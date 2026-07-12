@@ -12097,7 +12097,8 @@ static int operation_solver_seed_known_classifiers(struct compile_context* ctx, 
 	}
 	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
 		const struct prototype_operation_node* operation = &ctx->metadata->operations[i];
-		if (operation->classifier != PROTOTYPE_INVALID_ID &&
+		if (operation->tag != PROTOTYPE_OPERATION_ASCRIPTION &&
+			operation->classifier != PROTOTYPE_INVALID_ID &&
 			operation_solver_bind(ctx, i, operation->classifier, p_changed) != 0) {
 			return -1;
 		}
@@ -12165,23 +12166,8 @@ static int operation_solver_solve(struct compile_context* ctx) {
 					}
 					break;
 				case OPERATION_CONSTRAINT_EXPECTED:
-					if (constraint->left >= ctx->metadata->operation_count ||
-						(classifier = operation_solver_classifier(ctx, constraint->left)) ==
-							PROTOTYPE_INVALID_ID) {
-						break;
-					}
-					if (ctx->metadata->operations[constraint->target].tag ==
-						PROTOTYPE_OPERATION_MATCH) {
-						if (operation_solver_seed_motive(
-								ctx, constraint->target, classifier, &pass_changed
-							) != 0) {
-							return -1;
-						}
-					} else if (operation_solver_bind(
-								ctx, constraint->target, classifier, &pass_changed
-							) != 0) {
-						return -1;
-					}
+					/* Ascription is a post-synthesis conversion obligation. It never
+					 * binds the source operation or supplies a motive solution. */
 					break;
 				case OPERATION_CONSTRAINT_PI_EXPECTED:
 					if (constraint->left >= ctx->metadata->operation_count ||

@@ -19,6 +19,10 @@ solver emits constraints for:
 - one motive equation per match branch, and
 - an induction-hypothesis requirement for `*rest`.
 
+An ascription constraint is recorded as a conversion obligation but does not
+bind an operation classifier or seed a motive. The post-synthesis ascription
+phase checks it against the resolved classifier.
+
 The solver commits resolved classifiers to `OperationGraph` only after its
 worklist reaches a fixed point. `JudgementDB` derivations are then
 materialized from the resolved operation classifiers. It is not used as the
