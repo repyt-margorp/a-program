@@ -87,6 +87,22 @@ node. This preserves the intended invariant: `Bool` and `Two` may retain
 different `TYPE_VIEW` identities while their erased type-former core is one
 node.
 
+## Constructor Schema Boundary
+
+`classifier_family` is the authoritative constructor schema. Shape keys,
+constructor import/export checking, constructor application, pattern-field
+typing, and recursive-field recognition all consume its graph-level `PI`
+spine. The `readback` field and `readback_field_types` table remain only for
+source diagnostics and artifact readback; they do not decide a constructor's
+meaning.
+
+The artifact-flow suite exercises this boundary with
+`Sigma := \A => \B => @{ mk : (a : A) -> B a -> *; }`: an importing artifact
+applies `mk`, a match derives the second field classifier `B a`, and an
+alpha-renamed `Sigma2` shares the same core representation. Indexed result
+families are still intentionally outside the current surface type literal
+syntax; this is an IADT feature, not a field-schema fallback.
+
 ## Recursive Constant Motives
 
 For a recursive match, a solved non-recursive branch may provide a constant
@@ -159,14 +175,11 @@ The following items are intentionally not claimed as complete:
    identity. Universe level constraints, cumulativity, and Pi `max(u, v)`
    formation remain in `UniverseDB`; they have not yet been moved into the
    solver arena.
-5. Constructor schema is still represented by both graph-level
-   `classifier_family` and readback metadata. The graph-only constructor
-   schema migration, including dependent field telescopes, is a later phase.
-6. App constraints currently propagate forward from a resolved function and a
+5. App constraints currently propagate forward from a resolved function and a
    resolved argument. Reverse Pi propagation requires an explicit separation
    between value application and type-level application before it is safe to
    add: the current operation graph contains both forms.
-7. `SOLVED_MATCH_MOTIVE` currently records its branch-classifier evidence as
+6. `SOLVED_MATCH_MOTIVE` currently records its branch-classifier evidence as
    an artifact-slicing dependency rather than explicit variable-arity proof
    premises. The proof representation should eventually encode that evidence
    directly.
