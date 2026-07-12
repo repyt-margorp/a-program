@@ -10,6 +10,13 @@ cd "$ROOT_DIR"
 make reader >/dev/null
 make >/dev/null
 
+if ./a.out examples/negative/04_recursive_motive_conflict.p \
+	>/dev/null 2>"$TMP_DIR/recursive-motive-conflict.err"; then
+	echo "recursive motive conflict compiled successfully" >&2
+	exit 1
+fi
+grep -q 'failed to compile AST graph' "$TMP_DIR/recursive-motive-conflict.err"
+
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/repl.c \
 	src/prototype/ast.c \
