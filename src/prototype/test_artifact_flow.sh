@@ -216,6 +216,27 @@ grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
 grep -q '^exports-normalization-equal main expected mode=default yes$' \
 	"$TMP_DIR/list-nat-match-read.out"
 
+cat >"$TMP_DIR/recursive-dependent-motive.p" <<'EOF_RECURSIVE_DEPENDENT_MOTIVE'
+Bool := @{ true : *; false : *; };
+Nat := @{ zero : *; succ : * -> *; };
+BadNat := @{ zero0 : *; zero1 : *; succ : * -> *; };
+
+fold := \n : BadNat =>
+	n @zero0 => Bool.true
+	  @zero1 => Nat.zero
+	  @succ k => *k;
+EOF_RECURSIVE_DEPENDENT_MOTIVE
+
+./read_file.out --write-artifact "$TMP_DIR/recursive-dependent-motive.apo" \
+	"$TMP_DIR/recursive-dependent-motive.p" >"$TMP_DIR/recursive-dependent-motive.out"
+grep -q 'CASE(zero0 -> TYPE_VIEW(Bool' "$TMP_DIR/recursive-dependent-motive.out"
+grep -q 'CASE(zero1 -> TYPE_VIEW(Nat' "$TMP_DIR/recursive-dependent-motive.out"
+grep -q 'CASE(succ .* -> INDUCTION_HYPOTHESIS' "$TMP_DIR/recursive-dependent-motive.out"
+./read_file.out --read-graph "$TMP_DIR/recursive-dependent-motive.apo" \
+	>"$TMP_DIR/recursive-dependent-motive-read.out"
+grep -q 'term_exports=4 type_exports=3 constructor_exports=7 dependencies=0' \
+	"$TMP_DIR/recursive-dependent-motive-read.out"
+
 cat >"$TMP_DIR/repl-normal-form.p" <<'EOF_REPL_NORMAL_FORM'
 Nat := @{ zero : *; succ : * -> *; };
 

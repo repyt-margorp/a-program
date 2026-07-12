@@ -231,6 +231,12 @@ static int classifier_kernel_normalization_equal(
 	if (!term_exists(terms, expected) || !term_exists(terms, actual)) {
 		return 0;
 	}
+	/* Judgemental equality is reflexive even when WHNF expansion would enter a
+	 * guarded recursive motive. Normalization is evidence for distinct nodes,
+	 * not a prerequisite for a node being equal to itself. */
+	if (expected == actual) {
+		return 1;
+	}
 	if (term_is_universe_var(terms, expected) && term_is_universe_var(terms, actual)) {
 		return 1;
 	}
@@ -6832,20 +6838,41 @@ static int validate_solved_match_motive_proof(
 		}
 		int found = 0;
 		for (uint32_t j = 0; j < classifier_count; ++j) {
-			uint32_t expected_motive_case_body;
-			if (prototype_judgement_prepare_match_motive_case(
+			uint32_t expected_motive_case_body = PROTOTYPE_INVALID_ID;
+			int prepare_status = prototype_judgement_prepare_match_motive_case(
 					terms, type_declarations,
 					&terms->case_binders[match_case->first_binder],
 					&terms->case_binders[motive_case->first_binder],
 					match_case->binder_count, classifiers[j],
 					&expected_motive_case_body
-				) == 0 &&
+				);
+			if (prepare_status == 0 &&
 				prototype_judgement_classifier_normalization_equal(
 					terms, type_declarations, expected_motive_case_body,
 					motive_case->body
 				)) {
 				found = 1;
 				break;
+			}
+			/* A structurally recursive motive records M(rest) as an IH node in
+			 * its own match frame. This is a guarded equation, not a new WHNF
+			 * conversion rule. Verify the frame and the substituted recursive
+			 * binder explicitly. */
+			if (prepare_status == 0 && motive_case->body < terms->term_count &&
+				terms->terms[motive_case->body].tag ==
+					PROTOTYPE_TERM_INDUCTION_HYPOTHESIS &&
+				expected_motive_case_body < terms->term_count &&
+				terms->terms[expected_motive_case_body].tag == PROTOTYPE_TERM_APP) {
+				const struct prototype_term* motive_ih =
+					&terms->terms[motive_case->body];
+				const struct prototype_term* expected_app =
+					&terms->terms[expected_motive_case_body];
+				if (motive_body->as.match.frame_id == motive_ih->as.induction_hypothesis.frame_id &&
+					expected_app->as.app.function == motive_app->as.app.function &&
+					expected_app->as.app.argument == motive_ih->as.induction_hypothesis.argument) {
+					found = 1;
+					break;
+				}
 			}
 		}
 		if (!found) {

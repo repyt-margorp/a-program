@@ -12076,29 +12076,9 @@ static int operation_solver_seed_motive(
 		classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
 		return -1;
 	}
-	for (uint32_t case_index = 0;
-		case_index < ctx->metadata->operations[operation].case_count;
-		++case_index) {
-		const struct operation_motive_equation* equation =
-			operation_solver_motive_equation(
-				&ctx->classifier_solver, operation, case_index
-			);
-		if (!equation) {
-			return -1;
-		}
-		for (uint32_t binder_index = 0;
-			binder_index < equation->binder_count;
-			++binder_index) {
-			uint32_t binder_id = ctx->terms->case_binders[
-				equation->first_binder + binder_index
-			].binder_id;
-			if (prototype_term_contains_free_binder(
-					ctx->terms, classifier, binder_id
-				) != 0) {
-				return 1;
-			}
-		}
-	}
+	/* Do not test candidate capture with raw TermDB binder ids here. Tagless
+	 * core binder slots may be shared by unrelated source scopes. The equation
+	 * retains source scope for the later operation-aware unifier. */
 	uint32_t previous = ctx->classifier_solver.motive_seed_classifiers[operation];
 	if (previous == PROTOTYPE_INVALID_ID) {
 		ctx->classifier_solver.motive_seed_classifiers[operation] = classifier;
@@ -12254,6 +12234,12 @@ static int operation_solver_materialize_induction_hypothesis(
 static int operation_solver_match_has_recursive_binder(
 	const struct compile_context* ctx,
 	const struct prototype_operation_node* operation
+);
+
+static int operation_solver_find_match_for_frame(
+	const struct compile_context* ctx,
+	uint32_t frame_id,
+	uint32_t* p_operation
 );
 
 static int operation_solver_solve(struct compile_context* ctx) {
@@ -12667,6 +12653,151 @@ static int build_operation_constant_motive(
 	return 0;
 }
 
+/*
+ * Solve the guarded equation M(C(..., rest, ...)) = M(rest) without first
+ * inventing a TermDB classifier for M(rest). The resulting motive carries its
+ * own structurally-recursive match frame, so the recursive equation is a
+ * finite graph rather than a cyclic solver substitution.
+ */
+static int build_operation_guarded_recursive_motive(
+	struct compile_context* ctx,
+	const struct pending_match_typing* typing,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !typing || !p_classifier ||
+		typing->operation >= ctx->metadata->operation_count ||
+		typing->match_term >= ctx->terms->term_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* operation =
+		&ctx->metadata->operations[typing->operation];
+	const struct prototype_term* match = &ctx->terms->terms[typing->match_term];
+	if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
+		match->tag != PROTOTYPE_TERM_MATCH ||
+		operation->case_count == 0 || operation->case_count > 64 ||
+		match->as.match.case_count != operation->case_count) {
+		return 1;
+	}
+	struct prototype_match_case_input motive_cases[64];
+	struct prototype_case_binder motive_binders[256];
+	uint32_t binder_cursor = 0;
+	uint32_t motive_frame = prototype_term_new_match_frame(ctx->terms);
+	if (motive_frame == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
+		const struct operation_motive_equation* equation =
+			operation_solver_motive_equation(
+				&ctx->classifier_solver, typing->operation, case_index
+			);
+		uint32_t source_case_id = match->as.match.first_case + case_index;
+		if (!equation || source_case_id >= ctx->terms->case_count) {
+			return -1;
+		}
+		const struct prototype_match_case* source_case =
+			&ctx->terms->cases[source_case_id];
+		if (source_case->constructor_owner == PROTOTYPE_INVALID_ID ||
+			source_case->constructor_id == PROTOTYPE_INVALID_ID ||
+			binder_cursor + source_case->binder_count > 256) {
+			return 1;
+		}
+		for (uint32_t binder_index = 0;
+			binder_index < source_case->binder_count;
+			++binder_index) {
+			const struct prototype_case_binder* source_binder =
+				&ctx->terms->case_binders[source_case->first_binder + binder_index];
+			motive_binders[binder_cursor + binder_index].binder_id =
+				prototype_term_fresh_binder(ctx->terms);
+			motive_binders[binder_cursor + binder_index].is_recursive =
+				source_binder->is_recursive;
+			if (motive_binders[binder_cursor + binder_index].binder_id ==
+				PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+		}
+		motive_cases[case_index].case_label_symbol_id =
+			ctx->terms->case_label_symbols[source_case_id];
+		motive_cases[case_index].constructor_owner = source_case->constructor_owner;
+		motive_cases[case_index].constructor_id = source_case->constructor_id;
+		motive_cases[case_index].binders = &motive_binders[binder_cursor];
+		motive_cases[case_index].binder_count = source_case->binder_count;
+		uint32_t branch_classifier =
+			ctx->classifier_solver.bindings[equation->body_operation];
+		if (branch_classifier != PROTOTYPE_INVALID_ID) {
+			if (prototype_judgement_prepare_match_motive_case(
+					ctx->terms, ctx->type_declarations,
+					&ctx->terms->case_binders[source_case->first_binder],
+					&motive_binders[binder_cursor], source_case->binder_count,
+					branch_classifier, &motive_cases[case_index].body
+				) != 0) {
+				return -1;
+			}
+		} else {
+			const struct prototype_operation_node* branch =
+				&ctx->metadata->operations[equation->body_operation];
+			uint32_t parent_match;
+			if (branch->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS ||
+				branch->argument >= ctx->metadata->operation_count ||
+				operation_solver_find_match_for_frame(
+					ctx, branch->first_case, &parent_match
+				) != 0 || parent_match != typing->operation) {
+				return 1;
+			}
+			uint32_t original_argument =
+				ctx->metadata->operations[branch->argument].core_term;
+			if (original_argument >= ctx->terms->term_count ||
+				ctx->terms->terms[original_argument].tag != PROTOTYPE_TERM_VAR) {
+				return 1;
+			}
+			uint32_t recursive_index = PROTOTYPE_INVALID_ID;
+			for (uint32_t binder_index = 0;
+				binder_index < source_case->binder_count;
+				++binder_index) {
+				const struct prototype_case_binder* source_binder =
+					&ctx->terms->case_binders[source_case->first_binder + binder_index];
+				if (source_binder->is_recursive &&
+					source_binder->binder_id ==
+						ctx->terms->terms[original_argument].as.var.binder_id) {
+					recursive_index = binder_index;
+					break;
+				}
+			}
+			if (recursive_index == PROTOTYPE_INVALID_ID) {
+				return 1;
+			}
+			uint32_t recursive_var;
+			if (prototype_term_var(
+					ctx->terms,
+					motive_binders[binder_cursor + recursive_index].binder_id,
+					&recursive_var
+				) != 0 ||
+				prototype_term_induction_hypothesis(
+					ctx->terms, motive_frame, recursive_var,
+					&motive_cases[case_index].body
+				) != 0) {
+				return -1;
+			}
+		}
+		binder_cursor += source_case->binder_count;
+	}
+	uint32_t motive_binder = prototype_term_fresh_binder(ctx->terms);
+	uint32_t motive_var;
+	uint32_t motive_match;
+	uint32_t motive;
+	if (motive_binder == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(ctx->terms, motive_binder, &motive_var) != 0 ||
+		prototype_term_match_with_frame(
+			ctx->terms, motive_var, motive_cases, operation->case_count,
+			motive_frame, &motive_match
+		) != 0 ||
+		prototype_term_set_match_frame_term(ctx->terms, motive_frame, motive_match) != 0 ||
+		prototype_term_lambda(ctx->terms, motive_binder, motive_match, &motive) != 0 ||
+		prototype_term_app(ctx->terms, motive, match->as.match.scrutinee, p_classifier) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
 static int operation_solver_find_match_for_frame(
 	const struct compile_context* ctx,
 	uint32_t frame_id,
@@ -12788,6 +12919,42 @@ static int operation_solver_record_materialized_motive(
 	);
 }
 
+static int operation_solver_has_guarded_recursive_equation(
+	const struct compile_context* ctx,
+	uint32_t operation_id
+) {
+	if (!ctx || !ctx->metadata || operation_id >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	int has_unresolved_ih = 0;
+	const struct prototype_operation_node* match =
+		&ctx->metadata->operations[operation_id];
+	for (uint32_t case_index = 0; case_index < match->case_count; ++case_index) {
+		const struct operation_motive_equation* equation =
+			operation_solver_motive_equation(
+				&ctx->classifier_solver, operation_id, case_index
+			);
+		if (!equation) {
+			return -1;
+		}
+		if (ctx->classifier_solver.bindings[equation->body_operation] !=
+			PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		const struct prototype_operation_node* body =
+			&ctx->metadata->operations[equation->body_operation];
+		uint32_t parent_match;
+		if (body->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS ||
+			operation_solver_find_match_for_frame(
+				ctx, body->first_case, &parent_match
+			) != 0 || parent_match != operation_id) {
+			return 0;
+		}
+		has_unresolved_ih = 1;
+	}
+	return has_unresolved_ih;
+}
+
 static int operation_solver_existing_materialized_motive(
 	const struct compile_context* ctx,
 	const struct pending_match_typing* typing,
@@ -12882,6 +13049,31 @@ static int operation_solver_materialize_match(
 			 * every equation has a solved branch classifier. */
 			if (!has_recursive_binder) {
 				return 0;
+			}
+			int guarded_status = operation_solver_has_guarded_recursive_equation(
+				ctx, operation_id
+			);
+			if (guarded_status < 0) {
+				return -1;
+			}
+			if (guarded_status > 0) {
+				uint32_t recursive_classifier;
+				int recursive_status = build_operation_guarded_recursive_motive(
+					ctx, typing, &recursive_classifier
+				);
+				if (recursive_status != 0) {
+					return recursive_status < 0 ? -1 : 0;
+				}
+				ctx->classifier_solver.motive_terms[operation_id] =
+					ctx->terms->terms[recursive_classifier].as.app.function;
+				if (operation_solver_bind(
+						ctx, operation_id, recursive_classifier, p_changed
+					) != 0) {
+					return -1;
+				}
+				return operation_solver_record_materialized_motive(
+					ctx, operation_id, typing->match_term, recursive_classifier
+				);
 			}
 			uint32_t seed_classifier;
 			int seed_status = operation_solver_nonrecursive_seed_classifier(
@@ -12978,6 +13170,80 @@ static int operation_solver_materialize_induction_hypothesis(
 	return operation_solver_bind(ctx, operation_id, classifier, p_changed);
 }
 
+static int operation_solver_materialize_induction_hypothesis_judgement(
+	struct compile_context* ctx,
+	uint32_t operation_id
+) {
+	if (!ctx || !ctx->metadata || operation_id >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* operation =
+		&ctx->metadata->operations[operation_id];
+	uint32_t classifier = operation->classifier;
+	if (operation->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS ||
+		classifier == PROTOTYPE_INVALID_ID ||
+		operation->core_term >= ctx->terms->term_count ||
+		ctx->terms->terms[operation->core_term].tag !=
+			PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+		return -1;
+	}
+	for (int source = 0; source < 2; ++source) {
+		const struct prototype_judgement_relation* relations =
+			source == 0 ? ctx->judgement_delta.relations : ctx->judgement->relations;
+		size_t relation_count =
+			source == 0 ? ctx->judgement_delta.relation_count : ctx->judgement->relation_count;
+		for (size_t i = 0; i < relation_count; ++i) {
+			if (relations[i].kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				relations[i].subject == operation->core_term &&
+				prototype_judgement_classifier_normalization_equal(
+					ctx->terms, ctx->type_declarations,
+					relations[i].classifier, classifier
+				)) {
+				return 0;
+			}
+		}
+	}
+	const struct prototype_term* ih = &ctx->terms->terms[operation->core_term];
+	uint32_t frame_id = ih->as.induction_hypothesis.frame_id;
+	if (frame_id >= ctx->terms->match_frame_count ||
+		ih->as.induction_hypothesis.argument >= ctx->terms->term_count ||
+		ctx->terms->terms[ih->as.induction_hypothesis.argument].tag !=
+			PROTOTYPE_TERM_VAR) {
+		return -1;
+	}
+	uint32_t match_term = ctx->terms->match_frames[frame_id].match_term;
+	if (match_term >= ctx->terms->term_count ||
+		ctx->terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
+		return -1;
+	}
+	const struct prototype_term* match = &ctx->terms->terms[match_term];
+	uint32_t binder_id =
+		ctx->terms->terms[ih->as.induction_hypothesis.argument].as.var.binder_id;
+	for (uint32_t case_index = 0; case_index < match->as.match.case_count;
+		++case_index) {
+		const struct prototype_match_case* match_case = &ctx->terms->cases[
+			match->as.match.first_case + case_index
+		];
+		for (uint32_t binder_index = 0; binder_index < match_case->binder_count;
+			++binder_index) {
+			const struct prototype_case_binder* binder = &ctx->terms->case_binders[
+				match_case->first_binder + binder_index
+			];
+			if (binder->binder_id != binder_id) {
+				continue;
+			}
+			if (!binder->is_recursive) {
+				return -1;
+			}
+			return prototype_judgement_delta_expand_induction_hypothesis(
+				&ctx->judgement_delta, ctx->terms, operation->core_term, classifier,
+				match_term, case_index, binder_index
+			);
+		}
+	}
+	return -1;
+}
+
 /*
  * The solver owns classifier synthesis. Once all operation variables have a
  * concrete solution, this phase only reconstructs JudgementDB derivations for
@@ -13020,17 +13286,9 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 					return -1;
 				}
 			} else if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
-				struct prototype_induction_hypothesis_resolution_request request;
-				memset(&request, 0, sizeof(request));
-				request.subject = operation->core_term;
-				request.frame_id = operation->first_case;
-				request.argument = ctx->metadata->operations[
-					operation->argument
-				].core_term;
-				int status = prototype_judgement_delta_resolve_induction_hypothesis_request(
-					&ctx->judgement_delta, ctx->terms, ctx->type_declarations, &request
-				);
-				if (status < 0) {
+				if (operation_solver_materialize_induction_hypothesis_judgement(
+						ctx, i
+					) != 0) {
 					return -1;
 				}
 			}
