@@ -55,6 +55,11 @@ compiler creates the actual motive lambda and the `APP(motive, scrutinee)` and
 `APP(motive, rest)` terms. This is sufficient for the current `Nat` and
 `List` recursive examples, including `append`.
 
+Candidate closedness is checked only against the source branch that produced
+the candidate. Checking every case against raw core binder ids would reject a
+closed candidate when another case happens to share that tagless core binder
+slot.
+
 ## Direct Guarded Recursive Motives
 
 The solver now recognizes the direct guarded equation

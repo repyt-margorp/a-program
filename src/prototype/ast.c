@@ -12054,6 +12054,12 @@ static const struct operation_motive_equation* operation_solver_motive_equation(
 	return NULL;
 }
 
+static int operation_classifier_captures_case_binder(
+	const struct compile_context* ctx,
+	const struct operation_motive_equation* equation,
+	uint32_t classifier
+);
+
 static int operation_solver_bind(
 	struct compile_context* ctx,
 	uint32_t variable,
@@ -12102,6 +12108,7 @@ static int operation_solver_seed_motive(
 	struct compile_context* ctx,
 	uint32_t operation,
 	uint32_t classifier,
+	uint32_t source_body_operation,
 	int* p_changed
 ) {
 	if (!ctx || !ctx->metadata || !p_changed ||
@@ -12109,9 +12116,31 @@ static int operation_solver_seed_motive(
 		classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
 		return -1;
 	}
-	/* Do not test candidate capture with raw TermDB binder ids here. Tagless
-	 * core binder slots may be shared by unrelated source scopes. The equation
-	 * retains source scope for the later operation-aware unifier. */
+	const struct operation_motive_equation* source_equation = NULL;
+	for (uint32_t case_index = 0;
+		case_index < ctx->metadata->operations[operation].case_count;
+		++case_index) {
+		const struct operation_motive_equation* equation =
+			operation_solver_motive_equation(
+				&ctx->classifier_solver, operation, case_index
+			);
+		if (!equation) {
+			return -1;
+		}
+		if (equation->body_operation == source_body_operation) {
+			source_equation = equation;
+			break;
+		}
+	}
+	if (!source_equation) {
+		return -1;
+	}
+	int capture_status = operation_classifier_captures_case_binder(
+		ctx, source_equation, classifier
+	);
+	if (capture_status != 0) {
+		return capture_status < 0 ? -1 : 1;
+	}
 	uint32_t previous =
 		ctx->classifier_solver.motive_constant_candidates[operation];
 	if (previous == PROTOTYPE_INVALID_ID) {
@@ -12656,6 +12685,31 @@ static int operation_branch_uses_case_binder(
 	return 0;
 }
 
+static int operation_classifier_captures_case_binder(
+	const struct compile_context* ctx,
+	const struct operation_motive_equation* equation,
+	uint32_t classifier
+) {
+	if (!ctx || !equation || classifier >= ctx->terms->term_count ||
+		equation->first_binder + equation->binder_count >
+			ctx->terms->case_binder_count) {
+		return -1;
+	}
+	int source_uses_binder = operation_branch_uses_case_binder(ctx, equation);
+	if (source_uses_binder <= 0) {
+		return source_uses_binder;
+	}
+	for (uint32_t i = 0; i < equation->binder_count; ++i) {
+		uint32_t binder_id = ctx->terms->case_binders[
+			equation->first_binder + i
+		].binder_id;
+		if (prototype_term_contains_free_binder(ctx->terms, classifier, binder_id) != 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 /*
  * A uniform motive is represented as a constant lambda. This is not a Match
  * typing shortcut: APP(\_ => T, scrutinee) reduces by beta to T. It is valid
@@ -12688,8 +12742,6 @@ static int build_operation_uniform_motive(
 			operation_solver_motive_equation(
 				&ctx->classifier_solver, typing->operation, case_index
 			);
-		const struct prototype_match_case* source_case =
-			&ctx->terms->cases[match->as.match.first_case + case_index];
 		if (!equation || equation->body_operation >= ctx->metadata->operation_count) {
 			return -1;
 		}
@@ -12698,30 +12750,14 @@ static int build_operation_uniform_motive(
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
-		int dependency_status = operation_branch_uses_case_binder(ctx, equation);
-		if (dependency_status < 0) {
+		int capture_status = operation_classifier_captures_case_binder(
+			ctx, equation, branch_classifier
+		);
+		if (capture_status < 0) {
 			return -1;
 		}
-		if (dependency_status > 0) {
-			/* The source branch uses a case binder. Only then does a matching
-			 * core free binder establish classifier dependency; inspecting raw
-			 * core binders without this source check is unsound after sharing. */
-			if (source_case->first_binder + source_case->binder_count >
-				ctx->terms->case_binder_count) {
-				return -1;
-			}
-			for (uint32_t binder_index = 0;
-				binder_index < source_case->binder_count;
-				++binder_index) {
-				uint32_t binder_id = ctx->terms->case_binders[
-					source_case->first_binder + binder_index
-				].binder_id;
-				if (prototype_term_contains_free_binder(
-						ctx->terms, branch_classifier, binder_id
-					) != 0) {
-					return 1;
-				}
-			}
+		if (capture_status > 0) {
+			return 1;
 		}
 		if (classifier == PROTOTYPE_INVALID_ID) {
 			classifier = branch_classifier;
@@ -12979,15 +13015,17 @@ static int operation_solver_nonrecursive_seed_classifier(
 	struct compile_context* ctx,
 	uint32_t operation_id,
 	const struct prototype_operation_node* operation,
-	uint32_t* p_classifier
+	uint32_t* p_classifier,
+	uint32_t* p_source_body_operation
 ) {
-	if (!ctx || !operation || !p_classifier ||
+	if (!ctx || !operation || !p_classifier || !p_source_body_operation ||
 		operation_id >= ctx->metadata->operation_count || operation->case_count == 0 ||
 		operation->first_case + operation->case_count >
 			ctx->metadata->operation_case_count) {
 		return -1;
 	}
 	uint32_t candidate = PROTOTYPE_INVALID_ID;
+	uint32_t source_body_operation = PROTOTYPE_INVALID_ID;
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
 		const struct operation_motive_equation* equation =
 			operation_solver_motive_equation(
@@ -13021,6 +13059,7 @@ static int operation_solver_nonrecursive_seed_classifier(
 		}
 		if (candidate == PROTOTYPE_INVALID_ID) {
 			candidate = branch_classifier;
+			source_body_operation = equation->body_operation;
 		} else if (!prototype_judgement_classifier_normalization_equal(
 				ctx->terms, ctx->type_declarations, candidate, branch_classifier
 			)) {
@@ -13031,6 +13070,7 @@ static int operation_solver_nonrecursive_seed_classifier(
 		return 1;
 	}
 	*p_classifier = candidate;
+	*p_source_body_operation = source_body_operation;
 	return 0;
 }
 
@@ -13230,8 +13270,10 @@ static int operation_solver_materialize_match(
 				);
 			}
 			uint32_t seed_classifier;
+			uint32_t seed_source_body_operation;
 			int seed_status = operation_solver_nonrecursive_seed_classifier(
-				ctx, operation_id, operation, &seed_classifier
+				ctx, operation_id, operation, &seed_classifier,
+				&seed_source_body_operation
 			);
 			if (seed_status != 0) {
 				return seed_status < 0 ? -1 : 0;
@@ -13240,7 +13282,8 @@ static int operation_solver_materialize_match(
 			 * constant-motive equation, but no APP(M, _) TermDB node exists
 			 * until all branch equations have been checked. */
 			seed_status = operation_solver_seed_motive(
-				ctx, operation_id, seed_classifier, p_changed
+				ctx, operation_id, seed_classifier, seed_source_body_operation,
+				p_changed
 			);
 			if (seed_status < 0) {
 				return -1;
