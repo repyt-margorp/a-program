@@ -280,6 +280,8 @@ struct prototype_operation_node {
 	int tag;
 	uint32_t core_term;
 	uint32_t classifier;
+	/* Solver-local classifier variable. It is an operation identity, not a TermDB id. */
+	uint32_t classifier_variable;
 	uint32_t source_ast;
 	int source_symbol_id;
 	int binder_symbol_id;

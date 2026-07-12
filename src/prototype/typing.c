@@ -2696,6 +2696,29 @@ static int add_match_motive_result(
 	return 0;
 }
 
+int prototype_judgement_delta_record_materialized_match_motive(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_term_db* terms,
+	uint32_t match_term,
+	uint32_t classifier
+) {
+	if (!delta || !terms || match_term >= terms->term_count ||
+		classifier >= terms->term_count ||
+		!match_motive_result_classifier(terms, match_term, classifier)) {
+		return -1;
+	}
+	if (add_match_motive_result(delta, match_term, classifier) != 0) {
+		return -1;
+	}
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		match_term,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE
+	);
+}
+
 static void remove_match_motive_results_normalization_equal(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -6735,6 +6758,21 @@ static int validate_induction_hypothesis_elim_proof(
 	return -1;
 }
 
+static int validate_solved_match_motive_proof(
+	const struct prototype_term_db* terms,
+	const struct prototype_judgement_relation* relation,
+	const struct prototype_judgement_proof* proof
+) {
+	if (!terms || !relation || !proof ||
+		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		proof->premise_count != 0 ||
+		proof->context_kind != PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_NONE ||
+		!match_motive_result_classifier(terms, relation->subject, relation->classifier)) {
+		return -1;
+	}
+	return 0;
+}
+
 static int validate_type_formation_intro_proof(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -7511,6 +7549,11 @@ int prototype_judgement_validate_proofs(
 						relation,
 						proof
 					) != 0) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE:
+				if (validate_solved_match_motive_proof(terms, relation, proof) != 0) {
 					return -1;
 				}
 				break;

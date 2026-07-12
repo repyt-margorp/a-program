@@ -25,6 +25,7 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
+	PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE,
 	PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_INTRINSIC_TYPE_INTRO,
@@ -521,6 +522,13 @@ int prototype_judgement_delta_resolve_induction_hypothesis_request(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_induction_hypothesis_resolution_request* request
+);
+
+int prototype_judgement_delta_record_materialized_match_motive(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_term_db* terms,
+	uint32_t match_term,
+	uint32_t classifier
 );
 
 int prototype_judgement_delta_infer_term_classifiers(
