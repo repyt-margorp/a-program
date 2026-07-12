@@ -19,6 +19,11 @@ solver emits constraints for:
 - one motive equation per match branch, and
 - an induction-hypothesis requirement for `*rest`.
 
+Each motive equation also records its constructor, source case-binder range,
+and match frame in the solver arena. This is the scoped context used when a
+constant motive candidate is admitted; a candidate may not capture any case
+binder.
+
 An ascription constraint is recorded as a conversion obligation but does not
 bind an operation classifier or seed a motive. The post-synthesis ascription
 phase checks it against the resolved classifier.

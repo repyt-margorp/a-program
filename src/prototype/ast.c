@@ -7766,6 +7766,7 @@ struct compile_ref {
 
 #define PROTOTYPE_JUDGEMENT_DELTA_CAPACITY 4096
 #define PROTOTYPE_OPERATION_CONSTRAINT_CAPACITY 16384
+#define PROTOTYPE_OPERATION_MOTIVE_EQUATION_CAPACITY 4096
 
 enum operation_classifier_constraint_kind {
 	OPERATION_CONSTRAINT_HAS_TYPE = 1,
@@ -7785,6 +7786,26 @@ struct operation_classifier_constraint {
 };
 
 /*
+ * This is the solver-side form of
+ *
+ *     classifier(branch body) == M(Constructor(case binders)).
+ *
+ * Binder scope is copied here as data. It is not inferred later from a shared
+ * core VAR node, whose identity is deliberately weaker than a source
+ * occurrence identity.
+ */
+struct operation_motive_equation {
+	uint32_t match_operation;
+	uint32_t case_index;
+	uint32_t body_operation;
+	uint32_t constructor_owner;
+	uint32_t constructor_id;
+	uint32_t first_binder;
+	uint32_t binder_count;
+	uint32_t match_frame_id;
+};
+
+/*
  * This arena is intentionally separate from TermDB and JudgementDB. Entries in
  * bindings are resolved TermDB classifiers; INVALID means an unsolved type
  * metavariable identified by its operation id.
@@ -7796,6 +7817,9 @@ struct operation_classifier_solver {
 	uint32_t motive_seed_classifiers[4096];
 	uint32_t provisional_ih_classifiers[4096];
 	uint32_t motive_terms[4096];
+	struct operation_motive_equation
+		motive_equations[PROTOTYPE_OPERATION_MOTIVE_EQUATION_CAPACITY];
+	uint32_t motive_equation_count;
 	struct operation_classifier_constraint
 		constraints[PROTOTYPE_OPERATION_CONSTRAINT_CAPACITY];
 	uint32_t constraint_count;
@@ -11939,6 +11963,73 @@ static int operation_solver_add_constraint(
 	return 0;
 }
 
+static int operation_solver_add_motive_equation(
+	struct compile_context* ctx,
+	uint32_t match_operation,
+	uint32_t case_index,
+	uint32_t body_operation
+) {
+	if (!ctx || !ctx->metadata ||
+		match_operation >= ctx->metadata->operation_count ||
+		body_operation >= ctx->metadata->operation_count ||
+		ctx->classifier_solver.motive_equation_count >=
+			PROTOTYPE_OPERATION_MOTIVE_EQUATION_CAPACITY) {
+		return -1;
+	}
+	const struct prototype_operation_node* operation =
+		&ctx->metadata->operations[match_operation];
+	if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
+		operation->core_term >= ctx->terms->term_count ||
+		ctx->terms->terms[operation->core_term].tag != PROTOTYPE_TERM_MATCH ||
+		case_index >= operation->case_count ||
+		operation->first_case + case_index >=
+			ctx->metadata->operation_case_count) {
+		return -1;
+	}
+	const struct prototype_term* match = &ctx->terms->terms[operation->core_term];
+	uint32_t term_case_id = match->as.match.first_case + case_index;
+	if (term_case_id >= ctx->terms->case_count) {
+		return -1;
+	}
+	const struct prototype_match_case* match_case = &ctx->terms->cases[term_case_id];
+	if (match_case->first_binder + match_case->binder_count >
+		ctx->terms->case_binder_count) {
+		return -1;
+	}
+	ctx->classifier_solver.motive_equations[
+		ctx->classifier_solver.motive_equation_count++
+	] = (struct operation_motive_equation){
+		match_operation,
+		case_index,
+		body_operation,
+		match_case->constructor_owner,
+		match_case->constructor_id,
+		match_case->first_binder,
+		match_case->binder_count,
+		match->as.match.frame_id
+	};
+	return 0;
+}
+
+static const struct operation_motive_equation* operation_solver_motive_equation(
+	const struct operation_classifier_solver* solver,
+	uint32_t match_operation,
+	uint32_t case_index
+) {
+	if (!solver) {
+		return NULL;
+	}
+	for (uint32_t i = 0; i < solver->motive_equation_count; ++i) {
+		const struct operation_motive_equation* equation =
+			&solver->motive_equations[i];
+		if (equation->match_operation == match_operation &&
+			equation->case_index == case_index) {
+			return equation;
+		}
+	}
+	return NULL;
+}
+
 static int operation_solver_bind(
 	struct compile_context* ctx,
 	uint32_t variable,
@@ -11984,6 +12075,29 @@ static int operation_solver_seed_motive(
 		operation >= ctx->metadata->operation_count ||
 		classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
 		return -1;
+	}
+	for (uint32_t case_index = 0;
+		case_index < ctx->metadata->operations[operation].case_count;
+		++case_index) {
+		const struct operation_motive_equation* equation =
+			operation_solver_motive_equation(
+				&ctx->classifier_solver, operation, case_index
+			);
+		if (!equation) {
+			return -1;
+		}
+		for (uint32_t binder_index = 0;
+			binder_index < equation->binder_count;
+			++binder_index) {
+			uint32_t binder_id = ctx->terms->case_binders[
+				equation->first_binder + binder_index
+			].binder_id;
+			if (prototype_term_contains_free_binder(
+					ctx->terms, classifier, binder_id
+				) != 0) {
+				return 1;
+			}
+		}
 	}
 	uint32_t previous = ctx->classifier_solver.motive_seed_classifiers[operation];
 	if (previous == PROTOTYPE_INVALID_ID) {
@@ -12071,6 +12185,10 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 		} else if (operation->tag == PROTOTYPE_OPERATION_MATCH) {
 			for (uint32_t j = 0; j < operation->case_count; ++j) {
 				if (operation->first_case + j >= ctx->metadata->operation_case_count ||
+					operation_solver_add_motive_equation(
+						ctx, i, j,
+						ctx->metadata->operation_cases[operation->first_case + j].body_operation
+					) != 0 ||
 					operation_solver_add_constraint(
 						ctx, OPERATION_CONSTRAINT_MOTIVE_EQUATION, i,
 						ctx->metadata->operation_cases[operation->first_case + j].body_operation,
@@ -12356,18 +12474,20 @@ static int build_operation_motive(
 	struct prototype_case_binder motive_binders[256];
 	uint32_t binder_cursor = 0;
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
-		const struct prototype_operation_match_case* operation_case =
-			&ctx->metadata->operation_cases[operation->first_case + case_index];
+		const struct operation_motive_equation* equation =
+			operation_solver_motive_equation(
+				&ctx->classifier_solver, typing->operation, case_index
+			);
 		const struct prototype_match_case* source_case =
 			&ctx->terms->cases[match->as.match.first_case + case_index];
-		if (operation_case->body_operation >= ctx->metadata->operation_count ||
+		if (!equation || equation->body_operation >= ctx->metadata->operation_count ||
 			source_case->constructor_owner == PROTOTYPE_INVALID_ID ||
 			source_case->constructor_id == PROTOTYPE_INVALID_ID ||
 			binder_cursor + source_case->binder_count > 256) {
 			return 1;
 		}
 		uint32_t branch_classifier =
-			ctx->classifier_solver.bindings[operation_case->body_operation];
+			ctx->classifier_solver.bindings[equation->body_operation];
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
@@ -12437,16 +12557,18 @@ static int build_operation_uniform_motive(
 	}
 	uint32_t classifier = PROTOTYPE_INVALID_ID;
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
-		const struct prototype_operation_match_case* operation_case =
-			&ctx->metadata->operation_cases[operation->first_case + case_index];
+		const struct operation_motive_equation* equation =
+			operation_solver_motive_equation(
+				&ctx->classifier_solver, typing->operation, case_index
+			);
 		const struct prototype_match_case* source_case =
 			&ctx->terms->cases[match->as.match.first_case + case_index];
-		if (operation_case->body_operation >= ctx->metadata->operation_count ||
+		if (!equation || equation->body_operation >= ctx->metadata->operation_count ||
 			source_case->first_binder + source_case->binder_count > ctx->terms->case_binder_count) {
 			return -1;
 		}
 		uint32_t branch_classifier =
-			ctx->classifier_solver.bindings[operation_case->body_operation];
+			ctx->classifier_solver.bindings[equation->body_operation];
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
@@ -12570,23 +12692,27 @@ static int operation_solver_find_match_for_frame(
 
 static int operation_solver_nonrecursive_seed_classifier(
 	struct compile_context* ctx,
+	uint32_t operation_id,
 	const struct prototype_operation_node* operation,
 	uint32_t* p_classifier
 ) {
-	if (!ctx || !operation || !p_classifier || operation->case_count == 0 ||
+	if (!ctx || !operation || !p_classifier ||
+		operation_id >= ctx->metadata->operation_count || operation->case_count == 0 ||
 		operation->first_case + operation->case_count >
 			ctx->metadata->operation_case_count) {
 		return -1;
 	}
 	uint32_t candidate = PROTOTYPE_INVALID_ID;
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
-		const struct prototype_operation_match_case* operation_case =
-			&ctx->metadata->operation_cases[operation->first_case + case_index];
-		if (operation_case->body_operation >= ctx->metadata->operation_count) {
+		const struct operation_motive_equation* equation =
+			operation_solver_motive_equation(
+				&ctx->classifier_solver, operation_id, case_index
+			);
+		if (!equation || equation->body_operation >= ctx->metadata->operation_count) {
 			return -1;
 		}
 		uint32_t branch_classifier =
-			ctx->classifier_solver.bindings[operation_case->body_operation];
+			ctx->classifier_solver.bindings[equation->body_operation];
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
@@ -12737,9 +12863,14 @@ static int operation_solver_materialize_match(
 		);
 	}
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
-		uint32_t body_operation = ctx->metadata->operation_cases[
-			operation->first_case + case_index
-		].body_operation;
+		const struct operation_motive_equation* equation =
+			operation_solver_motive_equation(
+				&ctx->classifier_solver, operation_id, case_index
+			);
+		if (!equation) {
+			return -1;
+		}
+		uint32_t body_operation = equation->body_operation;
 		if (body_operation >= ctx->metadata->operation_count ||
 			ctx->classifier_solver.bindings[body_operation] == PROTOTYPE_INVALID_ID) {
 			int has_recursive_binder = operation_solver_match_has_recursive_binder(ctx, operation);
@@ -12754,7 +12885,7 @@ static int operation_solver_materialize_match(
 			}
 			uint32_t seed_classifier;
 			int seed_status = operation_solver_nonrecursive_seed_classifier(
-				ctx, operation, &seed_classifier
+				ctx, operation_id, operation, &seed_classifier
 			);
 			if (seed_status != 0) {
 				return seed_status < 0 ? -1 : 0;
@@ -12762,9 +12893,10 @@ static int operation_solver_materialize_match(
 			/* Keep the candidate in the solver only. The IH can use this
 			 * constant-motive equation, but no APP(M, _) TermDB node exists
 			 * until all branch equations have been checked. */
-			if (operation_solver_seed_motive(
-					ctx, operation_id, seed_classifier, p_changed
-				) != 0) {
+			seed_status = operation_solver_seed_motive(
+				ctx, operation_id, seed_classifier, p_changed
+			);
+			if (seed_status < 0) {
 				return -1;
 			}
 			return 0;
