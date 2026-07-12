@@ -1,10 +1,10 @@
-(* Level 1: Non-recursive data type - Product (Pair) *)
+/* Level 1: Non-recursive data type - Product (Pair) */
 
 Prod := \A : @ => \B : @ => @{
   pair : A -> B -> *;
 };
 
-(* Projections *)
+/* Projections */
 fst : (A : @) -> (B : @) -> Prod A B -> A :=
   \A : @ => \B : @ => \p : Prod A B =>
     p @pair a b => a;
@@ -23,7 +23,7 @@ Nat := @{
   succ : * -> *;
 };
 
-(* Example: Bool × Nat *)
+/* Example: Bool × Nat */
 example_pair : Prod Bool Nat :=
   (Prod Bool Nat).pair Bool.true Nat.zero;
 

@@ -1,12 +1,29 @@
 
-all: parser.tab.c lex.yy.c
-	cc -I ./include src/main.c src/term.c src/symbol.c src/environment.c src/parse.c parser.tab.c lex.yy.c -o a.out
+all:
+	cc -std=c11 -Wall -Wextra -I src/prototype \
+		src/prototype/repl.c \
+		src/prototype/ast.c \
+		src/prototype/ast_inspect.c \
+		src/prototype/reader.c \
+		src/prototype/term.c \
+		src/prototype/type_declaration.c \
+		src/prototype/typing.c \
+		src/prototype/universe.c \
+		src/prototype/symbol.c \
+		-o a.out
 
-parser.tab.c parser.tab.h: src/parser.y
-	bison -d src/parser.y
-
-lex.yy.c: src/lexer.l parser.tab.h
-	flex src/lexer.l
+reader:
+	cc -std=c11 -Wall -Wextra -I src/prototype \
+		src/prototype/read_file.c \
+		src/prototype/ast.c \
+		src/prototype/ast_inspect.c \
+		src/prototype/reader.c \
+		src/prototype/term.c \
+		src/prototype/type_declaration.c \
+		src/prototype/typing.c \
+		src/prototype/universe.c \
+		src/prototype/symbol.c \
+		-o read_file.out
 
 clean:
-	rm -f parser.tab.c parser.tab.h lex.yy.c a.out
+	rm -f a.out read_file.out

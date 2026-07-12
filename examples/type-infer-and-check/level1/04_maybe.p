@@ -1,11 +1,11 @@
-(* Level 1: Non-recursive data type - Maybe (Option) *)
+/* Level 1: Non-recursive data type - Maybe (Option) */
 
 Maybe := \A : @ => @{
   nothing : *;
   just : A -> *;
 };
 
-(* Maybe eliminator *)
+/* Maybe eliminator */
 maybe_elim : (A : @) -> (B : @) ->
              B -> (A -> B) -> Maybe A -> B :=
   \A : @ => \B : @ =>
@@ -18,7 +18,7 @@ Nat := @{
   succ : * -> *;
 };
 
-(* Maybe is used for partial functions *)
+/* Maybe is used for partial functions */
 none_example : Maybe Nat := (Maybe Nat).nothing;
 some_example : Maybe Nat := (Maybe Nat).just Nat.zero;
 

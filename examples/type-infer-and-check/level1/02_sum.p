@@ -1,4 +1,4 @@
-(* Level 1: Non-recursive data type - Sum (Either) *)
+/* Level 1: Non-recursive data type - Sum (Either) */
 
 Sum := \A : @ => \B : @ => @{
   inl : A -> *;
@@ -15,7 +15,7 @@ Nat := @{
   succ : * -> *;
 };
 
-(* Sum eliminator *)
+/* Sum eliminator */
 sum_elim : (A : @) -> (B : @) -> (C : @) ->
            (A -> C) -> (B -> C) -> Sum A B -> C :=
   \A : @ => \B : @ => \C : @ =>
@@ -23,7 +23,7 @@ sum_elim : (A : @) -> (B : @) -> (C : @) ->
     s @inl a => f a
       @inr b => g b;
 
-(* Example: Bool or Nat *)
+/* Example: Bool or Nat */
 left_example : Sum Bool Nat := (Sum Bool Nat).inl Bool.true;
 right_example : Sum Bool Nat := (Sum Bool Nat).inr Nat.zero;
 

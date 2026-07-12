@@ -1,21 +1,21 @@
-(* Level 2: Simple inductive type - Natural numbers *)
+/* Level 2: Simple inductive type - Natural numbers */
 
 Nat := @{
   zero : *;
   succ : * -> *;
 };
 
-(* Addition with induction hypothesis *)
+/* Addition with induction hypothesis */
 add : Nat -> Nat -> Nat := \n : Nat =>
   n @zero => (\m : Nat => m)
-    @succ k => (\m : Nat => Nat.succ ( *k m));
+    @succ k => (\m : Nat => Nat.succ (*k m));
 
-(* Multiplication with induction hypothesis *)
+/* Multiplication with induction hypothesis */
 mul : Nat -> Nat -> Nat := \n : Nat =>
   n @zero => (\m : Nat => Nat.zero)
-    @succ k => (\m : Nat => add m ( *k m));
+    @succ k => (\m : Nat => add m (*k m));
 
-(* Predecessor *)
+/* Predecessor */
 pred : Nat -> Nat := \n : Nat =>
   n @zero => Nat.zero
     @succ k => k;

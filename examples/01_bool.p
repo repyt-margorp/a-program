@@ -3,4 +3,5 @@ Bool := @{
 	false : *;
 };
 
-id := \x : @ => x;
+id := \A : @ => x : A => x;
+x := id Bool Bool.true;

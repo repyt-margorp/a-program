@@ -8,9 +8,10 @@ Nat := @{
 	succ : * -> *;
 };
 
-add : Nat -> Nat -> Nat := \n : Nat =>
+add := \n : Nat =>
 	n @zero => (\m : Nat => m)
-	  @succ k => (\m : Nat => Nat.succ ( *k m));
+	  @succ k => (\m : Nat => Nat.succ (*k m));
+add :: Nat -> Nat -> Nat;
 
 two := Nat.succ (Nat.succ Nat.zero);
 three := Nat.succ two;

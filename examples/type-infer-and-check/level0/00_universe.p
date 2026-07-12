@@ -1,9 +1,9 @@
-(* Level 0: Universe type *)
+/* Level 0: Universe type */
 
-(* Universe itself *)
+/* Universe itself */
 U : * := @;
 
-(* Types inhabit the universe *)
+/* Types inhabit the universe */
 TypeExample : * := *;
 
 main := U;
