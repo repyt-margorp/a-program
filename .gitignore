@@ -1,4 +1,5 @@
 a.out
+read_file.out
 *.o
 *.swp
 .claude/

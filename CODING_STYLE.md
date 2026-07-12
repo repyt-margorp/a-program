@@ -13,6 +13,11 @@
 - Comments and documentation must be in English.
   - Write block/line comments, docstrings, and Markdown docs in clear English.
   - Prefer concise rationale over verbose prose; include why-not when helpful.
+- Comment syntax is C-style.
+  - Use `// ...` for line comments.
+  - Use `/* ... */` for block comments.
+  - Do not use ML/OCaml-style comments such as `(* ... *)` in `.p` examples,
+    documentation snippets, lexer/parser tests, or source-adjacent fixtures.
 - All code, identifiers, comments, and documentation (including coding guidelines) must be written in English.
 - Files:
   - Headers under `include/` only declare interfaces; no non-trivial inline logic.

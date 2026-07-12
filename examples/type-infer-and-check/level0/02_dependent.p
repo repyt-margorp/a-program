@@ -1,13 +1,13 @@
-(* Level 0: Dependent function types (Π-types) *)
+/* Level 0: Dependent function types (Π-types) */
 
-(* Dependent identity *)
+/* Dependent identity */
 dep_id : (A : *) -> A -> A := \A : * => \x : A => x;
 
-(* Dependent constant *)
+/* Dependent constant */
 dep_const : (A : *) -> (B : *) -> A -> B -> A :=
   \A : * => \B : * => \a : A => \b : B => a;
 
-(* Type-level application *)
+/* Type-level application */
 app_type : (F : * -> *) -> * -> * :=
   \F : (* -> *) => \A : * => F A;
 

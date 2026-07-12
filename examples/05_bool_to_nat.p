@@ -13,7 +13,7 @@ toNat := \b : Bool =>
 	  @false => Nat.zero;
 
 negate := \b : Bool =>
-	b @true => false
-	  @false => true;
+	b @true => Bool.false
+	  @false => Bool.true;
 
-main := toNat (negate false);
+main := toNat (negate Bool.false);

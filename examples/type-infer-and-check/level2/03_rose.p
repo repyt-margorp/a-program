@@ -1,4 +1,4 @@
-(* Level 2: Complex inductive type - Rose trees (nested recursion) *)
+/* Level 2: Complex inductive type - Rose trees (nested recursion) */
 
 Nat := @{
   zero : *;
@@ -10,16 +10,16 @@ List := \A : @ => @{
   cons : A -> * -> *;
 };
 
-(* Rose tree: node with list of children *)
+/* Rose tree: node with list of children */
 RoseTree := \A : @ => @{
   rose : A -> List (RoseTree A) -> *;
 };
 
-(* Note: This demonstrates nested recursion
+/* Note: This demonstrates nested recursion
    The constructor takes List (RoseTree A), which means
-   RoseTree appears nested inside List *)
+   RoseTree appears nested inside List */
 
-(* Example construction *)
+/* Example construction */
 empty_children : List (RoseTree Nat) := (List (RoseTree Nat)).nil;
 
 leaf : Nat -> RoseTree Nat := \x : Nat =>

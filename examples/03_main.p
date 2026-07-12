@@ -1,2 +1,7 @@
-id := \x : @ => x;
-main := id C;
+Bool := @{
+	true : *;
+	false : *;
+};
+
+id := \A : @ => x : A => x;
+main := id Bool Bool.true;
