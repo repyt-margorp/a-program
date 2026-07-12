@@ -20,9 +20,9 @@ solver emits constraints for:
 - an induction-hypothesis requirement for `*rest`.
 
 Each motive equation also records its constructor, source case-binder range,
-and match frame in the solver arena. This is the scoped context used when a
-constant motive candidate is admitted; a candidate may not capture any case
-binder.
+and match frame in the solver arena. The range is source scope, not merely a
+core TermDB binder id: tagless core `VAR` nodes may be shared by unrelated
+source scopes.
 
 An ascription constraint is recorded as a conversion obligation but does not
 bind an operation classifier or seed a motive. The post-synthesis ascription
@@ -40,15 +40,32 @@ is obtained by beta reduction rather than by a special kernel conversion rule.
 ## Recursive Constant Motives
 
 For a recursive match, a solved non-recursive branch may provide a constant
-motive candidate. The candidate is retained only in the solver arena. In
-particular, it does not create a provisional `APP(motive, scrutinee)` term or
-a provisional JudgementDB relation.
+motive candidate. The candidate is retained only in the solver arena. An IH
+is retained there as the expression `M(argument-operation)`, rather than as a
+provisional classifier id. In particular, this does not create a provisional
+`APP(motive, scrutinee)` term or a provisional JudgementDB relation.
 
 The induction-hypothesis equation can use that solver-local candidate while
 typing a recursive branch. Once every branch has a solved classifier, the
 compiler creates the actual motive lambda and the `APP(motive, scrutinee)` and
 `APP(motive, rest)` terms. This is sufficient for the current `Nat` and
 `List` recursive examples, including `append`.
+
+## Direct Guarded Recursive Motives
+
+The solver now recognizes the direct guarded equation
+
+    M(C(..., rest, ...)) = M(rest)
+
+when the unresolved branch is exactly the `*rest` IH of its own match. It
+materializes the final motive as a finite match graph only after recognizing
+that equation. The training program `training/recursive_dependent_match.p`
+exercises a non-uniform motive with two distinct base result types and this
+recursive branch.
+
+This is not general higher-order unification. For example, an equation such
+as `M(C(rest)) = F(M(rest))` still needs solver type-expression nodes and
+unification before it can be accepted.
 
 ## Operation Binder Identity
 
@@ -65,11 +82,12 @@ unrelated operation occurrence that happens to share a core `VAR` node.
 
 The following items are intentionally not claimed as complete:
 
-1. The current arena stores resolved classifier term ids and a constant motive
-   candidate. It does not yet have general scoped type/motive metavariables or
-   an occurs check.
-2. A recursive dependent motive whose `M(rest)` cannot be represented by a
-   constant seed still needs solver-level type-expression nodes. It must not be
+1. The current arena stores resolved classifier term ids, motive equations,
+   direct `M(argument)` IH expressions, and constant motive candidates. It
+   does not yet have general scoped type/motive metavariables or an occurs
+   check.
+2. A recursive dependent motive whose `M(rest)` is transformed by another type
+   expression still needs solver-level type-expression nodes. It must not be
    solved by prematurely materializing a TermDB motive.
 3. `SOLVED_MATCH_MOTIVE` validation checks that every materialized motive case
    agrees with an available branch classifier without inserting cyclic proof
@@ -89,4 +107,6 @@ The migration is currently exercised by:
 - generic `List Nat` construction and match,
 - recursive `append` and list-length examples,
 - `training/double.p`, and
+- `training/dependent_match.p`,
+- `training/recursive_dependent_match.p`, and
 - `src/prototype/test_artifact_flow.sh`.

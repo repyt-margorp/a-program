@@ -7812,10 +7812,14 @@ struct operation_motive_equation {
  */
 struct operation_classifier_solver {
 	uint32_t bindings[4096];
-	/* A recursive match may use a constant motive candidate to solve its IH
-	 * equations. These are solver-local facts, not TermDB classifier terms. */
-	uint32_t motive_seed_classifiers[4096];
-	uint32_t provisional_ih_classifiers[4096];
+	/* A candidate is a solver equation M(_) == T. It is never represented by
+	 * a provisional TermDB APP node. */
+	uint32_t motive_constant_candidates[4096];
+	/* For an IH operation i, these retain the solver expression M(argument).
+	 * They are resolved through a solved motive or a candidate equation only
+	 * while solving; materialization creates the actual APP after M is known. */
+	uint32_t ih_motive_operations[4096];
+	uint32_t ih_argument_operations[4096];
 	uint32_t motive_terms[4096];
 	struct operation_motive_equation
 		motive_equations[PROTOTYPE_OPERATION_MOTIVE_EQUATION_CAPACITY];
@@ -12062,7 +12066,16 @@ static uint32_t operation_solver_classifier(
 	if (ctx->classifier_solver.bindings[operation] != PROTOTYPE_INVALID_ID) {
 		return ctx->classifier_solver.bindings[operation];
 	}
-	return ctx->classifier_solver.provisional_ih_classifiers[operation];
+	uint32_t motive_operation =
+		ctx->classifier_solver.ih_motive_operations[operation];
+	if (motive_operation == PROTOTYPE_INVALID_ID ||
+		motive_operation >= ctx->metadata->operation_count) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	/* A constant candidate is a solver-side equation M(_) == T, so it can
+	 * discharge the classifier query without pretending that M(argument) has
+	 * already been built in TermDB. */
+	return ctx->classifier_solver.motive_constant_candidates[motive_operation];
 }
 
 static int operation_solver_seed_motive(
@@ -12079,9 +12092,10 @@ static int operation_solver_seed_motive(
 	/* Do not test candidate capture with raw TermDB binder ids here. Tagless
 	 * core binder slots may be shared by unrelated source scopes. The equation
 	 * retains source scope for the later operation-aware unifier. */
-	uint32_t previous = ctx->classifier_solver.motive_seed_classifiers[operation];
+	uint32_t previous =
+		ctx->classifier_solver.motive_constant_candidates[operation];
 	if (previous == PROTOTYPE_INVALID_ID) {
-		ctx->classifier_solver.motive_seed_classifiers[operation] = classifier;
+		ctx->classifier_solver.motive_constant_candidates[operation] = classifier;
 		*p_changed = 1;
 		return 0;
 	}
@@ -12090,26 +12104,31 @@ static int operation_solver_seed_motive(
 	) ? 0 : -1;
 }
 
-static int operation_solver_set_provisional_ih_classifier(
+static int operation_solver_set_ih_motive_application(
 	struct compile_context* ctx,
 	uint32_t operation,
-	uint32_t classifier,
+	uint32_t motive_operation,
+	uint32_t argument_operation,
 	int* p_changed
 ) {
 	if (!ctx || !ctx->metadata || !p_changed ||
 		operation >= ctx->metadata->operation_count ||
-		classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
+		motive_operation >= ctx->metadata->operation_count ||
+		argument_operation >= ctx->metadata->operation_count) {
 		return -1;
 	}
-	uint32_t previous = ctx->classifier_solver.provisional_ih_classifiers[operation];
-	if (previous == PROTOTYPE_INVALID_ID) {
-		ctx->classifier_solver.provisional_ih_classifiers[operation] = classifier;
+	uint32_t previous_motive =
+		ctx->classifier_solver.ih_motive_operations[operation];
+	uint32_t previous_argument =
+		ctx->classifier_solver.ih_argument_operations[operation];
+	if (previous_motive == PROTOTYPE_INVALID_ID) {
+		ctx->classifier_solver.ih_motive_operations[operation] = motive_operation;
+		ctx->classifier_solver.ih_argument_operations[operation] = argument_operation;
 		*p_changed = 1;
 		return 0;
 	}
-	return prototype_judgement_classifier_normalization_equal(
-		ctx->terms, ctx->type_declarations, previous, classifier
-	) ? 0 : -1;
+	return previous_motive == motive_operation &&
+		previous_argument == argument_operation ? 0 : -1;
 }
 
 static int operation_solver_generate_constraints(struct compile_context* ctx) {
@@ -12120,8 +12139,9 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	memset(&ctx->classifier_solver, 0, sizeof(ctx->classifier_solver));
 	for (uint32_t i = 0; i < 4096; ++i) {
 		ctx->classifier_solver.bindings[i] = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.motive_seed_classifiers[i] = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.provisional_ih_classifiers[i] = PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.motive_constant_candidates[i] = PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.ih_motive_operations[i] = PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.ih_argument_operations[i] = PROTOTYPE_INVALID_ID;
 		ctx->classifier_solver.motive_terms[i] = PROTOTYPE_INVALID_ID;
 	}
 	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
@@ -13103,7 +13123,7 @@ static int operation_solver_materialize_match(
 		return status < 0 ? -1 : 0;
 	}
 	uint32_t seed_classifier =
-		ctx->classifier_solver.motive_seed_classifiers[operation_id];
+		ctx->classifier_solver.motive_constant_candidates[operation_id];
 	if (seed_classifier != PROTOTYPE_INVALID_ID &&
 		!prototype_judgement_classifier_normalization_equal(
 			ctx->terms, ctx->type_declarations, classifier, seed_classifier
@@ -13149,14 +13169,9 @@ static int operation_solver_materialize_induction_hypothesis(
 	}
 	uint32_t motive = ctx->classifier_solver.motive_terms[parent_match];
 	if (motive == PROTOTYPE_INVALID_ID) {
-		uint32_t seed_classifier =
-			ctx->classifier_solver.motive_seed_classifiers[parent_match];
-		if (seed_classifier != PROTOTYPE_INVALID_ID) {
-			return operation_solver_set_provisional_ih_classifier(
-				ctx, operation_id, seed_classifier, p_changed
-			);
-		}
-		return 0;
+		return operation_solver_set_ih_motive_application(
+			ctx, operation_id, parent_match, operation->argument, p_changed
+		);
 	}
 	uint32_t classifier;
 	if (prototype_term_app(
