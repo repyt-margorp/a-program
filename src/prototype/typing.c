@@ -755,54 +755,6 @@ int prototype_judgement_classifier_compatible_with_definitions(
 	);
 }
 
-static int prototype_term_core_owner_instance_info(
-	const struct prototype_term_db* terms,
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t owner,
-	uint32_t* p_type_id,
-	uint32_t* args,
-	uint32_t* p_arg_count
-) {
-	if (!terms || !type_declarations || !p_type_id || !p_arg_count || owner >= terms->term_count) {
-		return -1;
-	}
-	uint32_t reversed[16];
-	uint32_t count = 0;
-	uint32_t current = owner;
-	while (current < terms->term_count && terms->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW) {
-		current = terms->terms[current].as.type_view.core;
-	}
-	while (current < terms->term_count && terms->terms[current].tag == PROTOTYPE_TERM_APP) {
-		if (count >= 16) {
-			return -1;
-		}
-		reversed[count++] = terms->terms[current].as.app.argument;
-		current = terms->terms[current].as.app.function;
-	}
-	if (current >= terms->term_count || terms->terms[current].tag != PROTOTYPE_TERM_TYPE_FORMER) {
-		return -1;
-	}
-	if (prototype_type_declaration_representation_type_id(
-			type_declarations,
-			terms->terms[current].as.type_former.representation_id,
-			p_type_id
-		) != 0) {
-		if (!type_declarations->representations_dirty ||
-			terms->terms[current].as.type_former.representation_id >= type_declarations->type_count) {
-			return -1;
-		}
-		*p_type_id = terms->terms[current].as.type_former.representation_id;
-	}
-	if (count > 0 && !args) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < count; ++i) {
-		args[i] = reversed[count - i - 1];
-	}
-	*p_arg_count = count;
-	return 0;
-}
-
 static int owner_parameter_argument(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -816,8 +768,8 @@ static int owner_parameter_argument(
 	uint32_t type_id;
 	uint32_t args[16];
 	uint32_t arg_count;
-	if (prototype_term_core_owner_instance_info(
-			terms, type_declarations, owner, &type_id, args, &arg_count
+	if (prototype_term_type_instance_info(
+			terms, owner, &type_id, args, &arg_count
 		) != 0 || type_id >= type_declarations->type_count) {
 		return -1;
 	}
@@ -836,6 +788,43 @@ static int owner_parameter_argument(
 		}
 	}
 	return -1;
+}
+
+static int core_owner_instance_info(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t owner,
+	uint32_t* p_type_id,
+	uint32_t* args,
+	uint32_t* p_arg_count
+) {
+	uint32_t reversed[16];
+	uint32_t count = 0;
+	uint32_t current = owner;
+	if (!terms || !type_declarations || !p_type_id || !p_arg_count || owner >= terms->term_count) {
+		return -1;
+	}
+	while (current < terms->term_count && terms->terms[current].tag == PROTOTYPE_TERM_APP) {
+		if (count >= 16) {
+			return -1;
+		}
+		reversed[count++] = terms->terms[current].as.app.argument;
+		current = terms->terms[current].as.app.function;
+	}
+	if (current >= terms->term_count ||
+		terms->terms[current].tag != PROTOTYPE_TERM_TYPE_FORMER ||
+		prototype_type_declaration_representation_type_id(
+			type_declarations,
+			terms->terms[current].as.type_former.representation_id,
+			p_type_id
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < count; ++i) {
+		args[i] = reversed[count - i - 1];
+	}
+	*p_arg_count = count;
+	return 0;
 }
 
 static int resolver_type_expr_term_with_self(
@@ -1051,9 +1040,12 @@ static const struct prototype_type_constructor_declaration* lookup_constructor_f
 	uint32_t args[16];
 	uint32_t arg_count;
 	if (!terms || !type_declarations ||
-		prototype_term_core_owner_instance_info(
-			terms, type_declarations, owner, &type_id, args, &arg_count
-		) != 0 ||
+		(prototype_term_type_instance_info(
+			terms, owner, &type_id, args, &arg_count
+		) != 0 &&
+			core_owner_instance_info(
+				terms, type_declarations, owner, &type_id, args, &arg_count
+			) != 0) ||
 		type_id >= type_declarations->type_count) {
 		return NULL;
 	}
@@ -1086,9 +1078,12 @@ static int constructor_classifier_from_family(
 	uint32_t type_id;
 	uint32_t args[16];
 	uint32_t arg_count;
-	if (prototype_term_core_owner_instance_info(
-			terms, type_declarations, owner, &type_id, args, &arg_count
-		) != 0 ||
+	if ((prototype_term_type_instance_info(
+			terms, owner, &type_id, args, &arg_count
+		) != 0 &&
+			core_owner_instance_info(
+				terms, type_declarations, owner, &type_id, args, &arg_count
+			) != 0) ||
 		type_id >= type_declarations->type_count ||
 		type_id != constructor->owner_type) {
 		return 1;
@@ -1273,6 +1268,35 @@ static int materialize_constructor_classifier(
 			&schema_owner
 		) != 0) {
 		return -1;
+	}
+	uint32_t schema_type_id;
+	uint32_t schema_args[16];
+	uint32_t schema_arg_count;
+	if (prototype_term_type_instance_info(
+			terms,
+			schema_owner,
+			&schema_type_id,
+			schema_args,
+			&schema_arg_count
+		) != 0) {
+		if (core_owner_instance_info(
+				terms,
+				type_declarations,
+				schema_owner,
+				&schema_type_id,
+				schema_args,
+				&schema_arg_count
+			) != 0 ||
+			prototype_term_type_instance_make(
+				terms,
+				type_declarations,
+				schema_type_id,
+				schema_args,
+				schema_arg_count,
+				&schema_owner
+			) != 0) {
+			return -1;
+		}
 	}
 	const struct prototype_type_constructor_declaration* constructor =
 		lookup_constructor_for_owner_index(
@@ -1490,8 +1514,8 @@ int prototype_judgement_resolve_match_case_request(
 	}
 
 		for (uint32_t j = 0; j < match_case->binder_count; ++j) {
-			const struct prototype_case_binder* binder =
-				&terms->case_binders[match_case->first_binder + j];
+		struct prototype_case_binder* binder =
+			&terms->case_binders[match_case->first_binder + j];
 			uint32_t binder_var;
 			uint32_t binder_classifier;
 			uint32_t binder_proof_id;
@@ -1520,6 +1544,12 @@ int prototype_judgement_resolve_match_case_request(
 				delta->relation_count == 0) {
 				return -1;
 			}
+			binder->is_recursive = prototype_judgement_classifier_normalization_equal(
+				terms,
+				type_declarations,
+				binder_classifier,
+				request->scrutinee_classifier
+			);
 			binder_proof_id =
 				delta->relations[delta->relation_count - 1].proof_id;
 			if (prototype_judgement_delta_set_proof_context_by_id(
@@ -2272,10 +2302,32 @@ static int constructor_belongs_to_owner(
 	uint32_t type_id;
 	uint32_t args[16];
 	uint32_t arg_count;
-	if (prototype_term_core_owner_instance_info(
-			terms, type_declarations, owner, &type_id, args, &arg_count
+	if (prototype_term_type_instance_info(
+			terms, owner, &type_id, args, &arg_count
 		) != 0) {
-		return 0;
+		uint32_t reversed[16];
+		uint32_t count = 0;
+		uint32_t current = owner;
+		while (current < terms->term_count && terms->terms[current].tag == PROTOTYPE_TERM_APP) {
+			if (count >= 16) {
+				return 0;
+			}
+			reversed[count++] = terms->terms[current].as.app.argument;
+			current = terms->terms[current].as.app.function;
+		}
+		if (current >= terms->term_count ||
+			terms->terms[current].tag != PROTOTYPE_TERM_TYPE_FORMER ||
+			prototype_type_declaration_representation_type_id(
+				type_declarations,
+				terms->terms[current].as.type_former.representation_id,
+				&type_id
+			) != 0) {
+			return 0;
+		}
+		for (uint32_t i = 0; i < count; ++i) {
+			args[i] = reversed[count - i - 1];
+		}
+		arg_count = count;
 	}
 	if (type_id >= type_declarations->type_count ||
 		arg_count != type_declarations->type_declarations[type_id].parameter_count) {
@@ -5225,6 +5277,57 @@ int prototype_judgement_delta_build_match_motive_from_known_branches(
 	);
 }
 
+int prototype_judgement_delta_build_match_motive_from_branch_hints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t match_term,
+	const uint32_t* branch_classifiers,
+	uint32_t branch_count,
+	uint32_t universe_level_var,
+	uint32_t* p_motive_result
+) {
+	if (!delta || !terms || !type_declarations || !branch_classifiers || !p_motive_result ||
+		match_term >= terms->term_count ||
+		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH ||
+		branch_count != terms->terms[match_term].as.match.case_count || branch_count > 64) {
+		return -1;
+	}
+	uint32_t selected = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < branch_count; ++i) {
+		uint32_t classifier = branch_classifiers[i];
+		if (classifier == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (classifier >= terms->term_count) {
+			return -1;
+		}
+		if (selected != PROTOTYPE_INVALID_ID &&
+			!prototype_judgement_classifier_normalization_equal(
+				terms, type_declarations, selected, classifier
+			)) {
+			return 1;
+		}
+		selected = classifier;
+	}
+	if (selected == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	uint32_t uniform_classifiers[64];
+	for (uint32_t i = 0; i < branch_count; ++i) {
+		uniform_classifiers[i] = selected;
+	}
+	return build_match_motive_from_branch_classifiers(
+		delta,
+		terms,
+		type_declarations,
+		match_term,
+		uniform_classifiers,
+		universe_level_var,
+		p_motive_result
+	);
+}
+
 int prototype_judgement_delta_build_match_motive_from_cases(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -5555,6 +5658,96 @@ int prototype_judgement_delta_expand_match(
 			type_declarations,
 			subject,
 			classifier
+		);
+	}
+	return status;
+}
+
+int prototype_judgement_delta_expand_match_with_branch_hints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier,
+	const uint32_t* branch_classifiers,
+	uint32_t branch_count
+) {
+	if (!delta || !terms || !type_declarations || !branch_classifiers ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_MATCH) ||
+		!term_has_tag(terms, classifier, PROTOTYPE_TERM_APP)) {
+		return -1;
+	}
+	const struct prototype_term* match = &terms->terms[subject];
+	const struct prototype_term* motive_app = &terms->terms[classifier];
+	if (branch_count != match->as.match.case_count ||
+		branch_count + 1 > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
+		motive_app->as.app.argument != match->as.match.scrutinee ||
+		!term_has_tag(terms, motive_app->as.app.function, PROTOTYPE_TERM_LAMBDA)) {
+		return -1;
+	}
+	const struct prototype_term* motive_lambda =
+		&terms->terms[motive_app->as.app.function];
+	if (!term_has_tag(terms, motive_lambda->as.lambda.body, PROTOTYPE_TERM_MATCH)) {
+		return -1;
+	}
+	const struct prototype_term* motive_body =
+		&terms->terms[motive_lambda->as.lambda.body];
+	if (motive_body->as.match.case_count != branch_count) {
+		return -1;
+	}
+	uint32_t motive_universe;
+	if (select_delta_universe_classifier(
+			delta, terms, type_declarations, classifier, &motive_universe
+		) != 0) {
+		return -1;
+	}
+	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	premise_subjects[0] = classifier;
+	premise_classifiers[0] = motive_universe;
+	for (uint32_t i = 0; i < branch_count; ++i) {
+		uint32_t case_id = match->as.match.first_case + i;
+		uint32_t motive_case_id = motive_body->as.match.first_case + i;
+		if (case_id >= terms->case_count || motive_case_id >= terms->case_count ||
+			branch_classifiers[i] == PROTOTYPE_INVALID_ID ||
+			branch_classifiers[i] >= terms->term_count) {
+			return -1;
+		}
+		const struct prototype_match_case* match_case = &terms->cases[case_id];
+		const struct prototype_match_case* motive_case = &terms->cases[motive_case_id];
+		uint32_t expected_motive_case_body;
+		if (match_case->constructor_id != motive_case->constructor_id ||
+			match_case->binder_count != motive_case->binder_count ||
+			prototype_judgement_prepare_match_motive_case(
+				terms,
+				type_declarations,
+				&terms->case_binders[match_case->first_binder],
+				&terms->case_binders[motive_case->first_binder],
+				match_case->binder_count,
+				branch_classifiers[i],
+				&expected_motive_case_body
+			) != 0 ||
+			!prototype_judgement_classifier_normalization_equal(
+				terms, type_declarations, expected_motive_case_body, motive_case->body
+			)) {
+			return -1;
+		}
+		premise_subjects[i + 1] = match_case->body;
+		premise_classifiers[i + 1] = branch_classifiers[i];
+	}
+	int status = add_delta_relation_with_premises(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
+		premise_subjects,
+		premise_classifiers,
+		branch_count + 1
+	);
+	if (status == 0) {
+		remove_match_motive_results_normalization_equal(
+			delta, terms, type_declarations, subject, classifier
 		);
 	}
 	return status;
@@ -6438,7 +6631,6 @@ static int validate_match_elim_proof(
 			}
 		}
 		uint32_t expected_motive_case_body;
-		int same_body = 0;
 		if (prototype_judgement_prepare_match_motive_case(
 				terms,
 				type_declarations,
@@ -6448,13 +6640,12 @@ static int validate_match_elim_proof(
 				proof->premise_classifiers[i + 1],
 				&expected_motive_case_body
 			) != 0 ||
-			prototype_term_view_shape_equal(
+			!prototype_judgement_classifier_normalization_equal(
 				terms,
+				type_declarations,
 				expected_motive_case_body,
-				motive_case->body,
-				&same_body
-			) != 0 ||
-			!same_body) {
+				motive_case->body
+			)) {
 			return -1;
 		}
 	}
@@ -6494,31 +6685,13 @@ static int validate_induction_hypothesis_elim_proof(
 	}
 	const struct prototype_case_binder* binder =
 		&terms->case_binders[terms->cases[case_id].first_binder + proof->context_aux];
-	struct prototype_judgement_relation delta_relations[16];
-	struct prototype_judgement_proof delta_proofs[16];
-	struct prototype_judgement_match_motive_result match_motive_results[16];
-	struct prototype_judgement_db judgement_view = *judgement;
-	struct prototype_judgement_delta delta;
-	prototype_judgement_delta_init(
-		&delta,
-		&judgement_view,
-		delta_relations,
-		delta_proofs,
-		16,
-		match_motive_results,
-		16
-	);
 	if (ih->as.induction_hypothesis.argument >= terms->term_count ||
 		terms->terms[ih->as.induction_hypothesis.argument].tag != PROTOTYPE_TERM_VAR ||
 		terms->terms[ih->as.induction_hypothesis.argument].as.var.binder_id !=
-			binder->binder_id ||
-		match_case_binder_is_recursive_self_field(
-			&delta,
-			terms,
-			type_declarations,
-			&terms->cases[case_id],
-			binder->binder_id
-		) != 0) {
+			binder->binder_id) {
+		return -1;
+	}
+	if (!binder->is_recursive) {
 		return -1;
 	}
 	uint32_t match_classifier;

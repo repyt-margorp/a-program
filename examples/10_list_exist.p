@@ -16,16 +16,16 @@ List := \A : @ => @{
 };
 
 /* Placeholder equality: always returns false (for demo) */
-//is_equal := \A : @ => \l : A => \r : A => true;
-is_equal := \A : @ => \l : A => \r : A => false;
+//is_equal := \A : @ => \l : A => \r : A => Bool.true;
+is_equal := \A : @ => \l : A => \r : A => Bool.false;
 
 /* Non-dependent exists_in_list (checks only head due to no recursion yet) */
 exists_in_list := \A : @ => \a : A => \lst : List A =>
-				lst @nil => false
+				lst @nil => Bool.false
 				    @cons x xs =>
 				        (is_equal A x a
-				                @true => true
-				                @false => false);
+				                @true => Bool.true
+				                @false => Bool.false);
 
 /* Example list: [0, 1, 2] */
 lst_base := (List Nat).nil;

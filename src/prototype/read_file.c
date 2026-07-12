@@ -40,6 +40,8 @@
 #define RESOLUTION_ITEM_CAPACITY 2048
 #define RESOLUTION_ITERATION_CAPACITY 128
 #define RESOLUTION_EVENT_CAPACITY 2048
+#define OPERATION_CAPACITY 4096
+#define OPERATION_CASE_CAPACITY 4096
 #define ARTIFACT_TERM_EXPORT_CAPACITY 512
 #define ARTIFACT_TYPE_EXPORT_CAPACITY 256
 #define ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY 512
@@ -101,6 +103,8 @@ static struct prototype_resolve_error resolve_errors[RESOLVE_ERROR_CAPACITY];
 static struct prototype_resolution_item resolution_items[RESOLUTION_ITEM_CAPACITY];
 static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
+static struct prototype_operation_node operations[OPERATION_CAPACITY];
+static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
 static struct prototype_artifact_term_export artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
 static struct prototype_artifact_type_export artifact_type_exports[ARTIFACT_TYPE_EXPORT_CAPACITY];
 static struct prototype_artifact_type_parameter_export artifact_type_parameter_exports[ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY];
@@ -294,6 +298,21 @@ static const char* resolve_error_kind_name(int kind) {
 			return "compile";
 		default:
 			return "unknown";
+	}
+}
+
+static const char* operation_tag_name(int tag) {
+	switch (tag) {
+		case PROTOTYPE_OPERATION_ATOM: return "atom";
+		case PROTOTYPE_OPERATION_VAR: return "var";
+		case PROTOTYPE_OPERATION_NAME: return "name";
+		case PROTOTYPE_OPERATION_CONSTRUCTOR: return "constructor";
+		case PROTOTYPE_OPERATION_APP: return "app";
+		case PROTOTYPE_OPERATION_LAMBDA: return "lambda";
+		case PROTOTYPE_OPERATION_MATCH: return "match";
+		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS: return "induction-hypothesis";
+		case PROTOTYPE_OPERATION_ASCRIPTION: return "ascription";
+		default: return "unknown";
 	}
 }
 
@@ -3141,7 +3160,11 @@ int main(int argc, char** argv) {
 		resolution_iterations,
 		RESOLUTION_ITERATION_CAPACITY,
 		resolution_events,
-		RESOLUTION_EVENT_CAPACITY
+		RESOLUTION_EVENT_CAPACITY,
+		operations,
+		OPERATION_CAPACITY,
+		operation_cases,
+		OPERATION_CASE_CAPACITY
 	);
 	prototype_judgement_db_init(
 		&judgement_db,
@@ -3381,6 +3404,43 @@ int main(int argc, char** argv) {
 		prototype_term_print_debug(stdout, &symbols, &type_declarations, &term_db, label->term);
 		printf("\n");
 	}
+	printf("\n#### Operations ####\noperations=%zu cases=%zu\n",
+		metadata.operation_count,
+		metadata.operation_case_count);
+	for (size_t i = 0; i < metadata.operation_count; ++i) {
+		const struct prototype_operation_node* operation = &metadata.operations[i];
+		printf("operation#%zu %s core#%u classifier#%u ast#%u",
+			i,
+			operation_tag_name(operation->tag),
+			operation->core_term,
+			operation->classifier,
+			operation->source_ast);
+		if (operation->source_symbol_id >= 0) {
+			printf(" name=%s", symbol_to_string(&symbols, operation->source_symbol_id));
+		}
+		if (operation->binder_symbol_id >= 0) {
+			printf(" binder=%s", symbol_to_string(&symbols, operation->binder_symbol_id));
+		}
+		if (operation->tag == PROTOTYPE_OPERATION_MATCH) {
+			printf(" scrutinee-operation#%u cases=%u", operation->scrutinee,
+				operation->case_count);
+		}
+		printf("\n");
+	}
+	for (size_t i = 0; i < metadata.operation_case_count; ++i) {
+		const struct prototype_operation_match_case* operation_case =
+			&metadata.operation_cases[i];
+		printf("operation-case#%zu body-operation#%u owner#%u ordinal#%u",
+			i,
+			operation_case->body_operation,
+			operation_case->constructor_owner,
+			operation_case->constructor_id);
+		if (operation_case->case_label_symbol_id >= 0) {
+			printf(" label=%s",
+				symbol_to_string(&symbols, operation_case->case_label_symbol_id));
+		}
+		printf("\n");
+	}
 	printf("\n#### Judgements ####\n");
 	prototype_judgement_print(stdout, &symbols, &type_declarations, &term_db, &judgement_db);
 	memset(reachable_external_refs, 0, sizeof(reachable_external_refs));
@@ -3408,8 +3468,9 @@ int main(int argc, char** argv) {
 	);
 	for (size_t i = 0; i < metadata.label_count; ++i) {
 		const struct prototype_compile_label* label = &metadata.labels[i];
-		printf("metadata label %s -> term#%u\n",
+		printf("metadata label %s -> operation#%u -> term#%u\n",
 			symbol_to_string(&symbols, label->name_symbol_id),
+			label->operation,
 			label->term);
 	}
 	for (size_t i = 0; i < metadata.resolve_error_count; ++i) {

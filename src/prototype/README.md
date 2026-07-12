@@ -23,6 +23,12 @@ Accepted implementation code belongs in `src/` outside this directory and in
   term graph roots. The terms preserve syntax structure before evaluation; for
   example, `x := id Bool.true;` is stored as an application of the term pointed
   to by `id` to the constructor term `Bool.true`.
+- `ast.h`, `ast.c`: AST lowering also creates an operation graph in compile
+  metadata. An operation node records the source occurrence, its typed binder
+  and match information, and a pointer to the erased `core_term`. It is not an
+  evaluator environment. Distinct source operations such as `\x : Bool => x`
+  and `\y : Nat => y` therefore retain distinct operation nodes and
+  classifiers while intentionally sharing one erased core lambda node.
 - `reader.h`, `reader.c`: prototype reader for a small `.p` subset.
 - `read_file.c`: temporary CLI used to compile and inspect the prototype reader.
 - `repl.c`: temporary interactive CLI that keeps the loaded program state and
@@ -34,6 +40,24 @@ compiler pass can later annotate identifier references such as `true` or `false`
 with their resolved type-level constructor identity.
 
 ## Canonical Term Identity
+
+The core term graph is the computation representation only. It intentionally
+does not decide which typed source operation a shared node denotes. The
+operation graph is the AST-lowered annotation layer: its `APP`, `LAMBDA`, and
+`MATCH` nodes retain the source-level type views and resolved constructor
+owners, and each points to a core term. Evaluation and graph interning operate
+only on the core graph. Classifier synthesis uses operation edges when it needs
+the classifier of a particular source occurrence, rather than collecting all
+classifiers ever attached to the shared core node.
+Operation nodes also retain their source symbol, lambda binder symbol, and
+match-case label where applicable; these labels are never inputs to core graph
+interning or evaluation.
+
+A top-level `name :: T` is represented as an `ASCRIPTION` operation whose body
+is the lowered definition operation. It guides operation-layer synthesis for
+uses of `name`; checking compares the body operation's synthesized classifier
+with `T`. It is not emitted as an unproved core `HAS_TYPE` declaration merely
+because the core term is shared with another source operation.
 
 Term graph nodes keep binder references as local binder pointers, not as source
 variable names. This is useful for graph rewriting and substitution, but those
@@ -326,7 +350,7 @@ Core-shape equality must not be used as a typed conversion until a later
 transport/equality proof explicitly changes the view.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 27`. The reader accepts that format only; old artifact
+`A_PROGRAM_ARTIFACT 28`. The reader accepts that format only; old artifact
 versions are intentionally rejected instead of being kept as compatibility paths.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor

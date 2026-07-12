@@ -125,16 +125,21 @@ identityNat :: Nat -> Nat;
 EOF_IDENTITY
 
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 27$' "$TMP_DIR/identity.apo"
-sed '1s/27$/26/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v26.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v26.apo" >"$TMP_DIR/identity-v26.out" 2>"$TMP_DIR/identity-v26.err"; then
-	echo "v26 artifact unexpectedly passed after v27 format bump" >&2
+grep -q '^A_PROGRAM_ARTIFACT 28$' "$TMP_DIR/identity.apo"
+sed '1s/28$/27/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v27.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v27.apo" >"$TMP_DIR/identity-v27.out" 2>"$TMP_DIR/identity-v27.err"; then
+	echo "v27 artifact unexpectedly passed after v28 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
 grep -q '^type Bool .* namespace identity$' "$TMP_DIR/identity.apo"
-grep -q 'metadata label identityBool -> term#' "$TMP_DIR/identity.out"
-grep -q 'metadata label identityNat -> term#' "$TMP_DIR/identity.out"
+grep -q 'metadata label identityBool -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
+grep -q 'metadata label identityNat -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
+identity_bool_operation=$(awk '/metadata label identityBool -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/identity.out")
+identity_nat_operation=$(awk '/metadata label identityNat -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/identity.out")
+test -n "$identity_bool_operation"
+test -n "$identity_nat_operation"
+test "$identity_bool_operation" != "$identity_nat_operation"
 identity_bool_term=$(awk '$1 == "term" && $2 == "identityBool" { print $3 }' "$TMP_DIR/identity.apo")
 identity_nat_term=$(awk '$1 == "term" && $2 == "identityNat" { print $3 }' "$TMP_DIR/identity.apo")
 identity_bool_classifier=$(awk '$1 == "term" && $2 == "identityBool" { print $4 }' "$TMP_DIR/identity.apo")
@@ -155,6 +160,30 @@ grep -q 'constructor_name 0 true 0 ' "$TMP_DIR/identity.apo"
 ./read_file.out --read-graph "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-read.out"
 grep -q 'debug_term_names=4 debug_type_names=2 debug_constructor_names=4' "$TMP_DIR/identity-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/identity-read.out"
+
+cat >"$TMP_DIR/operation-layer.p" <<'EOF_OPERATION_LAYER'
+Bool := @{ true : *; false : *; };
+Nat := @{ zero : *; succ : * -> *; };
+
+and := \a : Bool =>
+	a @true => (\b : Bool => b)
+	  @false => (\b : Bool => Bool.false);
+
+addNat := \n : Nat =>
+	n @zero => (\m : Nat => m)
+	  @succ k => (\m : Nat => Nat.succ (*k m));
+EOF_OPERATION_LAYER
+
+./read_file.out "$TMP_DIR/operation-layer.p" >"$TMP_DIR/operation-layer.out"
+and_true_operation=$(awk '$1 ~ /^operation-case#/ && $NF == "label=true" { sub("body-operation#", "", $2); print $2; exit }' "$TMP_DIR/operation-layer.out")
+add_nat_zero_operation=$(awk '$1 ~ /^operation-case#/ && $NF == "label=zero" { sub("body-operation#", "", $2); print $2; exit }' "$TMP_DIR/operation-layer.out")
+test -n "$and_true_operation"
+test -n "$add_nat_zero_operation"
+test "$and_true_operation" != "$add_nat_zero_operation"
+and_true_core=$(awk -v operation="$and_true_operation" '$1 == "operation#" operation { sub("core#", "", $3); print $3; exit }' "$TMP_DIR/operation-layer.out")
+add_nat_zero_core=$(awk -v operation="$add_nat_zero_operation" '$1 == "operation#" operation { sub("core#", "", $3); print $3; exit }' "$TMP_DIR/operation-layer.out")
+test -n "$and_true_core"
+test "$and_true_core" = "$add_nat_zero_core"
 
 cat >"$TMP_DIR/BoolProvider.p" <<'EOF_BOOL_PROVIDER'
 Bool := @{ true : *; false : *; };
@@ -342,15 +371,15 @@ matchAscribed := ((identityBool :: Bool -> Bool) Bool.true)
 EOF_MULTI_APP
 
 ./read_file.out "$TMP_DIR/multi-app.p" >"$TMP_DIR/multi-app.out"
-multi_identity_bool_term=$(awk '/metadata label identityBool -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
-multi_identity_nat_term=$(awk '/metadata label identityNat -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
-multi_higher_bool_term=$(awk '/metadata label higherBool -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
-multi_higher_nat_term=$(awk '/metadata label higherNat -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
-multi_use_higher_bool_term=$(awk '/metadata label useHigherBool -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
-multi_use_higher_nat_term=$(awk '/metadata label useHigherNat -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
-multi_use_ascribed_bool_term=$(awk '/metadata label useAscribedBool -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
-multi_use_ascribed_nat_term=$(awk '/metadata label useAscribedNat -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
-multi_match_ascribed_term=$(awk '/metadata label matchAscribed -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/multi-app.out")
+multi_identity_bool_term=$(awk '/metadata label identityBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_identity_nat_term=$(awk '/metadata label identityNat -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_higher_bool_term=$(awk '/metadata label higherBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_higher_nat_term=$(awk '/metadata label higherNat -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_use_higher_bool_term=$(awk '/metadata label useHigherBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_use_higher_nat_term=$(awk '/metadata label useHigherNat -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_use_ascribed_bool_term=$(awk '/metadata label useAscribedBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_use_ascribed_nat_term=$(awk '/metadata label useAscribedNat -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_match_ascribed_term=$(awk '/metadata label matchAscribed -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
 test "$multi_identity_bool_term" = "$multi_identity_nat_term"
 test "$multi_higher_bool_term" = "$multi_higher_nat_term"
 test "$multi_use_higher_bool_term" = "$multi_use_higher_nat_term"
@@ -362,7 +391,7 @@ multi_app_elim_count=$(
 	grep -F -c '[app-elim]'
 )
 test "$multi_app_elim_count" -ge 2
-grep -F 'metadata label matchAscribed -> term#' "$TMP_DIR/multi-app.out" >/dev/null
+grep -E 'metadata label matchAscribed -> operation#[0-9]+ -> term#' "$TMP_DIR/multi-app.out" >/dev/null
 grep -F '[match-elim]' "$TMP_DIR/multi-app.out" >/dev/null
 
 cat >"$TMP_DIR/type-view-sharing.p" <<'EOF_TYPE_VIEW_SHARING'
@@ -382,13 +411,13 @@ EOF_TYPE_VIEW_SHARING
 
 ./read_file.out "$TMP_DIR/type-view-sharing.p" >"$TMP_DIR/type-view-sharing.out"
 ./read_file.out --write-artifact "$TMP_DIR/type-view-sharing.apo" "$TMP_DIR/type-view-sharing.p" >"$TMP_DIR/type-view-sharing-artifact.out"
-view_id_bool_term=$(awk '/metadata label idBool -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/type-view-sharing.out")
-view_id_two_term=$(awk '/metadata label idTwo -> term#/ { sub("term#", "", $5); print $5 }' "$TMP_DIR/type-view-sharing.out")
+view_id_bool_term=$(awk '/metadata label idBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
+view_id_two_term=$(awk '/metadata label idTwo -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
 test "$view_id_bool_term" = "$view_id_two_term"
-view_bool_shape=$(awk '/interface type Bool / { sub("core_type#", "", $5); print $5 }' "$TMP_DIR/type-view-sharing.out")
-view_two_shape=$(awk '/interface type Two / { sub("core_type#", "", $5); print $5 }' "$TMP_DIR/type-view-sharing.out")
-view_bool_key=$(awk '/interface type Bool / { sub("code_shape_key=", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
-view_two_key=$(awk '/interface type Two / { sub("code_shape_key=", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
+view_bool_shape=$(awk '/interface type Bool / { sub("core_representation_anchor_type#", "", $5); print $5 }' "$TMP_DIR/type-view-sharing.out")
+view_two_shape=$(awk '/interface type Two / { sub("core_representation_anchor_type#", "", $5); print $5 }' "$TMP_DIR/type-view-sharing.out")
+view_bool_key=$(awk '/interface type Bool / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
+view_two_key=$(awk '/interface type Two / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
 test -n "$view_bool_shape"
 test "$view_bool_shape" = "$view_two_shape"
 test -n "$view_bool_key"
@@ -397,8 +426,8 @@ grep -q 'interface constructor type_export#0.true ordinal=0 fields=0 classifier_
 grep -q 'interface constructor type_export#1.one ordinal=0 fields=0 classifier_family=' "$TMP_DIR/type-view-sharing.out"
 grep -q 'interface constructor type_export#0.false ordinal=1 fields=0 classifier_family=' "$TMP_DIR/type-view-sharing.out"
 grep -q 'interface constructor type_export#1.zero ordinal=1 fields=0 classifier_family=' "$TMP_DIR/type-view-sharing.out"
-grep -q 'term Bool := TYPE_VIEW(Bool, core=TYPE_FORMER(Bool), source=TYPE_FORMER(Bool))' "$TMP_DIR/type-view-sharing.out"
-grep -q 'term Two := TYPE_VIEW(Two, core=TYPE_FORMER(Bool), source=TYPE_FORMER(Two))' "$TMP_DIR/type-view-sharing.out"
+grep -Eq 'term Bool := TYPE_VIEW\(Bool, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Bool\)\)' "$TMP_DIR/type-view-sharing.out"
+grep -Eq 'term Two := TYPE_VIEW\(Two, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Two\)\)' "$TMP_DIR/type-view-sharing.out"
 ./read_file.out --check-exports-core-shape-equal "$TMP_DIR/type-view-sharing.apo" Bool Two >"$TMP_DIR/type-view-core-shape.out"
 ./read_file.out --check-exports-view-shape-equal "$TMP_DIR/type-view-sharing.apo" Bool Two >"$TMP_DIR/type-view-view-shape.out"
 grep -q 'exports-core-shape-equal Bool Two yes' "$TMP_DIR/type-view-core-shape.out"
@@ -433,7 +462,7 @@ first := \A : @ => \B : A -> @ => \p : Sigma A B =>
 EOF_DEPENDENT_CONSTRUCTOR_FIELD
 
 ./read_file.out "$TMP_DIR/dependent-constructor-field.p" >"$TMP_DIR/dependent-constructor-field.out"
-grep -q 'metadata label first -> term#' "$TMP_DIR/dependent-constructor-field.out"
+grep -q 'metadata label first -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/dependent-constructor-field.out"
 grep -q 'interface constructor type_export#0.mk ordinal=0 fields=2 classifier_family=' "$TMP_DIR/dependent-constructor-field.out"
 grep -E 'has-type VAR\(_#[0-9]+\) APP\(VAR\(_#[0-9]+\), VAR\(_#[0-9]+\)\) \[match-pattern-assumption\]' "$TMP_DIR/dependent-constructor-field.out" >/dev/null
 
@@ -462,7 +491,7 @@ grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 classifier_family=[0-9
 ./read_file.out --write-artifact "$TMP_DIR/SigmaUser.apo" \
 	--import-interface "$TMP_DIR/Sigma.apo" \
 	"$TMP_DIR/dependent-constructor-import-user.p" >"$TMP_DIR/dependent-constructor-import-user.out"
-grep -Fq 'metadata label main -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
+grep -Eq 'metadata label main -> operation#[0-9]+ -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'metadata external-ref Sigma -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Eq 'has-type CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\) PI\(' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'APP(LAMBDA(_#' "$TMP_DIR/dependent-constructor-import-user.out"
@@ -488,17 +517,17 @@ p2 := (Sigma2 Nat ConstNat).mk Nat.zero Nat.zero;
 EOF_DEPENDENT_CONSTRUCTOR_SHAPE_KEY
 
 ./read_file.out "$TMP_DIR/dependent-constructor-shape-key.p" >"$TMP_DIR/dependent-constructor-shape-key.out"
-sigma_key=$(awk '/interface type Sigma / { sub("code_shape_key=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
-sigma2_key=$(awk '/interface type Sigma2 / { sub("code_shape_key=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
-sigma_core=$(awk '/interface type Sigma / { sub("core_type#", "", $5); print $5 }' "$TMP_DIR/dependent-constructor-shape-key.out")
-sigma2_core=$(awk '/interface type Sigma2 / { sub("core_type#", "", $5); print $5 }' "$TMP_DIR/dependent-constructor-shape-key.out")
+sigma_key=$(awk '/interface type Sigma / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
+sigma2_key=$(awk '/interface type Sigma2 / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
+sigma_core=$(awk '/interface type Sigma / { sub("core_representation_anchor_type#", "", $5); print $5 }' "$TMP_DIR/dependent-constructor-shape-key.out")
+sigma2_core=$(awk '/interface type Sigma2 / { sub("core_representation_anchor_type#", "", $5); print $5 }' "$TMP_DIR/dependent-constructor-shape-key.out")
 test -n "$sigma_key"
 test "$sigma_key" = "$sigma2_key"
 test -n "$sigma_core"
 test "$sigma_core" = "$sigma2_core"
 grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 classifier_family=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
 grep -Eq 'constructor \(Sigma2 X Y\)\.mk readback_fields=2 classifier_family=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
-grep -Fq 'term Sigma2 := TYPE_VIEW(Sigma2, core=TYPE_FORMER(Sigma), source=TYPE_FORMER(Sigma2))' "$TMP_DIR/dependent-constructor-shape-key.out"
+grep -Eq 'term Sigma2 := TYPE_VIEW\(Sigma2, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Sigma2\)\)' "$TMP_DIR/dependent-constructor-shape-key.out"
 
 cat >"$TMP_DIR/bad-ascription.p" <<'EOF_BAD_ASCRIPTION'
 Bool := @{
@@ -562,7 +591,7 @@ awk '
 		}
 		next;
 	}
-	$1 == "judgement" && $6 == constructor_intro_proof_kind && !done {
+	$1 == "judgement" && $6 == declaration_proof_kind && !done {
 		$5 = bad_classifier;
 		target_proof = $7;
 		done = 1;
@@ -572,7 +601,7 @@ awk '
 	}
 	{ print }
 ' type_formation_proof_kind="$PROOF_KIND_TYPE_FORMATION_INTRO" \
-	constructor_intro_proof_kind="$PROOF_KIND_CONSTRUCTOR_INTRO" \
+	declaration_proof_kind="$PROOF_KIND_DECLARATION" \
 	"$TMP_DIR/ConstructorValue.apo" "$TMP_DIR/ConstructorValue.apo" >"$TMP_DIR/BadConstructorIntroClassifier.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadConstructorIntroClassifier.apo" >"$TMP_DIR/bad-constructor-intro-classifier.out" 2>"$TMP_DIR/bad-constructor-intro-classifier.err"; then
 	echo "bad constructor intro classifier artifact unexpectedly passed" >&2
@@ -1256,7 +1285,7 @@ len := \A : @ =>
 EOF_IH_MOTIVE
 
 ./read_file.out "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive.out"
-grep -q 'has-type INDUCTION_HYPOTHESIS.*TYPE_FORMER(Nat).* \[ih-elim\]' "$TMP_DIR/ih-motive.out"
+grep -q 'has-type INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat.* \[ih-elim\]' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[match-elim\]' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim\] proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type APP(CONSTRUCTOR.*succ).*INDUCTION_HYPOTHESIS.*\[app-elim\] proof#[0-9][0-9]* premises=2' "$TMP_DIR/ih-motive.out"
@@ -1295,6 +1324,22 @@ if grep -q 'expects-type' "$TMP_DIR/add-proof.out"; then
 	exit 1
 fi
 grep -q 'has-type LAMBDA.*\[lambda-intro\] proof#[0-9][0-9]* premises=2' "$TMP_DIR/add-proof.out"
+
+cat >"$TMP_DIR/source-view-nat-match.p" <<'EOF_SOURCE_VIEW_NAT_MATCH'
+Nat := @{
+	zero : *;
+	succ : * -> *;
+};
+
+double := \x : Nat =>
+	x @zero => Nat.zero
+	@succ k => Nat.succ (Nat.succ *k);
+EOF_SOURCE_VIEW_NAT_MATCH
+
+./read_file.out "$TMP_DIR/source-view-nat-match.p" >"$TMP_DIR/source-view-nat-match.out"
+grep -q 'metadata label double' "$TMP_DIR/source-view-nat-match.out"
+grep -q 'INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat' "$TMP_DIR/source-view-nat-match.out"
+
 ./read_file.out --write-artifact "$TMP_DIR/AddProof.apo" examples/07_add.p >"$TMP_DIR/add-proof-artifact.out"
 awk '
 	$1 == "proof" && $3 == conversion_proof_kind && !done {

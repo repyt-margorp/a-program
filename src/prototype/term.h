@@ -256,6 +256,7 @@ struct prototype_match_case {
 
 struct prototype_case_binder {
 	uint32_t binder_id;
+	int is_recursive;
 };
 
 struct prototype_match_case_input {

@@ -218,6 +218,7 @@ struct prototype_ast_term_assignment_def {
 	uint32_t next_for_symbol;
 	uint32_t compiled_term;
 	uint32_t compiled_classifier;
+	uint32_t compiled_operation;
 	int compiling;
 	int compiled;
 	int published;
@@ -253,7 +254,49 @@ struct prototype_compile_label {
 	int name_symbol_id;
 	uint32_t term;
 	uint32_t classifier;
+	uint32_t operation;
 	struct prototype_term_canonical_key canonical_key;
+};
+
+/*
+ * Operation nodes preserve the typed/source occurrence graph produced by AST
+ * lowering.  Their core_term fields may intentionally alias: for example,
+ * \x : Bool => x and \y : Nat => y share one core lambda but have distinct
+ * operation nodes and classifiers.
+ */
+enum prototype_operation_tag {
+	PROTOTYPE_OPERATION_ATOM = 1,
+	PROTOTYPE_OPERATION_VAR,
+	PROTOTYPE_OPERATION_NAME,
+	PROTOTYPE_OPERATION_CONSTRUCTOR,
+	PROTOTYPE_OPERATION_APP,
+	PROTOTYPE_OPERATION_LAMBDA,
+	PROTOTYPE_OPERATION_MATCH,
+	PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS,
+	PROTOTYPE_OPERATION_ASCRIPTION
+};
+
+struct prototype_operation_node {
+	int tag;
+	uint32_t core_term;
+	uint32_t classifier;
+	uint32_t source_ast;
+	int source_symbol_id;
+	int binder_symbol_id;
+	uint32_t function;
+	uint32_t argument;
+	uint32_t body;
+	uint32_t scrutinee;
+	uint32_t binder_classifier;
+	uint32_t first_case;
+	uint32_t case_count;
+};
+
+struct prototype_operation_match_case {
+	uint32_t body_operation;
+	uint32_t constructor_owner;
+	uint32_t constructor_id;
+	int case_label_symbol_id;
 };
 
 struct prototype_compile_constructor_export {
@@ -537,6 +580,14 @@ struct prototype_resolution_iteration {
 };
 
 struct prototype_compile_metadata {
+	struct prototype_operation_node* operations;
+	size_t operation_count;
+	size_t operation_capacity;
+
+	struct prototype_operation_match_case* operation_cases;
+	size_t operation_case_count;
+	size_t operation_case_capacity;
+
 	struct prototype_compile_label* labels;
 	size_t label_count;
 	size_t label_capacity;
@@ -880,7 +931,11 @@ void prototype_compile_metadata_init(
 	struct prototype_resolution_iteration* resolution_iterations,
 	size_t resolution_iteration_capacity,
 	struct prototype_resolution_event* resolution_events,
-	size_t resolution_event_capacity
+	size_t resolution_event_capacity,
+	struct prototype_operation_node* operations,
+	size_t operation_capacity,
+	struct prototype_operation_match_case* operation_cases,
+	size_t operation_case_capacity
 );
 
 void prototype_canonical_link_table_init(

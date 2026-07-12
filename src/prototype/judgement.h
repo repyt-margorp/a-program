@@ -290,6 +290,32 @@ int prototype_judgement_delta_build_match_motive_from_known_branches(
 	uint32_t* p_motive_result
 );
 
+/*
+ * Build a uniform motive from classifiers attached to source operation
+ * branches.  INVALID entries are unresolved recursive branches; they are
+ * constrained by the synthesized motive rather than read from unrelated
+ * JudgementDB facts sharing the same core term.
+ */
+int prototype_judgement_delta_build_match_motive_from_branch_hints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t match_term,
+	const uint32_t* branch_classifiers,
+	uint32_t branch_count,
+	uint32_t universe_level_var,
+	uint32_t* p_motive_result
+);
+int prototype_judgement_delta_expand_match_with_branch_hints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier,
+	const uint32_t* branch_classifiers,
+	uint32_t branch_count
+);
+
 int prototype_judgement_expand_match(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
