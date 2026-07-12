@@ -279,6 +279,10 @@ enum prototype_operation_tag {
 struct prototype_operation_node {
 	int tag;
 	uint32_t core_term;
+	/* A lowering-time fact supplied to the solver. It is not a solved
+	 * operation classifier and must never be published as one. */
+	uint32_t known_classifier;
+	/* The solver result for this source operation. */
 	uint32_t classifier;
 	/* Solver-local classifier variable. It is an operation identity, not a TermDB id. */
 	uint32_t classifier_variable;

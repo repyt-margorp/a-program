@@ -9,8 +9,10 @@ Status: in progress in `src/prototype/`
 Classifier synthesis now starts from an operation-scoped solver arena rather
 than from global fixed-point insertion into `JudgementDelta`.
 
-Each `prototype_operation_node` has a solver-local classifier variable. The
-solver emits constraints for:
+Each `prototype_operation_node` has a solver-local classifier variable. A
+lowering-time fact is stored separately as `known_classifier`; the public
+`classifier` field is written only from the solver binding. The solver emits
+constraints for:
 
 - `HasType` for source atoms and declarations,
 - equality for source-name occurrences,

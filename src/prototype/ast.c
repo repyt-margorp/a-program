@@ -8479,7 +8479,8 @@ static int operation_add(
 	memset(node, 0, sizeof(*node));
 	node->tag = tag;
 	node->core_term = core_term;
-	node->classifier = classifier;
+	node->known_classifier = classifier;
+	node->classifier = PROTOTYPE_INVALID_ID;
 	node->classifier_variable = operation;
 	node->source_ast = source_ast;
 	node->source_symbol_id = -1;
@@ -8494,6 +8495,16 @@ static int operation_add(
 	node->case_count = case_count;
 	*p_operation = operation;
 	return 0;
+}
+
+static uint32_t operation_available_classifier(
+	const struct prototype_operation_node* operation
+) {
+	if (!operation) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	return operation->classifier != PROTOTYPE_INVALID_ID ?
+		operation->classifier : operation->known_classifier;
 }
 
 static int operation_add_match_case(
@@ -8639,9 +8650,9 @@ static int select_match_resolution_scrutinee_classifier(
 		return -1;
 	}
 	if (resolution->scrutinee_operation < ctx->metadata->operation_count) {
-		uint32_t classifier = ctx->metadata->operations[
-			resolution->scrutinee_operation
-		].classifier;
+		uint32_t classifier = operation_available_classifier(
+			&ctx->metadata->operations[resolution->scrutinee_operation]
+		);
 		if (classifier != PROTOTYPE_INVALID_ID) {
 			*p_scrutinee_classifier = classifier;
 			return 0;
@@ -11239,7 +11250,7 @@ static int compile_def(
 		}
 		ref.classifier = declared_classifier;
 		if (ref.operation < ctx->metadata->operation_count) {
-			ctx->metadata->operations[ref.operation].classifier = declared_classifier;
+			ctx->metadata->operations[ref.operation].known_classifier = declared_classifier;
 		}
 	}
 	if (ref.operation < ctx->metadata->operation_count) {
@@ -12065,7 +12076,7 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 						ctx->asts->case_binders[
 							source_case->first_binder + binder_index
 						].ast_binder_id) {
-					operation->classifier = binder_classifier;
+					operation->known_classifier = binder_classifier;
 				}
 			}
 		}
@@ -12507,8 +12518,8 @@ static int operation_solver_seed_known_classifiers(struct compile_context* ctx, 
 	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
 		const struct prototype_operation_node* operation = &ctx->metadata->operations[i];
 		if (operation->tag != PROTOTYPE_OPERATION_ASCRIPTION &&
-			operation->classifier != PROTOTYPE_INVALID_ID &&
-			operation_solver_bind(ctx, i, operation->classifier, p_changed) != 0) {
+			operation->known_classifier != PROTOTYPE_INVALID_ID &&
+			operation_solver_bind(ctx, i, operation->known_classifier, p_changed) != 0) {
 			return -1;
 		}
 	}
