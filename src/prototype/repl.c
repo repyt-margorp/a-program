@@ -935,8 +935,6 @@ int main(int argc, char** argv) {
 	print_state(&symbols, &ast_db, &type_declarations, &term_db, &universe_db, &judgement_db, &metadata);
 	if (lookup_label(&metadata, main_symbol)) {
 		query_existing_value(&symbols, &type_declarations, &term_db, &metadata, main_symbol);
-		symbol_table_free(&symbols);
-		return 0;
 	}
 
 	printf("prototype> ");

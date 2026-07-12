@@ -223,13 +223,13 @@ add := \n : Nat =>
 	n @zero => (\m : Nat => m)
 	  @succ k => (\m : Nat => Nat.succ (*k m));
 one := Nat.succ Nat.zero;
-result := add one one;
+main := add one one;
 EOF_REPL_NORMAL_FORM
 
-printf ':whnf result\n:nf result\n:quit\n' |
+printf ':whnf main\n:nf main\n:quit\n' |
 	"$TMP_DIR/prototype-repl" "$TMP_DIR/repl-normal-form.p" >"$TMP_DIR/repl-normal-form.out"
-grep -q '^prototype> whnf result := .*INDUCTION_HYPOTHESIS' "$TMP_DIR/repl-normal-form.out"
-grep -q '^prototype> nf result := APP(CONSTRUCTOR(rep#0.ordinal#1), APP(CONSTRUCTOR(rep#0.ordinal#1), CONSTRUCTOR(rep#0.ordinal#0)))$' \
+grep -q '^prototype> whnf main := .*INDUCTION_HYPOTHESIS' "$TMP_DIR/repl-normal-form.out"
+grep -q '^prototype> nf main := APP(CONSTRUCTOR(rep#0.ordinal#1), APP(CONSTRUCTOR(rep#0.ordinal#1), CONSTRUCTOR(rep#0.ordinal#0)))$' \
 	"$TMP_DIR/repl-normal-form.out"
 
 cat >"$TMP_DIR/operation-layer.p" <<'EOF_OPERATION_LAYER'
