@@ -23,14 +23,6 @@ cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	-o "$TMP_DIR/prototype-repl"
 
 cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
-	src/prototype/effect_uniform_match_check.c \
-	src/prototype/term.c \
-	src/prototype/type_declaration.c \
-	src/prototype/symbol.c \
-	-o "$TMP_DIR/effect_uniform_match_check"
-"$TMP_DIR/effect_uniform_match_check"
-
-cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/whnf_profile_cache_check.c \
 	src/prototype/term.c \
 	src/prototype/type_declaration.c \

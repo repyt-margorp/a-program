@@ -93,6 +93,49 @@ int main(void) {
 	if (prototype_term_match(&term_db, application, &match_case, 1, &match_term) != 0) {
 		return 1;
 	}
+	uint32_t neutral_scrutinee;
+	if (prototype_term_external_ref(
+			&term_db,
+			(struct prototype_qualified_name){ PROTOTYPE_BASE_NAMESPACE_ID, 4 },
+			&neutral_scrutinee
+		) != 0) {
+		return 1;
+	}
+	struct prototype_match_case_input uniform_cases[2] = {
+		{
+			.case_label_symbol_id = -1,
+			.constructor_owner = PROTOTYPE_INVALID_ID,
+			.constructor_id = 0,
+			.binders = NULL,
+			.binder_count = 0,
+			.body = branch
+		},
+		{
+			.case_label_symbol_id = -1,
+			.constructor_owner = PROTOTYPE_INVALID_ID,
+			.constructor_id = 1,
+			.binders = NULL,
+			.binder_count = 0,
+			.body = branch
+		}
+	};
+	uint32_t neutral_uniform_match;
+	if (prototype_term_match(
+			&term_db, neutral_scrutinee, uniform_cases, 2, &neutral_uniform_match
+		) != 0) {
+		return 1;
+	}
+	uint32_t kernel_whnf;
+	if (prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF,
+			neutral_uniform_match,
+			&kernel_whnf
+		) != 0 || kernel_whnf != neutral_uniform_match) {
+		return 1;
+	}
 
 	prototype_term_normalization_cache_clear(&term_db);
 	uint32_t lambda_whnf;

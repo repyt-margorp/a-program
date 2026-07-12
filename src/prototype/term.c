@@ -3701,21 +3701,7 @@ static int normalization_equal_at_depth(
 static struct prototype_term_reduction_options normalize_reduction_options(
 	struct prototype_term_reduction_options options
 ) {
-	if ((options.flags & PROTOTYPE_TERM_PERFORM_HOST_EFFECT) != 0) {
-		/*
-		 * Uniform match is a pure structural normalization rule. It may inspect
-		 * every branch body before the scrutinee is known, so it must not run in
-		 * an effect-performing strategy where branch order is observable.
-		 */
-		options.flags &= ~PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH;
-	}
 	return options;
-}
-
-static int options_allow_uniform_match(
-	struct prototype_term_reduction_options options
-) {
-	return (options.flags & PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH) != 0;
 }
 
 static int normalization_profile_options(
@@ -3739,8 +3725,7 @@ static int normalization_profile_options(
 		case PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF:
 			p_options->flags = PROTOTYPE_TERM_REDUCE_BETA |
 				PROTOTYPE_TERM_REDUCE_MATCH |
-				PROTOTYPE_TERM_REDUCE_INDUCTION |
-				PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH;
+				PROTOTYPE_TERM_REDUCE_INDUCTION;
 			break;
 		default:
 			return -1;
@@ -3768,12 +3753,6 @@ static int normalization_profile_from_options(
 			PROTOTYPE_TERM_REDUCE_MATCH |
 			PROTOTYPE_TERM_REDUCE_INDUCTION)) {
 		return PROTOTYPE_TERM_NORMALIZATION_INDUCTIVE_WHNF;
-	}
-	if (options.flags == (PROTOTYPE_TERM_REDUCE_BETA |
-			PROTOTYPE_TERM_REDUCE_MATCH |
-			PROTOTYPE_TERM_REDUCE_INDUCTION |
-			PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH)) {
-		return PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF;
 	}
 	return 0;
 }
@@ -3833,97 +3812,6 @@ static struct prototype_term_normalization_cache_entry* normalization_cache_rese
 	entry->profile = profile;
 	entry->state = PROTOTYPE_TERM_NORMALIZATION_CACHE_IN_PROGRESS;
 	return entry;
-}
-
-static int uniform_match_body(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	struct prototype_term_reduction_options options,
-	uint32_t match_term,
-	uint32_t* p_body,
-	unsigned depth
-) {
-	options.flags &= ~PROTOTYPE_TERM_PERFORM_HOST_EFFECT;
-	options.effect_output = NULL;
-	options.effect_capabilities = 0;
-	options.p_effect_performed = NULL;
-
-	if (!db || !type_declarations || !p_body ||
-		match_term >= db->term_count ||
-		db->terms[match_term].tag != PROTOTYPE_TERM_MATCH ||
-		db->terms[match_term].as.match.case_count == 0) {
-		return 0;
-	}
-	const struct prototype_term* term = &db->terms[match_term];
-	uint32_t first_case_id = term->as.match.first_case;
-	if (first_case_id >= db->case_count) {
-		return -1;
-	}
-	const struct prototype_match_case* first_case = &db->cases[first_case_id];
-	uint32_t first_body;
-	if (evaluate_steps(
-			db,
-			type_declarations,
-			definitions,
-			options,
-			first_case->body,
-			&first_body,
-			depth
-		) != 0) {
-		return -1;
-	}
-	for (uint32_t j = 0; j < first_case->binder_count; ++j) {
-		const struct prototype_case_binder* binder =
-			&db->case_binders[first_case->first_binder + j];
-		if (prototype_term_contains_free_binder(db, first_body, binder->binder_id)) {
-			return 0;
-		}
-	}
-	for (uint32_t i = 1; i < term->as.match.case_count; ++i) {
-		uint32_t case_id = term->as.match.first_case + i;
-		if (case_id >= db->case_count) {
-			return -1;
-		}
-		const struct prototype_match_case* match_case = &db->cases[case_id];
-		uint32_t normalized_body;
-		if (evaluate_steps(
-				db,
-				type_declarations,
-				definitions,
-				options,
-				match_case->body,
-				&normalized_body,
-				depth
-			) != 0) {
-			return -1;
-		}
-		for (uint32_t j = 0; j < match_case->binder_count; ++j) {
-			const struct prototype_case_binder* binder =
-				&db->case_binders[match_case->first_binder + j];
-			if (prototype_term_contains_free_binder(db, normalized_body, binder->binder_id)) {
-				return 0;
-			}
-		}
-		int same_body = 0;
-		if (normalization_equal_at_depth(
-				db,
-				type_declarations,
-				definitions,
-				options,
-				first_body,
-				normalized_body,
-				&same_body,
-				0
-			) != 0) {
-			return -1;
-		}
-		if (!same_body) {
-			return 0;
-		}
-	}
-	*p_body = first_body;
-	return 1;
 }
 
 static int evaluate_steps(
@@ -4039,38 +3927,12 @@ static int evaluate_steps(
 			*p_ret = candidate;
 			return 0;
 		}
-			case PROTOTYPE_TERM_MATCH: {
-				if (!(options.flags & PROTOTYPE_TERM_REDUCE_MATCH)) {
-					*p_ret = term_id;
-					return 0;
-				}
-				if (options_allow_uniform_match(options)) {
-					uint32_t common_body;
-					int uniform_status = uniform_match_body(
-						db,
-						type_declarations,
-						definitions,
-						options,
-						term_id,
-						&common_body,
-						depth - 1
-					);
-					if (uniform_status < 0) {
-						return -1;
-					}
-					if (uniform_status > 0) {
-						return evaluate_steps(
-							db,
-							type_declarations,
-							definitions,
-							options,
-							common_body,
-							p_ret,
-							depth - 1
-						);
-					}
-				}
-				uint32_t scrutinee;
+		case PROTOTYPE_TERM_MATCH: {
+			if (!(options.flags & PROTOTYPE_TERM_REDUCE_MATCH)) {
+				*p_ret = term_id;
+				return 0;
+			}
+			uint32_t scrutinee;
 				if (evaluate_steps(
 					db,
 					type_declarations,

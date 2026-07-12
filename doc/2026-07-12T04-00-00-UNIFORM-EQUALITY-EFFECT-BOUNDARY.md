@@ -2,7 +2,8 @@
 
 Date: 2026-07-12
 
-Status: design review; no implementation change in this note
+Status: uniform-match kernel removal implemented; equality and effect sections
+remain design work.
 
 This note records the next four theory-driven criticisms of the prototype.
 They are intentionally separate from the Core/TypeView boundary. The immediate
@@ -11,14 +12,12 @@ effects from being merged into one undifferentiated notion of computation.
 
 ## 5. Uniform Match Is Not a Kernel Beta or Iota Rule
 
-### Current implementation
+### Removed implementation
 
-`term.h` defines `PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH` and includes it in
-`PROTOTYPE_TERM_REDUCE_DEFAULT`. `KERNEL_CONVERSION_WHNF` also enables it.
-In `term.c`, `uniform_match_body(...)` normalizes every branch body of a match
-with a neutral scrutinee, rejects branch-local binder occurrences, compares the
-normalized bodies with recursive normalization equality, and returns the common
-body when all compare equal.
+Until this migration, `term.h` defined
+`PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH` and `KERNEL_CONVERSION_WHNF` enabled it.
+`term.c` then normalized every branch of a match with a neutral scrutinee and
+returned a common body when all normalized branches compared equal.
 
 Thus the prototype can perform an equation of the following form:
 
@@ -28,8 +27,8 @@ MATCH(b, true -> T, false -> T)  ->  T
 
 without learning whether `b` is `true` or `false`.
 
-The implementation disables this rule when host effects are enabled. That
-guard is necessary, but it does not make the rule a kernel computation rule.
+The rule and its host-effect guard have been removed. Kernel conversion now
+contains beta, constructor iota, and induction reductions only.
 
 ### Why this differs from beta and iota
 
@@ -77,15 +76,14 @@ MATCH(b, true -> value, false -> value) == value
 The latter may be a pure optimizer rewrite after a separate purity proof, but
 must not be kernel DefEq.
 
-### Required change
+### Implemented change
 
-1. Remove `PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH` from
-   `KERNEL_CONVERSION_WHNF` and from the default kernel normalizer.
-2. Remove the normalizer-side `uniform_match_body(...)` path from classifier
-   conversion.
-3. Replace it with a motive constraint rule: when all branch classifiers solve
+1. `PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH` and the normalizer-side
+   `uniform_match_body(...)` path were removed.
+2. The classifier solver replaces uniform classifier handling with a motive
+   constraint rule: when all branch classifiers solve
    to one classifier, build a constant lambda motive explicitly.
-4. If a future optimizer retains case-of-constant rewriting, place it in an
+3. If a future optimizer retains case-of-constant rewriting, place it in an
    optimization pass with a purity/effect analysis and never use it as
    Judgemental/Definitional equality.
 
