@@ -295,6 +295,7 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 			break;
 		case PROTOTYPE_TERM_PI:
 		case PROTOTYPE_TERM_TYPE_FORMER:
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			case PROTOTYPE_TERM_TYPE_VIEW:
 				case PROTOTYPE_TERM_UNIVERSE_VAR:
 				case PROTOTYPE_TERM_PRIMITIVE_TEXT:
@@ -681,7 +682,9 @@ static int shape_terms_equal_at_depth(
 			}
 			return 1;
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			return left->as.type_former.type_id == right->as.type_former.type_id;
+			return left->as.type_former.representation_id == right->as.type_former.representation_id;
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			return left->as.type_declaration.type_id == right->as.type_declaration.type_id;
 		case PROTOTYPE_TERM_TYPE_VIEW:
 			return left->as.type_view.view_type_id == right->as.type_view.view_type_id &&
 				shape_terms_equal_at_depth(
@@ -1059,9 +1062,16 @@ static int cross_shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			return cross_type_formers_equal(
 				left_type_declarations,
-				left->as.type_former.type_id,
+				left->as.type_former.representation_id,
 				right_type_declarations,
-				right->as.type_former.type_id
+				right->as.type_former.representation_id
+			);
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			return cross_type_formers_equal(
+				left_type_declarations,
+				left->as.type_declaration.type_id,
+				right_type_declarations,
+				right->as.type_declaration.type_id
 			);
 		case PROTOTYPE_TERM_TYPE_VIEW:
 			return left->as.type_view.view_type_id == right->as.type_view.view_type_id &&
@@ -1549,7 +1559,11 @@ static int canonical_hash_term_at_depth(
 			return 0;
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			key->has_type_local_reference = 1;
-			canonical_hash_mix_u32(p_hash, term->as.type_former.type_id);
+			canonical_hash_mix_u32(p_hash, term->as.type_former.representation_id);
+			return 0;
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			key->has_type_local_reference = 1;
+			canonical_hash_mix_u32(p_hash, term->as.type_declaration.type_id);
 			return 0;
 		case PROTOTYPE_TERM_TYPE_VIEW:
 			key->has_type_local_reference = 1;
@@ -2108,15 +2122,76 @@ int prototype_term_resolve_match_case(
 	return 0;
 }
 
+int prototype_term_erase_constructor_view_owners(struct prototype_term_db* db) {
+	if (!db) {
+		return -1;
+	}
+	int changed = 0;
+	for (size_t i = 0; i < db->term_count; ++i) {
+		struct prototype_term* term = &db->terms[i];
+		if (term->tag != PROTOTYPE_TERM_CONSTRUCTOR) {
+			continue;
+		}
+		uint32_t owner = term->as.constructor.owner;
+		for (uint32_t depth = 0;
+			owner < db->term_count && db->terms[owner].tag == PROTOTYPE_TERM_TYPE_VIEW && depth < 32;
+			++depth) {
+			owner = db->terms[owner].as.type_view.core;
+		}
+		if (owner >= db->term_count) {
+			return -1;
+		}
+		if (owner != term->as.constructor.owner) {
+			term->as.constructor.owner = owner;
+			changed = 1;
+		}
+	}
+	for (size_t i = 0; i < db->case_count; ++i) {
+		struct prototype_match_case* match_case = &db->cases[i];
+		if (match_case->constructor_owner == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		uint32_t owner = match_case->constructor_owner;
+		for (uint32_t depth = 0;
+			owner < db->term_count && db->terms[owner].tag == PROTOTYPE_TERM_TYPE_VIEW && depth < 32;
+			++depth) {
+			owner = db->terms[owner].as.type_view.core;
+		}
+		if (owner >= db->term_count) {
+			return -1;
+		}
+		if (owner != match_case->constructor_owner) {
+			match_case->constructor_owner = owner;
+			changed = 1;
+		}
+	}
+	if (changed) {
+		invalidate_normalization_cache(db);
+	}
+	return 0;
+}
+
 static int prototype_term_type_former(
+	struct prototype_term_db* db,
+	uint32_t representation_id,
+	uint32_t* p_ret
+) {
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_TYPE_FORMER;
+	term.as.type_former.representation_id = representation_id;
+	return add_term(db, term, p_ret);
+}
+
+static int prototype_term_type_declaration(
 	struct prototype_term_db* db,
 	uint32_t type_id,
 	uint32_t* p_ret
 ) {
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_TYPE_FORMER;
-	term.as.type_former.type_id = type_id;
+	term.tag = PROTOTYPE_TERM_TYPE_DECLARATION;
+	term.as.type_declaration.type_id = type_id;
 	return add_term(db, term, p_ret);
 }
 
@@ -2141,7 +2216,7 @@ static int prototype_term_type_view(
 
 int prototype_term_type_instance_make(
 	struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_declaration_db* type_declarations,
 	uint32_t type_id,
 	const uint32_t* args,
 	uint32_t arg_count,
@@ -2160,21 +2235,21 @@ int prototype_term_type_instance_make(
 		}
 	}
 
-	uint32_t core_type_id;
-	if (prototype_type_declaration_core_shape_representative(
+	uint32_t representation_id;
+	if (prototype_type_declaration_intern_representation(
 				db,
 				type_declarations,
 				type_id,
-				&core_type_id
+				&representation_id
 		) != 0) {
 		return -1;
 	}
 	uint32_t current;
-	if (prototype_term_type_former(db, core_type_id, &current) != 0) {
+	if (prototype_term_type_former(db, representation_id, &current) != 0) {
 		return -1;
 	}
 	uint32_t source_current;
-	if (prototype_term_type_former(db, type_id, &source_current) != 0) {
+	if (prototype_term_type_declaration(db, type_id, &source_current) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < arg_count; ++i) {
@@ -2232,7 +2307,7 @@ static int type_instance_app_spine_info(
 		current = db->terms[current].as.app.function;
 	}
 	if (current >= db->term_count ||
-		db->terms[current].tag != PROTOTYPE_TERM_TYPE_FORMER) {
+		db->terms[current].tag != PROTOTYPE_TERM_TYPE_DECLARATION) {
 		return -1;
 	}
 	if (count > 0 && !args) {
@@ -2241,7 +2316,7 @@ static int type_instance_app_spine_info(
 	for (uint32_t i = 0; i < count; ++i) {
 		args[i] = reversed[count - i - 1];
 	}
-	*p_type_id = db->terms[current].as.type_former.type_id;
+	*p_type_id = db->terms[current].as.type_declaration.type_id;
 	*p_arg_count = count;
 	return 0;
 }
@@ -2259,9 +2334,33 @@ int prototype_term_type_instance_info(
 	return type_instance_app_spine_info(db, term_id, p_type_id, args, p_arg_count);
 }
 
+int prototype_term_rebind_type_former_anchors(
+	struct prototype_term_db* db,
+	const struct prototype_type_declaration_db* type_declarations
+) {
+	if (!db || !type_declarations || type_declarations->representations_dirty) {
+		return -1;
+	}
+	for (size_t i = 0; i < db->term_count; ++i) {
+		struct prototype_term* term = &db->terms[i];
+		if (term->tag != PROTOTYPE_TERM_TYPE_FORMER) {
+			continue;
+		}
+		uint32_t declaration_anchor = term->as.type_former.representation_id;
+		if (declaration_anchor >= type_declarations->type_count ||
+			type_declarations->type_declarations[declaration_anchor].representation_id ==
+				PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		term->as.type_former.representation_id =
+			type_declarations->type_declarations[declaration_anchor].representation_id;
+	}
+	return 0;
+}
+
 int prototype_term_type_instance_extend(
 	struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_declaration_db* type_declarations,
 	uint32_t instance,
 	uint32_t argument,
 	uint32_t* p_ret
@@ -3134,6 +3233,7 @@ static int substitute_term_internal(
 			);
 			}
 			case PROTOTYPE_TERM_TYPE_FORMER:
+			case PROTOTYPE_TERM_TYPE_DECLARATION:
 				case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 			case PROTOTYPE_TERM_TEXT_LITERAL:
 			case PROTOTYPE_TERM_PRIMITIVE_INT:
@@ -3474,6 +3574,28 @@ static int type_instance_type_id(
 	return -1;
 }
 
+static int constructor_owner_representation_id(
+	const struct prototype_term_db* terms,
+	uint32_t owner,
+	uint32_t* p_representation_id
+) {
+	if (!terms || !p_representation_id || owner >= terms->term_count) {
+		return -1;
+	}
+	uint32_t current = owner;
+	while (current < terms->term_count && terms->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		current = terms->terms[current].as.type_view.core;
+	}
+	while (current < terms->term_count && terms->terms[current].tag == PROTOTYPE_TERM_APP) {
+		current = terms->terms[current].as.app.function;
+	}
+	if (current >= terms->term_count || terms->terms[current].tag != PROTOTYPE_TERM_TYPE_FORMER) {
+		return -1;
+	}
+	*p_representation_id = terms->terms[current].as.type_former.representation_id;
+	return 0;
+}
+
 static int constructor_member_matches(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -3498,14 +3620,14 @@ static int constructor_member_matches(
 		return 0;
 	}
 	int equal = 0;
-	return prototype_term_normalization_equal_with_definitions(
-			terms,
-			type_declarations,
-			definitions,
-			term->as.constructor.owner,
-			match_case->constructor_owner,
-			&equal
-		) == 0 && equal;
+	(void)type_declarations;
+	(void)definitions;
+	return prototype_term_core_shape_equal(
+		terms,
+		term->as.constructor.owner,
+		match_case->constructor_owner,
+		&equal
+	) == 0 && equal;
 }
 
 static int term_is_constructor_like(const struct prototype_term* term) {
@@ -4122,6 +4244,7 @@ static int evaluate_steps(
 		case PROTOTYPE_TERM_VAR:
 			case PROTOTYPE_TERM_CONSTRUCTOR:
 			case PROTOTYPE_TERM_TYPE_FORMER:
+			case PROTOTYPE_TERM_TYPE_DECLARATION:
 			case PROTOTYPE_TERM_TYPE_VIEW:
 				case PROTOTYPE_TERM_UNIVERSE_VAR:
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
@@ -4520,14 +4643,18 @@ static int normalization_equal_at_depth(
 				p_equal,
 				depth + 1
 			);
-		case PROTOTYPE_TERM_TYPE_FORMER: {
+		case PROTOTYPE_TERM_TYPE_FORMER:
+			*p_equal = left_term->as.type_former.representation_id ==
+				right_term->as.type_former.representation_id;
+			return 0;
+		case PROTOTYPE_TERM_TYPE_DECLARATION: {
 			if (!type_declarations ||
-				left_term->as.type_former.type_id >= type_declarations->type_count ||
-				right_term->as.type_former.type_id >= type_declarations->type_count) {
+				left_term->as.type_declaration.type_id >= type_declarations->type_count ||
+				right_term->as.type_declaration.type_id >= type_declarations->type_count) {
 				return -1;
 			}
-			*p_equal = left_term->as.type_former.type_id ==
-				right_term->as.type_former.type_id;
+			*p_equal = left_term->as.type_declaration.type_id ==
+				right_term->as.type_declaration.type_id;
 			return 0;
 		}
 			case PROTOTYPE_TERM_TYPE_VIEW:
@@ -5304,7 +5431,17 @@ static void print_term_depth(
 			uint32_t type_id;
 			if (type_instance_type_id(terms, term->as.constructor.owner, &type_id) != 0 ||
 				type_id >= type_declarations->type_count) {
-				fprintf(output, "<bad-constructor>");
+				uint32_t representation_id;
+				if (constructor_owner_representation_id(
+						terms,
+						term->as.constructor.owner,
+						&representation_id
+					) != 0) {
+					fprintf(output, "<bad-constructor>");
+				} else {
+					fprintf(output, "rep#%u.ordinal#%u", representation_id,
+						term->as.constructor.constructor_id);
+				}
 				break;
 			}
 			const struct prototype_type_declaration* type = &type_declarations->type_declarations[type_id];
@@ -5352,8 +5489,11 @@ static void print_term_depth(
 			}
 			break;
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			fprintf(output, "TYPE_FORMER(");
-			print_type_head(output, symbols, type_declarations, term->as.type_former.type_id);
+			fprintf(output, "TYPE_FORMER(rep#%u)", term->as.type_former.representation_id);
+			break;
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			fprintf(output, "TYPE_DECLARATION(");
+			print_type_head(output, symbols, type_declarations, term->as.type_declaration.type_id);
 			fprintf(output, ")");
 			break;
 		case PROTOTYPE_TERM_TYPE_VIEW:
@@ -5434,7 +5574,17 @@ static void print_constructor_name(
 	uint32_t type_id;
 	if (type_instance_type_id(terms, term->as.constructor.owner, &type_id) != 0 ||
 		type_id >= type_declarations->type_count) {
-		fprintf(output, "<bad-constructor>");
+		uint32_t representation_id;
+		if (constructor_owner_representation_id(
+				terms,
+				term->as.constructor.owner,
+				&representation_id
+			) != 0) {
+			fprintf(output, "<bad-constructor>");
+		} else {
+			fprintf(output, "rep#%u.ordinal#%u", representation_id,
+				term->as.constructor.constructor_id);
+		}
 		return;
 	}
 
@@ -5537,8 +5687,11 @@ static void print_term_debug_depth(
 			fprintf(output, ")");
 			break;
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			fprintf(output, "TYPE_FORMER(");
-			print_type_head(output, symbols, type_declarations, term->as.type_former.type_id);
+			fprintf(output, "TYPE_FORMER(rep#%u)", term->as.type_former.representation_id);
+			break;
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			fprintf(output, "TYPE_DECLARATION(");
+			print_type_head(output, symbols, type_declarations, term->as.type_declaration.type_id);
 			fprintf(output, ")");
 			break;
 		case PROTOTYPE_TERM_TYPE_VIEW:

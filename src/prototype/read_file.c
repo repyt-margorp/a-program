@@ -2943,10 +2943,10 @@ int main(int argc, char** argv) {
 			for (size_t i = 0; i < artifact_interface.type_export_count; ++i) {
 				const struct prototype_artifact_type_export* type_export =
 					&artifact_interface.type_exports[i];
-			printf("interface type %s local_type#%u core_type#%u constructors=%u code_shape_key=%llu\n",
+			printf("interface type %s local_type#%u core_representation_anchor_type#%u constructors=%u representation_fingerprint=%llu\n",
 				symbol_to_string(&symbols, type_export->name_symbol_id),
 				type_export->local_type_id,
-				type_export->core_type_id,
+				type_export->core_representation_anchor_type_id,
 				type_export->constructor_count,
 				(unsigned long long)type_export->code_shape_key.hash);
 		}
@@ -3446,10 +3446,10 @@ int main(int argc, char** argv) {
 	for (size_t i = 0; i < artifact_interface.type_export_count; ++i) {
 		const struct prototype_artifact_type_export* type_export =
 			&artifact_interface.type_exports[i];
-		printf("interface type %s local_type#%u core_type#%u constructors=%u code_shape_key=%llu\n",
+		printf("interface type %s local_type#%u core_representation_anchor_type#%u constructors=%u representation_fingerprint=%llu\n",
 			symbol_to_string(&symbols, type_export->name_symbol_id),
 			type_export->local_type_id,
-			type_export->core_type_id,
+			type_export->core_representation_anchor_type_id,
 			type_export->constructor_count,
 			(unsigned long long)type_export->code_shape_key.hash);
 	}

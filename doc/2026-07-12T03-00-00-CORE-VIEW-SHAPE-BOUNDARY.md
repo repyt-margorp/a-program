@@ -2,7 +2,7 @@
 
 Date: 2026-07-12
 
-Status: design decision; implementation debt remains
+Status: implemented prototype boundary
 
 This note records four conclusions reached while separating A Program source
 semantics from the erased computation graph. They are constraints on the
@@ -131,52 +131,64 @@ strategy. Kernel conversion must likewise use one fixed conversion rule set.
 Profiles are an implementation partition for evaluation and memoization, not a
 new source-level typing feature.
 
-## Required Refactoring
+## Implemented Refactoring
 
-### Rename and narrow `TypeCodeShapeKey`
+### Dedicated Representation Handles
 
-`TypeCodeShapeKey` reads like an identity key. Its intended role is a
-representation-shape fingerprint. Rename it to a name such as
-`RepresentationShapeFingerprint` or `CoreRepresentationShapeKey`, and state
-at every API boundary that it is not declaration identity, DefEq evidence, or
-an import-resolution key.
+`TYPE_FORMER` now stores an interned `representation_id`. A separate
+`TYPE_DECLARATION(type_id)` graph node is used only in the source spine of a
+`TYPE_VIEW`. A declaration id is therefore no longer used as both source
+identity and core representation handle.
 
-### Do not canonicalize from a fingerprint alone
+`prototype_type_declaration_db` owns the representation interning table. Its
+numeric handles are implementation-local and never participate in source type
+identity, qualified import lookup, or typed conversion.
 
-`prototype_type_declaration_core_shape_representative(...)` currently selects
-the first declaration with an equal `TypeCodeShapeKey`. The key is finite
-metadata containing a hash and aggregate counts. Equal keys are not a proof of
-structural representation equality: distinct declarations can collide.
+### Exact Sharing Check
 
-Use the fingerprint only as an index or fast rejection. Before sharing a core
-representative, perform an exact alpha-invariant comparison of the erased
-constructor classifier-family graphs. The comparison must ignore source names
-but preserve constructor ordinal, parameter arity, binder structure, recursive
-positions, and referenced representation identities.
+`prototype_type_declaration_rebuild_representations(...)` uses the existing
+`TypeCodeShapeKey` only as a fingerprint for fast rejection. Candidate sharing
+then requires an exact alpha-invariant comparison of parameters, constructor
+ordinals, classifier-family graphs, binders, recursive declaration pairs, and
+referenced type structure. A fingerprint match alone no longer shares a core
+representation.
 
-### Make representation sharing link-order independent
+The old `prototype_type_declaration_find_by_code_shape_key(...)` lookup path
+has been removed. Imported type references resolve through qualified exported
+`TypeView` identity, not through a representation fingerprint.
 
-The current representative is the first matching local declaration. This
-makes the chosen core type id depend on declaration/link order. The public
-`TypeView` identity is protected, but artifact canonicalization should not
-silently change a core representative solely because artifacts were linked in a
-different order.
+### Finalization and Artifact Relocation
 
-Use a stable exact representation key or a deterministic canonical graph
-representative after exact comparison. The key may be serialized for artifact
-deduplication, but it must never replace the qualified exported type identity.
+While recursive declarations are being assembled, their core type formers use
+provisional declaration anchors. After graph construction, exact interning
+rewrites those anchors to representation handles. Constructor and match owners
+retain source views during typing/proof validation, then a final graph pass
+erases them to core representation owners before publication.
 
-### Keep shape out of all semantic lookup paths
+Artifact format 27 serializes a type former through its representative
+declaration anchor rather than an artifact-local representation id. Readback
+rebuilds the intern table and rebinds the anchors. Artifact append/link remaps
+both target and provider handles into the target table. Numeric allocation can
+therefore vary with link order without changing any source or kernel equality
+decision.
 
-Search for and remove any path equivalent to:
+### Regression Coverage
 
-```text
-IMPORTED_TYPE(representation_shape) -> local declaration with same shape
-```
+`core_view_representation_check.c` verifies that same-shape `Bool` and `Two`
+views share a core representation but are not normalization-equal, that their
+function classifiers remain distinct, and that beta reduction and a fixed WHNF
+profile operate on the shared core independently of the view.
 
-An imported type reference must resolve by its qualified exported
-`TypeView` identity. Shape data can be carried beside that reference only for
-optional validation or representation sharing after resolution.
+`test_artifact_flow.sh` verifies that a `Bool` dependency remains unresolved
+when only same-shape `Two` is linked, and resolves only when the qualified
+`Bool` provider is linked.
+
+## Remaining Naming Cleanup
+
+`TypeCodeShapeKey` remains as a compatibility-oriented C identifier, but now
+means only a representation fingerprint. Artifact/readback output calls it a
+`representation_fingerprint`. A mechanical C identifier rename is separate
+from the implemented semantic boundary.
 
 ## Non-Goals
 

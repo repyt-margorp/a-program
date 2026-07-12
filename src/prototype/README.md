@@ -311,21 +311,22 @@ artifact
 ```
 
 `TYPE_VIEW(view_type_id, core, source)` is the bridge between the two layers.
-`core` points at the structural type-code spine, while `view_type_id` and
+`core` points at an interned representation spine, while `view_type_id` and
 `source` preserve the named type view used for constructor label lookup and type
-checking. Constructor ordinals remain integers; their meaning is determined by
-the owner type view plus the ordinal.
+checking. Constructor ordinals remain integers; the evaluator uses an erased
+owner representation plus the ordinal, while source lookup chooses that ordinal
+through a named `TYPE_VIEW`.
 
 The prototype now keeps two explicit equality modes for type views. View-shape
 equality preserves the `TYPE_VIEW` wrapper and compares `view_type_id`, `core`,
-and `source`; this is the mode used by typing, constructor owners, and match
-owner checks. Core-shape equality unwraps `TYPE_VIEW.core` before comparing and
+and `source`; this is the mode used by typed conversion. Core-shape equality
+unwraps `TYPE_VIEW.core` before comparing and
 is only structural evidence that two views share the same computational shape.
 Core-shape equality must not be used as a typed conversion until a later
 transport/equality proof explicitly changes the view.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 26`. The reader accepts that format only; old artifact
+`A_PROGRAM_ARTIFACT 27`. The reader accepts that format only; old artifact
 versions are intentionally rejected instead of being kept as compatibility paths.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor

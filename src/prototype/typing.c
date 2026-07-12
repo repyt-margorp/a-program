@@ -755,6 +755,54 @@ int prototype_judgement_classifier_compatible_with_definitions(
 	);
 }
 
+static int prototype_term_core_owner_instance_info(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t owner,
+	uint32_t* p_type_id,
+	uint32_t* args,
+	uint32_t* p_arg_count
+) {
+	if (!terms || !type_declarations || !p_type_id || !p_arg_count || owner >= terms->term_count) {
+		return -1;
+	}
+	uint32_t reversed[16];
+	uint32_t count = 0;
+	uint32_t current = owner;
+	while (current < terms->term_count && terms->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		current = terms->terms[current].as.type_view.core;
+	}
+	while (current < terms->term_count && terms->terms[current].tag == PROTOTYPE_TERM_APP) {
+		if (count >= 16) {
+			return -1;
+		}
+		reversed[count++] = terms->terms[current].as.app.argument;
+		current = terms->terms[current].as.app.function;
+	}
+	if (current >= terms->term_count || terms->terms[current].tag != PROTOTYPE_TERM_TYPE_FORMER) {
+		return -1;
+	}
+	if (prototype_type_declaration_representation_type_id(
+			type_declarations,
+			terms->terms[current].as.type_former.representation_id,
+			p_type_id
+		) != 0) {
+		if (!type_declarations->representations_dirty ||
+			terms->terms[current].as.type_former.representation_id >= type_declarations->type_count) {
+			return -1;
+		}
+		*p_type_id = terms->terms[current].as.type_former.representation_id;
+	}
+	if (count > 0 && !args) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < count; ++i) {
+		args[i] = reversed[count - i - 1];
+	}
+	*p_arg_count = count;
+	return 0;
+}
+
 static int owner_parameter_argument(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -768,8 +816,9 @@ static int owner_parameter_argument(
 	uint32_t type_id;
 	uint32_t args[16];
 	uint32_t arg_count;
-	if (prototype_term_type_instance_info(terms, owner, &type_id, args, &arg_count) != 0 ||
-		type_id >= type_declarations->type_count) {
+	if (prototype_term_core_owner_instance_info(
+			terms, type_declarations, owner, &type_id, args, &arg_count
+		) != 0 || type_id >= type_declarations->type_count) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
@@ -1002,7 +1051,9 @@ static const struct prototype_type_constructor_declaration* lookup_constructor_f
 	uint32_t args[16];
 	uint32_t arg_count;
 	if (!terms || !type_declarations ||
-		prototype_term_type_instance_info(terms, owner, &type_id, args, &arg_count) != 0 ||
+		prototype_term_core_owner_instance_info(
+			terms, type_declarations, owner, &type_id, args, &arg_count
+		) != 0 ||
 		type_id >= type_declarations->type_count) {
 		return NULL;
 	}
@@ -1035,7 +1086,9 @@ static int constructor_classifier_from_family(
 	uint32_t type_id;
 	uint32_t args[16];
 	uint32_t arg_count;
-	if (prototype_term_type_instance_info(terms, owner, &type_id, args, &arg_count) != 0 ||
+	if (prototype_term_core_owner_instance_info(
+			terms, type_declarations, owner, &type_id, args, &arg_count
+		) != 0 ||
 		type_id >= type_declarations->type_count ||
 		type_id != constructor->owner_type) {
 		return 1;
@@ -2185,7 +2238,7 @@ static int classifier_returns_owner(
 		if (current == owner) {
 			return 1;
 		}
-		if (prototype_term_view_shape_equal(
+		if (prototype_term_core_shape_equal(
 				terms,
 				current,
 				owner,
@@ -2213,12 +2266,18 @@ static int constructor_belongs_to_owner(
 	uint32_t owner,
 	uint32_t constructor_index
 ) {
+	if (!terms || !type_declarations || owner >= terms->term_count) {
+		return 0;
+	}
 	uint32_t type_id;
 	uint32_t args[16];
 	uint32_t arg_count;
-	if (!type_declarations ||
-		prototype_term_type_instance_info(terms, owner, &type_id, args, &arg_count) != 0 ||
-		type_id >= type_declarations->type_count ||
+	if (prototype_term_core_owner_instance_info(
+			terms, type_declarations, owner, &type_id, args, &arg_count
+		) != 0) {
+		return 0;
+	}
+	if (type_id >= type_declarations->type_count ||
 		arg_count != type_declarations->type_declarations[type_id].parameter_count) {
 		return 0;
 	}

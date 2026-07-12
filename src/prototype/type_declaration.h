@@ -117,10 +117,20 @@ struct prototype_type_constructor_declaration {
 struct prototype_type_declaration {
 	int name_symbol_id;
 	uint32_t type_index;
+	uint32_t representation_id;
 	uint32_t first_parameter;
 	uint32_t parameter_count;
 	uint32_t first_constructor;
 	uint32_t constructor_count;
+};
+
+/*
+ * An interned erased representation. This is not source type identity. The
+ * source declaration remains identified by prototype_type_declaration::type_index.
+ */
+struct prototype_type_representation {
+	uint32_t representative_type_id;
+	struct prototype_type_code_shape_key fingerprint;
 };
 
 struct prototype_type_declaration_db {
@@ -143,6 +153,11 @@ struct prototype_type_declaration_db {
 	struct prototype_type_expr* exprs;
 	size_t expr_count;
 	size_t expr_capacity;
+
+	struct prototype_type_representation* representations;
+	size_t representation_count;
+	size_t representation_capacity;
+	int representations_dirty;
 
 	uint32_t next_level_var;
 };
@@ -229,18 +244,29 @@ int prototype_type_code_shape_keys_equal(
 	const struct prototype_type_code_shape_key* right
 );
 
-int prototype_type_declaration_core_shape_representative(
+int prototype_type_declaration_representation_anchor_type_id(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	uint32_t type_id,
-	uint32_t* p_core_type_id
+	uint32_t* p_anchor_type_id
 );
 
-int prototype_type_declaration_find_by_code_shape_key(
+int prototype_type_declaration_intern_representation(
 	const struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* db,
+	uint32_t type_id,
+	uint32_t* p_representation_id
+);
+
+int prototype_type_declaration_representation_type_id(
 	const struct prototype_type_declaration_db* db,
-	const struct prototype_type_code_shape_key* key,
+	uint32_t representation_id,
 	uint32_t* p_type_id
+);
+
+int prototype_type_declaration_rebuild_representations(
+	const struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* db
 );
 
 #endif

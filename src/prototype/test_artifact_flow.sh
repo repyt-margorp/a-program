@@ -102,6 +102,10 @@ if grep -q 'prototype_type_declaration_find_by_code_shape_key' src/prototype/typ
 	echo "typing must not resolve imported type expressions by TypeCodeShapeKey" >&2
 	exit 1
 fi
+if rg -q 'prototype_type_declaration_find_by_code_shape_key' src/prototype --glob '*.[ch]'; then
+	echo "import resolution must not expose a TypeCodeShapeKey lookup path" >&2
+	exit 1
+fi
 
 cat >"$TMP_DIR/identity.p" <<'EOF_IDENTITY'
 Bool := @{
@@ -121,10 +125,10 @@ identityNat :: Nat -> Nat;
 EOF_IDENTITY
 
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 26$' "$TMP_DIR/identity.apo"
-sed '1s/26$/25/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v25.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v25.apo" >"$TMP_DIR/identity-v25.out" 2>"$TMP_DIR/identity-v25.err"; then
-	echo "v25 artifact unexpectedly passed after v26 format bump" >&2
+grep -q '^A_PROGRAM_ARTIFACT 27$' "$TMP_DIR/identity.apo"
+sed '1s/27$/26/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v26.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v26.apo" >"$TMP_DIR/identity-v26.out" 2>"$TMP_DIR/identity-v26.err"; then
+	echo "v26 artifact unexpectedly passed after v27 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -151,6 +155,30 @@ grep -q 'constructor_name 0 true 0 ' "$TMP_DIR/identity.apo"
 ./read_file.out --read-graph "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-read.out"
 grep -q 'debug_term_names=4 debug_type_names=2 debug_constructor_names=4' "$TMP_DIR/identity-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/identity-read.out"
+
+cat >"$TMP_DIR/BoolProvider.p" <<'EOF_BOOL_PROVIDER'
+Bool := @{ true : *; false : *; };
+EOF_BOOL_PROVIDER
+cat >"$TMP_DIR/TwoProvider.p" <<'EOF_TWO_PROVIDER'
+Two := @{ one : *; zero : *; };
+EOF_TWO_PROVIDER
+cat >"$TMP_DIR/BoolUser.p" <<'EOF_BOOL_USER'
+identity := \x : Bool => x;
+EOF_BOOL_USER
+./read_file.out --write-artifact "$TMP_DIR/Bool.apo" "$TMP_DIR/BoolProvider.p" >"$TMP_DIR/bool-provider.out"
+./read_file.out --write-artifact "$TMP_DIR/Two.apo" "$TMP_DIR/TwoProvider.p" >"$TMP_DIR/two-provider.out"
+./read_file.out --write-artifact "$TMP_DIR/BoolUser.apo" \
+	--import-interface "$TMP_DIR/Bool.apo" "$TMP_DIR/BoolUser.p" >"$TMP_DIR/bool-user.out"
+./read_file.out --link-artifacts "$TMP_DIR/BoolUser.apo" "$TMP_DIR/Two.apo" \
+	--link-output "$TMP_DIR/BoolUser.with-two.apo" >"$TMP_DIR/bool-user-with-two-link.out"
+./read_file.out --read-graph "$TMP_DIR/BoolUser.with-two.apo" >"$TMP_DIR/bool-user-with-two-read.out"
+grep -q 'dependencies=1' "$TMP_DIR/bool-user-with-two-read.out"
+grep -q 'relocation_external_terms=1 .*relocation_resolved_external_terms=0' "$TMP_DIR/bool-user-with-two-read.out"
+./read_file.out --link-artifacts "$TMP_DIR/BoolUser.apo" "$TMP_DIR/Bool.apo" \
+	--link-output "$TMP_DIR/BoolUser.with-bool.apo" >"$TMP_DIR/bool-user-with-bool-link.out"
+./read_file.out --read-graph "$TMP_DIR/BoolUser.with-bool.apo" >"$TMP_DIR/bool-user-with-bool-read.out"
+grep -q 'dependencies=0' "$TMP_DIR/bool-user-with-bool-read.out"
+grep -q 'relocation_external_terms=0 .*relocation_resolved_external_terms=0' "$TMP_DIR/bool-user-with-bool-read.out"
 
 cat >"$TMP_DIR/type-slice.p" <<'EOF_TYPE_SLICE'
 Used := @{ a : *; };
@@ -436,7 +464,7 @@ grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 classifier_family=[0-9
 	"$TMP_DIR/dependent-constructor-import-user.p" >"$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'metadata label main -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'metadata external-ref Sigma -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
-grep -Fq 'has-type CONSTRUCTOR(<bad-constructor>) PI(' "$TMP_DIR/dependent-constructor-import-user.out"
+grep -Eq 'has-type CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\) PI\(' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'APP(LAMBDA(_#' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'APP(APP(EXTERNAL_REF(Sigma.Sigma)' "$TMP_DIR/dependent-constructor-import-user.out"
 
@@ -2144,7 +2172,7 @@ grep -q 'resolved constructor owner kind=1 .* ordinal=0' "$TMP_DIR/user-linked-r
 	--import-interface "$TMP_DIR/List.apo" \
 	--import-interface "$TMP_DIR/Nat.apo" \
 	"$TMP_DIR/good-cons-user.p" >"$TMP_DIR/good-cons-user.out"
-grep -q 'has-type APP(APP(CONSTRUCTOR(<bad-constructor>), CONSTRUCTOR(<bad-constructor>)), CONSTRUCTOR(<bad-constructor>)) APP(EXTERNAL_REF(List), EXTERNAL_REF(Nat)) \[app-elim\]' "$TMP_DIR/good-cons-user.out"
+grep -Eq 'has-type APP\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\)\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\)\) APP\(EXTERNAL_REF\(List\), EXTERNAL_REF\(Nat\)\) \[app-elim\]' "$TMP_DIR/good-cons-user.out"
 if ./read_file.out --write-artifact "$TMP_DIR/BadConsUser.apo" \
 	--import-interface "$TMP_DIR/List.apo" \
 	--import-interface "$TMP_DIR/Nat.apo" \
@@ -2160,5 +2188,13 @@ fi
 grep -q 'term_exports=4 type_exports=2 constructor_exports=4 dependencies=0' "$TMP_DIR/alias-linked-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/alias-linked-read.out"
 grep -q 'resolved constructor owner kind=1 .* ordinal=0' "$TMP_DIR/alias-linked-read.out"
+
+cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
+	src/prototype/core_view_representation_check.c \
+	src/prototype/ast.c src/prototype/ast_inspect.c src/prototype/reader.c \
+	src/prototype/term.c src/prototype/type_declaration.c src/prototype/typing.c \
+	src/prototype/universe.c src/prototype/symbol.c \
+	-o "$TMP_DIR/core-view-representation-check"
+"$TMP_DIR/core-view-representation-check"
 
 echo "artifact flow tests passed"

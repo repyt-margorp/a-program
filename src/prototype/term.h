@@ -21,6 +21,7 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_PI,
 	PROTOTYPE_TERM_MATCH,
 	PROTOTYPE_TERM_TYPE_FORMER,
+	PROTOTYPE_TERM_TYPE_DECLARATION,
 	PROTOTYPE_TERM_INDUCTION_HYPOTHESIS,
 	PROTOTYPE_TERM_UNIVERSE_VAR,
 	PROTOTYPE_TERM_PRIMITIVE_TEXT,
@@ -204,8 +205,11 @@ struct prototype_term {
 			uint32_t frame_id;
 		} match;
 		struct {
-			uint32_t type_id;
+			uint32_t representation_id;
 		} type_former;
+		struct {
+			uint32_t type_id;
+		} type_declaration;
 		struct {
 			uint32_t view_type_id;
 			uint32_t core;
@@ -390,9 +394,10 @@ int prototype_term_resolve_match_case(
 	uint32_t constructor_owner,
 	uint32_t constructor_id
 );
+int prototype_term_erase_constructor_view_owners(struct prototype_term_db* db);
 int prototype_term_type_instance_make(
 	struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_declaration_db* type_declarations,
 	uint32_t type_id,
 	const uint32_t* args,
 	uint32_t arg_count,
@@ -405,9 +410,16 @@ int prototype_term_type_instance_info(
 	uint32_t* args,
 	uint32_t* p_arg_count
 );
+
+/* Rebind provisional TYPE_FORMER declaration anchors after representation
+ * interning has completed. */
+int prototype_term_rebind_type_former_anchors(
+	struct prototype_term_db* db,
+	const struct prototype_type_declaration_db* type_declarations
+);
 int prototype_term_type_instance_extend(
 	struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_declaration_db* type_declarations,
 	uint32_t instance,
 	uint32_t argument,
 	uint32_t* p_ret

@@ -1,9 +1,11 @@
 #include "type_declaration.h"
 #include "term.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #define PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY 512
+#define PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY 512
 #define PROTOTYPE_TYPE_CODE_SHAPE_KEY_HASH_OFFSET 1469598103934665603ULL
 #define PROTOTYPE_TYPE_CODE_SHAPE_KEY_HASH_PRIME 1099511628211ULL
 
@@ -41,6 +43,33 @@ struct type_code_shape_key_binder_env {
 	uint32_t level_count;
 	uint32_t next_level_slot;
 };
+
+struct representation_compare_env {
+	uint32_t left_binders[PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY];
+	uint32_t right_binders[PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY];
+	uint32_t binder_count;
+	uint32_t left_types[PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY];
+	uint32_t right_types[PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY];
+	uint32_t type_count;
+};
+
+static int representation_types_equal_at_depth(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	uint32_t left_type_id,
+	uint32_t right_type_id,
+	struct representation_compare_env* env,
+	uint32_t depth
+);
+
+static int representation_terms_equal_at_depth(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	uint32_t left_term_id,
+	uint32_t right_term_id,
+	struct representation_compare_env* env,
+	uint32_t depth
+);
 
 static void type_code_shape_key_hash_mix_u32(uint64_t* p_hash, uint32_t value) {
 	*p_hash ^= (uint64_t)value;
@@ -161,6 +190,11 @@ void prototype_type_declaration_db_init(
 	db->readback_field_type_capacity = readback_field_type_capacity;
 	db->exprs = exprs;
 	db->expr_capacity = expr_capacity;
+	db->representations = calloc(type_capacity, sizeof(*db->representations));
+	if (db->representations) {
+		db->representation_capacity = type_capacity;
+	}
+	db->representations_dirty = 1;
 }
 
 static int add_expr(struct prototype_type_declaration_db* db, struct prototype_type_expr expr, uint32_t* p_ret) {
@@ -302,10 +336,12 @@ int prototype_type_declaration_add(
 	memset(type, 0, sizeof(*type));
 	type->name_symbol_id = name_symbol_id;
 	type->type_index = id;
+	type->representation_id = PROTOTYPE_INVALID_ID;
 	type->first_parameter = (uint32_t)db->parameter_count;
 	type->first_constructor = (uint32_t)db->constructor_count;
 
 	db->type_count++;
+	db->representations_dirty = 1;
 	*p_type_id = id;
 	return 0;
 }
@@ -335,6 +371,7 @@ int prototype_type_declaration_add_parameter(
 	db->parameter_declarations[id].type_expr = type_expr;
 	db->parameter_count++;
 	type->parameter_count++;
+	db->representations_dirty = 1;
 	return 0;
 }
 
@@ -384,6 +421,7 @@ int prototype_type_declaration_add_constructor(
 
 	db->constructor_count++;
 	type->constructor_count++;
+	db->representations_dirty = 1;
 	*p_constructor_id = id;
 	return 0;
 }
@@ -428,6 +466,379 @@ const struct prototype_type_constructor_declaration* prototype_type_declaration_
 		}
 	}
 	return NULL;
+}
+
+static int representation_binders_equal(
+	const struct representation_compare_env* env,
+	uint32_t left_binder,
+	uint32_t right_binder
+) {
+	if (!env) {
+		return 0;
+	}
+	for (uint32_t i = env->binder_count; i > 0; --i) {
+		uint32_t index = i - 1;
+		if (env->left_binders[index] == left_binder) {
+			return env->right_binders[index] == right_binder;
+		}
+		if (env->right_binders[index] == right_binder) {
+			return 0;
+		}
+	}
+	return left_binder == right_binder;
+}
+
+static int representation_push_binder(
+	struct representation_compare_env* env,
+	uint32_t left_binder,
+	uint32_t right_binder
+) {
+	if (!env || env->binder_count >= PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY) {
+		return -1;
+	}
+	env->left_binders[env->binder_count] = left_binder;
+	env->right_binders[env->binder_count] = right_binder;
+	env->binder_count++;
+	return 0;
+}
+
+static int representation_type_pair_lookup(
+	const struct representation_compare_env* env,
+	uint32_t left_type_id,
+	uint32_t right_type_id
+) {
+	if (!env) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < env->type_count; ++i) {
+		if (env->left_types[i] == left_type_id || env->right_types[i] == right_type_id) {
+			return env->left_types[i] == left_type_id && env->right_types[i] == right_type_id ? 1 : -1;
+		}
+	}
+	return 0;
+}
+
+static int representation_push_type_pair(
+	struct representation_compare_env* env,
+	uint32_t left_type_id,
+	uint32_t right_type_id
+) {
+	if (!env || env->type_count >= PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY) {
+		return -1;
+	}
+	env->left_types[env->type_count] = left_type_id;
+	env->right_types[env->type_count] = right_type_id;
+	env->type_count++;
+	return 0;
+}
+
+static int representation_type_exprs_equal_at_depth(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	uint32_t left_expr_id,
+	uint32_t right_expr_id,
+	struct representation_compare_env* env,
+	uint32_t depth
+) {
+	if (!db || !env || left_expr_id >= db->expr_count || right_expr_id >= db->expr_count ||
+		depth > PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY) {
+		return 0;
+	}
+	const struct prototype_type_expr* left = &db->exprs[left_expr_id];
+	const struct prototype_type_expr* right = &db->exprs[right_expr_id];
+	if (!type_expr_present(left) || !type_expr_present(right) || left->tag != right->tag) {
+		return 0;
+	}
+	switch (left->tag) {
+		case PROTOTYPE_TYPE_EXPR_UNIVERSE:
+			return left->as.universe.level == right->as.universe.level;
+		case PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR:
+			/* Local universe variables are alpha-like representation parameters. */
+			return 1;
+		case PROTOTYPE_TYPE_EXPR_SELF:
+			return 1;
+		case PROTOTYPE_TYPE_EXPR_VAR:
+			return representation_binders_equal(
+				env,
+				left->as.var.binder_id,
+				right->as.var.binder_id
+			);
+		case PROTOTYPE_TYPE_EXPR_NAME: {
+			const struct prototype_type_declaration* left_type =
+				prototype_type_declaration_lookup(db, left->as.name.symbol_id);
+			const struct prototype_type_declaration* right_type =
+				prototype_type_declaration_lookup(db, right->as.name.symbol_id);
+			if (left_type && right_type) {
+				return representation_types_equal_at_depth(
+					terms,
+					db,
+					left_type->type_index,
+					right_type->type_index,
+					env,
+					depth + 1
+				);
+			}
+			return left->as.name.symbol_id == right->as.name.symbol_id;
+		}
+		case PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE:
+			return left->as.imported_type.name.namespace_symbol_id ==
+				right->as.imported_type.name.namespace_symbol_id &&
+				left->as.imported_type.name.name_symbol_id == right->as.imported_type.name.name_symbol_id;
+		case PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM:
+			return left->as.external_term.name.namespace_symbol_id ==
+				right->as.external_term.name.namespace_symbol_id &&
+				left->as.external_term.name.name_symbol_id == right->as.external_term.name.name_symbol_id;
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT:
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT:
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64:
+			return 1;
+		case PROTOTYPE_TYPE_EXPR_APP:
+			return representation_type_exprs_equal_at_depth(
+					terms, db, left->as.app.function, right->as.app.function, env, depth + 1
+			) && representation_type_exprs_equal_at_depth(
+				terms, db, left->as.app.argument, right->as.app.argument, env, depth + 1
+			);
+		case PROTOTYPE_TYPE_EXPR_ARROW:
+			return representation_type_exprs_equal_at_depth(
+				terms, db, left->as.arrow.domain, right->as.arrow.domain, env, depth + 1
+			) && representation_type_exprs_equal_at_depth(
+				terms, db, left->as.arrow.codomain, right->as.arrow.codomain, env, depth + 1
+			);
+		default:
+			return 0;
+	}
+}
+
+static int representation_match_cases_equal_at_depth(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_match_case* left,
+	const struct prototype_match_case* right,
+	struct representation_compare_env* env,
+	uint32_t depth
+) {
+	if (!terms || !db || !left || !right || !env ||
+		left->constructor_id != right->constructor_id ||
+		left->binder_count != right->binder_count ||
+		left->first_binder + left->binder_count > terms->case_binder_count ||
+		right->first_binder + right->binder_count > terms->case_binder_count ||
+		!representation_terms_equal_at_depth(
+			terms, db, left->constructor_owner, right->constructor_owner, env, depth + 1
+		)) {
+		return 0;
+	}
+	uint32_t saved = env->binder_count;
+	for (uint32_t i = 0; i < left->binder_count; ++i) {
+		if (representation_push_binder(
+				env,
+				terms->case_binders[left->first_binder + i].binder_id,
+				terms->case_binders[right->first_binder + i].binder_id
+			) != 0) {
+			env->binder_count = saved;
+			return 0;
+		}
+	}
+	int equal = representation_terms_equal_at_depth(
+		terms, db, left->body, right->body, env, depth + 1
+	);
+	env->binder_count = saved;
+	return equal;
+}
+
+static int representation_terms_equal_at_depth(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	uint32_t left_term_id,
+	uint32_t right_term_id,
+	struct representation_compare_env* env,
+	uint32_t depth
+) {
+	if (!terms || !db || !env || left_term_id >= terms->term_count ||
+		right_term_id >= terms->term_count || depth > PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY) {
+		return 0;
+	}
+	const struct prototype_term* left = &terms->terms[left_term_id];
+	const struct prototype_term* right = &terms->terms[right_term_id];
+	if (left->tag != right->tag) {
+		return 0;
+	}
+	switch (left->tag) {
+		case PROTOTYPE_TERM_VAR:
+			return representation_binders_equal(env, left->as.var.binder_id, right->as.var.binder_id);
+		case PROTOTYPE_TERM_CONSTRUCTOR:
+			return left->as.constructor.constructor_id == right->as.constructor.constructor_id &&
+				representation_terms_equal_at_depth(
+					terms, db, left->as.constructor.owner, right->as.constructor.owner, env, depth + 1
+				);
+		case PROTOTYPE_TERM_APP:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.app.function, right->as.app.function, env, depth + 1
+			) && representation_terms_equal_at_depth(
+				terms, db, left->as.app.argument, right->as.app.argument, env, depth + 1
+			);
+		case PROTOTYPE_TERM_LAMBDA:
+		case PROTOTYPE_TERM_PI: {
+			uint32_t left_binder = left->tag == PROTOTYPE_TERM_LAMBDA ?
+				left->as.lambda.binder_id : PROTOTYPE_PI_UNUSED_BINDER_ID;
+			uint32_t right_binder = right->tag == PROTOTYPE_TERM_LAMBDA ?
+				right->as.lambda.binder_id : PROTOTYPE_PI_UNUSED_BINDER_ID;
+			uint32_t saved = env->binder_count;
+			if (left->tag == PROTOTYPE_TERM_PI &&
+				!representation_terms_equal_at_depth(
+					terms, db, left->as.pi.domain, right->as.pi.domain, env, depth + 1
+				)) {
+				return 0;
+			}
+			if (left_binder != PROTOTYPE_PI_UNUSED_BINDER_ID &&
+				representation_push_binder(env, left_binder, right_binder) != 0) {
+				return 0;
+			}
+			int equal = representation_terms_equal_at_depth(
+				terms,
+				db,
+				left->tag == PROTOTYPE_TERM_LAMBDA ? left->as.lambda.body : left->as.pi.codomain_family,
+				right->tag == PROTOTYPE_TERM_LAMBDA ? right->as.lambda.body : right->as.pi.codomain_family,
+				env,
+				depth + 1
+			);
+			env->binder_count = saved;
+			return equal;
+		}
+		case PROTOTYPE_TERM_MATCH:
+			if (left->as.match.case_count != right->as.match.case_count ||
+				left->as.match.first_case + left->as.match.case_count > terms->case_count ||
+				right->as.match.first_case + right->as.match.case_count > terms->case_count ||
+				!representation_terms_equal_at_depth(
+					terms, db, left->as.match.scrutinee, right->as.match.scrutinee, env, depth + 1
+				)) {
+				return 0;
+			}
+			for (uint32_t i = 0; i < left->as.match.case_count; ++i) {
+				if (!representation_match_cases_equal_at_depth(
+						terms,
+						db,
+						&terms->cases[left->as.match.first_case + i],
+						&terms->cases[right->as.match.first_case + i],
+						env,
+						depth + 1
+					)) {
+					return 0;
+				}
+			}
+			return 1;
+		case PROTOTYPE_TERM_TYPE_VIEW:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.type_view.source, right->as.type_view.source, env, depth + 1
+			);
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			return representation_types_equal_at_depth(
+				terms, db, left->as.type_declaration.type_id, right->as.type_declaration.type_id, env, depth + 1
+			);
+		case PROTOTYPE_TERM_TYPE_FORMER:
+			return left->as.type_former.representation_id == right->as.type_former.representation_id;
+		case PROTOTYPE_TERM_UNIVERSE_VAR:
+			return 1;
+		case PROTOTYPE_TERM_EXTERNAL_REF:
+			return left->as.external_ref.name.namespace_symbol_id == right->as.external_ref.name.namespace_symbol_id &&
+				left->as.external_ref.name.name_symbol_id == right->as.external_ref.name.name_symbol_id;
+		case PROTOTYPE_TERM_INTRINSIC:
+			return left->as.intrinsic.intrinsic_id == right->as.intrinsic.intrinsic_id &&
+				left->as.intrinsic.type_symbol_id == right->as.intrinsic.type_symbol_id;
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.induction_hypothesis.argument,
+				right->as.induction_hypothesis.argument, env, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+			return left->as.effect_label.effects == right->as.effect_label.effects;
+		case PROTOTYPE_TERM_EFFECT_TYPE:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.effect_type.label, right->as.effect_type.label, env, depth + 1
+			) && representation_terms_equal_at_depth(
+				terms, db, left->as.effect_type.result, right->as.effect_type.result, env, depth + 1
+			);
+		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT64:
+			return 1;
+		case PROTOTYPE_TERM_TEXT_LITERAL:
+			return left->as.text_literal.text_symbol_id == right->as.text_literal.text_symbol_id;
+		case PROTOTYPE_TERM_INT_LITERAL:
+			return left->as.int_literal.value == right->as.int_literal.value;
+		default:
+			return 0;
+	}
+}
+
+static int representation_types_equal_at_depth(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	uint32_t left_type_id,
+	uint32_t right_type_id,
+	struct representation_compare_env* env,
+	uint32_t depth
+) {
+	if (!db || !env || left_type_id >= db->type_count || right_type_id >= db->type_count ||
+		depth > PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY ||
+		!type_declaration_present(&db->type_declarations[left_type_id]) ||
+		!type_declaration_present(&db->type_declarations[right_type_id])) {
+		return 0;
+	}
+	int pair_status = representation_type_pair_lookup(env, left_type_id, right_type_id);
+	if (pair_status > 0) {
+		return 1;
+	}
+	if (pair_status < 0) {
+		return 0;
+	}
+	const struct prototype_type_declaration* left = &db->type_declarations[left_type_id];
+	const struct prototype_type_declaration* right = &db->type_declarations[right_type_id];
+	if (left->parameter_count != right->parameter_count ||
+		left->constructor_count != right->constructor_count ||
+		left->first_parameter + left->parameter_count > db->parameter_count ||
+		right->first_parameter + right->parameter_count > db->parameter_count ||
+		left->first_constructor + left->constructor_count > db->constructor_count ||
+		right->first_constructor + right->constructor_count > db->constructor_count ||
+		representation_push_type_pair(env, left_type_id, right_type_id) != 0) {
+		return 0;
+	}
+	uint32_t saved_binders = env->binder_count;
+	for (uint32_t i = 0; i < left->parameter_count; ++i) {
+		const struct prototype_type_parameter_declaration* left_parameter =
+			&db->parameter_declarations[left->first_parameter + i];
+		const struct prototype_type_parameter_declaration* right_parameter =
+			&db->parameter_declarations[right->first_parameter + i];
+		if (!parameter_declaration_present(left_parameter) || !parameter_declaration_present(right_parameter) ||
+			representation_push_binder(env, left_parameter->binder_id, right_parameter->binder_id) != 0 ||
+			!representation_type_exprs_equal_at_depth(
+				terms, db, left_parameter->type_expr, right_parameter->type_expr, env, depth + 1
+			)) {
+			env->binder_count = saved_binders;
+			return 0;
+		}
+	}
+	for (uint32_t i = 0; i < left->constructor_count; ++i) {
+		const struct prototype_type_constructor_declaration* left_constructor =
+			&db->constructor_declarations[left->first_constructor + i];
+		const struct prototype_type_constructor_declaration* right_constructor =
+			&db->constructor_declarations[right->first_constructor + i];
+		if (!constructor_declaration_present(left_constructor) ||
+			!constructor_declaration_present(right_constructor) ||
+			left_constructor->constructor_index != right_constructor->constructor_index ||
+			!terms || !representation_terms_equal_at_depth(
+				terms,
+				db,
+				left_constructor->classifier_family,
+				right_constructor->classifier_family,
+				env,
+				depth + 1
+			)) {
+			env->binder_count = saved_binders;
+			return 0;
+		}
+	}
+	env->binder_count = saved_binders;
+	return 1;
 }
 
 static int type_expr_code_shape_key_at_depth(
@@ -917,6 +1328,28 @@ static int type_code_shape_key_term_at_depth(
 			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.intrinsic.symbol_id);
 			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.intrinsic.type_symbol_id);
 			return 0;
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			if (term->as.type_declaration.type_id == self_type_id) {
+				type_code_shape_key_hash_mix_tag(p_hash, 0x73656c66U);
+				return 0;
+			}
+			if (term->as.type_declaration.type_id >= db->type_count) {
+				return -1;
+			}
+			{
+				struct prototype_type_code_shape_key referenced;
+				if (prototype_type_declaration_code_shape_key(
+						terms,
+						db,
+						term->as.type_declaration.type_id,
+						&referenced
+					) != 0) {
+					return -1;
+				}
+				type_code_shape_key_hash_mix_key(p_hash, &referenced);
+				type_code_shape_key_merge_referenced_key(key, &referenced);
+				return 0;
+			}
 		case PROTOTYPE_TERM_TYPE_FORMER:
 		case PROTOTYPE_TERM_TYPE_VIEW:
 			return -1;
@@ -1016,58 +1449,111 @@ int prototype_type_code_shape_keys_equal(
 		left->has_name_reference == right->has_name_reference;
 }
 
-int prototype_type_declaration_core_shape_representative(
+int prototype_type_declaration_representation_anchor_type_id(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	uint32_t type_id,
-	uint32_t* p_core_type_id
+	uint32_t* p_anchor_type_id
 ) {
-	if (!terms || !db || !p_core_type_id || type_id >= db->type_count ||
+	if (!terms || !db || !p_anchor_type_id || type_id >= db->type_count ||
 		!type_declaration_present(&db->type_declarations[type_id])) {
 		return -1;
 	}
-
-	struct prototype_type_code_shape_key key;
-	if (prototype_type_declaration_code_shape_key(terms, db, type_id, &key) != 0) {
+	uint32_t representation_id = db->type_declarations[type_id].representation_id;
+	if (representation_id == PROTOTYPE_INVALID_ID ||
+		representation_id >= db->representation_count) {
 		return -1;
 	}
-	for (uint32_t i = 0; i <= type_id; ++i) {
-		struct prototype_type_code_shape_key candidate;
-		if (!type_declaration_present(&db->type_declarations[i])) {
-			continue;
-		}
-		if (prototype_type_declaration_code_shape_key(terms, db, i, &candidate) != 0) {
-			return -1;
-		}
-		if (prototype_type_code_shape_keys_equal(&candidate, &key)) {
-			*p_core_type_id = i;
-			return 0;
-		}
-	}
-	return -1;
+	*p_anchor_type_id = db->representations[representation_id].representative_type_id;
+	return *p_anchor_type_id < db->type_count ? 0 : -1;
 }
 
-int prototype_type_declaration_find_by_code_shape_key(
+int prototype_type_declaration_intern_representation(
 	const struct prototype_term_db* terms,
-	const struct prototype_type_declaration_db* db,
-	const struct prototype_type_code_shape_key* key,
-	uint32_t* p_type_id
+	struct prototype_type_declaration_db* db,
+	uint32_t type_id,
+	uint32_t* p_representation_id
 ) {
-	if (!terms || !db || !key || !p_type_id) {
+	if (!terms || !db || !p_representation_id || type_id >= db->type_count ||
+		!type_declaration_present(&db->type_declarations[type_id]) ||
+		!db->representations) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < db->type_count; ++i) {
-		struct prototype_type_code_shape_key candidate;
-		if (!type_declaration_present(&db->type_declarations[i])) {
+	if (db->representations_dirty) {
+		/* Type declarations are still being assembled. Use a declaration anchor
+		 * until the graph-finalization pass interns exact representations. */
+		*p_representation_id = type_id;
+		return 0;
+	}
+	uint32_t representation_id = db->type_declarations[type_id].representation_id;
+	if (representation_id == PROTOTYPE_INVALID_ID || representation_id >= db->representation_count) {
+		return -1;
+	}
+	*p_representation_id = representation_id;
+	return 0;
+}
+
+int prototype_type_declaration_representation_type_id(
+	const struct prototype_type_declaration_db* db,
+	uint32_t representation_id,
+	uint32_t* p_type_id
+) {
+	if (!db || !p_type_id || representation_id >= db->representation_count ||
+		db->representations[representation_id].representative_type_id >= db->type_count) {
+		return -1;
+	}
+	*p_type_id = db->representations[representation_id].representative_type_id;
+	return 0;
+}
+
+int prototype_type_declaration_rebuild_representations(
+	const struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* db
+) {
+	if (!terms || !db || !db->representations || db->representation_capacity < db->type_count) {
+		return -1;
+	}
+	db->representation_count = 0;
+	for (uint32_t type_id = 0; type_id < db->type_count; ++type_id) {
+		if (!type_declaration_present(&db->type_declarations[type_id])) {
 			continue;
 		}
-		if (prototype_type_declaration_code_shape_key(terms, db, i, &candidate) != 0) {
+		struct prototype_type_code_shape_key fingerprint;
+		if (prototype_type_declaration_code_shape_key(terms, db, type_id, &fingerprint) != 0) {
 			return -1;
 		}
-		if (prototype_type_code_shape_keys_equal(&candidate, key)) {
-			*p_type_id = i;
-			return 0;
+		uint32_t representation_id = PROTOTYPE_INVALID_ID;
+		for (uint32_t candidate_id = 0; candidate_id < db->representation_count; ++candidate_id) {
+			const struct prototype_type_representation* candidate =
+				&db->representations[candidate_id];
+			if (!prototype_type_code_shape_keys_equal(&fingerprint, &candidate->fingerprint)) {
+				continue;
+			}
+			struct representation_compare_env env;
+			memset(&env, 0, sizeof(env));
+			if (representation_types_equal_at_depth(
+					terms,
+					db,
+					type_id,
+					candidate->representative_type_id,
+					&env,
+					0
+				)) {
+				representation_id = candidate_id;
+				break;
+			}
 		}
+		if (representation_id == PROTOTYPE_INVALID_ID) {
+			if (db->representation_count >= db->representation_capacity) {
+				return -1;
+			}
+			representation_id = (uint32_t)db->representation_count;
+			db->representations[representation_id].representative_type_id = type_id;
+			db->representations[representation_id].fingerprint = fingerprint;
+			db->representation_count++;
+		}
+		db->type_declarations[type_id].representation_id = representation_id;
 	}
-	return 1;
+	db->representations_dirty = 0;
+	return 0;
 }
