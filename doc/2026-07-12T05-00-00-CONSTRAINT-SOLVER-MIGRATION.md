@@ -63,6 +63,12 @@ an output of synthesis, not its mutable input.
 The worklist has a bounded number of passes and rejects non-convergence; it
 does not silently publish a partially progressed fixed point.
 
+Before committing bindings, the solver requires every source `APP`, `LAMBDA`,
+`MATCH`, and `*rest` operation to have a classifier solution. This prevents an
+invalid application such as `Bool.true Bool.false` from surviving as an
+untyped core graph node merely because no surrounding expectation demanded a
+type.
+
 All match results use a materialized `APP(motive, scrutinee)` classifier. A
 uniform result is represented by a constant lambda motive, so its common type
 is obtained by beta reduction rather than by a special kernel conversion rule.

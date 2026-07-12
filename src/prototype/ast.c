@@ -12541,6 +12541,30 @@ static int operation_solver_commit_bindings(struct compile_context* ctx, int* p_
 	return 0;
 }
 
+static int operation_solver_require_complete(struct compile_context* ctx) {
+	if (!ctx || !ctx->metadata) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
+		const struct prototype_operation_node* operation =
+			&ctx->metadata->operations[i];
+		switch (operation->tag) {
+			case PROTOTYPE_OPERATION_APP:
+			case PROTOTYPE_OPERATION_LAMBDA:
+			case PROTOTYPE_OPERATION_MATCH:
+			case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+				if (ctx->classifier_solver.bindings[i] ==
+					PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	return 0;
+}
+
 static int operation_solver_solve_match(
 	struct compile_context* ctx,
 	uint32_t operation,
@@ -12766,6 +12790,9 @@ static int operation_solver_solve(struct compile_context* ctx) {
 			return -1;
 		}
 		if (!materialized) {
+			if (operation_solver_require_complete(ctx) != 0) {
+				return -1;
+			}
 			return operation_solver_commit_bindings(ctx, &changed);
 		}
 		changed = 1;

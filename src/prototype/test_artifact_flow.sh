@@ -645,6 +645,22 @@ Nat := @{
 bad := Bool.true :: Nat;
 EOF_BAD_ASCRIPTION
 
+cat >"$TMP_DIR/non-function-application.p" <<'EOF_NON_FUNCTION_APPLICATION'
+Bool := @{
+	true : *;
+	false : *;
+};
+
+bad := Bool.true Bool.false;
+EOF_NON_FUNCTION_APPLICATION
+
+if ./read_file.out "$TMP_DIR/non-function-application.p" \
+	>"$TMP_DIR/non-function-application.out" \
+	2>"$TMP_DIR/non-function-application.err"; then
+	echo "non-function application unexpectedly passed" >&2
+	exit 1
+fi
+
 if ./read_file.out "$TMP_DIR/bad-ascription.p" >"$TMP_DIR/bad-ascription.out" 2>"$TMP_DIR/bad-ascription.err"; then
 	echo "bad ascription unexpectedly passed" >&2
 	exit 1
