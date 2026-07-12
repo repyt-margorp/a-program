@@ -36,6 +36,10 @@ solver's global candidate store.
 All match results use a materialized `APP(motive, scrutinee)` classifier. A
 uniform result is represented by a constant lambda motive, so its common type
 is obtained by beta reduction rather than by a special kernel conversion rule.
+The compiler first checks source-operation binder use before consulting a core
+classifier's free binders. This prevents an unrelated shared core `VAR` from
+making a branch appear dependent. A source use together with a matching free
+binder is conservatively treated as a dependent branch.
 
 ## Recursive Constant Motives
 

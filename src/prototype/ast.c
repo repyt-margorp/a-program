@@ -7802,6 +7802,8 @@ struct operation_motive_equation {
 	uint32_t constructor_id;
 	uint32_t first_binder;
 	uint32_t binder_count;
+	uint32_t first_ast_binder;
+	uint32_t ast_binder_count;
 	uint32_t match_frame_id;
 };
 
@@ -11991,13 +11993,29 @@ static int operation_solver_add_motive_equation(
 		return -1;
 	}
 	const struct prototype_term* match = &ctx->terms->terms[operation->core_term];
+	if (operation->source_ast >= ctx->asts->node_count ||
+		ctx->asts->nodes[operation->source_ast].tag != PROTOTYPE_AST_MATCH) {
+		return -1;
+	}
+	const struct prototype_ast_node* source_match =
+		&ctx->asts->nodes[operation->source_ast];
+	if (case_index >= source_match->as.match.case_count ||
+		source_match->as.match.first_case + case_index >= ctx->asts->case_count) {
+		return -1;
+	}
 	uint32_t term_case_id = match->as.match.first_case + case_index;
 	if (term_case_id >= ctx->terms->case_count) {
 		return -1;
 	}
 	const struct prototype_match_case* match_case = &ctx->terms->cases[term_case_id];
+	const struct prototype_ast_match_case* ast_match_case = &ctx->asts->cases[
+		source_match->as.match.first_case + case_index
+	];
 	if (match_case->first_binder + match_case->binder_count >
-		ctx->terms->case_binder_count) {
+		ctx->terms->case_binder_count ||
+		ast_match_case->first_binder + ast_match_case->binder_count >
+			ctx->asts->case_binder_count ||
+		match_case->binder_count != ast_match_case->binder_count) {
 		return -1;
 	}
 	ctx->classifier_solver.motive_equations[
@@ -12010,6 +12028,8 @@ static int operation_solver_add_motive_equation(
 		match_case->constructor_id,
 		match_case->first_binder,
 		match_case->binder_count,
+		ast_match_case->first_binder,
+		ast_match_case->binder_count,
 		match->as.match.frame_id
 	};
 	return 0;
@@ -12536,6 +12556,107 @@ static int build_operation_motive(
 }
 
 /*
+ * Type dependency belongs to the source-operation graph, not to a raw core
+ * binder id. A tagless core VAR can be shared by unrelated source binders.
+ * This helper is deliberately conservative: a source use means a branch is
+ * not treated as uniform, even if a later solver proves its classifier is
+ * constant.
+ */
+static int operation_subtree_references_ast_binder(
+	const struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t ast_binder_id,
+	uint8_t* visited
+) {
+	if (!ctx || !ctx->metadata || !visited ||
+		operation_id >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	if (visited[operation_id]) {
+		return 0;
+	}
+	visited[operation_id] = 1;
+	const struct prototype_operation_node* operation =
+		&ctx->metadata->operations[operation_id];
+	if (operation->tag == PROTOTYPE_OPERATION_VAR) {
+		return operation->referenced_ast_binder_id == ast_binder_id;
+	}
+	uint32_t children[66];
+	uint32_t child_count = 0;
+	switch (operation->tag) {
+		case PROTOTYPE_OPERATION_NAME:
+			children[child_count++] = operation->function;
+			break;
+		case PROTOTYPE_OPERATION_ASCRIPTION:
+			children[child_count++] = operation->body;
+			break;
+		case PROTOTYPE_OPERATION_APP:
+			children[child_count++] = operation->function;
+			children[child_count++] = operation->argument;
+			break;
+		case PROTOTYPE_OPERATION_LAMBDA:
+			children[child_count++] = operation->body;
+			break;
+		case PROTOTYPE_OPERATION_MATCH:
+			children[child_count++] = operation->scrutinee;
+			if (operation->first_case + operation->case_count >
+				ctx->metadata->operation_case_count || child_count + operation->case_count > 66) {
+				return -1;
+			}
+			for (uint32_t i = 0; i < operation->case_count; ++i) {
+				children[child_count++] = ctx->metadata->operation_cases[
+					operation->first_case + i
+				].body_operation;
+			}
+			break;
+		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+			children[child_count++] = operation->argument;
+			break;
+		case PROTOTYPE_OPERATION_ATOM:
+		case PROTOTYPE_OPERATION_CONSTRUCTOR:
+		case PROTOTYPE_OPERATION_VAR:
+			break;
+		default:
+			return -1;
+	}
+	for (uint32_t i = 0; i < child_count; ++i) {
+		if (children[i] == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		int status = operation_subtree_references_ast_binder(
+			ctx, children[i], ast_binder_id, visited
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
+	return 0;
+}
+
+static int operation_branch_uses_case_binder(
+	const struct compile_context* ctx,
+	const struct operation_motive_equation* equation
+) {
+	if (!ctx || !equation ||
+		equation->first_ast_binder + equation->ast_binder_count >
+			ctx->asts->case_binder_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < equation->ast_binder_count; ++i) {
+		uint8_t visited[4096] = { 0 };
+		int status = operation_subtree_references_ast_binder(
+			ctx, equation->body_operation,
+			ctx->asts->case_binders[equation->first_ast_binder + i].ast_binder_id,
+			visited
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
+	return 0;
+}
+
+/*
  * A uniform motive is represented as a constant lambda. This is not a Match
  * typing shortcut: APP(\_ => T, scrutinee) reduces by beta to T. It is valid
  * only when no branch classifier mentions that branch's pattern binders.
@@ -12569,8 +12690,7 @@ static int build_operation_uniform_motive(
 			);
 		const struct prototype_match_case* source_case =
 			&ctx->terms->cases[match->as.match.first_case + case_index];
-		if (!equation || equation->body_operation >= ctx->metadata->operation_count ||
-			source_case->first_binder + source_case->binder_count > ctx->terms->case_binder_count) {
+		if (!equation || equation->body_operation >= ctx->metadata->operation_count) {
 			return -1;
 		}
 		uint32_t branch_classifier =
@@ -12578,15 +12698,29 @@ static int build_operation_uniform_motive(
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
-		for (uint32_t binder_index = 0; binder_index < source_case->binder_count;
-			++binder_index) {
-			uint32_t binder_id = ctx->terms->case_binders[
-				source_case->first_binder + binder_index
-			].binder_id;
-			if (prototype_term_contains_free_binder(
-					ctx->terms, branch_classifier, binder_id
-				) != 0) {
-				return 1;
+		int dependency_status = operation_branch_uses_case_binder(ctx, equation);
+		if (dependency_status < 0) {
+			return -1;
+		}
+		if (dependency_status > 0) {
+			/* The source branch uses a case binder. Only then does a matching
+			 * core free binder establish classifier dependency; inspecting raw
+			 * core binders without this source check is unsound after sharing. */
+			if (source_case->first_binder + source_case->binder_count >
+				ctx->terms->case_binder_count) {
+				return -1;
+			}
+			for (uint32_t binder_index = 0;
+				binder_index < source_case->binder_count;
+				++binder_index) {
+				uint32_t binder_id = ctx->terms->case_binders[
+					source_case->first_binder + binder_index
+				].binder_id;
+				if (prototype_term_contains_free_binder(
+						ctx->terms, branch_classifier, binder_id
+					) != 0) {
+					return 1;
+				}
 			}
 		}
 		if (classifier == PROTOTYPE_INVALID_ID) {
