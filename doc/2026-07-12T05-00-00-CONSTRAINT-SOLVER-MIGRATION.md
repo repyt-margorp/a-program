@@ -26,9 +26,10 @@ and match frame in the solver arena. The range is source scope, not merely a
 core TermDB binder id: tagless core `VAR` nodes may be shared by unrelated
 source scopes.
 
-An ascription constraint is recorded as a conversion obligation but does not
-bind an operation classifier or seed a motive. The post-synthesis ascription
-phase checks it against the resolved classifier.
+An ascription emits an explicit `Convertible` constraint. It checks the
+resolved source-operation classifier by kernel normalization equality, but
+does not bind that source operation or seed a motive. The post-synthesis
+ascription phase only materializes the corresponding conversion proof.
 
 The solver first propagates classifier equations to a fixed point. A solved
 match is recorded as either a ready branch equation set or a guarded recursive

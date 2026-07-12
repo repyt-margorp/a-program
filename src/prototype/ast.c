@@ -7826,7 +7826,7 @@ struct compile_ref {
 enum operation_classifier_constraint_kind {
 	OPERATION_CONSTRAINT_HAS_TYPE = 1,
 	OPERATION_CONSTRAINT_EQUAL,
-	OPERATION_CONSTRAINT_EXPECTED,
+	OPERATION_CONSTRAINT_CONVERTIBLE,
 	OPERATION_CONSTRAINT_PI_EXPECTED,
 	OPERATION_CONSTRAINT_MOTIVE_EQUATION,
 	OPERATION_CONSTRAINT_IH_EXPECTED
@@ -12465,8 +12465,8 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 		} else if (operation->tag == PROTOTYPE_OPERATION_ASCRIPTION) {
 			if (operation->body >= ctx->metadata->operation_count ||
 				operation_solver_add_constraint(
-					ctx, OPERATION_CONSTRAINT_EXPECTED, operation->body, i,
-					PROTOTYPE_INVALID_ID, 0
+					ctx, OPERATION_CONSTRAINT_CONVERTIBLE, i, operation->body,
+					operation->known_classifier, 0
 				) != 0) {
 				return -1;
 			}
@@ -12598,9 +12598,25 @@ static int operation_solver_solve(struct compile_context* ctx) {
 						return -1;
 					}
 					break;
-				case OPERATION_CONSTRAINT_EXPECTED:
-					/* Ascription is a post-synthesis conversion obligation. It never
-					 * binds the source operation or supplies a motive solution. */
+				case OPERATION_CONSTRAINT_CONVERTIBLE:
+					/* An ascription only checks conversion. It does not bind the
+					 * source operation or choose a motive. */
+					if (constraint->left >= ctx->metadata->operation_count ||
+						constraint->right >= ctx->terms->term_count) {
+						return -1;
+					}
+					classifier = operation_solver_classifier(ctx, constraint->left);
+					if (classifier == PROTOTYPE_INVALID_ID) {
+						break;
+					}
+					if (!prototype_judgement_classifier_normalization_equal(
+							ctx->terms,
+							ctx->type_declarations,
+							constraint->right,
+							classifier
+						)) {
+						return -1;
+					}
 					break;
 				case OPERATION_CONSTRAINT_PI_EXPECTED:
 					if (constraint->left >= ctx->metadata->operation_count ||
