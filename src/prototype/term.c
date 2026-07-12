@@ -4426,6 +4426,144 @@ int prototype_term_perform_with_options(
 	return status;
 }
 
+static int normalize_term_at_depth(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	uint32_t term_id,
+	uint32_t* p_ret,
+	unsigned depth
+) {
+	uint32_t whnf;
+	if (!db || !p_ret || term_id >= db->term_count || depth == 0 ||
+		prototype_term_whnf_with_options(
+			db, type_declarations, definitions, options, term_id, &whnf
+		) != 0 || whnf >= db->term_count) {
+		return -1;
+	}
+
+	const struct prototype_term* term = &db->terms[whnf];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_APP: {
+			uint32_t function;
+			uint32_t argument;
+			uint32_t rebuilt;
+			if (normalize_term_at_depth(
+					db, type_declarations, definitions, options,
+					term->as.app.function, &function, depth - 1
+				) != 0 ||
+				normalize_term_at_depth(
+					db, type_declarations, definitions, options,
+					term->as.app.argument, &argument, depth - 1
+				) != 0 ||
+				prototype_term_app(db, function, argument, &rebuilt) != 0) {
+				return -1;
+			}
+			return rebuilt == whnf ? (*p_ret = rebuilt, 0) :
+				normalize_term_at_depth(
+					db, type_declarations, definitions, options, rebuilt, p_ret, depth - 1
+				);
+		}
+		case PROTOTYPE_TERM_LAMBDA: {
+			uint32_t body;
+			if (normalize_term_at_depth(
+					db, type_declarations, definitions, options,
+					term->as.lambda.body, &body, depth - 1
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_lambda(db, term->as.lambda.binder_id, body, p_ret);
+		}
+		case PROTOTYPE_TERM_PI: {
+			uint32_t domain;
+			uint32_t codomain_family;
+			if (normalize_term_at_depth(
+					db, type_declarations, definitions, options,
+					term->as.pi.domain, &domain, depth - 1
+				) != 0 ||
+				normalize_term_at_depth(
+					db, type_declarations, definitions, options,
+					term->as.pi.codomain_family, &codomain_family, depth - 1
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_pi_family(db, domain, codomain_family, p_ret);
+		}
+		case PROTOTYPE_TERM_MATCH: {
+			struct prototype_match_case_input cases[64];
+			struct prototype_case_binder binders[256];
+			uint32_t scrutinee;
+			uint32_t binder_cursor = 0;
+			uint32_t rebuilt;
+			if (term->as.match.case_count > 64 ||
+				normalize_term_at_depth(
+					db, type_declarations, definitions, options,
+					term->as.match.scrutinee, &scrutinee, depth - 1
+				) != 0) {
+				return -1;
+			}
+			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
+				const struct prototype_match_case* old_case =
+					&db->cases[term->as.match.first_case + i];
+				uint32_t body;
+				if (binder_cursor + old_case->binder_count > 256 ||
+					normalize_term_at_depth(
+						db, type_declarations, definitions, options,
+						old_case->body, &body, depth - 1
+					) != 0) {
+					return -1;
+				}
+				for (uint32_t j = 0; j < old_case->binder_count; ++j) {
+					binders[binder_cursor + j] =
+						db->case_binders[old_case->first_binder + j];
+				}
+				cases[i] = (struct prototype_match_case_input){
+					.case_label_symbol_id = db->case_label_symbols[term->as.match.first_case + i],
+					.constructor_owner = old_case->constructor_owner,
+					.constructor_id = old_case->constructor_id,
+					.binders = &binders[binder_cursor],
+					.binder_count = old_case->binder_count,
+					.body = body
+				};
+				binder_cursor += old_case->binder_count;
+			}
+			if (prototype_term_match_with_frame(
+					db, scrutinee, cases, term->as.match.case_count,
+					term->as.match.frame_id, &rebuilt
+				) != 0) {
+				return -1;
+			}
+			return rebuilt == whnf ? (*p_ret = rebuilt, 0) :
+				normalize_term_at_depth(
+					db, type_declarations, definitions, options, rebuilt, p_ret, depth - 1
+				);
+		}
+		default:
+			*p_ret = whnf;
+			return 0;
+	}
+}
+
+int prototype_term_nf_with_options(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	uint32_t term_id,
+	uint32_t* p_ret
+) {
+	return normalize_term_at_depth(
+		db,
+		type_declarations,
+		definitions,
+		normalize_reduction_options(options),
+		term_id,
+		p_ret,
+		PROTOTYPE_EVALUATION_DEPTH_LIMIT
+	);
+}
+
 static int match_frame_keys_equal(
 	const struct prototype_term_db* db,
 	uint32_t left_frame,

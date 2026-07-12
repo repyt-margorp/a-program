@@ -10,6 +10,18 @@ cd "$ROOT_DIR"
 make reader >/dev/null
 make >/dev/null
 
+cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
+	src/prototype/repl.c \
+	src/prototype/ast.c \
+	src/prototype/ast_inspect.c \
+	src/prototype/reader.c \
+	src/prototype/term.c \
+	src/prototype/type_declaration.c \
+	src/prototype/typing.c \
+	src/prototype/universe.c \
+	src/prototype/symbol.c \
+	-o "$TMP_DIR/prototype-repl"
+
 cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/effect_uniform_match_check.c \
 	src/prototype/term.c \
@@ -203,6 +215,22 @@ grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
 	main expected --reduction-mode default >"$TMP_DIR/list-nat-match-read.out"
 grep -q '^exports-normalization-equal main expected mode=default yes$' \
 	"$TMP_DIR/list-nat-match-read.out"
+
+cat >"$TMP_DIR/repl-normal-form.p" <<'EOF_REPL_NORMAL_FORM'
+Nat := @{ zero : *; succ : * -> *; };
+
+add := \n : Nat =>
+	n @zero => (\m : Nat => m)
+	  @succ k => (\m : Nat => Nat.succ (*k m));
+one := Nat.succ Nat.zero;
+result := add one one;
+EOF_REPL_NORMAL_FORM
+
+printf ':whnf result\n:nf result\n:quit\n' |
+	"$TMP_DIR/prototype-repl" "$TMP_DIR/repl-normal-form.p" >"$TMP_DIR/repl-normal-form.out"
+grep -q '^prototype> whnf result := .*INDUCTION_HYPOTHESIS' "$TMP_DIR/repl-normal-form.out"
+grep -q '^prototype> nf result := APP(CONSTRUCTOR(rep#0.ordinal#1), APP(CONSTRUCTOR(rep#0.ordinal#1), CONSTRUCTOR(rep#0.ordinal#0)))$' \
+	"$TMP_DIR/repl-normal-form.out"
 
 cat >"$TMP_DIR/operation-layer.p" <<'EOF_OPERATION_LAYER'
 Bool := @{ true : *; false : *; };

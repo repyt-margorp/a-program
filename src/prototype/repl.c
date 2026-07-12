@@ -595,6 +595,23 @@ static int is_query_line(const char* line, char* name, size_t name_capacity) {
 	return 1;
 }
 
+static int is_named_command(
+	const char* line,
+	const char* command,
+	char* name,
+	size_t name_capacity
+) {
+	if (!line || !command || !name || name_capacity == 0) {
+		return 0;
+	}
+	size_t command_len = strlen(command);
+	if (strncmp(line, command, command_len) != 0 ||
+		(line[command_len] != ' ' && line[command_len] != '\t')) {
+		return 0;
+	}
+	return is_query_line(line + command_len, name, name_capacity);
+}
+
 static int evaluate_for_output(
 	FILE* output,
 	struct symbol_table* symbols,
@@ -663,6 +680,42 @@ static void query_value(
 	}
 	printf("value %s := ", name);
 	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, evaluated);
+	printf("\n");
+}
+
+static void query_normal_form(
+	struct symbol_table* symbols,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_term_db* term_db,
+	const struct prototype_compile_metadata* metadata,
+	const char* name,
+	int full
+) {
+	int symbol_id = symbol_intern(symbols, name, strlen(name));
+	const struct prototype_compile_label* label = lookup_label(metadata, symbol_id);
+	uint32_t normalized;
+	const char* mode_name = full ? "nf" : "whnf";
+	struct prototype_term_reduction_options options = {
+		.flags = PROTOTYPE_TERM_REDUCE_DEFAULT
+	};
+
+	if (!label) {
+		printf("%s is not defined\n", name);
+		return;
+	}
+	int status = full ?
+		prototype_term_nf_with_options(
+			term_db, type_declarations, NULL, options, label->term, &normalized
+		) :
+		prototype_term_whnf_with_options(
+			term_db, type_declarations, NULL, options, label->term, &normalized
+		);
+	if (status != 0) {
+		printf("%s %s := <normalization failed>\n", mode_name, name);
+		return;
+	}
+	printf("%s %s := ", mode_name, name);
+	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, normalized);
 	printf("\n");
 }
 
@@ -913,6 +966,22 @@ int main(int argc, char** argv) {
 		}
 		if (input_len == 0) {
 			char query_name[128];
+			if (is_named_command(line, ":whnf", query_name, sizeof(query_name))) {
+				query_normal_form(
+					&symbols, &type_declarations, &term_db, &metadata, query_name, 0
+				);
+				printf("prototype> ");
+				fflush(stdout);
+				continue;
+			}
+			if (is_named_command(line, ":nf", query_name, sizeof(query_name))) {
+				query_normal_form(
+					&symbols, &type_declarations, &term_db, &metadata, query_name, 1
+				);
+				printf("prototype> ");
+				fflush(stdout);
+				continue;
+			}
 			if (is_query_line(line, query_name, sizeof(query_name))) {
 				query_value(&symbols, &type_declarations, &term_db, &metadata, query_name);
 				printf("prototype> ");

@@ -600,6 +600,14 @@ int prototype_term_whnf_with_profile(
 	uint32_t term_id,
 	uint32_t* p_ret
 );
+int prototype_term_nf_with_options(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	uint32_t term_id,
+	uint32_t* p_ret
+);
 int prototype_term_perform_with_options(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
