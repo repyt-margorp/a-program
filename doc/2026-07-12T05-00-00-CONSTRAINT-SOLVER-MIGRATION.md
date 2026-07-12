@@ -33,6 +33,9 @@ worklist reaches a fixed point. `JudgementDB` derivations are then
 materialized from the resolved operation classifiers. It is not used as the
 solver's global candidate store.
 
+The worklist has a bounded number of passes and rejects non-convergence; it
+does not silently publish a partially progressed fixed point.
+
 All match results use a materialized `APP(motive, scrutinee)` classifier. A
 uniform result is represented by a constant lambda motive, so its common type
 is obtained by beta reduction rather than by a special kernel conversion rule.
@@ -107,6 +110,10 @@ The following items are intentionally not claimed as complete:
 5. Constructor schema is still represented by both graph-level
    `classifier_family` and readback metadata. The graph-only constructor
    schema migration, including dependent field telescopes, is a later phase.
+6. App constraints currently propagate forward from a resolved function and a
+   resolved argument. Reverse Pi propagation requires an explicit separation
+   between value application and type-level application before it is safe to
+   add: the current operation graph contains both forms.
 
 ## Verification
 

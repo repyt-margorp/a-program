@@ -12319,6 +12319,7 @@ static int operation_solver_solve(struct compile_context* ctx) {
 	if (operation_solver_seed_known_classifiers(ctx, &changed) != 0) {
 		return -1;
 	}
+	int converged = 0;
 	for (uint32_t pass = 0; pass < 64; ++pass) {
 		int pass_changed = 0;
 		for (uint32_t i = 0; i < ctx->classifier_solver.constraint_count; ++i) {
@@ -12477,9 +12478,13 @@ static int operation_solver_solve(struct compile_context* ctx) {
 			}
 		}
 		if (!pass_changed) {
+			converged = 1;
 			break;
 		}
 		changed = 1;
+	}
+	if (!converged) {
+		return -1;
 	}
 	return operation_solver_commit_bindings(ctx, &changed);
 }
