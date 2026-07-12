@@ -7832,6 +7832,13 @@ enum operation_classifier_constraint_kind {
 	OPERATION_CONSTRAINT_IH_EXPECTED
 };
 
+enum operation_motive_solution_state {
+	OPERATION_MOTIVE_SOLUTION_UNRESOLVED = 0,
+	OPERATION_MOTIVE_SOLUTION_READY,
+	OPERATION_MOTIVE_SOLUTION_GUARDED_RECURSIVE,
+	OPERATION_MOTIVE_SOLUTION_MATERIALIZED
+};
+
 struct operation_classifier_constraint {
 	int kind;
 	uint32_t target;
@@ -7849,6 +7856,18 @@ struct operation_classifier_constraint {
 struct operation_solver_input_fact {
 	uint32_t subject;
 	uint32_t classifier;
+};
+
+/*
+ * A symbolic classifier M(argument) used by an IH before M has a TermDB
+ * representation. `scope_frame` records the Match scope that owns the
+ * expression, so a tagless VAR node cannot make an unrelated binder appear
+ * recursive.
+ */
+struct operation_solver_motive_application {
+	uint32_t motive_operation;
+	uint32_t argument_operation;
+	uint32_t scope_frame;
 };
 
 /*
@@ -7883,11 +7902,12 @@ struct operation_classifier_solver {
 	/* A candidate is a solver equation M(_) == T. It is never represented by
 	 * a provisional TermDB APP node. */
 	uint32_t motive_constant_candidates[4096];
-	/* For an IH operation i, these retain the solver expression M(argument).
-	 * They are resolved through a solved motive or a candidate equation only
-	 * while solving; materialization creates the actual APP after M is known. */
-	uint32_t ih_motive_operations[4096];
-	uint32_t ih_argument_operations[4096];
+	uint8_t motive_solution_states[4096];
+	/* For an IH operation i, this indexes symbolic M(argument) in the solver
+	 * arena. It is never a provisional TermDB APP node. */
+	uint32_t ih_motive_application_ids[4096];
+	struct operation_solver_motive_application motive_applications[4096];
+	uint32_t motive_application_count;
 	uint32_t motive_terms[4096];
 	struct operation_motive_equation
 		motive_equations[PROTOTYPE_OPERATION_MOTIVE_EQUATION_CAPACITY];
@@ -12212,10 +12232,16 @@ static uint32_t operation_solver_classifier(
 	if (ctx->classifier_solver.bindings[operation] != PROTOTYPE_INVALID_ID) {
 		return ctx->classifier_solver.bindings[operation];
 	}
-	uint32_t motive_operation =
-		ctx->classifier_solver.ih_motive_operations[operation];
-	if (motive_operation == PROTOTYPE_INVALID_ID ||
-		motive_operation >= ctx->metadata->operation_count) {
+	uint32_t application_id =
+		ctx->classifier_solver.ih_motive_application_ids[operation];
+	if (application_id == PROTOTYPE_INVALID_ID ||
+		application_id >= ctx->classifier_solver.motive_application_count) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t motive_operation = ctx->classifier_solver.motive_applications[
+		application_id
+	].motive_operation;
+	if (motive_operation >= ctx->metadata->operation_count) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	/* A constant candidate is a solver-side equation M(_) == T, so it can
@@ -12286,18 +12312,30 @@ static int operation_solver_set_ih_motive_application(
 		argument_operation >= ctx->metadata->operation_count) {
 		return -1;
 	}
-	uint32_t previous_motive =
-		ctx->classifier_solver.ih_motive_operations[operation];
-	uint32_t previous_argument =
-		ctx->classifier_solver.ih_argument_operations[operation];
-	if (previous_motive == PROTOTYPE_INVALID_ID) {
-		ctx->classifier_solver.ih_motive_operations[operation] = motive_operation;
-		ctx->classifier_solver.ih_argument_operations[operation] = argument_operation;
+	uint32_t previous =
+		ctx->classifier_solver.ih_motive_application_ids[operation];
+	if (previous == PROTOTYPE_INVALID_ID) {
+		if (ctx->classifier_solver.motive_application_count >= 4096) {
+			return -1;
+		}
+		uint32_t scope_frame = ctx->metadata->operations[operation].first_case;
+		ctx->classifier_solver.motive_applications[
+			ctx->classifier_solver.motive_application_count
+		] = (struct operation_solver_motive_application){
+			motive_operation, argument_operation, scope_frame
+		};
+		ctx->classifier_solver.ih_motive_application_ids[operation] =
+			ctx->classifier_solver.motive_application_count++;
 		*p_changed = 1;
 		return 0;
 	}
-	return previous_motive == motive_operation &&
-		previous_argument == argument_operation ? 0 : -1;
+	if (previous >= ctx->classifier_solver.motive_application_count) {
+		return -1;
+	}
+	const struct operation_solver_motive_application* application =
+		&ctx->classifier_solver.motive_applications[previous];
+	return application->motive_operation == motive_operation &&
+		application->argument_operation == argument_operation ? 0 : -1;
 }
 
 static int operation_solver_add_input_fact(
@@ -12389,8 +12427,9 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	for (uint32_t i = 0; i < 4096; ++i) {
 		ctx->classifier_solver.bindings[i] = PROTOTYPE_INVALID_ID;
 		ctx->classifier_solver.motive_constant_candidates[i] = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.ih_motive_operations[i] = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.ih_argument_operations[i] = PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.motive_solution_states[i] =
+			OPERATION_MOTIVE_SOLUTION_UNRESOLVED;
+		ctx->classifier_solver.ih_motive_application_ids[i] = PROTOTYPE_INVALID_ID;
 		ctx->classifier_solver.motive_terms[i] = PROTOTYPE_INVALID_ID;
 	}
 	if (operation_solver_initialize_input_facts(ctx) != 0) {
@@ -12491,9 +12530,14 @@ static int operation_solver_commit_bindings(struct compile_context* ctx, int* p_
 	return 0;
 }
 
-static int operation_solver_materialize_match(
+static int operation_solver_solve_match(
 	struct compile_context* ctx,
 	uint32_t operation,
+	int* p_changed
+);
+
+static int operation_solver_materialize_solved_motives(
+	struct compile_context* ctx,
 	int* p_changed
 );
 
@@ -12522,10 +12566,11 @@ static int operation_solver_solve(struct compile_context* ctx) {
 	if (operation_solver_seed_known_classifiers(ctx, &changed) != 0) {
 		return -1;
 	}
-	int converged = 0;
-	for (uint32_t pass = 0; pass < 64; ++pass) {
-		int pass_changed = 0;
-		for (uint32_t i = 0; i < ctx->classifier_solver.constraint_count; ++i) {
+	for (uint32_t round = 0; round < 64; ++round) {
+		int converged = 0;
+		for (uint32_t pass = 0; pass < 64; ++pass) {
+			int pass_changed = 0;
+			for (uint32_t i = 0; i < ctx->classifier_solver.constraint_count; ++i) {
 			const struct operation_classifier_constraint* constraint =
 				&ctx->classifier_solver.constraints[i];
 			uint32_t classifier;
@@ -12663,7 +12708,7 @@ static int operation_solver_solve(struct compile_context* ctx) {
 					}
 					break;
 				case OPERATION_CONSTRAINT_MOTIVE_EQUATION:
-					if (operation_solver_materialize_match(
+					if (operation_solver_solve_match(
 							ctx, constraint->target, &pass_changed
 						) != 0) {
 						return -1;
@@ -12679,17 +12724,26 @@ static int operation_solver_solve(struct compile_context* ctx) {
 				default:
 					return -1;
 			}
+			}
+			if (!pass_changed) {
+				converged = 1;
+				break;
+			}
+			changed = 1;
 		}
-		if (!pass_changed) {
-			converged = 1;
-			break;
+		if (!converged) {
+			return -1;
+		}
+		int materialized = 0;
+		if (operation_solver_materialize_solved_motives(ctx, &materialized) != 0) {
+			return -1;
+		}
+		if (!materialized) {
+			return operation_solver_commit_bindings(ctx, &changed);
 		}
 		changed = 1;
 	}
-	if (!converged) {
-		return -1;
-	}
-	return operation_solver_commit_bindings(ctx, &changed);
+	return -1;
 }
 
 static int compile_phase_infer_general_classifiers(struct compile_context* ctx) {
@@ -13013,57 +13067,6 @@ static const struct pending_match_typing* lookup_pending_match_typing(
 	return NULL;
 }
 
-static int build_operation_constant_motive(
-	struct compile_context* ctx,
-	const struct pending_match_typing* typing,
-	uint32_t result_classifier,
-	uint32_t* p_classifier
-) {
-	if (!ctx || !typing || !p_classifier ||
-		typing->operation >= ctx->metadata->operation_count ||
-		typing->match_term >= ctx->terms->term_count) {
-		return -1;
-	}
-	const struct prototype_operation_node* operation =
-		&ctx->metadata->operations[typing->operation];
-	const struct prototype_term* match = &ctx->terms->terms[typing->match_term];
-	if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
-		operation->first_case + operation->case_count >
-			ctx->metadata->operation_case_count ||
-		match->tag != PROTOTYPE_TERM_MATCH ||
-		match->as.match.case_count != operation->case_count) {
-		return 1;
-	}
-	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
-		const struct prototype_match_case* match_case = &ctx->terms->cases[
-			match->as.match.first_case + case_index
-		];
-		if (match_case->first_binder + match_case->binder_count >
-			ctx->terms->case_binder_count) {
-			return -1;
-		}
-		for (uint32_t binder_index = 0; binder_index < match_case->binder_count;
-			++binder_index) {
-			uint32_t binder_id = ctx->terms->case_binders[
-				match_case->first_binder + binder_index
-			].binder_id;
-			if (prototype_term_contains_free_binder(
-					ctx->terms, result_classifier, binder_id
-				) != 0) {
-				return 1;
-			}
-		}
-	}
-	uint32_t binder_id = prototype_term_fresh_binder(ctx->terms);
-	uint32_t motive;
-	if (binder_id == PROTOTYPE_INVALID_ID ||
-		prototype_term_lambda(ctx->terms, binder_id, result_classifier, &motive) != 0 ||
-		prototype_term_app(ctx->terms, motive, match->as.match.scrutinee, p_classifier) != 0) {
-		return -1;
-	}
-	return 0;
-}
-
 /*
  * Solve the guarded equation M(C(..., rest, ...)) = M(rest) without first
  * inventing a TermDB classifier for M(rest). The resulting motive carries its
@@ -13232,6 +13235,62 @@ static int operation_solver_find_match_for_frame(
 	return 1;
 }
 
+/*
+ * This is the solver occurs check for the only recursive metavariable form
+ * currently admitted by the language: an IH denotes M(rest). The occurrence
+ * must point back to its own Match frame and `rest` must be a recursive field
+ * of that Match. A raw M(x) self-reference outside that structural edge is
+ * rejected instead of becoming a cyclic solver substitution.
+ */
+static int operation_solver_validate_guarded_motive_occurrence(
+	const struct compile_context* ctx,
+	uint32_t ih_operation,
+	uint32_t motive_operation,
+	uint32_t argument_operation
+) {
+	if (!ctx || !ctx->metadata ||
+		ih_operation >= ctx->metadata->operation_count ||
+		motive_operation >= ctx->metadata->operation_count ||
+		argument_operation >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* ih =
+		&ctx->metadata->operations[ih_operation];
+	const struct prototype_operation_node* match =
+		&ctx->metadata->operations[motive_operation];
+	const struct prototype_operation_node* argument =
+		&ctx->metadata->operations[argument_operation];
+	if (ih->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS ||
+		match->tag != PROTOTYPE_OPERATION_MATCH ||
+		ih->first_case >= ctx->terms->match_frame_count ||
+		argument->core_term >= ctx->terms->term_count ||
+		ctx->terms->terms[argument->core_term].tag != PROTOTYPE_TERM_VAR) {
+		return -1;
+	}
+	if (ctx->terms->match_frames[ih->first_case].match_term != match->core_term ||
+		match->core_term >= ctx->terms->term_count ||
+		ctx->terms->terms[match->core_term].tag != PROTOTYPE_TERM_MATCH) {
+		return -1;
+	}
+	uint32_t binder_id = ctx->terms->terms[argument->core_term].as.var.binder_id;
+	const struct prototype_term* match_term = &ctx->terms->terms[match->core_term];
+	for (uint32_t case_index = 0; case_index < match_term->as.match.case_count;
+		++case_index) {
+		const struct prototype_match_case* match_case = &ctx->terms->cases[
+			match_term->as.match.first_case + case_index
+		];
+		for (uint32_t binder_index = 0; binder_index < match_case->binder_count;
+			++binder_index) {
+			const struct prototype_case_binder* binder =
+				&ctx->terms->case_binders[match_case->first_binder + binder_index];
+			if (binder->binder_id == binder_id) {
+				return binder->is_recursive ? 0 : -1;
+			}
+		}
+	}
+	return -1;
+}
+
 static int operation_solver_nonrecursive_seed_classifier(
 	struct compile_context* ctx,
 	uint32_t operation_id,
@@ -13356,31 +13415,13 @@ static int operation_solver_has_guarded_recursive_equation(
 	return has_unresolved_ih;
 }
 
-static int operation_solver_existing_materialized_motive(
-	const struct compile_context* ctx,
-	const struct pending_match_typing* typing,
-	uint32_t classifier,
-	uint32_t* p_motive
-) {
-	if (!ctx || !typing || !p_motive ||
-		typing->match_term >= ctx->terms->term_count ||
-		classifier >= ctx->terms->term_count ||
-		ctx->terms->terms[typing->match_term].tag != PROTOTYPE_TERM_MATCH ||
-		ctx->terms->terms[classifier].tag != PROTOTYPE_TERM_APP) {
-		return 1;
-	}
-	const struct prototype_term* match = &ctx->terms->terms[typing->match_term];
-	const struct prototype_term* app = &ctx->terms->terms[classifier];
-	if (app->as.app.argument != match->as.match.scrutinee ||
-		app->as.app.function >= ctx->terms->term_count ||
-		ctx->terms->terms[app->as.app.function].tag != PROTOTYPE_TERM_LAMBDA) {
-		return 1;
-	}
-	*p_motive = app->as.app.function;
-	return 0;
-}
-
-static int operation_solver_materialize_match(
+/*
+ * Match solving records only an equation solution state. It deliberately does
+ * not build a motive or an IH classifier in TermDB: an unresolved ?M is a
+ * solver object, not a graph node. Materialization happens after propagation
+ * reaches a fixed point.
+ */
+static int operation_solver_solve_match(
 	struct compile_context* ctx,
 	uint32_t operation_id,
 	int* p_changed
@@ -13398,34 +13439,12 @@ static int operation_solver_materialize_match(
 			ctx->metadata->operation_case_count) {
 		return -1;
 	}
-	uint32_t existing = ctx->classifier_solver.bindings[operation_id];
-	if (existing != PROTOTYPE_INVALID_ID) {
-		if (ctx->classifier_solver.motive_terms[operation_id] != PROTOTYPE_INVALID_ID) {
-			return 0;
-		}
-		uint32_t existing_motive;
-		int existing_status = operation_solver_existing_materialized_motive(
-			ctx, typing, existing, &existing_motive
-		);
-		if (existing_status < 0) {
-			return -1;
-		}
-		if (existing_status == 0) {
-			ctx->classifier_solver.motive_terms[operation_id] = existing_motive;
-			return 0;
-		}
-		uint32_t classifier;
-		int status = build_operation_constant_motive(ctx, typing, existing, &classifier);
-		if (status != 0) {
-			return status < 0 ? -1 : 0;
-		}
-		ctx->classifier_solver.motive_terms[operation_id] =
-			ctx->terms->terms[classifier].as.app.function;
-		if (operation_solver_bind(ctx, operation_id, classifier, p_changed) != 0) {
-			return -1;
-		}
+	if (ctx->classifier_solver.bindings[operation_id] != PROTOTYPE_INVALID_ID ||
+		ctx->classifier_solver.motive_solution_states[operation_id] ==
+			OPERATION_MOTIVE_SOLUTION_MATERIALIZED) {
 		return 0;
 	}
+	int has_unresolved_body = 0;
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
 		const struct operation_motive_equation* equation =
 			operation_solver_motive_equation(
@@ -13437,65 +13456,75 @@ static int operation_solver_materialize_match(
 		uint32_t body_operation = equation->body_operation;
 		if (body_operation >= ctx->metadata->operation_count ||
 			ctx->classifier_solver.bindings[body_operation] == PROTOTYPE_INVALID_ID) {
-			int has_recursive_binder = operation_solver_match_has_recursive_binder(ctx, operation);
-			if (has_recursive_binder < 0) {
-				return -1;
-			}
-			/* A recursive branch may require its match motive before all branch
-			 * classifiers are known. Non-recursive matches remain unresolved until
-			 * every equation has a solved branch classifier. */
-			if (!has_recursive_binder) {
-				return 0;
-			}
-			int guarded_status = operation_solver_has_guarded_recursive_equation(
-				ctx, operation_id
-			);
-			if (guarded_status < 0) {
-				return -1;
-			}
-			if (guarded_status > 0) {
-				uint32_t recursive_classifier;
-				int recursive_status = build_operation_guarded_recursive_motive(
-					ctx, typing, &recursive_classifier
-				);
-				if (recursive_status != 0) {
-					return recursive_status < 0 ? -1 : 0;
-				}
-				ctx->classifier_solver.motive_terms[operation_id] =
-					ctx->terms->terms[recursive_classifier].as.app.function;
-				if (operation_solver_bind(
-						ctx, operation_id, recursive_classifier, p_changed
-					) != 0) {
-					return -1;
-				}
-				return 0;
-			}
-			uint32_t seed_classifier;
-			uint32_t seed_source_body_operation;
-			int seed_status = operation_solver_nonrecursive_seed_classifier(
-				ctx, operation_id, operation, &seed_classifier,
-				&seed_source_body_operation
-			);
-			if (seed_status != 0) {
-				return seed_status < 0 ? -1 : 0;
-			}
-			/* Keep the candidate in the solver only. The IH can use this
-			 * constant-motive equation, but no APP(M, _) TermDB node exists
-			 * until all branch equations have been checked. */
-			seed_status = operation_solver_seed_motive(
-				ctx, operation_id, seed_classifier, seed_source_body_operation,
-				p_changed
-			);
-			if (seed_status < 0) {
-				return -1;
-			}
-			return 0;
+			has_unresolved_body = 1;
 		}
 	}
+	if (!has_unresolved_body) {
+		ctx->classifier_solver.motive_solution_states[operation_id] =
+			OPERATION_MOTIVE_SOLUTION_READY;
+		return 0;
+	}
+	int has_recursive_binder = operation_solver_match_has_recursive_binder(ctx, operation);
+	if (has_recursive_binder < 0) {
+		return -1;
+	}
+	if (!has_recursive_binder) {
+		return 0;
+	}
+	int guarded_status = operation_solver_has_guarded_recursive_equation(ctx, operation_id);
+	if (guarded_status < 0) {
+		return -1;
+	}
+	if (guarded_status > 0) {
+		ctx->classifier_solver.motive_solution_states[operation_id] =
+			OPERATION_MOTIVE_SOLUTION_GUARDED_RECURSIVE;
+		return 0;
+	}
+	uint32_t seed_classifier;
+	uint32_t seed_source_body_operation;
+	int seed_status = operation_solver_nonrecursive_seed_classifier(
+		ctx, operation_id, operation, &seed_classifier, &seed_source_body_operation
+	);
+	if (seed_status != 0) {
+		return seed_status < 0 ? -1 : 0;
+	}
+	/* The candidate is an equation M(_) == T in the solver. It may type an
+	 * IH while recursive branch constraints are propagated, but it is not a
+	 * TermDB application and it does not materialize a motive. */
+	seed_status = operation_solver_seed_motive(
+		ctx, operation_id, seed_classifier, seed_source_body_operation, p_changed
+	);
+	return seed_status < 0 ? -1 : 0;
+}
+
+static int operation_solver_materialize_match_solution(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	int* p_changed
+) {
+	if (!ctx || !ctx->metadata || !p_changed ||
+		operation_id >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* operation =
+		&ctx->metadata->operations[operation_id];
+	const struct pending_match_typing* typing =
+		lookup_pending_match_typing(ctx, operation_id);
+	uint8_t state = ctx->classifier_solver.motive_solution_states[operation_id];
+	if (operation->tag != PROTOTYPE_OPERATION_MATCH || !typing ||
+		state == OPERATION_MOTIVE_SOLUTION_UNRESOLVED ||
+		state == OPERATION_MOTIVE_SOLUTION_MATERIALIZED) {
+		return 0;
+	}
 	uint32_t classifier;
-	int status = build_operation_uniform_motive(ctx, typing, &classifier);
-	if (status > 0) {
-		status = build_operation_motive(ctx, typing, &classifier);
+	int status;
+	if (state == OPERATION_MOTIVE_SOLUTION_GUARDED_RECURSIVE) {
+		status = build_operation_guarded_recursive_motive(ctx, typing, &classifier);
+	} else {
+		status = build_operation_uniform_motive(ctx, typing, &classifier);
+		if (status > 0) {
+			status = build_operation_motive(ctx, typing, &classifier);
+		}
 	}
 	if (status != 0) {
 		return status < 0 ? -1 : 0;
@@ -13510,12 +13539,29 @@ static int operation_solver_materialize_match(
 	}
 	ctx->classifier_solver.motive_terms[operation_id] =
 		ctx->terms->terms[classifier].as.app.function;
-	if (operation_solver_bind(ctx, operation_id, classifier, p_changed) != 0) {
+	ctx->classifier_solver.motive_solution_states[operation_id] =
+		OPERATION_MOTIVE_SOLUTION_MATERIALIZED;
+	return operation_solver_bind(ctx, operation_id, classifier, p_changed);
+}
+
+static int operation_solver_materialize_solved_motives(
+	struct compile_context* ctx,
+	int* p_changed
+) {
+	if (!ctx || !ctx->metadata || !p_changed) {
 		return -1;
+	}
+	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
+		if (ctx->metadata->operations[i].tag == PROTOTYPE_OPERATION_MATCH &&
+			operation_solver_materialize_match_solution(ctx, i, p_changed) != 0) {
+			return -1;
+		}
 	}
 	return 0;
 }
 
+/* Keep IH propagation entirely in the solver until its parent motive has
+ * been materialized from a solved equation. */
 static int operation_solver_materialize_induction_hypothesis(
 	struct compile_context* ctx,
 	uint32_t operation_id,
@@ -13540,19 +13586,23 @@ static int operation_solver_materialize_induction_hypothesis(
 	if (match_status != 0) {
 		return match_status < 0 ? -1 : 0;
 	}
-	if (operation_solver_materialize_match(ctx, parent_match, p_changed) != 0) {
+	if (operation_solver_solve_match(ctx, parent_match, p_changed) != 0) {
 		return -1;
 	}
 	uint32_t motive = ctx->classifier_solver.motive_terms[parent_match];
 	if (motive == PROTOTYPE_INVALID_ID) {
+		if (operation_solver_validate_guarded_motive_occurrence(
+				ctx, operation_id, parent_match, operation->argument
+			) != 0) {
+			return -1;
+		}
 		return operation_solver_set_ih_motive_application(
 			ctx, operation_id, parent_match, operation->argument, p_changed
 		);
 	}
 	uint32_t classifier;
 	if (prototype_term_app(
-			ctx->terms,
-			motive,
+			ctx->terms, motive,
 			ctx->metadata->operations[operation->argument].core_term,
 			&classifier
 		) != 0) {

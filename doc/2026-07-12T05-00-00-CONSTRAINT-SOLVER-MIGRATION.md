@@ -28,11 +28,16 @@ An ascription constraint is recorded as a conversion obligation but does not
 bind an operation classifier or seed a motive. The post-synthesis ascription
 phase checks it against the resolved classifier.
 
-The solver commits resolved classifiers to `OperationGraph` only after its
-worklist reaches a fixed point. Match-pattern assumptions, solved match
-motives, lambda/application derivations, and IH derivations are then
-materialized from the resolved operation classifiers. `JudgementDB` is not
-used as the solver's global candidate store.
+The solver first propagates classifier equations to a fixed point. A solved
+match is recorded as either a ready branch equation set or a guarded recursive
+equation; neither state creates a TermDB motive. At the fixed-point boundary,
+the compiler materializes the solved motive and its `APP(motive, scrutinee)`
+classifier, then starts another propagation round for dependent IH, lambda,
+and application constraints. Only after no further solved motives remain are
+match-pattern assumptions, solved match motives, lambda/application
+derivations, and IH derivations materialized in `JudgementDB`.
+
+`JudgementDB` is not used as the solver's global candidate store.
 
 Lambda and application materialization takes the solved source-operation
 premise classifiers explicitly. It does not rediscover them by searching for
@@ -83,15 +88,16 @@ node.
 
 For a recursive match, a solved non-recursive branch may provide a constant
 motive candidate. The candidate is retained only in the solver arena. An IH
-is retained there as the expression `M(argument-operation)`, rather than as a
-provisional classifier id. In particular, this does not create a provisional
-`APP(motive, scrutinee)` term or a provisional JudgementDB relation.
+is retained there as the scoped expression `M(argument-operation)`, rather
+than as a provisional classifier id. In particular, this does not create a
+provisional `APP(motive, scrutinee)` term or a provisional JudgementDB
+relation.
 
 The induction-hypothesis equation can use that solver-local candidate while
 typing a recursive branch. Once every branch has a solved classifier, the
-compiler creates the actual motive lambda and the `APP(motive, scrutinee)` and
-`APP(motive, rest)` terms. This is sufficient for the current `Nat` and
-`List` recursive examples, including `append`.
+fixed-point boundary creates the actual motive lambda and the
+`APP(motive, scrutinee)` and `APP(motive, rest)` terms. This is sufficient for
+the current `Nat` and `List` recursive examples, including `append`.
 
 Candidate closedness is checked only against the source branch that produced
 the candidate. Checking every case against raw core binder ids would reject a
@@ -109,6 +115,12 @@ materializes the final motive as a finite match graph only after recognizing
 that equation. The training program `training/recursive_dependent_match.p`
 exercises a non-uniform motive with two distinct base result types and this
 recursive branch.
+
+The solver records each symbolic `M(rest)` with the owning match frame. Its
+occurs check accepts only an occurrence whose argument is an actual recursive
+field of that same frame; an unguarded self-reference cannot become a cyclic
+solver substitution. This is deliberately a structural occurs check, not a
+general higher-order unifier.
 
 This is not general higher-order unification. For example, an equation such
 as `M(C(rest)) = F(M(rest))` still needs solver type-expression nodes and
@@ -129,10 +141,10 @@ unrelated operation occurrence that happens to share a core `VAR` node.
 
 The following items are intentionally not claimed as complete:
 
-1. The current arena stores resolved classifier term ids, motive equations,
-   direct `M(argument)` IH expressions, and constant motive candidates. It
-   does not yet have general scoped type/motive metavariables or an occurs
-   check.
+1. The current arena stores operation classifier metavariables, scoped
+   `M(argument)` expressions, motive equations, constant motive candidates,
+   and a structural occurs check. It does not yet have general higher-order
+   type-expression metavariables or unification.
 2. A recursive dependent motive whose `M(rest)` is transformed by another type
    expression still needs solver-level type-expression nodes. It must not be
    solved by prematurely materializing a TermDB motive.
