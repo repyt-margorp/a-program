@@ -68,6 +68,13 @@ declaration; a saturated type instance is recorded with a universe classifier.
 This keeps `List A` as an ordinary application derivation and avoids a generic
 declaration-proof fallback for local type formers.
 
+Artifact type exports serialize that formation classifier as part of the type
+declaration graph. An interface-only import must not reuse the provider's term
+id: it reconstructs a fresh Pi-family from the exported parameter telescope in
+the importing TermDB. This preserves the typed operation layer across the
+artifact boundary without treating a provider-local graph address as a global
+identity.
+
 The worklist has a bounded number of passes and rejects non-convergence; it
 does not silently publish a partially progressed fixed point.
 
@@ -108,7 +115,7 @@ constructor import/export checking, constructor application, pattern-field
 typing, and recursive-field recognition all consume its graph-level `PI`
 spine. The `readback` field and `readback_field_types` table remain only for
 source diagnostics and artifact readback; they do not decide a constructor's
-meaning.
+meaning and may be absent from a semantic artifact slice.
 
 The artifact-flow suite exercises this boundary with
 `Sigma := \A => \B => @{ mk : (a : A) -> B a -> *; }`: an importing artifact
@@ -189,7 +196,9 @@ The following items are intentionally not claimed as complete:
    identity. Application accepts distinct universe variables only as a
    cumulativity obligation. The materialized `APP_ELIM` proof is collected as
    `v <= u` by `UniverseDB` after linking; it never merges the two universe
-   nodes as DefEq. Pi `max(u, v)` formation is still incomplete.
+   nodes as DefEq. Closed nested Pi codomains are collected recursively as
+   well; an alpha-aware traversal of open dependent codomains and Pi `max(u,
+   v)` formation are still incomplete.
 5. App constraints currently propagate forward from a resolved function and a
    resolved argument. Reverse Pi propagation requires an explicit separation
    between value application and type-level application before it is safe to

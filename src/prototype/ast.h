@@ -353,6 +353,8 @@ struct prototype_artifact_type_export {
 	uint32_t local_type_id;
 	/* Serialized declaration anchor for the interned core representation. */
 	uint32_t core_representation_anchor_type_id;
+	/* Graph-level classifier of the unapplied type former. */
+	uint32_t formation_classifier;
 	struct prototype_type_code_shape_key code_shape_key;
 	uint32_t first_parameter;
 	uint32_t parameter_count;

@@ -1925,8 +1925,16 @@ static int prototype_install_intrinsic_nat(struct prototype_program* program) {
 			succ_classifier,
 			&succ_constructor_id
 		) != 0 ||
-		prototype_term_universe_var(program->terms, program->judgement->next_universe_var++, &universe) != 0 ||
-		prototype_judgement_expand_type_def(
+		prototype_term_universe_var(
+			program->terms, program->judgement->next_universe_var++, &universe
+		) != 0) {
+		return -1;
+	}
+	if (type_id >= program->type_declarations->type_count) {
+		return -1;
+	}
+	program->type_declarations->type_declarations[type_id].formation_classifier = universe;
+	if (prototype_judgement_expand_type_def(
 			program->judgement,
 			program->terms,
 			program->type_declarations,

@@ -389,6 +389,11 @@ int prototype_artifact_interface_build_from_metadata(
 		}
 		const struct prototype_type_declaration* type =
 			&type_declarations->type_declarations[type_export->type_id];
+		if (type->formation_classifier == PROTOTYPE_INVALID_ID ||
+			type->formation_classifier >= terms->term_count) {
+			return -1;
+		}
+		export->formation_classifier = type->formation_classifier;
 		export->first_parameter = type->first_parameter;
 		export->parameter_count = type->parameter_count;
 		export->first_constructor_export = type_export->first_constructor_export;
@@ -1257,15 +1262,28 @@ static int artifact_mark_constructor(
 		return 0;
 	}
 	marks->constructors[constructor_id] = 1;
-	if (artifact_mark_type(marks, terms, constructor->owner_type, depth + 1) != 0 ||
-		artifact_mark_type_expr(marks, terms, constructor->readback.result_type, depth + 1) != 0) {
+	if (artifact_mark_type(marks, terms, constructor->owner_type, depth + 1) != 0) {
+		return -1;
+	}
+	if (constructor->readback.result_type != PROTOTYPE_INVALID_ID &&
+		artifact_mark_type_expr(
+			marks, terms, constructor->readback.result_type, depth + 1
+		) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < constructor->readback.field_count; ++i) {
+		uint32_t field_id = constructor->readback.first_field_type + i;
+		if (constructor->readback.first_field_type == PROTOTYPE_INVALID_ID ||
+			field_id >= type_declarations->readback_field_type_count ||
+			!artifact_field_type_present(
+				&type_declarations->readback_field_types[field_id]
+			)) {
+			continue;
+		}
 		if (artifact_mark_field_type(
 				marks,
 				terms,
-				constructor->readback.first_field_type + i,
+				field_id,
 				depth + 1
 			) != 0) {
 			return -1;
@@ -1310,6 +1328,18 @@ static int artifact_mark_type(
 		return 0;
 	}
 	marks->types[type_id] = 1;
+	if (type->formation_classifier == PROTOTYPE_INVALID_ID ||
+		artifact_mark_term(
+			marks, terms, type->formation_classifier, depth + 1
+		) != 0 ||
+		artifact_mark_subject_relations(
+			marks,
+			terms,
+			marks->judgement,
+			type->formation_classifier
+		) != 0) {
+		return -1;
+	}
 	if (type->first_parameter + type->parameter_count > marks->parameter_count ||
 		type->first_constructor + type->constructor_count > marks->constructor_count) {
 		return -1;
@@ -1811,14 +1841,15 @@ static int write_artifact_graph_section(
 		}
 		fprintf(
 			stream,
-			"type_decl %zu %s %u %u %u %u %u\n",
+			"type_decl %zu %s %u %u %u %u %u %u\n",
 			i,
 			symbol_to_string(symbols, type->name_symbol_id),
 			type->type_index,
 			type->first_parameter,
 			type->parameter_count,
 			type->first_constructor,
-			type->constructor_count
+			type->constructor_count,
+			type->formation_classifier
 		);
 	}
 
@@ -3093,7 +3124,12 @@ static int artifact_mark_roots(
 	for (size_t i = 0; i < interface->type_export_count; ++i) {
 		const struct prototype_artifact_type_export* export = &interface->type_exports[i];
 		if (artifact_mark_type(marks, terms, export->local_type_id, 0) != 0 ||
-			artifact_mark_type(marks, terms, export->core_representation_anchor_type_id, 0) != 0) {
+			artifact_mark_type(marks, terms, export->core_representation_anchor_type_id, 0) != 0 ||
+			export->formation_classifier == PROTOTYPE_INVALID_ID ||
+			artifact_mark_term(marks, terms, export->formation_classifier, 0) != 0 ||
+			artifact_mark_subject_relations(
+				marks, terms, judgement, export->formation_classifier
+			) != 0) {
 			return -1;
 		}
 	}
@@ -3388,6 +3424,7 @@ static int artifact_build_sparse_graph(
 	if (!graph || !interface || !terms || !type_declarations || !judgement || !universe) {
 		return -1;
 	}
+	memset(graph, 0, sizeof(*graph));
 	struct artifact_graph_marks marks;
 	if (artifact_marks_init(&marks, terms, type_declarations, judgement) != 0) {
 		return -1;
@@ -3420,7 +3457,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 28\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 29\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -3535,10 +3572,11 @@ static int prototype_artifact_write_text_body(
 		}
 		fprintf(
 			stream,
-			"type %s %u %u %u %u %u %u ",
+			"type %s %u %u %u %u %u %u %u ",
 			name,
 			export->local_type_id,
 			export->core_representation_anchor_type_id,
+			export->formation_classifier,
 			export->first_parameter,
 			export->parameter_count,
 			export->first_constructor_export,
@@ -3713,7 +3751,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 28) {
+		version != 29) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -3910,16 +3948,17 @@ int prototype_artifact_read_text_interface(
 			&interface->type_exports[interface->type_export_count++];
 		if (fscanf(
 				stream,
-				"%255s %255s %u %u %u %u %u %u",
+				"%255s %255s %u %u %u %u %u %u %u",
 				word,
 				name,
 				&export->local_type_id,
 				&export->core_representation_anchor_type_id,
+				&export->formation_classifier,
 				&export->first_parameter,
 				&export->parameter_count,
 				&export->first_constructor_export,
 				&export->constructor_count
-			) != 8 ||
+			) != 9 ||
 			strcmp(word, "type") != 0 ||
 			export->first_parameter + export->parameter_count >
 				interface->type_parameter_count) {
@@ -3970,18 +4009,12 @@ int prototype_artifact_read_text_interface(
 				&export->classifier_family
 			) != 7 ||
 			strcmp(word, "constructor") != 0 ||
-			export->readback_first_field_type + export->readback_field_count >
-				interface->constructor_field_type_expr_count) {
+			(export->readback_field_count > 0 &&
+				(export->readback_first_field_type == PROTOTYPE_INVALID_ID ||
+					export->readback_first_field_type +
+						export->readback_field_count >
+						interface->constructor_field_type_expr_count))) {
 			return -1;
-		}
-		for (uint32_t j = 0; j < export->readback_field_count; ++j) {
-			if (!artifact_field_type_present(
-					&interface->constructor_field_type_exprs[
-						export->readback_first_field_type + j
-					]
-				)) {
-				return -1;
-			}
 		}
 		export->name_symbol_id = symbol_intern(symbols, name, strlen(name));
 		if (export->name_symbol_id < 0) {
@@ -4396,6 +4429,8 @@ static int artifact_validate_type_graph_refs(
 			continue;
 		}
 		if (type->type_index != i ||
+			type->formation_classifier == PROTOTYPE_INVALID_ID ||
+			!artifact_read_term_present(terms, type->formation_classifier) ||
 			!artifact_range_within(
 				type->first_parameter,
 				type->parameter_count,
@@ -4893,6 +4928,8 @@ int prototype_artifact_read_text_graph(
 	for (size_t i = 0; i < type_slot_count; ++i) {
 		type_declarations->type_declarations[i].name_symbol_id = -1;
 		type_declarations->type_declarations[i].type_index = PROTOTYPE_INVALID_ID;
+		type_declarations->type_declarations[i].formation_classifier =
+			PROTOTYPE_INVALID_ID;
 		type_declarations->type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
 		type_declarations->type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
 	}
@@ -4927,10 +4964,12 @@ int prototype_artifact_read_text_graph(
 		uint32_t parameter_count;
 		uint32_t first_constructor;
 		uint32_t constructor_count;
-		if (fscanf(stream, "%255s %zu %255s %u %u %u %u %u", word, &id, name, &type_index, &first_parameter, &parameter_count, &first_constructor, &constructor_count) != 8 ||
+		uint32_t formation_classifier;
+		if (fscanf(stream, "%255s %zu %255s %u %u %u %u %u %u", word, &id, name, &type_index, &first_parameter, &parameter_count, &first_constructor, &constructor_count, &formation_classifier) != 9 ||
 				strcmp(word, "type_decl") != 0 ||
 				id >= type_slot_count ||
 				type_index != id ||
+				formation_classifier >= term_slot_count ||
 				!artifact_range_within(first_parameter, parameter_count, parameter_slot_count) ||
 				!artifact_range_within(first_constructor, constructor_count, constructor_slot_count)) {
 				return -1;
@@ -4944,6 +4983,7 @@ int prototype_artifact_read_text_graph(
 			return -1;
 		}
 		type->type_index = type_index;
+		type->formation_classifier = formation_classifier;
 		type->first_parameter = first_parameter;
 		type->parameter_count = parameter_count;
 		type->first_constructor = first_constructor;
@@ -4997,8 +5037,12 @@ int prototype_artifact_read_text_graph(
 			strcmp(word, "type_constructor") != 0 ||
 				id >= constructor_slot_count ||
 				owner_type >= type_slot_count ||
-				!artifact_range_within(first_field_type, field_count, field_type_slot_count) ||
-				result_type >= expr_slot_count ||
+				(field_count > 0 &&
+					(first_field_type == PROTOTYPE_INVALID_ID ||
+					!artifact_range_within(
+						first_field_type, field_count, field_type_slot_count
+					))) ||
+				(result_type != PROTOTYPE_INVALID_ID && result_type >= expr_slot_count) ||
 				(classifier_family != PROTOTYPE_INVALID_ID &&
 					classifier_family >= term_slot_count)) {
 			return -1;
@@ -6060,6 +6104,14 @@ int prototype_artifact_interface_recompute_keys(
 				) != 0) {
 				return -1;
 			}
+			uint32_t formation_classifier = type_declarations->type_declarations[
+				export->local_type_id
+			].formation_classifier;
+			if (formation_classifier == PROTOTYPE_INVALID_ID ||
+				formation_classifier >= terms->term_count) {
+				return -1;
+			}
+			export->formation_classifier = formation_classifier;
 			if (prototype_type_declaration_representation_anchor_type_id(
 					terms,
 					type_declarations,
@@ -6547,6 +6599,8 @@ int prototype_artifact_append_graph(
 		if (artifact_type_present(&type)) {
 			type.type_index = offset_artifact_id(type.type_index, type_offset);
 			type.representation_id = PROTOTYPE_INVALID_ID;
+			type.formation_classifier =
+				offset_artifact_id(type.formation_classifier, term_offset);
 			type.first_parameter = offset_artifact_id(type.first_parameter, parameter_offset);
 			type.first_constructor = offset_artifact_id(type.first_constructor, constructor_offset);
 		}
@@ -6769,6 +6823,11 @@ int prototype_artifact_append_graph(
 		if (appended_interface->type_exports[i].core_representation_anchor_type_id != PROTOTYPE_INVALID_ID) {
 			appended_interface->type_exports[i].core_representation_anchor_type_id += type_offset;
 		}
+		appended_interface->type_exports[i].formation_classifier =
+			offset_artifact_id(
+				appended_interface->type_exports[i].formation_classifier,
+				term_offset
+			);
 			if (prototype_type_declaration_code_shape_key(
 					target_terms,
 					target_type_declarations,
@@ -7971,6 +8030,11 @@ static int compile_ast_type_expr_term(
 	uint32_t type_expr,
 	uint32_t* p_ret
 );
+static int imported_type_formation_classifier(
+	struct compile_context* ctx,
+	struct prototype_qualified_name name,
+	uint32_t* p_classifier
+);
 static int compile_def(
 	struct compile_context* ctx,
 	struct prototype_ast_term_assignment_def* def,
@@ -8363,6 +8427,16 @@ static int compile_external_ref_ref(
 			has_classifier = 1;
 		}
 	}
+	if (!has_classifier) {
+		int imported_status = resolve_imported_type_name(ctx, name_symbol_id, &name);
+		if (imported_status < 0) {
+			return -1;
+		}
+		if (imported_status == 0 &&
+			imported_type_formation_classifier(ctx, name, &classifier) == 0) {
+			has_classifier = 1;
+		}
+	}
 	uint32_t term;
 	if (prototype_term_external_ref(ctx->terms, name, &term) != 0) {
 		return -1;
@@ -8560,18 +8634,11 @@ static int operation_apply_classifier(
 		return 1;
 	}
 	const struct prototype_term* pi = &ctx->terms->terms[whnf];
-	if (!prototype_judgement_classifier_normalization_equal(
+	if (!prototype_judgement_classifier_compatible(
 			ctx->terms, ctx->type_declarations,
 			pi->as.pi.domain, argument_classifier
 		)) {
-		if (ctx->terms->terms[pi->as.pi.domain].tag !=
-				PROTOTYPE_TERM_UNIVERSE_VAR ||
-			ctx->terms->terms[argument_classifier].tag !=
-				PROTOTYPE_TERM_UNIVERSE_VAR) {
-			return -1;
-		}
-		/* Cumulativity is recorded from the materialized APP_ELIM proof by
-		 * UniverseDB. It is not a DefEq merge of the two universe nodes. */
+		return -1;
 	}
 	const struct prototype_term* family = &ctx->terms->terms[pi->as.pi.codomain_family];
 	if (family->tag != PROTOTYPE_TERM_LAMBDA) {
@@ -8677,6 +8744,35 @@ static int compile_ref_from_term(
 				&p_ref->classifier
 			) != 0) {
 			return -1;
+		}
+	} else if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_EXTERNAL_REF) {
+		int imported_status = imported_type_formation_classifier(
+			ctx,
+			ctx->terms->terms[term].as.external_ref.name,
+			&p_ref->classifier
+		);
+		if (imported_status < 0) {
+			return -1;
+		}
+		if (imported_status == 0 &&
+			queue_declaration_fact(ctx, term, p_ref->classifier) != 0) {
+			return -1;
+		}
+		if (imported_status > 0) {
+			uint32_t classifiers[32];
+			uint32_t classifier_count = 0;
+			if (collect_graph_classifiers(
+					ctx,
+					term,
+					classifiers,
+					32,
+					&classifier_count
+				) != 0) {
+				return -1;
+			}
+			if (classifier_count == 1) {
+				p_ref->classifier = classifiers[0];
+			}
 		}
 	} else {
 		int type_status = type_instance_formation_classifier(
@@ -9884,6 +9980,231 @@ static int compile_type_or_value_app(
 		return -1;
 	}
 	*p_ret = app_term;
+	return 0;
+}
+
+static int imported_type_parameter_binder(
+	const uint32_t* source_binders,
+	const uint32_t* target_binders,
+	uint32_t binder_count,
+	uint32_t source_binder,
+	uint32_t* p_target_binder
+) {
+	if (!source_binders || !target_binders || !p_target_binder) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < binder_count; ++i) {
+		if (source_binders[i] == source_binder) {
+			*p_target_binder = target_binders[i];
+			return 0;
+		}
+	}
+	return -1;
+}
+
+static int compile_imported_type_expr_term(
+	struct compile_context* ctx,
+	const struct prototype_artifact_interface* interface,
+	uint32_t type_expr,
+	const uint32_t* source_binders,
+	const uint32_t* target_binders,
+	uint32_t binder_count,
+	uint32_t* p_ret
+) {
+	if (!ctx || !interface || !source_binders || !target_binders || !p_ret ||
+		type_expr >= interface->type_expr_count) {
+		return -1;
+	}
+	const struct prototype_type_expr* expr = &interface->type_exprs[type_expr];
+	switch (expr->tag) {
+		case PROTOTYPE_TYPE_EXPR_UNIVERSE:
+		case PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR:
+			return prototype_term_universe_var(
+				ctx->terms,
+				ctx->type_declarations->next_level_var++,
+				p_ret
+			);
+		case PROTOTYPE_TYPE_EXPR_VAR: {
+			uint32_t target_binder;
+			if (imported_type_parameter_binder(
+					source_binders,
+					target_binders,
+					binder_count,
+					expr->as.var.binder_id,
+					&target_binder
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_var(ctx->terms, target_binder, p_ret);
+		}
+		case PROTOTYPE_TYPE_EXPR_NAME:
+			return compile_type_declaration_term_by_symbol(
+				ctx, expr->as.name.symbol_id, p_ret
+			);
+		case PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE:
+			return prototype_term_external_ref(
+				ctx->terms, expr->as.imported_type.name, p_ret
+			);
+		case PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM:
+			return prototype_term_external_ref(
+				ctx->terms, expr->as.external_term.name, p_ret
+			);
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT:
+			return prototype_term_make_host_type(
+				ctx->terms, PROTOTYPE_HOST_TYPE_TEXT, p_ret
+			);
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT:
+			return prototype_term_make_host_type(
+				ctx->terms, PROTOTYPE_HOST_TYPE_INT32, p_ret
+			);
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64:
+			return prototype_term_make_host_type(
+				ctx->terms, PROTOTYPE_HOST_TYPE_INT64, p_ret
+			);
+		case PROTOTYPE_TYPE_EXPR_APP: {
+			uint32_t function;
+			uint32_t argument;
+			if (compile_imported_type_expr_term(
+					ctx,
+					interface,
+					expr->as.app.function,
+					source_binders,
+					target_binders,
+					binder_count,
+					&function
+				) != 0 ||
+				compile_imported_type_expr_term(
+					ctx,
+					interface,
+					expr->as.app.argument,
+					source_binders,
+					target_binders,
+					binder_count,
+					&argument
+				) != 0) {
+				return -1;
+			}
+			return compile_type_or_value_app(ctx, function, argument, p_ret);
+		}
+		case PROTOTYPE_TYPE_EXPR_ARROW: {
+			uint32_t domain;
+			uint32_t codomain;
+			if (compile_imported_type_expr_term(
+					ctx,
+					interface,
+					expr->as.arrow.domain,
+					source_binders,
+					target_binders,
+					binder_count,
+					&domain
+				) != 0 ||
+				compile_imported_type_expr_term(
+					ctx,
+					interface,
+					expr->as.arrow.codomain,
+					source_binders,
+					target_binders,
+					binder_count,
+					&codomain
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_pi(ctx->terms, domain, codomain, p_ret);
+		}
+		default:
+			return -1;
+	}
+}
+
+static int imported_type_formation_classifier(
+	struct compile_context* ctx,
+	struct prototype_qualified_name name,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !p_classifier) {
+		return -1;
+	}
+	const struct prototype_artifact_interface* interface = NULL;
+	const struct prototype_artifact_type_export* type_export = NULL;
+	for (size_t i = 0; i < ctx->imported_interface_count; ++i) {
+		const struct prototype_artifact_interface* candidate =
+			ctx->imported_interfaces[i];
+		uint32_t export_id;
+		if (!candidate) {
+			continue;
+		}
+		int status = prototype_artifact_interface_find_type_export_in_namespace(
+			candidate, name.namespace_symbol_id, name.name_symbol_id, &export_id
+		);
+		if (status < 0) {
+			return -1;
+		}
+		if (status == 0) {
+			if (interface) {
+				return -1;
+			}
+			interface = candidate;
+			type_export = &candidate->type_exports[export_id];
+		}
+	}
+	if (!interface || !type_export) {
+		return 1;
+	}
+	if (type_export->parameter_count > 16 ||
+		type_export->first_parameter + type_export->parameter_count >
+			interface->type_parameter_count) {
+		return -1;
+	}
+	uint32_t source_binders[16];
+	uint32_t target_binders[16];
+	uint32_t domains[16];
+	for (uint32_t i = 0; i < type_export->parameter_count; ++i) {
+		const struct prototype_artifact_type_parameter_export* parameter =
+			&interface->type_parameters[type_export->first_parameter + i];
+		if (parameter->type_expr >= interface->type_expr_count ||
+			compile_imported_type_expr_term(
+				ctx,
+				interface,
+				parameter->type_expr,
+				source_binders,
+				target_binders,
+				i,
+				&domains[i]
+			) != 0) {
+			return -1;
+		}
+		source_binders[i] = parameter->binder_id;
+		target_binders[i] = prototype_term_fresh_binder(ctx->terms);
+		if (target_binders[i] == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+	}
+	uint32_t classifier;
+	if (prototype_term_universe_var(
+			ctx->terms,
+			ctx->type_declarations->next_level_var++,
+			&classifier
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = type_export->parameter_count; i > 0; --i) {
+		uint32_t codomain_family;
+		if (prototype_term_lambda(
+				ctx->terms,
+				target_binders[i - 1],
+				classifier,
+				&codomain_family
+			) != 0 ||
+			prototype_term_pi_family(
+				ctx->terms,
+				domains[i - 1],
+				codomain_family,
+				&classifier
+			) != 0) {
+			return -1;
+		}
+	}
+	*p_classifier = classifier;
 	return 0;
 }
 
@@ -14056,6 +14377,13 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 					return -1;
 				}
 			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
+				prototype_term_type_instance_info(
+					ctx->terms,
+					operation->core_term,
+					&(uint32_t){0},
+					NULL,
+					&(uint32_t){0}
+				) == 0 &&
 				prototype_judgement_delta_record_type_formation(
 					&ctx->judgement_delta,
 					ctx->terms,

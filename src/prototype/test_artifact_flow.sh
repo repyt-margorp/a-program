@@ -158,10 +158,10 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 28$' "$TMP_DIR/identity.apo"
-sed '1s/28$/27/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v27.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v27.apo" >"$TMP_DIR/identity-v27.out" 2>"$TMP_DIR/identity-v27.err"; then
-	echo "v27 artifact unexpectedly passed after v28 format bump" >&2
+grep -q '^A_PROGRAM_ARTIFACT 29$' "$TMP_DIR/identity.apo"
+sed '1s/29$/28/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v28.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v28.apo" >"$TMP_DIR/identity-v28.out" 2>"$TMP_DIR/identity-v28.err"; then
+	echo "v28 artifact unexpectedly passed after v29 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -590,6 +590,9 @@ EOF_DEPENDENT_CONSTRUCTOR_IMPORT_USER
 	--namespace Sigma \
 	"$TMP_DIR/dependent-constructor-provider.p" >"$TMP_DIR/dependent-constructor-provider.out"
 grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 classifier_family=[0-9]+' "$TMP_DIR/dependent-constructor-provider.out"
+sigma_formation_classifier=$(awk '$1 == "type" && $2 == "Sigma" { print $5; exit }' "$TMP_DIR/Sigma.apo")
+test -n "$sigma_formation_classifier"
+test "$sigma_formation_classifier" != 4294967295
 ./read_file.out --write-artifact "$TMP_DIR/SigmaUser.apo" \
 	--import-interface "$TMP_DIR/Sigma.apo" \
 	"$TMP_DIR/dependent-constructor-import-user.p" >"$TMP_DIR/dependent-constructor-import-user.out"
@@ -619,6 +622,8 @@ p2 := (Sigma2 Nat ConstNat).mk Nat.zero Nat.zero;
 EOF_DEPENDENT_CONSTRUCTOR_SHAPE_KEY
 
 ./read_file.out "$TMP_DIR/dependent-constructor-shape-key.p" >"$TMP_DIR/dependent-constructor-shape-key.out"
+grep -Eq 'universe-constraint #[0-9]+ \?u[0-9]+ \+ 0 <= \?u[0-9]+ .* reason=6$' \
+	"$TMP_DIR/dependent-constructor-shape-key.out"
 sigma_key=$(awk '/interface type Sigma / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
 sigma2_key=$(awk '/interface type Sigma2 / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
 sigma_core=$(awk '/interface type Sigma / { sub("core_representation_anchor_type#", "", $5); print $5 }' "$TMP_DIR/dependent-constructor-shape-key.out")

@@ -488,9 +488,90 @@ static int collect_match_branch_constraints(
 }
 
 /* An APP proof may use universe cumulativity rather than DefEq for its
- * argument. Preserve that operation-solver obligation as v <= u when the
- * function domain is Universe(u) and the argument is classified by
- * Universe(v). */
+ * argument. Preserve each directly observable v <= u obligation. Closed Pi
+ * codomains can be traversed without allocating a comparison binder; open
+ * dependent codomains require the later alpha-aware universe comparison. */
+static int collect_classifier_cumulativity_constraints(
+	struct prototype_universe_db* db,
+	const struct prototype_term_db* terms,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t depth
+) {
+	if (!db || !terms || expected >= terms->term_count ||
+		actual >= terms->term_count || depth > 32) {
+		return -1;
+	}
+	uint32_t lower_level;
+	uint32_t upper_level;
+	if (term_universe_level_var(terms, actual, &lower_level) == 0 &&
+		term_universe_level_var(terms, expected, &upper_level) == 0) {
+		return add_constraint(
+			db,
+			lower_level,
+			upper_level,
+			0,
+			subject,
+			classifier,
+			PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM
+		);
+	}
+	uint32_t expected_domain;
+	uint32_t expected_family;
+	uint32_t actual_domain;
+	uint32_t actual_family;
+	if (prototype_judgement_pi_parts(
+			terms, expected, &expected_domain, &expected_family
+		) != 0 ||
+		prototype_judgement_pi_parts(
+			terms, actual, &actual_domain, &actual_family
+		) != 0) {
+		return 0;
+	}
+	if (collect_classifier_cumulativity_constraints(
+			db,
+			terms,
+			expected_domain,
+			actual_domain,
+			subject,
+			classifier,
+			depth + 1
+		) != 0) {
+		return -1;
+	}
+	if (expected_family >= terms->term_count || actual_family >= terms->term_count ||
+		terms->terms[expected_family].tag != PROTOTYPE_TERM_LAMBDA ||
+		terms->terms[actual_family].tag != PROTOTYPE_TERM_LAMBDA) {
+		return -1;
+	}
+	const struct prototype_term* expected_lambda =
+		&terms->terms[expected_family];
+	const struct prototype_term* actual_lambda = &terms->terms[actual_family];
+	if (prototype_term_contains_free_binder(
+			terms,
+			expected_lambda->as.lambda.body,
+			expected_lambda->as.lambda.binder_id
+		) ||
+		prototype_term_contains_free_binder(
+			terms,
+			actual_lambda->as.lambda.body,
+			actual_lambda->as.lambda.binder_id
+		)) {
+		return 0;
+	}
+	return collect_classifier_cumulativity_constraints(
+		db,
+		terms,
+		expected_lambda->as.lambda.body,
+		actual_lambda->as.lambda.body,
+		subject,
+		classifier,
+		depth + 1
+	);
+}
+
 static int collect_app_elim_cumulativity_constraint(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
@@ -517,21 +598,14 @@ static int collect_app_elim_cumulativity_constraint(
 		return 0;
 	}
 	(void)codomain_family;
-	uint32_t lower_level;
-	uint32_t upper_level;
-	if (term_universe_level_var(
-			terms, proof->premise_classifiers[1], &lower_level
-		) != 0 || term_universe_level_var(terms, domain, &upper_level) != 0) {
-		return 0;
-	}
-	return add_constraint(
+	return collect_classifier_cumulativity_constraints(
 		db,
-		lower_level,
-		upper_level,
-		0,
+		terms,
+		domain,
+		proof->premise_classifiers[1],
 		relation->subject,
 		relation->classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM
+		0
 	);
 }
 

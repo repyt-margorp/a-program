@@ -6192,7 +6192,7 @@ int prototype_judgement_delta_record_app_elim(
 			terms,
 			type_declarations,
 			function_pi,
-			app->as.app.argument,
+			argument_subject,
 			&result_classifier
 		) : -1;
 	int result_equal = result_status == 0 &&
@@ -6924,7 +6924,7 @@ static int validate_app_elim_proof(
 			terms,
 			type_declarations,
 			function_pi,
-			app->as.app.argument,
+			proof->premise_subjects[1],
 			&result_classifier
 		) != 0 ||
 			!prototype_judgement_classifier_normalization_equal(
