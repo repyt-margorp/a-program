@@ -247,8 +247,22 @@ int prototype_judgement_delta_record_app_elim(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
+	uint32_t function_subject,
 	uint32_t function_classifier,
+	uint32_t argument_subject,
 	uint32_t argument_classifier
+);
+
+/* Materialize a solved type-formation fact selected by the operation solver.
+ * A saturated type instance is classified by a universe term; an unapplied
+ * type former is classified by its declared Pi-family. Level inequalities are
+ * checked by the separate UniverseDB constraint solver after linking. */
+int prototype_judgement_delta_record_type_formation(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier
 );
 
 int prototype_judgement_delta_record_intrinsic_type(

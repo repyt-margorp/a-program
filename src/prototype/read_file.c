@@ -3337,11 +3337,6 @@ int main(int argc, char** argv) {
 		symbol_table_free(&symbols);
 		return 1;
 	}
-	if (prototype_universe_collect(&universe_db, &type_declarations, &term_db, &judgement_db) != 0) {
-		fprintf(stderr, "%s: failed to collect universe graph\n", argv[file_arg]);
-		symbol_table_free(&symbols);
-		return 1;
-	}
 	struct prototype_artifact_interface artifact_interface;
 	prototype_artifact_interface_init(
 		&artifact_interface,

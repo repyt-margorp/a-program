@@ -221,6 +221,29 @@ static int proof_kind_requires_local_context(int proof_kind) {
 		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM;
 }
 
+/* Operation judgements retain TYPE_VIEW nodes. The application rule validates
+ * their shared computation against the enclosed core APP. */
+static int term_core_app(
+	const struct prototype_term_db* terms,
+	uint32_t term_id,
+	const struct prototype_term** p_app
+) {
+	if (!terms || !p_app || term_id >= terms->term_count) {
+		return -1;
+	}
+	uint32_t current = term_id;
+	while (current < terms->term_count &&
+		terms->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		current = terms->terms[current].as.type_view.core;
+	}
+	if (current >= terms->term_count ||
+		terms->terms[current].tag != PROTOTYPE_TERM_APP) {
+		return -1;
+	}
+	*p_app = &terms->terms[current];
+	return 0;
+}
+
 static int classifier_kernel_normalization_equal(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -651,6 +674,14 @@ static int classifier_kernel_compatible_at_depth(
 			expected,
 			actual
 		)) {
+		return 1;
+	}
+	/* Universe variables are not judgementally equal unless their level ids
+	 * match. They are nevertheless conversion-compatible here: the compiler
+	 * records the corresponding level inequality and UniverseDB checks it after
+	 * linking the complete graph. */
+	if (term_is_universe_var(terms, expected) &&
+		term_is_universe_var(terms, actual)) {
 		return 1;
 	}
 
@@ -2313,6 +2344,12 @@ static int infer_type_formation_classifier(
 	if (!delta || !delta->db || !terms || !type_declarations ||
 		!type_instance_has_known_type(terms, type_declarations, term_id)) {
 		return -1;
+	}
+	uint32_t existing_classifier;
+	if (lookup_delta_proven_classifier(
+			delta, terms, term_id, &existing_classifier
+		) == 0 && term_is_universe_var(terms, existing_classifier)) {
+		return 0;
 	}
 	uint32_t classifier;
 	if (prototype_term_universe_var(
@@ -6105,22 +6142,40 @@ int prototype_judgement_delta_record_app_elim(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
+	uint32_t function_subject,
 	uint32_t function_classifier,
+	uint32_t argument_subject,
 	uint32_t argument_classifier
 ) {
 	if (!delta || !terms || !type_declarations ||
-		!term_has_tag(terms, subject, PROTOTYPE_TERM_APP) ||
+		subject >= terms->term_count ||
+		function_subject >= terms->term_count ||
+		argument_subject >= terms->term_count ||
 		!term_exists(terms, classifier) ||
 		!term_exists(terms, function_classifier) ||
 		!term_exists(terms, argument_classifier)) {
 		return -1;
 	}
-	const struct prototype_term* app = &terms->terms[subject];
+	const struct prototype_term* app;
+	if (term_core_app(terms, subject, &app) != 0) {
+		return -1;
+	}
+	int function_matches = 0;
+	int argument_matches = 0;
+	if (prototype_term_core_shape_equal(
+			terms, app->as.app.function, function_subject, &function_matches
+		) != 0 ||
+		prototype_term_core_shape_equal(
+			terms, app->as.app.argument, argument_subject, &argument_matches
+		) != 0 ||
+		!function_matches || !argument_matches) {
+		return -1;
+	}
 	uint32_t function_pi;
 	uint32_t domain;
 	uint32_t codomain_family;
 	uint32_t result_classifier;
-	if (classifier_kernel_as_pi(
+	int pi_status = classifier_kernel_as_pi(
 			terms,
 			type_declarations,
 			NULL,
@@ -6128,26 +6183,29 @@ int prototype_judgement_delta_record_app_elim(
 			&function_pi,
 			&domain,
 			&codomain_family
-		) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		);
+	int compatible = pi_status == 0 &&
+		prototype_judgement_classifier_compatible(
 			terms, type_declarations, domain, argument_classifier
-		) ||
-		pi_codomain_after_argument(
+		);
+	int result_status = pi_status == 0 && compatible ? pi_codomain_after_argument(
 			terms,
 			type_declarations,
 			function_pi,
 			app->as.app.argument,
 			&result_classifier
-		) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		) : -1;
+	int result_equal = result_status == 0 &&
+		prototype_judgement_classifier_normalization_equal(
 			terms, type_declarations, result_classifier, classifier
-		)) {
+		);
+	if (pi_status != 0 || !compatible || result_status != 0 || !result_equal) {
 		return -1;
 	}
 	(void)codomain_family;
 	uint32_t premise_subjects[2] = {
-		app->as.app.function,
-		app->as.app.argument
+		function_subject,
+		argument_subject
 	};
 	uint32_t premise_classifiers[2] = {
 		function_classifier,
@@ -6162,6 +6220,56 @@ int prototype_judgement_delta_record_app_elim(
 		premise_subjects,
 		premise_classifiers,
 		2
+	);
+}
+
+int prototype_judgement_delta_record_type_formation(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	if (!delta || !terms || !type_declarations) {
+		return -1;
+	}
+	uint32_t type_id;
+	uint32_t arguments[16];
+	uint32_t argument_count;
+	if (prototype_term_type_instance_info(
+			terms, subject, &type_id, arguments, &argument_count
+		) != 0 || type_id >= type_declarations->type_count ||
+		argument_count > 16) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	if (argument_count == 0 &&
+		type->formation_classifier != PROTOTYPE_INVALID_ID &&
+		prototype_judgement_classifier_normalization_equal(
+			terms,
+			type_declarations,
+			type->formation_classifier,
+			classifier
+		)) {
+		return add_delta_relation(
+			delta,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			subject,
+			classifier,
+			PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO
+		);
+	}
+	if (!type_instance_has_known_type(terms, type_declarations, subject) ||
+		!term_is_universe_var(terms, classifier)) {
+		return -1;
+	}
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO
 	);
 }
 
@@ -6767,15 +6875,24 @@ static int validate_app_elim_proof(
 	if (!terms || !type_declarations || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		relation->subject >= terms->term_count ||
-		terms->terms[relation->subject].tag != PROTOTYPE_TERM_APP ||
 		proof->premise_count != 2 ||
 		proof->premise_kinds[0] != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		proof->premise_kinds[1] != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
 		return -1;
 	}
-	const struct prototype_term* app = &terms->terms[relation->subject];
-	if (proof->premise_subjects[0] != app->as.app.function ||
-		proof->premise_subjects[1] != app->as.app.argument) {
+	const struct prototype_term* app;
+	if (term_core_app(terms, relation->subject, &app) != 0) {
+		return -1;
+	}
+	int function_matches = 0;
+	int argument_matches = 0;
+	if (prototype_term_core_shape_equal(
+			terms, app->as.app.function, proof->premise_subjects[0], &function_matches
+		) != 0 ||
+		prototype_term_core_shape_equal(
+			terms, app->as.app.argument, proof->premise_subjects[1], &argument_matches
+		) != 0 ||
+		!function_matches || !argument_matches) {
 		return -1;
 	}
 	uint32_t function_pi;
@@ -7187,12 +7304,26 @@ static int validate_type_formation_intro_proof(
 ) {
 	if (!terms || !type_declarations || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		proof->premise_count != 0 ||
-		!type_instance_has_known_type(terms, type_declarations, relation->subject) ||
-		!term_is_universe_var(terms, relation->classifier)) {
+		proof->premise_count != 0) {
 		return -1;
 	}
-	return 0;
+	uint32_t type_id;
+	uint32_t arguments[16];
+	uint32_t argument_count;
+	if (prototype_term_type_instance_info(
+			terms, relation->subject, &type_id, arguments, &argument_count
+		) != 0 || type_id >= type_declarations->type_count ||
+		argument_count > 16) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	if (argument_count == 0 &&
+		type->formation_classifier != PROTOTYPE_INVALID_ID) {
+		return type->formation_classifier == relation->classifier ? 0 : -1;
+	}
+	return type_instance_has_known_type(terms, type_declarations, relation->subject) &&
+		term_is_universe_var(terms, relation->classifier) ? 0 : -1;
 }
 
 static int validate_constructor_intro_proof(

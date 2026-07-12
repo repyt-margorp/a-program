@@ -8017,6 +8017,11 @@ static int find_unique_synthetic_classifier_for_label(
 	uint32_t subject,
 	uint32_t* p_classifier
 );
+static int queue_declaration_fact(
+	struct compile_context* ctx,
+	uint32_t subject,
+	uint32_t classifier
+);
 
 static int compile_type_expectation_classifier(
 	struct compile_context* ctx,
@@ -8556,12 +8561,17 @@ static int operation_apply_classifier(
 	}
 	const struct prototype_term* pi = &ctx->terms->terms[whnf];
 	if (!prototype_judgement_classifier_normalization_equal(
-			ctx->terms,
-			ctx->type_declarations,
-			pi->as.pi.domain,
-			argument_classifier
+			ctx->terms, ctx->type_declarations,
+			pi->as.pi.domain, argument_classifier
 		)) {
-		return -1;
+		if (ctx->terms->terms[pi->as.pi.domain].tag !=
+				PROTOTYPE_TERM_UNIVERSE_VAR ||
+			ctx->terms->terms[argument_classifier].tag !=
+				PROTOTYPE_TERM_UNIVERSE_VAR) {
+			return -1;
+		}
+		/* Cumulativity is recorded from the materialized APP_ELIM proof by
+		 * UniverseDB. It is not a DefEq merge of the two universe nodes. */
 	}
 	const struct prototype_term* family = &ctx->terms->terms[pi->as.pi.codomain_family];
 	if (family->tag != PROTOTYPE_TERM_LAMBDA) {
@@ -8575,6 +8585,61 @@ static int operation_apply_classifier(
 		argument_term,
 		p_classifier
 	);
+}
+
+static int type_instance_formation_classifier(
+	struct compile_context* ctx,
+	uint32_t term,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !p_classifier || term >= ctx->terms->term_count) {
+		return 1;
+	}
+	uint32_t type_id;
+	uint32_t arguments[16];
+	uint32_t argument_count;
+	if (prototype_term_type_instance_info(
+			ctx->terms, term, &type_id, arguments, &argument_count
+		) != 0 || type_id >= ctx->type_declarations->type_count ||
+		argument_count > 16) {
+		return 1;
+	}
+	const struct prototype_type_declaration* type =
+		&ctx->type_declarations->type_declarations[type_id];
+	if (type->formation_classifier == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	uint32_t classifier = type->formation_classifier;
+	for (uint32_t i = 0; i < argument_count; ++i) {
+		uint32_t whnf;
+		if (prototype_term_whnf_with_profile(
+				ctx->terms,
+				ctx->type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF,
+				classifier,
+				&whnf
+			) != 0 || whnf >= ctx->terms->term_count ||
+			ctx->terms->terms[whnf].tag != PROTOTYPE_TERM_PI) {
+			return -1;
+		}
+		const struct prototype_term* pi = &ctx->terms->terms[whnf];
+		const struct prototype_term* family =
+			&ctx->terms->terms[pi->as.pi.codomain_family];
+		if (family->tag != PROTOTYPE_TERM_LAMBDA ||
+			prototype_term_substitute(
+				ctx->terms,
+				ctx->type_declarations,
+				family->as.lambda.body,
+				family->as.lambda.binder_id,
+				arguments[i],
+				&classifier
+			) != 0) {
+			return -1;
+		}
+	}
+	*p_classifier = classifier;
+	return 0;
 }
 
 static int compile_ref_from_term(
@@ -8614,19 +8679,27 @@ static int compile_ref_from_term(
 			return -1;
 		}
 	} else {
-		uint32_t classifiers[32];
-		uint32_t classifier_count = 0;
-		if (collect_graph_classifiers(
-				ctx,
-				term,
-				classifiers,
-				32,
-				&classifier_count
-			) != 0) {
+		int type_status = type_instance_formation_classifier(
+			ctx, term, &p_ref->classifier
+		);
+		if (type_status < 0) {
 			return -1;
 		}
-		if (classifier_count == 1) {
-			p_ref->classifier = classifiers[0];
+		if (type_status > 0) {
+			uint32_t classifiers[32];
+			uint32_t classifier_count = 0;
+			if (collect_graph_classifiers(
+					ctx,
+					term,
+					classifiers,
+					32,
+					&classifier_count
+				) != 0) {
+				return -1;
+			}
+			if (classifier_count == 1) {
+				p_ref->classifier = classifiers[0];
+			}
 		}
 	}
 	if (operation_add(
@@ -10285,6 +10358,43 @@ static int compile_constructor_classifier_family(
 	return 0;
 }
 
+static int compile_type_formation_classifier_family(
+	struct compile_context* ctx,
+	const struct prototype_ast_type_def* ast_type,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !ast_type || !p_classifier) {
+		return -1;
+	}
+	uint32_t classifier;
+	if (prototype_term_universe_var(
+			ctx->terms,
+			ctx->type_declarations->next_level_var++,
+			&classifier
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = ast_type->parameter_count; i > 0; --i) {
+		const struct prototype_ast_type_parameter* parameter =
+			&ctx->asts->type_parameters[ast_type->first_parameter + i - 1];
+		uint32_t domain;
+		uint32_t binder_id;
+		uint32_t codomain_family;
+		if (compile_ast_type_expr_term(ctx, parameter->type_expr, &domain) != 0 ||
+			lookup_graph_binder(ctx, parameter->ast_binder_id, &binder_id) != 0 ||
+			prototype_term_lambda(
+				ctx->terms, binder_id, classifier, &codomain_family
+			) != 0 ||
+			prototype_term_pi_family(
+				ctx->terms, domain, codomain_family, &classifier
+			) != 0) {
+			return -1;
+		}
+	}
+	*p_classifier = classifier;
+	return 0;
+}
+
 static int compile_ast_type_def(
 	struct compile_context* ctx,
 	uint32_t ast_type_def_id,
@@ -10366,6 +10476,14 @@ static int compile_ast_type_def(
 		ast_type->parameter_count,
 		&type_term
 	) != 0) {
+		ast_type->compiling = 0;
+		return -1;
+	}
+	if (compile_type_formation_classifier_family(
+			ctx,
+			ast_type,
+			&ctx->type_declarations->type_declarations[type_id].formation_classifier
+		) != 0) {
 		ast_type->compiling = 0;
 		return -1;
 	}
@@ -12228,9 +12346,12 @@ static int operation_solver_bind(
 		*p_changed = 1;
 		return 0;
 	}
-	return prototype_judgement_classifier_normalization_equal(
-		ctx->terms, ctx->type_declarations, previous, classifier
-	) ? 0 : -1;
+	if (!prototype_judgement_classifier_normalization_equal(
+			ctx->terms, ctx->type_declarations, previous, classifier
+		)) {
+		return -1;
+	}
+	return 0;
 }
 
 static uint32_t operation_solver_classifier(
@@ -12689,10 +12810,22 @@ static int operation_solver_solve(struct compile_context* ctx) {
 						if (classifier == PROTOTYPE_INVALID_ID) {
 							break;
 						}
-						if (prototype_term_pi(
+						uint32_t codomain_family;
+						const struct prototype_operation_node* lambda =
+							&ctx->metadata->operations[constraint->target];
+						if (lambda->core_term >= ctx->terms->term_count ||
+							ctx->terms->terms[lambda->core_term].tag !=
+								PROTOTYPE_TERM_LAMBDA ||
+							prototype_term_lambda(
+								ctx->terms,
+								ctx->terms->terms[lambda->core_term].as.lambda.binder_id,
+								classifier,
+								&codomain_family
+							) != 0 ||
+							prototype_term_pi_family(
 								ctx->terms,
 								constraint->right,
-								classifier,
+								codomain_family,
 								&classifier
 							) != 0 || operation_solver_bind(
 								ctx, constraint->target, classifier, &pass_changed
@@ -13909,7 +14042,9 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 						ctx->type_declarations,
 						operation->core_term,
 						classifier,
+						ctx->metadata->operations[operation->function].core_term,
 						ctx->metadata->operations[operation->function].classifier,
+						ctx->metadata->operations[operation->argument].core_term,
 						ctx->metadata->operations[operation->argument].classifier
 					) != 0) {
 					return -1;
@@ -13920,6 +14055,15 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 					) != 0) {
 					return -1;
 				}
+			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
+				prototype_judgement_delta_record_type_formation(
+					&ctx->judgement_delta,
+					ctx->terms,
+					ctx->type_declarations,
+					operation->core_term,
+					classifier
+				) != 0) {
+				return -1;
 			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
 				operation->core_term < ctx->terms->term_count &&
 				ctx->terms->terms[operation->core_term].tag ==

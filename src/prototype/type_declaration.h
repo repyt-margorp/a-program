@@ -118,6 +118,9 @@ struct prototype_type_declaration {
 	int name_symbol_id;
 	uint32_t type_index;
 	uint32_t representation_id;
+	/* Classifier of the source type former itself. For example,
+	 * List : Pi(Universe(u), \A => Universe(v)). */
+	uint32_t formation_classifier;
 	uint32_t first_parameter;
 	uint32_t parameter_count;
 	uint32_t first_constructor;

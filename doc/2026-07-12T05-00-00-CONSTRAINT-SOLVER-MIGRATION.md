@@ -60,6 +60,14 @@ After the operation classifiers are resolved, the same pending facts are
 materialized as binder-assumption and declaration proofs. Thus JudgementDB is
 an output of synthesis, not its mutable input.
 
+A declared type former also has a graph-level formation classifier. For
+example, `List` is classified by `Pi(Universe(u), \A => Universe(v))`, while
+`List A` is classified by the result of applying that family. The unapplied
+former is recorded with a `TYPE_FORMATION_INTRO` proof directly from its
+declaration; a saturated type instance is recorded with a universe classifier.
+This keeps `List A` as an ordinary application derivation and avoids a generic
+declaration-proof fallback for local type formers.
+
 The worklist has a bounded number of passes and rejects non-convergence; it
 does not silently publish a partially progressed fixed point.
 
@@ -178,9 +186,10 @@ The following items are intentionally not claimed as complete:
    edges. It still needs operation-identity evidence in the proof object;
    current validation can only query core-term branch relations.
 4. DefEq now distinguishes `Universe(u)` and `Universe(v)` by level-variable
-   identity. Universe level constraints, cumulativity, and Pi `max(u, v)`
-   formation remain in `UniverseDB`; they have not yet been moved into the
-   solver arena.
+   identity. Application accepts distinct universe variables only as a
+   cumulativity obligation. The materialized `APP_ELIM` proof is collected as
+   `v <= u` by `UniverseDB` after linking; it never merges the two universe
+   nodes as DefEq. Pi `max(u, v)` formation is still incomplete.
 5. App constraints currently propagate forward from a resolved function and a
    resolved argument. Reverse Pi propagation requires an explicit separation
    between value application and type-level application before it is safe to

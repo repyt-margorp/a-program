@@ -487,6 +487,54 @@ static int collect_match_branch_constraints(
 	return 0;
 }
 
+/* An APP proof may use universe cumulativity rather than DefEq for its
+ * argument. Preserve that operation-solver obligation as v <= u when the
+ * function domain is Universe(u) and the argument is classified by
+ * Universe(v). */
+static int collect_app_elim_cumulativity_constraint(
+	struct prototype_universe_db* db,
+	const struct prototype_term_db* terms,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_relation* relation
+) {
+	if (!db || !terms || !judgement || !relation ||
+		relation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM ||
+		relation->proof_id >= judgement->proof_count) {
+		return 0;
+	}
+	const struct prototype_judgement_proof* proof =
+		&judgement->proofs[relation->proof_id];
+	if (proof->premise_count != 2 ||
+		proof->premise_classifiers[0] >= terms->term_count ||
+		proof->premise_classifiers[1] >= terms->term_count) {
+		return -1;
+	}
+	uint32_t domain;
+	uint32_t codomain_family;
+	if (prototype_judgement_pi_parts(
+			terms, proof->premise_classifiers[0], &domain, &codomain_family
+		) != 0) {
+		return 0;
+	}
+	(void)codomain_family;
+	uint32_t lower_level;
+	uint32_t upper_level;
+	if (term_universe_level_var(
+			terms, proof->premise_classifiers[1], &lower_level
+		) != 0 || term_universe_level_var(terms, domain, &upper_level) != 0) {
+		return 0;
+	}
+	return add_constraint(
+		db,
+		lower_level,
+		upper_level,
+		0,
+		relation->subject,
+		relation->classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM
+	);
+}
+
 static int collect_relation_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
@@ -527,6 +575,12 @@ static int collect_relation_constraints(
 			relation->subject,
 			relation->classifier,
 			relation->proof_kind
+		) != 0 ||
+		collect_app_elim_cumulativity_constraint(
+			db,
+			terms,
+			judgement,
+			relation
 		) != 0) {
 		return -1;
 	}

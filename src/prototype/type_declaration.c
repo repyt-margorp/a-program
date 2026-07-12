@@ -337,6 +337,7 @@ int prototype_type_declaration_add(
 	type->name_symbol_id = name_symbol_id;
 	type->type_index = id;
 	type->representation_id = PROTOTYPE_INVALID_ID;
+	type->formation_classifier = PROTOTYPE_INVALID_ID;
 	type->first_parameter = (uint32_t)db->parameter_count;
 	type->first_constructor = (uint32_t)db->constructor_count;
 

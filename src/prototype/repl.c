@@ -921,11 +921,6 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 	}
-	if (prototype_universe_collect(&universe_db, &type_declarations, &term_db, &judgement_db) != 0) {
-		fprintf(stderr, "failed to collect universe graph\n");
-		symbol_table_free(&symbols);
-		return 1;
-	}
 	int main_symbol = symbol_intern(&symbols, "main", 4);
 	if (main_symbol < 0) {
 		fprintf(stderr, "failed to intern main symbol\n");
@@ -1025,11 +1020,6 @@ int main(int argc, char** argv) {
 			);
 			print_metadata_resolve_errors(stderr, &symbols, &metadata);
 		} else {
-			if (prototype_universe_collect(&universe_db, &type_declarations, &term_db, &judgement_db) != 0) {
-				fprintf(stderr, "failed to collect universe graph\n");
-				symbol_table_free(&symbols);
-				return 1;
-			}
 			print_state(&symbols, &ast_db, &type_declarations, &term_db, &universe_db, &judgement_db, &metadata);
 		}
 
