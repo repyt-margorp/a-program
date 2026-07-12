@@ -11826,9 +11826,7 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 		if (item->state == PROTOTYPE_RESOLUTION_ITEM_RESOLVED) {
 			continue;
 		}
-			struct prototype_match_resolution_request request;
 			uint32_t scrutinee_classifier;
-			memset(&request, 0, sizeof(request));
 			int selection_status = select_match_resolution_scrutinee_classifier(
 					ctx,
 					resolution,
@@ -11842,17 +11840,19 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				has_pending = 1;
 				continue;
 			}
-		request.match_term = resolution->match_term;
-		request.case_index = item->case_index;
-		request.scrutinee_term = item->scrutinee_term;
-		request.scrutinee_classifier = scrutinee_classifier;
-		request.constructor_symbol_id = resolution->constructor_symbol_id;
-		if (prototype_judgement_resolve_match_case_request(
-				&ctx->judgement_delta,
+		if (prototype_judgement_resolve_match_constructor(
 				ctx->terms,
 				ctx->type_declarations,
-				&request,
+				scrutinee_classifier,
+				resolution->constructor_symbol_id,
 				&resolved
+			) != 0 ||
+			prototype_term_resolve_match_case(
+				ctx->terms,
+				resolution->match_term,
+				item->case_index,
+				resolved.constructor_owner,
+				resolved.constructor_id
 			) != 0 ||
 			resolve_match_constructor_resolution_item(
 				ctx,
@@ -11889,29 +11889,27 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 		for (uint32_t binder_index = 0;
 			binder_index < resolved_case->binder_count;
 			++binder_index) {
-			const struct prototype_case_binder* binder =
+			struct prototype_case_binder* binder =
 				&ctx->terms->case_binders[resolved_case->first_binder + binder_index];
-			uint32_t binder_term;
 			uint32_t binder_classifier = PROTOTYPE_INVALID_ID;
-			if (prototype_term_var(ctx->terms, binder->binder_id, &binder_term) != 0) {
+			if (prototype_judgement_constructor_field_classifier(
+					ctx->terms,
+					ctx->type_declarations,
+					resolved.constructor_owner,
+					resolved.constructor_id,
+					&ctx->terms->case_binders[resolved_case->first_binder],
+					binder_index,
+					binder_index,
+					&binder_classifier
+				) != 0) {
 				return -1;
 			}
-			for (size_t relation_index = ctx->judgement_delta.relation_count;
-				relation_index > 0;
-				--relation_index) {
-				const struct prototype_judgement_relation* relation =
-					&ctx->judgement_delta.relations[relation_index - 1];
-				if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-					relation->subject == binder_term &&
-					relation->proof_kind ==
-						PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION) {
-					binder_classifier = relation->classifier;
-					break;
-				}
-			}
-			if (binder_classifier == PROTOTYPE_INVALID_ID) {
-				return -1;
-			}
+			binder->is_recursive = prototype_judgement_classifier_normalization_equal(
+				ctx->terms,
+				ctx->type_declarations,
+				binder_classifier,
+				scrutinee_classifier
+			);
 			for (uint32_t operation_id = 0;
 				operation_id < ctx->metadata->operation_count;
 				++operation_id) {
@@ -11945,9 +11943,6 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 			operation_case->constructor_owner = resolved.constructor_owner;
 			operation_case->constructor_id = resolved.constructor_id;
 		}
-	}
-	if (prototype_judgement_delta_commit(&ctx->judgement_delta, 0) != 0) {
-		return -1;
 	}
 	return has_pending ? 1 : 0;
 }
@@ -13104,20 +13099,6 @@ static int operation_solver_match_has_recursive_binder(
 	return 0;
 }
 
-static int operation_solver_record_materialized_motive(
-	struct compile_context* ctx,
-	uint32_t operation_id,
-	uint32_t match_term,
-	uint32_t classifier
-) {
-	if (!ctx || operation_id >= ctx->metadata->operation_count) {
-		return -1;
-	}
-	return prototype_judgement_delta_record_materialized_match_motive(
-		&ctx->judgement_delta, ctx->terms, match_term, classifier
-	);
-}
-
 static int operation_solver_has_guarded_recursive_equation(
 	const struct compile_context* ctx,
 	uint32_t operation_id
@@ -13210,9 +13191,7 @@ static int operation_solver_materialize_match(
 		}
 		if (existing_status == 0) {
 			ctx->classifier_solver.motive_terms[operation_id] = existing_motive;
-			return operation_solver_record_materialized_motive(
-				ctx, operation_id, typing->match_term, existing
-			);
+			return 0;
 		}
 		uint32_t classifier;
 		int status = build_operation_constant_motive(ctx, typing, existing, &classifier);
@@ -13224,9 +13203,7 @@ static int operation_solver_materialize_match(
 		if (operation_solver_bind(ctx, operation_id, classifier, p_changed) != 0) {
 			return -1;
 		}
-		return operation_solver_record_materialized_motive(
-			ctx, operation_id, typing->match_term, classifier
-		);
+		return 0;
 	}
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
 		const struct operation_motive_equation* equation =
@@ -13270,9 +13247,7 @@ static int operation_solver_materialize_match(
 					) != 0) {
 					return -1;
 				}
-				return operation_solver_record_materialized_motive(
-					ctx, operation_id, typing->match_term, recursive_classifier
-				);
+				return 0;
 			}
 			uint32_t seed_classifier;
 			uint32_t seed_source_body_operation;
@@ -13317,9 +13292,7 @@ static int operation_solver_materialize_match(
 	if (operation_solver_bind(ctx, operation_id, classifier, p_changed) != 0) {
 		return -1;
 	}
-	return operation_solver_record_materialized_motive(
-		ctx, operation_id, typing->match_term, classifier
-	);
+	return 0;
 }
 
 static int operation_solver_materialize_induction_hypothesis(
@@ -13448,9 +13421,125 @@ static int operation_solver_materialize_induction_hypothesis_judgement(
  * pass: every generated conclusion must be normalization-equal to the solver
  * binding for the same operation.
  */
+static int operation_solver_materialize_match_pattern_assumptions(
+	struct compile_context* ctx
+) {
+	if (!ctx || !ctx->metadata) {
+		return -1;
+	}
+	for (uint32_t operation_id = 0;
+		operation_id < ctx->metadata->operation_count;
+		++operation_id) {
+		const struct prototype_operation_node* operation =
+			&ctx->metadata->operations[operation_id];
+		if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
+			operation->core_term >= ctx->terms->term_count ||
+			ctx->terms->terms[operation->core_term].tag != PROTOTYPE_TERM_MATCH ||
+			operation->source_ast >= ctx->asts->node_count ||
+			ctx->asts->nodes[operation->source_ast].tag != PROTOTYPE_AST_MATCH) {
+			continue;
+		}
+		const struct prototype_term* match =
+			&ctx->terms->terms[operation->core_term];
+		const struct prototype_ast_node* source_match =
+			&ctx->asts->nodes[operation->source_ast];
+		if (match->as.match.case_count != operation->case_count ||
+			source_match->as.match.case_count != operation->case_count ||
+			operation->first_case + operation->case_count >
+				ctx->metadata->operation_case_count) {
+			return -1;
+		}
+		for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
+			const struct prototype_operation_match_case* operation_case =
+				&ctx->metadata->operation_cases[operation->first_case + case_index];
+			uint32_t term_case_id = match->as.match.first_case + case_index;
+			uint32_t ast_case_id = source_match->as.match.first_case + case_index;
+			if (term_case_id >= ctx->terms->case_count || ast_case_id >= ctx->asts->case_count ||
+				operation_case->constructor_owner == PROTOTYPE_INVALID_ID ||
+				operation_case->constructor_id == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			const struct prototype_match_case* match_case =
+				&ctx->terms->cases[term_case_id];
+			const struct prototype_ast_match_case* ast_case =
+				&ctx->asts->cases[ast_case_id];
+			if (match_case->binder_count != ast_case->binder_count ||
+				match_case->first_binder + match_case->binder_count >
+					ctx->terms->case_binder_count ||
+				ast_case->first_binder + ast_case->binder_count >
+					ctx->asts->case_binder_count) {
+				return -1;
+			}
+			for (uint32_t binder_index = 0;
+				binder_index < match_case->binder_count;
+				++binder_index) {
+				uint32_t classifier;
+				uint32_t binder_var;
+				if (prototype_judgement_constructor_field_classifier(
+						ctx->terms,
+						ctx->type_declarations,
+						operation_case->constructor_owner,
+						operation_case->constructor_id,
+						&ctx->terms->case_binders[match_case->first_binder],
+						binder_index,
+						binder_index,
+						&classifier
+					) != 0 ||
+					prototype_term_var(
+						ctx->terms,
+						ctx->terms->case_binders[
+							match_case->first_binder + binder_index
+						].binder_id,
+						&binder_var
+					) != 0 ||
+					prototype_judgement_delta_expand_match_pattern(
+						&ctx->judgement_delta,
+						ctx->terms,
+						binder_var,
+						classifier
+					) != 0 ||
+					ctx->judgement_delta.relation_count == 0) {
+					return -1;
+				}
+				uint32_t proof_id = ctx->judgement_delta.relations[
+					ctx->judgement_delta.relation_count - 1
+				].proof_id;
+				if (prototype_judgement_delta_set_proof_context_by_id(
+						&ctx->judgement_delta,
+						proof_id,
+						PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_MATCH_CASE_FIELD,
+						operation->core_term,
+						case_index,
+						binder_index
+					) != 0) {
+					return -1;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
 static int operation_solver_materialize_judgements(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata) {
 		return -1;
+	}
+	if (operation_solver_materialize_match_pattern_assumptions(ctx) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
+		const struct prototype_operation_node* operation =
+			&ctx->metadata->operations[i];
+		if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
+			operation->classifier == PROTOTYPE_INVALID_ID ||
+			prototype_judgement_delta_record_materialized_match_motive(
+				&ctx->judgement_delta,
+				ctx->terms,
+				operation->core_term,
+				operation->classifier
+			) != 0) {
+			return -1;
+		}
 	}
 	for (uint32_t pass = 0; pass < 64; ++pass) {
 		size_t before_relation_count = ctx->judgement_delta.relation_count;

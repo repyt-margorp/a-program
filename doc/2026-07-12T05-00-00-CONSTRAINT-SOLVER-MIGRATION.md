@@ -29,9 +29,15 @@ bind an operation classifier or seed a motive. The post-synthesis ascription
 phase checks it against the resolved classifier.
 
 The solver commits resolved classifiers to `OperationGraph` only after its
-worklist reaches a fixed point. `JudgementDB` derivations are then
-materialized from the resolved operation classifiers. It is not used as the
-solver's global candidate store.
+worklist reaches a fixed point. Match-pattern assumptions, solved match
+motives, lambda/application derivations, and IH derivations are then
+materialized from the resolved operation classifiers. `JudgementDB` is not
+used as the solver's global candidate store.
+
+Lambda binder and declaration facts are still seeded before solving because
+the atom constraint path currently reads them through `collect_graph_classifiers`.
+Moving these input facts into the solver arena is the remaining part of the
+JudgementDB separation; they are not provisional synthesis conclusions.
 
 The worklist has a bounded number of passes and rejects non-convergence; it
 does not silently publish a partially progressed fixed point.
@@ -116,6 +122,9 @@ The following items are intentionally not claimed as complete:
    resolved argument. Reverse Pi propagation requires an explicit separation
    between value application and type-level application before it is safe to
    add: the current operation graph contains both forms.
+7. Lambda binder and declaration input facts must move from the pre-solver
+   JudgementDelta into solver-owned fact tables before all JudgementDB writes
+   can be deferred until materialization.
 
 ## Verification
 

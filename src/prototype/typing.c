@@ -1418,6 +1418,75 @@ static int constructor_field_classifier_from_spine(
 	return -1;
 }
 
+int prototype_judgement_constructor_field_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t owner,
+	uint32_t constructor_index,
+	const struct prototype_case_binder* previous_binders,
+	uint32_t previous_binder_count,
+	uint32_t field_index,
+	uint32_t* p_classifier
+) {
+	if (!terms || !type_declarations || !p_classifier ||
+		owner >= terms->term_count ||
+		(previous_binder_count > 0 && !previous_binders)) {
+		return -1;
+	}
+	const struct prototype_type_constructor_declaration* constructor =
+		lookup_constructor_for_owner_index(
+			terms, type_declarations, owner, constructor_index
+		);
+	if (!constructor) {
+		return -1;
+	}
+	uint32_t current_classifier;
+	int family_status = constructor_classifier_from_family(
+		terms, type_declarations, owner, constructor, &current_classifier
+	);
+	if (family_status != 0) {
+		return family_status < 0 ? -1 : 1;
+	}
+	for (uint32_t i = 0; i <= field_index; ++i) {
+		uint32_t pi_term;
+		uint32_t domain;
+		uint32_t codomain_family;
+		if (classifier_kernel_as_pi(
+				terms,
+				type_declarations,
+				NULL,
+				current_classifier,
+				&pi_term,
+				&domain,
+				&codomain_family
+			) != 0) {
+			return -1;
+		}
+		(void)codomain_family;
+		if (i == field_index) {
+			*p_classifier = domain;
+			return 0;
+		}
+		if (i >= previous_binder_count) {
+			return -1;
+		}
+		uint32_t binder_var;
+		if (prototype_term_var(
+				terms, previous_binders[i].binder_id, &binder_var
+			) != 0 ||
+			pi_codomain_after_argument(
+				terms,
+				type_declarations,
+				pi_term,
+				binder_var,
+				&current_classifier
+			) != 0) {
+			return -1;
+		}
+	}
+	return -1;
+}
+
 int prototype_judgement_synthesize_match_pattern_classifier(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,

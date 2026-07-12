@@ -509,6 +509,17 @@ int prototype_judgement_synthesize_match_pattern_classifier(
 	uint32_t* p_classifier
 );
 
+int prototype_judgement_constructor_field_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t owner,
+	uint32_t constructor_index,
+	const struct prototype_case_binder* previous_binders,
+	uint32_t previous_binder_count,
+	uint32_t field_index,
+	uint32_t* p_classifier
+);
+
 int prototype_judgement_resolve_match_case_request(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
