@@ -122,8 +122,20 @@ identityBool := \x : Bool => x;
 identityNat := \y : Nat => y;
 identityBool :: Bool -> Bool;
 identityNat :: Nat -> Nat;
+boolExpected := Bool.true;
+boolMain := identityBool Bool.true;
+natExpected := Nat.succ Nat.zero;
+natMain := identityNat (Nat.succ Nat.zero);
 EOF_IDENTITY
 
+./read_file.out --check-source-exports-normalization-equal boolMain boolExpected \
+	--reduction-mode default "$TMP_DIR/identity.p" >"$TMP_DIR/identity-source-bool.out"
+grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default yes$' \
+	"$TMP_DIR/identity-source-bool.out"
+./read_file.out --check-source-exports-normalization-equal natMain natExpected \
+	--reduction-mode default "$TMP_DIR/identity.p" >"$TMP_DIR/identity-source-nat.out"
+grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
+	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
 grep -q '^A_PROGRAM_ARTIFACT 28$' "$TMP_DIR/identity.apo"
 sed '1s/28$/27/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v27.apo"
@@ -160,6 +172,37 @@ grep -q 'constructor_name 0 true 0 ' "$TMP_DIR/identity.apo"
 ./read_file.out --read-graph "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-read.out"
 grep -q 'debug_term_names=4 debug_type_names=2 debug_constructor_names=4' "$TMP_DIR/identity-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/identity-read.out"
+./read_file.out --check-exports-normalization-equal "$TMP_DIR/identity.apo" \
+	boolMain boolExpected --reduction-mode default >"$TMP_DIR/identity-read-bool.out"
+grep -q '^exports-normalization-equal boolMain boolExpected mode=default yes$' \
+	"$TMP_DIR/identity-read-bool.out"
+./read_file.out --check-exports-normalization-equal "$TMP_DIR/identity.apo" \
+	natMain natExpected --reduction-mode default >"$TMP_DIR/identity-read-nat.out"
+grep -q '^exports-normalization-equal natMain natExpected mode=default yes$' \
+	"$TMP_DIR/identity-read-nat.out"
+
+cat >"$TMP_DIR/list-nat-match.p" <<'EOF_LIST_NAT_MATCH'
+Nat := @{ zero : *; succ : * -> *; };
+List := \A : @ => @{ nil : *; cons : A -> * -> *; };
+
+headOrZero := \xs : List Nat =>
+	xs @nil => Nat.zero
+	   @cons x rest => x;
+input := (List Nat).cons (Nat.succ Nat.zero) (List Nat).nil;
+expected := Nat.succ Nat.zero;
+main := headOrZero input;
+EOF_LIST_NAT_MATCH
+
+./read_file.out --check-source-exports-normalization-equal main expected \
+	--reduction-mode default "$TMP_DIR/list-nat-match.p" >"$TMP_DIR/list-nat-match-source.out"
+grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
+	"$TMP_DIR/list-nat-match-source.out"
+./read_file.out --write-artifact "$TMP_DIR/ListNatMatch.apo" \
+	"$TMP_DIR/list-nat-match.p" >"$TMP_DIR/list-nat-match.out"
+./read_file.out --check-exports-normalization-equal "$TMP_DIR/ListNatMatch.apo" \
+	main expected --reduction-mode default >"$TMP_DIR/list-nat-match-read.out"
+grep -q '^exports-normalization-equal main expected mode=default yes$' \
+	"$TMP_DIR/list-nat-match-read.out"
 
 cat >"$TMP_DIR/operation-layer.p" <<'EOF_OPERATION_LAYER'
 Bool := @{ true : *; false : *; };
@@ -813,10 +856,18 @@ n3 := Nat.succ n2;
 
 list01 := (List Nat).cons n0 ((List Nat).cons n1 (List Nat).nil);
 list23 := (List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil);
+list0 := (List Nat).cons n0 (List Nat).nil;
+oneExpected := (List Nat).cons n0 list23;
+oneMain := append Nat list0 list23;
 expected := (List Nat).cons n0 ((List Nat).cons n1 ((List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil)));
 main := append Nat list01 list23;
 EOF_APPEND_NORMALIZATION_EQUAL
 
+./read_file.out --check-source-exports-normalization-equal oneMain oneExpected \
+	--reduction-mode default "$TMP_DIR/append-normalization_equal.p" \
+	>"$TMP_DIR/append-normalization_equal-one-source.out"
+grep -q '^source-exports-normalization-equal oneMain oneExpected mode=default yes$' \
+	"$TMP_DIR/append-normalization_equal-one-source.out"
 ./read_file.out --check-source-exports-normalization-equal main expected \
 	--reduction-mode default "$TMP_DIR/append-normalization_equal.p" \
 	>"$TMP_DIR/append-normalization_equal-source.out"
@@ -824,6 +875,10 @@ grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
 	"$TMP_DIR/append-normalization_equal-source.out"
 ./read_file.out --write-artifact "$TMP_DIR/AppendNormalizationEqual.apo" \
 	"$TMP_DIR/append-normalization_equal.p" >"$TMP_DIR/append-normalization_equal.out"
+./read_file.out --check-exports-normalization-equal "$TMP_DIR/AppendNormalizationEqual.apo" \
+	oneMain oneExpected --reduction-mode default >"$TMP_DIR/append-normalization_equal-one-default.out"
+grep -q '^exports-normalization-equal oneMain oneExpected mode=default yes$' \
+	"$TMP_DIR/append-normalization_equal-one-default.out"
 ./read_file.out --check-exports-normalization-equal "$TMP_DIR/AppendNormalizationEqual.apo" \
 	main expected --reduction-mode default >"$TMP_DIR/append-normalization_equal-default.out"
 grep -q '^exports-normalization-equal main expected mode=default yes$' "$TMP_DIR/append-normalization_equal-default.out"
