@@ -285,6 +285,9 @@ struct prototype_operation_node {
 	uint32_t source_ast;
 	int source_symbol_id;
 	int binder_symbol_id;
+	/* Source-operation binder identity for VAR occurrences. The core VAR may
+	 * alias another scoped occurrence after tagless canonicalization. */
+	uint32_t referenced_ast_binder_id;
 	uint32_t function;
 	uint32_t argument;
 	uint32_t body;

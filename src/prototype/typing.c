@@ -6759,16 +6759,98 @@ static int validate_induction_hypothesis_elim_proof(
 }
 
 static int validate_solved_match_motive_proof(
-	const struct prototype_term_db* terms,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_relation* relation,
 	const struct prototype_judgement_proof* proof
 ) {
-	if (!terms || !relation || !proof ||
+	if (!terms || !type_declarations || !judgement || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		proof->premise_count != 0 ||
 		proof->context_kind != PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_NONE ||
 		!match_motive_result_classifier(terms, relation->subject, relation->classifier)) {
 		return -1;
+	}
+	const struct prototype_term* match = &terms->terms[relation->subject];
+	const struct prototype_term* motive_app = &terms->terms[relation->classifier];
+	const struct prototype_term* motive =
+		&terms->terms[motive_app->as.app.function];
+	if (motive->as.lambda.body >= terms->term_count) {
+		return -1;
+	}
+	const struct prototype_term* motive_body = &terms->terms[motive->as.lambda.body];
+	if (motive_body->tag != PROTOTYPE_TERM_MATCH) {
+		/* Constant motives are valid only when every branch proves the same
+		 * result classifier. The constant-motive builder separately excludes
+		 * pattern-binder capture. */
+		for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
+			uint32_t case_id = match->as.match.first_case + i;
+			uint32_t classifiers[32];
+			uint32_t classifier_count = 0;
+			if (case_id >= terms->case_count ||
+				collect_judgement_subject_classifiers(
+					judgement, terms, type_declarations, terms->cases[case_id].body,
+					classifiers, 32, &classifier_count
+				) != 0 ||
+				!classifier_list_contains_normalization_equal(
+					terms, type_declarations, classifiers, classifier_count,
+					motive->as.lambda.body
+				)) {
+				return -1;
+			}
+		}
+		return 0;
+	}
+	if (motive_body->as.match.case_count != match->as.match.case_count ||
+		motive_body->as.match.scrutinee >= terms->term_count ||
+		terms->terms[motive_body->as.match.scrutinee].tag != PROTOTYPE_TERM_VAR ||
+		terms->terms[motive_body->as.match.scrutinee].as.var.binder_id !=
+			motive->as.lambda.binder_id) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
+		uint32_t case_id = match->as.match.first_case + i;
+		uint32_t motive_case_id = motive_body->as.match.first_case + i;
+		if (case_id >= terms->case_count || motive_case_id >= terms->case_count) {
+			return -1;
+		}
+		const struct prototype_match_case* match_case = &terms->cases[case_id];
+		const struct prototype_match_case* motive_case = &terms->cases[motive_case_id];
+		if (match_case->constructor_id != motive_case->constructor_id ||
+			match_case->binder_count != motive_case->binder_count ||
+			match_case->constructor_owner != motive_case->constructor_owner) {
+			return -1;
+		}
+		uint32_t classifiers[32];
+		uint32_t classifier_count = 0;
+		if (collect_judgement_subject_classifiers(
+				judgement, terms, type_declarations, match_case->body,
+				classifiers, 32, &classifier_count
+			) != 0) {
+			return -1;
+		}
+		int found = 0;
+		for (uint32_t j = 0; j < classifier_count; ++j) {
+			uint32_t expected_motive_case_body;
+			if (prototype_judgement_prepare_match_motive_case(
+					terms, type_declarations,
+					&terms->case_binders[match_case->first_binder],
+					&terms->case_binders[motive_case->first_binder],
+					match_case->binder_count, classifiers[j],
+					&expected_motive_case_body
+				) == 0 &&
+				prototype_judgement_classifier_normalization_equal(
+					terms, type_declarations, expected_motive_case_body,
+					motive_case->body
+				)) {
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -7553,7 +7635,9 @@ int prototype_judgement_validate_proofs(
 				}
 				break;
 			case PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE:
-				if (validate_solved_match_motive_proof(terms, relation, proof) != 0) {
+				if (validate_solved_match_motive_proof(
+						terms, type_declarations, judgement, relation, proof
+					) != 0) {
 					return -1;
 				}
 				break;

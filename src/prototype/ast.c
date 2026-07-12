@@ -6125,8 +6125,7 @@ static int canonicalize_type_view_core_refs(
 	}
 	size_t original_term_count = terms->term_count;
 	for (size_t i = 0; i < original_term_count; ++i) {
-		struct prototype_term* term = &terms->terms[i];
-		if (term->tag != PROTOTYPE_TERM_TYPE_VIEW) {
+		if (terms->terms[i].tag != PROTOTYPE_TERM_TYPE_VIEW) {
 			continue;
 		}
 		uint32_t type_id;
@@ -6152,7 +6151,10 @@ static int canonicalize_type_view_core_refs(
 			terms->terms[canonical_view].tag != PROTOTYPE_TERM_TYPE_VIEW) {
 			return -1;
 		}
-		term->as.type_view.core = terms->terms[canonical_view].as.type_view.core;
+		/* type_instance_make may grow TermDB and relocate terms. Reacquire the
+		 * slot by index rather than writing through a pointer captured above. */
+		terms->terms[i].as.type_view.core =
+			terms->terms[canonical_view].as.type_view.core;
 	}
 	return 0;
 }
@@ -7718,6 +7720,7 @@ struct match_frame_map_entry {
 struct pending_match_resolution {
 	uint32_t item_id;
 	uint32_t match_term;
+	uint32_t scrutinee_operation;
 	uint32_t scrutinee_proven_classifier_hint;
 	int constructor_symbol_id;
 };
@@ -7726,12 +7729,6 @@ struct pending_match_typing {
 	uint32_t match_term;
 	uint32_t operation;
 	uint32_t universe_level_var;
-};
-
-struct pending_induction_hypothesis {
-	uint32_t subject;
-	uint32_t frame_id;
-	uint32_t argument;
 };
 
 struct pending_ascription_check {
@@ -7794,6 +7791,10 @@ struct operation_classifier_constraint {
  */
 struct operation_classifier_solver {
 	uint32_t bindings[4096];
+	/* A recursive match may use a constant motive candidate to solve its IH
+	 * equations. These are solver-local facts, not TermDB classifier terms. */
+	uint32_t motive_seed_classifiers[4096];
+	uint32_t provisional_ih_classifiers[4096];
 	uint32_t motive_terms[4096];
 	struct operation_classifier_constraint
 		constraints[PROTOTYPE_OPERATION_CONSTRAINT_CAPACITY];
@@ -7824,8 +7825,6 @@ struct compile_context {
 	uint32_t pending_match_resolution_count;
 	struct pending_match_typing pending_match_typings[512];
 	uint32_t pending_match_typing_count;
-	struct pending_induction_hypothesis pending_induction_hypotheses[512];
-	uint32_t pending_induction_hypothesis_count;
 	struct pending_ascription_check pending_ascription_checks[1024];
 	uint32_t pending_ascription_check_count;
 	struct pending_imported_constructor_classifier
@@ -8337,6 +8336,7 @@ static int operation_add(
 	node->source_ast = source_ast;
 	node->source_symbol_id = -1;
 	node->binder_symbol_id = -1;
+	node->referenced_ast_binder_id = PROTOTYPE_INVALID_ID;
 	node->function = function;
 	node->argument = argument;
 	node->body = body;
@@ -8462,6 +8462,15 @@ static int select_match_resolution_scrutinee_classifier(
 ) {
 	if (!ctx || !resolution || !item || !p_scrutinee_classifier) {
 		return -1;
+	}
+	if (resolution->scrutinee_operation < ctx->metadata->operation_count) {
+		uint32_t classifier = ctx->metadata->operations[
+			resolution->scrutinee_operation
+		].classifier;
+		if (classifier != PROTOTYPE_INVALID_ID) {
+			*p_scrutinee_classifier = classifier;
+			return 0;
+		}
 	}
 	if (resolution->scrutinee_proven_classifier_hint != PROTOTYPE_INVALID_ID) {
 		*p_scrutinee_classifier = resolution->scrutinee_proven_classifier_hint;
@@ -8847,6 +8856,7 @@ static int queue_match_constructor_resolution(
 	struct compile_context* ctx,
 	uint32_t item_id,
 	uint32_t match_term,
+	uint32_t scrutinee_operation,
 	uint32_t scrutinee_proven_classifier_hint,
 	int constructor_symbol_id
 ) {
@@ -8859,6 +8869,7 @@ static int queue_match_constructor_resolution(
 	uint32_t id = ctx->pending_match_resolution_count++;
 	ctx->pending_match_resolutions[id].item_id = item_id;
 	ctx->pending_match_resolutions[id].match_term = match_term;
+	ctx->pending_match_resolutions[id].scrutinee_operation = scrutinee_operation;
 	ctx->pending_match_resolutions[id].scrutinee_proven_classifier_hint =
 		scrutinee_proven_classifier_hint;
 	ctx->pending_match_resolutions[id].constructor_symbol_id = constructor_symbol_id;
@@ -8887,27 +8898,6 @@ static int queue_match_typing(
 	ctx->pending_match_typings[id].match_term = match_term;
 	ctx->pending_match_typings[id].operation = operation;
 	ctx->pending_match_typings[id].universe_level_var = universe_level_var;
-	return 0;
-}
-
-static int queue_induction_hypothesis_resolution(
-	struct compile_context* ctx,
-	uint32_t subject,
-	uint32_t frame_id,
-	uint32_t argument
-) {
-	if (!ctx ||
-		subject >= ctx->terms->term_count ||
-		argument >= ctx->terms->term_count ||
-		frame_id >= ctx->terms->match_frame_count ||
-		ctx->pending_induction_hypothesis_count >= 512) {
-		return -1;
-	}
-
-	uint32_t id = ctx->pending_induction_hypothesis_count++;
-	ctx->pending_induction_hypotheses[id].subject = subject;
-	ctx->pending_induction_hypotheses[id].frame_id = frame_id;
-	ctx->pending_induction_hypotheses[id].argument = argument;
 	return 0;
 }
 
@@ -9081,38 +9071,6 @@ static int compile_phase_seed_declaration_facts(struct compile_context* ctx) {
 			) != 0) {
 			return -1;
 		}
-	}
-	return 0;
-}
-
-static int canonicalize_pending_induction_hypothesis_frame(
-	struct compile_context* ctx,
-	uint32_t old_frame_id,
-	uint32_t canonical_frame_id
-) {
-	if (!ctx ||
-		old_frame_id == canonical_frame_id ||
-		old_frame_id >= ctx->terms->match_frame_count ||
-		canonical_frame_id >= ctx->terms->match_frame_count) {
-		return 0;
-	}
-	for (uint32_t i = 0; i < ctx->pending_induction_hypothesis_count; ++i) {
-		struct pending_induction_hypothesis* hypothesis =
-			&ctx->pending_induction_hypotheses[i];
-		if (hypothesis->frame_id != old_frame_id) {
-			continue;
-		}
-		uint32_t canonical_subject;
-		if (prototype_term_induction_hypothesis(
-			ctx->terms,
-			canonical_frame_id,
-			hypothesis->argument,
-			&canonical_subject
-		) != 0) {
-			return -1;
-		}
-		hypothesis->subject = canonical_subject;
-		hypothesis->frame_id = canonical_frame_id;
 	}
 	return 0;
 }
@@ -9982,15 +9940,6 @@ static int compile_ast_match_ref(
 		ctx->terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
 		return -1;
 	}
-	uint32_t canonical_frame_id = ctx->terms->terms[match_term].as.match.frame_id;
-	if (canonical_frame_id != PROTOTYPE_INVALID_ID &&
-		canonicalize_pending_induction_hypothesis_frame(
-			ctx,
-			state.frame_id,
-			canonical_frame_id
-		) != 0) {
-		return -1;
-	}
 	if (prototype_term_set_match_frame_term(ctx->terms, state.frame_id, match_term) != 0) {
 		return -1;
 	}
@@ -9999,6 +9948,7 @@ static int compile_ast_match_ref(
 				ctx,
 				state.resolution_item_ids[i],
 				match_term,
+				state.scrutinee_operation,
 				scrutinee_proven_classifier_hint,
 				state.case_constructor_symbols[i]
 			) != 0) {
@@ -11052,8 +11002,6 @@ static int compile_def(
 	def->compiling = 1;
 	uint32_t previous_pending_match_resolution_count = ctx->pending_match_resolution_count;
 	uint32_t previous_pending_match_typing_count = ctx->pending_match_typing_count;
-	uint32_t previous_pending_induction_hypothesis_count =
-		ctx->pending_induction_hypothesis_count;
 	uint32_t previous_pending_ascription_check_count =
 		ctx->pending_ascription_check_count;
 	uint32_t previous_pending_imported_constructor_classifier_count =
@@ -11066,8 +11014,6 @@ static int compile_def(
 	if (compile_ast_ref(ctx, def->ast, &ref) != 0) {
 		ctx->pending_match_resolution_count = previous_pending_match_resolution_count;
 		ctx->pending_match_typing_count = previous_pending_match_typing_count;
-		ctx->pending_induction_hypothesis_count =
-			previous_pending_induction_hypothesis_count;
 		ctx->pending_ascription_check_count = previous_pending_ascription_check_count;
 		ctx->pending_imported_constructor_classifier_count =
 			previous_pending_imported_constructor_classifier_count;
@@ -11323,14 +11269,6 @@ static int compile_ast(struct compile_context* ctx, uint32_t ast_id, uint32_t* p
 					argument,
 					&ih_term
 				) != 0) {
-				return -1;
-			}
-			if (queue_induction_hypothesis_resolution(
-					ctx,
-					ih_term,
-					frame_id,
-					argument
-			) != 0) {
 				return -1;
 			}
 			*p_ret = ih_term;
@@ -11630,12 +11568,11 @@ static int compile_ast_ref(
 				) != 0 ||
 				prototype_term_induction_hypothesis(
 					ctx->terms, frame_id, argument_term, &ih_term
-				) != 0 ||
-				queue_induction_hypothesis_resolution(
-					ctx, ih_term, frame_id, argument_term
 				) != 0) {
 				return -1;
 			}
+			ctx->metadata->operations[argument_operation].referenced_ast_binder_id =
+				node->as.induction_hypothesis.ast_binder_id;
 			p_ret->term = ih_term;
 			p_ret->classifier = PROTOTYPE_INVALID_ID;
 			return operation_add(
@@ -11666,6 +11603,8 @@ static int compile_ast_ref(
 				) != 0) {
 				return -1;
 			}
+			ctx->metadata->operations[p_ret->operation].referenced_ast_binder_id =
+				node->as.var.ast_binder_id;
 			(void)lookup_graph_binder_symbol(
 				ctx,
 				node->as.var.ast_binder_id,
@@ -11903,6 +11842,20 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 		}
 		const struct prototype_match_case* resolved_case =
 			&ctx->terms->cases[resolved_case_id];
+		if (item->ast >= ctx->asts->node_count ||
+			ctx->asts->nodes[item->ast].tag != PROTOTYPE_AST_MATCH ||
+			item->case_index >= ctx->asts->nodes[item->ast].as.match.case_count) {
+			return -1;
+		}
+		const struct prototype_ast_match_case* source_case =
+			&ctx->asts->cases[
+				ctx->asts->nodes[item->ast].as.match.first_case + item->case_index
+			];
+		if (source_case->binder_count != resolved_case->binder_count ||
+			source_case->first_binder + source_case->binder_count >
+				ctx->asts->case_binder_count) {
+			return -1;
+		}
 		for (uint32_t binder_index = 0;
 			binder_index < resolved_case->binder_count;
 			++binder_index) {
@@ -11935,7 +11888,10 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				struct prototype_operation_node* operation =
 					&ctx->metadata->operations[operation_id];
 				if (operation->tag == PROTOTYPE_OPERATION_VAR &&
-					operation->core_term == binder_term) {
+					operation->referenced_ast_binder_id ==
+						ctx->asts->case_binders[
+							source_case->first_binder + binder_index
+						].ast_binder_id) {
 					operation->classifier = binder_classifier;
 				}
 			}
@@ -11964,116 +11920,6 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 		return -1;
 	}
 	return has_pending ? 1 : 0;
-}
-
-static int match_cases_are_resolved(
-	const struct prototype_term_db* terms,
-	uint32_t match_term
-) {
-	if (!terms || match_term >= terms->term_count ||
-		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
-		return -1;
-	}
-	const struct prototype_term* match = &terms->terms[match_term];
-	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
-		uint32_t case_id = match->as.match.first_case + i;
-		if (case_id >= terms->case_count) {
-			return -1;
-		}
-		const struct prototype_match_case* match_case = &terms->cases[case_id];
-		if (match_case->constructor_owner == PROTOTYPE_INVALID_ID ||
-			match_case->constructor_id == PROTOTYPE_INVALID_ID) {
-			return 0;
-		}
-	}
-	return 1;
-}
-
-static int lookup_compile_delta_proven_classifier(
-	const struct prototype_judgement_delta* delta,
-	uint32_t subject,
-	uint32_t* p_classifier
-) {
-	if (!delta || !p_classifier) {
-		return -1;
-	}
-	for (size_t i = delta->relation_count; i > 0; --i) {
-		const struct prototype_judgement_relation* relation = &delta->relations[i - 1];
-		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			relation->subject == subject) {
-			*p_classifier = relation->classifier;
-			return 0;
-		}
-	}
-	if (delta->db) {
-		for (size_t i = delta->db->relation_count; i > 0; --i) {
-			const struct prototype_judgement_relation* relation =
-				&delta->db->relations[i - 1];
-			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-				relation->subject == subject) {
-				*p_classifier = relation->classifier;
-				return 0;
-			}
-		}
-	}
-	return 1;
-}
-
-static int match_branch_bodies_have_proven_classifiers(
-	const struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms,
-	uint32_t match_term
-) {
-	if (!delta || !terms ||
-		match_term >= terms->term_count ||
-		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
-		return -1;
-	}
-	const struct prototype_term* match = &terms->terms[match_term];
-	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
-		uint32_t case_id = match->as.match.first_case + i;
-		uint32_t classifier;
-		if (case_id >= terms->case_count) {
-			return -1;
-		}
-		int status = lookup_compile_delta_proven_classifier(
-			delta,
-			terms->cases[case_id].body,
-			&classifier
-		);
-		if (status != 0) {
-			return status < 0 ? -1 : 0;
-		}
-	}
-	return 1;
-}
-
-static int compile_phase_resolve_pending_induction_hypotheses(
-	struct compile_context* ctx,
-	int require_all
-) {
-	if (!ctx) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < ctx->pending_induction_hypothesis_count; ++i) {
-		const struct pending_induction_hypothesis* hypothesis =
-			&ctx->pending_induction_hypotheses[i];
-		struct prototype_induction_hypothesis_resolution_request request;
-		memset(&request, 0, sizeof(request));
-		request.subject = hypothesis->subject;
-		request.frame_id = hypothesis->frame_id;
-		request.argument = hypothesis->argument;
-		int status = prototype_judgement_delta_resolve_induction_hypothesis_request(
-			&ctx->judgement_delta,
-			ctx->terms,
-			ctx->type_declarations,
-			&request
-		);
-		if (status < 0 || (require_all && status != 0)) {
-			return -1;
-		}
-	}
-	return 0;
 }
 
 static int operation_solver_add_constraint(
@@ -12115,6 +11961,63 @@ static int operation_solver_bind(
 	) ? 0 : -1;
 }
 
+static uint32_t operation_solver_classifier(
+	const struct compile_context* ctx,
+	uint32_t operation
+) {
+	if (!ctx || !ctx->metadata || operation >= ctx->metadata->operation_count) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	if (ctx->classifier_solver.bindings[operation] != PROTOTYPE_INVALID_ID) {
+		return ctx->classifier_solver.bindings[operation];
+	}
+	return ctx->classifier_solver.provisional_ih_classifiers[operation];
+}
+
+static int operation_solver_seed_motive(
+	struct compile_context* ctx,
+	uint32_t operation,
+	uint32_t classifier,
+	int* p_changed
+) {
+	if (!ctx || !ctx->metadata || !p_changed ||
+		operation >= ctx->metadata->operation_count ||
+		classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	uint32_t previous = ctx->classifier_solver.motive_seed_classifiers[operation];
+	if (previous == PROTOTYPE_INVALID_ID) {
+		ctx->classifier_solver.motive_seed_classifiers[operation] = classifier;
+		*p_changed = 1;
+		return 0;
+	}
+	return prototype_judgement_classifier_normalization_equal(
+		ctx->terms, ctx->type_declarations, previous, classifier
+	) ? 0 : -1;
+}
+
+static int operation_solver_set_provisional_ih_classifier(
+	struct compile_context* ctx,
+	uint32_t operation,
+	uint32_t classifier,
+	int* p_changed
+) {
+	if (!ctx || !ctx->metadata || !p_changed ||
+		operation >= ctx->metadata->operation_count ||
+		classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	uint32_t previous = ctx->classifier_solver.provisional_ih_classifiers[operation];
+	if (previous == PROTOTYPE_INVALID_ID) {
+		ctx->classifier_solver.provisional_ih_classifiers[operation] = classifier;
+		*p_changed = 1;
+		return 0;
+	}
+	return prototype_judgement_classifier_normalization_equal(
+		ctx->terms, ctx->type_declarations, previous, classifier
+	) ? 0 : -1;
+}
+
 static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata ||
 		ctx->metadata->operation_count > 4096) {
@@ -12123,6 +12026,8 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	memset(&ctx->classifier_solver, 0, sizeof(ctx->classifier_solver));
 	for (uint32_t i = 0; i < 4096; ++i) {
 		ctx->classifier_solver.bindings[i] = PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.motive_seed_classifiers[i] = PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.provisional_ih_classifiers[i] = PROTOTYPE_INVALID_ID;
 		ctx->classifier_solver.motive_terms[i] = PROTOTYPE_INVALID_ID;
 	}
 	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
@@ -12248,15 +12153,33 @@ static int operation_solver_solve(struct compile_context* ctx) {
 			uint32_t classifier;
 			switch (constraint->kind) {
 				case OPERATION_CONSTRAINT_EQUAL:
-				case OPERATION_CONSTRAINT_EXPECTED:
 					if (constraint->left >= ctx->metadata->operation_count ||
-						(classifier = ctx->classifier_solver.bindings[constraint->left]) ==
+						(classifier = operation_solver_classifier(ctx, constraint->left)) ==
 							PROTOTYPE_INVALID_ID) {
 						break;
 					}
 					if (operation_solver_bind(
 							ctx, constraint->target, classifier, &pass_changed
 						) != 0) {
+						return -1;
+					}
+					break;
+				case OPERATION_CONSTRAINT_EXPECTED:
+					if (constraint->left >= ctx->metadata->operation_count ||
+						(classifier = operation_solver_classifier(ctx, constraint->left)) ==
+							PROTOTYPE_INVALID_ID) {
+						break;
+					}
+					if (ctx->metadata->operations[constraint->target].tag ==
+						PROTOTYPE_OPERATION_MATCH) {
+						if (operation_solver_seed_motive(
+								ctx, constraint->target, classifier, &pass_changed
+							) != 0) {
+							return -1;
+						}
+					} else if (operation_solver_bind(
+								ctx, constraint->target, classifier, &pass_changed
+							) != 0) {
 						return -1;
 					}
 					break;
@@ -12303,7 +12226,7 @@ static int operation_solver_solve(struct compile_context* ctx) {
 								break;
 							}
 						}
-						classifier = ctx->classifier_solver.bindings[constraint->left];
+						classifier = operation_solver_classifier(ctx, constraint->left);
 						if (classifier == PROTOTYPE_INVALID_ID) {
 							break;
 						}
@@ -12319,9 +12242,9 @@ static int operation_solver_solve(struct compile_context* ctx) {
 						}
 					} else {
 						uint32_t function_classifier =
-							ctx->classifier_solver.bindings[constraint->left];
+							operation_solver_classifier(ctx, constraint->left);
 						uint32_t argument_classifier =
-							ctx->classifier_solver.bindings[constraint->right];
+							operation_solver_classifier(ctx, constraint->right);
 						if (function_classifier == PROTOTYPE_INVALID_ID ||
 							argument_classifier == PROTOTYPE_INVALID_ID) {
 							break;
@@ -12422,78 +12345,6 @@ static size_t count_classified_operations(const struct compile_context* ctx) {
 	return count;
 }
 
-static int build_match_motive_from_operation_branches(
-	struct compile_context* ctx,
-	const struct pending_match_typing* typing,
-	uint32_t* p_motive_result
-) {
-	if (!ctx || !ctx->metadata || !typing || !p_motive_result ||
-		typing->operation >= ctx->metadata->operation_count) {
-		return -1;
-	}
-	const struct prototype_operation_node* operation =
-		&ctx->metadata->operations[typing->operation];
-	if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
-		operation->core_term != typing->match_term ||
-		operation->first_case > ctx->metadata->operation_case_count ||
-		operation->case_count > ctx->metadata->operation_case_count - operation->first_case ||
-		operation->case_count > 64) {
-		return -1;
-	}
-	uint32_t classifiers[64];
-	for (uint32_t i = 0; i < operation->case_count; ++i) {
-		const struct prototype_operation_match_case* match_case =
-			&ctx->metadata->operation_cases[operation->first_case + i];
-		if (match_case->body_operation >= ctx->metadata->operation_count) {
-			return -1;
-		}
-		const struct prototype_operation_node* body_operation =
-			&ctx->metadata->operations[match_case->body_operation];
-		uint32_t operation_classifier = body_operation->classifier;
-		classifiers[i] = PROTOTYPE_INVALID_ID;
-		if (operation_classifier == PROTOTYPE_INVALID_ID) {
-			continue;
-		}
-		for (int source = 0; source < 2 && classifiers[i] == PROTOTYPE_INVALID_ID;
-			++source) {
-			const struct prototype_judgement_relation* relations =
-				source == 0 ? ctx->judgement_delta.relations : ctx->judgement->relations;
-			size_t relation_count = source == 0 ?
-				ctx->judgement_delta.relation_count : ctx->judgement->relation_count;
-			for (size_t relation_index = relation_count; relation_index > 0; --relation_index) {
-				const struct prototype_judgement_relation* relation =
-					&relations[relation_index - 1];
-				if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					relation->subject != body_operation->core_term ||
-					relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION ||
-					!prototype_judgement_classifier_normalization_equal(
-						ctx->terms,
-						ctx->type_declarations,
-						operation_classifier,
-						relation->classifier
-					)) {
-					continue;
-				}
-				classifiers[i] = relation->classifier;
-				break;
-			}
-		}
-		if (classifiers[i] == PROTOTYPE_INVALID_ID) {
-			return 1;
-		}
-	}
-	return prototype_judgement_delta_build_match_motive_from_branch_hints(
-		&ctx->judgement_delta,
-		ctx->terms,
-		ctx->type_declarations,
-		typing->match_term,
-		classifiers,
-		operation->case_count,
-		typing->universe_level_var,
-		p_motive_result
-	);
-}
-
 static int build_operation_motive(
 	struct compile_context* ctx,
 	const struct pending_match_typing* typing,
@@ -12530,7 +12381,7 @@ static int build_operation_motive(
 			return 1;
 		}
 		uint32_t branch_classifier =
-			ctx->metadata->operations[operation_case->body_operation].classifier;
+			ctx->classifier_solver.bindings[operation_case->body_operation];
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
@@ -12811,7 +12662,7 @@ static int operation_solver_match_has_recursive_binder(
 	return 0;
 }
 
-static int operation_solver_record_motive_if_recursive(
+static int operation_solver_record_materialized_motive(
 	struct compile_context* ctx,
 	uint32_t operation_id,
 	uint32_t match_term,
@@ -12820,15 +12671,33 @@ static int operation_solver_record_motive_if_recursive(
 	if (!ctx || operation_id >= ctx->metadata->operation_count) {
 		return -1;
 	}
-	int has_recursive_binder = operation_solver_match_has_recursive_binder(
-		ctx, &ctx->metadata->operations[operation_id]
-	);
-	if (has_recursive_binder < 0) {
-		return -1;
-	}
-	return has_recursive_binder ? prototype_judgement_delta_record_materialized_match_motive(
+	return prototype_judgement_delta_record_materialized_match_motive(
 		&ctx->judgement_delta, ctx->terms, match_term, classifier
-	) : 0;
+	);
+}
+
+static int operation_solver_existing_materialized_motive(
+	const struct compile_context* ctx,
+	const struct pending_match_typing* typing,
+	uint32_t classifier,
+	uint32_t* p_motive
+) {
+	if (!ctx || !typing || !p_motive ||
+		typing->match_term >= ctx->terms->term_count ||
+		classifier >= ctx->terms->term_count ||
+		ctx->terms->terms[typing->match_term].tag != PROTOTYPE_TERM_MATCH ||
+		ctx->terms->terms[classifier].tag != PROTOTYPE_TERM_APP) {
+		return 1;
+	}
+	const struct prototype_term* match = &ctx->terms->terms[typing->match_term];
+	const struct prototype_term* app = &ctx->terms->terms[classifier];
+	if (app->as.app.argument != match->as.match.scrutinee ||
+		app->as.app.function >= ctx->terms->term_count ||
+		ctx->terms->terms[app->as.app.function].tag != PROTOTYPE_TERM_LAMBDA) {
+		return 1;
+	}
+	*p_motive = app->as.app.function;
+	return 0;
 }
 
 static int operation_solver_materialize_match(
@@ -12849,17 +12718,23 @@ static int operation_solver_materialize_match(
 			ctx->metadata->operation_case_count) {
 		return -1;
 	}
-	int has_recursive_binder = operation_solver_match_has_recursive_binder(ctx, operation);
-	if (has_recursive_binder < 0) {
-		return -1;
-	}
-	if (!has_recursive_binder) {
-		return 0;
-	}
 	uint32_t existing = ctx->classifier_solver.bindings[operation_id];
 	if (existing != PROTOTYPE_INVALID_ID) {
 		if (ctx->classifier_solver.motive_terms[operation_id] != PROTOTYPE_INVALID_ID) {
 			return 0;
+		}
+		uint32_t existing_motive;
+		int existing_status = operation_solver_existing_materialized_motive(
+			ctx, typing, existing, &existing_motive
+		);
+		if (existing_status < 0) {
+			return -1;
+		}
+		if (existing_status == 0) {
+			ctx->classifier_solver.motive_terms[operation_id] = existing_motive;
+			return operation_solver_record_materialized_motive(
+				ctx, operation_id, typing->match_term, existing
+			);
 		}
 		uint32_t classifier;
 		int status = build_operation_constant_motive(ctx, typing, existing, &classifier);
@@ -12871,7 +12746,7 @@ static int operation_solver_materialize_match(
 		if (operation_solver_bind(ctx, operation_id, classifier, p_changed) != 0) {
 			return -1;
 		}
-		return operation_solver_record_motive_if_recursive(
+		return operation_solver_record_materialized_motive(
 			ctx, operation_id, typing->match_term, classifier
 		);
 	}
@@ -12881,12 +12756,13 @@ static int operation_solver_materialize_match(
 		].body_operation;
 		if (body_operation >= ctx->metadata->operation_count ||
 			ctx->classifier_solver.bindings[body_operation] == PROTOTYPE_INVALID_ID) {
-			int has_recursive_binder = operation_solver_match_has_recursive_binder(
-				ctx, operation
-			);
+			int has_recursive_binder = operation_solver_match_has_recursive_binder(ctx, operation);
 			if (has_recursive_binder < 0) {
 				return -1;
 			}
+			/* A recursive branch may require its match motive before all branch
+			 * classifiers are known. Non-recursive matches remain unresolved until
+			 * every equation has a solved branch classifier. */
 			if (!has_recursive_binder) {
 				return 0;
 			}
@@ -12897,18 +12773,11 @@ static int operation_solver_materialize_match(
 			if (seed_status != 0) {
 				return seed_status < 0 ? -1 : 0;
 			}
-			uint32_t seeded_result;
-			seed_status = build_operation_constant_motive(
-				ctx, typing, seed_classifier, &seeded_result
-			);
-			if (seed_status != 0) {
-				return seed_status < 0 ? -1 : 0;
-			}
-			ctx->classifier_solver.motive_terms[operation_id] =
-				ctx->terms->terms[seeded_result].as.app.function;
-			if (operation_solver_bind(ctx, operation_id, seeded_result, p_changed) != 0 ||
-				operation_solver_record_motive_if_recursive(
-					ctx, operation_id, typing->match_term, seeded_result
+			/* Keep the candidate in the solver only. The IH can use this
+			 * constant-motive equation, but no APP(M, _) TermDB node exists
+			 * until all branch equations have been checked. */
+			if (operation_solver_seed_motive(
+					ctx, operation_id, seed_classifier, p_changed
 				) != 0) {
 				return -1;
 			}
@@ -12923,12 +12792,20 @@ static int operation_solver_materialize_match(
 	if (status != 0) {
 		return status < 0 ? -1 : 0;
 	}
+	uint32_t seed_classifier =
+		ctx->classifier_solver.motive_seed_classifiers[operation_id];
+	if (seed_classifier != PROTOTYPE_INVALID_ID &&
+		!prototype_judgement_classifier_normalization_equal(
+			ctx->terms, ctx->type_declarations, classifier, seed_classifier
+		)) {
+		return -1;
+	}
 	ctx->classifier_solver.motive_terms[operation_id] =
 		ctx->terms->terms[classifier].as.app.function;
 	if (operation_solver_bind(ctx, operation_id, classifier, p_changed) != 0) {
 		return -1;
 	}
-	return operation_solver_record_motive_if_recursive(
+	return operation_solver_record_materialized_motive(
 		ctx, operation_id, typing->match_term, classifier
 	);
 }
@@ -12962,6 +12839,13 @@ static int operation_solver_materialize_induction_hypothesis(
 	}
 	uint32_t motive = ctx->classifier_solver.motive_terms[parent_match];
 	if (motive == PROTOTYPE_INVALID_ID) {
+		uint32_t seed_classifier =
+			ctx->classifier_solver.motive_seed_classifiers[parent_match];
+		if (seed_classifier != PROTOTYPE_INVALID_ID) {
+			return operation_solver_set_provisional_ih_classifier(
+				ctx, operation_id, seed_classifier, p_changed
+			);
+		}
 		return 0;
 	}
 	uint32_t classifier;
@@ -12976,138 +12860,68 @@ static int operation_solver_materialize_induction_hypothesis(
 	return operation_solver_bind(ctx, operation_id, classifier, p_changed);
 }
 
-static int compile_phase_build_pending_match_motives(
-	struct compile_context* ctx,
-	int require_elim
-) {
-	if (!ctx) {
+/*
+ * The solver owns classifier synthesis. Once all operation variables have a
+ * concrete solution, this phase only reconstructs JudgementDB derivations for
+ * those already-fixed conclusions. It is deliberately not a second inference
+ * pass: every generated conclusion must be normalization-equal to the solver
+ * binding for the same operation.
+ */
+static int operation_solver_materialize_judgements(struct compile_context* ctx) {
+	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
-	int has_pending = 0;
-	for (uint32_t i = 0; i < ctx->pending_match_typing_count; ++i) {
-		const struct pending_match_typing* typing = &ctx->pending_match_typings[i];
-		uint32_t motive_result;
-		uint32_t existing_match_classifier;
-		int has_operation = typing->operation < ctx->metadata->operation_count;
-		if (has_operation &&
-			ctx->metadata->operations[typing->operation].classifier !=
-				PROTOTYPE_INVALID_ID) {
-			continue;
-		}
-		int cases_resolved = match_cases_are_resolved(ctx->terms, typing->match_term);
-		if (cases_resolved < 0) {
-			return -1;
-		}
-		if (!cases_resolved) {
-			has_pending = 1;
-			continue;
-		}
-		int status;
-		status = has_operation ?
-			build_match_motive_from_operation_branches(ctx, typing, &motive_result) : 1;
-		if (status == 0) {
+	for (uint32_t pass = 0; pass < 64; ++pass) {
+		size_t before_relation_count = ctx->judgement_delta.relation_count;
+		for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
 			const struct prototype_operation_node* operation =
-				&ctx->metadata->operations[typing->operation];
-			uint32_t branch_classifiers[64];
-			uint32_t selected = PROTOTYPE_INVALID_ID;
-			for (uint32_t j = 0; j < operation->case_count; ++j) {
-				uint32_t body_operation =
-					ctx->metadata->operation_cases[operation->first_case + j].body_operation;
-				uint32_t branch_classifier =
-					ctx->metadata->operations[body_operation].classifier;
-				if (branch_classifier != PROTOTYPE_INVALID_ID) {
-					selected = branch_classifier;
-					break;
-				}
-			}
-			if (selected == PROTOTYPE_INVALID_ID) {
-				return -1;
-			}
-			for (uint32_t j = 0; j < operation->case_count; ++j) {
-				branch_classifiers[j] = selected;
-			}
-			if (prototype_judgement_delta_expand_match_with_branch_hints(
-					&ctx->judgement_delta,
-					ctx->terms,
-					ctx->type_declarations,
-					typing->match_term,
-					motive_result,
-					branch_classifiers,
-					operation->case_count
-				) != 0) {
-				return -1;
-			}
-			ctx->metadata->operations[typing->operation].classifier = motive_result;
-			continue;
-		}
-		if (status < 0) {
-			return -1;
-		}
-		if (lookup_compile_delta_proven_classifier(
-				&ctx->judgement_delta,
-				typing->match_term,
-				&existing_match_classifier
-			) == 0) {
-			continue;
-		}
-		if (require_elim) {
-			status = prototype_judgement_delta_type_match_from_cases(
-				&ctx->judgement_delta,
-				ctx->terms,
-				ctx->type_declarations,
-				typing->match_term,
-				typing->universe_level_var,
-				&motive_result
-			);
-		} else {
-			int has_proven_branches = match_branch_bodies_have_proven_classifiers(
-				&ctx->judgement_delta,
-				ctx->terms,
-				typing->match_term
-			);
-			if (has_proven_branches < 0) {
-				return -1;
-			}
-			if (has_proven_branches) {
-				status = prototype_judgement_delta_type_match_from_cases(
-					&ctx->judgement_delta,
-					ctx->terms,
-					ctx->type_declarations,
-					typing->match_term,
-					typing->universe_level_var,
-					&motive_result
-				);
-			} else {
-				status = prototype_judgement_delta_build_match_motive_from_cases(
-					&ctx->judgement_delta,
-					ctx->terms,
-					ctx->type_declarations,
-					typing->match_term,
-					typing->universe_level_var,
-					&motive_result
-				);
-				if (status > 0) {
-					status = prototype_judgement_delta_build_match_motive_from_known_branches(
-						&ctx->judgement_delta,
-						ctx->terms,
-						ctx->type_declarations,
-						typing->match_term,
-						typing->universe_level_var,
-						&motive_result
-					);
-				}
-			}
-		}
-
-		if (status != 0) {
-			if (!require_elim && status > 0) {
-				has_pending = 1;
+				&ctx->metadata->operations[i];
+			uint32_t classifier = operation->classifier;
+			if (classifier == PROTOTYPE_INVALID_ID) {
 				continue;
 			}
-			return status;
+			if (operation->tag == PROTOTYPE_OPERATION_LAMBDA) {
+				int status = prototype_judgement_delta_expand_lambda(
+					&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
+					operation->core_term, classifier
+				);
+				if (status < 0) {
+					return -1;
+				}
+			} else if (operation->tag == PROTOTYPE_OPERATION_APP) {
+				uint32_t derived_classifier = PROTOTYPE_INVALID_ID;
+				int status = prototype_judgement_delta_expand_app(
+					&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
+					operation->core_term, &derived_classifier
+				);
+				if (status < 0 ||
+					(status == 0 && !prototype_judgement_classifier_normalization_equal(
+						ctx->terms, ctx->type_declarations,
+						derived_classifier, classifier
+					))) {
+					return -1;
+				}
+			} else if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+				struct prototype_induction_hypothesis_resolution_request request;
+				memset(&request, 0, sizeof(request));
+				request.subject = operation->core_term;
+				request.frame_id = operation->first_case;
+				request.argument = ctx->metadata->operations[
+					operation->argument
+				].core_term;
+				int status = prototype_judgement_delta_resolve_induction_hypothesis_request(
+					&ctx->judgement_delta, ctx->terms, ctx->type_declarations, &request
+				);
+				if (status < 0) {
+					return -1;
+				}
+			}
+		}
+		if (ctx->judgement_delta.relation_count == before_relation_count) {
+			break;
 		}
 	}
-	return has_pending ? 1 : 0;
+	return 0;
 }
 
 static int compile_phase_infer_pending_types(struct compile_context* ctx) {
@@ -13116,39 +12930,17 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 	}
 
 	for (uint32_t iteration = 0; iteration < 32; ++iteration) {
-		size_t before = ctx->judgement_delta.relation_count;
-		size_t before_match_motive_results =
-			ctx->judgement_delta.match_motive_result_count;
 		size_t before_operation_classifiers = count_classified_operations(ctx);
 		size_t before_unresolved = count_unresolved_resolution_items(ctx);
 		int match_resolution_status = compile_phase_resolve_pending_match_items(ctx);
 		if (match_resolution_status < 0) {
 			return -1;
 		}
-		int status = compile_phase_resolve_pending_induction_hypotheses(ctx, 0);
+		int status = compile_phase_infer_general_classifiers(ctx);
 		if (status != 0) {
 			return -1;
 		}
-		status = compile_phase_infer_general_classifiers(ctx);
-		if (status != 0) {
-			return -1;
-		}
-		match_resolution_status = compile_phase_resolve_pending_match_items(ctx);
-		if (match_resolution_status < 0) {
-			return -1;
-		}
-		status = compile_phase_build_pending_match_motives(ctx, 0);
-		if (status < 0) {
-			return -1;
-		}
-		status = compile_phase_infer_general_classifiers(ctx);
-		if (status != 0) {
-			return -1;
-		}
-		if (ctx->judgement_delta.relation_count == before &&
-			ctx->judgement_delta.match_motive_result_count ==
-				before_match_motive_results &&
-			count_classified_operations(ctx) == before_operation_classifiers &&
+		if (count_classified_operations(ctx) == before_operation_classifiers &&
 			count_unresolved_resolution_items(ctx) == before_unresolved) {
 			break;
 		}
@@ -13158,68 +12950,26 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 	if (match_resolution_status < 0) {
 		return -1;
 	}
-	int status = compile_phase_resolve_pending_induction_hypotheses(ctx, 0);
+	int status = compile_phase_infer_general_classifiers(ctx);
 	if (status != 0) {
 		return -1;
 	}
-	status = compile_phase_infer_general_classifiers(ctx);
-	if (status != 0) {
-		return -1;
-	}
-	match_resolution_status = compile_phase_resolve_pending_match_items(ctx);
-	if (match_resolution_status < 0) {
-		return -1;
-	}
-	status = compile_phase_build_pending_match_motives(ctx, 0);
-	if (status < 0) {
-		return -1;
-	}
-	status = compile_phase_infer_general_classifiers(ctx);
-	if (status != 0) {
-		return -1;
-	}
-	status = compile_phase_resolve_pending_induction_hypotheses(ctx, 1);
-	if (status != 0) {
-		return -1;
-	}
-	for (uint32_t iteration = 0; iteration < 32; ++iteration) {
-		size_t before = ctx->judgement_delta.relation_count;
-		size_t before_match_motive_results =
-			ctx->judgement_delta.match_motive_result_count;
-		size_t before_operation_classifiers = count_classified_operations(ctx);
-		status = compile_phase_infer_general_classifiers(ctx);
-		if (status != 0) {
+	for (uint32_t i = 0; i < ctx->pending_match_typing_count; ++i) {
+		uint32_t operation = ctx->pending_match_typings[i].operation;
+		if (operation >= ctx->metadata->operation_count ||
+			ctx->classifier_solver.bindings[operation] == PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
-		status = compile_phase_build_pending_match_motives(ctx, 0);
-		if (status < 0) {
-			return -1;
-		}
-		status = compile_phase_infer_general_classifiers(ctx);
-		if (status != 0) {
-			return -1;
-		}
-		if (ctx->judgement_delta.relation_count == before &&
-			ctx->judgement_delta.match_motive_result_count ==
-				before_match_motive_results &&
-			count_classified_operations(ctx) == before_operation_classifiers) {
-			break;
-		}
 	}
-	status = compile_phase_build_pending_match_motives(ctx, 1);
-	if (status < 0) {
+	if (operation_solver_materialize_judgements(ctx) != 0) {
 		return -1;
 	}
-	status = compile_phase_infer_general_classifiers(ctx);
-	if (status != 0) {
-		return -1;
-	}
-	/* Solver-materialized motives are an in-flight IH lookup index, not a
-	 * JudgementDB fact. All remaining proof facts are committed below. */
-	ctx->judgement_delta.match_motive_result_count = 0;
 	if (prototype_judgement_delta_commit(&ctx->judgement_delta, 0) != 0) {
 		return -1;
 	}
+	/* The materialized classifier relation has been committed. This temporary
+	 * solver lookup index must not survive as pending JudgementDB state. */
+	ctx->judgement_delta.match_motive_result_count = 0;
 	return count_unresolved_resolution_items(ctx) == 0 ? 0 : -1;
 }
 
