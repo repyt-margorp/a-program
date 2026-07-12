@@ -1002,6 +1002,60 @@ static int check_exports_normalization_equal(
 	return 0;
 }
 
+static int check_compiled_exports_normalization_equal(
+	struct symbol_table* symbols,
+	const struct prototype_artifact_interface* interface,
+	struct prototype_term_db* term_db,
+	struct prototype_type_declaration_db* type_declarations,
+	const char* left_name,
+	const char* right_name,
+	const char* reduction_mode
+) {
+	struct prototype_term_reduction_options options;
+	struct prototype_term_definition_env definition_env;
+	int left_symbol;
+	int right_symbol;
+	uint32_t left_export;
+	uint32_t right_export;
+	int equal = 0;
+
+	if (!symbols || !interface || !term_db || !type_declarations ||
+		!left_name || !right_name ||
+		reduction_options_from_mode(reduction_mode, &options) != 0) {
+		return -1;
+	}
+	if (prototype_artifact_interface_build_definition_env(
+			interface,
+			artifact_definitions,
+			ARTIFACT_DEFINITION_CAPACITY,
+			&definition_env
+		) != 0) {
+		return -1;
+	}
+	left_symbol = symbol_intern(symbols, left_name, strlen(left_name));
+	right_symbol = symbol_intern(symbols, right_name, strlen(right_name));
+	if (left_symbol < 0 || right_symbol < 0 ||
+		prototype_artifact_interface_find_term_export(interface, left_symbol, &left_export) != 0 ||
+		prototype_artifact_interface_find_term_export(interface, right_symbol, &right_export) != 0 ||
+		prototype_term_normalization_equal_with_options(
+			term_db,
+			type_declarations,
+			&definition_env,
+			options,
+			interface->term_exports[left_export].local_term,
+			interface->term_exports[right_export].local_term,
+			&equal
+		) != 0) {
+		return -1;
+	}
+	printf("source-exports-normalization-equal %s %s mode=%s %s\n",
+		left_name,
+		right_name,
+		reduction_mode ? reduction_mode : "default",
+		equal ? "yes" : "no");
+	return equal ? 0 : 1;
+}
+
 static int check_exports_shape_equal(
 	const char* path,
 	const char* left_name,
@@ -2144,6 +2198,8 @@ int main(int argc, char** argv) {
 	const char* check_exports_normalization_equal_path = NULL;
 	const char* check_exports_normalization_equal_left_name = NULL;
 	const char* check_exports_normalization_equal_right_name = NULL;
+	const char* check_source_exports_normalization_equal_left_name = NULL;
+	const char* check_source_exports_normalization_equal_right_name = NULL;
 	const char* reduction_mode = "default";
 	const char* check_exports_shape_equal_path = NULL;
 	const char* check_exports_shape_equal_left_name = NULL;
@@ -2221,6 +2277,15 @@ int main(int argc, char** argv) {
 			check_exports_normalization_equal_path = argv[++file_arg];
 			check_exports_normalization_equal_left_name = argv[++file_arg];
 			check_exports_normalization_equal_right_name = argv[++file_arg];
+			continue;
+		}
+		if (strcmp(argv[file_arg], "--check-source-exports-normalization-equal") == 0) {
+			if (file_arg + 2 >= argc) {
+				fprintf(stderr, "--check-source-exports-normalization-equal requires two term names\n");
+				return 1;
+			}
+			check_source_exports_normalization_equal_left_name = argv[++file_arg];
+			check_source_exports_normalization_equal_right_name = argv[++file_arg];
 			continue;
 		}
 			if (strcmp(argv[file_arg], "--reduction-mode") == 0) {
@@ -2354,7 +2419,8 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
-			fprintf(stderr, "       %s --check-exports-normalization-equal file.ao left right [--reduction-mode mode]\n", argv[0]);
+		fprintf(stderr, "       %s --check-exports-normalization-equal file.ao left right [--reduction-mode mode]\n", argv[0]);
+		fprintf(stderr, "       %s --check-source-exports-normalization-equal left right [--reduction-mode mode] file.p\n", argv[0]);
 			fprintf(stderr, "       %s --check-exports-view-shape-equal file.ao left right\n", argv[0]);
 			fprintf(stderr, "       %s --check-exports-core-shape-equal file.ao left right\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-classifiers-compatible file.ao expected actual\n", argv[0]);
@@ -2416,7 +2482,8 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
-			fprintf(stderr, "       %s --check-exports-normalization-equal file.ao left right [--reduction-mode mode]\n", argv[0]);
+		fprintf(stderr, "       %s --check-exports-normalization-equal file.ao left right [--reduction-mode mode]\n", argv[0]);
+		fprintf(stderr, "       %s --check-source-exports-normalization-equal left right [--reduction-mode mode] file.p\n", argv[0]);
 			fprintf(stderr, "       %s --check-exports-view-shape-equal file.ao left right\n", argv[0]);
 			fprintf(stderr, "       %s --check-exports-core-shape-equal file.ao left right\n", argv[0]);
 			fprintf(stderr, "       %s --link-artifacts target.ao provider.ao [--link-provider provider2.ao ...] [--link-search-dir dir] [--link-reexport-providers] [--link-output linked.ao]\n", argv[0]);
@@ -3337,7 +3404,23 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 	}
-		prototype_artifact_interface_set_namespace(&artifact_interface, namespace_symbol_id);
+	prototype_artifact_interface_set_namespace(&artifact_interface, namespace_symbol_id);
+	if (check_source_exports_normalization_equal_left_name) {
+		int check_status = check_compiled_exports_normalization_equal(
+			&symbols,
+			&artifact_interface,
+			&term_db,
+			&type_declarations,
+			check_source_exports_normalization_equal_left_name,
+			check_source_exports_normalization_equal_right_name,
+			reduction_mode
+		);
+		if (check_status < 0) {
+			fprintf(stderr, "%s: failed to check source export normalization equality\n", argv[file_arg]);
+		}
+		symbol_table_free(&symbols);
+		return check_status == 0 ? 0 : 1;
+	}
 	if (artifact_output_path) {
 		FILE* artifact_file = fopen(artifact_output_path, "w");
 		if (!artifact_file) {

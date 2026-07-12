@@ -102,6 +102,26 @@ instead of the numeric frame id. Terms that still contain unrelocated frame-loca
 references are flagged so an artifact linker can reject or relocate them
 explicitly.
 
+## Artifact Operation Boundaries
+
+The operation graph is not serialized as a second executable graph. Its nested
+nodes exist to preserve source occurrences while a compilation unit is lowered
+and typed; evaluation remains solely a core-graph operation. The artifact
+interface preserves the linkable part of that layer through each term export:
+
+```
+(qualified name, local erased core root, classifier, transparency)
+```
+
+This tuple is a named typed-operation boundary. Two exports may intentionally
+have the same `local_term` and distinct classifiers, such as `identityBool` and
+`identityNat`; the qualified export names remain distinct API entries. The
+linker may intern their core roots, but must not merge their export records or
+classifiers. Anonymous nested operation nodes have no cross-artifact name or
+linking role, so serializing them would duplicate AST/typing metadata without
+adding evaluator semantics. Source spans and operation-tree diagnostics remain
+debug information rather than artifact identity.
+
 Definitional equality is a separate layer: the canonical key handles
 alpha-normalized structure, not beta or match computation. The prototype now
 exposes `prototype_term_whnf` for the current weak-head evaluator and

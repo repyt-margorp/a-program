@@ -322,6 +322,13 @@ enum prototype_artifact_export_transparency {
 };
 
 struct prototype_artifact_term_export {
+	/*
+	 * A named typed-operation boundary. local_term is deliberately an erased
+	 * core root and may be shared by several exports; the qualified name and
+	 * classifier retain the distinct source operation selected by the API.
+	 * Nested operation nodes are compiler-local annotation data and are not
+	 * serialized as linkable runtime graph nodes.
+	 */
 	int namespace_symbol_id;
 	int name_symbol_id;
 	uint32_t local_term;

@@ -817,6 +817,11 @@ expected := (List Nat).cons n0 ((List Nat).cons n1 ((List Nat).cons n2 ((List Na
 main := append Nat list01 list23;
 EOF_APPEND_NORMALIZATION_EQUAL
 
+./read_file.out --check-source-exports-normalization-equal main expected \
+	--reduction-mode default "$TMP_DIR/append-normalization_equal.p" \
+	>"$TMP_DIR/append-normalization_equal-source.out"
+grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
+	"$TMP_DIR/append-normalization_equal-source.out"
 ./read_file.out --write-artifact "$TMP_DIR/AppendNormalizationEqual.apo" \
 	"$TMP_DIR/append-normalization_equal.p" >"$TMP_DIR/append-normalization_equal.out"
 ./read_file.out --check-exports-normalization-equal "$TMP_DIR/AppendNormalizationEqual.apo" \

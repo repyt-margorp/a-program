@@ -642,6 +642,7 @@ int prototype_term_normalization_equal_with_profile(
 	int* p_equal
 );
 void prototype_term_normalization_cache_clear(struct prototype_term_db* db);
+void prototype_term_notify_graph_mutation(struct prototype_term_db* db);
 void prototype_term_normalization_cache_get_stats(
 	const struct prototype_term_db* db,
 	struct prototype_term_normalization_cache_stats* p_stats

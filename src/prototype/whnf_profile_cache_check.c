@@ -166,5 +166,25 @@ int main(void) {
 		return 1;
 	}
 	prototype_term_normalization_cache_get_stats(&term_db, &stats);
-	return stats.hit_count >= 2 ? 0 : 1;
+	if (stats.hit_count < 2) {
+		return 1;
+	}
+
+	/* Artifact linking mutates graph slots directly; its notification must make
+	 * the cached WHNF of this match unusable. */
+	term_db.cases[term_db.terms[match_term].as.match.first_case].body = application;
+	prototype_term_notify_graph_mutation(&term_db);
+	uint32_t mutated_whnf;
+	if (prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_INDUCTIVE_WHNF,
+			match_term,
+			&mutated_whnf
+		) != 0 ||
+		mutated_whnf != constructor) {
+		return 1;
+	}
+	return 0;
 }

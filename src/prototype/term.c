@@ -1811,6 +1811,10 @@ static void invalidate_normalization_cache(struct prototype_term_db* db) {
 	}
 }
 
+void prototype_term_notify_graph_mutation(struct prototype_term_db* db) {
+	invalidate_normalization_cache(db);
+}
+
 static int add_term(struct prototype_term_db* db, struct prototype_term term, uint32_t* p_ret) {
 	if (!db || !p_ret || reserve_slot(db->term_count, db->term_capacity) != 0) {
 		return -1;
@@ -3613,21 +3617,28 @@ static int constructor_member_matches(
 	if (term->as.constructor.constructor_id != match_case->constructor_id) {
 		return 0;
 	}
-	if (term->as.constructor.owner == match_case->constructor_owner) {
-		return 1;
-	}
 	if (match_case->constructor_owner == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
-	int equal = 0;
+	uint32_t term_representation_id;
+	uint32_t case_representation_id;
 	(void)type_declarations;
 	(void)definitions;
-	return prototype_term_core_shape_equal(
+	/*
+	 * Constructor matching belongs to the erased computation graph. A source
+	 * TYPE_VIEW may remain inside a substituted type application, so structural
+	 * comparison of owner terms would make List Nat fail to match itself after
+	 * beta substitution. The representation and ordinal are the runtime tag.
+	 */
+	return constructor_owner_representation_id(
 		terms,
 		term->as.constructor.owner,
+		&term_representation_id
+	) == 0 && constructor_owner_representation_id(
+		terms,
 		match_case->constructor_owner,
-		&equal
-	) == 0 && equal;
+		&case_representation_id
+	) == 0 && term_representation_id == case_representation_id;
 }
 
 static int term_is_constructor_like(const struct prototype_term* term) {
@@ -4482,20 +4493,27 @@ static int normalization_equal_at_depth(
 	}
 
 	switch (left_term->tag) {
-		case PROTOTYPE_TERM_CONSTRUCTOR:
+		case PROTOTYPE_TERM_CONSTRUCTOR: {
+			uint32_t left_representation_id;
+			uint32_t right_representation_id;
 			if (left_term->as.constructor.constructor_id != right_term->as.constructor.constructor_id) {
 				return 0;
 			}
-			return normalization_equal_at_depth(
-				db,
-				type_declarations,
-				definitions,
-				options,
-				left_term->as.constructor.owner,
-				right_term->as.constructor.owner,
-				p_equal,
-				depth + 1
-			);
+			if (constructor_owner_representation_id(
+					db,
+					left_term->as.constructor.owner,
+					&left_representation_id
+				) != 0 ||
+				constructor_owner_representation_id(
+					db,
+					right_term->as.constructor.owner,
+					&right_representation_id
+				) != 0) {
+				return -1;
+			}
+			*p_equal = left_representation_id == right_representation_id;
+			return 0;
+		}
 		case PROTOTYPE_TERM_APP: {
 			int equal = 0;
 			if (normalization_equal_at_depth(

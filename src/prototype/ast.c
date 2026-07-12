@@ -5978,6 +5978,7 @@ int prototype_artifact_apply_term_relocations(
 			}
 		}
 	}
+	prototype_term_notify_graph_mutation(target_terms);
 	return prototype_artifact_interface_collect_dependencies(
 		target_interface,
 		target_terms,
@@ -6739,6 +6740,7 @@ int prototype_artifact_append_graph(
 	for (size_t i = 0; i < source_interface->dependency_count; ++i) {
 		appended_interface->dependencies[i] = source_interface->dependencies[i];
 	}
+	prototype_term_notify_graph_mutation(target_terms);
 	return 0;
 }
 
