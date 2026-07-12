@@ -7821,6 +7821,7 @@ struct compile_ref {
 #define PROTOTYPE_JUDGEMENT_DELTA_CAPACITY 4096
 #define PROTOTYPE_OPERATION_CONSTRAINT_CAPACITY 16384
 #define PROTOTYPE_OPERATION_MOTIVE_EQUATION_CAPACITY 4096
+#define PROTOTYPE_OPERATION_SOLVER_INPUT_FACT_CAPACITY 2048
 
 enum operation_classifier_constraint_kind {
 	OPERATION_CONSTRAINT_HAS_TYPE = 1,
@@ -7837,6 +7838,17 @@ struct operation_classifier_constraint {
 	uint32_t left;
 	uint32_t right;
 	uint32_t aux;
+};
+
+/*
+ * Input facts belong to the solver invocation, not to JudgementDB. They are
+ * declarations and binder assumptions collected while lowering. The same
+ * facts become proof relations only after the solver has found classifiers
+ * for the operation graph.
+ */
+struct operation_solver_input_fact {
+	uint32_t subject;
+	uint32_t classifier;
 };
 
 /*
@@ -7883,6 +7895,9 @@ struct operation_classifier_solver {
 	struct operation_classifier_constraint
 		constraints[PROTOTYPE_OPERATION_CONSTRAINT_CAPACITY];
 	uint32_t constraint_count;
+	struct operation_solver_input_fact
+		input_facts[PROTOTYPE_OPERATION_SOLVER_INPUT_FACT_CAPACITY];
+	uint32_t input_fact_count;
 };
 
 struct compile_context {
@@ -9136,7 +9151,7 @@ static int queue_binder_assumption(
 	return 0;
 }
 
-static int compile_phase_seed_binder_assumptions(struct compile_context* ctx) {
+static int materialize_pending_binder_assumptions(struct compile_context* ctx) {
 	if (!ctx) {
 		return -1;
 	}
@@ -9196,7 +9211,7 @@ static int queue_declaration_fact(
 	return 0;
 }
 
-static int compile_phase_seed_declaration_facts(struct compile_context* ctx) {
+static int materialize_pending_declaration_facts(struct compile_context* ctx) {
 	if (!ctx) {
 		return -1;
 	}
@@ -12285,6 +12300,86 @@ static int operation_solver_set_ih_motive_application(
 		previous_argument == argument_operation ? 0 : -1;
 }
 
+static int operation_solver_add_input_fact(
+	struct compile_context* ctx,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	if (!ctx || subject >= ctx->terms->term_count ||
+		classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < ctx->classifier_solver.input_fact_count; ++i) {
+		const struct operation_solver_input_fact* fact =
+			&ctx->classifier_solver.input_facts[i];
+		if (fact->subject == subject && fact->classifier == classifier) {
+			return 0;
+		}
+	}
+	if (ctx->classifier_solver.input_fact_count >=
+		PROTOTYPE_OPERATION_SOLVER_INPUT_FACT_CAPACITY) {
+		return -1;
+	}
+	ctx->classifier_solver.input_facts[
+		ctx->classifier_solver.input_fact_count++
+	] = (struct operation_solver_input_fact){subject, classifier};
+	return 0;
+}
+
+static int operation_solver_initialize_input_facts(struct compile_context* ctx) {
+	if (!ctx) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < ctx->pending_binder_assumption_count; ++i) {
+		const struct pending_binder_assumption* pending =
+			&ctx->pending_binder_assumptions[i];
+		if (operation_solver_add_input_fact(
+				ctx, pending->binder_var, pending->classifier
+			) != 0) {
+			return -1;
+		}
+	}
+	for (uint32_t i = 0; i < ctx->pending_declaration_fact_count; ++i) {
+		const struct pending_declaration_fact* pending =
+			&ctx->pending_declaration_facts[i];
+		if (operation_solver_add_input_fact(
+				ctx, pending->subject, pending->classifier
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int operation_solver_collect_input_classifiers(
+	struct compile_context* ctx,
+	uint32_t subject,
+	uint32_t* classifiers,
+	uint32_t classifier_capacity,
+	uint32_t* p_classifier_count
+) {
+	if (!ctx || !classifiers || !p_classifier_count ||
+		subject >= ctx->terms->term_count) {
+		return -1;
+	}
+	*p_classifier_count = 0;
+	for (uint32_t i = 0; i < ctx->classifier_solver.input_fact_count; ++i) {
+		const struct operation_solver_input_fact* fact =
+			&ctx->classifier_solver.input_facts[i];
+		if (fact->subject != subject ||
+			graph_classifier_list_contains_normalization_equal(
+				ctx, classifiers, *p_classifier_count, fact->classifier
+			)) {
+			continue;
+		}
+		if (*p_classifier_count >= classifier_capacity) {
+			return -1;
+		}
+		classifiers[(*p_classifier_count)++] = fact->classifier;
+	}
+	return 0;
+}
+
 static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata ||
 		ctx->metadata->operation_count > 4096) {
@@ -12297,6 +12392,9 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 		ctx->classifier_solver.ih_motive_operations[i] = PROTOTYPE_INVALID_ID;
 		ctx->classifier_solver.ih_argument_operations[i] = PROTOTYPE_INVALID_ID;
 		ctx->classifier_solver.motive_terms[i] = PROTOTYPE_INVALID_ID;
+	}
+	if (operation_solver_initialize_input_facts(ctx) != 0) {
+		return -1;
 	}
 	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
 		const struct prototype_operation_node* operation = &ctx->metadata->operations[i];
@@ -12548,7 +12646,7 @@ static int operation_solver_solve(struct compile_context* ctx) {
 					{
 						uint32_t classifiers[32];
 						uint32_t classifier_count = 0;
-						if (collect_graph_classifiers(
+						if (operation_solver_collect_input_classifiers(
 								ctx,
 								ctx->metadata->operations[constraint->target].core_term,
 								classifiers,
@@ -13647,6 +13745,10 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
+	if (materialize_pending_binder_assumptions(ctx) != 0 ||
+		materialize_pending_declaration_facts(ctx) != 0) {
+		return -1;
+	}
 	if (operation_solver_materialize_match_pattern_assumptions(ctx) != 0) {
 		return -1;
 	}
@@ -14287,16 +14389,10 @@ int prototype_ast_compile_pending_with_imports(
 	if (compile_phase_build_graph(&ctx) != 0) {
 		return -1;
 	}
-	if (compile_phase_seed_binder_assumptions(&ctx) != 0) {
-		return -1;
-	}
 	if (begin_resolution_iteration(&ctx, 0, count_unresolved_resolution_items(&ctx)) != 0) {
 		return -1;
 	}
 	if (compile_phase_infer_imported_constructor_classifiers(&ctx) != 0) {
-		return -1;
-	}
-	if (compile_phase_seed_declaration_facts(&ctx) != 0) {
 		return -1;
 	}
 	if (canonicalize_type_view_core_refs(terms, type_declarations) != 0 ||

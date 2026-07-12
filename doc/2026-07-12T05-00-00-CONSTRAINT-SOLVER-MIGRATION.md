@@ -45,10 +45,12 @@ intro/declaration facts are materialized only after the operation classifier
 is known. A small integer retains both valid `Int` and `Int64` literal
 derivations, while the source operation's default classifier remains `Int64`.
 
-Lambda binder and declaration facts are still seeded before solving because
-the atom constraint path currently reads them through `collect_graph_classifiers`.
-Moving these input facts into the solver arena is the remaining part of the
-JudgementDB separation; they are not provisional synthesis conclusions.
+Lambda binder and declaration facts are copied into a solver-owned input-fact
+table for each solve invocation. The `HasType` atom constraint reads only that
+table; it no longer searches committed or pending JudgementDB relations.
+After the operation classifiers are resolved, the same pending facts are
+materialized as binder-assumption and declaration proofs. Thus JudgementDB is
+an output of synthesis, not its mutable input.
 
 The worklist has a bounded number of passes and rejects non-convergence; it
 does not silently publish a partially progressed fixed point.
@@ -149,10 +151,7 @@ The following items are intentionally not claimed as complete:
    resolved argument. Reverse Pi propagation requires an explicit separation
    between value application and type-level application before it is safe to
    add: the current operation graph contains both forms.
-7. Lambda binder and declaration input facts must move from the pre-solver
-   JudgementDelta into solver-owned fact tables before all JudgementDB writes
-   can be deferred until materialization.
-8. `SOLVED_MATCH_MOTIVE` currently records its branch-classifier evidence as
+7. `SOLVED_MATCH_MOTIVE` currently records its branch-classifier evidence as
    an artifact-slicing dependency rather than explicit variable-arity proof
    premises. The proof representation should eventually encode that evidence
    directly.
