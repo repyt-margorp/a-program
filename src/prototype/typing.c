@@ -238,7 +238,8 @@ static int classifier_kernel_normalization_equal(
 		return 1;
 	}
 	if (term_is_universe_var(terms, expected) && term_is_universe_var(terms, actual)) {
-		return 1;
+		return terms->terms[expected].as.universe_var.level_var ==
+			terms->terms[actual].as.universe_var.level_var;
 	}
 	int equal = 0;
 	return prototype_term_normalization_equal_with_profile(

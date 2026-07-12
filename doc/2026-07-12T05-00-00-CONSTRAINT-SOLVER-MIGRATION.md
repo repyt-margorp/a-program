@@ -105,8 +105,10 @@ The following items are intentionally not claimed as complete:
    agrees with an available branch classifier without inserting cyclic proof
    edges. It still needs operation-identity evidence in the proof object;
    current validation can only query core-term branch relations.
-4. Universe level constraints remain in `UniverseDB`; they have not yet been
-   moved into the solver arena.
+4. DefEq now distinguishes `Universe(u)` and `Universe(v)` by level-variable
+   identity. Universe level constraints, cumulativity, and Pi `max(u, v)`
+   formation remain in `UniverseDB`; they have not yet been moved into the
+   solver arena.
 5. Constructor schema is still represented by both graph-level
    `classifier_family` and readback metadata. The graph-only constructor
    schema migration, including dependent field telescopes, is a later phase.

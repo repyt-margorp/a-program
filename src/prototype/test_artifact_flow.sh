@@ -30,6 +30,15 @@ cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
 	-o "$TMP_DIR/whnf_profile_cache_check"
 "$TMP_DIR/whnf_profile_cache_check"
 
+cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
+	src/prototype/universe_defeq_check.c \
+	src/prototype/term.c \
+	src/prototype/type_declaration.c \
+	src/prototype/typing.c \
+	src/prototype/symbol.c \
+	-o "$TMP_DIR/universe_defeq_check"
+"$TMP_DIR/universe_defeq_check"
+
 c_enum_value_in() {
 	awk -v enum_name="$2" -v target_name="$3" '
 		$0 ~ "enum " enum_name " " {
