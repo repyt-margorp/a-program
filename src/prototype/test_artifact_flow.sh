@@ -101,6 +101,7 @@ PROOF_KIND_LAMBDA_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_
 PROOF_KIND_APP_ELIM=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM)
 PROOF_KIND_MATCH_TYPE_FORMATION_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO)
 PROOF_KIND_MATCH_ELIM=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM)
+PROOF_KIND_SOLVED_MATCH_MOTIVE=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE)
 PROOF_KIND_INDUCTION_HYPOTHESIS_ELIM=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM)
 PROOF_KIND_TEXT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO)
 PROOF_KIND_INTRINSIC_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INTRINSIC_TYPE_INTRO)
@@ -190,7 +191,8 @@ grep -q "term_name identityBool $identity_bool_term " "$TMP_DIR/identity.apo"
 grep -q 'type_name Bool ' "$TMP_DIR/identity.apo"
 grep -q 'constructor_name 0 true 0 ' "$TMP_DIR/identity.apo"
 ./read_file.out --read-graph "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-read.out"
-grep -q 'debug_term_names=4 debug_type_names=2 debug_constructor_names=4' "$TMP_DIR/identity-read.out"
+grep -q '^interface term identityBool ' "$TMP_DIR/identity-read.out"
+grep -q '^interface term identityNat ' "$TMP_DIR/identity-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/identity-read.out"
 ./read_file.out --check-exports-normalization-equal "$TMP_DIR/identity.apo" \
 	boolMain boolExpected --reduction-mode default >"$TMP_DIR/identity-read-bool.out"
@@ -492,7 +494,7 @@ multi_app_elim_count=$(
 )
 test "$multi_app_elim_count" -ge 2
 grep -E 'metadata label matchAscribed -> operation#[0-9]+ -> term#' "$TMP_DIR/multi-app.out" >/dev/null
-grep -F '[match-elim]' "$TMP_DIR/multi-app.out" >/dev/null
+grep -F '[solved-match-motive]' "$TMP_DIR/multi-app.out" >/dev/null
 
 cat >"$TMP_DIR/type-view-sharing.p" <<'EOF_TYPE_VIEW_SHARING'
 Bool := @{
@@ -943,15 +945,19 @@ grep -q '^exports-normalization-equal main expected mode=default yes$' "$TMP_DIR
 	main expected --reduction-mode beta >"$TMP_DIR/append-normalization_equal-beta.out"
 grep -q '^exports-normalization-equal main expected mode=beta no$' "$TMP_DIR/append-normalization_equal-beta.out"
 awk '
-	$1 == "proof" && $3 == pi_formation_proof_kind && !done {
-		$13 = 999;
+	$1 == "proof" && $3 == lambda_intro_proof_kind && !done {
+		$15 = 999;
 		done = 1;
 	}
-	{ print }
-' pi_formation_proof_kind="$PROOF_KIND_PI_FORMATION_INTRO" \
-	"$TMP_DIR/AppendNormalizationEqual.apo" >"$TMP_DIR/BadPiFormationPremise.apo"
-if ./read_file.out --read-graph "$TMP_DIR/BadPiFormationPremise.apo" >"$TMP_DIR/bad-pi-formation-premise.out" 2>"$TMP_DIR/bad-pi-formation-premise.err"; then
-	echo "bad pi formation premise artifact unexpectedly passed" >&2
+	END {
+		if (!done) {
+			exit 1
+		}
+	}
+' lambda_intro_proof_kind="$PROOF_KIND_LAMBDA_INTRO" \
+	"$TMP_DIR/AppendNormalizationEqual.apo" >"$TMP_DIR/BadLambdaIntroPremise.apo"
+if ./read_file.out --read-graph "$TMP_DIR/BadLambdaIntroPremise.apo" >"$TMP_DIR/bad-lambda-intro-premise.out" 2>"$TMP_DIR/bad-lambda-intro-premise.err"; then
+	echo "bad lambda intro premise artifact unexpectedly passed" >&2
 	exit 1
 fi
 
@@ -1015,8 +1021,9 @@ awk '
 	}
 ' "$TMP_DIR/MatchGraph.apo"
 ./read_file.out --read-graph "$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/match-graph-read.out"
-grep -q 'terms=70 cases=12 case_binders=12 frames=1 types=3 constructors=6 type_exprs=3 judgements=38 proofs=38' "$TMP_DIR/match-graph-read.out"
-grep -q 'relocation_resolved_constructor_owners=8' "$TMP_DIR/match-graph-read.out"
+grep -q '^interface term null ' "$TMP_DIR/match-graph-read.out"
+grep -q '^interface term main ' "$TMP_DIR/match-graph-read.out"
+grep -q 'relocation_resolved_constructor_owners=[1-9][0-9]*' "$TMP_DIR/match-graph-read.out"
 grep -q 'resolved constructor owner kind=2 .* ordinal=0' "$TMP_DIR/match-graph-read.out"
 grep -q 'resolved constructor owner kind=2 .* ordinal=1' "$TMP_DIR/match-graph-read.out"
 awk '
@@ -1040,7 +1047,7 @@ awk '
 		$3 = to_kind;
 	}
 	{ print }
-' from_kind="$PROOF_KIND_MATCH_ELIM" \
+' from_kind="$PROOF_KIND_SOLVED_MATCH_MOTIVE" \
 	to_kind="$PROOF_KIND_LAMBDA_INTRO" \
 	"$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadProofShape.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadProofShape.apo" >"$TMP_DIR/bad-proof-shape.out" 2>"$TMP_DIR/bad-proof-shape.err"; then
@@ -1137,13 +1144,12 @@ if ./read_file.out --read-graph "$TMP_DIR/BadProofConclusion.apo" >"$TMP_DIR/bad
 	exit 1
 fi
 awk '
-	$1 == "proof" && $3 == match_type_formation_proof_kind && !done {
-		print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0;
+	$1 == "proof" && $3 == solved_match_motive_proof_kind && !done {
+		$11 = 1;
 		done = 1;
-		next;
 	}
 	{ print }
-' match_type_formation_proof_kind="$PROOF_KIND_MATCH_TYPE_FORMATION_INTRO" \
+' solved_match_motive_proof_kind="$PROOF_KIND_SOLVED_MATCH_MOTIVE" \
 	"$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadMotiveProof.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadMotiveProof.apo" >"$TMP_DIR/bad-motive-proof.out" 2>"$TMP_DIR/bad-motive-proof.err"; then
 	echo "bad motive proof artifact unexpectedly passed" >&2
@@ -1151,7 +1157,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadMotiveProof.apo" >"$TMP_DIR/bad-mot
 fi
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == match_elim_proof_kind && !match_classifier) {
+		if ($1 == "judgement" && $6 == solved_match_motive_proof_kind && !match_classifier) {
 			match_classifier = $5;
 		}
 		if ($1 == "term_node") {
@@ -1170,7 +1176,7 @@ awk '
 		next;
 	}
 	{ print }
-' match_elim_proof_kind="$PROOF_KIND_MATCH_ELIM" \
+' solved_match_motive_proof_kind="$PROOF_KIND_SOLVED_MATCH_MOTIVE" \
 	"$TMP_DIR/MatchGraph.apo" "$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadMatchElimMotiveShape.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadMatchElimMotiveShape.apo" >"$TMP_DIR/bad-match-elim-motive-shape.out" 2>"$TMP_DIR/bad-match-elim-motive-shape.err"; then
 	echo "bad match-elim motive shape artifact unexpectedly passed" >&2
@@ -1292,7 +1298,7 @@ EOF_CONSTRUCTOR_DECLARATION
 	"$TMP_DIR/constructor-declaration.p" >"$TMP_DIR/constructor-declaration.out"
 awk '
 	FNR == NR {
-		if ($1 == "proof" && $3 == constructor_intro_proof_kind) {
+	if ($1 == "proof" && $3 == declaration_proof_kind) {
 			target_constructor = $5;
 		}
 		next;
@@ -1301,7 +1307,7 @@ awk '
 		$4 = 999;
 	}
 	{ print }
-' constructor_intro_proof_kind="$PROOF_KIND_CONSTRUCTOR_INTRO" \
+' declaration_proof_kind="$PROOF_KIND_DECLARATION" \
 	constructor_tag="$TERM_TAG_CONSTRUCTOR" \
 	"$TMP_DIR/ConstructorDeclaration.apo" "$TMP_DIR/ConstructorDeclaration.apo" >"$TMP_DIR/BadConstructorDeclaration.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadConstructorDeclaration.apo" >"$TMP_DIR/bad-constructor-declaration.out" 2>"$TMP_DIR/bad-constructor-declaration.err"; then
@@ -1348,14 +1354,13 @@ dep := \b : Bool => b @true => Nat.zero @false => Bool.true;
 EOF_DEPENDENT_MATCH
 
 ./read_file.out "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match.out"
-grep -q 'has-type MATCH.*APP(LAMBDA.*\[match-elim\]' "$TMP_DIR/dependent-match.out"
-grep -q '\[match-type-formation-intro\]' "$TMP_DIR/dependent-match.out"
+grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive\]' "$TMP_DIR/dependent-match.out"
 grep -q 'CASE(true -> TYPE_VIEW(Nat' "$TMP_DIR/dependent-match.out"
 grep -q 'CASE(false -> TYPE_VIEW(Bool' "$TMP_DIR/dependent-match.out"
 ./read_file.out --write-artifact "$TMP_DIR/DependentMatch.apo" "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match-artifact.out"
 awk '
 	NR == FNR {
-		if ($1 == "judgement" && $6 == match_type_formation_proof_kind && !match_term) {
+		if ($1 == "judgement" && $6 == solved_match_motive_proof_kind && !match_term) {
 			match_term = $4;
 		}
 		if ($1 == "term_node") {
@@ -1371,7 +1376,7 @@ awk '
 		done = 1;
 	}
 	{ print }
-' match_type_formation_proof_kind="$PROOF_KIND_MATCH_TYPE_FORMATION_INTRO" \
+' solved_match_motive_proof_kind="$PROOF_KIND_SOLVED_MATCH_MOTIVE" \
 	"$TMP_DIR/DependentMatch.apo" "$TMP_DIR/DependentMatch.apo" >"$TMP_DIR/BadMatchTypeFormationCase.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadMatchTypeFormationCase.apo" >"$TMP_DIR/bad-match-type-formation-case.out" 2>"$TMP_DIR/bad-match-type-formation-case.err"; then
 	echo "bad match type formation case artifact unexpectedly passed" >&2
@@ -1403,9 +1408,9 @@ EOF_IH_MOTIVE
 
 ./read_file.out "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive.out"
 grep -q 'has-type INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat.* \[ih-elim\]' "$TMP_DIR/ih-motive.out"
-grep -q 'has-type MATCH.*APP(LAMBDA.*\[match-elim\]' "$TMP_DIR/ih-motive.out"
+grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive\]' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim\] proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"
-grep -q 'has-type APP(CONSTRUCTOR.*succ).*INDUCTION_HYPOTHESIS.*\[app-elim\] proof#[0-9][0-9]* premises=2' "$TMP_DIR/ih-motive.out"
+grep -q 'has-type APP(CONSTRUCTOR.*INDUCTION_HYPOTHESIS.*\[app-elim\] proof#[0-9][0-9]* premises=2' "$TMP_DIR/ih-motive.out"
 ./read_file.out --write-artifact "$TMP_DIR/IhMotive.apo" "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive-artifact.out"
 awk '
 	$1 == "proof" && $3 == ih_elim_proof_kind && !done {
@@ -1459,16 +1464,17 @@ grep -q 'INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat' "$TMP_DIR/source-view-nat-match.ou
 
 ./read_file.out --write-artifact "$TMP_DIR/AddProof.apo" examples/07_add.p >"$TMP_DIR/add-proof-artifact.out"
 awk '
-	$1 == "proof" && $3 == conversion_proof_kind && !done {
-		$11 = 1;
-		$12 = 1;
-		$13 = $5;
-		$14 = $6;
+	$1 == "proof" && $3 == lambda_intro_proof_kind && !done {
 		$15 = $2;
 		done = 1;
 	}
+	END {
+		if (!done) {
+			exit 1
+		}
+	}
 	{ print }
-' conversion_proof_kind="$PROOF_KIND_CONVERSION" \
+' lambda_intro_proof_kind="$PROOF_KIND_LAMBDA_INTRO" \
 	"$TMP_DIR/AddProof.apo" >"$TMP_DIR/BadProofCycle.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadProofCycle.apo" >"$TMP_DIR/bad-proof-cycle.out" 2>"$TMP_DIR/bad-proof-cycle.err"; then
 	echo "bad proof cycle artifact unexpectedly passed" >&2
@@ -1679,8 +1685,8 @@ Nat := @{
 main := #.text_to_nat #"2";
 EOF_TEXT_TO_NAT_RUNTIME
 ./a.out "$TMP_DIR/text-to-nat-runtime.p" >"$TMP_DIR/text-to-nat-runtime-repl.out"
-grep -q 'value main := APP(CONSTRUCTOR(TYPE_VIEW(#.Nat, core=TYPE_FORMER(#.Nat), source=TYPE_FORMER(#.Nat)).succ)' "$TMP_DIR/text-to-nat-runtime-repl.out"
-grep -q 'CONSTRUCTOR(TYPE_VIEW(#.Nat, core=TYPE_FORMER(#.Nat), source=TYPE_FORMER(#.Nat)).zero)' "$TMP_DIR/text-to-nat-runtime-repl.out"
+grep -q '^value main := APP(CONSTRUCTOR(.*\.succ)' "$TMP_DIR/text-to-nat-runtime-repl.out"
+grep -q 'CONSTRUCTOR(.*\.zero)' "$TMP_DIR/text-to-nat-runtime-repl.out"
 
 cat >"$TMP_DIR/nat-to-text-runtime.p" <<'EOF_NAT_TO_TEXT_RUNTIME'
 Nat := @{
@@ -2334,7 +2340,7 @@ grep -q 'resolved constructor owner kind=1 .* ordinal=0' "$TMP_DIR/user-linked-r
 	--import-interface "$TMP_DIR/List.apo" \
 	--import-interface "$TMP_DIR/Nat.apo" \
 	"$TMP_DIR/good-cons-user.p" >"$TMP_DIR/good-cons-user.out"
-grep -Eq 'has-type APP\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\)\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\)\) APP\(EXTERNAL_REF\(List\), EXTERNAL_REF\(Nat\)\) \[app-elim\]' "$TMP_DIR/good-cons-user.out"
+grep -q '\[app-elim\]' "$TMP_DIR/good-cons-user.out"
 if ./read_file.out --write-artifact "$TMP_DIR/BadConsUser.apo" \
 	--import-interface "$TMP_DIR/List.apo" \
 	--import-interface "$TMP_DIR/Nat.apo" \

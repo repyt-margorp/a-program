@@ -34,6 +34,17 @@ motives, lambda/application derivations, and IH derivations are then
 materialized from the resolved operation classifiers. `JudgementDB` is not
 used as the solver's global candidate store.
 
+Lambda and application materialization takes the solved source-operation
+premise classifiers explicitly. It does not rediscover them by searching for
+every judgement whose subject is the same shared core term. Thus the two
+source operations for the shared core `\x => x` can materialize distinct
+`Bool -> Bool` and `Nat -> Nat` derivations without treating either type as a
+property of the core node itself. Declared external references, intrinsics,
+text literals, and integer literals are likewise source operations; their
+intro/declaration facts are materialized only after the operation classifier
+is known. A small integer retains both valid `Int` and `Int64` literal
+derivations, while the source operation's default classifier remains `Int64`.
+
 Lambda binder and declaration facts are still seeded before solving because
 the atom constraint path currently reads them through `collect_graph_classifiers`.
 Moving these input facts into the solver arena is the remaining part of the
@@ -49,6 +60,22 @@ The compiler first checks source-operation binder use before consulting a core
 classifier's free binders. This prevents an unrelated shared core `VAR` from
 making a branch appear dependent. A source use together with a matching free
 binder is conservatively treated as a dependent branch.
+
+Before checking free binders, the classifier is reduced to kernel WHNF. This
+matters for nested matches: a constant inner motive may be written as
+`APP(\_ => Int, scrutinee)`, whose raw argument mentions outer case binders
+even though its beta-reduced classifier is simply `Int`.
+
+Artifact slicing also retains branch-body judgement relations required by a
+`SOLVED_MATCH_MOTIVE` validator. Those are semantic dependencies of the
+variable-arity motive proof, even though they are not stored as a fixed proof
+premise array.
+
+When representation interning merges two type declarations, rebinding
+`TYPE_FORMER` anchors now remaps all graph edges to the representative core
+node. This preserves the intended invariant: `Bool` and `Two` may retain
+different `TYPE_VIEW` identities while their erased type-former core is one
+node.
 
 ## Recursive Constant Motives
 
@@ -125,6 +152,10 @@ The following items are intentionally not claimed as complete:
 7. Lambda binder and declaration input facts must move from the pre-solver
    JudgementDelta into solver-owned fact tables before all JudgementDB writes
    can be deferred until materialization.
+8. `SOLVED_MATCH_MOTIVE` currently records its branch-classifier evidence as
+   an artifact-slicing dependency rather than explicit variable-arity proof
+   premises. The proof representation should eventually encode that evidence
+   directly.
 
 ## Verification
 

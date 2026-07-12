@@ -1,6 +1,6 @@
 #include "term.h"
 #include "type_declaration.h"
-#include "typing.h"
+#include "judgement.h"
 
 #include <stdint.h>
 

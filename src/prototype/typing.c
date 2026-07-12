@@ -3656,7 +3656,7 @@ static int host_signature_classifier(
 	return 0;
 }
 
-static int intrinsic_classifier(
+int prototype_judgement_intrinsic_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term* intrinsic,
@@ -3772,7 +3772,7 @@ static int infer_intrinsic_classifier(
 		return -1;
 	}
 	uint32_t classifier;
-	if (intrinsic_classifier(
+	if (prototype_judgement_intrinsic_classifier(
 			terms,
 			type_declarations,
 			&terms->terms[term_id],
@@ -6026,6 +6026,233 @@ int prototype_judgement_expand_primitives(
 		}
 	}
 	return 0;
+}
+
+int prototype_judgement_delta_record_lambda_intro(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t binder_classifier,
+	uint32_t body_classifier
+) {
+	if (!delta || !terms || !type_declarations ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_LAMBDA) ||
+		!term_exists(terms, classifier) ||
+		!term_exists(terms, binder_classifier) ||
+		!term_exists(terms, body_classifier)) {
+		return -1;
+	}
+	const struct prototype_term* lambda = &terms->terms[subject];
+	uint32_t lambda_pi;
+	uint32_t domain;
+	uint32_t codomain_family;
+	uint32_t binder_var;
+	uint32_t expected_body_classifier;
+	if (classifier_kernel_as_pi(
+			terms,
+			type_declarations,
+			NULL,
+			classifier,
+			&lambda_pi,
+			&domain,
+			&codomain_family
+		) != 0 ||
+		prototype_term_var(terms, lambda->as.lambda.binder_id, &binder_var) != 0 ||
+		pi_codomain_after_argument(
+			terms,
+			type_declarations,
+			lambda_pi,
+			binder_var,
+			&expected_body_classifier
+		) != 0 ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, domain, binder_classifier
+		) ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms,
+			type_declarations,
+			expected_body_classifier,
+			body_classifier
+		)) {
+		return -1;
+	}
+	(void)codomain_family;
+	uint32_t premise_subjects[2] = {
+		binder_var,
+		lambda->as.lambda.body
+	};
+	uint32_t premise_classifiers[2] = {
+		binder_classifier,
+		body_classifier
+	};
+	return add_delta_relation_with_premises(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO,
+		premise_subjects,
+		premise_classifiers,
+		2
+	);
+}
+
+int prototype_judgement_delta_record_app_elim(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t function_classifier,
+	uint32_t argument_classifier
+) {
+	if (!delta || !terms || !type_declarations ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_APP) ||
+		!term_exists(terms, classifier) ||
+		!term_exists(terms, function_classifier) ||
+		!term_exists(terms, argument_classifier)) {
+		return -1;
+	}
+	const struct prototype_term* app = &terms->terms[subject];
+	uint32_t function_pi;
+	uint32_t domain;
+	uint32_t codomain_family;
+	uint32_t result_classifier;
+	if (classifier_kernel_as_pi(
+			terms,
+			type_declarations,
+			NULL,
+			function_classifier,
+			&function_pi,
+			&domain,
+			&codomain_family
+		) != 0 ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, domain, argument_classifier
+		) ||
+		pi_codomain_after_argument(
+			terms,
+			type_declarations,
+			function_pi,
+			app->as.app.argument,
+			&result_classifier
+		) != 0 ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, result_classifier, classifier
+		)) {
+		return -1;
+	}
+	(void)codomain_family;
+	uint32_t premise_subjects[2] = {
+		app->as.app.function,
+		app->as.app.argument
+	};
+	uint32_t premise_classifiers[2] = {
+		function_classifier,
+		argument_classifier
+	};
+	return add_delta_relation_with_premises(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM,
+		premise_subjects,
+		premise_classifiers,
+		2
+	);
+}
+
+int prototype_judgement_delta_record_intrinsic_type(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	if (!delta || !terms || !type_declarations ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_INTRINSIC) ||
+		!term_exists(terms, classifier)) {
+		return -1;
+	}
+	uint32_t inferred_classifier;
+	if (prototype_judgement_intrinsic_classifier(
+			terms,
+			type_declarations,
+			&terms->terms[subject],
+			&inferred_classifier
+		) != 0 ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms,
+			type_declarations,
+			inferred_classifier,
+			classifier
+		)) {
+		return -1;
+	}
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_INTRINSIC_TYPE_INTRO
+	);
+}
+
+int prototype_judgement_delta_record_text_literal(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	uint32_t text;
+	if (!delta || !terms ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_TEXT_LITERAL) ||
+		!term_exists(terms, classifier) ||
+		prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_TEXT, &text) != 0 ||
+		text != classifier) {
+		return -1;
+	}
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO
+	);
+}
+
+int prototype_judgement_delta_record_int_literal(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	uint32_t integer;
+	uint32_t integer64;
+	if (!delta || !terms ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_INT_LITERAL) ||
+		!term_exists(terms, classifier) ||
+		prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_INT64, &integer64) != 0) {
+		return -1;
+	}
+	if (classifier != integer64) {
+		if (terms->terms[subject].as.int_literal.value < INT32_MIN ||
+			terms->terms[subject].as.int_literal.value > INT32_MAX ||
+			prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_INT32, &integer) != 0 ||
+			classifier != integer) {
+			return -1;
+		}
+	}
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO
+	);
 }
 
 int prototype_judgement_expand_checked(

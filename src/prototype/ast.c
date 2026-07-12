@@ -1480,6 +1480,54 @@ static int artifact_mark_relation(
 	uint32_t depth
 );
 
+/* A solved motive proof validates each source branch against its synthesized
+ * motive case. Those classifier facts are semantic dependencies even though
+ * the proof has no fixed premise list: the motive can have a variable number
+ * of cases. Keep every branch-body derivation in an artifact slice so the
+ * readback validator sees the same evidence as the source graph. */
+static int artifact_mark_solved_motive_branch_relations(
+	struct artifact_graph_marks* marks,
+	const struct prototype_term_db* terms,
+	const struct prototype_judgement_db* judgement,
+	uint32_t match_term,
+	uint32_t depth
+) {
+	if (!marks || !terms || !judgement || match_term >= terms->term_count ||
+		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH || depth > 512) {
+		return -1;
+	}
+	const struct prototype_term* match = &terms->terms[match_term];
+	for (uint32_t case_index = 0; case_index < match->as.match.case_count;
+		++case_index) {
+		uint32_t case_id = match->as.match.first_case + case_index;
+		if (case_id >= terms->case_count) {
+			return -1;
+		}
+		uint32_t body = terms->cases[case_id].body;
+		int found = 0;
+		for (uint32_t relation_id = 0;
+			relation_id < (uint32_t)judgement->relation_count;
+			++relation_id) {
+			const struct prototype_judgement_relation* relation =
+				&judgement->relations[relation_id];
+			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN ||
+				relation->subject != body) {
+				continue;
+			}
+			if (artifact_mark_relation(
+					marks, terms, judgement, relation_id, depth + 1
+				) != 0) {
+				return -1;
+			}
+			found = 1;
+		}
+		if (!found) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int artifact_mark_relation_for_proof(
 	struct artifact_graph_marks* marks,
 	const struct prototype_term_db* terms,
@@ -1526,6 +1574,12 @@ static int artifact_mark_proof(
 	}
 	if (proof->context_subject != PROTOTYPE_INVALID_ID &&
 		artifact_mark_term(marks, terms, proof->context_subject, depth + 1) != 0) {
+		return -1;
+	}
+	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE &&
+		artifact_mark_solved_motive_branch_relations(
+			marks, terms, judgement, proof->conclusion_subject, depth + 1
+		) != 0) {
 		return -1;
 	}
 	if (artifact_mark_relation_for_proof(marks, terms, judgement, proof_id, depth + 1) != 0) {
@@ -7903,6 +7957,21 @@ static int compile_type_or_value_app(
 	uint32_t argument,
 	uint32_t* p_ret
 );
+static int operation_add(
+	struct compile_context* ctx,
+	int tag,
+	uint32_t core_term,
+	uint32_t classifier,
+	uint32_t source_ast,
+	uint32_t function,
+	uint32_t argument,
+	uint32_t body,
+	uint32_t scrutinee,
+	uint32_t binder_classifier,
+	uint32_t first_case,
+	uint32_t case_count,
+	uint32_t* p_operation
+);
 static int reduce_type_namespace_term(
 	struct compile_context* ctx,
 	uint32_t namespace_term,
@@ -8264,7 +8333,21 @@ static int compile_external_ref_ref(
 	}
 	p_ret->term = term;
 	p_ret->classifier = has_classifier ? classifier : PROTOTYPE_INVALID_ID;
-	return 0;
+	return operation_add(
+		ctx,
+		PROTOTYPE_OPERATION_ATOM,
+		term,
+		p_ret->classifier,
+		PROTOTYPE_INVALID_ID,
+		PROTOTYPE_INVALID_ID,
+		PROTOTYPE_INVALID_ID,
+		PROTOTYPE_INVALID_ID,
+		PROTOTYPE_INVALID_ID,
+		PROTOTYPE_INVALID_ID,
+		PROTOTYPE_INVALID_ID,
+		0,
+		&p_ret->operation
+	);
 }
 
 static int graph_classifier_list_contains_normalization_equal(
@@ -8459,19 +8542,46 @@ static int compile_ref_from_term(
 	p_ref->term = term;
 	p_ref->classifier = PROTOTYPE_INVALID_ID;
 	p_ref->operation = PROTOTYPE_INVALID_ID;
-	uint32_t classifiers[32];
-	uint32_t classifier_count = 0;
-	if (collect_graph_classifiers(
-			ctx,
-			term,
-			classifiers,
-			32,
-			&classifier_count
-		) != 0) {
-		return -1;
-	}
-	if (classifier_count == 1) {
-		p_ref->classifier = classifiers[0];
+	if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_INTRINSIC) {
+		if (prototype_judgement_intrinsic_classifier(
+				ctx->terms,
+				ctx->type_declarations,
+				&ctx->terms->terms[term],
+				&p_ref->classifier
+			) != 0) {
+			return -1;
+		}
+	} else if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_TEXT_LITERAL) {
+		if (prototype_term_make_host_type(
+				ctx->terms,
+				PROTOTYPE_HOST_TYPE_TEXT,
+				&p_ref->classifier
+			) != 0) {
+			return -1;
+		}
+	} else if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_INT_LITERAL) {
+		if (prototype_term_make_host_type(
+				ctx->terms,
+				PROTOTYPE_HOST_TYPE_INT64,
+				&p_ref->classifier
+			) != 0) {
+			return -1;
+		}
+	} else {
+		uint32_t classifiers[32];
+		uint32_t classifier_count = 0;
+		if (collect_graph_classifiers(
+				ctx,
+				term,
+				classifiers,
+				32,
+				&classifier_count
+			) != 0) {
+			return -1;
+		}
+		if (classifier_count == 1) {
+			p_ref->classifier = classifiers[0];
+		}
 	}
 	if (operation_add(
 			ctx, PROTOTYPE_OPERATION_ATOM, term, p_ref->classifier,
@@ -12699,11 +12809,24 @@ static int operation_classifier_captures_case_binder(
 	if (source_uses_binder <= 0) {
 		return source_uses_binder;
 	}
+	uint32_t classifier_whnf;
+	if (prototype_term_whnf_with_profile(
+			ctx->terms,
+			ctx->type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF,
+			classifier,
+			&classifier_whnf
+		) != 0) {
+		return -1;
+	}
 	for (uint32_t i = 0; i < equation->binder_count; ++i) {
 		uint32_t binder_id = ctx->terms->case_binders[
 			equation->first_binder + i
 		].binder_id;
-		if (prototype_term_contains_free_binder(ctx->terms, classifier, binder_id) != 0) {
+		if (prototype_term_contains_free_binder(
+			ctx->terms, classifier_whnf, binder_id
+		) != 0) {
 			return 1;
 		}
 	}
@@ -13530,8 +13653,10 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
 		const struct prototype_operation_node* operation =
 			&ctx->metadata->operations[i];
-		if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
-			operation->classifier == PROTOTYPE_INVALID_ID ||
+		if (operation->tag != PROTOTYPE_OPERATION_MATCH) {
+			continue;
+		}
+		if (operation->classifier == PROTOTYPE_INVALID_ID ||
 			prototype_judgement_delta_record_materialized_match_motive(
 				&ctx->judgement_delta,
 				ctx->terms,
@@ -13551,24 +13676,36 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 				continue;
 			}
 			if (operation->tag == PROTOTYPE_OPERATION_LAMBDA) {
-				int status = prototype_judgement_delta_expand_lambda(
-					&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
-					operation->core_term, classifier
-				);
-				if (status < 0) {
+				if (operation->body >= ctx->metadata->operation_count ||
+					ctx->metadata->operations[operation->body].classifier ==
+						PROTOTYPE_INVALID_ID ||
+					prototype_judgement_delta_record_lambda_intro(
+						&ctx->judgement_delta,
+						ctx->terms,
+						ctx->type_declarations,
+						operation->core_term,
+						classifier,
+						operation->binder_classifier,
+						ctx->metadata->operations[operation->body].classifier
+					) != 0) {
 					return -1;
 				}
 			} else if (operation->tag == PROTOTYPE_OPERATION_APP) {
-				uint32_t derived_classifier = PROTOTYPE_INVALID_ID;
-				int status = prototype_judgement_delta_expand_app(
-					&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
-					operation->core_term, &derived_classifier
-				);
-				if (status < 0 ||
-					(status == 0 && !prototype_judgement_classifier_normalization_equal(
-						ctx->terms, ctx->type_declarations,
-						derived_classifier, classifier
-					))) {
+				if (operation->function >= ctx->metadata->operation_count ||
+					operation->argument >= ctx->metadata->operation_count ||
+					ctx->metadata->operations[operation->function].classifier ==
+						PROTOTYPE_INVALID_ID ||
+					ctx->metadata->operations[operation->argument].classifier ==
+						PROTOTYPE_INVALID_ID ||
+					prototype_judgement_delta_record_app_elim(
+						&ctx->judgement_delta,
+						ctx->terms,
+						ctx->type_declarations,
+						operation->core_term,
+						classifier,
+						ctx->metadata->operations[operation->function].classifier,
+						ctx->metadata->operations[operation->argument].classifier
+					) != 0) {
 					return -1;
 				}
 			} else if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
@@ -13576,6 +13713,60 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 						ctx, i
 					) != 0) {
 					return -1;
+				}
+			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
+				operation->core_term < ctx->terms->term_count &&
+				ctx->terms->terms[operation->core_term].tag ==
+					PROTOTYPE_TERM_INTRINSIC &&
+				prototype_judgement_delta_record_intrinsic_type(
+					&ctx->judgement_delta,
+					ctx->terms,
+					ctx->type_declarations,
+					operation->core_term,
+					classifier
+				) != 0) {
+				return -1;
+			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
+				operation->core_term < ctx->terms->term_count &&
+				ctx->terms->terms[operation->core_term].tag ==
+					PROTOTYPE_TERM_TEXT_LITERAL &&
+				prototype_judgement_delta_record_text_literal(
+					&ctx->judgement_delta,
+					ctx->terms,
+					operation->core_term,
+					classifier
+				) != 0) {
+				return -1;
+			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
+				operation->core_term < ctx->terms->term_count &&
+				ctx->terms->terms[operation->core_term].tag ==
+					PROTOTYPE_TERM_INT_LITERAL) {
+				if (prototype_judgement_delta_record_int_literal(
+						&ctx->judgement_delta,
+						ctx->terms,
+						operation->core_term,
+						classifier
+					) != 0) {
+					return -1;
+				}
+				int64_t value = ctx->terms->terms[
+					operation->core_term
+				].as.int_literal.value;
+				if (value >= INT32_MIN && value <= INT32_MAX) {
+					uint32_t integer;
+					if (prototype_term_make_host_type(
+							ctx->terms,
+							PROTOTYPE_HOST_TYPE_INT32,
+							&integer
+						) != 0 ||
+						prototype_judgement_delta_record_int_literal(
+							&ctx->judgement_delta,
+							ctx->terms,
+							operation->core_term,
+							integer
+						) != 0) {
+						return -1;
+					}
 				}
 			}
 		}

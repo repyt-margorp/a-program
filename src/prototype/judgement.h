@@ -228,6 +228,58 @@ int prototype_judgement_delta_expand_app(
 	uint32_t* p_classifier
 );
 
+/* Materialize a source-operation derivation without choosing premises by
+ * core-term identity. The caller supplies the already solved classifiers of
+ * the source binder/body or function/argument occurrence. */
+int prototype_judgement_delta_record_lambda_intro(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t binder_classifier,
+	uint32_t body_classifier
+);
+
+int prototype_judgement_delta_record_app_elim(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t function_classifier,
+	uint32_t argument_classifier
+);
+
+int prototype_judgement_delta_record_intrinsic_type(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier
+);
+
+int prototype_judgement_delta_record_text_literal(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	uint32_t subject,
+	uint32_t classifier
+);
+
+int prototype_judgement_delta_record_int_literal(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	uint32_t subject,
+	uint32_t classifier
+);
+
+int prototype_judgement_intrinsic_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term* intrinsic,
+	uint32_t* p_classifier
+);
+
 int prototype_judgement_expand_match_motive(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,

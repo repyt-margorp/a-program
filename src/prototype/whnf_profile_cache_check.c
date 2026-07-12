@@ -54,16 +54,16 @@ int main(void) {
 		TYPE_EXPR_CAPACITY
 	);
 
+	uint32_t type_id;
 	uint32_t owner;
 	uint32_t constructor;
 	uint32_t argument;
 	uint32_t lambda;
 	uint32_t application;
 	uint32_t branch;
-	if (prototype_term_external_ref(
-			&term_db,
-			(struct prototype_qualified_name){ PROTOTYPE_BASE_NAMESPACE_ID, 1 },
-			&owner
+	if (prototype_type_declaration_add(&type_db, 1, &type_id) != 0 ||
+		prototype_term_type_instance_make(
+			&term_db, &type_db, type_id, NULL, 0, &owner
 		) != 0 ||
 		prototype_term_constructor(&term_db, owner, 0, &constructor) != 0 ||
 		prototype_term_external_ref(

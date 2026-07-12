@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define PROTOTYPE_EVALUATION_DEPTH_LIMIT 100000
@@ -2345,6 +2346,13 @@ int prototype_term_rebind_type_former_anchors(
 	if (!db || !type_declarations || type_declarations->representations_dirty) {
 		return -1;
 	}
+	uint32_t* remap = calloc(db->term_count, sizeof(*remap));
+	if (!remap && db->term_count > 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < db->term_count; ++i) {
+		remap[i] = (uint32_t)i;
+	}
 	for (size_t i = 0; i < db->term_count; ++i) {
 		struct prototype_term* term = &db->terms[i];
 		if (term->tag != PROTOTYPE_TERM_TYPE_FORMER) {
@@ -2359,6 +2367,71 @@ int prototype_term_rebind_type_former_anchors(
 		term->as.type_former.representation_id =
 			type_declarations->type_declarations[declaration_anchor].representation_id;
 	}
+	for (size_t i = 0; i < db->term_count; ++i) {
+		if (db->terms[i].tag != PROTOTYPE_TERM_TYPE_FORMER) {
+			continue;
+		}
+		for (size_t j = 0; j < i; ++j) {
+			if (db->terms[j].tag == PROTOTYPE_TERM_TYPE_FORMER &&
+				db->terms[j].as.type_former.representation_id ==
+					db->terms[i].as.type_former.representation_id) {
+				remap[i] = (uint32_t)j;
+				break;
+			}
+		}
+	}
+	for (size_t i = 0; i < db->term_count; ++i) {
+		while (remap[i] != i && remap[remap[i]] != remap[i]) {
+			remap[i] = remap[remap[i]];
+		}
+	}
+	for (size_t i = 0; i < db->term_count; ++i) {
+		struct prototype_term* term = &db->terms[i];
+		switch (term->tag) {
+			case PROTOTYPE_TERM_CONSTRUCTOR:
+				term->as.constructor.owner = remap[term->as.constructor.owner];
+				break;
+			case PROTOTYPE_TERM_APP:
+				term->as.app.function = remap[term->as.app.function];
+				term->as.app.argument = remap[term->as.app.argument];
+				break;
+			case PROTOTYPE_TERM_LAMBDA:
+				term->as.lambda.body = remap[term->as.lambda.body];
+				break;
+			case PROTOTYPE_TERM_PI:
+				term->as.pi.domain = remap[term->as.pi.domain];
+				term->as.pi.codomain_family = remap[term->as.pi.codomain_family];
+				break;
+			case PROTOTYPE_TERM_MATCH:
+				term->as.match.scrutinee = remap[term->as.match.scrutinee];
+				break;
+			case PROTOTYPE_TERM_TYPE_VIEW:
+				term->as.type_view.core = remap[term->as.type_view.core];
+				term->as.type_view.source = remap[term->as.type_view.source];
+				break;
+			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+				term->as.induction_hypothesis.argument =
+					remap[term->as.induction_hypothesis.argument];
+				break;
+			case PROTOTYPE_TERM_EFFECT_TYPE:
+				term->as.effect_type.label = remap[term->as.effect_type.label];
+				term->as.effect_type.result = remap[term->as.effect_type.result];
+				break;
+			default:
+				break;
+		}
+	}
+	for (size_t i = 0; i < db->case_count; ++i) {
+		db->cases[i].constructor_owner =
+			db->cases[i].constructor_owner == PROTOTYPE_INVALID_ID ?
+				PROTOTYPE_INVALID_ID : remap[db->cases[i].constructor_owner];
+		db->cases[i].body = remap[db->cases[i].body];
+	}
+	for (size_t i = 0; i < db->match_frame_count; ++i) {
+		db->match_frames[i].match_term = remap[db->match_frames[i].match_term];
+	}
+	free(remap);
+	invalidate_normalization_cache(db);
 	return 0;
 }
 
