@@ -7889,6 +7889,8 @@ static const char* proof_kind_name(int proof_kind) {
 			return "match-type-formation-intro";
 		case PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM:
 			return "match-elim";
+		case PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE:
+			return "solved-match-motive";
 		case PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM:
 			return "ih-elim";
 			case PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO:
