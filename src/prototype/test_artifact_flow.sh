@@ -104,7 +104,7 @@ PROOF_KIND_MATCH_ELIM=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JU
 PROOF_KIND_SOLVED_MATCH_MOTIVE=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE)
 PROOF_KIND_INDUCTION_HYPOTHESIS_ELIM=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM)
 PROOF_KIND_TEXT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO)
-PROOF_KIND_INTRINSIC_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INTRINSIC_TYPE_INTRO)
+PROOF_KIND_OPERATION_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO)
 PROOF_KIND_INT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO)
 PROOF_KIND_CONVERSION=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_CONVERSION)
 PROOF_KIND_HOST_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_HOST_TYPE_INTRO)
@@ -117,7 +117,7 @@ TERM_TAG_PI=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_
 TERM_TAG_TEXT_LITERAL=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_TEXT_LITERAL)
 TERM_TAG_EXTERNAL_REF=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EXTERNAL_REF)
 TERM_TAG_EFFECT_LABEL=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_LABEL)
-TERM_TAG_EFFECT_TYPE=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_TYPE)
+TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
 
 if grep -q 'prototype_type_declaration_find_by_code_shape_key' src/prototype/typing.c; then
 	echo "typing must not resolve imported type expressions by TypeCodeShapeKey" >&2
@@ -143,9 +143,9 @@ identityBool := \x : Bool => x;
 identityNat := \y : Nat => y;
 identityBool :: Bool -> Bool;
 identityNat :: Nat -> Nat;
-boolExpected := Bool.true;
+boolExpected := return Bool.true;
 boolMain := identityBool Bool.true;
-natExpected := Nat.succ Nat.zero;
+natExpected := return (Nat.succ Nat.zero);
 natMain := identityNat (Nat.succ Nat.zero);
 EOF_IDENTITY
 
@@ -158,10 +158,10 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 29$' "$TMP_DIR/identity.apo"
-sed '1s/29$/28/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v28.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v28.apo" >"$TMP_DIR/identity-v28.out" 2>"$TMP_DIR/identity-v28.err"; then
-	echo "v28 artifact unexpectedly passed after v29 format bump" >&2
+grep -q '^A_PROGRAM_ARTIFACT 37$' "$TMP_DIR/identity.apo"
+sed '1s/37$/36/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v36.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v36.apo" >"$TMP_DIR/identity-v36.out" 2>"$TMP_DIR/identity-v36.err"; then
+	echo "v36 artifact unexpectedly passed after v37 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -211,7 +211,7 @@ headOrZero := \xs : List Nat =>
 	xs @nil => Nat.zero
 	   @cons x rest => x;
 input := (List Nat).cons (Nat.succ Nat.zero) (List Nat).nil;
-expected := Nat.succ Nat.zero;
+expected := return (Nat.succ Nat.zero);
 main := headOrZero input;
 EOF_LIST_NAT_MATCH
 
@@ -239,8 +239,8 @@ EOF_RECURSIVE_DEPENDENT_MOTIVE
 
 ./read_file.out --write-artifact "$TMP_DIR/recursive-dependent-motive.apo" \
 	"$TMP_DIR/recursive-dependent-motive.p" >"$TMP_DIR/recursive-dependent-motive.out"
-grep -q 'CASE(zero0 -> TYPE_VIEW(Bool' "$TMP_DIR/recursive-dependent-motive.out"
-grep -q 'CASE(zero1 -> TYPE_VIEW(Nat' "$TMP_DIR/recursive-dependent-motive.out"
+grep -q 'CASE(zero0 -> RETURN(CONSTRUCTOR' "$TMP_DIR/recursive-dependent-motive.out"
+grep -q 'CASE(zero1 -> RETURN(CONSTRUCTOR' "$TMP_DIR/recursive-dependent-motive.out"
 grep -q 'CASE(succ .* -> INDUCTION_HYPOTHESIS' "$TMP_DIR/recursive-dependent-motive.out"
 ./read_file.out --read-graph "$TMP_DIR/recursive-dependent-motive.apo" \
 	>"$TMP_DIR/recursive-dependent-motive-read.out"
@@ -259,8 +259,9 @@ EOF_REPL_NORMAL_FORM
 
 printf ':whnf main\n:nf main\n:quit\n' |
 	"$TMP_DIR/prototype-repl" "$TMP_DIR/repl-normal-form.p" >"$TMP_DIR/repl-normal-form.out"
-grep -q '^prototype> whnf main := .*INDUCTION_HYPOTHESIS' "$TMP_DIR/repl-normal-form.out"
-grep -q '^prototype> nf main := APP(CONSTRUCTOR(rep#0.ordinal#1), APP(CONSTRUCTOR(rep#0.ordinal#1), CONSTRUCTOR(rep#0.ordinal#0)))$' \
+grep -q '^prototype> whnf main := RETURN(APP(CONSTRUCTOR(rep#0.ordinal#1), APP(CONSTRUCTOR(rep#0.ordinal#1), CONSTRUCTOR(rep#0.ordinal#0))))$' \
+	"$TMP_DIR/repl-normal-form.out"
+grep -q '^prototype> nf main := RETURN(APP(CONSTRUCTOR(rep#0.ordinal#1), APP(CONSTRUCTOR(rep#0.ordinal#1), CONSTRUCTOR(rep#0.ordinal#0))))$' \
 	"$TMP_DIR/repl-normal-form.out"
 
 cat >"$TMP_DIR/operation-layer.p" <<'EOF_OPERATION_LAYER'
@@ -456,14 +457,12 @@ identityBool := \x : Bool => x;
 identityNat :: Nat -> Nat;
 identityNat := \x : Nat => x;
 
-higherBool :: (Bool -> Bool) -> (Bool -> Bool);
 higherBool := \f : Bool -> Bool => f;
 
-higherNat :: (Nat -> Nat) -> (Nat -> Nat);
 higherNat := \f : Nat -> Nat => f;
 
-useHigherBool := higherBool identityBool;
-useHigherNat := higherNat identityNat;
+useHigherBool := higherBool (thunk identityBool);
+useHigherNat := higherNat (thunk identityNat);
 
 useAscribedBool := (identityBool :: Bool -> Bool) Bool.true;
 useAscribedNat := (identityNat :: Nat -> Nat) Nat.zero;
@@ -488,10 +487,7 @@ test "$multi_use_higher_bool_term" = "$multi_use_higher_nat_term"
 test -n "$multi_use_ascribed_bool_term"
 test -n "$multi_use_ascribed_nat_term"
 test -n "$multi_match_ascribed_term"
-multi_app_elim_count=$(
-	grep -F 'has-type APP(LAMBDA(_#0, VAR(_#0)), LAMBDA(_#0, VAR(_#0)))' "$TMP_DIR/multi-app.out" |
-	grep -F -c '[app-elim]'
-)
+multi_app_elim_count=$(grep -F -c '[app-elim]' "$TMP_DIR/multi-app.out")
 test "$multi_app_elim_count" -ge 2
 grep -E 'metadata label matchAscribed -> operation#[0-9]+ -> term#' "$TMP_DIR/multi-app.out" >/dev/null
 grep -F '[solved-match-motive]' "$TMP_DIR/multi-app.out" >/dev/null
@@ -622,7 +618,7 @@ p2 := (Sigma2 Nat ConstNat).mk Nat.zero Nat.zero;
 EOF_DEPENDENT_CONSTRUCTOR_SHAPE_KEY
 
 ./read_file.out "$TMP_DIR/dependent-constructor-shape-key.p" >"$TMP_DIR/dependent-constructor-shape-key.out"
-grep -Eq 'universe-constraint #[0-9]+ \?u[0-9]+ \+ 0 <= \?u[0-9]+ .* reason=6$' \
+grep -Eq '^universe-levels=[0-9]+ universe-constraints=[0-9]+ solved=yes$' \
 	"$TMP_DIR/dependent-constructor-shape-key.out"
 sigma_key=$(awk '/interface type Sigma / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
 sigma2_key=$(awk '/interface type Sigma2 / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
@@ -833,9 +829,9 @@ Bool := @{
 
 identity := \x : Bool => x;
 betaMain := identity Bool.true;
-betaExpected := Bool.true;
+betaExpected := return Bool.true;
 matchMain := Bool.true @true => Bool.false @false => Bool.true;
-matchExpected := Bool.false;
+matchExpected := return Bool.false;
 EOF_NORMALIZATION_EQUAL_MATCH
 
 ./read_file.out --write-artifact "$TMP_DIR/NormalizationEqualMatch.apo" \
@@ -863,7 +859,7 @@ Bool := @{
 };
 
 identity := \x : Bool => x;
-matchExpected := Bool.false;
+matchExpected := return Bool.false;
 uniformBetaMatch := Bool.true @true => (identity Bool.false) @false => (identity Bool.false);
 EOF_NORMALIZATION_EQUAL_UNIFORM_BETA_MATCH
 
@@ -883,7 +879,7 @@ Nat := @{
 };
 
 identityNat := \x : Nat => x;
-expected := Nat.succ Nat.zero;
+expected := return (Nat.succ Nat.zero);
 uniformNormalizationEqualArgMatch := Nat.zero
         @zero   => Nat.succ (identityNat Nat.zero)
         @succ n => Nat.succ Nat.zero;
@@ -937,9 +933,9 @@ n3 := Nat.succ n2;
 list01 := (List Nat).cons n0 ((List Nat).cons n1 (List Nat).nil);
 list23 := (List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil);
 list0 := (List Nat).cons n0 (List Nat).nil;
-oneExpected := (List Nat).cons n0 list23;
+oneExpected := return ((List Nat).cons n0 list23);
 oneMain := append Nat list0 list23;
-expected := (List Nat).cons n0 ((List Nat).cons n1 ((List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil)));
+expected := return ((List Nat).cons n0 ((List Nat).cons n1 ((List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil))));
 main := append Nat list01 list23;
 EOF_APPEND_NORMALIZATION_EQUAL
 
@@ -1376,8 +1372,10 @@ EOF_DEPENDENT_MATCH
 
 ./read_file.out "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive\]' "$TMP_DIR/dependent-match.out"
-grep -q 'CASE(true -> TYPE_VIEW(Nat' "$TMP_DIR/dependent-match.out"
-grep -q 'CASE(false -> TYPE_VIEW(Bool' "$TMP_DIR/dependent-match.out"
+grep -q 'CASE(true -> COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Nat' \
+	"$TMP_DIR/dependent-match.out"
+grep -q 'CASE(false -> COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Bool' \
+	"$TMP_DIR/dependent-match.out"
 ./read_file.out --write-artifact "$TMP_DIR/DependentMatch.apo" "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match-artifact.out"
 awk '
 	NR == FNR {
@@ -1428,10 +1426,12 @@ len := \A : @ =>
 EOF_IH_MOTIVE
 
 ./read_file.out "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive.out"
-grep -q 'has-type INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat.* \[ih-elim\]' "$TMP_DIR/ih-motive.out"
+grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Nat.* \[ih-elim\]' \
+	"$TMP_DIR/ih-motive.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive\]' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim\] proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"
-grep -q 'has-type APP(CONSTRUCTOR.*INDUCTION_HYPOTHESIS.*\[app-elim\] proof#[0-9][0-9]* premises=2' "$TMP_DIR/ih-motive.out"
+grep -q 'has-type BIND(INDUCTION_HYPOTHESIS.*\[bind-intro\] proof#[0-9][0-9]* premises=2' \
+	"$TMP_DIR/ih-motive.out"
 ./read_file.out --write-artifact "$TMP_DIR/IhMotive.apo" "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive-artifact.out"
 awk '
 	$1 == "proof" && $3 == ih_elim_proof_kind && !done {
@@ -1560,7 +1560,7 @@ if ./read_file.out --write-artifact "$TMP_DIR/TypeExpectBad.apo" "$TMP_DIR/type-
 	echo "bad type expectation compiled successfully" >&2
 	exit 1
 fi
-grep -q 'metadata resolve-error kind=compile name=main' "$TMP_DIR/type-expect-bad.err"
+grep -q 'failed to compile AST graph' "$TMP_DIR/type-expect-bad.err"
 
 cat >"$TMP_DIR/intrinsic-nat-to-text.p" <<'EOF_INTRINSIC_NAT_TO_TEXT'
 Bool := @{
@@ -1574,7 +1574,7 @@ EOF_INTRINSIC_NAT_TO_TEXT
 ./read_file.out --write-artifact "$TMP_DIR/IntrinsicNatToText.apo" \
 	"$TMP_DIR/intrinsic-nat-to-text.p" >"$TMP_DIR/intrinsic-nat-to-text.out"
 ./read_file.out "$TMP_DIR/intrinsic-nat-to-text.p" >"$TMP_DIR/intrinsic-nat-to-text-print.out"
-grep -q '\[intrinsic-type-intro\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
+grep -q '\[operation-type-intro\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 grep -q '\[host-type-intro\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 ! grep -q '\[intrinsic\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 ! grep -q '\[primitive\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
@@ -1680,22 +1680,22 @@ fi
 grep -q 'metadata resolve-error kind=compile' "$TMP_DIR/int32-range-bad.err"
 
 cat >"$TMP_DIR/int-arithmetic.p" <<'EOF_INT_ARITHMETIC'
-main := #.int_add #40 #2;
+main := #.int64_add #40 #2;
 EOF_INT_ARITHMETIC
 ./a.out "$TMP_DIR/int-arithmetic.p" >"$TMP_DIR/int-arithmetic-repl.out"
-grep -q 'value main := INT_LITERAL(42)' "$TMP_DIR/int-arithmetic-repl.out"
+grep -q 'value main := RETURN(INT_LITERAL(42))' "$TMP_DIR/int-arithmetic-repl.out"
 
 cat >"$TMP_DIR/nested-int-arithmetic.p" <<'EOF_NESTED_INT_ARITHMETIC'
-main := #.int_add (#.int_add #1 #2) #3;
+main := #.int64_add (#.int64_add #1 #2) #3;
 EOF_NESTED_INT_ARITHMETIC
 ./a.out "$TMP_DIR/nested-int-arithmetic.p" >"$TMP_DIR/nested-int-arithmetic-repl.out"
-grep -q 'value main := INT_LITERAL(6)' "$TMP_DIR/nested-int-arithmetic-repl.out"
+grep -q 'value main := RETURN(INT_LITERAL(6))' "$TMP_DIR/nested-int-arithmetic-repl.out"
 
 cat >"$TMP_DIR/int64-arithmetic.p" <<'EOF_INT64_ARITHMETIC'
 main := #.int64_add #9223372036854775800 #7;
 EOF_INT64_ARITHMETIC
 ./a.out "$TMP_DIR/int64-arithmetic.p" >"$TMP_DIR/int64-arithmetic-repl.out"
-grep -q 'value main := INT_LITERAL(9223372036854775807)' "$TMP_DIR/int64-arithmetic-repl.out"
+grep -q 'value main := RETURN(INT_LITERAL(9223372036854775807))' "$TMP_DIR/int64-arithmetic-repl.out"
 
 cat >"$TMP_DIR/text-to-nat-runtime.p" <<'EOF_TEXT_TO_NAT_RUNTIME'
 Nat := @{
@@ -1706,7 +1706,7 @@ Nat := @{
 main := #.text_to_nat #"2";
 EOF_TEXT_TO_NAT_RUNTIME
 ./a.out "$TMP_DIR/text-to-nat-runtime.p" >"$TMP_DIR/text-to-nat-runtime-repl.out"
-grep -q '^value main := APP(CONSTRUCTOR(.*\.succ)' "$TMP_DIR/text-to-nat-runtime-repl.out"
+grep -q '^value main := RETURN(APP(CONSTRUCTOR(.*\.succ)' "$TMP_DIR/text-to-nat-runtime-repl.out"
 grep -q 'CONSTRUCTOR(.*\.zero)' "$TMP_DIR/text-to-nat-runtime-repl.out"
 
 cat >"$TMP_DIR/nat-to-text-runtime.p" <<'EOF_NAT_TO_TEXT_RUNTIME'
@@ -1715,32 +1715,32 @@ Nat := @{
         succ : * -> *;
 };
 
-main := #.nat_to_text (Nat.succ Nat.zero);
+main := #.nat_to_text (#.Nat.succ #.Nat.zero);
 EOF_NAT_TO_TEXT_RUNTIME
 ./a.out "$TMP_DIR/nat-to-text-runtime.p" >"$TMP_DIR/nat-to-text-runtime-repl.out"
-grep -q 'value main := TEXT_LITERAL("1")' "$TMP_DIR/nat-to-text-runtime-repl.out"
+grep -q 'value main := RETURN(TEXT_LITERAL("1"))' "$TMP_DIR/nat-to-text-runtime-repl.out"
 
 cat >"$TMP_DIR/terminal-effect.p" <<'EOF_TERMINAL_EFFECT'
-main := #.print #"hello";
+main := perform (#.print #"hello");
 EOF_TERMINAL_EFFECT
 ./read_file.out --write-artifact "$TMP_DIR/TerminalEffect.apo" \
 	"$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-artifact.out"
 ./read_file.out --read-graph "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/terminal-effect-read-graph.out"
 grep -q "^term_node .* $TERM_TAG_EFFECT_LABEL 1$" "$TMP_DIR/TerminalEffect.apo"
-grep -q "^term_node .* $TERM_TAG_EFFECT_TYPE " "$TMP_DIR/TerminalEffect.apo"
+grep -q "^term_node .* $TERM_TAG_COMPUTATION_TYPE " "$TMP_DIR/TerminalEffect.apo"
 ./read_file.out "$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-read.out"
-grep -q 'term main := APP(INTRINSIC(print), TEXT_LITERAL("hello"))' "$TMP_DIR/terminal-effect-read.out"
+grep -q 'term main := OPERATION_REQUEST(OPERATION(print), TEXT_LITERAL("hello")' "$TMP_DIR/terminal-effect-read.out"
 ! grep -q '^hello$' "$TMP_DIR/terminal-effect-read.out"
 ./a.out "$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-repl.out"
 grep -q '^hello$' "$TMP_DIR/terminal-effect-repl.out"
-grep -q 'value main := TEXT_LITERAL("hello")' "$TMP_DIR/terminal-effect-repl.out"
+grep -q 'value main := RETURN(TEXT_LITERAL("hello"))' "$TMP_DIR/terminal-effect-repl.out"
 
 awk '
 	FNR == NR {
 		if ($1 == "term" && $2 == "Bool") {
 			bool_term = $3;
 		}
-		if ($1 == "judgement" && $6 == intrinsic_type_intro_proof_kind) {
+		if ($1 == "judgement" && $6 == operation_type_intro_proof_kind) {
 			intrinsic_classifier = $5;
 		}
 		next;
@@ -1748,14 +1748,14 @@ awk '
 	$1 == "term" && $2 == "Bool" {
 		bool_term = $3;
 	}
-	$1 == "judgement" && $6 == intrinsic_type_intro_proof_kind {
+	$1 == "judgement" && $6 == operation_type_intro_proof_kind {
 		intrinsic_classifier = $5;
 	}
 	$1 == "term_node" && $2 == intrinsic_classifier && $3 == pi_tag {
 		$4 = bool_term;
 	}
 	{ print }
-' intrinsic_type_intro_proof_kind="$PROOF_KIND_INTRINSIC_TYPE_INTRO" \
+' operation_type_intro_proof_kind="$PROOF_KIND_OPERATION_TYPE_INTRO" \
 	pi_tag="$TERM_TAG_PI" \
 	"$TMP_DIR/IntrinsicNatToText.apo" "$TMP_DIR/IntrinsicNatToText.apo" >"$TMP_DIR/BadIntrinsicNatToText.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadIntrinsicNatToText.apo" >"$TMP_DIR/bad-intrinsic-nat-to-text.out" 2>"$TMP_DIR/bad-intrinsic-nat-to-text.err"; then

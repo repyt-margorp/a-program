@@ -310,6 +310,9 @@ static const char* operation_tag_name(int tag) {
 		case PROTOTYPE_OPERATION_APP: return "app";
 		case PROTOTYPE_OPERATION_LAMBDA: return "lambda";
 		case PROTOTYPE_OPERATION_MATCH: return "match";
+		case PROTOTYPE_OPERATION_RETURN: return "return";
+		case PROTOTYPE_OPERATION_THUNK: return "thunk";
+		case PROTOTYPE_OPERATION_FORCE: return "force";
 		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS: return "induction-hypothesis";
 		case PROTOTYPE_OPERATION_ASCRIPTION: return "ascription";
 		default: return "unknown";
@@ -2224,9 +2227,18 @@ int main(int argc, char** argv) {
 	size_t opaque_export_count = 0;
 	int read_graph = 0;
 	int link_reexport_providers = 0;
+	int disable_automatic_cbpv_coercions = 0;
 	memset(&read_options, 0, sizeof(read_options));
 
 	for (; file_arg < argc && argv[file_arg][0] == '-'; ++file_arg) {
+		if (strcmp(argv[file_arg], "--automatic-cbpv-coercions") == 0) {
+			disable_automatic_cbpv_coercions = 0;
+			continue;
+		}
+		if (strcmp(argv[file_arg], "--no-automatic-cbpv-coercions") == 0) {
+			disable_automatic_cbpv_coercions = 1;
+			continue;
+		}
 		if (strcmp(argv[file_arg], "--write-artifact") == 0) {
 			if (file_arg + 1 >= argc) {
 				fprintf(stderr, "--write-artifact requires a path\n");
@@ -2415,7 +2427,7 @@ int main(int argc, char** argv) {
 			continue;
 		}
 		fprintf(stderr, "unknown option: %s\n", argv[file_arg]);
-		fprintf(stderr, "Usage: %s [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
@@ -2478,7 +2490,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (!interface_input_path && !link_target_path && argc - file_arg < 1) {
-		fprintf(stderr, "Usage: %s [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
@@ -3248,6 +3260,8 @@ int main(int argc, char** argv) {
 	program.judgement = &judgement_db;
 	program.metadata = &metadata;
 	program.universe = &universe_db;
+	program.compile_options.disable_automatic_cbpv_coercions =
+		disable_automatic_cbpv_coercions;
 
 	for (int i = file_arg; i < argc; ++i) {
 		if (prototype_read_ast_file_with_options(argv[i], &program, &read_options, &error) != 0) {

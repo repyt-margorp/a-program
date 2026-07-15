@@ -130,10 +130,98 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			neutral_uniform_match,
 			&kernel_whnf
 		) != 0 || kernel_whnf != neutral_uniform_match) {
+		return 1;
+	}
+
+	/* Core WHNF observes only beta reduction. CBPV cut elimination is a
+	 * separate computation-layer rule, even though it reuses the same TermDB. */
+	uint32_t returned_constructor;
+	uint32_t thunked_constructor;
+	uint32_t forced_constructor;
+	uint32_t bind_binder;
+	uint32_t bind_var;
+	uint32_t bind_body;
+	uint32_t bind_continuation;
+	uint32_t bound_constructor;
+	uint32_t thunked_bound_constructor;
+	uint32_t forced_bound_constructor;
+	uint32_t core_cbpv_whnf;
+	uint32_t computation_cbpv_whnf;
+	if (prototype_term_return(&term_db, constructor, &returned_constructor) != 0 ||
+		prototype_term_thunk(&term_db, returned_constructor, &thunked_constructor) != 0 ||
+		prototype_term_force(&term_db, thunked_constructor, &forced_constructor) != 0 ||
+		(bind_binder = prototype_term_fresh_binder(&term_db)) == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(&term_db, bind_binder, &bind_var) != 0 ||
+		prototype_term_return(&term_db, bind_var, &bind_body) != 0 ||
+		prototype_term_lambda(&term_db, bind_binder, bind_body, &bind_continuation) != 0 ||
+		prototype_term_bind(
+			&term_db, returned_constructor, bind_continuation, &bound_constructor
+		) != 0 || prototype_term_thunk(
+			&term_db, bound_constructor, &thunked_bound_constructor
+		) != 0 || prototype_term_force(
+			&term_db, thunked_bound_constructor, &forced_bound_constructor
+		) != 0 || prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			forced_constructor,
+			&core_cbpv_whnf
+		) != 0 || core_cbpv_whnf != forced_constructor ||
+		prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
+			forced_constructor,
+			&computation_cbpv_whnf
+		) != 0 || computation_cbpv_whnf != returned_constructor ||
+		prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			forced_constructor,
+			&computation_cbpv_whnf
+		) != 0 || computation_cbpv_whnf != returned_constructor ||
+		prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			bound_constructor,
+			&core_cbpv_whnf
+		) != 0 || core_cbpv_whnf != bound_constructor ||
+		prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
+			bound_constructor,
+			&computation_cbpv_whnf
+		) != 0 || computation_cbpv_whnf != returned_constructor ||
+		prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			bound_constructor,
+			&computation_cbpv_whnf
+		) != 0 || computation_cbpv_whnf != returned_constructor) {
+		return 1;
+	}
+	if (prototype_term_whnf_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			forced_bound_constructor,
+			&computation_cbpv_whnf
+		) != 0 || computation_cbpv_whnf != returned_constructor) {
 		return 1;
 	}
 
@@ -143,7 +231,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_LAMBDA_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			match_term,
 			&lambda_whnf
 		) != 0 ||
@@ -155,7 +243,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_LAMBDA_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			match_term,
 			&cached_lambda_whnf
 		) != 0 ||
@@ -173,7 +261,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_INDUCTIVE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			match_term,
 			&unresolved_inductive_whnf
 		) != 0 ||
@@ -189,7 +277,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_INDUCTIVE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			match_term,
 			&inductive_whnf
 		) != 0 ||
@@ -201,7 +289,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_INDUCTIVE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			match_term,
 			&cached_inductive_whnf
 		) != 0 ||
@@ -222,7 +310,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_INDUCTIVE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			match_term,
 			&mutated_whnf
 		) != 0 ||

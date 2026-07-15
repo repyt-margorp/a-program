@@ -110,13 +110,13 @@ conversion evidence.
 The prototype currently has named normalization profiles:
 
 ```text
-LAMBDA_WHNF:
+CORE_WHNF:
   beta
 
-INDUCTIVE_WHNF:
+COMPUTATION_WHNF:
   beta + match iota + induction expansion
 
-KERNEL_CONVERSION_WHNF:
+PURE_TYPE_WHNF:
   beta + match iota + induction expansion + temporary uniform-match rule
 ```
 

@@ -214,23 +214,23 @@ but it makes the intended separation observable.
 - Eliminator layer: `MATCH`
 - Type-former layer: `PI`, `TYPE_FORMER`, `UNIVERSE_VAR`, host primitive types
   such as `PRIMITIVE_TEXT`, `PRIMITIVE_INT`, and `PRIMITIVE_INT64`, and effect
-  classifier nodes such as `EFFECT_LABEL` and `EFFECT_TYPE`
+  classifier nodes such as `EFFECT_LABEL` and `COMPUTATION_TYPE`
 - Data layer: `CONSTRUCTOR`, host literal values such as `TEXT_LITERAL` and
   `INT_LITERAL`
 - Link layer: `EXTERNAL_REF`
-- Host layer: `INTRINSIC`; concrete processing-system oracles are registered
-  through the host intrinsic table in `term.c`
+- Operation layer: `OPERATION`; language-level declarations are separate from
+  the private default-host implementation map in `term.c`
 - Induction layer: `INDUCTION_HYPOTHESIS`
 
 The key distinction is that alpha/canonical identity is still structural, while
 normalization equality is computational. `APP` reduces by beta when its WHNF
 function is a lambda. `MATCH` evaluates its scrutinee and reduces when the
-scrutinee head is a known constructor. Pure host intrinsics such as integer
-arithmetic reduce through the same step engine and are enabled in the default
-pure reduction mode. Effectful host intrinsics are typed as effectful
-computations, for example `#.print : #.Text -> Effect(Terminal, #.Text)`, and
-only run when the evaluator mode explicitly allows the corresponding effect
-capability. `INDUCTION_HYPOTHESIS` uses the match frame key for identity but
+scrutinee head is a known constructor. Host operations, including deterministic
+integer arithmetic, have `Comp(E, A)` result classifiers and run only after
+`perform` creates an `OPERATION_REQUEST`; they are never direct APP reductions
+in normalization or kernel conversion. Terminal operations such as `#.print`
+add the `Terminal` effect and require the corresponding runtime capability.
+`INDUCTION_HYPOTHESIS` uses the match frame key for identity but
 still uses the local frame handle to build the recursive match during
 evaluation. Direct match reduction is part of normalization equality; fully
 normalizing recursive definitions that rely on `INDUCTION_HYPOTHESIS` still
@@ -469,7 +469,7 @@ treats two separate exported declarations as the same type merely because their
 Symbol identifiers are artifact-local implementation handles, so the graph
 section does not serialize raw `symbol_id` values for names. Type declaration
 names, constructor names, type-expression name refs, text literals, external
-refs, intrinsics, and match case labels are written as symbol text and interned
+refs, operations, and match case labels are written as symbol text and interned
 into the current symbol table on readback. This keeps provider graph names from
 being accidentally reinterpreted as unrelated target symbols during link.
 

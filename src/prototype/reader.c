@@ -413,6 +413,15 @@ static struct prototype_source_span current_span(const struct parser* parser) {
 	return span;
 }
 
+static int current_is_keyword(const struct parser* parser, const char* keyword) {
+	const char* name;
+	if (!parser || !keyword || parser->current.kind != TOKEN_IDENT) {
+		return 0;
+	}
+	name = symbol_to_string(parser->program->symbols, parser->current.symbol_id);
+	return name && strcmp(name, keyword) == 0;
+}
+
 static int parse_type_expr(struct parser* parser, uint32_t* p_ret);
 static int parse_term(struct parser* parser, uint32_t* p_ret);
 static int parse_case_body(struct parser* parser, uint32_t* p_ret);
@@ -434,11 +443,11 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 		if (read_token(parser) != 0) {
 			return -1;
 		}
-		if (expect(parser, TOKEN_DOT, "expected '.' after intrinsic namespace") != 0) {
+		if (expect(parser, TOKEN_DOT, "expected '.' after system namespace") != 0) {
 			return -1;
 		}
 		if (parser->current.kind != TOKEN_IDENT) {
-			set_error(parser, "expected intrinsic type name after '#.'");
+			set_error(parser, "expected system type name after '#.'");
 			return -1;
 		}
 		name = symbol_to_string(parser->program->symbols, parser->current.symbol_id);
@@ -459,7 +468,7 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 			);
 		}
 		if (!name || strcmp(name, "Nat") != 0) {
-			set_error(parser, "unknown intrinsic type name");
+			set_error(parser, "unknown system type name");
 			return -1;
 		}
 		symbol_id = symbol_intern(parser->program->symbols, "#.Nat", 5);
@@ -993,9 +1002,9 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		int namespace_symbol_id;
 		int symbol_id;
 		int type_symbol_id = -1;
-		int intrinsic_id = PROTOTYPE_AST_INTRINSIC_UNKNOWN;
+		int system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_UNKNOWN;
 		int host_type_id = PROTOTYPE_HOST_TYPE_INVALID;
-		int term_intrinsic_id = PROTOTYPE_TERM_INTRINSIC_UNKNOWN;
+		int operation_id = PROTOTYPE_OPERATION_UNKNOWN;
 		const char* name;
 		struct prototype_source_span span = current_span(parser);
 		if (read_token(parser) != 0) {
@@ -1006,11 +1015,11 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			set_error(parser, "symbol table is full");
 			return -1;
 		}
-		if (expect(parser, TOKEN_DOT, "expected '.' after intrinsic namespace") != 0) {
+		if (expect(parser, TOKEN_DOT, "expected '.' after system namespace") != 0) {
 			return -1;
 		}
 		if (parser->current.kind != TOKEN_IDENT) {
-			set_error(parser, "expected intrinsic name after '#.'");
+			set_error(parser, "expected system name after '#.'");
 			return -1;
 		}
 			symbol_id = parser->current.symbol_id;
@@ -1044,38 +1053,42 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 					p_ret
 				);
 			}
+			if (name && strcmp(name, "bind") == 0) {
+				system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_BIND;
+			} else {
 			int host_type;
 			int host_status = prototype_term_host_type_from_source_name(name, &host_type);
 			if (host_status < 0) {
 				return -1;
 			}
 			if (host_status == 0) {
-				intrinsic_id = PROTOTYPE_AST_INTRINSIC_HOST_TYPE;
+				system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_HOST_TYPE;
 				host_type_id = host_type;
 			} else {
-				int intrinsic_status = prototype_term_host_intrinsic_from_source_name(
+				int operation_status = prototype_term_operation_from_source_name(
 					name,
-					&term_intrinsic_id
+					&operation_id
 				);
-				if (intrinsic_status < 0) {
+				if (operation_status < 0) {
 					return -1;
 				}
-				if (intrinsic_status > 0) {
-					set_error(parser, "unknown intrinsic name");
+				if (operation_status > 0) {
+					set_error(parser, "unknown system operation name");
 					return -1;
 				}
-				intrinsic_id = PROTOTYPE_AST_INTRINSIC_HOST_ORACLE;
-				if (term_intrinsic_id == PROTOTYPE_TERM_INTRINSIC_TEXT_TO_NAT ||
-					term_intrinsic_id == PROTOTYPE_TERM_INTRINSIC_NAT_TO_TEXT) {
+				system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_HOST_OPERATION;
+				if (operation_id == PROTOTYPE_OPERATION_TEXT_TO_NAT ||
+					operation_id == PROTOTYPE_OPERATION_NAT_TO_TEXT) {
 					type_symbol_id = symbol_intern(parser->program->symbols, "#.Nat", 5);
 				}
+				}
 			}
-			if (intrinsic_id == PROTOTYPE_AST_INTRINSIC_UNKNOWN) {
-				set_error(parser, "unknown intrinsic name");
+			if (system_name_kind == PROTOTYPE_AST_SYSTEM_NAME_UNKNOWN) {
+				set_error(parser, "unknown system name");
 				return -1;
 			}
-				if ((term_intrinsic_id == PROTOTYPE_TERM_INTRINSIC_TEXT_TO_NAT ||
-						term_intrinsic_id == PROTOTYPE_TERM_INTRINSIC_NAT_TO_TEXT) &&
+				if ((operation_id == PROTOTYPE_OPERATION_TEXT_TO_NAT ||
+						operation_id == PROTOTYPE_OPERATION_NAT_TO_TEXT) &&
 					type_symbol_id < 0) {
 					set_error(parser, "symbol table is full");
 					return -1;
@@ -1083,14 +1096,14 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		if (read_token(parser) != 0) {
 			return -1;
 		}
-		return prototype_ast_intrinsic_name(
+		return prototype_ast_system_name(
 			parser->program->asts,
 			namespace_symbol_id,
 			symbol_id,
 			type_symbol_id,
-			intrinsic_id,
+			system_name_kind,
 			host_type_id,
-			term_intrinsic_id,
+			operation_id,
 			span,
 			p_ret
 		);
@@ -1439,9 +1452,125 @@ static int parse_bare_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	return 1;
 }
 
+static int parse_handle_term(struct parser* parser, uint32_t* p_ret) {
+	struct prototype_source_span span = current_span(parser);
+	uint32_t computation;
+	uint32_t operation;
+	uint32_t operation_body;
+	uint32_t return_body;
+	uint32_t operation_argument_binder_id;
+	uint32_t operation_continuation_binder_id;
+	uint32_t return_binder_id;
+	int operation_argument_symbol_id;
+	int operation_continuation_symbol_id;
+	int return_symbol_id;
+	struct local_binder operation_argument_binder;
+	struct local_binder operation_continuation_binder;
+	struct local_binder return_binder;
+
+	if (read_token(parser) != 0 || expect(parser, TOKEN_LPAREN, "expected '(' after 'handle'") != 0 ||
+		parse_term(parser, &computation) != 0 ||
+		expect(parser, TOKEN_RPAREN, "expected ')' after handled computation") != 0 ||
+		!current_is_keyword(parser, "with") || read_token(parser) != 0 ||
+		expect(parser, TOKEN_LPAREN, "expected '(' before handled operation") != 0 ||
+		parse_term(parser, &operation) != 0 ||
+		expect(parser, TOKEN_RPAREN, "expected ')' after handled operation") != 0 ||
+		parser->current.kind != TOKEN_IDENT) {
+		set_error(parser, "expected 'handle (computation) with (operation) argument continuation => body ; return value => body'");
+		return -1;
+	}
+	operation_argument_symbol_id = parser->current.symbol_id;
+	operation_argument_binder_id = prototype_ast_new_binder(parser->program->asts);
+	if (operation_argument_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
+		parser->current.kind != TOKEN_IDENT) {
+		set_error(parser, "expected operation continuation binder");
+		return -1;
+	}
+	operation_continuation_symbol_id = parser->current.symbol_id;
+	operation_continuation_binder_id = prototype_ast_new_binder(parser->program->asts);
+	if (operation_continuation_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
+		expect(parser, TOKEN_FATARROW, "expected '=>' after handler binders") != 0) {
+		set_error(parser, "handler binder table is full");
+		return -1;
+	}
+	operation_argument_binder.symbol_id = operation_argument_symbol_id;
+	operation_argument_binder.ast_binder_id = operation_argument_binder_id;
+	operation_argument_binder.induction_allowed = 0;
+	operation_argument_binder.next = parser->binders;
+	operation_continuation_binder.symbol_id = operation_continuation_symbol_id;
+	operation_continuation_binder.ast_binder_id = operation_continuation_binder_id;
+	operation_continuation_binder.induction_allowed = 0;
+	operation_continuation_binder.next = &operation_argument_binder;
+	parser->binders = &operation_continuation_binder;
+	if (parse_term(parser, &operation_body) != 0) {
+		parser->binders = operation_argument_binder.next;
+		return -1;
+	}
+	parser->binders = operation_argument_binder.next;
+	if (expect(parser, TOKEN_SEMI, "expected ';' before handler return clause") != 0 ||
+		!current_is_keyword(parser, "return") || read_token(parser) != 0 ||
+		parser->current.kind != TOKEN_IDENT) {
+		set_error(parser, "expected 'return value => body' handler clause");
+		return -1;
+	}
+	return_symbol_id = parser->current.symbol_id;
+	return_binder_id = prototype_ast_new_binder(parser->program->asts);
+	if (return_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
+		expect(parser, TOKEN_FATARROW, "expected '=>' after return binder") != 0) {
+		set_error(parser, "handler binder table is full");
+		return -1;
+	}
+	return_binder.symbol_id = return_symbol_id;
+	return_binder.ast_binder_id = return_binder_id;
+	return_binder.induction_allowed = 0;
+	return_binder.next = parser->binders;
+	parser->binders = &return_binder;
+	if (parse_term(parser, &return_body) != 0) {
+		parser->binders = return_binder.next;
+		return -1;
+	}
+	parser->binders = return_binder.next;
+	if (prototype_ast_handle(
+			parser->program->asts, computation, operation,
+			operation_argument_binder_id, operation_argument_symbol_id,
+			operation_continuation_binder_id, operation_continuation_symbol_id,
+			operation_body, return_binder_id, return_symbol_id, return_body, span, p_ret
+		) != 0) {
+		set_error(parser, "AST table is full");
+		return -1;
+	}
+	return 0;
+}
+
 static int parse_term(struct parser* parser, uint32_t* p_ret) {
 	struct prototype_source_span span = current_span(parser);
-	if (parser->current.kind == TOKEN_BACKSLASH) {
+	if (current_is_keyword(parser, "handle")) {
+		if (parse_handle_term(parser, p_ret) != 0) {
+			return -1;
+		}
+	} else if (current_is_keyword(parser, "return") ||
+		current_is_keyword(parser, "thunk") ||
+		current_is_keyword(parser, "force") || current_is_keyword(parser, "perform")) {
+		int is_return = current_is_keyword(parser, "return");
+		int is_thunk = current_is_keyword(parser, "thunk");
+		int is_perform = current_is_keyword(parser, "perform");
+		uint32_t operand;
+		uint32_t result;
+		if (read_token(parser) != 0 || parse_term(parser, &operand) != 0) {
+			return -1;
+		}
+		int status = is_return ?
+			prototype_ast_return(parser->program->asts, operand, span, &result) :
+			(is_thunk ?
+				prototype_ast_thunk(parser->program->asts, operand, span, &result) :
+				(is_perform ? prototype_ast_perform(parser->program->asts, operand, span, &result) :
+					prototype_ast_force(parser->program->asts, operand, span, &result)));
+		if (status != 0) {
+			set_error(parser, "AST table is full");
+			return -1;
+		}
+		*p_ret = result;
+	} else if (parser->current.kind == TOKEN_BACKSLASH) {
 		if (parse_lambda_term(parser, p_ret) != 0) {
 			return -1;
 		}
@@ -1495,7 +1624,13 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 
 static int parse_case_body(struct parser* parser, uint32_t* p_ret) {
 	struct prototype_source_span span = current_span(parser);
-	if (parser->current.kind == TOKEN_BACKSLASH) {
+	if (current_is_keyword(parser, "return") ||
+		current_is_keyword(parser, "thunk") ||
+		current_is_keyword(parser, "force")) {
+		if (parse_term(parser, p_ret) != 0) {
+			return -1;
+		}
+	} else if (parser->current.kind == TOKEN_BACKSLASH) {
 		if (parse_lambda_term(parser, p_ret) != 0) {
 			return -1;
 		}
@@ -1861,7 +1996,7 @@ int prototype_read_ast_string(
 	return prototype_read_ast_string_with_options(name, input, program, NULL, error);
 }
 
-static int prototype_install_intrinsic_nat(struct prototype_program* program) {
+static int prototype_install_system_nat(struct prototype_program* program) {
 	int nat_symbol;
 	int zero_symbol;
 	int succ_symbol;
@@ -1977,9 +2112,9 @@ int prototype_compile_graph_with_imports(
 		}
 		return -1;
 	}
-	if (prototype_install_intrinsic_nat(program) != 0) {
+	if (prototype_install_system_nat(program) != 0) {
 		if (error) {
-			snprintf(error->message, sizeof(error->message), "%s", "failed to install intrinsic Nat");
+			snprintf(error->message, sizeof(error->message), "%s", "failed to install system Nat");
 		}
 		return -1;
 	}
@@ -1987,10 +2122,11 @@ int prototype_compile_graph_with_imports(
 		program->asts,
 		program->terms,
 		program->type_declarations,
-			program->judgement,
-			program->metadata,
-			program->namespace_symbol_id,
-			imported_interfaces,
+		program->judgement,
+		program->metadata,
+		program->namespace_symbol_id,
+		!program->compile_options.disable_automatic_cbpv_coercions,
+		imported_interfaces,
 		imported_interface_count
 	) != 0) {
 		if (error) {

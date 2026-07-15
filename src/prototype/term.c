@@ -63,106 +63,114 @@ static const struct prototype_host_type_descriptor host_types[] = {
 	}
 };
 
-static const struct prototype_host_intrinsic_signature host_intrinsics[] = {
+static const struct prototype_operation_declaration operation_declarations[] = {
 	{
-			PROTOTYPE_TERM_INTRINSIC_PRINT,
+			PROTOTYPE_OPERATION_PRINT,
 			"print",
-			PROTOTYPE_HOST_ORACLE_PRINT,
 			PROTOTYPE_HOST_EFFECT_TERMINAL,
 			1,
 			{ PROTOTYPE_HOST_TYPE_TEXT, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_TEXT
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_TEXT_TO_NAT,
+			PROTOTYPE_OPERATION_TEXT_TO_NAT,
 			"text_to_nat",
-			PROTOTYPE_HOST_ORACLE_TEXT_TO_NAT,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			1,
 			{ PROTOTYPE_HOST_TYPE_TEXT, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_INVALID
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_NAT_TO_TEXT,
+			PROTOTYPE_OPERATION_NAT_TO_TEXT,
 			"nat_to_text",
-			PROTOTYPE_HOST_ORACLE_NAT_TO_TEXT,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			1,
 			{ PROTOTYPE_HOST_TYPE_INVALID, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_TEXT
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_INT_ADD,
+			PROTOTYPE_OPERATION_INT_ADD,
 			"int_add",
-			PROTOTYPE_HOST_ORACLE_INT_ADD,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
 			PROTOTYPE_HOST_TYPE_INT32
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_INT_SUB,
+			PROTOTYPE_OPERATION_INT_SUB,
 			"int_sub",
-			PROTOTYPE_HOST_ORACLE_INT_SUB,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
 			PROTOTYPE_HOST_TYPE_INT32
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_INT_MUL,
+			PROTOTYPE_OPERATION_INT_MUL,
 			"int_mul",
-			PROTOTYPE_HOST_ORACLE_INT_MUL,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
 			PROTOTYPE_HOST_TYPE_INT32
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_INT_NEG,
+			PROTOTYPE_OPERATION_INT_NEG,
 			"int_neg",
-			PROTOTYPE_HOST_ORACLE_INT_NEG,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			1,
 			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_INT32
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_INT64_ADD,
+			PROTOTYPE_OPERATION_INT64_ADD,
 			"int64_add",
-			PROTOTYPE_HOST_ORACLE_INT_ADD,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
 			PROTOTYPE_HOST_TYPE_INT64
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_INT64_SUB,
+			PROTOTYPE_OPERATION_INT64_SUB,
 			"int64_sub",
-			PROTOTYPE_HOST_ORACLE_INT_SUB,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
 			PROTOTYPE_HOST_TYPE_INT64
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_INT64_MUL,
+			PROTOTYPE_OPERATION_INT64_MUL,
 			"int64_mul",
-			PROTOTYPE_HOST_ORACLE_INT_MUL,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
 			PROTOTYPE_HOST_TYPE_INT64
 	},
 	{
-			PROTOTYPE_TERM_INTRINSIC_INT64_NEG,
+			PROTOTYPE_OPERATION_INT64_NEG,
 			"int64_neg",
-			PROTOTYPE_HOST_ORACLE_INT_NEG,
 			PROTOTYPE_HOST_EFFECT_NONE,
 			1,
 			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_INT64
 	}
+};
+
+struct host_operation_implementation {
+	int operation_id;
+	int oracle_kind;
+};
+
+static const struct host_operation_implementation host_operation_implementations[] = {
+	{ PROTOTYPE_OPERATION_PRINT, PROTOTYPE_HOST_ORACLE_PRINT },
+	{ PROTOTYPE_OPERATION_TEXT_TO_NAT, PROTOTYPE_HOST_ORACLE_TEXT_TO_NAT },
+	{ PROTOTYPE_OPERATION_NAT_TO_TEXT, PROTOTYPE_HOST_ORACLE_NAT_TO_TEXT },
+	{ PROTOTYPE_OPERATION_INT_ADD, PROTOTYPE_HOST_ORACLE_INT_ADD },
+	{ PROTOTYPE_OPERATION_INT_SUB, PROTOTYPE_HOST_ORACLE_INT_SUB },
+	{ PROTOTYPE_OPERATION_INT_MUL, PROTOTYPE_HOST_ORACLE_INT_MUL },
+	{ PROTOTYPE_OPERATION_INT_NEG, PROTOTYPE_HOST_ORACLE_INT_NEG },
+	{ PROTOTYPE_OPERATION_INT64_ADD, PROTOTYPE_HOST_ORACLE_INT_ADD },
+	{ PROTOTYPE_OPERATION_INT64_SUB, PROTOTYPE_HOST_ORACLE_INT_SUB },
+	{ PROTOTYPE_OPERATION_INT64_MUL, PROTOTYPE_HOST_ORACLE_INT_MUL },
+	{ PROTOTYPE_OPERATION_INT64_NEG, PROTOTYPE_HOST_ORACLE_INT_NEG }
 };
 
 static const struct prototype_host_type_descriptor* host_type_by_id(int type_id) {
@@ -256,28 +264,45 @@ int prototype_term_host_type_at(size_t index, int* p_type_id) {
 	return 0;
 }
 
-const struct prototype_host_intrinsic_signature* prototype_term_host_intrinsic_signature(
-	int intrinsic_id
+const struct prototype_operation_declaration* prototype_term_operation_declaration(
+	int operation_id
 ) {
-	for (size_t i = 0; i < sizeof(host_intrinsics) / sizeof(host_intrinsics[0]); ++i) {
-		if (host_intrinsics[i].intrinsic_id == intrinsic_id) {
-			return &host_intrinsics[i];
+	for (size_t i = 0;
+		i < sizeof(operation_declarations) / sizeof(operation_declarations[0]);
+		++i) {
+		if (operation_declarations[i].operation_id == operation_id) {
+			return &operation_declarations[i];
 		}
 	}
 	return NULL;
 }
 
-int prototype_term_host_intrinsic_from_source_name(const char* name, int* p_intrinsic_id) {
-	if (!name || !p_intrinsic_id) {
+int prototype_term_operation_from_source_name(const char* name, int* p_operation_id) {
+	if (!name || !p_operation_id) {
 		return -1;
 	}
-	for (size_t i = 0; i < sizeof(host_intrinsics) / sizeof(host_intrinsics[0]); ++i) {
-		if (strcmp(name, host_intrinsics[i].source_name) == 0) {
-			*p_intrinsic_id = host_intrinsics[i].intrinsic_id;
+	for (size_t i = 0;
+		i < sizeof(operation_declarations) / sizeof(operation_declarations[0]);
+		++i) {
+		if (strcmp(name, operation_declarations[i].source_name) == 0) {
+			*p_operation_id = operation_declarations[i].operation_id;
 			return 0;
 		}
 	}
 	return 1;
+}
+
+static const struct host_operation_implementation* host_operation_implementation(
+	int operation_id
+) {
+	for (size_t i = 0;
+		i < sizeof(host_operation_implementations) / sizeof(host_operation_implementations[0]);
+		++i) {
+		if (host_operation_implementations[i].operation_id == operation_id) {
+			return &host_operation_implementations[i];
+		}
+	}
+	return NULL;
 }
 
 int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
@@ -289,6 +314,11 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 		case PROTOTYPE_TERM_VAR:
 		case PROTOTYPE_TERM_APP:
 		case PROTOTYPE_TERM_LAMBDA:
+		case PROTOTYPE_TERM_RETURN:
+		case PROTOTYPE_TERM_FORCE:
+		case PROTOTYPE_TERM_BIND:
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+		case PROTOTYPE_TERM_HANDLE:
 			p_ret->layer = PROTOTYPE_TERM_LAYER_LAMBDA_CORE;
 			break;
 		case PROTOTYPE_TERM_MATCH:
@@ -300,14 +330,21 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 			case PROTOTYPE_TERM_TYPE_VIEW:
 				case PROTOTYPE_TERM_UNIVERSE_VAR:
 				case PROTOTYPE_TERM_PRIMITIVE_TEXT:
-				case PROTOTYPE_TERM_PRIMITIVE_INT:
-				case PROTOTYPE_TERM_PRIMITIVE_INT64:
-				case PROTOTYPE_TERM_EFFECT_LABEL:
-				case PROTOTYPE_TERM_EFFECT_TYPE:
-					p_ret->layer = PROTOTYPE_TERM_LAYER_TYPE_FORMER;
+		case PROTOTYPE_TERM_PRIMITIVE_INT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT64:
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+		case PROTOTYPE_TERM_THUNK_TYPE:
+		case PROTOTYPE_TERM_HANDLER_TYPE:
+				p_ret->layer = PROTOTYPE_TERM_LAYER_TYPE_FORMER;
 					break;
-			case PROTOTYPE_TERM_CONSTRUCTOR:
-				case PROTOTYPE_TERM_TEXT_LITERAL:
+		case PROTOTYPE_TERM_CONSTRUCTOR:
+		case PROTOTYPE_TERM_THUNK:
+		case PROTOTYPE_TERM_HANDLER:
+		case PROTOTYPE_TERM_TEXT_LITERAL:
 				case PROTOTYPE_TERM_INT_LITERAL:
 					p_ret->layer = PROTOTYPE_TERM_LAYER_DATA;
 				break;
@@ -315,8 +352,8 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 			p_ret->layer = PROTOTYPE_TERM_LAYER_LINK;
 			p_ret->link_boundary = 1;
 			break;
-		case PROTOTYPE_TERM_INTRINSIC:
-			p_ret->layer = PROTOTYPE_TERM_LAYER_HOST;
+		case PROTOTYPE_TERM_OPERATION:
+			p_ret->layer = PROTOTYPE_TERM_LAYER_OPERATION;
 			break;
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			p_ret->layer = PROTOTYPE_TERM_LAYER_INDUCTION;
@@ -328,11 +365,19 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 	switch (tag) {
 		case PROTOTYPE_TERM_LAMBDA:
 		case PROTOTYPE_TERM_PI:
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+		case PROTOTYPE_TERM_THUNK_TYPE:
 		case PROTOTYPE_TERM_CONSTRUCTOR:
+		case PROTOTYPE_TERM_THUNK:
 			p_ret->whnf_role = PROTOTYPE_TERM_WHNF_INTRODUCTION;
 			break;
 		case PROTOTYPE_TERM_APP:
 		case PROTOTYPE_TERM_MATCH:
+		case PROTOTYPE_TERM_RETURN:
+		case PROTOTYPE_TERM_FORCE:
+		case PROTOTYPE_TERM_BIND:
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+		case PROTOTYPE_TERM_HANDLE:
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			p_ret->whnf_role = PROTOTYPE_TERM_WHNF_ELIMINATOR;
 			break;
@@ -348,9 +393,56 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 	p_ret->binds_term_variable =
 		tag == PROTOTYPE_TERM_LAMBDA ||
 		tag == PROTOTYPE_TERM_PI ||
-		tag == PROTOTYPE_TERM_MATCH;
+		tag == PROTOTYPE_TERM_MATCH ||
+		tag == PROTOTYPE_TERM_BIND;
 	p_ret->evaluates_scrutinee = tag == PROTOTYPE_TERM_MATCH;
 	p_ret->reduces_by_beta = tag == PROTOTYPE_TERM_APP;
+	return 0;
+}
+
+int prototype_term_classifier_view(
+	const struct prototype_term_db* db,
+	uint32_t classifier,
+	struct prototype_term_classifier_view* p_ret
+) {
+	if (!db || !p_ret || classifier >= db->term_count) {
+		return -1;
+	}
+	memset(p_ret, 0, sizeof(*p_ret));
+	const struct prototype_term* term = &db->terms[classifier];
+	if (term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		if (term->as.computation_type.label >= db->term_count ||
+			term->as.computation_type.result >= db->term_count) {
+			return -1;
+		}
+		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
+		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
+		p_ret->effect_row = term->as.computation_type.label;
+		if (prototype_term_effect_row_closed_bits(
+				db, p_ret->effect_row, &p_ret->effects
+			) != 0) {
+			p_ret->effects = PROTOTYPE_HOST_EFFECT_NONE;
+		}
+		p_ret->result = term->as.computation_type.result;
+		return 0;
+	}
+	/* PI(A, C) classifies a computation-level function. A source function is a
+	 * value only after THUNK introduces THUNK_TYPE(PI(A, C)). */
+	if (term->tag == PROTOTYPE_TERM_PI) {
+		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
+		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION;
+		p_ret->effect_row = PROTOTYPE_INVALID_ID;
+		p_ret->effects = PROTOTYPE_HOST_EFFECT_NONE;
+		p_ret->result = classifier;
+		return 0;
+	}
+	if (term->tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
+		p_ret->category = PROTOTYPE_TERM_CATEGORY_TYPE;
+		p_ret->result = classifier;
+		return 0;
+	}
+	p_ret->category = PROTOTYPE_TERM_CATEGORY_VALUE;
+	p_ret->result = classifier;
 	return 0;
 }
 
@@ -362,7 +454,8 @@ struct shape_binder_env {
 
 enum prototype_type_view_compare_mode {
 	PROTOTYPE_TYPE_VIEW_COMPARE_VIEW = 1,
-	PROTOTYPE_TYPE_VIEW_COMPARE_CORE
+	PROTOTYPE_TYPE_VIEW_COMPARE_CORE,
+	PROTOTYPE_TYPE_VIEW_COMPARE_SOURCE
 };
 
 struct canonical_binder_env {
@@ -544,12 +637,15 @@ static uint32_t shape_term_compare_id(
 ) {
 	uint32_t current = term_id;
 	for (uint32_t depth = 0;
-		type_view_compare_mode == PROTOTYPE_TYPE_VIEW_COMPARE_CORE &&
+		(type_view_compare_mode == PROTOTYPE_TYPE_VIEW_COMPARE_CORE ||
+			type_view_compare_mode == PROTOTYPE_TYPE_VIEW_COMPARE_SOURCE) &&
 			current < db->term_count &&
 			db->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW &&
 			depth < 32;
 		++depth) {
-		current = db->terms[current].as.type_view.core;
+		current = type_view_compare_mode == PROTOTYPE_TYPE_VIEW_COMPARE_CORE ?
+			db->terms[current].as.type_view.core :
+			db->terms[current].as.type_view.source;
 	}
 	return current;
 }
@@ -630,6 +726,101 @@ static int shape_terms_equal_at_depth(
 			env->count = saved_count;
 			return equal;
 		}
+		case PROTOTYPE_TERM_RETURN:
+			return shape_terms_equal_at_depth(
+				db,
+				left->as.return_term.value,
+				right->as.return_term.value,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return shape_terms_equal_at_depth(
+				db,
+				left->as.thunk_type.computation,
+				right->as.thunk_type.computation,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return shape_terms_equal_at_depth(
+				db,
+				left->as.thunk.computation,
+				right->as.thunk.computation,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return shape_terms_equal_at_depth(
+				db,
+				left->as.force.value,
+				right->as.force.value,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_BIND: {
+			if (!shape_terms_equal_at_depth(
+					db, left->as.bind.computation, right->as.bind.computation,
+					env, type_view_compare_mode, ignore_match_frames, depth + 1
+				)) {
+				return 0;
+			}
+			return shape_terms_equal_at_depth(
+				db, left->as.bind.continuation, right->as.bind.continuation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			return shape_terms_equal_at_depth(
+				db, left->as.operation_request.operation, right->as.operation_request.operation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && shape_terms_equal_at_depth(
+				db, left->as.operation_request.argument, right->as.operation_request.argument,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && shape_terms_equal_at_depth(
+				db, left->as.operation_request.continuation, right->as.operation_request.continuation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER:
+			return shape_terms_equal_at_depth(
+				db, left->as.handler.operation, right->as.handler.operation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && shape_terms_equal_at_depth(
+				db, left->as.handler.return_clause, right->as.handler.return_clause,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && shape_terms_equal_at_depth(
+				db, left->as.handler.operation_clause, right->as.handler.operation_clause,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLE:
+			return shape_terms_equal_at_depth(
+				db, left->as.handle.handler, right->as.handle.handler,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && shape_terms_equal_at_depth(
+				db, left->as.handle.computation, right->as.handle.computation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER_TYPE:
+			return shape_terms_equal_at_depth(
+				db, left->as.handler_type.operation, right->as.handler_type.operation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && shape_terms_equal_at_depth(
+				db, left->as.handler_type.input_computation,
+				right->as.handler_type.input_computation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && shape_terms_equal_at_depth(
+				db, left->as.handler_type.output_computation,
+				right->as.handler_type.output_computation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
 		case PROTOTYPE_TERM_PI:
 			return shape_terms_equal_at_depth(
 					db,
@@ -749,17 +940,50 @@ static int shape_terms_equal_at_depth(
 				return left->as.int_literal.value == right->as.int_literal.value;
 			case PROTOTYPE_TERM_EXTERNAL_REF:
 				return qualified_names_equal(left->as.external_ref.name, right->as.external_ref.name);
-			case PROTOTYPE_TERM_INTRINSIC:
-				return left->as.intrinsic.intrinsic_id == right->as.intrinsic.intrinsic_id &&
-					left->as.intrinsic.symbol_id == right->as.intrinsic.symbol_id &&
-					left->as.intrinsic.type_symbol_id == right->as.intrinsic.type_symbol_id;
+		case PROTOTYPE_TERM_OPERATION:
+				return left->as.operation.operation_id == right->as.operation.operation_id &&
+					left->as.operation.symbol_id == right->as.operation.symbol_id &&
+					left->as.operation.type_symbol_id == right->as.operation.type_symbol_id;
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return left->as.effect_label.effects == right->as.effect_label.effects;
-			case PROTOTYPE_TERM_EFFECT_TYPE:
+			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+				return shape_vars_equal(
+					env, left->as.effect_row_var.binder_id, right->as.effect_row_var.binder_id
+				);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				return shape_terms_equal_at_depth(
+					db, left->as.effect_row_union.left, right->as.effect_row_union.left,
+					env, type_view_compare_mode, ignore_match_frames, depth + 1
+				) && shape_terms_equal_at_depth(
+					db, left->as.effect_row_union.right, right->as.effect_row_union.right,
+					env, type_view_compare_mode, ignore_match_frames, depth + 1
+				);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
+			uint32_t saved_count = env->count;
+			if (shape_env_push(
+					env,
+					left->as.effect_row_forall.binder_id,
+					right->as.effect_row_forall.binder_id
+				) != 0) {
+				return 0;
+			}
+			int equal = shape_terms_equal_at_depth(
+				db,
+				left->as.effect_row_forall.body,
+				right->as.effect_row_forall.body,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+			env->count = saved_count;
+			return equal;
+		}
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return shape_terms_equal_at_depth(
 						db,
-						left->as.effect_type.label,
-						right->as.effect_type.label,
+						left->as.computation_type.label,
+						right->as.computation_type.label,
 						env,
 						type_view_compare_mode,
 						ignore_match_frames,
@@ -767,8 +991,8 @@ static int shape_terms_equal_at_depth(
 					) &&
 					shape_terms_equal_at_depth(
 						db,
-						left->as.effect_type.result,
-						right->as.effect_type.result,
+						left->as.computation_type.result,
+						right->as.computation_type.result,
 						env,
 						type_view_compare_mode,
 						ignore_match_frames,
@@ -996,6 +1220,124 @@ static int cross_shape_terms_equal_at_depth(
 			env->count = saved_count;
 			return equal;
 		}
+		case PROTOTYPE_TERM_RETURN:
+			return cross_shape_terms_equal_at_depth(
+				left_db,
+				left_type_declarations,
+				left->as.return_term.value,
+				right_db,
+				right_type_declarations,
+				right->as.return_term.value,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return cross_shape_terms_equal_at_depth(
+				left_db,
+				left_type_declarations,
+				left->as.thunk_type.computation,
+				right_db,
+				right_type_declarations,
+				right->as.thunk_type.computation,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return cross_shape_terms_equal_at_depth(
+				left_db,
+				left_type_declarations,
+				left->as.thunk.computation,
+				right_db,
+				right_type_declarations,
+				right->as.thunk.computation,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return cross_shape_terms_equal_at_depth(
+				left_db,
+				left_type_declarations,
+				left->as.force.value,
+				right_db,
+				right_type_declarations,
+				right->as.force.value,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_BIND: {
+			if (!cross_shape_terms_equal_at_depth(
+					left_db, left_type_declarations, left->as.bind.computation,
+					right_db, right_type_declarations, right->as.bind.computation,
+					env, type_view_compare_mode, ignore_match_frames, depth + 1
+				)) {
+				return 0;
+			}
+			return cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.bind.continuation,
+				right_db, right_type_declarations, right->as.bind.continuation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			return cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.operation_request.operation,
+				right_db, right_type_declarations, right->as.operation_request.operation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.operation_request.argument,
+				right_db, right_type_declarations, right->as.operation_request.argument,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.operation_request.continuation,
+				right_db, right_type_declarations, right->as.operation_request.continuation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER:
+			return cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.handler.operation,
+				right_db, right_type_declarations, right->as.handler.operation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.handler.return_clause,
+				right_db, right_type_declarations, right->as.handler.return_clause,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.handler.operation_clause,
+				right_db, right_type_declarations, right->as.handler.operation_clause,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLE:
+			return cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.handle.handler,
+				right_db, right_type_declarations, right->as.handle.handler,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.handle.computation,
+				right_db, right_type_declarations, right->as.handle.computation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER_TYPE:
+			return cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.handler_type.operation,
+				right_db, right_type_declarations, right->as.handler_type.operation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.handler_type.input_computation,
+				right_db, right_type_declarations, right->as.handler_type.input_computation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			) && cross_shape_terms_equal_at_depth(
+				left_db, left_type_declarations, left->as.handler_type.output_computation,
+				right_db, right_type_declarations, right->as.handler_type.output_computation,
+				env, type_view_compare_mode, ignore_match_frames, depth + 1
+			);
 		case PROTOTYPE_TERM_PI:
 			return cross_shape_terms_equal_at_depth(
 					left_db,
@@ -1142,20 +1484,58 @@ static int cross_shape_terms_equal_at_depth(
 				return left->as.int_literal.value == right->as.int_literal.value;
 			case PROTOTYPE_TERM_EXTERNAL_REF:
 				return qualified_names_equal(left->as.external_ref.name, right->as.external_ref.name);
-			case PROTOTYPE_TERM_INTRINSIC:
-				return left->as.intrinsic.intrinsic_id == right->as.intrinsic.intrinsic_id &&
-					left->as.intrinsic.symbol_id == right->as.intrinsic.symbol_id &&
-					left->as.intrinsic.type_symbol_id == right->as.intrinsic.type_symbol_id;
+		case PROTOTYPE_TERM_OPERATION:
+				return left->as.operation.operation_id == right->as.operation.operation_id &&
+					left->as.operation.symbol_id == right->as.operation.symbol_id &&
+					left->as.operation.type_symbol_id == right->as.operation.type_symbol_id;
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return left->as.effect_label.effects == right->as.effect_label.effects;
-			case PROTOTYPE_TERM_EFFECT_TYPE:
+			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+				return shape_vars_equal(
+					env, left->as.effect_row_var.binder_id, right->as.effect_row_var.binder_id
+				);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				return cross_shape_terms_equal_at_depth(
+					left_db, left_type_declarations, left->as.effect_row_union.left,
+					right_db, right_type_declarations, right->as.effect_row_union.left,
+					env, type_view_compare_mode, ignore_match_frames, depth + 1
+				) && cross_shape_terms_equal_at_depth(
+					left_db, left_type_declarations, left->as.effect_row_union.right,
+					right_db, right_type_declarations, right->as.effect_row_union.right,
+					env, type_view_compare_mode, ignore_match_frames, depth + 1
+				);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
+			uint32_t saved_count = env->count;
+			if (shape_env_push(
+					env,
+					left->as.effect_row_forall.binder_id,
+					right->as.effect_row_forall.binder_id
+				) != 0) {
+				return 0;
+			}
+			int equal = cross_shape_terms_equal_at_depth(
+				left_db,
+				left_type_declarations,
+				left->as.effect_row_forall.body,
+				right_db,
+				right_type_declarations,
+				right->as.effect_row_forall.body,
+				env,
+				type_view_compare_mode,
+				ignore_match_frames,
+				depth + 1
+			);
+			env->count = saved_count;
+			return equal;
+		}
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return cross_shape_terms_equal_at_depth(
 						left_db,
 						left_type_declarations,
-						left->as.effect_type.label,
+						left->as.computation_type.label,
 						right_db,
 						right_type_declarations,
-						right->as.effect_type.label,
+						right->as.computation_type.label,
 						env,
 						type_view_compare_mode,
 						ignore_match_frames,
@@ -1164,10 +1544,10 @@ static int cross_shape_terms_equal_at_depth(
 					cross_shape_terms_equal_at_depth(
 						left_db,
 						left_type_declarations,
-						left->as.effect_type.result,
+						left->as.computation_type.result,
 						right_db,
 						right_type_declarations,
-						right->as.effect_type.result,
+						right->as.computation_type.result,
 						env,
 						type_view_compare_mode,
 						ignore_match_frames,
@@ -1309,6 +1689,21 @@ int prototype_term_core_shape_equal(
 		left,
 		right,
 		PROTOTYPE_TYPE_VIEW_COMPARE_CORE,
+		p_equal
+	);
+}
+
+int prototype_term_source_shape_equal(
+	const struct prototype_term_db* db,
+	uint32_t left,
+	uint32_t right,
+	int* p_equal
+) {
+	return shape_equal_with_type_view_mode(
+		db,
+		left,
+		right,
+		PROTOTYPE_TYPE_VIEW_COMPARE_SOURCE,
 		p_equal
 	);
 }
@@ -1498,6 +1893,71 @@ static int canonical_hash_term_at_depth(
 			env->next_slot = saved_next_slot;
 			return status;
 		}
+		case PROTOTYPE_TERM_BIND: {
+			if (canonical_hash_term_at_depth(
+					db, type_declarations, term->as.bind.computation,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return canonical_hash_term_at_depth(
+				db, type_declarations, term->as.bind.continuation,
+				env, key, p_hash, canonicalize_frame_refs, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			if (canonical_hash_term_at_depth(
+					db, type_declarations, term->as.operation_request.operation,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0 || canonical_hash_term_at_depth(
+					db, type_declarations, term->as.operation_request.argument,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return canonical_hash_term_at_depth(
+				db, type_declarations, term->as.operation_request.continuation,
+				env, key, p_hash, canonicalize_frame_refs, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER:
+			if (canonical_hash_term_at_depth(
+					db, type_declarations, term->as.handler.operation,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0 || canonical_hash_term_at_depth(
+					db, type_declarations, term->as.handler.return_clause,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return canonical_hash_term_at_depth(
+				db, type_declarations, term->as.handler.operation_clause,
+				env, key, p_hash, canonicalize_frame_refs, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLE:
+			if (canonical_hash_term_at_depth(
+					db, type_declarations, term->as.handle.handler,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return canonical_hash_term_at_depth(
+				db, type_declarations, term->as.handle.computation,
+				env, key, p_hash, canonicalize_frame_refs, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER_TYPE:
+			if (canonical_hash_term_at_depth(
+					db, type_declarations, term->as.handler_type.operation,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0 || canonical_hash_term_at_depth(
+					db, type_declarations, term->as.handler_type.input_computation,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return canonical_hash_term_at_depth(
+				db, type_declarations, term->as.handler_type.output_computation,
+				env, key, p_hash, canonicalize_frame_refs, depth + 1
+			);
 		case PROTOTYPE_TERM_PI:
 			if (canonical_hash_term_at_depth(
 					db,
@@ -1643,19 +2103,61 @@ static int canonical_hash_term_at_depth(
 					(uint32_t)term->as.external_ref.name.name_symbol_id
 				);
 				return 0;
-			case PROTOTYPE_TERM_INTRINSIC:
-				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.intrinsic.intrinsic_id);
-				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.intrinsic.symbol_id);
-				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.intrinsic.type_symbol_id);
+		case PROTOTYPE_TERM_OPERATION:
+				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.operation.operation_id);
+				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.operation.symbol_id);
+				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.operation.type_symbol_id);
 				return 0;
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				canonical_hash_mix_u32(p_hash, term->as.effect_label.effects);
 				return 0;
-			case PROTOTYPE_TERM_EFFECT_TYPE:
+			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+				{
+					uint32_t slot;
+					if (canonical_env_lookup(env, term->as.effect_row_var.binder_id, &slot)) {
+						canonical_hash_mix_u32(p_hash, slot);
+					} else {
+						canonical_hash_mix_u32(p_hash, term->as.effect_row_var.binder_id);
+					}
+				}
+				return 0;
+			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				if (canonical_hash_term_at_depth(
+						db, type_declarations, term->as.effect_row_union.left, env, key,
+						p_hash, canonicalize_frame_refs, depth + 1
+					) != 0) {
+					return -1;
+				}
+			return canonical_hash_term_at_depth(
+				db, type_declarations, term->as.effect_row_union.right, env, key,
+				p_hash, canonicalize_frame_refs, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
+			uint32_t saved_count = env->count;
+			uint32_t saved_next_slot = env->next_slot;
+			if (canonical_env_push(env, term->as.effect_row_forall.binder_id) != 0) {
+				return -1;
+			}
+			key->bound_binder_count++;
+			int status = canonical_hash_term_at_depth(
+				db,
+				type_declarations,
+				term->as.effect_row_forall.body,
+				env,
+				key,
+				p_hash,
+				canonicalize_frame_refs,
+				depth + 1
+			);
+			env->count = saved_count;
+			env->next_slot = saved_next_slot;
+			return status;
+		}
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			if (canonical_hash_term_at_depth(
 						db,
 						type_declarations,
-						term->as.effect_type.label,
+						term->as.computation_type.label,
 						env,
 						key,
 						p_hash,
@@ -1664,16 +2166,60 @@ static int canonical_hash_term_at_depth(
 					) != 0) {
 					return -1;
 				}
-				return canonical_hash_term_at_depth(
-					db,
-					type_declarations,
-					term->as.effect_type.result,
+			return canonical_hash_term_at_depth(
+				db,
+				type_declarations,
+				term->as.computation_type.result,
 					env,
 					key,
 					p_hash,
 					canonicalize_frame_refs,
-					depth + 1
-				);
+				depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return canonical_hash_term_at_depth(
+				db,
+				type_declarations,
+				term->as.thunk_type.computation,
+				env,
+				key,
+				p_hash,
+				canonicalize_frame_refs,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_RETURN:
+			return canonical_hash_term_at_depth(
+				db,
+				type_declarations,
+				term->as.return_term.value,
+				env,
+				key,
+				p_hash,
+				canonicalize_frame_refs,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return canonical_hash_term_at_depth(
+				db,
+				type_declarations,
+				term->as.thunk.computation,
+				env,
+				key,
+				p_hash,
+				canonicalize_frame_refs,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return canonical_hash_term_at_depth(
+				db,
+				type_declarations,
+				term->as.force.value,
+				env,
+				key,
+				p_hash,
+				canonicalize_frame_refs,
+				depth + 1
+			);
 			default:
 				return -1;
 		}
@@ -1994,7 +2540,7 @@ int prototype_term_pi_family(
 	if (!db || !p_ret ||
 		domain >= db->term_count ||
 		codomain_family >= db->term_count ||
-		db->terms[codomain_family].tag != PROTOTYPE_TERM_LAMBDA) {
+		prototype_term_pure_family_lambda(db, codomain_family, NULL) != 0) {
 		return -1;
 	}
 
@@ -2004,6 +2550,63 @@ int prototype_term_pi_family(
 	term.as.pi.domain = domain;
 	term.as.pi.codomain_family = codomain_family;
 	return add_term(db, term, p_ret);
+}
+
+int prototype_term_pure_family(
+	struct prototype_term_db* db,
+	uint32_t binder_id,
+	uint32_t body,
+	uint32_t* p_family
+) {
+	uint32_t lambda;
+	uint32_t returned_body;
+	if (!db || !p_family || body >= db->term_count ||
+		prototype_term_return(db, body, &returned_body) != 0 ||
+		prototype_term_lambda(db, binder_id, returned_body, &lambda) != 0) {
+		return -1;
+	}
+	return prototype_term_thunk(db, lambda, p_family);
+}
+
+int prototype_term_pure_family_lambda(
+	const struct prototype_term_db* db,
+	uint32_t family,
+	uint32_t* p_lambda
+) {
+	if (!db || family >= db->term_count ||
+		db->terms[family].tag != PROTOTYPE_TERM_THUNK) {
+		return -1;
+	}
+	uint32_t lambda = db->terms[family].as.thunk.computation;
+	if (lambda >= db->term_count || db->terms[lambda].tag != PROTOTYPE_TERM_LAMBDA) {
+		return -1;
+	}
+	uint32_t returned = db->terms[lambda].as.lambda.body;
+	if (returned >= db->term_count || db->terms[returned].tag != PROTOTYPE_TERM_RETURN) {
+		return -1;
+	}
+	if (p_lambda) {
+		*p_lambda = lambda;
+	}
+	return 0;
+}
+
+int prototype_term_pure_family_parts(
+	const struct prototype_term_db* db,
+	uint32_t family,
+	uint32_t* p_binder_id,
+	uint32_t* p_body
+) {
+	uint32_t lambda;
+	if (!db || !p_binder_id || !p_body ||
+		prototype_term_pure_family_lambda(db, family, &lambda) != 0) {
+		return -1;
+	}
+	const struct prototype_term* lambda_term = &db->terms[lambda];
+	uint32_t returned = lambda_term->as.lambda.body;
+	*p_binder_id = lambda_term->as.lambda.binder_id;
+	*p_body = db->terms[returned].as.return_term.value;
+	return 0;
 }
 
 int prototype_term_match(
@@ -2398,6 +3001,45 @@ int prototype_term_rebind_type_former_anchors(
 			case PROTOTYPE_TERM_LAMBDA:
 				term->as.lambda.body = remap[term->as.lambda.body];
 				break;
+			case PROTOTYPE_TERM_RETURN:
+				term->as.return_term.value = remap[term->as.return_term.value];
+				break;
+			case PROTOTYPE_TERM_THUNK:
+				term->as.thunk.computation = remap[term->as.thunk.computation];
+				break;
+			case PROTOTYPE_TERM_FORCE:
+				term->as.force.value = remap[term->as.force.value];
+				break;
+			case PROTOTYPE_TERM_BIND:
+				term->as.bind.computation = remap[term->as.bind.computation];
+				term->as.bind.continuation = remap[term->as.bind.continuation];
+				break;
+			case PROTOTYPE_TERM_OPERATION_REQUEST:
+				term->as.operation_request.operation = remap[term->as.operation_request.operation];
+				term->as.operation_request.argument = remap[term->as.operation_request.argument];
+				term->as.operation_request.continuation = remap[term->as.operation_request.continuation];
+				break;
+			case PROTOTYPE_TERM_HANDLER:
+				term->as.handler.operation = remap[term->as.handler.operation];
+				term->as.handler.return_clause = remap[term->as.handler.return_clause];
+				term->as.handler.operation_clause = remap[term->as.handler.operation_clause];
+				break;
+			case PROTOTYPE_TERM_HANDLE:
+				term->as.handle.handler = remap[term->as.handle.handler];
+				term->as.handle.computation = remap[term->as.handle.computation];
+				break;
+			case PROTOTYPE_TERM_HANDLER_TYPE:
+				term->as.handler_type.operation = remap[term->as.handler_type.operation];
+				term->as.handler_type.input_computation = remap[term->as.handler_type.input_computation];
+				term->as.handler_type.output_computation = remap[term->as.handler_type.output_computation];
+				break;
+			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+				term->as.effect_row_union.left = remap[term->as.effect_row_union.left];
+				term->as.effect_row_union.right = remap[term->as.effect_row_union.right];
+				break;
+			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+				term->as.effect_row_forall.body = remap[term->as.effect_row_forall.body];
+				break;
 			case PROTOTYPE_TERM_PI:
 				term->as.pi.domain = remap[term->as.pi.domain];
 				term->as.pi.codomain_family = remap[term->as.pi.codomain_family];
@@ -2413,9 +3055,12 @@ int prototype_term_rebind_type_former_anchors(
 				term->as.induction_hypothesis.argument =
 					remap[term->as.induction_hypothesis.argument];
 				break;
-			case PROTOTYPE_TERM_EFFECT_TYPE:
-				term->as.effect_type.label = remap[term->as.effect_type.label];
-				term->as.effect_type.result = remap[term->as.effect_type.result];
+			case PROTOTYPE_TERM_COMPUTATION_TYPE:
+				term->as.computation_type.label = remap[term->as.computation_type.label];
+				term->as.computation_type.result = remap[term->as.computation_type.result];
+				break;
+			case PROTOTYPE_TERM_THUNK_TYPE:
+				term->as.thunk_type.computation = remap[term->as.thunk_type.computation];
 				break;
 			default:
 				break;
@@ -2428,6 +3073,15 @@ int prototype_term_rebind_type_former_anchors(
 		db->cases[i].body = remap[db->cases[i].body];
 	}
 	for (size_t i = 0; i < db->match_frame_count; ++i) {
+		/* A frame is allocated before its Match node is committed.  During
+		 * type-former rebinding that pending frame has no term yet. */
+		if (db->match_frames[i].match_term == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (db->match_frames[i].match_term >= db->term_count) {
+			free(remap);
+			return -1;
+		}
 		db->match_frames[i].match_term = remap[db->match_frames[i].match_term];
 	}
 	free(remap);
@@ -2581,7 +3235,7 @@ int prototype_term_int_literal(struct prototype_term_db* db, int64_t value, uint
 }
 
 int prototype_term_effect_label(struct prototype_term_db* db, unsigned effects, uint32_t* p_ret) {
-	if (!db || !p_ret || effects == PROTOTYPE_HOST_EFFECT_NONE) {
+	if (!db || !p_ret) {
 		return -1;
 	}
 	struct prototype_term term;
@@ -2591,7 +3245,116 @@ int prototype_term_effect_label(struct prototype_term_db* db, unsigned effects, 
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_effect_type(
+int prototype_term_effect_row_var(
+	struct prototype_term_db* db,
+	uint32_t binder_id,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || binder_id == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_EFFECT_ROW_VAR;
+	term.as.effect_row_var.binder_id = binder_id;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_effect_row_closed_bits(
+	const struct prototype_term_db* db,
+	uint32_t row,
+	unsigned* p_effects
+) {
+	if (!db || !p_effects || row >= db->term_count) {
+		return -1;
+	}
+	const struct prototype_term* term = &db->terms[row];
+	if (term->tag == PROTOTYPE_TERM_EFFECT_LABEL) {
+		*p_effects = term->as.effect_label.effects;
+		return 0;
+	}
+	if (term->tag != PROTOTYPE_TERM_EFFECT_ROW_UNION) {
+		return 1;
+	}
+	unsigned left;
+	unsigned right;
+	if (prototype_term_effect_row_closed_bits(
+			db, term->as.effect_row_union.left, &left
+		) != 0 || prototype_term_effect_row_closed_bits(
+			db, term->as.effect_row_union.right, &right
+		) != 0) {
+		return 1;
+	}
+	*p_effects = left | right;
+	return 0;
+}
+
+int prototype_term_effect_row_union(
+	struct prototype_term_db* db,
+	uint32_t left,
+	uint32_t right,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || left >= db->term_count || right >= db->term_count) {
+		return -1;
+	}
+	unsigned left_effects;
+	unsigned right_effects;
+	if (prototype_term_effect_row_closed_bits(db, left, &left_effects) == 0 &&
+		prototype_term_effect_row_closed_bits(db, right, &right_effects) == 0) {
+		return prototype_term_effect_label(db, left_effects | right_effects, p_ret);
+	}
+	if (prototype_term_effect_row_closed_bits(db, left, &left_effects) == 0 &&
+		left_effects == PROTOTYPE_HOST_EFFECT_NONE) {
+		*p_ret = right;
+		return 0;
+	}
+	if (prototype_term_effect_row_closed_bits(db, right, &right_effects) == 0 &&
+		right_effects == PROTOTYPE_HOST_EFFECT_NONE) {
+		*p_ret = left;
+		return 0;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_EFFECT_ROW_UNION;
+	term.as.effect_row_union.left = left;
+	term.as.effect_row_union.right = right;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_effect_row_forall(
+	struct prototype_term_db* db,
+	uint32_t binder_id,
+	uint32_t body,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || binder_id == PROTOTYPE_INVALID_ID || body >= db->term_count) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_EFFECT_ROW_FORALL;
+	term.as.effect_row_forall.binder_id = binder_id;
+	term.as.effect_row_forall.body = body;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_effect_row_forall_parts(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_binder_id,
+	uint32_t* p_body
+) {
+	if (!db || !p_binder_id || !p_body || term_id >= db->term_count ||
+		db->terms[term_id].tag != PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
+		return -1;
+	}
+	*p_binder_id = db->terms[term_id].as.effect_row_forall.binder_id;
+	*p_body = db->terms[term_id].as.effect_row_forall.body;
+	return 0;
+}
+
+int prototype_term_computation_type(
 	struct prototype_term_db* db,
 	uint32_t label,
 	uint32_t result,
@@ -2602,9 +3365,172 @@ int prototype_term_effect_type(
 	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_EFFECT_TYPE;
-	term.as.effect_type.label = label;
-	term.as.effect_type.result = result;
+	term.tag = PROTOTYPE_TERM_COMPUTATION_TYPE;
+	term.as.computation_type.label = label;
+	term.as.computation_type.result = result;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_thunk_type(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || computation >= db->term_count) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_THUNK_TYPE;
+	term.as.thunk_type.computation = computation;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_return(
+	struct prototype_term_db* db,
+	uint32_t value,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || value >= db->term_count) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_RETURN;
+	term.as.return_term.value = value;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_thunk(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || computation >= db->term_count) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_THUNK;
+	term.as.thunk.computation = computation;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_force(
+	struct prototype_term_db* db,
+	uint32_t value,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || value >= db->term_count) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_FORCE;
+	term.as.force.value = value;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_bind(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t continuation,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || computation >= db->term_count || continuation >= db->term_count) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_BIND;
+	term.as.bind.computation = computation;
+	term.as.bind.continuation = continuation;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_operation_request(
+	struct prototype_term_db* db,
+	uint32_t operation,
+	uint32_t argument,
+	uint32_t continuation,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || operation >= db->term_count || argument >= db->term_count ||
+		continuation >= db->term_count ||
+		db->terms[continuation].tag != PROTOTYPE_TERM_THUNK ||
+		db->terms[continuation].as.thunk.computation >= db->term_count ||
+		db->terms[db->terms[continuation].as.thunk.computation].tag !=
+			PROTOTYPE_TERM_LAMBDA) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_OPERATION_REQUEST;
+	term.as.operation_request.operation = operation;
+	term.as.operation_request.argument = argument;
+	term.as.operation_request.continuation = continuation;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_handler(
+	struct prototype_term_db* db,
+	uint32_t operation,
+	uint32_t return_clause,
+	uint32_t operation_clause,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || operation >= db->term_count ||
+		return_clause >= db->term_count || operation_clause >= db->term_count ||
+		db->terms[return_clause].tag != PROTOTYPE_TERM_LAMBDA ||
+		db->terms[operation_clause].tag != PROTOTYPE_TERM_LAMBDA) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_HANDLER;
+	term.as.handler.operation = operation;
+	term.as.handler.return_clause = return_clause;
+	term.as.handler.operation_clause = operation_clause;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_handle(
+	struct prototype_term_db* db,
+	uint32_t handler,
+	uint32_t computation,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || handler >= db->term_count || computation >= db->term_count ||
+		db->terms[handler].tag != PROTOTYPE_TERM_HANDLER) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_HANDLE;
+	term.as.handle.handler = handler;
+	term.as.handle.computation = computation;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_handler_type(
+	struct prototype_term_db* db,
+	uint32_t operation,
+	uint32_t input_computation,
+	uint32_t output_computation,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || operation >= db->term_count ||
+		input_computation >= db->term_count || output_computation >= db->term_count ||
+		db->terms[input_computation].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
+		db->terms[output_computation].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_HANDLER_TYPE;
+	term.as.handler_type.operation = operation;
+	term.as.handler_type.input_computation = input_computation;
+	term.as.handler_type.output_computation = output_computation;
 	return add_term(db, term, p_ret);
 }
 
@@ -2640,19 +3566,19 @@ int prototype_term_external_ref(
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_intrinsic(
+int prototype_term_operation(
 	struct prototype_term_db* db,
-	int intrinsic_id,
+	int operation_id,
 	int symbol_id,
 	int type_symbol_id,
 	uint32_t* p_ret
 ) {
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_INTRINSIC;
-	term.as.intrinsic.intrinsic_id = intrinsic_id;
-	term.as.intrinsic.symbol_id = symbol_id;
-	term.as.intrinsic.type_symbol_id = type_symbol_id;
+	term.tag = PROTOTYPE_TERM_OPERATION;
+	term.as.operation.operation_id = operation_id;
+	term.as.operation.symbol_id = symbol_id;
+	term.as.operation.type_symbol_id = type_symbol_id;
 	return add_term(db, term, p_ret);
 }
 
@@ -2676,6 +3602,74 @@ static int term_contains_free_binder_at_depth(
 				binder_id,
 				depth + 1
 			);
+		case PROTOTYPE_TERM_RETURN:
+			return term_contains_free_binder_at_depth(
+				db, term->as.return_term.value, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return term_contains_free_binder_at_depth(
+				db, term->as.thunk_type.computation, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return term_contains_free_binder_at_depth(
+				db, term->as.thunk.computation, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return term_contains_free_binder_at_depth(
+				db, term->as.force.value, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_BIND:
+			if (term_contains_free_binder_at_depth(
+					db, term->as.bind.computation, binder_id, depth + 1
+				)) {
+				return 1;
+			}
+			return term_contains_free_binder_at_depth(
+				db, term->as.bind.continuation, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			return term_contains_free_binder_at_depth(
+				db, term->as.operation_request.operation, binder_id, depth + 1
+			) || term_contains_free_binder_at_depth(
+				db, term->as.operation_request.argument, binder_id, depth + 1
+			) || term_contains_free_binder_at_depth(
+				db, term->as.operation_request.continuation, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER:
+			return term_contains_free_binder_at_depth(
+				db, term->as.handler.operation, binder_id, depth + 1
+			) || term_contains_free_binder_at_depth(
+				db, term->as.handler.return_clause, binder_id, depth + 1
+			) || term_contains_free_binder_at_depth(
+				db, term->as.handler.operation_clause, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLE:
+			return term_contains_free_binder_at_depth(
+				db, term->as.handle.handler, binder_id, depth + 1
+			) || term_contains_free_binder_at_depth(
+				db, term->as.handle.computation, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER_TYPE:
+			return term_contains_free_binder_at_depth(
+				db, term->as.handler_type.operation, binder_id, depth + 1
+			) || term_contains_free_binder_at_depth(
+				db, term->as.handler_type.input_computation, binder_id, depth + 1
+			) || term_contains_free_binder_at_depth(
+				db, term->as.handler_type.output_computation, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			return term->as.effect_row_var.binder_id == binder_id;
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			return term_contains_free_binder_at_depth(
+				db, term->as.effect_row_union.left, binder_id, depth + 1
+			) || term_contains_free_binder_at_depth(
+				db, term->as.effect_row_union.right, binder_id, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return term->as.effect_row_forall.binder_id == binder_id ? 0 :
+				term_contains_free_binder_at_depth(
+					db, term->as.effect_row_forall.body, binder_id, depth + 1
+				);
 		case PROTOTYPE_TERM_APP:
 			return term_contains_free_binder_at_depth(
 					db,
@@ -2767,16 +3761,16 @@ static int term_contains_free_binder_at_depth(
 					binder_id,
 					depth + 1
 				);
-			case PROTOTYPE_TERM_EFFECT_TYPE:
-				return term_contains_free_binder_at_depth(
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return term_contains_free_binder_at_depth(
 						db,
-						term->as.effect_type.label,
+						term->as.computation_type.label,
 						binder_id,
 						depth + 1
 					) ||
 					term_contains_free_binder_at_depth(
 						db,
-						term->as.effect_type.result,
+						term->as.computation_type.result,
 						binder_id,
 						depth + 1
 					);
@@ -2803,14 +3797,9 @@ int prototype_term_pi(
 		return -1;
 	}
 
-	uint32_t binder_id;
 	uint32_t codomain_family;
-	binder_id = PROTOTYPE_PI_UNUSED_BINDER_ID;
-	if (prototype_term_lambda(
-		db,
-		binder_id,
-		codomain,
-		&codomain_family
+	if (prototype_term_pure_family(
+		db, PROTOTYPE_PI_UNUSED_BINDER_ID, codomain, &codomain_family
 	) != 0) {
 		return -1;
 	}
@@ -2892,6 +3881,70 @@ static int term_contains_frame_scope_reference_at_depth(
 					term->as.app.argument,
 					depth + 1
 				);
+		case PROTOTYPE_TERM_RETURN:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.return_term.value, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.thunk_type.computation, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.thunk.computation, depth + 1
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.force.value, depth + 1
+			);
+		case PROTOTYPE_TERM_BIND:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.bind.computation, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.bind.continuation, depth + 1
+			);
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.operation_request.operation, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.operation_request.argument, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.operation_request.continuation, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.handler.operation, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.handler.return_clause, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.handler.operation_clause, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLE:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.handle.handler, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.handle.computation, depth + 1
+			);
+		case PROTOTYPE_TERM_HANDLER_TYPE:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.handler_type.operation, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.handler_type.input_computation, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.handler_type.output_computation, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.effect_row_union.left, depth + 1
+			) || term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.effect_row_union.right, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			return 0;
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.effect_row_forall.body, depth + 1
+			);
 		case PROTOTYPE_TERM_LAMBDA:
 			return term_contains_frame_scope_reference_at_depth(
 				db,
@@ -2975,17 +4028,17 @@ static int term_contains_frame_scope_reference_at_depth(
 					term->as.induction_hypothesis.argument,
 					depth + 1
 				);
-		case PROTOTYPE_TERM_EFFECT_TYPE:
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return term_contains_frame_scope_reference_at_depth(
 					db,
 					ctx,
-					term->as.effect_type.label,
+					term->as.computation_type.label,
 					depth + 1
 				) ||
 				term_contains_frame_scope_reference_at_depth(
 					db,
 					ctx,
-					term->as.effect_type.result,
+					term->as.computation_type.result,
 					depth + 1
 				);
 		default:
@@ -3019,6 +4072,14 @@ static int substitute_term_internal(
 		case PROTOTYPE_TERM_VAR:
 			if (binder_id != PROTOTYPE_INVALID_ID &&
 				term->as.var.binder_id == binder_id) {
+				*p_ret = replacement;
+			} else {
+				*p_ret = term_id;
+			}
+			return 0;
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			if (binder_id != PROTOTYPE_INVALID_ID &&
+				term->as.effect_row_var.binder_id == binder_id) {
 				*p_ret = replacement;
 			} else {
 				*p_ret = term_id;
@@ -3105,7 +4166,7 @@ static int substitute_term_internal(
 				argument,
 				p_ret
 			);
-		}
+			}
 		case PROTOTYPE_TERM_MATCH: {
 			uint32_t scrutinee;
 			if (substitute_term_internal(
@@ -3316,16 +4377,51 @@ static int substitute_term_internal(
 			case PROTOTYPE_TERM_PRIMITIVE_INT:
 			case PROTOTYPE_TERM_PRIMITIVE_INT64:
 				case PROTOTYPE_TERM_INT_LITERAL:
-				case PROTOTYPE_TERM_INTRINSIC:
+			case PROTOTYPE_TERM_OPERATION:
 				case PROTOTYPE_TERM_EFFECT_LABEL:
 					*p_ret = term_id;
 					return 0;
-			case PROTOTYPE_TERM_EFFECT_TYPE: {
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
+			uint32_t left;
+			uint32_t right;
+			if (substitute_term_internal(
+					db, term->as.effect_row_union.left, binder_id, replacement, ctx, &left
+				) != 0 || substitute_term_internal(
+					db, term->as.effect_row_union.right, binder_id, replacement, ctx, &right
+				) != 0) {
+				return -1;
+			}
+			return left == term->as.effect_row_union.left &&
+				right == term->as.effect_row_union.right ?
+				(*p_ret = term_id, 0) : prototype_term_effect_row_union(db, left, right, p_ret);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
+			if (term->as.effect_row_forall.binder_id == binder_id) {
+				*p_ret = term_id;
+				return 0;
+			}
+			uint32_t body;
+			if (substitute_term_internal(
+					db,
+					term->as.effect_row_forall.body,
+					binder_id,
+					replacement,
+					ctx,
+					&body
+				) != 0) {
+				return -1;
+			}
+			return body == term->as.effect_row_forall.body ?
+				(*p_ret = term_id, 0) : prototype_term_effect_row_forall(
+					db, term->as.effect_row_forall.binder_id, body, p_ret
+				);
+		}
+		case PROTOTYPE_TERM_COMPUTATION_TYPE: {
 				uint32_t label;
 				uint32_t result;
 				if (substitute_term_internal(
 						db,
-						term->as.effect_type.label,
+						term->as.computation_type.label,
 						binder_id,
 						replacement,
 						ctx,
@@ -3333,7 +4429,7 @@ static int substitute_term_internal(
 					) != 0 ||
 					substitute_term_internal(
 						db,
-						term->as.effect_type.result,
+						term->as.computation_type.result,
 						binder_id,
 						replacement,
 						ctx,
@@ -3341,12 +4437,126 @@ static int substitute_term_internal(
 					) != 0) {
 					return -1;
 				}
-				if (label == term->as.effect_type.label &&
-					result == term->as.effect_type.result) {
+				if (label == term->as.computation_type.label &&
+					result == term->as.computation_type.result) {
 					*p_ret = term_id;
 					return 0;
 				}
-				return prototype_term_effect_type(db, label, result, p_ret);
+				return prototype_term_computation_type(db, label, result, p_ret);
+			}
+			case PROTOTYPE_TERM_THUNK_TYPE: {
+				uint32_t computation;
+				if (substitute_term_internal(
+						db, term->as.thunk_type.computation, binder_id, replacement, ctx, &computation
+					) != 0) {
+					return -1;
+				}
+				return computation == term->as.thunk_type.computation ?
+					(*p_ret = term_id, 0) : prototype_term_thunk_type(db, computation, p_ret);
+			}
+			case PROTOTYPE_TERM_RETURN: {
+				uint32_t value;
+				if (substitute_term_internal(
+						db, term->as.return_term.value, binder_id, replacement, ctx, &value
+					) != 0) {
+					return -1;
+				}
+				return value == term->as.return_term.value ?
+					(*p_ret = term_id, 0) : prototype_term_return(db, value, p_ret);
+			}
+			case PROTOTYPE_TERM_THUNK: {
+				uint32_t computation;
+				if (substitute_term_internal(
+						db, term->as.thunk.computation, binder_id, replacement, ctx, &computation
+					) != 0) {
+					return -1;
+				}
+				return computation == term->as.thunk.computation ?
+					(*p_ret = term_id, 0) : prototype_term_thunk(db, computation, p_ret);
+			}
+			case PROTOTYPE_TERM_FORCE: {
+				uint32_t value;
+				if (substitute_term_internal(
+						db, term->as.force.value, binder_id, replacement, ctx, &value
+					) != 0) {
+					return -1;
+				}
+				return value == term->as.force.value ?
+					(*p_ret = term_id, 0) : prototype_term_force(db, value, p_ret);
+			}
+			case PROTOTYPE_TERM_BIND: {
+				uint32_t computation;
+				uint32_t continuation;
+				if (substitute_term_internal(
+						db, term->as.bind.computation, binder_id, replacement, ctx, &computation
+					) != 0 || substitute_term_internal(
+						db, term->as.bind.continuation, binder_id, replacement, ctx, &continuation
+					) != 0) {
+					return -1;
+				}
+				return computation == term->as.bind.computation &&
+					continuation == term->as.bind.continuation ?
+					(*p_ret = term_id, 0) : prototype_term_bind(
+						db, computation, continuation, p_ret
+					);
+			}
+			case PROTOTYPE_TERM_OPERATION_REQUEST: {
+				uint32_t operation;
+				uint32_t argument;
+				uint32_t continuation;
+				if (substitute_term_internal(
+						db, term->as.operation_request.operation, binder_id, replacement, ctx, &operation
+					) != 0 || substitute_term_internal(
+						db, term->as.operation_request.argument, binder_id, replacement, ctx, &argument
+					) != 0 || substitute_term_internal(
+						db, term->as.operation_request.continuation, binder_id, replacement, ctx, &continuation
+					) != 0) {
+					return -1;
+				}
+				return operation == term->as.operation_request.operation &&
+					argument == term->as.operation_request.argument &&
+					continuation == term->as.operation_request.continuation ?
+					(*p_ret = term_id, 0) : prototype_term_operation_request(
+						db, operation, argument, continuation, p_ret
+					);
+			}
+			case PROTOTYPE_TERM_HANDLER: {
+				uint32_t operation;
+				uint32_t return_clause;
+				uint32_t operation_clause;
+				if (substitute_term_internal(db, term->as.handler.operation, binder_id, replacement, ctx, &operation) != 0 ||
+					substitute_term_internal(db, term->as.handler.return_clause, binder_id, replacement, ctx, &return_clause) != 0 ||
+					substitute_term_internal(db, term->as.handler.operation_clause, binder_id, replacement, ctx, &operation_clause) != 0) {
+					return -1;
+				}
+				return operation == term->as.handler.operation &&
+					return_clause == term->as.handler.return_clause &&
+					operation_clause == term->as.handler.operation_clause ?
+					(*p_ret = term_id, 0) : prototype_term_handler(db, operation, return_clause, operation_clause, p_ret);
+			}
+			case PROTOTYPE_TERM_HANDLE: {
+				uint32_t handler;
+				uint32_t computation;
+				if (substitute_term_internal(db, term->as.handle.handler, binder_id, replacement, ctx, &handler) != 0 ||
+					substitute_term_internal(db, term->as.handle.computation, binder_id, replacement, ctx, &computation) != 0) {
+					return -1;
+				}
+				return handler == term->as.handle.handler && computation == term->as.handle.computation ?
+					(*p_ret = term_id, 0) : prototype_term_handle(db, handler, computation, p_ret);
+			}
+			case PROTOTYPE_TERM_HANDLER_TYPE: {
+				uint32_t operation;
+				uint32_t input;
+				uint32_t output;
+				if (substitute_term_internal(db, term->as.handler_type.operation, binder_id, replacement, ctx, &operation) != 0 ||
+					substitute_term_internal(db, term->as.handler_type.input_computation, binder_id, replacement, ctx, &input) != 0 ||
+					substitute_term_internal(db, term->as.handler_type.output_computation, binder_id, replacement, ctx, &output) != 0) {
+					return -1;
+				}
+				return operation == term->as.handler_type.operation &&
+					input == term->as.handler_type.input_computation &&
+					output == term->as.handler_type.output_computation ?
+					(*p_ret = term_id, 0) : prototype_term_handler_type(db, operation, input, output, p_ret);
 			}
 			case PROTOTYPE_TERM_TYPE_VIEW: {
 			uint32_t core;
@@ -3546,6 +4756,32 @@ static int resolve_external_ref_term(
 			}
 			return prototype_term_constructor(db, owner, term->as.constructor.constructor_id, p_ret);
 		}
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
+			uint32_t left;
+			uint32_t right;
+			if (resolve_external_ref_term(
+					db, term->as.effect_row_union.left, symbol_id, replacement, &left
+				) != 0 || resolve_external_ref_term(
+					db, term->as.effect_row_union.right, symbol_id, replacement, &right
+				) != 0) {
+				return -1;
+			}
+			return left == term->as.effect_row_union.left &&
+				right == term->as.effect_row_union.right ?
+				(*p_ret = term_id, 0) : prototype_term_effect_row_union(db, left, right, p_ret);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
+			uint32_t body;
+			if (resolve_external_ref_term(
+					db, term->as.effect_row_forall.body, symbol_id, replacement, &body
+				) != 0) {
+				return -1;
+			}
+			return body == term->as.effect_row_forall.body ?
+				(*p_ret = term_id, 0) : prototype_term_effect_row_forall(
+					db, term->as.effect_row_forall.binder_id, body, p_ret
+				);
+		}
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS: {
 				uint32_t argument;
 				if (resolve_external_ref_term(
@@ -3568,31 +4804,145 @@ static int resolve_external_ref_term(
 				p_ret
 				);
 			}
-			case PROTOTYPE_TERM_EFFECT_TYPE: {
+			case PROTOTYPE_TERM_COMPUTATION_TYPE: {
 				uint32_t label;
 				uint32_t result;
 				if (resolve_external_ref_term(
 						db,
-						term->as.effect_type.label,
+						term->as.computation_type.label,
 						symbol_id,
 						replacement,
 						&label
 					) != 0 ||
 					resolve_external_ref_term(
 						db,
-						term->as.effect_type.result,
+						term->as.computation_type.result,
 						symbol_id,
 						replacement,
 						&result
 					) != 0) {
 					return -1;
 				}
-				if (label == term->as.effect_type.label &&
-					result == term->as.effect_type.result) {
+				if (label == term->as.computation_type.label &&
+					result == term->as.computation_type.result) {
 					*p_ret = term_id;
 					return 0;
 				}
-				return prototype_term_effect_type(db, label, result, p_ret);
+				return prototype_term_computation_type(db, label, result, p_ret);
+			}
+			case PROTOTYPE_TERM_THUNK_TYPE: {
+				uint32_t computation;
+				if (resolve_external_ref_term(
+						db, term->as.thunk_type.computation, symbol_id, replacement, &computation
+					) != 0) {
+					return -1;
+				}
+				return computation == term->as.thunk_type.computation ?
+					(*p_ret = term_id, 0) : prototype_term_thunk_type(db, computation, p_ret);
+			}
+			case PROTOTYPE_TERM_RETURN: {
+				uint32_t value;
+				if (resolve_external_ref_term(
+						db, term->as.return_term.value, symbol_id, replacement, &value
+					) != 0) {
+					return -1;
+				}
+				return value == term->as.return_term.value ?
+					(*p_ret = term_id, 0) : prototype_term_return(db, value, p_ret);
+			}
+			case PROTOTYPE_TERM_THUNK: {
+				uint32_t computation;
+				if (resolve_external_ref_term(
+						db, term->as.thunk.computation, symbol_id, replacement, &computation
+					) != 0) {
+					return -1;
+				}
+				return computation == term->as.thunk.computation ?
+					(*p_ret = term_id, 0) : prototype_term_thunk(db, computation, p_ret);
+			}
+			case PROTOTYPE_TERM_FORCE: {
+				uint32_t value;
+				if (resolve_external_ref_term(
+						db, term->as.force.value, symbol_id, replacement, &value
+					) != 0) {
+					return -1;
+				}
+				return value == term->as.force.value ?
+					(*p_ret = term_id, 0) : prototype_term_force(db, value, p_ret);
+			}
+			case PROTOTYPE_TERM_BIND: {
+				uint32_t computation;
+				uint32_t continuation;
+				if (resolve_external_ref_term(
+						db, term->as.bind.computation, symbol_id, replacement, &computation
+					) != 0 || resolve_external_ref_term(
+						db, term->as.bind.continuation, symbol_id, replacement, &continuation
+					) != 0) {
+					return -1;
+				}
+				return computation == term->as.bind.computation &&
+					continuation == term->as.bind.continuation ?
+					(*p_ret = term_id, 0) : prototype_term_bind(
+						db, computation, continuation, p_ret
+					);
+			}
+			case PROTOTYPE_TERM_OPERATION_REQUEST: {
+				uint32_t operation;
+				uint32_t argument;
+				uint32_t continuation;
+				if (resolve_external_ref_term(
+						db, term->as.operation_request.operation, symbol_id, replacement, &operation
+					) != 0 || resolve_external_ref_term(
+						db, term->as.operation_request.argument, symbol_id, replacement, &argument
+					) != 0 || resolve_external_ref_term(
+						db, term->as.operation_request.continuation, symbol_id, replacement, &continuation
+					) != 0) {
+					return -1;
+				}
+				return operation == term->as.operation_request.operation &&
+					argument == term->as.operation_request.argument &&
+					continuation == term->as.operation_request.continuation ?
+					(*p_ret = term_id, 0) : prototype_term_operation_request(
+						db, operation, argument, continuation, p_ret
+					);
+			}
+			case PROTOTYPE_TERM_HANDLER: {
+				uint32_t operation;
+				uint32_t return_clause;
+				uint32_t operation_clause;
+				if (resolve_external_ref_term(db, term->as.handler.operation, symbol_id, replacement, &operation) != 0 ||
+					resolve_external_ref_term(db, term->as.handler.return_clause, symbol_id, replacement, &return_clause) != 0 ||
+					resolve_external_ref_term(db, term->as.handler.operation_clause, symbol_id, replacement, &operation_clause) != 0) {
+					return -1;
+				}
+				return operation == term->as.handler.operation &&
+					return_clause == term->as.handler.return_clause &&
+					operation_clause == term->as.handler.operation_clause ?
+					(*p_ret = term_id, 0) : prototype_term_handler(db, operation, return_clause, operation_clause, p_ret);
+			}
+			case PROTOTYPE_TERM_HANDLE: {
+				uint32_t handler;
+				uint32_t computation;
+				if (resolve_external_ref_term(db, term->as.handle.handler, symbol_id, replacement, &handler) != 0 ||
+					resolve_external_ref_term(db, term->as.handle.computation, symbol_id, replacement, &computation) != 0) {
+					return -1;
+				}
+				return handler == term->as.handle.handler && computation == term->as.handle.computation ?
+					(*p_ret = term_id, 0) : prototype_term_handle(db, handler, computation, p_ret);
+			}
+			case PROTOTYPE_TERM_HANDLER_TYPE: {
+				uint32_t operation;
+				uint32_t input;
+				uint32_t output;
+				if (resolve_external_ref_term(db, term->as.handler_type.operation, symbol_id, replacement, &operation) != 0 ||
+					resolve_external_ref_term(db, term->as.handler_type.input_computation, symbol_id, replacement, &input) != 0 ||
+					resolve_external_ref_term(db, term->as.handler_type.output_computation, symbol_id, replacement, &output) != 0) {
+					return -1;
+				}
+				return operation == term->as.handler_type.operation &&
+					input == term->as.handler_type.input_computation &&
+					output == term->as.handler_type.output_computation ?
+					(*p_ret = term_id, 0) : prototype_term_handler_type(db, operation, input, output, p_ret);
 			}
 			default:
 				*p_ret = term_id;
@@ -3760,6 +5110,35 @@ static int perform_host_step(
 	unsigned depth
 );
 
+static int perform_operation_request_step(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	uint32_t term_id,
+	uint32_t* p_ret,
+	unsigned depth
+);
+
+/* Request continuations are ordinary CBPV function values.  Keeping this
+ * construction here prevents host dispatch, BIND propagation, and HANDLE
+ * dispatch from each inventing a separate continuation application rule. */
+static int operation_request_resume(
+	struct prototype_term_db* db,
+	uint32_t continuation,
+	uint32_t result,
+	uint32_t* p_ret
+) {
+	uint32_t forced;
+	if (!db || !p_ret || continuation >= db->term_count || result >= db->term_count ||
+		db->terms[continuation].tag != PROTOTYPE_TERM_THUNK ||
+		prototype_term_force(db, continuation, &forced) != 0 ||
+		prototype_term_app(db, forced, result, p_ret) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
 static int normalization_equal_at_depth(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -3777,6 +5156,12 @@ static struct prototype_term_reduction_options normalize_reduction_options(
 	return options;
 }
 
+static int reduction_is_pure_type(
+	struct prototype_term_reduction_options options
+) {
+	return (options.flags & PROTOTYPE_TERM_REDUCE_PURE_TYPE) != 0;
+}
+
 static int normalization_profile_options(
 	int profile,
 	const struct prototype_term_definition_env* definitions,
@@ -3787,18 +5172,21 @@ static int normalization_profile_options(
 	}
 	memset(p_options, 0, sizeof(*p_options));
 	switch (profile) {
-		case PROTOTYPE_TERM_NORMALIZATION_LAMBDA_WHNF:
+		case PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF:
 			p_options->flags = PROTOTYPE_TERM_REDUCE_BETA;
 			break;
-		case PROTOTYPE_TERM_NORMALIZATION_INDUCTIVE_WHNF:
+		case PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF:
 			p_options->flags = PROTOTYPE_TERM_REDUCE_BETA |
 				PROTOTYPE_TERM_REDUCE_MATCH |
-				PROTOTYPE_TERM_REDUCE_INDUCTION;
+				PROTOTYPE_TERM_REDUCE_INDUCTION |
+				PROTOTYPE_TERM_REDUCE_COMPUTATIONS;
 			break;
-		case PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF:
+		case PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF:
 			p_options->flags = PROTOTYPE_TERM_REDUCE_BETA |
 				PROTOTYPE_TERM_REDUCE_MATCH |
-				PROTOTYPE_TERM_REDUCE_INDUCTION;
+				PROTOTYPE_TERM_REDUCE_INDUCTION |
+				PROTOTYPE_TERM_REDUCE_COMPUTATIONS |
+				PROTOTYPE_TERM_REDUCE_PURE_TYPE;
 			break;
 		default:
 			return -1;
@@ -3815,17 +5203,24 @@ static int normalization_profile_from_options(
 ) {
 	if (definitions ||
 		(options.flags & (PROTOTYPE_TERM_REDUCE_DEFINITIONS |
-			PROTOTYPE_TERM_REDUCE_HOST_PURE |
 			PROTOTYPE_TERM_PERFORM_HOST_EFFECT)) != 0) {
 		return 0;
 	}
 	if (options.flags == PROTOTYPE_TERM_REDUCE_BETA) {
-		return PROTOTYPE_TERM_NORMALIZATION_LAMBDA_WHNF;
+		return PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF;
 	}
 	if (options.flags == (PROTOTYPE_TERM_REDUCE_BETA |
 			PROTOTYPE_TERM_REDUCE_MATCH |
-			PROTOTYPE_TERM_REDUCE_INDUCTION)) {
-		return PROTOTYPE_TERM_NORMALIZATION_INDUCTIVE_WHNF;
+			PROTOTYPE_TERM_REDUCE_INDUCTION |
+			PROTOTYPE_TERM_REDUCE_COMPUTATIONS |
+			PROTOTYPE_TERM_REDUCE_PURE_TYPE)) {
+		return PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF;
+	}
+	if (options.flags == (PROTOTYPE_TERM_REDUCE_BETA |
+			PROTOTYPE_TERM_REDUCE_MATCH |
+			PROTOTYPE_TERM_REDUCE_INDUCTION |
+			PROTOTYPE_TERM_REDUCE_COMPUTATIONS)) {
+		return PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF;
 	}
 	return 0;
 }
@@ -3973,29 +5368,34 @@ static int evaluate_steps(
 				prototype_term_app(db, function, term->as.app.argument, &candidate) != 0) {
 				return -1;
 			}
-			uint32_t stepped;
-			int step_status = perform_host_step(
-				db,
-				type_declarations,
-				definitions,
-				options,
-				candidate,
-				&stepped,
-				depth - 1
-			);
-			if (step_status < 0) {
-				return -1;
-			}
-			if (step_status > 0) {
-				return evaluate_steps(
-					db,
-					type_declarations,
-					definitions,
-					options,
-					stepped,
-					p_ret,
-					depth - 1
-				);
+			/* A pure intrinsic has the ordinary computation type Comp({}, A).
+			 * Execution reduces its application to RETURN(result); it is neither
+			 * an operation request nor a type-conversion rule. */
+			if ((options.flags & PROTOTYPE_TERM_REDUCE_PURE_INTRINSICS) &&
+				!reduction_is_pure_type(options)) {
+				uint32_t head;
+				uint32_t arguments[64];
+				uint32_t argument_count;
+				decompose_app(db, candidate, &head, arguments, &argument_count);
+				if (head < db->term_count &&
+					db->terms[head].tag == PROTOTYPE_TERM_OPERATION) {
+					const struct prototype_operation_declaration* declaration =
+						prototype_term_operation_declaration(
+							db->terms[head].as.operation.operation_id
+						);
+					if (declaration && declaration->effects == PROTOTYPE_HOST_EFFECT_NONE) {
+						uint32_t result;
+						int status = perform_host_step(
+							db, type_declarations, definitions, options, candidate, &result, depth - 1
+						);
+						if (status < 0) {
+							return -1;
+						}
+						if (status > 0) {
+							return prototype_term_return(db, result, p_ret);
+						}
+					}
+				}
 			}
 			*p_ret = candidate;
 			return 0;
@@ -4186,6 +5586,123 @@ static int evaluate_steps(
 			);
 		}
 		case PROTOTYPE_TERM_LAMBDA:
+		case PROTOTYPE_TERM_RETURN:
+		case PROTOTYPE_TERM_THUNK:
+			*p_ret = term_id;
+			return 0;
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			if (options.operation_dispatch ||
+				(options.flags & PROTOTYPE_TERM_PERFORM_HOST_EFFECT) != 0) {
+				return perform_operation_request_step(
+					db, type_declarations, definitions, options, term_id, p_ret, depth - 1
+				);
+			}
+			*p_ret = term_id;
+			return 0;
+		case PROTOTYPE_TERM_HANDLER:
+			*p_ret = term_id;
+			return 0;
+		case PROTOTYPE_TERM_HANDLE: {
+			if (!(options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS) ||
+				reduction_is_pure_type(options)) {
+				*p_ret = term_id;
+				return 0;
+			}
+			const struct prototype_term* handler =
+				&db->terms[term->as.handle.handler];
+			if (handler->tag != PROTOTYPE_TERM_HANDLER) {
+				return -1;
+			}
+
+			/* A graph handler receives requests before host or embedding dispatch. */
+			struct prototype_term_reduction_options inner_options = options;
+			inner_options.flags &= ~PROTOTYPE_TERM_PERFORM_HOST_EFFECT;
+			inner_options.operation_dispatch = NULL;
+			inner_options.operation_dispatch_context = NULL;
+			uint32_t computation;
+			if (evaluate_steps(
+					db, type_declarations, definitions, inner_options,
+					term->as.handle.computation, &computation, depth - 1
+				) != 0) {
+				return -1;
+			}
+			if (computation < db->term_count &&
+				db->terms[computation].tag == PROTOTYPE_TERM_RETURN) {
+				uint32_t applied;
+				if (prototype_term_app(
+						db, handler->as.handler.return_clause,
+						db->terms[computation].as.return_term.value, &applied
+					) != 0) {
+					return -1;
+				}
+				return evaluate_steps(
+					db, type_declarations, definitions, options, applied, p_ret, depth - 1
+				);
+			}
+			if (computation < db->term_count &&
+				db->terms[computation].tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
+				const struct prototype_term* request = &db->terms[computation];
+				int handles_operation = 0;
+				if (prototype_term_core_shape_equal(
+						db, handler->as.handler.operation,
+					request->as.operation_request.operation, &handles_operation
+					) != 0) {
+					return -1;
+				}
+				uint32_t binder_id = prototype_term_fresh_binder(db);
+				uint32_t result_var;
+				uint32_t resumed;
+				uint32_t resumed_under_handler;
+				uint32_t continuation_lambda;
+				uint32_t continuation;
+				if (binder_id == PROTOTYPE_INVALID_ID ||
+					prototype_term_var(db, binder_id, &result_var) != 0 ||
+					operation_request_resume(
+						db, request->as.operation_request.continuation, result_var, &resumed
+						) != 0 || prototype_term_handle(
+						db, term->as.handle.handler, resumed, &resumed_under_handler
+						) != 0 || prototype_term_lambda(
+						db, binder_id, resumed_under_handler, &continuation_lambda
+						) != 0 || prototype_term_thunk(
+						db, continuation_lambda, &continuation
+						) != 0) {
+					return -1;
+				}
+				if (handles_operation) {
+					uint32_t clause_application;
+					if (prototype_term_app(
+							db, handler->as.handler.operation_clause,
+						request->as.operation_request.argument, &clause_application
+						) != 0 || prototype_term_app(
+							db, clause_application, continuation, &clause_application
+						) != 0) {
+						return -1;
+					}
+					return evaluate_steps(
+						db, type_declarations, definitions, options,
+						clause_application, p_ret, depth - 1
+					);
+				}
+				return prototype_term_operation_request(
+					db, request->as.operation_request.operation,
+					request->as.operation_request.argument, continuation, p_ret
+				);
+			}
+			if (computation == term->as.handle.computation) {
+				*p_ret = term_id;
+				return 0;
+			}
+			return prototype_term_handle(db, term->as.handle.handler, computation, p_ret);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
+			unsigned effects;
+			if (prototype_term_effect_row_closed_bits(db, term_id, &effects) == 0) {
+				return prototype_term_effect_label(db, effects, p_ret);
+			}
+			*p_ret = term_id;
+			return 0;
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 		case PROTOTYPE_TERM_PI:
 		case PROTOTYPE_TERM_VAR:
 			case PROTOTYPE_TERM_CONSTRUCTOR:
@@ -4198,35 +5715,158 @@ static int evaluate_steps(
 			case PROTOTYPE_TERM_PRIMITIVE_INT:
 			case PROTOTYPE_TERM_PRIMITIVE_INT64:
 				case PROTOTYPE_TERM_INT_LITERAL:
-				case PROTOTYPE_TERM_INTRINSIC:
+				case PROTOTYPE_TERM_OPERATION:
 				case PROTOTYPE_TERM_EFFECT_LABEL:
-				case PROTOTYPE_TERM_EFFECT_TYPE:
-				default:
+				case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			*p_ret = term_id;
+			return 0;
+		case PROTOTYPE_TERM_FORCE: {
+			if (!(options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS)) {
+				*p_ret = term_id;
+				return 0;
+			}
+			uint32_t value;
+			if (evaluate_steps(
+					db,
+					type_declarations,
+					definitions,
+					options,
+					term->as.force.value,
+					&value,
+					depth - 1
+				) != 0) {
+				return -1;
+			}
+			if (value < db->term_count && db->terms[value].tag == PROTOTYPE_TERM_THUNK) {
+				uint32_t computation = db->terms[value].as.thunk.computation;
+				if (reduction_is_pure_type(options)) {
+					uint32_t pure_computation;
+					if (evaluate_steps(
+							db,
+							type_declarations,
+							definitions,
+							options,
+							computation,
+							&pure_computation,
+							depth - 1
+						) != 0) {
+						return -1;
+					}
+					if (pure_computation >= db->term_count ||
+						db->terms[pure_computation].tag != PROTOTYPE_TERM_RETURN) {
+						*p_ret = term_id;
+						return 0;
+					}
+					return evaluate_steps(
+						db,
+						type_declarations,
+						definitions,
+						options,
+						pure_computation,
+						p_ret,
+						depth - 1
+					);
+				}
+				return evaluate_steps(
+					db,
+					type_declarations,
+					definitions,
+					options,
+					computation,
+					p_ret,
+					depth - 1
+				);
+			}
+			if (value == term->as.force.value) {
+				*p_ret = term_id;
+				return 0;
+			}
+			return prototype_term_force(db, value, p_ret);
+		}
+		case PROTOTYPE_TERM_BIND: {
+			if (!(options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS)) {
+				*p_ret = term_id;
+				return 0;
+			}
+			uint32_t computation;
+			if (evaluate_steps(
+					db, type_declarations, definitions, options,
+					term->as.bind.computation, &computation, depth - 1
+				) != 0) {
+				return -1;
+			}
+			if (computation < db->term_count &&
+				db->terms[computation].tag == PROTOTYPE_TERM_RETURN) {
+				uint32_t applied;
+				if (prototype_term_app(
+						db,
+						term->as.bind.continuation,
+						db->terms[computation].as.return_term.value,
+						&applied
+					) != 0) {
+					return -1;
+				}
+				return evaluate_steps(
+					db, type_declarations, definitions, options, applied, p_ret, depth - 1
+				);
+			}
+			if (computation < db->term_count &&
+				db->terms[computation].tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
+				if (reduction_is_pure_type(options)) {
+					*p_ret = term_id;
+					return 0;
+				}
+				const struct prototype_term* request = &db->terms[computation];
+				const struct prototype_term* continuation =
+					&db->terms[request->as.operation_request.continuation];
+				if (continuation->tag != PROTOTYPE_TERM_THUNK ||
+					continuation->as.thunk.computation >= db->term_count ||
+					db->terms[continuation->as.thunk.computation].tag !=
+						PROTOTYPE_TERM_LAMBDA) {
+					return -1;
+				}
+				const struct prototype_term* continuation_lambda =
+					&db->terms[continuation->as.thunk.computation];
+				uint32_t result_var;
+				uint32_t resumed;
+				uint32_t chained_body;
+				uint32_t chained_lambda;
+				uint32_t chained;
+				if (prototype_term_var(
+						db, continuation_lambda->as.lambda.binder_id, &result_var
+						) != 0 || operation_request_resume(
+						db, request->as.operation_request.continuation, result_var, &resumed
+						) != 0 || prototype_term_bind(
+						db, resumed, term->as.bind.continuation, &chained_body
+						) != 0 || prototype_term_lambda(
+						db, continuation_lambda->as.lambda.binder_id, chained_body, &chained_lambda
+						) != 0 || prototype_term_thunk(
+						db, chained_lambda, &chained
+						) != 0) {
+					return -1;
+				}
+				return prototype_term_operation_request(
+					db, request->as.operation_request.operation,
+					request->as.operation_request.argument, chained, p_ret
+				);
+			}
+			if (computation == term->as.bind.computation) {
+				*p_ret = term_id;
+				return 0;
+			}
+			return prototype_term_bind(
+				db,
+				computation,
+				term->as.bind.continuation,
+				p_ret
+			);
+		}
+		default:
 					*p_ret = term_id;
 					return 0;
 	}
-}
-
-int prototype_term_evaluate(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	int term_id,
-	uint32_t* p_ret
-) {
-	if (term_id < 0) {
-		return -1;
-	}
-	return evaluate_steps(
-		db,
-		type_declarations,
-		NULL,
-			(struct prototype_term_reduction_options){
-				.flags = PROTOTYPE_TERM_REDUCE_DEFAULT
-			},
-		(uint32_t)term_id,
-		p_ret,
-		PROTOTYPE_EVALUATION_DEPTH_LIMIT
-	);
 }
 
 int prototype_term_whnf(
@@ -4612,6 +6252,26 @@ static int normalization_equal_at_depth(
 				depth + 1
 			);
 		}
+		case PROTOTYPE_TERM_HANDLER_TYPE: {
+			int equal = 0;
+			if (normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.handler_type.operation, right_term->as.handler_type.operation,
+					&equal, depth + 1
+				) != 0 || !equal || normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.handler_type.input_computation,
+					right_term->as.handler_type.input_computation, &equal, depth + 1
+				) != 0 || !equal) {
+				*p_equal = 0;
+				return 0;
+			}
+			return normalization_equal_at_depth(
+				db, type_declarations, definitions, options,
+				left_term->as.handler_type.output_computation,
+				right_term->as.handler_type.output_computation, p_equal, depth + 1
+			);
+		}
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t left_var;
 			uint32_t right_body;
@@ -4781,32 +6441,183 @@ static int normalization_equal_at_depth(
 				*p_equal = left_term->as.effect_label.effects ==
 					right_term->as.effect_label.effects;
 				return 0;
-			case PROTOTYPE_TERM_EFFECT_TYPE: {
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			*p_equal = left_term->as.effect_row_var.binder_id ==
+				right_term->as.effect_row_var.binder_id;
+			return 0;
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
+			int equal = 0;
+			if (normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.effect_row_union.left,
+					right_term->as.effect_row_union.left,
+					&equal, depth + 1
+				) != 0 || !equal) {
+				return 0;
+			}
+			return normalization_equal_at_depth(
+				db, type_declarations, definitions, options,
+				left_term->as.effect_row_union.right,
+				right_term->as.effect_row_union.right,
+				p_equal, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
+			struct shape_binder_env env;
+			memset(&env, 0, sizeof(env));
+			if (shape_env_push(
+					&env,
+					left_term->as.effect_row_forall.binder_id,
+					right_term->as.effect_row_forall.binder_id
+				) != 0) {
+				return -1;
+			}
+			*p_equal = shape_terms_equal_at_depth(
+				db,
+				left_term->as.effect_row_forall.body,
+				right_term->as.effect_row_forall.body,
+				&env,
+				PROTOTYPE_TYPE_VIEW_COMPARE_SOURCE,
+				0,
+				depth + 1
+			);
+			return 0;
+		}
+		case PROTOTYPE_TERM_COMPUTATION_TYPE: {
 				int equal = 0;
 				if (normalization_equal_at_depth(
 						db,
 						type_declarations,
 						definitions,
 						options,
-						left_term->as.effect_type.label,
-						right_term->as.effect_type.label,
+						left_term->as.computation_type.label,
+						right_term->as.computation_type.label,
 						&equal,
 						depth + 1
 					) != 0 || !equal) {
 					return 0;
 				}
-				return normalization_equal_at_depth(
+			return normalization_equal_at_depth(
 					db,
 					type_declarations,
 					definitions,
 					options,
-					left_term->as.effect_type.result,
-					right_term->as.effect_type.result,
+					left_term->as.computation_type.result,
+					right_term->as.computation_type.result,
 					p_equal,
 					depth + 1
-				);
+			);
+		}
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return normalization_equal_at_depth(
+				db,
+				type_declarations,
+				definitions,
+				options,
+				left_term->as.thunk_type.computation,
+				right_term->as.thunk_type.computation,
+				p_equal,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_RETURN:
+			return normalization_equal_at_depth(
+				db,
+				type_declarations,
+				definitions,
+				options,
+				left_term->as.return_term.value,
+				right_term->as.return_term.value,
+				p_equal,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return normalization_equal_at_depth(
+				db,
+				type_declarations,
+				definitions,
+				options,
+				left_term->as.thunk.computation,
+				right_term->as.thunk.computation,
+				p_equal,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_BIND: {
+			int equal = 0;
+			if (normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.bind.computation,
+					right_term->as.bind.computation,
+					&equal, depth + 1
+				) != 0 || !equal) {
+				*p_equal = 0;
+				return 0;
 			}
-			default:
+			return normalization_equal_at_depth(
+				db, type_declarations, definitions, options,
+				left_term->as.bind.continuation, right_term->as.bind.continuation,
+				p_equal, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_OPERATION_REQUEST: {
+			int equal = 0;
+			if (normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.operation_request.operation,
+					right_term->as.operation_request.operation,
+					&equal, depth + 1
+				) != 0 || !equal || normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.operation_request.argument,
+					right_term->as.operation_request.argument,
+					&equal, depth + 1
+				) != 0 || !equal) {
+				*p_equal = 0;
+				return 0;
+			}
+			return normalization_equal_at_depth(
+				db, type_declarations, definitions, options,
+				left_term->as.operation_request.continuation,
+				right_term->as.operation_request.continuation,
+				p_equal, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_HANDLER: {
+			int equal = 0;
+			if (normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.handler.operation, right_term->as.handler.operation,
+					&equal, depth + 1
+				) != 0 || !equal || normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.handler.return_clause, right_term->as.handler.return_clause,
+					&equal, depth + 1
+				) != 0 || !equal) {
+				*p_equal = 0;
+				return 0;
+			}
+			return normalization_equal_at_depth(
+				db, type_declarations, definitions, options,
+				left_term->as.handler.operation_clause, right_term->as.handler.operation_clause,
+				p_equal, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_HANDLE: {
+			int equal = 0;
+			if (normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.handle.handler, right_term->as.handle.handler,
+					&equal, depth + 1
+				) != 0 || !equal) {
+				*p_equal = 0;
+				return 0;
+			}
+			return normalization_equal_at_depth(
+				db, type_declarations, definitions, options,
+				left_term->as.handle.computation, right_term->as.handle.computation,
+				p_equal, depth + 1
+			);
+		}
+		default:
 				*p_equal = left_whnf == right_whnf;
 				return 0;
 	}
@@ -4901,33 +6712,39 @@ static int host_oracle_is_integer_arithmetic(int oracle_kind) {
 		oracle_kind == PROTOTYPE_HOST_ORACLE_INT_NEG;
 }
 
-static int int_intrinsic_arity(int intrinsic_id) {
-	const struct prototype_host_intrinsic_signature* signature =
-		prototype_term_host_intrinsic_signature(intrinsic_id);
-	if (!signature || !host_oracle_is_integer_arithmetic(signature->oracle_kind)) {
+static int int_operation_arity(int operation_id) {
+	const struct prototype_operation_declaration* declaration =
+		prototype_term_operation_declaration(operation_id);
+	const struct host_operation_implementation* implementation =
+		host_operation_implementation(operation_id);
+	if (!declaration || !implementation ||
+		!host_oracle_is_integer_arithmetic(implementation->oracle_kind)) {
 		return 0;
 	}
-	return (int)signature->arity;
+	return (int)declaration->arity;
 }
 
-static int execute_int_intrinsic(
+static int execute_int_operation(
 	struct prototype_term_db* db,
-	int intrinsic_id,
+	int operation_id,
 	const int64_t* arguments,
 	uint32_t argument_count,
 	uint32_t* p_ret
 ) {
 	if (!db || !arguments || !p_ret ||
-		argument_count != (uint32_t)int_intrinsic_arity(intrinsic_id)) {
+		argument_count != (uint32_t)int_operation_arity(operation_id)) {
 		return -1;
 	}
-	const struct prototype_host_intrinsic_signature* signature =
-		prototype_term_host_intrinsic_signature(intrinsic_id);
-	if (!signature || !host_oracle_is_integer_arithmetic(signature->oracle_kind)) {
+	const struct prototype_operation_declaration* declaration =
+		prototype_term_operation_declaration(operation_id);
+	const struct host_operation_implementation* implementation =
+		host_operation_implementation(operation_id);
+	if (!declaration || !implementation ||
+		!host_oracle_is_integer_arithmetic(implementation->oracle_kind)) {
 		return -1;
 	}
 
-	int result_width = prototype_term_host_type_bit_width(signature->result_type);
+	int result_width = prototype_term_host_type_bit_width(declaration->result_type);
 	if (result_width == 32) {
 		for (uint32_t i = 0; i < argument_count; ++i) {
 			if (!int_literal_fits_int32(arguments[i])) {
@@ -4935,7 +6752,7 @@ static int execute_int_intrinsic(
 			}
 		}
 		uint32_t result_bits;
-		switch (signature->oracle_kind) {
+		switch (implementation->oracle_kind) {
 			case PROTOTYPE_HOST_ORACLE_INT_ADD:
 				result_bits = (uint32_t)arguments[0] + (uint32_t)arguments[1];
 				break;
@@ -4958,7 +6775,7 @@ static int execute_int_intrinsic(
 	}
 
 	uint64_t result_bits;
-	switch (signature->oracle_kind) {
+	switch (implementation->oracle_kind) {
 		case PROTOTYPE_HOST_ORACLE_INT_ADD:
 			result_bits = (uint64_t)arguments[0] + (uint64_t)arguments[1];
 			break;
@@ -5002,7 +6819,8 @@ static int host_effect_allowed(
 	unsigned effects
 ) {
 	if (effects == PROTOTYPE_HOST_EFFECT_NONE) {
-		return (options.flags & PROTOTYPE_TERM_REDUCE_HOST_PURE) != 0;
+		/* This function is reached only through OPERATION_REQUEST dispatch. */
+		return 1;
 	}
 	return (options.flags & PROTOTYPE_TERM_PERFORM_HOST_EFFECT) != 0 &&
 		(options.effect_capabilities & effects) == effects;
@@ -5089,20 +6907,22 @@ static int perform_host_step(
 	uint32_t arg_count;
 	decompose_app(db, term_id, &head, args, &arg_count);
 	if (head >= db->term_count ||
-		db->terms[head].tag != PROTOTYPE_TERM_INTRINSIC) {
+		db->terms[head].tag != PROTOTYPE_TERM_OPERATION) {
 		*p_ret = term_id;
 		return 0;
 	}
 
-	int intrinsic_id = db->terms[head].as.intrinsic.intrinsic_id;
-	const struct prototype_host_intrinsic_signature* signature =
-		prototype_term_host_intrinsic_signature(intrinsic_id);
-	if (!signature || arg_count != signature->arity ||
-		!host_effect_allowed(options, signature->effects)) {
+	int operation_id = db->terms[head].as.operation.operation_id;
+	const struct prototype_operation_declaration* declaration =
+		prototype_term_operation_declaration(operation_id);
+	const struct host_operation_implementation* implementation =
+		host_operation_implementation(operation_id);
+	if (!declaration || !implementation || arg_count != declaration->arity ||
+		!host_effect_allowed(options, declaration->effects)) {
 		*p_ret = term_id;
 		return 0;
 	}
-	if (signature->effects != PROTOTYPE_HOST_EFFECT_NONE &&
+	if (declaration->effects != PROTOTYPE_HOST_EFFECT_NONE &&
 		(!options.effect_output || !options.symbols)) {
 		return -1;
 	}
@@ -5126,8 +6946,8 @@ static int perform_host_step(
 		}
 	}
 
-	if (host_oracle_is_integer_arithmetic(signature->oracle_kind)) {
-		int64_t int_args[PROTOTYPE_HOST_INTRINSIC_MAX_ARITY];
+	if (host_oracle_is_integer_arithmetic(implementation->oracle_kind)) {
+		int64_t int_args[PROTOTYPE_OPERATION_MAX_ARITY];
 		for (uint32_t i = 0; i < arg_count; ++i) {
 			if (reduced_args[i] >= db->term_count ||
 				db->terms[reduced_args[i]].tag != PROTOTYPE_TERM_INT_LITERAL) {
@@ -5143,16 +6963,16 @@ static int perform_host_step(
 			}
 			int_args[i] = db->terms[reduced_args[i]].as.int_literal.value;
 		}
-		return execute_int_intrinsic(
+		return execute_int_operation(
 			db,
-			intrinsic_id,
+			operation_id,
 			int_args,
 			arg_count,
 			p_ret
 		) == 0 ? 1 : -1;
 	}
 
-	if (signature->oracle_kind == PROTOTYPE_HOST_ORACLE_PRINT) {
+	if (implementation->oracle_kind == PROTOTYPE_HOST_ORACLE_PRINT) {
 		if (arg_count != 1 ||
 			reduced_args[0] >= db->term_count ||
 			db->terms[reduced_args[0]].tag != PROTOTYPE_TERM_TEXT_LITERAL) {
@@ -5166,7 +6986,7 @@ static int perform_host_step(
 				p_ret
 			);
 		}
-		const char* text = symbol_to_string(
+			const char* text = symbol_to_string(
 			options.symbols,
 			db->terms[reduced_args[0]].as.text_literal.text_symbol_id
 		);
@@ -5218,7 +7038,7 @@ static int perform_host_step(
 		);
 	}
 
-	if (signature->oracle_kind == PROTOTYPE_HOST_ORACLE_TEXT_TO_NAT) {
+	if (implementation->oracle_kind == PROTOTYPE_HOST_ORACLE_TEXT_TO_NAT) {
 		if (arg_count != 1 ||
 			reduced_args[0] >= db->term_count ||
 			db->terms[reduced_args[0]].tag != PROTOTYPE_TERM_TEXT_LITERAL) {
@@ -5274,7 +7094,7 @@ static int perform_host_step(
 		return 1;
 	}
 
-	if (signature->oracle_kind == PROTOTYPE_HOST_ORACLE_NAT_TO_TEXT) {
+	if (implementation->oracle_kind == PROTOTYPE_HOST_ORACLE_NAT_TO_TEXT) {
 		if (arg_count != 1) {
 			return perform_host_step_rebuild_if_changed(
 				db,
@@ -5379,6 +7199,75 @@ static int perform_host_step(
 	);
 }
 
+static int default_host_operation_dispatch(
+	void* context,
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	const struct prototype_term_reduction_options* options,
+	uint32_t operation,
+	uint32_t argument,
+	uint32_t* p_result,
+	unsigned depth
+) {
+	(void)context;
+	if (!options) {
+		return -1;
+	}
+	uint32_t application;
+	if (prototype_term_app(db, operation, argument, &application) != 0) {
+		return -1;
+	}
+	return perform_host_step(
+		db, type_declarations, definitions, *options, application, p_result, depth
+	);
+}
+
+static int perform_operation_request_step(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	uint32_t term_id,
+	uint32_t* p_ret,
+	unsigned depth
+) {
+	if (!db || !type_declarations || !p_ret || term_id >= db->term_count || depth == 0 ||
+		db->terms[term_id].tag != PROTOTYPE_TERM_OPERATION_REQUEST) {
+		return -1;
+	}
+	const struct prototype_term* request = &db->terms[term_id];
+	uint32_t result;
+	prototype_term_operation_dispatch_fn dispatch = options.operation_dispatch;
+	if (!dispatch) {
+		dispatch = default_host_operation_dispatch;
+	}
+	int status = dispatch(
+		options.operation_dispatch_context,
+		db,
+		type_declarations,
+		definitions,
+		&options,
+		request->as.operation_request.operation,
+		request->as.operation_request.argument,
+		&result,
+		depth - 1
+	);
+	if (status <= 0) {
+		*p_ret = term_id;
+		return status;
+	}
+	uint32_t resumed;
+	if (operation_request_resume(
+			db, request->as.operation_request.continuation, result, &resumed
+		) != 0) {
+		return -1;
+	}
+	return evaluate_steps(
+		db, type_declarations, definitions, options, resumed, p_ret, depth - 1
+	);
+}
+
 int prototype_term_normalization_equal_with_profile(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -5403,7 +7292,7 @@ int prototype_term_normalization_equal_with_profile(
 	);
 }
 
-int prototype_term_execute_host_intrinsic(
+int prototype_term_execute_with_default_host_handler(
 	FILE* output,
 	struct symbol_table* symbols,
 	struct prototype_type_declaration_db* type_declarations,
@@ -5420,7 +7309,8 @@ int prototype_term_execute_host_intrinsic(
 			type_declarations,
 			NULL,
 			(struct prototype_term_reduction_options){
-				.flags = PROTOTYPE_TERM_REDUCE_DEFAULT | PROTOTYPE_TERM_PERFORM_HOST_EFFECT,
+					.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT |
+						PROTOTYPE_TERM_PERFORM_HOST_EFFECT,
 				.effect_output = output,
 				.symbols = symbols,
 				.effect_capabilities = PROTOTYPE_HOST_EFFECT_TERMINAL
@@ -5515,8 +7405,8 @@ static void print_term_depth(
 			}
 			fprintf(output, "%s>", safe_symbol_name(symbols, term->as.external_ref.name.name_symbol_id));
 			break;
-		case PROTOTYPE_TERM_INTRINSIC:
-			fprintf(output, "#.%s", safe_symbol_name(symbols, term->as.intrinsic.symbol_id));
+		case PROTOTYPE_TERM_OPERATION:
+			fprintf(output, "#.%s", safe_symbol_name(symbols, term->as.operation.symbol_id));
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR: {
 			uint32_t type_id;
@@ -5623,14 +7513,85 @@ static void print_term_depth(
 				case PROTOTYPE_TERM_EFFECT_LABEL:
 					fprintf(output, "Terminal");
 					break;
-				case PROTOTYPE_TERM_EFFECT_TYPE:
-					fprintf(output, "Effect(");
-					print_term_depth(output, symbols, type_declarations, terms, term->as.effect_type.label, depth - 1);
+				case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+					fprintf(output, "effect#%u", term->as.effect_row_var.binder_id);
+					break;
+				case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+					fprintf(output, "EffectUnion(");
+					print_term_depth(output, symbols, type_declarations, terms,
+						term->as.effect_row_union.left, depth - 1);
 					fprintf(output, ", ");
-					print_term_depth(output, symbols, type_declarations, terms, term->as.effect_type.result, depth - 1);
+					print_term_depth(output, symbols, type_declarations, terms,
+						term->as.effect_row_union.right, depth - 1);
 					fprintf(output, ")");
 					break;
-			default:
+				case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+					fprintf(output, "EffectForall(effect#%u, ",
+						term->as.effect_row_forall.binder_id);
+					print_term_depth(output, symbols, type_declarations, terms,
+						term->as.effect_row_forall.body, depth - 1);
+					fprintf(output, ")");
+					break;
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			fprintf(output, "Comp(");
+					print_term_depth(output, symbols, type_declarations, terms, term->as.computation_type.label, depth - 1);
+					fprintf(output, ", ");
+					print_term_depth(output, symbols, type_declarations, terms, term->as.computation_type.result, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			fprintf(output, "Thunk(");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.thunk_type.computation, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_RETURN:
+			fprintf(output, "return ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.return_term.value, depth - 1);
+			break;
+		case PROTOTYPE_TERM_THUNK:
+			fprintf(output, "thunk ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.thunk.computation, depth - 1);
+			break;
+		case PROTOTYPE_TERM_FORCE:
+			fprintf(output, "force ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.force.value, depth - 1);
+			break;
+		case PROTOTYPE_TERM_BIND:
+			fprintf(output, "bind ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.bind.computation, depth - 1);
+			fprintf(output, " with ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.bind.continuation, depth - 1);
+			break;
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			fprintf(output, "request ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.operation_request.operation, depth - 1);
+			fprintf(output, " ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.operation_request.argument, depth - 1);
+			break;
+		case PROTOTYPE_TERM_HANDLER:
+			fprintf(output, "handler ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.handler.operation, depth - 1);
+			fprintf(output, " return ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.handler.return_clause, depth - 1);
+			fprintf(output, " operation ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.handler.operation_clause, depth - 1);
+			break;
+		case PROTOTYPE_TERM_HANDLE:
+			fprintf(output, "handle ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.handle.computation, depth - 1);
+			fprintf(output, " with ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.handle.handler, depth - 1);
+			break;
+		case PROTOTYPE_TERM_HANDLER_TYPE:
+			fprintf(output, "Handler(");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.handler_type.operation, depth - 1);
+			fprintf(output, ", ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.handler_type.input_computation, depth - 1);
+			fprintf(output, ", ");
+			print_term_depth(output, symbols, type_declarations, terms, term->as.handler_type.output_computation, depth - 1);
+			fprintf(output, ")");
+			break;
+		default:
 				fprintf(output, "<unknown-term>");
 				break;
 	}
@@ -5723,10 +7684,10 @@ static void print_term_debug_depth(
 			}
 			fprintf(output, "%s)", safe_symbol_name(symbols, term->as.external_ref.name.name_symbol_id));
 			break;
-		case PROTOTYPE_TERM_INTRINSIC:
-			fprintf(output, "INTRINSIC(%s", safe_symbol_name(symbols, term->as.intrinsic.symbol_id));
-			if (term->as.intrinsic.type_symbol_id >= 0) {
-				fprintf(output, ":%s", safe_symbol_name(symbols, term->as.intrinsic.type_symbol_id));
+		case PROTOTYPE_TERM_OPERATION:
+			fprintf(output, "OPERATION(%s", safe_symbol_name(symbols, term->as.operation.symbol_id));
+			if (term->as.operation.type_symbol_id >= 0) {
+				fprintf(output, ":%s", safe_symbol_name(symbols, term->as.operation.type_symbol_id));
 			}
 			fprintf(output, ")");
 			break;
@@ -5830,13 +7791,95 @@ static void print_term_debug_depth(
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				fprintf(output, "EFFECT_LABEL(%u)", term->as.effect_label.effects);
 				break;
-			case PROTOTYPE_TERM_EFFECT_TYPE:
-				fprintf(output, "EFFECT_TYPE(");
-				print_term_debug_depth(output, symbols, type_declarations, terms, term->as.effect_type.label, depth - 1);
+			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+				fprintf(output, "EFFECT_ROW_VAR(%u)", term->as.effect_row_var.binder_id);
+				break;
+			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+				fprintf(output, "EFFECT_ROW_UNION(");
+				print_term_debug_depth(output, symbols, type_declarations, terms,
+					term->as.effect_row_union.left, depth - 1);
 				fprintf(output, ", ");
-				print_term_debug_depth(output, symbols, type_declarations, terms, term->as.effect_type.result, depth - 1);
+				print_term_debug_depth(output, symbols, type_declarations, terms,
+					term->as.effect_row_union.right, depth - 1);
 				fprintf(output, ")");
 				break;
+			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+				fprintf(output, "EFFECT_ROW_FORALL(%u, ",
+					term->as.effect_row_forall.binder_id);
+				print_term_debug_depth(output, symbols, type_declarations, terms,
+					term->as.effect_row_forall.body, depth - 1);
+				fprintf(output, ")");
+				break;
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			fprintf(output, "COMPUTATION_TYPE(");
+				print_term_debug_depth(output, symbols, type_declarations, terms, term->as.computation_type.label, depth - 1);
+				fprintf(output, ", ");
+				print_term_debug_depth(output, symbols, type_declarations, terms, term->as.computation_type.result, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			fprintf(output, "Thunk(");
+			print_term_debug_depth(
+				output, symbols, type_declarations, terms, term->as.thunk_type.computation, depth - 1
+			);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_RETURN:
+			fprintf(output, "RETURN(");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.return_term.value, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_THUNK:
+			fprintf(output, "THUNK(");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.thunk.computation, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_FORCE:
+			fprintf(output, "FORCE(");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.force.value, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_BIND:
+			fprintf(output, "BIND(");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.bind.computation, depth - 1);
+			fprintf(output, ", ");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.bind.continuation, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			fprintf(output, "OPERATION_REQUEST(");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.operation_request.operation, depth - 1);
+			fprintf(output, ", ");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.operation_request.argument, depth - 1);
+			fprintf(output, ", ");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.operation_request.continuation, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_HANDLER:
+			fprintf(output, "HANDLER(");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler.operation, depth - 1);
+			fprintf(output, ", ");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler.return_clause, depth - 1);
+			fprintf(output, ", ");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler.operation_clause, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_HANDLE:
+			fprintf(output, "HANDLE(");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handle.handler, depth - 1);
+			fprintf(output, ", ");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handle.computation, depth - 1);
+			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_HANDLER_TYPE:
+			fprintf(output, "HANDLER_TYPE(");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler_type.operation, depth - 1);
+			fprintf(output, ", ");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler_type.input_computation, depth - 1);
+			fprintf(output, ", ");
+			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler_type.output_computation, depth - 1);
+			fprintf(output, ")");
+			break;
 			default:
 				fprintf(output, "UNKNOWN_TERM");
 				break;

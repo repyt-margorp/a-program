@@ -31,10 +31,20 @@ static const char* ast_tag_name(int tag) {
 				return "text-literal";
 			case PROTOTYPE_AST_INT_LITERAL:
 				return "int-literal";
-			case PROTOTYPE_AST_INTRINSIC_NAME:
-				return "intrinsic-name";
+			case PROTOTYPE_AST_SYSTEM_NAME:
+				return "system-name";
 		case PROTOTYPE_AST_ASCRIPTION:
 			return "ascription";
+		case PROTOTYPE_AST_RETURN:
+			return "return";
+		case PROTOTYPE_AST_THUNK:
+			return "thunk";
+		case PROTOTYPE_AST_FORCE:
+			return "force";
+		case PROTOTYPE_AST_PERFORM:
+			return "perform";
+		case PROTOTYPE_AST_HANDLE:
+			return "handle";
 		default:
 			return "unknown";
 	}

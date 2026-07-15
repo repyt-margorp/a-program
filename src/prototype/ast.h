@@ -22,14 +22,22 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_INDUCTION_HYPOTHESIS,
 	PROTOTYPE_AST_TEXT_LITERAL,
 	PROTOTYPE_AST_INT_LITERAL,
-	PROTOTYPE_AST_INTRINSIC_NAME,
-	PROTOTYPE_AST_ASCRIPTION
+	PROTOTYPE_AST_SYSTEM_NAME,
+	PROTOTYPE_AST_ASCRIPTION,
+	PROTOTYPE_AST_RETURN,
+	PROTOTYPE_AST_THUNK,
+	PROTOTYPE_AST_FORCE,
+	PROTOTYPE_AST_PERFORM,
+	PROTOTYPE_AST_HANDLE
 };
 
-enum prototype_ast_intrinsic_id {
-	PROTOTYPE_AST_INTRINSIC_UNKNOWN = 0,
-	PROTOTYPE_AST_INTRINSIC_HOST_TYPE,
-	PROTOTYPE_AST_INTRINSIC_HOST_ORACLE
+enum prototype_ast_system_name_kind {
+	PROTOTYPE_AST_SYSTEM_NAME_UNKNOWN = 0,
+	PROTOTYPE_AST_SYSTEM_NAME_HOST_TYPE,
+	PROTOTYPE_AST_SYSTEM_NAME_HOST_OPERATION,
+	/* A surface intrinsic recognized only as the head of #.bind M (\\x => N).
+	 * It has no standalone TermDB representation. */
+	PROTOTYPE_AST_SYSTEM_NAME_BIND
 };
 
 enum prototype_ast_type_expr_tag {
@@ -133,14 +141,29 @@ struct prototype_ast_node {
 			int namespace_symbol_id;
 			int symbol_id;
 			int type_symbol_id;
-			int intrinsic_id;
+			int kind;
 			int host_type_id;
-			int term_intrinsic_id;
-		} intrinsic_name;
+			int operation_id;
+		} system_name;
 		struct {
 			uint32_t term;
 			uint32_t type_expr;
 		} ascription;
+		struct {
+			uint32_t term;
+		} unary;
+		struct {
+			uint32_t computation;
+			uint32_t operation;
+			uint32_t operation_argument_binder_id;
+			int operation_argument_symbol_id;
+			uint32_t operation_continuation_binder_id;
+			int operation_continuation_symbol_id;
+			uint32_t operation_body;
+			uint32_t return_binder_id;
+			int return_symbol_id;
+			uint32_t return_body;
+		} handle;
 	} as;
 };
 
@@ -273,11 +296,22 @@ enum prototype_operation_tag {
 	PROTOTYPE_OPERATION_LAMBDA,
 	PROTOTYPE_OPERATION_MATCH,
 	PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS,
-	PROTOTYPE_OPERATION_ASCRIPTION
+	PROTOTYPE_OPERATION_ASCRIPTION,
+	PROTOTYPE_OPERATION_RETURN,
+	PROTOTYPE_OPERATION_THUNK,
+	PROTOTYPE_OPERATION_FORCE,
+	PROTOTYPE_OPERATION_BIND,
+	PROTOTYPE_OPERATION_PERFORM,
+	PROTOTYPE_OPERATION_HANDLE
 };
 
 struct prototype_operation_node {
 	int tag;
+	/* This belongs to the source operation occurrence, not to the erased core
+	 * term. A shared core lambda can be raw in one occurrence and thunked in
+	 * another. */
+	int polarity;
+	int computation_kind;
 	uint32_t core_term;
 	/* A lowering-time fact supplied to the solver. It is not a solved
 	 * operation classifier and must never be published as one. */
@@ -297,6 +331,10 @@ struct prototype_operation_node {
 	uint32_t body;
 	uint32_t scrutinee;
 	uint32_t binder_classifier;
+	/* Classifier-only row binders generalized by this lambda. They are never
+	 * runtime lambda arguments. */
+	uint32_t implicit_effect_row_binders[16];
+	uint32_t implicit_effect_row_count;
 	uint32_t first_case;
 	uint32_t case_count;
 };
@@ -878,14 +916,14 @@ int prototype_ast_int_literal(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_intrinsic_name(
+int prototype_ast_system_name(
 	struct prototype_ast_db* db,
 	int namespace_symbol_id,
 	int symbol_id,
 	int type_symbol_id,
-	int intrinsic_id,
+	int kind,
 	int host_type_id,
-	int term_intrinsic_id,
+	int operation_id,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
@@ -893,6 +931,45 @@ int prototype_ast_ascription(
 	struct prototype_ast_db* db,
 	uint32_t term,
 	uint32_t type_expr,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_return(
+	struct prototype_ast_db* db,
+	uint32_t term,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_thunk(
+	struct prototype_ast_db* db,
+	uint32_t term,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_force(
+	struct prototype_ast_db* db,
+	uint32_t term,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_perform(
+	struct prototype_ast_db* db,
+	uint32_t application,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_handle(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	uint32_t operation,
+	uint32_t operation_argument_binder_id,
+	int operation_argument_symbol_id,
+	uint32_t operation_continuation_binder_id,
+	int operation_continuation_symbol_id,
+	uint32_t operation_body,
+	uint32_t return_binder_id,
+	int return_symbol_id,
+	uint32_t return_body,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
@@ -1185,6 +1262,7 @@ int prototype_ast_compile_pending_with_imports(
 	struct prototype_judgement_db* judgement,
 	struct prototype_compile_metadata* metadata,
 	int namespace_symbol_id,
+	int automatic_cbpv_coercions,
 	const struct prototype_artifact_interface* const* imported_interfaces,
 	size_t imported_interface_count
 );

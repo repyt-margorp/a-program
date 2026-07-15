@@ -87,7 +87,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 		bool_view,
 		two_view,
 		&equal
@@ -106,7 +106,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			bool_classifier,
 			two_classifier,
 			&equal
@@ -128,7 +128,7 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_LAMBDA_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			application,
 			&whnf
 		) != 0 || whnf != bool_zero) {
@@ -155,14 +155,14 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			shared_core,
 			&bool_whnf
 		) != 0 || prototype_term_whnf_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_KERNEL_CONVERSION_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			term_db.terms[two_view_after].as.type_view.core,
 			&two_whnf
 		) != 0 || bool_whnf != shared_core || two_whnf != shared_core) {

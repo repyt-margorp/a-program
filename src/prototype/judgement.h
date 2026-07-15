@@ -23,12 +23,19 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION,
 	PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM,
+	PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_FORCE_ELIM,
+	PROTOTYPE_JUDGEMENT_PROOF_BIND_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_HANDLER_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_HANDLE_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE,
 	PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO,
-	PROTOTYPE_JUDGEMENT_PROOF_INTRINSIC_TYPE_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_CONVERSION,
 	PROTOTYPE_JUDGEMENT_PROOF_TEXT_TYPE_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO,
@@ -77,6 +84,42 @@ struct prototype_judgement_match_motive_result {
 	uint32_t classifier;
 };
 
+enum prototype_judgement_computation_constraint_kind {
+	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_BIND = 1,
+	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST,
+	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_HANDLER,
+	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_HANDLE
+};
+
+/* A computation constraint records the two operands required to solve a CBPV
+ * computation judgement. It is compiler-local state, not a TermDB node and
+ * not a runtime environment. */
+struct prototype_judgement_computation_constraint {
+	int kind;
+	uint32_t subject;
+	uint32_t computation;
+	uint32_t continuation;
+	uint32_t argument;
+	uint32_t application;
+	uint32_t effect_residual_row;
+};
+
+enum prototype_judgement_effect_row_equation_kind {
+	PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_UNION = 1,
+	PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_RESIDUAL
+};
+
+/* Effect-row equations belong to the compile-time constraint solver. They are
+ * neither TermDB nodes nor runtime handler state. */
+struct prototype_judgement_effect_row_equation {
+	int kind;
+	uint32_t subject;
+	uint32_t result_row;
+	uint32_t left_row;
+	uint32_t right_row;
+	int solved;
+};
+
 struct prototype_judgement_db {
 	struct prototype_judgement_relation* relations;
 	struct prototype_judgement_proof* proofs;
@@ -96,12 +139,18 @@ struct prototype_judgement_delta {
 	struct prototype_judgement_relation* relations;
 	struct prototype_judgement_proof* proofs;
 	struct prototype_judgement_match_motive_result* match_motive_results;
+	struct prototype_judgement_computation_constraint* computation_constraints;
+	struct prototype_judgement_effect_row_equation* effect_row_equations;
 	size_t relation_count;
 	size_t relation_capacity;
 	size_t proof_count;
 	size_t proof_capacity;
 	size_t match_motive_result_count;
 	size_t match_motive_result_capacity;
+	size_t computation_constraint_count;
+	size_t computation_constraint_capacity;
+	size_t effect_row_equation_count;
+	size_t effect_row_equation_capacity;
 };
 
 struct prototype_match_constructor_resolution {
@@ -138,7 +187,11 @@ void prototype_judgement_delta_init(
 	struct prototype_judgement_proof* proofs,
 	size_t relation_capacity,
 	struct prototype_judgement_match_motive_result* match_motive_results,
-	size_t match_motive_result_capacity
+	size_t match_motive_result_capacity,
+	struct prototype_judgement_computation_constraint* computation_constraints,
+	size_t computation_constraint_capacity,
+	struct prototype_judgement_effect_row_equation* effect_row_equations,
+	size_t effect_row_equation_capacity
 );
 
 size_t prototype_judgement_delta_mark(
@@ -265,7 +318,7 @@ int prototype_judgement_delta_record_type_formation(
 	uint32_t classifier
 );
 
-int prototype_judgement_delta_record_intrinsic_type(
+int prototype_judgement_delta_record_operation_type(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -287,10 +340,10 @@ int prototype_judgement_delta_record_int_literal(
 	uint32_t classifier
 );
 
-int prototype_judgement_intrinsic_classifier(
+int prototype_judgement_operation_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term* intrinsic,
+	const struct prototype_term* operation,
 	uint32_t* p_classifier
 );
 
@@ -423,7 +476,7 @@ int prototype_judgement_expand_int_literal(
 	uint32_t classifier
 );
 
-int prototype_judgement_delta_expand_negative_intrinsic(
+int prototype_judgement_delta_expand_negative_operation(
 	struct prototype_judgement_delta* delta,
 	const struct prototype_term_db* terms,
 	uint32_t subject,
@@ -533,6 +586,17 @@ int prototype_judgement_classifier_normalization_equal_with_definitions(
 	uint32_t actual
 );
 
+/* Classify a synthesized classifier after the kernel conversion profile has
+ * exposed its outer constructor. This is the sole value/computation/type
+ * boundary; JudgementDB continues to store one HAS_TYPE relation. */
+int prototype_judgement_classifier_view(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	uint32_t classifier,
+	struct prototype_term_classifier_view* p_ret
+);
+
 int prototype_judgement_classifier_compatible(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -546,6 +610,17 @@ int prototype_judgement_classifier_compatible_with_definitions(
 	const struct prototype_term_definition_env* definitions,
 	uint32_t expected,
 	uint32_t actual
+);
+
+/* Instantiate classifier-only implicit effect-row binders from a function
+ * value argument. Returns 0 when no binders remain or specialization succeeds,
+ * 1 when the argument does not determine the row, and -1 on malformed input. */
+int prototype_judgement_specialize_effect_rows_for_argument(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t function_classifier,
+	uint32_t argument_classifier,
+	uint32_t* p_ret
 );
 
 int prototype_judgement_type_expr_term(
@@ -612,6 +687,59 @@ int prototype_judgement_delta_infer_term_classifiers(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations
+);
+
+/* Infer only the CBPV boundary nodes from already materialized child facts.
+ * The source-operation compiler uses this after its own solver commits, so
+ * it does not create competing derivations for legacy type formation. */
+int prototype_judgement_delta_infer_cbpv_boundaries(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations
+);
+
+/* Classify one RETURN/THUNK/FORCE boundary from its occurrence-selected
+ * child classifier. This is the shared kernel rule used by both the source
+ * operation constraint solver and JudgementDB proof materialization. */
+int prototype_judgement_cbpv_boundary_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t child_classifier,
+	uint32_t* p_classifier
+);
+
+/* Record one CBPV boundary rule from an occurrence-scoped child classifier.
+ * This is used when several source operations intentionally share the same
+ * erased RETURN/THUNK/FORCE node in TermDB. */
+int prototype_judgement_delta_record_cbpv_boundary(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t child_classifier
+);
+
+/* Infer CBPV boundary nodes and solve BIND/request constraints using already
+ * materialized child derivations. Unlike infer_term_classifiers, this does
+ * not re-run general type formation, APP, or LAMBDA inference. */
+int prototype_judgement_delta_infer_computation_constraints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations
+);
+
+/* Solve BIND, OPERATION_REQUEST, and HANDLE constraints after source lowering
+ * has materialized the occurrence-selected CBPV boundary derivations. */
+int prototype_judgement_delta_solve_computation_constraints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations
+);
+
+int prototype_judgement_delta_generate_computation_constraints(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_term_db* terms
 );
 
 void prototype_judgement_print(

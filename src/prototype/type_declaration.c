@@ -679,10 +679,30 @@ static int representation_terms_equal_at_depth(
 			);
 		case PROTOTYPE_TERM_LAMBDA:
 		case PROTOTYPE_TERM_PI: {
-			uint32_t left_binder = left->tag == PROTOTYPE_TERM_LAMBDA ?
-				left->as.lambda.binder_id : PROTOTYPE_PI_UNUSED_BINDER_ID;
-			uint32_t right_binder = right->tag == PROTOTYPE_TERM_LAMBDA ?
-				right->as.lambda.binder_id : PROTOTYPE_PI_UNUSED_BINDER_ID;
+			uint32_t left_body = PROTOTYPE_INVALID_ID;
+			uint32_t right_body = PROTOTYPE_INVALID_ID;
+			uint32_t left_binder = PROTOTYPE_PI_UNUSED_BINDER_ID;
+			uint32_t right_binder = PROTOTYPE_PI_UNUSED_BINDER_ID;
+			if (left->tag == PROTOTYPE_TERM_LAMBDA) {
+				left_binder = left->as.lambda.binder_id;
+				right_binder = right->as.lambda.binder_id;
+				left_body = left->as.lambda.body;
+				right_body = right->as.lambda.body;
+			} else {
+				if (prototype_term_pure_family_parts(
+						terms,
+						left->as.pi.codomain_family,
+						&left_binder,
+						&left_body
+					) != 0 || prototype_term_pure_family_parts(
+						terms,
+						right->as.pi.codomain_family,
+						&right_binder,
+						&right_body
+					) != 0) {
+					return 0;
+				}
+			}
 			uint32_t saved = env->binder_count;
 			if (left->tag == PROTOTYPE_TERM_PI &&
 				!representation_terms_equal_at_depth(
@@ -697,8 +717,8 @@ static int representation_terms_equal_at_depth(
 			int equal = representation_terms_equal_at_depth(
 				terms,
 				db,
-				left->tag == PROTOTYPE_TERM_LAMBDA ? left->as.lambda.body : left->as.pi.codomain_family,
-				right->tag == PROTOTYPE_TERM_LAMBDA ? right->as.lambda.body : right->as.pi.codomain_family,
+				left_body,
+				right_body,
 				env,
 				depth + 1
 			);
@@ -742,9 +762,9 @@ static int representation_terms_equal_at_depth(
 		case PROTOTYPE_TERM_EXTERNAL_REF:
 			return left->as.external_ref.name.namespace_symbol_id == right->as.external_ref.name.namespace_symbol_id &&
 				left->as.external_ref.name.name_symbol_id == right->as.external_ref.name.name_symbol_id;
-		case PROTOTYPE_TERM_INTRINSIC:
-			return left->as.intrinsic.intrinsic_id == right->as.intrinsic.intrinsic_id &&
-				left->as.intrinsic.type_symbol_id == right->as.intrinsic.type_symbol_id;
+		case PROTOTYPE_TERM_OPERATION:
+			return left->as.operation.symbol_id == right->as.operation.symbol_id &&
+				left->as.operation.type_symbol_id == right->as.operation.type_symbol_id;
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			return representation_terms_equal_at_depth(
 				terms, db, left->as.induction_hypothesis.argument,
@@ -752,11 +772,59 @@ static int representation_terms_equal_at_depth(
 			);
 		case PROTOTYPE_TERM_EFFECT_LABEL:
 			return left->as.effect_label.effects == right->as.effect_label.effects;
-		case PROTOTYPE_TERM_EFFECT_TYPE:
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			return representation_binders_equal(
+				env, left->as.effect_row_var.binder_id, right->as.effect_row_var.binder_id
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 			return representation_terms_equal_at_depth(
-				terms, db, left->as.effect_type.label, right->as.effect_type.label, env, depth + 1
+				terms, db, left->as.effect_row_union.left, right->as.effect_row_union.left, env, depth + 1
 			) && representation_terms_equal_at_depth(
-				terms, db, left->as.effect_type.result, right->as.effect_type.result, env, depth + 1
+				terms, db, left->as.effect_row_union.right, right->as.effect_row_union.right, env, depth + 1
+			);
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.computation_type.label, right->as.computation_type.label, env, depth + 1
+			) && representation_terms_equal_at_depth(
+				terms, db, left->as.computation_type.result, right->as.computation_type.result, env, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.thunk_type.computation,
+				right->as.thunk_type.computation, env, depth + 1
+			);
+		case PROTOTYPE_TERM_RETURN:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.return_term.value, right->as.return_term.value, env, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.thunk.computation, right->as.thunk.computation, env, depth + 1
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.force.value, right->as.force.value, env, depth + 1
+			);
+		case PROTOTYPE_TERM_BIND: {
+			if (!representation_terms_equal_at_depth(
+					terms, db, left->as.bind.computation, right->as.bind.computation, env, depth + 1
+				)) {
+				return 0;
+			}
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.bind.continuation, right->as.bind.continuation, env, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			return representation_terms_equal_at_depth(
+				terms, db, left->as.operation_request.operation, right->as.operation_request.operation,
+				env, depth + 1
+			) && representation_terms_equal_at_depth(
+				terms, db, left->as.operation_request.argument, right->as.operation_request.argument,
+				env, depth + 1
+			) && representation_terms_equal_at_depth(
+				terms, db, left->as.operation_request.continuation, right->as.operation_request.continuation,
+				env, depth + 1
 			);
 		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 		case PROTOTYPE_TERM_PRIMITIVE_INT:
@@ -1220,6 +1288,9 @@ static int type_code_shape_key_term_at_depth(
 			return status;
 		}
 		case PROTOTYPE_TERM_PI:
+		{
+			uint32_t binder_id;
+			uint32_t body;
 			if (type_code_shape_key_term_at_depth(
 					terms,
 					db,
@@ -1232,15 +1303,90 @@ static int type_code_shape_key_term_at_depth(
 				) != 0) {
 				return -1;
 			}
-			return type_code_shape_key_term_at_depth(
+			if (prototype_term_pure_family_parts(
+					terms,
+					term->as.pi.codomain_family,
+					&binder_id,
+					&body
+				) != 0) {
+				return -1;
+			}
+			uint32_t saved_count = env->count;
+			uint32_t saved_next_slot = env->next_slot;
+			if (type_code_shape_key_env_push(env, binder_id) != 0) {
+				return -1;
+			}
+			key->bound_binder_count++;
+			int status = type_code_shape_key_term_at_depth(
 				terms,
 				db,
 				self_type_id,
-				term->as.pi.codomain_family,
+				body,
 				env,
 				key,
 				p_hash,
 				depth + 1
+			);
+			env->count = saved_count;
+			env->next_slot = saved_next_slot;
+			return status;
+		}
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+			type_code_shape_key_hash_mix_u32(p_hash, term->as.effect_label.effects);
+			return 0;
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			{
+				uint32_t slot;
+				if (type_code_shape_key_env_lookup(
+						env, term->as.effect_row_var.binder_id, &slot
+					)) {
+					type_code_shape_key_hash_mix_u32(p_hash, slot);
+				} else {
+					type_code_shape_key_hash_mix_u32(p_hash, term->as.effect_row_var.binder_id);
+				}
+			}
+			return 0;
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			if (type_code_shape_key_term_at_depth(
+					terms, db, self_type_id, term->as.effect_row_union.left,
+					env, key, p_hash, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return type_code_shape_key_term_at_depth(
+				terms, db, self_type_id, term->as.effect_row_union.right,
+				env, key, p_hash, depth + 1
+			);
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			if (type_code_shape_key_term_at_depth(
+					terms, db, self_type_id, term->as.computation_type.label,
+					env, key, p_hash, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return type_code_shape_key_term_at_depth(
+				terms, db, self_type_id, term->as.computation_type.result,
+				env, key, p_hash, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return type_code_shape_key_term_at_depth(
+				terms, db, self_type_id, term->as.thunk_type.computation,
+				env, key, p_hash, depth + 1
+			);
+		case PROTOTYPE_TERM_RETURN:
+			return type_code_shape_key_term_at_depth(
+				terms, db, self_type_id, term->as.return_term.value,
+				env, key, p_hash, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return type_code_shape_key_term_at_depth(
+				terms, db, self_type_id, term->as.thunk.computation,
+				env, key, p_hash, depth + 1
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return type_code_shape_key_term_at_depth(
+				terms, db, self_type_id, term->as.force.value,
+				env, key, p_hash, depth + 1
 			);
 		case PROTOTYPE_TERM_MATCH:
 			if (term->as.match.first_case + term->as.match.case_count > terms->case_count) {
@@ -1324,10 +1470,9 @@ static int type_code_shape_key_term_at_depth(
 					(uint32_t)term->as.external_ref.name.name_symbol_id
 				);
 				return 0;
-		case PROTOTYPE_TERM_INTRINSIC:
-			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.intrinsic.intrinsic_id);
-			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.intrinsic.symbol_id);
-			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.intrinsic.type_symbol_id);
+		case PROTOTYPE_TERM_OPERATION:
+			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.operation.symbol_id);
+			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.operation.type_symbol_id);
 			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			if (term->as.type_declaration.type_id == self_type_id) {

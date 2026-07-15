@@ -306,16 +306,20 @@ static int collect_pi_constraints(
 		return -1;
 	}
 
-	const struct prototype_term* family = &terms->terms[codomain_family];
-	if (family->tag == PROTOTYPE_TERM_LAMBDA) {
+	uint32_t family_binder;
+	uint32_t family_body;
+	if (prototype_term_pure_family_parts(
+			terms, codomain_family, &family_binder, &family_body
+		) == 0) {
 		uint32_t body_classifier;
 		uint32_t body_level;
-		if (lookup_classifier(judgement, terms, family->as.lambda.body, &body_classifier) == 0 &&
+		if (lookup_classifier(judgement, terms, family_body, &body_classifier) == 0 &&
 			term_universe_level_var(terms, body_classifier, &body_level) == 0 &&
 			add_constraint(db, body_level, result_level, 0, subject, classifier, reason_kind) != 0) {
 			return -1;
 		}
 	}
+	(void)family_binder;
 
 	return 0;
 }
@@ -398,14 +402,17 @@ static int collect_type_level_at_depth(
 			return -1;
 		}
 
-		const struct prototype_term* family = &terms->terms[codomain_family];
-		if (family->tag == PROTOTYPE_TERM_LAMBDA) {
+		uint32_t family_binder;
+		uint32_t family_body;
+		if (prototype_term_pure_family_parts(
+				terms, codomain_family, &family_binder, &family_body
+			) == 0) {
 			uint32_t body_level;
 			if (collect_type_level_at_depth(
 					db,
 					terms,
 					judgement,
-					family->as.lambda.body,
+					family_body,
 					&body_level,
 					depth + 1
 				) == 0 &&
@@ -421,6 +428,7 @@ static int collect_type_level_at_depth(
 				return -1;
 			}
 		}
+		(void)family_binder;
 
 		*p_level_var = pi_level;
 		return 0;
@@ -541,31 +549,34 @@ static int collect_classifier_cumulativity_constraints(
 		) != 0) {
 		return -1;
 	}
-	if (expected_family >= terms->term_count || actual_family >= terms->term_count ||
-		terms->terms[expected_family].tag != PROTOTYPE_TERM_LAMBDA ||
-		terms->terms[actual_family].tag != PROTOTYPE_TERM_LAMBDA) {
+	uint32_t expected_binder;
+	uint32_t expected_body;
+	uint32_t actual_binder;
+	uint32_t actual_body;
+	if (prototype_term_pure_family_parts(
+			terms, expected_family, &expected_binder, &expected_body
+		) != 0 || prototype_term_pure_family_parts(
+			terms, actual_family, &actual_binder, &actual_body
+		) != 0) {
 		return -1;
 	}
-	const struct prototype_term* expected_lambda =
-		&terms->terms[expected_family];
-	const struct prototype_term* actual_lambda = &terms->terms[actual_family];
 	if (prototype_term_contains_free_binder(
 			terms,
-			expected_lambda->as.lambda.body,
-			expected_lambda->as.lambda.binder_id
+			expected_body,
+			expected_binder
 		) ||
 		prototype_term_contains_free_binder(
 			terms,
-			actual_lambda->as.lambda.body,
-			actual_lambda->as.lambda.binder_id
+			actual_body,
+			actual_binder
 		)) {
 		return 0;
 	}
 	return collect_classifier_cumulativity_constraints(
 		db,
 		terms,
-		expected_lambda->as.lambda.body,
-		actual_lambda->as.lambda.body,
+		expected_body,
+		actual_body,
 		subject,
 		classifier,
 		depth + 1

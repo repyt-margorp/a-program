@@ -8,6 +8,16 @@
 #include "type_declaration.h"
 #include "universe.h"
 
+/*
+ * Lowering defaults to the ordinary A Program surface: value/computation
+ * boundaries are elaborated with RETURN, THUNK, FORCE, and sequencing where
+ * their source and target polarities require it. Set this opt-out flag to
+ * inspect or require the corresponding raw CBPV program instead.
+ */
+struct prototype_compile_options {
+	int disable_automatic_cbpv_coercions;
+};
+
 struct prototype_program {
 	struct symbol_table* symbols;
 	/* The namespace of the unit currently being compiled, or -1 when unset. */
@@ -18,6 +28,7 @@ struct prototype_program {
 	struct prototype_judgement_db* judgement;
 	struct prototype_compile_metadata* metadata;
 	struct prototype_universe_db* universe;
+	struct prototype_compile_options compile_options;
 };
 
 struct prototype_read_error {

@@ -15,7 +15,7 @@ effects from being merged into one undifferentiated notion of computation.
 ### Removed implementation
 
 Until this migration, `term.h` defined
-`PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH` and `KERNEL_CONVERSION_WHNF` enabled it.
+`PROTOTYPE_TERM_REDUCE_UNIFORM_MATCH` and `PURE_TYPE_WHNF` enabled it.
 `term.c` then normalized every branch of a match with a neutral scrutinee and
 returned a common body when all normalized branches compared equal.
 

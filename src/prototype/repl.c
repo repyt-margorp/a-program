@@ -631,7 +631,8 @@ static int evaluate_for_output(
 		type_declarations,
 		NULL,
 		(struct prototype_term_reduction_options){
-			.flags = PROTOTYPE_TERM_REDUCE_DEFAULT | PROTOTYPE_TERM_PERFORM_HOST_EFFECT,
+				.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT |
+					PROTOTYPE_TERM_PERFORM_HOST_EFFECT,
 			.effect_output = output,
 			.symbols = symbols,
 			.effect_capabilities = PROTOTYPE_HOST_EFFECT_TERMINAL,
@@ -776,11 +777,20 @@ int main(int argc, char** argv) {
 	size_t input_len = 0;
 	unsigned entry_index = 1;
 	int first_file_arg = 1;
+	int disable_automatic_cbpv_coercions = 0;
 
 	memset(&read_options, 0, sizeof(read_options));
 	for (; first_file_arg < argc && argv[first_file_arg][0] == '-'; ++first_file_arg) {
+		if (strcmp(argv[first_file_arg], "--automatic-cbpv-coercions") == 0) {
+			disable_automatic_cbpv_coercions = 0;
+			continue;
+		}
+		if (strcmp(argv[first_file_arg], "--no-automatic-cbpv-coercions") == 0) {
+			disable_automatic_cbpv_coercions = 1;
+			continue;
+		}
 		fprintf(stderr, "unknown option: %s\n", argv[first_file_arg]);
-		fprintf(stderr, "Usage: %s [file.p ...]\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [file.p ...]\n", argv[0]);
 		return 1;
 	}
 
@@ -893,6 +903,8 @@ int main(int argc, char** argv) {
 	program.judgement = &judgement_db;
 	program.metadata = &metadata;
 	program.universe = &universe_db;
+	program.compile_options.disable_automatic_cbpv_coercions =
+		disable_automatic_cbpv_coercions;
 
 	for (int i = first_file_arg; i < argc; ++i) {
 		if (prototype_read_ast_file_with_options(argv[i], &program, &read_options, &error) != 0) {
