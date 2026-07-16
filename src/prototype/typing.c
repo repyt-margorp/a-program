@@ -535,7 +535,7 @@ static int classifier_kernel_whnf(
 	}
 
 	uint32_t evaluated;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			terms,
 			type_declarations,
 			definitions,
@@ -1668,7 +1668,7 @@ static int constructor_classifier_from_family(
 		classifier = app;
 	}
 
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			terms,
 			type_declarations,
 			NULL,
@@ -1835,7 +1835,7 @@ static int materialize_constructor_classifier(
 	}
 
 	uint32_t schema_owner;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			terms,
 			type_declarations,
 			NULL,
@@ -1963,7 +1963,7 @@ static int constructor_field_classifier_from_spine(
 		(void)codomain_family;
 		if (i == field_index) {
 			uint32_t whnf;
-			if (prototype_term_whnf_with_profile(
+			if (prototype_term_normalize_complete_with_profile(
 					terms,
 					type_declarations,
 					NULL,
@@ -2046,7 +2046,7 @@ int prototype_judgement_constructor_field_classifier(
 		(void)codomain_family;
 		if (i == field_index) {
 			uint32_t whnf;
-			if (prototype_term_whnf_with_profile(
+			if (prototype_term_normalize_complete_with_profile(
 					terms,
 					type_declarations,
 					NULL,
@@ -4649,7 +4649,7 @@ static int bind_result_classifier(
 			terms, codomain, codomain_binder
 		)) {
 		applied_codomain = codomain;
-	} else if (prototype_term_whnf_with_profile(
+	} else if (prototype_term_normalize_complete_with_profile(
 			terms,
 			type_declarations,
 			NULL,
@@ -4670,7 +4670,7 @@ static int bind_result_classifier(
 		) != 0) {
 		return -1;
 	}
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			terms,
 			type_declarations,
 			NULL,
@@ -5038,17 +5038,23 @@ static int solve_handle_constraint(
 		) != 0) {
 		return -1;
 	}
-	uint32_t return_binder = PROTOTYPE_PI_UNUSED_BINDER_ID;
+	if (handler->as.handler.return_clause >= terms->term_count ||
+		terms->terms[handler->as.handler.return_clause].tag != PROTOTYPE_TERM_LAMBDA) {
+		return -1;
+	}
+	uint32_t return_binder =
+		terms->terms[handler->as.handler.return_clause].as.lambda.binder_id;
 	uint32_t return_var;
 	uint32_t output_classifier;
 	if (prototype_term_var(terms, return_binder, &return_var) != 0 ||
 		pi_codomain_after_argument(
 			terms, type_declarations, return_pi, return_var, &output_classifier
-		) != 0 || prototype_term_contains_free_binder(
-			terms, output_classifier, return_binder
-		)) {
+		) != 0) {
 		return -1;
 	}
+	int dependent_output = prototype_term_contains_free_binder(
+		terms, output_classifier, return_binder
+	);
 	struct prototype_term_classifier_view output_view;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, output_classifier, &output_view
@@ -5211,6 +5217,15 @@ static int solve_handle_constraint(
 			&handler_classifier
 		) != 0) {
 		return -1;
+	}
+	if (dependent_output) {
+		/* The return value needed to instantiate the handler result family is
+		 * produced by the handled computation.  The clause assumptions above
+		 * are sufficient to classify the occurrence-local operation body, but
+		 * no closed HANDLE classifier exists until runtime supplies that value.
+		 * The source compiler records a HANDLER_RESULT obligation instead of
+		 * publishing a closed handler-elimination proof. */
+		return 1;
 	}
 	uint32_t handler_subjects[3] = {
 		handler->as.handler.operation,
@@ -7818,7 +7833,7 @@ int prototype_judgement_delta_record_app_elim(
 		);
 	if (pi_status == 0) {
 		uint32_t domain_whnf;
-		if (prototype_term_whnf_with_profile(
+		if (prototype_term_normalize_complete_with_profile(
 				terms,
 				type_declarations,
 				NULL,
@@ -8571,7 +8586,7 @@ static int validate_app_elim_proof(
 	}
 	(void)codomain_family;
 	uint32_t domain_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			terms,
 			type_declarations,
 			NULL,

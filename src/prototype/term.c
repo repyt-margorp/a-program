@@ -6017,64 +6017,7 @@ static int evaluate_steps(
 	}
 }
 
-int prototype_term_whnf(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t term_id,
-	uint32_t* p_ret
-) {
-	return evaluate_steps(
-		db,
-		type_declarations,
-		NULL,
-			(struct prototype_term_reduction_options){
-				.flags = PROTOTYPE_TERM_REDUCE_DEFAULT
-			},
-		term_id,
-		p_ret,
-		PROTOTYPE_EVALUATION_DEPTH_LIMIT
-	);
-}
-
-int prototype_term_whnf_with_definitions(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	uint32_t term_id,
-	uint32_t* p_ret
-) {
-	return evaluate_steps(
-		db,
-		type_declarations,
-		definitions,
-			(struct prototype_term_reduction_options){
-				.flags = PROTOTYPE_TERM_REDUCE_DEFAULT | PROTOTYPE_TERM_REDUCE_DEFINITIONS
-			},
-		term_id,
-		p_ret,
-		PROTOTYPE_EVALUATION_DEPTH_LIMIT
-	);
-}
-
-int prototype_term_whnf_with_options(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	struct prototype_term_reduction_options options,
-	uint32_t term_id,
-	uint32_t* p_ret
-) {
-	return prototype_term_perform_with_options(
-		db,
-		type_declarations,
-		definitions,
-		options,
-		term_id,
-		p_ret
-	);
-}
-
-int prototype_term_whnf_with_profile(
+int prototype_term_normalize_complete_with_profile(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
@@ -6088,7 +6031,7 @@ int prototype_term_whnf_with_profile(
 		return -1;
 	}
 	options.p_normalization_status = &normalization_status;
-	if (prototype_term_whnf_with_options(
+	if (prototype_term_perform_with_options(
 		db,
 		type_declarations,
 		definitions,
@@ -6101,7 +6044,7 @@ int prototype_term_whnf_with_profile(
 	return normalization_status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ? 0 : -1;
 }
 
-int prototype_term_whnf_with_profile_result(
+int prototype_term_normalize_with_profile(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
@@ -6218,7 +6161,7 @@ static int normalize_term_at_depth(
 ) {
 	uint32_t whnf;
 	if (!db || !p_ret || term_id >= db->term_count || depth == 0 ||
-		prototype_term_whnf_with_options(
+		prototype_term_perform_with_options(
 			db, type_declarations, definitions, options, term_id, &whnf
 		) != 0 || whnf >= db->term_count) {
 		return -1;
@@ -6387,8 +6330,8 @@ static int normalization_equal_at_depth(
 
 	uint32_t left_whnf;
 	uint32_t right_whnf;
-	if (prototype_term_whnf_with_options(db, type_declarations, definitions, options, left, &left_whnf) != 0 ||
-		prototype_term_whnf_with_options(db, type_declarations, definitions, options, right, &right_whnf) != 0 ||
+	if (prototype_term_perform_with_options(db, type_declarations, definitions, options, left, &left_whnf) != 0 ||
+		prototype_term_perform_with_options(db, type_declarations, definitions, options, right, &right_whnf) != 0 ||
 		left_whnf >= db->term_count ||
 		right_whnf >= db->term_count) {
 		return -1;
@@ -7509,38 +7452,6 @@ int prototype_term_normalization_equal_with_profile(
 		right,
 		p_equal
 	);
-}
-
-int prototype_term_execute_with_default_host_handler(
-	FILE* output,
-	struct symbol_table* symbols,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_term_db* db,
-	uint32_t term_id,
-	uint32_t* p_ret
-) {
-	if (!output || !symbols || !type_declarations || !db || !p_ret || term_id >= db->term_count) {
-		return -1;
-	}
-	uint32_t result;
-	if (prototype_term_perform_with_options(
-			db,
-			type_declarations,
-			NULL,
-			(struct prototype_term_reduction_options){
-					.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT |
-						PROTOTYPE_TERM_PERFORM_HOST_EFFECT,
-				.effect_output = output,
-				.symbols = symbols,
-				.effect_capabilities = PROTOTYPE_HOST_EFFECT_TERMINAL
-			},
-			term_id,
-			&result
-		) != 0) {
-		return -1;
-	}
-	*p_ret = result;
-	return result != term_id ? 1 : 0;
 }
 
 static const char* safe_symbol_name(const struct symbol_table* symbols, int symbol_id) {

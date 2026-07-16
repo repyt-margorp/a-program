@@ -371,8 +371,7 @@ struct prototype_operation_graph {
  * conditional runtime obligation, never a closed has-type derivation. */
 enum prototype_verification_obligation_kind {
 	PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND = 1,
-	PROTOTYPE_VERIFICATION_OBLIGATION_HANDLER_RESULT,
-	PROTOTYPE_VERIFICATION_OBLIGATION_RUNTIME_CONVERSION
+	PROTOTYPE_VERIFICATION_OBLIGATION_HANDLER_RESULT
 };
 
 enum prototype_verification_obligation_state {
@@ -709,8 +708,7 @@ enum prototype_runtime_capability {
 	PROTOTYPE_RUNTIME_CAPABILITY_DEPENDENT_BIND_VERIFIER = 1u << 0,
 	PROTOTYPE_RUNTIME_CAPABILITY_OPERATION_DISPATCH = 1u << 1,
 	PROTOTYPE_RUNTIME_CAPABILITY_HANDLER = 1u << 2,
-	PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL = 1u << 3,
-	PROTOTYPE_RUNTIME_CAPABILITY_CONVERSION_VERIFIER = 1u << 4
+	PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL = 1u << 3
 };
 
 enum prototype_backend_target {
@@ -1225,6 +1223,14 @@ int prototype_verification_db_discharge_dependent_bind(
 	uint32_t obligation_id,
 	uint32_t returned_value,
 	uint32_t continuation_result_classifier
+);
+int prototype_verification_db_discharge_handler_result(
+	struct prototype_verification_db* db,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t obligation_id,
+	uint32_t returned_value,
+	uint32_t return_result_classifier
 );
 int prototype_operation_evaluate_with_verification(
 	struct prototype_compile_metadata* metadata,

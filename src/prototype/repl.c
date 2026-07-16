@@ -756,7 +756,7 @@ static void query_normal_form(
 		prototype_term_nf_with_options(
 			term_db, type_declarations, NULL, options, label->term, &normalized
 		) :
-		prototype_term_whnf_with_options(
+		prototype_term_perform_with_options(
 			term_db, type_declarations, NULL, options, label->term, &normalized
 		);
 	if (status != 0) {

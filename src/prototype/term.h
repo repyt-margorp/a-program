@@ -813,28 +813,7 @@ int prototype_term_resolve_external_ref(
 	uint32_t* p_ret
 );
 
-int prototype_term_whnf(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t term_id,
-	uint32_t* p_ret
-);
-int prototype_term_whnf_with_definitions(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	uint32_t term_id,
-	uint32_t* p_ret
-);
-int prototype_term_whnf_with_options(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	struct prototype_term_reduction_options options,
-	uint32_t term_id,
-	uint32_t* p_ret
-);
-int prototype_term_whnf_with_profile(
+int prototype_term_normalize_complete_with_profile(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
@@ -843,8 +822,8 @@ int prototype_term_whnf_with_profile(
 	uint32_t* p_ret
 );
 /* Evaluate only the supplied profile and classify the outcome. Zero permits
-	 * no reduction work. This does not dispatch effects. */
-int prototype_term_whnf_with_profile_result(
+ * no reduction work. This does not dispatch effects. */
+int prototype_term_normalize_with_profile(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
@@ -907,15 +886,6 @@ void prototype_term_notify_graph_mutation(struct prototype_term_db* db);
 void prototype_term_normalization_cache_get_stats(
 	const struct prototype_term_db* db,
 	struct prototype_term_normalization_cache_stats* p_stats
-);
-
-int prototype_term_execute_with_default_host_handler(
-	FILE* output,
-	struct symbol_table* symbols,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_term_db* db,
-	uint32_t term_id,
-	uint32_t* p_ret
 );
 
 void prototype_term_print(

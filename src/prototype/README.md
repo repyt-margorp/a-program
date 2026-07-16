@@ -104,39 +104,46 @@ explicitly.
 
 ## Artifact Operation Boundaries
 
-The operation graph is not serialized as a second executable graph. Its nested
-nodes exist to preserve source occurrences while a compilation unit is lowered
-and typed; evaluation remains solely a core-graph operation. The artifact
-interface preserves the linkable part of that layer through each term export:
+The operation graph is the serialized occurrence-level executable view. Each
+operation points to an erased TermDB root, but it also retains the source
+children, selected classifier, source binder identities, Match cases, and
+HANDLE clause scope needed to execute the typed occurrence without choosing a
+classifier from every judgement attached to the shared core root. TermDB
+remains the shared computation and classifier-expression graph; it is not the
+runtime environment.
+
+The artifact interface exposes named operation boundaries as:
 
 ```
-(qualified name, local erased core root, classifier, transparency)
+(qualified name, local operation root, local erased core root,
+ classifier-or-residual, transparency)
 ```
 
-This tuple is a named typed-operation boundary. Two exports may intentionally
+Two exports may intentionally
 have the same `local_term` and distinct classifiers, such as `identityBool` and
 `identityNat`; the qualified export names remain distinct API entries. The
 linker may intern their core roots, but must not merge their export records or
-classifiers. Anonymous nested operation nodes have no cross-artifact name or
-linking role, so serializing them would duplicate AST/typing metadata without
-adding evaluator semantics. Source spans and operation-tree diagnostics remain
-debug information rather than artifact identity.
+classifiers. Nested operations are serialized because BIND, Match, handler
+resumption, and residual verification must preserve occurrence identity across
+artifact readback and linking. Source display names and spans remain debug
+information rather than core graph identity.
 
 Definitional equality is a separate layer: the canonical key handles
 alpha-normalized structure, not beta or match computation. The prototype now
-exposes `prototype_term_whnf` for the current weak-head evaluator and
-`prototype_term_normalization_equal` for WHNF-based recursive equality over lambda, app, pi,
-match, constructor, and induction-hypothesis nodes. The typing layer
-uses this normalization equality path for classifier compatibility where it has access to the
-mutable term graph and type declaration database, including lambda expansion,
-match motive applications, and the current motive-derived induction hypothesis
-resolution path. `*rest` typing no longer uses a seed classifier or a `P_`-style
-constant. The match typing phase builds a concrete generated motive and records
-the temporary match result classifier in a dedicated match-motive result table.
-IH resolution may read only that motive-derived result or a committed
-`MATCH_ELIM` fact. Expected/ascribed classifiers live in a separate expected
-classifier table and are not allowed to seed IH typing. This is still not a
-general dependent recursive motive solver.
+exposes `prototype_term_normalize_with_profile` for outcome-aware,
+step-bounded pure normalization and
+`prototype_term_normalization_equal_with_profile` for profile-specific
+conversion. Only a `COMPLETE` normalization result may establish kernel
+conversion. `BLOCKED_EFFECT` and `EXHAUSTED` preserve a residual frontier; they
+are not negative equality proofs. Runtime operation dispatch uses the
+OperationGraph machine and is not a normalization profile.
+
+`*rest` typing uses the generated Match motive and guarded recursive equations.
+The operation-classifier solver keeps explicit motive constraints and a stable
+dependency-indexed worklist. Expected/ascribed classifiers live in a separate
+expected-classifier table and are not allowed to seed IH typing. General IADT
+index refinement and arbitrary higher-order unification remain beyond the
+current guarded recursive fragment.
 Match lowering now records the scrutinee term, case labels, branch bodies, and
 match frame without requiring the scrutinee classifier immediately. Constructor
 case resolution reads the scrutinee classifier later from synthesized HAS_TYPE
@@ -170,10 +177,10 @@ conversion proof when the exposed classifier differs from the synthesized one.
 Top-level expectations use the same post-inference path, including the case
 where several exported names point to the same core lambda graph but expose
 different classifiers.
-The evaluator is controlled by explicit reduction flags: definition unfolding,
-lambda beta reduction, match branch reduction, and induction-hypothesis
-expansion can be enabled independently through
-`prototype_term_whnf_with_options` and `prototype_term_normalization_equal_with_options`.
+Pure reduction is controlled by explicit flags: definition unfolding, lambda
+beta reduction, match branch reduction, and induction-hypothesis expansion can
+be enabled independently through `prototype_term_perform_with_options` and
+`prototype_term_normalization_equal_with_options`.
 This keeps the lambda-core computation layer separate from the eliminator layer:
 beta-only checks can run without selecting match branches, and match-only checks
 can select constructor-headed branches without reducing beta redexes first.

@@ -127,7 +127,7 @@ int main(void) {
 		return 1;
 	}
 	uint32_t kernel_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -165,7 +165,7 @@ int main(void) {
 			&term_db, bound_constructor, &thunked_bound_constructor
 		) != 0 || prototype_term_force(
 			&term_db, thunked_bound_constructor, &forced_bound_constructor
-		) != 0 || prototype_term_whnf_with_profile(
+		) != 0 || prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -173,7 +173,7 @@ int main(void) {
 			forced_constructor,
 			&core_cbpv_whnf
 		) != 0 || core_cbpv_whnf != forced_constructor ||
-		prototype_term_whnf_with_profile(
+		prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -181,7 +181,7 @@ int main(void) {
 			forced_constructor,
 			&computation_cbpv_whnf
 		) != 0 || computation_cbpv_whnf != returned_constructor ||
-		prototype_term_whnf_with_profile(
+		prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -189,7 +189,7 @@ int main(void) {
 			forced_constructor,
 			&computation_cbpv_whnf
 		) != 0 || computation_cbpv_whnf != returned_constructor ||
-		prototype_term_whnf_with_profile(
+		prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -197,7 +197,7 @@ int main(void) {
 			bound_constructor,
 			&core_cbpv_whnf
 		) != 0 || core_cbpv_whnf != bound_constructor ||
-		prototype_term_whnf_with_profile(
+		prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -205,7 +205,7 @@ int main(void) {
 			bound_constructor,
 			&computation_cbpv_whnf
 		) != 0 || computation_cbpv_whnf != returned_constructor ||
-		prototype_term_whnf_with_profile(
+		prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -215,7 +215,7 @@ int main(void) {
 		) != 0 || computation_cbpv_whnf != returned_constructor) {
 		return 1;
 	}
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -228,7 +228,7 @@ int main(void) {
 
 	prototype_term_normalization_cache_clear(&term_db);
 	uint32_t lambda_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -240,7 +240,7 @@ int main(void) {
 		return 1;
 	}
 	uint32_t cached_lambda_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -258,7 +258,7 @@ int main(void) {
 	}
 
 	uint32_t unresolved_inductive_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -274,7 +274,7 @@ int main(void) {
 		return 1;
 	}
 	uint32_t inductive_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -286,7 +286,7 @@ int main(void) {
 		return 1;
 	}
 	uint32_t cached_inductive_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -307,7 +307,7 @@ int main(void) {
 	term_db.cases[term_db.terms[match_term].as.match.first_case].body = application;
 	prototype_term_notify_graph_mutation(&term_db);
 	uint32_t mutated_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -342,7 +342,7 @@ int main(void) {
 		return 1;
 	}
 	struct prototype_term_normalization_result normalization_result;
-	if (prototype_term_whnf_with_profile_result(
+	if (prototype_term_normalize_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -358,7 +358,7 @@ int main(void) {
 		normalization_result.steps_used > normalization_result.step_limit) {
 		return 1;
 	}
-	if (prototype_term_whnf_with_profile_result(
+	if (prototype_term_normalize_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -372,7 +372,7 @@ int main(void) {
 		normalization_result.steps_used != 0) {
 		return 1;
 	}
-	if (prototype_term_whnf_with_profile_result(
+	if (prototype_term_normalize_with_profile(
 			&term_db,
 			&type_db,
 			NULL,

@@ -2,16 +2,17 @@
 
 Date: 2026-07-16
 
-Status: implemented migration baseline plus remaining runtime/solver work.
+Status: implemented v44 migration baseline.
 Later work may revise the plan, but a revision must state which invariant or
 decision changed.
 
 Revision baseline: 2026-07-16, artifact v44 prototype.  The current baseline
 includes deterministic normalization/solver budgets, explicit operation
 constraint outcomes, qualified artifact proof relocation, nested residual
-dependent BIND execution, compile policies, runtime capability declarations,
-and occurrence-level HANDLE clause scope.  The rebased plan below remains
-authoritative for the incomplete work stated explicitly in each phase.
+dependent BIND and handler-result execution, compile policies, backend
+capability validation, and an explicit occurrence runtime machine.  The
+rebased plan below is the authoritative baseline; future extensions are listed
+separately from migration defects.
 
 ## Purpose
 
@@ -153,23 +154,23 @@ described by the historical sections below.
 
 | Area | Current state | Remaining gap |
 | --- | --- | --- |
-| Core BIND | `BIND(computation, continuation)`; direct and nested dependent results can become residual obligations | dynamically generated continuations still need a first-class runtime frame stack |
-| Normalization | explicit `COMPLETE`, `BLOCKED_EFFECT`, `EXHAUSTED`, `INVALID`; deterministic step limit and complete-only cache | the evaluator is still recursive and retains a structural recursion guard in legacy APIs |
+| Core BIND | `BIND(computation, continuation)`; direct and nested dependent results can become residual obligations | full dependent sequencing remains a future language extension beyond the current residual family protocol |
+| Normalization | explicit `COMPLETE`, `BLOCKED_EFFECT`, `EXHAUSTED`, `INVALID`; deterministic step limit and complete-only cache | effect-row and universe solvers still need the same explicit outcome protocol |
 | Occurrence layer | operation occurrences, Match cases with source binder identities, HANDLE clause bodies, and clause binder identities are serialized in artifact v44 through OperationGraph APIs | API implementation remains physically concentrated in `ast.c` until the build boundary is approved for splitting |
 | Closed evidence | JudgementDB proof DAGs reconnect imports to provider evidence by qualified export identity | no known proof-boundary defect remains in the covered artifact tests |
-| Residual evidence | VerificationDB serializes dependent-BIND obligations and nested occurrences discharge per invocation | handler-result and general runtime-conversion obligation kinds are not materialized yet |
+| Residual evidence | VerificationDB serializes dependent-BIND and dependent handler-result obligations; runtime instances discharge per invocation | arbitrary incomplete conversion is deliberately rejected because no selected verifier rule exists |
 | Constraints | immutable operation constraint blueprint, stable IDs, explicit kinds and four outcome states; deterministic dependency-indexed FIFO worklist | effect-row and universe constraints still use separate propagation protocols |
-| Runtime | occurrence evaluator executes APP, RETURN, BIND and HANDLE clause entry; TermDB evaluator handles dynamic continuations | no explicit continuation/handler/obligation stack API yet |
-| Policy | strict/hybrid/exploratory are serialized and checked at compile/read/link; capability bits are validated | exploratory incomplete verifiers and backend entry contracts are not implemented |
+| Runtime | an explicit occurrence machine executes APP, RETURN, BIND, Match, HANDLE, resumptions, and dynamic obligation frames | general non-tail or multi-shot dependent resumption environments are outside the current handler fragment |
+| Policy | strict/hybrid/exploratory are serialized and checked at compile/read/link/backend entry; interpreter, C, and Verilog capability contracts are validated | generated C verifier code and broader backend implementations are future work |
 
 The former blocking artifact-proof defect has been fixed.  Link finalization
 now uses qualified provider identity and provider evidence rather than
 retaining a premise-free declaration proof after replacing an external term.
-The current blocking architectural gap is dynamic execution: a continuation
-created while handling an operation has no static OperationGraph occurrence.
-It therefore needs an explicit runtime continuation/handler frame carrying
-residual verification instances instead of falling back indefinitely to the
-recursive TermDB evaluator.
+Dynamic execution now uses explicit occurrence frames and invocation-local
+obligation instances.  The remaining handler limitation is narrower: the
+current resumption protocol is tail-oriented and conservatively rejects a
+dependent handler result when an abortive path never produces the runtime index
+needed to discharge its family.
 
 ## Target Compilation Pipeline
 
@@ -492,8 +493,9 @@ Current implementation:
 
 ### Phase G: Complete algebraic handlers without absorbing pure reduction
 
-Status: handler/effect-row foundations and occurrence-level clause scope exist.
-Dynamic continuation frames and handler-result residuals remain incomplete.
+Status: complete for the current tail-resumption handler fragment.  Dependent
+return-clause results are serialized as `HANDLER_RESULT` obligations and
+discharged by invocation-local runtime frames.
 
 Tasks:
 
@@ -512,8 +514,7 @@ of installed runtime handlers, and handler execution cannot alter DefEq.
 
 ### Phase H: Enforce artifact and backend policies
 
-Status: compile/read/link policy and capability metadata implemented; backend
-entry enforcement remains incomplete.
+Status: complete for the prototype backend contracts.
 
 Tasks:
 
@@ -531,7 +532,7 @@ it is not a REPL-only option.
 
 ### Phase I: Remove transitional paths and establish the new baseline
 
-Status: final cleanup.
+Status: complete for the v44 prototype baseline.
 
 Tasks:
 
@@ -793,8 +794,12 @@ Initial obligation kinds:
 ```text
 DEPENDENT_BIND
 HANDLER_RESULT
-RUNTIME_CONVERSION
 ```
+
+Arbitrary runtime conversion is intentionally not an obligation kind.  An
+incomplete conversion is accepted only after a concrete dependency-indexed
+runtime verifier and its artifact schema have been defined.  Today, unsupported
+incomplete conversion remains a compile error.
 
 An initial dependent-BIND obligation needs:
 
@@ -996,7 +1001,7 @@ must reject or require discharge before code generation.
 
 ## Test Matrix
 
-The migration is incomplete until all of these are automated:
+The migration baseline requires all of these to be automated:
 
 ```text
 closed pure beta/iota conversion
@@ -1044,9 +1049,9 @@ new invariant or test
 
 Implemented:
 
-- `prototype_term_whnf_with_profile_result` distinguishes `COMPLETE`,
-  `BLOCKED_EFFECT`, `EXHAUSTED`, and `INVALID` without changing the strict
-  existing WHNF API.
+- `prototype_term_normalize_with_profile` distinguishes `COMPLETE`,
+  `BLOCKED_EFFECT`, `EXHAUSTED`, and `INVALID`.  The obsolete success/failure
+  WHNF wrappers were later removed from the v44 baseline.
 - `PURE_TYPE_WHNF` reports an operation boundary as `BLOCKED_EFFECT`; only a
   complete result is usable as kernel conversion evidence.
 - `VerificationDB` is separate from `JudgementDB`.  Its first operation is an
@@ -1208,18 +1213,25 @@ exploratory
   INCOMPLETE constraints are not silently accepted today.
 ```
 
-Known remaining work:
+Future work beyond the v44 migration baseline:
 
-- Move OperationGraph and VerificationDB lifecycle/relocation code out of
-  `ast.c` behind owned subsystem APIs.
-- Introduce an explicit runtime continuation, handler, and dynamic obligation
-  stack.  A resumption generated by HANDLE currently crosses into the TermDB
-  computation evaluator, so residual obligations inside such a dynamic
-  continuation are not yet generally occurrence-addressable.
-- Materialize and execute `HANDLER_RESULT` and general runtime-conversion
-  obligations.
-- Enforce policy and capability contracts at future C/Verilog backend entry
-  points.
+- General non-tail or multi-shot dependent resumptions need an explicit
+  caller-environment protocol.  The current runtime machine intentionally
+  implements the tail-resumption fragment exercised by the handler tests.
+- A dependent abortive operation clause that never reaches the handler return
+  clause cannot produce the runtime index required by `HANDLER_RESULT`; the
+  runtime rejects it rather than fabricating evidence.
+- Arbitrary runtime conversion remains unsupported.  It must not be admitted
+  until a concrete verifier rule, dependency set, artifact schema, and backend
+  capability have been designed.
+- Effect-row and universe constraints still use propagation protocols separate
+  from the operation-classifier worklist.
+- OperationGraph and VerificationDB APIs now own their lifecycle and relocation
+  behavior, but their implementation remains physically in `ast.c` until an
+  accepted build-boundary change permits splitting files.
+- Interpreter, C, and Verilog entry contracts are validated.  Actual generated
+  C verifier code and broader backend implementations remain separate backend
+  projects.
 
 Completed after the initial v42 baseline:
 
@@ -1232,6 +1244,14 @@ Completed after the initial v42 baseline:
 - Recursive dependent Match remains closed across repeated classifier phases:
   an already materialized `APP(motive, scrutinee)` classifier restores its
   motive pointer for IH propagation without serializing solver-local unknowns.
+- OperationGraph and VerificationDB now have owned lifecycle, validation,
+  relocation, and artifact-boundary APIs.
+- The runtime uses explicit continuation, Match, handler, resumption, and
+  dynamic-obligation frames rather than treating TermDB as an environment.
+- Dependent handler return results materialize as `HANDLER_RESULT` obligations
+  and discharge per invocation.
+- Backend entry validation enforces interpreter, C, and Verilog capability
+  contracts.
 
 Regression coverage includes the four prototype test suites, examples 01-09,
 shared-core typed identities, generic `List Nat` Match, recursive `*rest`,

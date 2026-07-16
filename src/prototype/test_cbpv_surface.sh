@@ -474,6 +474,58 @@ EOF
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' \
 	"$tmp_dir/deep-handle-bind-eval.out"
 
+cat >"$tmp_dir/dependent-handler-result.p" <<'EOF'
+Bool := @{ true : *; false : *; };
+Nat := @{ zero : *; succ : * -> *; };
+m := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.true);
+main := handle (m) with (#.print) x k => k x; return b => b @true => (return Nat.zero) @false => (return Bool.true);
+EOF
+
+./read_file.out "$tmp_dir/dependent-handler-result.p" \
+	>"$tmp_dir/dependent-handler-result.out"
+grep -q 'compile-budget .* residual=1 incomplete=0' \
+	"$tmp_dir/dependent-handler-result.out"
+./read_file.out --write-artifact "$tmp_dir/dependent-handler-result.apo" \
+	"$tmp_dir/dependent-handler-result.p" \
+	>"$tmp_dir/dependent-handler-result-write.out"
+grep -q '^verification_obligations 1$' \
+	"$tmp_dir/dependent-handler-result.apo"
+./read_file.out --read-graph "$tmp_dir/dependent-handler-result.apo" \
+	>"$tmp_dir/dependent-handler-result-read.out"
+grep -q 'verification_obligations=1' \
+	"$tmp_dir/dependent-handler-result-read.out"
+./read_file.out --check-backend c "$tmp_dir/dependent-handler-result.apo" \
+	>"$tmp_dir/dependent-handler-result-c.out"
+grep -q '^backend c compatible yes$' \
+	"$tmp_dir/dependent-handler-result-c.out"
+if ./read_file.out --check-backend verilog \
+	"$tmp_dir/dependent-handler-result.apo" \
+	>"$tmp_dir/dependent-handler-result-verilog.out" \
+	2>"$tmp_dir/dependent-handler-result-verilog.err"; then
+	echo 'verilog backend accepted a dependent handler verifier' >&2
+	exit 1
+fi
+./read_file.out --aggregate-artifact \
+	"$tmp_dir/dependent-handler-result-linked.apo" \
+	"$tmp_dir/dependent-handler-result.apo" \
+	>"$tmp_dir/dependent-handler-result-link.out"
+./read_file.out --read-graph "$tmp_dir/dependent-handler-result-linked.apo" \
+	>"$tmp_dir/dependent-handler-result-linked-read.out"
+grep -q 'verification_obligations=1' \
+	"$tmp_dir/dependent-handler-result-linked-read.out"
+if ./read_file.out --policy strict "$tmp_dir/dependent-handler-result.p" \
+	>"$tmp_dir/dependent-handler-result-strict.out" \
+	2>"$tmp_dir/dependent-handler-result-strict.err"; then
+	echo 'strict policy accepted a residual dependent handler result' >&2
+	exit 1
+fi
+{
+	cat "$tmp_dir/dependent-handler-result.p"
+	printf 'main\n:q\n'
+} | ./a.out >"$tmp_dir/dependent-handler-result-eval.out"
+grep -q '^verification main := discharged$' \
+	"$tmp_dir/dependent-handler-result-eval.out"
+
 cat >"$tmp_dir/negative-handle-raw-function.p" <<'EOF'
 bad := handle (\x : #.Int => x) with (#.print) x k => k x; return y => return y;
 EOF

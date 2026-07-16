@@ -117,16 +117,32 @@ int main(void) {
 		view.effects != PROTOTYPE_HOST_EFFECT_NONE) {
 		return 1;
 	}
-	uint32_t row_whnf;
-	if (prototype_term_whnf(
-			&term_db, &type_db, symbolic_effect_union, &row_whnf
-		) != 0 || row_whnf != symbolic_effect_union) {
+	struct prototype_term_normalization_result normalization;
+	if (prototype_term_normalize_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			symbolic_effect_union,
+			PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
+			&normalization
+		) != 0 ||
+		normalization.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
+		normalization.term_id != symbolic_effect_union) {
 		return 1;
 	}
 
-	uint32_t reduced;
-	if (prototype_term_whnf(&term_db, &type_db, forced, &reduced) != 0 ||
-		reduced != returned) {
+	if (prototype_term_normalize_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			forced,
+			PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
+			&normalization
+		) != 0 ||
+		normalization.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
+		normalization.term_id != returned) {
 		return 1;
 	}
 	uint32_t bound_var;
@@ -137,14 +153,17 @@ int main(void) {
 		prototype_term_return(&term_db, bound_var, &bound_result) != 0 ||
 		prototype_term_lambda(&term_db, 6, bound_result, &bound_continuation) != 0 ||
 		prototype_term_bind(&term_db, returned, bound_continuation, &pure_bound) != 0 ||
-		prototype_term_whnf(&term_db, &type_db, pure_bound, &reduced) != 0 ||
-		reduced != returned) {
-		return 1;
-	}
-	uint32_t runtime_return;
-	if (prototype_term_execute_with_default_host_handler(
-			stdout, &symbols, &type_db, &term_db, returned, &runtime_return
-		) != 0 || runtime_return != returned) {
+		prototype_term_normalize_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			pure_bound,
+			PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
+			&normalization
+		) != 0 ||
+		normalization.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
+		normalization.term_id != returned) {
 		return 1;
 	}
 	uint32_t operation;

@@ -124,7 +124,7 @@ int main(void) {
 		prototype_term_var(&term_db, binder, &variable) != 0 ||
 		prototype_term_lambda(&term_db, binder, variable, &identity_core) != 0 ||
 		prototype_term_app(&term_db, identity_core, bool_zero, &application) != 0 ||
-		prototype_term_whnf_with_profile(
+		prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
@@ -151,14 +151,14 @@ int main(void) {
 	uint32_t shared_core = term_db.terms[bool_view_after].as.type_view.core;
 	uint32_t bool_whnf;
 	uint32_t two_whnf;
-	if (prototype_term_whnf_with_profile(
+	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			shared_core,
 			&bool_whnf
-		) != 0 || prototype_term_whnf_with_profile(
+		) != 0 || prototype_term_normalize_complete_with_profile(
 			&term_db,
 			&type_db,
 			NULL,
