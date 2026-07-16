@@ -30,6 +30,8 @@ typedef int (*prototype_term_operation_dispatch_fn)(
 #define PROTOTYPE_PI_UNUSED_BINDER_ID (UINT32_MAX - 2)
 #define PROTOTYPE_SCOPE_BINDER_CAPACITY 512
 #define PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY 1024
+#define PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT UINT64_C(100000)
+#define PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT UINT64_C(100000)
 
 enum prototype_term_tag {
 	PROTOTYPE_TERM_VAR = 1,
@@ -202,7 +204,9 @@ enum prototype_term_normalization_status {
 struct prototype_term_normalization_result {
 	int status;
 	uint32_t term_id;
-	uint64_t depth_budget;
+	uint64_t step_limit;
+	uint64_t steps_used;
+	uint64_t graph_revision;
 };
 
 enum prototype_term_normalization_cache_state {
@@ -242,9 +246,11 @@ struct prototype_term_reduction_options {
 	struct symbol_table* symbols;
 	unsigned effect_capabilities;
 	int* p_effect_performed;
-	/* Internal callers may distinguish a depth/budget stop from an invalid
-	 * graph without changing the established strict evaluator ABI. */
+	/* Internal callers may distinguish a fuel stop from an invalid graph
+	 * without changing the established strict evaluator ABI. */
 	int* p_normalization_status;
+	uint64_t* p_steps_remaining;
+	uint64_t* p_steps_used;
 	prototype_term_operation_dispatch_fn operation_dispatch;
 	void* operation_dispatch_context;
 };
@@ -291,9 +297,11 @@ struct prototype_term {
 		} type_former;
 		struct {
 			uint32_t type_id;
+			struct prototype_qualified_name identity;
 		} type_declaration;
 		struct {
 			uint32_t view_type_id;
+			struct prototype_qualified_name identity;
 			uint32_t core;
 			uint32_t source;
 		} type_view;
@@ -834,15 +842,15 @@ int prototype_term_whnf_with_profile(
 	uint32_t term_id,
 	uint32_t* p_ret
 );
-/* Evaluate only the supplied profile and classify the outcome. A depth budget
- * of zero selects the implementation default. This does not dispatch effects. */
+/* Evaluate only the supplied profile and classify the outcome. Zero permits
+	 * no reduction work. This does not dispatch effects. */
 int prototype_term_whnf_with_profile_result(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t term_id,
-	uint64_t depth_budget,
+	uint64_t step_limit,
 	struct prototype_term_normalization_result* p_result
 );
 int prototype_term_nf_with_options(

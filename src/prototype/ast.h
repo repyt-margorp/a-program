@@ -331,6 +331,16 @@ struct prototype_operation_node {
 	uint32_t body;
 	uint32_t scrutinee;
 	uint32_t binder_classifier;
+	/* HANDLE-only clause scope. `body` is the operation-clause body and
+	 * `scrutinee` is the return-clause body. Source binder identities select
+	 * occurrence-local VAR nodes; graph binder identities instantiate the
+	 * corresponding TermDB clause bodies. */
+	uint32_t handler_argument_ast_binder_id;
+	uint32_t handler_argument_binder_id;
+	uint32_t handler_continuation_ast_binder_id;
+	uint32_t handler_continuation_binder_id;
+	uint32_t handler_return_ast_binder_id;
+	uint32_t handler_return_binder_id;
 	/* Classifier-only row binders generalized by this lambda. They are never
 	 * runtime lambda arguments. */
 	uint32_t implicit_effect_row_binders[16];
@@ -669,7 +679,32 @@ struct prototype_resolution_iteration {
 	size_t event_count;
 };
 
+enum prototype_compile_policy {
+	PROTOTYPE_COMPILE_POLICY_STRICT = 1,
+	PROTOTYPE_COMPILE_POLICY_HYBRID,
+	PROTOTYPE_COMPILE_POLICY_EXPLORATORY
+};
+
+enum prototype_runtime_capability {
+	PROTOTYPE_RUNTIME_CAPABILITY_DEPENDENT_BIND_VERIFIER = 1u << 0,
+	PROTOTYPE_RUNTIME_CAPABILITY_OPERATION_DISPATCH = 1u << 1,
+	PROTOTYPE_RUNTIME_CAPABILITY_HANDLER = 1u << 2,
+	PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL = 1u << 3
+};
+
 struct prototype_compile_metadata {
+	int compile_policy;
+	uint64_t required_runtime_capabilities;
+	uint64_t normalization_step_limit;
+	uint64_t normalization_steps_used;
+	uint64_t solver_step_limit;
+	uint64_t solver_steps_used;
+	int solver_exhausted;
+	uint64_t solver_constraint_count;
+	uint64_t solver_solved_count;
+	uint64_t solver_residual_count;
+	uint64_t solver_incomplete_count;
+
 	struct prototype_operation_node* operations;
 	size_t operation_count;
 	size_t operation_capacity;

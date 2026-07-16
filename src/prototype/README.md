@@ -369,8 +369,23 @@ is only structural evidence that two views share the same computational shape.
 Core-shape equality must not be used as a typed conversion until a later
 transport/equality proof explicitly changes the view.
 
+Compiler verification work is bounded by deterministic counters rather than
+wall-clock time:
+
+```text
+--normalization-steps N
+--solver-steps N
+--policy strict|hybrid|exploratory
+```
+
+The same source, linked interfaces, reduction profile, policy, and step limits
+must produce the same verification frontier and artifact. Different limits may
+close different amounts of pure work, but machine speed does not affect the
+result. The current implementation rejects arbitrary incomplete solver work;
+`hybrid` permits only residual obligations with a defined runtime verifier.
+
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 28`. The reader accepts that format only; old artifact
+`A_PROGRAM_ARTIFACT 42`. The reader accepts that format only; old artifact
 versions are intentionally rejected instead of being kept as compatibility paths.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor
@@ -395,6 +410,13 @@ Proof validation also rejects cyclic premise edges; proof objects form a DAG
 over the judgement graph, not a circular justification table. Every proof object
 must be referenced by exactly one judgement relation, so serialized artifacts
 cannot hide orphan proof nodes.
+An `operation_graph` section stores occurrence-local operation nodes, Match
+case edges, HANDLE operation/return clause bodies and binder identities,
+residual verification obligations, deterministic normalization and solver step
+budgets, compile policy, and required runtime capabilities. Runtime capability
+metadata is recomputed from the loaded graph and rejected when the serialized
+declaration understates its requirements. Source binder identities are
+relocated independently from TermDB binder ids when artifacts are combined.
 A `universe`
 section stores universe nodes, edges, solved levels, and constraints. Universe
 nodes and edges are also sparse: only nodes reachable through exported type

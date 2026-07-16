@@ -121,6 +121,7 @@ TERM_TAG_TEXT_LITERAL=$(c_enum_value_in src/prototype/term.h prototype_term_tag 
 TERM_TAG_EXTERNAL_REF=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EXTERNAL_REF)
 TERM_TAG_EFFECT_LABEL=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_LABEL)
 TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
+OPERATION_TAG_LAMBDA=$(c_enum_value_in src/prototype/ast.h prototype_operation_tag PROTOTYPE_OPERATION_LAMBDA)
 
 if grep -q 'prototype_type_declaration_find_by_code_shape_key' src/prototype/typing.c; then
 	echo "typing must not resolve imported type expressions by TypeCodeShapeKey" >&2
@@ -161,10 +162,35 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 38$' "$TMP_DIR/identity.apo"
-sed '1s/38$/37/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v37.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v37.apo" >"$TMP_DIR/identity-v37.out" 2>"$TMP_DIR/identity-v37.err"; then
-	echo "v37 artifact unexpectedly passed after v38 format bump" >&2
+grep -q '^A_PROGRAM_ARTIFACT 42$' "$TMP_DIR/identity.apo"
+grep -q '^compile_policy 2 0 100000 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' "$TMP_DIR/identity.apo"
+./read_file.out --policy strict --write-artifact "$TMP_DIR/identity-strict.apo" \
+	"$TMP_DIR/identity.p" >"$TMP_DIR/identity-strict.out"
+grep -q '^compile_policy 1 ' "$TMP_DIR/identity-strict.apo"
+if ./read_file.out --aggregate-artifact "$TMP_DIR/mixed-policy.apo" \
+	"$TMP_DIR/identity.apo" "$TMP_DIR/identity-strict.apo" \
+	>"$TMP_DIR/mixed-policy.out" 2>"$TMP_DIR/mixed-policy.err"; then
+	echo 'link accepted artifacts with incompatible compile policies' >&2
+	exit 1
+fi
+./read_file.out --normalization-steps 7 --solver-steps 100000 \
+	--write-artifact "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity.p" \
+	>"$TMP_DIR/identity-budget.out"
+grep -q '^compile_policy 2 0 7 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' \
+	"$TMP_DIR/identity-budget.apo"
+./read_file.out --normalization-steps 7 --solver-steps 100000 \
+	--write-artifact "$TMP_DIR/identity-budget-repeat.apo" "$TMP_DIR/identity.p" \
+	>"$TMP_DIR/identity-budget-repeat.out"
+cmp "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity-budget-repeat.apo"
+if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
+	>"$TMP_DIR/identity-zero-solver.out" 2>"$TMP_DIR/identity-zero-solver.err"; then
+	echo "zero-step classifier solver unexpectedly completed" >&2
+	exit 1
+fi
+grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
+sed '1s/42$/41/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v41.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v41.apo" >"$TMP_DIR/identity-v41.out" 2>"$TMP_DIR/identity-v41.err"; then
+	echo "obsolete artifact unexpectedly passed after v42 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -197,6 +223,15 @@ grep -q 'constructor_name 0 true 0 ' "$TMP_DIR/identity.apo"
 grep -q '^interface term identityBool ' "$TMP_DIR/identity-read.out"
 grep -q '^interface term identityNat ' "$TMP_DIR/identity-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/identity-read.out"
+awk '
+	$1 == "compile_policy" { $12 = 1 }
+	{ print }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-incomplete.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-incomplete.apo" \
+	>"$TMP_DIR/identity-incomplete.out" 2>"$TMP_DIR/identity-incomplete.err"; then
+	echo "artifact with unsupported incomplete constraints unexpectedly passed" >&2
+	exit 1
+fi
 ./read_file.out --check-exports-normalization-equal "$TMP_DIR/identity.apo" \
 	boolMain boolExpected --reduction-mode default >"$TMP_DIR/identity-read-bool.out"
 grep -q '^exports-normalization-equal boolMain boolExpected mode=default yes$' \
@@ -1730,8 +1765,19 @@ EOF_TERMINAL_EFFECT
 ./read_file.out --write-artifact "$TMP_DIR/TerminalEffect.apo" \
 	"$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-artifact.out"
 ./read_file.out --read-graph "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/terminal-effect-read-graph.out"
+grep -q '^compile_policy 2 10 ' "$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_EFFECT_LABEL 1$" "$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_COMPUTATION_TYPE " "$TMP_DIR/TerminalEffect.apo"
+awk '
+	$1 == "compile_policy" { $3 = 0 }
+	{ print }
+' "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/TerminalEffectBadCapabilities.apo"
+if ./read_file.out --read-graph "$TMP_DIR/TerminalEffectBadCapabilities.apo" \
+	>"$TMP_DIR/terminal-effect-bad-capabilities.out" \
+	2>"$TMP_DIR/terminal-effect-bad-capabilities.err"; then
+	echo "artifact with understated runtime capabilities unexpectedly passed" >&2
+	exit 1
+fi
 ./read_file.out "$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-read.out"
 grep -q 'term main := OPERATION_REQUEST(OPERATION(print), TEXT_LITERAL("hello")' "$TMP_DIR/terminal-effect-read.out"
 ! grep -q '^hello$' "$TMP_DIR/terminal-effect-read.out"
@@ -1951,6 +1997,17 @@ duplicate_nat_b_key=$(awk '$1 == "term" && $2 == "idB" { print $6 ":" $7 ":" $8 
 test "$duplicate_nat_a_term" = "$duplicate_nat_b_term"
 test "$duplicate_nat_a_classifier" != "$duplicate_nat_b_classifier"
 test "$duplicate_nat_a_key" = "$duplicate_nat_b_key"
+awk -v lambda_tag="$OPERATION_TAG_LAMBDA" '
+	$1 == "operation" && $3 == lambda_tag && $13 != 4294967295 {
+		seen[$13] = 1;
+	}
+	END {
+		for (id in seen) {
+			count++;
+		}
+		exit count >= 2 ? 0 : 1;
+	}
+' "$TMP_DIR/DuplicateNatAB.apo"
 ./read_file.out --write-artifact "$TMP_DIR/TypeAliasKey.apo" \
 	"$TMP_DIR/type-alias-key.p" >"$TMP_DIR/type-alias-key.out"
 ./read_file.out --read-graph "$TMP_DIR/TypeAliasKey.apo" >"$TMP_DIR/type-alias-key-read.out"
@@ -2115,7 +2172,6 @@ Nat := @{
         succ : * -> *;
 };
 
-main := idNat Nat.zero;
 localId := \y : Nat => y;
 EOF_ID_TARGET_LOCAL
 
@@ -2136,15 +2192,6 @@ test "$idnat_term" = "$localid_term"
 test "$idnat_classifier" != "$localid_classifier"
 test "$idnat_key" = "$localid_key"
 test "$idnat_classifier_key" != "$localid_classifier_key"
-if ./read_file.out --link-artifacts "$TMP_DIR/IdTargetLocal.apo" \
-	--link-search-dir "$TMP_DIR" \
-	--link-output "$TMP_DIR/IdTargetLocal.ambiguous.apo" \
-	>"$TMP_DIR/id-target-local-ambiguous.out" \
-	2>"$TMP_DIR/id-target-local-ambiguous.err"; then
-	echo "ambiguous bare idNat provider unexpectedly linked" >&2
-	exit 1
-fi
-grep -q 'failed to search provider artifacts' "$TMP_DIR/id-target-local-ambiguous.err"
 
 cat >"$TMP_DIR/nat.p" <<'EOF_NAT'
 Nat := @{

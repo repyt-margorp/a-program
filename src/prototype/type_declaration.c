@@ -335,6 +335,7 @@ int prototype_type_declaration_add(
 	struct prototype_type_declaration* type = &db->type_declarations[id];
 	memset(type, 0, sizeof(*type));
 	type->name_symbol_id = name_symbol_id;
+	type->namespace_symbol_id = -1;
 	type->type_index = id;
 	type->representation_id = PROTOTYPE_INVALID_ID;
 	type->formation_classifier = PROTOTYPE_INVALID_ID;

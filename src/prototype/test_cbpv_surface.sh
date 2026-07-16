@@ -112,6 +112,17 @@ EOF
 ./read_file.out "$tmp_dir/dependent-bind-residual.p" \
 	>"$tmp_dir/dependent-bind-residual.out"
 grep -q '^term main := BIND(' "$tmp_dir/dependent-bind-residual.out"
+grep -q 'compile-budget .* residual=1 incomplete=0' \
+	"$tmp_dir/dependent-bind-residual.out"
+./read_file.out --write-artifact "$tmp_dir/dependent-bind-residual.apo" \
+	"$tmp_dir/dependent-bind-residual.p" >"$tmp_dir/dependent-bind-residual-write.out"
+grep -q '^compile_policy 2 11 ' "$tmp_dir/dependent-bind-residual.apo"
+if ./read_file.out --policy strict "$tmp_dir/dependent-bind-residual.p" \
+	>"$tmp_dir/dependent-bind-strict.out" 2>"$tmp_dir/dependent-bind-strict.err"; then
+	echo 'strict policy accepted a residual dependent BIND' >&2
+	exit 1
+fi
+grep -q 'failed to compile AST graph' "$tmp_dir/dependent-bind-strict.err"
 residual_bind_operation=$(awk '
 	/^operation#/ && $2 == "bind" && $NF == "name=main" {
 		id = $1
@@ -171,6 +182,32 @@ grep -q '^verification main := discharged$' \
 
 [ "$(grep -Ec '^value main := RETURN\(CONSTRUCTOR\(' \
 	"$tmp_dir/dependent-bind-residual-eval.out")" -eq 2 ]
+
+# A residual family can remain symbolic through a nested BIND. Pointwise
+# computation classifiers factor the common effect row while retaining the
+# Match result family, and the runtime follows occurrence edges through both
+# BINDs before discharging the outer frame.
+cat >"$tmp_dir/nested-dependent-bind-residual.p" <<'EOF'
+Bool := @{ true : *; false : *; };
+Nat := @{ zero : *; succ : * -> *; };
+m := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.false);
+main := #.bind m (\b : Bool =>
+	#.bind (perform (#.print #"y"))
+		(\x : #.Text => b @true => Nat.zero @false => Bool.true));
+EOF
+./read_file.out "$tmp_dir/nested-dependent-bind-residual.p" \
+	>"$tmp_dir/nested-dependent-bind-residual.out"
+grep -q 'compile-budget .* residual=1 incomplete=0' \
+	"$tmp_dir/nested-dependent-bind-residual.out"
+{
+	cat "$tmp_dir/nested-dependent-bind-residual.p"
+	printf '%s\n' main ':q'
+} | ./a.out >"$tmp_dir/nested-dependent-bind-residual-eval.out"
+grep -q '^xy$' "$tmp_dir/nested-dependent-bind-residual-eval.out"
+grep -q '^verification main := discharged$' \
+	"$tmp_dir/nested-dependent-bind-residual-eval.out"
+grep -q '^value main := RETURN(CONSTRUCTOR(' \
+	"$tmp_dir/nested-dependent-bind-residual-eval.out"
 
 cat >"$tmp_dir/effect-forwarding.p" <<'EOF'
 forward := \f : #.Text -> #.Text => f #"x";
@@ -376,6 +413,7 @@ grep -q 'term main := HANDLE(HANDLER(' "$tmp_dir/handle.out"
 grep -q '\[handler-intro\]' "$tmp_dir/handle.out"
 grep -q '\[handle-elim\]' "$tmp_dir/handle.out"
 ./read_file.out --write-artifact "$tmp_dir/handle.apo" "$tmp_dir/handle.p" >"$tmp_dir/handle-write.out"
+grep -q '^compile_policy 2 14 ' "$tmp_dir/handle.apo"
 ./read_file.out --read-graph "$tmp_dir/handle.apo" >"$tmp_dir/handle-read.out"
 grep -q 'interface term main ' "$tmp_dir/handle-read.out"
 

@@ -346,13 +346,30 @@ int main(void) {
 			&term_db,
 			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-			effect_request,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				effect_request,
+				PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
+			&normalization_result
+			) != 0 || normalization_result.status !=
+				PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT ||
+		normalization_result.term_id != effect_request ||
+		normalization_result.step_limit == 0 ||
+		normalization_result.steps_used == 0 ||
+		normalization_result.steps_used > normalization_result.step_limit) {
+		return 1;
+	}
+	if (prototype_term_whnf_with_profile_result(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			application,
 			0,
 			&normalization_result
 		) != 0 || normalization_result.status !=
-			PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT ||
-		normalization_result.term_id != effect_request) {
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED ||
+		normalization_result.step_limit != 0 ||
+		normalization_result.steps_used != 0) {
 		return 1;
 	}
 	if (prototype_term_whnf_with_profile_result(
@@ -363,8 +380,10 @@ int main(void) {
 			application,
 			1,
 			&normalization_result
-		) != 0 || normalization_result.status !=
-			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED) {
+			) != 0 || normalization_result.status !=
+				PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED ||
+		normalization_result.step_limit != 1 ||
+		normalization_result.steps_used != 1) {
 		return 1;
 	}
 

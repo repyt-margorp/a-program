@@ -2118,6 +2118,17 @@ int prototype_compile_graph_with_imports(
 		}
 		return -1;
 	}
+	if (program->compile_options.normalization_step_limit_is_set) {
+		program->metadata->normalization_step_limit =
+			program->compile_options.normalization_step_limit;
+	}
+	if (program->compile_options.solver_step_limit_is_set) {
+		program->metadata->solver_step_limit =
+			program->compile_options.solver_step_limit;
+	}
+	if (program->compile_options.compile_policy != 0) {
+		program->metadata->compile_policy = program->compile_options.compile_policy;
+	}
 	if (prototype_ast_compile_pending_with_imports(
 		program->asts,
 		program->terms,
@@ -2136,7 +2147,14 @@ int prototype_compile_graph_with_imports(
 				error->line = resolve_error->span.line;
 				error->column = resolve_error->span.column;
 			}
-			snprintf(error->message, sizeof(error->message), "%s", "failed to compile AST graph");
+			snprintf(
+				error->message,
+				sizeof(error->message),
+				"%s",
+				program->metadata->solver_exhausted ?
+					"classifier solver step limit exhausted" :
+					"failed to compile AST graph"
+			);
 		}
 		return -1;
 	}
@@ -2256,7 +2274,12 @@ int prototype_link_external_refs(struct prototype_program* program) {
 		return -1;
 	}
 
-	for (uint32_t pass = 0; pass < 64; ++pass) {
+	/* Each successful pass must eliminate or relocate at least one reference.
+	 * Bound the fixed point by the finite linked graph rather than a magic
+	 * pass count unrelated to the artifact size. */
+	size_t pass_limit = program->terms->term_count +
+		program->judgement->relation_count + program->judgement->proof_count + 1;
+	for (size_t pass = 0; pass < pass_limit; ++pass) {
 		int changed = 0;
 		for (size_t i = 0; i < program->metadata->label_count; ++i) {
 			uint32_t linked;

@@ -49,6 +49,37 @@ void prototype_judgement_delta_init(
 	delta->effect_row_equation_capacity = effect_row_equation_capacity;
 }
 
+void prototype_judgement_delta_set_solver_budget(
+	struct prototype_judgement_delta* delta,
+	uint64_t step_limit,
+	uint64_t* steps_used,
+	int* exhausted
+) {
+	if (!delta) {
+		return;
+	}
+	delta->solver_step_limit = step_limit;
+	delta->solver_steps_used = steps_used;
+	delta->solver_exhausted = exhausted;
+}
+
+static int consume_solver_step(struct prototype_judgement_delta* delta) {
+	if (!delta) {
+		return -1;
+	}
+	if (!delta->solver_steps_used) {
+		return 0;
+	}
+	if (*delta->solver_steps_used >= delta->solver_step_limit) {
+		if (delta->solver_exhausted) {
+			*delta->solver_exhausted = 1;
+		}
+		return 1;
+	}
+	(*delta->solver_steps_used)++;
+	return 0;
+}
+
 size_t prototype_judgement_delta_mark(
 	const struct prototype_judgement_delta* delta
 ) {
@@ -520,15 +551,16 @@ static int classifier_kernel_whnf(
 	return 0;
 }
 
-int prototype_judgement_classifier_view(
+static int classifier_view_with_depth(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	uint32_t classifier,
-	struct prototype_term_classifier_view* p_ret
+	struct prototype_term_classifier_view* p_ret,
+	uint32_t depth
 ) {
 	uint32_t whnf;
-	if (!p_ret || classifier_kernel_whnf(
+	if (!p_ret || depth == 0 || classifier_kernel_whnf(
 				terms,
 			type_declarations,
 			definitions,
@@ -557,7 +589,81 @@ int prototype_judgement_classifier_view(
 		terms->terms[whnf].tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
 		return -1;
 	}
+	if (terms->terms[whnf].tag == PROTOTYPE_TERM_MATCH) {
+		const struct prototype_term* match = &terms->terms[whnf];
+		if (match->as.match.case_count == 0 || match->as.match.case_count > 64 ||
+			match->as.match.first_case + match->as.match.case_count > terms->case_count) {
+			return -1;
+		}
+		struct prototype_match_case_input result_cases[64];
+		uint32_t effect_row = PROTOTYPE_INVALID_ID;
+		for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
+			const struct prototype_match_case* match_case =
+				&terms->cases[match->as.match.first_case + i];
+			struct prototype_term_classifier_view branch_view;
+			if (match_case->first_binder + match_case->binder_count >
+					terms->case_binder_count || classifier_view_with_depth(
+					terms,
+					type_declarations,
+					definitions,
+					match_case->body,
+					&branch_view,
+					depth - 1
+				) != 0 || branch_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+				branch_view.computation_kind !=
+					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+				return prototype_term_classifier_view(terms, whnf, p_ret);
+			}
+			result_cases[i].case_label_symbol_id =
+				terms->case_label_symbols[match->as.match.first_case + i];
+			result_cases[i].constructor_owner = match_case->constructor_owner;
+			result_cases[i].constructor_id = match_case->constructor_id;
+			result_cases[i].binders = &terms->case_binders[match_case->first_binder];
+			result_cases[i].binder_count = match_case->binder_count;
+			result_cases[i].body = branch_view.result;
+			if (effect_row == PROTOTYPE_INVALID_ID) {
+				effect_row = branch_view.effect_row;
+			} else if (prototype_term_effect_row_union(
+					terms, effect_row, branch_view.effect_row, &effect_row
+				) != 0) {
+				return -1;
+			}
+		}
+		uint32_t result;
+		if (prototype_term_match(
+				terms,
+				match->as.match.scrutinee,
+				result_cases,
+				match->as.match.case_count,
+				&result
+			) != 0) {
+			return -1;
+		}
+		memset(p_ret, 0, sizeof(*p_ret));
+		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
+		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
+		p_ret->effect_row = effect_row;
+		p_ret->result = result;
+		if (prototype_term_effect_row_closed_bits(
+				terms, effect_row, &p_ret->effects
+			) != 0) {
+			p_ret->effects = PROTOTYPE_HOST_EFFECT_NONE;
+		}
+		return 0;
+	}
 	return prototype_term_classifier_view(terms, whnf, p_ret);
+}
+
+int prototype_judgement_classifier_view(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	uint32_t classifier,
+	struct prototype_term_classifier_view* p_ret
+) {
+	return classifier_view_with_depth(
+		terms, type_declarations, definitions, classifier, p_ret, 256
+	);
 }
 
 static int classifier_kernel_whnf_no_definitions(
@@ -1016,6 +1122,27 @@ static int classifier_kernel_compatible_at_depth(
 			expected,
 			actual
 		)) {
+		return 1;
+	}
+	/* Artifact lowering may expose a qualified type name before relocation and
+	 * the corresponding TYPE_VIEW after relocation. This is name resolution for
+	 * one declaration identity, not structural equality between declarations. */
+	const struct prototype_term* expected_term = &terms->terms[expected];
+	const struct prototype_term* actual_term = &terms->terms[actual];
+	if (expected_term->tag == PROTOTYPE_TERM_EXTERNAL_REF &&
+		actual_term->tag == PROTOTYPE_TERM_TYPE_VIEW &&
+		expected_term->as.external_ref.name.namespace_symbol_id ==
+			actual_term->as.type_view.identity.namespace_symbol_id &&
+		expected_term->as.external_ref.name.name_symbol_id ==
+			actual_term->as.type_view.identity.name_symbol_id) {
+		return 1;
+	}
+	if (actual_term->tag == PROTOTYPE_TERM_EXTERNAL_REF &&
+		expected_term->tag == PROTOTYPE_TERM_TYPE_VIEW &&
+		actual_term->as.external_ref.name.namespace_symbol_id ==
+			expected_term->as.type_view.identity.namespace_symbol_id &&
+		actual_term->as.external_ref.name.name_symbol_id ==
+			expected_term->as.type_view.identity.name_symbol_id) {
 		return 1;
 	}
 	/* Universe variables are not judgementally equal unless their level ids
@@ -4382,7 +4509,7 @@ int prototype_judgement_delta_infer_cbpv_boundaries(
 	if (!delta || !terms || !type_declarations) {
 		return -1;
 	}
-	for (uint32_t iteration = 0; iteration < 32; ++iteration) {
+	for (;;) {
 		int changed = 0;
 		for (uint32_t i = 0; i < (uint32_t)terms->term_count; ++i) {
 			int tag = terms->terms[i].tag;
@@ -5117,6 +5244,10 @@ static int solve_computation_constraints(
 	struct prototype_type_declaration_db* type_declarations
 ) {
 	for (size_t i = 0; i < delta->computation_constraint_count; ++i) {
+		int budget_status = consume_solver_step(delta);
+		if (budget_status != 0) {
+			return budget_status;
+		}
 		struct prototype_judgement_computation_constraint* constraint =
 			&delta->computation_constraints[i];
 		if (constraint->kind == PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_BIND) {
@@ -5152,19 +5283,23 @@ int prototype_judgement_delta_infer_computation_constraints(
 		return -1;
 	}
 
-	for (uint32_t iteration = 0; iteration < 32; ++iteration) {
+	for (;;) {
 		size_t before = delta->relation_count;
 		if (prototype_judgement_delta_infer_cbpv_boundaries(
 				delta, terms, type_declarations
-			) != 0 ||
-			solve_computation_constraints(delta, terms, type_declarations) != 0) {
+			) != 0) {
 			return -1;
+		}
+		int solve_status = solve_computation_constraints(
+			delta, terms, type_declarations
+		);
+		if (solve_status != 0) {
+			return solve_status;
 		}
 		if (delta->relation_count == before) {
 			return 0;
 		}
 	}
-	return -1;
 }
 
 int prototype_judgement_delta_solve_computation_constraints(
@@ -5176,16 +5311,18 @@ int prototype_judgement_delta_solve_computation_constraints(
 		prototype_judgement_delta_generate_computation_constraints(delta, terms) != 0) {
 		return -1;
 	}
-	for (uint32_t iteration = 0; iteration < 32; ++iteration) {
+	for (;;) {
 		size_t before = delta->relation_count;
-		if (solve_computation_constraints(delta, terms, type_declarations) != 0) {
-			return -1;
+		int solve_status = solve_computation_constraints(
+			delta, terms, type_declarations
+		);
+		if (solve_status != 0) {
+			return solve_status;
 		}
 		if (delta->relation_count == before) {
 			return 0;
 		}
 	}
-	return -1;
 }
 
 int prototype_judgement_delta_infer_term_classifiers(
@@ -5201,7 +5338,7 @@ int prototype_judgement_delta_infer_term_classifiers(
 	}
 
 	int changed = 1;
-	for (uint32_t iteration = 0; iteration < 32 && changed; ++iteration) {
+	while (changed) {
 		changed = 0;
 			uint32_t term_count = (uint32_t)terms->term_count;
 			for (uint32_t i = 0; i < term_count; ++i) {
@@ -5305,8 +5442,11 @@ int prototype_judgement_delta_infer_term_classifiers(
 			}
 		}
 		size_t before = delta->relation_count;
-		if (solve_computation_constraints(delta, terms, type_declarations) != 0) {
-			return -1;
+		int solve_status = solve_computation_constraints(
+			delta, terms, type_declarations
+		);
+		if (solve_status != 0) {
+			return solve_status;
 		}
 		if (delta->relation_count > before) {
 			changed = 1;

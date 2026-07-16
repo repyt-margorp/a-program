@@ -1,6 +1,7 @@
 #include "reader.h"
 
 #include <dirent.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -698,6 +699,38 @@ static uint32_t offset_link_graph_id(uint32_t id, uint32_t offset) {
 	return id == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID : id + offset;
 }
 
+static int operation_graph_next_source_binder_id(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t* p_ret
+) {
+	if (!metadata || !p_ret) {
+		return -1;
+	}
+	uint32_t next = 0;
+	for (size_t i = 0; i < metadata->operation_count; ++i) {
+		const struct prototype_operation_node* operation = &metadata->operations[i];
+		uint32_t ids[] = {
+			operation->referenced_ast_binder_id,
+			operation->handler_argument_ast_binder_id,
+			operation->handler_continuation_ast_binder_id,
+			operation->handler_return_ast_binder_id
+		};
+		for (size_t j = 0; j < sizeof(ids) / sizeof(ids[0]); ++j) {
+			if (ids[j] == PROTOTYPE_INVALID_ID) {
+				continue;
+			}
+			if (ids[j] == UINT32_MAX - 1) {
+				return -1;
+			}
+			if (next <= ids[j]) {
+				next = ids[j] + 1;
+			}
+		}
+	}
+	*p_ret = next;
+	return 0;
+}
+
 static int append_link_operation_graph(
 	struct prototype_compile_metadata* target,
 	const struct prototype_compile_metadata* source,
@@ -712,8 +745,40 @@ static int append_link_operation_graph(
 			target->verification.obligation_capacity) {
 		return -1;
 	}
+	int target_is_empty = target->operation_count == 0 &&
+		target->solver_constraint_count == 0 &&
+		target->verification.obligation_count == 0;
+	if (target_is_empty) {
+		target->compile_policy = source->compile_policy;
+	} else if (target->compile_policy != source->compile_policy) {
+		return -1;
+	}
+	if (UINT64_MAX - target->normalization_step_limit < source->normalization_step_limit ||
+		UINT64_MAX - target->normalization_steps_used < source->normalization_steps_used ||
+		UINT64_MAX - target->solver_step_limit < source->solver_step_limit ||
+		UINT64_MAX - target->solver_steps_used < source->solver_steps_used ||
+		UINT64_MAX - target->solver_constraint_count < source->solver_constraint_count ||
+		UINT64_MAX - target->solver_solved_count < source->solver_solved_count ||
+		UINT64_MAX - target->solver_residual_count < source->solver_residual_count ||
+		UINT64_MAX - target->solver_incomplete_count < source->solver_incomplete_count) {
+		return -1;
+	}
+	target->normalization_step_limit += source->normalization_step_limit;
+	target->normalization_steps_used += source->normalization_steps_used;
+	target->solver_step_limit += source->solver_step_limit;
+	target->solver_steps_used += source->solver_steps_used;
+	target->solver_exhausted = target->solver_exhausted || source->solver_exhausted;
+	target->solver_constraint_count += source->solver_constraint_count;
+	target->solver_solved_count += source->solver_solved_count;
+	target->solver_residual_count += source->solver_residual_count;
+	target->solver_incomplete_count += source->solver_incomplete_count;
+	target->required_runtime_capabilities |= source->required_runtime_capabilities;
 	uint32_t operation_offset = (uint32_t)target->operation_count;
 	uint32_t case_offset = (uint32_t)target->operation_case_count;
+	uint32_t source_binder_offset;
+	if (operation_graph_next_source_binder_id(target, &source_binder_offset) != 0) {
+		return -1;
+	}
 	for (size_t i = 0; i < source->operation_count; ++i) {
 		struct prototype_operation_node operation = source->operations[i];
 		operation.core_term = offset_link_graph_id(operation.core_term, term_offset);
@@ -724,10 +789,31 @@ static int append_link_operation_graph(
 		operation.binder_classifier = offset_link_graph_id(
 			operation.binder_classifier, term_offset
 		);
+		operation.handler_argument_binder_id = offset_link_graph_id(
+			operation.handler_argument_binder_id, binder_offset
+		);
+		operation.handler_continuation_binder_id = offset_link_graph_id(
+			operation.handler_continuation_binder_id, binder_offset
+		);
+		operation.handler_return_binder_id = offset_link_graph_id(
+			operation.handler_return_binder_id, binder_offset
+		);
 		operation.function = offset_link_graph_id(operation.function, operation_offset);
 		operation.argument = offset_link_graph_id(operation.argument, operation_offset);
 		operation.body = offset_link_graph_id(operation.body, operation_offset);
 		operation.scrutinee = offset_link_graph_id(operation.scrutinee, operation_offset);
+		operation.referenced_ast_binder_id = offset_link_graph_id(
+			operation.referenced_ast_binder_id, source_binder_offset
+		);
+		operation.handler_argument_ast_binder_id = offset_link_graph_id(
+			operation.handler_argument_ast_binder_id, source_binder_offset
+		);
+		operation.handler_continuation_ast_binder_id = offset_link_graph_id(
+			operation.handler_continuation_ast_binder_id, source_binder_offset
+		);
+		operation.handler_return_ast_binder_id = offset_link_graph_id(
+			operation.handler_return_ast_binder_id, source_binder_offset
+		);
 		operation.first_case = offset_link_graph_id(operation.first_case, case_offset);
 		for (uint32_t j = 0; j < operation.implicit_effect_row_count; ++j) {
 			operation.implicit_effect_row_binders[j] = offset_link_graph_id(
@@ -2292,6 +2378,12 @@ static int reexport_appended_interface(
 	return 0;
 }
 
+static int parse_step_limit(const char* text, uint64_t* p_value) {
+	char trailing;
+	return text && p_value && text[0] != '-' &&
+		sscanf(text, "%" SCNu64 "%c", p_value, &trailing) == 1 ? 0 : -1;
+}
+
 int main(int argc, char** argv) {
 	struct prototype_read_options read_options;
 	int file_arg = 1;
@@ -2329,6 +2421,11 @@ int main(int argc, char** argv) {
 	int read_graph = 0;
 	int link_reexport_providers = 0;
 	int disable_automatic_cbpv_coercions = 0;
+	int normalization_step_limit_is_set = 0;
+	uint64_t normalization_step_limit = 0;
+	int solver_step_limit_is_set = 0;
+	uint64_t solver_step_limit = 0;
+	int compile_policy = PROTOTYPE_COMPILE_POLICY_HYBRID;
 	memset(&read_options, 0, sizeof(read_options));
 
 	for (; file_arg < argc && argv[file_arg][0] == '-'; ++file_arg) {
@@ -2338,6 +2435,46 @@ int main(int argc, char** argv) {
 		}
 		if (strcmp(argv[file_arg], "--no-automatic-cbpv-coercions") == 0) {
 			disable_automatic_cbpv_coercions = 1;
+			continue;
+		}
+		if (strcmp(argv[file_arg], "--normalization-steps") == 0) {
+			if (file_arg + 1 >= argc || parse_step_limit(
+					argv[file_arg + 1], &normalization_step_limit
+				) != 0) {
+				fprintf(stderr, "--normalization-steps requires an unsigned integer\n");
+				return 1;
+			}
+			normalization_step_limit_is_set = 1;
+			file_arg++;
+			continue;
+		}
+		if (strcmp(argv[file_arg], "--solver-steps") == 0) {
+			if (file_arg + 1 >= argc || parse_step_limit(
+					argv[file_arg + 1], &solver_step_limit
+				) != 0) {
+				fprintf(stderr, "--solver-steps requires an unsigned integer\n");
+				return 1;
+			}
+			solver_step_limit_is_set = 1;
+			file_arg++;
+			continue;
+		}
+		if (strcmp(argv[file_arg], "--policy") == 0) {
+			if (file_arg + 1 >= argc) {
+				fprintf(stderr, "--policy requires strict, hybrid, or exploratory\n");
+				return 1;
+			}
+			const char* policy_name = argv[++file_arg];
+			if (strcmp(policy_name, "strict") == 0) {
+				compile_policy = PROTOTYPE_COMPILE_POLICY_STRICT;
+			} else if (strcmp(policy_name, "hybrid") == 0) {
+				compile_policy = PROTOTYPE_COMPILE_POLICY_HYBRID;
+			} else if (strcmp(policy_name, "exploratory") == 0) {
+				compile_policy = PROTOTYPE_COMPILE_POLICY_EXPLORATORY;
+			} else {
+				fprintf(stderr, "unknown compile policy: %s\n", policy_name);
+				return 1;
+			}
 			continue;
 		}
 		if (strcmp(argv[file_arg], "--write-artifact") == 0) {
@@ -2528,7 +2665,7 @@ int main(int argc, char** argv) {
 			continue;
 		}
 		fprintf(stderr, "unknown option: %s\n", argv[file_arg]);
-		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--policy strict|hybrid|exploratory] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
@@ -2591,7 +2728,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (!interface_input_path && !link_target_path && argc - file_arg < 1) {
-		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
@@ -2963,9 +3100,9 @@ int main(int argc, char** argv) {
 			symbol_table_free(&symbols);
 			return 1;
 		}
-			prototype_judgement_resolve_declaration_premises(
-				&term_db,
-				&type_declarations,
+		prototype_judgement_resolve_declaration_premises(
+			&term_db,
+			&type_declarations,
 			&judgement_db
 		);
 		prototype_judgement_resolve_proof_edges(&judgement_db);
@@ -3452,6 +3589,12 @@ int main(int argc, char** argv) {
 	program.universe = &universe_db;
 	program.compile_options.disable_automatic_cbpv_coercions =
 		disable_automatic_cbpv_coercions;
+	program.compile_options.compile_policy = compile_policy;
+	program.compile_options.normalization_step_limit_is_set =
+		normalization_step_limit_is_set;
+	program.compile_options.normalization_step_limit = normalization_step_limit;
+	program.compile_options.solver_step_limit_is_set = solver_step_limit_is_set;
+	program.compile_options.solver_step_limit = solver_step_limit;
 
 	for (int i = file_arg; i < argc; ++i) {
 		if (prototype_read_ast_file_with_options(argv[i], &program, &read_options, &error) != 0) {
@@ -3690,6 +3833,24 @@ int main(int argc, char** argv) {
 	printf("\n#### Operations ####\noperations=%zu cases=%zu\n",
 		metadata.operation_count,
 		metadata.operation_case_count);
+	printf(
+		"compile-budget policy=%d capabilities=%" PRIu64
+		" normalization=%" PRIu64 " used=%" PRIu64
+		" solver=%" PRIu64 " used=%" PRIu64 " exhausted=%s"
+		" constraints=%" PRIu64 " solved=%" PRIu64 " residual=%" PRIu64
+		" incomplete=%" PRIu64 "\n",
+		metadata.compile_policy,
+		metadata.required_runtime_capabilities,
+		metadata.normalization_step_limit,
+		metadata.normalization_steps_used,
+		metadata.solver_step_limit,
+		metadata.solver_steps_used,
+		metadata.solver_exhausted ? "yes" : "no",
+		metadata.solver_constraint_count,
+		metadata.solver_solved_count,
+		metadata.solver_residual_count,
+		metadata.solver_incomplete_count
+	);
 	for (size_t i = 0; i < metadata.operation_count; ++i) {
 		const struct prototype_operation_node* operation = &metadata.operations[i];
 		printf("operation#%zu %s core#%u classifier#%u ast#%u",

@@ -565,6 +565,19 @@ static int shape_vars_equal(
 	return left_binder == right_binder;
 }
 
+static int type_identity_is_stable(struct prototype_qualified_name identity) {
+	return identity.namespace_symbol_id >= 0 && identity.name_symbol_id >= 0;
+}
+
+static int type_identity_equal(
+	struct prototype_qualified_name left,
+	struct prototype_qualified_name right
+) {
+	return type_identity_is_stable(left) && type_identity_is_stable(right) &&
+		left.namespace_symbol_id == right.namespace_symbol_id &&
+		left.name_symbol_id == right.name_symbol_id;
+}
+
 static int shape_terms_equal_at_depth(
 	const struct prototype_term_db* db,
 	uint32_t left_id,
@@ -875,9 +888,19 @@ static int shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			return left->as.type_former.representation_id == right->as.type_former.representation_id;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			if (type_identity_is_stable(left->as.type_declaration.identity) ||
+				type_identity_is_stable(right->as.type_declaration.identity)) {
+				return type_identity_equal(
+					left->as.type_declaration.identity,
+					right->as.type_declaration.identity
+				);
+			}
 			return left->as.type_declaration.type_id == right->as.type_declaration.type_id;
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return left->as.type_view.view_type_id == right->as.type_view.view_type_id &&
+			return (type_identity_is_stable(left->as.type_view.identity) ||
+				type_identity_is_stable(right->as.type_view.identity) ?
+				type_identity_equal(left->as.type_view.identity, right->as.type_view.identity) :
+				left->as.type_view.view_type_id == right->as.type_view.view_type_id) &&
 				shape_terms_equal_at_depth(
 					db,
 						left->as.type_view.core,
@@ -1409,14 +1432,15 @@ static int cross_shape_terms_equal_at_depth(
 				right->as.type_former.representation_id
 			);
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			return cross_type_formers_equal(
-				left_type_declarations,
-				left->as.type_declaration.type_id,
-				right_type_declarations,
-				right->as.type_declaration.type_id
+			return type_identity_equal(
+				left->as.type_declaration.identity,
+				right->as.type_declaration.identity
 			);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return left->as.type_view.view_type_id == right->as.type_view.view_type_id &&
+			return type_identity_equal(
+				left->as.type_view.identity,
+				right->as.type_view.identity
+			) &&
 				cross_shape_terms_equal_at_depth(
 					left_db,
 					left_type_declarations,
@@ -2022,12 +2046,34 @@ static int canonical_hash_term_at_depth(
 			canonical_hash_mix_u32(p_hash, term->as.type_former.representation_id);
 			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			key->has_type_local_reference = 1;
-			canonical_hash_mix_u32(p_hash, term->as.type_declaration.type_id);
+			if (type_identity_is_stable(term->as.type_declaration.identity)) {
+				canonical_hash_mix_u32(
+					p_hash,
+					(uint32_t)term->as.type_declaration.identity.namespace_symbol_id
+				);
+				canonical_hash_mix_u32(
+					p_hash,
+					(uint32_t)term->as.type_declaration.identity.name_symbol_id
+				);
+			} else {
+				key->has_type_local_reference = 1;
+				canonical_hash_mix_u32(p_hash, term->as.type_declaration.type_id);
+			}
 			return 0;
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			key->has_type_local_reference = 1;
-			canonical_hash_mix_u32(p_hash, term->as.type_view.view_type_id);
+			if (type_identity_is_stable(term->as.type_view.identity)) {
+				canonical_hash_mix_u32(
+					p_hash,
+					(uint32_t)term->as.type_view.identity.namespace_symbol_id
+				);
+				canonical_hash_mix_u32(
+					p_hash,
+					(uint32_t)term->as.type_view.identity.name_symbol_id
+				);
+			} else {
+				key->has_type_local_reference = 1;
+				canonical_hash_mix_u32(p_hash, term->as.type_view.view_type_id);
+			}
 			if (canonical_hash_term_at_depth(
 					db,
 					type_declarations,
@@ -2792,19 +2838,29 @@ static int prototype_term_type_former(
 
 static int prototype_term_type_declaration(
 	struct prototype_term_db* db,
+	const struct prototype_type_declaration_db* type_declarations,
 	uint32_t type_id,
 	uint32_t* p_ret
 ) {
+	if (!db || !type_declarations || !p_ret ||
+		type_id >= type_declarations->type_count) {
+		return -1;
+	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_TYPE_DECLARATION;
 	term.as.type_declaration.type_id = type_id;
+	term.as.type_declaration.identity.namespace_symbol_id =
+		type_declarations->type_declarations[type_id].namespace_symbol_id;
+	term.as.type_declaration.identity.name_symbol_id =
+		type_declarations->type_declarations[type_id].name_symbol_id;
 	return add_term(db, term, p_ret);
 }
 
 static int prototype_term_type_view(
 	struct prototype_term_db* db,
 	uint32_t view_type_id,
+	struct prototype_qualified_name identity,
 	uint32_t core,
 	uint32_t source,
 	uint32_t* p_ret
@@ -2816,6 +2872,7 @@ static int prototype_term_type_view(
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_TYPE_VIEW;
 	term.as.type_view.view_type_id = view_type_id;
+	term.as.type_view.identity = identity;
 	term.as.type_view.core = core;
 	term.as.type_view.source = source;
 	return add_term(db, term, p_ret);
@@ -2856,7 +2913,9 @@ int prototype_term_type_instance_make(
 		return -1;
 	}
 	uint32_t source_current;
-	if (prototype_term_type_declaration(db, type_id, &source_current) != 0) {
+	if (prototype_term_type_declaration(
+			db, type_declarations, type_id, &source_current
+		) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < arg_count; ++i) {
@@ -2874,7 +2933,13 @@ int prototype_term_type_instance_make(
 		}
 		source_current = next;
 	}
-	return prototype_term_type_view(db, type_id, current, source_current, p_ret);
+	struct prototype_qualified_name identity;
+	identity.namespace_symbol_id =
+		type_declarations->type_declarations[type_id].namespace_symbol_id;
+	identity.name_symbol_id = type_declarations->type_declarations[type_id].name_symbol_id;
+	return prototype_term_type_view(
+		db, type_id, identity, current, source_current, p_ret
+	);
 }
 
 static int type_instance_app_spine_info(
@@ -3149,7 +3214,14 @@ static int prototype_term_type_view_rebuild_from_source(
 			);
 		}
 	}
-	return prototype_term_type_view(db, view_type_id, core, source, p_ret);
+	struct prototype_qualified_name identity;
+	identity.namespace_symbol_id =
+		type_declarations->type_declarations[view_type_id].namespace_symbol_id;
+	identity.name_symbol_id =
+		type_declarations->type_declarations[view_type_id].name_symbol_id;
+	return prototype_term_type_view(
+		db, view_type_id, identity, core, source, p_ret
+	);
 }
 
 int prototype_term_type_instance_is_saturated(
@@ -4678,6 +4750,7 @@ static int resolve_external_ref_term(
 			return prototype_term_type_view(
 				db,
 				term->as.type_view.view_type_id,
+				term->as.type_view.identity,
 				core,
 				source,
 				p_ret
@@ -5172,6 +5245,24 @@ static void normalization_mark_status(
 	*options.p_normalization_status = status;
 }
 
+static int normalization_consume_step(struct prototype_term_reduction_options options) {
+	if (!options.p_steps_remaining) {
+		return 0;
+	}
+	if (*options.p_steps_remaining == 0) {
+		normalization_mark_status(
+			options,
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED
+		);
+		return 1;
+	}
+	(*options.p_steps_remaining)--;
+	if (options.p_steps_used) {
+		(*options.p_steps_used)++;
+	}
+	return 0;
+}
+
 static int normalization_profile_options(
 	int profile,
 	const struct prototype_term_definition_env* definitions,
@@ -5304,6 +5395,9 @@ static int evaluate_steps(
 	if (!db || !p_ret || term_id >= db->term_count) {
 		return -1;
 	}
+	if (normalization_consume_step(options)) {
+		return -1;
+	}
 	if (depth == 0) {
 		normalization_mark_status(
 			options,
@@ -5375,6 +5469,28 @@ static int evaluate_steps(
 					p_ret,
 					depth - 1
 				);
+			}
+
+			/* Imported type formers become TYPE_VIEW only after transparent-name
+			 * reduction. Materialize their application here just as graph lowering
+			 * does for an already-local type former. This is type-level graph
+			 * construction, not a runtime APP reduction. */
+			if (reduction_is_pure_type(options) && type_declarations) {
+				uint32_t type_id;
+				uint32_t arguments[16];
+				uint32_t argument_count;
+				if (prototype_term_type_instance_info(
+						db, function, &type_id, arguments, &argument_count
+					) == 0 && type_id < type_declarations->type_count &&
+					argument_count < type_declarations->type_declarations[type_id].parameter_count) {
+					return prototype_term_type_instance_extend(
+						db,
+						type_declarations,
+						function,
+						term->as.app.argument,
+						p_ret
+					);
+				}
 			}
 
 			uint32_t candidate = term_id;
@@ -5967,17 +6083,22 @@ int prototype_term_whnf_with_profile(
 	uint32_t* p_ret
 ) {
 	struct prototype_term_reduction_options options;
+	int normalization_status = PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE;
 	if (normalization_profile_options(profile, definitions, &options) != 0) {
 		return -1;
 	}
-	return prototype_term_whnf_with_options(
+	options.p_normalization_status = &normalization_status;
+	if (prototype_term_whnf_with_options(
 		db,
 		type_declarations,
 		definitions,
 		options,
 		term_id,
 		p_ret
-	);
+		) != 0) {
+		return -1;
+	}
+	return normalization_status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ? 0 : -1;
 }
 
 int prototype_term_whnf_with_profile_result(
@@ -5986,30 +6107,32 @@ int prototype_term_whnf_with_profile_result(
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t term_id,
-	uint64_t depth_budget,
+	uint64_t step_limit,
 	struct prototype_term_normalization_result* p_result
 ) {
 	struct prototype_term_reduction_options options;
 	uint32_t result_term = PROTOTYPE_INVALID_ID;
 	int status = PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE;
-	unsigned depth;
+	uint64_t steps_remaining;
+	uint64_t steps_used = 0;
 	if (!p_result) {
 		return -1;
 	}
 	p_result->status = PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID;
 	p_result->term_id = PROTOTYPE_INVALID_ID;
-	p_result->depth_budget = 0;
+	p_result->step_limit = 0;
+	p_result->steps_used = 0;
+	p_result->graph_revision = 0;
 	if (!db || !type_declarations || term_id >= db->term_count ||
 		normalization_profile_options(profile, definitions, &options) != 0) {
 		return 0;
 	}
-	if (depth_budget == 0 || depth_budget > PROTOTYPE_EVALUATION_DEPTH_LIMIT) {
-		depth = PROTOTYPE_EVALUATION_DEPTH_LIMIT;
-	} else {
-		depth = (unsigned)depth_budget;
-	}
-	p_result->depth_budget = depth;
+	steps_remaining = step_limit;
+	p_result->step_limit = steps_remaining;
+	p_result->graph_revision = db->normalization_graph_revision;
 	options.p_normalization_status = &status;
+	options.p_steps_remaining = &steps_remaining;
+	options.p_steps_used = &steps_used;
 	if (evaluate_steps(
 			db,
 			type_declarations,
@@ -6017,13 +6140,15 @@ int prototype_term_whnf_with_profile_result(
 			options,
 			term_id,
 			&result_term,
-			depth
+			PROTOTYPE_EVALUATION_DEPTH_LIMIT
 		) != 0) {
 		p_result->status = status;
+		p_result->steps_used = steps_used;
 		return 0;
 	}
 	p_result->status = status;
 	p_result->term_id = result_term;
+	p_result->steps_used = steps_used;
 	return 0;
 }
 
@@ -6071,7 +6196,9 @@ int prototype_term_perform_with_options(
 	if (!entry) {
 		return status;
 	}
-	if (status == 0 && db && entry_revision == db->normalization_graph_revision) {
+	if (status == 0 && db && entry_revision == db->normalization_graph_revision &&
+		(!options.p_normalization_status ||
+			*options.p_normalization_status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE)) {
 		entry->result_term_id = *p_ret;
 		entry->state = PROTOTYPE_TERM_NORMALIZATION_CACHE_COMPLETE;
 	} else {
@@ -6483,13 +6610,26 @@ static int normalization_equal_at_depth(
 				right_term->as.type_declaration.type_id >= type_declarations->type_count) {
 				return -1;
 			}
-			*p_equal = left_term->as.type_declaration.type_id ==
-				right_term->as.type_declaration.type_id;
+			if (type_identity_is_stable(left_term->as.type_declaration.identity) ||
+				type_identity_is_stable(right_term->as.type_declaration.identity)) {
+				*p_equal = type_identity_equal(
+					left_term->as.type_declaration.identity,
+					right_term->as.type_declaration.identity
+				);
+			} else {
+				*p_equal = left_term->as.type_declaration.type_id ==
+					right_term->as.type_declaration.type_id;
+			}
 			return 0;
 		}
 			case PROTOTYPE_TERM_TYPE_VIEW:
-				if (left_term->as.type_view.view_type_id !=
-					right_term->as.type_view.view_type_id) {
+				if (type_identity_is_stable(left_term->as.type_view.identity) ||
+					type_identity_is_stable(right_term->as.type_view.identity) ?
+					!type_identity_equal(
+						left_term->as.type_view.identity,
+						right_term->as.type_view.identity
+					) : left_term->as.type_view.view_type_id !=
+						right_term->as.type_view.view_type_id) {
 				*p_equal = 0;
 				return 0;
 			}

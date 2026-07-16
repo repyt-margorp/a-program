@@ -116,6 +116,10 @@ struct prototype_type_constructor_declaration {
 
 struct prototype_type_declaration {
 	int name_symbol_id;
+	/* Stable TypeView identity.  The local type_index remains an arena handle;
+	 * separately compiled copies of one imported declaration retain this
+	 * qualified identity and become the same view after linking. */
+	int namespace_symbol_id;
 	uint32_t type_index;
 	uint32_t representation_id;
 	/* Classifier of the source type former itself. For example,

@@ -16,6 +16,11 @@
  */
 struct prototype_compile_options {
 	int disable_automatic_cbpv_coercions;
+	int compile_policy;
+	int normalization_step_limit_is_set;
+	uint64_t normalization_step_limit;
+	int solver_step_limit_is_set;
+	uint64_t solver_step_limit;
 };
 
 struct prototype_program {

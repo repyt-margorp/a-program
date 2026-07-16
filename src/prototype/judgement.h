@@ -151,6 +151,9 @@ struct prototype_judgement_delta {
 	size_t computation_constraint_capacity;
 	size_t effect_row_equation_count;
 	size_t effect_row_equation_capacity;
+	uint64_t solver_step_limit;
+	uint64_t* solver_steps_used;
+	int* solver_exhausted;
 };
 
 struct prototype_match_constructor_resolution {
@@ -192,6 +195,13 @@ void prototype_judgement_delta_init(
 	size_t computation_constraint_capacity,
 	struct prototype_judgement_effect_row_equation* effect_row_equations,
 	size_t effect_row_equation_capacity
+);
+
+void prototype_judgement_delta_set_solver_budget(
+	struct prototype_judgement_delta* delta,
+	uint64_t step_limit,
+	uint64_t* steps_used,
+	int* exhausted
 );
 
 size_t prototype_judgement_delta_mark(
