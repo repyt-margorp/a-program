@@ -356,6 +356,15 @@ struct prototype_operation_match_case {
 	int case_label_symbol_id;
 };
 
+struct prototype_operation_graph {
+	struct prototype_operation_node* operations;
+	size_t operation_count;
+	size_t operation_capacity;
+	struct prototype_operation_match_case* cases;
+	size_t case_count;
+	size_t case_capacity;
+};
+
 /* Residual verification is distinct from JudgementDB: a record here is a
  * conditional runtime obligation, never a closed has-type derivation. */
 enum prototype_verification_obligation_kind {
@@ -382,12 +391,21 @@ struct prototype_verification_obligation {
 	uint32_t classifier_family;
 	uint32_t effect_row;
 	int normalization_profile;
+	uint32_t schema_version;
 };
 
 struct prototype_verification_db {
 	struct prototype_verification_obligation* obligations;
 	size_t obligation_count;
 	size_t obligation_capacity;
+};
+
+struct prototype_verification_coverage {
+	size_t pending_count;
+	size_t discharged_count;
+	size_t failed_count;
+	uint64_t reachable_kind_mask;
+	uint64_t required_runtime_capabilities;
 };
 
 struct prototype_compile_constructor_export {
@@ -689,7 +707,8 @@ enum prototype_runtime_capability {
 	PROTOTYPE_RUNTIME_CAPABILITY_DEPENDENT_BIND_VERIFIER = 1u << 0,
 	PROTOTYPE_RUNTIME_CAPABILITY_OPERATION_DISPATCH = 1u << 1,
 	PROTOTYPE_RUNTIME_CAPABILITY_HANDLER = 1u << 2,
-	PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL = 1u << 3
+	PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL = 1u << 3,
+	PROTOTYPE_RUNTIME_CAPABILITY_CONVERSION_VERIFIER = 1u << 4
 };
 
 struct prototype_compile_metadata {
@@ -1105,10 +1124,80 @@ void prototype_compile_metadata_init(
 	struct prototype_verification_obligation* verification_obligations,
 	size_t verification_obligation_capacity
 );
+void prototype_operation_graph_init(
+	struct prototype_operation_graph* graph,
+	struct prototype_operation_node* operations,
+	size_t operation_capacity,
+	struct prototype_operation_match_case* cases,
+	size_t case_capacity
+);
+size_t prototype_operation_graph_count(const struct prototype_operation_graph* graph);
+size_t prototype_operation_graph_case_count(const struct prototype_operation_graph* graph);
+const struct prototype_operation_node* prototype_operation_graph_get(
+	const struct prototype_operation_graph* graph,
+	uint32_t operation_id
+);
+const struct prototype_operation_match_case* prototype_operation_graph_get_case(
+	const struct prototype_operation_graph* graph,
+	uint32_t case_id
+);
+int prototype_operation_graph_add(
+	struct prototype_operation_graph* graph,
+	struct prototype_operation_node operation,
+	uint32_t* p_operation_id
+);
+int prototype_operation_graph_add_case(
+	struct prototype_operation_graph* graph,
+	struct prototype_operation_match_case operation_case,
+	uint32_t* p_case_id
+);
+int prototype_operation_graph_validate(
+	const struct prototype_operation_graph* graph,
+	const struct prototype_term_db* terms
+);
+void prototype_compile_metadata_operation_graph(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_operation_graph* graph
+);
+void prototype_compile_metadata_operation_graph_const(
+	const struct prototype_compile_metadata* metadata,
+	struct prototype_operation_graph* graph
+);
+void prototype_compile_metadata_commit_operation_graph(
+	struct prototype_compile_metadata* metadata,
+	const struct prototype_operation_graph* graph
+);
 void prototype_verification_db_init(
 	struct prototype_verification_db* db,
 	struct prototype_verification_obligation* obligations,
 	size_t obligation_capacity
+);
+uint32_t prototype_verification_obligation_schema_version(int kind);
+size_t prototype_verification_db_count(const struct prototype_verification_db* db);
+size_t prototype_verification_db_capacity(const struct prototype_verification_db* db);
+void prototype_verification_db_clear(struct prototype_verification_db* db);
+const struct prototype_verification_obligation* prototype_verification_db_get(
+	const struct prototype_verification_db* db,
+	uint32_t obligation_id
+);
+struct prototype_verification_obligation* prototype_verification_db_get_mutable(
+	struct prototype_verification_db* db,
+	uint32_t obligation_id
+);
+int prototype_verification_db_find_operation(
+	const struct prototype_verification_db* db,
+	int kind,
+	uint32_t operation,
+	uint32_t* p_obligation_id
+);
+int prototype_verification_db_validate(
+	const struct prototype_verification_db* db,
+	const struct prototype_operation_graph* graph,
+	const struct prototype_term_db* terms
+);
+int prototype_verification_db_coverage(
+	const struct prototype_verification_db* db,
+	struct prototype_verification_coverage* p_coverage
 );
 int prototype_verification_db_add(
 	struct prototype_verification_db* db,

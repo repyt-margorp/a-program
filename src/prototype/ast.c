@@ -14,6 +14,191 @@ static int reserve_slot(size_t count, size_t capacity) {
 	return count < capacity ? 0 : -1;
 }
 
+void prototype_operation_graph_init(
+	struct prototype_operation_graph* graph,
+	struct prototype_operation_node* operations,
+	size_t operation_capacity,
+	struct prototype_operation_match_case* cases,
+	size_t case_capacity
+) {
+	if (!graph) {
+		return;
+	}
+	memset(graph, 0, sizeof(*graph));
+	graph->operations = operations;
+	graph->operation_capacity = operation_capacity;
+	graph->cases = cases;
+	graph->case_capacity = case_capacity;
+}
+
+size_t prototype_operation_graph_count(const struct prototype_operation_graph* graph) {
+	return graph ? graph->operation_count : 0;
+}
+
+size_t prototype_operation_graph_case_count(const struct prototype_operation_graph* graph) {
+	return graph ? graph->case_count : 0;
+}
+
+const struct prototype_operation_node* prototype_operation_graph_get(
+	const struct prototype_operation_graph* graph,
+	uint32_t operation_id
+) {
+	return graph && operation_id < graph->operation_count ?
+		&graph->operations[operation_id] : NULL;
+}
+
+const struct prototype_operation_match_case* prototype_operation_graph_get_case(
+	const struct prototype_operation_graph* graph,
+	uint32_t case_id
+) {
+	return graph && case_id < graph->case_count ?
+		&graph->cases[case_id] : NULL;
+}
+
+int prototype_operation_graph_add(
+	struct prototype_operation_graph* graph,
+	struct prototype_operation_node operation,
+	uint32_t* p_operation_id
+) {
+	if (!graph || !graph->operations ||
+		reserve_slot(graph->operation_count, graph->operation_capacity) != 0) {
+		return -1;
+	}
+	if (p_operation_id) {
+		*p_operation_id = (uint32_t)graph->operation_count;
+	}
+	graph->operations[graph->operation_count++] = operation;
+	return 0;
+}
+
+int prototype_operation_graph_add_case(
+	struct prototype_operation_graph* graph,
+	struct prototype_operation_match_case operation_case,
+	uint32_t* p_case_id
+) {
+	if (!graph || !graph->cases ||
+		reserve_slot(graph->case_count, graph->case_capacity) != 0) {
+		return -1;
+	}
+	if (p_case_id) {
+		*p_case_id = (uint32_t)graph->case_count;
+	}
+	graph->cases[graph->case_count++] = operation_case;
+	return 0;
+}
+
+int prototype_operation_graph_validate(
+	const struct prototype_operation_graph* graph,
+	const struct prototype_term_db* terms
+) {
+	if (!graph || !terms ||
+		(graph->operation_count != 0 && !graph->operations) ||
+		(graph->case_count != 0 && !graph->cases)) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < graph->operation_count; ++i) {
+		const struct prototype_operation_node* operation =
+			prototype_operation_graph_get(graph, i);
+		if (!operation ||
+			operation->tag < PROTOTYPE_OPERATION_ATOM ||
+			operation->tag > PROTOTYPE_OPERATION_HANDLE) {
+			return -1;
+		}
+		uint32_t term_references[] = {
+			operation->core_term,
+			operation->known_classifier,
+			operation->classifier,
+			operation->binder_classifier
+		};
+		for (size_t j = 0; j < sizeof(term_references) / sizeof(term_references[0]); ++j) {
+			if (term_references[j] != PROTOTYPE_INVALID_ID &&
+				(term_references[j] >= terms->term_count ||
+				 terms->terms[term_references[j]].tag == 0)) {
+				return -1;
+			}
+		}
+		uint32_t operation_references[] = {
+			operation->function,
+			operation->argument,
+			operation->body,
+			operation->scrutinee
+		};
+		for (size_t j = 0;
+			j < sizeof(operation_references) / sizeof(operation_references[0]);
+			++j) {
+			if (operation_references[j] != PROTOTYPE_INVALID_ID &&
+				operation_references[j] >= graph->operation_count) {
+				return -1;
+			}
+		}
+		if (operation->first_case != PROTOTYPE_INVALID_ID &&
+			(operation->first_case > graph->case_count ||
+			 operation->case_count > graph->case_count - operation->first_case)) {
+			return -1;
+		}
+	}
+	for (uint32_t i = 0; i < graph->case_count; ++i) {
+		const struct prototype_operation_match_case* operation_case =
+			prototype_operation_graph_get_case(graph, i);
+		if (!operation_case ||
+			operation_case->body_operation >= graph->operation_count ||
+			operation_case->constructor_owner >= terms->term_count ||
+			terms->terms[operation_case->constructor_owner].tag == 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+void prototype_compile_metadata_operation_graph(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_operation_graph* graph
+) {
+	if (!graph) {
+		return;
+	}
+	memset(graph, 0, sizeof(*graph));
+	if (!metadata) {
+		return;
+	}
+	graph->operations = metadata->operations;
+	graph->operation_count = metadata->operation_count;
+	graph->operation_capacity = metadata->operation_capacity;
+	graph->cases = metadata->operation_cases;
+	graph->case_count = metadata->operation_case_count;
+	graph->case_capacity = metadata->operation_case_capacity;
+}
+
+void prototype_compile_metadata_operation_graph_const(
+	const struct prototype_compile_metadata* metadata,
+	struct prototype_operation_graph* graph
+) {
+	if (!graph) {
+		return;
+	}
+	memset(graph, 0, sizeof(*graph));
+	if (!metadata) {
+		return;
+	}
+	graph->operations = metadata->operations;
+	graph->operation_count = metadata->operation_count;
+	graph->operation_capacity = metadata->operation_capacity;
+	graph->cases = metadata->operation_cases;
+	graph->case_count = metadata->operation_case_count;
+	graph->case_capacity = metadata->operation_case_capacity;
+}
+
+void prototype_compile_metadata_commit_operation_graph(
+	struct prototype_compile_metadata* metadata,
+	const struct prototype_operation_graph* graph
+) {
+	if (!metadata || !graph) {
+		return;
+	}
+	metadata->operation_count = graph->operation_count;
+	metadata->operation_case_count = graph->case_count;
+}
+
 void prototype_verification_db_init(
 	struct prototype_verification_db* db,
 	struct prototype_verification_obligation* obligations,
@@ -27,15 +212,198 @@ void prototype_verification_db_init(
 	db->obligation_capacity = obligation_capacity;
 }
 
+uint32_t prototype_verification_obligation_schema_version(int kind) {
+	switch (kind) {
+		case PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND:
+		case PROTOTYPE_VERIFICATION_OBLIGATION_HANDLER_RESULT:
+		case PROTOTYPE_VERIFICATION_OBLIGATION_RUNTIME_CONVERSION:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+size_t prototype_verification_db_count(const struct prototype_verification_db* db) {
+	return db ? db->obligation_count : 0;
+}
+
+size_t prototype_verification_db_capacity(const struct prototype_verification_db* db) {
+	return db ? db->obligation_capacity : 0;
+}
+
+void prototype_verification_db_clear(struct prototype_verification_db* db) {
+	if (db) {
+		db->obligation_count = 0;
+	}
+}
+
+const struct prototype_verification_obligation* prototype_verification_db_get(
+	const struct prototype_verification_db* db,
+	uint32_t obligation_id
+) {
+	return db && obligation_id < db->obligation_count ?
+		&db->obligations[obligation_id] : NULL;
+}
+
+struct prototype_verification_obligation* prototype_verification_db_get_mutable(
+	struct prototype_verification_db* db,
+	uint32_t obligation_id
+) {
+	return db && obligation_id < db->obligation_count ?
+		&db->obligations[obligation_id] : NULL;
+}
+
+int prototype_verification_db_find_operation(
+	const struct prototype_verification_db* db,
+	int kind,
+	uint32_t operation,
+	uint32_t* p_obligation_id
+) {
+	if (!db || !p_obligation_id ||
+		prototype_verification_obligation_schema_version(kind) == 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->obligation_count; ++i) {
+		const struct prototype_verification_obligation* obligation =
+			prototype_verification_db_get(db, i);
+		if (obligation && obligation->kind == kind &&
+			obligation->operation == operation) {
+			*p_obligation_id = i;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int verification_term_reference_present(
+	const struct prototype_term_db* terms,
+	uint32_t term
+) {
+	return terms && term < terms->term_count && terms->terms[term].tag != 0;
+}
+
+int prototype_verification_db_validate(
+	const struct prototype_verification_db* db,
+	const struct prototype_operation_graph* graph,
+	const struct prototype_term_db* terms
+) {
+	if (!db || !graph || !terms) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->obligation_count; ++i) {
+		const struct prototype_verification_obligation* obligation =
+			prototype_verification_db_get(db, i);
+		if (!obligation ||
+			obligation->schema_version !=
+				prototype_verification_obligation_schema_version(obligation->kind) ||
+			obligation->state < PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
+			obligation->state > PROTOTYPE_VERIFICATION_OBLIGATION_FAILED ||
+			obligation->operation >= graph->operation_count ||
+			!verification_term_reference_present(terms, obligation->core_term)) {
+			return -1;
+		}
+		switch (obligation->kind) {
+			case PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND:
+				if (obligation->computation_operation >= graph->operation_count ||
+					obligation->continuation_operation >= graph->operation_count ||
+					!verification_term_reference_present(
+						terms, obligation->input_classifier
+					) ||
+					!verification_term_reference_present(
+						terms, obligation->classifier_family
+					) ||
+					!verification_term_reference_present(terms, obligation->effect_row)) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_VERIFICATION_OBLIGATION_HANDLER_RESULT:
+				if (obligation->computation_operation >= graph->operation_count ||
+					!verification_term_reference_present(
+						terms, obligation->classifier_family
+					)) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_VERIFICATION_OBLIGATION_RUNTIME_CONVERSION:
+				if (!verification_term_reference_present(
+						terms, obligation->input_classifier
+					) ||
+					!verification_term_reference_present(
+						terms, obligation->classifier_family
+					)) {
+					return -1;
+				}
+				break;
+			default:
+				return -1;
+		}
+	}
+	return 0;
+}
+
+int prototype_verification_db_coverage(
+	const struct prototype_verification_db* db,
+	struct prototype_verification_coverage* p_coverage
+) {
+	if (!db || !p_coverage) {
+		return -1;
+	}
+	memset(p_coverage, 0, sizeof(*p_coverage));
+	for (uint32_t i = 0; i < db->obligation_count; ++i) {
+		const struct prototype_verification_obligation* obligation =
+			prototype_verification_db_get(db, i);
+		if (!obligation || obligation->kind <= 0 || obligation->kind >= 64) {
+			return -1;
+		}
+		p_coverage->reachable_kind_mask |= UINT64_C(1) << obligation->kind;
+		switch (obligation->state) {
+			case PROTOTYPE_VERIFICATION_OBLIGATION_PENDING:
+				p_coverage->pending_count++;
+				break;
+			case PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED:
+				p_coverage->discharged_count++;
+				break;
+			case PROTOTYPE_VERIFICATION_OBLIGATION_FAILED:
+				p_coverage->failed_count++;
+				break;
+			default:
+				return -1;
+		}
+		switch (obligation->kind) {
+			case PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND:
+				p_coverage->required_runtime_capabilities |=
+					PROTOTYPE_RUNTIME_CAPABILITY_DEPENDENT_BIND_VERIFIER;
+				break;
+			case PROTOTYPE_VERIFICATION_OBLIGATION_HANDLER_RESULT:
+				p_coverage->required_runtime_capabilities |=
+					PROTOTYPE_RUNTIME_CAPABILITY_HANDLER;
+				break;
+			case PROTOTYPE_VERIFICATION_OBLIGATION_RUNTIME_CONVERSION:
+				p_coverage->required_runtime_capabilities |=
+					PROTOTYPE_RUNTIME_CAPABILITY_CONVERSION_VERIFIER;
+				break;
+			default:
+				return -1;
+		}
+	}
+	return 0;
+}
+
 int prototype_verification_db_add(
 	struct prototype_verification_db* db,
 	struct prototype_verification_obligation obligation,
 	uint32_t* p_obligation_id
 ) {
+	uint32_t current_schema =
+		prototype_verification_obligation_schema_version(obligation.kind);
 	if (!db || !db->obligations ||
+		current_schema == 0 ||
+		(obligation.schema_version != 0 &&
+			obligation.schema_version != current_schema) ||
 		reserve_slot(db->obligation_count, db->obligation_capacity) != 0) {
 		return -1;
 	}
+	obligation.schema_version = current_schema;
 	if (p_obligation_id) {
 		*p_obligation_id = (uint32_t)db->obligation_count;
 	}
@@ -56,7 +424,11 @@ int prototype_verification_db_discharge_dependent_bind(
 		continuation_result_classifier >= terms->term_count) {
 		return -1;
 	}
-	struct prototype_verification_obligation* obligation = &db->obligations[obligation_id];
+	struct prototype_verification_obligation* obligation =
+		prototype_verification_db_get_mutable(db, obligation_id);
+	if (!obligation) {
+		return -1;
+	}
 	if (obligation->kind != PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND ||
 		obligation->state != PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
 		obligation->classifier_family >= terms->term_count) {
@@ -248,17 +620,22 @@ static int operation_runtime_discharge_bind(
 	int* p_verification_state
 ) {
 	uint32_t obligation_id = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < metadata->verification.obligation_count; ++i) {
-		const struct prototype_verification_obligation* obligation =
-			&metadata->verification.obligations[i];
-		if (obligation->kind == PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND &&
-			obligation->operation == operation_id) {
-			obligation_id = i;
-			break;
-		}
-	}
-	if (obligation_id == PROTOTYPE_INVALID_ID) {
+	int find_status = prototype_verification_db_find_operation(
+		&metadata->verification,
+		PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND,
+		operation_id,
+		&obligation_id
+	);
+	if (find_status > 0) {
 		return 0;
+	}
+	if (find_status < 0) {
+		return -1;
+	}
+	const struct prototype_verification_obligation* obligation =
+		prototype_verification_db_get(&metadata->verification, obligation_id);
+	if (!obligation) {
+		return -1;
 	}
 	const struct prototype_operation_node* operation = &metadata->operations[operation_id];
 	const struct prototype_operation_node* continuation =
@@ -287,7 +664,7 @@ static int operation_runtime_discharge_bind(
 			terms,
 			type_declarations,
 			definitions,
-			metadata->verification.obligations[obligation_id].normalization_profile,
+			obligation->normalization_profile,
 			family_application,
 			&continuation_classifier
 		) != 0 || continuation_classifier >= terms->term_count) {
@@ -297,10 +674,14 @@ static int operation_runtime_discharge_bind(
 		continuation_classifier = terms->terms[continuation_classifier].as.return_term.value;
 	}
 	struct prototype_verification_obligation frame_obligation =
-		metadata->verification.obligations[obligation_id];
+		*obligation;
 	struct prototype_verification_db frame_verification;
 	prototype_verification_db_init(&frame_verification, &frame_obligation, 1);
-	frame_verification.obligation_count = 1;
+	if (prototype_verification_db_add(
+			&frame_verification, frame_obligation, NULL
+		) != 0) {
+		return -1;
+	}
 	if (prototype_verification_db_discharge_dependent_bind(
 			&frame_verification,
 			terms,
@@ -3987,9 +4368,14 @@ static int artifact_mark_roots(
 				}
 			}
 		}
-		for (size_t i = 0; i < metadata->verification.obligation_count; ++i) {
+		for (size_t i = 0;
+			i < prototype_verification_db_count(&metadata->verification);
+			++i) {
 			const struct prototype_verification_obligation* obligation =
-				&metadata->verification.obligations[i];
+				prototype_verification_db_get(&metadata->verification, (uint32_t)i);
+			if (!obligation) {
+				return -1;
+			}
 			uint32_t references[] = {
 				obligation->core_term,
 				obligation->input_classifier,
@@ -4320,9 +4706,12 @@ static int write_artifact_operation_graph_section(
 	if (!stream || !symbols) {
 		return -1;
 	}
-	size_t operation_count = metadata ? metadata->operation_count : 0;
-	size_t case_count = metadata ? metadata->operation_case_count : 0;
-	size_t obligation_count = metadata ? metadata->verification.obligation_count : 0;
+	struct prototype_operation_graph graph;
+	prototype_compile_metadata_operation_graph_const(metadata, &graph);
+	size_t operation_count = prototype_operation_graph_count(&graph);
+	size_t case_count = prototype_operation_graph_case_count(&graph);
+	size_t obligation_count = metadata ?
+		prototype_verification_db_count(&metadata->verification) : 0;
 	fprintf(stream, "SECTION operation_graph\n");
 	fprintf(
 		stream,
@@ -4342,7 +4731,11 @@ static int write_artifact_operation_graph_section(
 	);
 	fprintf(stream, "operations %zu\n", operation_count);
 	for (size_t i = 0; i < operation_count; ++i) {
-		const struct prototype_operation_node* operation = &metadata->operations[i];
+		const struct prototype_operation_node* operation =
+			prototype_operation_graph_get(&graph, (uint32_t)i);
+		if (!operation) {
+			return -1;
+		}
 		const char* source_name = artifact_optional_symbol_name(
 			symbols, operation->source_symbol_id
 		);
@@ -4392,7 +4785,10 @@ static int write_artifact_operation_graph_section(
 	fprintf(stream, "operation_cases %zu\n", case_count);
 	for (size_t i = 0; i < case_count; ++i) {
 		const struct prototype_operation_match_case* operation_case =
-			&metadata->operation_cases[i];
+			prototype_operation_graph_get_case(&graph, (uint32_t)i);
+		if (!operation_case) {
+			return -1;
+		}
 		const char* label = artifact_optional_symbol_name(
 			symbols, operation_case->case_label_symbol_id
 		);
@@ -4412,10 +4808,13 @@ static int write_artifact_operation_graph_section(
 	fprintf(stream, "verification_obligations %zu\n", obligation_count);
 	for (size_t i = 0; i < obligation_count; ++i) {
 		const struct prototype_verification_obligation* obligation =
-			&metadata->verification.obligations[i];
+			prototype_verification_db_get(&metadata->verification, (uint32_t)i);
+		if (!obligation) {
+			return -1;
+		}
 		fprintf(
 			stream,
-			"verification %zu %d %d %u %u %u %u %u %u %u %u %d\n",
+			"verification %zu %d %d %u %u %u %u %u %u %u %u %d %u\n",
 			i,
 			obligation->kind,
 			obligation->state,
@@ -4427,7 +4826,8 @@ static int write_artifact_operation_graph_section(
 			obligation->input_classifier,
 			obligation->classifier_family,
 			obligation->effect_row,
-			obligation->normalization_profile
+			obligation->normalization_profile,
+			obligation->schema_version
 		);
 	}
 	return fprintf(stream, "END operation_graph\n") < 0 ? -1 : 0;
@@ -4449,7 +4849,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 42\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 43\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -4749,7 +5149,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 42) {
+		version != 43) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -6475,6 +6875,8 @@ int prototype_artifact_read_text_operation_graph(
 	size_t operation_count;
 	size_t case_count;
 	size_t obligation_count;
+	struct prototype_operation_graph graph;
+	prototype_compile_metadata_operation_graph(metadata, &graph);
 	if (fscanf(stream, "%255s %255s", word, section_name) != 2 ||
 		strcmp(word, "SECTION") != 0 || strcmp(section_name, "operation_graph") != 0 ||
 		fscanf(
@@ -6499,7 +6901,7 @@ int prototype_artifact_read_text_operation_graph(
 		(solver_exhausted != 0 && solver_exhausted != 1) ||
 		solver_exhausted != 0 || solver_incomplete_count != 0 ||
 		expect_artifact_count(stream, "operations", &operation_count) != 0 ||
-		(metadata && operation_count > metadata->operation_capacity)) {
+		(metadata && operation_count > graph.operation_capacity)) {
 		return -1;
 	}
 	if (metadata) {
@@ -6514,9 +6916,9 @@ int prototype_artifact_read_text_operation_graph(
 		metadata->solver_solved_count = solver_solved_count;
 		metadata->solver_residual_count = solver_residual_count;
 		metadata->solver_incomplete_count = solver_incomplete_count;
-		metadata->operation_count = 0;
-		metadata->operation_case_count = 0;
-		metadata->verification.obligation_count = 0;
+		graph.operation_count = 0;
+		graph.case_count = 0;
+		prototype_verification_db_clear(&metadata->verification);
 	}
 	for (size_t i = 0; i < operation_count; ++i) {
 		size_t id;
@@ -6568,11 +6970,13 @@ int prototype_artifact_read_text_operation_graph(
 			}
 		}
 		if (metadata) {
-			metadata->operations[metadata->operation_count++] = operation;
+			if (prototype_operation_graph_add(&graph, operation, NULL) != 0) {
+				return -1;
+			}
 		}
 	}
 	if (expect_artifact_count(stream, "operation_cases", &case_count) != 0 ||
-		(metadata && case_count > metadata->operation_case_capacity)) {
+		(metadata && case_count > graph.case_capacity)) {
 		return -1;
 	}
 	for (size_t i = 0; i < case_count; ++i) {
@@ -6592,11 +6996,14 @@ int prototype_artifact_read_text_operation_graph(
 			return -1;
 		}
 		if (metadata) {
-			metadata->operation_cases[metadata->operation_case_count++] = operation_case;
+			if (prototype_operation_graph_add_case(&graph, operation_case, NULL) != 0) {
+				return -1;
+			}
 		}
 	}
 	if (expect_artifact_count(stream, "verification_obligations", &obligation_count) != 0 ||
-		(metadata && obligation_count > metadata->verification.obligation_capacity)) {
+		(metadata && obligation_count >
+			prototype_verification_db_capacity(&metadata->verification))) {
 		return -1;
 	}
 	/* Import and linker callers that do not supply an occurrence graph cannot
@@ -6611,15 +7018,18 @@ int prototype_artifact_read_text_operation_graph(
 	for (size_t i = 0; i < obligation_count; ++i) {
 		size_t id;
 		struct prototype_verification_obligation obligation;
-		if (fscanf(stream, "%255s %zu %d %d %u %u %u %u %u %u %u %u %d", word, &id,
+		if (fscanf(stream, "%255s %zu %d %d %u %u %u %u %u %u %u %u %d %u", word, &id,
 				&obligation.kind, &obligation.state, &obligation.operation,
 				&obligation.core_term, &obligation.computation_operation,
 				&obligation.continuation_operation, &obligation.continuation_binder_id,
 				&obligation.input_classifier, &obligation.classifier_family,
-				&obligation.effect_row, &obligation.normalization_profile) != 13 ||
+				&obligation.effect_row, &obligation.normalization_profile,
+				&obligation.schema_version) != 14 ||
 			strcmp(word, "verification") != 0 || id != i ||
 			obligation.kind < PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND ||
 			obligation.kind > PROTOTYPE_VERIFICATION_OBLIGATION_RUNTIME_CONVERSION ||
+			obligation.schema_version !=
+				prototype_verification_obligation_schema_version(obligation.kind) ||
 			obligation.state != PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
 			obligation.normalization_profile < PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF ||
 			obligation.normalization_profile >
@@ -6635,36 +7045,27 @@ int prototype_artifact_read_text_operation_graph(
 		return -1;
 	}
 	if (metadata) {
-		for (size_t i = 0; i < metadata->operation_count; ++i) {
-			const struct prototype_operation_node* operation = &metadata->operations[i];
+		if (prototype_operation_graph_validate(&graph, terms) != 0) {
+			return -1;
+		}
+		prototype_compile_metadata_commit_operation_graph(metadata, &graph);
+		for (size_t i = 0; i < prototype_operation_graph_count(&graph); ++i) {
+			const struct prototype_operation_node* operation =
+				prototype_operation_graph_get(&graph, (uint32_t)i);
+			if (!operation) {
+				return -1;
+			}
 			uint32_t term_references[] = {
 				operation->core_term,
 				operation->known_classifier,
 				operation->classifier,
 				operation->binder_classifier
 			};
-			uint32_t operation_references[] = {
-				operation->function,
-				operation->argument,
-				operation->body,
-				operation->scrutinee
-			};
 			for (size_t j = 0; j < sizeof(term_references) / sizeof(term_references[0]); ++j) {
 				if (term_references[j] != PROTOTYPE_INVALID_ID &&
 					!artifact_read_term_present(terms, term_references[j])) {
 					return -1;
 				}
-			}
-			for (size_t j = 0; j < sizeof(operation_references) / sizeof(operation_references[0]); ++j) {
-				if (operation_references[j] != PROTOTYPE_INVALID_ID &&
-					operation_references[j] >= metadata->operation_count) {
-					return -1;
-				}
-			}
-			if (operation->first_case != PROTOTYPE_INVALID_ID &&
-				(operation->first_case > metadata->operation_case_count ||
-				 operation->case_count > metadata->operation_case_count - operation->first_case)) {
-				return -1;
 			}
 			if (operation->tag == PROTOTYPE_OPERATION_HANDLE &&
 				(operation->body == PROTOTYPE_INVALID_ID ||
@@ -6679,25 +7080,10 @@ int prototype_artifact_read_text_operation_graph(
 				return -1;
 			}
 		}
-		for (size_t i = 0; i < metadata->verification.obligation_count; ++i) {
-			const struct prototype_verification_obligation* obligation =
-				&metadata->verification.obligations[i];
-			uint32_t term_references[] = {
-				obligation->core_term,
-				obligation->input_classifier,
-				obligation->classifier_family,
-				obligation->effect_row
-			};
-			if (obligation->operation >= metadata->operation_count ||
-				obligation->computation_operation >= metadata->operation_count ||
-				obligation->continuation_operation >= metadata->operation_count) {
-				return -1;
-			}
-			for (size_t j = 0; j < sizeof(term_references) / sizeof(term_references[0]); ++j) {
-				if (!artifact_read_term_present(terms, term_references[j])) {
-					return -1;
-				}
-			}
+		if (prototype_verification_db_validate(
+				&metadata->verification, &graph, terms
+			) != 0) {
+			return -1;
 		}
 		uint64_t declared_capabilities = metadata->required_runtime_capabilities;
 		compile_metadata_refresh_runtime_capabilities(metadata, terms);
@@ -17191,30 +17577,32 @@ static int compile_phase_record_residual_dependent_binds(struct compile_context*
 			normalized.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED) {
 			return -1;
 		}
-		int already_recorded = 0;
-		for (size_t i = 0; i < ctx->metadata->verification.obligation_count; ++i) {
-			const struct prototype_verification_obligation* existing =
-				&ctx->metadata->verification.obligations[i];
-			if (existing->kind == PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND &&
-				existing->operation == operation_id) {
-				already_recorded = 1;
-				break;
-			}
+		uint32_t existing_obligation;
+		int find_status = prototype_verification_db_find_operation(
+			&ctx->metadata->verification,
+			PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND,
+			operation_id,
+			&existing_obligation
+		);
+		if (find_status < 0) {
+			return -1;
 		}
+		int already_recorded = find_status == 0;
 		if (!already_recorded && prototype_verification_db_add(
 				&ctx->metadata->verification,
 				(struct prototype_verification_obligation){
-					PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND,
-					PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
-					operation_id,
-					operation->core_term,
-					operation->function,
-					operation->argument,
-					continuation_binder_id,
-					input_view.result,
-					classifier_family,
-					input_view.effect_row,
-					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
+					.kind = PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND,
+					.state = PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
+					.operation = operation_id,
+					.core_term = operation->core_term,
+					.computation_operation = operation->function,
+					.continuation_operation = operation->argument,
+					.continuation_binder_id = continuation_binder_id,
+					.input_classifier = input_view.result,
+					.classifier_family = classifier_family,
+					.effect_row = input_view.effect_row,
+					.normalization_profile =
+						PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
 				},
 				NULL
 			) != 0) {
@@ -17308,10 +17696,16 @@ static void operation_solver_refresh_constraint_states(
 		}
 		int residual = 0;
 		for (size_t obligation_id = 0;
-			obligation_id < ctx->metadata->verification.obligation_count;
+			obligation_id <
+				prototype_verification_db_count(&ctx->metadata->verification);
 			++obligation_id) {
 			const struct prototype_verification_obligation* obligation =
-				&ctx->metadata->verification.obligations[obligation_id];
+				prototype_verification_db_get(
+					&ctx->metadata->verification, (uint32_t)obligation_id
+				);
+			if (!obligation) {
+				continue;
+			}
 			if (obligation->operation == constraint->target) {
 				residual = 1;
 				break;
@@ -19966,8 +20360,11 @@ static void compile_metadata_refresh_runtime_capabilities(
 		return;
 	}
 	uint64_t capabilities = 0;
-	if (metadata->verification.obligation_count != 0) {
-		capabilities |= PROTOTYPE_RUNTIME_CAPABILITY_DEPENDENT_BIND_VERIFIER;
+	struct prototype_verification_coverage coverage;
+	if (prototype_verification_db_coverage(
+			&metadata->verification, &coverage
+		) == 0) {
+		capabilities |= coverage.required_runtime_capabilities;
 	}
 	for (size_t i = 0; i < metadata->operation_count; ++i) {
 		const struct prototype_operation_node* operation = &metadata->operations[i];
@@ -20114,7 +20511,7 @@ int prototype_ast_compile_pending_with_imports(
 	operation_solver_refresh_constraint_states(&ctx, ctx.metadata->solver_exhausted);
 	compile_metadata_refresh_runtime_capabilities(metadata, terms);
 	if (metadata && metadata->compile_policy == PROTOTYPE_COMPILE_POLICY_STRICT &&
-		metadata->verification.obligation_count != 0) {
+		prototype_verification_db_count(&metadata->verification) != 0) {
 		return -1;
 	}
 	if (compile_phase_check_ascriptions(&ctx) != 0) {

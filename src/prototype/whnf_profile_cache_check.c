@@ -408,17 +408,18 @@ int main(void) {
 	if (prototype_verification_db_add(
 			&verification,
 			(struct prototype_verification_obligation){
-				PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND,
-				PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
-				0,
-				bound_constructor,
-				0,
-				0,
-				residual_binder,
-				owner,
-				residual_family,
-				effect_row,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
+				.kind = PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND,
+				.state = PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
+				.operation = 0,
+				.core_term = bound_constructor,
+				.computation_operation = 0,
+				.continuation_operation = 0,
+				.continuation_binder_id = residual_binder,
+				.input_classifier = owner,
+				.classifier_family = residual_family,
+				.effect_row = effect_row,
+				.normalization_profile =
+					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
 			},
 			NULL
 		) != 0 || prototype_verification_db_discharge_dependent_bind(
@@ -428,7 +429,8 @@ int main(void) {
 			0,
 			constructor,
 			residual_classifier
-		) != 0 || verification.obligations[0].state !=
+		) != 0 || !prototype_verification_db_get(&verification, 0) ||
+			prototype_verification_db_get(&verification, 0)->state !=
 			PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED) {
 		return 1;
 	}

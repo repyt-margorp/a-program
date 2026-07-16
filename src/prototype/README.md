@@ -385,7 +385,7 @@ result. The current implementation rejects arbitrary incomplete solver work;
 `hybrid` permits only residual obligations with a defined runtime verifier.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 42`. The reader accepts that format only; old artifact
+`A_PROGRAM_ARTIFACT 43`. The reader accepts that format only; old artifact
 versions are intentionally rejected instead of being kept as compatibility paths.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor

@@ -6,7 +6,7 @@ Status: implemented migration baseline plus remaining runtime/solver work.
 Later work may revise the plan, but a revision must state which invariant or
 decision changed.
 
-Revision baseline: 2026-07-16, artifact v42 prototype.  The current baseline
+Revision baseline: 2026-07-16, artifact v43 prototype.  The current baseline
 includes deterministic normalization/solver budgets, explicit operation
 constraint outcomes, qualified artifact proof relocation, nested residual
 dependent BIND execution, compile policies, runtime capability declarations,
@@ -155,7 +155,7 @@ described by the historical sections below.
 | --- | --- | --- |
 | Core BIND | `BIND(computation, continuation)`; direct and nested dependent results can become residual obligations | dynamically generated continuations still need a first-class runtime frame stack |
 | Normalization | explicit `COMPLETE`, `BLOCKED_EFFECT`, `EXHAUSTED`, `INVALID`; deterministic step limit and complete-only cache | the evaluator is still recursive and retains a structural recursion guard in legacy APIs |
-| Occurrence layer | operation occurrences, Match cases, HANDLE clause bodies, and clause binder identities are serialized in artifact v42 | ownership APIs remain concentrated in `ast.c` |
+| Occurrence layer | operation occurrences, Match cases, HANDLE clause bodies, and clause binder identities are serialized in artifact v43 through OperationGraph APIs | API implementation remains physically concentrated in `ast.c` until the build boundary is approved for splitting |
 | Closed evidence | JudgementDB proof DAGs reconnect imports to provider evidence by qualified export identity | no known proof-boundary defect remains in the covered artifact tests |
 | Residual evidence | VerificationDB serializes dependent-BIND obligations and nested occurrences discharge per invocation | handler-result and general runtime-conversion obligation kinds are not materialized yet |
 | Constraints | immutable operation constraint blueprint, stable IDs, explicit kinds and four outcome states; deterministic dependency-indexed FIFO worklist | effect-row and universe constraints still use separate propagation protocols |
@@ -406,7 +406,9 @@ false-branch, and failing-result fixtures all have defined outcomes.
 
 ### Phase E: Make OperationGraph and VerificationDB owned subsystems
 
-Status: persisted and relocated, but not yet cleanly modularized.
+Status: ownership APIs implemented at the persistence and link boundaries.
+Physical source-file separation remains pending because the accepted build file
+is outside the default prototype write boundary.
 
 Primary files: currently `ast.h` and `ast.c`; planned
 `operation_graph.[ch]` and `verification.[ch]` under `src/prototype/`.
@@ -424,6 +426,17 @@ Tasks:
 Completion gate: artifact code does not access VerificationDB storage fields
 directly outside its API, and linked obligations retain exact occurrence
 identity across provider offsets.
+
+Current implementation:
+
+- Artifact v43 stores a schema version on every verification obligation.
+- VerificationDB owns count, lookup, insertion, validation, coverage, and
+  operation-identity search.
+- OperationGraph owns count, lookup, append, case append, and graph validation
+  at artifact read/write/link boundaries.
+- Artifact and linker code no longer reads VerificationDB storage fields
+  directly.  Provider operation, source binder, graph binder, and TermDB
+  relocation spaces remain distinct.
 
 ### Phase F: Introduce the general runtime machine
 

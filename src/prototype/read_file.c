@@ -737,17 +737,25 @@ static int append_link_operation_graph(
 	uint32_t term_offset,
 	uint32_t binder_offset
 ) {
+	struct prototype_operation_graph target_graph;
+	struct prototype_operation_graph source_graph;
+	prototype_compile_metadata_operation_graph(target, &target_graph);
+	prototype_compile_metadata_operation_graph_const(source, &source_graph);
 	if (!target || !source ||
-		target->operation_count + source->operation_count > target->operation_capacity ||
-		target->operation_case_count + source->operation_case_count >
-			target->operation_case_capacity ||
-		target->verification.obligation_count + source->verification.obligation_count >
-			target->verification.obligation_capacity) {
+		prototype_operation_graph_count(&target_graph) +
+			prototype_operation_graph_count(&source_graph) >
+			target_graph.operation_capacity ||
+		prototype_operation_graph_case_count(&target_graph) +
+			prototype_operation_graph_case_count(&source_graph) >
+			target_graph.case_capacity ||
+		prototype_verification_db_count(&target->verification) +
+			prototype_verification_db_count(&source->verification) >
+			prototype_verification_db_capacity(&target->verification)) {
 		return -1;
 	}
-	int target_is_empty = target->operation_count == 0 &&
+	int target_is_empty = prototype_operation_graph_count(&target_graph) == 0 &&
 		target->solver_constraint_count == 0 &&
-		target->verification.obligation_count == 0;
+		prototype_verification_db_count(&target->verification) == 0;
 	if (target_is_empty) {
 		target->compile_policy = source->compile_policy;
 	} else if (target->compile_policy != source->compile_policy) {
@@ -773,14 +781,21 @@ static int append_link_operation_graph(
 	target->solver_residual_count += source->solver_residual_count;
 	target->solver_incomplete_count += source->solver_incomplete_count;
 	target->required_runtime_capabilities |= source->required_runtime_capabilities;
-	uint32_t operation_offset = (uint32_t)target->operation_count;
-	uint32_t case_offset = (uint32_t)target->operation_case_count;
+	uint32_t operation_offset =
+		(uint32_t)prototype_operation_graph_count(&target_graph);
+	uint32_t case_offset =
+		(uint32_t)prototype_operation_graph_case_count(&target_graph);
 	uint32_t source_binder_offset;
 	if (operation_graph_next_source_binder_id(target, &source_binder_offset) != 0) {
 		return -1;
 	}
-	for (size_t i = 0; i < source->operation_count; ++i) {
-		struct prototype_operation_node operation = source->operations[i];
+	for (size_t i = 0; i < prototype_operation_graph_count(&source_graph); ++i) {
+		const struct prototype_operation_node* source_operation =
+			prototype_operation_graph_get(&source_graph, (uint32_t)i);
+		if (!source_operation) {
+			return -1;
+		}
+		struct prototype_operation_node operation = *source_operation;
 		operation.core_term = offset_link_graph_id(operation.core_term, term_offset);
 		operation.known_classifier = offset_link_graph_id(
 			operation.known_classifier, term_offset
@@ -820,20 +835,40 @@ static int append_link_operation_graph(
 				operation.implicit_effect_row_binders[j], binder_offset
 			);
 		}
-		target->operations[target->operation_count++] = operation;
+		if (prototype_operation_graph_add(&target_graph, operation, NULL) != 0) {
+			return -1;
+		}
 	}
-	for (size_t i = 0; i < source->operation_case_count; ++i) {
-		struct prototype_operation_match_case operation_case = source->operation_cases[i];
+	for (size_t i = 0;
+		i < prototype_operation_graph_case_count(&source_graph);
+		++i) {
+		const struct prototype_operation_match_case* source_case =
+			prototype_operation_graph_get_case(&source_graph, (uint32_t)i);
+		if (!source_case) {
+			return -1;
+		}
+		struct prototype_operation_match_case operation_case = *source_case;
 		operation_case.body_operation = offset_link_graph_id(
 			operation_case.body_operation, operation_offset
 		);
 		operation_case.constructor_owner = offset_link_graph_id(
 			operation_case.constructor_owner, term_offset
 		);
-		target->operation_cases[target->operation_case_count++] = operation_case;
+		if (prototype_operation_graph_add_case(
+				&target_graph, operation_case, NULL
+			) != 0) {
+			return -1;
+		}
 	}
-	for (size_t i = 0; i < source->verification.obligation_count; ++i) {
-		struct prototype_verification_obligation obligation = source->verification.obligations[i];
+	for (size_t i = 0;
+		i < prototype_verification_db_count(&source->verification);
+		++i) {
+		const struct prototype_verification_obligation* source_obligation =
+			prototype_verification_db_get(&source->verification, (uint32_t)i);
+		if (!source_obligation) {
+			return -1;
+		}
+		struct prototype_verification_obligation obligation = *source_obligation;
 		obligation.operation = offset_link_graph_id(obligation.operation, operation_offset);
 		obligation.core_term = offset_link_graph_id(obligation.core_term, term_offset);
 		obligation.computation_operation = offset_link_graph_id(
@@ -856,6 +891,7 @@ static int append_link_operation_graph(
 			return -1;
 		}
 	}
+	prototype_compile_metadata_commit_operation_graph(target, &target_graph);
 	return 0;
 }
 
@@ -3409,7 +3445,7 @@ int main(int argc, char** argv) {
 				"operation_occurrences=%zu operation_cases=%zu verification_obligations=%zu\n",
 				artifact_metadata.operation_count,
 				artifact_metadata.operation_case_count,
-				artifact_metadata.verification.obligation_count
+				prototype_verification_db_count(&artifact_metadata.verification)
 			);
 			printf(
 				"relocation_external_terms=%zu relocation_resolved_external_terms=%zu relocation_external_type_exprs=%zu relocation_resolved_external_type_exprs=%zu relocation_external_type_formers=%zu relocation_resolved_external_type_formers=%zu relocation_resolved_constructor_owners=%zu\n",
