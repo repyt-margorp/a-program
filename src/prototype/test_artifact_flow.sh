@@ -599,7 +599,8 @@ grep -Eq 'metadata label main -> operation#[0-9]+ -> term#' "$TMP_DIR/dependent-
 grep -Fq 'metadata external-ref Sigma -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Eq 'has-type CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\) PI\(' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'APP(LAMBDA(_#' "$TMP_DIR/dependent-constructor-import-user.out"
-grep -Fq 'APP(APP(EXTERNAL_REF(Sigma.Sigma)' "$TMP_DIR/dependent-constructor-import-user.out"
+grep -Fq 'source=APP(APP(TYPE_DECLARATION(Sigma)' \
+	"$TMP_DIR/dependent-constructor-import-user.out"
 
 cat >"$TMP_DIR/dependent-constructor-shape-key.p" <<'EOF_DEPENDENT_CONSTRUCTOR_SHAPE_KEY'
 Sigma := \A : @ => \B : A -> @ => @{

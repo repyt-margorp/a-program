@@ -3763,10 +3763,14 @@ static int lambda_body_classifier_matches_binder(
 	if (terms->terms[body].tag == PROTOTYPE_TERM_RETURN) {
 		uint32_t value = terms->terms[body].as.return_term.value;
 		struct prototype_term_classifier_view view;
-		if (value >= terms->term_count ||
-			terms->terms[value].tag != PROTOTYPE_TERM_VAR ||
-			terms->terms[value].as.var.binder_id != binder_id ||
-			prototype_judgement_classifier_view(
+		if (value >= terms->term_count) {
+			return 0;
+		}
+		if (terms->terms[value].tag != PROTOTYPE_TERM_VAR ||
+			terms->terms[value].as.var.binder_id != binder_id) {
+			return 1;
+		}
+		if (prototype_judgement_classifier_view(
 				terms, type_declarations, NULL, body_classifier, &view
 			) != 0 || view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
 			return 0;
@@ -3953,6 +3957,65 @@ static int infer_lambda_classifier_for_app_argument(
 		lambda_term,
 		&changed
 	);
+}
+
+/* A source lambda can have several provisional classifier candidates while the
+ * operation graph fixed point is being solved. Consumers with a known input
+ * domain must select the compatible Pi candidate, rather than depend on
+ * relation insertion order. */
+static int select_delta_pi_classifier_for_domain(
+	const struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t expected_domain,
+	uint32_t* p_classifier
+) {
+	if (!delta || !terms || !type_declarations || !p_classifier ||
+		subject >= terms->term_count || expected_domain >= terms->term_count) {
+		return -1;
+	}
+	uint32_t candidates[32];
+	uint32_t candidate_count;
+	if (collect_subject_classifiers(
+			delta,
+			terms,
+			type_declarations,
+			subject,
+			candidates,
+			32,
+			&candidate_count
+		) != 0) {
+		return -1;
+	}
+	int found = 0;
+	for (uint32_t i = 0; i < candidate_count; ++i) {
+		uint32_t pi;
+		uint32_t domain;
+		uint32_t family;
+		if (classifier_kernel_as_pi(
+				terms,
+				type_declarations,
+				NULL,
+				candidates[i],
+				&pi,
+				&domain,
+				&family
+			) != 0 || !prototype_judgement_classifier_normalization_equal(
+				terms, type_declarations, domain, expected_domain
+			)) {
+			continue;
+		}
+		if (!found) {
+			*p_classifier = pi;
+			found = 1;
+		} else if (!prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, *p_classifier, pi
+		)) {
+			return -1;
+		}
+	}
+	return found ? 0 : 1;
 }
 
 static int operation_named_nat_type_classifier(
@@ -4825,9 +4888,18 @@ static int solve_handle_constraint(
 		return -1;
 	}
 	uint32_t return_classifier;
-	if (lookup_delta_proven_classifier(
-			delta, terms, handler->as.handler.return_clause, &return_classifier
-		) != 0) {
+	int return_selection = select_delta_pi_classifier_for_domain(
+		delta,
+		terms,
+		type_declarations,
+		handler->as.handler.return_clause,
+		input_view.result,
+		&return_classifier
+	);
+	if (return_selection < 0) {
+		return -1;
+	}
+	if (return_selection > 0) {
 		return 1;
 	}
 	uint32_t return_pi;
@@ -4836,9 +4908,7 @@ static int solve_handle_constraint(
 	if (classifier_kernel_as_pi(
 			terms, type_declarations, NULL, return_classifier,
 			&return_pi, &return_domain, &return_family
-		) != 0 || !prototype_judgement_classifier_normalization_equal(
-			terms, type_declarations, return_domain, input_view.result
-		)) {
+		) != 0) {
 		return -1;
 	}
 	uint32_t return_binder = PROTOTYPE_PI_UNUSED_BINDER_ID;
@@ -4927,10 +4997,34 @@ static int solve_handle_constraint(
 		) != 0) {
 		return -1;
 	}
-	uint32_t outer_classifier;
-	if (lookup_delta_proven_classifier(
-			delta, terms, handler->as.handler.operation_clause, &outer_classifier
+	uint32_t expected_continuation_classifier;
+	uint32_t expected_outer_classifier;
+	if (prototype_term_pi(
+			terms,
+			continuation_expected,
+			handled_output_classifier,
+			&expected_continuation_classifier
+		) != 0 || prototype_term_pi(
+			terms,
+			operation_domain,
+			expected_continuation_classifier,
+			&expected_outer_classifier
 		) != 0) {
+		return -1;
+	}
+	uint32_t outer_classifier;
+	int outer_selection = lookup_delta_proven_classifier_normalization_equal(
+		delta,
+		terms,
+		type_declarations,
+		handler->as.handler.operation_clause,
+		expected_outer_classifier,
+		&outer_classifier
+	);
+	if (outer_selection < 0) {
+		return -1;
+	}
+	if (outer_selection > 0) {
 		return 1;
 	}
 	uint32_t outer_pi;
@@ -4939,9 +5033,7 @@ static int solve_handle_constraint(
 	if (classifier_kernel_as_pi(
 			terms, type_declarations, NULL, outer_classifier,
 			&outer_pi, &outer_domain, &outer_family
-		) != 0 || !prototype_judgement_classifier_normalization_equal(
-			terms, type_declarations, outer_domain, operation_domain
-		)) {
+		) != 0) {
 		return -1;
 	}
 	uint32_t outer_binder = PROTOTYPE_PI_UNUSED_BINDER_ID;
@@ -4957,12 +5049,21 @@ static int solve_handle_constraint(
 	uint32_t continuation_pi;
 	uint32_t continuation_domain;
 	uint32_t continuation_family;
-	if (classifier_kernel_as_pi(
+	int continuation_selection = lookup_delta_proven_classifier_normalization_equal(
+		delta,
+		terms,
+		type_declarations,
+		continuation_lambda,
+		expected_continuation_classifier,
+		&continuation_classifier
+	);
+	if (continuation_selection < 0) {
+		return -1;
+	}
+	if (continuation_selection > 0 || classifier_kernel_as_pi(
 			terms, type_declarations, NULL, continuation_classifier,
 			&continuation_pi, &continuation_domain, &continuation_family
-		) != 0 || !prototype_judgement_classifier_normalization_equal(
-			terms, type_declarations, continuation_domain, continuation_expected
-		)) {
+		) != 0) {
 		return -1;
 	}
 	uint32_t continuation_binder = PROTOTYPE_PI_UNUSED_BINDER_ID;

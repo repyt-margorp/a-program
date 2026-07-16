@@ -488,24 +488,76 @@ Implemented:
 
 Current limitations, deliberately not hidden by this slice:
 
-- Existing intrinsic operations return only host primitive values.  The source
-  language therefore has no effectful user-ADT result with which to construct
-  the planned Bool/Nat residual fixture yet.
-- The normal REPL evaluator still starts from a TermDB node, not an operation
-  occurrence.  It cannot safely discharge a residual BIND because a shared
-  core BIND may belong to multiple typed source occurrences.  Phase 6 must add
-  an operation-graph runtime entry point with local environment and handler
-  frames before hybrid execution is exposed.
+- This first residual runtime entry point handles a residual BIND at the
+  selected operation occurrence.  It recursively evaluates a residual input
+  occurrence, but it does not yet interpret arbitrary nested residual BIND
+  occurrences introduced after continuation beta reduction.
+- The frame checker specializes the serialized continuation classifier with
+  the actual `RETURN(v)` and discharges the corresponding local obligation.
+  It is not yet a general runtime type-evidence system for higher-order
+  returned values.
 - Artifact readback preserves and validates operation metadata.  Linking now
   offsets and merges target and provider operation IDs, match-case occurrence
   IDs, TermDB references, and continuation binder IDs, including residual
-  obligations.  This has a dedicated artifact regression.  Runtime handler
-  frames still remain Phase 6 work.
+  obligations.  Target-runtime loading and handler-stack execution still
+  remain later Phase 6 work.
 
-Tests currently cover the normalization outcomes, static pure dependent BIND,
-operation-graph artifact round-trip, and direct dependent-BIND discharge.  The
-effectful residual and linker merge fixtures remain Phase 6/7 work.
+Tests currently cover normalization outcomes, static pure dependent BIND,
+effect-blocked source residual generation, operation-graph artifact
+round-trip/linking, and direct REPL execution of an effectful residual BIND.
 
 Do not preserve obsolete compatibility paths merely because a prior artifact
 or prototype test used them.  Bump the artifact format and update fixtures
 when a semantic representation changes.
+
+### 2026-07-16: Effectful source residual and operation-entry runtime slice
+
+Changed assumption:
+
+The earlier implementation record assumed an effectful computation could not
+produce a user ADT value for a residual fixture.  That was false.  A source
+BIND can run an effectful `#.print`, discard its `Text` result, and return
+`Bool.true`; a later BIND can therefore have a Bool-dependent Match classifier.
+
+Implemented invariants:
+
+- `compile_ast_ref` preserves a syntactic BIND before the value-first lowering
+  path.  A top-level source BIND is therefore represented by an operation
+  occurrence instead of being reduced to only its shared core term.
+- BIND binder propagation is scoped to the exact continuation operation
+  subtree.  Canonically shared erased core `VAR(_#n)` nodes from unrelated
+  source lambdas cannot pollute another occurrence's classifier, while
+  compiler-generated continuations remain supported.
+- Handler constraint solving selects a Pi candidate by its required domain and
+  checks the complete expected continuation/operation-clause Pi shape.  It no
+  longer depends on provisional JudgementDelta insertion order.
+- `prototype_operation_evaluate_with_verification` executes a direct residual
+  BIND through its operation occurrence.  It evaluates the input exactly once,
+  requires `RETURN(v)`, specializes the continuation family using the stored
+  pure normalization profile, and discharges a one-record local
+  VerificationDB frame before running the continuation.
+- The serialized VerificationDB record is not mutated by evaluation.  A
+  discharge belongs to one dynamic frame and cannot authorize another call of
+  the same artifact occurrence with a different result.
+
+Affected phases and schema:
+
+- Phase 3's v38 operation graph is now used by the REPL as the source
+  occurrence authority for direct residual BIND evaluation.
+- Phase 6 is partially implemented.  It still requires a general runtime
+  evaluator with handler frames, nested residual occurrence dispatch, and
+  explicit target policy enforcement.
+
+Regression fixture:
+
+```text
+Bool := @{ true : *; false : *; };
+Nat := @{ zero : *; succ : * -> *; };
+m := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.true);
+main := #.bind m (\b : Bool => b @true => Nat.zero @false => Bool.true);
+```
+
+Compilation emits one `DEPENDENT_BIND` residual for the `main` operation.
+Artifact round-trip and link preserve it.  REPL execution prints `x` once,
+reports `verification main := discharged`, and yields `Nat.zero` without
+modifying the artifact obligation.

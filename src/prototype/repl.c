@@ -620,27 +620,45 @@ static int evaluate_for_output(
 	struct symbol_table* symbols,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
+	struct prototype_compile_metadata* metadata,
+	uint32_t operation,
 	uint32_t term,
 	uint32_t* p_ret,
-	int* p_host_ran
+	int* p_host_ran,
+	int* p_verification_state
 ) {
-	if (!output || !symbols || !type_declarations || !term_db || !p_ret || !p_host_ran) {
+	if (!output || !symbols || !type_declarations || !term_db || !p_ret || !p_host_ran ||
+		!p_verification_state) {
 		return -1;
 	}
 
 	*p_host_ran = 0;
+	*p_verification_state = 0;
+	struct prototype_term_reduction_options options = {
+		.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT |
+			PROTOTYPE_TERM_PERFORM_HOST_EFFECT,
+		.effect_output = output,
+		.symbols = symbols,
+		.effect_capabilities = PROTOTYPE_HOST_EFFECT_TERMINAL,
+		.p_effect_performed = p_host_ran
+	};
+	if (metadata && operation < metadata->operation_count) {
+		return prototype_operation_evaluate_with_verification(
+			metadata,
+			term_db,
+			type_declarations,
+			NULL,
+			options,
+			operation,
+			p_ret,
+			p_verification_state
+		);
+	}
 	return prototype_term_perform_with_options(
 		term_db,
 		type_declarations,
 		NULL,
-		(struct prototype_term_reduction_options){
-				.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT |
-					PROTOTYPE_TERM_PERFORM_HOST_EFFECT,
-			.effect_output = output,
-			.symbols = symbols,
-			.effect_capabilities = PROTOTYPE_HOST_EFFECT_TERMINAL,
-			.p_effect_performed = p_host_ran
-		},
+		options,
 		term,
 		p_ret
 	);
@@ -650,7 +668,7 @@ static void query_value(
 	struct symbol_table* symbols,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
-	const struct prototype_compile_metadata* metadata,
+	struct prototype_compile_metadata* metadata,
 	const char* name
 ) {
 	int symbol_id = symbol_intern(symbols, name, strlen(name));
@@ -667,20 +685,27 @@ static void query_value(
 	printf("\n");
 
 	int host_ran;
+	int verification_state;
 	if (evaluate_for_output(
 			stdout,
 			symbols,
 			type_declarations,
 			term_db,
+			metadata,
+			label->operation,
 			label->term,
 			&evaluated,
-			&host_ran
+			&host_ran,
+			&verification_state
 		) != 0) {
 		printf("value %s := <evaluation failed>\n", name);
 		return;
 	}
 	if (host_ran) {
 		printf("\n");
+	}
+	if (verification_state == PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED) {
+		printf("verification %s := discharged\n", name);
 	}
 	printf("value %s := ", name);
 	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, evaluated);
@@ -691,7 +716,7 @@ static void query_normal_form(
 	struct symbol_table* symbols,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
-	const struct prototype_compile_metadata* metadata,
+	struct prototype_compile_metadata* metadata,
 	const char* name,
 	int full
 ) {
@@ -727,7 +752,7 @@ static int query_existing_value(
 	const struct symbol_table* symbols,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
-	const struct prototype_compile_metadata* metadata,
+	struct prototype_compile_metadata* metadata,
 	int symbol_id
 ) {
 	const struct prototype_compile_label* label = lookup_label(metadata, symbol_id);
@@ -744,20 +769,27 @@ static int query_existing_value(
 	printf("\n");
 
 	int host_ran;
+	int verification_state;
 	if (evaluate_for_output(
 			stdout,
 			(struct symbol_table*)symbols,
 			type_declarations,
 			term_db,
+			metadata,
+			label->operation,
 			label->term,
 			&evaluated,
-			&host_ran
+			&host_ran,
+			&verification_state
 		) != 0) {
 		printf("value %s := <evaluation failed>\n", name ? name : "<unknown>");
 		return 1;
 	}
 	if (host_ran) {
 		printf("\n");
+	}
+	if (verification_state == PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED) {
+		printf("verification %s := discharged\n", name ? name : "<unknown>");
 	}
 	printf("value %s := ", name ? name : "<unknown>");
 	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, evaluated);

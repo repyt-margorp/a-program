@@ -101,32 +101,42 @@ grep -q 'has-type THUNK(LAMBDA(.*\[thunk-intro\]' \
 grep -q 'interface term main ' "$tmp_dir/higher-order-function-read.out"
 grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=0' \
 	"$tmp_dir/higher-order-function-read.out"
-residual_core_term=$(awk '$1 == "operation" && $2 == 0 { print $6; exit }' \
-	"$tmp_dir/higher-order-function.apo")
-residual_classifier=$(awk '$1 == "operation" && $2 == 0 { print $7; exit }' \
-	"$tmp_dir/higher-order-function.apo")
-[ -n "$residual_core_term" ]
-[ -n "$residual_classifier" ]
-awk '
-	/^verification_obligations 0$/ {
-		print "verification_obligations 1"
-		print "verification 0 1 1 0 " core " 0 0 0 " classifier " " classifier " " classifier " 3"
-		next
+
+cat >"$tmp_dir/dependent-bind-residual.p" <<'EOF'
+Bool := @{ true : *; false : *; };
+Nat := @{ zero : *; succ : * -> *; };
+m := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.true);
+main := #.bind m (\b : Bool => b @true => Nat.zero @false => Bool.true);
+EOF
+
+./read_file.out "$tmp_dir/dependent-bind-residual.p" \
+	>"$tmp_dir/dependent-bind-residual.out"
+grep -q '^term main := BIND(' "$tmp_dir/dependent-bind-residual.out"
+residual_bind_operation=$(awk '
+	/^operation#/ && $2 == "bind" && $NF == "name=main" {
+		id = $1
+		sub(/^operation#/, "", id)
+		print id
+		exit
 	}
-	{ print }
-' core="$residual_core_term" classifier="$residual_classifier" \
-	"$tmp_dir/higher-order-function.apo" >"$tmp_dir/higher-order-function-residual.apo"
-./read_file.out --read-graph "$tmp_dir/higher-order-function-residual.apo" \
-	>"$tmp_dir/higher-order-function-residual-read.out"
-grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=1' \
-	"$tmp_dir/higher-order-function-residual-read.out"
+' "$tmp_dir/dependent-bind-residual.out")
+[ -n "$residual_bind_operation" ]
+./read_file.out --write-artifact "$tmp_dir/dependent-bind-residual.apo" \
+	"$tmp_dir/dependent-bind-residual.p" >"$tmp_dir/dependent-bind-residual-write.out"
+awk '$1 == "verification" { print $5; exit }' \
+	"$tmp_dir/dependent-bind-residual.apo" | grep -qx "$residual_bind_operation"
+grep -q '^verification_obligations 1$' "$tmp_dir/dependent-bind-residual.apo"
+./read_file.out --read-graph "$tmp_dir/dependent-bind-residual.apo" \
+	>"$tmp_dir/dependent-bind-residual-read.out"
+grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=1' \
+	"$tmp_dir/dependent-bind-residual-read.out"
 ./read_file.out --aggregate-artifact "$tmp_dir/residual-link.apo" \
-	"$tmp_dir/higher-order-function-residual.apo" \
+	"$tmp_dir/dependent-bind-residual.apo" \
 	>"$tmp_dir/higher-order-function-residual-link.out" \
 	2>"$tmp_dir/higher-order-function-residual-link.err"
 ./read_file.out --read-graph "$tmp_dir/residual-link.apo" \
 	>"$tmp_dir/residual-link-read.out"
-grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=1' \
+grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=1' \
 	"$tmp_dir/residual-link-read.out"
 cat >"$tmp_dir/link-base.p" <<'EOF'
 root := #1;
@@ -134,12 +144,33 @@ EOF
 ./read_file.out --write-artifact "$tmp_dir/link-base.apo" "$tmp_dir/link-base.p" \
 	>"$tmp_dir/link-base-write.out"
 ./read_file.out --aggregate-artifact "$tmp_dir/provider-residual-link.apo" \
-	"$tmp_dir/link-base.apo" "$tmp_dir/higher-order-function-residual.apo" \
+	"$tmp_dir/link-base.apo" "$tmp_dir/dependent-bind-residual.apo" \
 	>"$tmp_dir/provider-residual-link.out"
 ./read_file.out --read-graph "$tmp_dir/provider-residual-link.apo" \
 	>"$tmp_dir/provider-residual-link-read.out"
-grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=1' \
+grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=1' \
 	"$tmp_dir/provider-residual-link-read.out"
+
+# A residual obligation is immutable artifact data. At evaluation, the input
+# computation runs once, its returned value discharges only a local frame, and
+# the continuation is then evaluated with that value.
+printf '%s\n' \
+	'Bool := @{ true : *; false : *; };' \
+	'Nat := @{ zero : *; succ : * -> *; };' \
+	'm := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.true);' \
+	'main := #.bind m (\b : Bool => b @true => Nat.zero @false => Bool.true);' \
+	'main' \
+	'main' \
+	':q' | ./a.out >"$tmp_dir/dependent-bind-residual-eval.out"
+[ "$(grep -cx 'x' "$tmp_dir/dependent-bind-residual-eval.out")" -eq 2 ]
+[ "$(grep -cx 'verification main := discharged' \
+	"$tmp_dir/dependent-bind-residual-eval.out")" -eq 2 ]
+grep -q '^verification main := discharged$' \
+	"$tmp_dir/dependent-bind-residual-eval.out"
+
+
+[ "$(grep -Ec '^value main := RETURN\(CONSTRUCTOR\(' \
+	"$tmp_dir/dependent-bind-residual-eval.out")" -eq 2 ]
 
 cat >"$tmp_dir/effect-forwarding.p" <<'EOF'
 forward := \f : #.Text -> #.Text => f #"x";

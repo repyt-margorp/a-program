@@ -1088,6 +1088,16 @@ int prototype_verification_db_discharge_dependent_bind(
 	uint32_t returned_value,
 	uint32_t continuation_result_classifier
 );
+int prototype_operation_evaluate_with_verification(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	uint32_t operation_id,
+	uint32_t* p_ret,
+	int* p_verification_state
+);
 
 void prototype_canonical_link_table_init(
 	struct prototype_canonical_link_table* table,

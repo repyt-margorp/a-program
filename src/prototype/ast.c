@@ -97,6 +97,136 @@ int prototype_verification_db_discharge_dependent_bind(
 	return 0;
 }
 
+int prototype_operation_evaluate_with_verification(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	uint32_t operation_id,
+	uint32_t* p_ret,
+	int* p_verification_state
+) {
+	if (!metadata || !terms || !type_declarations || !p_ret ||
+		operation_id >= metadata->operation_count) {
+		return -1;
+	}
+	if (p_verification_state) {
+		*p_verification_state = 0;
+	}
+	const struct prototype_operation_node* operation = &metadata->operations[operation_id];
+	if (operation->core_term >= terms->term_count) {
+		return -1;
+	}
+	uint32_t obligation_id = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < metadata->verification.obligation_count; ++i) {
+		const struct prototype_verification_obligation* obligation =
+			&metadata->verification.obligations[i];
+		if (obligation->kind == PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND &&
+			obligation->operation == operation_id) {
+			obligation_id = i;
+			break;
+		}
+	}
+	if (obligation_id == PROTOTYPE_INVALID_ID) {
+		return prototype_term_perform_with_options(
+			terms, type_declarations, definitions, options, operation->core_term, p_ret
+		);
+	}
+	if (operation->tag != PROTOTYPE_OPERATION_BIND ||
+		operation->function >= metadata->operation_count ||
+		operation->argument >= metadata->operation_count ||
+		terms->terms[operation->core_term].tag != PROTOTYPE_TERM_BIND) {
+		return -1;
+	}
+
+	uint32_t input_result;
+	if (prototype_operation_evaluate_with_verification(
+			metadata,
+			terms,
+			type_declarations,
+			definitions,
+			options,
+			operation->function,
+			&input_result,
+			NULL
+		) != 0 || input_result >= terms->term_count ||
+		terms->terms[input_result].tag != PROTOTYPE_TERM_RETURN) {
+		return -1;
+	}
+	uint32_t returned_value = terms->terms[input_result].as.return_term.value;
+	const struct prototype_operation_node* continuation =
+		&metadata->operations[operation->argument];
+	uint32_t domain;
+	uint32_t classifier_family;
+	uint32_t family_lambda;
+	uint32_t family_application;
+	uint32_t continuation_classifier;
+	if (continuation->classifier >= terms->term_count ||
+		prototype_judgement_pi_parts(
+			terms, continuation->classifier, &domain, &classifier_family
+		) != 0 || prototype_term_pure_family_lambda(
+			terms, classifier_family, &family_lambda
+		) != 0 || prototype_term_app(
+			terms, family_lambda, returned_value, &family_application
+		) != 0 || prototype_term_whnf_with_profile(
+			terms,
+			type_declarations,
+			definitions,
+			metadata->verification.obligations[obligation_id].normalization_profile,
+			family_application,
+			&continuation_classifier
+		) != 0 || continuation_classifier >= terms->term_count) {
+		return -1;
+	}
+	if (terms->terms[continuation_classifier].tag == PROTOTYPE_TERM_RETURN) {
+		continuation_classifier =
+			terms->terms[continuation_classifier].as.return_term.value;
+	}
+
+	/* Artifact obligations remain immutable. A discharge belongs to this runtime
+	 * frame and must not authorize a later execution with another result value. */
+	struct prototype_verification_obligation frame_obligation =
+		metadata->verification.obligations[obligation_id];
+	struct prototype_verification_db frame_verification;
+	prototype_verification_db_init(&frame_verification, &frame_obligation, 1);
+	frame_verification.obligation_count = 1;
+	if (prototype_verification_db_discharge_dependent_bind(
+			&frame_verification,
+			terms,
+			type_declarations,
+			0,
+			returned_value,
+			continuation_classifier
+		) != 0 || frame_obligation.state !=
+			PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED) {
+		if (p_verification_state) {
+			*p_verification_state = PROTOTYPE_VERIFICATION_OBLIGATION_FAILED;
+		}
+		return -1;
+	}
+	if (p_verification_state) {
+		*p_verification_state = PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED;
+	}
+	uint32_t continuation_application;
+	if (prototype_term_app(
+			terms,
+			terms->terms[operation->core_term].as.bind.continuation,
+			returned_value,
+			&continuation_application
+		) != 0) {
+		return -1;
+	}
+	return prototype_term_perform_with_options(
+		terms,
+		type_declarations,
+		definitions,
+		options,
+		continuation_application,
+		p_ret
+	);
+}
+
 void prototype_compile_metadata_init(
 	struct prototype_compile_metadata* metadata,
 	struct prototype_compile_label* labels,
@@ -15265,8 +15395,8 @@ static int compile_ast_ref(
 	if (!ctx || !p_ret || ast_id >= ctx->asts->node_count) {
 		return -1;
 	}
+	const struct prototype_ast_node* node = &ctx->asts->nodes[ast_id];
 	if (ctx->asts->nodes[ast_id].tag == PROTOTYPE_AST_ASCRIPTION) {
-		const struct prototype_ast_node* node = &ctx->asts->nodes[ast_id];
 		struct compile_ref inner;
 		uint32_t expected_classifier;
 		if (compile_ast_ascription_classifier(
@@ -15283,6 +15413,17 @@ static int compile_ast_ref(
 		*p_ret = inner;
 		p_ret->classifier = expected_classifier;
 		return 0;
+	}
+	uint32_t bind_computation_ast;
+	uint32_t bind_continuation_ast;
+	int is_bind_intrinsic = node->tag == PROTOTYPE_AST_APP &&
+		ast_application_is_bind_intrinsic(
+			ctx, ast_id, &bind_computation_ast, &bind_continuation_ast
+		);
+	/* BIND has an occurrence-local residual classifier. Preserve its source
+	 * operation before value-first lowering can erase that occurrence. */
+	if (is_bind_intrinsic) {
+		return compile_ast_computation_ref(ctx, ast_id, p_ret);
 	}
 	int status = compile_ast_value_ref(ctx, ast_id, p_ret);
 	if (status <= 0) {
@@ -16236,6 +16377,13 @@ static int operation_solver_find_match_for_frame(
 	uint32_t* p_operation
 );
 
+static int operation_subtree_contains_operation(
+	const struct compile_context* ctx,
+	uint32_t root_operation,
+	uint32_t target_operation,
+	uint8_t* visited
+);
+
 static int operation_solver_solve(struct compile_context* ctx, int require_complete) {
 	if (!ctx || operation_solver_generate_constraints(ctx) != 0) {
 		return -1;
@@ -16314,13 +16462,21 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 					) != 0) {
 					return -1;
 				}
+				uint8_t visited[ctx->metadata->operation_count];
 				for (uint32_t operation_id = 0;
 					operation_id < ctx->metadata->operation_count;
 					++operation_id) {
 					const struct prototype_operation_node* operation =
 						&ctx->metadata->operations[operation_id];
+					memset(visited, 0, sizeof(visited));
 					if (operation->tag == PROTOTYPE_OPERATION_VAR &&
 						operation->core_term == binder_var &&
+						operation_subtree_contains_operation(
+							ctx,
+							bind_operation->argument,
+							operation_id,
+							visited
+						) > 0 &&
 						operation_solver_bind(
 							ctx,
 							operation_id,
@@ -16759,6 +16915,91 @@ static int operation_subtree_references_ast_binder(
 		}
 		int status = operation_subtree_references_ast_binder(
 			ctx, children[i], ast_binder_id, visited
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
+	return 0;
+}
+
+static int operation_subtree_contains_operation(
+	const struct compile_context* ctx,
+	uint32_t root_operation,
+	uint32_t target_operation,
+	uint8_t* visited
+) {
+	if (!ctx || !ctx->metadata || !visited ||
+		root_operation >= ctx->metadata->operation_count ||
+		target_operation >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	if (root_operation == target_operation) {
+		return 1;
+	}
+	if (visited[root_operation]) {
+		return 0;
+	}
+	visited[root_operation] = 1;
+	const struct prototype_operation_node* operation =
+		&ctx->metadata->operations[root_operation];
+	uint32_t children[66];
+	uint32_t child_count = 0;
+	switch (operation->tag) {
+		case PROTOTYPE_OPERATION_NAME:
+			children[child_count++] = operation->function;
+			break;
+		case PROTOTYPE_OPERATION_ASCRIPTION:
+			children[child_count++] = operation->body;
+			break;
+		case PROTOTYPE_OPERATION_APP:
+		case PROTOTYPE_OPERATION_BIND:
+			children[child_count++] = operation->function;
+			children[child_count++] = operation->argument;
+			break;
+		case PROTOTYPE_OPERATION_LAMBDA:
+			children[child_count++] = operation->body;
+			break;
+		case PROTOTYPE_OPERATION_RETURN:
+		case PROTOTYPE_OPERATION_THUNK:
+		case PROTOTYPE_OPERATION_FORCE:
+		case PROTOTYPE_OPERATION_PERFORM:
+			children[child_count++] = operation->argument;
+			break;
+		case PROTOTYPE_OPERATION_HANDLE:
+			children[child_count++] = operation->function;
+			children[child_count++] = operation->argument;
+			children[child_count++] = operation->body;
+			children[child_count++] = operation->scrutinee;
+			break;
+		case PROTOTYPE_OPERATION_MATCH:
+			children[child_count++] = operation->scrutinee;
+			if (operation->first_case + operation->case_count >
+				ctx->metadata->operation_case_count || child_count + operation->case_count > 66) {
+				return -1;
+			}
+			for (uint32_t i = 0; i < operation->case_count; ++i) {
+				children[child_count++] = ctx->metadata->operation_cases[
+					operation->first_case + i
+				].body_operation;
+			}
+			break;
+		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+			children[child_count++] = operation->argument;
+			break;
+		case PROTOTYPE_OPERATION_ATOM:
+		case PROTOTYPE_OPERATION_CONSTRUCTOR:
+		case PROTOTYPE_OPERATION_VAR:
+			break;
+		default:
+			return -1;
+	}
+	for (uint32_t i = 0; i < child_count; ++i) {
+		if (children[i] == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		int status = operation_subtree_contains_operation(
+			ctx, children[i], target_operation, visited
 		);
 		if (status != 0) {
 			return status;
