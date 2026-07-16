@@ -158,7 +158,7 @@ described by the historical sections below.
 | Occurrence layer | operation occurrences, Match cases, HANDLE clause bodies, and clause binder identities are serialized in artifact v42 | ownership APIs remain concentrated in `ast.c` |
 | Closed evidence | JudgementDB proof DAGs reconnect imports to provider evidence by qualified export identity | no known proof-boundary defect remains in the covered artifact tests |
 | Residual evidence | VerificationDB serializes dependent-BIND obligations and nested occurrences discharge per invocation | handler-result and general runtime-conversion obligation kinds are not materialized yet |
-| Constraints | immutable operation constraint blueprint, stable IDs, explicit kinds and four outcome states | scheduling still revisits broad sets instead of a dependency-indexed worklist |
+| Constraints | immutable operation constraint blueprint, stable IDs, explicit kinds and four outcome states; deterministic dependency-indexed FIFO worklist | effect-row and universe constraints still use separate propagation protocols |
 | Runtime | occurrence evaluator executes APP, RETURN, BIND and HANDLE clause entry; TermDB evaluator handles dynamic continuations | no explicit continuation/handler/obligation stack API yet |
 | Policy | strict/hybrid/exploratory are serialized and checked at compile/read/link; capability bits are validated | exploratory incomplete verifiers and backend entry contracts are not implemented |
 
@@ -342,9 +342,10 @@ complete WHNF are distinguishable at every typing call site.
 
 ### Phase C: Separate constraint generation from solving
 
-Status: partially complete.  Constraint identity, immutable generation, and
-explicit outcomes are implemented; dependency-indexed worklist scheduling is
-not.
+Status: complete for the current operation-classifier solver.  Constraint
+identity, immutable generation, explicit outcomes, and dependency-indexed FIFO
+worklist scheduling are implemented.  Effect-row and universe constraints
+remain separate solver domains and are not claimed to use this worklist.
 
 Primary files: `judgement.h`, `typing.c`, `ast.c`; split modules only after the
 data contract is stable.
@@ -363,6 +364,18 @@ Tasks:
    repeated whole-TermDB scans.
 6. Materialize TermDB motive/family graphs only when a solution or a defined
    residual verifier requires them.
+
+Implementation note:
+
+- Each classifier binding enqueues only constraints indexed as depending on
+  that operation.
+- Processing one queued constraint consumes one `solver_step_limit` unit.
+- CBPV boundary propagation and BIND input propagation are ordinary constraint
+  kinds rather than post-solver whole-graph passes.
+- Re-entering the solver may seed an already classified Match from an earlier
+  phase.  In that case an IH recovers the authoritative motive from the
+  classifier `APP(motive, scrutinee)`; no temporary motive metavariable is
+  emitted into TermDB.
 
 Completion gate: the solver can report why each unresolved operation is
 residual or unsupported, and existing Match/append/IH examples remain closed.
@@ -1167,8 +1180,6 @@ exploratory
 
 Known remaining work:
 
-- Replace broad fixed-point revisits with a dependency-indexed constraint
-  worklist.
 - Move OperationGraph and VerificationDB lifecycle/relocation code out of
   `ast.c` behind owned subsystem APIs.
 - Introduce an explicit runtime continuation, handler, and dynamic obligation
@@ -1179,6 +1190,18 @@ Known remaining work:
   obligations.
 - Enforce policy and capability contracts at future C/Verilog backend entry
   points.
+
+Completed after the initial v42 baseline:
+
+- The operation-classifier solver now uses a stable dependency-indexed FIFO
+  worklist.  The configured solver budget counts dequeued constraints, not
+  elapsed time or machine-dependent throughput.
+- `RETURN`, `THUNK`, and `FORCE` classifier propagation is represented by an
+  explicit CBPV-boundary constraint.  BIND input propagation is likewise
+  triggered through the worklist.
+- Recursive dependent Match remains closed across repeated classifier phases:
+  an already materialized `APP(motive, scrutinee)` classifier restores its
+  motive pointer for IH propagation without serializing solver-local unknowns.
 
 Regression coverage includes the four prototype test suites, examples 01-09,
 shared-core typed identities, generic `List Nat` Match, recursive `*rest`,
