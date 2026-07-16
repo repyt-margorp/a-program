@@ -141,6 +141,19 @@ grep -q '^verification_obligations 1$' "$tmp_dir/dependent-bind-residual.apo"
 	>"$tmp_dir/dependent-bind-residual-read.out"
 grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=1' \
 	"$tmp_dir/dependent-bind-residual-read.out"
+./read_file.out --check-backend c "$tmp_dir/dependent-bind-residual.apo" \
+	>"$tmp_dir/dependent-bind-residual-c.out"
+grep -q '^backend c compatible yes$' \
+	"$tmp_dir/dependent-bind-residual-c.out"
+if ./read_file.out --check-backend verilog \
+	"$tmp_dir/dependent-bind-residual.apo" \
+	>"$tmp_dir/dependent-bind-residual-verilog.out" \
+	2>"$tmp_dir/dependent-bind-residual-verilog.err"; then
+	echo 'verilog backend accepted a residual verifier obligation' >&2
+	exit 1
+fi
+grep -q 'backend verilog is incompatible' \
+	"$tmp_dir/dependent-bind-residual-verilog.err"
 ./read_file.out --aggregate-artifact "$tmp_dir/residual-link.apo" \
 	"$tmp_dir/dependent-bind-residual.apo" \
 	>"$tmp_dir/higher-order-function-residual-link.out" \
@@ -423,6 +436,14 @@ grep -q '\[handle-elim\]' "$tmp_dir/handle.out"
 grep -q '^compile_policy 2 14 ' "$tmp_dir/handle.apo"
 ./read_file.out --read-graph "$tmp_dir/handle.apo" >"$tmp_dir/handle-read.out"
 grep -q 'interface term main ' "$tmp_dir/handle-read.out"
+./read_file.out --check-backend c "$tmp_dir/handle.apo" \
+	>"$tmp_dir/handle-c.out"
+grep -q '^backend c compatible yes$' "$tmp_dir/handle-c.out"
+if ./read_file.out --check-backend verilog "$tmp_dir/handle.apo" \
+	>"$tmp_dir/handle-verilog.out" 2>"$tmp_dir/handle-verilog.err"; then
+	echo 'verilog backend accepted handler runtime requirements' >&2
+	exit 1
+fi
 
 printf '%s\n' \
 	'main := handle (perform (#.print #"x")) with (#.print) x k => k x; return y => return y;' \

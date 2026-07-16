@@ -713,6 +713,12 @@ enum prototype_runtime_capability {
 	PROTOTYPE_RUNTIME_CAPABILITY_CONVERSION_VERIFIER = 1u << 4
 };
 
+enum prototype_backend_target {
+	PROTOTYPE_BACKEND_INTERPRETER = 1,
+	PROTOTYPE_BACKEND_C,
+	PROTOTYPE_BACKEND_VERILOG
+};
+
 struct prototype_compile_metadata {
 	int compile_policy;
 	uint64_t required_runtime_capabilities;
@@ -1168,6 +1174,12 @@ void prototype_compile_metadata_operation_graph_const(
 void prototype_compile_metadata_commit_operation_graph(
 	struct prototype_compile_metadata* metadata,
 	const struct prototype_operation_graph* graph
+);
+uint64_t prototype_backend_default_capabilities(int backend);
+int prototype_compile_metadata_validate_backend(
+	const struct prototype_compile_metadata* metadata,
+	int backend,
+	uint64_t available_runtime_capabilities
 );
 void prototype_verification_db_init(
 	struct prototype_verification_db* db,

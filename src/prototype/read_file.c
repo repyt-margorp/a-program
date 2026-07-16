@@ -2452,6 +2452,7 @@ int main(int argc, char** argv) {
 	size_t link_search_dir_count = 0;
 	const char* link_output_path = NULL;
 	const char* aggregate_output_path = NULL;
+	const char* check_backend_name = NULL;
 	const char* namespace_name = NULL;
 	const char* import_interface_paths[IMPORT_INTERFACE_CAPACITY];
 	size_t import_interface_count = 0;
@@ -2547,6 +2548,16 @@ int main(int argc, char** argv) {
 				fprintf(stderr, "--read-graph requires a path\n");
 				return 1;
 			}
+			interface_input_path = argv[++file_arg];
+			read_graph = 1;
+			continue;
+		}
+		if (strcmp(argv[file_arg], "--check-backend") == 0) {
+			if (file_arg + 2 >= argc) {
+				fprintf(stderr, "--check-backend requires interpreter, c, or verilog and an artifact path\n");
+				return 1;
+			}
+			check_backend_name = argv[++file_arg];
 			interface_input_path = argv[++file_arg];
 			read_graph = 1;
 			continue;
@@ -2709,6 +2720,7 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--policy strict|hybrid|exploratory] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
+			fprintf(stderr, "       %s --check-backend interpreter|c|verilog file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
 		fprintf(stderr, "       %s --check-exports-normalization-equal file.ao left right [--reduction-mode mode]\n", argv[0]);
 		fprintf(stderr, "       %s --check-source-exports-normalization-equal left right [--reduction-mode mode] file.p\n", argv[0]);
@@ -3375,6 +3387,36 @@ int main(int argc, char** argv) {
 				fprintf(stderr, "%s: failed to read artifact graph/universe/relocation\n", interface_input_path);
 				symbol_table_free(&symbols);
 				return 1;
+			}
+			if (check_backend_name) {
+				int backend;
+				if (strcmp(check_backend_name, "interpreter") == 0) {
+					backend = PROTOTYPE_BACKEND_INTERPRETER;
+				} else if (strcmp(check_backend_name, "c") == 0) {
+					backend = PROTOTYPE_BACKEND_C;
+				} else if (strcmp(check_backend_name, "verilog") == 0) {
+					backend = PROTOTYPE_BACKEND_VERILOG;
+				} else {
+					fclose(artifact_file);
+					fprintf(stderr, "unknown backend: %s\n", check_backend_name);
+					symbol_table_free(&symbols);
+					return 1;
+				}
+				if (prototype_compile_metadata_validate_backend(
+						&artifact_metadata,
+						backend,
+						prototype_backend_default_capabilities(backend)
+					) != 0) {
+					fclose(artifact_file);
+					fprintf(
+						stderr,
+						"backend %s is incompatible with artifact policy or capabilities\n",
+						check_backend_name
+					);
+					symbol_table_free(&symbols);
+					return 1;
+				}
+				printf("backend %s compatible yes\n", check_backend_name);
 			}
 		}
 		fclose(artifact_file);

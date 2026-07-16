@@ -163,6 +163,13 @@ grep -q '^source-exports-normalization-equal natMain natExpected mode=default ye
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
 grep -q '^A_PROGRAM_ARTIFACT 44$' "$TMP_DIR/identity.apo"
+./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
+	>"$TMP_DIR/identity-c-backend.out"
+grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
+./read_file.out --check-backend verilog "$TMP_DIR/identity.apo" \
+	>"$TMP_DIR/identity-verilog-backend.out"
+grep -q '^backend verilog compatible yes$' \
+	"$TMP_DIR/identity-verilog-backend.out"
 grep -q '^compile_policy 2 0 100000 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' "$TMP_DIR/identity.apo"
 ./read_file.out --policy strict --write-artifact "$TMP_DIR/identity-strict.apo" \
 	"$TMP_DIR/identity.p" >"$TMP_DIR/identity-strict.out"

@@ -390,6 +390,64 @@ int prototype_verification_db_coverage(
 	return 0;
 }
 
+uint64_t prototype_backend_default_capabilities(int backend) {
+	switch (backend) {
+		case PROTOTYPE_BACKEND_INTERPRETER:
+			return PROTOTYPE_RUNTIME_CAPABILITY_DEPENDENT_BIND_VERIFIER |
+				PROTOTYPE_RUNTIME_CAPABILITY_OPERATION_DISPATCH |
+				PROTOTYPE_RUNTIME_CAPABILITY_HANDLER |
+				PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL;
+		case PROTOTYPE_BACKEND_C:
+			/* This is the contract required of a future generated C runtime.
+			 * Runtime conversion is deliberately absent until that verifier is
+			 * implemented. */
+			return PROTOTYPE_RUNTIME_CAPABILITY_DEPENDENT_BIND_VERIFIER |
+				PROTOTYPE_RUNTIME_CAPABILITY_OPERATION_DISPATCH |
+				PROTOTYPE_RUNTIME_CAPABILITY_HANDLER |
+				PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL;
+		case PROTOTYPE_BACKEND_VERILOG:
+			return 0;
+		default:
+			return 0;
+	}
+}
+
+int prototype_compile_metadata_validate_backend(
+	const struct prototype_compile_metadata* metadata,
+	int backend,
+	uint64_t available_runtime_capabilities
+) {
+	if (!metadata ||
+		backend < PROTOTYPE_BACKEND_INTERPRETER ||
+		backend > PROTOTYPE_BACKEND_VERILOG ||
+		metadata->solver_exhausted ||
+		metadata->solver_incomplete_count != 0) {
+		return -1;
+	}
+	struct prototype_verification_coverage coverage;
+	if (prototype_verification_db_coverage(
+			&metadata->verification, &coverage
+		) != 0 || coverage.failed_count != 0 ||
+		(metadata->required_runtime_capabilities &
+			~available_runtime_capabilities) != 0 ||
+		(coverage.required_runtime_capabilities &
+			~available_runtime_capabilities) != 0) {
+		return -1;
+	}
+	if (metadata->compile_policy == PROTOTYPE_COMPILE_POLICY_STRICT &&
+		coverage.pending_count != 0) {
+		return -1;
+	}
+	if (backend == PROTOTYPE_BACKEND_VERILOG && coverage.pending_count != 0) {
+		return -1;
+	}
+	if (metadata->compile_policy == PROTOTYPE_COMPILE_POLICY_EXPLORATORY &&
+		backend != PROTOTYPE_BACKEND_INTERPRETER) {
+		return -1;
+	}
+	return 0;
+}
+
 int prototype_verification_db_add(
 	struct prototype_verification_db* db,
 	struct prototype_verification_obligation obligation,
