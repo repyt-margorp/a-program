@@ -108,6 +108,10 @@ static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
 static struct prototype_verification_obligation
 	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
+static struct prototype_operation_node provider_operations[OPERATION_CAPACITY];
+static struct prototype_operation_match_case provider_operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_verification_obligation
+	provider_verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
 static struct prototype_artifact_term_export artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
 static struct prototype_artifact_type_export artifact_type_exports[ARTIFACT_TYPE_EXPORT_CAPACITY];
 static struct prototype_artifact_type_parameter_export artifact_type_parameter_exports[ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY];
@@ -685,6 +689,85 @@ static int read_artifact_interface_and_graph(
 		status = -1;
 	}
 	return status;
+}
+
+static uint32_t offset_link_graph_id(uint32_t id, uint32_t offset) {
+	return id == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID : id + offset;
+}
+
+static int append_link_operation_graph(
+	struct prototype_compile_metadata* target,
+	const struct prototype_compile_metadata* source,
+	uint32_t term_offset,
+	uint32_t binder_offset
+) {
+	if (!target || !source ||
+		target->operation_count + source->operation_count > target->operation_capacity ||
+		target->operation_case_count + source->operation_case_count >
+			target->operation_case_capacity ||
+		target->verification.obligation_count + source->verification.obligation_count >
+			target->verification.obligation_capacity) {
+		return -1;
+	}
+	uint32_t operation_offset = (uint32_t)target->operation_count;
+	uint32_t case_offset = (uint32_t)target->operation_case_count;
+	for (size_t i = 0; i < source->operation_count; ++i) {
+		struct prototype_operation_node operation = source->operations[i];
+		operation.core_term = offset_link_graph_id(operation.core_term, term_offset);
+		operation.known_classifier = offset_link_graph_id(
+			operation.known_classifier, term_offset
+		);
+		operation.classifier = offset_link_graph_id(operation.classifier, term_offset);
+		operation.binder_classifier = offset_link_graph_id(
+			operation.binder_classifier, term_offset
+		);
+		operation.function = offset_link_graph_id(operation.function, operation_offset);
+		operation.argument = offset_link_graph_id(operation.argument, operation_offset);
+		operation.body = offset_link_graph_id(operation.body, operation_offset);
+		operation.scrutinee = offset_link_graph_id(operation.scrutinee, operation_offset);
+		operation.first_case = offset_link_graph_id(operation.first_case, case_offset);
+		for (uint32_t j = 0; j < operation.implicit_effect_row_count; ++j) {
+			operation.implicit_effect_row_binders[j] = offset_link_graph_id(
+				operation.implicit_effect_row_binders[j], binder_offset
+			);
+		}
+		target->operations[target->operation_count++] = operation;
+	}
+	for (size_t i = 0; i < source->operation_case_count; ++i) {
+		struct prototype_operation_match_case operation_case = source->operation_cases[i];
+		operation_case.body_operation = offset_link_graph_id(
+			operation_case.body_operation, operation_offset
+		);
+		operation_case.constructor_owner = offset_link_graph_id(
+			operation_case.constructor_owner, term_offset
+		);
+		target->operation_cases[target->operation_case_count++] = operation_case;
+	}
+	for (size_t i = 0; i < source->verification.obligation_count; ++i) {
+		struct prototype_verification_obligation obligation = source->verification.obligations[i];
+		obligation.operation = offset_link_graph_id(obligation.operation, operation_offset);
+		obligation.core_term = offset_link_graph_id(obligation.core_term, term_offset);
+		obligation.computation_operation = offset_link_graph_id(
+			obligation.computation_operation, operation_offset
+		);
+		obligation.continuation_operation = offset_link_graph_id(
+			obligation.continuation_operation, operation_offset
+		);
+		obligation.continuation_binder_id = offset_link_graph_id(
+			obligation.continuation_binder_id, binder_offset
+		);
+		obligation.input_classifier = offset_link_graph_id(
+			obligation.input_classifier, term_offset
+		);
+		obligation.classifier_family = offset_link_graph_id(
+			obligation.classifier_family, term_offset
+		);
+		obligation.effect_row = offset_link_graph_id(obligation.effect_row, term_offset);
+		if (prototype_verification_db_add(&target->verification, obligation, NULL) != 0) {
+			return -1;
+		}
+	}
+	return 0;
 }
 
 static int read_artifact_interface_only(
@@ -2540,6 +2623,7 @@ int main(int argc, char** argv) {
 		struct prototype_type_declaration_db provider_type_declarations;
 		struct prototype_term_db provider_term_db;
 		struct prototype_judgement_db provider_judgement_db;
+		struct prototype_compile_metadata provider_metadata;
 		struct prototype_artifact_interface artifact_interface;
 		struct prototype_artifact_interface provider_interface;
 		struct prototype_artifact_interface appended_interface;
@@ -2737,6 +2821,29 @@ int main(int argc, char** argv) {
 				provider_judgement_proofs,
 				JUDGEMENT_CAPACITY
 			);
+			prototype_compile_metadata_init(
+				&provider_metadata,
+				compile_labels,
+				COMPILE_LABEL_CAPACITY,
+				compile_type_exports,
+				COMPILE_TYPE_EXPORT_CAPACITY,
+				compile_constructor_exports,
+				COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
+				resolve_errors,
+				RESOLVE_ERROR_CAPACITY,
+				resolution_items,
+				RESOLUTION_ITEM_CAPACITY,
+				resolution_iterations,
+				RESOLUTION_ITERATION_CAPACITY,
+				resolution_events,
+				RESOLUTION_EVENT_CAPACITY,
+				provider_operations,
+				OPERATION_CAPACITY,
+				provider_operation_cases,
+				OPERATION_CASE_CAPACITY,
+				provider_verification_obligations,
+				VERIFICATION_OBLIGATION_CAPACITY
+			);
 			if (read_artifact_interface_and_graph(
 					provider_path,
 					&symbols,
@@ -2745,7 +2852,7 @@ int main(int argc, char** argv) {
 					&provider_type_declarations,
 					&provider_judgement_db,
 					&universe_db,
-					NULL
+					&provider_metadata
 				) != 0) {
 				fprintf(stderr, "%s: failed to read provider artifact\n", provider_path);
 				symbol_table_free(&symbols);
@@ -2757,8 +2864,14 @@ int main(int argc, char** argv) {
 					&type_declarations,
 					&judgement_db,
 					&provider_interface
-				) != 0 ||
-				prototype_artifact_append_graph(
+				) != 0) {
+				fprintf(stderr, "%s + %s: failed to link artifacts\n", link_target_path, provider_path);
+				symbol_table_free(&symbols);
+				return 1;
+			}
+			uint32_t provider_term_offset = (uint32_t)term_db.term_count;
+			uint32_t provider_binder_offset = term_db.next_binder_id;
+			if (prototype_artifact_append_graph(
 					&appended_interface,
 					&term_db,
 					&type_declarations,
@@ -2767,6 +2880,11 @@ int main(int argc, char** argv) {
 					&provider_term_db,
 					&provider_type_declarations,
 					&provider_judgement_db
+				) != 0 || append_link_operation_graph(
+					&metadata,
+					&provider_metadata,
+					provider_term_offset,
+					provider_binder_offset
 				) != 0) {
 				fprintf(stderr, "%s + %s: failed to link artifacts\n", link_target_path, provider_path);
 				symbol_table_free(&symbols);

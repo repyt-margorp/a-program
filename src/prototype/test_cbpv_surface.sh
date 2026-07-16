@@ -128,6 +128,18 @@ grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_oblig
 	>"$tmp_dir/residual-link-read.out"
 grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=1' \
 	"$tmp_dir/residual-link-read.out"
+cat >"$tmp_dir/link-base.p" <<'EOF'
+root := #1;
+EOF
+./read_file.out --write-artifact "$tmp_dir/link-base.apo" "$tmp_dir/link-base.p" \
+	>"$tmp_dir/link-base-write.out"
+./read_file.out --aggregate-artifact "$tmp_dir/provider-residual-link.apo" \
+	"$tmp_dir/link-base.apo" "$tmp_dir/higher-order-function-residual.apo" \
+	>"$tmp_dir/provider-residual-link.out"
+./read_file.out --read-graph "$tmp_dir/provider-residual-link.apo" \
+	>"$tmp_dir/provider-residual-link-read.out"
+grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=1' \
+	"$tmp_dir/provider-residual-link-read.out"
 
 cat >"$tmp_dir/effect-forwarding.p" <<'EOF'
 forward := \f : #.Text -> #.Text => f #"x";
