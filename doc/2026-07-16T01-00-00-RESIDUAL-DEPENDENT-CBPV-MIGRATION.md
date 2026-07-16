@@ -6,7 +6,7 @@ Status: implemented migration baseline plus remaining runtime/solver work.
 Later work may revise the plan, but a revision must state which invariant or
 decision changed.
 
-Revision baseline: 2026-07-16, artifact v43 prototype.  The current baseline
+Revision baseline: 2026-07-16, artifact v44 prototype.  The current baseline
 includes deterministic normalization/solver budgets, explicit operation
 constraint outcomes, qualified artifact proof relocation, nested residual
 dependent BIND execution, compile policies, runtime capability declarations,
@@ -155,7 +155,7 @@ described by the historical sections below.
 | --- | --- | --- |
 | Core BIND | `BIND(computation, continuation)`; direct and nested dependent results can become residual obligations | dynamically generated continuations still need a first-class runtime frame stack |
 | Normalization | explicit `COMPLETE`, `BLOCKED_EFFECT`, `EXHAUSTED`, `INVALID`; deterministic step limit and complete-only cache | the evaluator is still recursive and retains a structural recursion guard in legacy APIs |
-| Occurrence layer | operation occurrences, Match cases, HANDLE clause bodies, and clause binder identities are serialized in artifact v43 through OperationGraph APIs | API implementation remains physically concentrated in `ast.c` until the build boundary is approved for splitting |
+| Occurrence layer | operation occurrences, Match cases with source binder identities, HANDLE clause bodies, and clause binder identities are serialized in artifact v44 through OperationGraph APIs | API implementation remains physically concentrated in `ast.c` until the build boundary is approved for splitting |
 | Closed evidence | JudgementDB proof DAGs reconnect imports to provider evidence by qualified export identity | no known proof-boundary defect remains in the covered artifact tests |
 | Residual evidence | VerificationDB serializes dependent-BIND obligations and nested occurrences discharge per invocation | handler-result and general runtime-conversion obligation kinds are not materialized yet |
 | Constraints | immutable operation constraint blueprint, stable IDs, explicit kinds and four outcome states; deterministic dependency-indexed FIFO worklist | effect-row and universe constraints still use separate propagation protocols |
@@ -429,7 +429,8 @@ identity across provider offsets.
 
 Current implementation:
 
-- Artifact v43 stores a schema version on every verification obligation.
+- Artifact v44 stores a schema version on every verification obligation and
+  source binder identities on every Match case.
 - VerificationDB owns count, lookup, insertion, validation, coverage, and
   operation-identity search.
 - OperationGraph owns count, lookup, append, case append, and graph validation
@@ -440,8 +441,9 @@ Current implementation:
 
 ### Phase F: Introduce the general runtime machine
 
-Status: occurrence evaluator implemented for APP/RETURN/BIND and HANDLE clause
-entry.  Dynamic continuation and handler stacks remain incomplete.
+Status: complete for the current operation set.  The REPL and reusable runtime
+API execute one explicit occurrence machine; the former recursive
+`depth=100000` evaluator has been removed.
 
 Primary files: new `runtime.[ch]`, with `term.c` retaining pure graph
 normalization and REPL delegating execution.
@@ -472,6 +474,21 @@ Tasks:
 
 Completion gate: the REPL and a reusable runtime API execute the same machine;
 the recursive evaluator is no longer the authority for effectful execution.
+
+Current implementation:
+
+- The machine owns the current occurrence, source-binder environment,
+  continuation stack, handler stack, runtime resumptions, dynamic verification
+  instances, and failure trace.
+- APP, RETURN, BIND, Match, static FORCE/THUNK, HANDLE, and operation requests
+  are machine transitions.  Pure TermDB normalization remains independent.
+- Operation requests capture intervening machine frames until a handler.
+  Resumption invocation restores those frames and the original environment, so
+  BIND and Match occurrence identities survive suspension.
+- Deep handling is covered by a resumed BIND whose continuation performs the
+  handled operation again.
+- `prototype_operation_evaluate_with_trace` reports the failed occurrence,
+  continuation frames, and dynamic obligation states.
 
 ### Phase G: Complete algebraic handlers without absorbing pure reduction
 

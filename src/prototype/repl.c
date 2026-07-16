@@ -643,7 +643,8 @@ static int evaluate_for_output(
 		.p_effect_performed = p_host_ran
 	};
 	if (metadata && operation < metadata->operation_count) {
-		return prototype_operation_evaluate_with_verification(
+		struct prototype_runtime_trace trace;
+		int status = prototype_operation_evaluate_with_trace(
 			metadata,
 			term_db,
 			type_declarations,
@@ -651,8 +652,27 @@ static int evaluate_for_output(
 			options,
 			operation,
 			p_ret,
-			p_verification_state
+			p_verification_state,
+			&trace
 		);
+		if (status != 0) {
+			fprintf(
+				output,
+				"runtime failure kind=%d operation#%u\n",
+				trace.failure_kind,
+				trace.failed_operation
+			);
+			for (uint32_t i = 0; i < trace.frame_count; ++i) {
+				fprintf(
+					output,
+					"runtime frame %u kind=%d operation#%u\n",
+					i,
+					trace.frame_kinds[i],
+					trace.frame_operations[i]
+				);
+			}
+		}
+		return status;
 	}
 	return prototype_term_perform_with_options(
 		term_db,

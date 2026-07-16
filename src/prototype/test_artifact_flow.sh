@@ -162,7 +162,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 43$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 44$' "$TMP_DIR/identity.apo"
 grep -q '^compile_policy 2 0 100000 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' "$TMP_DIR/identity.apo"
 ./read_file.out --policy strict --write-artifact "$TMP_DIR/identity-strict.apo" \
 	"$TMP_DIR/identity.p" >"$TMP_DIR/identity-strict.out"
@@ -188,9 +188,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/43$/42/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v42.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v42.apo" >"$TMP_DIR/identity-v42.out" 2>"$TMP_DIR/identity-v42.err"; then
-	echo "obsolete artifact unexpectedly passed after v43 format bump" >&2
+sed '1s/44$/43/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v43.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v43.apo" >"$TMP_DIR/identity-v43.out" 2>"$TMP_DIR/identity-v43.err"; then
+	echo "obsolete artifact unexpectedly passed after v44 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"

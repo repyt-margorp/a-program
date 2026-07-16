@@ -291,6 +291,13 @@ grep -q 'has-type MATCH(.*\[solved-match-motive\]' \
 	>"$tmp_dir/recursive-dependent-match.out"
 grep -q 'has-type MATCH(.*\[solved-match-motive\]' \
 	"$tmp_dir/recursive-dependent-match.out"
+./read_file.out --write-artifact "$tmp_dir/recursive-dependent-match.apo" \
+	training/recursive_dependent_match.p \
+	>"$tmp_dir/recursive-dependent-match-write.out"
+grep -Eq '^operation_case_binders [0-9]+ 1 [0-9]+$' \
+	"$tmp_dir/recursive-dependent-match.apo"
+./read_file.out --read-graph "$tmp_dir/recursive-dependent-match.apo" \
+	>"$tmp_dir/recursive-dependent-match-read.out"
 
 cat >"$tmp_dir/bind.p" <<'EOF'
 main := #.bind (return #1) (\x : #.Int64 => return x);
@@ -422,6 +429,29 @@ printf '%s\n' \
 	'main' \
 	':q' | ./a.out >"$tmp_dir/handle-eval.out"
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' "$tmp_dir/handle-eval.out"
+
+cat >"$tmp_dir/handle-bind.p" <<'EOF'
+main := handle (#.bind (perform (#.print #"x")) (\y : #.Text => return y)) with (#.print) x k => k x; return y => return y;
+EOF
+
+./read_file.out "$tmp_dir/handle-bind.p" >"$tmp_dir/handle-bind.out"
+{
+	cat "$tmp_dir/handle-bind.p"
+	printf 'main\n:q\n'
+} | ./a.out >"$tmp_dir/handle-bind-eval.out"
+grep -q 'value main := RETURN(TEXT_LITERAL("x"))' "$tmp_dir/handle-bind-eval.out"
+
+cat >"$tmp_dir/deep-handle-bind.p" <<'EOF'
+main := handle (#.bind (perform (#.print #"x")) (\y : #.Text => perform (#.print y))) with (#.print) x k => k x; return y => return y;
+EOF
+
+./read_file.out "$tmp_dir/deep-handle-bind.p" >"$tmp_dir/deep-handle-bind.out"
+{
+	cat "$tmp_dir/deep-handle-bind.p"
+	printf 'main\n:q\n'
+} | ./a.out >"$tmp_dir/deep-handle-bind-eval.out"
+grep -q 'value main := RETURN(TEXT_LITERAL("x"))' \
+	"$tmp_dir/deep-handle-bind-eval.out"
 
 cat >"$tmp_dir/negative-handle-raw-function.p" <<'EOF'
 bad := handle (\x : #.Int => x) with (#.print) x k => k x; return y => return y;

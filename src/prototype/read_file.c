@@ -854,6 +854,11 @@ static int append_link_operation_graph(
 		operation_case.constructor_owner = offset_link_graph_id(
 			operation_case.constructor_owner, term_offset
 		);
+		for (uint32_t j = 0; j < operation_case.binder_count; ++j) {
+			operation_case.ast_binder_ids[j] = offset_link_graph_id(
+				operation_case.ast_binder_ids[j], source_binder_offset
+			);
+		}
 		if (prototype_operation_graph_add_case(
 				&target_graph, operation_case, NULL
 			) != 0) {
