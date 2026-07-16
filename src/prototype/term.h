@@ -190,6 +190,21 @@ enum prototype_term_normalization_profile {
 	PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
 };
 
+/* A kernel normalization attempt may stop without establishing a normal form.
+ * This status is intentionally separate from runtime operation dispatch. */
+enum prototype_term_normalization_status {
+	PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE = 1,
+	PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT,
+	PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED,
+	PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID
+};
+
+struct prototype_term_normalization_result {
+	int status;
+	uint32_t term_id;
+	uint64_t depth_budget;
+};
+
 enum prototype_term_normalization_cache_state {
 	PROTOTYPE_TERM_NORMALIZATION_CACHE_EMPTY = 0,
 	PROTOTYPE_TERM_NORMALIZATION_CACHE_IN_PROGRESS,
@@ -227,6 +242,9 @@ struct prototype_term_reduction_options {
 	struct symbol_table* symbols;
 	unsigned effect_capabilities;
 	int* p_effect_performed;
+	/* Internal callers may distinguish a depth/budget stop from an invalid
+	 * graph without changing the established strict evaluator ABI. */
+	int* p_normalization_status;
 	prototype_term_operation_dispatch_fn operation_dispatch;
 	void* operation_dispatch_context;
 };
@@ -815,6 +833,17 @@ int prototype_term_whnf_with_profile(
 	int profile,
 	uint32_t term_id,
 	uint32_t* p_ret
+);
+/* Evaluate only the supplied profile and classify the outcome. A depth budget
+ * of zero selects the implementation default. This does not dispatch effects. */
+int prototype_term_whnf_with_profile_result(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	int profile,
+	uint32_t term_id,
+	uint64_t depth_budget,
+	struct prototype_term_normalization_result* p_result
 );
 int prototype_term_nf_with_options(
 	struct prototype_term_db* db,

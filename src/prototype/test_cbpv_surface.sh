@@ -99,6 +99,34 @@ grep -q 'has-type THUNK(LAMBDA(.*\[thunk-intro\]' \
 ./read_file.out --read-graph "$tmp_dir/higher-order-function.apo" \
 	>"$tmp_dir/higher-order-function-read.out"
 grep -q 'interface term main ' "$tmp_dir/higher-order-function-read.out"
+grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=0' \
+	"$tmp_dir/higher-order-function-read.out"
+residual_core_term=$(awk '$1 == "operation" && $2 == 0 { print $6; exit }' \
+	"$tmp_dir/higher-order-function.apo")
+residual_classifier=$(awk '$1 == "operation" && $2 == 0 { print $7; exit }' \
+	"$tmp_dir/higher-order-function.apo")
+[ -n "$residual_core_term" ]
+[ -n "$residual_classifier" ]
+awk '
+	/^verification_obligations 0$/ {
+		print "verification_obligations 1"
+		print "verification 0 1 1 0 " core " 0 0 0 " classifier " " classifier " " classifier " 3"
+		next
+	}
+	{ print }
+' core="$residual_core_term" classifier="$residual_classifier" \
+	"$tmp_dir/higher-order-function.apo" >"$tmp_dir/higher-order-function-residual.apo"
+./read_file.out --read-graph "$tmp_dir/higher-order-function-residual.apo" \
+	>"$tmp_dir/higher-order-function-residual-read.out"
+grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=1' \
+	"$tmp_dir/higher-order-function-residual-read.out"
+if ./read_file.out --aggregate-artifact "$tmp_dir/rejected-residual-link.apo" \
+	"$tmp_dir/higher-order-function-residual.apo" \
+	>"$tmp_dir/higher-order-function-residual-link.out" \
+	2>"$tmp_dir/higher-order-function-residual-link.err"; then
+	echo "linker unexpectedly discarded a residual verification obligation" >&2
+	exit 1
+fi
 
 cat >"$tmp_dir/effect-forwarding.p" <<'EOF'
 forward := \f : #.Text -> #.Text => f #"x";

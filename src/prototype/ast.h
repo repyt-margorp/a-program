@@ -346,6 +346,40 @@ struct prototype_operation_match_case {
 	int case_label_symbol_id;
 };
 
+/* Residual verification is distinct from JudgementDB: a record here is a
+ * conditional runtime obligation, never a closed has-type derivation. */
+enum prototype_verification_obligation_kind {
+	PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND = 1,
+	PROTOTYPE_VERIFICATION_OBLIGATION_HANDLER_RESULT,
+	PROTOTYPE_VERIFICATION_OBLIGATION_RUNTIME_CONVERSION
+};
+
+enum prototype_verification_obligation_state {
+	PROTOTYPE_VERIFICATION_OBLIGATION_PENDING = 1,
+	PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED,
+	PROTOTYPE_VERIFICATION_OBLIGATION_FAILED
+};
+
+struct prototype_verification_obligation {
+	int kind;
+	int state;
+	uint32_t operation;
+	uint32_t core_term;
+	uint32_t computation_operation;
+	uint32_t continuation_operation;
+	uint32_t continuation_binder_id;
+	uint32_t input_classifier;
+	uint32_t classifier_family;
+	uint32_t effect_row;
+	int normalization_profile;
+};
+
+struct prototype_verification_db {
+	struct prototype_verification_obligation* obligations;
+	size_t obligation_count;
+	size_t obligation_capacity;
+};
+
 struct prototype_compile_constructor_export {
 	uint32_t type_export_index;
 	int name_symbol_id;
@@ -643,6 +677,8 @@ struct prototype_compile_metadata {
 	struct prototype_operation_match_case* operation_cases;
 	size_t operation_case_count;
 	size_t operation_case_capacity;
+
+	struct prototype_verification_db verification;
 
 	struct prototype_compile_label* labels;
 	size_t label_count;
@@ -1030,7 +1066,27 @@ void prototype_compile_metadata_init(
 	struct prototype_operation_node* operations,
 	size_t operation_capacity,
 	struct prototype_operation_match_case* operation_cases,
-	size_t operation_case_capacity
+	size_t operation_case_capacity,
+	struct prototype_verification_obligation* verification_obligations,
+	size_t verification_obligation_capacity
+);
+void prototype_verification_db_init(
+	struct prototype_verification_db* db,
+	struct prototype_verification_obligation* obligations,
+	size_t obligation_capacity
+);
+int prototype_verification_db_add(
+	struct prototype_verification_db* db,
+	struct prototype_verification_obligation obligation,
+	uint32_t* p_obligation_id
+);
+int prototype_verification_db_discharge_dependent_bind(
+	struct prototype_verification_db* db,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t obligation_id,
+	uint32_t returned_value,
+	uint32_t continuation_result_classifier
 );
 
 void prototype_canonical_link_table_init(
@@ -1172,7 +1228,8 @@ int prototype_artifact_write_text(
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_universe_db* universe,
-	const struct prototype_ast_db* asts
+	const struct prototype_ast_db* asts,
+	const struct prototype_compile_metadata* metadata
 );
 
 int prototype_artifact_read_text_interface(
@@ -1187,6 +1244,13 @@ int prototype_artifact_read_text_graph(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement
+);
+
+int prototype_artifact_read_text_operation_graph(
+	FILE* stream,
+	struct symbol_table* symbols,
+	const struct prototype_term_db* terms,
+	struct prototype_compile_metadata* metadata
 );
 
 int prototype_artifact_read_text_universe(

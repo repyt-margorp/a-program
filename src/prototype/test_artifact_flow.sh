@@ -31,8 +31,11 @@ cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 
 cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/whnf_profile_cache_check.c \
+	src/prototype/ast.c \
 	src/prototype/term.c \
 	src/prototype/type_declaration.c \
+	src/prototype/typing.c \
+	src/prototype/universe.c \
 	src/prototype/symbol.c \
 	-o "$TMP_DIR/whnf_profile_cache_check"
 "$TMP_DIR/whnf_profile_cache_check"
@@ -158,10 +161,10 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 37$' "$TMP_DIR/identity.apo"
-sed '1s/37$/36/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v36.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v36.apo" >"$TMP_DIR/identity-v36.out" 2>"$TMP_DIR/identity-v36.err"; then
-	echo "v36 artifact unexpectedly passed after v37 format bump" >&2
+grep -q '^A_PROGRAM_ARTIFACT 38$' "$TMP_DIR/identity.apo"
+sed '1s/38$/37/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v37.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v37.apo" >"$TMP_DIR/identity-v37.out" 2>"$TMP_DIR/identity-v37.err"; then
+	echo "v37 artifact unexpectedly passed after v38 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"

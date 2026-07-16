@@ -393,8 +393,7 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 	p_ret->binds_term_variable =
 		tag == PROTOTYPE_TERM_LAMBDA ||
 		tag == PROTOTYPE_TERM_PI ||
-		tag == PROTOTYPE_TERM_MATCH ||
-		tag == PROTOTYPE_TERM_BIND;
+		tag == PROTOTYPE_TERM_MATCH;
 	p_ret->evaluates_scrutinee = tag == PROTOTYPE_TERM_MATCH;
 	p_ret->reduces_by_beta = tag == PROTOTYPE_TERM_APP;
 	return 0;
@@ -5162,6 +5161,17 @@ static int reduction_is_pure_type(
 	return (options.flags & PROTOTYPE_TERM_REDUCE_PURE_TYPE) != 0;
 }
 
+static void normalization_mark_status(
+	struct prototype_term_reduction_options options,
+	int status
+) {
+	if (!options.p_normalization_status ||
+		*options.p_normalization_status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
+		return;
+	}
+	*options.p_normalization_status = status;
+}
+
 static int normalization_profile_options(
 	int profile,
 	const struct prototype_term_definition_env* definitions,
@@ -5295,6 +5305,10 @@ static int evaluate_steps(
 		return -1;
 	}
 	if (depth == 0) {
+		normalization_mark_status(
+			options,
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED
+		);
 		return -1;
 	}
 
@@ -5597,6 +5611,12 @@ static int evaluate_steps(
 					db, type_declarations, definitions, options, term_id, p_ret, depth - 1
 				);
 			}
+			if (reduction_is_pure_type(options)) {
+				normalization_mark_status(
+					options,
+					PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT
+				);
+			}
 			*p_ret = term_id;
 			return 0;
 		case PROTOTYPE_TERM_HANDLER:
@@ -5756,6 +5776,14 @@ static int evaluate_steps(
 					}
 					if (pure_computation >= db->term_count ||
 						db->terms[pure_computation].tag != PROTOTYPE_TERM_RETURN) {
+						if (pure_computation < db->term_count &&
+							db->terms[pure_computation].tag ==
+								PROTOTYPE_TERM_OPERATION_REQUEST) {
+							normalization_mark_status(
+								options,
+								PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT
+							);
+						}
 						*p_ret = term_id;
 						return 0;
 					}
@@ -5812,11 +5840,15 @@ static int evaluate_steps(
 					db, type_declarations, definitions, options, applied, p_ret, depth - 1
 				);
 			}
-			if (computation < db->term_count &&
-				db->terms[computation].tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
-				if (reduction_is_pure_type(options)) {
-					*p_ret = term_id;
-					return 0;
+				if (computation < db->term_count &&
+					db->terms[computation].tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
+					if (reduction_is_pure_type(options)) {
+						normalization_mark_status(
+							options,
+							PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT
+						);
+						*p_ret = term_id;
+						return 0;
 				}
 				const struct prototype_term* request = &db->terms[computation];
 				const struct prototype_term* continuation =
@@ -5946,6 +5978,53 @@ int prototype_term_whnf_with_profile(
 		term_id,
 		p_ret
 	);
+}
+
+int prototype_term_whnf_with_profile_result(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	int profile,
+	uint32_t term_id,
+	uint64_t depth_budget,
+	struct prototype_term_normalization_result* p_result
+) {
+	struct prototype_term_reduction_options options;
+	uint32_t result_term = PROTOTYPE_INVALID_ID;
+	int status = PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE;
+	unsigned depth;
+	if (!p_result) {
+		return -1;
+	}
+	p_result->status = PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID;
+	p_result->term_id = PROTOTYPE_INVALID_ID;
+	p_result->depth_budget = 0;
+	if (!db || !type_declarations || term_id >= db->term_count ||
+		normalization_profile_options(profile, definitions, &options) != 0) {
+		return 0;
+	}
+	if (depth_budget == 0 || depth_budget > PROTOTYPE_EVALUATION_DEPTH_LIMIT) {
+		depth = PROTOTYPE_EVALUATION_DEPTH_LIMIT;
+	} else {
+		depth = (unsigned)depth_budget;
+	}
+	p_result->depth_budget = depth;
+	options.p_normalization_status = &status;
+	if (evaluate_steps(
+			db,
+			type_declarations,
+			definitions,
+			options,
+			term_id,
+			&result_term,
+			depth
+		) != 0) {
+		p_result->status = status;
+		return 0;
+	}
+	p_result->status = status;
+	p_result->term_id = result_term;
+	return 0;
 }
 
 int prototype_term_perform_with_options(

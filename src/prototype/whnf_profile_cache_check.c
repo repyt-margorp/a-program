@@ -1,3 +1,4 @@
+#include "ast.h"
 #include "term.h"
 #include "type_declaration.h"
 
@@ -315,6 +316,101 @@ int main(void) {
 			&mutated_whnf
 		) != 0 ||
 		mutated_whnf != constructor) {
+		return 1;
+	}
+
+	/* Residual verification needs to distinguish an effect boundary from an
+	 * invalid graph or a pure normalization budget stop. */
+	uint32_t continuation_binder = prototype_term_fresh_binder(&term_db);
+	uint32_t continuation_var;
+	uint32_t continuation_lambda;
+	uint32_t continuation_thunk;
+	uint32_t effect_operation;
+	uint32_t effect_request;
+	if (continuation_binder == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(&term_db, continuation_binder, &continuation_var) != 0 ||
+		prototype_term_lambda(
+			&term_db, continuation_binder, continuation_var, &continuation_lambda
+		) != 0 || prototype_term_thunk(&term_db, continuation_lambda, &continuation_thunk) != 0 ||
+		prototype_term_external_ref(
+			&term_db,
+			(struct prototype_qualified_name){ PROTOTYPE_BASE_NAMESPACE_ID, 5 },
+			&effect_operation
+		) != 0 || prototype_term_operation_request(
+			&term_db, effect_operation, constructor, continuation_thunk, &effect_request
+		) != 0) {
+		return 1;
+	}
+	struct prototype_term_normalization_result normalization_result;
+	if (prototype_term_whnf_with_profile_result(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			effect_request,
+			0,
+			&normalization_result
+		) != 0 || normalization_result.status !=
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT ||
+		normalization_result.term_id != effect_request) {
+		return 1;
+	}
+	if (prototype_term_whnf_with_profile_result(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			application,
+			1,
+			&normalization_result
+		) != 0 || normalization_result.status !=
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED) {
+		return 1;
+	}
+
+	/* The runtime side of a residual BIND receives an occurrence-local value.
+	 * It instantiates the recorded family without placing that value in TermDB
+	 * as a global RESULT_OF node. */
+	uint32_t effect_row;
+	uint32_t residual_classifier;
+	uint32_t residual_binder = prototype_term_fresh_binder(&term_db);
+	uint32_t residual_family;
+	struct prototype_verification_obligation obligations[1];
+	struct prototype_verification_db verification;
+	if (residual_binder == PROTOTYPE_INVALID_ID ||
+		prototype_term_effect_label(&term_db, PROTOTYPE_HOST_EFFECT_NONE, &effect_row) != 0 ||
+		prototype_term_computation_type(&term_db, effect_row, owner, &residual_classifier) != 0 ||
+		prototype_term_pure_family(
+			&term_db, residual_binder, residual_classifier, &residual_family
+		) != 0) {
+		return 1;
+	}
+	prototype_verification_db_init(&verification, obligations, 1);
+	if (prototype_verification_db_add(
+			&verification,
+			(struct prototype_verification_obligation){
+				PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND,
+				PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
+				0,
+				bound_constructor,
+				0,
+				0,
+				residual_binder,
+				owner,
+				residual_family,
+				effect_row,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
+			},
+			NULL
+		) != 0 || prototype_verification_db_discharge_dependent_bind(
+			&verification,
+			&term_db,
+			&type_db,
+			0,
+			constructor,
+			residual_classifier
+		) != 0 || verification.obligations[0].state !=
+			PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED) {
 		return 1;
 	}
 	return 0;

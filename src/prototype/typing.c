@@ -4416,6 +4416,7 @@ int prototype_judgement_delta_generate_computation_constraints(
 static int bind_result_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	uint32_t input_computation,
 	uint32_t input_classifier,
 	uint32_t continuation_classifier,
 	uint32_t* p_ret
@@ -4427,8 +4428,13 @@ static int bind_result_classifier(
 	uint32_t codomain_family;
 	uint32_t codomain_binder;
 	uint32_t codomain;
+	uint32_t normalized_input;
+	uint32_t codomain_lambda;
+	uint32_t applied_codomain;
+	uint32_t normalized_codomain;
 	if (!terms || !type_declarations || !p_ret ||
-		input_classifier >= terms->term_count || continuation_classifier >= terms->term_count ||
+		input_computation >= terms->term_count || input_classifier >= terms->term_count ||
+		continuation_classifier >= terms->term_count ||
 		prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, input_classifier, &input_view
 		) != 0 ||
@@ -4446,12 +4452,53 @@ static int bind_result_classifier(
 			terms, codomain_family, &codomain_binder, &codomain
 		) != 0 || !prototype_judgement_classifier_normalization_equal(
 			terms, type_declarations, domain, input_view.result
-		) || prototype_judgement_classifier_view(
-			terms, type_declarations, NULL, codomain, &continuation_view
+		)) {
+		return -1;
+	}
+	if (!prototype_term_contains_free_binder(
+			terms, codomain, codomain_binder
+		)) {
+		applied_codomain = codomain;
+	} else if (prototype_term_whnf_with_profile(
+			terms,
+			type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			input_computation,
+			&normalized_input
+		) != 0 || normalized_input >= terms->term_count ||
+		terms->terms[normalized_input].tag != PROTOTYPE_TERM_RETURN ||
+		prototype_term_pure_family_lambda(
+			terms,
+			codomain_family,
+			&codomain_lambda
+		) != 0 || prototype_term_app(
+			terms,
+			codomain_lambda,
+			terms->terms[normalized_input].as.return_term.value,
+			&applied_codomain
+		) != 0) {
+		return -1;
+	}
+	if (prototype_term_whnf_with_profile(
+			terms,
+			type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			applied_codomain,
+			&normalized_codomain
+		) != 0 || normalized_codomain >= terms->term_count) {
+		return -1;
+	}
+	if (terms->terms[normalized_codomain].tag == PROTOTYPE_TERM_RETURN) {
+		applied_codomain = terms->terms[normalized_codomain].as.return_term.value;
+	} else {
+		applied_codomain = normalized_codomain;
+	}
+	if (prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, applied_codomain, &continuation_view
 		) != 0 || continuation_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		continuation_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		prototype_term_contains_free_binder(terms, continuation_view.result, codomain_binder) ||
-		prototype_term_contains_free_binder(terms, continuation_view.effect_row, codomain_binder)) {
+		continuation_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
 		return -1;
 	}
 	uint32_t effect_row;
@@ -4463,7 +4510,41 @@ static int bind_result_classifier(
 		return -1;
 	}
 	(void)continuation_pi;
+	(void)codomain_binder;
+	(void)codomain;
 	return 0;
+}
+
+static int bind_has_dependent_family(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t input_classifier,
+	uint32_t continuation_classifier
+) {
+	struct prototype_term_classifier_view input_view;
+	uint32_t continuation_pi;
+	uint32_t domain;
+	uint32_t codomain_family;
+	uint32_t codomain_binder;
+	uint32_t codomain;
+	if (!terms || !type_declarations || input_classifier >= terms->term_count ||
+		continuation_classifier >= terms->term_count ||
+		prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, input_classifier, &input_view
+		) != 0 || input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		input_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		classifier_kernel_as_pi(
+			terms, type_declarations, NULL, continuation_classifier,
+			&continuation_pi, &domain, &codomain_family
+		) != 0 || prototype_term_pure_family_parts(
+			terms, codomain_family, &codomain_binder, &codomain
+		) != 0 || !prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, domain, input_view.result
+		)) {
+		return -1;
+	}
+	(void)continuation_pi;
+	return prototype_term_contains_free_binder(terms, codomain, codomain_binder) ? 1 : 0;
 }
 
 static int solve_bind_constraint(
@@ -4505,12 +4586,18 @@ static int solve_bind_constraint(
 	int result_status = bind_result_classifier(
 		terms,
 		type_declarations,
+		constraint->computation,
 		input_classifier,
 		continuation_classifier,
 		&classifier
 	);
 	if (result_status != 0) {
-		return result_status;
+		/* A dependent continuation whose input cannot be pure-normalized is
+		 * structurally valid but has no closed classifier yet.  The source
+		 * compiler records the occurrence-local residual obligation. */
+		return bind_has_dependent_family(
+			terms, type_declarations, input_classifier, continuation_classifier
+		) > 0 ? 1 : result_status;
 	}
 	uint32_t subjects[2] = { constraint->computation, constraint->continuation };
 	uint32_t classifiers[2] = { input_classifier, continuation_classifier };
@@ -9107,6 +9194,7 @@ static int validate_bind_intro_proof(
 	if (bind_result_classifier(
 			terms,
 			type_declarations,
+		terms->terms[relation->subject].as.bind.computation,
 			proof->premise_classifiers[0],
 			proof->premise_classifiers[1],
 			&expected_result

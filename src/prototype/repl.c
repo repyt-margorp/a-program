@@ -42,6 +42,7 @@
 #define RESOLUTION_EVENT_CAPACITY 2048
 #define OPERATION_CAPACITY 4096
 #define OPERATION_CASE_CAPACITY 4096
+#define VERIFICATION_OBLIGATION_CAPACITY 4096
 #define INPUT_CAPACITY 8192
 #define LINE_CAPACITY 1024
 
@@ -88,6 +89,8 @@ static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_IT
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_verification_obligation
+	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
 
 static const char* resolve_error_kind_name(int kind) {
 	switch (kind) {
@@ -883,11 +886,13 @@ int main(int argc, char** argv) {
 			RESOLUTION_ITERATION_CAPACITY,
 			resolution_events,
 			RESOLUTION_EVENT_CAPACITY,
-			operations,
-			OPERATION_CAPACITY,
-			operation_cases,
-			OPERATION_CASE_CAPACITY
-		);
+		operations,
+		OPERATION_CAPACITY,
+		operation_cases,
+		OPERATION_CASE_CAPACITY,
+		verification_obligations,
+		VERIFICATION_OBLIGATION_CAPACITY
+	);
 	prototype_judgement_db_init(
 		&judgement_db,
 		judgements,

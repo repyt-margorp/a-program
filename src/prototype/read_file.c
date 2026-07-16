@@ -42,6 +42,7 @@
 #define RESOLUTION_EVENT_CAPACITY 2048
 #define OPERATION_CAPACITY 4096
 #define OPERATION_CASE_CAPACITY 4096
+#define VERIFICATION_OBLIGATION_CAPACITY 4096
 #define ARTIFACT_TERM_EXPORT_CAPACITY 512
 #define ARTIFACT_TYPE_EXPORT_CAPACITY 256
 #define ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY 512
@@ -105,6 +106,8 @@ static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_IT
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_verification_obligation
+	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
 static struct prototype_artifact_term_export artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
 static struct prototype_artifact_type_export artifact_type_exports[ARTIFACT_TYPE_EXPORT_CAPACITY];
 static struct prototype_artifact_type_parameter_export artifact_type_parameter_exports[ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY];
@@ -659,6 +662,12 @@ static int read_artifact_interface_and_graph(
 			term_db,
 			type_declarations,
 			judgement_db
+		) != 0 ||
+		prototype_artifact_read_text_operation_graph(
+			artifact_file,
+			symbols,
+			term_db,
+			NULL
 		) != 0 ||
 		prototype_artifact_read_text_universe(
 			artifact_file,
@@ -2837,6 +2846,7 @@ int main(int argc, char** argv) {
 				&type_declarations,
 				&judgement_db,
 				&universe_db,
+				NULL,
 				NULL
 			);
 			if (fclose(output) != 0) {
@@ -2882,6 +2892,7 @@ int main(int argc, char** argv) {
 		struct prototype_artifact_interface artifact_interface;
 		struct prototype_artifact_relocation_table relocation_table;
 		struct prototype_artifact_debug_table debug_table;
+		struct prototype_compile_metadata artifact_metadata;
 		prototype_artifact_interface_init(
 			&artifact_interface,
 			artifact_term_exports,
@@ -2943,6 +2954,19 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 		if (read_graph) {
+			prototype_compile_metadata_init(
+				&artifact_metadata,
+				compile_labels, COMPILE_LABEL_CAPACITY,
+				compile_type_exports, COMPILE_TYPE_EXPORT_CAPACITY,
+				compile_constructor_exports, COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
+				resolve_errors, RESOLVE_ERROR_CAPACITY,
+				resolution_items, RESOLUTION_ITEM_CAPACITY,
+				resolution_iterations, RESOLUTION_ITERATION_CAPACITY,
+				resolution_events, RESOLUTION_EVENT_CAPACITY,
+				operations, OPERATION_CAPACITY,
+				operation_cases, OPERATION_CASE_CAPACITY,
+				verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+			);
 			prototype_type_declaration_db_init(
 				&type_declarations,
 				type_declaration_storage,
@@ -2991,6 +3015,12 @@ int main(int argc, char** argv) {
 					&term_db,
 					&type_declarations,
 					&judgement_db
+				) != 0 ||
+				prototype_artifact_read_text_operation_graph(
+					artifact_file,
+					&symbols,
+					&term_db,
+					&artifact_metadata
 				) != 0 ||
 				prototype_artifact_read_text_universe(
 					artifact_file,
@@ -3085,6 +3115,12 @@ int main(int argc, char** argv) {
 				"graph_next_level_var=%u judgement_next_universe_var=%u\n",
 				type_declarations.next_level_var,
 				judgement_db.next_universe_var
+			);
+			printf(
+				"operation_occurrences=%zu operation_cases=%zu verification_obligations=%zu\n",
+				artifact_metadata.operation_count,
+				artifact_metadata.operation_case_count,
+				artifact_metadata.verification.obligation_count
 			);
 			printf(
 				"relocation_external_terms=%zu relocation_resolved_external_terms=%zu relocation_external_type_exprs=%zu relocation_resolved_external_type_exprs=%zu relocation_external_type_formers=%zu relocation_resolved_external_type_formers=%zu relocation_resolved_constructor_owners=%zu\n",
@@ -3243,7 +3279,9 @@ int main(int argc, char** argv) {
 		operations,
 		OPERATION_CAPACITY,
 		operation_cases,
-		OPERATION_CASE_CAPACITY
+		OPERATION_CASE_CAPACITY,
+		verification_obligations,
+		VERIFICATION_OBLIGATION_CAPACITY
 	);
 	prototype_judgement_db_init(
 		&judgement_db,
@@ -3445,7 +3483,8 @@ int main(int argc, char** argv) {
 			&type_declarations,
 			&judgement_db,
 			&universe_db,
-			&ast_db
+			&ast_db,
+			&metadata
 		);
 		fclose(artifact_file);
 		if (write_status != 0) {

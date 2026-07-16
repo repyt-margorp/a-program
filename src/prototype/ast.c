@@ -9,6 +9,94 @@ static int reserve_slot(size_t count, size_t capacity) {
 	return count < capacity ? 0 : -1;
 }
 
+void prototype_verification_db_init(
+	struct prototype_verification_db* db,
+	struct prototype_verification_obligation* obligations,
+	size_t obligation_capacity
+) {
+	if (!db) {
+		return;
+	}
+	memset(db, 0, sizeof(*db));
+	db->obligations = obligations;
+	db->obligation_capacity = obligation_capacity;
+}
+
+int prototype_verification_db_add(
+	struct prototype_verification_db* db,
+	struct prototype_verification_obligation obligation,
+	uint32_t* p_obligation_id
+) {
+	if (!db || !db->obligations ||
+		reserve_slot(db->obligation_count, db->obligation_capacity) != 0) {
+		return -1;
+	}
+	if (p_obligation_id) {
+		*p_obligation_id = (uint32_t)db->obligation_count;
+	}
+	db->obligations[db->obligation_count++] = obligation;
+	return 0;
+}
+
+int prototype_verification_db_discharge_dependent_bind(
+	struct prototype_verification_db* db,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t obligation_id,
+	uint32_t returned_value,
+	uint32_t continuation_result_classifier
+) {
+	if (!db || !terms || !type_declarations || obligation_id >= db->obligation_count ||
+		returned_value >= terms->term_count ||
+		continuation_result_classifier >= terms->term_count) {
+		return -1;
+	}
+	struct prototype_verification_obligation* obligation = &db->obligations[obligation_id];
+	if (obligation->kind != PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND ||
+		obligation->state != PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
+		obligation->classifier_family >= terms->term_count) {
+		return -1;
+	}
+	uint32_t family_lambda;
+	uint32_t family_application;
+	uint32_t normalized_application;
+	if (prototype_term_pure_family_lambda(
+			terms, obligation->classifier_family, &family_lambda
+		) != 0 || prototype_term_app(
+			terms, family_lambda, returned_value, &family_application
+		) != 0 || prototype_term_whnf_with_profile(
+			terms,
+			type_declarations,
+			NULL,
+			obligation->normalization_profile,
+			family_application,
+			&normalized_application
+		) != 0 || normalized_application >= terms->term_count) {
+		obligation->state = PROTOTYPE_VERIFICATION_OBLIGATION_FAILED;
+		return 0;
+	}
+	uint32_t expected_classifier = normalized_application;
+	if (terms->terms[expected_classifier].tag == PROTOTYPE_TERM_RETURN) {
+		expected_classifier = terms->terms[expected_classifier].as.return_term.value;
+	}
+	struct prototype_term_classifier_view expected_view;
+	if (prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, expected_classifier, &expected_view
+		) != 0 || expected_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		expected_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms,
+			type_declarations,
+			expected_classifier,
+			continuation_result_classifier
+		)) {
+		obligation->state = PROTOTYPE_VERIFICATION_OBLIGATION_FAILED;
+		return 0;
+	}
+	obligation->state = PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED;
+	return 0;
+}
+
 void prototype_compile_metadata_init(
 	struct prototype_compile_metadata* metadata,
 	struct prototype_compile_label* labels,
@@ -28,7 +116,9 @@ void prototype_compile_metadata_init(
 	struct prototype_operation_node* operations,
 	size_t operation_capacity,
 	struct prototype_operation_match_case* operation_cases,
-	size_t operation_case_capacity
+	size_t operation_case_capacity,
+	struct prototype_verification_obligation* verification_obligations,
+	size_t verification_obligation_capacity
 ) {
 	memset(metadata, 0, sizeof(*metadata));
 	metadata->labels = labels;
@@ -49,6 +139,11 @@ void prototype_compile_metadata_init(
 	metadata->operation_capacity = operation_capacity;
 	metadata->operation_cases = operation_cases;
 	metadata->operation_case_capacity = operation_case_capacity;
+	prototype_verification_db_init(
+		&metadata->verification,
+		verification_obligations,
+		verification_obligation_capacity
+	);
 }
 
 static int canonical_keys_equal(
@@ -3301,7 +3396,8 @@ static int artifact_mark_roots(
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_compile_metadata* metadata
 ) {
 	if (!marks || !interface || !terms || !type_declarations || !judgement) {
 		return -1;
@@ -3354,6 +3450,39 @@ static int artifact_mark_roots(
 					export->classifier_family
 				) != 0)) {
 			return -1;
+		}
+	}
+	if (metadata) {
+		for (size_t i = 0; i < metadata->operation_count; ++i) {
+			const struct prototype_operation_node* operation = &metadata->operations[i];
+			uint32_t references[] = {
+				operation->core_term,
+				operation->known_classifier,
+				operation->classifier,
+				operation->binder_classifier
+			};
+			for (size_t j = 0; j < sizeof(references) / sizeof(references[0]); ++j) {
+				if (references[j] != PROTOTYPE_INVALID_ID &&
+					artifact_mark_term(marks, terms, references[j], 0) != 0) {
+					return -1;
+				}
+			}
+		}
+		for (size_t i = 0; i < metadata->verification.obligation_count; ++i) {
+			const struct prototype_verification_obligation* obligation =
+				&metadata->verification.obligations[i];
+			uint32_t references[] = {
+				obligation->core_term,
+				obligation->input_classifier,
+				obligation->classifier_family,
+				obligation->effect_row
+			};
+			for (size_t j = 0; j < sizeof(references) / sizeof(references[0]); ++j) {
+				if (references[j] != PROTOTYPE_INVALID_ID &&
+					artifact_mark_term(marks, terms, references[j], 0) != 0) {
+					return -1;
+				}
+			}
 		}
 	}
 	return 0;
@@ -3628,7 +3757,8 @@ static int artifact_build_sparse_graph(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_universe_db* universe
+	const struct prototype_universe_db* universe,
+	const struct prototype_compile_metadata* metadata
 ) {
 	if (!graph || !interface || !terms || !type_declarations || !judgement || !universe) {
 		return -1;
@@ -3639,7 +3769,9 @@ static int artifact_build_sparse_graph(
 		return -1;
 	}
 	int status = 0;
-	if (artifact_mark_roots(&marks, interface, terms, type_declarations, judgement) != 0 ||
+	if (artifact_mark_roots(
+			&marks, interface, terms, type_declarations, judgement, metadata
+		) != 0 ||
 		artifact_sparse_graph_alloc(graph, terms, type_declarations, judgement, universe) != 0 ||
 		artifact_sparse_graph_copy_marked(graph, &marks, terms, judgement, universe) != 0) {
 		status = -1;
@@ -3651,6 +3783,114 @@ static int artifact_build_sparse_graph(
 	return status;
 }
 
+static const char* artifact_optional_symbol_name(
+	const struct symbol_table* symbols,
+	int symbol_id
+) {
+	if (symbol_id < 0) {
+		return "-";
+	}
+	return symbol_to_string(symbols, symbol_id);
+}
+
+static int write_artifact_operation_graph_section(
+	FILE* stream,
+	const struct symbol_table* symbols,
+	const struct prototype_compile_metadata* metadata
+) {
+	if (!stream || !symbols) {
+		return -1;
+	}
+	size_t operation_count = metadata ? metadata->operation_count : 0;
+	size_t case_count = metadata ? metadata->operation_case_count : 0;
+	size_t obligation_count = metadata ? metadata->verification.obligation_count : 0;
+	fprintf(stream, "SECTION operation_graph\n");
+	fprintf(stream, "operations %zu\n", operation_count);
+	for (size_t i = 0; i < operation_count; ++i) {
+		const struct prototype_operation_node* operation = &metadata->operations[i];
+		const char* source_name = artifact_optional_symbol_name(
+			symbols, operation->source_symbol_id
+		);
+		const char* binder_name = artifact_optional_symbol_name(
+			symbols, operation->binder_symbol_id
+		);
+		if (!source_name || !binder_name) {
+			return -1;
+		}
+		fprintf(
+			stream,
+			"operation %zu %d %d %d %u %u %u %u %u %s %s %u %u %u %u %u %u %u %u %u\n",
+			i,
+			operation->tag,
+			operation->polarity,
+			operation->computation_kind,
+			operation->core_term,
+			operation->known_classifier,
+			operation->classifier,
+			operation->classifier_variable,
+			operation->source_ast,
+			source_name,
+			binder_name,
+			operation->referenced_ast_binder_id,
+			operation->function,
+			operation->argument,
+			operation->body,
+			operation->scrutinee,
+			operation->binder_classifier,
+			operation->implicit_effect_row_count,
+			operation->first_case,
+			operation->case_count
+		);
+		fprintf(stream, "operation_rows %zu", i);
+		for (uint32_t j = 0; j < operation->implicit_effect_row_count; ++j) {
+			fprintf(stream, " %u", operation->implicit_effect_row_binders[j]);
+		}
+		fprintf(stream, "\n");
+	}
+	fprintf(stream, "operation_cases %zu\n", case_count);
+	for (size_t i = 0; i < case_count; ++i) {
+		const struct prototype_operation_match_case* operation_case =
+			&metadata->operation_cases[i];
+		const char* label = artifact_optional_symbol_name(
+			symbols, operation_case->case_label_symbol_id
+		);
+		if (!label) {
+			return -1;
+		}
+		fprintf(
+			stream,
+			"operation_case %zu %u %u %u %s\n",
+			i,
+			operation_case->body_operation,
+			operation_case->constructor_owner,
+			operation_case->constructor_id,
+			label
+		);
+	}
+	fprintf(stream, "verification_obligations %zu\n", obligation_count);
+	for (size_t i = 0; i < obligation_count; ++i) {
+		const struct prototype_verification_obligation* obligation =
+			&metadata->verification.obligations[i];
+		fprintf(
+			stream,
+			"verification %zu %d %d %u %u %u %u %u %u %u %u %d\n",
+			i,
+			obligation->kind,
+			obligation->state,
+			obligation->operation,
+			obligation->core_term,
+			obligation->computation_operation,
+			obligation->continuation_operation,
+			obligation->continuation_binder_id,
+			obligation->input_classifier,
+			obligation->classifier_family,
+			obligation->effect_row,
+			obligation->normalization_profile
+		);
+	}
+	return fprintf(stream, "END operation_graph\n") < 0 ? -1 : 0;
+}
+
 static int prototype_artifact_write_text_body(
 	FILE* stream,
 	const struct symbol_table* symbols,
@@ -3659,14 +3899,15 @@ static int prototype_artifact_write_text_body(
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_universe_db* universe,
-	const struct prototype_ast_db* asts
+	const struct prototype_ast_db* asts,
+	const struct prototype_compile_metadata* metadata
 ) {
 	if (!stream || !symbols || !interface || !terms || !type_declarations || !judgement ||
 		!universe) {
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 37\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 38\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -3838,6 +4079,9 @@ static int prototype_artifact_write_text_body(
 		) != 0) {
 		return -1;
 	}
+	if (write_artifact_operation_graph_section(stream, symbols, metadata) != 0) {
+		return -1;
+	}
 	if (write_artifact_universe_section(stream, universe) != 0) {
 		return -1;
 	}
@@ -3862,7 +4106,8 @@ int prototype_artifact_write_text(
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_universe_db* universe,
-	const struct prototype_ast_db* asts
+	const struct prototype_ast_db* asts,
+	const struct prototype_compile_metadata* metadata
 ) {
 	if (!stream || !symbols || !interface || !terms || !type_declarations || !judgement ||
 		!universe) {
@@ -3875,7 +4120,8 @@ int prototype_artifact_write_text(
 			terms,
 			type_declarations,
 			judgement,
-			universe
+			universe,
+			metadata
 		) != 0) {
 		return -1;
 	}
@@ -3887,7 +4133,8 @@ int prototype_artifact_write_text(
 		&sparse_graph.type_declarations,
 		&sparse_graph.judgement,
 		&sparse_graph.universe,
-		asts
+		asts,
+		metadata
 	);
 	artifact_sparse_graph_free(&sparse_graph);
 	return status;
@@ -3960,7 +4207,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 37) {
+		version != 38) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -5593,6 +5840,188 @@ int prototype_artifact_read_text_graph(
 		strcmp(word, "END") != 0 ||
 		strcmp(section_name, "graph") != 0) {
 		return -1;
+	}
+	return 0;
+}
+
+int prototype_artifact_read_text_operation_graph(
+	FILE* stream,
+	struct symbol_table* symbols,
+	const struct prototype_term_db* terms,
+	struct prototype_compile_metadata* metadata
+) {
+	if (!stream || !symbols || !terms) {
+		return -1;
+	}
+	char word[256];
+	char section_name[256];
+	size_t operation_count;
+	size_t case_count;
+	size_t obligation_count;
+	if (fscanf(stream, "%255s %255s", word, section_name) != 2 ||
+		strcmp(word, "SECTION") != 0 || strcmp(section_name, "operation_graph") != 0 ||
+		expect_artifact_count(stream, "operations", &operation_count) != 0 ||
+		(metadata && operation_count > metadata->operation_capacity)) {
+		return -1;
+	}
+	if (metadata) {
+		metadata->operation_count = 0;
+		metadata->operation_case_count = 0;
+		metadata->verification.obligation_count = 0;
+	}
+	for (size_t i = 0; i < operation_count; ++i) {
+		size_t id;
+		struct prototype_operation_node operation;
+		char source_name[256];
+		char binder_name[256];
+		memset(&operation, 0, sizeof(operation));
+		if (fscanf(stream, "%255s %zu %d %d %d %u %u %u %u %u %255s %255s %u %u %u %u %u %u %u %u %u",
+				word, &id, &operation.tag, &operation.polarity, &operation.computation_kind,
+				&operation.core_term, &operation.known_classifier, &operation.classifier,
+				&operation.classifier_variable, &operation.source_ast, source_name, binder_name,
+				&operation.referenced_ast_binder_id, &operation.function, &operation.argument,
+				&operation.body, &operation.scrutinee, &operation.binder_classifier,
+				&operation.implicit_effect_row_count,
+				&operation.first_case, &operation.case_count) != 21 ||
+			strcmp(word, "operation") != 0 || id != i) {
+			return -1;
+		}
+		if (strcmp(source_name, "-") == 0) {
+			operation.source_symbol_id = -1;
+		} else if ((operation.source_symbol_id = symbol_intern(
+				symbols, source_name, strlen(source_name)
+			)) < 0) {
+			return -1;
+		}
+		if (strcmp(binder_name, "-") == 0) {
+			operation.binder_symbol_id = -1;
+		} else if ((operation.binder_symbol_id = symbol_intern(
+				symbols, binder_name, strlen(binder_name)
+			)) < 0) {
+			return -1;
+		}
+		size_t row_id;
+		if (fscanf(stream, "%255s %zu", word, &row_id) != 2 ||
+			strcmp(word, "operation_rows") != 0 || row_id != i ||
+			operation.implicit_effect_row_count > 16) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < operation.implicit_effect_row_count; ++j) {
+			if (fscanf(stream, "%u", &operation.implicit_effect_row_binders[j]) != 1) {
+				return -1;
+			}
+		}
+		if (metadata) {
+			metadata->operations[metadata->operation_count++] = operation;
+		}
+	}
+	if (expect_artifact_count(stream, "operation_cases", &case_count) != 0 ||
+		(metadata && case_count > metadata->operation_case_capacity)) {
+		return -1;
+	}
+	for (size_t i = 0; i < case_count; ++i) {
+		size_t id;
+		struct prototype_operation_match_case operation_case;
+		char label[256];
+		if (fscanf(stream, "%255s %zu %u %u %u %255s", word, &id,
+				&operation_case.body_operation, &operation_case.constructor_owner,
+				&operation_case.constructor_id, label) != 6 ||
+			strcmp(word, "operation_case") != 0 || id != i) {
+			return -1;
+		}
+		if (strcmp(label, "-") == 0) {
+			operation_case.case_label_symbol_id = -1;
+		} else if ((operation_case.case_label_symbol_id = symbol_intern(
+			symbols, label, strlen(label))) < 0) {
+			return -1;
+		}
+		if (metadata) {
+			metadata->operation_cases[metadata->operation_case_count++] = operation_case;
+		}
+	}
+	if (expect_artifact_count(stream, "verification_obligations", &obligation_count) != 0 ||
+		(metadata && obligation_count > metadata->verification.obligation_capacity)) {
+		return -1;
+	}
+	/* Import and linker callers that do not supply an occurrence graph cannot
+	 * preserve a residual obligation. Reject it here rather than silently
+	 * producing a linked artifact with weaker verification coverage. */
+	if (!metadata && obligation_count != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < obligation_count; ++i) {
+		size_t id;
+		struct prototype_verification_obligation obligation;
+		if (fscanf(stream, "%255s %zu %d %d %u %u %u %u %u %u %u %u %d", word, &id,
+				&obligation.kind, &obligation.state, &obligation.operation,
+				&obligation.core_term, &obligation.computation_operation,
+				&obligation.continuation_operation, &obligation.continuation_binder_id,
+				&obligation.input_classifier, &obligation.classifier_family,
+				&obligation.effect_row, &obligation.normalization_profile) != 13 ||
+			strcmp(word, "verification") != 0 || id != i ||
+			(metadata && prototype_verification_db_add(
+				&metadata->verification, obligation, NULL
+			) != 0)) {
+			return -1;
+		}
+	}
+	if (fscanf(stream, "%255s %255s", word, section_name) != 2 ||
+		strcmp(word, "END") != 0 || strcmp(section_name, "operation_graph") != 0) {
+		return -1;
+	}
+	if (metadata) {
+		for (size_t i = 0; i < metadata->operation_count; ++i) {
+			const struct prototype_operation_node* operation = &metadata->operations[i];
+			uint32_t term_references[] = {
+				operation->core_term,
+				operation->known_classifier,
+				operation->classifier,
+				operation->binder_classifier
+			};
+			uint32_t operation_references[] = {
+				operation->function,
+				operation->argument,
+				operation->body,
+				operation->scrutinee
+			};
+			for (size_t j = 0; j < sizeof(term_references) / sizeof(term_references[0]); ++j) {
+				if (term_references[j] != PROTOTYPE_INVALID_ID &&
+					!artifact_read_term_present(terms, term_references[j])) {
+					return -1;
+				}
+			}
+			for (size_t j = 0; j < sizeof(operation_references) / sizeof(operation_references[0]); ++j) {
+				if (operation_references[j] != PROTOTYPE_INVALID_ID &&
+					operation_references[j] >= metadata->operation_count) {
+					return -1;
+				}
+			}
+			if (operation->first_case != PROTOTYPE_INVALID_ID &&
+				(operation->first_case > metadata->operation_case_count ||
+				 operation->case_count > metadata->operation_case_count - operation->first_case)) {
+				return -1;
+			}
+		}
+		for (size_t i = 0; i < metadata->verification.obligation_count; ++i) {
+			const struct prototype_verification_obligation* obligation =
+				&metadata->verification.obligations[i];
+			uint32_t term_references[] = {
+				obligation->core_term,
+				obligation->input_classifier,
+				obligation->classifier_family,
+				obligation->effect_row
+			};
+			if (obligation->operation >= metadata->operation_count ||
+				obligation->computation_operation >= metadata->operation_count ||
+				obligation->continuation_operation >= metadata->operation_count) {
+				return -1;
+			}
+			for (size_t j = 0; j < sizeof(term_references) / sizeof(term_references[0]); ++j) {
+				if (!artifact_read_term_present(terms, term_references[j])) {
+					return -1;
+				}
+			}
+		}
 	}
 	return 0;
 }
@@ -15655,6 +16084,100 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 	return 0;
 }
 
+static int compile_phase_record_residual_dependent_binds(struct compile_context* ctx) {
+	if (!ctx || !ctx->metadata || !ctx->terms || !ctx->type_declarations) {
+		return -1;
+	}
+	for (uint32_t operation_id = 0;
+		operation_id < ctx->metadata->operation_count;
+		++operation_id) {
+		const struct prototype_operation_node* operation =
+			&ctx->metadata->operations[operation_id];
+		if (operation->tag != PROTOTYPE_OPERATION_BIND ||
+			operation->core_term >= ctx->terms->term_count ||
+			ctx->terms->terms[operation->core_term].tag != PROTOTYPE_TERM_BIND ||
+			operation->function >= ctx->metadata->operation_count ||
+			operation->argument >= ctx->metadata->operation_count) {
+			continue;
+		}
+		uint32_t input_classifier = operation_solver_classifier(ctx, operation->function);
+		uint32_t continuation_classifier = operation_solver_classifier(
+			ctx, operation->argument
+		);
+		struct prototype_term_classifier_view input_view;
+		uint32_t domain;
+		uint32_t classifier_family;
+		uint32_t continuation_binder_id;
+		uint32_t codomain;
+		if (input_classifier == PROTOTYPE_INVALID_ID ||
+			continuation_classifier == PROTOTYPE_INVALID_ID ||
+			prototype_judgement_classifier_view(
+				ctx->terms, ctx->type_declarations, NULL, input_classifier, &input_view
+			) != 0 || input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			input_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+			prototype_judgement_pi_parts(
+				ctx->terms, continuation_classifier, &domain, &classifier_family
+			) != 0 || !prototype_judgement_classifier_normalization_equal(
+				ctx->terms, ctx->type_declarations, domain, input_view.result
+			) || prototype_term_pure_family_parts(
+				ctx->terms, classifier_family, &continuation_binder_id, &codomain
+			) != 0 || !prototype_term_contains_free_binder(
+				ctx->terms, codomain, continuation_binder_id
+			)) {
+			continue;
+		}
+		struct prototype_term_normalization_result normalized;
+		if (prototype_term_whnf_with_profile_result(
+				ctx->terms,
+				ctx->type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				ctx->terms->terms[operation->core_term].as.bind.computation,
+				0,
+				&normalized
+			) != 0 || normalized.status == PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {
+			return -1;
+		}
+		if (normalized.status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
+			continue;
+		}
+		if (normalized.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT &&
+			normalized.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED) {
+			return -1;
+		}
+		int already_recorded = 0;
+		for (size_t i = 0; i < ctx->metadata->verification.obligation_count; ++i) {
+			const struct prototype_verification_obligation* existing =
+				&ctx->metadata->verification.obligations[i];
+			if (existing->kind == PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND &&
+				existing->operation == operation_id) {
+				already_recorded = 1;
+				break;
+			}
+		}
+		if (!already_recorded && prototype_verification_db_add(
+				&ctx->metadata->verification,
+				(struct prototype_verification_obligation){
+					PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND,
+					PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
+					operation_id,
+					operation->core_term,
+					operation->function,
+					operation->argument,
+					continuation_binder_id,
+					input_view.result,
+					classifier_family,
+					input_view.effect_row,
+					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
+				},
+				NULL
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int operation_solver_generalize_lambda_effect_rows(
 	struct compile_context* ctx,
 	uint32_t operation_id,
@@ -18274,7 +18797,8 @@ int prototype_ast_compile_pending_with_imports(
 			terms,
 			type_declarations
 		) != 0 ||
-		prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0) {
+		prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
+		compile_phase_record_residual_dependent_binds(&ctx) != 0) {
 		return -1;
 	}
 	if (compile_phase_check_ascriptions(&ctx) != 0) {
