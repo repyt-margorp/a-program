@@ -496,11 +496,11 @@ Current limitations, deliberately not hidden by this slice:
   core BIND may belong to multiple typed source occurrences.  Phase 6 must add
   an operation-graph runtime entry point with local environment and handler
   frames before hybrid execution is exposed.
-- Artifact readback preserves and validates operation metadata.  The linker
-  currently emits a fresh linked occurrence graph only for data it constructs;
-  it does not yet merge and offset residual operation graphs.  A linker must
-  reject a residual artifact until that merge is implemented, rather than
-  silently dropping the obligation.
+- Artifact readback preserves and validates operation metadata.  Linking
+  preserves the target artifact's occurrence graph and residual obligations.
+  It does not yet merge and offset a provider's occurrence graph, so a provider
+  artifact carrying residual obligations is rejected rather than silently
+  dropped.  Provider-side residual merge remains Phase 7 work.
 
 Tests currently cover the normalization outcomes, static pure dependent BIND,
 operation-graph artifact round-trip, and direct dependent-BIND discharge.  The

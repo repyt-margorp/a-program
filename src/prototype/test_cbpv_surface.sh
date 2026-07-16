@@ -120,13 +120,14 @@ awk '
 	>"$tmp_dir/higher-order-function-residual-read.out"
 grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=1' \
 	"$tmp_dir/higher-order-function-residual-read.out"
-if ./read_file.out --aggregate-artifact "$tmp_dir/rejected-residual-link.apo" \
+./read_file.out --aggregate-artifact "$tmp_dir/residual-link.apo" \
 	"$tmp_dir/higher-order-function-residual.apo" \
 	>"$tmp_dir/higher-order-function-residual-link.out" \
-	2>"$tmp_dir/higher-order-function-residual-link.err"; then
-	echo "linker unexpectedly discarded a residual verification obligation" >&2
-	exit 1
-fi
+	2>"$tmp_dir/higher-order-function-residual-link.err"
+./read_file.out --read-graph "$tmp_dir/residual-link.apo" \
+	>"$tmp_dir/residual-link-read.out"
+grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=1' \
+	"$tmp_dir/residual-link-read.out"
 
 cat >"$tmp_dir/effect-forwarding.p" <<'EOF'
 forward := \f : #.Text -> #.Text => f #"x";

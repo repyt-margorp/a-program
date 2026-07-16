@@ -640,7 +640,8 @@ static int read_artifact_interface_and_graph(
 	struct prototype_term_db* term_db,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement_db,
-	struct prototype_universe_db* universe_db
+	struct prototype_universe_db* universe_db,
+	struct prototype_compile_metadata* metadata
 ) {
 	if (!path || !symbols || !artifact_interface || !term_db ||
 		!type_declarations || !judgement_db || !universe_db) {
@@ -667,7 +668,7 @@ static int read_artifact_interface_and_graph(
 			artifact_file,
 			symbols,
 			term_db,
-			NULL
+			metadata
 		) != 0 ||
 		prototype_artifact_read_text_universe(
 			artifact_file,
@@ -785,7 +786,8 @@ static int check_export_normalization_equal(
 			&term_db,
 			&type_declarations,
 			&judgement_db,
-			&universe_db
+			&universe_db,
+			NULL
 		) != 0) {
 		fprintf(stderr, "%s: failed to read artifact\n", path);
 		symbol_table_free(&symbols);
@@ -953,7 +955,8 @@ static int check_exports_normalization_equal(
 			&term_db,
 			&type_declarations,
 			&judgement_db,
-			&universe_db
+			&universe_db,
+			NULL
 		) != 0) {
 		fprintf(stderr, "%s: failed to read artifact\n", path);
 		symbol_table_free(&symbols);
@@ -1145,7 +1148,8 @@ static int check_exports_shape_equal(
 			&term_db,
 			&type_declarations,
 			&judgement_db,
-			&universe_db
+			&universe_db,
+			NULL
 		) != 0) {
 		fprintf(stderr, "%s: failed to read artifact\n", path);
 		symbol_table_free(&symbols);
@@ -1278,7 +1282,8 @@ static int check_export_classifier_compatible(
 			&term_db,
 			&type_declarations,
 			&judgement_db,
-			&universe_db
+			&universe_db,
+			NULL
 		) != 0) {
 		fprintf(stderr, "%s: failed to read artifact\n", path);
 		symbol_table_free(&symbols);
@@ -1531,7 +1536,8 @@ static int read_import_artifact_into_slot(
 			&provider_term_db,
 			&provider_type_declarations,
 			&provider_judgement_db,
-			universe
+			universe,
+			NULL
 		) != 0) {
 		return -1;
 	}
@@ -2597,6 +2603,29 @@ int main(int argc, char** argv) {
 			universe_constraints,
 			UNIVERSE_CONSTRAINT_CAPACITY
 		);
+		prototype_compile_metadata_init(
+			&metadata,
+			compile_labels,
+			COMPILE_LABEL_CAPACITY,
+			compile_type_exports,
+			COMPILE_TYPE_EXPORT_CAPACITY,
+			compile_constructor_exports,
+			COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
+			resolve_errors,
+			RESOLVE_ERROR_CAPACITY,
+			resolution_items,
+			RESOLUTION_ITEM_CAPACITY,
+			resolution_iterations,
+			RESOLUTION_ITERATION_CAPACITY,
+			resolution_events,
+			RESOLUTION_EVENT_CAPACITY,
+			operations,
+			OPERATION_CAPACITY,
+			operation_cases,
+			OPERATION_CASE_CAPACITY,
+			verification_obligations,
+			VERIFICATION_OBLIGATION_CAPACITY
+		);
 
 		if (read_artifact_interface_and_graph(
 				link_target_path,
@@ -2605,7 +2634,8 @@ int main(int argc, char** argv) {
 				&term_db,
 				&type_declarations,
 				&judgement_db,
-				&universe_db
+				&universe_db,
+				&metadata
 			) != 0) {
 			fprintf(stderr, "%s: failed to read target artifact\n", link_target_path);
 			symbol_table_free(&symbols);
@@ -2714,7 +2744,8 @@ int main(int argc, char** argv) {
 					&provider_term_db,
 					&provider_type_declarations,
 					&provider_judgement_db,
-					&universe_db
+					&universe_db,
+					NULL
 				) != 0) {
 				fprintf(stderr, "%s: failed to read provider artifact\n", provider_path);
 				symbol_table_free(&symbols);
@@ -2847,7 +2878,7 @@ int main(int argc, char** argv) {
 				&judgement_db,
 				&universe_db,
 				NULL,
-				NULL
+				&metadata
 			);
 			if (fclose(output) != 0) {
 				write_status = -1;
