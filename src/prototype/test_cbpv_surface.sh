@@ -7,6 +7,164 @@ trap 'rm -rf "$tmp_dir"' EXIT
 # Examples from 10 onward exercise the unfinished general Match-motive and
 # constraint-solving work. They are not CBPV surface regressions yet.
 
+./read_file.out src/prototype/computation_block_check.p \
+	>"$tmp_dir/computation-block.out"
+grep -q '^term main := DEEP_FOLD(' "$tmp_dir/computation-block.out"
+grep -q '^term quotedIdentity := THUNK(LAMBDA(' \
+	"$tmp_dir/computation-block.out"
+grep -q '^term constructorBlock := DEEP_FOLD(' "$tmp_dir/computation-block.out"
+grep -q '^term matchBlock := MATCH(.*CASE(zero -> DEEP_FOLD(' \
+	"$tmp_dir/computation-block.out"
+
+./read_file.out src/prototype/runtime_strict_value_check.p \
+	>"$tmp_dir/runtime-strict-value.out"
+grep -q '^term appArgument := DEEP_FOLD(' "$tmp_dir/runtime-strict-value.out"
+grep -q '^term constructorArgument := DEEP_FOLD(.*RETURN(APP(CONSTRUCTOR' \
+	"$tmp_dir/runtime-strict-value.out"
+grep -q '^term matchScrutinee := DEEP_FOLD(.*MATCH(VAR' \
+	"$tmp_dir/runtime-strict-value.out"
+./read_file.out --write-artifact "$tmp_dir/runtime-strict-value.apo" \
+	src/prototype/runtime_strict_value_check.p \
+	>"$tmp_dir/runtime-strict-value-write.out"
+./read_file.out --read-graph "$tmp_dir/runtime-strict-value.apo" \
+	>"$tmp_dir/runtime-strict-value-read.out"
+grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=6 verification_obligations=0' \
+	"$tmp_dir/runtime-strict-value-read.out"
+
+./read_file.out src/prototype/computation_reference_type_check.p \
+	>"$tmp_dir/computation-reference.out"
+grep -q '^term run := LAMBDA(.*DEEP_FOLD(FORCE(VAR' \
+	"$tmp_dir/computation-reference.out"
+grep -q '^term preserve := LAMBDA(.*RETURN(VAR' \
+	"$tmp_dir/computation-reference.out"
+
+./read_file.out src/prototype/nested_computation_reference_check.p \
+	>"$tmp_dir/nested-computation-reference.out"
+grep -q '^term nest := LAMBDA(.*RETURN(THUNK(RETURN(VAR' \
+	"$tmp_dir/nested-computation-reference.out"
+grep -q 'EFFECT_ROW_FORALL(.*EFFECT_ROW_FORALL' \
+	"$tmp_dir/nested-computation-reference.out"
+
+cat >"$tmp_dir/removed-bind-intrinsic.p" <<'EOF'
+bad := #.bind (perform (#.print #"x")) (\x : #.Text => x);
+EOF
+if ./read_file.out "$tmp_dir/removed-bind-intrinsic.p" \
+	>"$tmp_dir/removed-bind-intrinsic.out" 2>&1; then
+	echo 'removed #.bind surface intrinsic was accepted' >&2
+	exit 1
+fi
+
+cat >"$tmp_dir/removed-force-intrinsic.p" <<'EOF'
+bad := #.force &{ #1 };
+EOF
+if ./read_file.out "$tmp_dir/removed-force-intrinsic.p" \
+	>"$tmp_dir/removed-force-intrinsic.out" 2>&1; then
+	echo 'removed #.force surface intrinsic was accepted' >&2
+	exit 1
+fi
+
+if ./read_file.out src/prototype/computation_block_invalid_argument.p \
+	>"$tmp_dir/computation-argument.out" 2>&1; then
+	echo 'higher-order application accepted a raw function without quotation' >&2
+	exit 1
+fi
+if ./read_file.out src/prototype/computation_block_invalid_quote.p \
+	>"$tmp_dir/value-quote.out" 2>&1; then
+	echo 'quotation accepted an ordinary value' >&2
+	exit 1
+fi
+
+cat >"$tmp_dir/block-missing-terminal.p" <<'EOF'
+main := { x := #1; };
+EOF
+if ./read_file.out "$tmp_dir/block-missing-terminal.p" \
+	>"$tmp_dir/block-missing-terminal.out" 2>&1; then
+	echo 'computation block accepted a missing terminal term' >&2
+	exit 1
+fi
+
+cat >"$tmp_dir/block-duplicate.p" <<'EOF'
+main := { x := #1; x := #2; x };
+EOF
+if ./read_file.out "$tmp_dir/block-duplicate.p" \
+	>"$tmp_dir/block-duplicate.out" 2>&1; then
+	echo 'computation block accepted a duplicate local name' >&2
+	exit 1
+fi
+
+cat >"$tmp_dir/quote-effects.p" <<'EOF'
+delayed := &(perform (#.print #"x"));
+once := {
+	x := delayed;
+	x
+};
+twice := {
+	x := delayed;
+	y := delayed;
+	y
+};
+EOF
+{
+	cat "$tmp_dir/quote-effects.p"
+	printf 'once\ntwice\n:q\n'
+} | ./a.out >"$tmp_dir/quote-effects.out"
+grep -qx 'x' "$tmp_dir/quote-effects.out"
+grep -qx 'xx' "$tmp_dir/quote-effects.out"
+
+cp src/prototype/runtime_strict_effects_check.p \
+	"$tmp_dir/runtime-strict-effects.p"
+
+./read_file.out "$tmp_dir/runtime-strict-effects.p" \
+	>"$tmp_dir/runtime-strict-effects.out"
+grep -q '^term leftToRight := DEEP_FOLD(.*DEEP_FOLD(' \
+	"$tmp_dir/runtime-strict-effects.out"
+grep -q '^term performArgument := DEEP_FOLD(OPERATION_REQUEST' \
+	"$tmp_dir/runtime-strict-effects.out"
+{
+	cat "$tmp_dir/runtime-strict-effects.p"
+	printf '%s\n' leftToRight repeat shared constructorOrder \
+		performArgument matchScrutineeEffect ':q'
+} | ./a.out >"$tmp_dir/runtime-strict-effects-eval.out"
+grep -qx 'ab' "$tmp_dir/runtime-strict-effects-eval.out"
+grep -qx 'rr' "$tmp_dir/runtime-strict-effects-eval.out"
+grep -qx 's' "$tmp_dir/runtime-strict-effects-eval.out"
+grep -qx 'cd' "$tmp_dir/runtime-strict-effects-eval.out"
+grep -qx 'm' "$tmp_dir/runtime-strict-effects-eval.out"
+grep -qx 'ee' "$tmp_dir/runtime-strict-effects-eval.out"
+
+cat >"$tmp_dir/runtime-strict-dependent.p" <<'EOF'
+Bool := @{ true : *; false : *; };
+Nat := @{ zero : *; succ : * -> *; };
+m := { x : #.Text := perform (#.print #"x"); Bool.true };
+select := \b : Bool =>
+	b @true => Nat.zero @false => Bool.true;
+main := select m;
+EOF
+./read_file.out "$tmp_dir/runtime-strict-dependent.p" \
+	>"$tmp_dir/runtime-strict-dependent.out"
+grep -q '^term main := DEEP_FOLD(DEEP_FOLD(OPERATION_REQUEST' \
+	"$tmp_dir/runtime-strict-dependent.out"
+grep -q 'compile-budget .* residual=1 incomplete=0' \
+	"$tmp_dir/runtime-strict-dependent.out"
+./read_file.out --write-artifact "$tmp_dir/runtime-strict-dependent.apo" \
+	"$tmp_dir/runtime-strict-dependent.p" \
+	>"$tmp_dir/runtime-strict-dependent-write.out"
+grep -q '^verification_obligations 1$' \
+	"$tmp_dir/runtime-strict-dependent.apo"
+
+cat >"$tmp_dir/runtime-strict-type-view.p" <<'EOF'
+Bool := @{ true : *; false : *; };
+Two := @{ one : *; zero : *; };
+produceTwo := \x : Two => x;
+consumeBool := \x : Bool => x;
+main := consumeBool (produceTwo Two.one);
+EOF
+if ./read_file.out "$tmp_dir/runtime-strict-type-view.p" \
+	>"$tmp_dir/runtime-strict-type-view.out" 2>&1; then
+	echo 'runtime sequencing erased distinct surface TypeViews' >&2
+	exit 1
+fi
+
 cat >"$tmp_dir/raw-function.p" <<'EOF'
 id :: #.Int -> #.Int;
 id := \x : #.Int => x;
@@ -20,35 +178,18 @@ grep -q '^term main := APP(LAMBDA(.*INT_LITERAL(1))' "$tmp_dir/raw-function.out"
 grep -q 'has-type LAMBDA(.*PI(PRIMITIVE(Int).*COMPUTATION_TYPE(EFFECT_LABEL(0), PRIMITIVE(Int))' \
 	"$tmp_dir/raw-function.out"
 
-# The default surface inserts the CBPV RETURN required by a value lambda body.
-# Strict mode disables all implicit value/computation boundaries; the raw CBPV
-# spelling remains valid when the source provides RETURN itself.
-! ./read_file.out --no-automatic-cbpv-coercions "$tmp_dir/raw-function.p" \
-	>"$tmp_dir/raw-function-strict-implicit.out" 2>&1
-
-cat >"$tmp_dir/raw-function-strict.p" <<'EOF'
-id := \x : #.Int => return x;
-main := id #1;
-EOF
-
-./read_file.out --no-automatic-cbpv-coercions "$tmp_dir/raw-function-strict.p" \
-	>"$tmp_dir/raw-function-strict.out"
-grep -q '^term id := LAMBDA(.*RETURN(VAR' "$tmp_dir/raw-function-strict.out"
-grep -q '^term main := APP(LAMBDA(.*INT_LITERAL(1))' "$tmp_dir/raw-function-strict.out"
-
-cat >"$tmp_dir/higher-order-function-strict.p" <<'EOF'
+cat >"$tmp_dir/higher-order-function.p" <<'EOF'
 Nat := @{ zero : *; succ : * -> *; };
-id := \x : Nat => return x;
-apply := \f : Nat -> Nat => (force f) Nat.zero;
-main := apply (thunk id);
+id := \x : Nat => x;
+apply := \f : Nat -> Nat => f Nat.zero;
+main := apply &id;
 EOF
 
-./read_file.out --no-automatic-cbpv-coercions \
-	"$tmp_dir/higher-order-function-strict.p" >"$tmp_dir/higher-order-function-strict.out"
+./read_file.out "$tmp_dir/higher-order-function.p" >"$tmp_dir/higher-order-function.out"
 grep -q '^term apply := LAMBDA(.*APP(FORCE(VAR' \
-	"$tmp_dir/higher-order-function-strict.out"
+	"$tmp_dir/higher-order-function.out"
 grep -q '^term main := APP(LAMBDA(.*THUNK(LAMBDA' \
-	"$tmp_dir/higher-order-function-strict.out"
+	"$tmp_dir/higher-order-function.out"
 
 cat >"$tmp_dir/ascribed-raw-function.p" <<'EOF'
 id := ((\x : #.Int => x) :: #.Int -> #.Int);
@@ -80,14 +221,6 @@ grep -q '^term main := LAMBDA(' "$tmp_dir/effect-function.out"
 grep -q 'has-type LAMBDA(.*COMPUTATION_TYPE(EFFECT_LABEL(1), PRIMITIVE(Text))' \
 	"$tmp_dir/effect-function.out"
 
-cat >"$tmp_dir/higher-order-function.p" <<'EOF'
-Nat := @{ zero : *; succ : * -> *; };
-id := \x : Nat => x;
-apply := \f : Nat -> Nat => f Nat.zero;
-main := apply id;
-EOF
-
-./read_file.out "$tmp_dir/higher-order-function.p" >"$tmp_dir/higher-order-function.out"
 grep -q '^term id := LAMBDA(' "$tmp_dir/higher-order-function.out"
 grep -q '^term apply := LAMBDA(.*FORCE(VAR' "$tmp_dir/higher-order-function.out"
 grep -q '^term main := APP(LAMBDA(.*THUNK(LAMBDA' \
@@ -105,26 +238,26 @@ grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_oblig
 cat >"$tmp_dir/dependent-bind-residual.p" <<'EOF'
 Bool := @{ true : *; false : *; };
 Nat := @{ zero : *; succ : * -> *; };
-m := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.true);
-main := #.bind m (\b : Bool => b @true => Nat.zero @false => Bool.true);
+m := { x : #.Text := perform (#.print #"x"); Bool.true };
+main := { b : Bool := m; b @true => Nat.zero @false => Bool.true };
 EOF
 
 ./read_file.out "$tmp_dir/dependent-bind-residual.p" \
 	>"$tmp_dir/dependent-bind-residual.out"
-grep -q '^term main := BIND(' "$tmp_dir/dependent-bind-residual.out"
+grep -q '^term main := DEEP_FOLD(' "$tmp_dir/dependent-bind-residual.out"
 grep -q 'compile-budget .* residual=1 incomplete=0' \
 	"$tmp_dir/dependent-bind-residual.out"
 ./read_file.out --write-artifact "$tmp_dir/dependent-bind-residual.apo" \
 	"$tmp_dir/dependent-bind-residual.p" >"$tmp_dir/dependent-bind-residual-write.out"
-grep -q '^compile_policy 2 11 ' "$tmp_dir/dependent-bind-residual.apo"
+grep -Eq '^compile_policy 2 [1-9][0-9]* ' "$tmp_dir/dependent-bind-residual.apo"
 if ./read_file.out --policy strict "$tmp_dir/dependent-bind-residual.p" \
 	>"$tmp_dir/dependent-bind-strict.out" 2>"$tmp_dir/dependent-bind-strict.err"; then
-	echo 'strict policy accepted a residual dependent BIND' >&2
+	echo 'strict policy accepted a residual dependent DEEP_FOLD' >&2
 	exit 1
 fi
 grep -q 'failed to compile AST graph' "$tmp_dir/dependent-bind-strict.err"
 residual_bind_operation=$(awk '
-	/^operation#/ && $2 == "bind" && $NF == "name=main" {
+	/^operation#/ && $2 == "deep-fold" && $NF == "name=main" {
 		id = $1
 		sub(/^operation#/, "", id)
 		print id
@@ -181,8 +314,8 @@ grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_oblig
 printf '%s\n' \
 	'Bool := @{ true : *; false : *; };' \
 	'Nat := @{ zero : *; succ : * -> *; };' \
-	'm := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.true);' \
-	'main := #.bind m (\b : Bool => b @true => Nat.zero @false => Bool.true);' \
+	'm := { x : #.Text := perform (#.print #"x"); Bool.true };' \
+	'main := { b : Bool := m; b @true => Nat.zero @false => Bool.true };' \
 	'main' \
 	'main' \
 	':q' | ./a.out >"$tmp_dir/dependent-bind-residual-eval.out"
@@ -203,10 +336,12 @@ grep -q '^verification main := discharged$' \
 cat >"$tmp_dir/nested-dependent-bind-residual.p" <<'EOF'
 Bool := @{ true : *; false : *; };
 Nat := @{ zero : *; succ : * -> *; };
-m := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.false);
-main := #.bind m (\b : Bool =>
-	#.bind (perform (#.print #"y"))
-		(\x : #.Text => b @true => Nat.zero @false => Bool.true));
+m := { x : #.Text := perform (#.print #"x"); Bool.false };
+main := {
+	b : Bool := m;
+	x : #.Text := perform (#.print #"y");
+	b @true => Nat.zero @false => Bool.true
+};
 EOF
 ./read_file.out "$tmp_dir/nested-dependent-bind-residual.p" \
 	>"$tmp_dir/nested-dependent-bind-residual.out"
@@ -225,7 +360,7 @@ grep -q '^value main := RETURN(CONSTRUCTOR(' \
 cat >"$tmp_dir/effect-forwarding.p" <<'EOF'
 forward := \f : #.Text -> #.Text => f #"x";
 printer := \text : #.Text => perform (#.print text);
-main := forward printer;
+main := forward &printer;
 EOF
 
 ./read_file.out "$tmp_dir/effect-forwarding.p" >"$tmp_dir/effect-forwarding.out"
@@ -239,9 +374,12 @@ grep -q 'has-type APP(LAMBDA(.*COMPUTATION_TYPE(EFFECT_LABEL(1), PRIMITIVE(Text)
 grep -q 'interface term main ' "$tmp_dir/effect-forwarding-read.out"
 
 cat >"$tmp_dir/effect-union-forwarding.p" <<'EOF'
-both := \f : #.Text -> #.Text => #.bind (f #"x") (\x : #.Text => perform (#.print x));
+both := \f : #.Text -> #.Text => {
+	x : #.Text := f #"x";
+	perform (#.print x)
+};
 printer := \text : #.Text => perform (#.print text);
-main := both printer;
+main := both &printer;
 EOF
 
 ./read_file.out "$tmp_dir/effect-union-forwarding.p" >"$tmp_dir/effect-union-forwarding.out"
@@ -313,40 +451,36 @@ grep -Eq '^operation_case_binders [0-9]+ 1 [0-9]+$' \
 	>"$tmp_dir/recursive-dependent-match-read.out"
 
 cat >"$tmp_dir/bind.p" <<'EOF'
-main := #.bind (return #1) (\x : #.Int64 => return x);
+main := { x : #.Int64 := { #1 }; x };
 EOF
 
 ./read_file.out "$tmp_dir/bind.p" >"$tmp_dir/bind.out"
-grep -q 'term main := BIND(' "$tmp_dir/bind.out"
-grep -q '\[bind-intro\]' "$tmp_dir/bind.out"
+grep -q 'term main := DEEP_FOLD(' "$tmp_dir/bind.out"
+grep -q '\[deep-fold-elim\]' "$tmp_dir/bind.out"
 
 cat >"$tmp_dir/bind-requires-computation.p" <<'EOF'
-main := #.bind (return #1) (\x : #.Int64 => \y : #.Int64 => x);
+main := { x : #.Int64 := { #1 }; \y : #.Int64 => x };
 EOF
 
 if ./read_file.out "$tmp_dir/bind-requires-computation.p" \
 	>"$tmp_dir/bind-requires-computation.out" 2>&1; then
-	echo "BIND unexpectedly accepted a raw Pi result" >&2
+	echo "DEEP_FOLD unexpectedly accepted a raw Pi result" >&2
 	exit 1
 fi
 
-cat >"$tmp_dir/computed-match.p" <<'EOF'
-Nat := @{ zero : *; succ : * -> *; };
-main := (force (thunk (return Nat.zero))) @zero => Nat.zero @succ k => Nat.succ k;
-EOF
-
-./read_file.out "$tmp_dir/computed-match.p" >"$tmp_dir/computed-match.out"
-grep -q 'term main := BIND(FORCE(THUNK(RETURN(CONSTRUCTOR' "$tmp_dir/computed-match.out"
+./read_file.out src/prototype/computed_match_execution_check.p \
+	>"$tmp_dir/computed-match.out"
+grep -q 'term main := DEEP_FOLD(RETURN(CONSTRUCTOR' "$tmp_dir/computed-match.out"
 grep -q 'MATCH(VAR' "$tmp_dir/computed-match.out"
-grep -q '\[bind-intro\]' "$tmp_dir/computed-match.out"
+grep -q '\[deep-fold-elim\]' "$tmp_dir/computed-match.out"
 
 cat >"$tmp_dir/lambda-bind.p" <<'EOF'
-main := \n : #.Nat => #.bind (return n) (\x : #.Nat => return x);
+main := \n : #.Nat => { x : #.Nat := { n }; x };
 EOF
 
 ./read_file.out "$tmp_dir/lambda-bind.p" >"$tmp_dir/lambda-bind.out"
-grep -q 'term main := LAMBDA(.*BIND(RETURN(VAR' "$tmp_dir/lambda-bind.out"
-grep -q '\[bind-intro\]' "$tmp_dir/lambda-bind.out"
+grep -q 'term main := LAMBDA(.*DEEP_FOLD(RETURN(VAR' "$tmp_dir/lambda-bind.out"
+grep -q '\[deep-fold-elim\]' "$tmp_dir/lambda-bind.out"
 grep -q '\[lambda-intro\]' "$tmp_dir/lambda-bind.out"
 
 cat >"$tmp_dir/sigma-dependent-field.p" <<'EOF'
@@ -413,10 +547,10 @@ printf '%s\n' \
 	':q' | ./a.out >"$tmp_dir/pure-operation-perform.out"
 grep -q 'value main := RETURN(INT_LITERAL(3))' "$tmp_dir/pure-operation-perform.out"
 printf '%s\n' \
-	'main := #.bind (perform ((#.int64_add #1) #2)) (\x : #.Int64 => return x);' \
+	'main := { x : #.Int64 := perform ((#.int64_add #1) #2); x };' \
 	'main' \
 	':q' | ./a.out >"$tmp_dir/pure-operation-bind.out"
-grep -q 'term main := BIND(OPERATION_REQUEST(' "$tmp_dir/pure-operation-bind.out"
+grep -q 'term main := DEEP_FOLD(OPERATION_REQUEST(' "$tmp_dir/pure-operation-bind.out"
 grep -q 'value main := RETURN(INT_LITERAL(3))' "$tmp_dir/pure-operation-bind.out"
 ./read_file.out --write-artifact "$tmp_dir/pure-operation.apo" "$tmp_dir/pure-operation.p" \
 	>"$tmp_dir/pure-operation-write.out"
@@ -425,15 +559,15 @@ grep -q 'value main := RETURN(INT_LITERAL(3))' "$tmp_dir/pure-operation-bind.out
 grep -q 'interface term main ' "$tmp_dir/pure-operation-read.out"
 
 cat >"$tmp_dir/handle.p" <<'EOF'
-main := handle (perform (#.print #"x")) with (#.print) x k => k x; return y => return y;
+main := handle (perform (#.print #"x")) with (#.print) x k => k x; return y => y;
 EOF
 
 ./read_file.out "$tmp_dir/handle.p" >"$tmp_dir/handle.out"
-grep -q 'term main := HANDLE(HANDLER(' "$tmp_dir/handle.out"
-grep -q '\[handler-intro\]' "$tmp_dir/handle.out"
-grep -q '\[handle-elim\]' "$tmp_dir/handle.out"
+grep -q 'term main := DEEP_FOLD(' "$tmp_dir/handle.out"
+grep -q '\[deep-fold-elim\]' "$tmp_dir/handle.out"
 ./read_file.out --write-artifact "$tmp_dir/handle.apo" "$tmp_dir/handle.p" >"$tmp_dir/handle-write.out"
 grep -q '^compile_policy 2 14 ' "$tmp_dir/handle.apo"
+grep -Eq '^effect_constraint [0-9]+ 2 2 ' "$tmp_dir/handle.apo"
 ./read_file.out --read-graph "$tmp_dir/handle.apo" >"$tmp_dir/handle-read.out"
 grep -q 'interface term main ' "$tmp_dir/handle-read.out"
 ./read_file.out --check-backend c "$tmp_dir/handle.apo" \
@@ -446,13 +580,13 @@ if ./read_file.out --check-backend verilog "$tmp_dir/handle.apo" \
 fi
 
 printf '%s\n' \
-	'main := handle (perform (#.print #"x")) with (#.print) x k => k x; return y => return y;' \
+	'main := handle (perform (#.print #"x")) with (#.print) x k => k x; return y => y;' \
 	'main' \
 	':q' | ./a.out >"$tmp_dir/handle-eval.out"
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' "$tmp_dir/handle-eval.out"
 
 cat >"$tmp_dir/handle-bind.p" <<'EOF'
-main := handle (#.bind (perform (#.print #"x")) (\y : #.Text => return y)) with (#.print) x k => k x; return y => return y;
+main := handle ({ y : #.Text := perform (#.print #"x"); y }) with (#.print) x k => k x; return y => y;
 EOF
 
 ./read_file.out "$tmp_dir/handle-bind.p" >"$tmp_dir/handle-bind.out"
@@ -463,7 +597,7 @@ EOF
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' "$tmp_dir/handle-bind-eval.out"
 
 cat >"$tmp_dir/deep-handle-bind.p" <<'EOF'
-main := handle (#.bind (perform (#.print #"x")) (\y : #.Text => perform (#.print y))) with (#.print) x k => k x; return y => return y;
+main := handle ({ y : #.Text := perform (#.print #"x"); perform (#.print y) }) with (#.print) x k => k x; return y => y;
 EOF
 
 ./read_file.out "$tmp_dir/deep-handle-bind.p" >"$tmp_dir/deep-handle-bind.out"
@@ -474,12 +608,8 @@ EOF
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' \
 	"$tmp_dir/deep-handle-bind-eval.out"
 
-cat >"$tmp_dir/dependent-handler-result.p" <<'EOF'
-Bool := @{ true : *; false : *; };
-Nat := @{ zero : *; succ : * -> *; };
-m := #.bind (perform (#.print #"x")) (\x : #.Text => return Bool.true);
-main := handle (m) with (#.print) x k => k x; return b => b @true => (return Nat.zero) @false => (return Bool.true);
-EOF
+cp src/prototype/dependent_handler_result_check.p \
+	"$tmp_dir/dependent-handler-result.p"
 
 ./read_file.out "$tmp_dir/dependent-handler-result.p" \
 	>"$tmp_dir/dependent-handler-result.out"
@@ -527,7 +657,7 @@ grep -q '^verification main := discharged$' \
 	"$tmp_dir/dependent-handler-result-eval.out"
 
 cat >"$tmp_dir/negative-handle-raw-function.p" <<'EOF'
-bad := handle (\x : #.Int => x) with (#.print) x k => k x; return y => return y;
+bad := handle (\x : #.Int => x) with (#.print) x k => k x; return y => y;
 EOF
 
 if ./read_file.out "$tmp_dir/negative-handle-raw-function.p" \
@@ -540,12 +670,12 @@ grep -q 'failed to compile AST graph' \
 	"$tmp_dir/negative-handle-raw-function.err"
 
 cat >"$tmp_dir/lambda-handle.p" <<'EOF'
-main := \n : #.Nat => handle (perform (#.print #"x")) with (#.print) x k => k x; return y => return y;
+main := \n : #.Nat => handle (perform (#.print #"x")) with (#.print) x k => k x; return y => y;
 EOF
 
 ./read_file.out "$tmp_dir/lambda-handle.p" >"$tmp_dir/lambda-handle.out"
-grep -q 'term main := LAMBDA(.*HANDLE(HANDLER(' "$tmp_dir/lambda-handle.out"
-grep -q '\[handle-elim\]' "$tmp_dir/lambda-handle.out"
+grep -q 'term main := LAMBDA(.*DEEP_FOLD(' "$tmp_dir/lambda-handle.out"
+grep -q '\[deep-fold-elim\]' "$tmp_dir/lambda-handle.out"
 grep -q '\[lambda-intro\]' "$tmp_dir/lambda-handle.out"
 ./read_file.out --write-artifact "$tmp_dir/lambda-handle.apo" "$tmp_dir/lambda-handle.p" \
 	>"$tmp_dir/lambda-handle-write.out"

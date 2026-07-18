@@ -97,6 +97,10 @@ int main(void) {
 	uint32_t symbolic_effect_row;
 	uint32_t symbolic_effect_union;
 	uint32_t row_computation;
+	uint32_t pure_computation;
+	uint32_t terminal_computation;
+	uint32_t symbolic_computation;
+	uint32_t solved_symbolic_computation;
 	unsigned closed_effects;
 	if (prototype_term_effect_label(&term_db, PROTOTYPE_HOST_EFFECT_NONE, &empty_effect_row) != 0 ||
 		prototype_term_effect_label(&term_db, PROTOTYPE_HOST_EFFECT_TERMINAL, &terminal_effect_row) != 0 ||
@@ -114,7 +118,33 @@ int main(void) {
 			&term_db, symbolic_effect_union, value, &row_computation
 		) != 0 || prototype_term_classifier_view(&term_db, row_computation, &view) != 0 ||
 		view.effect_row != symbolic_effect_union ||
-		view.effects != PROTOTYPE_HOST_EFFECT_NONE) {
+		view.effects != PROTOTYPE_HOST_EFFECT_NONE ||
+		prototype_term_computation_type(
+			&term_db, empty_effect_row, value, &pure_computation
+		) != 0 ||
+		prototype_term_computation_type(
+			&term_db, terminal_effect_row, value, &terminal_computation
+		) != 0 ||
+		prototype_term_computation_type(
+			&term_db, symbolic_effect_row, value, &symbolic_computation
+		) != 0 ||
+		prototype_judgement_classifier_compatible(
+			&term_db, &type_db, pure_computation, terminal_computation
+		) != 0 ||
+		prototype_judgement_solve_expected_effect_rows(
+			&term_db,
+			&type_db,
+			NULL,
+			symbolic_computation,
+			terminal_computation,
+			&solved_symbolic_computation
+		) != 0 ||
+		!prototype_judgement_classifier_normalization_equal(
+			&term_db,
+			&type_db,
+			solved_symbolic_computation,
+			terminal_computation
+		)) {
 		return 1;
 	}
 	struct prototype_term_normalization_result normalization;
@@ -152,7 +182,9 @@ int main(void) {
 	if (prototype_term_var(&term_db, 6, &bound_var) != 0 ||
 		prototype_term_return(&term_db, bound_var, &bound_result) != 0 ||
 		prototype_term_lambda(&term_db, 6, bound_result, &bound_continuation) != 0 ||
-		prototype_term_bind(&term_db, returned, bound_continuation, &pure_bound) != 0 ||
+		prototype_term_deep_fold(
+			&term_db, returned, bound_continuation, NULL, 0, &pure_bound
+		) != 0 ||
 		prototype_term_normalize_with_profile(
 			&term_db,
 			&type_db,

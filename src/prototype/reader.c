@@ -24,6 +24,7 @@ enum token_kind {
 	TOKEN_FATARROW,
 	TOKEN_ARROW,
 	TOKEN_HASH,
+	TOKEN_AMPERSAND,
 	TOKEN_TEXT_LITERAL,
 	TOKEN_INT_LITERAL
 };
@@ -380,6 +381,9 @@ static int read_token(struct parser* parser) {
 		case '#':
 			parser->current.kind = TOKEN_HASH;
 			return 0;
+		case '&':
+			parser->current.kind = TOKEN_AMPERSAND;
+			return 0;
 		default:
 			break;
 	}
@@ -437,6 +441,17 @@ static const struct local_binder* lookup_binder(const struct parser* parser, int
 
 static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 	struct prototype_source_span span = current_span(parser);
+	if (accept(parser, TOKEN_AMPERSAND)) {
+		uint32_t result;
+		if (parse_type_atom(parser, &result) != 0 ||
+			prototype_ast_type_expr_computation_reference(
+				parser->program->asts, result, span, p_ret
+			) != 0) {
+			set_error(parser, "expected result type after '&'");
+			return -1;
+		}
+		return 0;
+	}
 	if (parser->current.kind == TOKEN_HASH) {
 		int symbol_id;
 		const char* name;
@@ -517,7 +532,8 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 }
 
 static int token_starts_type_atom(int kind) {
-	return kind == TOKEN_HASH || kind == TOKEN_STAR || kind == TOKEN_AT || kind == TOKEN_IDENT || kind == TOKEN_LPAREN;
+	return kind == TOKEN_AMPERSAND || kind == TOKEN_HASH || kind == TOKEN_STAR ||
+		kind == TOKEN_AT || kind == TOKEN_IDENT || kind == TOKEN_LPAREN;
 }
 
 static int parse_type_app(struct parser* parser, uint32_t* p_ret) {
@@ -544,7 +560,82 @@ static int parse_type_app(struct parser* parser, uint32_t* p_ret) {
 	return 0;
 }
 
+struct parser_snapshot {
+	size_t pos;
+	unsigned line;
+	unsigned column;
+	struct token current;
+	struct local_binder* binders;
+};
+
+static void snapshot_parser(const struct parser* parser, struct parser_snapshot* snapshot) {
+	snapshot->pos = parser->pos;
+	snapshot->line = parser->line;
+	snapshot->column = parser->column;
+	snapshot->current = parser->current;
+	snapshot->binders = parser->binders;
+}
+
+static void restore_parser(struct parser* parser, const struct parser_snapshot* snapshot) {
+	parser->pos = snapshot->pos;
+	parser->line = snapshot->line;
+	parser->column = snapshot->column;
+	parser->current = snapshot->current;
+	parser->binders = snapshot->binders;
+}
+
 static int parse_type_expr(struct parser* parser, uint32_t* p_ret) {
+	if (parser->current.kind == TOKEN_LPAREN) {
+		struct parser_snapshot snapshot;
+		snapshot_parser(parser, &snapshot);
+		struct prototype_source_span span = current_span(parser);
+		if (read_token(parser) != 0) {
+			return -1;
+		}
+		if (parser->current.kind == TOKEN_IDENT) {
+			int symbol_id = parser->current.symbol_id;
+			if (read_token(parser) != 0) {
+				return -1;
+			}
+			if (parser->current.kind == TOKEN_COLON) {
+				uint32_t ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+				uint32_t domain;
+				uint32_t codomain;
+				struct local_binder binder;
+				if (ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
+					parse_type_expr(parser, &domain) != 0 ||
+					expect(parser, TOKEN_RPAREN, "expected ')' after Pi binder") != 0 ||
+					expect(parser, TOKEN_ARROW, "expected '->' after Pi binder") != 0) {
+					return -1;
+				}
+				binder.symbol_id = symbol_id;
+				binder.ast_binder_id = ast_binder_id;
+				binder.induction_allowed = 0;
+				binder.next = parser->binders;
+				parser->binders = &binder;
+				if (parse_type_expr(parser, &codomain) != 0) {
+					parser->binders = binder.next;
+					return -1;
+				}
+				parser->binders = binder.next;
+				if (prototype_ast_type_expr_pi(
+						parser->program->asts,
+						ast_binder_id,
+						symbol_id,
+						domain,
+						codomain,
+						span,
+						p_ret
+					) != 0) {
+					set_error(parser, "type expression table is full");
+					return -1;
+				}
+				return 0;
+			}
+		}
+		restore_parser(parser, &snapshot);
+	}
+
 	uint32_t lhs;
 	if (parse_type_app(parser, &lhs) != 0) {
 		return -1;
@@ -569,30 +660,6 @@ static int parse_type_expr(struct parser* parser, uint32_t* p_ret) {
 static int type_expr_is_self(const struct prototype_ast_db* asts, uint32_t type_expr) {
 	return type_expr < asts->type_expr_count &&
 		asts->type_exprs[type_expr].tag == PROTOTYPE_AST_TYPE_EXPR_SELF;
-}
-
-struct parser_snapshot {
-	size_t pos;
-	unsigned line;
-	unsigned column;
-	struct token current;
-	struct local_binder* binders;
-};
-
-static void snapshot_parser(const struct parser* parser, struct parser_snapshot* snapshot) {
-	snapshot->pos = parser->pos;
-	snapshot->line = parser->line;
-	snapshot->column = parser->column;
-	snapshot->current = parser->current;
-	snapshot->binders = parser->binders;
-}
-
-static void restore_parser(struct parser* parser, const struct parser_snapshot* snapshot) {
-	parser->pos = snapshot->pos;
-	parser->line = snapshot->line;
-	parser->column = snapshot->column;
-	parser->current = snapshot->current;
-	parser->binders = snapshot->binders;
 }
 
 static int try_parse_constructor_field_binder(
@@ -997,7 +1064,141 @@ static int parse_parameterized_type_or_lambda_def(
 	return 0;
 }
 
+static int block_starts_binding(struct parser* parser) {
+	if (!parser || parser->current.kind != TOKEN_IDENT) {
+		return 0;
+	}
+	struct parser_snapshot snapshot;
+	snapshot_parser(parser, &snapshot);
+	if (read_token(parser) != 0) {
+		return -1;
+	}
+	int result = parser->current.kind == TOKEN_ASSIGN ||
+		parser->current.kind == TOKEN_COLON;
+	restore_parser(parser, &snapshot);
+	return result;
+}
+
+static int block_has_local_symbol(
+	const struct parser* parser,
+	const struct local_binder* outer_binders,
+	int symbol_id
+) {
+	if (!parser) {
+		return 0;
+	}
+	for (const struct local_binder* binder = parser->binders;
+		binder != outer_binders;
+		binder = binder->next) {
+		if (!binder || binder->symbol_id == symbol_id) {
+			return binder != NULL;
+		}
+	}
+	return 0;
+}
+
+static int parse_block_body(
+	struct parser* parser,
+	const struct local_binder* outer_binders,
+	uint32_t* p_ret
+) {
+	if (!parser || !p_ret || parser->current.kind == TOKEN_RBRACE ||
+		parser->current.kind == TOKEN_EOF) {
+		set_error(parser, "computation block requires a terminal term");
+		return -1;
+	}
+	int starts_binding = block_starts_binding(parser);
+	if (starts_binding < 0) {
+		return -1;
+	}
+	if (starts_binding == 0) {
+		if (parse_term(parser, p_ret) != 0) {
+			return -1;
+		}
+		return expect(parser, TOKEN_RBRACE, "expected '}' after computation block");
+	}
+
+	struct prototype_source_span span = current_span(parser);
+	int binder_symbol_id = parser->current.symbol_id;
+	if (block_has_local_symbol(parser, outer_binders, binder_symbol_id)) {
+		set_error(parser, "duplicate computation block binding");
+		return -1;
+	}
+	uint32_t ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+	uint32_t binder_type = PROTOTYPE_INVALID_ID;
+	uint32_t value;
+	uint32_t rest;
+	struct local_binder binder;
+	if (ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0) {
+		return -1;
+	}
+	if (accept(parser, TOKEN_COLON) && parse_type_expr(parser, &binder_type) != 0) {
+		return -1;
+	}
+	if (expect(parser, TOKEN_ASSIGN, "expected ':=' in computation block") != 0 ||
+		parse_term(parser, &value) != 0 ||
+		expect(parser, TOKEN_SEMI, "expected ';' after computation block binding") != 0) {
+		return -1;
+	}
+	binder.symbol_id = binder_symbol_id;
+	binder.ast_binder_id = ast_binder_id;
+	binder.induction_allowed = 0;
+	binder.next = parser->binders;
+	parser->binders = &binder;
+	if (parse_block_body(parser, outer_binders, &rest) != 0) {
+		parser->binders = binder.next;
+		return -1;
+	}
+	parser->binders = binder.next;
+	if (prototype_ast_block_bind(
+			parser->program->asts,
+			ast_binder_id,
+			binder_symbol_id,
+			binder_type,
+			value,
+			rest,
+			span,
+			p_ret
+		) != 0) {
+		set_error(parser, "AST table is full");
+		return -1;
+	}
+	return 0;
+}
+
+static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
+	struct prototype_source_span span = current_span(parser);
+	const struct local_binder* outer_binders = parser->binders;
+	uint32_t body;
+	if (expect(parser, TOKEN_LBRACE, "expected '{'") != 0 ||
+		parse_block_body(parser, outer_binders, &body) != 0) {
+		return -1;
+	}
+	if (prototype_ast_computation_block(
+			parser->program->asts, body, span, p_ret
+		) != 0) {
+		set_error(parser, "AST table is full");
+		return -1;
+	}
+	return 0;
+}
+
 static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
+	if (accept(parser, TOKEN_AMPERSAND)) {
+		struct prototype_source_span span = current_span(parser);
+		uint32_t computation;
+		if (parse_term_atom(parser, &computation) != 0 ||
+			prototype_ast_quote(
+				parser->program->asts, computation, span, p_ret
+			) != 0) {
+			set_error(parser, "expected computation after '&'");
+			return -1;
+		}
+		return 0;
+	}
+	if (parser->current.kind == TOKEN_LBRACE) {
+		return parse_computation_block(parser, p_ret);
+	}
 	if (parser->current.kind == TOKEN_HASH) {
 		int namespace_symbol_id;
 		int symbol_id;
@@ -1053,9 +1254,6 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 					p_ret
 				);
 			}
-			if (name && strcmp(name, "bind") == 0) {
-				system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_BIND;
-			} else {
 			int host_type;
 			int host_status = prototype_term_host_type_from_source_name(name, &host_type);
 			if (host_status < 0) {
@@ -1080,7 +1278,6 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				if (operation_id == PROTOTYPE_OPERATION_TEXT_TO_NAT ||
 					operation_id == PROTOTYPE_OPERATION_NAT_TO_TEXT) {
 					type_symbol_id = symbol_intern(parser->program->symbols, "#.Nat", 5);
-				}
 				}
 			}
 			if (system_name_kind == PROTOTYPE_AST_SYSTEM_NAME_UNKNOWN) {
@@ -1221,6 +1418,8 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 static int token_starts_term_atom(int kind) {
 	return kind == TOKEN_IDENT ||
 		kind == TOKEN_LPAREN ||
+		kind == TOKEN_LBRACE ||
+		kind == TOKEN_AMPERSAND ||
 		kind == TOKEN_STAR ||
 		kind == TOKEN_HASH ||
 		kind == TOKEN_TEXT_LITERAL ||
@@ -1548,24 +1747,15 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 		if (parse_handle_term(parser, p_ret) != 0) {
 			return -1;
 		}
-	} else if (current_is_keyword(parser, "return") ||
-		current_is_keyword(parser, "thunk") ||
-		current_is_keyword(parser, "force") || current_is_keyword(parser, "perform")) {
-		int is_return = current_is_keyword(parser, "return");
-		int is_thunk = current_is_keyword(parser, "thunk");
-		int is_perform = current_is_keyword(parser, "perform");
+	} else if (current_is_keyword(parser, "perform")) {
 		uint32_t operand;
 		uint32_t result;
 		if (read_token(parser) != 0 || parse_term(parser, &operand) != 0) {
 			return -1;
 		}
-		int status = is_return ?
-			prototype_ast_return(parser->program->asts, operand, span, &result) :
-			(is_thunk ?
-				prototype_ast_thunk(parser->program->asts, operand, span, &result) :
-				(is_perform ? prototype_ast_perform(parser->program->asts, operand, span, &result) :
-					prototype_ast_force(parser->program->asts, operand, span, &result)));
-		if (status != 0) {
+		if (prototype_ast_perform(
+				parser->program->asts, operand, span, &result
+			) != 0) {
 			set_error(parser, "AST table is full");
 			return -1;
 		}
@@ -1624,10 +1814,12 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 
 static int parse_case_body(struct parser* parser, uint32_t* p_ret) {
 	struct prototype_source_span span = current_span(parser);
-	if (current_is_keyword(parser, "return") ||
-		current_is_keyword(parser, "thunk") ||
-		current_is_keyword(parser, "force")) {
-		if (parse_term(parser, p_ret) != 0) {
+	if (parser->current.kind == TOKEN_LBRACE) {
+		if (parse_computation_block(parser, p_ret) != 0) {
+			return -1;
+		}
+	} else if (parser->current.kind == TOKEN_AMPERSAND) {
+		if (parse_app_term(parser, p_ret) != 0) {
 			return -1;
 		}
 	} else if (parser->current.kind == TOKEN_BACKSLASH) {
@@ -2136,7 +2328,6 @@ int prototype_compile_graph_with_imports(
 		program->judgement,
 		program->metadata,
 		program->namespace_symbol_id,
-		!program->compile_options.disable_automatic_cbpv_coercions,
 		imported_interfaces,
 		imported_interface_count
 	) != 0) {

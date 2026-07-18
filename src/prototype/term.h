@@ -30,6 +30,7 @@ typedef int (*prototype_term_operation_dispatch_fn)(
 #define PROTOTYPE_PI_UNUSED_BINDER_ID (UINT32_MAX - 2)
 #define PROTOTYPE_SCOPE_BINDER_CAPACITY 512
 #define PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY 1024
+#define PROTOTYPE_DEEP_FOLD_CLAUSE_CAPACITY 4096
 #define PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT UINT64_C(100000)
 #define PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT UINT64_C(100000)
 
@@ -63,11 +64,8 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_RETURN,
 	PROTOTYPE_TERM_THUNK,
 	PROTOTYPE_TERM_FORCE,
-	PROTOTYPE_TERM_BIND,
 	PROTOTYPE_TERM_OPERATION_REQUEST,
-	PROTOTYPE_TERM_HANDLER,
-	PROTOTYPE_TERM_HANDLE,
-	PROTOTYPE_TERM_HANDLER_TYPE
+	PROTOTYPE_TERM_DEEP_FOLD
 };
 
 enum prototype_term_category {
@@ -357,30 +355,23 @@ struct prototype_term {
 			uint32_t value;
 		} force;
 		struct {
-			uint32_t computation;
-			uint32_t continuation;
-		} bind;
-		struct {
 			uint32_t operation;
 			uint32_t argument;
 			uint32_t continuation;
 		} operation_request;
 		struct {
-			uint32_t operation;
-			uint32_t return_clause;
-			uint32_t operation_clause;
-		} handler;
-		struct {
-			uint32_t handler;
 			uint32_t computation;
-		} handle;
-		struct {
-			uint32_t operation;
-			uint32_t input_computation;
-			uint32_t output_computation;
-		} handler_type;
+			uint32_t return_clause;
+			uint32_t first_clause;
+			uint32_t clause_count;
+		} deep_fold;
 	} as;
 	};
+
+struct prototype_deep_fold_clause {
+	uint32_t operation;
+	uint32_t body;
+};
 
 struct prototype_match_case {
 	uint32_t constructor_owner;
@@ -443,6 +434,10 @@ struct prototype_term_db {
 	struct prototype_match_frame* match_frames;
 	size_t match_frame_count;
 	size_t match_frame_capacity;
+
+	struct prototype_deep_fold_clause
+		deep_fold_clauses[PROTOTYPE_DEEP_FOLD_CLAUSE_CAPACITY];
+	size_t deep_fold_clause_count;
 
 	uint32_t next_binder_id;
 	uint32_t scope_binders[PROTOTYPE_SCOPE_BINDER_CAPACITY];
@@ -638,12 +633,6 @@ int prototype_term_force(
 	uint32_t value,
 	uint32_t* p_ret
 );
-int prototype_term_bind(
-	struct prototype_term_db* db,
-	uint32_t computation,
-	uint32_t continuation,
-	uint32_t* p_ret
-);
 int prototype_term_operation_request(
 	struct prototype_term_db* db,
 	uint32_t operation,
@@ -651,24 +640,12 @@ int prototype_term_operation_request(
 	uint32_t continuation,
 	uint32_t* p_ret
 );
-int prototype_term_handler(
+int prototype_term_deep_fold(
 	struct prototype_term_db* db,
-	uint32_t operation,
-	uint32_t return_clause,
-	uint32_t operation_clause,
-	uint32_t* p_ret
-);
-int prototype_term_handle(
-	struct prototype_term_db* db,
-	uint32_t handler,
 	uint32_t computation,
-	uint32_t* p_ret
-);
-int prototype_term_handler_type(
-	struct prototype_term_db* db,
-	uint32_t operation,
-	uint32_t input_computation,
-	uint32_t output_computation,
+	uint32_t return_clause,
+	const struct prototype_deep_fold_clause* clauses,
+	uint32_t clause_count,
 	uint32_t* p_ret
 );
 int prototype_term_host_type_from_source_name(const char* name, int* p_type_id);

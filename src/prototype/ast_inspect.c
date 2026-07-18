@@ -35,12 +35,12 @@ static const char* ast_tag_name(int tag) {
 				return "system-name";
 		case PROTOTYPE_AST_ASCRIPTION:
 			return "ascription";
-		case PROTOTYPE_AST_RETURN:
-			return "return";
-		case PROTOTYPE_AST_THUNK:
-			return "thunk";
-		case PROTOTYPE_AST_FORCE:
-			return "force";
+		case PROTOTYPE_AST_QUOTE:
+			return "quote";
+		case PROTOTYPE_AST_COMPUTATION_BLOCK:
+			return "computation-block";
+		case PROTOTYPE_AST_BLOCK_BIND:
+			return "block-bind";
 		case PROTOTYPE_AST_PERFORM:
 			return "perform";
 		case PROTOTYPE_AST_HANDLE:
@@ -66,6 +66,10 @@ static const char* type_expr_tag_name(int tag) {
 			return "app";
 			case PROTOTYPE_AST_TYPE_EXPR_ARROW:
 				return "arrow";
+			case PROTOTYPE_AST_TYPE_EXPR_PI:
+				return "pi";
+			case PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE:
+				return "computation-reference";
 			case PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE:
 				return "host-type";
 			default:

@@ -289,6 +289,24 @@ int prototype_type_expr_arrow(struct prototype_type_declaration_db* db, uint32_t
 	return add_expr(db, expr, p_ret);
 }
 
+int prototype_type_expr_pi(
+	struct prototype_type_declaration_db* db,
+	uint32_t binder_id,
+	int symbol_id,
+	uint32_t domain,
+	uint32_t codomain,
+	uint32_t* p_ret
+) {
+	struct prototype_type_expr expr;
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_TYPE_EXPR_PI;
+	expr.as.pi.binder_id = binder_id;
+	expr.as.pi.symbol_id = symbol_id;
+	expr.as.pi.domain = domain;
+	expr.as.pi.codomain = codomain;
+	return add_expr(db, expr, p_ret);
+}
+
 int prototype_type_expr_imported_type(
 	struct prototype_type_declaration_db* db,
 	struct prototype_qualified_name name,
@@ -606,6 +624,24 @@ static int representation_type_exprs_equal_at_depth(
 			) && representation_type_exprs_equal_at_depth(
 				terms, db, left->as.arrow.codomain, right->as.arrow.codomain, env, depth + 1
 			);
+		case PROTOTYPE_TYPE_EXPR_PI: {
+			if (!representation_type_exprs_equal_at_depth(
+					terms, db, left->as.pi.domain, right->as.pi.domain, env, depth + 1
+				)) {
+				return 0;
+			}
+			uint32_t saved_binders = env->binder_count;
+			if (representation_push_binder(
+					env, left->as.pi.binder_id, right->as.pi.binder_id
+				) != 0) {
+				return 0;
+			}
+			int equal = representation_type_exprs_equal_at_depth(
+				terms, db, left->as.pi.codomain, right->as.pi.codomain, env, depth + 1
+			);
+			env->binder_count = saved_binders;
+			return equal;
+		}
 		default:
 			return 0;
 	}
@@ -806,15 +842,32 @@ static int representation_terms_equal_at_depth(
 			return representation_terms_equal_at_depth(
 				terms, db, left->as.force.value, right->as.force.value, env, depth + 1
 			);
-		case PROTOTYPE_TERM_BIND: {
+		case PROTOTYPE_TERM_DEEP_FOLD: {
 			if (!representation_terms_equal_at_depth(
-					terms, db, left->as.bind.computation, right->as.bind.computation, env, depth + 1
-				)) {
+					terms, db, left->as.deep_fold.computation,
+					right->as.deep_fold.computation, env, depth + 1
+				) || !representation_terms_equal_at_depth(
+					terms, db, left->as.deep_fold.return_clause,
+					right->as.deep_fold.return_clause, env, depth + 1
+				) || left->as.deep_fold.clause_count != right->as.deep_fold.clause_count) {
 				return 0;
 			}
-			return representation_terms_equal_at_depth(
-				terms, db, left->as.bind.continuation, right->as.bind.continuation, env, depth + 1
-			);
+			for (uint32_t i = 0; i < left->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* left_clause =
+					&terms->deep_fold_clauses[left->as.deep_fold.first_clause + i];
+				const struct prototype_deep_fold_clause* right_clause =
+					&terms->deep_fold_clauses[right->as.deep_fold.first_clause + i];
+				if (!representation_terms_equal_at_depth(
+						terms, db, left_clause->operation, right_clause->operation,
+						env, depth + 1
+					) || !representation_terms_equal_at_depth(
+						terms, db, left_clause->body, right_clause->body,
+						env, depth + 1
+					)) {
+					return 0;
+				}
+			}
+			return 1;
 		}
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			return representation_terms_equal_at_depth(
@@ -1028,6 +1081,25 @@ static int type_expr_code_shape_key_at_depth(
 				p_hash,
 				depth + 1
 			);
+		case PROTOTYPE_TYPE_EXPR_PI: {
+			if (type_expr_code_shape_key_at_depth(
+					db, expr->as.pi.domain, env, key, p_hash, depth + 1
+				) != 0) {
+				return -1;
+			}
+			uint32_t saved_count = env->count;
+			uint32_t saved_next_slot = env->next_slot;
+			if (type_code_shape_key_env_push(env, expr->as.pi.binder_id) != 0) {
+				return -1;
+			}
+			key->bound_binder_count++;
+			int status = type_expr_code_shape_key_at_depth(
+				db, expr->as.pi.codomain, env, key, p_hash, depth + 1
+			);
+			env->count = saved_count;
+			env->next_slot = saved_next_slot;
+			return status;
+		}
 		default:
 			return -1;
 	}

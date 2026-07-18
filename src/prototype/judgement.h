@@ -26,10 +26,8 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_FORCE_ELIM,
-	PROTOTYPE_JUDGEMENT_PROOF_BIND_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO,
-	PROTOTYPE_JUDGEMENT_PROOF_HANDLER_INTRO,
-	PROTOTYPE_JUDGEMENT_PROOF_HANDLE_ELIM,
+	PROTOTYPE_JUDGEMENT_PROOF_DEEP_FOLD_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE,
@@ -85,10 +83,8 @@ struct prototype_judgement_match_motive_result {
 };
 
 enum prototype_judgement_computation_constraint_kind {
-	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_BIND = 1,
-	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST,
-	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_HANDLER,
-	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_HANDLE
+	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_DEEP_FOLD = 1,
+	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST
 };
 
 /* A computation constraint records the two operands required to solve a CBPV
@@ -314,6 +310,26 @@ int prototype_judgement_delta_record_app_elim(
 	uint32_t function_classifier,
 	uint32_t argument_subject,
 	uint32_t argument_classifier
+);
+int prototype_judgement_delta_record_deep_fold_elim(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t computation,
+	uint32_t computation_classifier,
+	uint32_t continuation,
+	uint32_t continuation_classifier
+);
+
+int prototype_judgement_deep_fold_result_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t computation,
+	uint32_t computation_classifier,
+	uint32_t continuation_classifier,
+	uint32_t* p_classifier
 );
 
 /* Materialize a solved type-formation fact selected by the operation solver.
@@ -607,6 +623,22 @@ int prototype_judgement_classifier_view(
 	struct prototype_term_classifier_view* p_ret
 );
 
+/*
+ * Solve free effect-row variables in an elaborated expected classifier from
+ * the corresponding rows of an actual classifier. Returns 0 with a concrete
+ * classifier, 1 when the classifier shapes do not determine a compatible
+ * solution, and -1 for malformed input. This is elaboration/constraint
+ * solving, not kernel compatibility.
+ */
+int prototype_judgement_solve_expected_effect_rows(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t* p_solved_expected
+);
+
 int prototype_judgement_classifier_compatible(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -730,7 +762,7 @@ int prototype_judgement_delta_record_cbpv_boundary(
 	uint32_t child_classifier
 );
 
-/* Infer CBPV boundary nodes and solve BIND/request constraints using already
+/* Infer CBPV boundary nodes and solve deep-fold/request constraints using already
  * materialized child derivations. Unlike infer_term_classifiers, this does
  * not re-run general type formation, APP, or LAMBDA inference. */
 int prototype_judgement_delta_infer_computation_constraints(
@@ -739,7 +771,7 @@ int prototype_judgement_delta_infer_computation_constraints(
 	struct prototype_type_declaration_db* type_declarations
 );
 
-/* Solve BIND, OPERATION_REQUEST, and HANDLE constraints after source lowering
+/* Solve DEEP_FOLD and OPERATION_REQUEST constraints after source lowering
  * has materialized the occurrence-selected CBPV boundary derivations. */
 int prototype_judgement_delta_solve_computation_constraints(
 	struct prototype_judgement_delta* delta,

@@ -43,6 +43,7 @@
 #define RESOLUTION_EVENT_CAPACITY 2048
 #define OPERATION_CAPACITY 4096
 #define OPERATION_CASE_CAPACITY 4096
+#define EFFECT_CONSTRAINT_CAPACITY 8192
 #define VERIFICATION_OBLIGATION_CAPACITY 4096
 #define ARTIFACT_TERM_EXPORT_CAPACITY 512
 #define ARTIFACT_TYPE_EXPORT_CAPACITY 256
@@ -107,10 +108,14 @@ static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_IT
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_operation_effect_constraint
+	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
 static struct prototype_operation_node provider_operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case provider_operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_operation_effect_constraint
+	provider_effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	provider_verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
 static struct prototype_artifact_term_export artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
@@ -321,9 +326,8 @@ static const char* operation_tag_name(int tag) {
 		case PROTOTYPE_OPERATION_RETURN: return "return";
 		case PROTOTYPE_OPERATION_THUNK: return "thunk";
 		case PROTOTYPE_OPERATION_FORCE: return "force";
-		case PROTOTYPE_OPERATION_BIND: return "bind";
+		case PROTOTYPE_OPERATION_DEEP_FOLD: return "deep-fold";
 		case PROTOTYPE_OPERATION_PERFORM: return "perform";
-		case PROTOTYPE_OPERATION_HANDLE: return "handle";
 		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS: return "induction-hypothesis";
 		case PROTOTYPE_OPERATION_ASCRIPTION: return "ascription";
 		default: return "unknown";
@@ -534,13 +538,22 @@ static void print_type_expr_debug(
 			print_type_expr_debug(symbols, type_declarations, expr->as.app.argument);
 			printf(")");
 			break;
-		case PROTOTYPE_TYPE_EXPR_ARROW:
-			printf("ARROW(");
-			print_type_expr_debug(symbols, type_declarations, expr->as.arrow.domain);
-			printf(", ");
-			print_type_expr_debug(symbols, type_declarations, expr->as.arrow.codomain);
-			printf(")");
-			break;
+			case PROTOTYPE_TYPE_EXPR_ARROW:
+				printf("ARROW(");
+				print_type_expr_debug(symbols, type_declarations, expr->as.arrow.domain);
+				printf(", ");
+				print_type_expr_debug(symbols, type_declarations, expr->as.arrow.codomain);
+				printf(")");
+				break;
+			case PROTOTYPE_TYPE_EXPR_PI:
+				printf("PI(%s#%u : ",
+					symbol_to_string(symbols, expr->as.pi.symbol_id),
+					expr->as.pi.binder_id);
+				print_type_expr_debug(symbols, type_declarations, expr->as.pi.domain);
+				printf(", ");
+				print_type_expr_debug(symbols, type_declarations, expr->as.pi.codomain);
+				printf(")");
+				break;
 		default:
 			printf("UNKNOWN_TYPE");
 			break;
@@ -748,6 +761,8 @@ static int append_link_operation_graph(
 		prototype_operation_graph_case_count(&target_graph) +
 			prototype_operation_graph_case_count(&source_graph) >
 			target_graph.case_capacity ||
+		target->effect_constraint_count + source->effect_constraint_count >
+			target->effect_constraint_capacity ||
 		prototype_verification_db_count(&target->verification) +
 			prototype_verification_db_count(&source->verification) >
 			prototype_verification_db_capacity(&target->verification)) {
@@ -864,6 +879,23 @@ static int append_link_operation_graph(
 			) != 0) {
 			return -1;
 		}
+	}
+	for (size_t i = 0; i < source->effect_constraint_count; ++i) {
+		struct prototype_operation_effect_constraint constraint =
+			source->effect_constraints[i];
+		constraint.operation = offset_link_graph_id(
+			constraint.operation, operation_offset
+		);
+		constraint.result_row = offset_link_graph_id(
+			constraint.result_row, term_offset
+		);
+		constraint.left_row = offset_link_graph_id(
+			constraint.left_row, term_offset
+		);
+		constraint.right_row = offset_link_graph_id(
+			constraint.right_row, term_offset
+		);
+		target->effect_constraints[target->effect_constraint_count++] = constraint;
 	}
 	for (size_t i = 0;
 		i < prototype_verification_db_count(&source->verification);
@@ -2293,6 +2325,12 @@ static int reexport_appended_interface(
 					expr.as.arrow.codomain =
 						offset_optional_id(expr.as.arrow.codomain, type_expr_offset);
 					break;
+				case PROTOTYPE_TYPE_EXPR_PI:
+					expr.as.pi.domain =
+						offset_optional_id(expr.as.pi.domain, type_expr_offset);
+					expr.as.pi.codomain =
+						offset_optional_id(expr.as.pi.codomain, type_expr_offset);
+					break;
 				default:
 					break;
 			}
@@ -2462,7 +2500,6 @@ int main(int argc, char** argv) {
 	size_t opaque_export_count = 0;
 	int read_graph = 0;
 	int link_reexport_providers = 0;
-	int disable_automatic_cbpv_coercions = 0;
 	int normalization_step_limit_is_set = 0;
 	uint64_t normalization_step_limit = 0;
 	int solver_step_limit_is_set = 0;
@@ -2471,14 +2508,6 @@ int main(int argc, char** argv) {
 	memset(&read_options, 0, sizeof(read_options));
 
 	for (; file_arg < argc && argv[file_arg][0] == '-'; ++file_arg) {
-		if (strcmp(argv[file_arg], "--automatic-cbpv-coercions") == 0) {
-			disable_automatic_cbpv_coercions = 0;
-			continue;
-		}
-		if (strcmp(argv[file_arg], "--no-automatic-cbpv-coercions") == 0) {
-			disable_automatic_cbpv_coercions = 1;
-			continue;
-		}
 		if (strcmp(argv[file_arg], "--normalization-steps") == 0) {
 			if (file_arg + 1 >= argc || parse_step_limit(
 					argv[file_arg + 1], &normalization_step_limit
@@ -2717,7 +2746,7 @@ int main(int argc, char** argv) {
 			continue;
 		}
 		fprintf(stderr, "unknown option: %s\n", argv[file_arg]);
-		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--policy strict|hybrid|exploratory] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--policy strict|hybrid|exploratory] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-backend interpreter|c|verilog file.ao\n", argv[0]);
@@ -2781,7 +2810,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (!interface_input_path && !link_target_path && argc - file_arg < 1) {
-		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
@@ -2900,6 +2929,8 @@ int main(int argc, char** argv) {
 			OPERATION_CAPACITY,
 			operation_cases,
 			OPERATION_CASE_CAPACITY,
+			effect_constraints,
+			EFFECT_CONSTRAINT_CAPACITY,
 			verification_obligations,
 			VERIFICATION_OBLIGATION_CAPACITY
 		);
@@ -3034,6 +3065,8 @@ int main(int argc, char** argv) {
 				OPERATION_CAPACITY,
 				provider_operation_cases,
 				OPERATION_CASE_CAPACITY,
+				provider_effect_constraints,
+				EFFECT_CONSTRAINT_CAPACITY,
 				provider_verification_obligations,
 				VERIFICATION_OBLIGATION_CAPACITY
 			);
@@ -3307,6 +3340,7 @@ int main(int argc, char** argv) {
 				resolution_events, RESOLUTION_EVENT_CAPACITY,
 				operations, OPERATION_CAPACITY,
 				operation_cases, OPERATION_CASE_CAPACITY,
+				effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 				verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 			);
 			prototype_type_declaration_db_init(
@@ -3652,6 +3686,8 @@ int main(int argc, char** argv) {
 		OPERATION_CAPACITY,
 		operation_cases,
 		OPERATION_CASE_CAPACITY,
+		effect_constraints,
+		EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations,
 		VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -3670,8 +3706,6 @@ int main(int argc, char** argv) {
 	program.judgement = &judgement_db;
 	program.metadata = &metadata;
 	program.universe = &universe_db;
-	program.compile_options.disable_automatic_cbpv_coercions =
-		disable_automatic_cbpv_coercions;
 	program.compile_options.compile_policy = compile_policy;
 	program.compile_options.normalization_step_limit_is_set =
 		normalization_step_limit_is_set;

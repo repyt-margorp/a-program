@@ -316,9 +316,8 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 		case PROTOTYPE_TERM_LAMBDA:
 		case PROTOTYPE_TERM_RETURN:
 		case PROTOTYPE_TERM_FORCE:
-		case PROTOTYPE_TERM_BIND:
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
-		case PROTOTYPE_TERM_HANDLE:
+		case PROTOTYPE_TERM_DEEP_FOLD:
 			p_ret->layer = PROTOTYPE_TERM_LAYER_LAMBDA_CORE;
 			break;
 		case PROTOTYPE_TERM_MATCH:
@@ -338,12 +337,10 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 		case PROTOTYPE_TERM_THUNK_TYPE:
-		case PROTOTYPE_TERM_HANDLER_TYPE:
 				p_ret->layer = PROTOTYPE_TERM_LAYER_TYPE_FORMER;
 					break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 		case PROTOTYPE_TERM_THUNK:
-		case PROTOTYPE_TERM_HANDLER:
 		case PROTOTYPE_TERM_TEXT_LITERAL:
 				case PROTOTYPE_TERM_INT_LITERAL:
 					p_ret->layer = PROTOTYPE_TERM_LAYER_DATA;
@@ -375,9 +372,8 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 		case PROTOTYPE_TERM_MATCH:
 		case PROTOTYPE_TERM_RETURN:
 		case PROTOTYPE_TERM_FORCE:
-		case PROTOTYPE_TERM_BIND:
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
-		case PROTOTYPE_TERM_HANDLE:
+		case PROTOTYPE_TERM_DEEP_FOLD:
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			p_ret->whnf_role = PROTOTYPE_TERM_WHNF_ELIMINATOR;
 			break;
@@ -778,17 +774,32 @@ static int shape_terms_equal_at_depth(
 				ignore_match_frames,
 				depth + 1
 			);
-		case PROTOTYPE_TERM_BIND: {
+		case PROTOTYPE_TERM_DEEP_FOLD: {
 			if (!shape_terms_equal_at_depth(
-					db, left->as.bind.computation, right->as.bind.computation,
+					db, left->as.deep_fold.computation, right->as.deep_fold.computation,
 					env, type_view_compare_mode, ignore_match_frames, depth + 1
-				)) {
+				) || !shape_terms_equal_at_depth(
+					db, left->as.deep_fold.return_clause, right->as.deep_fold.return_clause,
+					env, type_view_compare_mode, ignore_match_frames, depth + 1
+				) || left->as.deep_fold.clause_count != right->as.deep_fold.clause_count) {
 				return 0;
 			}
-			return shape_terms_equal_at_depth(
-				db, left->as.bind.continuation, right->as.bind.continuation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			);
+			for (uint32_t i = 0; i < left->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* left_clause =
+					&db->deep_fold_clauses[left->as.deep_fold.first_clause + i];
+				const struct prototype_deep_fold_clause* right_clause =
+					&db->deep_fold_clauses[right->as.deep_fold.first_clause + i];
+				if (!shape_terms_equal_at_depth(
+						db, left_clause->operation, right_clause->operation, env,
+						type_view_compare_mode, ignore_match_frames, depth + 1
+					) || !shape_terms_equal_at_depth(
+						db, left_clause->body, right_clause->body, env,
+						type_view_compare_mode, ignore_match_frames, depth + 1
+					)) {
+					return 0;
+				}
+			}
+			return 1;
 		}
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			return shape_terms_equal_at_depth(
@@ -799,38 +810,6 @@ static int shape_terms_equal_at_depth(
 				env, type_view_compare_mode, ignore_match_frames, depth + 1
 			) && shape_terms_equal_at_depth(
 				db, left->as.operation_request.continuation, right->as.operation_request.continuation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER:
-			return shape_terms_equal_at_depth(
-				db, left->as.handler.operation, right->as.handler.operation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && shape_terms_equal_at_depth(
-				db, left->as.handler.return_clause, right->as.handler.return_clause,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && shape_terms_equal_at_depth(
-				db, left->as.handler.operation_clause, right->as.handler.operation_clause,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLE:
-			return shape_terms_equal_at_depth(
-				db, left->as.handle.handler, right->as.handle.handler,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && shape_terms_equal_at_depth(
-				db, left->as.handle.computation, right->as.handle.computation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER_TYPE:
-			return shape_terms_equal_at_depth(
-				db, left->as.handler_type.operation, right->as.handler_type.operation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && shape_terms_equal_at_depth(
-				db, left->as.handler_type.input_computation,
-				right->as.handler_type.input_computation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && shape_terms_equal_at_depth(
-				db, left->as.handler_type.output_computation,
-				right->as.handler_type.output_computation,
 				env, type_view_compare_mode, ignore_match_frames, depth + 1
 			);
 		case PROTOTYPE_TERM_PI:
@@ -1294,19 +1273,36 @@ static int cross_shape_terms_equal_at_depth(
 				ignore_match_frames,
 				depth + 1
 			);
-		case PROTOTYPE_TERM_BIND: {
+		case PROTOTYPE_TERM_DEEP_FOLD: {
 			if (!cross_shape_terms_equal_at_depth(
-					left_db, left_type_declarations, left->as.bind.computation,
-					right_db, right_type_declarations, right->as.bind.computation,
+					left_db, left_type_declarations, left->as.deep_fold.computation,
+					right_db, right_type_declarations, right->as.deep_fold.computation,
 					env, type_view_compare_mode, ignore_match_frames, depth + 1
-				)) {
+				) || !cross_shape_terms_equal_at_depth(
+					left_db, left_type_declarations, left->as.deep_fold.return_clause,
+					right_db, right_type_declarations, right->as.deep_fold.return_clause,
+					env, type_view_compare_mode, ignore_match_frames, depth + 1
+				) || left->as.deep_fold.clause_count != right->as.deep_fold.clause_count) {
 				return 0;
 			}
-			return cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.bind.continuation,
-				right_db, right_type_declarations, right->as.bind.continuation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			);
+			for (uint32_t i = 0; i < left->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* left_clause =
+					&left_db->deep_fold_clauses[left->as.deep_fold.first_clause + i];
+				const struct prototype_deep_fold_clause* right_clause =
+					&right_db->deep_fold_clauses[right->as.deep_fold.first_clause + i];
+				if (!cross_shape_terms_equal_at_depth(
+						left_db, left_type_declarations, left_clause->operation,
+						right_db, right_type_declarations, right_clause->operation,
+						env, type_view_compare_mode, ignore_match_frames, depth + 1
+					) || !cross_shape_terms_equal_at_depth(
+						left_db, left_type_declarations, left_clause->body,
+						right_db, right_type_declarations, right_clause->body,
+						env, type_view_compare_mode, ignore_match_frames, depth + 1
+					)) {
+					return 0;
+				}
+			}
+			return 1;
 		}
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			return cross_shape_terms_equal_at_depth(
@@ -1320,44 +1316,6 @@ static int cross_shape_terms_equal_at_depth(
 			) && cross_shape_terms_equal_at_depth(
 				left_db, left_type_declarations, left->as.operation_request.continuation,
 				right_db, right_type_declarations, right->as.operation_request.continuation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER:
-			return cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.handler.operation,
-				right_db, right_type_declarations, right->as.handler.operation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.handler.return_clause,
-				right_db, right_type_declarations, right->as.handler.return_clause,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.handler.operation_clause,
-				right_db, right_type_declarations, right->as.handler.operation_clause,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLE:
-			return cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.handle.handler,
-				right_db, right_type_declarations, right->as.handle.handler,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.handle.computation,
-				right_db, right_type_declarations, right->as.handle.computation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER_TYPE:
-			return cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.handler_type.operation,
-				right_db, right_type_declarations, right->as.handler_type.operation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.handler_type.input_computation,
-				right_db, right_type_declarations, right->as.handler_type.input_computation,
-				env, type_view_compare_mode, ignore_match_frames, depth + 1
-			) && cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.handler_type.output_computation,
-				right_db, right_type_declarations, right->as.handler_type.output_computation,
 				env, type_view_compare_mode, ignore_match_frames, depth + 1
 			);
 		case PROTOTYPE_TERM_PI:
@@ -1916,17 +1874,31 @@ static int canonical_hash_term_at_depth(
 			env->next_slot = saved_next_slot;
 			return status;
 		}
-		case PROTOTYPE_TERM_BIND: {
+		case PROTOTYPE_TERM_DEEP_FOLD: {
 			if (canonical_hash_term_at_depth(
-					db, type_declarations, term->as.bind.computation,
+					db, type_declarations, term->as.deep_fold.computation,
+					env, key, p_hash, canonicalize_frame_refs, depth + 1
+				) != 0 || canonical_hash_term_at_depth(
+					db, type_declarations, term->as.deep_fold.return_clause,
 					env, key, p_hash, canonicalize_frame_refs, depth + 1
 				) != 0) {
 				return -1;
 			}
-			return canonical_hash_term_at_depth(
-				db, type_declarations, term->as.bind.continuation,
-				env, key, p_hash, canonicalize_frame_refs, depth + 1
-			);
+			canonical_hash_mix_u32(p_hash, term->as.deep_fold.clause_count);
+			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* clause =
+					&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+				if (canonical_hash_term_at_depth(
+						db, type_declarations, clause->operation, env, key, p_hash,
+						canonicalize_frame_refs, depth + 1
+					) != 0 || canonical_hash_term_at_depth(
+						db, type_declarations, clause->body, env, key, p_hash,
+						canonicalize_frame_refs, depth + 1
+					) != 0) {
+					return -1;
+				}
+			}
+			return 0;
 		}
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			if (canonical_hash_term_at_depth(
@@ -1940,45 +1912,6 @@ static int canonical_hash_term_at_depth(
 			}
 			return canonical_hash_term_at_depth(
 				db, type_declarations, term->as.operation_request.continuation,
-				env, key, p_hash, canonicalize_frame_refs, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER:
-			if (canonical_hash_term_at_depth(
-					db, type_declarations, term->as.handler.operation,
-					env, key, p_hash, canonicalize_frame_refs, depth + 1
-				) != 0 || canonical_hash_term_at_depth(
-					db, type_declarations, term->as.handler.return_clause,
-					env, key, p_hash, canonicalize_frame_refs, depth + 1
-				) != 0) {
-				return -1;
-			}
-			return canonical_hash_term_at_depth(
-				db, type_declarations, term->as.handler.operation_clause,
-				env, key, p_hash, canonicalize_frame_refs, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLE:
-			if (canonical_hash_term_at_depth(
-					db, type_declarations, term->as.handle.handler,
-					env, key, p_hash, canonicalize_frame_refs, depth + 1
-				) != 0) {
-				return -1;
-			}
-			return canonical_hash_term_at_depth(
-				db, type_declarations, term->as.handle.computation,
-				env, key, p_hash, canonicalize_frame_refs, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER_TYPE:
-			if (canonical_hash_term_at_depth(
-					db, type_declarations, term->as.handler_type.operation,
-					env, key, p_hash, canonicalize_frame_refs, depth + 1
-				) != 0 || canonical_hash_term_at_depth(
-					db, type_declarations, term->as.handler_type.input_computation,
-					env, key, p_hash, canonicalize_frame_refs, depth + 1
-				) != 0) {
-				return -1;
-			}
-			return canonical_hash_term_at_depth(
-				db, type_declarations, term->as.handler_type.output_computation,
 				env, key, p_hash, canonicalize_frame_refs, depth + 1
 			);
 		case PROTOTYPE_TERM_PI:
@@ -3074,28 +3007,20 @@ int prototype_term_rebind_type_former_anchors(
 			case PROTOTYPE_TERM_FORCE:
 				term->as.force.value = remap[term->as.force.value];
 				break;
-			case PROTOTYPE_TERM_BIND:
-				term->as.bind.computation = remap[term->as.bind.computation];
-				term->as.bind.continuation = remap[term->as.bind.continuation];
+			case PROTOTYPE_TERM_DEEP_FOLD:
+				term->as.deep_fold.computation = remap[term->as.deep_fold.computation];
+				term->as.deep_fold.return_clause = remap[term->as.deep_fold.return_clause];
+				for (uint32_t j = 0; j < term->as.deep_fold.clause_count; ++j) {
+					struct prototype_deep_fold_clause* clause =
+						&db->deep_fold_clauses[term->as.deep_fold.first_clause + j];
+					clause->operation = remap[clause->operation];
+					clause->body = remap[clause->body];
+				}
 				break;
 			case PROTOTYPE_TERM_OPERATION_REQUEST:
 				term->as.operation_request.operation = remap[term->as.operation_request.operation];
 				term->as.operation_request.argument = remap[term->as.operation_request.argument];
 				term->as.operation_request.continuation = remap[term->as.operation_request.continuation];
-				break;
-			case PROTOTYPE_TERM_HANDLER:
-				term->as.handler.operation = remap[term->as.handler.operation];
-				term->as.handler.return_clause = remap[term->as.handler.return_clause];
-				term->as.handler.operation_clause = remap[term->as.handler.operation_clause];
-				break;
-			case PROTOTYPE_TERM_HANDLE:
-				term->as.handle.handler = remap[term->as.handle.handler];
-				term->as.handle.computation = remap[term->as.handle.computation];
-				break;
-			case PROTOTYPE_TERM_HANDLER_TYPE:
-				term->as.handler_type.operation = remap[term->as.handler_type.operation];
-				term->as.handler_type.input_computation = remap[term->as.handler_type.input_computation];
-				term->as.handler_type.output_computation = remap[term->as.handler_type.output_computation];
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				term->as.effect_row_union.left = remap[term->as.effect_row_union.left];
@@ -3502,23 +3427,6 @@ int prototype_term_force(
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_bind(
-	struct prototype_term_db* db,
-	uint32_t computation,
-	uint32_t continuation,
-	uint32_t* p_ret
-) {
-	if (!db || !p_ret || computation >= db->term_count || continuation >= db->term_count) {
-		return -1;
-	}
-	struct prototype_term term;
-	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_BIND;
-	term.as.bind.computation = computation;
-	term.as.bind.continuation = continuation;
-	return add_term(db, term, p_ret);
-}
-
 int prototype_term_operation_request(
 	struct prototype_term_db* db,
 	uint32_t operation,
@@ -3543,66 +3451,60 @@ int prototype_term_operation_request(
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_handler(
+int prototype_term_deep_fold(
 	struct prototype_term_db* db,
-	uint32_t operation,
-	uint32_t return_clause,
-	uint32_t operation_clause,
-	uint32_t* p_ret
-) {
-	if (!db || !p_ret || operation >= db->term_count ||
-		return_clause >= db->term_count || operation_clause >= db->term_count ||
-		db->terms[return_clause].tag != PROTOTYPE_TERM_LAMBDA ||
-		db->terms[operation_clause].tag != PROTOTYPE_TERM_LAMBDA) {
-		return -1;
-	}
-	struct prototype_term term;
-	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_HANDLER;
-	term.as.handler.operation = operation;
-	term.as.handler.return_clause = return_clause;
-	term.as.handler.operation_clause = operation_clause;
-	return add_term(db, term, p_ret);
-}
-
-int prototype_term_handle(
-	struct prototype_term_db* db,
-	uint32_t handler,
 	uint32_t computation,
+	uint32_t return_clause,
+	const struct prototype_deep_fold_clause* clauses,
+	uint32_t clause_count,
 	uint32_t* p_ret
 ) {
-	if (!db || !p_ret || handler >= db->term_count || computation >= db->term_count ||
-		db->terms[handler].tag != PROTOTYPE_TERM_HANDLER) {
+	if (!db || !p_ret || computation >= db->term_count ||
+		return_clause >= db->term_count || db->terms[return_clause].tag != PROTOTYPE_TERM_LAMBDA ||
+		(clause_count > 0 && !clauses) ||
+		db->deep_fold_clause_count + clause_count > PROTOTYPE_DEEP_FOLD_CLAUSE_CAPACITY) {
 		return -1;
 	}
-	struct prototype_term term;
-	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_HANDLE;
-	term.as.handle.handler = handler;
-	term.as.handle.computation = computation;
-	return add_term(db, term, p_ret);
-}
+	for (uint32_t i = 0; i < clause_count; ++i) {
+		if (clauses[i].operation >= db->term_count || clauses[i].body >= db->term_count ||
+			db->terms[clauses[i].body].tag != PROTOTYPE_TERM_LAMBDA) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < i; ++j) {
+			struct shape_binder_env env;
+			memset(&env, 0, sizeof(env));
+			if (shape_terms_equal_at_depth(
+					db, clauses[i].operation, clauses[j].operation, &env,
+					PROTOTYPE_TYPE_VIEW_COMPARE_VIEW, 0, 0
+				)) {
+				return -1;
+			}
+		}
+	}
 
-int prototype_term_handler_type(
-	struct prototype_term_db* db,
-	uint32_t operation,
-	uint32_t input_computation,
-	uint32_t output_computation,
-	uint32_t* p_ret
-) {
-	if (!db || !p_ret || operation >= db->term_count ||
-		input_computation >= db->term_count || output_computation >= db->term_count ||
-		db->terms[input_computation].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
-		db->terms[output_computation].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
-		return -1;
+	size_t saved_clause_count = db->deep_fold_clause_count;
+	size_t saved_term_count = db->term_count;
+	uint32_t first_clause = (uint32_t)saved_clause_count;
+	for (uint32_t i = 0; i < clause_count; ++i) {
+		db->deep_fold_clauses[db->deep_fold_clause_count].operation = clauses[i].operation;
+		db->deep_fold_clauses[db->deep_fold_clause_count].body = clauses[i].body;
+		db->deep_fold_clause_count++;
 	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_HANDLER_TYPE;
-	term.as.handler_type.operation = operation;
-	term.as.handler_type.input_computation = input_computation;
-	term.as.handler_type.output_computation = output_computation;
-	return add_term(db, term, p_ret);
+	term.tag = PROTOTYPE_TERM_DEEP_FOLD;
+	term.as.deep_fold.computation = computation;
+	term.as.deep_fold.return_clause = return_clause;
+	term.as.deep_fold.first_clause = first_clause;
+	term.as.deep_fold.clause_count = clause_count;
+	if (add_term(db, term, p_ret) != 0) {
+		db->deep_fold_clause_count = saved_clause_count;
+		return -1;
+	}
+	if (*p_ret < saved_term_count) {
+		db->deep_fold_clause_count = saved_clause_count;
+	}
+	return 0;
 }
 
 int prototype_term_make_host_type(
@@ -3689,15 +3591,29 @@ static int term_contains_free_binder_at_depth(
 			return term_contains_free_binder_at_depth(
 				db, term->as.force.value, binder_id, depth + 1
 			);
-		case PROTOTYPE_TERM_BIND:
+		case PROTOTYPE_TERM_DEEP_FOLD:
 			if (term_contains_free_binder_at_depth(
-					db, term->as.bind.computation, binder_id, depth + 1
+					db, term->as.deep_fold.computation, binder_id, depth + 1
 				)) {
 				return 1;
 			}
-			return term_contains_free_binder_at_depth(
-				db, term->as.bind.continuation, binder_id, depth + 1
-			);
+			if (term_contains_free_binder_at_depth(
+					db, term->as.deep_fold.return_clause, binder_id, depth + 1
+				)) {
+				return 1;
+			}
+			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* clause =
+					&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+				if (term_contains_free_binder_at_depth(
+						db, clause->operation, binder_id, depth + 1
+					) || term_contains_free_binder_at_depth(
+						db, clause->body, binder_id, depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			return term_contains_free_binder_at_depth(
 				db, term->as.operation_request.operation, binder_id, depth + 1
@@ -3705,28 +3621,6 @@ static int term_contains_free_binder_at_depth(
 				db, term->as.operation_request.argument, binder_id, depth + 1
 			) || term_contains_free_binder_at_depth(
 				db, term->as.operation_request.continuation, binder_id, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER:
-			return term_contains_free_binder_at_depth(
-				db, term->as.handler.operation, binder_id, depth + 1
-			) || term_contains_free_binder_at_depth(
-				db, term->as.handler.return_clause, binder_id, depth + 1
-			) || term_contains_free_binder_at_depth(
-				db, term->as.handler.operation_clause, binder_id, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLE:
-			return term_contains_free_binder_at_depth(
-				db, term->as.handle.handler, binder_id, depth + 1
-			) || term_contains_free_binder_at_depth(
-				db, term->as.handle.computation, binder_id, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER_TYPE:
-			return term_contains_free_binder_at_depth(
-				db, term->as.handler_type.operation, binder_id, depth + 1
-			) || term_contains_free_binder_at_depth(
-				db, term->as.handler_type.input_computation, binder_id, depth + 1
-			) || term_contains_free_binder_at_depth(
-				db, term->as.handler_type.output_computation, binder_id, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			return term->as.effect_row_var.binder_id == binder_id;
@@ -3968,12 +3862,26 @@ static int term_contains_frame_scope_reference_at_depth(
 			return term_contains_frame_scope_reference_at_depth(
 				db, ctx, term->as.force.value, depth + 1
 			);
-		case PROTOTYPE_TERM_BIND:
-			return term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.bind.computation, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.bind.continuation, depth + 1
-			);
+		case PROTOTYPE_TERM_DEEP_FOLD:
+			if (term_contains_frame_scope_reference_at_depth(
+					db, ctx, term->as.deep_fold.computation, depth + 1
+				) || term_contains_frame_scope_reference_at_depth(
+					db, ctx, term->as.deep_fold.return_clause, depth + 1
+				)) {
+				return 1;
+			}
+			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* clause =
+					&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+				if (term_contains_frame_scope_reference_at_depth(
+						db, ctx, clause->operation, depth + 1
+					) || term_contains_frame_scope_reference_at_depth(
+						db, ctx, clause->body, depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			return term_contains_frame_scope_reference_at_depth(
 				db, ctx, term->as.operation_request.operation, depth + 1
@@ -3981,28 +3889,6 @@ static int term_contains_frame_scope_reference_at_depth(
 				db, ctx, term->as.operation_request.argument, depth + 1
 			) || term_contains_frame_scope_reference_at_depth(
 				db, ctx, term->as.operation_request.continuation, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER:
-			return term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.handler.operation, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.handler.return_clause, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.handler.operation_clause, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLE:
-			return term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.handle.handler, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.handle.computation, depth + 1
-			);
-		case PROTOTYPE_TERM_HANDLER_TYPE:
-			return term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.handler_type.operation, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.handler_type.input_computation, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
-				db, ctx, term->as.handler_type.output_computation, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 			return term_contains_frame_scope_reference_at_depth(
@@ -4555,21 +4441,45 @@ static int substitute_term_internal(
 				return value == term->as.force.value ?
 					(*p_ret = term_id, 0) : prototype_term_force(db, value, p_ret);
 			}
-			case PROTOTYPE_TERM_BIND: {
+			case PROTOTYPE_TERM_DEEP_FOLD: {
 				uint32_t computation;
-				uint32_t continuation;
-				if (substitute_term_internal(
-						db, term->as.bind.computation, binder_id, replacement, ctx, &computation
-					) != 0 || substitute_term_internal(
-						db, term->as.bind.continuation, binder_id, replacement, ctx, &continuation
-					) != 0) {
+				uint32_t return_clause;
+				uint32_t clause_count = term->as.deep_fold.clause_count;
+				struct prototype_deep_fold_clause* clauses =
+					calloc(clause_count, sizeof(*clauses));
+				if (clause_count > 0 && !clauses) {
 					return -1;
 				}
-				return computation == term->as.bind.computation &&
-					continuation == term->as.bind.continuation ?
-					(*p_ret = term_id, 0) : prototype_term_bind(
-						db, computation, continuation, p_ret
-					);
+				if (substitute_term_internal(
+						db, term->as.deep_fold.computation, binder_id, replacement, ctx, &computation
+					) != 0 || substitute_term_internal(
+						db, term->as.deep_fold.return_clause, binder_id, replacement, ctx, &return_clause
+					) != 0) {
+					free(clauses);
+					return -1;
+				}
+				int unchanged = computation == term->as.deep_fold.computation &&
+					return_clause == term->as.deep_fold.return_clause;
+				for (uint32_t i = 0; i < clause_count; ++i) {
+					const struct prototype_deep_fold_clause* clause =
+						&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+					if (substitute_term_internal(
+							db, clause->operation, binder_id, replacement, ctx,
+							&clauses[i].operation
+						) != 0 || substitute_term_internal(
+							db, clause->body, binder_id, replacement, ctx, &clauses[i].body
+						) != 0) {
+						free(clauses);
+						return -1;
+					}
+					unchanged = unchanged && clauses[i].operation == clause->operation &&
+						clauses[i].body == clause->body;
+				}
+				int status = unchanged ? (*p_ret = term_id, 0) : prototype_term_deep_fold(
+					db, computation, return_clause, clauses, clause_count, p_ret
+				);
+				free(clauses);
+				return status;
 			}
 			case PROTOTYPE_TERM_OPERATION_REQUEST: {
 				uint32_t operation;
@@ -4590,44 +4500,6 @@ static int substitute_term_internal(
 					(*p_ret = term_id, 0) : prototype_term_operation_request(
 						db, operation, argument, continuation, p_ret
 					);
-			}
-			case PROTOTYPE_TERM_HANDLER: {
-				uint32_t operation;
-				uint32_t return_clause;
-				uint32_t operation_clause;
-				if (substitute_term_internal(db, term->as.handler.operation, binder_id, replacement, ctx, &operation) != 0 ||
-					substitute_term_internal(db, term->as.handler.return_clause, binder_id, replacement, ctx, &return_clause) != 0 ||
-					substitute_term_internal(db, term->as.handler.operation_clause, binder_id, replacement, ctx, &operation_clause) != 0) {
-					return -1;
-				}
-				return operation == term->as.handler.operation &&
-					return_clause == term->as.handler.return_clause &&
-					operation_clause == term->as.handler.operation_clause ?
-					(*p_ret = term_id, 0) : prototype_term_handler(db, operation, return_clause, operation_clause, p_ret);
-			}
-			case PROTOTYPE_TERM_HANDLE: {
-				uint32_t handler;
-				uint32_t computation;
-				if (substitute_term_internal(db, term->as.handle.handler, binder_id, replacement, ctx, &handler) != 0 ||
-					substitute_term_internal(db, term->as.handle.computation, binder_id, replacement, ctx, &computation) != 0) {
-					return -1;
-				}
-				return handler == term->as.handle.handler && computation == term->as.handle.computation ?
-					(*p_ret = term_id, 0) : prototype_term_handle(db, handler, computation, p_ret);
-			}
-			case PROTOTYPE_TERM_HANDLER_TYPE: {
-				uint32_t operation;
-				uint32_t input;
-				uint32_t output;
-				if (substitute_term_internal(db, term->as.handler_type.operation, binder_id, replacement, ctx, &operation) != 0 ||
-					substitute_term_internal(db, term->as.handler_type.input_computation, binder_id, replacement, ctx, &input) != 0 ||
-					substitute_term_internal(db, term->as.handler_type.output_computation, binder_id, replacement, ctx, &output) != 0) {
-					return -1;
-				}
-				return operation == term->as.handler_type.operation &&
-					input == term->as.handler_type.input_computation &&
-					output == term->as.handler_type.output_computation ?
-					(*p_ret = term_id, 0) : prototype_term_handler_type(db, operation, input, output, p_ret);
 			}
 			case PROTOTYPE_TERM_TYPE_VIEW: {
 			uint32_t core;
@@ -4942,21 +4814,44 @@ static int resolve_external_ref_term(
 				return value == term->as.force.value ?
 					(*p_ret = term_id, 0) : prototype_term_force(db, value, p_ret);
 			}
-			case PROTOTYPE_TERM_BIND: {
+			case PROTOTYPE_TERM_DEEP_FOLD: {
 				uint32_t computation;
-				uint32_t continuation;
-				if (resolve_external_ref_term(
-						db, term->as.bind.computation, symbol_id, replacement, &computation
-					) != 0 || resolve_external_ref_term(
-						db, term->as.bind.continuation, symbol_id, replacement, &continuation
-					) != 0) {
+				uint32_t return_clause;
+				uint32_t clause_count = term->as.deep_fold.clause_count;
+				struct prototype_deep_fold_clause* clauses =
+					calloc(clause_count, sizeof(*clauses));
+				if (clause_count > 0 && !clauses) {
 					return -1;
 				}
-				return computation == term->as.bind.computation &&
-					continuation == term->as.bind.continuation ?
-					(*p_ret = term_id, 0) : prototype_term_bind(
-						db, computation, continuation, p_ret
-					);
+				if (resolve_external_ref_term(
+						db, term->as.deep_fold.computation, symbol_id, replacement, &computation
+					) != 0 || resolve_external_ref_term(
+						db, term->as.deep_fold.return_clause, symbol_id, replacement, &return_clause
+					) != 0) {
+					free(clauses);
+					return -1;
+				}
+				int unchanged = computation == term->as.deep_fold.computation &&
+					return_clause == term->as.deep_fold.return_clause;
+				for (uint32_t i = 0; i < clause_count; ++i) {
+					const struct prototype_deep_fold_clause* clause =
+						&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+					if (resolve_external_ref_term(
+							db, clause->operation, symbol_id, replacement, &clauses[i].operation
+						) != 0 || resolve_external_ref_term(
+							db, clause->body, symbol_id, replacement, &clauses[i].body
+						) != 0) {
+						free(clauses);
+						return -1;
+					}
+					unchanged = unchanged && clauses[i].operation == clause->operation &&
+						clauses[i].body == clause->body;
+				}
+				int status = unchanged ? (*p_ret = term_id, 0) : prototype_term_deep_fold(
+					db, computation, return_clause, clauses, clause_count, p_ret
+				);
+				free(clauses);
+				return status;
 			}
 			case PROTOTYPE_TERM_OPERATION_REQUEST: {
 				uint32_t operation;
@@ -4977,44 +4872,6 @@ static int resolve_external_ref_term(
 					(*p_ret = term_id, 0) : prototype_term_operation_request(
 						db, operation, argument, continuation, p_ret
 					);
-			}
-			case PROTOTYPE_TERM_HANDLER: {
-				uint32_t operation;
-				uint32_t return_clause;
-				uint32_t operation_clause;
-				if (resolve_external_ref_term(db, term->as.handler.operation, symbol_id, replacement, &operation) != 0 ||
-					resolve_external_ref_term(db, term->as.handler.return_clause, symbol_id, replacement, &return_clause) != 0 ||
-					resolve_external_ref_term(db, term->as.handler.operation_clause, symbol_id, replacement, &operation_clause) != 0) {
-					return -1;
-				}
-				return operation == term->as.handler.operation &&
-					return_clause == term->as.handler.return_clause &&
-					operation_clause == term->as.handler.operation_clause ?
-					(*p_ret = term_id, 0) : prototype_term_handler(db, operation, return_clause, operation_clause, p_ret);
-			}
-			case PROTOTYPE_TERM_HANDLE: {
-				uint32_t handler;
-				uint32_t computation;
-				if (resolve_external_ref_term(db, term->as.handle.handler, symbol_id, replacement, &handler) != 0 ||
-					resolve_external_ref_term(db, term->as.handle.computation, symbol_id, replacement, &computation) != 0) {
-					return -1;
-				}
-				return handler == term->as.handle.handler && computation == term->as.handle.computation ?
-					(*p_ret = term_id, 0) : prototype_term_handle(db, handler, computation, p_ret);
-			}
-			case PROTOTYPE_TERM_HANDLER_TYPE: {
-				uint32_t operation;
-				uint32_t input;
-				uint32_t output;
-				if (resolve_external_ref_term(db, term->as.handler_type.operation, symbol_id, replacement, &operation) != 0 ||
-					resolve_external_ref_term(db, term->as.handler_type.input_computation, symbol_id, replacement, &input) != 0 ||
-					resolve_external_ref_term(db, term->as.handler_type.output_computation, symbol_id, replacement, &output) != 0) {
-					return -1;
-				}
-				return operation == term->as.handler_type.operation &&
-					input == term->as.handler_type.input_computation &&
-					output == term->as.handler_type.output_computation ?
-					(*p_ret = term_id, 0) : prototype_term_handler_type(db, operation, input, output, p_ret);
 			}
 			default:
 				*p_ret = term_id;
@@ -5193,7 +5050,7 @@ static int perform_operation_request_step(
 );
 
 /* Request continuations are ordinary CBPV function values.  Keeping this
- * construction here prevents host dispatch, BIND propagation, and HANDLE
+ * construction here prevents host dispatch and recursive deep-fold propagation
  * dispatch from each inventing a separate continuation application rule. */
 static int operation_request_resume(
 	struct prototype_term_db* db,
@@ -5211,6 +5068,80 @@ static int operation_request_resume(
 	return 0;
 }
 
+static int deep_fold_rebuild(
+	struct prototype_term_db* db,
+	uint32_t fold_id,
+	uint32_t computation,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || fold_id >= db->term_count || computation >= db->term_count ||
+		db->terms[fold_id].tag != PROTOTYPE_TERM_DEEP_FOLD) {
+		return -1;
+	}
+	const struct prototype_term* fold = &db->terms[fold_id];
+	const struct prototype_deep_fold_clause* clauses =
+		&db->deep_fold_clauses[fold->as.deep_fold.first_clause];
+	return prototype_term_deep_fold(
+		db,
+		computation,
+		fold->as.deep_fold.return_clause,
+		clauses,
+		fold->as.deep_fold.clause_count,
+		p_ret
+	);
+}
+
+static int deep_fold_continuation(
+	struct prototype_term_db* db,
+	uint32_t fold_id,
+	uint32_t request_continuation,
+	uint32_t* p_ret
+) {
+	uint32_t binder_id = prototype_term_fresh_binder(db);
+	uint32_t result_var;
+	uint32_t resumed;
+	uint32_t folded;
+	uint32_t lambda;
+	if (!db || !p_ret || binder_id == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(db, binder_id, &result_var) != 0 ||
+		operation_request_resume(db, request_continuation, result_var, &resumed) != 0 ||
+		deep_fold_rebuild(db, fold_id, resumed, &folded) != 0 ||
+		prototype_term_lambda(db, binder_id, folded, &lambda) != 0 ||
+		prototype_term_thunk(db, lambda, p_ret) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
+static int deep_fold_find_clause(
+	const struct prototype_term_db* db,
+	uint32_t fold_id,
+	uint32_t operation,
+	uint32_t* p_body
+) {
+	if (!db || !p_body || fold_id >= db->term_count || operation >= db->term_count ||
+		db->terms[fold_id].tag != PROTOTYPE_TERM_DEEP_FOLD) {
+		return -1;
+	}
+	const struct prototype_term* fold = &db->terms[fold_id];
+	for (uint32_t i = 0; i < fold->as.deep_fold.clause_count; ++i) {
+		const struct prototype_deep_fold_clause* clause =
+			&db->deep_fold_clauses[fold->as.deep_fold.first_clause + i];
+		int equal = 0;
+		if (prototype_term_core_shape_equal(
+				db, clause->operation, operation, &equal
+			) != 0) {
+			return -1;
+		}
+		if (equal) {
+			*p_body = clause->body;
+			return 0;
+		}
+	}
+	*p_body = PROTOTYPE_INVALID_ID;
+	return 0;
+}
+
 static int normalization_equal_at_depth(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -5221,6 +5152,219 @@ static int normalization_equal_at_depth(
 	int* p_equal,
 	uint32_t depth
 );
+
+static int normalization_equal_match_case_bodies(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	const struct prototype_match_case* left_case,
+	const struct prototype_match_case* right_case,
+	uint32_t left_body,
+	uint32_t right_body,
+	int* p_equal,
+	uint32_t depth
+) {
+	if (!db || !left_case || !right_case || !p_equal ||
+		left_case->binder_count != right_case->binder_count) {
+		return -1;
+	}
+
+	uint32_t remapped_left = left_body;
+	uint32_t remapped_right = right_body;
+	for (uint32_t i = 0; i < left_case->binder_count; ++i) {
+		uint32_t left_binder_index = left_case->first_binder + i;
+		uint32_t right_binder_index = right_case->first_binder + i;
+		if (left_binder_index >= db->case_binder_count ||
+			right_binder_index >= db->case_binder_count) {
+			return -1;
+		}
+		uint32_t binder_id = prototype_term_fresh_binder(db);
+		uint32_t binder_var;
+		if (binder_id == PROTOTYPE_INVALID_ID ||
+			prototype_term_var(db, binder_id, &binder_var) != 0 ||
+			prototype_term_substitute(
+				db,
+				type_declarations,
+				remapped_left,
+				db->case_binders[left_binder_index].binder_id,
+				binder_var,
+				&remapped_left
+			) != 0 ||
+			prototype_term_substitute(
+				db,
+				type_declarations,
+				remapped_right,
+				db->case_binders[right_binder_index].binder_id,
+				binder_var,
+				&remapped_right
+			) != 0) {
+			return -1;
+		}
+	}
+
+	return normalization_equal_at_depth(
+		db,
+		type_declarations,
+		definitions,
+		options,
+		remapped_left,
+		remapped_right,
+		p_equal,
+		depth + 1
+	);
+}
+
+/* A dependent computation family has two graph presentations while its
+ * scrutinee is neutral:
+ *
+ *   Comp(E, match x { c_i -> A_i })
+ *   match x { c_i -> Comp(E, A_i) }
+ *
+ * They are the same pointwise family. Keep this commuting conversion in the
+ * normalizer so Lambda checking and every other conversion client share it. */
+static int normalization_equal_computation_match(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_term_reduction_options options,
+	uint32_t computation_id,
+	uint32_t match_id,
+	int* p_equal,
+	uint32_t depth
+) {
+	if (!db || !p_equal || computation_id >= db->term_count ||
+		match_id >= db->term_count ||
+		db->terms[computation_id].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
+		db->terms[match_id].tag != PROTOTYPE_TERM_MATCH) {
+		return -1;
+	}
+	*p_equal = 0;
+
+	struct prototype_term computation = db->terms[computation_id];
+	struct prototype_term outer_match = db->terms[match_id];
+	uint32_t result_whnf;
+	if (prototype_term_perform_with_options(
+			db,
+			type_declarations,
+			definitions,
+			options,
+			computation.as.computation_type.result,
+			&result_whnf
+		) != 0 || result_whnf >= db->term_count ||
+		db->terms[result_whnf].tag != PROTOTYPE_TERM_MATCH) {
+		return 0;
+	}
+	struct prototype_term result_match = db->terms[result_whnf];
+	if (result_match.as.match.case_count != outer_match.as.match.case_count) {
+		return 0;
+	}
+
+	int equal = 0;
+	if (normalization_equal_at_depth(
+			db,
+			type_declarations,
+			definitions,
+			options,
+			result_match.as.match.scrutinee,
+			outer_match.as.match.scrutinee,
+			&equal,
+			depth + 1
+		) != 0 || !equal) {
+		return 0;
+	}
+
+	for (uint32_t i = 0; i < result_match.as.match.case_count; ++i) {
+		uint32_t result_case_id = result_match.as.match.first_case + i;
+		uint32_t outer_case_id = outer_match.as.match.first_case + i;
+		if (result_case_id >= db->case_count || outer_case_id >= db->case_count) {
+			return -1;
+		}
+		struct prototype_match_case result_case = db->cases[result_case_id];
+		struct prototype_match_case outer_case = db->cases[outer_case_id];
+		int use_labels = result_case.constructor_owner == PROTOTYPE_INVALID_ID ||
+			outer_case.constructor_owner == PROTOTYPE_INVALID_ID ||
+			result_case.constructor_id == PROTOTYPE_INVALID_ID ||
+			outer_case.constructor_id == PROTOTYPE_INVALID_ID;
+		int labels_equal = use_labels &&
+			db->case_label_symbols[result_case_id] >= 0 &&
+			db->case_label_symbols[result_case_id] ==
+				db->case_label_symbols[outer_case_id];
+		if ((use_labels && !labels_equal) ||
+			(!use_labels &&
+				result_case.constructor_id != outer_case.constructor_id) ||
+			result_case.binder_count != outer_case.binder_count) {
+			return 0;
+		}
+		if (!use_labels &&
+			(result_case.constructor_owner != PROTOTYPE_INVALID_ID ||
+			outer_case.constructor_owner != PROTOTYPE_INVALID_ID)) {
+			if (result_case.constructor_owner == PROTOTYPE_INVALID_ID ||
+				outer_case.constructor_owner == PROTOTYPE_INVALID_ID ||
+				normalization_equal_at_depth(
+					db,
+					type_declarations,
+					definitions,
+					options,
+					result_case.constructor_owner,
+					outer_case.constructor_owner,
+					&equal,
+					depth + 1
+				) != 0 || !equal) {
+				return 0;
+			}
+		}
+
+		uint32_t remapped_result = result_case.body;
+		uint32_t remapped_outer = outer_case.body;
+		for (uint32_t j = 0; j < result_case.binder_count; ++j) {
+			uint32_t result_binder_index = result_case.first_binder + j;
+			uint32_t outer_binder_index = outer_case.first_binder + j;
+			if (result_binder_index >= db->case_binder_count ||
+				outer_binder_index >= db->case_binder_count) {
+				return -1;
+			}
+			uint32_t binder_id = prototype_term_fresh_binder(db);
+			uint32_t binder_var;
+			if (binder_id == PROTOTYPE_INVALID_ID ||
+				prototype_term_var(db, binder_id, &binder_var) != 0 ||
+				prototype_term_substitute(
+					db, type_declarations, remapped_result,
+					db->case_binders[result_binder_index].binder_id,
+					binder_var, &remapped_result
+				) != 0 ||
+				prototype_term_substitute(
+					db, type_declarations, remapped_outer,
+					db->case_binders[outer_binder_index].binder_id,
+					binder_var, &remapped_outer
+				) != 0) {
+				return -1;
+			}
+		}
+
+		uint32_t branch_computation;
+		if (prototype_term_computation_type(
+				db,
+				computation.as.computation_type.label,
+				remapped_result,
+				&branch_computation
+			) != 0 || normalization_equal_at_depth(
+				db,
+				type_declarations,
+				definitions,
+				options,
+				branch_computation,
+				remapped_outer,
+				&equal,
+				depth + 1
+			) != 0 || !equal) {
+			return 0;
+		}
+	}
+
+	*p_equal = 1;
+	return 0;
+}
 
 static struct prototype_term_reduction_options normalize_reduction_options(
 	struct prototype_term_reduction_options options
@@ -5735,22 +5879,14 @@ static int evaluate_steps(
 			}
 			*p_ret = term_id;
 			return 0;
-		case PROTOTYPE_TERM_HANDLER:
-			*p_ret = term_id;
-			return 0;
-		case PROTOTYPE_TERM_HANDLE: {
+		case PROTOTYPE_TERM_DEEP_FOLD: {
 			if (!(options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS) ||
-				reduction_is_pure_type(options)) {
+				(reduction_is_pure_type(options) && term->as.deep_fold.clause_count > 0)) {
 				*p_ret = term_id;
 				return 0;
 			}
-			const struct prototype_term* handler =
-				&db->terms[term->as.handle.handler];
-			if (handler->tag != PROTOTYPE_TERM_HANDLER) {
-				return -1;
-			}
 
-			/* A graph handler receives requests before host or embedding dispatch. */
+			/* A deep fold receives requests before host or embedding dispatch. */
 			struct prototype_term_reduction_options inner_options = options;
 			inner_options.flags &= ~PROTOTYPE_TERM_PERFORM_HOST_EFFECT;
 			inner_options.operation_dispatch = NULL;
@@ -5758,7 +5894,7 @@ static int evaluate_steps(
 			uint32_t computation;
 			if (evaluate_steps(
 					db, type_declarations, definitions, inner_options,
-					term->as.handle.computation, &computation, depth - 1
+					term->as.deep_fold.computation, &computation, depth - 1
 				) != 0) {
 				return -1;
 			}
@@ -5766,7 +5902,7 @@ static int evaluate_steps(
 				db->terms[computation].tag == PROTOTYPE_TERM_RETURN) {
 				uint32_t applied;
 				if (prototype_term_app(
-						db, handler->as.handler.return_clause,
+						db, term->as.deep_fold.return_clause,
 						db->terms[computation].as.return_term.value, &applied
 					) != 0) {
 					return -1;
@@ -5778,36 +5914,19 @@ static int evaluate_steps(
 			if (computation < db->term_count &&
 				db->terms[computation].tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
 				const struct prototype_term* request = &db->terms[computation];
-				int handles_operation = 0;
-				if (prototype_term_core_shape_equal(
-						db, handler->as.handler.operation,
-					request->as.operation_request.operation, &handles_operation
+				uint32_t continuation;
+				uint32_t clause_body;
+				if (deep_fold_continuation(
+						db, term_id, request->as.operation_request.continuation, &continuation
+					) != 0 || deep_fold_find_clause(
+						db, term_id, request->as.operation_request.operation, &clause_body
 					) != 0) {
 					return -1;
 				}
-				uint32_t binder_id = prototype_term_fresh_binder(db);
-				uint32_t result_var;
-				uint32_t resumed;
-				uint32_t resumed_under_handler;
-				uint32_t continuation_lambda;
-				uint32_t continuation;
-				if (binder_id == PROTOTYPE_INVALID_ID ||
-					prototype_term_var(db, binder_id, &result_var) != 0 ||
-					operation_request_resume(
-						db, request->as.operation_request.continuation, result_var, &resumed
-						) != 0 || prototype_term_handle(
-						db, term->as.handle.handler, resumed, &resumed_under_handler
-						) != 0 || prototype_term_lambda(
-						db, binder_id, resumed_under_handler, &continuation_lambda
-						) != 0 || prototype_term_thunk(
-						db, continuation_lambda, &continuation
-						) != 0) {
-					return -1;
-				}
-				if (handles_operation) {
+				if (clause_body != PROTOTYPE_INVALID_ID) {
 					uint32_t clause_application;
 					if (prototype_term_app(
-							db, handler->as.handler.operation_clause,
+							db, clause_body,
 						request->as.operation_request.argument, &clause_application
 						) != 0 || prototype_term_app(
 							db, clause_application, continuation, &clause_application
@@ -5824,11 +5943,11 @@ static int evaluate_steps(
 					request->as.operation_request.argument, continuation, p_ret
 				);
 			}
-			if (computation == term->as.handle.computation) {
+			if (computation == term->as.deep_fold.computation) {
 				*p_ret = term_id;
 				return 0;
 			}
-			return prototype_term_handle(db, term->as.handle.handler, computation, p_ret);
+			return deep_fold_rebuild(db, term_id, computation, p_ret);
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
 			unsigned effects;
@@ -5928,88 +6047,6 @@ static int evaluate_steps(
 				return 0;
 			}
 			return prototype_term_force(db, value, p_ret);
-		}
-		case PROTOTYPE_TERM_BIND: {
-			if (!(options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS)) {
-				*p_ret = term_id;
-				return 0;
-			}
-			uint32_t computation;
-			if (evaluate_steps(
-					db, type_declarations, definitions, options,
-					term->as.bind.computation, &computation, depth - 1
-				) != 0) {
-				return -1;
-			}
-			if (computation < db->term_count &&
-				db->terms[computation].tag == PROTOTYPE_TERM_RETURN) {
-				uint32_t applied;
-				if (prototype_term_app(
-						db,
-						term->as.bind.continuation,
-						db->terms[computation].as.return_term.value,
-						&applied
-					) != 0) {
-					return -1;
-				}
-				return evaluate_steps(
-					db, type_declarations, definitions, options, applied, p_ret, depth - 1
-				);
-			}
-				if (computation < db->term_count &&
-					db->terms[computation].tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
-					if (reduction_is_pure_type(options)) {
-						normalization_mark_status(
-							options,
-							PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT
-						);
-						*p_ret = term_id;
-						return 0;
-				}
-				const struct prototype_term* request = &db->terms[computation];
-				const struct prototype_term* continuation =
-					&db->terms[request->as.operation_request.continuation];
-				if (continuation->tag != PROTOTYPE_TERM_THUNK ||
-					continuation->as.thunk.computation >= db->term_count ||
-					db->terms[continuation->as.thunk.computation].tag !=
-						PROTOTYPE_TERM_LAMBDA) {
-					return -1;
-				}
-				const struct prototype_term* continuation_lambda =
-					&db->terms[continuation->as.thunk.computation];
-				uint32_t result_var;
-				uint32_t resumed;
-				uint32_t chained_body;
-				uint32_t chained_lambda;
-				uint32_t chained;
-				if (prototype_term_var(
-						db, continuation_lambda->as.lambda.binder_id, &result_var
-						) != 0 || operation_request_resume(
-						db, request->as.operation_request.continuation, result_var, &resumed
-						) != 0 || prototype_term_bind(
-						db, resumed, term->as.bind.continuation, &chained_body
-						) != 0 || prototype_term_lambda(
-						db, continuation_lambda->as.lambda.binder_id, chained_body, &chained_lambda
-						) != 0 || prototype_term_thunk(
-						db, chained_lambda, &chained
-						) != 0) {
-					return -1;
-				}
-				return prototype_term_operation_request(
-					db, request->as.operation_request.operation,
-					request->as.operation_request.argument, chained, p_ret
-				);
-			}
-			if (computation == term->as.bind.computation) {
-				*p_ret = term_id;
-				return 0;
-			}
-			return prototype_term_bind(
-				db,
-				computation,
-				term->as.bind.continuation,
-				p_ret
-			);
 		}
 		default:
 					*p_ret = term_id;
@@ -6351,6 +6388,20 @@ static int normalization_equal_at_depth(
 	const struct prototype_term* left_term = &db->terms[left_whnf];
 	const struct prototype_term* right_term = &db->terms[right_whnf];
 	if (left_term->tag != right_term->tag) {
+		if (left_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
+			right_term->tag == PROTOTYPE_TERM_MATCH) {
+			return normalization_equal_computation_match(
+				db, type_declarations, definitions, options,
+				left_whnf, right_whnf, p_equal, depth + 1
+			);
+		}
+		if (left_term->tag == PROTOTYPE_TERM_MATCH &&
+			right_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
+			return normalization_equal_computation_match(
+				db, type_declarations, definitions, options,
+				right_whnf, left_whnf, p_equal, depth + 1
+			);
+		}
 		return 0;
 	}
 
@@ -6399,26 +6450,6 @@ static int normalization_equal_at_depth(
 				right_term->as.app.argument,
 				p_equal,
 				depth + 1
-			);
-		}
-		case PROTOTYPE_TERM_HANDLER_TYPE: {
-			int equal = 0;
-			if (normalization_equal_at_depth(
-					db, type_declarations, definitions, options,
-					left_term->as.handler_type.operation, right_term->as.handler_type.operation,
-					&equal, depth + 1
-				) != 0 || !equal || normalization_equal_at_depth(
-					db, type_declarations, definitions, options,
-					left_term->as.handler_type.input_computation,
-					right_term->as.handler_type.input_computation, &equal, depth + 1
-				) != 0 || !equal) {
-				*p_equal = 0;
-				return 0;
-			}
-			return normalization_equal_at_depth(
-				db, type_declarations, definitions, options,
-				left_term->as.handler_type.output_computation,
-				right_term->as.handler_type.output_computation, p_equal, depth + 1
 			);
 		}
 		case PROTOTYPE_TERM_LAMBDA: {
@@ -6480,13 +6511,28 @@ static int normalization_equal_at_depth(
 					&db->cases[left_term->as.match.first_case + i];
 				const struct prototype_match_case* right_case =
 					&db->cases[right_term->as.match.first_case + i];
-				if (left_case->constructor_id != right_case->constructor_id ||
+				int use_labels =
+					left_case->constructor_owner == PROTOTYPE_INVALID_ID ||
+					right_case->constructor_owner == PROTOTYPE_INVALID_ID ||
+					left_case->constructor_id == PROTOTYPE_INVALID_ID ||
+					right_case->constructor_id == PROTOTYPE_INVALID_ID;
+				int labels_equal = use_labels && db->case_label_symbols[
+					left_term->as.match.first_case + i
+				] >= 0 && db->case_label_symbols[
+					left_term->as.match.first_case + i
+				] == db->case_label_symbols[
+					right_term->as.match.first_case + i
+				];
+				if ((use_labels && !labels_equal) ||
+					(!use_labels &&
+						left_case->constructor_id != right_case->constructor_id) ||
 					left_case->binder_count != right_case->binder_count) {
 					return 0;
 				}
 				int equal = 0;
-				if (left_case->constructor_owner != PROTOTYPE_INVALID_ID ||
-					right_case->constructor_owner != PROTOTYPE_INVALID_ID) {
+				if (!use_labels &&
+					(left_case->constructor_owner != PROTOTYPE_INVALID_ID ||
+					right_case->constructor_owner != PROTOTYPE_INVALID_ID)) {
 					if (left_case->constructor_owner == PROTOTYPE_INVALID_ID ||
 						right_case->constructor_owner == PROTOTYPE_INVALID_ID ||
 						normalization_equal_at_depth(
@@ -6502,11 +6548,13 @@ static int normalization_equal_at_depth(
 						return 0;
 					}
 				}
-				if (normalization_equal_at_depth(
+				if (normalization_equal_match_case_bodies(
 						db,
 						type_declarations,
 						definitions,
 						options,
+						left_case,
+						right_case,
 						left_case->body,
 						right_case->body,
 						&equal,
@@ -6703,22 +6751,41 @@ static int normalization_equal_at_depth(
 				p_equal,
 				depth + 1
 			);
-		case PROTOTYPE_TERM_BIND: {
+		case PROTOTYPE_TERM_DEEP_FOLD: {
 			int equal = 0;
 			if (normalization_equal_at_depth(
 					db, type_declarations, definitions, options,
-					left_term->as.bind.computation,
-					right_term->as.bind.computation,
+					left_term->as.deep_fold.computation,
+					right_term->as.deep_fold.computation,
 					&equal, depth + 1
-				) != 0 || !equal) {
+				) != 0 || !equal || normalization_equal_at_depth(
+					db, type_declarations, definitions, options,
+					left_term->as.deep_fold.return_clause,
+					right_term->as.deep_fold.return_clause,
+					&equal, depth + 1
+				) != 0 || !equal || left_term->as.deep_fold.clause_count !=
+					right_term->as.deep_fold.clause_count) {
 				*p_equal = 0;
 				return 0;
 			}
-			return normalization_equal_at_depth(
-				db, type_declarations, definitions, options,
-				left_term->as.bind.continuation, right_term->as.bind.continuation,
-				p_equal, depth + 1
-			);
+			for (uint32_t i = 0; i < left_term->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* left_clause =
+					&db->deep_fold_clauses[left_term->as.deep_fold.first_clause + i];
+				const struct prototype_deep_fold_clause* right_clause =
+					&db->deep_fold_clauses[right_term->as.deep_fold.first_clause + i];
+				if (normalization_equal_at_depth(
+						db, type_declarations, definitions, options,
+						left_clause->operation, right_clause->operation, &equal, depth + 1
+					) != 0 || !equal || normalization_equal_at_depth(
+						db, type_declarations, definitions, options,
+						left_clause->body, right_clause->body, &equal, depth + 1
+					) != 0 || !equal) {
+					*p_equal = 0;
+					return 0;
+				}
+			}
+			*p_equal = 1;
+			return 0;
 		}
 		case PROTOTYPE_TERM_OPERATION_REQUEST: {
 			int equal = 0;
@@ -6740,42 +6807,6 @@ static int normalization_equal_at_depth(
 				db, type_declarations, definitions, options,
 				left_term->as.operation_request.continuation,
 				right_term->as.operation_request.continuation,
-				p_equal, depth + 1
-			);
-		}
-		case PROTOTYPE_TERM_HANDLER: {
-			int equal = 0;
-			if (normalization_equal_at_depth(
-					db, type_declarations, definitions, options,
-					left_term->as.handler.operation, right_term->as.handler.operation,
-					&equal, depth + 1
-				) != 0 || !equal || normalization_equal_at_depth(
-					db, type_declarations, definitions, options,
-					left_term->as.handler.return_clause, right_term->as.handler.return_clause,
-					&equal, depth + 1
-				) != 0 || !equal) {
-				*p_equal = 0;
-				return 0;
-			}
-			return normalization_equal_at_depth(
-				db, type_declarations, definitions, options,
-				left_term->as.handler.operation_clause, right_term->as.handler.operation_clause,
-				p_equal, depth + 1
-			);
-		}
-		case PROTOTYPE_TERM_HANDLE: {
-			int equal = 0;
-			if (normalization_equal_at_depth(
-					db, type_declarations, definitions, options,
-					left_term->as.handle.handler, right_term->as.handle.handler,
-					&equal, depth + 1
-				) != 0 || !equal) {
-				*p_equal = 0;
-				return 0;
-			}
-			return normalization_equal_at_depth(
-				db, type_declarations, definitions, options,
-				left_term->as.handle.computation, right_term->as.handle.computation,
 				p_equal, depth + 1
 			);
 		}
@@ -7686,40 +7717,29 @@ static void print_term_depth(
 			fprintf(output, "force ");
 			print_term_depth(output, symbols, type_declarations, terms, term->as.force.value, depth - 1);
 			break;
-		case PROTOTYPE_TERM_BIND:
-			fprintf(output, "bind ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.bind.computation, depth - 1);
-			fprintf(output, " with ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.bind.continuation, depth - 1);
+		case PROTOTYPE_TERM_DEEP_FOLD:
+			fprintf(output, "fold ");
+			print_term_depth(output, symbols, type_declarations, terms,
+				term->as.deep_fold.computation, depth - 1);
+			fprintf(output, " return ");
+			print_term_depth(output, symbols, type_declarations, terms,
+				term->as.deep_fold.return_clause, depth - 1);
+			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* clause =
+					&terms->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+				fprintf(output, " operation ");
+				print_term_depth(output, symbols, type_declarations, terms,
+					clause->operation, depth - 1);
+				fprintf(output, " => ");
+				print_term_depth(output, symbols, type_declarations, terms,
+					clause->body, depth - 1);
+			}
 			break;
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			fprintf(output, "request ");
 			print_term_depth(output, symbols, type_declarations, terms, term->as.operation_request.operation, depth - 1);
 			fprintf(output, " ");
 			print_term_depth(output, symbols, type_declarations, terms, term->as.operation_request.argument, depth - 1);
-			break;
-		case PROTOTYPE_TERM_HANDLER:
-			fprintf(output, "handler ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.handler.operation, depth - 1);
-			fprintf(output, " return ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.handler.return_clause, depth - 1);
-			fprintf(output, " operation ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.handler.operation_clause, depth - 1);
-			break;
-		case PROTOTYPE_TERM_HANDLE:
-			fprintf(output, "handle ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.handle.computation, depth - 1);
-			fprintf(output, " with ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.handle.handler, depth - 1);
-			break;
-		case PROTOTYPE_TERM_HANDLER_TYPE:
-			fprintf(output, "Handler(");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.handler_type.operation, depth - 1);
-			fprintf(output, ", ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.handler_type.input_computation, depth - 1);
-			fprintf(output, ", ");
-			print_term_depth(output, symbols, type_declarations, terms, term->as.handler_type.output_computation, depth - 1);
-			fprintf(output, ")");
 			break;
 		default:
 				fprintf(output, "<unknown-term>");
@@ -7969,11 +7989,24 @@ static void print_term_debug_depth(
 			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.force.value, depth - 1);
 			fprintf(output, ")");
 			break;
-		case PROTOTYPE_TERM_BIND:
-			fprintf(output, "BIND(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.bind.computation, depth - 1);
+		case PROTOTYPE_TERM_DEEP_FOLD:
+			fprintf(output, "DEEP_FOLD(");
+			print_term_debug_depth(output, symbols, type_declarations, terms,
+				term->as.deep_fold.computation, depth - 1);
 			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.bind.continuation, depth - 1);
+			print_term_debug_depth(output, symbols, type_declarations, terms,
+				term->as.deep_fold.return_clause, depth - 1);
+			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
+				const struct prototype_deep_fold_clause* clause =
+					&terms->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+				fprintf(output, ", OP_CLAUSE(");
+				print_term_debug_depth(output, symbols, type_declarations, terms,
+					clause->operation, depth - 1);
+				fprintf(output, ", ");
+				print_term_debug_depth(output, symbols, type_declarations, terms,
+					clause->body, depth - 1);
+				fprintf(output, ")");
+			}
 			fprintf(output, ")");
 			break;
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
@@ -7983,31 +8016,6 @@ static void print_term_debug_depth(
 			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.operation_request.argument, depth - 1);
 			fprintf(output, ", ");
 			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.operation_request.continuation, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_HANDLER:
-			fprintf(output, "HANDLER(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler.operation, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler.return_clause, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler.operation_clause, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_HANDLE:
-			fprintf(output, "HANDLE(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handle.handler, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handle.computation, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_HANDLER_TYPE:
-			fprintf(output, "HANDLER_TYPE(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler_type.operation, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler_type.input_computation, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.handler_type.output_computation, depth - 1);
 			fprintf(output, ")");
 			break;
 			default:

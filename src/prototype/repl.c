@@ -42,6 +42,7 @@
 #define RESOLUTION_EVENT_CAPACITY 2048
 #define OPERATION_CAPACITY 4096
 #define OPERATION_CASE_CAPACITY 4096
+#define EFFECT_CONSTRAINT_CAPACITY 8192
 #define VERIFICATION_OBLIGATION_CAPACITY 4096
 #define INPUT_CAPACITY 8192
 #define LINE_CAPACITY 1024
@@ -89,6 +90,8 @@ static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_IT
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_operation_effect_constraint
+	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
 
@@ -331,6 +334,15 @@ static void print_type_expr_debug(
 			print_type_expr_debug(symbols, type_declarations, expr->as.arrow.domain);
 			printf(", ");
 			print_type_expr_debug(symbols, type_declarations, expr->as.arrow.codomain);
+			printf(")");
+			break;
+		case PROTOTYPE_TYPE_EXPR_PI:
+			printf("PI(%s#%u : ",
+				symbol_to_string(symbols, expr->as.pi.symbol_id),
+				expr->as.pi.binder_id);
+			print_type_expr_debug(symbols, type_declarations, expr->as.pi.domain);
+			printf(", ");
+			print_type_expr_debug(symbols, type_declarations, expr->as.pi.codomain);
 			printf(")");
 			break;
 		default:
@@ -832,20 +844,11 @@ int main(int argc, char** argv) {
 	size_t input_len = 0;
 	unsigned entry_index = 1;
 	int first_file_arg = 1;
-	int disable_automatic_cbpv_coercions = 0;
 
 	memset(&read_options, 0, sizeof(read_options));
 	for (; first_file_arg < argc && argv[first_file_arg][0] == '-'; ++first_file_arg) {
-		if (strcmp(argv[first_file_arg], "--automatic-cbpv-coercions") == 0) {
-			disable_automatic_cbpv_coercions = 0;
-			continue;
-		}
-		if (strcmp(argv[first_file_arg], "--no-automatic-cbpv-coercions") == 0) {
-			disable_automatic_cbpv_coercions = 1;
-			continue;
-		}
 		fprintf(stderr, "unknown option: %s\n", argv[first_file_arg]);
-		fprintf(stderr, "Usage: %s [--automatic-cbpv-coercions|--no-automatic-cbpv-coercions] [file.p ...]\n", argv[0]);
+		fprintf(stderr, "Usage: %s [file.p ...]\n", argv[0]);
 		return 1;
 	}
 
@@ -942,6 +945,8 @@ int main(int argc, char** argv) {
 		OPERATION_CAPACITY,
 		operation_cases,
 		OPERATION_CASE_CAPACITY,
+		effect_constraints,
+		EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations,
 		VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -960,9 +965,6 @@ int main(int argc, char** argv) {
 	program.judgement = &judgement_db;
 	program.metadata = &metadata;
 	program.universe = &universe_db;
-	program.compile_options.disable_automatic_cbpv_coercions =
-		disable_automatic_cbpv_coercions;
-
 	for (int i = first_file_arg; i < argc; ++i) {
 		if (prototype_read_ast_file_with_options(argv[i], &program, &read_options, &error) != 0) {
 			fprintf(

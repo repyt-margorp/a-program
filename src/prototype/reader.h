@@ -8,14 +8,7 @@
 #include "type_declaration.h"
 #include "universe.h"
 
-/*
- * Lowering defaults to the ordinary A Program surface: value/computation
- * boundaries are elaborated with RETURN, THUNK, FORCE, and sequencing where
- * their source and target polarities require it. Set this opt-out flag to
- * inspect or require the corresponding raw CBPV program instead.
- */
 struct prototype_compile_options {
-	int disable_automatic_cbpv_coercions;
 	int compile_policy;
 	int normalization_step_limit_is_set;
 	uint64_t normalization_step_limit;

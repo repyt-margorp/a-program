@@ -147,9 +147,9 @@ identityBool := \x : Bool => x;
 identityNat := \y : Nat => y;
 identityBool :: Bool -> Bool;
 identityNat :: Nat -> Nat;
-boolExpected := return Bool.true;
+boolExpected := { Bool.true };
 boolMain := identityBool Bool.true;
-natExpected := return (Nat.succ Nat.zero);
+natExpected := { Nat.succ Nat.zero };
 natMain := identityNat (Nat.succ Nat.zero);
 EOF_IDENTITY
 
@@ -162,7 +162,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 44$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 47$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -195,9 +195,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/44$/43/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v43.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v43.apo" >"$TMP_DIR/identity-v43.out" 2>"$TMP_DIR/identity-v43.err"; then
-	echo "obsolete artifact unexpectedly passed after v44 format bump" >&2
+sed '1s/47$/46/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v46.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v46.apo" >"$TMP_DIR/identity-v46.out" 2>"$TMP_DIR/identity-v46.err"; then
+	echo "obsolete artifact unexpectedly passed after v47 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -256,7 +256,7 @@ headOrZero := \xs : List Nat =>
 	xs @nil => Nat.zero
 	   @cons x rest => x;
 input := (List Nat).cons (Nat.succ Nat.zero) (List Nat).nil;
-expected := return (Nat.succ Nat.zero);
+expected := { Nat.succ Nat.zero };
 main := headOrZero input;
 EOF_LIST_NAT_MATCH
 
@@ -297,7 +297,10 @@ Nat := @{ zero : *; succ : * -> *; };
 
 add := \n : Nat =>
 	n @zero => (\m : Nat => m)
-	  @succ k => (\m : Nat => Nat.succ (*k m));
+	  @succ k => (\m : Nat => {
+		result := *k m;
+		Nat.succ result
+	  });
 one := Nat.succ Nat.zero;
 main := add one one;
 EOF_REPL_NORMAL_FORM
@@ -319,7 +322,10 @@ and := \a : Bool =>
 
 addNat := \n : Nat =>
 	n @zero => (\m : Nat => m)
-	  @succ k => (\m : Nat => Nat.succ (*k m));
+	  @succ k => (\m : Nat => {
+		result := *k m;
+		Nat.succ result
+	  });
 EOF_OPERATION_LAYER
 
 ./read_file.out "$TMP_DIR/operation-layer.p" >"$TMP_DIR/operation-layer.out"
@@ -394,7 +400,8 @@ if grep -q '^universe_node 0 ' "$TMP_DIR/TypeSlice.apo"; then
 	exit 1
 fi
 
-./read_file.out --write-artifact "$TMP_DIR/SparseList.apo" examples/standard/List.p >"$TMP_DIR/sparse-list.out"
+./read_file.out --write-artifact "$TMP_DIR/SparseList.apo" \
+	src/prototype/artifact_sparse_list_check.p >"$TMP_DIR/sparse-list.out"
 graph_type_expr_hole=$(
 	awk '
 		$1 == "SECTION" && $2 == "graph" {
@@ -506,14 +513,16 @@ higherBool := \f : Bool -> Bool => f;
 
 higherNat := \f : Nat -> Nat => f;
 
-useHigherBool := higherBool (thunk identityBool);
-useHigherNat := higherNat (thunk identityNat);
+useHigherBool := higherBool &identityBool;
+useHigherNat := higherNat &identityNat;
 
 useAscribedBool := (identityBool :: Bool -> Bool) Bool.true;
 useAscribedNat := (identityNat :: Nat -> Nat) Nat.zero;
-matchAscribed := ((identityBool :: Bool -> Bool) Bool.true)
-        @true => (identityNat :: Nat -> Nat) Nat.zero
-        @false => (identityNat :: Nat -> Nat) (Nat.succ Nat.zero);
+matchAscribed := {
+	b := (identityBool :: Bool -> Bool) Bool.true;
+	b @true => (identityNat :: Nat -> Nat) Nat.zero
+	  @false => (identityNat :: Nat -> Nat) (Nat.succ Nat.zero)
+};
 EOF_MULTI_APP
 
 ./read_file.out "$TMP_DIR/multi-app.p" >"$TMP_DIR/multi-app.out"
@@ -849,7 +858,8 @@ if ./read_file.out --read-graph "$TMP_DIR/BadLambdaIntroBinderPremise.apo" >"$TM
 	echo "bad lambda intro binder premise artifact unexpectedly passed" >&2
 	exit 1
 fi
-./read_file.out --write-artifact "$TMP_DIR/ListInductionPattern.apo" examples/09_list_induction.p >"$TMP_DIR/list-induction-pattern.out"
+./read_file.out --write-artifact "$TMP_DIR/ListInductionPattern.apo" \
+	src/prototype/artifact_list_induction_check.p >"$TMP_DIR/list-induction-pattern.out"
 if grep -q 'TELESCOPE' "$TMP_DIR/list-induction-pattern.out"; then
 	echo "newly generated list induction graph unexpectedly contains TELESCOPE" >&2
 	exit 1
@@ -875,9 +885,9 @@ Bool := @{
 
 identity := \x : Bool => x;
 betaMain := identity Bool.true;
-betaExpected := return Bool.true;
+betaExpected := { Bool.true };
 matchMain := Bool.true @true => Bool.false @false => Bool.true;
-matchExpected := return Bool.false;
+matchExpected := { Bool.false };
 EOF_NORMALIZATION_EQUAL_MATCH
 
 ./read_file.out --write-artifact "$TMP_DIR/NormalizationEqualMatch.apo" \
@@ -905,7 +915,7 @@ Bool := @{
 };
 
 identity := \x : Bool => x;
-matchExpected := return Bool.false;
+matchExpected := { Bool.false };
 uniformBetaMatch := Bool.true @true => (identity Bool.false) @false => (identity Bool.false);
 EOF_NORMALIZATION_EQUAL_UNIFORM_BETA_MATCH
 
@@ -925,10 +935,13 @@ Nat := @{
 };
 
 identityNat := \x : Nat => x;
-expected := return (Nat.succ Nat.zero);
+expected := { Nat.succ Nat.zero };
 uniformNormalizationEqualArgMatch := Nat.zero
-        @zero   => Nat.succ (identityNat Nat.zero)
-        @succ n => Nat.succ Nat.zero;
+	@zero   => {
+		n : Nat := identityNat Nat.zero;
+		Nat.succ n
+	}
+	@succ predecessor => Nat.succ Nat.zero;
 EOF_NORMALIZATION_EQUAL_UNIFORM_ARG_MATCH
 
 ./read_file.out --write-artifact "$TMP_DIR/NormalizationEqualUniformArgMatch.apo" \
@@ -969,7 +982,10 @@ List := \A : @ => @{
 append := \A : @ =>
         \xs : List A =>
                 xs @nil         => (\ys : List A => ys)
-                   @cons x rest => (\ys : List A => (List A).cons x (*rest ys));
+                   @cons x rest => (\ys : List A => {
+			tail := *rest ys;
+			(List A).cons x tail
+		   });
 
 n0 := Nat.zero;
 n1 := Nat.succ Nat.zero;
@@ -979,9 +995,9 @@ n3 := Nat.succ n2;
 list01 := (List Nat).cons n0 ((List Nat).cons n1 (List Nat).nil);
 list23 := (List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil);
 list0 := (List Nat).cons n0 (List Nat).nil;
-oneExpected := return ((List Nat).cons n0 list23);
+oneExpected := { (List Nat).cons n0 list23 };
 oneMain := append Nat list0 list23;
-expected := return ((List Nat).cons n0 ((List Nat).cons n1 ((List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil))));
+expected := { (List Nat).cons n0 ((List Nat).cons n1 ((List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil))) };
 main := append Nat list01 list23;
 EOF_APPEND_NORMALIZATION_EQUAL
 
@@ -1149,7 +1165,8 @@ if ./read_file.out --read-graph "$TMP_DIR/BadProofEdgeMismatch.apo" >"$TMP_DIR/b
 	echo "bad proof edge mismatch artifact unexpectedly passed" >&2
 	exit 1
 fi
-./read_file.out --write-artifact "$TMP_DIR/AppPremiseKind.apo" examples/07_add.p >"$TMP_DIR/app-premise-kind-artifact.out"
+./read_file.out --write-artifact "$TMP_DIR/AppPremiseKind.apo" \
+	src/prototype/artifact_add_check.p >"$TMP_DIR/app-premise-kind-artifact.out"
 awk '
 	FNR == NR {
 		if ($1 == "counts") {
@@ -1467,7 +1484,10 @@ List := \A : @ => @{
 len := \A : @ =>
         ((\xs : List A =>
                 xs @nil => Nat.zero
-                   @cons x rest => Nat.succ *rest)
+                   @cons x rest => {
+			n := *rest;
+			Nat.succ n
+		   })
          :: List A -> Nat);
 EOF_IH_MOTIVE
 
@@ -1476,7 +1496,7 @@ grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_V
 	"$TMP_DIR/ih-motive.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive\]' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim\] proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"
-grep -q 'has-type BIND(INDUCTION_HYPOTHESIS.*\[bind-intro\] proof#[0-9][0-9]* premises=2' \
+grep -q 'has-type DEEP_FOLD(INDUCTION_HYPOTHESIS.*\[deep-fold-elim\] proof#[0-9][0-9]* premises=2' \
 	"$TMP_DIR/ih-motive.out"
 ./read_file.out --write-artifact "$TMP_DIR/IhMotive.apo" "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive-artifact.out"
 awk '
@@ -1507,7 +1527,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadIhContextField.apo" >"$TMP_DIR/bad-
 	exit 1
 fi
 
-./read_file.out examples/07_add.p >"$TMP_DIR/add-proof.out"
+./read_file.out src/prototype/artifact_add_check.p >"$TMP_DIR/add-proof.out"
 if grep -q 'expects-type' "$TMP_DIR/add-proof.out"; then
 	echo "expectation relation leaked into proof output" >&2
 	exit 1
@@ -1522,14 +1542,18 @@ Nat := @{
 
 double := \x : Nat =>
 	x @zero => Nat.zero
-	@succ k => Nat.succ (Nat.succ *k);
+	@succ k => {
+		n := *k;
+		Nat.succ (Nat.succ n)
+	};
 EOF_SOURCE_VIEW_NAT_MATCH
 
 ./read_file.out "$TMP_DIR/source-view-nat-match.p" >"$TMP_DIR/source-view-nat-match.out"
 grep -q 'metadata label double' "$TMP_DIR/source-view-nat-match.out"
 grep -q 'INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat' "$TMP_DIR/source-view-nat-match.out"
 
-./read_file.out --write-artifact "$TMP_DIR/AddProof.apo" examples/07_add.p >"$TMP_DIR/add-proof-artifact.out"
+./read_file.out --write-artifact "$TMP_DIR/AddProof.apo" \
+	src/prototype/artifact_add_check.p >"$TMP_DIR/add-proof-artifact.out"
 awk '
 	$1 == "proof" && $3 == lambda_intro_proof_kind && !done {
 		$15 = $2;
@@ -1732,7 +1756,10 @@ EOF_INT_ARITHMETIC
 grep -q 'value main := RETURN(INT_LITERAL(42))' "$TMP_DIR/int-arithmetic-repl.out"
 
 cat >"$TMP_DIR/nested-int-arithmetic.p" <<'EOF_NESTED_INT_ARITHMETIC'
-main := #.int64_add (#.int64_add #1 #2) #3;
+main := {
+	x := #.int64_add #1 #2;
+	#.int64_add x #3
+};
 EOF_NESTED_INT_ARITHMETIC
 ./a.out "$TMP_DIR/nested-int-arithmetic.p" >"$TMP_DIR/nested-int-arithmetic-repl.out"
 grep -q 'value main := RETURN(INT_LITERAL(6))' "$TMP_DIR/nested-int-arithmetic-repl.out"
@@ -1775,6 +1802,7 @@ EOF_TERMINAL_EFFECT
 grep -q '^compile_policy 2 10 ' "$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_EFFECT_LABEL 1$" "$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_COMPUTATION_TYPE " "$TMP_DIR/TerminalEffect.apo"
+grep -Eq '^effect_constraint [0-9]+ 3 2 ' "$TMP_DIR/TerminalEffect.apo"
 awk '
 	$1 == "compile_policy" { $3 = 0 }
 	{ print }
@@ -2081,39 +2109,17 @@ fi
 	idAlias >"$TMP_DIR/alias-classifier-compatible.out"
 grep -q '^export-classifiers-compatible idNat idAlias yes$' "$TMP_DIR/alias-classifier-compatible.out"
 ./read_file.out --write-artifact "$TMP_DIR/IdUserDeclared.apo" "$TMP_DIR/id-user-declared.p" >"$TMP_DIR/id-user-declared.out"
-grep -q 'has-type EXTERNAL_REF(id-user-declared.idNat) PI' "$TMP_DIR/id-user-declared.out"
-grep -q 'has-type APP(EXTERNAL_REF(id-user-declared.idNat)' "$TMP_DIR/id-user-declared.out"
-cat >"$TMP_DIR/id-user-declared-only.p" <<'EOF_ID_USER_DECLARED_ONLY'
-Nat := @{
-        zero : *;
-        succ : * -> *;
-};
-
-idNat : Nat -> Nat;
-EOF_ID_USER_DECLARED_ONLY
-./read_file.out --write-artifact "$TMP_DIR/IdUserDeclaredOnly.apo" \
-	"$TMP_DIR/id-user-declared-only.p" >"$TMP_DIR/id-user-declared-only.out"
-awk '
-	FNR == NR {
-		if ($1 == "term_node" && $3 == constructor_tag && $5 == 0 && !bad_classifier) {
-			bad_classifier = $2;
-		}
-		next;
-	}
-	$1 == "judgement" && $6 == declaration_proof_kind && !done {
-		$5 = bad_classifier;
-		target_proof = $7;
-		done = 1;
-	}
-	$1 == "proof" && $2 == target_proof {
-		$6 = bad_classifier;
-	}
-	{ print }
-' constructor_tag="$TERM_TAG_CONSTRUCTOR" \
-	declaration_proof_kind="$PROOF_KIND_DECLARATION" \
-	"$TMP_DIR/IdUserDeclaredOnly.apo" "$TMP_DIR/IdUserDeclaredOnly.apo" >"$TMP_DIR/BadExternalDeclarationClassifier.apo"
-if ./read_file.out --read-graph "$TMP_DIR/BadExternalDeclarationClassifier.apo" >"$TMP_DIR/bad-external-declaration-classifier.out" 2>"$TMP_DIR/bad-external-declaration-classifier.err"; then
-	echo "bad external declaration classifier artifact unexpectedly passed" >&2
+if grep -q 'has-type EXTERNAL_REF(id-user-declared.idNat)' "$TMP_DIR/id-user-declared.out" ||
+	grep -q 'has-type APP(EXTERNAL_REF(id-user-declared.idNat)' "$TMP_DIR/id-user-declared.out"; then
+	echo "unresolved external effect row was materialized in JudgementDB" >&2
+	exit 1
+fi
+grep -Eq '^effect_constraint [0-9]+ 2 3 ' "$TMP_DIR/IdUserDeclared.apo"
+./read_file.out --read-graph "$TMP_DIR/IdUserDeclared.apo" >"$TMP_DIR/id-user-declared-read.out"
+if ./read_file.out --policy strict --write-artifact "$TMP_DIR/IdUserDeclaredStrict.apo" \
+	"$TMP_DIR/id-user-declared.p" >"$TMP_DIR/id-user-declared-strict.out" \
+	2>"$TMP_DIR/id-user-declared-strict.err"; then
+	echo "strict compilation unexpectedly accepted an unresolved external effect row" >&2
 	exit 1
 fi
 ./read_file.out --write-artifact "$TMP_DIR/IdUser.apo" \
@@ -2435,6 +2441,41 @@ fi
 grep -q 'term_exports=4 type_exports=2 constructor_exports=4 dependencies=0' "$TMP_DIR/alias-linked-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/alias-linked-read.out"
 grep -q 'resolved constructor owner kind=1 .* ordinal=0' "$TMP_DIR/alias-linked-read.out"
+
+mkdir "$TMP_DIR/residual-link"
+./read_file.out --link-artifacts "$TMP_DIR/IdUserDeclared.apo" \
+	--link-output "$TMP_DIR/residual-link/IdUserDeclared.linked.apo" \
+	>"$TMP_DIR/id-user-declared-link.out"
+grep -Eq '^effect_constraint [0-9]+ 2 3 ' \
+	"$TMP_DIR/residual-link/IdUserDeclared.linked.apo"
+./read_file.out --read-graph "$TMP_DIR/residual-link/IdUserDeclared.linked.apo" \
+	>"$TMP_DIR/id-user-declared-linked-read.out"
+
+awk '
+	FNR == NR {
+		if ($1 == "term_node" && $3 == constructor_tag && $5 == 0 && !bad_classifier) {
+			bad_classifier = $2;
+		}
+		next;
+	}
+	$1 == "judgement" && $6 == declaration_proof_kind && !done {
+		$5 = bad_classifier;
+		target_proof = $7;
+		done = 1;
+	}
+	$1 == "proof" && $2 == target_proof {
+		$6 = bad_classifier;
+	}
+	{ print }
+' constructor_tag="$TERM_TAG_CONSTRUCTOR" \
+	declaration_proof_kind="$PROOF_KIND_DECLARATION" \
+	"$TMP_DIR/IdProvider.apo" "$TMP_DIR/IdProvider.apo" >"$TMP_DIR/BadExternalDeclarationClassifier.apo"
+if ./read_file.out --read-graph "$TMP_DIR/BadExternalDeclarationClassifier.apo" \
+	>"$TMP_DIR/bad-external-declaration-classifier.out" \
+	2>"$TMP_DIR/bad-external-declaration-classifier.err"; then
+	echo "bad external declaration classifier artifact unexpectedly passed" >&2
+	exit 1
+fi
 
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/core_view_representation_check.c \

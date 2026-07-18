@@ -33,6 +33,7 @@ enum prototype_type_expr_tag {
 	PROTOTYPE_TYPE_EXPR_NAME,
 	PROTOTYPE_TYPE_EXPR_APP,
 	PROTOTYPE_TYPE_EXPR_ARROW,
+	PROTOTYPE_TYPE_EXPR_PI,
 	PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE,
 	PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM,
 	PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT,
@@ -86,6 +87,12 @@ struct prototype_type_expr {
 			uint32_t domain;
 			uint32_t codomain;
 		} arrow;
+		struct {
+			uint32_t binder_id;
+			int symbol_id;
+			uint32_t domain;
+			uint32_t codomain;
+		} pi;
 	} as;
 };
 
@@ -191,6 +198,14 @@ int prototype_type_expr_name(struct prototype_type_declaration_db* db, int symbo
 int prototype_type_expr_primitive(struct prototype_type_declaration_db* db, int tag, uint32_t* p_ret);
 int prototype_type_expr_app(struct prototype_type_declaration_db* db, uint32_t function, uint32_t argument, uint32_t* p_ret);
 int prototype_type_expr_arrow(struct prototype_type_declaration_db* db, uint32_t domain, uint32_t codomain, uint32_t* p_ret);
+int prototype_type_expr_pi(
+	struct prototype_type_declaration_db* db,
+	uint32_t binder_id,
+	int symbol_id,
+	uint32_t domain,
+	uint32_t codomain,
+	uint32_t* p_ret
+);
 int prototype_type_expr_imported_type(
 	struct prototype_type_declaration_db* db,
 	struct prototype_qualified_name name,

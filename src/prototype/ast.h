@@ -24,9 +24,9 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_INT_LITERAL,
 	PROTOTYPE_AST_SYSTEM_NAME,
 	PROTOTYPE_AST_ASCRIPTION,
-	PROTOTYPE_AST_RETURN,
-	PROTOTYPE_AST_THUNK,
-	PROTOTYPE_AST_FORCE,
+	PROTOTYPE_AST_QUOTE,
+	PROTOTYPE_AST_COMPUTATION_BLOCK,
+	PROTOTYPE_AST_BLOCK_BIND,
 	PROTOTYPE_AST_PERFORM,
 	PROTOTYPE_AST_HANDLE
 };
@@ -34,10 +34,7 @@ enum prototype_ast_tag {
 enum prototype_ast_system_name_kind {
 	PROTOTYPE_AST_SYSTEM_NAME_UNKNOWN = 0,
 	PROTOTYPE_AST_SYSTEM_NAME_HOST_TYPE,
-	PROTOTYPE_AST_SYSTEM_NAME_HOST_OPERATION,
-	/* A surface intrinsic recognized only as the head of #.bind M (\\x => N).
-	 * It has no standalone TermDB representation. */
-	PROTOTYPE_AST_SYSTEM_NAME_BIND
+	PROTOTYPE_AST_SYSTEM_NAME_HOST_OPERATION
 };
 
 enum prototype_ast_type_expr_tag {
@@ -48,6 +45,8 @@ enum prototype_ast_type_expr_tag {
 	PROTOTYPE_AST_TYPE_EXPR_NAME,
 	PROTOTYPE_AST_TYPE_EXPR_APP,
 	PROTOTYPE_AST_TYPE_EXPR_ARROW,
+	PROTOTYPE_AST_TYPE_EXPR_PI,
+	PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE,
 	PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE
 };
 
@@ -81,6 +80,15 @@ struct prototype_ast_type_expr {
 			uint32_t domain;
 			uint32_t codomain;
 		} arrow;
+		struct {
+			uint32_t ast_binder_id;
+			int symbol_id;
+			uint32_t domain;
+			uint32_t codomain;
+		} pi;
+		struct {
+			uint32_t result;
+		} computation_reference;
 		struct {
 			int host_type_id;
 		} host_type;
@@ -152,6 +160,16 @@ struct prototype_ast_node {
 		struct {
 			uint32_t term;
 		} unary;
+		struct {
+			uint32_t body;
+		} block;
+		struct {
+			uint32_t ast_binder_id;
+			int binder_symbol_id;
+			uint32_t binder_type;
+			uint32_t value;
+			uint32_t rest;
+		} block_bind;
 		struct {
 			uint32_t computation;
 			uint32_t operation;
@@ -300,9 +318,8 @@ enum prototype_operation_tag {
 	PROTOTYPE_OPERATION_RETURN,
 	PROTOTYPE_OPERATION_THUNK,
 	PROTOTYPE_OPERATION_FORCE,
-	PROTOTYPE_OPERATION_BIND,
 	PROTOTYPE_OPERATION_PERFORM,
-	PROTOTYPE_OPERATION_HANDLE
+	PROTOTYPE_OPERATION_DEEP_FOLD
 };
 
 struct prototype_operation_node {
@@ -331,7 +348,7 @@ struct prototype_operation_node {
 	uint32_t body;
 	uint32_t scrutinee;
 	uint32_t binder_classifier;
-	/* HANDLE-only clause scope. `body` is the operation-clause body and
+	/* deep-fold clause clause scope. `body` is the operation-clause body and
 	 * `scrutinee` is the return-clause body. Source binder identities select
 	 * occurrence-local VAR nodes; graph binder identities instantiate the
 	 * corresponding TermDB clause bodies. */
@@ -367,11 +384,39 @@ struct prototype_operation_graph {
 	size_t case_capacity;
 };
 
+enum prototype_operation_effect_constraint_kind {
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_EXACT = 1,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_COPY,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNION,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_RESIDUAL
+};
+
+enum prototype_operation_effect_constraint_state {
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_PENDING = 1,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNSOLVED_RESIDUAL,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_INCOMPLETE
+};
+
+/*
+ * Effect constraints are occurrence-level compiler state. Row fields are
+ * TermDB ids; operation identifies the typed source occurrence whose
+ * classifier owns result_row. EXACT uses left_row as the required row and
+ * leaves right_row invalid.
+ */
+struct prototype_operation_effect_constraint {
+	int kind;
+	int state;
+	uint32_t operation;
+	uint32_t result_row;
+	uint32_t left_row;
+	uint32_t right_row;
+};
+
 /* Residual verification is distinct from JudgementDB: a record here is a
  * conditional runtime obligation, never a closed has-type derivation. */
 enum prototype_verification_obligation_kind {
-	PROTOTYPE_VERIFICATION_OBLIGATION_DEPENDENT_BIND = 1,
-	PROTOTYPE_VERIFICATION_OBLIGATION_HANDLER_RESULT
+	PROTOTYPE_VERIFICATION_OBLIGATION_DEEP_FOLD_RESULT = 1
 };
 
 enum prototype_verification_obligation_state {
@@ -705,7 +750,7 @@ enum prototype_compile_policy {
 };
 
 enum prototype_runtime_capability {
-	PROTOTYPE_RUNTIME_CAPABILITY_DEPENDENT_BIND_VERIFIER = 1u << 0,
+	PROTOTYPE_RUNTIME_CAPABILITY_DEEP_FOLD_RESULT_VERIFIER = 1u << 0,
 	PROTOTYPE_RUNTIME_CAPABILITY_OPERATION_DISPATCH = 1u << 1,
 	PROTOTYPE_RUNTIME_CAPABILITY_HANDLER = 1u << 2,
 	PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL = 1u << 3
@@ -737,6 +782,10 @@ struct prototype_compile_metadata {
 	struct prototype_operation_match_case* operation_cases;
 	size_t operation_case_count;
 	size_t operation_case_capacity;
+
+	struct prototype_operation_effect_constraint* effect_constraints;
+	size_t effect_constraint_count;
+	size_t effect_constraint_capacity;
 
 	struct prototype_verification_db verification;
 
@@ -905,6 +954,21 @@ int prototype_ast_type_expr_arrow(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
+int prototype_ast_type_expr_pi(
+	struct prototype_ast_db* db,
+	uint32_t ast_binder_id,
+	int symbol_id,
+	uint32_t domain,
+	uint32_t codomain,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_type_expr_computation_reference(
+	struct prototype_ast_db* db,
+	uint32_t result,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
 int prototype_ast_type_add(
 	struct prototype_ast_db* db,
 	int name_symbol_id,
@@ -1030,21 +1094,25 @@ int prototype_ast_ascription(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_return(
+int prototype_ast_quote(
 	struct prototype_ast_db* db,
 	uint32_t term,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_thunk(
+int prototype_ast_computation_block(
 	struct prototype_ast_db* db,
-	uint32_t term,
+	uint32_t body,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_force(
+int prototype_ast_block_bind(
 	struct prototype_ast_db* db,
-	uint32_t term,
+	uint32_t ast_binder_id,
+	int binder_symbol_id,
+	uint32_t binder_type,
+	uint32_t value,
+	uint32_t rest,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
@@ -1127,6 +1195,8 @@ void prototype_compile_metadata_init(
 	size_t operation_capacity,
 	struct prototype_operation_match_case* operation_cases,
 	size_t operation_case_capacity,
+	struct prototype_operation_effect_constraint* effect_constraints,
+	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
 	size_t verification_obligation_capacity
 );
@@ -1224,7 +1294,7 @@ int prototype_verification_db_discharge_dependent_bind(
 	uint32_t returned_value,
 	uint32_t continuation_result_classifier
 );
-int prototype_verification_db_discharge_handler_result(
+int prototype_verification_db_discharge_deep_fold_result(
 	struct prototype_verification_db* db,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -1510,7 +1580,6 @@ int prototype_ast_compile_pending_with_imports(
 	struct prototype_judgement_db* judgement,
 	struct prototype_compile_metadata* metadata,
 	int namespace_symbol_id,
-	int automatic_cbpv_coercions,
 	const struct prototype_artifact_interface* const* imported_interfaces,
 	size_t imported_interface_count
 );
