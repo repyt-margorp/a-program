@@ -2443,7 +2443,7 @@ uint32_t prototype_term_binder_for_scope_slot(struct prototype_term_db* db, uint
 	if (db->scope_binders[scope_slot] != PROTOTYPE_INVALID_ID) {
 		return db->scope_binders[scope_slot];
 	}
-	if (db->next_binder_id >= PROTOTYPE_PI_UNUSED_BINDER_ID) {
+	if (db->next_binder_id == PROTOTYPE_INVALID_ID) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	uint32_t binder_id = db->next_binder_id++;
@@ -2452,7 +2452,7 @@ uint32_t prototype_term_binder_for_scope_slot(struct prototype_term_db* db, uint
 }
 
 uint32_t prototype_term_fresh_binder(struct prototype_term_db* db) {
-	if (!db || db->next_binder_id >= PROTOTYPE_PI_UNUSED_BINDER_ID) {
+	if (!db || db->next_binder_id == PROTOTYPE_INVALID_ID) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	return db->next_binder_id++;
@@ -3843,10 +3843,10 @@ int prototype_term_pi(
 		return -1;
 	}
 
+	uint32_t binder_id = prototype_term_fresh_binder(db);
 	uint32_t codomain_family;
-	if (prototype_term_pure_family(
-		db, PROTOTYPE_PI_UNUSED_BINDER_ID, codomain, &codomain_family
-	) != 0) {
+	if (binder_id == PROTOTYPE_INVALID_ID ||
+		prototype_term_pure_family(db, binder_id, codomain, &codomain_family) != 0) {
 		return -1;
 	}
 	return prototype_term_pi_family(db, domain, codomain_family, p_ret);

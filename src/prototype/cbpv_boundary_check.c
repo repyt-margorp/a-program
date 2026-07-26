@@ -17,6 +17,8 @@
 #define FIELD_TYPE_CAPACITY 8
 #define TYPE_EXPR_CAPACITY 8
 #define JUDGEMENT_CAPACITY 128
+#define CONTEXT_CAPACITY 128
+#define SUBSTITUTION_CAPACITY 128
 
 static struct prototype_term terms[TERM_CAPACITY];
 static struct prototype_match_case cases[CASE_CAPACITY];
@@ -35,6 +37,8 @@ static struct prototype_judgement_proof delta_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_match_motive_result motive_results[8];
 static struct prototype_judgement_computation_constraint computation_constraints[8];
 static struct prototype_judgement_effect_row_equation effect_row_equations[8];
+static struct prototype_context context_entries[CONTEXT_CAPACITY];
+static struct prototype_substitution substitution_entries[SUBSTITUTION_CAPACITY];
 static int symbol_map_ids[16];
 static uint32_t symbol_map_hashes[16];
 static char* symbol_storage[16];
@@ -44,6 +48,8 @@ int main(void) {
 	struct prototype_type_declaration_db type_db;
 	struct prototype_judgement_db judgement;
 	struct prototype_judgement_delta delta;
+	struct prototype_context_db contexts;
+	struct prototype_substitution_db substitutions;
 	struct symbol_table symbols;
 	symbol_table_init(
 		&symbols, symbol_map_ids, symbol_map_hashes, 16, symbol_storage, 16
@@ -64,6 +70,13 @@ int main(void) {
 		&delta, &judgement, delta_relations, delta_proofs, JUDGEMENT_CAPACITY,
 		motive_results, 8, computation_constraints, 8, effect_row_equations, 8
 	);
+	prototype_context_db_init(&contexts, context_entries, CONTEXT_CAPACITY);
+	prototype_substitution_db_init(
+		&substitutions, substitution_entries, SUBSTITUTION_CAPACITY
+	);
+	prototype_judgement_delta_set_context_store(
+		&delta, &contexts, &substitutions
+	);
 
 	uint32_t value;
 	uint32_t returned;
@@ -75,7 +88,13 @@ int main(void) {
 		prototype_term_force(&term_db, suspended, &forced) != 0 ||
 		prototype_judgement_delta_infer_term_classifiers(&delta, &term_db, &type_db) != 0 ||
 		prototype_judgement_delta_commit(&delta, 0) != 0 ||
-		prototype_judgement_validate_proofs(&term_db, &type_db, &judgement) != 0) {
+		prototype_judgement_validate_proofs(
+			&term_db,
+			&type_db,
+			&contexts,
+			&substitutions,
+			&judgement
+		) != 0) {
 		return 1;
 	}
 

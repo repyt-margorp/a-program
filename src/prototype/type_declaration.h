@@ -114,15 +114,16 @@ struct prototype_type_constructor_declaration {
 	uint32_t constructor_index;
 	/*
 	 * Source/interface field and result expressions are readback metadata only.
-	 * Constructor typing, shape keys, import reconstruction, and semantic owner
-	 * checks must use classifier_family.
+	 * Constructor field typing, shape keys, import reconstruction, and semantic
+	 * owner checks must use the context telescope and result classifier.
 	 */
 	struct prototype_type_constructor_readback readback;
 	/*
 	 * The constructor telescope is the ContextDB path from parameter_context
 	 * to field_context. result_classifier is meaningful in field_context.
-	 * classifier_family is the derived curried display used by existing Pi
-	 * elimination; it is not a second schema authority.
+	 * classifier_family is a derived curried cache used to classify constructor
+	 * terms through existing Pi elimination. It is generated from the
+	 * telescope and is not a second schema authority.
 	 */
 	uint32_t parameter_context;
 	uint32_t field_context;

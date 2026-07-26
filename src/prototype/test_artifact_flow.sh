@@ -42,9 +42,11 @@ cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
 
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/universe_defeq_check.c \
+	src/prototype/ast.c \
 	src/prototype/term.c \
 	src/prototype/type_declaration.c \
 	src/prototype/typing.c \
+	src/prototype/universe.c \
 	src/prototype/symbol.c \
 	-o "$TMP_DIR/universe_defeq_check"
 "$TMP_DIR/universe_defeq_check"
@@ -165,7 +167,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 50$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 51$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -198,9 +200,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/50$/49/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v49.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v49.apo" >"$TMP_DIR/identity-v49.out" 2>"$TMP_DIR/identity-v49.err"; then
-	echo "obsolete artifact unexpectedly passed after v50 format bump" >&2
+sed '1s/51$/50/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v50.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v50.apo" >"$TMP_DIR/identity-v50.out" 2>"$TMP_DIR/identity-v50.err"; then
+	echo "obsolete artifact unexpectedly passed after v51 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"

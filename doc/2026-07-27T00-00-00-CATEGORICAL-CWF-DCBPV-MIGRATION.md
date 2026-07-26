@@ -419,7 +419,10 @@ Evidence:
 
 Status: in progress
 
-- [ ] Add `context.h` and `context.c` under `src/prototype`.
+- [x] Add `context.h` under `src/prototype`.
+- [ ] Move the implementation from `ast.c` to `context.c`. This requires an
+      accepted-build `Makefile` change and therefore remains outside the
+      current agent write boundary.
 - [x] Add immutable empty/extend/query operations.
 - [x] Add stable context interning.
 - [x] Add `context_id` to operation occurrences.
@@ -459,15 +462,15 @@ Required laws:
 
 ### Phase 3: Migrate Pi, Lambda, and APP
 
-Status: in progress
+Status: completed for the current pure-family fragment
 
-- [ ] Represent Pi domain in `Gamma` and codomain in `Gamma.A`.
-- [ ] Replace `pi_codomain_after_argument` with reindexing by
+- [x] Represent Pi domain in `Gamma` and codomain in `Gamma.A`.
+- [x] Replace `pi_codomain_after_argument` with reindexing by
       `<id_Gamma, argument>`.
 - [x] Context-index Lambda introduction premises.
 - [x] Context-index APP elimination premises and conversion checks.
-- [ ] Make Pi substitution stability an explicit test.
-- [ ] Remove `PROTOTYPE_PI_UNUSED_BINDER_ID`.
+- [x] Make Pi substitution stability an explicit test.
+- [x] Remove `PROTOTYPE_PI_UNUSED_BINDER_ID`.
 - [ ] Keep CBPV family wrappers only where they represent real F/U structure,
       not as a substitute for missing context data.
 
@@ -480,8 +483,12 @@ Status: in progress
 - [x] Store constructor result classifier over the full field context.
 - [x] Instantiate Match case fields through a substitution into the field
       context.
-- [x] Retain a derived curried classifier display for existing Pi consumers.
+- [x] Generate a derived curried classifier cache from the context telescope
+      for existing Pi consumers.
 - [x] Make constructor ordinal ownership remain TypeView-sensitive.
+- [x] Resolve Match field counts from the telescope rather than by decoding
+      the curried cache.
+- [x] Validate the Nat-shaped primitive boundary from constructor telescopes.
 - [ ] Update structural representation keys from graph-level schema.
 - [ ] Remove semantic reads of field/result readback metadata.
 
@@ -645,18 +652,18 @@ Implemented in this checkpoint:
 - substitutions validate extension terms against `A[sigma]`, not raw `A`;
 - Match field typing uses constructor parameter/field contexts and explicit
   substitutions, including dependent second fields;
-- artifact version 50 serializes and relocates context and substitution
+- artifact version 51 serializes and relocates context and substitution
   closure;
 - context, artifact, dependent Pi, shared-core, CBPV surface, and examples
   01-09 regressions pass.
 
 Remaining architectural debt:
 
-- `ContextDB` and `SubstitutionDB` declarations still live in `ast.h`; they
-  should move to a lower-level context module so the kernel does not depend on
-  AST-layer declarations;
-- Pi codomain application and several kernel validators still decode the
-  derived `classifier_family` and call single-binder substitution;
+- `ContextDB` and `SubstitutionDB` declarations now live in `context.h`, but
+  their implementation remains in `ast.c` until the accepted build may add
+  `context.c`;
+- constructor term classification still consumes the derived
+  `classifier_family` cache; field typing and Match resolution no longer do;
 - proof records still retain `context_subject/context_index/context_aux` as a
   second provenance mechanism for Match and IH validation;
 - Match motive and IH solver records still copy binder arrays instead of
@@ -664,13 +671,13 @@ Remaining architectural debt:
 - the context-sensitive classifier search still has a broad fallback needed
   by the current guarded-IH implementation; it must disappear when IH
   constraints are fully context-indexed;
-- structural type keys still hash the derived constructor family rather than
+- structural type keys still hash the derived constructor cache rather than
   traversing the constructor telescope directly;
 - readback field/result metadata remains serialized for diagnostics and some
   legacy validation paths;
-- the public single-binder substitution API still has 27 implementation/test
-  references and cannot be removed until Pi, Match motive, IH, and proof
-  validation all use SubstitutionDB.
+- the public single-binder substitution API remains an implementation detail
+  of TermDB reindexing and several Match/IH transforms; it cannot be removed
+  until those transforms consume SubstitutionDB directly.
 
 Checkpoint verification:
 
@@ -681,4 +688,14 @@ Checkpoint verification:
             through 09, compiled successfully.
 2026-07-27: dependent constructor field and artifact round-trip checks passed
             after Match field instantiation moved to telescope substitutions.
+2026-07-27: artifact version 51 preserves the constructor owner TypeView used
+            by Match-pattern proof rules even though the shared Match core
+            erases its owner to the canonical representation.
+2026-07-27: APP candidate synthesis, APP proof refresh, Lambda checking, and
+            proof validation all instantiate Pi codomains by context
+            substitution rather than a context-free binder replacement.
+2026-07-27: constructor field count, field typing, and Nat-shape validation
+            read the constructor telescope. The curried classifier cache is
+            generated from that telescope rather than independently from AST
+            field arrays.
 ```

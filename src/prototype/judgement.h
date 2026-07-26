@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "context.h"
 #include "symbol.h"
 #include "term.h"
 #include "type_declaration.h"
@@ -66,6 +67,9 @@ struct prototype_judgement_proof {
 	uint32_t context_subject;
 	uint32_t context_index;
 	uint32_t context_aux;
+	/* Type view selected when a Match pattern introduced this field. The
+	 * Match node retains only its canonical core owner after graph erasure. */
+	uint32_t constructor_owner_view;
 	uint32_t premise_count;
 	int premise_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
@@ -157,6 +161,8 @@ struct prototype_judgement_delta {
 	uint64_t solver_step_limit;
 	uint64_t* solver_steps_used;
 	int* solver_exhausted;
+	struct prototype_context_db* contexts;
+	struct prototype_substitution_db* substitutions;
 	/* Context for relations emitted by the current elaboration rule. This is
 	 * an explicit CwF object ID, not the old proof provenance fields. */
 	uint32_t current_context_id;
@@ -213,6 +219,11 @@ void prototype_judgement_delta_set_context(
 	struct prototype_judgement_delta* delta,
 	uint32_t context_id
 );
+void prototype_judgement_delta_set_context_store(
+	struct prototype_judgement_delta* delta,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions
+);
 
 size_t prototype_judgement_delta_mark(
 	const struct prototype_judgement_delta* delta
@@ -265,6 +276,11 @@ int prototype_judgement_delta_set_proof_context_by_id(
 	uint32_t context_subject,
 	uint32_t context_index,
 	uint32_t context_aux
+);
+int prototype_judgement_delta_set_match_pattern_owner_by_id(
+	struct prototype_judgement_delta* delta,
+	uint32_t proof_id,
+	uint32_t constructor_owner_view
 );
 
 int prototype_judgement_expand_lambda(
@@ -570,6 +586,8 @@ int prototype_judgement_delta_has_pending_classifier_state(
 int prototype_judgement_validate_proofs(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
 	const struct prototype_judgement_db* judgement
 );
 
@@ -584,7 +602,9 @@ int prototype_judgement_add_normalization_premise_conversions(
 void prototype_judgement_refresh_app_elim_premises(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions
 );
 
 void prototype_judgement_resolve_declaration_premises(
@@ -703,6 +723,7 @@ int prototype_judgement_type_expr_term(
 int prototype_judgement_resolve_match_constructor(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
 	uint32_t scrutinee_classifier,
 	int constructor_symbol_id,
 	struct prototype_match_constructor_resolution* p_resolution
@@ -715,17 +736,6 @@ int prototype_judgement_synthesize_match_pattern_classifier(
 	uint32_t scrutinee,
 	uint32_t scrutinee_classifier,
 	int constructor_symbol_id,
-	uint32_t field_index,
-	uint32_t* p_classifier
-);
-
-int prototype_judgement_constructor_field_classifier(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t owner,
-	uint32_t constructor_index,
-	const struct prototype_case_binder* previous_binders,
-	uint32_t previous_binder_count,
 	uint32_t field_index,
 	uint32_t* p_classifier
 );

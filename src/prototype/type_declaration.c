@@ -727,8 +727,8 @@ static int representation_terms_equal_at_depth(
 		case PROTOTYPE_TERM_PI: {
 			uint32_t left_body = PROTOTYPE_INVALID_ID;
 			uint32_t right_body = PROTOTYPE_INVALID_ID;
-			uint32_t left_binder = PROTOTYPE_PI_UNUSED_BINDER_ID;
-			uint32_t right_binder = PROTOTYPE_PI_UNUSED_BINDER_ID;
+			uint32_t left_binder = PROTOTYPE_INVALID_ID;
+			uint32_t right_binder = PROTOTYPE_INVALID_ID;
 			if (left->tag == PROTOTYPE_TERM_LAMBDA) {
 				left_binder = left->as.lambda.binder_id;
 				right_binder = right->as.lambda.binder_id;
@@ -756,7 +756,7 @@ static int representation_terms_equal_at_depth(
 				)) {
 				return 0;
 			}
-			if (left_binder != PROTOTYPE_PI_UNUSED_BINDER_ID &&
+			if (left_binder != PROTOTYPE_INVALID_ID &&
 				representation_push_binder(env, left_binder, right_binder) != 0) {
 				return 0;
 			}

@@ -18,7 +18,7 @@ text_term=$(sed -n 's/^metadata label identityText -> operation#[0-9][0-9]* -> t
 
 test -n "$int_term"
 test "$int_term" = "$text_term"
-grep -q 'has-type LAMBDA(_#0, RETURN(VAR(_#0))) PI(PRIMITIVE(Int),' "$tmp_dir/output"
-grep -q 'has-type LAMBDA(_#0, RETURN(VAR(_#0))) PI(PRIMITIVE(Text),' "$tmp_dir/output"
+grep -q 'has-type LAMBDA(_#[0-9][0-9]*, RETURN(VAR(_#[0-9][0-9]*))) PI(PRIMITIVE(Int),' "$tmp_dir/output"
+grep -q 'has-type LAMBDA(_#[0-9][0-9]*, RETURN(VAR(_#[0-9][0-9]*))) PI(PRIMITIVE(Text),' "$tmp_dir/output"
 grep -q 'metadata label intResult ' "$tmp_dir/output"
 grep -q 'metadata label textResult ' "$tmp_dir/output"

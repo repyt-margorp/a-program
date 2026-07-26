@@ -3,6 +3,9 @@ set -eu
 
 cc -std=c11 -Wall -Wextra -I src/prototype \
 	src/prototype/cbpv_boundary_check.c \
+	src/prototype/ast.c \
+	src/prototype/ast_inspect.c \
+	src/prototype/reader.c \
 	src/prototype/term.c \
 	src/prototype/type_declaration.c \
 	src/prototype/typing.c \

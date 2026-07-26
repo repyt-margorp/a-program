@@ -685,7 +685,7 @@ static int read_artifact_interface_and_graph(
 	struct prototype_compile_metadata* metadata
 ) {
 	if (!path || !symbols || !artifact_interface || !term_db ||
-		!type_declarations || !judgement_db || !universe_db) {
+		!type_declarations || !judgement_db || !universe_db || !metadata) {
 		return -1;
 	}
 	FILE* artifact_file = fopen(path, "r");
@@ -723,6 +723,8 @@ static int read_artifact_interface_and_graph(
 		prototype_judgement_validate_proofs(
 			term_db,
 			type_declarations,
+			&metadata->contexts,
+			&metadata->substitutions,
 			judgement_db
 		) != 0) {
 		status = -1;
@@ -1008,6 +1010,7 @@ static int check_export_normalization_equal(
 	struct prototype_type_declaration_db type_declarations;
 	struct prototype_judgement_db judgement_db;
 	struct prototype_universe_db universe_db;
+	struct prototype_compile_metadata metadata;
 	struct prototype_term_definition_env definition_env;
 	symbol_table_init(&symbols, symbol_ids, symbol_hashes, SYMBOL_MAP_CAPACITY, symbol_strings, SYMBOL_STORAGE_CAPACITY);
 	prototype_artifact_interface_init(
@@ -1064,6 +1067,22 @@ static int check_export_normalization_equal(
 		universe_constraints,
 		UNIVERSE_CONSTRAINT_CAPACITY
 	);
+	prototype_compile_metadata_init(
+		&metadata,
+		compile_labels, COMPILE_LABEL_CAPACITY,
+		compile_type_exports, COMPILE_TYPE_EXPORT_CAPACITY,
+		compile_constructor_exports, COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
+		resolve_errors, RESOLVE_ERROR_CAPACITY,
+		resolution_items, RESOLUTION_ITEM_CAPACITY,
+		resolution_iterations, RESOLUTION_ITERATION_CAPACITY,
+		resolution_events, RESOLUTION_EVENT_CAPACITY,
+		artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
+		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
+		operations, OPERATION_CAPACITY,
+		operation_cases, OPERATION_CASE_CAPACITY,
+		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
+		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
@@ -1072,7 +1091,7 @@ static int check_export_normalization_equal(
 			&type_declarations,
 			&judgement_db,
 			&universe_db,
-			NULL
+			&metadata
 		) != 0) {
 		fprintf(stderr, "%s: failed to read artifact\n", path);
 		symbol_table_free(&symbols);
@@ -1177,6 +1196,7 @@ static int check_exports_normalization_equal(
 	struct prototype_type_declaration_db type_declarations;
 	struct prototype_judgement_db judgement_db;
 	struct prototype_universe_db universe_db;
+	struct prototype_compile_metadata metadata;
 	struct prototype_term_definition_env definition_env;
 	symbol_table_init(&symbols, symbol_ids, symbol_hashes, SYMBOL_MAP_CAPACITY, symbol_strings, SYMBOL_STORAGE_CAPACITY);
 	prototype_artifact_interface_init(
@@ -1233,6 +1253,22 @@ static int check_exports_normalization_equal(
 		universe_constraints,
 		UNIVERSE_CONSTRAINT_CAPACITY
 	);
+	prototype_compile_metadata_init(
+		&metadata,
+		compile_labels, COMPILE_LABEL_CAPACITY,
+		compile_type_exports, COMPILE_TYPE_EXPORT_CAPACITY,
+		compile_constructor_exports, COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
+		resolve_errors, RESOLVE_ERROR_CAPACITY,
+		resolution_items, RESOLUTION_ITEM_CAPACITY,
+		resolution_iterations, RESOLUTION_ITERATION_CAPACITY,
+		resolution_events, RESOLUTION_EVENT_CAPACITY,
+		artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
+		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
+		operations, OPERATION_CAPACITY,
+		operation_cases, OPERATION_CASE_CAPACITY,
+		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
+		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
@@ -1241,7 +1277,7 @@ static int check_exports_normalization_equal(
 			&type_declarations,
 			&judgement_db,
 			&universe_db,
-			NULL
+			&metadata
 		) != 0) {
 		fprintf(stderr, "%s: failed to read artifact\n", path);
 		symbol_table_free(&symbols);
@@ -1371,6 +1407,7 @@ static int check_exports_shape_equal(
 	struct prototype_type_declaration_db type_declarations;
 	struct prototype_judgement_db judgement_db;
 	struct prototype_universe_db universe_db;
+	struct prototype_compile_metadata metadata;
 	symbol_table_init(&symbols, symbol_ids, symbol_hashes, SYMBOL_MAP_CAPACITY, symbol_strings, SYMBOL_STORAGE_CAPACITY);
 	prototype_artifact_interface_init(
 		&artifact_interface,
@@ -1426,6 +1463,22 @@ static int check_exports_shape_equal(
 		universe_constraints,
 		UNIVERSE_CONSTRAINT_CAPACITY
 	);
+	prototype_compile_metadata_init(
+		&metadata,
+		compile_labels, COMPILE_LABEL_CAPACITY,
+		compile_type_exports, COMPILE_TYPE_EXPORT_CAPACITY,
+		compile_constructor_exports, COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
+		resolve_errors, RESOLVE_ERROR_CAPACITY,
+		resolution_items, RESOLUTION_ITEM_CAPACITY,
+		resolution_iterations, RESOLUTION_ITERATION_CAPACITY,
+		resolution_events, RESOLUTION_EVENT_CAPACITY,
+		artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
+		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
+		operations, OPERATION_CAPACITY,
+		operation_cases, OPERATION_CASE_CAPACITY,
+		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
+		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
@@ -1434,7 +1487,7 @@ static int check_exports_shape_equal(
 			&type_declarations,
 			&judgement_db,
 			&universe_db,
-			NULL
+			&metadata
 		) != 0) {
 		fprintf(stderr, "%s: failed to read artifact\n", path);
 		symbol_table_free(&symbols);
@@ -1504,6 +1557,7 @@ static int check_export_classifier_compatible(
 	struct prototype_type_declaration_db type_declarations;
 	struct prototype_judgement_db judgement_db;
 	struct prototype_universe_db universe_db;
+	struct prototype_compile_metadata metadata;
 	struct prototype_term_definition_env definition_env;
 	symbol_table_init(&symbols, symbol_ids, symbol_hashes, SYMBOL_MAP_CAPACITY, symbol_strings, SYMBOL_STORAGE_CAPACITY);
 	prototype_artifact_interface_init(
@@ -1560,6 +1614,22 @@ static int check_export_classifier_compatible(
 		universe_constraints,
 		UNIVERSE_CONSTRAINT_CAPACITY
 	);
+	prototype_compile_metadata_init(
+		&metadata,
+		compile_labels, COMPILE_LABEL_CAPACITY,
+		compile_type_exports, COMPILE_TYPE_EXPORT_CAPACITY,
+		compile_constructor_exports, COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
+		resolve_errors, RESOLVE_ERROR_CAPACITY,
+		resolution_items, RESOLUTION_ITEM_CAPACITY,
+		resolution_iterations, RESOLUTION_ITERATION_CAPACITY,
+		resolution_events, RESOLUTION_EVENT_CAPACITY,
+		artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
+		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
+		operations, OPERATION_CAPACITY,
+		operation_cases, OPERATION_CASE_CAPACITY,
+		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
+		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
@@ -1568,7 +1638,7 @@ static int check_export_classifier_compatible(
 			&type_declarations,
 			&judgement_db,
 			&universe_db,
-			NULL
+			&metadata
 		) != 0) {
 		fprintf(stderr, "%s: failed to read artifact\n", path);
 		symbol_table_free(&symbols);
@@ -3281,6 +3351,8 @@ int main(int argc, char** argv) {
 		if (prototype_judgement_validate_proofs(
 				&term_db,
 				&type_declarations,
+				&metadata.contexts,
+				&metadata.substitutions,
 				&judgement_db
 			) != 0) {
 			fprintf(stderr, "%s: linked artifact proof validation failed\n", link_target_path);
@@ -3503,6 +3575,8 @@ int main(int argc, char** argv) {
 				prototype_judgement_validate_proofs(
 					&term_db,
 					&type_declarations,
+					&artifact_metadata.contexts,
+					&artifact_metadata.substitutions,
 					&judgement_db
 				) != 0) {
 				fclose(artifact_file);
