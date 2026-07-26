@@ -1954,7 +1954,7 @@ AST and graph lowering are deliberately small:
 - The classifier is registered in JudgementDB as
   `CODE_LITERAL(...) : PRIMITIVE(Code)`.
 
-The prototype also has the first negative intrinsic function:
+The prototype also has the first host-backed pure primitive:
 
 ```p
 x := #.print #"ok";

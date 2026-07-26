@@ -202,8 +202,8 @@ int main(void) {
 	uint32_t continuation_lambda;
 	uint32_t continuation_thunk;
 	uint32_t request;
-	if (prototype_term_operation(
-			&term_db, PROTOTYPE_OPERATION_INT_ADD, 0, -1, &operation
+	if (prototype_term_effect_operation(
+			&term_db, PROTOTYPE_EFFECT_OPERATION_PRINT, &operation
 		) != 0 || prototype_term_lambda(
 			&term_db, 6, bound_result, &continuation_lambda
 		) != 0 || prototype_term_operation_request(

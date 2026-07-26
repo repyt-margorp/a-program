@@ -106,6 +106,26 @@ static struct prototype_resolve_error resolve_errors[RESOLVE_ERROR_CAPACITY];
 static struct prototype_resolution_item resolution_items[RESOLUTION_ITEM_CAPACITY];
 static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
+static struct prototype_context contexts[PROTOTYPE_CONTEXT_CAPACITY];
+static struct prototype_context provider_contexts[PROTOTYPE_CONTEXT_CAPACITY];
+static struct prototype_context artifact_contexts[PROTOTYPE_CONTEXT_CAPACITY];
+static struct prototype_substitution
+	substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
+static struct prototype_substitution
+	provider_substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
+static struct prototype_substitution
+	artifact_substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
+static struct prototype_compile_label provider_compile_labels[COMPILE_LABEL_CAPACITY];
+static struct prototype_compile_type_export
+	provider_compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
+static struct prototype_compile_constructor_export
+	provider_compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
+static struct prototype_resolve_error provider_resolve_errors[RESOLVE_ERROR_CAPACITY];
+static struct prototype_resolution_item provider_resolution_items[RESOLUTION_ITEM_CAPACITY];
+static struct prototype_resolution_iteration
+	provider_resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
+static struct prototype_resolution_event
+	provider_resolution_events[RESOLUTION_EVENT_CAPACITY];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
 static struct prototype_operation_effect_constraint
@@ -695,6 +715,11 @@ static int read_artifact_interface_and_graph(
 			artifact_file,
 			universe_db
 		) != 0 ||
+		(metadata && prototype_constructor_telescopes_validate(
+			type_declarations,
+			&metadata->contexts,
+			term_db
+		) != 0) ||
 		prototype_judgement_validate_proofs(
 			term_db,
 			type_declarations,
@@ -800,6 +825,17 @@ static int append_link_operation_graph(
 		(uint32_t)prototype_operation_graph_count(&target_graph);
 	uint32_t case_offset =
 		(uint32_t)prototype_operation_graph_case_count(&target_graph);
+	uint32_t context_relocation[PROTOTYPE_CONTEXT_CAPACITY];
+	if (prototype_context_db_append_relocated(
+		&target->contexts,
+		&source->contexts,
+		term_offset,
+		binder_offset,
+		context_relocation,
+		PROTOTYPE_CONTEXT_CAPACITY
+	) != 0) {
+		return -1;
+	}
 	uint32_t source_binder_offset;
 	if (operation_graph_next_source_binder_id(target, &source_binder_offset) != 0) {
 		return -1;
@@ -811,6 +847,10 @@ static int append_link_operation_graph(
 			return -1;
 		}
 		struct prototype_operation_node operation = *source_operation;
+		if (operation.context_id >= source->contexts.context_count) {
+			return -1;
+		}
+		operation.context_id = context_relocation[operation.context_id];
 		operation.core_term = offset_link_graph_id(operation.core_term, term_offset);
 		operation.known_classifier = offset_link_graph_id(
 			operation.known_classifier, term_offset
@@ -1767,11 +1807,41 @@ static int read_import_artifact_into_slot(
 	struct prototype_type_declaration_db provider_type_declarations;
 	struct prototype_term_db provider_term_db;
 	struct prototype_judgement_db provider_judgement_db;
+	struct prototype_compile_metadata provider_metadata;
 	init_provider_artifact_storage(
 		&provider_interface,
 		&provider_type_declarations,
 		&provider_term_db,
 		&provider_judgement_db
+	);
+	prototype_compile_metadata_init(
+		&provider_metadata,
+		provider_compile_labels,
+		COMPILE_LABEL_CAPACITY,
+		provider_compile_type_exports,
+		COMPILE_TYPE_EXPORT_CAPACITY,
+		provider_compile_constructor_exports,
+		COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
+		provider_resolve_errors,
+		RESOLVE_ERROR_CAPACITY,
+		provider_resolution_items,
+		RESOLUTION_ITEM_CAPACITY,
+		provider_resolution_iterations,
+		RESOLUTION_ITERATION_CAPACITY,
+		provider_resolution_events,
+		RESOLUTION_EVENT_CAPACITY,
+		provider_contexts,
+		PROTOTYPE_CONTEXT_CAPACITY,
+		provider_substitutions,
+		PROTOTYPE_SUBSTITUTION_CAPACITY,
+		provider_operations,
+		OPERATION_CAPACITY,
+		provider_operation_cases,
+		OPERATION_CASE_CAPACITY,
+		provider_effect_constraints,
+		EFFECT_CONSTRAINT_CAPACITY,
+		provider_verification_obligations,
+		VERIFICATION_OBLIGATION_CAPACITY
 	);
 	init_imported_interface_slot(slot);
 	if (read_artifact_interface_and_graph(
@@ -1782,8 +1852,8 @@ static int read_import_artifact_into_slot(
 			&provider_type_declarations,
 			&provider_judgement_db,
 			universe,
-			NULL
-		) != 0) {
+		&provider_metadata
+	) != 0) {
 		return -1;
 	}
 	return prototype_artifact_append_graph(
@@ -1791,10 +1861,14 @@ static int read_import_artifact_into_slot(
 			program->terms,
 			program->type_declarations,
 			program->judgement,
+			&program->metadata->contexts,
+			&program->metadata->substitutions,
 			&provider_interface,
 			&provider_term_db,
 			&provider_type_declarations,
-			&provider_judgement_db
+			&provider_judgement_db,
+			&provider_metadata.contexts,
+			&provider_metadata.substitutions
 	);
 }
 
@@ -2925,6 +2999,10 @@ int main(int argc, char** argv) {
 			RESOLUTION_ITERATION_CAPACITY,
 			resolution_events,
 			RESOLUTION_EVENT_CAPACITY,
+			contexts,
+			PROTOTYPE_CONTEXT_CAPACITY,
+			substitutions,
+			PROTOTYPE_SUBSTITUTION_CAPACITY,
 			operations,
 			OPERATION_CAPACITY,
 			operation_cases,
@@ -3047,20 +3125,24 @@ int main(int argc, char** argv) {
 			);
 			prototype_compile_metadata_init(
 				&provider_metadata,
-				compile_labels,
+				provider_compile_labels,
 				COMPILE_LABEL_CAPACITY,
-				compile_type_exports,
+				provider_compile_type_exports,
 				COMPILE_TYPE_EXPORT_CAPACITY,
-				compile_constructor_exports,
+				provider_compile_constructor_exports,
 				COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
-				resolve_errors,
+				provider_resolve_errors,
 				RESOLVE_ERROR_CAPACITY,
-				resolution_items,
+				provider_resolution_items,
 				RESOLUTION_ITEM_CAPACITY,
-				resolution_iterations,
+				provider_resolution_iterations,
 				RESOLUTION_ITERATION_CAPACITY,
-				resolution_events,
+				provider_resolution_events,
 				RESOLUTION_EVENT_CAPACITY,
+				provider_contexts,
+				PROTOTYPE_CONTEXT_CAPACITY,
+				provider_substitutions,
+				PROTOTYPE_SUBSTITUTION_CAPACITY,
 				provider_operations,
 				OPERATION_CAPACITY,
 				provider_operation_cases,
@@ -3102,10 +3184,14 @@ int main(int argc, char** argv) {
 					&term_db,
 					&type_declarations,
 					&judgement_db,
+					&metadata.contexts,
+					&metadata.substitutions,
 					&provider_interface,
 					&provider_term_db,
 					&provider_type_declarations,
-					&provider_judgement_db
+					&provider_judgement_db,
+					&provider_metadata.contexts,
+					&provider_metadata.substitutions
 				) != 0 || append_link_operation_graph(
 					&metadata,
 					&provider_metadata,
@@ -3338,6 +3424,8 @@ int main(int argc, char** argv) {
 				resolution_items, RESOLUTION_ITEM_CAPACITY,
 				resolution_iterations, RESOLUTION_ITERATION_CAPACITY,
 				resolution_events, RESOLUTION_EVENT_CAPACITY,
+				artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
+				artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 				operations, OPERATION_CAPACITY,
 				operation_cases, OPERATION_CASE_CAPACITY,
 				effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
@@ -3682,6 +3770,10 @@ int main(int argc, char** argv) {
 		RESOLUTION_ITERATION_CAPACITY,
 		resolution_events,
 		RESOLUTION_EVENT_CAPACITY,
+		contexts,
+		PROTOTYPE_CONTEXT_CAPACITY,
+		substitutions,
+		PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations,
 		OPERATION_CAPACITY,
 		operation_cases,

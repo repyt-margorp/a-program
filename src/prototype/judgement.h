@@ -33,7 +33,8 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE,
 	PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO,
-	PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_CONVERSION,
 	PROTOTYPE_JUDGEMENT_PROOF_TEXT_TYPE_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO,
@@ -42,13 +43,15 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE,
 	PROTOTYPE_JUDGEMENT_PROOF_DECLARATION,
 	PROTOTYPE_JUDGEMENT_PROOF_UNIVERSE_CUMULATIVITY,
-	PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO
+	PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX
 };
 
 enum prototype_judgement_proof_context_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_NONE = 0,
 	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_LAMBDA_BINDER,
-	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_MATCH_CASE_FIELD
+	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_MATCH_CASE_FIELD,
+	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_ASSUMPTION
 };
 
 #define PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES 65
@@ -56,6 +59,7 @@ enum prototype_judgement_proof_context_kind {
 struct prototype_judgement_proof {
 	int proof_kind;
 	int conclusion_kind;
+	uint32_t conclusion_context_id;
 	uint32_t conclusion_subject;
 	uint32_t conclusion_classifier;
 	int context_kind;
@@ -64,6 +68,7 @@ struct prototype_judgement_proof {
 	uint32_t context_aux;
 	uint32_t premise_count;
 	int premise_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_proof_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
@@ -71,6 +76,7 @@ struct prototype_judgement_proof {
 
 struct prototype_judgement_relation {
 	int kind;
+	uint32_t context_id;
 	uint32_t subject;
 	uint32_t classifier;
 	int proof_kind;
@@ -92,6 +98,7 @@ enum prototype_judgement_computation_constraint_kind {
  * not a runtime environment. */
 struct prototype_judgement_computation_constraint {
 	int kind;
+	uint32_t context_id;
 	uint32_t subject;
 	uint32_t computation;
 	uint32_t continuation;
@@ -150,6 +157,9 @@ struct prototype_judgement_delta {
 	uint64_t solver_step_limit;
 	uint64_t* solver_steps_used;
 	int* solver_exhausted;
+	/* Context for relations emitted by the current elaboration rule. This is
+	 * an explicit CwF object ID, not the old proof provenance fields. */
+	uint32_t current_context_id;
 };
 
 struct prototype_match_constructor_resolution {
@@ -198,6 +208,10 @@ void prototype_judgement_delta_set_solver_budget(
 	uint64_t step_limit,
 	uint64_t* steps_used,
 	int* exhausted
+);
+void prototype_judgement_delta_set_context(
+	struct prototype_judgement_delta* delta,
+	uint32_t context_id
 );
 
 size_t prototype_judgement_delta_mark(
@@ -297,7 +311,8 @@ int prototype_judgement_delta_record_lambda_intro(
 	uint32_t subject,
 	uint32_t classifier,
 	uint32_t binder_classifier,
-	uint32_t body_classifier
+	uint32_t body_classifier,
+	uint32_t premise_context_id
 );
 
 int prototype_judgement_delta_record_app_elim(
@@ -310,6 +325,12 @@ int prototype_judgement_delta_record_app_elim(
 	uint32_t function_classifier,
 	uint32_t argument_subject,
 	uint32_t argument_classifier
+);
+int prototype_judgement_delta_record_context_reindex(
+	struct prototype_judgement_delta* delta,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t source_context_id
 );
 int prototype_judgement_delta_record_deep_fold_elim(
 	struct prototype_judgement_delta* delta,
@@ -344,7 +365,14 @@ int prototype_judgement_delta_record_type_formation(
 	uint32_t classifier
 );
 
-int prototype_judgement_delta_record_operation_type(
+int prototype_judgement_delta_record_pure_primitive_type(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier
+);
+int prototype_judgement_delta_record_effect_operation_type(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -366,11 +394,16 @@ int prototype_judgement_delta_record_int_literal(
 	uint32_t classifier
 );
 
-int prototype_judgement_operation_classifier(
+int prototype_judgement_pure_primitive_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term* operation,
 	uint32_t* p_classifier
+);
+int prototype_judgement_effect_operation_classifier(
+	struct prototype_term_db* terms,
+	const struct prototype_term* operation,
+	uint32_t* p_ret
 );
 
 int prototype_judgement_expand_match_motive(
@@ -502,13 +535,6 @@ int prototype_judgement_expand_int_literal(
 	uint32_t classifier
 );
 
-int prototype_judgement_delta_expand_negative_operation(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-);
-
 int prototype_judgement_expand_primitives(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms
@@ -524,6 +550,7 @@ int prototype_judgement_expand_checked(
 int prototype_judgement_add_conversion(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
+	uint32_t context_id,
 	uint32_t subject,
 	uint32_t expected,
 	uint32_t actual
@@ -777,6 +804,17 @@ int prototype_judgement_delta_solve_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations
+);
+int prototype_judgement_delta_solve_recorded_computation_constraints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations
+);
+int prototype_judgement_delta_record_computation_constraint(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t subject
 );
 
 int prototype_judgement_delta_generate_computation_constraints(

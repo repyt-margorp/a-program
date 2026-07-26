@@ -525,15 +525,10 @@ grep -q '\[operation-request-intro\]' "$tmp_dir/perform.out"
 
 cat >"$tmp_dir/pure-operation.p" <<'EOF'
 direct := ((#.int64_add #1) #2);
-main := perform ((#.int64_add #1) #2);
 EOF
 
 ./read_file.out "$tmp_dir/pure-operation.p" >"$tmp_dir/pure-operation.out"
-grep -q 'term direct := APP(APP(OPERATION(int64_add), INT_LITERAL(1)), INT_LITERAL(2))' \
-	"$tmp_dir/pure-operation.out"
-grep -q 'term main := OPERATION_REQUEST(APP(OPERATION(int64_add), INT_LITERAL(1)), INT_LITERAL(2),' \
-	"$tmp_dir/pure-operation.out"
-grep -q 'OPERATION_REQUEST.*COMPUTATION_TYPE(EFFECT_LABEL(0), PRIMITIVE(Int64)) \[operation-request-intro\]' \
+grep -q 'term direct := APP(APP(PURE_PRIMITIVE(int64_add), INT_LITERAL(1)), INT_LITERAL(2))' \
 	"$tmp_dir/pure-operation.out"
 printf '%s\n' \
 	'direct := ((#.int64_add #1) #2);' \
@@ -541,22 +536,32 @@ printf '%s\n' \
 	':q' | ./a.out >"$tmp_dir/pure-operation-eval.out"
 grep -q 'value direct := RETURN(INT_LITERAL(3))' \
 	"$tmp_dir/pure-operation-eval.out"
-printf '%s\n' \
-	'main := perform ((#.int64_add #1) #2);' \
-	'main' \
-	':q' | ./a.out >"$tmp_dir/pure-operation-perform.out"
-grep -q 'value main := RETURN(INT_LITERAL(3))' "$tmp_dir/pure-operation-perform.out"
-printf '%s\n' \
-	'main := { x : #.Int64 := perform ((#.int64_add #1) #2); x };' \
-	'main' \
-	':q' | ./a.out >"$tmp_dir/pure-operation-bind.out"
-grep -q 'term main := DEEP_FOLD(OPERATION_REQUEST(' "$tmp_dir/pure-operation-bind.out"
-grep -q 'value main := RETURN(INT_LITERAL(3))' "$tmp_dir/pure-operation-bind.out"
 ./read_file.out --write-artifact "$tmp_dir/pure-operation.apo" "$tmp_dir/pure-operation.p" \
 	>"$tmp_dir/pure-operation-write.out"
 ./read_file.out --read-graph "$tmp_dir/pure-operation.apo" \
 	>"$tmp_dir/pure-operation-read.out"
-grep -q 'interface term main ' "$tmp_dir/pure-operation-read.out"
+grep -q 'interface term direct ' "$tmp_dir/pure-operation-read.out"
+grep -Eq '^term_node [0-9]+ [0-9]+ int64_add -$' "$tmp_dir/pure-operation.apo"
+
+cat >"$tmp_dir/invalid-perform-intrinsic.p" <<'EOF'
+bad := perform ((#.int64_add #1) #2);
+EOF
+if ./read_file.out "$tmp_dir/invalid-perform-intrinsic.p" \
+	>"$tmp_dir/invalid-perform-intrinsic.out" \
+	2>"$tmp_dir/invalid-perform-intrinsic.err"; then
+	echo 'perform accepted a pure primitive' >&2
+	exit 1
+fi
+
+cat >"$tmp_dir/invalid-handle-intrinsic.p" <<'EOF'
+bad := handle (perform (#.print #"x")) with (#.int_neg) x k => k x; return y => y;
+EOF
+if ./read_file.out "$tmp_dir/invalid-handle-intrinsic.p" \
+	>"$tmp_dir/invalid-handle-intrinsic.out" \
+	2>"$tmp_dir/invalid-handle-intrinsic.err"; then
+	echo 'handler accepted a pure primitive as an effect operation' >&2
+	exit 1
+fi
 
 cat >"$tmp_dir/handle.p" <<'EOF'
 main := handle (perform (#.print #"x")) with (#.print) x k => k x; return y => y;

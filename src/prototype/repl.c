@@ -88,6 +88,9 @@ static struct prototype_resolve_error resolve_errors[RESOLVE_ERROR_CAPACITY];
 static struct prototype_resolution_item resolution_items[RESOLUTION_ITEM_CAPACITY];
 static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
+static struct prototype_context contexts[PROTOTYPE_CONTEXT_CAPACITY];
+static struct prototype_substitution
+	substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
 static struct prototype_operation_effect_constraint
@@ -941,6 +944,10 @@ int main(int argc, char** argv) {
 			RESOLUTION_ITERATION_CAPACITY,
 			resolution_events,
 			RESOLUTION_EVENT_CAPACITY,
+			contexts,
+			PROTOTYPE_CONTEXT_CAPACITY,
+			substitutions,
+			PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations,
 		OPERATION_CAPACITY,
 		operation_cases,

@@ -25,152 +25,167 @@ static int qualified_names_equal(
 
 struct prototype_host_type_descriptor {
 	int type_id;
-	const char* source_name;
 	const char* debug_name;
 	int term_tag;
 	int type_expr_tag;
 	int bit_width;
-	const char* aliases[2];
 };
 
 static const struct prototype_host_type_descriptor host_types[] = {
 	{
 		PROTOTYPE_HOST_TYPE_TEXT,
 		"Text",
-		"Text",
 		PROTOTYPE_TERM_PRIMITIVE_TEXT,
 		PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT,
-		0,
-		{ NULL, NULL }
+		0
 	},
 	{
 		PROTOTYPE_HOST_TYPE_INT32,
 		"Int",
-		"Int",
 		PROTOTYPE_TERM_PRIMITIVE_INT,
 		PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT,
-		32,
-		{ "Int32", NULL }
+		32
 	},
 	{
 		PROTOTYPE_HOST_TYPE_INT64,
 		"Int64",
-		"Int64",
 		PROTOTYPE_TERM_PRIMITIVE_INT64,
 		PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64,
-		64,
-		{ NULL, NULL }
+		64
 	}
 };
 
-static const struct prototype_operation_declaration operation_declarations[] = {
+static const struct prototype_pure_primitive_declaration
+pure_primitive_declarations[] = {
 	{
-			PROTOTYPE_OPERATION_PRINT,
-			"print",
-			PROTOTYPE_HOST_EFFECT_TERMINAL,
-			1,
-			{ PROTOTYPE_HOST_TYPE_TEXT, PROTOTYPE_HOST_TYPE_INVALID },
-			PROTOTYPE_HOST_TYPE_TEXT
-	},
-	{
-			PROTOTYPE_OPERATION_TEXT_TO_NAT,
-			"text_to_nat",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT,
 			1,
 			{ PROTOTYPE_HOST_TYPE_TEXT, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_INVALID
 	},
 	{
-			PROTOTYPE_OPERATION_NAT_TO_TEXT,
-			"nat_to_text",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT,
 			1,
 			{ PROTOTYPE_HOST_TYPE_INVALID, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_TEXT
 	},
 	{
-			PROTOTYPE_OPERATION_INT_ADD,
-			"int_add",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_INT_ADD,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
 			PROTOTYPE_HOST_TYPE_INT32
 	},
 	{
-			PROTOTYPE_OPERATION_INT_SUB,
-			"int_sub",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_INT_SUB,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
 			PROTOTYPE_HOST_TYPE_INT32
 	},
 	{
-			PROTOTYPE_OPERATION_INT_MUL,
-			"int_mul",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_INT_MUL,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
 			PROTOTYPE_HOST_TYPE_INT32
 	},
 	{
-			PROTOTYPE_OPERATION_INT_NEG,
-			"int_neg",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_INT_NEG,
 			1,
 			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_INT32
 	},
 	{
-			PROTOTYPE_OPERATION_INT64_ADD,
-			"int64_add",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_INT64_ADD,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
 			PROTOTYPE_HOST_TYPE_INT64
 	},
 	{
-			PROTOTYPE_OPERATION_INT64_SUB,
-			"int64_sub",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_INT64_SUB,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
 			PROTOTYPE_HOST_TYPE_INT64
 	},
 	{
-			PROTOTYPE_OPERATION_INT64_MUL,
-			"int64_mul",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_INT64_MUL,
 			2,
 			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
 			PROTOTYPE_HOST_TYPE_INT64
 	},
 	{
-			PROTOTYPE_OPERATION_INT64_NEG,
-			"int64_neg",
-			PROTOTYPE_HOST_EFFECT_NONE,
+			PROTOTYPE_PURE_PRIMITIVE_INT64_NEG,
 			1,
 			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INVALID },
 			PROTOTYPE_HOST_TYPE_INT64
 	}
 };
 
-struct host_operation_implementation {
+static const struct prototype_effect_operation_declaration
+effect_operation_declarations[] = {
+	{
+		PROTOTYPE_EFFECT_OPERATION_PRINT,
+		PROTOTYPE_HOST_EFFECT_TERMINAL,
+		1,
+		{ PROTOTYPE_HOST_TYPE_TEXT },
+		PROTOTYPE_HOST_TYPE_TEXT
+	}
+};
+
+static const struct prototype_intrinsic_namespace_binding intrinsic_namespace[] = {
+	{ "Text", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, PROTOTYPE_HOST_TYPE_TEXT },
+	{ "Int", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, PROTOTYPE_HOST_TYPE_INT32 },
+	{ "Int32", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, PROTOTYPE_HOST_TYPE_INT32 },
+	{ "Int64", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, PROTOTYPE_HOST_TYPE_INT64 },
+	{ "text_to_nat", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT },
+	{ "nat_to_text", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT },
+	{ "int_add", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_INT_ADD },
+	{ "int_sub", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_INT_SUB },
+	{ "int_mul", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_INT_MUL },
+	{ "int_neg", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_INT_NEG },
+	{ "int64_add", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_INT64_ADD },
+	{ "int64_sub", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_INT64_SUB },
+	{ "int64_mul", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_INT64_MUL },
+	{ "int64_neg", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+		PROTOTYPE_PURE_PRIMITIVE_INT64_NEG },
+	{ "print", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
+		PROTOTYPE_EFFECT_OPERATION_PRINT }
+};
+
+struct host_pure_primitive_implementation {
+	int primitive_id;
+	int oracle_kind;
+};
+
+static const struct host_pure_primitive_implementation
+host_pure_primitive_implementations[] = {
+	{ PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT, PROTOTYPE_HOST_ORACLE_TEXT_TO_NAT },
+	{ PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT, PROTOTYPE_HOST_ORACLE_NAT_TO_TEXT },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT_ADD, PROTOTYPE_HOST_ORACLE_INT_ADD },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT_SUB, PROTOTYPE_HOST_ORACLE_INT_SUB },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT_MUL, PROTOTYPE_HOST_ORACLE_INT_MUL },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT_NEG, PROTOTYPE_HOST_ORACLE_INT_NEG },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT64_ADD, PROTOTYPE_HOST_ORACLE_INT_ADD },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT64_SUB, PROTOTYPE_HOST_ORACLE_INT_SUB },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT64_MUL, PROTOTYPE_HOST_ORACLE_INT_MUL },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT64_NEG, PROTOTYPE_HOST_ORACLE_INT_NEG }
+};
+
+struct host_effect_operation_implementation {
 	int operation_id;
 	int oracle_kind;
 };
 
-static const struct host_operation_implementation host_operation_implementations[] = {
-	{ PROTOTYPE_OPERATION_PRINT, PROTOTYPE_HOST_ORACLE_PRINT },
-	{ PROTOTYPE_OPERATION_TEXT_TO_NAT, PROTOTYPE_HOST_ORACLE_TEXT_TO_NAT },
-	{ PROTOTYPE_OPERATION_NAT_TO_TEXT, PROTOTYPE_HOST_ORACLE_NAT_TO_TEXT },
-	{ PROTOTYPE_OPERATION_INT_ADD, PROTOTYPE_HOST_ORACLE_INT_ADD },
-	{ PROTOTYPE_OPERATION_INT_SUB, PROTOTYPE_HOST_ORACLE_INT_SUB },
-	{ PROTOTYPE_OPERATION_INT_MUL, PROTOTYPE_HOST_ORACLE_INT_MUL },
-	{ PROTOTYPE_OPERATION_INT_NEG, PROTOTYPE_HOST_ORACLE_INT_NEG },
-	{ PROTOTYPE_OPERATION_INT64_ADD, PROTOTYPE_HOST_ORACLE_INT_ADD },
-	{ PROTOTYPE_OPERATION_INT64_SUB, PROTOTYPE_HOST_ORACLE_INT_SUB },
-	{ PROTOTYPE_OPERATION_INT64_MUL, PROTOTYPE_HOST_ORACLE_INT_MUL },
-	{ PROTOTYPE_OPERATION_INT64_NEG, PROTOTYPE_HOST_ORACLE_INT_NEG }
+static const struct host_effect_operation_implementation
+host_effect_operation_implementations[] = {
+	{ PROTOTYPE_EFFECT_OPERATION_PRINT, PROTOTYPE_HOST_ORACLE_PRINT }
 };
 
 static const struct prototype_host_type_descriptor* host_type_by_id(int type_id) {
@@ -186,19 +201,16 @@ int prototype_term_host_type_from_source_name(const char* name, int* p_type_id) 
 	if (!name || !p_type_id) {
 		return -1;
 	}
-	for (size_t i = 0; i < sizeof(host_types) / sizeof(host_types[0]); ++i) {
-		if (strcmp(name, host_types[i].source_name) == 0) {
-			*p_type_id = host_types[i].type_id;
-			return 0;
-		}
-		for (size_t j = 0; j < sizeof(host_types[i].aliases) / sizeof(host_types[i].aliases[0]); ++j) {
-			if (host_types[i].aliases[j] && strcmp(name, host_types[i].aliases[j]) == 0) {
-				*p_type_id = host_types[i].type_id;
-				return 0;
-			}
-		}
+	struct prototype_intrinsic_namespace_binding binding;
+	int status = prototype_intrinsic_namespace_lookup(name, &binding);
+	if (status != 0) {
+		return status;
 	}
-	return 1;
+	if (binding.kind != PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE) {
+		return 1;
+	}
+	*p_type_id = binding.target_id;
+	return 0;
 }
 
 int prototype_term_host_type_from_term_tag(int tag, int* p_type_id) {
@@ -228,8 +240,9 @@ int prototype_term_host_type_from_type_expr_tag(int tag, int* p_type_id) {
 }
 
 const char* prototype_term_host_type_source_name(int type_id) {
-	const struct prototype_host_type_descriptor* type = host_type_by_id(type_id);
-	return type ? type->source_name : NULL;
+	return prototype_intrinsic_namespace_source_name(
+		PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, type_id
+	);
 }
 
 const char* prototype_term_host_type_debug_name(int type_id) {
@@ -264,42 +277,79 @@ int prototype_term_host_type_at(size_t index, int* p_type_id) {
 	return 0;
 }
 
-const struct prototype_operation_declaration* prototype_term_operation_declaration(
-	int operation_id
+int prototype_intrinsic_namespace_lookup(
+	const char* name,
+	struct prototype_intrinsic_namespace_binding* p_binding
 ) {
-	for (size_t i = 0;
-		i < sizeof(operation_declarations) / sizeof(operation_declarations[0]);
-		++i) {
-		if (operation_declarations[i].operation_id == operation_id) {
-			return &operation_declarations[i];
-		}
-	}
-	return NULL;
-}
-
-int prototype_term_operation_from_source_name(const char* name, int* p_operation_id) {
-	if (!name || !p_operation_id) {
+	if (!name || !p_binding) {
 		return -1;
 	}
-	for (size_t i = 0;
-		i < sizeof(operation_declarations) / sizeof(operation_declarations[0]);
-		++i) {
-		if (strcmp(name, operation_declarations[i].source_name) == 0) {
-			*p_operation_id = operation_declarations[i].operation_id;
+	for (size_t i = 0; i < sizeof(intrinsic_namespace) / sizeof(intrinsic_namespace[0]); ++i) {
+		if (strcmp(name, intrinsic_namespace[i].source_name) == 0) {
+			*p_binding = intrinsic_namespace[i];
 			return 0;
 		}
 	}
 	return 1;
 }
 
-static const struct host_operation_implementation* host_operation_implementation(
-	int operation_id
+const char* prototype_intrinsic_namespace_source_name(int kind, int target_id) {
+	for (size_t i = 0; i < sizeof(intrinsic_namespace) / sizeof(intrinsic_namespace[0]); ++i) {
+		if (intrinsic_namespace[i].kind == kind &&
+			intrinsic_namespace[i].target_id == target_id) {
+			return intrinsic_namespace[i].source_name;
+		}
+	}
+	return NULL;
+}
+
+const struct prototype_pure_primitive_declaration*
+prototype_term_pure_primitive_declaration(int primitive_id) {
+	for (size_t i = 0;
+		i < sizeof(pure_primitive_declarations) /
+			sizeof(pure_primitive_declarations[0]);
+		++i) {
+		if (pure_primitive_declarations[i].primitive_id == primitive_id) {
+			return &pure_primitive_declarations[i];
+		}
+	}
+	return NULL;
+}
+
+const struct prototype_effect_operation_declaration*
+prototype_term_effect_operation_declaration(int operation_id) {
+	for (size_t i = 0;
+		i < sizeof(effect_operation_declarations) / sizeof(effect_operation_declarations[0]);
+		++i) {
+		if (effect_operation_declarations[i].operation_id == operation_id) {
+			return &effect_operation_declarations[i];
+		}
+	}
+	return NULL;
+}
+
+static const struct host_pure_primitive_implementation*
+host_pure_primitive_implementation(int primitive_id
 ) {
 	for (size_t i = 0;
-		i < sizeof(host_operation_implementations) / sizeof(host_operation_implementations[0]);
+		i < sizeof(host_pure_primitive_implementations) /
+			sizeof(host_pure_primitive_implementations[0]);
 		++i) {
-		if (host_operation_implementations[i].operation_id == operation_id) {
-			return &host_operation_implementations[i];
+		if (host_pure_primitive_implementations[i].primitive_id == primitive_id) {
+			return &host_pure_primitive_implementations[i];
+		}
+	}
+	return NULL;
+}
+
+static const struct host_effect_operation_implementation*
+host_effect_operation_implementation(int operation_id) {
+	for (size_t i = 0;
+		i < sizeof(host_effect_operation_implementations) /
+			sizeof(host_effect_operation_implementations[0]);
+		++i) {
+		if (host_effect_operation_implementations[i].operation_id == operation_id) {
+			return &host_effect_operation_implementations[i];
 		}
 	}
 	return NULL;
@@ -349,8 +399,11 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 			p_ret->layer = PROTOTYPE_TERM_LAYER_LINK;
 			p_ret->link_boundary = 1;
 			break;
-		case PROTOTYPE_TERM_OPERATION:
-			p_ret->layer = PROTOTYPE_TERM_LAYER_OPERATION;
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			p_ret->layer = PROTOTYPE_TERM_LAYER_PURE_PRIMITIVE;
+			break;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			p_ret->layer = PROTOTYPE_TERM_LAYER_EFFECT_OPERATION;
 			break;
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			p_ret->layer = PROTOTYPE_TERM_LAYER_INDUCTION;
@@ -941,10 +994,11 @@ static int shape_terms_equal_at_depth(
 				return left->as.int_literal.value == right->as.int_literal.value;
 			case PROTOTYPE_TERM_EXTERNAL_REF:
 				return qualified_names_equal(left->as.external_ref.name, right->as.external_ref.name);
-		case PROTOTYPE_TERM_OPERATION:
-				return left->as.operation.operation_id == right->as.operation.operation_id &&
-					left->as.operation.symbol_id == right->as.operation.symbol_id &&
-					left->as.operation.type_symbol_id == right->as.operation.type_symbol_id;
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+				return left->as.pure_primitive.primitive_id == right->as.pure_primitive.primitive_id &&
+					left->as.pure_primitive.type_symbol_id == right->as.pure_primitive.type_symbol_id;
+			case PROTOTYPE_TERM_EFFECT_OPERATION:
+				return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id;
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return left->as.effect_label.effects == right->as.effect_label.effects;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -1465,10 +1519,11 @@ static int cross_shape_terms_equal_at_depth(
 				return left->as.int_literal.value == right->as.int_literal.value;
 			case PROTOTYPE_TERM_EXTERNAL_REF:
 				return qualified_names_equal(left->as.external_ref.name, right->as.external_ref.name);
-		case PROTOTYPE_TERM_OPERATION:
-				return left->as.operation.operation_id == right->as.operation.operation_id &&
-					left->as.operation.symbol_id == right->as.operation.symbol_id &&
-					left->as.operation.type_symbol_id == right->as.operation.type_symbol_id;
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+				return left->as.pure_primitive.primitive_id == right->as.pure_primitive.primitive_id &&
+					left->as.pure_primitive.type_symbol_id == right->as.pure_primitive.type_symbol_id;
+			case PROTOTYPE_TERM_EFFECT_OPERATION:
+				return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id;
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return left->as.effect_label.effects == right->as.effect_label.effects;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -2081,11 +2136,13 @@ static int canonical_hash_term_at_depth(
 					(uint32_t)term->as.external_ref.name.name_symbol_id
 				);
 				return 0;
-		case PROTOTYPE_TERM_OPERATION:
-				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.operation.operation_id);
-				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.operation.symbol_id);
-				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.operation.type_symbol_id);
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.pure_primitive.primitive_id);
+				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.pure_primitive.type_symbol_id);
 				return 0;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			canonical_hash_mix_u32(p_hash, (uint32_t)term->as.effect_operation.operation_id);
+			return 0;
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				canonical_hash_mix_u32(p_hash, term->as.effect_label.effects);
 				return 0;
@@ -3442,6 +3499,13 @@ int prototype_term_operation_request(
 			PROTOTYPE_TERM_LAMBDA) {
 		return -1;
 	}
+	uint32_t head = operation;
+	while (head < db->term_count && db->terms[head].tag == PROTOTYPE_TERM_APP) {
+		head = db->terms[head].as.app.function;
+	}
+	if (head >= db->term_count || db->terms[head].tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
+		return -1;
+	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_OPERATION_REQUEST;
@@ -3467,6 +3531,7 @@ int prototype_term_deep_fold(
 	}
 	for (uint32_t i = 0; i < clause_count; ++i) {
 		if (clauses[i].operation >= db->term_count || clauses[i].body >= db->term_count ||
+			db->terms[clauses[i].operation].tag != PROTOTYPE_TERM_EFFECT_OPERATION ||
 			db->terms[clauses[i].body].tag != PROTOTYPE_TERM_LAMBDA) {
 			return -1;
 		}
@@ -3539,19 +3604,35 @@ int prototype_term_external_ref(
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_operation(
+int prototype_term_pure_primitive(
 	struct prototype_term_db* db,
-	int operation_id,
-	int symbol_id,
+	int primitive_id,
 	int type_symbol_id,
 	uint32_t* p_ret
 ) {
+	if (!prototype_term_pure_primitive_declaration(primitive_id)) {
+		return -1;
+	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_OPERATION;
-	term.as.operation.operation_id = operation_id;
-	term.as.operation.symbol_id = symbol_id;
-	term.as.operation.type_symbol_id = type_symbol_id;
+	term.tag = PROTOTYPE_TERM_PURE_PRIMITIVE;
+	term.as.pure_primitive.primitive_id = primitive_id;
+	term.as.pure_primitive.type_symbol_id = type_symbol_id;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_effect_operation(
+	struct prototype_term_db* db,
+	int operation_id,
+	uint32_t* p_ret
+) {
+	if (!prototype_term_effect_operation_declaration(operation_id)) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_EFFECT_OPERATION;
+	term.as.effect_operation.operation_id = operation_id;
 	return add_term(db, term, p_ret);
 }
 
@@ -4334,7 +4415,8 @@ static int substitute_term_internal(
 			case PROTOTYPE_TERM_PRIMITIVE_INT:
 			case PROTOTYPE_TERM_PRIMITIVE_INT64:
 				case PROTOTYPE_TERM_INT_LITERAL:
-			case PROTOTYPE_TERM_OPERATION:
+			case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			case PROTOTYPE_TERM_EFFECT_OPERATION:
 				case PROTOTYPE_TERM_EFFECT_LABEL:
 					*p_ret = term_id;
 					return 0;
@@ -5029,7 +5111,7 @@ static int evaluate_steps(
 	unsigned depth
 );
 
-static int perform_host_step(
+static int reduce_host_pure_primitive_step(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
@@ -5642,7 +5724,7 @@ static int evaluate_steps(
 				prototype_term_app(db, function, term->as.app.argument, &candidate) != 0) {
 				return -1;
 			}
-			/* A pure intrinsic has the ordinary computation type Comp({}, A).
+			/* A pure primitive has the ordinary computation type Comp({}, A).
 			 * Execution reduces its application to RETURN(result); it is neither
 			 * an operation request nor a type-conversion rule. */
 			if ((options.flags & PROTOTYPE_TERM_REDUCE_PURE_INTRINSICS) &&
@@ -5652,14 +5734,14 @@ static int evaluate_steps(
 				uint32_t argument_count;
 				decompose_app(db, candidate, &head, arguments, &argument_count);
 				if (head < db->term_count &&
-					db->terms[head].tag == PROTOTYPE_TERM_OPERATION) {
-					const struct prototype_operation_declaration* declaration =
-						prototype_term_operation_declaration(
-							db->terms[head].as.operation.operation_id
+					db->terms[head].tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
+					const struct prototype_pure_primitive_declaration* declaration =
+						prototype_term_pure_primitive_declaration(
+							db->terms[head].as.pure_primitive.primitive_id
 						);
-					if (declaration && declaration->effects == PROTOTYPE_HOST_EFFECT_NONE) {
+					if (declaration) {
 						uint32_t result;
-						int status = perform_host_step(
+						int status = reduce_host_pure_primitive_step(
 							db, type_declarations, definitions, options, candidate, &result, depth - 1
 						);
 						if (status < 0) {
@@ -5970,7 +6052,8 @@ static int evaluate_steps(
 			case PROTOTYPE_TERM_PRIMITIVE_INT:
 			case PROTOTYPE_TERM_PRIMITIVE_INT64:
 				case PROTOTYPE_TERM_INT_LITERAL:
-				case PROTOTYPE_TERM_OPERATION:
+				case PROTOTYPE_TERM_PURE_PRIMITIVE:
+				case PROTOTYPE_TERM_EFFECT_OPERATION:
 				case PROTOTYPE_TERM_EFFECT_LABEL:
 				case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
@@ -6905,11 +6988,11 @@ static int host_oracle_is_integer_arithmetic(int oracle_kind) {
 		oracle_kind == PROTOTYPE_HOST_ORACLE_INT_NEG;
 }
 
-static int int_operation_arity(int operation_id) {
-	const struct prototype_operation_declaration* declaration =
-		prototype_term_operation_declaration(operation_id);
-	const struct host_operation_implementation* implementation =
-		host_operation_implementation(operation_id);
+static int int_pure_primitive_arity(int primitive_id) {
+	const struct prototype_pure_primitive_declaration* declaration =
+		prototype_term_pure_primitive_declaration(primitive_id);
+	const struct host_pure_primitive_implementation* implementation =
+		host_pure_primitive_implementation(primitive_id);
 	if (!declaration || !implementation ||
 		!host_oracle_is_integer_arithmetic(implementation->oracle_kind)) {
 		return 0;
@@ -6917,21 +7000,21 @@ static int int_operation_arity(int operation_id) {
 	return (int)declaration->arity;
 }
 
-static int execute_int_operation(
+static int execute_int_pure_primitive(
 	struct prototype_term_db* db,
-	int operation_id,
+	int primitive_id,
 	const int64_t* arguments,
 	uint32_t argument_count,
 	uint32_t* p_ret
 ) {
 	if (!db || !arguments || !p_ret ||
-		argument_count != (uint32_t)int_operation_arity(operation_id)) {
+		argument_count != (uint32_t)int_pure_primitive_arity(primitive_id)) {
 		return -1;
 	}
-	const struct prototype_operation_declaration* declaration =
-		prototype_term_operation_declaration(operation_id);
-	const struct host_operation_implementation* implementation =
-		host_operation_implementation(operation_id);
+	const struct prototype_pure_primitive_declaration* declaration =
+		prototype_term_pure_primitive_declaration(primitive_id);
+	const struct host_pure_primitive_implementation* implementation =
+		host_pure_primitive_implementation(primitive_id);
 	if (!declaration || !implementation ||
 		!host_oracle_is_integer_arithmetic(implementation->oracle_kind)) {
 		return -1;
@@ -7019,7 +7102,7 @@ static int host_effect_allowed(
 		(options.effect_capabilities & effects) == effects;
 }
 
-static int perform_host_step_rebuild_if_changed(
+static int reduce_host_pure_primitive_rebuild_if_changed(
 	struct prototype_term_db* db,
 	uint32_t head,
 	const uint32_t* args,
@@ -7078,7 +7161,7 @@ static int lookup_nat_runtime_shape(
 	return 0;
 }
 
-static int perform_host_step(
+static int reduce_host_pure_primitive_step(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
@@ -7100,24 +7183,19 @@ static int perform_host_step(
 	uint32_t arg_count;
 	decompose_app(db, term_id, &head, args, &arg_count);
 	if (head >= db->term_count ||
-		db->terms[head].tag != PROTOTYPE_TERM_OPERATION) {
+		db->terms[head].tag != PROTOTYPE_TERM_PURE_PRIMITIVE) {
 		*p_ret = term_id;
 		return 0;
 	}
 
-	int operation_id = db->terms[head].as.operation.operation_id;
-	const struct prototype_operation_declaration* declaration =
-		prototype_term_operation_declaration(operation_id);
-	const struct host_operation_implementation* implementation =
-		host_operation_implementation(operation_id);
-	if (!declaration || !implementation || arg_count != declaration->arity ||
-		!host_effect_allowed(options, declaration->effects)) {
+	int primitive_id = db->terms[head].as.pure_primitive.primitive_id;
+	const struct prototype_pure_primitive_declaration* declaration =
+		prototype_term_pure_primitive_declaration(primitive_id);
+	const struct host_pure_primitive_implementation* implementation =
+		host_pure_primitive_implementation(primitive_id);
+	if (!declaration || !implementation || arg_count != declaration->arity) {
 		*p_ret = term_id;
 		return 0;
-	}
-	if (declaration->effects != PROTOTYPE_HOST_EFFECT_NONE &&
-		(!options.effect_output || !options.symbols)) {
-		return -1;
 	}
 
 	uint32_t reduced_args[64];
@@ -7140,11 +7218,11 @@ static int perform_host_step(
 	}
 
 	if (host_oracle_is_integer_arithmetic(implementation->oracle_kind)) {
-		int64_t int_args[PROTOTYPE_OPERATION_MAX_ARITY];
+		int64_t int_args[PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY];
 		for (uint32_t i = 0; i < arg_count; ++i) {
 			if (reduced_args[i] >= db->term_count ||
 				db->terms[reduced_args[i]].tag != PROTOTYPE_TERM_INT_LITERAL) {
-				return perform_host_step_rebuild_if_changed(
+				return reduce_host_pure_primitive_rebuild_if_changed(
 					db,
 					head,
 					reduced_args,
@@ -7156,45 +7234,17 @@ static int perform_host_step(
 			}
 			int_args[i] = db->terms[reduced_args[i]].as.int_literal.value;
 		}
-		return execute_int_operation(
+		return execute_int_pure_primitive(
 			db,
-			operation_id,
+			primitive_id,
 			int_args,
 			arg_count,
 			p_ret
 		) == 0 ? 1 : -1;
 	}
 
-	if (implementation->oracle_kind == PROTOTYPE_HOST_ORACLE_PRINT) {
-		if (arg_count != 1 ||
-			reduced_args[0] >= db->term_count ||
-			db->terms[reduced_args[0]].tag != PROTOTYPE_TERM_TEXT_LITERAL) {
-			return perform_host_step_rebuild_if_changed(
-				db,
-				head,
-				reduced_args,
-				arg_count,
-				changed,
-				term_id,
-				p_ret
-			);
-		}
-			const char* text = symbol_to_string(
-			options.symbols,
-			db->terms[reduced_args[0]].as.text_literal.text_symbol_id
-		);
-		if (text) {
-			fputs(text, options.effect_output);
-		}
-		if (options.p_effect_performed) {
-			*options.p_effect_performed = 1;
-		}
-		*p_ret = reduced_args[0];
-		return 1;
-	}
-
 	if (!options.symbols) {
-		return perform_host_step_rebuild_if_changed(
+		return reduce_host_pure_primitive_rebuild_if_changed(
 			db,
 			head,
 			reduced_args,
@@ -7220,7 +7270,7 @@ static int perform_host_step(
 		return -1;
 	}
 	if (nat_status > 0) {
-		return perform_host_step_rebuild_if_changed(
+		return reduce_host_pure_primitive_rebuild_if_changed(
 			db,
 			head,
 			reduced_args,
@@ -7235,7 +7285,7 @@ static int perform_host_step(
 		if (arg_count != 1 ||
 			reduced_args[0] >= db->term_count ||
 			db->terms[reduced_args[0]].tag != PROTOTYPE_TERM_TEXT_LITERAL) {
-			return perform_host_step_rebuild_if_changed(
+			return reduce_host_pure_primitive_rebuild_if_changed(
 				db,
 				head,
 				reduced_args,
@@ -7289,7 +7339,7 @@ static int perform_host_step(
 
 	if (implementation->oracle_kind == PROTOTYPE_HOST_ORACLE_NAT_TO_TEXT) {
 		if (arg_count != 1) {
-			return perform_host_step_rebuild_if_changed(
+			return reduce_host_pure_primitive_rebuild_if_changed(
 				db,
 				head,
 				reduced_args,
@@ -7322,7 +7372,7 @@ static int perform_host_step(
 			decompose_app(db, current, &nat_head, nat_args, &nat_arg_count);
 			if (nat_head >= db->term_count ||
 				db->terms[nat_head].tag != PROTOTYPE_TERM_CONSTRUCTOR) {
-				return perform_host_step_rebuild_if_changed(
+				return reduce_host_pure_primitive_rebuild_if_changed(
 					db,
 					head,
 					reduced_args,
@@ -7342,7 +7392,7 @@ static int perform_host_step(
 				return -1;
 			}
 			if (!same_owner) {
-				return perform_host_step_rebuild_if_changed(
+				return reduce_host_pure_primitive_rebuild_if_changed(
 					db,
 					head,
 					reduced_args,
@@ -7381,7 +7431,7 @@ static int perform_host_step(
 		return 1;
 	}
 
-	return perform_host_step_rebuild_if_changed(
+	return reduce_host_pure_primitive_rebuild_if_changed(
 		db,
 		head,
 		reduced_args,
@@ -7392,7 +7442,7 @@ static int perform_host_step(
 	);
 }
 
-static int default_host_operation_dispatch(
+static int default_host_effect_dispatch(
 	void* context,
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -7404,16 +7454,49 @@ static int default_host_operation_dispatch(
 	unsigned depth
 ) {
 	(void)context;
-	if (!options) {
+	if (!options || !db || operation >= db->term_count ||
+		db->terms[operation].tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
 		return -1;
 	}
-	uint32_t application;
-	if (prototype_term_app(db, operation, argument, &application) != 0) {
+	int operation_id = db->terms[operation].as.effect_operation.operation_id;
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_term_effect_operation_declaration(operation_id);
+	const struct host_effect_operation_implementation* implementation =
+		host_effect_operation_implementation(operation_id);
+	if (!declaration || !implementation || declaration->arity != 1 ||
+		!host_effect_allowed(*options, declaration->effects)) {
+		return 0;
+	}
+	uint32_t reduced_argument;
+	if (evaluate_steps(
+			db,
+			type_declarations,
+			definitions,
+			*options,
+			argument,
+			&reduced_argument,
+			depth
+		) != 0) {
 		return -1;
 	}
-	return perform_host_step(
-		db, type_declarations, definitions, *options, application, p_result, depth
+	if (implementation->oracle_kind != PROTOTYPE_HOST_ORACLE_PRINT ||
+		reduced_argument >= db->term_count ||
+		db->terms[reduced_argument].tag != PROTOTYPE_TERM_TEXT_LITERAL ||
+		!options->effect_output || !options->symbols) {
+		return 0;
+	}
+	const char* value = symbol_to_string(
+		options->symbols,
+		db->terms[reduced_argument].as.text_literal.text_symbol_id
 	);
+	if (value) {
+		fputs(value, options->effect_output);
+	}
+	if (options->p_effect_performed) {
+		*options->p_effect_performed = 1;
+	}
+	*p_result = reduced_argument;
+	return 1;
 }
 
 static int perform_operation_request_step(
@@ -7433,7 +7516,7 @@ static int perform_operation_request_step(
 	uint32_t result;
 	prototype_term_operation_dispatch_fn dispatch = options.operation_dispatch;
 	if (!dispatch) {
-		dispatch = default_host_operation_dispatch;
+		dispatch = default_host_effect_dispatch;
 	}
 	int status = dispatch(
 		options.operation_dispatch_context,
@@ -7566,8 +7649,17 @@ static void print_term_depth(
 			}
 			fprintf(output, "%s>", safe_symbol_name(symbols, term->as.external_ref.name.name_symbol_id));
 			break;
-		case PROTOTYPE_TERM_OPERATION:
-			fprintf(output, "#.%s", safe_symbol_name(symbols, term->as.operation.symbol_id));
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			fprintf(output, "#.%s", prototype_intrinsic_namespace_source_name(
+				PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+				term->as.pure_primitive.primitive_id
+			));
+			break;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			fprintf(output, "#.%s", prototype_intrinsic_namespace_source_name(
+				PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
+				term->as.effect_operation.operation_id
+			));
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR: {
 			uint32_t type_id;
@@ -7834,12 +7926,22 @@ static void print_term_debug_depth(
 			}
 			fprintf(output, "%s)", safe_symbol_name(symbols, term->as.external_ref.name.name_symbol_id));
 			break;
-		case PROTOTYPE_TERM_OPERATION:
-			fprintf(output, "OPERATION(%s", safe_symbol_name(symbols, term->as.operation.symbol_id));
-			if (term->as.operation.type_symbol_id >= 0) {
-				fprintf(output, ":%s", safe_symbol_name(symbols, term->as.operation.type_symbol_id));
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			fprintf(output, "PURE_PRIMITIVE(%s", prototype_intrinsic_namespace_source_name(
+				PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+				term->as.pure_primitive.primitive_id
+			));
+			if (term->as.pure_primitive.type_symbol_id >= 0) {
+				fprintf(output, ":%s", safe_symbol_name(symbols, term->as.pure_primitive.type_symbol_id));
 			}
 			fprintf(output, ")");
+			break;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			fprintf(output, "EFFECT_OPERATION(%s)",
+				prototype_intrinsic_namespace_source_name(
+					PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
+					term->as.effect_operation.operation_id
+				));
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			fprintf(output, "CONSTRUCTOR(");

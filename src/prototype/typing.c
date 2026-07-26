@@ -63,6 +63,16 @@ void prototype_judgement_delta_set_solver_budget(
 	delta->solver_exhausted = exhausted;
 }
 
+void prototype_judgement_delta_set_context(
+	struct prototype_judgement_delta* delta,
+	uint32_t context_id
+) {
+	if (!delta) {
+		return;
+	}
+	delta->current_context_id = context_id;
+}
+
 static int consume_solver_step(struct prototype_judgement_delta* delta) {
 	if (!delta) {
 		return -1;
@@ -338,6 +348,7 @@ static int add_delta_relation_with_premises(
 static void set_proof_premises(
 	struct prototype_judgement_proof* proof,
 	const struct prototype_judgement_db* judgement,
+	const uint32_t* premise_context_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
 	uint32_t premise_count
@@ -3647,10 +3658,12 @@ static int type_formation_has_name_symbol(
 
 static int add_relation_with_premises(
 	struct prototype_judgement_db* judgement,
+	uint32_t context_id,
 	int kind,
 	uint32_t subject,
 	uint32_t classifier,
 	int proof_kind,
+	const uint32_t* premise_context_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
 	uint32_t premise_count
@@ -3665,6 +3678,7 @@ static int add_relation_with_premises(
 	if (!proof_kind_requires_local_context(proof_kind)) {
 		for (size_t i = 0; i < judgement->relation_count; ++i) {
 			if (judgement->relations[i].kind == kind &&
+				judgement->relations[i].context_id == context_id &&
 				judgement->relations[i].subject == subject &&
 				judgement->relations[i].classifier == classifier &&
 				judgement->relations[i].proof_kind == proof_kind) {
@@ -3673,6 +3687,7 @@ static int add_relation_with_premises(
 					memset(&judgement->proofs[proof_id], 0, sizeof(judgement->proofs[proof_id]));
 					judgement->proofs[proof_id].proof_kind = proof_kind;
 					judgement->proofs[proof_id].conclusion_kind = kind;
+					judgement->proofs[proof_id].conclusion_context_id = context_id;
 					judgement->proofs[proof_id].conclusion_subject = subject;
 					judgement->proofs[proof_id].conclusion_classifier = classifier;
 					set_proof_context(
@@ -3685,6 +3700,7 @@ static int add_relation_with_premises(
 					set_proof_premises(
 						&judgement->proofs[proof_id],
 						judgement,
+						premise_context_ids,
 						premise_subjects,
 						premise_classifiers,
 						premise_count
@@ -3698,6 +3714,7 @@ static int add_relation_with_premises(
 	uint32_t id = (uint32_t)judgement->relation_count;
 	uint32_t proof_id = (uint32_t)judgement->proof_count;
 	judgement->relations[id].kind = kind;
+	judgement->relations[id].context_id = context_id;
 	judgement->relations[id].subject = subject;
 	judgement->relations[id].classifier = classifier;
 	judgement->relations[id].proof_kind = proof_kind;
@@ -3705,6 +3722,7 @@ static int add_relation_with_premises(
 	memset(&judgement->proofs[proof_id], 0, sizeof(judgement->proofs[proof_id]));
 	judgement->proofs[proof_id].proof_kind = proof_kind;
 	judgement->proofs[proof_id].conclusion_kind = kind;
+	judgement->proofs[proof_id].conclusion_context_id = context_id;
 	judgement->proofs[proof_id].conclusion_subject = subject;
 	judgement->proofs[proof_id].conclusion_classifier = classifier;
 	set_proof_context(
@@ -3717,6 +3735,7 @@ static int add_relation_with_premises(
 	set_proof_premises(
 		&judgement->proofs[proof_id],
 		judgement,
+		premise_context_ids,
 		premise_subjects,
 		premise_classifiers,
 		premise_count
@@ -3728,6 +3747,7 @@ static int add_relation_with_premises(
 
 static int add_relation(
 	struct prototype_judgement_db* judgement,
+	uint32_t context_id,
 	int kind,
 	uint32_t subject,
 	uint32_t classifier,
@@ -3735,10 +3755,12 @@ static int add_relation(
 ) {
 	return add_relation_with_premises(
 		judgement,
+		context_id,
 		kind,
 		subject,
 		classifier,
 		proof_kind,
+		NULL,
 		NULL,
 		NULL,
 		0
@@ -3765,6 +3787,7 @@ static int add_delta_relation_with_premises(
 	if (!proof_kind_requires_local_context(proof_kind)) {
 		for (size_t i = 0; i < delta->relation_count; ++i) {
 			if (delta->relations[i].kind == kind &&
+				delta->relations[i].context_id == delta->current_context_id &&
 				delta->relations[i].subject == subject &&
 				delta->relations[i].classifier == classifier &&
 				delta->relations[i].proof_kind == proof_kind) {
@@ -3773,6 +3796,8 @@ static int add_delta_relation_with_premises(
 					memset(&delta->proofs[proof_id], 0, sizeof(delta->proofs[proof_id]));
 					delta->proofs[proof_id].proof_kind = proof_kind;
 					delta->proofs[proof_id].conclusion_kind = kind;
+					delta->proofs[proof_id].conclusion_context_id =
+						delta->current_context_id;
 					delta->proofs[proof_id].conclusion_subject = subject;
 					delta->proofs[proof_id].conclusion_classifier = classifier;
 					set_proof_context(
@@ -3786,6 +3811,8 @@ static int add_delta_relation_with_premises(
 					for (uint32_t j = 0; j < premise_count; ++j) {
 						delta->proofs[proof_id].premise_kinds[j] =
 							PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
+						delta->proofs[proof_id].premise_context_ids[j] =
+							delta->current_context_id;
 						delta->proofs[proof_id].premise_subjects[j] = premise_subjects[j];
 						delta->proofs[proof_id].premise_classifiers[j] = premise_classifiers[j];
 						delta->proofs[proof_id].premise_proof_ids[j] = PROTOTYPE_INVALID_ID;
@@ -3797,6 +3824,7 @@ static int add_delta_relation_with_premises(
 	}
 	uint32_t proof_id = (uint32_t)delta->proof_count;
 	delta->relations[id].kind = kind;
+	delta->relations[id].context_id = delta->current_context_id;
 	delta->relations[id].subject = subject;
 	delta->relations[id].classifier = classifier;
 	delta->relations[id].proof_kind = proof_kind;
@@ -3804,6 +3832,7 @@ static int add_delta_relation_with_premises(
 	memset(&delta->proofs[proof_id], 0, sizeof(delta->proofs[proof_id]));
 	delta->proofs[proof_id].proof_kind = proof_kind;
 	delta->proofs[proof_id].conclusion_kind = kind;
+	delta->proofs[proof_id].conclusion_context_id = delta->current_context_id;
 	delta->proofs[proof_id].conclusion_subject = subject;
 	delta->proofs[proof_id].conclusion_classifier = classifier;
 	set_proof_context(
@@ -3817,6 +3846,8 @@ static int add_delta_relation_with_premises(
 	for (uint32_t i = 0; i < premise_count; ++i) {
 		delta->proofs[proof_id].premise_kinds[i] =
 			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
+		delta->proofs[proof_id].premise_context_ids[i] =
+			delta->current_context_id;
 		delta->proofs[proof_id].premise_subjects[i] = premise_subjects[i];
 		delta->proofs[proof_id].premise_classifiers[i] = premise_classifiers[i];
 		delta->proofs[proof_id].premise_proof_ids[i] = PROTOTYPE_INVALID_ID;
@@ -3939,10 +3970,12 @@ int prototype_judgement_delta_commit(
 		const struct prototype_judgement_proof* proof = &delta->proofs[relation->proof_id];
 		if (add_relation_with_premises(
 				delta->db,
+				relation->context_id,
 				relation->kind,
 				relation->subject,
 				relation->classifier,
 				relation->proof_kind,
+				proof->premise_context_ids,
 				proof->premise_subjects,
 				proof->premise_classifiers,
 				proof->premise_count
@@ -3980,7 +4013,7 @@ int prototype_judgement_expand_type_def(
 		!term_is_universe_var(terms, classifier)) {
 		return -1;
 	}
-	return add_relation(judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO);
+	return add_relation(judgement, 0, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO);
 }
 
 int prototype_judgement_expand_constructor_def(
@@ -4009,7 +4042,7 @@ int prototype_judgement_expand_constructor_def(
 		)) {
 		return -1;
 	}
-	return add_relation(judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_INTRO);
+	return add_relation(judgement, 0, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_INTRO);
 }
 
 int prototype_judgement_delta_expand_lambda_binder(
@@ -4710,33 +4743,32 @@ static int operation_named_nat_type_classifier(
 
 static int host_signature_classifier(
 	struct prototype_term_db* terms,
-	const struct prototype_operation_declaration* signature,
+	uint32_t arity,
+	const int* argument_types,
+	int result_type,
+	unsigned effects,
 	uint32_t* p_ret
 ) {
-	if (!terms || !signature || !p_ret ||
-		signature->result_type == PROTOTYPE_HOST_TYPE_INVALID ||
-		signature->arity > PROTOTYPE_OPERATION_MAX_ARITY) {
+	if (!terms || !argument_types || !p_ret ||
+		result_type == PROTOTYPE_HOST_TYPE_INVALID) {
 		return 1;
 	}
-	for (uint32_t i = 0; i < signature->arity; ++i) {
-		if (signature->argument_types[i] == PROTOTYPE_HOST_TYPE_INVALID) {
+	for (uint32_t i = 0; i < arity; ++i) {
+		if (argument_types[i] == PROTOTYPE_HOST_TYPE_INVALID) {
 			return 1;
 		}
 	}
 	uint32_t current;
-	if (prototype_term_make_host_type(terms, signature->result_type, &current) != 0) {
+	if (prototype_term_make_host_type(terms, result_type, &current) != 0) {
 		return -1;
 	}
-	/* A host declaration is always an operation.  Empty effects still produce
-	 * a computation: executing an implementation is never ordinary APP beta
-	 * reduction. */
 	uint32_t effect_label;
-	if (prototype_term_effect_label(terms, signature->effects, &effect_label) != 0 ||
+	if (prototype_term_effect_label(terms, effects, &effect_label) != 0 ||
 		prototype_term_computation_type(terms, effect_label, current, &current) != 0) {
 		return -1;
 	}
-	for (uint32_t i = signature->arity; i > 0; --i) {
-		int argument_type = signature->argument_types[i - 1];
+	for (uint32_t i = arity; i > 0; --i) {
+		int argument_type = argument_types[i - 1];
 		uint32_t domain;
 		if (prototype_term_make_host_type(terms, argument_type, &domain) != 0 ||
 			prototype_term_pi(terms, domain, current, &current) != 0) {
@@ -4747,35 +4779,43 @@ static int host_signature_classifier(
 	return 0;
 }
 
-int prototype_judgement_operation_classifier(
+int prototype_judgement_pure_primitive_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term* operation,
 	uint32_t* p_ret
 ) {
 	if (!terms || !type_declarations || !operation || !p_ret ||
-		operation->tag != PROTOTYPE_TERM_OPERATION) {
+		operation->tag != PROTOTYPE_TERM_PURE_PRIMITIVE) {
 		return -1;
 	}
-	const struct prototype_operation_declaration* signature =
-		prototype_term_operation_declaration(operation->as.operation.operation_id);
+	const struct prototype_pure_primitive_declaration* signature =
+		prototype_term_pure_primitive_declaration(operation->as.pure_primitive.primitive_id);
 	if (signature) {
-		int status = host_signature_classifier(terms, signature, p_ret);
+		int status = host_signature_classifier(
+			terms,
+			signature->arity,
+			signature->argument_types,
+			signature->result_type,
+			PROTOTYPE_HOST_EFFECT_NONE,
+			p_ret
+		);
 		if (status <= 0) {
 			return status;
 		}
 	}
+
 	uint32_t text;
 	uint32_t nat;
 	if (prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_TEXT, &text) != 0) {
 		return -1;
 	}
-	switch (operation->as.operation.operation_id) {
-		case PROTOTYPE_OPERATION_TEXT_TO_NAT: {
+	switch (operation->as.pure_primitive.primitive_id) {
+		case PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT: {
 			if (operation_named_nat_type_classifier(
 					terms,
 					type_declarations,
-					operation->as.operation.type_symbol_id,
+					operation->as.pure_primitive.type_symbol_id,
 					&nat
 				) != 0) {
 				return -1;
@@ -4788,15 +4828,15 @@ int prototype_judgement_operation_classifier(
 			}
 			return prototype_term_pi(terms, text, result, p_ret);
 		}
-		case PROTOTYPE_OPERATION_NAT_TO_TEXT: {
+		case PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT: {
 			if (operation_named_nat_type_classifier(
 					terms,
 					type_declarations,
-					operation->as.operation.type_symbol_id,
+					operation->as.pure_primitive.type_symbol_id,
 					&nat
 				) != 0) {
 				return -1;
-				}
+			}
 			uint32_t effects;
 			uint32_t result;
 			if (prototype_term_effect_label(terms, PROTOTYPE_HOST_EFFECT_NONE, &effects) != 0 ||
@@ -4805,10 +4845,36 @@ int prototype_judgement_operation_classifier(
 			}
 			return prototype_term_pi(terms, nat, result, p_ret);
 		}
-			default:
-				return -1;
-		}
+		default:
+			return -1;
 	}
+	}
+
+int prototype_judgement_effect_operation_classifier(
+	struct prototype_term_db* terms,
+	const struct prototype_term* operation,
+	uint32_t* p_ret
+) {
+	if (!terms || !operation || !p_ret ||
+		operation->tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
+		return -1;
+	}
+	const struct prototype_effect_operation_declaration* signature =
+		prototype_term_effect_operation_declaration(
+			operation->as.effect_operation.operation_id
+		);
+	if (!signature) {
+		return -1;
+	}
+	return host_signature_classifier(
+		terms,
+		signature->arity,
+		signature->argument_types,
+		signature->result_type,
+		signature->effects,
+		p_ret
+	);
+}
 
 static int infer_text_literal_classifier(
 	struct prototype_judgement_delta* delta,
@@ -4866,18 +4932,18 @@ static int infer_int_literal_classifier(
 		);
 }
 
-static int infer_operation_classifier(
+static int infer_pure_primitive_classifier(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t term_id
 ) {
 	if (!delta || !terms || !type_declarations ||
-		!term_has_tag(terms, term_id, PROTOTYPE_TERM_OPERATION)) {
+		!term_has_tag(terms, term_id, PROTOTYPE_TERM_PURE_PRIMITIVE)) {
 		return -1;
 	}
 	uint32_t classifier;
-	if (prototype_judgement_operation_classifier(
+	if (prototype_judgement_pure_primitive_classifier(
 			terms,
 			type_declarations,
 			&terms->terms[term_id],
@@ -4890,7 +4956,31 @@ static int infer_operation_classifier(
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		term_id,
 		classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO
+		PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO
+	);
+}
+
+static int infer_effect_operation_classifier(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	uint32_t term_id
+) {
+	if (!delta || !terms ||
+		!term_has_tag(terms, term_id, PROTOTYPE_TERM_EFFECT_OPERATION)) {
+		return -1;
+	}
+	uint32_t classifier;
+	if (prototype_judgement_effect_operation_classifier(
+			terms, &terms->terms[term_id], &classifier
+		) != 0) {
+		return -1;
+	}
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		term_id,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO
 	);
 }
 
@@ -5077,59 +5167,74 @@ int prototype_judgement_delta_infer_cbpv_boundaries(
 	return 0;
 }
 
+int prototype_judgement_delta_record_computation_constraint(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t subject
+) {
+	if (!delta || !terms ||
+		(delta->computation_constraint_capacity != 0 &&
+			!delta->computation_constraints) ||
+		subject >= terms->term_count) {
+		return -1;
+	}
+	const struct prototype_term* term = &terms->terms[subject];
+	struct prototype_judgement_computation_constraint constraint;
+	memset(&constraint, 0, sizeof(constraint));
+	constraint.context_id = context_id;
+	constraint.subject = subject;
+	constraint.effect_residual_row = PROTOTYPE_INVALID_ID;
+	if (term->tag == PROTOTYPE_TERM_DEEP_FOLD) {
+		constraint.kind = PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_DEEP_FOLD;
+		constraint.computation = term->as.deep_fold.computation;
+		constraint.continuation = term->as.deep_fold.return_clause;
+		constraint.argument = PROTOTYPE_INVALID_ID;
+		constraint.application = PROTOTYPE_INVALID_ID;
+	} else if (term->tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
+		constraint.kind =
+			PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST;
+		constraint.computation = term->as.operation_request.operation;
+		constraint.continuation = term->as.operation_request.continuation;
+		constraint.argument = term->as.operation_request.argument;
+		constraint.application = PROTOTYPE_INVALID_ID;
+	} else {
+		return 1;
+	}
+	for (size_t i = 0; i < delta->computation_constraint_count; ++i) {
+		const struct prototype_judgement_computation_constraint* existing =
+			&delta->computation_constraints[i];
+		if (existing->kind == constraint.kind &&
+			existing->context_id == context_id &&
+			existing->subject == subject) {
+			return 0;
+		}
+	}
+	if (reserve_slot(
+			delta->computation_constraint_count,
+			delta->computation_constraint_capacity
+		) != 0) {
+		return -1;
+	}
+	delta->computation_constraints[delta->computation_constraint_count++] =
+		constraint;
+	return 0;
+}
+
 int prototype_judgement_delta_generate_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	const struct prototype_term_db* terms
 ) {
-	if (!delta || !terms ||
-		(delta->computation_constraint_capacity != 0 &&
-			!delta->computation_constraints)) {
+	if (!delta || !terms) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < (uint32_t)terms->term_count; ++i) {
-		const struct prototype_term* term = &terms->terms[i];
-		struct prototype_judgement_computation_constraint constraint;
-		memset(&constraint, 0, sizeof(constraint));
-		constraint.subject = i;
-		constraint.effect_residual_row = PROTOTYPE_INVALID_ID;
-		if (term->tag == PROTOTYPE_TERM_DEEP_FOLD) {
-			constraint.kind = PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_DEEP_FOLD;
-			constraint.computation = term->as.deep_fold.computation;
-			constraint.continuation = term->as.deep_fold.return_clause;
-			constraint.argument = PROTOTYPE_INVALID_ID;
-			constraint.application = PROTOTYPE_INVALID_ID;
-		} else if (term->tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
-			constraint.kind = PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST;
-			constraint.computation = term->as.operation_request.operation;
-			constraint.continuation = term->as.operation_request.continuation;
-			constraint.argument = term->as.operation_request.argument;
-			constraint.application = PROTOTYPE_INVALID_ID;
-		} else {
-			continue;
-		}
-		/* Constraints are solver state, not a per-pass cache. Rebuilding them
-		 * would discard a future scoped B(z) family or symbolic row solution
-		 * between source/CBPV fixed-point iterations. A TermDB subject has one
-		 * immutable computation constraint. */
-		int already_recorded = 0;
-		for (size_t j = 0; j < delta->computation_constraint_count; ++j) {
-			const struct prototype_judgement_computation_constraint* existing =
-				&delta->computation_constraints[j];
-			if (existing->kind == constraint.kind && existing->subject == constraint.subject) {
-				already_recorded = 1;
-				break;
-			}
-		}
-		if (already_recorded) {
-			continue;
-		}
-		if (reserve_slot(
-				delta->computation_constraint_count,
-				delta->computation_constraint_capacity
-			) != 0) {
+		int status = prototype_judgement_delta_record_computation_constraint(
+			delta, terms, delta->current_context_id, i
+		);
+		if (status < 0) {
 			return -1;
 		}
-		delta->computation_constraints[delta->computation_constraint_count++] = constraint;
 	}
 	return 0;
 }
@@ -5837,6 +5942,7 @@ static int solve_computation_constraints(
 		}
 		struct prototype_judgement_computation_constraint* constraint =
 			&delta->computation_constraints[i];
+		delta->current_context_id = constraint->context_id;
 		if (constraint->kind == PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_DEEP_FOLD) {
 			if (constraint->subject >= terms->term_count ||
 				terms->terms[constraint->subject].tag != PROTOTYPE_TERM_DEEP_FOLD) {
@@ -5901,6 +6007,28 @@ int prototype_judgement_delta_solve_computation_constraints(
 ) {
 	if (!delta || !terms || !type_declarations ||
 		prototype_judgement_delta_generate_computation_constraints(delta, terms) != 0) {
+		return -1;
+	}
+	for (;;) {
+		size_t before = delta->relation_count;
+		int solve_status = solve_computation_constraints(
+			delta, terms, type_declarations
+		);
+		if (solve_status != 0) {
+			return solve_status;
+		}
+		if (delta->relation_count == before) {
+			return 0;
+		}
+	}
+}
+
+int prototype_judgement_delta_solve_recorded_computation_constraints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations
+) {
+	if (!delta || !terms || !type_declarations) {
 		return -1;
 	}
 	for (;;) {
@@ -5992,14 +6120,22 @@ int prototype_judgement_delta_infer_term_classifiers(
 					if (delta->relation_count > before) {
 						changed = 1;
 					}
-				} else if (terms->terms[i].tag == PROTOTYPE_TERM_OPERATION) {
+				} else if (terms->terms[i].tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
 					size_t before = delta->relation_count;
-				if (infer_operation_classifier(
-						delta,
+					if (infer_pure_primitive_classifier(
+							delta,
 							terms,
 							type_declarations,
 							i
 						) != 0) {
+						return -1;
+					}
+					if (delta->relation_count > before) {
+						changed = 1;
+					}
+				} else if (terms->terms[i].tag == PROTOTYPE_TERM_EFFECT_OPERATION) {
+					size_t before = delta->relation_count;
+					if (infer_effect_operation_classifier(delta, terms, i) != 0) {
 						return -1;
 					}
 					if (delta->relation_count > before) {
@@ -6061,10 +6197,12 @@ int prototype_judgement_expand_match_motive(
 	}
 	return add_relation_with_premises(
 		judgement,
+		0,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
+		NULL,
 		NULL,
 		NULL,
 		0
@@ -6301,7 +6439,8 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 				returned,
 				lambda_classifier,
 				domain,
-				returned_classifier
+				returned_classifier,
+				delta->current_context_id
 			) != 0) {
 			return -1;
 		}
@@ -7877,10 +8016,12 @@ int prototype_judgement_expand_match(
 	}
 	return add_relation_with_premises(
 		judgement,
+		0,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
+		NULL,
 		premise_subjects,
 		premise_classifiers,
 		premise_count
@@ -8146,7 +8287,7 @@ int prototype_judgement_expand_text_literal(
 		!term_has_tag(terms, classifier, PROTOTYPE_TERM_PRIMITIVE_TEXT)) {
 		return -1;
 	}
-	return add_relation(judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO);
+	return add_relation(judgement, 0, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO);
 }
 
 int prototype_judgement_expand_int_literal(
@@ -8163,25 +8304,7 @@ int prototype_judgement_expand_int_literal(
 		!int_literal_fits_int32(terms->terms[subject].as.int_literal.value)) {
 		return -1;
 	}
-	return add_relation(judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO);
-}
-
-int prototype_judgement_delta_expand_negative_operation(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-) {
-	if (!delta || !term_exists(terms, subject) || !term_exists(terms, classifier)) {
-		return -1;
-	}
-	return add_delta_relation(
-		delta,
-		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		subject,
-		classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO
-	);
+	return add_relation(judgement, 0, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO);
 }
 
 static int judgement_has_host_type_intro(
@@ -8223,6 +8346,7 @@ static int add_host_type_intro_classifier(
 			) != 0 ||
 			add_relation(
 				judgement,
+				0,
 				PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 				subject,
 				universe,
@@ -8282,7 +8406,8 @@ int prototype_judgement_delta_record_lambda_intro(
 	uint32_t subject,
 	uint32_t classifier,
 	uint32_t binder_classifier,
-	uint32_t body_classifier
+	uint32_t body_classifier,
+	uint32_t premise_context_id
 ) {
 	if (!delta || !terms || !type_declarations ||
 		!term_has_tag(terms, subject, PROTOTYPE_TERM_LAMBDA) ||
@@ -8337,7 +8462,7 @@ int prototype_judgement_delta_record_lambda_intro(
 		binder_classifier,
 		body_classifier
 	};
-	return add_delta_relation_with_premises(
+	if (add_delta_relation_with_premises(
 		delta,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
@@ -8346,7 +8471,26 @@ int prototype_judgement_delta_record_lambda_intro(
 		premise_subjects,
 		premise_classifiers,
 		2
-	);
+	) != 0) {
+		return -1;
+	}
+	for (size_t i = delta->relation_count; i > 0; --i) {
+		const struct prototype_judgement_relation* relation =
+			&delta->relations[i - 1];
+		if (relation->context_id == delta->current_context_id &&
+			relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			relation->subject == subject &&
+			relation->classifier == classifier &&
+			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO &&
+			relation->proof_id < delta->proof_count) {
+			struct prototype_judgement_proof* proof =
+				&delta->proofs[relation->proof_id];
+			proof->premise_context_ids[0] = premise_context_id;
+			proof->premise_context_ids[1] = premise_context_id;
+			return 0;
+		}
+	}
+	return -1;
 }
 
 int prototype_judgement_delta_record_app_elim(
@@ -8464,6 +8608,46 @@ int prototype_judgement_delta_record_app_elim(
 	);
 }
 
+int prototype_judgement_delta_record_context_reindex(
+	struct prototype_judgement_delta* delta,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t source_context_id
+) {
+	if (!delta || source_context_id == delta->current_context_id) {
+		return -1;
+	}
+	uint32_t premise_subjects[1] = { subject };
+	uint32_t premise_classifiers[1] = { classifier };
+	if (add_delta_relation_with_premises(
+			delta,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			subject,
+			classifier,
+			PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX,
+			premise_subjects,
+			premise_classifiers,
+			1
+		) != 0) {
+		return -1;
+	}
+	for (size_t i = delta->relation_count; i > 0; --i) {
+		const struct prototype_judgement_relation* relation =
+			&delta->relations[i - 1];
+		if (relation->context_id == delta->current_context_id &&
+			relation->subject == subject &&
+			relation->classifier == classifier &&
+			relation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX &&
+			relation->proof_id < delta->proof_count) {
+			delta->proofs[relation->proof_id].premise_context_ids[0] =
+				source_context_id;
+			return 0;
+		}
+	}
+	return -1;
+}
+
 int prototype_judgement_delta_record_type_formation(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -8514,7 +8698,7 @@ int prototype_judgement_delta_record_type_formation(
 	);
 }
 
-int prototype_judgement_delta_record_operation_type(
+int prototype_judgement_delta_record_pure_primitive_type(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -8522,12 +8706,12 @@ int prototype_judgement_delta_record_operation_type(
 	uint32_t classifier
 ) {
 	if (!delta || !terms || !type_declarations ||
-		!term_has_tag(terms, subject, PROTOTYPE_TERM_OPERATION) ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_PURE_PRIMITIVE) ||
 		!term_exists(terms, classifier)) {
 		return -1;
 	}
 	uint32_t inferred_classifier;
-	if (prototype_judgement_operation_classifier(
+	if (prototype_judgement_pure_primitive_classifier(
 			terms,
 			type_declarations,
 			&terms->terms[subject],
@@ -8546,7 +8730,38 @@ int prototype_judgement_delta_record_operation_type(
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO
+		PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO
+	);
+}
+
+int prototype_judgement_delta_record_effect_operation_type(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	(void)type_declarations;
+	if (!delta || !terms ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_EFFECT_OPERATION) ||
+		!term_exists(terms, classifier)) {
+		return -1;
+	}
+	uint32_t inferred_classifier;
+	if (prototype_judgement_effect_operation_classifier(
+			terms, &terms->terms[subject], &inferred_classifier
+		) != 0 ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, inferred_classifier, classifier
+		)) {
+		return -1;
+	}
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO
 	);
 }
 
@@ -8613,12 +8828,13 @@ int prototype_judgement_expand_checked(
 	if (!term_exists(terms, subject) || !term_exists(terms, classifier)) {
 		return -1;
 	}
-	return add_relation(judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_DECLARATION);
+	return add_relation(judgement, 0, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_DECLARATION);
 }
 
 int prototype_judgement_add_conversion(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
+	uint32_t context_id,
 	uint32_t subject,
 	uint32_t expected,
 	uint32_t actual
@@ -8634,6 +8850,7 @@ int prototype_judgement_add_conversion(
 			const struct prototype_judgement_relation* relation =
 				&judgement->relations[i - 1];
 			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				relation->context_id == context_id &&
 				relation->subject == subject &&
 				relation->classifier == actual &&
 				relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION &&
@@ -8653,12 +8870,15 @@ int prototype_judgement_add_conversion(
 	}
 	uint32_t premise_subjects[1] = { subject };
 	uint32_t premise_classifiers[1] = { actual };
+	uint32_t premise_context_ids[1] = { context_id };
 	return add_relation_with_premises(
 		judgement,
+		context_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		expected,
 		PROTOTYPE_JUDGEMENT_PROOF_CONVERSION,
+		premise_context_ids,
 		premise_subjects,
 		premise_classifiers,
 		1
@@ -8688,6 +8908,7 @@ int prototype_judgement_delta_has_pending_classifier_state(
 
 static int judgement_find_relation_proof_id(
 	const struct prototype_judgement_db* judgement,
+	uint32_t context_id,
 	int kind,
 	uint32_t subject,
 	uint32_t classifier,
@@ -8700,6 +8921,7 @@ static int judgement_find_relation_proof_id(
 	for (size_t i = 0; i < judgement->relation_count; ++i) {
 		const struct prototype_judgement_relation* relation = &judgement->relations[i];
 		if (relation->kind == kind &&
+			relation->context_id == context_id &&
 			relation->subject == subject &&
 			relation->classifier == classifier &&
 			(include_conversion ||
@@ -8716,6 +8938,7 @@ static int judgement_find_relation_proof_id(
 static void set_proof_premises(
 	struct prototype_judgement_proof* proof,
 	const struct prototype_judgement_db* judgement,
+	const uint32_t* premise_context_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
 	uint32_t premise_count
@@ -8723,10 +8946,13 @@ static void set_proof_premises(
 	proof->premise_count = premise_count;
 	for (uint32_t i = 0; i < premise_count; ++i) {
 		proof->premise_kinds[i] = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
+		proof->premise_context_ids[i] = premise_context_ids ?
+			premise_context_ids[i] : proof->conclusion_context_id;
 		proof->premise_subjects[i] = premise_subjects[i];
 		proof->premise_classifiers[i] = premise_classifiers[i];
 		if (judgement_find_relation_proof_id(
 				judgement,
+				proof->premise_context_ids[i],
 				PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 				premise_subjects[i],
 				premise_classifiers[i],
@@ -8832,6 +9058,7 @@ void prototype_judgement_resolve_proof_edges(struct prototype_judgement_db* judg
 		for (uint32_t j = 0; j < proof->premise_count; ++j) {
 			if (judgement_find_relation_proof_id(
 					judgement,
+					proof->premise_context_ids[j],
 					proof->premise_kinds[j],
 					proof->premise_subjects[j],
 					proof->premise_classifiers[j],
@@ -8862,6 +9089,7 @@ int prototype_judgement_add_normalization_premise_conversions(
 			uint32_t proof_id;
 			if (judgement_find_relation_proof_id(
 					judgement,
+					proof->premise_context_ids[j],
 					proof->premise_kinds[j],
 					proof->premise_subjects[j],
 					proof->premise_classifiers[j],
@@ -8877,6 +9105,7 @@ int prototype_judgement_add_normalization_premise_conversions(
 				const struct prototype_judgement_relation* candidate =
 					&judgement->relations[k];
 				if (candidate->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+					candidate->context_id != proof->premise_context_ids[j] ||
 					candidate->subject != proof->premise_subjects[j] ||
 					candidate->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION ||
 					!prototype_judgement_classifier_normalization_equal(
@@ -8891,10 +9120,12 @@ int prototype_judgement_add_normalization_premise_conversions(
 				uint32_t premise_classifiers[1] = { candidate->classifier };
 				if (add_relation_with_premises(
 						judgement,
+						proof->premise_context_ids[j],
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 						proof->premise_subjects[j],
 						proof->premise_classifiers[j],
 						PROTOTYPE_JUDGEMENT_PROOF_CONVERSION,
+						NULL,
 						premise_subjects,
 						premise_classifiers,
 						1
@@ -9814,6 +10045,14 @@ static int validate_assumption_proof(
 						PROTOTYPE_PI_UNUSED_BINDER_ID)) {
 				return -1;
 			}
+		} else if (proof->context_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_ASSUMPTION) {
+			if (proof->conclusion_context_id == 0 ||
+				proof->context_subject != PROTOTYPE_INVALID_ID ||
+				proof->context_index != binder_id ||
+				proof->context_aux != PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
 		} else {
 			return -1;
 		}
@@ -10070,6 +10309,16 @@ static int validate_operation_request_intro_proof(
 		proof->premise_classifiers[1] >= terms->term_count || relation->classifier >= terms->term_count) {
 		return -1;
 	}
+	uint32_t operation_head =
+		terms->terms[relation->subject].as.operation_request.operation;
+	while (operation_head < terms->term_count &&
+		terms->terms[operation_head].tag == PROTOTYPE_TERM_APP) {
+		operation_head = terms->terms[operation_head].as.app.function;
+	}
+	if (operation_head >= terms->term_count ||
+		terms->terms[operation_head].tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
+		return -1;
+	}
 	struct prototype_term_classifier_view operation;
 	struct prototype_term_classifier_view result;
 	if (prototype_term_classifier_view(terms, proof->premise_classifiers[0], &operation) != 0 ||
@@ -10195,25 +10444,26 @@ static int term_is_host_type_id(
 static int validate_host_signature_classifier(
 	const struct prototype_term_db* terms,
 	uint32_t classifier,
-	const struct prototype_operation_declaration* signature
+	uint32_t arity,
+	const int* argument_types,
+	int result_type,
+	unsigned expected_effects
 ) {
-	if (!terms || !signature ||
-		signature->result_type == PROTOTYPE_HOST_TYPE_INVALID ||
-		signature->arity > PROTOTYPE_OPERATION_MAX_ARITY) {
+	if (!terms || !argument_types || result_type == PROTOTYPE_HOST_TYPE_INVALID) {
 		return -1;
 	}
 	uint32_t current = classifier;
-	for (uint32_t i = 0; i < signature->arity; ++i) {
+	for (uint32_t i = 0; i < arity; ++i) {
 		uint32_t domain;
 		uint32_t codomain_family;
 		uint32_t binder_id;
 		uint32_t codomain;
-		if (signature->argument_types[i] == PROTOTYPE_HOST_TYPE_INVALID ||
+		if (argument_types[i] == PROTOTYPE_HOST_TYPE_INVALID ||
 			pi_parts(terms, current, &domain, &codomain_family) != 0 ||
 			prototype_term_pure_family_parts(
 				terms, codomain_family, &binder_id, &codomain
 			) != 0 ||
-			!term_is_host_type_id(terms, domain, signature->argument_types[i])) {
+			!term_is_host_type_id(terms, domain, argument_types[i])) {
 			return -1;
 		}
 		(void)binder_id;
@@ -10228,13 +10478,13 @@ static int validate_host_signature_classifier(
 	unsigned effects;
 	if (!term_exists(terms, label) ||
 		prototype_term_effect_row_closed_bits(terms, label, &effects) != 0 ||
-		effects != signature->effects) {
+		effects != expected_effects) {
 		return -1;
 	}
-	return term_is_host_type_id(terms, result, signature->result_type) ? 0 : -1;
+	return term_is_host_type_id(terms, result, result_type) ? 0 : -1;
 }
 
-static int validate_operation_type_intro_proof(
+static int validate_pure_primitive_type_intro_proof(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_relation* relation,
@@ -10243,12 +10493,12 @@ static int validate_operation_type_intro_proof(
 	if (!terms || !type_declarations || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		proof->premise_count != 0 ||
-		!term_has_tag(terms, relation->subject, PROTOTYPE_TERM_OPERATION) ||
+		!term_has_tag(terms, relation->subject, PROTOTYPE_TERM_PURE_PRIMITIVE) ||
 		!term_exists(terms, relation->classifier)) {
 		return -1;
 	}
 
-	const struct prototype_term* operation = &terms->terms[relation->subject];
+	const struct prototype_term* primitive = &terms->terms[relation->subject];
 	uint32_t domain;
 	uint32_t codomain_family;
 	uint32_t codomain_binder;
@@ -10259,8 +10509,8 @@ static int validate_operation_type_intro_proof(
 		) != 0) {
 		return -1;
 	}
-	const struct prototype_operation_declaration* signature =
-		prototype_term_operation_declaration(operation->as.operation.operation_id);
+	const struct prototype_pure_primitive_declaration* signature =
+		prototype_term_pure_primitive_declaration(primitive->as.pure_primitive.primitive_id);
 	if (signature &&
 		signature->result_type != PROTOTYPE_HOST_TYPE_INVALID) {
 		int host_only = 1;
@@ -10273,7 +10523,10 @@ static int validate_operation_type_intro_proof(
 			return validate_host_signature_classifier(
 				terms,
 				relation->classifier,
-				signature
+				signature->arity,
+				signature->argument_types,
+				signature->result_type,
+				PROTOTYPE_HOST_EFFECT_NONE
 			);
 		}
 	}
@@ -10282,6 +10535,7 @@ static int validate_operation_type_intro_proof(
 		terms->terms[codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
 		return -1;
 	}
+
 	uint32_t effect_label = terms->terms[codomain].as.computation_type.label;
 	uint32_t result = terms->terms[codomain].as.computation_type.result;
 	unsigned effects;
@@ -10290,28 +10544,44 @@ static int validate_operation_type_intro_proof(
 		effects != PROTOTYPE_HOST_EFFECT_NONE) {
 		return -1;
 	}
-	if (operation->as.operation.operation_id == PROTOTYPE_OPERATION_TEXT_TO_NAT) {
+	if (primitive->as.pure_primitive.primitive_id == PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT) {
 		return term_is_primitive_text(terms, domain) &&
 			type_formation_is_nat_shape(terms, type_declarations, result) &&
 			type_formation_has_name_symbol(
 				terms,
 				type_declarations,
 				result,
-				operation->as.operation.type_symbol_id
+				primitive->as.pure_primitive.type_symbol_id
 			) ? 0 : -1;
 	}
-		if (operation->as.operation.operation_id == PROTOTYPE_OPERATION_NAT_TO_TEXT) {
-			return type_formation_is_nat_shape(terms, type_declarations, domain) &&
-				type_formation_has_name_symbol(
+	if (primitive->as.pure_primitive.primitive_id == PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT) {
+		return type_formation_is_nat_shape(terms, type_declarations, domain) &&
+			type_formation_has_name_symbol(
 				terms,
 				type_declarations,
 				domain,
-				operation->as.operation.type_symbol_id
+				primitive->as.pure_primitive.type_symbol_id
 			) &&
 			term_is_primitive_text(terms, result) ? 0 : -1;
-		}
+	}
+	return -1;
+}
+
+static int validate_context_reindex_proof(
+	const struct prototype_judgement_relation* relation,
+	const struct prototype_judgement_proof* proof
+) {
+	if (!relation || !proof ||
+		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		proof->premise_count != 1 ||
+		proof->premise_kinds[0] != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		proof->premise_context_ids[0] == relation->context_id ||
+		proof->premise_subjects[0] != relation->subject ||
+		proof->premise_classifiers[0] != relation->classifier) {
 		return -1;
 	}
+	return 0;
+}
 
 static int validate_is_type_from_has_type_proof(
 	const struct prototype_term_db* terms,
@@ -10454,6 +10724,36 @@ static int validate_proof_acyclic_at(
 	return 0;
 }
 
+static int validate_effect_operation_type_intro_proof(
+	const struct prototype_term_db* terms,
+	const struct prototype_judgement_relation* relation,
+	const struct prototype_judgement_proof* proof
+) {
+	if (!terms || !relation || !proof ||
+		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		proof->premise_count != 0 ||
+		!term_has_tag(terms, relation->subject, PROTOTYPE_TERM_EFFECT_OPERATION) ||
+		!term_exists(terms, relation->classifier)) {
+		return -1;
+	}
+	const struct prototype_term* operation = &terms->terms[relation->subject];
+	const struct prototype_effect_operation_declaration* signature =
+		prototype_term_effect_operation_declaration(
+			operation->as.effect_operation.operation_id
+		);
+	if (!signature) {
+		return -1;
+	}
+	return validate_host_signature_classifier(
+		terms,
+		relation->classifier,
+		signature->arity,
+		signature->argument_types,
+		signature->result_type,
+		signature->effects
+	);
+}
+
 static int validate_proof_acyclic(const struct prototype_judgement_db* judgement) {
 	if (!judgement) {
 		return -1;
@@ -10536,7 +10836,9 @@ static int validate_proof_context_shape(
 	}
 	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION) {
 		return proof->context_kind ==
-			PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_LAMBDA_BINDER ? 0 : -1;
+				PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_LAMBDA_BINDER ||
+			proof->context_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_ASSUMPTION ? 0 : -1;
 	}
 	if (proof->context_kind != PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_NONE ||
 		proof->context_subject != PROTOTYPE_INVALID_ID ||
@@ -10643,6 +10945,7 @@ int prototype_judgement_validate_proofs(
 				proof->conclusion_kind != relation->kind ||
 				proof->conclusion_subject != relation->subject ||
 				proof->conclusion_classifier != relation->classifier ||
+				proof->conclusion_context_id != relation->context_id ||
 				proof->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
 				validate_proof_context_shape(proof) != 0) {
 				return -1;
@@ -10798,16 +11101,23 @@ int prototype_judgement_validate_proofs(
 						return -1;
 					}
 					break;
-				case PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO:
-					if (validate_operation_type_intro_proof(
-							terms,
+				case PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO:
+					if (validate_pure_primitive_type_intro_proof(
+						terms,
 						type_declarations,
 						relation,
 						proof
 					) != 0) {
-					return -1;
-				}
-				break;
+						return -1;
+					}
+					break;
+				case PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO:
+					if (validate_effect_operation_type_intro_proof(
+						terms, relation, proof
+					) != 0) {
+						return -1;
+					}
+					break;
 				case PROTOTYPE_JUDGEMENT_PROOF_TEXT_TYPE_INTRO:
 					if (validate_text_type_intro_proof(terms, relation, proof) != 0) {
 						return -1;
@@ -10869,6 +11179,11 @@ int prototype_judgement_validate_proofs(
 					return -1;
 				}
 				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX:
+				if (validate_context_reindex_proof(relation, proof) != 0) {
+					return -1;
+				}
+				break;
 			case PROTOTYPE_JUDGEMENT_PROOF_INVALID:
 				return -1;
 			default:
@@ -10882,7 +11197,9 @@ int prototype_judgement_validate_proofs(
 				judgement->proofs[premise_proof_id].conclusion_subject !=
 					proof->premise_subjects[j] ||
 				judgement->proofs[premise_proof_id].conclusion_classifier !=
-					proof->premise_classifiers[j]) {
+					proof->premise_classifiers[j] ||
+				judgement->proofs[premise_proof_id].conclusion_context_id !=
+					proof->premise_context_ids[j]) {
 				return -1;
 			}
 		}
@@ -10938,10 +11255,12 @@ int prototype_judgement_add_is_type(
 	uint32_t premise_classifier = universe;
 	return add_relation_with_premises(
 		judgement,
+		0,
 		PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
 		subject,
 		universe,
 		PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE,
+		NULL,
 		&premise_subject,
 		&premise_classifier,
 		1
@@ -11012,8 +11331,10 @@ static const char* proof_kind_name(int proof_kind) {
 				return "text-literal-intro";
 			case PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO:
 				return "int-literal-intro";
-			case PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO:
-				return "operation-type-intro";
+			case PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO:
+				return "pure-primitive-type-intro";
+			case PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO:
+				return "effect-operation-type-intro";
 		case PROTOTYPE_JUDGEMENT_PROOF_CONVERSION:
 			return "conversion";
 			case PROTOTYPE_JUDGEMENT_PROOF_TEXT_TYPE_INTRO:
@@ -11030,6 +11351,8 @@ static const char* proof_kind_name(int proof_kind) {
 			return "universe-cumulativity";
 		case PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO:
 			return "pi-formation-intro";
+		case PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX:
+			return "context-reindex";
 		default:
 			return "invalid";
 	}

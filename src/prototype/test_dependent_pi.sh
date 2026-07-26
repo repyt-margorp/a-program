@@ -12,7 +12,7 @@ grep -q '^has-type LAMBDA(.*PI(UNIVERSE' "$tmp_dir/identity.out"
 ./read_file.out src/prototype/dependent_pi_surface_check.p \
 	>"$tmp_dir/match.out"
 grep -q '^term choose := LAMBDA(' "$tmp_dir/match.out"
-grep -q '^has-type LAMBDA(.*COMPUTATION_TYPE(EFFECT_LABEL(0), MATCH(' \
+grep -q '^has-type LAMBDA(.*THUNK(LAMBDA(.*RETURN(APP(LAMBDA(.*MATCH(' \
 	"$tmp_dir/match.out"
 
 ./read_file.out --write-artifact "$tmp_dir/dependent-pi.apo" \

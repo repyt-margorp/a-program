@@ -51,7 +51,8 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_PRIMITIVE_INT64,
 	PROTOTYPE_TERM_INT_LITERAL,
 	PROTOTYPE_TERM_EXTERNAL_REF,
-	PROTOTYPE_TERM_OPERATION,
+	PROTOTYPE_TERM_PURE_PRIMITIVE,
+	PROTOTYPE_TERM_EFFECT_OPERATION,
 	PROTOTYPE_TERM_TYPE_VIEW,
 	PROTOTYPE_TERM_EFFECT_LABEL,
 	PROTOTYPE_TERM_EFFECT_ROW_VAR,
@@ -90,19 +91,23 @@ struct prototype_term_classifier_view {
 	uint32_t result;
 };
 
-enum prototype_term_operation_id {
-	PROTOTYPE_OPERATION_UNKNOWN = 0,
-	PROTOTYPE_OPERATION_PRINT,
-	PROTOTYPE_OPERATION_TEXT_TO_NAT,
-	PROTOTYPE_OPERATION_NAT_TO_TEXT,
-	PROTOTYPE_OPERATION_INT_ADD,
-	PROTOTYPE_OPERATION_INT_SUB,
-	PROTOTYPE_OPERATION_INT_MUL,
-	PROTOTYPE_OPERATION_INT_NEG,
-	PROTOTYPE_OPERATION_INT64_ADD,
-	PROTOTYPE_OPERATION_INT64_SUB,
-	PROTOTYPE_OPERATION_INT64_MUL,
-	PROTOTYPE_OPERATION_INT64_NEG
+enum prototype_pure_primitive_id {
+	PROTOTYPE_PURE_PRIMITIVE_UNKNOWN = 0,
+	PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT,
+	PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT,
+	PROTOTYPE_PURE_PRIMITIVE_INT_ADD,
+	PROTOTYPE_PURE_PRIMITIVE_INT_SUB,
+	PROTOTYPE_PURE_PRIMITIVE_INT_MUL,
+	PROTOTYPE_PURE_PRIMITIVE_INT_NEG,
+	PROTOTYPE_PURE_PRIMITIVE_INT64_ADD,
+	PROTOTYPE_PURE_PRIMITIVE_INT64_SUB,
+	PROTOTYPE_PURE_PRIMITIVE_INT64_MUL,
+	PROTOTYPE_PURE_PRIMITIVE_INT64_NEG
+};
+
+enum prototype_effect_operation_id {
+	PROTOTYPE_EFFECT_OPERATION_UNKNOWN = 0,
+	PROTOTYPE_EFFECT_OPERATION_PRINT
 };
 
 enum prototype_host_type_id {
@@ -128,17 +133,37 @@ enum prototype_host_effect_flag {
 	PROTOTYPE_HOST_EFFECT_TERMINAL = 1u << 0
 };
 
-#define PROTOTYPE_OPERATION_MAX_ARITY 2
+#define PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY 2
+#define PROTOTYPE_EFFECT_OPERATION_MAX_ARITY 1
 
-/* Operation declarations are language-level interface data. Runtime
- * implementations are intentionally not part of this classifier contract. */
-struct prototype_operation_declaration {
+struct prototype_pure_primitive_declaration {
+	int primitive_id;
+	uint32_t arity;
+	int argument_types[PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY];
+	int result_type;
+};
+
+/* Effect-operation declarations are language-level interface data. Runtime
+ * implementations and intrinsic-namespace spellings are separate. */
+struct prototype_effect_operation_declaration {
 	int operation_id;
-	const char* source_name;
 	unsigned effects;
 	uint32_t arity;
-	int argument_types[PROTOTYPE_OPERATION_MAX_ARITY];
+	int argument_types[PROTOTYPE_EFFECT_OPERATION_MAX_ARITY];
 	int result_type;
+};
+
+enum prototype_intrinsic_namespace_binding_kind {
+	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_UNKNOWN = 0,
+	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE,
+	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION
+};
+
+struct prototype_intrinsic_namespace_binding {
+	const char* source_name;
+	int kind;
+	int target_id;
 };
 
 enum prototype_term_layer {
@@ -147,7 +172,8 @@ enum prototype_term_layer {
 	PROTOTYPE_TERM_LAYER_TYPE_FORMER,
 	PROTOTYPE_TERM_LAYER_DATA,
 	PROTOTYPE_TERM_LAYER_LINK,
-	PROTOTYPE_TERM_LAYER_OPERATION,
+	PROTOTYPE_TERM_LAYER_PURE_PRIMITIVE,
+	PROTOTYPE_TERM_LAYER_EFFECT_OPERATION,
 	PROTOTYPE_TERM_LAYER_INDUCTION
 };
 
@@ -320,10 +346,12 @@ struct prototype_term {
 			struct prototype_qualified_name name;
 		} external_ref;
 		struct {
-			int operation_id;
-			int symbol_id;
+			int primitive_id;
 			int type_symbol_id;
-		} operation;
+		} pure_primitive;
+		struct {
+			int operation_id;
+		} effect_operation;
 		struct {
 			unsigned effects;
 		} effect_label;
@@ -663,20 +691,31 @@ int prototype_term_make_host_type(
 	int type_id,
 	uint32_t* p_ret
 );
-const struct prototype_operation_declaration* prototype_term_operation_declaration(
+int prototype_intrinsic_namespace_lookup(
+	const char* name,
+	struct prototype_intrinsic_namespace_binding* p_binding
+);
+const char* prototype_intrinsic_namespace_source_name(int kind, int target_id);
+const struct prototype_pure_primitive_declaration*
+prototype_term_pure_primitive_declaration(int primitive_id);
+const struct prototype_effect_operation_declaration*
+prototype_term_effect_operation_declaration(
 	int operation_id
 );
-int prototype_term_operation_from_source_name(const char* name, int* p_operation_id);
 int prototype_term_external_ref(
 	struct prototype_term_db* db,
 	struct prototype_qualified_name name,
 	uint32_t* p_ret
 );
-int prototype_term_operation(
+int prototype_term_pure_primitive(
+	struct prototype_term_db* db,
+	int primitive_id,
+	int type_symbol_id,
+	uint32_t* p_ret
+);
+int prototype_term_effect_operation(
 	struct prototype_term_db* db,
 	int operation_id,
-	int symbol_id,
-	int type_symbol_id,
 	uint32_t* p_ret
 );
 int prototype_term_contains_free_binder(

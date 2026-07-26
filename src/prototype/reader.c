@@ -1205,7 +1205,8 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		int type_symbol_id = -1;
 		int system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_UNKNOWN;
 		int host_type_id = PROTOTYPE_HOST_TYPE_INVALID;
-		int operation_id = PROTOTYPE_OPERATION_UNKNOWN;
+		int pure_primitive_id = PROTOTYPE_PURE_PRIMITIVE_UNKNOWN;
+		int effect_operation_id = PROTOTYPE_EFFECT_OPERATION_UNKNOWN;
 		const char* name;
 		struct prototype_source_span span = current_span(parser);
 		if (read_token(parser) != 0) {
@@ -1254,38 +1255,40 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 					p_ret
 				);
 			}
-			int host_type;
-			int host_status = prototype_term_host_type_from_source_name(name, &host_type);
-			if (host_status < 0) {
+			struct prototype_intrinsic_namespace_binding binding;
+			int binding_status = prototype_intrinsic_namespace_lookup(name, &binding);
+			if (binding_status < 0) {
 				return -1;
 			}
-			if (host_status == 0) {
+			if (binding_status > 0) {
+				set_error(parser, "unknown system name");
+				return -1;
+			}
+			if (binding.kind == PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE) {
 				system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_HOST_TYPE;
-				host_type_id = host_type;
-			} else {
-				int operation_status = prototype_term_operation_from_source_name(
-					name,
-					&operation_id
-				);
-				if (operation_status < 0) {
-					return -1;
-				}
-				if (operation_status > 0) {
-					set_error(parser, "unknown system operation name");
-					return -1;
-				}
-				system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_HOST_OPERATION;
-				if (operation_id == PROTOTYPE_OPERATION_TEXT_TO_NAT ||
-					operation_id == PROTOTYPE_OPERATION_NAT_TO_TEXT) {
+				host_type_id = binding.target_id;
+			} else if (binding.kind == PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE) {
+				system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_PURE_PRIMITIVE;
+				pure_primitive_id = binding.target_id;
+				if (pure_primitive_id == PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT ||
+					pure_primitive_id == PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT) {
 					type_symbol_id = symbol_intern(parser->program->symbols, "#.Nat", 5);
 				}
+			} else if (
+				binding.kind == PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION
+			) {
+				system_name_kind = PROTOTYPE_AST_SYSTEM_NAME_EFFECT_OPERATION;
+				effect_operation_id = binding.target_id;
+			} else {
+				set_error(parser, "unsupported system namespace binding");
+				return -1;
 			}
 			if (system_name_kind == PROTOTYPE_AST_SYSTEM_NAME_UNKNOWN) {
 				set_error(parser, "unknown system name");
 				return -1;
 			}
-				if ((operation_id == PROTOTYPE_OPERATION_TEXT_TO_NAT ||
-						operation_id == PROTOTYPE_OPERATION_NAT_TO_TEXT) &&
+				if ((pure_primitive_id == PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT ||
+						pure_primitive_id == PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT) &&
 					type_symbol_id < 0) {
 					set_error(parser, "symbol table is full");
 					return -1;
@@ -1300,7 +1303,8 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			type_symbol_id,
 			system_name_kind,
 			host_type_id,
-			operation_id,
+			pure_primitive_id,
+			effect_operation_id,
 			span,
 			p_ret
 		);
@@ -2202,8 +2206,12 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 	uint32_t zero_constructor_id;
 	uint32_t succ_constructor_id;
 	uint32_t succ_classifier;
+	uint32_t empty_context;
+	uint32_t succ_field_context;
+	uint32_t succ_binder;
 
-	if (!program || !program->symbols || !program->type_declarations || !program->terms || !program->judgement) {
+	if (!program || !program->symbols || !program->type_declarations ||
+		!program->terms || !program->judgement || !program->metadata) {
 		return -1;
 	}
 
@@ -2229,6 +2237,9 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 			&nat_term
 		) != 0 ||
 		prototype_term_pi(program->terms, nat_term, nat_term, &succ_classifier) != 0 ||
+		(empty_context = prototype_context_empty(
+			&program->metadata->contexts
+		)) == PROTOTYPE_INVALID_ID ||
 		prototype_type_declaration_add_constructor(
 			program->type_declarations,
 			type_id,
@@ -2236,12 +2247,27 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 			NULL,
 			0,
 			self_expr,
+			empty_context,
+			empty_context,
+			nat_term,
 			nat_term,
 			&zero_constructor_id
 		) != 0) {
 		return -1;
 	}
 	succ_field = self_expr;
+	succ_binder = prototype_term_binder_for_scope_slot(program->terms, 0);
+	if (succ_binder == PROTOTYPE_INVALID_ID ||
+		prototype_context_extend(
+			&program->metadata->contexts,
+			empty_context,
+			succ_binder,
+			nat_term,
+			PROTOTYPE_INVALID_ID,
+			&succ_field_context
+		) != 0) {
+		return -1;
+	}
 	if (prototype_type_declaration_add_constructor(
 			program->type_declarations,
 			type_id,
@@ -2249,6 +2275,9 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 			&succ_field,
 			1,
 			self_expr,
+			empty_context,
+			succ_field_context,
+			nat_term,
 			succ_classifier,
 			&succ_constructor_id
 		) != 0 ||

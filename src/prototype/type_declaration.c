@@ -402,10 +402,16 @@ int prototype_type_declaration_add_constructor(
 	const uint32_t* readback_field_type_exprs,
 	uint32_t readback_field_count,
 	uint32_t readback_result_type_expr,
+	uint32_t parameter_context,
+	uint32_t field_context,
+	uint32_t result_classifier,
 	uint32_t classifier_family,
 	uint32_t* p_constructor_id
 ) {
 	if (!db || !p_constructor_id || type_id >= db->type_count ||
+		parameter_context == PROTOTYPE_INVALID_ID ||
+		field_context == PROTOTYPE_INVALID_ID ||
+		result_classifier == PROTOTYPE_INVALID_ID ||
 		classifier_family == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
@@ -433,6 +439,9 @@ int prototype_type_declaration_add_constructor(
 	constructor->readback.first_field_type = (uint32_t)db->readback_field_type_count;
 	constructor->readback.field_count = readback_field_count;
 	constructor->readback.result_type = readback_result_type_expr;
+	constructor->parameter_context = parameter_context;
+	constructor->field_context = field_context;
+	constructor->result_classifier = result_classifier;
 	constructor->classifier_family = classifier_family;
 
 	for (uint32_t i = 0; i < readback_field_count; ++i) {
@@ -799,9 +808,12 @@ static int representation_terms_equal_at_depth(
 		case PROTOTYPE_TERM_EXTERNAL_REF:
 			return left->as.external_ref.name.namespace_symbol_id == right->as.external_ref.name.namespace_symbol_id &&
 				left->as.external_ref.name.name_symbol_id == right->as.external_ref.name.name_symbol_id;
-		case PROTOTYPE_TERM_OPERATION:
-			return left->as.operation.symbol_id == right->as.operation.symbol_id &&
-				left->as.operation.type_symbol_id == right->as.operation.type_symbol_id;
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			return left->as.pure_primitive.primitive_id ==
+					right->as.pure_primitive.primitive_id &&
+				left->as.pure_primitive.type_symbol_id == right->as.pure_primitive.type_symbol_id;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id;
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			return representation_terms_equal_at_depth(
 				terms, db, left->as.induction_hypothesis.argument,
@@ -1543,9 +1555,15 @@ static int type_code_shape_key_term_at_depth(
 					(uint32_t)term->as.external_ref.name.name_symbol_id
 				);
 				return 0;
-		case PROTOTYPE_TERM_OPERATION:
-			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.operation.symbol_id);
-			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.operation.type_symbol_id);
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			type_code_shape_key_hash_mix_u32(
+				p_hash, (uint32_t)term->as.pure_primitive.primitive_id
+			);
+			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.pure_primitive.type_symbol_id);
+			return 0;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			type_code_shape_key_hash_mix_u32(p_hash,
+				(uint32_t)term->as.effect_operation.operation_id);
 			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			if (term->as.type_declaration.type_id == self_type_id) {

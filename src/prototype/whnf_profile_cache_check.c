@@ -333,9 +333,9 @@ int main(void) {
 		prototype_term_lambda(
 			&term_db, continuation_binder, continuation_var, &continuation_lambda
 		) != 0 || prototype_term_thunk(&term_db, continuation_lambda, &continuation_thunk) != 0 ||
-		prototype_term_external_ref(
+		prototype_term_effect_operation(
 			&term_db,
-			(struct prototype_qualified_name){ PROTOTYPE_BASE_NAMESPACE_ID, 5 },
+			PROTOTYPE_EFFECT_OPERATION_PRINT,
 			&effect_operation
 		) != 0 || prototype_term_operation_request(
 			&term_db, effect_operation, constructor, continuation_thunk, &effect_request

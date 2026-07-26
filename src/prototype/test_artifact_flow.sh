@@ -107,7 +107,8 @@ PROOF_KIND_MATCH_ELIM=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JU
 PROOF_KIND_SOLVED_MATCH_MOTIVE=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE)
 PROOF_KIND_INDUCTION_HYPOTHESIS_ELIM=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM)
 PROOF_KIND_TEXT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO)
-PROOF_KIND_OPERATION_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_OPERATION_TYPE_INTRO)
+PROOF_KIND_PURE_PRIMITIVE_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO)
+PROOF_KIND_EFFECT_OPERATION_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO)
 PROOF_KIND_INT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO)
 PROOF_KIND_CONVERSION=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_CONVERSION)
 PROOF_KIND_HOST_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_HOST_TYPE_INTRO)
@@ -119,6 +120,8 @@ TERM_TAG_CONSTRUCTOR=$(c_enum_value_in src/prototype/term.h prototype_term_tag P
 TERM_TAG_PI=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_PI)
 TERM_TAG_TEXT_LITERAL=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_TEXT_LITERAL)
 TERM_TAG_EXTERNAL_REF=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EXTERNAL_REF)
+TERM_TAG_PURE_PRIMITIVE=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_PURE_PRIMITIVE)
+TERM_TAG_EFFECT_OPERATION=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_OPERATION)
 TERM_TAG_EFFECT_LABEL=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_LABEL)
 TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
 OPERATION_TAG_LAMBDA=$(c_enum_value_in src/prototype/ast.h prototype_operation_tag PROTOTYPE_OPERATION_LAMBDA)
@@ -162,7 +165,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 47$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 50$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -195,9 +198,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/47$/46/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v46.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v46.apo" >"$TMP_DIR/identity-v46.out" 2>"$TMP_DIR/identity-v46.err"; then
-	echo "obsolete artifact unexpectedly passed after v47 format bump" >&2
+sed '1s/50$/49/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v49.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v49.apo" >"$TMP_DIR/identity-v49.out" 2>"$TMP_DIR/identity-v49.err"; then
+	echo "obsolete artifact unexpectedly passed after v50 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -1644,7 +1647,7 @@ EOF_INTRINSIC_NAT_TO_TEXT
 ./read_file.out --write-artifact "$TMP_DIR/IntrinsicNatToText.apo" \
 	"$TMP_DIR/intrinsic-nat-to-text.p" >"$TMP_DIR/intrinsic-nat-to-text.out"
 ./read_file.out "$TMP_DIR/intrinsic-nat-to-text.p" >"$TMP_DIR/intrinsic-nat-to-text-print.out"
-grep -q '\[operation-type-intro\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
+grep -q '\[pure-primitive-type-intro\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 grep -q '\[host-type-intro\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 ! grep -q '\[intrinsic\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 ! grep -q '\[primitive\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
@@ -1754,6 +1757,23 @@ main := #.int64_add #40 #2;
 EOF_INT_ARITHMETIC
 ./a.out "$TMP_DIR/int-arithmetic.p" >"$TMP_DIR/int-arithmetic-repl.out"
 grep -q 'value main := RETURN(INT_LITERAL(42))' "$TMP_DIR/int-arithmetic-repl.out"
+./read_file.out --write-artifact "$TMP_DIR/IntArithmetic.apo" \
+	"$TMP_DIR/int-arithmetic.p" >"$TMP_DIR/int-arithmetic-artifact.out"
+./read_file.out --read-graph "$TMP_DIR/IntArithmetic.apo" \
+	>"$TMP_DIR/int-arithmetic-read.out"
+grep -q "^term_node .* $TERM_TAG_PURE_PRIMITIVE int64_add -$" \
+	"$TMP_DIR/IntArithmetic.apo"
+awk -v primitive_tag="$TERM_TAG_PURE_PRIMITIVE" \
+	-v effect_tag="$TERM_TAG_EFFECT_OPERATION" '
+	$1 == "term_node" && $3 == primitive_tag && $4 == "int64_add" { $3 = effect_tag }
+	{ print }
+' "$TMP_DIR/IntArithmetic.apo" >"$TMP_DIR/IntArithmeticBadKind.apo"
+if ./read_file.out --read-graph "$TMP_DIR/IntArithmeticBadKind.apo" \
+	>"$TMP_DIR/int-arithmetic-bad-kind.out" \
+	2>"$TMP_DIR/int-arithmetic-bad-kind.err"; then
+	echo "pure primitive encoded as effect operation unexpectedly passed" >&2
+	exit 1
+fi
 
 cat >"$TMP_DIR/nested-int-arithmetic.p" <<'EOF_NESTED_INT_ARITHMETIC'
 main := {
@@ -1798,7 +1818,21 @@ main := perform (#.print #"hello");
 EOF_TERMINAL_EFFECT
 ./read_file.out --write-artifact "$TMP_DIR/TerminalEffect.apo" \
 	"$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-artifact.out"
+grep -q '\[effect-operation-type-intro\]' "$TMP_DIR/terminal-effect-artifact.out"
 ./read_file.out --read-graph "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/terminal-effect-read-graph.out"
+grep -q "^term_node .* $TERM_TAG_EFFECT_OPERATION print$" \
+	"$TMP_DIR/TerminalEffect.apo"
+awk -v primitive_tag="$TERM_TAG_PURE_PRIMITIVE" \
+	-v effect_tag="$TERM_TAG_EFFECT_OPERATION" '
+	$1 == "term_node" && $3 == effect_tag && $4 == "print" { $3 = primitive_tag }
+	{ print }
+' "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/TerminalEffectBadKind.apo"
+if ./read_file.out --read-graph "$TMP_DIR/TerminalEffectBadKind.apo" \
+	>"$TMP_DIR/terminal-effect-bad-kind.out" \
+	2>"$TMP_DIR/terminal-effect-bad-kind.err"; then
+	echo "effect operation encoded as pure primitive unexpectedly passed" >&2
+	exit 1
+fi
 grep -q '^compile_policy 2 10 ' "$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_EFFECT_LABEL 1$" "$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_COMPUTATION_TYPE " "$TMP_DIR/TerminalEffect.apo"
@@ -1814,7 +1848,7 @@ if ./read_file.out --read-graph "$TMP_DIR/TerminalEffectBadCapabilities.apo" \
 	exit 1
 fi
 ./read_file.out "$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-read.out"
-grep -q 'term main := OPERATION_REQUEST(OPERATION(print), TEXT_LITERAL("hello")' "$TMP_DIR/terminal-effect-read.out"
+grep -q 'term main := OPERATION_REQUEST(EFFECT_OPERATION(print), TEXT_LITERAL("hello")' "$TMP_DIR/terminal-effect-read.out"
 ! grep -q '^hello$' "$TMP_DIR/terminal-effect-read.out"
 ./a.out "$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-repl.out"
 grep -q '^hello$' "$TMP_DIR/terminal-effect-repl.out"
@@ -1840,7 +1874,7 @@ awk '
 		$4 = bool_term;
 	}
 	{ print }
-' operation_type_intro_proof_kind="$PROOF_KIND_OPERATION_TYPE_INTRO" \
+' operation_type_intro_proof_kind="$PROOF_KIND_PURE_PRIMITIVE_TYPE_INTRO" \
 	pi_tag="$TERM_TAG_PI" \
 	"$TMP_DIR/IntrinsicNatToText.apo" "$TMP_DIR/IntrinsicNatToText.apo" >"$TMP_DIR/BadIntrinsicNatToText.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadIntrinsicNatToText.apo" >"$TMP_DIR/bad-intrinsic-nat-to-text.out" 2>"$TMP_DIR/bad-intrinsic-nat-to-text.err"; then

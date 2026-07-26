@@ -14,6 +14,709 @@ static int reserve_slot(size_t count, size_t capacity) {
 	return count < capacity ? 0 : -1;
 }
 
+void prototype_context_db_init(
+	struct prototype_context_db* db,
+	struct prototype_context* contexts,
+	size_t context_capacity
+) {
+	if (!db || !contexts || context_capacity == 0) {
+		return;
+	}
+	memset(db, 0, sizeof(*db));
+	db->contexts = contexts;
+	db->context_capacity = context_capacity;
+	db->context_count = 1;
+	db->contexts[0].parent = PROTOTYPE_INVALID_ID;
+	db->contexts[0].binder_id = PROTOTYPE_INVALID_ID;
+	db->contexts[0].classifier = PROTOTYPE_INVALID_ID;
+	db->contexts[0].classifier_variable = PROTOTYPE_INVALID_ID;
+	db->contexts[0].depth = 0;
+}
+
+uint32_t prototype_context_empty(const struct prototype_context_db* db) {
+	return db && db->context_count > 0 ? 0 : PROTOTYPE_INVALID_ID;
+}
+
+const struct prototype_context* prototype_context_get(
+	const struct prototype_context_db* db,
+	uint32_t context_id
+) {
+	return db && context_id < db->context_count ? &db->contexts[context_id] : NULL;
+}
+
+int prototype_context_extend(
+	struct prototype_context_db* db,
+	uint32_t parent,
+	uint32_t binder_id,
+	uint32_t classifier,
+	uint32_t classifier_variable,
+	uint32_t* p_context
+) {
+	if (!db || !p_context || parent >= db->context_count ||
+		binder_id == PROTOTYPE_INVALID_ID ||
+		(classifier == PROTOTYPE_INVALID_ID &&
+			classifier_variable == PROTOTYPE_INVALID_ID)) {
+		return -1;
+	}
+	for (uint32_t i = 1; i < db->context_count; ++i) {
+		const struct prototype_context* context = &db->contexts[i];
+		int same_extension = classifier != PROTOTYPE_INVALID_ID ?
+			context->classifier == classifier :
+			context->classifier == PROTOTYPE_INVALID_ID &&
+				context->classifier_variable == classifier_variable;
+		if (context->parent == parent && same_extension) {
+			*p_context = i;
+			return 0;
+		}
+	}
+	if (db->context_count >= db->context_capacity) {
+		return -1;
+	}
+	uint32_t id = (uint32_t)db->context_count++;
+	db->contexts[id].parent = parent;
+	db->contexts[id].binder_id = binder_id;
+	db->contexts[id].classifier = classifier;
+	db->contexts[id].classifier_variable = classifier_variable;
+	db->contexts[id].depth = db->contexts[parent].depth + 1;
+	*p_context = id;
+	return 0;
+}
+
+int prototype_context_contains_binder(
+	const struct prototype_context_db* db,
+	uint32_t context_id,
+	uint32_t binder_id
+) {
+	if (!db || context_id >= db->context_count ||
+		binder_id == PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	while (context_id != 0) {
+		const struct prototype_context* context = &db->contexts[context_id];
+		if (context->binder_id == binder_id) {
+			return 1;
+		}
+		context_id = context->parent;
+	}
+	return 0;
+}
+
+int prototype_context_db_validate(
+	const struct prototype_context_db* db,
+	const struct prototype_term_db* terms
+) {
+	if (!db || !terms || !db->contexts || db->context_count == 0 ||
+		db->context_count > db->context_capacity) {
+		return -1;
+	}
+	const struct prototype_context* empty = &db->contexts[0];
+	if (empty->parent != PROTOTYPE_INVALID_ID ||
+		empty->binder_id != PROTOTYPE_INVALID_ID ||
+		empty->classifier != PROTOTYPE_INVALID_ID ||
+		empty->classifier_variable != PROTOTYPE_INVALID_ID ||
+		empty->depth != 0) {
+		return -1;
+	}
+	for (uint32_t i = 1; i < db->context_count; ++i) {
+		const struct prototype_context* context = &db->contexts[i];
+		if (context->parent >= i ||
+			context->binder_id == PROTOTYPE_INVALID_ID ||
+			context->depth != db->contexts[context->parent].depth + 1 ||
+			(context->classifier == PROTOTYPE_INVALID_ID &&
+				context->classifier_variable == PROTOTYPE_INVALID_ID) ||
+			(context->classifier != PROTOTYPE_INVALID_ID &&
+				(context->classifier >= terms->term_count ||
+				 terms->terms[context->classifier].tag == 0))) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+int prototype_constructor_telescopes_validate(
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms
+) {
+	if (!type_declarations || !contexts || !terms) {
+		return -1;
+	}
+	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
+		const struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->constructor_declarations[i];
+		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		const struct prototype_context* parameter_context =
+			prototype_context_get(contexts, constructor->parameter_context);
+		const struct prototype_context* field_context =
+			prototype_context_get(contexts, constructor->field_context);
+		if (!parameter_context || !field_context ||
+			constructor->result_classifier >= terms->term_count ||
+			field_context->depth < parameter_context->depth ||
+			field_context->depth - parameter_context->depth !=
+				constructor->readback.field_count) {
+			return -1;
+		}
+		uint32_t cursor = constructor->field_context;
+		while (cursor != constructor->parameter_context) {
+			const struct prototype_context* context =
+				prototype_context_get(contexts, cursor);
+			if (!context || cursor == prototype_context_empty(contexts)) {
+				return -1;
+			}
+			cursor = context->parent;
+		}
+	}
+	return 0;
+}
+
+int prototype_context_db_append_relocated(
+	struct prototype_context_db* target,
+	const struct prototype_context_db* source,
+	uint32_t term_offset,
+	uint32_t binder_offset,
+	uint32_t* relocation,
+	size_t relocation_capacity
+) {
+	if (!target || !source || !relocation ||
+		source->context_count == 0 ||
+		source->context_count > relocation_capacity ||
+		prototype_context_empty(target) == PROTOTYPE_INVALID_ID ||
+		prototype_context_empty(source) == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	relocation[0] = prototype_context_empty(target);
+	for (uint32_t i = 1; i < source->context_count; ++i) {
+		const struct prototype_context* context =
+			prototype_context_get(source, i);
+		uint32_t classifier = context &&
+			context->classifier != PROTOTYPE_INVALID_ID
+			? context->classifier + term_offset
+			: PROTOTYPE_INVALID_ID;
+		uint32_t classifier_variable = context &&
+			context->classifier_variable != PROTOTYPE_INVALID_ID
+			? context->classifier_variable + binder_offset
+			: PROTOTYPE_INVALID_ID;
+		if (!context || context->parent >= i ||
+			(classifier == PROTOTYPE_INVALID_ID) ==
+				(classifier_variable == PROTOTYPE_INVALID_ID) ||
+			context->binder_id == PROTOTYPE_INVALID_ID ||
+			prototype_context_extend(
+				target,
+				relocation[context->parent],
+				context->binder_id + binder_offset,
+				classifier,
+				classifier_variable,
+				&relocation[i]
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int prototype_substitution_add(
+	struct prototype_substitution_db* db,
+	struct prototype_substitution substitution,
+	uint32_t* p_substitution
+);
+
+static int prototype_substitution_db_append_relocated(
+	struct prototype_substitution_db* target,
+	const struct prototype_substitution_db* source,
+	const uint32_t* context_relocation,
+	size_t context_relocation_count,
+	uint32_t term_offset,
+	uint32_t proof_offset
+) {
+	if (!target || !source || !context_relocation) {
+		return -1;
+	}
+	uint32_t relocation[PROTOTYPE_SUBSTITUTION_CAPACITY];
+	if (source->substitution_count > PROTOTYPE_SUBSTITUTION_CAPACITY) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < source->substitution_count; ++i) {
+		struct prototype_substitution substitution = source->substitutions[i];
+		if (substitution.source_context >= context_relocation_count ||
+			substitution.target_context >= context_relocation_count ||
+			(substitution.first != PROTOTYPE_INVALID_ID &&
+				substitution.first >= i) ||
+			(substitution.second != PROTOTYPE_INVALID_ID &&
+				substitution.second >= i)) {
+			return -1;
+		}
+		substitution.source_context =
+			context_relocation[substitution.source_context];
+		substitution.target_context =
+			context_relocation[substitution.target_context];
+		if (substitution.first != PROTOTYPE_INVALID_ID) {
+			substitution.first = relocation[substitution.first];
+		}
+		if (substitution.second != PROTOTYPE_INVALID_ID) {
+			substitution.second = relocation[substitution.second];
+		}
+		if (substitution.term != PROTOTYPE_INVALID_ID) {
+			substitution.term += term_offset;
+		}
+		if (substitution.term_classifier != PROTOTYPE_INVALID_ID) {
+			substitution.term_classifier += term_offset;
+		}
+		if (substitution.term_proof_id != PROTOTYPE_INVALID_ID) {
+			substitution.term_proof_id += proof_offset;
+		}
+		if (prototype_substitution_add(
+			target, substitution, &relocation[i]
+		) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+void prototype_substitution_db_init(
+	struct prototype_substitution_db* db,
+	struct prototype_substitution* substitutions,
+	size_t substitution_capacity
+) {
+	if (!db) {
+		return;
+	}
+	db->substitutions = substitutions;
+	db->substitution_count = 0;
+	db->substitution_capacity = substitution_capacity;
+}
+
+const struct prototype_substitution* prototype_substitution_get(
+	const struct prototype_substitution_db* db,
+	uint32_t substitution_id
+) {
+	if (!db || substitution_id >= db->substitution_count) {
+		return NULL;
+	}
+	return &db->substitutions[substitution_id];
+}
+
+static int prototype_substitution_add(
+	struct prototype_substitution_db* db,
+	struct prototype_substitution substitution,
+	uint32_t* p_substitution
+) {
+	if (!db || !db->substitutions || !p_substitution) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->substitution_count; ++i) {
+		const struct prototype_substitution* existing = &db->substitutions[i];
+		if (existing->kind == substitution.kind &&
+			existing->source_context == substitution.source_context &&
+			existing->target_context == substitution.target_context &&
+			existing->first == substitution.first &&
+			existing->second == substitution.second &&
+			existing->term == substitution.term &&
+			existing->term_classifier == substitution.term_classifier &&
+			existing->term_proof_id == substitution.term_proof_id) {
+			*p_substitution = i;
+			return 0;
+		}
+	}
+	if (db->substitution_count >= db->substitution_capacity) {
+		return -1;
+	}
+	uint32_t id = (uint32_t)db->substitution_count++;
+	db->substitutions[id] = substitution;
+	*p_substitution = id;
+	return 0;
+}
+
+int prototype_substitution_identity(
+	struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t context,
+	uint32_t* p_substitution
+) {
+	if (!prototype_context_get(contexts, context)) {
+		return -1;
+	}
+	struct prototype_substitution substitution = {
+		.kind = PROTOTYPE_SUBSTITUTION_IDENTITY,
+		.source_context = context,
+		.target_context = context,
+		.first = PROTOTYPE_INVALID_ID,
+		.second = PROTOTYPE_INVALID_ID,
+		.term = PROTOTYPE_INVALID_ID,
+		.term_classifier = PROTOTYPE_INVALID_ID,
+		.term_proof_id = PROTOTYPE_INVALID_ID
+	};
+	return prototype_substitution_add(db, substitution, p_substitution);
+}
+
+int prototype_substitution_empty(
+	struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t source_context,
+	uint32_t* p_substitution
+) {
+	if (!prototype_context_get(contexts, source_context)) {
+		return -1;
+	}
+	struct prototype_substitution substitution = {
+		.kind = PROTOTYPE_SUBSTITUTION_EMPTY,
+		.source_context = source_context,
+		.target_context = prototype_context_empty(contexts),
+		.first = PROTOTYPE_INVALID_ID,
+		.second = PROTOTYPE_INVALID_ID,
+		.term = PROTOTYPE_INVALID_ID,
+		.term_classifier = PROTOTYPE_INVALID_ID,
+		.term_proof_id = PROTOTYPE_INVALID_ID
+	};
+	return prototype_substitution_add(db, substitution, p_substitution);
+}
+
+int prototype_substitution_projection(
+	struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t extended_context,
+	uint32_t* p_substitution
+) {
+	const struct prototype_context* context =
+		prototype_context_get(contexts, extended_context);
+	if (!context || extended_context == prototype_context_empty(contexts)) {
+		return -1;
+	}
+	struct prototype_substitution substitution = {
+		.kind = PROTOTYPE_SUBSTITUTION_PROJECTION,
+		.source_context = extended_context,
+		.target_context = context->parent,
+		.first = PROTOTYPE_INVALID_ID,
+		.second = PROTOTYPE_INVALID_ID,
+		.term = PROTOTYPE_INVALID_ID,
+		.term_classifier = PROTOTYPE_INVALID_ID,
+		.term_proof_id = PROTOTYPE_INVALID_ID
+	};
+	return prototype_substitution_add(db, substitution, p_substitution);
+}
+
+int prototype_term_reindex(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	uint32_t term,
+	uint32_t substitution_id,
+	uint32_t* p_reindexed
+);
+
+int prototype_substitution_extend(
+	struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t prefix_substitution,
+	uint32_t target_context,
+	uint32_t term,
+	uint32_t term_classifier,
+	uint32_t term_proof_id,
+	uint32_t* p_substitution
+) {
+	const struct prototype_substitution* prefix =
+		prototype_substitution_get(db, prefix_substitution);
+	if (!prefix || !terms || !type_declarations ||
+		term == PROTOTYPE_INVALID_ID ||
+		term_classifier == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	const struct prototype_context* target =
+		prototype_context_get(contexts, target_context);
+	if (!target || target_context == prototype_context_empty(contexts) ||
+		target->parent != prefix->target_context ||
+		target->classifier == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	uint32_t expected_classifier;
+	if (prototype_term_reindex(
+			terms,
+			type_declarations,
+			contexts,
+			db,
+			target->classifier,
+			prefix_substitution,
+			&expected_classifier
+		) != 0 ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms,
+			type_declarations,
+			expected_classifier,
+			term_classifier
+		)) {
+		return -1;
+	}
+	struct prototype_substitution substitution = {
+		.kind = PROTOTYPE_SUBSTITUTION_EXTEND,
+		.source_context = prefix->source_context,
+		.target_context = target_context,
+		.first = prefix_substitution,
+		.second = PROTOTYPE_INVALID_ID,
+		.term = term,
+		.term_classifier = term_classifier,
+		.term_proof_id = term_proof_id
+	};
+	return prototype_substitution_add(db, substitution, p_substitution);
+}
+
+int prototype_substitution_compose(
+	struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t outer_substitution,
+	uint32_t inner_substitution,
+	uint32_t* p_substitution
+) {
+	const struct prototype_substitution* outer =
+		prototype_substitution_get(db, outer_substitution);
+	const struct prototype_substitution* inner =
+		prototype_substitution_get(db, inner_substitution);
+	if (!outer || !inner ||
+		outer->source_context != inner->target_context ||
+		!prototype_context_get(contexts, inner->source_context) ||
+		!prototype_context_get(contexts, outer->target_context)) {
+		return -1;
+	}
+	struct prototype_substitution substitution = {
+		.kind = PROTOTYPE_SUBSTITUTION_COMPOSE,
+		.source_context = inner->source_context,
+		.target_context = outer->target_context,
+		.first = outer_substitution,
+		.second = inner_substitution,
+		.term = PROTOTYPE_INVALID_ID,
+		.term_classifier = PROTOTYPE_INVALID_ID,
+		.term_proof_id = PROTOTYPE_INVALID_ID
+	};
+	return prototype_substitution_add(db, substitution, p_substitution);
+}
+
+int prototype_substitution_db_validate(
+	const struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms
+) {
+	if (!db || !contexts || !terms) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->substitution_count; ++i) {
+		const struct prototype_substitution* substitution = &db->substitutions[i];
+		if (!prototype_context_get(contexts, substitution->source_context) ||
+			!prototype_context_get(contexts, substitution->target_context)) {
+			return -1;
+		}
+		switch (substitution->kind) {
+			case PROTOTYPE_SUBSTITUTION_IDENTITY:
+				if (substitution->source_context != substitution->target_context) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_SUBSTITUTION_EMPTY:
+				if (substitution->target_context != prototype_context_empty(contexts)) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_SUBSTITUTION_PROJECTION: {
+				const struct prototype_context* source =
+					prototype_context_get(contexts, substitution->source_context);
+				if (!source || source->parent != substitution->target_context) {
+					return -1;
+				}
+				break;
+			}
+			case PROTOTYPE_SUBSTITUTION_EXTEND: {
+				const struct prototype_substitution* prefix =
+					prototype_substitution_get(db, substitution->first);
+				const struct prototype_context* target =
+					prototype_context_get(contexts, substitution->target_context);
+				if (!prefix || substitution->first >= i || !target ||
+					prefix->source_context != substitution->source_context ||
+					target->parent != prefix->target_context ||
+					target->classifier == PROTOTYPE_INVALID_ID ||
+					substitution->term >= terms->term_count) {
+					return -1;
+				}
+				break;
+			}
+			case PROTOTYPE_SUBSTITUTION_COMPOSE: {
+				const struct prototype_substitution* outer =
+					prototype_substitution_get(db, substitution->first);
+				const struct prototype_substitution* inner =
+					prototype_substitution_get(db, substitution->second);
+				if (!outer || !inner || substitution->first >= i ||
+					substitution->second >= i ||
+					outer->source_context != inner->target_context ||
+					substitution->source_context != inner->source_context ||
+					substitution->target_context != outer->target_context) {
+					return -1;
+				}
+				break;
+			}
+			default:
+				return -1;
+		}
+	}
+	return 0;
+}
+
+static int prototype_substitution_lookup_term(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	uint32_t substitution_id,
+	uint32_t target_binder,
+	uint32_t* p_term
+);
+
+int prototype_term_reindex(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	uint32_t term,
+	uint32_t substitution_id,
+	uint32_t* p_reindexed
+) {
+	const struct prototype_substitution* substitution =
+		prototype_substitution_get(substitutions, substitution_id);
+	if (!terms || !type_declarations || !contexts || !substitution ||
+		!p_reindexed || term >= terms->term_count) {
+		return -1;
+	}
+	if (substitution->kind == PROTOTYPE_SUBSTITUTION_IDENTITY) {
+		*p_reindexed = term;
+		return 0;
+	}
+	uint32_t context_ids[512];
+	uint32_t count = 0;
+	uint32_t context_id = substitution->target_context;
+	while (context_id != prototype_context_empty(contexts)) {
+		const struct prototype_context* context =
+			prototype_context_get(contexts, context_id);
+		if (!context || count >= 512) {
+			return -1;
+		}
+		context_ids[count++] = context_id;
+		context_id = context->parent;
+	}
+
+	uint32_t fresh_binders[512];
+	uint32_t replacements[512];
+	uint32_t result = term;
+	for (uint32_t i = 0; i < count; ++i) {
+		const struct prototype_context* context =
+			prototype_context_get(contexts, context_ids[i]);
+		fresh_binders[i] = prototype_term_fresh_binder(terms);
+		if (!context || fresh_binders[i] == PROTOTYPE_INVALID_ID ||
+			prototype_term_var(terms, fresh_binders[i], &replacements[i]) != 0 ||
+			prototype_term_substitute(
+				terms,
+				type_declarations,
+				result,
+				context->binder_id,
+				replacements[i],
+				&result
+			) != 0 ||
+			prototype_substitution_lookup_term(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				substitution_id,
+				context->binder_id,
+				&replacements[i]
+			) != 0) {
+			return -1;
+		}
+	}
+	for (uint32_t i = 0; i < count; ++i) {
+		if (prototype_term_substitute(
+			terms,
+			type_declarations,
+			result,
+			fresh_binders[i],
+			replacements[i],
+			&result
+		) != 0) {
+			return -1;
+		}
+	}
+	*p_reindexed = result;
+	return 0;
+}
+
+static int prototype_substitution_lookup_term(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	uint32_t substitution_id,
+	uint32_t target_binder,
+	uint32_t* p_term
+) {
+	const struct prototype_substitution* substitution =
+		prototype_substitution_get(substitutions, substitution_id);
+	if (!substitution || !p_term) {
+		return -1;
+	}
+	switch (substitution->kind) {
+		case PROTOTYPE_SUBSTITUTION_IDENTITY:
+		case PROTOTYPE_SUBSTITUTION_PROJECTION:
+			return prototype_term_var(terms, target_binder, p_term);
+		case PROTOTYPE_SUBSTITUTION_EMPTY:
+			return -1;
+		case PROTOTYPE_SUBSTITUTION_EXTEND: {
+			const struct prototype_context* target =
+				prototype_context_get(contexts, substitution->target_context);
+			if (!target) {
+				return -1;
+			}
+			if (target->binder_id == target_binder) {
+				*p_term = substitution->term;
+				return 0;
+			}
+			return prototype_substitution_lookup_term(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				substitution->first,
+				target_binder,
+				p_term
+			);
+		}
+		case PROTOTYPE_SUBSTITUTION_COMPOSE: {
+			uint32_t middle_term;
+			if (prototype_substitution_lookup_term(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				substitution->first,
+				target_binder,
+				&middle_term
+			) != 0) {
+				return -1;
+			}
+			return prototype_term_reindex(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				middle_term,
+				substitution->second,
+				p_term
+			);
+		}
+		default:
+			return -1;
+	}
+}
+
 void prototype_operation_graph_init(
 	struct prototype_operation_graph* graph,
 	struct prototype_operation_node* operations,
@@ -1865,6 +2568,10 @@ void prototype_compile_metadata_init(
 	size_t resolution_iteration_capacity,
 	struct prototype_resolution_event* resolution_events,
 	size_t resolution_event_capacity,
+	struct prototype_context* contexts,
+	size_t context_capacity,
+	struct prototype_substitution* substitutions,
+	size_t substitution_capacity,
 	struct prototype_operation_node* operations,
 	size_t operation_capacity,
 	struct prototype_operation_match_case* operation_cases,
@@ -1878,6 +2585,12 @@ void prototype_compile_metadata_init(
 	metadata->compile_policy = PROTOTYPE_COMPILE_POLICY_HYBRID;
 	metadata->normalization_step_limit = PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT;
 	metadata->solver_step_limit = PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT;
+	prototype_context_db_init(&metadata->contexts, contexts, context_capacity);
+	prototype_substitution_db_init(
+		&metadata->substitutions,
+		substitutions,
+		substitution_capacity
+	);
 	metadata->labels = labels;
 	metadata->label_capacity = label_capacity;
 	metadata->type_exports = type_exports;
@@ -2954,14 +3667,27 @@ static int write_artifact_term(
 					symbol_to_string(symbols, term->as.external_ref.name.name_symbol_id)
 				);
 				break;
-			case PROTOTYPE_TERM_OPERATION:
+			case PROTOTYPE_TERM_PURE_PRIMITIVE:
 				fprintf(
 					stream,
 					" %s %s",
-					symbol_to_string(symbols, term->as.operation.symbol_id),
-				term->as.operation.type_symbol_id >= 0 ?
-					symbol_to_string(symbols, term->as.operation.type_symbol_id) :
+					prototype_intrinsic_namespace_source_name(
+						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+						term->as.pure_primitive.primitive_id
+					),
+				term->as.pure_primitive.type_symbol_id >= 0 ?
+					symbol_to_string(symbols, term->as.pure_primitive.type_symbol_id) :
 					"-"
+				);
+				break;
+			case PROTOTYPE_TERM_EFFECT_OPERATION:
+				fprintf(
+					stream,
+					" %s",
+					prototype_intrinsic_namespace_source_name(
+						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
+						term->as.effect_operation.operation_id
+					)
 				);
 				break;
 			case PROTOTYPE_TERM_EFFECT_LABEL:
@@ -3045,6 +3771,146 @@ struct artifact_graph_marks {
 	size_t relation_count;
 	size_t proof_count;
 };
+
+struct artifact_context_slice {
+	unsigned char* reachable;
+	uint32_t* relocation;
+	size_t source_count;
+	size_t context_count;
+};
+
+static int artifact_constructor_present(
+	const struct prototype_type_constructor_declaration* constructor
+);
+static int artifact_relation_present(
+	const struct prototype_judgement_relation* relation
+);
+
+static void artifact_context_slice_free(struct artifact_context_slice* slice) {
+	if (!slice) {
+		return;
+	}
+	free(slice->reachable);
+	free(slice->relocation);
+	memset(slice, 0, sizeof(*slice));
+}
+
+static int artifact_context_slice_mark(
+	struct artifact_context_slice* slice,
+	const struct prototype_context_db* contexts,
+	uint32_t context_id
+) {
+	if (!slice || !contexts || context_id >= contexts->context_count) {
+		return -1;
+	}
+	while (context_id != prototype_context_empty(contexts)) {
+		const struct prototype_context* context =
+			prototype_context_get(contexts, context_id);
+		if (!context) {
+			return -1;
+		}
+		slice->reachable[context_id] = 1;
+		context_id = context->parent;
+	}
+	slice->reachable[prototype_context_empty(contexts)] = 1;
+	return 0;
+}
+
+static int artifact_context_slice_init(
+	struct artifact_context_slice* slice,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_compile_metadata* metadata
+) {
+	if (!slice || !type_declarations || !judgement || !metadata ||
+		metadata->contexts.context_count == 0) {
+		return -1;
+	}
+	memset(slice, 0, sizeof(*slice));
+	slice->source_count = metadata->contexts.context_count;
+	slice->reachable = calloc(slice->source_count, sizeof(*slice->reachable));
+	slice->relocation = malloc(
+		slice->source_count * sizeof(*slice->relocation)
+	);
+	if (!slice->reachable || !slice->relocation) {
+		artifact_context_slice_free(slice);
+		return -1;
+	}
+	for (size_t i = 0; i < slice->source_count; ++i) {
+		slice->relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	if (artifact_context_slice_mark(
+		slice, &metadata->contexts, prototype_context_empty(&metadata->contexts)
+	) != 0) {
+		artifact_context_slice_free(slice);
+		return -1;
+	}
+	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
+		const struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->constructor_declarations[i];
+		if (!artifact_constructor_present(constructor)) {
+			continue;
+		}
+		if (artifact_context_slice_mark(
+				slice, &metadata->contexts, constructor->parameter_context
+			) != 0 || artifact_context_slice_mark(
+				slice, &metadata->contexts, constructor->field_context
+			) != 0) {
+			artifact_context_slice_free(slice);
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < judgement->relation_count; ++i) {
+		if (artifact_relation_present(&judgement->relations[i]) &&
+			artifact_context_slice_mark(
+				slice,
+				&metadata->contexts,
+				judgement->relations[i].context_id
+			) != 0) {
+			artifact_context_slice_free(slice);
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < metadata->operation_count; ++i) {
+		if (artifact_context_slice_mark(
+			slice, &metadata->contexts, metadata->operations[i].context_id
+		) != 0) {
+			artifact_context_slice_free(slice);
+			return -1;
+		}
+	}
+	for (size_t i = 0;
+		i < metadata->substitutions.substitution_count;
+		++i) {
+		const struct prototype_substitution* substitution =
+			&metadata->substitutions.substitutions[i];
+		if (artifact_context_slice_mark(
+				slice, &metadata->contexts, substitution->source_context
+			) != 0 || artifact_context_slice_mark(
+				slice, &metadata->contexts, substitution->target_context
+			) != 0) {
+			artifact_context_slice_free(slice);
+			return -1;
+		}
+	}
+	for (uint32_t i = 0; i < slice->source_count; ++i) {
+		if (slice->reachable[i]) {
+			slice->relocation[i] = (uint32_t)slice->context_count++;
+		}
+	}
+	return 0;
+}
+
+static uint32_t artifact_context_slice_relocate(
+	const struct artifact_context_slice* slice,
+	uint32_t context_id
+) {
+	if (!slice || context_id >= slice->source_count ||
+		!slice->reachable[context_id]) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	return slice->relocation[context_id];
+}
 
 static int artifact_type_present(const struct prototype_type_declaration* type) {
 	return type && type->type_index != PROTOTYPE_INVALID_ID;
@@ -3274,14 +4140,18 @@ static int artifact_mark_constructor(
 			return -1;
 		}
 	}
-	if (constructor->classifier_family != PROTOTYPE_INVALID_ID &&
+	if ((constructor->result_classifier != PROTOTYPE_INVALID_ID &&
+			artifact_mark_term(
+				marks, terms, constructor->result_classifier, depth + 1
+			) != 0) ||
+		(constructor->classifier_family != PROTOTYPE_INVALID_ID &&
 		(artifact_mark_term(marks, terms, constructor->classifier_family, depth + 1) != 0 ||
 			artifact_mark_subject_relations(
 				marks,
 				terms,
 				marks->judgement,
 				constructor->classifier_family
-			) != 0)) {
+			) != 0))) {
 		return -1;
 	}
 	return 0;
@@ -3752,9 +4622,11 @@ static int write_artifact_graph_section(
 	const struct symbol_table* symbols,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_judgement_db* judgement,
+	const struct artifact_context_slice* context_slice
 ) {
-	if (!stream || !symbols || !terms || !type_declarations || !judgement) {
+	if (!stream || !symbols || !terms || !type_declarations || !judgement ||
+		!context_slice) {
 		return -1;
 	}
 	fprintf(stream, "SECTION graph\n");
@@ -3900,7 +4772,7 @@ static int write_artifact_graph_section(
 		}
 		fprintf(
 			stream,
-			"type_constructor %zu %s %u %u %u %u %u %u\n",
+			"type_constructor %zu %s %u %u %u %u %u %u %u %u %u\n",
 			i,
 			symbol_to_string(symbols, constructor->name_symbol_id),
 				constructor->owner_type,
@@ -3908,6 +4780,13 @@ static int write_artifact_graph_section(
 				constructor->readback.first_field_type,
 				constructor->readback.field_count,
 				constructor->readback.result_type,
+				artifact_context_slice_relocate(
+					context_slice, constructor->parameter_context
+				),
+				artifact_context_slice_relocate(
+					context_slice, constructor->field_context
+				),
+				constructor->result_classifier,
 				constructor->classifier_family
 			);
 	}
@@ -4004,13 +4883,16 @@ static int write_artifact_graph_section(
 		}
 		fprintf(
 			stream,
-			"judgement %zu %d %u %u %d %u\n",
+			"judgement %zu %d %u %u %d %u %u\n",
 			i,
 			relation->kind,
 			relation->subject,
 			relation->classifier,
 			relation->proof_kind,
-			relation->proof_id
+			relation->proof_id,
+			artifact_context_slice_relocate(
+				context_slice, relation->context_id
+			)
 		);
 	}
 	fprintf(stream, "proofs %zu\n", present_proof_count);
@@ -4041,6 +4923,22 @@ static int write_artifact_graph_section(
 				proof->premise_subjects[j],
 				proof->premise_classifiers[j],
 				proof->premise_proof_ids[j]
+			);
+		}
+		fprintf(
+			stream,
+			" contexts %u",
+			artifact_context_slice_relocate(
+				context_slice, proof->conclusion_context_id
+			)
+		);
+		for (uint32_t j = 0; j < proof->premise_count; ++j) {
+			fprintf(
+				stream,
+				" %u",
+				artifact_context_slice_relocate(
+					context_slice, proof->premise_context_ids[j]
+				)
 			);
 		}
 		fprintf(stream, "\n");
@@ -5092,6 +5990,12 @@ static void artifact_init_sparse_defaults(struct artifact_sparse_graph* graph) {
 			PROTOTYPE_INVALID_ID;
 		graph->type_declarations.constructor_declarations[i].readback.result_type =
 			PROTOTYPE_INVALID_ID;
+		graph->type_declarations.constructor_declarations[i].parameter_context =
+			PROTOTYPE_INVALID_ID;
+		graph->type_declarations.constructor_declarations[i].field_context =
+			PROTOTYPE_INVALID_ID;
+		graph->type_declarations.constructor_declarations[i].result_classifier =
+			PROTOTYPE_INVALID_ID;
 		graph->type_declarations.constructor_declarations[i].classifier_family =
 			PROTOTYPE_INVALID_ID;
 	}
@@ -5244,8 +6148,92 @@ static int artifact_mark_roots(
 		}
 	}
 	if (metadata) {
-			for (size_t i = 0; i < metadata->operation_count; ++i) {
+		unsigned char reachable_contexts[PROTOTYPE_CONTEXT_CAPACITY];
+		memset(reachable_contexts, 0, sizeof(reachable_contexts));
+		reachable_contexts[prototype_context_empty(&metadata->contexts)] = 1;
+		for (size_t i = 0; i < interface->type_export_count; ++i) {
+			uint32_t type_id = interface->type_exports[i].local_type_id;
+			if (type_id >= type_declarations->type_count) {
+				return -1;
+			}
+			const struct prototype_type_declaration* type =
+				&type_declarations->type_declarations[type_id];
+			for (uint32_t j = 0; j < type->constructor_count; ++j) {
+				const struct prototype_type_constructor_declaration* constructor =
+					&type_declarations->constructor_declarations[
+						type->first_constructor + j
+					];
+				uint32_t context_ids[] = {
+					constructor->parameter_context,
+					constructor->field_context
+				};
+				for (size_t k = 0; k < 2; ++k) {
+					uint32_t context_id = context_ids[k];
+					while (context_id != prototype_context_empty(
+						&metadata->contexts
+					)) {
+						const struct prototype_context* context =
+							prototype_context_get(
+								&metadata->contexts, context_id
+							);
+						if (!context || context_id >= PROTOTYPE_CONTEXT_CAPACITY) {
+							return -1;
+						}
+						reachable_contexts[context_id] = 1;
+						context_id = context->parent;
+					}
+				}
+			}
+		}
+		for (size_t i = 0;
+			i < metadata->substitutions.substitution_count;
+			++i) {
+			const struct prototype_substitution* substitution =
+				prototype_substitution_get(
+					&metadata->substitutions, (uint32_t)i
+				);
+			if (!substitution ||
+				(substitution->term != PROTOTYPE_INVALID_ID &&
+					artifact_mark_term(
+						marks, terms, substitution->term, 0
+					) != 0) ||
+				(substitution->term_classifier != PROTOTYPE_INVALID_ID &&
+					artifact_mark_term(
+						marks, terms, substitution->term_classifier, 0
+					) != 0)) {
+				return -1;
+			}
+			uint32_t context_ids[] = {
+				substitution->source_context,
+				substitution->target_context
+			};
+			for (size_t j = 0; j < 2; ++j) {
+				uint32_t context_id = context_ids[j];
+				while (context_id != prototype_context_empty(
+					&metadata->contexts
+				)) {
+					const struct prototype_context* context =
+						prototype_context_get(&metadata->contexts, context_id);
+					if (!context || context_id >= PROTOTYPE_CONTEXT_CAPACITY) {
+						return -1;
+					}
+					reachable_contexts[context_id] = 1;
+					context_id = context->parent;
+				}
+			}
+		}
+		for (size_t i = 0; i < metadata->operation_count; ++i) {
 			const struct prototype_operation_node* operation = &metadata->operations[i];
+			uint32_t context_id = operation->context_id;
+			while (context_id != prototype_context_empty(&metadata->contexts)) {
+				const struct prototype_context* context =
+					prototype_context_get(&metadata->contexts, context_id);
+				if (!context || context_id >= PROTOTYPE_CONTEXT_CAPACITY) {
+					return -1;
+				}
+				reachable_contexts[context_id] = 1;
+				context_id = context->parent;
+			}
 			uint32_t references[] = {
 				operation->core_term,
 				operation->known_classifier,
@@ -5297,6 +6285,35 @@ static int artifact_mark_roots(
 					artifact_mark_term(marks, terms, references[j], 0) != 0) {
 					return -1;
 				}
+			}
+		}
+		for (size_t i = 0; i < marks->relation_count; ++i) {
+			if (!marks->relations[i]) {
+				continue;
+			}
+			uint32_t context_id = judgement->relations[i].context_id;
+			while (context_id != prototype_context_empty(&metadata->contexts)) {
+				const struct prototype_context* context =
+					prototype_context_get(&metadata->contexts, context_id);
+				if (!context || context_id >= PROTOTYPE_CONTEXT_CAPACITY) {
+					return -1;
+				}
+				reachable_contexts[context_id] = 1;
+				context_id = context->parent;
+			}
+		}
+		for (uint32_t i = 1; i < metadata->contexts.context_count; ++i) {
+			if (!reachable_contexts[i]) {
+				continue;
+			}
+			const struct prototype_context* context =
+				prototype_context_get(&metadata->contexts, i);
+			if (!context ||
+				(context->classifier != PROTOTYPE_INVALID_ID &&
+					artifact_mark_term(
+						marks, terms, context->classifier, 0
+					) != 0)) {
+				return -1;
 			}
 		}
 	}
@@ -5617,9 +6634,13 @@ static const char* artifact_optional_symbol_name(
 static int write_artifact_operation_graph_section(
 	FILE* stream,
 	const struct symbol_table* symbols,
-	const struct prototype_compile_metadata* metadata
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_compile_metadata* metadata,
+	const struct artifact_context_slice* context_slice
 ) {
-	if (!stream || !symbols) {
+	if (!stream || !symbols || !type_declarations || !judgement ||
+		!metadata || !context_slice) {
 		return -1;
 	}
 	struct prototype_operation_graph graph;
@@ -5645,6 +6666,52 @@ static int write_artifact_operation_graph_section(
 		metadata ? metadata->solver_residual_count : 0,
 		metadata ? metadata->solver_incomplete_count : 0
 	);
+	fprintf(stream, "contexts %zu\n", context_slice->context_count);
+	for (size_t i = 0; i < metadata->contexts.context_count; ++i) {
+		if (!context_slice->reachable[i]) {
+			continue;
+		}
+		const struct prototype_context* context =
+			&metadata->contexts.contexts[i];
+		fprintf(
+			stream,
+			"context %zu %u %u %u %u %u\n",
+			(size_t)context_slice->relocation[i],
+			context->parent == PROTOTYPE_INVALID_ID ?
+				PROTOTYPE_INVALID_ID :
+				artifact_context_slice_relocate(
+					context_slice, context->parent
+				),
+			context->binder_id,
+			context->classifier,
+			context->classifier_variable,
+			context->depth
+		);
+	}
+	size_t substitution_count = metadata ?
+		metadata->substitutions.substitution_count : 0;
+	fprintf(stream, "substitutions %zu\n", substitution_count);
+	for (size_t i = 0; i < substitution_count; ++i) {
+		const struct prototype_substitution* substitution =
+			&metadata->substitutions.substitutions[i];
+		fprintf(
+			stream,
+			"substitution %zu %d %u %u %u %u %u %u %u\n",
+			i,
+			substitution->kind,
+			artifact_context_slice_relocate(
+				context_slice, substitution->source_context
+			),
+			artifact_context_slice_relocate(
+				context_slice, substitution->target_context
+			),
+			substitution->first,
+			substitution->second,
+			substitution->term,
+			substitution->term_classifier,
+			substitution->term_proof_id
+		);
+	}
 	fprintf(stream, "operations %zu\n", operation_count);
 	for (size_t i = 0; i < operation_count; ++i) {
 		const struct prototype_operation_node* operation =
@@ -5664,7 +6731,7 @@ static int write_artifact_operation_graph_section(
 		fprintf(
 			stream,
 			"operation %zu %d %d %d %u %u %u %u %u %s %s %u %u %u %u %u %u"
-			" %u %u %u %u %u %u %u %u %u\n",
+			" %u %u %u %u %u %u %u %u %u %u\n",
 			i,
 			operation->tag,
 			operation->polarity,
@@ -5690,7 +6757,10 @@ static int write_artifact_operation_graph_section(
 			operation->handler_return_binder_id,
 			operation->implicit_effect_row_count,
 			operation->first_case,
-			operation->case_count
+			operation->case_count,
+			artifact_context_slice_relocate(
+				context_slice, operation->context_id
+			)
 		);
 		fprintf(stream, "operation_rows %zu", i);
 		for (uint32_t j = 0; j < operation->implicit_effect_row_count; ++j) {
@@ -5788,7 +6858,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 47\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 50\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -5951,18 +7021,38 @@ static int prototype_artifact_write_text_body(
 	}
 	fprintf(stream, "END interface\n");
 
+	struct artifact_context_slice context_slice;
+	if (artifact_context_slice_init(
+		&context_slice,
+		type_declarations,
+		judgement,
+		metadata
+	) != 0) {
+		return -1;
+	}
 	if (write_artifact_graph_section(
 			stream,
 			symbols,
 			terms,
 			type_declarations,
-			judgement
+			judgement,
+			&context_slice
 		) != 0) {
+		artifact_context_slice_free(&context_slice);
 		return -1;
 	}
-	if (write_artifact_operation_graph_section(stream, symbols, metadata) != 0) {
+	if (write_artifact_operation_graph_section(
+		stream,
+		symbols,
+		type_declarations,
+		judgement,
+		metadata,
+		&context_slice
+	) != 0) {
+		artifact_context_slice_free(&context_slice);
 		return -1;
 	}
+	artifact_context_slice_free(&context_slice);
 	if (write_artifact_universe_section(stream, universe) != 0) {
 		return -1;
 	}
@@ -5992,6 +7082,16 @@ int prototype_artifact_write_text(
 ) {
 	if (!stream || !symbols || !interface || !terms || !type_declarations || !judgement ||
 		!universe) {
+		return -1;
+	}
+	if (metadata &&
+		(prototype_context_db_validate(&metadata->contexts, terms) != 0 ||
+		 prototype_substitution_db_validate(
+			&metadata->substitutions, &metadata->contexts, terms
+		 ) != 0 ||
+		 prototype_constructor_telescopes_validate(
+			type_declarations, &metadata->contexts, terms
+		 ) != 0)) {
 		return -1;
 	}
 	struct artifact_sparse_graph sparse_graph;
@@ -6088,7 +7188,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 47) {
+		version != 50) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -6651,16 +7751,41 @@ static int read_artifact_term(
 					&term->as.external_ref.name.namespace_symbol_id
 				) == 0 &&
 					read_artifact_symbol(stream, symbols, &term->as.external_ref.name.name_symbol_id) == 0 ? 0 : -1;
-			case PROTOTYPE_TERM_OPERATION:
-				if (read_artifact_symbol(stream, symbols, &term->as.operation.symbol_id) != 0 ||
-					read_artifact_optional_symbol(stream, symbols, &term->as.operation.type_symbol_id) != 0 ||
-					prototype_term_operation_from_source_name(
-						symbol_to_string(symbols, term->as.operation.symbol_id),
-						&term->as.operation.operation_id
-					) != 0) {
-					return -1;
+			case PROTOTYPE_TERM_PURE_PRIMITIVE:
+				{
+					int symbol_id;
+					if (read_artifact_symbol(stream, symbols, &symbol_id) != 0 ||
+					read_artifact_optional_symbol(stream, symbols, &term->as.pure_primitive.type_symbol_id) != 0) {
+						return -1;
+					}
+					struct prototype_intrinsic_namespace_binding binding;
+					if (prototype_intrinsic_namespace_lookup(
+							symbol_to_string(symbols, symbol_id),
+							&binding
+						) != 0 ||
+						binding.kind != PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE) {
+						return -1;
+					}
+					term->as.pure_primitive.primitive_id = binding.target_id;
+					return 0;
 				}
-				return 0;
+			case PROTOTYPE_TERM_EFFECT_OPERATION:
+				{
+					int symbol_id;
+					if (read_artifact_symbol(stream, symbols, &symbol_id) != 0) {
+						return -1;
+					}
+					struct prototype_intrinsic_namespace_binding binding;
+					if (prototype_intrinsic_namespace_lookup(
+							symbol_to_string(symbols, symbol_id),
+							&binding
+						) != 0 ||
+						binding.kind != PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION) {
+						return -1;
+					}
+					term->as.effect_operation.operation_id = binding.target_id;
+					return 0;
+				}
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return fscanf(stream, "%u", &term->as.effect_label.effects) == 1 ? 0 : -1;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -6901,6 +8026,8 @@ static int artifact_validate_type_graph_refs(
 			continue;
 		}
 		if (!artifact_read_type_present(type_declarations, constructor->owner_type) ||
+			constructor->result_classifier == PROTOTYPE_INVALID_ID ||
+			!artifact_read_term_present(terms, constructor->result_classifier) ||
 			constructor->classifier_family == PROTOTYPE_INVALID_ID ||
 			!artifact_read_term_present(terms, constructor->classifier_family)) {
 			return -1;
@@ -6946,7 +8073,8 @@ static int artifact_validate_term_refs(
 			case PROTOTYPE_TERM_PRIMITIVE_INT64:
 			case PROTOTYPE_TERM_INT_LITERAL:
 				case PROTOTYPE_TERM_EXTERNAL_REF:
-				case PROTOTYPE_TERM_OPERATION:
+				case PROTOTYPE_TERM_PURE_PRIMITIVE:
+				case PROTOTYPE_TERM_EFFECT_OPERATION:
 				case PROTOTYPE_TERM_EFFECT_LABEL:
 				case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 					return 0;
@@ -7157,7 +8285,10 @@ static int artifact_validate_judgement_graph_refs(
 		if (!artifact_read_term_present(terms, proof->conclusion_subject) ||
 			!artifact_read_term_present(terms, proof->conclusion_classifier) ||
 			proof->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
-			(proof->context_kind != PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_NONE &&
+			((proof->context_kind ==
+					PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_LAMBDA_BINDER ||
+				proof->context_kind ==
+					PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_MATCH_CASE_FIELD) &&
 				!artifact_read_term_present(terms, proof->context_subject))) {
 			return -1;
 		}
@@ -7429,6 +8560,12 @@ int prototype_artifact_read_text_graph(
 			PROTOTYPE_INVALID_ID;
 		type_declarations->constructor_declarations[i].readback.result_type =
 			PROTOTYPE_INVALID_ID;
+		type_declarations->constructor_declarations[i].parameter_context =
+			PROTOTYPE_INVALID_ID;
+		type_declarations->constructor_declarations[i].field_context =
+			PROTOTYPE_INVALID_ID;
+		type_declarations->constructor_declarations[i].result_classifier =
+			PROTOTYPE_INVALID_ID;
 		type_declarations->constructor_declarations[i].classifier_family = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < field_type_slot_count; ++i) {
@@ -7519,8 +8656,26 @@ int prototype_artifact_read_text_graph(
 		uint32_t first_field_type;
 		uint32_t field_count;
 		uint32_t result_type;
+		uint32_t parameter_context;
+		uint32_t field_context;
+		uint32_t result_classifier;
 		uint32_t classifier_family;
-		if (fscanf(stream, "%255s %zu %255s %u %u %u %u %u %u", word, &id, name, &owner_type, &constructor_index, &first_field_type, &field_count, &result_type, &classifier_family) != 9 ||
+		if (fscanf(
+				stream,
+				"%255s %zu %255s %u %u %u %u %u %u %u %u %u",
+				word,
+				&id,
+				name,
+				&owner_type,
+				&constructor_index,
+				&first_field_type,
+				&field_count,
+				&result_type,
+				&parameter_context,
+				&field_context,
+				&result_classifier,
+				&classifier_family
+			) != 12 ||
 			strcmp(word, "type_constructor") != 0 ||
 				id >= constructor_slot_count ||
 				owner_type >= type_slot_count ||
@@ -7530,6 +8685,7 @@ int prototype_artifact_read_text_graph(
 						first_field_type, field_count, field_type_slot_count
 					))) ||
 				(result_type != PROTOTYPE_INVALID_ID && result_type >= expr_slot_count) ||
+				result_classifier >= term_slot_count ||
 				(classifier_family != PROTOTYPE_INVALID_ID &&
 					classifier_family >= term_slot_count)) {
 			return -1;
@@ -7548,6 +8704,9 @@ int prototype_artifact_read_text_graph(
 		constructor->readback.first_field_type = first_field_type;
 		constructor->readback.field_count = field_count;
 		constructor->readback.result_type = result_type;
+		constructor->parameter_context = parameter_context;
+		constructor->field_context = field_context;
+		constructor->result_classifier = result_classifier;
 		constructor->classifier_family = classifier_family;
 	}
 	type_declarations->constructor_count = constructor_slot_count;
@@ -7717,15 +8876,16 @@ int prototype_artifact_read_text_graph(
 		struct prototype_judgement_relation read_relation;
 		if (fscanf(
 				stream,
-				"%255s %zu %d %u %u %d %u",
+				"%255s %zu %d %u %u %d %u %u",
 				word,
 				&id,
 				&read_relation.kind,
 				&read_relation.subject,
 				&read_relation.classifier,
 				&read_relation.proof_kind,
-				&read_relation.proof_id
-			) != 7 ||
+				&read_relation.proof_id,
+				&read_relation.context_id
+			) != 8 ||
 			strcmp(word, "judgement") != 0 ||
 				id >= judgement_slot_count ||
 				read_relation.proof_id >= proof_slot_count) {
@@ -7781,6 +8941,20 @@ int prototype_artifact_read_text_graph(
 				return -1;
 			}
 		}
+		if (fscanf(
+				stream,
+				"%255s %u",
+				word,
+				&proof->conclusion_context_id
+			) != 2 ||
+			strcmp(word, "contexts") != 0) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < proof->premise_count; ++j) {
+			if (fscanf(stream, "%u", &proof->premise_context_ids[j]) != 1) {
+				return -1;
+			}
+		}
 		}
 		judgement->proof_count = proof_slot_count;
 		if (prototype_type_declaration_rebuild_representations(terms, type_declarations) != 0) {
@@ -7826,6 +9000,8 @@ int prototype_artifact_read_text_operation_graph(
 	int compile_policy;
 	uint64_t required_runtime_capabilities;
 	size_t operation_count;
+	size_t context_count;
+	size_t substitution_count;
 	size_t case_count;
 	size_t effect_constraint_count;
 	size_t obligation_count;
@@ -7854,6 +9030,91 @@ int prototype_artifact_read_text_operation_graph(
 		 compile_policy > PROTOTYPE_COMPILE_POLICY_EXPLORATORY) ||
 		(solver_exhausted != 0 && solver_exhausted != 1) ||
 		solver_exhausted != 0 || solver_incomplete_count != 0 ||
+		expect_artifact_count(stream, "contexts", &context_count) != 0 ||
+		(metadata && context_count > metadata->contexts.context_capacity)) {
+		return -1;
+	}
+	if (metadata) {
+		metadata->contexts.context_count = 0;
+	}
+	for (size_t i = 0; i < context_count; ++i) {
+		size_t id;
+		struct prototype_context context;
+		if (fscanf(
+				stream,
+				"%255s %zu %u %u %u %u %u",
+				word,
+				&id,
+				&context.parent,
+				&context.binder_id,
+				&context.classifier,
+				&context.classifier_variable,
+				&context.depth
+			) != 7 ||
+			strcmp(word, "context") != 0 ||
+			id != i ||
+			(metadata && (
+				context.classifier != PROTOTYPE_INVALID_ID &&
+				context.classifier >= terms->term_count))) {
+			return -1;
+		}
+		if (metadata) {
+			metadata->contexts.contexts[i] = context;
+			metadata->contexts.context_count++;
+		}
+	}
+	if ((metadata && prototype_context_db_validate(
+			&metadata->contexts, terms
+		) != 0) ||
+		expect_artifact_count(stream, "substitutions", &substitution_count) != 0 ||
+		(metadata &&
+			substitution_count > metadata->substitutions.substitution_capacity)) {
+		return -1;
+	}
+	if (metadata) {
+		metadata->substitutions.substitution_count = 0;
+	}
+	for (size_t i = 0; i < substitution_count; ++i) {
+		size_t id;
+		struct prototype_substitution substitution;
+		if (fscanf(
+				stream,
+				"%255s %zu %d %u %u %u %u %u %u %u",
+				word,
+				&id,
+				&substitution.kind,
+				&substitution.source_context,
+				&substitution.target_context,
+				&substitution.first,
+				&substitution.second,
+				&substitution.term,
+				&substitution.term_classifier,
+				&substitution.term_proof_id
+			) != 10 ||
+			strcmp(word, "substitution") != 0 ||
+			id != i ||
+			substitution.source_context >= context_count ||
+			substitution.target_context >= context_count ||
+			(substitution.term != PROTOTYPE_INVALID_ID &&
+				substitution.term >= terms->term_count) ||
+			(substitution.term_classifier != PROTOTYPE_INVALID_ID &&
+				substitution.term_classifier >= terms->term_count) ||
+			(substitution.first != PROTOTYPE_INVALID_ID &&
+				substitution.first >= i) ||
+			(substitution.second != PROTOTYPE_INVALID_ID &&
+				substitution.second >= i)) {
+			return -1;
+		}
+		if (metadata) {
+			metadata->substitutions.substitutions[i] = substitution;
+			metadata->substitutions.substitution_count++;
+		}
+	}
+	if ((metadata && prototype_substitution_db_validate(
+			&metadata->substitutions,
+			&metadata->contexts,
+			terms
+		) != 0) ||
 		expect_artifact_count(stream, "operations", &operation_count) != 0 ||
 		(metadata && operation_count > graph.operation_capacity)) {
 		return -1;
@@ -7882,7 +9143,7 @@ int prototype_artifact_read_text_operation_graph(
 		char binder_name[256];
 		memset(&operation, 0, sizeof(operation));
 	if (fscanf(stream, "%255s %zu %d %d %d %u %u %u %u %u %255s %255s"
-				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
 				word, &id, &operation.tag, &operation.polarity, &operation.computation_kind,
 				&operation.core_term, &operation.known_classifier, &operation.classifier,
 				&operation.classifier_variable, &operation.source_ast, source_name, binder_name,
@@ -7895,8 +9156,12 @@ int prototype_artifact_read_text_operation_graph(
 				&operation.handler_return_ast_binder_id,
 				&operation.handler_return_binder_id,
 				&operation.implicit_effect_row_count,
-				&operation.first_case, &operation.case_count) != 27 ||
+				&operation.first_case, &operation.case_count,
+				&operation.context_id) != 28 ||
 			strcmp(word, "operation") != 0 || id != i) {
+			return -1;
+		}
+		if (metadata && operation.context_id >= context_count) {
 			return -1;
 		}
 		if (strcmp(source_name, "-") == 0) {
@@ -9372,14 +10637,20 @@ int prototype_artifact_append_graph(
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
+	struct prototype_context_db* target_contexts,
+	struct prototype_substitution_db* target_substitutions,
 	const struct prototype_artifact_interface* source_interface,
 	const struct prototype_term_db* source_terms,
 	const struct prototype_type_declaration_db* source_type_declarations,
-	const struct prototype_judgement_db* source_judgement
+	const struct prototype_judgement_db* source_judgement,
+	const struct prototype_context_db* source_contexts,
+	const struct prototype_substitution_db* source_substitutions
 ) {
 	if (!appended_interface || !target_terms || !target_type_declarations ||
-		!target_judgement || !source_interface || !source_terms ||
-		!source_type_declarations || !source_judgement) {
+		!target_judgement || !target_contexts || !target_substitutions ||
+		!source_interface ||
+		!source_terms || !source_type_declarations || !source_judgement ||
+		!source_contexts || !source_substitutions) {
 		return -1;
 	}
 
@@ -9395,11 +10666,33 @@ int prototype_artifact_append_graph(
 	uint32_t expr_offset = (uint32_t)target_type_declarations->expr_count;
 	uint32_t binder_offset = target_terms->next_binder_id;
 	uint32_t universe_offset = target_type_declarations->next_level_var;
+	uint32_t proof_offset = (uint32_t)target_judgement->proof_count;
+	uint32_t context_relocation[PROTOTYPE_CONTEXT_CAPACITY];
 	uint32_t target_representation_anchors[512];
 	uint32_t source_representation_anchors[512];
 	size_t old_target_representation_count = target_type_declarations->representation_count;
 	size_t source_representation_count = source_type_declarations->representation_count;
 	if (old_target_representation_count > 512 || source_representation_count > 512) {
+		return -1;
+	}
+	if (prototype_context_db_append_relocated(
+		target_contexts,
+		source_contexts,
+		term_offset,
+		binder_offset,
+		context_relocation,
+		PROTOTYPE_CONTEXT_CAPACITY
+	) != 0) {
+		return -1;
+	}
+	if (prototype_substitution_db_append_relocated(
+		target_substitutions,
+		source_substitutions,
+		context_relocation,
+		source_contexts->context_count,
+		term_offset,
+		proof_offset
+	) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < old_target_representation_count; ++i) {
@@ -9468,6 +10761,16 @@ int prototype_artifact_append_graph(
 				offset_artifact_id(constructor.readback.first_field_type, field_type_offset);
 			constructor.readback.result_type =
 				offset_artifact_id(constructor.readback.result_type, expr_offset);
+			if (constructor.parameter_context >= source_contexts->context_count ||
+				constructor.field_context >= source_contexts->context_count) {
+				return -1;
+			}
+			constructor.parameter_context =
+				context_relocation[constructor.parameter_context];
+			constructor.field_context =
+				context_relocation[constructor.field_context];
+			constructor.result_classifier =
+				offset_artifact_id(constructor.result_classifier, term_offset);
 			constructor.classifier_family =
 				offset_artifact_id(constructor.classifier_family, term_offset);
 		}
@@ -9560,13 +10863,16 @@ int prototype_artifact_append_graph(
 			target_type_declarations->type_declarations[anchor_type_id].representation_id;
 	}
 
-	uint32_t proof_offset = (uint32_t)target_judgement->proof_count;
 	for (size_t i = 0; i < source_judgement->relation_count; ++i) {
 		struct prototype_judgement_relation relation = source_judgement->relations[i];
 		if (relation.kind != PROTOTYPE_JUDGEMENT_KIND_UNKNOWN) {
 			relation.subject = offset_artifact_id(relation.subject, term_offset);
 			relation.classifier = offset_artifact_id(relation.classifier, term_offset);
 			relation.proof_id = offset_artifact_id(relation.proof_id, proof_offset);
+			if (relation.context_id >= source_contexts->context_count) {
+				return -1;
+			}
+			relation.context_id = context_relocation[relation.context_id];
 		}
 		target_judgement->relations[target_judgement->relation_count++] = relation;
 	}
@@ -9575,6 +10881,11 @@ int prototype_artifact_append_graph(
 		if (proof.proof_kind != PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
 			proof.conclusion_subject = offset_artifact_id(proof.conclusion_subject, term_offset);
 			proof.conclusion_classifier = offset_artifact_id(proof.conclusion_classifier, term_offset);
+			if (proof.conclusion_context_id >= source_contexts->context_count) {
+				return -1;
+			}
+			proof.conclusion_context_id =
+				context_relocation[proof.conclusion_context_id];
 			proof.context_subject = offset_artifact_id(proof.context_subject, term_offset);
 			if (proof.context_kind == PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_LAMBDA_BINDER &&
 				proof.context_index != PROTOTYPE_INVALID_ID) {
@@ -9587,6 +10898,11 @@ int prototype_artifact_append_graph(
 					offset_artifact_id(proof.premise_classifiers[j], term_offset);
 				proof.premise_proof_ids[j] =
 					offset_artifact_id(proof.premise_proof_ids[j], proof_offset);
+				if (proof.premise_context_ids[j] >= source_contexts->context_count) {
+					return -1;
+				}
+				proof.premise_context_ids[j] =
+					context_relocation[proof.premise_context_ids[j]];
 			}
 		}
 		target_judgement->proofs[target_judgement->proof_count++] = proof;
@@ -10466,7 +11782,8 @@ int prototype_ast_system_name(
 	int type_symbol_id,
 	int kind,
 	int host_type_id,
-	int operation_id,
+	int pure_primitive_id,
+	int effect_operation_id,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 ) {
@@ -10479,7 +11796,8 @@ int prototype_ast_system_name(
 	node.as.system_name.type_symbol_id = type_symbol_id;
 	node.as.system_name.kind = kind;
 	node.as.system_name.host_type_id = host_type_id;
-	node.as.system_name.operation_id = operation_id;
+	node.as.system_name.pure_primitive_id = pure_primitive_id;
+	node.as.system_name.effect_operation_id = effect_operation_id;
 	return add_node(db, node, p_ret);
 }
 
@@ -10911,6 +12229,7 @@ struct pending_imported_constructor_classifier {
 };
 
 struct pending_binder_assumption {
+	uint32_t context_id;
 	uint32_t binder_var;
 	uint32_t classifier;
 	uint32_t context_subject;
@@ -10919,6 +12238,7 @@ struct pending_binder_assumption {
 };
 
 struct pending_declaration_fact {
+	uint32_t context_id;
 	uint32_t subject;
 	uint32_t classifier;
 };
@@ -11083,20 +12403,25 @@ struct operation_classifier_solver {
 	uint32_t input_fact_count;
 };
 
+struct compile_judgement_workspace {
+	struct prototype_judgement_relation
+		relations[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
+	struct prototype_judgement_proof
+		proofs[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
+	struct prototype_judgement_match_motive_result
+		match_motive_results[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
+	struct prototype_judgement_computation_constraint
+		computation_constraints[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
+	struct prototype_judgement_effect_row_equation
+		effect_row_equations[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
+};
+
 struct compile_context {
 	struct prototype_ast_db* asts;
 	struct prototype_term_db* terms;
 	struct prototype_type_declaration_db* type_declarations;
 	struct prototype_judgement_db* judgement;
 	struct prototype_judgement_delta judgement_delta;
-	struct prototype_judgement_relation judgement_delta_relations[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
-	struct prototype_judgement_proof judgement_delta_proofs[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
-	struct prototype_judgement_match_motive_result
-		judgement_delta_match_motive_results[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
-	struct prototype_judgement_computation_constraint
-		judgement_delta_computation_constraints[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
-	struct prototype_judgement_effect_row_equation
-		judgement_delta_effect_row_equations[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
 	struct prototype_compile_metadata* metadata;
 	struct operation_classifier_solver classifier_solver;
 	struct operation_classifier_constraint
@@ -11105,6 +12430,10 @@ struct compile_context {
 	int classifier_constraints_generated;
 	struct binder_map_entry binders[512];
 	uint32_t binder_count;
+	/* context_ids[n] is the persistent context represented by the first n
+	 * entries of binders. Restoring binder_count therefore restores context
+	 * without a second mutable scope stack. */
+	uint32_t context_ids[513];
 	struct local_ref_map_entry local_refs[512];
 	uint32_t local_ref_count;
 	struct match_frame_map_entry match_frames[512];
@@ -11201,6 +12530,9 @@ static int compile_ast_handle_ref(
 	uint32_t operation_inner_lambda;
 	uint32_t operation_clause;
 	uint32_t return_clause;
+	uint32_t operation_inner_lambda_operation;
+	uint32_t operation_clause_operation;
+	uint32_t return_clause_operation;
 	uint32_t term;
 	uint32_t saved_binder_count = ctx->binder_count;
 	if (compile_ast_computation_ref(ctx, node->as.handle.computation, &computation) != 0 ||
@@ -11222,7 +12554,51 @@ static int compile_ast_handle_ref(
 		ctx->binder_count = saved_binder_count;
 		return -1;
 	}
+	ctx->binder_count = saved_binder_count + 1;
+	if (operation_add(
+			ctx,
+			PROTOTYPE_OPERATION_LAMBDA,
+			operation_inner_lambda,
+			PROTOTYPE_INVALID_ID,
+			node->as.handle.operation_body,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			operation_body.operation,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			0,
+			&operation_inner_lambda_operation
+		) != 0) {
+		ctx->binder_count = saved_binder_count;
+		return -1;
+	}
+	ctx->metadata->operations[
+		operation_inner_lambda_operation
+	].referenced_ast_binder_id =
+		node->as.handle.operation_continuation_binder_id;
 	ctx->binder_count = saved_binder_count;
+	if (operation_add(
+			ctx,
+			PROTOTYPE_OPERATION_LAMBDA,
+			operation_clause,
+			PROTOTYPE_INVALID_ID,
+			node->as.handle.operation_body,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			operation_inner_lambda_operation,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			0,
+			&operation_clause_operation
+		) != 0) {
+		return -1;
+	}
+	ctx->metadata->operations[
+		operation_clause_operation
+	].referenced_ast_binder_id =
+		node->as.handle.operation_argument_binder_id;
 	if (push_graph_binder(
 			ctx, node->as.handle.return_binder_id, PROTOTYPE_INVALID_ID,
 			node->as.handle.return_symbol_id, &return_binder
@@ -11233,6 +12609,27 @@ static int compile_ast_handle_ref(
 		ctx->binder_count = saved_binder_count;
 		return -1;
 	}
+	ctx->binder_count = saved_binder_count;
+	if (operation_add(
+			ctx,
+			PROTOTYPE_OPERATION_LAMBDA,
+			return_clause,
+			PROTOTYPE_INVALID_ID,
+			node->as.handle.return_body,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			return_body.operation,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			0,
+			&return_clause_operation
+		) != 0) {
+		return -1;
+	}
+	ctx->metadata->operations[
+		return_clause_operation
+	].referenced_ast_binder_id = node->as.handle.return_binder_id;
 	struct prototype_deep_fold_clause clause = {
 		.operation = operation.term,
 		.body = operation_clause
@@ -11888,6 +13285,7 @@ static int operation_add(
 	struct prototype_operation_node* node = &ctx->metadata->operations[operation];
 	memset(node, 0, sizeof(*node));
 	node->tag = tag;
+	node->context_id = ctx->context_ids[ctx->binder_count];
 	node->core_term = core_term;
 	node->known_classifier = classifier;
 	node->classifier = PROTOTYPE_INVALID_ID;
@@ -12171,12 +13569,18 @@ static int compile_ref_from_term(
 			ctx->terms->terms[term].tag == PROTOTYPE_TERM_LAMBDA ?
 				COMPILE_REF_COMPUTATION_KIND_FUNCTION :
 				COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
-	if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_OPERATION) {
-		if (prototype_judgement_operation_classifier(
+	if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
+		if (prototype_judgement_pure_primitive_classifier(
 				ctx->terms,
 				ctx->type_declarations,
 				&ctx->terms->terms[term],
 				&p_ref->classifier
+			) != 0) {
+			return -1;
+		}
+	} else if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_EFFECT_OPERATION) {
+		if (prototype_judgement_effect_operation_classifier(
+				ctx->terms, &ctx->terms->terms[term], &p_ref->classifier
 			) != 0) {
 			return -1;
 		}
@@ -12777,6 +14181,7 @@ static int queue_imported_constructor_classifier(
 
 static int queue_binder_assumption(
 	struct compile_context* ctx,
+	uint32_t context_id,
 	uint32_t binder_var,
 	uint32_t classifier,
 	uint32_t context_subject,
@@ -12784,6 +14189,7 @@ static int queue_binder_assumption(
 	uint32_t context_aux
 ) {
 	if (!ctx ||
+		context_id >= ctx->metadata->contexts.context_count ||
 		binder_var >= ctx->terms->term_count ||
 		classifier >= ctx->terms->term_count ||
 		context_subject >= ctx->terms->term_count ||
@@ -12793,7 +14199,8 @@ static int queue_binder_assumption(
 	for (uint32_t i = 0; i < ctx->pending_binder_assumption_count; ++i) {
 		const struct pending_binder_assumption* pending =
 			&ctx->pending_binder_assumptions[i];
-		if (pending->binder_var == binder_var &&
+		if (pending->context_id == context_id &&
+			pending->binder_var == binder_var &&
 			pending->classifier == classifier &&
 			pending->context_subject == context_subject &&
 			pending->context_index == context_index &&
@@ -12802,6 +14209,7 @@ static int queue_binder_assumption(
 		}
 	}
 	uint32_t id = ctx->pending_binder_assumption_count++;
+	ctx->pending_binder_assumptions[id].context_id = context_id;
 	ctx->pending_binder_assumptions[id].binder_var = binder_var;
 	ctx->pending_binder_assumptions[id].classifier = classifier;
 	ctx->pending_binder_assumptions[id].context_subject = context_subject;
@@ -12817,6 +14225,9 @@ static int materialize_pending_binder_assumptions(struct compile_context* ctx) {
 	for (uint32_t i = 0; i < ctx->pending_binder_assumption_count; ++i) {
 		const struct pending_binder_assumption* pending =
 			&ctx->pending_binder_assumptions[i];
+		prototype_judgement_delta_set_context(
+			&ctx->judgement_delta, pending->context_id
+		);
 		int already_materialized = 0;
 		for (size_t relation_id = 0;
 			relation_id < ctx->judgement_delta.relation_count;
@@ -12824,6 +14235,7 @@ static int materialize_pending_binder_assumptions(struct compile_context* ctx) {
 			const struct prototype_judgement_relation* relation =
 				&ctx->judgement_delta.relations[relation_id];
 			if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				relation->context_id != pending->context_id ||
 				relation->subject != pending->binder_var ||
 				relation->classifier != pending->classifier ||
 				relation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION ||
@@ -12877,20 +14289,26 @@ static int queue_declaration_fact(
 	uint32_t subject,
 	uint32_t classifier
 ) {
+	uint32_t context_id;
 	if (!ctx ||
+		ctx->binder_count > 512 ||
 		subject >= ctx->terms->term_count ||
 		classifier >= ctx->terms->term_count ||
 		ctx->pending_declaration_fact_count >= 1024) {
 		return -1;
 	}
+	context_id = ctx->context_ids[ctx->binder_count];
 	for (uint32_t i = 0; i < ctx->pending_declaration_fact_count; ++i) {
 		const struct pending_declaration_fact* pending =
 			&ctx->pending_declaration_facts[i];
-		if (pending->subject == subject && pending->classifier == classifier) {
+		if (pending->context_id == context_id &&
+			pending->subject == subject &&
+			pending->classifier == classifier) {
 			return 0;
 		}
 	}
 	uint32_t id = ctx->pending_declaration_fact_count++;
+	ctx->pending_declaration_facts[id].context_id = context_id;
 	ctx->pending_declaration_facts[id].subject = subject;
 	ctx->pending_declaration_facts[id].classifier = classifier;
 	return 0;
@@ -12923,6 +14341,9 @@ static int materialize_pending_declaration_facts(struct compile_context* ctx) {
 	for (uint32_t i = 0; i < ctx->pending_declaration_fact_count; ++i) {
 		const struct pending_declaration_fact* pending =
 			&ctx->pending_declaration_facts[i];
+		prototype_judgement_delta_set_context(
+			&ctx->judgement_delta, pending->context_id
+		);
 		int has_free_row = classifier_contains_free_effect_row_variable(
 			ctx->terms, pending->classifier
 		);
@@ -13019,12 +14440,52 @@ static int push_graph_binder(
 	if (graph_binder_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
+	uint32_t parent_context = ctx->context_ids[ctx->binder_count];
+	uint32_t context_id;
+	uint32_t classifier_variable =
+		classifier == PROTOTYPE_INVALID_ID ? ast_binder_id : PROTOTYPE_INVALID_ID;
+	if (prototype_context_extend(
+			&ctx->metadata->contexts,
+			parent_context,
+			graph_binder_id,
+			classifier,
+			classifier_variable,
+			&context_id
+		) != 0) {
+		return -1;
+	}
 	ctx->binders[ctx->binder_count].ast_binder_id = ast_binder_id;
 	ctx->binders[ctx->binder_count].graph_binder_id = graph_binder_id;
 	ctx->binders[ctx->binder_count].classifier = classifier;
 	ctx->binders[ctx->binder_count].symbol_id = symbol_id;
 	ctx->binder_count++;
+	ctx->context_ids[ctx->binder_count] = context_id;
 	*p_graph_binder_id = graph_binder_id;
+	return 0;
+}
+
+static int resolve_current_graph_binder_classifier(
+	struct compile_context* ctx,
+	uint32_t classifier
+) {
+	if (!ctx || !ctx->metadata || ctx->binder_count == 0 ||
+		classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	struct binder_map_entry* binder = &ctx->binders[ctx->binder_count - 1];
+	uint32_t context_id;
+	if (prototype_context_extend(
+			&ctx->metadata->contexts,
+			ctx->context_ids[ctx->binder_count - 1],
+			binder->graph_binder_id,
+			classifier,
+			PROTOTYPE_INVALID_ID,
+			&context_id
+		) != 0) {
+		return -1;
+	}
+	binder->classifier = classifier;
+	ctx->context_ids[ctx->binder_count] = context_id;
 	return 0;
 }
 
@@ -14781,6 +16242,8 @@ static int compile_ast_type_def(
 		uint32_t constructor_id;
 		uint32_t classifier_family;
 		uint32_t previous_binder_count = ctx->binder_count;
+		uint32_t parameter_context =
+			ctx->context_ids[previous_binder_count];
 		int constructor_has_recursive_field = 0;
 		if (constructor->field_count > 64) {
 			ast_type->compiling = 0;
@@ -14830,22 +16293,22 @@ static int compile_ast_type_def(
 				constructor_has_recursive_field = 1;
 				has_recursive_constructor_field = 1;
 			}
-			compiled_field_binder_ids[j] = PROTOTYPE_PI_UNUSED_BINDER_ID;
-			if (ast_field_binder_id != PROTOTYPE_INVALID_ID) {
-				uint32_t graph_binder_id;
-				if (push_graph_binder(
-						ctx,
-						ast_field_binder_id,
-						compiled_field_terms[j],
-						field_symbol_id,
-						&graph_binder_id
-					) != 0) {
-					ctx->binder_count = previous_binder_count;
-					ast_type->compiling = 0;
-					return -1;
-				}
-				compiled_field_binder_ids[j] = graph_binder_id;
+			uint32_t graph_binder_id;
+			if (push_graph_binder(
+					ctx,
+					ast_field_binder_id,
+					compiled_field_terms[j],
+					field_symbol_id,
+					&graph_binder_id
+				) != 0) {
+				ctx->binder_count = previous_binder_count;
+				ast_type->compiling = 0;
+				return -1;
 			}
+			compiled_field_binder_ids[j] =
+				ast_field_binder_id == PROTOTYPE_INVALID_ID ?
+				PROTOTYPE_PI_UNUSED_BINDER_ID :
+				graph_binder_id;
 		}
 		if (!constructor_has_recursive_field) {
 			has_structural_seed_constructor = 1;
@@ -14863,6 +16326,7 @@ static int compile_ast_type_def(
 			ast_type->compiling = 0;
 			return -1;
 		}
+		uint32_t field_context = ctx->context_ids[ctx->binder_count];
 		ctx->binder_count = previous_binder_count;
 		if (prototype_type_declaration_add_constructor(
 				ctx->type_declarations,
@@ -14871,6 +16335,9 @@ static int compile_ast_type_def(
 				compiled_field_types,
 				constructor->field_count,
 				compiled_result_type,
+				parameter_context,
+				field_context,
+				type_term,
 				classifier_family,
 				&constructor_id
 			) != 0) {
@@ -16030,14 +17497,25 @@ static int compile_ast_atomic_ref(
 					return -1;
 				}
 			} else if (
-				node->as.system_name.kind == PROTOTYPE_AST_SYSTEM_NAME_HOST_OPERATION &&
-				node->as.system_name.operation_id != PROTOTYPE_OPERATION_UNKNOWN
+				node->as.system_name.kind == PROTOTYPE_AST_SYSTEM_NAME_PURE_PRIMITIVE &&
+				node->as.system_name.pure_primitive_id !=
+					PROTOTYPE_PURE_PRIMITIVE_UNKNOWN
 			) {
-				if (prototype_term_operation(
+				if (prototype_term_pure_primitive(
 						ctx->terms,
-						node->as.system_name.operation_id,
-						node->as.system_name.symbol_id,
+						node->as.system_name.pure_primitive_id,
 						node->as.system_name.type_symbol_id,
+						&term
+					) != 0) {
+					return -1;
+				}
+			} else if (
+				node->as.system_name.kind == PROTOTYPE_AST_SYSTEM_NAME_EFFECT_OPERATION &&
+				node->as.system_name.effect_operation_id != PROTOTYPE_EFFECT_OPERATION_UNKNOWN
+			) {
+				if (prototype_term_effect_operation(
+						ctx->terms,
+						node->as.system_name.effect_operation_id,
 						&term
 					) != 0) {
 					return -1;
@@ -16269,7 +17747,12 @@ static int compile_ast_atomic_ref(
 					ctx->binder_count = previous_binder_count;
 					return -1;
 				}
-				ctx->binders[ctx->binder_count - 1].classifier = binder_classifier;
+				if (resolve_current_graph_binder_classifier(
+						ctx, binder_classifier
+					) != 0) {
+					ctx->binder_count = previous_binder_count;
+					return -1;
+				}
 			}
 			if (compile_ast_type_def(
 					ctx, node->as.type_formation.ast_type_def_id, &type_id
@@ -16348,7 +17831,7 @@ static int compile_ast_application_computation_ref(
 	struct compile_ref* p_ret
 );
 
-static int ast_application_head_is_host_operation(
+static int ast_application_head_is_system_callable(
 	const struct compile_context* ctx,
 	uint32_t ast_id
 );
@@ -16637,16 +18120,36 @@ static int compile_continue_runtime_computation(
 	uint32_t binder_id;
 	uint32_t variable_term;
 	uint32_t lambda_term;
+	uint32_t continuation_context;
+	uint32_t saved_binder_count;
 	struct compile_ref variable;
 	struct compile_ref body;
 	struct compile_ref lambda;
 	if (!ctx || !computation || !continuation || !continuation->apply || !p_ret ||
 		computation->polarity != COMPILE_REF_POLARITY_COMPUTATION ||
+		ctx->binder_count >= 512 ||
 		(ast_binder_id = prototype_ast_new_binder(ctx->asts)) == PROTOTYPE_INVALID_ID ||
 		(binder_id = prototype_term_fresh_binder(ctx->terms)) == PROTOTYPE_INVALID_ID ||
 		prototype_term_var(ctx->terms, binder_id, &variable_term) != 0) {
 		return -1;
 	}
+	saved_binder_count = ctx->binder_count;
+	if (prototype_context_extend(
+			&ctx->metadata->contexts,
+			ctx->context_ids[saved_binder_count],
+			binder_id,
+			PROTOTYPE_INVALID_ID,
+			ast_binder_id,
+			&continuation_context
+		) != 0) {
+		return -1;
+	}
+	ctx->binders[saved_binder_count].ast_binder_id = ast_binder_id;
+	ctx->binders[saved_binder_count].graph_binder_id = binder_id;
+	ctx->binders[saved_binder_count].classifier = PROTOTYPE_INVALID_ID;
+	ctx->binders[saved_binder_count].symbol_id = -1;
+	ctx->binder_count++;
+	ctx->context_ids[ctx->binder_count] = continuation_context;
 	variable.term = variable_term;
 	variable.classifier = PROTOTYPE_INVALID_ID;
 	variable.polarity = COMPILE_REF_POLARITY_VALUE;
@@ -16657,6 +18160,7 @@ static int compile_continue_runtime_computation(
 			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_INVALID_ID, 0, &variable.operation
 		) != 0) {
+		ctx->binder_count = saved_binder_count;
 		return -1;
 	}
 	ctx->metadata->operations[variable.operation].referenced_ast_binder_id =
@@ -16664,8 +18168,10 @@ static int compile_continue_runtime_computation(
 	if (continuation->apply(ctx, &variable, continuation->data, &body) != 0 ||
 		body.polarity != COMPILE_REF_POLARITY_COMPUTATION ||
 		prototype_term_lambda(ctx->terms, binder_id, body.term, &lambda_term) != 0) {
+		ctx->binder_count = saved_binder_count;
 		return -1;
 	}
+	ctx->binder_count = saved_binder_count;
 	lambda.term = lambda_term;
 	lambda.classifier = PROTOTYPE_INVALID_ID;
 	lambda.polarity = COMPILE_REF_POLARITY_COMPUTATION;
@@ -16709,7 +18215,7 @@ static int term_app_head_is_constructor(
 	return terms->terms[term_id].tag == PROTOTYPE_TERM_CONSTRUCTOR;
 }
 
-static int ast_application_head_is_host_operation(
+static int ast_application_head_is_system_callable(
 	const struct compile_context* ctx,
 	uint32_t ast_id
 ) {
@@ -16724,7 +18230,8 @@ static int ast_application_head_is_host_operation(
 	}
 	const struct prototype_ast_node* head = &ctx->asts->nodes[ast_id];
 	return head->tag == PROTOTYPE_AST_SYSTEM_NAME &&
-		head->as.system_name.kind == PROTOTYPE_AST_SYSTEM_NAME_HOST_OPERATION;
+		(head->as.system_name.kind == PROTOTYPE_AST_SYSTEM_NAME_PURE_PRIMITIVE ||
+			head->as.system_name.kind == PROTOTYPE_AST_SYSTEM_NAME_EFFECT_OPERATION);
 }
 
 static int ast_application_head_is_constructor(
@@ -17030,6 +18537,7 @@ static int compile_ast_lambda_computation_ref(
 	if (prototype_term_var(ctx->terms, canonical_binder_id, &binder_var) != 0 ||
 		queue_binder_assumption(
 			ctx,
+			ctx->metadata->operations[body.operation].context_id,
 			binder_var,
 			binder_classifier,
 			lambda_term,
@@ -17180,12 +18688,26 @@ static int compile_ast_value_ref(
 			return -1;
 		}
 		p_ret->operation = operation;
-		/* Host operation signatures are declaration facts. Handler and request
-		 * constraints may need them in the same fixed-point round, before the
-		 * generic operation materializer reaches this occurrence. */
+		prototype_judgement_delta_set_context(
+			&ctx->judgement_delta,
+			ctx->metadata->operations[operation].context_id
+		);
+		/* System signatures are declaration facts needed by APP and request
+		 * constraints in the same fixed-point round. */
 		if (p_ret->term < ctx->terms->term_count &&
-			ctx->terms->terms[p_ret->term].tag == PROTOTYPE_TERM_OPERATION &&
-			prototype_judgement_delta_record_operation_type(
+			ctx->terms->terms[p_ret->term].tag == PROTOTYPE_TERM_PURE_PRIMITIVE &&
+			prototype_judgement_delta_record_pure_primitive_type(
+				&ctx->judgement_delta,
+				ctx->terms,
+				ctx->type_declarations,
+				p_ret->term,
+				p_ret->classifier
+			) != 0) {
+			return -1;
+		}
+		if (p_ret->term < ctx->terms->term_count &&
+			ctx->terms->terms[p_ret->term].tag == PROTOTYPE_TERM_EFFECT_OPERATION &&
+			prototype_judgement_delta_record_effect_operation_type(
 				&ctx->judgement_delta,
 				ctx->terms,
 				ctx->type_declarations,
@@ -17499,7 +19021,8 @@ static int compile_ast_operation_spine_then(
 	node = &ctx->asts->nodes[ast_id];
 	if (node->tag == PROTOTYPE_AST_SYSTEM_NAME) {
 		struct compile_ref operation;
-		if (node->as.system_name.kind != PROTOTYPE_AST_SYSTEM_NAME_HOST_OPERATION ||
+		if ((node->as.system_name.kind != PROTOTYPE_AST_SYSTEM_NAME_PURE_PRIMITIVE &&
+				node->as.system_name.kind != PROTOTYPE_AST_SYSTEM_NAME_EFFECT_OPERATION) ||
 			compile_ast_value_ref(ctx, ast_id, &operation) != 0) {
 			return -1;
 		}
@@ -17528,7 +19051,7 @@ static int compile_operation_spine_computation_continuation(
 	struct prototype_term_classifier_view view;
 	uint32_t head;
 	uint32_t argument_count;
-	const struct prototype_operation_declaration* declaration;
+	uint32_t declared_arity;
 	(void)data;
 	if (!ctx || !application || !p_ret) {
 		return -1;
@@ -17540,11 +19063,31 @@ static int compile_operation_spine_computation_continuation(
 		head = ctx->terms->terms[head].as.app.function;
 		argument_count++;
 	}
-	if (head >= ctx->terms->term_count ||
-		ctx->terms->terms[head].tag != PROTOTYPE_TERM_OPERATION ||
-		!(declaration = prototype_term_operation_declaration(
-			ctx->terms->terms[head].as.operation.operation_id
-		)) || argument_count != declaration->arity) {
+	if (head >= ctx->terms->term_count) {
+		return -1;
+	}
+	if (ctx->terms->terms[head].tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
+		const struct prototype_pure_primitive_declaration* declaration =
+			prototype_term_pure_primitive_declaration(
+				ctx->terms->terms[head].as.pure_primitive.primitive_id
+			);
+		if (!declaration) {
+			return -1;
+		}
+		declared_arity = declaration->arity;
+	} else if (ctx->terms->terms[head].tag == PROTOTYPE_TERM_EFFECT_OPERATION) {
+		const struct prototype_effect_operation_declaration* declaration =
+			prototype_term_effect_operation_declaration(
+				ctx->terms->terms[head].as.effect_operation.operation_id
+			);
+		if (!declaration) {
+			return -1;
+		}
+		declared_arity = declaration->arity;
+	} else {
+		return -1;
+	}
+	if (argument_count != declared_arity) {
 		return -1;
 	}
 	/* A binder introduced by an enclosing deep fold can be the missing premise for
@@ -17599,6 +19142,9 @@ static int compile_perform_argument_continuation(
 	uint32_t continuation_classifier;
 	uint32_t canonical_result;
 	uint32_t canonical_result_variable;
+	uint32_t canonical_binder_id;
+	uint32_t parent_context_id;
+	uint32_t continuation_context_id;
 	struct compile_ref result_variable;
 	struct compile_ref result_return;
 	uint32_t continuation_operation;
@@ -17653,18 +19199,42 @@ static int compile_perform_argument_continuation(
 	}
 	canonical_result_variable =
 		ctx->terms->terms[canonical_result].as.return_term.value;
+	if (canonical_result_variable >= ctx->terms->term_count ||
+		ctx->terms->terms[canonical_result_variable].tag != PROTOTYPE_TERM_VAR) {
+		return -1;
+	}
+	canonical_binder_id =
+		ctx->terms->terms[canonical_result_variable].as.var.binder_id;
+	parent_context_id = ctx->context_ids[ctx->binder_count];
+	if (prototype_context_extend(
+			&ctx->metadata->contexts,
+			parent_context_id,
+			canonical_binder_id,
+			application_view.result,
+			PROTOTYPE_INVALID_ID,
+			&continuation_context_id
+		) != 0) {
+		return -1;
+	}
 	result_variable.term = canonical_result_variable;
 	result_variable.classifier = application_view.result;
 	result_variable.polarity = COMPILE_REF_POLARITY_VALUE;
 	result_variable.computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
+	ctx->context_ids[ctx->binder_count] = continuation_context_id;
 	if (operation_add(
-			ctx, PROTOTYPE_OPERATION_VAR, binder_var, application_view.result,
+			ctx, PROTOTYPE_OPERATION_VAR, canonical_result_variable,
+			application_view.result,
 			context->source_ast, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_INVALID_ID, 0, &result_variable.operation
 		) != 0 || compile_ref_make_return(
 			ctx, &result_variable, context->source_ast, &result_return
-		) != 0 || operation_add(
+		) != 0) {
+		ctx->context_ids[ctx->binder_count] = parent_context_id;
+		return -1;
+	}
+	ctx->context_ids[ctx->binder_count] = parent_context_id;
+	if (operation_add(
 			ctx, PROTOTYPE_OPERATION_LAMBDA, continuation, continuation_classifier,
 			context->source_ast, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			result_return.operation, PROTOTYPE_INVALID_ID, application_view.result,
@@ -17865,6 +19435,7 @@ static int compile_ast_block_body_ref(
 				ctx->terms, canonical_binder_id, &binder_var
 			) != 0 || queue_binder_assumption(
 				ctx,
+				ctx->metadata->operations[body.operation].context_id,
 				binder_var,
 				binder_classifier,
 				lambda_term,
@@ -17927,7 +19498,7 @@ static int compile_ast_computation_ref(
 		return compile_ast_lambda_computation_ref(ctx, node, ast_id, p_ret);
 	}
 	if (node->tag == PROTOTYPE_AST_APP) {
-		if (ast_application_head_is_host_operation(ctx, ast_id)) {
+		if (ast_application_head_is_system_callable(ctx, ast_id)) {
 			struct compile_ref operation_spine;
 			if (compile_ast_operation_spine_computation_ref(
 					ctx, ast_id, &operation_spine
@@ -18056,6 +19627,207 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 	return 0;
 }
 
+static int context_extension_path(
+	const struct prototype_context_db* contexts,
+	uint32_t ancestor,
+	uint32_t descendant,
+	uint32_t* path,
+	uint32_t path_capacity,
+	uint32_t* p_count
+) {
+	if (!contexts || !path || !p_count ||
+		!prototype_context_get(contexts, ancestor) ||
+		!prototype_context_get(contexts, descendant)) {
+		return -1;
+	}
+	uint32_t reverse_path[128];
+	uint32_t count = 0;
+	uint32_t cursor = descendant;
+	while (cursor != ancestor) {
+		const struct prototype_context* context =
+			prototype_context_get(contexts, cursor);
+		if (!context || count >= 128 || count >= path_capacity ||
+			cursor == prototype_context_empty(contexts)) {
+			return -1;
+		}
+		reverse_path[count++] = cursor;
+		cursor = context->parent;
+	}
+	for (uint32_t i = 0; i < count; ++i) {
+		path[i] = reverse_path[count - i - 1];
+	}
+	*p_count = count;
+	return 0;
+}
+
+static int constructor_telescope_field_classifier(
+	struct compile_context* ctx,
+	uint32_t source_context,
+	uint32_t owner,
+	uint32_t constructor_index,
+	const struct prototype_case_binder* previous_binders,
+	uint32_t previous_binder_count,
+	uint32_t field_index,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !ctx->metadata || !p_classifier ||
+		owner >= ctx->terms->term_count ||
+		(previous_binder_count > 0 && !previous_binders)) {
+		return -1;
+	}
+	uint32_t type_id;
+	uint32_t arguments[64];
+	uint32_t argument_count;
+	if (prototype_term_type_instance_info(
+			ctx->terms,
+			owner,
+			&type_id,
+			arguments,
+			&argument_count
+		) != 0 ||
+		type_id >= ctx->type_declarations->type_count) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&ctx->type_declarations->type_declarations[type_id];
+	if (constructor_index >= type->constructor_count ||
+		type->first_constructor + constructor_index >=
+			ctx->type_declarations->constructor_count ||
+		argument_count != type->parameter_count) {
+		return -1;
+	}
+	const struct prototype_type_constructor_declaration* constructor =
+		&ctx->type_declarations->constructor_declarations[
+			type->first_constructor + constructor_index
+		];
+	if (field_index >= constructor->readback.field_count ||
+		previous_binder_count < field_index ||
+		!prototype_context_get(&ctx->metadata->contexts, source_context)) {
+		return -1;
+	}
+
+	uint32_t substitution;
+	if (prototype_substitution_empty(
+			&ctx->metadata->substitutions,
+			&ctx->metadata->contexts,
+			source_context,
+			&substitution
+		) != 0) {
+		return -1;
+	}
+	uint32_t parameter_path[64];
+	uint32_t parameter_count;
+	if (context_extension_path(
+			&ctx->metadata->contexts,
+			prototype_context_empty(&ctx->metadata->contexts),
+			constructor->parameter_context,
+			parameter_path,
+			64,
+			&parameter_count
+		) != 0 ||
+		parameter_count != argument_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < parameter_count; ++i) {
+		const struct prototype_context* parameter =
+			prototype_context_get(
+				&ctx->metadata->contexts, parameter_path[i]
+			);
+		uint32_t argument_classifier;
+		if (!parameter ||
+			prototype_term_reindex(
+				ctx->terms,
+				ctx->type_declarations,
+				&ctx->metadata->contexts,
+				&ctx->metadata->substitutions,
+				parameter->classifier,
+				substitution,
+				&argument_classifier
+			) != 0 ||
+			prototype_substitution_extend(
+				&ctx->metadata->substitutions,
+				&ctx->metadata->contexts,
+				ctx->terms,
+				ctx->type_declarations,
+				substitution,
+				parameter_path[i],
+				arguments[i],
+				argument_classifier,
+				PROTOTYPE_INVALID_ID,
+				&substitution
+			) != 0) {
+			return -1;
+		}
+	}
+
+	uint32_t field_path[64];
+	uint32_t field_count;
+	if (context_extension_path(
+			&ctx->metadata->contexts,
+			constructor->parameter_context,
+			constructor->field_context,
+			field_path,
+			64,
+			&field_count
+		) != 0 ||
+		field_count != constructor->readback.field_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i <= field_index; ++i) {
+		const struct prototype_context* field =
+			prototype_context_get(&ctx->metadata->contexts, field_path[i]);
+		uint32_t classifier;
+		uint32_t whnf;
+		if (!field ||
+			prototype_term_reindex(
+				ctx->terms,
+				ctx->type_declarations,
+				&ctx->metadata->contexts,
+				&ctx->metadata->substitutions,
+				field->classifier,
+				substitution,
+				&classifier
+			) != 0 ||
+			prototype_term_normalize_complete_with_profile(
+				ctx->terms,
+				ctx->type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				classifier,
+				&whnf
+			) != 0 ||
+			whnf >= ctx->terms->term_count) {
+			return -1;
+		}
+		if (ctx->terms->terms[whnf].tag == PROTOTYPE_TERM_RETURN) {
+			whnf = ctx->terms->terms[whnf].as.return_term.value;
+		}
+		if (i == field_index) {
+			*p_classifier = whnf;
+			return 0;
+		}
+		uint32_t binder_var;
+		if (prototype_term_var(
+				ctx->terms, previous_binders[i].binder_id, &binder_var
+			) != 0 ||
+			prototype_substitution_extend(
+				&ctx->metadata->substitutions,
+				&ctx->metadata->contexts,
+				ctx->terms,
+				ctx->type_declarations,
+				substitution,
+				field_path[i],
+				binder_var,
+				whnf,
+				PROTOTYPE_INVALID_ID,
+				&substitution
+			) != 0) {
+			return -1;
+		}
+	}
+	return -1;
+}
+
 static int compile_phase_resolve_pending_match_items(struct compile_context* ctx) {
 	if (!ctx) {
 		return -1;
@@ -18134,15 +19906,44 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				ctx->asts->case_binder_count) {
 			return -1;
 		}
+		uint32_t case_context = PROTOTYPE_INVALID_ID;
+		for (uint32_t operation_id = 0;
+			operation_id < ctx->metadata->operation_count;
+			++operation_id) {
+			const struct prototype_operation_node* operation =
+				&ctx->metadata->operations[operation_id];
+			if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
+				operation->core_term != resolution->match_term ||
+				item->case_index >= operation->case_count ||
+				operation->first_case + item->case_index >=
+					ctx->metadata->operation_case_count) {
+				continue;
+			}
+			const struct prototype_operation_match_case* operation_case =
+				&ctx->metadata->operation_cases[
+					operation->first_case + item->case_index
+				];
+			if (operation_case->body_operation >=
+				ctx->metadata->operation_count) {
+				return -1;
+			}
+			case_context = ctx->metadata->operations[
+				operation_case->body_operation
+			].context_id;
+			break;
+		}
+		if (case_context == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
 		for (uint32_t binder_index = 0;
 			binder_index < resolved_case->binder_count;
 			++binder_index) {
 			struct prototype_case_binder* binder =
 				&ctx->terms->case_binders[resolved_case->first_binder + binder_index];
 			uint32_t binder_classifier = PROTOTYPE_INVALID_ID;
-			if (prototype_judgement_constructor_field_classifier(
-					ctx->terms,
-					ctx->type_declarations,
+			if (constructor_telescope_field_classifier(
+					ctx,
+					case_context,
 					resolved.constructor_owner,
 					resolved.constructor_id,
 					&ctx->terms->case_binders[resolved_case->first_binder],
@@ -19988,8 +21789,18 @@ static int operation_solver_propagate_clause_deep_fold_input(
 	for (uint32_t operation_id = 0;
 		operation_id < ctx->metadata->operation_count;
 		++operation_id) {
-		const struct prototype_operation_node* operation =
+		struct prototype_operation_node* operation =
 			&ctx->metadata->operations[operation_id];
+		if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
+			operation->referenced_ast_binder_id ==
+				handle_operation->handler_return_ast_binder_id &&
+			operation->binder_classifier == PROTOTYPE_INVALID_ID) {
+			operation->binder_classifier = input_view.result;
+			*p_changed = 1;
+			if (operation_solver_enqueue_dependents(ctx, operation_id) != 0) {
+				return -1;
+			}
+		}
 		memset(visited, 0, sizeof(visited));
 		if (operation->tag == PROTOTYPE_OPERATION_VAR &&
 			operation->referenced_ast_binder_id ==
@@ -20074,13 +21885,43 @@ static int operation_solver_propagate_clause_deep_fold_input(
 				break;
 			}
 		}
-		if (classifier != PROTOTYPE_INVALID_ID &&
-			operation_solver_bind(
-				ctx, operation_id, classifier, p_changed
-			) != 0) {
-			return -1;
+			if (classifier != PROTOTYPE_INVALID_ID &&
+				operation_solver_bind(
+					ctx, operation_id, classifier, p_changed
+				) != 0) {
+				return -1;
+			}
+			if (classifier != PROTOTYPE_INVALID_ID) {
+				for (uint32_t lambda_operation_id = 0;
+					lambda_operation_id < ctx->metadata->operation_count;
+					++lambda_operation_id) {
+					struct prototype_operation_node* lambda_operation =
+						&ctx->metadata->operations[lambda_operation_id];
+					if (lambda_operation->tag != PROTOTYPE_OPERATION_LAMBDA ||
+						lambda_operation->core_term != lambda_term) {
+						continue;
+					}
+					if (lambda_operation->binder_classifier ==
+						PROTOTYPE_INVALID_ID) {
+						lambda_operation->binder_classifier = classifier;
+						*p_changed = 1;
+						if (operation_solver_enqueue_dependents(
+								ctx, lambda_operation_id
+							) != 0) {
+							return -1;
+						}
+					} else if (
+						!prototype_judgement_classifier_normalization_equal(
+							ctx->terms,
+							ctx->type_declarations,
+							lambda_operation->binder_classifier,
+							classifier
+						)) {
+						return -1;
+					}
+				}
+			}
 		}
-	}
 	return 0;
 }
 
@@ -21549,10 +23390,16 @@ static int operation_solver_materialize_match_pattern_assumptions(
 			uint32_t term_case_id = match->as.match.first_case + case_index;
 			uint32_t ast_case_id = source_match->as.match.first_case + case_index;
 			if (term_case_id >= ctx->terms->case_count || ast_case_id >= ctx->asts->case_count ||
+				operation_case->body_operation >= ctx->metadata->operation_count ||
 				operation_case->constructor_owner == PROTOTYPE_INVALID_ID ||
 				operation_case->constructor_id == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
+			uint32_t case_context_id =
+				ctx->metadata->operations[operation_case->body_operation].context_id;
+			prototype_judgement_delta_set_context(
+				&ctx->judgement_delta, case_context_id
+			);
 			const struct prototype_match_case* match_case =
 				&ctx->terms->cases[term_case_id];
 			const struct prototype_ast_match_case* ast_case =
@@ -21569,9 +23416,9 @@ static int operation_solver_materialize_match_pattern_assumptions(
 				++binder_index) {
 				uint32_t classifier;
 				uint32_t binder_var;
-				if (prototype_judgement_constructor_field_classifier(
-						ctx->terms,
-						ctx->type_declarations,
+				if (constructor_telescope_field_classifier(
+						ctx,
+						case_context_id,
 						operation_case->constructor_owner,
 						operation_case->constructor_id,
 						&ctx->terms->case_binders[match_case->first_binder],
@@ -21595,6 +23442,7 @@ static int operation_solver_materialize_match_pattern_assumptions(
 					const struct prototype_judgement_relation* relation =
 						&ctx->judgement_delta.relations[relation_id];
 					if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+						relation->context_id != case_context_id ||
 						relation->subject != binder_var ||
 						relation->classifier != classifier ||
 						relation->proof_kind !=
@@ -21645,6 +23493,74 @@ static int operation_solver_materialize_match_pattern_assumptions(
 	return 0;
 }
 
+static int operation_solver_reindex_existing_proof(
+	struct compile_context* ctx,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	if (!ctx || !ctx->metadata ||
+		context_id >= ctx->metadata->contexts.context_count) {
+		return -1;
+	}
+	uint32_t source_context = context_id;
+	for (;;) {
+		for (size_t i = 0; i < ctx->judgement_delta.relation_count; ++i) {
+			const struct prototype_judgement_relation* relation =
+				&ctx->judgement_delta.relations[i];
+			if (relation->context_id == source_context &&
+				relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				relation->subject == subject &&
+				relation->classifier == classifier) {
+				if (source_context == context_id) {
+					return 0;
+				}
+				prototype_judgement_delta_set_context(
+					&ctx->judgement_delta, context_id
+				);
+				return prototype_judgement_delta_record_context_reindex(
+					&ctx->judgement_delta,
+					subject,
+					classifier,
+					source_context
+				);
+			}
+		}
+		for (size_t i = 0; i < ctx->judgement->relation_count; ++i) {
+			const struct prototype_judgement_relation* relation =
+				&ctx->judgement->relations[i];
+			if (relation->context_id == source_context &&
+				relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				relation->subject == subject &&
+				relation->classifier == classifier) {
+				if (source_context == context_id) {
+					return 0;
+				}
+				prototype_judgement_delta_set_context(
+					&ctx->judgement_delta, context_id
+				);
+				return prototype_judgement_delta_record_context_reindex(
+					&ctx->judgement_delta,
+					subject,
+					classifier,
+					source_context
+				);
+			}
+		}
+		if (source_context == 0) {
+			break;
+		}
+		const struct prototype_context* context = prototype_context_get(
+			&ctx->metadata->contexts, source_context
+		);
+		if (!context || context->parent >= source_context) {
+			return -1;
+		}
+		source_context = context->parent;
+	}
+	return 1;
+}
+
 /*
  * A source operation is a typed occurrence.  Its TermDB root can be shared
  * with an alpha-equivalent occurrence whose children have different raw
@@ -21680,16 +23596,77 @@ static int operation_solver_reify_core_proof(
 			const struct prototype_operation_node* body =
 				&ctx->metadata->operations[operation->body];
 			if (body->classifier == PROTOTYPE_INVALID_ID ||
-				operation_solver_reify_core_proof(
-					ctx, operation->body, term->as.lambda.body, depth + 1
-				) < 0 || prototype_judgement_delta_record_lambda_intro(
+				operation->binder_classifier == PROTOTYPE_INVALID_ID) {
+				return 1;
+			}
+			int status = operation_solver_reify_core_proof(
+				ctx, operation->body, term->as.lambda.body, depth + 1
+			);
+			if (status != 0) {
+				return status;
+			}
+			uint32_t binder_var;
+			if (prototype_term_var(
+					ctx->terms, term->as.lambda.binder_id, &binder_var
+				) != 0) {
+				return -1;
+			}
+			int has_binder_assumption = 0;
+			for (size_t i = 0;
+				i < ctx->judgement_delta.relation_count;
+				++i) {
+				const struct prototype_judgement_relation* relation =
+					&ctx->judgement_delta.relations[i];
+				if (relation->context_id == body->context_id &&
+					relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+					relation->subject == binder_var &&
+					relation->classifier == operation->binder_classifier &&
+					relation->proof_kind ==
+						PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION) {
+					has_binder_assumption = 1;
+					break;
+				}
+			}
+			if (!has_binder_assumption) {
+				prototype_judgement_delta_set_context(
+					&ctx->judgement_delta, body->context_id
+				);
+				size_t before = ctx->judgement_delta.relation_count;
+				if (prototype_judgement_delta_expand_lambda_binder(
+						&ctx->judgement_delta,
+						ctx->terms,
+						binder_var,
+						operation->binder_classifier
+					) != 0 ||
+					ctx->judgement_delta.relation_count <= before) {
+					return -1;
+				}
+				uint32_t proof_id = ctx->judgement_delta.relations[
+					ctx->judgement_delta.relation_count - 1
+				].proof_id;
+				if (prototype_judgement_delta_set_proof_context_by_id(
+						&ctx->judgement_delta,
+						proof_id,
+						PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_LAMBDA_BINDER,
+						core_term,
+						term->as.lambda.binder_id,
+						operation_id
+					) != 0) {
+					return -1;
+				}
+			}
+			prototype_judgement_delta_set_context(
+				&ctx->judgement_delta, operation->context_id
+			);
+			if (prototype_judgement_delta_record_lambda_intro(
 					&ctx->judgement_delta,
 					ctx->terms,
 					ctx->type_declarations,
 					core_term,
 					classifier,
 					operation->binder_classifier,
-					body->classifier
+					body->classifier,
+					body->context_id
 				) != 0) {
 				return -1;
 			}
@@ -21706,12 +23683,43 @@ static int operation_solver_reify_core_proof(
 			const struct prototype_operation_node* argument =
 				&ctx->metadata->operations[operation->argument];
 			if (function->classifier == PROTOTYPE_INVALID_ID ||
-				argument->classifier == PROTOTYPE_INVALID_ID ||
-				operation_solver_reify_core_proof(
-					ctx, operation->function, term->as.app.function, depth + 1
-				) < 0 || operation_solver_reify_core_proof(
-					ctx, operation->argument, term->as.app.argument, depth + 1
-				) < 0 || prototype_judgement_delta_record_app_elim(
+				argument->classifier == PROTOTYPE_INVALID_ID) {
+				return 1;
+			}
+			int status = operation_solver_reify_core_proof(
+				ctx, operation->function, term->as.app.function, depth + 1
+			);
+			if (status != 0) {
+				return status;
+			}
+			status = operation_solver_reify_core_proof(
+				ctx, operation->argument, term->as.app.argument, depth + 1
+			);
+			if (status != 0) {
+				return status;
+			}
+			status = operation_solver_reindex_existing_proof(
+				ctx,
+				operation->context_id,
+				term->as.app.function,
+				function->classifier
+			);
+			if (status != 0) {
+				return status;
+			}
+			status = operation_solver_reindex_existing_proof(
+				ctx,
+				operation->context_id,
+				term->as.app.argument,
+				argument->classifier
+			);
+			if (status != 0) {
+				return status;
+			}
+			prototype_judgement_delta_set_context(
+				&ctx->judgement_delta, operation->context_id
+			);
+			if (prototype_judgement_delta_record_app_elim(
 					&ctx->judgement_delta,
 					ctx->terms,
 					ctx->type_declarations,
@@ -21770,9 +23778,16 @@ static int operation_solver_reify_core_proof(
 			} else {
 				return -1;
 			}
-			if (operation_solver_reify_core_proof(
-					ctx, operation->argument, child_term, depth + 1
-				) < 0 || prototype_judgement_delta_record_cbpv_boundary(
+			int status = operation_solver_reify_core_proof(
+				ctx, operation->argument, child_term, depth + 1
+			);
+			if (status != 0) {
+				return status;
+			}
+			prototype_judgement_delta_set_context(
+				&ctx->judgement_delta, operation->context_id
+			);
+			if (prototype_judgement_delta_record_cbpv_boundary(
 					&ctx->judgement_delta,
 					ctx->terms,
 					ctx->type_declarations,
@@ -21797,22 +23812,31 @@ static int operation_solver_reify_core_proof(
 			const struct prototype_operation_node* continuation =
 				&ctx->metadata->operations[operation->argument];
 			if (computation->classifier == PROTOTYPE_INVALID_ID ||
-				continuation->classifier == PROTOTYPE_INVALID_ID ||
-				operation_solver_reify_core_proof(
-					ctx,
-					operation->function,
-					term->as.deep_fold.computation,
-					depth + 1
-				) < 0 ||
-				operation_solver_reify_core_proof(
-					ctx,
-					operation->argument,
-					term->as.deep_fold.return_clause,
-					depth + 1
-				) < 0) {
-				return -1;
+				continuation->classifier == PROTOTYPE_INVALID_ID) {
+				return 1;
 			}
-			int status = prototype_judgement_delta_record_deep_fold_elim(
+			int status = operation_solver_reify_core_proof(
+				ctx,
+				operation->function,
+				term->as.deep_fold.computation,
+				depth + 1
+			);
+			if (status != 0) {
+				return status;
+			}
+			status = operation_solver_reify_core_proof(
+				ctx,
+				operation->argument,
+				term->as.deep_fold.return_clause,
+				depth + 1
+			);
+			if (status != 0) {
+				return status;
+			}
+			prototype_judgement_delta_set_context(
+				&ctx->judgement_delta, operation->context_id
+			);
+			status = prototype_judgement_delta_record_deep_fold_elim(
 				&ctx->judgement_delta,
 				ctx->terms,
 				ctx->type_declarations,
@@ -21825,15 +23849,190 @@ static int operation_solver_reify_core_proof(
 			);
 			return status < 0 ? -1 : 0;
 		}
+		case PROTOTYPE_OPERATION_VAR: {
+			if (term->tag != PROTOTYPE_TERM_VAR) {
+				return -1;
+			}
+			prototype_judgement_delta_set_context(
+				&ctx->judgement_delta, operation->context_id
+			);
+			for (size_t i = 0; i < ctx->judgement_delta.relation_count; ++i) {
+				const struct prototype_judgement_relation* relation =
+					&ctx->judgement_delta.relations[i];
+				if (relation->context_id == operation->context_id &&
+					relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+					relation->subject == core_term &&
+					relation->classifier == classifier &&
+					relation->proof_kind ==
+						PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION) {
+					return 0;
+				}
+			}
+			size_t before = ctx->judgement_delta.relation_count;
+			if (prototype_judgement_delta_expand_lambda_binder(
+					&ctx->judgement_delta,
+					ctx->terms,
+					core_term,
+					classifier
+				) != 0 ||
+				ctx->judgement_delta.relation_count <= before) {
+				return -1;
+			}
+			uint32_t proof_id = ctx->judgement_delta.relations[
+				ctx->judgement_delta.relation_count - 1
+			].proof_id;
+			if (prototype_judgement_delta_set_proof_context_by_id(
+					&ctx->judgement_delta,
+					proof_id,
+					PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_ASSUMPTION,
+					PROTOTYPE_INVALID_ID,
+					term->as.var.binder_id,
+					PROTOTYPE_INVALID_ID
+				) != 0) {
+				return -1;
+			}
+			return 0;
+		}
+		case PROTOTYPE_OPERATION_NAME: {
+			if (operation->function >= ctx->metadata->operation_count) {
+				return -1;
+			}
+			int child_status = operation_solver_reify_core_proof(
+				ctx, operation->function, core_term, depth + 1
+			);
+			if (child_status != 0) {
+				return child_status;
+			}
+			return operation_solver_reindex_existing_proof(
+				ctx, operation->context_id, core_term, classifier
+			);
+		}
+		case PROTOTYPE_OPERATION_MATCH: {
+			if (term->tag != PROTOTYPE_TERM_MATCH ||
+				operation->scrutinee >= ctx->metadata->operation_count ||
+				operation->first_case + operation->case_count >
+					ctx->metadata->operation_case_count ||
+				term->as.match.case_count != operation->case_count) {
+				return -1;
+			}
+			int status = operation_solver_reify_core_proof(
+				ctx,
+				operation->scrutinee,
+				term->as.match.scrutinee,
+				depth + 1
+			);
+			if (status != 0) {
+				return status;
+			}
+			for (uint32_t i = 0; i < operation->case_count; ++i) {
+				uint32_t case_id = term->as.match.first_case + i;
+				const struct prototype_operation_match_case* operation_case =
+					&ctx->metadata->operation_cases[operation->first_case + i];
+				if (case_id >= ctx->terms->case_count ||
+					operation_case->body_operation >=
+						ctx->metadata->operation_count) {
+					return -1;
+				}
+				status = operation_solver_reify_core_proof(
+					ctx,
+					operation_case->body_operation,
+					ctx->terms->cases[case_id].body,
+					depth + 1
+				);
+				if (status != 0) {
+					return status;
+				}
+			}
+			return 0;
+		}
 		case PROTOTYPE_OPERATION_ATOM:
-		case PROTOTYPE_OPERATION_VAR:
-		case PROTOTYPE_OPERATION_NAME:
 		case PROTOTYPE_OPERATION_CONSTRUCTOR:
 		case PROTOTYPE_OPERATION_ASCRIPTION:
-		case PROTOTYPE_OPERATION_MATCH:
 		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
-		case PROTOTYPE_OPERATION_PERFORM:
 			return 0;
+		case PROTOTYPE_OPERATION_PERFORM:
+			if (term->tag != PROTOTYPE_TERM_OPERATION_REQUEST ||
+				operation->function >= ctx->metadata->operation_count ||
+				operation->argument >= ctx->metadata->operation_count) {
+				return -1;
+			}
+			{
+				const struct prototype_operation_node* function =
+					&ctx->metadata->operations[operation->function];
+				const struct prototype_operation_node* argument =
+					&ctx->metadata->operations[operation->argument];
+				if (function->classifier == PROTOTYPE_INVALID_ID ||
+					argument->classifier == PROTOTYPE_INVALID_ID) {
+					return 1;
+				}
+				int status = operation_solver_reify_core_proof(
+					ctx,
+					operation->function,
+					term->as.operation_request.operation,
+					depth + 1
+				);
+				if (status != 0) {
+					return status;
+				}
+				status = operation_solver_reify_core_proof(
+					ctx,
+					operation->argument,
+					term->as.operation_request.argument,
+					depth + 1
+				);
+				if (status != 0) {
+					return status;
+				}
+				uint32_t application;
+				if (prototype_term_app(
+						ctx->terms,
+						term->as.operation_request.operation,
+						term->as.operation_request.argument,
+						&application
+					) != 0) {
+					return -1;
+				}
+				status = operation_solver_reindex_existing_proof(
+					ctx,
+					operation->context_id,
+					term->as.operation_request.operation,
+					function->classifier
+				);
+				if (status != 0) {
+					return status;
+				}
+				status = operation_solver_reindex_existing_proof(
+					ctx,
+					operation->context_id,
+					term->as.operation_request.argument,
+					argument->classifier
+				);
+				if (status != 0) {
+					return status;
+				}
+				prototype_judgement_delta_set_context(
+					&ctx->judgement_delta, operation->context_id
+				);
+				if (prototype_judgement_delta_record_app_elim(
+						&ctx->judgement_delta,
+						ctx->terms,
+						ctx->type_declarations,
+						application,
+						operation->classifier,
+						term->as.operation_request.operation,
+						function->classifier,
+						term->as.operation_request.argument,
+						argument->classifier
+					) != 0) {
+					return -1;
+				}
+			}
+			return prototype_judgement_delta_record_computation_constraint(
+				&ctx->judgement_delta,
+				ctx->terms,
+				operation->context_id,
+				core_term
+			);
 		default:
 			return -1;
 	}
@@ -21866,6 +24065,9 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 		if (operation->classifier == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
+		prototype_judgement_delta_set_context(
+			&ctx->judgement_delta, operation->context_id
+		);
 		if (prototype_judgement_delta_record_materialized_match_motive(
 				&ctx->judgement_delta,
 				ctx->terms,
@@ -21880,6 +24082,9 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 		for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
 			const struct prototype_operation_node* operation =
 				&ctx->metadata->operations[i];
+			prototype_judgement_delta_set_context(
+				&ctx->judgement_delta, operation->context_id
+			);
 			uint32_t classifier = operation->classifier;
 			if (classifier == PROTOTYPE_INVALID_ID) {
 				continue;
@@ -21897,11 +24102,19 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 			}
 			if (operation->tag == PROTOTYPE_OPERATION_LAMBDA ||
 				operation->tag == PROTOTYPE_OPERATION_APP ||
-				operation->tag == PROTOTYPE_OPERATION_DEEP_FOLD) {
-				if (operation_solver_reify_core_proof(
-						ctx, i, operation->core_term, 0
-					) != 0) {
+				operation->tag == PROTOTYPE_OPERATION_RETURN ||
+				operation->tag == PROTOTYPE_OPERATION_THUNK ||
+				operation->tag == PROTOTYPE_OPERATION_FORCE ||
+				operation->tag == PROTOTYPE_OPERATION_DEEP_FOLD ||
+				operation->tag == PROTOTYPE_OPERATION_PERFORM) {
+				int reify_status = operation_solver_reify_core_proof(
+					ctx, i, operation->core_term, 0
+				);
+				if (reify_status < 0) {
 					return -1;
+				}
+				if (reify_status > 0) {
+					continue;
 				}
 			} else if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
 				if (operation_solver_materialize_induction_hypothesis_judgement(
@@ -21928,13 +24141,25 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
 				operation->core_term < ctx->terms->term_count &&
 				ctx->terms->terms[operation->core_term].tag ==
-					PROTOTYPE_TERM_OPERATION &&
-				prototype_judgement_delta_record_operation_type(
+					PROTOTYPE_TERM_PURE_PRIMITIVE &&
+				prototype_judgement_delta_record_pure_primitive_type(
 					&ctx->judgement_delta,
 					ctx->terms,
 					ctx->type_declarations,
 					operation->core_term,
 					classifier
+				) != 0) {
+				return -1;
+			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
+				operation->core_term < ctx->terms->term_count &&
+				ctx->terms->terms[operation->core_term].tag ==
+					PROTOTYPE_TERM_EFFECT_OPERATION &&
+				prototype_judgement_delta_record_effect_operation_type(
+					&ctx->judgement_delta,
+					ctx->terms,
+					ctx->type_declarations,
+					operation->core_term,
+					operation->classifier
 				) != 0) {
 				return -1;
 			} else if (operation->tag == PROTOTYPE_OPERATION_ATOM &&
@@ -21983,6 +24208,163 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 		}
 		if (ctx->judgement_delta.relation_count == before_relation_count) {
 			break;
+		}
+	}
+	return 0;
+}
+
+static int operation_solver_resolve_contexts(struct compile_context* ctx) {
+	if (!ctx || !ctx->metadata ||
+		ctx->metadata->contexts.context_count > PROTOTYPE_CONTEXT_CAPACITY) {
+		return -1;
+	}
+	uint32_t relocation[PROTOTYPE_CONTEXT_CAPACITY];
+	size_t source_count = ctx->metadata->contexts.context_count;
+	relocation[0] = 0;
+	for (uint32_t context_id = 1; context_id < source_count; ++context_id) {
+		const struct prototype_context* context = prototype_context_get(
+			&ctx->metadata->contexts, context_id
+		);
+		if (!context || context->parent >= context_id) {
+			return -1;
+		}
+		uint32_t classifier = context->classifier;
+		if (classifier == PROTOTYPE_INVALID_ID) {
+			for (uint32_t operation_id = 0;
+				operation_id < ctx->metadata->operation_count;
+				++operation_id) {
+				const struct prototype_operation_node* operation =
+					&ctx->metadata->operations[operation_id];
+				if (operation->tag == PROTOTYPE_OPERATION_VAR &&
+					operation->referenced_ast_binder_id ==
+						context->classifier_variable &&
+					operation->classifier != PROTOTYPE_INVALID_ID) {
+					if (classifier != PROTOTYPE_INVALID_ID &&
+						!prototype_judgement_classifier_normalization_equal(
+							ctx->terms,
+							ctx->type_declarations,
+							classifier,
+							operation->classifier
+						)) {
+						return -1;
+					}
+					classifier = operation->classifier;
+				}
+			}
+		}
+		if (prototype_context_extend(
+				&ctx->metadata->contexts,
+				relocation[context->parent],
+				context->binder_id,
+				classifier,
+				classifier == PROTOTYPE_INVALID_ID ?
+					context->classifier_variable : PROTOTYPE_INVALID_ID,
+				&relocation[context_id]
+			) != 0) {
+			return -1;
+		}
+	}
+	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
+		uint32_t context_id = ctx->metadata->operations[i].context_id;
+		if (context_id >= source_count) {
+			return -1;
+		}
+		ctx->metadata->operations[i].context_id = relocation[context_id];
+	}
+	for (uint32_t i = 0; i < ctx->pending_binder_assumption_count; ++i) {
+		uint32_t context_id = ctx->pending_binder_assumptions[i].context_id;
+		if (context_id >= source_count) {
+			return -1;
+		}
+		ctx->pending_binder_assumptions[i].context_id = relocation[context_id];
+	}
+	for (uint32_t i = 0; i < ctx->pending_declaration_fact_count; ++i) {
+		uint32_t context_id = ctx->pending_declaration_facts[i].context_id;
+		if (context_id >= source_count) {
+			return -1;
+		}
+		ctx->pending_declaration_facts[i].context_id = relocation[context_id];
+	}
+	for (size_t i = 0; i < ctx->judgement_delta.relation_count; ++i) {
+		uint32_t context_id = ctx->judgement_delta.relations[i].context_id;
+		if (context_id >= source_count) {
+			return -1;
+		}
+		ctx->judgement_delta.relations[i].context_id = relocation[context_id];
+	}
+	for (size_t i = 0; i < ctx->judgement_delta.proof_count; ++i) {
+		struct prototype_judgement_proof* proof =
+			&ctx->judgement_delta.proofs[i];
+		if (proof->conclusion_context_id >= source_count) {
+			return -1;
+		}
+		proof->conclusion_context_id =
+			relocation[proof->conclusion_context_id];
+		for (uint32_t j = 0; j < proof->premise_count; ++j) {
+			if (proof->premise_context_ids[j] >= source_count) {
+				return -1;
+			}
+			proof->premise_context_ids[j] =
+				relocation[proof->premise_context_ids[j]];
+		}
+	}
+	for (size_t i = 0;
+		i < ctx->judgement_delta.computation_constraint_count;
+		++i) {
+		uint32_t context_id =
+			ctx->judgement_delta.computation_constraints[i].context_id;
+		if (context_id >= source_count) {
+			return -1;
+		}
+		ctx->judgement_delta.computation_constraints[i].context_id =
+			relocation[context_id];
+	}
+	for (size_t i = 0; i < ctx->judgement->relation_count; ++i) {
+		uint32_t context_id = ctx->judgement->relations[i].context_id;
+		if (context_id >= source_count) {
+			return -1;
+		}
+		ctx->judgement->relations[i].context_id = relocation[context_id];
+	}
+	for (size_t i = 0; i < ctx->judgement->proof_count; ++i) {
+		struct prototype_judgement_proof* proof = &ctx->judgement->proofs[i];
+		if (proof->conclusion_context_id >= source_count) {
+			return -1;
+		}
+		proof->conclusion_context_id =
+			relocation[proof->conclusion_context_id];
+		for (uint32_t j = 0; j < proof->premise_count; ++j) {
+			if (proof->premise_context_ids[j] >= source_count) {
+				return -1;
+			}
+			proof->premise_context_ids[j] =
+				relocation[proof->premise_context_ids[j]];
+		}
+	}
+	return 0;
+}
+
+static int operation_solver_generate_computation_constraints(
+	struct compile_context* ctx
+) {
+	if (!ctx || !ctx->metadata) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
+		const struct prototype_operation_node* operation =
+			&ctx->metadata->operations[i];
+		if (operation->tag != PROTOTYPE_OPERATION_DEEP_FOLD &&
+			operation->tag != PROTOTYPE_OPERATION_PERFORM) {
+			continue;
+		}
+		int status = prototype_judgement_delta_record_computation_constraint(
+			&ctx->judgement_delta,
+			ctx->terms,
+			operation->context_id,
+			operation->core_term
+		);
+		if (status != 0) {
+			return -1;
 		}
 	}
 	return 0;
@@ -22041,6 +24423,9 @@ static int bind_cbpv_operation_classifiers(
 		if (child_classifier == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
+		prototype_judgement_delta_set_context(
+			&ctx->judgement_delta, operation->context_id
+		);
 		if (prototype_judgement_delta_record_cbpv_boundary(
 				&ctx->judgement_delta,
 				ctx->terms,
@@ -22236,22 +24621,26 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 		if (match_resolution_status < 0) {
 			return -1;
 		}
-		int status = compile_phase_infer_general_classifiers(ctx, 0);
-		if (status != 0) {
-			return -1;
-		}
-		/* Source operations carry the selected typed occurrence. Materialize their
-		 * CBPV boundaries before solving sequencing constraints so a shared
-		 * FORCE/THUNK node is never reclassified from an unrelated occurrence. */
+			int status = compile_phase_infer_general_classifiers(ctx, 0);
+			if (status != 0) {
+				return -1;
+			}
+			if (operation_solver_resolve_contexts(ctx) != 0) {
+				return -1;
+			}
+			/* Source operations carry the selected typed occurrence. Materialize their
+			 * CBPV boundaries before solving sequencing constraints so a shared
+			 * FORCE/THUNK node is never reclassified from an unrelated occurrence. */
 		if (operation_solver_materialize_judgements(ctx) != 0) {
 			return -1;
-		}
-		int cbpv_changed = 0;
-		if (bind_cbpv_operation_classifiers(ctx, &cbpv_changed) != 0 ||
-			prototype_judgement_delta_solve_computation_constraints(
-				&ctx->judgement_delta,
-				ctx->terms,
-				ctx->type_declarations
+			}
+			int cbpv_changed = 0;
+			if (bind_cbpv_operation_classifiers(ctx, &cbpv_changed) != 0 ||
+				operation_solver_generate_computation_constraints(ctx) != 0 ||
+				prototype_judgement_delta_solve_recorded_computation_constraints(
+					&ctx->judgement_delta,
+					ctx->terms,
+					ctx->type_declarations
 			) != 0 ||
 			operation_effect_generate_constraints(ctx) != 0) {
 			return -1;
@@ -22271,10 +24660,58 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 	if (status != 0) {
 		return -1;
 	}
+	if (operation_solver_resolve_contexts(ctx) != 0) {
+		return -1;
+	}
 	for (uint32_t i = 0; i < ctx->pending_match_typing_count; ++i) {
 		uint32_t operation = ctx->pending_match_typings[i].operation;
 		if (operation >= ctx->metadata->operation_count ||
 			ctx->classifier_solver.bindings[operation] == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+	}
+	int has_handler_constraint = 0;
+	for (size_t i = 0;
+		i < ctx->judgement_delta.computation_constraint_count;
+		++i) {
+		const struct prototype_judgement_computation_constraint* constraint =
+			&ctx->judgement_delta.computation_constraints[i];
+		if (constraint->kind ==
+				PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_DEEP_FOLD &&
+			constraint->subject < ctx->terms->term_count &&
+			ctx->terms->terms[constraint->subject].tag ==
+				PROTOTYPE_TERM_DEEP_FOLD &&
+			ctx->terms->terms[constraint->subject].as.deep_fold.clause_count != 0) {
+			has_handler_constraint = 1;
+			break;
+		}
+	}
+	if (has_handler_constraint) {
+		/* Handler solving creates provisional structural derivations in its
+		 * outer context. Rebuild those from the clause OperationGraph nodes. */
+		prototype_judgement_delta_drop_temporary_derivations(
+			&ctx->judgement_delta
+		);
+		size_t write = 0;
+		for (size_t i = 0;
+			i < ctx->judgement_delta.computation_constraint_count;
+			++i) {
+			if (ctx->judgement_delta.computation_constraints[i].kind !=
+				PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST) {
+				continue;
+			}
+			if (write != i) {
+				ctx->judgement_delta.computation_constraints[write] =
+					ctx->judgement_delta.computation_constraints[i];
+			}
+			write++;
+		}
+		ctx->judgement_delta.computation_constraint_count = write;
+		if (prototype_judgement_delta_solve_recorded_computation_constraints(
+				&ctx->judgement_delta,
+				ctx->terms,
+				ctx->type_declarations
+			) != 0) {
 			return -1;
 		}
 	}
@@ -22391,6 +24828,7 @@ static int compile_phase_check_ascriptions(struct compile_context* ctx) {
 		if (prototype_judgement_add_conversion(
 					ctx->judgement,
 					ctx->terms,
+					ctx->metadata->operations[check->operation].context_id,
 					check->subject,
 					solved_expected_classifier,
 					actual_classifier
@@ -22553,6 +24991,7 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 			if (prototype_judgement_add_conversion(
 					ctx->judgement,
 					ctx->terms,
+					0,
 					compiled_term,
 					expected_classifier,
 					actual_classifier
@@ -22759,8 +25198,9 @@ static void compile_metadata_refresh_runtime_capabilities(
 		while (head < terms->term_count && terms->terms[head].tag == PROTOTYPE_TERM_APP) {
 			head = terms->terms[head].as.app.function;
 		}
-		if (head < terms->term_count && terms->terms[head].tag == PROTOTYPE_TERM_OPERATION &&
-			terms->terms[head].as.operation.operation_id == PROTOTYPE_OPERATION_PRINT) {
+		if (head < terms->term_count && terms->terms[head].tag == PROTOTYPE_TERM_EFFECT_OPERATION &&
+			terms->terms[head].as.effect_operation.operation_id ==
+				PROTOTYPE_EFFECT_OPERATION_PRINT) {
 			capabilities |= PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL;
 		}
 	}
@@ -22797,7 +25237,7 @@ static void sync_universe_level_counters(struct compile_context* ctx) {
 	}
 }
 
-int prototype_ast_compile_pending_with_imports(
+static int compile_pending_with_workspace(
 	struct prototype_ast_db* asts,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -22805,9 +25245,10 @@ int prototype_ast_compile_pending_with_imports(
 	struct prototype_compile_metadata* metadata,
 	int namespace_symbol_id,
 	const struct prototype_artifact_interface* const* imported_interfaces,
-	size_t imported_interface_count
+	size_t imported_interface_count,
+	struct compile_judgement_workspace* workspace
 ) {
-	if (!asts || !terms || !type_declarations || !judgement) {
+	if (!asts || !terms || !type_declarations || !judgement || !workspace) {
 		return -1;
 	}
 	struct compile_context ctx;
@@ -22819,17 +25260,21 @@ int prototype_ast_compile_pending_with_imports(
 	prototype_judgement_delta_init(
 		&ctx.judgement_delta,
 		judgement,
-				ctx.judgement_delta_relations,
-				ctx.judgement_delta_proofs,
+				workspace->relations,
+				workspace->proofs,
 				PROTOTYPE_JUDGEMENT_DELTA_CAPACITY,
-				ctx.judgement_delta_match_motive_results,
+				workspace->match_motive_results,
 				PROTOTYPE_JUDGEMENT_DELTA_CAPACITY,
-				ctx.judgement_delta_computation_constraints,
+				workspace->computation_constraints,
 				PROTOTYPE_JUDGEMENT_DELTA_CAPACITY,
-				ctx.judgement_delta_effect_row_equations,
+				workspace->effect_row_equations,
 				PROTOTYPE_JUDGEMENT_DELTA_CAPACITY
 			);
 	ctx.metadata = metadata;
+	if (!metadata || prototype_context_empty(&metadata->contexts) == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	ctx.context_ids[0] = prototype_context_empty(&metadata->contexts);
 	if (metadata) {
 		prototype_judgement_delta_set_solver_budget(
 			&ctx.judgement_delta,
@@ -22872,16 +25317,12 @@ int prototype_ast_compile_pending_with_imports(
 	if (compile_phase_infer_pending_types(&ctx) != 0) {
 		return -1;
 	}
-	/* Source APP/LAMBDA/MATCH derivations are already committed above. Solve
-	 * only CBPV boundaries and sequencing constraints here; re-running the
-	 * generic term solver would create competing type-formation derivations. */
-	if (prototype_judgement_delta_solve_computation_constraints(
-			&ctx.judgement_delta,
-			terms,
-			type_declarations
-		) != 0 ||
-		operation_effect_generate_constraints(&ctx) != 0 ||
-		prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
+	/* The fixed point above has already solved and committed source-operation
+	 * computation constraints in their contexts. Rebuilding constraints from
+	 * TermDB here would erase occurrence contexts and create false closed
+	 * derivations for shared core terms. */
+	if (operation_effect_generate_constraints(&ctx) != 0 ||
+			prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
 			compile_phase_record_residual_dependent_binds(&ctx) != 0 ||
 			compile_phase_record_residual_deep_fold_results(&ctx) != 0) {
 		return -1;
@@ -22936,6 +25377,35 @@ int prototype_ast_compile_pending_with_imports(
 		return -1;
 	}
 	return 0;
+}
+
+int prototype_ast_compile_pending_with_imports(
+	struct prototype_ast_db* asts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_judgement_db* judgement,
+	struct prototype_compile_metadata* metadata,
+	int namespace_symbol_id,
+	const struct prototype_artifact_interface* const* imported_interfaces,
+	size_t imported_interface_count
+) {
+	struct compile_judgement_workspace* workspace = calloc(1, sizeof(*workspace));
+	if (!workspace) {
+		return -1;
+	}
+	int status = compile_pending_with_workspace(
+		asts,
+		terms,
+		type_declarations,
+		judgement,
+		metadata,
+		namespace_symbol_id,
+		imported_interfaces,
+		imported_interface_count,
+		workspace
+	);
+	free(workspace);
+	return status;
 }
 
 int prototype_ast_compile_pending(

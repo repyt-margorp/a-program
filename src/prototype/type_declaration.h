@@ -118,6 +118,15 @@ struct prototype_type_constructor_declaration {
 	 * checks must use classifier_family.
 	 */
 	struct prototype_type_constructor_readback readback;
+	/*
+	 * The constructor telescope is the ContextDB path from parameter_context
+	 * to field_context. result_classifier is meaningful in field_context.
+	 * classifier_family is the derived curried display used by existing Pi
+	 * elimination; it is not a second schema authority.
+	 */
+	uint32_t parameter_context;
+	uint32_t field_context;
+	uint32_t result_classifier;
 	uint32_t classifier_family;
 };
 
@@ -239,6 +248,9 @@ int prototype_type_declaration_add_constructor(
 	const uint32_t* readback_field_type_exprs,
 	uint32_t readback_field_count,
 	uint32_t readback_result_type_expr,
+	uint32_t parameter_context,
+	uint32_t field_context,
+	uint32_t result_classifier,
 	uint32_t classifier_family,
 	uint32_t* p_constructor_id
 );
