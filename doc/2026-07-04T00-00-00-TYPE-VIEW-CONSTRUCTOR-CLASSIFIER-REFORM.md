@@ -2,7 +2,11 @@
 
 Date: 2026-07-04
 
-Status: current implementation target
+Status: historical; constructor schema authority was superseded on 2026-07-27
+by `2026-07-27T00-00-00-CATEGORICAL-CWF-DCBPV-MIGRATION.md`
+
+The historical `classifier_family` field described below is now the derived
+`curried_classifier_cache`. Constructor semantics live in ContextDB telescopes.
 
 This document records the current implementation goal after reviewing the
 interaction between type former application, `TELESCOPE`, `PI`, constructor

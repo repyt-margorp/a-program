@@ -4,6 +4,10 @@ Date: 2026-07-12
 
 Status: in progress in `src/prototype/`
 
+Update (2026-07-27): constructor `classifier_family` terminology below is
+historical. The authoritative schema is now the parameter/field Context
+telescope plus result classifier; the curried classifier is a validated cache.
+
 ## Implemented Boundary
 
 Classifier synthesis now starts from an operation-scoped solver arena rather

@@ -1,5 +1,6 @@
 #include "term.h"
 #include "type_declaration.h"
+#include "context.h"
 
 #include <stdint.h>
 
@@ -23,10 +24,12 @@ static struct prototype_type_constructor_declaration constructor_declarations[CO
 static struct prototype_type_parameter_declaration parameter_declarations[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
+static struct prototype_context contexts[8];
 
 int main(void) {
 	struct prototype_term_db term_db;
 	struct prototype_type_declaration_db type_db;
+	struct prototype_context_db context_db;
 	prototype_term_db_init(
 		&term_db,
 		terms,
@@ -52,6 +55,7 @@ int main(void) {
 		type_exprs,
 		TYPE_EXPR_CAPACITY
 	);
+	prototype_context_db_init(&context_db, contexts, 8);
 
 	uint32_t bool_type_id;
 	uint32_t two_type_id;
@@ -60,6 +64,7 @@ int main(void) {
 	uint32_t two_view;
 	uint32_t ignored_constructor;
 	if (prototype_type_declaration_add(&type_db, 1, &bool_type_id) != 0) return 10;
+	type_db.type_declarations[bool_type_id].parameter_context = 0;
 	if (prototype_type_expr_self(&type_db, &self_expr) != 0) return 12;
 	if (prototype_term_type_instance_make(&term_db, &type_db, bool_type_id, NULL, 0, &bool_view) != 0) return 13;
 	if (prototype_type_declaration_add_constructor(
@@ -71,6 +76,7 @@ int main(void) {
 		0, 0, bool_view, bool_view, &ignored_constructor
 	) != 0) return 16;
 	if (prototype_type_declaration_add(&type_db, 2, &two_type_id) != 0) return 11;
+	type_db.type_declarations[two_type_id].parameter_context = 0;
 	if (prototype_term_type_instance_make(&term_db, &type_db, two_type_id, NULL, 0, &two_view) != 0) return 14;
 	if (prototype_type_declaration_add_constructor(
 		&type_db, two_type_id, 21, NULL, 0, self_expr,
@@ -80,7 +86,9 @@ int main(void) {
 		&type_db, two_type_id, 22, NULL, 0, self_expr,
 		0, 0, two_view, two_view, &ignored_constructor
 	) != 0) return 18;
-	if (prototype_type_declaration_rebuild_representations(&term_db, &type_db) != 0) return 19;
+	if (prototype_type_declaration_rebuild_representations(
+			&term_db, &type_db, &context_db
+		) != 0) return 19;
 	if (prototype_term_rebind_type_former_anchors(&term_db, &type_db) != 0) return 20;
 
 	int equal = 0;

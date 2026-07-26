@@ -90,6 +90,16 @@ int prototype_constructor_telescopes_validate(
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms
 );
+int prototype_constructor_curried_caches_validate(
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms
+);
+int prototype_constructor_curried_caches_rebuild(
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms
+);
 int prototype_context_db_append_relocated(
 	struct prototype_context_db* target,
 	const struct prototype_context_db* source,
@@ -105,6 +115,19 @@ int prototype_context_extension_path(
 	uint32_t* path,
 	uint32_t path_capacity,
 	uint32_t* p_count
+);
+int prototype_context_fresh_reindex_extension(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t base_context,
+	uint32_t source_extension,
+	uint32_t* binders,
+	uint32_t binder_capacity,
+	uint32_t* p_binder_count,
+	uint32_t* p_target_extension,
+	uint32_t* p_substitution
 );
 
 void prototype_substitution_db_init(

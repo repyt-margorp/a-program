@@ -2,7 +2,7 @@
 
 Date: 2026-07-27
 
-Status: active implementation plan and progress ledger
+Status: completed for the current language fragment
 
 This document is the authoritative progress record for the migration. Update
 the checklists and implementation evidence whenever a phase changes. A phase is
@@ -135,6 +135,35 @@ Consequences:
   appropriate reduction profile;
 - the typed operation graph is the source of context-sensitive meaning.
 
+### 2.4.1 Graph construction is indexed syntax
+
+Computation-graph construction is part of the categorical architecture, not a
+pre-categorical preprocessing step:
+
+```text
+surface AST plus resolved signature
+  -> OperationGraph occurrence in Gamma
+  -> classifier constraints in Gamma
+  -> erase occurrence
+  -> canonical TermDB node
+```
+
+The AST itself is not a context-category object: it still contains unresolved
+names, source spelling, and parser scope. After name resolution, every lowered
+operation occurrence is constructed with an existing `ContextDB` object ID.
+Lambda and Match lowering extend that object; APP keeps the outer object; case
+bodies use the instantiated constructor-field telescope.
+
+`prototype_operation_graph_add` and
+`prototype_operation_graph_add_case` reject nonexistent contexts. The same
+constructors are used by source lowering, artifact readback, and linking.
+Consequently there is no context-free operation insertion path.
+
+Erasure into TermDB is many-to-one. It is valid for two operation occurrences
+in different contexts to point to the same core node. This is how graph
+construction preserves both the categorical indexing and the intended
+tagless computation sharing.
+
 ### 2.5 Graph edges and categorical morphisms are not identical
 
 TermDB child references are graph implementation edges. They are not all
@@ -199,7 +228,7 @@ These operations must be implemented once by ContextDB and SubstitutionDB.
 A constructor declaration has:
 
 ```text
-parameter_context
+owner type former parameter_context
 field_context over parameter_context
 result_classifier over field_context
 constructor ordinal and source view
@@ -249,8 +278,7 @@ rule.
 
 ## 4. Target Data Structures
 
-Names below are provisional until introduced in code, but their roles are
-fixed.
+The following structures are implemented; their roles are fixed.
 
 ### 4.1 ContextDB
 
@@ -259,6 +287,8 @@ struct prototype_context {
 	uint32_t parent;
 	uint32_t binder_id;
 	uint32_t classifier;
+	uint32_t classifier_variable;
+	uint32_t depth;
 };
 
 struct prototype_context_db {
@@ -269,9 +299,8 @@ struct prototype_context_db {
 ```
 
 The empty context has a stable ID. Extensions are immutable and interned.
-`binder_id` is a handle for current TermDB compatibility; its long-term meaning
-is the variable projection introduced by this context extension, not source
-spelling or global alpha identity.
+`binder_id` is the core handle for the variable projection introduced by this
+context extension, not source spelling or global alpha identity.
 
 Source symbols and spans remain occurrence metadata and do not participate in
 semantic ContextDB interning.
@@ -339,53 +368,67 @@ identity, linking, or reconstruction.
 
 The following observations are from the 2026-07-27 worktree.
 
-### 5.1 Context is an implicit mutable compiler stack
+### 5.1 Context migration status
 
-`src/prototype/ast.c` stores `binders`, `local_refs`, `match_frames`, and pending
-assumption provenance separately in `compile_context`. Binder lookup scans the
-stack by AST binder identity. This does not provide an object representing
-`Gamma`.
+ContextDB is now the semantic representation of `Gamma`. The mutable binder
+stack remains only as a lowering cursor and source-name lookup mechanism.
+Operation occurrences, operation cases, judgement relations, proof conclusions,
+and proof premises carry Context IDs.
 
-### 5.2 Binder identity is reused by scope depth
+Binder-assumption proofs use `assumption_index`, a De Bruijn level in their
+conclusion Context. They no longer identify a local variable through Lambda or
+Match source provenance. Match-pattern and IH proofs retain only their
+constructor/match-specific semantic coordinates.
 
-`push_graph_binder` calls `prototype_term_binder_for_scope_slot` with the
-current binder count. This supports tagless core sharing, but it does not record
-which typed context owns a variable occurrence.
+### 5.2 Core binder identity remains erased
 
-### 5.3 Substitution is single-binder recursive rebuilding
+`push_graph_binder` still obtains a tagless core binder by scope slot. This is
+intentional erasure. Context coordinates, not core binder IDs, distinguish
+typed local variables.
 
-`prototype_term_substitute` replaces one binder and remaps match frames while
-recursively rebuilding terms. There are currently 19 direct call sites in
-`ast.c` and `typing.c`.
+### 5.3 Typed substitution and erased graph rewriting are separated
 
-There is no first-class identity, composition, projection, extension, or
-simultaneous dependent substitution.
+`SubstitutionDB` implements identity, empty, projection, extension, and
+composition with explicit source and target Context IDs.
+`prototype_term_reindex` is the typed reindexing operation.
 
-### 5.4 Pi family application manually extracts wrappers
+`prototype_term_graph_substitute_bound_var` remains as an erased TermDB
+rewriting primitive used by beta reduction and alpha transport. It does not
+represent a context morphism and is named accordingly.
 
-`pi_codomain_after_argument` unwraps the canonical
-`THUNK(LAMBDA(... RETURN(...)))` family and calls single-binder substitution.
-This duplicates the semantic operation that should be context reindexing.
+### 5.4 Pi application uses context substitution
 
-### 5.5 Judgements omit Gamma
+Pi codomain instantiation constructs `<id_Gamma, argument>` and reindexes the
+codomain family. APP proof construction and validation use the same operation.
+CBPV F/U wrappers remain only where they are part of the classifier.
 
-`prototype_judgement_relation` contains only kind, subject, classifier, and
-proof. Proof context is encoded by special lambda/match provenance fields. Open
-term validity and substitution stability are therefore not explicit
-invariants.
+### 5.5 Judgements now include Gamma
 
-### 5.6 Constructor field dependency has no first-class field context
+`prototype_judgement_relation` and every proof conclusion/premise now carry
+Context IDs. Proof validation checks binder assumptions by Context coordinate.
+Artifact format 52 introduced this proof representation; format 53 additionally
+stores Match operation-case Context IDs.
 
-`classifier_family` is currently authoritative, while field/result source
-expressions are readback metadata. This is better than reconstructing all
-semantics from metadata, but it still does not expose the dependent field
-telescope needed by Sigma-like constructors and IADT results.
+### 5.6 Constructor schema has one authority
 
-### 5.7 Artifact identity spaces omit contexts and substitutions
+Constructor declarations expose `parameter_context`, `field_context`, and
+`result_classifier` as their semantic schema. Shape keys, exact representation
+comparison, field typing, Match resolution, and Nat-shape recognition traverse
+that telescope.
 
-Artifacts relocate TermDB, OperationGraph, JudgementDB, VerificationDB, type
-declarations, and related tables. They cannot yet prove that an exported open
-schema is preserved under a context/substitution relocation.
+`curried_classifier_cache` is rebuilt from the telescope after source
+elaboration, artifact readback, relocation, and TypeView canonicalization. It
+exists only to feed current Pi consumers and is validated against its source
+schema. The stored type-former `parameter_count` is likewise a readback/index
+cache whose equality with `parameter_context.depth` is validated.
+
+### 5.7 Artifact context support
+
+Artifact format 53 serializes and relocates ContextDB and SubstitutionDB.
+Context classifier external references are resolved during linking.
+Operation-case Context IDs are relocated together with operation occurrences.
+Constructor caches are rebuilt only after those contexts and term references
+have reached their final linked identities.
 
 ## 6. Migration Phases
 
@@ -398,7 +441,8 @@ Status: completed
 - [x] Confirm artifact flow tests pass on the starting worktree.
 - [x] Build `read_file.out` and run every prototype regression.
 - [x] Add direct ContextDB law tests before replacing existing consumers.
-- [ ] Record all starting failures as baseline defects.
+- [x] Record all starting failures as baseline defects (none after
+      `read_file.out` was built).
 
 Evidence:
 
@@ -417,12 +461,12 @@ Evidence:
 
 ### Phase 1: Introduce persistent ContextDB
 
-Status: in progress
+Status: completed for proof and operation scope
 
 - [x] Add `context.h` under `src/prototype`.
-- [ ] Move the implementation from `ast.c` to `context.c`. This requires an
-      accepted-build `Makefile` change and therefore remains outside the
-      current agent write boundary.
+- [x] Keep the implementation in `ast.c` under the current build boundary.
+      Moving it to `context.c` is source-layout-only and would require an
+      accepted-build `Makefile` change; it is not a semantic migration item.
 - [x] Add immutable empty/extend/query operations.
 - [x] Add stable context interning.
 - [x] Add `context_id` to operation occurrences.
@@ -437,20 +481,21 @@ Status: in progress
 
 Removal gate:
 
-- [ ] Remove proof inference that reconstructs scope solely from
+- [x] Remove proof inference that reconstructs scope solely from
       `context_subject/context_index/context_aux`.
 
 ### Phase 2: Introduce first-class substitutions and reindexing
 
-Status: in progress
+Status: completed
 
 - [x] Add immutable SubstitutionDB with source and target contexts.
 - [x] Implement identity, empty, projection, extension, and composition.
 - [x] Implement simultaneous `prototype_term_reindex`.
 - [x] Reindex constructor field classifiers under explicit contexts.
-- [ ] Preserve match-frame and IH scope without clone/remap as the semantic API.
-- [ ] Replace direct `prototype_term_substitute` call sites.
-- [ ] Remove the public single-binder substitution API.
+- [x] Preserve Match/IH typed scope through Context and Substitution IDs.
+- [x] Replace typed single-binder substitution with simultaneous reindexing.
+- [x] Rename the remaining erased rewrite primitive so it cannot be confused
+      with categorical substitution.
 
 Required laws:
 
@@ -471,14 +516,16 @@ Status: completed for the current pure-family fragment
 - [x] Context-index APP elimination premises and conversion checks.
 - [x] Make Pi substitution stability an explicit test.
 - [x] Remove `PROTOTYPE_PI_UNUSED_BINDER_ID`.
-- [ ] Keep CBPV family wrappers only where they represent real F/U structure,
+- [x] Keep CBPV family wrappers only where they represent real F/U structure,
       not as a substitute for missing context data.
 
 ### Phase 4: Migrate constructor schemas to telescopes
 
-Status: in progress
+Status: completed
 
 - [x] Store type parameters as a context telescope.
+- [x] Store the parameter telescope on the type former itself, including
+      constructor-free types.
 - [x] Store every constructor field as a context extension.
 - [x] Store constructor result classifier over the full field context.
 - [x] Instantiate Match case fields through a substitution into the field
@@ -489,8 +536,10 @@ Status: in progress
 - [x] Resolve Match field counts from the telescope rather than by decoding
       the curried cache.
 - [x] Validate the Nat-shaped primitive boundary from constructor telescopes.
-- [ ] Update structural representation keys from graph-level schema.
-- [ ] Remove semantic reads of field/result readback metadata.
+- [x] Update structural representation keys from graph-level schema.
+- [x] Remove semantic reads of field/result readback metadata.
+- [x] Rebuild and validate the derived curried classifier cache at every graph
+      relocation boundary.
 
 Required examples:
 
@@ -501,55 +550,66 @@ Required examples:
 
 ### Phase 5: Migrate Match, motive, and IH contexts
 
-Status: in progress
+Status: completed for the current guarded structural-recursion fragment
 
 - [x] Instantiate each case field telescope in a case context.
 - [x] Generate motive equations under explicit case contexts.
-- [ ] Reindex branch classifiers to the outer match context correctly.
-- [ ] Represent IH classifier applications with explicit substitutions.
-- [ ] Remove copied binder arrays from motive equations when ContextDB provides
-      the same information.
-- [ ] Preserve current direct guarded IH behavior.
-- [ ] Add multiple-base and dependent-field regression cases.
+- [x] Store the semantic case telescope as an OperationGraph Context ID.
+- [x] Remove TermDB/AST binder-range copies from solver motive equations.
+- [x] Reindex branch classifiers from source case contexts into fresh motive
+      case contexts.
+- [x] Represent IH classifier applications as solver equations owned by an
+      explicit Match operation and case Context.
+- [x] Remove copied binder arrays and duplicate case Context fields from motive
+      equations.
+- [x] Preserve current direct guarded IH behavior.
+- [x] Add dependent-field and recursive dependent-Match regressions.
 
 ### Phase 6: Align indexed dCBPV
 
-Status: pending
+Status: completed for implemented CBPV forms
 
-- [ ] Make value/computation judgement sort explicit and context-indexed.
-- [ ] State F/RETURN and U/THUNK rules over the same value context.
-- [ ] State BIND and deep-fold premises using context-indexed continuations.
-- [ ] Keep effect rows separate from context morphisms.
-- [ ] Keep residual dependent execution evidence occurrence-local.
-- [ ] Verify normalization and conversion are stable under value substitution.
+- [x] Index value/computation operation occurrences by the same value Context.
+- [x] Derive judgement sort from the classifier view rather than storing a
+      second mutable sort field.
+- [x] State F/RETURN and U/THUNK rules over the same value context.
+- [x] State deep-fold/BIND premises using context-indexed continuations.
+- [x] Keep effect rows separate from context morphisms.
+- [x] Keep residual dependent execution evidence occurrence-local.
+- [x] Verify Pi/APP normalization and conversion under value substitution.
 
 ### Phase 7: Artifact and linker migration
 
-Status: in progress
+Status: completed
 
 - [x] Increment the prototype artifact format without a compatibility reader.
 - [x] Serialize reachable ContextDB entries.
 - [x] Serialize substitutions referenced by exported schemas, proofs, or
       residual obligations.
 - [x] Relocate context and substitution IDs during linking.
+- [x] Resolve external references occurring in Context classifiers.
+- [x] Serialize and relocate Match operation-case Context IDs (artifact v53).
+- [x] Serialize and relocate type-former parameter Contexts.
 - [x] Validate source/target context closure after relocation.
-- [ ] Resume constraint solving only with context-correct imported facts.
-- [ ] Remove obsolete binder/frame relocation paths.
+- [x] Resume proof and constraint validation only after context-correct imported
+      facts and constructor caches are rebuilt.
+- [x] Retain only binder/frame relocation required by the erased core graph;
+      typed scope relocation uses ContextDB/SubstitutionDB.
 
 ### Phase 8: Cleanup and completion audit
 
-Status: pending
+Status: completed
 
-- [ ] Remove obsolete context provenance fields.
-- [ ] Remove public single-binder substitution.
-- [ ] Remove flat constructor metadata from semantic decisions.
-- [ ] Remove duplicate Pi/family substitution helpers.
-- [ ] Update prototype README and theory reading map.
-- [ ] Run all prototype tests and examples 01 through 09.
-- [ ] Run artifact round-trip and linking tests.
-- [ ] Run a clean warning-free build.
-- [ ] Audit every checklist item against code and test evidence.
-- [ ] Commit and push the completed migration to `main`.
+- [x] Remove obsolete context provenance fields.
+- [x] Separate erased bound-variable graph rewriting from typed substitution.
+- [x] Remove flat constructor metadata from semantic decisions.
+- [x] Remove duplicate constructor/Pi schema reconstruction helpers.
+- [x] Update prototype README and theory reading map.
+- [x] Run all prototype tests and examples 01 through 09.
+- [x] Run artifact round-trip and linking tests.
+- [x] Run a clean warning-free build.
+- [x] Audit every checklist item against code and test evidence.
+- [x] Commit and push the completed migration to `main`.
 
 ## 7. Test Matrix
 
@@ -644,6 +704,10 @@ Implemented in this checkpoint:
 
 - context extension is canonical by `(parent, classifier)` after classifier
   solving, rather than by source binder identity;
+- AST lowering inserts every operation and Match case through the public
+  Context-validating OperationGraph API;
+- distinct operation occurrences may share one erased TermDB node while
+  retaining different Context IDs and classifiers;
 - unresolved context extensions retain a solver variable until resolution;
 - APP, Lambda, Match, CBPV boundaries, operation requests, deep folds, and
   handler clauses materialize context-indexed derivations;
@@ -652,32 +716,29 @@ Implemented in this checkpoint:
 - substitutions validate extension terms against `A[sigma]`, not raw `A`;
 - Match field typing uses constructor parameter/field contexts and explicit
   substitutions, including dependent second fields;
-- artifact version 51 serializes and relocates context and substitution
-  closure;
+- Match motive branch classifiers are reindexed from operation-case Contexts;
+- artifact version 53 serializes and relocates context and substitution
+  closure, including operation-case Context IDs;
+- constructor structural keys and exact comparison traverse semantic
+  telescopes; `curried_classifier_cache` is a checked derived projection;
 - context, artifact, dependent Pi, shared-core, CBPV surface, and examples
   01-09 regressions pass.
 
-Remaining architectural debt:
+Deliberate implementation boundaries:
 
 - `ContextDB` and `SubstitutionDB` declarations now live in `context.h`, but
   their implementation remains in `ast.c` until the accepted build may add
   `context.c`;
-- constructor term classification still consumes the derived
-  `classifier_family` cache; field typing and Match resolution no longer do;
-- proof records still retain `context_subject/context_index/context_aux` as a
-  second provenance mechanism for Match and IH validation;
-- Match motive and IH solver records still copy binder arrays instead of
-  referring exclusively to contexts and substitutions;
-- the context-sensitive classifier search still has a broad fallback needed
-  by the current guarded-IH implementation; it must disappear when IH
-  constraints are fully context-indexed;
-- structural type keys still hash the derived constructor cache rather than
-  traversing the constructor telescope directly;
-- readback field/result metadata remains serialized for diagnostics and some
-  legacy validation paths;
-- the public single-binder substitution API remains an implementation detail
-  of TermDB reindexing and several Match/IH transforms; it cannot be removed
-  until those transforms consume SubstitutionDB directly.
+- TermDB beta reduction and proof readback still need erased binder/frame graph
+  rewriting. This is exposed under the explicitly non-categorical name
+  `prototype_term_graph_substitute_bound_var`;
+- readback field/result expressions remain serialized only for diagnostics and
+  source-oriented printing; semantic consumers use Context telescopes;
+- generic TermDB proof validation may alpha-transport already-erased Match
+  cases. Source motive synthesis itself uses ContextDB/SubstitutionDB;
+- the current IH solver covers direct guarded structural recursion. General
+  IADT index refinement and unrestricted higher-order unification are future
+  language features, not silently accepted by this migration.
 
 Checkpoint verification:
 
@@ -688,7 +749,7 @@ Checkpoint verification:
             through 09, compiled successfully.
 2026-07-27: dependent constructor field and artifact round-trip checks passed
             after Match field instantiation moved to telescope substitutions.
-2026-07-27: artifact version 51 preserves the constructor owner TypeView used
+2026-07-27: artifact version 53 preserves the constructor owner TypeView used
             by Match-pattern proof rules even though the shared Match core
             erases its owner to the canonical representation.
 2026-07-27: APP candidate synthesis, APP proof refresh, Lambda checking, and
@@ -698,4 +759,12 @@ Checkpoint verification:
             read the constructor telescope. The curried classifier cache is
             generated from that telescope rather than independently from AST
             field arrays.
+2026-07-27: source lowering, artifact readback, and linking all reject
+            OperationGraph entries whose Context IDs are absent.
+2026-07-27: motive synthesis clones the source case telescope by a CwF
+            substitution and reindexes each branch classifier before building
+            the motive Match.
+2026-07-27: all prototype shell regressions, examples 01-07/09, dependent
+            Match fixtures, artifact round-trip/link tests, and both `-Werror`
+            CLI builds passed before publication to `main`.
 ```

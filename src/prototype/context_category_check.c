@@ -1,6 +1,7 @@
 #include "ast.h"
 
 #include <stdio.h>
+#include <string.h>
 
 int main(void) {
 	struct prototype_term terms[32];
@@ -41,6 +42,19 @@ int main(void) {
 	uint32_t reindexed;
 	uint32_t composed_reindexed;
 	uint32_t dependent_reindexed;
+	uint32_t cloned_binders[2];
+	uint32_t cloned_binder_count;
+	uint32_t cloned_context;
+	uint32_t clone_substitution;
+	uint32_t cloned_classifier;
+	struct prototype_operation_node operation_storage[2];
+	struct prototype_operation_match_case operation_case_storage[1];
+	struct prototype_operation_graph operation_graph;
+	struct prototype_operation_node int_occurrence;
+	struct prototype_operation_node text_occurrence;
+	struct prototype_operation_node invalid_occurrence;
+	uint32_t int_operation;
+	uint32_t text_operation;
 
 	prototype_term_db_init(
 		&term_db,
@@ -184,13 +198,48 @@ int main(void) {
 			section,
 			&dependent_reindexed
 		) != 0 ||
+		prototype_context_fresh_reindex_extension(
+			&contexts,
+			&substitutions,
+			&term_db,
+			&type_declarations,
+			prototype_context_empty(&contexts),
+			dependent_context,
+			cloned_binders,
+			2,
+			&cloned_binder_count,
+			&cloned_context,
+			&clone_substitution
+		) != 0 ||
+		prototype_term_reindex(
+			&term_db,
+			&type_declarations,
+			&contexts,
+			&substitutions,
+			dependent_classifier,
+			clone_substitution,
+			&cloned_classifier
+		) != 0 ||
 		reindexed != literal ||
 		composed_reindexed != literal ||
+		cloned_binder_count != 2 ||
+		prototype_substitution_get(
+			&substitutions, clone_substitution
+		)->source_context != cloned_context ||
+		prototype_substitution_get(
+			&substitutions, clone_substitution
+		)->target_context != dependent_context ||
 		!prototype_judgement_classifier_normalization_equal(
 			&term_db,
 			&type_declarations,
 			dependent_reindexed,
 			int_type
+		) ||
+		!prototype_judgement_classifier_normalization_equal(
+			&term_db,
+			&type_declarations,
+			cloned_classifier,
+			dependent_classifier
 		) ||
 		prototype_substitution_get(&substitutions, dependent_section) == NULL ||
 		prototype_substitution_get(&substitutions, projection) == NULL ||
@@ -198,6 +247,47 @@ int main(void) {
 			&substitutions, &contexts, &term_db
 		) != 0) {
 		fprintf(stderr, "categorical substitution law failed\n");
+		return 1;
+	}
+	prototype_operation_graph_init(
+		&operation_graph,
+		operation_storage,
+		2,
+		operation_case_storage,
+		1
+	);
+	memset(&int_occurrence, 0xff, sizeof(int_occurrence));
+	int_occurrence.tag = PROTOTYPE_OPERATION_ATOM;
+	int_occurrence.polarity = 1;
+	int_occurrence.computation_kind = 0;
+	int_occurrence.context_id = int_context;
+	int_occurrence.core_term = literal;
+	int_occurrence.source_symbol_id = -1;
+	int_occurrence.binder_symbol_id = -1;
+	int_occurrence.case_count = 0;
+	memset(&text_occurrence, 0xff, sizeof(text_occurrence));
+	text_occurrence = int_occurrence;
+	text_occurrence.context_id = text_context;
+	invalid_occurrence = int_occurrence;
+	invalid_occurrence.context_id = 99;
+	if (prototype_operation_graph_add(
+			&operation_graph, &contexts, int_occurrence, &int_operation
+		) != 0 ||
+		prototype_operation_graph_add(
+			&operation_graph, &contexts, text_occurrence, &text_operation
+		) != 0 ||
+		prototype_operation_graph_add(
+			&operation_graph, &contexts, invalid_occurrence, NULL
+		) == 0 ||
+		int_operation == text_operation ||
+		operation_graph.operations[int_operation].core_term !=
+			operation_graph.operations[text_operation].core_term ||
+		operation_graph.operations[int_operation].context_id ==
+			operation_graph.operations[text_operation].context_id ||
+		prototype_operation_graph_validate(
+			&operation_graph, &term_db, &contexts
+		) != 0) {
+		fprintf(stderr, "context-indexed operation graph law failed\n");
 		return 1;
 	}
 	printf("context category checks passed\n");

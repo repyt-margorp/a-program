@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 struct prototype_term_db;
+struct prototype_context_db;
 
 /*
  * A qualified source-level address used only while a graph reference has not
@@ -121,14 +122,14 @@ struct prototype_type_constructor_declaration {
 	/*
 	 * The constructor telescope is the ContextDB path from parameter_context
 	 * to field_context. result_classifier is meaningful in field_context.
-	 * classifier_family is a derived curried cache used to classify constructor
+	 * curried_classifier_cache is a derived curried cache used to classify constructor
 	 * terms through existing Pi elimination. It is generated from the
 	 * telescope and is not a second schema authority.
 	 */
 	uint32_t parameter_context;
 	uint32_t field_context;
 	uint32_t result_classifier;
-	uint32_t classifier_family;
+	uint32_t curried_classifier_cache;
 };
 
 struct prototype_type_declaration {
@@ -142,7 +143,11 @@ struct prototype_type_declaration {
 	/* Classifier of the source type former itself. For example,
 	 * List : Pi(Universe(u), \A => Universe(v)). */
 	uint32_t formation_classifier;
+	/* Full telescope of type-former parameters. */
+	uint32_t parameter_context;
 	uint32_t first_parameter;
+	/* Readback/index cache; validation requires this to equal the depth of
+	 * parameter_context. Semantic parameter classifiers live in ContextDB. */
 	uint32_t parameter_count;
 	uint32_t first_constructor;
 	uint32_t constructor_count;
@@ -252,8 +257,17 @@ int prototype_type_declaration_add_constructor(
 	uint32_t parameter_context,
 	uint32_t field_context,
 	uint32_t result_classifier,
-	uint32_t classifier_family,
+	uint32_t curried_classifier_cache,
 	uint32_t* p_constructor_id
+);
+
+int prototype_type_constructor_derive_curried_classifier(
+	struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
+	uint32_t parameter_context,
+	uint32_t field_context,
+	uint32_t result_classifier,
+	uint32_t* p_classifier
 );
 
 const struct prototype_type_declaration* prototype_type_declaration_lookup(
@@ -270,6 +284,7 @@ const struct prototype_type_constructor_declaration* prototype_type_declaration_
 int prototype_type_declaration_code_shape_key(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
 	uint32_t type_id,
 	struct prototype_type_code_shape_key* p_key
 );
@@ -301,7 +316,8 @@ int prototype_type_declaration_representation_type_id(
 
 int prototype_type_declaration_rebuild_representations(
 	const struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* db
+	struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts
 );
 
 #endif

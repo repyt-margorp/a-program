@@ -2290,6 +2290,8 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 		return -1;
 	}
 	program->type_declarations->type_declarations[type_id].formation_classifier = universe;
+	program->type_declarations->type_declarations[type_id].parameter_context =
+		empty_context;
 	if (prototype_judgement_expand_type_def(
 			program->judgement,
 			program->terms,
@@ -2556,17 +2558,31 @@ int prototype_link_external_refs(struct prototype_program* program) {
 					proof->conclusion_classifier = linked_classifier;
 					changed = 1;
 				}
-				if (proof->context_subject != PROTOTYPE_INVALID_ID) {
-					uint32_t linked_context_subject;
+				if (proof->constructor_owner_view != PROTOTYPE_INVALID_ID) {
+					uint32_t linked_owner;
 					if (link_term_against_labels(
 							program,
-							proof->context_subject,
-							&linked_context_subject
+							proof->constructor_owner_view,
+							&linked_owner
 						) != 0) {
 						return -1;
 					}
-					if (linked_context_subject != proof->context_subject) {
-						proof->context_subject = linked_context_subject;
+					if (linked_owner != proof->constructor_owner_view) {
+						proof->constructor_owner_view = linked_owner;
+						changed = 1;
+					}
+				}
+				if (proof->induction_match != PROTOTYPE_INVALID_ID) {
+					uint32_t linked_match;
+					if (link_term_against_labels(
+							program,
+							proof->induction_match,
+							&linked_match
+						) != 0) {
+						return -1;
+					}
+					if (linked_match != proof->induction_match) {
+						proof->induction_match = linked_match;
 						changed = 1;
 					}
 				}

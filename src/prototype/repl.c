@@ -479,10 +479,10 @@ static void print_state(
 				&type_declarations->constructor_declarations[type->first_constructor + j];
 			printf("constructor ");
 			print_type_namespace(symbols, type_declarations, type);
-			printf(".%s readback_fields=%u classifier_family=%u\n",
+			printf(".%s readback_fields=%u curried_classifier_cache=%u\n",
 				symbol_to_string(symbols, constructor->name_symbol_id),
 				constructor->readback.field_count,
-				constructor->classifier_family);
+				constructor->curried_classifier_cache);
 		}
 	}
 	if (metadata) {

@@ -812,7 +812,13 @@ int prototype_term_pure_family_parts(
 	uint32_t* p_binder_id,
 	uint32_t* p_body
 );
-int prototype_term_substitute(
+/*
+ * Rebuild an erased core graph after replacing one bound-variable handle.
+ * This is the implementation primitive for beta reduction and alpha transport,
+ * not a morphism between typed ContextDB objects. Typed reindexing must use
+ * prototype_term_reindex with an explicit SubstitutionDB entry.
+ */
+int prototype_term_graph_substitute_bound_var(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t term_id,

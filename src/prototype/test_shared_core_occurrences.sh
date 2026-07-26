@@ -22,3 +22,13 @@ grep -q 'has-type LAMBDA(_#[0-9][0-9]*, RETURN(VAR(_#[0-9][0-9]*))) PI(PRIMITIVE
 grep -q 'has-type LAMBDA(_#[0-9][0-9]*, RETURN(VAR(_#[0-9][0-9]*))) PI(PRIMITIVE(Text),' "$tmp_dir/output"
 grep -q 'metadata label intResult ' "$tmp_dir/output"
 grep -q 'metadata label textResult ' "$tmp_dir/output"
+
+./read_file.out training/list_nat_match.p >"$tmp_dir/list-match-output"
+grep -q 'metadata label main ' "$tmp_dir/list-match-output"
+grep -q 'operation#[0-9][0-9]* match ' "$tmp_dir/list-match-output"
+
+./read_file.out training/recursive_dependent_match.p \
+	>"$tmp_dir/recursive-dependent-match-output"
+grep -q 'metadata label fold ' "$tmp_dir/recursive-dependent-match-output"
+grep -q 'operation#[0-9][0-9]* induction-hypothesis ' \
+	"$tmp_dir/recursive-dependent-match-output"

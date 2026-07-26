@@ -48,13 +48,6 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX
 };
 
-enum prototype_judgement_proof_context_kind {
-	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_NONE = 0,
-	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_LAMBDA_BINDER,
-	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_MATCH_CASE_FIELD,
-	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_ASSUMPTION
-};
-
 #define PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES 65
 
 struct prototype_judgement_proof {
@@ -63,13 +56,17 @@ struct prototype_judgement_proof {
 	uint32_t conclusion_context_id;
 	uint32_t conclusion_subject;
 	uint32_t conclusion_classifier;
-	int context_kind;
-	uint32_t context_subject;
-	uint32_t context_index;
-	uint32_t context_aux;
-	/* Type view selected when a Match pattern introduced this field. The
-	 * Match node retains only its canonical core owner after graph erasure. */
+	/* De Bruijn level of a binder assumption in conclusion_context_id. */
+	uint32_t assumption_index;
+	/* Rule parameters for Match-pattern assumptions. The Match core erases
+	 * owner views, so the derivation retains the selected declaration. */
 	uint32_t constructor_owner_view;
+	uint32_t constructor_index;
+	uint32_t constructor_field_index;
+	/* Rule parameters for guarded induction-hypothesis elimination. */
+	uint32_t induction_match;
+	uint32_t induction_case_index;
+	uint32_t induction_field_index;
 	uint32_t premise_count;
 	int premise_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
@@ -269,18 +266,12 @@ int prototype_judgement_delta_expand_match_pattern(
 	uint32_t classifier
 );
 
-int prototype_judgement_delta_set_proof_context_by_id(
-	struct prototype_judgement_delta* delta,
-	uint32_t proof_id,
-	int context_kind,
-	uint32_t context_subject,
-	uint32_t context_index,
-	uint32_t context_aux
-);
 int prototype_judgement_delta_set_match_pattern_owner_by_id(
 	struct prototype_judgement_delta* delta,
 	uint32_t proof_id,
-	uint32_t constructor_owner_view
+	uint32_t constructor_owner_view,
+	uint32_t constructor_index,
+	uint32_t constructor_field_index
 );
 
 int prototype_judgement_expand_lambda(
@@ -448,16 +439,6 @@ int prototype_judgement_delta_build_match_motive(
 	uint32_t* p_motive_result
 );
 
-int prototype_judgement_prepare_match_motive_case(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_case_binder* source_binders,
-	const struct prototype_case_binder* motive_binders,
-	uint32_t binder_count,
-	uint32_t branch_classifier,
-	uint32_t* p_motive_body
-);
-
 int prototype_judgement_delta_type_match_from_cases(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -532,9 +513,9 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	const struct prototype_term_db* terms,
 	uint32_t subject,
 	uint32_t classifier,
-	uint32_t context_subject,
-	uint32_t context_index,
-	uint32_t context_aux
+	uint32_t match_term,
+	uint32_t case_index,
+	uint32_t field_index
 );
 
 int prototype_judgement_expand_text_literal(

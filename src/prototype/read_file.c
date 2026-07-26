@@ -709,13 +709,14 @@ static int read_artifact_interface_and_graph(
 			artifact_file,
 			symbols,
 			term_db,
+			type_declarations,
 			metadata
 		) != 0 ||
 		prototype_artifact_read_text_universe(
 			artifact_file,
 			universe_db
 		) != 0 ||
-		(metadata && prototype_constructor_telescopes_validate(
+		(metadata && prototype_constructor_curried_caches_validate(
 			type_declarations,
 			&metadata->contexts,
 			term_db
@@ -892,7 +893,9 @@ static int append_link_operation_graph(
 				operation.implicit_effect_row_binders[j], binder_offset
 			);
 		}
-		if (prototype_operation_graph_add(&target_graph, operation, NULL) != 0) {
+		if (prototype_operation_graph_add(
+				&target_graph, &target->contexts, operation, NULL
+			) != 0) {
 			return -1;
 		}
 	}
@@ -905,6 +908,11 @@ static int append_link_operation_graph(
 			return -1;
 		}
 		struct prototype_operation_match_case operation_case = *source_case;
+		if (operation_case.context_id >= source->contexts.context_count) {
+			return -1;
+		}
+		operation_case.context_id =
+			context_relocation[operation_case.context_id];
 		operation_case.body_operation = offset_link_graph_id(
 			operation_case.body_operation, operation_offset
 		);
@@ -917,7 +925,7 @@ static int append_link_operation_graph(
 			);
 		}
 		if (prototype_operation_graph_add_case(
-				&target_graph, operation_case, NULL
+				&target_graph, &target->contexts, operation_case, NULL
 			) != 0) {
 			return -1;
 		}
@@ -3241,6 +3249,7 @@ int main(int argc, char** argv) {
 					&term_db,
 					&type_declarations,
 					&judgement_db,
+					&metadata.contexts,
 					&provider_interface
 				) != 0) {
 				fprintf(stderr, "%s + %s: failed to link artifacts\n", link_target_path, provider_path);
@@ -3277,6 +3286,7 @@ int main(int argc, char** argv) {
 					&term_db,
 					&type_declarations,
 					&judgement_db,
+					&metadata.contexts,
 					&artifact_interface
 				) != 0 ||
 				prototype_artifact_apply_term_relocations(
@@ -3284,6 +3294,7 @@ int main(int argc, char** argv) {
 					&term_db,
 					&type_declarations,
 					&judgement_db,
+					&metadata.contexts,
 					&artifact_interface
 				) != 0 ||
 				prototype_artifact_apply_term_relocations(
@@ -3291,6 +3302,7 @@ int main(int argc, char** argv) {
 					&term_db,
 					&type_declarations,
 					&judgement_db,
+					&metadata.contexts,
 					&appended_interface
 				) != 0) {
 				fprintf(stderr, "%s + %s: failed to link artifacts\n", link_target_path, provider_path);
@@ -3330,7 +3342,8 @@ int main(int argc, char** argv) {
 		if (prototype_artifact_interface_recompute_keys(
 				&artifact_interface,
 				&term_db,
-				&type_declarations
+				&type_declarations,
+				&metadata.contexts
 			) != 0 ||
 			prototype_artifact_interface_collect_dependencies(
 				&artifact_interface,
@@ -3556,6 +3569,7 @@ int main(int argc, char** argv) {
 					artifact_file,
 					&symbols,
 					&term_db,
+					&type_declarations,
 					&artifact_metadata
 				) != 0 ||
 				prototype_artifact_read_text_universe(
@@ -3649,12 +3663,12 @@ int main(int argc, char** argv) {
 		for (size_t i = 0; i < artifact_interface.constructor_export_count; ++i) {
 			const struct prototype_artifact_constructor_export* constructor_export =
 				&artifact_interface.constructor_exports[i];
-			printf("interface constructor type_export#%u.%s ordinal=%u fields=%u classifier_family=%u\n",
+			printf("interface constructor type_export#%u.%s ordinal=%u fields=%u curried_classifier_cache=%u\n",
 				constructor_export->type_export_index,
 				symbol_to_string(&symbols, constructor_export->name_symbol_id),
 				constructor_export->ordinal,
 			constructor_export->readback_field_count,
-				constructor_export->classifier_family);
+				constructor_export->curried_classifier_cache);
 		}
 		if (read_graph) {
 			printf(
@@ -4101,10 +4115,10 @@ int main(int argc, char** argv) {
 			}
 			printf("constructor ");
 			print_type_namespace(&symbols, &type_declarations, type);
-			printf(".%s readback_fields=%u classifier_family=%u\n",
+			printf(".%s readback_fields=%u curried_classifier_cache=%u\n",
 				symbol_to_string(&symbols, constructor->name_symbol_id),
 				constructor->readback.field_count,
-				constructor->classifier_family);
+				constructor->curried_classifier_cache);
 		}
 	}
 	for (size_t i = 0; i < metadata.label_count; ++i) {
@@ -4244,12 +4258,12 @@ int main(int argc, char** argv) {
 	for (size_t i = 0; i < artifact_interface.constructor_export_count; ++i) {
 		const struct prototype_artifact_constructor_export* constructor_export =
 			&artifact_interface.constructor_exports[i];
-		printf("interface constructor type_export#%u.%s ordinal=%u fields=%u classifier_family=%u\n",
+		printf("interface constructor type_export#%u.%s ordinal=%u fields=%u curried_classifier_cache=%u\n",
 			constructor_export->type_export_index,
 			symbol_to_string(&symbols, constructor_export->name_symbol_id),
 			constructor_export->ordinal,
 			constructor_export->readback_field_count,
-			constructor_export->classifier_family);
+			constructor_export->curried_classifier_cache);
 	}
 	printf("\n#### Resolution ####\n");
 	print_resolution_trace(&symbols, &type_declarations, &term_db, &metadata);

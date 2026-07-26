@@ -21,6 +21,8 @@ The current project questions are:
    explicit rewriting, and future higher equality?
 6. How can a pure normalizer coexist with host intrinsics and effects?
 7. How can proved equalities become optional certified optimisation rules?
+8. How should ContextDB, substitutions, typed operation occurrences, and the
+   erased computation graph realize a categorical semantics?
 
 ## Reading Order
 
@@ -123,6 +125,49 @@ Read the following sequence before making large kernel changes:
 - A-Program use: model for an untrusted optimiser/linker producing artefacts
   checked by a smaller trusted kernel. This is relevant if rewrite certificates
   are later serialized with object artefacts.
+
+### 9. Internal Type Theory
+
+- Author: Peter Dybjer
+- Venue: TYPES 1995
+- Access: author and conference archive copies are commonly available
+- A-Program use: basis for representing contexts, context extension, types in a
+  context, and terms as sections rather than treating every graph edge as a
+  categorical morphism.
+- Implementation consequence: `ContextDB` objects and explicit
+  `SubstitutionDB` morphisms index the typed OperationGraph; TermDB remains an
+  erasure.
+
+### 10. Categories with Families: Unityped, Simply Typed, and Dependently Typed
+
+- Authors: Simon Castellan, Pierre Clairambault, Peter Dybjer
+- Access: author preprint
+- Link: <https://arxiv.org/abs/1904.00827>
+- A-Program use: precise CwF operations and laws for identity, composition,
+  projection, extension, and reindexing.
+- Implementation consequence: constructor fields and Pi binders share context
+  telescope operations, while their introduction/elimination rules remain
+  distinct.
+
+### 11. Call-By-Push-Value: A Functional/Imperative Synthesis
+
+- Author: Paul Blain Levy
+- Form: book and earlier papers
+- A-Program use: value/computation polarity, F/RETURN, U/THUNK, sequencing, and
+  the boundary between pure graph reduction and effectful execution.
+- Implementation consequence: operation occurrences carry polarity and
+  computation kind; effect rows are not Context morphisms.
+
+### 12. A Framework for Dependent Types and Effects
+
+- Author: Matthijs Vakar
+- Access: Open Access thesis/preprints
+- Link: <https://arxiv.org/abs/1512.08009>
+- A-Program use: dependent CBPV and the restrictions required when dynamic
+  computation results influence dependent classifiers.
+- Implementation consequence: residual dependent computations stay
+  occurrence-local obligations. They are not inserted into static ContextDB as
+  if execution had already produced a value.
 
 ## Additional Open Access Reading
 
@@ -252,8 +297,17 @@ The bibliography supports the following current directions.
 TermDB:
   shared core calculation graph
 
+ContextDB:
+  objects of the syntactic context category
+
+SubstitutionDB:
+  explicit context morphisms and typed reindexing
+
+OperationGraph:
+  context-indexed typed occurrences that point to shared TermDB nodes
+
 TypedView / Binding:
-  source name, classifier, proof, namespace, and core graph reference
+  source name, classifier, proof, namespace, operation, and core graph reference
 
 ConstraintDB:
   unresolved classifier equations, Motive variables, universe constraints,

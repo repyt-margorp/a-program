@@ -39,6 +39,41 @@ names are stored together with their owning type and constructor index, so a
 compiler pass can later annotate identifier references such as `true` or `false`
 with their resolved type-level constructor identity.
 
+## Categorical Graph Construction
+
+The current lowering boundary is:
+
+```text
+surface AST + resolved signature
+  -> Context-indexed OperationGraph
+  -> shared context-erased TermDB
+  -> Context-indexed constraints and JudgementDB proofs
+```
+
+`ContextDB` entries are objects of the compiler's syntactic context category.
+`SubstitutionDB` entries are explicit morphisms with source and target Context
+IDs. Identity, empty substitution, projection, extension, composition, and
+term reindexing are represented directly.
+
+Every OperationGraph node and Match case is inserted with an existing Context
+ID. Lambda bodies extend the outer Context. Match case bodies use an
+instantiated constructor-field telescope. APP remains in the outer Context.
+The AST itself is not treated as a categorical object because unresolved names
+and parser scope have not yet formed typed syntax.
+
+Erasure from OperationGraph to TermDB is intentionally many-to-one. Thus
+`identityBool` and `identityNat` can point to one core identity lambda while
+their operation occurrences, Contexts, classifiers, proofs, TypeViews, and
+names remain distinct.
+
+Constructor fields and Pi binders share Context telescope and reindexing
+machinery. Their semantics are not merged: constructors retain positive
+introduction/ordinal and Match-iota rules, while Pi retains
+formation/Lambda/APP rules. A constructor's semantic schema is
+`parameter_context`, `field_context`, and `result_classifier`.
+`curried_classifier_cache` is derived from that schema for current Pi
+consumers and is rebuilt after artifact relocation.
+
 ## Canonical Term Identity
 
 The core term graph is the computation representation only. It intentionally
@@ -454,16 +489,14 @@ already-compiled provider graphs preserve display names but use unknown source
 spans for re-exported provider names because the source AST is not present at
 that link stage.
 
-Constructor exports include field counts, diagnostic field type closures, and the
-graph-level `classifier_family`. Interface-only import can therefore type both
-zero-field constructors such as `(List Nat).nil` and ordinary constructor
-applications such as `(List Nat).cons Nat.zero tail` without loading the provider
-graph. The authoritative constructor classifier is the exported
-`classifier_family`; field type expressions are retained for readback and
-diagnostics. Imported constructor namespace resolution only builds the
-constructor term during AST lowering; it queues classifier materialization for the
-later classifier-inference phase, where the interface classifier family is
-instantiated against the owner type graph.
+Constructor exports include diagnostic field counts/closures and the provider
+Term ID of `curried_classifier_cache`. This lightweight interface record is not
+trusted as an independent schema. Compilation imports the interface and provider
+graph together; graph readback validates
+`parameter_context -> field_context -> result_classifier`, then verifies the
+cache derived from it. Imported constructor namespace resolution only builds
+the constructor term during AST lowering. The later classifier phase consumes
+the already validated cache associated with the relocated provider graph.
 
 Universe variables inside the interface type-expression pool are artifact-local
 handles. When an interface is imported for source compilation, the prototype
@@ -487,9 +520,10 @@ Type expressions inside type declarations normalize transparent aliases by
 name. A field type written through a transparent local alias such as `B := Nat`
 is stored for readback as a reference to the underlying `Nat` name, so the alias
 does not create a new displayed field type dependency. The constructor portion of
-`TypeCodeShapeKey` is computed from `classifier_family`, not from those field
-metadata records, so dependent constructor fields such as
-`mk : (a : A) -> B a -> *` canonicalize through the graph binder structure. A new
+`TypeCodeShapeKey` is computed directly from the constructor telescope and
+result classifier, not from either the cache or those field metadata records,
+so dependent constructor fields such as `mk : (a : A) -> B a -> *`
+canonicalize through the graph binder structure. A new
 declaration such as `BoxB := @{ box : B -> *; }` is still generative and remains
 distinct from `BoxNat := @{ box : Nat -> *; }`. Interface-only checking no longer
 treats two separate exported declarations as the same type merely because their

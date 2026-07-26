@@ -167,7 +167,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 51$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 53$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -200,9 +200,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/51$/50/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v50.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v50.apo" >"$TMP_DIR/identity-v50.out" 2>"$TMP_DIR/identity-v50.err"; then
-	echo "obsolete artifact unexpectedly passed after v51 format bump" >&2
+sed '1s/53$/52/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v52.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v52.apo" >"$TMP_DIR/identity-v52.out" 2>"$TMP_DIR/identity-v52.err"; then
+	echo "obsolete artifact unexpectedly passed after v53 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -579,10 +579,10 @@ test -n "$view_bool_shape"
 test "$view_bool_shape" = "$view_two_shape"
 test -n "$view_bool_key"
 test "$view_bool_key" = "$view_two_key"
-grep -q 'interface constructor type_export#0.true ordinal=0 fields=0 classifier_family=' "$TMP_DIR/type-view-sharing.out"
-grep -q 'interface constructor type_export#1.one ordinal=0 fields=0 classifier_family=' "$TMP_DIR/type-view-sharing.out"
-grep -q 'interface constructor type_export#0.false ordinal=1 fields=0 classifier_family=' "$TMP_DIR/type-view-sharing.out"
-grep -q 'interface constructor type_export#1.zero ordinal=1 fields=0 classifier_family=' "$TMP_DIR/type-view-sharing.out"
+grep -q 'interface constructor type_export#0.true ordinal=0 fields=0 curried_classifier_cache=' "$TMP_DIR/type-view-sharing.out"
+grep -q 'interface constructor type_export#1.one ordinal=0 fields=0 curried_classifier_cache=' "$TMP_DIR/type-view-sharing.out"
+grep -q 'interface constructor type_export#0.false ordinal=1 fields=0 curried_classifier_cache=' "$TMP_DIR/type-view-sharing.out"
+grep -q 'interface constructor type_export#1.zero ordinal=1 fields=0 curried_classifier_cache=' "$TMP_DIR/type-view-sharing.out"
 grep -Eq 'term Bool := TYPE_VIEW\(Bool, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Bool\)\)' "$TMP_DIR/type-view-sharing.out"
 grep -Eq 'term Two := TYPE_VIEW\(Two, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Two\)\)' "$TMP_DIR/type-view-sharing.out"
 ./read_file.out --check-exports-core-shape-equal "$TMP_DIR/type-view-sharing.apo" Bool Two >"$TMP_DIR/type-view-core-shape.out"
@@ -620,7 +620,7 @@ EOF_DEPENDENT_CONSTRUCTOR_FIELD
 
 ./read_file.out "$TMP_DIR/dependent-constructor-field.p" >"$TMP_DIR/dependent-constructor-field.out"
 grep -q 'metadata label first -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/dependent-constructor-field.out"
-grep -q 'interface constructor type_export#0.mk ordinal=0 fields=2 classifier_family=' "$TMP_DIR/dependent-constructor-field.out"
+grep -q 'interface constructor type_export#0.mk ordinal=0 fields=2 curried_classifier_cache=' "$TMP_DIR/dependent-constructor-field.out"
 grep -E 'has-type VAR\(_#[0-9]+\) APP\(VAR\(_#[0-9]+\), VAR\(_#[0-9]+\)\) \[match-pattern-assumption\]' "$TMP_DIR/dependent-constructor-field.out" >/dev/null
 
 cat >"$TMP_DIR/dependent-constructor-provider.p" <<'EOF_DEPENDENT_CONSTRUCTOR_PROVIDER'
@@ -644,7 +644,7 @@ EOF_DEPENDENT_CONSTRUCTOR_IMPORT_USER
 ./read_file.out --write-artifact "$TMP_DIR/Sigma.apo" \
 	--namespace Sigma \
 	"$TMP_DIR/dependent-constructor-provider.p" >"$TMP_DIR/dependent-constructor-provider.out"
-grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 classifier_family=[0-9]+' "$TMP_DIR/dependent-constructor-provider.out"
+grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 curried_classifier_cache=[0-9]+' "$TMP_DIR/dependent-constructor-provider.out"
 sigma_formation_classifier=$(awk '$1 == "type" && $2 == "Sigma" { print $5; exit }' "$TMP_DIR/Sigma.apo")
 test -n "$sigma_formation_classifier"
 test "$sigma_formation_classifier" != 4294967295
@@ -688,8 +688,8 @@ test -n "$sigma_key"
 test "$sigma_key" = "$sigma2_key"
 test -n "$sigma_core"
 test "$sigma_core" = "$sigma2_core"
-grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 classifier_family=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
-grep -Eq 'constructor \(Sigma2 X Y\)\.mk readback_fields=2 classifier_family=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
+grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 curried_classifier_cache=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
+grep -Eq 'constructor \(Sigma2 X Y\)\.mk readback_fields=2 curried_classifier_cache=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
 grep -Eq 'term Sigma2 := TYPE_VIEW\(Sigma2, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Sigma2\)\)' "$TMP_DIR/dependent-constructor-shape-key.out"
 
 cat >"$TMP_DIR/bad-ascription.p" <<'EOF_BAD_ASCRIPTION'
@@ -805,7 +805,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadPatternAssumption.apo" >"$TMP_DIR/b
 fi
 awk '
 	$1 == "proof" && $3 == binder_assumption_proof_kind && !done {
-		$8 = 999;
+		$7 = 999;
 		done = 1;
 	}
 	{ print }
@@ -817,10 +817,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadBinderContext.apo" >"$TMP_DIR/bad-b
 fi
 awk '
 	$1 == "proof" && $3 == binder_assumption_proof_kind && !done {
-		$7 = 0;
-		$8 = 4294967295;
-		$9 = 4294967295;
-		$10 = 4294967295;
+		$7 = 4294967295;
 		done = 1;
 	}
 	{ print }
@@ -1110,6 +1107,19 @@ grep -q '^interface term main ' "$TMP_DIR/match-graph-read.out"
 grep -q 'relocation_resolved_constructor_owners=[1-9][0-9]*' "$TMP_DIR/match-graph-read.out"
 grep -q 'resolved constructor owner kind=2 .* ordinal=0' "$TMP_DIR/match-graph-read.out"
 grep -q 'resolved constructor owner kind=2 .* ordinal=1' "$TMP_DIR/match-graph-read.out"
+awk '
+	$1 == "type_constructor" && $3 == "cons" && !done {
+		$12 = 0;
+		done = 1;
+	}
+	{ print }
+' "$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadConstructorCache.apo"
+if ./read_file.out --read-graph "$TMP_DIR/BadConstructorCache.apo" \
+	>"$TMP_DIR/bad-constructor-cache.out" \
+	2>"$TMP_DIR/bad-constructor-cache.err"; then
+	echo "bad derived constructor cache artifact unexpectedly passed" >&2
+	exit 1
+fi
 awk '
 	$1 == "proof" && !done {
 		$3 = 999;
@@ -2341,8 +2351,8 @@ interface_universe_vars=$(awk '
 test "$interface_universe_vars" -eq 2
 grep -q 'interface constructor type_export#0.cons ordinal=1 fields=2' "$TMP_DIR/list.out"
 awk '
-	/interface constructor type_export#0\.cons ordinal=1 fields=2 classifier_family=/ {
-		split($0, parts, "classifier_family=");
+	/interface constructor type_export#0\.cons ordinal=1 fields=2 curried_classifier_cache=/ {
+		split($0, parts, "curried_classifier_cache=");
 		if (parts[2] == "4294967295" || parts[2] == "") {
 			exit 1;
 		}

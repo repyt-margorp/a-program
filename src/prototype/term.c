@@ -4624,7 +4624,7 @@ static int substitute_term_internal(
 	}
 }
 
-int prototype_term_substitute(
+int prototype_term_graph_substitute_bound_var(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t term_id,
@@ -5265,7 +5265,7 @@ static int normalization_equal_match_case_bodies(
 		uint32_t binder_var;
 		if (binder_id == PROTOTYPE_INVALID_ID ||
 			prototype_term_var(db, binder_id, &binder_var) != 0 ||
-			prototype_term_substitute(
+			prototype_term_graph_substitute_bound_var(
 				db,
 				type_declarations,
 				remapped_left,
@@ -5273,7 +5273,7 @@ static int normalization_equal_match_case_bodies(
 				binder_var,
 				&remapped_left
 			) != 0 ||
-			prototype_term_substitute(
+			prototype_term_graph_substitute_bound_var(
 				db,
 				type_declarations,
 				remapped_right,
@@ -5410,12 +5410,12 @@ static int normalization_equal_computation_match(
 			uint32_t binder_var;
 			if (binder_id == PROTOTYPE_INVALID_ID ||
 				prototype_term_var(db, binder_id, &binder_var) != 0 ||
-				prototype_term_substitute(
+				prototype_term_graph_substitute_bound_var(
 					db, type_declarations, remapped_result,
 					db->case_binders[result_binder_index].binder_id,
 					binder_var, &remapped_result
 				) != 0 ||
-				prototype_term_substitute(
+				prototype_term_graph_substitute_bound_var(
 					db, type_declarations, remapped_outer,
 					db->case_binders[outer_binder_index].binder_id,
 					binder_var, &remapped_outer

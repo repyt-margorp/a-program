@@ -374,6 +374,8 @@ struct prototype_operation_node {
 
 struct prototype_operation_match_case {
 	uint32_t body_operation;
+	/* Semantic case telescope. Source binder IDs below are occurrence metadata. */
+	uint32_t context_id;
 	uint32_t constructor_owner;
 	uint32_t constructor_id;
 	int case_label_symbol_id;
@@ -466,7 +468,7 @@ struct prototype_compile_constructor_export {
 	uint32_t ordinal;
 	uint32_t readback_first_field_type;
 	uint32_t readback_field_count;
-	uint32_t classifier_family;
+	uint32_t curried_classifier_cache;
 };
 
 struct prototype_compile_type_export {
@@ -526,7 +528,7 @@ struct prototype_artifact_constructor_export {
 	uint32_t ordinal;
 	uint32_t readback_first_field_type;
 	uint32_t readback_field_count;
-	uint32_t classifier_family;
+	uint32_t curried_classifier_cache;
 };
 
 struct prototype_artifact_dependency {
@@ -1233,17 +1235,20 @@ const struct prototype_operation_match_case* prototype_operation_graph_get_case(
 );
 int prototype_operation_graph_add(
 	struct prototype_operation_graph* graph,
+	const struct prototype_context_db* contexts,
 	struct prototype_operation_node operation,
 	uint32_t* p_operation_id
 );
 int prototype_operation_graph_add_case(
 	struct prototype_operation_graph* graph,
+	const struct prototype_context_db* contexts,
 	struct prototype_operation_match_case operation_case,
 	uint32_t* p_case_id
 );
 int prototype_operation_graph_validate(
 	const struct prototype_operation_graph* graph,
-	const struct prototype_term_db* terms
+	const struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts
 );
 void prototype_compile_metadata_operation_graph(
 	struct prototype_compile_metadata* metadata,
@@ -1439,7 +1444,8 @@ void prototype_artifact_interface_set_namespace(
 int prototype_artifact_interface_recompute_keys(
 	struct prototype_artifact_interface* interface,
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts
 );
 
 int prototype_artifact_interface_build_definition_env(
@@ -1517,7 +1523,8 @@ int prototype_artifact_read_text_graph(
 int prototype_artifact_read_text_operation_graph(
 	FILE* stream,
 	struct symbol_table* symbols,
-	const struct prototype_term_db* terms,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_compile_metadata* metadata
 );
 
@@ -1543,6 +1550,7 @@ int prototype_artifact_apply_term_relocations(
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
+	struct prototype_context_db* target_contexts,
 	const struct prototype_artifact_interface* provider_interface
 );
 
@@ -1551,6 +1559,7 @@ int prototype_artifact_apply_type_expr_relocations(
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
+	const struct prototype_context_db* target_contexts,
 	const struct prototype_artifact_interface* provider_interface
 );
 
