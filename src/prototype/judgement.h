@@ -20,6 +20,7 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_INVALID = 0,
 	PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_INTRO,
+	PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION,
 	PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION,
 	PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO,
@@ -339,6 +340,28 @@ int prototype_judgement_delta_record_context_reindex(
 	uint32_t classifier,
 	uint32_t source_context_id
 );
+int prototype_judgement_constructor_spine_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_context,
+	uint32_t subject,
+	uint32_t constructor_owner_view,
+	const uint32_t* argument_classifiers,
+	uint32_t argument_classifier_count,
+	uint32_t* p_classifier,
+	int* p_saturated
+);
+int prototype_judgement_delta_record_constructor_spine(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier,
+	const uint32_t* argument_classifiers,
+	uint32_t argument_classifier_count
+);
 int prototype_judgement_delta_record_deep_fold_elim(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -636,6 +659,24 @@ int prototype_judgement_classifier_normalization_equal_with_definitions(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
+	uint32_t expected,
+	uint32_t actual
+);
+
+/* Normalize a classifier expression at the pure type profile and expose the
+ * value type returned by a type-family computation. */
+int prototype_judgement_classifier_value_whnf(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t classifier,
+	uint32_t* p_value_classifier
+);
+
+/* Elaboration equality for an unresolved qualified type reference and the
+ * imported TYPE_VIEW carrying the same identity. This is not DefEq. */
+int prototype_judgement_classifier_reference_equal(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
 	uint32_t expected,
 	uint32_t actual
 );

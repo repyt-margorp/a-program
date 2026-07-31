@@ -522,8 +522,10 @@ int prototype_substitution_extend(
 			target->classifier,
 			prefix_substitution,
 			&expected_classifier
+		) != 0 || prototype_judgement_classifier_value_whnf(
+			terms, type_declarations, expected_classifier, &expected_classifier
 		) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!prototype_judgement_classifier_reference_equal(
 			terms,
 			type_declarations,
 			expected_classifier,
@@ -893,6 +895,15 @@ int prototype_operation_graph_validate(
 			!prototype_context_get(contexts, operation->context_id)) {
 			return -1;
 		}
+		if (operation->application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
+			operation->application_role >
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION ||
+			(operation->tag != PROTOTYPE_OPERATION_APP &&
+			 operation->application_role != PROTOTYPE_TERM_APPLICATION_NONE) ||
+			(operation->tag == PROTOTYPE_OPERATION_APP &&
+			 operation->application_role == PROTOTYPE_TERM_APPLICATION_NONE)) {
+			return -1;
+		}
 		uint32_t term_references[] = {
 			operation->core_term,
 			operation->known_classifier,
@@ -903,6 +914,18 @@ int prototype_operation_graph_validate(
 			if (term_references[j] != PROTOTYPE_INVALID_ID &&
 				(term_references[j] >= terms->term_count ||
 				 terms->terms[term_references[j]].tag == 0)) {
+				return -1;
+			}
+		}
+		if (operation->tag == PROTOTYPE_OPERATION_APP) {
+			struct prototype_term_semantics semantics;
+			if (prototype_term_semantics(
+					terms, operation->core_term, &semantics
+				) != 0 ||
+				semantics.application_role != operation->application_role ||
+				(operation->application_role ==
+						PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION &&
+				 operation->polarity != PROTOTYPE_OPERATION_POLARITY_VALUE)) {
 				return -1;
 			}
 		}
@@ -1454,41 +1477,6 @@ static int operation_runtime_lookup_value(
 	return 1;
 }
 
-static int operation_runtime_constructor_spine(
-	const struct prototype_term_db* terms,
-	uint32_t value,
-	uint32_t* p_owner,
-	uint32_t* p_constructor_id,
-	uint32_t arguments[64],
-	uint32_t* p_argument_count
-) {
-	if (!terms || !p_owner || !p_constructor_id || !arguments ||
-		!p_argument_count || value >= terms->term_count) {
-		return -1;
-	}
-	uint32_t reverse_arguments[64];
-	uint32_t argument_count = 0;
-	uint32_t head = value;
-	while (head < terms->term_count && terms->terms[head].tag == PROTOTYPE_TERM_APP) {
-		if (argument_count >= 64) {
-			return -1;
-		}
-		reverse_arguments[argument_count++] = terms->terms[head].as.app.argument;
-		head = terms->terms[head].as.app.function;
-	}
-	if (head >= terms->term_count ||
-		terms->terms[head].tag != PROTOTYPE_TERM_CONSTRUCTOR) {
-		return 1;
-	}
-	for (uint32_t i = 0; i < argument_count; ++i) {
-		arguments[i] = reverse_arguments[argument_count - i - 1];
-	}
-	*p_owner = terms->terms[head].as.constructor.owner;
-	*p_constructor_id = terms->terms[head].as.constructor.constructor_id;
-	*p_argument_count = argument_count;
-	return 0;
-}
-
 static uint32_t operation_runtime_unwrap_name(
 	const struct prototype_compile_metadata* metadata,
 	uint32_t operation_id
@@ -1962,18 +1950,22 @@ static int operation_runtime_machine_enter_match_case(
 	}
 	uint32_t owner;
 	uint32_t constructor_id;
+	uint32_t constructor_head;
 	uint32_t arguments[64];
 	uint32_t argument_count;
-	if (operation_runtime_constructor_spine(
+	if (prototype_term_constructor_spine_info(
 			machine->terms,
 			scrutinee,
+			&constructor_head,
 			&owner,
 			&constructor_id,
 			arguments,
+			64,
 			&argument_count
 		) != 0) {
 		return -1;
 	}
+	(void)constructor_head;
 	const struct prototype_term* match =
 		&machine->terms->terms[operation->core_term];
 	for (uint32_t i = 0; i < operation->case_count; ++i) {
@@ -6843,12 +6835,13 @@ static int write_artifact_operation_graph_section(
 		}
 		fprintf(
 			stream,
-			"operation %zu %d %d %d %u %u %u %u %u %s %s %u %u %u %u %u %u"
+			"operation %zu %d %d %d %d %u %u %u %u %u %s %s %u %u %u %u %u %u"
 			" %u %u %u %u %u %u %u %u %u %u\n",
 			i,
 			operation->tag,
 			operation->polarity,
 			operation->computation_kind,
+			operation->application_role,
 			operation->core_term,
 			operation->known_classifier,
 			operation->classifier,
@@ -6974,7 +6967,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 53\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 54\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -7304,7 +7297,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 53) {
+		version != 54) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -9288,9 +9281,10 @@ int prototype_artifact_read_text_operation_graph(
 		char source_name[256];
 		char binder_name[256];
 		memset(&operation, 0, sizeof(operation));
-	if (fscanf(stream, "%255s %zu %d %d %d %u %u %u %u %u %255s %255s"
+	if (fscanf(stream, "%255s %zu %d %d %d %d %u %u %u %u %u %255s %255s"
 				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
 				word, &id, &operation.tag, &operation.polarity, &operation.computation_kind,
+				&operation.application_role,
 				&operation.core_term, &operation.known_classifier, &operation.classifier,
 				&operation.classifier_variable, &operation.source_ast, source_name, binder_name,
 				&operation.referenced_ast_binder_id, &operation.function, &operation.argument,
@@ -9303,8 +9297,15 @@ int prototype_artifact_read_text_operation_graph(
 				&operation.handler_return_binder_id,
 				&operation.implicit_effect_row_count,
 				&operation.first_case, &operation.case_count,
-				&operation.context_id) != 28 ||
+				&operation.context_id) != 29 ||
 			strcmp(word, "operation") != 0 || id != i) {
+			return -1;
+		}
+		if (operation.application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
+			operation.application_role >
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION ||
+			(operation.tag != PROTOTYPE_OPERATION_APP &&
+			 operation.application_role != PROTOTYPE_TERM_APPLICATION_NONE)) {
 			return -1;
 		}
 		if (metadata && operation.context_id >= context_count) {
@@ -12497,9 +12498,9 @@ struct pending_declaration_fact {
 };
 
 enum compile_ref_polarity {
-	COMPILE_REF_POLARITY_UNKNOWN = 0,
-	COMPILE_REF_POLARITY_VALUE,
-	COMPILE_REF_POLARITY_COMPUTATION
+	COMPILE_REF_POLARITY_UNKNOWN = PROTOTYPE_OPERATION_POLARITY_UNKNOWN,
+	COMPILE_REF_POLARITY_VALUE = PROTOTYPE_OPERATION_POLARITY_VALUE,
+	COMPILE_REF_POLARITY_COMPUTATION = PROTOTYPE_OPERATION_POLARITY_COMPUTATION
 };
 
 /* This is lowering information, not a TermDB tag or a typing result.  It
@@ -12541,7 +12542,8 @@ enum operation_classifier_constraint_kind {
 	OPERATION_CONSTRAINT_IH_EXPECTED,
 	OPERATION_CONSTRAINT_CBPV_BOUNDARY,
 	OPERATION_CONSTRAINT_DEEP_FOLD_RESULT,
-	OPERATION_CONSTRAINT_OPERATION_REQUEST_RESULT
+	OPERATION_CONSTRAINT_OPERATION_REQUEST_RESULT,
+	OPERATION_CONSTRAINT_CONSTRUCTOR_FORMATION
 };
 
 enum operation_classifier_constraint_state {
@@ -13510,6 +13512,67 @@ static void compile_ref_clear(struct compile_ref* ref) {
 	ref->computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
 }
 
+static void operation_default_semantics(
+	const struct compile_context* ctx,
+	int tag,
+	uint32_t core_term,
+	int* p_polarity,
+	int* p_computation_kind,
+	int* p_application_role
+) {
+	uint32_t head;
+	uint32_t owner;
+	uint32_t constructor_id;
+	uint32_t arguments[64];
+	uint32_t argument_count;
+	int constructor_spine = ctx && tag == PROTOTYPE_OPERATION_APP &&
+		prototype_term_constructor_spine_info(
+			ctx->terms,
+			core_term,
+			&head,
+			&owner,
+			&constructor_id,
+			arguments,
+			64,
+			&argument_count
+		) == 0;
+	if (!p_polarity || !p_computation_kind || !p_application_role) {
+		return;
+	}
+	*p_polarity = COMPILE_REF_POLARITY_UNKNOWN;
+	*p_computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
+	*p_application_role = PROTOTYPE_TERM_APPLICATION_NONE;
+	switch (tag) {
+		case PROTOTYPE_OPERATION_VAR:
+		case PROTOTYPE_OPERATION_CONSTRUCTOR:
+		case PROTOTYPE_OPERATION_THUNK:
+			*p_polarity = COMPILE_REF_POLARITY_VALUE;
+			return;
+		case PROTOTYPE_OPERATION_LAMBDA:
+			*p_polarity = COMPILE_REF_POLARITY_COMPUTATION;
+			*p_computation_kind = COMPILE_REF_COMPUTATION_KIND_FUNCTION;
+			return;
+		case PROTOTYPE_OPERATION_RETURN:
+		case PROTOTYPE_OPERATION_MATCH:
+		case PROTOTYPE_OPERATION_FORCE:
+		case PROTOTYPE_OPERATION_PERFORM:
+		case PROTOTYPE_OPERATION_DEEP_FOLD:
+		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+			*p_polarity = COMPILE_REF_POLARITY_COMPUTATION;
+			*p_computation_kind = COMPILE_REF_COMPUTATION_KIND_RETURNING;
+			return;
+		case PROTOTYPE_OPERATION_APP:
+			*p_polarity = constructor_spine ?
+				COMPILE_REF_POLARITY_VALUE : COMPILE_REF_POLARITY_COMPUTATION;
+			*p_application_role = constructor_spine ?
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION :
+				PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION;
+			return;
+		default:
+			return;
+	}
+}
+
 static int operation_add(
 	struct compile_context* ctx,
 	int tag,
@@ -13532,6 +13595,14 @@ static int operation_add(
 	struct prototype_operation_node node;
 	memset(&node, 0, sizeof(node));
 	node.tag = tag;
+	operation_default_semantics(
+		ctx,
+		tag,
+		core_term,
+		&node.polarity,
+		&node.computation_kind,
+		&node.application_role
+	);
 	node.context_id = ctx->context_ids[ctx->binder_count];
 	node.core_term = core_term;
 	node.known_classifier = classifier;
@@ -13653,20 +13724,10 @@ static int operation_apply_classifier(
 	}
 	const struct prototype_term* pi = &ctx->terms->terms[whnf];
 	uint32_t expected_domain;
-	if (prototype_term_normalize_complete_with_profile(
-			ctx->terms,
-			ctx->type_declarations,
-			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-			pi->as.pi.domain,
-			&expected_domain
+	if (prototype_judgement_classifier_value_whnf(
+			ctx->terms, ctx->type_declarations, pi->as.pi.domain, &expected_domain
 		) != 0 || expected_domain >= ctx->terms->term_count) {
 		return -1;
-	}
-	/* Type families are raw CBPV computations. A Pi domain is a value-type
-	 * position, so read a pure RETURN(T) as T after type-level reduction. */
-	if (ctx->terms->terms[expected_domain].tag == PROTOTYPE_TERM_RETURN) {
-		expected_domain = ctx->terms->terms[expected_domain].as.return_term.value;
 	}
 	if (!prototype_judgement_classifier_compatible(
 			ctx->terms, ctx->type_declarations,
@@ -17466,6 +17527,146 @@ static int compile_ast_against_surface_classifier(
 	return compile_ast_computation_ref(ctx, ast_id, p_ret);
 }
 
+/* A primitive constructor is an n-ary value introduction, not a completed
+ * first-class function. */
+static int constructor_spine_saturation(
+	const struct compile_context* ctx,
+	uint32_t term_id
+) {
+	uint32_t head;
+	uint32_t owner;
+	uint32_t constructor_index;
+	uint32_t arguments[64];
+	uint32_t argument_count;
+	if (!ctx) {
+		return -1;
+	}
+	int spine_status = prototype_term_constructor_spine_info(
+		ctx->terms,
+		term_id,
+		&head,
+		&owner,
+		&constructor_index,
+		arguments,
+		64,
+		&argument_count
+	);
+	if (spine_status != 0) {
+		return spine_status;
+	}
+	uint32_t type_id;
+	uint32_t owner_arguments[64];
+	uint32_t owner_argument_count;
+	if (prototype_type_declaration_instance_info(
+			ctx->type_declarations,
+			ctx->terms,
+			owner,
+			&type_id,
+			owner_arguments,
+			64,
+			&owner_argument_count
+		) != 0 || type_id >= ctx->type_declarations->type_count) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&ctx->type_declarations->type_declarations[type_id];
+	if (constructor_index >= type->constructor_count ||
+		owner_argument_count != type->parameter_count ||
+		type->first_constructor + constructor_index >=
+			ctx->type_declarations->constructor_count) {
+		return -1;
+	}
+	const struct prototype_type_constructor_declaration* constructor =
+		&ctx->type_declarations->constructor_declarations[
+			type->first_constructor + constructor_index
+		];
+	const struct prototype_context* parameter_context = prototype_context_get(
+		&ctx->metadata->contexts, constructor->parameter_context
+	);
+	const struct prototype_context* field_context = prototype_context_get(
+		&ctx->metadata->contexts, constructor->field_context
+	);
+	if (!parameter_context || !field_context ||
+		field_context->depth < parameter_context->depth) {
+		return -1;
+	}
+	uint32_t declared_field_count =
+		field_context->depth - parameter_context->depth;
+	(void)head;
+	return argument_count == declared_field_count ? 0 :
+		(argument_count < declared_field_count ? 2 : -1);
+}
+
+/* Partial spine occurrences are builder steps. Each must feed the function
+ * edge of the next constructor-formation APP; only a saturated occurrence may
+ * escape into any other source operation. */
+static int validate_constructor_occurrence_saturation(
+	const struct compile_context* ctx
+) {
+	if (!ctx || !ctx->metadata) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
+		const struct prototype_operation_node* operation =
+			&ctx->metadata->operations[i];
+		int saturation = constructor_spine_saturation(ctx, operation->core_term);
+		if (saturation < 0) {
+			return -1;
+		}
+		if (saturation != 2) {
+			continue;
+		}
+		for (uint32_t parent_id = 0;
+			parent_id < ctx->metadata->operation_count;
+			++parent_id) {
+			const struct prototype_operation_node* parent =
+				&ctx->metadata->operations[parent_id];
+			if (parent->function == i &&
+				(parent->tag != PROTOTYPE_OPERATION_APP ||
+				 parent->application_role !=
+					PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION)) {
+				return -1;
+			}
+			if (parent->argument == i || parent->body == i ||
+				parent->scrutinee == i) {
+				return -1;
+			}
+			if (parent->tag == PROTOTYPE_OPERATION_MATCH) {
+				if (parent->first_case + parent->case_count >
+					ctx->metadata->operation_case_count) {
+					return -1;
+				}
+				for (uint32_t case_index = 0;
+					case_index < parent->case_count;
+					++case_index) {
+					if (ctx->metadata->operation_cases[
+							parent->first_case + case_index
+						].body_operation == i) {
+						return -1;
+					}
+				}
+			}
+		}
+		for (size_t label_id = 0;
+			label_id < ctx->metadata->label_count;
+			++label_id) {
+			if (ctx->metadata->labels[label_id].operation == i) {
+				return -1;
+			}
+		}
+		for (size_t assignment_id = 0;
+			assignment_id < ctx->asts->assignment_count;
+			++assignment_id) {
+			const struct prototype_ast_term_assignment_def* assignment =
+				&ctx->asts->assignments[assignment_id];
+			if (assignment->compiled && assignment->compiled_operation == i) {
+				return -1;
+			}
+		}
+	}
+	return 0;
+}
+
 static int compile_def(
 	struct compile_context* ctx,
 	struct prototype_ast_term_assignment_def* def,
@@ -18391,16 +18592,21 @@ static int term_app_head_is_constructor(
 	const struct prototype_term_db* terms,
 	uint32_t term_id
 ) {
-	if (!terms || term_id >= terms->term_count) {
-		return 0;
-	}
-	while (terms->terms[term_id].tag == PROTOTYPE_TERM_APP) {
-		term_id = terms->terms[term_id].as.app.function;
-		if (term_id >= terms->term_count) {
-			return 0;
-		}
-	}
-	return terms->terms[term_id].tag == PROTOTYPE_TERM_CONSTRUCTOR;
+	uint32_t head;
+	uint32_t owner;
+	uint32_t constructor_id;
+	uint32_t arguments[64];
+	uint32_t argument_count;
+	return prototype_term_constructor_spine_info(
+		terms,
+		term_id,
+		&head,
+		&owner,
+		&constructor_id,
+		arguments,
+		64,
+		&argument_count
+	) == 0;
 }
 
 static int ast_application_head_is_system_callable(
@@ -20643,6 +20849,71 @@ static uint32_t operation_solver_classifier(
 	return ctx->classifier_solver.motive_constant_candidates[motive_operation];
 }
 
+/* Solve a constructor APP from its dependent telescope. The curried cache is
+ * used only to describe a residual, under-applied builder; a saturated value's
+ * classifier is reindexed directly from the authoritative result schema. */
+static int operation_solver_constructor_spine_classifier(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !ctx->metadata || !p_classifier ||
+		operation_id >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* operation =
+		&ctx->metadata->operations[operation_id];
+	if (operation->tag != PROTOTYPE_OPERATION_APP ||
+		operation->application_role !=
+			PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
+		return -1;
+	}
+	uint32_t reverse_argument_operations[64];
+	uint32_t argument_operation_count = 0;
+	uint32_t cursor = operation_id;
+	while (cursor < ctx->metadata->operation_count) {
+		const struct prototype_operation_node* cursor_operation =
+			&ctx->metadata->operations[cursor];
+		if (cursor_operation->tag != PROTOTYPE_OPERATION_APP ||
+			cursor_operation->application_role !=
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
+			break;
+		}
+		if (argument_operation_count >= 64 ||
+			cursor_operation->argument >= ctx->metadata->operation_count) {
+			return -1;
+		}
+		reverse_argument_operations[argument_operation_count++] =
+			cursor_operation->argument;
+		cursor = cursor_operation->function;
+	}
+	uint32_t argument_classifiers[64];
+	for (uint32_t i = 0; i < argument_operation_count; ++i) {
+		uint32_t argument_operation =
+			reverse_argument_operations[argument_operation_count - i - 1];
+		uint32_t argument_classifier =
+			operation_solver_classifier(ctx, argument_operation);
+		if (argument_classifier == PROTOTYPE_INVALID_ID) {
+			return 1;
+		}
+		argument_classifiers[i] = argument_classifier;
+	}
+	int saturated;
+	return prototype_judgement_constructor_spine_classifier(
+		ctx->terms,
+		ctx->type_declarations,
+		&ctx->metadata->contexts,
+		&ctx->metadata->substitutions,
+		operation->context_id,
+		operation->core_term,
+		PROTOTYPE_INVALID_ID,
+		argument_classifiers,
+		argument_operation_count,
+		p_classifier,
+		&saturated
+	);
+}
+
 static int operation_solver_seed_motive(
 	struct compile_context* ctx,
 	uint32_t operation,
@@ -20935,6 +21206,15 @@ static int operation_solver_index_constraints(struct compile_context* ctx) {
 					return -1;
 				}
 				break;
+			case OPERATION_CONSTRAINT_CONSTRUCTOR_FORMATION:
+				if (operation_solver_add_constraint_dependency(
+						ctx, constraint->left, i
+					) != 0 || operation_solver_add_constraint_dependency(
+						ctx, constraint->right, i
+					) != 0) {
+					return -1;
+				}
+				break;
 			case OPERATION_CONSTRAINT_MOTIVE_EQUATION:
 				if (operation_solver_add_constraint_dependency(
 						ctx, constraint->left, i
@@ -21045,7 +21325,11 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 		++i) {
 		const struct prototype_operation_node* operation = &ctx->metadata->operations[i];
 		int base_constraint_kind = OPERATION_CONSTRAINT_HAS_TYPE;
-		if (operation->tag == PROTOTYPE_OPERATION_RETURN ||
+		if (operation->tag == PROTOTYPE_OPERATION_APP &&
+			operation->application_role ==
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
+			base_constraint_kind = OPERATION_CONSTRAINT_CONSTRUCTOR_FORMATION;
+		} else if (operation->tag == PROTOTYPE_OPERATION_RETURN ||
 			operation->tag == PROTOTYPE_OPERATION_THUNK ||
 			operation->tag == PROTOTYPE_OPERATION_FORCE) {
 			base_constraint_kind = OPERATION_CONSTRAINT_CBPV_BOUNDARY;
@@ -21086,7 +21370,9 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 				) != 0) {
 				return -1;
 			}
-		} else if (operation->tag == PROTOTYPE_OPERATION_APP) {
+		} else if (operation->tag == PROTOTYPE_OPERATION_APP &&
+			operation->application_role ==
+				PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION) {
 			if (operation_solver_add_constraint(
 					ctx, OPERATION_CONSTRAINT_PI_EXPECTED, i, operation->function,
 					operation->argument, 1
@@ -22556,6 +22842,21 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 						}
 					}
 					break;
+				case OPERATION_CONSTRAINT_CONSTRUCTOR_FORMATION: {
+					int constructor_status =
+						operation_solver_constructor_spine_classifier(
+							ctx, constraint->target, &classifier
+						);
+					if (constructor_status < 0) {
+						return -1;
+					}
+					if (constructor_status == 0 && operation_solver_bind(
+							ctx, constraint->target, classifier, &pass_changed
+						) != 0) {
+						return -1;
+					}
+					break;
+				}
 				case OPERATION_CONSTRAINT_HAS_TYPE:
 					if (ctx->classifier_solver.bindings[constraint->target] !=
 						PROTOTYPE_INVALID_ID) {
@@ -24169,6 +24470,94 @@ static int operation_solver_reify_core_proof(
 				operation->argument >= ctx->metadata->operation_count) {
 				return -1;
 			}
+			if (operation->application_role ==
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
+				uint32_t head;
+				uint32_t owner;
+				uint32_t constructor_index;
+				uint32_t arguments[64];
+				uint32_t argument_count;
+				uint32_t reverse_argument_operations[64];
+				uint32_t argument_operation_count = 0;
+				uint32_t cursor = operation_id;
+				if (prototype_term_constructor_spine_info(
+						ctx->terms,
+						core_term,
+						&head,
+						&owner,
+						&constructor_index,
+						arguments,
+						64,
+						&argument_count
+					) != 0) {
+					return -1;
+				}
+				while (cursor < ctx->metadata->operation_count) {
+					const struct prototype_operation_node* cursor_operation =
+						&ctx->metadata->operations[cursor];
+					if (cursor_operation->tag != PROTOTYPE_OPERATION_APP ||
+						cursor_operation->application_role !=
+							PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
+						break;
+					}
+					if (argument_operation_count >= 64 ||
+						cursor_operation->argument >=
+							ctx->metadata->operation_count) {
+						return -1;
+					}
+					reverse_argument_operations[argument_operation_count++] =
+						cursor_operation->argument;
+					cursor = cursor_operation->function;
+				}
+				if (argument_operation_count != argument_count) {
+					return -1;
+				}
+				uint32_t argument_classifiers[64];
+				for (uint32_t i = 0; i < argument_count; ++i) {
+					uint32_t argument_operation = reverse_argument_operations[
+						argument_count - i - 1
+					];
+					const struct prototype_operation_node* argument_operation_node =
+						&ctx->metadata->operations[argument_operation];
+					argument_classifiers[i] = argument_operation_node->classifier;
+					if (argument_classifiers[i] == PROTOTYPE_INVALID_ID) {
+						return 1;
+					}
+					int status = operation_solver_reify_core_proof(
+						ctx,
+						argument_operation,
+						arguments[i],
+						depth + 1
+					);
+					if (status != 0) {
+						return status;
+					}
+					status = operation_solver_reindex_existing_proof(
+						ctx,
+						operation->context_id,
+						arguments[i],
+						argument_classifiers[i]
+					);
+					if (status != 0) {
+						return status;
+					}
+				}
+				prototype_judgement_delta_set_context(
+					&ctx->judgement_delta, operation->context_id
+				);
+				(void)head;
+				(void)owner;
+				(void)constructor_index;
+				return prototype_judgement_delta_record_constructor_spine(
+					&ctx->judgement_delta,
+					ctx->terms,
+					ctx->type_declarations,
+					core_term,
+					classifier,
+					argument_classifiers,
+					argument_count
+				);
+			}
 			const struct prototype_operation_node* function =
 				&ctx->metadata->operations[operation->function];
 			const struct prototype_operation_node* argument =
@@ -25758,6 +26147,9 @@ static int compile_pending_with_workspace(
 		return -1;
 	}
 	if (compile_phase_build_graph(&ctx) != 0) {
+		return -1;
+	}
+	if (validate_constructor_occurrence_saturation(&ctx) != 0) {
 		return -1;
 	}
 	if (begin_resolution_iteration(&ctx, 0, count_unresolved_resolution_items(&ctx)) != 0) {

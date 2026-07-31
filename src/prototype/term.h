@@ -183,6 +183,14 @@ enum prototype_term_whnf_role {
 	PROTOTYPE_TERM_WHNF_ATOMIC
 };
 
+enum prototype_term_application_role {
+	PROTOTYPE_TERM_APPLICATION_NONE = 0,
+	/* The function may expose a lambda after permitted normalization. */
+	PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION,
+	/* The APP chain is assembling fields under a constructor telescope. */
+	PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION
+};
+
 enum prototype_term_definition_transparency {
 	PROTOTYPE_TERM_DEFINITION_OPAQUE = 1,
 	PROTOTYPE_TERM_DEFINITION_TRANSPARENT
@@ -281,6 +289,7 @@ struct prototype_term_reduction_options {
 struct prototype_term_semantics {
 	int layer;
 	int whnf_role;
+	int application_role;
 	int binds_term_variable;
 	int evaluates_scrutinee;
 	int reduces_by_beta;
@@ -490,7 +499,21 @@ struct prototype_term_definition_env {
 	size_t definition_count;
 };
 
-int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret);
+int prototype_term_semantics(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	struct prototype_term_semantics* p_ret
+);
+int prototype_term_constructor_spine_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_head,
+	uint32_t* p_owner,
+	uint32_t* p_constructor_id,
+	uint32_t* arguments,
+	uint32_t argument_capacity,
+	uint32_t* p_argument_count
+);
 int prototype_term_classifier_view(
 	const struct prototype_term_db* db,
 	uint32_t classifier,

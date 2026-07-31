@@ -167,7 +167,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 53$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 54$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -200,9 +200,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/53$/52/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v52.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v52.apo" >"$TMP_DIR/identity-v52.out" 2>"$TMP_DIR/identity-v52.err"; then
-	echo "obsolete artifact unexpectedly passed after v53 format bump" >&2
+sed '1s/54$/53/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v53.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v53.apo" >"$TMP_DIR/identity-v53.out" 2>"$TMP_DIR/identity-v53.err"; then
+	echo "obsolete artifact unexpectedly passed after v54 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -2471,7 +2471,7 @@ grep -q 'resolved constructor owner kind=1 .* ordinal=0' "$TMP_DIR/user-linked-r
 	--import-interface "$TMP_DIR/List.apo" \
 	--import-interface "$TMP_DIR/Nat.apo" \
 	"$TMP_DIR/good-cons-user.p" >"$TMP_DIR/good-cons-user.out"
-grep -q '\[app-elim\]' "$TMP_DIR/good-cons-user.out"
+grep -q '\[constructor-spine-formation\]' "$TMP_DIR/good-cons-user.out"
 if ./read_file.out --write-artifact "$TMP_DIR/BadConsUser.apo" \
 	--import-interface "$TMP_DIR/List.apo" \
 	--import-interface "$TMP_DIR/Nat.apo" \

@@ -355,20 +355,81 @@ host_effect_operation_implementation(int operation_id) {
 	return NULL;
 }
 
-int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
-	if (!p_ret) {
+int prototype_term_constructor_spine_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_head,
+	uint32_t* p_owner,
+	uint32_t* p_constructor_id,
+	uint32_t* arguments,
+	uint32_t argument_capacity,
+	uint32_t* p_argument_count
+) {
+	if (!db || !p_head || !p_owner || !p_constructor_id || !p_argument_count ||
+		term_id >= db->term_count || (argument_capacity > 0 && !arguments)) {
 		return -1;
 	}
+	uint32_t reverse_arguments[64];
+	uint32_t argument_count = 0;
+	uint32_t head = term_id;
+	while (head < db->term_count && db->terms[head].tag == PROTOTYPE_TERM_APP) {
+		if (argument_count >= 64 || argument_count >= argument_capacity) {
+			return -1;
+		}
+		reverse_arguments[argument_count++] = db->terms[head].as.app.argument;
+		head = db->terms[head].as.app.function;
+	}
+	if (head >= db->term_count || db->terms[head].tag != PROTOTYPE_TERM_CONSTRUCTOR) {
+		return 1;
+	}
+	for (uint32_t i = 0; i < argument_count; ++i) {
+		arguments[i] = reverse_arguments[argument_count - i - 1];
+	}
+	*p_head = head;
+	*p_owner = db->terms[head].as.constructor.owner;
+	*p_constructor_id = db->terms[head].as.constructor.constructor_id;
+	*p_argument_count = argument_count;
+	return 0;
+}
+
+int prototype_term_semantics(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	struct prototype_term_semantics* p_ret
+) {
+	if (!db || !p_ret || term_id >= db->term_count) {
+		return -1;
+	}
+	int tag = db->terms[term_id].tag;
+	uint32_t ignored_head;
+	uint32_t ignored_owner;
+	uint32_t ignored_constructor;
+	uint32_t ignored_arguments[64];
+	uint32_t ignored_argument_count;
+	int constructor_spine = tag == PROTOTYPE_TERM_APP &&
+		prototype_term_constructor_spine_info(
+			db,
+			term_id,
+			&ignored_head,
+			&ignored_owner,
+			&ignored_constructor,
+			ignored_arguments,
+			64,
+			&ignored_argument_count
+		) == 0;
 	memset(p_ret, 0, sizeof(*p_ret));
 	switch (tag) {
 		case PROTOTYPE_TERM_VAR:
-		case PROTOTYPE_TERM_APP:
 		case PROTOTYPE_TERM_LAMBDA:
 		case PROTOTYPE_TERM_RETURN:
 		case PROTOTYPE_TERM_FORCE:
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 		case PROTOTYPE_TERM_DEEP_FOLD:
 			p_ret->layer = PROTOTYPE_TERM_LAYER_LAMBDA_CORE;
+			break;
+		case PROTOTYPE_TERM_APP:
+			p_ret->layer = constructor_spine ?
+				PROTOTYPE_TERM_LAYER_DATA : PROTOTYPE_TERM_LAYER_LAMBDA_CORE;
 			break;
 		case PROTOTYPE_TERM_MATCH:
 			p_ret->layer = PROTOTYPE_TERM_LAYER_ELIMINATOR;
@@ -421,7 +482,6 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 		case PROTOTYPE_TERM_THUNK:
 			p_ret->whnf_role = PROTOTYPE_TERM_WHNF_INTRODUCTION;
 			break;
-		case PROTOTYPE_TERM_APP:
 		case PROTOTYPE_TERM_MATCH:
 		case PROTOTYPE_TERM_RETURN:
 		case PROTOTYPE_TERM_FORCE:
@@ -429,6 +489,10 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 		case PROTOTYPE_TERM_DEEP_FOLD:
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			p_ret->whnf_role = PROTOTYPE_TERM_WHNF_ELIMINATOR;
+			break;
+		case PROTOTYPE_TERM_APP:
+			p_ret->whnf_role = constructor_spine ?
+				PROTOTYPE_TERM_WHNF_INTRODUCTION : PROTOTYPE_TERM_WHNF_ELIMINATOR;
 			break;
 		case PROTOTYPE_TERM_VAR:
 		case PROTOTYPE_TERM_EXTERNAL_REF:
@@ -444,7 +508,12 @@ int prototype_term_semantics(int tag, struct prototype_term_semantics* p_ret) {
 		tag == PROTOTYPE_TERM_PI ||
 		tag == PROTOTYPE_TERM_MATCH;
 	p_ret->evaluates_scrutinee = tag == PROTOTYPE_TERM_MATCH;
-	p_ret->reduces_by_beta = tag == PROTOTYPE_TERM_APP;
+	if (tag == PROTOTYPE_TERM_APP) {
+		p_ret->application_role = constructor_spine ?
+			PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION :
+			PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION;
+	}
+	p_ret->reduces_by_beta = tag == PROTOTYPE_TERM_APP && !constructor_spine;
 	return 0;
 }
 

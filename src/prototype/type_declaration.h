@@ -314,6 +314,18 @@ int prototype_type_declaration_representation_type_id(
 	uint32_t* p_type_id
 );
 
+/* Resolve either a named TYPE_VIEW/TYPE_DECLARATION instance or its erased
+ * TYPE_FORMER representation spine to the authoritative declaration. */
+int prototype_type_declaration_instance_info(
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_term_db* terms,
+	uint32_t instance,
+	uint32_t* p_type_id,
+	uint32_t* arguments,
+	uint32_t argument_capacity,
+	uint32_t* p_argument_count
+);
+
 int prototype_type_declaration_rebuild_representations(
 	const struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* db,

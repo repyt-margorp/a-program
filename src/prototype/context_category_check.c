@@ -258,8 +258,9 @@ int main(void) {
 	);
 	memset(&int_occurrence, 0xff, sizeof(int_occurrence));
 	int_occurrence.tag = PROTOTYPE_OPERATION_ATOM;
-	int_occurrence.polarity = 1;
-	int_occurrence.computation_kind = 0;
+	int_occurrence.polarity = PROTOTYPE_OPERATION_POLARITY_VALUE;
+	int_occurrence.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
+	int_occurrence.application_role = PROTOTYPE_TERM_APPLICATION_NONE;
 	int_occurrence.context_id = int_context;
 	int_occurrence.core_term = literal;
 	int_occurrence.source_symbol_id = -1;

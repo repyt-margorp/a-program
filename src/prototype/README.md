@@ -265,9 +265,12 @@ but it makes the intended separation observable.
 - Induction layer: `INDUCTION_HYPOTHESIS`
 
 The key distinction is that alpha/canonical identity is still structural, while
-normalization equality is computational. `APP` reduces by beta when its WHNF
-function is a lambda. `MATCH` evaluates its scrutinee and reduces when the
-scrutinee head is a known constructor. Host operations, including deterministic
+normalization equality is computational. `APP(left, right)` is a shared
+structural edge. At a typed operation occurrence, an ordinary function
+application reduces by beta when its WHNF function is a lambda, while a
+constructor-headed application forms a data value and is not itself beta
+elimination. `MATCH` evaluates its scrutinee and reduces when the scrutinee head
+is a known constructor. Host operations, including deterministic
 integer arithmetic, have `Comp(E, A)` result classifiers and run only after
 `perform` creates an `OPERATION_REQUEST`; they are never direct APP reductions
 in normalization or kernel conversion. Terminal operations such as `#.print`

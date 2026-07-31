@@ -1688,6 +1688,67 @@ int prototype_type_declaration_representation_type_id(
 	return 0;
 }
 
+int prototype_type_declaration_instance_info(
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_term_db* terms,
+	uint32_t instance,
+	uint32_t* p_type_id,
+	uint32_t* arguments,
+	uint32_t argument_capacity,
+	uint32_t* p_argument_count
+) {
+	if (!db || !terms || !p_type_id || !p_argument_count ||
+		instance >= terms->term_count ||
+		(argument_capacity > 0 && !arguments)) {
+		return -1;
+	}
+	uint32_t named_arguments[16];
+	uint32_t named_argument_count;
+	if (prototype_term_type_instance_info(
+			terms,
+			instance,
+			p_type_id,
+			named_arguments,
+			&named_argument_count
+		) == 0) {
+		if (*p_type_id >= db->type_count ||
+			named_argument_count > argument_capacity) {
+			return -1;
+		}
+		for (uint32_t i = 0; i < named_argument_count; ++i) {
+			arguments[i] = named_arguments[i];
+		}
+		*p_argument_count = named_argument_count;
+		return 0;
+	}
+
+	uint32_t reversed[16];
+	uint32_t count = 0;
+	uint32_t current = instance;
+	while (current < terms->term_count &&
+		terms->terms[current].tag == PROTOTYPE_TERM_APP) {
+		if (count >= 16 || count >= argument_capacity) {
+			return -1;
+		}
+		reversed[count++] = terms->terms[current].as.app.argument;
+		current = terms->terms[current].as.app.function;
+	}
+	if (current >= terms->term_count ||
+		terms->terms[current].tag != PROTOTYPE_TERM_TYPE_FORMER ||
+		prototype_type_declaration_representation_type_id(
+			db,
+			terms->terms[current].as.type_former.representation_id,
+			p_type_id
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < count; ++i) {
+		arguments[i] = reversed[count - i - 1];
+	}
+	*p_argument_count = count;
+	return 0;
+}
+
 int prototype_type_declaration_rebuild_representations(
 	const struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* db,

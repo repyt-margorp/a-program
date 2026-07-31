@@ -325,6 +325,12 @@ enum prototype_operation_tag {
 	PROTOTYPE_OPERATION_DEEP_FOLD
 };
 
+enum prototype_operation_polarity {
+	PROTOTYPE_OPERATION_POLARITY_UNKNOWN = 0,
+	PROTOTYPE_OPERATION_POLARITY_VALUE,
+	PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+};
+
 struct prototype_operation_node {
 	int tag;
 	/* This belongs to the source operation occurrence, not to the erased core
@@ -332,6 +338,9 @@ struct prototype_operation_node {
 	 * another. */
 	int polarity;
 	int computation_kind;
+	/* APP is one shared core node. This occurrence field selects the typed
+	 * elimination or introduction rule without changing TermDB identity. */
+	int application_role;
 	/* Typed occurrences are indexed by a value context. This ID is deliberately
 	 * not part of the erased TermDB node or its canonical key. */
 	uint32_t context_id;

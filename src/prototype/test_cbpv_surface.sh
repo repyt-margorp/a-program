@@ -493,7 +493,7 @@ EOF
 ./read_file.out "$tmp_dir/sigma-dependent-field.p" >"$tmp_dir/sigma-dependent-field.out"
 grep -q '^term ConstNat := LAMBDA(' "$tmp_dir/sigma-dependent-field.out"
 grep -q '^term main := APP(APP(CONSTRUCTOR' "$tmp_dir/sigma-dependent-field.out"
-grep -q '\[app-elim\]' "$tmp_dir/sigma-dependent-field.out"
+grep -q '\[constructor-spine-formation\]' "$tmp_dir/sigma-dependent-field.out"
 ./read_file.out --write-artifact "$tmp_dir/sigma-dependent-field.apo" \
 	"$tmp_dir/sigma-dependent-field.p" >"$tmp_dir/sigma-dependent-field-write.out"
 ./read_file.out --read-graph "$tmp_dir/sigma-dependent-field.apo" \
