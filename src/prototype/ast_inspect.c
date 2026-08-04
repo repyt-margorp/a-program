@@ -39,8 +39,12 @@ static const char* ast_tag_name(int tag) {
 			return "quote";
 		case PROTOTYPE_AST_COMPUTATION_BLOCK:
 			return "computation-block";
-		case PROTOTYPE_AST_BLOCK_BIND:
-			return "block-bind";
+		case PROTOTYPE_AST_BLOCK_BINDING:
+			return "block-binding";
+		case PROTOTYPE_AST_BLOCK_EXPRESSION:
+			return "block-expression";
+		case PROTOTYPE_AST_BLOCK_LAMBDA_EXIT:
+			return "block-lambda-exit";
 		case PROTOTYPE_AST_PERFORM:
 			return "perform";
 		case PROTOTYPE_AST_HANDLE:
@@ -99,8 +103,9 @@ void prototype_ast_inspect_print(
 
 	fprintf(
 		output,
-		"ast-inspect nodes=%zu expectations=%zu assignments=%zu def_index_entries=%zu type_exprs=%zu type_defs=%zu\n",
+		"ast-inspect nodes=%zu block-items=%zu expectations=%zu assignments=%zu def_index_entries=%zu type_exprs=%zu type_defs=%zu\n",
 		asts->node_count,
+		asts->block_item_count,
 		asts->expectation_count,
 		asts->assignment_count,
 		asts->def_index_count,

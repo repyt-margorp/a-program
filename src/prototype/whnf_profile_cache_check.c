@@ -159,7 +159,7 @@ int main(void) {
 		prototype_term_var(&term_db, bind_binder, &bind_var) != 0 ||
 		prototype_term_return(&term_db, bind_var, &bind_body) != 0 ||
 		prototype_term_lambda(&term_db, bind_binder, bind_body, &bind_continuation) != 0 ||
-		prototype_term_deep_fold(
+		prototype_term_computation_fold(
 			&term_db, returned_constructor, bind_continuation, NULL, 0,
 			&bound_constructor
 		) != 0 || prototype_term_thunk(
@@ -388,7 +388,7 @@ int main(void) {
 		return 1;
 	}
 
-	/* The runtime side of a residual deep fold receives an occurrence-local value.
+	/* The runtime side of a residual computation fold receives an occurrence-local value.
 	 * It instantiates the recorded family without placing that value in TermDB
 	 * as a global RESULT_OF node. */
 	uint32_t effect_row;
@@ -409,7 +409,7 @@ int main(void) {
 	if (prototype_verification_db_add(
 			&verification,
 			(struct prototype_verification_obligation){
-				.kind = PROTOTYPE_VERIFICATION_OBLIGATION_DEEP_FOLD_RESULT,
+				.kind = PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT,
 				.state = PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
 				.operation = 0,
 				.core_term = bound_constructor,
@@ -423,7 +423,7 @@ int main(void) {
 					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
 			},
 			NULL
-		) != 0 || prototype_verification_db_discharge_dependent_bind(
+		) != 0 || prototype_verification_db_discharge_computation_fold_result(
 			&verification,
 			&term_db,
 			&type_db,

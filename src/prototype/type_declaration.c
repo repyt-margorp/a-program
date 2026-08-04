@@ -825,21 +825,21 @@ static int representation_terms_equal_at_depth(
 			return representation_terms_equal_at_depth(
 				terms, db, left->as.force.value, right->as.force.value, env, depth + 1
 			);
-		case PROTOTYPE_TERM_DEEP_FOLD: {
+		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (!representation_terms_equal_at_depth(
-					terms, db, left->as.deep_fold.computation,
-					right->as.deep_fold.computation, env, depth + 1
+					terms, db, left->as.computation_fold.computation,
+					right->as.computation_fold.computation, env, depth + 1
 				) || !representation_terms_equal_at_depth(
-					terms, db, left->as.deep_fold.return_clause,
-					right->as.deep_fold.return_clause, env, depth + 1
-				) || left->as.deep_fold.clause_count != right->as.deep_fold.clause_count) {
+					terms, db, left->as.computation_fold.return_clause,
+					right->as.computation_fold.return_clause, env, depth + 1
+				) || left->as.computation_fold.clause_count != right->as.computation_fold.clause_count) {
 				return 0;
 			}
-			for (uint32_t i = 0; i < left->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* left_clause =
-					&terms->deep_fold_clauses[left->as.deep_fold.first_clause + i];
-				const struct prototype_deep_fold_clause* right_clause =
-					&terms->deep_fold_clauses[right->as.deep_fold.first_clause + i];
+			for (uint32_t i = 0; i < left->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* left_clause =
+					&terms->computation_fold_clauses[left->as.computation_fold.first_clause + i];
+				const struct prototype_computation_fold_clause* right_clause =
+					&terms->computation_fold_clauses[right->as.computation_fold.first_clause + i];
 				if (!representation_terms_equal_at_depth(
 						terms, db, left_clause->operation, right_clause->operation,
 						env, depth + 1

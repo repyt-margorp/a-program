@@ -19,7 +19,7 @@ len := \A : @ =>
 			@nil => Nat.zero
 			@cons x xs => {
 				n := *xs;
-				Nat.succ n
+				Nat.succ n;
 			})
 	 :: List A -> Nat);
 

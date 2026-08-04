@@ -1,5 +1,11 @@
 # Execution-Suppression CBPV Surface Plan
 
+The computation-block terminal syntax in this document was superseded on
+2026-08-04 by
+`2026-08-04T00-00-00-COMPUTATION-BLOCK-SEQUENCE-AND-LAMBDA-EXIT-MIGRATION.md`.
+In particular, mandatory erased `!result;` is historical; `!` is reserved for
+lexical Lambda exit in the newer design.
+
 Date: 2026-07-18
 
 ## Status
@@ -61,7 +67,7 @@ The implementation established the following points:
    `Thunk(Comp(effect-row-variable, A))`. Every free latent row in a binder
    classifier is owned and generalized by the enclosing Lambda occurrence.
 2. Nested references are representable. `&&A` owns two independent latent
-   rows, and `&{ &m }` lowers to the raw shape
+   rows, and `&{ !&m; }` lowers to the raw shape
    `THUNK(RETURN(THUNK(...)))` rather than collapsing the nested thunk.
 3. Effect-row specialization must follow the expected and actual classifier
    structure. The old one-level rule could specialize `&A` but not `&&A`.
@@ -71,9 +77,9 @@ The implementation established the following points:
 5. Surface `#.bind` and `#.force` are no longer recognized. Computation blocks,
    strict contexts, and callable application generate Core `BIND` and `FORCE`
    nodes.
-6. `&{ M }` deliberately suppresses execution. Therefore replacing
-   `#.force &{ M }` with `x := &{ M }` is incorrect: the equivalent block form
-   is `x := { M }`, or a separate `saved := &{ M }; x := saved` execution
+6. `&{ !M; }` deliberately suppresses execution. Therefore replacing
+   `#.force &{ !M; }` with `x := &{ !M; }` is incorrect: the equivalent block
+   form is `x := { !M; }`, or a separate `saved := &{ !M; }; x := saved` execution
    demand.
 
 The implementation also exposed three pre-existing occurrence/core leaks:
@@ -195,7 +201,7 @@ The source position requests that a computation be run. The principal
 execution-demand positions are:
 
 1. the right-hand side of a computation-block binding;
-2. a computation-block tail;
+2. an explicit computation-block result;
 3. a Lambda body;
 4. a Match branch body;
 5. a selected program entry point;
@@ -349,12 +355,12 @@ the context rules above are implemented.
 
 | Raw Core form | Surface source |
 | --- | --- |
-| `RETURN(v)` | value `v` in a computation body or block tail |
+| `RETURN(v)` | `!v;` at a computation block boundary, or a value in another computation body |
 | `THUNK(M)` | `&M` |
 | `FORCE(v)`, returning computation | bare `v` in an execution-demand block binding or tail |
 | `FORCE(f)`, function computation | use `f` as an application callee |
 | `APP(f, v)` | ordinary application `f v` |
-| `BIND(M, LAMBDA(x, N))` | `{ x := M; N }` |
+| `BIND(M, LAMBDA(x, N))` | `{ x := M; !N; }` |
 | nested `BIND` | multiple block bindings |
 | `OPERATION_REQUEST` | `perform` form, subject to the separate operation-surface plan |
 | `HANDLE` | `handle` form, subject to the separate handler-surface plan |

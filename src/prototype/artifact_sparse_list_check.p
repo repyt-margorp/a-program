@@ -8,5 +8,5 @@ append := \A : @ =>
 		xs @nil => (\ys : List A => ys)
 		   @cons x rest => (\ys : List A => {
 			tail := *rest ys;
-			(List A).cons x tail
+			(List A).cons x tail;
 		   });

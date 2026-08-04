@@ -8,6 +8,15 @@ Implemented in `src/prototype/` on 2026-07-17. The prototype build, CBPV
 boundary tests, surface tests, dependent-Pi tests, shared-core occurrence
 tests, and artifact flow tests pass.
 
+Updated on 2026-08-02: the implicit bare terminal term was removed. Every
+computation block now ends explicitly in `!result;`. The `!` marker is erased
+during parsing; it does not add an Effect operation or a TermDB node.
+
+Superseded on 2026-08-04 by
+`2026-08-04T00-00-00-COMPUTATION-BLOCK-SEQUENCE-AND-LAMBDA-EXIT-MIGRATION.md`.
+The mandatory erased `!result;` form described below is historical and is not
+the current surface design.
+
 The accepted examples are outside the AI write boundary and have not been
 migrated. Examples 01-04 and 06 compile unchanged. Examples 05, 07, and 09
 now fail intentionally at an implicit computation-to-value boundary and need
@@ -46,7 +55,7 @@ The two meanings have separate source forms:
 ```text
 {
 	x := M;
-	N
+	!N;
 }
 
 &M
@@ -66,7 +75,7 @@ A block is a computation expression:
 {
 	x := M;
 	y := f x;
-	y
+	!y;
 }
 ```
 
@@ -99,16 +108,16 @@ rule.
 The initial block grammar is:
 
 ```text
-block        := "{" block_item* terminal_term "}"
+block        := "{" block_item* block_result "}"
 block_item   := identifier (":" type_expr)? ":=" term ";"
-terminal_term := term
+block_result := "!" term ";"
 ```
 
-The final term is mandatory. An empty block and a block ending only in `;`
-are errors in the first implementation. This avoids inventing an implicit
-Unit value before the source-level Unit policy is settled.
+The explicit result is mandatory. An empty block, a block ending only in `;`,
+and the removed `{ bindings... bare_term }` form are errors. This avoids both
+an implicit Unit value and an implicit choice of the block result.
 
-The terminal term follows these rules:
+The result term follows these rules:
 
 * A terminal value `v : B` lowers to `RETURN(v)`.
 * A terminal computation `M : Comp(E, B)` is used directly as the tail
@@ -409,7 +418,7 @@ BIND(computation, LAMBDA(x, continuation))
 Lower a block from the last entry toward the first while preserving source
 order.
 
-1. Lower the terminal term in computation context.
+1. Lower the explicit result term in computation context.
 2. For a value terminal, emit `RETURN(value)`.
 3. For each preceding entry in reverse order, lower its right-hand side while
    retaining its occurrence polarity and computation kind.
@@ -436,12 +445,12 @@ constraints rather than demand a final classifier during parsing.
 1. Add `TOKEN_AMPERSAND` to `reader.c` and lex a standalone `&`.
 2. Add quote parsing at unary/atom precedence.
 3. Admit `TOKEN_LBRACE` as the start of a term atom or primary computation.
-4. Parse ordered local assignments and one mandatory terminal term.
+4. Parse ordered local assignments and one mandatory `!result;` terminator.
 5. Allocate an AST binder for each local assignment and extend scope only for
-   subsequent entries and the terminal term.
+   subsequent entries and the result term.
 6. Keep `@{ ... }` parsing exclusively in type-formation parsing; bare
    `{ ... }` is a computation block.
-7. Produce precise errors for a missing terminal term, duplicate local name
+7. Produce precise errors for a missing `!result;`, duplicate local name
    in one active scope, and unterminated block.
 
 Match case parsing must parse a leading block directly rather than call the
@@ -556,8 +565,8 @@ semantics. Do not couple all syntax removal into one unreviewable patch.
 ### Positive
 
 ```text
-module := { value };
-main := { x := module; x };
+module := { !value; };
+main := { x := module; !x; };
 ```
 
 The block returns the result value and has the unioned computation classifier.
@@ -607,7 +616,7 @@ Reject quotation of an ordinary value.
 }
 ```
 
-Reject a missing terminal term in the initial grammar.
+Reject a missing `!result;` and the removed bare-terminal form.
 
 ```text
 higher_func id
@@ -654,7 +663,7 @@ syntax work:
 
 Permanent tests cover typed and inferred block binders, value and raw-function
 aliases, blocks in Match branches, IH block sequencing, explicit quotation,
-illegal computation arguments, illegal value quotation, a missing terminal,
+illegal computation arguments, illegal value quotation, a missing explicit result,
 curried application, repeated force, execute-once binding, and artifact
 write/read/link/normalization flows.
 
@@ -710,7 +719,7 @@ The migration is complete when:
 4. Function application inserts FORCE only from a proven thunked-Pi callee
    classifier.
 5. A raw computation cannot be accepted as an ordinary APP argument.
-6. Top-level raw computations, Lambda bodies, Match bodies, and block tails
+6. Top-level raw computations, Lambda bodies, Match bodies, and block results
    retain their computation polarity.
 7. Source order of effectful block entries is preserved.
 8. Direct and artifact compilation agree on polarity, classifier, effect row,

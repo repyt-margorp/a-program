@@ -20,6 +20,7 @@
 #define AST_DEF_CAPACITY 256
 #define AST_MATCH_CASE_CAPACITY 256
 #define AST_MATCH_BINDER_CAPACITY 512
+#define AST_BLOCK_ITEM_CAPACITY 4096
 #define AST_TYPE_EXPR_CAPACITY 1024
 #define AST_TYPE_DEF_CAPACITY 64
 #define AST_TYPE_PARAMETER_CAPACITY 128
@@ -81,6 +82,7 @@ static struct prototype_ast_import_def ast_imports[AST_DEF_CAPACITY];
 static struct prototype_ast_def_open_address_entry ast_def_index[AST_DEF_CAPACITY];
 static struct prototype_ast_match_case ast_match_cases[AST_MATCH_CASE_CAPACITY];
 static struct prototype_ast_binder ast_match_binders[AST_MATCH_BINDER_CAPACITY];
+static uint32_t ast_block_items[AST_BLOCK_ITEM_CAPACITY];
 static struct prototype_ast_type_expr ast_type_exprs[AST_TYPE_EXPR_CAPACITY];
 static struct prototype_ast_type_def ast_type_defs[AST_TYPE_DEF_CAPACITY];
 static struct prototype_ast_type_parameter ast_type_parameters[AST_TYPE_PARAMETER_CAPACITY];
@@ -346,7 +348,7 @@ static const char* operation_tag_name(int tag) {
 		case PROTOTYPE_OPERATION_RETURN: return "return";
 		case PROTOTYPE_OPERATION_THUNK: return "thunk";
 		case PROTOTYPE_OPERATION_FORCE: return "force";
-		case PROTOTYPE_OPERATION_DEEP_FOLD: return "deep-fold";
+		case PROTOTYPE_OPERATION_COMPUTATION_FOLD: return "computation-fold";
 		case PROTOTYPE_OPERATION_PERFORM: return "perform";
 		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS: return "induction-hypothesis";
 		case PROTOTYPE_OPERATION_ASCRIPTION: return "ascription";
@@ -3806,6 +3808,8 @@ int main(int argc, char** argv) {
 		AST_MATCH_CASE_CAPACITY,
 		ast_match_binders,
 		AST_MATCH_BINDER_CAPACITY,
+		ast_block_items,
+		AST_BLOCK_ITEM_CAPACITY,
 		ast_type_exprs,
 		AST_TYPE_EXPR_CAPACITY,
 		ast_type_defs,

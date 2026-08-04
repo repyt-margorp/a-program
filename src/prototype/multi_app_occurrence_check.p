@@ -19,5 +19,5 @@ useAscribedNat := (identityNat :: Nat -> Nat) Nat.zero;
 matchAscribed := {
 	b := (identityBool :: Bool -> Bool) Bool.true;
 	b @true => (identityNat :: Nat -> Nat) Nat.zero
-	  @false => (identityNat :: Nat -> Nat) (Nat.succ Nat.zero)
+	  @false => (identityNat :: Nat -> Nat) (Nat.succ Nat.zero);
 };

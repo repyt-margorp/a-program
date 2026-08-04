@@ -202,7 +202,7 @@ static int computation_effect_row_is_union(
 
 /* Closed rows are solved immediately. Symbolic residual rows remain for the
  * row-constraint solver rather than being guessed from a bitset. */
-static int closed_deep_fold_residual_row(
+static int closed_computation_fold_residual_row(
 	struct prototype_term_db* terms,
 	const struct prototype_term_classifier_view* input,
 	const struct prototype_term_classifier_view* operation,
@@ -5494,10 +5494,10 @@ int prototype_judgement_delta_record_computation_constraint(
 	constraint.context_id = context_id;
 	constraint.subject = subject;
 	constraint.effect_residual_row = PROTOTYPE_INVALID_ID;
-	if (term->tag == PROTOTYPE_TERM_DEEP_FOLD) {
-		constraint.kind = PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_DEEP_FOLD;
-		constraint.computation = term->as.deep_fold.computation;
-		constraint.continuation = term->as.deep_fold.return_clause;
+	if (term->tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
+		constraint.kind = PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_FOLD;
+		constraint.computation = term->as.computation_fold.computation;
+		constraint.continuation = term->as.computation_fold.return_clause;
 		constraint.argument = PROTOTYPE_INVALID_ID;
 		constraint.application = PROTOTYPE_INVALID_ID;
 	} else if (term->tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
@@ -5548,9 +5548,9 @@ int prototype_judgement_delta_generate_computation_constraints(
 	return 0;
 }
 
-/* A zero-clause deep fold sequences a returning computation through its
+/* A zero-clause computation fold sequences a returning computation through its
  * return algebra. The result remains a returning computation. */
-int prototype_judgement_deep_fold_result_classifier(
+int prototype_judgement_computation_fold_result_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t input_computation,
@@ -5665,7 +5665,7 @@ int prototype_judgement_deep_fold_result_classifier(
 	return 0;
 }
 
-int prototype_judgement_delta_record_deep_fold_elim(
+int prototype_judgement_delta_record_computation_fold_elim(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -5684,7 +5684,7 @@ int prototype_judgement_delta_record_deep_fold_elim(
 		continuation_classifier >= terms->term_count) {
 		return -1;
 	}
-	int status = prototype_judgement_deep_fold_result_classifier(
+	int status = prototype_judgement_computation_fold_result_classifier(
 		terms,
 		type_declarations,
 		computation,
@@ -5709,14 +5709,14 @@ int prototype_judgement_delta_record_deep_fold_elim(
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_DEEP_FOLD_ELIM,
+		PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM,
 		subjects,
 		classifiers,
 		2
 	);
 }
 
-static int solve_zero_clause_deep_fold_constraint(
+static int solve_zero_clause_computation_fold_constraint(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -5727,7 +5727,7 @@ static int solve_zero_clause_deep_fold_constraint(
 			&delta->relations[i];
 		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
 			relation->subject == constraint->subject &&
-			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_DEEP_FOLD_ELIM) {
+			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM) {
 			return 0;
 		}
 	}
@@ -5744,7 +5744,7 @@ static int solve_zero_clause_deep_fold_constraint(
 		input_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
 		/* TermDB identity may be shared by differently typed source occurrences.
 		 * A global lookup that finds a non-returning candidate cannot refute this
-		 * occurrence-local zero-clause deep fold; defer until the OperationGraph records its selected
+		 * occurrence-local zero-clause computation fold; defer until the OperationGraph records its selected
 		 * operand classifiers. */
 		return 1;
 	}
@@ -5765,7 +5765,7 @@ static int solve_zero_clause_deep_fold_constraint(
 		return 1;
 	}
 	uint32_t classifier;
-	int result_status = prototype_judgement_deep_fold_result_classifier(
+	int result_status = prototype_judgement_computation_fold_result_classifier(
 		terms,
 		type_declarations,
 		constraint->computation,
@@ -5776,7 +5776,7 @@ static int solve_zero_clause_deep_fold_constraint(
 	if (result_status != 0) {
 		/* This legacy constraint stores only TermDB subjects.  A shared core
 		 * term may have several occurrence-local classifiers, so failure for the
-		 * candidates selected above cannot refute the source deep fold.  Derive a
+		 * candidates selected above cannot refute the source computation fold.  Derive a
 		 * proof here only when the candidates work; otherwise let the
 		 * OperationGraph validate its explicitly selected child classifiers. */
 		return 1;
@@ -5785,7 +5785,7 @@ static int solve_zero_clause_deep_fold_constraint(
 	uint32_t classifiers[2] = { input_classifier, continuation_classifier };
 	return add_delta_relation_with_premises(
 		delta, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, constraint->subject, classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_DEEP_FOLD_ELIM, subjects, classifiers, 2
+		PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM, subjects, classifiers, 2
 	);
 }
 
@@ -5914,26 +5914,26 @@ static int solve_operation_request_constraint(
 	);
 }
 
-static int solve_clause_deep_fold_constraint(
+static int solve_clause_computation_fold_constraint(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_computation_constraint* constraint
 ) {
 	if (constraint->subject >= terms->term_count ||
-		terms->terms[constraint->subject].tag != PROTOTYPE_TERM_DEEP_FOLD) {
+		terms->terms[constraint->subject].tag != PROTOTYPE_TERM_COMPUTATION_FOLD) {
 		return -1;
 	}
 	const struct prototype_term* fold = &terms->terms[constraint->subject];
-	if (fold->as.deep_fold.clause_count != 1 ||
-		fold->as.deep_fold.first_clause >= terms->deep_fold_clause_count) {
+	if (fold->as.computation_fold.clause_count != 1 ||
+		fold->as.computation_fold.first_clause >= terms->computation_fold_clause_count) {
 		return -1;
 	}
-	const struct prototype_deep_fold_clause* clause =
-		&terms->deep_fold_clauses[fold->as.deep_fold.first_clause];
+	const struct prototype_computation_fold_clause* clause =
+		&terms->computation_fold_clauses[fold->as.computation_fold.first_clause];
 	uint32_t input_classifier;
 	if (lookup_delta_proven_classifier(
-			delta, terms, fold->as.deep_fold.computation, &input_classifier
+			delta, terms, fold->as.computation_fold.computation, &input_classifier
 		) != 0) {
 		return 1;
 	}
@@ -5984,7 +5984,7 @@ static int solve_clause_deep_fold_constraint(
 		return -1;
 	}
 	uint32_t residual_effect_row;
-	int residual_status = closed_deep_fold_residual_row(
+	int residual_status = closed_computation_fold_residual_row(
 		terms, &input_view, &operation_view, &residual_effect_row
 	);
 	if (residual_status < 0) {
@@ -6018,7 +6018,7 @@ static int solve_clause_deep_fold_constraint(
 	}
 
 	if (infer_lambda_classifier_for_app_argument(
-			delta, terms, type_declarations, fold->as.deep_fold.return_clause, input_view.result
+			delta, terms, type_declarations, fold->as.computation_fold.return_clause, input_view.result
 		) != 0) {
 		return -1;
 	}
@@ -6027,7 +6027,7 @@ static int solve_clause_deep_fold_constraint(
 		delta,
 		terms,
 		type_declarations,
-		fold->as.deep_fold.return_clause,
+		fold->as.computation_fold.return_clause,
 		input_view.result,
 		&return_classifier
 	);
@@ -6046,12 +6046,12 @@ static int solve_clause_deep_fold_constraint(
 		) != 0) {
 		return -1;
 	}
-	if (fold->as.deep_fold.return_clause >= terms->term_count ||
-		terms->terms[fold->as.deep_fold.return_clause].tag != PROTOTYPE_TERM_LAMBDA) {
+	if (fold->as.computation_fold.return_clause >= terms->term_count ||
+		terms->terms[fold->as.computation_fold.return_clause].tag != PROTOTYPE_TERM_LAMBDA) {
 		return -1;
 	}
 	uint32_t return_binder =
-		terms->terms[fold->as.deep_fold.return_clause].as.lambda.binder_id;
+		terms->terms[fold->as.computation_fold.return_clause].as.lambda.binder_id;
 	uint32_t return_var;
 	uint32_t output_classifier;
 	if (prototype_term_var(terms, return_binder, &return_var) != 0 ||
@@ -6273,14 +6273,14 @@ static int solve_clause_deep_fold_constraint(
 		/* The return value needed to instantiate the handler result family is
 		 * produced by the handled computation.  The clause assumptions above
 		 * are sufficient to classify the occurrence-local operation body, but
-		 * no closed deep-fold classifier exists until runtime supplies that value.
+		 * no closed computation-fold classifier exists until runtime supplies that value.
 		 * The source compiler records a HANDLER_RESULT obligation instead of
 		 * publishing a closed handler-elimination proof. */
 		return 1;
 	}
 	uint32_t subjects[4] = {
-		fold->as.deep_fold.computation,
-		fold->as.deep_fold.return_clause,
+		fold->as.computation_fold.computation,
+		fold->as.computation_fold.return_clause,
 		clause->operation,
 		clause->body
 	};
@@ -6292,7 +6292,7 @@ static int solve_clause_deep_fold_constraint(
 	};
 	return add_delta_relation_with_premises(
 		delta, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, constraint->subject,
-		handled_output_classifier, PROTOTYPE_JUDGEMENT_PROOF_DEEP_FOLD_ELIM,
+		handled_output_classifier, PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM,
 		subjects, classifiers, 4
 	);
 }
@@ -6310,16 +6310,16 @@ static int solve_computation_constraints(
 		struct prototype_judgement_computation_constraint* constraint =
 			&delta->computation_constraints[i];
 		delta->current_context_id = constraint->context_id;
-		if (constraint->kind == PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_DEEP_FOLD) {
+		if (constraint->kind == PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_FOLD) {
 			if (constraint->subject >= terms->term_count ||
-				terms->terms[constraint->subject].tag != PROTOTYPE_TERM_DEEP_FOLD) {
+				terms->terms[constraint->subject].tag != PROTOTYPE_TERM_COMPUTATION_FOLD) {
 				return -1;
 			}
 			const struct prototype_term* fold = &terms->terms[constraint->subject];
-			int status = fold->as.deep_fold.clause_count == 0 ?
-				solve_zero_clause_deep_fold_constraint(
+			int status = fold->as.computation_fold.clause_count == 0 ?
+				solve_zero_clause_computation_fold_constraint(
 					delta, terms, type_declarations, constraint
-				) : solve_clause_deep_fold_constraint(
+				) : solve_clause_computation_fold_constraint(
 					delta, terms, type_declarations, constraint
 				);
 			if (status < 0) {
@@ -10689,7 +10689,7 @@ static int validate_force_elim_proof(
 			terms->terms[proof->premise_classifiers[0]].as.thunk_type.computation ? 0 : -1;
 }
 
-static int validate_deep_fold_elim_proof(
+static int validate_computation_fold_elim_proof(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_relation* relation,
@@ -10697,39 +10697,39 @@ static int validate_deep_fold_elim_proof(
 ) {
 	if (!terms || !type_declarations || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		!term_has_tag(terms, relation->subject, PROTOTYPE_TERM_DEEP_FOLD) ||
+		!term_has_tag(terms, relation->subject, PROTOTYPE_TERM_COMPUTATION_FOLD) ||
 		proof->premise_classifiers[0] >= terms->term_count ||
 		proof->premise_classifiers[1] >= terms->term_count ||
 		relation->classifier >= terms->term_count) {
 		return -1;
 	}
 	const struct prototype_term* fold = &terms->terms[relation->subject];
-	if (proof->premise_count != 2 + 2 * fold->as.deep_fold.clause_count ||
-		proof->premise_subjects[0] != fold->as.deep_fold.computation ||
-		proof->premise_subjects[1] != fold->as.deep_fold.return_clause ||
-		fold->as.deep_fold.first_clause + fold->as.deep_fold.clause_count >
-			terms->deep_fold_clause_count) {
+	if (proof->premise_count != 2 + 2 * fold->as.computation_fold.clause_count ||
+		proof->premise_subjects[0] != fold->as.computation_fold.computation ||
+		proof->premise_subjects[1] != fold->as.computation_fold.return_clause ||
+		fold->as.computation_fold.first_clause + fold->as.computation_fold.clause_count >
+			terms->computation_fold_clause_count) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < fold->as.deep_fold.clause_count; ++i) {
-		const struct prototype_deep_fold_clause* clause =
-			&terms->deep_fold_clauses[fold->as.deep_fold.first_clause + i];
+	for (uint32_t i = 0; i < fold->as.computation_fold.clause_count; ++i) {
+		const struct prototype_computation_fold_clause* clause =
+			&terms->computation_fold_clauses[fold->as.computation_fold.first_clause + i];
 		if (proof->premise_subjects[2 + 2 * i] != clause->operation ||
 			proof->premise_subjects[3 + 2 * i] != clause->body) {
 			return -1;
 		}
 	}
-	if (fold->as.deep_fold.clause_count != 0) {
+	if (fold->as.computation_fold.clause_count != 0) {
 		struct prototype_term_classifier_view result;
 		return prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, relation->classifier, &result
 		) == 0 && result.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ? 0 : -1;
 	}
 	uint32_t expected_result;
-	if (prototype_judgement_deep_fold_result_classifier(
+	if (prototype_judgement_computation_fold_result_classifier(
 			terms,
 			type_declarations,
-			fold->as.deep_fold.computation,
+			fold->as.computation_fold.computation,
 			proof->premise_classifiers[0],
 			proof->premise_classifiers[1],
 			&expected_result
@@ -11568,8 +11568,8 @@ int prototype_judgement_validate_proofs(
 					return -1;
 				}
 				break;
-			case PROTOTYPE_JUDGEMENT_PROOF_DEEP_FOLD_ELIM:
-				if (validate_deep_fold_elim_proof(
+			case PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM:
+				if (validate_computation_fold_elim_proof(
 						terms, type_declarations, relation, proof
 					) != 0) {
 					return -1;
@@ -11857,8 +11857,8 @@ static const char* proof_kind_name(int proof_kind) {
 			return "thunk-intro";
 		case PROTOTYPE_JUDGEMENT_PROOF_FORCE_ELIM:
 			return "force-elim";
-		case PROTOTYPE_JUDGEMENT_PROOF_DEEP_FOLD_ELIM:
-			return "deep-fold-elim";
+		case PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM:
+			return "computation-fold-elim";
 		case PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO:
 			return "operation-request-intro";
 		case PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO:

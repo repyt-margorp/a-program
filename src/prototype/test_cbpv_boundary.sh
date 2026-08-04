@@ -19,8 +19,8 @@ rm -f /tmp/a-program-cbpv-boundary-check
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
 cat >"$tmp_dir/boundary.p" <<'EOF'
-delayed := &{ #1 };
-main := { x := delayed; x };
+delayed := &{ #1; };
+main := { x := delayed; x; };
 EOF
 
 ./read_file.out "$tmp_dir/boundary.p" >"$tmp_dir/output"

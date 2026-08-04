@@ -29,7 +29,7 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_FORCE_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO,
-	PROTOTYPE_JUDGEMENT_PROOF_DEEP_FOLD_ELIM,
+	PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
 	PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
 	PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE,
@@ -91,7 +91,7 @@ struct prototype_judgement_match_motive_result {
 };
 
 enum prototype_judgement_computation_constraint_kind {
-	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_DEEP_FOLD = 1,
+	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_FOLD = 1,
 	PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST
 };
 
@@ -362,7 +362,7 @@ int prototype_judgement_delta_record_constructor_spine(
 	const uint32_t* argument_classifiers,
 	uint32_t argument_classifier_count
 );
-int prototype_judgement_delta_record_deep_fold_elim(
+int prototype_judgement_delta_record_computation_fold_elim(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -374,7 +374,7 @@ int prototype_judgement_delta_record_deep_fold_elim(
 	uint32_t continuation_classifier
 );
 
-int prototype_judgement_deep_fold_result_classifier(
+int prototype_judgement_computation_fold_result_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t computation,
@@ -821,7 +821,7 @@ int prototype_judgement_delta_record_cbpv_boundary(
 	uint32_t child_classifier
 );
 
-/* Infer CBPV boundary nodes and solve deep-fold/request constraints using already
+/* Infer CBPV boundary nodes and solve computation-fold/request constraints using already
  * materialized child derivations. Unlike infer_term_classifiers, this does
  * not re-run general type formation, APP, or LAMBDA inference. */
 int prototype_judgement_delta_infer_computation_constraints(
@@ -830,7 +830,7 @@ int prototype_judgement_delta_infer_computation_constraints(
 	struct prototype_type_declaration_db* type_declarations
 );
 
-/* Solve DEEP_FOLD and OPERATION_REQUEST constraints after source lowering
+/* Solve COMPUTATION_FOLD and OPERATION_REQUEST constraints after source lowering
  * has materialized the occurrence-selected CBPV boundary derivations. */
 int prototype_judgement_delta_solve_computation_constraints(
 	struct prototype_judgement_delta* delta,

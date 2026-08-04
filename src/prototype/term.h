@@ -29,7 +29,7 @@ typedef int (*prototype_term_operation_dispatch_fn)(
 #define PROTOTYPE_BASE_NAMESPACE_ID (-1)
 #define PROTOTYPE_SCOPE_BINDER_CAPACITY 512
 #define PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY 1024
-#define PROTOTYPE_DEEP_FOLD_CLAUSE_CAPACITY 4096
+#define PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY 4096
 #define PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT UINT64_C(100000)
 #define PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT UINT64_C(100000)
 
@@ -65,7 +65,7 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_THUNK,
 	PROTOTYPE_TERM_FORCE,
 	PROTOTYPE_TERM_OPERATION_REQUEST,
-	PROTOTYPE_TERM_DEEP_FOLD
+	PROTOTYPE_TERM_COMPUTATION_FOLD
 };
 
 enum prototype_term_category {
@@ -201,7 +201,7 @@ enum prototype_term_reduction_flag {
 	PROTOTYPE_TERM_REDUCE_BETA = 1u << 1,
 	PROTOTYPE_TERM_REDUCE_MATCH = 1u << 2,
 	PROTOTYPE_TERM_REDUCE_INDUCTION = 1u << 3,
-	/* CBPV cut elimination: force/thunk, bind/return, and graph handlers.
+	/* CBPV cut elimination: force/thunk, computation-fold/return, and graph handlers.
 	 * This is structural computation reduction, never host-effect dispatch. */
 	PROTOTYPE_TERM_REDUCE_COMPUTATIONS = 1u << 4,
 	/* A semantic profile marker. It introduces no reduction rule; it keeps
@@ -400,11 +400,11 @@ struct prototype_term {
 			uint32_t return_clause;
 			uint32_t first_clause;
 			uint32_t clause_count;
-		} deep_fold;
+		} computation_fold;
 	} as;
 	};
 
-struct prototype_deep_fold_clause {
+struct prototype_computation_fold_clause {
 	uint32_t operation;
 	uint32_t body;
 };
@@ -471,9 +471,9 @@ struct prototype_term_db {
 	size_t match_frame_count;
 	size_t match_frame_capacity;
 
-	struct prototype_deep_fold_clause
-		deep_fold_clauses[PROTOTYPE_DEEP_FOLD_CLAUSE_CAPACITY];
-	size_t deep_fold_clause_count;
+	struct prototype_computation_fold_clause
+		computation_fold_clauses[PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY];
+	size_t computation_fold_clause_count;
 
 	uint32_t next_binder_id;
 	uint32_t scope_binders[PROTOTYPE_SCOPE_BINDER_CAPACITY];
@@ -690,11 +690,11 @@ int prototype_term_operation_request(
 	uint32_t continuation,
 	uint32_t* p_ret
 );
-int prototype_term_deep_fold(
+int prototype_term_computation_fold(
 	struct prototype_term_db* db,
 	uint32_t computation,
 	uint32_t return_clause,
-	const struct prototype_deep_fold_clause* clauses,
+	const struct prototype_computation_fold_clause* clauses,
 	uint32_t clause_count,
 	uint32_t* p_ret
 );

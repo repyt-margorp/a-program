@@ -23,19 +23,19 @@ main := {
 	n := toNat b;
 	alias := n;
 	id := identity;
-	id alias
+	id alias;
 };
 
 quotedIdentity := &identity;
 
 constructorBlock := {
 	n : Nat := identity Nat.zero;
-	Nat.succ n
+	Nat.succ n;
 };
 
 matchBlock := Nat.zero
 	@zero => {
 		n : Nat := identity Nat.zero;
-		Nat.succ n
+		Nat.succ n;
 	}
 	@succ predecessor => Nat.succ Nat.zero;

@@ -1,6 +1,6 @@
 run := \m : &#.Int64 => {
 	x := m;
-	x
+	x;
 };
 
 preserve := \m : &#.Int64 => &m;

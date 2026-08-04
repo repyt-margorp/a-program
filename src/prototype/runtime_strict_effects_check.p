@@ -13,7 +13,7 @@ repeat := second
 
 shared := {
 	x := perform (#.print #"s");
-	second x x
+	second x x;
 };
 
 constructorOrder := PairText.mk
@@ -24,7 +24,7 @@ performArgument := perform (#.print (perform (#.print #"e")));
 
 effectBool := {
 	x : #.Text := perform (#.print #"m");
-	Bool.false
+	Bool.false;
 };
 
 matchScrutineeEffect := effectBool

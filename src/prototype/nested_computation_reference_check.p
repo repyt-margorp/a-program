@@ -1,5 +1,5 @@
-nest := \m : &#.Int64 => &{ &m };
+nest := \m : &#.Int64 => &{ &m; };
 
 preserveNested := \m : &&#.Int64 => &m;
 
-main := preserveNested (nest &{ #1 });
+main := preserveNested (nest &{ #1; });

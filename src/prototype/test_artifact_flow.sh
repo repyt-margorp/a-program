@@ -152,9 +152,9 @@ identityBool := \x : Bool => x;
 identityNat := \y : Nat => y;
 identityBool :: Bool -> Bool;
 identityNat :: Nat -> Nat;
-boolExpected := { Bool.true };
+boolExpected := { Bool.true; };
 boolMain := identityBool Bool.true;
-natExpected := { Nat.succ Nat.zero };
+natExpected := { Nat.succ Nat.zero; };
 natMain := identityNat (Nat.succ Nat.zero);
 EOF_IDENTITY
 
@@ -261,7 +261,7 @@ headOrZero := \xs : List Nat =>
 	xs @nil => Nat.zero
 	   @cons x rest => x;
 input := (List Nat).cons (Nat.succ Nat.zero) (List Nat).nil;
-expected := { Nat.succ Nat.zero };
+expected := { Nat.succ Nat.zero; };
 main := headOrZero input;
 EOF_LIST_NAT_MATCH
 
@@ -304,7 +304,7 @@ add := \n : Nat =>
 	n @zero => (\m : Nat => m)
 	  @succ k => (\m : Nat => {
 		result := *k m;
-		Nat.succ result
+		Nat.succ result;
 	  });
 one := Nat.succ Nat.zero;
 main := add one one;
@@ -329,7 +329,7 @@ addNat := \n : Nat =>
 	n @zero => (\m : Nat => m)
 	  @succ k => (\m : Nat => {
 		result := *k m;
-		Nat.succ result
+		Nat.succ result;
 	  });
 EOF_OPERATION_LAYER
 
@@ -526,7 +526,7 @@ useAscribedNat := (identityNat :: Nat -> Nat) Nat.zero;
 matchAscribed := {
 	b := (identityBool :: Bool -> Bool) Bool.true;
 	b @true => (identityNat :: Nat -> Nat) Nat.zero
-	  @false => (identityNat :: Nat -> Nat) (Nat.succ Nat.zero)
+	  @false => (identityNat :: Nat -> Nat) (Nat.succ Nat.zero);
 };
 EOF_MULTI_APP
 
@@ -887,9 +887,9 @@ Bool := @{
 
 identity := \x : Bool => x;
 betaMain := identity Bool.true;
-betaExpected := { Bool.true };
+betaExpected := { Bool.true; };
 matchMain := Bool.true @true => Bool.false @false => Bool.true;
-matchExpected := { Bool.false };
+matchExpected := { Bool.false; };
 EOF_NORMALIZATION_EQUAL_MATCH
 
 ./read_file.out --write-artifact "$TMP_DIR/NormalizationEqualMatch.apo" \
@@ -917,7 +917,7 @@ Bool := @{
 };
 
 identity := \x : Bool => x;
-matchExpected := { Bool.false };
+matchExpected := { Bool.false; };
 uniformBetaMatch := Bool.true @true => (identity Bool.false) @false => (identity Bool.false);
 EOF_NORMALIZATION_EQUAL_UNIFORM_BETA_MATCH
 
@@ -937,11 +937,11 @@ Nat := @{
 };
 
 identityNat := \x : Nat => x;
-expected := { Nat.succ Nat.zero };
+expected := { Nat.succ Nat.zero; };
 uniformNormalizationEqualArgMatch := Nat.zero
 	@zero   => {
 		n : Nat := identityNat Nat.zero;
-		Nat.succ n
+		Nat.succ n;
 	}
 	@succ predecessor => Nat.succ Nat.zero;
 EOF_NORMALIZATION_EQUAL_UNIFORM_ARG_MATCH
@@ -984,9 +984,9 @@ List := \A : @ => @{
 append := \A : @ =>
         \xs : List A =>
                 xs @nil         => (\ys : List A => ys)
-                   @cons x rest => (\ys : List A => {
+		   @cons x rest => (\ys : List A => {
 			tail := *rest ys;
-			(List A).cons x tail
+			(List A).cons x tail;
 		   });
 
 n0 := Nat.zero;
@@ -997,9 +997,9 @@ n3 := Nat.succ n2;
 list01 := (List Nat).cons n0 ((List Nat).cons n1 (List Nat).nil);
 list23 := (List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil);
 list0 := (List Nat).cons n0 (List Nat).nil;
-oneExpected := { (List Nat).cons n0 list23 };
+oneExpected := { (List Nat).cons n0 list23; };
 oneMain := append Nat list0 list23;
-expected := { (List Nat).cons n0 ((List Nat).cons n1 ((List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil))) };
+expected := { (List Nat).cons n0 ((List Nat).cons n1 ((List Nat).cons n2 ((List Nat).cons n3 (List Nat).nil))); };
 main := append Nat list01 list23;
 EOF_APPEND_NORMALIZATION_EQUAL
 
@@ -1499,9 +1499,9 @@ List := \A : @ => @{
 len := \A : @ =>
         ((\xs : List A =>
                 xs @nil => Nat.zero
-                   @cons x rest => {
+		   @cons x rest => {
 			n := *rest;
-			Nat.succ n
+			Nat.succ n;
 		   })
          :: List A -> Nat);
 EOF_IH_MOTIVE
@@ -1511,7 +1511,7 @@ grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_V
 	"$TMP_DIR/ih-motive.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive\]' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim\] proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"
-grep -q 'has-type DEEP_FOLD(INDUCTION_HYPOTHESIS.*\[deep-fold-elim\] proof#[0-9][0-9]* premises=2' \
+grep -q 'has-type COMPUTATION_FOLD(INDUCTION_HYPOTHESIS.*\[computation-fold-elim\] proof#[0-9][0-9]* premises=2' \
 	"$TMP_DIR/ih-motive.out"
 ./read_file.out --write-artifact "$TMP_DIR/IhMotive.apo" "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive-artifact.out"
 awk '
@@ -1559,7 +1559,7 @@ double := \x : Nat =>
 	x @zero => Nat.zero
 	@succ k => {
 		n := *k;
-		Nat.succ (Nat.succ n)
+		Nat.succ (Nat.succ n);
 	};
 EOF_SOURCE_VIEW_NAT_MATCH
 
@@ -1790,7 +1790,7 @@ fi
 cat >"$TMP_DIR/nested-int-arithmetic.p" <<'EOF_NESTED_INT_ARITHMETIC'
 main := {
 	x := #.int64_add #1 #2;
-	#.int64_add x #3
+	#.int64_add x #3;
 };
 EOF_NESTED_INT_ARITHMETIC
 ./a.out "$TMP_DIR/nested-int-arithmetic.p" >"$TMP_DIR/nested-int-arithmetic-repl.out"

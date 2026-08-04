@@ -201,7 +201,7 @@ int main(void) {
 	if (prototype_term_var(&term_db, 6, &bound_var) != 0 ||
 		prototype_term_return(&term_db, bound_var, &bound_result) != 0 ||
 		prototype_term_lambda(&term_db, 6, bound_result, &bound_continuation) != 0 ||
-		prototype_term_deep_fold(
+		prototype_term_computation_fold(
 			&term_db, returned, bound_continuation, NULL, 0, &pure_bound
 		) != 0 ||
 		prototype_term_normalize_with_profile(

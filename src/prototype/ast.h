@@ -27,9 +27,16 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_ASCRIPTION,
 	PROTOTYPE_AST_QUOTE,
 	PROTOTYPE_AST_COMPUTATION_BLOCK,
-	PROTOTYPE_AST_BLOCK_BIND,
+	PROTOTYPE_AST_BLOCK_BINDING,
+	PROTOTYPE_AST_BLOCK_EXPRESSION,
+	PROTOTYPE_AST_BLOCK_LAMBDA_EXIT,
 	PROTOTYPE_AST_PERFORM,
 	PROTOTYPE_AST_HANDLE
+};
+
+enum prototype_ast_block_result_mode {
+	PROTOTYPE_AST_BLOCK_RESULT_FINAL_ITEM = 1,
+	PROTOTYPE_AST_BLOCK_RESULT_SELECTED_BINDING
 };
 
 enum prototype_ast_system_name_kind {
@@ -164,15 +171,23 @@ struct prototype_ast_node {
 			uint32_t term;
 		} unary;
 		struct {
-			uint32_t body;
+			uint32_t first_item;
+			uint32_t item_count;
+			uint32_t result_item_index;
+			int result_mode;
 		} block;
 		struct {
 			uint32_t ast_binder_id;
 			int binder_symbol_id;
 			uint32_t binder_type;
 			uint32_t value;
-			uint32_t rest;
-		} block_bind;
+		} block_binding;
+		struct {
+			uint32_t term;
+		} block_expression;
+		struct {
+			uint32_t value;
+		} block_lambda_exit;
 		struct {
 			uint32_t computation;
 			uint32_t operation;
@@ -322,7 +337,7 @@ enum prototype_operation_tag {
 	PROTOTYPE_OPERATION_THUNK,
 	PROTOTYPE_OPERATION_FORCE,
 	PROTOTYPE_OPERATION_PERFORM,
-	PROTOTYPE_OPERATION_DEEP_FOLD
+	PROTOTYPE_OPERATION_COMPUTATION_FOLD
 };
 
 enum prototype_operation_polarity {
@@ -363,7 +378,7 @@ struct prototype_operation_node {
 	uint32_t body;
 	uint32_t scrutinee;
 	uint32_t binder_classifier;
-	/* deep-fold clause clause scope. `body` is the operation-clause body and
+	/* computation-fold clause clause scope. `body` is the operation-clause body and
 	 * `scrutinee` is the return-clause body. Source binder identities select
 	 * occurrence-local VAR nodes; graph binder identities instantiate the
 	 * corresponding TermDB clause bodies. */
@@ -433,7 +448,7 @@ struct prototype_operation_effect_constraint {
 /* Residual verification is distinct from JudgementDB: a record here is a
  * conditional runtime obligation, never a closed has-type derivation. */
 enum prototype_verification_obligation_kind {
-	PROTOTYPE_VERIFICATION_OBLIGATION_DEEP_FOLD_RESULT = 1
+	PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT = 1
 };
 
 enum prototype_verification_obligation_state {
@@ -767,7 +782,7 @@ enum prototype_compile_policy {
 };
 
 enum prototype_runtime_capability {
-	PROTOTYPE_RUNTIME_CAPABILITY_DEEP_FOLD_RESULT_VERIFIER = 1u << 0,
+	PROTOTYPE_RUNTIME_CAPABILITY_COMPUTATION_FOLD_RESULT_VERIFIER = 1u << 0,
 	PROTOTYPE_RUNTIME_CAPABILITY_OPERATION_DISPATCH = 1u << 1,
 	PROTOTYPE_RUNTIME_CAPABILITY_HANDLER = 1u << 2,
 	PROTOTYPE_RUNTIME_CAPABILITY_TERMINAL = 1u << 3
@@ -867,6 +882,10 @@ struct prototype_ast_db {
 	size_t case_binder_count;
 	size_t case_binder_capacity;
 
+	uint32_t* block_items;
+	size_t block_item_count;
+	size_t block_item_capacity;
+
 	struct prototype_ast_type_expr* type_exprs;
 	size_t type_expr_count;
 	size_t type_expr_capacity;
@@ -910,6 +929,8 @@ void prototype_ast_db_init(
 	size_t case_capacity,
 	struct prototype_ast_binder* case_binders,
 	size_t case_binder_capacity,
+	uint32_t* block_items,
+	size_t block_item_capacity,
 	struct prototype_ast_type_expr* type_exprs,
 	size_t type_expr_capacity,
 	struct prototype_ast_type_def* type_defs,
@@ -1123,17 +1144,31 @@ int prototype_ast_quote(
 );
 int prototype_ast_computation_block(
 	struct prototype_ast_db* db,
-	uint32_t body,
+	const uint32_t* items,
+	uint32_t item_count,
+	uint32_t result_item_index,
+	int result_mode,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_block_bind(
+int prototype_ast_block_binding(
 	struct prototype_ast_db* db,
 	uint32_t ast_binder_id,
 	int binder_symbol_id,
 	uint32_t binder_type,
 	uint32_t value,
-	uint32_t rest,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_block_expression(
+	struct prototype_ast_db* db,
+	uint32_t term,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_block_lambda_exit(
+	struct prototype_ast_db* db,
+	uint32_t value,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
@@ -1314,15 +1349,7 @@ int prototype_verification_db_add(
 	struct prototype_verification_obligation obligation,
 	uint32_t* p_obligation_id
 );
-int prototype_verification_db_discharge_dependent_bind(
-	struct prototype_verification_db* db,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t obligation_id,
-	uint32_t returned_value,
-	uint32_t continuation_result_classifier
-);
-int prototype_verification_db_discharge_deep_fold_result(
+int prototype_verification_db_discharge_computation_fold_result(
 	struct prototype_verification_db* db,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,

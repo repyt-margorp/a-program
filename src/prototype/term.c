@@ -424,7 +424,7 @@ int prototype_term_semantics(
 		case PROTOTYPE_TERM_RETURN:
 		case PROTOTYPE_TERM_FORCE:
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
-		case PROTOTYPE_TERM_DEEP_FOLD:
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
 			p_ret->layer = PROTOTYPE_TERM_LAYER_LAMBDA_CORE;
 			break;
 		case PROTOTYPE_TERM_APP:
@@ -486,7 +486,7 @@ int prototype_term_semantics(
 		case PROTOTYPE_TERM_RETURN:
 		case PROTOTYPE_TERM_FORCE:
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
-		case PROTOTYPE_TERM_DEEP_FOLD:
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			p_ret->whnf_role = PROTOTYPE_TERM_WHNF_ELIMINATOR;
 			break;
@@ -896,21 +896,21 @@ static int shape_terms_equal_at_depth(
 				ignore_match_frames,
 				depth + 1
 			);
-		case PROTOTYPE_TERM_DEEP_FOLD: {
+		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (!shape_terms_equal_at_depth(
-					db, left->as.deep_fold.computation, right->as.deep_fold.computation,
+					db, left->as.computation_fold.computation, right->as.computation_fold.computation,
 					env, type_view_compare_mode, ignore_match_frames, depth + 1
 				) || !shape_terms_equal_at_depth(
-					db, left->as.deep_fold.return_clause, right->as.deep_fold.return_clause,
+					db, left->as.computation_fold.return_clause, right->as.computation_fold.return_clause,
 					env, type_view_compare_mode, ignore_match_frames, depth + 1
-				) || left->as.deep_fold.clause_count != right->as.deep_fold.clause_count) {
+				) || left->as.computation_fold.clause_count != right->as.computation_fold.clause_count) {
 				return 0;
 			}
-			for (uint32_t i = 0; i < left->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* left_clause =
-					&db->deep_fold_clauses[left->as.deep_fold.first_clause + i];
-				const struct prototype_deep_fold_clause* right_clause =
-					&db->deep_fold_clauses[right->as.deep_fold.first_clause + i];
+			for (uint32_t i = 0; i < left->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* left_clause =
+					&db->computation_fold_clauses[left->as.computation_fold.first_clause + i];
+				const struct prototype_computation_fold_clause* right_clause =
+					&db->computation_fold_clauses[right->as.computation_fold.first_clause + i];
 				if (!shape_terms_equal_at_depth(
 						db, left_clause->operation, right_clause->operation, env,
 						type_view_compare_mode, ignore_match_frames, depth + 1
@@ -1396,23 +1396,23 @@ static int cross_shape_terms_equal_at_depth(
 				ignore_match_frames,
 				depth + 1
 			);
-		case PROTOTYPE_TERM_DEEP_FOLD: {
+		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (!cross_shape_terms_equal_at_depth(
-					left_db, left_type_declarations, left->as.deep_fold.computation,
-					right_db, right_type_declarations, right->as.deep_fold.computation,
+					left_db, left_type_declarations, left->as.computation_fold.computation,
+					right_db, right_type_declarations, right->as.computation_fold.computation,
 					env, type_view_compare_mode, ignore_match_frames, depth + 1
 				) || !cross_shape_terms_equal_at_depth(
-					left_db, left_type_declarations, left->as.deep_fold.return_clause,
-					right_db, right_type_declarations, right->as.deep_fold.return_clause,
+					left_db, left_type_declarations, left->as.computation_fold.return_clause,
+					right_db, right_type_declarations, right->as.computation_fold.return_clause,
 					env, type_view_compare_mode, ignore_match_frames, depth + 1
-				) || left->as.deep_fold.clause_count != right->as.deep_fold.clause_count) {
+				) || left->as.computation_fold.clause_count != right->as.computation_fold.clause_count) {
 				return 0;
 			}
-			for (uint32_t i = 0; i < left->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* left_clause =
-					&left_db->deep_fold_clauses[left->as.deep_fold.first_clause + i];
-				const struct prototype_deep_fold_clause* right_clause =
-					&right_db->deep_fold_clauses[right->as.deep_fold.first_clause + i];
+			for (uint32_t i = 0; i < left->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* left_clause =
+					&left_db->computation_fold_clauses[left->as.computation_fold.first_clause + i];
+				const struct prototype_computation_fold_clause* right_clause =
+					&right_db->computation_fold_clauses[right->as.computation_fold.first_clause + i];
 				if (!cross_shape_terms_equal_at_depth(
 						left_db, left_type_declarations, left_clause->operation,
 						right_db, right_type_declarations, right_clause->operation,
@@ -1998,20 +1998,20 @@ static int canonical_hash_term_at_depth(
 			env->next_slot = saved_next_slot;
 			return status;
 		}
-		case PROTOTYPE_TERM_DEEP_FOLD: {
+		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (canonical_hash_term_at_depth(
-					db, type_declarations, term->as.deep_fold.computation,
+					db, type_declarations, term->as.computation_fold.computation,
 					env, key, p_hash, canonicalize_frame_refs, depth + 1
 				) != 0 || canonical_hash_term_at_depth(
-					db, type_declarations, term->as.deep_fold.return_clause,
+					db, type_declarations, term->as.computation_fold.return_clause,
 					env, key, p_hash, canonicalize_frame_refs, depth + 1
 				) != 0) {
 				return -1;
 			}
-			canonical_hash_mix_u32(p_hash, term->as.deep_fold.clause_count);
-			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* clause =
-					&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+			canonical_hash_mix_u32(p_hash, term->as.computation_fold.clause_count);
+			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* clause =
+					&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 				if (canonical_hash_term_at_depth(
 						db, type_declarations, clause->operation, env, key, p_hash,
 						canonicalize_frame_refs, depth + 1
@@ -3133,12 +3133,12 @@ int prototype_term_rebind_type_former_anchors(
 			case PROTOTYPE_TERM_FORCE:
 				term->as.force.value = remap[term->as.force.value];
 				break;
-			case PROTOTYPE_TERM_DEEP_FOLD:
-				term->as.deep_fold.computation = remap[term->as.deep_fold.computation];
-				term->as.deep_fold.return_clause = remap[term->as.deep_fold.return_clause];
-				for (uint32_t j = 0; j < term->as.deep_fold.clause_count; ++j) {
-					struct prototype_deep_fold_clause* clause =
-						&db->deep_fold_clauses[term->as.deep_fold.first_clause + j];
+			case PROTOTYPE_TERM_COMPUTATION_FOLD:
+				term->as.computation_fold.computation = remap[term->as.computation_fold.computation];
+				term->as.computation_fold.return_clause = remap[term->as.computation_fold.return_clause];
+				for (uint32_t j = 0; j < term->as.computation_fold.clause_count; ++j) {
+					struct prototype_computation_fold_clause* clause =
+						&db->computation_fold_clauses[term->as.computation_fold.first_clause + j];
 					clause->operation = remap[clause->operation];
 					clause->body = remap[clause->body];
 				}
@@ -3584,18 +3584,18 @@ int prototype_term_operation_request(
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_deep_fold(
+int prototype_term_computation_fold(
 	struct prototype_term_db* db,
 	uint32_t computation,
 	uint32_t return_clause,
-	const struct prototype_deep_fold_clause* clauses,
+	const struct prototype_computation_fold_clause* clauses,
 	uint32_t clause_count,
 	uint32_t* p_ret
 ) {
 	if (!db || !p_ret || computation >= db->term_count ||
 		return_clause >= db->term_count || db->terms[return_clause].tag != PROTOTYPE_TERM_LAMBDA ||
 		(clause_count > 0 && !clauses) ||
-		db->deep_fold_clause_count + clause_count > PROTOTYPE_DEEP_FOLD_CLAUSE_CAPACITY) {
+		db->computation_fold_clause_count + clause_count > PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < clause_count; ++i) {
@@ -3616,27 +3616,27 @@ int prototype_term_deep_fold(
 		}
 	}
 
-	size_t saved_clause_count = db->deep_fold_clause_count;
+	size_t saved_clause_count = db->computation_fold_clause_count;
 	size_t saved_term_count = db->term_count;
 	uint32_t first_clause = (uint32_t)saved_clause_count;
 	for (uint32_t i = 0; i < clause_count; ++i) {
-		db->deep_fold_clauses[db->deep_fold_clause_count].operation = clauses[i].operation;
-		db->deep_fold_clauses[db->deep_fold_clause_count].body = clauses[i].body;
-		db->deep_fold_clause_count++;
+		db->computation_fold_clauses[db->computation_fold_clause_count].operation = clauses[i].operation;
+		db->computation_fold_clauses[db->computation_fold_clause_count].body = clauses[i].body;
+		db->computation_fold_clause_count++;
 	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
-	term.tag = PROTOTYPE_TERM_DEEP_FOLD;
-	term.as.deep_fold.computation = computation;
-	term.as.deep_fold.return_clause = return_clause;
-	term.as.deep_fold.first_clause = first_clause;
-	term.as.deep_fold.clause_count = clause_count;
+	term.tag = PROTOTYPE_TERM_COMPUTATION_FOLD;
+	term.as.computation_fold.computation = computation;
+	term.as.computation_fold.return_clause = return_clause;
+	term.as.computation_fold.first_clause = first_clause;
+	term.as.computation_fold.clause_count = clause_count;
 	if (add_term(db, term, p_ret) != 0) {
-		db->deep_fold_clause_count = saved_clause_count;
+		db->computation_fold_clause_count = saved_clause_count;
 		return -1;
 	}
 	if (*p_ret < saved_term_count) {
-		db->deep_fold_clause_count = saved_clause_count;
+		db->computation_fold_clause_count = saved_clause_count;
 	}
 	return 0;
 }
@@ -3741,20 +3741,20 @@ static int term_contains_free_binder_at_depth(
 			return term_contains_free_binder_at_depth(
 				db, term->as.force.value, binder_id, depth + 1
 			);
-		case PROTOTYPE_TERM_DEEP_FOLD:
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
 			if (term_contains_free_binder_at_depth(
-					db, term->as.deep_fold.computation, binder_id, depth + 1
+					db, term->as.computation_fold.computation, binder_id, depth + 1
 				)) {
 				return 1;
 			}
 			if (term_contains_free_binder_at_depth(
-					db, term->as.deep_fold.return_clause, binder_id, depth + 1
+					db, term->as.computation_fold.return_clause, binder_id, depth + 1
 				)) {
 				return 1;
 			}
-			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* clause =
-					&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* clause =
+					&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 				if (term_contains_free_binder_at_depth(
 						db, clause->operation, binder_id, depth + 1
 					) || term_contains_free_binder_at_depth(
@@ -4012,17 +4012,17 @@ static int term_contains_frame_scope_reference_at_depth(
 			return term_contains_frame_scope_reference_at_depth(
 				db, ctx, term->as.force.value, depth + 1
 			);
-		case PROTOTYPE_TERM_DEEP_FOLD:
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
 			if (term_contains_frame_scope_reference_at_depth(
-					db, ctx, term->as.deep_fold.computation, depth + 1
+					db, ctx, term->as.computation_fold.computation, depth + 1
 				) || term_contains_frame_scope_reference_at_depth(
-					db, ctx, term->as.deep_fold.return_clause, depth + 1
+					db, ctx, term->as.computation_fold.return_clause, depth + 1
 				)) {
 				return 1;
 			}
-			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* clause =
-					&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* clause =
+					&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 				if (term_contains_frame_scope_reference_at_depth(
 						db, ctx, clause->operation, depth + 1
 					) || term_contains_frame_scope_reference_at_depth(
@@ -4592,28 +4592,28 @@ static int substitute_term_internal(
 				return value == term->as.force.value ?
 					(*p_ret = term_id, 0) : prototype_term_force(db, value, p_ret);
 			}
-			case PROTOTYPE_TERM_DEEP_FOLD: {
+			case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 				uint32_t computation;
 				uint32_t return_clause;
-				uint32_t clause_count = term->as.deep_fold.clause_count;
-				struct prototype_deep_fold_clause* clauses =
+				uint32_t clause_count = term->as.computation_fold.clause_count;
+				struct prototype_computation_fold_clause* clauses =
 					calloc(clause_count, sizeof(*clauses));
 				if (clause_count > 0 && !clauses) {
 					return -1;
 				}
 				if (substitute_term_internal(
-						db, term->as.deep_fold.computation, binder_id, replacement, ctx, &computation
+						db, term->as.computation_fold.computation, binder_id, replacement, ctx, &computation
 					) != 0 || substitute_term_internal(
-						db, term->as.deep_fold.return_clause, binder_id, replacement, ctx, &return_clause
+						db, term->as.computation_fold.return_clause, binder_id, replacement, ctx, &return_clause
 					) != 0) {
 					free(clauses);
 					return -1;
 				}
-				int unchanged = computation == term->as.deep_fold.computation &&
-					return_clause == term->as.deep_fold.return_clause;
+				int unchanged = computation == term->as.computation_fold.computation &&
+					return_clause == term->as.computation_fold.return_clause;
 				for (uint32_t i = 0; i < clause_count; ++i) {
-					const struct prototype_deep_fold_clause* clause =
-						&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+					const struct prototype_computation_fold_clause* clause =
+						&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 					if (substitute_term_internal(
 							db, clause->operation, binder_id, replacement, ctx,
 							&clauses[i].operation
@@ -4626,7 +4626,7 @@ static int substitute_term_internal(
 					unchanged = unchanged && clauses[i].operation == clause->operation &&
 						clauses[i].body == clause->body;
 				}
-				int status = unchanged ? (*p_ret = term_id, 0) : prototype_term_deep_fold(
+				int status = unchanged ? (*p_ret = term_id, 0) : prototype_term_computation_fold(
 					db, computation, return_clause, clauses, clause_count, p_ret
 				);
 				free(clauses);
@@ -4965,28 +4965,28 @@ static int resolve_external_ref_term(
 				return value == term->as.force.value ?
 					(*p_ret = term_id, 0) : prototype_term_force(db, value, p_ret);
 			}
-			case PROTOTYPE_TERM_DEEP_FOLD: {
+			case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 				uint32_t computation;
 				uint32_t return_clause;
-				uint32_t clause_count = term->as.deep_fold.clause_count;
-				struct prototype_deep_fold_clause* clauses =
+				uint32_t clause_count = term->as.computation_fold.clause_count;
+				struct prototype_computation_fold_clause* clauses =
 					calloc(clause_count, sizeof(*clauses));
 				if (clause_count > 0 && !clauses) {
 					return -1;
 				}
 				if (resolve_external_ref_term(
-						db, term->as.deep_fold.computation, symbol_id, replacement, &computation
+						db, term->as.computation_fold.computation, symbol_id, replacement, &computation
 					) != 0 || resolve_external_ref_term(
-						db, term->as.deep_fold.return_clause, symbol_id, replacement, &return_clause
+						db, term->as.computation_fold.return_clause, symbol_id, replacement, &return_clause
 					) != 0) {
 					free(clauses);
 					return -1;
 				}
-				int unchanged = computation == term->as.deep_fold.computation &&
-					return_clause == term->as.deep_fold.return_clause;
+				int unchanged = computation == term->as.computation_fold.computation &&
+					return_clause == term->as.computation_fold.return_clause;
 				for (uint32_t i = 0; i < clause_count; ++i) {
-					const struct prototype_deep_fold_clause* clause =
-						&db->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+					const struct prototype_computation_fold_clause* clause =
+						&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 					if (resolve_external_ref_term(
 							db, clause->operation, symbol_id, replacement, &clauses[i].operation
 						) != 0 || resolve_external_ref_term(
@@ -4998,7 +4998,7 @@ static int resolve_external_ref_term(
 					unchanged = unchanged && clauses[i].operation == clause->operation &&
 						clauses[i].body == clause->body;
 				}
-				int status = unchanged ? (*p_ret = term_id, 0) : prototype_term_deep_fold(
+				int status = unchanged ? (*p_ret = term_id, 0) : prototype_term_computation_fold(
 					db, computation, return_clause, clauses, clause_count, p_ret
 				);
 				free(clauses);
@@ -5201,7 +5201,7 @@ static int perform_operation_request_step(
 );
 
 /* Request continuations are ordinary CBPV function values.  Keeping this
- * construction here prevents host dispatch and recursive deep-fold propagation
+ * construction here prevents host dispatch and recursive computation-fold propagation
  * dispatch from each inventing a separate continuation application rule. */
 static int operation_request_resume(
 	struct prototype_term_db* db,
@@ -5219,30 +5219,30 @@ static int operation_request_resume(
 	return 0;
 }
 
-static int deep_fold_rebuild(
+static int computation_fold_rebuild(
 	struct prototype_term_db* db,
 	uint32_t fold_id,
 	uint32_t computation,
 	uint32_t* p_ret
 ) {
 	if (!db || !p_ret || fold_id >= db->term_count || computation >= db->term_count ||
-		db->terms[fold_id].tag != PROTOTYPE_TERM_DEEP_FOLD) {
+		db->terms[fold_id].tag != PROTOTYPE_TERM_COMPUTATION_FOLD) {
 		return -1;
 	}
 	const struct prototype_term* fold = &db->terms[fold_id];
-	const struct prototype_deep_fold_clause* clauses =
-		&db->deep_fold_clauses[fold->as.deep_fold.first_clause];
-	return prototype_term_deep_fold(
+	const struct prototype_computation_fold_clause* clauses =
+		&db->computation_fold_clauses[fold->as.computation_fold.first_clause];
+	return prototype_term_computation_fold(
 		db,
 		computation,
-		fold->as.deep_fold.return_clause,
+		fold->as.computation_fold.return_clause,
 		clauses,
-		fold->as.deep_fold.clause_count,
+		fold->as.computation_fold.clause_count,
 		p_ret
 	);
 }
 
-static int deep_fold_continuation(
+static int computation_fold_continuation(
 	struct prototype_term_db* db,
 	uint32_t fold_id,
 	uint32_t request_continuation,
@@ -5256,7 +5256,7 @@ static int deep_fold_continuation(
 	if (!db || !p_ret || binder_id == PROTOTYPE_INVALID_ID ||
 		prototype_term_var(db, binder_id, &result_var) != 0 ||
 		operation_request_resume(db, request_continuation, result_var, &resumed) != 0 ||
-		deep_fold_rebuild(db, fold_id, resumed, &folded) != 0 ||
+		computation_fold_rebuild(db, fold_id, resumed, &folded) != 0 ||
 		prototype_term_lambda(db, binder_id, folded, &lambda) != 0 ||
 		prototype_term_thunk(db, lambda, p_ret) != 0) {
 		return -1;
@@ -5264,20 +5264,20 @@ static int deep_fold_continuation(
 	return 0;
 }
 
-static int deep_fold_find_clause(
+static int computation_fold_find_clause(
 	const struct prototype_term_db* db,
 	uint32_t fold_id,
 	uint32_t operation,
 	uint32_t* p_body
 ) {
 	if (!db || !p_body || fold_id >= db->term_count || operation >= db->term_count ||
-		db->terms[fold_id].tag != PROTOTYPE_TERM_DEEP_FOLD) {
+		db->terms[fold_id].tag != PROTOTYPE_TERM_COMPUTATION_FOLD) {
 		return -1;
 	}
 	const struct prototype_term* fold = &db->terms[fold_id];
-	for (uint32_t i = 0; i < fold->as.deep_fold.clause_count; ++i) {
-		const struct prototype_deep_fold_clause* clause =
-			&db->deep_fold_clauses[fold->as.deep_fold.first_clause + i];
+	for (uint32_t i = 0; i < fold->as.computation_fold.clause_count; ++i) {
+		const struct prototype_computation_fold_clause* clause =
+			&db->computation_fold_clauses[fold->as.computation_fold.first_clause + i];
 		int equal = 0;
 		if (prototype_term_core_shape_equal(
 				db, clause->operation, operation, &equal
@@ -6030,14 +6030,14 @@ static int evaluate_steps(
 			}
 			*p_ret = term_id;
 			return 0;
-		case PROTOTYPE_TERM_DEEP_FOLD: {
+		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (!(options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS) ||
-				(reduction_is_pure_type(options) && term->as.deep_fold.clause_count > 0)) {
+				(reduction_is_pure_type(options) && term->as.computation_fold.clause_count > 0)) {
 				*p_ret = term_id;
 				return 0;
 			}
 
-			/* A deep fold receives requests before host or embedding dispatch. */
+			/* A computation fold receives requests before host or embedding dispatch. */
 			struct prototype_term_reduction_options inner_options = options;
 			inner_options.flags &= ~PROTOTYPE_TERM_PERFORM_HOST_EFFECT;
 			inner_options.operation_dispatch = NULL;
@@ -6045,7 +6045,7 @@ static int evaluate_steps(
 			uint32_t computation;
 			if (evaluate_steps(
 					db, type_declarations, definitions, inner_options,
-					term->as.deep_fold.computation, &computation, depth - 1
+					term->as.computation_fold.computation, &computation, depth - 1
 				) != 0) {
 				return -1;
 			}
@@ -6053,7 +6053,7 @@ static int evaluate_steps(
 				db->terms[computation].tag == PROTOTYPE_TERM_RETURN) {
 				uint32_t applied;
 				if (prototype_term_app(
-						db, term->as.deep_fold.return_clause,
+						db, term->as.computation_fold.return_clause,
 						db->terms[computation].as.return_term.value, &applied
 					) != 0) {
 					return -1;
@@ -6067,9 +6067,9 @@ static int evaluate_steps(
 				const struct prototype_term* request = &db->terms[computation];
 				uint32_t continuation;
 				uint32_t clause_body;
-				if (deep_fold_continuation(
+				if (computation_fold_continuation(
 						db, term_id, request->as.operation_request.continuation, &continuation
-					) != 0 || deep_fold_find_clause(
+					) != 0 || computation_fold_find_clause(
 						db, term_id, request->as.operation_request.operation, &clause_body
 					) != 0) {
 					return -1;
@@ -6094,11 +6094,11 @@ static int evaluate_steps(
 					request->as.operation_request.argument, continuation, p_ret
 				);
 			}
-			if (computation == term->as.deep_fold.computation) {
+			if (computation == term->as.computation_fold.computation) {
 				*p_ret = term_id;
 				return 0;
 			}
-			return deep_fold_rebuild(db, term_id, computation, p_ret);
+			return computation_fold_rebuild(db, term_id, computation, p_ret);
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
 			unsigned effects;
@@ -6903,28 +6903,28 @@ static int normalization_equal_at_depth(
 				p_equal,
 				depth + 1
 			);
-		case PROTOTYPE_TERM_DEEP_FOLD: {
+		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			int equal = 0;
 			if (normalization_equal_at_depth(
 					db, type_declarations, definitions, options,
-					left_term->as.deep_fold.computation,
-					right_term->as.deep_fold.computation,
+					left_term->as.computation_fold.computation,
+					right_term->as.computation_fold.computation,
 					&equal, depth + 1
 				) != 0 || !equal || normalization_equal_at_depth(
 					db, type_declarations, definitions, options,
-					left_term->as.deep_fold.return_clause,
-					right_term->as.deep_fold.return_clause,
+					left_term->as.computation_fold.return_clause,
+					right_term->as.computation_fold.return_clause,
 					&equal, depth + 1
-				) != 0 || !equal || left_term->as.deep_fold.clause_count !=
-					right_term->as.deep_fold.clause_count) {
+				) != 0 || !equal || left_term->as.computation_fold.clause_count !=
+					right_term->as.computation_fold.clause_count) {
 				*p_equal = 0;
 				return 0;
 			}
-			for (uint32_t i = 0; i < left_term->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* left_clause =
-					&db->deep_fold_clauses[left_term->as.deep_fold.first_clause + i];
-				const struct prototype_deep_fold_clause* right_clause =
-					&db->deep_fold_clauses[right_term->as.deep_fold.first_clause + i];
+			for (uint32_t i = 0; i < left_term->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* left_clause =
+					&db->computation_fold_clauses[left_term->as.computation_fold.first_clause + i];
+				const struct prototype_computation_fold_clause* right_clause =
+					&db->computation_fold_clauses[right_term->as.computation_fold.first_clause + i];
 				if (normalization_equal_at_depth(
 						db, type_declarations, definitions, options,
 						left_clause->operation, right_clause->operation, &equal, depth + 1
@@ -7878,16 +7878,16 @@ static void print_term_depth(
 			fprintf(output, "force ");
 			print_term_depth(output, symbols, type_declarations, terms, term->as.force.value, depth - 1);
 			break;
-		case PROTOTYPE_TERM_DEEP_FOLD:
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
 			fprintf(output, "fold ");
 			print_term_depth(output, symbols, type_declarations, terms,
-				term->as.deep_fold.computation, depth - 1);
+				term->as.computation_fold.computation, depth - 1);
 			fprintf(output, " return ");
 			print_term_depth(output, symbols, type_declarations, terms,
-				term->as.deep_fold.return_clause, depth - 1);
-			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* clause =
-					&terms->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+				term->as.computation_fold.return_clause, depth - 1);
+			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* clause =
+					&terms->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 				fprintf(output, " operation ");
 				print_term_depth(output, symbols, type_declarations, terms,
 					clause->operation, depth - 1);
@@ -8160,16 +8160,16 @@ static void print_term_debug_depth(
 			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.force.value, depth - 1);
 			fprintf(output, ")");
 			break;
-		case PROTOTYPE_TERM_DEEP_FOLD:
-			fprintf(output, "DEEP_FOLD(");
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+			fprintf(output, "COMPUTATION_FOLD(");
 			print_term_debug_depth(output, symbols, type_declarations, terms,
-				term->as.deep_fold.computation, depth - 1);
+				term->as.computation_fold.computation, depth - 1);
 			fprintf(output, ", ");
 			print_term_debug_depth(output, symbols, type_declarations, terms,
-				term->as.deep_fold.return_clause, depth - 1);
-			for (uint32_t i = 0; i < term->as.deep_fold.clause_count; ++i) {
-				const struct prototype_deep_fold_clause* clause =
-					&terms->deep_fold_clauses[term->as.deep_fold.first_clause + i];
+				term->as.computation_fold.return_clause, depth - 1);
+			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* clause =
+					&terms->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 				fprintf(output, ", OP_CLAUSE(");
 				print_term_debug_depth(output, symbols, type_declarations, terms,
 					clause->operation, depth - 1);

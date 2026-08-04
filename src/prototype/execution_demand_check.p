@@ -1,2 +1,2 @@
-delayed := &{ #1 };
-main := { x := delayed; x };
+delayed := &{ #1; };
+main := { x := delayed; x; };

@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define PARSER_BLOCK_ITEM_CAPACITY 512
+
 enum token_kind {
 	TOKEN_EOF = 0,
 	TOKEN_IDENT,
@@ -25,6 +27,7 @@ enum token_kind {
 	TOKEN_ARROW,
 	TOKEN_HASH,
 	TOKEN_AMPERSAND,
+	TOKEN_BANG,
 	TOKEN_TEXT_LITERAL,
 	TOKEN_INT_LITERAL
 };
@@ -383,6 +386,9 @@ static int read_token(struct parser* parser) {
 			return 0;
 		case '&':
 			parser->current.kind = TOKEN_AMPERSAND;
+			return 0;
+		case '!':
+			parser->current.kind = TOKEN_BANG;
 			return 0;
 		default:
 			break;
@@ -1097,90 +1103,164 @@ static int block_has_local_symbol(
 	return 0;
 }
 
-static int parse_block_body(
-	struct parser* parser,
-	const struct local_binder* outer_binders,
-	uint32_t* p_ret
-) {
-	if (!parser || !p_ret || parser->current.kind == TOKEN_RBRACE ||
-		parser->current.kind == TOKEN_EOF) {
-		set_error(parser, "computation block requires a terminal term");
-		return -1;
-	}
-	int starts_binding = block_starts_binding(parser);
-	if (starts_binding < 0) {
-		return -1;
-	}
-	if (starts_binding == 0) {
-		if (parse_term(parser, p_ret) != 0) {
-			return -1;
-		}
-		return expect(parser, TOKEN_RBRACE, "expected '}' after computation block");
-	}
-
+static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
 	struct prototype_source_span span = current_span(parser);
-	int binder_symbol_id = parser->current.symbol_id;
-	if (block_has_local_symbol(parser, outer_binders, binder_symbol_id)) {
-		set_error(parser, "duplicate computation block binding");
+	struct local_binder* outer_binders = parser->binders;
+	uint32_t item_ids[PARSER_BLOCK_ITEM_CAPACITY];
+	struct local_binder local_binders[PARSER_BLOCK_ITEM_CAPACITY];
+	uint32_t item_count = 0;
+	uint32_t local_binder_count = 0;
+	uint32_t result_item_index;
+	int result_mode = PROTOTYPE_AST_BLOCK_RESULT_FINAL_ITEM;
+	if (!parser || !p_ret || expect(parser, TOKEN_LBRACE, "expected '{'") != 0) {
 		return -1;
 	}
-	uint32_t ast_binder_id = prototype_ast_new_binder(parser->program->asts);
-	uint32_t binder_type = PROTOTYPE_INVALID_ID;
-	uint32_t value;
-	uint32_t rest;
-	struct local_binder binder;
-	if (ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0) {
-		return -1;
+	while (parser->current.kind != TOKEN_RBRACE) {
+		if (parser->current.kind == TOKEN_EOF) {
+			set_error(parser, "expected '}' after computation block");
+			goto fail;
+		}
+		if (item_count >= PARSER_BLOCK_ITEM_CAPACITY) {
+			set_error(parser, "computation block has too many items");
+			goto fail;
+		}
+		if (parser->current.kind == TOKEN_BANG) {
+			struct prototype_source_span item_span = current_span(parser);
+			uint32_t value;
+			uint32_t item_id;
+			if (read_token(parser) != 0 || parse_term(parser, &value) != 0 ||
+				expect(
+					parser,
+					TOKEN_SEMI,
+					"expected ';' after Lambda exit"
+				) != 0 || prototype_ast_block_lambda_exit(
+					parser->program->asts, value, item_span, &item_id
+				) != 0) {
+				if (!parser->error || parser->error->message[0] == '\0') {
+					set_error(parser, "AST table is full");
+				}
+				goto fail;
+			}
+			item_ids[item_count++] = item_id;
+			continue;
+		}
+		int starts_binding = block_starts_binding(parser);
+		if (starts_binding < 0) {
+			goto fail;
+		}
+		struct prototype_source_span item_span = current_span(parser);
+		uint32_t item_id;
+		if (starts_binding) {
+			int binder_symbol_id = parser->current.symbol_id;
+			uint32_t ast_binder_id;
+			uint32_t binder_type = PROTOTYPE_INVALID_ID;
+			uint32_t value;
+			if (block_has_local_symbol(parser, outer_binders, binder_symbol_id)) {
+				set_error(parser, "duplicate computation block binding");
+				goto fail;
+			}
+			ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+			if (ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0) {
+				goto fail;
+			}
+			if (accept(parser, TOKEN_COLON) &&
+				parse_type_expr(parser, &binder_type) != 0) {
+				goto fail;
+			}
+			if (expect(parser, TOKEN_ASSIGN, "expected ':=' in computation block") != 0 ||
+				parse_term(parser, &value) != 0 || expect(
+					parser,
+					TOKEN_SEMI,
+					"expected ';' after computation block binding"
+				) != 0 || prototype_ast_block_binding(
+					parser->program->asts,
+					ast_binder_id,
+					binder_symbol_id,
+					binder_type,
+					value,
+					item_span,
+					&item_id
+				) != 0) {
+				if (!parser->error || parser->error->message[0] == '\0') {
+					set_error(parser, "AST table is full");
+				}
+				goto fail;
+			}
+			struct local_binder* binder = &local_binders[local_binder_count++];
+			binder->symbol_id = binder_symbol_id;
+			binder->ast_binder_id = ast_binder_id;
+			binder->induction_allowed = 0;
+			binder->next = parser->binders;
+			parser->binders = binder;
+		} else {
+			uint32_t term;
+			if (parse_term(parser, &term) != 0 || expect(
+					parser,
+					TOKEN_SEMI,
+					"expected ';' after computation block expression"
+				) != 0 || prototype_ast_block_expression(
+					parser->program->asts, term, item_span, &item_id
+				) != 0) {
+				if (!parser->error || parser->error->message[0] == '\0') {
+					set_error(parser, "AST table is full");
+				}
+				goto fail;
+			}
+		}
+		item_ids[item_count++] = item_id;
 	}
-	if (accept(parser, TOKEN_COLON) && parse_type_expr(parser, &binder_type) != 0) {
-		return -1;
+	if (item_count == 0) {
+		set_error(parser, "computation block requires at least one item");
+		goto fail;
 	}
-	if (expect(parser, TOKEN_ASSIGN, "expected ':=' in computation block") != 0 ||
-		parse_term(parser, &value) != 0 ||
-		expect(parser, TOKEN_SEMI, "expected ';' after computation block binding") != 0) {
-		return -1;
+	if (expect(parser, TOKEN_RBRACE, "expected '}' after computation block") != 0) {
+		goto fail;
 	}
-	binder.symbol_id = binder_symbol_id;
-	binder.ast_binder_id = ast_binder_id;
-	binder.induction_allowed = 0;
-	binder.next = parser->binders;
-	parser->binders = &binder;
-	if (parse_block_body(parser, outer_binders, &rest) != 0) {
-		parser->binders = binder.next;
-		return -1;
+	result_item_index = item_count - 1;
+	if (accept(parser, TOKEN_DOT)) {
+		if (parser->current.kind != TOKEN_IDENT) {
+			set_error(parser, "expected result binding after computation block dot");
+			goto fail;
+		}
+		int result_symbol_id = parser->current.symbol_id;
+		int found = 0;
+		for (uint32_t i = 0; i < item_count; ++i) {
+			const struct prototype_ast_node* item =
+				&parser->program->asts->nodes[item_ids[i]];
+			if (item->tag == PROTOTYPE_AST_BLOCK_BINDING &&
+				item->as.block_binding.binder_symbol_id == result_symbol_id) {
+				result_item_index = i;
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			set_error(parser, "computation block result must name a direct binding");
+			goto fail;
+		}
+		result_mode = PROTOTYPE_AST_BLOCK_RESULT_SELECTED_BINDING;
+		if (read_token(parser) != 0) {
+			goto fail;
+		}
 	}
-	parser->binders = binder.next;
-	if (prototype_ast_block_bind(
+	if (prototype_ast_computation_block(
 			parser->program->asts,
-			ast_binder_id,
-			binder_symbol_id,
-			binder_type,
-			value,
-			rest,
+			item_ids,
+			item_count,
+			result_item_index,
+			result_mode,
 			span,
 			p_ret
 		) != 0) {
 		set_error(parser, "AST table is full");
-		return -1;
+		goto fail;
 	}
+	parser->binders = outer_binders;
 	return 0;
-}
 
-static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
-	struct prototype_source_span span = current_span(parser);
-	const struct local_binder* outer_binders = parser->binders;
-	uint32_t body;
-	if (expect(parser, TOKEN_LBRACE, "expected '{'") != 0 ||
-		parse_block_body(parser, outer_binders, &body) != 0) {
-		return -1;
-	}
-	if (prototype_ast_computation_block(
-			parser->program->asts, body, span, p_ret
-		) != 0) {
-		set_error(parser, "AST table is full");
-		return -1;
-	}
-	return 0;
+fail:
+	parser->binders = outer_binders;
+	return -1;
 }
 
 static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
