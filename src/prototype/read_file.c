@@ -20,6 +20,7 @@
 #define AST_DEF_CAPACITY 256
 #define AST_MATCH_CASE_CAPACITY 256
 #define AST_MATCH_BINDER_CAPACITY 512
+#define AST_COMPUTATION_FOLD_CLAUSE_CAPACITY 256
 #define AST_BLOCK_ITEM_CAPACITY 4096
 #define AST_TYPE_EXPR_CAPACITY 1024
 #define AST_TYPE_DEF_CAPACITY 64
@@ -44,6 +45,7 @@
 #define RESOLUTION_EVENT_CAPACITY 2048
 #define OPERATION_CAPACITY 4096
 #define OPERATION_CASE_CAPACITY 4096
+#define OPERATION_FOLD_CLAUSE_CAPACITY 4096
 #define EFFECT_CONSTRAINT_CAPACITY 8192
 #define VERIFICATION_OBLIGATION_CAPACITY 4096
 #define ARTIFACT_TERM_EXPORT_CAPACITY 512
@@ -82,6 +84,8 @@ static struct prototype_ast_import_def ast_imports[AST_DEF_CAPACITY];
 static struct prototype_ast_def_open_address_entry ast_def_index[AST_DEF_CAPACITY];
 static struct prototype_ast_match_case ast_match_cases[AST_MATCH_CASE_CAPACITY];
 static struct prototype_ast_binder ast_match_binders[AST_MATCH_BINDER_CAPACITY];
+static struct prototype_ast_computation_fold_clause
+	ast_computation_fold_clauses[AST_COMPUTATION_FOLD_CLAUSE_CAPACITY];
 static uint32_t ast_block_items[AST_BLOCK_ITEM_CAPACITY];
 static struct prototype_ast_type_expr ast_type_exprs[AST_TYPE_EXPR_CAPACITY];
 static struct prototype_ast_type_def ast_type_defs[AST_TYPE_DEF_CAPACITY];
@@ -130,12 +134,16 @@ static struct prototype_resolution_event
 	provider_resolution_events[RESOLUTION_EVENT_CAPACITY];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_operation_computation_fold_clause
+	operation_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
 static struct prototype_operation_effect_constraint
 	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
 static struct prototype_operation_node provider_operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case provider_operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_operation_computation_fold_clause
+	provider_operation_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
 static struct prototype_operation_effect_constraint
 	provider_effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
@@ -754,9 +762,26 @@ static int operation_graph_next_source_binder_id(
 		const struct prototype_operation_node* operation = &metadata->operations[i];
 		uint32_t ids[] = {
 			operation->referenced_ast_binder_id,
-			operation->handler_argument_ast_binder_id,
-			operation->handler_continuation_ast_binder_id,
-			operation->handler_return_ast_binder_id
+			operation->fold_return_ast_binder_id
+		};
+		for (size_t j = 0; j < sizeof(ids) / sizeof(ids[0]); ++j) {
+			if (ids[j] == PROTOTYPE_INVALID_ID) {
+				continue;
+			}
+			if (ids[j] == UINT32_MAX - 1) {
+				return -1;
+			}
+			if (next <= ids[j]) {
+				next = ids[j] + 1;
+			}
+		}
+	}
+	for (size_t i = 0; i < metadata->operation_fold_clause_count; ++i) {
+		const struct prototype_operation_computation_fold_clause* clause =
+			&metadata->operation_fold_clauses[i];
+		uint32_t ids[] = {
+			clause->argument_ast_binder_id,
+			clause->continuation_ast_binder_id
 		};
 		for (size_t j = 0; j < sizeof(ids) / sizeof(ids[0]); ++j) {
 			if (ids[j] == PROTOTYPE_INVALID_ID) {
@@ -791,6 +816,8 @@ static int append_link_operation_graph(
 		prototype_operation_graph_case_count(&target_graph) +
 			prototype_operation_graph_case_count(&source_graph) >
 			target_graph.case_capacity ||
+		target_graph.fold_clause_count + source_graph.fold_clause_count >
+			target_graph.fold_clause_capacity ||
 		target->effect_constraint_count + source->effect_constraint_count >
 			target->effect_constraint_capacity ||
 		prototype_verification_db_count(&target->verification) +
@@ -830,6 +857,7 @@ static int append_link_operation_graph(
 		(uint32_t)prototype_operation_graph_count(&target_graph);
 	uint32_t case_offset =
 		(uint32_t)prototype_operation_graph_case_count(&target_graph);
+	uint32_t fold_clause_offset = (uint32_t)target_graph.fold_clause_count;
 	uint32_t context_relocation[PROTOTYPE_CONTEXT_CAPACITY];
 	if (prototype_context_db_append_relocated(
 		&target->contexts,
@@ -864,14 +892,8 @@ static int append_link_operation_graph(
 		operation.binder_classifier = offset_link_graph_id(
 			operation.binder_classifier, term_offset
 		);
-		operation.handler_argument_binder_id = offset_link_graph_id(
-			operation.handler_argument_binder_id, binder_offset
-		);
-		operation.handler_continuation_binder_id = offset_link_graph_id(
-			operation.handler_continuation_binder_id, binder_offset
-		);
-		operation.handler_return_binder_id = offset_link_graph_id(
-			operation.handler_return_binder_id, binder_offset
+		operation.fold_return_binder_id = offset_link_graph_id(
+			operation.fold_return_binder_id, binder_offset
 		);
 		operation.function = offset_link_graph_id(operation.function, operation_offset);
 		operation.argument = offset_link_graph_id(operation.argument, operation_offset);
@@ -880,16 +902,13 @@ static int append_link_operation_graph(
 		operation.referenced_ast_binder_id = offset_link_graph_id(
 			operation.referenced_ast_binder_id, source_binder_offset
 		);
-		operation.handler_argument_ast_binder_id = offset_link_graph_id(
-			operation.handler_argument_ast_binder_id, source_binder_offset
-		);
-		operation.handler_continuation_ast_binder_id = offset_link_graph_id(
-			operation.handler_continuation_ast_binder_id, source_binder_offset
-		);
-		operation.handler_return_ast_binder_id = offset_link_graph_id(
-			operation.handler_return_ast_binder_id, source_binder_offset
+		operation.fold_return_ast_binder_id = offset_link_graph_id(
+			operation.fold_return_ast_binder_id, source_binder_offset
 		);
 		operation.first_case = offset_link_graph_id(operation.first_case, case_offset);
+		operation.first_fold_clause = offset_link_graph_id(
+			operation.first_fold_clause, fold_clause_offset
+		);
 		for (uint32_t j = 0; j < operation.implicit_effect_row_count; ++j) {
 			operation.implicit_effect_row_binders[j] = offset_link_graph_id(
 				operation.implicit_effect_row_binders[j], binder_offset
@@ -897,6 +916,38 @@ static int append_link_operation_graph(
 		}
 		if (prototype_operation_graph_add(
 				&target_graph, &target->contexts, operation, NULL
+			) != 0) {
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < source_graph.fold_clause_count; ++i) {
+		const struct prototype_operation_computation_fold_clause* source_clause =
+			prototype_operation_graph_get_fold_clause(&source_graph, (uint32_t)i);
+		if (!source_clause || source_clause->context_id >= source->contexts.context_count) {
+			return -1;
+		}
+		struct prototype_operation_computation_fold_clause clause = *source_clause;
+		clause.operation_operation = offset_link_graph_id(
+			clause.operation_operation, operation_offset
+		);
+		clause.body_operation = offset_link_graph_id(
+			clause.body_operation, operation_offset
+		);
+		clause.context_id = context_relocation[clause.context_id];
+		clause.argument_ast_binder_id = offset_link_graph_id(
+			clause.argument_ast_binder_id, source_binder_offset
+		);
+		clause.continuation_ast_binder_id = offset_link_graph_id(
+			clause.continuation_ast_binder_id, source_binder_offset
+		);
+		clause.argument_binder_id = offset_link_graph_id(
+			clause.argument_binder_id, binder_offset
+		);
+		clause.continuation_binder_id = offset_link_graph_id(
+			clause.continuation_binder_id, binder_offset
+		);
+		if (prototype_operation_graph_add_fold_clause(
+				&target_graph, &target->contexts, clause, NULL
 			) != 0) {
 			return -1;
 		}
@@ -1090,6 +1141,7 @@ static int check_export_normalization_equal(
 		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations, OPERATION_CAPACITY,
 		operation_cases, OPERATION_CASE_CAPACITY,
+		operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -1276,6 +1328,7 @@ static int check_exports_normalization_equal(
 		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations, OPERATION_CAPACITY,
 		operation_cases, OPERATION_CASE_CAPACITY,
+		operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -1486,6 +1539,7 @@ static int check_exports_shape_equal(
 		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations, OPERATION_CAPACITY,
 		operation_cases, OPERATION_CASE_CAPACITY,
+		operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -1637,6 +1691,7 @@ static int check_export_classifier_compatible(
 		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations, OPERATION_CAPACITY,
 		operation_cases, OPERATION_CASE_CAPACITY,
+		operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -1918,6 +1973,8 @@ static int read_import_artifact_into_slot(
 		OPERATION_CAPACITY,
 		provider_operation_cases,
 		OPERATION_CASE_CAPACITY,
+		provider_operation_fold_clauses,
+		OPERATION_FOLD_CLAUSE_CAPACITY,
 		provider_effect_constraints,
 		EFFECT_CONSTRAINT_CAPACITY,
 		provider_verification_obligations,
@@ -3087,6 +3144,8 @@ int main(int argc, char** argv) {
 			OPERATION_CAPACITY,
 			operation_cases,
 			OPERATION_CASE_CAPACITY,
+			operation_fold_clauses,
+			OPERATION_FOLD_CLAUSE_CAPACITY,
 			effect_constraints,
 			EFFECT_CONSTRAINT_CAPACITY,
 			verification_obligations,
@@ -3227,6 +3286,8 @@ int main(int argc, char** argv) {
 				OPERATION_CAPACITY,
 				provider_operation_cases,
 				OPERATION_CASE_CAPACITY,
+				provider_operation_fold_clauses,
+				OPERATION_FOLD_CLAUSE_CAPACITY,
 				provider_effect_constraints,
 				EFFECT_CONSTRAINT_CAPACITY,
 				provider_verification_obligations,
@@ -3515,6 +3576,7 @@ int main(int argc, char** argv) {
 				artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 				operations, OPERATION_CAPACITY,
 				operation_cases, OPERATION_CASE_CAPACITY,
+				operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 				effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 				verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 			);
@@ -3808,6 +3870,8 @@ int main(int argc, char** argv) {
 		AST_MATCH_CASE_CAPACITY,
 		ast_match_binders,
 		AST_MATCH_BINDER_CAPACITY,
+		ast_computation_fold_clauses,
+		AST_COMPUTATION_FOLD_CLAUSE_CAPACITY,
 		ast_block_items,
 		AST_BLOCK_ITEM_CAPACITY,
 		ast_type_exprs,
@@ -3870,6 +3934,8 @@ int main(int argc, char** argv) {
 		OPERATION_CAPACITY,
 		operation_cases,
 		OPERATION_CASE_CAPACITY,
+		operation_fold_clauses,
+		OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints,
 		EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations,

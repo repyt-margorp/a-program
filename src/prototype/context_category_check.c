@@ -49,6 +49,7 @@ int main(void) {
 	uint32_t cloned_classifier;
 	struct prototype_operation_node operation_storage[2];
 	struct prototype_operation_match_case operation_case_storage[1];
+	struct prototype_operation_computation_fold_clause operation_fold_clause_storage[1];
 	struct prototype_operation_graph operation_graph;
 	struct prototype_operation_node int_occurrence;
 	struct prototype_operation_node text_occurrence;
@@ -254,6 +255,8 @@ int main(void) {
 		operation_storage,
 		2,
 		operation_case_storage,
+		1,
+		operation_fold_clause_storage,
 		1
 	);
 	memset(&int_occurrence, 0xff, sizeof(int_occurrence));

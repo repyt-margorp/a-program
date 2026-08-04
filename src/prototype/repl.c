@@ -19,6 +19,7 @@
 #define AST_DEF_CAPACITY 256
 #define AST_MATCH_CASE_CAPACITY 256
 #define AST_MATCH_BINDER_CAPACITY 512
+#define AST_COMPUTATION_FOLD_CLAUSE_CAPACITY 256
 #define AST_BLOCK_ITEM_CAPACITY 4096
 #define AST_TYPE_EXPR_CAPACITY 1024
 #define AST_TYPE_DEF_CAPACITY 64
@@ -43,6 +44,7 @@
 #define RESOLUTION_EVENT_CAPACITY 2048
 #define OPERATION_CAPACITY 4096
 #define OPERATION_CASE_CAPACITY 4096
+#define OPERATION_FOLD_CLAUSE_CAPACITY 4096
 #define EFFECT_CONSTRAINT_CAPACITY 8192
 #define VERIFICATION_OBLIGATION_CAPACITY 4096
 #define INPUT_CAPACITY 8192
@@ -64,6 +66,8 @@ static struct prototype_ast_import_def ast_imports[AST_DEF_CAPACITY];
 static struct prototype_ast_def_open_address_entry ast_def_index[AST_DEF_CAPACITY];
 static struct prototype_ast_match_case ast_match_cases[AST_MATCH_CASE_CAPACITY];
 static struct prototype_ast_binder ast_match_binders[AST_MATCH_BINDER_CAPACITY];
+static struct prototype_ast_computation_fold_clause
+	ast_computation_fold_clauses[AST_COMPUTATION_FOLD_CLAUSE_CAPACITY];
 static uint32_t ast_block_items[AST_BLOCK_ITEM_CAPACITY];
 static struct prototype_ast_type_expr ast_type_exprs[AST_TYPE_EXPR_CAPACITY];
 static struct prototype_ast_type_def ast_type_defs[AST_TYPE_DEF_CAPACITY];
@@ -95,6 +99,8 @@ static struct prototype_substitution
 	substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_operation_computation_fold_clause
+	operation_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
 static struct prototype_operation_effect_constraint
 	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
@@ -894,6 +900,8 @@ int main(int argc, char** argv) {
 		AST_MATCH_CASE_CAPACITY,
 		ast_match_binders,
 		AST_MATCH_BINDER_CAPACITY,
+		ast_computation_fold_clauses,
+		AST_COMPUTATION_FOLD_CLAUSE_CAPACITY,
 		ast_block_items,
 		AST_BLOCK_ITEM_CAPACITY,
 		ast_type_exprs,
@@ -956,6 +964,8 @@ int main(int argc, char** argv) {
 		OPERATION_CAPACITY,
 		operation_cases,
 		OPERATION_CASE_CAPACITY,
+		operation_fold_clauses,
+		OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints,
 		EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations,

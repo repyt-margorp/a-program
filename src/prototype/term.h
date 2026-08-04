@@ -132,6 +132,11 @@ enum prototype_host_effect_flag {
 	PROTOTYPE_HOST_EFFECT_TERMINAL = 1u << 0
 };
 
+enum prototype_effect_operation_label {
+	PROTOTYPE_EFFECT_OPERATION_LABEL_NONE = 0,
+	PROTOTYPE_EFFECT_OPERATION_LABEL_PRINT = 1u << 0
+};
+
 #define PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY 2
 #define PROTOTYPE_EFFECT_OPERATION_MAX_ARITY 1
 
@@ -146,7 +151,8 @@ struct prototype_pure_primitive_declaration {
  * implementations and intrinsic-namespace spellings are separate. */
 struct prototype_effect_operation_declaration {
 	int operation_id;
-	unsigned effects;
+	unsigned operation_labels;
+	unsigned required_host_effects;
 	uint32_t arity;
 	int argument_types[PROTOTYPE_EFFECT_OPERATION_MAX_ARITY];
 	int result_type;
@@ -156,7 +162,8 @@ enum prototype_intrinsic_namespace_binding_kind {
 	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_UNKNOWN = 0,
 	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE,
 	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION
+	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
+	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_COMPUTATION_FOLD_RETURN
 };
 
 struct prototype_intrinsic_namespace_binding {
@@ -739,6 +746,12 @@ int prototype_term_effect_operation(
 	struct prototype_term_db* db,
 	int operation_id,
 	uint32_t* p_ret
+);
+
+int prototype_term_effect_operation_identity(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	int* p_operation_id
 );
 int prototype_term_contains_free_binder(
 	const struct prototype_term_db* db,

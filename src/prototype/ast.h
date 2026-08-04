@@ -31,7 +31,7 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_BLOCK_EXPRESSION,
 	PROTOTYPE_AST_BLOCK_LAMBDA_EXIT,
 	PROTOTYPE_AST_PERFORM,
-	PROTOTYPE_AST_HANDLE
+	PROTOTYPE_AST_COMPUTATION_FOLD
 };
 
 enum prototype_ast_block_result_mode {
@@ -190,16 +190,12 @@ struct prototype_ast_node {
 		} block_lambda_exit;
 		struct {
 			uint32_t computation;
-			uint32_t operation;
-			uint32_t operation_argument_binder_id;
-			int operation_argument_symbol_id;
-			uint32_t operation_continuation_binder_id;
-			int operation_continuation_symbol_id;
-			uint32_t operation_body;
+			uint32_t first_clause;
+			uint32_t clause_count;
 			uint32_t return_binder_id;
 			int return_symbol_id;
 			uint32_t return_body;
-		} handle;
+		} computation_fold;
 	} as;
 };
 
@@ -247,6 +243,26 @@ struct prototype_ast_match_case_input {
 	const struct prototype_ast_binder* binders;
 	uint32_t binder_count;
 	uint32_t body;
+};
+
+struct prototype_ast_computation_fold_clause {
+	uint32_t operation;
+	uint32_t operation_argument_binder_id;
+	int operation_argument_symbol_id;
+	uint32_t operation_continuation_binder_id;
+	int operation_continuation_symbol_id;
+	uint32_t body;
+	struct prototype_source_span span;
+};
+
+struct prototype_ast_computation_fold_clause_input {
+	uint32_t operation;
+	uint32_t operation_argument_binder_id;
+	int operation_argument_symbol_id;
+	uint32_t operation_continuation_binder_id;
+	int operation_continuation_symbol_id;
+	uint32_t body;
+	struct prototype_source_span span;
 };
 
 enum prototype_ast_type_entry_kind {
@@ -378,22 +394,18 @@ struct prototype_operation_node {
 	uint32_t body;
 	uint32_t scrutinee;
 	uint32_t binder_classifier;
-	/* computation-fold clause clause scope. `body` is the operation-clause body and
-	 * `scrutinee` is the return-clause body. Source binder identities select
-	 * occurrence-local VAR nodes; graph binder identities instantiate the
-	 * corresponding TermDB clause bodies. */
-	uint32_t handler_argument_ast_binder_id;
-	uint32_t handler_argument_binder_id;
-	uint32_t handler_continuation_ast_binder_id;
-	uint32_t handler_continuation_binder_id;
-	uint32_t handler_return_ast_binder_id;
-	uint32_t handler_return_binder_id;
+	/* The return branch remains singular. Operation clauses live in the
+	 * computation-fold clause arena below. */
+	uint32_t fold_return_ast_binder_id;
+	uint32_t fold_return_binder_id;
 	/* Classifier-only row binders generalized by this lambda. They are never
 	 * runtime lambda arguments. */
 	uint32_t implicit_effect_row_binders[16];
 	uint32_t implicit_effect_row_count;
 	uint32_t first_case;
 	uint32_t case_count;
+	uint32_t first_fold_clause;
+	uint32_t fold_clause_count;
 };
 
 struct prototype_operation_match_case {
@@ -407,6 +419,16 @@ struct prototype_operation_match_case {
 	uint32_t ast_binder_ids[16];
 };
 
+struct prototype_operation_computation_fold_clause {
+	uint32_t operation_operation;
+	uint32_t body_operation;
+	uint32_t context_id;
+	uint32_t argument_ast_binder_id;
+	uint32_t argument_binder_id;
+	uint32_t continuation_ast_binder_id;
+	uint32_t continuation_binder_id;
+};
+
 struct prototype_operation_graph {
 	struct prototype_operation_node* operations;
 	size_t operation_count;
@@ -414,6 +436,9 @@ struct prototype_operation_graph {
 	struct prototype_operation_match_case* cases;
 	size_t case_count;
 	size_t case_capacity;
+	struct prototype_operation_computation_fold_clause* fold_clauses;
+	size_t fold_clause_count;
+	size_t fold_clause_capacity;
 };
 
 enum prototype_operation_effect_constraint_kind {
@@ -818,6 +843,10 @@ struct prototype_compile_metadata {
 	size_t operation_case_count;
 	size_t operation_case_capacity;
 
+	struct prototype_operation_computation_fold_clause* operation_fold_clauses;
+	size_t operation_fold_clause_count;
+	size_t operation_fold_clause_capacity;
+
 	struct prototype_operation_effect_constraint* effect_constraints;
 	size_t effect_constraint_count;
 	size_t effect_constraint_capacity;
@@ -882,6 +911,10 @@ struct prototype_ast_db {
 	size_t case_binder_count;
 	size_t case_binder_capacity;
 
+	struct prototype_ast_computation_fold_clause* computation_fold_clauses;
+	size_t computation_fold_clause_count;
+	size_t computation_fold_clause_capacity;
+
 	uint32_t* block_items;
 	size_t block_item_count;
 	size_t block_item_capacity;
@@ -929,6 +962,8 @@ void prototype_ast_db_init(
 	size_t case_capacity,
 	struct prototype_ast_binder* case_binders,
 	size_t case_binder_capacity,
+	struct prototype_ast_computation_fold_clause* computation_fold_clauses,
+	size_t computation_fold_clause_capacity,
 	uint32_t* block_items,
 	size_t block_item_capacity,
 	struct prototype_ast_type_expr* type_exprs,
@@ -1178,15 +1213,11 @@ int prototype_ast_perform(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_handle(
+int prototype_ast_computation_fold(
 	struct prototype_ast_db* db,
 	uint32_t computation,
-	uint32_t operation,
-	uint32_t operation_argument_binder_id,
-	int operation_argument_symbol_id,
-	uint32_t operation_continuation_binder_id,
-	int operation_continuation_symbol_id,
-	uint32_t operation_body,
+	const struct prototype_ast_computation_fold_clause_input* clauses,
+	uint32_t clause_count,
 	uint32_t return_binder_id,
 	int return_symbol_id,
 	uint32_t return_body,
@@ -1255,6 +1286,8 @@ void prototype_compile_metadata_init(
 	size_t operation_capacity,
 	struct prototype_operation_match_case* operation_cases,
 	size_t operation_case_capacity,
+	struct prototype_operation_computation_fold_clause* operation_fold_clauses,
+	size_t operation_fold_clause_capacity,
 	struct prototype_operation_effect_constraint* effect_constraints,
 	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
@@ -1265,7 +1298,9 @@ void prototype_operation_graph_init(
 	struct prototype_operation_node* operations,
 	size_t operation_capacity,
 	struct prototype_operation_match_case* cases,
-	size_t case_capacity
+	size_t case_capacity,
+	struct prototype_operation_computation_fold_clause* fold_clauses,
+	size_t fold_clause_capacity
 );
 size_t prototype_operation_graph_count(const struct prototype_operation_graph* graph);
 size_t prototype_operation_graph_case_count(const struct prototype_operation_graph* graph);
@@ -1276,6 +1311,11 @@ const struct prototype_operation_node* prototype_operation_graph_get(
 const struct prototype_operation_match_case* prototype_operation_graph_get_case(
 	const struct prototype_operation_graph* graph,
 	uint32_t case_id
+);
+const struct prototype_operation_computation_fold_clause*
+prototype_operation_graph_get_fold_clause(
+	const struct prototype_operation_graph* graph,
+	uint32_t clause_id
 );
 int prototype_operation_graph_add(
 	struct prototype_operation_graph* graph,
@@ -1288,6 +1328,12 @@ int prototype_operation_graph_add_case(
 	const struct prototype_context_db* contexts,
 	struct prototype_operation_match_case operation_case,
 	uint32_t* p_case_id
+);
+int prototype_operation_graph_add_fold_clause(
+	struct prototype_operation_graph* graph,
+	const struct prototype_context_db* contexts,
+	struct prototype_operation_computation_fold_clause clause,
+	uint32_t* p_clause_id
 );
 int prototype_operation_graph_validate(
 	const struct prototype_operation_graph* graph,

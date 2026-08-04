@@ -103,7 +103,7 @@ int main(void) {
 	if (prototype_judgement_lookup_classifier(&judgement, returned, &classifier) != 0 ||
 		prototype_judgement_classifier_view(&term_db, &type_db, NULL, classifier, &view) != 0 ||
 		view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		view.effects != PROTOTYPE_HOST_EFFECT_NONE ||
+		view.effects != PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ||
 		prototype_judgement_lookup_classifier(&judgement, forced, &classifier) != 0 ||
 		prototype_judgement_classifier_view(&term_db, &type_db, NULL, classifier, &view) != 0 ||
 		view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
@@ -121,7 +121,7 @@ int main(void) {
 	uint32_t symbolic_computation;
 	uint32_t solved_symbolic_computation;
 	unsigned closed_effects;
-	if (prototype_term_effect_label(&term_db, PROTOTYPE_HOST_EFFECT_NONE, &empty_effect_row) != 0 ||
+	if (prototype_term_effect_label(&term_db, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &empty_effect_row) != 0 ||
 		prototype_term_effect_label(&term_db, PROTOTYPE_HOST_EFFECT_TERMINAL, &terminal_effect_row) != 0 ||
 		prototype_term_effect_row_union(
 			&term_db, empty_effect_row, terminal_effect_row, &closed_effect_union
@@ -137,7 +137,7 @@ int main(void) {
 			&term_db, symbolic_effect_union, value, &row_computation
 		) != 0 || prototype_term_classifier_view(&term_db, row_computation, &view) != 0 ||
 		view.effect_row != symbolic_effect_union ||
-		view.effects != PROTOTYPE_HOST_EFFECT_NONE ||
+		view.effects != PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ||
 		prototype_term_computation_type(
 			&term_db, empty_effect_row, value, &pure_computation
 		) != 0 ||

@@ -1534,45 +1534,156 @@ static int parse_app_term(struct parser* parser, uint32_t* p_ret) {
 	return 0;
 }
 
-static int parse_match_suffix(
+enum parsed_elimination_head_kind {
+	PARSED_ELIMINATION_HEAD_BARE = 1,
+	PARSED_ELIMINATION_HEAD_TERM,
+	PARSED_ELIMINATION_HEAD_RETURN
+};
+
+struct parsed_elimination_clause {
+	int head_kind;
+	int head_symbol_id;
+	uint32_t head_ast;
+	struct prototype_source_span span;
+	struct prototype_ast_binder* binders;
+	uint32_t binder_count;
+	uint32_t body;
+};
+
+static int parse_elimination_head(
+	struct parser* parser,
+	struct parsed_elimination_clause* clause
+) {
+	if (!parser || !clause) {
+		return -1;
+	}
+	clause->span = current_span(parser);
+	clause->head_ast = PROTOTYPE_INVALID_ID;
+	clause->head_symbol_id = -1;
+	if (parser->current.kind == TOKEN_HASH) {
+		int namespace_symbol_id;
+		int symbol_id;
+		const char* name;
+		struct prototype_intrinsic_namespace_binding binding;
+		if (read_token(parser) != 0 ||
+			expect(parser, TOKEN_DOT, "expected '.' after system namespace") != 0 ||
+			parser->current.kind != TOKEN_IDENT) {
+			set_error(parser, "expected intrinsic clause label after '@#.'");
+			return -1;
+		}
+		namespace_symbol_id = symbol_intern(parser->program->symbols, "#", 1);
+		symbol_id = parser->current.symbol_id;
+		name = symbol_to_string(parser->program->symbols, symbol_id);
+		if (namespace_symbol_id < 0 || !name ||
+			prototype_intrinsic_namespace_lookup(name, &binding) != 0) {
+			set_error(parser, "unknown intrinsic elimination label");
+			return -1;
+		}
+		if (read_token(parser) != 0) {
+			return -1;
+		}
+		if (binding.kind ==
+			PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_COMPUTATION_FOLD_RETURN) {
+			clause->head_kind = PARSED_ELIMINATION_HEAD_RETURN;
+			clause->head_symbol_id = symbol_id;
+			return 0;
+		}
+		if (binding.kind != PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION ||
+			prototype_ast_system_name(
+				parser->program->asts,
+				namespace_symbol_id,
+				symbol_id,
+				-1,
+				PROTOTYPE_AST_SYSTEM_NAME_EFFECT_OPERATION,
+				PROTOTYPE_HOST_TYPE_INVALID,
+				PROTOTYPE_PURE_PRIMITIVE_UNKNOWN,
+				binding.target_id,
+				clause->span,
+				&clause->head_ast
+			) != 0) {
+			set_error(parser, "computation-fold clause requires an effect operation");
+			return -1;
+		}
+		clause->head_kind = PARSED_ELIMINATION_HEAD_TERM;
+		clause->head_symbol_id = symbol_id;
+		return 0;
+	}
+	if (parser->current.kind != TOKEN_IDENT) {
+		set_error(parser, "expected constructor, operation, or '#.return' after '@'");
+		return -1;
+	}
+	int symbol_id = parser->current.symbol_id;
+	const struct local_binder* local = lookup_binder(parser, symbol_id);
+	clause->head_symbol_id = symbol_id;
+	if (read_token(parser) != 0) {
+		return -1;
+	}
+	if (accept(parser, TOKEN_DOT)) {
+		if (parser->current.kind != TOKEN_IDENT) {
+			set_error(parser, "expected member name after elimination label namespace");
+			return -1;
+		}
+		int member_symbol_id = parser->current.symbol_id;
+		if (read_token(parser) != 0 || prototype_ast_name_in_namespace(
+				parser->program->asts,
+				symbol_id,
+				member_symbol_id,
+				clause->span,
+				&clause->head_ast
+			) != 0) {
+			set_error(parser, "AST table is full");
+			return -1;
+		}
+		clause->head_kind = PARSED_ELIMINATION_HEAD_TERM;
+		return 0;
+	}
+	if ((local && prototype_ast_var(
+			parser->program->asts,
+			local->ast_binder_id,
+			symbol_id,
+			clause->span,
+			&clause->head_ast
+		) != 0) || (!local && prototype_ast_name(
+			parser->program->asts,
+			symbol_id,
+			clause->span,
+			&clause->head_ast
+		) != 0)) {
+		set_error(parser, "AST table is full");
+		return -1;
+	}
+	clause->head_kind = PARSED_ELIMINATION_HEAD_BARE;
+	return 0;
+}
+
+static int parse_elimination_suffix(
 	struct parser* parser,
 	uint32_t scrutinee,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 ) {
-	struct prototype_ast_match_case_input cases[64];
+	struct parsed_elimination_clause clauses[64];
 	struct prototype_ast_binder binder_storage[256];
 	struct local_binder local_binders[256];
-	uint32_t case_count = 0;
+	uint32_t clause_count = 0;
 	uint32_t binder_cursor = 0;
+	uint32_t return_clause = PROTOTYPE_INVALID_ID;
 
 	while (accept(parser, TOKEN_AT)) {
-		if (case_count >= 64) {
-			set_error(parser, "too many match cases");
+		if (clause_count >= 64) {
+			set_error(parser, "too many elimination clauses");
 			return -1;
 		}
-		if (parser->current.kind != TOKEN_IDENT) {
-			set_error(parser, "expected constructor name after '@'");
+		struct parsed_elimination_clause* clause = &clauses[clause_count];
+		memset(clause, 0, sizeof(*clause));
+		if (parse_elimination_head(parser, clause) != 0) {
 			return -1;
 		}
-
-		for (uint32_t i = 0; i < case_count; ++i) {
-			if (cases[i].constructor_symbol_id == parser->current.symbol_id) {
-				set_error(parser, "duplicate match case; wrap nested match bodies in parentheses");
-				return -1;
-			}
-		}
-		cases[case_count].constructor_symbol_id = parser->current.symbol_id;
-		if (read_token(parser) != 0) {
-			return -1;
-		}
-
-		uint32_t case_binder_start = binder_cursor;
-		cases[case_count].binders = &binder_storage[binder_cursor];
-		cases[case_count].binder_count = 0;
+		clause->binders = &binder_storage[binder_cursor];
+		clause->binder_count = 0;
 		while (parser->current.kind == TOKEN_IDENT) {
 			if (binder_cursor >= 256) {
-				set_error(parser, "too many match binders");
+				set_error(parser, "too many elimination binders");
 				return -1;
 			}
 			binder_storage[binder_cursor].symbol_id = parser->current.symbol_id;
@@ -1587,30 +1698,98 @@ static int parse_match_suffix(
 			local_binders[binder_cursor].next = parser->binders;
 			parser->binders = &local_binders[binder_cursor];
 			binder_cursor++;
-			cases[case_count].binder_count++;
+			clause->binder_count++;
 			if (read_token(parser) != 0) {
 				return -1;
 			}
 		}
 
-		if (expect(parser, TOKEN_FATARROW, "expected '=>' after match case") != 0) {
+		if (expect(parser, TOKEN_FATARROW, "expected '=>' after elimination clause") != 0) {
 			return -1;
 		}
-		if (parse_case_body(parser, &cases[case_count].body) != 0) {
+		if (parse_case_body(parser, &clause->body) != 0) {
 			return -1;
 		}
-		for (uint32_t i = 0; i < cases[case_count].binder_count; ++i) {
+		for (uint32_t i = 0; i < clause->binder_count; ++i) {
 			parser->binders = local_binders[binder_cursor - i - 1].next;
 		}
-		(void)case_binder_start;
-		case_count++;
+		if (clause->head_kind == PARSED_ELIMINATION_HEAD_RETURN) {
+			if (return_clause != PROTOTYPE_INVALID_ID) {
+				set_error(parser, "duplicate '#.return' computation-fold clause");
+				return -1;
+			}
+			return_clause = clause_count;
+		}
+		clause_count++;
 	}
 
-	if (case_count == 0) {
-		set_error(parser, "expected match case");
+	if (clause_count == 0) {
+		set_error(parser, "expected elimination clause");
 		return -1;
 	}
-	return prototype_ast_match(parser->program->asts, scrutinee, cases, case_count, span, p_ret);
+	if (return_clause != PROTOTYPE_INVALID_ID) {
+		if (clauses[return_clause].binder_count != 1 || clause_count - 1 > 31) {
+			set_error(parser, clauses[return_clause].binder_count != 1 ?
+				"'#.return' clause requires exactly one binder" :
+				"computation fold supports at most 31 operation clauses");
+			return -1;
+		}
+		struct prototype_ast_computation_fold_clause_input fold_clauses[31];
+		uint32_t fold_clause_count = 0;
+		for (uint32_t i = 0; i < clause_count; ++i) {
+			if (i == return_clause) {
+				continue;
+			}
+			if (clauses[i].binder_count != 2 ||
+				clauses[i].head_ast == PROTOTYPE_INVALID_ID) {
+				set_error(parser, "operation clause requires an operation and exactly two binders");
+				return -1;
+			}
+			fold_clauses[fold_clause_count].operation = clauses[i].head_ast;
+			fold_clauses[fold_clause_count].operation_argument_binder_id =
+				clauses[i].binders[0].ast_binder_id;
+			fold_clauses[fold_clause_count].operation_argument_symbol_id =
+				clauses[i].binders[0].symbol_id;
+			fold_clauses[fold_clause_count].operation_continuation_binder_id =
+				clauses[i].binders[1].ast_binder_id;
+			fold_clauses[fold_clause_count].operation_continuation_symbol_id =
+				clauses[i].binders[1].symbol_id;
+			fold_clauses[fold_clause_count].body = clauses[i].body;
+			fold_clauses[fold_clause_count].span = clauses[i].span;
+			fold_clause_count++;
+		}
+		return prototype_ast_computation_fold(
+			parser->program->asts,
+			scrutinee,
+			fold_clauses,
+			fold_clause_count,
+			clauses[return_clause].binders[0].ast_binder_id,
+			clauses[return_clause].binders[0].symbol_id,
+			clauses[return_clause].body,
+			span,
+			p_ret
+		);
+	}
+	struct prototype_ast_match_case_input match_cases[64];
+	for (uint32_t i = 0; i < clause_count; ++i) {
+		if (clauses[i].head_kind != PARSED_ELIMINATION_HEAD_BARE) {
+			set_error(parser, "ADT match requires a bare constructor label");
+			return -1;
+		}
+		for (uint32_t j = 0; j < i; ++j) {
+			if (clauses[j].head_symbol_id == clauses[i].head_symbol_id) {
+				set_error(parser, "duplicate match case; wrap nested match bodies in parentheses");
+				return -1;
+			}
+		}
+		match_cases[i].constructor_symbol_id = clauses[i].head_symbol_id;
+		match_cases[i].binders = clauses[i].binders;
+		match_cases[i].binder_count = clauses[i].binder_count;
+		match_cases[i].body = clauses[i].body;
+	}
+	return prototype_ast_match(
+		parser->program->asts, scrutinee, match_cases, clause_count, span, p_ret
+	);
 }
 
 static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
@@ -1735,103 +1914,9 @@ static int parse_bare_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	return 1;
 }
 
-static int parse_handle_term(struct parser* parser, uint32_t* p_ret) {
-	struct prototype_source_span span = current_span(parser);
-	uint32_t computation;
-	uint32_t operation;
-	uint32_t operation_body;
-	uint32_t return_body;
-	uint32_t operation_argument_binder_id;
-	uint32_t operation_continuation_binder_id;
-	uint32_t return_binder_id;
-	int operation_argument_symbol_id;
-	int operation_continuation_symbol_id;
-	int return_symbol_id;
-	struct local_binder operation_argument_binder;
-	struct local_binder operation_continuation_binder;
-	struct local_binder return_binder;
-
-	if (read_token(parser) != 0 || expect(parser, TOKEN_LPAREN, "expected '(' after 'handle'") != 0 ||
-		parse_term(parser, &computation) != 0 ||
-		expect(parser, TOKEN_RPAREN, "expected ')' after handled computation") != 0 ||
-		!current_is_keyword(parser, "with") || read_token(parser) != 0 ||
-		expect(parser, TOKEN_LPAREN, "expected '(' before handled operation") != 0 ||
-		parse_term(parser, &operation) != 0 ||
-		expect(parser, TOKEN_RPAREN, "expected ')' after handled operation") != 0 ||
-		parser->current.kind != TOKEN_IDENT) {
-		set_error(parser, "expected 'handle (computation) with (operation) argument continuation => body ; return value => body'");
-		return -1;
-	}
-	operation_argument_symbol_id = parser->current.symbol_id;
-	operation_argument_binder_id = prototype_ast_new_binder(parser->program->asts);
-	if (operation_argument_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
-		parser->current.kind != TOKEN_IDENT) {
-		set_error(parser, "expected operation continuation binder");
-		return -1;
-	}
-	operation_continuation_symbol_id = parser->current.symbol_id;
-	operation_continuation_binder_id = prototype_ast_new_binder(parser->program->asts);
-	if (operation_continuation_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
-		expect(parser, TOKEN_FATARROW, "expected '=>' after handler binders") != 0) {
-		set_error(parser, "handler binder table is full");
-		return -1;
-	}
-	operation_argument_binder.symbol_id = operation_argument_symbol_id;
-	operation_argument_binder.ast_binder_id = operation_argument_binder_id;
-	operation_argument_binder.induction_allowed = 0;
-	operation_argument_binder.next = parser->binders;
-	operation_continuation_binder.symbol_id = operation_continuation_symbol_id;
-	operation_continuation_binder.ast_binder_id = operation_continuation_binder_id;
-	operation_continuation_binder.induction_allowed = 0;
-	operation_continuation_binder.next = &operation_argument_binder;
-	parser->binders = &operation_continuation_binder;
-	if (parse_term(parser, &operation_body) != 0) {
-		parser->binders = operation_argument_binder.next;
-		return -1;
-	}
-	parser->binders = operation_argument_binder.next;
-	if (expect(parser, TOKEN_SEMI, "expected ';' before handler return clause") != 0 ||
-		!current_is_keyword(parser, "return") || read_token(parser) != 0 ||
-		parser->current.kind != TOKEN_IDENT) {
-		set_error(parser, "expected 'return value => body' handler clause");
-		return -1;
-	}
-	return_symbol_id = parser->current.symbol_id;
-	return_binder_id = prototype_ast_new_binder(parser->program->asts);
-	if (return_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
-		expect(parser, TOKEN_FATARROW, "expected '=>' after return binder") != 0) {
-		set_error(parser, "handler binder table is full");
-		return -1;
-	}
-	return_binder.symbol_id = return_symbol_id;
-	return_binder.ast_binder_id = return_binder_id;
-	return_binder.induction_allowed = 0;
-	return_binder.next = parser->binders;
-	parser->binders = &return_binder;
-	if (parse_term(parser, &return_body) != 0) {
-		parser->binders = return_binder.next;
-		return -1;
-	}
-	parser->binders = return_binder.next;
-	if (prototype_ast_handle(
-			parser->program->asts, computation, operation,
-			operation_argument_binder_id, operation_argument_symbol_id,
-			operation_continuation_binder_id, operation_continuation_symbol_id,
-			operation_body, return_binder_id, return_symbol_id, return_body, span, p_ret
-		) != 0) {
-		set_error(parser, "AST table is full");
-		return -1;
-	}
-	return 0;
-}
-
 static int parse_term(struct parser* parser, uint32_t* p_ret) {
 	struct prototype_source_span span = current_span(parser);
-	if (current_is_keyword(parser, "handle")) {
-		if (parse_handle_term(parser, p_ret) != 0) {
-			return -1;
-		}
-	} else if (current_is_keyword(parser, "perform")) {
+	if (current_is_keyword(parser, "perform")) {
 		uint32_t operand;
 		uint32_t result;
 		if (read_token(parser) != 0 || parse_term(parser, &operand) != 0) {
@@ -1860,7 +1945,7 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			if (parser->current.kind == TOKEN_AT) {
-				if (parse_match_suffix(parser, term, span, p_ret) != 0) {
+				if (parse_elimination_suffix(parser, term, span, p_ret) != 0) {
 					return -1;
 				}
 			} else {
@@ -1873,7 +1958,7 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 			return -1;
 		}
 		if (parser->current.kind == TOKEN_AT) {
-			if (parse_match_suffix(parser, term, span, p_ret) != 0) {
+			if (parse_elimination_suffix(parser, term, span, p_ret) != 0) {
 				return -1;
 			}
 		} else {

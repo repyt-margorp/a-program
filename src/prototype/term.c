@@ -123,6 +123,7 @@ static const struct prototype_effect_operation_declaration
 effect_operation_declarations[] = {
 	{
 		PROTOTYPE_EFFECT_OPERATION_PRINT,
+		PROTOTYPE_EFFECT_OPERATION_LABEL_PRINT,
 		PROTOTYPE_HOST_EFFECT_TERMINAL,
 		1,
 		{ PROTOTYPE_HOST_TYPE_TEXT },
@@ -156,7 +157,8 @@ static const struct prototype_intrinsic_namespace_binding intrinsic_namespace[] 
 	{ "int64_neg", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
 		PROTOTYPE_PURE_PRIMITIVE_INT64_NEG },
 	{ "print", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
-		PROTOTYPE_EFFECT_OPERATION_PRINT }
+		PROTOTYPE_EFFECT_OPERATION_PRINT },
+	{ "return", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_COMPUTATION_FOLD_RETURN, 0 }
 };
 
 struct host_pure_primitive_implementation {
@@ -538,7 +540,7 @@ int prototype_term_classifier_view(
 		if (prototype_term_effect_row_closed_bits(
 				db, p_ret->effect_row, &p_ret->effects
 			) != 0) {
-			p_ret->effects = PROTOTYPE_HOST_EFFECT_NONE;
+			p_ret->effects = PROTOTYPE_EFFECT_OPERATION_LABEL_NONE;
 		}
 		p_ret->result = term->as.computation_type.result;
 		return 0;
@@ -549,7 +551,7 @@ int prototype_term_classifier_view(
 		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
 		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION;
 		p_ret->effect_row = PROTOTYPE_INVALID_ID;
-		p_ret->effects = PROTOTYPE_HOST_EFFECT_NONE;
+		p_ret->effects = PROTOTYPE_EFFECT_OPERATION_LABEL_NONE;
 		p_ret->result = classifier;
 		return 0;
 	}
@@ -3427,12 +3429,12 @@ int prototype_term_effect_row_union(
 		return prototype_term_effect_label(db, left_effects | right_effects, p_ret);
 	}
 	if (prototype_term_effect_row_closed_bits(db, left, &left_effects) == 0 &&
-		left_effects == PROTOTYPE_HOST_EFFECT_NONE) {
+		left_effects == PROTOTYPE_EFFECT_OPERATION_LABEL_NONE) {
 		*p_ret = right;
 		return 0;
 	}
 	if (prototype_term_effect_row_closed_bits(db, right, &right_effects) == 0 &&
-		right_effects == PROTOTYPE_HOST_EFFECT_NONE) {
+		right_effects == PROTOTYPE_EFFECT_OPERATION_LABEL_NONE) {
 		*p_ret = left;
 		return 0;
 	}
@@ -3605,12 +3607,8 @@ int prototype_term_computation_fold(
 			return -1;
 		}
 		for (uint32_t j = 0; j < i; ++j) {
-			struct shape_binder_env env;
-			memset(&env, 0, sizeof(env));
-			if (shape_terms_equal_at_depth(
-					db, clauses[i].operation, clauses[j].operation, &env,
-					PROTOTYPE_TYPE_VIEW_COMPARE_VIEW, 0, 0
-				)) {
+			if (db->terms[clauses[i].operation].as.effect_operation.operation_id ==
+				db->terms[clauses[j].operation].as.effect_operation.operation_id) {
 				return -1;
 			}
 		}
@@ -3703,6 +3701,25 @@ int prototype_term_effect_operation(
 	term.tag = PROTOTYPE_TERM_EFFECT_OPERATION;
 	term.as.effect_operation.operation_id = operation_id;
 	return add_term(db, term, p_ret);
+}
+
+int prototype_term_effect_operation_identity(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	int* p_operation_id
+) {
+	if (!db || !p_operation_id || term_id >= db->term_count) {
+		return -1;
+	}
+	while (term_id < db->term_count && db->terms[term_id].tag == PROTOTYPE_TERM_APP) {
+		term_id = db->terms[term_id].as.app.function;
+	}
+	if (term_id >= db->term_count ||
+		db->terms[term_id].tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
+		return -1;
+	}
+	*p_operation_id = db->terms[term_id].as.effect_operation.operation_id;
+	return 0;
 }
 
 static int term_contains_free_binder_at_depth(
@@ -5278,13 +5295,16 @@ static int computation_fold_find_clause(
 	for (uint32_t i = 0; i < fold->as.computation_fold.clause_count; ++i) {
 		const struct prototype_computation_fold_clause* clause =
 			&db->computation_fold_clauses[fold->as.computation_fold.first_clause + i];
-		int equal = 0;
-		if (prototype_term_core_shape_equal(
-				db, clause->operation, operation, &equal
+		int clause_identity;
+		int request_identity;
+		if (prototype_term_effect_operation_identity(
+				db, clause->operation, &clause_identity
+			) != 0 || prototype_term_effect_operation_identity(
+				db, operation, &request_identity
 			) != 0) {
 			return -1;
 		}
-		if (equal) {
+		if (clause_identity == request_identity) {
 			*p_body = clause->body;
 			return 0;
 		}
@@ -7533,7 +7553,7 @@ static int default_host_effect_dispatch(
 	const struct host_effect_operation_implementation* implementation =
 		host_effect_operation_implementation(operation_id);
 	if (!declaration || !implementation || declaration->arity != 1 ||
-		!host_effect_allowed(*options, declaration->effects)) {
+		!host_effect_allowed(*options, declaration->required_host_effects)) {
 		return 0;
 	}
 	uint32_t reduced_argument;

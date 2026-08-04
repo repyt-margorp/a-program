@@ -560,7 +560,7 @@ if ./read_file.out "$tmp_dir/invalid-perform-intrinsic.p" \
 fi
 
 cat >"$tmp_dir/invalid-handle-intrinsic.p" <<'EOF'
-bad := handle (perform (#.print #"x")) with (#.int_neg) x k => k x; return y => y;
+bad := (perform (#.print #"x")) @#.return y => y @#.int_neg x k => k x;
 EOF
 if ./read_file.out "$tmp_dir/invalid-handle-intrinsic.p" \
 	>"$tmp_dir/invalid-handle-intrinsic.out" \
@@ -570,7 +570,7 @@ if ./read_file.out "$tmp_dir/invalid-handle-intrinsic.p" \
 fi
 
 cat >"$tmp_dir/handle.p" <<'EOF'
-main := handle (perform (#.print #"x")) with (#.print) x k => k x; return y => y;
+main := (perform (#.print #"x")) @#.return y => y @#.print x k => k x;
 EOF
 
 ./read_file.out "$tmp_dir/handle.p" >"$tmp_dir/handle.out"
@@ -591,13 +591,68 @@ if ./read_file.out --check-backend verilog "$tmp_dir/handle.apo" \
 fi
 
 printf '%s\n' \
-	'main := handle (perform (#.print #"x")) with (#.print) x k => k x; return y => y;' \
+	'main := (perform (#.print #"x")) @#.return y => y @#.print x k => k x;' \
 	'main' \
 	':q' | ./a.out >"$tmp_dir/handle-eval.out"
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' "$tmp_dir/handle-eval.out"
 
+cat >"$tmp_dir/return-only-fold.p" <<'EOF'
+main := ({ #1; }) @#.return x => x;
+EOF
+./read_file.out "$tmp_dir/return-only-fold.p" >"$tmp_dir/return-only-fold.out"
+grep -q '^term main := COMPUTATION_FOLD(.*LAMBDA(.*RETURN(VAR' \
+	"$tmp_dir/return-only-fold.out"
+
+cat >"$tmp_dir/operation-alias-fold.p" <<'EOF'
+output := #.print;
+main := (perform (#.print #"x"))
+	@#.return y => y
+	@output x k => k x;
+EOF
+./read_file.out "$tmp_dir/operation-alias-fold.p" \
+	>"$tmp_dir/operation-alias-fold.out"
+{
+	cat "$tmp_dir/operation-alias-fold.p"
+	printf 'main\n:q\n'
+} | ./a.out >"$tmp_dir/operation-alias-fold-eval.out"
+grep -q 'value main := RETURN(TEXT_LITERAL("x"))' \
+	"$tmp_dir/operation-alias-fold-eval.out"
+
+cat >"$tmp_dir/duplicate-operation-fold.p" <<'EOF'
+output := #.print;
+bad := (perform (#.print #"x"))
+	@#.return y => y
+	@#.print x k => k x
+	@output x k => k x;
+EOF
+if ./read_file.out "$tmp_dir/duplicate-operation-fold.p" \
+	>"$tmp_dir/duplicate-operation-fold.out" 2>&1; then
+	echo 'computation fold accepted duplicate nominal operation clauses' >&2
+	exit 1
+fi
+
+cat >"$tmp_dir/duplicate-return-fold.p" <<'EOF'
+bad := ({ #1; }) @#.return x => x @#.return y => y;
+EOF
+if ./read_file.out "$tmp_dir/duplicate-return-fold.p" \
+	>"$tmp_dir/duplicate-return-fold.out" 2>&1; then
+	echo 'computation fold accepted duplicate return clauses' >&2
+	exit 1
+fi
+
+cat >"$tmp_dir/perform-return-label.p" <<'EOF'
+bad := perform (#.return #1);
+EOF
+if ./read_file.out "$tmp_dir/perform-return-label.p" \
+	>"$tmp_dir/perform-return-label.out" 2>&1; then
+	echo '#.return was accepted as an effect operation' >&2
+	exit 1
+fi
+
 cat >"$tmp_dir/handle-bind.p" <<'EOF'
-main := handle ({ y : #.Text := perform (#.print #"x"); y; }) with (#.print) x k => k x; return y => y;
+main := ({ y : #.Text := perform (#.print #"x"); y; })
+	@#.return y => y
+	@#.print x k => k x;
 EOF
 
 ./read_file.out "$tmp_dir/handle-bind.p" >"$tmp_dir/handle-bind.out"
@@ -608,7 +663,9 @@ EOF
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' "$tmp_dir/handle-bind-eval.out"
 
 cat >"$tmp_dir/deep-handle-bind.p" <<'EOF'
-main := handle ({ y : #.Text := perform (#.print #"x"); perform (#.print y); }) with (#.print) x k => k x; return y => y;
+main := ({ y : #.Text := perform (#.print #"x"); perform (#.print y); })
+	@#.return y => y
+	@#.print x k => k x;
 EOF
 
 ./read_file.out "$tmp_dir/deep-handle-bind.p" >"$tmp_dir/deep-handle-bind.out"
@@ -668,7 +725,7 @@ grep -q '^verification main := discharged$' \
 	"$tmp_dir/dependent-handler-result-eval.out"
 
 cat >"$tmp_dir/negative-handle-raw-function.p" <<'EOF'
-bad := handle (\x : #.Int => x) with (#.print) x k => k x; return y => y;
+bad := (\x : #.Int => x) @#.return y => y @#.print x k => k x;
 EOF
 
 if ./read_file.out "$tmp_dir/negative-handle-raw-function.p" \
@@ -681,7 +738,8 @@ grep -q 'failed to compile AST graph' \
 	"$tmp_dir/negative-handle-raw-function.err"
 
 cat >"$tmp_dir/lambda-handle.p" <<'EOF'
-main := \n : #.Nat => handle (perform (#.print #"x")) with (#.print) x k => k x; return y => y;
+main := \n : #.Nat =>
+	(perform (#.print #"x")) @#.return y => y @#.print x k => k x;
 EOF
 
 ./read_file.out "$tmp_dir/lambda-handle.p" >"$tmp_dir/lambda-handle.out"
