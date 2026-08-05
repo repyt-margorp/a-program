@@ -46,7 +46,8 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_DECLARATION,
 	PROTOTYPE_JUDGEMENT_PROOF_UNIVERSE_CUMULATIVITY,
 	PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO,
-	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX
+	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX,
+	PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN
 };
 
 #define PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES 65
@@ -106,22 +107,29 @@ struct prototype_judgement_computation_constraint {
 	uint32_t continuation;
 	uint32_t argument;
 	uint32_t application;
+	/* An unresolved fold residual is solver-local state. It must not be
+	 * represented by a fresh EFFECT_ROW_VAR in TermDB. */
+	int effect_residual_pending;
 	uint32_t effect_residual_row;
 };
 
-enum prototype_judgement_effect_row_equation_kind {
-	PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_UNION = 1,
-	PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_RESIDUAL
+enum prototype_judgement_effect_row_constraint_kind {
+	PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_JOIN = 1,
+	PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_RESIDUAL,
+	PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_INCLUSION
 };
 
-/* Effect-row equations belong to the compile-time constraint solver. They are
- * neither TermDB nodes nor runtime handler state. */
-struct prototype_judgement_effect_row_equation {
+/* Effect-row constraints belong to the compile-time solver. JOIN is n-ary;
+ * RESIDUAL uses input and removed rows; INCLUSION uses source and target rows.
+ * They are neither TermDB nodes nor runtime handler state. */
+#define PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_MAX_OPERANDS 34
+
+struct prototype_judgement_effect_row_constraint {
 	int kind;
 	uint32_t subject;
 	uint32_t result_row;
-	uint32_t left_row;
-	uint32_t right_row;
+	uint32_t operand_count;
+	uint32_t operands[PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_MAX_OPERANDS];
 	int solved;
 };
 
@@ -145,7 +153,7 @@ struct prototype_judgement_delta {
 	struct prototype_judgement_proof* proofs;
 	struct prototype_judgement_match_motive_result* match_motive_results;
 	struct prototype_judgement_computation_constraint* computation_constraints;
-	struct prototype_judgement_effect_row_equation* effect_row_equations;
+	struct prototype_judgement_effect_row_constraint* effect_row_constraints;
 	size_t relation_count;
 	size_t relation_capacity;
 	size_t proof_count;
@@ -154,8 +162,8 @@ struct prototype_judgement_delta {
 	size_t match_motive_result_capacity;
 	size_t computation_constraint_count;
 	size_t computation_constraint_capacity;
-	size_t effect_row_equation_count;
-	size_t effect_row_equation_capacity;
+	size_t effect_row_constraint_count;
+	size_t effect_row_constraint_capacity;
 	uint64_t solver_step_limit;
 	uint64_t* solver_steps_used;
 	int* solver_exhausted;
@@ -203,8 +211,8 @@ void prototype_judgement_delta_init(
 	size_t match_motive_result_capacity,
 	struct prototype_judgement_computation_constraint* computation_constraints,
 	size_t computation_constraint_capacity,
-	struct prototype_judgement_effect_row_equation* effect_row_equations,
-	size_t effect_row_equation_capacity
+	struct prototype_judgement_effect_row_constraint* effect_row_constraints,
+	size_t effect_row_constraint_capacity
 );
 
 void prototype_judgement_delta_set_solver_budget(
@@ -265,6 +273,15 @@ int prototype_judgement_delta_expand_match_pattern(
 	const struct prototype_term_db* terms,
 	uint32_t subject,
 	uint32_t classifier
+);
+
+int prototype_judgement_delta_record_effect_weaken(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t source_classifier,
+	uint32_t target_classifier
 );
 
 int prototype_judgement_delta_set_match_pattern_owner_by_id(

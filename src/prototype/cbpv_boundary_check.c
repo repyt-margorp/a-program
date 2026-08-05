@@ -36,7 +36,7 @@ static struct prototype_judgement_relation delta_relations[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof delta_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_match_motive_result motive_results[8];
 static struct prototype_judgement_computation_constraint computation_constraints[8];
-static struct prototype_judgement_effect_row_equation effect_row_equations[8];
+static struct prototype_judgement_effect_row_constraint effect_row_constraints[8];
 static struct prototype_context context_entries[CONTEXT_CAPACITY];
 static struct prototype_substitution substitution_entries[SUBSTITUTION_CAPACITY];
 static int symbol_map_ids[16];
@@ -68,7 +68,7 @@ int main(void) {
 	);
 	prototype_judgement_delta_init(
 		&delta, &judgement, delta_relations, delta_proofs, JUDGEMENT_CAPACITY,
-		motive_results, 8, computation_constraints, 8, effect_row_equations, 8
+		motive_results, 8, computation_constraints, 8, effect_row_constraints, 8
 	);
 	prototype_context_db_init(&contexts, context_entries, CONTEXT_CAPACITY);
 	prototype_substitution_db_init(
@@ -178,6 +178,62 @@ int main(void) {
 		) != 0 ||
 		normalization.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
 		normalization.term_id != symbolic_effect_union) {
+		return 1;
+	}
+
+	uint32_t returned_classifier;
+	uint32_t widened_returned_classifier;
+	uint32_t wrong_result_classifier;
+	if (prototype_judgement_lookup_classifier(
+			&judgement, returned, &returned_classifier
+		) != 0 || prototype_judgement_classifier_view(
+			&term_db, &type_db, NULL, returned_classifier, &view
+		) != 0 || view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		prototype_term_computation_type(
+			&term_db,
+			terminal_effect_row,
+			view.result,
+			&widened_returned_classifier
+		) != 0 || prototype_term_computation_type(
+			&term_db,
+			terminal_effect_row,
+			value,
+			&wrong_result_classifier
+		) != 0) {
+		return 1;
+	}
+	prototype_judgement_delta_init(
+		&delta, &judgement, delta_relations, delta_proofs, JUDGEMENT_CAPACITY,
+		motive_results, 8, computation_constraints, 8, effect_row_constraints, 8
+	);
+	prototype_judgement_delta_set_context_store(
+		&delta, &contexts, &substitutions
+	);
+	prototype_judgement_delta_set_context(
+		&delta, prototype_context_empty(&contexts)
+	);
+	if (prototype_judgement_delta_record_effect_weaken(
+			&delta,
+			&term_db,
+			&type_db,
+			returned,
+			returned_classifier,
+			widened_returned_classifier
+		) != 0 || prototype_judgement_delta_record_effect_weaken(
+			&delta,
+			&term_db,
+			&type_db,
+			returned,
+			returned_classifier,
+			wrong_result_classifier
+		) == 0 || prototype_judgement_delta_commit(&delta, 0) != 0 ||
+		prototype_judgement_validate_proofs(
+			&term_db,
+			&type_db,
+			&contexts,
+			&substitutions,
+			&judgement
+		) != 0) {
 		return 1;
 	}
 

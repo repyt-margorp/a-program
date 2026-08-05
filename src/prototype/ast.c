@@ -12981,6 +12981,7 @@ struct local_ref_map_entry {
 #define PROTOTYPE_OPERATION_CONSTRAINT_CAPACITY 16384
 #define PROTOTYPE_OPERATION_MOTIVE_EQUATION_CAPACITY 4096
 #define PROTOTYPE_OPERATION_SOLVER_INPUT_FACT_CAPACITY 2048
+#define PROTOTYPE_OPERATION_EFFECT_ROW_META_CAPACITY 4096
 
 enum operation_classifier_constraint_kind {
 	OPERATION_CONSTRAINT_HAS_TYPE = 1,
@@ -13103,6 +13104,27 @@ struct operation_classifier_solver {
 	uint32_t input_fact_count;
 };
 
+enum operation_effect_row_meta_state {
+	OPERATION_EFFECT_ROW_META_UNSOLVED = 0,
+	OPERATION_EFFECT_ROW_META_SOLVED
+};
+
+/* Effect-row metavariables are owned by source occurrences. The placeholder
+ * row is only a location in the current classifier graph; binder identity is
+ * never the identity of the solver cell. */
+struct operation_effect_row_meta {
+	uint32_t owner_operation;
+	uint32_t placeholder_row;
+	uint32_t solution_row;
+	int state;
+};
+
+struct operation_effect_solver {
+	struct operation_effect_row_meta
+		metas[PROTOTYPE_OPERATION_EFFECT_ROW_META_CAPACITY];
+	uint32_t meta_count;
+};
+
 struct compile_judgement_workspace {
 	struct prototype_judgement_relation
 		relations[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
@@ -13112,8 +13134,8 @@ struct compile_judgement_workspace {
 		match_motive_results[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
 	struct prototype_judgement_computation_constraint
 		computation_constraints[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
-	struct prototype_judgement_effect_row_equation
-		effect_row_equations[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
+	struct prototype_judgement_effect_row_constraint
+		effect_row_constraints[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
 };
 
 struct compile_context {
@@ -13124,6 +13146,7 @@ struct compile_context {
 	struct prototype_judgement_delta judgement_delta;
 	struct prototype_compile_metadata* metadata;
 	struct operation_classifier_solver classifier_solver;
+	struct operation_effect_solver effect_solver;
 	struct operation_classifier_constraint
 		classifier_constraint_blueprint[PROTOTYPE_OPERATION_CONSTRAINT_CAPACITY];
 	uint32_t classifier_constraint_blueprint_count;
@@ -22741,6 +22764,45 @@ static int operation_subtree_ast_binder_use_count(
 	uint32_t* p_count
 );
 
+static int operation_effect_row_binder_is_owned(
+	const struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t binder_id
+) {
+	if (!ctx || !ctx->metadata || operation_id >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	for (uint32_t owner = 0; owner < ctx->metadata->operation_count; ++owner) {
+		const struct prototype_operation_node* lambda =
+			&ctx->metadata->operations[owner];
+		if (lambda->tag != PROTOTYPE_OPERATION_LAMBDA) {
+			continue;
+		}
+		int declares_binder = 0;
+		for (uint32_t row = 0; row < lambda->implicit_effect_row_count; ++row) {
+			if (lambda->implicit_effect_row_binders[row] == binder_id) {
+				declares_binder = 1;
+				break;
+			}
+		}
+		if (!declares_binder) {
+			continue;
+		}
+		uint8_t visited[ctx->metadata->operation_count];
+		memset(visited, 0, sizeof(visited));
+		int contains = operation_subtree_contains_operation(
+			ctx, owner, operation_id, visited
+		);
+		if (contains < 0) {
+			return -1;
+		}
+		if (contains) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static int operation_classifier_contains_unowned_effect_row(
 	const struct compile_context* ctx,
 	uint32_t operation_id,
@@ -22759,38 +22821,13 @@ static int operation_classifier_contains_unowned_effect_row(
 		if (prototype_term_contains_free_binder(
 				ctx->terms,
 				classifier,
-				binder_id
-			)) {
-			int owned = 0;
-			for (uint32_t owner = 0;
-				owner < ctx->metadata->operation_count && !owned;
-				++owner) {
-				const struct prototype_operation_node* lambda =
-					&ctx->metadata->operations[owner];
-				if (lambda->tag != PROTOTYPE_OPERATION_LAMBDA) {
-					continue;
-				}
-				int declares_binder = 0;
-				for (uint32_t row = 0;
-					row < lambda->implicit_effect_row_count;
-					++row) {
-					if (lambda->implicit_effect_row_binders[row] == binder_id) {
-						declares_binder = 1;
-						break;
-					}
-				}
-				if (!declares_binder) {
-					continue;
-				}
-				uint8_t visited[ctx->metadata->operation_count];
-				memset(visited, 0, sizeof(visited));
-				int contains = operation_subtree_contains_operation(
-					ctx, owner, operation_id, visited
-				);
-				if (contains < 0) {
-					return -1;
-				}
-				owned = contains;
+			binder_id
+		)) {
+			int owned = operation_effect_row_binder_is_owned(
+				ctx, operation_id, binder_id
+			);
+			if (owned < 0) {
+				return -1;
 			}
 			if (!owned) {
 				return 1;
@@ -22871,40 +22908,84 @@ static int operation_classifier_computation_view(
 		p_view->effect_row != PROTOTYPE_INVALID_ID ? 0 : 1;
 }
 
-static int operation_effect_substitute(
+static int operation_effect_row_meta_find_or_add(
 	struct compile_context* ctx,
-	uint32_t binder_id,
-	uint32_t replacement
+	uint32_t owner_operation,
+	uint32_t placeholder_row,
+	struct operation_effect_row_meta** p_meta
 ) {
-	if (!ctx || replacement >= ctx->terms->term_count) {
+	if (!ctx || !p_meta || owner_operation >= ctx->metadata->operation_count ||
+		placeholder_row >= ctx->terms->term_count ||
+		ctx->terms->terms[placeholder_row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
-		uint32_t* classifiers[] = {
-			&ctx->metadata->operations[i].known_classifier,
-			&ctx->metadata->operations[i].classifier,
-			&ctx->metadata->operations[i].binder_classifier,
-			&ctx->classifier_solver.bindings[i]
-		};
-		for (size_t j = 0; j < sizeof(classifiers) / sizeof(classifiers[0]); ++j) {
-			if (*classifiers[j] == PROTOTYPE_INVALID_ID) {
-				continue;
-			}
-			if (prototype_term_graph_substitute_bound_var(
-					ctx->terms,
-					ctx->type_declarations,
-					*classifiers[j],
-					binder_id,
-					replacement,
-					classifiers[j]
-				) != 0) {
-				return -1;
-			}
+	for (uint32_t i = 0; i < ctx->effect_solver.meta_count; ++i) {
+		struct operation_effect_row_meta* meta = &ctx->effect_solver.metas[i];
+		if (meta->owner_operation == owner_operation &&
+			meta->placeholder_row == placeholder_row) {
+			*p_meta = meta;
+			return 0;
+		}
+	}
+	if (ctx->effect_solver.meta_count >=
+		PROTOTYPE_OPERATION_EFFECT_ROW_META_CAPACITY) {
+		return -1;
+	}
+	struct operation_effect_row_meta* meta =
+		&ctx->effect_solver.metas[ctx->effect_solver.meta_count++];
+	*meta = (struct operation_effect_row_meta){
+		.owner_operation = owner_operation,
+		.placeholder_row = placeholder_row,
+		.solution_row = PROTOTYPE_INVALID_ID,
+		.state = OPERATION_EFFECT_ROW_META_UNSOLVED
+	};
+	*p_meta = meta;
+	return 0;
+}
+
+static int operation_effect_materialize_solution(
+	struct compile_context* ctx,
+	struct operation_effect_row_meta* meta,
+	uint32_t replacement
+) {
+	if (!ctx || !meta || replacement >= ctx->terms->term_count ||
+		meta->owner_operation >= ctx->metadata->operation_count ||
+		meta->placeholder_row >= ctx->terms->term_count ||
+		ctx->terms->terms[meta->placeholder_row].tag !=
+			PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		return -1;
+	}
+	uint32_t owner = meta->owner_operation;
+	uint32_t binder_id = ctx->terms->terms[
+		meta->placeholder_row
+	].as.effect_row_var.binder_id;
+	uint32_t* classifiers[] = {
+		&ctx->metadata->operations[owner].known_classifier,
+		&ctx->metadata->operations[owner].classifier,
+		&ctx->metadata->operations[owner].binder_classifier,
+		&ctx->classifier_solver.bindings[owner]
+	};
+	for (size_t i = 0; i < sizeof(classifiers) / sizeof(classifiers[0]); ++i) {
+		if (*classifiers[i] == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (prototype_term_graph_substitute_bound_var(
+				ctx->terms,
+				ctx->type_declarations,
+				*classifiers[i],
+				binder_id,
+				replacement,
+				classifiers[i]
+			) != 0) {
+			return -1;
 		}
 	}
 	for (size_t i = 0; i < ctx->metadata->effect_constraint_count; ++i) {
 		struct prototype_operation_effect_constraint* constraint =
 			&ctx->metadata->effect_constraints[i];
+		if (constraint->operation != owner) {
+			continue;
+		}
 		uint32_t* rows[] = {
 			&constraint->result_row,
 			&constraint->left_row,
@@ -22926,6 +23007,8 @@ static int operation_effect_substitute(
 			}
 		}
 	}
+	meta->solution_row = replacement;
+	meta->state = OPERATION_EFFECT_ROW_META_SOLVED;
 	return 0;
 }
 
@@ -22987,15 +23070,42 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 					PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNSOLVED_RESIDUAL;
 				continue;
 			}
+			uint32_t result_binder = ctx->terms->terms[
+				constraint->result_row
+			].as.effect_row_var.binder_id;
+			int owned = operation_effect_row_binder_is_owned(
+				ctx, constraint->operation, result_binder
+			);
+			if (owned < 0) {
+				return -1;
+			}
+			if (owned) {
+				constraint->state =
+					PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNSOLVED_RESIDUAL;
+				continue;
+			}
+			struct operation_effect_row_meta* meta;
+			if (operation_effect_row_meta_find_or_add(
+					ctx, constraint->operation, constraint->result_row, &meta
+				) != 0) {
+				return -1;
+			}
+			if (meta->state == OPERATION_EFFECT_ROW_META_SOLVED) {
+				unsigned solved;
+				if (prototype_term_effect_row_closed_bits(
+						ctx->terms, meta->solution_row, &solved
+					) != 0 || solved != expected) {
+					return -1;
+				}
+				constraint->result_row = meta->solution_row;
+				constraint->state = PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED;
+				continue;
+			}
 			uint32_t replacement;
 			if (prototype_term_effect_label(
 					ctx->terms, expected, &replacement
-				) != 0 || operation_effect_substitute(
-					ctx,
-					ctx->terms->terms[
-						constraint->result_row
-					].as.effect_row_var.binder_id,
-					replacement
+				) != 0 || operation_effect_materialize_solution(
+					ctx, meta, replacement
 				) != 0) {
 				return -1;
 			}
@@ -23137,17 +23247,22 @@ static int operation_effect_generate_constraints(struct compile_context* ctx) {
 			return -1;
 		}
 	}
-	for (size_t equation_id = 0;
-		equation_id < ctx->judgement_delta.effect_row_equation_count;
-		++equation_id) {
-		const struct prototype_judgement_effect_row_equation* equation =
-			&ctx->judgement_delta.effect_row_equations[equation_id];
+	for (size_t constraint_id = 0;
+		constraint_id < ctx->judgement_delta.effect_row_constraint_count;
+		++constraint_id) {
+		const struct prototype_judgement_effect_row_constraint* row_constraint =
+			&ctx->judgement_delta.effect_row_constraints[constraint_id];
+		if (row_constraint->operand_count != 2 ||
+			row_constraint->kind ==
+				PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_INCLUSION) {
+			continue;
+		}
 		for (uint32_t operation_id = 0;
 			operation_id < ctx->metadata->operation_count;
 			++operation_id) {
 			const struct prototype_operation_node* operation =
 				&ctx->metadata->operations[operation_id];
-			if (operation->core_term != equation->subject) {
+			if (operation->core_term != row_constraint->subject) {
 				continue;
 			}
 			struct prototype_term_classifier_view view;
@@ -23158,21 +23273,21 @@ static int operation_effect_generate_constraints(struct compile_context* ctx) {
 					ctx->terms,
 					ctx->type_declarations,
 					view.effect_row,
-					equation->result_row
+					row_constraint->result_row
 				)) {
 				continue;
 			}
-			int kind = equation->kind ==
-				PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_UNION ?
+			int kind = row_constraint->kind ==
+				PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_JOIN ?
 				PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNION :
 				PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_RESIDUAL;
 			if (operation_effect_constraint_add(
 					ctx,
 					kind,
 					operation_id,
-					equation->result_row,
-					equation->left_row,
-					equation->right_row
+					row_constraint->result_row,
+					row_constraint->operands[0],
+					row_constraint->operands[1]
 				) != 0) {
 				return -1;
 			}
@@ -27800,7 +27915,7 @@ static int compile_pending_with_workspace(
 				PROTOTYPE_JUDGEMENT_DELTA_CAPACITY,
 				workspace->computation_constraints,
 				PROTOTYPE_JUDGEMENT_DELTA_CAPACITY,
-				workspace->effect_row_equations,
+				workspace->effect_row_constraints,
 				PROTOTYPE_JUDGEMENT_DELTA_CAPACITY
 			);
 	ctx.metadata = metadata;

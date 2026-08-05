@@ -32,8 +32,8 @@ void prototype_judgement_delta_init(
 	size_t match_motive_result_capacity,
 	struct prototype_judgement_computation_constraint* computation_constraints,
 	size_t computation_constraint_capacity,
-	struct prototype_judgement_effect_row_equation* effect_row_equations,
-	size_t effect_row_equation_capacity
+	struct prototype_judgement_effect_row_constraint* effect_row_constraints,
+	size_t effect_row_constraint_capacity
 ) {
 	memset(delta, 0, sizeof(*delta));
 	delta->db = db;
@@ -41,12 +41,12 @@ void prototype_judgement_delta_init(
 	delta->proofs = proofs;
 	delta->match_motive_results = match_motive_results;
 	delta->computation_constraints = computation_constraints;
-	delta->effect_row_equations = effect_row_equations;
+	delta->effect_row_constraints = effect_row_constraints;
 	delta->relation_capacity = relation_capacity;
 	delta->proof_capacity = relation_capacity;
 	delta->match_motive_result_capacity = match_motive_result_capacity;
 	delta->computation_constraint_capacity = computation_constraint_capacity;
-	delta->effect_row_equation_capacity = effect_row_equation_capacity;
+	delta->effect_row_constraint_capacity = effect_row_constraint_capacity;
 }
 
 void prototype_judgement_delta_set_solver_budget(
@@ -231,78 +231,122 @@ static int term_exists(const struct prototype_term_db* terms, uint32_t term_id) 
 	return terms && term_id < terms->term_count;
 }
 
-static int add_effect_row_equation(
+static int add_effect_row_constraint(
 	struct prototype_judgement_delta* delta,
 	int kind,
 	uint32_t subject,
 	uint32_t result_row,
-	uint32_t left_row,
-	uint32_t right_row
+	const uint32_t* operands,
+	uint32_t operand_count
 ) {
-	if (!delta || !delta->effect_row_equations ||
-		result_row == PROTOTYPE_INVALID_ID || left_row == PROTOTYPE_INVALID_ID ||
-		right_row == PROTOTYPE_INVALID_ID) {
+	if (!delta || !delta->effect_row_constraints || !operands ||
+		result_row == PROTOTYPE_INVALID_ID || operand_count == 0 ||
+		operand_count > PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_MAX_OPERANDS) {
 		return -1;
 	}
-	for (size_t i = 0; i < delta->effect_row_equation_count; ++i) {
-		const struct prototype_judgement_effect_row_equation* equation =
-			&delta->effect_row_equations[i];
-		if (equation->kind == kind && equation->subject == subject &&
-			equation->result_row == result_row && equation->left_row == left_row &&
-			equation->right_row == right_row) {
+	for (uint32_t i = 0; i < operand_count; ++i) {
+		if (operands[i] == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < delta->effect_row_constraint_count; ++i) {
+		const struct prototype_judgement_effect_row_constraint* constraint =
+			&delta->effect_row_constraints[i];
+		if (constraint->kind != kind || constraint->subject != subject ||
+			constraint->result_row != result_row ||
+			constraint->operand_count != operand_count) {
+			continue;
+		}
+		int equal = 1;
+		for (uint32_t j = 0; j < operand_count; ++j) {
+			if (constraint->operands[j] != operands[j]) {
+				equal = 0;
+				break;
+			}
+		}
+		if (equal) {
 			return 0;
 		}
 	}
 	if (reserve_slot(
-			delta->effect_row_equation_count, delta->effect_row_equation_capacity
+			delta->effect_row_constraint_count, delta->effect_row_constraint_capacity
 		) != 0) {
 		return -1;
 	}
-	delta->effect_row_equations[delta->effect_row_equation_count++] =
-		(struct prototype_judgement_effect_row_equation){
+	struct prototype_judgement_effect_row_constraint* constraint =
+		&delta->effect_row_constraints[delta->effect_row_constraint_count++];
+	*constraint = (struct prototype_judgement_effect_row_constraint){
 			.kind = kind,
 			.subject = subject,
 			.result_row = result_row,
-			.left_row = left_row,
-			.right_row = right_row,
+			.operand_count = operand_count,
 			.solved = 0
 		};
+	memcpy(constraint->operands, operands, operand_count * sizeof(*operands));
 	return 0;
 }
 
 /* Solve only equations whose rows are fully known. A symbolic equation stays
  * recorded instead of being approximated by an empty capability set. */
-static int solve_effect_row_equations(
+static int solve_effect_row_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms
 ) {
 	if (!delta || !terms) {
 		return -1;
 	}
-	for (size_t i = 0; i < delta->effect_row_equation_count; ++i) {
-		struct prototype_judgement_effect_row_equation* equation =
-			&delta->effect_row_equations[i];
-		unsigned left;
-		unsigned right;
+	for (size_t i = 0; i < delta->effect_row_constraint_count; ++i) {
+		struct prototype_judgement_effect_row_constraint* constraint =
+			&delta->effect_row_constraints[i];
 		unsigned result;
-		if (prototype_term_effect_row_closed_bits(terms, equation->left_row, &left) != 0 ||
-			prototype_term_effect_row_closed_bits(terms, equation->right_row, &right) != 0 ||
-			prototype_term_effect_row_closed_bits(terms, equation->result_row, &result) != 0) {
-			equation->solved = 0;
+		if (prototype_term_effect_row_closed_bits(
+				terms, constraint->result_row, &result
+			) != 0) {
+			constraint->solved = 0;
 			continue;
 		}
-		if (equation->kind == PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_UNION) {
-			if (result != (left | right)) {
+		unsigned operand_bits[
+			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_MAX_OPERANDS
+		];
+		int closed = 1;
+		for (uint32_t j = 0; j < constraint->operand_count; ++j) {
+			if (prototype_term_effect_row_closed_bits(
+					terms, constraint->operands[j], &operand_bits[j]
+				) != 0) {
+				closed = 0;
+				break;
+			}
+		}
+		if (!closed) {
+			constraint->solved = 0;
+			continue;
+		}
+		if (constraint->kind == PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_JOIN) {
+			unsigned joined = 0;
+			for (uint32_t j = 0; j < constraint->operand_count; ++j) {
+				joined |= operand_bits[j];
+			}
+			if (result != joined) {
 				return -1;
 			}
-		} else if (equation->kind == PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_RESIDUAL) {
-			if ((left & right) != right || result != (left & ~right)) {
+		} else if (constraint->kind ==
+			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_RESIDUAL) {
+			if (constraint->operand_count != 2 ||
+				(operand_bits[0] & operand_bits[1]) != operand_bits[1] ||
+				result != (operand_bits[0] & ~operand_bits[1])) {
+				return -1;
+			}
+		} else if (constraint->kind ==
+			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_INCLUSION) {
+			if (constraint->operand_count != 2 ||
+				(operand_bits[0] & operand_bits[1]) != operand_bits[0] ||
+				result != operand_bits[1]) {
 				return -1;
 			}
 		} else {
 			return -1;
 		}
-		equation->solved = 1;
+		constraint->solved = 1;
 	}
 	return 0;
 }
@@ -4437,7 +4481,7 @@ int prototype_judgement_expand_lambda(
 	struct prototype_judgement_proof proofs[4];
 	struct prototype_judgement_match_motive_result motives[1];
 	struct prototype_judgement_computation_constraint constraints[1];
-	struct prototype_judgement_effect_row_equation effect_rows[1];
+	struct prototype_judgement_effect_row_constraint effect_rows[1];
 	struct prototype_judgement_delta delta;
 	prototype_judgement_delta_init(
 		&delta, judgement, relations, proofs, 4, motives, 1, constraints, 1, effect_rows, 1
@@ -4590,7 +4634,7 @@ int prototype_judgement_expand_app(
 	struct prototype_judgement_proof proofs[64];
 	struct prototype_judgement_match_motive_result motives[1];
 	struct prototype_judgement_computation_constraint constraints[1];
-	struct prototype_judgement_effect_row_equation effect_rows[1];
+	struct prototype_judgement_effect_row_constraint effect_rows[1];
 	struct prototype_judgement_delta delta;
 	prototype_judgement_delta_init(
 		&delta, judgement, relations, proofs, 64, motives, 1, constraints, 1, effect_rows, 1
@@ -5498,6 +5542,7 @@ int prototype_judgement_delta_record_computation_constraint(
 	memset(&constraint, 0, sizeof(constraint));
 	constraint.context_id = context_id;
 	constraint.subject = subject;
+	constraint.effect_residual_pending = 0;
 	constraint.effect_residual_row = PROTOTYPE_INVALID_ID;
 	if (term->tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
 		constraint.kind = PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_FOLD;
@@ -5932,9 +5977,13 @@ static int solve_operation_request_constraint(
 		) != 0) {
 		return -1;
 	}
-	if (add_effect_row_equation(
-			delta, PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_UNION, constraint->subject,
-			effect_row, operation_view.effect_row, continuation_view.effect_row
+	uint32_t request_rows[2] = {
+		operation_view.effect_row,
+		continuation_view.effect_row
+	};
+	if (add_effect_row_constraint(
+			delta, PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_JOIN,
+			constraint->subject, effect_row, request_rows, 2
 		) != 0) {
 		return -1;
 	}
@@ -5981,6 +6030,7 @@ static int solve_clause_computation_fold_constraint(
 	uint32_t operation_classifiers[31];
 	uint32_t operation_domains[31];
 	struct prototype_term_classifier_view operation_views[31];
+	uint32_t handled_operation_rows[31];
 	uint32_t handled_operations_row;
 	if (prototype_term_effect_label(
 			terms, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &handled_operations_row
@@ -6026,7 +6076,18 @@ static int solve_clause_computation_fold_constraint(
 			) != 0) {
 			return -1;
 		}
+		handled_operation_rows[i] = operation_views[i].effect_row;
 		handled_operations_row = union_row;
+	}
+	if (add_effect_row_constraint(
+			delta,
+			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_JOIN,
+			constraint->subject,
+			handled_operations_row,
+			handled_operation_rows,
+			clause_count
+		) != 0) {
+		return -1;
 	}
 	struct prototype_term_classifier_view handled_operations_view = {
 		.category = PROTOTYPE_TERM_CATEGORY_COMPUTATION,
@@ -6042,28 +6103,19 @@ static int solve_clause_computation_fold_constraint(
 		return -1;
 	}
 	if (residual_status > 0) {
-		if (constraint->effect_residual_row == PROTOTYPE_INVALID_ID) {
-			uint32_t binder_id = prototype_term_fresh_binder(terms);
-			if (binder_id == PROTOTYPE_INVALID_ID ||
-				prototype_term_effect_row_var(
-					terms, binder_id, &constraint->effect_residual_row
-				) != 0) {
-				return -1;
-			}
-		}
-		if (add_effect_row_equation(
-				delta, PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_RESIDUAL,
-				constraint->subject, constraint->effect_residual_row,
-				input_view.effect_row, handled_operations_row
-			) != 0) {
-			return -1;
-		}
+		constraint->effect_residual_pending = 1;
+		constraint->effect_residual_row = PROTOTYPE_INVALID_ID;
 		return 1;
 	}
+	constraint->effect_residual_pending = 0;
 	constraint->effect_residual_row = residual_effect_row;
-	if (add_effect_row_equation(
-			delta, PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_RESIDUAL, constraint->subject,
-			residual_effect_row, input_view.effect_row, handled_operations_row
+	uint32_t residual_rows[2] = {
+		input_view.effect_row,
+		handled_operations_row
+	};
+	if (add_effect_row_constraint(
+			delta, PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_RESIDUAL,
+			constraint->subject, residual_effect_row, residual_rows, 2
 		) != 0) {
 		return -1;
 	}
@@ -6132,9 +6184,38 @@ static int solve_clause_computation_fold_constraint(
 		) != 0) {
 		return -1;
 	}
-	if (add_effect_row_equation(
-			delta, PROTOTYPE_JUDGEMENT_EFFECT_ROW_EQUATION_UNION, constraint->subject,
-			handled_effect_row, output_view.effect_row, residual_effect_row
+	uint32_t handled_rows[2] = {
+		output_view.effect_row,
+		residual_effect_row
+	};
+	if (add_effect_row_constraint(
+			delta, PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_JOIN,
+			constraint->subject, handled_effect_row, handled_rows, 2
+		) != 0) {
+		return -1;
+	}
+	uint32_t return_inclusion[2] = {
+		output_view.effect_row,
+		handled_effect_row
+	};
+	uint32_t residual_inclusion[2] = {
+		residual_effect_row,
+		handled_effect_row
+	};
+	if (add_effect_row_constraint(
+			delta,
+			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_INCLUSION,
+			constraint->subject,
+			handled_effect_row,
+			return_inclusion,
+			2
+		) != 0 || add_effect_row_constraint(
+			delta,
+			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_INCLUSION,
+			constraint->subject,
+			handled_effect_row,
+			residual_inclusion,
+			2
 		) != 0) {
 		return -1;
 	}
@@ -6400,7 +6481,7 @@ static int solve_computation_constraints(
 			}
 		}
 	}
-	return solve_effect_row_equations(delta, terms);
+	return solve_effect_row_constraints(delta, terms);
 }
 
 int prototype_judgement_delta_infer_computation_constraints(
@@ -9034,6 +9115,54 @@ int prototype_judgement_delta_record_context_reindex(
 	return -1;
 }
 
+int prototype_judgement_delta_record_effect_weaken(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t source_classifier,
+	uint32_t target_classifier
+) {
+	if (!delta || !terms || !type_declarations ||
+		subject >= terms->term_count || source_classifier >= terms->term_count ||
+		target_classifier >= terms->term_count) {
+		return -1;
+	}
+	struct prototype_term_classifier_view source;
+	struct prototype_term_classifier_view target;
+	unsigned source_effects;
+	unsigned target_effects;
+	if (prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, source_classifier, &source
+		) != 0 || prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, target_classifier, &target
+		) != 0 || source.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		target.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		source.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		target.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, source.result, target.result
+		) || prototype_term_effect_row_closed_bits(
+			terms, source.effect_row, &source_effects
+		) != 0 || prototype_term_effect_row_closed_bits(
+			terms, target.effect_row, &target_effects
+		) != 0 || (source_effects & target_effects) != source_effects) {
+		return -1;
+	}
+	uint32_t premise_subjects[1] = { subject };
+	uint32_t premise_classifiers[1] = { source_classifier };
+	return add_delta_relation_with_premises(
+		delta,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		target_classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN,
+		premise_subjects,
+		premise_classifiers,
+		1
+	);
+}
+
 int prototype_judgement_delta_record_type_formation(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -10407,6 +10536,47 @@ static int validate_conversion_proof(
 	return 0;
 }
 
+static int validate_effect_weaken_proof(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_relation* relation,
+	const struct prototype_judgement_proof* proof
+) {
+	if (!terms || !type_declarations || !relation || !proof ||
+		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		proof->premise_count != 1 ||
+		proof->premise_kinds[0] != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		proof->premise_subjects[0] != relation->subject ||
+		!term_exists(terms, relation->subject) ||
+		!term_exists(terms, relation->classifier) ||
+		!term_exists(terms, proof->premise_classifiers[0])) {
+		return -1;
+	}
+	struct prototype_term_classifier_view source;
+	struct prototype_term_classifier_view target;
+	unsigned source_effects;
+	unsigned target_effects;
+	if (prototype_judgement_classifier_view(
+			terms, type_declarations, NULL,
+			proof->premise_classifiers[0], &source
+		) != 0 || prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, relation->classifier, &target
+		) != 0 || source.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		target.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		source.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		target.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, source.result, target.result
+		) || prototype_term_effect_row_closed_bits(
+			terms, source.effect_row, &source_effects
+		) != 0 || prototype_term_effect_row_closed_bits(
+			terms, target.effect_row, &target_effects
+		) != 0 || (source_effects & target_effects) != source_effects) {
+		return -1;
+	}
+	return 0;
+}
+
 static int validate_declaration_proof(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -10558,7 +10728,7 @@ static int validate_assumption_proof(
 		struct prototype_judgement_proof delta_proofs[16];
 		struct prototype_judgement_match_motive_result match_motive_results[16];
 		struct prototype_judgement_computation_constraint computation_constraints[16];
-		struct prototype_judgement_effect_row_equation effect_row_equations[16];
+		struct prototype_judgement_effect_row_constraint effect_row_constraints[16];
 		struct prototype_judgement_db judgement_view = *judgement;
 		uint32_t type_id;
 		uint32_t arguments[64];
@@ -10628,7 +10798,7 @@ static int validate_assumption_proof(
 					16,
 					computation_constraints,
 					16,
-					effect_row_equations,
+					effect_row_constraints,
 					16
 					);
 			prototype_judgement_delta_set_context_store(
@@ -11769,6 +11939,13 @@ int prototype_judgement_validate_proofs(
 					return -1;
 				}
 				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN:
+				if (validate_effect_weaken_proof(
+						terms, type_declarations, relation, proof
+					) != 0) {
+					return -1;
+				}
+				break;
 			case PROTOTYPE_JUDGEMENT_PROOF_INVALID:
 				return -1;
 			default:
@@ -12011,6 +12188,8 @@ static const char* proof_kind_name(int proof_kind) {
 			return "pi-formation-intro";
 		case PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX:
 			return "context-reindex";
+		case PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN:
+			return "effect-weaken";
 		default:
 			return "invalid";
 	}
