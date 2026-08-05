@@ -71,8 +71,8 @@ Current relevant implementation facts:
 | 0 | Freeze implementation plan and baseline evidence | complete |
 | 1 | Make graph-level classifiers authoritative for operations | complete |
 | 2 | Validate thunk-encoded higher-order operation requests | partial, opaque handling proven |
-| 3 | Add inner-policy and resumption-multiplicity contracts | partial |
-| 4 | Separate runtime values from TermDB and add resource scopes | pending |
+| 3 | Add inner-policy and resumption-multiplicity contracts | complete for direct use |
+| 4 | Separate runtime values from TermDB and add resource scopes | partial: tagged values introduced |
 | 5 | Add File scoped borrowing and finalization | pending |
 | 6 | Add region non-escape and required multiplicity checks | pending |
 | 7 | Validate direct, runtime, artifact, and backend boundaries | pending |
@@ -273,12 +273,19 @@ ABORTIVE
 
 Work items:
 
-- [ ] type each clause continuation with its declared multiplicity;
-- [ ] reject continuation use for `ABORTIVE` operations;
-- [ ] reject more than one static use where a one-shot use count is decidable;
+- [x] type each clause continuation independently of whether it is used;
+- [x] reject direct continuation use for `ABORTIVE` operations;
+- [x] reject more than one direct source use for a one-shot continuation;
 - [x] add a consumed flag to runtime resumptions as a dynamic backstop;
-- [ ] retain unrestricted behavior only for `MULTI_SHOT`;
-- [ ] test aliases and plural clauses under each policy.
+- [x] retain unrestricted direct-use behavior only for `MULTI_SHOT`;
+- [x] test zero, one, and two direct uses under the three policies.
+
+The static check counts source OperationGraph edges, not shared Core TermDB
+nodes.  It saturates at two because the current contracts distinguish zero,
+one, and more-than-one use.  This is intentionally not claimed as a complete
+linear type system: capturing a continuation in another thunk and duplicating
+that thunk requires usage-aware value typing.  The runtime consumed flag
+remains the defensive one-shot check for paths the direct counter cannot prove.
 
 ## 8. Stage 4: Runtime Value and Resource Separation
 
@@ -294,6 +301,26 @@ RESUMPTION(resumption_id)
 
 Resumptions may remain a distinct binding kind internally, but a generic
 runtime value must not overload all three as an untagged `uint32_t`.
+
+Implementation status:
+
+- [x] introduce one tagged runtime-value representation for terms, resource
+      references, and resumptions;
+- [x] store the tagged value in runtime environments;
+- [x] carry tagged values as the operation-machine result and request argument;
+- [x] restrict TermDB binder substitution to `TERM` values;
+- [x] allow lambda and continuation entry to bind a generic runtime value;
+- [x] retain the public TermID evaluation API as an adapter which succeeds only
+      when the final runtime result is `TERM`;
+- [ ] permit `RESOURCE` arguments to cross a perform boundary without building
+      a TermDB `OPERATION_REQUEST`;
+- [ ] expose a resource-valued evaluation API to runtime backends.
+
+The first five completed items are a representation migration, not a claim
+that resources are executable.  The existing operation request reducer and
+host dispatcher still consume TermDB arguments.  A resource must not be
+encoded as a synthetic Term merely to satisfy those interfaces; Stage 4.2 and
+the runtime dispatch boundary must be completed instead.
 
 ### 8.2 Resource table
 
@@ -397,7 +424,7 @@ Every row requires direct and artifact-backed evidence where applicable.
 | Thunk operation | discard, once, repeated, explicit inner fold | pending |
 | Forwarding | unknown thunk request preserves argument | pending |
 | Effect rows | latent before force, union after force | pending |
-| Resumptions | one-shot rejects replay, multi-shot permits replay | pending |
+| Resumptions | direct one-shot replay rejected; multi-shot replay returns to clause | passed |
 | File success | read and close exactly once | pending |
 | File acquisition failure | no finalizer on failed acquisition | pending |
 | Lambda exit | File finalizer runs before exit reaches caller | pending |
@@ -421,6 +448,23 @@ Every row requires direct and artifact-backed evidence where applicable.
   resources.
 - No implementation stage is marked complete yet.
 
+### 2026-08-05: Tagged runtime-value boundary introduced
+
+- Replaced the runtime environment's independent `kind` and untyped `uint32_t`
+  payload with a single tagged value used by bindings, machine results, lambda
+  entry, resumptions, and pending request arguments.
+- Term instantiation now substitutes only `TERM(term_id)` bindings.  Resource
+  and resumption identities cannot be inserted into TermDB by that path.
+- Kept `prototype_operation_evaluate_with_trace` as a Term-result adapter so
+  existing callers retain their contract while the internal machine is no
+  longer term-only.
+- Confirmed the change with clean builds, the resumption multiplicity runtime
+  tests, and the artifact flow tests.
+- Discovered the next precise boundary: `PERFORM_ARGUMENT` still materializes
+  a TermDB request and the host dispatch callback accepts only Term IDs.
+  Resource-bearing requests must bypass that representation without weakening
+  the invariant that artifacts contain no live resource.
+
 ### 2026-08-05: Graph classifier milestone
 
 - Replaced effect-operation host argument/result arrays with classifier schema,
@@ -438,6 +482,25 @@ Every row requires direct and artifact-backed evidence where applicable.
 - Existing CBPV boundary tests passed after the graph change.  The complete
   prototype script suite, artifact flow, and examples 01-09 also pass.
 
+### 2026-08-05: Direct resumption multiplicity milestone
+
+- Corrected `#.scope_text` from `INNER_SCOPED` to `INNER_OPAQUE`; the current
+  deep fold treats its thunk argument opaquely and must not claim scoped inner
+  interpretation.
+- Added nominal one-shot and abortive test operations with separate effect
+  labels and the same thunk-argument classifier schema.
+- Derived the clause continuation classifier from the operation result and
+  handler return computation even when the continuation binder is unused.
+- Added a source OperationGraph continuation-use counter.  Multi-shot accepts
+  two direct uses, one-shot accepts one and rejects two, and abortive accepts
+  zero and rejects one.
+- Added a runtime resumption-return state.  Invoking a captured continuation
+  now restores the handler-clause environment, handler stack, and reduction
+  options after the captured continuation returns.  This makes sequential
+  multi-shot resumption return to the clause before the second use.
+- Added `test_resumption_multiplicity.sh`; it covers direct compilation,
+  negative static checks, runtime results, and artifact readback.
+
 ## 13. Deviations and Revised Decisions
 
 Record every implementation-driven design change here before marking the
@@ -450,19 +513,18 @@ review showed that a cache would create another authority and would not
 naturally participate in artifact reachability.  The operation node now owns a
 classifier edge instead.
 
-### 2026-08-05: Higher-order handling blocker refined
+### 2026-08-05: Higher-order handling blocker refined and resolved
 
-The request `perform (#.scope_text &M)` builds and type-checks.  A fold clause
-for `#.scope_text` does not yet type-check: clause solving strips the outer
-effect-row forall to inspect Pi, but does not instantiate that row against the
-clause argument's `Thunk(Comp(E,A))` classifier before constructing binder and
-continuation classifiers.  The failure occurs in
-`compile_phase_infer_general_classifiers`, before
-`solve_clause_computation_fold_constraint` runs.
+The request `perform (#.scope_text &M)` originally built and type-checked while
+its fold clause failed before clause solving.  The implementation now exposes
+classifier-only effect-row quantifiers before Pi decomposition, types unused
+operation and continuation binders from the handler algebra, and validates the
+resulting handler and artifact.
 
-This is not a representation failure and does not justify a new higher-order
-operation node.  Stage 2 remains partial until this row-specialization path is
-implemented and the discard/once/repeated/forwarding tests pass.
+This confirmed that the failure was not a representation failure and did not
+justify a new higher-order operation node.  Discard, one direct resumption, and
+repeated multi-shot resumption now pass.  Explicit scoped interpretation and
+unknown-operation forwarding remain Stage 2 work.
 
 ## 14. Completion Rule
 
