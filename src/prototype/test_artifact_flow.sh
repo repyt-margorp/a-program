@@ -167,7 +167,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 60$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 61$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -200,9 +200,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/60$/59/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v59.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v59.apo" >"$TMP_DIR/identity-v59.out" 2>"$TMP_DIR/identity-v59.err"; then
-	echo "obsolete artifact unexpectedly passed after v60 format bump" >&2
+sed '1s/61$/60/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v60.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v60.apo" >"$TMP_DIR/identity-v60.out" 2>"$TMP_DIR/identity-v60.err"; then
+	echo "obsolete artifact unexpectedly passed after v61 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -1826,7 +1826,7 @@ EOF_NAT_TO_TEXT_RUNTIME
 grep -q 'value main := RETURN(TEXT_LITERAL("1"))' "$TMP_DIR/nat-to-text-runtime-repl.out"
 
 cat >"$TMP_DIR/terminal-effect.p" <<'EOF_TERMINAL_EFFECT'
-main := perform (#.print #"hello");
+main := (#.print #"hello");
 EOF_TERMINAL_EFFECT
 ./read_file.out --write-artifact "$TMP_DIR/TerminalEffect.apo" \
 	"$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-artifact.out"

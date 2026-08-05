@@ -911,6 +911,31 @@ int prototype_operation_graph_add_fold_clause(
 	return 0;
 }
 
+static int term_is_saturated_effect_application(
+	const struct prototype_term_db* terms,
+	uint32_t term_id
+) {
+	uint32_t argument_count = 0;
+	uint32_t head = term_id;
+	if (!terms || term_id >= terms->term_count) {
+		return 0;
+	}
+	while (head < terms->term_count &&
+		terms->terms[head].tag == PROTOTYPE_TERM_APP) {
+		head = terms->terms[head].as.app.function;
+		argument_count++;
+	}
+	if (head >= terms->term_count ||
+		terms->terms[head].tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
+		return 0;
+	}
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_term_effect_operation_declaration(
+			terms->terms[head].as.effect_operation.operation_id
+		);
+	return declaration && argument_count >= declaration->arity;
+}
+
 int prototype_operation_graph_validate(
 	const struct prototype_operation_graph* graph,
 	const struct prototype_term_db* terms,
@@ -959,6 +984,7 @@ int prototype_operation_graph_validate(
 					terms, operation->core_term, &semantics
 				) != 0 ||
 				semantics.application_role != operation->application_role ||
+				term_is_saturated_effect_application(terms, operation->core_term) ||
 				(operation->application_role ==
 						PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION &&
 				 operation->polarity != PROTOTYPE_OPERATION_POLARITY_VALUE)) {
@@ -2407,7 +2433,7 @@ static int operation_runtime_machine_step_evaluate(
 		machine->current_operation = operation->argument;
 		return 0;
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_PERFORM) {
+	if (operation->tag == PROTOTYPE_OPERATION_REQUEST) {
 		if (operation->function >= machine->metadata->operation_count ||
 			operation->argument >= machine->metadata->operation_count ||
 			operation->body >= machine->metadata->operation_count ||
@@ -7339,7 +7365,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 60\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 61\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -7669,7 +7695,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 60) {
+		version != 61) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -12744,15 +12770,6 @@ int prototype_ast_block_lambda_exit(
 	return add_node(db, node, p_ret);
 }
 
-int prototype_ast_perform(
-	struct prototype_ast_db* db,
-	uint32_t application,
-	struct prototype_source_span span,
-	uint32_t* p_ret
-) {
-	return prototype_ast_unary(db, PROTOTYPE_AST_PERFORM, application, span, p_ret);
-}
-
 int prototype_ast_computation_fold(
 	struct prototype_ast_db* db,
 	uint32_t computation,
@@ -14290,7 +14307,7 @@ static void operation_default_semantics(
 		case PROTOTYPE_OPERATION_RETURN:
 		case PROTOTYPE_OPERATION_MATCH:
 		case PROTOTYPE_OPERATION_FORCE:
-		case PROTOTYPE_OPERATION_PERFORM:
+		case PROTOTYPE_OPERATION_REQUEST:
 		case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
 		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
 			*p_polarity = COMPILE_REF_POLARITY_COMPUTATION;
@@ -19037,12 +19054,6 @@ static int compile_ast_constructor_application_value_ref(
 	struct compile_ref* p_ret
 );
 
-static int compile_ast_operation_spine_computation_ref(
-	struct compile_context* ctx,
-	uint32_t ast_id,
-	struct compile_ref* p_ret
-);
-
 static int compile_ast_computation_control_ref(
 	struct compile_context* ctx,
 	uint32_t ast_id,
@@ -19057,9 +19068,12 @@ static int compile_ast_application_computation_ref(
 	struct compile_ref* p_ret
 );
 
-static int ast_application_head_is_system_callable(
-	const struct compile_context* ctx,
-	uint32_t ast_id
+static int compile_ref_make_operation_request(
+	struct compile_context* ctx,
+	const struct compile_ref* operation,
+	const struct compile_ref* argument,
+	uint32_t source_ast,
+	struct compile_ref* p_ret
 );
 
 static int ast_application_head_is_constructor(
@@ -19332,7 +19346,7 @@ static int compile_ref_thunk_computation_kind(
 		&ctx->metadata->operations[operation_id];
 	switch (computation->tag) {
 		case PROTOTYPE_OPERATION_RETURN:
-		case PROTOTYPE_OPERATION_PERFORM:
+		case PROTOTYPE_OPERATION_REQUEST:
 		case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
 			return COMPILE_REF_COMPUTATION_KIND_RETURNING;
 		case PROTOTYPE_OPERATION_LAMBDA:
@@ -19530,25 +19544,6 @@ static int term_app_head_is_constructor(
 	) == 0;
 }
 
-static int ast_application_head_is_system_callable(
-	const struct compile_context* ctx,
-	uint32_t ast_id
-) {
-	if (!ctx || !ctx->asts || ast_id >= ctx->asts->node_count) {
-		return 0;
-	}
-	while (ctx->asts->nodes[ast_id].tag == PROTOTYPE_AST_APP) {
-		ast_id = ctx->asts->nodes[ast_id].as.app.function;
-		if (ast_id >= ctx->asts->node_count) {
-			return 0;
-		}
-	}
-	const struct prototype_ast_node* head = &ctx->asts->nodes[ast_id];
-	return head->tag == PROTOTYPE_AST_SYSTEM_NAME &&
-		(head->as.system_name.kind == PROTOTYPE_AST_SYSTEM_NAME_PURE_PRIMITIVE ||
-			head->as.system_name.kind == PROTOTYPE_AST_SYSTEM_NAME_EFFECT_OPERATION);
-}
-
 static int ast_application_head_is_constructor(
 	const struct compile_context* ctx,
 	uint32_t ast_id
@@ -19585,13 +19580,70 @@ static int compile_ast_function_ref(
 	switch (node->tag) {
 		case PROTOTYPE_AST_APP:
 		case PROTOTYPE_AST_LAMBDA:
-		case PROTOTYPE_AST_NAME:
 		case PROTOTYPE_AST_MATCH:
 		case PROTOTYPE_AST_INDUCTION_HYPOTHESIS:
 			return compile_ast_computation_ref(ctx, ast_id, p_ret);
 		default:
 			return compile_ast_ref(ctx, ast_id, p_ret);
 	}
+}
+
+enum compile_intrinsic_spine_kind {
+	COMPILE_INTRINSIC_SPINE_NONE = 0,
+	COMPILE_INTRINSIC_SPINE_PURE_PRIMITIVE,
+	COMPILE_INTRINSIC_SPINE_EFFECT_OPERATION
+};
+
+static int compile_intrinsic_spine_info(
+	const struct prototype_term_db* terms,
+	uint32_t term_id,
+	int* p_kind,
+	uint32_t* p_argument_count,
+	uint32_t* p_declared_arity
+) {
+	if (!terms || !p_kind || !p_argument_count || !p_declared_arity ||
+		term_id >= terms->term_count) {
+		return -1;
+	}
+	uint32_t argument_count = 0;
+	while (term_id < terms->term_count &&
+		terms->terms[term_id].tag == PROTOTYPE_TERM_APP) {
+		term_id = terms->terms[term_id].as.app.function;
+		argument_count++;
+	}
+	if (term_id >= terms->term_count) {
+		return -1;
+	}
+	if (terms->terms[term_id].tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
+		const struct prototype_pure_primitive_declaration* declaration =
+			prototype_term_pure_primitive_declaration(
+				terms->terms[term_id].as.pure_primitive.primitive_id
+			);
+		if (!declaration) {
+			return -1;
+		}
+		*p_kind = COMPILE_INTRINSIC_SPINE_PURE_PRIMITIVE;
+		*p_argument_count = argument_count;
+		*p_declared_arity = declaration->arity;
+		return 0;
+	}
+	if (terms->terms[term_id].tag == PROTOTYPE_TERM_EFFECT_OPERATION) {
+		const struct prototype_effect_operation_declaration* declaration =
+			prototype_term_effect_operation_declaration(
+				terms->terms[term_id].as.effect_operation.operation_id
+			);
+		if (!declaration) {
+			return -1;
+		}
+		*p_kind = COMPILE_INTRINSIC_SPINE_EFFECT_OPERATION;
+		*p_argument_count = argument_count;
+		*p_declared_arity = declaration->arity;
+		return 0;
+	}
+	*p_kind = COMPILE_INTRINSIC_SPINE_NONE;
+	*p_argument_count = argument_count;
+	*p_declared_arity = 0;
+	return 0;
 }
 
 static int compile_application_make_computation(
@@ -19602,6 +19654,9 @@ static int compile_application_make_computation(
 	struct compile_ref* p_ret
 ) {
 	struct compile_ref applied_function;
+	int intrinsic_kind;
+	uint32_t intrinsic_argument_count;
+	uint32_t intrinsic_arity;
 	uint32_t term;
 	if (!ctx || !function || !argument || !p_ret) {
 		return -1;
@@ -19622,6 +19677,48 @@ static int compile_application_make_computation(
 		value.polarity = COMPILE_REF_POLARITY_VALUE;
 		value.computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
 		return compile_ref_make_return(ctx, &value, source_ast, p_ret);
+	}
+	if (compile_intrinsic_spine_info(
+			ctx->terms,
+			function->term,
+			&intrinsic_kind,
+			&intrinsic_argument_count,
+			&intrinsic_arity
+		) != 0 || (intrinsic_kind != COMPILE_INTRINSIC_SPINE_NONE &&
+			intrinsic_argument_count >= intrinsic_arity)) {
+		return -1;
+	}
+	if (intrinsic_kind == COMPILE_INTRINSIC_SPINE_EFFECT_OPERATION &&
+		intrinsic_argument_count + 1 == intrinsic_arity) {
+		return compile_ref_make_operation_request(
+			ctx, function, argument, source_ast, p_ret
+		);
+	}
+	if (intrinsic_kind != COMPILE_INTRINSIC_SPINE_NONE) {
+		if (compile_shared_app(ctx, function->term, argument->term, &term) != 0) {
+			return -1;
+		}
+		p_ret->term = term;
+		p_ret->classifier = PROTOTYPE_INVALID_ID;
+		if (function->classifier != PROTOTYPE_INVALID_ID &&
+			argument->classifier != PROTOTYPE_INVALID_ID &&
+			operation_apply_classifier(
+				ctx,
+				function->classifier,
+				argument->classifier,
+				argument->term,
+				&p_ret->classifier
+			) != 0) {
+			return -1;
+		}
+		p_ret->polarity = COMPILE_REF_POLARITY_COMPUTATION;
+		p_ret->computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
+		return operation_add(
+			ctx, PROTOTYPE_OPERATION_APP, term, p_ret->classifier,
+			source_ast, function->operation, argument->operation,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID, 0, &p_ret->operation
+		);
 	}
 	applied_function = *function;
 	if (function->polarity == COMPILE_REF_POLARITY_VALUE) {
@@ -19849,8 +19946,6 @@ static int ast_lambda_exit_presence_in(
 			);
 		case PROTOTYPE_AST_ASCRIPTION:
 			return ast_lambda_exit_presence_in(asts, node->as.ascription.term);
-		case PROTOTYPE_AST_PERFORM:
-			return ast_lambda_exit_presence_in(asts, node->as.unary.term);
 		case PROTOTYPE_AST_QUOTE:
 			return ast_lambda_exit_presence_in(asts, node->as.unary.term) ==
 				AST_LAMBDA_EXIT_NONE ? AST_LAMBDA_EXIT_NONE :
@@ -20064,7 +20159,6 @@ static int compile_ast_value_ref(
 			node->tag == PROTOTYPE_AST_BLOCK_BINDING ||
 			node->tag == PROTOTYPE_AST_BLOCK_EXPRESSION ||
 			node->tag == PROTOTYPE_AST_BLOCK_LAMBDA_EXIT ||
-		node->tag == PROTOTYPE_AST_PERFORM ||
 		node->tag == PROTOTYPE_AST_COMPUTATION_FOLD ||
 		node->tag == PROTOTYPE_AST_INDUCTION_HYPOTHESIS) {
 		return 1;
@@ -20388,214 +20482,13 @@ static int compile_ast_match_ref(
 	);
 }
 
-struct compile_operation_spine_function_context {
-	uint32_t argument_ast;
-	uint32_t source_ast;
-	const struct compile_value_continuation* continuation;
-};
-
-struct compile_operation_spine_argument_context {
-	struct compile_ref function;
-	uint32_t source_ast;
-	const struct compile_value_continuation* continuation;
-};
-
-static int compile_ast_operation_spine_then(
+static int compile_ref_make_operation_request(
 	struct compile_context* ctx,
-	uint32_t ast_id,
-	const struct compile_value_continuation* continuation,
-	struct compile_ref* p_ret
-);
-
-static int compile_operation_spine_argument_continuation(
-	struct compile_context* ctx,
+	const struct compile_ref* operation,
 	const struct compile_ref* argument,
-	void* data,
+	uint32_t source_ast,
 	struct compile_ref* p_ret
 ) {
-	const struct compile_operation_spine_argument_context* context = data;
-	struct compile_ref application;
-	uint32_t term;
-	if (!ctx || !argument || !context || !context->continuation || !p_ret ||
-		compile_shared_app(ctx, context->function.term, argument->term, &term) != 0) {
-		return -1;
-	}
-	application.term = term;
-	application.classifier = PROTOTYPE_INVALID_ID;
-	application.polarity = COMPILE_REF_POLARITY_VALUE;
-	application.computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
-	if (context->function.classifier != PROTOTYPE_INVALID_ID &&
-		argument->classifier != PROTOTYPE_INVALID_ID &&
-		operation_apply_classifier(
-			ctx,
-			context->function.classifier,
-			argument->classifier,
-			argument->term,
-			&application.classifier
-		) != 0) {
-		return -1;
-	}
-	if (operation_add(
-			ctx, PROTOTYPE_OPERATION_APP, term, PROTOTYPE_INVALID_ID,
-			context->source_ast, context->function.operation, argument->operation,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
-			PROTOTYPE_INVALID_ID, 0, &application.operation
-		) != 0) {
-		return -1;
-	}
-	return context->continuation->apply(
-		ctx, &application, context->continuation->data, p_ret
-	);
-}
-
-static int compile_operation_spine_function_continuation(
-	struct compile_context* ctx,
-	const struct compile_ref* function,
-	void* data,
-	struct compile_ref* p_ret
-) {
-	const struct compile_operation_spine_function_context* function_context = data;
-	struct compile_operation_spine_argument_context argument_context;
-	struct compile_value_continuation argument_continuation = { 0 };
-	if (!ctx || !function || !function_context || !p_ret) {
-		return -1;
-	}
-	argument_context.function = *function;
-	argument_context.source_ast = function_context->source_ast;
-	argument_context.continuation = function_context->continuation;
-	argument_continuation.apply = compile_operation_spine_argument_continuation;
-	argument_continuation.data = &argument_context;
-	return compile_ast_runtime_value_then(
-		ctx, function_context->argument_ast, &argument_continuation, p_ret
-	);
-}
-
-/* An intrinsic application consumes values like every other CBPV function.
- * Its arguments may therefore be computations which are sequenced before the
- * shared APP spine is constructed. */
-static int compile_ast_operation_spine_then(
-	struct compile_context* ctx,
-	uint32_t ast_id,
-	const struct compile_value_continuation* continuation,
-	struct compile_ref* p_ret
-) {
-	const struct prototype_ast_node* node;
-	if (!ctx || !continuation || !continuation->apply || !p_ret ||
-		ast_id >= ctx->asts->node_count) {
-		return -1;
-	}
-	node = &ctx->asts->nodes[ast_id];
-	if (node->tag == PROTOTYPE_AST_SYSTEM_NAME) {
-		struct compile_ref operation;
-		if ((node->as.system_name.kind != PROTOTYPE_AST_SYSTEM_NAME_PURE_PRIMITIVE &&
-				node->as.system_name.kind != PROTOTYPE_AST_SYSTEM_NAME_EFFECT_OPERATION) ||
-			compile_ast_value_ref(ctx, ast_id, &operation) != 0) {
-			return -1;
-		}
-		return continuation->apply(ctx, &operation, continuation->data, p_ret);
-	}
-	if (node->tag == PROTOTYPE_AST_APP) {
-		struct compile_operation_spine_function_context function_context = {
-			node->as.app.argument, ast_id, continuation
-		};
-		struct compile_value_continuation function_continuation = {
-			.apply = compile_operation_spine_function_continuation,
-			.data = &function_context
-		};
-		return compile_ast_operation_spine_then(
-			ctx, node->as.app.function, &function_continuation, p_ret
-		);
-	}
-	return -1;
-}
-
-static int compile_operation_spine_computation_continuation(
-	struct compile_context* ctx,
-	const struct compile_ref* application,
-	void* data,
-	struct compile_ref* p_ret
-) {
-	struct prototype_term_classifier_view view;
-	uint32_t head;
-	uint32_t argument_count;
-	uint32_t declared_arity;
-	(void)data;
-	if (!ctx || !application || !p_ret) {
-		return -1;
-	}
-	head = application->term;
-	argument_count = 0;
-	while (head < ctx->terms->term_count &&
-		ctx->terms->terms[head].tag == PROTOTYPE_TERM_APP) {
-		head = ctx->terms->terms[head].as.app.function;
-		argument_count++;
-	}
-	if (head >= ctx->terms->term_count) {
-		return -1;
-	}
-	if (ctx->terms->terms[head].tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
-		const struct prototype_pure_primitive_declaration* declaration =
-			prototype_term_pure_primitive_declaration(
-				ctx->terms->terms[head].as.pure_primitive.primitive_id
-			);
-		if (!declaration) {
-			return -1;
-		}
-		declared_arity = declaration->arity;
-	} else if (ctx->terms->terms[head].tag == PROTOTYPE_TERM_EFFECT_OPERATION) {
-		const struct prototype_effect_operation_declaration* declaration =
-			prototype_term_effect_operation_declaration(
-				ctx->terms->terms[head].as.effect_operation.operation_id
-			);
-		if (!declaration) {
-			return -1;
-		}
-		declared_arity = declaration->arity;
-	} else {
-		return -1;
-	}
-	if (argument_count != declared_arity) {
-		return -1;
-	}
-	/* A binder introduced by an enclosing computation fold can be the missing premise for
-	 * this application. Preserve the computation occurrence for the constraint
-	 * solver instead of requiring its result classifier during graph building. */
-	if (application->classifier != PROTOTYPE_INVALID_ID &&
-		(prototype_judgement_classifier_view(
-			ctx->terms, ctx->type_declarations, NULL, application->classifier, &view
-		) != 0 || view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION)) {
-		return -1;
-	}
-	*p_ret = *application;
-	p_ret->polarity = COMPILE_REF_POLARITY_COMPUTATION;
-	p_ret->computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
-	return 0;
-}
-
-static int compile_ast_operation_spine_computation_ref(
-	struct compile_context* ctx,
-	uint32_t ast_id,
-	struct compile_ref* p_ret
-) {
-	struct compile_value_continuation continuation = {
-		.apply = compile_operation_spine_computation_continuation,
-		.data = NULL
-	};
-	return compile_ast_operation_spine_then(ctx, ast_id, &continuation, p_ret);
-}
-
-struct compile_perform_argument_context {
-	struct compile_ref operation;
-	uint32_t source_ast;
-};
-
-static int compile_perform_argument_continuation(
-	struct compile_context* ctx,
-	const struct compile_ref* argument,
-	void* data,
-	struct compile_ref* p_ret
-) {
-	struct compile_perform_argument_context* context = data;
 	uint32_t binder_id;
 	uint32_t binder_var;
 	uint32_t result;
@@ -20616,11 +20509,11 @@ static int compile_perform_argument_continuation(
 	struct compile_ref result_variable;
 	struct compile_ref result_return;
 	uint32_t continuation_operation;
-	if (!ctx || !argument || !context || !p_ret ||
-		context->operation.classifier == PROTOTYPE_INVALID_ID ||
+	if (!ctx || !operation || !argument || !p_ret ||
+		operation->classifier == PROTOTYPE_INVALID_ID ||
 		operation_apply_classifier_unchecked(
 			ctx,
-			context->operation.classifier,
+			operation->classifier,
 			argument->term,
 			&application_classifier
 		) != 0 ||
@@ -20648,7 +20541,7 @@ static int compile_perform_argument_continuation(
 		prototype_term_lambda(ctx->terms, binder_id, result, &continuation) != 0 ||
 		prototype_term_thunk(ctx->terms, continuation, &continuation_thunk) != 0 ||
 		prototype_term_operation_request(
-			ctx->terms, context->operation.term, argument->term, continuation_thunk, &request
+			ctx->terms, operation->term, argument->term, continuation_thunk, &request
 		) != 0) {
 		return -1;
 	}
@@ -20692,11 +20585,11 @@ static int compile_perform_argument_continuation(
 	if (operation_add(
 			ctx, PROTOTYPE_OPERATION_VAR, canonical_result_variable,
 			application_view.result,
-			context->source_ast, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
+			source_ast, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_INVALID_ID, 0, &result_variable.operation
 		) != 0 || compile_ref_make_return(
-			ctx, &result_variable, context->source_ast, &result_return
+			ctx, &result_variable, source_ast, &result_return
 		) != 0) {
 		ctx->context_ids[ctx->binder_count] = parent_context_id;
 		return -1;
@@ -20704,7 +20597,7 @@ static int compile_perform_argument_continuation(
 	ctx->context_ids[ctx->binder_count] = parent_context_id;
 	if (operation_add(
 			ctx, PROTOTYPE_OPERATION_LAMBDA, continuation, continuation_classifier,
-			context->source_ast, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
+			source_ast, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			result_return.operation, PROTOTYPE_INVALID_ID, application_view.result,
 			PROTOTYPE_INVALID_ID, 0, &continuation_operation
 		) != 0) {
@@ -20716,68 +20609,17 @@ static int compile_perform_argument_continuation(
 	p_ret->computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
 	if (operation_add(
 			ctx, PROTOTYPE_OPERATION_THUNK, continuation_thunk, PROTOTYPE_INVALID_ID,
-			context->source_ast, PROTOTYPE_INVALID_ID, continuation_operation,
+			source_ast, PROTOTYPE_INVALID_ID, continuation_operation,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_INVALID_ID, 0, &continuation_operation
 		) != 0) {
 		return -1;
 	}
 	return operation_add(
-		ctx, PROTOTYPE_OPERATION_PERFORM, request, application_classifier,
-		context->source_ast, context->operation.operation, argument->operation,
+		ctx, PROTOTYPE_OPERATION_REQUEST, request, application_classifier,
+		source_ast, operation->operation, argument->operation,
 		continuation_operation, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 		PROTOTYPE_INVALID_ID, 0, &p_ret->operation
-	);
-}
-
-struct compile_perform_operation_context {
-	uint32_t argument_ast;
-	uint32_t source_ast;
-};
-
-static int compile_perform_operation_continuation(
-	struct compile_context* ctx,
-	const struct compile_ref* operation,
-	void* data,
-	struct compile_ref* p_ret
-) {
-	const struct compile_perform_operation_context* operation_context = data;
-	struct compile_perform_argument_context argument_context;
-	struct compile_value_continuation argument_continuation = { 0 };
-	if (!ctx || !operation || !operation_context || !p_ret) {
-		return -1;
-	}
-	argument_context.operation = *operation;
-	argument_context.source_ast = operation_context->source_ast;
-	argument_continuation.apply = compile_perform_argument_continuation;
-	argument_continuation.data = &argument_context;
-	return compile_ast_runtime_value_then(
-		ctx, operation_context->argument_ast, &argument_continuation, p_ret
-	);
-}
-
-static int compile_ast_perform_ref(
-	struct compile_context* ctx,
-	uint32_t ast_id,
-	const struct prototype_ast_node* node,
-	struct compile_ref* p_ret
-) {
-	if (!ctx || !node || !p_ret || node->tag != PROTOTYPE_AST_PERFORM ||
-		node->as.unary.term >= ctx->asts->node_count ||
-		ctx->asts->nodes[node->as.unary.term].tag != PROTOTYPE_AST_APP) {
-		return -1;
-	}
-	const struct prototype_ast_node* operand =
-		&ctx->asts->nodes[node->as.unary.term];
-	struct compile_perform_operation_context operation_context = {
-		operand->as.app.argument, ast_id
-	};
-	struct compile_value_continuation operation_continuation = {
-		.apply = compile_perform_operation_continuation,
-		.data = &operation_context
-	};
-	return compile_ast_operation_spine_then(
-		ctx, operand->as.app.function, &operation_continuation, p_ret
 	);
 }
 
@@ -21391,9 +21233,6 @@ static int compile_ast_computation_ref(
 			ctx, ast_id, node, 0, node->as.block.result_item_index, p_ret
 		);
 	}
-	if (node->tag == PROTOTYPE_AST_PERFORM) {
-		return compile_ast_perform_ref(ctx, ast_id, node, p_ret);
-	}
 	if (node->tag == PROTOTYPE_AST_COMPUTATION_FOLD) {
 		return compile_ast_computation_fold_ref(ctx, node, ast_id, p_ret);
 	}
@@ -21426,17 +21265,6 @@ static int compile_ast_computation_ref(
 		return compile_ast_lambda_computation_ref(ctx, node, ast_id, p_ret);
 	}
 	if (node->tag == PROTOTYPE_AST_APP) {
-		if (ast_application_head_is_system_callable(ctx, ast_id)) {
-			struct compile_ref operation_spine;
-			if (compile_ast_operation_spine_computation_ref(
-					ctx, ast_id, &operation_spine
-				) != 0) {
-				return -1;
-			}
-			operation_spine.polarity = COMPILE_REF_POLARITY_COMPUTATION;
-			*p_ret = operation_spine;
-			return 0;
-		}
 		if (ast_application_head_is_constructor(ctx, ast_id)) {
 			struct compile_value_continuation continuation = {
 				.apply = compile_return_continuation,
@@ -23188,7 +23016,7 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 			base_constraint_kind = OPERATION_CONSTRAINT_CBPV_BOUNDARY;
 		} else if (operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD) {
 			base_constraint_kind = OPERATION_CONSTRAINT_COMPUTATION_FOLD_RESULT;
-		} else if (operation->tag == PROTOTYPE_OPERATION_PERFORM) {
+		} else if (operation->tag == PROTOTYPE_OPERATION_REQUEST) {
 			base_constraint_kind = OPERATION_CONSTRAINT_OPERATION_REQUEST_RESULT;
 		}
 		if (operation->classifier_variable != i || operation_solver_add_constraint(
@@ -25522,7 +25350,7 @@ static int operation_subtree_ast_binder_use_count(
 		case PROTOTYPE_OPERATION_RETURN:
 		case PROTOTYPE_OPERATION_THUNK:
 		case PROTOTYPE_OPERATION_FORCE:
-		case PROTOTYPE_OPERATION_PERFORM:
+		case PROTOTYPE_OPERATION_REQUEST:
 			children[child_count++] = operation->argument;
 			break;
 		case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
@@ -25626,7 +25454,7 @@ static int operation_subtree_references_ast_binder(
 		case PROTOTYPE_OPERATION_RETURN:
 		case PROTOTYPE_OPERATION_THUNK:
 		case PROTOTYPE_OPERATION_FORCE:
-		case PROTOTYPE_OPERATION_PERFORM:
+		case PROTOTYPE_OPERATION_REQUEST:
 			children[child_count++] = operation->argument;
 			break;
 		case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
@@ -25752,7 +25580,7 @@ static int operation_subtree_contains_operation(
 		case PROTOTYPE_OPERATION_RETURN:
 		case PROTOTYPE_OPERATION_THUNK:
 		case PROTOTYPE_OPERATION_FORCE:
-		case PROTOTYPE_OPERATION_PERFORM:
+		case PROTOTYPE_OPERATION_REQUEST:
 			children[child_count++] = operation->argument;
 			break;
 		case PROTOTYPE_OPERATION_MATCH:
@@ -27311,7 +27139,7 @@ static int operation_solver_reify_core_proof(
 			premise_terms[1] = term->as.computation_fold.return_clause;
 			premise_classifiers[0] = computation->classifier;
 			premise_classifiers[1] = return_operation->classifier;
-			if (computation->tag == PROTOTYPE_OPERATION_PERFORM) {
+			if (computation->tag == PROTOTYPE_OPERATION_REQUEST) {
 				int proven_status = operation_solver_lookup_proven_classifier(
 					ctx,
 					premise_terms[0],
@@ -27504,7 +27332,7 @@ static int operation_solver_reify_core_proof(
 		case PROTOTYPE_OPERATION_ASCRIPTION:
 		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
 			return 0;
-		case PROTOTYPE_OPERATION_PERFORM:
+		case PROTOTYPE_OPERATION_REQUEST:
 			if (term->tag != PROTOTYPE_TERM_OPERATION_REQUEST ||
 				operation->function >= ctx->metadata->operation_count ||
 				operation->argument >= ctx->metadata->operation_count) {
@@ -27669,7 +27497,7 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 				operation->tag == PROTOTYPE_OPERATION_THUNK ||
 				operation->tag == PROTOTYPE_OPERATION_FORCE ||
 				operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD ||
-				operation->tag == PROTOTYPE_OPERATION_PERFORM) {
+				operation->tag == PROTOTYPE_OPERATION_REQUEST) {
 				int reify_status = operation_solver_reify_core_proof(
 					ctx, i, operation->core_term, 0
 				);
@@ -27923,7 +27751,7 @@ static int operation_solver_generate_computation_constraints(
 		const struct prototype_operation_node* operation =
 			&ctx->metadata->operations[i];
 		if (operation->tag != PROTOTYPE_OPERATION_COMPUTATION_FOLD &&
-			operation->tag != PROTOTYPE_OPERATION_PERFORM) {
+			operation->tag != PROTOTYPE_OPERATION_REQUEST) {
 			continue;
 		}
 		int status = prototype_judgement_delta_record_computation_constraint(
@@ -28023,7 +27851,7 @@ static int bind_cbpv_operation_classifiers(
 			case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
 				expected_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM;
 				break;
-			case PROTOTYPE_OPERATION_PERFORM:
+			case PROTOTYPE_OPERATION_REQUEST:
 				expected_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO;
 				break;
 			default:
@@ -28089,7 +27917,7 @@ static int bind_cbpv_operation_classifiers(
 							proof->premise_subjects[3 + 2 * i] == clause->body;
 					}
 				}
-				} else if (operation->tag == PROTOTYPE_OPERATION_PERFORM) {
+				} else if (operation->tag == PROTOTYPE_OPERATION_REQUEST) {
 					const struct prototype_term* request =
 						&ctx->terms->terms[operation->core_term];
 					matches = proof->premise_count == 3 &&
@@ -28116,7 +27944,7 @@ static int bind_cbpv_operation_classifiers(
 							ctx->metadata->operations[operation->body].core_term;
 				}
 			if (matches) {
-				if (operation->tag == PROTOTYPE_OPERATION_PERFORM ||
+				if (operation->tag == PROTOTYPE_OPERATION_REQUEST ||
 					operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD) {
 					/* Later fixed-point derivations supersede earlier provisional
 					 * derivations for this source occurrence. Publish only once. */
@@ -28802,7 +28630,7 @@ static void compile_metadata_refresh_runtime_capabilities(
 			terms->terms[operation->core_term].as.computation_fold.clause_count != 0) {
 			capabilities |= PROTOTYPE_RUNTIME_CAPABILITY_HANDLER;
 		}
-		if (operation->tag != PROTOTYPE_OPERATION_PERFORM ||
+		if (operation->tag != PROTOTYPE_OPERATION_REQUEST ||
 			operation->core_term >= terms->term_count ||
 			terms->terms[operation->core_term].tag != PROTOTYPE_TERM_OPERATION_REQUEST) {
 			continue;

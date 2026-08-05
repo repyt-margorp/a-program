@@ -49,8 +49,6 @@ static const char* ast_tag_name(int tag) {
 			return "block-expression";
 		case PROTOTYPE_AST_BLOCK_LAMBDA_EXIT:
 			return "block-lambda-exit";
-		case PROTOTYPE_AST_PERFORM:
-			return "perform";
 		case PROTOTYPE_AST_COMPUTATION_FOLD:
 			return "computation-fold";
 		default:

@@ -1,1 +1,1 @@
-main := perform (#.scope_text &(perform (#.print #"inner")));
+main := (#.scope_text &((#.print #"inner")));

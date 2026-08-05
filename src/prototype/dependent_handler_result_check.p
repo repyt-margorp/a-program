@@ -2,7 +2,7 @@ Bool := @{ true : *; false : *; };
 Nat := @{ zero : *; succ : * -> *; };
 
 m := {
-	x : #.Text := perform (#.print #"x");
+	x : #.Text := (#.print #"x");
 	Bool.true;
 };
 

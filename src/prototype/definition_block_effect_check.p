@@ -1,3 +1,3 @@
 {{
-	main := { perform (#.print #"definition-entry"); };
+	main := { (#.print #"definition-entry"); };
 }}.main

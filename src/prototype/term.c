@@ -5455,7 +5455,7 @@ static int reduce_host_pure_primitive_step(
 	unsigned depth
 );
 
-static int perform_operation_request_step(
+static int dispatch_operation_request_step(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
@@ -6286,7 +6286,7 @@ static int evaluate_steps(
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			if (options.operation_dispatch ||
 				(options.flags & PROTOTYPE_TERM_PERFORM_HOST_EFFECT) != 0) {
-				return perform_operation_request_step(
+				return dispatch_operation_request_step(
 					db, type_declarations, definitions, options, term_id, p_ret, depth - 1
 				);
 			}
@@ -7854,7 +7854,7 @@ static int default_host_effect_dispatch(
 	return 1;
 }
 
-static int perform_operation_request_step(
+static int dispatch_operation_request_step(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,

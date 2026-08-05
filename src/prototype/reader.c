@@ -423,15 +423,6 @@ static struct prototype_source_span current_span(const struct parser* parser) {
 	return span;
 }
 
-static int current_is_keyword(const struct parser* parser, const char* keyword) {
-	const char* name;
-	if (!parser || !keyword || parser->current.kind != TOKEN_IDENT) {
-		return 0;
-	}
-	name = symbol_to_string(parser->program->symbols, parser->current.symbol_id);
-	return name && strcmp(name, keyword) == 0;
-}
-
 static int parse_type_expr(struct parser* parser, uint32_t* p_ret);
 static int parse_term(struct parser* parser, uint32_t* p_ret);
 static int parse_case_body(struct parser* parser, uint32_t* p_ret);
@@ -1916,20 +1907,7 @@ static int parse_bare_lambda_term(struct parser* parser, uint32_t* p_ret) {
 
 static int parse_term(struct parser* parser, uint32_t* p_ret) {
 	struct prototype_source_span span = current_span(parser);
-	if (current_is_keyword(parser, "perform")) {
-		uint32_t operand;
-		uint32_t result;
-		if (read_token(parser) != 0 || parse_term(parser, &operand) != 0) {
-			return -1;
-		}
-		if (prototype_ast_perform(
-				parser->program->asts, operand, span, &result
-			) != 0) {
-			set_error(parser, "AST table is full");
-			return -1;
-		}
-		*p_ret = result;
-	} else if (parser->current.kind == TOKEN_BACKSLASH) {
+	if (parser->current.kind == TOKEN_BACKSLASH) {
 		if (parse_lambda_term(parser, p_ret) != 0) {
 			return -1;
 		}

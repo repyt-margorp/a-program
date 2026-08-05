@@ -32,7 +32,6 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_BLOCK_BINDING,
 	PROTOTYPE_AST_BLOCK_EXPRESSION,
 	PROTOTYPE_AST_BLOCK_LAMBDA_EXIT,
-	PROTOTYPE_AST_PERFORM,
 	PROTOTYPE_AST_COMPUTATION_FOLD
 };
 
@@ -363,7 +362,7 @@ enum prototype_operation_tag {
 	PROTOTYPE_OPERATION_RETURN,
 	PROTOTYPE_OPERATION_THUNK,
 	PROTOTYPE_OPERATION_FORCE,
-	PROTOTYPE_OPERATION_PERFORM,
+	PROTOTYPE_OPERATION_REQUEST,
 	PROTOTYPE_OPERATION_COMPUTATION_FOLD
 };
 
@@ -1252,12 +1251,6 @@ int prototype_ast_block_expression(
 int prototype_ast_block_lambda_exit(
 	struct prototype_ast_db* db,
 	uint32_t value,
-	struct prototype_source_span span,
-	uint32_t* p_ret
-);
-int prototype_ast_perform(
-	struct prototype_ast_db* db,
-	uint32_t application,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );

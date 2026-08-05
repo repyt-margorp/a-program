@@ -47,15 +47,18 @@ int main(void) {
 	uint32_t cloned_context;
 	uint32_t clone_substitution;
 	uint32_t cloned_classifier;
-	struct prototype_operation_node operation_storage[2];
+	struct prototype_operation_node operation_storage[3];
 	struct prototype_operation_match_case operation_case_storage[1];
 	struct prototype_operation_computation_fold_clause operation_fold_clause_storage[1];
 	struct prototype_operation_graph operation_graph;
 	struct prototype_operation_node int_occurrence;
 	struct prototype_operation_node text_occurrence;
 	struct prototype_operation_node invalid_occurrence;
+	struct prototype_operation_node saturated_effect_occurrence;
 	uint32_t int_operation;
 	uint32_t text_operation;
+	uint32_t effect_operation;
+	uint32_t effect_application;
 
 	prototype_term_db_init(
 		&term_db,
@@ -253,7 +256,7 @@ int main(void) {
 	prototype_operation_graph_init(
 		&operation_graph,
 		operation_storage,
-		2,
+		3,
 		operation_case_storage,
 		1,
 		operation_fold_clause_storage,
@@ -292,6 +295,35 @@ int main(void) {
 			&operation_graph, &term_db, &contexts
 		) != 0) {
 		fprintf(stderr, "context-indexed operation graph law failed\n");
+		return 1;
+	}
+	if (prototype_term_effect_operation(
+			&term_db, PROTOTYPE_EFFECT_OPERATION_PRINT, &effect_operation
+		) != 0 || prototype_term_app(
+			&term_db, effect_operation, literal, &effect_application
+		) != 0) {
+		fprintf(stderr, "failed to construct saturated effect application\n");
+		return 1;
+	}
+	saturated_effect_occurrence = int_occurrence;
+	saturated_effect_occurrence.tag = PROTOTYPE_OPERATION_APP;
+	saturated_effect_occurrence.polarity = PROTOTYPE_OPERATION_POLARITY_COMPUTATION;
+	saturated_effect_occurrence.computation_kind =
+		PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
+	saturated_effect_occurrence.application_role =
+		PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION;
+	saturated_effect_occurrence.core_term = effect_application;
+	saturated_effect_occurrence.function = int_operation;
+	saturated_effect_occurrence.argument = text_operation;
+	if (prototype_operation_graph_add(
+			&operation_graph,
+			&contexts,
+			saturated_effect_occurrence,
+			NULL
+		) != 0 || prototype_operation_graph_validate(
+			&operation_graph, &term_db, &contexts
+		) == 0) {
+		fprintf(stderr, "saturated effect APP escaped request validation\n");
 		return 1;
 	}
 	printf("context category checks passed\n");

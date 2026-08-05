@@ -4,26 +4,26 @@ PairText := @{ mk : #.Text -> #.Text -> *; };
 second := \x : #.Text => \y : #.Text => y;
 
 leftToRight := second
-	(perform (#.print #"a"))
-	(perform (#.print #"b"));
+	((#.print #"a"))
+	((#.print #"b"));
 
 repeat := second
-	(perform (#.print #"r"))
-	(perform (#.print #"r"));
+	((#.print #"r"))
+	((#.print #"r"));
 
 shared := {
-	x := perform (#.print #"s");
+	x := (#.print #"s");
 	second x x;
 };
 
 constructorOrder := PairText.mk
-	(perform (#.print #"c"))
-	(perform (#.print #"d"));
+	((#.print #"c"))
+	((#.print #"d"));
 
-performArgument := perform (#.print (perform (#.print #"e")));
+performArgument := (#.print ((#.print #"e")));
 
 effectBool := {
-	x : #.Text := perform (#.print #"m");
+	x : #.Text := (#.print #"m");
 	Bool.false;
 };
 

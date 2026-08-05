@@ -24,7 +24,7 @@ reject_case() {
 run_case final-value 'main := { #1; };'
 grep -q '^term main := RETURN(INT_LITERAL(1))$' "$tmp_dir/final-value.out"
 
-run_case final-computation 'main := { perform (#.print #"x"); };'
+run_case final-computation 'main := { (#.print #"x"); };'
 grep -q '^term main := OPERATION_REQUEST(' "$tmp_dir/final-computation.out"
 
 run_case final-binding 'main := { x := #1; };'
@@ -40,7 +40,7 @@ grep -q '^term main := COMPUTATION_FOLD(.*RETURN(INT_LITERAL(3)))' \
 	"$tmp_dir/discard-computation.out"
 
 run_case selected-cutoff \
-	'main := { selected := #1; dead := missing; perform (#.print #"dead"); }.selected;'
+	'main := { selected := #1; dead := missing; (#.print #"dead"); }.selected;'
 grep -q '^term main := RETURN(INT_LITERAL(1))$' "$tmp_dir/selected-cutoff.out"
 grep -q 'resolve_errors=0' "$tmp_dir/selected-cutoff.out"
 ! grep -q 'OPERATION_REQUEST' "$tmp_dir/selected-cutoff.out"
@@ -49,7 +49,7 @@ grep -q 'resolve_errors=0' "$tmp_dir/selected-cutoff.out"
 	"$tmp_dir/selected-cutoff.p" >"$tmp_dir/selected-cutoff-write.out"
 ./read_file.out --read-graph "$tmp_dir/selected-cutoff.apo" \
 	>"$tmp_dir/selected-cutoff-read.out"
-grep -q '^A_PROGRAM_ARTIFACT 60$' "$tmp_dir/selected-cutoff.apo"
+grep -q '^A_PROGRAM_ARTIFACT 61$' "$tmp_dir/selected-cutoff.apo"
 ! grep -q 'OPERATION_REQUEST' "$tmp_dir/selected-cutoff.apo"
 ! grep -q 'missing' "$tmp_dir/selected-cutoff.apo"
 
@@ -103,7 +103,7 @@ grep -q 'mode=default yes$' "$tmp_dir/match-exit-false.out"
 	"$tmp_dir/match-exit.p" >"$tmp_dir/match-exit-write.out"
 ./read_file.out --read-graph "$tmp_dir/match-exit.apo" \
 	>"$tmp_dir/match-exit-read.out"
-grep -q '^A_PROGRAM_ARTIFACT 60$' "$tmp_dir/match-exit.apo"
+grep -q '^A_PROGRAM_ARTIFACT 61$' "$tmp_dir/match-exit.apo"
 ./read_file.out --check-exports-normalization-equal "$tmp_dir/match-exit.apo" \
 	trueResult zeroExpected --reduction-mode default \
 	>"$tmp_dir/match-exit-artifact-true.out"

@@ -359,7 +359,7 @@ static const char* operation_tag_name(int tag) {
 		case PROTOTYPE_OPERATION_THUNK: return "thunk";
 		case PROTOTYPE_OPERATION_FORCE: return "force";
 		case PROTOTYPE_OPERATION_COMPUTATION_FOLD: return "computation-fold";
-		case PROTOTYPE_OPERATION_PERFORM: return "perform";
+		case PROTOTYPE_OPERATION_REQUEST: return "operation-request";
 		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS: return "induction-hypothesis";
 		case PROTOTYPE_OPERATION_ASCRIPTION: return "ascription";
 		default: return "unknown";

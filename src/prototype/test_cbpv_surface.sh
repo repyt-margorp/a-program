@@ -94,7 +94,7 @@ grep -q 'EFFECT_ROW_FORALL(.*EFFECT_ROW_FORALL' \
 	"$tmp_dir/nested-computation-reference.out"
 
 cat >"$tmp_dir/removed-bind-intrinsic.p" <<'EOF'
-bad := #.bind (perform (#.print #"x")) (\x : #.Text => x);
+bad := #.bind ((#.print #"x")) (\x : #.Text => x);
 EOF
 if ./read_file.out "$tmp_dir/removed-bind-intrinsic.p" \
 	>"$tmp_dir/removed-bind-intrinsic.out" 2>&1; then
@@ -147,7 +147,7 @@ if ./read_file.out "$tmp_dir/block-duplicate.p" \
 fi
 
 cat >"$tmp_dir/quote-effects.p" <<'EOF'
-delayed := &(perform (#.print #"x"));
+delayed := &((#.print #"x"));
 once := {
 	x := delayed;
 	x;
@@ -189,7 +189,7 @@ grep -qx 'ee' "$tmp_dir/runtime-strict-effects-eval.out"
 cat >"$tmp_dir/runtime-strict-dependent.p" <<'EOF'
 Bool := @{ true : *; false : *; };
 Nat := @{ zero : *; succ : * -> *; };
-m := { x : #.Text := perform (#.print #"x"); Bool.true; };
+m := { x : #.Text := (#.print #"x"); Bool.true; };
 select := \b : Bool =>
 	b @true => Nat.zero @false => Bool.true;
 main := select m;
@@ -267,7 +267,7 @@ grep -q '^term main := APP(LAMBDA(.*INT_LITERAL(1))' \
 
 cat >"$tmp_dir/effect-function.p" <<'EOF'
 main :: #.Nat -> #.Text;
-main := \n : #.Nat => perform (#.print #"x");
+main := \n : #.Nat => (#.print #"x");
 EOF
 
 ./read_file.out "$tmp_dir/effect-function.p" >"$tmp_dir/effect-function.out"
@@ -292,7 +292,7 @@ grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_oblig
 cat >"$tmp_dir/dependent-fold-residual.p" <<'EOF'
 Bool := @{ true : *; false : *; };
 Nat := @{ zero : *; succ : * -> *; };
-m := { x : #.Text := perform (#.print #"x"); Bool.true; };
+m := { x : #.Text := (#.print #"x"); Bool.true; };
 main := { b : Bool := m; b @true => Nat.zero @false => Bool.true; };
 EOF
 
@@ -369,7 +369,7 @@ grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_oblig
 printf '%s\n' \
 	'Bool := @{ true : *; false : *; };' \
 	'Nat := @{ zero : *; succ : * -> *; };' \
-	'm := { x : #.Text := perform (#.print #"x"); Bool.true; };' \
+	'm := { x : #.Text := (#.print #"x"); Bool.true; };' \
 	'main := { b : Bool := m; b @true => Nat.zero @false => Bool.true; };' \
 	'main' \
 	'main' \
@@ -391,10 +391,10 @@ grep -q '^verification main := discharged$' \
 cat >"$tmp_dir/nested-dependent-fold-residual.p" <<'EOF'
 Bool := @{ true : *; false : *; };
 Nat := @{ zero : *; succ : * -> *; };
-m := { x : #.Text := perform (#.print #"x"); Bool.false; };
+m := { x : #.Text := (#.print #"x"); Bool.false; };
 main := {
 	b : Bool := m;
-	x : #.Text := perform (#.print #"y");
+	x : #.Text := (#.print #"y");
 	b @true => Nat.zero @false => Bool.true;
 };
 EOF
@@ -414,7 +414,7 @@ grep -q '^value main := RETURN(CONSTRUCTOR(' \
 
 cat >"$tmp_dir/effect-forwarding.p" <<'EOF'
 forward := \f : #.Text -> #.Text => f #"x";
-printer := \text : #.Text => perform (#.print text);
+printer := \text : #.Text => (#.print text);
 main := forward &printer;
 EOF
 
@@ -431,9 +431,9 @@ grep -q 'interface term main ' "$tmp_dir/effect-forwarding-read.out"
 cat >"$tmp_dir/effect-union-forwarding.p" <<'EOF'
 both := \f : #.Text -> #.Text => {
 	x : #.Text := f #"x";
-	perform (#.print x);
+	(#.print x);
 };
-printer := \text : #.Text => perform (#.print text);
+printer := \text : #.Text => (#.print text);
 main := both &printer;
 EOF
 
@@ -559,7 +559,7 @@ grep -q 'interface constructor .*mk ordinal=0 fields=2' \
 cat >"$tmp_dir/effectful-type-family.p" <<'EOF'
 Sigma := \A : @ => \B : A -> @ => @{ mk : (a : A) -> B a -> *; };
 Nat := @{ zero : *; succ : * -> *; };
-Bad := \x : Nat => perform (#.print #"x");
+Bad := \x : Nat => (#.print #"x");
 main := (Sigma Nat Bad).mk Nat.zero Nat.zero;
 EOF
 
@@ -570,13 +570,23 @@ if ./read_file.out "$tmp_dir/effectful-type-family.p" \
 fi
 grep -q 'failed to compile AST graph' "$tmp_dir/effectful-type-family.err"
 
-cat >"$tmp_dir/perform.p" <<'EOF'
-main := perform (#.print #"x");
+cat >"$tmp_dir/direct-operation-request.p" <<'EOF'
+main := (#.print #"x");
 EOF
 
-./read_file.out "$tmp_dir/perform.p" >"$tmp_dir/perform.out"
-grep -q 'term main := OPERATION_REQUEST(' "$tmp_dir/perform.out"
-grep -q '\[operation-request-intro\]' "$tmp_dir/perform.out"
+./read_file.out "$tmp_dir/direct-operation-request.p" \
+	>"$tmp_dir/direct-operation-request.out"
+grep -q 'term main := OPERATION_REQUEST(' \
+	"$tmp_dir/direct-operation-request.out"
+grep -q '\[operation-request-intro\]' \
+	"$tmp_dir/direct-operation-request.out"
+printf '%s\n' \
+	'main := #.print #"x";' \
+	'main' \
+	':q' | ./a.out >"$tmp_dir/direct-operation-request-eval.out"
+test "$(grep -c '^x$' "$tmp_dir/direct-operation-request-eval.out")" -eq 1
+grep -q 'value main := RETURN(TEXT_LITERAL("x"))' \
+	"$tmp_dir/direct-operation-request-eval.out"
 
 cat >"$tmp_dir/pure-operation.p" <<'EOF'
 direct := ((#.int64_add #1) #2);
@@ -598,18 +608,36 @@ grep -q 'value direct := RETURN(INT_LITERAL(3))' \
 grep -q 'interface term direct ' "$tmp_dir/pure-operation-read.out"
 grep -Eq '^term_node [0-9]+ [0-9]+ int64_add -$' "$tmp_dir/pure-operation.apo"
 
-cat >"$tmp_dir/invalid-perform-intrinsic.p" <<'EOF'
-bad := perform ((#.int64_add #1) #2);
+cat >"$tmp_dir/operation-alias.p" <<'EOF'
+output := #.print;
+main := output #"x";
 EOF
-if ./read_file.out "$tmp_dir/invalid-perform-intrinsic.p" \
-	>"$tmp_dir/invalid-perform-intrinsic.out" \
-	2>"$tmp_dir/invalid-perform-intrinsic.err"; then
-	echo 'perform accepted a pure primitive' >&2
+./read_file.out "$tmp_dir/operation-alias.p" >"$tmp_dir/operation-alias.out"
+grep -q 'term main := OPERATION_REQUEST(' "$tmp_dir/operation-alias.out"
+./read_file.out --write-artifact "$tmp_dir/operation-alias.apo" \
+	"$tmp_dir/operation-alias.p" >"$tmp_dir/operation-alias-write.out"
+./read_file.out --read-graph "$tmp_dir/operation-alias.apo" \
+	>"$tmp_dir/operation-alias-read.out"
+grep -q 'interface term main ' "$tmp_dir/operation-alias-read.out"
+
+cat >"$tmp_dir/perform-identifier.p" <<'EOF'
+perform := #1;
+main := perform;
+EOF
+./read_file.out "$tmp_dir/perform-identifier.p" >"$tmp_dir/perform-identifier.out"
+grep -q '^term main := INT_LITERAL(1)$' "$tmp_dir/perform-identifier.out"
+
+cat >"$tmp_dir/obsolete-perform-wrapper.p" <<'EOF'
+bad := perform (#.print #"x");
+EOF
+if ./read_file.out "$tmp_dir/obsolete-perform-wrapper.p" \
+	>"$tmp_dir/obsolete-perform-wrapper.out" 2>&1; then
+	echo 'obsolete perform wrapper was treated specially' >&2
 	exit 1
 fi
 
 cat >"$tmp_dir/invalid-handle-intrinsic.p" <<'EOF'
-bad := (perform (#.print #"x")) @#.return y => y @#.int_neg x k => k x;
+bad := ((#.print #"x")) @#.return y => y @#.int_neg x k => k x;
 EOF
 if ./read_file.out "$tmp_dir/invalid-handle-intrinsic.p" \
 	>"$tmp_dir/invalid-handle-intrinsic.out" \
@@ -619,7 +647,7 @@ if ./read_file.out "$tmp_dir/invalid-handle-intrinsic.p" \
 fi
 
 cat >"$tmp_dir/handle.p" <<'EOF'
-main := (perform (#.print #"x")) @#.return y => y @#.print x k => k x;
+main := ((#.print #"x")) @#.return y => y @#.print x k => k x;
 EOF
 
 ./read_file.out "$tmp_dir/handle.p" >"$tmp_dir/handle.out"
@@ -641,7 +669,7 @@ if ./read_file.out --check-backend verilog "$tmp_dir/handle.apo" \
 fi
 
 printf '%s\n' \
-	'main := (perform (#.print #"x")) @#.return y => y @#.print x k => k x;' \
+	'main := ((#.print #"x")) @#.return y => y @#.print x k => k x;' \
 	'main' \
 	':q' | ./a.out >"$tmp_dir/handle-eval.out"
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' "$tmp_dir/handle-eval.out"
@@ -655,7 +683,7 @@ grep -q '^term main := COMPUTATION_FOLD(.*LAMBDA(.*RETURN(VAR' \
 
 cat >"$tmp_dir/operation-alias-fold.p" <<'EOF'
 output := #.print;
-main := (perform (#.print #"x"))
+main := ((#.print #"x"))
 	@#.return y => y
 	@output x k => k x;
 EOF
@@ -670,7 +698,7 @@ grep -q 'value main := RETURN(TEXT_LITERAL("x"))' \
 
 cat >"$tmp_dir/duplicate-operation-fold.p" <<'EOF'
 output := #.print;
-bad := (perform (#.print #"x"))
+bad := ((#.print #"x"))
 	@#.return y => y
 	@#.print x k => k x
 	@output x k => k x;
@@ -690,17 +718,17 @@ if ./read_file.out "$tmp_dir/duplicate-return-fold.p" \
 	exit 1
 fi
 
-cat >"$tmp_dir/perform-return-label.p" <<'EOF'
-bad := perform (#.return #1);
+cat >"$tmp_dir/direct-return-label.p" <<'EOF'
+bad := (#.return #1);
 EOF
-if ./read_file.out "$tmp_dir/perform-return-label.p" \
-	>"$tmp_dir/perform-return-label.out" 2>&1; then
+if ./read_file.out "$tmp_dir/direct-return-label.p" \
+	>"$tmp_dir/direct-return-label.out" 2>&1; then
 	echo '#.return was accepted as an effect operation' >&2
 	exit 1
 fi
 
 cat >"$tmp_dir/handle-bind.p" <<'EOF'
-main := ({ y : #.Text := perform (#.print #"x"); y; })
+main := ({ y : #.Text := (#.print #"x"); y; })
 	@#.return y => y
 	@#.print x k => k x;
 EOF
@@ -713,7 +741,7 @@ EOF
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' "$tmp_dir/handle-bind-eval.out"
 
 cat >"$tmp_dir/deep-handle-bind.p" <<'EOF'
-main := ({ y : #.Text := perform (#.print #"x"); perform (#.print y); })
+main := ({ y : #.Text := (#.print #"x"); (#.print y); })
 	@#.return y => y
 	@#.print x k => k x;
 EOF
@@ -789,7 +817,7 @@ grep -q 'failed to compile AST graph' \
 
 cat >"$tmp_dir/lambda-handle.p" <<'EOF'
 main := \n : #.Nat =>
-	(perform (#.print #"x")) @#.return y => y @#.print x k => k x;
+	((#.print #"x")) @#.return y => y @#.print x k => k x;
 EOF
 
 ./read_file.out "$tmp_dir/lambda-handle.p" >"$tmp_dir/lambda-handle.out"
