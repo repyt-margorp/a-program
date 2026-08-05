@@ -607,6 +607,34 @@ unclassified export; strict policy rejects it.  The remaining work is
 effect-row specialization and fold classifier solving, not a missing Core
 `FORCE` node.
 
+This gap cannot be repaired in general by attaching one substitution to the
+fold.  The request itself has classifier `Comp({scope_text}, Text)`: its latent
+`E` is intentionally absent because constructing an opaque request does not
+execute its thunk.  A computation may also contain two `scope_text` requests
+whose thunk rows differ.  One monomorphic equation `E = concrete_row` would
+then either choose one occurrence incorrectly or collapse the rows into an
+imprecise union.
+
+There are three distinct designs:
+
+1. Conservatively type the request as `Comp(E union {scope_text}, Text)`.
+   This is sound but reports effects for discarded thunks and defeats opaque
+   higher-order requests.
+2. Inspect a closed input graph and specialize each request occurrence while
+   typing its handler.  This can optimize a closed program but is not a
+   compositional type for a function receiving an unknown computation.
+3. Extend effect rows with a parameterized higher-order atom such as
+   `scope_text<E>` and define how handling the atom exposes, transforms, or
+   preserves `E`.  This retains opacity and supports different request
+   occurrences, but requires a real higher-order effect-row rule rather than a
+   bitset-only label.
+
+The decision is to keep the current runtime capability under partial policy,
+reject it under strict policy, and not adopt option 1 as a silent workaround.
+Option 2 may later be used as compile-time specialization, but only option 3 is
+an adequate general static account.  Its design precedes resource operations
+whose safety depends on latent effects.
+
 ### 10.3 Not yet represented soundly
 
 The following still require new static or runtime representation:

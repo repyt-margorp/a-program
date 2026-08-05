@@ -655,11 +655,28 @@ proof-lifecycle repair.
   residual constraints and leaves the export classifier invalid; strict policy
   rejects the program.
 
-The next type-system task is therefore an explicit effect-row instantiation
-constraint connecting the request application, clause binder, and handled
-fold result.  It must be solved before force-once can be called statically
-verified or exported with a classifier.  Runtime success alone is not evidence
-for that claim.
+An initially proposed next step was one effect-row instantiation constraint
+connecting the request argument, clause binder, and handled fold result.
+Further analysis rejects that as the general rule.  The first-order request
+classifier `Comp({scope_text}, Text)` intentionally omits the latent row, and a
+single computation can contain requests with different latent rows.  A single
+fold-wide substitution would therefore be occurrence-dependent and
+non-compositional.
+
+The revised design alternatives are:
+
+1. conservatively include every latent row in the request result effect;
+2. specialize closed request occurrences as an optimization only;
+3. add a parameterized higher-order effect atom whose handler rule determines
+   how the latent row is exposed.
+
+Alternative 1 is not adopted because it reports effects for discarded thunks.
+Alternative 2 cannot type handlers over unknown computations.  Alternative 3
+is the intended general direction, but it requires a dedicated effect-row
+representation and elimination rule before implementation.  Until then,
+partial artifacts preserve the residual and invalid export classifier, while
+strict compilation rejects force-once/twice.  Runtime success must not be
+reported as static verification.
 
 ## 14. Completion Rule
 
