@@ -157,8 +157,8 @@ remaining handler tests depend on effect-row-forall specialization described
 below:
 
 - [x] discard without forcing;
-- [ ] force exactly once;
-- [ ] force more than once for an unrestricted thunk;
+- [x] force exactly once at runtime; static row specialization remains residual;
+- [x] force more than once for an unrestricted thunk at runtime;
 - [ ] explicitly place a computation fold around the inner computation;
 - [ ] forward an unknown request while preserving the thunk unchanged;
 - [ ] keep the thunk's effect row latent before force;
@@ -423,7 +423,7 @@ Every row requires direct and artifact-backed evidence where applicable.
 |---|---|---|
 | Existing examples 01-09 | compile as before | passed 2026-08-05 |
 | Existing prototype suite | every `test_*.sh` passes | passed 2026-08-05 |
-| Thunk operation | discard, once, repeated, explicit inner fold | pending |
+| Thunk operation | discard, once, repeated, explicit inner fold | discard/once/repeated runtime passed; inner fold pending |
 | Forwarding | unknown thunk request preserves argument | pending |
 | Effect rows | latent before force, union after force | pending |
 | Resumptions | direct one-shot replay rejected; multi-shot replay returns to clause | passed |
@@ -631,6 +631,35 @@ strongly than semantic carrier/effect-row equations.  Source compilation has
 already solved those equations, but independent replay by the artifact kernel
 remains a separate hardening task and must not be confused with the completed
 proof-lifecycle repair.
+
+### 2026-08-05: Clause computation-demand milestone
+
+- Confirmed that no new `force` keyword is required for direct-style block
+  binding.  `inner : Text := delayed` is the computation demand; an explicit
+  `&` remains the value-preserving form.
+- Found the phase-ordering defect: a handler argument was a value-polarity VAR
+  with no classifier during Lowering, so existing demand elaboration could not
+  decide whether to insert FORCE.
+- Seeded the request binder from the operation declaration's authoritative
+  classifier graph by exposing only its outer Pi domain.  This is declaration
+  readback, not a second inference engine.  Unknown or computed operation
+  aliases remain solver work.
+- Added permanent once and repeated-force programs.  The once program executes
+  the nested print once; the repeated program executes the same unrestricted
+  thunk twice.  Both return the produced text.
+- Kept inner-thunk use separate from outer resumption multiplicity.  A one-shot
+  continuation policy does not imply a one-shot request thunk.
+- Confirmed the remaining static gap: the effect-row quantifier in
+  `forall E. Thunk(Comp(E, Text))` is not specialized from the concrete request
+  argument when the handler result row is solved.  Partial policy records
+  residual constraints and leaves the export classifier invalid; strict policy
+  rejects the program.
+
+The next type-system task is therefore an explicit effect-row instantiation
+constraint connecting the request application, clause binder, and handled
+fold result.  It must be solved before force-once can be called statically
+verified or exported with a classifier.  Runtime success alone is not evidence
+for that claim.
 
 ## 14. Completion Rule
 

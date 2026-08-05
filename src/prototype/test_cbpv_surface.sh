@@ -796,3 +796,50 @@ fi
 	>"$tmp_dir/higher-order-operation-handler-read.out"
 grep -q 'interface term main ' \
 	"$tmp_dir/higher-order-operation-handler-read.out"
+
+# A computation-block binding is an execution demand. Once the handler
+# argument receives its declaration-owned Thunk(Comp(E, Text)) classifier,
+# lowering inserts FORCE and sequences the result. The current effect-row
+# solver does not yet connect the operation's forall E with the concrete thunk
+# row, so partial policy preserves residual constraints and strict rejects it.
+./read_file.out src/prototype/higher_order_operation_force_once_check.p \
+	>"$tmp_dir/higher-order-operation-force-once.out"
+grep -q 'FORCE(VAR' "$tmp_dir/higher-order-operation-force-once.out"
+grep -Eq 'compile-budget .* residual=[1-9][0-9]* incomplete=0' \
+	"$tmp_dir/higher-order-operation-force-once.out"
+if ./read_file.out --policy strict \
+	src/prototype/higher_order_operation_force_once_check.p \
+	>"$tmp_dir/higher-order-operation-force-once-strict.out" \
+	2>"$tmp_dir/higher-order-operation-force-once-strict.err"; then
+	echo 'strict policy accepted unresolved higher-order force effects' >&2
+	exit 1
+fi
+{
+	cat src/prototype/higher_order_operation_force_once_check.p
+	printf 'main\n:q\n'
+} | ./a.out >"$tmp_dir/higher-order-operation-force-once-eval.out"
+test "$(grep -c '^inner$' "$tmp_dir/higher-order-operation-force-once-eval.out")" -eq 1
+grep -q '^value main := RETURN(TEXT_LITERAL("inner"))$' \
+	"$tmp_dir/higher-order-operation-force-once-eval.out"
+./read_file.out --write-artifact \
+	"$tmp_dir/higher-order-operation-force-once.apo" \
+	src/prototype/higher_order_operation_force_once_check.p \
+	>"$tmp_dir/higher-order-operation-force-once-write.out"
+grep -Eq '^compile_policy .* [1-9][0-9]* 0$' \
+	"$tmp_dir/higher-order-operation-force-once.apo"
+./read_file.out --read-graph \
+	"$tmp_dir/higher-order-operation-force-once.apo" \
+	>"$tmp_dir/higher-order-operation-force-once-read.out"
+grep -q 'interface term main .* classifier#4294967295 ' \
+	"$tmp_dir/higher-order-operation-force-once-read.out"
+
+./read_file.out src/prototype/higher_order_operation_force_twice_check.p \
+	>"$tmp_dir/higher-order-operation-force-twice.out"
+grep -q 'FORCE(VAR' "$tmp_dir/higher-order-operation-force-twice.out"
+{
+	cat src/prototype/higher_order_operation_force_twice_check.p
+	printf 'main\n:q\n'
+} | ./a.out >"$tmp_dir/higher-order-operation-force-twice-eval.out"
+grep -q '^innerinner$' "$tmp_dir/higher-order-operation-force-twice-eval.out"
+grep -q '^value main := RETURN(TEXT_LITERAL("inner"))$' \
+	"$tmp_dir/higher-order-operation-force-twice-eval.out"

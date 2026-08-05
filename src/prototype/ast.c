@@ -13196,6 +13196,57 @@ static int push_graph_binder(
 	int symbol_id,
 	uint32_t* p_graph_binder_id
 );
+
+/* Operation declarations own their classifier graph before clause-body
+ * lowering. Exposing only the outer domain here is declaration readback, not
+ * general classifier inference; unknown aliases remain solver constraints. */
+static int compile_known_operation_domain(
+	struct compile_context* ctx,
+	uint32_t classifier,
+	uint32_t* p_domain
+) {
+	if (!ctx || !p_domain) {
+		return -1;
+	}
+	if (classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
+		return 1;
+	}
+	uint32_t whnf;
+	if (prototype_term_normalize_complete_with_profile(
+			ctx->terms,
+			ctx->type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			classifier,
+			&whnf
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t depth = 0;
+		depth < 32 && whnf < ctx->terms->term_count &&
+		ctx->terms->terms[whnf].tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL;
+		++depth) {
+		whnf = ctx->terms->terms[whnf].as.effect_row_forall.body;
+		if (prototype_term_normalize_complete_with_profile(
+				ctx->terms,
+				ctx->type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				whnf,
+				&whnf
+			) != 0) {
+			return -1;
+		}
+	}
+	uint32_t ignored_family;
+	if (prototype_judgement_pi_parts(
+			ctx->terms, whnf, p_domain, &ignored_family
+		) != 0) {
+		return 1;
+	}
+	return 0;
+}
+
 static int operation_add(
 	struct compile_context* ctx,
 	int tag,
@@ -13252,12 +13303,18 @@ static int compile_ast_computation_fold_ref(
 		uint32_t outer_lambda;
 		uint32_t inner_lambda_operation;
 		uint32_t outer_lambda_operation;
+		uint32_t operation_domain = PROTOTYPE_INVALID_ID;
 		ctx->binder_count = saved_binder_count;
-		if (compile_ast_ref(ctx, ast_clause->operation, &operation) != 0 ||
-			push_graph_binder(
+		if (compile_ast_ref(ctx, ast_clause->operation, &operation) != 0) {
+			return -1;
+		}
+		int domain_status = compile_known_operation_domain(
+			ctx, operation.classifier, &operation_domain
+		);
+		if (domain_status < 0 || push_graph_binder(
 				ctx,
 				ast_clause->operation_argument_binder_id,
-				PROTOTYPE_INVALID_ID,
+				domain_status == 0 ? operation_domain : PROTOTYPE_INVALID_ID,
 				ast_clause->operation_argument_symbol_id,
 				&argument_binder
 			) != 0 || push_graph_binder(
@@ -13298,7 +13355,8 @@ static int compile_ast_computation_fold_ref(
 				PROTOTYPE_INVALID_ID, ast_clause->body,
 				PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 				inner_lambda_operation, PROTOTYPE_INVALID_ID,
-				PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, 0,
+				domain_status == 0 ? operation_domain : PROTOTYPE_INVALID_ID,
+				PROTOTYPE_INVALID_ID, 0,
 				&outer_lambda_operation
 			) != 0) {
 			return -1;

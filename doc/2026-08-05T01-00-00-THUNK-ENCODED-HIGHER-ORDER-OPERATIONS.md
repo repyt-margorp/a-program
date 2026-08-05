@@ -590,12 +590,22 @@ evidence that thunk encoding is insufficient.  Independent semantic replay of
 positive-fold carrier and effect-row equations remains artifact-kernel work.
 
 The surface force probe exposed a second, independent boundary.  A block
-binding such as `inner := delayed` binds the thunk value; it does not force it.
-This is correct CBPV behavior.  The current surface has removed `#.force`, and
-the implicit computation-demand rules do not yet provide an end-to-end typed
-way to force a handler argument and bind its result inside the clause.  The
-remaining work is therefore partly surface elaboration and partly fold
-classifier solving, not a missing Core `FORCE` node.
+binding such as `inner : Text := delayed` is intended as an execution demand,
+while `&delayed` preserves a value.  Lowering already had that distinction, but
+the handler argument was initially unclassified and therefore could not be
+recognized as `Thunk(Comp(E, Text))`.  Reading the outer domain from the
+operation declaration's authoritative classifier now supplies that binder fact
+without running general inference during Lowering.  The block consequently
+builds `COMPUTATION_FOLD(FORCE(delayed), ...)`, and runtime tests execute the
+inner computation once or repeatedly according to source demand.
+
+This does not yet close static typing.  For
+`forall E. Thunk(Comp(E, Text))`, the concrete request argument establishes
+`E = {print}`, but that specialization is not propagated into the handler
+clause/result effect row.  Partial policy retains residual constraints and an
+unclassified export; strict policy rejects it.  The remaining work is
+effect-row specialization and fold classifier solving, not a missing Core
+`FORCE` node.
 
 ### 10.3 Not yet represented soundly
 
