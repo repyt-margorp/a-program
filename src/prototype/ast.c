@@ -23476,13 +23476,65 @@ static int operation_solver_propagate_clause_computation_fold_input(
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			operation_classifier,
 			&operation_classifier_whnf
-		) != 0 || prototype_judgement_pi_parts(
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t depth = 0;
+		depth < 32 && operation_classifier_whnf < ctx->terms->term_count &&
+		ctx->terms->terms[operation_classifier_whnf].tag ==
+			PROTOTYPE_TERM_EFFECT_ROW_FORALL;
+		++depth) {
+		operation_classifier_whnf = ctx->terms->terms[
+			operation_classifier_whnf
+		].as.effect_row_forall.body;
+		if (prototype_term_normalize_complete_with_profile(
+				ctx->terms,
+				ctx->type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				operation_classifier_whnf,
+				&operation_classifier_whnf
+			) != 0) {
+			return -1;
+		}
+	}
+	if (prototype_judgement_pi_parts(
 			ctx->terms,
 			operation_classifier_whnf,
 			&operation_domain,
 			&operation_codomain_family
 		) != 0) {
 		return -1;
+	}
+	/* A clause argument has the operation domain even when the source body
+	 * discards it. VAR occurrences are usage evidence, not typing authority. */
+	for (uint32_t lambda_operation_id = 0;
+		lambda_operation_id < ctx->metadata->operation_count;
+		++lambda_operation_id) {
+		struct prototype_operation_node* lambda_operation =
+			&ctx->metadata->operations[lambda_operation_id];
+		uint32_t ast_binder_id;
+		if (lambda_operation->tag != PROTOTYPE_OPERATION_LAMBDA ||
+			lambda_operation->core_term != outer_lambda ||
+			operation_solver_lambda_ast_binder(
+				ctx, lambda_operation_id, &ast_binder_id
+			) != 0 || ast_binder_id != occurrence_clause->argument_ast_binder_id) {
+			continue;
+		}
+		if (lambda_operation->binder_classifier == PROTOTYPE_INVALID_ID) {
+			lambda_operation->binder_classifier = operation_domain;
+			*p_changed = 1;
+			if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
+				return -1;
+			}
+		} else if (!prototype_judgement_classifier_normalization_equal(
+				ctx->terms,
+				ctx->type_declarations,
+				lambda_operation->binder_classifier,
+				operation_domain
+			)) {
+			return -1;
+		}
 	}
 	for (uint32_t operation_id = 0;
 		operation_id < ctx->metadata->operation_count;
@@ -25863,7 +25915,9 @@ static int operation_solver_reify_core_proof(
 					return status;
 				}
 			}
-			return 0;
+			return operation_solver_reindex_existing_proof(
+				ctx, operation->context_id, core_term, classifier
+			);
 		}
 		case PROTOTYPE_OPERATION_ATOM:
 		case PROTOTYPE_OPERATION_CONSTRUCTOR:

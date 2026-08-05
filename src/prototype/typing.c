@@ -11796,7 +11796,9 @@ void prototype_judgement_delta_drop_temporary_derivations(
 		}
 		if (relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM ||
 			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO ||
-			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
+			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM ||
+			(relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM &&
+				source_proofs[relation->proof_id].premise_count > 2)) {
 			continue;
 		}
 		if (write != read) {

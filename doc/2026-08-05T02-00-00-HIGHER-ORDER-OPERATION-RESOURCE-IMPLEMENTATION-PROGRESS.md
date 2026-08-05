@@ -70,7 +70,7 @@ Current relevant implementation facts:
 |---|---|---|
 | 0 | Freeze implementation plan and baseline evidence | complete |
 | 1 | Make graph-level classifiers authoritative for operations | complete |
-| 2 | Validate thunk-encoded higher-order operation requests | partial |
+| 2 | Validate thunk-encoded higher-order operation requests | partial, opaque handling proven |
 | 3 | Add inner-policy and resumption-multiplicity contracts | partial |
 | 4 | Separate runtime values from TermDB and add resource scopes | pending |
 | 5 | Add File scoped borrowing and finalization | pending |
@@ -156,7 +156,7 @@ The operation now supports a request containing a quoted computation.  The
 remaining handler tests depend on effect-row-forall specialization described
 below:
 
-- [ ] discard without forcing;
+- [x] discard without forcing;
 - [ ] force exactly once;
 - [ ] force more than once for an unrestricted thunk;
 - [ ] explicitly place a computation fold around the inner computation;
@@ -170,8 +170,77 @@ Completed request-level evidence:
 - [x] the resulting graph contains `THUNK(OPERATION_REQUEST(...))`;
 - [x] the inner print row remains latent in the thunk classifier;
 - [x] artifact v56 preserves and validates both operation classifiers.
+- [x] a `#.scope_text` clause receives the quoted computation as an ordinary
+      argument and can discard it;
+- [x] discarding the argument leaves the nested `#.print` unexecuted;
+- [x] the handler result is `RETURN(TEXT_LITERAL("handled"))`;
+- [x] handler typing strips classifier-only `EFFECT_ROW_FORALL` binders before
+      reading the operation Pi domain;
+- [x] an unused operation-clause argument still receives the operation domain;
+      variable occurrence is usage evidence, not typing authority;
+- [x] the handler and its proof graph survive artifact write/read.
 
 No special higher-order surface syntax or Core node may appear in this stage.
+
+### 6.1 Precisely established capability
+
+The implementation now establishes the following, and no stronger claim:
+
+```text
+op : Thunk(Comp(E, A)) -> Comp({op}, B)
+M  : Comp(E, A)
+---------------------------------------
+perform (op &M) : Comp({op}, B)
+```
+
+The handler receives `&M` as an opaque value.  It may discard that value,
+retain it, or use the language's ordinary force path where its clause type
+permits that use.  Deep folding the outer request does not inspect the thunk.
+
+This representation is sufficient for a higher-order operation request.  It
+is not by itself a complete higher-order handler semantics.  In particular,
+the following remain separate obligations:
+
+- whether a scoped clause handles effects inside `M`;
+- whether forwarding an unknown request recursively transforms `M`;
+- how latent and handled effect rows are related after force;
+- whether the resumption or the inner thunk is one-shot;
+- how resource ownership survives capture, forwarding, and scope exit.
+
+Treating these as one boolean `is_higher_order` flag would lose the semantic
+distinctions.  They remain explicit policy and typing work.
+
+### 6.2 Implementation defects found while adding the handler
+
+Two defects were exposed:
+
+1. Handler propagation attempted to read an operation classifier directly as
+   Pi.  A polymorphic operation classifier begins with `EFFECT_ROW_FORALL`, so
+   classifier-only row binders must be exposed before Pi decomposition.
+2. Clause argument typing was inferred only from variable occurrences.  An
+   unused argument consequently had no classifier.  Its type is determined by
+   the operation domain regardless of use count.
+
+The proof cleanup path also exposed a broader debt.  Temporary lambda/app/IH
+derivations are removed before handler reconstruction.  A fold proof that uses
+those lambdas must be removed and rebuilt in the same unit; retaining it leaves
+dangling premise IDs.  The current implementation therefore drops clause-bearing
+`COMPUTATION_FOLD_ELIM` proofs together with those structural derivations.
+Zero-clause sequencing folds remain intact; they do not contain clause lambda
+premises and are not part of handler reconstruction.
+
+This is not yet a general proof-DAG garbage collector.  A fully transitive
+proof removal exposed that `operation_solver_reify_core_proof` cannot recreate
+every context-local proof from scratch.  General dependency-closed compaction
+is deferred until the reifier contract is changed to:
+
+```text
+0 = the exact proof exists in the requested context
+1 = deferred until another fixed-point round
+-1 = invalid
+```
+
+That work must be completed before temporary-proof cleanup is generalized.
 
 ## 7. Stage 3: Handling Contracts
 

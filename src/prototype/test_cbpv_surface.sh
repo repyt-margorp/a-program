@@ -766,3 +766,31 @@ grep -q '\[operation-request-intro\]' "$tmp_dir/higher-order-operation.out"
 ./read_file.out --read-graph "$tmp_dir/higher-order-operation.apo" \
 	>"$tmp_dir/higher-order-operation-read.out"
 grep -q 'interface term main ' "$tmp_dir/higher-order-operation-read.out"
+
+# A handler receives the quoted inner computation as an opaque value. This
+# clause discards it, so the nested print must not execute.
+./read_file.out src/prototype/higher_order_operation_handler_check.p \
+	>"$tmp_dir/higher-order-operation-handler.out"
+grep -q '^term main := COMPUTATION_FOLD(OPERATION_REQUEST(EFFECT_OPERATION(scope_text)' \
+	"$tmp_dir/higher-order-operation-handler.out"
+grep -q 'OP_CLAUSE(EFFECT_OPERATION(scope_text)' \
+	"$tmp_dir/higher-order-operation-handler.out"
+grep -q '\[computation-fold-elim\]' \
+	"$tmp_dir/higher-order-operation-handler.out"
+{
+	cat src/prototype/higher_order_operation_handler_check.p
+	printf ':q\n'
+} | ./a.out >"$tmp_dir/higher-order-operation-handler-eval.out"
+grep -q '^value main := RETURN(TEXT_LITERAL("handled"))$' \
+	"$tmp_dir/higher-order-operation-handler-eval.out"
+if grep -qx 'inner' "$tmp_dir/higher-order-operation-handler-eval.out"; then
+	echo 'discarded higher-order operation argument was executed' >&2
+	exit 1
+fi
+./read_file.out --write-artifact "$tmp_dir/higher-order-operation-handler.apo" \
+	src/prototype/higher_order_operation_handler_check.p \
+	>"$tmp_dir/higher-order-operation-handler-write.out"
+./read_file.out --read-graph "$tmp_dir/higher-order-operation-handler.apo" \
+	>"$tmp_dir/higher-order-operation-handler-read.out"
+grep -q 'interface term main ' \
+	"$tmp_dir/higher-order-operation-handler-read.out"
