@@ -5676,39 +5676,66 @@ int prototype_judgement_delta_record_computation_fold_elim(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
-	uint32_t computation,
-	uint32_t computation_classifier,
-	uint32_t continuation,
-	uint32_t continuation_classifier
+	const uint32_t* premise_classifiers,
+	uint32_t premise_count
 ) {
-	uint32_t derived_classifier;
 	if (!delta || !terms || !type_declarations ||
-		subject >= terms->term_count || computation >= terms->term_count ||
-		continuation >= terms->term_count || classifier >= terms->term_count ||
-		computation_classifier >= terms->term_count ||
-		continuation_classifier >= terms->term_count) {
+		subject >= terms->term_count || classifier >= terms->term_count ||
+		terms->terms[subject].tag != PROTOTYPE_TERM_COMPUTATION_FOLD ||
+		!premise_classifiers) {
 		return -1;
 	}
-	int status = prototype_judgement_computation_fold_result_classifier(
-		terms,
-		type_declarations,
-		computation,
-		computation_classifier,
-		continuation_classifier,
-		&derived_classifier
-	);
-	if (status != 0) {
-		return status;
-	}
-	if (!prototype_judgement_classifier_normalization_equal(
-			terms, type_declarations, classifier, derived_classifier
-		)) {
+	const struct prototype_term* fold = &terms->terms[subject];
+	uint32_t clause_count = fold->as.computation_fold.clause_count;
+	uint32_t expected_premise_count = 2 + 2 * clause_count;
+	if (clause_count > 31 || premise_count != expected_premise_count ||
+		fold->as.computation_fold.first_clause > terms->computation_fold_clause_count ||
+		clause_count > terms->computation_fold_clause_count -
+			fold->as.computation_fold.first_clause) {
 		return -1;
 	}
-	uint32_t subjects[2] = { computation, continuation };
-	uint32_t classifiers[2] = {
-		computation_classifier, continuation_classifier
-	};
+	for (uint32_t i = 0; i < premise_count; ++i) {
+		if (premise_classifiers[i] >= terms->term_count) {
+			return -1;
+		}
+	}
+	if (clause_count == 0) {
+		uint32_t derived_classifier;
+		int status = prototype_judgement_computation_fold_result_classifier(
+			terms,
+			type_declarations,
+			fold->as.computation_fold.computation,
+			premise_classifiers[0],
+			premise_classifiers[1],
+			&derived_classifier
+		);
+		if (status != 0) {
+			return status;
+		}
+		if (!prototype_judgement_classifier_normalization_equal(
+				terms, type_declarations, classifier, derived_classifier
+			)) {
+			return -1;
+		}
+	} else {
+		struct prototype_term_classifier_view result;
+		if (prototype_judgement_classifier_view(
+				terms, type_declarations, NULL, classifier, &result
+			) != 0 || result.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
+			return -1;
+		}
+	}
+	uint32_t subjects[64];
+	subjects[0] = fold->as.computation_fold.computation;
+	subjects[1] = fold->as.computation_fold.return_clause;
+	for (uint32_t i = 0; i < clause_count; ++i) {
+		const struct prototype_computation_fold_clause* clause =
+			&terms->computation_fold_clauses[
+				fold->as.computation_fold.first_clause + i
+			];
+		subjects[2 + 2 * i] = clause->operation;
+		subjects[3 + 2 * i] = clause->body;
+	}
 	return add_delta_relation_with_premises(
 		delta,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
@@ -5716,8 +5743,8 @@ int prototype_judgement_delta_record_computation_fold_elim(
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM,
 		subjects,
-		classifiers,
-		2
+		premise_classifiers,
+		premise_count
 	);
 }
 

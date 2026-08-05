@@ -965,7 +965,8 @@ int prototype_operation_graph_validate(
 			operation->function,
 			operation->argument,
 			operation->body,
-			operation->scrutinee
+			operation->scrutinee,
+			operation->fold_return_operation
 		};
 		for (size_t j = 0;
 			j < sizeof(operation_references) / sizeof(operation_references[0]);
@@ -986,6 +987,70 @@ int prototype_operation_graph_validate(
 				graph->fold_clause_count - operation->first_fold_clause)) {
 			return -1;
 		}
+		if (operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD) {
+			if (terms->terms[operation->core_term].tag !=
+					PROTOTYPE_TERM_COMPUTATION_FOLD ||
+				operation->function >= graph->operation_count) {
+				return -1;
+			}
+			const struct prototype_term* fold =
+				&terms->terms[operation->core_term];
+			uint32_t return_operation_id =
+				fold->as.computation_fold.clause_count == 0 ?
+					operation->argument : operation->fold_return_operation;
+			if (return_operation_id >= graph->operation_count) {
+				return -1;
+			}
+			const struct prototype_operation_node* input_operation =
+				prototype_operation_graph_get(graph, operation->function);
+			const struct prototype_operation_node* return_operation =
+				prototype_operation_graph_get(graph, return_operation_id);
+			if (!input_operation || !return_operation ||
+				input_operation->core_term != fold->as.computation_fold.computation ||
+				return_operation->tag != PROTOTYPE_OPERATION_LAMBDA ||
+				return_operation->core_term != fold->as.computation_fold.return_clause ||
+				operation->fold_clause_count != fold->as.computation_fold.clause_count) {
+				return -1;
+			}
+			if (fold->as.computation_fold.clause_count != 0 &&
+				(operation->first_fold_clause == PROTOTYPE_INVALID_ID ||
+				operation->first_fold_clause > graph->fold_clause_count ||
+				operation->fold_clause_count >
+					graph->fold_clause_count - operation->first_fold_clause ||
+				fold->as.computation_fold.first_clause >
+					terms->computation_fold_clause_count ||
+				fold->as.computation_fold.clause_count >
+					terms->computation_fold_clause_count -
+						fold->as.computation_fold.first_clause)) {
+				return -1;
+			}
+			for (uint32_t clause_index = 0;
+				clause_index < fold->as.computation_fold.clause_count;
+				++clause_index) {
+				const struct prototype_operation_computation_fold_clause* occurrence =
+					prototype_operation_graph_get_fold_clause(
+						graph, operation->first_fold_clause + clause_index
+					);
+				const struct prototype_computation_fold_clause* core_clause =
+					&terms->computation_fold_clauses[
+						fold->as.computation_fold.first_clause + clause_index
+					];
+				const struct prototype_operation_node* operation_occurrence =
+					occurrence ? prototype_operation_graph_get(
+						graph, occurrence->operation_operation
+					) : NULL;
+				const struct prototype_operation_node* clause_occurrence =
+					occurrence ? prototype_operation_graph_get(
+						graph, occurrence->clause_operation
+					) : NULL;
+				if (!occurrence || !operation_occurrence || !clause_occurrence ||
+					operation_occurrence->core_term != core_clause->operation ||
+					clause_occurrence->tag != PROTOTYPE_OPERATION_LAMBDA ||
+					clause_occurrence->core_term != core_clause->body) {
+					return -1;
+				}
+			}
+		}
 	}
 	for (uint32_t i = 0; i < graph->case_count; ++i) {
 		const struct prototype_operation_match_case* operation_case =
@@ -1004,6 +1069,7 @@ int prototype_operation_graph_validate(
 			prototype_operation_graph_get_fold_clause(graph, i);
 		if (!clause || clause->operation_operation >= graph->operation_count ||
 			clause->body_operation >= graph->operation_count ||
+			clause->clause_operation >= graph->operation_count ||
 			!prototype_context_get(contexts, clause->context_id)) {
 			return -1;
 		}
@@ -7079,7 +7145,7 @@ static int write_artifact_operation_graph_section(
 		fprintf(
 			stream,
 			"operation %zu %d %d %d %d %u %u %u %u %u %s %s %u %u %u %u %u %u"
-			" %u %u %u %u %u %u %u %u\n",
+			" %u %u %u %u %u %u %u %u %u\n",
 			i,
 			operation->tag,
 			operation->polarity,
@@ -7100,6 +7166,7 @@ static int write_artifact_operation_graph_section(
 			operation->binder_classifier,
 			operation->fold_return_ast_binder_id,
 			operation->fold_return_binder_id,
+			operation->fold_return_operation,
 			operation->implicit_effect_row_count,
 			operation->first_case,
 			operation->case_count,
@@ -7124,10 +7191,11 @@ static int write_artifact_operation_graph_section(
 		}
 		fprintf(
 			stream,
-			"operation_fold_clause %zu %u %u %u %u %u %u %u\n",
+			"operation_fold_clause %zu %u %u %u %u %u %u %u %u\n",
 			i,
 			clause->operation_operation,
 			clause->body_operation,
+			clause->clause_operation,
 			artifact_context_slice_relocate(context_slice, clause->context_id),
 			clause->argument_ast_binder_id,
 			clause->argument_binder_id,
@@ -7228,7 +7296,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 56\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 57\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -7558,7 +7626,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 56) {
+		version != 57) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -9549,7 +9617,7 @@ int prototype_artifact_read_text_operation_graph(
 		char binder_name[256];
 		memset(&operation, 0, sizeof(operation));
 	if (fscanf(stream, "%255s %zu %d %d %d %d %u %u %u %u %u %255s %255s"
-				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
 				word, &id, &operation.tag, &operation.polarity, &operation.computation_kind,
 				&operation.application_role,
 				&operation.core_term, &operation.known_classifier, &operation.classifier,
@@ -9558,10 +9626,11 @@ int prototype_artifact_read_text_operation_graph(
 				&operation.body, &operation.scrutinee, &operation.binder_classifier,
 				&operation.fold_return_ast_binder_id,
 				&operation.fold_return_binder_id,
+				&operation.fold_return_operation,
 				&operation.implicit_effect_row_count,
 				&operation.first_case, &operation.case_count,
 				&operation.first_fold_clause, &operation.fold_clause_count,
-				&operation.context_id) != 27 ||
+				&operation.context_id) != 28 ||
 			strcmp(word, "operation") != 0 || id != i) {
 			return -1;
 		}
@@ -9618,17 +9687,18 @@ int prototype_artifact_read_text_operation_graph(
 		struct prototype_operation_computation_fold_clause clause;
 		if (fscanf(
 				stream,
-				"%255s %zu %u %u %u %u %u %u %u",
+				"%255s %zu %u %u %u %u %u %u %u %u",
 				word,
 				&id,
 				&clause.operation_operation,
 				&clause.body_operation,
+				&clause.clause_operation,
 				&clause.context_id,
 				&clause.argument_ast_binder_id,
 				&clause.argument_binder_id,
 				&clause.continuation_ast_binder_id,
 				&clause.continuation_binder_id
-			) != 9 || strcmp(word, "operation_fold_clause") != 0 || id != i ||
+			) != 10 || strcmp(word, "operation_fold_clause") != 0 || id != i ||
 			(metadata && clause.context_id >= context_count)) {
 			return -1;
 		}
@@ -9810,6 +9880,7 @@ int prototype_artifact_read_text_operation_graph(
 				terms->terms[operation->core_term].tag == PROTOTYPE_TERM_COMPUTATION_FOLD &&
 				terms->terms[operation->core_term].as.computation_fold.clause_count > 0 &&
 				(operation->scrutinee == PROTOTYPE_INVALID_ID ||
+				 operation->fold_return_operation == PROTOTYPE_INVALID_ID ||
 				 operation->fold_clause_count !=
 					terms->terms[operation->core_term].as.computation_fold.clause_count ||
 				 (size_t)operation->first_fold_clause + operation->fold_clause_count >
@@ -13245,6 +13316,7 @@ static int compile_ast_computation_fold_ref(
 		core_clauses[i].body = outer_lambda;
 		occurrence_clauses[i].operation_operation = operation.operation;
 		occurrence_clauses[i].body_operation = operation_body.operation;
+		occurrence_clauses[i].clause_operation = outer_lambda_operation;
 		occurrence_clauses[i].context_id =
 			ctx->metadata->operations[operation_body.operation].context_id;
 		occurrence_clauses[i].argument_ast_binder_id =
@@ -13320,6 +13392,7 @@ static int compile_ast_computation_fold_ref(
 		node->as.computation_fold.return_binder_id;
 	fold_operation->fold_return_binder_id =
 		ctx->terms->terms[return_clause].as.lambda.binder_id;
+	fold_operation->fold_return_operation = return_clause_operation;
 	struct prototype_operation_graph graph;
 	prototype_compile_metadata_operation_graph(ctx->metadata, &graph);
 	fold_operation->first_fold_clause = (uint32_t)graph.fold_clause_count;
@@ -14024,6 +14097,7 @@ static int operation_add(
 	node.binder_classifier = binder_classifier;
 	node.fold_return_ast_binder_id = PROTOTYPE_INVALID_ID;
 	node.fold_return_binder_id = PROTOTYPE_INVALID_ID;
+	node.fold_return_operation = PROTOTYPE_INVALID_ID;
 	node.first_case = first_case;
 	node.case_count = case_count;
 	node.first_fold_clause = PROTOTYPE_INVALID_ID;
@@ -26148,51 +26222,100 @@ static int operation_solver_reify_core_proof(
 				operation->function >= ctx->metadata->operation_count) {
 				return -1;
 			}
-			if (term->as.computation_fold.clause_count != 0) {
-				return 0;
-			}
-			if (operation->argument >= ctx->metadata->operation_count) {
+			uint32_t clause_count = term->as.computation_fold.clause_count;
+			if (clause_count > 31 || operation->fold_clause_count != clause_count ||
+				(clause_count != 0 &&
+				 (operation->first_fold_clause >
+					ctx->metadata->operation_fold_clause_count ||
+				  clause_count > ctx->metadata->operation_fold_clause_count -
+					operation->first_fold_clause ||
+				  term->as.computation_fold.first_clause >
+					ctx->terms->computation_fold_clause_count ||
+				  clause_count > ctx->terms->computation_fold_clause_count -
+					term->as.computation_fold.first_clause))) {
 				return -1;
 			}
 			const struct prototype_operation_node* computation =
 				&ctx->metadata->operations[operation->function];
-			const struct prototype_operation_node* continuation =
-				&ctx->metadata->operations[operation->argument];
-			if (computation->classifier == PROTOTYPE_INVALID_ID ||
-				continuation->classifier == PROTOTYPE_INVALID_ID) {
-				return 1;
+			uint32_t return_operation_id = clause_count == 0 ?
+				operation->argument : operation->fold_return_operation;
+			if (return_operation_id >= ctx->metadata->operation_count) {
+				return -1;
 			}
-			int status = operation_solver_reify_core_proof(
-				ctx,
-				operation->function,
-				term->as.computation_fold.computation,
-				depth + 1
-			);
-			if (status != 0) {
-				return status;
+			const struct prototype_operation_node* return_operation =
+				&ctx->metadata->operations[return_operation_id];
+			uint32_t premise_count = 2 + 2 * clause_count;
+			uint32_t premise_operations[64];
+			uint32_t premise_terms[64];
+			uint32_t premise_classifiers[64];
+			premise_operations[0] = operation->function;
+			premise_operations[1] = return_operation_id;
+			premise_terms[0] = term->as.computation_fold.computation;
+			premise_terms[1] = term->as.computation_fold.return_clause;
+			premise_classifiers[0] = computation->classifier;
+			premise_classifiers[1] = return_operation->classifier;
+			for (uint32_t i = 0; i < clause_count; ++i) {
+				const struct prototype_operation_computation_fold_clause* occurrence_clause =
+					&ctx->metadata->operation_fold_clauses[
+						operation->first_fold_clause + i
+					];
+				const struct prototype_computation_fold_clause* core_clause =
+					&ctx->terms->computation_fold_clauses[
+						term->as.computation_fold.first_clause + i
+					];
+				premise_operations[2 + 2 * i] =
+					occurrence_clause->operation_operation;
+				premise_operations[3 + 2 * i] =
+					occurrence_clause->clause_operation;
+				premise_terms[2 + 2 * i] = core_clause->operation;
+				premise_terms[3 + 2 * i] = core_clause->body;
 			}
-			status = operation_solver_reify_core_proof(
-				ctx,
-				operation->argument,
-				term->as.computation_fold.return_clause,
-				depth + 1
-			);
-			if (status != 0) {
-				return status;
+			for (uint32_t i = 2; i < premise_count; ++i) {
+				if (premise_operations[i] >= ctx->metadata->operation_count) {
+					return -1;
+				}
+				premise_classifiers[i] = ctx->metadata->operations[
+					premise_operations[i]
+				].classifier;
+			}
+			for (uint32_t i = 0; i < premise_count; ++i) {
+				if (premise_classifiers[i] == PROTOTYPE_INVALID_ID) {
+					return 1;
+				}
+			}
+			for (uint32_t i = 0; i < premise_count; ++i) {
+				int status = operation_solver_reify_core_proof(
+					ctx,
+					premise_operations[i],
+					premise_terms[i],
+					depth + 1
+				);
+				if (status != 0) {
+					return status;
+				}
+				if (clause_count != 0) {
+					status = operation_solver_reindex_existing_proof(
+						ctx,
+						operation->context_id,
+						premise_terms[i],
+						premise_classifiers[i]
+					);
+					if (status != 0) {
+						return status;
+					}
+				}
 			}
 			prototype_judgement_delta_set_context(
 				&ctx->judgement_delta, operation->context_id
 			);
-			status = prototype_judgement_delta_record_computation_fold_elim(
+			int status = prototype_judgement_delta_record_computation_fold_elim(
 				&ctx->judgement_delta,
 				ctx->terms,
 				ctx->type_declarations,
 				core_term,
 				classifier,
-				term->as.computation_fold.computation,
-				computation->classifier,
-				term->as.computation_fold.return_clause,
-				continuation->classifier
+				premise_classifiers,
+				premise_count
 			);
 			return status < 0 ? -1 : 0;
 		}
@@ -27048,6 +27171,20 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 	}
 	if (operation_solver_materialize_judgements(ctx) != 0) {
 		return -1;
+	}
+	if (has_handler_constraint) {
+		/* Cleanup removes provisional APP proofs and therefore also removes
+		 * operation-request proofs that depend on them.  The first materialize
+		 * pass restores the structural APP proofs; solve requests again before
+		 * rebuilding the enclosing clause-bearing fold. */
+		if (prototype_judgement_delta_solve_recorded_computation_constraints(
+				&ctx->judgement_delta,
+				ctx->terms,
+				ctx->type_declarations
+			) != 0 ||
+			operation_solver_materialize_judgements(ctx) != 0) {
+			return -1;
+		}
 	}
 	if (prototype_judgement_delta_commit(&ctx->judgement_delta, 0) != 0) {
 		return -1;

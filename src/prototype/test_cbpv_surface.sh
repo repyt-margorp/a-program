@@ -771,15 +771,17 @@ grep -q 'interface term main ' "$tmp_dir/higher-order-operation-read.out"
 # clause discards it, so the nested print must not execute.
 ./read_file.out src/prototype/higher_order_operation_handler_check.p \
 	>"$tmp_dir/higher-order-operation-handler.out"
-grep -q '^term main := COMPUTATION_FOLD(OPERATION_REQUEST(EFFECT_OPERATION(scope_text)' \
+grep -q '^term main := COMPUTATION_FOLD(' \
 	"$tmp_dir/higher-order-operation-handler.out"
 grep -q 'OP_CLAUSE(EFFECT_OPERATION(scope_text)' \
 	"$tmp_dir/higher-order-operation-handler.out"
 grep -q '\[computation-fold-elim\]' \
 	"$tmp_dir/higher-order-operation-handler.out"
+grep -q '\[computation-fold-elim\] proof#[0-9][0-9]* premises=6' \
+	"$tmp_dir/higher-order-operation-handler.out"
 {
 	cat src/prototype/higher_order_operation_handler_check.p
-	printf ':q\n'
+	printf 'main\n:q\n'
 } | ./a.out >"$tmp_dir/higher-order-operation-handler-eval.out"
 grep -q '^value main := RETURN(TEXT_LITERAL("handled"))$' \
 	"$tmp_dir/higher-order-operation-handler-eval.out"

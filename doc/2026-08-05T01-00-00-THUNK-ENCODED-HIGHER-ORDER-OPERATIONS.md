@@ -136,7 +136,7 @@ M
 ```
 
 The reader stores up to 31 operation clauses.  AST, OperationGraph, TermDB,
-typing, runtime dispatch, and artifact v56 all carry clause arrays.  The former
+typing, runtime dispatch, and artifact v57 all carry clause arrays.  The former
 single-clause limitation is no longer present.
 
 ### 3.4 Deeply handle the outer continuation
@@ -583,9 +583,11 @@ derivation as permanent even though handler cleanup later deletes it.  A local
 lookup repair caused ordinary computation-block regressions because a reindex
 proof could itself depend on a provisional proof.  Cleanup has therefore been
 changed to remove the dependency closure of provisional derivations before
-reification.  Clause-bearing fold proof reification remains incomplete, so
-this is not yet the final proof-DAG repair.  These are proof lifecycle defects,
-not evidence that thunk encoding is insufficient.
+reification.  Clause-bearing fold proof reification is now complete: the
+OperationGraph retains the generated wrapper lambdas and reconstruction uses
+the full `2 + 2*n` premise tuple.  These were proof lifecycle defects, not
+evidence that thunk encoding is insufficient.  Independent semantic replay of
+positive-fold carrier and effect-row equations remains artifact-kernel work.
 
 The surface force probe exposed a second, independent boundary.  A block
 binding such as `inner := delayed` binds the thunk value; it does not force it.
@@ -627,7 +629,7 @@ independent axes.
 | Unknown forwarding | an unrecognized higher-order request has a defined modular meaning | only opaque forwarding is defined |
 | Usage | thunk and resumption multiplicities are enforced | direct resumption use only; captured thunk use is not yet general |
 | Lifetime | resources captured by either computation cannot escape or replay unsafely | not implemented |
-| Artifact | the operation classifier and suspended graph survive serialization | yes for the current v56 tests |
+| Artifact | the operation classifier, suspended graph, and fold wrapper edges survive serialization | yes for the current v57 tests |
 
 This gives the precise current classification:
 
@@ -756,3 +758,33 @@ occurrence should instead retain the return-lambda operation and each outer
 clause-lambda operation as authoritative proof edges.  Runtime body edges may
 remain in addition when they are needed for direct clause execution.  This is
 an OperationGraph/proof-boundary correction, not a new TermDB calculus node.
+
+### 11.6 Implemented boundary and remaining kernel obligation
+
+The OperationGraph correction and the first two implementation-order items are
+now complete.  A clause-bearing fold retains its generated return lambda and
+every generated outer clause lambda.  `COMPUTATION_FOLD_ELIM` is rebuilt with
+the exact `2 + 2*n` premise tuple after provisional derivation cleanup, and the
+artifact format is v57.  Graph validation checks that every serialized wrapper
+edge points back to the corresponding Core fold child rather than merely to an
+in-range operation slot.
+
+Cleanup also requires a three-step fixed point:
+
+```text
+materialize structural APP/LAMBDA proofs
+solve operation-request constraints
+materialize enclosing clause-bearing folds
+```
+
+Solving requests before restoring their APP premises was the reason the
+higher-order handler could have a solved classifier without a durable fold
+proof.
+
+This closes a proof-lifecycle and artifact-identity defect.  It does not decide
+inner-thunk execution or forwarding policy.  One kernel debt also remains:
+positive-fold proof validation currently verifies the complete premise shape
+but relies on the source constraint solver for the semantic carrier/effect-row
+equations.  Artifact validation must eventually replay those equations from
+the proof premises before artifacts from an untrusted producer can be treated
+as independently kernel-checked.

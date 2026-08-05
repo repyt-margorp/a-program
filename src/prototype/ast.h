@@ -398,6 +398,9 @@ struct prototype_operation_node {
 	 * computation-fold clause arena below. */
 	uint32_t fold_return_ast_binder_id;
 	uint32_t fold_return_binder_id;
+	/* Generated return-clause lambda occurrence. The return body remains in
+	 * scrutinee for source propagation and runtime evaluation. */
+	uint32_t fold_return_operation;
 	/* Classifier-only row binders generalized by this lambda. They are never
 	 * runtime lambda arguments. */
 	uint32_t implicit_effect_row_binders[16];
@@ -422,6 +425,8 @@ struct prototype_operation_match_case {
 struct prototype_operation_computation_fold_clause {
 	uint32_t operation_operation;
 	uint32_t body_operation;
+	/* Generated outer lambda which binds the request and resumption. */
+	uint32_t clause_operation;
 	uint32_t context_id;
 	uint32_t argument_ast_binder_id;
 	uint32_t argument_binder_id;

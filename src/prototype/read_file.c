@@ -895,6 +895,9 @@ static int append_link_operation_graph(
 		operation.fold_return_binder_id = offset_link_graph_id(
 			operation.fold_return_binder_id, binder_offset
 		);
+		operation.fold_return_operation = offset_link_graph_id(
+			operation.fold_return_operation, operation_offset
+		);
 		operation.function = offset_link_graph_id(operation.function, operation_offset);
 		operation.argument = offset_link_graph_id(operation.argument, operation_offset);
 		operation.body = offset_link_graph_id(operation.body, operation_offset);
@@ -932,6 +935,9 @@ static int append_link_operation_graph(
 		);
 		clause.body_operation = offset_link_graph_id(
 			clause.body_operation, operation_offset
+		);
+		clause.clause_operation = offset_link_graph_id(
+			clause.clause_operation, operation_offset
 		);
 		clause.context_id = context_relocation[clause.context_id];
 		clause.argument_ast_binder_id = offset_link_graph_id(

@@ -368,10 +368,8 @@ int prototype_judgement_delta_record_computation_fold_elim(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
-	uint32_t computation,
-	uint32_t computation_classifier,
-	uint32_t continuation,
-	uint32_t continuation_classifier
+	const uint32_t* premise_classifiers,
+	uint32_t premise_count
 );
 
 int prototype_judgement_computation_fold_result_classifier(

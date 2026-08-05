@@ -169,7 +169,7 @@ Completed request-level evidence:
 - [x] `#.scope_text` accepts `&(perform (#.print ...))` as an ordinary argument;
 - [x] the resulting graph contains `THUNK(OPERATION_REQUEST(...))`;
 - [x] the inner print row remains latent in the thunk classifier;
-- [x] artifact v56 preserves and validates both operation classifiers.
+- [x] artifact v57 preserves operation classifiers and fold wrapper edges.
 - [x] a `#.scope_text` clause receives the quoted computation as an ordinary
       argument and can discard it;
 - [x] discarding the argument leaves the nested `#.print` unexecuted;
@@ -179,8 +179,8 @@ Completed request-level evidence:
 - [x] an unused operation-clause argument still receives the operation domain;
       variable occurrence is usage evidence, not typing authority;
 - [x] the handler and its proof graph survive artifact write/read.
-- [ ] rebuild CBPV boundary premises with explicit `CONTEXT_REINDEX` after
-      dependency-closed removal of provisional handler derivations;
+- [x] rebuild clause-bearing fold premises after dependency-closed removal of
+      provisional handler derivations;
 
 No special higher-order surface syntax or Core node may appear in this stage.
 
@@ -422,7 +422,7 @@ Every row requires direct and artifact-backed evidence where applicable.
 | Area | Required tests | Status |
 |---|---|---|
 | Existing examples 01-09 | compile as before | passed 2026-08-05 |
-| Existing prototype suite | every `test_*.sh` passes | failing: clause-fold proof assertion |
+| Existing prototype suite | every `test_*.sh` passes | passed 2026-08-05 |
 | Thunk operation | discard, once, repeated, explicit inner fold | pending |
 | Forwarding | unknown thunk request preserves argument | pending |
 | Effect rows | latent before force, union after force | pending |
@@ -432,7 +432,7 @@ Every row requires direct and artifact-backed evidence where applicable.
 | Lambda exit | File finalizer runs before exit reaches caller | pending |
 | Handler abort | File finalizer runs before abort leaves scope | pending |
 | Region escape | returned/stored/thunk-captured borrow rejected | pending |
-| Artifact | operation classifiers survive readback | passed for classifier edge |
+| Artifact | operation classifiers and fold wrapper edges survive readback | passed for v57 |
 | Backend | unsupported filesystem capability rejected | pending |
 
 ## 12. Progress Log
@@ -603,6 +603,34 @@ Core representatives and artifact relocation.  The planned repair therefore
 adds authoritative wrapper-lambda occurrence edges and reifies the complete
 `2 + 2*n` premise tuple from them.  This representation repair precedes the
 inner-force surface work.
+
+### 2026-08-05: Clause-bearing fold proof milestone
+
+- Added authoritative OperationGraph edges for the generated return-clause
+  lambda and every generated outer operation-clause lambda.
+- Rebuilt `COMPUTATION_FOLD_ELIM` with input, return lambda, and each
+  `(operation identity, clause lambda)` pair, for `2 + 2*n` premises.
+- Preserved the old zero-clause sequencing path.  Applying handler-specific
+  context reindexing to sequencing had admitted a provisional lambda
+  derivation into the durable proof graph and was reverted.
+- Corrected the post-cleanup fixed-point order to materialize structural
+  proofs, solve operation requests, and only then materialize enclosing folds.
+- Changed the artifact format from v56 to v57 and relocated, serialized, and
+  validated the new edges.  Validation checks correspondence with Core fold
+  children, not only operation-ID bounds.
+- Corrected the higher-order runtime test to request evaluation of `main`;
+  defining a name in the REPL is not execution.
+- Passed every `src/prototype/test_*.sh` script and examples 01-09.
+
+The next implementation item is the explicit surface computation-demand path
+for a thunk received by a clause.  This milestone does not make generic folds
+descend through thunks and does not establish modular higher-order forwarding.
+
+The positive-fold artifact validator still checks structural premises more
+strongly than semantic carrier/effect-row equations.  Source compilation has
+already solved those equations, but independent replay by the artifact kernel
+remains a separate hardening task and must not be confused with the completed
+proof-lifecycle repair.
 
 ## 14. Completion Rule
 
