@@ -557,6 +557,53 @@ the removed `#.force` syntax has no complete replacement for this clause use.
 The remaining issue is therefore proof reification plus surface elaboration
 and classifier solving, not Core representation.
 
+### 2026-08-05: Higher-order capability reassessed by independent contracts
+
+The implementation and the primary scoped-effect literature were reviewed
+again after the claim that a thunk argument might already provide the required
+higher-order structure.  The claim is partly correct and changes the problem
+statement:
+
+- `&M` already supplies the representation of an internal computation;
+- the operation request already keeps that computation distinct from its outer
+  continuation;
+- plural operation clauses are already implemented and are unrelated to
+  whether an individual request is higher-order;
+- no separate higher-order operation Core tag is justified by the current
+  evidence.
+
+What remains is not "make operations accept computations".  It is to complete
+and validate the contracts for inner scheduling, recursive inner handling,
+unknown-operation forwarding, usage, and resource lifetime.  The current
+runtime's generic deep fold handles the outer continuation and preserves a
+thunk argument opaquely.  That is a coherent default, but not a complete scoped
+forwarding semantics.
+
+The semantic decision document now records a nine-axis capability matrix and
+the following implementation order:
+
+1. repair clause-bearing fold proof reification;
+2. validate plural proofs and artifact readback;
+3. provide an unambiguous surface computation-demand path for inner force;
+4. separately test discard, once, repeated, and explicit inner fold;
+5. decide modular forwarding only after those paths are sound;
+6. add resource lifetime machinery after the runtime perform boundary supports
+   non-Term values.
+
+This supersedes any earlier diagnosis that the present surface syntax accepts
+only one operation clause.  It also prevents the opposite overstatement that
+successful `&M` request construction proves full higher-order handling.
+
+Code inspection refined item 1 further.  The Core proof requires the generated
+return-clause lambda and each generated outer operation-clause lambda as proof
+premises.  OperationGraph currently retains only their bodies as direct fold
+edges, despite creating wrapper-lambda occurrence nodes during lowering.
+Searching those nodes again by binder identity would be fragile under shared
+Core representatives and artifact relocation.  The planned repair therefore
+adds authoritative wrapper-lambda occurrence edges and reifies the complete
+`2 + 2*n` premise tuple from them.  This representation repair precedes the
+inner-force surface work.
+
 ## 14. Completion Rule
 
 This migration is complete only when:

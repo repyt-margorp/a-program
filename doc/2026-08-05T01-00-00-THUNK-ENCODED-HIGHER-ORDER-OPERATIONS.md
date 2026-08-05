@@ -136,7 +136,7 @@ M
 ```
 
 The reader stores up to 31 operation clauses.  AST, OperationGraph, TermDB,
-typing, runtime dispatch, and artifact v55 all carry clause arrays.  The former
+typing, runtime dispatch, and artifact v56 all carry clause arrays.  The former
 single-clause limitation is no longer present.
 
 ### 3.4 Deeply handle the outer continuation
@@ -610,3 +610,149 @@ The following still require new static or runtime representation:
 This boundary is intentional.  It distinguishes a missing proof or runtime
 contract from a missing expression form, and prevents a successful parser or
 Core construction test from being reported as resource-safe handling.
+
+## 11. Decision After Multi-Axis Reassessment
+
+The question "does A Program support higher-order operations?" has no useful
+single boolean answer.  The implementation must be assessed along the following
+independent axes.
+
+| Axis | Required property | Current result |
+|---|---|---|
+| Representation | an operation request can contain a suspended computation | yes: `THUNK(M)` is an ordinary request argument |
+| Typing | the request preserves `Thunk(Comp(E,A))` and keeps `E` latent | yes for the builtin graph classifier schemas now tested |
+| Clause dispatch | one fold can distinguish several nominal operations | yes: the source and Core representations are plural |
+| Inner execution | a clause can force the supplied computation and bind its result | Core-representable, but not yet validated through the current surface elaborator and proof graph |
+| Inner handling | a clause can place a selected fold around the supplied computation | Core-representable, but not yet validated end to end |
+| Unknown forwarding | an unrecognized higher-order request has a defined modular meaning | only opaque forwarding is defined |
+| Usage | thunk and resumption multiplicities are enforced | direct resumption use only; captured thunk use is not yet general |
+| Lifetime | resources captured by either computation cannot escape or replay unsafely | not implemented |
+| Artifact | the operation classifier and suspended graph survive serialization | yes for the current v56 tests |
+
+This gives the precise current classification:
+
+> A Program implements thunk-encoded higher-order **requests** and ordinary
+> plural deep handlers whose default treatment of request thunks is opaque.  It
+> does not yet implement a complete, modular higher-order-handler calculus or a
+> resource-safe scoped-effect calculus.
+
+### 11.1 Why plural clauses and higher order are orthogonal
+
+The following source form already represents several operation algebras in one
+fold:
+
+```text
+M
+	@#.return x => R x
+	@op_1 request_1 k_1 => C_1
+	@op_2 request_2 k_2 => C_2;
+```
+
+This answers which nominal operation is intercepted.  It says nothing about
+whether `request_1` contains a computation or what `C_1` does with that
+computation.  Conversely, a single operation clause can receive `&N` and hence
+be higher-order in its parameter.  Clause cardinality and operation order are
+therefore separate dimensions.  The earlier statement that the surface syntax
+only admitted one operation clause is obsolete for the current implementation.
+
+### 11.2 What thunk encoding establishes
+
+For a declaration with graph classifier
+
+```text
+scope : forall E. Thunk(Comp(E, A)) -> Comp({scope}, B)
+```
+
+the existing graph can represent:
+
+```text
+perform (scope &M)
+```
+
+without executing `M`.  The handler receives two different computations in
+different positions:
+
+- the inner computation `M`, suspended in the request value; and
+- the outer continuation, suspended in `OPERATION_REQUEST.continuation`.
+
+This is enough to encode discard, storage, explicit execution, duplication,
+and explicit recursive handling as different clause bodies.  It also means a
+new `HIGHER_OPERATION` TermDB tag would duplicate information already present
+in the graph.
+
+### 11.3 What thunk encoding does not decide
+
+An ordinary deep fold recursively wraps the outer continuation.  It does not
+cross a `THUNK` boundary.  This is not an implementation failure: crossing that
+boundary would choose an observable scheduling policy.  For an unknown
+operation carrying `&M`, at least the following semantics are distinct:
+
+1. forward `&M` unchanged;
+2. recursively transform `M` before forwarding;
+3. execute `M` under the current handler before forwarding;
+4. expose separate inner and outer forwarding clauses.
+
+The current implementation selects option 1.  Papers on scoped handlers require
+an explicit account of the inner and outer computations, and in particular of
+forwarding unknown scoped operations.  Therefore option 1 is coherent opaque
+forwarding, but it must not be advertised as general scoped forwarding.
+
+### 11.4 Decisions
+
+1. Keep one operation-request Core representation.  Do not add a separate
+   higher-order-operation tag merely because the request contains a thunk.
+2. Keep plural match-style `COMPUTATION_FOLD`; do not restore the removed
+   single-operation handler AST.
+3. Treat `THUNK` as an opacity boundary for generic deep folds.  Entering the
+   thunk must be explicit in the selected clause or in a future typed policy.
+4. Describe the current feature as "thunk-encoded higher-order requests", not
+   as complete higher-order handling.
+5. Complete clause-bearing fold proof reification before using a passing Core
+   construction as evidence for inner force or inner handling.
+6. Provide an unambiguous computation-demand surface path before claiming that
+   a clause can force its thunk argument.  A plain binding of `delayed` remains
+   a binding of the thunk value and must not silently execute it.
+7. Keep opaque forwarding as the default.  Any recursive inner-forwarding rule
+   requires a separately typed and tested contract.
+8. Keep resumption multiplicity, thunk usage, and resource lifetime separate.
+   A one-shot outer continuation does not prove one-shot use of an inner thunk.
+9. Do not begin File/resource operations until runtime values can cross the
+   perform boundary without being materialized as TermDB nodes.
+
+### 11.5 Immediate implementation order
+
+The next work is intentionally narrower than adding a new effect calculus:
+
+1. rebuild `COMPUTATION_FOLD_ELIM` proofs with all `2 + 2*n` premises after
+   provisional derivation cleanup;
+2. add permanent tests for two operation clauses and artifact readback of the
+   rebuilt proof;
+3. define and implement the surface computation-demand operation used to force
+   a thunk inside a clause;
+4. test discard, force once, force repeatedly, and explicit inner fold as four
+   different programs;
+5. only then select a modular unknown-operation forwarding rule;
+6. add resource tables, finalizers, region escape checks, and File operations
+   as a later safety layer.
+
+This order separates an existing proof-lifecycle defect from unresolved
+semantic policy.  It avoids adding syntax or Core tags to work around a proof
+reification bug.
+
+The first item includes one representation correction in OperationGraph.  A
+clause-bearing Core fold requires these proof subjects:
+
+```text
+input computation
+return-clause lambda
+(operation identity, operation-clause outer lambda) for every clause
+```
+
+The current occurrence record directly stores the return body and each clause
+body, while the wrapper lambdas are created as separate operations but are not
+retained as explicit fold edges.  Recovering them later by scanning binder IDs
+would make proof construction depend on incidental graph layout.  The fold
+occurrence should instead retain the return-lambda operation and each outer
+clause-lambda operation as authoritative proof edges.  Runtime body edges may
+remain in addition when they are needed for direct clause execution.  This is
+an OperationGraph/proof-boundary correction, not a new TermDB calculus node.
