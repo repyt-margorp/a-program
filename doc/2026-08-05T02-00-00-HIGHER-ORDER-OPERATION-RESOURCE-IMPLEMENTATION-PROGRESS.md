@@ -179,6 +179,8 @@ Completed request-level evidence:
 - [x] an unused operation-clause argument still receives the operation domain;
       variable occurrence is usage evidence, not typing authority;
 - [x] the handler and its proof graph survive artifact write/read.
+- [ ] rebuild CBPV boundary premises with explicit `CONTEXT_REINDEX` after
+      dependency-closed removal of provisional handler derivations;
 
 No special higher-order surface syntax or Core node may appear in this stage.
 
@@ -420,7 +422,7 @@ Every row requires direct and artifact-backed evidence where applicable.
 | Area | Required tests | Status |
 |---|---|---|
 | Existing examples 01-09 | compile as before | passed 2026-08-05 |
-| Existing prototype suite | every `test_*.sh` passes | passed 2026-08-05 |
+| Existing prototype suite | every `test_*.sh` passes | failing: clause-fold proof assertion |
 | Thunk operation | discard, once, repeated, explicit inner fold | pending |
 | Forwarding | unknown thunk request preserves argument | pending |
 | Effect rows | latent before force, union after force | pending |
@@ -525,6 +527,35 @@ This confirmed that the failure was not a representation failure and did not
 justify a new higher-order operation node.  Discard, one direct resumption, and
 repeated multi-shot resumption now pass.  Explicit scoped interpretation and
 unknown-operation forwarding remain Stage 2 work.
+
+### 2026-08-05: Inner-force probe exposed proof lifecycle debt
+
+A clause which merely receives and discards `&M` is not sufficient evidence
+that the clause can execute `M`.  A dedicated force probe exposed two general
+proof-DAG defects:
+
+1. RETURN/THUNK/FORCE proof construction omitted context reindexing for a child
+   proof inherited from the handler argument context.
+2. Reindex lookup accepted provisional APP/Lambda/IH derivations which are
+   deliberately removed during handler reconstruction, leaving durable CBPV
+   proofs with missing premises.
+
+A local lookup repair made the simple ancestor-context probe reach proof
+validation, but regressed ordinary computation blocks because a reindex proof
+could itself cite a provisional proof.  That lookup repair was reverted.
+Temporary-proof cleanup now removes every derivation whose premise tuple is no
+longer provided by a surviving relation, and clears stale proof IDs before
+reification.  Examples 01-09, artifact flow, and resumption tests pass with
+this dependency-closed cleanup.
+
+The full CBPV surface script still fails where it requires a
+`computation-fold-elim` proof for a clause-bearing handler.  This is the known
+gap in clause-fold reification, not a runtime failure.  Stage 2's force-once,
+force-repeatedly, and explicit-inner-fold boxes remain unchecked.  The source
+probe also established that `inner := delayed` merely binds the thunk, while
+the removed `#.force` syntax has no complete replacement for this clause use.
+The remaining issue is therefore proof reification plus surface elaboration
+and classifier solving, not Core representation.
 
 ## 14. Completion Rule
 

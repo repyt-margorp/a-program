@@ -26120,6 +26120,15 @@ static int operation_solver_reify_core_proof(
 			if (status != 0) {
 				return status;
 			}
+			status = operation_solver_reindex_existing_proof(
+				ctx,
+				operation->context_id,
+				child_term,
+				child_classifier
+			);
+			if (status != 0) {
+				return status;
+			}
 			prototype_judgement_delta_set_context(
 				&ctx->judgement_delta, operation->context_id
 			);

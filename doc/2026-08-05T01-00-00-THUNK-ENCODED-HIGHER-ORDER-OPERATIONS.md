@@ -521,3 +521,92 @@ effect algebraic.  The decision is narrower:
 > computations in operation requests.  Additional type, handling, forwarding,
 > multiplicity, and lifetime rules are layered on that representation instead
 > of introducing duplicate operation syntax.
+
+## 10. Refined Problem Statement After Implementation
+
+The implementation evidence rules out both overly strong conclusions:
+
+```text
+&M can be passed to an operation
+therefore arbitrary higher-order handling is complete             (false)
+
+an ordinary deep fold does not enter &M automatically
+therefore thunk encoding cannot express higher-order operations    (false)
+```
+
+The actual problem is a product of six independent contracts:
+
+1. **Request representation.** Can an operation carry `&M` without running it?
+2. **Elaboration and typing.** Can the graph classifier preserve the latent
+   `Comp(E,A)` and make it available in a clause context?
+3. **Inner scheduling.** Does the clause discard, force once, force repeatedly,
+   or explicitly fold `M`?
+4. **Forwarding.** What happens to both `M` and the outer continuation when an
+   enclosing handler does not recognize the operation?
+5. **Usage.** How many times may the inner thunk and outer resumption be used?
+6. **Lifetime.** If either side captures a runtime resource, where is that
+   resource stored, when is it finalized, and how is escape rejected?
+
+A design is a general higher-order or scoped handler design only when it gives
+a compositional answer to all relevant contracts.  A separate Core operation
+tag would not answer contracts 3 through 6, so adding one is not a solution to
+the current blockers.
+
+### 10.1 Proven capabilities
+
+The current implementation has direct evidence for:
+
+- preserving a quoted computation as an opaque request argument;
+- preserving its latent effect row in the thunk classifier;
+- selecting one of several nominal operation clauses;
+- discarding the quoted computation without executing it;
+- deeply handling and forwarding the outer continuation;
+- direct one-shot, multi-shot, and abortive resumption checks;
+- returning from a captured multi-shot resumption to the handler clause;
+- preserving authoritative operation classifier graphs through artifacts;
+- keeping term values and resumption identities distinct in the runtime.
+
+### 10.2 Representable but not yet validated end to end
+
+The Core can contain an explicit `FORCE` and another `COMPUTATION_FOLD` around
+an inner thunk.  The source elaborator also already builds these nodes in
+ordinary sequencing contexts.  Nevertheless, a handler-clause probe which
+forces its thunk exposed proof-context cleanup defects.  Therefore explicit
+inner execution and recursive inner handling remain unproven capabilities
+until permanent tests pass through typing, proof validation, runtime, and
+artifact readback.
+
+The first defect was precise: CBPV boundary proofs can use a premise from an
+ancestor context without retaining the required `CONTEXT_REINDEX` proof.  A
+second defect is that reindex lookup can treat a provisional APP/Lambda/IH
+derivation as permanent even though handler cleanup later deletes it.  A local
+lookup repair caused ordinary computation-block regressions because a reindex
+proof could itself depend on a provisional proof.  Cleanup has therefore been
+changed to remove the dependency closure of provisional derivations before
+reification.  Clause-bearing fold proof reification remains incomplete, so
+this is not yet the final proof-DAG repair.  These are proof lifecycle defects,
+not evidence that thunk encoding is insufficient.
+
+The surface force probe exposed a second, independent boundary.  A block
+binding such as `inner := delayed` binds the thunk value; it does not force it.
+This is correct CBPV behavior.  The current surface has removed `#.force`, and
+the implicit computation-demand rules do not yet provide an end-to-end typed
+way to force a handler argument and bind its result inside the clause.  The
+remaining work is therefore partly surface elaboration and partly fold
+classifier solving, not a missing Core `FORCE` node.
+
+### 10.3 Not yet represented soundly
+
+The following still require new static or runtime representation:
+
+- generic transformation of unknown inner computations while forwarding;
+- usage-aware thunk capture beyond direct continuation occurrence counting;
+- a runtime resource table and finalizer scopes;
+- a perform/dispatch boundary which can carry a runtime resource without
+  materializing it as a TermDB node;
+- region binders, non-escape constraints, and branch-consistent resource use;
+- the scoped File interface and backend capability validation.
+
+This boundary is intentional.  It distinguishes a missing proof or runtime
+contract from a missing expression form, and prevents a successful parser or
+Core construction test from being reported as resource-safe handling.

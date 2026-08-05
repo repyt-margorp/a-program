@@ -11774,10 +11774,14 @@ void prototype_judgement_delta_drop_temporary_derivations(
 	if (!delta) {
 		return;
 	}
+	uint8_t* removed = calloc(delta->relation_count, sizeof(*removed));
 	struct prototype_judgement_proof* source_proofs = malloc(
 		delta->proof_count * sizeof(*source_proofs)
 	);
-	if (delta->proof_count != 0 && !source_proofs) {
+	if ((delta->relation_count != 0 && !removed) ||
+		(delta->proof_count != 0 && !source_proofs)) {
+		free(removed);
+		free(source_proofs);
 		return;
 	}
 	if (delta->proof_count != 0) {
@@ -11787,10 +11791,10 @@ void prototype_judgement_delta_drop_temporary_derivations(
 			delta->proof_count * sizeof(*source_proofs)
 		);
 	}
-	size_t write = 0;
 	for (size_t read = 0; read < delta->relation_count; ++read) {
 		const struct prototype_judgement_relation* relation = &delta->relations[read];
 		if (relation->proof_id >= delta->proof_count) {
+			free(removed);
 			free(source_proofs);
 			return;
 		}
@@ -11799,17 +11803,71 @@ void prototype_judgement_delta_drop_temporary_derivations(
 			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM ||
 			(relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM &&
 				source_proofs[relation->proof_id].premise_count > 2)) {
+			removed[read] = 1;
+		}
+	}
+	for (;;) {
+		int changed = 0;
+		for (size_t read = 0; read < delta->relation_count; ++read) {
+			if (removed[read]) {
+				continue;
+			}
+			const struct prototype_judgement_relation* relation =
+				&delta->relations[read];
+			const struct prototype_judgement_proof* proof =
+				&source_proofs[relation->proof_id];
+			for (uint32_t premise = 0; premise < proof->premise_count; ++premise) {
+				int found = 0;
+				for (size_t candidate = 0;
+					candidate < delta->relation_count;
+					++candidate) {
+					const struct prototype_judgement_relation* premise_relation =
+						&delta->relations[candidate];
+					if (!removed[candidate] &&
+						premise_relation->kind == proof->premise_kinds[premise] &&
+						premise_relation->context_id ==
+							proof->premise_context_ids[premise] &&
+						premise_relation->subject ==
+							proof->premise_subjects[premise] &&
+						premise_relation->classifier ==
+							proof->premise_classifiers[premise]) {
+						found = 1;
+						break;
+					}
+				}
+				if (!found) {
+					removed[read] = 1;
+					changed = 1;
+					break;
+				}
+			}
+		}
+		if (!changed) {
+			break;
+		}
+	}
+	size_t write = 0;
+	for (size_t read = 0; read < delta->relation_count; ++read) {
+		if (removed[read]) {
 			continue;
 		}
+		const struct prototype_judgement_relation* relation = &delta->relations[read];
 		if (write != read) {
 			delta->relations[write] = delta->relations[read];
 		}
 		delta->proofs[write] = source_proofs[relation->proof_id];
+		for (uint32_t premise = 0;
+			premise < delta->proofs[write].premise_count;
+			++premise) {
+			delta->proofs[write].premise_proof_ids[premise] =
+				PROTOTYPE_INVALID_ID;
+		}
 		delta->relations[write].proof_id = (uint32_t)write;
 		write++;
 	}
 	delta->relation_count = write;
 	delta->proof_count = write;
+	free(removed);
 	free(source_proofs);
 }
 
