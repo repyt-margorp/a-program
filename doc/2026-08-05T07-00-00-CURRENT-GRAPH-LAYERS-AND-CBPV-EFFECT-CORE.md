@@ -3,7 +3,7 @@
 Date: 2026-08-05
 
 Status: current-system design record. This document describes the implemented
-prototype at `main` commit `7120766`. It is descriptive where explicitly
+prototype through `main` commit `586d16c`. It is descriptive where explicitly
 labelled "current" and normative where explicitly labelled "invariant" or
 "decision".
 
@@ -20,8 +20,8 @@ The implementation therefore does not consist of one graph with every concern
 encoded into node identity. It consists of one shared TermDB plus
 occurrence-level and proof-level graphs which refer to it.
 
-This document fixes the responsibilities of those layers before the surface
-`perform` form is removed.
+This document fixes the responsibilities of those layers after direct effect
+application replaced the former surface wrapper.
 
 ## 2. Principal Decision
 
@@ -61,14 +61,13 @@ The AST records syntax before canonical Core sharing. It currently includes:
 - `APP`, `LAMBDA`, Match, constructor formation, and ascription;
 - definition and computation blocks;
 - quotation;
-- a transitional `PROTOTYPE_AST_PERFORM` node;
 - computation-fold syntax.
 
 The AST owns source spans and source binder identities. AST identity is not
 semantic Core identity.
 
-The transitional `PERFORM` AST is not part of the desired final surface. Its
-removal is planned separately.
+There is no perform-specific AST node. Direct application syntax is resolved
+semantically during lowering.
 
 ### 3.2 TermDB: canonical static graph
 
@@ -414,34 +413,29 @@ machine resumes the request continuation with that result.
 
 Kernel conversion and artifact validation must not perform this dispatch.
 
-## 9. Current Inconsistency Around Direct Operation APP
+## 9. Direct Operation Application Invariant
 
-The current surface has two paths.
-
-```ap
-perform (#.print #"hello")
-```
-
-constructs an `OPERATION_REQUEST` with an identity return continuation.
-
-By contrast:
+The current surface uses ordinary application syntax:
 
 ```ap
 #.print #"hello"
 ```
 
-can construct a saturated APP spine and obtain a computation classifier, but
-it does not become an `OPERATION_REQUEST`. The evaluator consequently has no
-request constructor to dispatch or handle and can leave the APP stuck.
+After name resolution, a saturated `EFFECT_OPERATION` head lowers to one
+`OPERATION_REQUEST` occurrence with an explicit identity continuation. An
+alias such as `output := #.print; output #"hello";` follows the same path.
+Pure primitives remain ordinary APP spines.
 
-This violates the intended invariant:
+OperationGraph validation enforces:
 
 ```text
 Every accepted saturated EFFECT_OPERATION application denotes exactly one
 operation request occurrence.
 ```
 
-The direct-effect-application migration must repair this inconsistency.
+The internal APP used as the operation-signature typing premise may remain in
+TermDB/JudgementDB, but it is not an executable source occurrence. Surface
+`perform` has no special parser meaning and may be used as an ordinary name.
 
 ## 10. Naming and Identity Invariants
 
@@ -468,10 +462,10 @@ Artifacts must preserve reachable slices of:
 - effect operation declarations/dependencies and backend requirements;
 - selected definition/entry metadata.
 
-The artifact must not preserve parser-only `perform` syntax. Removing the
-surface AST node does not require removing the Core request tag. Renaming the
-OperationGraph occurrence tag may require an artifact version bump because
-serialized occurrence tags are part of the format.
+Artifact v61 does not preserve parser-only `perform` syntax. Removing the
+surface AST node did not remove the Core request tag. The version was bumped
+because serialized OperationGraph occurrence tags are part of the format;
+v60 is rejected explicitly.
 
 ## 12. Non-Goals
 

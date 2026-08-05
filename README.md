@@ -1,727 +1,521 @@
-# Core Language Specification
+# A Program
 
-**Date**: 2025-10-09
-**Status**: In development (migrating from program-old)
+A Program is an experimental dependently typed language and compiler
+prototype. It compiles a compact source language into a shared canonical term
+graph, preserves typed source occurrences in a separate operation graph,
+synthesizes classifiers through constraints, records checkable typing proofs,
+and can execute CBPV computations with algebraic effect requests.
 
-This document defines the Core term language — the **only** intermediate representation in this system. Unlike traditional compilers, there is no separate AST layer; the parser translates `.p` files directly into Core terms.
+The active implementation is under `src/prototype/`. Code under `src/` and
+`include/` is accepted project code and is not automatically updated from the
+prototype. See `AGENTS.md` for the promotion policy.
 
----
+The former 2025 README described a different architecture. It is archived at
+`doc/2026-08-06T00-00-00-LEGACY-README-2025-10-09.md`.
 
-## Table of Contents
+## Current Status
 
-1. [Design Goals](#design-goals)
-2. [Core Term Constructors](#core-term-constructors)
-3. [Data Structures](#data-structures)
-4. [Universe Levels](#universe-levels)
-5. [Inductive Types](#inductive-types)
-6. [Pattern Matching](#pattern-matching)
-7. [Equality and Identity Types](#equality-and-identity-types)
-8. [Global Environment](#global-environment)
-9. [Evaluation Strategy](#evaluation-strategy)
-10. [Type Checking](#type-checking)
-11. [What is Intentionally Absent](#what-is-intentionally-absent)
+Implemented in the prototype:
 
----
+- an AST and explicit AST-to-graph elaboration phase;
+- context-indexed typed source occurrences over a shared TermDB;
+- alpha-aware canonical sharing with pointer-like binder IDs;
+- generative positive ADTs, parameterized type formers, constructors, Match,
+  and guarded structural induction through `*field`;
+- dependent Pi classifiers and computed Match motives for the supported
+  guarded fragment;
+- CBPV boundaries (`RETURN`, `THUNK`, `FORCE`) and computation blocks;
+- explicit effect requests and multi-clause computation folds/handlers;
+- bounded classifier/effect solving with strict, hybrid, and exploratory
+  policies;
+- JudgementDB typing derivations and VerificationDB residual obligations;
+- profile-specific pure normalization with memoized WHNF results;
+- artifact v61, namespace-qualified interfaces, relocation, linking,
+  aggregation, and backend capability checks;
+- an interpreter/REPL and an inspection-oriented compiler CLI.
 
-## Design Goals
+This remains a research prototype. In particular, propositional equality,
+`refl`, transport/J, general IADT index refinement, general higher-order
+unification, linear resources, user-defined operations, and production C or
+Verilog code generation are not complete language features.
 
-### Minimal Yet Sufficient
+## Build
 
-The Core language is designed to be:
-- **Minimal**: Small enough for manual inspection and formal verification
-- **Sufficient**: Expressive enough for indexed inductive types and dependent pattern matching
-- **Canonical**: Uses de Bruijn indices and spine form for predictable equality
-- **Direct**: No elaboration layer; parser output = type checker input
+The root `Makefile` builds the prototype directly:
 
-### Not a Research Vehicle
-
-This is **not** an experiment in:
-- Type inference algorithms
-- Implicit argument synthesis
-- Syntactic sugar translation
-- Advanced elaboration techniques
-
-Instead, it is a **typed assembly language** for dependent types, where all complexity is explicit.
-
----
-
-## Core Term Constructors
-
-### Term Tags (`struct term.tag`)
-
-```c
-enum {
-    T_SORT = 1,      // Universe Type u
-    T_VAR,           // De Bruijn indexed variable
-    T_PI,            // Dependent function type Π(x:A).B
-    T_LAM,           // Lambda abstraction λ(x:A).body
-    T_APP,           // Application (spine form)
-
-    T_CONST = 10,    // Global constant reference
-    T_INDUCTIVE,     // Inductive type reference
-    T_CTOR,          // Constructor
-    T_MATCH,         // Pattern match eliminator
-
-    T_META = 14,     // Meta-variable (hole for inference)
-    T_ANN,           // Type annotation (term : type)
-
-    T_EQ,            // Propositional equality type
-    T_REFL,          // Reflexivity constructor
-    T_EQ_ELIM,       // Equality eliminator (J-rule)
-
-    T_IH_CALL,       // Induction hypothesis call (*k)
-};
+```sh
+make
+make reader
 ```
 
-### Term Structure
+This creates:
 
-```c
-struct term {
-    int tag;
-    struct span loc;  // Source location for error messages
-    union {
-        struct { struct univ_level level; } sort;
-        struct { uint32_t binder_ref; uint32_t name; } var;
-        struct { struct telescope dom; uint32_t cod; } pi;
-        struct { struct telescope binders; uint32_t body; } lam;
-        struct { uint32_t fn; uint32_t* args; uint32_t argc; } app;
-        struct { uint32_t name; } const_;
-        struct { uint32_t name; } inductive;
-        struct { uint32_t name; uint32_t inductive_id; uint32_t ctor_index; } ctor;
-        struct match_core match_;
-        struct { uint32_t id; } meta;
-        struct { uint32_t term; uint32_t type; } ann;
-        struct { uint32_t type; uint32_t lhs; uint32_t rhs; } eq;
-        struct { uint32_t type; uint32_t term; } refl;
-        struct { uint32_t type; uint32_t motive; uint32_t base;
-                 uint32_t lhs; uint32_t rhs; uint32_t proof; } eq_elim;
-        struct { uint32_t param_name; uint32_t param_index;
-                 uint32_t match_term; } ih_call;
-    } as;
-};
+- `a.out`: interpreter and REPL;
+- `read_file.out`: compiler, graph inspector, artifact, linker, and validation
+  CLI.
+
+Both require a C11 compiler. The current build uses only the C standard
+library.
+
+Run an example:
+
+```sh
+./a.out examples/05_bool_to_nat.p
+./read_file.out examples/09_list_induction.p
 ```
 
----
+At the REPL:
 
-## Data Structures
-
-### Term Arena
-
-All terms are stored in a flat arena with hash-consing for sharing:
-
-```c
-struct term_arena {
-    struct term* data;
-    uint32_t len;
-    uint32_t cap;
-};
+```text
+:whnf main
+:nf main
+:q
 ```
 
-**Properties**:
-- Terms referenced by **ID** (uint32_t index into arena)
-- Immutable once created (functional data structure)
-- Automatic sharing of identical subterms
-- Efficient equality testing (pointer equality when hash-consed)
+`main` entered as an ordinary name executes under the runtime evaluator.
+`:whnf` and `:nf` expose the explicit normalization commands.
 
-### Binders and Telescopes
+## Small Example
 
-```c
-struct binder {
-    uint32_t name;       // Symbol ID (for printing)
-    uint32_t type;       // Type term ID
-    bool implicit;       // Implicit argument flag
-    uint8_t relevance;   // REL_RUNTIME or REL_ERASED
-};
-
-struct telescope {
-    struct binder* params;
-    uint32_t len;
-};
-```
-
-**Telescope**: Sequence of binders for Π-types and λ-abstractions
-- Allows multiple binders in one node (efficiency)
-- Example: `Π(A:Type)(x:A)(y:A). ...` → single Pi node with 3 binders
-
-### Relevance Annotations
-
-```c
-#define REL_RUNTIME 0  // Must be kept at runtime
-#define REL_ERASED  1  // Can be erased (proof term)
-```
-
-Used for **proof erasure** in future optimization passes.
-
----
-
-## Universe Levels
-
-### Level Structure
-
-```c
-struct univ_level {
-    int tag;
-    uint32_t a, b, v, k;  // Interpretation depends on tag
-};
-
-enum {
-    UL_ZERO = 1,  // Type 0
-    UL_SUCC,      // Type (u+1)
-    UL_MAX,       // Type (max u v)
-    UL_VAR,       // Type u (universe variable)
-};
-```
-
-### Level Expressions
-
-- `UL_ZERO`: Base universe `Type 0`
-- `UL_SUCC(u)`: Successor `Type (u+1)`
-- `UL_MAX(u,v)`: Maximum `Type (max u v)`
-- `UL_VAR(i)`: Universe variable `Type u_i`
-
-**Current implementation**: Only `Type 0` is used. Full universe polymorphism planned for future.
-
-### Universe Checking Rules
-
-```
-Γ ⊢ Type u : Type (u+1)        (Universe hierarchy)
-
-Γ, x:A ⊢ B : Type v
-─────────────────────────      (Pi formation)
-Γ ⊢ Π(x:A).B : Type (max u v)
-  where Γ ⊢ A : Type u
-```
-
----
-
-## Inductive Types
-
-### Inductive Definition Structure
-
-```c
-struct inductive_def {
-    uint32_t name;              // Type name
-    struct telescope params;     // Type parameters
-    struct telescope indices;    // Indices (for indexed families)
-    uint32_t param_count;       // Number of parameters
-    uint32_t sort;              // Universe term
-    struct ctor_def* ctors;     // Constructors
-    uint32_t ctor_count;
-};
-
-struct ctor_def {
-    uint32_t name;              // Constructor name
-    uint32_t type;              // Full type (term ID)
-    uint32_t ctor_index;        // Index in inductive's ctor array
-};
-```
-
-### Parameters vs Indices
-
-**Parameters**: Uniform across all constructors
-```scheme
-List := \A : @ => @{
-  nil  : *;
-  cons : A -> * -> *;
-};
-// A is a parameter (same for nil and cons)
-```
-
-**Indices**: Vary per constructor
-```scheme
-Vec := \A : @ => \n : Nat => @{
-  nil  : Vec A Nat.zero;                    // Index: Nat.zero
-  cons : A -> Vec A n -> Vec A (Nat.succ n); // Index: Nat.succ n
-};
-// n is an index (different for nil and cons)
-```
-
-### The `*` Self-Reference Marker
-
-**In IR syntax**, `*` represents "the type being defined":
-
-```scheme
-Nat := @{
-  zero : *;        // * = Nat
-  succ : * -> *;   // * -> * = Nat -> Nat
-};
-```
-
-**Elaboration**: Parser/elaborator replaces `*` with actual type reference
-**Guarantee**: Enforces that constructors return the correct type
-**Positivity**: Structural constraint prevents non-positive occurrences
-
----
-
-## Pattern Matching
-
-### Match Structure
-
-```c
-struct match_core {
-    uint32_t scrutinee;       // Term being matched
-    uint32_t inductive_id;    // Which inductive type
-    uint32_t* branches;       // Array[ctor_count], indexed by ctor_index
-    uint32_t branch_count;    // = ctor_count
-    uint32_t motive;          // Return type (dependent on scrutinee)
-    struct match_ih_info* ih_refs;  // Induction hypothesis references
-    uint32_t ih_ref_count;
-};
-```
-
-### Indexed Match Semantics
-
-**Key innovation**: Branches are **indexed by constructor index**, not sequential.
-
-```c
-// Constructor with ctor_index=2 → branches[2]
-// O(1) lookup, no linear search needed
-```
-
-**Example**:
-```scheme
+```ap
 Bool := @{
-  true : *;   // ctor_index = 0
-  false : *;  // ctor_index = 1
+	true : *;
+	false : *;
 };
 
-not : Bool -> Bool := \b : Bool =>
-  b @true => Bool.false    // branches[0]
-    @false => Bool.true;   // branches[1]
+Nat := @{
+	zero : *;
+	succ : * -> *;
+};
+
+toNat := \b : Bool =>
+	b @true  => Nat.succ Nat.zero
+	  @false => Nat.zero;
+
+negate := \b : Bool =>
+	b @true  => Bool.false
+	  @false => Bool.true;
+
+main := toNat (negate Bool.false);
 ```
 
-### Motive (Return Type)
+Applications are curried. Constructor names are selected through the type
+view (`Nat.zero`, `Bool.true`, `(List Nat).cons`), while the shared Core graph
+may erase distinctions that are irrelevant to computation.
 
-For **dependent pattern matching**, the motive specifies the return type as a function of the scrutinee:
+## Surface Language
 
-```
-motive : (x : Ind params indices) -> Type
-```
+The source reader is implemented in `src/prototype/reader.c`. The examples are
+the most reliable executable syntax reference.
 
-**Example** (dependent elimination):
-```scheme
-// Simple (non-dependent): motive = λ(_:Nat). Nat
-pred : Nat -> Nat := \n : Nat =>
-  n @zero => Nat.zero
-    @succ k => k;
+### Definitions and declarations
 
-// Dependent: motive = λ(n:Nat). Vec A n
-// (return type depends on scrutinee value)
+An assignment publishes a named typed occurrence after synthesis:
+
+```ap
+identity := \A : @ => x : A => x;
 ```
 
-### Induction Hypothesis (`*k`)
+An external declaration supplies a classifier without a body:
 
-For **recursive constructors**, `*k` invokes the induction hypothesis:
-
-```scheme
-add : Nat -> Nat -> Nat := \n : Nat =>
-  n @zero => (\m : Nat => m)
-    @succ k => (\m : Nat => Nat.succ (*k m));
-                                      ↑
-                              Induction hypothesis:
-                              recursive call with k
+```ap
+externalName : A -> B;
 ```
 
-**Core representation**:
-```c
-struct {
-    uint32_t param_name;   // k
-    uint32_t param_index;  // De Bruijn index of k
-    uint32_t match_term;   // ID of enclosing match
-} ih_call;
+A standalone expectation checks a separately assigned name after inference:
+
+```ap
+main :: Nat;
 ```
 
-**Evaluation**: `*k` re-evaluates the match with `k`'s value to get recursive result.
+Inline ascription uses the same `::` token:
 
----
-
-## Equality and Identity Types
-
-### Propositional Equality
-
-```c
-// T_EQ: Propositional equality type
-struct { uint32_t type; uint32_t lhs; uint32_t rhs; } eq;
-
-// Eq A x y  ≡  "x equals y at type A"
+```ap
+(Nat.zero :: Nat)
 ```
 
-**Constructor**: Only reflexivity
-```c
-// T_REFL: Reflexivity proof
-struct { uint32_t type; uint32_t term; } refl;
+Ascription is a post-synthesis check. It does not inject an arbitrary
+classifier into TermDB or replace classifier synthesis.
 
-// refl : Π(A:Type)(x:A). Eq A x x
-```
+`import Name;` declares an unresolved artifact dependency. Files can also be
+compiled together under one namespace by the CLI; source paths are not the
+semantic namespace identity.
 
-### Equality Elimination (J-rule)
+### Types and constructors
 
-```c
-// T_EQ_ELIM: Equality eliminator
-struct {
-    uint32_t type;    // A
-    uint32_t motive;  // P : Π(x y:A). Eq A x y -> Type
-    uint32_t base;    // base : Π(x:A). P x x refl
-    uint32_t lhs;     // x
-    uint32_t rhs;     // y
-    uint32_t proof;   // p : Eq A x y
-} eq_elim;
-```
+`@` denotes a universe expression in the current surface. A positive ADT is:
 
-**Reduction rule**:
-```
-eq_elim A P base x x refl  ⟶  base x
-```
-
-**Use case**: Transport along equality, substitution, proving properties
-
----
-
-## Global Environment
-
-### Structure
-
-```c
-struct global_env {
-    struct const_def* consts;
-    uint32_t const_count;
-
-    struct inductive_def* inds;
-    uint32_t ind_count;
+```ap
+List := \A : @ => @{
+	nil  : *;
+	cons : A -> * -> *;
 };
 ```
 
-### Constant Definitions
+`*` in a constructor schema means the current instantiated owner type. Field
+binders may be dependent:
 
-```c
-struct const_def {
-    uint32_t name;
-    uint32_t type;      // Type term
-    uint32_t body;      // Definition (0 if axiom/opaque)
-    bool opaque;        // If true, block δ-reduction
+```ap
+Sigma := \A : @ => \B : A -> @ => @{
+	mk : (a : A) -> B a -> *;
 };
 ```
 
-**δ-reduction**: Unfold non-opaque constants
-```
-Γ ⊢ c ↝ body    (if c is defined and not opaque)
-```
+The authoritative constructor schema is graph-level and context-indexed.
+Readback field metadata is derived diagnostic/interface data, not a second
+typing authority.
 
----
+Pi syntax includes non-dependent arrows and explicit dependent binders:
 
-## Evaluation Strategy
-
-### WHNF (Weak Head Normal Form)
-
-Evaluation reduces to WHNF using:
-
-- **β-reduction**: `(λx.body) arg ⟶ body[arg/x]`
-- **δ-reduction**: `const ⟶ body` (if non-opaque)
-- **ι-reduction**: `match (Ctor args) { ... | Ctor x => rhs | ... } ⟶ rhs[args/x]`
-
-### Closure-Based Evaluation
-
-```c
-struct value {
-    int tag;  // V_SORT, V_PI, V_LAM, V_NEUTRAL, V_REFL, V_IH_CALL
-    // ... tag-specific data
-};
-
-struct env {
-    struct value** data;  // Runtime environment
-    uint32_t len;
-};
+```ap
+A -> B
+(x : A) -> B x
 ```
 
-**Closure**: `{ env, binders, body }`
-- Captures environment at lambda creation
-- Application extends environment without copying
+### Lambda, application, Match, and induction
 
-**Neutral values**: Variables and stuck computations
-```c
-struct {
-    int head_tag;      // H_VAR or H_CONST
-    uint32_t head_id;
-    struct value** args;  // Spine of arguments
-    uint32_t argc;
-} neutral;
+Lambda binders are typed:
+
+```ap
+\x : A => body
 ```
 
-### Evaluation Algorithm
+Nested binders may omit the second backslash:
 
-```c
-struct value* eval_whnf(struct eval_ctx* ctx,
-                        struct env* env,
-                        uint32_t term_id);
+```ap
+\A : @ => x : A => x
 ```
 
-**Strategy**:
-1. Lookup term in arena
-2. Match on term tag:
-   - `T_VAR`: Lookup in environment
-   - `T_LAM`: Create closure
-   - `T_APP`: Evaluate function, then apply
-   - `T_CONST`: Unfold if non-opaque, else neutral
-   - `T_MATCH`: Evaluate scrutinee, dispatch to branch
-   - `T_SORT`, `T_PI`, etc.: Return corresponding value
+Match uses elimination clauses:
 
-**Normalization**: Current implementation stops at WHNF. Full normalization via NbE planned for future.
-
----
-
-## Type Checking
-
-### Bidirectional Type Checking
-
-```c
-// Infer mode: compute the type of a term
-int type_infer(struct type_ctx* tc,
-               struct local_ctx* lctx,
-               uint32_t term,
-               uint32_t* out_type);
-
-// Check mode: verify term has expected type
-int type_check(struct type_ctx* tc,
-               struct local_ctx* lctx,
-               uint32_t term,
-               uint32_t expected_type);
+```ap
+n @zero => Nat.zero
+  @succ predecessor => predecessor
 ```
 
-### Type Checking Context
+Inside a recursive constructor branch, `*field` denotes the guarded induction
+hypothesis associated with a recursive field:
 
-```c
-struct local_ctx {
-    struct local_entry* entries;
-    uint32_t len;
-};
+```ap
+len := \A : @ =>
+	\xs : List A =>
+		xs @nil => Nat.zero
+		   @cons x rest => Nat.succ *rest;
+```
 
-struct local_entry {
-    uint32_t name;         // Symbol (for printing)
-    uint32_t type;         // Type term
-    uint32_t binder_ref;   // Reference to binding lambda/pi/match
-    bool has_value;        // For definitional unfolding
-    uint32_t value;        // Term (if has_value)
+Lowering checks the direct guarded use discipline. The current motive solver
+supports this recursive fragment; it is not a general IADT or higher-order
+unification procedure.
+
+### Intrinsic namespace
+
+The `#.` namespace currently contains several different binding kinds:
+
+- host value types: `#.Text`, `#.Int`/`#.Int32`, `#.Int64`;
+- pure primitives: `#.int_add`, `#.int64_add`, `#.text_to_nat`, and related
+  arithmetic/conversion functions;
+- effect operations: `#.print`, `#.scope_text`, `#.scope_text_once`, and
+  `#.abort_text`;
+- the contextual computation-fold label `#.return`.
+
+Namespace membership does not make every intrinsic effectful. Pure primitives
+remain ordinary APP spines. A saturated effect operation application lowers
+to an explicit Core request:
+
+```ap
+#.print #"hello"
+```
+
+There is no `perform` keyword or perform-specific AST node. Aliases are
+resolved semantically, so this is equivalent:
+
+```ap
+output := #.print;
+main := output #"hello";
+```
+
+Text literals use `#"..."`; integers use forms such as `#1` and `#-1`.
+
+### Computation blocks
+
+A single-brace block is a sequential computation expression:
+
+```ap
+main := {
+	b : Bool := negate Bool.false;
+	n := toNat b;
+	toNat b;
 };
 ```
 
-### Meta-Variables (Type Inference)
+Bindings sequence a computation once and expose its value to the remaining
+continuation. An expression statement discards its result. The final selected
+item is the block result.
 
-```c
-struct type_ctx {
-    struct global_env* genv;
-    struct term_arena* arena;
-    struct sym_table* syms;
+A direct binding can be selected as a cutoff:
 
-    struct type_meta_slot* metas;  // Meta-variable state
-    uint32_t meta_count;
-    uint32_t meta_next;            // Next meta ID
-};
-
-struct type_meta_slot {
-    uint32_t id;
-    uint32_t term;       // T_META term
-    uint32_t solution;   // Solved value (0 if unsolved)
-    bool solved;
-    struct span loc;     // Error reporting
-};
+```ap
+main := {
+	x := #1;
+	dead := missing;
+}.x;
 ```
 
-**Unification**: Solve meta-variables during type checking
-**Constraint solving**: Deferred equality constraints
+Only the prefix required for `x` is compiled as the selected computation.
 
----
+Within the dynamic extent of a lambda body, `!value;` exits that nearest
+lambda computation. It is not a generic unlabeled block jump and is rejected
+outside a lambda or underneath a quoted computation.
 
-## What is Intentionally Absent
+### Quotation and implicit boundaries
 
-### 1. **No `Let` Binding**
+`&term` quotes a computation as a thunk value. This is how a suspended
+computation is passed to a higher-order operation:
 
-**Desugaring**:
-```
-let x = v in body  ⟹  (λx. body) v
-```
-
-**Rationale**:
-- Theoretically redundant (ζ-reduction ⊆ β-reduction)
-- Simplifies equality checking (only βδι, no ζ)
-- Sharing handled by environment/arena, not syntax
-
-### 2. **No Σ (Dependent Pairs) as Primitive**
-
-Can be encoded as inductive type:
-```scheme
-Sigma := \A : @ => \B : (A -> @) => @{
-  pair : (x : A) -> B x -> *;
-};
+```ap
+main := #.scope_text &{ #.print #"inner"; };
 ```
 
-**Future**: May add as primitive for efficiency if heavily used.
+The default surface policy inserts ordinary value-to-computation returns and
+some use-site force/thunk boundaries. `--no-implicit-definition-thunks`
+enables the stricter explicit definition policy. TermDB still records
+`RETURN`, `THUNK`, and `FORCE` explicitly after elaboration.
 
-### 3. **No Pattern Matching Sugar**
+### Computation folds and handlers
 
-**Not allowed in Core IR**:
-```haskell
-pred Zero = Zero        -- Multiple equations
-pred (Succ k) = k       -- Pattern in function head
+The same `@` clause syntax distinguishes ADT Match from computation folds. A
+fold has exactly one `@#.return` clause and zero or more operation clauses:
+
+```ap
+main := (#.print #"x")
+	@#.return value => value
+	@#.print request resume => resume request;
 ```
 
-**Must write**:
-```scheme
-pred : Nat -> Nat := \n : Nat =>
-  n @zero => Nat.zero
-    @succ k => k;
+The return clause maps the pure leaf. Each operation clause receives the
+operation argument and a recursively folded continuation. Unmatched requests
+are forwarded with that folded continuation. Multiple distinct operation
+clauses are supported; duplicate nominal operations are rejected.
+
+The current built-in operations also carry resumption multiplicity and inner
+scope metadata. `scope_text_once` is one-shot and `abort_text` is abortive.
+Higher-order payloads are represented by ordinary thunk values rather than a
+separate request tag.
+
+### Definition blocks
+
+A double-brace definition block builds a set of named definitions and selects
+one root:
+
+```ap
+{{
+	id := \x : #.Int64 => x;
+	main := { #1; };
+}}.main
 ```
 
-**Rationale**: Eliminates elaboration complexity, keeps Core minimal.
+Definition blocks and computation blocks are distinct AST forms. The former
+select a named program graph root; the latter construct sequential CBPV
+computations.
 
-### 4. **No Implicit Arguments**
+## Compiler Architecture
 
-All arguments are **explicit** in Core IR:
-```scheme
-id : (A : @) -> A -> A := \A : @ => \x : A => x;
+The implemented pipeline is:
 
-// Call site: MUST pass A explicitly
-id Nat Nat.zero
+```text
+source text
+  -> surface AST and source binders
+  -> name/type-declaration indexing
+  -> ContextDB-indexed OperationGraph + shared TermDB
+  -> classifier/effect constraint generation
+  -> bounded fixed-point solving
+  -> JudgementDB proof reconstruction and validation
+  -> VerificationDB residual obligations
+  -> artifact/interface or runtime execution
 ```
 
-**Future**: High-level language can infer and insert implicit arguments, then emit explicit Core IR.
+### TermDB
 
-### 5. **No Type Classes / Coercions**
+TermDB is the canonical static computation and classifier-expression graph.
+It contains shared `VAR`, `APP`, `LAMBDA`, `MATCH`, `PI`, constructor,
+type-view, CBPV, effect-row, request, fold, intrinsic, and linking terms.
 
-These are high-level features that compile to explicit dictionary passing in Core IR.
+TermDB is not the runtime machine state. Evaluation may intern pure
+intermediate/result terms, but live environments, handler stacks, resumptions,
+and host resources remain outside canonical term identity.
 
-### 6. **No Module System**
+### ContextDB, SubstitutionDB, and OperationGraph
 
-Global environment is flat. Namespacing handled by dot notation (`Nat.zero`).
+ContextDB entries are objects of the syntactic context category.
+SubstitutionDB stores explicit identity, projection, extension, composition,
+and reindexing morphisms.
 
-**Future**: Module system in high-level language, compiles to unique names in Core.
+OperationGraph stores typed source occurrences. Each occurrence points to a
+TermDB node and retains its context, polarity, classifier variable, source and
+binder provenance, and occurrence edges. Two typed identities can therefore
+share one erased Core lambda without merging their classifiers or exported
+names.
 
----
+This many-to-one erasure is deliberate:
 
-## De Bruijn Indices
-
-### Representation
-
-Variables are represented by **indices** (distance to binder):
-
-```
-λx. λy. x y
-  ↓
-λ. λ. 1 0
-```
-
-- `0` = innermost binder (y)
-- `1` = next outer binder (x)
-
-### Binder References
-
-In addition to indices, we track `binder_ref` for better error messages:
-
-```c
-struct {
-    uint32_t binder_ref;  // Term ID of binding lambda/pi/match
-    uint32_t name;        // Symbol ID (for printing)
-} var;
+```text
+typed/source operation occurrences  --many-to-one-->  canonical TermDB
 ```
 
-**Conversion**: `binder_ref` → De Bruijn index via binder stack during evaluation.
+Runtime execution follows validated operation roots; it does not choose an
+arbitrary classifier attached to a shared Core node.
 
----
+### Constraints, judgements, and verification
 
-## Spine Form Applications
+Lowering creates occurrence-local classifier and effect-row constraints. A
+worklist/fixed-point solver attempts to solve them under configured step
+budgets. Solved results are reconstructed as explicit JudgementDB proof nodes,
+including lambda/app, Match motive, constructor, CBPV, request, and fold rules.
 
-### Structure
+VerificationDB stores obligations that remain residual. A residual is not a
+negative proof and is not silently published as a completed `HAS_TYPE`
+judgement.
 
-Instead of nested binary application:
+Compile policies control admission:
+
+- `strict`: requires the configured static obligations to close;
+- `hybrid`: preserves supported residual verification for runtime discharge;
+- `exploratory`: permits broader incomplete prototype exploration.
+
+The normalization and solver step limits are explicit artifact metadata, so
+verification coverage is reproducible as data even when a build chooses a
+different budget.
+
+### Normalization and definitional equality
+
+The normalizer has separate profiles:
+
+- Core WHNF: beta-layer observation;
+- computation WHNF: CBPV structural reduction;
+- pure type WHNF: kernel conversion without host dispatch.
+
+Reduction flags independently control definitions, beta, Match/iota,
+induction, CBPV cuts, and pure intrinsics. Results are memoized by term,
+profile, and graph revision. Outcomes distinguish `COMPLETE`,
+`BLOCKED_EFFECT`, and `EXHAUSTED`; only complete normalization can establish
+kernel conversion.
+
+User proofs do not extend global definitional equality, and no propositional
+equality type is currently part of the implemented surface language.
+
+### Effects and runtime
+
+The free effect computation is represented explicitly by:
+
+```text
+RETURN(value)
+OPERATION_REQUEST(operation, argument, continuation)
 ```
-((f x) y) z   // Traditional
+
+`COMPUTATION_FOLD` interprets or forwards that structure. Pure normalization
+never dispatches observable host effects. Only executable runtime mode may
+send an unhandled request to an enabled host dispatcher.
+
+Every accepted saturated effect operation source occurrence must lower to one
+request. OperationGraph validation rejects a saturated effect APP that escapes
+this elaboration boundary.
+
+## Artifacts and Linking
+
+Artifact format v61 serializes reachable slices of:
+
+- interfaces, qualified exports, dependencies, and transparency;
+- TermDB and OperationGraph;
+- contexts, substitutions, constructor schemas, and type views;
+- JudgementDB proofs, constraints, residual verification, and budgets;
+- universe constraints and runtime/backend capabilities;
+- relocation and debug/readback metadata.
+
+Artifacts use sparse slots and validate that referenced slots are present, not
+merely numerically in range. The linker resolves qualified external names,
+relocates binders/contexts/terms, preserves typed export identity, and may
+share alpha-equivalent Core representatives without merging the exports.
+
+Useful commands:
+
+```sh
+./read_file.out --write-artifact Example.apo --namespace Example example.p
+./read_file.out --read-interface Example.apo
+./read_file.out --read-graph Example.apo
+./read_file.out --link-artifacts User.apo Library.apo --link-output Linked.apo
+./read_file.out --aggregate-artifact Bundle.apo Base.apo Provider.apo
+./read_file.out --check-backend interpreter Example.apo
 ```
 
-Use **spine form**:
-```c
-struct {
-    uint32_t fn;      // f
-    uint32_t* args;   // [x, y, z]
-    uint32_t argc;    // 3
-} app;
+The C and Verilog backend commands currently perform compatibility/admission
+checks; this prototype is not yet a complete source-to-C or source-to-Verilog
+compiler.
+
+## Tests
+
+Run the full prototype suite:
+
+```sh
+for test_script in src/prototype/test_*.sh; do
+	sh "$test_script"
+done
 ```
 
-**Benefits**:
-- Efficient WHNF (single step to head)
-- Fast equality testing
-- Natural for partial application
+The permanent suite covers artifact/link flow, CBPV boundaries and surface
+coercions, computation blocks and lambda exit, constructor polarity,
+context/substitution laws, dependent Pi and Match, guarded IH, handler
+resumption multiplicity, and shared Core occurrences with distinct typed
+views.
 
----
+Examples 01-07 and 09 are expected to compile. Later examples include drafts
+for features that are not yet complete; do not treat every numbered file as a
+positive conformance test.
 
-## Summary
+## Repository Layout
 
-### Core Language Characteristics
+- `src/prototype/`: active experimental implementation and tests;
+- `examples/`: executable examples, negative fixtures, and future drafts;
+- `training/`: small language exercises and dependent Match probes;
+- `doc/`: dated design decisions, implementation plans, and reviews;
+- `src/prototype/current/`: an older prototype-side snapshot, not the active
+  root build;
+- `DESIGN-PHILOSOPHY.md`: historical 2025 design note; several implementation
+  claims there have been superseded;
+- `CODING_STYLE.md`: repository coding conventions.
 
-| Property | Value |
-|----------|-------|
-| **Size** | ~20 term constructors |
-| **Binding** | De Bruijn indices |
-| **Application** | Spine form |
-| **Sharing** | Arena + hash-consing |
-| **Equality** | WHNF + pointer equality |
-| **Universes** | Predicative hierarchy |
-| **Inductives** | Indexed families supported |
-| **Pattern match** | Indexed branches, explicit motive |
-| **Proofs** | Erasable via relevance |
+## Design Documents
 
-### Design Priorities
+Start with these current documents:
 
-1. ✅ **Minimality**: Small trusted kernel
-2. ✅ **Explicitness**: No hidden elaboration
-3. ✅ **Canonicality**: De Bruijn, spine form
-4. ✅ **Efficiency**: Arena allocation, sharing
-5. ✅ **Correctness**: Verifiable implementation
+- `doc/2026-08-05T07-00-00-CURRENT-GRAPH-LAYERS-AND-CBPV-EFFECT-CORE.md`
+- `doc/2026-08-05T08-00-00-DIRECT-EFFECT-APPLICATION-AND-PERFORM-REMOVAL-PLAN.md`
+- `doc/2026-08-05T06-00-00-DEFINITION-BLOCK-AND-IMPLICIT-THUNK-POLICY.md`
+- `doc/2026-08-05T03-00-00-HIGHER-ORDER-EFFECT-CAPABILITY-DECISIONS.md`
+- `doc/2026-07-27T00-00-00-CATEGORICAL-CWF-DCBPV-MIGRATION.md`
+- `doc/2026-07-17T02-00-00-CURRENT-SYSTEM-DESIGN-DEBT.md`
+- `doc/2026-07-12T02-00-00-THEORY-READING-MAP.md`
 
----
+Earlier dated plans are historical records. Their unchecked items and
+terminology are not automatically current requirements.
 
-## Implementation Status
+## Theory References
 
-### Completed (program-old)
-- ✅ Full Core term structure
-- ✅ Arena allocation with hash-consing
-- ✅ Parser (`.p` → Core terms)
-- ✅ Type checker (infer + check)
-- ✅ Evaluator (WHNF with βδι)
-- ✅ Indexed inductive types
-- ✅ Dependent pattern matching
-- ✅ Identity types (Eq, refl, eq_elim)
-- ✅ Induction hypothesis (`*k`)
+The detailed bibliography and project-specific reading notes are in
+`doc/2026-07-12T02-00-00-THEORY-READING-MAP.md`. Core references include:
 
-### In Progress (current migration)
-- 🔄 Migrating Core structures to new codebase
-- 🔄 Simplifying parser (removing AST layer)
-- 🔄 Porting type checker
-- 🔄 Porting evaluator
+- Per Martin-Lof, *Intuitionistic Type Theory*;
+- Peter Dybjer, *Internal Type Theory*;
+- Castellan, Clairambault, and Dybjer, *Categories with Families*;
+- Paul Blain Levy, *Call-By-Push-Value: A Functional/Imperative Synthesis*;
+- Matthijs Vakar, *A Framework for Dependent Types and Effects*;
+- Dybjer and Filinski, *Normalization by Evaluation for Martin-Lof Type
+  Theory*;
+- de Moura et al., *Elaboration in Dependent Type Theory*;
+- Cockx, Devriese, and Piessens, *Unifiers as Equivalences*;
+- Cohen, Coquand, Huber, and Mortberg, *Cubical Type Theory*;
+- the Univalent Foundations Program, *Homotopy Type Theory*;
+- Willsey et al., *egg: Fast and Extensible Equality Saturation*;
+- Appel, *Foundational Proof-Carrying Code*.
 
-### Planned
-- ⏳ Universe constraint solving
-- ⏳ Positivity checking
-- ⏳ Termination checking
-- ⏳ NbE for full normalization
-- ⏳ Proof erasure pass
-- ⏳ Code generation backend
-
----
-
-## References
-
-### Internal Documents
-- `DESIGN-PHILOSOPHY.md` — Overall design philosophy
-- `CODING_STYLE.md` — Implementation conventions
-- `program-old/CORE-README.md` — Original specification
-
-### External References
-- **Coquand & Huet (1988)**: "The Calculus of Constructions" (foundational theory)
-- **de Bruijn (1972)**: "Lambda calculus notation with nameless dummies" (indices)
-- **Norell (2007)**: "Towards a practical programming language based on dependent type theory" (Agda Core)
-- **Brady (2013)**: "Idris, a general-purpose dependently typed programming language" (practical DTT)
-- **Univalent Foundations (2013)**: "Homotopy Type Theory" (identity types)
-
----
-
-**Last updated**: 2025-10-09
-**Authors**: Original design by program-old authors, updated for IR-first architecture
+These references inform design boundaries; they do not imply that all
+associated calculi are implemented.
