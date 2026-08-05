@@ -106,7 +106,25 @@ enum prototype_pure_primitive_id {
 
 enum prototype_effect_operation_id {
 	PROTOTYPE_EFFECT_OPERATION_UNKNOWN = 0,
-	PROTOTYPE_EFFECT_OPERATION_PRINT
+	PROTOTYPE_EFFECT_OPERATION_PRINT,
+	PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT
+};
+
+enum prototype_effect_operation_classifier_schema {
+	PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_INVALID = 0,
+	PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_TEXT_TO_TEXT,
+	PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT
+};
+
+enum prototype_effect_operation_inner_policy {
+	PROTOTYPE_EFFECT_OPERATION_INNER_OPAQUE = 0,
+	PROTOTYPE_EFFECT_OPERATION_INNER_SCOPED
+};
+
+enum prototype_effect_operation_resumption_multiplicity {
+	PROTOTYPE_EFFECT_OPERATION_RESUMPTION_MULTI_SHOT = 0,
+	PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT,
+	PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ABORTIVE
 };
 
 enum prototype_host_type_id {
@@ -134,7 +152,8 @@ enum prototype_host_effect_flag {
 
 enum prototype_effect_operation_label {
 	PROTOTYPE_EFFECT_OPERATION_LABEL_NONE = 0,
-	PROTOTYPE_EFFECT_OPERATION_LABEL_PRINT = 1u << 0
+	PROTOTYPE_EFFECT_OPERATION_LABEL_PRINT = 1u << 0,
+	PROTOTYPE_EFFECT_OPERATION_LABEL_SCOPE_TEXT = 1u << 1
 };
 
 #define PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY 2
@@ -151,11 +170,12 @@ struct prototype_pure_primitive_declaration {
  * implementations and intrinsic-namespace spellings are separate. */
 struct prototype_effect_operation_declaration {
 	int operation_id;
+	int classifier_schema;
 	unsigned operation_labels;
 	unsigned required_host_effects;
 	uint32_t arity;
-	int argument_types[PROTOTYPE_EFFECT_OPERATION_MAX_ARITY];
-	int result_type;
+	int inner_policy;
+	int resumption_multiplicity;
 };
 
 enum prototype_intrinsic_namespace_binding_kind {
@@ -366,6 +386,7 @@ struct prototype_term {
 		} pure_primitive;
 		struct {
 			int operation_id;
+			uint32_t classifier;
 		} effect_operation;
 		struct {
 			unsigned effects;

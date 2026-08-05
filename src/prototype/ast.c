@@ -1658,6 +1658,8 @@ struct operation_runtime_request {
 	uint32_t operation;
 	uint32_t argument;
 	uint32_t continuation;
+	int resumption_multiplicity;
+	int consumed;
 	struct operation_runtime_environment environment;
 	struct prototype_term_reduction_options options;
 	struct operation_runtime_frame frames[512];
@@ -1818,10 +1820,22 @@ static int operation_runtime_machine_request_from_result(
 		return 0;
 	}
 	const struct prototype_term* request = &machine->terms->terms[machine->result];
+	int operation_id;
+	if (prototype_term_effect_operation_identity(
+			machine->terms, request->as.operation_request.operation, &operation_id
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_term_effect_operation_declaration(operation_id);
+	if (!declaration) {
+		return -1;
+	}
 	memset(&machine->request, 0, sizeof(machine->request));
 	machine->request.operation = request->as.operation_request.operation;
 	machine->request.argument = request->as.operation_request.argument;
 	machine->request.continuation = request->as.operation_request.continuation;
+	machine->request.resumption_multiplicity = declaration->resumption_multiplicity;
 	machine->request.environment = machine->environment;
 	machine->request.options = machine->options;
 	machine->has_request = 1;
@@ -1891,8 +1905,19 @@ static int operation_runtime_machine_invoke_resumption(
 	if (!machine || resumption_id >= machine->resumption_count) {
 		return -1;
 	}
-	const struct operation_runtime_request* resumption =
+	struct operation_runtime_request* resumption =
 		&machine->resumptions[resumption_id];
+	if (resumption->resumption_multiplicity ==
+			PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ABORTIVE ||
+		(resumption->resumption_multiplicity ==
+			PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT &&
+			resumption->consumed)) {
+		return -1;
+	}
+	if (resumption->resumption_multiplicity ==
+		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT) {
+		resumption->consumed = 1;
+	}
 	if (machine->frame_count + resumption->frame_count > 2048) {
 		machine->failure_kind = PROTOTYPE_RUNTIME_FAILURE_STACK_CAPACITY;
 		return -1;
@@ -3819,11 +3844,12 @@ static int write_artifact_term(
 			case PROTOTYPE_TERM_EFFECT_OPERATION:
 				fprintf(
 					stream,
-					" %s",
+					" %s %u",
 					prototype_intrinsic_namespace_source_name(
 						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 						term->as.effect_operation.operation_id
-					)
+					),
+					term->as.effect_operation.classifier
 				);
 				break;
 			case PROTOTYPE_TERM_EFFECT_LABEL:
@@ -4496,6 +4522,10 @@ static int artifact_mark_term(
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 				return artifact_mark_frame(marks, terms, term->as.induction_hypothesis.frame_id, depth + 1) == 0 &&
 					artifact_mark_term(marks, terms, term->as.induction_hypothesis.argument, depth + 1) == 0 ? 0 : -1;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			return artifact_mark_term(
+				marks, terms, term->as.effect_operation.classifier, depth + 1
+			);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return artifact_mark_term(marks, terms, term->as.computation_type.label, depth + 1) == 0 &&
 				artifact_mark_term(marks, terms, term->as.computation_type.result, depth + 1) == 0 ? 0 : -1;
@@ -7042,7 +7072,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 55\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 56\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -7372,7 +7402,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 55) {
+		version != 56) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -7956,7 +7986,8 @@ static int read_artifact_term(
 			case PROTOTYPE_TERM_EFFECT_OPERATION:
 				{
 					int symbol_id;
-					if (read_artifact_symbol(stream, symbols, &symbol_id) != 0) {
+					if (read_artifact_symbol(stream, symbols, &symbol_id) != 0 ||
+						fscanf(stream, "%u", &term->as.effect_operation.classifier) != 1) {
 						return -1;
 					}
 					struct prototype_intrinsic_namespace_binding binding;
@@ -8259,10 +8290,13 @@ static int artifact_validate_term_refs(
 			case PROTOTYPE_TERM_INT_LITERAL:
 				case PROTOTYPE_TERM_EXTERNAL_REF:
 				case PROTOTYPE_TERM_PURE_PRIMITIVE:
-				case PROTOTYPE_TERM_EFFECT_OPERATION:
 				case PROTOTYPE_TERM_EFFECT_LABEL:
 				case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 					return 0;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			return artifact_read_term_present(
+				terms, term->as.effect_operation.classifier
+			) ? 0 : -1;
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 			return artifact_read_term_present(terms, term->as.effect_row_union.left) &&
 				artifact_read_term_present(terms, term->as.effect_row_union.right) ? 0 : -1;
@@ -10925,6 +10959,9 @@ static void offset_artifact_term(
 				term->as.effect_row_var.binder_id =
 					offset_artifact_binder_id(term->as.effect_row_var.binder_id, binder_offset);
 				break;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			term->as.effect_operation.classifier += term_offset;
+			break;
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			term->as.computation_type.label += term_offset;
 			term->as.computation_type.result += term_offset;
@@ -13986,7 +14023,18 @@ static int operation_apply_classifier_unchecked(
 	uint32_t binder_id;
 	uint32_t body;
 	if (!ctx || !p_classifier || function_classifier == PROTOTYPE_INVALID_ID ||
-		function_classifier >= ctx->terms->term_count || argument_term >= ctx->terms->term_count ||
+		function_classifier >= ctx->terms->term_count || argument_term >= ctx->terms->term_count) {
+		return -1;
+	}
+	/* During graph construction the argument classifier may still be a solver
+	 * variable. Keep an operation's quantified effect-row binder in the graph,
+	 * but expose its Pi body so the dependent result family can be formed. */
+	while (function_classifier < ctx->terms->term_count &&
+		ctx->terms->terms[function_classifier].tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
+		function_classifier =
+			ctx->terms->terms[function_classifier].as.effect_row_forall.body;
+	}
+	if (function_classifier >= ctx->terms->term_count ||
 		prototype_term_normalize_complete_with_profile(
 			ctx->terms,
 			ctx->type_declarations,

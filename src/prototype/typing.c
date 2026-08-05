@@ -966,6 +966,19 @@ static int classifier_kernel_as_pi(
 		) != 0) {
 		return -1;
 	}
+	for (uint32_t depth = 0;
+		depth < 32 && normalized_classifier < terms->term_count &&
+		terms->terms[normalized_classifier].tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL;
+		++depth) {
+		normalized_classifier =
+			terms->terms[normalized_classifier].as.effect_row_forall.body;
+		if (classifier_kernel_whnf(
+				terms, type_declarations, definitions,
+				normalized_classifier, &normalized_classifier
+			) != 0) {
+			return -1;
+		}
+	}
 	if (pi_parts(terms, normalized_classifier, p_domain, p_codomain_family) != 0) {
 		return 1;
 	}
@@ -5168,21 +5181,13 @@ int prototype_judgement_effect_operation_classifier(
 		operation->tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
 		return -1;
 	}
-	const struct prototype_effect_operation_declaration* signature =
-		prototype_term_effect_operation_declaration(
+	if (!prototype_term_effect_operation_declaration(
 			operation->as.effect_operation.operation_id
-		);
-	if (!signature) {
+		) || operation->as.effect_operation.classifier >= terms->term_count) {
 		return -1;
 	}
-	return host_signature_classifier(
-		terms,
-		signature->arity,
-		signature->argument_types,
-		signature->result_type,
-		signature->operation_labels,
-		p_ret
-	);
+	*p_ret = operation->as.effect_operation.classifier;
+	return 0;
 }
 
 static int infer_text_literal_classifier(
@@ -11246,21 +11251,12 @@ static int validate_effect_operation_type_intro_proof(
 		return -1;
 	}
 	const struct prototype_term* operation = &terms->terms[relation->subject];
-	const struct prototype_effect_operation_declaration* signature =
-		prototype_term_effect_operation_declaration(
+	if (!prototype_term_effect_operation_declaration(
 			operation->as.effect_operation.operation_id
-		);
-	if (!signature) {
+		) || operation->as.effect_operation.classifier >= terms->term_count) {
 		return -1;
 	}
-	return validate_host_signature_classifier(
-		terms,
-		relation->classifier,
-		signature->arity,
-		signature->argument_types,
-		signature->result_type,
-		signature->operation_labels
-	);
+	return relation->classifier == operation->as.effect_operation.classifier ? 0 : -1;
 }
 
 static int validate_proof_acyclic(const struct prototype_judgement_db* judgement) {

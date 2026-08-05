@@ -1,0 +1,409 @@
+# Higher-Order Operation and Resource Implementation Progress
+
+Date: 2026-08-05
+
+## 1. Purpose
+
+This is the implementation and progress record for the decisions in:
+
+- `2026-08-05T01-00-00-THUNK-ENCODED-HIGHER-ORDER-OPERATIONS.md`
+
+The referenced document is the semantic decision record.  This document owns:
+
+- concrete code changes;
+- migration order;
+- completion gates;
+- test evidence;
+- deviations discovered during implementation;
+- decisions revised after contact with the implementation.
+
+It must be updated while the migration proceeds.  A checked item requires
+direct code or test evidence recorded in this file.
+
+## 2. Baseline
+
+Implementation baseline inspected on 2026-08-05:
+
+```text
+branch: main
+commit: 8afe93c generalize computation folds to match-style clauses
+```
+
+Uncommitted baseline documentation:
+
+```text
+doc/2026-08-05T01-00-00-THUNK-ENCODED-HIGHER-ORDER-OPERATIONS.md
+```
+
+Current relevant implementation facts:
+
+- `&M` parses as `PROTOTYPE_AST_QUOTE` and lowers to `THUNK(M)`;
+- `OPERATION_REQUEST` already stores an arbitrary Term argument and a thunked
+  outer continuation;
+- `COMPUTATION_FOLD` and its source occurrence carry plural operation clauses;
+- deep folding rebuilds the outer continuation but treats thunks in request
+  arguments as opaque values;
+- operation signatures are static host-type metadata with maximum arity one;
+- only `#.print` is currently declared as an effect operation;
+- runtime environments bind source binders to TermDB IDs or resumption IDs;
+- the runtime has no resource-value domain, resource table, finalizer frame,
+  region binder, or usage multiplicity checker.
+
+## 3. Non-Negotiable Invariants
+
+1. Do not add a second higher-order operation Core node.  Quoted computations
+   remain ordinary operation arguments.
+2. Do not restore singular handler syntax.  Match-style plural
+   `COMPUTATION_FOLD` remains authoritative.
+3. Do not put a live host resource into TermDB or an artifact.
+4. Do not infer ownership or one-shot use from an effect-row label.
+5. Do not perform host operations during normalization or kernel conversion.
+6. Keep operation identity, language effect labels, and backend capabilities
+   distinct.
+7. Keep implementation changes under `src/prototype/` until separately
+   promoted.
+8. Do not retain compatibility paths for replaced prototype representations.
+
+## 4. Migration Overview
+
+| Stage | Goal | Status |
+|---|---|---|
+| 0 | Freeze implementation plan and baseline evidence | complete |
+| 1 | Make graph-level classifiers authoritative for operations | complete |
+| 2 | Validate thunk-encoded higher-order operation requests | partial |
+| 3 | Add inner-policy and resumption-multiplicity contracts | partial |
+| 4 | Separate runtime values from TermDB and add resource scopes | pending |
+| 5 | Add File scoped borrowing and finalization | pending |
+| 6 | Add region non-escape and required multiplicity checks | pending |
+| 7 | Validate direct, runtime, artifact, and backend boundaries | pending |
+| 8 | Commit and push the completed main branch | pending |
+
+## 5. Stage 1: Authoritative Graph-Level Operation Classifiers
+
+### 5.1 Problem
+
+`prototype_effect_operation_declaration` currently stores:
+
+```text
+arity
+argument_types[]
+result_type
+operation_labels
+required_host_effects
+```
+
+`prototype_judgement_effect_operation_classifier` reconstructs a Pi/Comp graph
+from the host-type IDs.  This prevents operation domains from containing user
+ADTs, thunks, dependent families, open effect rows, regions, or multiplicity
+information.
+
+### 5.2 Target representation
+
+The static declaration keeps only stable schema and dispatch metadata:
+
+```text
+operation identity
+classifier-schema kind
+logical arity
+language operation labels
+required runtime capabilities
+inner-computation policy
+resumption multiplicity
+host implementation identity
+```
+
+The classifier schema is materialized into each TermDB as an ordinary graph.
+Each `PROTOTYPE_TERM_EFFECT_OPERATION` node directly points to that classifier.
+There is no side cache: the edge is part of graph identity, artifact
+reachability, validation, and relocation.  Typing reads this edge and does not
+independently reconstruct a second classifier.
+
+Initial schema kinds may be builtin constructors implemented in C.  They are
+not the final public operation declaration language.  Their output is still an
+authoritative Term graph and exercises the same typing path required by future
+source or artifact declarations.
+
+### 5.3 Work items
+
+- [x] Replace host argument/result arrays as typing authority.
+- [x] Add classifier schema kinds for current `#.print` and a thunk-operation
+      test declaration.
+- [x] Store the authoritative classifier as an operation-node graph edge.
+- [x] Make all typing callers read the graph classifier from one API.
+- [x] Store only a dispatch arity; typing does not use it.
+- [ ] Validate the dispatch arity against the classifier Pi spine when the
+      classifier schema is materialized.
+- [ ] Validate that a declaration's final codomain is a returning computation.
+- [x] Preserve nominal operation labels and host capability mapping.
+- [x] Include graph-level operation classifiers in artifact reachability and
+      validation where they become interface dependencies.
+- [x] Remove the old host-signature classifier constructor for operations.
+
+### 5.4 Completion evidence
+
+- `#.print` retains its existing classifier and behavior.
+- a declared test operation accepts `Thunk(Comp(E,A))` through the ordinary APP
+  and operation-request path;
+- direct and artifact readback expose the same operation classifier graph;
+- malformed classifier schemas fail before runtime dispatch.
+
+## 6. Stage 2: Thunk-Encoded Higher-Order Operation Tests
+
+Introduce a non-resource operation before File handling.  Its purpose is to
+separate higher-order representation from resource safety.
+
+The operation now supports a request containing a quoted computation.  The
+remaining handler tests depend on effect-row-forall specialization described
+below:
+
+- [ ] discard without forcing;
+- [ ] force exactly once;
+- [ ] force more than once for an unrestricted thunk;
+- [ ] explicitly place a computation fold around the inner computation;
+- [ ] forward an unknown request while preserving the thunk unchanged;
+- [ ] keep the thunk's effect row latent before force;
+- [ ] include the inner row when a clause forces the thunk.
+
+Completed request-level evidence:
+
+- [x] `#.scope_text` accepts `&(perform (#.print ...))` as an ordinary argument;
+- [x] the resulting graph contains `THUNK(OPERATION_REQUEST(...))`;
+- [x] the inner print row remains latent in the thunk classifier;
+- [x] artifact v56 preserves and validates both operation classifiers.
+
+No special higher-order surface syntax or Core node may appear in this stage.
+
+## 7. Stage 3: Handling Contracts
+
+### 7.1 Inner-computation policy
+
+Add an operation declaration policy with an explicit initial set:
+
+```text
+OPAQUE
+SCOPED_EXPLICIT
+```
+
+`OPAQUE` means generic forwarding preserves all thunk request fields unchanged
+and folds only the outer continuation.  `SCOPED_EXPLICIT` means a clause is
+required to interpret the inner computation; it still does not authorize the
+runtime to search arbitrary ADT fields for thunks.
+
+Automatic recursive descent into operation arguments is intentionally excluded
+until a typed request-field traversal contract exists.
+
+### 7.2 Resumption multiplicity
+
+Add declaration metadata and runtime enforcement for:
+
+```text
+ONE_SHOT
+MULTI_SHOT
+ABORTIVE
+```
+
+Work items:
+
+- [ ] type each clause continuation with its declared multiplicity;
+- [ ] reject continuation use for `ABORTIVE` operations;
+- [ ] reject more than one static use where a one-shot use count is decidable;
+- [x] add a consumed flag to runtime resumptions as a dynamic backstop;
+- [ ] retain unrestricted behavior only for `MULTI_SHOT`;
+- [ ] test aliases and plural clauses under each policy.
+
+## 8. Stage 4: Runtime Value and Resource Separation
+
+### 8.1 Runtime values
+
+Replace term-only runtime bindings with a tagged value domain:
+
+```text
+TERM(term_id)
+RESOURCE(resource_slot, generation)
+RESUMPTION(resumption_id)
+```
+
+Resumptions may remain a distinct binding kind internally, but a generic
+runtime value must not overload all three as an untagged `uint32_t`.
+
+### 8.2 Resource table
+
+Add runtime-only entries containing at least:
+
+```text
+kind
+generation
+state
+host payload
+finalizer
+```
+
+Term substitution remains available only for `TERM`.  Applying a continuation
+to a `RESOURCE` value must bind the runtime value in the occurrence machine; it
+must not materialize a resource term in TermDB.
+
+### 8.3 Resource scopes
+
+Add a finalizer/scope frame which records acquired resources.  Unwind it on:
+
+- normal `RETURN`;
+- lambda exit lowered from `!`;
+- abortive handled operation;
+- runtime failure after acquisition;
+- future cancellation entry points.
+
+Finalization must be idempotent in the runtime as a defensive check, while the
+type system proves the stronger exactly-once protocol where possible.
+
+## 9. Stage 5: File Scoped Borrowing
+
+The first public File interface is scoped.  Raw ownership-returning `open` and
+manual `close` are not exposed in this stage.
+
+Conceptual interface:
+
+```text
+with_file : forall E A.
+	Path ->
+	Mode ->
+	(forall r. Thunk(Pi(FileBorrow(r), Comp(E, A)))) ->
+	Comp(E union {Filesystem}, Result(OpenError, A))
+```
+
+Required operations and runtime capabilities are separate:
+
+```text
+language operations: Filesystem.with_file, Filesystem.read
+runtime capability:  FILESYSTEM
+```
+
+Work items:
+
+- [ ] introduce nominal Path/Mode/request/result classifiers;
+- [ ] introduce an opaque runtime `FileBorrow(r)` capability;
+- [ ] add filesystem operation identities and effect labels;
+- [ ] add filesystem runtime capability checks;
+- [ ] install a File finalizer only after successful acquisition;
+- [ ] close on every supported exit path;
+- [ ] reject File operations in pure normalization and conversion;
+- [ ] reject filesystem artifacts on the Verilog backend;
+- [ ] permit C/interpreter backends only when filesystem capability is present;
+- [ ] verify no resource payload is written into an artifact.
+
+## 10. Stage 6: Region and Multiplicity Checks
+
+Only the usage discipline needed by the scoped File interface is introduced
+here.  It must nevertheless use a general occurrence-level representation so
+that it can later extend to other resources.
+
+### 10.1 Region non-escape
+
+- [ ] allocate an occurrence-scoped region binder for each scoped resource;
+- [ ] record the region in the borrowed resource classifier;
+- [ ] reject a fold result, returned ADT, thunk, or exported classifier which
+      contains the region binder;
+- [ ] allow ordinary repeated reads within the region when the borrow policy is
+      unrestricted;
+- [ ] prevent retention of the borrow by an unrestricted closure or thunk that
+      can outlive the region.
+
+### 10.2 Ownership and continuation usage
+
+- [ ] represent at least zero, one, and unrestricted usage in Context/Judgement
+      constraints;
+- [ ] keep usage out of TermDB canonical identity;
+- [ ] check APP, computation fold, Match branches, and thunk capture;
+- [ ] require one-shot continuation behavior for resource scopes;
+- [ ] record residual usage obligations under hybrid compile policy rather than
+      inventing a successful proof.
+
+## 11. Stage 7: Test and Artifact Matrix
+
+Every row requires direct and artifact-backed evidence where applicable.
+
+| Area | Required tests | Status |
+|---|---|---|
+| Existing examples 01-09 | compile as before | passed 2026-08-05 |
+| Existing prototype suite | every `test_*.sh` passes | passed 2026-08-05 |
+| Thunk operation | discard, once, repeated, explicit inner fold | pending |
+| Forwarding | unknown thunk request preserves argument | pending |
+| Effect rows | latent before force, union after force | pending |
+| Resumptions | one-shot rejects replay, multi-shot permits replay | pending |
+| File success | read and close exactly once | pending |
+| File acquisition failure | no finalizer on failed acquisition | pending |
+| Lambda exit | File finalizer runs before exit reaches caller | pending |
+| Handler abort | File finalizer runs before abort leaves scope | pending |
+| Region escape | returned/stored/thunk-captured borrow rejected | pending |
+| Artifact | operation classifiers survive readback | passed for classifier edge |
+| Backend | unsupported filesystem capability rejected | pending |
+
+## 12. Progress Log
+
+### 2026-08-05: Plan created
+
+- Inspected `main` at `8afe93c`.
+- Confirmed plural operation clauses are implemented through reader, AST,
+  OperationGraph, TermDB, typing, runtime, and artifact paths.
+- Confirmed `&M` and arbitrary operation request arguments already provide the
+  representation needed for computation parameters.
+- Identified the first concrete blocker as the host-only operation signature in
+  `term.h` and `typing.c`, not operation syntax.
+- Identified runtime term-only bindings as the first concrete blocker for live
+  resources.
+- No implementation stage is marked complete yet.
+
+### 2026-08-05: Graph classifier milestone
+
+- Replaced effect-operation host argument/result arrays with classifier schema,
+  policy, and checked-arity metadata.
+- Added the nominal `#.scope_text` operation with classifier
+  `forall E. Thunk(Comp(E, Text)) -> Comp({scope_text}, Text)`.
+- Made the classifier an authoritative child edge of each effect-operation
+  TermDB node; structural comparison and canonical hashing include the edge.
+- Changed artifact format from v55 to v56.  Writer, reader, sparse-slot
+  validation, graph marking, and append relocation preserve the edge.
+- Changed effect-operation typing and proof validation to use the stored graph
+  classifier rather than rebuilding a host signature.
+- Added `higher_order_operation_check.p` and direct/artifact regression checks.
+- Added runtime one-shot/abortive resumption checks as a dynamic backstop.
+- Existing CBPV boundary tests passed after the graph change.  The complete
+  prototype script suite, artifact flow, and examples 01-09 also pass.
+
+## 13. Deviations and Revised Decisions
+
+Record every implementation-driven design change here before marking the
+affected stage complete.
+
+### 2026-08-05: Operation node edge replaces the proposed cache
+
+The plan initially proposed a TermDB-side classifier cache.  Implementation
+review showed that a cache would create another authority and would not
+naturally participate in artifact reachability.  The operation node now owns a
+classifier edge instead.
+
+### 2026-08-05: Higher-order handling blocker refined
+
+The request `perform (#.scope_text &M)` builds and type-checks.  A fold clause
+for `#.scope_text` does not yet type-check: clause solving strips the outer
+effect-row forall to inspect Pi, but does not instantiate that row against the
+clause argument's `Thunk(Comp(E,A))` classifier before constructing binder and
+continuation classifiers.  The failure occurs in
+`compile_phase_infer_general_classifiers`, before
+`solve_clause_computation_fold_constraint` runs.
+
+This is not a representation failure and does not justify a new higher-order
+operation node.  Stage 2 remains partial until this row-specialization path is
+implemented and the discard/once/repeated/forwarding tests pass.
+
+## 14. Completion Rule
+
+This migration is complete only when:
+
+1. all stages above are complete or explicitly superseded with a justified
+   replacement recorded in Section 13;
+2. all validation rows have direct evidence;
+3. the full prototype test suite passes;
+4. the artifact and backend boundaries have been exercised;
+5. both this progress record and the referenced decision record describe the
+   implemented system rather than a future intention;
+6. the resulting main commit is pushed to `origin/main`.

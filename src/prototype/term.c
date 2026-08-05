@@ -123,11 +123,21 @@ static const struct prototype_effect_operation_declaration
 effect_operation_declarations[] = {
 	{
 		PROTOTYPE_EFFECT_OPERATION_PRINT,
+		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_TEXT_TO_TEXT,
 		PROTOTYPE_EFFECT_OPERATION_LABEL_PRINT,
 		PROTOTYPE_HOST_EFFECT_TERMINAL,
 		1,
-		{ PROTOTYPE_HOST_TYPE_TEXT },
-		PROTOTYPE_HOST_TYPE_TEXT
+		PROTOTYPE_EFFECT_OPERATION_INNER_OPAQUE,
+		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_MULTI_SHOT
+	},
+	{
+		PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT,
+		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT,
+		PROTOTYPE_EFFECT_OPERATION_LABEL_SCOPE_TEXT,
+		PROTOTYPE_HOST_EFFECT_NONE,
+		1,
+		PROTOTYPE_EFFECT_OPERATION_INNER_SCOPED,
+		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_MULTI_SHOT
 	}
 };
 
@@ -158,6 +168,8 @@ static const struct prototype_intrinsic_namespace_binding intrinsic_namespace[] 
 		PROTOTYPE_PURE_PRIMITIVE_INT64_NEG },
 	{ "print", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 		PROTOTYPE_EFFECT_OPERATION_PRINT },
+	{ "scope_text", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
+		PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT },
 	{ "return", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_COMPUTATION_FOLD_RETURN, 0 }
 };
 
@@ -1069,7 +1081,12 @@ static int shape_terms_equal_at_depth(
 				return left->as.pure_primitive.primitive_id == right->as.pure_primitive.primitive_id &&
 					left->as.pure_primitive.type_symbol_id == right->as.pure_primitive.type_symbol_id;
 			case PROTOTYPE_TERM_EFFECT_OPERATION:
-				return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id;
+				return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id &&
+					shape_terms_equal_at_depth(
+						db, left->as.effect_operation.classifier,
+						right->as.effect_operation.classifier, env,
+						type_view_compare_mode, ignore_match_frames, depth + 1
+					);
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return left->as.effect_label.effects == right->as.effect_label.effects;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -1594,7 +1611,14 @@ static int cross_shape_terms_equal_at_depth(
 				return left->as.pure_primitive.primitive_id == right->as.pure_primitive.primitive_id &&
 					left->as.pure_primitive.type_symbol_id == right->as.pure_primitive.type_symbol_id;
 			case PROTOTYPE_TERM_EFFECT_OPERATION:
-				return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id;
+				return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id &&
+					cross_shape_terms_equal_at_depth(
+						left_db, left_type_declarations,
+						left->as.effect_operation.classifier,
+						right_db, right_type_declarations,
+						right->as.effect_operation.classifier, env,
+						type_view_compare_mode, ignore_match_frames, depth + 1
+					);
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return left->as.effect_label.effects == right->as.effect_label.effects;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -2213,7 +2237,10 @@ static int canonical_hash_term_at_depth(
 				return 0;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			canonical_hash_mix_u32(p_hash, (uint32_t)term->as.effect_operation.operation_id);
-			return 0;
+			return canonical_hash_term_at_depth(
+				db, type_declarations, term->as.effect_operation.classifier, env,
+				key, p_hash, canonicalize_frame_refs, depth + 1
+			);
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				canonical_hash_mix_u32(p_hash, term->as.effect_label.effects);
 				return 0;
@@ -3693,13 +3720,50 @@ int prototype_term_effect_operation(
 	int operation_id,
 	uint32_t* p_ret
 ) {
-	if (!prototype_term_effect_operation_declaration(operation_id)) {
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_term_effect_operation_declaration(operation_id);
+	if (!db || !p_ret || !declaration) {
 		return -1;
+	}
+	uint32_t text;
+	uint32_t argument;
+	uint32_t result_effects;
+	uint32_t result;
+	uint32_t classifier;
+	if (prototype_term_make_host_type(db, PROTOTYPE_HOST_TYPE_TEXT, &text) != 0 ||
+		prototype_term_effect_label(db, declaration->operation_labels, &result_effects) != 0 ||
+		prototype_term_computation_type(db, result_effects, text, &result) != 0) {
+		return -1;
+	}
+	switch (declaration->classifier_schema) {
+		case PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_TEXT_TO_TEXT:
+			argument = text;
+			if (prototype_term_pi(db, argument, result, &classifier) != 0) {
+				return -1;
+			}
+			break;
+		case PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT: {
+			uint32_t row_binder = prototype_term_fresh_binder(db);
+			uint32_t row;
+			uint32_t computation;
+			if (row_binder == PROTOTYPE_INVALID_ID ||
+				prototype_term_effect_row_var(db, row_binder, &row) != 0 ||
+				prototype_term_computation_type(db, row, text, &computation) != 0 ||
+				prototype_term_thunk_type(db, computation, &argument) != 0 ||
+				prototype_term_pi(db, argument, result, &classifier) != 0 ||
+				prototype_term_effect_row_forall(db, row_binder, classifier, &classifier) != 0) {
+				return -1;
+			}
+			break;
+		}
+		default:
+			return -1;
 	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_EFFECT_OPERATION;
 	term.as.effect_operation.operation_id = operation_id;
+	term.as.effect_operation.classifier = classifier;
 	return add_term(db, term, p_ret);
 }
 

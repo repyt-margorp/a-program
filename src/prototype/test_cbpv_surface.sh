@@ -751,3 +751,18 @@ grep -q '\[lambda-intro\]' "$tmp_dir/lambda-handle.out"
 ./read_file.out --read-graph "$tmp_dir/lambda-handle.apo" \
 	>"$tmp_dir/lambda-handle-read.out"
 grep -q 'interface term main ' "$tmp_dir/lambda-handle-read.out"
+
+# A higher-order operation uses the ordinary request argument to carry a
+# thunked computation. The inner operation remains latent in the request.
+./read_file.out src/prototype/higher_order_operation_check.p \
+	>"$tmp_dir/higher-order-operation.out"
+grep -q 'EFFECT_OPERATION(scope_text)' "$tmp_dir/higher-order-operation.out"
+grep -q 'THUNK(OPERATION_REQUEST(EFFECT_OPERATION(print)' \
+	"$tmp_dir/higher-order-operation.out"
+grep -q '\[operation-request-intro\]' "$tmp_dir/higher-order-operation.out"
+./read_file.out --write-artifact "$tmp_dir/higher-order-operation.apo" \
+	src/prototype/higher_order_operation_check.p \
+	>"$tmp_dir/higher-order-operation-write.out"
+./read_file.out --read-graph "$tmp_dir/higher-order-operation.apo" \
+	>"$tmp_dir/higher-order-operation-read.out"
+grep -q 'interface term main ' "$tmp_dir/higher-order-operation-read.out"
