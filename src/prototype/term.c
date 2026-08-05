@@ -3541,6 +3541,63 @@ int prototype_term_effect_row_union(
 	return add_term(db, term, p_ret);
 }
 
+int prototype_term_effect_row_residual(
+	struct prototype_term_db* db,
+	uint32_t row,
+	unsigned handled_effects,
+	uint32_t* p_residual
+) {
+	if (!db || !p_residual || row >= db->term_count) {
+		return -1;
+	}
+	const struct prototype_term* term = &db->terms[row];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+			return prototype_term_effect_label(
+				db, term->as.effect_label.effects & ~handled_effects, p_residual
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
+			uint32_t left;
+			uint32_t right;
+			int status = prototype_term_effect_row_residual(
+				db, term->as.effect_row_union.left, handled_effects, &left
+			);
+			if (status != 0) {
+				return status;
+			}
+			status = prototype_term_effect_row_residual(
+				db, term->as.effect_row_union.right, handled_effects, &right
+			);
+			return status != 0 ? status :
+				prototype_term_effect_row_union(db, left, right, p_residual);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
+			const struct prototype_effect_operation_declaration* declaration =
+				prototype_term_effect_operation_declaration(
+					term->as.effect_row_operation.operation_id
+				);
+			if (!declaration) {
+				return -1;
+			}
+			if ((declaration->operation_labels & handled_effects) ==
+				declaration->operation_labels) {
+				/* A first-order fold removes the outer operation atom. The latent
+				 * row remains scoped inside its thunk and is not exposed here. */
+				return prototype_term_effect_label(
+					db, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, p_residual
+				);
+			}
+			*p_residual = row;
+			return 0;
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return 1;
+		default:
+			return -1;
+	}
+}
+
 int prototype_term_effect_row_forall(
 	struct prototype_term_db* db,
 	uint32_t binder_id,

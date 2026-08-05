@@ -274,7 +274,11 @@ int prototype_context_db_append_relocated(
 			context->classifier != PROTOTYPE_INVALID_ID
 			? context->classifier + term_offset
 			: PROTOTYPE_INVALID_ID;
+		/* A resolved source context may retain its compile-time classifier
+		 * provenance. Linking needs only the concrete classifier; unresolved
+		 * contexts still relocate their variable as before. */
 		uint32_t classifier_variable = context &&
+			context->classifier == PROTOTYPE_INVALID_ID &&
 			context->classifier_variable != PROTOTYPE_INVALID_ID
 			? context->classifier_variable + binder_offset
 			: PROTOTYPE_INVALID_ID;
@@ -7322,7 +7326,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 58\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 59\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -7652,7 +7656,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 58) {
+		version != 59) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -15359,8 +15363,10 @@ static int push_graph_binder(
 	}
 	uint32_t parent_context = ctx->context_ids[ctx->binder_count];
 	uint32_t context_id;
-	uint32_t classifier_variable =
-		classifier == PROTOTYPE_INVALID_ID ? ast_binder_id : PROTOTYPE_INVALID_ID;
+	/* Keep the source binder as provenance even after an initial classifier is
+	 * available. Fixed-point elaboration may later refine that classifier and
+	 * must then relocate this immutable context extension. */
+	uint32_t classifier_variable = ast_binder_id;
 	if (prototype_context_extend(
 			&ctx->metadata->contexts,
 			parent_context,
@@ -15396,7 +15402,7 @@ static int resolve_current_graph_binder_classifier(
 			ctx->context_ids[ctx->binder_count - 1],
 			binder->graph_binder_id,
 			classifier,
-			PROTOTYPE_INVALID_ID,
+			binder->ast_binder_id,
 			&context_id
 		) != 0) {
 		return -1;
@@ -22163,6 +22169,32 @@ static int operation_solver_bind(
 	return 0;
 }
 
+static int operation_solver_bind_proven_classifier(
+	struct compile_context* ctx,
+	uint32_t variable,
+	uint32_t classifier,
+	int* p_changed
+) {
+	if (!ctx || !ctx->metadata || !p_changed ||
+		variable >= ctx->metadata->operation_count ||
+		classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	if (ctx->classifier_solver.bindings[variable] == classifier) {
+		ctx->metadata->operations[variable].known_classifier = classifier;
+		return 0;
+	}
+	/* The OperationGraph seed is an elaboration approximation.  Once the
+	 * kernel has validated a rule-specific proof, that occurrence classifier
+	 * becomes authoritative even when it is not convertible to the seed. */
+	ctx->classifier_solver.bindings[variable] = classifier;
+	ctx->metadata->operations[variable].known_classifier = classifier;
+	*p_changed = 1;
+	return operation_solver_enqueue_dependents(ctx, variable) != 0 ||
+		operation_solver_enqueue_clause_fold_dependents(ctx, variable) != 0 ?
+			-1 : 0;
+}
+
 static int operation_solver_widen_computation_binding(
 	struct compile_context* ctx,
 	uint32_t operation,
@@ -23266,6 +23298,33 @@ static int operation_effect_materialize_solution(
 	return 0;
 }
 
+static int operation_effect_row_is_ground(
+	const struct prototype_term_db* terms,
+	uint32_t row,
+	uint32_t depth
+) {
+	if (!terms || row >= terms->term_count || depth > 256) {
+		return 0;
+	}
+	const struct prototype_term* term = &terms->terms[row];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+			return 1;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return operation_effect_row_is_ground(
+				terms, term->as.effect_row_operation.latent_row, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			return operation_effect_row_is_ground(
+					terms, term->as.effect_row_union.left, depth + 1
+				) && operation_effect_row_is_ground(
+					terms, term->as.effect_row_union.right, depth + 1
+				);
+		default:
+			return 0;
+	}
+}
+
 static int operation_effect_solve_constraints(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata) {
 		return -1;
@@ -23275,6 +23334,53 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 		for (size_t i = 0; i < ctx->metadata->effect_constraint_count; ++i) {
 			struct prototype_operation_effect_constraint* constraint =
 				&ctx->metadata->effect_constraints[i];
+			uint32_t structural_expected = PROTOTYPE_INVALID_ID;
+			if (constraint->kind == PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_EXACT ||
+				constraint->kind == PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_COPY) {
+				structural_expected = constraint->left_row;
+			} else if (constraint->kind ==
+					PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNION &&
+				prototype_term_effect_row_union(
+					ctx->terms,
+					constraint->left_row,
+					constraint->right_row,
+					&structural_expected
+				) != 0) {
+				return -1;
+			} else if (constraint->kind ==
+					PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_RESIDUAL) {
+				unsigned handled_effects;
+				if (prototype_term_effect_row_closed_bits(
+						ctx->terms, constraint->right_row, &handled_effects
+					) == 0) {
+					int residual_status = prototype_term_effect_row_residual(
+						ctx->terms,
+						constraint->left_row,
+						handled_effects,
+						&structural_expected
+					);
+					if (residual_status < 0) {
+						return -1;
+					}
+					if (residual_status > 0) {
+						structural_expected = PROTOTYPE_INVALID_ID;
+					}
+				}
+			}
+			if (structural_expected != PROTOTYPE_INVALID_ID &&
+				operation_effect_row_is_ground(
+					ctx->terms, structural_expected, 0
+				) &&
+				prototype_judgement_classifier_normalization_equal(
+					ctx->terms,
+					ctx->type_declarations,
+					constraint->result_row,
+					structural_expected
+				)) {
+				constraint->state =
+					PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED;
+				continue;
+			}
 			unsigned left;
 			unsigned right = 0;
 			unsigned expected;
@@ -23377,6 +23483,11 @@ static int operation_effect_generate_constraints(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
+	/* These constraints are a derived view of the current operation
+	 * classifiers. A fixed-point round may replace a symbolic row with a
+	 * concrete one, so retaining constraints from an earlier round creates
+	 * false residual obligations. */
+	ctx->metadata->effect_constraint_count = 0;
 	uint32_t empty_row;
 	if (prototype_term_effect_label(
 			ctx->terms, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &empty_row
@@ -24190,21 +24301,26 @@ static int operation_solver_propagate_clause_computation_fold_input(
 	}
 	uint32_t fold_output_classifier;
 	unsigned closed_fold_effects;
-	if (prototype_term_effect_row_closed_bits(
-			ctx->terms, fold_effect_row, &closed_fold_effects
-		) != 0) {
-		return 0;
-	}
-	(void)closed_fold_effects;
 	if (prototype_term_computation_type(
 			ctx->terms,
 			fold_effect_row,
 			return_body_view.result,
 			&fold_output_classifier
-		) != 0 || operation_solver_widen_computation_binding(
-			ctx, handle_operation_id, fold_output_classifier, p_changed
 		) != 0) {
 		return -1;
+	}
+	/* A symbolic clause row is precisely the case in which the operation
+	 * domain must still be propagated into the clause binders below.  Defer
+	 * publishing the fold result, but do not return before that propagation. */
+	if (prototype_term_effect_row_closed_bits(
+			ctx->terms, fold_effect_row, &closed_fold_effects
+		) == 0) {
+		(void)closed_fold_effects;
+		if (operation_solver_widen_computation_binding(
+				ctx, handle_operation_id, fold_output_classifier, p_changed
+			) != 0) {
+			return -1;
+		}
 	}
 	for (uint32_t clause_index = 0;
 		clause_index < fold_term->as.computation_fold.clause_count;
@@ -24266,6 +24382,21 @@ static int operation_solver_propagate_clause_computation_fold_input(
 		uint32_t operation_domain;
 		uint32_t operation_codomain_family;
 		if (operation_classifier == PROTOTYPE_INVALID_ID) {
+			return 0;
+		}
+		int specialization_status =
+			prototype_judgement_specialize_fold_operation_classifier(
+				ctx->terms,
+				ctx->type_declarations,
+				input_view.effect_row,
+				operation_identity,
+				operation_classifier,
+				&operation_classifier
+			);
+		if (specialization_status < 0) {
+			return -1;
+		}
+		if (specialization_status > 0) {
 			return 0;
 		}
 		if (prototype_term_normalize_complete_with_profile(
@@ -24356,19 +24487,18 @@ static int operation_solver_propagate_clause_computation_fold_input(
 			) != 0 || ast_binder_id != occurrence_clause->argument_ast_binder_id) {
 			continue;
 		}
-		if (lambda_operation->binder_classifier == PROTOTYPE_INVALID_ID) {
-			lambda_operation->binder_classifier = operation_domain;
-			*p_changed = 1;
-			if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
-				return -1;
-			}
-		} else if (!prototype_judgement_classifier_normalization_equal(
+		if (lambda_operation->binder_classifier == PROTOTYPE_INVALID_ID ||
+			!prototype_judgement_classifier_normalization_equal(
 				ctx->terms,
 				ctx->type_declarations,
 				lambda_operation->binder_classifier,
 				operation_domain
 			)) {
-			return -1;
+			lambda_operation->binder_classifier = operation_domain;
+			*p_changed = 1;
+			if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
+				return -1;
+			}
 		}
 	}
 	for (uint32_t lambda_operation_id = 0;
@@ -24513,7 +24643,7 @@ static int operation_solver_propagate_clause_computation_fold_input(
 					occurrence_clause->continuation_ast_binder_id ?
 					operation_solver_widen_continuation_binding(
 						ctx, operation_id, classifier, p_changed
-					) : operation_solver_bind(
+					) : operation_solver_bind_proven_classifier(
 						ctx, operation_id, classifier, p_changed
 					)) != 0) {
 				return -1;
@@ -24534,7 +24664,15 @@ static int operation_solver_propagate_clause_computation_fold_input(
 						continue;
 					}
 					if (lambda_operation->binder_classifier ==
-						PROTOTYPE_INVALID_ID) {
+							PROTOTYPE_INVALID_ID ||
+						(operation->referenced_ast_binder_id ==
+							occurrence_clause->argument_ast_binder_id &&
+						 !prototype_judgement_classifier_normalization_equal(
+							ctx->terms,
+							ctx->type_declarations,
+							lambda_operation->binder_classifier,
+							classifier
+						 ))) {
 						lambda_operation->binder_classifier = classifier;
 						*p_changed = 1;
 						if (operation_solver_enqueue_dependents(
@@ -24734,7 +24872,7 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 								&classifier
 							) != 0 || operation_solver_generalize_lambda_effect_rows(
 								ctx, constraint->target, classifier, &classifier
-							) != 0 || operation_solver_bind(
+							) != 0 || operation_solver_bind_proven_classifier(
 								ctx, constraint->target, classifier, &pass_changed
 							) != 0) {
 							return -1;
@@ -24767,7 +24905,7 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 						/* A non-Pi or incompatible current candidate may belong to a
 						 * shared core node. Leave this operation constraint unresolved
 						 * until a source-operation binding selects its classifier. */
-						if (apply_status == 0 && operation_solver_bind(
+						if (apply_status == 0 && operation_solver_bind_proven_classifier(
 								ctx, constraint->target, classifier, &pass_changed
 							) != 0) {
 							return -1;
@@ -24852,7 +24990,7 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 							ctx->metadata->operations[constraint->target].core_term,
 							child_classifier,
 							&classifier
-						) != 0 || operation_solver_bind(
+						) != 0 || operation_solver_bind_proven_classifier(
 							ctx, constraint->target, classifier, &pass_changed
 						) != 0) {
 						return -1;
@@ -26440,6 +26578,38 @@ static int operation_solver_reindex_existing_proof(
 	return 1;
 }
 
+static int operation_solver_lookup_proven_classifier(
+	const struct compile_context* ctx,
+	uint32_t subject,
+	int proof_kind,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !p_classifier) {
+		return -1;
+	}
+	for (size_t i = ctx->judgement_delta.relation_count; i > 0; --i) {
+		const struct prototype_judgement_relation* relation =
+			&ctx->judgement_delta.relations[i - 1];
+		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			relation->subject == subject && relation->proof_kind == proof_kind) {
+			*p_classifier = relation->classifier;
+			return 0;
+		}
+	}
+	if (ctx->judgement_delta.db) {
+		for (size_t i = ctx->judgement_delta.db->relation_count; i > 0; --i) {
+			const struct prototype_judgement_relation* relation =
+				&ctx->judgement_delta.db->relations[i - 1];
+			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				relation->subject == subject && relation->proof_kind == proof_kind) {
+				*p_classifier = relation->classifier;
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
 /*
  * A source operation is a typed occurrence.  Its TermDB root can be shared
  * with an alpha-equivalent occurrence whose children have different raw
@@ -26524,6 +26694,31 @@ static int operation_solver_reify_core_proof(
 			prototype_judgement_delta_set_context(
 				&ctx->judgement_delta, operation->context_id
 			);
+			uint32_t expected_family;
+			uint32_t expected_classifier;
+			if (prototype_term_pure_family(
+					ctx->terms,
+					term->as.lambda.binder_id,
+					body->classifier,
+					&expected_family
+				) != 0 || prototype_term_pi_family(
+					ctx->terms,
+					operation->binder_classifier,
+					expected_family,
+					&expected_classifier
+				) != 0 || operation_solver_generalize_lambda_effect_rows(
+					ctx, operation_id, expected_classifier, &expected_classifier
+				) != 0) {
+				return -1;
+			}
+			if (!prototype_judgement_classifier_normalization_equal(
+					ctx->terms,
+					ctx->type_declarations,
+					classifier,
+					expected_classifier
+				)) {
+				return 1;
+			}
 			if (prototype_judgement_delta_record_lambda_intro(
 					&ctx->judgement_delta,
 					ctx->terms,
@@ -26766,7 +26961,27 @@ static int operation_solver_reify_core_proof(
 				operation->function >= ctx->metadata->operation_count) {
 				return -1;
 			}
+			uint32_t proven_classifier;
+			int proven_status = operation_solver_lookup_proven_classifier(
+				ctx,
+				core_term,
+				PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM,
+				&proven_classifier
+			);
+			if (proven_status < 0) {
+				return -1;
+			}
+			if (proven_status == 0) {
+				return operation_solver_reindex_existing_proof(
+					ctx, operation->context_id, core_term, proven_classifier
+				);
+			}
 			uint32_t clause_count = term->as.computation_fold.clause_count;
+			if (clause_count != 0) {
+				/* Clause-bearing folds are kernel solver conclusions. The
+				 * OperationGraph classifier is only a fixed-point approximation. */
+				return 1;
+			}
 			if (clause_count > 31 || operation->fold_clause_count != clause_count ||
 				(clause_count != 0 &&
 				 (operation->first_fold_clause >
@@ -26798,6 +27013,17 @@ static int operation_solver_reify_core_proof(
 			premise_terms[1] = term->as.computation_fold.return_clause;
 			premise_classifiers[0] = computation->classifier;
 			premise_classifiers[1] = return_operation->classifier;
+			if (computation->tag == PROTOTYPE_OPERATION_PERFORM) {
+				int proven_status = operation_solver_lookup_proven_classifier(
+					ctx,
+					premise_terms[0],
+					PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO,
+					&premise_classifiers[0]
+				);
+				if (proven_status != 0) {
+					return proven_status < 0 ? -1 : 1;
+				}
+			}
 			for (uint32_t i = 0; i < clause_count; ++i) {
 				const struct prototype_operation_computation_fold_clause* occurrence_clause =
 					&ctx->metadata->operation_fold_clauses[
@@ -27043,12 +27269,21 @@ static int operation_solver_reify_core_proof(
 				prototype_judgement_delta_set_context(
 					&ctx->judgement_delta, operation->context_id
 				);
-				if (prototype_judgement_delta_record_app_elim(
+				uint32_t application_classifier;
+				if (prototype_judgement_delta_app_elim_classifier(
+						&ctx->judgement_delta,
+						ctx->terms,
+						ctx->type_declarations,
+						function->classifier,
+						term->as.operation_request.argument,
+						argument->classifier,
+						&application_classifier
+					) != 0 || prototype_judgement_delta_record_app_elim(
 						&ctx->judgement_delta,
 						ctx->terms,
 						ctx->type_declarations,
 						application,
-						operation->classifier,
+						application_classifier,
 						term->as.operation_request.operation,
 						function->classifier,
 						term->as.operation_request.argument,
@@ -27259,7 +27494,7 @@ static int operation_solver_resolve_contexts(struct compile_context* ctx) {
 			return -1;
 		}
 		uint32_t classifier = context->classifier;
-		if (classifier == PROTOTYPE_INVALID_ID) {
+		if (context->classifier_variable != PROTOTYPE_INVALID_ID) {
 			for (uint32_t operation_id = 0;
 				operation_id < ctx->metadata->operation_count;
 				++operation_id) {
@@ -27271,15 +27506,6 @@ static int operation_solver_resolve_contexts(struct compile_context* ctx) {
 					operation->referenced_ast_binder_id ==
 						context->classifier_variable &&
 					operation_classifier != PROTOTYPE_INVALID_ID) {
-					if (classifier != PROTOTYPE_INVALID_ID &&
-						!prototype_judgement_classifier_normalization_equal(
-							ctx->terms,
-							ctx->type_declarations,
-							classifier,
-							operation_classifier
-						)) {
-						return -1;
-					}
 					classifier = operation_classifier;
 				}
 			}
@@ -27289,8 +27515,7 @@ static int operation_solver_resolve_contexts(struct compile_context* ctx) {
 				relocation[context->parent],
 				context->binder_id,
 				classifier,
-				classifier == PROTOTYPE_INVALID_ID ?
-					context->classifier_variable : PROTOTYPE_INVALID_ID,
+				context->classifier_variable,
 				&relocation[context_id]
 			) != 0) {
 			return -1;
@@ -27509,6 +27734,7 @@ static int bind_cbpv_operation_classifiers(
 		if (operation->core_term >= ctx->terms->term_count) {
 			return -1;
 		}
+		uint32_t proven_classifier = PROTOTYPE_INVALID_ID;
 		for (size_t relation_id = 0;
 			relation_id < ctx->judgement_delta.relation_count;
 			++relation_id) {
@@ -27540,16 +27766,12 @@ static int bind_cbpv_operation_classifiers(
 				}
 				if (fold->as.computation_fold.clause_count == 0) {
 					matches = proof->premise_count == 2 &&
-					operation->function < ctx->metadata->operation_count &&
-					operation->argument < ctx->metadata->operation_count &&
-					proof->premise_subjects[0] ==
-						ctx->metadata->operations[operation->function].core_term &&
-					proof->premise_classifiers[0] ==
-						ctx->metadata->operations[operation->function].classifier &&
-					proof->premise_subjects[1] ==
-						ctx->metadata->operations[operation->argument].core_term &&
-					proof->premise_classifiers[1] ==
-						ctx->metadata->operations[operation->argument].classifier;
+						operation->function < ctx->metadata->operation_count &&
+						operation->argument < ctx->metadata->operation_count &&
+						proof->premise_subjects[0] ==
+							ctx->metadata->operations[operation->function].core_term &&
+						proof->premise_subjects[1] ==
+							ctx->metadata->operations[operation->argument].core_term;
 				} else {
 					matches = fold->as.computation_fold.first_clause +
 						fold->as.computation_fold.clause_count <=
@@ -27572,7 +27794,7 @@ static int bind_cbpv_operation_classifiers(
 				} else if (operation->tag == PROTOTYPE_OPERATION_PERFORM) {
 					const struct prototype_term* request =
 						&ctx->terms->terms[operation->core_term];
-					matches = proof->premise_count == 2 &&
+					matches = proof->premise_count == 3 &&
 						operation->function < ctx->metadata->operation_count &&
 						operation->argument < ctx->metadata->operation_count &&
 						operation->body < ctx->metadata->operation_count &&
@@ -27585,6 +27807,8 @@ static int bind_cbpv_operation_classifiers(
 						ctx->terms->terms[proof->premise_subjects[0]].as.app.argument ==
 							ctx->metadata->operations[operation->argument].core_term &&
 						proof->premise_subjects[1] ==
+							ctx->metadata->operations[operation->argument].core_term &&
+						proof->premise_subjects[2] ==
 							ctx->metadata->operations[operation->body].core_term &&
 						request->as.operation_request.operation ==
 							ctx->metadata->operations[operation->function].core_term &&
@@ -27594,6 +27818,13 @@ static int bind_cbpv_operation_classifiers(
 							ctx->metadata->operations[operation->body].core_term;
 				}
 			if (matches) {
+				if (operation->tag == PROTOTYPE_OPERATION_PERFORM ||
+					operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD) {
+					/* Later fixed-point derivations supersede earlier provisional
+					 * derivations for this source occurrence. Publish only once. */
+					proven_classifier = relation->classifier;
+					continue;
+				}
 				uint32_t selected_classifier = operation_solver_classifier(
 					ctx, operation_id
 				);
@@ -27612,6 +27843,12 @@ static int bind_cbpv_operation_classifiers(
 					return -1;
 				}
 			}
+		}
+		if (proven_classifier != PROTOTYPE_INVALID_ID &&
+			operation_solver_bind_proven_classifier(
+				ctx, operation_id, proven_classifier, p_changed
+			) != 0) {
+			return -1;
 		}
 	}
 	return operation_solver_commit_bindings(ctx, p_changed);
@@ -27709,7 +27946,9 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 			i < ctx->judgement_delta.computation_constraint_count;
 			++i) {
 			if (ctx->judgement_delta.computation_constraints[i].kind !=
-				PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST) {
+					PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST &&
+				ctx->judgement_delta.computation_constraints[i].kind !=
+					PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_FOLD) {
 				continue;
 			}
 			if (write != i) {
@@ -27744,6 +27983,13 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 			return -1;
 		}
 	}
+	/* Generic inference may have emitted provisional structural derivations in
+	 * a clause context that was later replaced by the typed OperationGraph
+	 * context. Keep the reified derivations and remove only conclusions whose
+	 * premise tuple has no remaining proof in its declared context. */
+	prototype_judgement_delta_drop_unsupported_derivations(
+		&ctx->judgement_delta
+	);
 	if (prototype_judgement_delta_commit(&ctx->judgement_delta, 0) != 0) {
 		return -1;
 	}

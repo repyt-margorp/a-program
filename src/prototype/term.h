@@ -703,6 +703,12 @@ int prototype_term_effect_row_closed_bits(
 	uint32_t row,
 	unsigned* p_effects
 );
+int prototype_term_effect_row_residual(
+	struct prototype_term_db* db,
+	uint32_t row,
+	unsigned handled_effects,
+	uint32_t* p_residual
+);
 int prototype_term_computation_type(
 	struct prototype_term_db* db,
 	uint32_t label,

@@ -353,6 +353,25 @@ int prototype_judgement_delta_record_app_elim(
 	uint32_t argument_subject,
 	uint32_t argument_classifier
 );
+
+int prototype_judgement_delta_app_elim_classifier(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t function_classifier,
+	uint32_t argument_subject,
+	uint32_t argument_classifier,
+	uint32_t* p_classifier
+);
+
+int prototype_judgement_specialize_fold_operation_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t input_row,
+	int operation_id,
+	uint32_t classifier,
+	uint32_t* p_specialized
+);
 int prototype_judgement_delta_record_context_reindex(
 	struct prototype_judgement_delta* delta,
 	uint32_t subject,
@@ -635,6 +654,10 @@ void prototype_judgement_resolve_declaration_premises(
 );
 
 void prototype_judgement_delta_drop_temporary_derivations(
+	struct prototype_judgement_delta* delta
+);
+
+void prototype_judgement_delta_drop_unsupported_derivations(
 	struct prototype_judgement_delta* delta
 );
 

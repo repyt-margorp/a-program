@@ -200,31 +200,191 @@ static int computation_effect_row_is_union(
 	return left_equal && right_equal;
 }
 
-/* Closed rows are solved immediately. Symbolic residual rows remain for the
- * row-constraint solver rather than being guessed from a bitset. */
-static int closed_computation_fold_residual_row(
+static int effect_row_operation_latent_union(
+	struct prototype_term_db* terms,
+	uint32_t row,
+	int operation_id,
+	uint32_t* p_latent,
+	int* p_found
+) {
+	if (!terms || !p_latent || !p_found || row >= terms->term_count) {
+		return -1;
+	}
+	const struct prototype_term* term = &terms->terms[row];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+			return 0;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			if (term->as.effect_row_operation.operation_id != operation_id) {
+				return 0;
+			}
+			if (!*p_found) {
+				*p_latent = term->as.effect_row_operation.latent_row;
+				*p_found = 1;
+				return 0;
+			}
+			return prototype_term_effect_row_union(
+				terms,
+				*p_latent,
+				term->as.effect_row_operation.latent_row,
+				p_latent
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
+			int left_status = effect_row_operation_latent_union(
+				terms,
+				term->as.effect_row_union.left,
+				operation_id,
+				p_latent,
+				p_found
+			);
+			return left_status != 0 ? left_status :
+				effect_row_operation_latent_union(
+					terms,
+					term->as.effect_row_union.right,
+					operation_id,
+					p_latent,
+					p_found
+				);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return 1;
+		default:
+			return -1;
+	}
+}
+
+int prototype_judgement_specialize_fold_operation_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t input_row,
+	int operation_id,
+	uint32_t classifier,
+	uint32_t* p_specialized
+) {
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_term_effect_operation_declaration(operation_id);
+	if (!terms || !type_declarations || !declaration || !p_specialized) {
+		return -1;
+	}
+	*p_specialized = classifier;
+	if (declaration->classifier_schema !=
+		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT) {
+		return 0;
+	}
+	uint32_t latent_row = PROTOTYPE_INVALID_ID;
+	int found_latent = 0;
+	int latent_status = effect_row_operation_latent_union(
+		terms, input_row, operation_id, &latent_row, &found_latent
+	);
+	if (latent_status != 0) {
+		return latent_status;
+	}
+	if (!found_latent) {
+		return 1;
+	}
+	uint32_t text;
+	uint32_t latent_computation;
+	uint32_t latent_argument;
+	if (prototype_term_make_host_type(
+			terms, PROTOTYPE_HOST_TYPE_TEXT, &text
+		) != 0 || prototype_term_computation_type(
+			terms, latent_row, text, &latent_computation
+		) != 0 || prototype_term_thunk_type(
+			terms, latent_computation, &latent_argument
+		) != 0 || prototype_judgement_specialize_effect_rows_for_argument(
+			terms,
+			type_declarations,
+			classifier,
+			latent_argument,
+			p_specialized
+		) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
+static int instantiate_fold_clause_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t generic_domain,
+	uint32_t concrete_domain,
+	uint32_t classifier,
+	uint32_t* p_instantiated
+) {
+	if (!terms || !type_declarations || !p_instantiated ||
+		generic_domain >= terms->term_count || concrete_domain >= terms->term_count ||
+		classifier >= terms->term_count) {
+		return -1;
+	}
+	if (prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, generic_domain, concrete_domain
+		)) {
+		*p_instantiated = classifier;
+		return 0;
+	}
+	if (terms->terms[generic_domain].tag != PROTOTYPE_TERM_THUNK_TYPE ||
+		terms->terms[concrete_domain].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		return -1;
+	}
+	struct prototype_term_classifier_view generic;
+	struct prototype_term_classifier_view concrete;
+	if (prototype_judgement_classifier_view(
+			terms,
+			type_declarations,
+			NULL,
+			terms->terms[generic_domain].as.thunk_type.computation,
+			&generic
+		) != 0 || prototype_judgement_classifier_view(
+			terms,
+			type_declarations,
+			NULL,
+			terms->terms[concrete_domain].as.thunk_type.computation,
+			&concrete
+		) != 0 || generic.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		concrete.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		generic.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		concrete.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		generic.effect_row >= terms->term_count ||
+		terms->terms[generic.effect_row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR ||
+		!prototype_judgement_classifier_normalization_equal(
+			terms, type_declarations, generic.result, concrete.result
+		)) {
+		return -1;
+	}
+	return prototype_term_graph_substitute_bound_var(
+		terms,
+		type_declarations,
+		classifier,
+		terms->terms[generic.effect_row].as.effect_row_var.binder_id,
+		concrete.effect_row,
+		p_instantiated
+	);
+}
+
+/* Residual subtraction is structural. Higher-order operation atoms are
+ * removable by their outer operation identity while retaining opaque latent
+ * rows on unhandled atoms. Open rows remain solver obligations. */
+static int computation_fold_residual_row(
 	struct prototype_term_db* terms,
 	const struct prototype_term_classifier_view* input,
 	const struct prototype_term_classifier_view* operation,
 	uint32_t* p_residual
 ) {
-	unsigned input_effects;
 	unsigned operation_effects;
 	if (!terms || !input || !operation || !p_residual ||
 		input->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		operation->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		input->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		operation->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		prototype_term_effect_row_closed_bits(terms, input->effect_row, &input_effects) != 0 ||
 		prototype_term_effect_row_closed_bits(
 			terms, operation->effect_row, &operation_effects
 		) != 0) {
 		return 1;
 	}
-	if ((input_effects & operation_effects) != operation_effects) {
-		return -1;
-	}
-	return prototype_term_effect_label(terms, input_effects & ~operation_effects, p_residual);
+	return prototype_term_effect_row_residual(
+		terms, input->effect_row, operation_effects, p_residual
+	);
 }
 
 static int term_exists(const struct prototype_term_db* terms, uint32_t term_id) {
@@ -867,6 +1027,117 @@ static int lookup_delta_proven_classifier(
 	return lookup_classifier(delta->db, terms, subject, p_classifier);
 }
 
+static int lookup_classifier_with_proof_kind_in_relations(
+	const struct prototype_judgement_relation* relations,
+	size_t relation_count,
+	uint32_t subject,
+	int proof_kind,
+	uint32_t* p_classifier
+) {
+	if (!relations || !p_classifier) {
+		return -1;
+	}
+	for (size_t i = relation_count; i > 0; --i) {
+		const struct prototype_judgement_relation* relation = &relations[i - 1];
+		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			relation->subject == subject && relation->proof_kind == proof_kind) {
+			*p_classifier = relation->classifier;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int lookup_delta_classifier_with_proof_kind(
+	const struct prototype_judgement_delta* delta,
+	uint32_t subject,
+	int proof_kind,
+	uint32_t* p_classifier
+) {
+	if (!delta || !p_classifier) {
+		return -1;
+	}
+	int status = lookup_classifier_with_proof_kind_in_relations(
+		delta->relations, delta->relation_count, subject, proof_kind, p_classifier
+	);
+	if (status <= 0 || !delta->db) {
+		return status;
+	}
+	return lookup_classifier_with_proof_kind_in_relations(
+		delta->db->relations,
+		delta->db->relation_count,
+		subject,
+		proof_kind,
+		p_classifier
+	);
+}
+
+static int lookup_app_elim_argument_classifier_in_relations(
+	const struct prototype_judgement_relation* relations,
+	size_t relation_count,
+	const struct prototype_judgement_proof* proofs,
+	size_t proof_count,
+	uint32_t application,
+	uint32_t application_classifier,
+	uint32_t argument,
+	uint32_t* p_argument_classifier
+) {
+	if (!relations || !proofs || !p_argument_classifier) {
+		return -1;
+	}
+	for (size_t i = relation_count; i > 0; --i) {
+		const struct prototype_judgement_relation* relation = &relations[i - 1];
+		if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			relation->subject != application ||
+			relation->classifier != application_classifier ||
+			relation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM ||
+			relation->proof_id >= proof_count) {
+			continue;
+		}
+		const struct prototype_judgement_proof* proof = &proofs[relation->proof_id];
+		if (proof->premise_count == 2 && proof->premise_subjects[1] == argument) {
+			*p_argument_classifier = proof->premise_classifiers[1];
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int lookup_delta_app_elim_argument_classifier(
+	const struct prototype_judgement_delta* delta,
+	uint32_t application,
+	uint32_t application_classifier,
+	uint32_t argument,
+	uint32_t* p_argument_classifier
+) {
+	if (!delta || !p_argument_classifier) {
+		return -1;
+	}
+	int status = lookup_app_elim_argument_classifier_in_relations(
+		delta->relations,
+		delta->relation_count,
+		delta->proofs,
+		delta->proof_count,
+		application,
+		application_classifier,
+		argument,
+		p_argument_classifier
+	);
+	if (status <= 0 || !delta->db) {
+		return status;
+	}
+	return lookup_app_elim_argument_classifier_in_relations(
+		delta->db->relations,
+		delta->db->relation_count,
+		delta->db->proofs,
+		delta->db->proof_count,
+		application,
+		application_classifier,
+		argument,
+		p_argument_classifier
+	);
+}
+
 static int lookup_delta_classifier_normalization_equal(
 	const struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -878,6 +1149,27 @@ static int lookup_delta_classifier_normalization_equal(
 	if (!delta || !terms || !type_declarations || !p_classifier ||
 		!term_exists(terms, subject) || !term_exists(terms, expected)) {
 		return -1;
+	}
+	/* Preserve occurrence-specific row specialization when both a generic and
+	 * a specialized lambda derivation exist for the same erased core term. */
+	for (size_t i = 0; i < delta->relation_count; ++i) {
+		const struct prototype_judgement_relation* relation = &delta->relations[i];
+		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			relation->subject == subject && relation->classifier == expected) {
+			*p_classifier = expected;
+			return 0;
+		}
+	}
+	if (delta->db) {
+		for (size_t i = 0; i < delta->db->relation_count; ++i) {
+			const struct prototype_judgement_relation* relation =
+				&delta->db->relations[i];
+			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				relation->subject == subject && relation->classifier == expected) {
+				*p_classifier = expected;
+				return 0;
+			}
+		}
 	}
 	for (size_t i = 0; i < delta->relation_count; ++i) {
 		const struct prototype_judgement_relation* relation = &delta->relations[i];
@@ -924,6 +1216,25 @@ static int lookup_delta_proven_classifier_normalization_equal(
 	if (!delta || !terms || !type_declarations || !p_classifier ||
 		!term_exists(terms, subject) || !term_exists(terms, expected)) {
 		return -1;
+	}
+	for (size_t i = 0; i < delta->relation_count; ++i) {
+		const struct prototype_judgement_relation* relation = &delta->relations[i];
+		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			relation->subject == subject && relation->classifier == expected) {
+			*p_classifier = expected;
+			return 0;
+		}
+	}
+	if (delta->db) {
+		for (size_t i = 0; i < delta->db->relation_count; ++i) {
+			const struct prototype_judgement_relation* relation =
+				&delta->db->relations[i];
+			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				relation->subject == subject && relation->classifier == expected) {
+				*p_classifier = expected;
+				return 0;
+			}
+		}
 	}
 	for (size_t i = 0; i < delta->relation_count; ++i) {
 		const struct prototype_judgement_relation* relation = &delta->relations[i];
@@ -4870,6 +5181,7 @@ static int infer_lambda_classifier_pair(
 	uint32_t binder_subject,
 	uint32_t binder_classifier,
 	uint32_t body_classifier,
+	uint32_t premise_context_id,
 	int* p_changed
 ) {
 	if (!delta || !terms || !type_declarations || !p_changed ||
@@ -4930,6 +5242,21 @@ static int infer_lambda_classifier_pair(
 		) != 0) {
 		return -1;
 	}
+	for (size_t i = delta->relation_count; i > 0; --i) {
+		const struct prototype_judgement_relation* relation =
+			&delta->relations[i - 1];
+		if (relation->context_id == delta->current_context_id &&
+			relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			relation->subject == lambda_term && relation->classifier == classifier &&
+			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO &&
+			relation->proof_id < delta->proof_count) {
+			struct prototype_judgement_proof* proof =
+				&delta->proofs[relation->proof_id];
+			proof->premise_context_ids[0] = premise_context_id;
+			proof->premise_context_ids[1] = premise_context_id;
+			break;
+		}
+	}
 	if (delta->relation_count > before) {
 		*p_changed = 1;
 	}
@@ -4988,6 +5315,7 @@ static int infer_lambda_classifiers_from_body(
 							binder_relation->subject,
 							binder_relation->classifier,
 							body_relation->classifier,
+							binder_relation->context_id,
 							p_changed
 						) != 0) {
 						return -1;
@@ -5868,20 +6196,26 @@ static int solve_zero_clause_computation_fold_constraint(
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_computation_constraint* constraint
 ) {
-	for (size_t i = 0; i < delta->relation_count; ++i) {
-		const struct prototype_judgement_relation* relation =
-			&delta->relations[i];
-		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			relation->subject == constraint->subject &&
-			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM) {
-			return 0;
-		}
-	}
 	uint32_t input_classifier;
 	struct prototype_term_classifier_view input_view;
-	if (lookup_delta_proven_classifier(
-			delta, terms, constraint->computation, &input_classifier
-		) != 0) {
+	int input_status = term_has_tag(
+		terms, constraint->computation, PROTOTYPE_TERM_OPERATION_REQUEST
+	) ? lookup_delta_classifier_with_proof_kind(
+		delta,
+		constraint->computation,
+		PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO,
+		&input_classifier
+	) : term_has_tag(
+		terms, constraint->computation, PROTOTYPE_TERM_COMPUTATION_FOLD
+	) ? lookup_delta_classifier_with_proof_kind(
+		delta,
+		constraint->computation,
+		PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM,
+		&input_classifier
+	) : lookup_delta_proven_classifier(
+		delta, terms, constraint->computation, &input_classifier
+	);
+	if (input_status != 0) {
 		return 1;
 	}
 	if (prototype_judgement_classifier_view(
@@ -5966,6 +6300,17 @@ static int solve_operation_request_constraint(
 		);
 		return status < 0 ? -1 : 1;
 	}
+	uint32_t argument_classifier;
+	int argument_status = lookup_delta_app_elim_argument_classifier(
+		delta,
+		constraint->application,
+		application_classifier,
+		constraint->argument,
+		&argument_classifier
+	);
+	if (argument_status != 0) {
+		return argument_status < 0 ? -1 : 1;
+	}
 	struct prototype_term_classifier_view operation_view;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, application_classifier, &operation_view
@@ -6037,17 +6382,52 @@ static int solve_operation_request_constraint(
 		)) {
 		return 1;
 	}
+	uint32_t operation_effect_row = operation_view.effect_row;
+	int operation_id;
+	if (prototype_term_effect_operation_identity(
+			terms, constraint->computation, &operation_id
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_term_effect_operation_declaration(operation_id);
+	if (!declaration) {
+		return -1;
+	}
+	if (declaration->classifier_schema ==
+		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT) {
+		if (!term_has_tag(terms, argument_classifier, PROTOTYPE_TERM_THUNK_TYPE)) {
+			return -1;
+		}
+		struct prototype_term_classifier_view argument_view;
+		if (prototype_judgement_classifier_view(
+				terms,
+				type_declarations,
+				NULL,
+				terms->terms[argument_classifier].as.thunk_type.computation,
+				&argument_view
+			) != 0 || argument_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			argument_view.computation_kind !=
+				PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+			prototype_term_effect_row_operation(
+				terms, operation_id, argument_view.effect_row, &operation_effect_row
+			) != 0) {
+			return -1;
+		}
+	}
+	struct prototype_term_classifier_view request_operation_view = operation_view;
+	request_operation_view.effect_row = operation_effect_row;
 	uint32_t effect_row;
 	uint32_t classifier;
 	if (computation_effect_row_union(
-			terms, &operation_view, &continuation_view, &effect_row
+			terms, &request_operation_view, &continuation_view, &effect_row
 		) != 0 || prototype_term_computation_type(
 			terms, effect_row, continuation_view.result, &classifier
 		) != 0) {
 		return -1;
 	}
 	uint32_t request_rows[2] = {
-		operation_view.effect_row,
+		operation_effect_row,
 		continuation_view.effect_row
 	};
 	if (add_effect_row_constraint(
@@ -6056,11 +6436,19 @@ static int solve_operation_request_constraint(
 		) != 0) {
 		return -1;
 	}
-	uint32_t subjects[2] = { constraint->application, constraint->continuation };
-	uint32_t classifiers[2] = { application_classifier, continuation_classifier };
+	uint32_t subjects[3] = {
+		constraint->application,
+		constraint->argument,
+		constraint->continuation
+	};
+	uint32_t classifiers[3] = {
+		application_classifier,
+		argument_classifier,
+		continuation_classifier
+	};
 	return add_delta_relation_with_premises(
 		delta, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, constraint->subject, classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO, subjects, classifiers, 2
+		PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO, subjects, classifiers, 3
 	);
 }
 
@@ -6182,9 +6570,28 @@ static int solve_clause_computation_fold_constraint(
 		return -1;
 	}
 	uint32_t input_classifier;
-	if (lookup_delta_proven_classifier(
-			delta, terms, fold->as.computation_fold.computation, &input_classifier
-		) != 0) {
+	int input_status = term_has_tag(
+		terms,
+		fold->as.computation_fold.computation,
+		PROTOTYPE_TERM_OPERATION_REQUEST
+	) ? lookup_delta_classifier_with_proof_kind(
+		delta,
+		fold->as.computation_fold.computation,
+		PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO,
+		&input_classifier
+	) : term_has_tag(
+		terms,
+		fold->as.computation_fold.computation,
+		PROTOTYPE_TERM_COMPUTATION_FOLD
+	) ? lookup_delta_classifier_with_proof_kind(
+		delta,
+		fold->as.computation_fold.computation,
+		PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM,
+		&input_classifier
+	) : lookup_delta_proven_classifier(
+		delta, terms, fold->as.computation_fold.computation, &input_classifier
+	);
+	if (input_status != 0) {
 		return 1;
 	}
 	struct prototype_term_classifier_view input_view;
@@ -6196,6 +6603,7 @@ static int solve_clause_computation_fold_constraint(
 	}
 
 	uint32_t operation_classifiers[31];
+	uint32_t operation_declaration_classifiers[31];
 	uint32_t operation_domains[31];
 	struct prototype_term_classifier_view operation_views[31];
 	uint32_t handled_operation_rows[31];
@@ -6220,6 +6628,29 @@ static int solve_clause_computation_fold_constraint(
 				delta, terms, clause->operation, &operation_classifiers[i]
 			) != 0) {
 			return 1;
+		}
+		operation_declaration_classifiers[i] = operation_classifiers[i];
+		int operation_identity;
+		if (prototype_term_effect_operation_identity(
+				terms, clause->operation, &operation_identity
+			) != 0) {
+			return -1;
+		}
+		const struct prototype_effect_operation_declaration* declaration =
+			prototype_term_effect_operation_declaration(operation_identity);
+		if (!declaration) {
+			return -1;
+		}
+		int specialization_status = prototype_judgement_specialize_fold_operation_classifier(
+			terms,
+			type_declarations,
+			input_view.effect_row,
+			operation_identity,
+			operation_classifiers[i],
+			&operation_classifiers[i]
+		);
+		if (specialization_status != 0) {
+			return specialization_status < 0 ? -1 : 1;
 		}
 		if (classifier_kernel_as_pi(
 				terms, type_declarations, NULL, operation_classifiers[i],
@@ -6264,7 +6695,7 @@ static int solve_clause_computation_fold_constraint(
 		.result = input_view.result
 	};
 	uint32_t residual_effect_row;
-	int residual_status = closed_computation_fold_residual_row(
+	int residual_status = computation_fold_residual_row(
 		terms, &input_view, &handled_operations_view, &residual_effect_row
 	);
 	if (residual_status < 0) {
@@ -6373,22 +6804,47 @@ static int solve_clause_computation_fold_constraint(
 			uint32_t inner_binder;
 			uint32_t body_classifier;
 			struct prototype_term_classifier_view body_view;
-			if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				relation->subject != clause->body || pi_parts(
-					terms, relation->classifier, &outer_domain, &outer_family
-				) != 0 || !prototype_judgement_classifier_normalization_equal(
-					terms, type_declarations, outer_domain, operation_domains[i]
-				) || prototype_term_pure_family_parts(
-					terms, outer_family, &outer_binder, &inner_classifier
-				) != 0 || pi_parts(
-					terms, inner_classifier, &inner_domain, &inner_family
-				) != 0 || prototype_term_pure_family_parts(
-					terms, inner_family, &inner_binder, &body_classifier
-				) != 0 || prototype_judgement_classifier_view(
-					terms, type_declarations, NULL, body_classifier, &body_view
-				) != 0 || body_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-				body_view.computation_kind !=
-					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+				if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+					relation->subject != clause->body || pi_parts(
+						terms, relation->classifier, &outer_domain, &outer_family
+					) != 0 || prototype_term_pure_family_parts(
+						terms, outer_family, &outer_binder, &inner_classifier
+					) != 0 || pi_parts(
+						terms, inner_classifier, &inner_domain, &inner_family
+					) != 0 || prototype_term_pure_family_parts(
+						terms, inner_family, &inner_binder, &body_classifier
+					) != 0) {
+					continue;
+				}
+				uint32_t instantiated_domain;
+				uint32_t instantiated_body;
+				if (instantiate_fold_clause_classifier(
+						terms,
+						type_declarations,
+						outer_domain,
+						operation_domains[i],
+						outer_domain,
+						&instantiated_domain
+					) != 0 || instantiate_fold_clause_classifier(
+						terms,
+						type_declarations,
+						outer_domain,
+						operation_domains[i],
+						body_classifier,
+						&instantiated_body
+					) != 0 || !prototype_judgement_classifier_normalization_equal(
+						terms,
+						type_declarations,
+						instantiated_domain,
+						operation_domains[i]
+					) || prototype_judgement_classifier_view(
+						terms, type_declarations, NULL, instantiated_body, &body_view
+					) != 0 || body_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+					body_view.computation_kind !=
+						PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+					(body_view.effect_row < terms->term_count &&
+					 terms->terms[body_view.effect_row].tag ==
+						PROTOTYPE_TERM_EFFECT_ROW_VAR) ||
 				!prototype_judgement_classifier_normalization_equal(
 					terms, type_declarations, body_view.result, output_view.result
 				)) {
@@ -6698,7 +7154,7 @@ static int solve_clause_computation_fold_constraint(
 			];
 		subjects[2 + 2 * i] = clause->operation;
 		subjects[3 + 2 * i] = clause->body;
-		classifiers[2 + 2 * i] = operation_classifiers[i];
+		classifiers[2 + 2 * i] = operation_declaration_classifiers[i];
 		classifiers[3 + 2 * i] = outer_classifiers[i];
 	}
 	return add_delta_relation_with_premises(
@@ -6713,15 +7169,26 @@ static int solve_computation_constraints(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations
 ) {
-	for (size_t i = 0; i < delta->computation_constraint_count; ++i) {
-		int budget_status = consume_solver_step(delta);
-		if (budget_status != 0) {
-			return budget_status;
-		}
-		struct prototype_judgement_computation_constraint* constraint =
-			&delta->computation_constraints[i];
-		delta->current_context_id = constraint->context_id;
-		if (constraint->kind == PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_FOLD) {
+	/* Request classifiers are premises of enclosing folds. Derive every request
+	 * which is ready before allowing a fold to consume child classifiers. */
+	for (int pass = 0; pass < 2; ++pass) {
+		for (size_t i = 0; i < delta->computation_constraint_count; ++i) {
+			struct prototype_judgement_computation_constraint* constraint =
+				&delta->computation_constraints[i];
+			int is_request = constraint->kind ==
+				PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST;
+			if ((pass == 0) != is_request) {
+				continue;
+			}
+			int budget_status = consume_solver_step(delta);
+			if (budget_status != 0) {
+				return budget_status;
+			}
+			delta->current_context_id = constraint->context_id;
+			if (!is_request) {
+				if (constraint->kind != PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_FOLD) {
+					return -1;
+				}
 			if (constraint->subject >= terms->term_count ||
 				terms->terms[constraint->subject].tag != PROTOTYPE_TERM_COMPUTATION_FOLD) {
 				return -1;
@@ -6736,13 +7203,13 @@ static int solve_computation_constraints(
 			if (status < 0) {
 				return -1;
 			}
-		} else if (constraint->kind ==
-			PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST) {
+			} else {
 			int status = solve_operation_request_constraint(
 				delta, terms, type_declarations, constraint
 			);
 			if (status < 0) {
 				return -1;
+			}
 			}
 		}
 	}
@@ -9219,6 +9686,79 @@ int prototype_judgement_delta_record_lambda_intro(
 	return -1;
 }
 
+int prototype_judgement_delta_app_elim_classifier(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t function_classifier,
+	uint32_t argument_subject,
+	uint32_t argument_classifier,
+	uint32_t* p_classifier
+) {
+	if (!delta || !terms || !type_declarations || !p_classifier ||
+		!term_exists(terms, function_classifier) ||
+		!term_exists(terms, argument_subject) ||
+		!term_exists(terms, argument_classifier)) {
+		return -1;
+	}
+	uint32_t specialized_function_classifier;
+	if (prototype_judgement_specialize_effect_rows_for_argument(
+			terms,
+			type_declarations,
+			function_classifier,
+			argument_classifier,
+			&specialized_function_classifier
+		) != 0) {
+		return -1;
+	}
+	uint32_t function_pi;
+	uint32_t domain;
+	uint32_t codomain_family;
+	if (classifier_kernel_as_pi(
+			terms,
+			type_declarations,
+			NULL,
+			specialized_function_classifier,
+			&function_pi,
+			&domain,
+			&codomain_family
+		) != 0) {
+		return -1;
+	}
+	uint32_t domain_whnf;
+	if (prototype_term_normalize_complete_with_profile(
+			terms,
+			type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			domain,
+			&domain_whnf
+		) != 0 || domain_whnf >= terms->term_count) {
+		return -1;
+	}
+	if (terms->terms[domain_whnf].tag == PROTOTYPE_TERM_RETURN) {
+		domain_whnf = terms->terms[domain_whnf].as.return_term.value;
+	}
+	if (!prototype_judgement_classifier_compatible(
+			terms, type_declarations, domain_whnf, argument_classifier
+		)) {
+		return -1;
+	}
+	(void)codomain_family;
+	return pi_codomain_after_argument_in_context(
+		delta->contexts,
+		delta->substitutions,
+		terms,
+		type_declarations,
+		delta->current_context_id,
+		function_pi,
+		argument_subject,
+		argument_classifier,
+		PROTOTYPE_INVALID_ID,
+		p_classifier
+	);
+}
+
 int prototype_judgement_delta_record_app_elim(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -9254,72 +9794,23 @@ int prototype_judgement_delta_record_app_elim(
 		!function_matches || !argument_matches) {
 		return -1;
 	}
-	uint32_t function_pi;
-	uint32_t domain;
-	uint32_t codomain_family;
 	uint32_t result_classifier;
-	uint32_t specialized_function_classifier;
-	int specialization_status = prototype_judgement_specialize_effect_rows_for_argument(
+	int result_status = prototype_judgement_delta_app_elim_classifier(
+		delta,
 		terms,
 		type_declarations,
 		function_classifier,
+		argument_subject,
 		argument_classifier,
-		&specialized_function_classifier
+		&result_classifier
 	);
-	if (specialization_status != 0) {
-		return -1;
-	}
-	int pi_status = classifier_kernel_as_pi(
-			terms,
-			type_declarations,
-			NULL,
-			specialized_function_classifier,
-			&function_pi,
-			&domain,
-			&codomain_family
-		);
-	if (pi_status == 0) {
-		uint32_t domain_whnf;
-		if (prototype_term_normalize_complete_with_profile(
-				terms,
-				type_declarations,
-				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-				domain,
-				&domain_whnf
-			) != 0 || domain_whnf >= terms->term_count) {
-			return -1;
-		}
-		if (terms->terms[domain_whnf].tag == PROTOTYPE_TERM_RETURN) {
-			domain_whnf = terms->terms[domain_whnf].as.return_term.value;
-		}
-		domain = domain_whnf;
-	}
-	int compatible = pi_status == 0 &&
-		prototype_judgement_classifier_compatible(
-			terms, type_declarations, domain, argument_classifier
-		);
-	int result_status = pi_status == 0 && compatible ?
-		pi_codomain_after_argument_in_context(
-			delta->contexts,
-			delta->substitutions,
-			terms,
-			type_declarations,
-			delta->current_context_id,
-			function_pi,
-			argument_subject,
-			argument_classifier,
-			PROTOTYPE_INVALID_ID,
-			&result_classifier
-		) : -1;
 	int result_equal = result_status == 0 &&
 		prototype_judgement_classifier_normalization_equal(
 			terms, type_declarations, result_classifier, classifier
 		);
-	if (pi_status != 0 || !compatible || result_status != 0 || !result_equal) {
+	if (result_status != 0 || !result_equal) {
 		return -1;
 	}
-	(void)codomain_family;
 	uint32_t premise_subjects[2] = {
 		function_subject,
 		argument_subject
@@ -11239,7 +11730,8 @@ static int validate_computation_fold_elim_proof(
 		return -1;
 	}
 	const struct prototype_term* fold = &terms->terms[relation->subject];
-	if (proof->premise_count != 2 + 2 * fold->as.computation_fold.clause_count ||
+	if (fold->as.computation_fold.clause_count > 31 ||
+		proof->premise_count != 2 + 2 * fold->as.computation_fold.clause_count ||
 		proof->premise_subjects[0] != fold->as.computation_fold.computation ||
 		proof->premise_subjects[1] != fold->as.computation_fold.return_clause ||
 		fold->as.computation_fold.first_clause + fold->as.computation_fold.clause_count >
@@ -11275,15 +11767,6 @@ static int validate_computation_fold_elim_proof(
 			result.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
 			return -1;
 		}
-		unsigned input_effects;
-		unsigned result_effects;
-		if (prototype_term_effect_row_closed_bits(
-				terms, input.effect_row, &input_effects
-			) != 0 || prototype_term_effect_row_closed_bits(
-				terms, result.effect_row, &result_effects
-			) != 0) {
-			return -1;
-		}
 		uint32_t return_domain;
 		uint32_t return_family;
 		uint32_t return_binder;
@@ -11309,13 +11792,8 @@ static int validate_computation_fold_elim_proof(
 			return -1;
 		}
 		(void)return_binder;
-		unsigned return_effects;
-		if (prototype_term_effect_row_closed_bits(
-				terms, return_result.effect_row, &return_effects
-			) != 0 || (return_effects & result_effects) != return_effects) {
-			return -1;
-		}
 		unsigned handled_effects = 0;
+		uint32_t clause_body_rows[31];
 		for (uint32_t i = 0; i < fold->as.computation_fold.clause_count; ++i) {
 			const struct prototype_computation_fold_clause* clause =
 				&terms->computation_fold_clauses[
@@ -11335,6 +11813,17 @@ static int validate_computation_fold_elim_proof(
 			handled_effects |= declaration->operation_labels;
 
 			uint32_t operation_classifier = proof->premise_classifiers[2 + 2 * i];
+			int specialization_status = prototype_judgement_specialize_fold_operation_classifier(
+				terms,
+				type_declarations,
+				input.effect_row,
+				operation_identity,
+				operation_classifier,
+				&operation_classifier
+			);
+			if (specialization_status != 0) {
+				return -1;
+			}
 			for (uint32_t depth = 0;
 				depth < 32 && operation_classifier < terms->term_count &&
 				terms->terms[operation_classifier].tag ==
@@ -11387,15 +11876,51 @@ static int validate_computation_fold_elim_proof(
 					&inner_family
 				) != 0 || prototype_term_pure_family_parts(
 					terms, inner_family, &inner_binder, &inner_body
+				) != 0 || inner_domain >= terms->term_count ||
+				terms->terms[inner_domain].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+				return -1;
+			}
+			uint32_t instantiated_outer_domain;
+			uint32_t instantiated_inner_body;
+			if (instantiate_fold_clause_classifier(
+					terms,
+					type_declarations,
+					outer_domain,
+					operation_domain,
+					outer_domain,
+					&instantiated_outer_domain
+				) != 0 || instantiate_fold_clause_classifier(
+					terms,
+					type_declarations,
+					outer_domain,
+					operation_domain,
+					inner_body,
+					&instantiated_inner_body
 				) != 0 || !prototype_judgement_classifier_normalization_equal(
-					terms, type_declarations, outer_domain, operation_domain
-				) || inner_domain >= terms->term_count ||
-				terms->terms[inner_domain].tag != PROTOTYPE_TERM_THUNK_TYPE ||
-				!computation_fold_carrier_compatible(
-					terms, type_declarations, inner_body, relation->classifier
+					terms, type_declarations, instantiated_outer_domain, operation_domain
+				) || !computation_fold_carrier_compatible(
+					terms,
+					type_declarations,
+					instantiated_inner_body,
+					relation->classifier
 				)) {
 				return -1;
 			}
+			inner_body = instantiated_inner_body;
+			struct prototype_term_classifier_view clause_body_result;
+			if (prototype_judgement_classifier_view(
+					terms,
+					type_declarations,
+					NULL,
+					inner_body,
+					&clause_body_result
+				) != 0 || clause_body_result.category !=
+					PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+				clause_body_result.computation_kind !=
+					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+				return -1;
+			}
+			clause_body_rows[i] = clause_body_result.effect_row;
 			uint32_t continuation_function =
 				terms->terms[inner_domain].as.thunk_type.computation;
 			uint32_t continuation_domain;
@@ -11429,12 +11954,32 @@ static int validate_computation_fold_elim_proof(
 			(void)inner_binder;
 			(void)continuation_binder;
 		}
-		if ((input_effects & handled_effects) != handled_effects) {
+		uint32_t residual_row;
+		int residual_status = prototype_term_effect_row_residual(
+			terms, input.effect_row, handled_effects, &residual_row
+		);
+		if (residual_status != 0) {
 			return -1;
 		}
-		unsigned required_effects =
-			return_effects | (input_effects & ~handled_effects);
-		return (required_effects & result_effects) == required_effects ? 0 : -1;
+		uint32_t expected_row;
+		if (prototype_term_effect_row_union(
+				terms, return_result.effect_row, residual_row, &expected_row
+			) != 0) {
+			return -1;
+		}
+		for (uint32_t i = 0; i < fold->as.computation_fold.clause_count; ++i) {
+			uint32_t joined_row;
+			if (prototype_term_effect_row_union(
+					terms, expected_row, clause_body_rows[i], &joined_row
+				) != 0) {
+				return -1;
+			}
+			expected_row = joined_row;
+		}
+		int rows_equal = 0;
+		return prototype_term_view_shape_equal(
+			terms, expected_row, result.effect_row, &rows_equal
+		) == 0 && rows_equal ? 0 : -1;
 	}
 	uint32_t expected_result;
 	if (prototype_judgement_computation_fold_result_classifier(
@@ -11462,11 +12007,24 @@ static int validate_operation_request_intro_proof(
 ) {
 	if (!terms || !type_declarations || !contexts || !substitutions ||
 		!relation || !proof ||
-		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE || proof->premise_count != 2 ||
+		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE || proof->premise_count != 3 ||
 		!term_has_tag(terms, relation->subject, PROTOTYPE_TERM_OPERATION_REQUEST) ||
-		proof->premise_subjects[1] != terms->terms[relation->subject].as.operation_request.continuation ||
+		proof->premise_subjects[1] !=
+			terms->terms[relation->subject].as.operation_request.argument ||
+		proof->premise_subjects[2] !=
+			terms->terms[relation->subject].as.operation_request.continuation ||
 		proof->premise_classifiers[0] >= terms->term_count ||
-		proof->premise_classifiers[1] >= terms->term_count || relation->classifier >= terms->term_count) {
+		proof->premise_classifiers[1] >= terms->term_count ||
+		proof->premise_classifiers[2] >= terms->term_count ||
+		relation->classifier >= terms->term_count) {
+		return -1;
+	}
+	const struct prototype_term* request = &terms->terms[relation->subject];
+	if (!term_has_tag(terms, proof->premise_subjects[0], PROTOTYPE_TERM_APP) ||
+		terms->terms[proof->premise_subjects[0]].as.app.function !=
+			request->as.operation_request.operation ||
+		terms->terms[proof->premise_subjects[0]].as.app.argument !=
+			request->as.operation_request.argument) {
 		return -1;
 	}
 	uint32_t operation_head =
@@ -11477,6 +12035,12 @@ static int validate_operation_request_intro_proof(
 	}
 	if (operation_head >= terms->term_count ||
 		terms->terms[operation_head].tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
+		return -1;
+	}
+	int operation_id = terms->terms[operation_head].as.effect_operation.operation_id;
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_term_effect_operation_declaration(operation_id);
+	if (!declaration) {
 		return -1;
 	}
 	struct prototype_term_classifier_view operation;
@@ -11498,11 +12062,11 @@ static int validate_operation_request_intro_proof(
 	}
 	uint32_t continuation_lambda = terms->terms[continuation_thunk].as.thunk.computation;
 	if (terms->terms[continuation_lambda].tag != PROTOTYPE_TERM_LAMBDA ||
-		terms->terms[proof->premise_classifiers[1]].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		terms->terms[proof->premise_classifiers[2]].tag != PROTOTYPE_TERM_THUNK_TYPE) {
 		return -1;
 	}
 	uint32_t continuation_function_classifier =
-		terms->terms[proof->premise_classifiers[1]].as.thunk_type.computation;
+		terms->terms[proof->premise_classifiers[2]].as.thunk_type.computation;
 	uint32_t domain;
 	uint32_t family;
 	if (pi_parts(terms, continuation_function_classifier, &domain, &family) != 0 ||
@@ -11545,12 +12109,32 @@ static int validate_operation_request_intro_proof(
 		return -1;
 	}
 	struct prototype_term_classifier_view continuation;
+	struct prototype_term_classifier_view request_operation = operation;
+	if (declaration->classifier_schema ==
+		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT) {
+		if (terms->terms[proof->premise_classifiers[1]].tag !=
+			PROTOTYPE_TERM_THUNK_TYPE) {
+			return -1;
+		}
+		struct prototype_term_classifier_view argument;
+		if (prototype_term_classifier_view(
+				terms,
+				terms->terms[proof->premise_classifiers[1]].as.thunk_type.computation,
+				&argument
+			) != 0 || argument.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			argument.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+			prototype_term_effect_row_operation(
+				terms, operation_id, argument.effect_row, &request_operation.effect_row
+			) != 0) {
+			return -1;
+		}
+	}
 	if (prototype_term_classifier_view(terms, continuation_result, &continuation) != 0 ||
 		continuation.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		continuation.computation_kind !=
 			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		!computation_effect_row_is_union(
-			terms, type_declarations, &result, &operation, &continuation
+			terms, type_declarations, &result, &request_operation, &continuation
 		) ||
 		result.result != continuation.result || prototype_term_contains_free_binder(
 			terms, continuation.result, terms->terms[continuation_lambda].as.lambda.binder_id
@@ -12448,8 +13032,9 @@ int prototype_judgement_validate_proofs(
 	return 0;
 }
 
-void prototype_judgement_delta_drop_temporary_derivations(
-	struct prototype_judgement_delta* delta
+static void judgement_delta_drop_derivations(
+	struct prototype_judgement_delta* delta,
+	int drop_structural_derivations
 ) {
 	if (!delta) {
 		return;
@@ -12478,11 +13063,12 @@ void prototype_judgement_delta_drop_temporary_derivations(
 			free(source_proofs);
 			return;
 		}
-		if (relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM ||
+		if (drop_structural_derivations &&
+			(relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM ||
 			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO ||
 			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM ||
 			(relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM &&
-				source_proofs[relation->proof_id].premise_count > 2)) {
+				source_proofs[relation->proof_id].premise_count > 2))) {
 			removed[read] = 1;
 		}
 	}
@@ -12549,6 +13135,18 @@ void prototype_judgement_delta_drop_temporary_derivations(
 	delta->proof_count = write;
 	free(removed);
 	free(source_proofs);
+}
+
+void prototype_judgement_delta_drop_temporary_derivations(
+	struct prototype_judgement_delta* delta
+) {
+	judgement_delta_drop_derivations(delta, 1);
+}
+
+void prototype_judgement_delta_drop_unsupported_derivations(
+	struct prototype_judgement_delta* delta
+) {
+	judgement_delta_drop_derivations(delta, 0);
 }
 
 int prototype_judgement_add_is_type(

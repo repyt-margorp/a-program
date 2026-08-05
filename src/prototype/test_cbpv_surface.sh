@@ -4,6 +4,54 @@ set -eu
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
 
+c_enum_value_in() {
+	awk -v enum_name="$2" -v target_name="$3" '
+		$0 ~ "enum " enum_name " " { in_enum = 1; next_value = 0; next }
+		in_enum && $0 ~ /^};/ { exit }
+		in_enum {
+			line = $0
+			if (in_comment) {
+				if (line ~ /\*\//) {
+					sub(/^.*\*\//, "", line)
+					in_comment = 0
+				} else {
+					next
+				}
+			}
+			while (line ~ /\/\*/) {
+				before = line
+				sub(/\/\*.*/, "", before)
+				after = line
+				if (after ~ /\*\//) {
+					sub(/^.*\*\//, "", after)
+					line = before after
+				} else {
+					line = before
+					in_comment = 1
+					break
+				}
+			}
+			sub(/\/\/.*/, "", line)
+			gsub(/,/, "", line)
+			gsub(/^[ \t]+|[ \t]+$/, "", line)
+			if (line == "") next
+			split(line, parts, "=")
+			name = parts[1]
+			gsub(/[ \t]+/, "", name)
+			value = parts[2] != "" ? parts[2] + 0 : next_value
+			if (name == target_name) { print value; found = 1; exit }
+			next_value = value + 1
+		}
+		END { if (!found) exit 1 }
+	' "$1"
+}
+
+effect_row_operation_tag=$(c_enum_value_in \
+	src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
+operation_request_proof_kind=$(c_enum_value_in \
+	src/prototype/judgement.h prototype_judgement_proof_kind \
+	PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO)
+
 # Examples from 10 onward exercise the unfinished general Match-motive and
 # constraint-solving work. They are not CBPV surface regressions yet.
 
@@ -754,23 +802,39 @@ grep -q 'interface term main ' "$tmp_dir/lambda-handle-read.out"
 
 # A higher-order operation uses the ordinary request argument to carry a
 # thunked computation. The inner operation remains latent in the request.
-./read_file.out src/prototype/higher_order_operation_check.p \
+./read_file.out --policy strict src/prototype/higher_order_operation_check.p \
 	>"$tmp_dir/higher-order-operation.out"
+grep -q 'compile-budget .* residual=0 incomplete=0' \
+	"$tmp_dir/higher-order-operation.out"
 grep -q 'EFFECT_OPERATION(scope_text)' "$tmp_dir/higher-order-operation.out"
 grep -q 'THUNK(OPERATION_REQUEST(EFFECT_OPERATION(print)' \
 	"$tmp_dir/higher-order-operation.out"
 grep -q '\[operation-request-intro\]' "$tmp_dir/higher-order-operation.out"
-./read_file.out --write-artifact "$tmp_dir/higher-order-operation.apo" \
+./read_file.out --policy strict --write-artifact "$tmp_dir/higher-order-operation.apo" \
 	src/prototype/higher_order_operation_check.p \
 	>"$tmp_dir/higher-order-operation-write.out"
 ./read_file.out --read-graph "$tmp_dir/higher-order-operation.apo" \
 	>"$tmp_dir/higher-order-operation-read.out"
 grep -q 'interface term main ' "$tmp_dir/higher-order-operation-read.out"
 
+# Latent rows belong to request occurrences, not to the operation declaration.
+# Two uses of scope_text therefore retain distinct pure and print-bearing rows.
+./read_file.out --policy strict \
+	src/prototype/higher_order_operation_distinct_latent_check.p \
+	>"$tmp_dir/higher-order-operation-distinct-latent.out"
+grep -Eq 'EFFECT_ROW_OPERATION\([0-9]+, EFFECT_LABEL\(0\)\)' \
+	"$tmp_dir/higher-order-operation-distinct-latent.out"
+grep -Eq 'EFFECT_ROW_OPERATION\([0-9]+, EFFECT_LABEL\(1\)\)' \
+	"$tmp_dir/higher-order-operation-distinct-latent.out"
+grep -q 'compile-budget .* residual=0 incomplete=0' \
+	"$tmp_dir/higher-order-operation-distinct-latent.out"
+
 # A handler receives the quoted inner computation as an opaque value. This
 # clause discards it, so the nested print must not execute.
-./read_file.out src/prototype/higher_order_operation_handler_check.p \
+./read_file.out --policy strict src/prototype/higher_order_operation_handler_check.p \
 	>"$tmp_dir/higher-order-operation-handler.out"
+grep -q 'compile-budget .* residual=0 incomplete=0' \
+	"$tmp_dir/higher-order-operation-handler.out"
 grep -q '^term main := COMPUTATION_FOLD(' \
 	"$tmp_dir/higher-order-operation-handler.out"
 grep -q 'OP_CLAUSE(EFFECT_OPERATION(scope_text)' \
@@ -789,13 +853,62 @@ if grep -qx 'inner' "$tmp_dir/higher-order-operation-handler-eval.out"; then
 	echo 'discarded higher-order operation argument was executed' >&2
 	exit 1
 fi
-./read_file.out --write-artifact "$tmp_dir/higher-order-operation-handler.apo" \
+./read_file.out --policy strict --write-artifact "$tmp_dir/higher-order-operation-handler.apo" \
 	src/prototype/higher_order_operation_handler_check.p \
 	>"$tmp_dir/higher-order-operation-handler-write.out"
 ./read_file.out --read-graph "$tmp_dir/higher-order-operation-handler.apo" \
 	>"$tmp_dir/higher-order-operation-handler-read.out"
 grep -q 'interface term main ' \
 	"$tmp_dir/higher-order-operation-handler-read.out"
+
+awk -v effect_row_operation_tag="$effect_row_operation_tag" '
+	BEGIN { changed = 0 }
+	$1 == "term_node" && $3 == effect_row_operation_tag && !changed {
+		$4 = "print"
+		changed = 1
+	}
+	{ print }
+	END { if (!changed) exit 1 }' \
+	"$tmp_dir/higher-order-operation-handler.apo" \
+	>"$tmp_dir/forged-operation-id.apo"
+if ./read_file.out --read-graph "$tmp_dir/forged-operation-id.apo" \
+	>"$tmp_dir/forged-operation-id.out" 2>"$tmp_dir/forged-operation-id.err"; then
+	echo 'artifact accepted a forged higher-order operation identity' >&2
+	exit 1
+fi
+
+awk -v effect_row_operation_tag="$effect_row_operation_tag" '
+	BEGIN { changed = 0 }
+	$1 == "term_node" && $3 == effect_row_operation_tag && !changed {
+		$5 = 999999
+		changed = 1
+	}
+	{ print }
+	END { if (!changed) exit 1 }' \
+	"$tmp_dir/higher-order-operation-handler.apo" \
+	>"$tmp_dir/forged-latent-row.apo"
+if ./read_file.out --read-graph "$tmp_dir/forged-latent-row.apo" \
+	>"$tmp_dir/forged-latent-row.out" 2>"$tmp_dir/forged-latent-row.err"; then
+	echo 'artifact accepted an out-of-range latent effect row' >&2
+	exit 1
+fi
+
+awk -v request_proof_kind="$operation_request_proof_kind" '
+	BEGIN { changed = 0 }
+	$1 == "proof" && $3 == request_proof_kind && !changed {
+		$20 = 21
+		changed = 1
+	}
+	{ print }
+	END { if (!changed) exit 1 }' \
+	"$tmp_dir/higher-order-operation-handler.apo" \
+	>"$tmp_dir/forged-request-premise.apo"
+if ./read_file.out --read-graph "$tmp_dir/forged-request-premise.apo" \
+	>"$tmp_dir/forged-request-premise.out" \
+	2>"$tmp_dir/forged-request-premise.err"; then
+	echo 'artifact accepted a forged operation-request argument premise' >&2
+	exit 1
+fi
 
 # A handled clause may introduce effects which the pure return clause does not
 # have. The fold carrier is their join, not the return clause classifier alone.
@@ -818,24 +931,15 @@ grep -q '^value main := RETURN(TEXT_LITERAL("abort"))$' \
 	>"$tmp_dir/effect-weaken-handler-read.out"
 grep -q 'interface term main ' "$tmp_dir/effect-weaken-handler-read.out"
 
-# A computation-block binding is an execution demand. Once the handler
-# argument receives its declaration-owned Thunk(Comp(E, Text)) classifier,
-# lowering inserts FORCE and sequences the result. The current effect-row
-# solver does not yet connect the operation's forall E with the concrete thunk
-# row, so partial policy preserves a current classifier plus residual
-# constraints, while strict rejects it.
-./read_file.out src/prototype/higher_order_operation_force_once_check.p \
+# A computation-block binding is an execution demand. The higher-order
+# operation atom retains the thunk's latent row, and the handler clause exposes
+# that row only when it forces the thunk.
+./read_file.out --policy strict \
+	src/prototype/higher_order_operation_force_once_check.p \
 	>"$tmp_dir/higher-order-operation-force-once.out"
 grep -q 'FORCE(VAR' "$tmp_dir/higher-order-operation-force-once.out"
-grep -Eq 'compile-budget .* residual=[1-9][0-9]* incomplete=0' \
+grep -q 'compile-budget .* residual=0 incomplete=0' \
 	"$tmp_dir/higher-order-operation-force-once.out"
-if ./read_file.out --policy strict \
-	src/prototype/higher_order_operation_force_once_check.p \
-	>"$tmp_dir/higher-order-operation-force-once-strict.out" \
-	2>"$tmp_dir/higher-order-operation-force-once-strict.err"; then
-	echo 'strict policy accepted unresolved higher-order force effects' >&2
-	exit 1
-fi
 {
 	cat src/prototype/higher_order_operation_force_once_check.p
 	printf 'main\n:q\n'
@@ -843,26 +947,26 @@ fi
 test "$(grep -c '^inner$' "$tmp_dir/higher-order-operation-force-once-eval.out")" -eq 1
 grep -q '^value main := RETURN(TEXT_LITERAL("inner"))$' \
 	"$tmp_dir/higher-order-operation-force-once-eval.out"
-./read_file.out --write-artifact \
+./read_file.out --policy strict --write-artifact \
 	"$tmp_dir/higher-order-operation-force-once.apo" \
 	src/prototype/higher_order_operation_force_once_check.p \
 	>"$tmp_dir/higher-order-operation-force-once-write.out"
-grep -Eq '^compile_policy .* [1-9][0-9]* 0$' \
+awk '$1 == "compile_policy" && $2 == 1 && $(NF - 1) == 0 && $NF == 0 {
+	found = 1
+}
+END { exit found ? 0 : 1 }' \
 	"$tmp_dir/higher-order-operation-force-once.apo"
 ./read_file.out --read-graph \
 	"$tmp_dir/higher-order-operation-force-once.apo" \
 	>"$tmp_dir/higher-order-operation-force-once-read.out"
 grep -q 'interface term main .* classifier#[0-9][0-9]* ' \
 	"$tmp_dir/higher-order-operation-force-once-read.out"
-if grep -q 'interface term main .* classifier#4294967295 ' \
-	"$tmp_dir/higher-order-operation-force-once-read.out"; then
-	echo 'partial higher-order artifact discarded its classifier approximation' >&2
-	exit 1
-fi
-
-./read_file.out src/prototype/higher_order_operation_force_twice_check.p \
+./read_file.out --policy strict \
+	src/prototype/higher_order_operation_force_twice_check.p \
 	>"$tmp_dir/higher-order-operation-force-twice.out"
 grep -q 'FORCE(VAR' "$tmp_dir/higher-order-operation-force-twice.out"
+grep -q 'compile-budget .* residual=0 incomplete=0' \
+	"$tmp_dir/higher-order-operation-force-twice.out"
 {
 	cat src/prototype/higher_order_operation_force_twice_check.p
 	printf 'main\n:q\n'
