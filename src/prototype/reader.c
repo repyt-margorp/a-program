@@ -2205,8 +2205,128 @@ static int parse_entry(struct parser* parser) {
 	return 0;
 }
 
+static int finish_definition_block(
+	struct parser* parser,
+	uint32_t first_assignment,
+	struct prototype_source_span block_span,
+	int selected_symbol_id,
+	struct prototype_source_span select_span
+) {
+	if (!parser || first_assignment > parser->program->asts->assignment_count) {
+		return -1;
+	}
+	uint32_t assignment_count =
+		(uint32_t)parser->program->asts->assignment_count - first_assignment;
+	if (assignment_count == 0) {
+		set_error(parser, "definition block requires at least one definition");
+		return -1;
+	}
+	if (assignment_count > PARSER_BLOCK_ITEM_CAPACITY) {
+		set_error(parser, "definition block is too large");
+		return -1;
+	}
+	uint32_t assignment_ids[PARSER_BLOCK_ITEM_CAPACITY];
+	int selected_found = 0;
+	for (uint32_t i = 0; i < assignment_count; ++i) {
+		uint32_t assignment_id = first_assignment + i;
+		assignment_ids[i] = assignment_id;
+		struct prototype_ast_term_assignment_def* assignment =
+			&parser->program->asts->assignments[assignment_id];
+		assignment->definition_value_required = 1;
+		if (selected_symbol_id >= 0 &&
+			assignment->name_symbol_id == selected_symbol_id) {
+			selected_found++;
+		}
+	}
+	if (selected_found != 1) {
+		set_error(parser, selected_found == 0 ?
+			"selected definition is not a direct member of the definition block" :
+			"selected definition is ambiguous");
+		return -1;
+	}
+	uint32_t definition_block;
+	if (prototype_ast_definition_block(
+			parser->program->asts,
+			assignment_ids,
+			assignment_count,
+			block_span,
+			&definition_block
+		) != 0) {
+		set_error(parser, "definition block table is full");
+		return -1;
+	}
+	parser->program->asts->root_definition_block = definition_block;
+	if (selected_found == 1) {
+		uint32_t definition_select;
+		if (prototype_ast_definition_select(
+				parser->program->asts,
+				definition_block,
+				selected_symbol_id,
+				select_span,
+				&definition_select
+			) != 0) {
+			set_error(parser, "definition selection table is full");
+			return -1;
+		}
+		parser->program->asts->root_definition_select = definition_select;
+	}
+	return 0;
+}
+
 static int parse_program(struct parser* parser) {
 	if (read_token(parser) != 0) {
+		return -1;
+	}
+	if (parser->current.kind == TOKEN_LBRACE) {
+		struct prototype_source_span span = current_span(parser);
+		uint32_t first_assignment = (uint32_t)parser->program->asts->assignment_count;
+		if (read_token(parser) != 0) {
+			return -1;
+		}
+		if (parser->current.kind == TOKEN_LBRACE) {
+			if (read_token(parser) != 0) {
+				return -1;
+			}
+			while (parser->current.kind != TOKEN_RBRACE) {
+				if (parser->current.kind == TOKEN_EOF) {
+					set_error(parser, "expected '}}' after definition block");
+					return -1;
+				}
+				if (parse_entry(parser) != 0) {
+					return -1;
+				}
+			}
+			if (expect(parser, TOKEN_RBRACE, "expected first '}' after definition block") != 0 ||
+				expect(parser, TOKEN_RBRACE, "expected second '}' after definition block") != 0 ||
+				expect(parser, TOKEN_DOT, "expected '.name' after definition block") != 0 ||
+				parser->current.kind != TOKEN_IDENT) {
+				if (!parser->error || parser->error->message[0] == '\0') {
+					set_error(parser, "expected selected definition name after definition block");
+				}
+				return -1;
+			}
+			int selected_symbol_id = parser->current.symbol_id;
+			struct prototype_source_span select_span = current_span(parser);
+			if (read_token(parser) != 0) {
+				return -1;
+			}
+			(void)accept(parser, TOKEN_SEMI);
+			if (finish_definition_block(
+					parser,
+					first_assignment,
+					span,
+					selected_symbol_id,
+					select_span
+				) != 0) {
+				return -1;
+			}
+			if (parser->current.kind != TOKEN_EOF) {
+				set_error(parser, "definition block selection must be the program root");
+				return -1;
+			}
+			return 0;
+		}
+		set_error(parser, "a program-level computation block is not a definition block; use '{{'");
 		return -1;
 	}
 	while (parser->current.kind != TOKEN_EOF) {
@@ -2516,6 +2636,10 @@ int prototype_compile_graph_with_imports(
 	}
 	if (program->compile_options.compile_policy != 0) {
 		program->metadata->compile_policy = program->compile_options.compile_policy;
+	}
+	if (program->compile_options.definition_thunk_policy != 0) {
+		program->metadata->definition_thunk_policy =
+			program->compile_options.definition_thunk_policy;
 	}
 	if (prototype_ast_compile_pending_with_imports(
 		program->asts,

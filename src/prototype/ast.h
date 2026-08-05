@@ -26,6 +26,8 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_SYSTEM_NAME,
 	PROTOTYPE_AST_ASCRIPTION,
 	PROTOTYPE_AST_QUOTE,
+	PROTOTYPE_AST_DEFINITION_BLOCK,
+	PROTOTYPE_AST_DEFINITION_SELECT,
 	PROTOTYPE_AST_COMPUTATION_BLOCK,
 	PROTOTYPE_AST_BLOCK_BINDING,
 	PROTOTYPE_AST_BLOCK_EXPRESSION,
@@ -171,6 +173,14 @@ struct prototype_ast_node {
 			uint32_t term;
 		} unary;
 		struct {
+			uint32_t first_assignment;
+			uint32_t assignment_count;
+		} definition_block;
+		struct {
+			uint32_t definition_block;
+			int name_symbol_id;
+		} definition_select;
+		struct {
 			uint32_t first_item;
 			uint32_t item_count;
 			uint32_t result_item_index;
@@ -297,6 +307,7 @@ struct prototype_ast_term_assignment_def {
 	int compiling;
 	int compiled;
 	int published;
+	int definition_value_required;
 };
 
 struct prototype_ast_import_def {
@@ -811,6 +822,11 @@ enum prototype_compile_policy {
 	PROTOTYPE_COMPILE_POLICY_EXPLORATORY
 };
 
+enum prototype_definition_thunk_policy {
+	PROTOTYPE_DEFINITION_THUNK_IMPLICIT = 1,
+	PROTOTYPE_DEFINITION_THUNK_EXPLICIT
+};
+
 enum prototype_runtime_capability {
 	PROTOTYPE_RUNTIME_CAPABILITY_COMPUTATION_FOLD_RESULT_VERIFIER = 1u << 0,
 	PROTOTYPE_RUNTIME_CAPABILITY_OPERATION_DISPATCH = 1u << 1,
@@ -826,6 +842,11 @@ enum prototype_backend_target {
 
 struct prototype_compile_metadata {
 	int compile_policy;
+	int definition_thunk_policy;
+	int selected_entry_symbol_id;
+	uint32_t selected_entry_term;
+	uint32_t selected_entry_classifier;
+	uint32_t selected_entry_operation;
 	uint64_t required_runtime_capabilities;
 	uint64_t normalization_step_limit;
 	uint64_t normalization_steps_used;
@@ -924,6 +945,12 @@ struct prototype_ast_db {
 	size_t block_item_count;
 	size_t block_item_capacity;
 
+	uint32_t* definition_items;
+	size_t definition_item_count;
+	size_t definition_item_capacity;
+	uint32_t root_definition_block;
+	uint32_t root_definition_select;
+
 	struct prototype_ast_type_expr* type_exprs;
 	size_t type_expr_count;
 	size_t type_expr_capacity;
@@ -971,6 +998,8 @@ void prototype_ast_db_init(
 	size_t computation_fold_clause_capacity,
 	uint32_t* block_items,
 	size_t block_item_capacity,
+	uint32_t* definition_items,
+	size_t definition_item_capacity,
 	struct prototype_ast_type_expr* type_exprs,
 	size_t type_expr_capacity,
 	struct prototype_ast_type_def* type_defs,
@@ -1179,6 +1208,20 @@ int prototype_ast_ascription(
 int prototype_ast_quote(
 	struct prototype_ast_db* db,
 	uint32_t term,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_definition_block(
+	struct prototype_ast_db* db,
+	const uint32_t* assignments,
+	uint32_t assignment_count,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_definition_select(
+	struct prototype_ast_db* db,
+	uint32_t definition_block,
+	int name_symbol_id,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );

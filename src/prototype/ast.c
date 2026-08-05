@@ -2967,6 +2967,11 @@ void prototype_compile_metadata_init(
 ) {
 	memset(metadata, 0, sizeof(*metadata));
 	metadata->compile_policy = PROTOTYPE_COMPILE_POLICY_HYBRID;
+	metadata->definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
+	metadata->selected_entry_symbol_id = -1;
+	metadata->selected_entry_term = PROTOTYPE_INVALID_ID;
+	metadata->selected_entry_classifier = PROTOTYPE_INVALID_ID;
+	metadata->selected_entry_operation = PROTOTYPE_INVALID_ID;
 	metadata->normalization_step_limit = PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT;
 	metadata->solver_step_limit = PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT;
 	prototype_context_db_init(&metadata->contexts, contexts, context_capacity);
@@ -7096,9 +7101,17 @@ static int write_artifact_operation_graph_section(
 	fprintf(stream, "SECTION operation_graph\n");
 	fprintf(
 		stream,
-		"compile_policy %d %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64
+		"compile_policy %d %d %s %u %u %u %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64
 		" %d %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
 		metadata ? metadata->compile_policy : PROTOTYPE_COMPILE_POLICY_HYBRID,
+		metadata ? metadata->definition_thunk_policy :
+			PROTOTYPE_DEFINITION_THUNK_IMPLICIT,
+		metadata ? artifact_optional_symbol_name(
+			symbols, metadata->selected_entry_symbol_id
+		) : "-",
+		metadata ? metadata->selected_entry_term : PROTOTYPE_INVALID_ID,
+		metadata ? metadata->selected_entry_classifier : PROTOTYPE_INVALID_ID,
+		metadata ? metadata->selected_entry_operation : PROTOTYPE_INVALID_ID,
 		metadata ? metadata->required_runtime_capabilities : 0,
 		metadata ? metadata->normalization_step_limit : 0,
 		metadata ? metadata->normalization_steps_used : 0,
@@ -7326,7 +7339,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 59\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 60\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -7656,7 +7669,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 59) {
+		version != 60) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -9520,6 +9533,11 @@ int prototype_artifact_read_text_operation_graph(
 	uint64_t solver_residual_count;
 	uint64_t solver_incomplete_count;
 	int compile_policy;
+	int definition_thunk_policy;
+	char selected_entry_name[256];
+	uint32_t selected_entry_term;
+	uint32_t selected_entry_classifier;
+	uint32_t selected_entry_operation;
 	uint64_t required_runtime_capabilities;
 	size_t operation_count;
 	size_t context_count;
@@ -9534,10 +9552,15 @@ int prototype_artifact_read_text_operation_graph(
 		strcmp(word, "SECTION") != 0 || strcmp(section_name, "operation_graph") != 0 ||
 		fscanf(
 			stream,
-			" %255s %d %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64
+			" %255s %d %d %255s %u %u %u %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64
 			" %d %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64,
 			word,
 			&compile_policy,
+			&definition_thunk_policy,
+			selected_entry_name,
+			&selected_entry_term,
+			&selected_entry_classifier,
+			&selected_entry_operation,
 			&required_runtime_capabilities,
 			&normalization_step_limit,
 			&normalization_steps_used,
@@ -9548,9 +9571,18 @@ int prototype_artifact_read_text_operation_graph(
 			&solver_solved_count,
 			&solver_residual_count,
 			&solver_incomplete_count
-		) != 12 || strcmp(word, "compile_policy") != 0 ||
+		) != 17 || strcmp(word, "compile_policy") != 0 ||
 		(compile_policy < PROTOTYPE_COMPILE_POLICY_STRICT ||
 		 compile_policy > PROTOTYPE_COMPILE_POLICY_EXPLORATORY) ||
+		(definition_thunk_policy < PROTOTYPE_DEFINITION_THUNK_IMPLICIT ||
+		 definition_thunk_policy > PROTOTYPE_DEFINITION_THUNK_EXPLICIT) ||
+		((strcmp(selected_entry_name, "-") == 0) !=
+			(selected_entry_term == PROTOTYPE_INVALID_ID &&
+			 selected_entry_classifier == PROTOTYPE_INVALID_ID &&
+			 selected_entry_operation == PROTOTYPE_INVALID_ID)) ||
+		(selected_entry_term != PROTOTYPE_INVALID_ID &&
+			(!artifact_read_term_present(terms, selected_entry_term) ||
+			 !artifact_read_term_present(terms, selected_entry_classifier))) ||
 		(solver_exhausted != 0 && solver_exhausted != 1) ||
 		solver_exhausted != 0 || solver_incomplete_count != 0 ||
 		expect_artifact_count(stream, "contexts", &context_count) != 0 ||
@@ -9644,6 +9676,16 @@ int prototype_artifact_read_text_operation_graph(
 	}
 	if (metadata) {
 		metadata->compile_policy = compile_policy;
+		metadata->definition_thunk_policy = definition_thunk_policy;
+		metadata->selected_entry_symbol_id = strcmp(selected_entry_name, "-") == 0 ?
+			-1 : symbol_intern(symbols, selected_entry_name, strlen(selected_entry_name));
+		if (strcmp(selected_entry_name, "-") != 0 &&
+			metadata->selected_entry_symbol_id < 0) {
+			return -1;
+		}
+		metadata->selected_entry_term = selected_entry_term;
+		metadata->selected_entry_classifier = selected_entry_classifier;
+		metadata->selected_entry_operation = selected_entry_operation;
 		metadata->required_runtime_capabilities = required_runtime_capabilities;
 		metadata->normalization_step_limit = normalization_step_limit;
 		metadata->normalization_steps_used = normalization_steps_used;
@@ -9723,6 +9765,22 @@ int prototype_artifact_read_text_operation_graph(
 			if (prototype_operation_graph_add(
 					&graph, &metadata->contexts, operation, NULL
 				) != 0) {
+				return -1;
+			}
+		}
+	}
+	if (selected_entry_operation != PROTOTYPE_INVALID_ID) {
+		if (selected_entry_operation >= operation_count ||
+			selected_entry_term >= terms->term_count ||
+			terms->terms[selected_entry_term].tag != PROTOTYPE_TERM_FORCE) {
+			return -1;
+		}
+		if (metadata) {
+			const struct prototype_operation_node* entry =
+				&graph.operations[selected_entry_operation];
+			if (entry->tag != PROTOTYPE_OPERATION_FORCE ||
+				entry->core_term != selected_entry_term ||
+				entry->classifier != selected_entry_classifier) {
 				return -1;
 			}
 		}
@@ -11852,6 +11910,8 @@ void prototype_ast_db_init(
 	size_t computation_fold_clause_capacity,
 	uint32_t* block_items,
 	size_t block_item_capacity,
+	uint32_t* definition_items,
+	size_t definition_item_capacity,
 	struct prototype_ast_type_expr* type_exprs,
 	size_t type_expr_capacity,
 	struct prototype_ast_type_def* type_defs,
@@ -11884,6 +11944,10 @@ void prototype_ast_db_init(
 	db->computation_fold_clause_capacity = computation_fold_clause_capacity;
 	db->block_items = block_items;
 	db->block_item_capacity = block_item_capacity;
+	db->definition_items = definition_items;
+	db->definition_item_capacity = definition_item_capacity;
+	db->root_definition_block = PROTOTYPE_INVALID_ID;
+	db->root_definition_select = PROTOTYPE_INVALID_ID;
 	db->type_exprs = type_exprs;
 	db->type_expr_capacity = type_expr_capacity;
 	db->type_defs = type_defs;
@@ -12529,6 +12593,59 @@ int prototype_ast_quote(
 	uint32_t* p_ret
 ) {
 	return prototype_ast_unary(db, PROTOTYPE_AST_QUOTE, term, span, p_ret);
+}
+
+int prototype_ast_definition_block(
+	struct prototype_ast_db* db,
+	const uint32_t* assignments,
+	uint32_t assignment_count,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || !assignments || assignment_count == 0 ||
+		db->definition_item_count + assignment_count >
+			db->definition_item_capacity) {
+		return -1;
+	}
+	uint32_t first_assignment = (uint32_t)db->definition_item_count;
+	for (uint32_t i = 0; i < assignment_count; ++i) {
+		if (assignments[i] >= db->assignment_count) {
+			db->definition_item_count = first_assignment;
+			return -1;
+		}
+		db->definition_items[db->definition_item_count++] = assignments[i];
+	}
+	struct prototype_ast_node node;
+	memset(&node, 0, sizeof(node));
+	node.tag = PROTOTYPE_AST_DEFINITION_BLOCK;
+	node.span = span;
+	node.as.definition_block.first_assignment = first_assignment;
+	node.as.definition_block.assignment_count = assignment_count;
+	if (add_node(db, node, p_ret) != 0) {
+		db->definition_item_count = first_assignment;
+		return -1;
+	}
+	return 0;
+}
+
+int prototype_ast_definition_select(
+	struct prototype_ast_db* db,
+	uint32_t definition_block,
+	int name_symbol_id,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || definition_block >= db->node_count || name_symbol_id < 0 ||
+		db->nodes[definition_block].tag != PROTOTYPE_AST_DEFINITION_BLOCK) {
+		return -1;
+	}
+	struct prototype_ast_node node;
+	memset(&node, 0, sizeof(node));
+	node.tag = PROTOTYPE_AST_DEFINITION_SELECT;
+	node.span = span;
+	node.as.definition_select.definition_block = definition_block;
+	node.as.definition_select.name_symbol_id = name_symbol_id;
+	return add_node(db, node, p_ret);
 }
 
 int prototype_ast_computation_block(
@@ -13257,6 +13374,12 @@ static int compile_ast_computation_ref(
 static int compile_ast_value_ref(
 	struct compile_context* ctx,
 	uint32_t ast_id,
+	struct compile_ref* p_ret
+);
+static int compile_ref_make_thunk(
+	struct compile_context* ctx,
+	const struct compile_ref* computation,
+	uint32_t source_ast,
 	struct compile_ref* p_ret
 );
 static int compile_ast_match_ref(
@@ -18456,6 +18579,28 @@ static int compile_def(
 			ctx->metadata->operations[ref.operation].known_classifier = declared_classifier;
 		}
 	}
+	if (def->definition_value_required &&
+		ref.polarity == COMPILE_REF_POLARITY_COMPUTATION) {
+		if (!ctx->metadata || ctx->metadata->definition_thunk_policy !=
+			PROTOTYPE_DEFINITION_THUNK_IMPLICIT) {
+			(void)add_resolve_error_at_span(
+				ctx,
+				PROTOTYPE_RESOLVE_ERROR_COMPILE,
+				def->name_symbol_id,
+				-1,
+				def->ast,
+				def->body_span
+			);
+			def->compiling = 0;
+			return -1;
+		}
+		struct compile_ref quoted;
+		if (compile_ref_make_thunk(ctx, &ref, def->ast, &quoted) != 0) {
+			def->compiling = 0;
+			return -1;
+		}
+		ref = quoted;
+	}
 	if (ref.operation < ctx->metadata->operation_count) {
 		ctx->metadata->operations[ref.operation].source_symbol_id = def->name_symbol_id;
 		ctx->metadata->operations[ref.operation].polarity = ref.polarity;
@@ -19112,6 +19257,17 @@ static int compile_ref_make_thunk(
 	}
 	p_ret->term = term;
 	p_ret->classifier = PROTOTYPE_INVALID_ID;
+	uint32_t immediate_classifier;
+	if (computation->classifier != PROTOTYPE_INVALID_ID &&
+		prototype_judgement_cbpv_boundary_classifier(
+			ctx->terms,
+			ctx->type_declarations,
+			term,
+			computation->classifier,
+			&immediate_classifier
+		) == 0) {
+		p_ret->classifier = immediate_classifier;
+	}
 	p_ret->polarity = COMPILE_REF_POLARITY_VALUE;
 	p_ret->computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
 	return operation_add(
@@ -19184,6 +19340,37 @@ static int compile_ref_thunk_computation_kind(
 		default:
 			return computation->computation_kind;
 	}
+}
+
+static int compile_ref_is_returning_thunk(
+	const struct compile_context* ctx,
+	const struct compile_ref* ref,
+	int* p_ret
+) {
+	if (!ctx || !ref || !p_ret) {
+		return -1;
+	}
+	*p_ret = compile_ref_thunk_computation_kind(ctx, ref) ==
+		COMPILE_REF_COMPUTATION_KIND_RETURNING;
+	if (*p_ret || ref->classifier >= ctx->terms->term_count ||
+		ctx->terms->terms[ref->classifier].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		return 0;
+	}
+	struct prototype_term_classifier_view view;
+	uint32_t computation_classifier =
+		ctx->terms->terms[ref->classifier].as.thunk_type.computation;
+	if (prototype_judgement_classifier_view(
+			ctx->terms,
+			ctx->type_declarations,
+			NULL,
+			computation_classifier,
+			&view
+		) != 0) {
+		return -1;
+	}
+	*p_ret = view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
+		view.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
+	return 0;
 }
 
 /* A runtime strict value context evaluates a returning computation exactly
@@ -20024,6 +20211,19 @@ static int compile_ast_runtime_value_then(
 	compile_ref_clear(&value);
 	status = compile_ast_value_ref(ctx, ast_id, &value);
 	if (status == 0) {
+		int execute_thunk;
+		if (compile_ref_is_returning_thunk(ctx, &value, &execute_thunk) != 0) {
+			return -1;
+		}
+		if (execute_thunk && ctx->asts->nodes[ast_id].tag != PROTOTYPE_AST_QUOTE) {
+			struct compile_ref forced;
+			if (compile_ref_make_force(ctx, &value, ast_id, &forced) != 0) {
+				return -1;
+			}
+			return compile_continue_runtime_computation(
+				ctx, &forced, ast_id, continuation, p_ret
+			);
+		}
 		return continuation->apply(ctx, &value, continuation->data, p_ret);
 	}
 	if (status < 0) {
@@ -20581,7 +20781,7 @@ static int compile_ast_perform_ref(
 	);
 }
 
-static int compile_ast_block_source_ref(
+static int compile_ast_block_execution_ref(
 	struct compile_context* ctx,
 	uint32_t source_ast,
 	uint32_t value_ast,
@@ -20600,24 +20800,9 @@ static int compile_ast_block_source_ref(
 	if (value_status != 0) {
 		return -1;
 	}
-	int execute_thunk = compile_ref_thunk_computation_kind(ctx, &value) ==
-		COMPILE_REF_COMPUTATION_KIND_RETURNING;
-	if (!execute_thunk && value.classifier < ctx->terms->term_count &&
-		ctx->terms->terms[value.classifier].tag == PROTOTYPE_TERM_THUNK_TYPE) {
-		struct prototype_term_classifier_view view;
-		uint32_t computation_classifier =
-			ctx->terms->terms[value.classifier].as.thunk_type.computation;
-		if (prototype_judgement_classifier_view(
-				ctx->terms,
-				ctx->type_declarations,
-				NULL,
-				computation_classifier,
-				&view
-			) != 0) {
-			return -1;
-		}
-		execute_thunk = view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
-			view.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
+	int execute_thunk;
+	if (compile_ref_is_returning_thunk(ctx, &value, &execute_thunk) != 0) {
+		return -1;
 	}
 	if (value.polarity == COMPILE_REF_POLARITY_VALUE && execute_thunk &&
 		ctx->asts->nodes[value_ast].tag != PROTOTYPE_AST_QUOTE) {
@@ -20697,7 +20882,7 @@ static int compile_ast_block_items_ref(
 			);
 		}
 		struct compile_ref computation;
-		if (compile_ast_block_source_ref(
+		if (compile_ast_block_execution_ref(
 				ctx, item_ast, item->as.block_expression.term, &computation
 			) != 0 || computation.polarity != COMPILE_REF_POLARITY_COMPUTATION ||
 			computation.computation_kind == COMPILE_REF_COMPUTATION_KIND_FUNCTION) {
@@ -20720,7 +20905,7 @@ static int compile_ast_block_items_ref(
 
 	struct compile_ref value;
 	uint32_t binder_classifier = PROTOTYPE_INVALID_ID;
-	if (compile_ast_block_source_ref(
+	if (compile_ast_block_execution_ref(
 			ctx, item_ast, item->as.block_binding.value, &value
 		) != 0 || (item->as.block_binding.binder_type != PROTOTYPE_INVALID_ID &&
 			compile_ast_type_expr_term(
@@ -21015,7 +21200,7 @@ static int compile_ast_block_items_control_ref(
 				ctx->asts, item->as.block_expression.term
 			) == AST_LAMBDA_EXIT_NONE) {
 			struct compile_ref computation;
-			if (compile_ast_block_source_ref(
+			if (compile_ast_block_execution_ref(
 					ctx, item_ast, item->as.block_expression.term, &computation
 				) != 0 || computation.polarity != COMPILE_REF_POLARITY_COMPUTATION ||
 				computation.computation_kind == COMPILE_REF_COMPUTATION_KIND_FUNCTION) {
@@ -21051,8 +21236,11 @@ static int compile_ast_block_items_control_ref(
 		return -1;
 	}
 	if (value_exit_presence == AST_LAMBDA_EXIT_NONE &&
-		compile_ast_block_source_ref(
-			ctx, item_ast, item->as.block_binding.value, &value
+		compile_ast_block_execution_ref(
+			ctx,
+			item_ast,
+			item->as.block_binding.value,
+			&value
 		) != 0) {
 		return -1;
 	}
@@ -21336,6 +21524,102 @@ static int compile_ast_ref(
 	return compile_ast_computation_ref(ctx, ast_id, p_ret);
 }
 
+/* Resolve the selected root definition through the definition block itself.
+ * This keeps graph construction and label publication on one membership rule. */
+static int compile_selected_definition(
+	struct compile_context* ctx,
+	const struct prototype_ast_node** p_select,
+	struct prototype_ast_term_assignment_def** p_selected
+) {
+	if (!ctx || !p_select || !p_selected ||
+		ctx->asts->root_definition_select >= ctx->asts->node_count) {
+		return -1;
+	}
+	const struct prototype_ast_node* select =
+		&ctx->asts->nodes[ctx->asts->root_definition_select];
+	if (select->tag != PROTOTYPE_AST_DEFINITION_SELECT ||
+		select->as.definition_select.definition_block >= ctx->asts->node_count) {
+		return -1;
+	}
+	const struct prototype_ast_node* block = &ctx->asts->nodes[
+		select->as.definition_select.definition_block
+	];
+	if (block->tag != PROTOTYPE_AST_DEFINITION_BLOCK ||
+		(size_t)block->as.definition_block.first_assignment +
+			block->as.definition_block.assignment_count >
+			ctx->asts->definition_item_count) {
+		return -1;
+	}
+	struct prototype_ast_term_assignment_def* selected = NULL;
+	for (uint32_t i = 0; i < block->as.definition_block.assignment_count; ++i) {
+		uint32_t assignment_id = ctx->asts->definition_items[
+			block->as.definition_block.first_assignment + i
+		];
+		if (assignment_id >= ctx->asts->assignment_count) {
+			return -1;
+		}
+		struct prototype_ast_term_assignment_def* candidate =
+			&ctx->asts->assignments[assignment_id];
+		if (candidate->name_symbol_id ==
+			select->as.definition_select.name_symbol_id) {
+			if (selected) {
+				return -1;
+			}
+			selected = candidate;
+		}
+	}
+	if (!selected) {
+		return -1;
+	}
+	*p_select = select;
+	*p_selected = selected;
+	return 0;
+}
+
+static int compile_phase_build_selected_entry(struct compile_context* ctx) {
+	if (ctx->asts->root_definition_select != PROTOTYPE_INVALID_ID) {
+		const struct prototype_ast_node* select;
+		struct prototype_ast_term_assignment_def* selected;
+		if (compile_selected_definition(ctx, &select, &selected) != 0) {
+			return -1;
+		}
+		if (!selected || !selected->compiled ||
+			selected->compiled_operation >= ctx->metadata->operation_count ||
+			selected->compiled_term >= ctx->terms->term_count ||
+			ctx->terms->terms[selected->compiled_term].tag != PROTOTYPE_TERM_THUNK) {
+			(void)add_resolve_error_at_span(
+				ctx,
+				PROTOTYPE_RESOLVE_ERROR_COMPILE,
+				select->as.definition_select.name_symbol_id,
+				-1,
+				ctx->asts->root_definition_select,
+				select->span
+			);
+			return -1;
+		}
+		struct compile_ref selected_ref;
+		selected_ref.term = selected->compiled_term;
+		selected_ref.classifier = selected->compiled_classifier;
+		selected_ref.operation = selected->compiled_operation;
+		selected_ref.polarity = COMPILE_REF_POLARITY_VALUE;
+		selected_ref.computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
+		struct compile_ref entry_ref;
+		if (compile_ref_make_force(
+				ctx,
+				&selected_ref,
+				ctx->asts->root_definition_select,
+				&entry_ref
+			) != 0) {
+			return -1;
+		}
+		ctx->metadata->selected_entry_symbol_id = selected->name_symbol_id;
+		ctx->metadata->selected_entry_term = entry_ref.term;
+		ctx->metadata->selected_entry_classifier = entry_ref.classifier;
+		ctx->metadata->selected_entry_operation = entry_ref.operation;
+	}
+	return 0;
+}
+
 static int compile_phase_build_graph(struct compile_context* ctx) {
 	if (!ctx || !ctx->asts) {
 		return -1;
@@ -21351,9 +21635,11 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 		}
 		ctx->binder_count = 0;
 		ctx->match_frame_count = 0;
-		size_t previous_error_count = ctx->metadata ? ctx->metadata->resolve_error_count : 0;
+		size_t previous_error_count = ctx->metadata ?
+			ctx->metadata->resolve_error_count : 0;
 		if (compile_def(ctx, &ctx->asts->assignments[i], &term) != 0) {
-			if (!ctx->metadata || ctx->metadata->resolve_error_count == previous_error_count) {
+			if (!ctx->metadata ||
+				ctx->metadata->resolve_error_count == previous_error_count) {
 				(void)add_resolve_error_at_span(
 					ctx,
 					PROTOTYPE_RESOLVE_ERROR_COMPILE,
@@ -21366,7 +21652,7 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 			continue;
 		}
 	}
-	return 0;
+	return compile_phase_build_selected_entry(ctx);
 }
 
 int prototype_context_extension_path(
@@ -24775,6 +25061,18 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 							return -1;
 						}
 						if (solve_status != 0) {
+							/* The body classifier is already a valid synthesis frontier.
+							 * Preserve it for downstream operations while the dedicated
+							 * ascription phase retains responsibility for proving conversion
+							 * to the surface expectation. */
+							if (operation_solver_bind(
+									ctx,
+									constraint->target,
+									classifier,
+									&pass_changed
+								) != 0) {
+								return -1;
+							}
 							break;
 						}
 						ctx->metadata->operations[constraint->target].known_classifier =
@@ -28154,6 +28452,18 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 			);
 			continue;
 		}
+		if (def->definition_value_required && def->ast < ctx->asts->node_count &&
+			ctx->asts->nodes[def->ast].tag != PROTOTYPE_AST_QUOTE &&
+			def->compiled_operation < ctx->metadata->operation_count &&
+			ctx->metadata->operations[def->compiled_operation].tag ==
+				PROTOTYPE_OPERATION_THUNK) {
+			/*
+			 * The ascription checks the explicit definition RHS before the definition
+			 * boundary inserts its implicit thunk. The exported definition retains
+			 * the synthesized thunk classifier.
+			 */
+			continue;
+		}
 		struct compile_ref expected_ref;
 		compile_ref_clear(&expected_ref);
 		if (def->compiled_operation >= ctx->metadata->operation_count) {
@@ -28417,6 +28727,12 @@ static int compile_phase_publish_labels(struct compile_context* ctx) {
 		if (!def->compiled || def->published) {
 			continue;
 		}
+		if (def->compiled_classifier == PROTOTYPE_INVALID_ID &&
+			def->compiled_operation < ctx->metadata->operation_count) {
+			def->compiled_classifier = ctx->metadata->operations[
+				def->compiled_operation
+			].classifier;
+		}
 		if (def->compiled_classifier == PROTOTYPE_INVALID_ID) {
 			(void)find_unique_synthetic_classifier_for_label(
 				ctx,
@@ -28434,6 +28750,32 @@ static int compile_phase_publish_labels(struct compile_context* ctx) {
 			return -1;
 		}
 		def->published = 1;
+	}
+	if (ctx->asts->root_definition_select != PROTOTYPE_INVALID_ID) {
+		const struct prototype_ast_node* select;
+		struct prototype_ast_term_assignment_def* selected;
+		if (compile_selected_definition(ctx, &select, &selected) != 0) {
+			return -1;
+		}
+		(void)select;
+		if (!selected || !selected->compiled ||
+			selected->compiled_operation >= ctx->metadata->operation_count ||
+			ctx->metadata->operations[selected->compiled_operation].polarity !=
+				COMPILE_REF_POLARITY_VALUE) {
+			return -1;
+		}
+		if (ctx->metadata->selected_entry_symbol_id != selected->name_symbol_id ||
+			ctx->metadata->selected_entry_term >= ctx->terms->term_count ||
+			ctx->metadata->selected_entry_operation >=
+				ctx->metadata->operation_count) {
+			return -1;
+		}
+		ctx->metadata->selected_entry_classifier = ctx->metadata->operations[
+			ctx->metadata->selected_entry_operation
+		].classifier;
+		if (ctx->metadata->selected_entry_classifier == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
 	}
 	return 0;
 }

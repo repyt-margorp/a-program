@@ -6431,7 +6431,8 @@ static int evaluate_steps(
 						return -1;
 					}
 					if (pure_computation >= db->term_count ||
-						db->terms[pure_computation].tag != PROTOTYPE_TERM_RETURN) {
+						(db->terms[pure_computation].tag != PROTOTYPE_TERM_RETURN &&
+							db->terms[pure_computation].tag != PROTOTYPE_TERM_LAMBDA)) {
 						if (pure_computation < db->term_count &&
 							db->terms[pure_computation].tag ==
 								PROTOTYPE_TERM_OPERATION_REQUEST) {

@@ -37,6 +37,10 @@ static const char* ast_tag_name(int tag) {
 			return "ascription";
 		case PROTOTYPE_AST_QUOTE:
 			return "quote";
+		case PROTOTYPE_AST_DEFINITION_BLOCK:
+			return "definition-block";
+		case PROTOTYPE_AST_DEFINITION_SELECT:
+			return "definition-select";
 		case PROTOTYPE_AST_COMPUTATION_BLOCK:
 			return "computation-block";
 		case PROTOTYPE_AST_BLOCK_BINDING:
@@ -103,9 +107,10 @@ void prototype_ast_inspect_print(
 
 	fprintf(
 		output,
-		"ast-inspect nodes=%zu block-items=%zu expectations=%zu assignments=%zu def_index_entries=%zu type_exprs=%zu type_defs=%zu\n",
+		"ast-inspect nodes=%zu block-items=%zu definition-items=%zu expectations=%zu assignments=%zu def_index_entries=%zu type_exprs=%zu type_defs=%zu\n",
 		asts->node_count,
 		asts->block_item_count,
+		asts->definition_item_count,
 		asts->expectation_count,
 		asts->assignment_count,
 		asts->def_index_count,

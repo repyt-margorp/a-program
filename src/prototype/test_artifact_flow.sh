@@ -167,7 +167,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 59$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 60$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -175,7 +175,7 @@ grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
 	>"$TMP_DIR/identity-verilog-backend.out"
 grep -q '^backend verilog compatible yes$' \
 	"$TMP_DIR/identity-verilog-backend.out"
-grep -q '^compile_policy 2 0 100000 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' "$TMP_DIR/identity.apo"
+grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0 100000 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' "$TMP_DIR/identity.apo"
 ./read_file.out --policy strict --write-artifact "$TMP_DIR/identity-strict.apo" \
 	"$TMP_DIR/identity.p" >"$TMP_DIR/identity-strict.out"
 grep -q '^compile_policy 1 ' "$TMP_DIR/identity-strict.apo"
@@ -188,7 +188,7 @@ fi
 ./read_file.out --normalization-steps 7 --solver-steps 100000 \
 	--write-artifact "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-budget.out"
-grep -q '^compile_policy 2 0 7 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' \
+grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0 7 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' \
 	"$TMP_DIR/identity-budget.apo"
 ./read_file.out --normalization-steps 7 --solver-steps 100000 \
 	--write-artifact "$TMP_DIR/identity-budget-repeat.apo" "$TMP_DIR/identity.p" \
@@ -200,9 +200,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/59$/58/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v58.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v58.apo" >"$TMP_DIR/identity-v58.out" 2>"$TMP_DIR/identity-v58.err"; then
-	echo "obsolete artifact unexpectedly passed after v59 format bump" >&2
+sed '1s/60$/59/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v59.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v59.apo" >"$TMP_DIR/identity-v59.out" 2>"$TMP_DIR/identity-v59.err"; then
+	echo "obsolete artifact unexpectedly passed after v60 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -236,7 +236,7 @@ grep -q '^interface term identityBool ' "$TMP_DIR/identity-read.out"
 grep -q '^interface term identityNat ' "$TMP_DIR/identity-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/identity-read.out"
 awk '
-	$1 == "compile_policy" { $12 = 1 }
+	$1 == "compile_policy" { $17 = 1 }
 	{ print }
 ' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-incomplete.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-incomplete.apo" \
@@ -1845,12 +1845,13 @@ if ./read_file.out --read-graph "$TMP_DIR/TerminalEffectBadKind.apo" \
 	echo "effect operation encoded as pure primitive unexpectedly passed" >&2
 	exit 1
 fi
-grep -q '^compile_policy 2 10 ' "$TMP_DIR/TerminalEffect.apo"
+awk '$1 == "compile_policy" && $2 == 2 && $8 == 10 { found = 1 }
+END { exit found ? 0 : 1 }' "$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_EFFECT_LABEL 1$" "$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_COMPUTATION_TYPE " "$TMP_DIR/TerminalEffect.apo"
 grep -Eq '^effect_constraint [0-9]+ 3 2 ' "$TMP_DIR/TerminalEffect.apo"
 awk '
-	$1 == "compile_policy" { $3 = 0 }
+	$1 == "compile_policy" { $8 = 0 }
 	{ print }
 ' "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/TerminalEffectBadCapabilities.apo"
 if ./read_file.out --read-graph "$TMP_DIR/TerminalEffectBadCapabilities.apo" \

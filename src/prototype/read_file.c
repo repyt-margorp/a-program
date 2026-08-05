@@ -22,6 +22,7 @@
 #define AST_MATCH_BINDER_CAPACITY 512
 #define AST_COMPUTATION_FOLD_CLAUSE_CAPACITY 256
 #define AST_BLOCK_ITEM_CAPACITY 4096
+#define AST_DEFINITION_ITEM_CAPACITY 4096
 #define AST_TYPE_EXPR_CAPACITY 1024
 #define AST_TYPE_DEF_CAPACITY 64
 #define AST_TYPE_PARAMETER_CAPACITY 128
@@ -87,6 +88,7 @@ static struct prototype_ast_binder ast_match_binders[AST_MATCH_BINDER_CAPACITY];
 static struct prototype_ast_computation_fold_clause
 	ast_computation_fold_clauses[AST_COMPUTATION_FOLD_CLAUSE_CAPACITY];
 static uint32_t ast_block_items[AST_BLOCK_ITEM_CAPACITY];
+static uint32_t ast_definition_items[AST_DEFINITION_ITEM_CAPACITY];
 static struct prototype_ast_type_expr ast_type_exprs[AST_TYPE_EXPR_CAPACITY];
 static struct prototype_ast_type_def ast_type_defs[AST_TYPE_DEF_CAPACITY];
 static struct prototype_ast_type_parameter ast_type_parameters[AST_TYPE_PARAMETER_CAPACITY];
@@ -740,6 +742,21 @@ static int read_artifact_interface_and_graph(
 		) != 0) {
 		status = -1;
 	}
+	if (status == 0 && metadata->selected_entry_symbol_id >= 0) {
+		uint32_t export_id;
+		if (prototype_artifact_interface_find_term_export(
+				artifact_interface,
+				metadata->selected_entry_symbol_id,
+				&export_id
+			) != 0 || export_id >= artifact_interface->term_export_count ||
+			metadata->selected_entry_term >= term_db->term_count ||
+			term_db->terms[metadata->selected_entry_term].tag !=
+				PROTOTYPE_TERM_FORCE ||
+			term_db->terms[metadata->selected_entry_term].as.force.value !=
+				artifact_interface->term_exports[export_id].local_term) {
+			status = -1;
+		}
+	}
 	if (fclose(artifact_file) != 0) {
 		status = -1;
 	}
@@ -828,8 +845,14 @@ static int append_link_operation_graph(
 	int target_is_empty = prototype_operation_graph_count(&target_graph) == 0 &&
 		target->solver_constraint_count == 0 &&
 		prototype_verification_db_count(&target->verification) == 0;
+	if (target->selected_entry_operation != PROTOTYPE_INVALID_ID &&
+		source->selected_entry_operation != PROTOTYPE_INVALID_ID) {
+		/* Aggregation has no syntax for choosing between executable entries. */
+		return -1;
+	}
 	if (target_is_empty) {
 		target->compile_policy = source->compile_policy;
+		target->definition_thunk_policy = source->definition_thunk_policy;
 	} else if (target->compile_policy != source->compile_policy) {
 		return -1;
 	}
@@ -1036,6 +1059,18 @@ static int append_link_operation_graph(
 		if (prototype_verification_db_add(&target->verification, obligation, NULL) != 0) {
 			return -1;
 		}
+	}
+	if (source->selected_entry_operation != PROTOTYPE_INVALID_ID) {
+		target->selected_entry_symbol_id = source->selected_entry_symbol_id;
+		target->selected_entry_term = offset_link_graph_id(
+			source->selected_entry_term, term_offset
+		);
+		target->selected_entry_classifier = offset_link_graph_id(
+			source->selected_entry_classifier, term_offset
+		);
+		target->selected_entry_operation = offset_link_graph_id(
+			source->selected_entry_operation, operation_offset
+		);
 	}
 	prototype_compile_metadata_commit_operation_graph(target, &target_graph);
 	return 0;
@@ -2722,9 +2757,18 @@ int main(int argc, char** argv) {
 	int solver_step_limit_is_set = 0;
 	uint64_t solver_step_limit = 0;
 	int compile_policy = PROTOTYPE_COMPILE_POLICY_HYBRID;
+	int definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
 	memset(&read_options, 0, sizeof(read_options));
 
 	for (; file_arg < argc && argv[file_arg][0] == '-'; ++file_arg) {
+		if (strcmp(argv[file_arg], "--implicit-definition-thunks") == 0) {
+			definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
+			continue;
+		}
+		if (strcmp(argv[file_arg], "--no-implicit-definition-thunks") == 0) {
+			definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_EXPLICIT;
+			continue;
+		}
 		if (strcmp(argv[file_arg], "--normalization-steps") == 0) {
 			if (file_arg + 1 >= argc || parse_step_limit(
 					argv[file_arg + 1], &normalization_step_limit
@@ -2963,7 +3007,7 @@ int main(int argc, char** argv) {
 			continue;
 		}
 		fprintf(stderr, "unknown option: %s\n", argv[file_arg]);
-		fprintf(stderr, "Usage: %s [--policy strict|hybrid|exploratory] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--policy strict|hybrid|exploratory] [--implicit-definition-thunks|--no-implicit-definition-thunks] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-backend interpreter|c|verilog file.ao\n", argv[0]);
@@ -3027,7 +3071,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (!interface_input_path && !link_target_path && argc - file_arg < 1) {
-		fprintf(stderr, "Usage: %s [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--implicit-definition-thunks|--no-implicit-definition-thunks] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
@@ -3880,6 +3924,8 @@ int main(int argc, char** argv) {
 		AST_COMPUTATION_FOLD_CLAUSE_CAPACITY,
 		ast_block_items,
 		AST_BLOCK_ITEM_CAPACITY,
+		ast_definition_items,
+		AST_DEFINITION_ITEM_CAPACITY,
 		ast_type_exprs,
 		AST_TYPE_EXPR_CAPACITY,
 		ast_type_defs,
@@ -3963,6 +4009,7 @@ int main(int argc, char** argv) {
 	program.metadata = &metadata;
 	program.universe = &universe_db;
 	program.compile_options.compile_policy = compile_policy;
+	program.compile_options.definition_thunk_policy = definition_thunk_policy;
 	program.compile_options.normalization_step_limit_is_set =
 		normalization_step_limit_is_set;
 	program.compile_options.normalization_step_limit = normalization_step_limit;

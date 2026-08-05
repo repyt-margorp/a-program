@@ -21,6 +21,7 @@
 #define AST_MATCH_BINDER_CAPACITY 512
 #define AST_COMPUTATION_FOLD_CLAUSE_CAPACITY 256
 #define AST_BLOCK_ITEM_CAPACITY 4096
+#define AST_DEFINITION_ITEM_CAPACITY 4096
 #define AST_TYPE_EXPR_CAPACITY 1024
 #define AST_TYPE_DEF_CAPACITY 64
 #define AST_TYPE_PARAMETER_CAPACITY 128
@@ -69,6 +70,7 @@ static struct prototype_ast_binder ast_match_binders[AST_MATCH_BINDER_CAPACITY];
 static struct prototype_ast_computation_fold_clause
 	ast_computation_fold_clauses[AST_COMPUTATION_FOLD_CLAUSE_CAPACITY];
 static uint32_t ast_block_items[AST_BLOCK_ITEM_CAPACITY];
+static uint32_t ast_definition_items[AST_DEFINITION_ITEM_CAPACITY];
 static struct prototype_ast_type_expr ast_type_exprs[AST_TYPE_EXPR_CAPACITY];
 static struct prototype_ast_type_def ast_type_defs[AST_TYPE_DEF_CAPACITY];
 static struct prototype_ast_type_parameter ast_type_parameters[AST_TYPE_PARAMETER_CAPACITY];
@@ -143,6 +145,23 @@ static const struct prototype_compile_label* lookup_label(
 		}
 	}
 	return NULL;
+}
+
+static void label_evaluation_root(
+	const struct prototype_compile_metadata* metadata,
+	int symbol_id,
+	const struct prototype_compile_label* label,
+	uint32_t* p_operation,
+	uint32_t* p_term
+) {
+	*p_operation = label->operation;
+	*p_term = label->term;
+	if (metadata->selected_entry_symbol_id == symbol_id &&
+		metadata->selected_entry_operation < metadata->operation_count &&
+		metadata->selected_entry_term != PROTOTYPE_INVALID_ID) {
+		*p_operation = metadata->selected_entry_operation;
+		*p_term = metadata->selected_entry_term;
+	}
 }
 
 static void print_metadata_resolve_errors(
@@ -729,14 +748,23 @@ static void query_value(
 
 	int host_ran;
 	int verification_state;
+	uint32_t evaluation_operation;
+	uint32_t evaluation_term;
+	label_evaluation_root(
+		metadata,
+		symbol_id,
+		label,
+		&evaluation_operation,
+		&evaluation_term
+	);
 	if (evaluate_for_output(
 			stdout,
 			symbols,
 			type_declarations,
 			term_db,
 			metadata,
-			label->operation,
-			label->term,
+			evaluation_operation,
+			evaluation_term,
 			&evaluated,
 			&host_ran,
 			&verification_state
@@ -775,12 +803,22 @@ static void query_normal_form(
 		printf("%s is not defined\n", name);
 		return;
 	}
+	uint32_t evaluation_operation;
+	uint32_t evaluation_term;
+	label_evaluation_root(
+		metadata,
+		symbol_id,
+		label,
+		&evaluation_operation,
+		&evaluation_term
+	);
+	(void)evaluation_operation;
 	int status = full ?
 		prototype_term_nf_with_options(
-			term_db, type_declarations, NULL, options, label->term, &normalized
+			term_db, type_declarations, NULL, options, evaluation_term, &normalized
 		) :
 		prototype_term_perform_with_options(
-			term_db, type_declarations, NULL, options, label->term, &normalized
+			term_db, type_declarations, NULL, options, evaluation_term, &normalized
 		);
 	if (status != 0) {
 		printf("%s %s := <normalization failed>\n", mode_name, name);
@@ -813,14 +851,23 @@ static int query_existing_value(
 
 	int host_ran;
 	int verification_state;
+	uint32_t evaluation_operation;
+	uint32_t evaluation_term;
+	label_evaluation_root(
+		metadata,
+		symbol_id,
+		label,
+		&evaluation_operation,
+		&evaluation_term
+	);
 	if (evaluate_for_output(
 			stdout,
 			(struct symbol_table*)symbols,
 			type_declarations,
 			term_db,
 			metadata,
-			label->operation,
-			label->term,
+			evaluation_operation,
+			evaluation_term,
 			&evaluated,
 			&host_ran,
 			&verification_state
@@ -855,11 +902,20 @@ int main(int argc, char** argv) {
 	size_t input_len = 0;
 	unsigned entry_index = 1;
 	int first_file_arg = 1;
+	int definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
 
 	memset(&read_options, 0, sizeof(read_options));
 	for (; first_file_arg < argc && argv[first_file_arg][0] == '-'; ++first_file_arg) {
+		if (strcmp(argv[first_file_arg], "--implicit-definition-thunks") == 0) {
+			definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
+			continue;
+		}
+		if (strcmp(argv[first_file_arg], "--no-implicit-definition-thunks") == 0) {
+			definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_EXPLICIT;
+			continue;
+		}
 		fprintf(stderr, "unknown option: %s\n", argv[first_file_arg]);
-		fprintf(stderr, "Usage: %s [file.p ...]\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--implicit-definition-thunks|--no-implicit-definition-thunks] [file.p ...]\n", argv[0]);
 		return 1;
 	}
 
@@ -904,6 +960,8 @@ int main(int argc, char** argv) {
 		AST_COMPUTATION_FOLD_CLAUSE_CAPACITY,
 		ast_block_items,
 		AST_BLOCK_ITEM_CAPACITY,
+		ast_definition_items,
+		AST_DEFINITION_ITEM_CAPACITY,
 		ast_type_exprs,
 		AST_TYPE_EXPR_CAPACITY,
 		ast_type_defs,
@@ -986,6 +1044,7 @@ int main(int argc, char** argv) {
 	program.judgement = &judgement_db;
 	program.metadata = &metadata;
 	program.universe = &universe_db;
+	program.compile_options.definition_thunk_policy = definition_thunk_policy;
 	for (int i = first_file_arg; i < argc; ++i) {
 		if (prototype_read_ast_file_with_options(argv[i], &program, &read_options, &error) != 0) {
 			fprintf(
@@ -1013,7 +1072,8 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 	}
-	int main_symbol = symbol_intern(&symbols, "main", 4);
+	int main_symbol = metadata.selected_entry_symbol_id >= 0 ?
+		metadata.selected_entry_symbol_id : symbol_intern(&symbols, "main", 4);
 	if (main_symbol < 0) {
 		fprintf(stderr, "failed to intern main symbol\n");
 		symbol_table_free(&symbols);

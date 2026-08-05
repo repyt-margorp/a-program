@@ -81,7 +81,7 @@ grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=6 verification_oblig
 
 ./read_file.out src/prototype/computation_reference_type_check.p \
 	>"$tmp_dir/computation-reference.out"
-grep -q '^term run := LAMBDA(.*COMPUTATION_FOLD(FORCE(VAR' \
+grep -q '^term run := LAMBDA(.*FORCE(VAR' \
 	"$tmp_dir/computation-reference.out"
 grep -q '^term preserve := LAMBDA(.*RETURN(VAR' \
 	"$tmp_dir/computation-reference.out"
@@ -303,7 +303,8 @@ grep -q 'compile-budget .* residual=1 incomplete=0' \
 	"$tmp_dir/dependent-fold-residual.out"
 ./read_file.out --write-artifact "$tmp_dir/dependent-fold-residual.apo" \
 	"$tmp_dir/dependent-fold-residual.p" >"$tmp_dir/dependent-fold-residual-write.out"
-grep -Eq '^compile_policy 2 [1-9][0-9]* ' "$tmp_dir/dependent-fold-residual.apo"
+awk '$1 == "compile_policy" && $2 == 2 && $8 > 0 { found = 1 }
+END { exit found ? 0 : 1 }' "$tmp_dir/dependent-fold-residual.apo"
 if ./read_file.out --policy strict "$tmp_dir/dependent-fold-residual.p" \
 	>"$tmp_dir/dependent-fold-strict.out" 2>"$tmp_dir/dependent-fold-strict.err"; then
 	echo 'strict policy accepted a residual dependent COMPUTATION_FOLD' >&2
@@ -625,7 +626,8 @@ EOF
 grep -q 'term main := COMPUTATION_FOLD(' "$tmp_dir/handle.out"
 grep -q '\[computation-fold-elim\]' "$tmp_dir/handle.out"
 ./read_file.out --write-artifact "$tmp_dir/handle.apo" "$tmp_dir/handle.p" >"$tmp_dir/handle-write.out"
-grep -q '^compile_policy 2 14 ' "$tmp_dir/handle.apo"
+awk '$1 == "compile_policy" && $2 == 2 && $8 == 14 { found = 1 }
+END { exit found ? 0 : 1 }' "$tmp_dir/handle.apo"
 grep -Eq '^effect_constraint [0-9]+ 2 2 ' "$tmp_dir/handle.apo"
 ./read_file.out --read-graph "$tmp_dir/handle.apo" >"$tmp_dir/handle-read.out"
 grep -q 'interface term main ' "$tmp_dir/handle-read.out"

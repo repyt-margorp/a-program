@@ -10,6 +10,7 @@
 
 struct prototype_compile_options {
 	int compile_policy;
+	int definition_thunk_policy;
 	int normalization_step_limit_is_set;
 	uint64_t normalization_step_limit;
 	int solver_step_limit_is_set;
