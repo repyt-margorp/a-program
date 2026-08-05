@@ -7,6 +7,7 @@ Date: 2026-08-05
 This is the implementation and progress record for the decisions in:
 
 - `2026-08-05T01-00-00-THUNK-ENCODED-HIGHER-ORDER-OPERATIONS.md`
+- `2026-08-05T03-00-00-HIGHER-ORDER-EFFECT-CAPABILITY-DECISIONS.md`
 
 The referenced document is the semantic decision record.  This document owns:
 
@@ -692,6 +693,34 @@ clause may inhabit `Comp(E, A)`.  The static implementation sequence is now:
 
 This is deliberately narrower than general subtyping.  It is proof-producing
 effect inclusion for computations and does not change value-type equality.
+
+### 2026-08-05: Multi-axis problem statement and implementation order fixed
+
+The capability and remaining problem were reviewed across representation,
+typing, runtime traversal, modular forwarding, artifacts, and resources.  The
+result is recorded in
+`2026-08-05T03-00-00-HIGHER-ORDER-EFFECT-CAPABILITY-DECISIONS.md`.
+
+The main correction is that the static gap contains two separate fixed points:
+
+1. each higher-order request occurrence must retain its own latent effect row;
+2. the fold output row must be joined from return, clause, and residual rows
+   while those same rows determine continuation and clause classifiers.
+
+Therefore a parameterized effect atom alone is not the next safe code change.
+The implementation order is now:
+
+1. separate solver-local row metavariables from graph-level row binders;
+2. add row inclusion and n-ary join constraints;
+3. reify and validate runtime-erased effect weakening proofs;
+4. add parameterized operation atoms and their elimination rule;
+5. close strict force-once/twice typing and artifact tests;
+6. proceed to explicit inner handling and resource stages.
+
+This supersedes the earlier tentative order which placed the parameterized atom
+before the solver and proof prerequisites.  No Core or runtime representation
+is removed: thunk-encoded requests, plural dispatch, direct force, repeated
+force, and opaque forwarding remain valid implemented capabilities.
 
 ## 14. Completion Rule
 
