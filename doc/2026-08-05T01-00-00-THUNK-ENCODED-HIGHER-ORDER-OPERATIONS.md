@@ -635,6 +635,26 @@ Option 2 may later be used as compile-time specialization, but only option 3 is
 an adequate general static account.  Its design precedes resource operations
 whose safety depends on latent effects.
 
+Even option 3 is not sufficient alone.  The return clause has classifier
+`Comp({}, Text)`, while a clause which forces the request thunk has classifier
+`Comp(E, Text)`.  The current fold solver requires one exact carrier
+computation type, so it cannot choose `Comp(E, Text)` unless it also has a
+derivation which embeds the pure return clause into the larger row.
+
+The complete static repair therefore has three parts:
+
+1. a parameterized effect atom preserving the latent row in the request effect;
+2. a row join computed from the return clause, operation clauses, and residual
+   input effects;
+3. an explicit, runtime-erased effect-weakening Judgement proving
+   `Comp(E1, A)` usable as `Comp(E1 union E2, A)`.
+
+The third item is not adopted as unrestricted term-type subtyping.  It is a
+specific computation-effect inclusion rule with proof data and artifact
+validation.  Silently treating all pure computations as having arbitrary
+effects would hide the derivation and recreate the same authority split that
+JudgementDB is intended to avoid.
+
 ### 10.3 Not yet represented soundly
 
 The following still require new static or runtime representation:

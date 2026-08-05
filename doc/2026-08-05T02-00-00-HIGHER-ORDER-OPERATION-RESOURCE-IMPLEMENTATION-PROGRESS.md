@@ -678,6 +678,21 @@ partial artifacts preserve the residual and invalid export classifier, while
 strict compilation rejects force-once/twice.  Runtime success must not be
 reported as static verification.
 
+Further constraint analysis found a second prerequisite.  A pure return clause
+has row `{}`, while a clause forcing the request has row `E`.  Existing fold
+typing requires an exact common carrier and has no evidence that the pure
+clause may inhabit `Comp(E, A)`.  The static implementation sequence is now:
+
+1. represent a parameterized higher-order effect atom carrying the latent row;
+2. compute the join of return, clause, and residual rows;
+3. add a runtime-erased `EFFECT_WEAKEN` Judgement rule with explicit row
+   inclusion premises;
+4. validate the same rule during artifact readback;
+5. only then publish the closed classifier for force-once/twice.
+
+This is deliberately narrower than general subtyping.  It is proof-producing
+effect inclusion for computations and does not change value-type equality.
+
 ## 14. Completion Rule
 
 This migration is complete only when:
