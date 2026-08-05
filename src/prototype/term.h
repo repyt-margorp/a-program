@@ -65,7 +65,10 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_THUNK,
 	PROTOTYPE_TERM_FORCE,
 	PROTOTYPE_TERM_OPERATION_REQUEST,
-	PROTOTYPE_TERM_COMPUTATION_FOLD
+	PROTOTYPE_TERM_COMPUTATION_FOLD,
+	/* Static effect-row atom for one higher-order operation family and the
+	 * latent effects of its suspended computation argument. */
+	PROTOTYPE_TERM_EFFECT_ROW_OPERATION
 };
 
 enum prototype_term_category {
@@ -407,6 +410,10 @@ struct prototype_term {
 			uint32_t body;
 		} effect_row_forall;
 		struct {
+			int operation_id;
+			uint32_t latent_row;
+		} effect_row_operation;
+		struct {
 			uint32_t label;
 			uint32_t result;
 		} computation_type;
@@ -683,6 +690,13 @@ int prototype_term_effect_row_forall_parts(
 	uint32_t term_id,
 	uint32_t* p_binder_id,
 	uint32_t* p_body
+);
+
+int prototype_term_effect_row_operation(
+	struct prototype_term_db* db,
+	int operation_id,
+	uint32_t latent_row,
+	uint32_t* p_ret
 );
 int prototype_term_effect_row_closed_bits(
 	const struct prototype_term_db* db,

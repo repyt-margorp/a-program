@@ -24,8 +24,8 @@ to the deviation log rather than silently replacing the original plan.
 
 ```text
 branch: main
-commit: 6b834dc formalize higher-order effect capability boundary
-artifact format: v57
+commit: b19352b prove closed higher-order fold effects
+artifact format: v58
 ```
 
 The untracked `book/` directory is outside this work and must remain untouched.
@@ -73,7 +73,7 @@ Existing negative evidence:
 | 1 | Separate solver row metavariables from TermDB binders | in progress |
 | 2 | Add n-ary row join and row inclusion constraints | complete for closed rows |
 | 3 | Add `EFFECT_WEAKEN` proof production and validation | kernel rule complete; fold use in progress |
-| 4 | Add parameterized operation atoms | pending |
+| 4 | Add parameterized operation atoms | representation complete; occurrence inference blocked on proof authority |
 | 5 | Add handled-atom elimination and fold carrier solving | in progress; closed rows supported |
 | 6 | Close strict higher-order tests and artifact replay | pending |
 | 7 | Validate explicit inner fold and opaque forwarding | pending |
@@ -195,11 +195,14 @@ static row data and does not change runtime dispatch.
 
 Planned work:
 
-- [ ] Define the TermDB representation and canonical hashing.
-- [ ] Support traversal, substitution, normalization comparison, printing,
+- [x] Define the TermDB representation and canonical hashing.
+- [x] Support traversal, substitution, normalization comparison, printing,
       reachability, relocation, serialization, and readback validation.
 - [ ] Instantiate one atom per request occurrence.
 - [ ] Preserve distinct latent rows for distinct occurrences.
+
+The first two items establish durable syntax only. They do not change the
+classifier currently inferred for an operation request.
 
 ## 9. Stage 5: Handler Elimination and Fold Carrier
 
@@ -239,6 +242,28 @@ inclusion and requires runtime resource values, region/non-escape constraints,
 finalization, and multiplicity checking.
 
 ## 12. Progress Log
+
+### 2026-08-05: Parameterized row representation added; authority boundary found
+
+- Added `PROTOTYPE_TERM_EFFECT_ROW_OPERATION(operation_id, latent_row)` without
+  adding a runtime request tag.
+- Covered canonical identity, graph traversal, substitution, normalization,
+  printing, artifact reachability, relocation, v58 serialization, readback,
+  and reference validation.
+- Confirmed that merely generating the atom in request inference is premature.
+  `OPERATION_REQUEST_INTRO` currently omits the argument occurrence and its
+  selected classifier from its proof premises.
+- Confirmed a second authority conflict: OperationGraph may retain a
+  provisional closed request classifier after JudgementDB derives a more
+  precise occurrence classifier. The OperationGraph proof materializer can
+  then rebuild an enclosing fold against the stale classifier.
+- Rejected a normalization-equality patch between those proofs. The required
+  fix is to make the argument occurrence explicit in the request proof, bind
+  the request OperationGraph node to that proven classifier, and defer fold
+  proof reification until that binding exists.
+- Kept automatic atom generation and handled-atom elimination disabled at this
+  checkpoint. The existing CBPV surface suite passes with the representation
+  changes alone.
 
 ### 2026-08-05: Ledger created
 

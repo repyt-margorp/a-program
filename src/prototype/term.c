@@ -482,6 +482,7 @@ int prototype_term_semantics(
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 		case PROTOTYPE_TERM_THUNK_TYPE:
 				p_ret->layer = PROTOTYPE_TERM_LAYER_TYPE_FORMER;
@@ -1144,6 +1145,18 @@ static int shape_terms_equal_at_depth(
 			env->count = saved_count;
 			return equal;
 		}
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return left->as.effect_row_operation.operation_id ==
+					right->as.effect_row_operation.operation_id &&
+				shape_terms_equal_at_depth(
+					db,
+					left->as.effect_row_operation.latent_row,
+					right->as.effect_row_operation.latent_row,
+					env,
+					type_view_compare_mode,
+					ignore_match_frames,
+					depth + 1
+				);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return shape_terms_equal_at_depth(
 						db,
@@ -1681,6 +1694,21 @@ static int cross_shape_terms_equal_at_depth(
 			env->count = saved_count;
 			return equal;
 		}
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return left->as.effect_row_operation.operation_id ==
+					right->as.effect_row_operation.operation_id &&
+				cross_shape_terms_equal_at_depth(
+					left_db,
+					left_type_declarations,
+					left->as.effect_row_operation.latent_row,
+					right_db,
+					right_type_declarations,
+					right->as.effect_row_operation.latent_row,
+					env,
+					type_view_compare_mode,
+					ignore_match_frames,
+					depth + 1
+				);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return cross_shape_terms_equal_at_depth(
 						left_db,
@@ -2046,6 +2074,20 @@ static int canonical_hash_term_at_depth(
 			env->next_slot = saved_next_slot;
 			return status;
 		}
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			canonical_hash_mix_u32(
+				p_hash, (uint32_t)term->as.effect_row_operation.operation_id
+			);
+			return canonical_hash_term_at_depth(
+				db,
+				type_declarations,
+				term->as.effect_row_operation.latent_row,
+				env,
+				key,
+				p_hash,
+				canonicalize_frame_refs,
+				depth + 1
+			);
 		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (canonical_hash_term_at_depth(
 					db, type_declarations, term->as.computation_fold.computation,
@@ -3206,6 +3248,10 @@ int prototype_term_rebind_type_former_anchors(
 			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 				term->as.effect_row_forall.body = remap[term->as.effect_row_forall.body];
 				break;
+			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+				term->as.effect_row_operation.latent_row =
+					remap[term->as.effect_row_operation.latent_row];
+				break;
 			case PROTOTYPE_TERM_PI:
 				term->as.pi.domain = remap[term->as.pi.domain];
 				term->as.pi.codomain_family = remap[term->as.pi.codomain_family];
@@ -3525,6 +3571,24 @@ int prototype_term_effect_row_forall_parts(
 	*p_binder_id = db->terms[term_id].as.effect_row_forall.binder_id;
 	*p_body = db->terms[term_id].as.effect_row_forall.body;
 	return 0;
+}
+
+int prototype_term_effect_row_operation(
+	struct prototype_term_db* db,
+	int operation_id,
+	uint32_t latent_row,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || latent_row >= db->term_count ||
+		!prototype_term_effect_operation_declaration(operation_id)) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_EFFECT_ROW_OPERATION;
+	term.as.effect_row_operation.operation_id = operation_id;
+	term.as.effect_row_operation.latent_row = latent_row;
+	return add_term(db, term, p_ret);
 }
 
 int prototype_term_computation_type(
@@ -3888,6 +3952,10 @@ static int term_contains_free_binder_at_depth(
 				term_contains_free_binder_at_depth(
 					db, term->as.effect_row_forall.body, binder_id, depth + 1
 				);
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return term_contains_free_binder_at_depth(
+				db, term->as.effect_row_operation.latent_row, binder_id, depth + 1
+			);
 		case PROTOTYPE_TERM_APP:
 			return term_contains_free_binder_at_depth(
 					db,
@@ -4154,6 +4222,10 @@ static int term_contains_frame_scope_reference_at_depth(
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 			return term_contains_frame_scope_reference_at_depth(
 				db, ctx, term->as.effect_row_forall.body, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return term_contains_frame_scope_reference_at_depth(
+				db, ctx, term->as.effect_row_operation.latent_row, depth + 1
 			);
 		case PROTOTYPE_TERM_LAMBDA:
 			return term_contains_frame_scope_reference_at_depth(
@@ -4627,6 +4699,23 @@ static int substitute_term_internal(
 					db, term->as.effect_row_forall.binder_id, body, p_ret
 				);
 		}
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
+			uint32_t latent_row;
+			if (substitute_term_internal(
+					db,
+					term->as.effect_row_operation.latent_row,
+					binder_id,
+					replacement,
+					ctx,
+					&latent_row
+				) != 0) {
+				return -1;
+			}
+			return latent_row == term->as.effect_row_operation.latent_row ?
+				(*p_ret = term_id, 0) : prototype_term_effect_row_operation(
+					db, term->as.effect_row_operation.operation_id, latent_row, p_ret
+				);
+		}
 		case PROTOTYPE_TERM_COMPUTATION_TYPE: {
 				uint32_t label;
 				uint32_t result;
@@ -4978,6 +5067,22 @@ static int resolve_external_ref_term(
 			return body == term->as.effect_row_forall.body ?
 				(*p_ret = term_id, 0) : prototype_term_effect_row_forall(
 					db, term->as.effect_row_forall.binder_id, body, p_ret
+				);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
+			uint32_t latent_row;
+			if (resolve_external_ref_term(
+					db,
+					term->as.effect_row_operation.latent_row,
+					symbol_id,
+					replacement,
+					&latent_row
+				) != 0) {
+				return -1;
+			}
+			return latent_row == term->as.effect_row_operation.latent_row ?
+				(*p_ret = term_id, 0) : prototype_term_effect_row_operation(
+					db, term->as.effect_row_operation.operation_id, latent_row, p_ret
 				);
 		}
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS: {
@@ -6215,6 +6320,7 @@ static int evaluate_steps(
 			return 0;
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
 		case PROTOTYPE_TERM_PI:
 		case PROTOTYPE_TERM_VAR:
 			case PROTOTYPE_TERM_CONSTRUCTOR:
@@ -6951,6 +7057,22 @@ static int normalization_equal_at_depth(
 			);
 			return 0;
 		}
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			if (left_term->as.effect_row_operation.operation_id !=
+				right_term->as.effect_row_operation.operation_id) {
+				*p_equal = 0;
+				return 0;
+			}
+			return normalization_equal_at_depth(
+				db,
+				type_declarations,
+				definitions,
+				options,
+				left_term->as.effect_row_operation.latent_row,
+				right_term->as.effect_row_operation.latent_row,
+				p_equal,
+				depth + 1
+			);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE: {
 				int equal = 0;
 				if (normalization_equal_at_depth(
@@ -7960,6 +8082,13 @@ static void print_term_depth(
 						term->as.effect_row_forall.body, depth - 1);
 					fprintf(output, ")");
 					break;
+				case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+					fprintf(output, "EffectOperation(%d, ",
+						term->as.effect_row_operation.operation_id);
+					print_term_depth(output, symbols, type_declarations, terms,
+						term->as.effect_row_operation.latent_row, depth - 1);
+					fprintf(output, ")");
+					break;
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			fprintf(output, "Comp(");
 					print_term_depth(output, symbols, type_declarations, terms, term->as.computation_type.label, depth - 1);
@@ -8235,6 +8364,13 @@ static void print_term_debug_depth(
 					term->as.effect_row_forall.binder_id);
 				print_term_debug_depth(output, symbols, type_declarations, terms,
 					term->as.effect_row_forall.body, depth - 1);
+				fprintf(output, ")");
+				break;
+			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+				fprintf(output, "EFFECT_ROW_OPERATION(%d, ",
+					term->as.effect_row_operation.operation_id);
+				print_term_debug_depth(output, symbols, type_declarations, terms,
+					term->as.effect_row_operation.latent_row, depth - 1);
 				fprintf(output, ")");
 				break;
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:

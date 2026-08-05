@@ -99,6 +99,61 @@ Runtime success for a closed graph does not establish modular static typing.
 Conversely, an unresolved symbolic row does not imply that the runtime
 representation is missing.
 
+### 3.3 Five questions for every higher-order operation
+
+Every proposed operation must be reviewed along five independent axes:
+
+1. **Representation:** can its argument contain `THUNK(M)` without executing
+   `M`?
+2. **Demand:** may a clause discard, force once, force repeatedly, or explicitly
+   fold `M`?
+3. **Static effects:** where is the latent row of `M` retained per request
+   occurrence?
+4. **Proof authority:** can the final classifier be replayed from proof premises
+   after artifact readback?
+5. **Resources:** is duplication or escape of the thunk legal?
+
+The first two questions are already answered by the current Core and runtime.
+The third now has a serializable TermDB vocabulary but is not yet connected to
+request inference. The fourth blocks that connection. The fifth is a later
+linear/resource discipline and must not be inferred merely from a one-shot
+runtime counter.
+
+### 3.4 Current implementation checkpoint
+
+TermDB and artifact v58 can represent and preserve:
+
+```text
+EFFECT_ROW_OPERATION(operation_id, latent_row)
+```
+
+This is the concrete representation of the schematic `scope<E>` atom. It is
+included in canonical hashing, graph traversal, binder substitution,
+normalization comparison, relocation, printing, serialization, and artifact
+reference validation.
+
+It is intentionally **not yet generated automatically** by
+`OPERATION_REQUEST_INTRO`. The current request proof has only the applied
+operation and continuation as premises. It does not retain the selected
+argument-occurrence classifier from which `E` must be derived. In addition,
+the OperationGraph can still hold a provisional closed classifier while
+JudgementDB later derives a more precise classifier. An enclosing fold may
+therefore reify a proof against the provisional classifier.
+
+The accepted next boundary is:
+
+1. make the selected argument occurrence an explicit request-proof premise;
+2. make the resulting JudgementDB derivation authoritative for the request
+   operation occurrence;
+3. prevent a fold from reifying until that authoritative derivation exists;
+4. only then generate `EFFECT_ROW_OPERATION(op,E)` and implement handled-atom
+   residual elimination.
+
+Generating atoms before these authority changes is rejected because it makes
+the same OperationGraph node carry incompatible provisional and proven
+classifiers. A local normalization-equality workaround would hide, rather than
+remove, that proof-source duplication.
+
 ## 4. What Is Already Possible
 
 ### 4.1 Store a computation in an operation argument
@@ -121,7 +176,7 @@ are observably different programs; generic fold must not silently choose one.
 ### 4.3 Handle several operation names in one fold
 
 Plural clauses are represented in the surface AST, OperationGraph, TermDB,
-runtime dispatch, proof tuple, and artifact v57. Clause cardinality is
+runtime dispatch, proof tuple, and artifact v58. Clause cardinality is
 independent of whether a request argument contains a thunk.
 
 ### 4.4 Forward an unknown request opaquely
@@ -273,6 +328,12 @@ residual obligation. The proof validator checks its structural domains and
 result type but cannot claim row equality. Strict policy must reject the
 artifact until all such rows are materialized. For closed rows, validator
 acceptance requires exact carrier equality and row inclusion checks.
+
+The artifact format may serialize a parameterized operation atom now, but
+serialization alone is not evidence that a source request was assigned that
+atom. Once occurrence generation is enabled, `OPERATION_REQUEST_INTRO` must
+carry the request argument and its selected classifier as a proof premise so
+readback can independently verify the latent row.
 
 ### 7.5 Two fixed points, one proof boundary
 

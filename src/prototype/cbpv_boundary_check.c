@@ -120,6 +120,11 @@ int main(void) {
 	uint32_t terminal_computation;
 	uint32_t symbolic_computation;
 	uint32_t solved_symbolic_computation;
+	uint32_t scoped_symbolic_row;
+	uint32_t duplicate_scoped_symbolic_row;
+	uint32_t once_scoped_symbolic_row;
+	uint32_t scoped_terminal_row;
+	uint32_t substituted_scoped_row;
 	unsigned closed_effects;
 	if (prototype_term_effect_label(&term_db, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &empty_effect_row) != 0 ||
 		prototype_term_effect_label(&term_db, PROTOTYPE_HOST_EFFECT_TERMINAL, &terminal_effect_row) != 0 ||
@@ -133,7 +138,41 @@ int main(void) {
 			&term_db, symbolic_effect_row, terminal_effect_row, &symbolic_effect_union
 		) != 0 || prototype_term_effect_row_closed_bits(
 			&term_db, symbolic_effect_union, &closed_effects
-		) != 1 || prototype_term_computation_type(
+		) != 1 || prototype_term_effect_row_operation(
+			&term_db,
+			PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT,
+			symbolic_effect_row,
+			&scoped_symbolic_row
+		) != 0 || prototype_term_effect_row_operation(
+			&term_db,
+			PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT,
+			symbolic_effect_row,
+			&duplicate_scoped_symbolic_row
+		) != 0 || scoped_symbolic_row != duplicate_scoped_symbolic_row ||
+		prototype_term_effect_row_operation(
+			&term_db,
+			PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT_ONCE,
+			symbolic_effect_row,
+			&once_scoped_symbolic_row
+		) != 0 || scoped_symbolic_row == once_scoped_symbolic_row ||
+		prototype_term_effect_row_operation(
+			&term_db,
+			PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT,
+			terminal_effect_row,
+			&scoped_terminal_row
+		) != 0 || prototype_term_graph_substitute_bound_var(
+			&term_db,
+			&type_db,
+			scoped_symbolic_row,
+			99,
+			terminal_effect_row,
+			&substituted_scoped_row
+		) != 0 || !prototype_judgement_classifier_normalization_equal(
+			&term_db,
+			&type_db,
+			substituted_scoped_row,
+			scoped_terminal_row
+		) || prototype_term_computation_type(
 			&term_db, symbolic_effect_union, value, &row_computation
 		) != 0 || prototype_term_classifier_view(&term_db, row_computation, &view) != 0 ||
 		view.effect_row != symbolic_effect_union ||

@@ -3553,6 +3553,13 @@ static int collect_term_dependencies_at_depth(
 				return collect_term_dependencies_at_depth(
 					interface, terms, term->as.effect_row_forall.body, depth + 1
 				);
+			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+				return collect_term_dependencies_at_depth(
+					interface,
+					terms,
+					term->as.effect_row_operation.latent_row,
+					depth + 1
+				);
 			case PROTOTYPE_TERM_THUNK_TYPE:
 				return collect_term_dependencies_at_depth(
 					interface, terms, term->as.thunk_type.computation, depth + 1
@@ -4087,6 +4094,17 @@ static int write_artifact_term(
 			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 				fprintf(stream, " %u %u", term->as.effect_row_forall.binder_id,
 					term->as.effect_row_forall.body);
+				break;
+			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+				fprintf(
+					stream,
+					" %s %u",
+					prototype_intrinsic_namespace_source_name(
+						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
+						term->as.effect_row_operation.operation_id
+					),
+					term->as.effect_row_operation.latent_row
+				);
 				break;
 			case PROTOTYPE_TERM_COMPUTATION_TYPE:
 				fprintf(
@@ -4756,6 +4774,10 @@ static int artifact_mark_term(
 				artifact_mark_term(marks, terms, term->as.effect_row_union.right, depth + 1) == 0 ? 0 : -1;
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 			return artifact_mark_term(marks, terms, term->as.effect_row_forall.body, depth + 1);
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return artifact_mark_term(
+				marks, terms, term->as.effect_row_operation.latent_row, depth + 1
+			);
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return artifact_mark_term(marks, terms, term->as.thunk_type.computation, depth + 1);
 		case PROTOTYPE_TERM_RETURN:
@@ -5501,6 +5523,10 @@ static int artifact_term_reaches_term_at_depth(
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 			return artifact_term_reaches_term_at_depth(
 				terms, term->as.effect_row_forall.body, needle, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return artifact_term_reaches_term_at_depth(
+				terms, term->as.effect_row_operation.latent_row, needle, depth + 1
 			);
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return artifact_term_reaches_term_at_depth(
@@ -7296,7 +7322,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 57\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 58\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -7626,7 +7652,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 57) {
+		version != 58) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -8235,6 +8261,20 @@ static int read_artifact_term(
 			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 				return fscanf(stream, "%u %u", &term->as.effect_row_forall.binder_id,
 					&term->as.effect_row_forall.body) == 2 ? 0 : -1;
+			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
+				int symbol_id;
+				struct prototype_intrinsic_namespace_binding binding;
+				if (read_artifact_symbol(stream, symbols, &symbol_id) != 0 ||
+					fscanf(stream, "%u", &term->as.effect_row_operation.latent_row) != 1 ||
+					prototype_intrinsic_namespace_lookup(
+						symbol_to_string(symbols, symbol_id), &binding
+					) != 0 || binding.kind !=
+						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION) {
+					return -1;
+				}
+				term->as.effect_row_operation.operation_id = binding.target_id;
+				return 0;
+			}
 			case PROTOTYPE_TERM_COMPUTATION_TYPE:
 				return fscanf(
 					stream,
@@ -8526,6 +8566,12 @@ static int artifact_validate_term_refs(
 				artifact_read_term_present(terms, term->as.effect_row_union.right) ? 0 : -1;
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 			return artifact_read_term_present(terms, term->as.effect_row_forall.body) ? 0 : -1;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return prototype_term_effect_operation_declaration(
+					term->as.effect_row_operation.operation_id
+				) && artifact_read_term_present(
+					terms, term->as.effect_row_operation.latent_row
+				) ? 0 : -1;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			return artifact_read_term_present(terms, term->as.constructor.owner) ? 0 : -1;
 		case PROTOTYPE_TERM_APP:
@@ -11201,6 +11247,9 @@ static void offset_artifact_term(
 			term->as.effect_row_forall.binder_id =
 				offset_artifact_binder_id(term->as.effect_row_forall.binder_id, binder_offset);
 			term->as.effect_row_forall.body += term_offset;
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			term->as.effect_row_operation.latent_row += term_offset;
 			break;
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			term->as.thunk_type.computation += term_offset;
@@ -17954,6 +18003,22 @@ static int __attribute__((unused)) rewrite_imported_type_instances_to_external(
 			return body == term->as.effect_row_forall.body ?
 				(*p_ret = term_id, 0) : prototype_term_effect_row_forall(
 					terms, term->as.effect_row_forall.binder_id, body, p_ret
+				);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
+			uint32_t latent_row;
+			if (rewrite_imported_type_instances_to_external(
+					terms,
+					interface,
+					term->as.effect_row_operation.latent_row,
+					&latent_row,
+					depth + 1
+				) != 0) {
+				return -1;
+			}
+			return latent_row == term->as.effect_row_operation.latent_row ?
+				(*p_ret = term_id, 0) : prototype_term_effect_row_operation(
+					terms, term->as.effect_row_operation.operation_id, latent_row, p_ret
 				);
 		}
 		case PROTOTYPE_TERM_THUNK_TYPE: {
