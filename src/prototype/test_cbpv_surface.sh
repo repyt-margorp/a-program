@@ -797,11 +797,33 @@ fi
 grep -q 'interface term main ' \
 	"$tmp_dir/higher-order-operation-handler-read.out"
 
+# A handled clause may introduce effects which the pure return clause does not
+# have. The fold carrier is their join, not the return clause classifier alone.
+./read_file.out --policy strict src/prototype/effect_weaken_handler_check.p \
+	>"$tmp_dir/effect-weaken-handler.out"
+grep -q 'has-type COMPUTATION_FOLD(.*COMPUTATION_TYPE(EFFECT_LABEL(1), PRIMITIVE(Text)) \[computation-fold-elim\]' \
+	"$tmp_dir/effect-weaken-handler.out"
+{
+	cat src/prototype/effect_weaken_handler_check.p
+	printf 'main\n:q\n'
+} | ./a.out >"$tmp_dir/effect-weaken-handler-eval.out"
+grep -qx 'handled' "$tmp_dir/effect-weaken-handler-eval.out"
+grep -q '^value main := RETURN(TEXT_LITERAL("abort"))$' \
+	"$tmp_dir/effect-weaken-handler-eval.out"
+./read_file.out --policy strict --write-artifact \
+	"$tmp_dir/effect-weaken-handler.apo" \
+	src/prototype/effect_weaken_handler_check.p \
+	>"$tmp_dir/effect-weaken-handler-write.out"
+./read_file.out --read-graph "$tmp_dir/effect-weaken-handler.apo" \
+	>"$tmp_dir/effect-weaken-handler-read.out"
+grep -q 'interface term main ' "$tmp_dir/effect-weaken-handler-read.out"
+
 # A computation-block binding is an execution demand. Once the handler
 # argument receives its declaration-owned Thunk(Comp(E, Text)) classifier,
 # lowering inserts FORCE and sequences the result. The current effect-row
 # solver does not yet connect the operation's forall E with the concrete thunk
-# row, so partial policy preserves residual constraints and strict rejects it.
+# row, so partial policy preserves a current classifier plus residual
+# constraints, while strict rejects it.
 ./read_file.out src/prototype/higher_order_operation_force_once_check.p \
 	>"$tmp_dir/higher-order-operation-force-once.out"
 grep -q 'FORCE(VAR' "$tmp_dir/higher-order-operation-force-once.out"
@@ -830,8 +852,13 @@ grep -Eq '^compile_policy .* [1-9][0-9]* 0$' \
 ./read_file.out --read-graph \
 	"$tmp_dir/higher-order-operation-force-once.apo" \
 	>"$tmp_dir/higher-order-operation-force-once-read.out"
-grep -q 'interface term main .* classifier#4294967295 ' \
+grep -q 'interface term main .* classifier#[0-9][0-9]* ' \
 	"$tmp_dir/higher-order-operation-force-once-read.out"
+if grep -q 'interface term main .* classifier#4294967295 ' \
+	"$tmp_dir/higher-order-operation-force-once-read.out"; then
+	echo 'partial higher-order artifact discarded its classifier approximation' >&2
+	exit 1
+fi
 
 ./read_file.out src/prototype/higher_order_operation_force_twice_check.p \
 	>"$tmp_dir/higher-order-operation-force-twice.out"

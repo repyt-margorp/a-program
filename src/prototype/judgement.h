@@ -111,6 +111,8 @@ struct prototype_judgement_computation_constraint {
 	 * represented by a fresh EFFECT_ROW_VAR in TermDB. */
 	int effect_residual_pending;
 	uint32_t effect_residual_row;
+	/* Current solved approximation of a clause-bearing fold's output row. */
+	uint32_t effect_output_row;
 };
 
 enum prototype_judgement_effect_row_constraint_kind {

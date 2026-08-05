@@ -71,10 +71,10 @@ Existing negative evidence:
 |---|---|---|
 | 0 | Freeze implementation ledger and baseline | complete |
 | 1 | Separate solver row metavariables from TermDB binders | in progress |
-| 2 | Add n-ary row join and row inclusion constraints | pending |
-| 3 | Add `EFFECT_WEAKEN` proof production and validation | pending |
+| 2 | Add n-ary row join and row inclusion constraints | complete for closed rows |
+| 3 | Add `EFFECT_WEAKEN` proof production and validation | kernel rule complete; fold use in progress |
 | 4 | Add parameterized operation atoms | pending |
-| 5 | Add handled-atom elimination and fold carrier solving | pending |
+| 5 | Add handled-atom elimination and fold carrier solving | in progress; closed rows supported |
 | 6 | Close strict higher-order tests and artifact replay | pending |
 | 7 | Validate explicit inner fold and opaque forwarding | pending |
 | 8 | Resume runtime resource, region, and multiplicity stages | pending |
@@ -154,7 +154,7 @@ Planned work:
 - [x] Add n-ary join constraints to the JudgementDelta solver. TermDB may still
       hash-cons a binary union expression, but the solver evidence is n-ary.
 - [x] Add row-inclusion constraints.
-- [ ] Define normalization of duplicate and empty row operands.
+- [x] Normalize duplicate and empty closed-row operands by bitset union.
 - [x] Detect closed contradictions.
 - [x] Retain unsupported symbolic constraints under partial policy.
 - [x] Reject unresolved constraints under strict policy.
@@ -174,7 +174,8 @@ Planned work:
 - [x] Add `PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN`.
 - [x] Require one source has-type premise and independently replay closed row
       inclusion in the proof validator.
-- [ ] Use it to align return and clause computations with the solved fold row.
+- [ ] Use it to align every return and clause computation with the solved fold
+      row. Closed abortive clauses now align; symbolic latent rows remain.
 - [x] Keep the rule parameter-free so existing generic proof
       serialization/relocation preserves its sole has-type premise.
 - [x] Replay closed row inclusion when artifact proofs are kernel-validated.
@@ -299,9 +300,44 @@ finalization, and multiplicity checking.
 - Added a direct CBPV boundary test which accepts pure-to-terminal widening and
   rejects a target with a changed result type.
 - The complete prototype suite and examples 01-09 passed.
-- Fold integration remains pending: return and operation-clause lambdas must be
-  rebuilt from widened body derivations before this proof can close the
-  higher-order fixtures.
+- Fold integration records weakening on the returned computation body. It does
+  not rebuild the enclosing Lambda/Pi classifier; the fold rule separately
+  validates branch-row inclusion in its carrier.
+
+### 2026-08-05: Closed fold carrier join integrated
+
+- OperationGraph now computes a monotone closed-row carrier from the return
+  body, known clause bodies, and the unhandled input residual.
+- A clause body becoming classified re-enqueues its owning fold constraint.
+- Continuation binder classifiers may widen only in the specific shape
+  `Thunk(Pi(B, Comp(E, C)))`, preserving `B` and `C` and requiring `E` to grow
+  by closed-row inclusion.
+- Added `effect_weaken_handler_check.p`: a pure return clause and an abortive
+  `{print}` clause produce `Comp({print}, Text)`, pass strict policy, survive
+  artifact readback, print `handled`, and return `"abort"`.
+- Strengthened clause-bearing fold proof validation. Closed carriers are
+  checked exactly; symbolic carrier comparisons are accepted only as residual
+  partial-policy obligations and remain rejected by strict policy.
+- Existing force-once behavior remains partial: it executes, but strict
+  verification still rejects its unresolved latent row.
+
+### 2026-08-05: Principal Lambda effects separated from weakening
+
+- A shared core Lambda had both a pure Pi derivation and a widened `{print}` Pi
+  derivation. Candidate selection treated them as unrelated and failed; a
+  later workaround also produced a Lambda proof with the wrong binder context.
+- Removed the workaround which rebuilt the enclosing Lambda after weakening.
+  `EFFECT_WEAKEN` now applies only to the computation body used as branch
+  inclusion evidence.
+- Lambda synthesis no longer feeds an `EFFECT_WEAKEN` result back into Pi
+  synthesis. For otherwise equal closed Pi candidates, selection keeps the
+  least effect row; incomparable or symbolic candidates still fail.
+- The closed abortive handler fixture passes strict compilation and artifact
+  readback. It prints `handled`, returns `"abort"`, and does not execute the
+  discarded `"inner"` thunk.
+- Partial higher-order force artifacts retain their current classifier
+  approximation together with residual obligations. Strict policy still
+  rejects those artifacts until occurrence-local latent rows are solved.
 
 ## 13. Deviation Log
 
@@ -312,6 +348,18 @@ n-ary constraints. Existing artifact effect constraints remain binary
 diagnostic records for materialized JOIN/RESIDUAL cases. N-ary JOIN and
 INCLUSION become artifact authority only through the Stage 3 proof format.
 This avoids exposing solver internals as program graph syntax.
+
+### 2026-08-05: Fold carrier inference spans OperationGraph and JudgementDB
+
+The original plan described fold carrier solving mainly as a JudgementDelta
+task. Implementation showed that continuation binder classifiers are required
+while OperationGraph is still reaching its fixed point. The revised boundary
+is:
+
+- OperationGraph computes a monotone carrier approximation for elaboration;
+- JudgementDB reifies and validates the final weakening/fold derivations;
+- artifact validation independently replays closed carrier structure;
+- symbolic comparisons remain verification obligations, never strict proof.
 
 ## 14. Completion Rule
 

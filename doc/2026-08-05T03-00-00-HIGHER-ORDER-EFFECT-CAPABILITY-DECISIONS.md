@@ -54,7 +54,9 @@ The implementation must not be described by one higher-order yes/no flag.
 | Inner computation handling | explicit only | a selected clause may force or explicitly fold the thunk |
 | Unknown forwarding | opaque forwarding supported | generic fold does not cross `THUNK` |
 | General static latent effects | not supported | the first-order request result does not preserve the latent row |
-| Fold effect join and weakening | not supported | clauses currently require an exact common computation carrier |
+| Closed fold effect join | supported | closed return, clause, and residual rows form one monotone carrier |
+| Symbolic fold effect join | not supported | occurrence-local latent rows are not retained in the request row |
+| Effect weakening proof | supported for closed rows | symbolic inclusion remains a residual obligation |
 | Modular higher-order forwarding | not supported | no typed policy transforms an unknown inner computation |
 | Resource lifetime and multiplicity | not supported generally | direct resumption counting is insufficient |
 | Artifact preservation | supported for the current form | complete semantic replay of carrier/row equations is pending |
@@ -65,6 +67,37 @@ The accurate feature statement is:
 > explicit use of inner computations, and opaque default forwarding. It does
 > not yet support a complete modular higher-order handler calculus or
 > resource-safe scoped effects.
+
+### 3.1 Three independent dimensions
+
+The following questions must not be conflated:
+
+1. **Clause cardinality:** can one fold dispatch several operation names?
+2. **Request order:** can an operation argument contain a suspended
+   computation?
+3. **Static closure:** can the compiler prove the effects exposed by every
+   discard, force, forwarding, and inner-fold choice?
+
+The current answers are respectively **yes**, **yes**, and **only for closed
+rows**. A surface AST which accepted one clause would be a syntax limitation;
+it would not prove that thunk-encoded higher-order operations are impossible.
+Conversely, accepting several clauses and `THUNK(M)` does not solve latent-row
+typing.
+
+### 3.2 Four compiler layers
+
+The remaining work must also be separated by compiler layer:
+
+| Layer | Established capability | Remaining problem |
+|---|---|---|
+| Surface/OperationGraph | plural clauses and thunk payloads are represented | no general occurrence-local latent-row atom |
+| Runtime reduction | discard, force once, repeated force, explicit inner fold, and opaque forwarding are representable | no generic scoped transformation through an unknown thunk |
+| Static solver | closed joins, residuals, and inclusions are solved | symbolic `scope<E>` elimination is residual |
+| Proof/artifact | closed fold carrier and weakening are replayed | symbolic row equations cannot be accepted by strict policy |
+
+Runtime success for a closed graph does not establish modular static typing.
+Conversely, an unresolved symbolic row does not imply that the runtime
+representation is missing.
 
 ## 4. What Is Already Possible
 
@@ -101,6 +134,17 @@ This is coherent forwarding, but it is not recursive inner handling.
 The force-once and force-twice fixtures execute with the expected behavior.
 Strict verification rejects them because latent-row constraints remain
 undischarged. Runtime success and static verification are separate claims.
+
+### 4.6 Join effects introduced by closed handler branches
+
+When every relevant row is closed, the OperationGraph fixed point can now join
+the return row, clause-body rows, and unhandled input residual. A pure return
+clause and a `{print}` abortive clause therefore produce a
+`Comp({print}, Text)` fold. Strict compilation and artifact readback accept
+this case.
+
+This does not yet solve `scope<E>`: a forced thunk whose `E` was hidden by the
+first-order request result still leaves a symbolic obligation.
 
 ## 5. Precise Static Problem
 
@@ -210,11 +254,38 @@ M : Comp(E2, A)
 This `EFFECT_WEAKEN` rule is restricted to computation effects. It is not
 value-type subtyping and does not alter definitional equality.
 
+Lambda synthesis keeps the least closed effect row derivable from its body as
+the principal classifier. A widened body judgement is admissible evidence for
+a consumer, but it is not fed back into principal Pi synthesis. If two closed
+candidate Pi classifiers have the same domain and result and their rows are
+ordered by inclusion, the smaller row is selected. Incomparable or symbolic
+candidates remain ambiguous. This prevents effect weakening from becoming a
+second, order-dependent source of Lambda identity.
+
 ### 7.4 Artifact validation
 
 Readback must verify parameterized atom identity and arguments, row inclusion,
 join/residual equations, and correspondence between fold clauses and proof
 premises. Serialization without semantic replay is not proof authority.
+
+For partial-policy artifacts, a symbolic carrier comparison may remain a
+residual obligation. The proof validator checks its structural domains and
+result type but cannot claim row equality. Strict policy must reject the
+artifact until all such rows are materialized. For closed rows, validator
+acceptance requires exact carrier equality and row inclusion checks.
+
+### 7.5 Two fixed points, one proof boundary
+
+Closed fold carrier inference crosses two existing compiler layers:
+
+1. OperationGraph monotonically approximates the carrier so continuation
+   binders can be classified while their clause bodies are still being built.
+2. JudgementDB replays the final carrier using `EFFECT_WEAKEN` and
+   `COMPUTATION_FOLD_ELIM` premises.
+
+OperationGraph bindings are inference state, not proof authority. JudgementDB
+and artifact validation remain the authority boundary. Replacing either layer
+with an unchecked classifier overwrite is rejected.
 
 ## 8. Operational Decisions
 
@@ -286,3 +357,11 @@ The static higher-order milestone is complete only when:
 8. Require explicit, runtime-erased effect inclusion proofs.
 9. Keep effect inclusion out of definitional equality and value subtyping.
 10. Delay resource claims until ownership and lifetime machinery exists.
+11. Treat clause cardinality, thunk-encoded request order, and static latent-row
+    closure as separate capability axes.
+12. Permit monotone closed-row carrier widening during OperationGraph inference,
+    but require JudgementDB proof replay before strict export.
+13. Allow symbolic carrier compatibility only as an explicit partial-policy
+    residual; it is never strict proof evidence.
+14. Keep principal Lambda synthesis separate from `EFFECT_WEAKEN`; select the
+    least comparable closed effect row and reject incomparable candidates.
