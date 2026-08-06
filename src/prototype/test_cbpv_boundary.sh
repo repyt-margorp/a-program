@@ -4,6 +4,7 @@ set -eu
 cc -std=c11 -Wall -Wextra -I src/prototype \
 	src/prototype/cbpv_boundary_check.c \
 	src/prototype/ast.c \
+	src/prototype/context.c \
 	src/prototype/ast_inspect.c \
 	src/prototype/reader.c \
 	src/prototype/term.c \

@@ -4,7 +4,7 @@
 #include <string.h>
 
 int main(void) {
-	struct prototype_term terms[32];
+	struct prototype_term terms[128];
 	struct prototype_match_case cases[8];
 	int case_labels[8];
 	struct prototype_case_binder case_binders[8];
@@ -47,6 +47,12 @@ int main(void) {
 	uint32_t cloned_context;
 	uint32_t clone_substitution;
 	uint32_t cloned_classifier;
+	uint32_t empty_identity;
+	uint32_t right_identity_composed;
+	uint32_t identity_squared;
+	uint32_t associative_left;
+	uint32_t associative_right;
+	uint32_t law_reindexed;
 	struct prototype_operation_node operation_storage[3];
 	struct prototype_operation_match_case operation_case_storage[1];
 	struct prototype_operation_computation_fold_clause operation_fold_clause_storage[1];
@@ -63,7 +69,7 @@ int main(void) {
 	prototype_term_db_init(
 		&term_db,
 		terms,
-		32,
+		128,
 		cases,
 		case_labels,
 		8,
@@ -95,7 +101,7 @@ int main(void) {
 			&contexts, 0, 0, int_type, PROTOTYPE_INVALID_ID, &int_context
 		) != 0 ||
 		prototype_context_extend(
-			&contexts, 0, 0, int_type, PROTOTYPE_INVALID_ID, &same_int_context
+			&contexts, 0, 99, int_type, PROTOTYPE_INVALID_ID, &same_int_context
 		) != 0 ||
 		prototype_context_extend(
 			&contexts, 0, 0, text_type, PROTOTYPE_INVALID_ID, &text_context
@@ -128,6 +134,7 @@ int main(void) {
 	}
 	if (prototype_context_empty(&contexts) != 0 ||
 		int_context != same_int_context ||
+		prototype_context_get(&contexts, same_int_context)->binder_id != 0 ||
 		int_context == text_context ||
 		unresolved_left == unresolved_right ||
 		!prototype_context_contains_binder(&contexts, nested_context, 0) ||
@@ -252,6 +259,189 @@ int main(void) {
 		) != 0) {
 		fprintf(stderr, "categorical substitution law failed\n");
 		return 1;
+	}
+	if (prototype_substitution_identity(
+			&substitutions,
+			&contexts,
+			prototype_context_empty(&contexts),
+			&empty_identity
+		) != 0 || prototype_substitution_compose(
+			&substitutions,
+			&contexts,
+			section,
+			empty_identity,
+			&right_identity_composed
+		) != 0 || prototype_substitution_compose(
+			&substitutions,
+			&contexts,
+			identity,
+			identity,
+			&identity_squared
+		) != 0 || prototype_substitution_compose(
+			&substitutions,
+			&contexts,
+			identity_squared,
+			section,
+			&associative_left
+		) != 0 || prototype_substitution_compose(
+			&substitutions,
+			&contexts,
+			identity,
+			composed,
+			&associative_right
+		) != 0 || prototype_term_reindex(
+			&term_db,
+			&type_declarations,
+			&contexts,
+			&substitutions,
+			variable,
+			right_identity_composed,
+			&law_reindexed
+		) != 0 || law_reindexed != literal || prototype_term_reindex(
+			&term_db,
+			&type_declarations,
+			&contexts,
+			&substitutions,
+			variable,
+			associative_left,
+			&law_reindexed
+		) != 0 || law_reindexed != literal || prototype_term_reindex(
+			&term_db,
+			&type_declarations,
+			&contexts,
+			&substitutions,
+			variable,
+			associative_right,
+			&law_reindexed
+		) != 0 || law_reindexed != literal) {
+		fprintf(stderr, "substitution identity/associativity law failed\n");
+		return 1;
+	}
+	if (prototype_substitution_compose(
+			&substitutions,
+			&contexts,
+			section,
+			identity,
+			&law_reindexed
+		) == 0) {
+		fprintf(stderr, "substitution context mismatch was accepted\n");
+		return 1;
+	}
+	{
+		struct prototype_context malformed_context_storage[1];
+		struct prototype_context_db malformed_contexts;
+		struct prototype_substitution malformed_substitution_storage[1];
+		struct prototype_substitution_db malformed_substitutions;
+
+		prototype_context_db_init(
+			&malformed_contexts, malformed_context_storage, 1
+		);
+		malformed_context_storage[0].depth = 1;
+		prototype_substitution_db_init(
+			&malformed_substitutions, malformed_substitution_storage, 1
+		);
+		malformed_substitutions.substitution_count = 1;
+		malformed_substitution_storage[0] = (struct prototype_substitution) {
+			.kind = PROTOTYPE_SUBSTITUTION_COMPOSE,
+			.source_context = prototype_context_empty(&contexts),
+			.target_context = prototype_context_empty(&contexts),
+			.first = 0,
+			.second = 0,
+			.term = PROTOTYPE_INVALID_ID,
+			.term_classifier = PROTOTYPE_INVALID_ID,
+			.term_proof_id = PROTOTYPE_INVALID_ID
+		};
+		if (prototype_context_db_validate(
+				&malformed_contexts, &term_db
+			) == 0 || prototype_substitution_db_validate(
+				&malformed_substitutions, &contexts, &term_db
+			) == 0) {
+			fprintf(stderr, "malformed categorical storage was accepted\n");
+			return 1;
+		}
+	}
+	{
+		struct prototype_context source_context_storage[4];
+		struct prototype_context target_context_storage[4];
+		struct prototype_context_db source_contexts;
+		struct prototype_context_db target_contexts;
+		struct prototype_substitution source_substitution_storage[4];
+		struct prototype_substitution target_substitution_storage[4];
+		struct prototype_substitution_db source_substitutions;
+		struct prototype_substitution_db target_substitutions;
+		uint32_t source_context;
+		uint32_t source_empty;
+		uint32_t source_section;
+		uint32_t context_relocation[4];
+
+		prototype_context_db_init(
+			&source_contexts, source_context_storage, 4
+		);
+		prototype_context_db_init(
+			&target_contexts, target_context_storage, 4
+		);
+		prototype_substitution_db_init(
+			&source_substitutions, source_substitution_storage, 4
+		);
+		prototype_substitution_db_init(
+			&target_substitutions, target_substitution_storage, 4
+		);
+		if (prototype_context_extend(
+				&source_contexts,
+				prototype_context_empty(&source_contexts),
+				41,
+				int_type,
+				PROTOTYPE_INVALID_ID,
+				&source_context
+			) != 0 || prototype_substitution_empty(
+				&source_substitutions,
+				&source_contexts,
+				source_context,
+				&source_empty
+			) != 0 || prototype_substitution_extend(
+				&source_substitutions,
+				&source_contexts,
+				&term_db,
+				&type_declarations,
+				source_empty,
+				source_context,
+				literal,
+				int_type,
+				5,
+				&source_section
+			) != 0 || prototype_context_db_append_relocated(
+				&target_contexts,
+				&source_contexts,
+				3,
+				100,
+				context_relocation,
+				4
+			) != 0 || prototype_substitution_db_append_relocated(
+				&target_substitutions,
+				&source_substitutions,
+				context_relocation,
+				source_contexts.context_count,
+				3,
+				7
+			) != 0 || source_section != 1 ||
+			target_contexts.context_count != 2 ||
+			target_contexts.contexts[context_relocation[source_context]].binder_id !=
+				141 ||
+			target_contexts.contexts[
+				context_relocation[source_context]
+			].classifier != int_type + 3 ||
+			target_substitutions.substitution_count != 2 ||
+			target_substitutions.substitutions[1].source_context !=
+				context_relocation[source_context] ||
+			target_substitutions.substitutions[1].target_context !=
+				context_relocation[source_context] ||
+			target_substitutions.substitutions[1].first != 0 ||
+			target_substitutions.substitutions[1].term != literal + 3 ||
+			target_substitutions.substitutions[1].term_classifier != int_type + 3 ||
+			target_substitutions.substitutions[1].term_proof_id != 12) {
+			fprintf(stderr, "context/substitution relocation law failed\n");
+			return 1;
+		}
 	}
 	prototype_operation_graph_init(
 		&operation_graph,

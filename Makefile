@@ -3,6 +3,7 @@ all:
 	cc -std=c11 -Wall -Wextra -I src/prototype \
 		src/prototype/repl.c \
 		src/prototype/ast.c \
+		src/prototype/context.c \
 		src/prototype/ast_inspect.c \
 		src/prototype/reader.c \
 		src/prototype/term.c \
@@ -16,6 +17,7 @@ reader:
 	cc -std=c11 -Wall -Wextra -I src/prototype \
 		src/prototype/read_file.c \
 		src/prototype/ast.c \
+		src/prototype/context.c \
 		src/prototype/ast_inspect.c \
 		src/prototype/reader.c \
 		src/prototype/term.c \

@@ -1714,7 +1714,7 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 	return -1;
 }
 
-int prototype_context_instantiate_pure_family(
+static int instantiate_pure_family_in_context(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
@@ -1835,7 +1835,7 @@ static int pi_codomain_after_argument_in_context(
 		return -1;
 	}
 	(void)domain;
-	return prototype_context_instantiate_pure_family(
+	return instantiate_pure_family_in_context(
 		contexts,
 		substitutions,
 		terms,
@@ -1875,7 +1875,7 @@ static int pi_codomain_at_binder_in_context(
 		) != 0) {
 		return -1;
 	}
-	return prototype_context_instantiate_pure_family(
+	return instantiate_pure_family_in_context(
 		delta->contexts,
 		delta->substitutions,
 		terms,
@@ -10872,7 +10872,7 @@ static int validate_app_elim_proof(
 	if (prototype_substitution_identity(
 			substitutions, contexts, relation->context_id, &identity
 		) != 0 ||
-		prototype_context_instantiate_pure_family(
+		instantiate_pure_family_in_context(
 			contexts,
 			substitutions,
 			terms,
@@ -10958,7 +10958,7 @@ static int validate_lambda_intro_proof(
 			proof->premise_context_ids[0],
 			&projection
 		) != 0 ||
-		prototype_context_instantiate_pure_family(
+		instantiate_pure_family_in_context(
 			contexts,
 			substitutions,
 			terms,
@@ -12318,7 +12318,7 @@ static int validate_operation_request_intro_proof(
 		prototype_substitution_projection(
 			substitutions, contexts, continuation_context, &projection
 		) != 0 ||
-		prototype_context_instantiate_pure_family(
+		instantiate_pure_family_in_context(
 			contexts,
 			substitutions,
 			terms,

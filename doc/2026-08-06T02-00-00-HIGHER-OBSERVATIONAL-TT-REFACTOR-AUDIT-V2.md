@@ -1159,7 +1159,7 @@ At commit `474867e`:
 | --- | --- | --- | --- | --- |
 | V2-K1 | Replace key-based IH conversion with scoped frame correspondence and preserve recursive-binder metadata | complete | none | nested/foreign-frame, collision, local/link metadata, artifact tests pass |
 | V2-K2 | Make binder-bearing conversion recursively semantic | complete | none | alpha/beta/nested forall, budget, and blocked-effect tests pass |
-| V2-C1 | Extract context/substitution implementation from `ast.c` | pending | none expected | existing CwF and artifact tests unchanged |
+| V2-C1 | Extract context/substitution implementation from `ast.c` | complete | none | CwF laws, all prototype tests, examples 01-07/09, and byte-identical v61 artifact pass |
 | V2-T1 | Freeze finite value-side HOTT calculus | pending | none until tags land | normative rules and derivations |
 | V2-T2 | Freeze dependent CBPV categorical boundary | pending | none until tags land | reindexing and `F/U`-style laws |
 | V2-S1 | Extend solver constraints with typed HOTT indices | pending | v62 if residualized | replayable typed goal tests |
@@ -1184,7 +1184,9 @@ At commit `474867e`:
 
 ### 23.4 Next implementation checkpoint
 
-Do not add equality syntax or TermDB tags at this checkpoint. V2-K1 and V2-K2
-are complete. The next checkpoint is V2-C1 together with the formal V2-T1 and
-V2-T2 judgements and substitution laws. Only then finalize the proof payload
-and artifact v62 schema.
+Do not add equality syntax or TermDB tags at this checkpoint. V2-K1, V2-K2,
+and V2-C1 are complete. The next checkpoint is the formal V2-T1 and V2-T2
+judgements and substitution laws. Only then finalize the proof payload and
+artifact v62 schema. The completed V2-C1 ownership, migration, and progress
+record is in
+`doc/2026-08-07T00-00-00-CONTEXT-SUBSTITUTION-V2-C1-IMPLEMENTATION-PLAN.md`.

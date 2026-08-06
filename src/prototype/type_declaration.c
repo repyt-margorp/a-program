@@ -24,6 +24,124 @@ static int constructor_declaration_present(
 	return constructor && constructor->owner_type != PROTOTYPE_INVALID_ID;
 }
 
+int prototype_constructor_telescopes_validate(
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms
+) {
+	if (!type_declarations || !contexts || !terms) {
+		return -1;
+	}
+	for (size_t i = 0; i < type_declarations->type_count; ++i) {
+		const struct prototype_type_declaration* type =
+			&type_declarations->type_declarations[i];
+		if (type->type_index != PROTOTYPE_INVALID_ID) {
+			const struct prototype_context* parameter_context =
+				prototype_context_get(contexts, type->parameter_context);
+			if (!parameter_context ||
+				parameter_context->depth != type->parameter_count) {
+				return -1;
+			}
+		}
+	}
+	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
+		const struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->constructor_declarations[i];
+		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		const struct prototype_context* parameter_context =
+			prototype_context_get(contexts, constructor->parameter_context);
+		const struct prototype_context* field_context =
+			prototype_context_get(contexts, constructor->field_context);
+		if (!parameter_context || !field_context ||
+			constructor->owner_type >= type_declarations->type_count ||
+			type_declarations->type_declarations[
+				constructor->owner_type
+			].parameter_context != constructor->parameter_context ||
+			constructor->result_classifier >= terms->term_count ||
+			field_context->depth < parameter_context->depth ||
+			field_context->depth - parameter_context->depth !=
+				constructor->readback.field_count) {
+			return -1;
+		}
+		uint32_t cursor = constructor->field_context;
+		while (cursor != constructor->parameter_context) {
+			const struct prototype_context* context =
+				prototype_context_get(contexts, cursor);
+			if (!context || cursor == prototype_context_empty(contexts)) {
+				return -1;
+			}
+			cursor = context->parent;
+		}
+	}
+	return 0;
+}
+
+int prototype_constructor_curried_caches_validate(
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms
+) {
+	if (!type_declarations || !contexts || !terms ||
+		prototype_constructor_telescopes_validate(
+			type_declarations, contexts, terms
+		) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
+		const struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->constructor_declarations[i];
+		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		uint32_t derived_classifier;
+		if (prototype_type_constructor_derive_curried_classifier(
+				terms,
+				contexts,
+				constructor->parameter_context,
+				constructor->field_context,
+				constructor->result_classifier,
+				&derived_classifier
+			) != 0 ||
+			derived_classifier != constructor->curried_classifier_cache) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+int prototype_constructor_curried_caches_rebuild(
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms
+) {
+	if (!type_declarations || !contexts || !terms ||
+		prototype_constructor_telescopes_validate(
+			type_declarations, contexts, terms
+		) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
+		struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->constructor_declarations[i];
+		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (prototype_type_constructor_derive_curried_classifier(
+				terms,
+				contexts,
+				constructor->parameter_context,
+				constructor->field_context,
+				constructor->result_classifier,
+				&constructor->curried_classifier_cache
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 struct type_code_shape_key_binder_env {
 	const struct prototype_context_db* contexts;
 	uint32_t binder_id[PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY];

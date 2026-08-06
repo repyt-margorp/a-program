@@ -20,6 +20,7 @@ grep -q 'failed to compile AST graph' "$TMP_DIR/recursive-motive-conflict.err"
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/repl.c \
 	src/prototype/ast.c \
+	src/prototype/context.c \
 	src/prototype/ast_inspect.c \
 	src/prototype/reader.c \
 	src/prototype/term.c \
@@ -32,6 +33,7 @@ cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/whnf_profile_cache_check.c \
 	src/prototype/ast.c \
+	src/prototype/context.c \
 	src/prototype/term.c \
 	src/prototype/type_declaration.c \
 	src/prototype/typing.c \
@@ -43,6 +45,7 @@ cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/universe_defeq_check.c \
 	src/prototype/ast.c \
+	src/prototype/context.c \
 	src/prototype/term.c \
 	src/prototype/type_declaration.c \
 	src/prototype/typing.c \
@@ -2526,7 +2529,8 @@ fi
 
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/core_view_representation_check.c \
-	src/prototype/ast.c src/prototype/ast_inspect.c src/prototype/reader.c \
+	src/prototype/ast.c src/prototype/context.c src/prototype/ast_inspect.c \
+	src/prototype/reader.c \
 	src/prototype/term.c src/prototype/type_declaration.c src/prototype/typing.c \
 	src/prototype/universe.c src/prototype/symbol.c \
 	-o "$TMP_DIR/core-view-representation-check"

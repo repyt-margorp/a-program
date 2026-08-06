@@ -85,21 +85,6 @@ int prototype_context_db_validate(
 	const struct prototype_context_db* db,
 	const struct prototype_term_db* terms
 );
-int prototype_constructor_telescopes_validate(
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_context_db* contexts,
-	const struct prototype_term_db* terms
-);
-int prototype_constructor_curried_caches_validate(
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms
-);
-int prototype_constructor_curried_caches_rebuild(
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms
-);
 int prototype_context_db_append_relocated(
 	struct prototype_context_db* target,
 	const struct prototype_context_db* source,
@@ -181,6 +166,14 @@ int prototype_substitution_db_validate(
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms
 );
+int prototype_substitution_db_append_relocated(
+	struct prototype_substitution_db* target,
+	const struct prototype_substitution_db* source,
+	const uint32_t* context_relocation,
+	size_t context_relocation_count,
+	uint32_t term_offset,
+	uint32_t proof_offset
+);
 int prototype_term_reindex(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -189,19 +182,6 @@ int prototype_term_reindex(
 	uint32_t term,
 	uint32_t substitution,
 	uint32_t* p_reindexed
-);
-int prototype_context_instantiate_pure_family(
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t prefix_substitution,
-	uint32_t domain,
-	uint32_t family,
-	uint32_t argument,
-	uint32_t argument_classifier,
-	uint32_t argument_proof_id,
-	uint32_t* p_result
 );
 int prototype_context_substitution_from_terms(
 	struct prototype_context_db* contexts,

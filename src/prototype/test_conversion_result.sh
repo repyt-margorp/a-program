@@ -11,6 +11,7 @@ fi
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/conversion_result_check.c \
 	src/prototype/ast.c \
+	src/prototype/context.c \
 	src/prototype/reader.c \
 	src/prototype/term.c \
 	src/prototype/type_declaration.c \

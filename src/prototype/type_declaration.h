@@ -270,6 +270,24 @@ int prototype_type_constructor_derive_curried_classifier(
 	uint32_t* p_classifier
 );
 
+int prototype_constructor_telescopes_validate(
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms
+);
+
+int prototype_constructor_curried_caches_validate(
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms
+);
+
+int prototype_constructor_curried_caches_rebuild(
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms
+);
+
 const struct prototype_type_declaration* prototype_type_declaration_lookup(
 	const struct prototype_type_declaration_db* db,
 	int name_symbol_id
