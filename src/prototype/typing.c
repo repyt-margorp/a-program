@@ -317,11 +317,16 @@ static int instantiate_fold_clause_classifier(
 		classifier >= terms->term_count) {
 		return -1;
 	}
-	if (prototype_judgement_classifier_normalization_equal(
+	struct prototype_term_conversion_result conversion =
+		prototype_judgement_classifier_conversion(
 			terms, type_declarations, generic_domain, concrete_domain
-		)) {
+		);
+	if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		*p_instantiated = classifier;
 		return 0;
+	}
+	if (conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
+		return -1;
 	}
 	if (terms->terms[generic_domain].tag != PROTOTYPE_TERM_THUNK_TYPE ||
 		terms->terms[concrete_domain].tag != PROTOTYPE_TERM_THUNK_TYPE) {
@@ -347,9 +352,9 @@ static int instantiate_fold_clause_classifier(
 		concrete.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		generic.effect_row >= terms->term_count ||
 		terms->terms[generic.effect_row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, generic.result, concrete.result
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	return prototype_term_graph_substitute_bound_var(
@@ -665,45 +670,69 @@ static int term_core_app(
 	return 0;
 }
 
-static int classifier_kernel_normalization_equal(
+static struct prototype_term_conversion_result classifier_kernel_conversion(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	uint32_t expected,
 	uint32_t actual
 ) {
+	struct prototype_term_conversion_result result;
+	memset(&result, 0, sizeof(result));
+	result.status = PROTOTYPE_TERM_CONVERSION_INVALID;
+	result.reason = PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH;
+	result.profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF;
+	result.left = expected;
+	result.right = actual;
+	result.left_observation = PROTOTYPE_INVALID_ID;
+	result.right_observation = PROTOTYPE_INVALID_ID;
+	result.step_limit = UINT64_MAX;
+	result.graph_revision = terms ? terms->normalization_graph_revision : 0;
 	if (!term_exists(terms, expected) || !term_exists(terms, actual)) {
-		return 0;
+		return result;
 	}
 	/* Judgemental equality is reflexive even when WHNF expansion would enter a
 	 * guarded recursive motive. Normalization is evidence for distinct nodes,
 	 * not a prerequisite for a node being equal to itself. */
 	if (expected == actual) {
-		return 1;
+		result.status = PROTOTYPE_TERM_CONVERSION_EQUAL;
+		result.reason = PROTOTYPE_TERM_CONVERSION_REASON_NONE;
+		result.left_observation = expected;
+		result.right_observation = actual;
+		return result;
 	}
 	if (term_is_universe_var(terms, expected) && term_is_universe_var(terms, actual)) {
-		return terms->terms[expected].as.universe_var.level_var ==
-			terms->terms[actual].as.universe_var.level_var;
+		result.status = terms->terms[expected].as.universe_var.level_var ==
+			terms->terms[actual].as.universe_var.level_var ?
+			PROTOTYPE_TERM_CONVERSION_EQUAL : PROTOTYPE_TERM_CONVERSION_NOT_EQUAL;
+		result.reason = PROTOTYPE_TERM_CONVERSION_REASON_NONE;
+		result.left_observation = expected;
+		result.right_observation = actual;
+		return result;
 	}
-	int equal = 0;
-	return prototype_term_normalization_equal_with_profile(
+	if (prototype_term_compare_for_conversion(
 			terms,
 			type_declarations,
 			definitions,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			expected,
 			actual,
-			&equal
-		) == 0 && equal;
+			UINT64_MAX,
+			&result
+		) != 0) {
+		result.status = PROTOTYPE_TERM_CONVERSION_INVALID;
+		result.reason = PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH;
+	}
+	return result;
 }
 
-int prototype_judgement_classifier_normalization_equal(
+struct prototype_term_conversion_result prototype_judgement_classifier_conversion(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t expected,
 	uint32_t actual
 ) {
-	return classifier_kernel_normalization_equal(
+	return classifier_kernel_conversion(
 		terms,
 		type_declarations,
 		NULL,
@@ -712,20 +741,39 @@ int prototype_judgement_classifier_normalization_equal(
 	);
 }
 
-int prototype_judgement_classifier_normalization_equal_with_definitions(
+struct prototype_term_conversion_result
+prototype_judgement_classifier_conversion_with_definitions(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	uint32_t expected,
 	uint32_t actual
 ) {
-	return classifier_kernel_normalization_equal(
+	return classifier_kernel_conversion(
 		terms,
 		type_declarations,
 		definitions,
 		expected,
 		actual
 	);
+}
+
+static int classifier_conversion_decision(
+	struct prototype_term_conversion_result conversion,
+	int* p_equal
+) {
+	if (!p_equal) {
+		return -1;
+	}
+	if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		*p_equal = 1;
+		return 0;
+	}
+	if (conversion.status == PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
+		*p_equal = 0;
+		return 0;
+	}
+	return -1;
 }
 
 int prototype_judgement_classifier_value_whnf(
@@ -766,10 +814,15 @@ int prototype_judgement_classifier_reference_equal(
 		) != 0) {
 		return 0;
 	}
-	if (prototype_judgement_classifier_normalization_equal(
+	struct prototype_term_conversion_result conversion =
+		prototype_judgement_classifier_conversion(
 			terms, type_declarations, expected, actual
-		)) {
+		);
+	if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		return 1;
+	}
+	if (conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
+		return 0;
 	}
 	const struct prototype_term* left = &terms->terms[expected];
 	const struct prototype_term* right = &terms->terms[actual];
@@ -1173,14 +1226,23 @@ static int lookup_delta_classifier_normalization_equal(
 	}
 	for (size_t i = 0; i < delta->relation_count; ++i) {
 		const struct prototype_judgement_relation* relation = &delta->relations[i];
-		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			relation->subject == subject &&
-			prototype_judgement_classifier_normalization_equal(
+		if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			relation->subject != subject) {
+			continue;
+		}
+		int equal;
+		if (classifier_conversion_decision(
+				prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				expected,
 				relation->classifier
-			)) {
+				),
+				&equal
+			) != 0) {
+			return -1;
+		}
+		if (equal) {
 			*p_classifier = relation->classifier;
 			return 0;
 		}
@@ -1189,14 +1251,23 @@ static int lookup_delta_classifier_normalization_equal(
 		for (size_t i = 0; i < delta->db->relation_count; ++i) {
 			const struct prototype_judgement_relation* relation =
 				&delta->db->relations[i];
-			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-				relation->subject == subject &&
-				prototype_judgement_classifier_normalization_equal(
+			if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				relation->subject != subject) {
+				continue;
+			}
+			int equal;
+			if (classifier_conversion_decision(
+					prototype_judgement_classifier_conversion(
 					terms,
 					type_declarations,
 					expected,
 					relation->classifier
-				)) {
+					),
+					&equal
+				) != 0) {
+				return -1;
+			}
+			if (equal) {
 				*p_classifier = relation->classifier;
 				return 0;
 			}
@@ -1238,14 +1309,23 @@ static int lookup_delta_proven_classifier_normalization_equal(
 	}
 	for (size_t i = 0; i < delta->relation_count; ++i) {
 		const struct prototype_judgement_relation* relation = &delta->relations[i];
-		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			relation->subject == subject &&
-			prototype_judgement_classifier_normalization_equal(
+		if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			relation->subject != subject) {
+			continue;
+		}
+		int equal;
+		if (classifier_conversion_decision(
+				prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				expected,
 				relation->classifier
-			)) {
+				),
+				&equal
+			) != 0) {
+			return -1;
+		}
+		if (equal) {
 			*p_classifier = relation->classifier;
 			return 0;
 		}
@@ -1254,14 +1334,23 @@ static int lookup_delta_proven_classifier_normalization_equal(
 		for (size_t i = 0; i < delta->db->relation_count; ++i) {
 			const struct prototype_judgement_relation* relation =
 				&delta->db->relations[i];
-			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-				relation->subject == subject &&
-				prototype_judgement_classifier_normalization_equal(
+			if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				relation->subject != subject) {
+				continue;
+			}
+			int equal;
+			if (classifier_conversion_decision(
+					prototype_judgement_classifier_conversion(
 					terms,
 					type_declarations,
 					expected,
 					relation->classifier
-				)) {
+					),
+					&equal
+				) != 0) {
+				return -1;
+			}
+			if (equal) {
 				*p_classifier = relation->classifier;
 				return 0;
 			}
@@ -1874,14 +1963,18 @@ static int classifier_kernel_compatible_at_depth(
 	}
 	expected = normalized_expected;
 	actual = normalized_actual;
-	if (classifier_kernel_normalization_equal(
+	struct prototype_term_conversion_result conversion = classifier_kernel_conversion(
 			terms,
 			type_declarations,
 			definitions,
 			expected,
 			actual
-		)) {
+		);
+	if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		return 1;
+	}
+	if (conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
+		return 0;
 	}
 	/* Artifact lowering may expose a qualified type name before relocation and
 	 * the corresponding TYPE_VIEW after relocation. This is name resolution for
@@ -1920,13 +2013,13 @@ static int classifier_kernel_compatible_at_depth(
 			actual_computation->as.computation_type.label >= terms->term_count) {
 			return 0;
 		}
-		if (!classifier_kernel_normalization_equal(
+		if (!(classifier_kernel_conversion(
 				terms,
 				type_declarations,
 				definitions,
 				expected_computation->as.computation_type.label,
 				actual_computation->as.computation_type.label
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return 0;
 		}
 		return classifier_kernel_compatible_at_depth(
@@ -2072,13 +2165,13 @@ static int expected_effect_row_bind(
 		if (solver->solutions[i].binder_id != binder_id) {
 			continue;
 		}
-		return classifier_kernel_normalization_equal(
+		return (classifier_kernel_conversion(
 			solver->terms,
 			solver->type_declarations,
 			solver->definitions,
 			solver->solutions[i].row,
 			row
-		) ? 0 : 1;
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ? 0 : 1;
 	}
 	if (solver->solution_count >= 64) {
 		return -1;
@@ -2104,13 +2197,13 @@ static int expected_effect_row_solve_row(
 			solver, expected_term->as.effect_row_var.binder_id, actual
 		);
 	}
-	return classifier_kernel_normalization_equal(
+	return (classifier_kernel_conversion(
 		solver->terms,
 		solver->type_declarations,
 		solver->definitions,
 		expected,
 		actual
-	) ? 0 : 1;
+	).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ? 0 : 1;
 }
 
 static int expected_effect_row_solve_classifier(
@@ -2161,13 +2254,13 @@ static int expected_effect_row_solve_classifier(
 		}
 		struct prototype_term expected_match = solver->terms->terms[expected_result];
 		if (expected_match.as.match.case_count != actual_match.as.match.case_count ||
-			!classifier_kernel_normalization_equal(
+			!(classifier_kernel_conversion(
 				solver->terms,
 				solver->type_declarations,
 				solver->definitions,
 				expected_match.as.match.scrutinee,
 				actual_match.as.match.scrutinee
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return 1;
 		}
 		for (uint32_t i = 0; i < expected_match.as.match.case_count; ++i) {
@@ -2201,13 +2294,13 @@ static int expected_effect_row_solve_classifier(
 				actual_case.constructor_owner != PROTOTYPE_INVALID_ID)) {
 				if (expected_case.constructor_owner == PROTOTYPE_INVALID_ID ||
 					actual_case.constructor_owner == PROTOTYPE_INVALID_ID ||
-					!classifier_kernel_normalization_equal(
+					!(classifier_kernel_conversion(
 						solver->terms,
 						solver->type_declarations,
 						solver->definitions,
 						expected_case.constructor_owner,
 						actual_case.constructor_owner
-					)) {
+					).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 					return 1;
 				}
 			}
@@ -2850,12 +2943,12 @@ static int materialize_constructor_classifier(
 			continue;
 		}
 		if (selected_existing != PROTOTYPE_INVALID_ID &&
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				selected_existing,
 				existing_classifiers[i]
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 		selected_existing = existing_classifiers[i];
@@ -3283,9 +3376,9 @@ int prototype_judgement_delta_record_constructor_spine(
 			argument_classifier_count,
 			&expected_classifier,
 			&saturated
-		) != 0 || !prototype_judgement_classifier_normalization_equal(
+		) != 0 || !(prototype_judgement_classifier_conversion(
 			terms, type_declarations, expected_classifier, classifier
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	(void)head;
@@ -3451,12 +3544,17 @@ int prototype_judgement_resolve_match_case_request(
 				delta->relation_count == 0) {
 				return -1;
 			}
-			binder->is_recursive = prototype_judgement_classifier_normalization_equal(
-				terms,
-				type_declarations,
-				binder_classifier,
-				request->scrutinee_classifier
-			);
+			if (classifier_conversion_decision(
+					prototype_judgement_classifier_conversion(
+						terms,
+						type_declarations,
+						binder_classifier,
+						request->scrutinee_classifier
+					),
+					&binder->is_recursive
+				) != 0) {
+				return -1;
+			}
 			binder_proof_id =
 				delta->relations[delta->relation_count - 1].proof_id;
 			if (prototype_judgement_delta_set_match_pattern_owner_by_id(
@@ -3514,12 +3612,12 @@ static int match_case_binder_is_recursive_self_field(
 		) != 0) {
 		return -1;
 	}
-	return prototype_judgement_classifier_normalization_equal(
+	return (prototype_judgement_classifier_conversion(
 		terms,
 		type_declarations,
 		field_classifier,
 		match_case->constructor_owner
-	) ? 0 : -1;
+	).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ? 0 : -1;
 }
 
 static int induction_hypothesis_classifier_from_match_motive(
@@ -3553,13 +3651,17 @@ static int induction_hypothesis_classifier_from_match_motive(
 				!match_motive_result_classifier(terms, match_term, relation->classifier)) {
 				continue;
 			}
-			if (classifier_list_contains_normalization_equal(
+			int contains = classifier_list_contains_normalization_equal(
 					terms,
 					type_declarations,
 					match_classifiers,
 					match_classifier_count,
 					relation->classifier
-				)) {
+				);
+			if (contains < 0) {
+				return -1;
+			}
+			if (contains > 0) {
 				continue;
 			}
 			if (match_classifier_count >= 32) {
@@ -3575,13 +3677,17 @@ static int induction_hypothesis_classifier_from_match_motive(
 			!match_motive_result_classifier(terms, match_term, result->classifier)) {
 			continue;
 		}
-		if (classifier_list_contains_normalization_equal(
+		int contains = classifier_list_contains_normalization_equal(
 				terms,
 				type_declarations,
 				match_classifiers,
 				match_classifier_count,
 				result->classifier
-			)) {
+			);
+		if (contains < 0) {
+			return -1;
+		}
+		if (contains > 0) {
 			continue;
 		}
 		if (match_classifier_count >= 32) {
@@ -3614,12 +3720,12 @@ static int induction_hypothesis_classifier_from_match_motive(
 			return -1;
 		}
 		if (selected != PROTOTYPE_INVALID_ID &&
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				selected,
 				candidate
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 		selected = candidate;
@@ -3764,24 +3870,37 @@ static int collect_app_classifier_candidates_from_candidates(
 			}
 			int duplicate = 0;
 			for (uint32_t k = 0; k < *p_candidate_count; ++k) {
-				if (prototype_judgement_classifier_normalization_equal(
-						terms,
-						type_declarations,
-						candidates[k].function_classifier,
-						function_candidates[i]
-					) &&
-					prototype_judgement_classifier_normalization_equal(
-						terms,
-						type_declarations,
-						candidates[k].argument_classifier,
-						argument_candidates[j]
-					) &&
-					prototype_judgement_classifier_normalization_equal(
-						terms,
-						type_declarations,
-						candidates[k].result_classifier,
-						result_classifier
-					)) {
+				int function_equal;
+				int argument_equal;
+				int result_equal;
+				if (classifier_conversion_decision(
+						prototype_judgement_classifier_conversion(
+							terms,
+							type_declarations,
+							candidates[k].function_classifier,
+							function_candidates[i]
+						),
+						&function_equal
+					) != 0 || classifier_conversion_decision(
+						prototype_judgement_classifier_conversion(
+							terms,
+							type_declarations,
+							candidates[k].argument_classifier,
+							argument_candidates[j]
+						),
+						&argument_equal
+					) != 0 || classifier_conversion_decision(
+						prototype_judgement_classifier_conversion(
+							terms,
+							type_declarations,
+							candidates[k].result_classifier,
+							result_classifier
+						),
+						&result_equal
+					) != 0) {
+					return -1;
+				}
+				if (function_equal && argument_equal && result_equal) {
 					duplicate = 1;
 					break;
 				}
@@ -4307,12 +4426,12 @@ static int type_formation_is_nat_shape(
 	if (!succ_field || succ_field->classifier == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
-	if (!prototype_judgement_classifier_normalization_equal(
+	if (!(prototype_judgement_classifier_conversion(
 			(struct prototype_term_db*)terms,
 			(struct prototype_type_declaration_db*)type_declarations,
 			succ_field->classifier,
 			term_id
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return 0;
 	}
 	return 1;
@@ -4625,12 +4744,12 @@ static void remove_match_motive_results_normalization_equal(
 	size_t write = 0;
 	for (size_t read = 0; read < delta->match_motive_result_count; ++read) {
 		if (delta->match_motive_results[read].match_term == match_term &&
-			prototype_judgement_classifier_normalization_equal(
+			(prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				classifier,
 				delta->match_motive_results[read].classifier
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			continue;
 		}
 		if (write != read) {
@@ -4871,7 +4990,16 @@ int prototype_judgement_delta_expand_lambda(
 			continue;
 		}
 		binder_classifier = relation->classifier;
-			if (!prototype_judgement_classifier_normalization_equal(terms, type_declarations, domain, binder_classifier)) {
+		int equal;
+		if (classifier_conversion_decision(
+				prototype_judgement_classifier_conversion(
+					terms, type_declarations, domain, binder_classifier
+				),
+				&equal
+			) != 0) {
+			return -1;
+		}
+			if (!equal) {
 				continue;
 			}
 		uint32_t premise_subjects[2] = {
@@ -4904,7 +5032,16 @@ int prototype_judgement_delta_expand_lambda(
 				continue;
 			}
 			binder_classifier = relation->classifier;
-			if (!prototype_judgement_classifier_normalization_equal(terms, type_declarations, domain, binder_classifier)) {
+			int equal;
+			if (classifier_conversion_decision(
+					prototype_judgement_classifier_conversion(
+						terms, type_declarations, domain, binder_classifier
+					),
+					&equal
+				) != 0) {
+				return -1;
+			}
+			if (!equal) {
 				continue;
 			}
 			uint32_t premise_subjects[2] = {
@@ -5144,12 +5281,12 @@ static int lambda_body_classifier_matches_binder(
 	}
 	if (terms->terms[body].tag == PROTOTYPE_TERM_VAR &&
 		terms->terms[body].as.var.binder_id == binder_id) {
-		return prototype_judgement_classifier_normalization_equal(
+		return (prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			binder_classifier,
 			body_classifier
-		);
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL);
 	}
 	if (terms->terms[body].tag == PROTOTYPE_TERM_RETURN) {
 		uint32_t value = terms->terms[body].as.return_term.value;
@@ -5166,9 +5303,9 @@ static int lambda_body_classifier_matches_binder(
 			) != 0 || view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
 			return 0;
 		}
-		return prototype_judgement_classifier_normalization_equal(
+		return (prototype_judgement_classifier_conversion(
 			terms, type_declarations, binder_classifier, view.result
-		);
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL);
 	}
 	return 1;
 }
@@ -5396,17 +5533,37 @@ static int select_delta_pi_classifier_for_domain(
 				&pi,
 				&domain,
 				&family
-			) != 0 || !prototype_judgement_classifier_normalization_equal(
-				terms, type_declarations, domain, expected_domain
-			)) {
+			) != 0) {
+			continue;
+		}
+		int domain_equal;
+		if (classifier_conversion_decision(
+				prototype_judgement_classifier_conversion(
+					terms, type_declarations, domain, expected_domain
+				),
+				&domain_equal
+			) != 0) {
+			return -1;
+		}
+		if (!domain_equal) {
 			continue;
 		}
 		if (!found) {
 			*p_classifier = pi;
 			found = 1;
-		} else if (!prototype_judgement_classifier_normalization_equal(
-			terms, type_declarations, *p_classifier, pi
-		)) {
+		} else {
+			int classifier_equal;
+			if (classifier_conversion_decision(
+					prototype_judgement_classifier_conversion(
+						terms, type_declarations, *p_classifier, pi
+					),
+					&classifier_equal
+				) != 0) {
+				return -1;
+			}
+			if (classifier_equal) {
+				continue;
+			}
 			uint32_t selected_domain;
 			uint32_t selected_family;
 			uint32_t selected_family_binder;
@@ -5454,12 +5611,12 @@ static int select_delta_pi_classifier_for_domain(
 					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 				candidate_view.computation_kind !=
 					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-				!prototype_judgement_classifier_normalization_equal(
+				!(prototype_judgement_classifier_conversion(
 					terms,
 					type_declarations,
 					selected_view.result,
 					candidate_view.result
-				) || prototype_term_effect_row_closed_bits(
+				).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_closed_bits(
 					terms, selected_view.effect_row, &selected_effects
 				) != 0 || prototype_term_effect_row_closed_bits(
 					terms, candidate_view.effect_row, &candidate_effects
@@ -6035,9 +6192,9 @@ int prototype_judgement_computation_fold_result_classifier(
 			&codomain_family
 		) != 0 || prototype_term_pure_family_parts(
 			terms, codomain_family, &codomain_binder, &codomain
-		) != 0 || !prototype_judgement_classifier_normalization_equal(
+		) != 0 || !(prototype_judgement_classifier_conversion(
 			terms, type_declarations, domain, input_view.result
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	if (!prototype_term_contains_free_binder(
@@ -6154,9 +6311,9 @@ int prototype_judgement_delta_record_computation_fold_elim(
 		if (status != 0) {
 			return status;
 		}
-		if (!prototype_judgement_classifier_normalization_equal(
+		if (!(prototype_judgement_classifier_conversion(
 				terms, type_declarations, classifier, derived_classifier
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 	} else {
@@ -6352,9 +6509,9 @@ static int solve_operation_request_constraint(
 	uint32_t domain;
 	uint32_t codomain_family;
 	if (pi_parts(terms, continuation_function_classifier, &domain, &codomain_family) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, domain, operation_view.result
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	uint32_t continuation_binder = terms->terms[continuation_lambda].as.lambda.binder_id;
@@ -6832,22 +6989,41 @@ static int solve_clause_computation_fold_constraint(
 						operation_domains[i],
 						body_classifier,
 						&instantiated_body
-					) != 0 || !prototype_judgement_classifier_normalization_equal(
-						terms,
-						type_declarations,
-						instantiated_domain,
-						operation_domains[i]
-					) || prototype_judgement_classifier_view(
+					) != 0) {
+					continue;
+				}
+				int domain_equal;
+				if (classifier_conversion_decision(
+						prototype_judgement_classifier_conversion(
+							terms,
+							type_declarations,
+							instantiated_domain,
+							operation_domains[i]
+						),
+						&domain_equal
+					) != 0) {
+					return -1;
+				}
+				if (!domain_equal || prototype_judgement_classifier_view(
 						terms, type_declarations, NULL, instantiated_body, &body_view
 					) != 0 || body_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 					body_view.computation_kind !=
 						PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 					(body_view.effect_row < terms->term_count &&
 					 terms->terms[body_view.effect_row].tag ==
-						PROTOTYPE_TERM_EFFECT_ROW_VAR) ||
-				!prototype_judgement_classifier_normalization_equal(
-					terms, type_declarations, body_view.result, output_view.result
-				)) {
+						PROTOTYPE_TERM_EFFECT_ROW_VAR)) {
+				continue;
+			}
+			int result_equal;
+			if (classifier_conversion_decision(
+					prototype_judgement_classifier_conversion(
+						terms, type_declarations, body_view.result, output_view.result
+					),
+					&result_equal
+				) != 0) {
+				return -1;
+			}
+			if (!result_equal) {
 				continue;
 			}
 			uint32_t joined_row;
@@ -6907,12 +7083,12 @@ static int solve_clause_computation_fold_constraint(
 		) != 0) {
 		return -1;
 	}
-	if (!prototype_judgement_classifier_normalization_equal(
+	if (!(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			output_view.effect_row,
 			handled_effect_row
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		unsigned source_effects;
 		unsigned target_effects;
 		if (prototype_term_effect_row_closed_bits(
@@ -7124,9 +7300,9 @@ static int solve_clause_computation_fold_constraint(
 				delta, terms, type_declarations, delta->current_context_id,
 				continuation_pi, continuation_var, continuation_domain,
 				PROTOTYPE_INVALID_ID, &continuation_output
-			) != 0 || !prototype_judgement_classifier_normalization_equal(
+			) != 0 || !(prototype_judgement_classifier_conversion(
 				terms, type_declarations, continuation_output, handled_output_classifier
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 		outer_classifiers[i] = outer_classifier;
@@ -7861,12 +8037,12 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 			continue;
 		}
 		if (actual != PROTOTYPE_INVALID_ID &&
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				actual,
 				actual_candidates[i]
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 		actual = actual_candidates[i];
@@ -8255,13 +8431,18 @@ static int classifier_list_contains_normalization_equal(
 	uint32_t candidate
 ) {
 	for (uint32_t i = 0; i < classifier_count; ++i) {
-		if (prototype_judgement_classifier_normalization_equal(
+		struct prototype_term_conversion_result conversion =
+			prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				classifiers[i],
 				candidate
-			)) {
+			);
+		if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			return 1;
+		}
+		if (conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
+			return -1;
 		}
 	}
 	return 0;
@@ -8293,13 +8474,17 @@ static int collect_subject_classifiers(
 				relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION) {
 				continue;
 			}
-			if (classifier_list_contains_normalization_equal(
+			int contains = classifier_list_contains_normalization_equal(
 					terms,
 					type_declarations,
 					classifiers,
 					*p_classifier_count,
 					relation->classifier
-				)) {
+				);
+			if (contains < 0) {
+				return -1;
+			}
+			if (contains > 0) {
 				continue;
 			}
 			if (*p_classifier_count >= classifier_capacity) {
@@ -8332,13 +8517,17 @@ static int collect_judgement_subject_classifiers(
 			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION) {
 			continue;
 		}
-		if (classifier_list_contains_normalization_equal(
+		int contains = classifier_list_contains_normalization_equal(
 				terms,
 				type_declarations,
 				classifiers,
 				*p_classifier_count,
 				relation->classifier
-			)) {
+			);
+		if (contains < 0) {
+			return -1;
+		}
+		if (contains > 0) {
 			continue;
 		}
 		if (*p_classifier_count >= classifier_capacity) {
@@ -8411,13 +8600,17 @@ static int select_match_branch_classifier(
 				) != 0) {
 				return -1;
 			}
-			if (classifier_list_contains_normalization_equal(
+			int contains = classifier_list_contains_normalization_equal(
 					terms,
 					type_declarations,
 					other_candidates,
 					other_candidate_count,
 					candidates[i]
-				)) {
+				);
+			if (contains < 0) {
+				return -1;
+			}
+			if (contains > 0) {
 				*p_classifier = candidates[i];
 				return 0;
 			}
@@ -8662,21 +8855,28 @@ static int select_match_branch_classifier_for_motive_from_candidates(
 			) != 0) {
 			return -1;
 		}
-		if (!prototype_judgement_classifier_normalization_equal(
-				terms,
-				type_declarations,
-				expected_motive_case_body,
-				motive_case->body
-			)) {
+		int motive_equal;
+		if (classifier_conversion_decision(
+				prototype_judgement_classifier_conversion(
+					terms,
+					type_declarations,
+					expected_motive_case_body,
+					motive_case->body
+				),
+				&motive_equal
+			) != 0) {
+			return -1;
+		}
+		if (!motive_equal) {
 			continue;
 		}
 		if (selected != PROTOTYPE_INVALID_ID &&
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				selected,
 				candidates[i]
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 		selected = candidates[i];
@@ -8918,13 +9118,17 @@ int prototype_judgement_delta_build_match_motive_from_known_branches(
 		}
 		uint32_t write = 0;
 		for (uint32_t j = 0; j < common_count; ++j) {
-			if (classifier_list_contains_normalization_equal(
+			int contains = classifier_list_contains_normalization_equal(
 					terms,
 					type_declarations,
 					branch_classifiers,
 					branch_classifier_count,
 					common[j]
-				)) {
+				);
+			if (contains < 0) {
+				return -1;
+			}
+			if (contains > 0) {
 				common[write++] = common[j];
 			}
 		}
@@ -8977,9 +9181,9 @@ int prototype_judgement_delta_build_match_motive_from_branch_hints(
 			return -1;
 		}
 		if (selected != PROTOTYPE_INVALID_ID &&
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms, type_declarations, selected, classifier
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return 1;
 		}
 		selected = classifier;
@@ -9403,9 +9607,9 @@ int prototype_judgement_delta_expand_match_with_branch_hints(
 				branch_classifiers[i],
 				&expected_motive_case_body
 			) != 0 ||
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms, type_declarations, expected_motive_case_body, motive_case->body
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 		premise_subjects[i + 1] = match_case->body;
@@ -9635,15 +9839,15 @@ int prototype_judgement_delta_record_lambda_intro(
 			PROTOTYPE_INVALID_ID,
 			&expected_body_classifier
 		) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, domain, binder_classifier
-		) ||
-		!prototype_judgement_classifier_normalization_equal(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ||
+		!(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			expected_body_classifier,
 			body_classifier
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	(void)codomain_family;
@@ -9805,9 +10009,9 @@ int prototype_judgement_delta_record_app_elim(
 		&result_classifier
 	);
 	int result_equal = result_status == 0 &&
-		prototype_judgement_classifier_normalization_equal(
+		(prototype_judgement_classifier_conversion(
 			terms, type_declarations, result_classifier, classifier
-		);
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL);
 	if (result_status != 0 || !result_equal) {
 		return -1;
 	}
@@ -9896,9 +10100,9 @@ int prototype_judgement_delta_record_effect_weaken(
 		target.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		source.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		target.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, source.result, target.result
-		) || prototype_term_effect_row_closed_bits(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_closed_bits(
 			terms, source.effect_row, &source_effects
 		) != 0 || prototype_term_effect_row_closed_bits(
 			terms, target.effect_row, &target_effects
@@ -9942,12 +10146,12 @@ int prototype_judgement_delta_record_type_formation(
 		&type_declarations->type_declarations[type_id];
 	if (argument_count == 0 &&
 		type->formation_classifier != PROTOTYPE_INVALID_ID &&
-		prototype_judgement_classifier_normalization_equal(
+		(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			type->formation_classifier,
 			classifier
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return add_delta_relation(
 			delta,
 			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
@@ -9988,12 +10192,12 @@ int prototype_judgement_delta_record_pure_primitive_type(
 			&terms->terms[subject],
 			&inferred_classifier
 		) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			inferred_classifier,
 			classifier
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	return add_delta_relation(
@@ -10022,9 +10226,9 @@ int prototype_judgement_delta_record_effect_operation_type(
 	if (prototype_judgement_effect_operation_classifier(
 			terms, &terms->terms[subject], &inferred_classifier
 		) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, inferred_classifier, classifier
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	return add_delta_relation(
@@ -10345,12 +10549,12 @@ int prototype_judgement_add_normalization_premise_conversions(
 					candidate->context_id != proof->premise_context_ids[j] ||
 					candidate->subject != proof->premise_subjects[j] ||
 					candidate->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION ||
-					!prototype_judgement_classifier_normalization_equal(
+					!(prototype_judgement_classifier_conversion(
 						terms,
 						type_declarations,
 						proof->premise_classifiers[j],
 						candidate->classifier
-					)) {
+					).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 					continue;
 				}
 				uint32_t premise_subjects[1] = { candidate->subject };
@@ -10453,12 +10657,12 @@ void prototype_judgement_refresh_app_elim_premises(
 						argument_relation->proof_id,
 						&result_classifier
 					) != 0 ||
-					!prototype_judgement_classifier_normalization_equal(
+					!(prototype_judgement_classifier_conversion(
 						terms,
 						type_declarations,
 						result_classifier,
 						relation->classifier
-					)) {
+					).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 					continue;
 				}
 				selected_function_classifier = function_relation->classifier;
@@ -10681,12 +10885,12 @@ static int validate_app_elim_proof(
 			proof->premise_proof_ids[1],
 			&result_classifier
 		) != 0 ||
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms,
 			type_declarations,
 			result_classifier,
 			relation->classifier
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	return 0;
@@ -10738,12 +10942,12 @@ static int validate_lambda_intro_proof(
 	);
 	(void)lambda_pi;
 	if (status != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			domain,
 			proof->premise_classifiers[0]
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	uint32_t expected_body_classifier;
@@ -10767,12 +10971,12 @@ static int validate_lambda_intro_proof(
 			proof->premise_proof_ids[0],
 			&expected_body_classifier
 		) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			expected_body_classifier,
 			proof->premise_classifiers[1]
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	(void)codomain_family;
@@ -10870,12 +11074,12 @@ static int validate_match_elim_proof(
 				proof->premise_classifiers[i + 1],
 				&expected_motive_case_body
 			) != 0 ||
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				expected_motive_case_body,
 				motive_case->body
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 	}
@@ -10955,12 +11159,19 @@ static int validate_induction_hypothesis_elim_proof(
 			) != 0) {
 			return -1;
 		}
-		if (prototype_judgement_classifier_normalization_equal(
-				terms,
-				type_declarations,
-				expected_classifier,
-				relation->classifier
-			)) {
+		int equal;
+		if (classifier_conversion_decision(
+				prototype_judgement_classifier_conversion(
+					terms,
+					type_declarations,
+					expected_classifier,
+					relation->classifier
+				),
+				&equal
+			) != 0) {
+			return -1;
+		}
+		if (equal) {
 			return 0;
 		}
 	}
@@ -11000,11 +11211,14 @@ static int validate_solved_match_motive_proof(
 				collect_judgement_subject_classifiers(
 					judgement, terms, type_declarations, terms->cases[case_id].body,
 					classifiers, 32, &classifier_count
-				) != 0 ||
-				!classifier_list_contains_normalization_equal(
-					terms, type_declarations, classifiers, classifier_count,
-					motive->as.lambda.body
-				)) {
+				) != 0) {
+				return -1;
+			}
+			int contains = classifier_list_contains_normalization_equal(
+				terms, type_declarations, classifiers, classifier_count,
+				motive->as.lambda.body
+			);
+			if (contains <= 0) {
 				return -1;
 			}
 		}
@@ -11048,13 +11262,21 @@ static int validate_solved_match_motive_proof(
 					match_case->binder_count, classifiers[j],
 					&expected_motive_case_body
 				);
-			if (prepare_status == 0 &&
-				prototype_judgement_classifier_normalization_equal(
-					terms, type_declarations, expected_motive_case_body,
-					motive_case->body
-				)) {
-				found = 1;
-				break;
+			if (prepare_status == 0) {
+				int equal;
+				if (classifier_conversion_decision(
+						prototype_judgement_classifier_conversion(
+							terms, type_declarations, expected_motive_case_body,
+							motive_case->body
+						),
+						&equal
+					) != 0) {
+					return -1;
+				}
+				if (equal) {
+					found = 1;
+					break;
+				}
 			}
 			/* A structurally recursive motive records M(rest) as an IH node in
 			 * its own match frame. This is a guarded equation, not a new WHNF
@@ -11200,12 +11422,12 @@ static int validate_constructor_spine_formation_proof(
 			argument_count,
 			&expected_classifier,
 			&saturated
-		) != 0 || !prototype_judgement_classifier_normalization_equal(
+		) != 0 || !(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			expected_classifier,
 			relation->classifier
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	(void)head;
@@ -11271,6 +11493,7 @@ static int validate_conversion_proof(
 	const struct prototype_judgement_relation* relation,
 	const struct prototype_judgement_proof* proof
 ) {
+	struct prototype_term_conversion_result conversion;
 	if (!terms || !type_declarations || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		proof->premise_count != 1 ||
@@ -11281,12 +11504,14 @@ static int validate_conversion_proof(
 		!term_exists(terms, proof->premise_classifiers[0])) {
 		return -1;
 	}
-	if (!prototype_judgement_classifier_compatible(
+	conversion = classifier_kernel_conversion(
 			terms,
 			type_declarations,
+			NULL,
 			relation->classifier,
 			proof->premise_classifiers[0]
-		)) {
+		);
+	if (conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		return -1;
 	}
 	return 0;
@@ -11321,9 +11546,9 @@ static int validate_effect_weaken_proof(
 		target.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		source.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		target.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, source.result, target.result
-		) || prototype_term_effect_row_closed_bits(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_closed_bits(
 			terms, source.effect_row, &source_effects
 		) != 0 || prototype_term_effect_row_closed_bits(
 			terms, target.effect_row, &target_effects
@@ -11438,12 +11663,12 @@ static int validate_assumption_proof(
 			}
 			if (entry->depth == proof->assumption_index + 1) {
 				if (entry->classifier != PROTOTYPE_INVALID_ID &&
-					!prototype_judgement_classifier_normalization_equal(
+					!(prototype_judgement_classifier_conversion(
 						terms,
 						type_declarations,
 						entry->classifier,
 						relation->classifier
-					)) {
+					).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 					return -1;
 				}
 				break;
@@ -11575,12 +11800,12 @@ static int validate_assumption_proof(
 					proof->constructor_field_index,
 					&expected_classifier
 				) != 0 ||
-				!prototype_judgement_classifier_normalization_equal(
+				!(prototype_judgement_classifier_conversion(
 					terms,
 					type_declarations,
 					expected_classifier,
 					relation->classifier
-				)) {
+				).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 				return -1;
 			}
 		return 0;
@@ -11696,9 +11921,9 @@ static int computation_fold_carrier_compatible(
 		right_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		left_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		right_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, left_view.result, right_view.result
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return 0;
 	}
 	unsigned left_effects;
@@ -11784,11 +12009,11 @@ static int validate_computation_fold_elim_proof(
 			) != 0 || return_result.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 			return_result.computation_kind !=
 				PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-			!prototype_judgement_classifier_normalization_equal(
+			!(prototype_judgement_classifier_conversion(
 				terms, type_declarations, return_domain, input.result
-			) || !prototype_judgement_classifier_normalization_equal(
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || !(prototype_judgement_classifier_conversion(
 				terms, type_declarations, return_result.result, result.result
-			)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
 		}
 		(void)return_binder;
@@ -11896,9 +12121,9 @@ static int validate_computation_fold_elim_proof(
 					operation_domain,
 					inner_body,
 					&instantiated_inner_body
-				) != 0 || !prototype_judgement_classifier_normalization_equal(
+				) != 0 || !(prototype_judgement_classifier_conversion(
 					terms, type_declarations, instantiated_outer_domain, operation_domain
-				) || !computation_fold_carrier_compatible(
+				).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || !computation_fold_carrier_compatible(
 					terms,
 					type_declarations,
 					instantiated_inner_body,
@@ -11937,12 +12162,12 @@ static int validate_computation_fold_elim_proof(
 					continuation_family,
 					&continuation_binder,
 					&continuation_body
-				) != 0 || !prototype_judgement_classifier_normalization_equal(
+				) != 0 || !(prototype_judgement_classifier_conversion(
 					terms,
 					type_declarations,
 					continuation_domain,
 					operation_result.result
-				) || !computation_fold_carrier_compatible(
+				).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || !computation_fold_carrier_compatible(
 					terms,
 					type_declarations,
 					continuation_body,
@@ -11989,9 +12214,9 @@ static int validate_computation_fold_elim_proof(
 			proof->premise_classifiers[0],
 			proof->premise_classifiers[1],
 			&expected_result
-		) != 0 || !prototype_judgement_classifier_normalization_equal(
+		) != 0 || !(prototype_judgement_classifier_conversion(
 			terms, type_declarations, relation->classifier, expected_result
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	return 0;
@@ -12070,9 +12295,9 @@ static int validate_operation_request_intro_proof(
 	uint32_t domain;
 	uint32_t family;
 	if (pi_parts(terms, continuation_function_classifier, &domain, &family) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, domain, operation.result
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
 	uint32_t binder_var;

@@ -61,14 +61,14 @@ int main(void) {
 		prototype_term_universe_var(&term_db, 8, &universe_v) != 0) {
 		return 1;
 	}
-	if (!prototype_judgement_classifier_normalization_equal(
+	if (!(prototype_judgement_classifier_conversion(
 			&term_db, &type_db, universe_u, universe_u
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return 1;
 	}
-	if (prototype_judgement_classifier_normalization_equal(
+	if ((prototype_judgement_classifier_conversion(
 			&term_db, &type_db, universe_u, universe_v
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return 1;
 	}
 	return 0;

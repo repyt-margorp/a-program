@@ -5904,13 +5904,17 @@ static int reduction_is_pure_type(
 
 static void normalization_mark_status(
 	struct prototype_term_reduction_options options,
-	int status
+	int status,
+	int reason
 ) {
 	if (!options.p_normalization_status ||
 		*options.p_normalization_status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
 		return;
 	}
 	*options.p_normalization_status = status;
+	if (options.p_normalization_reason) {
+		*options.p_normalization_reason = reason;
+	}
 }
 
 static int normalization_consume_step(struct prototype_term_reduction_options options) {
@@ -5920,7 +5924,8 @@ static int normalization_consume_step(struct prototype_term_reduction_options op
 	if (*options.p_steps_remaining == 0) {
 		normalization_mark_status(
 			options,
-			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED,
+			PROTOTYPE_TERM_CONVERSION_REASON_STEP_LIMIT
 		);
 		return 1;
 	}
@@ -6069,7 +6074,8 @@ static int evaluate_steps(
 	if (depth == 0) {
 		normalization_mark_status(
 			options,
-			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED,
+			PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT
 		);
 		return -1;
 	}
@@ -6398,7 +6404,8 @@ static int evaluate_steps(
 			if (reduction_is_pure_type(options)) {
 				normalization_mark_status(
 					options,
-					PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT
+					PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT,
+					PROTOTYPE_TERM_CONVERSION_REASON_EFFECT_REQUEST
 				);
 			}
 			*p_ret = term_id;
@@ -6543,7 +6550,8 @@ static int evaluate_steps(
 								PROTOTYPE_TERM_OPERATION_REQUEST) {
 							normalization_mark_status(
 								options,
-								PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT
+								PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT,
+								PROTOTYPE_TERM_CONVERSION_REASON_EFFECT_REQUEST
 							);
 						}
 						*p_ret = term_id;
@@ -6887,7 +6895,15 @@ static int normalization_equal_at_depth(
 	int* p_equal,
 	uint32_t depth
 ) {
-	if (!db || !p_equal || left >= db->term_count || right >= db->term_count || depth > 64) {
+	if (!db || !p_equal || left >= db->term_count || right >= db->term_count) {
+		return -1;
+	}
+	if (depth > 64) {
+		normalization_mark_status(
+			options,
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED,
+			PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT
+		);
 		return -1;
 	}
 	*p_equal = 0;
@@ -7358,68 +7374,167 @@ static int normalization_equal_at_depth(
 	}
 }
 
-int prototype_term_normalization_equal(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t left,
-	uint32_t right,
-	int* p_equal
+static void conversion_result_from_normalization_status(
+	struct prototype_term_conversion_result* result,
+	int normalization_status,
+	int normalization_reason
 ) {
-	return normalization_equal_at_depth(
-		db,
-		type_declarations,
-		NULL,
-			(struct prototype_term_reduction_options){
-				.flags = PROTOTYPE_TERM_REDUCE_DEFAULT
-			},
-		left,
-		right,
-		p_equal,
-		0
-	);
+	if (!result) {
+		return;
+	}
+	result->reason = normalization_reason;
+	switch (normalization_status) {
+		case PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT:
+			result->status = PROTOTYPE_TERM_CONVERSION_BLOCKED_EFFECT;
+			break;
+		case PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED:
+			result->status = PROTOTYPE_TERM_CONVERSION_EXHAUSTED;
+			break;
+		case PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID:
+			result->status = PROTOTYPE_TERM_CONVERSION_INVALID;
+			if (result->reason == PROTOTYPE_TERM_CONVERSION_REASON_NONE) {
+				result->reason = PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH;
+			}
+			break;
+		default:
+			result->status = PROTOTYPE_TERM_CONVERSION_INVALID;
+			result->reason = PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH;
+			break;
+	}
 }
 
-int prototype_term_normalization_equal_with_definitions(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	uint32_t left,
-	uint32_t right,
-	int* p_equal
-) {
-	return normalization_equal_at_depth(
-		db,
-		type_declarations,
-		definitions,
-			(struct prototype_term_reduction_options){
-				.flags = PROTOTYPE_TERM_REDUCE_DEFAULT | PROTOTYPE_TERM_REDUCE_DEFINITIONS
-			},
-		left,
-		right,
-		p_equal,
-		0
-	);
+const char* prototype_term_conversion_status_name(int status) {
+	switch (status) {
+		case PROTOTYPE_TERM_CONVERSION_EQUAL:
+			return "equal";
+		case PROTOTYPE_TERM_CONVERSION_NOT_EQUAL:
+			return "not-equal";
+		case PROTOTYPE_TERM_CONVERSION_RESIDUAL:
+			return "residual";
+		case PROTOTYPE_TERM_CONVERSION_BLOCKED_EFFECT:
+			return "blocked-effect";
+		case PROTOTYPE_TERM_CONVERSION_EXHAUSTED:
+			return "exhausted";
+		case PROTOTYPE_TERM_CONVERSION_INVALID:
+			return "invalid";
+		default:
+			return "unknown";
+	}
 }
 
-int prototype_term_normalization_equal_with_options(
+const char* prototype_term_conversion_reason_name(int reason) {
+	switch (reason) {
+		case PROTOTYPE_TERM_CONVERSION_REASON_NONE:
+			return "none";
+		case PROTOTYPE_TERM_CONVERSION_REASON_NEUTRAL:
+			return "neutral";
+		case PROTOTYPE_TERM_CONVERSION_REASON_OPAQUE_DEFINITION:
+			return "opaque-definition";
+		case PROTOTYPE_TERM_CONVERSION_REASON_UNSUPPORTED_RULE:
+			return "unsupported-rule";
+		case PROTOTYPE_TERM_CONVERSION_REASON_EFFECT_REQUEST:
+			return "effect-request";
+		case PROTOTYPE_TERM_CONVERSION_REASON_STEP_LIMIT:
+			return "step-limit";
+		case PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT:
+			return "depth-limit";
+		case PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH:
+			return "malformed-graph";
+		default:
+			return "unknown";
+	}
+}
+
+int prototype_term_compare_with_options(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t left,
 	uint32_t right,
-	int* p_equal
+	uint64_t step_limit,
+	struct prototype_term_conversion_result* p_result
 ) {
-	return normalization_equal_at_depth(
-		db,
-		type_declarations,
-		definitions,
-		options,
-		left,
-		right,
-		p_equal,
-		0
+	int normalization_status = PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE;
+	int normalization_reason = PROTOTYPE_TERM_CONVERSION_REASON_NONE;
+	uint64_t steps_remaining = step_limit;
+	uint64_t steps_used = 0;
+	int equal = 0;
+
+	if (!p_result) {
+		return -1;
+	}
+	memset(p_result, 0, sizeof(*p_result));
+	p_result->status = PROTOTYPE_TERM_CONVERSION_INVALID;
+	p_result->reason = PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH;
+	p_result->profile = normalization_profile_from_options(definitions, options);
+	p_result->left = left;
+	p_result->right = right;
+	p_result->left_observation = left;
+	p_result->right_observation = right;
+	p_result->step_limit = step_limit;
+	p_result->graph_revision = db ? db->normalization_graph_revision : 0;
+	if (!db || !type_declarations || left >= db->term_count || right >= db->term_count) {
+		return 0;
+	}
+	if (left == right) {
+		p_result->status = PROTOTYPE_TERM_CONVERSION_EQUAL;
+		p_result->reason = PROTOTYPE_TERM_CONVERSION_REASON_NONE;
+		p_result->left_observation = left;
+		p_result->right_observation = right;
+		return 0;
+	}
+
+	options.p_normalization_status = &normalization_status;
+	options.p_normalization_reason = &normalization_reason;
+	options.p_steps_remaining = &steps_remaining;
+	options.p_steps_used = &steps_used;
+	if (normalization_equal_at_depth(
+			db,
+			type_declarations,
+			definitions,
+			options,
+			left,
+			right,
+			&equal,
+			0
+		) != 0 || normalization_status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
+		conversion_result_from_normalization_status(
+			p_result,
+			normalization_status,
+			normalization_reason
 		);
+	} else {
+		p_result->status = equal ?
+			PROTOTYPE_TERM_CONVERSION_EQUAL : PROTOTYPE_TERM_CONVERSION_NOT_EQUAL;
+		p_result->reason = PROTOTYPE_TERM_CONVERSION_REASON_NONE;
+		struct prototype_term_reduction_options observation_options = options;
+		observation_options.p_normalization_status = NULL;
+		observation_options.p_normalization_reason = NULL;
+		observation_options.p_steps_remaining = NULL;
+		observation_options.p_steps_used = NULL;
+		if (prototype_term_perform_with_options(
+				db,
+				type_declarations,
+				definitions,
+				observation_options,
+				left,
+				&p_result->left_observation
+			) != 0 || prototype_term_perform_with_options(
+				db,
+				type_declarations,
+				definitions,
+				observation_options,
+				right,
+				&p_result->right_observation
+			) != 0) {
+			p_result->status = PROTOTYPE_TERM_CONVERSION_INVALID;
+			p_result->reason = PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH;
+		}
+	}
+	p_result->steps_used = steps_used;
+	p_result->graph_revision = db->normalization_graph_revision;
+	return 0;
 }
 
 static int int_literal_fits_int32(int64_t value) {
@@ -8003,28 +8118,47 @@ static int dispatch_operation_request_step(
 	);
 }
 
-int prototype_term_normalization_equal_with_profile(
+int prototype_term_compare_for_conversion(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t left,
 	uint32_t right,
-	int* p_equal
+	uint64_t step_limit,
+	struct prototype_term_conversion_result* p_result
 ) {
 	struct prototype_term_reduction_options options;
 	if (normalization_profile_options(profile, definitions, &options) != 0) {
-		return -1;
+		if (!p_result) {
+			return -1;
+		}
+		memset(p_result, 0, sizeof(*p_result));
+		p_result->status = PROTOTYPE_TERM_CONVERSION_INVALID;
+		p_result->reason = PROTOTYPE_TERM_CONVERSION_REASON_UNSUPPORTED_RULE;
+		p_result->profile = profile;
+		p_result->left = left;
+		p_result->right = right;
+		p_result->left_observation = PROTOTYPE_INVALID_ID;
+		p_result->right_observation = PROTOTYPE_INVALID_ID;
+		p_result->step_limit = step_limit;
+		p_result->graph_revision = db ? db->normalization_graph_revision : 0;
+		return 0;
 	}
-	return prototype_term_normalization_equal_with_options(
+	if (prototype_term_compare_with_options(
 		db,
 		type_declarations,
 		definitions,
 		options,
 		left,
 		right,
-		p_equal
-	);
+		step_limit,
+		p_result
+	) != 0) {
+		return -1;
+	}
+	p_result->profile = profile;
+	return 0;
 }
 
 static const char* safe_symbol_name(const struct symbol_table* symbols, int symbol_id) {

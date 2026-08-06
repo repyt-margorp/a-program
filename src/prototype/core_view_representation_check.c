@@ -92,21 +92,23 @@ int main(void) {
 	if (prototype_term_rebind_type_former_anchors(&term_db, &type_db) != 0) return 20;
 
 	int equal = 0;
+	struct prototype_term_conversion_result conversion;
 	if (prototype_term_core_shape_equal(&term_db, bool_view, two_view, &equal) != 0 || !equal) {
 		return 2;
 	}
-	if (prototype_term_normalization_equal_with_profile(
+	if (prototype_term_compare_for_conversion(
 			&term_db,
 			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-		bool_view,
-		two_view,
-		&equal
+			bool_view,
+			two_view,
+			UINT64_MAX,
+			&conversion
 		) != 0) {
 		return 3;
 	}
-	if (equal) {
+	if (conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
 		return 4;
 	}
 
@@ -114,15 +116,16 @@ int main(void) {
 	uint32_t two_classifier;
 	if (prototype_term_pi(&term_db, bool_view, bool_view, &bool_classifier) != 0 ||
 		prototype_term_pi(&term_db, two_view, two_view, &two_classifier) != 0 ||
-		prototype_term_normalization_equal_with_profile(
+		prototype_term_compare_for_conversion(
 			&term_db,
 			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			bool_classifier,
 			two_classifier,
-			&equal
-		) != 0 || equal) {
+			UINT64_MAX,
+			&conversion
+		) != 0 || conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
 		return 5;
 	}
 

@@ -274,6 +274,42 @@ struct prototype_term_normalization_result {
 	uint64_t graph_revision;
 };
 
+enum prototype_term_conversion_status {
+	PROTOTYPE_TERM_CONVERSION_EQUAL = 1,
+	PROTOTYPE_TERM_CONVERSION_NOT_EQUAL,
+	PROTOTYPE_TERM_CONVERSION_RESIDUAL,
+	PROTOTYPE_TERM_CONVERSION_BLOCKED_EFFECT,
+	PROTOTYPE_TERM_CONVERSION_EXHAUSTED,
+	PROTOTYPE_TERM_CONVERSION_INVALID
+};
+
+enum prototype_term_conversion_reason {
+	PROTOTYPE_TERM_CONVERSION_REASON_NONE = 0,
+	PROTOTYPE_TERM_CONVERSION_REASON_NEUTRAL,
+	PROTOTYPE_TERM_CONVERSION_REASON_OPAQUE_DEFINITION,
+	PROTOTYPE_TERM_CONVERSION_REASON_UNSUPPORTED_RULE,
+	PROTOTYPE_TERM_CONVERSION_REASON_EFFECT_REQUEST,
+	PROTOTYPE_TERM_CONVERSION_REASON_STEP_LIMIT,
+	PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT,
+	PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH
+};
+
+struct prototype_term_conversion_result {
+	int status;
+	int reason;
+	int profile;
+	uint32_t left;
+	uint32_t right;
+	uint32_t left_observation;
+	uint32_t right_observation;
+	uint64_t step_limit;
+	uint64_t steps_used;
+	uint64_t graph_revision;
+};
+
+const char* prototype_term_conversion_status_name(int status);
+const char* prototype_term_conversion_reason_name(int reason);
+
 enum prototype_term_normalization_cache_state {
 	PROTOTYPE_TERM_NORMALIZATION_CACHE_EMPTY = 0,
 	PROTOTYPE_TERM_NORMALIZATION_CACHE_IN_PROGRESS,
@@ -314,6 +350,7 @@ struct prototype_term_reduction_options {
 	/* Internal callers may distinguish a fuel stop from an invalid graph
 	 * without changing the established strict evaluator ABI. */
 	int* p_normalization_status;
+	int* p_normalization_reason;
 	uint64_t* p_steps_remaining;
 	uint64_t* p_steps_used;
 	prototype_term_operation_dispatch_fn operation_dispatch;
@@ -959,38 +996,25 @@ int prototype_term_perform_with_options(
 	uint32_t term_id,
 	uint32_t* p_ret
 );
-int prototype_term_normalization_equal(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t left,
-	uint32_t right,
-	int* p_equal
-);
-int prototype_term_normalization_equal_with_definitions(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	uint32_t left,
-	uint32_t right,
-	int* p_equal
-);
-int prototype_term_normalization_equal_with_options(
+int prototype_term_compare_with_options(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t left,
 	uint32_t right,
-	int* p_equal
+	uint64_t step_limit,
+	struct prototype_term_conversion_result* p_result
 );
-int prototype_term_normalization_equal_with_profile(
+int prototype_term_compare_for_conversion(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t left,
 	uint32_t right,
-	int* p_equal
+	uint64_t step_limit,
+	struct prototype_term_conversion_result* p_result
 );
 void prototype_term_normalization_cache_clear(struct prototype_term_db* db);
 void prototype_term_notify_graph_mutation(struct prototype_term_db* db);

@@ -233,18 +233,18 @@ int main(void) {
 		prototype_substitution_get(
 			&substitutions, clone_substitution
 		)->target_context != dependent_context ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			&term_db,
 			&type_declarations,
 			dependent_reindexed,
 			int_type
-		) ||
-		!prototype_judgement_classifier_normalization_equal(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ||
+		!(prototype_judgement_classifier_conversion(
 			&term_db,
 			&type_declarations,
 			cloned_classifier,
 			dependent_classifier
-		) ||
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ||
 		prototype_substitution_get(&substitutions, dependent_section) == NULL ||
 		prototype_substitution_get(&substitutions, projection) == NULL ||
 		prototype_substitution_db_validate(

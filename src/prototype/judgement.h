@@ -688,14 +688,15 @@ int prototype_judgement_pi_parts(
 	uint32_t* p_codomain_family
 );
 
-int prototype_judgement_classifier_normalization_equal(
+struct prototype_term_conversion_result prototype_judgement_classifier_conversion(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t expected,
 	uint32_t actual
 );
 
-int prototype_judgement_classifier_normalization_equal_with_definitions(
+struct prototype_term_conversion_result
+prototype_judgement_classifier_conversion_with_definitions(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,

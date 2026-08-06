@@ -624,11 +624,14 @@ The order is semantic, not merely convenient.
 
 ### Phase 1: Existing-kernel cleanup without HOTT tags
 
-- [ ] Separate alpha-canonical TermDB interning from shape/link comparison.
-- [ ] Introduce structured conversion outcomes.
+- [x] Separate alpha-canonical TermDB interning from shape/link comparison.
+- [x] Introduce structured conversion outcomes.
 - [ ] Refactor JudgementDB proof payloads.
 - [ ] Introduce typed constraint records.
 - [ ] Add tests proving TypeView/core sharing never establishes object equality.
+
+The structured conversion item is planned and tracked in
+`doc/2026-08-06T03-00-00-STRUCTURED-CONVERSION-RESULT-MIGRATION.md`.
 
 These changes should remain artifact v61 only if they preserve every serialized
 numeric and semantic schema. If proof serialization changes, bump immediately

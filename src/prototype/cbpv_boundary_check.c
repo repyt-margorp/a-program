@@ -167,12 +167,12 @@ int main(void) {
 			99,
 			terminal_effect_row,
 			&substituted_scoped_row
-		) != 0 || !prototype_judgement_classifier_normalization_equal(
+		) != 0 || !(prototype_judgement_classifier_conversion(
 			&term_db,
 			&type_db,
 			substituted_scoped_row,
 			scoped_terminal_row
-		) || prototype_term_computation_type(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_computation_type(
 			&term_db, symbolic_effect_union, value, &row_computation
 		) != 0 || prototype_term_classifier_view(&term_db, row_computation, &view) != 0 ||
 		view.effect_row != symbolic_effect_union ||
@@ -197,12 +197,12 @@ int main(void) {
 			terminal_computation,
 			&solved_symbolic_computation
 		) != 0 ||
-		!prototype_judgement_classifier_normalization_equal(
+		!(prototype_judgement_classifier_conversion(
 			&term_db,
 			&type_db,
 			solved_symbolic_computation,
 			terminal_computation
-		)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return 1;
 	}
 	struct prototype_term_normalization_result normalization;

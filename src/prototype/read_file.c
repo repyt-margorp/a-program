@@ -168,6 +168,7 @@ static struct prototype_artifact_debug_term_name artifact_debug_term_names[ARTIF
 static struct prototype_artifact_debug_type_name artifact_debug_type_names[ARTIFACT_DEBUG_NAME_CAPACITY];
 static struct prototype_artifact_debug_constructor_name artifact_debug_constructor_names[ARTIFACT_DEBUG_NAME_CAPACITY];
 static struct prototype_term_definition artifact_definitions[ARTIFACT_DEFINITION_CAPACITY];
+
 static struct prototype_type_declaration provider_type_declaration_storage[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration provider_constructor_declaration_storage[CONSTRUCTOR_CAPACITY];
 static struct prototype_type_parameter_declaration provider_parameter_declaration_storage[PARAMETER_CAPACITY];
@@ -1223,7 +1224,7 @@ static int check_export_normalization_equal(
 		return 1;
 	}
 	uint32_t external_ref;
-	int equal = 0;
+	struct prototype_term_conversion_result conversion;
 	if (prototype_term_external_ref(
 			&term_db,
 			(struct prototype_qualified_name){
@@ -1232,19 +1233,30 @@ static int check_export_normalization_equal(
 			},
 			&external_ref
 		) != 0 ||
-		prototype_term_normalization_equal_with_definitions(
+		prototype_term_compare_with_options(
 			&term_db,
 			&type_declarations,
 			&definition_env,
+			(struct prototype_term_reduction_options){
+				.flags = PROTOTYPE_TERM_REDUCE_DEFAULT |
+					PROTOTYPE_TERM_REDUCE_DEFINITIONS
+			},
 			external_ref,
 			artifact_interface.term_exports[export_id].local_term,
-			&equal
+			UINT64_MAX,
+			&conversion
 		) != 0) {
 		fprintf(stderr, "%s: failed to check export normalization equality: %s\n", path, name);
 		symbol_table_free(&symbols);
 		return 1;
 	}
-	printf("export-normalization-equal %s %s\n", name, equal ? "yes" : "no");
+	printf("export-normalization-equal %s %s\n",
+		name,
+		conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL ? "yes" : "no");
+	printf("conversion-status %s reason=%s steps=%" PRIu64 "\n",
+		prototype_term_conversion_status_name(conversion.status),
+		prototype_term_conversion_reason_name(conversion.reason),
+		conversion.steps_used);
 	symbol_table_free(&symbols);
 	return 0;
 }
@@ -1253,6 +1265,9 @@ static int reduction_options_from_mode(
 	const char* mode,
 	struct prototype_term_reduction_options* p_options
 ) {
+	if (p_options) {
+		memset(p_options, 0, sizeof(*p_options));
+	}
 	if (!mode || !p_options || strcmp(mode, "default") == 0) {
 		if (p_options) {
 			p_options->flags =
@@ -1416,15 +1431,16 @@ static int check_exports_normalization_equal(
 		symbol_table_free(&symbols);
 		return 1;
 	}
-	int equal = 0;
-	if (prototype_term_normalization_equal_with_options(
+	struct prototype_term_conversion_result conversion;
+	if (prototype_term_compare_with_options(
 			&term_db,
 			&type_declarations,
 			&definition_env,
 			options,
 			artifact_interface.term_exports[left_export].local_term,
 			artifact_interface.term_exports[right_export].local_term,
-			&equal
+			UINT64_MAX,
+			&conversion
 		) != 0) {
 		fprintf(stderr, "%s: failed to check export normalization equality: %s %s\n",
 			path,
@@ -1437,7 +1453,11 @@ static int check_exports_normalization_equal(
 		left_name,
 		right_name,
 		reduction_mode ? reduction_mode : "default",
-		equal ? "yes" : "no");
+		conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL ? "yes" : "no");
+	printf("conversion-status %s reason=%s steps=%" PRIu64 "\n",
+		prototype_term_conversion_status_name(conversion.status),
+		prototype_term_conversion_reason_name(conversion.reason),
+		conversion.steps_used);
 	symbol_table_free(&symbols);
 	return 0;
 }
@@ -1457,7 +1477,7 @@ static int check_compiled_exports_normalization_equal(
 	int right_symbol;
 	uint32_t left_export;
 	uint32_t right_export;
-	int equal = 0;
+	struct prototype_term_conversion_result conversion;
 
 	if (!symbols || !interface || !term_db || !type_declarations ||
 		!left_name || !right_name ||
@@ -1477,14 +1497,15 @@ static int check_compiled_exports_normalization_equal(
 	if (left_symbol < 0 || right_symbol < 0 ||
 		prototype_artifact_interface_find_term_export(interface, left_symbol, &left_export) != 0 ||
 		prototype_artifact_interface_find_term_export(interface, right_symbol, &right_export) != 0 ||
-		prototype_term_normalization_equal_with_options(
+		prototype_term_compare_with_options(
 			term_db,
 			type_declarations,
 			&definition_env,
 			options,
 			interface->term_exports[left_export].local_term,
 			interface->term_exports[right_export].local_term,
-			&equal
+			UINT64_MAX,
+			&conversion
 		) != 0) {
 		return -1;
 	}
@@ -1492,8 +1513,12 @@ static int check_compiled_exports_normalization_equal(
 		left_name,
 		right_name,
 		reduction_mode ? reduction_mode : "default",
-		equal ? "yes" : "no");
-	return equal ? 0 : 1;
+		conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL ? "yes" : "no");
+	printf("conversion-status %s reason=%s steps=%" PRIu64 "\n",
+		prototype_term_conversion_status_name(conversion.status),
+		prototype_term_conversion_reason_name(conversion.reason),
+		conversion.steps_used);
+	return conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL ? 0 : 1;
 }
 
 static int check_exports_shape_equal(
