@@ -11123,14 +11123,13 @@ static int find_existing_term_by_canonical_key(
 		if (!canonical_keys_equal(&candidate, key)) {
 			continue;
 		}
-			if (prototype_term_view_shape_equal_cross_db(
+			if (prototype_term_view_shape_equal_for_link(
 					terms,
 					type_declarations,
 					i,
 					terms,
 				type_declarations,
 				appended_term,
-				1,
 				&same_term
 			) != 0) {
 			return -1;
@@ -11829,23 +11828,6 @@ int prototype_artifact_append_graph(
 	return 0;
 }
 
-int prototype_canonical_link_table_find(
-	const struct prototype_canonical_link_table* table,
-	const struct prototype_term_canonical_key* key,
-	uint32_t* p_entry
-) {
-	if (!table || !key || !p_entry) {
-		return -1;
-	}
-	for (size_t i = 0; i < table->entry_count; ++i) {
-		if (canonical_keys_equal(&table->entries[i].canonical_key, key)) {
-			*p_entry = (uint32_t)i;
-			return 0;
-		}
-	}
-	return 1;
-}
-
 int prototype_canonical_link_table_add_metadata(
 	struct prototype_canonical_link_table* table,
 	const struct prototype_term_db* terms,
@@ -11880,14 +11862,13 @@ int prototype_canonical_link_table_add_metadata(
 				return -1;
 			}
 			int same_term = 0;
-				if (prototype_term_view_shape_equal_cross_db(
+				if (prototype_term_view_shape_equal_for_link(
 						candidate->terms,
 						candidate->type_declarations,
 						candidate->local_term,
 					terms,
 					type_declarations,
 					label->term,
-					1,
 					&same_term
 				) != 0) {
 				return -1;
@@ -13844,35 +13825,6 @@ static int lookup_source_expectation_classifier(
 	return -1;
 }
 
-static int find_local_term_by_key(
-	const struct compile_context* ctx,
-	const struct prototype_term_canonical_key* key,
-	uint32_t* p_term
-) {
-	if (!ctx || !key || !p_term) {
-		return -1;
-	}
-	if (key->node_count == 0 || !canonical_key_is_cross_artifact_linkable(key)) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < (uint32_t)ctx->terms->term_count; ++i) {
-		struct prototype_term_canonical_key candidate;
-		if (prototype_term_canonical_key_with_types(
-				ctx->terms,
-				ctx->type_declarations,
-				i,
-				&candidate
-			) != 0) {
-			return -1;
-		}
-		if (canonical_keys_equal(&candidate, key)) {
-			*p_term = i;
-			return 0;
-		}
-	}
-	return -1;
-}
-
 static int lookup_imported_term_classifier(
 	struct compile_context* ctx,
 	struct prototype_qualified_name name,
@@ -13901,10 +13853,9 @@ static int lookup_imported_term_classifier(
 			continue;
 		}
 		/* The imported interface has already been relocated into ctx->terms by
-		 * prototype_artifact_append_graph.  Its classifier ID is therefore the
-		 * authoritative reference.  A canonical-key lookup is only a fallback:
-		 * classifier families can contain bound/type-local references and are not
-		 * necessarily cross-artifact-linkable keys. */
+		 * prototype_artifact_append_graph. Its classifier ID is authoritative.
+		 * A canonical key without a source term can select candidates but cannot
+		 * validate structural identity, so there is no key-only fallback. */
 		if (interface->term_exports[export_id].classifier != PROTOTYPE_INVALID_ID &&
 			interface->term_exports[export_id].classifier < ctx->terms->term_count &&
 			artifact_term_present(
@@ -13913,11 +13864,7 @@ static int lookup_imported_term_classifier(
 			*p_classifier = interface->term_exports[export_id].classifier;
 			return 0;
 		}
-		return find_local_term_by_key(
-			ctx,
-			&interface->term_exports[export_id].classifier_key,
-			p_classifier
-		);
+		return -1;
 	}
 	return -1;
 }
@@ -13998,9 +13945,6 @@ static int build_imported_external_definition_env(
 		return -1;
 	}
 	size_t definition_count = 0;
-	struct prototype_term_canonical_key representative_keys[1024];
-	struct prototype_qualified_name representative_names[1024];
-	size_t representative_count = 0;
 	for (size_t i = 0; i < ctx->imported_interface_count; ++i) {
 		const struct prototype_artifact_interface* interface =
 			ctx->imported_interfaces[i];
@@ -14015,77 +13959,17 @@ static int build_imported_external_definition_env(
 				continue;
 			}
 
-			struct prototype_qualified_name representative_name = qualified_name_make(
-				export->namespace_symbol_id,
-				export->name_symbol_id
-			);
-			int found_representative = 0;
-			for (size_t k = 0; k < representative_count; ++k) {
-				if (canonical_keys_equal(
-						&representative_keys[k],
-						&export->canonical_key
-					)) {
-					representative_name = representative_names[k];
-					found_representative = 1;
-					break;
-				}
-			}
-			if (!found_representative) {
-				if (representative_count >= 1024) {
-					return -1;
-				}
-				representative_keys[representative_count] = export->canonical_key;
-				representative_names[representative_count] = representative_name;
-				representative_count++;
-			}
-
-			uint32_t local_term;
-			if (export->local_term < ctx->terms->term_count) {
-				local_term = export->local_term;
-			} else if (find_local_term_by_key(
-					ctx, &export->canonical_key, &local_term
-				) != 0) {
-				local_term = PROTOTYPE_INVALID_ID;
-			}
-			if (local_term != PROTOTYPE_INVALID_ID) {
-				if (definition_count >= definition_capacity) {
-					return -1;
-				}
-					definitions[definition_count].name = qualified_name_make(
-						export->namespace_symbol_id,
-						export->name_symbol_id
-					);
-				definitions[definition_count].term = local_term;
-				definitions[definition_count].classifier = PROTOTYPE_INVALID_ID;
-				definitions[definition_count].transparency =
-					PROTOTYPE_TERM_DEFINITION_TRANSPARENT;
-				definitions[definition_count].canonical_key = export->canonical_key;
-				definition_count++;
-				continue;
-			}
-
-			uint32_t representative_term;
-			if (prototype_term_external_ref(
-					ctx->terms,
-					representative_name,
-					&representative_term
-				) != 0) {
-				return -1;
-			}
-			if (qualified_names_equal(
-				representative_name,
-				qualified_name_make(export->namespace_symbol_id, export->name_symbol_id)
-			)) {
+			if (export->local_term >= ctx->terms->term_count) {
 				continue;
 			}
 			if (definition_count >= definition_capacity) {
 				return -1;
 			}
-					definitions[definition_count].name = qualified_name_make(
-						export->namespace_symbol_id,
-						export->name_symbol_id
-					);
-			definitions[definition_count].term = representative_term;
+			definitions[definition_count].name = qualified_name_make(
+				export->namespace_symbol_id,
+				export->name_symbol_id
+			);
+			definitions[definition_count].term = export->local_term;
 			definitions[definition_count].classifier = PROTOTYPE_INVALID_ID;
 			definitions[definition_count].transparency =
 				PROTOTYPE_TERM_DEFINITION_TRANSPARENT;

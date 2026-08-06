@@ -830,24 +830,33 @@ int prototype_term_source_shape_equal(
 	uint32_t right,
 	int* p_equal
 );
-int prototype_term_view_shape_equal_cross_db(
+/* Link comparisons use canonical keys only to select candidates. These
+ * functions always validate the complete cross-database term structure. */
+int prototype_term_view_shape_equal_for_link(
 	const struct prototype_term_db* left_db,
 	const struct prototype_type_declaration_db* left_type_declarations,
 	uint32_t left,
 	const struct prototype_term_db* right_db,
 	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right,
-	int ignore_match_frames,
 	int* p_equal
 );
-int prototype_term_core_shape_equal_cross_db(
+int prototype_term_source_shape_equal_for_link(
 	const struct prototype_term_db* left_db,
 	const struct prototype_type_declaration_db* left_type_declarations,
 	uint32_t left,
 	const struct prototype_term_db* right_db,
 	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right,
-	int ignore_match_frames,
+	int* p_equal
+);
+int prototype_term_core_shape_equal_for_link(
+	const struct prototype_term_db* left_db,
+	const struct prototype_type_declaration_db* left_type_declarations,
+	uint32_t left,
+	const struct prototype_term_db* right_db,
+	const struct prototype_type_declaration_db* right_type_declarations,
+	uint32_t right,
 	int* p_equal
 );
 int prototype_term_canonical_key(

@@ -1710,12 +1710,6 @@ int prototype_canonical_link_table_add_metadata(
 	int reject_frame_local_references
 );
 
-int prototype_canonical_link_table_find(
-	const struct prototype_canonical_link_table* table,
-	const struct prototype_term_canonical_key* key,
-	uint32_t* p_entry
-);
-
 int prototype_ast_compile_pending(
 	struct prototype_ast_db* asts,
 	struct prototype_term_db* terms,
