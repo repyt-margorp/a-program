@@ -2,7 +2,7 @@
 
 Date: 2026-08-07
 
-Status: implemented and validated; completion record pending commit
+Status: implemented and validated
 
 Parent plan:
 
@@ -482,12 +482,12 @@ Exit criteria:
 
 ### C1-7: Documentation and completion record
 
-Status: [ ] in progress; implementation commit not yet recorded
+Status: [x] complete
 
 Tasks:
 
 - [x] Update this phase sheet incrementally as each phase completes.
-- [ ] Record final commit IDs and exact test commands.
+- [x] Record final commit IDs and exact test commands.
 - [x] Update V2-C1 in the parent plan from `planned` to `complete` only after
   C1-6 passes.
 - [x] Record any newly discovered semantic defect as a separate follow-up;
@@ -581,9 +581,9 @@ V2-C1 must not:
 - [x] C1-4 build linkage updated with required approval.
 - [x] C1-5 law-level tests expanded.
 - [x] C1-6 full regression and artifact parity passed.
-- [ ] C1-7 documentation finalized.
+- [x] C1-7 documentation finalized.
 - [x] Parent V2-C1 status marked complete.
-- [ ] Final implementation commit recorded: `pending`.
+- [x] Final implementation commit recorded: `77083ea`.
 
 V2-C1 is complete only when every item above is checked. Creating `context.c`
 without the ownership, relocation, law, and artifact checks is not completion.
@@ -614,6 +614,9 @@ Implemented ownership boundary:
   `instantiate_pure_family_in_context` typing helper;
 - `src/prototype/ast.c` retains artifact orchestration and elaboration but no
   longer defines context/substitution semantics.
+
+Implementation commit: `77083ea` (`refactor: extract context and substitution
+semantics`).
 
 Validation commands:
 
