@@ -110,6 +110,31 @@ static int build_match_with_foreign_ih(
 	);
 }
 
+static int build_match_with_binder_role(
+	struct prototype_term_db* db,
+	uint32_t scrutinee,
+	int is_recursive,
+	uint32_t* p_match
+) {
+	uint32_t binder = prototype_term_fresh_binder(db);
+	uint32_t variable;
+	struct prototype_case_binder case_binder;
+	struct prototype_match_case_input match_case;
+	if (binder == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(db, binder, &variable) != 0) {
+		return -1;
+	}
+	case_binder.binder_id = binder;
+	case_binder.is_recursive = is_recursive;
+	match_case.case_label_symbol_id = 3;
+	match_case.constructor_owner = PROTOTYPE_INVALID_ID;
+	match_case.constructor_id = 3;
+	match_case.binders = &case_binder;
+	match_case.binder_count = 1;
+	match_case.body = variable;
+	return prototype_term_match(db, scrutinee, &match_case, 1, p_match);
+}
+
 int main(void) {
 	struct prototype_term_db left_db;
 	struct prototype_term_db right_db;
@@ -266,6 +291,20 @@ int main(void) {
 			&equal
 		) != 0 || equal) {
 		return 13;
+	}
+
+	uint32_t recursive_role_match;
+	uint32_t plain_role_match;
+	if (build_match_with_binder_role(
+			&left_db, left_scrutinee, 1, &recursive_role_match
+		) != 0 || build_match_with_binder_role(
+			&right_db, right_scrutinee, 0, &plain_role_match
+		) != 0 || prototype_term_view_shape_equal_for_link(
+			&left_db, NULL, recursive_role_match,
+			&right_db, NULL, plain_role_match,
+			&equal
+		) != 0 || equal) {
+		return 14;
 	}
 
 	return 0;

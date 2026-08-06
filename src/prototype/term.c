@@ -600,7 +600,7 @@ int prototype_term_classifier_view(
 	return 0;
 }
 
-struct term_compare_env {
+struct term_scope_env {
 	uint32_t left[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t right[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t count;
@@ -664,8 +664,8 @@ static void canonical_hash_mix_tag(uint64_t* p_hash, uint32_t tag) {
 	canonical_hash_mix_u32(p_hash, tag);
 }
 
-static int term_compare_env_push_binder(
-	struct term_compare_env* env,
+static int term_scope_env_push_binder(
+	struct term_scope_env* env,
 	uint32_t left_binder,
 	uint32_t right_binder
 ) {
@@ -687,8 +687,8 @@ static int term_compare_env_push_binder(
 	return 0;
 }
 
-static int term_compare_env_lookup_left_binder(
-	const struct term_compare_env* env,
+static int term_scope_env_lookup_left_binder(
+	const struct term_scope_env* env,
 	uint32_t left_binder,
 	uint32_t* p_right_binder
 ) {
@@ -705,8 +705,8 @@ static int term_compare_env_lookup_left_binder(
 	return 0;
 }
 
-static int term_compare_env_contains_right_binder(
-	const struct term_compare_env* env,
+static int term_scope_env_contains_right_binder(
+	const struct term_scope_env* env,
 	uint32_t right_binder
 ) {
 	if (!env) {
@@ -720,23 +720,23 @@ static int term_compare_env_contains_right_binder(
 	return 0;
 }
 
-static int shape_vars_equal(
-	const struct term_compare_env* env,
+static int term_scope_binders_equal(
+	const struct term_scope_env* env,
 	uint32_t left_binder,
 	uint32_t right_binder
 ) {
 	uint32_t mapped_right;
-	if (term_compare_env_lookup_left_binder(env, left_binder, &mapped_right)) {
+	if (term_scope_env_lookup_left_binder(env, left_binder, &mapped_right)) {
 		return mapped_right == right_binder;
 	}
-	if (term_compare_env_contains_right_binder(env, right_binder)) {
+	if (term_scope_env_contains_right_binder(env, right_binder)) {
 		return 0;
 	}
 	return left_binder == right_binder;
 }
 
-static int term_compare_env_push_frame(
-	struct term_compare_env* env,
+static int term_scope_env_push_frame(
+	struct term_scope_env* env,
 	uint32_t left_frame,
 	uint32_t right_frame
 ) {
@@ -758,8 +758,8 @@ static int term_compare_env_push_frame(
 	return 0;
 }
 
-static int term_compare_frames_equal(
-	const struct term_compare_env* env,
+static int term_scope_frames_equal(
+	const struct term_scope_env* env,
 	uint32_t left_frame,
 	uint32_t right_frame,
 	int* p_bound
@@ -799,7 +799,7 @@ static int shape_terms_equal_at_depth(
 	const struct prototype_term_db* db,
 	uint32_t left_id,
 	uint32_t right_id,
-	struct term_compare_env* env,
+	struct term_scope_env* env,
 	int type_view_compare_mode,
 	uint32_t depth
 );
@@ -808,7 +808,7 @@ static int shape_match_cases_equal_at_depth(
 	const struct prototype_term_db* db,
 	const struct prototype_match_case* left_case,
 	const struct prototype_match_case* right_case,
-	struct term_compare_env* env,
+	struct term_scope_env* env,
 	int type_view_compare_mode,
 	uint32_t depth
 ) {
@@ -838,7 +838,10 @@ static int shape_match_cases_equal_at_depth(
 			&db->case_binders[left_case->first_binder + i];
 		const struct prototype_case_binder* right_binder =
 			&db->case_binders[right_case->first_binder + i];
-		if (term_compare_env_push_binder(env, left_binder->binder_id, right_binder->binder_id) != 0) {
+		if (left_binder->is_recursive != right_binder->is_recursive ||
+			term_scope_env_push_binder(
+				env, left_binder->binder_id, right_binder->binder_id
+			) != 0) {
 			env->count = saved_count;
 			return 0;
 		}
@@ -879,7 +882,7 @@ static int shape_terms_equal_at_depth(
 	const struct prototype_term_db* db,
 	uint32_t left_id,
 	uint32_t right_id,
-	struct term_compare_env* env,
+	struct term_scope_env* env,
 	int type_view_compare_mode,
 	uint32_t depth
 ) {
@@ -901,7 +904,7 @@ static int shape_terms_equal_at_depth(
 	}
 	switch (left->tag) {
 		case PROTOTYPE_TERM_VAR:
-			return shape_vars_equal(env, left->as.var.binder_id, right->as.var.binder_id);
+			return term_scope_binders_equal(env, left->as.var.binder_id, right->as.var.binder_id);
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			return left->as.constructor.constructor_id == right->as.constructor.constructor_id &&
 				shape_terms_equal_at_depth(
@@ -931,7 +934,7 @@ static int shape_terms_equal_at_depth(
 				);
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t saved_count = env->count;
-			if (term_compare_env_push_binder(env, left->as.lambda.binder_id, right->as.lambda.binder_id) != 0) {
+			if (term_scope_env_push_binder(env, left->as.lambda.binder_id, right->as.lambda.binder_id) != 0) {
 				env->count = saved_count;
 				return 0;
 			}
@@ -1055,7 +1058,7 @@ static int shape_terms_equal_at_depth(
 				return 0;
 			}
 			uint32_t saved_frame_count = env->frame_count;
-			if (left_has_frame && term_compare_env_push_frame(
+			if (left_has_frame && term_scope_env_push_frame(
 					env, left->as.match.frame_id, right->as.match.frame_id
 				) != 0) {
 				return 0;
@@ -1114,7 +1117,7 @@ static int shape_terms_equal_at_depth(
 					);
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS: {
 			int frame_is_bound = 0;
-			if (!term_compare_frames_equal(
+			if (!term_scope_frames_equal(
 					env,
 					left->as.induction_hypothesis.frame_id,
 					right->as.induction_hypothesis.frame_id,
@@ -1158,7 +1161,7 @@ static int shape_terms_equal_at_depth(
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return left->as.effect_label.effects == right->as.effect_label.effects;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				return shape_vars_equal(
+				return term_scope_binders_equal(
 					env, left->as.effect_row_var.binder_id, right->as.effect_row_var.binder_id
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
@@ -1171,7 +1174,7 @@ static int shape_terms_equal_at_depth(
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
 			uint32_t saved_count = env->count;
-			if (term_compare_env_push_binder(
+			if (term_scope_env_push_binder(
 					env,
 					left->as.effect_row_forall.binder_id,
 					right->as.effect_row_forall.binder_id
@@ -1244,7 +1247,7 @@ static int cross_shape_terms_equal_at_depth(
 	const struct prototype_term_db* right_db,
 	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right_id,
-	struct term_compare_env* env,
+	struct term_scope_env* env,
 	int type_view_compare_mode,
 	uint32_t depth
 );
@@ -1288,7 +1291,7 @@ static int cross_free_frames_equal(
 	const struct prototype_term_db* right_db,
 	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right_frame,
-	struct term_compare_env* env,
+	struct term_scope_env* env,
 	int type_view_compare_mode,
 	uint32_t depth
 ) {
@@ -1338,7 +1341,7 @@ static int cross_shape_match_cases_equal_at_depth(
 	const struct prototype_term_db* right_db,
 	const struct prototype_type_declaration_db* right_type_declarations,
 	const struct prototype_match_case* right_case,
-	struct term_compare_env* env,
+	struct term_scope_env* env,
 	int type_view_compare_mode,
 	uint32_t depth
 ) {
@@ -1374,7 +1377,10 @@ static int cross_shape_match_cases_equal_at_depth(
 			&left_db->case_binders[left_case->first_binder + i];
 		const struct prototype_case_binder* right_binder =
 			&right_db->case_binders[right_case->first_binder + i];
-		if (term_compare_env_push_binder(env, left_binder->binder_id, right_binder->binder_id) != 0) {
+		if (left_binder->is_recursive != right_binder->is_recursive ||
+			term_scope_env_push_binder(
+				env, left_binder->binder_id, right_binder->binder_id
+			) != 0) {
 			env->count = saved_count;
 			return 0;
 		}
@@ -1401,7 +1407,7 @@ static int cross_shape_terms_equal_at_depth(
 	const struct prototype_term_db* right_db,
 	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right_id,
-	struct term_compare_env* env,
+	struct term_scope_env* env,
 	int type_view_compare_mode,
 	uint32_t depth
 ) {
@@ -1423,7 +1429,7 @@ static int cross_shape_terms_equal_at_depth(
 	}
 	switch (left->tag) {
 		case PROTOTYPE_TERM_VAR:
-			return shape_vars_equal(env, left->as.var.binder_id, right->as.var.binder_id);
+			return term_scope_binders_equal(env, left->as.var.binder_id, right->as.var.binder_id);
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			return left->as.constructor.constructor_id == right->as.constructor.constructor_id &&
 				cross_shape_terms_equal_at_depth(
@@ -1462,7 +1468,7 @@ static int cross_shape_terms_equal_at_depth(
 					);
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t saved_count = env->count;
-			if (term_compare_env_push_binder(env, left->as.lambda.binder_id, right->as.lambda.binder_id) != 0) {
+			if (term_scope_env_push_binder(env, left->as.lambda.binder_id, right->as.lambda.binder_id) != 0) {
 				env->count = saved_count;
 				return 0;
 			}
@@ -1617,7 +1623,7 @@ static int cross_shape_terms_equal_at_depth(
 				return 0;
 			}
 			uint32_t saved_frame_count = env->frame_count;
-			if (left_has_frame && term_compare_env_push_frame(
+			if (left_has_frame && term_scope_env_push_frame(
 					env, left->as.match.frame_id, right->as.match.frame_id
 				) != 0) {
 				return 0;
@@ -1686,7 +1692,7 @@ static int cross_shape_terms_equal_at_depth(
 					);
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS: {
 			int frame_is_bound = 0;
-			int frames_equal = term_compare_frames_equal(
+			int frames_equal = term_scope_frames_equal(
 				env,
 				left->as.induction_hypothesis.frame_id,
 				right->as.induction_hypothesis.frame_id,
@@ -1748,7 +1754,7 @@ static int cross_shape_terms_equal_at_depth(
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return left->as.effect_label.effects == right->as.effect_label.effects;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				return shape_vars_equal(
+				return term_scope_binders_equal(
 					env, left->as.effect_row_var.binder_id, right->as.effect_row_var.binder_id
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
@@ -1763,7 +1769,7 @@ static int cross_shape_terms_equal_at_depth(
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
 			uint32_t saved_count = env->count;
-			if (term_compare_env_push_binder(
+			if (term_scope_env_push_binder(
 					env,
 					left->as.effect_row_forall.binder_id,
 					right->as.effect_row_forall.binder_id
@@ -1842,7 +1848,7 @@ static int shape_equal_for_link_with_type_view_mode(
 		return -1;
 	}
 
-	struct term_compare_env env;
+	struct term_scope_env env;
 	memset(&env, 0, sizeof(env));
 	*p_equal = cross_shape_terms_equal_at_depth(
 			left_db,
@@ -1932,7 +1938,7 @@ static int shape_equal_with_type_view_mode(
 		return -1;
 	}
 
-	struct term_compare_env env;
+	struct term_scope_env env;
 	memset(&env, 0, sizeof(env));
 	*p_equal = shape_terms_equal_at_depth(
 		db,
@@ -1950,7 +1956,7 @@ static int term_intern_alpha_equal_local(
 	uint32_t left,
 	uint32_t right
 ) {
-	struct term_compare_env env;
+	struct term_scope_env env;
 	memset(&env, 0, sizeof(env));
 	return shape_terms_equal_at_depth(
 		db,
@@ -5666,22 +5672,64 @@ static int computation_fold_find_clause(
 	return 0;
 }
 
-static int normalization_equal_at_depth(
+static int conversion_equal_at_depth(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
+	struct term_scope_env* scope,
 	uint32_t left,
 	uint32_t right,
 	int* p_equal,
 	uint32_t depth
 );
 
-static int normalization_equal_match_case_bodies(
+static void normalization_mark_status(
+	struct prototype_term_reduction_options options,
+	int status,
+	int reason
+);
+
+static int conversion_scope_push_binder(
+	struct prototype_term_reduction_options options,
+	struct term_scope_env* scope,
+	uint32_t left_binder,
+	uint32_t right_binder
+) {
+	if (term_scope_env_push_binder(scope, left_binder, right_binder) == 0) {
+		return 0;
+	}
+	normalization_mark_status(
+		options,
+		PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED,
+		PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT
+	);
+	return -1;
+}
+
+static int conversion_scope_push_frame(
+	struct prototype_term_reduction_options options,
+	struct term_scope_env* scope,
+	uint32_t left_frame,
+	uint32_t right_frame
+) {
+	if (term_scope_env_push_frame(scope, left_frame, right_frame) == 0) {
+		return 0;
+	}
+	normalization_mark_status(
+		options,
+		PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED,
+		PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT
+	);
+	return -1;
+}
+
+static int conversion_equal_match_case_bodies(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
+	struct term_scope_env* scope,
 	const struct prototype_match_case* left_case,
 	const struct prototype_match_case* right_case,
 	uint32_t left_body,
@@ -5689,13 +5737,12 @@ static int normalization_equal_match_case_bodies(
 	int* p_equal,
 	uint32_t depth
 ) {
-	if (!db || !left_case || !right_case || !p_equal ||
+	if (!db || !scope || !left_case || !right_case || !p_equal ||
 		left_case->binder_count != right_case->binder_count) {
 		return -1;
 	}
 
-	uint32_t remapped_left = left_body;
-	uint32_t remapped_right = right_body;
+	struct term_scope_env body_scope = *scope;
 	for (uint32_t i = 0; i < left_case->binder_count; ++i) {
 		uint32_t left_binder_index = left_case->first_binder + i;
 		uint32_t right_binder_index = right_case->first_binder + i;
@@ -5703,37 +5750,29 @@ static int normalization_equal_match_case_bodies(
 			right_binder_index >= db->case_binder_count) {
 			return -1;
 		}
-		uint32_t binder_id = prototype_term_fresh_binder(db);
-		uint32_t binder_var;
-		if (binder_id == PROTOTYPE_INVALID_ID ||
-			prototype_term_var(db, binder_id, &binder_var) != 0 ||
-			prototype_term_graph_substitute_bound_var(
-				db,
-				type_declarations,
-				remapped_left,
-				db->case_binders[left_binder_index].binder_id,
-				binder_var,
-				&remapped_left
-			) != 0 ||
-			prototype_term_graph_substitute_bound_var(
-				db,
-				type_declarations,
-				remapped_right,
-				db->case_binders[right_binder_index].binder_id,
-				binder_var,
-				&remapped_right
+		const struct prototype_case_binder* left_binder =
+			&db->case_binders[left_binder_index];
+		const struct prototype_case_binder* right_binder =
+			&db->case_binders[right_binder_index];
+		if (left_binder->is_recursive != right_binder->is_recursive) {
+			*p_equal = 0;
+			return 0;
+		}
+		if (conversion_scope_push_binder(
+				options, &body_scope, left_binder->binder_id, right_binder->binder_id
 			) != 0) {
 			return -1;
 		}
 	}
 
-	return normalization_equal_at_depth(
+	return conversion_equal_at_depth(
 		db,
 		type_declarations,
 		definitions,
 		options,
-		remapped_left,
-		remapped_right,
+		&body_scope,
+		left_body,
+		right_body,
 		p_equal,
 		depth + 1
 	);
@@ -5746,18 +5785,19 @@ static int normalization_equal_match_case_bodies(
  *   match x { c_i -> Comp(E, A_i) }
  *
  * They are the same pointwise family. Keep this commuting conversion in the
- * normalizer so Lambda checking and every other conversion client share it. */
-static int normalization_equal_computation_match(
+ * conversion kernel so Lambda checking and every other client share it. */
+static int conversion_equal_computation_match(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
+	struct term_scope_env* scope,
 	uint32_t computation_id,
 	uint32_t match_id,
 	int* p_equal,
 	uint32_t depth
 ) {
-	if (!db || !p_equal || computation_id >= db->term_count ||
+	if (!db || !scope || !p_equal || computation_id >= db->term_count ||
 		match_id >= db->term_count ||
 		db->terms[computation_id].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
 		db->terms[match_id].tag != PROTOTYPE_TERM_MATCH) {
@@ -5785,17 +5825,33 @@ static int normalization_equal_computation_match(
 	}
 
 	int equal = 0;
-	if (normalization_equal_at_depth(
+	if (conversion_equal_at_depth(
 			db,
 			type_declarations,
 			definitions,
 			options,
+			scope,
 			result_match.as.match.scrutinee,
 			outer_match.as.match.scrutinee,
 			&equal,
 			depth + 1
 		) != 0 || !equal) {
 		return 0;
+	}
+
+	struct term_scope_env match_scope = *scope;
+	/* A solver-generated non-recursive Match may retain an internal frame when
+	 * the corresponding reduced surface family does not. Pair a missing frame
+	 * with INVALID so a vacuous frame is ignored but any IH use is rejected. */
+	if ((result_match.as.match.frame_id != PROTOTYPE_INVALID_ID ||
+		outer_match.as.match.frame_id != PROTOTYPE_INVALID_ID) &&
+		conversion_scope_push_frame(
+			options,
+			&match_scope,
+			result_match.as.match.frame_id,
+			outer_match.as.match.frame_id
+		) != 0) {
+		return -1;
 	}
 
 	for (uint32_t i = 0; i < result_match.as.match.case_count; ++i) {
@@ -5825,11 +5881,12 @@ static int normalization_equal_computation_match(
 			outer_case.constructor_owner != PROTOTYPE_INVALID_ID)) {
 			if (result_case.constructor_owner == PROTOTYPE_INVALID_ID ||
 				outer_case.constructor_owner == PROTOTYPE_INVALID_ID ||
-				normalization_equal_at_depth(
+				conversion_equal_at_depth(
 					db,
 					type_declarations,
 					definitions,
 					options,
+					&match_scope,
 					result_case.constructor_owner,
 					outer_case.constructor_owner,
 					&equal,
@@ -5839,46 +5896,22 @@ static int normalization_equal_computation_match(
 			}
 		}
 
-		uint32_t remapped_result = result_case.body;
-		uint32_t remapped_outer = outer_case.body;
-		for (uint32_t j = 0; j < result_case.binder_count; ++j) {
-			uint32_t result_binder_index = result_case.first_binder + j;
-			uint32_t outer_binder_index = outer_case.first_binder + j;
-			if (result_binder_index >= db->case_binder_count ||
-				outer_binder_index >= db->case_binder_count) {
-				return -1;
-			}
-			uint32_t binder_id = prototype_term_fresh_binder(db);
-			uint32_t binder_var;
-			if (binder_id == PROTOTYPE_INVALID_ID ||
-				prototype_term_var(db, binder_id, &binder_var) != 0 ||
-				prototype_term_graph_substitute_bound_var(
-					db, type_declarations, remapped_result,
-					db->case_binders[result_binder_index].binder_id,
-					binder_var, &remapped_result
-				) != 0 ||
-				prototype_term_graph_substitute_bound_var(
-					db, type_declarations, remapped_outer,
-					db->case_binders[outer_binder_index].binder_id,
-					binder_var, &remapped_outer
-				) != 0) {
-				return -1;
-			}
-		}
-
 		uint32_t branch_computation;
 		if (prototype_term_computation_type(
 				db,
 				computation.as.computation_type.label,
-				remapped_result,
+				result_case.body,
 				&branch_computation
-			) != 0 || normalization_equal_at_depth(
+			) != 0 || conversion_equal_match_case_bodies(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				&match_scope,
+				&result_case,
+				&outer_case,
 				branch_computation,
-				remapped_outer,
+				outer_case.body,
 				&equal,
 				depth + 1
 			) != 0 || !equal) {
@@ -6860,42 +6893,18 @@ int prototype_term_nf_with_options(
 	);
 }
 
-static int match_frame_keys_equal(
-	const struct prototype_term_db* db,
-	uint32_t left_frame,
-	uint32_t right_frame
-) {
-	if (left_frame == right_frame) {
-		return 1;
-	}
-	if (!db ||
-		left_frame >= db->match_frame_count ||
-		right_frame >= db->match_frame_count ||
-		!db->match_frames[left_frame].key.is_linkable ||
-		!db->match_frames[right_frame].key.is_linkable) {
-		return 0;
-	}
-	const struct prototype_match_frame_key* left = &db->match_frames[left_frame].key;
-	const struct prototype_match_frame_key* right = &db->match_frames[right_frame].key;
-	return left->case_count == right->case_count &&
-		left->match_key.hash == right->match_key.hash &&
-		left->match_key.node_count == right->match_key.node_count &&
-		left->match_key.bound_binder_count == right->match_key.bound_binder_count &&
-		left->match_key.free_binder_count == right->match_key.free_binder_count &&
-		left->match_key.has_frame_local_reference == right->match_key.has_frame_local_reference;
-}
-
-static int normalization_equal_at_depth(
+static int conversion_equal_at_depth(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
+	struct term_scope_env* scope,
 	uint32_t left,
 	uint32_t right,
 	int* p_equal,
 	uint32_t depth
 ) {
-	if (!db || !p_equal || left >= db->term_count || right >= db->term_count) {
+	if (!db || !scope || !p_equal || left >= db->term_count || right >= db->term_count) {
 		return -1;
 	}
 	if (depth > 64) {
@@ -6907,17 +6916,53 @@ static int normalization_equal_at_depth(
 		return -1;
 	}
 	*p_equal = 0;
+	if (db->terms[left].tag == PROTOTYPE_TERM_INDUCTION_HYPOTHESIS &&
+		db->terms[right].tag == PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+		int frame_bound = 0;
+		if (!term_scope_frames_equal(
+				scope,
+				db->terms[left].as.induction_hypothesis.frame_id,
+				db->terms[right].as.induction_hypothesis.frame_id,
+				&frame_bound
+			)) {
+			return 0;
+		}
+		return conversion_equal_at_depth(
+			db,
+			type_declarations,
+			definitions,
+			options,
+			scope,
+			db->terms[left].as.induction_hypothesis.argument,
+			db->terms[right].as.induction_hypothesis.argument,
+			p_equal,
+			depth + 1
+		);
+	}
 
 	uint32_t left_whnf;
 	uint32_t right_whnf;
-	if (prototype_term_perform_with_options(db, type_declarations, definitions, options, left, &left_whnf) != 0 ||
-		prototype_term_perform_with_options(db, type_declarations, definitions, options, right, &right_whnf) != 0 ||
+	struct prototype_term_reduction_options whnf_options = options;
+	/* An IH is a neutral term while its owning Match frame is in lexical
+	 * scope. Unfolding it here recreates the same Match recursively instead
+	 * of comparing the two scoped occurrences. */
+	if (scope->frame_count > 0) {
+		whnf_options.flags &= ~PROTOTYPE_TERM_REDUCE_INDUCTION;
+	}
+	if (prototype_term_perform_with_options(
+			db, type_declarations, definitions, whnf_options, left, &left_whnf
+		) != 0 || prototype_term_perform_with_options(
+			db, type_declarations, definitions, whnf_options, right, &right_whnf
+		) != 0 ||
 		left_whnf >= db->term_count ||
 		right_whnf >= db->term_count) {
 		return -1;
 	}
 
 	int shape_equal = 0;
+	/* Local alpha shape is a sufficient reflexivity/congruence fast path.
+	 * Artifact-link compatibility is a separate relation and must never be
+	 * substituted here; a miss continues through scoped conversion. */
 	if (prototype_term_view_shape_equal(
 			db,
 			left_whnf,
@@ -6933,22 +6978,29 @@ static int normalization_equal_at_depth(
 	if (left_term->tag != right_term->tag) {
 		if (left_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
 			right_term->tag == PROTOTYPE_TERM_MATCH) {
-			return normalization_equal_computation_match(
+			return conversion_equal_computation_match(
 				db, type_declarations, definitions, options,
-				left_whnf, right_whnf, p_equal, depth + 1
+				scope, left_whnf, right_whnf, p_equal, depth + 1
 			);
 		}
 		if (left_term->tag == PROTOTYPE_TERM_MATCH &&
 			right_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
-			return normalization_equal_computation_match(
+			return conversion_equal_computation_match(
 				db, type_declarations, definitions, options,
-				right_whnf, left_whnf, p_equal, depth + 1
+				scope, right_whnf, left_whnf, p_equal, depth + 1
 			);
 		}
 		return 0;
 	}
 
 	switch (left_term->tag) {
+		case PROTOTYPE_TERM_VAR:
+			*p_equal = term_scope_binders_equal(
+				scope,
+				left_term->as.var.binder_id,
+				right_term->as.var.binder_id
+			);
+			return 0;
 		case PROTOTYPE_TERM_CONSTRUCTOR: {
 			uint32_t left_representation_id;
 			uint32_t right_representation_id;
@@ -6972,11 +7024,12 @@ static int normalization_equal_at_depth(
 		}
 		case PROTOTYPE_TERM_APP: {
 			int equal = 0;
-			if (normalization_equal_at_depth(
+			if (conversion_equal_at_depth(
 					db,
 					type_declarations,
 					definitions,
 					options,
+					scope,
 					left_term->as.app.function,
 					right_term->as.app.function,
 					&equal,
@@ -6984,11 +7037,12 @@ static int normalization_equal_at_depth(
 				) != 0 || !equal) {
 				return 0;
 			}
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				scope,
 				left_term->as.app.argument,
 				right_term->as.app.argument,
 				p_equal,
@@ -6996,37 +7050,35 @@ static int normalization_equal_at_depth(
 			);
 		}
 		case PROTOTYPE_TERM_LAMBDA: {
-			uint32_t left_var;
-			uint32_t right_body;
-			if (prototype_term_var(db, left_term->as.lambda.binder_id, &left_var) != 0 ||
-				substitute_term(
-					db,
-					type_declarations,
-					right_term->as.lambda.body,
-					right_term->as.lambda.binder_id,
-					left_var,
-					&right_body
+			struct term_scope_env body_scope = *scope;
+			if (conversion_scope_push_binder(
+					options,
+					&body_scope,
+					left_term->as.lambda.binder_id,
+					right_term->as.lambda.binder_id
 				) != 0) {
 				return -1;
 			}
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				&body_scope,
 				left_term->as.lambda.body,
-				right_body,
+				right_term->as.lambda.body,
 				p_equal,
 				depth + 1
 			);
 		}
 		case PROTOTYPE_TERM_PI: {
 			int equal = 0;
-			if (normalization_equal_at_depth(
+			if (conversion_equal_at_depth(
 					db,
 					type_declarations,
 					definitions,
 					options,
+					scope,
 					left_term->as.pi.domain,
 					right_term->as.pi.domain,
 					&equal,
@@ -7034,26 +7086,59 @@ static int normalization_equal_at_depth(
 				) != 0 || !equal) {
 				return 0;
 			}
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				scope,
 				left_term->as.pi.codomain_family,
 				right_term->as.pi.codomain_family,
 				p_equal,
 				depth + 1
 			);
 		}
-		case PROTOTYPE_TERM_MATCH:
+		case PROTOTYPE_TERM_MATCH: {
 			if (left_term->as.match.case_count != right_term->as.match.case_count) {
 				return 0;
 			}
+			int equal = 0;
+			if (conversion_equal_at_depth(
+					db,
+					type_declarations,
+					definitions,
+					options,
+					scope,
+					left_term->as.match.scrutinee,
+					right_term->as.match.scrutinee,
+					&equal,
+					depth + 1
+				) != 0 || !equal) {
+				return 0;
+			}
+			struct term_scope_env match_scope = *scope;
+			/* Frame presence alone is internal metadata. The INVALID pairing makes
+			 * a one-sided frame observable only through an IH reference. */
+			if ((left_term->as.match.frame_id != PROTOTYPE_INVALID_ID ||
+				right_term->as.match.frame_id != PROTOTYPE_INVALID_ID) &&
+				conversion_scope_push_frame(
+					options,
+					&match_scope,
+					left_term->as.match.frame_id,
+					right_term->as.match.frame_id
+				) != 0) {
+				return -1;
+			}
 			for (uint32_t i = 0; i < left_term->as.match.case_count; ++i) {
+				uint32_t left_case_id = left_term->as.match.first_case + i;
+				uint32_t right_case_id = right_term->as.match.first_case + i;
+				if (left_case_id >= db->case_count || right_case_id >= db->case_count) {
+					return -1;
+				}
 				const struct prototype_match_case* left_case =
-					&db->cases[left_term->as.match.first_case + i];
+					&db->cases[left_case_id];
 				const struct prototype_match_case* right_case =
-					&db->cases[right_term->as.match.first_case + i];
+					&db->cases[right_case_id];
 				int use_labels =
 					left_case->constructor_owner == PROTOTYPE_INVALID_ID ||
 					right_case->constructor_owner == PROTOTYPE_INVALID_ID ||
@@ -7072,17 +7157,17 @@ static int normalization_equal_at_depth(
 					left_case->binder_count != right_case->binder_count) {
 					return 0;
 				}
-				int equal = 0;
 				if (!use_labels &&
 					(left_case->constructor_owner != PROTOTYPE_INVALID_ID ||
 					right_case->constructor_owner != PROTOTYPE_INVALID_ID)) {
 					if (left_case->constructor_owner == PROTOTYPE_INVALID_ID ||
 						right_case->constructor_owner == PROTOTYPE_INVALID_ID ||
-						normalization_equal_at_depth(
+						conversion_equal_at_depth(
 							db,
 							type_declarations,
 							definitions,
 							options,
+							&match_scope,
 							left_case->constructor_owner,
 							right_case->constructor_owner,
 							&equal,
@@ -7091,11 +7176,12 @@ static int normalization_equal_at_depth(
 						return 0;
 					}
 				}
-				if (normalization_equal_match_case_bodies(
+				if (conversion_equal_match_case_bodies(
 						db,
 						type_declarations,
 						definitions,
 						options,
+						&match_scope,
 						left_case,
 						right_case,
 						left_case->body,
@@ -7106,34 +7192,31 @@ static int normalization_equal_at_depth(
 					return 0;
 				}
 			}
-			return normalization_equal_at_depth(
-				db,
-				type_declarations,
-				definitions,
-				options,
-				left_term->as.match.scrutinee,
-				right_term->as.match.scrutinee,
-				p_equal,
-				depth + 1
-			);
-			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			if (!match_frame_keys_equal(
-					db,
+			*p_equal = 1;
+			return 0;
+		}
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS: {
+			int frame_bound = 0;
+			if (!term_scope_frames_equal(
+					scope,
 					left_term->as.induction_hypothesis.frame_id,
-					right_term->as.induction_hypothesis.frame_id
+					right_term->as.induction_hypothesis.frame_id,
+					&frame_bound
 				)) {
 				return 0;
 			}
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				scope,
 				left_term->as.induction_hypothesis.argument,
 				right_term->as.induction_hypothesis.argument,
 				p_equal,
 				depth + 1
 			);
+		}
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			*p_equal = left_term->as.type_former.representation_id ==
 				right_term->as.type_former.representation_id;
@@ -7156,9 +7239,9 @@ static int normalization_equal_at_depth(
 			}
 			return 0;
 		}
-			case PROTOTYPE_TERM_TYPE_VIEW:
-				if (type_identity_is_stable(left_term->as.type_view.identity) ||
-					type_identity_is_stable(right_term->as.type_view.identity) ?
+		case PROTOTYPE_TERM_TYPE_VIEW:
+			if (type_identity_is_stable(left_term->as.type_view.identity) ||
+				type_identity_is_stable(right_term->as.type_view.identity) ?
 					!type_identity_equal(
 						left_term->as.type_view.identity,
 						right_term->as.type_view.identity
@@ -7167,11 +7250,12 @@ static int normalization_equal_at_depth(
 				*p_equal = 0;
 				return 0;
 			}
-			if (normalization_equal_at_depth(
+			if (conversion_equal_at_depth(
 					db,
 					type_declarations,
 					definitions,
 					options,
+					scope,
 					left_term->as.type_view.core,
 					right_term->as.type_view.core,
 					p_equal,
@@ -7180,60 +7264,68 @@ static int normalization_equal_at_depth(
 				!*p_equal) {
 				return 0;
 			}
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				scope,
 				left_term->as.type_view.source,
 				right_term->as.type_view.source,
-					p_equal,
-					depth + 1
-				);
-			case PROTOTYPE_TERM_EFFECT_LABEL:
-				*p_equal = left_term->as.effect_label.effects ==
-					right_term->as.effect_label.effects;
-				return 0;
+				p_equal,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+			*p_equal = left_term->as.effect_label.effects ==
+				right_term->as.effect_label.effects;
+			return 0;
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-			*p_equal = left_term->as.effect_row_var.binder_id ==
-				right_term->as.effect_row_var.binder_id;
+			*p_equal = term_scope_binders_equal(
+				scope,
+				left_term->as.effect_row_var.binder_id,
+				right_term->as.effect_row_var.binder_id
+			);
 			return 0;
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
 			int equal = 0;
-			if (normalization_equal_at_depth(
+			if (conversion_equal_at_depth(
 					db, type_declarations, definitions, options,
+					scope,
 					left_term->as.effect_row_union.left,
 					right_term->as.effect_row_union.left,
 					&equal, depth + 1
 				) != 0 || !equal) {
 				return 0;
 			}
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db, type_declarations, definitions, options,
+				scope,
 				left_term->as.effect_row_union.right,
 				right_term->as.effect_row_union.right,
 				p_equal, depth + 1
 			);
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
-			struct term_compare_env env;
-			memset(&env, 0, sizeof(env));
-			if (term_compare_env_push_binder(
-					&env,
+			struct term_scope_env body_scope = *scope;
+			if (conversion_scope_push_binder(
+					options,
+					&body_scope,
 					left_term->as.effect_row_forall.binder_id,
 					right_term->as.effect_row_forall.binder_id
 				) != 0) {
 				return -1;
 			}
-			*p_equal = shape_terms_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
+				type_declarations,
+				definitions,
+				options,
+				&body_scope,
 				left_term->as.effect_row_forall.body,
 				right_term->as.effect_row_forall.body,
-				&env,
-				PROTOTYPE_TYPE_VIEW_COMPARE_SOURCE,
+				p_equal,
 				depth + 1
 			);
-			return 0;
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
 			if (left_term->as.effect_row_operation.operation_id !=
@@ -7241,69 +7333,75 @@ static int normalization_equal_at_depth(
 				*p_equal = 0;
 				return 0;
 			}
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				scope,
 				left_term->as.effect_row_operation.latent_row,
 				right_term->as.effect_row_operation.latent_row,
 				p_equal,
 				depth + 1
 			);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE: {
-				int equal = 0;
-				if (normalization_equal_at_depth(
-						db,
-						type_declarations,
-						definitions,
-						options,
-						left_term->as.computation_type.label,
-						right_term->as.computation_type.label,
-						&equal,
-						depth + 1
-					) != 0 || !equal) {
-					return 0;
-				}
-			return normalization_equal_at_depth(
+			int equal = 0;
+			if (conversion_equal_at_depth(
 					db,
 					type_declarations,
 					definitions,
 					options,
-					left_term->as.computation_type.result,
-					right_term->as.computation_type.result,
-					p_equal,
+					scope,
+					left_term->as.computation_type.label,
+					right_term->as.computation_type.label,
+					&equal,
 					depth + 1
-			);
-		}
-		case PROTOTYPE_TERM_THUNK_TYPE:
-			return normalization_equal_at_depth(
+				) != 0 || !equal) {
+				return 0;
+			}
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				scope,
+				left_term->as.computation_type.result,
+				right_term->as.computation_type.result,
+				p_equal,
+				depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return conversion_equal_at_depth(
+				db,
+				type_declarations,
+				definitions,
+				options,
+				scope,
 				left_term->as.thunk_type.computation,
 				right_term->as.thunk_type.computation,
 				p_equal,
 				depth + 1
 			);
 		case PROTOTYPE_TERM_RETURN:
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				scope,
 				left_term->as.return_term.value,
 				right_term->as.return_term.value,
 				p_equal,
 				depth + 1
 			);
 		case PROTOTYPE_TERM_THUNK:
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db,
 				type_declarations,
 				definitions,
 				options,
+				scope,
 				left_term->as.thunk.computation,
 				right_term->as.thunk.computation,
 				p_equal,
@@ -7311,13 +7409,15 @@ static int normalization_equal_at_depth(
 			);
 		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			int equal = 0;
-			if (normalization_equal_at_depth(
+			if (conversion_equal_at_depth(
 					db, type_declarations, definitions, options,
+					scope,
 					left_term->as.computation_fold.computation,
 					right_term->as.computation_fold.computation,
 					&equal, depth + 1
-				) != 0 || !equal || normalization_equal_at_depth(
+				) != 0 || !equal || conversion_equal_at_depth(
 					db, type_declarations, definitions, options,
+					scope,
 					left_term->as.computation_fold.return_clause,
 					right_term->as.computation_fold.return_clause,
 					&equal, depth + 1
@@ -7331,11 +7431,13 @@ static int normalization_equal_at_depth(
 					&db->computation_fold_clauses[left_term->as.computation_fold.first_clause + i];
 				const struct prototype_computation_fold_clause* right_clause =
 					&db->computation_fold_clauses[right_term->as.computation_fold.first_clause + i];
-				if (normalization_equal_at_depth(
+				if (conversion_equal_at_depth(
 						db, type_declarations, definitions, options,
+						scope,
 						left_clause->operation, right_clause->operation, &equal, depth + 1
-					) != 0 || !equal || normalization_equal_at_depth(
+					) != 0 || !equal || conversion_equal_at_depth(
 						db, type_declarations, definitions, options,
+						scope,
 						left_clause->body, right_clause->body, &equal, depth + 1
 					) != 0 || !equal) {
 					*p_equal = 0;
@@ -7347,13 +7449,15 @@ static int normalization_equal_at_depth(
 		}
 		case PROTOTYPE_TERM_OPERATION_REQUEST: {
 			int equal = 0;
-			if (normalization_equal_at_depth(
+			if (conversion_equal_at_depth(
 					db, type_declarations, definitions, options,
+					scope,
 					left_term->as.operation_request.operation,
 					right_term->as.operation_request.operation,
 					&equal, depth + 1
-				) != 0 || !equal || normalization_equal_at_depth(
+				) != 0 || !equal || conversion_equal_at_depth(
 					db, type_declarations, definitions, options,
+					scope,
 					left_term->as.operation_request.argument,
 					right_term->as.operation_request.argument,
 					&equal, depth + 1
@@ -7361,16 +7465,17 @@ static int normalization_equal_at_depth(
 				*p_equal = 0;
 				return 0;
 			}
-			return normalization_equal_at_depth(
+			return conversion_equal_at_depth(
 				db, type_declarations, definitions, options,
+				scope,
 				left_term->as.operation_request.continuation,
 				right_term->as.operation_request.continuation,
 				p_equal, depth + 1
 			);
 		}
 		default:
-				*p_equal = left_whnf == right_whnf;
-				return 0;
+			*p_equal = left_whnf == right_whnf;
+			return 0;
 	}
 }
 
@@ -7489,11 +7594,14 @@ int prototype_term_compare_with_options(
 	options.p_normalization_reason = &normalization_reason;
 	options.p_steps_remaining = &steps_remaining;
 	options.p_steps_used = &steps_used;
-	if (normalization_equal_at_depth(
+	struct term_scope_env scope;
+	memset(&scope, 0, sizeof(scope));
+	if (conversion_equal_at_depth(
 			db,
 			type_declarations,
 			definitions,
 			options,
+			&scope,
 			left,
 			right,
 			&equal,
