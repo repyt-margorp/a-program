@@ -27,7 +27,7 @@ typedef int (*prototype_term_operation_dispatch_fn)(
 );
 
 #define PROTOTYPE_BASE_NAMESPACE_ID (-1)
-#define PROTOTYPE_SCOPE_BINDER_CAPACITY 512
+#define PROTOTYPE_SCOPE_BINDING_CAPACITY 512
 #define PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY 1024
 #define PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY 4096
 #define PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT UINT64_C(100000)
@@ -378,7 +378,7 @@ struct prototype_term {
 	int tag;
 	union {
 		struct {
-			uint32_t binder_id;
+			uint32_t binding_id;
 		} var;
 		struct {
 			uint32_t owner;
@@ -389,7 +389,7 @@ struct prototype_term {
 			uint32_t argument;
 		} app;
 		struct {
-			uint32_t binder_id;
+			uint32_t binding_id;
 			uint32_t body;
 		} lambda;
 		struct {
@@ -400,7 +400,7 @@ struct prototype_term {
 			uint32_t scrutinee;
 			uint32_t first_case;
 			uint32_t case_count;
-			uint32_t frame_id;
+			uint32_t ih_scope_id;
 		} match;
 		struct {
 			uint32_t representation_id;
@@ -416,7 +416,7 @@ struct prototype_term {
 			uint32_t source;
 		} type_view;
 			struct {
-				uint32_t frame_id;
+				uint32_t ih_scope_id;
 				uint32_t argument;
 		} induction_hypothesis;
 		struct {
@@ -443,14 +443,14 @@ struct prototype_term {
 			unsigned effects;
 		} effect_label;
 		struct {
-			uint32_t binder_id;
+			uint32_t binding_id;
 		} effect_row_var;
 		struct {
 			uint32_t left;
 			uint32_t right;
 		} effect_row_union;
 		struct {
-			uint32_t binder_id;
+			uint32_t binding_id;
 			uint32_t body;
 		} effect_row_forall;
 		struct {
@@ -501,7 +501,7 @@ struct prototype_match_case {
 };
 
 struct prototype_case_binder {
-	uint32_t binder_id;
+	uint32_t binding_id;
 	int is_recursive;
 };
 
@@ -525,15 +525,15 @@ struct prototype_term_canonical_key {
 	int has_type_universe_reference;
 };
 
-struct prototype_match_frame_key {
+struct prototype_ih_scope_key {
 	struct prototype_term_canonical_key match_key;
 	uint32_t case_count;
 	int is_linkable;
 };
 
-struct prototype_match_frame {
+struct prototype_ih_scope {
 	uint32_t match_term;
-	struct prototype_match_frame_key key;
+	struct prototype_ih_scope_key key;
 };
 
 struct prototype_term_db {
@@ -550,16 +550,16 @@ struct prototype_term_db {
 	size_t case_binder_count;
 	size_t case_binder_capacity;
 
-	struct prototype_match_frame* match_frames;
-	size_t match_frame_count;
-	size_t match_frame_capacity;
+	struct prototype_ih_scope* ih_scopes;
+	size_t ih_scope_count;
+	size_t ih_scope_capacity;
 
 	struct prototype_computation_fold_clause
 		computation_fold_clauses[PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY];
 	size_t computation_fold_clause_count;
 
-	uint32_t next_binder_id;
-	uint32_t scope_binders[PROTOTYPE_SCOPE_BINDER_CAPACITY];
+	uint32_t next_binding_id;
+	uint32_t scope_bindings[PROTOTYPE_SCOPE_BINDING_CAPACITY];
 
 	/* Runtime-only metadata. It is not part of the serialized term graph. */
 	uint64_t normalization_graph_revision;
@@ -611,24 +611,24 @@ void prototype_term_db_init(
 	size_t case_capacity,
 	struct prototype_case_binder* case_binders,
 	size_t case_binder_capacity,
-	struct prototype_match_frame* match_frames,
-	size_t match_frame_capacity
+	struct prototype_ih_scope* ih_scopes,
+	size_t ih_scope_capacity
 );
 
-uint32_t prototype_term_binder_for_scope_slot(struct prototype_term_db* db, uint32_t scope_slot);
-uint32_t prototype_term_fresh_binder(struct prototype_term_db* db);
-uint32_t prototype_term_new_match_frame(struct prototype_term_db* db);
-int prototype_term_set_match_frame_term(
+uint32_t prototype_term_binding_for_scope_slot(struct prototype_term_db* db, uint32_t scope_slot);
+uint32_t prototype_term_new_binding(struct prototype_term_db* db);
+uint32_t prototype_term_new_ih_scope(struct prototype_term_db* db);
+int prototype_term_set_ih_scope_term(
 	struct prototype_term_db* db,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t match_term
 );
-int prototype_term_match_frame_key(
+int prototype_term_ih_scope_key(
 	const struct prototype_term_db* db,
-	uint32_t frame_id,
-	struct prototype_match_frame_key* p_key
+	uint32_t ih_scope_id,
+	struct prototype_ih_scope_key* p_key
 );
-int prototype_term_var(struct prototype_term_db* db, uint32_t binder_id, uint32_t* p_ret);
+int prototype_term_var(struct prototype_term_db* db, uint32_t binding_id, uint32_t* p_ret);
 int prototype_term_constructor(
 	struct prototype_term_db* db,
 	uint32_t owner,
@@ -638,7 +638,7 @@ int prototype_term_constructor(
 int prototype_term_app(struct prototype_term_db* db, uint32_t function, uint32_t argument, uint32_t* p_ret);
 int prototype_term_lambda(
 	struct prototype_term_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t body,
 	uint32_t* p_ret
 );
@@ -649,12 +649,12 @@ int prototype_term_match(
 	uint32_t case_count,
 	uint32_t* p_ret
 );
-int prototype_term_match_with_frame(
+int prototype_term_match_with_ih_scope(
 	struct prototype_term_db* db,
 	uint32_t scrutinee,
 	const struct prototype_match_case_input* cases,
 	uint32_t case_count,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t* p_ret
 );
 int prototype_term_resolve_match_case(
@@ -701,7 +701,7 @@ int prototype_term_type_instance_is_saturated(
 );
 int prototype_term_induction_hypothesis(
 	struct prototype_term_db* db,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t argument,
 	uint32_t* p_ret
 );
@@ -714,7 +714,7 @@ int prototype_term_int_literal(struct prototype_term_db* db, int64_t value, uint
 int prototype_term_effect_label(struct prototype_term_db* db, unsigned effects, uint32_t* p_ret);
 int prototype_term_effect_row_var(
 	struct prototype_term_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t* p_ret
 );
 int prototype_term_effect_row_union(
@@ -725,7 +725,7 @@ int prototype_term_effect_row_union(
 );
 int prototype_term_effect_row_forall(
 	struct prototype_term_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t body,
 	uint32_t* p_ret
 );
@@ -848,10 +848,10 @@ int prototype_term_effect_operation_identity(
 	uint32_t term_id,
 	int* p_operation_id
 );
-int prototype_term_contains_free_binder(
+int prototype_term_contains_free_binding(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
-	uint32_t binder_id
+	uint32_t binding_id
 );
 /*
  * View shape equality preserves TYPE_VIEW wrappers. Bool and Two may share the
@@ -934,7 +934,7 @@ int prototype_term_pi_family(
 );
 int prototype_term_pure_family(
 	struct prototype_term_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t body,
 	uint32_t* p_family
 );
@@ -962,8 +962,23 @@ int prototype_term_graph_substitute_bound_var(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t term_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t replacement,
+	uint32_t* p_ret
+);
+struct prototype_binding_replacement {
+	uint32_t binding_id;
+	uint32_t replacement;
+};
+/* Rebuild a graph once under a simultaneous binding-handle substitution.
+ * Replacement terms are final images and are never rewritten by sibling
+ * entries in the same substitution. */
+int prototype_term_graph_reindex_bindings(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t term_id,
+	const struct prototype_binding_replacement* bindings,
+	size_t binding_count,
 	uint32_t* p_ret
 );
 int prototype_term_resolve_external_ref(

@@ -18,7 +18,7 @@ static struct prototype_term terms[TERM_CAPACITY];
 static struct prototype_match_case cases[CASE_CAPACITY];
 static int case_label_symbols[CASE_CAPACITY];
 static struct prototype_case_binder case_binders[CASE_BINDER_CAPACITY];
-static struct prototype_match_frame match_frames[MATCH_FRAME_CAPACITY];
+static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 
 static struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration constructor_declarations[CONSTRUCTOR_CAPACITY];
@@ -38,7 +38,7 @@ int main(void) {
 		CASE_CAPACITY,
 		case_binders,
 		CASE_BINDER_CAPACITY,
-		match_frames,
+		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_type_declaration_db_init(
@@ -72,7 +72,7 @@ int main(void) {
 			(struct prototype_qualified_name){ PROTOTYPE_BASE_NAMESPACE_ID, 2 },
 			&argument
 		) != 0 ||
-		prototype_term_lambda(&term_db, prototype_term_fresh_binder(&term_db), constructor, &lambda) != 0 ||
+		prototype_term_lambda(&term_db, prototype_term_new_binding(&term_db), constructor, &lambda) != 0 ||
 		prototype_term_app(&term_db, lambda, argument, &application) != 0 ||
 		prototype_term_external_ref(
 			&term_db,
@@ -155,7 +155,7 @@ int main(void) {
 	if (prototype_term_return(&term_db, constructor, &returned_constructor) != 0 ||
 		prototype_term_thunk(&term_db, returned_constructor, &thunked_constructor) != 0 ||
 		prototype_term_force(&term_db, thunked_constructor, &forced_constructor) != 0 ||
-		(bind_binder = prototype_term_fresh_binder(&term_db)) == PROTOTYPE_INVALID_ID ||
+		(bind_binder = prototype_term_new_binding(&term_db)) == PROTOTYPE_INVALID_ID ||
 		prototype_term_var(&term_db, bind_binder, &bind_var) != 0 ||
 		prototype_term_return(&term_db, bind_var, &bind_body) != 0 ||
 		prototype_term_lambda(&term_db, bind_binder, bind_body, &bind_continuation) != 0 ||
@@ -322,7 +322,7 @@ int main(void) {
 
 	/* Residual verification needs to distinguish an effect boundary from an
 	 * invalid graph or a pure normalization budget stop. */
-	uint32_t continuation_binder = prototype_term_fresh_binder(&term_db);
+	uint32_t continuation_binder = prototype_term_new_binding(&term_db);
 	uint32_t continuation_var;
 	uint32_t continuation_lambda;
 	uint32_t continuation_thunk;
@@ -393,7 +393,7 @@ int main(void) {
 	 * as a global RESULT_OF node. */
 	uint32_t effect_row;
 	uint32_t residual_classifier;
-	uint32_t residual_binder = prototype_term_fresh_binder(&term_db);
+	uint32_t residual_binder = prototype_term_new_binding(&term_db);
 	uint32_t residual_family;
 	struct prototype_verification_obligation obligations[1];
 	struct prototype_verification_db verification;

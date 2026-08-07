@@ -192,7 +192,7 @@ struct prototype_match_resolution_request {
 
 struct prototype_induction_hypothesis_resolution_request {
 	uint32_t subject;
-	uint32_t frame_id;
+	uint32_t ih_scope_id;
 	uint32_t argument;
 };
 

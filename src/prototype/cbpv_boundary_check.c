@@ -24,7 +24,7 @@ static struct prototype_term terms[TERM_CAPACITY];
 static struct prototype_match_case cases[CASE_CAPACITY];
 static int case_label_symbols[CASE_CAPACITY];
 static struct prototype_case_binder case_binders[CASE_BINDER_CAPACITY];
-static struct prototype_match_frame match_frames[MATCH_FRAME_CAPACITY];
+static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration constructors[CONSTRUCTOR_CAPACITY];
 static struct prototype_type_parameter_declaration parameters[PARAMETER_CAPACITY];
@@ -56,7 +56,7 @@ int main(void) {
 	);
 	prototype_term_db_init(
 		&term_db, terms, TERM_CAPACITY, cases, case_label_symbols, CASE_CAPACITY,
-		case_binders, CASE_BINDER_CAPACITY, match_frames, MATCH_FRAME_CAPACITY
+		case_binders, CASE_BINDER_CAPACITY, ih_scopes, MATCH_FRAME_CAPACITY
 	);
 	prototype_type_declaration_db_init(
 		&type_db, type_declarations, TYPE_CAPACITY, constructors, CONSTRUCTOR_CAPACITY,

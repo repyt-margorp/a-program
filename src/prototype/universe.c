@@ -560,12 +560,12 @@ static int collect_classifier_cumulativity_constraints(
 		) != 0) {
 		return -1;
 	}
-	if (prototype_term_contains_free_binder(
+	if (prototype_term_contains_free_binding(
 			terms,
 			expected_body,
 			expected_binder
 		) ||
-		prototype_term_contains_free_binder(
+		prototype_term_contains_free_binding(
 			terms,
 			actual_body,
 			actual_binder

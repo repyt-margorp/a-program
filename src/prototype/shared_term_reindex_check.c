@@ -43,7 +43,7 @@ int main(void) {
 	struct prototype_match_case case_storage[CASE_CAPACITY];
 	int case_label_storage[CASE_CAPACITY];
 	struct prototype_case_binder case_binder_storage[CASE_BINDER_CAPACITY];
-	struct prototype_match_frame match_frame_storage[MATCH_FRAME_CAPACITY];
+	struct prototype_ih_scope ih_scope_storage[MATCH_FRAME_CAPACITY];
 	struct prototype_term_db terms;
 	struct prototype_type_declaration type_storage[1];
 	struct prototype_type_constructor_declaration constructor_storage[1];
@@ -65,7 +65,7 @@ int main(void) {
 		CASE_CAPACITY,
 		case_binder_storage,
 		CASE_BINDER_CAPACITY,
-		match_frame_storage,
+		ih_scope_storage,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_type_declaration_db_init(
@@ -118,7 +118,7 @@ int main(void) {
 			&outer_context
 		) != 0 || prototype_term_var(
 			&terms,
-			prototype_context_get(&contexts, outer_context)->binder_id,
+			prototype_context_get(&contexts, outer_context)->binding_id,
 			&outer_variable
 		) != 0 || prototype_substitution_empty(
 			&substitutions,
@@ -159,6 +159,70 @@ int main(void) {
 		return 1;
 	}
 
+	uint32_t direct_left;
+	uint32_t direct_right;
+	uint32_t direct_pair;
+	uint32_t direct_expected;
+	uint32_t direct_result;
+	struct prototype_binding_replacement direct_bindings[] = {
+		{ .binding_id = 410 },
+		{ .binding_id = 411 }
+	};
+	uint32_t binding_count_before_direct = terms.next_binding_id;
+	if (prototype_term_var(&terms, 410, &direct_left) != 0 ||
+		prototype_term_var(&terms, 411, &direct_right) != 0 ||
+		prototype_term_app(&terms, direct_left, direct_right, &direct_pair) != 0) {
+		fprintf(stderr, "failed to construct direct reindex fixture\n");
+		return 1;
+	}
+	direct_bindings[0].replacement = direct_right;
+	direct_bindings[1].replacement = literal_seven;
+	if (prototype_term_app(
+			&terms, direct_right, literal_seven, &direct_expected
+		) != 0 || prototype_term_graph_reindex_bindings(
+			&terms,
+			&types,
+			direct_pair,
+			direct_bindings,
+			2,
+			&direct_result
+		) != 0 || direct_result != direct_expected ||
+		terms.next_binding_id != binding_count_before_direct) {
+		fprintf(stderr, "simultaneous non-cascading binding reindex failed\n");
+		return 1;
+	}
+	direct_bindings[0].replacement = direct_right;
+	direct_bindings[1].replacement = direct_left;
+	if (prototype_term_app(
+			&terms, direct_right, direct_left, &direct_expected
+		) != 0 || prototype_term_graph_reindex_bindings(
+			&terms,
+			&types,
+			direct_pair,
+			direct_bindings,
+			2,
+			&direct_result
+		) != 0 || direct_result != direct_expected) {
+		fprintf(stderr, "simultaneous binding permutation failed\n");
+		return 1;
+	}
+
+	uint32_t alpha_left_variable;
+	uint32_t alpha_right_variable;
+	uint32_t alpha_left_lambda;
+	uint32_t alpha_right_lambda;
+	if (prototype_term_var(&terms, 420, &alpha_left_variable) != 0 ||
+		prototype_term_var(&terms, 421, &alpha_right_variable) != 0 ||
+		alpha_left_variable == alpha_right_variable ||
+		prototype_term_lambda(
+			&terms, 420, alpha_left_variable, &alpha_left_lambda
+		) != 0 || prototype_term_lambda(
+			&terms, 421, alpha_right_variable, &alpha_right_lambda
+		) != 0 || alpha_left_lambda != alpha_right_lambda) {
+		fprintf(stderr, "bound alpha/free binding identity boundary failed\n");
+		return 1;
+	}
+
 	uint32_t app;
 	uint32_t expected_app;
 	uint32_t returned;
@@ -188,7 +252,7 @@ int main(void) {
 			&terms, 200, expected_returned, &expected_lambda
 		) != 0 || prototype_term_lambda(
 			&terms,
-			prototype_context_get(&contexts, outer_context)->binder_id,
+			prototype_context_get(&contexts, outer_context)->binding_id,
 			outer_variable,
 			&shadow_lambda
 		) != 0 || prototype_term_computation_type(
@@ -257,7 +321,7 @@ int main(void) {
 	}
 
 	struct prototype_case_binder shadow_binder = {
-		.binder_id = prototype_context_get(&contexts, outer_context)->binder_id,
+		.binding_id = prototype_context_get(&contexts, outer_context)->binding_id,
 		.is_recursive = 0
 	};
 	struct prototype_match_case_input shadow_case = {
@@ -276,10 +340,10 @@ int main(void) {
 		return 1;
 	}
 
-	uint32_t ih_frame = prototype_term_new_match_frame(&terms);
+	uint32_t ih_frame = prototype_term_new_ih_scope(&terms);
 	uint32_t ih_term;
 	struct prototype_case_binder recursive_binder = {
-		.binder_id = 202,
+		.binding_id = 202,
 		.is_recursive = 1
 	};
 	struct prototype_match_case_input ih_case = {
@@ -299,9 +363,9 @@ int main(void) {
 		return 1;
 	}
 	ih_case.body = ih_term;
-	if (prototype_term_match_with_frame(
+	if (prototype_term_match_with_ih_scope(
 			&terms, outer_variable, &ih_case, 1, ih_frame, &ih_match
-		) != 0 || prototype_term_set_match_frame_term(
+		) != 0 || prototype_term_set_ih_scope_term(
 			&terms, ih_frame, ih_match
 		) != 0) {
 		fprintf(stderr, "failed to construct scoped IH Match\n");
@@ -326,6 +390,7 @@ int main(void) {
 		{ shadow_lambda, shadow_lambda, "LAMBDA shadowing" },
 		{ shadow_match, shadow_match, "MATCH binder shadowing" }
 	};
+	uint32_t binding_count_before_reindex = terms.next_binding_id;
 	for (size_t i = 0; i < sizeof(laws) / sizeof(laws[0]); ++i) {
 		if (expect_reindex(
 				&terms,
@@ -358,6 +423,10 @@ int main(void) {
 			return 1;
 		}
 	}
+	if (terms.next_binding_id != binding_count_before_reindex) {
+		fprintf(stderr, "ordinary reindex consumed transient bindings\n");
+		return 1;
+	}
 
 	uint32_t reindexed_ih_match;
 	if (prototype_term_reindex(
@@ -370,7 +439,7 @@ int main(void) {
 			&reindexed_ih_match
 		) != 0 || reindexed_ih_match >= terms.term_count ||
 		terms.terms[reindexed_ih_match].tag != PROTOTYPE_TERM_MATCH ||
-		terms.terms[reindexed_ih_match].as.match.frame_id == ih_frame ||
+		terms.terms[reindexed_ih_match].as.match.ih_scope_id == ih_frame ||
 		terms.terms[reindexed_ih_match].as.match.first_case >= terms.case_count) {
 		fprintf(stderr, "scoped IH Match reindex failed\n");
 		return 1;
@@ -380,8 +449,8 @@ int main(void) {
 	if (reindexed_ih_case->body >= terms.term_count ||
 		terms.terms[reindexed_ih_case->body].tag !=
 			PROTOTYPE_TERM_INDUCTION_HYPOTHESIS ||
-		terms.terms[reindexed_ih_case->body].as.induction_hypothesis.frame_id !=
-			terms.terms[reindexed_ih_match].as.match.frame_id ||
+		terms.terms[reindexed_ih_case->body].as.induction_hypothesis.ih_scope_id !=
+			terms.terms[reindexed_ih_match].as.match.ih_scope_id ||
 		terms.terms[reindexed_ih_case->body].as.induction_hypothesis.argument !=
 			literal_seven) {
 		fprintf(stderr, "scoped IH frame remap law failed\n");

@@ -581,7 +581,7 @@ struct prototype_artifact_type_export {
 };
 
 struct prototype_artifact_type_parameter_export {
-	uint32_t binder_id;
+	uint32_t binding_id;
 	int name_symbol_id;
 	uint32_t type_expr;
 };

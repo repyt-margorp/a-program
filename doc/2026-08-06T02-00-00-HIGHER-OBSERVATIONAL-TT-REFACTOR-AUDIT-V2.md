@@ -826,10 +826,11 @@ calculus introduces no separate value/computation copies of Pi, Lambda, APP,
 or Match. The completed plan is
 `doc/2026-08-07T01-00-00-SHARED-TERM-HOTT-DCBPV-V2-T1-T2-PLAN.md`.
 
-The next decision is V2-S1 typed constraint ownership using the context,
-carrier, endpoints, bridge structure, reindexing laws, and residual boundary
-fixed by that checkpoint. Proof schema and artifact v62 still wait for the
-resulting exact payloads.
+The next decision is V2-C2 direct binding-object reindexing. It preserves the
+context, carrier, endpoints, bridge structure, and reindexing laws fixed by the
+T1/T2 checkpoint while removing temporary fresh-binding substitution from the
+substrate. V2-S1 typed constraint ownership follows C2. Proof schema and
+artifact v62 still wait for the resulting exact payloads.
 
 ## 22. Detailed Implementation Plan: Term Identity and Match-Frame Scope
 
@@ -1177,6 +1178,7 @@ At commit `474867e`:
 | V2-C1 | Extract context/substitution implementation from `ast.c` | complete | none | CwF laws, all prototype tests, examples 01-07/09, and byte-identical v61 artifact pass |
 | V2-T1 | Freeze finite typed HOTT fragment over the shared TermDB | complete | none | frozen normative calculus and first-fragment matrix |
 | V2-T2 | Freeze dependent CBPV boundary without duplicated graph syntax | complete | none | F/U reindex laws, purity trichotomy, and law tests pass |
+| V2-C2 | Replace fresh-binder reindexing with direct binding-object graph action | complete | no schema change | simultaneous/capture/IH laws, depth-513 context, all 14 tests, examples 01-07/09, old/new v61 readback, and deterministic output pass |
 | V2-S1 | Extend solver constraints with typed HOTT indices | pending | v62 if residualized | replayable typed goal tests |
 | V2-P1 | Replace monolithic proof payload with tagged records and premise arena | pending | breaking | validator and relocation tests |
 | V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-S1/P1 | breaking | substitution/naturality tests |
@@ -1201,14 +1203,103 @@ At commit `474867e`:
 
 ### 23.4 Next implementation checkpoint
 
-V2-K1, V2-K2, V2-C1, V2-T1, and V2-T2 are complete. The next checkpoint is
-V2-S1: split classifier unification, kernel conversion, HOTT construction, and
-persistent residual obligations into the typed records frozen by the
+V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, and V2-C2 are complete. The next checkpoint
+is V2-S1: split classifier unification, kernel conversion, HOTT construction,
+and persistent residual obligations into the typed records frozen by the
 normative calculus. Equality syntax and object TermDB tags remain deferred to
 V2-O1, and artifact v62 remains deferred until V2-P1/O1 determine its complete
-schema. The completed T1/T2 plan is in
+schema. The completed V2-C2 implementation and evidence record is in
+`doc/2026-08-07T03-00-00-BINDING-OBJECT-DIRECT-REINDEX-V2-C2-PLAN.md`. The
+completed T1/T2 plan is in
 `doc/2026-08-07T01-00-00-SHARED-TERM-HOTT-DCBPV-V2-T1-T2-PLAN.md`; the
 normative calculus is in
 `doc/2026-08-07T02-00-00-SHARED-TERM-HOTT-DCBPV-NORMATIVE-CALCULUS.md`. The
 completed V2-C1 ownership, migration, and progress record is in
 `doc/2026-08-07T00-00-00-CONTEXT-SUBSTITUTION-V2-C1-IMPLEMENTATION-PLAN.md`.
+
+## 24. 2026-08-07 Binding-Object Reindex Correction
+
+### 24.1 Design decision
+
+A Program will not adopt De Bruijn indices or levels for stored TermDB bound
+variables. A graph occurrence refers directly to an opaque binding object. The
+current `uint32_t binding_id` is an arena handle, equivalent to a
+stable pointer inside TermDB, and not as a source-level name.
+
+Surface spelling remains in the parser, AST, diagnostic, and Name layers. A
+TermDB `VAR` edge identifies its introducing graph binding independently of
+that spelling. Local alpha interning continues to compare lexical binding
+correspondence, so alpha-equivalent source programs can share one graph even
+when lowering allocated different binding handles.
+
+This decision follows the project's central graph principle: computation is
+constructed by edges between semantic graph objects, while human names point
+to typed occurrences above that graph. It also preserves the V2-T1/T2 decision
+that Value and Computation do not receive duplicate Pi, Lambda, APP, or Match
+graph constructors.
+
+### 24.2 Why V2-C1 is not sufficient
+
+V2-C1 correctly moved CwF ownership out of `ast.c`, but retained the old
+algorithm. At the V2-C2 baseline, `prototype_term_reindex` protected
+simultaneous substitution by replacing every target-context binding with a
+temporary fresh binding and then replacing those fresh bindings with the final
+terms. This was capture-safe, but performed repeated graph traversals, consumed
+transient binding handles, interned staging-only graphs, and imposed a fixed
+512-entry context limit.
+
+The semantic operation remains necessary:
+
+```text
+sigma : Delta -> Gamma
+Gamma |- t : A
+----------------------
+Delta |- t[sigma] : A[sigma]
+```
+
+The completed implementation builds a simultaneous map from target binding
+handles to source-context TermDB nodes and applies it in one scope-aware graph
+traversal. Replacement terms are final map images and are not recursively
+captured by sibling entries.
+
+### 24.3 IH ownership
+
+A recursive Match frame is a hidden binding-like scope object, not runtime
+machine state. When a changed Match is rebuilt, its IH owner and all enclosed
+IH reference edges must be cloned coherently. This remains required, but it is
+specified as scoped graph cloning rather than textual remapping or a separate
+name-resolution mechanism.
+
+An unchanged Match must retain its node and IH scope. A changed Match must not
+leave any owner-local IH reference pointing to the old Match. Nested and
+foreign frames remain distinct.
+
+### 24.4 HOTT ordering consequence
+
+Higher observational endpoints and witnesses must obey ordinary substitution
+naturality. V2-S1 does not inherit the former fresh-renaming mechanism in its
+typed goal records. V2-C2 was therefore completed before V2-S1:
+
+```text
+V2-C2 -> V2-S1 -> V2-P1 -> V2-O1 -> V2-A1
+```
+
+V2-C2 changes no artifact schema and adds no HOTT object term. Its complete
+scope, implementation phases, progress sheet, and acceptance tests are defined
+in
+`doc/2026-08-07T03-00-00-BINDING-OBJECT-DIRECT-REINDEX-V2-C2-PLAN.md`.
+
+### 24.5 Completion evidence
+
+V2-C2 now uses one immutable binding-to-term view, one scope-aware TermDB
+traversal, lexical binding blocking, IH-scope cloning, and traversal-local
+memoization. Ordinary reindexing allocates no temporary binding. Graph APIs use
+`binding_id`; recursive Match ownership uses `ih_scope_id`. Serialized v61
+tokens remain `match_frames` and `match_frame` for compatibility.
+
+The final run passed a clean build, all 14 prototype test scripts, examples
+01-07 and 09, depth-513 reindexing, old and new v61 readback, normalization,
+deterministic artifact output, and `git diff --check`. On
+`09_list_induction.p`, transient TermDB slots fell from 1317 to 122 while the
+artifact retained the same 99 present terms and one recursive scope. Detailed
+numeric and test evidence is recorded in the V2-C2 plan.

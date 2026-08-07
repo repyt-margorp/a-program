@@ -619,28 +619,49 @@ enum prototype_type_view_compare_mode {
 };
 
 struct canonical_binder_env {
-	uint32_t binder_id[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
+	uint32_t binding_id[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t slot[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t count;
 	uint32_t next_slot;
 };
 
-struct substitution_frame_scope {
-	uint32_t old_frame_id;
-	uint32_t new_frame_id;
-	const struct substitution_frame_scope* previous;
+struct substitution_ih_scope_clone {
+	uint32_t old_ih_scope_id;
+	uint32_t new_ih_scope_id;
+	uint64_t scope_key;
+	const struct substitution_ih_scope_clone* previous;
+};
+
+struct substitution_binding_scope {
+	uint32_t binding_id;
+	uint64_t scope_key;
+	const struct substitution_binding_scope* previous;
+};
+
+struct substitution_memo_entry {
+	uint32_t term_id;
+	uint32_t result;
+	uint64_t binding_scope_key;
+	uint64_t ih_scope_clone_key;
 };
 
 struct substitution_context {
-	const struct substitution_frame_scope* frame_scope;
+	const struct substitution_ih_scope_clone* ih_scope_clone;
+	const struct substitution_binding_scope* binding_scope;
 	struct prototype_type_declaration_db* type_declarations;
+	const struct prototype_binding_replacement* bindings;
+	size_t binding_count;
+	struct substitution_memo_entry* memo;
+	size_t memo_count;
+	size_t memo_capacity;
+	uint64_t next_scope_key;
 };
 
 static int substitute_term(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t term_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t replacement,
 	uint32_t* p_ret
 );
@@ -648,8 +669,13 @@ static int substitute_term(
 static int substitute_term_internal(
 	struct prototype_term_db* db,
 	uint32_t term_id,
-	uint32_t binder_id,
-	uint32_t replacement,
+	struct substitution_context* ctx,
+	uint32_t* p_ret
+);
+
+static int substitute_term_uncached_internal(
+	struct prototype_term_db* db,
+	uint32_t term_id,
 	struct substitution_context* ctx,
 	uint32_t* p_ret
 );
@@ -840,7 +866,7 @@ static int shape_match_cases_equal_at_depth(
 			&db->case_binders[right_case->first_binder + i];
 		if (left_binder->is_recursive != right_binder->is_recursive ||
 			term_scope_env_push_binder(
-				env, left_binder->binder_id, right_binder->binder_id
+				env, left_binder->binding_id, right_binder->binding_id
 			) != 0) {
 			env->count = saved_count;
 			return 0;
@@ -904,7 +930,7 @@ static int shape_terms_equal_at_depth(
 	}
 	switch (left->tag) {
 		case PROTOTYPE_TERM_VAR:
-			return term_scope_binders_equal(env, left->as.var.binder_id, right->as.var.binder_id);
+			return term_scope_binders_equal(env, left->as.var.binding_id, right->as.var.binding_id);
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			return left->as.constructor.constructor_id == right->as.constructor.constructor_id &&
 				shape_terms_equal_at_depth(
@@ -934,7 +960,7 @@ static int shape_terms_equal_at_depth(
 				);
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t saved_count = env->count;
-			if (term_scope_env_push_binder(env, left->as.lambda.binder_id, right->as.lambda.binder_id) != 0) {
+			if (term_scope_env_push_binder(env, left->as.lambda.binding_id, right->as.lambda.binding_id) != 0) {
 				env->count = saved_count;
 				return 0;
 			}
@@ -1052,14 +1078,14 @@ static int shape_terms_equal_at_depth(
 				left->as.match.case_count != right->as.match.case_count) {
 				return 0;
 			}
-			int left_has_frame = left->as.match.frame_id != PROTOTYPE_INVALID_ID;
-			int right_has_frame = right->as.match.frame_id != PROTOTYPE_INVALID_ID;
+			int left_has_frame = left->as.match.ih_scope_id != PROTOTYPE_INVALID_ID;
+			int right_has_frame = right->as.match.ih_scope_id != PROTOTYPE_INVALID_ID;
 			if (left_has_frame != right_has_frame) {
 				return 0;
 			}
 			uint32_t saved_frame_count = env->frame_count;
 			if (left_has_frame && term_scope_env_push_frame(
-					env, left->as.match.frame_id, right->as.match.frame_id
+					env, left->as.match.ih_scope_id, right->as.match.ih_scope_id
 				) != 0) {
 				return 0;
 			}
@@ -1119,8 +1145,8 @@ static int shape_terms_equal_at_depth(
 			int frame_is_bound = 0;
 			if (!term_scope_frames_equal(
 					env,
-					left->as.induction_hypothesis.frame_id,
-					right->as.induction_hypothesis.frame_id,
+					left->as.induction_hypothesis.ih_scope_id,
+					right->as.induction_hypothesis.ih_scope_id,
 					&frame_is_bound
 				)) {
 				return 0;
@@ -1162,7 +1188,7 @@ static int shape_terms_equal_at_depth(
 				return left->as.effect_label.effects == right->as.effect_label.effects;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 				return term_scope_binders_equal(
-					env, left->as.effect_row_var.binder_id, right->as.effect_row_var.binder_id
+					env, left->as.effect_row_var.binding_id, right->as.effect_row_var.binding_id
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				return shape_terms_equal_at_depth(
@@ -1176,8 +1202,8 @@ static int shape_terms_equal_at_depth(
 			uint32_t saved_count = env->count;
 			if (term_scope_env_push_binder(
 					env,
-					left->as.effect_row_forall.binder_id,
-					right->as.effect_row_forall.binder_id
+					left->as.effect_row_forall.binding_id,
+					right->as.effect_row_forall.binding_id
 				) != 0) {
 				return 0;
 			}
@@ -1272,14 +1298,14 @@ static int cross_frame_keys_equal(
 	uint32_t right_frame
 ) {
 	if (!left_db || !right_db ||
-		left_frame >= left_db->match_frame_count ||
-		right_frame >= right_db->match_frame_count ||
-		!left_db->match_frames[left_frame].key.is_linkable ||
-		!right_db->match_frames[right_frame].key.is_linkable) {
+		left_frame >= left_db->ih_scope_count ||
+		right_frame >= right_db->ih_scope_count ||
+		!left_db->ih_scopes[left_frame].key.is_linkable ||
+		!right_db->ih_scopes[right_frame].key.is_linkable) {
 		return 0;
 	}
-	const struct prototype_match_frame_key* left = &left_db->match_frames[left_frame].key;
-	const struct prototype_match_frame_key* right = &right_db->match_frames[right_frame].key;
+	const struct prototype_ih_scope_key* left = &left_db->ih_scopes[left_frame].key;
+	const struct prototype_ih_scope_key* right = &right_db->ih_scopes[right_frame].key;
 	return left->case_count == right->case_count &&
 		canonical_keys_equal_local(&left->match_key, &right->match_key);
 }
@@ -1296,8 +1322,8 @@ static int cross_free_frames_equal(
 	uint32_t depth
 ) {
 	if (!cross_frame_keys_equal(left_db, left_frame, right_db, right_frame) ||
-		left_frame >= left_db->match_frame_count ||
-		right_frame >= right_db->match_frame_count) {
+		left_frame >= left_db->ih_scope_count ||
+		right_frame >= right_db->ih_scope_count) {
 		return 0;
 	}
 	for (uint32_t i = 0; i < env->visited_frame_count; ++i) {
@@ -1313,8 +1339,8 @@ static int cross_free_frames_equal(
 	env->visited_frame_left[env->visited_frame_count] = left_frame;
 	env->visited_frame_right[env->visited_frame_count] = right_frame;
 	env->visited_frame_count++;
-	uint32_t left_match = left_db->match_frames[left_frame].match_term;
-	uint32_t right_match = right_db->match_frames[right_frame].match_term;
+	uint32_t left_match = left_db->ih_scopes[left_frame].match_term;
+	uint32_t right_match = right_db->ih_scopes[right_frame].match_term;
 	if (left_match >= left_db->term_count || right_match >= right_db->term_count) {
 		env->visited_frame_count = saved_visited_frame_count;
 		return 0;
@@ -1379,7 +1405,7 @@ static int cross_shape_match_cases_equal_at_depth(
 			&right_db->case_binders[right_case->first_binder + i];
 		if (left_binder->is_recursive != right_binder->is_recursive ||
 			term_scope_env_push_binder(
-				env, left_binder->binder_id, right_binder->binder_id
+				env, left_binder->binding_id, right_binder->binding_id
 			) != 0) {
 			env->count = saved_count;
 			return 0;
@@ -1429,7 +1455,7 @@ static int cross_shape_terms_equal_at_depth(
 	}
 	switch (left->tag) {
 		case PROTOTYPE_TERM_VAR:
-			return term_scope_binders_equal(env, left->as.var.binder_id, right->as.var.binder_id);
+			return term_scope_binders_equal(env, left->as.var.binding_id, right->as.var.binding_id);
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			return left->as.constructor.constructor_id == right->as.constructor.constructor_id &&
 				cross_shape_terms_equal_at_depth(
@@ -1468,7 +1494,7 @@ static int cross_shape_terms_equal_at_depth(
 					);
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t saved_count = env->count;
-			if (term_scope_env_push_binder(env, left->as.lambda.binder_id, right->as.lambda.binder_id) != 0) {
+			if (term_scope_env_push_binder(env, left->as.lambda.binding_id, right->as.lambda.binding_id) != 0) {
 				env->count = saved_count;
 				return 0;
 			}
@@ -1617,14 +1643,14 @@ static int cross_shape_terms_equal_at_depth(
 				left->as.match.case_count != right->as.match.case_count) {
 				return 0;
 			}
-			int left_has_frame = left->as.match.frame_id != PROTOTYPE_INVALID_ID;
-			int right_has_frame = right->as.match.frame_id != PROTOTYPE_INVALID_ID;
+			int left_has_frame = left->as.match.ih_scope_id != PROTOTYPE_INVALID_ID;
+			int right_has_frame = right->as.match.ih_scope_id != PROTOTYPE_INVALID_ID;
 			if (left_has_frame != right_has_frame) {
 				return 0;
 			}
 			uint32_t saved_frame_count = env->frame_count;
 			if (left_has_frame && term_scope_env_push_frame(
-					env, left->as.match.frame_id, right->as.match.frame_id
+					env, left->as.match.ih_scope_id, right->as.match.ih_scope_id
 				) != 0) {
 				return 0;
 			}
@@ -1694,8 +1720,8 @@ static int cross_shape_terms_equal_at_depth(
 			int frame_is_bound = 0;
 			int frames_equal = term_scope_frames_equal(
 				env,
-				left->as.induction_hypothesis.frame_id,
-				right->as.induction_hypothesis.frame_id,
+				left->as.induction_hypothesis.ih_scope_id,
+				right->as.induction_hypothesis.ih_scope_id,
 				&frame_is_bound
 			);
 			if (frame_is_bound && !frames_equal) {
@@ -1704,10 +1730,10 @@ static int cross_shape_terms_equal_at_depth(
 			if (!frame_is_bound && !cross_free_frames_equal(
 					left_db,
 					left_type_declarations,
-					left->as.induction_hypothesis.frame_id,
+					left->as.induction_hypothesis.ih_scope_id,
 					right_db,
 					right_type_declarations,
-					right->as.induction_hypothesis.frame_id,
+					right->as.induction_hypothesis.ih_scope_id,
 					env,
 					type_view_compare_mode,
 					depth + 1
@@ -1755,7 +1781,7 @@ static int cross_shape_terms_equal_at_depth(
 				return left->as.effect_label.effects == right->as.effect_label.effects;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 				return term_scope_binders_equal(
-					env, left->as.effect_row_var.binder_id, right->as.effect_row_var.binder_id
+					env, left->as.effect_row_var.binding_id, right->as.effect_row_var.binding_id
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				return cross_shape_terms_equal_at_depth(
@@ -1771,8 +1797,8 @@ static int cross_shape_terms_equal_at_depth(
 			uint32_t saved_count = env->count;
 			if (term_scope_env_push_binder(
 					env,
-					left->as.effect_row_forall.binder_id,
-					right->as.effect_row_forall.binder_id
+					left->as.effect_row_forall.binding_id,
+					right->as.effect_row_forall.binding_id
 				) != 0) {
 				return 0;
 			}
@@ -2015,7 +2041,7 @@ int prototype_term_source_shape_equal(
 
 static int canonical_env_lookup(
 	const struct canonical_binder_env* env,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t* p_slot
 ) {
 	if (!env || !p_slot) {
@@ -2023,7 +2049,7 @@ static int canonical_env_lookup(
 	}
 	for (uint32_t i = env->count; i > 0; --i) {
 		uint32_t index = i - 1;
-		if (env->binder_id[index] == binder_id) {
+		if (env->binding_id[index] == binding_id) {
 			*p_slot = env->slot[index];
 			return 1;
 		}
@@ -2033,12 +2059,12 @@ static int canonical_env_lookup(
 
 static int canonical_env_push(
 	struct canonical_binder_env* env,
-	uint32_t binder_id
+	uint32_t binding_id
 ) {
 	if (!env || env->count >= PROTOTYPE_CANONICAL_BINDER_CAPACITY) {
 		return -1;
 	}
-	env->binder_id[env->count] = binder_id;
+	env->binding_id[env->count] = binding_id;
 	env->slot[env->count] = env->next_slot++;
 	env->count++;
 	return 0;
@@ -2090,7 +2116,7 @@ static int canonical_hash_match_case_at_depth(
 	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
 		const struct prototype_case_binder* binder =
 			&db->case_binders[match_case->first_binder + i];
-		if (canonical_env_push(env, binder->binder_id) != 0) {
+		if (canonical_env_push(env, binder->binding_id) != 0) {
 			env->count = saved_count;
 			env->next_slot = saved_next_slot;
 			return -1;
@@ -2132,12 +2158,12 @@ static int canonical_hash_term_at_depth(
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR: {
 			uint32_t slot;
-			if (canonical_env_lookup(env, term->as.var.binder_id, &slot)) {
+			if (canonical_env_lookup(env, term->as.var.binding_id, &slot)) {
 				canonical_hash_mix_u32(p_hash, 1);
 				canonical_hash_mix_u32(p_hash, slot);
 			} else {
 				canonical_hash_mix_u32(p_hash, 0);
-				canonical_hash_mix_u32(p_hash, term->as.var.binder_id);
+				canonical_hash_mix_u32(p_hash, term->as.var.binding_id);
 				key->free_binder_count++;
 			}
 			return 0;
@@ -2180,7 +2206,7 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t saved_count = env->count;
 			uint32_t saved_next_slot = env->next_slot;
-			if (canonical_env_push(env, term->as.lambda.binder_id) != 0) {
+			if (canonical_env_push(env, term->as.lambda.binding_id) != 0) {
 				return -1;
 			}
 			key->bound_binder_count++;
@@ -2278,10 +2304,10 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_MATCH:
 			key->has_frame_local_reference =
 				key->has_frame_local_reference ||
-				(term->as.match.frame_id != PROTOTYPE_INVALID_ID &&
+				(term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
 					!canonicalize_frame_refs &&
-					(term->as.match.frame_id >= db->match_frame_count ||
-						!db->match_frames[term->as.match.frame_id].key.is_linkable));
+					(term->as.match.ih_scope_id >= db->ih_scope_count ||
+						!db->ih_scopes[term->as.match.ih_scope_id].key.is_linkable));
 			canonical_hash_mix_u32(p_hash, term->as.match.case_count);
 			if (canonical_hash_term_at_depth(
 					db,
@@ -2370,10 +2396,10 @@ static int canonical_hash_term_at_depth(
 			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			if (canonicalize_frame_refs) {
 				canonical_hash_mix_u32(p_hash, 0);
-			} else if (term->as.induction_hypothesis.frame_id < db->match_frame_count &&
-				db->match_frames[term->as.induction_hypothesis.frame_id].key.is_linkable) {
-				const struct prototype_match_frame_key* frame_key =
-					&db->match_frames[term->as.induction_hypothesis.frame_id].key;
+			} else if (term->as.induction_hypothesis.ih_scope_id < db->ih_scope_count &&
+				db->ih_scopes[term->as.induction_hypothesis.ih_scope_id].key.is_linkable) {
+				const struct prototype_ih_scope_key* frame_key =
+					&db->ih_scopes[term->as.induction_hypothesis.ih_scope_id].key;
 				canonical_hash_mix_u32(p_hash, 1);
 				canonical_hash_mix_u32(p_hash, (uint32_t)frame_key->match_key.hash);
 				canonical_hash_mix_u32(p_hash, (uint32_t)(frame_key->match_key.hash >> 32));
@@ -2382,7 +2408,7 @@ static int canonical_hash_term_at_depth(
 			} else {
 				key->has_frame_local_reference = 1;
 				canonical_hash_mix_u32(p_hash, 2);
-				canonical_hash_mix_u32(p_hash, term->as.induction_hypothesis.frame_id);
+				canonical_hash_mix_u32(p_hash, term->as.induction_hypothesis.ih_scope_id);
 			}
 			return canonical_hash_term_at_depth(
 				db,
@@ -2435,10 +2461,10 @@ static int canonical_hash_term_at_depth(
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 				{
 					uint32_t slot;
-					if (canonical_env_lookup(env, term->as.effect_row_var.binder_id, &slot)) {
+					if (canonical_env_lookup(env, term->as.effect_row_var.binding_id, &slot)) {
 						canonical_hash_mix_u32(p_hash, slot);
 					} else {
-						canonical_hash_mix_u32(p_hash, term->as.effect_row_var.binder_id);
+						canonical_hash_mix_u32(p_hash, term->as.effect_row_var.binding_id);
 					}
 				}
 				return 0;
@@ -2456,7 +2482,7 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
 			uint32_t saved_count = env->count;
 			uint32_t saved_next_slot = env->next_slot;
-			if (canonical_env_push(env, term->as.effect_row_forall.binder_id) != 0) {
+			if (canonical_env_push(env, term->as.effect_row_forall.binding_id) != 0) {
 				return -1;
 			}
 			key->bound_binder_count++;
@@ -2584,10 +2610,10 @@ int prototype_term_canonical_key_with_types(
 	return 0;
 }
 
-static int compute_match_frame_key(
+static int compute_ih_scope_key(
 	const struct prototype_term_db* db,
 	uint32_t match_term,
-	struct prototype_match_frame_key* p_key
+	struct prototype_ih_scope_key* p_key
 ) {
 	if (!db || !p_key || match_term >= db->term_count ||
 		db->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
@@ -2627,8 +2653,8 @@ void prototype_term_db_init(
 	size_t case_capacity,
 	struct prototype_case_binder* case_binders,
 	size_t case_binder_capacity,
-	struct prototype_match_frame* match_frames,
-	size_t match_frame_capacity
+	struct prototype_ih_scope* ih_scopes,
+	size_t ih_scope_capacity
 ) {
 	memset(db, 0, sizeof(*db));
 	db->terms = terms;
@@ -2638,10 +2664,10 @@ void prototype_term_db_init(
 	db->case_capacity = case_capacity;
 	db->case_binders = case_binders;
 	db->case_binder_capacity = case_binder_capacity;
-	db->match_frames = match_frames;
-	db->match_frame_capacity = match_frame_capacity;
-	for (uint32_t i = 0; i < PROTOTYPE_SCOPE_BINDER_CAPACITY; ++i) {
-		db->scope_binders[i] = PROTOTYPE_INVALID_ID;
+	db->ih_scopes = ih_scopes;
+	db->ih_scope_capacity = ih_scope_capacity;
+	for (uint32_t i = 0; i < PROTOTYPE_SCOPE_BINDING_CAPACITY; ++i) {
+		db->scope_bindings[i] = PROTOTYPE_INVALID_ID;
 	}
 	db->normalization_graph_revision = 1;
 }
@@ -2709,73 +2735,73 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 	return 0;
 }
 
-uint32_t prototype_term_binder_for_scope_slot(struct prototype_term_db* db, uint32_t scope_slot) {
-	if (!db || scope_slot >= PROTOTYPE_SCOPE_BINDER_CAPACITY) {
+uint32_t prototype_term_binding_for_scope_slot(struct prototype_term_db* db, uint32_t scope_slot) {
+	if (!db || scope_slot >= PROTOTYPE_SCOPE_BINDING_CAPACITY) {
 		return PROTOTYPE_INVALID_ID;
 	}
-	if (db->scope_binders[scope_slot] != PROTOTYPE_INVALID_ID) {
-		return db->scope_binders[scope_slot];
+	if (db->scope_bindings[scope_slot] != PROTOTYPE_INVALID_ID) {
+		return db->scope_bindings[scope_slot];
 	}
-	if (db->next_binder_id == PROTOTYPE_INVALID_ID) {
+	if (db->next_binding_id == PROTOTYPE_INVALID_ID) {
 		return PROTOTYPE_INVALID_ID;
 	}
-	uint32_t binder_id = db->next_binder_id++;
-	db->scope_binders[scope_slot] = binder_id;
-	return binder_id;
+	uint32_t binding_id = db->next_binding_id++;
+	db->scope_bindings[scope_slot] = binding_id;
+	return binding_id;
 }
 
-uint32_t prototype_term_fresh_binder(struct prototype_term_db* db) {
-	if (!db || db->next_binder_id == PROTOTYPE_INVALID_ID) {
+uint32_t prototype_term_new_binding(struct prototype_term_db* db) {
+	if (!db || db->next_binding_id == PROTOTYPE_INVALID_ID) {
 		return PROTOTYPE_INVALID_ID;
 	}
-	return db->next_binder_id++;
+	return db->next_binding_id++;
 }
 
-uint32_t prototype_term_new_match_frame(struct prototype_term_db* db) {
-	if (!db || reserve_slot(db->match_frame_count, db->match_frame_capacity) != 0) {
+uint32_t prototype_term_new_ih_scope(struct prototype_term_db* db) {
+	if (!db || reserve_slot(db->ih_scope_count, db->ih_scope_capacity) != 0) {
 		return PROTOTYPE_INVALID_ID;
 	}
-	uint32_t id = (uint32_t)db->match_frame_count;
-	db->match_frames[id].match_term = PROTOTYPE_INVALID_ID;
-	memset(&db->match_frames[id].key, 0, sizeof(db->match_frames[id].key));
-	db->match_frame_count++;
+	uint32_t id = (uint32_t)db->ih_scope_count;
+	db->ih_scopes[id].match_term = PROTOTYPE_INVALID_ID;
+	memset(&db->ih_scopes[id].key, 0, sizeof(db->ih_scopes[id].key));
+	db->ih_scope_count++;
 	return id;
 }
 
-int prototype_term_set_match_frame_term(
+int prototype_term_set_ih_scope_term(
 	struct prototype_term_db* db,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t match_term
 ) {
-	if (!db || frame_id >= db->match_frame_count || match_term >= db->term_count) {
+	if (!db || ih_scope_id >= db->ih_scope_count || match_term >= db->term_count) {
 		return -1;
 	}
-	db->match_frames[frame_id].match_term = match_term;
-	if (compute_match_frame_key(db, match_term, &db->match_frames[frame_id].key) != 0) {
-		memset(&db->match_frames[frame_id].key, 0, sizeof(db->match_frames[frame_id].key));
+	db->ih_scopes[ih_scope_id].match_term = match_term;
+	if (compute_ih_scope_key(db, match_term, &db->ih_scopes[ih_scope_id].key) != 0) {
+		memset(&db->ih_scopes[ih_scope_id].key, 0, sizeof(db->ih_scopes[ih_scope_id].key));
 		return -1;
 	}
 	invalidate_normalization_cache(db);
 	return 0;
 }
 
-int prototype_term_match_frame_key(
+int prototype_term_ih_scope_key(
 	const struct prototype_term_db* db,
-	uint32_t frame_id,
-	struct prototype_match_frame_key* p_key
+	uint32_t ih_scope_id,
+	struct prototype_ih_scope_key* p_key
 ) {
-	if (!db || !p_key || frame_id >= db->match_frame_count) {
+	if (!db || !p_key || ih_scope_id >= db->ih_scope_count) {
 		return -1;
 	}
-	*p_key = db->match_frames[frame_id].key;
+	*p_key = db->ih_scopes[ih_scope_id].key;
 	return p_key->is_linkable ? 0 : -1;
 }
 
-int prototype_term_var(struct prototype_term_db* db, uint32_t binder_id, uint32_t* p_ret) {
+int prototype_term_var(struct prototype_term_db* db, uint32_t binding_id, uint32_t* p_ret) {
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_VAR;
-	term.as.var.binder_id = binder_id;
+	term.as.var.binding_id = binding_id;
 	return add_term(db, term, p_ret);
 }
 
@@ -2808,7 +2834,7 @@ int prototype_term_app(struct prototype_term_db* db, uint32_t function, uint32_t
 static int prototype_term_lambda_with_tag(
 	struct prototype_term_db* db,
 	int tag,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t body,
 	uint32_t* p_ret
 ) {
@@ -2819,21 +2845,21 @@ static int prototype_term_lambda_with_tag(
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = tag;
-	term.as.lambda.binder_id = binder_id;
+	term.as.lambda.binding_id = binding_id;
 	term.as.lambda.body = body;
 	return add_term(db, term, p_ret);
 }
 
 int prototype_term_lambda(
 	struct prototype_term_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t body,
 	uint32_t* p_ret
 ) {
 	return prototype_term_lambda_with_tag(
 		db,
 		PROTOTYPE_TERM_LAMBDA,
-		binder_id,
+		binding_id,
 		body,
 		p_ret
 	);
@@ -2862,7 +2888,7 @@ int prototype_term_pi_family(
 
 int prototype_term_pure_family(
 	struct prototype_term_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t body,
 	uint32_t* p_family
 ) {
@@ -2870,7 +2896,7 @@ int prototype_term_pure_family(
 	uint32_t returned_body;
 	if (!db || !p_family || body >= db->term_count ||
 		prototype_term_return(db, body, &returned_body) != 0 ||
-		prototype_term_lambda(db, binder_id, returned_body, &lambda) != 0) {
+		prototype_term_lambda(db, binding_id, returned_body, &lambda) != 0) {
 		return -1;
 	}
 	return prototype_term_thunk(db, lambda, p_family);
@@ -2912,7 +2938,7 @@ int prototype_term_pure_family_parts(
 	}
 	const struct prototype_term* lambda_term = &db->terms[lambda];
 	uint32_t returned = lambda_term->as.lambda.body;
-	*p_binder_id = lambda_term->as.lambda.binder_id;
+	*p_binder_id = lambda_term->as.lambda.binding_id;
 	*p_body = db->terms[returned].as.return_term.value;
 	return 0;
 }
@@ -2924,7 +2950,7 @@ int prototype_term_match(
 	uint32_t case_count,
 	uint32_t* p_ret
 ) {
-	return prototype_term_match_with_frame(
+	return prototype_term_match_with_ih_scope(
 		db,
 		scrutinee,
 		cases,
@@ -2934,18 +2960,18 @@ int prototype_term_match(
 	);
 }
 
-int prototype_term_match_with_frame(
+int prototype_term_match_with_ih_scope(
 	struct prototype_term_db* db,
 	uint32_t scrutinee,
 	const struct prototype_match_case_input* cases,
 	uint32_t case_count,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t* p_ret
 ) {
 	if (!db || !cases || !p_ret || !db->case_label_symbols || scrutinee >= db->term_count) {
 		return -1;
 	}
-	if (frame_id != PROTOTYPE_INVALID_ID && frame_id >= db->match_frame_count) {
+	if (ih_scope_id != PROTOTYPE_INVALID_ID && ih_scope_id >= db->ih_scope_count) {
 		return -1;
 	}
 	if (db->case_count + case_count > db->case_capacity) {
@@ -2996,7 +3022,7 @@ int prototype_term_match_with_frame(
 	term.as.match.scrutinee = scrutinee;
 	term.as.match.first_case = first_case;
 	term.as.match.case_count = case_count;
-	term.as.match.frame_id = frame_id;
+	term.as.match.ih_scope_id = ih_scope_id;
 	if (add_term(db, term, p_ret) != 0) {
 		db->case_count = saved_case_count;
 		db->case_binder_count = saved_case_binder_count;
@@ -3395,17 +3421,17 @@ int prototype_term_rebind_type_former_anchors(
 				PROTOTYPE_INVALID_ID : remap[db->cases[i].constructor_owner];
 		db->cases[i].body = remap[db->cases[i].body];
 	}
-	for (size_t i = 0; i < db->match_frame_count; ++i) {
+	for (size_t i = 0; i < db->ih_scope_count; ++i) {
 		/* A frame is allocated before its Match node is committed.  During
 		 * type-former rebinding that pending frame has no term yet. */
-		if (db->match_frames[i].match_term == PROTOTYPE_INVALID_ID) {
+		if (db->ih_scopes[i].match_term == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
-		if (db->match_frames[i].match_term >= db->term_count) {
+		if (db->ih_scopes[i].match_term >= db->term_count) {
 			free(remap);
 			return -1;
 		}
-		db->match_frames[i].match_term = remap[db->match_frames[i].match_term];
+		db->ih_scopes[i].match_term = remap[db->ih_scopes[i].match_term];
 	}
 	free(remap);
 	invalidate_normalization_cache(db);
@@ -3503,18 +3529,18 @@ int prototype_term_type_instance_is_saturated(
 
 int prototype_term_induction_hypothesis(
 	struct prototype_term_db* db,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t argument,
 	uint32_t* p_ret
 ) {
-	if (!db || argument >= db->term_count || frame_id >= db->match_frame_count) {
+	if (!db || argument >= db->term_count || ih_scope_id >= db->ih_scope_count) {
 		return -1;
 	}
 
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_INDUCTION_HYPOTHESIS;
-	term.as.induction_hypothesis.frame_id = frame_id;
+	term.as.induction_hypothesis.ih_scope_id = ih_scope_id;
 	term.as.induction_hypothesis.argument = argument;
 	return add_term(db, term, p_ret);
 }
@@ -3577,16 +3603,16 @@ int prototype_term_effect_label(struct prototype_term_db* db, unsigned effects, 
 
 int prototype_term_effect_row_var(
 	struct prototype_term_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t* p_ret
 ) {
-	if (!db || !p_ret || binder_id == PROTOTYPE_INVALID_ID) {
+	if (!db || !p_ret || binding_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_EFFECT_ROW_VAR;
-	term.as.effect_row_var.binder_id = binder_id;
+	term.as.effect_row_var.binding_id = binding_id;
 	return add_term(db, term, p_ret);
 }
 
@@ -3728,17 +3754,17 @@ int prototype_term_effect_row_residual(
 
 int prototype_term_effect_row_forall(
 	struct prototype_term_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t body,
 	uint32_t* p_ret
 ) {
-	if (!db || !p_ret || binder_id == PROTOTYPE_INVALID_ID || body >= db->term_count) {
+	if (!db || !p_ret || binding_id == PROTOTYPE_INVALID_ID || body >= db->term_count) {
 		return -1;
 	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_EFFECT_ROW_FORALL;
-	term.as.effect_row_forall.binder_id = binder_id;
+	term.as.effect_row_forall.binding_id = binding_id;
 	term.as.effect_row_forall.body = body;
 	return add_term(db, term, p_ret);
 }
@@ -3753,7 +3779,7 @@ int prototype_term_effect_row_forall_parts(
 		db->terms[term_id].tag != PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
 		return -1;
 	}
-	*p_binder_id = db->terms[term_id].as.effect_row_forall.binder_id;
+	*p_binder_id = db->terms[term_id].as.effect_row_forall.binding_id;
 	*p_body = db->terms[term_id].as.effect_row_forall.body;
 	return 0;
 }
@@ -4014,7 +4040,7 @@ int prototype_term_effect_operation(
 			}
 			break;
 		case PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT: {
-			uint32_t row_binder = prototype_term_fresh_binder(db);
+			uint32_t row_binder = prototype_term_new_binding(db);
 			uint32_t row;
 			uint32_t computation;
 			if (row_binder == PROTOTYPE_INVALID_ID ||
@@ -4060,7 +4086,7 @@ int prototype_term_effect_operation_identity(
 static int term_contains_free_binder_at_depth(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t depth
 ) {
 	if (!db || term_id >= db->term_count || depth > 128) {
@@ -4069,38 +4095,38 @@ static int term_contains_free_binder_at_depth(
 	const struct prototype_term* term = &db->terms[term_id];
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR:
-			return term->as.var.binder_id == binder_id;
+			return term->as.var.binding_id == binding_id;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			return term_contains_free_binder_at_depth(
 				db,
 				term->as.constructor.owner,
-				binder_id,
+				binding_id,
 				depth + 1
 			);
 		case PROTOTYPE_TERM_RETURN:
 			return term_contains_free_binder_at_depth(
-				db, term->as.return_term.value, binder_id, depth + 1
+				db, term->as.return_term.value, binding_id, depth + 1
 			);
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return term_contains_free_binder_at_depth(
-				db, term->as.thunk_type.computation, binder_id, depth + 1
+				db, term->as.thunk_type.computation, binding_id, depth + 1
 			);
 		case PROTOTYPE_TERM_THUNK:
 			return term_contains_free_binder_at_depth(
-				db, term->as.thunk.computation, binder_id, depth + 1
+				db, term->as.thunk.computation, binding_id, depth + 1
 			);
 		case PROTOTYPE_TERM_FORCE:
 			return term_contains_free_binder_at_depth(
-				db, term->as.force.value, binder_id, depth + 1
+				db, term->as.force.value, binding_id, depth + 1
 			);
 		case PROTOTYPE_TERM_COMPUTATION_FOLD:
 			if (term_contains_free_binder_at_depth(
-					db, term->as.computation_fold.computation, binder_id, depth + 1
+					db, term->as.computation_fold.computation, binding_id, depth + 1
 				)) {
 				return 1;
 			}
 			if (term_contains_free_binder_at_depth(
-					db, term->as.computation_fold.return_clause, binder_id, depth + 1
+					db, term->as.computation_fold.return_clause, binding_id, depth + 1
 				)) {
 				return 1;
 			}
@@ -4108,9 +4134,9 @@ static int term_contains_free_binder_at_depth(
 				const struct prototype_computation_fold_clause* clause =
 					&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 				if (term_contains_free_binder_at_depth(
-						db, clause->operation, binder_id, depth + 1
+						db, clause->operation, binding_id, depth + 1
 					) || term_contains_free_binder_at_depth(
-						db, clause->body, binder_id, depth + 1
+						db, clause->body, binding_id, depth + 1
 					)) {
 					return 1;
 				}
@@ -4118,70 +4144,70 @@ static int term_contains_free_binder_at_depth(
 			return 0;
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			return term_contains_free_binder_at_depth(
-				db, term->as.operation_request.operation, binder_id, depth + 1
+				db, term->as.operation_request.operation, binding_id, depth + 1
 			) || term_contains_free_binder_at_depth(
-				db, term->as.operation_request.argument, binder_id, depth + 1
+				db, term->as.operation_request.argument, binding_id, depth + 1
 			) || term_contains_free_binder_at_depth(
-				db, term->as.operation_request.continuation, binder_id, depth + 1
+				db, term->as.operation_request.continuation, binding_id, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-			return term->as.effect_row_var.binder_id == binder_id;
+			return term->as.effect_row_var.binding_id == binding_id;
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 			return term_contains_free_binder_at_depth(
-				db, term->as.effect_row_union.left, binder_id, depth + 1
+				db, term->as.effect_row_union.left, binding_id, depth + 1
 			) || term_contains_free_binder_at_depth(
-				db, term->as.effect_row_union.right, binder_id, depth + 1
+				db, term->as.effect_row_union.right, binding_id, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			return term->as.effect_row_forall.binder_id == binder_id ? 0 :
+			return term->as.effect_row_forall.binding_id == binding_id ? 0 :
 				term_contains_free_binder_at_depth(
-					db, term->as.effect_row_forall.body, binder_id, depth + 1
+					db, term->as.effect_row_forall.body, binding_id, depth + 1
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
 			return term_contains_free_binder_at_depth(
-				db, term->as.effect_row_operation.latent_row, binder_id, depth + 1
+				db, term->as.effect_row_operation.latent_row, binding_id, depth + 1
 			);
 		case PROTOTYPE_TERM_APP:
 			return term_contains_free_binder_at_depth(
 					db,
 					term->as.app.function,
-					binder_id,
+					binding_id,
 					depth + 1
 				) ||
 				term_contains_free_binder_at_depth(
 					db,
 					term->as.app.argument,
-					binder_id,
+					binding_id,
 					depth + 1
 				);
 		case PROTOTYPE_TERM_LAMBDA:
-			if (term->as.lambda.binder_id == binder_id) {
+			if (term->as.lambda.binding_id == binding_id) {
 				return 0;
 			}
 			return term_contains_free_binder_at_depth(
 				db,
 				term->as.lambda.body,
-				binder_id,
+				binding_id,
 				depth + 1
 			);
 		case PROTOTYPE_TERM_PI: {
 			if (term_contains_free_binder_at_depth(
 					db,
 					term->as.pi.domain,
-					binder_id,
+					binding_id,
 					depth + 1
 				)) {
 				return 1;
 			}
 			const struct prototype_term* family = &db->terms[term->as.pi.codomain_family];
 			if (family->tag == PROTOTYPE_TERM_LAMBDA &&
-				family->as.lambda.binder_id == binder_id) {
+				family->as.lambda.binding_id == binding_id) {
 				return 0;
 			}
 			return term_contains_free_binder_at_depth(
 				db,
 				term->as.pi.codomain_family,
-				binder_id,
+				binding_id,
 				depth + 1
 			);
 		}
@@ -4189,7 +4215,7 @@ static int term_contains_free_binder_at_depth(
 			if (term_contains_free_binder_at_depth(
 				db,
 				term->as.match.scrutinee,
-				binder_id,
+				binding_id,
 				depth + 1
 			)) {
 				return 1;
@@ -4201,12 +4227,12 @@ static int term_contains_free_binder_at_depth(
 				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
 					const struct prototype_case_binder* case_binder =
 						&db->case_binders[match_case->first_binder + j];
-					if (case_binder->binder_id == binder_id) {
+					if (case_binder->binding_id == binding_id) {
 						shadowed = 1;
 					}
 				}
 				if (!shadowed &&
-					term_contains_free_binder_at_depth(db, match_case->body, binder_id, depth + 1)) {
+					term_contains_free_binder_at_depth(db, match_case->body, binding_id, depth + 1)) {
 					return 1;
 				}
 			}
@@ -4216,33 +4242,33 @@ static int term_contains_free_binder_at_depth(
 			return term_contains_free_binder_at_depth(
 					db,
 					term->as.type_view.core,
-					binder_id,
+					binding_id,
 					depth + 1
 				) ||
 				term_contains_free_binder_at_depth(
 					db,
 					term->as.type_view.source,
-					binder_id,
+					binding_id,
 					depth + 1
 				);
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 				return term_contains_free_binder_at_depth(
 					db,
 					term->as.induction_hypothesis.argument,
-					binder_id,
+					binding_id,
 					depth + 1
 				);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return term_contains_free_binder_at_depth(
 						db,
 						term->as.computation_type.label,
-						binder_id,
+						binding_id,
 						depth + 1
 					) ||
 					term_contains_free_binder_at_depth(
 						db,
 						term->as.computation_type.result,
-						binder_id,
+						binding_id,
 						depth + 1
 					);
 			default:
@@ -4250,12 +4276,12 @@ static int term_contains_free_binder_at_depth(
 		}
 	}
 
-int prototype_term_contains_free_binder(
+int prototype_term_contains_free_binding(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
-	uint32_t binder_id
+	uint32_t binding_id
 ) {
-	return term_contains_free_binder_at_depth(db, term_id, binder_id, 0);
+	return term_contains_free_binder_at_depth(db, term_id, binding_id, 0);
 }
 
 int prototype_term_pi(
@@ -4268,10 +4294,10 @@ int prototype_term_pi(
 		return -1;
 	}
 
-	uint32_t binder_id = prototype_term_fresh_binder(db);
+	uint32_t binding_id = prototype_term_new_binding(db);
 	uint32_t codomain_family;
-	if (binder_id == PROTOTYPE_INVALID_ID ||
-		prototype_term_pure_family(db, binder_id, codomain, &codomain_family) != 0) {
+	if (binding_id == PROTOTYPE_INVALID_ID ||
+		prototype_term_pure_family(db, binding_id, codomain, &codomain_family) != 0) {
 		return -1;
 	}
 	return prototype_term_pi_family(db, domain, codomain_family, p_ret);
@@ -4281,51 +4307,172 @@ static int substitute_term(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t term_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t replacement,
 	uint32_t* p_ret
 ) {
+	const struct prototype_binding_replacement binding = {
+		.binding_id = binding_id,
+		.replacement = replacement
+	};
 	struct substitution_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.type_declarations = type_declarations;
-	return substitute_term_internal(
+	ctx.bindings = &binding;
+	ctx.binding_count = 1;
+	int status = substitute_term_internal(
 		db,
 		term_id,
-		binder_id,
-		replacement,
 		&ctx,
 		p_ret
 	);
+	free(ctx.memo);
+	return status;
 }
 
-static int substitution_lookup_frame(
+static int substitution_binding_is_bound(
 	const struct substitution_context* ctx,
-	uint32_t old_frame_id,
-	uint32_t* p_new_frame_id
+	uint32_t binding_id
 ) {
-	if (!ctx || !p_new_frame_id) {
+	if (!ctx) {
 		return 0;
 	}
-	for (const struct substitution_frame_scope* scope = ctx->frame_scope;
+	for (const struct substitution_binding_scope* scope = ctx->binding_scope;
 		scope;
 		scope = scope->previous) {
-		if (scope->old_frame_id == old_frame_id) {
-			*p_new_frame_id = scope->new_frame_id;
+		if (scope->binding_id == binding_id) {
 			return 1;
 		}
 	}
 	return 0;
 }
 
-static int substitution_has_frame_scope(
+static int substitution_lookup_binding(
 	const struct substitution_context* ctx,
-	uint32_t frame_id
+	uint32_t binding_id,
+	uint32_t* p_replacement
 ) {
-	uint32_t ignored;
-	return substitution_lookup_frame(ctx, frame_id, &ignored);
+	if (!ctx || !p_replacement || substitution_binding_is_bound(ctx, binding_id)) {
+		return 0;
+	}
+	for (size_t i = 0; i < ctx->binding_count; ++i) {
+		if (ctx->bindings[i].binding_id == binding_id) {
+			*p_replacement = ctx->bindings[i].replacement;
+			return 1;
+		}
+	}
+	return 0;
 }
 
-static int term_contains_frame_scope_reference_at_depth(
+static uint64_t substitution_binding_scope_key(
+	const struct substitution_context* ctx
+) {
+	return ctx && ctx->binding_scope ? ctx->binding_scope->scope_key : 0;
+}
+
+static uint64_t substitution_ih_scope_clone_key(
+	const struct substitution_context* ctx
+) {
+	return ctx && ctx->ih_scope_clone ? ctx->ih_scope_clone->scope_key : 0;
+}
+
+static int substitution_memo_lookup(
+	const struct substitution_context* ctx,
+	uint32_t term_id,
+	uint32_t* p_result
+) {
+	if (!ctx || !p_result || ctx->binding_count == 0) {
+		return 0;
+	}
+	uint64_t binding_scope_key = substitution_binding_scope_key(ctx);
+	uint64_t ih_scope_clone_key = substitution_ih_scope_clone_key(ctx);
+	for (size_t i = 0; i < ctx->memo_count; ++i) {
+		const struct substitution_memo_entry* entry = &ctx->memo[i];
+		if (entry->term_id == term_id &&
+			entry->binding_scope_key == binding_scope_key &&
+			entry->ih_scope_clone_key == ih_scope_clone_key) {
+			*p_result = entry->result;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int substitution_memo_store(
+	struct substitution_context* ctx,
+	uint32_t term_id,
+	uint32_t result
+) {
+	if (!ctx || ctx->binding_count == 0) {
+		return 0;
+	}
+	if (ctx->memo_count == ctx->memo_capacity) {
+		size_t capacity = ctx->memo_capacity ? ctx->memo_capacity * 2 : 64;
+		struct substitution_memo_entry* memo = realloc(
+			ctx->memo, capacity * sizeof(*memo)
+		);
+		if (!memo) {
+			return -1;
+		}
+		ctx->memo = memo;
+		ctx->memo_capacity = capacity;
+	}
+	ctx->memo[ctx->memo_count++] = (struct substitution_memo_entry) {
+		.term_id = term_id,
+		.result = result,
+		.binding_scope_key = substitution_binding_scope_key(ctx),
+		.ih_scope_clone_key = substitution_ih_scope_clone_key(ctx)
+	};
+	return 0;
+}
+
+static int substitution_term_has_binding(
+	const struct prototype_term_db* db,
+	const struct substitution_context* ctx,
+	uint32_t term_id
+) {
+	if (!db || !ctx || term_id >= db->term_count) {
+		return 0;
+	}
+	for (size_t i = 0; i < ctx->binding_count; ++i) {
+		if (!substitution_binding_is_bound(ctx, ctx->bindings[i].binding_id) &&
+			prototype_term_contains_free_binding(
+				db, term_id, ctx->bindings[i].binding_id
+			)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int substitution_lookup_frame(
+	const struct substitution_context* ctx,
+	uint32_t old_ih_scope_id,
+	uint32_t* p_new_frame_id
+) {
+	if (!ctx || !p_new_frame_id) {
+		return 0;
+	}
+	for (const struct substitution_ih_scope_clone* scope = ctx->ih_scope_clone;
+		scope;
+		scope = scope->previous) {
+		if (scope->old_ih_scope_id == old_ih_scope_id) {
+			*p_new_frame_id = scope->new_ih_scope_id;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int substitution_has_ih_scope_clone(
+	const struct substitution_context* ctx,
+	uint32_t ih_scope_id
+) {
+	uint32_t ignored;
+	return substitution_lookup_frame(ctx, ih_scope_id, &ignored);
+}
+
+static int term_contains_ih_scope_clone_reference_at_depth(
 	const struct prototype_term_db* db,
 	const struct substitution_context* ctx,
 	uint32_t term_id,
@@ -4334,44 +4481,44 @@ static int term_contains_frame_scope_reference_at_depth(
 	if (!db || !ctx || term_id >= db->term_count || depth > 100000) {
 		return 0;
 	}
-	if (!ctx->frame_scope) {
+	if (!ctx->ih_scope_clone) {
 		return 0;
 	}
 	const struct prototype_term* term = &db->terms[term_id];
 	switch (term->tag) {
 		case PROTOTYPE_TERM_APP:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.app.function,
 					depth + 1
 				) ||
-				term_contains_frame_scope_reference_at_depth(
+				term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.app.argument,
 					depth + 1
 				);
 		case PROTOTYPE_TERM_RETURN:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.return_term.value, depth + 1
 			);
 		case PROTOTYPE_TERM_THUNK_TYPE:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.thunk_type.computation, depth + 1
 			);
 		case PROTOTYPE_TERM_THUNK:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.thunk.computation, depth + 1
 			);
 		case PROTOTYPE_TERM_FORCE:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.force.value, depth + 1
 			);
 		case PROTOTYPE_TERM_COMPUTATION_FOLD:
-			if (term_contains_frame_scope_reference_at_depth(
+			if (term_contains_ih_scope_clone_reference_at_depth(
 					db, ctx, term->as.computation_fold.computation, depth + 1
-				) || term_contains_frame_scope_reference_at_depth(
+				) || term_contains_ih_scope_clone_reference_at_depth(
 					db, ctx, term->as.computation_fold.return_clause, depth + 1
 				)) {
 				return 1;
@@ -4379,9 +4526,9 @@ static int term_contains_frame_scope_reference_at_depth(
 			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
 				const struct prototype_computation_fold_clause* clause =
 					&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
-				if (term_contains_frame_scope_reference_at_depth(
+				if (term_contains_ih_scope_clone_reference_at_depth(
 						db, ctx, clause->operation, depth + 1
-					) || term_contains_frame_scope_reference_at_depth(
+					) || term_contains_ih_scope_clone_reference_at_depth(
 						db, ctx, clause->body, depth + 1
 					)) {
 					return 1;
@@ -4389,51 +4536,51 @@ static int term_contains_frame_scope_reference_at_depth(
 			}
 			return 0;
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.operation_request.operation, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
+			) || term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.operation_request.argument, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
+			) || term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.operation_request.continuation, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.effect_row_union.left, depth + 1
-			) || term_contains_frame_scope_reference_at_depth(
+			) || term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.effect_row_union.right, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			return 0;
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.effect_row_forall.body, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db, ctx, term->as.effect_row_operation.latent_row, depth + 1
 			);
 		case PROTOTYPE_TERM_LAMBDA:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db,
 				ctx,
 				term->as.lambda.body,
 				depth + 1
 			);
 		case PROTOTYPE_TERM_PI:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.pi.domain,
 					depth + 1
 				) ||
-				term_contains_frame_scope_reference_at_depth(
+				term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.pi.codomain_family,
 					depth + 1
 				);
 		case PROTOTYPE_TERM_MATCH:
-			if (term_contains_frame_scope_reference_at_depth(
+			if (term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.match.scrutinee,
@@ -4448,13 +4595,13 @@ static int term_contains_frame_scope_reference_at_depth(
 				}
 				const struct prototype_match_case* match_case = &db->cases[case_id];
 				if ((match_case->constructor_owner != PROTOTYPE_INVALID_ID &&
-						term_contains_frame_scope_reference_at_depth(
+						term_contains_ih_scope_clone_reference_at_depth(
 							db,
 							ctx,
 							match_case->constructor_owner,
 							depth + 1
 						)) ||
-					term_contains_frame_scope_reference_at_depth(
+					term_contains_ih_scope_clone_reference_at_depth(
 						db,
 						ctx,
 						match_case->body,
@@ -4465,44 +4612,44 @@ static int term_contains_frame_scope_reference_at_depth(
 			}
 			return 0;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 				db,
 				ctx,
 				term->as.constructor.owner,
 				depth + 1
 			);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.type_view.core,
 					depth + 1
 				) ||
-				term_contains_frame_scope_reference_at_depth(
+				term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.type_view.source,
 					depth + 1
 				);
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			return substitution_has_frame_scope(
+			return substitution_has_ih_scope_clone(
 					ctx,
-					term->as.induction_hypothesis.frame_id
+					term->as.induction_hypothesis.ih_scope_id
 				) ||
-				term_contains_frame_scope_reference_at_depth(
+				term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.induction_hypothesis.argument,
 					depth + 1
 				);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			return term_contains_frame_scope_reference_at_depth(
+			return term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.computation_type.label,
 					depth + 1
 				) ||
-				term_contains_frame_scope_reference_at_depth(
+				term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.computation_type.result,
@@ -4513,53 +4660,77 @@ static int term_contains_frame_scope_reference_at_depth(
 	}
 }
 
-static int term_contains_frame_scope_reference(
+static int term_contains_ih_scope_clone_reference(
 	const struct prototype_term_db* db,
 	const struct substitution_context* ctx,
 	uint32_t term_id
 ) {
-	return term_contains_frame_scope_reference_at_depth(db, ctx, term_id, 0);
+	return term_contains_ih_scope_clone_reference_at_depth(db, ctx, term_id, 0);
 }
 
 static int substitute_term_internal(
 	struct prototype_term_db* db,
 	uint32_t term_id,
-	uint32_t binder_id,
-	uint32_t replacement,
 	struct substitution_context* ctx,
 	uint32_t* p_ret
 ) {
-	if (!db || !p_ret || !ctx || term_id >= db->term_count ||
-		(binder_id != PROTOTYPE_INVALID_ID && replacement >= db->term_count)) {
+	if (!db || !p_ret || !ctx || term_id >= db->term_count) {
+		return -1;
+	}
+	if (substitution_memo_lookup(ctx, term_id, p_ret)) {
+		return 0;
+	}
+	int status = substitute_term_uncached_internal(
+		db, term_id, ctx, p_ret
+	);
+	if (status == 0 && substitution_memo_store(ctx, term_id, *p_ret) != 0) {
+		return -1;
+	}
+	return status;
+}
+
+static int substitute_term_uncached_internal(
+	struct prototype_term_db* db,
+	uint32_t term_id,
+	struct substitution_context* ctx,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || !ctx || term_id >= db->term_count) {
 		return -1;
 	}
 
 	const struct prototype_term* term = &db->terms[term_id];
 	switch (term->tag) {
-		case PROTOTYPE_TERM_VAR:
-			if (binder_id != PROTOTYPE_INVALID_ID &&
-				term->as.var.binder_id == binder_id) {
-				*p_ret = replacement;
+		case PROTOTYPE_TERM_VAR: {
+			uint32_t direct_replacement;
+			if (substitution_lookup_binding(
+					ctx, term->as.var.binding_id, &direct_replacement
+				)) {
+				*p_ret = direct_replacement;
 			} else {
 				*p_ret = term_id;
 			}
 			return 0;
-		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-			if (binder_id != PROTOTYPE_INVALID_ID &&
-				term->as.effect_row_var.binder_id == binder_id) {
-				*p_ret = replacement;
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR: {
+			uint32_t direct_replacement;
+			if (substitution_lookup_binding(
+					ctx,
+					term->as.effect_row_var.binding_id,
+					&direct_replacement
+				)) {
+				*p_ret = direct_replacement;
 			} else {
 				*p_ret = term_id;
 			}
 			return 0;
+		}
 		case PROTOTYPE_TERM_APP: {
 			uint32_t function;
 			uint32_t argument;
 			if (substitute_term_internal(
 					db,
 					term->as.app.function,
-					binder_id,
-					replacement,
 					ctx,
 					&function
 				) != 0) {
@@ -4568,8 +4739,6 @@ static int substitute_term_internal(
 			if (substitute_term_internal(
 					db,
 					term->as.app.argument,
-					binder_id,
-					replacement,
 					ctx,
 					&argument
 				) != 0) {
@@ -4587,16 +4756,12 @@ static int substitute_term_internal(
 			if (substitute_term_internal(
 					db,
 					term->as.pi.domain,
-					binder_id,
-					replacement,
 					ctx,
 					&domain
 				) != 0 ||
 				substitute_term_internal(
 					db,
 					term->as.pi.codomain_family,
-					binder_id,
-					replacement,
 					ctx,
 					&codomain_family
 				) != 0) {
@@ -4613,23 +4778,21 @@ static int substitute_term_internal(
 			if (substitute_term_internal(
 				db,
 				term->as.induction_hypothesis.argument,
-				binder_id,
-				replacement,
-				ctx,
+					ctx,
 				&argument
 			) != 0) {
 				return -1;
 			}
-			uint32_t frame_id = term->as.induction_hypothesis.frame_id;
-			substitution_lookup_frame(ctx, frame_id, &frame_id);
+			uint32_t ih_scope_id = term->as.induction_hypothesis.ih_scope_id;
+			substitution_lookup_frame(ctx, ih_scope_id, &ih_scope_id);
 			if (argument == term->as.induction_hypothesis.argument &&
-				frame_id == term->as.induction_hypothesis.frame_id) {
+				ih_scope_id == term->as.induction_hypothesis.ih_scope_id) {
 				*p_ret = term_id;
 				return 0;
 			}
 			return prototype_term_induction_hypothesis(
 				db,
-				frame_id,
+				ih_scope_id,
 				argument,
 				p_ret
 			);
@@ -4639,8 +4802,6 @@ static int substitute_term_internal(
 			if (substitute_term_internal(
 					db,
 					term->as.match.scrutinee,
-					binder_id,
-					replacement,
 					ctx,
 					&scrutinee
 				) != 0) {
@@ -4649,6 +4810,7 @@ static int substitute_term_internal(
 
 			struct prototype_match_case_input case_inputs[64];
 			struct prototype_case_binder binder_storage[256];
+			struct substitution_binding_scope scope_storage[256];
 			uint32_t binder_cursor = 0;
 			int changed = scrutinee != term->as.match.scrutinee;
 			if (term->as.match.case_count > 64) {
@@ -4662,35 +4824,35 @@ static int substitute_term_internal(
 					return -1;
 				}
 
-				int shadows = 0;
 				for (uint32_t j = 0; j < old_case->binder_count; ++j) {
 					struct prototype_case_binder case_binder = db->case_binders[old_case->first_binder + j];
 					binder_storage[binder_cursor + j] = case_binder;
-					if (case_binder.binder_id == binder_id) {
-						shadows = 1;
+				}
+				const struct substitution_binding_scope* saved_binding_scope =
+					ctx->binding_scope;
+				if (ctx->binding_count > 0) {
+					for (uint32_t j = 0; j < old_case->binder_count; ++j) {
+						scope_storage[binder_cursor + j].binding_id =
+							binder_storage[binder_cursor + j].binding_id;
+						scope_storage[binder_cursor + j].scope_key =
+							++ctx->next_scope_key;
+						scope_storage[binder_cursor + j].previous =
+							ctx->binding_scope;
+						ctx->binding_scope = &scope_storage[binder_cursor + j];
 					}
 				}
-				uint32_t body_binder_id = shadows ? PROTOTYPE_INVALID_ID : binder_id;
-				if ((body_binder_id != PROTOTYPE_INVALID_ID &&
-						prototype_term_contains_free_binder(
-							db,
-							old_case->body,
-							body_binder_id
-						)) ||
-					term_contains_frame_scope_reference(db, ctx, old_case->body)) {
+				if (term_contains_ih_scope_clone_reference(db, ctx, old_case->body) ||
+					substitution_term_has_binding(db, ctx, old_case->body)) {
 					changed = 1;
 				}
+				ctx->binding_scope = saved_binding_scope;
 				if (old_case->constructor_owner != PROTOTYPE_INVALID_ID &&
-					((binder_id != PROTOTYPE_INVALID_ID &&
-							prototype_term_contains_free_binder(
-								db,
-								old_case->constructor_owner,
-								binder_id
-							)) ||
-						term_contains_frame_scope_reference(
+					(term_contains_ih_scope_clone_reference(
 							db,
 							ctx,
 							old_case->constructor_owner
+						) || substitution_term_has_binding(
+							db, ctx, old_case->constructor_owner
 						))) {
 					changed = 1;
 				}
@@ -4702,19 +4864,20 @@ static int substitute_term_internal(
 				return 0;
 			}
 
-			uint32_t frame_id = term->as.match.frame_id;
-			const struct substitution_frame_scope* saved_frame_scope = ctx->frame_scope;
-			struct substitution_frame_scope frame_scope;
-			if (frame_id != PROTOTYPE_INVALID_ID) {
-				uint32_t new_frame_id = prototype_term_new_match_frame(db);
-				if (new_frame_id == PROTOTYPE_INVALID_ID) {
+			uint32_t ih_scope_id = term->as.match.ih_scope_id;
+			const struct substitution_ih_scope_clone* saved_ih_scope_clone = ctx->ih_scope_clone;
+			struct substitution_ih_scope_clone ih_scope_clone;
+			if (ih_scope_id != PROTOTYPE_INVALID_ID) {
+				uint32_t new_ih_scope_id = prototype_term_new_ih_scope(db);
+				if (new_ih_scope_id == PROTOTYPE_INVALID_ID) {
 					return -1;
 				}
-				frame_scope.old_frame_id = frame_id;
-				frame_scope.new_frame_id = new_frame_id;
-				frame_scope.previous = saved_frame_scope;
-				ctx->frame_scope = &frame_scope;
-				frame_id = new_frame_id;
+				ih_scope_clone.old_ih_scope_id = ih_scope_id;
+				ih_scope_clone.new_ih_scope_id = new_ih_scope_id;
+				ih_scope_clone.scope_key = ++ctx->next_scope_key;
+				ih_scope_clone.previous = saved_ih_scope_clone;
+				ctx->ih_scope_clone = &ih_scope_clone;
+				ih_scope_id = new_ih_scope_id;
 			}
 
 			binder_cursor = 0;
@@ -4723,34 +4886,43 @@ static int substitute_term_internal(
 					&db->cases[term->as.match.first_case + i];
 				uint32_t body = old_case->body;
 				uint32_t constructor_owner = old_case->constructor_owner;
-				int shadows = 0;
 				for (uint32_t j = 0; j < old_case->binder_count; ++j) {
 					struct prototype_case_binder case_binder =
 						db->case_binders[old_case->first_binder + j];
 					binder_storage[binder_cursor + j] = case_binder;
-					if (case_binder.binder_id == binder_id) {
-						shadows = 1;
+				}
+				const struct substitution_binding_scope* saved_binding_scope =
+					ctx->binding_scope;
+				if (ctx->binding_count > 0) {
+					for (uint32_t j = 0; j < old_case->binder_count; ++j) {
+						scope_storage[binder_cursor + j].binding_id =
+							binder_storage[binder_cursor + j].binding_id;
+						scope_storage[binder_cursor + j].scope_key =
+							++ctx->next_scope_key;
+						scope_storage[binder_cursor + j].previous =
+							ctx->binding_scope;
+						ctx->binding_scope = &scope_storage[binder_cursor + j];
 					}
 				}
-				uint32_t body_binder_id = shadows ? PROTOTYPE_INVALID_ID : binder_id;
 				if (substitute_term_internal(
 						db,
 						old_case->body,
-						body_binder_id,
-						replacement,
 						ctx,
 						&body
-					) != 0 ||
-					(constructor_owner != PROTOTYPE_INVALID_ID &&
-						substitute_term_internal(
-							db,
-							constructor_owner,
-							binder_id,
-							replacement,
-							ctx,
-							&constructor_owner
-						) != 0)) {
-					ctx->frame_scope = saved_frame_scope;
+					) != 0) {
+					ctx->binding_scope = saved_binding_scope;
+					ctx->ih_scope_clone = saved_ih_scope_clone;
+					return -1;
+				}
+				ctx->binding_scope = saved_binding_scope;
+				if (constructor_owner != PROTOTYPE_INVALID_ID &&
+					substitute_term_internal(
+						db,
+						constructor_owner,
+					ctx,
+						&constructor_owner
+					) != 0) {
+					ctx->ih_scope_clone = saved_ih_scope_clone;
 					return -1;
 				}
 				case_inputs[i].case_label_symbol_id =
@@ -4764,18 +4936,18 @@ static int substitute_term_internal(
 			}
 
 			uint32_t match_term;
-			int status = prototype_term_match_with_frame(
+			int status = prototype_term_match_with_ih_scope(
 				db,
 				scrutinee,
 				case_inputs,
 				term->as.match.case_count,
-				frame_id,
+				ih_scope_id,
 				&match_term
 			);
-			if (status == 0 && frame_id != PROTOTYPE_INVALID_ID) {
-				status = prototype_term_set_match_frame_term(db, frame_id, match_term);
+			if (status == 0 && ih_scope_id != PROTOTYPE_INVALID_ID) {
+				status = prototype_term_set_ih_scope_term(db, ih_scope_id, match_term);
 			}
-			ctx->frame_scope = saved_frame_scope;
+			ctx->ih_scope_clone = saved_ih_scope_clone;
 			if (status != 0) {
 				return -1;
 			}
@@ -4784,24 +4956,26 @@ static int substitute_term_internal(
 		}
 		case PROTOTYPE_TERM_LAMBDA: {
 			int tag = term->tag;
-			if (term->as.lambda.binder_id == binder_id) {
-				if (!ctx->frame_scope) {
-					*p_ret = term_id;
-					return 0;
-				}
-				binder_id = PROTOTYPE_INVALID_ID;
+			const struct substitution_binding_scope* saved_binding_scope =
+				ctx->binding_scope;
+			struct substitution_binding_scope binding_scope;
+			if (ctx->binding_count > 0) {
+				binding_scope.binding_id = term->as.lambda.binding_id;
+				binding_scope.scope_key = ++ctx->next_scope_key;
+				binding_scope.previous = saved_binding_scope;
+				ctx->binding_scope = &binding_scope;
 			}
 			uint32_t body;
 			if (substitute_term_internal(
 					db,
 					term->as.lambda.body,
-					binder_id,
-					replacement,
 					ctx,
 					&body
 				) != 0) {
+				ctx->binding_scope = saved_binding_scope;
 				return -1;
 			}
+			ctx->binding_scope = saved_binding_scope;
 			if (body == term->as.lambda.body) {
 				*p_ret = term_id;
 				return 0;
@@ -4809,7 +4983,7 @@ static int substitute_term_internal(
 			return prototype_term_lambda_with_tag(
 				db,
 				tag,
-				term->as.lambda.binder_id,
+				term->as.lambda.binding_id,
 				body,
 				p_ret
 			);
@@ -4819,8 +4993,6 @@ static int substitute_term_internal(
 			if (substitute_term_internal(
 					db,
 					term->as.constructor.owner,
-					binder_id,
-					replacement,
 					ctx,
 					&owner
 				) != 0) {
@@ -4853,9 +5025,9 @@ static int substitute_term_internal(
 			uint32_t left;
 			uint32_t right;
 			if (substitute_term_internal(
-					db, term->as.effect_row_union.left, binder_id, replacement, ctx, &left
+					db, term->as.effect_row_union.left, ctx, &left
 				) != 0 || substitute_term_internal(
-					db, term->as.effect_row_union.right, binder_id, replacement, ctx, &right
+					db, term->as.effect_row_union.right, ctx, &right
 				) != 0) {
 				return -1;
 			}
@@ -4864,24 +5036,29 @@ static int substitute_term_internal(
 				(*p_ret = term_id, 0) : prototype_term_effect_row_union(db, left, right, p_ret);
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
-			if (term->as.effect_row_forall.binder_id == binder_id) {
-				*p_ret = term_id;
-				return 0;
+			const struct substitution_binding_scope* saved_binding_scope =
+				ctx->binding_scope;
+			struct substitution_binding_scope binding_scope;
+			if (ctx->binding_count > 0) {
+				binding_scope.binding_id = term->as.effect_row_forall.binding_id;
+				binding_scope.scope_key = ++ctx->next_scope_key;
+				binding_scope.previous = saved_binding_scope;
+				ctx->binding_scope = &binding_scope;
 			}
 			uint32_t body;
 			if (substitute_term_internal(
 					db,
 					term->as.effect_row_forall.body,
-					binder_id,
-					replacement,
 					ctx,
 					&body
 				) != 0) {
+				ctx->binding_scope = saved_binding_scope;
 				return -1;
 			}
+			ctx->binding_scope = saved_binding_scope;
 			return body == term->as.effect_row_forall.body ?
 				(*p_ret = term_id, 0) : prototype_term_effect_row_forall(
-					db, term->as.effect_row_forall.binder_id, body, p_ret
+					db, term->as.effect_row_forall.binding_id, body, p_ret
 				);
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
@@ -4889,8 +5066,6 @@ static int substitute_term_internal(
 			if (substitute_term_internal(
 					db,
 					term->as.effect_row_operation.latent_row,
-					binder_id,
-					replacement,
 					ctx,
 					&latent_row
 				) != 0) {
@@ -4907,17 +5082,13 @@ static int substitute_term_internal(
 				if (substitute_term_internal(
 						db,
 						term->as.computation_type.label,
-						binder_id,
-						replacement,
-						ctx,
+					ctx,
 						&label
 					) != 0 ||
 					substitute_term_internal(
 						db,
 						term->as.computation_type.result,
-						binder_id,
-						replacement,
-						ctx,
+					ctx,
 						&result
 					) != 0) {
 					return -1;
@@ -4932,7 +5103,7 @@ static int substitute_term_internal(
 			case PROTOTYPE_TERM_THUNK_TYPE: {
 				uint32_t computation;
 				if (substitute_term_internal(
-						db, term->as.thunk_type.computation, binder_id, replacement, ctx, &computation
+						db, term->as.thunk_type.computation, ctx, &computation
 					) != 0) {
 					return -1;
 				}
@@ -4942,7 +5113,7 @@ static int substitute_term_internal(
 			case PROTOTYPE_TERM_RETURN: {
 				uint32_t value;
 				if (substitute_term_internal(
-						db, term->as.return_term.value, binder_id, replacement, ctx, &value
+						db, term->as.return_term.value, ctx, &value
 					) != 0) {
 					return -1;
 				}
@@ -4952,7 +5123,7 @@ static int substitute_term_internal(
 			case PROTOTYPE_TERM_THUNK: {
 				uint32_t computation;
 				if (substitute_term_internal(
-						db, term->as.thunk.computation, binder_id, replacement, ctx, &computation
+						db, term->as.thunk.computation, ctx, &computation
 					) != 0) {
 					return -1;
 				}
@@ -4962,7 +5133,7 @@ static int substitute_term_internal(
 			case PROTOTYPE_TERM_FORCE: {
 				uint32_t value;
 				if (substitute_term_internal(
-						db, term->as.force.value, binder_id, replacement, ctx, &value
+						db, term->as.force.value, ctx, &value
 					) != 0) {
 					return -1;
 				}
@@ -4979,9 +5150,9 @@ static int substitute_term_internal(
 					return -1;
 				}
 				if (substitute_term_internal(
-						db, term->as.computation_fold.computation, binder_id, replacement, ctx, &computation
+						db, term->as.computation_fold.computation, ctx, &computation
 					) != 0 || substitute_term_internal(
-						db, term->as.computation_fold.return_clause, binder_id, replacement, ctx, &return_clause
+						db, term->as.computation_fold.return_clause, ctx, &return_clause
 					) != 0) {
 					free(clauses);
 					return -1;
@@ -4992,10 +5163,10 @@ static int substitute_term_internal(
 					const struct prototype_computation_fold_clause* clause =
 						&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 					if (substitute_term_internal(
-							db, clause->operation, binder_id, replacement, ctx,
+							db, clause->operation, ctx,
 							&clauses[i].operation
 						) != 0 || substitute_term_internal(
-							db, clause->body, binder_id, replacement, ctx, &clauses[i].body
+							db, clause->body, ctx, &clauses[i].body
 						) != 0) {
 						free(clauses);
 						return -1;
@@ -5014,11 +5185,11 @@ static int substitute_term_internal(
 				uint32_t argument;
 				uint32_t continuation;
 				if (substitute_term_internal(
-						db, term->as.operation_request.operation, binder_id, replacement, ctx, &operation
+						db, term->as.operation_request.operation, ctx, &operation
 					) != 0 || substitute_term_internal(
-						db, term->as.operation_request.argument, binder_id, replacement, ctx, &argument
+						db, term->as.operation_request.argument, ctx, &argument
 					) != 0 || substitute_term_internal(
-						db, term->as.operation_request.continuation, binder_id, replacement, ctx, &continuation
+						db, term->as.operation_request.continuation, ctx, &continuation
 					) != 0) {
 					return -1;
 				}
@@ -5035,16 +5206,12 @@ static int substitute_term_internal(
 			if (substitute_term_internal(
 					db,
 					term->as.type_view.core,
-					binder_id,
-					replacement,
 					ctx,
 					&core
 				) != 0 ||
 				substitute_term_internal(
 					db,
 					term->as.type_view.source,
-					binder_id,
-					replacement,
 					ctx,
 					&source
 				) != 0) {
@@ -5074,11 +5241,54 @@ int prototype_term_graph_substitute_bound_var(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t term_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t replacement,
 	uint32_t* p_ret
 ) {
-	return substitute_term(db, type_declarations, term_id, binder_id, replacement, p_ret);
+	return substitute_term(db, type_declarations, term_id, binding_id, replacement, p_ret);
+}
+
+int prototype_term_graph_reindex_bindings(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t term_id,
+	const struct prototype_binding_replacement* bindings,
+	size_t binding_count,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || term_id >= db->term_count ||
+		(binding_count > 0 && !bindings)) {
+		return -1;
+	}
+	for (size_t i = 0; i < binding_count; ++i) {
+		if (bindings[i].binding_id == PROTOTYPE_INVALID_ID ||
+			bindings[i].replacement >= db->term_count) {
+			return -1;
+		}
+		for (size_t j = 0; j < i; ++j) {
+			if (bindings[j].binding_id == bindings[i].binding_id) {
+				return -1;
+			}
+		}
+	}
+	if (binding_count == 0) {
+		*p_ret = term_id;
+		return 0;
+	}
+
+	struct substitution_context ctx;
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.type_declarations = type_declarations;
+	ctx.bindings = bindings;
+	ctx.binding_count = binding_count;
+	int status = substitute_term_internal(
+		db,
+		term_id,
+		&ctx,
+		p_ret
+	);
+	free(ctx.memo);
+	return status;
 }
 
 static int resolve_external_ref_term(
@@ -5165,7 +5375,7 @@ static int resolve_external_ref_term(
 				*p_ret = term_id;
 				return 0;
 			}
-			return prototype_term_lambda_with_tag(db, term->tag, term->as.lambda.binder_id, body, p_ret);
+			return prototype_term_lambda_with_tag(db, term->tag, term->as.lambda.binding_id, body, p_ret);
 		}
 		case PROTOTYPE_TERM_MATCH: {
 			uint32_t scrutinee;
@@ -5208,12 +5418,12 @@ static int resolve_external_ref_term(
 				*p_ret = term_id;
 				return 0;
 			}
-			return prototype_term_match_with_frame(
+			return prototype_term_match_with_ih_scope(
 				db,
 				scrutinee,
 				case_inputs,
 				term->as.match.case_count,
-				term->as.match.frame_id,
+				term->as.match.ih_scope_id,
 				p_ret
 			);
 		}
@@ -5251,7 +5461,7 @@ static int resolve_external_ref_term(
 			}
 			return body == term->as.effect_row_forall.body ?
 				(*p_ret = term_id, 0) : prototype_term_effect_row_forall(
-					db, term->as.effect_row_forall.binder_id, body, p_ret
+					db, term->as.effect_row_forall.binding_id, body, p_ret
 				);
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
@@ -5287,7 +5497,7 @@ static int resolve_external_ref_term(
 			}
 			return prototype_term_induction_hypothesis(
 				db,
-				term->as.induction_hypothesis.frame_id,
+				term->as.induction_hypothesis.ih_scope_id,
 				argument,
 				p_ret
 				);
@@ -5641,16 +5851,16 @@ static int computation_fold_continuation(
 	uint32_t request_continuation,
 	uint32_t* p_ret
 ) {
-	uint32_t binder_id = prototype_term_fresh_binder(db);
+	uint32_t binding_id = prototype_term_new_binding(db);
 	uint32_t result_var;
 	uint32_t resumed;
 	uint32_t folded;
 	uint32_t lambda;
-	if (!db || !p_ret || binder_id == PROTOTYPE_INVALID_ID ||
-		prototype_term_var(db, binder_id, &result_var) != 0 ||
+	if (!db || !p_ret || binding_id == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(db, binding_id, &result_var) != 0 ||
 		operation_request_resume(db, request_continuation, result_var, &resumed) != 0 ||
 		computation_fold_rebuild(db, fold_id, resumed, &folded) != 0 ||
-		prototype_term_lambda(db, binder_id, folded, &lambda) != 0 ||
+		prototype_term_lambda(db, binding_id, folded, &lambda) != 0 ||
 		prototype_term_thunk(db, lambda, p_ret) != 0) {
 		return -1;
 	}
@@ -5776,7 +5986,7 @@ static int conversion_equal_match_case_bodies(
 			return 0;
 		}
 		if (conversion_scope_push_binder(
-				options, &body_scope, left_binder->binder_id, right_binder->binder_id
+				options, &body_scope, left_binder->binding_id, right_binder->binding_id
 			) != 0) {
 			return -1;
 		}
@@ -5860,13 +6070,13 @@ static int conversion_equal_computation_match(
 	/* A solver-generated non-recursive Match may retain an internal frame when
 	 * the corresponding reduced surface family does not. Pair a missing frame
 	 * with INVALID so a vacuous frame is ignored but any IH use is rejected. */
-	if ((result_match.as.match.frame_id != PROTOTYPE_INVALID_ID ||
-		outer_match.as.match.frame_id != PROTOTYPE_INVALID_ID) &&
+	if ((result_match.as.match.ih_scope_id != PROTOTYPE_INVALID_ID ||
+		outer_match.as.match.ih_scope_id != PROTOTYPE_INVALID_ID) &&
 		conversion_scope_push_frame(
 			options,
 			&match_scope,
-			result_match.as.match.frame_id,
-			outer_match.as.match.frame_id
+			result_match.as.match.ih_scope_id,
+			outer_match.as.match.ih_scope_id
 		) != 0) {
 		return -1;
 	}
@@ -6178,7 +6388,7 @@ static int evaluate_steps(
 					db,
 					type_declarations,
 					reduced_function->as.lambda.body,
-					reduced_function->as.lambda.binder_id,
+					reduced_function->as.lambda.binding_id,
 					term->as.app.argument,
 					&substituted
 				) != 0) {
@@ -6310,12 +6520,12 @@ static int evaluate_steps(
 					case_inputs[i].body = old_case->body;
 					binder_cursor += old_case->binder_count;
 				}
-				return prototype_term_match_with_frame(
+				return prototype_term_match_with_ih_scope(
 					db,
 					scrutinee,
 					case_inputs,
 					term->as.match.case_count,
-					term->as.match.frame_id,
+					term->as.match.ih_scope_id,
 					p_ret
 				);
 			}
@@ -6343,7 +6553,7 @@ static int evaluate_steps(
 							db,
 							type_declarations,
 							body,
-							binder.binder_id,
+							binder.binding_id,
 							args[j],
 							&body
 						) != 0) {
@@ -6382,10 +6592,10 @@ static int evaluate_steps(
 				return -1;
 			}
 
-			if (term->as.induction_hypothesis.frame_id >= db->match_frame_count) {
+			if (term->as.induction_hypothesis.ih_scope_id >= db->ih_scope_count) {
 				return -1;
 			}
-			uint32_t match_term = db->match_frames[term->as.induction_hypothesis.frame_id].match_term;
+			uint32_t match_term = db->ih_scopes[term->as.induction_hypothesis.ih_scope_id].match_term;
 			if (match_term >= db->term_count || db->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
 				*p_ret = term_id;
 				return 0;
@@ -6419,12 +6629,12 @@ static int evaluate_steps(
 			}
 
 			uint32_t recursive_match;
-			if (prototype_term_match_with_frame(
+			if (prototype_term_match_with_ih_scope(
 				db,
 				argument,
 				case_inputs,
 				frame_match->as.match.case_count,
-				term->as.induction_hypothesis.frame_id,
+				term->as.induction_hypothesis.ih_scope_id,
 				&recursive_match
 			) != 0) {
 				return -1;
@@ -6819,7 +7029,7 @@ static int normalize_term_at_depth(
 				) != 0) {
 				return -1;
 			}
-			return prototype_term_lambda(db, term->as.lambda.binder_id, body, p_ret);
+			return prototype_term_lambda(db, term->as.lambda.binding_id, body, p_ret);
 		}
 		case PROTOTYPE_TERM_PI: {
 			uint32_t domain;
@@ -6874,9 +7084,9 @@ static int normalize_term_at_depth(
 				};
 				binder_cursor += old_case->binder_count;
 			}
-			if (prototype_term_match_with_frame(
+			if (prototype_term_match_with_ih_scope(
 					db, scrutinee, cases, term->as.match.case_count,
-					term->as.match.frame_id, &rebuilt
+					term->as.match.ih_scope_id, &rebuilt
 				) != 0) {
 				return -1;
 			}
@@ -6938,8 +7148,8 @@ static int conversion_equal_at_depth(
 		int frame_bound = 0;
 		if (!term_scope_frames_equal(
 				scope,
-				db->terms[left].as.induction_hypothesis.frame_id,
-				db->terms[right].as.induction_hypothesis.frame_id,
+				db->terms[left].as.induction_hypothesis.ih_scope_id,
+				db->terms[right].as.induction_hypothesis.ih_scope_id,
 				&frame_bound
 			)) {
 			return 0;
@@ -7014,8 +7224,8 @@ static int conversion_equal_at_depth(
 		case PROTOTYPE_TERM_VAR:
 			*p_equal = term_scope_binders_equal(
 				scope,
-				left_term->as.var.binder_id,
-				right_term->as.var.binder_id
+				left_term->as.var.binding_id,
+				right_term->as.var.binding_id
 			);
 			return 0;
 		case PROTOTYPE_TERM_CONSTRUCTOR: {
@@ -7071,8 +7281,8 @@ static int conversion_equal_at_depth(
 			if (conversion_scope_push_binder(
 					options,
 					&body_scope,
-					left_term->as.lambda.binder_id,
-					right_term->as.lambda.binder_id
+					left_term->as.lambda.binding_id,
+					right_term->as.lambda.binding_id
 				) != 0) {
 				return -1;
 			}
@@ -7136,13 +7346,13 @@ static int conversion_equal_at_depth(
 			struct term_scope_env match_scope = *scope;
 			/* Frame presence alone is internal metadata. The INVALID pairing makes
 			 * a one-sided frame observable only through an IH reference. */
-			if ((left_term->as.match.frame_id != PROTOTYPE_INVALID_ID ||
-				right_term->as.match.frame_id != PROTOTYPE_INVALID_ID) &&
+			if ((left_term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID ||
+				right_term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID) &&
 				conversion_scope_push_frame(
 					options,
 					&match_scope,
-					left_term->as.match.frame_id,
-					right_term->as.match.frame_id
+					left_term->as.match.ih_scope_id,
+					right_term->as.match.ih_scope_id
 				) != 0) {
 				return -1;
 			}
@@ -7216,8 +7426,8 @@ static int conversion_equal_at_depth(
 			int frame_bound = 0;
 			if (!term_scope_frames_equal(
 					scope,
-					left_term->as.induction_hypothesis.frame_id,
-					right_term->as.induction_hypothesis.frame_id,
+					left_term->as.induction_hypothesis.ih_scope_id,
+					right_term->as.induction_hypothesis.ih_scope_id,
 					&frame_bound
 				)) {
 				return 0;
@@ -7299,8 +7509,8 @@ static int conversion_equal_at_depth(
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			*p_equal = term_scope_binders_equal(
 				scope,
-				left_term->as.effect_row_var.binder_id,
-				right_term->as.effect_row_var.binder_id
+				left_term->as.effect_row_var.binding_id,
+				right_term->as.effect_row_var.binding_id
 			);
 			return 0;
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
@@ -7327,8 +7537,8 @@ static int conversion_equal_at_depth(
 			if (conversion_scope_push_binder(
 					options,
 					&body_scope,
-					left_term->as.effect_row_forall.binder_id,
-					right_term->as.effect_row_forall.binder_id
+					left_term->as.effect_row_forall.binding_id,
+					right_term->as.effect_row_forall.binding_id
 				) != 0) {
 				return -1;
 			}
@@ -8485,7 +8695,7 @@ static void print_term_depth(
 					fprintf(output, "Terminal");
 					break;
 				case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-					fprintf(output, "effect#%u", term->as.effect_row_var.binder_id);
+					fprintf(output, "effect#%u", term->as.effect_row_var.binding_id);
 					break;
 				case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 					fprintf(output, "EffectUnion(");
@@ -8498,7 +8708,7 @@ static void print_term_depth(
 					break;
 				case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 					fprintf(output, "EffectForall(effect#%u, ",
-						term->as.effect_row_forall.binder_id);
+						term->as.effect_row_forall.binding_id);
 					print_term_depth(output, symbols, type_declarations, terms,
 						term->as.effect_row_forall.body, depth - 1);
 					fprintf(output, ")");
@@ -8642,7 +8852,7 @@ static void print_term_debug_depth(
 	const struct prototype_term* term = &terms->terms[term_id];
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR:
-			fprintf(output, "VAR(_#%u)", term->as.var.binder_id);
+			fprintf(output, "VAR(_#%u)", term->as.var.binding_id);
 			break;
 		case PROTOTYPE_TERM_EXTERNAL_REF:
 			fprintf(output, "EXTERNAL_REF(");
@@ -8683,7 +8893,7 @@ static void print_term_debug_depth(
 		case PROTOTYPE_TERM_LAMBDA:
 			fprintf(output,
 				"LAMBDA(_#%u, ",
-				term->as.lambda.binder_id);
+				term->as.lambda.binding_id);
 			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.lambda.body, depth - 1);
 			fprintf(output, ")");
 			break;
@@ -8707,7 +8917,7 @@ static void print_term_debug_depth(
 				);
 				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
 					struct prototype_case_binder binder = terms->case_binders[match_case->first_binder + j];
-					fprintf(output, " _#%u", binder.binder_id);
+					fprintf(output, " _#%u", binder.binding_id);
 				}
 				fprintf(output, " -> ");
 				print_term_debug_depth(output, symbols, type_declarations, terms, match_case->body, depth - 1);
@@ -8753,8 +8963,8 @@ static void print_term_debug_depth(
 				fprintf(output, "INT_LITERAL(%" PRId64 ")", term->as.int_literal.value);
 				break;
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-					fprintf(output, "INDUCTION_HYPOTHESIS(frame#%u, ",
-						term->as.induction_hypothesis.frame_id);
+					fprintf(output, "INDUCTION_HYPOTHESIS(ih_scope#%u, ",
+						term->as.induction_hypothesis.ih_scope_id);
 			print_term_debug_depth(
 				output,
 				symbols,
@@ -8769,7 +8979,7 @@ static void print_term_debug_depth(
 				fprintf(output, "EFFECT_LABEL(%u)", term->as.effect_label.effects);
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				fprintf(output, "EFFECT_ROW_VAR(%u)", term->as.effect_row_var.binder_id);
+				fprintf(output, "EFFECT_ROW_VAR(%u)", term->as.effect_row_var.binding_id);
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				fprintf(output, "EFFECT_ROW_UNION(");
@@ -8782,7 +8992,7 @@ static void print_term_debug_depth(
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 				fprintf(output, "EFFECT_ROW_FORALL(%u, ",
-					term->as.effect_row_forall.binder_id);
+					term->as.effect_row_forall.binding_id);
 				print_term_debug_depth(output, symbols, type_declarations, terms,
 					term->as.effect_row_forall.body, depth - 1);
 				fprintf(output, ")");

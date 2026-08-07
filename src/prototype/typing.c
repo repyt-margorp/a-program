@@ -361,7 +361,7 @@ static int instantiate_fold_clause_classifier(
 		terms,
 		type_declarations,
 		classifier,
-		terms->terms[generic.effect_row].as.effect_row_var.binder_id,
+		terms->terms[generic.effect_row].as.effect_row_var.binding_id,
 		concrete.effect_row,
 		p_instantiated
 	);
@@ -1486,7 +1486,7 @@ static int find_effect_row_argument(
 	const struct prototype_term* left = &terms->terms[expected_whnf];
 	const struct prototype_term* right = &terms->terms[actual_whnf];
 	if (left->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
-		left->as.effect_row_var.binder_id == row_binder) {
+		left->as.effect_row_var.binding_id == row_binder) {
 		*p_row = actual_whnf;
 		return 1;
 	}
@@ -1538,7 +1538,7 @@ static int find_effect_row_argument(
 				right->as.effect_row_union.right, row_binder, depth + 1, p_row
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			if (left->as.effect_row_forall.binder_id == row_binder) {
+			if (left->as.effect_row_forall.binding_id == row_binder) {
 				return 0;
 			}
 			return find_effect_row_argument(
@@ -1635,7 +1635,7 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 				type_declarations,
 				expected_thunk,
 				actual_thunk,
-				quantified->as.effect_row_forall.binder_id,
+				quantified->as.effect_row_forall.binding_id,
 				0,
 				&row
 			);
@@ -1643,7 +1643,7 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 					terms,
 					type_declarations,
 					quantified->as.effect_row_forall.body,
-					quantified->as.effect_row_forall.binder_id,
+					quantified->as.effect_row_forall.binding_id,
 					row,
 					&function_classifier
 				) != 0) {
@@ -1698,7 +1698,7 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 				terms,
 				type_declarations,
 				quantified->as.effect_row_forall.body,
-				quantified->as.effect_row_forall.binder_id,
+				quantified->as.effect_row_forall.binding_id,
 				row,
 				&function_classifier
 			) != 0) {
@@ -1736,12 +1736,12 @@ static int instantiate_pure_family_in_context(
 		argument_classifier >= terms->term_count) {
 		return -1;
 	}
-	uint32_t binder_id;
+	uint32_t binding_id;
 	uint32_t body;
 	if (prototype_term_pure_family_parts(
 			terms,
 			family,
-			&binder_id,
+			&binding_id,
 			&body
 		) != 0) {
 		return -1;
@@ -1750,7 +1750,7 @@ static int instantiate_pure_family_in_context(
 	if (prototype_context_extend(
 			contexts,
 			prefix->target_context,
-			binder_id,
+			binding_id,
 			domain,
 			PROTOTYPE_INVALID_ID,
 			&family_context
@@ -1762,16 +1762,16 @@ static int instantiate_pure_family_in_context(
 	if (!context) {
 		return -1;
 	}
-	if (context->binder_id != binder_id &&
-		prototype_term_contains_free_binder(terms, body, binder_id)) {
+	if (context->binding_id != binding_id &&
+		prototype_term_contains_free_binding(terms, body, binding_id)) {
 		uint32_t canonical_var;
 		if (prototype_term_var(
-				terms, context->binder_id, &canonical_var
+				terms, context->binding_id, &canonical_var
 			) != 0 || prototype_term_graph_substitute_bound_var(
 				terms,
 				type_declarations,
 				body,
-				binder_id,
+				binding_id,
 				canonical_var,
 				&body
 			) != 0) {
@@ -1909,7 +1909,7 @@ static int pi_codomain_at_fresh_binder(
 	if (prototype_context_extend(
 			delta->contexts,
 			base_context_id,
-			terms->terms[binder_var].as.var.binder_id,
+			terms->terms[binder_var].as.var.binding_id,
 			binder_classifier,
 			PROTOTYPE_INVALID_ID,
 			&premise_context
@@ -2079,7 +2079,7 @@ static int classifier_kernel_compatible_at_depth(
 		) != 0) {
 		return 0;
 	}
-	uint32_t comparison_binder = prototype_term_fresh_binder(terms);
+	uint32_t comparison_binder = prototype_term_new_binding(terms);
 	uint32_t comparison_var;
 	uint32_t expected_body;
 	uint32_t actual_body;
@@ -2141,7 +2141,7 @@ static int classifier_kernel_compatible_no_definitions_at_depth(
 }
 
 struct expected_effect_row_solution {
-	uint32_t binder_id;
+	uint32_t binding_id;
 	uint32_t row;
 };
 
@@ -2155,14 +2155,14 @@ struct expected_effect_row_solver {
 
 static int expected_effect_row_bind(
 	struct expected_effect_row_solver* solver,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t row
 ) {
 	if (!solver || row >= solver->terms->term_count) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < solver->solution_count; ++i) {
-		if (solver->solutions[i].binder_id != binder_id) {
+		if (solver->solutions[i].binding_id != binding_id) {
 			continue;
 		}
 		return (classifier_kernel_conversion(
@@ -2176,7 +2176,7 @@ static int expected_effect_row_bind(
 	if (solver->solution_count >= 64) {
 		return -1;
 	}
-	solver->solutions[solver->solution_count].binder_id = binder_id;
+	solver->solutions[solver->solution_count].binding_id = binding_id;
 	solver->solutions[solver->solution_count].row = row;
 	solver->solution_count += 1;
 	return 0;
@@ -2194,7 +2194,7 @@ static int expected_effect_row_solve_row(
 	const struct prototype_term* expected_term = &solver->terms->terms[expected];
 	if (expected_term->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 		return expected_effect_row_bind(
-			solver, expected_term->as.effect_row_var.binder_id, actual
+			solver, expected_term->as.effect_row_var.binding_id, actual
 		);
 	}
 	return (classifier_kernel_conversion(
@@ -2310,7 +2310,7 @@ static int expected_effect_row_solve_classifier(
 			for (uint32_t j = 0; j < expected_case.binder_count; ++j) {
 				uint32_t expected_binder_index = expected_case.first_binder + j;
 				uint32_t actual_binder_index = actual_case.first_binder + j;
-				uint32_t comparison_binder = prototype_term_fresh_binder(solver->terms);
+				uint32_t comparison_binder = prototype_term_new_binding(solver->terms);
 				uint32_t comparison_var;
 				if (expected_binder_index >= solver->terms->case_binder_count ||
 					actual_binder_index >= solver->terms->case_binder_count ||
@@ -2321,14 +2321,14 @@ static int expected_effect_row_solve_classifier(
 						solver->terms,
 						solver->type_declarations,
 						expected_body,
-						solver->terms->case_binders[expected_binder_index].binder_id,
+						solver->terms->case_binders[expected_binder_index].binding_id,
 						comparison_var,
 						&expected_body
 					) != 0 || prototype_term_graph_substitute_bound_var(
 						solver->terms,
 						solver->type_declarations,
 						actual_body,
-						solver->terms->case_binders[actual_binder_index].binder_id,
+						solver->terms->case_binders[actual_binder_index].binding_id,
 						comparison_var,
 						&actual_body
 					) != 0) {
@@ -2428,7 +2428,7 @@ static int expected_effect_row_solve_classifier(
 			) != 0) {
 			return -1;
 		}
-		uint32_t comparison_binder = prototype_term_fresh_binder(solver->terms);
+		uint32_t comparison_binder = prototype_term_new_binding(solver->terms);
 		uint32_t comparison_var;
 		uint32_t instantiated_expected;
 		uint32_t instantiated_actual;
@@ -2499,7 +2499,7 @@ int prototype_judgement_solve_expected_effect_rows(
 				terms,
 				type_declarations,
 				solved,
-				solver.solutions[i].binder_id,
+				solver.solutions[i].binding_id,
 				solver.solutions[i].row,
 				&solved
 			) != 0) {
@@ -2550,7 +2550,7 @@ static int owner_parameter_argument(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	uint32_t owner,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t* p_argument
 ) {
 	if (!terms || !type_declarations || !p_argument || owner >= terms->term_count) {
@@ -2572,8 +2572,8 @@ static int owner_parameter_argument(
 			i >= arg_count) {
 			return -1;
 		}
-		if (type_declarations->parameter_declarations[parameter_id].binder_id ==
-			binder_id) {
+		if (type_declarations->parameter_declarations[parameter_id].binding_id ==
+			binding_id) {
 			*p_argument = args[i];
 			return 0;
 		}
@@ -2610,12 +2610,12 @@ static int resolver_type_expr_term_with_self(
 					terms,
 					type_declarations,
 					self_type,
-					expr.as.var.binder_id,
+					expr.as.var.binding_id,
 					p_ret
 				) == 0) {
 				return 0;
 			}
-			return prototype_term_var(terms, expr.as.var.binder_id, p_ret);
+			return prototype_term_var(terms, expr.as.var.binding_id, p_ret);
 		case PROTOTYPE_TYPE_EXPR_NAME: {
 			const struct prototype_type_declaration* type =
 				prototype_type_declaration_lookup(type_declarations, expr.as.name.symbol_id);
@@ -2718,7 +2718,7 @@ static int resolver_type_expr_term_with_self(
 					self_type,
 					&codomain
 				) != 0 || prototype_term_pure_family(
-					terms, expr.as.pi.binder_id, codomain, &family
+					terms, expr.as.pi.binding_id, codomain, &family
 				) != 0) {
 				return -1;
 			}
@@ -3105,7 +3105,7 @@ static int constructor_field_classifier_from_spine(
 	uint32_t previous_terms[64];
 	for (uint32_t i = 0; i < field_index; ++i) {
 		if (prototype_term_var(
-				terms, previous_binders[i].binder_id, &previous_terms[i]
+				terms, previous_binders[i].binding_id, &previous_terms[i]
 			) != 0) {
 			return -1;
 		}
@@ -3521,7 +3521,7 @@ int prototype_judgement_resolve_match_case_request(
 			uint32_t binder_proof_id;
 			if (prototype_term_var(
 					terms,
-					binder->binder_id,
+					binder->binding_id,
 					&binder_var
 				) != 0 ||
 				constructor_field_classifier_from_spine(
@@ -3577,7 +3577,7 @@ static int match_case_binder_is_recursive_self_field(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_match_case* match_case,
-	uint32_t binder_id
+	uint32_t binding_id
 ) {
 	if (!delta || !terms || !type_declarations || !match_case ||
 		match_case->constructor_owner == PROTOTYPE_INVALID_ID ||
@@ -3589,7 +3589,7 @@ static int match_case_binder_is_recursive_self_field(
 	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
 		const struct prototype_case_binder* binder =
 			&terms->case_binders[match_case->first_binder + i];
-		if (binder->binder_id == binder_id) {
+		if (binder->binding_id == binding_id) {
 			field_index = i;
 			break;
 		}
@@ -3755,7 +3755,7 @@ static int induction_hypothesis_context_from_argument(
 		return -1;
 	}
 	const struct prototype_term* match = &terms->terms[match_term];
-	uint32_t binder_id = terms->terms[argument].as.var.binder_id;
+	uint32_t binding_id = terms->terms[argument].as.var.binding_id;
 	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
 		uint32_t case_id = match->as.match.first_case + i;
 		if (case_id >= terms->case_count) {
@@ -3766,7 +3766,7 @@ static int induction_hypothesis_context_from_argument(
 			terms,
 			type_declarations,
 			&terms->cases[case_id],
-			binder_id
+			binding_id
 		);
 		if (recursive < 0) {
 			return -1;
@@ -3775,8 +3775,8 @@ static int induction_hypothesis_context_from_argument(
 			continue;
 		}
 		for (uint32_t j = 0; j < terms->cases[case_id].binder_count; ++j) {
-			if (terms->case_binders[terms->cases[case_id].first_binder + j].binder_id ==
-				binder_id) {
+			if (terms->case_binders[terms->cases[case_id].first_binder + j].binding_id ==
+				binding_id) {
 				*p_context_case_index = i;
 				*p_context_field_index = j;
 				return 0;
@@ -3996,12 +3996,12 @@ static int prototype_judgement_delta_resolve_induction_hypothesis_for_app_argume
 		return -1;
 	}
 	const struct prototype_term* ih = &terms->terms[subject];
-	if (ih->as.induction_hypothesis.frame_id >= terms->match_frame_count ||
+	if (ih->as.induction_hypothesis.ih_scope_id >= terms->ih_scope_count ||
 		ih->as.induction_hypothesis.argument >= terms->term_count) {
 		return -1;
 	}
 	uint32_t match_term =
-		terms->match_frames[ih->as.induction_hypothesis.frame_id].match_term;
+		terms->ih_scopes[ih->as.induction_hypothesis.ih_scope_id].match_term;
 	uint32_t context_case_index = PROTOTYPE_INVALID_ID;
 	uint32_t context_field_index = PROTOTYPE_INVALID_ID;
 	int context_status = induction_hypothesis_context_from_argument(
@@ -4053,11 +4053,11 @@ int prototype_judgement_delta_resolve_induction_hypothesis_request(
 		!term_has_tag(terms, request->subject, PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) ||
 		request->argument >= terms->term_count ||
 		terms->terms[request->argument].tag != PROTOTYPE_TERM_VAR ||
-		request->frame_id >= terms->match_frame_count) {
+		request->ih_scope_id >= terms->ih_scope_count) {
 		return -1;
 	}
 	const struct prototype_term* subject = &terms->terms[request->subject];
-	if (subject->as.induction_hypothesis.frame_id != request->frame_id ||
+	if (subject->as.induction_hypothesis.ih_scope_id != request->ih_scope_id ||
 		subject->as.induction_hypothesis.argument != request->argument) {
 		return -1;
 	}
@@ -4070,12 +4070,12 @@ int prototype_judgement_delta_resolve_induction_hypothesis_request(
 			&ignored_existing_classifier
 		) == 0;
 
-	uint32_t match_term = terms->match_frames[request->frame_id].match_term;
+	uint32_t match_term = terms->ih_scopes[request->ih_scope_id].match_term;
 	if (!term_has_tag(terms, match_term, PROTOTYPE_TERM_MATCH)) {
 		return 1;
 	}
 	const struct prototype_term* match = &terms->terms[match_term];
-	uint32_t binder_id = terms->terms[request->argument].as.var.binder_id;
+	uint32_t binding_id = terms->terms[request->argument].as.var.binding_id;
 	int found = 0;
 	uint32_t context_case_index = PROTOTYPE_INVALID_ID;
 	uint32_t context_field_index = PROTOTYPE_INVALID_ID;
@@ -4089,7 +4089,7 @@ int prototype_judgement_delta_resolve_induction_hypothesis_request(
 			terms,
 			type_declarations,
 			&terms->cases[case_id],
-			binder_id
+			binding_id
 		);
 		if (recursive < 0) {
 			return -1;
@@ -4099,8 +4099,8 @@ int prototype_judgement_delta_resolve_induction_hypothesis_request(
 		}
 		if (recursive == 0) {
 			for (uint32_t j = 0; j < terms->cases[case_id].binder_count; ++j) {
-				if (terms->case_binders[terms->cases[case_id].first_binder + j].binder_id ==
-					binder_id) {
+				if (terms->case_binders[terms->cases[case_id].first_binder + j].binding_id ==
+					binding_id) {
 					found = 1;
 					context_case_index = i;
 					context_field_index = j;
@@ -4955,7 +4955,7 @@ int prototype_judgement_delta_expand_lambda(
 	if (status != 0) {
 		return -1;
 	}
-	if (prototype_term_var(terms, lambda->as.lambda.binder_id, &binder_var) != 0) {
+	if (prototype_term_var(terms, lambda->as.lambda.binding_id, &binder_var) != 0) {
 		return -1;
 	}
 	if (pi_codomain_at_fresh_binder(
@@ -4986,7 +4986,7 @@ int prototype_judgement_delta_expand_lambda(
 		if (relation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION ||
 			relation->subject >= terms->term_count ||
 			terms->terms[relation->subject].tag != PROTOTYPE_TERM_VAR ||
-			terms->terms[relation->subject].as.var.binder_id != lambda->as.lambda.binder_id) {
+			terms->terms[relation->subject].as.var.binding_id != lambda->as.lambda.binding_id) {
 			continue;
 		}
 		binder_classifier = relation->classifier;
@@ -5028,7 +5028,7 @@ int prototype_judgement_delta_expand_lambda(
 			if (relation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION ||
 				relation->subject >= terms->term_count ||
 				terms->terms[relation->subject].tag != PROTOTYPE_TERM_VAR ||
-				terms->terms[relation->subject].as.var.binder_id != lambda->as.lambda.binder_id) {
+				terms->terms[relation->subject].as.var.binding_id != lambda->as.lambda.binding_id) {
 				continue;
 			}
 			binder_classifier = relation->classifier;
@@ -5113,14 +5113,14 @@ static int ensure_lambda_binder_assumption(
 	}
 	const struct prototype_term* lambda = &terms->terms[lambda_term];
 	uint32_t binder_var;
-	if (prototype_term_var(terms, lambda->as.lambda.binder_id, &binder_var) != 0) {
+	if (prototype_term_var(terms, lambda->as.lambda.binding_id, &binder_var) != 0) {
 		return -1;
 	}
 	uint32_t binder_context;
 	if (!delta->contexts || prototype_context_extend(
 			delta->contexts,
 			delta->current_context_id,
-			lambda->as.lambda.binder_id,
+			lambda->as.lambda.binding_id,
 			argument_classifier,
 			PROTOTYPE_INVALID_ID,
 			&binder_context
@@ -5272,7 +5272,7 @@ static int lambda_body_classifier_matches_binder(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t body,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t binder_classifier,
 	uint32_t body_classifier
 ) {
@@ -5280,7 +5280,7 @@ static int lambda_body_classifier_matches_binder(
 		return 0;
 	}
 	if (terms->terms[body].tag == PROTOTYPE_TERM_VAR &&
-		terms->terms[body].as.var.binder_id == binder_id) {
+		terms->terms[body].as.var.binding_id == binding_id) {
 		return (prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
@@ -5295,7 +5295,7 @@ static int lambda_body_classifier_matches_binder(
 			return 0;
 		}
 		if (terms->terms[value].tag != PROTOTYPE_TERM_VAR ||
-			terms->terms[value].as.var.binder_id != binder_id) {
+			terms->terms[value].as.var.binding_id != binding_id) {
 			return 1;
 		}
 		if (prototype_judgement_classifier_view(
@@ -5332,7 +5332,7 @@ static int infer_lambda_classifier_pair(
 			terms,
 			type_declarations,
 			lambda->as.lambda.body,
-			lambda->as.lambda.binder_id,
+			lambda->as.lambda.binding_id,
 			binder_classifier,
 			body_classifier
 		)) {
@@ -5346,7 +5346,7 @@ static int infer_lambda_classifier_pair(
 	 * is a binder representation, not an extra Comp({}, PI(...)) wrapper. */
 	if (prototype_term_pure_family(
 			terms,
-			lambda->as.lambda.binder_id,
+			lambda->as.lambda.binding_id,
 			body_classifier,
 			&codomain_family
 		) != 0 ||
@@ -5425,8 +5425,8 @@ static int infer_lambda_classifiers_from_body(
 				binder_relation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION ||
 				binder_relation->subject >= terms->term_count ||
 				terms->terms[binder_relation->subject].tag != PROTOTYPE_TERM_VAR ||
-				terms->terms[binder_relation->subject].as.var.binder_id !=
-					lambda->as.lambda.binder_id) {
+				terms->terms[binder_relation->subject].as.var.binding_id !=
+					lambda->as.lambda.binding_id) {
 				continue;
 			}
 			for (int body_source = 0; body_source < 2; ++body_source) {
@@ -6197,7 +6197,7 @@ int prototype_judgement_computation_fold_result_classifier(
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
-	if (!prototype_term_contains_free_binder(
+	if (!prototype_term_contains_free_binding(
 			terms, codomain, codomain_binder
 		)) {
 		applied_codomain = codomain;
@@ -6514,7 +6514,7 @@ static int solve_operation_request_constraint(
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
-	uint32_t continuation_binder = terms->terms[continuation_lambda].as.lambda.binder_id;
+	uint32_t continuation_binder = terms->terms[continuation_lambda].as.lambda.binding_id;
 	uint32_t continuation_var;
 	uint32_t continuation_result;
 	if (prototype_term_var(terms, continuation_binder, &continuation_var) != 0 ||
@@ -6534,7 +6534,7 @@ static int solve_operation_request_constraint(
 			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
 		return 1;
 	}
-	if (prototype_term_contains_free_binder(
+	if (prototype_term_contains_free_binding(
 			terms, continuation_view.result, continuation_binder
 		)) {
 		return 1;
@@ -6628,7 +6628,7 @@ static int record_computation_lambda_body_effect_weaken(
 	uint32_t source_pi;
 	uint32_t domain;
 	uint32_t source_family;
-	uint32_t binder = terms->terms[lambda].as.lambda.binder_id;
+	uint32_t binder = terms->terms[lambda].as.lambda.binding_id;
 	uint32_t binder_var;
 	uint32_t source_body_classifier;
 	uint32_t source_family_binder;
@@ -6645,7 +6645,7 @@ static int record_computation_lambda_body_effect_weaken(
 		) != 0) {
 		return -1;
 	}
-	if (!prototype_term_contains_free_binder(
+	if (!prototype_term_contains_free_binding(
 			terms, source_family_body, source_family_binder
 		)) {
 		source_body_classifier = source_family_body;
@@ -6910,7 +6910,7 @@ static int solve_clause_computation_fold_constraint(
 		return -1;
 	}
 	uint32_t return_binder =
-		terms->terms[fold->as.computation_fold.return_clause].as.lambda.binder_id;
+		terms->terms[fold->as.computation_fold.return_clause].as.lambda.binding_id;
 	uint32_t return_var;
 	uint32_t output_classifier;
 	if (prototype_term_var(terms, return_binder, &return_var) != 0 ||
@@ -6921,7 +6921,7 @@ static int solve_clause_computation_fold_constraint(
 		) != 0) {
 		return -1;
 	}
-	int dependent_output = prototype_term_contains_free_binder(
+	int dependent_output = prototype_term_contains_free_binding(
 		terms, output_classifier, return_binder
 	);
 	struct prototype_term_classifier_view output_view;
@@ -7163,7 +7163,7 @@ static int solve_clause_computation_fold_constraint(
 			) != 0 || prototype_context_extend(
 				delta->contexts,
 				saved_context,
-				terms->terms[clause->body].as.lambda.binder_id,
+				terms->terms[clause->body].as.lambda.binding_id,
 				operation_domain,
 				PROTOTYPE_INVALID_ID,
 				&operation_argument_context
@@ -7179,7 +7179,7 @@ static int solve_clause_computation_fold_constraint(
 			) != 0 || prototype_context_extend(
 				delta->contexts,
 				operation_argument_context,
-				terms->terms[continuation_lambda].as.lambda.binder_id,
+				terms->terms[continuation_lambda].as.lambda.binding_id,
 				continuation_expected,
 				PROTOTYPE_INVALID_ID,
 				&continuation_context
@@ -7810,7 +7810,7 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 		returned = terms->terms[family].as.thunk.computation;
 		if (returned >= terms->term_count ||
 			terms->terms[returned].tag != PROTOTYPE_TERM_LAMBDA ||
-			terms->terms[returned].as.lambda.binder_id != codomain_binder ||
+			terms->terms[returned].as.lambda.binding_id != codomain_binder ||
 			terms->terms[returned].as.lambda.body >= terms->term_count ||
 			terms->terms[terms->terms[returned].as.lambda.body].tag != PROTOTYPE_TERM_RETURN ||
 			terms->terms[terms->terms[returned].as.lambda.body].as.return_term.value != codomain ||
@@ -7905,7 +7905,7 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 						uint32_t binder_var;
 						if (prototype_term_var(
 								terms,
-								lambda->as.lambda.binder_id,
+								lambda->as.lambda.binding_id,
 								&binder_var
 							) != 0 ||
 							ensure_lambda_binder_assumption(
@@ -8143,7 +8143,7 @@ int prototype_judgement_delta_build_match_motive(
 	}
 	(void)type_declarations;
 
-	uint32_t motive_binder_id = prototype_term_fresh_binder(terms);
+	uint32_t motive_binder_id = prototype_term_new_binding(terms);
 	uint32_t motive_binder_var;
 	uint32_t motive_body;
 	uint32_t motive_lambda;
@@ -8184,7 +8184,7 @@ int prototype_judgement_delta_build_match_motive(
 			size_t before = delta->relation_count;
 			if (prototype_term_var(
 					terms,
-					binder->binder_id,
+					binder->binding_id,
 					&binder_var
 				) != 0 ||
 				constructor_field_classifier_from_spine(
@@ -8272,7 +8272,7 @@ int prototype_judgement_delta_build_match_motive(
 			terms->terms[motive_lambda].tag != PROTOTYPE_TERM_LAMBDA) {
 			return -1;
 			}
-			motive_binder_id = terms->terms[motive_lambda].as.lambda.binder_id;
+			motive_binder_id = terms->terms[motive_lambda].as.lambda.binding_id;
 			motive_body = terms->terms[motive_lambda].as.lambda.body;
 			if (prototype_term_var(
 					terms,
@@ -8405,14 +8405,14 @@ static int core_match_case_alpha_reindex(
 		uint32_t motive_binder_var;
 		if (prototype_term_var(
 			terms,
-			motive_binders[i].binder_id,
+			motive_binders[i].binding_id,
 			&motive_binder_var
 		) != 0 ||
 			prototype_term_graph_substitute_bound_var(
 				terms,
 				type_declarations,
 				current,
-				source_binders[i].binder_id,
+				source_binders[i].binding_id,
 				motive_binder_var,
 				&current
 			) != 0) {
@@ -9019,11 +9019,11 @@ static int build_match_motive_from_branch_classifiers(
 		motive_cases[i].binders = &motive_binders[motive_binder_cursor];
 		motive_cases[i].binder_count = match_case->binder_count;
 		for (uint32_t j = 0; j < match_case->binder_count; ++j) {
-			uint32_t motive_binder_id = prototype_term_fresh_binder(terms);
+			uint32_t motive_binder_id = prototype_term_new_binding(terms);
 			if (motive_binder_id == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
-			motive_binders[motive_binder_cursor + j].binder_id = motive_binder_id;
+			motive_binders[motive_binder_cursor + j].binding_id = motive_binder_id;
 		}
 		if (core_match_case_alpha_reindex(
 				terms,
@@ -9353,8 +9353,8 @@ int prototype_judgement_expand_match(
 	if (motive_body->as.match.case_count != match->as.match.case_count ||
 		motive_body->as.match.scrutinee >= terms->term_count ||
 		terms->terms[motive_body->as.match.scrutinee].tag != PROTOTYPE_TERM_VAR ||
-		terms->terms[motive_body->as.match.scrutinee].as.var.binder_id !=
-			motive_lambda->as.lambda.binder_id) {
+		terms->terms[motive_body->as.match.scrutinee].as.var.binding_id !=
+			motive_lambda->as.lambda.binding_id) {
 		return -1;
 	}
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
@@ -9467,8 +9467,8 @@ int prototype_judgement_delta_expand_match(
 	if (motive_body->as.match.case_count != match->as.match.case_count ||
 		motive_body->as.match.scrutinee >= terms->term_count ||
 		terms->terms[motive_body->as.match.scrutinee].tag != PROTOTYPE_TERM_VAR ||
-		terms->terms[motive_body->as.match.scrutinee].as.var.binder_id !=
-			motive_lambda->as.lambda.binder_id) {
+		terms->terms[motive_body->as.match.scrutinee].as.var.binding_id !=
+			motive_lambda->as.lambda.binding_id) {
 		return -1;
 	}
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
@@ -9827,7 +9827,7 @@ int prototype_judgement_delta_record_lambda_intro(
 			&domain,
 			&codomain_family
 		) != 0 ||
-		prototype_term_var(terms, lambda->as.lambda.binder_id, &binder_var) != 0 ||
+		prototype_term_var(terms, lambda->as.lambda.binding_id, &binder_var) != 0 ||
 		pi_codomain_at_binder_in_context(
 			delta,
 			terms,
@@ -10918,8 +10918,8 @@ static int validate_lambda_intro_proof(
 	if (proof->premise_subjects[1] != lambda->as.lambda.body ||
 		proof->premise_subjects[0] >= terms->term_count ||
 		terms->terms[proof->premise_subjects[0]].tag != PROTOTYPE_TERM_VAR ||
-		terms->terms[proof->premise_subjects[0]].as.var.binder_id !=
-			lambda->as.lambda.binder_id) {
+		terms->terms[proof->premise_subjects[0]].as.var.binding_id !=
+			lambda->as.lambda.binding_id) {
 		return -1;
 	}
 	uint32_t lambda_pi;
@@ -11027,8 +11027,8 @@ static int validate_match_elim_proof(
 	if (motive_body->as.match.case_count != match->as.match.case_count ||
 		motive_body->as.match.scrutinee >= terms->term_count ||
 		terms->terms[motive_body->as.match.scrutinee].tag != PROTOTYPE_TERM_VAR ||
-		terms->terms[motive_body->as.match.scrutinee].as.var.binder_id !=
-			motive_lambda->as.lambda.binder_id) {
+		terms->terms[motive_body->as.match.scrutinee].as.var.binding_id !=
+			motive_lambda->as.lambda.binding_id) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
@@ -11106,8 +11106,8 @@ static int validate_induction_hypothesis_elim_proof(
 		return -1;
 	}
 	const struct prototype_term* ih = &terms->terms[relation->subject];
-	if (ih->as.induction_hypothesis.frame_id >= terms->match_frame_count ||
-		terms->match_frames[ih->as.induction_hypothesis.frame_id].match_term !=
+	if (ih->as.induction_hypothesis.ih_scope_id >= terms->ih_scope_count ||
+		terms->ih_scopes[ih->as.induction_hypothesis.ih_scope_id].match_term !=
 			proof->induction_match) {
 		return -1;
 	}
@@ -11123,8 +11123,8 @@ static int validate_induction_hypothesis_elim_proof(
 		];
 	if (ih->as.induction_hypothesis.argument >= terms->term_count ||
 		terms->terms[ih->as.induction_hypothesis.argument].tag != PROTOTYPE_TERM_VAR ||
-		terms->terms[ih->as.induction_hypothesis.argument].as.var.binder_id !=
-			binder->binder_id) {
+		terms->terms[ih->as.induction_hypothesis.argument].as.var.binding_id !=
+			binder->binding_id) {
 		return -1;
 	}
 	if (!binder->is_recursive) {
@@ -11227,8 +11227,8 @@ static int validate_solved_match_motive_proof(
 	if (motive_body->as.match.case_count != match->as.match.case_count ||
 		motive_body->as.match.scrutinee >= terms->term_count ||
 		terms->terms[motive_body->as.match.scrutinee].tag != PROTOTYPE_TERM_VAR ||
-		terms->terms[motive_body->as.match.scrutinee].as.var.binder_id !=
-			motive->as.lambda.binder_id) {
+		terms->terms[motive_body->as.match.scrutinee].as.var.binding_id !=
+			motive->as.lambda.binding_id) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
@@ -11291,7 +11291,7 @@ static int validate_solved_match_motive_proof(
 					&terms->terms[motive_case->body];
 				const struct prototype_term* expected_app =
 					&terms->terms[expected_motive_case_body];
-				if (motive_body->as.match.frame_id == motive_ih->as.induction_hypothesis.frame_id &&
+				if (motive_body->as.match.ih_scope_id == motive_ih->as.induction_hypothesis.ih_scope_id &&
 					expected_app->as.app.function == motive_app->as.app.function &&
 					expected_app->as.app.argument == motive_ih->as.induction_hypothesis.argument) {
 					found = 1;
@@ -11703,7 +11703,7 @@ static int validate_assumption_proof(
 			return -1;
 		}
 	if (relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION) {
-		uint32_t binder_id = terms->terms[relation->subject].as.var.binder_id;
+		uint32_t binding_id = terms->terms[relation->subject].as.var.binding_id;
 		struct prototype_case_binder previous_binders[64];
 		struct prototype_judgement_relation delta_relations[16];
 		struct prototype_judgement_proof delta_proofs[16];
@@ -11762,10 +11762,10 @@ static int validate_assumption_proof(
 				return -1;
 			}
 			memset(&previous_binders[i - 1], 0, sizeof(previous_binders[i - 1]));
-			previous_binders[i - 1].binder_id = entry->binder_id;
+			previous_binders[i - 1].binding_id = entry->binding_id;
 			context_id = entry->parent;
 		}
-		if (previous_binders[proof->constructor_field_index].binder_id != binder_id) {
+		if (previous_binders[proof->constructor_field_index].binding_id != binding_id) {
 			return -1;
 		}
 		struct prototype_judgement_delta delta;
@@ -12305,12 +12305,12 @@ static int validate_operation_request_intro_proof(
 	uint32_t continuation_context;
 	uint32_t projection;
 	if (prototype_term_var(
-			terms, terms->terms[continuation_lambda].as.lambda.binder_id, &binder_var
+			terms, terms->terms[continuation_lambda].as.lambda.binding_id, &binder_var
 		) != 0 ||
 		prototype_context_extend(
 			contexts,
 			relation->context_id,
-			terms->terms[continuation_lambda].as.lambda.binder_id,
+			terms->terms[continuation_lambda].as.lambda.binding_id,
 			operation.result,
 			PROTOTYPE_INVALID_ID,
 			&continuation_context
@@ -12361,8 +12361,8 @@ static int validate_operation_request_intro_proof(
 		!computation_effect_row_is_union(
 			terms, type_declarations, &result, &request_operation, &continuation
 		) ||
-		result.result != continuation.result || prototype_term_contains_free_binder(
-			terms, continuation.result, terms->terms[continuation_lambda].as.lambda.binder_id
+		result.result != continuation.result || prototype_term_contains_free_binding(
+			terms, continuation.result, terms->terms[continuation_lambda].as.lambda.binding_id
 		)) {
 		return -1;
 	}
@@ -12447,17 +12447,17 @@ static int validate_host_signature_classifier(
 	for (uint32_t i = 0; i < arity; ++i) {
 		uint32_t domain;
 		uint32_t codomain_family;
-		uint32_t binder_id;
+		uint32_t binding_id;
 		uint32_t codomain;
 		if (argument_types[i] == PROTOTYPE_HOST_TYPE_INVALID ||
 			pi_parts(terms, current, &domain, &codomain_family) != 0 ||
 			prototype_term_pure_family_parts(
-				terms, codomain_family, &binder_id, &codomain
+				terms, codomain_family, &binding_id, &codomain
 			) != 0 ||
 			!term_is_host_type_id(terms, domain, argument_types[i])) {
 			return -1;
 		}
-		(void)binder_id;
+		(void)binding_id;
 		current = codomain;
 	}
 	if (!term_exists(terms, current) ||
@@ -12615,10 +12615,10 @@ static int validate_pi_formation_intro_proof(
 		return -1;
 	}
 	uint32_t family = terms->terms[relation->subject].as.pi.codomain_family;
-	uint32_t binder_id;
+	uint32_t binding_id;
 	uint32_t codomain;
 	if (prototype_term_pure_family_parts(
-			terms, family, &binder_id, &codomain
+			terms, family, &binding_id, &codomain
 		) != 0 || family >= terms->term_count ||
 		terms->terms[family].tag != PROTOTYPE_TERM_THUNK) {
 		return -1;
@@ -12626,7 +12626,7 @@ static int validate_pi_formation_intro_proof(
 	uint32_t lambda = terms->terms[family].as.thunk.computation;
 	if (lambda >= terms->term_count ||
 		terms->terms[lambda].tag != PROTOTYPE_TERM_LAMBDA ||
-		terms->terms[lambda].as.lambda.binder_id != binder_id ||
+		terms->terms[lambda].as.lambda.binding_id != binding_id ||
 		terms->terms[lambda].as.lambda.body >= terms->term_count ||
 		terms->terms[terms->terms[lambda].as.lambda.body].tag != PROTOTYPE_TERM_RETURN ||
 		terms->terms[terms->terms[lambda].as.lambda.body].as.return_term.value != codomain ||
@@ -12653,7 +12653,7 @@ static int validate_pi_formation_intro_proof(
 	uint32_t lambda_result;
 	uint32_t lambda_result_binder;
 	uint32_t lambda_result_body;
-	if (prototype_term_var((struct prototype_term_db*)terms, binder_id, &binder_var) != 0 ||
+	if (prototype_term_var((struct prototype_term_db*)terms, binding_id, &binder_var) != 0 ||
 		prototype_term_pure_family_parts(
 			terms,
 			terms->terms[lambda_classifier].as.pi.codomain_family,
@@ -12885,15 +12885,15 @@ static int judgement_classifier_free_result_effect_row_binder(
 		terms->terms[view.effect_row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 		return 0;
 	}
-	uint32_t binder_id = terms->terms[view.effect_row].as.effect_row_var.binder_id;
-	if (!prototype_term_contains_free_binder(
+	uint32_t binding_id = terms->terms[view.effect_row].as.effect_row_var.binding_id;
+	if (!prototype_term_contains_free_binding(
 		terms,
 		classifier,
-		binder_id
+		binding_id
 	)) {
 		return 0;
 	}
-	*p_binder_id = binder_id;
+	*p_binder_id = binding_id;
 	return 1;
 }
 
@@ -12901,7 +12901,7 @@ static int judgement_proof_has_effect_row_assumption(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
 	uint32_t proof_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	size_t depth
 ) {
 	if (!judgement || !terms || proof_id >= judgement->proof_count ||
@@ -12911,8 +12911,8 @@ static int judgement_proof_has_effect_row_assumption(
 	const struct prototype_judgement_proof* proof = &judgement->proofs[proof_id];
 	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION) {
 		return proof->conclusion_classifier < terms->term_count &&
-			prototype_term_contains_free_binder(
-				terms, proof->conclusion_classifier, binder_id
+			prototype_term_contains_free_binding(
+				terms, proof->conclusion_classifier, binding_id
 			);
 	}
 	for (uint32_t i = 0; i < proof->premise_count; ++i) {
@@ -12923,7 +12923,7 @@ static int judgement_proof_has_effect_row_assumption(
 			judgement,
 			terms,
 			proof->premise_proof_ids[i],
-			binder_id,
+			binding_id,
 			depth + 1
 		);
 		if (found != 0) {

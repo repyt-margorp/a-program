@@ -144,7 +144,7 @@ int prototype_constructor_curried_caches_rebuild(
 
 struct type_code_shape_key_binder_env {
 	const struct prototype_context_db* contexts;
-	uint32_t binder_id[PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY];
+	uint32_t binding_id[PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY];
 	uint32_t slot[PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY];
 	uint32_t count;
 	uint32_t next_slot;
@@ -209,7 +209,7 @@ static void type_code_shape_key_hash_mix_key(
 
 static int type_code_shape_key_env_lookup(
 	const struct type_code_shape_key_binder_env* env,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t* p_slot
 ) {
 	if (!env || !p_slot) {
@@ -217,7 +217,7 @@ static int type_code_shape_key_env_lookup(
 	}
 	for (uint32_t i = env->count; i > 0; --i) {
 		uint32_t index = i - 1;
-		if (env->binder_id[index] == binder_id) {
+		if (env->binding_id[index] == binding_id) {
 			*p_slot = env->slot[index];
 			return 1;
 		}
@@ -227,12 +227,12 @@ static int type_code_shape_key_env_lookup(
 
 static int type_code_shape_key_env_push(
 	struct type_code_shape_key_binder_env* env,
-	uint32_t binder_id
+	uint32_t binding_id
 ) {
 	if (!env || env->count >= PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY) {
 		return -1;
 	}
-	env->binder_id[env->count] = binder_id;
+	env->binding_id[env->count] = binding_id;
 	env->slot[env->count] = env->next_slot++;
 	env->count++;
 	return 0;
@@ -354,11 +354,11 @@ int prototype_type_expr_self(struct prototype_type_declaration_db* db, uint32_t*
 	return add_expr(db, expr, p_ret);
 }
 
-int prototype_type_expr_var(struct prototype_type_declaration_db* db, uint32_t binder_id, int symbol_id, uint32_t* p_ret) {
+int prototype_type_expr_var(struct prototype_type_declaration_db* db, uint32_t binding_id, int symbol_id, uint32_t* p_ret) {
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_VAR;
-	expr.as.var.binder_id = binder_id;
+	expr.as.var.binding_id = binding_id;
 	expr.as.var.symbol_id = symbol_id;
 	return add_expr(db, expr, p_ret);
 }
@@ -402,7 +402,7 @@ int prototype_type_expr_arrow(struct prototype_type_declaration_db* db, uint32_t
 
 int prototype_type_expr_pi(
 	struct prototype_type_declaration_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	int symbol_id,
 	uint32_t domain,
 	uint32_t codomain,
@@ -411,7 +411,7 @@ int prototype_type_expr_pi(
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_PI;
-	expr.as.pi.binder_id = binder_id;
+	expr.as.pi.binding_id = binding_id;
 	expr.as.pi.symbol_id = symbol_id;
 	expr.as.pi.domain = domain;
 	expr.as.pi.codomain = codomain;
@@ -481,7 +481,7 @@ int prototype_type_declaration_add(
 int prototype_type_declaration_add_parameter(
 	struct prototype_type_declaration_db* db,
 	uint32_t type_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	int name_symbol_id,
 	uint32_t type_expr
 ) {
@@ -498,7 +498,7 @@ int prototype_type_declaration_add_parameter(
 	}
 
 	uint32_t id = (uint32_t)db->parameter_count;
-	db->parameter_declarations[id].binder_id = binder_id;
+	db->parameter_declarations[id].binding_id = binding_id;
 	db->parameter_declarations[id].name_symbol_id = name_symbol_id;
 	db->parameter_declarations[id].type_expr = type_expr;
 	db->parameter_count++;
@@ -609,7 +609,7 @@ int prototype_type_constructor_derive_curried_classifier(
 		if (!field || field->classifier == PROTOTYPE_INVALID_ID ||
 			prototype_term_pure_family(
 				terms,
-				field->binder_id,
+				field->binding_id,
 				classifier,
 				&codomain_family
 			) != 0 ||
@@ -629,7 +629,7 @@ int prototype_type_constructor_derive_curried_classifier(
 		uint32_t lambda;
 		if (!parameter ||
 			prototype_term_lambda(
-				terms, parameter->binder_id, classifier, &lambda
+				terms, parameter->binding_id, classifier, &lambda
 			) != 0) {
 			return -1;
 		}
@@ -767,8 +767,8 @@ static int representation_match_cases_equal_at_depth(
 	for (uint32_t i = 0; i < left->binder_count; ++i) {
 		if (representation_push_binder(
 				env,
-				terms->case_binders[left->first_binder + i].binder_id,
-				terms->case_binders[right->first_binder + i].binder_id
+				terms->case_binders[left->first_binder + i].binding_id,
+				terms->case_binders[right->first_binder + i].binding_id
 			) != 0) {
 			env->binder_count = saved;
 			return 0;
@@ -800,7 +800,7 @@ static int representation_terms_equal_at_depth(
 	}
 	switch (left->tag) {
 		case PROTOTYPE_TERM_VAR:
-			return representation_binders_equal(env, left->as.var.binder_id, right->as.var.binder_id);
+			return representation_binders_equal(env, left->as.var.binding_id, right->as.var.binding_id);
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			return left->as.constructor.constructor_id == right->as.constructor.constructor_id &&
 				representation_terms_equal_at_depth(
@@ -819,8 +819,8 @@ static int representation_terms_equal_at_depth(
 			uint32_t left_binder = PROTOTYPE_INVALID_ID;
 			uint32_t right_binder = PROTOTYPE_INVALID_ID;
 			if (left->tag == PROTOTYPE_TERM_LAMBDA) {
-				left_binder = left->as.lambda.binder_id;
-				right_binder = right->as.lambda.binder_id;
+				left_binder = left->as.lambda.binding_id;
+				right_binder = right->as.lambda.binding_id;
 				left_body = left->as.lambda.body;
 				right_body = right->as.lambda.body;
 			} else {
@@ -912,7 +912,7 @@ static int representation_terms_equal_at_depth(
 			return left->as.effect_label.effects == right->as.effect_label.effects;
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			return representation_binders_equal(
-				env, left->as.effect_row_var.binder_id, right->as.effect_row_var.binder_id
+				env, left->as.effect_row_var.binding_id, right->as.effect_row_var.binding_id
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 			return representation_terms_equal_at_depth(
@@ -1059,7 +1059,7 @@ static int representation_types_equal_at_depth(
 				right_parameter->classifier, env, depth + 1
 			) ||
 			representation_push_binder(
-				env, left_parameter->binder_id, right_parameter->binder_id
+				env, left_parameter->binding_id, right_parameter->binding_id
 			) != 0) {
 			env->binder_count = saved_binders;
 			return 0;
@@ -1108,7 +1108,7 @@ static int representation_types_equal_at_depth(
 					right_field->classifier, env, depth + 1
 				) ||
 				representation_push_binder(
-					env, left_field->binder_id, right_field->binder_id
+					env, left_field->binding_id, right_field->binding_id
 				) != 0) {
 				env->binder_count = saved_binders;
 				return 0;
@@ -1254,7 +1254,7 @@ static int type_code_shape_key_match_case_at_depth(
 	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
 		const struct prototype_case_binder* binder =
 			&terms->case_binders[match_case->first_binder + i];
-		if (type_code_shape_key_env_push(env, binder->binder_id) != 0) {
+		if (type_code_shape_key_env_push(env, binder->binding_id) != 0) {
 			env->count = saved_count;
 			env->next_slot = saved_next_slot;
 			return -1;
@@ -1316,12 +1316,12 @@ static int type_code_shape_key_term_at_depth(
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR: {
 			uint32_t slot;
-			if (type_code_shape_key_env_lookup(env, term->as.var.binder_id, &slot)) {
+			if (type_code_shape_key_env_lookup(env, term->as.var.binding_id, &slot)) {
 				type_code_shape_key_hash_mix_u32(p_hash, 1);
 				type_code_shape_key_hash_mix_u32(p_hash, slot);
 			} else {
 				type_code_shape_key_hash_mix_u32(p_hash, 0);
-				type_code_shape_key_hash_mix_u32(p_hash, term->as.var.binder_id);
+				type_code_shape_key_hash_mix_u32(p_hash, term->as.var.binding_id);
 				key->free_binder_count++;
 			}
 			return 0;
@@ -1364,7 +1364,7 @@ static int type_code_shape_key_term_at_depth(
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t saved_count = env->count;
 			uint32_t saved_next_slot = env->next_slot;
-			if (type_code_shape_key_env_push(env, term->as.lambda.binder_id) != 0) {
+			if (type_code_shape_key_env_push(env, term->as.lambda.binding_id) != 0) {
 				return -1;
 			}
 			key->bound_binder_count++;
@@ -1384,7 +1384,7 @@ static int type_code_shape_key_term_at_depth(
 		}
 		case PROTOTYPE_TERM_PI:
 		{
-			uint32_t binder_id;
+			uint32_t binding_id;
 			uint32_t body;
 			if (type_code_shape_key_term_at_depth(
 					terms,
@@ -1401,14 +1401,14 @@ static int type_code_shape_key_term_at_depth(
 			if (prototype_term_pure_family_parts(
 					terms,
 					term->as.pi.codomain_family,
-					&binder_id,
+					&binding_id,
 					&body
 				) != 0) {
 				return -1;
 			}
 			uint32_t saved_count = env->count;
 			uint32_t saved_next_slot = env->next_slot;
-			if (type_code_shape_key_env_push(env, binder_id) != 0) {
+			if (type_code_shape_key_env_push(env, binding_id) != 0) {
 				return -1;
 			}
 			key->bound_binder_count++;
@@ -1433,11 +1433,11 @@ static int type_code_shape_key_term_at_depth(
 			{
 				uint32_t slot;
 				if (type_code_shape_key_env_lookup(
-						env, term->as.effect_row_var.binder_id, &slot
+						env, term->as.effect_row_var.binding_id, &slot
 					)) {
 					type_code_shape_key_hash_mix_u32(p_hash, slot);
 				} else {
-					type_code_shape_key_hash_mix_u32(p_hash, term->as.effect_row_var.binder_id);
+					type_code_shape_key_hash_mix_u32(p_hash, term->as.effect_row_var.binding_id);
 				}
 			}
 			return 0;
@@ -1518,7 +1518,7 @@ static int type_code_shape_key_term_at_depth(
 			}
 			return 0;
 			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			type_code_shape_key_hash_mix_u32(p_hash, term->as.induction_hypothesis.frame_id);
+			type_code_shape_key_hash_mix_u32(p_hash, term->as.induction_hypothesis.ih_scope_id);
 			return type_code_shape_key_term_at_depth(
 				terms,
 				db,
@@ -1662,7 +1662,7 @@ int prototype_type_declaration_code_shape_key(
 				&hash,
 				0
 			) != 0 ||
-			type_code_shape_key_env_push(&env, parameter->binder_id) != 0) {
+			type_code_shape_key_env_push(&env, parameter->binding_id) != 0) {
 			return -1;
 		}
 		p_key->bound_binder_count++;
@@ -1709,7 +1709,7 @@ int prototype_type_declaration_code_shape_key(
 					&hash,
 					0
 				) != 0 ||
-				type_code_shape_key_env_push(&env, field->binder_id) != 0) {
+				type_code_shape_key_env_push(&env, field->binding_id) != 0) {
 				return -1;
 			}
 			p_key->bound_binder_count++;

@@ -104,7 +104,7 @@ static struct prototype_term terms[TERM_CAPACITY];
 static struct prototype_match_case match_cases[MATCH_CASE_CAPACITY];
 static int match_case_label_symbols[MATCH_CASE_CAPACITY];
 static struct prototype_case_binder match_binders[MATCH_BINDER_CAPACITY];
-static struct prototype_match_frame match_frames[MATCH_FRAME_CAPACITY];
+static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_judgement_relation judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
@@ -178,7 +178,7 @@ static struct prototype_term provider_terms[TERM_CAPACITY];
 static struct prototype_match_case provider_match_cases[MATCH_CASE_CAPACITY];
 static int provider_match_case_label_symbols[MATCH_CASE_CAPACITY];
 static struct prototype_case_binder provider_match_binders[MATCH_BINDER_CAPACITY];
-static struct prototype_match_frame provider_match_frames[MATCH_FRAME_CAPACITY];
+static struct prototype_ih_scope provider_ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_judgement_relation provider_judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof provider_judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_artifact_term_export provider_artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
@@ -547,7 +547,7 @@ static void print_type_expr_debug(
 			printf("SELF");
 			break;
 		case PROTOTYPE_TYPE_EXPR_VAR:
-			printf("VAR(%s#%u)", symbol_to_string(symbols, expr->as.var.symbol_id), expr->as.var.binder_id);
+			printf("VAR(%s#%u)", symbol_to_string(symbols, expr->as.var.symbol_id), expr->as.var.binding_id);
 			break;
 		case PROTOTYPE_TYPE_EXPR_NAME:
 			printf("CONST(%s)", symbol_to_string(symbols, expr->as.name.symbol_id));
@@ -581,7 +581,7 @@ static void print_type_expr_debug(
 			case PROTOTYPE_TYPE_EXPR_PI:
 				printf("PI(%s#%u : ",
 					symbol_to_string(symbols, expr->as.pi.symbol_id),
-					expr->as.pi.binder_id);
+					expr->as.pi.binding_id);
 				print_type_expr_debug(symbols, type_declarations, expr->as.pi.domain);
 				printf(", ");
 				print_type_expr_debug(symbols, type_declarations, expr->as.pi.codomain);
@@ -1155,7 +1155,7 @@ static int check_export_normalization_equal(
 		MATCH_CASE_CAPACITY,
 		match_binders,
 		MATCH_BINDER_CAPACITY,
-		match_frames,
+		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_judgement_db_init(&judgement_db, judgements, judgement_proofs, JUDGEMENT_CAPACITY);
@@ -1356,7 +1356,7 @@ static int check_exports_normalization_equal(
 		MATCH_CASE_CAPACITY,
 		match_binders,
 		MATCH_BINDER_CAPACITY,
-		match_frames,
+		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_judgement_db_init(&judgement_db, judgements, judgement_proofs, JUDGEMENT_CAPACITY);
@@ -1577,7 +1577,7 @@ static int check_exports_shape_equal(
 		MATCH_CASE_CAPACITY,
 		match_binders,
 		MATCH_BINDER_CAPACITY,
-		match_frames,
+		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_judgement_db_init(&judgement_db, judgements, judgement_proofs, JUDGEMENT_CAPACITY);
@@ -1729,7 +1729,7 @@ static int check_export_classifier_compatible(
 		MATCH_CASE_CAPACITY,
 		match_binders,
 		MATCH_BINDER_CAPACITY,
-		match_frames,
+		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_judgement_db_init(&judgement_db, judgements, judgement_proofs, JUDGEMENT_CAPACITY);
@@ -1981,7 +1981,7 @@ static void init_provider_artifact_storage(
 		MATCH_CASE_CAPACITY,
 		provider_match_binders,
 		MATCH_BINDER_CAPACITY,
-		provider_match_frames,
+		provider_ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_judgement_db_init(
@@ -2556,7 +2556,7 @@ static int interface_type_expr_present(const struct prototype_type_expr* expr) {
 static int interface_type_parameter_present(
 	const struct prototype_artifact_type_parameter_export* parameter
 ) {
-	return parameter && parameter->binder_id != PROTOTYPE_INVALID_ID;
+	return parameter && parameter->binding_id != PROTOTYPE_INVALID_ID;
 }
 
 static int interface_field_ref_present(const uint32_t* field_ref) {
@@ -3175,7 +3175,7 @@ int main(int argc, char** argv) {
 			MATCH_CASE_CAPACITY,
 			match_binders,
 			MATCH_BINDER_CAPACITY,
-			match_frames,
+			ih_scopes,
 			MATCH_FRAME_CAPACITY
 		);
 		prototype_judgement_db_init(
@@ -3328,7 +3328,7 @@ int main(int argc, char** argv) {
 				MATCH_CASE_CAPACITY,
 				provider_match_binders,
 				MATCH_BINDER_CAPACITY,
-				provider_match_frames,
+				provider_ih_scopes,
 				MATCH_FRAME_CAPACITY
 			);
 			prototype_judgement_db_init(
@@ -3395,7 +3395,7 @@ int main(int argc, char** argv) {
 				return 1;
 			}
 			uint32_t provider_term_offset = (uint32_t)term_db.term_count;
-			uint32_t provider_binder_offset = term_db.next_binder_id;
+			uint32_t provider_binder_offset = term_db.next_binding_id;
 			if (prototype_artifact_append_graph(
 					&appended_interface,
 					&term_db,
@@ -3677,7 +3677,7 @@ int main(int argc, char** argv) {
 				MATCH_CASE_CAPACITY,
 				match_binders,
 				MATCH_BINDER_CAPACITY,
-				match_frames,
+				ih_scopes,
 				MATCH_FRAME_CAPACITY
 			);
 			prototype_judgement_db_init(
@@ -3817,7 +3817,7 @@ int main(int argc, char** argv) {
 				term_db.term_count,
 				term_db.case_count,
 				term_db.case_binder_count,
-				term_db.match_frame_count,
+				term_db.ih_scope_count,
 				type_declarations.type_count,
 				type_declarations.constructor_count,
 				type_declarations.expr_count,
@@ -3984,7 +3984,7 @@ int main(int argc, char** argv) {
 		MATCH_CASE_CAPACITY,
 		match_binders,
 		MATCH_BINDER_CAPACITY,
-		match_frames,
+		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_compile_metadata_init(

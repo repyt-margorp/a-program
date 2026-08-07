@@ -67,7 +67,7 @@ struct prototype_type_expr {
 			uint32_t level_var;
 		} universe_var;
 	struct {
-		uint32_t binder_id;
+		uint32_t binding_id;
 		int symbol_id;
 	} var;
 	struct {
@@ -89,7 +89,7 @@ struct prototype_type_expr {
 			uint32_t codomain;
 		} arrow;
 		struct {
-			uint32_t binder_id;
+			uint32_t binding_id;
 			int symbol_id;
 			uint32_t domain;
 			uint32_t codomain;
@@ -98,7 +98,7 @@ struct prototype_type_expr {
 };
 
 struct prototype_type_parameter_declaration {
-	uint32_t binder_id;
+	uint32_t binding_id;
 	int name_symbol_id;
 	uint32_t type_expr;
 };
@@ -208,14 +208,14 @@ void prototype_type_declaration_db_init(
 int prototype_type_expr_universe(struct prototype_type_declaration_db* db, uint32_t level, uint32_t* p_ret);
 int prototype_type_expr_fresh_universe(struct prototype_type_declaration_db* db, uint32_t* p_ret);
 int prototype_type_expr_self(struct prototype_type_declaration_db* db, uint32_t* p_ret);
-int prototype_type_expr_var(struct prototype_type_declaration_db* db, uint32_t binder_id, int symbol_id, uint32_t* p_ret);
+int prototype_type_expr_var(struct prototype_type_declaration_db* db, uint32_t binding_id, int symbol_id, uint32_t* p_ret);
 int prototype_type_expr_name(struct prototype_type_declaration_db* db, int symbol_id, uint32_t* p_ret);
 int prototype_type_expr_primitive(struct prototype_type_declaration_db* db, int tag, uint32_t* p_ret);
 int prototype_type_expr_app(struct prototype_type_declaration_db* db, uint32_t function, uint32_t argument, uint32_t* p_ret);
 int prototype_type_expr_arrow(struct prototype_type_declaration_db* db, uint32_t domain, uint32_t codomain, uint32_t* p_ret);
 int prototype_type_expr_pi(
 	struct prototype_type_declaration_db* db,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	int symbol_id,
 	uint32_t domain,
 	uint32_t codomain,
@@ -242,7 +242,7 @@ int prototype_type_declaration_add(
 int prototype_type_declaration_add_parameter(
 	struct prototype_type_declaration_db* db,
 	uint32_t type_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	int name_symbol_id,
 	uint32_t type_expr
 );

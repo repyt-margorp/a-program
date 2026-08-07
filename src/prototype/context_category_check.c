@@ -8,7 +8,7 @@ int main(void) {
 	struct prototype_match_case cases[8];
 	int case_labels[8];
 	struct prototype_case_binder case_binders[8];
-	struct prototype_match_frame frames[8];
+	struct prototype_ih_scope frames[8];
 	struct prototype_term_db term_db;
 	struct prototype_context_db contexts;
 	struct prototype_context context_storage[16];
@@ -134,12 +134,12 @@ int main(void) {
 	}
 	if (prototype_context_empty(&contexts) != 0 ||
 		int_context != same_int_context ||
-		prototype_context_get(&contexts, same_int_context)->binder_id != 0 ||
+		prototype_context_get(&contexts, same_int_context)->binding_id != 0 ||
 		int_context == text_context ||
 		unresolved_left == unresolved_right ||
-		!prototype_context_contains_binder(&contexts, nested_context, 0) ||
-		!prototype_context_contains_binder(&contexts, nested_context, 1) ||
-		prototype_context_contains_binder(&contexts, text_context, 1) ||
+		!prototype_context_contains_binding(&contexts, nested_context, 0) ||
+		!prototype_context_contains_binding(&contexts, nested_context, 1) ||
+		prototype_context_contains_binding(&contexts, text_context, 1) ||
 		prototype_context_get(&contexts, nested_context)->depth != 2 ||
 		prototype_context_db_validate(&contexts, &term_db) != 0) {
 		fprintf(stderr, "categorical context law failed\n");
@@ -328,6 +328,112 @@ int main(void) {
 		return 1;
 	}
 	{
+		enum { LARGE_CONTEXT_DEPTH = 513 };
+		static struct prototype_term large_term_storage[16];
+		static struct prototype_match_case large_case_storage[1];
+		static int large_case_labels[1];
+		static struct prototype_case_binder large_case_binders[1];
+		static struct prototype_ih_scope large_frames[1];
+		static struct prototype_context
+			large_context_storage[LARGE_CONTEXT_DEPTH + 1];
+		static struct prototype_substitution
+			large_substitution_storage[LARGE_CONTEXT_DEPTH + 1];
+		struct prototype_term_db large_terms;
+		struct prototype_context_db large_contexts;
+		struct prototype_substitution_db large_substitutions;
+		uint32_t large_int_type;
+		uint32_t large_literal;
+		uint32_t large_context = 0;
+		uint32_t large_variable;
+		uint32_t large_result;
+
+		prototype_term_db_init(
+			&large_terms,
+			large_term_storage,
+			16,
+			large_case_storage,
+			large_case_labels,
+			1,
+			large_case_binders,
+			1,
+			large_frames,
+			1
+		);
+		prototype_context_db_init(
+			&large_contexts,
+			large_context_storage,
+			LARGE_CONTEXT_DEPTH + 1
+		);
+		prototype_substitution_db_init(
+			&large_substitutions,
+			large_substitution_storage,
+			LARGE_CONTEXT_DEPTH + 1
+		);
+		if (prototype_term_primitive_int(&large_terms, &large_int_type) != 0 ||
+			prototype_term_int_literal(&large_terms, 7, &large_literal) != 0) {
+			fprintf(stderr, "failed to initialize large reindex fixture\n");
+			return 1;
+		}
+		large_substitution_storage[0] = (struct prototype_substitution) {
+			.kind = PROTOTYPE_SUBSTITUTION_EMPTY,
+			.source_context = 0,
+			.target_context = 0,
+			.first = PROTOTYPE_INVALID_ID,
+			.second = PROTOTYPE_INVALID_ID,
+			.term = PROTOTYPE_INVALID_ID,
+			.term_classifier = PROTOTYPE_INVALID_ID,
+			.term_proof_id = PROTOTYPE_INVALID_ID
+		};
+		large_substitutions.substitution_count = 1;
+		for (uint32_t i = 0; i < LARGE_CONTEXT_DEPTH; ++i) {
+			uint32_t extended_context;
+			if (prototype_context_extend(
+					&large_contexts,
+					large_context,
+					1000 + i,
+					large_int_type,
+					PROTOTYPE_INVALID_ID,
+					&extended_context
+				) != 0) {
+				fprintf(stderr, "failed to extend large context\n");
+				return 1;
+			}
+			large_substitution_storage[i + 1] =
+				(struct prototype_substitution) {
+					.kind = PROTOTYPE_SUBSTITUTION_EXTEND,
+					.source_context = 0,
+					.target_context = extended_context,
+					.first = i,
+					.second = PROTOTYPE_INVALID_ID,
+					.term = large_literal,
+					.term_classifier = large_int_type,
+					.term_proof_id = PROTOTYPE_INVALID_ID
+				};
+			large_substitutions.substitution_count++;
+			large_context = extended_context;
+		}
+		uint32_t binding_count_before = large_terms.next_binding_id;
+		if (prototype_term_var(
+				&large_terms, 1000 + LARGE_CONTEXT_DEPTH - 1, &large_variable
+			) != 0 || prototype_context_db_validate(
+				&large_contexts, &large_terms
+			) != 0 || prototype_substitution_db_validate(
+				&large_substitutions, &large_contexts, &large_terms
+			) != 0 || prototype_term_reindex(
+				&large_terms,
+				&type_declarations,
+				&large_contexts,
+				&large_substitutions,
+				large_variable,
+				LARGE_CONTEXT_DEPTH,
+				&large_result
+			) != 0 || large_result != large_literal ||
+			large_terms.next_binding_id != binding_count_before) {
+			fprintf(stderr, "large direct reindex law failed\n");
+			return 1;
+		}
+	}
+	{
 		struct prototype_context malformed_context_storage[1];
 		struct prototype_context_db malformed_contexts;
 		struct prototype_substitution malformed_substitution_storage[1];
@@ -425,7 +531,7 @@ int main(void) {
 				7
 			) != 0 || source_section != 1 ||
 			target_contexts.context_count != 2 ||
-			target_contexts.contexts[context_relocation[source_context]].binder_id !=
+			target_contexts.contexts[context_relocation[source_context]].binding_id !=
 				141 ||
 			target_contexts.contexts[
 				context_relocation[source_context]

@@ -721,7 +721,7 @@ struct operation_runtime_value {
 
 struct operation_runtime_binding {
 	uint32_t ast_binder_id;
-	uint32_t binder_id;
+	uint32_t binding_id;
 	struct operation_runtime_value value;
 };
 
@@ -779,7 +779,7 @@ static int operation_runtime_instantiate_term(
 				terms,
 				type_declarations,
 				current,
-				environment->bindings[i].binder_id,
+				environment->bindings[i].binding_id,
 				environment->bindings[i].value.as.term,
 				&current
 			) != 0) {
@@ -793,7 +793,7 @@ static int operation_runtime_instantiate_term(
 static int operation_runtime_extend_environment(
 	const struct operation_runtime_environment* source,
 	uint32_t ast_binder_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	struct operation_runtime_value value,
 	struct operation_runtime_environment* p_ret
 ) {
@@ -805,7 +805,7 @@ static int operation_runtime_extend_environment(
 	p_ret->bindings[p_ret->count++] =
 		(struct operation_runtime_binding){
 			.ast_binder_id = ast_binder_id,
-			.binder_id = binder_id,
+			.binding_id = binding_id,
 			.value = value
 		};
 	return 0;
@@ -814,7 +814,7 @@ static int operation_runtime_extend_environment(
 static int operation_runtime_extend_term_environment(
 	const struct operation_runtime_environment* source,
 	uint32_t ast_binder_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t term,
 	struct operation_runtime_environment* p_ret
 )
@@ -825,7 +825,7 @@ static int operation_runtime_extend_term_environment(
 	return operation_runtime_extend_environment(
 		source,
 		ast_binder_id,
-		binder_id,
+		binding_id,
 		operation_runtime_term_value(term),
 		p_ret
 	);
@@ -834,7 +834,7 @@ static int operation_runtime_extend_term_environment(
 static int operation_runtime_extend_resumption_environment(
 	const struct operation_runtime_environment* source,
 	uint32_t ast_binder_id,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t resumption,
 	struct operation_runtime_environment* p_ret
 ) {
@@ -844,7 +844,7 @@ static int operation_runtime_extend_resumption_environment(
 	return operation_runtime_extend_environment(
 		source,
 		ast_binder_id,
-		binder_id,
+		binding_id,
 		operation_runtime_resumption_value(resumption),
 		p_ret
 	);
@@ -1382,7 +1382,7 @@ static int operation_runtime_machine_enter_lambda_body(
 	if (operation_runtime_extend_environment(
 			&machine->environment,
 			lambda_operation_node->referenced_ast_binder_id,
-			lambda->as.lambda.binder_id,
+			lambda->as.lambda.binding_id,
 			argument,
 			&extended
 		) != 0) {
@@ -1473,7 +1473,7 @@ static int operation_runtime_machine_enter_match_case(
 					operation_case->ast_binder_ids[j],
 					machine->terms->case_binders[
 						term_case->first_binder + j
-					].binder_id,
+					].binding_id,
 					arguments[j],
 					&extended
 				) != 0) {
@@ -2478,7 +2478,7 @@ int prototype_artifact_interface_build_from_metadata(
 			&type_declarations->parameter_declarations[i];
 		struct prototype_artifact_type_parameter_export* export =
 			&interface->type_parameters[interface->type_parameter_count++];
-		export->binder_id = parameter->binder_id;
+		export->binding_id = parameter->binding_id;
 		export->name_symbol_id = parameter->name_symbol_id;
 		export->type_expr = parameter->type_expr;
 	}
@@ -3126,7 +3126,7 @@ static int write_artifact_type_expr(
 			fprintf(
 				stream,
 				" %u %s",
-				expr->as.var.binder_id,
+				expr->as.var.binding_id,
 				symbol_to_string(symbols, expr->as.var.symbol_id)
 			);
 			break;
@@ -3166,7 +3166,7 @@ static int write_artifact_type_expr(
 			fprintf(
 				stream,
 				" %u %s %u %u",
-				expr->as.pi.binder_id,
+				expr->as.pi.binding_id,
 				symbol_to_string(symbols, expr->as.pi.symbol_id),
 				expr->as.pi.domain,
 				expr->as.pi.codomain
@@ -3193,7 +3193,7 @@ static int write_artifact_term(
 	fprintf(stream, "term_node %u %d", term_id, term->tag);
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR:
-			fprintf(stream, " %u", term->as.var.binder_id);
+			fprintf(stream, " %u", term->as.var.binding_id);
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			fprintf(
@@ -3207,7 +3207,7 @@ static int write_artifact_term(
 			fprintf(stream, " %u %u", term->as.app.function, term->as.app.argument);
 			break;
 		case PROTOTYPE_TERM_LAMBDA:
-			fprintf(stream, " %u %u", term->as.lambda.binder_id, term->as.lambda.body);
+			fprintf(stream, " %u %u", term->as.lambda.binding_id, term->as.lambda.body);
 			break;
 		case PROTOTYPE_TERM_PI:
 			fprintf(stream, " %u %u", term->as.pi.domain, term->as.pi.codomain_family);
@@ -3219,7 +3219,7 @@ static int write_artifact_term(
 				term->as.match.scrutinee,
 				term->as.match.first_case,
 				term->as.match.case_count,
-				term->as.match.frame_id
+				term->as.match.ih_scope_id
 			);
 			break;
 		case PROTOTYPE_TERM_TYPE_FORMER:
@@ -3276,7 +3276,7 @@ static int write_artifact_term(
 			fprintf(
 				stream,
 				" %u %u",
-				term->as.induction_hypothesis.frame_id,
+				term->as.induction_hypothesis.ih_scope_id,
 				term->as.induction_hypothesis.argument
 			);
 			break;
@@ -3331,14 +3331,14 @@ static int write_artifact_term(
 				fprintf(stream, " %u", term->as.effect_label.effects);
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				fprintf(stream, " %u", term->as.effect_row_var.binder_id);
+				fprintf(stream, " %u", term->as.effect_row_var.binding_id);
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				fprintf(stream, " %u %u", term->as.effect_row_union.left,
 					term->as.effect_row_union.right);
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-				fprintf(stream, " %u %u", term->as.effect_row_forall.binder_id,
+				fprintf(stream, " %u %u", term->as.effect_row_forall.binding_id,
 					term->as.effect_row_forall.body);
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
@@ -3578,13 +3578,13 @@ static int artifact_type_present(const struct prototype_type_declaration* type) 
 static int artifact_parameter_present(
 	const struct prototype_type_parameter_declaration* parameter
 ) {
-	return parameter && parameter->binder_id != PROTOTYPE_INVALID_ID;
+	return parameter && parameter->binding_id != PROTOTYPE_INVALID_ID;
 }
 
 static int artifact_interface_parameter_present(
 	const struct prototype_artifact_type_parameter_export* parameter
 ) {
-	return parameter && parameter->binder_id != PROTOTYPE_INVALID_ID;
+	return parameter && parameter->binding_id != PROTOTYPE_INVALID_ID;
 }
 
 static int artifact_constructor_present(
@@ -3900,11 +3900,11 @@ static int artifact_mark_case(
 		return -1;
 	}
 	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
-		uint32_t binder_id = match_case->first_binder + i;
-		if (binder_id >= marks->case_binder_count) {
+		uint32_t binding_id = match_case->first_binder + i;
+		if (binding_id >= marks->case_binder_count) {
 			return -1;
 		}
-		marks->case_binders[binder_id] = 1;
+		marks->case_binders[binding_id] = 1;
 	}
 	return 0;
 }
@@ -3912,27 +3912,27 @@ static int artifact_mark_case(
 static int artifact_mark_frame(
 	struct artifact_graph_marks* marks,
 	const struct prototype_term_db* terms,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t depth
 ) {
 	if (!marks || !terms || depth > 512) {
 		return -1;
 	}
-	if (frame_id == PROTOTYPE_INVALID_ID) {
+	if (ih_scope_id == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
-	if (frame_id >= marks->frame_count || frame_id >= terms->match_frame_count) {
+	if (ih_scope_id >= marks->frame_count || ih_scope_id >= terms->ih_scope_count) {
 		return -1;
 	}
-	if (marks->frames[frame_id]) {
+	if (marks->frames[ih_scope_id]) {
 		return 0;
 	}
-	marks->frames[frame_id] = 1;
-	if (terms->match_frames[frame_id].match_term != PROTOTYPE_INVALID_ID &&
+	marks->frames[ih_scope_id] = 1;
+	if (terms->ih_scopes[ih_scope_id].match_term != PROTOTYPE_INVALID_ID &&
 		artifact_mark_term(
 			marks,
 			terms,
-			terms->match_frames[frame_id].match_term,
+			terms->ih_scopes[ih_scope_id].match_term,
 			depth + 1
 		) != 0) {
 		return -1;
@@ -3973,7 +3973,7 @@ static int artifact_mark_term(
 				artifact_mark_term(marks, terms, term->as.pi.codomain_family, depth + 1) == 0 ? 0 : -1;
 		case PROTOTYPE_TERM_MATCH:
 			if (artifact_mark_term(marks, terms, term->as.match.scrutinee, depth + 1) != 0 ||
-				artifact_mark_frame(marks, terms, term->as.match.frame_id, depth + 1) != 0) {
+				artifact_mark_frame(marks, terms, term->as.match.ih_scope_id, depth + 1) != 0) {
 				return -1;
 			}
 			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
@@ -4006,7 +4006,7 @@ static int artifact_mark_term(
 				artifact_mark_term(marks, terms, term->as.type_view.core, depth + 1) == 0 &&
 				artifact_mark_term(marks, terms, term->as.type_view.source, depth + 1) == 0 ? 0 : -1;
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-				return artifact_mark_frame(marks, terms, term->as.induction_hypothesis.frame_id, depth + 1) == 0 &&
+				return artifact_mark_frame(marks, terms, term->as.induction_hypothesis.ih_scope_id, depth + 1) == 0 &&
 					artifact_mark_term(marks, terms, term->as.induction_hypothesis.argument, depth + 1) == 0 ? 0 : -1;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			return artifact_mark_term(
@@ -4267,10 +4267,10 @@ static int artifact_case_present(const struct prototype_match_case* match_case) 
 }
 
 static int artifact_case_binder_present(const struct prototype_case_binder* binder) {
-	return binder && binder->binder_id != PROTOTYPE_INVALID_ID;
+	return binder && binder->binding_id != PROTOTYPE_INVALID_ID;
 }
 
-static int artifact_frame_present(const struct prototype_match_frame* frame) {
+static int artifact_frame_present(const struct prototype_ih_scope* frame) {
 	return frame && frame->match_term != PROTOTYPE_INVALID_ID;
 }
 
@@ -4329,8 +4329,8 @@ static int write_artifact_graph_section(
 			present_case_binder_count++;
 		}
 	}
-	for (size_t i = 0; i < terms->match_frame_count; ++i) {
-		if (artifact_frame_present(&terms->match_frames[i])) {
+	for (size_t i = 0; i < terms->ih_scope_count; ++i) {
+		if (artifact_frame_present(&terms->ih_scopes[i])) {
 			present_frame_count++;
 		}
 	}
@@ -4378,7 +4378,7 @@ static int write_artifact_graph_section(
 		present_case_count,
 		terms->case_binder_count,
 		present_case_binder_count,
-		terms->match_frame_count,
+		terms->ih_scope_count,
 		present_frame_count,
 		type_declarations->type_count,
 		present_type_count,
@@ -4433,7 +4433,7 @@ static int write_artifact_graph_section(
 			stream,
 			"type_param %zu %u %s %u\n",
 			i,
-			parameter->binder_id,
+			parameter->binding_id,
 			symbol_to_string(symbols, parameter->name_symbol_id),
 			parameter->type_expr
 		);
@@ -4535,14 +4535,14 @@ static int write_artifact_graph_section(
 			stream,
 			"case_binder %zu %u %d\n",
 			i,
-			terms->case_binders[i].binder_id,
+			terms->case_binders[i].binding_id,
 			terms->case_binders[i].is_recursive
 		);
 	}
 
 	fprintf(stream, "match_frames %zu\n", present_frame_count);
-	for (size_t i = 0; i < terms->match_frame_count; ++i) {
-		const struct prototype_match_frame* frame = &terms->match_frames[i];
+	for (size_t i = 0; i < terms->ih_scope_count; ++i) {
+		const struct prototype_ih_scope* frame = &terms->ih_scopes[i];
 		if (!artifact_frame_present(frame)) {
 			continue;
 		}
@@ -5592,7 +5592,7 @@ struct artifact_sparse_graph {
 	struct prototype_match_case* cases;
 	int* case_label_symbols;
 	struct prototype_case_binder* case_binders;
-	struct prototype_match_frame* frames;
+	struct prototype_ih_scope* frames;
 	struct prototype_type_declaration* type_nodes;
 	struct prototype_type_parameter_declaration* parameter_declarations;
 	struct prototype_type_constructor_declaration* constructor_declarations;
@@ -5649,10 +5649,10 @@ static void artifact_init_sparse_defaults(struct artifact_sparse_graph* graph) {
 		graph->terms.cases[i].body = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < graph->terms.case_binder_count; ++i) {
-		graph->terms.case_binders[i].binder_id = PROTOTYPE_INVALID_ID;
+		graph->terms.case_binders[i].binding_id = PROTOTYPE_INVALID_ID;
 	}
-	for (size_t i = 0; i < graph->terms.match_frame_count; ++i) {
-		graph->terms.match_frames[i].match_term = PROTOTYPE_INVALID_ID;
+	for (size_t i = 0; i < graph->terms.ih_scope_count; ++i) {
+		graph->terms.ih_scopes[i].match_term = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < graph->type_declarations.type_count; ++i) {
 		graph->type_declarations.type_declarations[i].name_symbol_id = -1;
@@ -5662,7 +5662,7 @@ static void artifact_init_sparse_defaults(struct artifact_sparse_graph* graph) {
 		graph->type_declarations.type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < graph->type_declarations.parameter_count; ++i) {
-		graph->type_declarations.parameter_declarations[i].binder_id = PROTOTYPE_INVALID_ID;
+		graph->type_declarations.parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
 		graph->type_declarations.parameter_declarations[i].name_symbol_id = -1;
 		graph->type_declarations.parameter_declarations[i].type_expr = PROTOTYPE_INVALID_ID;
 	}
@@ -5720,7 +5720,7 @@ static int artifact_marks_init(
 	marks->term_count = terms->term_count;
 	marks->case_count = terms->case_count;
 	marks->case_binder_count = terms->case_binder_count;
-	marks->frame_count = terms->match_frame_count;
+	marks->frame_count = terms->ih_scope_count;
 	marks->type_count = type_declarations->type_count;
 	marks->parameter_count = type_declarations->parameter_count;
 	marks->constructor_count = type_declarations->constructor_count;
@@ -6032,7 +6032,7 @@ static int artifact_sparse_graph_alloc(
 			terms->case_binder_count,
 			sizeof(*graph->case_binders)
 		) != 0 ||
-		artifact_alloc_bytes((void**)&graph->frames, terms->match_frame_count, sizeof(*graph->frames)) != 0 ||
+		artifact_alloc_bytes((void**)&graph->frames, terms->ih_scope_count, sizeof(*graph->frames)) != 0 ||
 		artifact_alloc_bytes(
 			(void**)&graph->type_nodes,
 			type_declarations->type_count,
@@ -6093,7 +6093,7 @@ static int artifact_sparse_graph_alloc(
 		graph->case_binders,
 		terms->case_binder_count,
 		graph->frames,
-		terms->match_frame_count
+		terms->ih_scope_count
 	);
 	prototype_type_declaration_db_init(
 		&graph->type_declarations,
@@ -6128,9 +6128,9 @@ static int artifact_sparse_graph_alloc(
 	graph->terms.term_count = terms->term_count;
 	graph->terms.case_count = terms->case_count;
 	graph->terms.case_binder_count = terms->case_binder_count;
-	graph->terms.match_frame_count = terms->match_frame_count;
+	graph->terms.ih_scope_count = terms->ih_scope_count;
 	graph->terms.computation_fold_clause_count = terms->computation_fold_clause_count;
-	graph->terms.next_binder_id = terms->next_binder_id;
+	graph->terms.next_binding_id = terms->next_binding_id;
 	graph->type_declarations.type_count = type_declarations->type_count;
 	graph->type_declarations.parameter_count = type_declarations->parameter_count;
 	graph->type_declarations.constructor_count = type_declarations->constructor_count;
@@ -6180,9 +6180,9 @@ static int artifact_sparse_graph_copy_marked(
 			graph->terms.case_binders[i] = terms->case_binders[i];
 		}
 	}
-	for (size_t i = 0; i < terms->match_frame_count; ++i) {
+	for (size_t i = 0; i < terms->ih_scope_count; ++i) {
 		if (marks->frames[i]) {
-			graph->terms.match_frames[i] = terms->match_frames[i];
+			graph->terms.ih_scopes[i] = terms->ih_scopes[i];
 		}
 	}
 	const struct prototype_type_declaration_db* type_declarations =
@@ -6376,7 +6376,7 @@ static int write_artifact_operation_graph_section(
 				artifact_context_slice_relocate(
 					context_slice, context->parent
 				),
-			context->binder_id,
+			context->binding_id,
 			context->classifier,
 			context->classifier_variable,
 			context->depth
@@ -6636,7 +6636,7 @@ static int prototype_artifact_write_text_body(
 			stream,
 			"interface_type_parameter %zu %u %s %u\n",
 			i,
-			parameter->binder_id,
+			parameter->binding_id,
 			symbol_to_string(symbols, parameter->name_symbol_id),
 			parameter->type_expr
 		);
@@ -6977,21 +6977,21 @@ int prototype_artifact_read_text_interface(
 		return -1;
 	}
 	for (size_t i = 0; i < slot_count; ++i) {
-		interface->type_parameters[i].binder_id = PROTOTYPE_INVALID_ID;
+		interface->type_parameters[i].binding_id = PROTOTYPE_INVALID_ID;
 		interface->type_parameters[i].name_symbol_id = -1;
 		interface->type_parameters[i].type_expr = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < present_count; ++i) {
 		char name[256];
 		size_t id;
-		uint32_t binder_id;
+		uint32_t binding_id;
 		uint32_t type_expr;
 		if (fscanf(
 				stream,
 				"%255s %zu %u %255s %u",
 				word,
 				&id,
-				&binder_id,
+				&binding_id,
 				name,
 				&type_expr
 			) != 5 ||
@@ -7003,7 +7003,7 @@ int prototype_artifact_read_text_interface(
 		}
 		struct prototype_artifact_type_parameter_export* parameter =
 			&interface->type_parameters[id];
-		parameter->binder_id = binder_id;
+		parameter->binding_id = binding_id;
 		parameter->type_expr = type_expr;
 		parameter->name_symbol_id = symbol_intern(symbols, name, strlen(name));
 		if (parameter->name_symbol_id < 0) {
@@ -7306,7 +7306,7 @@ static int read_artifact_type_expr(
 		case PROTOTYPE_TYPE_EXPR_SELF:
 			return 0;
 		case PROTOTYPE_TYPE_EXPR_VAR:
-			return fscanf(stream, "%u", &expr->as.var.binder_id) == 1 &&
+			return fscanf(stream, "%u", &expr->as.var.binding_id) == 1 &&
 				read_artifact_symbol(stream, symbols, &expr->as.var.symbol_id) == 0 ? 0 : -1;
 			case PROTOTYPE_TYPE_EXPR_NAME:
 				return read_artifact_symbol(stream, symbols, &expr->as.name.symbol_id);
@@ -7336,7 +7336,7 @@ static int read_artifact_type_expr(
 		case PROTOTYPE_TYPE_EXPR_ARROW:
 			return fscanf(stream, "%u %u", &expr->as.arrow.domain, &expr->as.arrow.codomain) == 2 ? 0 : -1;
 		case PROTOTYPE_TYPE_EXPR_PI:
-			return fscanf(stream, "%u", &expr->as.pi.binder_id) == 1 &&
+			return fscanf(stream, "%u", &expr->as.pi.binding_id) == 1 &&
 				read_artifact_symbol(stream, symbols, &expr->as.pi.symbol_id) == 0 &&
 				fscanf(stream, "%u %u", &expr->as.pi.domain, &expr->as.pi.codomain) == 2 ? 0 : -1;
 		default:
@@ -7370,12 +7370,12 @@ static int read_artifact_term(
 	term->tag = tag;
 	switch (tag) {
 		case PROTOTYPE_TERM_VAR:
-			if (fscanf(stream, "%u", &term->as.var.binder_id) != 1) {
+			if (fscanf(stream, "%u", &term->as.var.binding_id) != 1) {
 				return -1;
 			}
-			if (term->as.var.binder_id != PROTOTYPE_INVALID_ID &&
-				*p_next_binder_id <= term->as.var.binder_id) {
-				*p_next_binder_id = term->as.var.binder_id + 1;
+			if (term->as.var.binding_id != PROTOTYPE_INVALID_ID &&
+				*p_next_binder_id <= term->as.var.binding_id) {
+				*p_next_binder_id = term->as.var.binding_id + 1;
 			}
 			return 0;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
@@ -7383,12 +7383,12 @@ static int read_artifact_term(
 		case PROTOTYPE_TERM_APP:
 			return fscanf(stream, "%u %u", &term->as.app.function, &term->as.app.argument) == 2 ? 0 : -1;
 		case PROTOTYPE_TERM_LAMBDA:
-			if (fscanf(stream, "%u %u", &term->as.lambda.binder_id, &term->as.lambda.body) != 2) {
+			if (fscanf(stream, "%u %u", &term->as.lambda.binding_id, &term->as.lambda.body) != 2) {
 				return -1;
 			}
-			if (term->as.lambda.binder_id != PROTOTYPE_INVALID_ID &&
-				*p_next_binder_id <= term->as.lambda.binder_id) {
-				*p_next_binder_id = term->as.lambda.binder_id + 1;
+			if (term->as.lambda.binding_id != PROTOTYPE_INVALID_ID &&
+				*p_next_binder_id <= term->as.lambda.binding_id) {
+				*p_next_binder_id = term->as.lambda.binding_id + 1;
 			}
 			return 0;
 		case PROTOTYPE_TERM_PI:
@@ -7400,7 +7400,7 @@ static int read_artifact_term(
 				&term->as.match.scrutinee,
 				&term->as.match.first_case,
 				&term->as.match.case_count,
-				&term->as.match.frame_id
+				&term->as.match.ih_scope_id
 			) == 4 ? 0 : -1;
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			return fscanf(stream, "%u", &term->as.type_former.representation_id) == 1 ? 0 : -1;
@@ -7450,7 +7450,7 @@ static int read_artifact_term(
 				term->as.type_view.identity.name_symbol_id >= -1 ? 0 : -1;
 		}
 			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			return fscanf(stream, "%u %u", &term->as.induction_hypothesis.frame_id, &term->as.induction_hypothesis.argument) == 2 ? 0 : -1;
+			return fscanf(stream, "%u %u", &term->as.induction_hypothesis.ih_scope_id, &term->as.induction_hypothesis.argument) == 2 ? 0 : -1;
 		case PROTOTYPE_TERM_UNIVERSE_VAR:
 			return fscanf(stream, "%u", &term->as.universe_var.level_var) == 1 ? 0 : -1;
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
@@ -7508,12 +7508,12 @@ static int read_artifact_term(
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return fscanf(stream, "%u", &term->as.effect_label.effects) == 1 ? 0 : -1;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				return fscanf(stream, "%u", &term->as.effect_row_var.binder_id) == 1 ? 0 : -1;
+				return fscanf(stream, "%u", &term->as.effect_row_var.binding_id) == 1 ? 0 : -1;
 			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				return fscanf(stream, "%u %u", &term->as.effect_row_union.left,
 					&term->as.effect_row_union.right) == 2 ? 0 : -1;
 			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-				return fscanf(stream, "%u %u", &term->as.effect_row_forall.binder_id,
+				return fscanf(stream, "%u %u", &term->as.effect_row_forall.binding_id,
 					&term->as.effect_row_forall.body) == 2 ? 0 : -1;
 			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
 				int symbol_id;
@@ -7638,20 +7638,20 @@ static int artifact_read_case_present(
 
 static int artifact_read_case_binder_present(
 	const struct prototype_term_db* terms,
-	uint32_t binder_id
+	uint32_t binding_id
 ) {
 	return terms &&
-		binder_id < terms->case_binder_count &&
-		artifact_case_binder_present(&terms->case_binders[binder_id]);
+		binding_id < terms->case_binder_count &&
+		artifact_case_binder_present(&terms->case_binders[binding_id]);
 }
 
 static int artifact_read_frame_present(
 	const struct prototype_term_db* terms,
-	uint32_t frame_id
+	uint32_t ih_scope_id
 ) {
 	return terms &&
-		frame_id < terms->match_frame_count &&
-		artifact_frame_present(&terms->match_frames[frame_id]);
+		ih_scope_id < terms->ih_scope_count &&
+		artifact_frame_present(&terms->ih_scopes[ih_scope_id]);
 }
 
 static int artifact_read_proof_present(
@@ -7843,8 +7843,8 @@ static int artifact_validate_term_refs(
 					term->as.match.case_count,
 					terms->case_count
 				) ||
-				(term->as.match.frame_id != PROTOTYPE_INVALID_ID &&
-					!artifact_read_frame_present(terms, term->as.match.frame_id))) {
+				(term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
+					!artifact_read_frame_present(terms, term->as.match.ih_scope_id))) {
 				return -1;
 			}
 			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
@@ -7894,7 +7894,7 @@ static int artifact_validate_term_refs(
 					0 : -1;
 			}
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-				return artifact_read_frame_present(terms, term->as.induction_hypothesis.frame_id) &&
+				return artifact_read_frame_present(terms, term->as.induction_hypothesis.ih_scope_id) &&
 					artifact_read_term_present(terms, term->as.induction_hypothesis.argument) ? 0 : -1;
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return artifact_read_term_present(terms, term->as.computation_type.label) &&
@@ -7974,8 +7974,8 @@ static int artifact_validate_term_graph_refs(
 			}
 		}
 	}
-	for (size_t i = 0; i < terms->match_frame_count; ++i) {
-		const struct prototype_match_frame* frame = &terms->match_frames[i];
+	for (size_t i = 0; i < terms->ih_scope_count; ++i) {
+		const struct prototype_ih_scope* frame = &terms->ih_scopes[i];
 		if (!artifact_frame_present(frame)) {
 			continue;
 		}
@@ -8289,7 +8289,7 @@ int prototype_artifact_read_text_graph(
 	if (term_slot_count > terms->term_capacity ||
 		case_slot_count > terms->case_capacity ||
 		case_binder_slot_count > terms->case_binder_capacity ||
-		frame_slot_count > terms->match_frame_capacity ||
+		frame_slot_count > terms->ih_scope_capacity ||
 		type_slot_count > type_declarations->type_capacity ||
 		parameter_slot_count > type_declarations->parameter_capacity ||
 		constructor_slot_count > type_declarations->constructor_capacity ||
@@ -8313,7 +8313,7 @@ int prototype_artifact_read_text_graph(
 		type_declarations->type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < parameter_slot_count; ++i) {
-		type_declarations->parameter_declarations[i].binder_id = PROTOTYPE_INVALID_ID;
+		type_declarations->parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
 		type_declarations->parameter_declarations[i].name_symbol_id = -1;
 		type_declarations->parameter_declarations[i].type_expr = PROTOTYPE_INVALID_ID;
 	}
@@ -8391,9 +8391,9 @@ int prototype_artifact_read_text_graph(
 	for (size_t i = 0; i < count; ++i) {
 		size_t id;
 		char name[256];
-		uint32_t binder_id;
+		uint32_t binding_id;
 		uint32_t type_expr;
-		if (fscanf(stream, "%255s %zu %u %255s %u", word, &id, &binder_id, name, &type_expr) != 5 ||
+		if (fscanf(stream, "%255s %zu %u %255s %u", word, &id, &binding_id, name, &type_expr) != 5 ||
 			strcmp(word, "type_param") != 0 ||
 			id >= parameter_slot_count ||
 			type_expr >= expr_slot_count) {
@@ -8404,7 +8404,7 @@ int prototype_artifact_read_text_graph(
 		if (artifact_parameter_present(parameter)) {
 			return -1;
 		}
-		parameter->binder_id = binder_id;
+		parameter->binding_id = binding_id;
 		parameter->type_expr = type_expr;
 		parameter->name_symbol_id = symbol_intern(symbols, name, strlen(name));
 		if (parameter->name_symbol_id < 0) {
@@ -8522,30 +8522,30 @@ int prototype_artifact_read_text_graph(
 	memset(terms->terms, 0, sizeof(*terms->terms) * term_slot_count);
 	memset(terms->cases, 0, sizeof(*terms->cases) * case_slot_count);
 	memset(terms->case_binders, 0, sizeof(*terms->case_binders) * case_binder_slot_count);
-	memset(terms->match_frames, 0, sizeof(*terms->match_frames) * frame_slot_count);
+	memset(terms->ih_scopes, 0, sizeof(*terms->ih_scopes) * frame_slot_count);
 	for (size_t i = 0; i < case_slot_count; ++i) {
 		terms->cases[i].constructor_owner = PROTOTYPE_INVALID_ID;
 		terms->cases[i].first_binder = PROTOTYPE_INVALID_ID;
 		terms->cases[i].body = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < case_binder_slot_count; ++i) {
-		terms->case_binders[i].binder_id = PROTOTYPE_INVALID_ID;
+		terms->case_binders[i].binding_id = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < frame_slot_count; ++i) {
-		terms->match_frames[i].match_term = PROTOTYPE_INVALID_ID;
+		terms->ih_scopes[i].match_term = PROTOTYPE_INVALID_ID;
 	}
 
 	if (expect_artifact_count(stream, "terms", &count) != 0 || count != present_term_count) {
 		return -1;
 	}
-	uint32_t next_binder_id = 0;
+	uint32_t next_binding_id = 0;
 	for (size_t i = 0; i < count; ++i) {
 		if (read_artifact_term(
 					stream,
 					symbols,
 					terms,
 					PROTOTYPE_INVALID_ID,
-					&next_binder_id
+					&next_binding_id
 				) != 0) {
 			return -1;
 		}
@@ -8591,40 +8591,40 @@ int prototype_artifact_read_text_graph(
 		}
 		for (size_t i = 0; i < count; ++i) {
 			size_t id;
-			uint32_t binder_id;
+			uint32_t binding_id;
 			int is_recursive;
 			if (fscanf(stream, "%255s %zu", word, &id) != 2 ||
 				strcmp(word, "case_binder") != 0 ||
 				id >= case_binder_slot_count ||
-				fscanf(stream, "%u %d", &binder_id, &is_recursive) != 2) {
+				fscanf(stream, "%u %d", &binding_id, &is_recursive) != 2) {
 				return -1;
 			}
 			if (artifact_case_binder_present(&terms->case_binders[id]) ||
-				binder_id == PROTOTYPE_INVALID_ID) {
+				binding_id == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
-			terms->case_binders[id].binder_id = binder_id;
+			terms->case_binders[id].binding_id = binding_id;
 			terms->case_binders[id].is_recursive = is_recursive;
-			if (terms->case_binders[id].binder_id != PROTOTYPE_INVALID_ID &&
-				next_binder_id <= terms->case_binders[id].binder_id) {
-				next_binder_id = terms->case_binders[id].binder_id + 1;
+			if (terms->case_binders[id].binding_id != PROTOTYPE_INVALID_ID &&
+				next_binding_id <= terms->case_binders[id].binding_id) {
+				next_binding_id = terms->case_binders[id].binding_id + 1;
 			}
 	}
 	terms->case_binder_count = case_binder_slot_count;
-	terms->next_binder_id = next_binder_id;
+	terms->next_binding_id = next_binding_id;
 
 	if (expect_artifact_count(stream, "match_frames", &count) != 0 || count != present_frame_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
 		size_t id;
-		struct prototype_match_frame* frame;
+		struct prototype_ih_scope* frame;
 		if (fscanf(stream, "%255s %zu", word, &id) != 2 ||
 			strcmp(word, "match_frame") != 0 ||
 				id >= frame_slot_count) {
 				return -1;
 			}
-			frame = &terms->match_frames[id];
+			frame = &terms->ih_scopes[id];
 			if (artifact_frame_present(frame)) {
 				return -1;
 			}
@@ -8633,7 +8633,7 @@ int prototype_artifact_read_text_graph(
 				return -1;
 		}
 	}
-	terms->match_frame_count = frame_slot_count;
+	terms->ih_scope_count = frame_slot_count;
 
 	memset(judgement->relations, 0, sizeof(*judgement->relations) * judgement_slot_count);
 	memset(judgement->proofs, 0, sizeof(*judgement->proofs) * proof_slot_count);
@@ -8838,7 +8838,7 @@ int prototype_artifact_read_text_operation_graph(
 				word,
 				&id,
 				&context.parent,
-				&context.binder_id,
+				&context.binding_id,
 				&context.classifier,
 				&context.classifier_variable,
 				&context.depth
@@ -10451,8 +10451,8 @@ static void offset_artifact_type_expr(
 			expr->as.universe_var.level_var += universe_offset;
 			break;
 		case PROTOTYPE_TYPE_EXPR_VAR:
-			expr->as.var.binder_id =
-				offset_artifact_binder_id(expr->as.var.binder_id, binder_offset);
+			expr->as.var.binding_id =
+				offset_artifact_binder_id(expr->as.var.binding_id, binder_offset);
 			break;
 		case PROTOTYPE_TYPE_EXPR_APP:
 			expr->as.app.function += expr_offset;
@@ -10463,8 +10463,8 @@ static void offset_artifact_type_expr(
 			expr->as.arrow.codomain += expr_offset;
 			break;
 		case PROTOTYPE_TYPE_EXPR_PI:
-			expr->as.pi.binder_id =
-				offset_artifact_binder_id(expr->as.pi.binder_id, binder_offset);
+			expr->as.pi.binding_id =
+				offset_artifact_binder_id(expr->as.pi.binding_id, binder_offset);
 			expr->as.pi.domain += expr_offset;
 			expr->as.pi.codomain += expr_offset;
 			break;
@@ -10484,8 +10484,8 @@ static void offset_artifact_term(
 ) {
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR:
-			term->as.var.binder_id =
-				offset_artifact_binder_id(term->as.var.binder_id, binder_offset);
+			term->as.var.binding_id =
+				offset_artifact_binder_id(term->as.var.binding_id, binder_offset);
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			term->as.constructor.owner = offset_artifact_id(term->as.constructor.owner, term_offset);
@@ -10495,8 +10495,8 @@ static void offset_artifact_term(
 			term->as.app.argument += term_offset;
 			break;
 		case PROTOTYPE_TERM_LAMBDA:
-			term->as.lambda.binder_id =
-				offset_artifact_binder_id(term->as.lambda.binder_id, binder_offset);
+			term->as.lambda.binding_id =
+				offset_artifact_binder_id(term->as.lambda.binding_id, binder_offset);
 			term->as.lambda.body += term_offset;
 			break;
 		case PROTOTYPE_TERM_PI:
@@ -10506,7 +10506,7 @@ static void offset_artifact_term(
 		case PROTOTYPE_TERM_MATCH:
 			term->as.match.scrutinee += term_offset;
 			term->as.match.first_case += case_offset;
-			term->as.match.frame_id = offset_artifact_id(term->as.match.frame_id, frame_offset);
+			term->as.match.ih_scope_id = offset_artifact_id(term->as.match.ih_scope_id, frame_offset);
 			break;
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			break;
@@ -10519,16 +10519,16 @@ static void offset_artifact_term(
 			term->as.type_view.source += term_offset;
 			break;
 			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			term->as.induction_hypothesis.frame_id =
-				offset_artifact_id(term->as.induction_hypothesis.frame_id, frame_offset);
+			term->as.induction_hypothesis.ih_scope_id =
+				offset_artifact_id(term->as.induction_hypothesis.ih_scope_id, frame_offset);
 			term->as.induction_hypothesis.argument += term_offset;
 			break;
 			case PROTOTYPE_TERM_UNIVERSE_VAR:
 				term->as.universe_var.level_var += universe_offset;
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				term->as.effect_row_var.binder_id =
-					offset_artifact_binder_id(term->as.effect_row_var.binder_id, binder_offset);
+				term->as.effect_row_var.binding_id =
+					offset_artifact_binder_id(term->as.effect_row_var.binding_id, binder_offset);
 				break;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			term->as.effect_operation.classifier += term_offset;
@@ -10542,8 +10542,8 @@ static void offset_artifact_term(
 			term->as.effect_row_union.right += term_offset;
 			break;
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			term->as.effect_row_forall.binder_id =
-				offset_artifact_binder_id(term->as.effect_row_forall.binder_id, binder_offset);
+			term->as.effect_row_forall.binding_id =
+				offset_artifact_binder_id(term->as.effect_row_forall.binding_id, binder_offset);
 			term->as.effect_row_forall.body += term_offset;
 			break;
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
@@ -10600,14 +10600,14 @@ int prototype_artifact_append_graph(
 	uint32_t term_offset = (uint32_t)target_terms->term_count;
 	uint32_t case_offset = (uint32_t)target_terms->case_count;
 	uint32_t case_binder_offset = (uint32_t)target_terms->case_binder_count;
-	uint32_t frame_offset = (uint32_t)target_terms->match_frame_count;
+	uint32_t frame_offset = (uint32_t)target_terms->ih_scope_count;
 	uint32_t computation_fold_clause_offset = (uint32_t)target_terms->computation_fold_clause_count;
 	uint32_t type_offset = (uint32_t)target_type_declarations->type_count;
 	uint32_t parameter_offset = (uint32_t)target_type_declarations->parameter_count;
 	uint32_t constructor_offset = (uint32_t)target_type_declarations->constructor_count;
 	uint32_t field_type_offset = (uint32_t)target_type_declarations->readback_field_type_count;
 	uint32_t expr_offset = (uint32_t)target_type_declarations->expr_count;
-	uint32_t binder_offset = target_terms->next_binder_id;
+	uint32_t binder_offset = target_terms->next_binding_id;
 	uint32_t universe_offset = target_type_declarations->next_level_var;
 	uint32_t proof_offset = (uint32_t)target_judgement->proof_count;
 	uint32_t context_relocation[PROTOTYPE_CONTEXT_CAPACITY];
@@ -10650,7 +10650,7 @@ int prototype_artifact_append_graph(
 	if (target_terms->term_count + source_terms->term_count > target_terms->term_capacity ||
 		target_terms->case_count + source_terms->case_count > target_terms->case_capacity ||
 		target_terms->case_binder_count + source_terms->case_binder_count > target_terms->case_binder_capacity ||
-		target_terms->match_frame_count + source_terms->match_frame_count > target_terms->match_frame_capacity ||
+		target_terms->ih_scope_count + source_terms->ih_scope_count > target_terms->ih_scope_capacity ||
 		target_terms->computation_fold_clause_count + source_terms->computation_fold_clause_count >
 			PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY ||
 		target_type_declarations->type_count + source_type_declarations->type_count > target_type_declarations->type_capacity ||
@@ -10688,8 +10688,8 @@ int prototype_artifact_append_graph(
 		struct prototype_type_parameter_declaration parameter =
 			source_type_declarations->parameter_declarations[i];
 		if (artifact_parameter_present(&parameter)) {
-			parameter.binder_id =
-				offset_artifact_binder_id(parameter.binder_id, binder_offset);
+			parameter.binding_id =
+				offset_artifact_binder_id(parameter.binding_id, binder_offset);
 			parameter.type_expr = offset_artifact_id(parameter.type_expr, expr_offset);
 		}
 		target_type_declarations->parameter_declarations[target_type_declarations->parameter_count++] =
@@ -10765,15 +10765,15 @@ int prototype_artifact_append_graph(
 	}
 	for (size_t i = 0; i < source_terms->case_binder_count; ++i) {
 		struct prototype_case_binder binder = source_terms->case_binders[i];
-		binder.binder_id =
-			offset_artifact_binder_id(binder.binder_id, binder_offset);
+		binder.binding_id =
+			offset_artifact_binder_id(binder.binding_id, binder_offset);
 		target_terms->case_binders[target_terms->case_binder_count++] = binder;
 	}
-	for (size_t i = 0; i < source_terms->match_frame_count; ++i) {
-		struct prototype_match_frame frame = source_terms->match_frames[i];
+	for (size_t i = 0; i < source_terms->ih_scope_count; ++i) {
+		struct prototype_ih_scope frame = source_terms->ih_scopes[i];
 		frame.match_term = offset_artifact_id(frame.match_term, term_offset);
 		frame.key.is_linkable = 0;
-		target_terms->match_frames[target_terms->match_frame_count++] = frame;
+		target_terms->ih_scopes[target_terms->ih_scope_count++] = frame;
 	}
 
 	if (prototype_type_declaration_rebuild_representations(
@@ -10856,7 +10856,7 @@ int prototype_artifact_append_graph(
 		target_judgement->proofs[target_judgement->proof_count++] = proof;
 	}
 
-	target_terms->next_binder_id = binder_offset + source_terms->next_binder_id;
+	target_terms->next_binding_id = binder_offset + source_terms->next_binding_id;
 	target_type_declarations->next_level_var =
 		universe_offset + source_type_declarations->next_level_var;
 	if (target_judgement->next_universe_var < target_type_declarations->next_level_var) {
@@ -12278,9 +12278,9 @@ struct type_expr_map_entry {
 	uint32_t graph_type_expr;
 };
 
-struct match_frame_map_entry {
+struct ih_scope_map_entry {
 	uint32_t ast_binder_id;
-	uint32_t frame_id;
+	uint32_t ih_scope_id;
 };
 
 struct pending_match_resolution {
@@ -12442,7 +12442,7 @@ struct operation_motive_equation {
 	uint32_t body_operation;
 	uint32_t constructor_owner;
 	uint32_t constructor_id;
-	uint32_t match_frame_id;
+	uint32_t ih_scope_id;
 };
 
 /*
@@ -12538,8 +12538,8 @@ struct compile_context {
 	uint32_t context_ids[513];
 	struct local_ref_map_entry local_refs[512];
 	uint32_t local_ref_count;
-	struct match_frame_map_entry match_frames[512];
-	uint32_t match_frame_count;
+	struct ih_scope_map_entry ih_scopes[512];
+	uint32_t ih_scope_count;
 	struct level_map_entry levels[512];
 	uint32_t level_count;
 	struct type_expr_map_entry type_exprs[1024];
@@ -12788,11 +12788,11 @@ static int compile_ast_computation_fold_ref(
 		occurrence_clauses[i].argument_ast_binder_id =
 			ast_clause->operation_argument_binder_id;
 		occurrence_clauses[i].argument_binder_id =
-			ctx->terms->terms[outer_lambda].as.lambda.binder_id;
+			ctx->terms->terms[outer_lambda].as.lambda.binding_id;
 		occurrence_clauses[i].continuation_ast_binder_id =
 			ast_clause->operation_continuation_binder_id;
 		occurrence_clauses[i].continuation_binder_id =
-			ctx->terms->terms[inner_lambda].as.lambda.binder_id;
+			ctx->terms->terms[inner_lambda].as.lambda.binding_id;
 	}
 	ctx->binder_count = saved_binder_count;
 	if (push_graph_binder(
@@ -12857,7 +12857,7 @@ static int compile_ast_computation_fold_ref(
 	fold_operation->fold_return_ast_binder_id =
 		node->as.computation_fold.return_binder_id;
 	fold_operation->fold_return_binder_id =
-		ctx->terms->terms[return_clause].as.lambda.binder_id;
+		ctx->terms->terms[return_clause].as.lambda.binding_id;
 	fold_operation->fold_return_operation = return_clause_operation;
 	struct prototype_operation_graph graph;
 	prototype_compile_metadata_operation_graph(ctx->metadata, &graph);
@@ -13596,12 +13596,12 @@ static int operation_apply_classifier(
 		) != 0) {
 		return -1;
 	}
-	uint32_t binder_id;
+	uint32_t binding_id;
 	uint32_t body;
 	if (prototype_term_pure_family_parts(
 			ctx->terms,
 			pi->as.pi.codomain_family,
-			&binder_id,
+			&binding_id,
 			&body
 		) != 0) {
 		return -1;
@@ -13611,7 +13611,7 @@ static int operation_apply_classifier(
 		ctx->terms,
 		ctx->type_declarations,
 		body,
-		binder_id,
+		binding_id,
 		argument_term,
 		p_classifier
 	);
@@ -13628,7 +13628,7 @@ static int operation_apply_classifier_unchecked(
 	uint32_t* p_classifier
 ) {
 	uint32_t whnf;
-	uint32_t binder_id;
+	uint32_t binding_id;
 	uint32_t body;
 	if (!ctx || !p_classifier || function_classifier == PROTOTYPE_INVALID_ID ||
 		function_classifier >= ctx->terms->term_count || argument_term >= ctx->terms->term_count) {
@@ -13655,13 +13655,13 @@ static int operation_apply_classifier_unchecked(
 		prototype_term_pure_family_parts(
 			ctx->terms,
 			ctx->terms->terms[whnf].as.pi.codomain_family,
-			&binder_id,
+			&binding_id,
 			&body
 		) != 0) {
 		return -1;
 	}
 	return prototype_term_graph_substitute_bound_var(
-		ctx->terms, ctx->type_declarations, body, binder_id, argument_term, p_classifier
+		ctx->terms, ctx->type_declarations, body, binding_id, argument_term, p_classifier
 	);
 }
 
@@ -13708,12 +13708,12 @@ static int type_instance_formation_classifier(
 			) != 0) {
 			return -1;
 		}
-		uint32_t binder_id;
+		uint32_t binding_id;
 		uint32_t body;
 		if (prototype_term_pure_family_parts(
 					ctx->terms,
 					pi->as.pi.codomain_family,
-					&binder_id,
+					&binding_id,
 					&body
 				) != 0) {
 			return -1;
@@ -13724,7 +13724,7 @@ static int type_instance_formation_classifier(
 				ctx->terms,
 				ctx->type_declarations,
 				body,
-				binder_id,
+				binding_id,
 				arguments[i],
 				&classifier
 			) != 0) {
@@ -13951,7 +13951,7 @@ static int lookup_graph_binder(
 	return -1;
 }
 
-static int lookup_match_frame_id(
+static int lookup_ih_scope_id(
 	const struct compile_context* ctx,
 	uint32_t ast_binder_id,
 	uint32_t* p_frame_id
@@ -13959,10 +13959,10 @@ static int lookup_match_frame_id(
 	if (!ctx || !p_frame_id) {
 		return -1;
 	}
-	for (uint32_t i = ctx->match_frame_count; i > 0; --i) {
-		const struct match_frame_map_entry* entry = &ctx->match_frames[i - 1];
+	for (uint32_t i = ctx->ih_scope_count; i > 0; --i) {
+		const struct ih_scope_map_entry* entry = &ctx->ih_scopes[i - 1];
 		if (entry->ast_binder_id == ast_binder_id) {
-			*p_frame_id = entry->frame_id;
+			*p_frame_id = entry->ih_scope_id;
 			return 0;
 		}
 	}
@@ -14488,10 +14488,10 @@ static int classifier_contains_free_effect_row_variable(
 	}
 	for (uint32_t i = 0; i < (uint32_t)terms->term_count; ++i) {
 		if (terms->terms[i].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
-			prototype_term_contains_free_binder(
+			prototype_term_contains_free_binding(
 				terms,
 				classifier,
-				terms->terms[i].as.effect_row_var.binder_id
+				terms->terms[i].as.effect_row_var.binding_id
 			)) {
 			return 1;
 		}
@@ -14601,7 +14601,7 @@ static int push_graph_binder(
 	}
 
 	uint32_t graph_binder_id =
-		prototype_term_binder_for_scope_slot(ctx->terms, ctx->binder_count);
+		prototype_term_binding_for_scope_slot(ctx->terms, ctx->binder_count);
 	if (graph_binder_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
@@ -15095,12 +15095,12 @@ static int compile_extract_pure_return_value_at_depth(
 		cases[i].binder_count = source.binder_count;
 		cases[i].body = body;
 	}
-	return prototype_term_match_with_frame(
+	return prototype_term_match_with_ih_scope(
 		ctx->terms,
 		term.as.match.scrutinee,
 		cases,
 		term.as.match.case_count,
-		term.as.match.frame_id,
+		term.as.match.ih_scope_id,
 		p_ret
 	);
 }
@@ -15287,7 +15287,7 @@ static int compile_ast_type_expr_term_with_self(
 					self_type,
 					&result
 				) != 0 ||
-				(row_binder = prototype_term_fresh_binder(ctx->terms)) ==
+				(row_binder = prototype_term_new_binding(ctx->terms)) ==
 					PROTOTYPE_INVALID_ID ||
 				prototype_term_effect_row_var(ctx->terms, row_binder, &row) != 0 ||
 				prototype_term_computation_type(
@@ -15328,7 +15328,7 @@ static int compile_ast_binder_value_type_with_latent_effect_row(
 		if (compile_ast_type_expr_term(
 				ctx, function_type->as.computation_reference.result, &result
 			) != 0 ||
-			(row_binder = prototype_term_fresh_binder(ctx->terms)) ==
+			(row_binder = prototype_term_new_binding(ctx->terms)) ==
 				PROTOTYPE_INVALID_ID ||
 			prototype_term_effect_row_var(ctx->terms, row_binder, &row) != 0 ||
 			prototype_term_computation_type(
@@ -15371,7 +15371,7 @@ static int compile_ast_binder_value_type_with_latent_effect_row(
 		return -1;
 	}
 	if (function_type->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW &&
-		(graph_binder_id = prototype_term_fresh_binder(ctx->terms)) ==
+		(graph_binder_id = prototype_term_new_binding(ctx->terms)) ==
 			PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
@@ -15381,7 +15381,7 @@ static int compile_ast_binder_value_type_with_latent_effect_row(
 	}
 	ctx->binder_count = saved_binder_count;
 	if (
-		(row_binder = prototype_term_fresh_binder(ctx->terms)) == PROTOTYPE_INVALID_ID ||
+		(row_binder = prototype_term_new_binding(ctx->terms)) == PROTOTYPE_INVALID_ID ||
 		prototype_term_effect_row_var(ctx->terms, row_binder, &row) != 0 ||
 		prototype_term_computation_type(ctx->terms, row, codomain, &computation) != 0 ||
 		prototype_term_pure_family(
@@ -15420,7 +15420,7 @@ static int compile_ast_function_result_type_expr_term(
 	uint32_t row_binder;
 	uint32_t effect_row;
 	if (compile_ast_type_expr_term(ctx, type_expr, &result) != 0 ||
-		(row_binder = prototype_term_fresh_binder(ctx->terms)) ==
+		(row_binder = prototype_term_new_binding(ctx->terms)) ==
 			PROTOTYPE_INVALID_ID ||
 		prototype_term_effect_row_var(ctx->terms, row_binder, &effect_row) != 0 ||
 		prototype_term_computation_type(
@@ -15585,7 +15585,7 @@ static int compile_imported_type_expr_term(
 					source_binders,
 					target_binders,
 					binder_count,
-					expr->as.var.binder_id,
+					expr->as.var.binding_id,
 					&target_binder
 				) != 0) {
 				return -1;
@@ -15669,7 +15669,7 @@ static int compile_imported_type_expr_term(
 		case PROTOTYPE_TYPE_EXPR_PI: {
 			uint32_t domain;
 			uint32_t codomain;
-			uint32_t target_binder = prototype_term_fresh_binder(ctx->terms);
+			uint32_t target_binder = prototype_term_new_binding(ctx->terms);
 			uint32_t family;
 			uint32_t nested_source_binders[128];
 			uint32_t nested_target_binders[128];
@@ -15684,7 +15684,7 @@ static int compile_imported_type_expr_term(
 				nested_target_binders, target_binders,
 				binder_count * sizeof(nested_target_binders[0])
 			);
-			nested_source_binders[binder_count] = expr->as.pi.binder_id;
+			nested_source_binders[binder_count] = expr->as.pi.binding_id;
 			nested_target_binders[binder_count] = target_binder;
 			if (compile_imported_type_expr_term(
 					ctx, interface, expr->as.pi.domain,
@@ -15764,8 +15764,8 @@ static int imported_type_formation_classifier(
 			) != 0) {
 			return -1;
 		}
-		source_binders[i] = parameter->binder_id;
-		target_binders[i] = prototype_term_fresh_binder(ctx->terms);
+		source_binders[i] = parameter->binding_id;
+		target_binders[i] = prototype_term_new_binding(ctx->terms);
 		if (target_binders[i] == PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
@@ -15856,7 +15856,7 @@ struct match_compile_state {
 	uint32_t match_ast;
 	uint32_t scrutinee;
 	uint32_t scrutinee_operation;
-	uint32_t frame_id;
+	uint32_t ih_scope_id;
 	struct prototype_match_case_input case_inputs[64];
 	uint32_t resolution_item_ids[64];
 	int case_constructor_symbols[64];
@@ -15882,7 +15882,7 @@ static int create_match_pattern_binders(
 	struct match_compile_state* state,
 	const struct prototype_ast_match_case* old_case,
 	uint32_t previous_binder_count,
-	uint32_t previous_match_frame_count,
+	uint32_t previous_ih_scope_count,
 	uint32_t* p_binder_start
 ) {
 	if (!ctx || !state || !old_case || !p_binder_start ||
@@ -15904,16 +15904,16 @@ static int create_match_pattern_binders(
 			ctx->binder_count = previous_binder_count;
 			return -1;
 		}
-		if (ctx->match_frame_count >= 512) {
+		if (ctx->ih_scope_count >= 512) {
 			ctx->binder_count = previous_binder_count;
-			ctx->match_frame_count = previous_match_frame_count;
+			ctx->ih_scope_count = previous_ih_scope_count;
 			return -1;
 		}
-		ctx->match_frames[ctx->match_frame_count].ast_binder_id =
+		ctx->ih_scopes[ctx->ih_scope_count].ast_binder_id =
 			ast_binder->ast_binder_id;
-		ctx->match_frames[ctx->match_frame_count].frame_id = state->frame_id;
-		ctx->match_frame_count++;
-		state->binder_storage[state->binder_cursor + j].binder_id = graph_binder_id;
+		ctx->ih_scopes[ctx->ih_scope_count].ih_scope_id = state->ih_scope_id;
+		ctx->ih_scope_count++;
+		state->binder_storage[state->binder_cursor + j].binding_id = graph_binder_id;
 	}
 	return 0;
 }
@@ -15923,7 +15923,7 @@ static int prepare_match_pattern_environment(
 	struct match_compile_state* state,
 	const struct prototype_ast_match_case* old_case,
 	uint32_t previous_binder_count,
-	uint32_t previous_match_frame_count,
+	uint32_t previous_ih_scope_count,
 	uint32_t* p_binder_start
 ) {
 	if (create_match_pattern_binders(
@@ -15931,13 +15931,13 @@ static int prepare_match_pattern_environment(
 		state,
 		old_case,
 		previous_binder_count,
-		previous_match_frame_count,
+		previous_ih_scope_count,
 		p_binder_start
 	) != 0) {
 		return -1;
 	}
 	(void)previous_binder_count;
-	(void)previous_match_frame_count;
+	(void)previous_ih_scope_count;
 	return 0;
 }
 
@@ -15984,7 +15984,7 @@ static int compile_match_branch(
 	const struct prototype_ast_match_case* old_case;
 	struct compiled_match_branch branch;
 	uint32_t previous_binder_count;
-	uint32_t previous_match_frame_count;
+	uint32_t previous_ih_scope_count;
 	uint32_t binder_start;
 	uint32_t resolution_item_id;
 	if (!ctx || !node || !state || case_index >= node->as.match.case_count) {
@@ -15992,7 +15992,7 @@ static int compile_match_branch(
 	}
 	old_case = &ctx->asts->cases[node->as.match.first_case + case_index];
 	previous_binder_count = ctx->binder_count;
-	previous_match_frame_count = ctx->match_frame_count;
+	previous_ih_scope_count = ctx->ih_scope_count;
 	if (add_match_constructor_resolution_item(
 		ctx,
 		state->match_ast,
@@ -16002,7 +16002,7 @@ static int compile_match_branch(
 		&resolution_item_id
 	) != 0) {
 		ctx->binder_count = previous_binder_count;
-		ctx->match_frame_count = previous_match_frame_count;
+		ctx->ih_scope_count = previous_ih_scope_count;
 		return -1;
 	}
 	state->resolution_item_ids[case_index] = resolution_item_id;
@@ -16012,7 +16012,7 @@ static int compile_match_branch(
 		state,
 		old_case,
 		previous_binder_count,
-		previous_match_frame_count,
+		previous_ih_scope_count,
 		&binder_start
 	) != 0 ||
 		compile_match_branch_body(
@@ -16024,11 +16024,11 @@ static int compile_match_branch(
 			&branch
 	) != 0) {
 		ctx->binder_count = previous_binder_count;
-		ctx->match_frame_count = previous_match_frame_count;
+		ctx->ih_scope_count = previous_ih_scope_count;
 		return -1;
 	}
 	ctx->binder_count = previous_binder_count;
-	ctx->match_frame_count = previous_match_frame_count;
+	ctx->ih_scope_count = previous_ih_scope_count;
 	state->binder_cursor += old_case->binder_count;
 	return 0;
 }
@@ -16094,7 +16094,7 @@ static int compile_ast_match_from_value_with_branch_compiler(
 	}
 	memset(&state, 0, sizeof(state));
 	state.match_ast = ast_id;
-	state.frame_id = PROTOTYPE_INVALID_ID;
+	state.ih_scope_id = PROTOTYPE_INVALID_ID;
 	state.compile_branch_body = compile_branch_body;
 	state.compile_branch_data = compile_branch_data;
 	if (node->as.match.case_count > 64) {
@@ -16111,8 +16111,8 @@ static int compile_ast_match_from_value_with_branch_compiler(
 		) != 0) {
 		return -1;
 	}
-	state.frame_id = prototype_term_new_match_frame(ctx->terms);
-	if (state.frame_id == PROTOTYPE_INVALID_ID) {
+	state.ih_scope_id = prototype_term_new_ih_scope(ctx->terms);
+	if (state.ih_scope_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
@@ -16120,12 +16120,12 @@ static int compile_ast_match_from_value_with_branch_compiler(
 			return -1;
 		}
 	}
-	if (prototype_term_match_with_frame(
+	if (prototype_term_match_with_ih_scope(
 		ctx->terms,
 		state.scrutinee,
 		state.case_inputs,
 		node->as.match.case_count,
-		state.frame_id,
+		state.ih_scope_id,
 		&match_term
 	) != 0) {
 		return -1;
@@ -16134,7 +16134,7 @@ static int compile_ast_match_from_value_with_branch_compiler(
 		ctx->terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
 		return -1;
 	}
-	if (prototype_term_set_match_frame_term(ctx->terms, state.frame_id, match_term) != 0) {
+	if (prototype_term_set_ih_scope_term(ctx->terms, state.ih_scope_id, match_term) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
@@ -16279,12 +16279,12 @@ static int compile_type_formation_classifier_family(
 		const struct prototype_ast_type_parameter* parameter =
 			&ctx->asts->type_parameters[ast_type->first_parameter + i - 1];
 		uint32_t domain;
-		uint32_t binder_id;
+		uint32_t binding_id;
 		uint32_t codomain_family;
 		if (compile_ast_type_expr_term(ctx, parameter->type_expr, &domain) != 0 ||
-			lookup_graph_binder(ctx, parameter->ast_binder_id, &binder_id) != 0 ||
+			lookup_graph_binder(ctx, parameter->ast_binder_id, &binding_id) != 0 ||
 			prototype_term_pure_family(
-				ctx->terms, binder_id, classifier, &codomain_family
+				ctx->terms, binding_id, classifier, &codomain_family
 			) != 0 ||
 			prototype_term_pi_family(
 				ctx->terms, domain, codomain_family, &classifier
@@ -16963,7 +16963,7 @@ static int __attribute__((unused)) rewrite_imported_type_instances_to_external(
 			}
 			return prototype_term_lambda(
 				terms,
-				term->as.lambda.binder_id,
+				term->as.lambda.binding_id,
 				body,
 				p_ret
 			);
@@ -17084,12 +17084,12 @@ static int __attribute__((unused)) rewrite_imported_type_instances_to_external(
 				*p_ret = term_id;
 				return 0;
 			}
-			return prototype_term_match_with_frame(
+			return prototype_term_match_with_ih_scope(
 				terms,
 				scrutinee,
 				case_inputs,
 				term->as.match.case_count,
-				term->as.match.frame_id,
+				term->as.match.ih_scope_id,
 				p_ret
 			);
 		}
@@ -17110,7 +17110,7 @@ static int __attribute__((unused)) rewrite_imported_type_instances_to_external(
 			}
 			return prototype_term_induction_hypothesis(
 				terms,
-				term->as.induction_hypothesis.frame_id,
+				term->as.induction_hypothesis.ih_scope_id,
 				argument,
 				p_ret
 			);
@@ -17252,7 +17252,7 @@ static int __attribute__((unused)) rewrite_imported_type_instances_to_external(
 			}
 			return body == term->as.effect_row_forall.body ?
 				(*p_ret = term_id, 0) : prototype_term_effect_row_forall(
-					terms, term->as.effect_row_forall.binder_id, body, p_ret
+					terms, term->as.effect_row_forall.binding_id, body, p_ret
 				);
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
@@ -17403,7 +17403,7 @@ static int compile_expected_classifier_for_ref(
 		return -1;
 	}
 	if (view.category == PROTOTYPE_TERM_CATEGORY_VALUE) {
-		uint32_t row_binder = prototype_term_fresh_binder(ctx->terms);
+		uint32_t row_binder = prototype_term_new_binding(ctx->terms);
 		uint32_t effect_row;
 		if (row_binder == PROTOTYPE_INVALID_ID ||
 			prototype_term_effect_row_var(
@@ -17626,6 +17626,7 @@ static int compile_def(
 	uint32_t previous_pending_declaration_fact_count =
 		ctx->pending_declaration_fact_count;
 	struct compile_ref ref;
+	compile_ref_clear(&ref);
 	uint32_t surface_expected_classifier = PROTOTYPE_INVALID_ID;
 	int has_surface_expectation = lookup_source_expectation_classifier(
 		ctx, def->name_symbol_id, &surface_expected_classifier
@@ -17862,18 +17863,18 @@ static int compile_ast_atomic_ref(
 		}
 		case PROTOTYPE_AST_INDUCTION_HYPOTHESIS:
 		{
-			uint32_t binder_id;
-			uint32_t frame_id;
+			uint32_t binding_id;
+			uint32_t ih_scope_id;
 			uint32_t argument_term;
 			uint32_t argument_operation;
 			uint32_t ih_term;
 			if (lookup_graph_binder(
-					ctx, node->as.induction_hypothesis.ast_binder_id, &binder_id
+					ctx, node->as.induction_hypothesis.ast_binder_id, &binding_id
 				) != 0 ||
-				lookup_match_frame_id(
-					ctx, node->as.induction_hypothesis.ast_binder_id, &frame_id
+				lookup_ih_scope_id(
+					ctx, node->as.induction_hypothesis.ast_binder_id, &ih_scope_id
 				) != 0 ||
-				prototype_term_var(ctx->terms, binder_id, &argument_term) != 0 ||
+				prototype_term_var(ctx->terms, binding_id, &argument_term) != 0 ||
 				operation_add(
 					ctx, PROTOTYPE_OPERATION_VAR, argument_term, PROTOTYPE_INVALID_ID,
 					ast_id, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
@@ -17882,7 +17883,7 @@ static int compile_ast_atomic_ref(
 					&argument_operation
 				) != 0 ||
 				prototype_term_induction_hypothesis(
-					ctx->terms, frame_id, argument_term, &ih_term
+					ctx->terms, ih_scope_id, argument_term, &ih_term
 				) != 0) {
 				return -1;
 			}
@@ -17896,7 +17897,7 @@ static int compile_ast_atomic_ref(
 				ctx, PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS, ih_term,
 				PROTOTYPE_INVALID_ID, ast_id, PROTOTYPE_INVALID_ID,
 				argument_operation, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
-				PROTOTYPE_INVALID_ID, frame_id, 0, &p_ret->operation
+				PROTOTYPE_INVALID_ID, ih_scope_id, 0, &p_ret->operation
 			);
 		}
 		case PROTOTYPE_AST_VAR: {
@@ -17923,11 +17924,11 @@ static int compile_ast_atomic_ref(
 					p_ret->computation_kind;
 				return 0;
 			}
-			uint32_t binder_id;
+			uint32_t binding_id;
 			uint32_t classifier;
 			uint32_t term;
-			if (lookup_graph_binder(ctx, node->as.var.ast_binder_id, &binder_id) != 0 ||
-				prototype_term_var(ctx->terms, binder_id, &term) != 0) {
+			if (lookup_graph_binder(ctx, node->as.var.ast_binder_id, &binding_id) != 0 ||
+				prototype_term_var(ctx->terms, binding_id, &term) != 0) {
 				return -1;
 			}
 			if (lookup_graph_binder_classifier(ctx, node->as.var.ast_binder_id, &classifier) != 0) {
@@ -18068,14 +18069,14 @@ static int compile_ast_atomic_ref(
 			for (uint32_t i = 0; i < ast_type->parameter_count; ++i) {
 				const struct prototype_ast_type_parameter* parameter =
 					&ctx->asts->type_parameters[ast_type->first_parameter + i];
-				uint32_t binder_id;
+				uint32_t binding_id;
 				uint32_t binder_classifier;
 				if (push_graph_binder(
 						ctx,
 						parameter->ast_binder_id,
 						PROTOTYPE_INVALID_ID,
 						parameter->name_symbol_id,
-						&binder_id
+						&binding_id
 					) != 0 || compile_ast_type_expr_term(
 						ctx, parameter->type_expr, &binder_classifier
 					) != 0) {
@@ -18504,7 +18505,7 @@ static int compile_continue_runtime_computation(
 	struct compile_ref* p_ret
 ) {
 	uint32_t ast_binder_id;
-	uint32_t binder_id;
+	uint32_t binding_id;
 	uint32_t variable_term;
 	uint32_t lambda_term;
 	uint32_t continuation_context;
@@ -18525,18 +18526,18 @@ static int compile_continue_runtime_computation(
 				ast_binder_id,
 				continuation->source_binder_classifier,
 				continuation->source_binder_symbol_id,
-				&binder_id
+				&binding_id
 			) != 0) {
 			return -1;
 		}
 	} else {
 		ast_binder_id = prototype_ast_new_binder(ctx->asts);
-		binder_id = prototype_term_fresh_binder(ctx->terms);
+		binding_id = prototype_term_new_binding(ctx->terms);
 		if (ast_binder_id == PROTOTYPE_INVALID_ID ||
-			binder_id == PROTOTYPE_INVALID_ID || prototype_context_extend(
+			binding_id == PROTOTYPE_INVALID_ID || prototype_context_extend(
 			&ctx->metadata->contexts,
 			ctx->context_ids[saved_binder_count],
-			binder_id,
+			binding_id,
 			PROTOTYPE_INVALID_ID,
 			ast_binder_id,
 			&continuation_context
@@ -18544,13 +18545,13 @@ static int compile_continue_runtime_computation(
 			return -1;
 		}
 		ctx->binders[saved_binder_count].ast_binder_id = ast_binder_id;
-		ctx->binders[saved_binder_count].graph_binder_id = binder_id;
+		ctx->binders[saved_binder_count].graph_binder_id = binding_id;
 		ctx->binders[saved_binder_count].classifier = PROTOTYPE_INVALID_ID;
 		ctx->binders[saved_binder_count].symbol_id = -1;
 		ctx->binder_count++;
 		ctx->context_ids[ctx->binder_count] = continuation_context;
 	}
-	if (prototype_term_var(ctx->terms, binder_id, &variable_term) != 0) {
+	if (prototype_term_var(ctx->terms, binding_id, &variable_term) != 0) {
 		ctx->binder_count = saved_binder_count;
 		return -1;
 	}
@@ -18572,7 +18573,7 @@ static int compile_continue_runtime_computation(
 		ast_binder_id;
 	if (continuation->apply(ctx, &variable, continuation->data, &body) != 0 ||
 		body.polarity != COMPILE_REF_POLARITY_COMPUTATION ||
-		prototype_term_lambda(ctx->terms, binder_id, body.term, &lambda_term) != 0) {
+		prototype_term_lambda(ctx->terms, binding_id, body.term, &lambda_term) != 0) {
 		ctx->binder_count = saved_binder_count;
 		return -1;
 	}
@@ -18600,7 +18601,7 @@ static int compile_continue_runtime_computation(
 	if (continuation->has_source_binder &&
 		continuation->source_binder_classifier != PROTOTYPE_INVALID_ID) {
 		uint32_t canonical_binder_id =
-			ctx->terms->terms[lambda_term].as.lambda.binder_id;
+			ctx->terms->terms[lambda_term].as.lambda.binding_id;
 		uint32_t canonical_binder_var;
 		if (prototype_term_var(
 				ctx->terms, canonical_binder_id, &canonical_binder_var
@@ -19095,7 +19096,7 @@ static int compile_ast_lambda_computation_ref(
 ) {
 	uint32_t saved_binder_count;
 	uint32_t binder_classifier;
-	uint32_t binder_id;
+	uint32_t binding_id;
 	struct compile_ref body;
 	uint32_t lambda_term;
 	uint32_t lambda_operation;
@@ -19121,7 +19122,7 @@ static int compile_ast_lambda_computation_ref(
 			)) != 0 ||
 		push_graph_binder(
 			ctx, node->as.lambda.ast_binder_id, binder_classifier,
-			node->as.lambda.binder_symbol_id, &binder_id
+			node->as.lambda.binder_symbol_id, &binding_id
 		) != 0 || (exit_presence == AST_LAMBDA_EXIT_FOUND ?
 			compile_ast_computation_control_ref(
 				ctx, node->as.lambda.body, NULL, NULL, &body
@@ -19133,7 +19134,7 @@ static int compile_ast_lambda_computation_ref(
 	}
 	ctx->binder_count = saved_binder_count;
 	if (body.polarity != COMPILE_REF_POLARITY_COMPUTATION ||
-		prototype_term_lambda(ctx->terms, binder_id, body.term, &lambda_term) != 0) {
+		prototype_term_lambda(ctx->terms, binding_id, body.term, &lambda_term) != 0) {
 		return -1;
 	}
 	p_ret->term = lambda_term;
@@ -19158,8 +19159,8 @@ static int compile_ast_lambda_computation_ref(
 		if (ctx->terms->terms[i].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 			continue;
 		}
-		uint32_t row_binder = ctx->terms->terms[i].as.effect_row_var.binder_id;
-		if (!prototype_term_contains_free_binder(
+		uint32_t row_binder = ctx->terms->terms[i].as.effect_row_var.binding_id;
+		if (!prototype_term_contains_free_binding(
 				ctx->terms, binder_classifier, row_binder
 			)) {
 			continue;
@@ -19183,7 +19184,7 @@ static int compile_ast_lambda_computation_ref(
 			lambda_operation_node->implicit_effect_row_count++
 		] = row_binder;
 	}
-	uint32_t canonical_binder_id = ctx->terms->terms[lambda_term].as.lambda.binder_id;
+	uint32_t canonical_binder_id = ctx->terms->terms[lambda_term].as.lambda.binding_id;
 	uint32_t binder_var;
 	if (prototype_term_var(ctx->terms, canonical_binder_id, &binder_var) != 0 ||
 		queue_binder_assumption(
@@ -19232,6 +19233,7 @@ static int compile_ast_constructor_application_value_ref(
 	p_ret->term = term;
 	p_ret->classifier = PROTOTYPE_INVALID_ID;
 	p_ret->polarity = COMPILE_REF_POLARITY_VALUE;
+	p_ret->computation_kind = COMPILE_REF_COMPUTATION_KIND_UNKNOWN;
 	return operation_add(
 		ctx, PROTOTYPE_OPERATION_APP, term, PROTOTYPE_INVALID_ID, ast_id,
 		function.operation, argument.operation, PROTOTYPE_INVALID_ID,
@@ -19593,7 +19595,7 @@ static int compile_ref_make_operation_request(
 	uint32_t source_ast,
 	struct compile_ref* p_ret
 ) {
-	uint32_t binder_id;
+	uint32_t binding_id;
 	uint32_t binder_var;
 	uint32_t result;
 	uint32_t continuation;
@@ -19633,16 +19635,16 @@ static int compile_ref_make_operation_request(
 		) != 0 || prototype_term_computation_type(
 			ctx->terms, empty_effects, application_view.result, &return_classifier
 		) != 0 ||
-		(binder_id = prototype_term_fresh_binder(ctx->terms)) == PROTOTYPE_INVALID_ID ||
+		(binding_id = prototype_term_new_binding(ctx->terms)) == PROTOTYPE_INVALID_ID ||
 		prototype_term_pure_family(
-			ctx->terms, binder_id, return_classifier, &continuation_family
+			ctx->terms, binding_id, return_classifier, &continuation_family
 		) != 0 || prototype_term_pi_family(
 			ctx->terms, application_view.result, continuation_family,
 			&continuation_classifier
 		) != 0 ||
-		prototype_term_var(ctx->terms, binder_id, &binder_var) != 0 ||
+		prototype_term_var(ctx->terms, binding_id, &binder_var) != 0 ||
 		prototype_term_return(ctx->terms, binder_var, &result) != 0 ||
-		prototype_term_lambda(ctx->terms, binder_id, result, &continuation) != 0 ||
+		prototype_term_lambda(ctx->terms, binding_id, result, &continuation) != 0 ||
 		prototype_term_thunk(ctx->terms, continuation, &continuation_thunk) != 0 ||
 		prototype_term_operation_request(
 			ctx->terms, operation->term, argument->term, continuation_thunk, &request
@@ -19669,7 +19671,7 @@ static int compile_ref_make_operation_request(
 		return -1;
 	}
 	canonical_binder_id =
-		ctx->terms->terms[canonical_result_variable].as.var.binder_id;
+		ctx->terms->terms[canonical_result_variable].as.var.binding_id;
 	parent_context_id = ctx->context_ids[ctx->binder_count];
 	if (prototype_context_extend(
 			&ctx->metadata->contexts,
@@ -20566,7 +20568,7 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 			continue;
 		}
 		ctx->binder_count = 0;
-		ctx->match_frame_count = 0;
+		ctx->ih_scope_count = 0;
 		size_t previous_error_count = ctx->metadata ?
 			ctx->metadata->resolve_error_count : 0;
 		if (compile_def(ctx, &ctx->asts->assignments[i], &term) != 0) {
@@ -20649,7 +20651,7 @@ static int constructor_telescope_field_classifier(
 	uint32_t previous_terms[64];
 	for (uint32_t i = 0; i < field_index; ++i) {
 		if (prototype_term_var(
-				ctx->terms, previous_binders[i].binder_id, &previous_terms[i]
+				ctx->terms, previous_binders[i].binding_id, &previous_terms[i]
 			) != 0) {
 			return -1;
 		}
@@ -20932,7 +20934,7 @@ static int operation_solver_add_motive_equation(
 		body_operation,
 		match_case->constructor_owner,
 		match_case->constructor_id,
-		match->as.match.frame_id
+		match->as.match.ih_scope_id
 	};
 	return 0;
 }
@@ -21474,14 +21476,14 @@ static int operation_solver_seed_motive(
 		if (operation_solver_enqueue_dependents(ctx, operation) != 0) {
 			return -1;
 		}
-		uint32_t match_frame = PROTOTYPE_INVALID_ID;
+		uint32_t ih_scope = PROTOTYPE_INVALID_ID;
 		const struct prototype_operation_node* match_operation =
 			&ctx->metadata->operations[operation];
 		if (match_operation->core_term < ctx->terms->term_count &&
 			ctx->terms->terms[match_operation->core_term].tag ==
 				PROTOTYPE_TERM_MATCH) {
-			match_frame =
-				ctx->terms->terms[match_operation->core_term].as.match.frame_id;
+			ih_scope =
+				ctx->terms->terms[match_operation->core_term].as.match.ih_scope_id;
 		}
 		for (uint32_t constraint_id = 0;
 			constraint_id < ctx->classifier_solver.constraint_count;
@@ -21491,7 +21493,7 @@ static int operation_solver_seed_motive(
 			if (constraint->kind != OPERATION_CONSTRAINT_IH_EXPECTED ||
 				constraint->target >= ctx->metadata->operation_count ||
 				ctx->metadata->operations[constraint->target].first_case !=
-					match_frame) {
+					ih_scope) {
 				continue;
 			}
 			if (operation_solver_enqueue_constraint(ctx, constraint_id) != 0) {
@@ -22007,7 +22009,7 @@ static int operation_subtree_ast_binder_use_count(
 static int operation_effect_row_binder_is_owned(
 	const struct compile_context* ctx,
 	uint32_t operation_id,
-	uint32_t binder_id
+	uint32_t binding_id
 ) {
 	if (!ctx || !ctx->metadata || operation_id >= ctx->metadata->operation_count) {
 		return -1;
@@ -22020,7 +22022,7 @@ static int operation_effect_row_binder_is_owned(
 		}
 		int declares_binder = 0;
 		for (uint32_t row = 0; row < lambda->implicit_effect_row_count; ++row) {
-			if (lambda->implicit_effect_row_binders[row] == binder_id) {
+			if (lambda->implicit_effect_row_binders[row] == binding_id) {
 				declares_binder = 1;
 				break;
 			}
@@ -22057,14 +22059,14 @@ static int operation_classifier_contains_unowned_effect_row(
 		if (ctx->terms->terms[i].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 			continue;
 		}
-		uint32_t binder_id = ctx->terms->terms[i].as.effect_row_var.binder_id;
-		if (prototype_term_contains_free_binder(
+		uint32_t binding_id = ctx->terms->terms[i].as.effect_row_var.binding_id;
+		if (prototype_term_contains_free_binding(
 				ctx->terms,
 				classifier,
-			binder_id
+			binding_id
 		)) {
 			int owned = operation_effect_row_binder_is_owned(
-				ctx, operation_id, binder_id
+				ctx, operation_id, binding_id
 			);
 			if (owned < 0) {
 				return -1;
@@ -22196,9 +22198,9 @@ static int operation_effect_materialize_solution(
 		return -1;
 	}
 	uint32_t owner = meta->owner_operation;
-	uint32_t binder_id = ctx->terms->terms[
+	uint32_t binding_id = ctx->terms->terms[
 		meta->placeholder_row
-	].as.effect_row_var.binder_id;
+	].as.effect_row_var.binding_id;
 	uint32_t* classifiers[] = {
 		&ctx->metadata->operations[owner].known_classifier,
 		&ctx->metadata->operations[owner].classifier,
@@ -22213,7 +22215,7 @@ static int operation_effect_materialize_solution(
 				ctx->terms,
 				ctx->type_declarations,
 				*classifiers[i],
-				binder_id,
+				binding_id,
 				replacement,
 				classifiers[i]
 			) != 0) {
@@ -22239,7 +22241,7 @@ static int operation_effect_materialize_solution(
 					ctx->terms,
 					ctx->type_declarations,
 					*rows[j],
-					binder_id,
+					binding_id,
 					replacement,
 					rows[j]
 				) != 0) {
@@ -22386,7 +22388,7 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 			}
 			uint32_t result_binder = ctx->terms->terms[
 				constraint->result_row
-			].as.effect_row_var.binder_id;
+			].as.effect_row_var.binding_id;
 			int owned = operation_effect_row_binder_is_owned(
 				ctx, constraint->operation, result_binder
 			);
@@ -22693,7 +22695,7 @@ static int compile_phase_record_residual_dependent_folds(struct compile_context*
 				ctx->terms, ctx->type_declarations, domain, input_view.result
 			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_pure_family_parts(
 				ctx->terms, classifier_family, &continuation_binder_id, &codomain
-			) != 0 || !prototype_term_contains_free_binder(
+			) != 0 || !prototype_term_contains_free_binding(
 				ctx->terms, codomain, continuation_binder_id
 			)) {
 			continue;
@@ -22782,7 +22784,7 @@ static int compile_phase_record_residual_computation_fold_results(struct compile
 				ctx->terms, ctx->type_declarations, NULL, input_classifier, &input_view
 			) != 0 || input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 			input_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-			!prototype_term_contains_free_binder(
+			!prototype_term_contains_free_binding(
 				ctx->terms, return_classifier, operation->fold_return_binder_id
 			)) {
 			continue;
@@ -22885,7 +22887,7 @@ static int operation_solver_match_has_recursive_binder(
 
 static int operation_solver_find_match_for_frame(
 	const struct compile_context* ctx,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t* p_operation
 );
 
@@ -23037,7 +23039,7 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 	uint32_t binder_var;
 	if (prototype_term_var(
 			ctx->terms,
-			ctx->terms->terms[sequence_fold_term->as.computation_fold.return_clause].as.lambda.binder_id,
+			ctx->terms->terms[sequence_fold_term->as.computation_fold.return_clause].as.lambda.binding_id,
 			&binder_var
 		) != 0) {
 		return -1;
@@ -23550,7 +23552,7 @@ static int operation_solver_propagate_clause_computation_fold_input(
 			uint32_t binder_var;
 			if (prototype_term_var(
 					ctx->terms,
-					ctx->terms->terms[lambda_term].as.lambda.binder_id,
+					ctx->terms->terms[lambda_term].as.lambda.binding_id,
 					&binder_var
 				) != 0) {
 				continue;
@@ -23790,7 +23792,7 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 								).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ||
 								prototype_term_var(
 									ctx->terms,
-									ctx->terms->terms[lambda->core_term].as.lambda.binder_id,
+									ctx->terms->terms[lambda->core_term].as.lambda.binding_id,
 									&binder_var
 								) != 0 ||
 								prototype_term_graph_substitute_bound_var(
@@ -23827,7 +23829,7 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 								PROTOTYPE_TERM_LAMBDA ||
 							prototype_term_pure_family(
 								ctx->terms,
-								ctx->terms->terms[lambda->core_term].as.lambda.binder_id,
+								ctx->terms->terms[lambda->core_term].as.lambda.binding_id,
 								classifier,
 								&codomain_family
 							) != 0 ||
@@ -24103,7 +24105,7 @@ static int build_operation_motive(
 		}
 		(void)motive_case_context;
 		for (uint32_t i = 0; i < source_case->binder_count; ++i) {
-			motive_binders[binder_cursor + i].binder_id =
+			motive_binders[binder_cursor + i].binding_id =
 				reindexed_binders[i];
 			motive_binders[binder_cursor + i].is_recursive =
 				ctx->terms->case_binders[
@@ -24129,14 +24131,14 @@ static int build_operation_motive(
 		}
 		binder_cursor += source_case->binder_count;
 	}
-	uint32_t binder_id = prototype_term_fresh_binder(ctx->terms);
+	uint32_t binding_id = prototype_term_new_binding(ctx->terms);
 	uint32_t binder_var;
 	uint32_t motive_match;
 	uint32_t motive;
-	if (binder_id == PROTOTYPE_INVALID_ID ||
-		prototype_term_var(ctx->terms, binder_id, &binder_var) != 0 ||
+	if (binding_id == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(ctx->terms, binding_id, &binder_var) != 0 ||
 		prototype_term_match(ctx->terms, binder_var, motive_cases, operation->case_count, &motive_match) != 0 ||
-		prototype_term_lambda(ctx->terms, binder_id, motive_match, &motive) != 0 ||
+		prototype_term_lambda(ctx->terms, binding_id, motive_match, &motive) != 0 ||
 		prototype_term_app(ctx->terms, motive, match->as.match.scrutinee, p_classifier) != 0) {
 		return -1;
 	}
@@ -24538,9 +24540,9 @@ static int operation_classifier_captures_case_binder(
 		if (!context) {
 			return -1;
 		}
-		uint32_t binder_id = context->binder_id;
-		if (prototype_term_contains_free_binder(
-			ctx->terms, classifier_whnf, binder_id
+		uint32_t binding_id = context->binding_id;
+		if (prototype_term_contains_free_binding(
+			ctx->terms, classifier_whnf, binding_id
 		) != 0) {
 			return 1;
 		}
@@ -24605,10 +24607,10 @@ static int build_operation_uniform_motive(
 			return 1;
 		}
 	}
-	uint32_t binder_id = prototype_term_fresh_binder(ctx->terms);
+	uint32_t binding_id = prototype_term_new_binding(ctx->terms);
 	uint32_t motive;
-	if (binder_id == PROTOTYPE_INVALID_ID ||
-		prototype_term_lambda(ctx->terms, binder_id, classifier, &motive) != 0 ||
+	if (binding_id == PROTOTYPE_INVALID_ID ||
+		prototype_term_lambda(ctx->terms, binding_id, classifier, &motive) != 0 ||
 		prototype_term_app(ctx->terms, motive, match->as.match.scrutinee, p_classifier) != 0) {
 		return -1;
 	}
@@ -24658,7 +24660,7 @@ static int build_operation_guarded_recursive_motive(
 	struct prototype_match_case_input motive_cases[64];
 	struct prototype_case_binder motive_binders[256];
 	uint32_t binder_cursor = 0;
-	uint32_t motive_frame = prototype_term_new_match_frame(ctx->terms);
+	uint32_t motive_frame = prototype_term_new_ih_scope(ctx->terms);
 	if (motive_frame == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
@@ -24707,7 +24709,7 @@ static int build_operation_guarded_recursive_motive(
 			++binder_index) {
 			const struct prototype_case_binder* source_binder =
 				&ctx->terms->case_binders[source_case->first_binder + binder_index];
-			motive_binders[binder_cursor + binder_index].binder_id =
+			motive_binders[binder_cursor + binder_index].binding_id =
 				reindexed_binders[binder_index];
 			motive_binders[binder_cursor + binder_index].is_recursive =
 				source_binder->is_recursive;
@@ -24756,8 +24758,8 @@ static int build_operation_guarded_recursive_motive(
 				const struct prototype_case_binder* source_binder =
 					&ctx->terms->case_binders[source_case->first_binder + binder_index];
 				if (source_binder->is_recursive &&
-					source_binder->binder_id ==
-						ctx->terms->terms[original_argument].as.var.binder_id) {
+					source_binder->binding_id ==
+						ctx->terms->terms[original_argument].as.var.binding_id) {
 					recursive_index = binder_index;
 					break;
 				}
@@ -24768,7 +24770,7 @@ static int build_operation_guarded_recursive_motive(
 			uint32_t recursive_var;
 			if (prototype_term_var(
 					ctx->terms,
-					motive_binders[binder_cursor + recursive_index].binder_id,
+					motive_binders[binder_cursor + recursive_index].binding_id,
 					&recursive_var
 				) != 0 ||
 				prototype_term_induction_hypothesis(
@@ -24780,17 +24782,17 @@ static int build_operation_guarded_recursive_motive(
 		}
 		binder_cursor += source_case->binder_count;
 	}
-	uint32_t motive_binder = prototype_term_fresh_binder(ctx->terms);
+	uint32_t motive_binder = prototype_term_new_binding(ctx->terms);
 	uint32_t motive_var;
 	uint32_t motive_match;
 	uint32_t motive;
 	if (motive_binder == PROTOTYPE_INVALID_ID ||
 		prototype_term_var(ctx->terms, motive_binder, &motive_var) != 0 ||
-		prototype_term_match_with_frame(
+		prototype_term_match_with_ih_scope(
 			ctx->terms, motive_var, motive_cases, operation->case_count,
 			motive_frame, &motive_match
 		) != 0 ||
-		prototype_term_set_match_frame_term(ctx->terms, motive_frame, motive_match) != 0 ||
+		prototype_term_set_ih_scope_term(ctx->terms, motive_frame, motive_match) != 0 ||
 		prototype_term_lambda(ctx->terms, motive_binder, motive_match, &motive) != 0 ||
 		prototype_term_app(ctx->terms, motive, match->as.match.scrutinee, p_classifier) != 0) {
 		return -1;
@@ -24800,13 +24802,13 @@ static int build_operation_guarded_recursive_motive(
 
 static int operation_solver_find_match_for_frame(
 	const struct compile_context* ctx,
-	uint32_t frame_id,
+	uint32_t ih_scope_id,
 	uint32_t* p_operation
 ) {
-	if (!ctx || !p_operation || frame_id >= ctx->terms->match_frame_count) {
+	if (!ctx || !p_operation || ih_scope_id >= ctx->terms->ih_scope_count) {
 		return -1;
 	}
-	uint32_t match_term = ctx->terms->match_frames[frame_id].match_term;
+	uint32_t match_term = ctx->terms->ih_scopes[ih_scope_id].match_term;
 	if (match_term >= ctx->terms->term_count) {
 		return -1;
 	}
@@ -24848,17 +24850,17 @@ static int operation_solver_validate_guarded_motive_occurrence(
 		&ctx->metadata->operations[argument_operation];
 	if (ih->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS ||
 		match->tag != PROTOTYPE_OPERATION_MATCH ||
-		ih->first_case >= ctx->terms->match_frame_count ||
+		ih->first_case >= ctx->terms->ih_scope_count ||
 		argument->core_term >= ctx->terms->term_count ||
 		ctx->terms->terms[argument->core_term].tag != PROTOTYPE_TERM_VAR) {
 		return -1;
 	}
-	if (ctx->terms->match_frames[ih->first_case].match_term != match->core_term ||
+	if (ctx->terms->ih_scopes[ih->first_case].match_term != match->core_term ||
 		match->core_term >= ctx->terms->term_count ||
 		ctx->terms->terms[match->core_term].tag != PROTOTYPE_TERM_MATCH) {
 		return -1;
 	}
-	uint32_t binder_id = ctx->terms->terms[argument->core_term].as.var.binder_id;
+	uint32_t binding_id = ctx->terms->terms[argument->core_term].as.var.binding_id;
 	const struct prototype_term* match_term = &ctx->terms->terms[match->core_term];
 	for (uint32_t case_index = 0; case_index < match_term->as.match.case_count;
 		++case_index) {
@@ -24869,7 +24871,7 @@ static int operation_solver_validate_guarded_motive_occurrence(
 			++binder_index) {
 			const struct prototype_case_binder* binder =
 				&ctx->terms->case_binders[match_case->first_binder + binder_index];
-			if (binder->binder_id == binder_id) {
+			if (binder->binding_id == binding_id) {
 				return binder->is_recursive ? 0 : -1;
 			}
 		}
@@ -25268,21 +25270,21 @@ static int operation_solver_materialize_induction_hypothesis_judgement(
 		}
 	}
 	const struct prototype_term* ih = &ctx->terms->terms[operation->core_term];
-	uint32_t frame_id = ih->as.induction_hypothesis.frame_id;
-	if (frame_id >= ctx->terms->match_frame_count ||
+	uint32_t ih_scope_id = ih->as.induction_hypothesis.ih_scope_id;
+	if (ih_scope_id >= ctx->terms->ih_scope_count ||
 		ih->as.induction_hypothesis.argument >= ctx->terms->term_count ||
 		ctx->terms->terms[ih->as.induction_hypothesis.argument].tag !=
 			PROTOTYPE_TERM_VAR) {
 		return -1;
 	}
-	uint32_t match_term = ctx->terms->match_frames[frame_id].match_term;
+	uint32_t match_term = ctx->terms->ih_scopes[ih_scope_id].match_term;
 	if (match_term >= ctx->terms->term_count ||
 		ctx->terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
 		return -1;
 	}
 	const struct prototype_term* match = &ctx->terms->terms[match_term];
-	uint32_t binder_id =
-		ctx->terms->terms[ih->as.induction_hypothesis.argument].as.var.binder_id;
+	uint32_t binding_id =
+		ctx->terms->terms[ih->as.induction_hypothesis.argument].as.var.binding_id;
 	for (uint32_t case_index = 0; case_index < match->as.match.case_count;
 		++case_index) {
 		const struct prototype_match_case* match_case = &ctx->terms->cases[
@@ -25293,7 +25295,7 @@ static int operation_solver_materialize_induction_hypothesis_judgement(
 			const struct prototype_case_binder* binder = &ctx->terms->case_binders[
 				match_case->first_binder + binder_index
 			];
-			if (binder->binder_id != binder_id) {
+			if (binder->binding_id != binding_id) {
 				continue;
 			}
 			if (!binder->is_recursive) {
@@ -25414,7 +25416,7 @@ static int operation_solver_materialize_match_pattern_assumptions(
 						ctx->terms,
 						ctx->terms->case_binders[
 							match_case->first_binder + binder_index
-						].binder_id,
+						].binding_id,
 						&binder_var
 					) != 0) {
 					return -1;
@@ -25622,7 +25624,7 @@ static int operation_solver_reify_core_proof(
 			}
 			uint32_t binder_var;
 			if (prototype_term_var(
-					ctx->terms, term->as.lambda.binder_id, &binder_var
+					ctx->terms, term->as.lambda.binding_id, &binder_var
 				) != 0) {
 				return -1;
 			}
@@ -25664,7 +25666,7 @@ static int operation_solver_reify_core_proof(
 			uint32_t expected_classifier;
 			if (prototype_term_pure_family(
 					ctx->terms,
-					term->as.lambda.binder_id,
+					term->as.lambda.binding_id,
 					body->classifier,
 					&expected_family
 				) != 0 || prototype_term_pi_family(
@@ -26479,7 +26481,7 @@ static int operation_solver_resolve_contexts(struct compile_context* ctx) {
 		if (prototype_context_extend(
 				&ctx->metadata->contexts,
 				relocation[context->parent],
-				context->binder_id,
+				context->binding_id,
 				classifier,
 				context->classifier_variable,
 				&relocation[context_id]
@@ -27107,7 +27109,7 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 			continue;
 		}
 		ctx->binder_count = 0;
-		ctx->match_frame_count = 0;
+		ctx->ih_scope_count = 0;
 		if (compile_def(ctx, def, &compiled_term) != 0 ||
 			compile_type_expectation_classifier(ctx, expectation, &expected_classifier) != 0) {
 			(void)add_resolve_error_at_span(

@@ -16,7 +16,7 @@ struct prototype_type_declaration_db;
  */
 struct prototype_context {
 	uint32_t parent;
-	uint32_t binder_id;
+	uint32_t binding_id;
 	uint32_t classifier;
 	uint32_t classifier_variable;
 	uint32_t depth;
@@ -67,7 +67,7 @@ uint32_t prototype_context_empty(const struct prototype_context_db* db);
 int prototype_context_extend(
 	struct prototype_context_db* db,
 	uint32_t parent,
-	uint32_t binder_id,
+	uint32_t binding_id,
 	uint32_t classifier,
 	uint32_t classifier_variable,
 	uint32_t* p_context
@@ -76,10 +76,10 @@ const struct prototype_context* prototype_context_get(
 	const struct prototype_context_db* db,
 	uint32_t context_id
 );
-int prototype_context_contains_binder(
+int prototype_context_contains_binding(
 	const struct prototype_context_db* db,
 	uint32_t context_id,
-	uint32_t binder_id
+	uint32_t binding_id
 );
 int prototype_context_db_validate(
 	const struct prototype_context_db* db,

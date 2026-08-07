@@ -19,7 +19,7 @@ struct test_storage {
 	struct prototype_match_case cases[CASE_CAPACITY];
 	int case_label_symbols[CASE_CAPACITY];
 	struct prototype_case_binder case_binders[CASE_BINDER_CAPACITY];
-	struct prototype_match_frame match_frames[MATCH_FRAME_CAPACITY];
+	struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 	struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
 	struct prototype_type_constructor_declaration constructors[CONSTRUCTOR_CAPACITY];
 	struct prototype_type_parameter_declaration parameters[PARAMETER_CAPACITY];
@@ -41,7 +41,7 @@ static void init_databases(
 		CASE_CAPACITY,
 		storage->case_binders,
 		CASE_BINDER_CAPACITY,
-		storage->match_frames,
+		storage->ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 	prototype_type_declaration_db_init(
@@ -97,8 +97,8 @@ static int build_recursive_match(
 	uint32_t* p_frame,
 	uint32_t* p_match
 ) {
-	uint32_t frame = prototype_term_new_match_frame(db);
-	uint32_t case_binder = prototype_term_fresh_binder(db);
+	uint32_t frame = prototype_term_new_ih_scope(db);
+	uint32_t case_binder = prototype_term_new_binding(db);
 	uint32_t case_variable;
 	uint32_t body;
 	if (frame == PROTOTYPE_INVALID_ID || case_binder == PROTOTYPE_INVALID_ID ||
@@ -108,7 +108,7 @@ static int build_recursive_match(
 	}
 
 	if (beta_wrap_body) {
-		uint32_t identity_binder = prototype_term_fresh_binder(db);
+		uint32_t identity_binder = prototype_term_new_binding(db);
 		uint32_t identity_variable;
 		uint32_t identity;
 		uint32_t application;
@@ -122,7 +122,7 @@ static int build_recursive_match(
 	}
 
 	struct prototype_case_binder binder;
-	binder.binder_id = case_binder;
+	binder.binding_id = case_binder;
 	binder.is_recursive = 1;
 	struct prototype_match_case_input match_case;
 	match_case.case_label_symbol_id = 1;
@@ -131,9 +131,9 @@ static int build_recursive_match(
 	match_case.binders = &binder;
 	match_case.binder_count = 1;
 	match_case.body = body;
-	if (prototype_term_match_with_frame(
+	if (prototype_term_match_with_ih_scope(
 			db, scrutinee, &match_case, 1, frame, p_match
-		) != 0 || prototype_term_set_match_frame_term(db, frame, *p_match) != 0) {
+		) != 0 || prototype_term_set_ih_scope_term(db, frame, *p_match) != 0) {
 		return -1;
 	}
 	*p_frame = frame;
@@ -146,14 +146,14 @@ static int build_binder_role_match(
 	int is_recursive,
 	uint32_t* p_match
 ) {
-	uint32_t binder_id = prototype_term_fresh_binder(db);
+	uint32_t binding_id = prototype_term_new_binding(db);
 	uint32_t body;
-	if (binder_id == PROTOTYPE_INVALID_ID ||
-		prototype_term_var(db, binder_id, &body) != 0) {
+	if (binding_id == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(db, binding_id, &body) != 0) {
 		return -1;
 	}
 	struct prototype_case_binder binder;
-	binder.binder_id = binder_id;
+	binder.binding_id = binding_id;
 	binder.is_recursive = is_recursive;
 	struct prototype_match_case_input match_case;
 	match_case.case_label_symbol_id = 2;
@@ -168,15 +168,15 @@ static int build_binder_role_match(
 static int build_frame_presence_match(
 	struct prototype_term_db* db,
 	uint32_t scrutinee,
-	uint32_t match_frame,
+	uint32_t ih_scope,
 	uint32_t body_frame,
 	uint32_t* p_match
 ) {
-	uint32_t binder_id = prototype_term_fresh_binder(db);
+	uint32_t binding_id = prototype_term_new_binding(db);
 	uint32_t variable;
 	uint32_t body;
-	if (binder_id == PROTOTYPE_INVALID_ID ||
-		prototype_term_var(db, binder_id, &variable) != 0) {
+	if (binding_id == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(db, binding_id, &variable) != 0) {
 		return -1;
 	}
 	body = variable;
@@ -187,7 +187,7 @@ static int build_frame_presence_match(
 		return -1;
 	}
 	struct prototype_case_binder binder;
-	binder.binder_id = binder_id;
+	binder.binding_id = binding_id;
 	binder.is_recursive = body_frame != PROTOTYPE_INVALID_ID;
 	struct prototype_match_case_input match_case;
 	match_case.case_label_symbol_id = 3;
@@ -196,8 +196,8 @@ static int build_frame_presence_match(
 	match_case.binders = &binder;
 	match_case.binder_count = 1;
 	match_case.body = body;
-	return prototype_term_match_with_frame(
-		db, scrutinee, &match_case, 1, match_frame, p_match
+	return prototype_term_match_with_ih_scope(
+		db, scrutinee, &match_case, 1, ih_scope, p_match
 	);
 }
 
@@ -208,10 +208,10 @@ static int build_nested_recursive_match(
 	int beta_wrap_body,
 	uint32_t* p_match
 ) {
-	uint32_t outer_frame = prototype_term_new_match_frame(db);
-	uint32_t inner_frame = prototype_term_new_match_frame(db);
-	uint32_t outer_binder = prototype_term_fresh_binder(db);
-	uint32_t inner_binder = prototype_term_fresh_binder(db);
+	uint32_t outer_frame = prototype_term_new_ih_scope(db);
+	uint32_t inner_frame = prototype_term_new_ih_scope(db);
+	uint32_t outer_binder = prototype_term_new_binding(db);
+	uint32_t inner_binder = prototype_term_new_binding(db);
 	uint32_t outer_variable;
 	uint32_t inner_variable;
 	uint32_t outer_ih;
@@ -236,7 +236,7 @@ static int build_nested_recursive_match(
 		return -1;
 	}
 	if (beta_wrap_body) {
-		uint32_t identity_binder = prototype_term_fresh_binder(db);
+		uint32_t identity_binder = prototype_term_new_binding(db);
 		uint32_t identity_variable;
 		uint32_t identity;
 		if (identity_binder == PROTOTYPE_INVALID_ID ||
@@ -250,7 +250,7 @@ static int build_nested_recursive_match(
 		}
 	}
 	struct prototype_case_binder inner_case_binder;
-	inner_case_binder.binder_id = inner_binder;
+	inner_case_binder.binding_id = inner_binder;
 	inner_case_binder.is_recursive = 1;
 	struct prototype_match_case_input inner_case;
 	inner_case.case_label_symbol_id = 4;
@@ -260,16 +260,16 @@ static int build_nested_recursive_match(
 	inner_case.binder_count = 1;
 	inner_case.body = inner_body;
 	uint32_t inner_match;
-	if (prototype_term_match_with_frame(
+	if (prototype_term_match_with_ih_scope(
 			db, outer_variable, &inner_case, 1, inner_frame, &inner_match
-		) != 0 || prototype_term_set_match_frame_term(
+		) != 0 || prototype_term_set_ih_scope_term(
 			db, inner_frame, inner_match
 		) != 0) {
 		return -1;
 	}
 
 	struct prototype_case_binder outer_case_binder;
-	outer_case_binder.binder_id = outer_binder;
+	outer_case_binder.binding_id = outer_binder;
 	outer_case_binder.is_recursive = 1;
 	struct prototype_match_case_input outer_case;
 	outer_case.case_label_symbol_id = 5;
@@ -278,9 +278,9 @@ static int build_nested_recursive_match(
 	outer_case.binders = &outer_case_binder;
 	outer_case.binder_count = 1;
 	outer_case.body = inner_match;
-	if (prototype_term_match_with_frame(
+	if (prototype_term_match_with_ih_scope(
 			db, scrutinee, &outer_case, 1, outer_frame, p_match
-		) != 0 || prototype_term_set_match_frame_term(
+		) != 0 || prototype_term_set_ih_scope_term(
 			db, outer_frame, *p_match
 		) != 0) {
 		return -1;
@@ -352,9 +352,9 @@ int main(void) {
 		return 5;
 	}
 
-	uint32_t left_row_binder = prototype_term_fresh_binder(&terms);
-	uint32_t right_row_binder = prototype_term_fresh_binder(&terms);
-	uint32_t identity_binder = prototype_term_fresh_binder(&terms);
+	uint32_t left_row_binder = prototype_term_new_binding(&terms);
+	uint32_t right_row_binder = prototype_term_new_binding(&terms);
+	uint32_t identity_binder = prototype_term_new_binding(&terms);
 	uint32_t left_row;
 	uint32_t right_row;
 	uint32_t identity_variable;
@@ -413,10 +413,10 @@ int main(void) {
 		return 13;
 	}
 
-	uint32_t left_outer = prototype_term_fresh_binder(&terms);
-	uint32_t left_inner = prototype_term_fresh_binder(&terms);
-	uint32_t right_outer = prototype_term_fresh_binder(&terms);
-	uint32_t right_inner = prototype_term_fresh_binder(&terms);
+	uint32_t left_outer = prototype_term_new_binding(&terms);
+	uint32_t left_inner = prototype_term_new_binding(&terms);
+	uint32_t right_outer = prototype_term_new_binding(&terms);
+	uint32_t right_inner = prototype_term_new_binding(&terms);
 	uint32_t left_outer_row;
 	uint32_t right_outer_row;
 	uint32_t right_inner_row;
@@ -462,7 +462,7 @@ int main(void) {
 		return 14;
 	}
 
-	uint32_t continuation_binder = prototype_term_fresh_binder(&terms);
+	uint32_t continuation_binder = prototype_term_new_binding(&terms);
 	uint32_t continuation_variable;
 	uint32_t continuation_lambda;
 	uint32_t continuation_thunk;
@@ -530,7 +530,7 @@ int main(void) {
 		return 17;
 	}
 
-	uint32_t vacuous_frame = prototype_term_new_match_frame(&terms);
+	uint32_t vacuous_frame = prototype_term_new_ih_scope(&terms);
 	uint32_t framed_match;
 	uint32_t unframed_match;
 	if (vacuous_frame == PROTOTYPE_INVALID_ID || build_frame_presence_match(
@@ -557,12 +557,12 @@ int main(void) {
 		return 18;
 	}
 
-	uint32_t used_frame = prototype_term_new_match_frame(&terms);
+	uint32_t used_frame = prototype_term_new_ih_scope(&terms);
 	uint32_t owning_match;
 	uint32_t foreign_match;
 	if (used_frame == PROTOTYPE_INVALID_ID || build_frame_presence_match(
 			&terms, scrutinee, used_frame, used_frame, &owning_match
-		) != 0 || prototype_term_set_match_frame_term(
+		) != 0 || prototype_term_set_ih_scope_term(
 			&terms, used_frame, owning_match
 		) != 0 || build_frame_presence_match(
 			&terms,

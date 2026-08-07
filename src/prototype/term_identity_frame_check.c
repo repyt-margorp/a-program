@@ -12,7 +12,7 @@ struct test_term_storage {
 	struct prototype_match_case cases[CASE_CAPACITY];
 	int case_label_symbols[CASE_CAPACITY];
 	struct prototype_case_binder case_binders[CASE_BINDER_CAPACITY];
-	struct prototype_match_frame match_frames[MATCH_FRAME_CAPACITY];
+	struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 };
 
 static void init_term_db(
@@ -28,7 +28,7 @@ static void init_term_db(
 		CASE_CAPACITY,
 		storage->case_binders,
 		CASE_BINDER_CAPACITY,
-		storage->match_frames,
+		storage->ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 }
@@ -40,8 +40,8 @@ static int build_recursive_match_with_constructor(
 	uint32_t* p_frame,
 	uint32_t* p_match
 ) {
-	uint32_t frame = prototype_term_new_match_frame(db);
-	uint32_t binder = prototype_term_fresh_binder(db);
+	uint32_t frame = prototype_term_new_ih_scope(db);
+	uint32_t binder = prototype_term_new_binding(db);
 	uint32_t variable;
 	uint32_t ih;
 	struct prototype_case_binder case_binder;
@@ -51,7 +51,7 @@ static int build_recursive_match_with_constructor(
 		prototype_term_induction_hypothesis(db, frame, variable, &ih) != 0) {
 		return -1;
 	}
-	case_binder.binder_id = binder;
+	case_binder.binding_id = binder;
 	case_binder.is_recursive = 1;
 	match_case.case_label_symbol_id = 1;
 	match_case.constructor_owner = PROTOTYPE_INVALID_ID;
@@ -59,9 +59,9 @@ static int build_recursive_match_with_constructor(
 	match_case.binders = &case_binder;
 	match_case.binder_count = 1;
 	match_case.body = ih;
-	if (prototype_term_match_with_frame(
+	if (prototype_term_match_with_ih_scope(
 			db, scrutinee, &match_case, 1, frame, p_match
-		) != 0 || prototype_term_set_match_frame_term(db, frame, *p_match) != 0) {
+		) != 0 || prototype_term_set_ih_scope_term(db, frame, *p_match) != 0) {
 		return -1;
 	}
 	*p_frame = frame;
@@ -84,9 +84,9 @@ static int build_match_with_foreign_ih(
 	uint32_t scrutinee,
 	uint32_t* p_match
 ) {
-	uint32_t enclosing_frame = prototype_term_new_match_frame(db);
-	uint32_t foreign_frame = prototype_term_new_match_frame(db);
-	uint32_t binder = prototype_term_fresh_binder(db);
+	uint32_t enclosing_frame = prototype_term_new_ih_scope(db);
+	uint32_t foreign_frame = prototype_term_new_ih_scope(db);
+	uint32_t binder = prototype_term_new_binding(db);
 	uint32_t variable;
 	uint32_t ih;
 	struct prototype_case_binder case_binder;
@@ -97,7 +97,7 @@ static int build_match_with_foreign_ih(
 		prototype_term_induction_hypothesis(db, foreign_frame, variable, &ih) != 0) {
 		return -1;
 	}
-	case_binder.binder_id = binder;
+	case_binder.binding_id = binder;
 	case_binder.is_recursive = 1;
 	match_case.case_label_symbol_id = 1;
 	match_case.constructor_owner = PROTOTYPE_INVALID_ID;
@@ -105,7 +105,7 @@ static int build_match_with_foreign_ih(
 	match_case.binders = &case_binder;
 	match_case.binder_count = 1;
 	match_case.body = ih;
-	return prototype_term_match_with_frame(
+	return prototype_term_match_with_ih_scope(
 		db, scrutinee, &match_case, 1, enclosing_frame, p_match
 	);
 }
@@ -116,7 +116,7 @@ static int build_match_with_binder_role(
 	int is_recursive,
 	uint32_t* p_match
 ) {
-	uint32_t binder = prototype_term_fresh_binder(db);
+	uint32_t binder = prototype_term_new_binding(db);
 	uint32_t variable;
 	struct prototype_case_binder case_binder;
 	struct prototype_match_case_input match_case;
@@ -124,7 +124,7 @@ static int build_match_with_binder_role(
 		prototype_term_var(db, binder, &variable) != 0) {
 		return -1;
 	}
-	case_binder.binder_id = binder;
+	case_binder.binding_id = binder;
 	case_binder.is_recursive = is_recursive;
 	match_case.case_label_symbol_id = 3;
 	match_case.constructor_owner = PROTOTYPE_INVALID_ID;
@@ -143,8 +143,8 @@ int main(void) {
 	init_term_db(&left_db, &left_storage);
 	init_term_db(&right_db, &right_storage);
 
-	uint32_t left_binder = prototype_term_fresh_binder(&left_db);
-	uint32_t right_binder = prototype_term_fresh_binder(&left_db);
+	uint32_t left_binder = prototype_term_new_binding(&left_db);
+	uint32_t right_binder = prototype_term_new_binding(&left_db);
 	uint32_t left_var;
 	uint32_t right_var;
 	uint32_t left_lambda;
@@ -173,11 +173,11 @@ int main(void) {
 		left_match != second_left_match) {
 		return 2;
 	}
-	struct prototype_match_frame_key left_frame_key;
-	struct prototype_match_frame_key second_frame_key;
-	if (prototype_term_match_frame_key(
+	struct prototype_ih_scope_key left_frame_key;
+	struct prototype_ih_scope_key second_frame_key;
+	if (prototype_term_ih_scope_key(
 			&left_db, left_frame, &left_frame_key
-		) != 0 || prototype_term_match_frame_key(
+		) != 0 || prototype_term_ih_scope_key(
 			&left_db, second_left_frame, &second_frame_key
 		) != 0 || left_frame_key.match_key.hash != second_frame_key.match_key.hash ||
 		left_frame_key.match_key.node_count != second_frame_key.match_key.node_count ||
@@ -204,7 +204,7 @@ int main(void) {
 		return 9;
 	}
 
-	uint32_t wrapper_binder = prototype_term_fresh_binder(&left_db);
+	uint32_t wrapper_binder = prototype_term_new_binding(&left_db);
 	uint32_t left_wrapper;
 	uint32_t right_wrapper;
 	if (prototype_term_lambda(
@@ -282,7 +282,7 @@ int main(void) {
 	}
 	/* Simulate a canonical-key collision. Link equality must still inspect the
 	 * referenced Match graph and reject the different constructor case. */
-	right_db.match_frames[mismatched_frame].key = left_frame_key;
+	right_db.ih_scopes[mismatched_frame].key = left_frame_key;
 	if (prototype_term_induction_hypothesis(
 			&right_db, mismatched_frame, right_argument, &mismatched_free_ih
 		) != 0 || prototype_term_view_shape_equal_for_link(

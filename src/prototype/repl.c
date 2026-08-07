@@ -86,7 +86,7 @@ static struct prototype_term terms[TERM_CAPACITY];
 static struct prototype_match_case match_cases[MATCH_CASE_CAPACITY];
 static int match_case_label_symbols[MATCH_CASE_CAPACITY];
 static struct prototype_case_binder match_binders[MATCH_BINDER_CAPACITY];
-static struct prototype_match_frame match_frames[MATCH_FRAME_CAPACITY];
+static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_judgement_relation judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
@@ -344,7 +344,7 @@ static void print_type_expr_debug(
 			printf("SELF");
 			break;
 		case PROTOTYPE_TYPE_EXPR_VAR:
-			printf("VAR(%s#%u)", symbol_to_string(symbols, expr->as.var.symbol_id), expr->as.var.binder_id);
+			printf("VAR(%s#%u)", symbol_to_string(symbols, expr->as.var.symbol_id), expr->as.var.binding_id);
 			break;
 		case PROTOTYPE_TYPE_EXPR_NAME:
 			printf("CONST(%s)", symbol_to_string(symbols, expr->as.name.symbol_id));
@@ -369,7 +369,7 @@ static void print_type_expr_debug(
 		case PROTOTYPE_TYPE_EXPR_PI:
 			printf("PI(%s#%u : ",
 				symbol_to_string(symbols, expr->as.pi.symbol_id),
-				expr->as.pi.binder_id);
+				expr->as.pi.binding_id);
 			print_type_expr_debug(symbols, type_declarations, expr->as.pi.domain);
 			printf(", ");
 			print_type_expr_debug(symbols, type_declarations, expr->as.pi.codomain);
@@ -995,7 +995,7 @@ int main(int argc, char** argv) {
 		MATCH_CASE_CAPACITY,
 		match_binders,
 		MATCH_BINDER_CAPACITY,
-		match_frames,
+		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
 		prototype_compile_metadata_init(

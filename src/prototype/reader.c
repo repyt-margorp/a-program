@@ -2519,7 +2519,7 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 		return -1;
 	}
 	succ_field = self_expr;
-	succ_binder = prototype_term_binder_for_scope_slot(program->terms, 0);
+	succ_binder = prototype_term_binding_for_scope_slot(program->terms, 0);
 	if (succ_binder == PROTOTYPE_INVALID_ID ||
 		prototype_context_extend(
 			&program->metadata->contexts,
