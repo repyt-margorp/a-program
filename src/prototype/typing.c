@@ -758,6 +758,465 @@ prototype_judgement_classifier_conversion_with_definitions(
 	);
 }
 
+static int kernel_conversion_profile_is_admitted(int profile) {
+	return profile == PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF ||
+		profile == PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF ||
+		profile == PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF;
+}
+
+int prototype_judgement_kernel_conversion_goal_validate(
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms,
+	const struct prototype_kernel_conversion_goal* goal,
+	int require_carrier
+) {
+	if (!contexts || !terms || !goal ||
+		goal->context_id >= contexts->context_count ||
+		goal->left_term >= terms->term_count ||
+		goal->right_term >= terms->term_count ||
+		!kernel_conversion_profile_is_admitted(goal->normalization_profile) ||
+		(require_carrier && goal->carrier_classifier == PROTOTYPE_INVALID_ID) ||
+		(goal->carrier_classifier != PROTOTYPE_INVALID_ID &&
+		 goal->carrier_classifier >= terms->term_count)) {
+		return -1;
+	}
+	return 0;
+}
+
+int prototype_judgement_kernel_conversion_goal_execute(
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_kernel_conversion_goal* goal,
+	int require_carrier
+) {
+	if (!type_declarations ||
+		prototype_judgement_kernel_conversion_goal_validate(
+			contexts, terms, goal, require_carrier
+		) != 0) {
+		return -1;
+	}
+	return prototype_term_compare_for_conversion(
+		terms,
+		type_declarations,
+		definitions,
+		goal->normalization_profile,
+		goal->left_term,
+		goal->right_term,
+		goal->step_limit,
+		&goal->result
+	);
+}
+
+static int hott_goal_kind_is_valid(int kind) {
+	return kind >= PROTOTYPE_HOTT_GOAL_VALUE_OBSERVATION &&
+		kind <= PROTOTYPE_HOTT_GOAL_TERM_ACTION;
+}
+
+static int hott_goal_state_is_valid(int state) {
+	return state >= PROTOTYPE_HOTT_GOAL_PENDING &&
+		state <= PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+}
+
+static int hott_residual_reason_is_valid(int reason) {
+	return reason >= PROTOTYPE_HOTT_RESIDUAL_NONE &&
+		reason <= PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
+}
+
+static int hott_local_rule_is_valid(int rule) {
+	return rule >= PROTOTYPE_HOTT_LOCAL_RULE_NONE &&
+		rule <= PROTOTYPE_HOTT_LOCAL_RULE_PURE_COMPUTATION;
+}
+
+static int hott_endpoint_substitution_is_valid(
+	const struct prototype_substitution_db* substitutions,
+	uint32_t substitution_id,
+	uint32_t bridge_context,
+	uint32_t endpoint_context
+) {
+	const struct prototype_substitution* substitution =
+		prototype_substitution_get(substitutions, substitution_id);
+	return substitution && substitution->source_context == bridge_context &&
+		substitution->target_context == endpoint_context;
+}
+
+static int hott_goal_record_is_valid(
+	const struct prototype_hott_goal_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms,
+	const struct prototype_hott_goal* goal,
+	uint32_t expected_id
+) {
+	if (!db || !contexts || !substitutions || !terms || !goal ||
+		goal->id != expected_id || !hott_goal_kind_is_valid(goal->kind) ||
+		!hott_goal_state_is_valid(goal->state) ||
+		!hott_residual_reason_is_valid(goal->residual_reason) ||
+		!hott_local_rule_is_valid(goal->local_type_former_rule) ||
+		!kernel_conversion_profile_is_admitted(goal->normalization_profile) ||
+		goal->context_id >= contexts->context_count ||
+		goal->bridge_context_id >= contexts->context_count ||
+		goal->carrier_classifier >= terms->term_count ||
+		goal->left_endpoint >= terms->term_count ||
+		goal->right_endpoint >= terms->term_count ||
+		!hott_endpoint_substitution_is_valid(
+			substitutions,
+			goal->left_endpoint_substitution,
+			goal->bridge_context_id,
+			goal->context_id
+		) || !hott_endpoint_substitution_is_valid(
+			substitutions,
+			goal->right_endpoint_substitution,
+			goal->bridge_context_id,
+			goal->context_id
+		) || (goal->parent_goal_id != PROTOTYPE_INVALID_ID &&
+			goal->parent_goal_id >= expected_id)) {
+		return -1;
+	}
+	if ((goal->state == PROTOTYPE_HOTT_GOAL_RESIDUAL ||
+		 goal->state == PROTOTYPE_HOTT_GOAL_UNSUPPORTED) ==
+		(goal->residual_reason == PROTOTYPE_HOTT_RESIDUAL_NONE)) {
+		return -1;
+	}
+	return 0;
+}
+
+void prototype_hott_goal_db_init(
+	struct prototype_hott_goal_db* db,
+	struct prototype_hott_goal* goals,
+	size_t goal_capacity
+) {
+	if (!db) {
+		return;
+	}
+	memset(db, 0, sizeof(*db));
+	db->goals = goals;
+	db->goal_capacity = goal_capacity;
+}
+
+size_t prototype_hott_goal_db_mark(const struct prototype_hott_goal_db* db) {
+	return db ? db->goal_count : 0;
+}
+
+void prototype_hott_goal_db_rewind(
+	struct prototype_hott_goal_db* db,
+	size_t mark
+) {
+	if (db && mark <= db->goal_count) {
+		db->goal_count = mark;
+	}
+}
+
+const struct prototype_hott_goal* prototype_hott_goal_db_get(
+	const struct prototype_hott_goal_db* db,
+	uint32_t goal_id
+) {
+	return db && goal_id < db->goal_count ? &db->goals[goal_id] : NULL;
+}
+
+int prototype_hott_goal_db_add(
+	struct prototype_hott_goal_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms,
+	struct prototype_hott_goal goal,
+	uint32_t* p_goal_id
+) {
+	if (!db || !db->goals || !p_goal_id || db->goal_count >= db->goal_capacity) {
+		return -1;
+	}
+	goal.id = (uint32_t)db->goal_count;
+	if (hott_goal_record_is_valid(
+			db, contexts, substitutions, terms, &goal, goal.id
+		) != 0) {
+		return -1;
+	}
+	db->goals[db->goal_count++] = goal;
+	*p_goal_id = goal.id;
+	return 0;
+}
+
+int prototype_hott_goal_db_validate(
+	const struct prototype_hott_goal_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms
+) {
+	if (!db || (db->goal_count > 0 && !db->goals) ||
+		db->goal_count > db->goal_capacity) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->goal_count; ++i) {
+		if (hott_goal_record_is_valid(
+				db, contexts, substitutions, terms, &db->goals[i], i
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int term_app_head_tag(
+	const struct prototype_term_db* terms,
+	uint32_t term_id
+) {
+	if (!terms || term_id >= terms->term_count) {
+		return 0;
+	}
+	while (terms->terms[term_id].tag == PROTOTYPE_TERM_APP) {
+		term_id = terms->terms[term_id].as.app.function;
+		if (term_id >= terms->term_count) {
+			return 0;
+		}
+	}
+	return terms->terms[term_id].tag;
+}
+
+int prototype_hott_goal_classify_admission(
+	const struct prototype_term_db* terms,
+	struct prototype_hott_goal* goal
+) {
+	if (!terms || !goal || goal->carrier_classifier >= terms->term_count ||
+		goal->left_endpoint >= terms->term_count ||
+		goal->right_endpoint >= terms->term_count) {
+		return -1;
+	}
+	goal->state = PROTOTYPE_HOTT_GOAL_PENDING;
+	goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
+	if (terms->terms[goal->carrier_classifier].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_TYPE_VIEW;
+		return 0;
+	}
+	if (terms->terms[goal->carrier_classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_UNIVERSE;
+		return 0;
+	}
+	if (goal->kind == PROTOTYPE_HOTT_GOAL_TYPE_ACTION ||
+		goal->kind == PROTOTYPE_HOTT_GOAL_TERM_ACTION) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
+		return 0;
+	}
+	int left_tag = term_app_head_tag(terms, goal->left_endpoint);
+	int right_tag = term_app_head_tag(terms, goal->right_endpoint);
+	if (left_tag == PROTOTYPE_TERM_OPERATION_REQUEST ||
+		right_tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_OPERATION_REQUEST;
+		return 0;
+	}
+	if (left_tag == PROTOTYPE_TERM_COMPUTATION_FOLD ||
+		right_tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_COMPUTATION_FOLD;
+		return 0;
+	}
+	if (left_tag == PROTOTYPE_TERM_PURE_PRIMITIVE ||
+		right_tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE;
+		return 0;
+	}
+	if (goal->kind != PROTOTYPE_HOTT_GOAL_COMPUTATION_OBSERVATION) {
+		return 0;
+	}
+	const struct prototype_term* carrier = &terms->terms[goal->carrier_classifier];
+	if (carrier->tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		return -1;
+	}
+	if (carrier->as.computation_type.result >= terms->term_count) {
+		return -1;
+	}
+	int result_tag = terms->terms[carrier->as.computation_type.result].tag;
+	if (result_tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_TYPE_VIEW;
+		return 0;
+	}
+	if (result_tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_UNIVERSE;
+		return 0;
+	}
+	int purity = prototype_term_effect_row_purity(
+		terms, carrier->as.computation_type.label
+	);
+	if (purity == PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
+		return 0;
+	}
+	goal->state = PROTOTYPE_HOTT_GOAL_RESIDUAL;
+	if (purity == PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL) {
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL;
+		return 0;
+	}
+	if (purity == PROTOTYPE_EFFECT_ROW_PURITY_UNRESOLVED) {
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_EFFECT_ROW_UNRESOLVED;
+		return 0;
+	}
+	return -1;
+}
+
+int prototype_hott_goal_apply_conversion_result(
+	struct prototype_hott_goal* goal,
+	struct prototype_term_conversion_result result
+) {
+	if (!goal || !kernel_conversion_profile_is_admitted(result.profile)) {
+		return -1;
+	}
+	goal->conversion_result = result;
+	switch (result.status) {
+		case PROTOTYPE_TERM_CONVERSION_EQUAL:
+			/* Conversion is a premise. V2-O1 must still construct the witness. */
+			goal->state = PROTOTYPE_HOTT_GOAL_PENDING;
+			goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
+			return 0;
+		case PROTOTYPE_TERM_CONVERSION_NOT_EQUAL:
+			goal->state = PROTOTYPE_HOTT_GOAL_CONTRADICTION;
+			goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
+			return 0;
+		case PROTOTYPE_TERM_CONVERSION_RESIDUAL:
+			goal->state = PROTOTYPE_HOTT_GOAL_RESIDUAL;
+			goal->residual_reason =
+				result.reason == PROTOTYPE_TERM_CONVERSION_REASON_NEUTRAL ?
+				PROTOTYPE_HOTT_RESIDUAL_NEUTRAL_PURE_COMPUTATION :
+				PROTOTYPE_HOTT_RESIDUAL_CONVERSION;
+			return 0;
+		case PROTOTYPE_TERM_CONVERSION_BLOCKED_EFFECT:
+			goal->state = PROTOTYPE_HOTT_GOAL_RESIDUAL;
+			goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL;
+			return 0;
+		case PROTOTYPE_TERM_CONVERSION_EXHAUSTED:
+			goal->state = PROTOTYPE_HOTT_GOAL_RESIDUAL;
+			goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_CONVERSION_EXHAUSTED;
+			return 0;
+		default:
+			return -1;
+	}
+}
+
+void prototype_hott_residual_db_init(
+	struct prototype_hott_residual_db* db,
+	struct prototype_hott_residual_obligation* obligations,
+	size_t obligation_capacity
+) {
+	if (!db) {
+		return;
+	}
+	memset(db, 0, sizeof(*db));
+	db->obligations = obligations;
+	db->obligation_capacity = obligation_capacity;
+}
+
+static int hott_residual_record_is_valid(
+	const struct prototype_hott_residual_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms,
+	const struct prototype_hott_residual_obligation* obligation,
+	uint32_t expected_id
+) {
+	if (!db || !contexts || !substitutions || !terms || !obligation ||
+		obligation->obligation_id != expected_id ||
+		obligation->validation_rule <= PROTOTYPE_HOTT_LOCAL_RULE_NONE ||
+		!hott_local_rule_is_valid(obligation->validation_rule) ||
+		obligation->residual_reason <= PROTOTYPE_HOTT_RESIDUAL_NONE ||
+		!hott_residual_reason_is_valid(obligation->residual_reason) ||
+		!kernel_conversion_profile_is_admitted(
+			obligation->normalization_profile
+		) || obligation->context_id >= contexts->context_count ||
+		obligation->bridge_context_id >= contexts->context_count ||
+		obligation->carrier_classifier >= terms->term_count ||
+		obligation->left_endpoint >= terms->term_count ||
+		obligation->right_endpoint >= terms->term_count ||
+		!hott_endpoint_substitution_is_valid(
+			substitutions,
+			obligation->left_endpoint_substitution,
+			obligation->bridge_context_id,
+			obligation->context_id
+		) || !hott_endpoint_substitution_is_valid(
+			substitutions,
+			obligation->right_endpoint_substitution,
+			obligation->bridge_context_id,
+			obligation->context_id
+		) || (obligation->parent_obligation_id != PROTOTYPE_INVALID_ID &&
+			obligation->parent_obligation_id >= expected_id)) {
+		return -1;
+	}
+	return 0;
+}
+
+int prototype_hott_residual_db_add_from_goal(
+	struct prototype_hott_residual_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms,
+	const struct prototype_hott_goal* goal,
+	uint32_t* p_obligation_id
+) {
+	if (!db || !db->obligations || !goal || !p_obligation_id ||
+		db->obligation_count >= db->obligation_capacity ||
+		(goal->state != PROTOTYPE_HOTT_GOAL_RESIDUAL &&
+		 goal->state != PROTOTYPE_HOTT_GOAL_UNSUPPORTED)) {
+		return -1;
+	}
+	struct prototype_hott_residual_obligation obligation = {
+		.obligation_id = (uint32_t)db->obligation_count,
+		.parent_obligation_id = PROTOTYPE_INVALID_ID,
+		.validation_rule = goal->local_type_former_rule,
+		.context_id = goal->context_id,
+		.carrier_classifier = goal->carrier_classifier,
+		.left_endpoint = goal->left_endpoint,
+		.right_endpoint = goal->right_endpoint,
+		.bridge_context_id = goal->bridge_context_id,
+		.left_endpoint_substitution = goal->left_endpoint_substitution,
+		.right_endpoint_substitution = goal->right_endpoint_substitution,
+		.normalization_profile = goal->normalization_profile,
+		.step_limit = goal->step_limit,
+		.steps_used = goal->conversion_result.steps_used,
+		.residual_reason = goal->residual_reason,
+		.source_ast = goal->source_ast,
+		.calculus_fingerprint_candidate = 0
+	};
+	if (hott_residual_record_is_valid(
+			db, contexts, substitutions, terms, &obligation,
+			obligation.obligation_id
+		) != 0) {
+		return -1;
+	}
+	db->obligations[db->obligation_count++] = obligation;
+	*p_obligation_id = obligation.obligation_id;
+	return 0;
+}
+
+int prototype_hott_residual_db_validate(
+	const struct prototype_hott_residual_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms
+) {
+	if (!db || (db->obligation_count > 0 && !db->obligations) ||
+		db->obligation_count > db->obligation_capacity) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->obligation_count; ++i) {
+		if (hott_residual_record_is_valid(
+				db, contexts, substitutions, terms, &db->obligations[i], i
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+int prototype_hott_residual_db_require_artifact_v62(
+	const struct prototype_hott_residual_db* db
+) {
+	return db && db->obligation_count == 0 ? 0 : -1;
+}
+
 static int classifier_conversion_decision(
 	struct prototype_term_conversion_result conversion,
 	int* p_equal

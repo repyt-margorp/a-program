@@ -13,6 +13,7 @@
 #define PARAMETER_CAPACITY 4
 #define FIELD_TYPE_CAPACITY 4
 #define TYPE_EXPR_CAPACITY 4
+#define CONTEXT_CAPACITY 8
 
 static struct prototype_term terms[TERM_CAPACITY];
 static struct prototype_match_case cases[CASE_CAPACITY];
@@ -26,8 +27,10 @@ static struct prototype_type_parameter_declaration
 	parameter_declarations[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
+static struct prototype_context contexts[CONTEXT_CAPACITY];
 
 static int expect_status(
+	struct prototype_context_db* context_db,
 	struct prototype_term_db* terms_db,
 	struct prototype_type_declaration_db* type_db,
 	uint32_t left,
@@ -36,34 +39,43 @@ static int expect_status(
 	int expected_status,
 	int expected_reason
 ) {
-	struct prototype_term_conversion_result result;
-	if (prototype_term_compare_for_conversion(
+	struct prototype_kernel_conversion_goal goal = {
+		.id = 0,
+		.context_id = prototype_context_empty(context_db),
+		.carrier_classifier = PROTOTYPE_INVALID_ID,
+		.left_term = left,
+		.right_term = right,
+		.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		.step_limit = step_limit
+	};
+	if (prototype_judgement_kernel_conversion_goal_execute(
+			context_db,
 			terms_db,
 			type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-			left,
-			right,
-			step_limit,
-			&result
-		) != 0 || result.status != expected_status) {
+			&goal,
+			0
+		) != 0 || goal.result.status != expected_status) {
 		return -1;
 	}
 	if (expected_reason != PROTOTYPE_TERM_CONVERSION_REASON_NONE &&
-		result.reason != expected_reason) {
+		goal.result.reason != expected_reason) {
 		return -1;
 	}
-	if (result.left != left || result.right != right ||
-		result.step_limit != step_limit ||
-		result.graph_revision != terms_db->normalization_graph_revision) {
+	if (goal.result.left != left || goal.result.right != right ||
+		goal.result.step_limit != step_limit ||
+		goal.result.profile != goal.normalization_profile ||
+		goal.result.graph_revision != terms_db->normalization_graph_revision) {
 		return -1;
 	}
 	return 0;
 }
 
 int main(void) {
+	struct prototype_context_db context_db;
 	struct prototype_term_db term_db;
 	struct prototype_type_declaration_db type_db;
+	prototype_context_db_init(&context_db, contexts, CONTEXT_CAPACITY);
 	prototype_term_db_init(
 		&term_db,
 		terms,
@@ -97,6 +109,7 @@ int main(void) {
 		return 1;
 	}
 	if (expect_status(
+			&context_db,
 			&term_db,
 			&type_db,
 			universe_u,
@@ -108,6 +121,7 @@ int main(void) {
 		return 2;
 	}
 	if (expect_status(
+			&context_db,
 			&term_db,
 			&type_db,
 			universe_u,
@@ -130,6 +144,7 @@ int main(void) {
 		return 4;
 	}
 	if (expect_status(
+			&context_db,
 			&term_db,
 			&type_db,
 			beta_redex,
@@ -143,6 +158,7 @@ int main(void) {
 
 	prototype_term_normalization_cache_clear(&term_db);
 	if (expect_status(
+			&context_db,
 			&term_db,
 			&type_db,
 			beta_redex,
@@ -165,6 +181,7 @@ int main(void) {
 	}
 	prototype_term_normalization_cache_clear(&term_db);
 	if (expect_status(
+			&context_db,
 			&term_db,
 			&type_db,
 			pi_with_redex,
@@ -205,6 +222,7 @@ int main(void) {
 	}
 	prototype_term_normalization_cache_clear(&term_db);
 	if (expect_status(
+			&context_db,
 			&term_db,
 			&type_db,
 			request,
@@ -237,6 +255,33 @@ int main(void) {
 		);
 	if (universe_result.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
 		return 12;
+	}
+
+	struct prototype_kernel_conversion_goal malformed_goal = {
+		.context_id = context_db.context_count,
+		.carrier_classifier = PROTOTYPE_INVALID_ID,
+		.left_term = universe_u,
+		.right_term = universe_u,
+		.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		.step_limit = 1
+	};
+	if (prototype_judgement_kernel_conversion_goal_validate(
+			&context_db, &term_db, &malformed_goal, 0
+		) == 0) {
+		return 13;
+	}
+	malformed_goal.context_id = prototype_context_empty(&context_db);
+	if (prototype_judgement_kernel_conversion_goal_validate(
+			&context_db, &term_db, &malformed_goal, 1
+		) == 0) {
+		return 14;
+	}
+	malformed_goal.carrier_classifier = universe_u;
+	malformed_goal.normalization_profile = 0;
+	if (prototype_judgement_kernel_conversion_goal_validate(
+			&context_db, &term_db, &malformed_goal, 1
+		) == 0) {
+		return 15;
 	}
 	return 0;
 }

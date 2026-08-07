@@ -706,6 +706,186 @@ prototype_judgement_classifier_conversion_with_definitions(
 	uint32_t actual
 );
 
+/* A conversion goal records the complete deterministic kernel request. It is
+ * compiler evidence only: executing it never creates an object-level equality
+ * witness or a JudgementDB relation. */
+struct prototype_kernel_conversion_goal {
+	uint32_t id;
+	uint32_t context_id;
+	uint32_t carrier_classifier;
+	uint32_t left_term;
+	uint32_t right_term;
+	int normalization_profile;
+	uint64_t step_limit;
+	struct prototype_term_conversion_result result;
+};
+
+int prototype_judgement_kernel_conversion_goal_validate(
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms,
+	const struct prototype_kernel_conversion_goal* goal,
+	int require_carrier
+);
+
+int prototype_judgement_kernel_conversion_goal_execute(
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_kernel_conversion_goal* goal,
+	int require_carrier
+);
+
+enum prototype_hott_goal_kind {
+	PROTOTYPE_HOTT_GOAL_VALUE_OBSERVATION = 1,
+	PROTOTYPE_HOTT_GOAL_COMPUTATION_OBSERVATION,
+	PROTOTYPE_HOTT_GOAL_TYPE_ACTION,
+	PROTOTYPE_HOTT_GOAL_TERM_ACTION
+};
+
+enum prototype_hott_goal_state {
+	PROTOTYPE_HOTT_GOAL_PENDING = 1,
+	PROTOTYPE_HOTT_GOAL_SOLVED,
+	PROTOTYPE_HOTT_GOAL_RESIDUAL,
+	PROTOTYPE_HOTT_GOAL_CONTRADICTION,
+	PROTOTYPE_HOTT_GOAL_UNSUPPORTED
+};
+
+enum prototype_hott_residual_reason {
+	PROTOTYPE_HOTT_RESIDUAL_NONE = 0,
+	PROTOTYPE_HOTT_RESIDUAL_CONVERSION,
+	PROTOTYPE_HOTT_RESIDUAL_CONVERSION_EXHAUSTED,
+	PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL,
+	PROTOTYPE_HOTT_RESIDUAL_EFFECT_ROW_UNRESOLVED,
+	PROTOTYPE_HOTT_RESIDUAL_NEUTRAL_PURE_COMPUTATION,
+	PROTOTYPE_HOTT_RESIDUAL_OPERATION_REQUEST,
+	PROTOTYPE_HOTT_RESIDUAL_COMPUTATION_FOLD,
+	PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE,
+	PROTOTYPE_HOTT_RESIDUAL_TYPE_VIEW,
+	PROTOTYPE_HOTT_RESIDUAL_UNIVERSE,
+	PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE
+};
+
+enum prototype_hott_local_rule {
+	PROTOTYPE_HOTT_LOCAL_RULE_NONE = 0,
+	PROTOTYPE_HOTT_LOCAL_RULE_OBSERVATION_DIAGONAL,
+	PROTOTYPE_HOTT_LOCAL_RULE_OBSERVATION_CONVERT,
+	PROTOTYPE_HOTT_LOCAL_RULE_PI,
+	PROTOTYPE_HOTT_LOCAL_RULE_ADT,
+	PROTOTYPE_HOTT_LOCAL_RULE_PURE_COMPUTATION
+};
+
+struct prototype_hott_goal {
+	uint32_t id;
+	int kind;
+	int state;
+	int residual_reason;
+	uint32_t source_ast;
+	uint32_t context_id;
+	uint32_t carrier_classifier;
+	uint32_t left_endpoint;
+	uint32_t right_endpoint;
+	uint32_t bridge_context_id;
+	uint32_t left_endpoint_substitution;
+	uint32_t right_endpoint_substitution;
+	uint32_t parent_goal_id;
+	int local_type_former_rule;
+	int normalization_profile;
+	uint64_t step_limit;
+	struct prototype_term_conversion_result conversion_result;
+};
+
+struct prototype_hott_goal_db {
+	struct prototype_hott_goal* goals;
+	size_t goal_count;
+	size_t goal_capacity;
+};
+
+void prototype_hott_goal_db_init(
+	struct prototype_hott_goal_db* db,
+	struct prototype_hott_goal* goals,
+	size_t goal_capacity
+);
+size_t prototype_hott_goal_db_mark(const struct prototype_hott_goal_db* db);
+void prototype_hott_goal_db_rewind(
+	struct prototype_hott_goal_db* db,
+	size_t mark
+);
+const struct prototype_hott_goal* prototype_hott_goal_db_get(
+	const struct prototype_hott_goal_db* db,
+	uint32_t goal_id
+);
+int prototype_hott_goal_db_add(
+	struct prototype_hott_goal_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms,
+	struct prototype_hott_goal goal,
+	uint32_t* p_goal_id
+);
+int prototype_hott_goal_db_validate(
+	const struct prototype_hott_goal_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms
+);
+int prototype_hott_goal_classify_admission(
+	const struct prototype_term_db* terms,
+	struct prototype_hott_goal* goal
+);
+int prototype_hott_goal_apply_conversion_result(
+	struct prototype_hott_goal* goal,
+	struct prototype_term_conversion_result result
+);
+
+struct prototype_hott_residual_obligation {
+	uint32_t obligation_id;
+	uint32_t parent_obligation_id;
+	int validation_rule;
+	uint32_t context_id;
+	uint32_t carrier_classifier;
+	uint32_t left_endpoint;
+	uint32_t right_endpoint;
+	uint32_t bridge_context_id;
+	uint32_t left_endpoint_substitution;
+	uint32_t right_endpoint_substitution;
+	int normalization_profile;
+	uint64_t step_limit;
+	uint64_t steps_used;
+	int residual_reason;
+	uint32_t source_ast;
+	uint64_t calculus_fingerprint_candidate;
+};
+
+struct prototype_hott_residual_db {
+	struct prototype_hott_residual_obligation* obligations;
+	size_t obligation_count;
+	size_t obligation_capacity;
+};
+
+void prototype_hott_residual_db_init(
+	struct prototype_hott_residual_db* db,
+	struct prototype_hott_residual_obligation* obligations,
+	size_t obligation_capacity
+);
+int prototype_hott_residual_db_add_from_goal(
+	struct prototype_hott_residual_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms,
+	const struct prototype_hott_goal* goal,
+	uint32_t* p_obligation_id
+);
+int prototype_hott_residual_db_validate(
+	const struct prototype_hott_residual_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_term_db* terms
+);
+int prototype_hott_residual_db_require_artifact_v62(
+	const struct prototype_hott_residual_db* db
+);
+
 /* Normalize a classifier expression at the pure type profile and expose the
  * value type returned by a type-family computation. */
 int prototype_judgement_classifier_value_whnf(

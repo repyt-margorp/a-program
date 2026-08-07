@@ -1180,7 +1180,7 @@ At commit `474867e`:
 | V2-T2 | Freeze dependent CBPV boundary without duplicated graph syntax | complete | none | F/U reindex laws, purity trichotomy, and law tests pass |
 | V2-C2 | Replace fresh-binder reindexing with direct binding-object graph action | complete | no schema change | simultaneous/capture/IH laws, depth-513 context, all 14 tests, examples 01-07/09, old/new v61 readback, and deterministic output pass |
 | V2-B1 | Replace positional binder-assumption proof identity with direct binding-object identity | complete | v61 slot is reserved; physical removal is deferred to V2-P1/v62 | exact-binding validator, binding-aware context identity, relocation, forged-proof, artifact, all 14 test scripts, and examples 01-07/09 pass |
-| V2-S1 | Extend solver constraints with typed HOTT indices | pending | v62 if residualized | replayable typed goal tests |
+| V2-S1 | Extend solver constraints with typed HOTT indices | complete | v61 unchanged; residual serialization deferred to v62 | tagged classifier goals, deterministic conversion goals, Context/substitution-indexed HOTT goals, purity/residual tests, all 15 scripts, and byte-stable artifacts pass |
 | V2-P1 | Replace monolithic proof payload with tagged records and premise arena | pending | breaking | validator and relocation tests |
 | V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-S1/P1 | breaking | substitution/naturality tests |
 | V2-A1 | Perform one coordinated artifact v62 migration | blocked by V2-P1/O1 | breaking | v61 rejection and v62 link matrix |
@@ -1204,16 +1204,18 @@ At commit `474867e`:
 
 ### 23.4 Next implementation checkpoint
 
-V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, V2-C2, and V2-B1 are complete. The next
-checkpoint is V2-S1: extend solver constraints with the typed indices required
-by the frozen HOTT fragment. Proof and Context binding identity is now uniform:
+V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, V2-C2, V2-B1, and V2-S1 are complete. The
+next checkpoint is V2-P1: replace the monolithic proof payload with tagged
+records and a premise arena. Proof and Context binding identity is now uniform:
 a binder assumption is selected by the binding object in its conclusion
 `VAR(binding_id)`, never by lexical depth. Equality syntax and object TermDB
 tags remain deferred to V2-O1, and
 the physical v62 proof-schema migration remains deferred until V2-P1/O1
 determine its complete schema. The V2-B1 implementation and progress plan is in
 `doc/2026-08-07T04-00-00-PROOF-BINDING-IDENTITY-V2-B1-PLAN.md`. The completed
-V2-C2 implementation and evidence record is in
+V2-S1 implementation and evidence record is in
+`doc/2026-08-07T05-00-00-TYPED-HOTT-GOALS-V2-S1-IMPLEMENTATION-PLAN.md`.
+The completed V2-C2 implementation and evidence record is in
 `doc/2026-08-07T03-00-00-BINDING-OBJECT-DIRECT-REINDEX-V2-C2-PLAN.md`. The
 completed T1/T2 plan is in
 `doc/2026-08-07T01-00-00-SHARED-TERM-HOTT-DCBPV-V2-T1-T2-PLAN.md`; the
