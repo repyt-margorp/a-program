@@ -81,6 +81,12 @@ int prototype_context_contains_binding(
 	uint32_t context_id,
 	uint32_t binding_id
 );
+int prototype_context_find_binding(
+	const struct prototype_context_db* db,
+	uint32_t context_id,
+	uint32_t binding_id,
+	uint32_t* p_entry_context_id
+);
 int prototype_context_db_validate(
 	const struct prototype_context_db* db,
 	const struct prototype_term_db* terms

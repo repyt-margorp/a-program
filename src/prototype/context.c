@@ -57,7 +57,10 @@ int prototype_context_extend(
 			context->classifier == classifier :
 			context->classifier == PROTOTYPE_INVALID_ID &&
 				context->classifier_variable == classifier_variable;
-		if (context->parent == parent && same_extension) {
+		/* Binding objects are graph identity.  Equal classifiers do not make two
+		 * independently allocated context extensions interchangeable. */
+		if (context->parent == parent && context->binding_id == binding_id &&
+			same_extension) {
 			*p_context = i;
 			return 0;
 		}
@@ -80,18 +83,34 @@ int prototype_context_contains_binding(
 	uint32_t context_id,
 	uint32_t binding_id
 ) {
+	uint32_t entry_context_id;
+	return prototype_context_find_binding(
+		db, context_id, binding_id, &entry_context_id
+	) == 0;
+}
+
+int prototype_context_find_binding(
+	const struct prototype_context_db* db,
+	uint32_t context_id,
+	uint32_t binding_id,
+	uint32_t* p_entry_context_id
+) {
 	if (!db || context_id >= db->context_count ||
-		binding_id == PROTOTYPE_INVALID_ID) {
-		return 0;
+		binding_id == PROTOTYPE_INVALID_ID || !p_entry_context_id) {
+		return -1;
 	}
 	while (context_id != 0) {
 		const struct prototype_context* context = &db->contexts[context_id];
 		if (context->binding_id == binding_id) {
-			return 1;
+			*p_entry_context_id = context_id;
+			return 0;
+		}
+		if (context->parent >= context_id) {
+			return -1;
 		}
 		context_id = context->parent;
 	}
-	return 0;
+	return 1;
 }
 
 int prototype_context_db_validate(

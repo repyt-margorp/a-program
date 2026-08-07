@@ -121,6 +121,7 @@ PROOF_KIND_IS_TYPE_FROM_HAS_TYPE=$(c_enum_value prototype_judgement_proof_kind P
 PROOF_KIND_DECLARATION=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_DECLARATION)
 PROOF_KIND_UNIVERSE_CUMULATIVITY=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_UNIVERSE_CUMULATIVITY)
 PROOF_KIND_PI_FORMATION_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO)
+TERM_TAG_VAR=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_VAR)
 TERM_TAG_CONSTRUCTOR=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_CONSTRUCTOR)
 TERM_TAG_PI=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_PI)
 TERM_TAG_TEXT_LITERAL=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_TEXT_LITERAL)
@@ -813,21 +814,28 @@ awk '
 	}
 	{ print }
 ' binder_assumption_proof_kind="$PROOF_KIND_BINDER_ASSUMPTION" \
-	"$TMP_DIR/identity.apo" >"$TMP_DIR/BadBinderContext.apo"
-if ./read_file.out --read-graph "$TMP_DIR/BadBinderContext.apo" >"$TMP_DIR/bad-binder-context.out" 2>"$TMP_DIR/bad-binder-context.err"; then
-	echo "bad binder context artifact unexpectedly passed" >&2
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/BadLegacyAssumptionLevel.apo"
+if ./read_file.out --read-graph "$TMP_DIR/BadLegacyAssumptionLevel.apo" >"$TMP_DIR/bad-legacy-assumption-level.out" 2>"$TMP_DIR/bad-legacy-assumption-level.err"; then
+	echo "nonempty legacy assumption level unexpectedly passed" >&2
 	exit 1
 fi
 awk '
-	$1 == "proof" && $3 == binder_assumption_proof_kind && !done {
-		$7 = 4294967295;
+	FNR == NR {
+		if ($1 == "judgement" && $6 == binder_assumption_proof_kind && !binder_subject) {
+			binder_subject = $4;
+		}
+		next;
+	}
+	$1 == "term_node" && $2 == binder_subject && $3 == var_tag && !done {
+		$4 = 999;
 		done = 1;
 	}
 	{ print }
 ' binder_assumption_proof_kind="$PROOF_KIND_BINDER_ASSUMPTION" \
-	"$TMP_DIR/identity.apo" >"$TMP_DIR/MissingBinderContext.apo"
-if ./read_file.out --read-graph "$TMP_DIR/MissingBinderContext.apo" >"$TMP_DIR/missing-binder-context.out" 2>"$TMP_DIR/missing-binder-context.err"; then
-	echo "missing binder context artifact unexpectedly passed" >&2
+	var_tag="$TERM_TAG_VAR" \
+	"$TMP_DIR/identity.apo" "$TMP_DIR/identity.apo" >"$TMP_DIR/BadBinderIdentity.apo"
+if ./read_file.out --read-graph "$TMP_DIR/BadBinderIdentity.apo" >"$TMP_DIR/bad-binder-identity.out" 2>"$TMP_DIR/bad-binder-identity.err"; then
+	echo "bad binder identity artifact unexpectedly passed" >&2
 	exit 1
 fi
 awk '

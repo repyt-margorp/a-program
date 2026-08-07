@@ -1179,6 +1179,7 @@ At commit `474867e`:
 | V2-T1 | Freeze finite typed HOTT fragment over the shared TermDB | complete | none | frozen normative calculus and first-fragment matrix |
 | V2-T2 | Freeze dependent CBPV boundary without duplicated graph syntax | complete | none | F/U reindex laws, purity trichotomy, and law tests pass |
 | V2-C2 | Replace fresh-binder reindexing with direct binding-object graph action | complete | no schema change | simultaneous/capture/IH laws, depth-513 context, all 14 tests, examples 01-07/09, old/new v61 readback, and deterministic output pass |
+| V2-B1 | Replace positional binder-assumption proof identity with direct binding-object identity | complete | v61 slot is reserved; physical removal is deferred to V2-P1/v62 | exact-binding validator, binding-aware context identity, relocation, forged-proof, artifact, all 14 test scripts, and examples 01-07/09 pass |
 | V2-S1 | Extend solver constraints with typed HOTT indices | pending | v62 if residualized | replayable typed goal tests |
 | V2-P1 | Replace monolithic proof payload with tagged records and premise arena | pending | breaking | validator and relocation tests |
 | V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-S1/P1 | breaking | substitution/naturality tests |
@@ -1203,12 +1204,16 @@ At commit `474867e`:
 
 ### 23.4 Next implementation checkpoint
 
-V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, and V2-C2 are complete. The next checkpoint
-is V2-S1: split classifier unification, kernel conversion, HOTT construction,
-and persistent residual obligations into the typed records frozen by the
-normative calculus. Equality syntax and object TermDB tags remain deferred to
-V2-O1, and artifact v62 remains deferred until V2-P1/O1 determine its complete
-schema. The completed V2-C2 implementation and evidence record is in
+V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, V2-C2, and V2-B1 are complete. The next
+checkpoint is V2-S1: extend solver constraints with the typed indices required
+by the frozen HOTT fragment. Proof and Context binding identity is now uniform:
+a binder assumption is selected by the binding object in its conclusion
+`VAR(binding_id)`, never by lexical depth. Equality syntax and object TermDB
+tags remain deferred to V2-O1, and
+the physical v62 proof-schema migration remains deferred until V2-P1/O1
+determine its complete schema. The V2-B1 implementation and progress plan is in
+`doc/2026-08-07T04-00-00-PROOF-BINDING-IDENTITY-V2-B1-PLAN.md`. The completed
+V2-C2 implementation and evidence record is in
 `doc/2026-08-07T03-00-00-BINDING-OBJECT-DIRECT-REINDEX-V2-C2-PLAN.md`. The
 completed T1/T2 plan is in
 `doc/2026-08-07T01-00-00-SHARED-TERM-HOTT-DCBPV-V2-T1-T2-PLAN.md`; the
@@ -1281,7 +1286,7 @@ naturality. V2-S1 does not inherit the former fresh-renaming mechanism in its
 typed goal records. V2-C2 was therefore completed before V2-S1:
 
 ```text
-V2-C2 -> V2-S1 -> V2-P1 -> V2-O1 -> V2-A1
+V2-C2 -> V2-B1 -> V2-S1 -> V2-P1 -> V2-O1 -> V2-A1
 ```
 
 V2-C2 changes no artifact schema and adds no HOTT object term. Its complete
@@ -1303,3 +1308,115 @@ deterministic artifact output, and `git diff --check`. On
 `09_list_induction.p`, transient TermDB slots fell from 1317 to 122 while the
 artifact retained the same 99 present terms and one recursive scope. Detailed
 numeric and test evidence is recorded in the V2-C2 plan.
+
+## 25. 2026-08-07 Proof Binding-Identity Correction
+
+### 25.1 Problem statement
+
+V2-C2 made ordinary TermDB reindexing act directly on opaque `binding_id`
+handles. Context entries also store `binding_id`, and a variable conclusion is
+already represented by `VAR(binding_id)`. Binder-assumption proofs nevertheless
+retain `assumption_index`, documented and validated as a De Bruijn level in the
+conclusion Context.
+
+The same binder is therefore identified in two incompatible ways:
+
+```text
+TermDB / ContextDB: binding object edge
+Judgement proof:    lexical depth
+```
+
+This positional proof identity must not become part of the typed HOTT goal or
+bridge-context contract. Reindexing a Context can preserve the binding graph
+while changing arena placement or depth, and higher endpoint substitutions must
+refer to the selected binding object rather than rediscover it by position.
+
+### 25.2 Binding authority
+
+The authoritative binder for a binder-assumption conclusion is the direct edge
+already present in the conclusion subject:
+
+```text
+relation.subject = VAR(binding_id)
+```
+
+V2-B1 must not replace `assumption_index` with a second, independently writable
+`assumption_binding_id` field. That would duplicate identity between the
+conclusion subject and the proof payload. The validator must extract the
+binding handle from the conclusion `VAR`, prove that the conclusion Context
+contains that exact handle, locate the corresponding Context entry, and compare
+that entry's classifier with the conclusion classifier under kernel conversion.
+
+Context extension interning remains permitted only for an extension with the
+same parent Context, the same binding object, and the same classifier state.
+Two extensions with alpha-equal or convertible classifiers but different
+binding objects are distinct Context objects. This is required because a
+Context is not merely a classifier telescope: it is also the scope that owns
+the exact binding edges referenced by terms and proofs.
+
+### 25.3 Proof and artifact transition
+
+During V2-B1, `assumption_index` becomes a reserved legacy slot and must be
+`PROTOTYPE_INVALID_ID` in every newly created or accepted in-memory proof.
+Artifact v61 keeps the numeric slot only to avoid an isolated schema migration
+immediately before V2-P1. Readers must not use the slot to reconstruct binder
+identity. The slot is removed physically when V2-P1 introduces tagged proof
+payloads and artifact v62.
+
+This is not backward-compatibility logic for positional proofs. A v61 proof is
+accepted only when its relation conclusion and Context graph independently
+establish the exact binding-object assumption; the positional value supplies no
+authority.
+
+### 25.4 Required implementation work
+
+V2-B1 must:
+
+1. replace every binder-assumption constructor assignment of
+   `context->depth - 1` with the direct conclusion-binding invariant;
+2. rewrite `validate_assumption_proof` to use the relation's `VAR(binding_id)`
+   and exact Context membership;
+3. remove positional checks from compiler-local assumption lookup;
+4. ensure Context relocation and artifact append preserve/relocate binding
+   handles independently of Context depth;
+5. make proof parameter validation require the legacy slot to be invalid for
+   every rule;
+6. add forged-proof tests where the depth and classifier match but the binding
+   object does not;
+7. retain `HAS_TYPE` and `IS_TYPE` as the only Judgement conclusion forms.
+
+V2-B1 does not add object equality, a HOTT witness tag, De Bruijn indices, a
+second BindingDB, or separate Value/Computation graph syntax.
+
+### 25.5 Ordering consequence
+
+V2-S1 typed goals will store Context and endpoint substitutions. They must be
+created only after binder-assumption evidence has the same direct graph identity
+as TermDB, ContextDB, and SubstitutionDB. V2-P1 then removes the reserved slot
+while moving rule data into tagged payloads. The mandatory order is:
+
+```text
+V2-C2 -> V2-B1 -> V2-S1 -> V2-P1 -> V2-O1
+```
+
+### 25.6 Completion evidence
+
+V2-B1 is complete. The implementation:
+
+1. derives binder-assumption identity solely from the conclusion
+   `VAR(binding_id)`;
+2. validates exact membership and retrieves the introducing Context through
+   `prototype_context_find_binding`;
+3. keeps distinct binding objects distinct during Context interning;
+4. uses source-occurrence binders for Lambda-introduction premises while
+   checking alpha shape only at the explicit typed-occurrence/erased-TermDB
+   boundary;
+5. writes the artifact v61 positional slot as invalid and rejects any artifact
+   that attempts to give it authority;
+6. preserves relocated binding identity across artifact append.
+
+The final verification passed a warning-free clean build, all 14
+`src/prototype/test_*.sh` scripts, examples 01-07 and 09, artifact readback and
+append tests, forged-binding rejection, and `git diff --check`. The detailed
+implementation record is
+`doc/2026-08-07T04-00-00-PROOF-BINDING-IDENTITY-V2-B1-PLAN.md`.

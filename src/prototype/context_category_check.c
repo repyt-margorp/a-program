@@ -24,6 +24,7 @@ int main(void) {
 	uint32_t text_type;
 	uint32_t int_context;
 	uint32_t same_int_context;
+	uint32_t repeated_int_context;
 	uint32_t text_context;
 	uint32_t nested_context;
 	uint32_t dependent_context;
@@ -65,6 +66,7 @@ int main(void) {
 	uint32_t text_operation;
 	uint32_t effect_operation;
 	uint32_t effect_application;
+	uint32_t found_context;
 
 	prototype_term_db_init(
 		&term_db,
@@ -104,6 +106,9 @@ int main(void) {
 			&contexts, 0, 99, int_type, PROTOTYPE_INVALID_ID, &same_int_context
 		) != 0 ||
 		prototype_context_extend(
+			&contexts, 0, 0, int_type, PROTOTYPE_INVALID_ID, &repeated_int_context
+		) != 0 ||
+		prototype_context_extend(
 			&contexts, 0, 0, text_type, PROTOTYPE_INVALID_ID, &text_context
 		) != 0 ||
 		prototype_context_extend(
@@ -133,13 +138,20 @@ int main(void) {
 		return 1;
 	}
 	if (prototype_context_empty(&contexts) != 0 ||
-		int_context != same_int_context ||
-		prototype_context_get(&contexts, same_int_context)->binding_id != 0 ||
+		int_context == same_int_context ||
+		int_context != repeated_int_context ||
+		prototype_context_get(&contexts, same_int_context)->binding_id != 99 ||
 		int_context == text_context ||
 		unresolved_left == unresolved_right ||
 		!prototype_context_contains_binding(&contexts, nested_context, 0) ||
 		!prototype_context_contains_binding(&contexts, nested_context, 1) ||
 		prototype_context_contains_binding(&contexts, text_context, 1) ||
+		prototype_context_find_binding(&contexts, nested_context, 0, &found_context) != 0 ||
+		found_context != int_context ||
+		prototype_context_find_binding(&contexts, nested_context, 1, &found_context) != 0 ||
+		found_context != nested_context ||
+		prototype_context_find_binding(&contexts, nested_context, 99, &found_context) != 1 ||
+		prototype_context_find_binding(&contexts, 0, 0, &found_context) != 1 ||
 		prototype_context_get(&contexts, nested_context)->depth != 2 ||
 		prototype_context_db_validate(&contexts, &term_db) != 0) {
 		fprintf(stderr, "categorical context law failed\n");

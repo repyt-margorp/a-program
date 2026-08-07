@@ -58,8 +58,8 @@ struct prototype_judgement_proof {
 	uint32_t conclusion_context_id;
 	uint32_t conclusion_subject;
 	uint32_t conclusion_classifier;
-	/* De Bruijn level of a binder assumption in conclusion_context_id. */
-	uint32_t assumption_index;
+	/* Reserved v61 field. Binding identity is the conclusion VAR edge. */
+	uint32_t reserved_legacy_assumption_level;
 	/* Rule parameters for Match-pattern assumptions. The Match core erases
 	 * owner views, so the derivation retains the selected declaration. */
 	uint32_t constructor_owner_view;
@@ -337,6 +337,8 @@ int prototype_judgement_delta_record_lambda_intro(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
+	uint32_t binder_subject,
+	uint32_t body_subject,
 	uint32_t binder_classifier,
 	uint32_t body_classifier,
 	uint32_t premise_context_id

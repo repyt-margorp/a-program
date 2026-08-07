@@ -4585,7 +4585,7 @@ static int write_artifact_graph_section(
 			proof->conclusion_kind,
 			proof->conclusion_subject,
 			proof->conclusion_classifier,
-			proof->assumption_index,
+			PROTOTYPE_INVALID_ID,
 			proof->constructor_owner_view,
 			proof->constructor_index,
 			proof->constructor_field_index,
@@ -8688,7 +8688,7 @@ int prototype_artifact_read_text_graph(
 				&proof->conclusion_kind,
 				&proof->conclusion_subject,
 				&proof->conclusion_classifier,
-				&proof->assumption_index,
+				&proof->reserved_legacy_assumption_level,
 				&proof->constructor_owner_view,
 				&proof->constructor_index,
 				&proof->constructor_field_index,
@@ -18600,15 +18600,13 @@ static int compile_continue_runtime_computation(
 			continuation->source_binder_symbol_id : -1;
 	if (continuation->has_source_binder &&
 		continuation->source_binder_classifier != PROTOTYPE_INVALID_ID) {
-		uint32_t canonical_binder_id =
-			ctx->terms->terms[lambda_term].as.lambda.binding_id;
-		uint32_t canonical_binder_var;
+		uint32_t binder_var;
 		if (prototype_term_var(
-				ctx->terms, canonical_binder_id, &canonical_binder_var
+				ctx->terms, binding_id, &binder_var
 			) != 0 || queue_binder_assumption(
 				ctx,
 				ctx->metadata->operations[body.operation].context_id,
-				canonical_binder_var,
+				binder_var,
 				continuation->source_binder_classifier,
 				lambda.operation
 			) != 0) {
@@ -19184,9 +19182,8 @@ static int compile_ast_lambda_computation_ref(
 			lambda_operation_node->implicit_effect_row_count++
 		] = row_binder;
 	}
-	uint32_t canonical_binder_id = ctx->terms->terms[lambda_term].as.lambda.binding_id;
 	uint32_t binder_var;
-	if (prototype_term_var(ctx->terms, canonical_binder_id, &binder_var) != 0 ||
+	if (prototype_term_var(ctx->terms, binding_id, &binder_var) != 0 ||
 		queue_binder_assumption(
 			ctx,
 			ctx->metadata->operations[body.operation].context_id,
@@ -23549,11 +23546,17 @@ static int operation_solver_propagate_clause_computation_fold_input(
 			if (lambda_operation->body >= ctx->metadata->operation_count) {
 				continue;
 			}
+			const struct prototype_operation_node* lambda_body_operation =
+				&ctx->metadata->operations[lambda_operation->body];
+			const struct prototype_context* lambda_binder_context =
+				prototype_context_get(
+					&ctx->metadata->contexts, lambda_body_operation->context_id
+				);
 			uint32_t binder_var;
-			if (prototype_term_var(
-					ctx->terms,
-					ctx->terms->terms[lambda_term].as.lambda.binding_id,
-					&binder_var
+			if (!lambda_binder_context ||
+				lambda_binder_context->parent != lambda_operation->context_id ||
+				prototype_term_var(
+					ctx->terms, lambda_binder_context->binding_id, &binder_var
 				) != 0) {
 				continue;
 			}
@@ -23562,25 +23565,30 @@ static int operation_solver_propagate_clause_computation_fold_input(
 				++relation_id) {
 				const struct prototype_judgement_relation* relation =
 					&ctx->judgement_delta.relations[relation_id];
-				const struct prototype_context* context =
-					prototype_context_get(
-						&ctx->metadata->contexts, relation->context_id
-					);
-				const struct prototype_context* argument_context =
-					context ? prototype_context_get(
-						&ctx->metadata->contexts, context->parent
-					) : NULL;
+				uint32_t assumption_context_id;
 				if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 					relation->subject != binder_var ||
 					relation->proof_kind !=
 						PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION ||
 					relation->proof_id >= ctx->judgement_delta.proof_count ||
-					!context || context->depth < 2 ||
-					!argument_context ||
+					prototype_context_find_binding(
+						&ctx->metadata->contexts,
+						relation->context_id,
+						ctx->terms->terms[relation->subject].as.var.binding_id,
+						&assumption_context_id
+					) != 0) {
+					continue;
+				}
+				const struct prototype_context* assumption_context =
+					prototype_context_get(
+						&ctx->metadata->contexts, assumption_context_id
+					);
+				const struct prototype_context* argument_context = assumption_context ?
+					prototype_context_get(
+						&ctx->metadata->contexts, assumption_context->parent
+					) : NULL;
+				if (!argument_context ||
 					argument_context->classifier == PROTOTYPE_INVALID_ID ||
-					ctx->judgement_delta.proofs[
-						relation->proof_id
-					].assumption_index != context->depth - 1 ||
 					!(prototype_judgement_classifier_conversion(
 						ctx->terms,
 						ctx->type_declarations,
@@ -25617,14 +25625,19 @@ static int operation_solver_reify_core_proof(
 				return 1;
 			}
 			int status = operation_solver_reify_core_proof(
-				ctx, operation->body, term->as.lambda.body, depth + 1
+				ctx, operation->body, body->core_term, depth + 1
 			);
 			if (status != 0) {
 				return status;
 			}
+			const struct prototype_context* binder_context = prototype_context_get(
+				&ctx->metadata->contexts, body->context_id
+			);
 			uint32_t binder_var;
-			if (prototype_term_var(
-					ctx->terms, term->as.lambda.binding_id, &binder_var
+			if (!binder_context || binder_context->parent != operation->context_id ||
+				binder_context->binding_id == PROTOTYPE_INVALID_ID ||
+				prototype_term_var(
+					ctx->terms, binder_context->binding_id, &binder_var
 				) != 0) {
 				return -1;
 			}
@@ -25693,6 +25706,8 @@ static int operation_solver_reify_core_proof(
 					ctx->type_declarations,
 					core_term,
 					classifier,
+					binder_var,
+					body->core_term,
 					operation->binder_classifier,
 					body->classifier,
 					body->context_id
@@ -26477,6 +26492,30 @@ static int operation_solver_resolve_contexts(struct compile_context* ctx) {
 					classifier = operation_classifier;
 				}
 			}
+			for (int source = 0;
+				classifier == PROTOTYPE_INVALID_ID && source < 2;
+				++source) {
+				const struct prototype_judgement_relation* relations = source == 0 ?
+					ctx->judgement_delta.relations : ctx->judgement->relations;
+				size_t relation_count = source == 0 ?
+					ctx->judgement_delta.relation_count : ctx->judgement->relation_count;
+				for (size_t relation_id = 0; relation_id < relation_count; ++relation_id) {
+					const struct prototype_judgement_relation* relation =
+						&relations[relation_id];
+					if (relation->context_id != context_id ||
+						relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+						relation->proof_kind !=
+							PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION ||
+						relation->subject >= ctx->terms->term_count ||
+						ctx->terms->terms[relation->subject].tag != PROTOTYPE_TERM_VAR ||
+						ctx->terms->terms[relation->subject].as.var.binding_id !=
+							context->binding_id) {
+						continue;
+					}
+					classifier = relation->classifier;
+					break;
+				}
+			}
 		}
 		if (prototype_context_extend(
 				&ctx->metadata->contexts,
@@ -26950,6 +26989,12 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 			operation_solver_materialize_judgements(ctx) != 0) {
 			return -1;
 		}
+	}
+	/* Reification can introduce binder premises in a symbolic Context after the
+	 * last solver pass. Refine those Contexts before publishing exact binding
+	 * identities to JudgementDB. */
+	if (operation_solver_resolve_contexts(ctx) != 0) {
+		return -1;
 	}
 	/* Generic inference may have emitted provisional structural derivations in
 	 * a clause context that was later replaced by the typed OperationGraph
