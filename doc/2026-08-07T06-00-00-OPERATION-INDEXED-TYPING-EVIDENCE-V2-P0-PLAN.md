@@ -3,20 +3,25 @@
 Date: 2026-08-07
 Last re-audited: 2026-08-08
 
-Status: V2-P0 is complete in the 2026-08-08 working tree. P0-R0 was its first
-implementation slice, not a pre-P0 project. The implementation satisfies the
-entry invariants in Section 3.1, and all P0.1-P0.8 checks are complete. HOTT
-object-equality rules remain deferred to the narrowed P1 evidence-storage work
-and V2-O1.
+Status: V2-P0 reopened after the 2026-08-08 code audit. Operation-indexed
+classifier solving is implemented, but the accepted certificate model still
+collapses claim identity, derivation identity, and dependency selection. The
+next implementation phase is P0-R0A in Section 6. It is a premise of P0, not
+P1 evidence work. HOTT object-equality rules remain deferred until P0 closes.
 
 Parent plan:
 `doc/2026-08-06T02-00-00-HIGHER-OBSERVATIONAL-TT-REFACTOR-AUDIT-V2.md`
 
+Re-entry code audit:
+`doc/2026-08-08T00-00-00-V2-P0-REENTRY-REFACTOR-AUDIT.md`
+
 Audit state:
 
-- committed baseline: `fb248ba` (`origin/main` is the same commit);
-- artifact format in the P0 working tree: `A_PROGRAM_ARTIFACT 62`;
-- the P0 working tree is intentionally uncommitted;
+- committed baseline: `701654a` (`origin/main` is the same commit);
+- artifact format at the audited baseline: `A_PROGRAM_ARTIFACT 62`;
+- the audit found that the previous P0 completion statement was too strong;
+- the current uncommitted validator/constant edits are audit probes only and do
+  not count as completion of P0-R0A;
 - provisional binder assumptions are revalidated against ContextDB;
 - request/fold constraints retain exact child Operation IDs and refreshed
   Operation-selected classifiers;
@@ -51,7 +56,7 @@ normalization, and shared computation identity belong to TermDB.
 
 ## 2. Verified Code Facts
 
-The following facts were rechecked against the 2026-08-07 codebase.
+The following facts were rechecked against commit `701654a` on 2026-08-08.
 
 ### 2.1 OperationGraph already is the typed occurrence graph
 
@@ -237,15 +242,19 @@ Only that irreducible evidence may receive a new payload or arena.
 
 For an Operation-backed derivation, the conclusion identity is not the tuple
 `(context_id, core_term, classifier)`. It is the typed occurrence selected by
-`operation_id`, together with the claimed classifier and rule boundary. Two
-Operations may project to the same Core Term and have equal Context and
+`operation_id`, together with Context, judgement kind, and claimed classifier.
+Two Operations may project to the same Core Term and have equal Context and
 classifier while still being distinct conclusions.
+
+The typing rule is not part of Claim identity. It belongs to the Derivation.
+Otherwise two rules proving the same proposition would incorrectly create two
+Claims and recreate the current relation/proof conflation under new names.
 
 Consequently, structural premise resolution must receive the expected child
 Operation ID. It may not recover a premise by globally searching for any proof
 whose Core Term, Context, and classifier happen to match.
 
-### P0-P10: Claim identity and derivation identity are separate
+### P0-P10: Claim identity and derivation identity must be separate before P0 closes
 
 The singular solver result `operation.classifier` does not imply one proof per
 claim or one claim per Operation. A typed claim is identified at the typed
@@ -266,10 +275,36 @@ it must preserve that derivation together with every other validated derivation
 produced within the configured resource budget. Failed, superseded, or still
 open solver candidates are not derivations and are not committed.
 
-A later P1 storage audit may intern one claim separately from its many
-derivations. P0 must not simulate that representation either by destructively
-replacing one proof or by duplicating a Term-indexed relation and treating the
-duplicates as distinct typed occurrences.
+This separation is not deferred to P1. The current representation duplicates a
+physical relation for each proof and therefore still conflates the two
+identities. P0 must intern one claim independently of its derivations. It must
+not simulate one-to-many derivation identity by duplicating a relation, and it
+must not make a premise depend on whichever duplicate happened to be inserted
+first or last.
+
+For a structural typing rule, a derivation consumes the exact child claims
+selected by the conclusion OperationGraph node. For a derived boundary such as
+conversion, literal admissibility, effect weakening, or context weakening, the
+derivation stores the exact source claim identity. Alternative derivations of a
+premise claim are not flattened into the parent derivation and do not create a
+Cartesian product of parent proofs.
+
+Published claims are accepted only by the least grounded closure:
+
+```text
+seed claims justified by declarations, Context bindings, and kernel axioms
+repeat
+    accept a derivation when all premise claims have lower closure rank
+    accept its conclusion claim if not already accepted
+until no claim changes
+reject every remaining unsupported or cyclic derivation
+```
+
+Ordinary recursive source programs may produce cyclic Operation dependencies
+during constraint solving. That does not authorize a cyclic certificate.
+Induction-hypothesis availability is justified by the scoped eliminator rule,
+not by a proof edge back to the conclusion being proved. Published derivations
+therefore form a DAG even when solver dependencies were cyclic.
 
 ### P0-P10A: Operation edges are exact; erased Core projections are alpha-stable
 
@@ -336,16 +371,18 @@ The solver may revise unpublished bindings and evidence candidates. It must not
 revise a committed proof node. A failed or superseded candidate is discarded
 before commit rather than published and repaired afterwards.
 
-### P0-P14: A proof is constructed atomically
+### P0-P14: A derivation is constructed atomically over stable claim identities
 
-The conclusion authority, Context, kind, Core projection, classifier, premise
-authorities, premise tuples, and rule-specific parameters form one proof node.
-They must be supplied together.
+The conclusion claim, rule-specific parameters, and irreducible source-claim
+edges form one derivation node. They must be supplied together. Structural
+premises are reconstructed from the exact conclusion Operation and its child
+Operations; their `(Core Term, Context, classifier)` tuples are not copied as a
+second authority.
 
-Late resolution may translate already fixed premise authorities to persisted
-proof IDs during artifact layout. It may not select a different semantic
-premise, mutate rule parameters, or repair an earlier derivation by tuple
-search.
+There is no semantic late premise resolution. Artifact layout may relocate a
+stable claim or derivation ID, but it may not select a claim by tuple search,
+choose one derivation of that claim, mutate rule parameters, or repair an
+earlier derivation.
 
 This makes the existing post-insertion updates in constructor-spine formation,
 match-pattern ownership, Context reindexing, and DB commit explicit P0 debt.
@@ -452,11 +489,12 @@ The code re-audit fixes the following directions as P0 premises:
    a neutral Core relation.
 3. `JudgementDelta` is unpublished candidate storage. Candidates may be
    rebuilt or discarded during fixed-point solving. `JudgementDB` is the
-   publication boundary and receives only complete records whose conclusion
-   authority, premise authorities, and rule payload are already fixed.
+   publication boundary and receives interned Claims plus immutable
+   Derivations only after the fixed point is stable.
 4. One selected synthetic classifier per Operation is distinct from the set of
-   admissible or derived typings. Multiple valid derivations of one typed claim
-   are permitted and cannot destructively replace one another.
+   admissible or derived typings. One Claim may have multiple immutable
+   Derivations. A premise refers to the Claim, not to an insertion-order-selected
+   Derivation.
 5. Effect-row equations use canonical finite sets plus unresolved atoms as
    solver state. TermDB row syntax is only input/output representation.
    Higher-order operation atoms stay opaque: residual handling may remove an
@@ -466,7 +504,9 @@ The code re-audit fixes the following directions as P0 premises:
    It creates authority-neutral candidates and cannot publish evidence for a
    source Operation until that evidence is reified through the exact Operation
    and Context.
-7. Artifact relocation and linking may construct a new unpublished certificate
+7. A published Claim must be in the least grounded closure of locally valid
+   Derivations. Existence of a cyclic tuple graph is not evidence.
+8. Artifact relocation and linking may construct a new unpublished certificate
    image. They may not mutate semantic fields in an already published
    in-memory certificate.
 
@@ -483,9 +523,12 @@ every implementation item below:
 - Context binding, declaration, type-formation, and Universe facts must enter
   through authority-specific APIs and must not be accepted as an anonymous
   fallback for a missing Operation proof;
-- the fixed-point frontier may emit only unpublished candidates; a published
-  derivation is an immutable DAG node and a second valid derivation is appended,
-  not substituted for the first;
+- the fixed-point frontier may emit only unpublished candidates; publication
+  interns the conclusion Claim and appends an immutable Derivation;
+- no accepted premise edge is reconstructed from a non-unique tuple or from
+  the first/latest physical proof record;
+- claim closure, not proof-record acyclicity alone, determines whether recursive
+  evidence is grounded;
 - `operation.classifier` is the one selected synthesis result, while literal
   admissibility, conversion, effect weakening, context reindexing, and export
   exposure are separately justified derived boundaries.
@@ -498,19 +541,20 @@ Current first-slice state after re-reading the implementation:
 
 | Boundary | State | Remaining work in P0 |
 | --- | --- | --- |
-| Operation ownership and exact premise edges | first-slice boundary complete | retain exact child Operation IDs; finish rule-specific certificate validation in P0.3 |
-| Candidate/commit separation | first-slice boundary complete | keep generic erased-Core inference authority-neutral and permit publication only through exact Operation reification |
-| Atomic proof construction | complete for normal and delta insertion | retain declaration completion only as construction of a new unpublished linked image |
+| Operation ownership and exact premise edges | partial | Operation IDs exist, but accepted premise IDs are discarded and later rebuilt by first/latest tuple search |
+| Candidate/commit separation | partial | Delta is provisional, but commit publishes the current relation/proof hybrid before grounded claim closure |
+| Claim/Derivation separation | missing; P0-R0A blocker | replace duplicated conclusion records with one accepted Claim and one-or-more immutable grounded Derivations |
+| Atomic derivation construction | missing at accepted boundary | preserve exact source Claim IDs; derive structural children from OperationGraph; remove semantic late resolution |
 | Canonical effect-row fixed point | complete for the current row language | add direct stability assertions and retain free external atoms as explicit residuals |
 | Operation structural validation | implemented for all current Operation tags | consolidate the older `prototype_operation_graph_validate()` checks with `prototype_judgement_validate_operation_typing()` during P0.3/P0.7 |
 | Non-Operation authority separation | P0.5 work | split binder, declaration, type-formation, and Universe queries from generic `subject` lookup |
 | Derived typing boundaries | P0.4 work | finish ASCRIPTION/exposure, literal specialization, weakening, and reindex provenance |
 
-Therefore the current project phase is **V2-P0**. The working tree has already
-implemented the P0-R0 construction boundary, and its implementation must remain
-subject to the entry gate above. The next ordered work is P0.1
-characterization, followed by P0.2-P0.7. Non-Operation authority cleanup and
-derived-boundary cleanup are P0 work; they are not a separate phase before P0.
+Therefore the current project phase is **V2-P0**. Earlier work implemented the
+Operation-indexing part of P0-R0, but did not complete its certificate boundary.
+The next ordered work is P0-R0A below, followed by a revalidation of P0.1-P0.7.
+These are P0 tasks; P1 must not begin while the accepted certificate still
+depends on duplicated relations or late tuple reconstruction.
 
 ## 4. Target Boundary
 
@@ -555,29 +599,27 @@ Term.
 | `src/prototype/ast.c:compile_phase_check_ascriptions` | knows the ASCRIPTION/body Operation but adds Core conversion | attach the derived claim to the typed boundary |
 | `src/prototype/ast.c:compile_phase_check_expectations` | sometimes uses Operation classifier, sometimes scans Core relations | make label/export selection explicit |
 | `src/prototype/typing.c:prototype_judgement_delta_infer_core_helper_facts` | named erased-Core helper closure | retain authority-neutral output; never publish it as Operation evidence without exact reification |
-| `src/prototype/typing.c:add_complete_relation` | immutable complete DB insertion | retain all distinct validated derivations; do not infer proof uniqueness from conclusion tuples |
-| `src/prototype/typing.c:add_complete_delta_relation` | complete unpublished candidate insertion | preserve rebuild/discard semantics before commit |
+| `src/prototype/typing.c:add_complete_relation` | appends a duplicated relation/proof pair and clears premise proof IDs | replace with Claim interning plus immutable Derivation insertion |
+| `src/prototype/typing.c:add_complete_delta_relation` | stores an unpublished relation/proof candidate but still uses the hybrid shape | preserve rebuild/discard semantics while changing the candidate to explicit Claim keys and exact source Claims |
 | `src/prototype/typing.c:prototype_judgement_add_conversion` | Core-level derived classifier chain | replace with explicit typed-boundary conversion API |
 | `src/prototype/typing.c:prototype_judgement_validate_operation_typing` | validates current Operation tags against exact graph/context/declaration authorities | retain as the structural certificate entry point and consolidate duplicate graph validation |
 | `src/prototype/universe.c:lookup_authority_classifier` | obtains an authority-neutral classifier for a Core Term | replace source-boundary callers with explicit selected Operation/type-view classifiers |
-| artifact judgement read/write/relocation in `src/prototype/ast.c` | assumes every subject is a Term ID | change only after the P0 ownership model is implemented |
+| artifact judgement read/write/relocation in `src/prototype/ast.c` | serializes the hybrid relation/proof pairing, duplicated conclusions, and resolved proof IDs | change only after the P0 in-memory Claim model is stable |
 
 ## 5.1 P0 Entry Re-audit: Findings and Disposition
 
-The 2026-08-07 implementation re-audit found that Operation ownership fields
-had been added to Judgement relations and proofs, but semantic selection still
-used Core tuples. The P0-R0 working tree has fixed the construction-boundary
-items below. The remaining rows are the ordered P0 work, rather than reasons to
-pretend that P0 has not started.
+The 2026-08-08 re-audit confirmed that Operation ownership fields were added,
+but the accepted certificate still performs semantic tuple selection. P0 has
+started, but its construction boundary is not complete.
 
 | Re-audit finding | Current disposition | Remaining P0 action |
 | --- | --- | --- |
-| Core-tuple premise lookup could borrow another occurrence's proof | old Operation reindex/proven-classifier helpers are removed; structural proof resolution now receives the expected child Operation ID | keep neutral fallback available only for explicitly non-Operation rules |
-| One physical relation points to one proof | insertion now preserves distinct complete derivations instead of replacing a prior derivation | P0.8/P1 decides whether claim interning plus one-to-many derivation edges improves storage; no semantic uniqueness assumption is permitted |
-| Structural premise arrays could lose the selected occurrence | exact child Operation IDs are retained and forged cross-occurrence premises are rejected | treat persisted proof IDs only as replay edges; never use them to rediscover a structural Operation edge |
+| Core-tuple premise lookup could borrow another occurrence's proof | structural rules can compute an expected child Operation, but accepted premise IDs are still found by first/latest tuple search | remove semantic late resolution; structural dependencies come only from exact OperationGraph edges |
+| One physical relation points to one proof | insertion preserves alternatives by duplicating the relation | intern one Claim and attach zero-or-more immutable Derivations in P0-R0A |
+| Structural premise arrays could lose the selected occurrence | computation constraints retain exact child Operations, but proof insertion clears premise IDs before later reconstruction | retain exact Claim authority through candidate validation and commit; never reconstruct it from tuples |
 | Ascription compatibility was conflated with conversion | `EXPECTED_TYPE_EXPOSURE` is distinct from kernel `CONVERSION` | complete Universe/effect constraint provenance in P0.4 |
 | Fold/request dependencies lacked exact typed operands | constraints retain child Operation IDs and canonical effect-row solver state | retain tag-specific dependency validation and add stability characterization |
-| Rule payloads were mutated after insertion | normal and delta insertion receive complete candidates; committed derivations are not destructively replaced | keep link completion confined to a new unpublished image and re-audit residual late proof-ID relocation |
+| Rule payloads were mutated after insertion | most rule parameters are now supplied at insertion, but premise identity is still repaired after insertion | make Derivations atomic and remove the repair pass |
 | Generic all-Term inference had ambiguous authority | it is now named `prototype_judgement_delta_infer_core_helper_facts`, forces invalid Operation authority, and verifies every emitted fact remains neutral | preserve it only as motive/type-synthesis support; exact Operation reification is mandatory before publication as source evidence |
 | Alpha-interned Lambda/Match representatives do not preserve occurrence binder/child IDs | OperationGraph now stores direct Lambda `binding_id`; structural validation follows exact Operation edges and uses alpha-stable Core projection checks | consolidate duplicate raw-ID checks in `prototype_operation_graph_validate()` during P0.3/P0.7 |
 | Non-Operation facts still share generic Term-subject storage | declaration-specific record APIs exist, but binder and Universe consumers still use generic relation lookup | finish the authority split in P0.5 |
@@ -587,9 +629,10 @@ The immediate refactoring order is therefore:
 
 ```text
 Operation-indexed constraints and operands
+    -> Claim/Derivation accepted-model separation
     -> solver/evidence-candidate separation
-    -> atomic immutable committed derivations
-    -> exact Operation premise lookup
+    -> grounded atomic publication
+    -> exact structural Operation and derived Claim dependencies
     -> tag-specific structural materialization
     -> derived boundary separation
     -> non-Operation authority cleanup
@@ -616,8 +659,8 @@ This is the entry refactor for P0. It is not a separate pre-P0 project.
 
 - [x] Add Operation ownership to relations, proofs, and computation constraints.
 - [x] Preserve a computation constraint's owner Operation across solver passes.
-- [x] Stop replacing an existing proof merely because its conclusion tuple
-  matches a newly discovered derivation.
+- [ ] Replace the physical relation/proof pairing with separate Claim and
+  Derivation identities. Appending a derivation must not duplicate its Claim.
 - [x] Pass Lambda premise Contexts and Context-reindex source Context at
   insertion instead of repairing them afterwards.
 - [x] Emit binder assumptions and computation-body effect weakening as explicit
@@ -635,19 +678,19 @@ This is the entry refactor for P0. It is not a separate pre-P0 project.
 - [x] Materialize computation classifiers from stable row solutions once per
   fixed-point result. Do not widen a classifier by repeatedly appending row
   syntax.
-- [x] Introduce one evidence-candidate builder whose input contains complete
-  conclusion authority, premise authorities, and rule payload.
+- [ ] Introduce one evidence-candidate builder whose input contains a complete
+  conclusion Claim key, exact derived source Claim keys, and rule payload.
 - [x] Keep evidence candidates outside the committed relation/proof arrays
   until their Operation classifier, Context bindings, and rule premises are
   stable for the current fixed point.
-- [x] At commit, preserve every validated derivation of a typed claim; do not
-  commit failed, superseded, or open candidates.
+- [ ] At commit, intern the Claim once and preserve every distinct validated
+  Derivation; do not commit failed, superseded, open, or ungrounded candidates.
 - [x] Replace constructor-spine and match-pattern post-insertion payload writes
   with the complete candidate builder.
-- [x] Make delta commit construct complete immutable DB proof nodes; remove
-  `copy_db_relation_rule_parameters()`.
-- [x] Restrict late proof-ID resolution to relocation/linking of already fixed
-  premise identities; it must not perform semantic premise selection.
+- [ ] Make delta commit construct complete immutable Derivation nodes and
+  publish only the least grounded claim closure.
+- [ ] Remove semantic late proof-ID resolution. Relocation may translate stable
+  IDs only; it may not choose a premise by tuple.
 - [x] Stop the legacy APP premise refresh from rewriting Operation-owned APP
   premises by globally scanning shared Core relations.
 - [x] Enforce closure during recursive Operation proof reification so a parent
@@ -677,6 +720,148 @@ one canonical TermDB row only after the fixed point is stable. Residual handling
 uses a higher-order atom's declared operation label without unfolding the
 latent thunk effects. External free-row obligations remain residual.
 
+### P0-R0A Normalize Claim and Derivation ownership
+
+This is the immediate implementation slice. It precedes every remaining P0
+check and is not a P1 storage optimization.
+
+#### P0-R0A.0 Transition checkpoint implemented on 2026-08-08
+
+- [x] Add separate in-memory `prototype_judgement_claim` and
+  `prototype_judgement_derivation` arenas without changing TermDB identity.
+- [x] Keep Claim identity independent of rule/Derivation identity.
+- [x] Reconstruct source Claim edges from the exact resolved proof IDs at the
+  existing publication boundary, then compute a least grounded closure rank.
+- [x] Reject a reconstructed certificate containing an unsupported cycle.
+- [x] Preserve all existing source, CBPV, shared-Core, artifact, and HOTT
+  substrate behavior; all 15 `src/prototype/test_*.sh` scripts pass.
+- [x] Rename the generated ancestor-context rule from `CONTEXT_REINDEX` to the
+  semantically accurate `CONTEXT_WEAKEN` and validate ancestry.
+- [x] Replace unexplained fold/premise capacity literals with named constants.
+- [ ] Remove the transitional relation/proof arrays. They remain the input to
+  Claim reconstruction in this checkpoint.
+- [ ] Remove `prototype_judgement_resolve_proof_edges()`. It still resolves the
+  legacy proof IDs before Claim reconstruction and is therefore the immediate
+  authority-preservation target.
+
+This checkpoint deliberately does not intern Claims during each solver delta
+commit. At that point premise candidates may still appear later in the same
+delta, NAME/ASCRIPTION source authority has not been uniformly propagated, and
+historical `INVALID` authority can mean either a real neutral fact or missing
+information. Building accepted edges there would reintroduce tuple inference.
+
+The current transition order is:
+
+```text
+candidate generation
+    -> legacy atomic candidate commit
+    -> OperationGraph-aware legacy edge resolution
+    -> Claim/Derivation reconstruction
+    -> grounded closure validation
+```
+
+The required P0 end state is:
+
+```text
+authority-complete candidate generation
+    -> intern all candidate Claims
+    -> resolve candidate Derivations by exact Claim IDs
+    -> atomic grounded publication
+```
+
+The first order is a migration scaffold. The second order is the P0 completion
+condition and must replace it without a compatibility resolver.
+
+#### P0-R0A.1 Accepted data model
+
+- [ ] Replace `prototype_judgement_relation` with an interned Claim record whose
+  key is `(kind, authority, context_id, subject_projection, classifier)`.
+- [ ] Represent authority explicitly. Operation-backed claims carry an exact
+  `operation_id`; Context, declaration, type-formation, intrinsic, and Universe
+  claims use their own authority kind and ID rather than `INVALID` as an
+  ambiguous fallback.
+- [ ] Replace `proof_kind/proof_id` ownership on a relation with a one-to-many
+  Claim-to-Derivation adjacency. An accepted Claim has at least one grounded
+  Derivation; zero-derivation entries remain unpublished candidates only.
+- [ ] Store each Derivation as `(conclusion_claim_id, rule_kind,
+  rule_parameters, derived_source_claim_ids)`.
+- [ ] Do not duplicate APP/Lambda/Match/IH/CBPV structural child tuples in the
+  Derivation. Reconstruct them from the conclusion OperationGraph node.
+- [ ] Retain the erased Core subject only as a validated projection for
+  normalization, diagnostics, and artifact reachability.
+
+#### P0-R0A.2 Candidate generation and publication
+
+- [ ] Keep solver candidates separate from accepted Claims and Derivations.
+- [ ] Generate structural candidates from exact Operation IDs, never from a
+  JudgementDB tuple lookup.
+- [ ] Give conversion/exposure, integer admissibility, effect weakening, and
+  context weakening an exact source Claim key before commit.
+- [ ] Intern Claims deterministically and append all distinct valid
+  Derivations reached within the configured resource budget.
+- [ ] Deduplicate Derivations by semantic rule payload and source Claim IDs;
+  do not compare or discard edges by proof insertion order.
+- [ ] Publish atomically after classifier, effect-row, Context, and authority
+  validation has stabilized.
+
+#### P0-R0A.3 Grounded closure
+
+- [ ] Classify declaration, intrinsic, Context-binding, and other primitive
+  introductions as explicit closure seeds.
+- [ ] Validate every local Derivation rule against its authoritative graph or
+  database.
+- [x] Compute the least fixed point of reconstructed Claims justified by seeds or by a
+  Derivation whose premise Claims have lower closure rank.
+- [x] Accept only reconstructed Derivations respecting that rank, so the proof graph
+  is a DAG.
+- [x] Reject unsupported strongly connected components, including a forged
+  pair of Claims that justify only each other.
+- [ ] Validate recursive source programs through the scoped IH/eliminator rule,
+  never through a back-edge to the conclusion Claim.
+
+#### P0-R0A.4 Consumer migration order
+
+- [ ] Migrate construction and validation in `src/prototype/typing.c` first.
+- [ ] Migrate Operation solver materialization and expectation checks in
+  `src/prototype/ast.c` second.
+- [ ] Migrate Universe collection to consume exact Claim/Operation provenance.
+- [ ] Migrate artifact mark/write/read/append/link only after the in-memory
+  model and closure algorithm are stable.
+- [ ] Remove `prototype_judgement_resolve_proof_edges()`; no compatibility
+  resolver or old relation/proof representation remains.
+
+The immediate next code change is the first item, scoped more precisely as:
+
+1. change solver candidates from relation/proof tuples to
+   Claim-candidate/Derivation-candidate records;
+2. represent premise authority as an explicit tagged authority, never an
+   overloaded invalid Operation ID;
+3. propagate exact source identity through NAME, ASCRIPTION, conversion,
+   expectation exposure, weakening, literal admissibility, and link completion;
+4. intern every Claim in an atomic candidate batch before attaching any
+   Derivation;
+5. delete tuple-based proof-edge repair and rebuild Claims directly from the
+   accepted candidate batch.
+
+This sequence is the premise for the remaining P0 phases. Artifact migration,
+Universe provenance cleanup, and HOTT witness work must not bypass it.
+
+#### P0-R0A.5 Characterization and adversarial tests
+
+- [ ] One Core identity Lambda used as Bool and Nat remains two Operation
+  Claims and cannot lend evidence across occurrences.
+- [ ] One Claim accepts two Derivations in either insertion order, and a parent
+  premise remains a reference to that Claim.
+- [ ] A forged same-Term/same-Context/same-classifier different-Operation
+  premise is rejected.
+- [ ] A forged context movement from a non-ancestor Context is rejected.
+- [ ] A forged effect weakening or integer admissibility source Claim is
+  rejected.
+- [ ] An unsupported derivation cycle is rejected; recursive source typing is
+  accepted through a finite scoped-IH derivation DAG.
+- [ ] Artifact round-trip and append preserve Claim/Derivation identity exactly
+  after the later schema migration.
+
 ### P0.1 Add characterization tests before changing storage
 
 - [x] Preserve the existing identityBool/identityNat shared-Core test.
@@ -694,7 +879,8 @@ latent thunk effects. External free-row obligations remain residual.
 - [x] Add a forged shared-Core premise test: replacing a child premise with a
   proof from another Operation must be rejected even when Core Term, Context,
   and classifier match.
-- [x] Add a multiple-derivation test showing that two validated derivations of
+- [ ] Re-run a multiple-derivation test on the normalized Claim model, showing
+  that two validated derivations of
   one Operation-level claim are both preserved and neither overwrites nor
   invalidates the other.
 - [x] Add a provisional-binder regression showing that a superseded classifier
@@ -721,11 +907,12 @@ latent thunk effects. External free-row obligations remain residual.
   premise resolution plus explicitly named authority-neutral resolution.
 - [x] Replace Core-keyed proven-classifier lookup on fold/request paths with an
   Operation-indexed query.
-- [x] Make committed derivation insertion append-only or otherwise immutable;
+- [ ] Make committed derivation insertion append-only or otherwise immutable;
   do not infer semantic proof uniqueness from a storage tuple.
-- [x] Represent the logical one-to-many relation from a typed claim to its
-  accepted derivations, without requiring the final P1 physical layout yet.
-- [x] Require complete rule payload and premise authority at insertion; expose
+- [ ] Represent physically the logical one-to-many relation from a typed Claim
+  to its accepted Derivations. This is P0 correctness, not deferred P1 layout.
+- [ ] Require complete rule payload and exact derived source Claim authority at
+  insertion; expose
   no setter that mutates a published proof.
 
 ### P0.3 Migrate structural operation rules
@@ -783,11 +970,10 @@ latent thunk effects. External free-row obligations remain residual.
   reconstruction path; labels use their typed Operation/type-view selection.
 - [x] Remove tuple-based premise selection where OperationGraph supplies the
   edge.
-- [x] Re-evaluate late proof-edge resolution: retain it only for genuinely
-  persisted non-structural evidence that cannot use an authoritative graph
-  edge.
-- [x] Re-evaluate relation/proof duplication and destructive replacement after
-  operation facts no longer share Core keys.
+- [ ] Remove late proof-edge resolution. Persisted non-structural evidence must
+  carry its exact source Claim before publication.
+- [ ] Remove relation/proof conclusion duplication and the physical
+  one-relation/one-proof coverage invariant.
 - [x] Remove every Operation-owned call to
   `operation_solver_reindex_existing_proof()` and
   `operation_solver_lookup_proven_classifier()`.
@@ -798,11 +984,11 @@ latent thunk effects. External free-row obligations remain residual.
   polarity, and typed child references.
 - [x] Validate derived boundaries against their source Operation/fact.
 - [x] Validate non-Operation facts against their explicit authority.
-- [x] Preserve proof acyclicity only for the residual evidence graph that still
-  exists after structural edges move to OperationGraph.
-- [x] Choose the final v62 representation only after the in-memory model is
-  stable.
-- [x] Update mark, write, read, relocation, append, and link logic once; retain
+- [ ] Replace physical proof-node acyclicity with grounded Claim closure over
+  locally valid Derivations.
+- [ ] Choose the next artifact representation only after the in-memory Claim
+  model is stable; artifact v62 is not the final P0 certificate schema.
+- [ ] Update mark, write, read, relocation, append, and link logic once; retain
   no fallback that guesses whether an integer is a Term ID or Operation ID.
 
 ### P0.8 Re-audit P1
@@ -813,7 +999,8 @@ latent thunk effects. External free-row obligations remain residual.
 - [x] Decide whether any variable-size premise arena remains necessary.
 - [x] Treat fixed premise capacity as general implementation capacity debt, not
   automatically as a HOTT blocker.
-- [x] Update or cancel V2-P1 accordingly before beginning it.
+- [ ] Re-run this audit after P0-R0A. The 2026-08-08 audit showed that the
+  proposed claim/derivation work belongs to P0 itself.
 
 P0.8 result:
 
@@ -831,9 +1018,11 @@ P0.8 result:
 - the current fixed premise arrays remain an implementation-capacity limit.
   They are not a reason to introduce a general tagged payload or arena before a
   HOTT rule demonstrates an unbounded evidence requirement.
-- P1 is therefore narrowed to claim/derivation storage and derived-boundary
-  evidence. The former plan to move every structural rule into a tagged payload
-  and variable-size premise arena is cancelled.
+- Claim/Derivation storage and exact derived-boundary sources are reclassified
+  as P0-R0A because they are required to make Operation ownership true.
+- P1 remains intentionally unspecified until P0-R0A is complete. The former
+  plan to move every structural rule into a tagged payload and variable-size
+  premise arena remains cancelled.
 
 ## 7. Explicit Non-Goals
 
@@ -876,6 +1065,13 @@ V2-P0 is complete only when:
 14. warning-free build, all prototype scripts, examples 01-07/09, artifact
     tests at the restored checkpoint, and forged-occurrence tests pass;
 15. `git diff --check` passes.
+16. one physical accepted Claim is interned independently of its one-or-more
+    grounded Derivations;
+17. accepted dependencies refer to exact Claims or are reconstructed from exact
+    OperationGraph edges, never selected by first/latest tuple search;
+18. the least grounded closure rejects unsupported cyclic evidence;
+19. `prototype_judgement_resolve_proof_edges()` and the one-relation/one-proof
+    coverage invariant no longer exist.
 
 ## 9. Progress Record
 
@@ -884,20 +1080,23 @@ V2-P0 is complete only when:
 | 2026-08-07 | P0.0 code re-audit | complete | Verified Operation-indexed solver, Term-indexed materialization, mixed non-Operation facts, and integer literal overload counterexample. |
 | 2026-08-07 | P0 premise correction | complete | Removed mandatory one-certificate, conversion-budget serialization, tagged payload, and premise-arena assumptions. |
 | 2026-08-07 | P0 entry code re-audit | complete | Found remaining Core-keyed proof borrowing, destructive proof replacement, expected-type/conversion conflation, and a fold return-edge dependency error. Added them as mandatory P0 premises. |
-| 2026-08-08 | P0.1 characterization tests | complete | Shared-Core ownership, forged APP premise, literal admissibility/specialization, repeated selected-classifier stability, multiple derivations, provisional binder cleanup, row convergence, Universe regressions, non-interned normalization-equal Pi conversion, and ASCRIPTION body-Operation preservation pass. |
-| 2026-08-08 | P0.2 authority-specific APIs | complete | Operation classifier/validation APIs are exact; Context binding, declaration, type-formation, intrinsic, and Universe entry points are named by authority. The remaining Core lookup API is explicitly authority-neutral and has no Operation solver caller. No general subject tag or separate structural certificate table is introduced. |
-| 2026-08-07 | P0-R0 certificate boundary | complete in working tree | Constraint owner preservation, exact operands, complete atomic relation/proof candidates, immutable delta commit, constructor/match/IH payload construction, unpublished candidate staging, canonical row-solver state, explicitly neutral Core helper facts, exact structural Operation validation, and regression restoration are implemented. Non-Operation authority separation is P0.5, not an R0 blocker. |
+| 2026-08-08 | P0 reopened after certificate audit | active | `prototype_judgement_relation` still owns one proof; premise proof IDs are cleared at insertion and recovered by first/latest tuple search. P0-P10 and P0-P14 are not satisfied. |
+| 2026-08-08 | P0-R0A Claim/Derivation normalization | pending; next | Intern Claims, append immutable Derivations, retain exact derived source Claims, reconstruct structural premises from OperationGraph, and compute grounded closure. |
+| 2026-08-08 | P0 authority validator probes | partial; uncommitted | Context movement was narrowed to ancestor weakening, context/effect premise Operation ownership was tightened, and fold capacities received named constants. A premature Operation-only integer check broke authority-neutral Core helper facts and was removed; exact integer source Claims must wait for P0-R0A. |
+| 2026-08-08 | P0.1 characterization tests | partial; revalidation required | Existing shared-Core and solver tests pass, but insertion-order-independent Claim derivation and unsupported-cycle tests do not yet exist. |
+| 2026-08-08 | P0.2 authority-specific APIs | partial; revalidation required | Operation APIs retain exact occurrence IDs, but accepted non-Operation Claims still encode authority through generic relation fields and `INVALID`; P0-R0A must make the distinction explicit. |
+| 2026-08-07 | P0-R0 Operation-indexing boundary | partial | Exact Operation operands and provisional solver state are implemented. Accepted Claim/Derivation identity and grounded publication remain P0-R0A blockers. |
 | 2026-08-07 | P0-R0 provisional binder cleanup | complete in working tree | Pending binder assumptions now use the current ContextDB classifier and stale assumptions are removed before commit; `higher_order_operation_force_once_check.p` passes. |
 | 2026-08-07 | P0-R0 exact computation operands | complete in working tree | Request/fold constraints retain child Operation IDs, refresh classifiers from the Operation solver, and expose an explicit solved classifier. Proof history is no longer their solver input. |
 | 2026-08-07 | P0-R0 effect-row solver | complete for current row language | Canonical finite bits plus unresolved atoms are compared outside TermDB union syntax and materialized only after stabilization. Residual handling removes higher-order atoms by declared labels without exposing latent thunk effects. Force-once, force-twice, and multi-clause handler strict checks pass; unresolved external rows remain artifact residuals. |
-| 2026-08-07 | P0-R0 evidence closure | complete in working tree | Recursive reification rejects unowned open rows; late ascription insertion was removed; imported-definition-dependent exposure is not emitted as a standalone kernel proof. |
+| 2026-08-07 | P0-R0 effect residual closure | complete for current row rules | Recursive reification rejects unowned open rows. This is not the grounded Claim closure required by P0-R0A. |
 | 2026-08-07 | P0-R0 regression restoration | complete | CBPV surface, definition-block, computation-block sequence, and artifact-flow suites pass. |
-| 2026-08-08 | P0.3 structural rules | complete | `prototype_judgement_validate_operation_typing()` validates every current Operation tag through exact OperationGraph edges, direct Lambda binding identity, ContextDB, TypeDeclarationDB, and alpha-stable erased-Core projection. Classifier-goal payloads are checked against tag-specific edges, including fold return operations. |
-| 2026-08-08 | P0.4 derived boundaries | complete | ASCRIPTION/exposure follows its body Operation, completed conversion replays the normative profile, residual goals retain profile/budget, the predecessor walk is removed, and integer admissibility now has an explicit source-claim premise. |
-| 2026-08-08 | P0.5 non-Operation facts | complete | Binder input is binding-indexed, declarations and type formations use named APIs, and UniverseDB consumes OperationGraph/proof/declaration authorities without `lookup_authority_classifier(core_term)`. |
-| 2026-08-08 | P0.6 obsolete reconstruction | complete | Structural premise lookup is exact by Operation; late proof-ID resolution remains only to connect fixed non-structural persisted claims in a new unpublished image. No committed proof is destructively replaced. |
-| 2026-08-08 | P0.7 validation/artifact | complete | Per-Operation and per-proof validation, proof acyclicity, v62 Operation IDs, relocation, append, link, and forged artifact tests pass without an ID-domain fallback. |
-| 2026-08-08 | P0.8 P1 re-audit | complete | P1 is narrowed to derived-boundary and claim/derivation evidence. Mandatory tagged structural payloads and a premise arena are cancelled; fixed premise capacity remains ordinary capacity debt. |
+| 2026-08-08 | P0.3 structural rules | partial; revalidation required | Operation structural validation follows exact graph edges, but accepted proof premises are still copied as tuples and later resolved. P0-R0A must remove that second authority path. |
+| 2026-08-08 | P0.4 derived boundaries | partial; revalidation required | ASCRIPTION/exposure is Operation-indexed, but context/effect/literal/link boundaries still require exact source Claim validation under P0-R0A. |
+| 2026-08-08 | P0.5 non-Operation facts | partial; revalidation required | Binder input is binding-indexed and named APIs exist, but link and Universe provenance are not yet represented as exact Claim authorities. |
+| 2026-08-08 | P0.6 obsolete reconstruction | reopened | `prototype_judgement_resolve_proof_edges()` still performs semantic first/latest tuple selection and must be removed. |
+| 2026-08-08 | P0.7 validation/artifact | reopened | Proof-node acyclicity is weaker than grounded Claim closure; artifact v62 encodes the hybrid relation/proof model. |
+| 2026-08-08 | P0.8 P1 re-audit | superseded | The audit correctly found Claim/Derivation debt but classified it too late. It is now P0-R0A. |
 
 ## 10. Mandatory Ordering
 
@@ -905,9 +1104,9 @@ V2-P0 is complete only when:
 V2-C2 -> V2-B1 -> V2-S1 -> V2-P0 -> P1 re-audit -> V2-O1 -> V2-A1
 ```
 
-V2-P0 and its P1 storage re-audit are complete. The next implementation work is
-the narrowed P1 task: represent irreducible derived-boundary evidence and the
-claim-to-many-derivations relation without duplicating OperationGraph structural
-edges. A general tagged subject, tagged structural payload, and variable-size
-premise arena are not prerequisites. HOTT equality terms still begin only in
-V2-O1 after that storage boundary is fixed.
+V2-P0 is active. The next implementation work is P0-R0A: normalize accepted
+Claim/Derivation identity, exact derived-boundary sources, and grounded closure
+without duplicating OperationGraph structural edges. P1 is blocked and will be
+re-audited after P0 closes. A general tagged structural payload and variable-size
+premise arena are not prerequisites. HOTT equality terms still begin only after
+this certificate boundary is fixed.

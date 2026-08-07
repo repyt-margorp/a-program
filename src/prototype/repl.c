@@ -89,6 +89,8 @@ static struct prototype_case_binder match_binders[MATCH_BINDER_CAPACITY];
 static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_judgement_relation judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof judgement_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
@@ -1033,6 +1035,8 @@ int main(int argc, char** argv) {
 		&judgement_db,
 		judgements,
 		judgement_proofs,
+		judgement_claims,
+		judgement_derivations,
 		JUDGEMENT_CAPACITY
 	);
 

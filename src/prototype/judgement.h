@@ -53,13 +53,33 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_DECLARATION,
 	PROTOTYPE_JUDGEMENT_PROOF_UNIVERSE_CUMULATIVITY,
 	PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO,
-	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_REINDEX,
+	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN,
 	PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN
 };
 
-#define PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES 65
+enum prototype_judgement_authority_kind {
+	PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID = 0,
+	PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+	PROTOTYPE_JUDGEMENT_AUTHORITY_CONTEXT_BINDING,
+	PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_DECLARATION,
+	PROTOTYPE_JUDGEMENT_AUTHORITY_INTRINSIC,
+	PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_FORMATION,
+	PROTOTYPE_JUDGEMENT_AUTHORITY_UNIVERSE,
+	PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+	PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT
+};
 
-struct prototype_judgement_proof {
+#define PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES 31
+#define PROTOTYPE_COMPUTATION_FOLD_STRUCTURAL_PREMISE_COUNT(clause_count) \
+	(2u + 2u * (clause_count))
+#define PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES \
+	PROTOTYPE_COMPUTATION_FOLD_STRUCTURAL_PREMISE_COUNT( \
+		PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES \
+	)
+
+/* Solver-local candidate. Premise tuples are permitted here because they have
+ * not crossed the accepted certificate boundary. */
+struct prototype_judgement_derivation_candidate {
 	int proof_kind;
 	int conclusion_kind;
 	uint32_t conclusion_context_id;
@@ -83,10 +103,11 @@ struct prototype_judgement_proof {
 	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_operation_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_proof_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 };
 
-struct prototype_judgement_relation {
+struct prototype_judgement_claim_candidate {
 	int kind;
 	uint32_t context_id;
 	/* Typed source/generated occurrence. The Core subject remains the erased
@@ -96,6 +117,71 @@ struct prototype_judgement_relation {
 	uint32_t classifier;
 	int proof_kind;
 	uint32_t proof_id;
+};
+
+/* Transitional candidate spellings used only until all producers and the v62
+ * reader have moved to the explicit candidate names. */
+struct prototype_judgement_relation {
+	int kind;
+	uint32_t context_id;
+	uint32_t operation_id;
+	uint32_t subject;
+	uint32_t classifier;
+	int proof_kind;
+	uint32_t proof_id;
+};
+
+struct prototype_judgement_proof {
+	int proof_kind;
+	int conclusion_kind;
+	uint32_t conclusion_context_id;
+	uint32_t conclusion_operation_id;
+	uint32_t conclusion_subject;
+	uint32_t conclusion_classifier;
+	uint32_t reserved_legacy_assumption_level;
+	uint32_t constructor_owner_view;
+	uint32_t constructor_index;
+	uint32_t constructor_field_index;
+	uint32_t induction_match;
+	uint32_t induction_case_index;
+	uint32_t induction_field_index;
+	uint32_t premise_count;
+	int premise_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_operation_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_proof_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+};
+
+/* Accepted proposition identity. Rule identity is deliberately absent. */
+struct prototype_judgement_claim {
+	int kind;
+	int authority_kind;
+	uint32_t authority_id;
+	uint32_t context_id;
+	uint32_t operation_id;
+	uint32_t subject;
+	uint32_t classifier;
+	uint32_t closure_rank;
+};
+
+/* Accepted rule application. During the P0 transition, source_claim_ids are
+ * reconstructed from resolved legacy edges. The final representation keeps
+ * only irreducible derived sources; structural sources come from OperationGraph. */
+struct prototype_judgement_derivation {
+	int proof_kind;
+	uint32_t conclusion_claim_id;
+	uint32_t closure_rank;
+	uint32_t reserved_legacy_assumption_level;
+	uint32_t constructor_owner_view;
+	uint32_t constructor_index;
+	uint32_t constructor_field_index;
+	uint32_t induction_match;
+	uint32_t induction_case_index;
+	uint32_t induction_field_index;
+	uint32_t source_claim_count;
+	uint32_t source_claim_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 };
 
 struct prototype_judgement_match_motive_result {
@@ -121,10 +207,10 @@ struct prototype_judgement_computation_constraint {
 	/* Structural operands remain Operation-owned even though the kernel solver
 	 * also receives their erased TermDB projections below. */
 	uint32_t premise_operation_count;
-	uint32_t premise_operations[64];
+	uint32_t premise_operations[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	/* Current fixed-point operands selected by the exact premise Operations.
 	 * These are refreshed by the Operation solver before each kernel pass. */
-	uint32_t premise_classifiers[64];
+	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t subject;
 	uint32_t computation;
 	uint32_t continuation;
@@ -163,12 +249,19 @@ struct prototype_judgement_effect_row_constraint {
 };
 
 struct prototype_judgement_db {
+	/* Transitional source image while all consumers move to Claims. */
 	struct prototype_judgement_relation* relations;
 	struct prototype_judgement_proof* proofs;
 	size_t relation_count;
 	size_t relation_capacity;
 	size_t proof_count;
 	size_t proof_capacity;
+	struct prototype_judgement_claim* claims;
+	struct prototype_judgement_derivation* derivations;
+	size_t claim_count;
+	size_t claim_capacity;
+	size_t derivation_count;
+	size_t derivation_capacity;
 
 	uint32_t next_universe_var;
 };
@@ -229,7 +322,9 @@ void prototype_judgement_db_init(
 	struct prototype_judgement_db* db,
 	struct prototype_judgement_relation* relations,
 	struct prototype_judgement_proof* proofs,
-	size_t relation_capacity
+	struct prototype_judgement_claim* claims,
+	struct prototype_judgement_derivation* derivations,
+	size_t claim_capacity
 );
 
 void prototype_judgement_delta_init(
@@ -402,7 +497,7 @@ int prototype_judgement_specialize_fold_operation_classifier(
 	uint32_t classifier,
 	uint32_t* p_specialized
 );
-int prototype_judgement_delta_record_context_reindex(
+int prototype_judgement_delta_record_context_weaken(
 	struct prototype_judgement_delta* delta,
 	uint32_t subject,
 	uint32_t classifier,
@@ -647,6 +742,7 @@ int prototype_judgement_add_expected_type_exposure(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t context_id,
 	uint32_t operation_id,
+	uint32_t source_operation_id,
 	uint32_t subject,
 	uint32_t expected,
 	uint32_t actual
@@ -656,6 +752,7 @@ int prototype_judgement_delta_record_expected_type_exposure(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	uint32_t source_operation_id,
 	uint32_t subject,
 	uint32_t expected,
 	uint32_t actual
@@ -678,7 +775,7 @@ int prototype_judgement_validate_proofs(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement
+	struct prototype_judgement_db* judgement
 );
 
 /* Validate one selected typed occurrence from its authoritative OperationGraph
@@ -694,6 +791,11 @@ int prototype_judgement_validate_operation_typing(
 void prototype_judgement_resolve_proof_edges(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_operation_graph* operations
+);
+
+int prototype_judgement_ground_claims(
+	const struct prototype_operation_graph* operations,
+	struct prototype_judgement_db* judgement
 );
 
 int prototype_judgement_add_normalization_premise_conversions(

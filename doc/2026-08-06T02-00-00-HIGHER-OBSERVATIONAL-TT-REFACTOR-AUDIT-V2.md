@@ -1219,9 +1219,9 @@ At commit `474867e`:
 | V2-C2 | Replace fresh-binder reindexing with direct binding-object graph action | complete | no schema change | simultaneous/capture/IH laws, depth-513 context, all 14 tests, examples 01-07/09, old/new v61 readback, and deterministic output pass |
 | V2-B1 | Replace positional binder-assumption proof identity with direct binding-object identity | complete | v61 slot is reserved; physical removal is deferred to V2-P1/v62 | exact-binding validator, binding-aware context identity, relocation, forged-proof, artifact, all 14 test scripts, and examples 01-07/09 pass |
 | V2-S1 | Extend solver constraints with typed HOTT indices | complete | v61 unchanged; residual serialization deferred to v62 | tagged classifier goals, deterministic conversion goals, Context/substitution-indexed HOTT goals, purity/residual tests, all 15 scripts, and byte-stable artifacts pass |
-| V2-P0 | Make OperationGraph authoritative for operation typing, separate synthetic and derived claims, and rehome non-Operation facts | complete in the 2026-08-08 working tree | artifact v62 | shared-core/distinct-operation, exact child-operation premises, immutable multiple derivations, literal overload/admissibility, forged occurrence, conversion-boundary, universe-input, and fixed-point tests pass |
-| V2-P1 | Store irreducible derived-boundary evidence and claim-to-many-derivation identity; do not duplicate structural Operation edges | pending after completed P0 re-audit | undecided | derived-boundary replay, multiple derivation, and validator tests |
-| V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-P0 and the P1 re-audit | breaking | substitution/naturality tests |
+| V2-P0 | Make OperationGraph authoritative for operation typing and normalize accepted Claim/Derivation ownership | active; P0-R0A is next | artifact v62 is transitional | Claim interning, multiple derivations, exact derived source Claims, grounded closure, and no late tuple resolver |
+| V2-P1 | Re-audit irreducible HOTT certificate payload after P0 | blocked by P0-R0A | undecided | scope must be rewritten after the accepted certificate model is stable |
+| V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-P0 and the later P1 re-audit | breaking | substitution/naturality tests |
 | V2-A1 | Perform one coordinated artifact v62 migration | blocked by P1 re-audit/O1 | breaking | v61 rejection and v62 link matrix |
 
 ### 23.3 Non-negotiable boundaries
@@ -1243,9 +1243,8 @@ At commit `474867e`:
 
 ### 23.4 Next implementation checkpoint
 
-V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, V2-C2, V2-B1, and V2-S1 are complete. The
-V2-P0 checkpoint is also complete in the 2026-08-08 working tree. Its first
-premise was that source/generated typing
+V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, V2-C2, V2-B1, and V2-S1 are complete.
+V2-P0 is active. Its first premise is that source/generated typing
 evidence belongs to the Operation/type-view occurrence, never to an erased
 TermDB ID. P0 makes OperationGraph authoritative for source and generated
 operation typing, distinguishes its selected synthetic classifier from
@@ -1255,11 +1254,26 @@ The selected solver classifier is singular; admissible relations need not be.
 P0 also forbids resolving an Operation premise by globally searching for an
 equal Core Term/Context/classifier tuple. Structural premises follow the exact
 child Operation edge, while Context/declaration facts use explicitly neutral
-authority paths. Accepted proof derivations are immutable DAG nodes: a second
-derivation of the same Operation-level typed claim must not overwrite the
-first. One claim may have multiple derivations, so P0 makes no semantic one-
-proof-per-relation assumption. Solver-frontier candidates are not accepted
-derivations and remain outside the committed certificate graph until validated.
+authority paths.
+
+The 2026-08-08 code audit found that the implementation did not yet satisfy
+that premise at the accepted certificate boundary. P0 was therefore reopened
+at P0-R0A. The first transition checkpoint now has separate in-memory Claim and
+Derivation arenas and reconstructs an exact source-Claim DAG from resolved
+proof IDs immediately before kernel validation. It computes and validates the
+least grounded Claim closure, and all 15 prototype regression scripts pass.
+
+This is not P0 completion. A physical legacy relation still owns exactly one
+legacy proof, and `prototype_judgement_resolve_proof_edges()` still chooses the
+legacy premise before Claim reconstruction. The next P0 step must propagate
+tagged source authority in candidates, atomically intern all candidate Claims,
+attach Derivations by exact Claim ID, and remove that resolver and both legacy
+arrays. P0-R0A ultimately keeps derived source Claim identity exact,
+reconstructs structural premises from OperationGraph, and accepts only the
+least grounded claim closure. This is not P1 proof-storage work.
+
+Solver-frontier candidates are not accepted derivations and remain outside the
+committed certificate graph until validated and grounded.
 The detailed P0 plan, including the mandatory P0-R0 certificate-construction
 refactor, is in
 `doc/2026-08-07T06-00-00-OPERATION-INDEXED-TYPING-EVIDENCE-V2-P0-PLAN.md`.
@@ -1277,11 +1291,12 @@ fixed-point state. This is required before a computation classifier can become
 accepted evidence and does not introduce object equality or a second
 Value/Computation Core graph.
 
-The P1 re-audit is complete. P1 is narrowed to irreducible derived-boundary
-evidence and claim-to-many-derivation identity. Structural Operation edges are
-not copied into tagged records, and a premise arena is not introduced without a
-future unbounded evidence requirement. Proof and Context binding identity is now
-uniform:
+The earlier P1 re-audit correctly identified the remaining hybrid certificate,
+but classified its repair one phase too late. Claim/Derivation separation and
+exact derived-boundary authority are now P0-R0A. P1 is blocked and will be
+re-audited after P0. Structural Operation edges are not copied into tagged
+records, and a premise arena is not introduced without a future unbounded
+evidence requirement. Proof and Context binding identity remains uniform:
 a binder assumption is selected by the binding object in its conclusion
 `VAR(binding_id)`, never by lexical depth. Equality syntax and object TermDB
 tags remain deferred to V2-O1, and
@@ -1363,7 +1378,7 @@ naturality. V2-S1 does not inherit the former fresh-renaming mechanism in its
 typed goal records. V2-C2 was therefore completed before V2-S1:
 
 ```text
-V2-C2 -> V2-B1 -> V2-S1 -> V2-P0 -> P1 re-audit -> V2-O1 -> V2-A1
+V2-C2 -> V2-B1 -> V2-S1 -> V2-P0/P0-R0A -> P1 re-audit -> V2-O1 -> V2-A1
 ```
 
 V2-C2 changes no artifact schema and adds no HOTT object term. Its complete
@@ -1474,7 +1489,7 @@ only its P1 re-audit may decide how the reserved proof slot and remaining rule
 data are physically represented. The mandatory order is:
 
 ```text
-V2-C2 -> V2-B1 -> V2-S1 -> V2-P0 -> P1 re-audit -> V2-O1
+V2-C2 -> V2-B1 -> V2-S1 -> V2-P0/P0-R0A -> P1 re-audit -> V2-O1
 ```
 
 ### 25.6 Completion evidence

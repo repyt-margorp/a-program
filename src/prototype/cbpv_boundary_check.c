@@ -32,6 +32,8 @@ static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
 static struct prototype_judgement_relation judgement_relations[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof judgement_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_relation delta_relations[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof delta_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_match_motive_result motive_results[8];
@@ -64,7 +66,12 @@ int main(void) {
 		type_exprs, TYPE_EXPR_CAPACITY
 	);
 	prototype_judgement_db_init(
-		&judgement, judgement_relations, judgement_proofs, JUDGEMENT_CAPACITY
+		&judgement,
+		judgement_relations,
+		judgement_proofs,
+		judgement_claims,
+		judgement_derivations,
+		JUDGEMENT_CAPACITY
 	);
 	prototype_judgement_delta_init(
 		&delta, &judgement, delta_relations, delta_proofs, JUDGEMENT_CAPACITY,

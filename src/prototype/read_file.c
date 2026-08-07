@@ -107,6 +107,8 @@ static struct prototype_case_binder match_binders[MATCH_BINDER_CAPACITY];
 static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_judgement_relation judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof judgement_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
@@ -181,6 +183,8 @@ static struct prototype_case_binder provider_match_binders[MATCH_BINDER_CAPACITY
 static struct prototype_ih_scope provider_ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_judgement_relation provider_judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_proof provider_judgement_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_claim provider_judgement_claims[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_derivation provider_judgement_derivations[JUDGEMENT_CAPACITY];
 static struct prototype_artifact_term_export provider_artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
 static struct prototype_artifact_type_export provider_artifact_type_exports[ARTIFACT_TYPE_EXPORT_CAPACITY];
 static struct prototype_artifact_type_parameter_export provider_artifact_type_parameter_exports[ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY];
@@ -1172,7 +1176,14 @@ static int check_export_normalization_equal(
 		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
-	prototype_judgement_db_init(&judgement_db, judgements, judgement_proofs, JUDGEMENT_CAPACITY);
+	prototype_judgement_db_init(
+		&judgement_db,
+		judgements,
+		judgement_proofs,
+		judgement_claims,
+		judgement_derivations,
+		JUDGEMENT_CAPACITY
+	);
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
@@ -1373,7 +1384,14 @@ static int check_exports_normalization_equal(
 		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
-	prototype_judgement_db_init(&judgement_db, judgements, judgement_proofs, JUDGEMENT_CAPACITY);
+	prototype_judgement_db_init(
+		&judgement_db,
+		judgements,
+		judgement_proofs,
+		judgement_claims,
+		judgement_derivations,
+		JUDGEMENT_CAPACITY
+	);
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
@@ -1594,7 +1612,14 @@ static int check_exports_shape_equal(
 		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
-	prototype_judgement_db_init(&judgement_db, judgements, judgement_proofs, JUDGEMENT_CAPACITY);
+	prototype_judgement_db_init(
+		&judgement_db,
+		judgements,
+		judgement_proofs,
+		judgement_claims,
+		judgement_derivations,
+		JUDGEMENT_CAPACITY
+	);
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
@@ -1746,7 +1771,14 @@ static int check_export_classifier_compatible(
 		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
-	prototype_judgement_db_init(&judgement_db, judgements, judgement_proofs, JUDGEMENT_CAPACITY);
+	prototype_judgement_db_init(
+		&judgement_db,
+		judgements,
+		judgement_proofs,
+		judgement_claims,
+		judgement_derivations,
+		JUDGEMENT_CAPACITY
+	);
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
@@ -2002,6 +2034,8 @@ static void init_provider_artifact_storage(
 		judgement_db,
 		provider_judgements,
 		provider_judgement_proofs,
+		provider_judgement_claims,
+		provider_judgement_derivations,
 		JUDGEMENT_CAPACITY
 	);
 }
@@ -3197,6 +3231,8 @@ int main(int argc, char** argv) {
 			&judgement_db,
 			judgements,
 			judgement_proofs,
+			judgement_claims,
+			judgement_derivations,
 			JUDGEMENT_CAPACITY
 		);
 		prototype_universe_db_init(
@@ -3350,6 +3386,8 @@ int main(int argc, char** argv) {
 				&provider_judgement_db,
 				provider_judgements,
 				provider_judgement_proofs,
+				provider_judgement_claims,
+				provider_judgement_derivations,
 				JUDGEMENT_CAPACITY
 			);
 			prototype_compile_metadata_init(
@@ -3717,6 +3755,8 @@ int main(int argc, char** argv) {
 				&judgement_db,
 				judgements,
 				judgement_proofs,
+				judgement_claims,
+				judgement_derivations,
 				JUDGEMENT_CAPACITY
 			);
 			prototype_universe_db_init(
@@ -4066,6 +4106,8 @@ int main(int argc, char** argv) {
 		&judgement_db,
 		judgements,
 		judgement_proofs,
+		judgement_claims,
+		judgement_derivations,
 		JUDGEMENT_CAPACITY
 	);
 

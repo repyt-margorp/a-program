@@ -5617,6 +5617,8 @@ struct artifact_sparse_graph {
 	struct prototype_type_expr* type_exprs;
 	struct prototype_judgement_relation* relations;
 	struct prototype_judgement_proof* proofs;
+	struct prototype_judgement_claim* claims;
+	struct prototype_judgement_derivation* derivations;
 	struct prototype_universe_node* universe_nodes;
 	struct prototype_universe_edge* universe_edges;
 	struct prototype_universe_level* universe_levels;
@@ -5638,6 +5640,8 @@ static void artifact_sparse_graph_free(struct artifact_sparse_graph* graph) {
 	free(graph->readback_field_types);
 	free(graph->type_exprs);
 	free(graph->type_declarations.representations);
+	free(graph->claims);
+	free(graph->derivations);
 	free(graph->relations);
 	free(graph->proofs);
 	free(graph->universe_nodes);
@@ -6075,6 +6079,14 @@ static int artifact_sparse_graph_alloc(
 			type_declarations->expr_count,
 			sizeof(*graph->type_exprs)
 		) != 0 ||
+		artifact_alloc_bytes(
+			(void**)&graph->claims, judgement_capacity, sizeof(*graph->claims)
+		) != 0 ||
+		artifact_alloc_bytes(
+			(void**)&graph->derivations,
+			judgement_capacity,
+			sizeof(*graph->derivations)
+		) != 0 ||
 		artifact_alloc_bytes((void**)&graph->relations, judgement_capacity, sizeof(*graph->relations)) != 0 ||
 		artifact_alloc_bytes((void**)&graph->proofs, judgement_capacity, sizeof(*graph->proofs)) != 0 ||
 		artifact_alloc_bytes(
@@ -6129,6 +6141,8 @@ static int artifact_sparse_graph_alloc(
 		&graph->judgement,
 		graph->relations,
 		graph->proofs,
+		graph->claims,
+		graph->derivations,
 		judgement_capacity
 	);
 	prototype_universe_db_init(
@@ -12808,7 +12822,8 @@ static int compile_ast_computation_fold_ref(
 		(size_t)node->as.computation_fold.first_clause +
 			node->as.computation_fold.clause_count >
 			ctx->asts->computation_fold_clause_count ||
-		node->as.computation_fold.clause_count > 31) {
+		node->as.computation_fold.clause_count >
+			PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES) {
 		return -1;
 	}
 	struct compile_ref computation;
@@ -12818,8 +12833,12 @@ static int compile_ast_computation_fold_ref(
 	uint32_t return_clause_operation;
 	uint32_t term;
 	uint32_t saved_binder_count = ctx->binder_count;
-	struct prototype_computation_fold_clause core_clauses[31];
-	struct prototype_operation_computation_fold_clause occurrence_clauses[31];
+	struct prototype_computation_fold_clause core_clauses[
+		PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES
+	];
+	struct prototype_operation_computation_fold_clause occurrence_clauses[
+		PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES
+	];
 	if (compile_ast_computation_ref(
 			ctx, node->as.computation_fold.computation, &computation
 		) != 0) {
@@ -26440,7 +26459,7 @@ static int operation_solver_require_evidence_in_context(
 				prototype_judgement_delta_set_operation(
 					&ctx->judgement_delta, expected_operation_id
 				);
-				return prototype_judgement_delta_record_context_reindex(
+				return prototype_judgement_delta_record_context_weaken(
 					&ctx->judgement_delta,
 					subject,
 					classifier,
@@ -26465,7 +26484,7 @@ static int operation_solver_require_evidence_in_context(
 				prototype_judgement_delta_set_operation(
 					&ctx->judgement_delta, expected_operation_id
 				);
-				return prototype_judgement_delta_record_context_reindex(
+				return prototype_judgement_delta_record_context_weaken(
 					&ctx->judgement_delta,
 					subject,
 					classifier,
@@ -26944,7 +26963,8 @@ static int operation_solver_reify_core_proof(
 				 * OperationGraph classifier is only a fixed-point approximation. */
 				return 1;
 			}
-			if (clause_count > 31 || operation->fold_clause_count != clause_count ||
+			if (clause_count > PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES ||
+				operation->fold_clause_count != clause_count ||
 				(clause_count != 0 &&
 				 (operation->first_fold_clause >
 					ctx->metadata->operation_fold_clause_count ||
@@ -26966,9 +26986,9 @@ static int operation_solver_reify_core_proof(
 			const struct prototype_operation_node* return_operation =
 				&ctx->metadata->operations[return_operation_id];
 			uint32_t premise_count = 2 + 2 * clause_count;
-			uint32_t premise_operations[64];
-			uint32_t premise_terms[64];
-			uint32_t premise_classifiers[64];
+			uint32_t premise_operations[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+			uint32_t premise_terms[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+			uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 			premise_operations[0] = operation->function;
 			premise_operations[1] = return_operation_id;
 			premise_terms[0] = term->as.computation_fold.computation;
@@ -27214,6 +27234,7 @@ static int operation_solver_reify_core_proof(
 				&ctx->judgement_delta,
 				ctx->terms,
 				ctx->type_declarations,
+				operation_solver_evidence_owner(ctx, operation->body),
 				core_term,
 				classifier,
 				body->classifier
@@ -28428,6 +28449,7 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 					ctx->type_declarations,
 					ctx->metadata->operations[def->compiled_operation].context_id,
 					def->compiled_operation,
+					def->compiled_operation,
 					compiled_term,
 					expected_classifier,
 					actual_classifier
@@ -28443,6 +28465,7 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 					ctx->type_declarations,
 					0,
 					def->compiled_operation,
+					PROTOTYPE_INVALID_ID,
 					compiled_term,
 					expected_classifier,
 					actual_classifier
