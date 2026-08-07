@@ -2658,6 +2658,15 @@ int prototype_compile_graph_with_imports(
 			program->universe,
 			program->type_declarations,
 			program->terms,
+			&(struct prototype_operation_graph) {
+				.operations = program->metadata->operations,
+				.operation_count = program->metadata->operation_count,
+				.cases = program->metadata->operation_cases,
+				.case_count = program->metadata->operation_case_count,
+				.fold_clauses = program->metadata->operation_fold_clauses,
+				.fold_clause_count =
+					program->metadata->operation_fold_clause_count
+			},
 			program->judgement
 		) != 0) {
 		if (error) {

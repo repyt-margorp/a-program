@@ -399,6 +399,9 @@ struct prototype_operation_node {
 	/* Source-operation binder identity for VAR occurrences. The core VAR may
 	 * alias another scoped occurrence after tagless canonicalization. */
 	uint32_t referenced_ast_binder_id;
+	/* Graph binding introduced by a Lambda occurrence. This cannot be recovered
+	 * from core_term after alpha-interning selects another representative. */
+	uint32_t binding_id;
 	uint32_t function;
 	uint32_t argument;
 	uint32_t body;
@@ -1349,6 +1352,11 @@ const struct prototype_operation_node* prototype_operation_graph_get(
 	const struct prototype_operation_graph* graph,
 	uint32_t operation_id
 );
+int prototype_operation_graph_selected_classifier(
+	const struct prototype_operation_graph* graph,
+	uint32_t operation_id,
+	uint32_t* p_classifier
+);
 const struct prototype_operation_match_case* prototype_operation_graph_get_case(
 	const struct prototype_operation_graph* graph,
 	uint32_t case_id
@@ -1674,6 +1682,7 @@ int prototype_artifact_apply_term_relocations(
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
 	struct prototype_context_db* target_contexts,
+	struct prototype_compile_metadata* target_metadata,
 	const struct prototype_artifact_interface* provider_interface
 );
 
@@ -1698,7 +1707,8 @@ int prototype_artifact_append_graph(
 	const struct prototype_type_declaration_db* source_type_declarations,
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
-	const struct prototype_substitution_db* source_substitutions
+	const struct prototype_substitution_db* source_substitutions,
+	uint32_t operation_offset
 );
 
 int prototype_canonical_link_table_add_metadata(

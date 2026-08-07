@@ -25,7 +25,7 @@ This audit is pinned to the following repository state:
 - commit subject: `refactor: structure kernel conversion outcomes`;
 - remote state at audit time: `HEAD`, `origin/main`, and `origin/HEAD` all
   point to `474867e`;
-- artifact format: `A_PROGRAM_ARTIFACT 61`;
+- artifact format: `A_PROGRAM_ARTIFACT 62`;
 - verification-obligation schema: version `1` for
   `PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT`.
 
@@ -431,7 +431,7 @@ residual obligation.
 This does not require storing every successful DefEq comparison as a judgement
 or object term.
 
-## 11. High Refactor 7: Make Judgement Proof Payloads Extensible
+## 11. High Refactor 7: Restore Typed-Occurrence Evidence Ownership
 
 ### Current implementation
 
@@ -439,21 +439,53 @@ JudgementDB has only `HAS_TYPE` and `IS_TYPE` conclusions at
 `src/prototype/judgement.h:13-17`. This is not itself a defect: an equality
 witness can be an ordinary TermDB term whose classifier is an equality type.
 
-The problem is the proof record at `src/prototype/judgement.h:55-78`. It is one
-large structure containing Match and IH-specific fields plus fixed parallel
-premise arrays.
+The immediate problem is not the physical proof record. Its conclusion subject
+is a shared Core Term ID, while A Program assigns synthetic classifiers to
+typed Operation occurrences. Distinct operations such as Bool and Nat identity
+functions may intentionally share one erased core lambda.
+
+The Operation classifier solver is already indexed by Operation ID. The loss of
+identity occurs when solved Operation classifiers are materialized into
+Term-indexed Judgement relations. Later code then recovers an occurrence by
+searching Core Term, Context, classifier, and proof tuples.
+
+JudgementDB also contains non-Operation facts: binder assumptions, declaration
+facts, type formation, intrinsic typing, and universe constraint inputs. A
+mechanical replacement of every Term subject by an Operation ID would therefore
+be another category error.
+
+The integer-literal implementation supplies a second constraint on the design.
+The solver selects one classifier for an Operation, while an in-range literal
+can have both Int64 and Int32 admissible typing relations. One synthetic solver
+result must not be confused with one possible derived typing claim.
 
 ### HOTT risk
 
-HOTT rules will need rule-specific data such as carrier types, dimensions,
-heterogeneous endpoints, transport families, and coherence boundaries. Adding
-all of them as more globally present fields would make proof validation fragile.
+HOTT endpoints and witnesses must be checked at a typed occurrence or explicit
+typed goal boundary. If operation typing remains Core-indexed, two distinct
+surface occurrences can borrow each other's classifier before object equality
+has even been introduced. That is the HOTT blocker.
+
+HOTT proof relevance still belongs first to object witness terms. V2-P0 keeps
+every validated derivation produced by the configured solver budget, but does
+not commit failed, superseded, unfinished, or merely hypothetical search
+candidates.
 
 ### Required change
 
-Keep `HAS_TYPE` and `IS_TYPE`, but refactor proof payloads into tagged,
-rule-specific records. Premises should be represented by a variable-size arena
-slice rather than fixed arrays in every proof object.
+V2-P0 makes OperationGraph authoritative for source/generated operation typing
+and for structural child edges. Binder, declaration, type-formation, intrinsic,
+and universe facts remain attached to their own authorities instead of being
+forced into fake Operation IDs. Synthesis, derived admissibility, and explicit
+exposure/conversion are represented as different concepts.
+
+Do not preselect a tagged subject union, tagged proof payload, or premise arena.
+After operation ownership is corrected, re-audit which evidence cannot be
+derived from OperationGraph, ContextDB, TypeDeclarationDB, UniverseDB, or kernel
+replay. Only that irreducible remainder may justify new storage in V2-P1.
+
+The mandatory pre-P1 correction is V2-P0 and is tracked in
+`doc/2026-08-07T06-00-00-OPERATION-INDEXED-TYPING-EVIDENCE-V2-P0-PLAN.md`.
 
 Do not add a general `JUDGEMENT_EQ` merely to represent object equality. Meta
 conversion remains a kernel service; object equality remains a type inhabited
@@ -639,7 +671,7 @@ Artifact validation currently replays v61 typing and conversion rules. Once the
 kernel admits new observational terms, transport rules, or type-former
 semantics, the meaning of a proof graph depends on the selected calculus.
 
-Two artifacts must not link merely because both say `A_PROGRAM_ARTIFACT 61` if
+Two artifacts must not link merely because both say `A_PROGRAM_ARTIFACT 62` if
 they were checked under different equality theories.
 
 ### Required v62 header contract
@@ -706,8 +738,10 @@ written.
 - [x] Make `EFFECT_ROW_FORALL` conversion recursively use conversion under its
   binder instead of falling back to source-shape comparison.
 - [x] Move ContextDB/SubstitutionDB implementation out of `ast.c`.
-- [ ] Specify, but do not yet serialize, the tagged JudgementDB proof payload.
-- [ ] Extend the existing solver record into a typed constraint design.
+- [ ] Move source/generated operation typing from Core Term identity to typed
+  Operation identity in V2-P0, while rehoming non-Operation facts.
+- [ ] Re-audit whether a tagged proof payload remains necessary after V2-P0.
+- [x] Extend the existing solver record into a typed constraint design.
 - [x] Add tests proving TypeView/core sharing never establishes object equality.
 
 The structured conversion item is planned and tracked in
@@ -730,10 +764,13 @@ records.
 - [x] Add law tests for identity, composition, extension, and computation
   reindexing; the current example-based category test is not a general law
   checker.
-- [ ] Add typed conversion/residual constraint records carrying context,
+- [x] Add typed conversion/residual constraint records carrying context,
   carrier, profile, rule identity, and budget.
-- [ ] Add tagged proof payloads and a variable-size premise arena according to
-  the frozen first-fragment rules.
+- [ ] Complete V2-P0: use OperationGraph edges for structural typing, attach
+  derived conversion/exposure to explicit typed boundaries, and rehome
+  non-Operation facts.
+- [ ] Re-audit V2-P1 storage requirements after the ownership migration; do not
+  assume tagged payloads or a premise arena in advance.
 
 ### Phase 3: Observational infrastructure
 
@@ -758,10 +795,11 @@ records.
 
 ### Phase 6: Artifact v62
 
-- [ ] Freeze all numeric tags and rule payload schemas.
+- [ ] Freeze all numeric tags and the evidence schema selected by the P1
+  re-audit.
 - [ ] Add semantic fingerprints to the header/interface.
-- [ ] Serialize tagged proof payloads, premise slices, typed residuals, and the
-  selected HOTT graph nodes in one schema break.
+- [ ] Serialize only the irreducible evidence selected after P0, together with
+  typed residuals and the selected HOTT graph nodes, in one schema break.
 - [ ] Serialize and relocate all new graph edges.
 - [ ] Reject v61.
 - [ ] Add source-to-artifact, readback, link, and revalidation tests.
@@ -1181,9 +1219,10 @@ At commit `474867e`:
 | V2-C2 | Replace fresh-binder reindexing with direct binding-object graph action | complete | no schema change | simultaneous/capture/IH laws, depth-513 context, all 14 tests, examples 01-07/09, old/new v61 readback, and deterministic output pass |
 | V2-B1 | Replace positional binder-assumption proof identity with direct binding-object identity | complete | v61 slot is reserved; physical removal is deferred to V2-P1/v62 | exact-binding validator, binding-aware context identity, relocation, forged-proof, artifact, all 14 test scripts, and examples 01-07/09 pass |
 | V2-S1 | Extend solver constraints with typed HOTT indices | complete | v61 unchanged; residual serialization deferred to v62 | tagged classifier goals, deterministic conversion goals, Context/substitution-indexed HOTT goals, purity/residual tests, all 15 scripts, and byte-stable artifacts pass |
-| V2-P1 | Replace monolithic proof payload with tagged records and premise arena | pending | breaking | validator and relocation tests |
-| V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-S1/P1 | breaking | substitution/naturality tests |
-| V2-A1 | Perform one coordinated artifact v62 migration | blocked by V2-P1/O1 | breaking | v61 rejection and v62 link matrix |
+| V2-P0 | Make OperationGraph authoritative for operation typing, separate synthetic and derived claims, and rehome non-Operation facts | complete in the 2026-08-08 working tree | artifact v62 | shared-core/distinct-operation, exact child-operation premises, immutable multiple derivations, literal overload/admissibility, forged occurrence, conversion-boundary, universe-input, and fixed-point tests pass |
+| V2-P1 | Store irreducible derived-boundary evidence and claim-to-many-derivation identity; do not duplicate structural Operation edges | pending after completed P0 re-audit | undecided | derived-boundary replay, multiple derivation, and validator tests |
+| V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-P0 and the P1 re-audit | breaking | substitution/naturality tests |
+| V2-A1 | Perform one coordinated artifact v62 migration | blocked by P1 re-audit/O1 | breaking | v61 rejection and v62 link matrix |
 
 ### 23.3 Non-negotiable boundaries
 
@@ -1205,8 +1244,44 @@ At commit `474867e`:
 ### 23.4 Next implementation checkpoint
 
 V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, V2-C2, V2-B1, and V2-S1 are complete. The
-next checkpoint is V2-P1: replace the monolithic proof payload with tagged
-records and a premise arena. Proof and Context binding identity is now uniform:
+V2-P0 checkpoint is also complete in the 2026-08-08 working tree. Its first
+premise was that source/generated typing
+evidence belongs to the Operation/type-view occurrence, never to an erased
+TermDB ID. P0 makes OperationGraph authoritative for source and generated
+operation typing, distinguishes its selected synthetic classifier from
+derived admissible typings and explicit exposure, and moves non-Operation facts
+back to ContextDB, TypeDeclarationDB, UniverseDB, or another explicit authority.
+The selected solver classifier is singular; admissible relations need not be.
+P0 also forbids resolving an Operation premise by globally searching for an
+equal Core Term/Context/classifier tuple. Structural premises follow the exact
+child Operation edge, while Context/declaration facts use explicitly neutral
+authority paths. Accepted proof derivations are immutable DAG nodes: a second
+derivation of the same Operation-level typed claim must not overwrite the
+first. One claim may have multiple derivations, so P0 makes no semantic one-
+proof-per-relation assumption. Solver-frontier candidates are not accepted
+derivations and remain outside the committed certificate graph until validated.
+The detailed P0 plan, including the mandatory P0-R0 certificate-construction
+refactor, is in
+`doc/2026-08-07T06-00-00-OPERATION-INDEXED-TYPING-EVIDENCE-V2-P0-PLAN.md`.
+
+P0-R0 is the first implementation slice of P0, not an optional compatibility
+cleanup and not a separate phase before P0. It separates
+Operation-indexed constraint generation, provisional fixed-point solving, and
+atomic immutable evidence commit. P0.1 characterization proceeds only after
+that boundary preserves the existing CBPV and artifact behavior.
+
+P0-R0 also owns the effect-row solver boundary required for atomic certificate
+publication. Symbolic effect equations remain canonical Operation-owned solver
+state until stable; repeatedly rebuilt `EFFECT_ROW_UNION` Term syntax is not a
+fixed-point state. This is required before a computation classifier can become
+accepted evidence and does not introduce object equality or a second
+Value/Computation Core graph.
+
+The P1 re-audit is complete. P1 is narrowed to irreducible derived-boundary
+evidence and claim-to-many-derivation identity. Structural Operation edges are
+not copied into tagged records, and a premise arena is not introduced without a
+future unbounded evidence requirement. Proof and Context binding identity is now
+uniform:
 a binder assumption is selected by the binding object in its conclusion
 `VAR(binding_id)`, never by lexical depth. Equality syntax and object TermDB
 tags remain deferred to V2-O1, and
@@ -1288,7 +1363,7 @@ naturality. V2-S1 does not inherit the former fresh-renaming mechanism in its
 typed goal records. V2-C2 was therefore completed before V2-S1:
 
 ```text
-V2-C2 -> V2-B1 -> V2-S1 -> V2-P1 -> V2-O1 -> V2-A1
+V2-C2 -> V2-B1 -> V2-S1 -> V2-P0 -> P1 re-audit -> V2-O1 -> V2-A1
 ```
 
 V2-C2 changes no artifact schema and adds no HOTT object term. Its complete
@@ -1361,9 +1436,9 @@ the exact binding edges referenced by terms and proofs.
 During V2-B1, `assumption_index` becomes a reserved legacy slot and must be
 `PROTOTYPE_INVALID_ID` in every newly created or accepted in-memory proof.
 Artifact v61 keeps the numeric slot only to avoid an isolated schema migration
-immediately before V2-P1. Readers must not use the slot to reconstruct binder
-identity. The slot is removed physically when V2-P1 introduces tagged proof
-payloads and artifact v62.
+immediately before the P0/P1 evidence redesign. Readers must not use the slot to
+reconstruct binder identity. The slot is removed physically in artifact v62
+after the P1 re-audit selects the final evidence representation.
 
 This is not backward-compatibility logic for positional proofs. A v61 proof is
 accepted only when its relation conclusion and Context graph independently
@@ -1392,13 +1467,14 @@ second BindingDB, or separate Value/Computation graph syntax.
 
 ### 25.5 Ordering consequence
 
-V2-S1 typed goals will store Context and endpoint substitutions. They must be
+V2-S1 typed goals store Context and endpoint substitutions. They must be
 created only after binder-assumption evidence has the same direct graph identity
-as TermDB, ContextDB, and SubstitutionDB. V2-P1 then removes the reserved slot
-while moving rule data into tagged payloads. The mandatory order is:
+as TermDB, ContextDB, and SubstitutionDB. V2-P0 next fixes occurrence ownership;
+only its P1 re-audit may decide how the reserved proof slot and remaining rule
+data are physically represented. The mandatory order is:
 
 ```text
-V2-C2 -> V2-B1 -> V2-S1 -> V2-P1 -> V2-O1
+V2-C2 -> V2-B1 -> V2-S1 -> V2-P0 -> P1 re-audit -> V2-O1
 ```
 
 ### 25.6 Completion evidence

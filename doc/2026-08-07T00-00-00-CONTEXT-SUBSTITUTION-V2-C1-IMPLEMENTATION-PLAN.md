@@ -50,7 +50,7 @@ The plan is pinned to:
 
 - branch: `main`;
 - commit: `8fe515d83360cfbc1aa4078653bba40c41da735c`;
-- artifact header: `A_PROGRAM_ARTIFACT 61`;
+- artifact header: `A_PROGRAM_ARTIFACT 62`;
 - `src/prototype/context.h` already contains the public data structures and
   most declarations;
 - implementations are split incorrectly between `ast.c` and `typing.c`;
@@ -642,7 +642,7 @@ Artifact parity evidence:
 baseline SHA-256: 1211bf6bac81a4fcf27f0db409b9f329ea6072d1da34bdac8c48ec85163fe4ad
 post-C1 SHA-256:  1211bf6bac81a4fcf27f0db409b9f329ea6072d1da34bdac8c48ec85163fe4ad
 size:             7880 bytes
-artifact header:  A_PROGRAM_ARTIFACT 61
+artifact header:  A_PROGRAM_ARTIFACT 62
 ```
 
 The extraction exposed two existing implementation details without changing

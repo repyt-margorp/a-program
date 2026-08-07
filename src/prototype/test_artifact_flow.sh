@@ -66,6 +66,27 @@ c_enum_value_in() {
 		}
 		in_enum {
 			line = $0;
+			if (in_comment) {
+				if (line ~ /\*\//) {
+					sub(/^.*\*\//, "", line);
+					in_comment = 0;
+				} else {
+					next;
+				}
+			}
+			while (line ~ /\/\*/) {
+				before = line;
+				sub(/\/\*.*/, "", before);
+				after = line;
+				if (after ~ /\*\//) {
+					sub(/^.*\*\//, "", after);
+					line = before after;
+				} else {
+					line = before;
+					in_comment = 1;
+					break;
+				}
+			}
 			sub(/\/\/.*/, "", line);
 			gsub(/,/, "", line);
 			gsub(/^[ \t]+|[ \t]+$/, "", line);
@@ -115,6 +136,7 @@ PROOF_KIND_TEXT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROT
 PROOF_KIND_PURE_PRIMITIVE_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO)
 PROOF_KIND_EFFECT_OPERATION_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO)
 PROOF_KIND_INT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO)
+PROOF_KIND_INT_LITERAL_ADMISSIBILITY=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_ADMISSIBILITY)
 PROOF_KIND_CONVERSION=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_CONVERSION)
 PROOF_KIND_HOST_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_HOST_TYPE_INTRO)
 PROOF_KIND_IS_TYPE_FROM_HAS_TYPE=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE)
@@ -171,7 +193,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 61$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 62$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -204,9 +226,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/61$/60/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v60.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v60.apo" >"$TMP_DIR/identity-v60.out" 2>"$TMP_DIR/identity-v60.err"; then
-	echo "obsolete artifact unexpectedly passed after v61 format bump" >&2
+sed '1s/62$/61/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v61.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v61.apo" >"$TMP_DIR/identity-v61.out" 2>"$TMP_DIR/identity-v61.err"; then
+	echo "obsolete artifact unexpectedly passed after v62 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
@@ -218,6 +240,63 @@ identity_nat_operation=$(awk '/metadata label identityNat -> operation#[0-9]+ ->
 test -n "$identity_bool_operation"
 test -n "$identity_nat_operation"
 test "$identity_bool_operation" != "$identity_nat_operation"
+
+cat >"$TMP_DIR/shared-core-proof-owner.p" <<'EOF_SHARED_CORE_PROOF_OWNER'
+Bool := @{
+	true : *;
+	false : *;
+};
+
+id1 := \x : Bool => x;
+id2 := \y : Bool => y;
+use1 := id1 Bool.true;
+use2 := id2 Bool.true;
+EOF_SHARED_CORE_PROOF_OWNER
+
+./read_file.out --write-artifact "$TMP_DIR/SharedCoreProofOwner.apo" \
+	"$TMP_DIR/shared-core-proof-owner.p" >"$TMP_DIR/shared-core-proof-owner.out"
+id1_operation=$(awk '/metadata label id1 -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
+id2_operation=$(awk '/metadata label id2 -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
+use1_operation=$(awk '/metadata label use1 -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
+test -n "$id1_operation"
+test -n "$id2_operation"
+test -n "$use1_operation"
+test "$id1_operation" != "$id2_operation"
+awk -v id1_operation="$id1_operation" -v id2_operation="$id2_operation" \
+	-v use1_operation="$use1_operation" '
+	FNR == NR {
+		if ($1 == "judgement" && $(NF - 1) == "operation") {
+			if ($NF == id1_operation) {
+				id1_proof = $7;
+			} else if ($NF == id2_operation) {
+				id2_proof = $7;
+			} else if ($NF == use1_operation) {
+				use1_proof = $7;
+			}
+		}
+		next;
+	}
+	$1 == "proof" && $2 == use1_proof {
+		if ($18 != id1_proof) {
+			exit 1;
+		}
+		$18 = id2_proof;
+		replaced = 1;
+	}
+	{ print }
+	END {
+		if (!id1_proof || !id2_proof || !use1_proof || !replaced) {
+			exit 1;
+		}
+	}
+' "$TMP_DIR/SharedCoreProofOwner.apo" "$TMP_DIR/SharedCoreProofOwner.apo" \
+	>"$TMP_DIR/BadSharedCoreProofOwner.apo"
+if ./read_file.out --read-graph "$TMP_DIR/BadSharedCoreProofOwner.apo" \
+	>"$TMP_DIR/bad-shared-core-proof-owner.out" \
+	2>"$TMP_DIR/bad-shared-core-proof-owner.err"; then
+	echo "shared-core proof from the wrong Operation unexpectedly passed" >&2
+	exit 1
+fi
 identity_bool_term=$(awk '$1 == "term" && $2 == "identityBool" { print $3 }' "$TMP_DIR/identity.apo")
 identity_nat_term=$(awk '$1 == "term" && $2 == "identityNat" { print $3 }' "$TMP_DIR/identity.apo")
 identity_bool_classifier=$(awk '$1 == "term" && $2 == "identityBool" { print $4 }' "$TMP_DIR/identity.apo")
@@ -554,6 +633,27 @@ multi_app_elim_count=$(grep -F -c '[app-elim]' "$TMP_DIR/multi-app.out")
 test "$multi_app_elim_count" -ge 2
 grep -E 'metadata label matchAscribed -> operation#[0-9]+ -> term#' "$TMP_DIR/multi-app.out" >/dev/null
 grep -F '[solved-match-motive]' "$TMP_DIR/multi-app.out" >/dev/null
+
+./read_file.out --write-artifact "$TMP_DIR/AscribedRawFunction.apo" \
+	src/prototype/ascribed_raw_function_check.p \
+	>"$TMP_DIR/ascribed-raw-function.out"
+awk '
+	$1 == "operation" {
+		core[$2] = $7;
+		classifier[$2] = $9;
+		if ($3 == 9) {
+			ascription = $2;
+			body = $18;
+		}
+	}
+	END {
+		if (ascription == "" || body == "" || !(body in core) ||
+			core[ascription] != core[body] ||
+			classifier[ascription] != classifier[body]) {
+			exit 1;
+		}
+	}
+' "$TMP_DIR/AscribedRawFunction.apo"
 
 cat >"$TMP_DIR/type-view-sharing.p" <<'EOF_TYPE_VIEW_SHARING'
 Bool := @{
@@ -1527,22 +1627,21 @@ grep -q 'has-type COMPUTATION_FOLD(INDUCTION_HYPOTHESIS.*\[computation-fold-elim
 ./read_file.out --write-artifact "$TMP_DIR/IhMotive.apo" "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive-artifact.out"
 awk '
 	$1 == "proof" && $3 == ih_elim_proof_kind && !done {
-		$7 = 0;
-		$8 = 4294967295;
-		$9 = 4294967295;
-		$10 = 4294967295;
+		$11 = 999;
+		$12 = 4294967295;
+		$13 = 4294967295;
 		done = 1;
 	}
 	{ print }
 ' ih_elim_proof_kind="$PROOF_KIND_INDUCTION_HYPOTHESIS_ELIM" \
 	"$TMP_DIR/IhMotive.apo" >"$TMP_DIR/BadIhContextKind.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadIhContextKind.apo" >"$TMP_DIR/bad-ih-context-kind.out" 2>"$TMP_DIR/bad-ih-context-kind.err"; then
-	echo "bad IH context kind artifact unexpectedly passed" >&2
+	echo "bad IH match artifact unexpectedly passed" >&2
 	exit 1
 fi
 awk '
 	$1 == "proof" && $3 == ih_elim_proof_kind && !done {
-		$10 = 999;
+		$13 = 999;
 		done = 1;
 	}
 	{ print }
@@ -1732,8 +1831,107 @@ EOF_INT_LITERAL
 ./read_file.out --write-artifact "$TMP_DIR/IntLiteral.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal.out"
 grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int64) \[int-literal-intro\]' "$TMP_DIR/int-literal.out"
-grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int) \[int-literal-intro\]' "$TMP_DIR/int-literal.out"
+grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int) \[int-literal-admissibility\]' "$TMP_DIR/int-literal.out"
 grep -q '\[host-type-intro\]' "$TMP_DIR/int-literal.out"
+awk '
+	$1 == "operation" && $3 == 1 {
+		literal_operation = $2;
+		selected_classifier = $9;
+		literal_count++;
+	}
+	$1 == "judgement" && $(NF - 1) == "operation" &&
+		($6 == int_literal_intro || $6 == int_literal_admissibility) {
+		admissible[$NF SUBSEP $5] = 1;
+	}
+	END {
+		classifier_count = 0;
+		for (entry in admissible) {
+			split(entry, parts, SUBSEP);
+			if (parts[1] == literal_operation) {
+				classifier_count++;
+			}
+		}
+		if (literal_count != 1 ||
+			!admissible[literal_operation SUBSEP selected_classifier] ||
+			classifier_count != 2) {
+			exit 1;
+		}
+	}
+' int_literal_intro="$PROOF_KIND_INT_LITERAL_INTRO" \
+	int_literal_admissibility="$PROOF_KIND_INT_LITERAL_ADMISSIBILITY" \
+	"$TMP_DIR/IntLiteral.apo"
+./read_file.out --write-artifact "$TMP_DIR/IntLiteralRepeat.apo" \
+	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-repeat.out"
+awk '$1 == "operation" { print $2, $9 }' "$TMP_DIR/IntLiteral.apo" \
+	>"$TMP_DIR/int-literal-selected.txt"
+awk '$1 == "operation" { print $2, $9 }' "$TMP_DIR/IntLiteralRepeat.apo" \
+	>"$TMP_DIR/int-literal-repeat-selected.txt"
+cmp "$TMP_DIR/int-literal-selected.txt" "$TMP_DIR/int-literal-repeat-selected.txt"
+
+cat >"$TMP_DIR/int-literal-specialization.p" <<'EOF_INT_LITERAL_SPECIALIZATION'
+id := \x : #.Int => x;
+main := id #42;
+EOF_INT_LITERAL_SPECIALIZATION
+./read_file.out --write-artifact "$TMP_DIR/IntLiteralSpecialization.apo" \
+	"$TMP_DIR/int-literal-specialization.p" \
+	>"$TMP_DIR/int-literal-specialization.out"
+awk '
+	$1 == "operation" && $3 == 1 {
+		literal_operation = $2;
+		selected_classifier = $9;
+		literal_count++;
+	}
+	$1 == "judgement" && $(NF - 1) == "operation" &&
+		($6 == int_literal_intro || $6 == int_literal_admissibility) {
+		admissible[$NF SUBSEP $5] = 1;
+	}
+	END {
+		classifier_count = 0;
+		for (entry in admissible) {
+			split(entry, parts, SUBSEP);
+			if (parts[1] == literal_operation) {
+				classifier_count++;
+			}
+		}
+		if (literal_count != 1 || classifier_count != 1 ||
+			!admissible[literal_operation SUBSEP selected_classifier]) {
+			exit 1;
+		}
+	}
+' int_literal_intro="$PROOF_KIND_INT_LITERAL_INTRO" \
+	int_literal_admissibility="$PROOF_KIND_INT_LITERAL_ADMISSIBILITY" \
+	"$TMP_DIR/IntLiteralSpecialization.apo"
+
+./read_file.out --write-artifact "$TMP_DIR/MultipleDerivations.apo" \
+	examples/05_bool_to_nat.p >"$TMP_DIR/multiple-derivations.out"
+awk '
+	$1 == "judgement" && $(NF - 1) == "operation" &&
+		$NF != 4294967295 {
+		key = $3 ":" $4 ":" $5 ":" $NF;
+		claims[key]++;
+		proof_kinds[key SUBSEP $6] = 1;
+	}
+	END {
+		for (key in claims) {
+			if (claims[key] < 2) {
+				continue;
+			}
+			kind_count = 0;
+			for (entry in proof_kinds) {
+				split(entry, parts, SUBSEP);
+				if (parts[1] == key) {
+					kind_count++;
+				}
+			}
+			if (kind_count >= 2) {
+				found = 1;
+			}
+		}
+		if (!found) {
+			exit 1;
+		}
+	}
+' "$TMP_DIR/MultipleDerivations.apo"
 awk '
 	FNR == NR {
 		if ($1 == "judgement" && $6 == host_type_intro && !universe_classifier) {

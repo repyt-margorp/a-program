@@ -6,7 +6,7 @@ Status: complete
 
 Baseline commit: `7780fdd` (`main`, synchronized with `origin/main`)
 
-Artifact format at baseline: `A_PROGRAM_ARTIFACT 61`
+Artifact format at baseline: `A_PROGRAM_ARTIFACT 62`
 
 Parent plan:
 `doc/2026-08-06T02-00-00-HIGHER-OBSERVATIONAL-TT-REFACTOR-AUDIT-V2.md`

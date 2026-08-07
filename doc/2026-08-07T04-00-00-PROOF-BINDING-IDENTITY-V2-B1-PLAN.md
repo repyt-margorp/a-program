@@ -23,7 +23,7 @@ Baseline:
 
 - branch: `main`;
 - commit: `fbc3c99`;
-- artifact format: `A_PROGRAM_ARTIFACT 61`;
+- artifact format: `A_PROGRAM_ARTIFACT 62`;
 - implementation boundary: `src/prototype/`.
 
 ## 1. Purpose
@@ -476,6 +476,6 @@ by classifier.
 
 ### 11.3 Artifact result
 
-Artifact format remains `A_PROGRAM_ARTIFACT 61`. The old numeric proof slot is
+Artifact format remains `A_PROGRAM_ARTIFACT 62`. The old numeric proof slot is
 written as `4294967295`, parsed only to preserve record width, and required to
 remain invalid. Physical removal remains mandatory in V2-P1/v62.

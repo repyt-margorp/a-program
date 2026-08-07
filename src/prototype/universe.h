@@ -7,6 +7,9 @@
 #include "term.h"
 #include "type_declaration.h"
 
+struct prototype_operation_graph;
+struct prototype_judgement_db;
+
 enum prototype_universe_node_tag {
 	PROTOTYPE_UNIVERSE_NODE_TYPE = 1,
 	PROTOTYPE_UNIVERSE_NODE_PARAMETER
@@ -116,6 +119,7 @@ int prototype_universe_collect(
 	struct prototype_universe_db* db,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
+	const struct prototype_operation_graph* operations,
 	const struct prototype_judgement_db* judgement
 );
 

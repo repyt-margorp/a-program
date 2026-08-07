@@ -19,7 +19,7 @@ This plan is pinned to:
 - branch: `main`;
 - commit: `474867ea31331bcf93821f9bf106184602715e58`;
 - short commit: `474867e`;
-- artifact format: `A_PROGRAM_ARTIFACT 61`;
+- artifact format: `A_PROGRAM_ARTIFACT 62`;
 - all twelve `src/prototype/test_*.sh` scripts passing;
 - a clean worktree before the V2 planning documents were added.
 

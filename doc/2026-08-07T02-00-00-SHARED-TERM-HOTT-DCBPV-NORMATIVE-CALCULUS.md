@@ -12,7 +12,7 @@ Baseline:
 
 - branch: `main`;
 - source baseline: `0f94680de93be47a810753db0573d76de6509f82`;
-- artifact format: `A_PROGRAM_ARTIFACT 61`;
+- artifact format: `A_PROGRAM_ARTIFACT 62`;
 - ContextDB/SubstitutionDB extraction: commit `77083ea`.
 
 This document freezes the semantic input required by V2-S1. It does not add

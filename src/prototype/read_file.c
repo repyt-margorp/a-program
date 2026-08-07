@@ -739,6 +739,17 @@ static int read_artifact_interface_and_graph(
 			type_declarations,
 			&metadata->contexts,
 			&metadata->substitutions,
+			&(struct prototype_operation_graph) {
+				.operations = metadata->operations,
+				.operation_count = metadata->operation_count,
+				.operation_capacity = metadata->operation_capacity,
+				.cases = metadata->operation_cases,
+				.case_count = metadata->operation_case_count,
+				.case_capacity = metadata->operation_case_capacity,
+				.fold_clauses = metadata->operation_fold_clauses,
+				.fold_clause_count = metadata->operation_fold_clause_count,
+				.fold_clause_capacity = metadata->operation_fold_clause_capacity
+			},
 			judgement_db
 		) != 0) {
 		status = -1;
@@ -928,6 +939,9 @@ static int append_link_operation_graph(
 		operation.scrutinee = offset_link_graph_id(operation.scrutinee, operation_offset);
 		operation.referenced_ast_binder_id = offset_link_graph_id(
 			operation.referenced_ast_binder_id, source_binder_offset
+		);
+		operation.binding_id = offset_link_graph_id(
+			operation.binding_id, binder_offset
 		);
 		operation.fold_return_ast_binder_id = offset_link_graph_id(
 			operation.fold_return_ast_binder_id, source_binder_offset
@@ -2071,7 +2085,8 @@ static int read_import_artifact_into_slot(
 			&provider_type_declarations,
 			&provider_judgement_db,
 			&provider_metadata.contexts,
-			&provider_metadata.substitutions
+			&provider_metadata.substitutions,
+			PROTOTYPE_INVALID_ID
 	);
 }
 
@@ -3396,6 +3411,8 @@ int main(int argc, char** argv) {
 			}
 			uint32_t provider_term_offset = (uint32_t)term_db.term_count;
 			uint32_t provider_binder_offset = term_db.next_binding_id;
+			uint32_t provider_operation_offset =
+				(uint32_t)metadata.operation_count;
 			if (prototype_artifact_append_graph(
 					&appended_interface,
 					&term_db,
@@ -3408,7 +3425,8 @@ int main(int argc, char** argv) {
 					&provider_type_declarations,
 					&provider_judgement_db,
 					&provider_metadata.contexts,
-					&provider_metadata.substitutions
+					&provider_metadata.substitutions,
+					provider_operation_offset
 				) != 0 || append_link_operation_graph(
 					&metadata,
 					&provider_metadata,
@@ -3433,6 +3451,7 @@ int main(int argc, char** argv) {
 					&type_declarations,
 					&judgement_db,
 					&metadata.contexts,
+					&metadata,
 					&artifact_interface
 				) != 0 ||
 				prototype_artifact_apply_term_relocations(
@@ -3441,6 +3460,7 @@ int main(int argc, char** argv) {
 					&type_declarations,
 					&judgement_db,
 					&metadata.contexts,
+					&metadata,
 					&appended_interface
 				) != 0) {
 				fprintf(stderr, "%s + %s: failed to link artifacts\n", link_target_path, provider_path);
@@ -3493,17 +3513,24 @@ int main(int argc, char** argv) {
 			symbol_table_free(&symbols);
 			return 1;
 		}
-		prototype_judgement_resolve_declaration_premises(
+		prototype_judgement_finalize_linked_declaration_premises(
 			&term_db,
 			&type_declarations,
 			&judgement_db
 		);
-		prototype_judgement_resolve_proof_edges(&judgement_db);
+		struct prototype_operation_graph linked_operation_graph;
+		prototype_compile_metadata_operation_graph(
+			&metadata, &linked_operation_graph
+		);
+		prototype_judgement_resolve_proof_edges(
+			&judgement_db, &linked_operation_graph
+		);
 		if (prototype_judgement_validate_proofs(
 				&term_db,
 				&type_declarations,
 				&metadata.contexts,
 				&metadata.substitutions,
+				&linked_operation_graph,
 				&judgement_db
 			) != 0) {
 			fprintf(stderr, "%s: linked artifact proof validation failed\n", link_target_path);
@@ -3511,7 +3538,13 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 		if (link_output_path) {
-			if (prototype_universe_collect(&universe_db, &type_declarations, &term_db, &judgement_db) != 0) {
+			if (prototype_universe_collect(
+					&universe_db,
+					&type_declarations,
+					&term_db,
+					&linked_operation_graph,
+					&judgement_db
+				) != 0) {
 				fprintf(stderr, "%s: failed to collect linked universe graph\n", link_output_path);
 				symbol_table_free(&symbols);
 				return 1;
@@ -3730,6 +3763,17 @@ int main(int argc, char** argv) {
 					&type_declarations,
 					&artifact_metadata.contexts,
 					&artifact_metadata.substitutions,
+					&(struct prototype_operation_graph) {
+						.operations = artifact_metadata.operations,
+						.operation_count = artifact_metadata.operation_count,
+						.operation_capacity = artifact_metadata.operation_capacity,
+						.cases = artifact_metadata.operation_cases,
+						.case_count = artifact_metadata.operation_case_count,
+						.case_capacity = artifact_metadata.operation_case_capacity,
+						.fold_clauses = artifact_metadata.operation_fold_clauses,
+						.fold_clause_count = artifact_metadata.operation_fold_clause_count,
+						.fold_clause_capacity = artifact_metadata.operation_fold_clause_capacity
+					},
 					&judgement_db
 				) != 0) {
 				fclose(artifact_file);

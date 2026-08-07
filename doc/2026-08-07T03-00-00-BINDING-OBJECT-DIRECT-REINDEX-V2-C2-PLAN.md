@@ -19,7 +19,7 @@ Baseline:
 - branch: `main`;
 - commit: `268f2e6b45725e6424681b90baddb8e152f0612b`;
 - short commit: `268f2e6`;
-- artifact format: `A_PROGRAM_ARTIFACT 61`;
+- artifact format: `A_PROGRAM_ARTIFACT 62`;
 - prototype test scripts: 14.
 
 ## 1. Purpose

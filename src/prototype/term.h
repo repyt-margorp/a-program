@@ -717,6 +717,32 @@ int prototype_term_effect_row_var(
 	uint32_t binding_id,
 	uint32_t* p_ret
 );
+
+/* Effect rows form an idempotent commutative union. The normal form is solver
+ * state, not a new Term tag: closed labels are accumulated in effects and each
+ * unresolved variable or higher-order operation atom occurs at most once. */
+#define PROTOTYPE_EFFECT_ROW_NORMAL_FORM_ATOM_CAPACITY 512
+
+struct prototype_effect_row_normal_form {
+	unsigned effects;
+	uint32_t atom_count;
+	uint32_t atoms[PROTOTYPE_EFFECT_ROW_NORMAL_FORM_ATOM_CAPACITY];
+};
+
+int prototype_term_effect_row_normal_form(
+	const struct prototype_term_db* db,
+	uint32_t row,
+	struct prototype_effect_row_normal_form* p_normal
+);
+int prototype_term_effect_row_normal_form_includes(
+	const struct prototype_effect_row_normal_form* superset,
+	const struct prototype_effect_row_normal_form* subset
+);
+int prototype_term_effect_row_materialize_normal_form(
+	struct prototype_term_db* db,
+	const struct prototype_effect_row_normal_form* normal,
+	uint32_t* p_ret
+);
 int prototype_term_effect_row_union(
 	struct prototype_term_db* db,
 	uint32_t left,
@@ -871,6 +897,14 @@ int prototype_term_view_shape_equal(
 int prototype_term_core_shape_equal(
 	const struct prototype_term_db* db,
 	uint32_t left,
+	uint32_t right,
+	int* p_equal
+);
+int prototype_term_core_shape_equal_under_binder(
+	const struct prototype_term_db* db,
+	uint32_t left_binder,
+	uint32_t left,
+	uint32_t right_binder,
 	uint32_t right,
 	int* p_equal
 );

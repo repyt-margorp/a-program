@@ -2024,6 +2024,28 @@ int prototype_term_core_shape_equal(
 	);
 }
 
+int prototype_term_core_shape_equal_under_binder(
+	const struct prototype_term_db* db,
+	uint32_t left_binder,
+	uint32_t left,
+	uint32_t right_binder,
+	uint32_t right,
+	int* p_equal
+) {
+	if (!db || !p_equal || left >= db->term_count || right >= db->term_count) {
+		return -1;
+	}
+	struct term_scope_env env;
+	memset(&env, 0, sizeof(env));
+	if (term_scope_env_push_binder(&env, left_binder, right_binder) != 0) {
+		return -1;
+	}
+	*p_equal = shape_terms_equal_at_depth(
+		db, left, right, &env, PROTOTYPE_TYPE_VIEW_COMPARE_CORE, 0
+	);
+	return 0;
+}
+
 int prototype_term_source_shape_equal(
 	const struct prototype_term_db* db,
 	uint32_t left,
@@ -3660,6 +3682,153 @@ int prototype_term_effect_row_purity(
 	return effects == PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ?
 		PROTOTYPE_EFFECT_ROW_PURITY_PURE :
 		PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL;
+}
+
+static int effect_row_normal_form_add_atom(
+	struct prototype_effect_row_normal_form* normal,
+	uint32_t atom
+) {
+	if (!normal) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < normal->atom_count; ++i) {
+		if (normal->atoms[i] == atom) {
+			return 0;
+		}
+	}
+	if (normal->atom_count >= PROTOTYPE_EFFECT_ROW_NORMAL_FORM_ATOM_CAPACITY) {
+		return -1;
+	}
+	normal->atoms[normal->atom_count++] = atom;
+	return 0;
+}
+
+static int effect_row_normal_form_collect(
+	const struct prototype_term_db* db,
+	uint32_t row,
+	struct prototype_effect_row_normal_form* normal,
+	uint32_t depth
+) {
+	if (!db || !normal || row >= db->term_count || depth > 512) {
+		return -1;
+	}
+	const struct prototype_term* term = &db->terms[row];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+			normal->effects |= term->as.effect_label.effects;
+			return 0;
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			return effect_row_normal_form_collect(
+					db, term->as.effect_row_union.left, normal, depth + 1
+				) != 0 || effect_row_normal_form_collect(
+					db, term->as.effect_row_union.right, normal, depth + 1
+				) != 0 ? -1 : 0;
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return effect_row_normal_form_add_atom(normal, row);
+		default:
+			return -1;
+	}
+}
+
+int prototype_term_effect_row_normal_form(
+	const struct prototype_term_db* db,
+	uint32_t row,
+	struct prototype_effect_row_normal_form* p_normal
+) {
+	if (!p_normal) {
+		return -1;
+	}
+	memset(p_normal, 0, sizeof(*p_normal));
+	return effect_row_normal_form_collect(db, row, p_normal, 0);
+}
+
+int prototype_term_effect_row_normal_form_includes(
+	const struct prototype_effect_row_normal_form* superset,
+	const struct prototype_effect_row_normal_form* subset
+) {
+	if (!superset || !subset ||
+		(superset->effects & subset->effects) != subset->effects) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < subset->atom_count; ++i) {
+		int found = 0;
+		for (uint32_t j = 0; j < superset->atom_count; ++j) {
+			if (subset->atoms[i] == superset->atoms[j]) {
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int effect_row_atom_compare(
+	const struct prototype_term_db* db,
+	uint32_t left,
+	uint32_t right
+) {
+	struct prototype_term_canonical_key left_key;
+	struct prototype_term_canonical_key right_key;
+	if (prototype_term_canonical_key(db, left, &left_key) != 0 ||
+		prototype_term_canonical_key(db, right, &right_key) != 0) {
+		return left < right ? -1 : left != right;
+	}
+	if (left_key.hash != right_key.hash) {
+		return left_key.hash < right_key.hash ? -1 : 1;
+	}
+	if (left_key.node_count != right_key.node_count) {
+		return left_key.node_count < right_key.node_count ? -1 : 1;
+	}
+	return left < right ? -1 : left != right;
+}
+
+int prototype_term_effect_row_materialize_normal_form(
+	struct prototype_term_db* db,
+	const struct prototype_effect_row_normal_form* normal,
+	uint32_t* p_ret
+) {
+	if (!db || !normal || !p_ret || normal->atom_count >
+		PROTOTYPE_EFFECT_ROW_NORMAL_FORM_ATOM_CAPACITY) {
+		return -1;
+	}
+	uint32_t atoms[PROTOTYPE_EFFECT_ROW_NORMAL_FORM_ATOM_CAPACITY];
+	memcpy(atoms, normal->atoms, normal->atom_count * sizeof(*atoms));
+	for (uint32_t i = 1; i < normal->atom_count; ++i) {
+		uint32_t atom = atoms[i];
+		uint32_t j = i;
+		while (j > 0 && effect_row_atom_compare(db, atom, atoms[j - 1]) < 0) {
+			atoms[j] = atoms[j - 1];
+			--j;
+		}
+		atoms[j] = atom;
+	}
+	uint32_t result = PROTOTYPE_INVALID_ID;
+	if (normal->effects != PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ||
+		normal->atom_count == 0) {
+		if (prototype_term_effect_label(db, normal->effects, &result) != 0) {
+			return -1;
+		}
+	}
+	for (uint32_t i = 0; i < normal->atom_count; ++i) {
+		if (result == PROTOTYPE_INVALID_ID) {
+			result = atoms[i];
+			continue;
+		}
+		struct prototype_term term;
+		memset(&term, 0, sizeof(term));
+		term.tag = PROTOTYPE_TERM_EFFECT_ROW_UNION;
+		term.as.effect_row_union.left = result;
+		term.as.effect_row_union.right = atoms[i];
+		if (add_term(db, term, &result) != 0) {
+			return -1;
+		}
+	}
+	*p_ret = result;
+	return 0;
 }
 
 int prototype_term_effect_row_union(

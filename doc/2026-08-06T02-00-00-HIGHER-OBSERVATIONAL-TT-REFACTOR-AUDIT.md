@@ -17,7 +17,7 @@ This audit is pinned to the following repository state:
 - commit subject: `docs: describe current prototype architecture`;
 - remote state at audit time: `HEAD`, `origin/main`, and `origin/HEAD` all
   point to `f9f687a`;
-- artifact format: `A_PROGRAM_ARTIFACT 61`;
+- artifact format: `A_PROGRAM_ARTIFACT 62`;
 - verification-obligation schema: version `1` for
   `PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT`.
 
@@ -577,7 +577,7 @@ Artifact validation currently replays v61 typing and conversion rules. Once the
 kernel admits new observational terms, transport rules, or type-former
 semantics, the meaning of a proof graph depends on the selected calculus.
 
-Two artifacts must not link merely because both say `A_PROGRAM_ARTIFACT 61` if
+Two artifacts must not link merely because both say `A_PROGRAM_ARTIFACT 62` if
 they were checked under different equality theories.
 
 ### Required v62 header contract

@@ -176,8 +176,20 @@ int main(void) {
 			&term_db, universe_u, beta_redex, &pi_with_redex
 		) != 0 || prototype_term_pi(
 			&term_db, universe_u, universe_u, &pi_reduced
-		) != 0) {
+		) != 0 || pi_with_redex == pi_reduced) {
 		return 7;
+	}
+	if (expect_status(
+			&context_db,
+			&term_db,
+			&type_db,
+			pi_with_redex,
+			pi_reduced,
+			UINT64_MAX,
+			PROTOTYPE_TERM_CONVERSION_EQUAL,
+			PROTOTYPE_TERM_CONVERSION_REASON_NONE
+		) != 0) {
+		return 8;
 	}
 	prototype_term_normalization_cache_clear(&term_db);
 	if (expect_status(
@@ -190,7 +202,7 @@ int main(void) {
 			PROTOTYPE_TERM_CONVERSION_EXHAUSTED,
 			PROTOTYPE_TERM_CONVERSION_REASON_STEP_LIMIT
 		) != 0) {
-		return 8;
+		return 9;
 	}
 
 	uint32_t continuation_binder = prototype_term_new_binding(&term_db);

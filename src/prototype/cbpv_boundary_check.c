@@ -86,13 +86,16 @@ int main(void) {
 		prototype_term_return(&term_db, value, &returned) != 0 ||
 		prototype_term_thunk(&term_db, returned, &suspended) != 0 ||
 		prototype_term_force(&term_db, suspended, &forced) != 0 ||
-		prototype_judgement_delta_infer_term_classifiers(&delta, &term_db, &type_db) != 0 ||
+		prototype_judgement_delta_infer_core_helper_facts(
+			&delta, &term_db, &type_db
+		) != 0 ||
 		prototype_judgement_delta_commit(&delta, 0) != 0 ||
 		prototype_judgement_validate_proofs(
 			&term_db,
 			&type_db,
 			&contexts,
 			&substitutions,
+			NULL,
 			&judgement
 		) != 0) {
 		return 1;
@@ -100,11 +103,15 @@ int main(void) {
 
 	uint32_t classifier;
 	struct prototype_term_classifier_view view;
-	if (prototype_judgement_lookup_classifier(&judgement, returned, &classifier) != 0 ||
+	if (prototype_judgement_lookup_authority_neutral_core_classifier(
+			&judgement, returned, &classifier
+		) != 0 ||
 		prototype_judgement_classifier_view(&term_db, &type_db, NULL, classifier, &view) != 0 ||
 		view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		view.effects != PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ||
-		prototype_judgement_lookup_classifier(&judgement, forced, &classifier) != 0 ||
+		prototype_judgement_lookup_authority_neutral_core_classifier(
+			&judgement, forced, &classifier
+		) != 0 ||
 		prototype_judgement_classifier_view(&term_db, &type_db, NULL, classifier, &view) != 0 ||
 		view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
 		return 1;
@@ -223,7 +230,7 @@ int main(void) {
 	uint32_t returned_classifier;
 	uint32_t widened_returned_classifier;
 	uint32_t wrong_result_classifier;
-	if (prototype_judgement_lookup_classifier(
+	if (prototype_judgement_lookup_authority_neutral_core_classifier(
 			&judgement, returned, &returned_classifier
 		) != 0 || prototype_judgement_classifier_view(
 			&term_db, &type_db, NULL, returned_classifier, &view
@@ -271,6 +278,7 @@ int main(void) {
 			&type_db,
 			&contexts,
 			&substitutions,
+			NULL,
 			&judgement
 		) != 0) {
 		return 1;

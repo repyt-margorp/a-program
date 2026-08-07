@@ -17,7 +17,7 @@ Baseline:
 
 - branch: `main`;
 - commit: `0f94680de93be47a810753db0573d76de6509f82`;
-- artifact format: `A_PROGRAM_ARTIFACT 61`;
+- artifact format: `A_PROGRAM_ARTIFACT 62`;
 - no object-equality TermDB tag is present;
 - no artifact change is authorized by this plan.
 
@@ -613,7 +613,7 @@ Validation on 2026-08-07:
 - clean `make` and `make reader` builds completed without warnings;
 - all fourteen `src/prototype/test_*.sh` scripts passed;
 - examples 01-07 and 09 compiled successfully;
-- the baseline and changed compiler both emitted `A_PROGRAM_ARTIFACT 61` for
+- the baseline and changed compiler both emitted `A_PROGRAM_ARTIFACT 62` for
   `examples/07_add.p`;
 - both artifact files had SHA-256
   `c5ea541a817ec9a2f87aa7f013afda65a5c8ea710b0293cdb39f13c50e908a31`;
