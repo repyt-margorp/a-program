@@ -592,15 +592,20 @@ without the ownership, relocation, law, and artifact checks is not completion.
 
 After V2-C1:
 
-1. finish the normative V2-T1 finite value-side HOTT calculus;
-2. finish the V2-T2 dependent-CBPV categorical boundary and substitution laws;
+1. finish the normative V2-T1 finite typed HOTT fragment over the shared
+   TermDB;
+2. finish the V2-T2 dependent-CBPV boundary and substitution laws without
+   duplicating Pi/Lambda/APP/Match graph constructors;
 3. implement V2-S1 typed HOTT solver indices;
 4. implement V2-P1 extensible proof records and premise arena;
-5. implement V2-O1 value-side observational action;
+5. implement V2-O1 type-directed observational action over shared terms;
 6. perform the coordinated V2-A1 artifact v62 migration.
 
 Do not add equality tags before V2-T1/T2 can state how those tags reindex over
 the ContextDB/SubstitutionDB boundary established here.
+
+The combined V2-T1/T2 plan is
+`doc/2026-08-07T01-00-00-SHARED-TERM-HOTT-DCBPV-V2-T1-T2-PLAN.md`.
 
 ## 12. Implementation Evidence
 

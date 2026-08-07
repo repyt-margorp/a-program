@@ -3619,6 +3619,23 @@ int prototype_term_effect_row_closed_bits(
 	return 0;
 }
 
+int prototype_term_effect_row_purity(
+	const struct prototype_term_db* db,
+	uint32_t row
+) {
+	unsigned effects;
+	int status = prototype_term_effect_row_closed_bits(db, row, &effects);
+	if (status < 0) {
+		return PROTOTYPE_EFFECT_ROW_PURITY_INVALID;
+	}
+	if (status > 0) {
+		return PROTOTYPE_EFFECT_ROW_PURITY_UNRESOLVED;
+	}
+	return effects == PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ?
+		PROTOTYPE_EFFECT_ROW_PURITY_PURE :
+		PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL;
+}
+
 int prototype_term_effect_row_union(
 	struct prototype_term_db* db,
 	uint32_t left,

@@ -163,6 +163,13 @@ enum prototype_effect_operation_label {
 	PROTOTYPE_EFFECT_OPERATION_LABEL_ABORT_TEXT = 1u << 3
 };
 
+enum prototype_effect_row_purity {
+	PROTOTYPE_EFFECT_ROW_PURITY_INVALID = 0,
+	PROTOTYPE_EFFECT_ROW_PURITY_PURE,
+	PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL,
+	PROTOTYPE_EFFECT_ROW_PURITY_UNRESOLVED
+};
+
 #define PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY 2
 #define PROTOTYPE_EFFECT_OPERATION_MAX_ARITY 1
 
@@ -739,6 +746,12 @@ int prototype_term_effect_row_closed_bits(
 	const struct prototype_term_db* db,
 	uint32_t row,
 	unsigned* p_effects
+);
+/* Unlike classifier-view cached bits, this preserves unresolved rows as a
+ * distinct result and is the authority for static purity checks. */
+int prototype_term_effect_row_purity(
+	const struct prototype_term_db* db,
+	uint32_t row
 );
 int prototype_term_effect_row_residual(
 	struct prototype_term_db* db,

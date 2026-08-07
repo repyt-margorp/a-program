@@ -275,21 +275,24 @@ The service must construct or validate object terms. It must not merely return
 projection, extension, and composition substitutions at
 `src/prototype/context.h:31-59`.
 
-An extension carries one term, its classifier, and one typing proof. Reindexing
-at `src/prototype/ast.c:661-735` implements substitution by generating fresh
-binders and rebuilding TermDB graphs.
+An extension carries one term, its classifier, and one typing proof. V2-C1
+moved reindexing into `src/prototype/context.c`; it implements substitution by
+generating fresh binders and rebuilding shared TermDB graphs.
 
 ### Positive assessment
 
 This is useful groundwork. It should not be removed, replaced by a HOTT-only
-category, or embedded into ordinary TermDB nodes. It is the candidate value-side
-CwF on which both dependent typing and dependent CBPV are indexed.
+category, or embedded into ordinary TermDB nodes. It is the context CwF on
+which both dependent typing and dependent CBPV are indexed. This categorical
+indexing does not require separate value-side and computation-side copies of
+TermDB constructors.
 
 ### Missing HOTT structure
 
-The current API only applies ordinary term substitution. Its implementation is
-also located in the front of `src/prototype/ast.c`, which mixes categorical
-infrastructure with AST lowering, artifact logic, and solver implementation.
+The current API applies ordinary term substitution. Its implementation is now
+owned by `src/prototype/context.c`, independently of AST lowering. V2-C1 fixed
+that ownership issue; observational action and computation-specific naturality
+laws are still absent.
 
 HOTT's internal parametricity construction requires mutually coherent
 operations on:
@@ -316,10 +319,13 @@ A Program-specific working hypothesis is a four-part model:
 4. dimension-indexed observational actions on the admitted value and
    computation structures.
 
-The first implementation fragment should define observational equality only
-for value types and pure functions. Equality of `Comp`, `Thunk`, operation
-requests, and handlers must initially return an explicit unsupported or
-residual result. It must never fall back to raw graph comparison.
+The first implementation fragment should define type-directed observational
+equality over the one shared TermDB. It may admit ordinary values and a
+precisely specified pure computation/function fragment through the existing
+`Comp` and `Thunk` boundaries. Effectful computations, operation requests, and
+handlers must initially return an explicit unsupported or residual result. It
+must never fall back to raw graph comparison, and it must not introduce a
+second value-side Pi, Lambda, APP, or Match syntax.
 
 Add a separate observational/context-action layer over the value CwF:
 
@@ -673,18 +679,23 @@ The order is semantic, not merely convenient.
 
 ### Phase 0: Theory freeze
 
-- [ ] Specify the concrete HOTT calculus.
-- [ ] Select the finite first implementation fragment.
-- [ ] Specify the value CwF and the context-indexed computation categories.
-- [ ] Specify reindexing laws for `Comp`, `RETURN`, `Thunk`, and `FORCE`.
-- [ ] Define the CBPV/effect exclusion boundary for the first HOTT fragment.
-- [ ] Specify observational dimensions and the action on contexts,
+- [x] Specify the concrete HOTT calculus.
+- [x] Select the finite first implementation fragment.
+- [x] Specify the context CwF and typed computation judgements over the shared
+  TermDB.
+- [x] Specify reindexing laws for `Comp`, `RETURN`, `Thunk`, and `FORCE`.
+- [x] Define the CBPV/effect exclusion boundary for the first HOTT fragment.
+- [x] Specify observational boundaries and the action on contexts,
   substitutions, types, terms, and admitted type formers.
-- [ ] Define the quotient/HIT choice for the machine-word model.
+- [x] Record quotient/HIT and machine-word observation as deferred beyond the
+  first fragment rather than inventing an incomplete rule.
 
-The initial working boundary is value types, pure Pi, and ordinary ADT point
-constructors. Computation, thunk, operation-request, and handler equality remain
-unsupported or residual until their indexed observational semantics is written.
+The initial working boundary is ordinary typed values, ordinary ADT point
+constructors, and the subset of shared `PI/LAMBDA/APP` and F/U-boundary terms
+whose computations are statically established as pure. This is not a
+value-side Pi. Effectful computation, operation-request, and handler equality
+remain unsupported or residual until their indexed observational semantics is
+written.
 
 ### Phase 1: Existing-kernel cleanup without HOTT tags
 
@@ -694,15 +705,17 @@ unsupported or residual until their indexed observational semantics is written.
 - [x] Introduce structured conversion outcomes.
 - [x] Make `EFFECT_ROW_FORALL` conversion recursively use conversion under its
   binder instead of falling back to source-shape comparison.
-- [ ] Move ContextDB/SubstitutionDB implementation out of `ast.c`.
+- [x] Move ContextDB/SubstitutionDB implementation out of `ast.c`.
 - [ ] Specify, but do not yet serialize, the tagged JudgementDB proof payload.
 - [ ] Extend the existing solver record into a typed constraint design.
-- [ ] Add tests proving TypeView/core sharing never establishes object equality.
+- [x] Add tests proving TypeView/core sharing never establishes object equality.
 
 The structured conversion item is planned and tracked in
 `doc/2026-08-06T03-00-00-STRUCTURED-CONVERSION-RESULT-MIGRATION.md`.
 The combined scoped-conversion implementation for V2-K1 and V2-K2 is tracked
 in `doc/2026-08-06T04-00-00-SCOPED-KERNEL-CONVERSION-K1-K2-PLAN.md`.
+The completed context/substitution extraction is tracked in
+`doc/2026-08-07T00-00-00-CONTEXT-SUBSTITUTION-V2-C1-IMPLEMENTATION-PLAN.md`.
 
 The Match/IH conversion and context ownership changes should remain artifact
 v61 if no serialized field or meaning changes. Do not refactor serialized proof
@@ -712,9 +725,9 @@ records.
 
 ### Phase 2: Categorical and typed-solver infrastructure
 
-- [ ] Define a value-CwF API boundary independent of AST lowering.
-- [ ] Define context-indexed computation and effect-row reindexing interfaces.
-- [ ] Add law tests for identity, composition, extension, and computation
+- [x] Define a context-CwF API boundary independent of AST lowering.
+- [x] Define context-indexed computation and effect-row reindexing interfaces.
+- [x] Add law tests for identity, composition, extension, and computation
   reindexing; the current example-based category test is not a general law
   checker.
 - [ ] Add typed conversion/residual constraint records carrying context,
@@ -807,15 +820,16 @@ meaning must be stated and tested in the normative calculus.
 
 No equality TermDB tag should be added yet.
 
-The next concrete engineering task is to complete Phase 1 by removing
-Match-frame canonical-key comparison from kernel conversion. Local interning
-and artifact-link comparison are already separated; the conversion leak is the
-remaining path by which representation metadata can decide kernel equality.
+The former Phase 1 tasks for Match-frame conversion and context ownership and
+the V2-T1/T2 shared-TermDB calculus checkpoint are complete. The frozen
+calculus introduces no separate value/computation copies of Pi, Lambda, APP,
+or Match. The completed plan is
+`doc/2026-08-07T01-00-00-SHARED-TERM-HOTT-DCBPV-V2-T1-T2-PLAN.md`.
 
-In parallel, the concrete finite HOTT calculus and its dependent CBPV boundary
-must be written. Categorical ownership cleanup and typed constraint design may
-proceed before object equality tags, but proof schema and artifact v62 must wait
-until those rules determine their exact payloads.
+The next decision is V2-S1 typed constraint ownership using the context,
+carrier, endpoints, bridge structure, reindexing laws, and residual boundary
+fixed by that checkpoint. Proof schema and artifact v62 still wait for the
+resulting exact payloads.
 
 ## 22. Detailed Implementation Plan: Term Identity and Match-Frame Scope
 
@@ -1142,7 +1156,8 @@ At commit `474867e`:
   cross-database structural comparison, and kernel conversion;
 - `EFFECT_ROW_FORALL` conversion recursively normalizes under corresponding
   row binders and propagates budget and blocked-effect outcomes;
-- ContextDB/SubstitutionDB provide the ordinary value-side CwF operations;
+- ContextDB/SubstitutionDB provide ordinary context-CwF operations over the
+  shared TermDB;
 - OperationGraph records source occurrences, context IDs, and value/computation
   polarity;
 - `Comp`, `Thunk`, effect rows, operation requests, and computation folds are
@@ -1160,11 +1175,11 @@ At commit `474867e`:
 | V2-K1 | Replace key-based IH conversion with scoped frame correspondence and preserve recursive-binder metadata | complete | none | nested/foreign-frame, collision, local/link metadata, artifact tests pass |
 | V2-K2 | Make binder-bearing conversion recursively semantic | complete | none | alpha/beta/nested forall, budget, and blocked-effect tests pass |
 | V2-C1 | Extract context/substitution implementation from `ast.c` | complete | none | CwF laws, all prototype tests, examples 01-07/09, and byte-identical v61 artifact pass |
-| V2-T1 | Freeze finite value-side HOTT calculus | pending | none until tags land | normative rules and derivations |
-| V2-T2 | Freeze dependent CBPV categorical boundary | pending | none until tags land | reindexing and `F/U`-style laws |
+| V2-T1 | Freeze finite typed HOTT fragment over the shared TermDB | complete | none | frozen normative calculus and first-fragment matrix |
+| V2-T2 | Freeze dependent CBPV boundary without duplicated graph syntax | complete | none | F/U reindex laws, purity trichotomy, and law tests pass |
 | V2-S1 | Extend solver constraints with typed HOTT indices | pending | v62 if residualized | replayable typed goal tests |
 | V2-P1 | Replace monolithic proof payload with tagged records and premise arena | pending | breaking | validator and relocation tests |
-| V2-O1 | Implement value-side observational action | blocked by V2-T1/T2 | breaking | substitution/naturality tests |
+| V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-S1/P1 | breaking | substitution/naturality tests |
 | V2-A1 | Perform one coordinated artifact v62 migration | blocked by V2-P1/O1 | breaking | v61 rejection and v62 link matrix |
 
 ### 23.3 Non-negotiable boundaries
@@ -1175,18 +1190,25 @@ At commit `474867e`:
 3. Object equality is represented by types and witness terms checked through
    ordinary `HAS_TYPE` judgements.
 4. Solver equations do not become object equality witnesses automatically.
-5. The value CwF remains the base of dependent syntax; computation structure is
-   indexed over it rather than folded into an untyped TermDB mode.
+5. The context CwF remains the base of dependent syntax. Value/computation
+   distinctions are typed occurrence data over one shared TermDB, with explicit
+   CBPV boundary nodes where the adjunction changes interpretation.
 6. The first HOTT fragment does not invent computation equality by comparing
    erased computation graphs.
-7. Published HOTT and dependent-CBPV work constrains the design but does not
+7. No value-side Pi, Lambda, APP, or Match graph tag is introduced.
+8. Published HOTT and dependent-CBPV work constrains the design but does not
    substitute for A Program's normative calculus.
 
 ### 23.4 Next implementation checkpoint
 
-Do not add equality syntax or TermDB tags at this checkpoint. V2-K1, V2-K2,
-and V2-C1 are complete. The next checkpoint is the formal V2-T1 and V2-T2
-judgements and substitution laws. Only then finalize the proof payload and
-artifact v62 schema. The completed V2-C1 ownership, migration, and progress
-record is in
+V2-K1, V2-K2, V2-C1, V2-T1, and V2-T2 are complete. The next checkpoint is
+V2-S1: split classifier unification, kernel conversion, HOTT construction, and
+persistent residual obligations into the typed records frozen by the
+normative calculus. Equality syntax and object TermDB tags remain deferred to
+V2-O1, and artifact v62 remains deferred until V2-P1/O1 determine its complete
+schema. The completed T1/T2 plan is in
+`doc/2026-08-07T01-00-00-SHARED-TERM-HOTT-DCBPV-V2-T1-T2-PLAN.md`; the
+normative calculus is in
+`doc/2026-08-07T02-00-00-SHARED-TERM-HOTT-DCBPV-NORMATIVE-CALCULUS.md`. The
+completed V2-C1 ownership, migration, and progress record is in
 `doc/2026-08-07T00-00-00-CONTEXT-SUBSTITUTION-V2-C1-IMPLEMENTATION-PLAN.md`.
