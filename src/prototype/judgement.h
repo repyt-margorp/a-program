@@ -394,6 +394,39 @@ int prototype_judgement_delta_commit(
 	size_t mark
 );
 
+/* Enumerates every solver candidate Derivation concluding one candidate Claim.
+ * Initialize *p_cursor to zero. Returns 0 with one result, 1 at the end, and
+ * -1 for malformed input. No Derivation is designated as the Claim's proof. */
+int prototype_judgement_candidate_derivation_next(
+	const struct prototype_judgement_claim_candidate* claims,
+	size_t claim_count,
+	const struct prototype_judgement_derivation_candidate* derivations,
+	size_t derivation_count,
+	uint32_t claim_id,
+	uint32_t* p_cursor,
+	uint32_t* p_derivation_id
+);
+
+int prototype_judgement_candidate_find_derivation_kind(
+	const struct prototype_judgement_claim_candidate* claims,
+	size_t claim_count,
+	const struct prototype_judgement_derivation_candidate* derivations,
+	size_t derivation_count,
+	uint32_t claim_id,
+	int proof_kind,
+	uint32_t* p_derivation_id
+);
+
+int prototype_judgement_candidate_find_derivation_other_than(
+	const struct prototype_judgement_claim_candidate* claims,
+	size_t claim_count,
+	const struct prototype_judgement_derivation_candidate* derivations,
+	size_t derivation_count,
+	uint32_t claim_id,
+	int excluded_proof_kind,
+	uint32_t* p_derivation_id
+);
+
 int prototype_judgement_expand_type_def(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,

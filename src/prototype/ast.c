@@ -13903,13 +13903,27 @@ static int collect_graph_classifiers(
 	for (int source = 0; source < 2; ++source) {
 		const struct prototype_judgement_claim_candidate* relations =
 			source == 0 ? ctx->judgement_delta.claim_candidates : ctx->judgement->claim_candidates;
+		const struct prototype_judgement_derivation_candidate* derivations =
+			source == 0 ? ctx->judgement_delta.derivation_candidates :
+				ctx->judgement->derivation_candidates;
 		size_t claim_candidate_count =
 			source == 0 ? ctx->judgement_delta.claim_candidate_count : ctx->judgement->claim_candidate_count;
+		size_t derivation_candidate_count = source == 0 ?
+			ctx->judgement_delta.derivation_candidate_count :
+			ctx->judgement->derivation_candidate_count;
 		for (size_t i = 0; i < claim_candidate_count; ++i) {
 			const struct prototype_judgement_claim_candidate* relation = &relations[i];
 			if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 				relation->subject != term ||
-				relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION) {
+				prototype_judgement_candidate_find_derivation_other_than(
+					relations,
+					claim_candidate_count,
+					derivations,
+					derivation_candidate_count,
+					(uint32_t)i,
+					PROTOTYPE_JUDGEMENT_PROOF_CONVERSION,
+					&(uint32_t){0}
+				) != 0) {
 				continue;
 			}
 			int contains = graph_classifier_list_contains_normalization_equal(
@@ -15021,7 +15035,15 @@ static int materialize_pending_binder_assumptions(struct compile_context* ctx) {
 				relation->context_id != pending->context_id ||
 				relation->subject != pending->binder_var ||
 				relation->classifier != classifier ||
-				relation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION) {
+				prototype_judgement_candidate_find_derivation_kind(
+					ctx->judgement_delta.claim_candidates,
+					ctx->judgement_delta.claim_candidate_count,
+					ctx->judgement_delta.derivation_candidates,
+					ctx->judgement_delta.derivation_candidate_count,
+					(uint32_t)relation_id,
+					PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
+					&(uint32_t){0}
+				) != 0) {
 				continue;
 			}
 			already_materialized = 1;
@@ -24833,9 +24855,15 @@ static int operation_solver_propagate_clause_computation_fold_input(
 				uint32_t assumption_context_id;
 				if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 					relation->subject != binder_var ||
-					relation->proof_kind !=
-						PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION ||
-					relation->proof_id >= ctx->judgement_delta.derivation_candidate_count ||
+					prototype_judgement_candidate_find_derivation_kind(
+						ctx->judgement_delta.claim_candidates,
+						ctx->judgement_delta.claim_candidate_count,
+						ctx->judgement_delta.derivation_candidates,
+						ctx->judgement_delta.derivation_candidate_count,
+						(uint32_t)relation_id,
+						PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
+						&(uint32_t){0}
+					) != 0 ||
 					prototype_context_find_binding(
 						&ctx->metadata->contexts,
 						relation->context_id,
@@ -26614,14 +26642,27 @@ static int operation_solver_materialize_induction_hypothesis_judgement(
 	for (int source = 0; source < 2; ++source) {
 		const struct prototype_judgement_claim_candidate* relations =
 			source == 0 ? ctx->judgement_delta.claim_candidates : ctx->judgement->claim_candidates;
+		const struct prototype_judgement_derivation_candidate* derivations =
+			source == 0 ? ctx->judgement_delta.derivation_candidates :
+				ctx->judgement->derivation_candidates;
 		size_t claim_candidate_count =
 			source == 0 ? ctx->judgement_delta.claim_candidate_count : ctx->judgement->claim_candidate_count;
+		size_t derivation_candidate_count = source == 0 ?
+			ctx->judgement_delta.derivation_candidate_count :
+			ctx->judgement->derivation_candidate_count;
 		for (size_t i = 0; i < claim_candidate_count; ++i) {
 			if (relations[i].kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
 				relations[i].operation_id == operation_id &&
 				relations[i].subject == operation->core_term &&
-				relations[i].proof_kind ==
-					PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM &&
+				prototype_judgement_candidate_find_derivation_kind(
+					relations,
+					claim_candidate_count,
+					derivations,
+					derivation_candidate_count,
+					(uint32_t)i,
+					PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM,
+					&(uint32_t){0}
+				) == 0 &&
 				(prototype_judgement_classifier_conversion(
 					ctx->terms, ctx->type_declarations,
 					relations[i].classifier, classifier
@@ -26803,20 +26844,34 @@ static int operation_solver_materialize_match_pattern_assumptions(
 					if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 						relation->context_id != operation_case->context_id ||
 						relation->subject != binder_var ||
-						relation->classifier != classifier ||
-						relation->proof_kind !=
-							PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION ||
-						relation->proof_id >= ctx->judgement_delta.derivation_candidate_count) {
+						relation->classifier != classifier) {
 						continue;
 					}
-					const struct prototype_judgement_derivation_candidate* proof =
-						&ctx->judgement_delta.derivation_candidates[relation->proof_id];
-					if (proof->constructor_owner_view ==
+					uint32_t cursor = 0;
+					uint32_t derivation_id;
+					while (prototype_judgement_candidate_derivation_next(
+						ctx->judgement_delta.claim_candidates,
+						ctx->judgement_delta.claim_candidate_count,
+						ctx->judgement_delta.derivation_candidates,
+						ctx->judgement_delta.derivation_candidate_count,
+						(uint32_t)relation_id,
+						&cursor,
+						&derivation_id
+					) == 0) {
+						const struct prototype_judgement_derivation_candidate* proof =
+							&ctx->judgement_delta.derivation_candidates[derivation_id];
+						if (proof->proof_kind ==
+								PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION &&
+							proof->constructor_owner_view ==
 							operation_case->constructor_owner &&
-						proof->constructor_index ==
+							proof->constructor_index ==
 							operation_case->constructor_id &&
-						proof->constructor_field_index == binder_index) {
-						already_materialized = 1;
+							proof->constructor_field_index == binder_index) {
+							already_materialized = 1;
+							break;
+						}
+					}
+					if (already_materialized) {
 						break;
 					}
 				}
@@ -26987,7 +27042,16 @@ static int operation_solver_lookup_operation_derivation_classifier(
 			&ctx->judgement_delta.claim_candidates[i - 1];
 		if (relation->operation_id == operation_id &&
 			relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			relation->subject == subject && relation->proof_kind == proof_kind) {
+			relation->subject == subject &&
+			prototype_judgement_candidate_find_derivation_kind(
+				ctx->judgement_delta.claim_candidates,
+				ctx->judgement_delta.claim_candidate_count,
+				ctx->judgement_delta.derivation_candidates,
+				ctx->judgement_delta.derivation_candidate_count,
+				(uint32_t)(i - 1),
+				proof_kind,
+				&(uint32_t){0}
+			) == 0) {
 			*p_classifier = relation->classifier;
 			return 0;
 		}
@@ -26998,7 +27062,16 @@ static int operation_solver_lookup_operation_derivation_classifier(
 				&ctx->judgement_delta.db->claim_candidates[i - 1];
 			if (relation->operation_id == operation_id &&
 				relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-				relation->subject == subject && relation->proof_kind == proof_kind) {
+				relation->subject == subject &&
+				prototype_judgement_candidate_find_derivation_kind(
+					ctx->judgement_delta.db->claim_candidates,
+					ctx->judgement_delta.db->claim_candidate_count,
+					ctx->judgement_delta.db->derivation_candidates,
+					ctx->judgement_delta.db->derivation_candidate_count,
+					(uint32_t)(i - 1),
+					proof_kind,
+					&(uint32_t){0}
+				) == 0) {
 				*p_classifier = relation->classifier;
 				return 0;
 			}
@@ -27091,8 +27164,15 @@ static int operation_solver_reify_core_proof(
 					relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
 					relation->subject == binder_var &&
 					relation->classifier == operation->binder_classifier &&
-					relation->proof_kind ==
-						PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION) {
+					prototype_judgement_candidate_find_derivation_kind(
+						ctx->judgement_delta.claim_candidates,
+						ctx->judgement_delta.claim_candidate_count,
+						ctx->judgement_delta.derivation_candidates,
+						ctx->judgement_delta.derivation_candidate_count,
+						(uint32_t)i,
+						PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
+						&(uint32_t){0}
+					) == 0) {
 					has_binder_assumption = 1;
 					break;
 				}
@@ -28149,15 +28229,28 @@ static int operation_solver_resolve_contexts(struct compile_context* ctx) {
 				++source) {
 				const struct prototype_judgement_claim_candidate* relations = source == 0 ?
 					ctx->judgement_delta.claim_candidates : ctx->judgement->claim_candidates;
+				const struct prototype_judgement_derivation_candidate* derivations = source == 0 ?
+					ctx->judgement_delta.derivation_candidates :
+					ctx->judgement->derivation_candidates;
 				size_t claim_candidate_count = source == 0 ?
 					ctx->judgement_delta.claim_candidate_count : ctx->judgement->claim_candidate_count;
+				size_t derivation_candidate_count = source == 0 ?
+					ctx->judgement_delta.derivation_candidate_count :
+					ctx->judgement->derivation_candidate_count;
 				for (size_t relation_id = 0; relation_id < claim_candidate_count; ++relation_id) {
 					const struct prototype_judgement_claim_candidate* relation =
 						&relations[relation_id];
 					if (relation->context_id != context_id ||
 						relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-						relation->proof_kind !=
-							PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION ||
+						prototype_judgement_candidate_find_derivation_kind(
+							relations,
+							claim_candidate_count,
+							derivations,
+							derivation_candidate_count,
+							(uint32_t)relation_id,
+							PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
+							&(uint32_t){0}
+						) != 0 ||
 						relation->subject >= ctx->terms->term_count ||
 						ctx->terms->terms[relation->subject].tag != PROTOTYPE_TERM_VAR ||
 						ctx->terms->terms[relation->subject].as.var.binding_id !=
