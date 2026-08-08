@@ -1116,6 +1116,46 @@ re-audit are meaningful. Beginning P1 with a candidate Claim that still owns a
 preferred proof would encode the implementation bug into the future HOTT
 certificate layer.
 
+#### P0-R0A.3a code-audited removal order
+
+A physical field-removal probe was compiled against the 2026-08-08 tree. It
+confirmed that `proof_kind/proof_id` is not confined to serialization. The
+following live consumers still read the preferred proof from a candidate
+Claim:
+
+1. classifier/evidence selection and generated-fact filtering in
+   `src/prototype/typing.c`;
+2. binder, Match/IH, fold, and Core-helper materialization in the Operation
+   solver in `src/prototype/ast.c`;
+3. Pi, Match, APP cumulativity, and expected-exposure constraint collection in
+   `src/prototype/universe.c`;
+4. normalization-premise completion and linked declaration completion in
+   `src/prototype/typing.c`;
+5. diagnostics and external-reference reachability;
+6. sparse artifact marking, wire writing/reading, append, and link-time
+   relocation in `src/prototype/ast.c`.
+
+Therefore field deletion is the last step, not the first. The implementation
+order is:
+
+```text
+R0A.3a.1  one shared ClaimId -> concluding Derivation iterator/query
+R0A.3a.2  typing candidate consumers
+R0A.3a.3  Operation solver consumers
+R0A.3a.4  Universe and link-completion consumers
+R0A.3a.5  diagnostics and reachability
+R0A.3a.6  native accepted artifact publication
+R0A.3a.7  remove candidate Claim proof_kind/proof_id,
+           premise_proof_ids, and source_candidate_proof_id
+```
+
+The shared query is an adjacency abstraction, not another semantic helper. It
+must enumerate all Derivations concluding a Claim and optionally filter by rule
+kind. It must never designate one derivation as the Claim's proof. Until a
+consumer is migrated, the existing fields are explicitly transitional and may
+only mirror one candidate Derivation; they are not part of Claim identity or
+accepted validation.
+
 #### P0-R0A.0 Transition checkpoint implemented on 2026-08-08
 
 - [x] Add separate in-memory `prototype_judgement_claim` and
@@ -1342,30 +1382,19 @@ represented only by membership in the accepted arenas.
 - [ ] Remove the old preferred-proof fields and candidate certificate artifact
   representation.
 
-The immediate next code change remains the first item, now scoped from the
-implemented evidence/APP slice as:
+The immediate next code change is R0A.3a.1 followed by R0A.3a.2. Producer
+authority, atomic Claim interning, accepted Claim-ID premises, grounded DAG
+validation, scoped fold/request premises, and dead resolver deletion are
+already implemented for the current calculus. The remaining work must not
+reopen tuple inference: each migrated consumer starts from a candidate Claim
+ID or accepted Claim ID and follows explicit concluding Derivations.
 
-1. close the fold/Lambda local-obligation boundary described by P0-P22;
-2. finish migrating authority-neutral generated helper construction and
-   derived rules from classifier-only selection to exact Claim keys; IH motive
-   validation is already local and must remain premise-free;
-3. make every migrated candidate Derivation retain the selected Claim key,
-   rather than projecting back to a tuple before insertion;
-4. propagate exact source identity through NAME, ASCRIPTION, conversion,
-   expectation exposure, weakening, literal admissibility, and link completion.
-   In particular, `prototype_judgement_delta_record_context_weaken()`,
-   `prototype_judgement_delta_record_effect_weaken()`, and
-   `prototype_judgement_delta_add_conversion()` must consume the selected
-   source Claim, not manufacture a premise from `current_operation_id`;
-5. intern every Claim in an atomic candidate batch before attaching any
-   Derivation;
-6. rewrite validation to traverse accepted Claim IDs rather than candidate
-   `premise_proof_ids`;
-7. delete the dead tuple-based proof-edge resolver, temporary-pruning helper,
-   and legacy tuple/proof-ID fields;
-8. replace provisional v64 candidate serialization with native accepted
-   Claim/Derivation serialization only after this in-memory boundary is final;
-   continue rejecting v62 without a compatibility reconstruction path.
+After typing and Operation solver consumers migrate, Universe and link
+completion must consume the same exact Claim authority. Then artifact
+publication moves from provisional v65 candidates to native accepted
+Claims/Derivations. Only that migration permits removal of
+`source_candidate_proof_id`; removing it earlier would force artifact marking
+back to an ambiguous tuple search.
 
 This sequence is the premise for the remaining P0 phases. Artifact migration,
 Universe provenance cleanup, and HOTT witness work must not bypass it.

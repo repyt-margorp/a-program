@@ -123,6 +123,9 @@ struct prototype_judgement_claim_candidate {
 	uint32_t operation_id;
 	uint32_t subject;
 	uint32_t classifier;
+	/* Transitional preferred derivation. This is not Claim identity or accepted
+	 * evidence. P0-R0A.3 removes these fields after every consumer follows
+	 * Derivation.conclusion_claim_candidate_id. */
 	int proof_kind;
 	uint32_t proof_id;
 };

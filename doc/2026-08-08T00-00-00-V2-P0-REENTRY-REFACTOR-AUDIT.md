@@ -167,6 +167,14 @@ uses those fields. Those are P0 premise violations because they silently turn
 one proposition with several derivations back into one proposition owned by
 one derivation.
 
+A physical removal probe also established the required migration order.
+Preferred-proof reads are live in typing selection, Operation solver
+materialization, Universe collection, link completion, diagnostics, and
+artifact publication. P0-R0A.3 must migrate those consumers in that order
+through one explicit Claim-to-concluding-Derivations adjacency API, then delete
+the fields. Deleting the fields first would create a broad non-building tree;
+keeping them indefinitely would preserve the wrong certificate semantics.
+
 ### 3.2.1 Structural producer closure found by the final code audit
 
 The current higher-order handler fixture exposes the first concrete P0 gate.
