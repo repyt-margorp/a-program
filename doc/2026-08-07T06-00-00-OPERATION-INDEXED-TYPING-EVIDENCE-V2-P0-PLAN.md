@@ -1261,7 +1261,9 @@ could retain `UNKNOWN` evidence.
 The remaining R0A.3 blocker is representation removal, not validation logic:
 candidate Claims still physically own one `proof_kind/proof_id`, and accepted
 Derivations still carry `source_candidate_proof_id` solely because artifact
-v64 reachability and serialization return to the legacy candidate graph.
+v64 reachability and serialization return to the legacy candidate graph. The
+old candidate `accepted` mutation has been removed completely; publication is
+represented only by membership in the accepted arenas.
 
 #### P0-R0A.4 Grounded closure
 

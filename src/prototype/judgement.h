@@ -81,9 +81,6 @@ enum prototype_judgement_authority_kind {
  * not crossed the accepted certificate boundary. */
 struct prototype_judgement_derivation_candidate {
 	int proof_kind;
-	/* Compiler-local publication result. This is not part of rule identity or
-	 * the artifact successor schema. */
-	int accepted;
 	int conclusion_kind;
 	uint32_t conclusion_context_id;
 	/* INVALID denotes a non-Operation kernel/declaration fact. */

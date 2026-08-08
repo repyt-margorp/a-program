@@ -872,7 +872,8 @@ as accepted Claim IDs is the next R0A.3 representation change.
 Current state: accepted Claim interning, ordered Claim-ID premise retention,
 least grounded closure, and final rule validation are authoritative in memory.
 The validator walks every accepted Derivation and does not select it from the
-legacy candidate `accepted` bit. Scoped fold/request rule parameters remain
+legacy candidate image; the candidate `accepted` bit and its post-closure
+mutation have been deleted. Scoped fold/request rule parameters remain
 local payload rather than fabricated Claims. The remaining dependency on proof
 IDs is confined to candidate construction/resolution, substitution metadata,
 Universe consumers, and v64 artifact reachability/serialization. In

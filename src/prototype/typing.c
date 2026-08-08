@@ -13070,10 +13070,6 @@ static int judgement_rebuild_claim_derivations(
 	}
 	judgement->claim_count = 0;
 	judgement->derivation_count = 0;
-	for (uint32_t i = 0;
-		i < (uint32_t)judgement->derivation_candidate_count; ++i) {
-		judgement->derivation_candidates[i].accepted = 0;
-	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_candidate_count; ++i) {
 		uint32_t claim_id;
 		if (!judgement_candidate_is_publishable(
@@ -13331,14 +13327,6 @@ int prototype_judgement_ground_claims(
 		if (!sources_grounded) {
 			continue;
 		}
-		if (derivation.source_candidate_proof_id >=
-			judgement->derivation_candidate_count) {
-			free(published_claim_ids);
-			return -1;
-		}
-		judgement->derivation_candidates[
-			derivation.source_candidate_proof_id
-		].accepted = 1;
 		judgement->derivations[grounded_derivation_count++] = derivation;
 	}
 	free(published_claim_ids);
