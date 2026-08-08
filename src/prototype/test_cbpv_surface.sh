@@ -926,7 +926,9 @@ fi
 awk -v request_proof_kind="$operation_request_proof_kind" '
 	BEGIN { changed = 0 }
 	$1 == "derivation" && $3 == request_proof_kind && !changed {
-		$18 = 999999
+		# The first request premise is scoped. Replace the second premise Claim
+		# with another in-range Claim so rule replay, not range checking, rejects it.
+		$23 = 0
 		changed = 1
 	}
 	{ print }

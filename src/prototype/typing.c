@@ -5286,8 +5286,6 @@ static int proof_candidates_equal(
 		left->conclusion_operation_id != right->conclusion_operation_id ||
 		left->conclusion_subject != right->conclusion_subject ||
 		left->conclusion_classifier != right->conclusion_classifier ||
-		left->reserved_legacy_assumption_level !=
-			right->reserved_legacy_assumption_level ||
 		left->constructor_owner_view != right->constructor_owner_view ||
 		left->constructor_index != right->constructor_index ||
 		left->constructor_field_index != right->constructor_field_index ||
@@ -5589,8 +5587,6 @@ static int derivations_equal(
 ) {
 	if (left->proof_kind != right->proof_kind ||
 		left->conclusion_claim_id != right->conclusion_claim_id ||
-		left->reserved_legacy_assumption_level !=
-			right->reserved_legacy_assumption_level ||
 		left->constructor_owner_view != right->constructor_owner_view ||
 		left->constructor_index != right->constructor_index ||
 		left->constructor_field_index != right->constructor_field_index ||
@@ -12829,7 +12825,6 @@ static void initialize_proof_rule_parameters(
 	if (!proof) {
 		return;
 	}
-	proof->reserved_legacy_assumption_level = PROTOTYPE_INVALID_ID;
 	proof->constructor_owner_view = PROTOTYPE_INVALID_ID;
 	proof->constructor_index = PROTOTYPE_INVALID_ID;
 	proof->constructor_field_index = PROTOTYPE_INVALID_ID;
@@ -13483,8 +13478,6 @@ static int judgement_rebuild_claim_derivations(
 		derivation.proof_kind = proof->proof_kind;
 		derivation.conclusion_claim_id = conclusion_claim_id;
 		derivation.closure_rank = PROTOTYPE_INVALID_ID;
-		derivation.reserved_legacy_assumption_level =
-			proof->reserved_legacy_assumption_level;
 		derivation.constructor_owner_view = proof->constructor_owner_view;
 		derivation.constructor_index = proof->constructor_index;
 		derivation.constructor_field_index = proof->constructor_field_index;
@@ -13817,166 +13810,6 @@ int prototype_judgement_add_normalization_premise_conversions(
 		}
 	}
 	return 0;
-}
-
-static int linked_declaration_support(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
-	uint32_t declaration_claim_id,
-	uint32_t* p_support_claim_id,
-	uint32_t* p_support_derivation_id
-) {
-	if (!terms || !type_declarations || !judgement || !p_support_claim_id ||
-		!p_support_derivation_id ||
-		declaration_claim_id >= judgement->claim_candidate_count) {
-		return -1;
-	}
-	const struct prototype_judgement_claim_candidate* declaration =
-		&judgement->claim_candidates[declaration_claim_id];
-	for (uint32_t candidate_id = 0;
-		candidate_id < (uint32_t)judgement->claim_candidate_count;
-		++candidate_id) {
-		const struct prototype_judgement_claim_candidate* candidate =
-			&judgement->claim_candidates[candidate_id];
-		uint32_t derivation_id;
-		if (candidate_id == declaration_claim_id ||
-			candidate->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			candidate->subject != declaration->subject ||
-			!prototype_judgement_classifier_compatible(
-				terms,
-				type_declarations,
-				declaration->classifier,
-				candidate->classifier
-			) || prototype_judgement_candidate_find_derivation_other_than(
-				judgement->claim_candidates,
-				judgement->claim_candidate_count,
-				judgement->derivation_candidates,
-				judgement->derivation_candidate_count,
-				candidate_id,
-				PROTOTYPE_JUDGEMENT_PROOF_DECLARATION,
-				&derivation_id
-			) != 0) {
-			continue;
-		}
-		*p_support_claim_id = candidate_id;
-		*p_support_derivation_id = derivation_id;
-		return 0;
-	}
-	return 1;
-}
-
-void prototype_judgement_finalize_linked_declaration_premises(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement
-) {
-	/* Linking constructs a new, unpublished certificate image. An external
-	 * declaration legitimately has no local premise in its provider artifact;
-	 * after relocation resolves it to a local term, complete that declaration
-	 * against the newly linked image before the image is validated or exposed. */
-	if (!terms || !type_declarations || !judgement) {
-		return;
-	}
-	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
-		struct prototype_judgement_claim_candidate* relation = &judgement->claim_candidates[i];
-		if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			relation->subject >= terms->term_count ||
-			term_has_tag(terms, relation->subject, PROTOTYPE_TERM_EXTERNAL_REF) ||
-			term_has_tag(terms, relation->subject, PROTOTYPE_TERM_CONSTRUCTOR)) {
-			continue;
-		}
-		if (candidate_has_derivation_kind(
-			judgement->claim_candidates,
-			judgement->claim_candidate_count,
-			judgement->derivation_candidates,
-			judgement->derivation_candidate_count,
-			(uint32_t)i,
-			PROTOTYPE_JUDGEMENT_PROOF_DECLARATION
-		) != 1) {
-			continue;
-		}
-		uint32_t support_claim_id;
-		uint32_t support_derivation_id;
-		int support_status = linked_declaration_support(
-			terms,
-			type_declarations,
-			judgement,
-			(uint32_t)i,
-			&support_claim_id,
-			&support_derivation_id
-		);
-		if (support_status == 1 &&
-			terms->terms[relation->subject].tag == PROTOTYPE_TERM_LAMBDA) {
-			(void)prototype_judgement_expand_lambda(
-				judgement,
-				terms,
-				type_declarations,
-				relation->subject,
-				relation->classifier
-			);
-		} else if (support_status == 1 &&
-			terms->terms[relation->subject].tag == PROTOTYPE_TERM_APP) {
-			uint32_t inferred_classifier;
-			(void)prototype_judgement_expand_app(
-				judgement,
-				terms,
-				type_declarations,
-				relation->subject,
-				&inferred_classifier
-			);
-		} else if (support_status == 1 &&
-			terms->terms[relation->subject].tag == PROTOTYPE_TERM_MATCH) {
-			(void)prototype_judgement_expand_match(
-				judgement,
-				terms,
-				type_declarations,
-				relation->subject,
-				relation->classifier
-			);
-		}
-		if (support_status == 1) {
-			support_status = linked_declaration_support(
-				terms,
-				type_declarations,
-				judgement,
-				(uint32_t)i,
-				&support_claim_id,
-				&support_derivation_id
-			);
-		}
-		if (support_status != 0) {
-			continue;
-		}
-		const struct prototype_judgement_claim_candidate* support =
-			&judgement->claim_candidates[support_claim_id];
-		uint32_t cursor = 0;
-		uint32_t declaration_derivation_id;
-		while (prototype_judgement_candidate_derivation_next(
-			judgement->claim_candidates,
-			judgement->claim_candidate_count,
-			judgement->derivation_candidates,
-			judgement->derivation_candidate_count,
-			(uint32_t)i,
-			&cursor,
-			&declaration_derivation_id
-		) == 0) {
-			struct prototype_judgement_derivation_candidate* proof =
-				&judgement->derivation_candidates[declaration_derivation_id];
-			if (proof->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_DECLARATION ||
-				proof->premise_count != 0) {
-				continue;
-			}
-			proof->premise_count = 1;
-			proof->premise_kinds[0] = support->kind;
-			proof->premise_context_ids[0] = support->context_id;
-			proof->premise_subjects[0] = support->subject;
-			proof->premise_classifiers[0] = support->classifier;
-			proof->premise_authority_kinds[0] = support->authority_kind;
-			proof->premise_authority_ids[0] = support->authority_id;
-			proof->premise_operation_ids[0] = support->operation_id;
-		}
-	}
 }
 
 static int validate_app_elim_proof(
@@ -14862,8 +14695,7 @@ static int validate_assumption_proof(
 		uint32_t classifier_classifier;
 		uint32_t binding_id = terms->terms[relation->subject].as.var.binding_id;
 		uint32_t assumption_context_id;
-		if (proof->reserved_legacy_assumption_level != PROTOTYPE_INVALID_ID ||
-			prototype_context_find_binding(
+		if (prototype_context_find_binding(
 				contexts,
 				proof->conclusion_context_id,
 				binding_id,
@@ -15981,8 +15813,6 @@ static int accepted_derivation_replay_view(
 	proof->conclusion_operation_id = conclusion->operation_id;
 	proof->conclusion_subject = conclusion->subject;
 	proof->conclusion_classifier = conclusion->classifier;
-	proof->reserved_legacy_assumption_level =
-		derivation->reserved_legacy_assumption_level;
 	proof->constructor_owner_view = derivation->constructor_owner_view;
 	proof->constructor_index = derivation->constructor_index;
 	proof->constructor_field_index = derivation->constructor_field_index;
@@ -16082,8 +15912,7 @@ static int validate_proof_rule_parameters(
 		return -1;
 	}
 	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION) {
-		return proof->reserved_legacy_assumption_level == PROTOTYPE_INVALID_ID &&
-			proof->constructor_owner_view != PROTOTYPE_INVALID_ID &&
+		return proof->constructor_owner_view != PROTOTYPE_INVALID_ID &&
 			proof->constructor_index != PROTOTYPE_INVALID_ID &&
 			proof->constructor_field_index != PROTOTYPE_INVALID_ID &&
 			proof->induction_match == PROTOTYPE_INVALID_ID &&
@@ -16092,8 +15921,7 @@ static int validate_proof_rule_parameters(
 			proof->induction_field_index == PROTOTYPE_INVALID_ID ? 0 : -1;
 	}
 	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
-		return proof->reserved_legacy_assumption_level == PROTOTYPE_INVALID_ID &&
-			proof->constructor_owner_view == PROTOTYPE_INVALID_ID &&
+		return proof->constructor_owner_view == PROTOTYPE_INVALID_ID &&
 			proof->constructor_index == PROTOTYPE_INVALID_ID &&
 			proof->constructor_field_index == PROTOTYPE_INVALID_ID &&
 			proof->induction_match != PROTOTYPE_INVALID_ID &&
@@ -16103,8 +15931,7 @@ static int validate_proof_rule_parameters(
 	}
 	if (proof->proof_kind ==
 		PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) {
-		return proof->reserved_legacy_assumption_level == PROTOTYPE_INVALID_ID &&
-			proof->constructor_owner_view != PROTOTYPE_INVALID_ID &&
+		return proof->constructor_owner_view != PROTOTYPE_INVALID_ID &&
 			proof->constructor_index == PROTOTYPE_INVALID_ID &&
 			proof->constructor_field_index == PROTOTYPE_INVALID_ID &&
 			proof->induction_match == PROTOTYPE_INVALID_ID &&
@@ -16113,8 +15940,7 @@ static int validate_proof_rule_parameters(
 			proof->induction_field_index == PROTOTYPE_INVALID_ID ? 0 : -1;
 	}
 	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION) {
-		return proof->reserved_legacy_assumption_level == PROTOTYPE_INVALID_ID &&
-			proof->constructor_owner_view == PROTOTYPE_INVALID_ID &&
+		return proof->constructor_owner_view == PROTOTYPE_INVALID_ID &&
 			proof->constructor_index == PROTOTYPE_INVALID_ID &&
 			proof->constructor_field_index == PROTOTYPE_INVALID_ID &&
 			proof->induction_match == PROTOTYPE_INVALID_ID &&
@@ -16122,8 +15948,7 @@ static int validate_proof_rule_parameters(
 			proof->induction_case_index == PROTOTYPE_INVALID_ID &&
 			proof->induction_field_index == PROTOTYPE_INVALID_ID ? 0 : -1;
 	}
-	if (proof->reserved_legacy_assumption_level != PROTOTYPE_INVALID_ID ||
-		proof->constructor_owner_view != PROTOTYPE_INVALID_ID ||
+	if (proof->constructor_owner_view != PROTOTYPE_INVALID_ID ||
 		proof->constructor_index != PROTOTYPE_INVALID_ID ||
 		proof->constructor_field_index != PROTOTYPE_INVALID_ID ||
 		proof->induction_match != PROTOTYPE_INVALID_ID ||

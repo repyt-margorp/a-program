@@ -10,6 +10,10 @@
 #include "type_declaration.h"
 #include "universe.h"
 
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 67
+#define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
+	"33afc155d4f21373e378c91280b92e80ca32ddeed39ce4d8f88ec88859765781"
+
 enum prototype_ast_tag {
 	PROTOTYPE_AST_VAR = 1,
 	PROTOTYPE_AST_NAME,
@@ -351,25 +355,25 @@ struct prototype_compile_label {
  */
 enum prototype_operation_tag {
 	PROTOTYPE_OPERATION_ATOM = 1,
-	PROTOTYPE_OPERATION_VAR,
-	PROTOTYPE_OPERATION_NAME,
-	PROTOTYPE_OPERATION_CONSTRUCTOR,
-	PROTOTYPE_OPERATION_APP,
-	PROTOTYPE_OPERATION_LAMBDA,
-	PROTOTYPE_OPERATION_MATCH,
-	PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS,
-	PROTOTYPE_OPERATION_ASCRIPTION,
-	PROTOTYPE_OPERATION_RETURN,
-	PROTOTYPE_OPERATION_THUNK,
-	PROTOTYPE_OPERATION_FORCE,
-	PROTOTYPE_OPERATION_REQUEST,
-	PROTOTYPE_OPERATION_COMPUTATION_FOLD
+	PROTOTYPE_OPERATION_VAR = 2,
+	PROTOTYPE_OPERATION_NAME = 3,
+	PROTOTYPE_OPERATION_CONSTRUCTOR = 4,
+	PROTOTYPE_OPERATION_APP = 5,
+	PROTOTYPE_OPERATION_LAMBDA = 6,
+	PROTOTYPE_OPERATION_MATCH = 7,
+	PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS = 8,
+	PROTOTYPE_OPERATION_ASCRIPTION = 9,
+	PROTOTYPE_OPERATION_RETURN = 10,
+	PROTOTYPE_OPERATION_THUNK = 11,
+	PROTOTYPE_OPERATION_FORCE = 12,
+	PROTOTYPE_OPERATION_REQUEST = 13,
+	PROTOTYPE_OPERATION_COMPUTATION_FOLD = 14
 };
 
 enum prototype_operation_polarity {
 	PROTOTYPE_OPERATION_POLARITY_UNKNOWN = 0,
-	PROTOTYPE_OPERATION_POLARITY_VALUE,
-	PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+	PROTOTYPE_OPERATION_POLARITY_VALUE = 1,
+	PROTOTYPE_OPERATION_POLARITY_COMPUTATION = 2
 };
 
 struct prototype_operation_node {
@@ -467,16 +471,16 @@ int prototype_operation_graph_reaches(
 
 enum prototype_operation_effect_constraint_kind {
 	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_EXACT = 1,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_COPY,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNION,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_RESIDUAL
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_COPY = 2,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNION = 3,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_RESIDUAL = 4
 };
 
 enum prototype_operation_effect_constraint_state {
 	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_PENDING = 1,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNSOLVED_RESIDUAL,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_INCOMPLETE
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED = 2,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNSOLVED_RESIDUAL = 3,
+	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_INCOMPLETE = 4
 };
 
 /*
@@ -502,8 +506,8 @@ enum prototype_verification_obligation_kind {
 
 enum prototype_verification_obligation_state {
 	PROTOTYPE_VERIFICATION_OBLIGATION_PENDING = 1,
-	PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED,
-	PROTOTYPE_VERIFICATION_OBLIGATION_FAILED
+	PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED = 2,
+	PROTOTYPE_VERIFICATION_OBLIGATION_FAILED = 3
 };
 
 struct prototype_verification_obligation {
@@ -554,7 +558,7 @@ struct prototype_compile_type_export {
 
 enum prototype_artifact_export_transparency {
 	PROTOTYPE_ARTIFACT_EXPORT_OPAQUE = 1,
-	PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT
+	PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT = 2
 };
 
 struct prototype_artifact_term_export {
@@ -572,6 +576,9 @@ struct prototype_artifact_term_export {
 	/* Source typed occurrence authorizing this export. The erased local_term
 	 * alone cannot identify a Claim or a residual solver obligation. */
 	uint32_t operation;
+	/* Exact accepted HAS_TYPE Claim authorizing this export. INVALID is allowed
+	 * only when the Operation has an explicit residual obligation. */
+	uint32_t source_claim_id;
 	int transparency;
 	struct prototype_term_canonical_key canonical_key;
 	struct prototype_term_canonical_key classifier_key;
@@ -829,13 +836,13 @@ struct prototype_resolution_iteration {
 
 enum prototype_compile_policy {
 	PROTOTYPE_COMPILE_POLICY_STRICT = 1,
-	PROTOTYPE_COMPILE_POLICY_HYBRID,
-	PROTOTYPE_COMPILE_POLICY_EXPLORATORY
+	PROTOTYPE_COMPILE_POLICY_HYBRID = 2,
+	PROTOTYPE_COMPILE_POLICY_EXPLORATORY = 3
 };
 
 enum prototype_definition_thunk_policy {
 	PROTOTYPE_DEFINITION_THUNK_IMPLICIT = 1,
-	PROTOTYPE_DEFINITION_THUNK_EXPLICIT
+	PROTOTYPE_DEFINITION_THUNK_EXPLICIT = 2
 };
 
 enum prototype_runtime_capability {
@@ -847,8 +854,8 @@ enum prototype_runtime_capability {
 
 enum prototype_backend_target {
 	PROTOTYPE_BACKEND_INTERPRETER = 1,
-	PROTOTYPE_BACKEND_C,
-	PROTOTYPE_BACKEND_VERILOG
+	PROTOTYPE_BACKEND_C = 2,
+	PROTOTYPE_BACKEND_VERILOG = 3
 };
 
 struct prototype_compile_metadata {
@@ -1718,6 +1725,13 @@ int prototype_artifact_append_graph(
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
 	uint32_t operation_offset
+);
+
+int prototype_artifact_align_export_operations(
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_term_db* terms,
+	struct prototype_judgement_db* judgement,
+	struct prototype_compile_metadata* metadata
 );
 
 int prototype_canonical_link_table_add_metadata(

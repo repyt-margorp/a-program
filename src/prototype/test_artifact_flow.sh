@@ -193,7 +193,10 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 66$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 67 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/artifact_v67.schema | awk '{print $1}')
+artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
+test "$artifact_fingerprint" = "$schema_fingerprint"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -205,12 +208,14 @@ grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0 100000 [0-9][0
 ./read_file.out --policy strict --write-artifact "$TMP_DIR/identity-strict.apo" \
 	"$TMP_DIR/identity.p" >"$TMP_DIR/identity-strict.out"
 grep -q '^compile_policy 1 ' "$TMP_DIR/identity-strict.apo"
+printf '%s\n' 'unpublished-sentinel' >"$TMP_DIR/mixed-policy.apo"
 if ./read_file.out --aggregate-artifact "$TMP_DIR/mixed-policy.apo" \
 	"$TMP_DIR/identity.apo" "$TMP_DIR/identity-strict.apo" \
 	>"$TMP_DIR/mixed-policy.out" 2>"$TMP_DIR/mixed-policy.err"; then
 	echo 'link accepted artifacts with incompatible compile policies' >&2
 	exit 1
 fi
+test "$(cat "$TMP_DIR/mixed-policy.apo")" = 'unpublished-sentinel'
 ./read_file.out --normalization-steps 7 --solver-steps 100000 \
 	--write-artifact "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-budget.out"
@@ -226,12 +231,85 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/66$/65/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v65.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v65.apo" >"$TMP_DIR/identity-v65.out" 2>"$TMP_DIR/identity-v65.err"; then
-	echo "obsolete artifact unexpectedly passed after v66 format bump" >&2
+sed '1s/A_PROGRAM_ARTIFACT 67/A_PROGRAM_ARTIFACT 66/' \
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v66.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v66.apo" >"$TMP_DIR/identity-v66.out" 2>"$TMP_DIR/identity-v66.err"; then
+	echo "obsolete artifact unexpectedly passed after v67 format bump" >&2
 	exit 1
 fi
-grep -q '^term identityBool .* namespace identity operation [0-9][0-9]*$' "$TMP_DIR/identity.apo"
+sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-bad-fingerprint.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-bad-fingerprint.apo" \
+	>"$TMP_DIR/identity-bad-fingerprint.out" \
+	2>"$TMP_DIR/identity-bad-fingerprint.err"; then
+	echo "artifact with a foreign calculus fingerprint unexpectedly passed" >&2
+	exit 1
+fi
+awk '$1 == "term_node" && !done { $3 = 999; done = 1 } { print } END { if (!done) exit 1 }' \
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-unknown-term-tag.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-term-tag.apo" \
+	>"$TMP_DIR/identity-unknown-term-tag.out" \
+	2>"$TMP_DIR/identity-unknown-term-tag.err"; then
+	echo "artifact with an unknown term tag unexpectedly passed" >&2
+	exit 1
+fi
+awk '$1 == "claim" && !done { $5 = 999; done = 1 } { print } END { if (!done) exit 1 }' \
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-unknown-authority.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-authority.apo" \
+	>"$TMP_DIR/identity-unknown-authority.out" \
+	2>"$TMP_DIR/identity-unknown-authority.err"; then
+	echo "artifact with an unknown Claim authority unexpectedly passed" >&2
+	exit 1
+fi
+awk '
+	FNR == NR && $1 == "claim" {
+		claims[++claim_count] = $2
+		claim_authority_kind[$2] = $5
+		claim_authority_id[$2] = $6
+		claim_subject[$2] = $11
+		claim_classifier[$2] = $12
+		next
+	}
+	FNR == NR && $1 == "universe_constraint" && !source_found {
+		source_authority_kind = $10
+		source_authority_id = $11
+		source_subject = $12
+		source_classifier = $13
+		source_found = 1
+		next
+	}
+	FNR != NR && $1 == "universe_constraint" && !done {
+		for (i = 1; i <= claim_count; ++i) {
+			candidate = claims[i]
+			if (claim_authority_kind[candidate] != source_authority_kind ||
+				claim_authority_id[candidate] != source_authority_id ||
+				claim_subject[candidate] != source_subject ||
+				claim_classifier[candidate] != source_classifier) {
+				$9 = candidate
+				done = 1
+				break
+			}
+		}
+	}
+	FNR != NR { print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" "$TMP_DIR/identity.apo" \
+	>"$TMP_DIR/identity-wrong-universe-claim.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-wrong-universe-claim.apo" \
+	>"$TMP_DIR/identity-wrong-universe-claim.out" \
+	2>"$TMP_DIR/identity-wrong-universe-claim.err"; then
+	echo "Universe constraint accepted unrelated Claim provenance" >&2
+	exit 1
+fi
+awk '$1 == "universe_constraint" && !done { $8 = 999; done = 1 } { print } END { if (!done) exit 1 }' \
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-unknown-universe-reason.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-universe-reason.apo" \
+	>"$TMP_DIR/identity-unknown-universe-reason.out" \
+	2>"$TMP_DIR/identity-unknown-universe-reason.err"; then
+	echo "Universe constraint accepted an unknown provenance reason" >&2
+	exit 1
+fi
+grep -q '^term identityBool .* namespace identity operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/identity.apo"
 grep -q '^type Bool .* namespace identity$' "$TMP_DIR/identity.apo"
 grep -q 'metadata label identityBool -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
 grep -q 'metadata label identityNat -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
@@ -242,7 +320,11 @@ test -n "$identity_nat_operation"
 test "$identity_bool_operation" != "$identity_nat_operation"
 awk -v wrong_operation="$identity_nat_operation" '
 	$1 == "term" && $2 == "identityBool" {
-		$NF = wrong_operation
+		for (i = 1; i <= NF; ++i) {
+			if ($i == "operation") {
+				$(i + 1) = wrong_operation
+			}
+		}
 	}
 	{ print }
 ' "$TMP_DIR/identity.apo" >"$TMP_DIR/BadIdentityExportOperation.apo"
@@ -274,6 +356,33 @@ test -n "$id1_operation"
 test -n "$id2_operation"
 test -n "$use1_operation"
 test "$id1_operation" != "$id2_operation"
+id1_export_claim=$(awk '
+	$1 == "term" && $2 == "id1" {
+		for (i = 1; i <= NF; ++i) if ($i == "claim") print $(i + 1)
+	}
+' "$TMP_DIR/SharedCoreProofOwner.apo")
+id2_export_claim=$(awk '
+	$1 == "term" && $2 == "id2" {
+		for (i = 1; i <= NF; ++i) if ($i == "claim") print $(i + 1)
+	}
+' "$TMP_DIR/SharedCoreProofOwner.apo")
+test -n "$id1_export_claim"
+test -n "$id2_export_claim"
+test "$id1_export_claim" != "$id2_export_claim"
+awk -v wrong_claim="$id2_export_claim" '
+	$1 == "term" && $2 == "id1" {
+		for (i = 1; i <= NF; ++i) if ($i == "claim") $(i + 1) = wrong_claim
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/SharedCoreProofOwner.apo" >"$TMP_DIR/BadSharedCoreExportClaim.apo"
+if ./read_file.out --read-graph "$TMP_DIR/BadSharedCoreExportClaim.apo" \
+	>"$TMP_DIR/bad-shared-core-export-claim.out" \
+	2>"$TMP_DIR/bad-shared-core-export-claim.err"; then
+	echo "export accepted the source Claim of a shared-Core sibling" >&2
+	exit 1
+fi
 awk -v id1_operation="$id1_operation" -v id2_operation="$id2_operation" \
 	-v use1_operation="$use1_operation" -v app_elim="$PROOF_KIND_APP_ELIM" '
 	FNR == NR {
@@ -289,10 +398,10 @@ awk -v id1_operation="$id1_operation" -v id2_operation="$id2_operation" \
 		next;
 	}
 	$1 == "derivation" && $3 == app_elim && $5 == use1_claim {
-		if ($17 != "premise" || $18 != id1_claim) {
+		if ($16 != "premise" || $17 != id1_claim) {
 			exit 1;
 		}
-		$18 = id2_claim;
+		$17 = id2_claim;
 		replaced = 1;
 	}
 	{ print }
@@ -320,7 +429,7 @@ identity_bool_classifier_key=$(awk '$1 == "term" && $2 == "identityBool" { print
 identity_nat_classifier_key=$(awk '$1 == "term" && $2 == "identityNat" { print $14 ":" $15 ":" $16 ":" $17 ":" $18 ":" $19 ":" $20 ":" $21 }' "$TMP_DIR/identity.apo")
 test "$identity_bool_term" = "$identity_nat_term"
 test "$identity_bool_classifier" != "$identity_nat_classifier"
-test "$identity_bool_fields" -eq 25
+test "$identity_bool_fields" -eq 27
 test "$identity_bool_key" = "$identity_nat_key"
 test "$identity_bool_classifier_key" != "$identity_nat_classifier_key"
 grep -q "term_name identityBool $identity_bool_term " "$TMP_DIR/identity.apo"
@@ -1150,7 +1259,7 @@ grep -q '^exports-normalization-equal main expected mode=default yes$' "$TMP_DIR
 	main expected --reduction-mode beta >"$TMP_DIR/append-normalization_equal-beta.out"
 grep -q '^exports-normalization-equal main expected mode=beta no$' "$TMP_DIR/append-normalization_equal-beta.out"
 awk '
-	$1 == "derivation" && $16 > 0 && !done {
+	$1 == "derivation" && $15 > 0 && !done {
 		$16 = 999;
 		done = 1;
 	}
@@ -1182,13 +1291,13 @@ EOF_SHARED_NAMESPACE_B
 	--namespace Shared \
 	"$TMP_DIR/shared-namespace-a.p" \
 	"$TMP_DIR/shared-namespace-b.p" >"$TMP_DIR/shared-namespace.out"
-grep -q '^term Nat .* namespace Shared operation [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
-grep -q '^term id .* namespace Shared operation [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
+grep -q '^term Nat .* namespace Shared operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
+grep -q '^term id .* namespace Shared operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
 grep -q '^type Nat .* namespace Shared$' "$TMP_DIR/Shared.apo"
 ./read_file.out --write-artifact "$TMP_DIR/DottedNamespace.apo" \
 	--namespace Shared.Core \
 	"$TMP_DIR/shared-namespace-a.p" >"$TMP_DIR/dotted-namespace.out"
-grep -q '^term Nat .* namespace Shared.Core operation [0-9][0-9]*$' "$TMP_DIR/DottedNamespace.apo"
+grep -q '^term Nat .* namespace Shared.Core operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DottedNamespace.apo"
 
 cat >"$TMP_DIR/match-graph.p" <<'EOF_MATCH_GRAPH'
 Bool := @{
@@ -1269,8 +1378,8 @@ if ./read_file.out --read-graph "$TMP_DIR/BadProofShape.apo" >"$TMP_DIR/bad-proo
 	exit 1
 fi
 awk '
-	$1 == "derivation" && $16 > 0 && !done {
-		$18 = 999;
+	$1 == "derivation" && $15 > 0 && !done {
+		$17 = 999;
 		done = 1;
 	}
 	{ print }
@@ -1284,9 +1393,9 @@ awk '
 		if ($1 == "claim") {
 			claims[++claim_count] = $2;
 		}
-		if ($1 == "derivation" && $16 > 0 && !target_derivation) {
+		if ($1 == "derivation" && $15 > 0 && !target_derivation) {
 			target_derivation = $2;
-			expected_premise = $18;
+			expected_premise = $17;
 		}
 		next;
 	}
@@ -1299,7 +1408,7 @@ awk '
 		}
 	}
 	$1 == "derivation" && $2 == target_derivation {
-		$18 = replacement_claim;
+		$17 = replacement_claim;
 	}
 	{ print }
 ' "$TMP_DIR/MatchGraph.apo" "$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadProofEdgeMismatch.apo"
@@ -1311,8 +1420,8 @@ fi
 	src/prototype/artifact_add_check.p >"$TMP_DIR/app-premise-kind-artifact.out"
 awk '
 	FNR == NR {
-		if ($1 == "derivation" && $3 == app_elim_proof_kind && $16 > 0 && !premise_claim) {
-			premise_claim = $18;
+		if ($1 == "derivation" && $3 == app_elim_proof_kind && $15 > 0 && !premise_claim) {
+			premise_claim = $17;
 		}
 		next;
 	}
@@ -1401,9 +1510,9 @@ if ./read_file.out --read-graph "$TMP_DIR/BadIsTypeProof.apo" >"$TMP_DIR/bad-is-
 	exit 1
 fi
 awk '
-	$1 == "derivation" && $16 > 0 && !done {
+	$1 == "derivation" && $15 > 0 && !done {
 		$3 = is_type_proof_kind;
-		$18 = 999;
+		$17 = 999;
 		done = 1;
 	}
 	{ print }
@@ -1582,7 +1691,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadIhContextKind.apo" >"$TMP_DIR/bad-i
 fi
 awk '
 	$1 == "derivation" && $3 == ih_elim_proof_kind && !done {
-		$15 = 999;
+		$14 = 999;
 		done = 1;
 	}
 	{ print }
@@ -1621,8 +1730,8 @@ grep -q 'INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat' "$TMP_DIR/source-view-nat-match.ou
 ./read_file.out --write-artifact "$TMP_DIR/AddProof.apo" \
 	src/prototype/artifact_add_check.p >"$TMP_DIR/add-proof-artifact.out"
 awk '
-	$1 == "derivation" && $3 == lambda_intro_proof_kind && $16 > 0 && !done {
-		$18 = $5;
+	$1 == "derivation" && $3 == lambda_intro_proof_kind && $15 > 0 && !done {
+		$17 = $5;
 		done = 1;
 	}
 	END {
@@ -2234,8 +2343,8 @@ grep -q '^export-normalization-equal idNat yes$' "$TMP_DIR/id-provider-normaliza
 	"$TMP_DIR/DuplicateNatB.apo" >"$TMP_DIR/duplicate-nat-ab.out"
 ./read_file.out --read-graph "$TMP_DIR/DuplicateNatAB.apo" >"$TMP_DIR/duplicate-nat-ab-read.out"
 grep -q 'term_exports=4 type_exports=2 constructor_exports=4 dependencies=0' "$TMP_DIR/duplicate-nat-ab-read.out"
-grep -q '^term Nat .* namespace duplicate-nat-a operation [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
-grep -q '^term Nat .* namespace duplicate-nat-b operation [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
+grep -q '^term Nat .* namespace duplicate-nat-a operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
+grep -q '^term Nat .* namespace duplicate-nat-b operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
 grep -q '^type Nat .* namespace duplicate-nat-a$' "$TMP_DIR/DuplicateNatAB.apo"
 grep -q '^type Nat .* namespace duplicate-nat-b$' "$TMP_DIR/DuplicateNatAB.apo"
 duplicate_nat_a_term=$(awk '$1 == "term" && $2 == "idA" { print $3 }' "$TMP_DIR/DuplicateNatAB.apo")
@@ -2360,6 +2469,17 @@ fi
 	--link-reexport-providers \
 	--link-output "$TMP_DIR/IdUser.linked.apo" >"$TMP_DIR/id-link.out"
 ./read_file.out --read-graph "$TMP_DIR/IdUser.linked.apo" >"$TMP_DIR/id-linked-read.out"
+awk -v declaration_proof_kind="$PROOF_KIND_DECLARATION" '
+	FNR == NR && $1 == "term" && $2 == "idNat" {
+		for (i = 1; i <= NF; ++i) if ($i == "claim") provider_claim = $(i + 1)
+		next
+	}
+	FNR != NR && $1 == "derivation" && $3 == declaration_proof_kind &&
+		$15 == 1 && $16 == "premise" && $17 == provider_claim {
+		found = 1
+	}
+	END { if (!provider_claim || !found) exit 1 }
+' "$TMP_DIR/IdUser.linked.apo" "$TMP_DIR/IdUser.linked.apo"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/id-linked-read.out"
 grep -q 'relocation_resolved_constructor_owners=' "$TMP_DIR/id-linked-read.out"
 grep -q 'resolved constructor owner kind=1' "$TMP_DIR/id-linked-read.out"

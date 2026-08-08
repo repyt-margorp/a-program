@@ -2600,6 +2600,42 @@ static int lookup_export_classifier(
 	return -1;
 }
 
+static uint32_t find_export_source_claim(
+	const struct prototype_judgement_db* judgement,
+	uint32_t operation,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	if (!judgement || operation == PROTOTYPE_INVALID_ID ||
+		classifier == PROTOTYPE_INVALID_ID) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t unique_claim = PROTOTYPE_INVALID_ID;
+	int ambiguous = 0;
+	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
+		const struct prototype_judgement_claim* claim = &judgement->claims[i];
+		if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			claim->context_id != context_id || claim->subject != subject ||
+			claim->classifier != classifier ||
+			claim->closure_rank == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (
+			claim->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+			claim->authority_id == operation &&
+			claim->operation_id == operation) {
+			return i;
+		}
+		if (unique_claim != PROTOTYPE_INVALID_ID) {
+			ambiguous = 1;
+		} else {
+			unique_claim = i;
+		}
+	}
+	return ambiguous ? PROTOTYPE_INVALID_ID : unique_claim;
+}
+
 int prototype_artifact_interface_build_from_metadata(
 	struct prototype_artifact_interface* interface,
 	const struct prototype_compile_metadata* metadata,
@@ -2654,6 +2690,7 @@ int prototype_artifact_interface_build_from_metadata(
 		export->name_symbol_id = label->name_symbol_id;
 		export->local_term = label->term;
 		export->operation = label->operation;
+		export->source_claim_id = PROTOTYPE_INVALID_ID;
 		export->canonical_key = label->canonical_key;
 		export->transparency = PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT;
 		if (label->operation < metadata->operation_count &&
@@ -2700,6 +2737,15 @@ int prototype_artifact_interface_build_from_metadata(
 				}
 			}
 		}
+		export->source_claim_id = find_export_source_claim(
+			judgement,
+			export->operation,
+			export->operation < metadata->operation_count ?
+				metadata->operations[export->operation].context_id :
+				PROTOTYPE_INVALID_ID,
+			export->local_term,
+			export->classifier
+		);
 		uint32_t existing_term;
 		int found_existing = find_existing_term_by_canonical_key(
 			terms,
@@ -4772,12 +4818,11 @@ static int write_artifact_graph_section(
 		}
 		fprintf(
 			stream,
-			"derivation %zu %d claim %u rank %u %u %u %u %u %u %u %u %u %u",
+			"derivation %zu %d claim %u rank %u %u %u %u %u %u %u %u %u",
 			i,
 			derivation->proof_kind,
 			derivation->conclusion_claim_id,
 			derivation->closure_rank,
-			derivation->reserved_legacy_assumption_level,
 			derivation->constructor_owner_view,
 			derivation->constructor_index,
 			derivation->constructor_field_index,
@@ -5642,14 +5687,19 @@ static int write_artifact_universe_section(
 		const struct prototype_universe_constraint* constraint = &universe->constraints[i];
 		fprintf(
 			stream,
-			"universe_constraint %zu %u %u %d %u %u %d\n",
+			"universe_constraint %zu %u %u %d %u %u %d %u %d %u %u %u\n",
 			i,
 			constraint->lower_level_var,
 			constraint->upper_level_var,
 			constraint->offset,
 			constraint->subject,
 			constraint->classifier,
-			constraint->reason_kind
+			constraint->reason,
+			constraint->source_claim_id,
+			constraint->source_authority_kind,
+			constraint->source_authority_id,
+			constraint->source_subject,
+			constraint->source_classifier
 		);
 	}
 	fprintf(stream, "END universe\n");
@@ -6496,7 +6546,10 @@ static int artifact_sparse_graph_copy_marked(
 		if (constraint->subject < marks->term_count &&
 			constraint->classifier < marks->term_count &&
 			marks->terms[constraint->subject] &&
-			marks->terms[constraint->classifier]) {
+			marks->terms[constraint->classifier] &&
+			(constraint->source_claim_id == PROTOTYPE_INVALID_ID ||
+			 (constraint->source_claim_id < marks->claim_count &&
+			  marks->claims[constraint->source_claim_id]))) {
 			graph->universe.constraints[graph->universe.constraint_count++] = *constraint;
 		}
 	}
@@ -6807,7 +6860,12 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 66\n");
+	fprintf(
+		stream,
+		"A_PROGRAM_ARTIFACT %d %s\n",
+		PROTOTYPE_ARTIFACT_FORMAT_VERSION,
+		PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT
+	);
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -6911,9 +6969,10 @@ static int prototype_artifact_write_text_body(
 		print_artifact_key(stream, &export->classifier_key);
 		fprintf(
 			stream,
-			" namespace %s operation %u\n",
+			" namespace %s operation %u claim %u\n",
 			namespace_name,
-			export->operation
+			export->operation,
+			export->source_claim_id
 		);
 	}
 
@@ -7139,10 +7198,12 @@ int prototype_artifact_read_text_interface(
 	}
 
 	char word[256];
+	char fingerprint[65];
 	int version;
-	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
+	if (fscanf(stream, "%255s %d %64s", word, &version, fingerprint) != 3 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 66) {
+		version != PROTOTYPE_ARTIFACT_FORMAT_VERSION ||
+		strcmp(fingerprint, PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT) != 0) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -7295,6 +7356,7 @@ int prototype_artifact_read_text_interface(
 		char namespace_word[256];
 		char namespace_name[256];
 		char operation_word[256];
+		char claim_word[256];
 		struct prototype_artifact_term_export* export =
 			&interface->term_exports[interface->term_export_count++];
 		if (fscanf(
@@ -7315,14 +7377,17 @@ int prototype_artifact_read_text_interface(
 			read_artifact_term_key(stream, &export->classifier_key) != 0 ||
 			fscanf(
 				stream,
-				"%255s %255s %255s %u",
+				"%255s %255s %255s %u %255s %u",
 				namespace_word,
 				namespace_name,
 				operation_word,
-				&export->operation
-			) != 4 ||
+				&export->operation,
+				claim_word,
+				&export->source_claim_id
+			) != 6 ||
 			strcmp(namespace_word, "namespace") != 0 ||
-			strcmp(operation_word, "operation") != 0) {
+			strcmp(operation_word, "operation") != 0 ||
+			strcmp(claim_word, "claim") != 0) {
 			return -1;
 		}
 		export->namespace_symbol_id = symbol_intern(
@@ -8923,6 +8988,10 @@ int prototype_artifact_read_text_graph(
 			strcmp(context_label, "context") != 0 ||
 			strcmp(operation_label, "operation") != 0 ||
 			strcmp(rank_label, "rank") != 0 || id >= claim_slot_count ||
+			read_claim.kind < PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			read_claim.kind > PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+			read_claim.authority_kind < PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+			read_claim.authority_kind > PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT ||
 			artifact_claim_present(&judgement->claims[id])) {
 			return -1;
 		}
@@ -8945,13 +9014,12 @@ int prototype_artifact_read_text_graph(
 		derivation = &judgement->derivations[id];
 		if (artifact_derivation_present(derivation) || fscanf(
 				stream,
-				"%d %31s %u %31s %u %u %u %u %u %u %u %u %u %u",
+				"%d %31s %u %31s %u %u %u %u %u %u %u %u %u",
 				&derivation->proof_kind,
 				claim_label,
 				&derivation->conclusion_claim_id,
 				rank_label,
 				&derivation->closure_rank,
-				&derivation->reserved_legacy_assumption_level,
 				&derivation->constructor_owner_view,
 				&derivation->constructor_index,
 				&derivation->constructor_field_index,
@@ -8960,8 +9028,10 @@ int prototype_artifact_read_text_graph(
 				&derivation->induction_case_index,
 				&derivation->induction_field_index,
 				&derivation->premise_count
-			) != 14 || strcmp(claim_label, "claim") != 0 ||
+			) != 13 || strcmp(claim_label, "claim") != 0 ||
 			strcmp(rank_label, "rank") != 0 ||
+			derivation->proof_kind < PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
+			derivation->proof_kind > PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN ||
 			derivation->conclusion_claim_id >= claim_slot_count ||
 			derivation->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 			return -1;
@@ -9036,8 +9106,6 @@ int prototype_artifact_read_text_graph(
 		proof->conclusion_operation_id = conclusion->operation_id;
 		proof->conclusion_subject = conclusion->subject;
 		proof->conclusion_classifier = conclusion->classifier;
-		proof->reserved_legacy_assumption_level =
-			derivation->reserved_legacy_assumption_level;
 		proof->constructor_owner_view = derivation->constructor_owner_view;
 		proof->constructor_index = derivation->constructor_index;
 		proof->constructor_field_index = derivation->constructor_field_index;
@@ -9233,6 +9301,8 @@ int prototype_artifact_read_text_operation_graph(
 			) != 10 ||
 			strcmp(word, "substitution") != 0 ||
 			id != i ||
+			substitution.kind < PROTOTYPE_SUBSTITUTION_IDENTITY ||
+			substitution.kind > PROTOTYPE_SUBSTITUTION_COMPOSE ||
 			substitution.source_context >= context_count ||
 			substitution.target_context >= context_count ||
 			(substitution.term != PROTOTYPE_INVALID_ID &&
@@ -9312,7 +9382,13 @@ int prototype_artifact_read_text_operation_graph(
 			strcmp(word, "operation") != 0 || id != i) {
 			return -1;
 		}
-		if (operation.application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
+		if (operation.tag < PROTOTYPE_OPERATION_ATOM ||
+			operation.tag > PROTOTYPE_OPERATION_COMPUTATION_FOLD ||
+			operation.polarity < PROTOTYPE_OPERATION_POLARITY_UNKNOWN ||
+			operation.polarity > PROTOTYPE_OPERATION_POLARITY_COMPUTATION ||
+			operation.computation_kind < PROTOTYPE_TERM_COMPUTATION_KIND_INVALID ||
+			operation.computation_kind > PROTOTYPE_TERM_COMPUTATION_KIND_HANDLER ||
+			operation.application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
 			operation.application_role >
 				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION ||
 			(operation.tag != PROTOTYPE_OPERATION_APP &&
@@ -9769,7 +9845,7 @@ int prototype_artifact_read_text_universe(
 		struct prototype_universe_constraint* constraint = &universe->constraints[i];
 		if (fscanf(
 				stream,
-				"%255s %zu %u %u %d %u %u %d",
+				"%255s %zu %u %u %d %u %u %d %u %d %u %u %u",
 				word,
 				&id,
 				&constraint->lower_level_var,
@@ -9777,8 +9853,13 @@ int prototype_artifact_read_text_universe(
 				&constraint->offset,
 				&constraint->subject,
 				&constraint->classifier,
-				&constraint->reason_kind
-			) != 8 ||
+				&constraint->reason,
+				&constraint->source_claim_id,
+				&constraint->source_authority_kind,
+				&constraint->source_authority_id,
+				&constraint->source_subject,
+				&constraint->source_classifier
+			) != 13 ||
 			strcmp(word, "universe_constraint") != 0 ||
 			id != i) {
 			return -1;
@@ -10247,6 +10328,46 @@ static int artifact_existing_term_representative(
 	return 0;
 }
 
+static int attach_linked_declaration_support(
+	struct prototype_judgement_db* judgement,
+	uint32_t declaration_claim_id,
+	uint32_t source_claim_id
+) {
+	if (!judgement || declaration_claim_id >= judgement->claim_candidate_count ||
+		source_claim_id >= judgement->claim_candidate_count ||
+		declaration_claim_id == source_claim_id) {
+		return -1;
+	}
+	const struct prototype_judgement_claim_candidate* source =
+		&judgement->claim_candidates[source_claim_id];
+	if (source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		source->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
+		return -1;
+	}
+	int attached = 0;
+	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
+		struct prototype_judgement_derivation_candidate* derivation =
+			&judgement->derivation_candidates[i];
+		if (derivation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_DECLARATION ||
+			derivation->conclusion_claim_candidate_id != declaration_claim_id) {
+			continue;
+		}
+		if (derivation->premise_count != 0) {
+			return -1;
+		}
+		derivation->premise_count = 1;
+		derivation->premise_kinds[0] = source->kind;
+		derivation->premise_context_ids[0] = source->context_id;
+		derivation->premise_subjects[0] = source->subject;
+		derivation->premise_classifiers[0] = source->classifier;
+		derivation->premise_authority_kinds[0] = source->authority_kind;
+		derivation->premise_authority_ids[0] = source->authority_id;
+		derivation->premise_operation_ids[0] = source->operation_id;
+		attached = 1;
+	}
+	return attached ? 0 : -1;
+}
+
 int prototype_artifact_apply_term_relocations(
 	struct prototype_artifact_interface* target_interface,
 	struct prototype_term_db* target_terms,
@@ -10270,6 +10391,15 @@ int prototype_artifact_apply_term_relocations(
 		);
 		uint32_t provider_term;
 		if (provider->local_term >= target_terms->term_count) {
+			return -1;
+		}
+		/* A residual export has no grounded source Claim and therefore cannot
+		 * discharge an external declaration during relocation. Its verification
+		 * obligation is validated at the final artifact boundary. */
+		if (provider->source_claim_id == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (provider->source_claim_id >= target_judgement->claim_candidate_count) {
 			return -1;
 		}
 		if (provider->transparency != PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT) {
@@ -10328,15 +10458,22 @@ int prototype_artifact_apply_term_relocations(
 			}
 		}
 		for (size_t j = 0; j < target_judgement->claim_candidate_count; ++j) {
-				struct prototype_judgement_claim_candidate* relation =
-					&target_judgement->claim_candidates[j];
-				uint32_t linked_subject;
-				uint32_t linked_classifier;
-				if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN) {
-					continue;
-				}
-				if (relation->subject >= target_terms->term_count ||
-					relation->classifier >= target_terms->term_count ||
+			struct prototype_judgement_claim_candidate* relation =
+				&target_judgement->claim_candidates[j];
+			uint32_t original_subject;
+			int subject_was_external_ref;
+			uint32_t linked_subject;
+			uint32_t linked_classifier;
+			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN) {
+				continue;
+			}
+			original_subject = relation->subject;
+			subject_was_external_ref =
+				original_subject < target_terms->term_count &&
+				target_terms->terms[original_subject].tag ==
+					PROTOTYPE_TERM_EXTERNAL_REF;
+			if (relation->subject >= target_terms->term_count ||
+				relation->classifier >= target_terms->term_count ||
 				prototype_term_resolve_external_ref(
 					target_terms,
 					relation->subject,
@@ -10355,54 +10492,79 @@ int prototype_artifact_apply_term_relocations(
 			}
 			relation->subject = linked_subject;
 			relation->classifier = linked_classifier;
-			}
-			for (size_t j = 0; j < target_metadata->operation_count; ++j) {
-				struct prototype_operation_node* operation =
-					&target_metadata->operations[j];
-				uint32_t* projections[] = {
-					&operation->core_term,
-					&operation->known_classifier,
-					&operation->classifier,
-					&operation->binder_classifier
-				};
-				for (size_t projection = 0;
-					projection < sizeof(projections) / sizeof(projections[0]);
-					++projection) {
-					if (*projections[projection] == PROTOTYPE_INVALID_ID) {
-						continue;
-					}
-					if (prototype_term_resolve_external_ref(
-							target_terms,
-							*projections[projection],
-							provider_name,
-							provider_term,
-							projections[projection]
-						) != 0) {
-						return -1;
+			if (subject_was_external_ref && linked_subject != original_subject &&
+				attach_linked_declaration_support(
+					target_judgement,
+					(uint32_t)j,
+					provider->source_claim_id
+				) != 0) {
+				int has_declaration = 0;
+				for (size_t k = 0;
+					k < target_judgement->derivation_candidate_count;
+					++k) {
+					const struct prototype_judgement_derivation_candidate* proof =
+						&target_judgement->derivation_candidates[k];
+					if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_DECLARATION &&
+						proof->conclusion_claim_candidate_id == j) {
+						has_declaration = 1;
+						break;
 					}
 				}
+				if (has_declaration) {
+					return -1;
+				}
 			}
-			for (size_t j = 1; j < target_contexts->context_count; ++j) {
-				struct prototype_context* context = &target_contexts->contexts[j];
-				if (context->classifier != PROTOTYPE_INVALID_ID &&
-					prototype_term_resolve_external_ref(
+		}
+		for (size_t j = 0; j < target_metadata->operation_count; ++j) {
+			struct prototype_operation_node* operation =
+				&target_metadata->operations[j];
+			uint32_t* projections[] = {
+				&operation->core_term,
+				&operation->known_classifier,
+				&operation->classifier,
+				&operation->binder_classifier
+			};
+			for (size_t projection = 0;
+				projection < sizeof(projections) / sizeof(projections[0]);
+				++projection) {
+				if (*projections[projection] == PROTOTYPE_INVALID_ID) {
+					continue;
+				}
+				if (prototype_term_resolve_external_ref(
 						target_terms,
-						context->classifier,
+						*projections[projection],
 						provider_name,
 						provider_term,
-						&context->classifier
+						projections[projection]
 					) != 0) {
 					return -1;
 				}
 			}
-			for (size_t j = 0; j < target_judgement->derivation_candidate_count; ++j) {
-				struct prototype_judgement_derivation_candidate* proof = &target_judgement->derivation_candidates[j];
-				if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
-					continue;
-				}
-					if (prototype_term_resolve_external_ref(
-							target_terms,
-							proof->conclusion_subject,
+		}
+		for (size_t j = 1; j < target_contexts->context_count; ++j) {
+			struct prototype_context* context = &target_contexts->contexts[j];
+			if (context->classifier != PROTOTYPE_INVALID_ID &&
+				prototype_term_resolve_external_ref(
+					target_terms,
+					context->classifier,
+					provider_name,
+					provider_term,
+					&context->classifier
+				) != 0) {
+				return -1;
+			}
+		}
+		for (size_t j = 0;
+			j < target_judgement->derivation_candidate_count;
+			++j) {
+			struct prototype_judgement_derivation_candidate* proof =
+				&target_judgement->derivation_candidates[j];
+			if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
+				continue;
+			}
+			if (prototype_term_resolve_external_ref(
+					target_terms,
+					proof->conclusion_subject,
 					provider_name,
 					provider_term,
 					&proof->conclusion_subject
@@ -10413,40 +10575,40 @@ int prototype_artifact_apply_term_relocations(
 					provider_name,
 					provider_term,
 					&proof->conclusion_classifier
-					) != 0) {
-					return -1;
-				}
-				if (proof->constructor_owner_view != PROTOTYPE_INVALID_ID &&
-					prototype_term_resolve_external_ref(
-						target_terms,
-						proof->constructor_owner_view,
-						provider_name,
-						provider_term,
-						&proof->constructor_owner_view
-					) != 0) {
-					return -1;
-				}
-				if (proof->induction_match != PROTOTYPE_INVALID_ID &&
-					prototype_term_resolve_external_ref(
-						target_terms,
-						proof->induction_match,
-						provider_name,
-						provider_term,
-						&proof->induction_match
-					) != 0) {
-					return -1;
-				}
-				if (proof->induction_motive != PROTOTYPE_INVALID_ID &&
-					prototype_term_resolve_external_ref(
-						target_terms,
-						proof->induction_motive,
-						provider_name,
-						provider_term,
-						&proof->induction_motive
-					) != 0) {
-					return -1;
-				}
-				for (uint32_t k = 0; k < proof->premise_count; ++k) {
+				) != 0) {
+				return -1;
+			}
+			if (proof->constructor_owner_view != PROTOTYPE_INVALID_ID &&
+				prototype_term_resolve_external_ref(
+					target_terms,
+					proof->constructor_owner_view,
+					provider_name,
+					provider_term,
+					&proof->constructor_owner_view
+				) != 0) {
+				return -1;
+			}
+			if (proof->induction_match != PROTOTYPE_INVALID_ID &&
+				prototype_term_resolve_external_ref(
+					target_terms,
+					proof->induction_match,
+					provider_name,
+					provider_term,
+					&proof->induction_match
+				) != 0) {
+				return -1;
+			}
+			if (proof->induction_motive != PROTOTYPE_INVALID_ID &&
+				prototype_term_resolve_external_ref(
+					target_terms,
+					proof->induction_motive,
+					provider_name,
+					provider_term,
+					&proof->induction_motive
+				) != 0) {
+				return -1;
+			}
+			for (uint32_t k = 0; k < proof->premise_count; ++k) {
 				if (prototype_term_resolve_external_ref(
 						target_terms,
 						proof->premise_subjects[k],
@@ -10842,6 +11004,50 @@ static int canonicalize_constructor_owner_refs(
 				&match_case->constructor_owner
 			) != 0) {
 			return -1;
+		}
+	}
+	return 0;
+}
+
+static int canonicalize_appended_export_evidence(
+	struct prototype_judgement_db* judgement,
+	uint32_t source_claim_id,
+	uint32_t old_subject,
+	uint32_t old_classifier,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	if (!judgement || source_claim_id >= judgement->claim_candidate_count) {
+		return -1;
+	}
+	struct prototype_judgement_claim_candidate* claim =
+		&judgement->claim_candidates[source_claim_id];
+	if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		claim->subject != old_subject || claim->classifier != old_classifier) {
+		return -1;
+	}
+	claim->subject = subject;
+	claim->classifier = classifier;
+	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
+		struct prototype_judgement_derivation_candidate* derivation =
+			&judgement->derivation_candidates[i];
+		if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
+			continue;
+		}
+		if (derivation->conclusion_claim_candidate_id == source_claim_id) {
+			derivation->conclusion_subject = subject;
+			derivation->conclusion_classifier = classifier;
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			if (derivation->premise_authority_kinds[j] != claim->authority_kind ||
+				derivation->premise_authority_ids[j] != claim->authority_id ||
+				derivation->premise_operation_ids[j] != claim->operation_id ||
+				derivation->premise_subjects[j] != old_subject ||
+				derivation->premise_classifiers[j] != old_classifier) {
+				continue;
+			}
+			derivation->premise_subjects[j] = subject;
+			derivation->premise_classifiers[j] = classifier;
 		}
 	}
 	return 0;
@@ -11342,14 +11548,34 @@ int prototype_artifact_append_graph(
 	for (size_t i = 0; i < source_interface->term_export_count; ++i) {
 		appended_interface->term_exports[i] = source_interface->term_exports[i];
 		appended_interface->term_exports[i].local_term += term_offset;
+		uint32_t appended_subject = appended_interface->term_exports[i].local_term;
 		appended_interface->term_exports[i].operation =
 			operation_offset == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
 			offset_artifact_id(
 				source_interface->term_exports[i].operation, operation_offset
 			);
+		if (source_interface->term_exports[i].source_claim_id !=
+				PROTOTYPE_INVALID_ID) {
+			uint32_t source_claim_candidate_id =
+				source_interface->term_exports[i].source_claim_id;
+			if (source_claim_candidate_id >=
+				source_judgement->claim_candidate_count) {
+				return -1;
+			}
+			appended_interface->term_exports[i].source_claim_id =
+				offset_artifact_id(
+					source_claim_candidate_id,
+					claim_candidate_offset
+				);
+		} else {
+			appended_interface->term_exports[i].source_claim_id =
+				PROTOTYPE_INVALID_ID;
+		}
 		if (appended_interface->term_exports[i].classifier != PROTOTYPE_INVALID_ID) {
 			appended_interface->term_exports[i].classifier += term_offset;
 		}
+		uint32_t appended_classifier =
+			appended_interface->term_exports[i].classifier;
 		if (prototype_term_canonical_key_with_types(
 				target_terms,
 				target_type_declarations,
@@ -11421,6 +11647,18 @@ int prototype_artifact_append_graph(
 				return -1;
 			}
 		}
+		if ((appended_interface->term_exports[i].local_term != appended_subject ||
+			 appended_interface->term_exports[i].classifier != appended_classifier) &&
+			canonicalize_appended_export_evidence(
+				target_judgement,
+				appended_interface->term_exports[i].source_claim_id,
+				appended_subject,
+				appended_classifier,
+				appended_interface->term_exports[i].local_term,
+				appended_interface->term_exports[i].classifier
+			) != 0) {
+			return -1;
+		}
 	}
 	for (size_t i = 0; i < source_interface->type_export_count; ++i) {
 		appended_interface->type_exports[i] = source_interface->type_exports[i];
@@ -11478,6 +11716,212 @@ int prototype_artifact_append_graph(
 		appended_interface->dependencies[i] = source_interface->dependencies[i];
 	}
 	prototype_term_notify_graph_mutation(target_terms);
+	return 0;
+}
+
+static int align_operation_claim_subjects(
+	struct prototype_judgement_db* judgement,
+	uint32_t old_subject,
+	uint32_t subject
+) {
+	if (!judgement) {
+		return -1;
+	}
+	for (uint32_t i = 0;
+		i < (uint32_t)judgement->claim_candidate_count;
+		++i) {
+		const struct prototype_judgement_claim_candidate* claim =
+			&judgement->claim_candidates[i];
+		if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			claim->subject != old_subject) {
+			continue;
+		}
+		if (canonicalize_appended_export_evidence(
+				judgement,
+				i,
+				old_subject,
+				claim->classifier,
+				subject,
+				claim->classifier
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int align_operation_projection(
+	const struct prototype_term_db* terms,
+	struct prototype_judgement_db* judgement,
+	struct prototype_operation_graph* graph,
+	uint32_t operation_id,
+	uint32_t core_term,
+	unsigned char* visited
+) {
+	if (!terms || !judgement || !graph || !visited ||
+		operation_id >= graph->operation_count || core_term >= terms->term_count) {
+		return -1;
+	}
+	struct prototype_operation_node* operation = &graph->operations[operation_id];
+	if (visited[operation_id]) {
+		return operation->core_term == core_term ? 0 : -1;
+	}
+	visited[operation_id] = 1;
+	uint32_t old_core = operation->core_term;
+	if (old_core != core_term && align_operation_claim_subjects(
+			judgement, old_core, core_term
+		) != 0) {
+		return -1;
+	}
+	operation->core_term = core_term;
+	const struct prototype_term* term = &terms->terms[core_term];
+	switch (operation->tag) {
+		case PROTOTYPE_OPERATION_NAME:
+			return align_operation_projection(
+				terms, judgement, graph, operation->function, core_term, visited
+			);
+		case PROTOTYPE_OPERATION_ASCRIPTION:
+			return align_operation_projection(
+				terms, judgement, graph, operation->body, core_term, visited
+			);
+		case PROTOTYPE_OPERATION_LAMBDA:
+			if (term->tag != PROTOTYPE_TERM_LAMBDA) {
+				return -1;
+			}
+			/* The shared Lambda is alpha-interned, while its typed body
+			 * occurrence retains the provider binder. The Lambda validator
+			 * compares those bodies under the two binder identities. */
+			return 0;
+		case PROTOTYPE_OPERATION_APP:
+			if (term->tag != PROTOTYPE_TERM_APP ||
+				align_operation_projection(
+					terms, judgement, graph, operation->function,
+					term->as.app.function, visited
+				) != 0) {
+				return -1;
+			}
+			return align_operation_projection(
+				terms, judgement, graph, operation->argument,
+				term->as.app.argument, visited
+			);
+		case PROTOTYPE_OPERATION_RETURN:
+			if (term->tag != PROTOTYPE_TERM_RETURN) {
+				return -1;
+			}
+			return align_operation_projection(
+				terms, judgement, graph, operation->argument,
+				term->as.return_term.value, visited
+			);
+		case PROTOTYPE_OPERATION_THUNK:
+			if (term->tag != PROTOTYPE_TERM_THUNK) {
+				return -1;
+			}
+			return align_operation_projection(
+				terms, judgement, graph, operation->argument,
+				term->as.thunk.computation, visited
+			);
+		case PROTOTYPE_OPERATION_FORCE:
+			if (term->tag != PROTOTYPE_TERM_FORCE) {
+				return -1;
+			}
+			return align_operation_projection(
+				terms, judgement, graph, operation->argument,
+				term->as.force.value, visited
+			);
+		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+			if (term->tag != PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+				return -1;
+			}
+			return align_operation_projection(
+				terms, judgement, graph, operation->argument,
+				term->as.induction_hypothesis.argument, visited
+			);
+		case PROTOTYPE_OPERATION_REQUEST:
+			if (term->tag != PROTOTYPE_TERM_OPERATION_REQUEST ||
+				align_operation_projection(
+					terms, judgement, graph, operation->function,
+					term->as.operation_request.operation, visited
+				) != 0 || align_operation_projection(
+					terms, judgement, graph, operation->argument,
+					term->as.operation_request.argument, visited
+				) != 0) {
+				return -1;
+			}
+			return align_operation_projection(
+				terms, judgement, graph, operation->body,
+				term->as.operation_request.continuation, visited
+			);
+		case PROTOTYPE_OPERATION_MATCH:
+			if (term->tag != PROTOTYPE_TERM_MATCH ||
+				operation->case_count != term->as.match.case_count ||
+				operation->first_case > graph->case_count ||
+				operation->case_count > graph->case_count - operation->first_case ||
+				term->as.match.first_case > terms->case_count ||
+				term->as.match.case_count > terms->case_count - term->as.match.first_case ||
+				align_operation_projection(
+					terms, judgement, graph, operation->scrutinee,
+					term->as.match.scrutinee, visited
+				) != 0) {
+				return -1;
+			}
+			for (uint32_t i = 0; i < operation->case_count; ++i) {
+				if (align_operation_projection(
+						terms,
+						judgement,
+						graph,
+						graph->cases[operation->first_case + i].body_operation,
+						terms->cases[term->as.match.first_case + i].body,
+						visited
+					) != 0) {
+					return -1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
+			/* Fold projection alignment needs clause-by-clause continuation
+			 * transport and is not guessed from a root canonical key. */
+			return old_core == core_term ? 0 : -1;
+		case PROTOTYPE_OPERATION_ATOM:
+		case PROTOTYPE_OPERATION_VAR:
+		case PROTOTYPE_OPERATION_CONSTRUCTOR:
+			return 0;
+		default:
+			return -1;
+	}
+}
+
+int prototype_artifact_align_export_operations(
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_term_db* terms,
+	struct prototype_judgement_db* judgement,
+	struct prototype_compile_metadata* metadata
+) {
+	if (!interface || !terms || !judgement || !metadata) {
+		return -1;
+	}
+	struct prototype_operation_graph graph;
+	prototype_compile_metadata_operation_graph(metadata, &graph);
+	unsigned char visited[graph.operation_count];
+	for (size_t i = 0; i < interface->term_export_count; ++i) {
+		const struct prototype_artifact_term_export* export =
+			&interface->term_exports[i];
+		if (export->operation >= graph.operation_count ||
+			export->local_term >= terms->term_count) {
+			return -1;
+		}
+		memset(visited, 0, sizeof(visited));
+		if (align_operation_projection(
+				terms,
+				judgement,
+				&graph,
+				export->operation,
+				export->local_term,
+				visited
+			) != 0) {
+			return -1;
+		}
+		graph.operations[export->operation].classifier = export->classifier;
+	}
 	return 0;
 }
 

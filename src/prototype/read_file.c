@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "symbol.h"
 #include "judgement.h"
@@ -683,19 +684,86 @@ static void print_universe_graph(
 		printf(" + %d <= ", constraint->offset);
 		print_universe_level_ref(constraint->upper_level_var);
 		printf(
-			" subject=term#%u classifier=term#%u reason=%d\n",
+			" subject=term#%u classifier=term#%u reason=%d source-claim=%u authority=%d:%u source=term#%u:term#%u\n",
 			constraint->subject,
 			constraint->classifier,
-			constraint->reason_kind
+			constraint->reason,
+			constraint->source_claim_id,
+			constraint->source_authority_kind,
+			constraint->source_authority_id,
+			constraint->source_subject,
+			constraint->source_classifier
 		);
 	}
 }
 
-static int artifact_exports_have_accepted_claims(
+static int artifact_export_claim_ids_match_loaded_image(
 	const struct prototype_artifact_interface* interface,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!interface || !judgement) {
+		return -1;
+	}
+	for (size_t i = 0; i < interface->term_export_count; ++i) {
+		const struct prototype_artifact_term_export* export =
+			&interface->term_exports[i];
+		if (export->source_claim_id == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (export->source_claim_id >= judgement->claim_count) {
+			return -1;
+		}
+		const struct prototype_judgement_claim* claim =
+			&judgement->claims[export->source_claim_id];
+		if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			claim->subject != export->local_term ||
+			claim->classifier != export->classifier ||
+			(claim->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+			 (claim->authority_id != export->operation ||
+			  claim->operation_id != export->operation))) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static uint32_t artifact_find_grounded_export_claim(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_artifact_term_export* export
+) {
+	if (!judgement || !export ||
+		export->source_claim_id >= judgement->claim_candidate_count) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	const struct prototype_judgement_claim_candidate* source =
+		&judgement->claim_candidates[export->source_claim_id];
+	if (source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		source->subject != export->local_term ||
+		source->classifier != export->classifier) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
+		const struct prototype_judgement_claim* claim = &judgement->claims[i];
+		if (claim->kind == source->kind &&
+			claim->authority_kind == source->authority_kind &&
+			claim->authority_id == source->authority_id &&
+			claim->context_id == source->context_id &&
+			claim->operation_id == source->operation_id &&
+			claim->subject == source->subject &&
+			claim->classifier == source->classifier &&
+			claim->closure_rank != PROTOTYPE_INVALID_ID) {
+			return i;
+		}
+	}
+	return PROTOTYPE_INVALID_ID;
+}
+
+static int artifact_exports_have_accepted_claims(
+	struct prototype_artifact_interface* interface,
 	struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_compile_metadata* metadata
+	const struct prototype_compile_metadata* metadata,
+	int rebind_source_claim_ids
 ) {
 	if (!interface || !terms || !judgement || !metadata) {
 		return -1;
@@ -712,33 +780,34 @@ static int artifact_exports_have_accepted_claims(
 		.fold_clause_capacity = metadata->operation_fold_clause_capacity
 	};
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
-		const struct prototype_artifact_term_export* export =
+		struct prototype_artifact_term_export* export =
 			&interface->term_exports[i];
 		if (export->operation >= metadata->operation_count ||
 			metadata->operations[export->operation].classifier != export->classifier) {
 			return -1;
 		}
 		int found = 0;
-		for (size_t j = 0;
-			export->classifier != PROTOTYPE_INVALID_ID && j < judgement->claim_count;
-			++j) {
-			const struct prototype_judgement_claim* claim = &judgement->claims[j];
-			int same_projection = 0;
-			if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				claim->classifier != export->classifier) {
-				continue;
+		if (export->source_claim_id != PROTOTYPE_INVALID_ID) {
+			uint32_t grounded_claim_id = artifact_find_grounded_export_claim(
+				judgement, export
+			);
+			if (grounded_claim_id == PROTOTYPE_INVALID_ID) {
+				return -1;
 			}
-			if (prototype_term_core_shape_equal(
-					terms,
-					claim->subject,
-					export->local_term,
-					&same_projection
-				) != 0) {
-				continue;
+			const struct prototype_judgement_claim* claim =
+				&judgement->claims[grounded_claim_id];
+			found = claim->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				claim->subject == export->local_term &&
+				claim->classifier == export->classifier &&
+				claim->closure_rank != PROTOTYPE_INVALID_ID &&
+				(claim->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+				 (claim->authority_id == export->operation &&
+				  claim->operation_id == export->operation));
+			if (!found) {
+				return -1;
 			}
-			if (same_projection) {
-				found = 1;
-				break;
+			if (rebind_source_claim_ids) {
+				export->source_claim_id = grounded_claim_id;
 			}
 		}
 		if (!found) {
@@ -839,6 +908,10 @@ static int read_artifact_interface_and_graph(
 		prototype_artifact_read_text_universe(
 			artifact_file,
 			universe_db
+		) != 0 || prototype_universe_validate_provenance(
+			universe_db, judgement_db
+		) != 0 || artifact_export_claim_ids_match_loaded_image(
+			artifact_interface, judgement_db
 		) != 0 ||
 		(metadata && prototype_constructor_curried_caches_validate(
 			type_declarations,
@@ -862,8 +935,12 @@ static int read_artifact_interface_and_graph(
 				.fold_clause_capacity = metadata->operation_fold_clause_capacity
 			},
 			judgement_db
+		) != 0 || prototype_universe_rebind_provenance(
+			universe_db, judgement_db
+		) != 0 || prototype_universe_validate_provenance(
+			universe_db, judgement_db
 		) != 0 || artifact_exports_have_accepted_claims(
-			artifact_interface, term_db, judgement_db, metadata
+			artifact_interface, term_db, judgement_db, metadata, 0
 		) != 0) {
 		status = -1;
 	}
@@ -3584,6 +3661,17 @@ int main(int argc, char** argv) {
 				symbol_table_free(&symbols);
 				return 1;
 			}
+			if (prototype_artifact_align_export_operations(
+					&appended_interface,
+					&term_db,
+					&judgement_db,
+					&metadata
+				) != 0) {
+				fprintf(stderr, "%s + %s: failed to align appended export Operations\n",
+					link_target_path, provider_path);
+				symbol_table_free(&symbols);
+				return 1;
+			}
 			if (prototype_artifact_apply_type_expr_relocations(
 					&appended_interface,
 					&term_db,
@@ -3591,8 +3679,13 @@ int main(int argc, char** argv) {
 					&judgement_db,
 					&metadata.contexts,
 					&artifact_interface
-				) != 0 ||
-				prototype_artifact_apply_term_relocations(
+				) != 0) {
+				fprintf(stderr, "%s + %s: failed provider type relocation\n",
+					link_target_path, provider_path);
+				symbol_table_free(&symbols);
+				return 1;
+			}
+			if (prototype_artifact_apply_term_relocations(
 					&appended_interface,
 					&term_db,
 					&type_declarations,
@@ -3600,8 +3693,13 @@ int main(int argc, char** argv) {
 					&metadata.contexts,
 					&metadata,
 					&artifact_interface
-				) != 0 ||
-				prototype_artifact_apply_term_relocations(
+				) != 0) {
+				fprintf(stderr, "%s + %s: failed provider term relocation\n",
+					link_target_path, provider_path);
+				symbol_table_free(&symbols);
+				return 1;
+			}
+			if (prototype_artifact_apply_term_relocations(
 					&artifact_interface,
 					&term_db,
 					&type_declarations,
@@ -3610,7 +3708,8 @@ int main(int argc, char** argv) {
 					&metadata,
 					&appended_interface
 				) != 0) {
-				fprintf(stderr, "%s + %s: failed to link artifacts\n", link_target_path, provider_path);
+				fprintf(stderr, "%s + %s: failed target term relocation\n",
+					link_target_path, provider_path);
 				symbol_table_free(&symbols);
 				return 1;
 			}
@@ -3660,11 +3759,6 @@ int main(int argc, char** argv) {
 			symbol_table_free(&symbols);
 			return 1;
 		}
-		prototype_judgement_finalize_linked_declaration_premises(
-			&term_db,
-			&type_declarations,
-			&judgement_db
-		);
 		struct prototype_operation_graph linked_operation_graph;
 		prototype_compile_metadata_operation_graph(
 			&metadata, &linked_operation_graph
@@ -3681,6 +3775,17 @@ int main(int argc, char** argv) {
 			symbol_table_free(&symbols);
 			return 1;
 		}
+		if (artifact_exports_have_accepted_claims(
+				&artifact_interface,
+				&term_db,
+				&judgement_db,
+				&metadata,
+				1
+			) != 0) {
+			fprintf(stderr, "%s: linked artifact export validation failed\n", link_target_path);
+			symbol_table_free(&symbols);
+			return 1;
+		}
 		if (link_output_path) {
 			if (prototype_universe_collect(
 					&universe_db,
@@ -3693,7 +3798,21 @@ int main(int argc, char** argv) {
 				symbol_table_free(&symbols);
 				return 1;
 			}
-			FILE* output = fopen(link_output_path, "w");
+			char temporary_output_path[4096];
+			int temporary_path_length = snprintf(
+				temporary_output_path,
+				sizeof(temporary_output_path),
+				"%s.tmp.%ld",
+				link_output_path,
+				(long)getpid()
+			);
+			if (temporary_path_length < 0 ||
+				(size_t)temporary_path_length >= sizeof(temporary_output_path)) {
+				fprintf(stderr, "%s: linked artifact output path is too long\n", link_output_path);
+				symbol_table_free(&symbols);
+				return 1;
+			}
+			FILE* output = fopen(temporary_output_path, "w");
 			if (!output) {
 				fprintf(stderr, "%s: failed to open linked artifact output\n", link_output_path);
 				symbol_table_free(&symbols);
@@ -3714,7 +3833,14 @@ int main(int argc, char** argv) {
 				write_status = -1;
 			}
 			if (write_status != 0) {
+				remove(temporary_output_path);
 				fprintf(stderr, "%s: failed to write linked artifact\n", link_output_path);
+				symbol_table_free(&symbols);
+				return 1;
+			}
+			if (rename(temporary_output_path, link_output_path) != 0) {
+				remove(temporary_output_path);
+				fprintf(stderr, "%s: failed to publish linked artifact\n", link_output_path);
 				symbol_table_free(&symbols);
 				return 1;
 			}
@@ -3893,6 +4019,10 @@ int main(int argc, char** argv) {
 				prototype_artifact_read_text_universe(
 					artifact_file,
 					&universe_db
+				) != 0 || prototype_universe_validate_provenance(
+					&universe_db, &judgement_db
+				) != 0 || artifact_export_claim_ids_match_loaded_image(
+					&artifact_interface, &judgement_db
 				) != 0 ||
 				prototype_artifact_read_text_debug(
 					artifact_file,
@@ -3921,11 +4051,16 @@ int main(int argc, char** argv) {
 						.fold_clause_capacity = artifact_metadata.operation_fold_clause_capacity
 					},
 					&judgement_db
+				) != 0 || prototype_universe_rebind_provenance(
+					&universe_db, &judgement_db
+				) != 0 || prototype_universe_validate_provenance(
+					&universe_db, &judgement_db
 				) != 0 || artifact_exports_have_accepted_claims(
 					&artifact_interface,
 					&term_db,
 					&judgement_db,
-					&artifact_metadata
+					&artifact_metadata,
+					0
 				) != 0) {
 				fclose(artifact_file);
 				fprintf(stderr, "%s: failed to read artifact graph/universe/relocation\n", interface_input_path);

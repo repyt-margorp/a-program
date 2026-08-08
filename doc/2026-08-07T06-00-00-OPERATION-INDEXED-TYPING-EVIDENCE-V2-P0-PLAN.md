@@ -3,14 +3,15 @@
 Date: 2026-08-07
 Last re-audited: 2026-08-08
 
-Status: V2-P0 active after the 2026-08-08 code audit. Operation-indexed
+Status: V2-P0 complete for the current calculus after the 2026-08-08 exit audit. Operation-indexed
 classifier solving, authority-complete producers for the current calculus, and
 accepted Claim/Derivation validation are implemented. The P0-R0A.3a entry
 premise is complete: candidate Claims no longer own a preferred proof, all
-consumers enumerate concluding Derivations, and artifact v66 publishes the
-accepted Claim/Derivation DAG directly. Solver-local candidates remain mutable
-frontier state only. The next work is P0 characterization and residual
-invariant closure, not P1 or object-level HOTT equality.
+certificate consumers enumerate concluding Derivations, and artifact v67
+publishes the accepted Claim/Derivation DAG with exact link and Universe
+provenance. Solver-local candidates remain mutable frontier state only. The
+next work may enter the HOTT plan; object-level equality is still not part of
+P0.
 
 Parent plan:
 `doc/2026-08-06T02-00-00-HIGHER-OBSERVATIONAL-TT-REFACTOR-AUDIT-V2.md`
@@ -18,12 +19,17 @@ Parent plan:
 Re-entry code audit:
 `doc/2026-08-08T00-00-00-V2-P0-REENTRY-REFACTOR-AUDIT.md`
 
+Remaining implementation plan:
+`doc/2026-08-08T17-10-35-V2-P0-REMAINING-IMPLEMENTATION-PLAN.md`
+
 Audit state:
 
 - committed P0 checkpoints: `985baf8`, `340ec81`, `0a4f9ac`, and `bc9566f`;
-- P0-R0A.3a boundary: `A_PROGRAM_ARTIFACT 66`;
-- v66 serializes accepted Claims and accepted Derivations separately and
-  rejects v65 without a compatibility fallback;
+- P0 completion boundary: `A_PROGRAM_ARTIFACT 67` plus the fingerprint in
+  `src/prototype/artifact_v67.schema`;
+- v67 serializes accepted Claims, accepted Derivations, exact export source
+  Claims, and Universe provenance, and rejects v66 without a compatibility
+  fallback;
 - the audit found that the previous P0 completion statement was too strong;
 - P0-R0A.1 and P0-R0A.2 are committed. P0-R0A.3 is implementation inside P0,
   not an audit probe or a pre-P0 compatibility layer;

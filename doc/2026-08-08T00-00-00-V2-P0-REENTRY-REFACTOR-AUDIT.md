@@ -1,17 +1,21 @@
 # V2-P0 Re-entry Audit Formerly Classified as P1 Entry Work
 
+Detailed remaining implementation plan:
+`doc/2026-08-08T17-10-35-V2-P0-REMAINING-IMPLEMENTATION-PLAN.md`
+
 Date: 2026-08-08
 
-Status: audit complete; P0-R0A.1 and P0-R0A.2 are implemented for the current
-calculus; the P0-R0A.3a candidate-adjacency/publication entry premise is
-complete. P0.1 characterization is next.
+Status: audit complete; all defects promoted from this audit into the remaining
+P0 plan are closed for the current calculus. The final boundary is artifact
+v67 with exact export and Universe Claim provenance.
 
 Baseline:
 
 - branch: `main`;
 - committed checkpoints through `85d720e refactor: migrate P0 candidate consumers`;
-- working artifact header: native `A_PROGRAM_ARTIFACT 66`;
-- implementation state: P0-R0A.3a is complete; solver candidates are local
+- working artifact header: native `A_PROGRAM_ARTIFACT 67` plus schema
+  fingerprint;
+- implementation state: P0 exit audit complete; solver candidates are local
   frontier state and accepted Claims/Derivations are the certificate image.
 
 This document re-audits the implementation after the earlier V2-P0 completion
@@ -1037,5 +1041,6 @@ Observational equality types and witnesses.
 | 2026-08-08 | P0 export occurrence boundary | implemented; provisional schema v64 | `term_export` now preserves its source Operation. Writer/readback require the export classifier to equal that Operation classifier and require either an accepted grounded Claim or a reachable explicit residual/verification obligation. Shared erased Core identity is not export evidence. |
 | 2026-08-08 | P0-R0A.2 authority-complete producer boundary | complete for current rules | Generated helper and source structural producers carry explicit authority-complete evidence; direct structural Operation edges remain distinct from evidence owner identity; all 15 prototype scripts pass. |
 | 2026-08-08 | P0-R0A.3a entry premise | complete | Candidate Claims are interned independently, candidate Derivations directly name their conclusion Claim, all consumers enumerate that adjacency, and multiple Derivations per Claim are retained. Artifact v66 publishes accepted Claims/Derivations and rejects v65. Preferred-proof and accepted-to-candidate back-reference fields are removed. |
-| 2026-08-08 | Candidate consumer migration | complete | Typing, Operation solver, linked-declaration completion, diagnostics, and Universe collection now traverse all Derivations concluding a Claim. No one of those consumers treats insertion order as evidence selection. |
-| 2026-08-08 | Next implementation phase | ready | Enter P0.1 characterization/adversarial validation with R0A.3a as a checked premise. Continue afterward with link authority, Universe provenance, and stable artifact wire identity. P1 remains blocked until P0 exit checks complete. |
+| 2026-08-08 | Candidate consumer migration | complete | Typing and solver-local construction enumerate candidate Derivations without preferred-proof selection. Published proof and Universe consumers use the accepted certificate. |
+| 2026-08-08 | P0 link/Universe/wire closure | complete | Exact relocated export Claims replace global Core search; Universe constraints carry accepted Claim provenance; artifact v67 has explicit stable wire values and a schema fingerprint. |
+| 2026-08-08 | P0 exit audit | complete | All 16 prototype scripts, examples 01-07 and 09, warning-free builds, artifact adversarial cases, and `git diff --check` pass. HOTT object equality remains the next separate phase. |

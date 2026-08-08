@@ -194,7 +194,12 @@ static int add_constraint(
 	int offset,
 	uint32_t subject,
 	uint32_t classifier,
-	int reason_kind
+	int reason,
+	uint32_t source_claim_id,
+	int source_authority_kind,
+	uint32_t source_authority_id,
+	uint32_t source_subject,
+	uint32_t source_classifier
 ) {
 	uint32_t lower_index;
 	uint32_t upper_index;
@@ -211,7 +216,12 @@ static int add_constraint(
 			constraint->offset == offset &&
 			constraint->subject == subject &&
 			constraint->classifier == classifier &&
-			constraint->reason_kind == reason_kind) {
+			constraint->reason == reason &&
+			constraint->source_claim_id == source_claim_id &&
+			constraint->source_authority_kind == source_authority_kind &&
+			constraint->source_authority_id == source_authority_id &&
+			constraint->source_subject == source_subject &&
+			constraint->source_classifier == source_classifier) {
 			return 0;
 		}
 	}
@@ -225,7 +235,12 @@ static int add_constraint(
 	db->constraints[id].offset = offset;
 	db->constraints[id].subject = subject;
 	db->constraints[id].classifier = classifier;
-	db->constraints[id].reason_kind = reason_kind;
+	db->constraints[id].reason = reason;
+	db->constraints[id].source_claim_id = source_claim_id;
+	db->constraints[id].source_authority_kind = source_authority_kind;
+	db->constraints[id].source_authority_id = source_authority_id;
+	db->constraints[id].source_subject = source_subject;
+	db->constraints[id].source_classifier = source_classifier;
 	db->constraint_count++;
 	(void)lower_index;
 	(void)upper_index;
@@ -237,7 +252,9 @@ static int collect_universe_term_constraints(
 	const struct prototype_term_db* terms,
 	uint32_t subject,
 	uint32_t classifier,
-	int reason_kind
+	uint32_t source_claim_id,
+	int source_authority_kind,
+	uint32_t source_authority_id
 ) {
 	uint32_t subject_level;
 	uint32_t classifier_level;
@@ -256,17 +273,46 @@ static int collect_universe_term_constraints(
 			1,
 			subject,
 			classifier,
-			reason_kind
+			PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_TERM_LEVEL_SUCCESSOR,
+			source_claim_id,
+			source_authority_kind,
+			source_authority_id,
+			subject,
+			classifier
 		);
 	}
 	return 0;
 }
 
+static int accepted_premise_classifier(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_derivation* derivation,
+	uint32_t premise_index,
+	uint32_t* p_classifier
+) {
+	if (!judgement || !derivation || !p_classifier ||
+		premise_index >= derivation->premise_count) {
+		return -1;
+	}
+	uint32_t claim_id = derivation->premise_claim_ids[premise_index];
+	if (claim_id != PROTOTYPE_INVALID_ID) {
+		if (claim_id >= judgement->claim_count) {
+			return -1;
+		}
+		*p_classifier = judgement->claims[claim_id].classifier;
+		return 0;
+	}
+	*p_classifier = derivation->scoped_premise_classifiers[premise_index];
+	return *p_classifier == PROTOTYPE_INVALID_ID ? -1 : 0;
+}
+
 static int collect_pi_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
-	const struct prototype_judgement_claim_candidate* relation,
-	const struct prototype_judgement_derivation_candidate* proof
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	const struct prototype_judgement_claim* relation,
+	const struct prototype_judgement_derivation* proof
 ) {
 	uint32_t result_level;
 	uint32_t domain;
@@ -283,20 +329,42 @@ static int collect_pi_constraints(
 		return 0;
 	}
 	uint32_t domain_level;
+	uint32_t domain_classifier;
 	if (term_universe_level_var(
-			terms, proof->premise_classifiers[0], &domain_level
+			terms,
+			accepted_premise_classifier(
+				judgement, proof, 0, &domain_classifier
+			) == 0 ? domain_classifier : PROTOTYPE_INVALID_ID,
+			&domain_level
 		) == 0 && add_constraint(
 			db, domain_level, result_level, 0, relation->subject,
-			relation->classifier, proof->proof_kind
+			relation->classifier,
+			PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_PI_DOMAIN,
+			claim_id,
+			relation->authority_kind,
+			relation->authority_id,
+			relation->subject,
+			relation->classifier
 		) != 0) {
 		return -1;
 	}
 	uint32_t body_level;
+	uint32_t body_classifier;
 	if (term_universe_level_var(
-			terms, proof->premise_classifiers[1], &body_level
+			terms,
+			accepted_premise_classifier(
+				judgement, proof, 1, &body_classifier
+			) == 0 ? body_classifier : PROTOTYPE_INVALID_ID,
+			&body_level
 		) == 0 && add_constraint(
 			db, body_level, result_level, 0, relation->subject,
-			relation->classifier, proof->proof_kind
+			relation->classifier,
+			PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_PI_CODOMAIN,
+			claim_id,
+			relation->authority_kind,
+			relation->authority_id,
+			relation->subject,
+			relation->classifier
 		) != 0) {
 		return -1;
 	}
@@ -313,6 +381,11 @@ static int collect_type_level_at_depth(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
 	uint32_t type_term,
+	uint32_t source_claim_id,
+	int source_authority_kind,
+	uint32_t source_authority_id,
+	uint32_t source_subject,
+	uint32_t source_classifier,
 	uint32_t* p_level_var,
 	uint32_t depth
 ) {
@@ -332,7 +405,12 @@ static int collect_type_level_at_depth(
 				1,
 				type_term,
 				type_term,
-				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_LEVEL
+				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_UNIVERSE_LEVEL,
+				source_claim_id,
+				source_authority_kind,
+				source_authority_id,
+				source_subject,
+				source_classifier
 			) != 0) {
 			return -1;
 		}
@@ -352,9 +430,14 @@ static int collect_type_level_at_depth(
 		uint32_t domain_level;
 		if (collect_type_level_at_depth(
 				db,
-				terms,
-				domain,
-				&domain_level,
+			terms,
+			domain,
+			source_claim_id,
+			source_authority_kind,
+			source_authority_id,
+			source_subject,
+			source_classifier,
+			&domain_level,
 				depth + 1
 			) == 0 &&
 			add_constraint(
@@ -364,7 +447,12 @@ static int collect_type_level_at_depth(
 				0,
 				type_term,
 				type_term,
-				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_LEVEL
+				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_DOMAIN,
+				source_claim_id,
+				source_authority_kind,
+				source_authority_id,
+				source_subject,
+				source_classifier
 			) != 0) {
 			return -1;
 		}
@@ -379,6 +467,11 @@ static int collect_type_level_at_depth(
 					db,
 					terms,
 					family_body,
+					source_claim_id,
+					source_authority_kind,
+					source_authority_id,
+					source_subject,
+					source_classifier,
 					&body_level,
 					depth + 1
 				) == 0 &&
@@ -389,7 +482,12 @@ static int collect_type_level_at_depth(
 					0,
 					type_term,
 					type_term,
-					PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_LEVEL
+					PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_CODOMAIN,
+						source_claim_id,
+						source_authority_kind,
+						source_authority_id,
+						source_subject,
+						source_classifier
 				) != 0) {
 				return -1;
 			}
@@ -407,8 +505,10 @@ static int collect_match_branch_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
 	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_claim_candidate* relation,
-	const struct prototype_judgement_derivation_candidate* proof
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	const struct prototype_judgement_claim* relation,
+	const struct prototype_judgement_derivation* proof
 ) {
 	uint32_t result_level;
 	if (!db || !terms || !relation || !proof ||
@@ -451,13 +551,18 @@ static int collect_match_branch_constraints(
 				) == 0) {
 				found_branch_level = 1;
 			}
-		} else if (i < proof->premise_count &&
+		} else if (i < proof->premise_count) {
+			uint32_t premise_classifier;
+			if (accepted_premise_classifier(
+					judgement, proof, i, &premise_classifier
+				) == 0 &&
 			term_universe_level_var(
 				terms,
-				proof->premise_classifiers[i],
+				premise_classifier,
 				&branch_level
-			) == 0) {
-			found_branch_level = 1;
+				) == 0) {
+				found_branch_level = 1;
+			}
 		}
 
 		if (found_branch_level &&
@@ -468,7 +573,12 @@ static int collect_match_branch_constraints(
 				0,
 				relation->subject,
 				relation->classifier,
-				proof->proof_kind
+				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_MATCH_BRANCH,
+				claim_id,
+				relation->authority_kind,
+				relation->authority_id,
+				relation->subject,
+				relation->classifier
 			) != 0) {
 			return -1;
 		}
@@ -488,6 +598,10 @@ static int collect_classifier_cumulativity_constraints(
 	uint32_t actual,
 	uint32_t subject,
 	uint32_t classifier,
+	int reason,
+	uint32_t source_claim_id,
+	int source_authority_kind,
+	uint32_t source_authority_id,
 	uint32_t depth
 ) {
 	if (!db || !terms || expected >= terms->term_count ||
@@ -505,7 +619,12 @@ static int collect_classifier_cumulativity_constraints(
 			0,
 			subject,
 			classifier,
-			PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM
+			reason,
+			source_claim_id,
+			source_authority_kind,
+			source_authority_id,
+			subject,
+			classifier
 		);
 	}
 	uint32_t expected_domain;
@@ -527,6 +646,10 @@ static int collect_classifier_cumulativity_constraints(
 			actual_domain,
 			subject,
 			classifier,
+			reason,
+			source_claim_id,
+			source_authority_kind,
+			source_authority_id,
 			depth + 1
 		) != 0) {
 		return -1;
@@ -561,6 +684,10 @@ static int collect_classifier_cumulativity_constraints(
 		actual_body,
 		subject,
 		classifier,
+		reason,
+		source_claim_id,
+		source_authority_kind,
+		source_authority_id,
 		depth + 1
 	);
 }
@@ -568,22 +695,30 @@ static int collect_classifier_cumulativity_constraints(
 static int collect_app_elim_cumulativity_constraint(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
-	const struct prototype_judgement_claim_candidate* relation,
-	const struct prototype_judgement_derivation_candidate* proof
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	const struct prototype_judgement_claim* relation,
+	const struct prototype_judgement_derivation* proof
 ) {
 	if (!db || !terms || !relation || !proof ||
 		proof->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM) {
 		return 0;
 	}
+	uint32_t function_classifier;
+	uint32_t argument_classifier;
 	if (proof->premise_count != 2 ||
-		proof->premise_classifiers[0] >= terms->term_count ||
-		proof->premise_classifiers[1] >= terms->term_count) {
+		accepted_premise_classifier(
+			judgement, proof, 0, &function_classifier
+		) != 0 || accepted_premise_classifier(
+			judgement, proof, 1, &argument_classifier
+		) != 0 || function_classifier >= terms->term_count ||
+		argument_classifier >= terms->term_count) {
 		return -1;
 	}
 	uint32_t domain;
 	uint32_t codomain_family;
 	if (prototype_judgement_pi_parts(
-			terms, proof->premise_classifiers[0], &domain, &codomain_family
+			terms, function_classifier, &domain, &codomain_family
 		) != 0) {
 		return 0;
 	}
@@ -592,9 +727,13 @@ static int collect_app_elim_cumulativity_constraint(
 		db,
 		terms,
 		domain,
-		proof->premise_classifiers[1],
+		argument_classifier,
 		relation->subject,
 		relation->classifier,
+		PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_APP_CUMULATIVITY,
+		claim_id,
+		relation->authority_kind,
+		relation->authority_id,
 		0
 	);
 }
@@ -602,24 +741,32 @@ static int collect_app_elim_cumulativity_constraint(
 static int collect_expected_type_exposure_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
-	const struct prototype_judgement_claim_candidate* relation,
-	const struct prototype_judgement_derivation_candidate* proof
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	const struct prototype_judgement_claim* relation,
+	const struct prototype_judgement_derivation* proof
 ) {
 	if (!db || !terms || !relation || !proof ||
 		proof->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE) {
 		return 0;
 	}
-	if (proof->premise_count != 1 ||
-		proof->premise_classifiers[0] >= terms->term_count) {
+	uint32_t premise_classifier;
+	if (proof->premise_count != 1 || accepted_premise_classifier(
+			judgement, proof, 0, &premise_classifier
+		) != 0 || premise_classifier >= terms->term_count) {
 		return -1;
 	}
 	return collect_classifier_cumulativity_constraints(
 		db,
 		terms,
 		relation->classifier,
-		proof->premise_classifiers[0],
+		premise_classifier,
 		relation->subject,
 		relation->classifier,
+		PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_EXPECTED_TYPE_CUMULATIVITY,
+		claim_id,
+		relation->authority_kind,
+		relation->authority_id,
 		0
 	);
 }
@@ -629,13 +776,13 @@ static int collect_relation_constraints(
 	const struct prototype_term_db* terms,
 	const struct prototype_operation_graph* operations,
 	const struct prototype_judgement_db* judgement,
-	uint32_t relation_id
+	uint32_t claim_id
 ) {
-	if (relation_id >= judgement->claim_candidate_count) {
+	if (claim_id >= judgement->claim_count) {
 		return -1;
 	}
-	const struct prototype_judgement_claim_candidate* relation =
-		&judgement->claim_candidates[relation_id];
+	const struct prototype_judgement_claim* relation =
+		&judgement->claims[claim_id];
 	if (!relation || relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
 		return 0;
 	}
@@ -644,43 +791,64 @@ static int collect_relation_constraints(
 		db,
 		terms,
 		relation->classifier,
+		claim_id,
+		relation->authority_kind,
+		relation->authority_id,
+		relation->subject,
+		relation->classifier,
 		&classifier_level,
 		0
 	);
-	uint32_t cursor = 0;
-	uint32_t derivation_id;
-	while (prototype_judgement_candidate_derivation_next(
-			judgement->claim_candidates,
-			judgement->claim_candidate_count,
-			judgement->derivation_candidates,
-			judgement->derivation_candidate_count,
-			relation_id,
-			&cursor,
-			&derivation_id
-		) == 0) {
-		const struct prototype_judgement_derivation_candidate* proof =
-			&judgement->derivation_candidates[derivation_id];
+	for (uint32_t derivation_id = 0;
+		derivation_id < (uint32_t)judgement->derivation_count;
+		++derivation_id) {
+		const struct prototype_judgement_derivation* proof =
+			&judgement->derivations[derivation_id];
+		if (proof->conclusion_claim_id != claim_id) {
+			continue;
+		}
 		if (collect_universe_term_constraints(
 				db,
 				terms,
 				relation->subject,
 				relation->classifier,
-				proof->proof_kind
+				claim_id,
+				relation->authority_kind,
+				relation->authority_id
 			) != 0 ||
-			collect_pi_constraints(db, terms, relation, proof) != 0 ||
+			collect_pi_constraints(
+				db, terms, judgement, claim_id, relation, proof
+			) != 0 ||
 			collect_match_branch_constraints(
-				db, terms, operations, relation, proof
+				db, terms, operations, judgement, claim_id, relation, proof
 			) != 0 ||
 			collect_app_elim_cumulativity_constraint(
-				db, terms, relation, proof
+				db, terms, judgement, claim_id, relation, proof
 			) != 0 ||
 			collect_expected_type_exposure_constraints(
-				db, terms, relation, proof
+				db, terms, judgement, claim_id, relation, proof
 			) != 0) {
 			return -1;
 		}
 	}
 	return 0;
+}
+
+static int constraint_is_first_numerical_edge(
+	const struct prototype_universe_db* db,
+	size_t constraint_index
+) {
+	const struct prototype_universe_constraint* current =
+		&db->constraints[constraint_index];
+	for (size_t i = 0; i < constraint_index; ++i) {
+		const struct prototype_universe_constraint* prior = &db->constraints[i];
+		if (prior->lower_level_var == current->lower_level_var &&
+			prior->upper_level_var == current->upper_level_var &&
+			prior->offset == current->offset) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 static int solve_constraints(struct prototype_universe_db* db) {
@@ -695,6 +863,9 @@ static int solve_constraints(struct prototype_universe_db* db) {
 	for (size_t pass = 0; pass <= db->level_count; ++pass) {
 		int changed = 0;
 		for (size_t i = 0; i < db->constraint_count; ++i) {
+			if (!constraint_is_first_numerical_edge(db, i)) {
+				continue;
+			}
 			const struct prototype_universe_constraint* constraint = &db->constraints[i];
 			uint32_t lower_index = find_level(db, constraint->lower_level_var);
 			uint32_t upper_index = find_level(db, constraint->upper_level_var);
@@ -772,7 +943,7 @@ int prototype_universe_collect(
 		}
 	}
 
-	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
+	for (size_t i = 0; i < judgement->claim_count; ++i) {
 		if (collect_relation_constraints(
 				db, terms, operations, judgement, (uint32_t)i
 			) != 0) {
@@ -780,5 +951,87 @@ int prototype_universe_collect(
 		}
 	}
 
-	return solve_constraints(db);
+	if (solve_constraints(db) != 0) {
+		return -1;
+	}
+	return prototype_universe_validate_provenance(db, judgement);
+}
+
+int prototype_universe_validate_provenance(
+	const struct prototype_universe_db* db,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!db || !judgement) {
+		return -1;
+	}
+	for (size_t i = 0; i < db->constraint_count; ++i) {
+		const struct prototype_universe_constraint* constraint =
+			&db->constraints[i];
+		if (constraint->reason <=
+				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_INVALID ||
+			constraint->reason >
+				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_CODOMAIN ||
+			constraint->source_authority_kind ==
+				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
+			return -1;
+		}
+		if (constraint->source_claim_id == PROTOTYPE_INVALID_ID) {
+			if (constraint->source_authority_kind !=
+					PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER ||
+				constraint->source_authority_id == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			continue;
+		}
+		if (constraint->source_claim_id >= judgement->claim_count) {
+			return -1;
+		}
+		const struct prototype_judgement_claim* claim =
+			&judgement->claims[constraint->source_claim_id];
+		if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			claim->closure_rank == PROTOTYPE_INVALID_ID ||
+			claim->authority_kind != constraint->source_authority_kind ||
+			claim->authority_id != constraint->source_authority_id ||
+			claim->subject != constraint->source_subject ||
+			claim->classifier != constraint->source_classifier) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+int prototype_universe_rebind_provenance(
+	struct prototype_universe_db* db,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!db || !judgement) {
+		return -1;
+	}
+	for (size_t i = 0; i < db->constraint_count; ++i) {
+		struct prototype_universe_constraint* constraint = &db->constraints[i];
+		if (constraint->source_claim_id == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		uint32_t found = PROTOTYPE_INVALID_ID;
+		for (uint32_t j = 0; j < (uint32_t)judgement->claim_count; ++j) {
+			const struct prototype_judgement_claim* claim = &judgement->claims[j];
+			if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				claim->authority_kind != constraint->source_authority_kind ||
+				claim->authority_id != constraint->source_authority_id ||
+				claim->subject != constraint->source_subject ||
+				claim->classifier != constraint->source_classifier ||
+				claim->closure_rank == PROTOTYPE_INVALID_ID) {
+				continue;
+			}
+			if (found != PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			found = j;
+		}
+		if (found == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		constraint->source_claim_id = found;
+	}
+	return 0;
 }

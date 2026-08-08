@@ -12,7 +12,7 @@ struct prototype_judgement_db;
 
 enum prototype_universe_node_tag {
 	PROTOTYPE_UNIVERSE_NODE_TYPE = 1,
-	PROTOTYPE_UNIVERSE_NODE_PARAMETER
+	PROTOTYPE_UNIVERSE_NODE_PARAMETER = 2
 };
 
 enum prototype_universe_edge_tag {
@@ -20,7 +20,16 @@ enum prototype_universe_edge_tag {
 };
 
 enum prototype_universe_constraint_reason {
-	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_LEVEL = 1001
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_INVALID = 0,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_TERM_LEVEL_SUCCESSOR = 1,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_PI_DOMAIN = 2,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_PI_CODOMAIN = 3,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_MATCH_BRANCH = 4,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_APP_CUMULATIVITY = 5,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_EXPECTED_TYPE_CUMULATIVITY = 6,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_UNIVERSE_LEVEL = 7,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_DOMAIN = 8,
+	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_CODOMAIN = 9
 };
 
 struct prototype_judgement_db;
@@ -50,7 +59,14 @@ struct prototype_universe_constraint {
 	int offset;
 	uint32_t subject;
 	uint32_t classifier;
-	int reason_kind;
+	int reason;
+	/* Accepted evidence provenance. A derived helper inequality has no Claim,
+	 * but still carries explicit authority instead of an untyped reason int. */
+	uint32_t source_claim_id;
+	int source_authority_kind;
+	uint32_t source_authority_id;
+	uint32_t source_subject;
+	uint32_t source_classifier;
 };
 
 struct prototype_universe_db {
@@ -120,6 +136,16 @@ int prototype_universe_collect(
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement
+);
+
+int prototype_universe_validate_provenance(
+	const struct prototype_universe_db* db,
+	const struct prototype_judgement_db* judgement
+);
+
+int prototype_universe_rebind_provenance(
+	struct prototype_universe_db* db,
 	const struct prototype_judgement_db* judgement
 );
 

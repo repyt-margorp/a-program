@@ -469,10 +469,15 @@ static void print_universe_graph(
 		printf(" + %d <= ", constraint->offset);
 		print_universe_level_ref(constraint->upper_level_var);
 		printf(
-			" subject=term#%u classifier=term#%u reason=%d\n",
+			" subject=term#%u classifier=term#%u reason=%d source-claim=%u authority=%d:%u source=term#%u:term#%u\n",
 			constraint->subject,
 			constraint->classifier,
-			constraint->reason_kind
+			constraint->reason,
+			constraint->source_claim_id,
+			constraint->source_authority_kind,
+			constraint->source_authority_id,
+			constraint->source_subject,
+			constraint->source_classifier
 		);
 	}
 }

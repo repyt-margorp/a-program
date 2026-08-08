@@ -1,10 +1,10 @@
 #!/bin/sh
 set -eu
 
-app_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_APP,' src/prototype/term.h)
-lambda_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_LAMBDA,' src/prototype/term.h)
-pi_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_PI,' src/prototype/term.h)
-match_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_MATCH,' src/prototype/term.h)
+app_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_APP([[:space:]]*=|,)' src/prototype/term.h)
+lambda_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_LAMBDA([[:space:]]*=|,)' src/prototype/term.h)
+pi_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_PI([[:space:]]*=|,)' src/prototype/term.h)
+match_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_MATCH([[:space:]]*=|,)' src/prototype/term.h)
 
 test "$app_tags" -eq 1
 test "$lambda_tags" -eq 1
