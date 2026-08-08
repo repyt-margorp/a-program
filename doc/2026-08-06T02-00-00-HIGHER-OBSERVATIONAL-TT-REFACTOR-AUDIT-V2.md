@@ -2,11 +2,11 @@
 
 Date: 2026-08-06
 
-Status: active HOTT pre-implementation audit after the term-identity,
-structured-conversion, and scoped K1/K2 conversion migrations. Local identity,
-artifact-link comparison, and kernel conversion now have separate semantic
-ownership. This document does not approve an object-language equality syntax or
-a complete HOTT calculus by itself.
+Status: active; V2-P1 is complete and V2-O1 is next. Local identity,
+artifact-link comparison, kernel conversion, immutable observation goals, and
+compiler-local candidate search now have separate semantic ownership. This
+document does not approve an object-language equality syntax or a complete HOTT
+calculus by itself.
 
 This V2 document preserves the original audit as historical evidence and updates
 the plan against the implementation at commit `474867e`. Requirements taken
@@ -26,6 +26,10 @@ substitution certification from structural substitutions, binds conversion
 results to exact requests, and removes solver-local wire authority in artifact
 v68. Its completed implementation and exit audit are tracked in
 `doc/2026-08-08T20-00-00-V2-P1-ENTRY-REFACTOR-AUDIT-PLAN.md`.
+V2-P1 then split immutable observation identity, typed rule candidates, mutable
+work state, and residual diagnostics; froze exact action contracts and a
+dedicated HOTT semantic fingerprint; and selected the replay-minimal future
+accepted payload without changing artifact v68.
 
 ## 1. Baseline
 
@@ -1234,8 +1238,8 @@ At commit `474867e`:
 | V2-S1 | Extend solver constraints with typed HOTT indices | complete | v61 unchanged; residual serialization deferred to v62 | tagged classifier goals, deterministic conversion goals, Context/substitution-indexed HOTT goals, purity/residual tests, all 15 scripts, and byte-stable artifacts pass |
 | V2-P0 | Make OperationGraph authoritative for operation typing and normalize accepted Claim/Derivation ownership | complete at `4025532` | v67 publishes accepted Claims/Derivations with exact link and Universe provenance | all 16 scripts, examples 01-07/09, forged artifacts, schema fingerprint, and exit audit pass |
 | V2-P1-R0 | Repair the typed HOTT-goal entry substrate discovered by the P1 audit | complete at `564a2ee` | v68 removes untrusted solver wire state; structural substitutions replay typing; the first admitted bridge is terminal | adversarial typed-goal, conversion, bridge, substitution, polarity, artifact, all 16 scripts, and examples 01-07/09 pass |
-| V2-P1 | Select irreducible HOTT certificate payload after P1-R0 | next | undecided | select only evidence not reconstructible from accepted authorities and retain the stable observational rule IDs |
-| V2-O1 | Implement type-directed observational action over shared terms | blocked by P1-R0/P1 | breaking | substitution/naturality tests |
+| V2-P1 | Select irreducible HOTT certificate payload after P1-R0 | complete | compiler-local ownership split; no v68 change | immutable observation-family goals, multiple rule candidates, exact authority premises, dedicated HOTT manifest, all 16 scripts, and examples 01-07/09 pass |
+| V2-O1 | Implement type-directed observational action over shared terms | next | breaking | substitution/naturality tests |
 | V2-A1 | Add the later object-HOTT artifact schema selected after O1 | blocked by P1-R0/P1/O1 | breaking, version after v68 | HOTT witness/link matrix for the schema selected after O1 |
 
 ### 23.3 Non-negotiable boundaries
@@ -1275,7 +1279,15 @@ projections; nonempty relational extension remains deferred until O1 defines
 the relation field. The implementation and exit evidence are in
 `doc/2026-08-08T20-00-00-V2-P1-ENTRY-REFACTOR-AUDIT-PLAN.md`. V2-P1 may now
 select irreducible observational evidence. Object equality syntax and witness
-construction remain deferred to V2-O1. The completed P0
+construction remain deferred to V2-O1.
+The completed V2-P1 implementation and exit record is in
+`doc/2026-08-08T21-45-21-V2-P1-IRREDUCIBLE-HOTT-EVIDENCE-IMPLEMENTATION-PLAN.md`.
+It separates immutable observation-family identity, candidate rule
+applications, mutable work state, and future object witnesses; freezes exact
+typed premise edges and a dedicated HOTT fingerprint; and corrects the
+distinct-constructor family/contradiction conflation before O1. V2-O1 is now
+the next implementation stage.
+The completed P0
 execution record is in
 `doc/2026-08-08T17-10-35-V2-P0-REMAINING-IMPLEMENTATION-PLAN.md`. The
 V2-B1 implementation and progress plan is in
