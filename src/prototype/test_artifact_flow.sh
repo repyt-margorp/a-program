@@ -193,7 +193,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 64$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 65$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -226,9 +226,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/64$/63/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v63.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v63.apo" >"$TMP_DIR/identity-v63.out" 2>"$TMP_DIR/identity-v63.err"; then
-	echo "obsolete artifact unexpectedly passed after v64 format bump" >&2
+sed '1s/65$/64/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v64.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v64.apo" >"$TMP_DIR/identity-v64.out" 2>"$TMP_DIR/identity-v64.err"; then
+	echo "obsolete artifact unexpectedly passed after v65 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity operation [0-9][0-9]*$' "$TMP_DIR/identity.apo"

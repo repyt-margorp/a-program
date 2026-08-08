@@ -81,6 +81,9 @@ enum prototype_judgement_authority_kind {
  * not crossed the accepted certificate boundary. */
 struct prototype_judgement_derivation_candidate {
 	int proof_kind;
+	/* Solver-local adjacency. Claim candidates are propositions; derivation
+	 * candidates independently point at the proposition they establish. */
+	uint32_t conclusion_claim_candidate_id;
 	int conclusion_kind;
 	uint32_t conclusion_context_id;
 	/* INVALID denotes a non-Operation kernel/declaration fact. */
@@ -381,15 +384,6 @@ void prototype_judgement_delta_set_context_store(
 	struct prototype_judgement_delta* delta,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions
-);
-
-size_t prototype_judgement_delta_mark(
-	const struct prototype_judgement_delta* delta
-);
-
-void prototype_judgement_delta_rewind(
-	struct prototype_judgement_delta* delta,
-	size_t mark
 );
 
 int prototype_judgement_delta_commit(
@@ -842,20 +836,6 @@ void prototype_judgement_finalize_linked_declaration_premises(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement
-);
-
-void prototype_judgement_delta_drop_temporary_derivations(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_operation_graph* operations,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
-);
-
-void prototype_judgement_delta_drop_unsupported_derivations(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_operation_graph* operations,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
 );
 
 int prototype_judgement_add_is_type(

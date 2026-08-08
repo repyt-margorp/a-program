@@ -2,14 +2,14 @@
 
 Date: 2026-08-08
 
-Status: audit complete; P0-R0A.1 and P0-R0A.2 implemented for the current calculus; P0-R0A.3 active
+Status: audit complete; P0-R0A.1 and P0-R0A.2 implemented for the current
+calculus; P0-R0A.3 candidate-adjacency and publication migration active
 
 Baseline:
 
 - branch: `main`;
-- committed checkpoint: `985baf8 refactor: establish P0 occurrence evidence premise`;
-- remote baseline: `origin/main` at the same commit;
-- committed artifact header: provisional `A_PROGRAM_ARTIFACT 64`;
+- committed checkpoints through `bc9566f refactor: remove candidate publication mutation`;
+- working artifact header: provisional `A_PROGRAM_ARTIFACT 65`;
 - implementation state: P0-R0A.1 and P0-R0A.2 implemented; P0-R0A.3 is the next active P0
   implementation phase.
 
@@ -30,7 +30,8 @@ The audit covers:
   integer-literal admissibility;
 - link-time declaration evidence;
 - Universe constraint provenance;
-- artifact v62 proof and enum encoding;
+- the current artifact candidate-proof encoding and its v65 direct conclusion
+  Claim adjacency;
 - capacities and constants that constrain the P0 certificate representation;
 - the regression suite that is supposed to protect these boundaries.
 
@@ -131,7 +132,7 @@ guess between them. The final candidate type must use an explicit authority
 sum, so neutral authority is a real variant and missing authority is invalid.
 
 The transition now builds the Claim/Derivation DAG and computes closure ranks.
-Artifact v64 additionally preserves each term export's exact source Operation,
+Artifact v64 introduced preservation of each term export's exact source Operation,
 so readback can validate the selected occurrence rather than infer it from a
 shared Core root. Version 64 is still transitional because candidate records
 and candidate proof IDs remain serialized; it is not the final native
@@ -150,11 +151,21 @@ The next implementation step is not P1. It is the corrected entry of P0-R0A:
 6. remove late tuple-based proof-edge reconstruction and its implementation;
 7. remove the transitional relation/proof arrays and their one-to-one coverage
    invariant;
-8. only then finalize a successor artifact after provisional v64 as the native
-   selected Claim/Derivation schema.
+8. only then replace provisional v65 with the native accepted
+   Claim/Derivation schema.
 
 Until steps 1-5 close, the reconstructed DAG is a validator and migration
 scaffold, not the authoritative source of premise identity.
+
+The subsequent code audit sharpened step 7. Candidate Claims and candidate
+Derivations are now different-size arenas, and each Derivation directly names
+its conclusion candidate Claim. The old resolver and the dead delta compaction
+APIs have been removed. The transition is nevertheless incomplete while a
+candidate Claim still stores a preferred `proof_kind/proof_id`, accepted
+Derivations retain `source_candidate_proof_id`, or Universe/link/artifact code
+uses those fields. Those are P0 premise violations because they silently turn
+one proposition with several derivations back into one proposition owned by
+one derivation.
 
 ### 3.2.1 Structural producer closure found by the final code audit
 
@@ -1004,13 +1015,13 @@ Observational equality types and witnesses.
 | --- | --- | --- | --- |
 | 2026-08-08 | P0 re-entry code audit | complete | Re-read Operation, Judgement, derived-boundary, link, Universe, artifact, enum, capacity, and test paths at `701654a`. |
 | 2026-08-08 | Committed baseline regression | complete | At the historical `701654a` baseline, all 15 prototype scripts and examples 01-07/09 passed. |
-| 2026-08-08 | Active worktree regression | complete for existing suite | Warning-free build, all 15 `src/prototype/test_*.sh` scripts, examples 01-07/09, and `git diff --check` pass with artifact v64. Section 13.2 still lists new adversarial coverage required before P0 exit. |
+| 2026-08-08 | Active worktree regression | complete for existing suite | Warning-free build and all 15 `src/prototype/test_*.sh` scripts pass with provisional artifact v65. Section 13.2 still lists new adversarial coverage required before P0 exit. |
 | 2026-08-08 | Certificate model decision | complete | Split Claim from Derivation; structural dependencies resolve to Claims, not latest proofs; object HOTT witnesses remain separate. |
 | 2026-08-08 | Former P1-R0 through P1-R5 | reclassified | Mandatory P0-R0A work before P1 can be scoped. |
 | 2026-08-08 | P0-R0A transition checkpoint | complete | `062b7cd` adds separate reconstructed Claim/Derivation arenas and grounded closure while retaining the legacy producer image. |
 | 2026-08-08 | P0-R0A.1 premise re-audit | complete | Classifier-only producer APIs lose child authority and Context; authority-complete evidence selection and structural premise descriptors are mandatory P0-R0A.1/R0A.2 work. |
 | 2026-08-08 | P0-R0A authoritative migration | in progress | R0A.1 and R0A.2 are implemented for the current calculus. Atomic accepted publication, artifact migration, and later provenance phases remain incomplete. |
-| 2026-08-08 | P0 premise code re-audit | complete | Confirmed remaining classifier-only lookups, candidate-proof-ID validation, dead resolver/pruning implementations, and provisional v64 candidate coupling. |
+| 2026-08-08 | P0 premise code re-audit | complete | Confirmed remaining candidate preferred-proof fields, Universe/link candidate consumption, accepted-to-candidate artifact back-references, and provisional candidate serialization. Dead resolver/pruning APIs were removed. |
 | 2026-08-08 | Structural authority repair | partial | APP child Operations are retained; Lambda binder premises use ContextBinding authority; direct child Context is preserved before owner projection; legacy final tuple pruning was removed. |
 | 2026-08-08 | SelectedEvidence/APP implementation | partial | Added an authority-complete selected-evidence record, evidence-preserving APP candidate collection, and partial Lambda/CBPV child propagation. Remaining classifier-only proof producers keep P0-R0A.1 open. |
 | 2026-08-08 | Candidate/publication separation | partial | Ungrounded or authority-ambiguous Core-helper derivations remain unpublished; local validation runs only for grounded publication selections; legacy candidate coverage and candidate-graph acyclicity no longer override accepted Claim closure. |
@@ -1020,4 +1031,5 @@ Observational equality types and witnesses.
 | 2026-08-08 | P0-R0A.1 implementation | complete for current rules | Superseded fixed-point classifiers are excluded from Claim publication; exact clause Operation classifiers determine fold rows; local rows are included in the final carrier and exact union is replayed by validation. `test_cbpv_surface.sh` passes, including higher-order force-once/force-twice and forged-artifact cases. |
 | 2026-08-08 | P0 export occurrence boundary | implemented; provisional schema v64 | `term_export` now preserves its source Operation. Writer/readback require the export classifier to equal that Operation classifier and require either an accepted grounded Claim or a reachable explicit residual/verification obligation. Shared erased Core identity is not export evidence. |
 | 2026-08-08 | P0-R0A.2 authority-complete producer boundary | complete for current rules | Generated helper and source structural producers carry explicit authority-complete evidence; direct structural Operation edges remain distinct from evidence owner identity; all 15 prototype scripts pass. |
-| 2026-08-08 | Next implementation phase | in progress | P0-R0A.3 makes accepted Claims/Derivations the sole atomic publication image. P1 remains blocked until the remaining R0A phases and P0 exit checks are complete. |
+| 2026-08-08 | P0-R0A.3 candidate adjacency | implemented; publication migration active | Candidate Claims are interned independently, candidate Derivations directly name their conclusion Claim, and multiple Derivations per Claim are retained. Artifact v65 records that edge explicitly and rejects v64. Preferred-proof Claim fields and accepted-to-candidate artifact back-references remain removal targets. |
+| 2026-08-08 | Next implementation phase | in progress | Finish P0-R0A.3 by migrating typing consumers, Universe collection, link completion, diagnostics, and artifact publication to explicit Claim/Derivation adjacency. P1 remains blocked until P0 exit checks complete. |

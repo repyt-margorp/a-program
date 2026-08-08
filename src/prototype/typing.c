@@ -134,27 +134,6 @@ static int consume_solver_step(struct prototype_judgement_delta* delta) {
 	return 0;
 }
 
-size_t prototype_judgement_delta_mark(
-	const struct prototype_judgement_delta* delta
-) {
-	return delta ? delta->claim_candidate_count : 0;
-}
-
-void prototype_judgement_delta_rewind(
-	struct prototype_judgement_delta* delta,
-	size_t mark
-) {
-	if (!delta) {
-		return;
-	}
-	if (mark < delta->claim_candidate_count) {
-		delta->claim_candidate_count = mark;
-	}
-	if (mark < delta->derivation_candidate_count) {
-		delta->derivation_candidate_count = mark;
-	}
-}
-
 static int term_has_tag(const struct prototype_term_db* terms, uint32_t term_id, int tag) {
 	return terms && term_id < terms->term_count && terms->terms[term_id].tag == tag;
 }
@@ -5209,6 +5188,8 @@ static int proof_candidates_equal(
 	const struct prototype_judgement_derivation_candidate* right
 ) {
 	if (!left || !right || left->proof_kind != right->proof_kind ||
+		left->conclusion_claim_candidate_id !=
+			right->conclusion_claim_candidate_id ||
 		left->conclusion_kind != right->conclusion_kind ||
 		left->conclusion_context_id != right->conclusion_context_id ||
 		left->conclusion_operation_id != right->conclusion_operation_id ||
@@ -5266,8 +5247,7 @@ static int claim_candidates_equal(
 		left->context_id == right->context_id &&
 		left->operation_id == right->operation_id &&
 		left->subject == right->subject &&
-		left->classifier == right->classifier &&
-		left->proof_kind == right->proof_kind;
+		left->classifier == right->classifier;
 }
 
 static void candidate_claim_authority(
@@ -5425,37 +5405,55 @@ static int add_complete_relation_legacy(
 		candidate_proof->conclusion_classifier != candidate_relation->classifier) {
 		return -1;
 	}
+	uint32_t relation_id = PROTOTYPE_INVALID_ID;
 	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
-		const struct prototype_judgement_claim_candidate* relation =
-			&judgement->claim_candidates[i];
-		if (claim_candidates_equal(relation, candidate_relation) &&
-			relation->proof_id < judgement->derivation_candidate_count &&
-			proof_candidates_equal(
-				&judgement->derivation_candidates[relation->proof_id], candidate_proof
+		if (claim_candidates_equal(
+				&judgement->claim_candidates[i], candidate_relation
 			)) {
+			relation_id = (uint32_t)i;
+			break;
+		}
+	}
+	int new_relation = relation_id == PROTOTYPE_INVALID_ID;
+	if (new_relation && reserve_slot(
+			judgement->claim_candidate_count, judgement->claim_candidate_capacity
+		) != 0) {
+		return -1;
+	}
+	if (new_relation) {
+		relation_id = (uint32_t)judgement->claim_candidate_count++;
+		judgement->claim_candidates[relation_id] = *candidate_relation;
+		initialize_candidate_claim_authority(
+			&judgement->claim_candidates[relation_id]
+		);
+		judgement->claim_candidates[relation_id].proof_id = PROTOTYPE_INVALID_ID;
+	}
+	struct prototype_judgement_derivation_candidate proof = *candidate_proof;
+	proof.conclusion_claim_candidate_id = relation_id;
+	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
+		if (proof_candidates_equal(&judgement->derivation_candidates[i], &proof)) {
 			return 0;
 		}
 	}
 	if (reserve_slot(
-			judgement->claim_candidate_count, judgement->claim_candidate_capacity
-		) != 0 || reserve_slot(
-			judgement->derivation_candidate_count, judgement->derivation_candidate_capacity
+			judgement->derivation_candidate_count,
+			judgement->derivation_candidate_capacity
 		) != 0) {
+		if (new_relation) {
+			judgement->claim_candidate_count--;
+		}
 		return -1;
 	}
-	uint32_t relation_id = (uint32_t)judgement->claim_candidate_count;
 	uint32_t proof_id = (uint32_t)judgement->derivation_candidate_count;
-	judgement->claim_candidates[relation_id] = *candidate_relation;
-	initialize_candidate_claim_authority(
-		&judgement->claim_candidates[relation_id]
-	);
-	judgement->claim_candidates[relation_id].proof_id = proof_id;
-	judgement->derivation_candidates[proof_id] = *candidate_proof;
+	judgement->derivation_candidates[proof_id] = proof;
 	for (uint32_t i = 0; i < candidate_proof->premise_count; ++i) {
 		judgement->derivation_candidates[proof_id].premise_proof_ids[i] = PROTOTYPE_INVALID_ID;
 	}
-	judgement->claim_candidate_count++;
 	judgement->derivation_candidate_count++;
+	if (judgement->claim_candidates[relation_id].proof_id == PROTOTYPE_INVALID_ID) {
+		judgement->claim_candidates[relation_id].proof_id = proof_id;
+		judgement->claim_candidates[relation_id].proof_kind = proof.proof_kind;
+	}
 	return 0;
 }
 
@@ -5552,36 +5550,51 @@ static int add_complete_delta_relation(
 		candidate_proof->conclusion_classifier != candidate_relation->classifier) {
 		return -1;
 	}
+	uint32_t relation_id = PROTOTYPE_INVALID_ID;
 	for (size_t i = 0; i < delta->claim_candidate_count; ++i) {
-		const struct prototype_judgement_claim_candidate* relation = &delta->claim_candidates[i];
-		if (claim_candidates_equal(relation, candidate_relation) &&
-			relation->proof_id < delta->derivation_candidate_count &&
-			proof_candidates_equal(
-				&delta->derivation_candidates[relation->proof_id], candidate_proof
-			)) {
+		if (claim_candidates_equal(&delta->claim_candidates[i], candidate_relation)) {
+			relation_id = (uint32_t)i;
+			break;
+		}
+	}
+	int new_relation = relation_id == PROTOTYPE_INVALID_ID;
+	if (new_relation && reserve_slot(
+			delta->claim_candidate_count, delta->claim_candidate_capacity
+		) != 0) {
+		return -1;
+	}
+	if (new_relation) {
+		relation_id = (uint32_t)delta->claim_candidate_count++;
+		delta->claim_candidates[relation_id] = *candidate_relation;
+		initialize_candidate_claim_authority(&delta->claim_candidates[relation_id]);
+		delta->claim_candidates[relation_id].proof_id = PROTOTYPE_INVALID_ID;
+	}
+	struct prototype_judgement_derivation_candidate proof = *candidate_proof;
+	proof.conclusion_claim_candidate_id = relation_id;
+	for (size_t i = 0; i < delta->derivation_candidate_count; ++i) {
+		if (proof_candidates_equal(&delta->derivation_candidates[i], &proof)) {
 			return 0;
 		}
 	}
 	if (reserve_slot(
-			delta->claim_candidate_count, delta->claim_candidate_capacity
-		) != 0 || reserve_slot(
-			delta->derivation_candidate_count, delta->derivation_candidate_capacity
+			delta->derivation_candidate_count,
+			delta->derivation_candidate_capacity
 		) != 0) {
+		if (new_relation) {
+			delta->claim_candidate_count--;
+		}
 		return -1;
 	}
-	uint32_t relation_id = (uint32_t)delta->claim_candidate_count;
 	uint32_t proof_id = (uint32_t)delta->derivation_candidate_count;
-	delta->claim_candidates[relation_id] = *candidate_relation;
-	initialize_candidate_claim_authority(
-		&delta->claim_candidates[relation_id]
-	);
-	delta->claim_candidates[relation_id].proof_id = proof_id;
-	delta->derivation_candidates[proof_id] = *candidate_proof;
+	delta->derivation_candidates[proof_id] = proof;
 	for (uint32_t i = 0; i < candidate_proof->premise_count; ++i) {
 		delta->derivation_candidates[proof_id].premise_proof_ids[i] = PROTOTYPE_INVALID_ID;
 	}
-	delta->claim_candidate_count++;
 	delta->derivation_candidate_count++;
+	if (delta->claim_candidates[relation_id].proof_id == PROTOTYPE_INVALID_ID) {
+		delta->claim_candidates[relation_id].proof_id = proof_id;
+		delta->claim_candidates[relation_id].proof_kind = proof.proof_kind;
+	}
 	return 0;
 }
 
@@ -5837,23 +5850,28 @@ int prototype_judgement_delta_commit(
 	struct prototype_judgement_delta* delta,
 	size_t mark
 ) {
-	if (!delta || !delta->db || mark > delta->claim_candidate_count) {
+	if (!delta || !delta->db || mark != 0) {
 		return -1;
 	}
 	size_t relation_mark = delta->db->claim_candidate_count;
 	size_t proof_mark = delta->db->derivation_candidate_count;
-	for (size_t i = mark; i < delta->claim_candidate_count; ++i) {
-		const struct prototype_judgement_claim_candidate* relation = &delta->claim_candidates[i];
-		if (relation->proof_id >= delta->derivation_candidate_count) {
+	for (size_t i = 0; i < delta->derivation_candidate_count; ++i) {
+		const struct prototype_judgement_derivation_candidate* proof =
+			&delta->derivation_candidates[i];
+		if (proof->conclusion_claim_candidate_id >=
+			delta->claim_candidate_count) {
 			goto rollback;
 		}
-		const struct prototype_judgement_derivation_candidate* proof = &delta->derivation_candidates[relation->proof_id];
-		if (add_complete_relation_legacy(delta->db, relation, proof) != 0) {
+		struct prototype_judgement_claim_candidate relation =
+			delta->claim_candidates[proof->conclusion_claim_candidate_id];
+		relation.proof_kind = proof->proof_kind;
+		relation.proof_id = (uint32_t)i;
+		if (add_complete_relation_legacy(delta->db, &relation, proof) != 0) {
 			goto rollback;
 		}
 	}
-	delta->claim_candidate_count = mark;
-	delta->derivation_candidate_count = mark;
+	delta->claim_candidate_count = 0;
+	delta->derivation_candidate_count = 0;
 	return 0;
 
 rollback:
@@ -12799,7 +12817,13 @@ static int judgement_expected_premise_operation(
 static int judgement_candidate_is_publishable(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_claim_candidate* candidate
+	const struct prototype_judgement_claim_candidate* candidate,
+	const struct prototype_judgement_derivation_candidate* proof
+);
+static int judgement_candidate_has_publishable_derivation(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_operation_graph* operations,
+	uint32_t candidate_id
 );
 
 static int judgement_rule_derives_alternate_operation_classifier(int proof_kind) {
@@ -12975,7 +12999,9 @@ static int judgement_candidate_source_claim(
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_candidate_count; ++i) {
 		const struct prototype_judgement_claim_candidate* candidate =
 			&judgement->claim_candidates[i];
-		if (!judgement_candidate_is_publishable(judgement, operations, candidate) ||
+		if (!judgement_candidate_has_publishable_derivation(
+				judgement, operations, i
+			) ||
 			candidate->kind != derivation->premise_kinds[premise_index] ||
 			candidate->context_id != expected_context_id ||
 			candidate->subject != derivation->premise_subjects[premise_index] ||
@@ -13023,18 +13049,15 @@ static int judgement_candidate_source_claim(
 static int judgement_candidate_is_publishable(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_claim_candidate* candidate
+	const struct prototype_judgement_claim_candidate* candidate,
+	const struct prototype_judgement_derivation_candidate* proof
 ) {
-	if (!judgement || !candidate ||
+	if (!judgement || !candidate || !proof ||
 		candidate->kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN ||
-		candidate->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
-		candidate->proof_id >= judgement->derivation_candidate_count) {
+		proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
 		return 0;
 	}
-	const struct prototype_judgement_derivation_candidate* proof =
-		&judgement->derivation_candidates[candidate->proof_id];
-	if (proof->proof_kind != candidate->proof_kind ||
-		proof->conclusion_kind != candidate->kind ||
+	if (proof->conclusion_kind != candidate->kind ||
 		proof->conclusion_context_id != candidate->context_id ||
 		proof->conclusion_operation_id != candidate->operation_id ||
 		proof->conclusion_subject != candidate->subject ||
@@ -13057,8 +13080,33 @@ static int judgement_candidate_is_publishable(
 	 * expose another convertible/admissible classifier over that occurrence. */
 	return operation->classifier == candidate->classifier ||
 		judgement_rule_derives_alternate_operation_classifier(
-			candidate->proof_kind
+			proof->proof_kind
 		);
+}
+
+static int judgement_candidate_has_publishable_derivation(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_operation_graph* operations,
+	uint32_t candidate_id
+) {
+	if (!judgement || candidate_id >= judgement->claim_candidate_count) {
+		return 0;
+	}
+	for (uint32_t i = 0;
+		i < (uint32_t)judgement->derivation_candidate_count; ++i) {
+		const struct prototype_judgement_derivation_candidate* proof =
+			&judgement->derivation_candidates[i];
+		if (proof->conclusion_claim_candidate_id == candidate_id &&
+			judgement_candidate_is_publishable(
+				judgement,
+				operations,
+				&judgement->claim_candidates[candidate_id],
+				proof
+			)) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
 static int judgement_rebuild_claim_derivations(
@@ -13070,32 +13118,44 @@ static int judgement_rebuild_claim_derivations(
 	}
 	judgement->claim_count = 0;
 	judgement->derivation_count = 0;
-	for (uint32_t i = 0; i < (uint32_t)judgement->claim_candidate_count; ++i) {
+	for (uint32_t i = 0;
+		i < (uint32_t)judgement->derivation_candidate_count; ++i) {
+		const struct prototype_judgement_derivation_candidate* proof =
+			&judgement->derivation_candidates[i];
+		if (proof->conclusion_claim_candidate_id >=
+			judgement->claim_candidate_count) {
+			continue;
+		}
+		const struct prototype_judgement_claim_candidate* relation =
+			&judgement->claim_candidates[proof->conclusion_claim_candidate_id];
 		uint32_t claim_id;
 		if (!judgement_candidate_is_publishable(
-				judgement, operations, &judgement->claim_candidates[i]
+				judgement, operations, relation, proof
 			)) {
 			continue;
 		}
 		if (judgement_intern_claim(
-				judgement, &judgement->claim_candidates[i], &claim_id
+				judgement, relation, &claim_id
 			) != 0) {
 			fprintf(stderr, "P0 claim intern failed candidate=%u\n", i);
 			return -1;
 		}
 	}
-	for (uint32_t i = 0; i < (uint32_t)judgement->claim_candidate_count; ++i) {
-		const struct prototype_judgement_claim_candidate* relation =
-			&judgement->claim_candidates[i];
-		if (!judgement_candidate_is_publishable(judgement, operations, relation)) {
+	for (uint32_t i = 0;
+		i < (uint32_t)judgement->derivation_candidate_count; ++i) {
+		const struct prototype_judgement_derivation_candidate* proof =
+			&judgement->derivation_candidates[i];
+		if (proof->conclusion_claim_candidate_id >=
+			judgement->claim_candidate_count) {
 			continue;
 		}
-		if (relation->proof_id >= judgement->derivation_candidate_count) {
-			fprintf(stderr, "P0 invalid derivation candidate candidate=%u\n", i);
-			return -1;
+		const struct prototype_judgement_claim_candidate* relation =
+			&judgement->claim_candidates[proof->conclusion_claim_candidate_id];
+		if (!judgement_candidate_is_publishable(
+				judgement, operations, relation, proof
+			)) {
+			continue;
 		}
-		const struct prototype_judgement_derivation_candidate* proof =
-			&judgement->derivation_candidates[relation->proof_id];
 		uint32_t conclusion_claim_id;
 		if (judgement_intern_claim(
 				judgement, relation, &conclusion_claim_id
@@ -13106,7 +13166,7 @@ static int judgement_rebuild_claim_derivations(
 		struct prototype_judgement_derivation derivation;
 		memset(&derivation, 0, sizeof(derivation));
 		derivation.proof_kind = proof->proof_kind;
-		derivation.source_candidate_proof_id = relation->proof_id;
+		derivation.source_candidate_proof_id = i;
 		derivation.conclusion_claim_id = conclusion_claim_id;
 		derivation.closure_rank = PROTOTYPE_INVALID_ID;
 		derivation.reserved_legacy_assumption_level =
@@ -13333,50 +13393,6 @@ int prototype_judgement_ground_claims(
 	judgement->claim_count = grounded_claim_count;
 	judgement->derivation_count = grounded_derivation_count;
 	return 0;
-}
-
-void prototype_judgement_resolve_proof_edges(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_operation_graph* operations
-) {
-	if (!judgement) {
-		return;
-	}
-	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
-		struct prototype_judgement_derivation_candidate* proof = &judgement->derivation_candidates[i];
-		if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
-			continue;
-		}
-		for (uint32_t j = 0; j < proof->premise_count; ++j) {
-			uint32_t premise_operation_id;
-			int operation_status = judgement_expected_premise_operation(
-				operations, proof, j, &premise_operation_id
-			);
-			int find_status = operation_status == 0 ?
-				judgement_find_operation_relation_proof_id(
-					judgement,
-					premise_operation_id,
-					proof->premise_context_ids[j],
-					proof->premise_kinds[j],
-					proof->premise_subjects[j],
-					proof->premise_classifiers[j],
-					&proof->premise_proof_ids[j]
-				) : judgement_find_relation_proof_id(
-					judgement,
-					proof->premise_context_ids[j],
-					proof->premise_kinds[j],
-					proof->premise_subjects[j],
-					proof->premise_classifiers[j],
-					&proof->premise_proof_ids[j],
-					proof->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_CONVERSION &&
-					proof->proof_kind !=
-						PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE
-				);
-			if (operation_status < 0 || find_status != 0) {
-				proof->premise_proof_ids[j] = PROTOTYPE_INVALID_ID;
-			}
-		}
-	}
 }
 
 int prototype_judgement_add_normalization_premise_conversions(
@@ -16549,177 +16565,6 @@ int prototype_judgement_validate_proofs(
 		}
 	}
 	return 0;
-}
-
-static void judgement_delta_drop_derivations(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_operation_graph* operations,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	int drop_structural_derivations
-) {
-	if (!delta) {
-		return;
-	}
-	uint8_t* removed = calloc(delta->claim_candidate_count, sizeof(*removed));
-	struct prototype_judgement_derivation_candidate* source_proofs = malloc(
-		delta->derivation_candidate_count * sizeof(*source_proofs)
-	);
-	if ((delta->claim_candidate_count != 0 && !removed) ||
-		(delta->derivation_candidate_count != 0 && !source_proofs)) {
-		free(removed);
-		free(source_proofs);
-		return;
-	}
-	if (delta->derivation_candidate_count != 0) {
-		memcpy(
-			source_proofs,
-			delta->derivation_candidates,
-			delta->derivation_candidate_count * sizeof(*source_proofs)
-		);
-	}
-	for (size_t read = 0; read < delta->claim_candidate_count; ++read) {
-		const struct prototype_judgement_claim_candidate* relation = &delta->claim_candidates[read];
-		if (relation->proof_id >= delta->derivation_candidate_count) {
-			free(removed);
-			free(source_proofs);
-			return;
-		}
-		if (drop_structural_derivations &&
-			relation->operation_id == PROTOTYPE_INVALID_ID &&
-			(relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM ||
-			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO ||
-			relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM ||
-			(relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM &&
-				source_proofs[relation->proof_id].premise_count > 2))) {
-			removed[read] = 1;
-		}
-		if (relation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION) {
-			uint32_t assumption_context_id;
-			if (!terms || !type_declarations || !delta->contexts ||
-				relation->subject >= terms->term_count ||
-				terms->terms[relation->subject].tag != PROTOTYPE_TERM_VAR ||
-				prototype_context_find_binding(
-					delta->contexts,
-					relation->context_id,
-					terms->terms[relation->subject].as.var.binding_id,
-					&assumption_context_id
-				) != 0) {
-				removed[read] = 1;
-				continue;
-			}
-			const struct prototype_context* assumption =
-				prototype_context_get(delta->contexts, assumption_context_id);
-			if (!assumption || assumption->classifier == PROTOTYPE_INVALID_ID ||
-				prototype_judgement_classifier_conversion(
-					terms,
-					type_declarations,
-					assumption->classifier,
-					relation->classifier
-				).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
-				removed[read] = 1;
-			}
-		}
-	}
-	for (;;) {
-		int changed = 0;
-		for (size_t read = 0; read < delta->claim_candidate_count; ++read) {
-			if (removed[read]) {
-				continue;
-			}
-			const struct prototype_judgement_claim_candidate* relation =
-				&delta->claim_candidates[read];
-			const struct prototype_judgement_derivation_candidate* proof =
-				&source_proofs[relation->proof_id];
-			for (uint32_t premise = 0; premise < proof->premise_count; ++premise) {
-				uint32_t expected_operation_id = PROTOTYPE_INVALID_ID;
-				int operation_status = judgement_expected_premise_operation(
-					operations,
-					proof,
-					premise,
-					&expected_operation_id
-				);
-				if (operation_status < 0) {
-					removed[read] = 1;
-					changed = 1;
-					break;
-				}
-				int found = 0;
-				for (size_t candidate = 0;
-					candidate < delta->claim_candidate_count;
-					++candidate) {
-					const struct prototype_judgement_claim_candidate* premise_relation =
-						&delta->claim_candidates[candidate];
-					if (!removed[candidate] &&
-						(operation_status != 0 ||
-						 premise_relation->operation_id == expected_operation_id) &&
-						premise_relation->kind == proof->premise_kinds[premise] &&
-						premise_relation->context_id ==
-							proof->premise_context_ids[premise] &&
-						premise_relation->subject ==
-							proof->premise_subjects[premise] &&
-						premise_relation->classifier ==
-							proof->premise_classifiers[premise]) {
-						found = 1;
-						break;
-					}
-				}
-				if (!found) {
-					removed[read] = 1;
-					changed = 1;
-					break;
-				}
-			}
-		}
-		if (!changed) {
-			break;
-		}
-	}
-	size_t write = 0;
-	for (size_t read = 0; read < delta->claim_candidate_count; ++read) {
-		if (removed[read]) {
-			continue;
-		}
-		const struct prototype_judgement_claim_candidate* relation = &delta->claim_candidates[read];
-		if (write != read) {
-			delta->claim_candidates[write] = delta->claim_candidates[read];
-		}
-		delta->derivation_candidates[write] = source_proofs[relation->proof_id];
-		for (uint32_t premise = 0;
-			premise < delta->derivation_candidates[write].premise_count;
-			++premise) {
-			delta->derivation_candidates[write].premise_proof_ids[premise] =
-				PROTOTYPE_INVALID_ID;
-		}
-		delta->claim_candidates[write].proof_id = (uint32_t)write;
-		write++;
-	}
-	delta->claim_candidate_count = write;
-	delta->derivation_candidate_count = write;
-	free(removed);
-	free(source_proofs);
-}
-
-void prototype_judgement_delta_drop_temporary_derivations(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_operation_graph* operations,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
-) {
-	judgement_delta_drop_derivations(
-		delta, operations, terms, type_declarations, 1
-	);
-}
-
-void prototype_judgement_delta_drop_unsupported_derivations(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_operation_graph* operations,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
-) {
-	judgement_delta_drop_derivations(
-		delta, operations, terms, type_declarations, 0
-	);
 }
 
 int prototype_judgement_add_is_type(

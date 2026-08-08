@@ -18,7 +18,11 @@ Current implementation direction (2026-08-08): HOTT work is blocked on V2-P0,
 whose corrected entry premise is documented in
 `doc/2026-08-07T06-00-00-OPERATION-INDEXED-TYPING-EVIDENCE-V2-P0-PLAN.md`.
 The immediate gate is the separation of solver-local obligations from closed,
-authority-complete Claims. In particular, a computation-fold clause may be
+authority-complete Claims and the removal of preferred-proof ownership from a
+Claim. One proposition may have several derivations, so candidate, Universe,
+link, diagnostic, and artifact consumers must follow explicit
+Derivation-to-Claim adjacency before P1 or object equality begins. In
+particular, a computation-fold clause may be
 checked under a parent-owned effect-row assumption, but that open classifier
 must not be serialized as an ordinary premise Claim. No HOTT object rule starts
 until this P0 publication boundary is closed.
@@ -1228,7 +1232,7 @@ At commit `474867e`:
 | V2-C2 | Replace fresh-binder reindexing with direct binding-object graph action | complete | no schema change | simultaneous/capture/IH laws, depth-513 context, all 14 tests, examples 01-07/09, old/new v61 readback, and deterministic output pass |
 | V2-B1 | Replace positional binder-assumption proof identity with direct binding-object identity | complete | v61 slot is reserved; physical removal is deferred to V2-P1/v62 | exact-binding validator, binding-aware context identity, relocation, forged-proof, artifact, all 14 test scripts, and examples 01-07/09 pass |
 | V2-S1 | Extend solver constraints with typed HOTT indices | complete | v61 unchanged; residual serialization deferred to v62 | tagged classifier goals, deterministic conversion goals, Context/substitution-indexed HOTT goals, purity/residual tests, all 15 scripts, and byte-stable artifacts pass |
-| V2-P0 | Make OperationGraph authoritative for operation typing and normalize accepted Claim/Derivation ownership | active; P0-R0A.2 is next | provisional v64 preserves export Operation identity but still serializes transitional candidates | authority-complete selection, Claim interning, multiple derivations, exact derived source Claims, grounded closure, and no late tuple resolver |
+| V2-P0 | Make OperationGraph authoritative for operation typing and normalize accepted Claim/Derivation ownership | active; P0-R0A.3 candidate/publication migration | provisional v65 directly links each candidate Derivation to its conclusion Claim but still serializes transitional candidates | remove preferred-proof Claim fields, migrate Universe/link/artifact to accepted Claims, retain multiple derivations, and publish only grounded closure |
 | V2-P1 | Re-audit irreducible HOTT certificate payload after P0 | blocked by P0-R0A | undecided | scope must be rewritten after the accepted certificate model is stable |
 | V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-P0 and the later P1 re-audit | breaking | substitution/naturality tests |
 | V2-A1 | Add the later object-HOTT artifact schema selected after O1 | blocked by P1 re-audit/O1 | breaking, version after v63 | HOTT witness/link matrix for the schema selected after O1 |
@@ -1273,21 +1277,22 @@ at P0-R0A. Commit `985baf8` establishes its first premise: separate in-memory
 Claim and Derivation arenas, least-grounded closure, source-occurrence export
 identity, and an explicit distinction between closed Claims and reachable
 residual obligations. All 15 prototype test scripts, examples 01-07/09, and
-artifact round-trip pass with provisional artifact v64.
+artifact round-trip pass at the committed v64 checkpoint. The active
+P0-R0A.3 worktree uses provisional v65 for direct candidate
+Derivation-to-Claim adjacency.
 
 This is not P0 completion, but it is already work inside P0. Source APP,
 Lambda, constructor spine, request, computation fold, and Match now preserve
 their exact structural occurrences. IH stores its motive as a local scoped
 eliminator parameter and intentionally does not point back to the parent Match
-Claim. A physical legacy relation still owns exactly one legacy proof, and the
-dead `prototype_judgement_resolve_proof_edges()` implementation plus legacy
-premise proof-ID fields remain. The next P0 step must complete authority-
-explicit generated helper producers. Conversion, expected exposure, Context/
-effect weakening, and integer admissibility already consume
-`SelectedEvidence`; their exact source becomes a Claim ID when the accepted
-model replaces transitional tuples. After that, P0 atomically interns all candidate Claims,
-attaches Derivations by exact Claim ID, and removes the resolver and both legacy
-arrays. P0-R0A ultimately keeps derived source Claim identity exact,
+Claim. Candidate Claims and Derivations are now separate arenas and each
+Derivation names its conclusion Claim directly. The dead late resolver and
+equal-count delta compaction APIs have been removed. Candidate Claims still
+retain transitional preferred-proof fields, accepted Derivations still retain
+a candidate-proof back-reference for artifact marking, and Universe/link/
+artifact consumers still read the candidate image. The next P0 step must
+remove those remaining ownership reversals and publish the accepted image
+natively. P0-R0A ultimately keeps derived source Claim identity exact,
 reconstructs structural premises from OperationGraph, and accepts only the
 least grounded claim closure. This is not P1 proof-storage work.
 
