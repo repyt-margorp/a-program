@@ -134,7 +134,6 @@ int main(void) {
 			outer_context,
 			literal_seven,
 			int_type,
-			PROTOTYPE_INVALID_ID,
 			&section
 		) != 0 || prototype_substitution_identity(
 			&substitutions, &contexts, outer_context, &identity
@@ -490,8 +489,8 @@ int main(void) {
 	}
 
 	if (prototype_context_db_validate(&contexts, &terms) != 0 ||
-		prototype_substitution_db_validate(
-			&substitutions, &contexts, &terms
+		prototype_substitution_db_validate_typed(
+			&substitutions, &contexts, &terms, &types
 		) != 0) {
 		fprintf(stderr, "shared-term categorical stores are invalid\n");
 		return 1;

@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "calculus.h"
 #include "context.h"
 #include "symbol.h"
 #include "term.h"
@@ -282,6 +283,78 @@ struct prototype_judgement_db {
 
 	uint32_t next_universe_var;
 };
+
+enum prototype_judgement_category {
+	PROTOTYPE_JUDGEMENT_CATEGORY_INVALID = 0,
+	PROTOTYPE_JUDGEMENT_CATEGORY_VALUE,
+	PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION,
+	PROTOTYPE_JUDGEMENT_CATEGORY_TYPE
+};
+
+const struct prototype_judgement_claim* prototype_judgement_claim_get(
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id
+);
+const struct prototype_judgement_derivation* prototype_judgement_derivation_get(
+	const struct prototype_judgement_db* judgement,
+	uint32_t derivation_id
+);
+int prototype_judgement_find_exact_claim(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_claim* identity,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_claim_derivations(
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	uint32_t* derivation_ids,
+	size_t derivation_capacity,
+	size_t* p_derivation_count
+);
+int prototype_judgement_claim_category(
+	const struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	const struct prototype_operation_graph* operations,
+	uint32_t claim_id,
+	int* p_category
+);
+
+struct prototype_substitution_certificate {
+	uint32_t substitution_id;
+	uint32_t claim_id;
+};
+
+struct prototype_substitution_certificate_db {
+	struct prototype_substitution_certificate* certificates;
+	size_t certificate_count;
+	size_t certificate_capacity;
+};
+
+void prototype_substitution_certificate_db_init(
+	struct prototype_substitution_certificate_db* db,
+	struct prototype_substitution_certificate* certificates,
+	size_t certificate_capacity
+);
+const struct prototype_substitution_certificate*
+prototype_substitution_certificate_db_get(
+	const struct prototype_substitution_certificate_db* db,
+	uint32_t certificate_id
+);
+int prototype_substitution_certificate_db_add(
+	struct prototype_substitution_certificate_db* db,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_judgement_db* judgement,
+	uint32_t substitution_id,
+	uint32_t claim_id,
+	uint32_t* p_certificate_id
+);
+int prototype_substitution_certificate_db_validate(
+	const struct prototype_substitution_certificate_db* db,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_judgement_db* judgement
+);
 
 /* Temporary overlay for judgement facts produced while compiling one graph
  * fragment. Successful paths commit the delta into JudgementDB; failed paths
@@ -930,6 +1003,11 @@ enum prototype_hott_goal_kind {
 	PROTOTYPE_HOTT_GOAL_TERM_ACTION
 };
 
+enum prototype_hott_goal_variant {
+	PROTOTYPE_HOTT_GOAL_VARIANT_OBSERVATION = 1,
+	PROTOTYPE_HOTT_GOAL_VARIANT_ACTION = 2
+};
+
 enum prototype_hott_goal_state {
 	PROTOTYPE_HOTT_GOAL_PENDING = 1,
 	PROTOTYPE_HOTT_GOAL_SOLVED,
@@ -953,33 +1031,108 @@ enum prototype_hott_residual_reason {
 	PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE
 };
 
-enum prototype_hott_local_rule {
-	PROTOTYPE_HOTT_LOCAL_RULE_NONE = 0,
-	PROTOTYPE_HOTT_LOCAL_RULE_OBSERVATION_DIAGONAL,
-	PROTOTYPE_HOTT_LOCAL_RULE_OBSERVATION_CONVERT,
-	PROTOTYPE_HOTT_LOCAL_RULE_PI,
-	PROTOTYPE_HOTT_LOCAL_RULE_ADT,
-	PROTOTYPE_HOTT_LOCAL_RULE_PURE_COMPUTATION
+enum prototype_hott_rule {
+	PROTOTYPE_HOTT_RULE_NONE = 0,
+	PROTOTYPE_HOTT_RULE_OBS_DIAGONAL,
+	PROTOTYPE_HOTT_RULE_OBS_CONVERT,
+	PROTOTYPE_HOTT_RULE_OBS_ADT_CONSTRUCTOR,
+	PROTOTYPE_HOTT_RULE_OBS_ADT_DISTINCT,
+	PROTOTYPE_HOTT_RULE_OBS_MATCH_ACTION,
+	PROTOTYPE_HOTT_RULE_OBS_COMP_RETURN,
+	PROTOTYPE_HOTT_RULE_OBS_PI_POINTWISE,
+	PROTOTYPE_HOTT_RULE_OBS_THUNK_PURE,
+	PROTOTYPE_HOTT_RULE_OBS_REINDEX
 };
 
-struct prototype_hott_goal {
+enum prototype_hott_child_role {
+	PROTOTYPE_HOTT_CHILD_NONE = 0,
+	PROTOTYPE_HOTT_CHILD_PI_DOMAIN,
+	PROTOTYPE_HOTT_CHILD_PI_CODOMAIN,
+	PROTOTYPE_HOTT_CHILD_ADT_CONSTRUCTOR_FIELD,
+	PROTOTYPE_HOTT_CHILD_MATCH_CASE,
+	PROTOTYPE_HOTT_CHILD_RECURSIVE_IH
+};
+
+struct prototype_hott_bridge {
 	uint32_t id;
-	int kind;
-	int state;
-	int residual_reason;
-	uint32_t source_ast;
+	uint32_t source_context_id;
+	uint32_t bridge_context_id;
+	uint32_t left_substitution_id;
+	uint32_t right_substitution_id;
+	uint32_t left_certificate_id;
+	uint32_t right_certificate_id;
+};
+
+struct prototype_hott_bridge_db {
+	struct prototype_hott_bridge* bridges;
+	size_t bridge_count;
+	size_t bridge_capacity;
+};
+
+void prototype_hott_bridge_db_init(
+	struct prototype_hott_bridge_db* db,
+	struct prototype_hott_bridge* bridges,
+	size_t bridge_capacity
+);
+const struct prototype_hott_bridge* prototype_hott_bridge_db_get(
+	const struct prototype_hott_bridge_db* db,
+	uint32_t bridge_id
+);
+int prototype_hott_bridge_db_construct(
+	struct prototype_hott_bridge_db* db,
+	const struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_judgement_db* judgement,
+	uint32_t source_context_id,
+	uint32_t* p_bridge_id
+);
+int prototype_hott_bridge_db_validate(
+	const struct prototype_hott_bridge_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_judgement_db* judgement
+);
+
+struct prototype_hott_observation_goal {
 	uint32_t context_id;
 	uint32_t carrier_classifier;
 	uint32_t left_endpoint;
 	uint32_t right_endpoint;
-	uint32_t bridge_context_id;
-	uint32_t left_endpoint_substitution;
-	uint32_t right_endpoint_substitution;
+	uint32_t carrier_claim_id;
+	uint32_t left_claim_id;
+	uint32_t right_claim_id;
+	uint32_t left_operation_id;
+	uint32_t right_operation_id;
+	uint32_t bridge_id;
+};
+
+struct prototype_hott_action_goal {
+	uint32_t context_id;
+	uint32_t subject;
+	uint32_t subject_claim_id;
+};
+
+struct prototype_hott_goal {
+	uint32_t id;
+	int variant;
+	int kind;
+	int state;
+	int residual_reason;
+	uint32_t source_ast;
 	uint32_t parent_goal_id;
-	int local_type_former_rule;
-	int normalization_profile;
-	uint64_t step_limit;
-	struct prototype_term_conversion_result conversion_result;
+	int parent_role;
+	uint32_t parent_index;
+	int rule;
+	union {
+		struct prototype_hott_observation_goal observation;
+		struct prototype_hott_action_goal action;
+	} as;
+	uint32_t witness_term;
+	uint32_t witness_claim_id;
+	struct prototype_kernel_conversion_goal conversion_request;
+	uint64_t conversion_graph_revision;
 };
 
 struct prototype_hott_goal_db {
@@ -1006,7 +1159,12 @@ int prototype_hott_goal_db_add(
 	struct prototype_hott_goal_db* db,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_hott_bridge_db* bridges,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
 	struct prototype_hott_goal goal,
 	uint32_t* p_goal_id
 );
@@ -1014,34 +1172,55 @@ int prototype_hott_goal_db_validate(
 	const struct prototype_hott_goal_db* db,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_hott_bridge_db* bridges,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement
 );
 int prototype_hott_goal_classify_admission(
-	const struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_hott_bridge_db* bridges,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
 	struct prototype_hott_goal* goal
 );
 int prototype_hott_goal_apply_conversion_result(
 	struct prototype_hott_goal* goal,
 	struct prototype_term_conversion_result result
 );
+int prototype_hott_goal_execute_conversion(
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_hott_goal* goal
+);
 
 struct prototype_hott_residual_obligation {
 	uint32_t obligation_id;
+	uint32_t source_goal_id;
 	uint32_t parent_obligation_id;
+	uint32_t parent_goal_id;
+	int parent_role;
+	uint32_t parent_index;
 	int validation_rule;
 	uint32_t context_id;
 	uint32_t carrier_classifier;
 	uint32_t left_endpoint;
 	uint32_t right_endpoint;
-	uint32_t bridge_context_id;
-	uint32_t left_endpoint_substitution;
-	uint32_t right_endpoint_substitution;
+	uint32_t bridge_id;
 	int normalization_profile;
 	uint64_t step_limit;
 	uint64_t steps_used;
 	int residual_reason;
 	uint32_t source_ast;
-	uint64_t calculus_fingerprint_candidate;
+	char calculus_fingerprint[65];
 };
 
 struct prototype_hott_residual_db {
@@ -1057,19 +1236,17 @@ void prototype_hott_residual_db_init(
 );
 int prototype_hott_residual_db_add_from_goal(
 	struct prototype_hott_residual_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms,
+	const struct prototype_hott_goal_db* goals,
+	const struct prototype_hott_bridge_db* bridges,
 	const struct prototype_hott_goal* goal,
 	uint32_t* p_obligation_id
 );
 int prototype_hott_residual_db_validate(
 	const struct prototype_hott_residual_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms
+	const struct prototype_hott_goal_db* goals,
+	const struct prototype_hott_bridge_db* bridges
 );
-int prototype_hott_residual_db_require_artifact_v62(
+int prototype_hott_residual_db_require_artifact_empty(
 	const struct prototype_hott_residual_db* db
 );
 

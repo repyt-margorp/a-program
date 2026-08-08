@@ -49,7 +49,6 @@ struct prototype_substitution {
 	uint32_t second;
 	uint32_t term;
 	uint32_t term_classifier;
-	uint32_t term_proof_id;
 };
 
 struct prototype_substitution_db {
@@ -153,7 +152,6 @@ int prototype_substitution_extend(
 	uint32_t target_context,
 	uint32_t term,
 	uint32_t term_classifier,
-	uint32_t term_proof_id,
 	uint32_t* p_substitution
 );
 int prototype_substitution_compose(
@@ -172,13 +170,18 @@ int prototype_substitution_db_validate(
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms
 );
+int prototype_substitution_db_validate_typed(
+	const struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations
+);
 int prototype_substitution_db_append_relocated(
 	struct prototype_substitution_db* target,
 	const struct prototype_substitution_db* source,
 	const uint32_t* context_relocation,
 	size_t context_relocation_count,
-	uint32_t term_offset,
-	uint32_t proof_offset
+	uint32_t term_offset
 );
 int prototype_term_reindex(
 	struct prototype_term_db* terms,

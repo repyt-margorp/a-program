@@ -57,13 +57,13 @@ grep -q 'metadata label pair ' "$tmp_dir/constructor-polarity.out"
 
 awk -v app="$operation_app" -v polarity="$polarity_value" \
 	-v role="$constructor_formation" '
-	$1 == "operation" && $3 == app && $4 == polarity && $6 == role { found = 1 }
+	$1 == "operation" && $3 == app && $4 == polarity && $5 == role { found = 1 }
 	END { exit found ? 0 : 1 }
 ' "$tmp_dir/constructor-polarity.apo"
 
 awk -v app="$operation_app" -v polarity="$polarity_computation" \
 	-v role="$function_elimination" '
-	$1 == "operation" && $3 == app && $4 == polarity && $6 == role { found = 1 }
+	$1 == "operation" && $3 == app && $4 == polarity && $5 == role { found = 1 }
 	END { exit found ? 0 : 1 }
 ' "$tmp_dir/constructor-polarity.apo"
 

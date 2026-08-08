@@ -14,18 +14,18 @@ from published work are distinguished from A Program-specific design
 hypotheses. The latter must be validated as part of the project calculus rather
 than treated as facts inherited from an external theory.
 
-Current implementation direction (2026-08-08): HOTT work is blocked on V2-P0,
-whose corrected entry premise is documented in
-`doc/2026-08-07T06-00-00-OPERATION-INDEXED-TYPING-EVIDENCE-V2-P0-PLAN.md`.
-The immediate gate is the separation of solver-local obligations from closed,
-authority-complete Claims and the removal of preferred-proof ownership from a
-Claim. One proposition may have several derivations, so candidate, Universe,
-link, diagnostic, and artifact consumers must follow explicit
-Derivation-to-Claim adjacency before P1 or object equality begins. In
-particular, a computation-fold clause may be
-checked under a parent-owned effect-row assumption, but that open classifier
-must not be serialized as an ordinary premise Claim. No HOTT object rule starts
-until this P0 publication boundary is closed.
+Current implementation direction (2026-08-08): V2-P0 is complete at commit
+`4025532` and artifact v67. Solver-local obligations are separated from closed,
+authority-complete Claims; one Claim may have multiple Derivations; and link and
+Universe provenance name exact accepted Claims. The executed P0 plan is
+recorded in
+`doc/2026-08-08T17-10-35-V2-P0-REMAINING-IMPLEMENTATION-PLAN.md`.
+The P1 re-audit found a mandatory entry refactor before observational payload
+selection. V2-P1-R0 now grounds HOTT goals in exact accepted Claims, separates
+substitution certification from structural substitutions, binds conversion
+results to exact requests, and removes solver-local wire authority in artifact
+v68. Its completed implementation and exit audit are tracked in
+`doc/2026-08-08T20-00-00-V2-P1-ENTRY-REFACTOR-AUDIT-PLAN.md`.
 
 ## 1. Baseline
 
@@ -1232,10 +1232,11 @@ At commit `474867e`:
 | V2-C2 | Replace fresh-binder reindexing with direct binding-object graph action | complete | no schema change | simultaneous/capture/IH laws, depth-513 context, all 14 tests, examples 01-07/09, old/new v61 readback, and deterministic output pass |
 | V2-B1 | Replace positional binder-assumption proof identity with direct binding-object identity | complete | v61 slot is reserved; physical removal is deferred to V2-P1/v62 | exact-binding validator, binding-aware context identity, relocation, forged-proof, artifact, all 14 test scripts, and examples 01-07/09 pass |
 | V2-S1 | Extend solver constraints with typed HOTT indices | complete | v61 unchanged; residual serialization deferred to v62 | tagged classifier goals, deterministic conversion goals, Context/substitution-indexed HOTT goals, purity/residual tests, all 15 scripts, and byte-stable artifacts pass |
-| V2-P0 | Make OperationGraph authoritative for operation typing and normalize accepted Claim/Derivation ownership | active; P0-R0A.3 candidate/publication migration | provisional v65 directly links each candidate Derivation to its conclusion Claim but still serializes transitional candidates | remove preferred-proof Claim fields, migrate Universe/link/artifact to accepted Claims, retain multiple derivations, and publish only grounded closure |
-| V2-P1 | Re-audit irreducible HOTT certificate payload after P0 | blocked by P0-R0A | undecided | scope must be rewritten after the accepted certificate model is stable |
-| V2-O1 | Implement type-directed observational action over shared terms | blocked by V2-P0 and the later P1 re-audit | breaking | substitution/naturality tests |
-| V2-A1 | Add the later object-HOTT artifact schema selected after O1 | blocked by P1 re-audit/O1 | breaking, version after v63 | HOTT witness/link matrix for the schema selected after O1 |
+| V2-P0 | Make OperationGraph authoritative for operation typing and normalize accepted Claim/Derivation ownership | complete at `4025532` | v67 publishes accepted Claims/Derivations with exact link and Universe provenance | all 16 scripts, examples 01-07/09, forged artifacts, schema fingerprint, and exit audit pass |
+| V2-P1-R0 | Repair the typed HOTT-goal entry substrate discovered by the P1 audit | complete; completion commit pending | v68 removes untrusted solver wire state; structural substitutions replay typing; the first admitted bridge is terminal | adversarial typed-goal, conversion, bridge, substitution, polarity, artifact, all 16 scripts, and examples 01-07/09 pass |
+| V2-P1 | Select irreducible HOTT certificate payload after P1-R0 | next | undecided | select only evidence not reconstructible from accepted authorities and retain the stable observational rule IDs |
+| V2-O1 | Implement type-directed observational action over shared terms | blocked by P1-R0/P1 | breaking | substitution/naturality tests |
+| V2-A1 | Add the later object-HOTT artifact schema selected after O1 | blocked by P1-R0/P1/O1 | breaking, version after v68 | HOTT witness/link matrix for the schema selected after O1 |
 
 ### 23.3 Non-negotiable boundaries
 
@@ -1257,80 +1258,26 @@ At commit `474867e`:
 ### 23.4 Next implementation checkpoint
 
 V2-K1, V2-K2, V2-C1, V2-T1, V2-T2, V2-C2, V2-B1, and V2-S1 are complete.
-V2-P0 is active. Its first premise is that source typing evidence belongs to
-the Operation/type-view occurrence, never to an erased TermDB ID. Generated
-Core helper evidence must receive its own explicit authority or remain
-unpublished; it must not borrow a source Operation by tuple matching. P0 makes
-OperationGraph authoritative for source operation typing, distinguishes its
-selected synthetic classifier from derived admissible typings and explicit
-exposure, and moves non-Operation facts back to ContextDB,
-TypeDeclarationDB, UniverseDB, or another explicit authority.
-The selected solver classifier is singular; admissible relations need not be.
-P0 also forbids resolving an Operation premise by globally searching for an
-equal Core Term/Context/classifier tuple. Structural premises follow the exact
-child Operation edge, while Context/declaration facts use explicitly neutral
-authority paths.
+V2-P0 is also complete. Commit `4025532` establishes the accepted certificate
+boundary and artifact v67: source typing belongs to exact Operation/type-view
+authority, structural premises replay through OperationGraph, one Claim may
+have multiple Derivations, and link/Universe provenance names exact accepted
+Claims. Solver candidates and residual obligations remain outside that closed
+certificate.
 
-The 2026-08-08 code audit found that the implementation did not yet satisfy
-that premise at the accepted certificate boundary. P0 was therefore reopened
-at P0-R0A. Commit `985baf8` establishes its first premise: separate in-memory
-Claim and Derivation arenas, least-grounded closure, source-occurrence export
-identity, and an explicit distinction between closed Claims and reachable
-residual obligations. All 15 prototype test scripts, examples 01-07/09, and
-artifact round-trip pass at the committed v64 checkpoint. The active
-P0-R0A.3 worktree uses provisional v65 for direct candidate
-Derivation-to-Claim adjacency.
-
-This is not P0 completion, but it is already work inside P0. Source APP,
-Lambda, constructor spine, request, computation fold, and Match now preserve
-their exact structural occurrences. IH stores its motive as a local scoped
-eliminator parameter and intentionally does not point back to the parent Match
-Claim. Candidate Claims and Derivations are now separate arenas and each
-Derivation names its conclusion Claim directly. The dead late resolver and
-equal-count delta compaction APIs have been removed. Candidate Claims still
-retain transitional preferred-proof fields, accepted Derivations still retain
-a candidate-proof back-reference for artifact marking, and Universe/link/
-artifact consumers still read the candidate image. The next P0 step must
-remove those remaining ownership reversals and publish the accepted image
-natively. P0-R0A ultimately keeps derived source Claim identity exact,
-reconstructs structural premises from OperationGraph, and accepts only the
-least grounded claim closure. This is not P1 proof-storage work.
-
-Solver-frontier candidates are not accepted derivations and remain outside the
-committed certificate graph until validated and grounded.
-The detailed P0 plan, including the mandatory P0-R0 certificate-construction
-refactor, is in
-`doc/2026-08-07T06-00-00-OPERATION-INDEXED-TYPING-EVIDENCE-V2-P0-PLAN.md`.
-
-P0-R0 is the first implementation slice of P0, not an optional compatibility
-cleanup and not a separate phase before P0. P0-R0A.1 now begins with the
-authority-complete evidence-selection invariant; only after that invariant is
-established may the accepted Claim/Derivation arenas become the sole
-publication image. It separates
-Operation-indexed constraint generation, provisional fixed-point solving, and
-atomic immutable evidence commit. P0.1 characterization proceeds only after
-that boundary preserves the existing CBPV and artifact behavior.
-
-P0-R0 also owns the effect-row solver boundary required for atomic certificate
-publication. Symbolic effect equations remain canonical Operation-owned solver
-state until stable; repeatedly rebuilt `EFFECT_ROW_UNION` Term syntax is not a
-fixed-point state. This is required before a computation classifier can become
-accepted evidence and does not introduce object equality or a second
-Value/Computation Core graph.
-
-The earlier P1 re-audit correctly identified the remaining hybrid certificate,
-but classified its repair one phase too late. Claim/Derivation separation and
-exact derived-boundary authority are now P0-R0A. P1 is blocked and will be
-re-audited after P0. Structural Operation edges are not copied into tagged
-records, and a premise arena is not introduced without a future unbounded
-evidence requirement. Proof and Context binding identity remains uniform:
-a binder assumption is selected by the binding object in its conclusion
-`VAR(binding_id)`, never by lexical depth. Equality syntax and object TermDB
-tags remain deferred to V2-O1. In contrast, the accepted certificate schema is
-P0 work: P0-R0A.9 replaces already-published v62 with v63 after the in-memory
-Claim/Derivation boundary is final and rejects v62 without a reconstruction
-fallback. If V2-O1 later needs object-HOTT wire records, V2-A1 introduces a
-later artifact version rather than delaying or silently mutating v63. The
+The P1 entry audit and V2-P1-R0 repair are complete. HOTT observations now name
+exact accepted carrier/endpoint Claims, conversion results are bound to exact
+requests and cannot manufacture contradiction, ordinary ADTs dispatch through
+nominal TypeView declarations, and artifact v68 removes solver/proof caches
+from Context, Operation, and Substitution wire records. The first admitted
+relational Context fragment is the terminal Context with its unique identity
+projections; nonempty relational extension remains deferred until O1 defines
+the relation field. The implementation and exit evidence are in
+`doc/2026-08-08T20-00-00-V2-P1-ENTRY-REFACTOR-AUDIT-PLAN.md`. Only after that
+completed gate may V2-P1 select irreducible observational evidence. Object equality
+syntax and witness construction remain deferred to V2-O1. The completed P0
+execution record is in
+`doc/2026-08-08T17-10-35-V2-P0-REMAINING-IMPLEMENTATION-PLAN.md`. The
 V2-B1 implementation and progress plan is in
 `doc/2026-08-07T04-00-00-PROOF-BINDING-IDENTITY-V2-B1-PLAN.md`. The completed
 V2-S1 implementation and evidence record is in
@@ -1409,7 +1356,7 @@ typed goal records. V2-C2 was therefore completed before V2-S1:
 
 ```text
 V2-C2 -> V2-B1 -> V2-S1 -> V2-P0/P0-R0A (including v63)
-    -> P1 re-audit -> V2-O1 -> V2-A1
+    -> V2-P1-R0 -> V2-P1 -> V2-O1 -> V2-A1
 ```
 
 V2-C2 changes no artifact schema and adds no HOTT object term. Its complete
@@ -1520,7 +1467,7 @@ only its P1 re-audit may decide how the reserved proof slot and remaining rule
 data are physically represented. The mandatory order is:
 
 ```text
-V2-C2 -> V2-B1 -> V2-S1 -> V2-P0/P0-R0A -> P1 re-audit -> V2-O1
+V2-C2 -> V2-B1 -> V2-S1 -> V2-P0/P0-R0A -> V2-P1-R0 -> V2-P1 -> V2-O1
 ```
 
 ### 25.6 Completion evidence

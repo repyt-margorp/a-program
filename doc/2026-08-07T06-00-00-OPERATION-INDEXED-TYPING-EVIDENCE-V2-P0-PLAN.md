@@ -22,6 +22,11 @@ Re-entry code audit:
 Remaining implementation plan:
 `doc/2026-08-08T17-10-35-V2-P0-REMAINING-IMPLEMENTATION-PLAN.md`
 
+The historical checklists below retain unchecked items from superseded P0
+design iterations. Their authoritative disposition is recorded in Sections
+11-14 of the remaining implementation plan. They must not be interpreted as
+open work without first satisfying the P0 reopening criteria documented there.
+
 Audit state:
 
 - committed P0 checkpoints: `985baf8`, `340ec81`, `0a4f9ac`, and `bc9566f`;
@@ -1660,17 +1665,24 @@ V2-P0 is complete only when:
 | 2026-08-08 | P0-R0A premise re-audit | complete | Rechecked the active `062b7cd` worktree: structural authority propagation is partial; calls to the late resolver and handler tuple pruning are gone, but classifier-only helper selection, candidate proof IDs, and provisional v64 candidate serialization remain. |
 | 2026-08-08 | P0-R0A.3a entry premise | complete | Candidate Claim identity excludes proof kind; all candidate consumers traverse concluding Derivations; artifact v66 publishes accepted Claim/Derivation records; transitional preferred-proof and back-reference fields are physically removed. All 15 prototype scripts pass. |
 | 2026-08-08 | P0 entry premise finalized from active code | complete | P0 is already active. Typed conclusions belong to Operation/type-view occurrences; TermDB remains shared erased computation; closed Claims and residual obligations are distinct. R0A.2 now continues generated-helper/derived-source Claim preservation before Claim-ID publication and dead resolver deletion. |
+| 2026-08-08 | P0 certificate boundary at `4025532` | complete | Exact export and Universe Claim provenance, grounded multi-Derivation certificates, atomic publication, artifact v67 wire values/fingerprint, all 16 scripts, examples 01-07/09, and the exit audit pass. |
 
 ## 10. Mandatory Ordering
 
 ```text
-V2-C2 -> V2-B1 -> V2-S1 -> V2-P0 -> P1 re-audit -> V2-O1 -> V2-A1
+V2-C2 -> V2-B1 -> V2-S1 -> V2-P0 -> V2-P1-R0 -> V2-P1 -> V2-O1 -> V2-A1
 ```
 
-V2-P0 is active and its R0A.3a representation premise is complete. The next
-implementation work is P0.1 characterization/adversarial validation, followed
-by the remaining link-authority, Universe-provenance, and stable-wire P0 work.
-P1 remains blocked until those P0 exit criteria close. A general tagged
-structural payload and variable-size premise arena are not prerequisites. HOTT
-equality terms still begin only after the complete P0 certificate boundary is
-validated.
+V2-P0 is complete at `4025532`. Its characterization, exact link authority,
+Universe provenance, stable artifact v67 wire contract, and exit audit are
+recorded in
+`doc/2026-08-08T17-10-35-V2-P0-REMAINING-IMPLEMENTATION-PLAN.md`.
+The P1 re-audit found a mandatory post-P0 entry refactor. P0 remains complete,
+but V2-P1-R0 must ground HOTT goals in exact accepted Claims, repair
+substitution certification and conversion-result semantics, and migrate the
+substrate to artifact v68 before P1 selects irreducible HOTT evidence. The
+detailed plan is
+`doc/2026-08-08T20-00-00-V2-P1-ENTRY-REFACTOR-AUDIT-PLAN.md`. A general tagged
+structural payload and variable-size premise arena are not P0 results and must
+not be presumed by P1. HOTT equality terms still begin only after P1, in
+V2-O1.

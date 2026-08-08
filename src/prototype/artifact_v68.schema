@@ -1,0 +1,67 @@
+A_PROGRAM_ARTIFACT 68
+
+This file is the canonical semantic manifest for artifact version 68. The
+artifact header carries the SHA-256 digest of these exact bytes. A reader must
+reject a different version or digest before reading the interface.
+
+judgement_kind UNKNOWN=0 HAS_TYPE=1 IS_TYPE=2
+judgement_authority INVALID=0 OPERATION=1 CONTEXT_BINDING=2 TYPE_DECLARATION=3 INTRINSIC=4 TYPE_FORMATION=5 UNIVERSE=6 CORE_HELPER=7 EXPORT=8
+judgement_proof INVALID=0 TYPE_FORMATION_INTRO=1 CONSTRUCTOR_INTRO=2 CONSTRUCTOR_SPINE_FORMATION=3 BINDER_ASSUMPTION=4 MATCH_PATTERN_ASSUMPTION=5 LAMBDA_INTRO=6 APP_ELIM=7 RETURN_INTRO=8 THUNK_INTRO=9 FORCE_ELIM=10 OPERATION_REQUEST_INTRO=11 COMPUTATION_FOLD_ELIM=12 MATCH_TYPE_FORMATION_INTRO=13 MATCH_ELIM=14 SOLVED_MATCH_MOTIVE=15 INDUCTION_HYPOTHESIS_ELIM=16 TEXT_LITERAL_INTRO=17 PURE_PRIMITIVE_TYPE_INTRO=18 EFFECT_OPERATION_TYPE_INTRO=19 CONVERSION=20 EXPECTED_TYPE_EXPOSURE=21 TEXT_TYPE_INTRO=22 INT_LITERAL_INTRO=23 INT_LITERAL_ADMISSIBILITY=24 INT_TYPE_INTRO=25 HOST_TYPE_INTRO=26 IS_TYPE_FROM_HAS_TYPE=27 DECLARATION=28 UNIVERSE_CUMULATIVITY=29 PI_FORMATION_INTRO=30 CONTEXT_WEAKEN=31 EFFECT_WEAKEN=32
+
+term_tag VAR=1 CONSTRUCTOR=2 APP=3 LAMBDA=4 PI=5 MATCH=6 TYPE_FORMER=7 TYPE_DECLARATION=8 INDUCTION_HYPOTHESIS=9 UNIVERSE_VAR=10 PRIMITIVE_TEXT=11 TEXT_LITERAL=12 PRIMITIVE_INT=13 PRIMITIVE_INT64=14 INT_LITERAL=15 EXTERNAL_REF=16 PURE_PRIMITIVE=17 EFFECT_OPERATION=18 TYPE_VIEW=19 EFFECT_LABEL=20 EFFECT_ROW_VAR=21 EFFECT_ROW_UNION=22 EFFECT_ROW_FORALL=23 COMPUTATION_TYPE=24 THUNK_TYPE=25 RETURN=26 THUNK=27 FORCE=28 OPERATION_REQUEST=29 COMPUTATION_FOLD=30 EFFECT_ROW_OPERATION=31
+type_expr_tag UNIVERSE=1 UNIVERSE_VAR=2 SELF=3 VAR=4 NAME=5 APP=6 ARROW=7 PI=8 IMPORTED_TYPE=9 EXTERNAL_TERM=10 PRIMITIVE_TEXT=11 PRIMITIVE_INT=12 PRIMITIVE_INT64=13
+operation_tag ATOM=1 VAR=2 NAME=3 CONSTRUCTOR=4 APP=5 LAMBDA=6 MATCH=7 INDUCTION_HYPOTHESIS=8 ASCRIPTION=9 RETURN=10 THUNK=11 FORCE=12 REQUEST=13 COMPUTATION_FOLD=14
+operation_polarity UNKNOWN=0 VALUE=1 COMPUTATION=2
+operation_application_role NONE=0 FUNCTION_ELIMINATION=1 CONSTRUCTOR_FORMATION=2
+substitution_kind IDENTITY=1 EMPTY=2 PROJECTION=3 EXTEND=4 COMPOSE=5
+effect_constraint_kind EXACT=1 COPY=2 UNION=3 RESIDUAL=4
+effect_constraint_state PENDING=1 SOLVED=2 UNSOLVED_RESIDUAL=3 INCOMPLETE=4
+verification_kind COMPUTATION_FOLD_RESULT=1
+verification_state PENDING=1 DISCHARGED=2 FAILED=3
+normalization_profile CORE_WHNF=1 COMPUTATION_WHNF=2 PURE_TYPE_WHNF=3
+export_transparency OPAQUE=1 TRANSPARENT=2
+compile_policy STRICT=1 HYBRID=2 EXPLORATORY=3
+definition_thunk_policy IMPLICIT=1 EXPLICIT=2
+universe_node TYPE=1 PARAMETER=2
+universe_edge PARAMETER_TO_TYPE=1
+universe_reason INVALID=0 TERM_LEVEL_SUCCESSOR=1 PI_DOMAIN=2 PI_CODOMAIN=3 MATCH_BRANCH=4 APP_CUMULATIVITY=5 EXPECTED_TYPE_CUMULATIVITY=6 DERIVED_UNIVERSE_LEVEL=7 DERIVED_PI_DOMAIN=8 DERIVED_PI_CODOMAIN=9
+
+Operation graph wire contract:
+- A Context record stores parent Context, binding identity, concrete classifier,
+  and depth. It never stores a classifier solver variable.
+- The writer resolves every reachable non-empty Context classifier before
+  publication. The reader reconstructs classifier_variable as INVALID.
+- An Operation record stores tag, polarity, application role, Core projection,
+  known/source classifier, solved classifier, diagnostic names, structural
+  child edges, binder identities, case/fold slices, and Context identity.
+- Operation classifier variables, source AST ids, and computation-kind caches
+  are not serialized. The reader reconstructs them from accepted structure or
+  sets them to INVALID.
+- UNKNOWN polarity is not valid for a closed Operation-backed accepted Claim.
+
+Substitution wire contract:
+- Structural identity is kind, source/target Contexts, structural child
+  substitutions, substituted Term, and substituted Term classifier.
+- Structural identity never contains a proof, Derivation, or preferred Claim.
+- EXTEND classifiers are replayed after Context readback and must equal the
+  target binding classifier reindexed by the prefix substitution.
+
+Accepted certificate contract:
+- Claim identity is kind, authority, authority id, context, operation, subject,
+  and classifier. A Claim does not select a preferred Derivation.
+- A Derivation concludes one Claim and refers only to accepted premise Claim
+  ids or explicit scoped premise tuples admitted by its rule.
+- Every transparent term export records the exact accepted source Claim id.
+- Every Universe constraint records its numerical edge and exact accepted
+  source Claim/authority provenance. Equal numerical edges may coexist when
+  their provenance differs.
+- Context and Operation solver variable ids and source AST ids are absent from
+  the wire and are reconstructed as INVALID after readback.
+- Structural substitution identity excludes typing proof or Derivation choice.
+- EXTEND substitution classifiers are replayed under their prefix substitution.
+- Substitution-extension certificates remain compiler-local in v68. No accepted
+  interface or admitted terminal HOTT bridge roots an EXTEND certificate, so
+  the reachable certificate set is empty and no certificate section is written.
+- Closed Operation polarity is validated from the accepted typed occurrence,
+  its solved classifier, and its Operation rule. Computation kind is a
+  reconstructible cache and is not accepted wire authority.

@@ -4,15 +4,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "calculus.h"
 #include "context.h"
 #include "term.h"
 #include "judgement.h"
 #include "type_declaration.h"
 #include "universe.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 67
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 68
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
-	"33afc155d4f21373e378c91280b92e80ca32ddeed39ce4d8f88ec88859765781"
+	PROTOTYPE_CALCULUS_FINGERPRINT
 
 enum prototype_ast_tag {
 	PROTOTYPE_AST_VAR = 1,

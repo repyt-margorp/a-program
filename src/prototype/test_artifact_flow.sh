@@ -193,10 +193,49 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 67 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/artifact_v67.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 68 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/artifact_v68.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
+awk '
+	$1 == "context" && NF != 6 { bad = 1 }
+	$1 == "operation" && NF != 26 { bad = 1 }
+	$1 == "substitution" && NF != 9 { bad = 1 }
+	END { exit bad }
+' "$TMP_DIR/identity.apo"
+awk '
+	$1 == "operation" && $4 == 2 && !done {
+		$4 = 1
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-forged-polarity.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-forged-polarity.apo" \
+	>"$TMP_DIR/identity-forged-polarity.out" \
+	2>"$TMP_DIR/identity-forged-polarity.err"; then
+	echo "artifact accepted forged Operation polarity" >&2
+	exit 1
+fi
+awk '
+	FNR == NR && $1 == "term" && $2 == "Bool" { bool_term = $3; next }
+	FNR == NR && $1 == "term" && $2 == "Nat" { nat_term = $3; next }
+	FNR != NR && $1 == "substitution" && $3 == 4 && !done {
+		if (bool_term == "" || nat_term == "" || bool_term == nat_term) exit 1
+		$9 = $9 == bool_term ? nat_term : bool_term
+		done = 1
+	}
+	FNR != NR { print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" "$TMP_DIR/identity.apo" \
+	>"$TMP_DIR/identity-forged-substitution-classifier.apo"
+if ./read_file.out --read-graph \
+	"$TMP_DIR/identity-forged-substitution-classifier.apo" \
+	>"$TMP_DIR/identity-forged-substitution-classifier.out" \
+	2>"$TMP_DIR/identity-forged-substitution-classifier.err"; then
+	echo "artifact accepted forged substitution classifier" >&2
+	exit 1
+fi
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -231,10 +270,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 67/A_PROGRAM_ARTIFACT 66/' \
-	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v66.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v66.apo" >"$TMP_DIR/identity-v66.out" 2>"$TMP_DIR/identity-v66.err"; then
-	echo "obsolete artifact unexpectedly passed after v67 format bump" >&2
+sed '1s/A_PROGRAM_ARTIFACT 68/A_PROGRAM_ARTIFACT 67/' \
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v67.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v67.apo" >"$TMP_DIR/identity-v67.out" 2>"$TMP_DIR/identity-v67.err"; then
+	echo "obsolete artifact unexpectedly passed after v68 format bump" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -760,11 +799,11 @@ grep -F '[solved-match-motive proof#' "$TMP_DIR/multi-app.out" >/dev/null
 	>"$TMP_DIR/ascribed-raw-function.out"
 awk '
 	$1 == "operation" {
-		core[$2] = $7;
-		classifier[$2] = $9;
+		core[$2] = $6;
+		classifier[$2] = $8;
 		if ($3 == 9) {
 			ascription = $2;
-			body = $18;
+			body = $15;
 		}
 	}
 	END {
@@ -1894,7 +1933,7 @@ grep -q '\[host-type-intro proof#' "$TMP_DIR/int-literal.out"
 awk '
 	$1 == "operation" && $3 == 1 {
 		literal_operation = $2;
-		selected_classifier = $9;
+		selected_classifier = $8;
 		literal_count++;
 	}
 	$1 == "claim" {
@@ -1924,9 +1963,9 @@ awk '
 	"$TMP_DIR/IntLiteral.apo"
 ./read_file.out --write-artifact "$TMP_DIR/IntLiteralRepeat.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-repeat.out"
-awk '$1 == "operation" { print $2, $9 }' "$TMP_DIR/IntLiteral.apo" \
+awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteral.apo" \
 	>"$TMP_DIR/int-literal-selected.txt"
-awk '$1 == "operation" { print $2, $9 }' "$TMP_DIR/IntLiteralRepeat.apo" \
+awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteralRepeat.apo" \
 	>"$TMP_DIR/int-literal-repeat-selected.txt"
 cmp "$TMP_DIR/int-literal-selected.txt" "$TMP_DIR/int-literal-repeat-selected.txt"
 
@@ -1940,7 +1979,7 @@ EOF_INT_LITERAL_SPECIALIZATION
 awk '
 	$1 == "operation" && $3 == 1 {
 		literal_operation = $2;
-		selected_classifier = $9;
+		selected_classifier = $8;
 		literal_count++;
 	}
 	$1 == "claim" {
@@ -2357,8 +2396,8 @@ test "$duplicate_nat_a_term" = "$duplicate_nat_b_term"
 test "$duplicate_nat_a_classifier" != "$duplicate_nat_b_classifier"
 test "$duplicate_nat_a_key" = "$duplicate_nat_b_key"
 awk -v lambda_tag="$OPERATION_TAG_LAMBDA" '
-	$1 == "operation" && $3 == lambda_tag && $13 != 4294967295 {
-		seen[$13] = 1;
+	$1 == "operation" && $3 == lambda_tag && $12 != 4294967295 {
+		seen[$12] = 1;
 	}
 	END {
 		for (id in seen) {

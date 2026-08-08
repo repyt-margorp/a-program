@@ -170,7 +170,6 @@ int main(void) {
 			int_context,
 			literal,
 			int_type,
-			PROTOTYPE_INVALID_ID,
 			&section
 		) != 0 ||
 		prototype_substitution_extend(
@@ -182,7 +181,6 @@ int main(void) {
 			dependent_context,
 			literal,
 			int_type,
-			PROTOTYPE_INVALID_ID,
 			&dependent_section
 		) != 0 ||
 		prototype_substitution_identity(
@@ -266,8 +264,8 @@ int main(void) {
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ||
 		prototype_substitution_get(&substitutions, dependent_section) == NULL ||
 		prototype_substitution_get(&substitutions, projection) == NULL ||
-		prototype_substitution_db_validate(
-			&substitutions, &contexts, &term_db
+		prototype_substitution_db_validate_typed(
+			&substitutions, &contexts, &term_db, &type_declarations
 		) != 0) {
 		fprintf(stderr, "categorical substitution law failed\n");
 		return 1;
@@ -393,8 +391,7 @@ int main(void) {
 			.first = PROTOTYPE_INVALID_ID,
 			.second = PROTOTYPE_INVALID_ID,
 			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID,
-			.term_proof_id = PROTOTYPE_INVALID_ID
+			.term_classifier = PROTOTYPE_INVALID_ID
 		};
 		large_substitutions.substitution_count = 1;
 		for (uint32_t i = 0; i < LARGE_CONTEXT_DEPTH; ++i) {
@@ -418,8 +415,7 @@ int main(void) {
 					.first = i,
 					.second = PROTOTYPE_INVALID_ID,
 					.term = large_literal,
-					.term_classifier = large_int_type,
-					.term_proof_id = PROTOTYPE_INVALID_ID
+					.term_classifier = large_int_type
 				};
 			large_substitutions.substitution_count++;
 			large_context = extended_context;
@@ -429,8 +425,11 @@ int main(void) {
 				&large_terms, 1000 + LARGE_CONTEXT_DEPTH - 1, &large_variable
 			) != 0 || prototype_context_db_validate(
 				&large_contexts, &large_terms
-			) != 0 || prototype_substitution_db_validate(
-				&large_substitutions, &large_contexts, &large_terms
+			) != 0 || prototype_substitution_db_validate_typed(
+				&large_substitutions,
+				&large_contexts,
+				&large_terms,
+				&type_declarations
 			) != 0 || prototype_term_reindex(
 				&large_terms,
 				&type_declarations,
@@ -466,8 +465,7 @@ int main(void) {
 			.first = 0,
 			.second = 0,
 			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID,
-			.term_proof_id = PROTOTYPE_INVALID_ID
+			.term_classifier = PROTOTYPE_INVALID_ID
 		};
 		if (prototype_context_db_validate(
 				&malformed_contexts, &term_db
@@ -525,7 +523,6 @@ int main(void) {
 				source_context,
 				literal,
 				int_type,
-				5,
 				&source_section
 			) != 0 || prototype_context_db_append_relocated(
 				&target_contexts,
@@ -539,8 +536,7 @@ int main(void) {
 				&source_substitutions,
 				context_relocation,
 				source_contexts.context_count,
-				3,
-				7
+				3
 			) != 0 || source_section != 1 ||
 			target_contexts.context_count != 2 ||
 			target_contexts.contexts[context_relocation[source_context]].binding_id !=
@@ -555,8 +551,7 @@ int main(void) {
 				context_relocation[source_context] ||
 			target_substitutions.substitutions[1].first != 0 ||
 			target_substitutions.substitutions[1].term != literal + 3 ||
-			target_substitutions.substitutions[1].term_classifier != int_type + 3 ||
-			target_substitutions.substitutions[1].term_proof_id != 12) {
+			target_substitutions.substitutions[1].term_classifier != int_type + 3) {
 			fprintf(stderr, "context/substitution relocation law failed\n");
 			return 1;
 		}

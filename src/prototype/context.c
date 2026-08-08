@@ -203,8 +203,7 @@ int prototype_substitution_db_append_relocated(
 	const struct prototype_substitution_db* source,
 	const uint32_t* context_relocation,
 	size_t context_relocation_count,
-	uint32_t term_offset,
-	uint32_t proof_offset
+	uint32_t term_offset
 ) {
 	if (!target || !source || !context_relocation) {
 		return -1;
@@ -238,9 +237,6 @@ int prototype_substitution_db_append_relocated(
 		}
 		if (substitution.term_classifier != PROTOTYPE_INVALID_ID) {
 			substitution.term_classifier += term_offset;
-		}
-		if (substitution.term_proof_id != PROTOTYPE_INVALID_ID) {
-			substitution.term_proof_id += proof_offset;
 		}
 		if (prototype_substitution_add(
 			target, substitution, &relocation[i]
@@ -290,8 +286,7 @@ static int prototype_substitution_add(
 			existing->first == substitution.first &&
 			existing->second == substitution.second &&
 			existing->term == substitution.term &&
-			existing->term_classifier == substitution.term_classifier &&
-			existing->term_proof_id == substitution.term_proof_id) {
+			existing->term_classifier == substitution.term_classifier) {
 			*p_substitution = i;
 			return 0;
 		}
@@ -321,8 +316,7 @@ int prototype_substitution_identity(
 		.first = PROTOTYPE_INVALID_ID,
 		.second = PROTOTYPE_INVALID_ID,
 		.term = PROTOTYPE_INVALID_ID,
-		.term_classifier = PROTOTYPE_INVALID_ID,
-		.term_proof_id = PROTOTYPE_INVALID_ID
+		.term_classifier = PROTOTYPE_INVALID_ID
 	};
 	return prototype_substitution_add(db, substitution, p_substitution);
 }
@@ -343,8 +337,7 @@ int prototype_substitution_empty(
 		.first = PROTOTYPE_INVALID_ID,
 		.second = PROTOTYPE_INVALID_ID,
 		.term = PROTOTYPE_INVALID_ID,
-		.term_classifier = PROTOTYPE_INVALID_ID,
-		.term_proof_id = PROTOTYPE_INVALID_ID
+		.term_classifier = PROTOTYPE_INVALID_ID
 	};
 	return prototype_substitution_add(db, substitution, p_substitution);
 }
@@ -367,8 +360,7 @@ int prototype_substitution_projection(
 		.first = PROTOTYPE_INVALID_ID,
 		.second = PROTOTYPE_INVALID_ID,
 		.term = PROTOTYPE_INVALID_ID,
-		.term_classifier = PROTOTYPE_INVALID_ID,
-		.term_proof_id = PROTOTYPE_INVALID_ID
+		.term_classifier = PROTOTYPE_INVALID_ID
 	};
 	return prototype_substitution_add(db, substitution, p_substitution);
 }
@@ -382,7 +374,6 @@ int prototype_substitution_extend(
 	uint32_t target_context,
 	uint32_t term,
 	uint32_t term_classifier,
-	uint32_t term_proof_id,
 	uint32_t* p_substitution
 ) {
 	const struct prototype_substitution* prefix =
@@ -426,8 +417,7 @@ int prototype_substitution_extend(
 		.first = prefix_substitution,
 		.second = PROTOTYPE_INVALID_ID,
 		.term = term,
-		.term_classifier = term_classifier,
-		.term_proof_id = term_proof_id
+		.term_classifier = term_classifier
 	};
 	return prototype_substitution_add(db, substitution, p_substitution);
 }
@@ -456,8 +446,7 @@ int prototype_substitution_compose(
 		.first = outer_substitution,
 		.second = inner_substitution,
 		.term = PROTOTYPE_INVALID_ID,
-		.term_classifier = PROTOTYPE_INVALID_ID,
-		.term_proof_id = PROTOTYPE_INVALID_ID
+		.term_classifier = PROTOTYPE_INVALID_ID
 	};
 	return prototype_substitution_add(db, substitution, p_substitution);
 }
@@ -526,6 +515,64 @@ int prototype_substitution_db_validate(
 			}
 			default:
 				return -1;
+		}
+	}
+	return 0;
+}
+
+int prototype_substitution_db_validate_typed(
+	const struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations
+) {
+	if (!type_declarations || prototype_substitution_db_validate(
+			db, contexts, terms
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->substitution_count; ++i) {
+		const struct prototype_substitution* substitution = &db->substitutions[i];
+		if (substitution->kind != PROTOTYPE_SUBSTITUTION_EXTEND) {
+			continue;
+		}
+		if (substitution->term_classifier >= terms->term_count) {
+			return -1;
+		}
+		const struct prototype_substitution* prefix =
+			prototype_substitution_get(db, substitution->first);
+		const struct prototype_context* target =
+			prototype_context_get(contexts, substitution->target_context);
+		uint32_t expected_classifier;
+		if (!prefix || !target || target->classifier == PROTOTYPE_INVALID_ID ||
+			substitution->term_classifier >= terms->term_count) {
+			return -1;
+		}
+		if (prototype_term_reindex(
+				terms,
+				type_declarations,
+				contexts,
+				db,
+				target->classifier,
+				substitution->first,
+				&expected_classifier
+			) != 0 || prototype_judgement_classifier_value_whnf(
+				terms,
+				type_declarations,
+				expected_classifier,
+				&expected_classifier
+			) != 0 || (!prototype_judgement_classifier_compatible(
+					terms,
+					type_declarations,
+					expected_classifier,
+					substitution->term_classifier
+				) && !prototype_judgement_classifier_reference_equal(
+					terms,
+					type_declarations,
+					expected_classifier,
+					substitution->term_classifier
+				))) {
+			return -1;
 		}
 	}
 	return 0;
@@ -815,7 +862,6 @@ int prototype_context_fresh_reindex_extension(
 				source_path[i],
 				variable,
 				classifier,
-				PROTOTYPE_INVALID_ID,
 				&extended_substitution
 			) != 0) {
 			return -1;
@@ -884,7 +930,6 @@ int prototype_context_substitution_from_terms(
 				path[i],
 				arguments[i],
 				classifier,
-				PROTOTYPE_INVALID_ID,
 				&substitution
 			) != 0) {
 			return -1;
@@ -968,7 +1013,6 @@ int prototype_context_telescope_entry_classifier(
 				path[i],
 				previous_terms[i],
 				whnf,
-				PROTOTYPE_INVALID_ID,
 				&substitution
 			) != 0) {
 			return -1;

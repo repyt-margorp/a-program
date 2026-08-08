@@ -6650,9 +6650,25 @@ static int write_artifact_operation_graph_section(
 		}
 		const struct prototype_context* context =
 			&metadata->contexts.contexts[i];
+		uint32_t classifier = context->classifier;
+		if (classifier == PROTOTYPE_INVALID_ID &&
+			context->classifier_variable != PROTOTYPE_INVALID_ID) {
+			const struct prototype_operation_node* classifier_operation =
+				prototype_operation_graph_get(
+					&graph, context->classifier_variable
+				);
+			if (!classifier_operation ||
+				classifier_operation->classifier == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			classifier = classifier_operation->classifier;
+		}
+		if (i != 0 && classifier == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
 		fprintf(
 			stream,
-			"context %zu %u %u %u %u %u\n",
+			"context %zu %u %u %u %u\n",
 			(size_t)context_slice->relocation[i],
 			context->parent == PROTOTYPE_INVALID_ID ?
 				PROTOTYPE_INVALID_ID :
@@ -6660,8 +6676,7 @@ static int write_artifact_operation_graph_section(
 					context_slice, context->parent
 				),
 			context->binding_id,
-			context->classifier,
-			context->classifier_variable,
+			classifier,
 			context->depth
 		);
 	}
@@ -6673,7 +6688,7 @@ static int write_artifact_operation_graph_section(
 			&metadata->substitutions.substitutions[i];
 		fprintf(
 			stream,
-			"substitution %zu %d %u %u %u %u %u %u %u\n",
+			"substitution %zu %d %u %u %u %u %u %u\n",
 			i,
 			substitution->kind,
 			artifact_context_slice_relocate(
@@ -6685,8 +6700,7 @@ static int write_artifact_operation_graph_section(
 			substitution->first,
 			substitution->second,
 			substitution->term,
-			substitution->term_classifier,
-			substitution->term_proof_id
+			substitution->term_classifier
 		);
 	}
 	fprintf(stream, "operations %zu\n", operation_count);
@@ -6707,18 +6721,15 @@ static int write_artifact_operation_graph_section(
 		}
 		fprintf(
 			stream,
-			"operation %zu %d %d %d %d %u %u %u %u %u %s %s %u %u %u %u %u %u %u"
+			"operation %zu %d %d %d %u %u %u %s %s %u %u %u %u %u %u %u"
 			" %u %u %u %u %u %u %u %u %u\n",
 			i,
 			operation->tag,
 			operation->polarity,
-			operation->computation_kind,
 			operation->application_role,
 			operation->core_term,
 			operation->known_classifier,
 			operation->classifier,
-			operation->classifier_variable,
-			operation->source_ast,
 			source_name,
 			binder_name,
 			operation->referenced_ast_binder_id,
@@ -9250,31 +9261,29 @@ int prototype_artifact_read_text_operation_graph(
 		struct prototype_context context;
 		if (fscanf(
 				stream,
-				"%255s %zu %u %u %u %u %u",
+				"%255s %zu %u %u %u %u",
 				word,
 				&id,
 				&context.parent,
 				&context.binding_id,
 				&context.classifier,
-				&context.classifier_variable,
 				&context.depth
-			) != 7 ||
+			) != 6 ||
 			strcmp(word, "context") != 0 ||
 			id != i ||
 			(metadata && (
-				context.classifier != PROTOTYPE_INVALID_ID &&
-				context.classifier >= terms->term_count))) {
+				(i != 0 && context.classifier == PROTOTYPE_INVALID_ID) ||
+				(context.classifier != PROTOTYPE_INVALID_ID &&
+				 context.classifier >= terms->term_count)))) {
 			return -1;
 		}
+		context.classifier_variable = PROTOTYPE_INVALID_ID;
 		if (metadata) {
 			metadata->contexts.contexts[i] = context;
 			metadata->contexts.context_count++;
 		}
 	}
-	if ((metadata && prototype_context_db_validate(
-			&metadata->contexts, terms
-		) != 0) ||
-		expect_artifact_count(stream, "substitutions", &substitution_count) != 0 ||
+	if (expect_artifact_count(stream, "substitutions", &substitution_count) != 0 ||
 		(metadata &&
 			substitution_count > metadata->substitutions.substitution_capacity)) {
 		return -1;
@@ -9287,7 +9296,7 @@ int prototype_artifact_read_text_operation_graph(
 		struct prototype_substitution substitution;
 		if (fscanf(
 				stream,
-				"%255s %zu %d %u %u %u %u %u %u %u",
+				"%255s %zu %d %u %u %u %u %u %u",
 				word,
 				&id,
 				&substitution.kind,
@@ -9296,9 +9305,8 @@ int prototype_artifact_read_text_operation_graph(
 				&substitution.first,
 				&substitution.second,
 				&substitution.term,
-				&substitution.term_classifier,
-				&substitution.term_proof_id
-			) != 10 ||
+				&substitution.term_classifier
+			) != 9 ||
 			strcmp(word, "substitution") != 0 ||
 			id != i ||
 			substitution.kind < PROTOTYPE_SUBSTITUTION_IDENTITY ||
@@ -9321,9 +9329,7 @@ int prototype_artifact_read_text_operation_graph(
 		}
 	}
 	if ((metadata && prototype_substitution_db_validate(
-			&metadata->substitutions,
-			&metadata->contexts,
-			terms
+			&metadata->substitutions, &metadata->contexts, terms
 		) != 0) ||
 		expect_artifact_count(stream, "operations", &operation_count) != 0 ||
 		(metadata && operation_count > graph.operation_capacity)) {
@@ -9363,12 +9369,12 @@ int prototype_artifact_read_text_operation_graph(
 		char source_name[256];
 		char binder_name[256];
 		memset(&operation, 0, sizeof(operation));
-	if (fscanf(stream, "%255s %zu %d %d %d %d %u %u %u %u %u %255s %255s"
+	if (fscanf(stream, "%255s %zu %d %d %d %u %u %u %255s %255s"
 				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
-				word, &id, &operation.tag, &operation.polarity, &operation.computation_kind,
+				word, &id, &operation.tag, &operation.polarity,
 				&operation.application_role,
 				&operation.core_term, &operation.known_classifier, &operation.classifier,
-				&operation.classifier_variable, &operation.source_ast, source_name, binder_name,
+				source_name, binder_name,
 				&operation.referenced_ast_binder_id, &operation.binding_id,
 				&operation.function, &operation.argument,
 				&operation.body, &operation.scrutinee, &operation.binder_classifier,
@@ -9378,7 +9384,7 @@ int prototype_artifact_read_text_operation_graph(
 				&operation.implicit_effect_row_count,
 				&operation.first_case, &operation.case_count,
 				&operation.first_fold_clause, &operation.fold_clause_count,
-				&operation.context_id) != 29 ||
+				&operation.context_id) != 26 ||
 			strcmp(word, "operation") != 0 || id != i) {
 			return -1;
 		}
@@ -9386,14 +9392,31 @@ int prototype_artifact_read_text_operation_graph(
 			operation.tag > PROTOTYPE_OPERATION_COMPUTATION_FOLD ||
 			operation.polarity < PROTOTYPE_OPERATION_POLARITY_UNKNOWN ||
 			operation.polarity > PROTOTYPE_OPERATION_POLARITY_COMPUTATION ||
-			operation.computation_kind < PROTOTYPE_TERM_COMPUTATION_KIND_INVALID ||
-			operation.computation_kind > PROTOTYPE_TERM_COMPUTATION_KIND_HANDLER ||
 			operation.application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
 			operation.application_role >
 				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION ||
 			(operation.tag != PROTOTYPE_OPERATION_APP &&
 			 operation.application_role != PROTOTYPE_TERM_APPLICATION_NONE)) {
 			return -1;
+		}
+		operation.classifier_variable = PROTOTYPE_INVALID_ID;
+		operation.source_ast = PROTOTYPE_INVALID_ID;
+		operation.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
+		if (operation.classifier != PROTOTYPE_INVALID_ID) {
+			struct prototype_term_classifier_view classifier_view;
+			if (prototype_judgement_classifier_view(
+					terms,
+					type_declarations,
+					NULL,
+					operation.classifier,
+					&classifier_view
+				) != 0) {
+				return -1;
+			}
+			operation.computation_kind =
+				classifier_view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
+					classifier_view.computation_kind :
+					PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
 		}
 		if (metadata && operation.context_id >= context_count) {
 			return -1;
@@ -9474,6 +9497,17 @@ int prototype_artifact_read_text_operation_graph(
 		}
 		if (metadata && prototype_operation_graph_add_fold_clause(
 				&graph, &metadata->contexts, clause, NULL
+			) != 0) {
+			return -1;
+		}
+	}
+	if (metadata) {
+		if (prototype_context_db_validate(&metadata->contexts, terms) != 0 ||
+			prototype_substitution_db_validate_typed(
+				&metadata->substitutions,
+				&metadata->contexts,
+				terms,
+				type_declarations
 			) != 0) {
 			return -1;
 		}
@@ -10555,6 +10589,32 @@ int prototype_artifact_apply_term_relocations(
 			}
 		}
 		for (size_t j = 0;
+			j < target_metadata->substitutions.substitution_count;
+			++j) {
+			struct prototype_substitution* substitution =
+				&target_metadata->substitutions.substitutions[j];
+			if (substitution->term != PROTOTYPE_INVALID_ID &&
+				prototype_term_resolve_external_ref(
+					target_terms,
+					substitution->term,
+					provider_name,
+					provider_term,
+					&substitution->term
+				) != 0) {
+				return -1;
+			}
+			if (substitution->term_classifier != PROTOTYPE_INVALID_ID &&
+				prototype_term_resolve_external_ref(
+					target_terms,
+					substitution->term_classifier,
+					provider_name,
+					provider_term,
+					&substitution->term_classifier
+				) != 0) {
+				return -1;
+			}
+		}
+		for (size_t j = 0;
 			j < target_judgement->derivation_candidate_count;
 			++j) {
 			struct prototype_judgement_derivation_candidate* proof =
@@ -11225,7 +11285,6 @@ int prototype_artifact_append_graph(
 	uint32_t universe_offset = target_type_declarations->next_level_var;
 	uint32_t claim_candidate_offset =
 		(uint32_t)target_judgement->claim_candidate_count;
-	uint32_t proof_offset = (uint32_t)target_judgement->derivation_candidate_count;
 	uint32_t context_relocation[PROTOTYPE_CONTEXT_CAPACITY];
 	uint32_t target_representation_anchors[512];
 	uint32_t source_representation_anchors[512];
@@ -11249,8 +11308,7 @@ int prototype_artifact_append_graph(
 		source_substitutions,
 		context_relocation,
 		source_contexts->context_count,
-		term_offset,
-		proof_offset
+		term_offset
 	) != 0) {
 		return -1;
 	}
@@ -14218,21 +14276,27 @@ static int compile_external_ref_ref(
 			p_ret->computation_kind = COMPILE_REF_COMPUTATION_KIND_FUNCTION;
 		}
 	}
-	return operation_add(
-		ctx,
-		PROTOTYPE_OPERATION_ATOM,
-		term,
-		p_ret->classifier,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_INVALID_ID,
-		0,
-		&p_ret->operation
-	);
+	if (operation_add(
+			ctx,
+			PROTOTYPE_OPERATION_ATOM,
+			term,
+			p_ret->classifier,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			0,
+			&p_ret->operation
+		) != 0) {
+		return -1;
+	}
+	ctx->metadata->operations[p_ret->operation].polarity = p_ret->polarity;
+	ctx->metadata->operations[p_ret->operation].computation_kind =
+		p_ret->computation_kind;
+	return 0;
 }
 
 static int graph_classifier_list_contains_normalization_equal(
@@ -14420,6 +14484,14 @@ static int operation_add(
 		&node.computation_kind,
 		&node.application_role
 	);
+	if (tag == PROTOTYPE_OPERATION_ASCRIPTION) {
+		if (body >= ctx->metadata->operation_count) {
+			return -1;
+		}
+		node.polarity = ctx->metadata->operations[body].polarity;
+		node.computation_kind =
+			ctx->metadata->operations[body].computation_kind;
+	}
 	node.context_id = ctx->context_ids[ctx->binder_count];
 	node.core_term = core_term;
 	node.known_classifier = classifier;
@@ -14812,6 +14884,9 @@ static int compile_ref_from_term(
 		) != 0) {
 		return -1;
 	}
+	ctx->metadata->operations[p_ref->operation].polarity = p_ref->polarity;
+	ctx->metadata->operations[p_ref->operation].computation_kind =
+		p_ref->computation_kind;
 	return 0;
 }
 
@@ -20377,6 +20452,9 @@ static int compile_ast_value_ref(
 			) != 0) {
 			return -1;
 		}
+		ctx->metadata->operations[operation].polarity = p_ret->polarity;
+		ctx->metadata->operations[operation].computation_kind =
+			p_ret->computation_kind;
 		p_ret->operation = operation;
 		prototype_judgement_delta_set_context(
 			&ctx->judgement_delta,

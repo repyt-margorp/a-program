@@ -344,6 +344,27 @@ int prototype_type_declaration_instance_info(
 	uint32_t* p_argument_count
 );
 
+/* Resolve a nominal TYPE_VIEW to its validated declaration. This query is the
+ * semantic ADT boundary: it never falls back to representation shape or
+ * readback metadata. */
+int prototype_type_view_declaration_query(
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms,
+	uint32_t type_view,
+	uint32_t* p_type_id,
+	const struct prototype_type_declaration** p_declaration
+);
+
+int prototype_type_view_constructor_telescope_query(
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms,
+	uint32_t type_view,
+	uint32_t constructor_ordinal,
+	const struct prototype_type_constructor_declaration** p_constructor
+);
+
 int prototype_type_declaration_rebuild_representations(
 	const struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* db,

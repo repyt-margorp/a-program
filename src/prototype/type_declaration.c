@@ -1867,6 +1867,75 @@ int prototype_type_declaration_instance_info(
 	return 0;
 }
 
+int prototype_type_view_declaration_query(
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms,
+	uint32_t type_view,
+	uint32_t* p_type_id,
+	const struct prototype_type_declaration** p_declaration
+) {
+	if (!db || !contexts || !terms || !p_type_id || !p_declaration ||
+		type_view >= terms->term_count ||
+		terms->terms[type_view].tag != PROTOTYPE_TERM_TYPE_VIEW ||
+		prototype_constructor_telescopes_validate(db, contexts, terms) != 0) {
+		return -1;
+	}
+	uint32_t type_id = terms->terms[type_view].as.type_view.view_type_id;
+	if (type_id >= db->type_count ||
+		!type_declaration_present(&db->type_declarations[type_id])) {
+		return -1;
+	}
+	const struct prototype_type_declaration* declaration =
+		&db->type_declarations[type_id];
+	if (declaration->type_index != type_id ||
+		declaration->namespace_symbol_id !=
+			terms->terms[type_view].as.type_view.identity.namespace_symbol_id ||
+		declaration->name_symbol_id !=
+			terms->terms[type_view].as.type_view.identity.name_symbol_id) {
+		return -1;
+	}
+	*p_type_id = type_id;
+	*p_declaration = declaration;
+	return 0;
+}
+
+int prototype_type_view_constructor_telescope_query(
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_term_db* terms,
+	uint32_t type_view,
+	uint32_t constructor_ordinal,
+	const struct prototype_type_constructor_declaration** p_constructor
+) {
+	uint32_t type_id;
+	const struct prototype_type_declaration* declaration;
+	if (!p_constructor ||
+		prototype_type_view_declaration_query(
+			db,
+			contexts,
+			terms,
+			type_view,
+			&type_id,
+			&declaration
+		) != 0 || constructor_ordinal >= declaration->constructor_count ||
+		declaration->first_constructor + constructor_ordinal >=
+			db->constructor_count) {
+		return -1;
+	}
+	const struct prototype_type_constructor_declaration* constructor =
+		&db->constructor_declarations[
+			declaration->first_constructor + constructor_ordinal
+		];
+	if (!constructor_declaration_present(constructor) ||
+		constructor->owner_type != type_id ||
+		constructor->constructor_index != constructor_ordinal) {
+		return -1;
+	}
+	*p_constructor = constructor;
+	return 0;
+}
+
 int prototype_type_declaration_rebuild_representations(
 	const struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* db,

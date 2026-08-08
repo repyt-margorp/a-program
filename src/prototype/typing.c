@@ -39,6 +39,13 @@ static int candidate_has_derivation_other_than(
 	uint32_t claim_id,
 	int excluded_proof_kind
 );
+static int judgement_operation_expected_polarity(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	uint32_t operation_id,
+	int* p_polarity
+);
 
 void prototype_judgement_db_init(
 	struct prototype_judgement_db* db,
@@ -57,6 +64,85 @@ void prototype_judgement_db_init(
 	db->derivations = derivations;
 	db->claim_capacity = claim_capacity;
 	db->derivation_capacity = claim_capacity;
+}
+
+const struct prototype_judgement_claim* prototype_judgement_claim_get(
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id
+) {
+	return judgement && claim_id < judgement->claim_count ?
+		&judgement->claims[claim_id] : NULL;
+}
+
+const struct prototype_judgement_derivation* prototype_judgement_derivation_get(
+	const struct prototype_judgement_db* judgement,
+	uint32_t derivation_id
+) {
+	return judgement && derivation_id < judgement->derivation_count ?
+		&judgement->derivations[derivation_id] : NULL;
+}
+
+static int judgement_claim_identity_equal(
+	const struct prototype_judgement_claim* left,
+	const struct prototype_judgement_claim* right
+) {
+	return left && right && left->kind == right->kind &&
+		left->authority_kind == right->authority_kind &&
+		left->authority_id == right->authority_id &&
+		left->context_id == right->context_id &&
+		left->operation_id == right->operation_id &&
+		left->subject == right->subject &&
+		left->classifier == right->classifier;
+}
+
+int prototype_judgement_find_exact_claim(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_claim* identity,
+	uint32_t* p_claim_id
+) {
+	if (!judgement || !identity || !p_claim_id) {
+		return -1;
+	}
+	uint32_t found = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
+		if (!judgement_claim_identity_equal(&judgement->claims[i], identity)) {
+			continue;
+		}
+		if (found != PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		found = i;
+	}
+	if (found == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	*p_claim_id = found;
+	return 0;
+}
+
+int prototype_judgement_claim_derivations(
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	uint32_t* derivation_ids,
+	size_t derivation_capacity,
+	size_t* p_derivation_count
+) {
+	if (!judgement || claim_id >= judgement->claim_count ||
+		(!derivation_ids && derivation_capacity != 0) || !p_derivation_count) {
+		return -1;
+	}
+	size_t count = 0;
+	for (uint32_t i = 0; i < (uint32_t)judgement->derivation_count; ++i) {
+		if (judgement->derivations[i].conclusion_claim_id != claim_id) {
+			continue;
+		}
+		if (count < derivation_capacity) {
+			derivation_ids[count] = i;
+		}
+		count++;
+	}
+	*p_derivation_count = count;
+	return count <= derivation_capacity ? 0 : 1;
 }
 
 void prototype_judgement_delta_init(
@@ -918,6 +1004,11 @@ static int hott_goal_kind_is_valid(int kind) {
 		kind <= PROTOTYPE_HOTT_GOAL_TERM_ACTION;
 }
 
+static int hott_goal_variant_is_valid(int variant) {
+	return variant == PROTOTYPE_HOTT_GOAL_VARIANT_OBSERVATION ||
+		variant == PROTOTYPE_HOTT_GOAL_VARIANT_ACTION;
+}
+
 static int hott_goal_state_is_valid(int state) {
 	return state >= PROTOTYPE_HOTT_GOAL_PENDING &&
 		state <= PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
@@ -928,59 +1019,551 @@ static int hott_residual_reason_is_valid(int reason) {
 		reason <= PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
 }
 
-static int hott_local_rule_is_valid(int rule) {
-	return rule >= PROTOTYPE_HOTT_LOCAL_RULE_NONE &&
-		rule <= PROTOTYPE_HOTT_LOCAL_RULE_PURE_COMPUTATION;
+static int hott_rule_is_valid(int rule) {
+	return rule >= PROTOTYPE_HOTT_RULE_NONE &&
+		rule <= PROTOTYPE_HOTT_RULE_OBS_REINDEX;
 }
 
-static int hott_endpoint_substitution_is_valid(
-	const struct prototype_substitution_db* substitutions,
-	uint32_t substitution_id,
-	uint32_t bridge_context,
-	uint32_t endpoint_context
+static int hott_child_role_is_valid(int role) {
+	return role >= PROTOTYPE_HOTT_CHILD_NONE &&
+		role <= PROTOTYPE_HOTT_CHILD_RECURSIVE_IH;
+}
+
+static int hott_child_position_is_valid(int role, uint32_t index) {
+	switch (role) {
+	case PROTOTYPE_HOTT_CHILD_NONE:
+		return index == PROTOTYPE_INVALID_ID;
+	case PROTOTYPE_HOTT_CHILD_PI_DOMAIN:
+	case PROTOTYPE_HOTT_CHILD_PI_CODOMAIN:
+		return index == 0;
+	case PROTOTYPE_HOTT_CHILD_ADT_CONSTRUCTOR_FIELD:
+	case PROTOTYPE_HOTT_CHILD_MATCH_CASE:
+	case PROTOTYPE_HOTT_CHILD_RECURSIVE_IH:
+		return index != PROTOTYPE_INVALID_ID;
+	default:
+		return 0;
+	}
+}
+
+void prototype_hott_bridge_db_init(
+	struct prototype_hott_bridge_db* db,
+	struct prototype_hott_bridge* bridges,
+	size_t bridge_capacity
 ) {
-	const struct prototype_substitution* substitution =
-		prototype_substitution_get(substitutions, substitution_id);
-	return substitution && substitution->source_context == bridge_context &&
-		substitution->target_context == endpoint_context;
+	if (!db) {
+		return;
+	}
+	memset(db, 0, sizeof(*db));
+	db->bridges = bridges;
+	db->bridge_capacity = bridge_capacity;
+}
+
+const struct prototype_hott_bridge* prototype_hott_bridge_db_get(
+	const struct prototype_hott_bridge_db* db,
+	uint32_t bridge_id
+) {
+	return db && bridge_id < db->bridge_count ? &db->bridges[bridge_id] : NULL;
+}
+
+static int hott_bridge_record_is_valid(
+	const struct prototype_hott_bridge* bridge,
+	uint32_t expected_id,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!bridge || !contexts || !substitutions || !certificates || !judgement ||
+		bridge->id != expected_id ||
+		bridge->source_context_id >= contexts->context_count ||
+		bridge->bridge_context_id >= contexts->context_count) {
+		return 0;
+	}
+	const struct prototype_substitution* left = prototype_substitution_get(
+		substitutions, bridge->left_substitution_id
+	);
+	const struct prototype_substitution* right = prototype_substitution_get(
+		substitutions, bridge->right_substitution_id
+	);
+	if (!left || !right ||
+		left->source_context != bridge->bridge_context_id ||
+		right->source_context != bridge->bridge_context_id ||
+		left->target_context != bridge->source_context_id ||
+		right->target_context != bridge->source_context_id) {
+		return 0;
+	}
+
+	/* P1-R0 admits the terminal context fragment. Its relational context and
+	 * both projections are definitionally the unique identity substitution, so
+	 * no extension certificate exists. Nonempty relational extension is deferred
+	 * until O1 defines its carrier and relation field. */
+	if (bridge->source_context_id != prototype_context_empty(contexts) ||
+		bridge->bridge_context_id != bridge->source_context_id ||
+		left->kind != PROTOTYPE_SUBSTITUTION_IDENTITY ||
+		right->kind != PROTOTYPE_SUBSTITUTION_IDENTITY ||
+		bridge->left_substitution_id != bridge->right_substitution_id ||
+		bridge->left_certificate_id != PROTOTYPE_INVALID_ID ||
+		bridge->right_certificate_id != PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	return 1;
+}
+
+int prototype_hott_bridge_db_construct(
+	struct prototype_hott_bridge_db* db,
+	const struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_judgement_db* judgement,
+	uint32_t source_context_id,
+	uint32_t* p_bridge_id
+) {
+	if (!db || !db->bridges || !contexts || !substitutions || !certificates ||
+		!judgement || !p_bridge_id || source_context_id >= contexts->context_count) {
+		return -1;
+	}
+	if (source_context_id != prototype_context_empty(contexts)) {
+		return 1;
+	}
+	uint32_t identity;
+	if (prototype_substitution_identity(
+			substitutions, contexts, source_context_id, &identity
+		) != 0 || db->bridge_count >= db->bridge_capacity) {
+		return -1;
+	}
+	struct prototype_hott_bridge bridge = {
+		.id = (uint32_t)db->bridge_count,
+		.source_context_id = source_context_id,
+		.bridge_context_id = source_context_id,
+		.left_substitution_id = identity,
+		.right_substitution_id = identity,
+		.left_certificate_id = PROTOTYPE_INVALID_ID,
+		.right_certificate_id = PROTOTYPE_INVALID_ID
+	};
+	if (!hott_bridge_record_is_valid(
+			&bridge,
+			bridge.id,
+			contexts,
+			substitutions,
+			certificates,
+			judgement
+		)) {
+		return -1;
+	}
+	db->bridges[db->bridge_count++] = bridge;
+	*p_bridge_id = bridge.id;
+	return 0;
+}
+
+int prototype_hott_bridge_db_validate(
+	const struct prototype_hott_bridge_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!db || db->bridge_count > db->bridge_capacity ||
+		(db->bridge_count != 0 && !db->bridges) ||
+		prototype_substitution_certificate_db_validate(
+			certificates, substitutions, judgement
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->bridge_count; ++i) {
+		if (!hott_bridge_record_is_valid(
+				&db->bridges[i],
+				i,
+				contexts,
+				substitutions,
+				certificates,
+				judgement
+			)) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int hott_is_type_claim_matches(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	uint32_t context_id,
+	uint32_t subject
+);
+
+static int hott_context_is_formed(
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
+	uint32_t context_id
+) {
+	if (!contexts || !terms || !type_declarations || !judgement ||
+		context_id >= contexts->context_count) {
+		return 0;
+	}
+	uint32_t empty = prototype_context_empty(contexts);
+	uint32_t cursor = context_id;
+	while (cursor != empty) {
+		const struct prototype_context* context = prototype_context_get(
+			contexts, cursor
+		);
+		if (!context || context->parent >= cursor ||
+			context->classifier == PROTOTYPE_INVALID_ID ||
+			context->classifier >= terms->term_count ||
+			context->classifier_variable != PROTOTYPE_INVALID_ID) {
+			return 0;
+		}
+		int found = 0;
+		for (uint32_t i = 0; i < judgement->claim_count; ++i) {
+			if (hott_is_type_claim_matches(
+					terms,
+					type_declarations,
+					judgement,
+					i,
+					context->parent,
+					context->classifier
+				)) {
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			return 0;
+		}
+		cursor = context->parent;
+	}
+	return cursor == empty;
+}
+
+static int hott_claim_matches(
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	int kind,
+	uint32_t context_id,
+	uint32_t operation_id,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, claim_id);
+	return claim && claim->kind == kind && claim->context_id == context_id &&
+		claim->operation_id == operation_id && claim->subject == subject &&
+		claim->classifier == classifier &&
+		((operation_id == PROTOTYPE_INVALID_ID &&
+		  claim->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION) ||
+		 (operation_id != PROTOTYPE_INVALID_ID &&
+		  claim->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+		  claim->authority_id == operation_id));
+}
+
+static int hott_is_type_claim_matches(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	uint32_t context_id,
+	uint32_t subject
+)
+{
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, claim_id);
+	uint32_t classifier;
+	if (!claim || claim->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		claim->context_id != context_id || claim->subject != subject ||
+		claim->operation_id != PROTOTYPE_INVALID_ID ||
+		claim->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+		claim->classifier >= terms->term_count ||
+		prototype_judgement_classifier_value_whnf(
+			terms, type_declarations, claim->classifier, &classifier
+		) != 0) {
+		return 0;
+	}
+	return classifier < terms->term_count &&
+		terms->terms[classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR;
+}
+
+static int hott_operation_matches_claim(
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id
+) {
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, claim_id);
+	if (!claim) {
+		return 0;
+	}
+	if (claim->operation_id == PROTOTYPE_INVALID_ID) {
+		return claim->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
+	}
+	if (!operations || claim->operation_id >= operations->operation_count ||
+		claim->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+		claim->authority_id != claim->operation_id) {
+		return 0;
+	}
+	const struct prototype_operation_node* operation =
+		&operations->operations[claim->operation_id];
+	return operation->context_id == claim->context_id &&
+		operation->core_term == claim->subject &&
+		operation->classifier == claim->classifier;
+}
+
+static uint32_t hott_term_head(
+	const struct prototype_term_db* terms,
+	uint32_t term_id
+) {
+	while (terms && term_id < terms->term_count &&
+		terms->terms[term_id].tag == PROTOTYPE_TERM_APP) {
+		term_id = terms->terms[term_id].as.app.function;
+	}
+	return terms && term_id < terms->term_count ? term_id : PROTOTYPE_INVALID_ID;
+}
+
+static int hott_explicit_contradiction_is_valid(
+	const struct prototype_term_db* terms,
+	const struct prototype_hott_goal* goal
+) {
+	if (!terms || !goal || goal->variant != PROTOTYPE_HOTT_GOAL_VARIANT_OBSERVATION ||
+		goal->rule != PROTOTYPE_HOTT_RULE_OBS_ADT_DISTINCT) {
+		return 0;
+	}
+	uint32_t left = hott_term_head(terms, goal->as.observation.left_endpoint);
+	uint32_t right = hott_term_head(terms, goal->as.observation.right_endpoint);
+	return left != PROTOTYPE_INVALID_ID && right != PROTOTYPE_INVALID_ID &&
+		terms->terms[left].tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+		terms->terms[right].tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+		terms->terms[left].as.constructor.owner ==
+			terms->terms[right].as.constructor.owner &&
+		terms->terms[left].as.constructor.constructor_id !=
+			terms->terms[right].as.constructor.constructor_id;
+}
+
+static int hott_conversion_result_is_unset(
+	const struct prototype_term_conversion_result* result
+) {
+	return result && (result->status == 0 ||
+		result->status == PROTOTYPE_TERM_CONVERSION_INVALID);
+}
+
+static int hott_conversion_result_matches_goal(
+	const struct prototype_hott_goal* goal
+) {
+	const struct prototype_kernel_conversion_goal* request =
+		&goal->conversion_request;
+	const struct prototype_term_conversion_result* result = &request->result;
+	if (hott_conversion_result_is_unset(result)) {
+		return 1;
+	}
+	if (result->profile != request->normalization_profile ||
+		result->left != request->left_term ||
+		result->right != request->right_term ||
+		result->step_limit != request->step_limit ||
+		result->graph_revision != goal->conversion_graph_revision ||
+		result->steps_used > result->step_limit) {
+		return 0;
+	}
+	switch (result->status) {
+	case PROTOTYPE_TERM_CONVERSION_EQUAL:
+	case PROTOTYPE_TERM_CONVERSION_NOT_EQUAL:
+		return result->reason == PROTOTYPE_TERM_CONVERSION_REASON_NONE;
+	case PROTOTYPE_TERM_CONVERSION_RESIDUAL:
+		return result->reason == PROTOTYPE_TERM_CONVERSION_REASON_NEUTRAL ||
+			result->reason == PROTOTYPE_TERM_CONVERSION_REASON_OPAQUE_DEFINITION ||
+			result->reason == PROTOTYPE_TERM_CONVERSION_REASON_UNSUPPORTED_RULE ||
+			result->reason == PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT;
+	case PROTOTYPE_TERM_CONVERSION_BLOCKED_EFFECT:
+		return result->reason == PROTOTYPE_TERM_CONVERSION_REASON_EFFECT_REQUEST;
+	case PROTOTYPE_TERM_CONVERSION_EXHAUSTED:
+		return result->reason == PROTOTYPE_TERM_CONVERSION_REASON_STEP_LIMIT;
+	default:
+		return 0;
+	}
 }
 
 static int hott_goal_record_is_valid(
 	const struct prototype_hott_goal_db* db,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_hott_bridge_db* bridges,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
 	const struct prototype_hott_goal* goal,
 	uint32_t expected_id
 ) {
-	if (!db || !contexts || !substitutions || !terms || !goal ||
-		goal->id != expected_id || !hott_goal_kind_is_valid(goal->kind) ||
+	if (!db || !contexts || !substitutions || !certificates || !bridges ||
+		!terms || !type_declarations || !operations || !judgement || !goal ||
+		goal->id != expected_id || !hott_goal_variant_is_valid(goal->variant) ||
+		!hott_goal_kind_is_valid(goal->kind) ||
 		!hott_goal_state_is_valid(goal->state) ||
 		!hott_residual_reason_is_valid(goal->residual_reason) ||
-		!hott_local_rule_is_valid(goal->local_type_former_rule) ||
-		!kernel_conversion_profile_is_admitted(goal->normalization_profile) ||
-		goal->context_id >= contexts->context_count ||
-		goal->bridge_context_id >= contexts->context_count ||
-		goal->carrier_classifier >= terms->term_count ||
-		goal->left_endpoint >= terms->term_count ||
-		goal->right_endpoint >= terms->term_count ||
-		!hott_endpoint_substitution_is_valid(
-			substitutions,
-			goal->left_endpoint_substitution,
-			goal->bridge_context_id,
-			goal->context_id
-		) || !hott_endpoint_substitution_is_valid(
-			substitutions,
-			goal->right_endpoint_substitution,
-			goal->bridge_context_id,
-			goal->context_id
-		) || (goal->parent_goal_id != PROTOTYPE_INVALID_ID &&
-			goal->parent_goal_id >= expected_id)) {
+		!hott_rule_is_valid(goal->rule) ||
+		!hott_child_role_is_valid(goal->parent_role) ||
+		!hott_child_position_is_valid(goal->parent_role, goal->parent_index) ||
+		(goal->parent_goal_id == PROTOTYPE_INVALID_ID) !=
+			(goal->parent_role == PROTOTYPE_HOTT_CHILD_NONE) ||
+		(goal->parent_goal_id != PROTOTYPE_INVALID_ID &&
+		 goal->parent_goal_id >= expected_id) ||
+		goal->state == PROTOTYPE_HOTT_GOAL_SOLVED ||
+		goal->witness_term != PROTOTYPE_INVALID_ID ||
+		goal->witness_claim_id != PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
 	if ((goal->state == PROTOTYPE_HOTT_GOAL_RESIDUAL ||
-		 goal->state == PROTOTYPE_HOTT_GOAL_UNSUPPORTED) ==
-		(goal->residual_reason == PROTOTYPE_HOTT_RESIDUAL_NONE)) {
+		 goal->state == PROTOTYPE_HOTT_GOAL_UNSUPPORTED) !=
+		(goal->residual_reason != PROTOTYPE_HOTT_RESIDUAL_NONE)) {
+		return -1;
+	}
+	if (goal->state == PROTOTYPE_HOTT_GOAL_CONTRADICTION &&
+		!hott_explicit_contradiction_is_valid(terms, goal)) {
+		return -1;
+	}
+
+	if (goal->variant == PROTOTYPE_HOTT_GOAL_VARIANT_ACTION) {
+		if ((goal->kind != PROTOTYPE_HOTT_GOAL_TYPE_ACTION &&
+			 goal->kind != PROTOTYPE_HOTT_GOAL_TERM_ACTION) ||
+			goal->as.action.context_id >= contexts->context_count ||
+			goal->as.action.subject >= terms->term_count ||
+			!hott_context_is_formed(
+				contexts, terms, type_declarations, judgement,
+				goal->as.action.context_id
+			) || goal->state != PROTOTYPE_HOTT_GOAL_UNSUPPORTED ||
+			goal->residual_reason !=
+				PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE) {
+			return -1;
+		}
+		const struct prototype_judgement_claim* subject_claim =
+			prototype_judgement_claim_get(
+				judgement, goal->as.action.subject_claim_id
+			);
+		if (!subject_claim ||
+			subject_claim->context_id != goal->as.action.context_id ||
+			subject_claim->subject != goal->as.action.subject) {
+			return -1;
+		}
+		if (goal->kind == PROTOTYPE_HOTT_GOAL_TYPE_ACTION) {
+			return hott_is_type_claim_matches(
+				terms,
+				type_declarations,
+				judgement,
+				goal->as.action.subject_claim_id,
+				goal->as.action.context_id,
+				goal->as.action.subject
+			) ? 0 : -1;
+		}
+		return subject_claim->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			hott_operation_matches_claim(
+				operations, judgement, goal->as.action.subject_claim_id
+			) ? 0 : -1;
+	}
+
+	if (goal->kind != PROTOTYPE_HOTT_GOAL_VALUE_OBSERVATION &&
+		goal->kind != PROTOTYPE_HOTT_GOAL_COMPUTATION_OBSERVATION) {
+		return -1;
+	}
+	const struct prototype_hott_observation_goal* observation =
+		&goal->as.observation;
+	if (observation->context_id >= contexts->context_count ||
+		observation->carrier_classifier >= terms->term_count ||
+		observation->left_endpoint >= terms->term_count ||
+		observation->right_endpoint >= terms->term_count ||
+		!hott_context_is_formed(
+			contexts, terms, type_declarations, judgement,
+			observation->context_id
+		) || !hott_is_type_claim_matches(
+			terms,
+			type_declarations,
+			judgement,
+			observation->carrier_claim_id,
+			observation->context_id,
+			observation->carrier_classifier
+		) || !hott_claim_matches(
+			judgement,
+			observation->left_claim_id,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			observation->context_id,
+			observation->left_operation_id,
+			observation->left_endpoint,
+			observation->carrier_classifier
+		) || !hott_claim_matches(
+			judgement,
+			observation->right_claim_id,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			observation->context_id,
+			observation->right_operation_id,
+			observation->right_endpoint,
+			observation->carrier_classifier
+		) || !hott_operation_matches_claim(
+			operations, judgement, observation->left_claim_id
+		) || !hott_operation_matches_claim(
+			operations, judgement, observation->right_claim_id
+		)) {
+		return -1;
+	}
+	const struct prototype_hott_bridge* bridge = prototype_hott_bridge_db_get(
+		bridges, observation->bridge_id
+	);
+	if (!bridge || bridge->source_context_id != observation->context_id ||
+		!hott_bridge_record_is_valid(
+			bridge,
+			observation->bridge_id,
+			contexts,
+			substitutions,
+			certificates,
+			judgement
+		)) {
+		return -1;
+	}
+	int carrier_category;
+	int left_category;
+	int right_category;
+	if (prototype_judgement_claim_category(
+			judgement,
+			terms,
+			type_declarations,
+			NULL,
+			operations,
+			observation->carrier_claim_id,
+			&carrier_category
+		) != 0 || carrier_category != PROTOTYPE_JUDGEMENT_CATEGORY_TYPE ||
+		prototype_judgement_claim_category(
+			judgement,
+			terms,
+			type_declarations,
+			NULL,
+			operations,
+			observation->left_claim_id,
+			&left_category
+		) != 0 || prototype_judgement_claim_category(
+			judgement,
+			terms,
+			type_declarations,
+			NULL,
+			operations,
+			observation->right_claim_id,
+			&right_category
+		) != 0 || left_category != right_category ||
+		(goal->kind == PROTOTYPE_HOTT_GOAL_VALUE_OBSERVATION &&
+		 left_category != PROTOTYPE_JUDGEMENT_CATEGORY_VALUE) ||
+		(goal->kind == PROTOTYPE_HOTT_GOAL_COMPUTATION_OBSERVATION &&
+		 left_category != PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION)) {
+		return -1;
+	}
+	if (prototype_judgement_kernel_conversion_goal_validate(
+			contexts, terms, &goal->conversion_request, 1
+		) != 0 || goal->conversion_request.id != goal->id ||
+		goal->conversion_request.context_id != observation->context_id ||
+		goal->conversion_request.carrier_classifier !=
+			observation->carrier_classifier ||
+		goal->conversion_request.left_term != observation->left_endpoint ||
+		goal->conversion_request.right_term != observation->right_endpoint ||
+		goal->conversion_request.normalization_profile !=
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
+		!hott_conversion_result_matches_goal(goal)) {
 		return -1;
 	}
 	return 0;
@@ -1023,7 +1606,12 @@ int prototype_hott_goal_db_add(
 	struct prototype_hott_goal_db* db,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_hott_bridge_db* bridges,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
 	struct prototype_hott_goal goal,
 	uint32_t* p_goal_id
 ) {
@@ -1032,7 +1620,8 @@ int prototype_hott_goal_db_add(
 	}
 	goal.id = (uint32_t)db->goal_count;
 	if (hott_goal_record_is_valid(
-			db, contexts, substitutions, terms, &goal, goal.id
+			db, contexts, substitutions, certificates, bridges, terms,
+			type_declarations, operations, judgement, &goal, goal.id
 		) != 0) {
 		return -1;
 	}
@@ -1045,7 +1634,12 @@ int prototype_hott_goal_db_validate(
 	const struct prototype_hott_goal_db* db,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_hott_bridge_db* bridges,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement
 ) {
 	if (!db || (db->goal_count > 0 && !db->goals) ||
 		db->goal_count > db->goal_capacity) {
@@ -1053,7 +1647,8 @@ int prototype_hott_goal_db_validate(
 	}
 	for (uint32_t i = 0; i < db->goal_count; ++i) {
 		if (hott_goal_record_is_valid(
-				db, contexts, substitutions, terms, &db->goals[i], i
+				db, contexts, substitutions, certificates, bridges, terms,
+				type_declarations, operations, judgement, &db->goals[i], i
 			) != 0) {
 			return -1;
 		}
@@ -1061,124 +1656,264 @@ int prototype_hott_goal_db_validate(
 	return 0;
 }
 
-static int term_app_head_tag(
+static int hott_term_first_fragment_scan(
 	const struct prototype_term_db* terms,
-	uint32_t term_id
+	uint32_t term_id,
+	uint32_t depth,
+	int* p_reason
 ) {
-	if (!terms || term_id >= terms->term_count) {
+	if (!terms || !p_reason || term_id >= terms->term_count || depth > 512) {
+		return -1;
+	}
+	const struct prototype_term* term = &terms->terms[term_id];
+	switch (term->tag) {
+	case PROTOTYPE_TERM_OPERATION_REQUEST:
+		*p_reason = PROTOTYPE_HOTT_RESIDUAL_OPERATION_REQUEST;
+		return 1;
+	case PROTOTYPE_TERM_COMPUTATION_FOLD:
+		*p_reason = PROTOTYPE_HOTT_RESIDUAL_COMPUTATION_FOLD;
+		return 1;
+	case PROTOTYPE_TERM_PURE_PRIMITIVE:
+	case PROTOTYPE_TERM_EFFECT_OPERATION:
+		*p_reason = PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE;
+		return 1;
+	case PROTOTYPE_TERM_APP:
+		{
+			int status = hott_term_first_fragment_scan(
+				terms, term->as.app.function, depth + 1, p_reason
+			);
+			if (status != 0) {
+				return status;
+			}
+		}
+		return hott_term_first_fragment_scan(
+			terms, term->as.app.argument, depth + 1, p_reason
+		);
+	case PROTOTYPE_TERM_LAMBDA:
+		return hott_term_first_fragment_scan(
+			terms, term->as.lambda.body, depth + 1, p_reason
+		);
+	case PROTOTYPE_TERM_PI:
+		{
+			int status = hott_term_first_fragment_scan(
+				terms, term->as.pi.domain, depth + 1, p_reason
+			);
+			if (status != 0) {
+				return status;
+			}
+		}
+		return hott_term_first_fragment_scan(
+			terms, term->as.pi.codomain_family, depth + 1, p_reason
+		);
+	case PROTOTYPE_TERM_MATCH:
+		{
+			int status = hott_term_first_fragment_scan(
+				terms, term->as.match.scrutinee, depth + 1, p_reason
+			);
+			if (status != 0) {
+				return status;
+			}
+		}
+		for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
+			uint32_t case_id = term->as.match.first_case + i;
+			if (case_id >= terms->case_count) {
+				return -1;
+			}
+			int status = hott_term_first_fragment_scan(
+				terms, terms->cases[case_id].body, depth + 1, p_reason
+			);
+			if (status != 0) {
+				return status;
+			}
+		}
+		return 0;
+	case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+		return hott_term_first_fragment_scan(
+			terms, term->as.induction_hypothesis.argument, depth + 1, p_reason
+		);
+	case PROTOTYPE_TERM_RETURN:
+		return hott_term_first_fragment_scan(
+			terms, term->as.return_term.value, depth + 1, p_reason
+		);
+	case PROTOTYPE_TERM_THUNK:
+		return hott_term_first_fragment_scan(
+			terms, term->as.thunk.computation, depth + 1, p_reason
+		);
+	case PROTOTYPE_TERM_FORCE:
+		return hott_term_first_fragment_scan(
+			terms, term->as.force.value, depth + 1, p_reason
+		);
+	case PROTOTYPE_TERM_COMPUTATION_TYPE:
+		{
+			int status = hott_term_first_fragment_scan(
+				terms, term->as.computation_type.label, depth + 1, p_reason
+			);
+			if (status != 0) {
+				return status;
+			}
+		}
+		return hott_term_first_fragment_scan(
+			terms, term->as.computation_type.result, depth + 1, p_reason
+		);
+	case PROTOTYPE_TERM_THUNK_TYPE:
+		return hott_term_first_fragment_scan(
+			terms, term->as.thunk_type.computation, depth + 1, p_reason
+		);
+	default:
 		return 0;
 	}
-	while (terms->terms[term_id].tag == PROTOTYPE_TERM_APP) {
-		term_id = terms->terms[term_id].as.app.function;
-		if (term_id >= terms->term_count) {
-			return 0;
-		}
-	}
-	return terms->terms[term_id].tag;
 }
 
 int prototype_hott_goal_classify_admission(
-	const struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_hott_bridge_db* bridges,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
 	struct prototype_hott_goal* goal
 ) {
-	if (!terms || !goal || goal->carrier_classifier >= terms->term_count ||
-		goal->left_endpoint >= terms->term_count ||
-		goal->right_endpoint >= terms->term_count) {
+	if (!goal || goal->variant != PROTOTYPE_HOTT_GOAL_VARIANT_OBSERVATION) {
 		return -1;
 	}
 	goal->state = PROTOTYPE_HOTT_GOAL_PENDING;
 	goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
-	if (terms->terms[goal->carrier_classifier].tag == PROTOTYPE_TERM_TYPE_VIEW) {
-		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_TYPE_VIEW;
-		return 0;
-	}
-	if (terms->terms[goal->carrier_classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
-		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_UNIVERSE;
-		return 0;
-	}
-	if (goal->kind == PROTOTYPE_HOTT_GOAL_TYPE_ACTION ||
-		goal->kind == PROTOTYPE_HOTT_GOAL_TERM_ACTION) {
-		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
-		return 0;
-	}
-	int left_tag = term_app_head_tag(terms, goal->left_endpoint);
-	int right_tag = term_app_head_tag(terms, goal->right_endpoint);
-	if (left_tag == PROTOTYPE_TERM_OPERATION_REQUEST ||
-		right_tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
-		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_OPERATION_REQUEST;
-		return 0;
-	}
-	if (left_tag == PROTOTYPE_TERM_COMPUTATION_FOLD ||
-		right_tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
-		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_COMPUTATION_FOLD;
-		return 0;
-	}
-	if (left_tag == PROTOTYPE_TERM_PURE_PRIMITIVE ||
-		right_tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
-		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE;
-		return 0;
-	}
-	if (goal->kind != PROTOTYPE_HOTT_GOAL_COMPUTATION_OBSERVATION) {
-		return 0;
-	}
-	const struct prototype_term* carrier = &terms->terms[goal->carrier_classifier];
-	if (carrier->tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+	goal->rule = PROTOTYPE_HOTT_RULE_OBS_CONVERT;
+	if (hott_goal_record_is_valid(
+			&(struct prototype_hott_goal_db){ .goals = goal, .goal_count = 1,
+				.goal_capacity = 1 },
+			contexts,
+			substitutions,
+			certificates,
+			bridges,
+			terms,
+			type_declarations,
+			operations,
+			judgement,
+			goal,
+			goal->id
+		) != 0) {
 		return -1;
 	}
-	if (carrier->as.computation_type.result >= terms->term_count) {
-		return -1;
-	}
-	int result_tag = terms->terms[carrier->as.computation_type.result].tag;
-	if (result_tag == PROTOTYPE_TERM_TYPE_VIEW) {
-		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_TYPE_VIEW;
-		return 0;
-	}
-	if (result_tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
-		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_UNIVERSE;
-		return 0;
-	}
-	int purity = prototype_term_effect_row_purity(
-		terms, carrier->as.computation_type.label
+	int reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
+	int scan_status = hott_term_first_fragment_scan(
+		terms, goal->as.observation.left_endpoint, 0, &reason
 	);
-	if (purity == PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
+	if (scan_status == 0) {
+		scan_status = hott_term_first_fragment_scan(
+			terms, goal->as.observation.right_endpoint, 0, &reason
+		);
+	}
+	if (scan_status < 0) {
+		return -1;
+	}
+	if (scan_status > 0) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = reason == PROTOTYPE_HOTT_RESIDUAL_NONE ?
+			PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE : reason;
 		return 0;
 	}
-	goal->state = PROTOTYPE_HOTT_GOAL_RESIDUAL;
-	if (purity == PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL) {
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL;
+	uint32_t carrier = goal->as.observation.carrier_classifier;
+	const struct prototype_term* carrier_term = &terms->terms[carrier];
+	if (carrier_term->tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
+		goal->state = PROTOTYPE_HOTT_GOAL_UNSUPPORTED;
+		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_UNIVERSE;
 		return 0;
 	}
-	if (purity == PROTOTYPE_EFFECT_ROW_PURITY_UNRESOLVED) {
-		goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_EFFECT_ROW_UNRESOLVED;
+	if (carrier_term->tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		uint32_t ignored_type_id;
+		const struct prototype_type_declaration* ignored_declaration;
+		if (prototype_type_view_declaration_query(
+				type_declarations,
+				contexts,
+				terms,
+				carrier,
+				&ignored_type_id,
+				&ignored_declaration
+			) != 0) {
+			return -1;
+		}
+		goal->rule = PROTOTYPE_HOTT_RULE_OBS_ADT_DISTINCT;
+		if (!hott_explicit_contradiction_is_valid(terms, goal)) {
+			goal->rule = PROTOTYPE_HOTT_RULE_OBS_ADT_CONSTRUCTOR;
+		}
+		if (goal->rule == PROTOTYPE_HOTT_RULE_OBS_ADT_DISTINCT) {
+			goal->state = PROTOTYPE_HOTT_GOAL_CONTRADICTION;
+		}
 		return 0;
 	}
-	return -1;
+	if (carrier_term->tag == PROTOTYPE_TERM_PI) {
+		goal->rule = PROTOTYPE_HOTT_RULE_OBS_PI_POINTWISE;
+		return 0;
+	}
+	if (carrier_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		int purity = prototype_term_effect_row_purity(
+			terms, carrier_term->as.computation_type.label
+		);
+		if (purity == PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
+			goal->rule = PROTOTYPE_HOTT_RULE_OBS_COMP_RETURN;
+			return 0;
+		}
+		goal->state = PROTOTYPE_HOTT_GOAL_RESIDUAL;
+		goal->residual_reason = purity == PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL ?
+			PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL :
+			PROTOTYPE_HOTT_RESIDUAL_EFFECT_ROW_UNRESOLVED;
+		return purity == PROTOTYPE_EFFECT_ROW_PURITY_INVALID ? -1 : 0;
+	}
+	if (carrier_term->tag == PROTOTYPE_TERM_THUNK_TYPE) {
+		uint32_t computation = carrier_term->as.thunk_type.computation;
+		if (computation >= terms->term_count ||
+			terms->terms[computation].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+			return -1;
+		}
+		int purity = prototype_term_effect_row_purity(
+			terms, terms->terms[computation].as.computation_type.label
+		);
+		if (purity == PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
+			goal->rule = PROTOTYPE_HOTT_RULE_OBS_THUNK_PURE;
+			return 0;
+		}
+		goal->state = PROTOTYPE_HOTT_GOAL_RESIDUAL;
+		goal->residual_reason = purity == PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL ?
+			PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL :
+			PROTOTYPE_HOTT_RESIDUAL_EFFECT_ROW_UNRESOLVED;
+		return purity == PROTOTYPE_EFFECT_ROW_PURITY_INVALID ? -1 : 0;
+	}
+	if (goal->as.observation.left_endpoint ==
+		goal->as.observation.right_endpoint) {
+		goal->rule = PROTOTYPE_HOTT_RULE_OBS_DIAGONAL;
+	}
+	return 0;
 }
 
 int prototype_hott_goal_apply_conversion_result(
 	struct prototype_hott_goal* goal,
 	struct prototype_term_conversion_result result
 ) {
-	if (!goal || !kernel_conversion_profile_is_admitted(result.profile)) {
+	if (!goal || !kernel_conversion_profile_is_admitted(result.profile) ||
+		result.profile != goal->conversion_request.normalization_profile ||
+		result.left != goal->conversion_request.left_term ||
+		result.right != goal->conversion_request.right_term ||
+		result.step_limit != goal->conversion_request.step_limit ||
+		result.graph_revision != goal->conversion_graph_revision) {
 		return -1;
 	}
-	goal->conversion_result = result;
+	struct prototype_hott_goal checked = *goal;
+	checked.conversion_request.result = result;
+	if (!hott_conversion_result_matches_goal(&checked)) {
+		return -1;
+	}
+	goal->conversion_request.result = result;
 	switch (result.status) {
 		case PROTOTYPE_TERM_CONVERSION_EQUAL:
-			/* Conversion is a premise. V2-O1 must still construct the witness. */
 			goal->state = PROTOTYPE_HOTT_GOAL_PENDING;
 			goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
 			return 0;
 		case PROTOTYPE_TERM_CONVERSION_NOT_EQUAL:
-			goal->state = PROTOTYPE_HOTT_GOAL_CONTRADICTION;
+			/* Failure of conversion is not evidence for object inequality. */
+			goal->state = PROTOTYPE_HOTT_GOAL_PENDING;
 			goal->residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
 			return 0;
 		case PROTOTYPE_TERM_CONVERSION_RESIDUAL:
@@ -1201,6 +1936,32 @@ int prototype_hott_goal_apply_conversion_result(
 	}
 }
 
+int prototype_hott_goal_execute_conversion(
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	struct prototype_hott_goal* goal
+) {
+	if (!terms || !goal || goal->variant != PROTOTYPE_HOTT_GOAL_VARIANT_OBSERVATION) {
+		return -1;
+	}
+	goal->conversion_graph_revision = terms->normalization_graph_revision;
+	if (prototype_judgement_kernel_conversion_goal_execute(
+			contexts,
+			terms,
+			type_declarations,
+			definitions,
+			&goal->conversion_request,
+			1
+		) != 0) {
+		return -1;
+	}
+	return prototype_hott_goal_apply_conversion_result(
+		goal, goal->conversion_request.result
+	);
+}
+
 void prototype_hott_residual_db_init(
 	struct prototype_hott_residual_db* db,
 	struct prototype_hott_residual_obligation* obligations,
@@ -1216,37 +1977,52 @@ void prototype_hott_residual_db_init(
 
 static int hott_residual_record_is_valid(
 	const struct prototype_hott_residual_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms,
+	const struct prototype_hott_goal_db* goals,
+	const struct prototype_hott_bridge_db* bridges,
 	const struct prototype_hott_residual_obligation* obligation,
 	uint32_t expected_id
 ) {
-	if (!db || !contexts || !substitutions || !terms || !obligation ||
+	if (!db || !goals || !bridges || !obligation ||
 		obligation->obligation_id != expected_id ||
-		obligation->validation_rule <= PROTOTYPE_HOTT_LOCAL_RULE_NONE ||
-		!hott_local_rule_is_valid(obligation->validation_rule) ||
+		obligation->source_goal_id >= goals->goal_count ||
+		obligation->validation_rule <= PROTOTYPE_HOTT_RULE_NONE ||
+		!hott_rule_is_valid(obligation->validation_rule) ||
 		obligation->residual_reason <= PROTOTYPE_HOTT_RESIDUAL_NONE ||
 		!hott_residual_reason_is_valid(obligation->residual_reason) ||
 		!kernel_conversion_profile_is_admitted(
 			obligation->normalization_profile
-		) || obligation->context_id >= contexts->context_count ||
-		obligation->bridge_context_id >= contexts->context_count ||
-		obligation->carrier_classifier >= terms->term_count ||
-		obligation->left_endpoint >= terms->term_count ||
-		obligation->right_endpoint >= terms->term_count ||
-		!hott_endpoint_substitution_is_valid(
-			substitutions,
-			obligation->left_endpoint_substitution,
-			obligation->bridge_context_id,
-			obligation->context_id
-		) || !hott_endpoint_substitution_is_valid(
-			substitutions,
-			obligation->right_endpoint_substitution,
-			obligation->bridge_context_id,
-			obligation->context_id
-		) || (obligation->parent_obligation_id != PROTOTYPE_INVALID_ID &&
-			obligation->parent_obligation_id >= expected_id)) {
+		) || obligation->bridge_id >= bridges->bridge_count ||
+		!hott_child_role_is_valid(obligation->parent_role) ||
+		!hott_child_position_is_valid(
+			obligation->parent_role, obligation->parent_index
+		) ||
+		(obligation->parent_obligation_id != PROTOTYPE_INVALID_ID &&
+		 obligation->parent_obligation_id >= expected_id) ||
+		strcmp(
+			obligation->calculus_fingerprint,
+			PROTOTYPE_CALCULUS_FINGERPRINT
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_hott_goal* goal = &goals->goals[obligation->source_goal_id];
+	if (goal->variant != PROTOTYPE_HOTT_GOAL_VARIANT_OBSERVATION ||
+		(goal->state != PROTOTYPE_HOTT_GOAL_RESIDUAL &&
+		 goal->state != PROTOTYPE_HOTT_GOAL_UNSUPPORTED) ||
+		obligation->parent_goal_id != goal->parent_goal_id ||
+		obligation->parent_role != goal->parent_role ||
+		obligation->parent_index != goal->parent_index ||
+		obligation->validation_rule != goal->rule ||
+		obligation->context_id != goal->as.observation.context_id ||
+		obligation->carrier_classifier != goal->as.observation.carrier_classifier ||
+		obligation->left_endpoint != goal->as.observation.left_endpoint ||
+		obligation->right_endpoint != goal->as.observation.right_endpoint ||
+		obligation->bridge_id != goal->as.observation.bridge_id ||
+		obligation->normalization_profile !=
+			goal->conversion_request.normalization_profile ||
+		obligation->step_limit != goal->conversion_request.step_limit ||
+		obligation->steps_used != goal->conversion_request.result.steps_used ||
+		obligation->residual_reason != goal->residual_reason ||
+		obligation->source_ast != goal->source_ast) {
 		return -1;
 	}
 	return 0;
@@ -1254,9 +2030,8 @@ static int hott_residual_record_is_valid(
 
 int prototype_hott_residual_db_add_from_goal(
 	struct prototype_hott_residual_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms,
+	const struct prototype_hott_goal_db* goals,
+	const struct prototype_hott_bridge_db* bridges,
 	const struct prototype_hott_goal* goal,
 	uint32_t* p_obligation_id
 ) {
@@ -1268,24 +2043,30 @@ int prototype_hott_residual_db_add_from_goal(
 	}
 	struct prototype_hott_residual_obligation obligation = {
 		.obligation_id = (uint32_t)db->obligation_count,
+		.source_goal_id = goal->id,
 		.parent_obligation_id = PROTOTYPE_INVALID_ID,
-		.validation_rule = goal->local_type_former_rule,
-		.context_id = goal->context_id,
-		.carrier_classifier = goal->carrier_classifier,
-		.left_endpoint = goal->left_endpoint,
-		.right_endpoint = goal->right_endpoint,
-		.bridge_context_id = goal->bridge_context_id,
-		.left_endpoint_substitution = goal->left_endpoint_substitution,
-		.right_endpoint_substitution = goal->right_endpoint_substitution,
-		.normalization_profile = goal->normalization_profile,
-		.step_limit = goal->step_limit,
-		.steps_used = goal->conversion_result.steps_used,
+		.parent_goal_id = goal->parent_goal_id,
+		.parent_role = goal->parent_role,
+		.parent_index = goal->parent_index,
+		.validation_rule = goal->rule,
+		.context_id = goal->as.observation.context_id,
+		.carrier_classifier = goal->as.observation.carrier_classifier,
+		.left_endpoint = goal->as.observation.left_endpoint,
+		.right_endpoint = goal->as.observation.right_endpoint,
+		.bridge_id = goal->as.observation.bridge_id,
+		.normalization_profile = goal->conversion_request.normalization_profile,
+		.step_limit = goal->conversion_request.step_limit,
+		.steps_used = goal->conversion_request.result.steps_used,
 		.residual_reason = goal->residual_reason,
-		.source_ast = goal->source_ast,
-		.calculus_fingerprint_candidate = 0
+		.source_ast = goal->source_ast
 	};
+	memcpy(
+		obligation.calculus_fingerprint,
+		PROTOTYPE_CALCULUS_FINGERPRINT,
+		sizeof(obligation.calculus_fingerprint)
+	);
 	if (hott_residual_record_is_valid(
-			db, contexts, substitutions, terms, &obligation,
+			db, goals, bridges, &obligation,
 			obligation.obligation_id
 		) != 0) {
 		return -1;
@@ -1297,9 +2078,8 @@ int prototype_hott_residual_db_add_from_goal(
 
 int prototype_hott_residual_db_validate(
 	const struct prototype_hott_residual_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_term_db* terms
+	const struct prototype_hott_goal_db* goals,
+	const struct prototype_hott_bridge_db* bridges
 ) {
 	if (!db || (db->obligation_count > 0 && !db->obligations) ||
 		db->obligation_count > db->obligation_capacity) {
@@ -1307,7 +2087,7 @@ int prototype_hott_residual_db_validate(
 	}
 	for (uint32_t i = 0; i < db->obligation_count; ++i) {
 		if (hott_residual_record_is_valid(
-				db, contexts, substitutions, terms, &db->obligations[i], i
+				db, goals, bridges, &db->obligations[i], i
 			) != 0) {
 			return -1;
 		}
@@ -1315,7 +2095,7 @@ int prototype_hott_residual_db_validate(
 	return 0;
 }
 
-int prototype_hott_residual_db_require_artifact_v62(
+int prototype_hott_residual_db_require_artifact_empty(
 	const struct prototype_hott_residual_db* db
 ) {
 	return db && db->obligation_count == 0 ? 0 : -1;
@@ -1548,6 +2328,158 @@ int prototype_judgement_classifier_view(
 	return classifier_view_with_depth(
 		terms, type_declarations, definitions, classifier, p_ret, 256
 	);
+}
+
+int prototype_judgement_claim_category(
+	const struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	const struct prototype_operation_graph* operations,
+	uint32_t claim_id,
+	int* p_category
+) {
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, claim_id);
+	if (!claim || !terms || !type_declarations || !p_category) {
+		return -1;
+	}
+	if (claim->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE) {
+		*p_category = PROTOTYPE_JUDGEMENT_CATEGORY_TYPE;
+		return 0;
+	}
+	if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
+		return -1;
+	}
+	if (claim->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION) {
+		int polarity;
+		if (!operations || claim->authority_id != claim->operation_id ||
+			judgement_operation_expected_polarity(
+				terms,
+				type_declarations,
+				operations,
+				claim->operation_id,
+				&polarity
+			) != 0) {
+			return -1;
+		}
+		*p_category = polarity == PROTOTYPE_OPERATION_POLARITY_COMPUTATION ?
+			PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION :
+			PROTOTYPE_JUDGEMENT_CATEGORY_VALUE;
+		return 0;
+	}
+	struct prototype_term_classifier_view view;
+	if (prototype_judgement_classifier_view(
+			terms, type_declarations, definitions, claim->classifier, &view
+		) != 0) {
+		return -1;
+	}
+	*p_category = view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
+		PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION :
+		PROTOTYPE_JUDGEMENT_CATEGORY_VALUE;
+	return 0;
+}
+
+void prototype_substitution_certificate_db_init(
+	struct prototype_substitution_certificate_db* db,
+	struct prototype_substitution_certificate* certificates,
+	size_t certificate_capacity
+) {
+	if (!db) {
+		return;
+	}
+	db->certificates = certificates;
+	db->certificate_count = 0;
+	db->certificate_capacity = certificate_capacity;
+}
+
+const struct prototype_substitution_certificate*
+prototype_substitution_certificate_db_get(
+	const struct prototype_substitution_certificate_db* db,
+	uint32_t certificate_id
+) {
+	return db && certificate_id < db->certificate_count ?
+		&db->certificates[certificate_id] : NULL;
+}
+
+static int substitution_certificate_is_valid(
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_substitution_certificate* certificate
+) {
+	if (!substitutions || !judgement || !certificate) {
+		return 0;
+	}
+	const struct prototype_substitution* substitution =
+		prototype_substitution_get(substitutions, certificate->substitution_id);
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, certificate->claim_id);
+	return substitution && claim &&
+		substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND &&
+		claim->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		claim->context_id == substitution->source_context &&
+		claim->subject == substitution->term &&
+		claim->classifier == substitution->term_classifier;
+}
+
+int prototype_substitution_certificate_db_add(
+	struct prototype_substitution_certificate_db* db,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_judgement_db* judgement,
+	uint32_t substitution_id,
+	uint32_t claim_id,
+	uint32_t* p_certificate_id
+) {
+	struct prototype_substitution_certificate certificate = {
+		.substitution_id = substitution_id,
+		.claim_id = claim_id
+	};
+	if (!db || !p_certificate_id || !db->certificates ||
+		!substitution_certificate_is_valid(
+			substitutions, judgement, &certificate
+		)) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->certificate_count; ++i) {
+		if (db->certificates[i].substitution_id == substitution_id &&
+			db->certificates[i].claim_id == claim_id) {
+			*p_certificate_id = i;
+			return 0;
+		}
+	}
+	if (db->certificate_count >= db->certificate_capacity) {
+		return -1;
+	}
+	uint32_t certificate_id = (uint32_t)db->certificate_count++;
+	db->certificates[certificate_id] = certificate;
+	*p_certificate_id = certificate_id;
+	return 0;
+}
+
+int prototype_substitution_certificate_db_validate(
+	const struct prototype_substitution_certificate_db* db,
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!db || (db->certificate_count != 0 && !db->certificates) ||
+		db->certificate_count > db->certificate_capacity) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->certificate_count; ++i) {
+		if (!substitution_certificate_is_valid(
+				substitutions, judgement, &db->certificates[i]
+			)) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < i; ++j) {
+			if (db->certificates[j].substitution_id ==
+					db->certificates[i].substitution_id &&
+				db->certificates[j].claim_id == db->certificates[i].claim_id) {
+				return -1;
+			}
+		}
+	}
+	return 0;
 }
 
 static int classifier_kernel_whnf_no_definitions(
@@ -2514,7 +3446,6 @@ static int instantiate_pure_family_in_context(
 	uint32_t family,
 	uint32_t argument,
 	uint32_t argument_classifier,
-	uint32_t argument_proof_id,
 	uint32_t* p_result
 ) {
 	const struct prototype_substitution* prefix =
@@ -2578,7 +3509,6 @@ static int instantiate_pure_family_in_context(
 			family_context,
 			argument,
 			argument_classifier,
-			argument_proof_id,
 			&section
 		) != 0) {
 		return -1;
@@ -2603,7 +3533,6 @@ static int pi_codomain_after_argument_in_context(
 	uint32_t pi_term,
 	uint32_t argument,
 	uint32_t argument_classifier,
-	uint32_t argument_proof_id,
 	uint32_t* p_result
 ) {
 	uint32_t domain;
@@ -2635,7 +3564,6 @@ static int pi_codomain_after_argument_in_context(
 		codomain_family,
 		argument,
 		argument_classifier,
-		argument_proof_id,
 		p_result
 	);
 }
@@ -2651,6 +3579,7 @@ static int pi_codomain_at_binder_in_context(
 	uint32_t binder_proof_id,
 	uint32_t* p_result
 ) {
+	(void)binder_proof_id;
 	uint32_t domain;
 	uint32_t family;
 	uint32_t projection;
@@ -2675,7 +3604,6 @@ static int pi_codomain_at_binder_in_context(
 		family,
 		binder_var,
 		binder_classifier,
-		binder_proof_id,
 		p_result
 	);
 }
@@ -2691,6 +3619,7 @@ static int pi_codomain_at_fresh_binder(
 	uint32_t binder_proof_id,
 	uint32_t* p_result
 ) {
+	(void)binder_proof_id;
 	if (!delta || !delta->contexts || binder_var >= terms->term_count ||
 		terms->terms[binder_var].tag != PROTOTYPE_TERM_VAR) {
 		return -1;
@@ -4079,7 +5008,6 @@ int prototype_judgement_constructor_spine_classifier(
 				residual_classifier,
 				field_terms[i],
 				argument_classifiers[i],
-				PROTOTYPE_INVALID_ID,
 				&next_residual
 			) != 0) {
 			return -1;
@@ -4093,7 +5021,6 @@ int prototype_judgement_constructor_spine_classifier(
 				field_context_path[i],
 				field_terms[i],
 				argument_classifiers[i],
-				PROTOTYPE_INVALID_ID,
 				&substitution
 			) != 0) {
 			return -1;
@@ -4682,7 +5609,6 @@ static int collect_app_classifier_candidates_from_candidates(
 					function_pi,
 					argument,
 					argument_candidates[j].classifier,
-					PROTOTYPE_INVALID_ID,
 					&result_classifier
 				) != 0) {
 				return -1;
@@ -12177,7 +13103,6 @@ int prototype_judgement_delta_app_elim_classifier(
 		function_pi,
 		argument_subject,
 		argument_classifier,
-		PROTOTYPE_INVALID_ID,
 		p_classifier
 	);
 }
@@ -13907,7 +14832,6 @@ static int validate_app_elim_proof(
 			codomain_family,
 			proof->premise_subjects[1],
 			proof->premise_classifiers[1],
-			PROTOTYPE_INVALID_ID,
 			&result_classifier
 		) != 0 ||
 			!(prototype_judgement_classifier_conversion(
@@ -14003,7 +14927,6 @@ static int validate_lambda_intro_proof(
 			codomain_family,
 			proof->premise_subjects[0],
 			proof->premise_classifiers[0],
-			PROTOTYPE_INVALID_ID,
 			&expected_body_classifier
 		) != 0 ||
 		!(prototype_judgement_classifier_conversion(
@@ -15394,7 +16317,6 @@ static int validate_operation_request_intro_proof(
 			family,
 			binder_var,
 			operation.result,
-			PROTOTYPE_INVALID_ID,
 			&continuation_result
 		) != 0) {
 		return -1;
@@ -16160,6 +17082,94 @@ static int term_core_projection_equal(
 	) == 0 && equal;
 }
 
+static int judgement_operation_expected_polarity(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_operation_graph* operations,
+	uint32_t operation_id,
+	int* p_polarity
+) {
+	if (!terms || !type_declarations || !operations || !p_polarity ||
+		operation_id >= operations->operation_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* operation =
+		&operations->operations[operation_id];
+	if (operation->classifier >= terms->term_count ||
+		operation->core_term >= terms->term_count) {
+		return -1;
+	}
+	struct prototype_term_classifier_view classifier_view;
+	if (prototype_judgement_classifier_view(
+			terms,
+			type_declarations,
+			NULL,
+			operation->classifier,
+			&classifier_view
+		) != 0) {
+		return -1;
+	}
+	int polarity = classifier_view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
+		PROTOTYPE_OPERATION_POLARITY_COMPUTATION :
+		PROTOTYPE_OPERATION_POLARITY_VALUE;
+	int core_tag = terms->terms[operation->core_term].tag;
+	switch (operation->tag) {
+		case PROTOTYPE_OPERATION_CONSTRUCTOR:
+		case PROTOTYPE_OPERATION_THUNK:
+			polarity = PROTOTYPE_OPERATION_POLARITY_VALUE;
+			break;
+		case PROTOTYPE_OPERATION_LAMBDA:
+		case PROTOTYPE_OPERATION_MATCH:
+		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+		case PROTOTYPE_OPERATION_RETURN:
+		case PROTOTYPE_OPERATION_FORCE:
+		case PROTOTYPE_OPERATION_REQUEST:
+		case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
+			polarity = PROTOTYPE_OPERATION_POLARITY_COMPUTATION;
+			break;
+		case PROTOTYPE_OPERATION_ATOM:
+			if (core_tag == PROTOTYPE_TERM_TYPE_VIEW ||
+				core_tag == PROTOTYPE_TERM_TYPE_FORMER ||
+				core_tag == PROTOTYPE_TERM_TYPE_DECLARATION) {
+				polarity = PROTOTYPE_OPERATION_POLARITY_VALUE;
+			}
+			break;
+		case PROTOTYPE_OPERATION_APP:
+			if (operation->application_role ==
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
+				polarity = PROTOTYPE_OPERATION_POLARITY_VALUE;
+			} else if (operation->application_role ==
+				PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION) {
+				polarity = PROTOTYPE_OPERATION_POLARITY_COMPUTATION;
+			} else {
+				return -1;
+			}
+			break;
+		case PROTOTYPE_OPERATION_NAME:
+		case PROTOTYPE_OPERATION_ASCRIPTION: {
+			uint32_t source_operation = operation->tag == PROTOTYPE_OPERATION_NAME ?
+				operation->function : operation->body;
+			if (source_operation >= operations->operation_count ||
+				judgement_operation_expected_polarity(
+					terms,
+					type_declarations,
+					operations,
+					source_operation,
+					&polarity
+				) != 0) {
+				return -1;
+			}
+			break;
+		}
+		case PROTOTYPE_OPERATION_VAR:
+			break;
+		default:
+			return -1;
+	}
+	*p_polarity = polarity;
+	return 0;
+}
+
 int prototype_judgement_validate_operation_typing(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -16402,6 +17412,37 @@ int prototype_judgement_validate_proofs(
 		return -1;
 	}
 	if (operations) {
+		for (uint32_t claim_id = 0;
+			claim_id < (uint32_t)judgement->claim_count; ++claim_id) {
+			const struct prototype_judgement_claim* claim =
+				&judgement->claims[claim_id];
+			if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				claim->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION) {
+				continue;
+			}
+			if (claim->operation_id >= operations->operation_count ||
+				claim->authority_id != claim->operation_id) {
+				return -1;
+			}
+			int expected_polarity;
+			if (judgement_operation_expected_polarity(
+					terms,
+					type_declarations,
+					operations,
+					claim->operation_id,
+					&expected_polarity
+				) != 0 || operations->operations[
+					claim->operation_id
+				].polarity != expected_polarity) {
+				fprintf(
+					stderr,
+					"P1-R0 accepted operation polarity failed claim=%u operation=%u\n",
+					claim_id,
+					claim->operation_id
+				);
+				return -1;
+			}
+		}
 		for (uint32_t operation_id = 0;
 			operation_id < operations->operation_count;
 			++operation_id) {
