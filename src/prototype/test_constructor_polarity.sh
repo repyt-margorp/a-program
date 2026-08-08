@@ -51,7 +51,7 @@ EOF_SOURCE
 ./read_file.out --write-artifact "$tmp_dir/constructor-polarity.apo" \
 	"$tmp_dir/constructor-polarity.p" >"$tmp_dir/constructor-polarity.out"
 
-grep -q '\[constructor-spine-formation\]' "$tmp_dir/constructor-polarity.out"
+grep -q '\[constructor-spine-formation proof#' "$tmp_dir/constructor-polarity.out"
 grep -q 'metadata label wrapped ' "$tmp_dir/constructor-polarity.out"
 grep -q 'metadata label pair ' "$tmp_dir/constructor-polarity.out"
 

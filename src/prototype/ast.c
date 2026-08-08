@@ -3568,8 +3568,8 @@ struct artifact_graph_marks {
 	unsigned char* constructors;
 	unsigned char* readback_field_types;
 	unsigned char* type_exprs;
-	unsigned char* claim_candidates;
-	unsigned char* derivation_candidates;
+	unsigned char* claims;
+	unsigned char* derivations;
 	size_t term_count;
 	size_t case_count;
 	size_t case_binder_count;
@@ -3579,8 +3579,8 @@ struct artifact_graph_marks {
 	size_t constructor_count;
 	size_t readback_field_type_count;
 	size_t type_expr_count;
-	size_t claim_candidate_count;
-	size_t derivation_candidate_count;
+	size_t claim_count;
+	size_t derivation_count;
 };
 
 struct artifact_context_slice {
@@ -3593,8 +3593,11 @@ struct artifact_context_slice {
 static int artifact_constructor_present(
 	const struct prototype_type_constructor_declaration* constructor
 );
-static int artifact_relation_present(
+static int artifact_candidate_claim_present(
 	const struct prototype_judgement_claim_candidate* relation
+);
+static int artifact_derivation_present(
+	const struct prototype_judgement_derivation* derivation
 );
 
 static void artifact_context_slice_free(struct artifact_context_slice* slice) {
@@ -3682,15 +3685,33 @@ static int artifact_context_slice_init(
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
-		if (artifact_relation_present(&judgement->claim_candidates[i]) &&
+	for (size_t i = 0; i < judgement->claim_count; ++i) {
+		if (judgement->claims[i].kind != PROTOTYPE_JUDGEMENT_KIND_UNKNOWN &&
 			artifact_context_slice_mark(
 				slice,
 				&metadata->contexts,
-				judgement->claim_candidates[i].context_id
+				judgement->claims[i].context_id
 			) != 0) {
 			artifact_context_slice_free(slice);
 			return -1;
+		}
+	}
+	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		const struct prototype_judgement_derivation* derivation =
+			&judgement->derivations[i];
+		if (!artifact_derivation_present(derivation)) {
+			continue;
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			if (derivation->premise_claim_ids[j] == PROTOTYPE_INVALID_ID &&
+				artifact_context_slice_mark(
+					slice,
+					&metadata->contexts,
+					derivation->scoped_premise_context_ids[j]
+				) != 0) {
+				artifact_context_slice_free(slice);
+				return -1;
+			}
 		}
 	}
 	for (size_t i = 0; i < metadata->operation_count; ++i) {
@@ -4221,70 +4242,6 @@ static int artifact_mark_term(
 	}
 }
 
-static int artifact_mark_relation(
-	struct artifact_graph_marks* marks,
-	const struct prototype_term_db* terms,
-	const struct prototype_judgement_db* judgement,
-	uint32_t relation_id,
-	uint32_t depth
-);
-
-/* A solved motive proof validates each source branch against its synthesized
- * motive case. Those classifier facts are semantic dependencies even though
- * the proof has no fixed premise list: the motive can have a variable number
- * of cases. Keep every branch-body derivation in an artifact slice so the
- * readback validator sees the same evidence as the source graph. */
-static int artifact_mark_solved_motive_branch_relations(
-	struct artifact_graph_marks* marks,
-	const struct prototype_term_db* terms,
-	const struct prototype_judgement_db* judgement,
-	uint32_t match_term,
-	uint32_t depth
-) {
-	if (!marks || !terms || !judgement || match_term >= terms->term_count ||
-		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH || depth > 512) {
-		return -1;
-	}
-	const struct prototype_term* match = &terms->terms[match_term];
-	for (uint32_t case_index = 0; case_index < match->as.match.case_count;
-		++case_index) {
-		uint32_t case_id = match->as.match.first_case + case_index;
-		if (case_id >= terms->case_count) {
-			return -1;
-		}
-		uint32_t body = terms->cases[case_id].body;
-		int found = 0;
-		for (uint32_t relation_id = 0;
-			relation_id < (uint32_t)judgement->claim_candidate_count;
-			++relation_id) {
-			const struct prototype_judgement_claim_candidate* relation =
-				&judgement->claim_candidates[relation_id];
-			if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN ||
-				relation->subject != body) {
-				continue;
-			}
-			if (artifact_mark_relation(
-					marks, terms, judgement, relation_id, depth + 1
-				) != 0) {
-				return -1;
-			}
-			found = 1;
-		}
-		if (!found) {
-			return -1;
-		}
-	}
-	return 0;
-}
-
-static int artifact_mark_proof(
-	struct artifact_graph_marks* marks,
-	const struct prototype_term_db* terms,
-	const struct prototype_judgement_db* judgement,
-	uint32_t proof_id,
-	uint32_t depth
-);
-
 static int artifact_mark_accepted_claim(
 	struct artifact_graph_marks* marks,
 	const struct prototype_term_db* terms,
@@ -4296,33 +4253,16 @@ static int artifact_mark_accepted_claim(
 		depth > 512) {
 		return -1;
 	}
-	const struct prototype_judgement_claim* claim = &judgement->claims[claim_id];
-	int candidate_found = 0;
-	for (uint32_t candidate_id = 0;
-		candidate_id < (uint32_t)judgement->claim_candidate_count; ++candidate_id) {
-		const struct prototype_judgement_claim_candidate* candidate =
-			&judgement->claim_candidates[candidate_id];
-		if (candidate->kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN ||
-			candidate->kind != claim->kind ||
-			candidate->authority_kind != claim->authority_kind ||
-			candidate->authority_id != claim->authority_id ||
-			candidate->context_id != claim->context_id ||
-			candidate->operation_id != claim->operation_id ||
-			candidate->subject != claim->subject ||
-			candidate->classifier != claim->classifier) {
-			continue;
-		}
-		marks->claim_candidates[candidate_id] = 1;
-		if (artifact_mark_term(marks, terms, candidate->subject, depth + 1) != 0 ||
-			artifact_mark_term(
-				marks, terms, candidate->classifier, depth + 1
-			) != 0) {
-			return -1;
-		}
-		candidate_found = 1;
-		break;
+	if (claim_id >= marks->claim_count) {
+		return -1;
 	}
-	if (!candidate_found) {
+	const struct prototype_judgement_claim* claim = &judgement->claims[claim_id];
+	if (marks->claims[claim_id]) {
+		return 0;
+	}
+	marks->claims[claim_id] = 1;
+	if (artifact_mark_term(marks, terms, claim->subject, depth + 1) != 0 ||
+		artifact_mark_term(marks, terms, claim->classifier, depth + 1) != 0) {
 		return -1;
 	}
 	int found = 0;
@@ -4333,12 +4273,43 @@ static int artifact_mark_accepted_claim(
 			continue;
 		}
 		found = 1;
-		uint32_t proof_id = derivation->source_candidate_proof_id;
-		if (proof_id >= judgement->derivation_candidate_count ||
-			artifact_mark_proof(
-				marks, terms, judgement, proof_id, depth + 1
+		if (i >= marks->derivation_count) {
+			return -1;
+		}
+		marks->derivations[i] = 1;
+		if (derivation->constructor_owner_view != PROTOTYPE_INVALID_ID &&
+			artifact_mark_term(
+				marks, terms, derivation->constructor_owner_view, depth + 1
 			) != 0) {
 			return -1;
+		}
+		if (derivation->induction_match != PROTOTYPE_INVALID_ID &&
+			artifact_mark_term(
+				marks, terms, derivation->induction_match, depth + 1
+			) != 0) {
+			return -1;
+		}
+		if (derivation->induction_motive != PROTOTYPE_INVALID_ID &&
+			artifact_mark_term(
+				marks, terms, derivation->induction_motive, depth + 1
+			) != 0) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			if (derivation->premise_claim_ids[j] != PROTOTYPE_INVALID_ID) {
+				if (artifact_mark_accepted_claim(
+						marks, terms, judgement,
+						derivation->premise_claim_ids[j], depth + 1
+					) != 0) {
+					return -1;
+				}
+			} else if (artifact_mark_term(
+					marks, terms, derivation->scoped_premise_subjects[j], depth + 1
+				) != 0 || artifact_mark_term(
+					marks, terms, derivation->scoped_premise_classifiers[j], depth + 1
+				) != 0) {
+				return -1;
+			}
 		}
 		for (uint32_t j = 0; j < derivation->source_claim_count; ++j) {
 			uint32_t source_claim_id = derivation->source_claim_ids[j];
@@ -4353,101 +4324,6 @@ static int artifact_mark_accepted_claim(
 		}
 	}
 	return found ? 0 : -1;
-}
-
-static int artifact_mark_proof(
-	struct artifact_graph_marks* marks,
-	const struct prototype_term_db* terms,
-	const struct prototype_judgement_db* judgement,
-	uint32_t proof_id,
-	uint32_t depth
-) {
-	if (!marks || !terms || !judgement || proof_id >= marks->derivation_candidate_count ||
-		proof_id >= judgement->derivation_candidate_count || depth > 512) {
-		return -1;
-	}
-	const struct prototype_judgement_derivation_candidate* proof = &judgement->derivation_candidates[proof_id];
-	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
-		return -1;
-	}
-	if (marks->derivation_candidates[proof_id]) {
-		return 0;
-	}
-	marks->derivation_candidates[proof_id] = 1;
-	if (artifact_mark_term(marks, terms, proof->conclusion_subject, depth + 1) != 0 ||
-		artifact_mark_term(marks, terms, proof->conclusion_classifier, depth + 1) != 0) {
-		return -1;
-	}
-	if (proof->constructor_owner_view != PROTOTYPE_INVALID_ID &&
-		artifact_mark_term(
-			marks, terms, proof->constructor_owner_view, depth + 1
-		) != 0) {
-		return -1;
-	}
-	if (proof->induction_match != PROTOTYPE_INVALID_ID &&
-		artifact_mark_term(marks, terms, proof->induction_match, depth + 1) != 0) {
-		return -1;
-	}
-	if (proof->induction_motive != PROTOTYPE_INVALID_ID &&
-		artifact_mark_term(marks, terms, proof->induction_motive, depth + 1) != 0) {
-		return -1;
-	}
-	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE &&
-		artifact_mark_solved_motive_branch_relations(
-			marks, terms, judgement, proof->conclusion_subject, depth + 1
-		) != 0) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < proof->premise_count; ++i) {
-		if (artifact_mark_term(marks, terms, proof->premise_subjects[i], depth + 1) != 0 ||
-			artifact_mark_term(marks, terms, proof->premise_classifiers[i], depth + 1) != 0) {
-			return -1;
-		}
-	}
-	return 0;
-}
-
-static int artifact_mark_relation(
-	struct artifact_graph_marks* marks,
-	const struct prototype_term_db* terms,
-	const struct prototype_judgement_db* judgement,
-	uint32_t relation_id,
-	uint32_t depth
-) {
-	if (!marks || !terms || !judgement || relation_id >= marks->claim_candidate_count ||
-		relation_id >= judgement->claim_candidate_count || depth > 512) {
-		return -1;
-	}
-	const struct prototype_judgement_claim_candidate* relation = &judgement->claim_candidates[relation_id];
-	if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN) {
-		return -1;
-	}
-	if (marks->claim_candidates[relation_id]) {
-		return 0;
-	}
-	marks->claim_candidates[relation_id] = 1;
-	if (artifact_mark_term(marks, terms, relation->subject, depth + 1) != 0 ||
-		artifact_mark_term(marks, terms, relation->classifier, depth + 1) != 0) {
-		return -1;
-	}
-	int found_derivation = 0;
-	for (uint32_t proof_id = 0;
-		proof_id < (uint32_t)judgement->derivation_candidate_count;
-		++proof_id) {
-		const struct prototype_judgement_derivation_candidate* proof =
-			&judgement->derivation_candidates[proof_id];
-		if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
-			proof->conclusion_claim_candidate_id != relation_id) {
-			continue;
-		}
-		found_derivation = 1;
-		if (artifact_mark_proof(
-				marks, terms, judgement, proof_id, depth + 1
-			) != 0) {
-			return -1;
-		}
-	}
-	return found_derivation ? 0 : -1;
 }
 
 static int artifact_mark_exact_relation(
@@ -4574,12 +4450,26 @@ static int artifact_frame_present(const struct prototype_ih_scope* frame) {
 	return frame && frame->match_term != PROTOTYPE_INVALID_ID;
 }
 
-static int artifact_relation_present(const struct prototype_judgement_claim_candidate* relation) {
+static int artifact_candidate_claim_present(
+	const struct prototype_judgement_claim_candidate* relation
+) {
 	return relation && relation->kind != PROTOTYPE_JUDGEMENT_KIND_UNKNOWN;
 }
 
-static int artifact_proof_present(const struct prototype_judgement_derivation_candidate* proof) {
+static int artifact_candidate_derivation_present(
+	const struct prototype_judgement_derivation_candidate* proof
+) {
 	return proof && proof->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_INVALID;
+}
+
+static int artifact_claim_present(const struct prototype_judgement_claim* claim) {
+	return claim && claim->kind != PROTOTYPE_JUDGEMENT_KIND_UNKNOWN;
+}
+
+static int artifact_derivation_present(
+	const struct prototype_judgement_derivation* derivation
+) {
+	return derivation && derivation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_INVALID;
 }
 
 static int artifact_universe_node_present(const struct prototype_universe_node* node) {
@@ -4612,8 +4502,8 @@ static int write_artifact_graph_section(
 	size_t present_constructor_count = 0;
 	size_t present_field_type_count = 0;
 	size_t present_type_expr_count = 0;
-	size_t present_relation_count = 0;
-	size_t present_proof_count = 0;
+	size_t present_claim_count = 0;
+	size_t present_derivation_count = 0;
 	for (size_t i = 0; i < terms->term_count; ++i) {
 		if (artifact_term_present(&terms->terms[i])) {
 			present_term_count++;
@@ -4659,19 +4549,19 @@ static int write_artifact_graph_section(
 			present_type_expr_count++;
 		}
 	}
-	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
-		if (artifact_relation_present(&judgement->claim_candidates[i])) {
-			present_relation_count++;
+	for (size_t i = 0; i < judgement->claim_count; ++i) {
+		if (artifact_claim_present(&judgement->claims[i])) {
+			present_claim_count++;
 		}
 	}
-	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
-		if (artifact_proof_present(&judgement->derivation_candidates[i])) {
-			present_proof_count++;
+	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		if (artifact_derivation_present(&judgement->derivations[i])) {
+			present_derivation_count++;
 		}
 	}
 	fprintf(
 		stream,
-		"counts term_slots %zu terms %zu case_slots %zu cases %zu case_binder_slots %zu case_binders %zu frame_slots %zu frames %zu type_slots %zu types %zu parameter_slots %zu parameters %zu constructor_slots %zu constructors %zu field_type_slots %zu field_types %zu type_expr_slots %zu type_exprs %zu judgement_slots %zu judgements %zu proof_slots %zu proofs %zu\n",
+		"counts term_slots %zu terms %zu case_slots %zu cases %zu case_binder_slots %zu case_binders %zu frame_slots %zu frames %zu type_slots %zu types %zu parameter_slots %zu parameters %zu constructor_slots %zu constructors %zu field_type_slots %zu field_types %zu type_expr_slots %zu type_exprs %zu claim_slots %zu claims %zu derivation_slots %zu derivations %zu\n",
 		terms->term_count,
 		present_term_count,
 		terms->case_count,
@@ -4690,10 +4580,10 @@ static int write_artifact_graph_section(
 		present_field_type_count,
 		type_declarations->expr_count,
 		present_type_expr_count,
-		judgement->claim_candidate_count,
-		present_relation_count,
-		judgement->derivation_candidate_count,
-		present_proof_count
+		judgement->claim_count,
+		present_claim_count,
+		judgement->derivation_count,
+		present_derivation_count
 	);
 
 	fprintf(stream, "type_declarations %zu\n", present_type_count);
@@ -4851,88 +4741,69 @@ static int write_artifact_graph_section(
 		fprintf(stream, "\n");
 	}
 
-	fprintf(stream, "judgements %zu\n", present_relation_count);
-	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
-		const struct prototype_judgement_claim_candidate* relation = &judgement->claim_candidates[i];
-		if (!artifact_relation_present(relation)) {
+	fprintf(stream, "claims %zu\n", present_claim_count);
+	for (size_t i = 0; i < judgement->claim_count; ++i) {
+		const struct prototype_judgement_claim* claim = &judgement->claims[i];
+		if (!artifact_claim_present(claim)) {
 			continue;
 		}
 		fprintf(
 			stream,
-			"judgement %zu %d %u %u %d %u %u operation %u authority %d %u\n",
+			"claim %zu %d authority %d %u context %u operation %u %u %u rank %u\n",
 			i,
-			relation->kind,
-			relation->subject,
-			relation->classifier,
-			relation->proof_kind,
-			relation->proof_id,
+			claim->kind,
+			claim->authority_kind,
+			claim->authority_id,
 			artifact_context_slice_relocate(
-				context_slice, relation->context_id
+				context_slice, claim->context_id
 			),
-			relation->operation_id,
-			relation->authority_kind,
-			relation->authority_id
+			claim->operation_id,
+			claim->subject,
+			claim->classifier,
+			claim->closure_rank
 		);
 	}
-	fprintf(stream, "proofs %zu\n", present_proof_count);
-	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
-		const struct prototype_judgement_derivation_candidate* proof = &judgement->derivation_candidates[i];
-		if (!artifact_proof_present(proof)) {
+	fprintf(stream, "derivations %zu\n", present_derivation_count);
+	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		const struct prototype_judgement_derivation* derivation =
+			&judgement->derivations[i];
+		if (!artifact_derivation_present(derivation)) {
 			continue;
 		}
 		fprintf(
 			stream,
-			"proof %zu %d %d %u %u %u %u %u %u %u %u %u %u %u",
+			"derivation %zu %d claim %u rank %u %u %u %u %u %u %u %u %u %u",
 			i,
-			proof->proof_kind,
-			proof->conclusion_kind,
-			proof->conclusion_subject,
-			proof->conclusion_classifier,
-			PROTOTYPE_INVALID_ID,
-			proof->constructor_owner_view,
-			proof->constructor_index,
-			proof->constructor_field_index,
-			proof->induction_match,
-			proof->induction_motive,
-			proof->induction_case_index,
-			proof->induction_field_index,
-			proof->premise_count
+			derivation->proof_kind,
+			derivation->conclusion_claim_id,
+			derivation->closure_rank,
+			derivation->reserved_legacy_assumption_level,
+			derivation->constructor_owner_view,
+			derivation->constructor_index,
+			derivation->constructor_field_index,
+			derivation->induction_match,
+			derivation->induction_motive,
+			derivation->induction_case_index,
+			derivation->induction_field_index,
+			derivation->premise_count
 		);
-		for (uint32_t j = 0; j < proof->premise_count; ++j) {
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
 			fprintf(
 				stream,
-					" %d %u %u %u authority %d %u operation %u",
-				proof->premise_kinds[j],
-				proof->premise_subjects[j],
-				proof->premise_classifiers[j],
-					proof->premise_proof_ids[j],
-					proof->premise_authority_kinds[j],
-					proof->premise_authority_ids[j],
-					proof->premise_operation_ids[j]
-			);
-		}
-		fprintf(
-			stream,
-			" contexts %u",
-			artifact_context_slice_relocate(
-				context_slice, proof->conclusion_context_id
-			)
-		);
-		for (uint32_t j = 0; j < proof->premise_count; ++j) {
-			fprintf(
-				stream,
-				" %u",
+				" premise %u %d %u %u %u",
+				derivation->premise_claim_ids[j],
+				derivation->scoped_premise_kinds[j],
 				artifact_context_slice_relocate(
-					context_slice, proof->premise_context_ids[j]
-				)
+					context_slice, derivation->scoped_premise_context_ids[j]
+				),
+				derivation->scoped_premise_subjects[j],
+				derivation->scoped_premise_classifiers[j]
 			);
 		}
-		fprintf(
-			stream,
-			" operation %u claim %u",
-			proof->conclusion_operation_id,
-			proof->conclusion_claim_candidate_id
-		);
+		fprintf(stream, " sources %u", derivation->source_claim_count);
+		for (uint32_t j = 0; j < derivation->source_claim_count; ++j) {
+			fprintf(stream, " %u", derivation->source_claim_ids[j]);
+		}
 		fprintf(stream, "\n");
 	}
 	fprintf(stream, "END graph\n");
@@ -6017,8 +5888,8 @@ static void artifact_marks_free(struct artifact_graph_marks* marks) {
 	free(marks->constructors);
 	free(marks->readback_field_types);
 	free(marks->type_exprs);
-	free(marks->claim_candidates);
-	free(marks->derivation_candidates);
+	free(marks->claims);
+	free(marks->derivations);
 	memset(marks, 0, sizeof(*marks));
 }
 
@@ -6043,8 +5914,8 @@ static int artifact_marks_init(
 	marks->constructor_count = type_declarations->constructor_count;
 	marks->readback_field_type_count = type_declarations->readback_field_type_count;
 	marks->type_expr_count = type_declarations->expr_count;
-	marks->claim_candidate_count = judgement->claim_candidate_count;
-	marks->derivation_candidate_count = judgement->derivation_candidate_count;
+	marks->claim_count = judgement->claim_count;
+	marks->derivation_count = judgement->derivation_count;
 	if (artifact_alloc_bytes((void**)&marks->terms, marks->term_count, sizeof(*marks->terms)) != 0 ||
 		artifact_alloc_bytes((void**)&marks->cases, marks->case_count, sizeof(*marks->cases)) != 0 ||
 		artifact_alloc_bytes(
@@ -6075,11 +5946,15 @@ static int artifact_marks_init(
 			sizeof(*marks->type_exprs)
 		) != 0 ||
 		artifact_alloc_bytes(
-			(void**)&marks->claim_candidates,
-			marks->claim_candidate_count,
-			sizeof(*marks->claim_candidates)
+			(void**)&marks->claims,
+			marks->claim_count,
+			sizeof(*marks->claims)
 		) != 0 ||
-		artifact_alloc_bytes((void**)&marks->derivation_candidates, marks->derivation_candidate_count, sizeof(*marks->derivation_candidates)) != 0) {
+		artifact_alloc_bytes(
+			(void**)&marks->derivations,
+			marks->derivation_count,
+			sizeof(*marks->derivations)
+		) != 0) {
 		artifact_marks_free(marks);
 		return -1;
 	}
@@ -6317,11 +6192,11 @@ static int artifact_mark_roots(
 				}
 			}
 		}
-		for (size_t i = 0; i < marks->claim_candidate_count; ++i) {
-			if (!marks->claim_candidates[i]) {
+		for (size_t i = 0; i < marks->claim_count; ++i) {
+			if (!marks->claims[i]) {
 				continue;
 			}
-			uint32_t context_id = judgement->claim_candidates[i].context_id;
+			uint32_t context_id = judgement->claims[i].context_id;
 			while (context_id != prototype_context_empty(&metadata->contexts)) {
 				const struct prototype_context* context =
 					prototype_context_get(&metadata->contexts, context_id);
@@ -6361,9 +6236,9 @@ static int artifact_sparse_graph_alloc(
 		return -1;
 	}
 	memset(graph, 0, sizeof(*graph));
-	size_t judgement_capacity = judgement->claim_candidate_count;
-	if (judgement_capacity < judgement->derivation_candidate_count) {
-		judgement_capacity = judgement->derivation_candidate_count;
+	size_t judgement_capacity = judgement->claim_count;
+	if (judgement_capacity < judgement->derivation_count) {
+		judgement_capacity = judgement->derivation_count;
 	}
 	if (artifact_alloc_bytes((void**)&graph->term_nodes, terms->term_count, sizeof(*graph->term_nodes)) != 0 ||
 		artifact_alloc_bytes((void**)&graph->cases, terms->case_count, sizeof(*graph->cases)) != 0 ||
@@ -6492,8 +6367,8 @@ static int artifact_sparse_graph_alloc(
 	graph->type_declarations.readback_field_type_count = type_declarations->readback_field_type_count;
 	graph->type_declarations.expr_count = type_declarations->expr_count;
 	graph->type_declarations.next_level_var = type_declarations->next_level_var;
-	graph->judgement.claim_candidate_count = judgement->claim_candidate_count;
-	graph->judgement.derivation_candidate_count = judgement->derivation_candidate_count;
+	graph->judgement.claim_count = judgement->claim_count;
+	graph->judgement.derivation_count = judgement->derivation_count;
 	graph->judgement.next_universe_var = judgement->next_universe_var;
 	graph->universe.node_count = universe->node_count;
 	graph->universe.edge_count = universe->edge_count;
@@ -6582,14 +6457,14 @@ static int artifact_sparse_graph_copy_marked(
 	);
 	graph->type_declarations.representation_count = type_declarations->representation_count;
 	graph->type_declarations.representations_dirty = type_declarations->representations_dirty;
-	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
-		if (marks->claim_candidates[i]) {
-			graph->judgement.claim_candidates[i] = judgement->claim_candidates[i];
+	for (size_t i = 0; i < judgement->claim_count; ++i) {
+		if (marks->claims[i]) {
+			graph->judgement.claims[i] = judgement->claims[i];
 		}
 	}
-	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
-		if (marks->derivation_candidates[i]) {
-			graph->judgement.derivation_candidates[i] = judgement->derivation_candidates[i];
+	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		if (marks->derivations[i]) {
+			graph->judgement.derivations[i] = judgement->derivations[i];
 		}
 	}
 	for (size_t i = 0; i < universe->node_count; ++i) {
@@ -6932,7 +6807,7 @@ static int prototype_artifact_write_text_body(
 		return -1;
 	}
 
-	fprintf(stream, "A_PROGRAM_ARTIFACT 65\n");
+	fprintf(stream, "A_PROGRAM_ARTIFACT 66\n");
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
 	size_t present_interface_parameter_count = 0;
@@ -7267,7 +7142,7 @@ int prototype_artifact_read_text_interface(
 	int version;
 	if (fscanf(stream, "%255s %d", word, &version) != 2 ||
 		strcmp(word, "A_PROGRAM_ARTIFACT") != 0 ||
-		version != 65) {
+		version != 66) {
 		return -1;
 	}
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
@@ -8385,7 +8260,7 @@ static int artifact_validate_judgement_graph_refs(
 	}
 	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
 		const struct prototype_judgement_claim_candidate* relation = &judgement->claim_candidates[i];
-		if (!artifact_relation_present(relation)) {
+		if (!artifact_candidate_claim_present(relation)) {
 			continue;
 		}
 		if (!artifact_read_term_present(terms, relation->subject) ||
@@ -8395,12 +8270,12 @@ static int artifact_validate_judgement_graph_refs(
 	}
 	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
 		const struct prototype_judgement_derivation_candidate* proof = &judgement->derivation_candidates[i];
-		if (!artifact_proof_present(proof)) {
+		if (!artifact_candidate_derivation_present(proof)) {
 			continue;
 		}
 		if (proof->conclusion_claim_candidate_id >=
 				judgement->claim_candidate_count ||
-			!artifact_relation_present(
+			!artifact_candidate_claim_present(
 				&judgement->claim_candidates[proof->conclusion_claim_candidate_id]
 			) ||
 			!artifact_read_term_present(terms, proof->conclusion_subject) ||
@@ -8550,10 +8425,10 @@ int prototype_artifact_read_text_graph(
 	char label_field_types[32];
 	char label_type_expr_slots[32];
 	char label_type_exprs[32];
-	char label_judgement_slots[32];
-	char label_judgements[32];
-	char label_proof_slots[32];
-	char label_proofs[32];
+	char label_claim_slots[32];
+	char label_claims[32];
+	char label_derivation_slots[32];
+	char label_derivations[32];
 	size_t term_slot_count;
 	size_t present_term_count;
 	size_t case_slot_count;
@@ -8572,10 +8447,10 @@ int prototype_artifact_read_text_graph(
 	size_t present_field_type_count;
 	size_t expr_slot_count;
 	size_t present_expr_count;
-	size_t judgement_slot_count;
-	size_t present_judgement_count;
-	size_t proof_slot_count;
-	size_t present_proof_count;
+	size_t claim_slot_count;
+	size_t present_claim_count;
+	size_t derivation_slot_count;
+	size_t present_derivation_count;
 	if (fscanf(
 			stream,
 			"%255s"
@@ -8627,14 +8502,14 @@ int prototype_artifact_read_text_graph(
 			&expr_slot_count,
 			label_type_exprs,
 			&present_expr_count,
-			label_judgement_slots,
-			&judgement_slot_count,
-			label_judgements,
-			&present_judgement_count,
-			label_proof_slots,
-			&proof_slot_count,
-			label_proofs,
-			&present_proof_count
+			label_claim_slots,
+			&claim_slot_count,
+			label_claims,
+			&present_claim_count,
+			label_derivation_slots,
+			&derivation_slot_count,
+			label_derivations,
+			&present_derivation_count
 		) != 45 ||
 		strcmp(word, "counts") != 0 ||
 		strcmp(label_term_slots, "term_slots") != 0 ||
@@ -8655,10 +8530,10 @@ int prototype_artifact_read_text_graph(
 		strcmp(label_field_types, "field_types") != 0 ||
 		strcmp(label_type_expr_slots, "type_expr_slots") != 0 ||
 		strcmp(label_type_exprs, "type_exprs") != 0 ||
-		strcmp(label_judgement_slots, "judgement_slots") != 0 ||
-		strcmp(label_judgements, "judgements") != 0 ||
-		strcmp(label_proof_slots, "proof_slots") != 0 ||
-		strcmp(label_proofs, "proofs") != 0) {
+		strcmp(label_claim_slots, "claim_slots") != 0 ||
+		strcmp(label_claims, "claims") != 0 ||
+		strcmp(label_derivation_slots, "derivation_slots") != 0 ||
+		strcmp(label_derivations, "derivations") != 0) {
 		return -1;
 	}
 	if (term_slot_count > terms->term_capacity ||
@@ -8670,8 +8545,10 @@ int prototype_artifact_read_text_graph(
 		constructor_slot_count > type_declarations->constructor_capacity ||
 		field_type_slot_count > type_declarations->readback_field_type_capacity ||
 		expr_slot_count > type_declarations->expr_capacity ||
-		judgement_slot_count > judgement->claim_candidate_capacity ||
-		proof_slot_count > judgement->derivation_candidate_capacity) {
+		claim_slot_count > judgement->claim_candidate_capacity ||
+		claim_slot_count > judgement->claim_capacity ||
+		derivation_slot_count > judgement->derivation_candidate_capacity ||
+		derivation_slot_count > judgement->derivation_capacity) {
 		return -1;
 	}
 
@@ -9010,143 +8887,196 @@ int prototype_artifact_read_text_graph(
 	}
 	terms->ih_scope_count = frame_slot_count;
 
-	memset(judgement->claim_candidates, 0, sizeof(*judgement->claim_candidates) * judgement_slot_count);
-	memset(judgement->derivation_candidates, 0, sizeof(*judgement->derivation_candidates) * proof_slot_count);
-	if (expect_artifact_count(stream, "judgements", &count) != 0 || count != present_judgement_count) {
+	memset(judgement->claims, 0, sizeof(*judgement->claims) * claim_slot_count);
+	memset(judgement->derivations, 0, sizeof(*judgement->derivations) * derivation_slot_count);
+	if (expect_artifact_count(stream, "claims", &count) != 0 ||
+		count != present_claim_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
 		size_t id;
-		struct prototype_judgement_claim_candidate read_relation;
-		char operation_label[32];
+		struct prototype_judgement_claim read_claim;
 		char authority_label[32];
+		char context_label[32];
+		char operation_label[32];
+		char rank_label[32];
 		if (fscanf(
 				stream,
-				"%255s %zu %d %u %u %d %u %u %31s %u %31s %d %u",
+				"%255s %zu %d %31s %d %u %31s %u %31s %u %u %u %31s %u",
 				word,
 				&id,
-				&read_relation.kind,
-				&read_relation.subject,
-				&read_relation.classifier,
-				&read_relation.proof_kind,
-				&read_relation.proof_id,
-				&read_relation.context_id,
-				operation_label,
-				&read_relation.operation_id,
+				&read_claim.kind,
 				authority_label,
-				&read_relation.authority_kind,
-				&read_relation.authority_id
-			) != 13 ||
-			strcmp(word, "judgement") != 0 ||
-			strcmp(operation_label, "operation") != 0 ||
+				&read_claim.authority_kind,
+				&read_claim.authority_id,
+				context_label,
+				&read_claim.context_id,
+				operation_label,
+				&read_claim.operation_id,
+				&read_claim.subject,
+				&read_claim.classifier,
+				rank_label,
+				&read_claim.closure_rank
+			) != 14 ||
+			strcmp(word, "claim") != 0 ||
 			strcmp(authority_label, "authority") != 0 ||
-				id >= judgement_slot_count ||
-				read_relation.proof_id >= proof_slot_count) {
-				return -1;
-			}
-			if (artifact_relation_present(&judgement->claim_candidates[id])) {
-				return -1;
-			}
-			judgement->claim_candidates[id] = read_relation;
+			strcmp(context_label, "context") != 0 ||
+			strcmp(operation_label, "operation") != 0 ||
+			strcmp(rank_label, "rank") != 0 || id >= claim_slot_count ||
+			artifact_claim_present(&judgement->claims[id])) {
+			return -1;
 		}
-	judgement->claim_candidate_count = judgement_slot_count;
-	if (expect_artifact_count(stream, "proofs", &count) != 0 || count != present_proof_count) {
+		judgement->claims[id] = read_claim;
+	}
+	judgement->claim_count = claim_slot_count;
+	if (expect_artifact_count(stream, "derivations", &count) != 0 ||
+		count != present_derivation_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
 		size_t id;
-		struct prototype_judgement_derivation_candidate* proof;
-		if (fscanf(stream, "%255s %zu", word, &id) != 2 ||
-				strcmp(word, "proof") != 0 ||
-				id >= proof_slot_count) {
-				return -1;
-			}
-			proof = &judgement->derivation_candidates[id];
-			if (artifact_proof_present(proof)) {
-				return -1;
-			}
-			if (fscanf(
-					stream,
-					"%d %d %u %u %u %u %u %u %u %u %u %u %u",
-				&proof->proof_kind,
-				&proof->conclusion_kind,
-				&proof->conclusion_subject,
-				&proof->conclusion_classifier,
-				&proof->reserved_legacy_assumption_level,
-				&proof->constructor_owner_view,
-				&proof->constructor_index,
-					&proof->constructor_field_index,
-					&proof->induction_match,
-					&proof->induction_motive,
-					&proof->induction_case_index,
-				&proof->induction_field_index,
-				&proof->premise_count
-				) != 13 ||
-			proof->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
-			return -1;
-		}
-		for (uint32_t j = 0; j < proof->premise_count; ++j) {
-			char authority_label[32];
-			char operation_label[32];
-			if (fscanf(
-					stream,
-					"%d %u %u %u %31s %d %u %31s %u",
-					&proof->premise_kinds[j],
-					&proof->premise_subjects[j],
-					&proof->premise_classifiers[j],
-					&proof->premise_proof_ids[j],
-					authority_label,
-					&proof->premise_authority_kinds[j],
-					&proof->premise_authority_ids[j],
-					operation_label,
-					&proof->premise_operation_ids[j]
-				) != 9 || strcmp(authority_label, "authority") != 0 ||
-				strcmp(operation_label, "operation") != 0 ||
-				(proof->premise_proof_ids[j] != PROTOTYPE_INVALID_ID &&
-				 proof->premise_proof_ids[j] >= proof_slot_count)) {
-				return -1;
-			}
-		}
-		if (fscanf(
-				stream,
-				"%255s %u",
-				word,
-				&proof->conclusion_context_id
-			) != 2 ||
-			strcmp(word, "contexts") != 0) {
-			return -1;
-		}
-		for (uint32_t j = 0; j < proof->premise_count; ++j) {
-			if (fscanf(stream, "%u", &proof->premise_context_ids[j]) != 1) {
-				return -1;
-			}
-		}
-		char operation_label[32];
+		struct prototype_judgement_derivation* derivation;
 		char claim_label[32];
-		if (fscanf(
+		char rank_label[32];
+		if (fscanf(stream, "%255s %zu", word, &id) != 2 ||
+			strcmp(word, "derivation") != 0 || id >= derivation_slot_count) {
+			return -1;
+		}
+		derivation = &judgement->derivations[id];
+		if (artifact_derivation_present(derivation) || fscanf(
 				stream,
-				"%31s %u %31s %u",
-				operation_label,
-				&proof->conclusion_operation_id,
+				"%d %31s %u %31s %u %u %u %u %u %u %u %u %u %u",
+				&derivation->proof_kind,
 				claim_label,
-				&proof->conclusion_claim_candidate_id
-			) != 4 || strcmp(operation_label, "operation") != 0 ||
-			strcmp(claim_label, "claim") != 0 ||
-			proof->conclusion_claim_candidate_id >= judgement_slot_count) {
+				&derivation->conclusion_claim_id,
+				rank_label,
+				&derivation->closure_rank,
+				&derivation->reserved_legacy_assumption_level,
+				&derivation->constructor_owner_view,
+				&derivation->constructor_index,
+				&derivation->constructor_field_index,
+				&derivation->induction_match,
+				&derivation->induction_motive,
+				&derivation->induction_case_index,
+				&derivation->induction_field_index,
+				&derivation->premise_count
+			) != 14 || strcmp(claim_label, "claim") != 0 ||
+			strcmp(rank_label, "rank") != 0 ||
+			derivation->conclusion_claim_id >= claim_slot_count ||
+			derivation->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 			return -1;
 		}
-		const struct prototype_judgement_claim_candidate* conclusion =
-			&judgement->claim_candidates[proof->conclusion_claim_candidate_id];
-		if (!artifact_relation_present(conclusion) ||
-			conclusion->kind != proof->conclusion_kind ||
-			conclusion->context_id != proof->conclusion_context_id ||
-			conclusion->operation_id != proof->conclusion_operation_id ||
-			conclusion->subject != proof->conclusion_subject ||
-			conclusion->classifier != proof->conclusion_classifier) {
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			char premise_label[32];
+			if (fscanf(
+					stream,
+					"%31s %u %d %u %u %u",
+					premise_label,
+					&derivation->premise_claim_ids[j],
+					&derivation->scoped_premise_kinds[j],
+					&derivation->scoped_premise_context_ids[j],
+					&derivation->scoped_premise_subjects[j],
+					&derivation->scoped_premise_classifiers[j]
+				) != 6 || strcmp(premise_label, "premise") != 0 ||
+				(derivation->premise_claim_ids[j] != PROTOTYPE_INVALID_ID &&
+				 derivation->premise_claim_ids[j] >= claim_slot_count)) {
+				return -1;
+			}
+		}
+		if (fscanf(stream, "%255s %u", word, &derivation->source_claim_count) != 2 ||
+			strcmp(word, "sources") != 0 ||
+			derivation->source_claim_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 			return -1;
 		}
+		for (uint32_t j = 0; j < derivation->source_claim_count; ++j) {
+			if (fscanf(stream, "%u", &derivation->source_claim_ids[j]) != 1 ||
+				derivation->source_claim_ids[j] >= claim_slot_count) {
+				return -1;
+			}
 		}
-		judgement->derivation_candidate_count = proof_slot_count;
+	}
+	judgement->derivation_count = derivation_slot_count;
+
+	memset(judgement->claim_candidates, 0,
+		sizeof(*judgement->claim_candidates) * claim_slot_count);
+	memset(judgement->derivation_candidates, 0,
+		sizeof(*judgement->derivation_candidates) * derivation_slot_count);
+	for (uint32_t i = 0; i < claim_slot_count; ++i) {
+		if (!artifact_claim_present(&judgement->claims[i])) {
+			continue;
+		}
+		const struct prototype_judgement_claim* claim = &judgement->claims[i];
+		struct prototype_judgement_claim_candidate* candidate =
+			&judgement->claim_candidates[i];
+		candidate->kind = claim->kind;
+		candidate->authority_kind = claim->authority_kind;
+		candidate->authority_id = claim->authority_id;
+		candidate->context_id = claim->context_id;
+		candidate->operation_id = claim->operation_id;
+		candidate->subject = claim->subject;
+		candidate->classifier = claim->classifier;
+	}
+	for (uint32_t i = 0; i < derivation_slot_count; ++i) {
+		if (!artifact_derivation_present(&judgement->derivations[i])) {
+			continue;
+		}
+		const struct prototype_judgement_derivation* derivation =
+			&judgement->derivations[i];
+		const struct prototype_judgement_claim* conclusion =
+			&judgement->claims[derivation->conclusion_claim_id];
+		if (!artifact_claim_present(conclusion)) {
+			return -1;
+		}
+		struct prototype_judgement_derivation_candidate* proof =
+			&judgement->derivation_candidates[i];
+		proof->proof_kind = derivation->proof_kind;
+		proof->conclusion_claim_candidate_id = derivation->conclusion_claim_id;
+		proof->conclusion_kind = conclusion->kind;
+		proof->conclusion_context_id = conclusion->context_id;
+		proof->conclusion_operation_id = conclusion->operation_id;
+		proof->conclusion_subject = conclusion->subject;
+		proof->conclusion_classifier = conclusion->classifier;
+		proof->reserved_legacy_assumption_level =
+			derivation->reserved_legacy_assumption_level;
+		proof->constructor_owner_view = derivation->constructor_owner_view;
+		proof->constructor_index = derivation->constructor_index;
+		proof->constructor_field_index = derivation->constructor_field_index;
+		proof->induction_match = derivation->induction_match;
+		proof->induction_motive = derivation->induction_motive;
+		proof->induction_case_index = derivation->induction_case_index;
+		proof->induction_field_index = derivation->induction_field_index;
+		proof->premise_count = derivation->premise_count;
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			uint32_t premise_claim_id = derivation->premise_claim_ids[j];
+			if (premise_claim_id != PROTOTYPE_INVALID_ID) {
+				const struct prototype_judgement_claim* premise =
+					&judgement->claims[premise_claim_id];
+				if (!artifact_claim_present(premise)) {
+					return -1;
+				}
+				proof->premise_kinds[j] = premise->kind;
+				proof->premise_context_ids[j] = premise->context_id;
+				proof->premise_subjects[j] = premise->subject;
+				proof->premise_classifiers[j] = premise->classifier;
+				proof->premise_authority_kinds[j] = premise->authority_kind;
+				proof->premise_authority_ids[j] = premise->authority_id;
+				proof->premise_operation_ids[j] = premise->operation_id;
+			} else {
+				proof->premise_kinds[j] = derivation->scoped_premise_kinds[j];
+				proof->premise_context_ids[j] =
+					derivation->scoped_premise_context_ids[j];
+				proof->premise_subjects[j] = derivation->scoped_premise_subjects[j];
+				proof->premise_classifiers[j] =
+					derivation->scoped_premise_classifiers[j];
+				proof->premise_authority_kinds[j] =
+					PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID;
+				proof->premise_authority_ids[j] = PROTOTYPE_INVALID_ID;
+				proof->premise_operation_ids[j] = PROTOTYPE_INVALID_ID;
+			}
+		}
+	}
+	judgement->claim_candidate_count = claim_slot_count;
+	judgement->derivation_candidate_count = derivation_slot_count;
 		if (artifact_validate_read_graph_refs(
 				terms,
 				type_declarations,
@@ -11297,7 +11227,6 @@ int prototype_artifact_append_graph(
 		if (relation.kind != PROTOTYPE_JUDGEMENT_KIND_UNKNOWN) {
 			relation.subject = offset_artifact_id(relation.subject, term_offset);
 			relation.classifier = offset_artifact_id(relation.classifier, term_offset);
-			relation.proof_id = offset_artifact_id(relation.proof_id, proof_offset);
 			if (relation.context_id >= source_contexts->context_count) {
 				return -1;
 			}
@@ -11343,8 +11272,6 @@ int prototype_artifact_append_graph(
 					offset_artifact_id(proof.premise_subjects[j], term_offset);
 				proof.premise_classifiers[j] =
 					offset_artifact_id(proof.premise_classifiers[j], term_offset);
-				proof.premise_proof_ids[j] =
-					offset_artifact_id(proof.premise_proof_ids[j], proof_offset);
 				proof.premise_operation_ids[j] =
 					operation_offset == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
 					offset_artifact_id(

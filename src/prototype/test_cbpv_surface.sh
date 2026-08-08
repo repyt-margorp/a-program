@@ -279,7 +279,7 @@ grep -q '^term id := LAMBDA(' "$tmp_dir/higher-order-function.out"
 grep -q '^term apply := LAMBDA(.*FORCE(VAR' "$tmp_dir/higher-order-function.out"
 grep -q '^term main := APP(LAMBDA(.*THUNK(LAMBDA' \
 	"$tmp_dir/higher-order-function.out"
-grep -q 'has-type THUNK(LAMBDA(.*\[thunk-intro\]' \
+grep -q 'has-type THUNK(LAMBDA(.*\[thunk-intro proof#' \
 	"$tmp_dir/higher-order-function.out"
 ./read_file.out --write-artifact "$tmp_dir/higher-order-function.apo" \
 	"$tmp_dir/higher-order-function.p" >"$tmp_dir/higher-order-function-write.out"
@@ -461,7 +461,7 @@ grep -q '^term const := LAMBDA(.*LAMBDA(.*RETURN(VAR' \
 	"$tmp_dir/curried-function.out"
 grep -q '^term main := APP(APP(LAMBDA' \
 	"$tmp_dir/curried-function.out"
-grep -q 'has-type APP(APP(LAMBDA.*\[app-elim\]' "$tmp_dir/curried-function.out"
+grep -q 'has-type APP(APP(LAMBDA.*\[app-elim proof#' "$tmp_dir/curried-function.out"
 
 cat >"$tmp_dir/raw-match-branch.p" <<'EOF'
 Nat := @{ zero : *; succ : * -> *; };
@@ -486,16 +486,16 @@ grep -q '^term choose := LAMBDA(.*MATCH(.*CASE(zero -> LAMBDA' \
 	"$tmp_dir/raw-match-function-call.out"
 grep -q '^term main := APP(APP(LAMBDA' \
 	"$tmp_dir/raw-match-function-call.out"
-grep -q 'has-type APP(APP(LAMBDA.*\[app-elim\]' \
+grep -q 'has-type APP(APP(LAMBDA.*\[app-elim proof#' \
 	"$tmp_dir/raw-match-function-call.out"
 
 ./read_file.out training/dependent_match.p >"$tmp_dir/dependent-match.out"
-grep -q 'has-type MATCH(.*\[solved-match-motive\]' \
+grep -q 'has-type MATCH(.*\[solved-match-motive proof#' \
 	"$tmp_dir/dependent-match.out"
 
 ./read_file.out training/recursive_dependent_match.p \
 	>"$tmp_dir/recursive-dependent-match.out"
-grep -q 'has-type MATCH(.*\[solved-match-motive\]' \
+grep -q 'has-type MATCH(.*\[solved-match-motive proof#' \
 	"$tmp_dir/recursive-dependent-match.out"
 ./read_file.out --write-artifact "$tmp_dir/recursive-dependent-match.apo" \
 	training/recursive_dependent_match.p \
@@ -511,7 +511,7 @@ EOF
 
 ./read_file.out "$tmp_dir/bind.p" >"$tmp_dir/bind.out"
 grep -q 'term main := COMPUTATION_FOLD(' "$tmp_dir/bind.out"
-grep -q '\[computation-fold-elim\]' "$tmp_dir/bind.out"
+grep -q '\[computation-fold-elim proof#' "$tmp_dir/bind.out"
 
 cat >"$tmp_dir/bind-requires-computation.p" <<'EOF'
 main := { x : #.Int64 := { #1; }; \y : #.Int64 => x; };
@@ -527,7 +527,7 @@ fi
 	>"$tmp_dir/computed-match.out"
 grep -q 'term main := COMPUTATION_FOLD(RETURN(CONSTRUCTOR' "$tmp_dir/computed-match.out"
 grep -q 'MATCH(VAR' "$tmp_dir/computed-match.out"
-grep -q '\[computation-fold-elim\]' "$tmp_dir/computed-match.out"
+grep -q '\[computation-fold-elim proof#' "$tmp_dir/computed-match.out"
 
 cat >"$tmp_dir/lambda-bind.p" <<'EOF'
 main := \n : #.Nat => { x : #.Nat := { n; }; x; };
@@ -535,8 +535,8 @@ EOF
 
 ./read_file.out "$tmp_dir/lambda-bind.p" >"$tmp_dir/lambda-bind.out"
 grep -q 'term main := LAMBDA(.*COMPUTATION_FOLD(RETURN(VAR' "$tmp_dir/lambda-bind.out"
-grep -q '\[computation-fold-elim\]' "$tmp_dir/lambda-bind.out"
-grep -q '\[lambda-intro\]' "$tmp_dir/lambda-bind.out"
+grep -q '\[computation-fold-elim proof#' "$tmp_dir/lambda-bind.out"
+grep -q '\[lambda-intro proof#' "$tmp_dir/lambda-bind.out"
 
 cat >"$tmp_dir/sigma-dependent-field.p" <<'EOF'
 Sigma := \A : @ => \B : A -> @ => @{ mk : (a : A) -> B a -> *; };
@@ -548,7 +548,7 @@ EOF
 ./read_file.out "$tmp_dir/sigma-dependent-field.p" >"$tmp_dir/sigma-dependent-field.out"
 grep -q '^term ConstNat := LAMBDA(' "$tmp_dir/sigma-dependent-field.out"
 grep -q '^term main := APP(APP(CONSTRUCTOR' "$tmp_dir/sigma-dependent-field.out"
-grep -q '\[constructor-spine-formation\]' "$tmp_dir/sigma-dependent-field.out"
+grep -q '\[constructor-spine-formation proof#' "$tmp_dir/sigma-dependent-field.out"
 ./read_file.out --write-artifact "$tmp_dir/sigma-dependent-field.apo" \
 	"$tmp_dir/sigma-dependent-field.p" >"$tmp_dir/sigma-dependent-field-write.out"
 ./read_file.out --read-graph "$tmp_dir/sigma-dependent-field.apo" \
@@ -578,7 +578,7 @@ EOF
 	>"$tmp_dir/direct-operation-request.out"
 grep -q 'term main := OPERATION_REQUEST(' \
 	"$tmp_dir/direct-operation-request.out"
-grep -q '\[operation-request-intro\]' \
+grep -q '\[operation-request-intro proof#' \
 	"$tmp_dir/direct-operation-request.out"
 printf '%s\n' \
 	'main := #.print #"x";' \
@@ -652,7 +652,7 @@ EOF
 
 ./read_file.out "$tmp_dir/handle.p" >"$tmp_dir/handle.out"
 grep -q 'term main := COMPUTATION_FOLD(' "$tmp_dir/handle.out"
-grep -q '\[computation-fold-elim\]' "$tmp_dir/handle.out"
+grep -q '\[computation-fold-elim proof#' "$tmp_dir/handle.out"
 ./read_file.out --write-artifact "$tmp_dir/handle.apo" "$tmp_dir/handle.p" >"$tmp_dir/handle-write.out"
 awk '$1 == "compile_policy" && $2 == 2 && $8 == 14 { found = 1 }
 END { exit found ? 0 : 1 }' "$tmp_dir/handle.apo"
@@ -822,8 +822,8 @@ EOF
 
 ./read_file.out "$tmp_dir/lambda-handle.p" >"$tmp_dir/lambda-handle.out"
 grep -q 'term main := LAMBDA(.*COMPUTATION_FOLD(' "$tmp_dir/lambda-handle.out"
-grep -q '\[computation-fold-elim\]' "$tmp_dir/lambda-handle.out"
-grep -q '\[lambda-intro\]' "$tmp_dir/lambda-handle.out"
+grep -q '\[computation-fold-elim proof#' "$tmp_dir/lambda-handle.out"
+grep -q '\[lambda-intro proof#' "$tmp_dir/lambda-handle.out"
 ./read_file.out --write-artifact "$tmp_dir/lambda-handle.apo" "$tmp_dir/lambda-handle.p" \
 	>"$tmp_dir/lambda-handle-write.out"
 ./read_file.out --read-graph "$tmp_dir/lambda-handle.apo" \
@@ -839,7 +839,7 @@ grep -q 'compile-budget .* residual=0 incomplete=0' \
 grep -q 'EFFECT_OPERATION(scope_text)' "$tmp_dir/higher-order-operation.out"
 grep -q 'THUNK(OPERATION_REQUEST(EFFECT_OPERATION(print)' \
 	"$tmp_dir/higher-order-operation.out"
-grep -q '\[operation-request-intro\]' "$tmp_dir/higher-order-operation.out"
+grep -q '\[operation-request-intro proof#' "$tmp_dir/higher-order-operation.out"
 ./read_file.out --policy strict --write-artifact "$tmp_dir/higher-order-operation.apo" \
 	src/prototype/higher_order_operation_check.p \
 	>"$tmp_dir/higher-order-operation-write.out"
@@ -869,9 +869,9 @@ grep -q '^term main := COMPUTATION_FOLD(' \
 	"$tmp_dir/higher-order-operation-handler.out"
 grep -q 'OP_CLAUSE(EFFECT_OPERATION(scope_text)' \
 	"$tmp_dir/higher-order-operation-handler.out"
-grep -q '\[computation-fold-elim\]' \
+grep -q '\[computation-fold-elim proof#' \
 	"$tmp_dir/higher-order-operation-handler.out"
-grep -q '\[computation-fold-elim\] proof#[0-9][0-9]* premises=6' \
+grep -q '\[computation-fold-elim proof#[0-9][0-9]* premises=6' \
 	"$tmp_dir/higher-order-operation-handler.out"
 {
 	cat src/prototype/higher_order_operation_handler_check.p
@@ -925,8 +925,8 @@ fi
 
 awk -v request_proof_kind="$operation_request_proof_kind" '
 	BEGIN { changed = 0 }
-	$1 == "proof" && $3 == request_proof_kind && !changed {
-		$20 = 21
+	$1 == "derivation" && $3 == request_proof_kind && !changed {
+		$18 = 999999
 		changed = 1
 	}
 	{ print }
@@ -944,7 +944,7 @@ fi
 # have. The fold carrier is their join, not the return clause classifier alone.
 ./read_file.out --policy strict src/prototype/effect_weaken_handler_check.p \
 	>"$tmp_dir/effect-weaken-handler.out"
-grep -q 'has-type COMPUTATION_FOLD(.*COMPUTATION_TYPE(EFFECT_LABEL(1), PRIMITIVE(Text)) \[computation-fold-elim\]' \
+grep -q 'has-type COMPUTATION_FOLD(.*COMPUTATION_TYPE(EFFECT_LABEL(1), PRIMITIVE(Text)) \[computation-fold-elim proof#' \
 	"$tmp_dir/effect-weaken-handler.out"
 {
 	cat src/prototype/effect_weaken_handler_check.p

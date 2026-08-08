@@ -110,7 +110,6 @@ struct prototype_judgement_derivation_candidate {
 	int premise_authority_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_authority_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_operation_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t premise_proof_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 };
 
 struct prototype_judgement_claim_candidate {
@@ -123,11 +122,6 @@ struct prototype_judgement_claim_candidate {
 	uint32_t operation_id;
 	uint32_t subject;
 	uint32_t classifier;
-	/* Transitional preferred derivation. This is not Claim identity or accepted
-	 * evidence. P0-R0A.3 removes these fields after every consumer follows
-	 * Derivation.conclusion_claim_candidate_id. */
-	int proof_kind;
-	uint32_t proof_id;
 };
 
 /* Complete evidence selected by a proof-producing lookup. Classifier-only
@@ -158,14 +152,10 @@ struct prototype_judgement_claim {
 	uint32_t closure_rank;
 };
 
-/* Accepted rule application. During the P0 transition, source_claim_ids are
- * reconstructed from resolved legacy edges. The final representation keeps
- * only irreducible derived sources; structural sources come from OperationGraph. */
+/* Accepted rule application. source_claim_ids retain irreducible derived
+ * dependencies; structural dependencies come from OperationGraph. */
 struct prototype_judgement_derivation {
 	int proof_kind;
-	/* Transitional back-reference used only to mark the producer candidate
-	 * selected by grounded publication. */
-	uint32_t source_candidate_proof_id;
 	uint32_t conclusion_claim_id;
 	uint32_t closure_rank;
 	uint32_t reserved_legacy_assumption_level;
@@ -277,7 +267,9 @@ struct prototype_judgement_effect_row_constraint {
 };
 
 struct prototype_judgement_db {
-	/* Transitional source image while all consumers move to Claims. */
+	/* Mutable solver frontier. These records are reconstructed after artifact
+	 * readback when linking or further solving needs a local candidate view;
+	 * they are not the accepted certificate image. */
 	struct prototype_judgement_claim_candidate* claim_candidates;
 	struct prototype_judgement_derivation_candidate* derivation_candidates;
 	size_t claim_candidate_count;

@@ -193,7 +193,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 65$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 66$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -226,9 +226,9 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/65$/64/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v64.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v64.apo" >"$TMP_DIR/identity-v64.out" 2>"$TMP_DIR/identity-v64.err"; then
-	echo "obsolete artifact unexpectedly passed after v65 format bump" >&2
+sed '1s/66$/65/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v65.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v65.apo" >"$TMP_DIR/identity-v65.out" 2>"$TMP_DIR/identity-v65.err"; then
+	echo "obsolete artifact unexpectedly passed after v66 format bump" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity operation [0-9][0-9]*$' "$TMP_DIR/identity.apo"
@@ -275,29 +275,29 @@ test -n "$id2_operation"
 test -n "$use1_operation"
 test "$id1_operation" != "$id2_operation"
 awk -v id1_operation="$id1_operation" -v id2_operation="$id2_operation" \
-	-v use1_operation="$use1_operation" '
+	-v use1_operation="$use1_operation" -v app_elim="$PROOF_KIND_APP_ELIM" '
 	FNR == NR {
-		if ($1 == "judgement" && $9 == "operation") {
+		if ($1 == "claim" && $9 == "operation") {
 			if ($10 == id1_operation) {
-				id1_proof = $7;
+				id1_claim = $2;
 			} else if ($10 == id2_operation) {
-				id2_proof = $7;
+				id2_claim = $2;
 			} else if ($10 == use1_operation) {
-				use1_proof = $7;
+				use1_claim = $2;
 			}
 		}
 		next;
 	}
-	$1 == "proof" && $2 == use1_proof {
-		if ($23 != "operation" || $24 != id1_operation) {
+	$1 == "derivation" && $3 == app_elim && $5 == use1_claim {
+		if ($17 != "premise" || $18 != id1_claim) {
 			exit 1;
 		}
-		$24 = id2_operation;
+		$18 = id2_claim;
 		replaced = 1;
 	}
 	{ print }
 	END {
-		if (!id1_proof || !id2_proof || !use1_proof || !replaced) {
+		if (!id1_claim || !id2_claim || !use1_claim || !replaced) {
 			exit 1;
 		}
 	}
@@ -641,10 +641,10 @@ test "$multi_use_higher_bool_term" = "$multi_use_higher_nat_term"
 test -n "$multi_use_ascribed_bool_term"
 test -n "$multi_use_ascribed_nat_term"
 test -n "$multi_match_ascribed_term"
-multi_app_elim_count=$(grep -F -c '[app-elim]' "$TMP_DIR/multi-app.out")
+multi_app_elim_count=$(grep -F -c '[app-elim proof#' "$TMP_DIR/multi-app.out")
 test "$multi_app_elim_count" -ge 2
 grep -E 'metadata label matchAscribed -> operation#[0-9]+ -> term#' "$TMP_DIR/multi-app.out" >/dev/null
-grep -F '[solved-match-motive]' "$TMP_DIR/multi-app.out" >/dev/null
+grep -F '[solved-match-motive proof#' "$TMP_DIR/multi-app.out" >/dev/null
 
 ./read_file.out --write-artifact "$TMP_DIR/AscribedRawFunction.apo" \
 	src/prototype/ascribed_raw_function_check.p \
@@ -737,7 +737,7 @@ EOF_DEPENDENT_CONSTRUCTOR_FIELD
 ./read_file.out "$TMP_DIR/dependent-constructor-field.p" >"$TMP_DIR/dependent-constructor-field.out"
 grep -q 'metadata label first -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/dependent-constructor-field.out"
 grep -q 'interface constructor type_export#0.mk ordinal=0 fields=2 curried_classifier_cache=' "$TMP_DIR/dependent-constructor-field.out"
-grep -E 'has-type VAR\(_#[0-9]+\) APP\(VAR\(_#[0-9]+\), VAR\(_#[0-9]+\)\) \[match-pattern-assumption\]' "$TMP_DIR/dependent-constructor-field.out" >/dev/null
+grep -E 'has-type VAR\(_#[0-9]+\) APP\(VAR\(_#[0-9]+\), VAR\(_#[0-9]+\)\) \[match-pattern-assumption proof#' "$TMP_DIR/dependent-constructor-field.out" >/dev/null
 
 cat >"$TMP_DIR/dependent-constructor-provider.p" <<'EOF_DEPENDENT_CONSTRUCTOR_PROVIDER'
 Sigma := \A : @ => \B : A -> @ => @{
@@ -858,18 +858,19 @@ EOF_CONSTRUCTOR_VALUE
 
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == constructor_intro_proof_kind && !bad_classifier) {
-			bad_classifier = $4;
+		if ($1 == "claim") {
+			classifier[$2] = $12;
+		}
+		if ($1 == "derivation" && $3 == constructor_intro_proof_kind && !bad_classifier) {
+			bad_classifier = classifier[$5];
+		} else if ($1 == "derivation" && $3 == type_formation_proof_kind && !target_claim) {
+			target_claim = $5;
 		}
 		next;
 	}
-	$1 == "judgement" && $6 == type_formation_proof_kind && !done {
-		$5 = bad_classifier;
-		target_proof = $7;
+	$1 == "claim" && $2 == target_claim && !done {
+		$12 = bad_classifier;
 		done = 1;
-	}
-	$1 == "proof" && $2 == target_proof {
-		$6 = bad_classifier;
 	}
 	{ print }
 ' constructor_intro_proof_kind="$PROOF_KIND_CONSTRUCTOR_INTRO" \
@@ -881,18 +882,19 @@ if ./read_file.out --read-graph "$TMP_DIR/BadTypeFormationClassifier.apo" >"$TMP
 fi
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == type_formation_proof_kind && !bad_classifier) {
-			bad_classifier = $5;
+		if ($1 == "claim") {
+			classifier[$2] = $12;
+		}
+		if ($1 == "derivation" && $3 == type_formation_proof_kind && !bad_classifier) {
+			bad_classifier = classifier[$5];
+		} else if ($1 == "derivation" && $3 == declaration_proof_kind && !target_claim) {
+			target_claim = $5;
 		}
 		next;
 	}
-	$1 == "judgement" && $6 == declaration_proof_kind && !done {
-		$5 = bad_classifier;
-		target_proof = $7;
+	$1 == "claim" && $2 == target_claim && !done {
+		$12 = bad_classifier;
 		done = 1;
-	}
-	$1 == "proof" && $2 == target_proof {
-		$6 = bad_classifier;
 	}
 	{ print }
 ' type_formation_proof_kind="$PROOF_KIND_TYPE_FORMATION_INTRO" \
@@ -903,13 +905,9 @@ if ./read_file.out --read-graph "$TMP_DIR/BadConstructorIntroClassifier.apo" >"$
 	exit 1
 fi
 awk '
-	$1 == "judgement" && $6 == binder_assumption_proof_kind && !done {
-		$6 = match_pattern_assumption_proof_kind;
-		target_proof = $7;
-		done = 1;
-	}
-	$1 == "proof" && $2 == target_proof {
+	$1 == "derivation" && $3 == binder_assumption_proof_kind && !done {
 		$3 = match_pattern_assumption_proof_kind;
+		done = 1;
 	}
 	{ print }
 ' binder_assumption_proof_kind="$PROOF_KIND_BINDER_ASSUMPTION" \
@@ -920,8 +918,8 @@ if ./read_file.out --read-graph "$TMP_DIR/BadPatternAssumption.apo" >"$TMP_DIR/b
 	exit 1
 fi
 awk '
-	$1 == "proof" && $3 == binder_assumption_proof_kind && !done {
-		$7 = 999;
+	$1 == "derivation" && $3 == binder_assumption_proof_kind && !done {
+		$8 = 999;
 		done = 1;
 	}
 	{ print }
@@ -933,8 +931,11 @@ if ./read_file.out --read-graph "$TMP_DIR/BadLegacyAssumptionLevel.apo" >"$TMP_D
 fi
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == binder_assumption_proof_kind && !binder_subject) {
-			binder_subject = $4;
+		if ($1 == "claim") {
+			subject[$2] = $11;
+		}
+		if ($1 == "derivation" && $3 == binder_assumption_proof_kind && !binder_subject) {
+			binder_subject = subject[$5];
 		}
 		next;
 	}
@@ -952,17 +953,17 @@ if ./read_file.out --read-graph "$TMP_DIR/BadBinderIdentity.apo" >"$TMP_DIR/bad-
 fi
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == binder_assumption_proof_kind && !target_proof) {
-			target_proof = $7;
-			bad_classifier = $4;
+		if ($1 == "claim") {
+			subject[$2] = $11;
+		}
+		if ($1 == "derivation" && $3 == binder_assumption_proof_kind && !target_claim) {
+			target_claim = $5;
+			bad_classifier = subject[$5];
 		}
 		next;
 	}
-	$1 == "judgement" && $7 == target_proof {
-		$5 = bad_classifier;
-	}
-	$1 == "proof" && $2 == target_proof {
-		$6 = bad_classifier;
+	$1 == "claim" && $2 == target_claim {
+		$12 = bad_classifier;
 	}
 	{ print }
 ' binder_assumption_proof_kind="$PROOF_KIND_BINDER_ASSUMPTION" \
@@ -972,8 +973,8 @@ if ./read_file.out --read-graph "$TMP_DIR/BadBinderClassifier.apo" >"$TMP_DIR/ba
 	exit 1
 fi
 awk '
-	$1 == "proof" && $3 == lambda_intro_proof_kind && !done {
-		$13 = $16;
+	$1 == "derivation" && $3 == lambda_intro_proof_kind && !done {
+		$14 = 999;
 		done = 1;
 	}
 	{ print }
@@ -990,8 +991,8 @@ if grep -q 'TELESCOPE' "$TMP_DIR/list-induction-pattern.out"; then
 	exit 1
 fi
 awk '
-	$1 == "proof" && $3 != match_pattern_assumption_proof_kind && !done {
-		$7 = 2;
+	$1 == "derivation" && $3 != match_pattern_assumption_proof_kind && !done {
+		$8 = 2;
 		done = 1;
 	}
 	{ print }
@@ -1149,8 +1150,8 @@ grep -q '^exports-normalization-equal main expected mode=default yes$' "$TMP_DIR
 	main expected --reduction-mode beta >"$TMP_DIR/append-normalization_equal-beta.out"
 grep -q '^exports-normalization-equal main expected mode=beta no$' "$TMP_DIR/append-normalization_equal-beta.out"
 awk '
-	$1 == "proof" && $15 > 0 && !done {
-		$15 = 999;
+	$1 == "derivation" && $16 > 0 && !done {
+		$16 = 999;
 		done = 1;
 	}
 	END {
@@ -1244,7 +1245,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadConstructorCache.apo" \
 	exit 1
 fi
 awk '
-	$1 == "proof" && !done {
+	$1 == "derivation" && !done {
 		$3 = 999;
 		done = 1;
 	}
@@ -1255,13 +1256,9 @@ if ./read_file.out --read-graph "$TMP_DIR/BadProof.apo" >"$TMP_DIR/bad-proof.out
 	exit 1
 fi
 awk '
-	$1 == "judgement" && $6 == from_kind && !done {
-		$6 = to_kind;
-		target_proof = $7;
-		done = 1;
-	}
-	$1 == "proof" && $2 == target_proof {
+	$1 == "derivation" && $3 == from_kind && !done {
 		$3 = to_kind;
+		done = 1;
 	}
 	{ print }
 ' from_kind="$PROOF_KIND_SOLVED_MATCH_MOTIVE" \
@@ -1272,8 +1269,8 @@ if ./read_file.out --read-graph "$TMP_DIR/BadProofShape.apo" >"$TMP_DIR/bad-proo
 	exit 1
 fi
 awk '
-	$1 == "proof" && $11 > 0 && !done {
-		$15 = 999;
+	$1 == "derivation" && $16 > 0 && !done {
+		$18 = 999;
 		done = 1;
 	}
 	{ print }
@@ -1284,18 +1281,25 @@ if ./read_file.out --read-graph "$TMP_DIR/BadProofEdge.apo" >"$TMP_DIR/bad-proof
 fi
 awk '
 	FNR == NR {
-		if ($1 == "proof" && $11 > 0 && !target_proof) {
-			target_proof = $2;
-			expected_premise = $15;
+		if ($1 == "claim") {
+			claims[++claim_count] = $2;
 		}
-		if ($1 == "proof" && target_proof && $2 != target_proof &&
-			$2 != expected_premise && !replacement_proof) {
-			replacement_proof = $2;
+		if ($1 == "derivation" && $16 > 0 && !target_derivation) {
+			target_derivation = $2;
+			expected_premise = $18;
 		}
 		next;
 	}
-	$1 == "proof" && $2 == target_proof {
-		$15 = replacement_proof;
+	FNR == 1 {
+		for (i = 1; i <= claim_count; ++i) {
+			if (claims[i] != expected_premise) {
+				replacement_claim = claims[i];
+				break;
+			}
+		}
+	}
+	$1 == "derivation" && $2 == target_derivation {
+		$18 = replacement_claim;
 	}
 	{ print }
 ' "$TMP_DIR/MatchGraph.apo" "$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadProofEdgeMismatch.apo"
@@ -1307,63 +1311,43 @@ fi
 	src/prototype/artifact_add_check.p >"$TMP_DIR/app-premise-kind-artifact.out"
 awk '
 	FNR == NR {
-		if ($1 == "counts") {
-			next_relation_id = $29;
-			next_proof_id = $33;
-		}
-		if ($1 == "proof" && $3 == app_elim_proof_kind && $11 > 0 && !target_proof) {
-			target_proof = $2;
-			premise_subject = $13;
-			premise_classifier = $14;
-			premise_proof = $15;
+		if ($1 == "derivation" && $3 == app_elim_proof_kind && $16 > 0 && !premise_claim) {
+			premise_claim = $18;
 		}
 		next;
 	}
-	$1 == "counts" {
-		$29 = $29 + 1;
-		$31 = $31 + 1;
-		$33 = $33 + 1;
-		$35 = $35 + 1;
-	}
-	$1 == "judgements" {
-		$2 = $2 + 1;
-	}
-	$1 == "proofs" {
-		$2 = $2 + 1;
-	}
-	$1 == "proof" && $2 == target_proof {
-		$12 = is_type_kind;
-		$15 = next_proof_id;
-	}
-	$1 == "END" && $2 == "graph" {
-		print "judgement", next_relation_id, is_type_kind, premise_subject, premise_classifier, is_type_proof_kind, next_proof_id;
-		print "proof", next_proof_id, is_type_proof_kind, is_type_kind, premise_subject, premise_classifier, 0, 4294967295, 4294967295, 4294967295, 1, has_type_kind, premise_subject, premise_classifier, premise_proof;
+	$1 == "claim" && $2 == premise_claim {
+		$3 = is_type_kind;
 	}
 	{ print }
 ' app_elim_proof_kind="$PROOF_KIND_APP_ELIM" \
 	is_type_kind="$JUDGEMENT_KIND_IS_TYPE" \
-	is_type_proof_kind="$PROOF_KIND_IS_TYPE_FROM_HAS_TYPE" \
-	has_type_kind="$JUDGEMENT_KIND_HAS_TYPE" \
 	"$TMP_DIR/AppPremiseKind.apo" "$TMP_DIR/AppPremiseKind.apo" >"$TMP_DIR/BadAppPremiseKind.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadAppPremiseKind.apo" >"$TMP_DIR/bad-app-premise-kind.out" 2>"$TMP_DIR/bad-app-premise-kind.err"; then
 	echo "bad app premise kind artifact unexpectedly passed" >&2
 	exit 1
 fi
 awk '
-	$1 == "proof" && !done {
-		$4 = is_type_kind;
+	FNR == NR {
+		if ($1 == "derivation" && !target_claim) {
+			target_claim = $5;
+		}
+		next;
+	}
+	$1 == "claim" && $2 == target_claim && !done {
+		$3 = is_type_kind;
 		done = 1;
 	}
 	{ print }
 ' is_type_kind="$JUDGEMENT_KIND_IS_TYPE" \
-	"$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadProofConclusion.apo"
+	"$TMP_DIR/MatchGraph.apo" "$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadProofConclusion.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadProofConclusion.apo" >"$TMP_DIR/bad-proof-conclusion.out" 2>"$TMP_DIR/bad-proof-conclusion.err"; then
 	echo "bad proof conclusion artifact unexpectedly passed" >&2
 	exit 1
 fi
 awk '
-	$1 == "proof" && $3 == solved_match_motive_proof_kind && !done {
-		$11 = 1;
+	$1 == "derivation" && $3 == solved_match_motive_proof_kind && !done {
+		$12 = 1;
 		done = 1;
 	}
 	{ print }
@@ -1375,8 +1359,11 @@ if ./read_file.out --read-graph "$TMP_DIR/BadMotiveProof.apo" >"$TMP_DIR/bad-mot
 fi
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == solved_match_motive_proof_kind && !match_classifier) {
-			match_classifier = $5;
+		if ($1 == "claim") {
+			classifier[$2] = $12;
+		}
+		if ($1 == "derivation" && $3 == solved_match_motive_proof_kind && !match_classifier) {
+			match_classifier = classifier[$5];
 		}
 		if ($1 == "term_node") {
 			term_tag[$2] = $3;
@@ -1401,23 +1388,9 @@ if ./read_file.out --read-graph "$TMP_DIR/BadMatchElimMotiveShape.apo" >"$TMP_DI
 	exit 1
 fi
 awk '
-	$1 == "counts" {
-		next_relation_id = $29;
-		next_proof_id = $33;
-		$29 = $29 + 1;
-		$31 = $31 + 1;
-		$33 = $33 + 1;
-		$35 = $35 + 1;
-	}
-	$1 == "judgements" {
-		$2 = $2 + 1;
-	}
-	$1 == "proofs" {
-		$2 = $2 + 1;
-	}
-	$1 == "END" && $2 == "graph" {
-		print "judgement", next_relation_id, is_type_kind, 0, 1, is_type_proof_kind, next_proof_id;
-		print "proof", next_proof_id, is_type_proof_kind, is_type_kind, 0, 1, 0, 4294967295, 4294967295, 4294967295, 0;
+	$1 == "derivation" && !done {
+		$3 = is_type_proof_kind;
+		done = 1;
 	}
 	{ print }
 ' is_type_kind="$JUDGEMENT_KIND_IS_TYPE" \
@@ -1428,23 +1401,10 @@ if ./read_file.out --read-graph "$TMP_DIR/BadIsTypeProof.apo" >"$TMP_DIR/bad-is-
 	exit 1
 fi
 awk '
-	$1 == "counts" {
-		next_relation_id = $29;
-		next_proof_id = $33;
-		$29 = $29 + 1;
-		$31 = $31 + 1;
-		$33 = $33 + 1;
-		$35 = $35 + 1;
-	}
-	$1 == "judgements" {
-		$2 = $2 + 1;
-	}
-	$1 == "proofs" {
-		$2 = $2 + 1;
-	}
-	$1 == "END" && $2 == "graph" {
-		print "judgement", next_relation_id, is_type_kind, 2, 3, is_type_proof_kind, next_proof_id;
-		print "proof", next_proof_id, is_type_proof_kind, is_type_kind, 2, 3, 0, 4294967295, 4294967295, 4294967295, 1, has_type_kind, 0, 3, 0;
+	$1 == "derivation" && $16 > 0 && !done {
+		$3 = is_type_proof_kind;
+		$18 = 999;
+		done = 1;
 	}
 	{ print }
 ' is_type_kind="$JUDGEMENT_KIND_IS_TYPE" \
@@ -1456,23 +1416,9 @@ if ./read_file.out --read-graph "$TMP_DIR/BadIsTypePremiseSubject.apo" >"$TMP_DI
 	exit 1
 fi
 awk '
-	$1 == "counts" {
-		next_relation_id = $29;
-		next_proof_id = $33;
-		$29 = $29 + 1;
-		$31 = $31 + 1;
-		$33 = $33 + 1;
-		$35 = $35 + 1;
-	}
-	$1 == "judgements" {
-		$2 = $2 + 1;
-	}
-	$1 == "proofs" {
-		$2 = $2 + 1;
-	}
-	$1 == "END" && $2 == "graph" {
-		print "judgement", next_relation_id, has_type_kind, 0, 1, universe_cumulativity_proof_kind, next_proof_id;
-		print "proof", next_proof_id, universe_cumulativity_proof_kind, has_type_kind, 0, 1, 0, 4294967295, 4294967295, 4294967295, 0;
+	$1 == "derivation" && !done {
+		$3 = universe_cumulativity_proof_kind;
+		done = 1;
 	}
 	{ print }
 ' has_type_kind="$JUDGEMENT_KIND_HAS_TYPE" \
@@ -1483,22 +1429,13 @@ if ./read_file.out --read-graph "$TMP_DIR/BadUniverseCumulativitySubject.apo" >"
 	exit 1
 fi
 awk '
-	FNR == NR {
-		if ($1 == "judgement" && !target_proof) {
-			target_proof = $7;
-		}
-		next;
-	}
-	$1 == "judgement" && $7 == target_proof {
-		$6 = declaration_proof_kind;
-	}
-	$1 == "proof" && $2 == target_proof {
-		print $1, $2, declaration_proof_kind, $4, $5, $6, $7, $8, $9, $10, 0;
-		next;
+	$1 == "derivation" && !done {
+		$3 = declaration_proof_kind;
+		done = 1;
 	}
 	{ print }
 ' declaration_proof_kind="$PROOF_KIND_DECLARATION" \
-	"$TMP_DIR/MatchGraph.apo" "$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadDeclarationProof.apo"
+	"$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadDeclarationProof.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadDeclarationProof.apo" >"$TMP_DIR/bad-declaration-proof.out" 2>"$TMP_DIR/bad-declaration-proof.err"; then
 	echo "bad declaration proof artifact unexpectedly passed" >&2
 	exit 1
@@ -1516,8 +1453,11 @@ EOF_CONSTRUCTOR_DECLARATION
 	"$TMP_DIR/constructor-declaration.p" >"$TMP_DIR/constructor-declaration.out"
 awk '
 	FNR == NR {
-	if ($1 == "proof" && $3 == declaration_proof_kind) {
-			target_constructor = $5;
+		if ($1 == "claim") {
+			subject[$2] = $11;
+		}
+		if ($1 == "derivation" && $3 == declaration_proof_kind) {
+			target_constructor = subject[$5];
 		}
 		next;
 	}
@@ -1533,23 +1473,9 @@ if ./read_file.out --read-graph "$TMP_DIR/BadConstructorDeclaration.apo" >"$TMP_
 	exit 1
 fi
 awk '
-	$1 == "counts" {
-		next_proof_id = $33;
-		$33 = $33 + 1;
-		$35 = $35 + 1;
-	}
-	$1 == "proofs" {
-		$2 = $2 + 1;
-	}
-	$1 == "proof" {
-		last_proof = $0;
-	}
-	$1 == "END" && $2 == "graph" {
-		split(last_proof, fields, " ");
-		fields[2] = next_proof_id;
-		for (i = 1; i <= length(fields); ++i) {
-			printf "%s%s", fields[i], i == length(fields) ? "\n" : " ";
-		}
+	$1 == "derivation" && !done {
+		$5 = 999;
+		done = 1;
 	}
 	{ print }
 ' "$TMP_DIR/MatchGraph.apo" >"$TMP_DIR/BadProofOrphan.apo"
@@ -1572,7 +1498,7 @@ dep := \b : Bool => b @true => Nat.zero @false => Bool.true;
 EOF_DEPENDENT_MATCH
 
 ./read_file.out "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match.out"
-grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive\]' "$TMP_DIR/dependent-match.out"
+grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive proof#' "$TMP_DIR/dependent-match.out"
 grep -q 'CASE(true -> COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Nat' \
 	"$TMP_DIR/dependent-match.out"
 grep -q 'CASE(false -> COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Bool' \
@@ -1580,8 +1506,11 @@ grep -q 'CASE(false -> COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Bool' \
 ./read_file.out --write-artifact "$TMP_DIR/DependentMatch.apo" "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match-artifact.out"
 awk '
 	NR == FNR {
-		if ($1 == "judgement" && $6 == solved_match_motive_proof_kind && !match_term) {
-			match_term = $4;
+		if ($1 == "claim") {
+			subject[$2] = $11;
+		}
+		if ($1 == "derivation" && $3 == solved_match_motive_proof_kind && !match_term) {
+			match_term = subject[$5];
 		}
 		if ($1 == "term_node") {
 			first_case_by_term[$2] = $5;
@@ -1630,18 +1559,18 @@ len := \A : @ =>
 EOF_IH_MOTIVE
 
 ./read_file.out "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive.out"
-grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Nat.* \[ih-elim\]' \
+grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Nat.* \[ih-elim proof#' \
 	"$TMP_DIR/ih-motive.out"
-grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive\]' "$TMP_DIR/ih-motive.out"
-grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim\] proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"
-grep -q 'has-type COMPUTATION_FOLD(INDUCTION_HYPOTHESIS.*\[computation-fold-elim\] proof#[0-9][0-9]* premises=2' \
+grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive proof#' "$TMP_DIR/ih-motive.out"
+grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"
+grep -q 'has-type COMPUTATION_FOLD(INDUCTION_HYPOTHESIS.*\[computation-fold-elim proof#[0-9][0-9]* premises=2' \
 	"$TMP_DIR/ih-motive.out"
 ./read_file.out --write-artifact "$TMP_DIR/IhMotive.apo" "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive-artifact.out"
 awk '
-	$1 == "proof" && $3 == ih_elim_proof_kind && !done {
-		$11 = 999;
-		$12 = 4294967295;
+	$1 == "derivation" && $3 == ih_elim_proof_kind && !done {
+		$12 = 999;
 		$13 = 4294967295;
+		$14 = 4294967295;
 		done = 1;
 	}
 	{ print }
@@ -1652,8 +1581,8 @@ if ./read_file.out --read-graph "$TMP_DIR/BadIhContextKind.apo" >"$TMP_DIR/bad-i
 	exit 1
 fi
 awk '
-	$1 == "proof" && $3 == ih_elim_proof_kind && !done {
-		$13 = 999;
+	$1 == "derivation" && $3 == ih_elim_proof_kind && !done {
+		$15 = 999;
 		done = 1;
 	}
 	{ print }
@@ -1669,7 +1598,7 @@ if grep -q 'expects-type' "$TMP_DIR/add-proof.out"; then
 	echo "expectation relation leaked into proof output" >&2
 	exit 1
 fi
-grep -q 'has-type LAMBDA.*\[lambda-intro\] proof#[0-9][0-9]* premises=2' "$TMP_DIR/add-proof.out"
+grep -q 'has-type LAMBDA.*\[lambda-intro proof#[0-9][0-9]* premises=2' "$TMP_DIR/add-proof.out"
 
 cat >"$TMP_DIR/source-view-nat-match.p" <<'EOF_SOURCE_VIEW_NAT_MATCH'
 Nat := @{
@@ -1692,8 +1621,8 @@ grep -q 'INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat' "$TMP_DIR/source-view-nat-match.ou
 ./read_file.out --write-artifact "$TMP_DIR/AddProof.apo" \
 	src/prototype/artifact_add_check.p >"$TMP_DIR/add-proof-artifact.out"
 awk '
-	$1 == "proof" && $3 == lambda_intro_proof_kind && !done {
-		$15 = $2;
+	$1 == "derivation" && $3 == lambda_intro_proof_kind && $16 > 0 && !done {
+		$18 = $5;
 		done = 1;
 	}
 	END {
@@ -1713,15 +1642,13 @@ awk '
 		if ($1 == "term_node" && $3 == text_literal_tag && !bad_classifier) {
 			bad_classifier = $2;
 		}
+		if ($1 == "derivation" && $3 == conversion_proof_kind && !target_claim) {
+			target_claim = $5;
+		}
 		next;
 	}
-	$1 == "judgement" && $6 == conversion_proof_kind && !done_relation {
-		target_proof = $7;
-		$5 = bad_classifier;
-		done_relation = 1;
-	}
-	$1 == "proof" && $2 == target_proof {
-		$6 = bad_classifier;
+	$1 == "claim" && $2 == target_claim {
+		$12 = bad_classifier;
 	}
 	{ print }
 ' conversion_proof_kind="$PROOF_KIND_CONVERSION" \
@@ -1781,8 +1708,8 @@ EOF_INTRINSIC_NAT_TO_TEXT
 ./read_file.out --write-artifact "$TMP_DIR/IntrinsicNatToText.apo" \
 	"$TMP_DIR/intrinsic-nat-to-text.p" >"$TMP_DIR/intrinsic-nat-to-text.out"
 ./read_file.out "$TMP_DIR/intrinsic-nat-to-text.p" >"$TMP_DIR/intrinsic-nat-to-text-print.out"
-grep -q '\[pure-primitive-type-intro\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
-grep -q '\[host-type-intro\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
+grep -q '\[pure-primitive-type-intro proof#' "$TMP_DIR/intrinsic-nat-to-text-print.out"
+grep -q '\[host-type-intro proof#' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 ! grep -q '\[intrinsic\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 ! grep -q '\[primitive\]' "$TMP_DIR/intrinsic-nat-to-text-print.out"
 cat >"$TMP_DIR/text-literal.p" <<'EOF_TEXT_LITERAL'
@@ -1792,20 +1719,25 @@ EOF_TEXT_LITERAL
 	"$TMP_DIR/text-literal.p" >"$TMP_DIR/text-literal.out"
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == host_type_intro && !universe_classifier) {
-			universe_classifier = $5;
+		if ($1 == "claim") {
+			classifier[$2] = $12;
+		}
+		if ($1 == "derivation" && $3 == host_type_intro && !universe_classifier_found) {
+			universe_classifier = classifier[$5];
+			universe_classifier_found = 1;
+		}
+		if ($1 == "derivation" && $3 == text_literal_intro && !target_claim_found) {
+			target_claim = $5;
+			target_claim_found = 1;
 		}
 		next;
 	}
-	$1 == "judgement" && $6 == text_literal_intro && !done {
-		$5 = universe_classifier;
-		target_proof = $7;
+	$1 == "claim" && $2 == target_claim {
+		$12 = universe_classifier;
 		done = 1;
 	}
-	$1 == "proof" && $2 == target_proof {
-		$6 = universe_classifier;
-	}
 	{ print }
+	END { if (!done || !universe_classifier_found || !target_claim_found) exit 1 }
 ' host_type_intro="$PROOF_KIND_HOST_TYPE_INTRO" \
 	text_literal_intro="$PROOF_KIND_TEXT_LITERAL_INTRO" \
 	"$TMP_DIR/TextLiteral.apo" "$TMP_DIR/TextLiteral.apo" >"$TMP_DIR/BadTextLiteralClassifier.apo"
@@ -1815,20 +1747,25 @@ if ./read_file.out --read-graph "$TMP_DIR/BadTextLiteralClassifier.apo" >"$TMP_D
 fi
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == text_literal_intro && !text_literal) {
-			text_literal = $4;
+		if ($1 == "claim") {
+			subject[$2] = $11;
+		}
+		if ($1 == "derivation" && $3 == text_literal_intro && !text_literal_found) {
+			text_literal = subject[$5];
+			text_literal_found = 1;
+		}
+		if ($1 == "derivation" && $3 == host_type_intro && !target_claim_found) {
+			target_claim = $5;
+			target_claim_found = 1;
 		}
 		next;
 	}
-	$1 == "judgement" && $6 == host_type_intro && !done {
-		$4 = text_literal;
-		target_proof = $7;
+	$1 == "claim" && $2 == target_claim {
+		$11 = text_literal;
 		done = 1;
 	}
-	$1 == "proof" && $2 == target_proof {
-		$5 = text_literal;
-	}
 	{ print }
+	END { if (!done || !text_literal_found || !target_claim_found) exit 1 }
 ' host_type_intro="$PROOF_KIND_HOST_TYPE_INTRO" \
 	text_literal_intro="$PROOF_KIND_TEXT_LITERAL_INTRO" \
 	"$TMP_DIR/TextLiteral.apo" "$TMP_DIR/TextLiteral.apo" >"$TMP_DIR/BadTextTypeSubject.apo"
@@ -1842,18 +1779,22 @@ main := #42;
 EOF_INT_LITERAL
 ./read_file.out --write-artifact "$TMP_DIR/IntLiteral.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal.out"
-grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int64) \[int-literal-intro\]' "$TMP_DIR/int-literal.out"
-grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int) \[int-literal-admissibility\]' "$TMP_DIR/int-literal.out"
-grep -q '\[host-type-intro\]' "$TMP_DIR/int-literal.out"
+grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int64) \[int-literal-intro proof#' "$TMP_DIR/int-literal.out"
+grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int) \[int-literal-admissibility proof#' "$TMP_DIR/int-literal.out"
+grep -q '\[host-type-intro proof#' "$TMP_DIR/int-literal.out"
 awk '
 	$1 == "operation" && $3 == 1 {
 		literal_operation = $2;
 		selected_classifier = $9;
 		literal_count++;
 	}
-	$1 == "judgement" && $9 == "operation" &&
-		($6 == int_literal_intro || $6 == int_literal_admissibility) {
-		admissible[$10 SUBSEP $5] = 1;
+	$1 == "claim" {
+		claim_operation[$2] = $10;
+		claim_classifier[$2] = $12;
+	}
+	$1 == "derivation" &&
+		($3 == int_literal_intro || $3 == int_literal_admissibility) {
+		admissible[claim_operation[$5] SUBSEP claim_classifier[$5]] = 1;
 	}
 	END {
 		classifier_count = 0;
@@ -1893,9 +1834,13 @@ awk '
 		selected_classifier = $9;
 		literal_count++;
 	}
-	$1 == "judgement" && $9 == "operation" &&
-		($6 == int_literal_intro || $6 == int_literal_admissibility) {
-		admissible[$10 SUBSEP $5] = 1;
+	$1 == "claim" {
+		claim_operation[$2] = $10;
+		claim_classifier[$2] = $12;
+	}
+	$1 == "derivation" &&
+		($3 == int_literal_intro || $3 == int_literal_admissibility) {
+		admissible[claim_operation[$5] SUBSEP claim_classifier[$5]] = 1;
 	}
 	END {
 		classifier_count = 0;
@@ -1915,22 +1860,21 @@ awk '
 	"$TMP_DIR/IntLiteralSpecialization.apo"
 
 ./read_file.out --write-artifact "$TMP_DIR/MultipleDerivations.apo" \
-	examples/05_bool_to_nat.p >"$TMP_DIR/multiple-derivations.out"
+	examples/07_add.p >"$TMP_DIR/multiple-derivations.out"
 awk '
-	$1 == "judgement" && $9 == "operation" && $10 != 4294967295 {
-		key = $3 ":" $4 ":" $5 ":" $10;
-		claims[key]++;
-		proof_kinds[key SUBSEP $6] = 1;
+	$1 == "derivation" {
+		derivation_count[$5]++;
+		proof_kinds[$5 SUBSEP $3] = 1;
 	}
 	END {
-		for (key in claims) {
-			if (claims[key] < 2) {
+		for (claim_id in derivation_count) {
+			if (derivation_count[claim_id] < 2) {
 				continue;
 			}
 			kind_count = 0;
 			for (entry in proof_kinds) {
 				split(entry, parts, SUBSEP);
-				if (parts[1] == key) {
+				if (parts[1] == claim_id) {
 					kind_count++;
 				}
 			}
@@ -1945,20 +1889,25 @@ awk '
 ' "$TMP_DIR/MultipleDerivations.apo"
 awk '
 	FNR == NR {
-		if ($1 == "judgement" && $6 == host_type_intro && !universe_classifier) {
-			universe_classifier = $5;
+		if ($1 == "claim") {
+			classifier[$2] = $12;
+		}
+		if ($1 == "derivation" && $3 == host_type_intro && !universe_classifier_found) {
+			universe_classifier = classifier[$5];
+			universe_classifier_found = 1;
+		}
+		if ($1 == "derivation" && $3 == int_literal_intro && !target_claim_found) {
+			target_claim = $5;
+			target_claim_found = 1;
 		}
 		next;
 	}
-	$1 == "judgement" && $6 == int_literal_intro && !done {
-		$5 = universe_classifier;
-		target_proof = $7;
+	$1 == "claim" && $2 == target_claim {
+		$12 = universe_classifier;
 		done = 1;
 	}
-	$1 == "proof" && $2 == target_proof {
-		$6 = universe_classifier;
-	}
 	{ print }
+	END { if (!done || !universe_classifier_found || !target_claim_found) exit 1 }
 ' host_type_intro="$PROOF_KIND_HOST_TYPE_INTRO" \
 	int_literal_intro="$PROOF_KIND_INT_LITERAL_INTRO" \
 	"$TMP_DIR/IntLiteral.apo" "$TMP_DIR/IntLiteral.apo" >"$TMP_DIR/BadIntLiteralClassifier.apo"
@@ -1972,8 +1921,8 @@ main := (#9223372036854775807 :: #.Int64);
 EOF_INT64_LITERAL
 ./read_file.out --write-artifact "$TMP_DIR/Int64Literal.apo" \
 	"$TMP_DIR/int64-literal.p" >"$TMP_DIR/int64-literal.out"
-grep -q 'has-type INT_LITERAL(9223372036854775807) PRIMITIVE(Int64) \[int-literal-intro\]' "$TMP_DIR/int64-literal.out"
-! grep -q 'has-type INT_LITERAL(9223372036854775807) PRIMITIVE(Int) \[int-literal-intro\]' "$TMP_DIR/int64-literal.out"
+grep -q 'has-type INT_LITERAL(9223372036854775807) PRIMITIVE(Int64) \[int-literal-intro proof#' "$TMP_DIR/int64-literal.out"
+! grep -q 'has-type INT_LITERAL(9223372036854775807) PRIMITIVE(Int) \[int-literal-intro proof#' "$TMP_DIR/int64-literal.out"
 
 cat >"$TMP_DIR/int32-range-bad.p" <<'EOF_INT32_RANGE_BAD'
 main := (#9223372036854775807 :: #.Int);
@@ -2050,7 +1999,7 @@ main := (#.print #"hello");
 EOF_TERMINAL_EFFECT
 ./read_file.out --write-artifact "$TMP_DIR/TerminalEffect.apo" \
 	"$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-artifact.out"
-grep -q '\[effect-operation-type-intro\]' "$TMP_DIR/terminal-effect-artifact.out"
+grep -q '\[effect-operation-type-intro proof#' "$TMP_DIR/terminal-effect-artifact.out"
 ./read_file.out --read-graph "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/terminal-effect-read-graph.out"
 grep -q "^term_node .* $TERM_TAG_EFFECT_OPERATION print [0-9][0-9]*$" \
 	"$TMP_DIR/TerminalEffect.apo"
@@ -2092,21 +2041,20 @@ awk '
 		if ($1 == "term" && $2 == "Bool") {
 			bool_term = $3;
 		}
-		if ($1 == "judgement" && $6 == operation_type_intro_proof_kind) {
-			intrinsic_classifier = $5;
+		if ($1 == "claim") {
+			classifier[$2] = $12;
+		}
+		if ($1 == "derivation" && $3 == operation_type_intro_proof_kind) {
+			intrinsic_classifier = classifier[$5];
 		}
 		next;
 	}
-	$1 == "term" && $2 == "Bool" {
-		bool_term = $3;
-	}
-	$1 == "judgement" && $6 == operation_type_intro_proof_kind {
-		intrinsic_classifier = $5;
-	}
 	$1 == "term_node" && $2 == intrinsic_classifier && $3 == pi_tag {
 		$4 = bool_term;
+		done = 1;
 	}
 	{ print }
+	END { if (!done) exit 1 }
 ' operation_type_intro_proof_kind="$PROOF_KIND_PURE_PRIMITIVE_TYPE_INTRO" \
 	pi_tag="$TERM_TAG_PI" \
 	"$TMP_DIR/IntrinsicNatToText.apo" "$TMP_DIR/IntrinsicNatToText.apo" >"$TMP_DIR/BadIntrinsicNatToText.apo"
@@ -2692,7 +2640,7 @@ grep -q 'resolved constructor owner kind=1 .* ordinal=0' "$TMP_DIR/user-linked-r
 	--import-interface "$TMP_DIR/List.apo" \
 	--import-interface "$TMP_DIR/Nat.apo" \
 	"$TMP_DIR/good-cons-user.p" >"$TMP_DIR/good-cons-user.out"
-grep -q '\[constructor-spine-formation\]' "$TMP_DIR/good-cons-user.out"
+grep -q '\[constructor-spine-formation proof#' "$TMP_DIR/good-cons-user.out"
 if ./read_file.out --write-artifact "$TMP_DIR/BadConsUser.apo" \
 	--import-interface "$TMP_DIR/List.apo" \
 	--import-interface "$TMP_DIR/Nat.apo" \
@@ -2720,22 +2668,22 @@ grep -Eq '^effect_constraint [0-9]+ 2 3 ' \
 
 awk '
 	FNR == NR {
-		if ($1 == "term_node" && $3 == constructor_tag && $5 == 0 && !bad_classifier) {
-			bad_classifier = $2;
+		if ($1 == "claim") {
+			subject[$2] = $11;
+		}
+		if ($1 == "derivation" && $3 == lambda_intro_proof_kind && !target_claim_found) {
+			target_claim = $5;
+			target_claim_found = 1;
 		}
 		next;
 	}
-	$1 == "judgement" && $6 == declaration_proof_kind && !done {
-		$5 = bad_classifier;
-		target_proof = $7;
+	$1 == "claim" && $2 == target_claim {
+		$12 = subject[target_claim];
 		done = 1;
 	}
-	$1 == "proof" && $2 == target_proof {
-		$6 = bad_classifier;
-	}
 	{ print }
-' constructor_tag="$TERM_TAG_CONSTRUCTOR" \
-	declaration_proof_kind="$PROOF_KIND_DECLARATION" \
+	END { if (!done || !target_claim_found) exit 1 }
+' lambda_intro_proof_kind="$PROOF_KIND_LAMBDA_INTRO" \
 	"$TMP_DIR/IdProvider.apo" "$TMP_DIR/IdProvider.apo" >"$TMP_DIR/BadExternalDeclarationClassifier.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadExternalDeclarationClassifier.apo" \
 	>"$TMP_DIR/bad-external-declaration-classifier.out" \

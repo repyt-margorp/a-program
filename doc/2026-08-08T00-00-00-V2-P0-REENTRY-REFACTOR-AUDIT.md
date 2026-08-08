@@ -2,16 +2,17 @@
 
 Date: 2026-08-08
 
-Status: audit complete; P0-R0A.1 and P0-R0A.2 implemented for the current
-calculus; P0-R0A.3 candidate-adjacency and publication migration active
+Status: audit complete; P0-R0A.1 and P0-R0A.2 are implemented for the current
+calculus; the P0-R0A.3a candidate-adjacency/publication entry premise is
+complete. P0.1 characterization is next.
 
 Baseline:
 
 - branch: `main`;
-- committed checkpoints through `bc9566f refactor: remove candidate publication mutation`;
-- working artifact header: provisional `A_PROGRAM_ARTIFACT 65`;
-- implementation state: P0-R0A.1 and P0-R0A.2 implemented; P0-R0A.3 is the next active P0
-  implementation phase.
+- committed checkpoints through `85d720e refactor: migrate P0 candidate consumers`;
+- working artifact header: native `A_PROGRAM_ARTIFACT 66`;
+- implementation state: P0-R0A.3a is complete; solver candidates are local
+  frontier state and accepted Claims/Derivations are the certificate image.
 
 This document re-audits the implementation after the earlier V2-P0 completion
 claim. It found that P0 had not actually established its accepted certificate
@@ -30,19 +31,19 @@ The audit covers:
   integer-literal admissibility;
 - link-time declaration evidence;
 - Universe constraint provenance;
-- the current artifact candidate-proof encoding and its v65 direct conclusion
+- the native v66 artifact Claim/Derivation encoding and its direct conclusion
   Claim adjacency;
 - capacities and constants that constrain the P0 certificate representation;
 - the regression suite that is supposed to protect these boundaries.
 
-The audit is now accompanied by the first P0-R0A implementation slices. They
-add separate in-memory Claim and Derivation records, distinguish scoped local
-obligations from publishable Claims, and carry exact selected evidence through
-the principal source rules. This remains a transition scaffold, not P0
-completion: legacy candidate relation/proof arrays, dead late-resolver code,
-and candidate proof IDs still exist and remain removal targets. Higher
-Observational equality syntax and witnesses remain outside P0 and begin only
-after this certificate boundary is stable.
+The audit is now accompanied by the completed P0-R0A.3a entry refactor. It has
+separate in-memory Claim and Derivation records, distinguishes scoped local
+obligations from publishable Claims, and carries exact selected evidence through
+the principal source rules. Candidate arrays remain only as solver-local
+frontier storage; the accepted DAG is the certificate and artifact image. This
+does not complete all of P0: characterization, link authority, Universe
+provenance, and stable wire identity remain. Higher Observational equality
+syntax and witnesses remain outside P0.
 
 ## 2. A Program Decisions Preserved by This Audit
 
@@ -154,26 +155,23 @@ The next implementation step is not P1. It is the corrected entry of P0-R0A:
 8. only then replace provisional v65 with the native accepted
    Claim/Derivation schema.
 
-Until steps 1-5 close, the reconstructed DAG is a validator and migration
-scaffold, not the authoritative source of premise identity.
+At that checkpoint, steps 1-5 had to close before the reconstructed DAG could
+be authoritative. They are now closed; accepted Claims/Derivations are the
+validation and artifact certificate image.
 
 The subsequent code audit sharpened step 7. Candidate Claims and candidate
-Derivations are now different-size arenas, and each Derivation directly names
-its conclusion candidate Claim. The old resolver and the dead delta compaction
-APIs have been removed. The transition is nevertheless incomplete while a
-candidate Claim still stores a preferred `proof_kind/proof_id`, accepted
-Derivations retain `source_candidate_proof_id`, or Universe/link/artifact code
-uses those fields. Those are P0 premise violations because they silently turn
-one proposition with several derivations back into one proposition owned by
-one derivation.
+Derivations are different-size arenas, and each Derivation directly names its
+conclusion candidate Claim. The old resolver and dead delta compaction APIs are
+removed. The identified premise violations have also been removed: candidate
+Claims have no preferred `proof_kind/proof_id`, accepted Derivations have no
+`source_candidate_proof_id`, and Universe/link/artifact consumers enumerate
+Derivations by conclusion Claim.
 
-A physical removal probe also established the required migration order.
-Preferred-proof reads are live in typing selection, Operation solver
-materialization, Universe collection, link completion, diagnostics, and
-artifact publication. P0-R0A.3 must migrate those consumers in that order
-through one explicit Claim-to-concluding-Derivations adjacency API, then delete
-the fields. Deleting the fields first would create a broad non-building tree;
-keeping them indefinitely would preserve the wrong certificate semantics.
+A physical removal probe established the migration order. That order has now
+been executed for typing selection, Operation solver materialization, Universe
+collection, link completion, diagnostics, and artifact publication. The fields
+were deleted only after those consumers followed explicit
+Claim-to-concluding-Derivations adjacency.
 
 ### 3.2.1 Structural producer closure found by the final code audit
 
@@ -305,7 +303,9 @@ Implemented transition pieces:
   publication path after it was shown to delete a valid zero-clause fold and
   its continuation Lambda by legacy tuple matching.
 
-Still missing before the P0-R0A.1 premise is established:
+The audit identified the following missing work before the P0-R0A.1 premise
+could be established. Items 1-7 are retained as the historical diagnosis; the
+current implementation has closed them for the current calculus:
 
 1. `SelectedEvidence` now exists as a first-class record. Source APP,
    constructor spine, operation request, and solved Match retain exact child
@@ -883,22 +883,19 @@ as accepted Claim IDs is the next R0A.3 representation change.
 - [x] Store one or more grounded Derivations per accepted Claim; keep
   zero-derivation candidates unpublished.
 - [x] Remove `proof_kind` and `proof_id` from accepted Claim identity.
-- [ ] Remove `proof_kind` and `proof_id` ownership from the legacy candidate
+- [x] Remove `proof_kind` and `proof_id` ownership from the solver candidate
   Claim representation.
-- [ ] Stop clearing and later guessing exact proof IDs.
-- [ ] Keep object HOTT witnesses entirely separate from this meta certificate.
+- [x] Stop clearing and later guessing exact proof IDs.
+- [x] Keep object HOTT witnesses entirely separate from this meta certificate.
 
 Current state: accepted Claim interning, ordered Claim-ID premise retention,
-least grounded closure, and final rule validation are authoritative in memory.
-The validator walks every accepted Derivation and does not select it from the
-legacy candidate image; the candidate `accepted` bit and its post-closure
-mutation have been deleted. Scoped fold/request rule parameters remain
-local payload rather than fabricated Claims. The remaining dependency on proof
-IDs is confined to candidate construction/resolution, substitution metadata,
-Universe consumers, and v64 artifact reachability/serialization. In
-particular, `source_candidate_proof_id` must disappear together with the native
-Claim/Derivation artifact migration; removing it earlier would merely replace
-it with a reverse tuple lookup.
+least grounded closure, and final rule validation are authoritative. Candidate
+Claims and Derivations remain separate solver-local arrays, but no candidate
+Claim owns a preferred proof. The validator, consumers, and artifact publisher
+enumerate all Derivations concluding a Claim. Scoped fold/request rule
+parameters remain local payload rather than fabricated Claims. Artifact v66
+serializes the accepted DAG directly; `premise_proof_ids` and
+`source_candidate_proof_id` no longer exist.
 
 ### P0-R0A.4 Structural dependencies
 
@@ -980,12 +977,12 @@ leaving `premise_proof_ids` unresolved.
 
 ### P0-R0A.10 Successor artifact
 
-- [ ] Finalize the in-memory model before changing the writer.
+- [x] Finalize Claim/Derivation ownership before changing the writer.
 - [ ] Add the calculus/schema fingerprint.
-- [ ] Serialize Claims separately from Derivations.
+- [x] Serialize Claims separately from Derivations.
 - [ ] Remove the reserved legacy assumption field.
-- [ ] Reject v62 with no reconstruction fallback.
-- [ ] Validate read, relocation, append, link, and forged artifacts.
+- [x] Reject v65 with no reconstruction fallback.
+- [x] Validate v66 read, relocation, append, link, and forged artifacts.
 
 ### P0-R0A.11 Exit verification
 
@@ -994,7 +991,7 @@ leaving `premise_proof_ids` unresolved.
 - [x] Examples 01-07/09 pass.
 - [ ] All Section 13.2 adversarial tests pass.
 - [x] `git diff --check` passes.
-- [ ] P0 and V2 status/dependency text matches the implemented state.
+- [x] P0 and V2 status/dependency text matches the implemented state.
 
 ## 15. P0-R0A Exit Criteria
 
@@ -1023,12 +1020,12 @@ Observational equality types and witnesses.
 | --- | --- | --- | --- |
 | 2026-08-08 | P0 re-entry code audit | complete | Re-read Operation, Judgement, derived-boundary, link, Universe, artifact, enum, capacity, and test paths at `701654a`. |
 | 2026-08-08 | Committed baseline regression | complete | At the historical `701654a` baseline, all 15 prototype scripts and examples 01-07/09 passed. |
-| 2026-08-08 | Active worktree regression | complete for existing suite | Warning-free build and all 15 `src/prototype/test_*.sh` scripts pass with provisional artifact v65. Section 13.2 still lists new adversarial coverage required before P0 exit. |
+| 2026-08-08 | Active worktree regression | complete for existing suite | Warning-free build and all 15 `src/prototype/test_*.sh` scripts pass with native artifact v66. Section 13.2 still lists broader adversarial coverage required before P0 exit. |
 | 2026-08-08 | Certificate model decision | complete | Split Claim from Derivation; structural dependencies resolve to Claims, not latest proofs; object HOTT witnesses remain separate. |
 | 2026-08-08 | Former P1-R0 through P1-R5 | reclassified | Mandatory P0-R0A work before P1 can be scoped. |
 | 2026-08-08 | P0-R0A transition checkpoint | complete | `062b7cd` adds separate reconstructed Claim/Derivation arenas and grounded closure while retaining the legacy producer image. |
 | 2026-08-08 | P0-R0A.1 premise re-audit | complete | Classifier-only producer APIs lose child authority and Context; authority-complete evidence selection and structural premise descriptors are mandatory P0-R0A.1/R0A.2 work. |
-| 2026-08-08 | P0-R0A authoritative migration | in progress | R0A.1 and R0A.2 are implemented for the current calculus. Atomic accepted publication, artifact migration, and later provenance phases remain incomplete. |
+| 2026-08-08 | P0-R0A authoritative migration | complete for ownership/publication | R0A.1-R0A.3a are implemented for the current calculus. Accepted publication and artifact migration are complete; later provenance and stable-wire phases remain P0 work. |
 | 2026-08-08 | P0 premise code re-audit | complete | Confirmed remaining candidate preferred-proof fields, Universe/link candidate consumption, accepted-to-candidate artifact back-references, and provisional candidate serialization. Dead resolver/pruning APIs were removed. |
 | 2026-08-08 | Structural authority repair | partial | APP child Operations are retained; Lambda binder premises use ContextBinding authority; direct child Context is preserved before owner projection; legacy final tuple pruning was removed. |
 | 2026-08-08 | SelectedEvidence/APP implementation | partial | Added an authority-complete selected-evidence record, evidence-preserving APP candidate collection, and partial Lambda/CBPV child propagation. Remaining classifier-only proof producers keep P0-R0A.1 open. |
@@ -1039,6 +1036,6 @@ Observational equality types and witnesses.
 | 2026-08-08 | P0-R0A.1 implementation | complete for current rules | Superseded fixed-point classifiers are excluded from Claim publication; exact clause Operation classifiers determine fold rows; local rows are included in the final carrier and exact union is replayed by validation. `test_cbpv_surface.sh` passes, including higher-order force-once/force-twice and forged-artifact cases. |
 | 2026-08-08 | P0 export occurrence boundary | implemented; provisional schema v64 | `term_export` now preserves its source Operation. Writer/readback require the export classifier to equal that Operation classifier and require either an accepted grounded Claim or a reachable explicit residual/verification obligation. Shared erased Core identity is not export evidence. |
 | 2026-08-08 | P0-R0A.2 authority-complete producer boundary | complete for current rules | Generated helper and source structural producers carry explicit authority-complete evidence; direct structural Operation edges remain distinct from evidence owner identity; all 15 prototype scripts pass. |
-| 2026-08-08 | P0-R0A.3 candidate adjacency | implemented; publication migration active | Candidate Claims are interned independently, candidate Derivations directly name their conclusion Claim, and multiple Derivations per Claim are retained. Artifact v65 records that edge explicitly and rejects v64. Preferred-proof Claim fields and accepted-to-candidate artifact back-references remain removal targets. |
+| 2026-08-08 | P0-R0A.3a entry premise | complete | Candidate Claims are interned independently, candidate Derivations directly name their conclusion Claim, all consumers enumerate that adjacency, and multiple Derivations per Claim are retained. Artifact v66 publishes accepted Claims/Derivations and rejects v65. Preferred-proof and accepted-to-candidate back-reference fields are removed. |
 | 2026-08-08 | Candidate consumer migration | complete | Typing, Operation solver, linked-declaration completion, diagnostics, and Universe collection now traverse all Derivations concluding a Claim. No one of those consumers treats insertion order as evidence selection. |
-| 2026-08-08 | Next implementation phase | in progress | Finish P0-R0A.3 at the artifact boundary: publish accepted Claims/Derivations directly, remove `source_candidate_proof_id`, then delete candidate Claim preferred-proof fields and candidate premise proof IDs. P1 remains blocked until P0 exit checks complete. |
+| 2026-08-08 | Next implementation phase | ready | Enter P0.1 characterization/adversarial validation with R0A.3a as a checked premise. Continue afterward with link authority, Universe provenance, and stable artifact wire identity. P1 remains blocked until P0 exit checks complete. |
