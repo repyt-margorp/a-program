@@ -1136,9 +1136,10 @@ mandatory preconditions of every following P0 change.
   explicit reachable residual obligation.
 - [x] Pass the higher-order handler forged-artifact regression.
 
-#### P0-R0A.2 Authority-complete producer and accepted data model
+#### P0-R0A.2 Authority-complete producer boundary
 
-This is the next active P0 phase. It is not P1 and not optional cleanup. Its
+This phase is complete for the current calculus. It is not P1 and not optional
+cleanup. Its
 order is mandatory:
 
 ```text
@@ -1192,17 +1193,17 @@ inherit the source Operation that requested motive synthesis.
 - [x] Add a transitional interned Claim record whose
   key is `(kind, authority, context_id, subject_projection, classifier)`.
 - [x] Add explicit authority kind/ID fields to candidate and accepted Claims.
-- [ ] Make every premise-bearing proof producer consume `SelectedEvidence` or
+- [x] Make every premise-bearing proof producer consume `SelectedEvidence` or
   an explicitly authority-neutral helper Claim; do not select a candidate by
   reverse/forward insertion order.
-- [ ] Remove the classifier-only `add_delta_relation_with_premises()` producer
+- [x] Remove the classifier-only `add_delta_relation_with_premises()` producer
   path after migrating its generated Lambda, RETURN, THUNK, APP, Match motive,
   Match elimination, and type-formation callers.
-- [ ] Require generated helper conclusions to state `CORE_HELPER` authority
+- [x] Require generated helper conclusions to state `CORE_HELPER` authority
   explicitly. `INVALID` authority means invalid/missing data, never neutral.
-- [ ] Keep generated helpers unpublished when their premises are ambiguous or
+- [x] Keep generated helpers unpublished when their premises are ambiguous or
   solver-local; never recover a source Operation from `(Core, Context, type)`.
-- [ ] Represent authority completely at every producer. Operation-backed claims
+- [x] Represent authority completely at every producer. Operation-backed claims
   carry an exact `operation_id`; Context, declaration, type-formation,
   intrinsic, and Universe claims use their own authority kind and ID rather
   than `INVALID` as an ambiguous fallback.
@@ -1218,6 +1219,16 @@ inherit the source Operation that requested motive synthesis.
   Derivation. Reconstruct them from the conclusion OperationGraph node.
 - [ ] Retain the erased Core subject only as a validated projection for
   normalization, diagnostics, and artifact reachability.
+
+The completed implementation also preserves two identities for structural
+premises instead of conflating them: `premise_operations[]` remains the direct
+OperationGraph child, while `premise_evidence[]` carries the selected Claim
+authority. This distinction is required for NAME/type-formation/intrinsic
+children whose evidence authority is not their direct child Operation. CBPV
+boundary reification now starts from the child Operation classifier and records
+an explicit conversion when the selected parent classifier uses a convertible
+universe representative; it no longer inverts the parent classifier and then
+guesses child evidence by a Core tuple.
 
 #### P0-R0A.3 Candidate generation and publication
 
@@ -1531,7 +1542,7 @@ V2-P0 is complete only when:
 | 2026-08-08 | P0 reopened after certificate audit | active | Each transitional `prototype_judgement_claim_candidate` still owns one candidate proof; premise proof IDs are cleared at insertion and recovered by first/latest tuple search. P0-P10, P0-P14, and P0-P20 are not satisfied. |
 | 2026-08-08 | P0-R0A transition scaffold | complete | Separate accepted Claim/Derivation arenas and least grounded compaction exist, but are reconstructed from transitional candidate relation/proof records. |
 | 2026-08-08 | P0-R0A.1 local-obligation boundary | complete for current calculus | Scoped fold/Lambda obligations are not published as standalone Claims; exact fold rule parameters are replayed locally. Export publication distinguishes grounded Claims from exact occurrence-owned residual constraints. |
-| 2026-08-08 | P0-R0A.2 authority-complete producer migration | in progress | `SelectedEvidence` and the source structural slice exist. Complete remaining generated APP/Match helper and derived-source migration before making accepted Claims/Derivations the sole publication image. |
+| 2026-08-08 | P0-R0A.2 authority-complete producer migration | complete for current rules | Generated Pi/Match/motive helpers state `CORE_HELPER` authority and consume exact evidence; no-premise introductions state their authority domain; computation constraints retain direct child Operations separately from selected evidence authority. All 15 prototype scripts pass after NAME/type-formation/intrinsic authority and CBPV universe-conversion reification were corrected. |
 | 2026-08-08 | P0-R0A.2 final entry audit at `985baf8` | complete | Reclassified the remaining work precisely: derived recorder APIs already consume `SelectedEvidence`; generated motive/type helpers and no-premise authority fallback are the immediate implementation targets. P0-R0A.2, not P1, is next. |
 | 2026-08-08 | P0-R0A.1 evidence API and APP slice | partial; implemented | Generic APP candidate collection retains function/argument evidence; Lambda and CBPV APIs retain direct child Operations separately from evidence authority. Normalization-equal and proof-kind selection now return evidence instead of classifier-only results. |
 | 2026-08-08 | P0-R0A.1 structural producer slice | implemented for current fold rules | Fold clause Lambdas and the request-internal APP are scoped rule parameters replayed by their enclosing validators, not independent Claims. Return-body effect weakening retains the exact body Operation, occurrence Context, and Core projection rather than reconstructing them from an alpha-interned Lambda representative. The CBPV surface suite, including higher-order handlers and forged artifacts, passes. |
@@ -1553,7 +1564,7 @@ V2-P0 is complete only when:
 | 2026-08-08 | P0.7 validation/artifact | active | Grounded Claim closure exists as a transition validator. Provisional v64 preserves `term_export.operation` and rejects closed exports without accepted evidence, but still serializes transitional candidates rather than native accepted Claims/Derivations. |
 | 2026-08-08 | P0.8 P1 re-audit | superseded | The audit correctly found Claim/Derivation debt but classified it too late. It is now P0-R0A. |
 | 2026-08-08 | P0-R0A premise re-audit | complete | Rechecked the active `062b7cd` worktree: structural authority propagation is partial; calls to the late resolver and handler tuple pruning are gone, but classifier-only helper selection, candidate proof IDs, and provisional v64 candidate serialization remain. |
-| 2026-08-08 | P0-R0A.1 next | completed; P0-R0A.2 next | The fold/Lambda local-obligation boundary is established for the current calculus. Continue authority-complete migration for generated helpers and derived-source consumers before making accepted Claim/Derivation storage authoritative. |
+| 2026-08-08 | P0-R0A.2 complete; P0-R0A.3 next | in progress | Authority-complete producer construction is established for the current calculus. The next change makes accepted Claims/Derivations the sole atomic publication image and removes candidate proof ownership from Claim identity. |
 | 2026-08-08 | P0 entry premise finalized from active code | complete | P0 is already active. Typed conclusions belong to Operation/type-view occurrences; TermDB remains shared erased computation; closed Claims and residual obligations are distinct. R0A.2 now continues generated-helper/derived-source Claim preservation before Claim-ID publication and dead resolver deletion. |
 
 ## 10. Mandatory Ordering

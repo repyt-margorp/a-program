@@ -2,7 +2,7 @@
 
 Date: 2026-08-08
 
-Status: audit complete; P0-R0A.1 current-calculus premise implemented; P0-R0A.2 active
+Status: audit complete; P0-R0A.1 and P0-R0A.2 implemented for the current calculus; P0-R0A.3 active
 
 Baseline:
 
@@ -10,7 +10,7 @@ Baseline:
 - committed checkpoint: `985baf8 refactor: establish P0 occurrence evidence premise`;
 - remote baseline: `origin/main` at the same commit;
 - committed artifact header: provisional `A_PROGRAM_ARTIFACT 64`;
-- implementation state: P0-R0A.1 committed; P0-R0A.2 is the next active P0
+- implementation state: P0-R0A.1 and P0-R0A.2 implemented; P0-R0A.3 is the next active P0
   implementation phase.
 
 This document re-audits the implementation after the earlier V2-P0 completion
@@ -834,26 +834,29 @@ before R0A.3 is allowed to make accepted Claim IDs authoritative.
   authority, Context, Operation projection, subject, and classifier.
 - [x] Migrate generic APP candidate collection to preserve function and
   argument evidence identity.
-- [ ] Replace all remaining proof-producing classifier-only lookups with
+- [x] Replace all remaining proof-producing classifier-only lookups with
   `SelectedEvidence`.
-- [ ] Make all candidate constructors require an explicit authority variant;
+- [x] Make all candidate constructors require an explicit authority variant;
   missing authority must not encode a neutral fact.
-- [ ] Preserve direct child Operation and child Context independently from the
+- [x] Preserve direct child Operation and child Context independently from the
   final ContextDB/TypeDeclarationDB/Operation authority.
-- [ ] Remove unique/first/latest tuple authority recovery.
-- [ ] Split generated Match/motive inference from source Match occurrence
+- [x] Remove unique/first/latest tuple authority recovery from proof producers.
+- [x] Split generated Match/motive inference from source Match occurrence
   recording before removing the classifier-only helper. Do not let a generated
   helper inherit the requesting source Operation through `current_operation_id`.
 
-Current state: the evidence API and source APP/Lambda/constructor/request/
-Match/CBPV/fold producer migration are implemented. `SOLVED_MATCH_MOTIVE` waits for all
+Current state: complete for the current calculus. The evidence API and source
+APP/Lambda/constructor/request/Match/CBPV/fold producer migration are implemented.
+`SOLVED_MATCH_MOTIVE` waits for all
 branch classifiers and records exact branch premises instead of validating
 through a later global tuple scan. IH carries `induction_motive` as an
 immutable scoped-eliminator parameter and intentionally has no parent-Match
 premise. Conversion, expected exposure, Context/effect weakening, and integer
-admissibility already consume `SelectedEvidence`; preserving that source as a
-Claim ID remains part of R0A.3. Authority-neutral generated Lambda/RETURN/
-THUNK/APP/Match/type-formation paths remain open, so this gate is not complete.
+admissibility consume `SelectedEvidence`. Generated Lambda/RETURN/THUNK/APP/
+Match/type-formation paths explicitly use `CORE_HELPER` or their own authority
+domain. Structural computation constraints retain direct child Operations and
+the independently selected evidence authority. Preserving those exact sources
+as accepted Claim IDs is the next R0A.3 representation change.
 
 ### P0-R0A.3 Claim and Derivation
 
@@ -992,7 +995,7 @@ Observational equality types and witnesses.
 | 2026-08-08 | Former P1-R0 through P1-R5 | reclassified | Mandatory P0-R0A work before P1 can be scoped. |
 | 2026-08-08 | P0-R0A transition checkpoint | complete | `062b7cd` adds separate reconstructed Claim/Derivation arenas and grounded closure while retaining the legacy producer image. |
 | 2026-08-08 | P0-R0A.1 premise re-audit | complete | Classifier-only producer APIs lose child authority and Context; authority-complete evidence selection and structural premise descriptors are mandatory P0-R0A.1/R0A.2 work. |
-| 2026-08-08 | P0-R0A authoritative migration | in progress | Candidate naming/schema work has begun, but exact producer migration, atomic publication, artifact migration, and regression recovery remain incomplete. |
+| 2026-08-08 | P0-R0A authoritative migration | in progress | R0A.1 and R0A.2 are implemented for the current calculus. Atomic accepted publication, artifact migration, and later provenance phases remain incomplete. |
 | 2026-08-08 | P0 premise code re-audit | complete | Confirmed remaining classifier-only lookups, candidate-proof-ID validation, dead resolver/pruning implementations, and provisional v64 candidate coupling. |
 | 2026-08-08 | Structural authority repair | partial | APP child Operations are retained; Lambda binder premises use ContextBinding authority; direct child Context is preserved before owner projection; legacy final tuple pruning was removed. |
 | 2026-08-08 | SelectedEvidence/APP implementation | partial | Added an authority-complete selected-evidence record, evidence-preserving APP candidate collection, and partial Lambda/CBPV child propagation. Remaining classifier-only proof producers keep P0-R0A.1 open. |
@@ -1002,4 +1005,5 @@ Observational equality types and witnesses.
 | 2026-08-08 | Final P0 premise audit | complete | The higher-order handler exposed both a parent-owned clause row obligation and alpha-interned Lambda/body occurrence divergence. The implemented boundary retains exact body Operation/Context/Core projection and treats clause Lambdas as scoped fold parameters. |
 | 2026-08-08 | P0-R0A.1 implementation | complete for current rules | Superseded fixed-point classifiers are excluded from Claim publication; exact clause Operation classifiers determine fold rows; local rows are included in the final carrier and exact union is replayed by validation. `test_cbpv_surface.sh` passes, including higher-order force-once/force-twice and forged-artifact cases. |
 | 2026-08-08 | P0 export occurrence boundary | implemented; provisional schema v64 | `term_export` now preserves its source Operation. Writer/readback require the export classifier to equal that Operation classifier and require either an accepted grounded Claim or a reachable explicit residual/verification obligation. Shared erased Core identity is not export evidence. |
-| 2026-08-08 | Next implementation phase | in progress | P0-R0A.2 completes authority-carrying generated-helper and derived-source producer APIs. P1 remains blocked until accepted Claims/Derivations become the sole atomic publication image. |
+| 2026-08-08 | P0-R0A.2 authority-complete producer boundary | complete for current rules | Generated helper and source structural producers carry explicit authority-complete evidence; direct structural Operation edges remain distinct from evidence owner identity; all 15 prototype scripts pass. |
+| 2026-08-08 | Next implementation phase | in progress | P0-R0A.3 makes accepted Claims/Derivations the sole atomic publication image. P1 remains blocked until the remaining R0A phases and P0 exit checks are complete. |

@@ -221,6 +221,12 @@ struct prototype_judgement_computation_constraint {
 	/* Current fixed-point operands selected by the exact premise Operations.
 	 * These are refreshed by the Operation solver before each kernel pass. */
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	/* Authority-complete evidence selected by the OperationGraph-aware solver.
+	 * premise_operations remains the structural child edge; it is not an
+	 * evidence-owner identifier. LOCAL operands deliberately keep zero evidence
+	 * because the enclosing rule replays their scoped assumptions. */
+	struct prototype_judgement_selected_evidence
+		premise_evidence[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t subject;
 	uint32_t computation;
 	uint32_t continuation;
@@ -1182,8 +1188,7 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	uint32_t match_term,
 	uint32_t classifier,
 	const uint32_t* branch_operation_ids,
-	const uint32_t* branch_context_ids,
-	const uint32_t* branch_classifiers,
+	const struct prototype_judgement_selected_evidence* branch_evidence,
 	uint32_t branch_count
 );
 

@@ -583,20 +583,12 @@ static int int_literal_fits_int32(int64_t value) {
 
 static int add_delta_relation(
 	struct prototype_judgement_delta* delta,
+	int authority_kind,
+	uint32_t authority_id,
 	int kind,
 	uint32_t subject,
 	uint32_t classifier,
 	int proof_kind
-);
-static int add_delta_relation_with_premises(
-	struct prototype_judgement_delta* delta,
-	int kind,
-	uint32_t subject,
-	uint32_t classifier,
-	int proof_kind,
-	const uint32_t* premise_subjects,
-	const uint32_t* premise_classifiers,
-	uint32_t premise_count
 );
 static int add_delta_relation_with_explicit_premises(
 	struct prototype_judgement_delta* delta,
@@ -667,6 +659,7 @@ static int prototype_judgement_delta_expand_match_motive_with_premises(
 	uint32_t classifier,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
+	const struct prototype_judgement_selected_evidence* premise_evidence,
 	uint32_t premise_count
 );
 static int collect_subject_classifiers(
@@ -3765,6 +3758,8 @@ static int materialize_constructor_classifier(
 
 	if (add_delta_relation(
 			delta,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_DECLARATION,
+			constructor_term,
 			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 			constructor_term,
 			cached_classifier,
@@ -4955,6 +4950,8 @@ static int infer_type_formation_classifier(
 	}
 	return add_delta_relation(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_FORMATION,
+		term_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		term_id,
 		classifier,
@@ -5657,10 +5654,17 @@ static int add_delta_relation_with_explicit_premises(
 	const struct prototype_judgement_selected_evidence* premise_evidence,
 	uint32_t premise_count
 ) {
+	int authority_kind = delta && delta->current_operation_id !=
+		PROTOTYPE_INVALID_ID ?
+		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION :
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER;
+	uint32_t authority_id = authority_kind ==
+		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
+		delta->current_operation_id : subject;
 	return add_delta_relation_with_authority_and_explicit_premises(
 		delta,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID,
-		PROTOTYPE_INVALID_ID,
+		authority_kind,
+		authority_id,
 		delta ? delta->current_operation_id : PROTOTYPE_INVALID_ID,
 		kind,
 		subject,
@@ -5675,44 +5679,30 @@ static int add_delta_relation_with_explicit_premises(
 	);
 }
 
-static int add_delta_relation_with_premises(
-	struct prototype_judgement_delta* delta,
-	int kind,
-	uint32_t subject,
-	uint32_t classifier,
-	int proof_kind,
-	const uint32_t* premise_subjects,
-	const uint32_t* premise_classifiers,
-	uint32_t premise_count
-) {
-	return add_delta_relation_with_explicit_premises(
-		delta,
-		kind,
-		subject,
-		classifier,
-		proof_kind,
-		NULL,
-		NULL,
-		premise_subjects,
-		premise_classifiers,
-		NULL,
-		premise_count
-	);
-}
-
 static int add_delta_relation(
 	struct prototype_judgement_delta* delta,
+	int authority_kind,
+	uint32_t authority_id,
 	int kind,
 	uint32_t subject,
 	uint32_t classifier,
 	int proof_kind
 ) {
-	return add_delta_relation_with_premises(
+	uint32_t conclusion_operation_id = authority_kind ==
+		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
+		authority_id : PROTOTYPE_INVALID_ID;
+	return add_delta_relation_with_authority_and_explicit_premises(
 		delta,
+		authority_kind,
+		authority_id,
+		conclusion_operation_id,
 		kind,
 		subject,
 		classifier,
 		proof_kind,
+		NULL,
+		NULL,
+		NULL,
 		NULL,
 		NULL,
 		0
@@ -5751,12 +5741,11 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	uint32_t match_term,
 	uint32_t classifier,
 	const uint32_t* branch_operation_ids,
-	const uint32_t* branch_context_ids,
-	const uint32_t* branch_classifiers,
+	const struct prototype_judgement_selected_evidence* branch_evidence,
 	uint32_t branch_count
 ) {
-	if (!delta || !terms || !branch_operation_ids || !branch_context_ids ||
-		!branch_classifiers || match_term >= terms->term_count ||
+	if (!delta || !terms || !branch_operation_ids || !branch_evidence ||
+		match_term >= terms->term_count ||
 		classifier >= terms->term_count ||
 		!match_motive_result_classifier(terms, match_term, classifier) ||
 		branch_count != terms->terms[match_term].as.match.case_count ||
@@ -5767,14 +5756,24 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		return -1;
 	}
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	for (uint32_t i = 0; i < branch_count; ++i) {
 		uint32_t case_id = terms->terms[match_term].as.match.first_case + i;
 		if (case_id >= terms->case_count ||
 			branch_operation_ids[i] == PROTOTYPE_INVALID_ID ||
-			branch_classifiers[i] >= terms->term_count) {
+			branch_evidence[i].kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			branch_evidence[i].authority_kind ==
+				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
+			branch_evidence[i].classifier >= terms->term_count) {
 			return -1;
 		}
 		premise_subjects[i] = terms->cases[case_id].body;
+		if (branch_evidence[i].subject != premise_subjects[i]) {
+			return -1;
+		}
+		premise_context_ids[i] = branch_evidence[i].context_id;
+		premise_classifiers[i] = branch_evidence[i].classifier;
 	}
 	return add_delta_relation_with_explicit_premises(
 		delta,
@@ -5782,11 +5781,11 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		match_term,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE,
-		branch_context_ids,
+		premise_context_ids,
 		branch_operation_ids,
 		premise_subjects,
-		branch_classifiers,
-		NULL,
+		premise_classifiers,
+		branch_evidence,
 		branch_count
 	);
 }
@@ -5909,7 +5908,15 @@ int prototype_judgement_delta_record_context_binding_assumption(
 		) || prototype_term_var(terms, binding_id, &subject) != 0) {
 		return -1;
 	}
-	return add_delta_relation(delta, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION);
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CONTEXT_BINDING,
+		subject,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION
+	);
 }
 
 int prototype_judgement_delta_record_match_pattern(
@@ -6399,19 +6406,30 @@ static int infer_lambda_classifier_pair(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t lambda_term,
-	uint32_t binder_subject,
-	uint32_t binder_classifier,
-	uint32_t body_classifier,
-	uint32_t premise_context_id,
+	const struct prototype_judgement_selected_evidence* binder_evidence,
+	const struct prototype_judgement_selected_evidence* body_evidence,
 	int* p_changed
 ) {
 	if (!delta || !terms || !type_declarations || !p_changed ||
+		!binder_evidence || !body_evidence ||
+		binder_evidence->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		body_evidence->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		binder_evidence->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
+		body_evidence->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
 		lambda_term >= terms->term_count ||
 		terms->terms[lambda_term].tag != PROTOTYPE_TERM_LAMBDA ||
-		binder_subject >= terms->term_count) {
+		binder_evidence->subject >= terms->term_count ||
+		body_evidence->subject >= terms->term_count) {
 		return -1;
 	}
 	const struct prototype_term* lambda = &terms->terms[lambda_term];
+	uint32_t binder_subject = binder_evidence->subject;
+	uint32_t binder_classifier = binder_evidence->classifier;
+	uint32_t body_classifier = body_evidence->classifier;
+	if (body_evidence->subject != lambda->as.lambda.body ||
+		binder_evidence->context_id != body_evidence->context_id) {
+		return -1;
+	}
 	if (!lambda_body_classifier_matches_binder(
 			terms,
 			type_declarations,
@@ -6451,8 +6469,12 @@ static int infer_lambda_classifier_pair(
 		body_classifier
 	};
 	uint32_t premise_context_ids[2] = {
-		premise_context_id,
-		premise_context_id
+		binder_evidence->context_id,
+		body_evidence->context_id
+	};
+	struct prototype_judgement_selected_evidence premise_evidence[2] = {
+		*binder_evidence,
+		*body_evidence
 	};
 	size_t before = delta->claim_candidate_count;
 	if (add_delta_relation_with_explicit_premises(
@@ -6465,7 +6487,7 @@ static int infer_lambda_classifier_pair(
 			NULL,
 			premise_subjects,
 			premise_classifiers,
-			NULL,
+			premise_evidence,
 			2
 		) != 0) {
 		return -1;
@@ -6520,15 +6542,19 @@ static int infer_lambda_classifiers_from_body(
 						body_relation->subject != lambda->as.lambda.body) {
 						continue;
 					}
+					struct prototype_judgement_selected_evidence binder_evidence;
+					struct prototype_judgement_selected_evidence body_evidence;
+					selected_evidence_from_candidate(
+						binder_relation, &binder_evidence
+					);
+					selected_evidence_from_candidate(body_relation, &body_evidence);
 					if (infer_lambda_classifier_pair(
 							delta,
 							terms,
 							type_declarations,
 							lambda_term,
-							binder_relation->subject,
-							binder_relation->classifier,
-							body_relation->classifier,
-							binder_relation->context_id,
+							&binder_evidence,
+							&body_evidence,
 							p_changed
 						) != 0) {
 						return -1;
@@ -6883,6 +6909,8 @@ static int infer_text_literal_classifier(
 	}
 	return add_delta_relation(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+		term_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		term_id,
 		text,
@@ -6903,6 +6931,8 @@ static int infer_int_literal_classifier(
 	if (prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_INT64, &integer64) != 0 ||
 		add_delta_relation(
 			delta,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+			term_id,
 			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 			term_id,
 			integer64,
@@ -6917,10 +6947,12 @@ static int infer_int_literal_classifier(
 		return -1;
 	}
 	return add_delta_relation(
-			delta,
-			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-			term_id,
-			integer,
+		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+		term_id,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		term_id,
+		integer,
 			PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO
 		);
 }
@@ -6946,6 +6978,8 @@ static int infer_pure_primitive_classifier(
 	}
 	return add_delta_relation(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_INTRINSIC,
+		term_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		term_id,
 		classifier,
@@ -6970,6 +7004,8 @@ static int infer_effect_operation_classifier(
 	}
 	return add_delta_relation(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_INTRINSIC,
+		term_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		term_id,
 		classifier,
@@ -7453,7 +7489,10 @@ int prototype_judgement_delta_record_computation_fold_elim(
 		if (!(prototype_judgement_classifier_conversion(
 				terms, type_declarations, classifier, derived_classifier
 			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
-			return -1;
+			/* The Operation classifier may still be a fixed-point approximation.
+			 * A mismatch is a deferred equation; final publication separately
+			 * requires an exact grounded Claim or residual obligation. */
+			return 1;
 		}
 	} else {
 		struct prototype_term_classifier_view result;
@@ -7487,6 +7526,49 @@ int prototype_judgement_delta_record_computation_fold_elim(
 		premise_evidence,
 		premise_count
 	);
+}
+
+static int select_closed_constraint_premises(
+	const struct prototype_judgement_computation_constraint* constraint,
+	const uint32_t* subjects,
+	const uint32_t* classifiers,
+	uint32_t premise_count,
+	struct prototype_judgement_selected_evidence* selected
+) {
+	if (!constraint || !subjects || !classifiers || !selected ||
+		constraint->operation_id == PROTOTYPE_INVALID_ID ||
+		premise_count > constraint->premise_operation_count) {
+		return -1;
+	}
+	memset(
+		selected,
+		0,
+		premise_count * sizeof(struct prototype_judgement_selected_evidence)
+	);
+	for (uint32_t i = 0; i < premise_count; ++i) {
+		if (constraint->premise_states[i] ==
+			PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_LOCAL) {
+			continue;
+		}
+		if (constraint->premise_states[i] ==
+			PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_UNRESOLVED) {
+			return 1;
+		}
+		if (constraint->premise_states[i] !=
+				PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_CLOSED ||
+			constraint->premise_operations[i] == PROTOTYPE_INVALID_ID ||
+			classifiers[i] == PROTOTYPE_INVALID_ID ||
+			constraint->premise_evidence[i].kind !=
+				PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			constraint->premise_evidence[i].authority_kind ==
+				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
+			constraint->premise_evidence[i].subject != subjects[i] ||
+			constraint->premise_evidence[i].classifier != classifiers[i]) {
+			return -1;
+		}
+		selected[i] = constraint->premise_evidence[i];
+	}
+	return 0;
 }
 
 static int solve_zero_clause_computation_fold_constraint(
@@ -7602,6 +7684,17 @@ static int solve_zero_clause_computation_fold_constraint(
 	if (constraint->operation_id != PROTOTYPE_INVALID_ID) {
 		premise_operation_ids[0] = constraint->premise_operations[0];
 		premise_operation_ids[1] = constraint->premise_operations[1];
+		int premise_status = select_closed_constraint_premises(
+				constraint,
+				subjects,
+				classifiers,
+				2,
+				selected_premises
+			);
+		if (premise_status != 0) {
+			return premise_status < 0 ? -1 : 1;
+		}
+		premise_evidence = selected_premises;
 	} else {
 		selected_premises[0] = input_evidence;
 		selected_premises[1] = continuation_evidence;
@@ -7862,6 +7955,25 @@ static int solve_operation_request_constraint(
 		premise_operation_ids[0] = PROTOTYPE_INVALID_ID;
 		premise_operation_ids[1] = constraint->premise_operations[1];
 		premise_operation_ids[2] = constraint->premise_operations[2];
+		memset(selected_premises, 0, sizeof(selected_premises));
+		for (uint32_t i = 1; i < 3; ++i) {
+			if (constraint->premise_states[i] ==
+				PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_UNRESOLVED) {
+				return 1;
+			}
+			if (constraint->premise_states[i] !=
+					PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_CLOSED ||
+				constraint->premise_evidence[i].kind !=
+					PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				constraint->premise_evidence[i].authority_kind ==
+					PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
+				constraint->premise_evidence[i].subject != subjects[i] ||
+				constraint->premise_evidence[i].classifier != classifiers[i]) {
+				return -1;
+			}
+			selected_premises[i] = constraint->premise_evidence[i];
+		}
+		premise_evidence = selected_premises;
 	} else {
 		selected_premises[0] = application_evidence;
 		selected_premises[1] = argument_evidence;
@@ -8740,6 +8852,17 @@ static int solve_clause_computation_fold_constraint(
 		for (uint32_t i = 0; i < premise_count; ++i) {
 			premise_operation_ids[i] = constraint->premise_operations[i];
 		}
+		int premise_status = select_closed_constraint_premises(
+				constraint,
+				subjects,
+				classifiers,
+				premise_count,
+				selected_premises
+			);
+		if (premise_status != 0) {
+			return premise_status < 0 ? -1 : 1;
+		}
+		premise_evidence = selected_premises;
 	} else {
 		selected_premises[0] = input_evidence;
 		selected_premises[1] = return_evidence;
@@ -9134,6 +9257,8 @@ static int prototype_judgement_delta_add_universe_cumulativity(
 	}
 	return add_delta_relation(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_UNIVERSE,
+		subject,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -9164,6 +9289,8 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 	if (type_instance_has_known_type(terms, type_declarations, subject)) {
 		return add_delta_relation(
 			delta,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_FORMATION,
+			subject,
 			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 			subject,
 			universe,
@@ -9458,14 +9585,35 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 							argument_classifier,
 							universe
 						};
-						if (add_delta_relation_with_premises(
+						struct prototype_judgement_selected_evidence premise_evidence[2];
+						if (lookup_delta_selected_evidence_normalization_equal(
 								delta,
+								terms,
+								type_declarations,
+								binder_var,
+								argument_classifier,
+								&premise_evidence[0]
+							) != 0 || lookup_delta_selected_evidence_normalization_equal(
+								delta,
+								terms,
+								type_declarations,
+								lambda->as.lambda.body,
+								universe,
+								&premise_evidence[1]
+							) != 0 || add_delta_relation_with_authority_and_explicit_premises(
+								delta,
+								PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+								app->as.app.function,
+								PROTOTYPE_INVALID_ID,
 								PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 								app->as.app.function,
 								classifier,
 								PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO,
+								NULL,
+								NULL,
 								premise_subjects,
 								premise_classifiers,
+								premise_evidence,
 								2
 							) != 0) {
 							return -1;
@@ -9498,6 +9646,9 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 		}
 		uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 		uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+		struct prototype_judgement_selected_evidence premise_evidence[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		];
 		for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
 			uint32_t case_id = match->as.match.first_case + i;
 			if (case_id >= terms->case_count) {
@@ -9515,6 +9666,16 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 			}
 			premise_subjects[i] = body;
 			premise_classifiers[i] = universe;
+			if (lookup_delta_selected_evidence_normalization_equal(
+					delta,
+					terms,
+					type_declarations,
+					body,
+					universe,
+					&premise_evidence[i]
+				) != 0) {
+				return -1;
+			}
 		}
 		if (prototype_judgement_delta_expand_match_motive_with_premises(
 				delta,
@@ -9523,6 +9684,7 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 				universe,
 				premise_subjects,
 				premise_classifiers,
+				premise_evidence,
 				match->as.match.case_count
 			) != 0) {
 			return -1;
@@ -9595,9 +9757,11 @@ static int prototype_judgement_delta_expand_match_motive_with_premises(
 	uint32_t classifier,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
+	const struct prototype_judgement_selected_evidence* premise_evidence,
 	uint32_t premise_count
 ) {
-	if (!delta || !premise_subjects || !premise_classifiers) {
+	if (!delta || !premise_subjects || !premise_classifiers ||
+		!premise_evidence) {
 		return -1;
 	}
 	if (!term_exists(terms, subject) ||
@@ -9610,18 +9774,29 @@ static int prototype_judgement_delta_expand_match_motive_with_premises(
 		uint32_t case_id = terms->terms[subject].as.match.first_case + i;
 		if (case_id >= terms->case_count ||
 			premise_subjects[i] != terms->cases[case_id].body ||
-			premise_classifiers[i] != classifier) {
+			premise_classifiers[i] != classifier ||
+			premise_evidence[i].kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			premise_evidence[i].authority_kind ==
+				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
+			premise_evidence[i].subject != premise_subjects[i] ||
+			premise_evidence[i].classifier != premise_classifiers[i]) {
 			return -1;
 		}
 	}
-	return add_delta_relation_with_premises(
+	return add_delta_relation_with_authority_and_explicit_premises(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+		subject,
+		PROTOTYPE_INVALID_ID,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
+		NULL,
+		NULL,
 		premise_subjects,
 		premise_classifiers,
+		premise_evidence,
 		premise_count
 	);
 }
@@ -9638,12 +9813,18 @@ int prototype_judgement_delta_expand_match_motive(
 		terms->terms[subject].as.match.case_count != 0) {
 		return -1;
 	}
-	return add_delta_relation_with_premises(
+	return add_delta_relation_with_authority_and_explicit_premises(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+		subject,
+		PROTOTYPE_INVALID_ID,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
+		NULL,
+		NULL,
+		NULL,
 		NULL,
 		NULL,
 		0
@@ -9677,6 +9858,9 @@ int prototype_judgement_delta_build_match_motive(
 	uint32_t motive_universe;
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	struct prototype_judgement_selected_evidence premise_evidence[
+		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	];
 	if (motive_binder_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
@@ -9763,14 +9947,25 @@ int prototype_judgement_delta_build_match_motive(
 			}
 		premise_subjects[i] = motive_case_body;
 		premise_classifiers[i] = motive_universe;
+		if (lookup_delta_selected_evidence_normalization_equal(
+				delta,
+				terms,
+				type_declarations,
+				motive_case_body,
+				motive_universe,
+				&premise_evidence[i]
+			) != 0) {
+			return -1;
+		}
 	}
 		if (prototype_judgement_delta_expand_match_motive_with_premises(
 			delta,
 			terms,
 		motive_body,
 		motive_universe,
-		premise_subjects,
-		premise_classifiers,
+			premise_subjects,
+			premise_classifiers,
+			premise_evidence,
 			case_count
 		) != 0) {
 			return -1;
@@ -9818,18 +10013,39 @@ int prototype_judgement_delta_build_match_motive(
 		scrutinee_classifier,
 		motive_universe
 	};
-		if (add_delta_relation_with_premises(
+	struct prototype_judgement_selected_evidence lambda_premise_evidence[2];
+	if (lookup_delta_selected_evidence_normalization_equal(
 			delta,
-		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		motive_lambda,
-		motive_pi,
-		PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO,
-		lambda_premise_subjects,
-		lambda_premise_classifiers,
+			terms,
+			type_declarations,
+			motive_binder_var,
+			scrutinee_classifier,
+			&lambda_premise_evidence[0]
+		) != 0 || lookup_delta_selected_evidence_normalization_equal(
+			delta,
+			terms,
+			type_declarations,
+			motive_body,
+			motive_universe,
+			&lambda_premise_evidence[1]
+		) != 0 || add_delta_relation_with_authority_and_explicit_premises(
+			delta,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+			motive_lambda,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			motive_lambda,
+			motive_pi,
+			PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO,
+			NULL,
+			NULL,
+			lambda_premise_subjects,
+			lambda_premise_classifiers,
+			lambda_premise_evidence,
 			2
 		) != 0) {
-			return -1;
-		}
+		return -1;
+	}
 	uint32_t motive_family;
 	uint32_t motive_return;
 	uint32_t motive_return_classifier;
@@ -9856,19 +10072,57 @@ int prototype_judgement_delta_build_match_motive(
 	}
 	uint32_t return_premise_subjects[1] = { motive_lambda };
 	uint32_t return_premise_classifiers[1] = { motive_pi };
-	if (add_delta_relation_with_premises(
-			delta, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, motive_return,
-			motive_return_classifier, PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO,
-			return_premise_subjects, return_premise_classifiers, 1
+	struct prototype_judgement_selected_evidence lambda_evidence;
+	if (prototype_judgement_delta_select_evidence(
+			delta,
+			PROTOTYPE_INVALID_ID,
+			delta->current_context_id,
+			motive_lambda,
+			motive_pi,
+			&lambda_evidence
+		) != 0 || add_delta_relation_with_authority_and_explicit_premises(
+			delta,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+			motive_return,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			motive_return,
+			motive_return_classifier,
+			PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO,
+			NULL,
+			NULL,
+			return_premise_subjects,
+			return_premise_classifiers,
+			&lambda_evidence,
+			1
 		) != 0) {
 		return -1;
 	}
 	uint32_t thunk_premise_subjects[1] = { motive_return };
 	uint32_t thunk_premise_classifiers[1] = { motive_return_classifier };
-	if (add_delta_relation_with_premises(
-			delta, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, motive_family,
-			motive_family_classifier, PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO,
-			thunk_premise_subjects, thunk_premise_classifiers, 1
+	struct prototype_judgement_selected_evidence return_evidence;
+	if (prototype_judgement_delta_select_evidence(
+			delta,
+			PROTOTYPE_INVALID_ID,
+			delta->current_context_id,
+			motive_return,
+			motive_return_classifier,
+			&return_evidence
+		) != 0 || add_delta_relation_with_authority_and_explicit_premises(
+			delta,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+			motive_family,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			motive_family,
+			motive_family_classifier,
+			PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO,
+			NULL,
+			NULL,
+			thunk_premise_subjects,
+			thunk_premise_classifiers,
+			&return_evidence,
+			1
 		) != 0) {
 		return -1;
 	}
@@ -9883,14 +10137,32 @@ int prototype_judgement_delta_build_match_motive(
 		motive_pi,
 		scrutinee_classifier
 	};
-		return add_delta_relation_with_premises(
+	struct prototype_judgement_selected_evidence app_premise_evidence[2];
+	app_premise_evidence[0] = lambda_evidence;
+	if (lookup_delta_selected_evidence_normalization_equal(
 			delta,
+			terms,
+			type_declarations,
+			scrutinee,
+			scrutinee_classifier,
+			&app_premise_evidence[1]
+		) != 0) {
+		return -1;
+	}
+	return add_delta_relation_with_authority_and_explicit_premises(
+		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+		*p_motive_result,
+		PROTOTYPE_INVALID_ID,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		*p_motive_result,
 		motive_universe,
 		PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM,
+		NULL,
+		NULL,
 		app_premise_subjects,
 		app_premise_classifiers,
+		app_premise_evidence,
 		2
 	);
 }
@@ -10989,12 +11261,25 @@ int prototype_judgement_delta_expand_match(
 	}
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	struct prototype_judgement_selected_evidence premise_evidence[
+		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	];
 	if (match->as.match.case_count + 1 > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 		return -1;
 	}
 	uint32_t premise_count = match->as.match.case_count + 1;
 	premise_subjects[0] = classifier;
 	premise_classifiers[0] = motive_result_classifier;
+	if (lookup_delta_selected_evidence_normalization_equal(
+			delta,
+			terms,
+			type_declarations,
+			classifier,
+			motive_result_classifier,
+			&premise_evidence[0]
+		) != 0) {
+		return -1;
+	}
 	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
 		uint32_t case_id = match->as.match.first_case + i;
 		uint32_t motive_case_id = motive_body->as.match.first_case + i;
@@ -11036,15 +11321,31 @@ int prototype_judgement_delta_expand_match(
 			return -1;
 		}
 		premise_subjects[i + 1] = terms->cases[case_id].body;
+		if (lookup_delta_selected_evidence_normalization_equal(
+				delta,
+				terms,
+				type_declarations,
+				premise_subjects[i + 1],
+				premise_classifiers[i + 1],
+				&premise_evidence[i + 1]
+			) != 0) {
+			return -1;
+		}
 	}
-	int status = add_delta_relation_with_premises(
+	int status = add_delta_relation_with_authority_and_explicit_premises(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+		subject,
+		PROTOTYPE_INVALID_ID,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
+		NULL,
+		NULL,
 		premise_subjects,
 		premise_classifiers,
+		premise_evidence,
 		premise_count
 	);
 	if (status == 0) {
@@ -11099,8 +11400,21 @@ int prototype_judgement_delta_expand_match_with_branch_hints(
 	}
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	struct prototype_judgement_selected_evidence premise_evidence[
+		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	];
 	premise_subjects[0] = classifier;
 	premise_classifiers[0] = motive_universe;
+	if (lookup_delta_selected_evidence_normalization_equal(
+			delta,
+			terms,
+			type_declarations,
+			classifier,
+			motive_universe,
+			&premise_evidence[0]
+		) != 0) {
+		return -1;
+	}
 	for (uint32_t i = 0; i < branch_count; ++i) {
 		uint32_t case_id = match->as.match.first_case + i;
 		uint32_t motive_case_id = motive_body->as.match.first_case + i;
@@ -11130,15 +11444,31 @@ int prototype_judgement_delta_expand_match_with_branch_hints(
 		}
 		premise_subjects[i + 1] = match_case->body;
 		premise_classifiers[i + 1] = branch_classifiers[i];
+		if (lookup_delta_selected_evidence_normalization_equal(
+				delta,
+				terms,
+				type_declarations,
+				match_case->body,
+				branch_classifiers[i],
+				&premise_evidence[i + 1]
+			) != 0) {
+			return -1;
+		}
 	}
-	int status = add_delta_relation_with_premises(
+	int status = add_delta_relation_with_authority_and_explicit_premises(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+		subject,
+		PROTOTYPE_INVALID_ID,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
+		NULL,
+		NULL,
 		premise_subjects,
 		premise_classifiers,
+		premise_evidence,
 		branch_count + 1
 	);
 	if (status == 0) {
@@ -11708,6 +12038,8 @@ int prototype_judgement_delta_record_type_formation(
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return add_delta_relation(
 			delta,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_FORMATION,
+			subject,
 			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 			subject,
 			classifier,
@@ -11720,6 +12052,8 @@ int prototype_judgement_delta_record_type_formation(
 	}
 	return add_delta_relation(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_FORMATION,
+		subject,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -11756,6 +12090,8 @@ int prototype_judgement_delta_record_pure_primitive_type(
 	}
 	return add_delta_relation(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_INTRINSIC,
+		subject,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -11787,6 +12123,8 @@ int prototype_judgement_delta_record_effect_operation_type(
 	}
 	return add_delta_relation(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_INTRINSIC,
+		subject,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -11810,6 +12148,11 @@ int prototype_judgement_delta_record_text_literal(
 	}
 	return add_delta_relation(
 		delta,
+		delta->current_operation_id == PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER :
+			PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		delta->current_operation_id == PROTOTYPE_INVALID_ID ?
+			subject : delta->current_operation_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -11841,6 +12184,11 @@ int prototype_judgement_delta_record_int_literal(
 	}
 	return add_delta_relation(
 		delta,
+		delta->current_operation_id == PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER :
+			PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		delta->current_operation_id == PROTOTYPE_INVALID_ID ?
+			subject : delta->current_operation_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -12048,7 +12396,15 @@ int prototype_judgement_delta_record_declaration_fact(
 	if (!term_exists(terms, subject) || !term_exists(terms, classifier)) {
 		return -1;
 	}
-	return add_delta_relation(delta, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_DECLARATION);
+	return add_delta_relation(
+		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_DECLARATION,
+		subject,
+		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		subject,
+		classifier,
+		PROTOTYPE_JUDGEMENT_PROOF_DECLARATION
+	);
 }
 
 int prototype_judgement_delta_has_pending_classifier_state(

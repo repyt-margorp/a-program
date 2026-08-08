@@ -26803,10 +26803,22 @@ static uint32_t operation_solver_evidence_owner(
 		++depth) {
 		const struct prototype_operation_node* operation =
 			&ctx->metadata->operations[operation_id];
-		if ((operation->tag == PROTOTYPE_OPERATION_ATOM &&
-			 operation->core_term < ctx->terms->term_count &&
+		int authority_neutral_atom = operation->tag == PROTOTYPE_OPERATION_ATOM &&
+			operation->core_term < ctx->terms->term_count &&
+			(ctx->terms->terms[operation->core_term].tag ==
+				PROTOTYPE_TERM_EXTERNAL_REF ||
 			 ctx->terms->terms[operation->core_term].tag ==
-				PROTOTYPE_TERM_EXTERNAL_REF) ||
+				PROTOTYPE_TERM_PURE_PRIMITIVE ||
+			 ctx->terms->terms[operation->core_term].tag ==
+				PROTOTYPE_TERM_EFFECT_OPERATION ||
+			 prototype_term_type_instance_info(
+				ctx->terms,
+				operation->core_term,
+				&(uint32_t){0},
+				NULL,
+				&(uint32_t){0}
+			) == 0);
+		if (authority_neutral_atom ||
 			operation->tag == PROTOTYPE_OPERATION_VAR ||
 			operation->tag == PROTOTYPE_OPERATION_CONSTRUCTOR) {
 			return PROTOTYPE_INVALID_ID;
@@ -27302,45 +27314,23 @@ static int operation_solver_reify_core_proof(
 		case PROTOTYPE_OPERATION_THUNK:
 		case PROTOTYPE_OPERATION_FORCE: {
 			uint32_t child_term;
-			uint32_t child_classifier;
 			if (operation->argument >= ctx->metadata->operation_count) {
 				return -1;
 			}
 			if (term->tag == PROTOTYPE_TERM_RETURN) {
 				child_term = term->as.return_term.value;
-				struct prototype_term_classifier_view view;
-				if (prototype_judgement_classifier_view(
-						ctx->terms, ctx->type_declarations, NULL, classifier, &view
-					) != 0 || view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-					view.computation_kind !=
-						PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
-					return -1;
-				}
-				child_classifier = view.result;
 			} else if (term->tag == PROTOTYPE_TERM_THUNK) {
 				child_term = term->as.thunk.computation;
-				uint32_t whnf;
-				if (prototype_term_normalize_complete_with_profile(
-						ctx->terms,
-						ctx->type_declarations,
-						NULL,
-						PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-						classifier,
-						&whnf
-					) != 0 || whnf >= ctx->terms->term_count ||
-					ctx->terms->terms[whnf].tag != PROTOTYPE_TERM_THUNK_TYPE) {
-					return -1;
-				}
-				child_classifier = ctx->terms->terms[whnf].as.thunk_type.computation;
 			} else if (term->tag == PROTOTYPE_TERM_FORCE) {
 				child_term = term->as.force.value;
-				if (prototype_term_thunk_type(
-						ctx->terms, classifier, &child_classifier
-					) != 0) {
-					return -1;
-				}
 			} else {
 				return -1;
+			}
+			uint32_t child_classifier = ctx->metadata->operations[
+				operation->argument
+			].classifier;
+			if (child_classifier == PROTOTYPE_INVALID_ID) {
+				return 1;
 			}
 			int status = operation_solver_reify_core_proof(
 				ctx, operation->argument, child_term, depth + 1
@@ -27348,14 +27338,14 @@ static int operation_solver_reify_core_proof(
 			if (status != 0) {
 				return status;
 			}
-				struct prototype_judgement_selected_evidence child_evidence;
-				status = operation_solver_select_evidence_in_context(
-					ctx,
-					operation_solver_evidence_owner(ctx, operation->argument),
-					operation->context_id,
-					child_term,
-					child_classifier,
-					&child_evidence
+			struct prototype_judgement_selected_evidence child_evidence;
+			status = operation_solver_select_evidence_in_context(
+				ctx,
+				operation_solver_evidence_owner(ctx, operation->argument),
+				operation->context_id,
+				child_term,
+				child_classifier,
+				&child_evidence
 			);
 			if (status != 0) {
 				return status;
@@ -27366,15 +27356,43 @@ static int operation_solver_reify_core_proof(
 			prototype_judgement_delta_set_operation(
 				&ctx->judgement_delta, operation_id
 			);
-			if (prototype_judgement_delta_record_cbpv_boundary(
+			uint32_t derived_classifier;
+			if (prototype_judgement_cbpv_boundary_classifier(
+					ctx->terms,
+					ctx->type_declarations,
+					core_term,
+					child_classifier,
+					&derived_classifier
+				) != 0 || prototype_judgement_delta_record_cbpv_boundary(
 					&ctx->judgement_delta,
 					ctx->terms,
 					ctx->type_declarations,
-						core_term,
-						operation->argument,
-						&child_evidence
+					core_term,
+					operation->argument,
+					&child_evidence
 				) != 0) {
 				return -1;
+			}
+			if (derived_classifier != classifier) {
+				struct prototype_judgement_selected_evidence boundary_evidence;
+				if (prototype_judgement_delta_select_evidence(
+						&ctx->judgement_delta,
+						operation_id,
+						operation->context_id,
+						core_term,
+						derived_classifier,
+						&boundary_evidence
+					) != 0 ||
+					prototype_judgement_delta_record_expected_type_exposure(
+						&ctx->judgement_delta,
+						ctx->terms,
+						ctx->type_declarations,
+						&boundary_evidence,
+						classifier,
+						core_term
+					) != 0) {
+					return -1;
+				}
 			}
 			return 0;
 		}
@@ -27395,13 +27413,14 @@ static int operation_solver_reify_core_proof(
 				return -1;
 			}
 			if (proven_status == 0) {
-				return operation_solver_require_evidence_in_context(
+				int evidence_status = operation_solver_require_evidence_in_context(
 					ctx,
 					operation_id,
 					operation->context_id,
 					core_term,
 					proven_classifier
 				);
+				return evidence_status;
 			}
 			uint32_t clause_count = term->as.computation_fold.clause_count;
 			if (clause_count != 0) {
@@ -27846,8 +27865,7 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 			&ctx->judgement_delta, i
 		);
 		uint32_t branch_operation_ids[64];
-		uint32_t branch_context_ids[64];
-		uint32_t branch_classifiers[64];
+		struct prototype_judgement_selected_evidence branch_evidence[64];
 		if (operation->case_count > 64) {
 			return -1;
 		}
@@ -27867,8 +27885,23 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 				break;
 			}
 			branch_operation_ids[case_index] = operation_case->body_operation;
-			branch_context_ids[case_index] = body->context_id;
-			branch_classifiers[case_index] = body->classifier;
+			int evidence_status = operation_solver_select_evidence_in_context(
+				ctx,
+				operation_solver_evidence_owner(
+					ctx, operation_case->body_operation
+				),
+				body->context_id,
+				body->core_term,
+				body->classifier,
+				&branch_evidence[case_index]
+			);
+			if (evidence_status < 0) {
+				return -1;
+			}
+			if (evidence_status != 0) {
+				branches_ready = 0;
+				break;
+			}
 		}
 		if (!branches_ready) {
 			continue;
@@ -27879,8 +27912,7 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 				operation->core_term,
 				operation->classifier,
 				branch_operation_ids,
-				branch_context_ids,
-				branch_classifiers,
+				branch_evidence,
 				operation->case_count
 			) != 0) {
 			return -1;
@@ -28351,6 +28383,11 @@ static int operation_solver_refresh_computation_constraint_operands(
 			}
 			uint32_t classifier = operation_solver_classifier(ctx, operation_id);
 			constraint->premise_classifiers[premise] = classifier;
+			memset(
+				&constraint->premise_evidence[premise],
+				0,
+				sizeof(constraint->premise_evidence[premise])
+			);
 			constraint->premise_contexts[premise] =
 				ctx->metadata->operations[operation_id].context_id;
 			if (classifier == PROTOTYPE_INVALID_ID) {
@@ -28364,9 +28401,25 @@ static int operation_solver_refresh_computation_constraint_operands(
 			if (local < 0) {
 				return -1;
 			}
-			constraint->premise_states[premise] = local ?
-				PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_LOCAL :
-				PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_CLOSED;
+			if (local) {
+				constraint->premise_states[premise] =
+					PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_LOCAL;
+				continue;
+			}
+			int evidence_status = operation_solver_select_evidence_in_context(
+				ctx,
+				operation_solver_evidence_owner(ctx, operation_id),
+				constraint->context_id,
+				ctx->metadata->operations[operation_id].core_term,
+				classifier,
+				&constraint->premise_evidence[premise]
+			);
+			if (evidence_status < 0) {
+				return -1;
+			}
+			constraint->premise_states[premise] = evidence_status == 0 ?
+				PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_CLOSED :
+				PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_UNRESOLVED;
 		}
 	}
 	return 0;
