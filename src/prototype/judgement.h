@@ -173,6 +173,15 @@ struct prototype_judgement_derivation {
 	uint32_t induction_motive;
 	uint32_t induction_case_index;
 	uint32_t induction_field_index;
+	/* Rule-premise order is part of the derivation. A valid Claim id denotes an
+	 * accepted proposition dependency. INVALID denotes a scoped rule parameter
+	 * whose local tuple is retained below and replayed by the rule validator. */
+	uint32_t premise_count;
+	uint32_t premise_claim_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	int scoped_premise_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t scoped_premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t scoped_premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t scoped_premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t source_claim_count;
 	uint32_t source_claim_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 };

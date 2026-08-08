@@ -860,16 +860,25 @@ as accepted Claim IDs is the next R0A.3 representation change.
 
 ### P0-R0A.3 Claim and Derivation
 
-- [ ] Intern one Claim per full authority-aware claim key.
-- [ ] Store one or more grounded Derivations per accepted Claim; keep
+- [x] Intern one Claim per full authority-aware claim key.
+- [x] Store one or more grounded Derivations per accepted Claim; keep
   zero-derivation candidates unpublished.
-- [ ] Remove `proof_kind` and `proof_id` from Claim identity.
+- [x] Remove `proof_kind` and `proof_id` from accepted Claim identity.
+- [ ] Remove `proof_kind` and `proof_id` ownership from the legacy candidate
+  Claim representation.
 - [ ] Stop clearing and later guessing exact proof IDs.
 - [ ] Keep object HOTT witnesses entirely separate from this meta certificate.
 
-Current state: separate candidate and accepted records plus grounded compaction
-exist. Candidate premises and validators still depend on legacy proof IDs, so
-the accepted model is not authoritative yet.
+Current state: accepted Claim interning, ordered Claim-ID premise retention,
+least grounded closure, and final rule validation are authoritative in memory.
+The validator walks every accepted Derivation and does not select it from the
+legacy candidate `accepted` bit. Scoped fold/request rule parameters remain
+local payload rather than fabricated Claims. The remaining dependency on proof
+IDs is confined to candidate construction/resolution, substitution metadata,
+Universe consumers, and v64 artifact reachability/serialization. In
+particular, `source_candidate_proof_id` must disappear together with the native
+Claim/Derivation artifact migration; removing it earlier would merely replace
+it with a reverse tuple lookup.
 
 ### P0-R0A.4 Structural dependencies
 
@@ -887,10 +896,11 @@ the accepted model is not authoritative yet.
 - [ ] Give remaining generated APP/Match helpers explicit authority
   or keep them unpublished; do not resolve their Core tuples to source
   Operations.
-- [ ] Resolve to a unique Claim ID, never to the latest Derivation.
+- [x] Resolve to a unique Claim ID, never to the latest Derivation.
 - [x] Keep binder and constructor assumptions under ContextDB and
   TypeDeclarationDB authority.
-- [ ] Remove structural use of generic Core tuple proof lookup.
+- [x] Remove structural use of generic Core tuple proof lookup from accepted
+  closure and final proof validation.
 
 Current state: APP and Lambda binder handling have been corrected; constructor
 spines retain argument Operations; request/fold retain their direct children,
@@ -904,9 +914,9 @@ consume exact Claim identities end to end.
 
 - [x] Rename current Context rule to `CONTEXT_WEAKEN` and validate ancestry.
 - [ ] Reserve true `CONTEXT_REINDEX` for an explicit substitution ID.
-- [ ] Store source Claim IDs for effect weakening.
-- [ ] Store and validate the selected source Claim for integer admissibility.
-- [ ] Store source Claims for conversion/exposure only where kernel replay and
+- [x] Store source Claim IDs for effect weakening.
+- [x] Store and validate the selected source Claim for integer admissibility.
+- [x] Store source Claims for conversion/exposure only where kernel replay and
   OperationGraph cannot recover them unambiguously.
 
 The recorder API migration is complete: these rules accept one complete source
@@ -917,12 +927,15 @@ leaving `premise_proof_ids` unresolved.
 
 ### P0-R0A.6 Grounded closure
 
-- [ ] Validate local rule shape before graph closure.
-- [ ] Seed authoritative axiom Claims explicitly.
-- [ ] Compute least supported Claim closure and assign closure ranks.
-- [ ] Publish only rank-decreasing Derivations; reject cycles and orphan
+- [x] Validate local rule shape after graph closure against the immutable
+  accepted Derivation image. Moving this before closure is unnecessary because
+  unresolved candidates are intentionally not accepted objects.
+- [x] Seed authoritative axiom Claims explicitly through zero-premise
+  Derivations in their authority domain.
+- [x] Compute least supported Claim closure and assign closure ranks.
+- [x] Publish only rank-decreasing Derivations; reject cycles and orphan
   Derivations.
-- [ ] Do not require one Derivation per Claim.
+- [x] Do not require one Derivation per Claim.
 
 ### P0-R0A.7 Link authority
 

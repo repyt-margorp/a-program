@@ -1213,7 +1213,7 @@ inherit the source Operation that requested motive synthesis.
   only.
 - [x] Add a transitional accepted Derivation record with conclusion and source
   Claim IDs and least-closure rank.
-- [ ] Store each authoritative Derivation as `(conclusion_claim_id, rule_kind,
+- [x] Store each authoritative Derivation as `(conclusion_claim_id, rule_kind,
   rule_parameters, derived_source_claim_ids)`.
 - [ ] Do not duplicate APP/Lambda/Match/IH/CBPV structural child tuples in the
   Derivation. Reconstruct them from the conclusion OperationGraph node.
@@ -1232,27 +1232,42 @@ guesses child evidence by a Core tuple.
 
 #### P0-R0A.3 Candidate generation and publication
 
-- [ ] Keep solver candidates separate from accepted Claims and Derivations.
+- [x] Keep solver candidates separate from accepted Claims and Derivations.
 - [x] Generate source APP, Lambda, constructor-spine, request, fold, and solved
   Match candidates from exact child Operation IDs and child Contexts.
 - [ ] Generate every remaining structural candidate from exact Operation IDs, never from a
   JudgementDB tuple lookup.
 - [x] Make conversion/exposure, integer admissibility, effect weakening, and
   context weakening consume exact source `SelectedEvidence` before commit.
-- [ ] Replace their transitional premise tuple with the interned source Claim
+- [x] Replace their transitional premise tuple with the interned source Claim
   ID when accepted Claim publication becomes authoritative.
-- [ ] Intern Claims deterministically and append all distinct valid
+- [x] Intern Claims deterministically and append all distinct valid
   Derivations reached within the configured resource budget.
-- [ ] Deduplicate Derivations by semantic rule payload and source Claim IDs;
+- [x] Deduplicate Derivations by semantic rule payload and source Claim IDs;
   do not compare or discard edges by proof insertion order.
-- [ ] Publish atomically after classifier, effect-row, Context, and authority
+- [x] Publish atomically after classifier, effect-row, Context, and authority
   validation has stabilized.
+
+The accepted image now retains premise order separately from its deduplicated
+closure-source set. Ordinary premises are accepted Claim IDs. Fold-clause
+local classifiers and the generated request APP are scoped rule parameters,
+not globally publishable Claims. Final rule validation iterates accepted
+Derivations and reconstructs a temporary validator view from the conclusion
+Claim and ordered premise Claim IDs; it no longer chooses validation work from
+candidate `accepted` flags. This exposed and fixed two producer defects: sparse
+artifact holes were incorrectly publishable, and request/fold local premises
+could retain `UNKNOWN` evidence.
+
+The remaining R0A.3 blocker is representation removal, not validation logic:
+candidate Claims still physically own one `proof_kind/proof_id`, and accepted
+Derivations still carry `source_candidate_proof_id` solely because artifact
+v64 reachability and serialization return to the legacy candidate graph.
 
 #### P0-R0A.4 Grounded closure
 
 - [ ] Classify declaration, intrinsic, Context-binding, and other primitive
   introductions as explicit closure seeds.
-- [ ] Validate every local Derivation rule against its authoritative graph or
+- [x] Validate every local Derivation rule against its authoritative graph or
   database.
 - [x] Compute the least fixed point of reconstructed Claims justified by seeds or by a
   Derivation whose premise Claims have lower closure rank.
