@@ -2,9 +2,11 @@
 
 Date: 2026-08-08
 
-Status: implementation complete; exit audit passed; completion commit pending
+Status: implementation complete; exit audit passed
 
 Planning baseline: `4025532` (`refactor: complete P0 certificate boundary`)
+
+Implementation baseline: `564a2ee` (`refactor: complete P1 HOTT entry substrate`)
 
 Planning artifact boundary: `A_PROGRAM_ARTIFACT 67`
 
@@ -541,6 +543,7 @@ P1-R0 does not add:
 | 2026-08-08 | P1-R0.6 bridge/child-edge boundary | complete for the first fragment | The terminal Context has the unique identity bridge; forged oriented bridges are rejected; nonempty relational extension is deferred to O1. |
 | 2026-08-08 | P1-R0.7 type-directed admission | complete | Nominal TypeView queries, ordinary ADT dispatch, Universe deferral, recursive first-fragment scan, stable rules, and compiler-local residuals are implemented. |
 | 2026-08-08 | P1-R0.8 exit audit | complete | `make`, `make reader`, `-Werror`, all 16 scripts, examples 01-07/09, schema hash, v67 rejection, and `git diff --check` pass. |
+| 2026-08-08 | P1-R0 implementation baseline | complete | `564a2ee`, artifact v68, calculus fingerprint `f5f32952ee941bcb393d3f9f09f789d921edbc1b349d116f6cb34bd1c3203ceb` |
 
 ## 10. Implemented Boundary Decisions
 

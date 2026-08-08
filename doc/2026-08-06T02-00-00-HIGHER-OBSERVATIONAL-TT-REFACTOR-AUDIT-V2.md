@@ -1233,7 +1233,7 @@ At commit `474867e`:
 | V2-B1 | Replace positional binder-assumption proof identity with direct binding-object identity | complete | v61 slot is reserved; physical removal is deferred to V2-P1/v62 | exact-binding validator, binding-aware context identity, relocation, forged-proof, artifact, all 14 test scripts, and examples 01-07/09 pass |
 | V2-S1 | Extend solver constraints with typed HOTT indices | complete | v61 unchanged; residual serialization deferred to v62 | tagged classifier goals, deterministic conversion goals, Context/substitution-indexed HOTT goals, purity/residual tests, all 15 scripts, and byte-stable artifacts pass |
 | V2-P0 | Make OperationGraph authoritative for operation typing and normalize accepted Claim/Derivation ownership | complete at `4025532` | v67 publishes accepted Claims/Derivations with exact link and Universe provenance | all 16 scripts, examples 01-07/09, forged artifacts, schema fingerprint, and exit audit pass |
-| V2-P1-R0 | Repair the typed HOTT-goal entry substrate discovered by the P1 audit | complete; completion commit pending | v68 removes untrusted solver wire state; structural substitutions replay typing; the first admitted bridge is terminal | adversarial typed-goal, conversion, bridge, substitution, polarity, artifact, all 16 scripts, and examples 01-07/09 pass |
+| V2-P1-R0 | Repair the typed HOTT-goal entry substrate discovered by the P1 audit | complete at `564a2ee` | v68 removes untrusted solver wire state; structural substitutions replay typing; the first admitted bridge is terminal | adversarial typed-goal, conversion, bridge, substitution, polarity, artifact, all 16 scripts, and examples 01-07/09 pass |
 | V2-P1 | Select irreducible HOTT certificate payload after P1-R0 | next | undecided | select only evidence not reconstructible from accepted authorities and retain the stable observational rule IDs |
 | V2-O1 | Implement type-directed observational action over shared terms | blocked by P1-R0/P1 | breaking | substitution/naturality tests |
 | V2-A1 | Add the later object-HOTT artifact schema selected after O1 | blocked by P1-R0/P1/O1 | breaking, version after v68 | HOTT witness/link matrix for the schema selected after O1 |
@@ -1273,9 +1273,9 @@ from Context, Operation, and Substitution wire records. The first admitted
 relational Context fragment is the terminal Context with its unique identity
 projections; nonempty relational extension remains deferred until O1 defines
 the relation field. The implementation and exit evidence are in
-`doc/2026-08-08T20-00-00-V2-P1-ENTRY-REFACTOR-AUDIT-PLAN.md`. Only after that
-completed gate may V2-P1 select irreducible observational evidence. Object equality
-syntax and witness construction remain deferred to V2-O1. The completed P0
+`doc/2026-08-08T20-00-00-V2-P1-ENTRY-REFACTOR-AUDIT-PLAN.md`. V2-P1 may now
+select irreducible observational evidence. Object equality syntax and witness
+construction remain deferred to V2-O1. The completed P0
 execution record is in
 `doc/2026-08-08T17-10-35-V2-P0-REMAINING-IMPLEMENTATION-PLAN.md`. The
 V2-B1 implementation and progress plan is in
