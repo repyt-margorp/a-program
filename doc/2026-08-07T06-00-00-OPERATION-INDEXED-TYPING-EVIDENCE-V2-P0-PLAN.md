@@ -19,14 +19,14 @@ Re-entry code audit:
 
 Audit state:
 
-- committed baseline: `062b7cd` (`origin/main` is the same commit);
-- artifact format at the audited baseline: `A_PROGRAM_ARTIFACT 62`;
-- the active worktree writes and reads only provisional artifact v64;
+- committed P0 checkpoint: `985baf8` (`origin/main` is the same commit);
+- artifact format at the checkpoint: provisional `A_PROGRAM_ARTIFACT 64`;
+- the committed tree writes and reads only provisional artifact v64;
   `term_export.operation` preserves the selected typed occurrence, but v64 is
   not the final native Claim/Derivation publication schema;
 - the audit found that the previous P0 completion statement was too strong;
-- the active uncommitted worktree is the P0-R0A.1 implementation, not an audit
-  probe and not a pre-P0 compatibility layer;
+- P0-R0A.1 is committed and is the premise on which P0-R0A.2 starts; this is
+  implementation inside P0, not an audit probe or a pre-P0 compatibility layer;
 - provisional binder assumptions are revalidated against ContextDB;
 - request/fold constraints retain exact child Operation IDs and refreshed
   Operation-selected classifiers;
@@ -61,8 +61,7 @@ normalization, and shared computation identity belong to TermDB.
 
 ## 2. Verified Code Facts
 
-The following facts were rechecked against commit `062b7cd` and the active P0
-worktree on 2026-08-08.
+The following facts were rechecked against commit `985baf8` on 2026-08-08.
 
 ### 2.1 OperationGraph already is the typed occurrence graph
 
@@ -1027,14 +1026,17 @@ Re-audited implementation state:
 - [x] keep a structural child Operation ID distinct from selected evidence
   authority; a VAR or constructor child is not relabelled as Operation-owned.
 - [ ] replace every remaining proof-producing classifier-only lookup with
-  `SelectedEvidence`. Source structural producers are migrated; generated
-  Core-helper facts and derived boundaries still lose source Claim keys.
+  `SelectedEvidence`. Source structural producers and the conversion,
+  expected-exposure, Context-weakening, effect-weakening, and integer-
+  admissibility boundaries are migrated. Generated Core-helper and generated
+  Match/type-formation paths still create tuple-only premises.
 - [x] make IH validation independent of a global classifier scan. The IH
   candidate stores `induction_motive` and validates `M recursive_argument`
   locally while remaining premise-free.
-- [ ] finish generated Lambda/RETURN/THUNK/APP/Match helper migration. Source
-  Lambda and CBPV child propagation exists, but generated helper candidates
-  still use transitional tuple fields.
+- [ ] finish generated Lambda/RETURN/THUNK/APP/Match helper migration. These
+  facts must use explicit authority-neutral Core-helper Claims, or remain local
+  solver obligations. They may not inherit `current_operation_id` and may not
+  be promoted by matching a source Core tuple.
 - [ ] make candidate Derivations refer to complete candidate Claim keys rather
   than repaired proof IDs.
 - [ ] validate and publish only the accepted Claim/Derivation image.
@@ -1052,7 +1054,7 @@ The code-level migration inventory is:
 | source Lambda/Match/constructor/CBPV recorders | migrated to direct child Operations and Contexts | preserve this path while Claim IDs replace tuple payloads |
 | scoped IH rule | formerly recovered motive by global Match classifier search | keep zero premises; store and validate the exact motive as a rule parameter |
 | generated Core helper recorders | RETURN/THUNK/Lambda/APP/Match premises contain Core tuples only | either provide exact generated authority or keep the helper unpublished; never borrow a source Operation |
-| conversion, exposure, Context/effect weakening | source is tuple or current Operation approximation | carry one exact source Claim key and validate the rule transition |
+| conversion, exposure, Context/effect weakening, integer admissibility | recorder APIs now consume `SelectedEvidence`, but storage is still a transitional tuple | preserve that exact source key when candidate premises become Claim IDs |
 | linked declaration completion | scans global Core support | consume relocated export/declaration authority |
 | Universe constraint insertion | keeps inequality but loses selected occurrence | keep authority/provenance beside the constraint reason |
 
@@ -1063,13 +1065,11 @@ Implementation order is strict:
 2. introduce the evidence and structural-premise records without changing
    accepted publication;
 3. migrate APP end to end and restore all source tests;
-4. migrate source Match, constructor spine, scoped IH, Lambda/CBPV tails,
-   request, and computation fold so every structural producer consumes full
-   evidence; Match/request/constructor are substantially migrated, but
-   Lambda/fold local-obligation discharge remains the immediate gate;
-5. close the local-obligation/Claim boundary, then migrate generated Core
-   helpers and derived boundaries, link authority,
-   and Universe provenance;
+4. preserve the completed source Match, constructor spine, scoped IH,
+   Lambda/CBPV, request, computation-fold, and local-obligation boundaries;
+5. migrate generated Core helpers and generated Match/type-formation paths,
+   then preserve the already-selected source evidence as Claim IDs at every
+   derived boundary; migrate link authority and Universe provenance afterward;
 6. replace candidate tuple edges with Claim IDs and atomic grounded
    publication;
 7. remove the old resolver and one-to-one coverage invariant;
@@ -1083,11 +1083,11 @@ Implementation order is strict:
 - [x] Reconstruct source Claim edges from the exact resolved proof IDs at the
   existing publication boundary, then compute a least grounded closure rank.
 - [x] Reject a reconstructed certificate containing an unsupported cycle.
-- [x] At committed checkpoint `062b7cd`, preserve the existing source, CBPV,
+- [x] At committed checkpoint `985baf8`, preserve the existing source, CBPV,
   shared-Core, artifact, and HOTT substrate behavior; all 15
-  `src/prototype/test_*.sh` scripts passed there. The active P0-R0A.1 worktree
-  now passes artifact flow with the occurrence-preserving v64 boundary; native
-  accepted Claim/Derivation serialization remains a P0 exit condition.
+  `src/prototype/test_*.sh` scripts and examples 01-07/09 pass with the
+  occurrence-preserving v64 boundary. Native accepted Claim/Derivation
+  serialization remains a P0 exit condition.
 - [x] Rename the generated ancestor-context rule from `CONTEXT_REINDEX` to the
   semantically accurate `CONTEXT_WEAKEN` and validate ancestry.
 - [x] Replace unexplained fold/premise capacity literals with named constants.
@@ -1127,17 +1127,19 @@ condition and must replace it without a compatibility resolver.
 
 #### P0-R0A.1 Local-obligation and closed-Claim boundary
 
-This is the immediate implementation phase. Complete the eight code-target
-steps under P0-P22 before treating a structural producer as migrated.
+This premise phase is complete for the current calculus. Its invariants remain
+mandatory preconditions of every following P0 change.
 
-- [ ] Distinguish scoped solver operands from Claim premises.
-- [ ] Discharge fold clause Lambda residuals under the fold carrier.
-- [ ] Reject exported roots without accepted authority-matching Claims.
-- [ ] Pass the higher-order handler forged-artifact regression.
+- [x] Distinguish scoped solver operands from Claim premises.
+- [x] Discharge fold clause Lambda residuals under the fold carrier.
+- [x] Reject exported roots without an accepted authority-matching Claim or an
+  explicit reachable residual obligation.
+- [x] Pass the higher-order handler forged-artifact regression.
 
 #### P0-R0A.2 Authority-complete producer and accepted data model
 
-This phase follows structural closure. Its order is mandatory:
+This is the next active P0 phase. It is not P1 and not optional cleanup. Its
+order is mandatory:
 
 ```text
 SelectedEvidence API
@@ -1149,11 +1151,57 @@ SelectedEvidence API
 The existing accepted arenas are a useful scaffold, but they do not satisfy
 this phase while they are rebuilt from `premise_proof_ids` after a resolver.
 
+Entry premises, checked against `985baf8`:
+
+1. R0A.1 remains true: a closed exported occurrence has an accepted grounded
+   Claim, while an unfinished occurrence has an explicit reachable residual or
+   verification obligation. The two outcomes are never encoded as one Claim.
+2. The conclusion authority is supplied before candidate insertion. A helper
+   constructor may not infer it from `proof_kind`, `current_operation_id`, or a
+   matching Core tuple after insertion.
+3. Every premise-bearing producer receives a complete selected Claim key. A
+   classifier alone is solver information, not evidence.
+4. Source structural rules follow OperationGraph child edges. Generated motive
+   and type helpers use `CORE_HELPER` authority and exact helper premises; they
+   do not borrow the enclosing source Operation.
+5. Context-binding, declaration, intrinsic, type-formation, and Universe facts
+   retain their own authority domains. `INVALID` is an error or absence marker,
+   not a spelling of authority-neutral evidence.
+6. No accepted-model rewrite begins until the legacy producer image passes the
+   full suite with these authority invariants. This prevents Claim interning
+   from freezing incorrectly inferred authority.
+
+Concrete R0A.2 producer inventory at this checkpoint:
+
+| Producer family | Current state | R0A.2 action |
+| --- | --- | --- |
+| source APP/Lambda/Match/constructor/CBPV/request/fold/IH | exact occurrence evidence implemented | preserve and add authority-forgery regressions |
+| conversion/expected exposure/Context weakening/effect weakening/int admissibility | consumes `SelectedEvidence` | retain the exact source as a Claim ID in R0A.3 |
+| generated Pi helper RETURN/Lambda/THUNK | partially explicit `CORE_HELPER` | migrate the remaining classifier-only fallback path |
+| generated Match motive Lambda/RETURN/THUNK/APP | tuple-only premises remain in `prototype_judgement_delta_build_match_motive()` | select exact generated evidence and state `CORE_HELPER` authority at construction |
+| generated Match type-formation and Match elimination | classifier-only branch selection remains in `prototype_judgement_delta_expand_match_motive_with_premises()` and `prototype_judgement_delta_expand_match*()` | split source-occurrence recording from authority-neutral helper inference; reject ambiguity |
+| generic inferred Lambda-at-Universe fallback | tuple-only premises remain in `prototype_judgement_delta_ensure_type_at_universe()` | consume the exact binder/body evidence already generated in their real Contexts |
+| no-premise introductions | stored authority is currently filled by fallback classification | pass the declaration/intrinsic/type-formation/Universe/Core-helper authority explicitly |
+
+The migration must not be implemented as a blind replacement of every old
+helper call. In particular, Match APIs currently serve both source occurrence
+recording and authority-neutral generated inference. Those paths must be split
+at their caller boundary first; otherwise a generated Match can accidentally
+inherit the source Operation that requested motive synthesis.
+
 - [x] Add a transitional interned Claim record whose
   key is `(kind, authority, context_id, subject_projection, classifier)`.
 - [x] Add explicit authority kind/ID fields to candidate and accepted Claims.
-- [ ] Make every proof-producing selection return `SelectedEvidence`; do not
-  select a candidate by reverse/forward insertion order.
+- [ ] Make every premise-bearing proof producer consume `SelectedEvidence` or
+  an explicitly authority-neutral helper Claim; do not select a candidate by
+  reverse/forward insertion order.
+- [ ] Remove the classifier-only `add_delta_relation_with_premises()` producer
+  path after migrating its generated Lambda, RETURN, THUNK, APP, Match motive,
+  Match elimination, and type-formation callers.
+- [ ] Require generated helper conclusions to state `CORE_HELPER` authority
+  explicitly. `INVALID` authority means invalid/missing data, never neutral.
+- [ ] Keep generated helpers unpublished when their premises are ambiguous or
+  solver-local; never recover a source Operation from `(Core, Context, type)`.
 - [ ] Represent authority completely at every producer. Operation-backed claims
   carry an exact `operation_id`; Context, declaration, type-formation,
   intrinsic, and Universe claims use their own authority kind and ID rather
@@ -1174,14 +1222,14 @@ this phase while they are rebuilt from `premise_proof_ids` after a resolver.
 #### P0-R0A.3 Candidate generation and publication
 
 - [ ] Keep solver candidates separate from accepted Claims and Derivations.
-- [ ] Generate source APP, Lambda, constructor-spine, request, fold, and solved
-  Match candidates from exact child Operation IDs and child Contexts. APP,
-  constructor, request, and Match are substantially migrated; Lambda/fold
-  closure and generic Core-helper paths remain open.
+- [x] Generate source APP, Lambda, constructor-spine, request, fold, and solved
+  Match candidates from exact child Operation IDs and child Contexts.
 - [ ] Generate every remaining structural candidate from exact Operation IDs, never from a
   JudgementDB tuple lookup.
-- [ ] Give conversion/exposure, integer admissibility, effect weakening, and
-  context weakening an exact source Claim key before commit.
+- [x] Make conversion/exposure, integer admissibility, effect weakening, and
+  context weakening consume exact source `SelectedEvidence` before commit.
+- [ ] Replace their transitional premise tuple with the interned source Claim
+  ID when accepted Claim publication becomes authoritative.
 - [ ] Intern Claims deterministically and append all distinct valid
   Derivations reached within the configured resource budget.
 - [ ] Deduplicate Derivations by semantic rule payload and source Claim IDs;
@@ -1484,6 +1532,7 @@ V2-P0 is complete only when:
 | 2026-08-08 | P0-R0A transition scaffold | complete | Separate accepted Claim/Derivation arenas and least grounded compaction exist, but are reconstructed from transitional candidate relation/proof records. |
 | 2026-08-08 | P0-R0A.1 local-obligation boundary | complete for current calculus | Scoped fold/Lambda obligations are not published as standalone Claims; exact fold rule parameters are replayed locally. Export publication distinguishes grounded Claims from exact occurrence-owned residual constraints. |
 | 2026-08-08 | P0-R0A.2 authority-complete producer migration | in progress | `SelectedEvidence` and the source structural slice exist. Complete remaining generated APP/Match helper and derived-source migration before making accepted Claims/Derivations the sole publication image. |
+| 2026-08-08 | P0-R0A.2 final entry audit at `985baf8` | complete | Reclassified the remaining work precisely: derived recorder APIs already consume `SelectedEvidence`; generated motive/type helpers and no-premise authority fallback are the immediate implementation targets. P0-R0A.2, not P1, is next. |
 | 2026-08-08 | P0-R0A.1 evidence API and APP slice | partial; implemented | Generic APP candidate collection retains function/argument evidence; Lambda and CBPV APIs retain direct child Operations separately from evidence authority. Normalization-equal and proof-kind selection now return evidence instead of classifier-only results. |
 | 2026-08-08 | P0-R0A.1 structural producer slice | implemented for current fold rules | Fold clause Lambdas and the request-internal APP are scoped rule parameters replayed by their enclosing validators, not independent Claims. Return-body effect weakening retains the exact body Operation, occurrence Context, and Core projection rather than reconstructing them from an alpha-interned Lambda representative. The CBPV surface suite, including higher-order handlers and forged artifacts, passes. |
 | 2026-08-08 | P0-R0A.1 fixed-point publication boundary | implemented | Operation-owned source candidates are publishable only when their classifier equals the final Operation classifier; explicit conversion, weakening, exposure, and admissibility rules remain allowed derived classifiers. Superseded solver-frontier candidates are retained as history but cannot become Claims. |

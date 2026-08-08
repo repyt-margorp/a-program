@@ -1269,24 +1269,23 @@ authority paths.
 
 The 2026-08-08 code audit found that the implementation did not yet satisfy
 that premise at the accepted certificate boundary. P0 was therefore reopened
-at P0-R0A. The first transition checkpoint now has separate in-memory Claim and
-Derivation arenas and reconstructs a source-Claim DAG from resolved proof IDs
-immediately before kernel validation. It computes the least grounded Claim
-closure. Source examples 01-07/09 and the strict-effect/resumption source cases
-pass in the active worktree, while artifact round-trip currently fails because
-v62 does not preserve the new authority/publication state.
+at P0-R0A. Commit `985baf8` establishes its first premise: separate in-memory
+Claim and Derivation arenas, least-grounded closure, source-occurrence export
+identity, and an explicit distinction between closed Claims and reachable
+residual obligations. All 15 prototype test scripts, examples 01-07/09, and
+artifact round-trip pass with provisional artifact v64.
 
 This is not P0 completion, but it is already work inside P0. Source APP,
 Lambda, constructor spine, request, computation fold, and Match now preserve
 their exact structural occurrences. IH stores its motive as a local scoped
 eliminator parameter and intentionally does not point back to the parent Match
-Claim. A physical legacy relation still owns exactly one legacy proof, and
-`prototype_judgement_resolve_proof_edges()` still chooses legacy premises
-before Claim reconstruction. The next P0 step must propagate
-authority-complete `SelectedEvidence` through generated helper and derived
-boundaries. Conversion and context/effect weakening are the first targets:
-their recorders currently receive no selected source Claim and substitute the
-current Operation. After that, P0 atomically interns all candidate Claims,
+Claim. A physical legacy relation still owns exactly one legacy proof, and the
+dead `prototype_judgement_resolve_proof_edges()` implementation plus legacy
+premise proof-ID fields remain. The next P0 step must complete authority-
+explicit generated helper producers. Conversion, expected exposure, Context/
+effect weakening, and integer admissibility already consume
+`SelectedEvidence`; their exact source becomes a Claim ID when the accepted
+model replaces transitional tuples. After that, P0 atomically interns all candidate Claims,
 attaches Derivations by exact Claim ID, and removes the resolver and both legacy
 arrays. P0-R0A ultimately keeps derived source Claim identity exact,
 reconstructs structural premises from OperationGraph, and accepts only the

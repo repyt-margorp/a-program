@@ -7,11 +7,11 @@ Status: audit complete; P0-R0A.1 current-calculus premise implemented; P0-R0A.2 
 Baseline:
 
 - branch: `main`;
-- committed checkpoint: `062b7cd refactor: establish P0 claim derivation boundary`;
+- committed checkpoint: `985baf8 refactor: establish P0 occurrence evidence premise`;
 - remote baseline: `origin/main` at the same commit;
-- committed-baseline artifact header: `A_PROGRAM_ARTIFACT 62`;
-- active-worktree artifact header: provisional `A_PROGRAM_ARTIFACT 64`;
-- implementation worktree: active P0-R0A transition over this baseline.
+- committed artifact header: provisional `A_PROGRAM_ARTIFACT 64`;
+- implementation state: P0-R0A.1 committed; P0-R0A.2 is the next active P0
+  implementation phase.
 
 This document re-audits the implementation after the earlier V2-P0 completion
 claim. It found that P0 had not actually established its accepted certificate
@@ -824,6 +824,12 @@ publication.
 
 ### P0-R0A.2 Authority-complete evidence API
 
+This section is the immediate P0 entry point after commit `985baf8`. Its
+premise is P0-P0, not a storage preference: a typed conclusion belongs to its
+Operation/type-view occurrence, while its Core Term is only the shared erased
+projection. R0A.2 must establish authority at producer construction time
+before R0A.3 is allowed to make accepted Claim IDs authoritative.
+
 - [x] Introduce `prototype_judgement_selected_evidence` with complete Claim
   authority, Context, Operation projection, subject, and classifier.
 - [x] Migrate generic APP candidate collection to preserve function and
@@ -835,14 +841,19 @@ publication.
 - [ ] Preserve direct child Operation and child Context independently from the
   final ContextDB/TypeDeclarationDB/Operation authority.
 - [ ] Remove unique/first/latest tuple authority recovery.
+- [ ] Split generated Match/motive inference from source Match occurrence
+  recording before removing the classifier-only helper. Do not let a generated
+  helper inherit the requesting source Operation through `current_operation_id`.
 
-Current state: the evidence API and source APP/constructor/request/Match
-producer migration are implemented. `SOLVED_MATCH_MOTIVE` now waits for all
+Current state: the evidence API and source APP/Lambda/constructor/request/
+Match/CBPV/fold producer migration are implemented. `SOLVED_MATCH_MOTIVE` waits for all
 branch classifiers and records exact branch premises instead of validating
 through a later global tuple scan. IH carries `induction_motive` as an
 immutable scoped-eliminator parameter and intentionally has no parent-Match
-premise. Lambda/fold scoped closure, authority-neutral generated helper paths,
-and derived-source consumers remain open, so this gate is not complete.
+premise. Conversion, expected exposure, Context/effect weakening, and integer
+admissibility already consume `SelectedEvidence`; preserving that source as a
+Claim ID remains part of R0A.3. Authority-neutral generated Lambda/RETURN/
+THUNK/APP/Match/type-formation paths remain open, so this gate is not complete.
 
 ### P0-R0A.3 Claim and Derivation
 
@@ -895,11 +906,11 @@ consume exact Claim identities end to end.
 - [ ] Store source Claims for conversion/exposure only where kernel replay and
   OperationGraph cannot recover them unambiguously.
 
-This slice follows structural producer closure. The current recorders accept only source
-Context/classifier tuples and frequently substitute `current_operation_id` for
-the actual selected authority. Their APIs must receive one complete source
-Claim/`SelectedEvidence`; replaying conversion or weakening validates the rule
-but does not identify which typed occurrence supplied its premise.
+The recorder API migration is complete: these rules accept one complete source
+`SelectedEvidence`. The remaining work is representational: when accepted
+Claims become authoritative, each derived Derivation must reference that exact
+source Claim ID instead of serializing the transitional authority tuple and
+leaving `premise_proof_ids` unresolved.
 
 ### P0-R0A.6 Grounded closure
 
