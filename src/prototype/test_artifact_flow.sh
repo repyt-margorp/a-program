@@ -193,7 +193,7 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 62$' "$TMP_DIR/identity.apo"
+grep -q '^A_PROGRAM_ARTIFACT 64$' "$TMP_DIR/identity.apo"
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
 	>"$TMP_DIR/identity-c-backend.out"
 grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
@@ -226,12 +226,12 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/62$/61/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v61.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v61.apo" >"$TMP_DIR/identity-v61.out" 2>"$TMP_DIR/identity-v61.err"; then
-	echo "obsolete artifact unexpectedly passed after v62 format bump" >&2
+sed '1s/64$/63/' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v63.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v63.apo" >"$TMP_DIR/identity-v63.out" 2>"$TMP_DIR/identity-v63.err"; then
+	echo "obsolete artifact unexpectedly passed after v64 format bump" >&2
 	exit 1
 fi
-grep -q '^term identityBool .* namespace identity$' "$TMP_DIR/identity.apo"
+grep -q '^term identityBool .* namespace identity operation [0-9][0-9]*$' "$TMP_DIR/identity.apo"
 grep -q '^type Bool .* namespace identity$' "$TMP_DIR/identity.apo"
 grep -q 'metadata label identityBool -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
 grep -q 'metadata label identityNat -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
@@ -240,6 +240,18 @@ identity_nat_operation=$(awk '/metadata label identityNat -> operation#[0-9]+ ->
 test -n "$identity_bool_operation"
 test -n "$identity_nat_operation"
 test "$identity_bool_operation" != "$identity_nat_operation"
+awk -v wrong_operation="$identity_nat_operation" '
+	$1 == "term" && $2 == "identityBool" {
+		$NF = wrong_operation
+	}
+	{ print }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/BadIdentityExportOperation.apo"
+if ./read_file.out --read-graph "$TMP_DIR/BadIdentityExportOperation.apo" \
+	>"$TMP_DIR/bad-identity-export-operation.out" \
+	2>"$TMP_DIR/bad-identity-export-operation.err"; then
+	echo "export accepted a different shared-Core Operation authority" >&2
+	exit 1
+fi
 
 cat >"$TMP_DIR/shared-core-proof-owner.p" <<'EOF_SHARED_CORE_PROOF_OWNER'
 Bool := @{
@@ -265,22 +277,22 @@ test "$id1_operation" != "$id2_operation"
 awk -v id1_operation="$id1_operation" -v id2_operation="$id2_operation" \
 	-v use1_operation="$use1_operation" '
 	FNR == NR {
-		if ($1 == "judgement" && $(NF - 1) == "operation") {
-			if ($NF == id1_operation) {
+		if ($1 == "judgement" && $9 == "operation") {
+			if ($10 == id1_operation) {
 				id1_proof = $7;
-			} else if ($NF == id2_operation) {
+			} else if ($10 == id2_operation) {
 				id2_proof = $7;
-			} else if ($NF == use1_operation) {
+			} else if ($10 == use1_operation) {
 				use1_proof = $7;
 			}
 		}
 		next;
 	}
 	$1 == "proof" && $2 == use1_proof {
-		if ($18 != id1_proof) {
+		if ($23 != "operation" || $24 != id1_operation) {
 			exit 1;
 		}
-		$18 = id2_proof;
+		$24 = id2_operation;
 		replaced = 1;
 	}
 	{ print }
@@ -308,7 +320,7 @@ identity_bool_classifier_key=$(awk '$1 == "term" && $2 == "identityBool" { print
 identity_nat_classifier_key=$(awk '$1 == "term" && $2 == "identityNat" { print $14 ":" $15 ":" $16 ":" $17 ":" $18 ":" $19 ":" $20 ":" $21 }' "$TMP_DIR/identity.apo")
 test "$identity_bool_term" = "$identity_nat_term"
 test "$identity_bool_classifier" != "$identity_nat_classifier"
-test "$identity_bool_fields" -eq 23
+test "$identity_bool_fields" -eq 25
 test "$identity_bool_key" = "$identity_nat_key"
 test "$identity_bool_classifier_key" != "$identity_nat_classifier_key"
 grep -q "term_name identityBool $identity_bool_term " "$TMP_DIR/identity.apo"
@@ -1137,7 +1149,7 @@ grep -q '^exports-normalization-equal main expected mode=default yes$' "$TMP_DIR
 	main expected --reduction-mode beta >"$TMP_DIR/append-normalization_equal-beta.out"
 grep -q '^exports-normalization-equal main expected mode=beta no$' "$TMP_DIR/append-normalization_equal-beta.out"
 awk '
-	$1 == "proof" && $3 == lambda_intro_proof_kind && !done {
+	$1 == "proof" && $15 > 0 && !done {
 		$15 = 999;
 		done = 1;
 	}
@@ -1146,7 +1158,7 @@ awk '
 			exit 1
 		}
 	}
-' lambda_intro_proof_kind="$PROOF_KIND_LAMBDA_INTRO" \
+	' \
 	"$TMP_DIR/AppendNormalizationEqual.apo" >"$TMP_DIR/BadLambdaIntroPremise.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadLambdaIntroPremise.apo" >"$TMP_DIR/bad-lambda-intro-premise.out" 2>"$TMP_DIR/bad-lambda-intro-premise.err"; then
 	echo "bad lambda intro premise artifact unexpectedly passed" >&2
@@ -1169,13 +1181,13 @@ EOF_SHARED_NAMESPACE_B
 	--namespace Shared \
 	"$TMP_DIR/shared-namespace-a.p" \
 	"$TMP_DIR/shared-namespace-b.p" >"$TMP_DIR/shared-namespace.out"
-grep -q '^term Nat .* namespace Shared$' "$TMP_DIR/Shared.apo"
-grep -q '^term id .* namespace Shared$' "$TMP_DIR/Shared.apo"
+grep -q '^term Nat .* namespace Shared operation [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
+grep -q '^term id .* namespace Shared operation [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
 grep -q '^type Nat .* namespace Shared$' "$TMP_DIR/Shared.apo"
 ./read_file.out --write-artifact "$TMP_DIR/DottedNamespace.apo" \
 	--namespace Shared.Core \
 	"$TMP_DIR/shared-namespace-a.p" >"$TMP_DIR/dotted-namespace.out"
-grep -q '^term Nat .* namespace Shared.Core$' "$TMP_DIR/DottedNamespace.apo"
+grep -q '^term Nat .* namespace Shared.Core operation [0-9][0-9]*$' "$TMP_DIR/DottedNamespace.apo"
 
 cat >"$TMP_DIR/match-graph.p" <<'EOF_MATCH_GRAPH'
 Bool := @{
@@ -1839,9 +1851,9 @@ awk '
 		selected_classifier = $9;
 		literal_count++;
 	}
-	$1 == "judgement" && $(NF - 1) == "operation" &&
+	$1 == "judgement" && $9 == "operation" &&
 		($6 == int_literal_intro || $6 == int_literal_admissibility) {
-		admissible[$NF SUBSEP $5] = 1;
+		admissible[$10 SUBSEP $5] = 1;
 	}
 	END {
 		classifier_count = 0;
@@ -1881,9 +1893,9 @@ awk '
 		selected_classifier = $9;
 		literal_count++;
 	}
-	$1 == "judgement" && $(NF - 1) == "operation" &&
+	$1 == "judgement" && $9 == "operation" &&
 		($6 == int_literal_intro || $6 == int_literal_admissibility) {
-		admissible[$NF SUBSEP $5] = 1;
+		admissible[$10 SUBSEP $5] = 1;
 	}
 	END {
 		classifier_count = 0;
@@ -1905,9 +1917,8 @@ awk '
 ./read_file.out --write-artifact "$TMP_DIR/MultipleDerivations.apo" \
 	examples/05_bool_to_nat.p >"$TMP_DIR/multiple-derivations.out"
 awk '
-	$1 == "judgement" && $(NF - 1) == "operation" &&
-		$NF != 4294967295 {
-		key = $3 ":" $4 ":" $5 ":" $NF;
+	$1 == "judgement" && $9 == "operation" && $10 != 4294967295 {
+		key = $3 ":" $4 ":" $5 ":" $10;
 		claims[key]++;
 		proof_kinds[key SUBSEP $6] = 1;
 	}
@@ -2275,8 +2286,8 @@ grep -q '^export-normalization-equal idNat yes$' "$TMP_DIR/id-provider-normaliza
 	"$TMP_DIR/DuplicateNatB.apo" >"$TMP_DIR/duplicate-nat-ab.out"
 ./read_file.out --read-graph "$TMP_DIR/DuplicateNatAB.apo" >"$TMP_DIR/duplicate-nat-ab-read.out"
 grep -q 'term_exports=4 type_exports=2 constructor_exports=4 dependencies=0' "$TMP_DIR/duplicate-nat-ab-read.out"
-grep -q '^term Nat .* namespace duplicate-nat-a$' "$TMP_DIR/DuplicateNatAB.apo"
-grep -q '^term Nat .* namespace duplicate-nat-b$' "$TMP_DIR/DuplicateNatAB.apo"
+grep -q '^term Nat .* namespace duplicate-nat-a operation [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
+grep -q '^term Nat .* namespace duplicate-nat-b operation [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
 grep -q '^type Nat .* namespace duplicate-nat-a$' "$TMP_DIR/DuplicateNatAB.apo"
 grep -q '^type Nat .* namespace duplicate-nat-b$' "$TMP_DIR/DuplicateNatAB.apo"
 duplicate_nat_a_term=$(awk '$1 == "term" && $2 == "idA" { print $3 }' "$TMP_DIR/DuplicateNatAB.apo")

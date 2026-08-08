@@ -2776,7 +2776,7 @@ int prototype_link_external_refs(struct prototype_program* program) {
 	 * Bound the fixed point by the finite linked graph rather than a magic
 	 * pass count unrelated to the artifact size. */
 	size_t pass_limit = program->terms->term_count +
-		program->judgement->relation_count + program->judgement->proof_count + 1;
+		program->judgement->claim_candidate_count + program->judgement->derivation_candidate_count + 1;
 	for (size_t pass = 0; pass < pass_limit; ++pass) {
 		int changed = 0;
 		for (size_t i = 0; i < program->metadata->label_count; ++i) {
@@ -2792,11 +2792,11 @@ int prototype_link_external_refs(struct prototype_program* program) {
 					changed = 1;
 				}
 			}
-		for (size_t i = 0; i < program->judgement->relation_count; ++i) {
+		for (size_t i = 0; i < program->judgement->claim_candidate_count; ++i) {
 			uint32_t linked_subject;
 			uint32_t linked_classifier;
-			struct prototype_judgement_relation* relation =
-				&program->judgement->relations[i];
+			struct prototype_judgement_claim_candidate* relation =
+				&program->judgement->claim_candidates[i];
 			if (link_term_against_labels(program, relation->subject, &linked_subject) != 0 ||
 				link_term_against_labels(program, relation->classifier, &linked_classifier) != 0) {
 				return -1;
@@ -2810,8 +2810,8 @@ int prototype_link_external_refs(struct prototype_program* program) {
 				changed = 1;
 			}
 		}
-		for (size_t i = 0; i < program->judgement->proof_count; ++i) {
-			struct prototype_judgement_proof* proof = &program->judgement->proofs[i];
+		for (size_t i = 0; i < program->judgement->derivation_candidate_count; ++i) {
+			struct prototype_judgement_derivation_candidate* proof = &program->judgement->derivation_candidates[i];
 			uint32_t linked_subject;
 			uint32_t linked_classifier;
 			if (link_term_against_labels(
@@ -2859,6 +2859,20 @@ int prototype_link_external_refs(struct prototype_program* program) {
 					}
 					if (linked_match != proof->induction_match) {
 						proof->induction_match = linked_match;
+						changed = 1;
+					}
+				}
+				if (proof->induction_motive != PROTOTYPE_INVALID_ID) {
+					uint32_t linked_motive;
+					if (link_term_against_labels(
+							program,
+							proof->induction_motive,
+							&linked_motive
+						) != 0) {
+						return -1;
+					}
+					if (linked_motive != proof->induction_motive) {
+						proof->induction_motive = linked_motive;
 						changed = 1;
 					}
 				}

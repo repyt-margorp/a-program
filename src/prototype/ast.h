@@ -459,6 +459,12 @@ struct prototype_operation_graph {
 	size_t fold_clause_capacity;
 };
 
+int prototype_operation_graph_reaches(
+	const struct prototype_operation_graph* graph,
+	uint32_t root_operation,
+	uint32_t target_operation
+);
+
 enum prototype_operation_effect_constraint_kind {
 	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_EXACT = 1,
 	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_COPY,
@@ -563,6 +569,9 @@ struct prototype_artifact_term_export {
 	int name_symbol_id;
 	uint32_t local_term;
 	uint32_t classifier;
+	/* Source typed occurrence authorizing this export. The erased local_term
+	 * alone cannot identify a Claim or a residual solver obligation. */
+	uint32_t operation;
 	int transparency;
 	struct prototype_term_canonical_key canonical_key;
 	struct prototype_term_canonical_key classifier_key;

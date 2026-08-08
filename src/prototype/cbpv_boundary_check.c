@@ -30,12 +30,12 @@ static struct prototype_type_constructor_declaration constructors[CONSTRUCTOR_CA
 static struct prototype_type_parameter_declaration parameters[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
-static struct prototype_judgement_relation judgement_relations[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_proof judgement_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_claim_candidate judgement_relations[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_derivation_candidate judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_relation delta_relations[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_proof delta_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_claim_candidate delta_relations[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_derivation_candidate delta_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_match_motive_result motive_results[8];
 static struct prototype_judgement_computation_constraint computation_constraints[8];
 static struct prototype_judgement_effect_row_constraint effect_row_constraints[8];
@@ -89,7 +89,9 @@ int main(void) {
 	uint32_t returned;
 	uint32_t suspended;
 	uint32_t forced;
-	if (prototype_term_int_literal(&term_db, 1, &value) != 0 ||
+	/* Keep the boundary test authority-neutral. Small literals deliberately have
+	 * both Int32 and Int64 Claims, which must not be resolved by insertion order. */
+	if (prototype_term_int_literal(&term_db, (int64_t)INT32_MAX + 1, &value) != 0 ||
 		prototype_term_return(&term_db, value, &returned) != 0 ||
 		prototype_term_thunk(&term_db, returned, &suspended) != 0 ||
 		prototype_term_force(&term_db, suspended, &forced) != 0 ||
@@ -265,19 +267,26 @@ int main(void) {
 	prototype_judgement_delta_set_context(
 		&delta, prototype_context_empty(&contexts)
 	);
+	struct prototype_judgement_selected_evidence returned_evidence = {
+		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+		.authority_id = returned,
+		.context_id = prototype_context_empty(&contexts),
+		.operation_id = PROTOTYPE_INVALID_ID,
+		.subject = returned,
+		.classifier = returned_classifier
+	};
 	if (prototype_judgement_delta_record_effect_weaken(
 			&delta,
 			&term_db,
 			&type_db,
-			returned,
-			returned_classifier,
+			&returned_evidence,
 			widened_returned_classifier
 		) != 0 || prototype_judgement_delta_record_effect_weaken(
 			&delta,
 			&term_db,
 			&type_db,
-			returned,
-			returned_classifier,
+			&returned_evidence,
 			wrong_result_classifier
 		) == 0 || prototype_judgement_delta_commit(&delta, 0) != 0 ||
 		prototype_judgement_validate_proofs(

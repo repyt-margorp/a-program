@@ -105,8 +105,8 @@ static struct prototype_match_case match_cases[MATCH_CASE_CAPACITY];
 static int match_case_label_symbols[MATCH_CASE_CAPACITY];
 static struct prototype_case_binder match_binders[MATCH_BINDER_CAPACITY];
 static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
-static struct prototype_judgement_relation judgements[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_proof judgement_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_claim_candidate judgements[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_derivation_candidate judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
@@ -181,8 +181,8 @@ static struct prototype_match_case provider_match_cases[MATCH_CASE_CAPACITY];
 static int provider_match_case_label_symbols[MATCH_CASE_CAPACITY];
 static struct prototype_case_binder provider_match_binders[MATCH_BINDER_CAPACITY];
 static struct prototype_ih_scope provider_ih_scopes[MATCH_FRAME_CAPACITY];
-static struct prototype_judgement_relation provider_judgements[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_proof provider_judgement_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_claim_candidate provider_judgements[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_derivation_candidate provider_judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_claim provider_judgement_claims[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation provider_judgement_derivations[JUDGEMENT_CAPACITY];
 static struct prototype_artifact_term_export provider_artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
@@ -691,6 +691,113 @@ static void print_universe_graph(
 	}
 }
 
+static int artifact_exports_have_accepted_claims(
+	const struct prototype_artifact_interface* interface,
+	struct prototype_term_db* terms,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_compile_metadata* metadata
+) {
+	if (!interface || !terms || !judgement || !metadata) {
+		return -1;
+	}
+	const struct prototype_operation_graph graph = {
+		.operations = metadata->operations,
+		.operation_count = metadata->operation_count,
+		.operation_capacity = metadata->operation_capacity,
+		.cases = metadata->operation_cases,
+		.case_count = metadata->operation_case_count,
+		.case_capacity = metadata->operation_case_capacity,
+		.fold_clauses = metadata->operation_fold_clauses,
+		.fold_clause_count = metadata->operation_fold_clause_count,
+		.fold_clause_capacity = metadata->operation_fold_clause_capacity
+	};
+	for (size_t i = 0; i < interface->term_export_count; ++i) {
+		const struct prototype_artifact_term_export* export =
+			&interface->term_exports[i];
+		if (export->operation >= metadata->operation_count ||
+			metadata->operations[export->operation].classifier != export->classifier) {
+			return -1;
+		}
+		int found = 0;
+		for (size_t j = 0;
+			export->classifier != PROTOTYPE_INVALID_ID && j < judgement->claim_count;
+			++j) {
+			const struct prototype_judgement_claim* claim = &judgement->claims[j];
+			int same_projection = 0;
+			if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				claim->classifier != export->classifier) {
+				continue;
+			}
+			if (prototype_term_core_shape_equal(
+					terms,
+					claim->subject,
+					export->local_term,
+					&same_projection
+				) != 0) {
+				continue;
+			}
+			if (same_projection) {
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			for (size_t j = 0; j < metadata->effect_constraint_count; ++j) {
+				const struct prototype_operation_effect_constraint* constraint =
+					&metadata->effect_constraints[j];
+				if (constraint->state ==
+						PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED) {
+					continue;
+				}
+				int reaches = prototype_operation_graph_reaches(
+					&graph, export->operation, constraint->operation
+				);
+				if (reaches < 0) {
+					return -1;
+				}
+				if (reaches > 0) {
+					found = 1;
+					break;
+				}
+			}
+		}
+		if (!found) {
+			for (size_t j = 0;
+				j < prototype_verification_db_count(&metadata->verification);
+				++j) {
+				const struct prototype_verification_obligation* obligation =
+					prototype_verification_db_get(
+						&metadata->verification, (uint32_t)j
+					);
+				if (!obligation || obligation->state !=
+						PROTOTYPE_VERIFICATION_OBLIGATION_PENDING) {
+					continue;
+				}
+				int reaches = prototype_operation_graph_reaches(
+					&graph, export->operation, obligation->operation
+				);
+				if (reaches < 0) {
+					return -1;
+				}
+				if (reaches > 0) {
+					found = 1;
+					break;
+				}
+			}
+		}
+		if (!found) {
+			fprintf(
+				stderr,
+				"artifact export has no accepted projected claim subject=%u classifier=%u\n",
+				export->local_term,
+				export->classifier
+			);
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int read_artifact_interface_and_graph(
 	const char* path,
 	struct symbol_table* symbols,
@@ -755,6 +862,8 @@ static int read_artifact_interface_and_graph(
 				.fold_clause_capacity = metadata->operation_fold_clause_capacity
 			},
 			judgement_db
+		) != 0 || artifact_exports_have_accepted_claims(
+			artifact_interface, term_db, judgement_db, metadata
 		) != 0) {
 		status = -1;
 	}
@@ -3560,9 +3669,6 @@ int main(int argc, char** argv) {
 		prototype_compile_metadata_operation_graph(
 			&metadata, &linked_operation_graph
 		);
-		prototype_judgement_resolve_proof_edges(
-			&judgement_db, &linked_operation_graph
-		);
 		if (prototype_judgement_validate_proofs(
 				&term_db,
 				&type_declarations,
@@ -3627,7 +3733,7 @@ int main(int argc, char** argv) {
 			term_db.term_count,
 			before_types,
 			type_declarations.type_count,
-			judgement_db.relation_count,
+			judgement_db.claim_candidate_count,
 			artifact_interface.term_export_count,
 			total_provider_exports,
 			artifact_interface.dependency_count,
@@ -3815,6 +3921,11 @@ int main(int argc, char** argv) {
 						.fold_clause_capacity = artifact_metadata.operation_fold_clause_capacity
 					},
 					&judgement_db
+				) != 0 || artifact_exports_have_accepted_claims(
+					&artifact_interface,
+					&term_db,
+					&judgement_db,
+					&artifact_metadata
 				) != 0) {
 				fclose(artifact_file);
 				fprintf(stderr, "%s: failed to read artifact graph/universe/relocation\n", interface_input_path);
@@ -3905,8 +4016,8 @@ int main(int argc, char** argv) {
 				type_declarations.type_count,
 				type_declarations.constructor_count,
 				type_declarations.expr_count,
-				judgement_db.relation_count,
-				judgement_db.proof_count
+				judgement_db.claim_candidate_count,
+				judgement_db.derivation_candidate_count
 			);
 			printf(
 				"universe_nodes=%zu universe_edges=%zu universe_levels=%zu universe_constraints=%zu solved=%s\n",
@@ -4422,9 +4533,9 @@ int main(int argc, char** argv) {
 	for (size_t i = 0; i < metadata.label_count; ++i) {
 		mark_reachable_external_refs(&term_db, metadata.labels[i].term, 0);
 	}
-	for (size_t i = 0; i < judgement_db.relation_count; ++i) {
-		mark_reachable_external_refs(&term_db, judgement_db.relations[i].subject, 0);
-		mark_reachable_external_refs(&term_db, judgement_db.relations[i].classifier, 0);
+	for (size_t i = 0; i < judgement_db.claim_candidate_count; ++i) {
+		mark_reachable_external_refs(&term_db, judgement_db.claim_candidates[i].subject, 0);
+		mark_reachable_external_refs(&term_db, judgement_db.claim_candidates[i].classifier, 0);
 	}
 	size_t external_ref_count = 0;
 	for (size_t i = 0; i < term_db.term_count; ++i) {

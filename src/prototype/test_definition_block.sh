@@ -11,7 +11,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 grep -q '^term id := THUNK(LAMBDA(' "$tmp_dir/definition.out"
 grep -q '^term main := THUNK(RETURN(INT_LITERAL(1)))$' \
 	"$tmp_dir/definition.out"
-grep -q '^A_PROGRAM_ARTIFACT 62$' "$tmp_dir/definition.apo"
+grep -q '^A_PROGRAM_ARTIFACT 64$' "$tmp_dir/definition.apo"
 awk '$1 == "compile_policy" && $2 == 2 && $3 == 1 && $4 == "main" &&
 	$5 != 4294967295 && $6 != 4294967295 && $7 != 4294967295 {
 	found = 1

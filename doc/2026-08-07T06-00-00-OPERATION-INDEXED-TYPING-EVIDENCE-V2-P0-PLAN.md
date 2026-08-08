@@ -3,11 +3,13 @@
 Date: 2026-08-07
 Last re-audited: 2026-08-08
 
-Status: V2-P0 reopened after the 2026-08-08 code audit. Operation-indexed
+Status: V2-P0 active after the 2026-08-08 code audit. Operation-indexed
 classifier solving is implemented, but the accepted certificate model still
-collapses claim identity, derivation identity, and dependency selection. The
-next implementation phase is P0-R0A in Section 6. It is a premise of P0, not
-P1 evidence work. HOTT object-equality rules remain deferred until P0 closes.
+mixes solver-local obligations, closed claims, derivation identity, and
+dependency selection. The next implementation phase is the corrected P0 entry
+gate in P0-R0A.2; P0-R0A.1 is complete for the current calculus. This is P0
+itself, not P1 evidence work. HOTT
+object-equality rules remain deferred until P0 closes.
 
 Parent plan:
 `doc/2026-08-06T02-00-00-HIGHER-OBSERVATIONAL-TT-REFACTOR-AUDIT-V2.md`
@@ -17,11 +19,14 @@ Re-entry code audit:
 
 Audit state:
 
-- committed baseline: `701654a` (`origin/main` is the same commit);
+- committed baseline: `062b7cd` (`origin/main` is the same commit);
 - artifact format at the audited baseline: `A_PROGRAM_ARTIFACT 62`;
+- the active worktree writes and reads only provisional artifact v64;
+  `term_export.operation` preserves the selected typed occurrence, but v64 is
+  not the final native Claim/Derivation publication schema;
 - the audit found that the previous P0 completion statement was too strong;
-- the current uncommitted validator/constant edits are audit probes only and do
-  not count as completion of P0-R0A;
+- the active uncommitted worktree is the P0-R0A.1 implementation, not an audit
+  probe and not a pre-P0 compatibility layer;
 - provisional binder assumptions are revalidated against ContextDB;
 - request/fold constraints retain exact child Operation IDs and refreshed
   Operation-selected classifiers;
@@ -56,7 +61,8 @@ normalization, and shared computation identity belong to TermDB.
 
 ## 2. Verified Code Facts
 
-The following facts were rechecked against commit `701654a` on 2026-08-08.
+The following facts were rechecked against commit `062b7cd` and the active P0
+worktree on 2026-08-08.
 
 ### 2.1 OperationGraph already is the typed occurrence graph
 
@@ -144,6 +150,11 @@ soundness defect.
 ## 3. P0 Premises
 
 These premises are frozen before structural implementation begins.
+
+They are not preparatory work outside P0. Establishing and enforcing these
+premises is the first implementation part of P0. P1 remains blocked until the
+premises hold at source compilation, artifact readback, append, and link
+boundaries.
 
 ### P0-P0: Typing evidence belongs to a typed occurrence, not a Core Term ID
 
@@ -331,6 +342,25 @@ classifier residual. P0 validates its exact structural authorities but emits a
 typing claim only after the classifier is solved; it must not misclassify the
 residual as stale or malformed graph data.
 
+### P0-P10B: Closed Claims and residual obligations are distinct publication outcomes
+
+An exported typed occurrence retains its source Operation ID, and its exported
+classifier must be exactly the classifier selected for that Operation. Sharing
+an erased Core root with another occurrence is never sufficient authority.
+
+Publication has two explicit outcomes:
+
+```text
+closed export   = exact Operation + accepted grounded Claim
+residual export = exact Operation + explicit reachable residual constraint
+                  or pending runtime verification obligation
+```
+
+A residual export is not promoted to a Claim, and an unrelated residual
+elsewhere in the artifact cannot justify it. Artifact v64 implements this
+occurrence boundary. The later native Claim/Derivation schema must preserve the
+same distinction rather than reconstruct it from Core terms.
+
 ### P0-P11: Authority-neutral facts are explicit exceptions
 
 An Operation premise must resolve to that exact Operation. A relation with
@@ -458,6 +488,198 @@ itself constrain `rho`. However, a fallback COPY record may also be the only
 current record that an unresolved external operation's effect row must be
 closed at link time. P0 must not conflate these meanings.
 
+### P0-P20: Evidence selection preserves the complete Claim authority
+
+This is the first implementation invariant inside P0-R0A. It is not a
+separate pre-P0 project and it is not deferred P1 work.
+
+A proof-producing lookup may not return only a classifier. It returns either:
+
+```text
+SelectedEvidence
+  Claim kind
+  explicit authority kind and authority ID
+  Context ID
+  typed Operation ID when the authority is an Operation
+  erased Core subject projection
+  classifier
+```
+
+or an explicit `missing`/`ambiguous` result. "Latest candidate" is not an
+evidence-selection rule. Two candidates that share the same Core subject and
+classifier but have different Operation, ContextBinding, TypeDeclaration, or
+other authority are distinct evidence.
+
+Every candidate Derivation is then constructed atomically from:
+
+- its complete conclusion Claim key;
+- exact structural child Operations, with their Context retained before the
+  final evidence authority is projected;
+- exact source Claim keys for conversion, exposure, weakening, literal
+  admissibility, linking, and other non-structural derived rules;
+- immutable rule parameters.
+
+Only after this information exists may Claims be interned and the least
+grounded accepted closure be published. No later tuple scan may repair missing
+authority or choose a premise.
+
+### P0-P21: P0-R0A.1 is the re-entry premise for every later P0 phase
+
+V2-P0 is already active. The next implementation phase is therefore not an
+entry into P0 and not P1; it is `P0-R0A.1`. Here *premise* means a hard
+implementation gate: no later P0 phase may consume the transitional candidate
+tuple image as an accepted certificate.
+
+`P0-R0A.1` is established only when every proof-producing path preserves:
+
+```text
+typed child occurrence or non-Operation authority
+    -> SelectedEvidence(full Claim key)
+    -> complete structural/derived premise
+    -> candidate Derivation over Claim keys
+```
+
+Adding the record alone is insufficient. APP, Lambda, Match, constructor
+spine, IH, CBPV boundaries, request, computation fold, conversion, weakening,
+admissibility, linking, and Universe provenance must consume complete evidence
+or be explicitly classified as non-proof-producing. A classifier-only lookup
+at any proof-producing boundary keeps this gate open.
+
+Only after this gate closes may P0 replace the publication image, remove the
+late resolver, migrate the artifact schema, and continue with later P0 work.
+This ordering prevents a new Claim/Derivation store from preserving guessed
+tuple edges in a cleaner data structure.
+
+### P0-P22: Solver-local obligations are not accepted Claims
+
+The 2026-08-08 producer audit found a missing boundary not captured precisely
+enough by P0-P13 or P0-P18. A constraint may legitimately classify a child
+under a row variable, motive variable, or other assumption owned by its parent
+rule. Such a classifier is useful solver state, but it is not an independently
+replayable Claim.
+
+The concrete counterexample is the higher-order operation handler fixture:
+
+```text
+clause Lambda Operation #34
+  selected solver classifier = classifier #74
+  classifier #74 contains an effect-row variable not owned by Operation #34
+
+parent computation-fold Operation #46
+  copies (#34, #74) as a required premise
+```
+
+The materializer correctly refuses to publish `#34 : #74` as a standalone
+closed Claim. The fold producer nevertheless requires exactly that Claim, so
+the grounded closure contained no Claim for the exported fold and the earlier
+provisional artifact image wrote `judgements 0` and `proofs 0`. The legacy candidate graph
+can still print a fold derivation, which demonstrates that successful solver
+output and an accepted certificate are currently different facts.
+
+P0 therefore separates:
+
+```text
+LocalObligation
+  owner rule/constraint
+  scoped variables and assumptions
+  exact child Operation
+  provisional classifier
+
+ClosedDerivedClaim
+  exact Operation or non-Operation authority
+  closed/scope-owned classifier
+  derivation discharging the LocalObligation under the parent rule
+
+AcceptedClaim
+  a ClosedDerivedClaim in the least grounded publication closure
+```
+
+For computation fold, checking a clause against the fold's expected carrier
+must either:
+
+1. produce an Operation-owned closed derived Claim for the clause Lambda at
+   the specialized expected classifier; or
+2. retain the clause check as an irreducible scoped parameter of the fold
+   Derivation, with a validator that replays it under the fold constraint.
+
+It must not copy an unowned residual classifier into an ordinary premise and
+must not publish an authority-neutral helper as though it belonged to the
+source clause Operation. The implementation must select one of the two forms
+after comparing their artifact replay and recursion behavior; no tuple lookup
+or late proof repair is allowed in either form.
+
+This is the first P0 implementation gate together with P0-P20/P0-P21. Derived
+conversion and weakening migration follows only after structural producers no
+longer consume solver-local obligations as Claims.
+
+#### P0-P22 implementation order and code targets
+
+The next code change follows this order. Later steps must not be used to hide a
+failure in an earlier step.
+
+1. **Name the local state at the computation-constraint boundary.**
+   Extend `prototype_judgement_computation_constraint` in
+   `src/prototype/judgement.h` so each operand is either a closed selected
+   evidence key or an explicitly scoped solver operand. Do not represent both
+   with `premise_operations[]` plus `premise_classifiers[]` alone.
+2. **Stop blind classifier copying.**
+   Change `operation_solver_refresh_computation_constraint_operands()` in
+   `src/prototype/ast.c`. It may refresh solver operands from OperationGraph,
+   but it may mark an ordinary Claim premise ready only after closure/ownership
+   succeeds. A classifier containing an unowned effect-row variable remains a
+   local operand.
+3. **Discharge fold clause obligations.**
+   Change `solve_clause_computation_fold_constraint()` in
+   `src/prototype/typing.c`. The already-computed
+   `expected_outer_classifier` is the fold-specialized goal. Validate the
+   exact clause Operation against that goal and emit either a closed
+   Operation-owned derived candidate or an explicit fold-scoped parameter.
+   Do not select the authority-neutral Lambda generated by
+   `infer_lambda_classifier_for_app_argument()` as a source occurrence.
+4. **Make Lambda materialization total over its declared result kind.**
+   Keep the corrected `operation->body` structural edge in
+   `operation_solver_reify_core_proof()`. Replace the current silent positive
+   return for a required exact producer with a typed result distinguishing
+   `closed`, `local residual`, and `invalid`. Parent fold construction may
+   consume `local residual` only through step 3, never as a Claim ID.
+5. **Publish only closed candidates.**
+   Update candidate construction in `src/prototype/typing.c` so
+   `add_delta_relation_with_explicit_premises()` is never called with a local
+   operand disguised as a premise tuple. Grounding then remains a publication
+   check, not the first place the category error is discovered.
+6. **Guard exported roots.**
+   Before artifact slicing in `artifact_mark_roots()` in
+   `src/prototype/ast.c`, reject an exported typed Operation for which no
+   accepted authority-matching Claim exists, unless that exact Operation owns
+   an explicit residual constraint or verification obligation. A residual
+   export remains residual and is not treated as a Claim.
+7. **Add adversarial regression.**
+   Extend `test_cbpv_surface.sh` to require non-zero accepted proof closure for
+   `higher_order_operation_handler_check.p`, then mutate the serialized
+   operation identity and require readback rejection. The test must mutate all
+   matching sparse Term slots, as a sparse fixture may contain
+   structurally duplicated row atoms.
+8. **Only after this gate, continue authority migration.**
+   Migrate generated Core helpers, conversion, Context/effect weakening,
+   integer admissibility, link authority, and Universe provenance. Then remove
+   dead `prototype_judgement_resolve_proof_edges()`,
+   `prototype_judgement_delta_drop_temporary_derivations()`,
+   `premise_proof_ids`, and transitional candidate proof IDs.
+
+Required invariant after step 7:
+
+```text
+every exported typed Operation
+  -> at least one accepted authority-matching Claim
+  -> at least one grounded Derivation
+  -> every source Claim edge is closed or explicitly scoped by its rule
+```
+
+This order deliberately puts fold/Lambda closure before conversion and
+weakening cleanup. The latter are real P0 debt, but they cannot establish a
+publication boundary while a structural parent cites a premise that the
+kernel correctly refuses to publish.
+
 At the current v62 checkpoint, an identity COPY is solved when its Operation
 subtree is internally constructed or its row variables are scoped by that
 Operation. It remains residual when the subtree contains an unresolved
@@ -466,9 +688,9 @@ own explicit kind instead of continuing to overload COPY.
 
 ### 3.1 P0 first slice: required refactoring direction
 
-P0 begins by establishing this construction boundary. It must not begin by
-adding equality terms or by changing proof payload tags. This is the first
-slice of P0 itself, not an optional pre-P0 compatibility project.
+P0 has already begun. Its first slice establishes this construction boundary;
+it does not add equality terms or begin by changing proof payload tags. This is
+P0 itself, not an optional pre-P0 compatibility project.
 
 ```text
 Surface occurrence / generated typed occurrence
@@ -509,9 +731,15 @@ The code re-audit fixes the following directions as P0 premises:
 8. Artifact relocation and linking may construct a new unpublished certificate
    image. They may not mutate semantic fields in an already published
    in-memory certificate.
+9. A solver-local classifier containing assumptions owned by a parent rule is
+   not a Claim premise. The parent producer must discharge it into a closed
+   derived Claim or retain an explicitly scoped, replayable rule parameter.
+10. A proof-producing producer that cannot close one of its exact structural
+    operands is a diagnosed P0 closure failure. The materializer must not
+    silently skip it while a parent candidate continues to cite it.
 
-These are not advisory design preferences. They are the **P0 entry gate** for
-every implementation item below:
+These are not advisory design preferences. They are the **first internal
+invariants of P0-R0A** for every implementation item below:
 
 - an Operation-backed producer must receive the owning `operation_id` directly;
 - an Operation-backed premise must receive the exact child `operation_id`
@@ -541,10 +769,10 @@ Current first-slice state after re-reading the implementation:
 
 | Boundary | State | Remaining work in P0 |
 | --- | --- | --- |
-| Operation ownership and exact premise edges | partial | Operation IDs exist, but accepted premise IDs are discarded and later rebuilt by first/latest tuple search |
-| Candidate/commit separation | partial | Delta is provisional, but commit publishes the current relation/proof hybrid before grounded claim closure |
-| Claim/Derivation separation | missing; P0-R0A blocker | replace duplicated conclusion records with one accepted Claim and one-or-more immutable grounded Derivations |
-| Atomic derivation construction | missing at accepted boundary | preserve exact source Claim IDs; derive structural children from OperationGraph; remove semantic late resolution |
+| Operation ownership and exact premise edges | partial | Operation IDs exist for several structural producers, but Lambda materialization and fold clause solving still confuse a local residual classifier with a closed premise |
+| Candidate/commit separation | partial | Delta is provisional and grounded compaction exists, but candidate relation/proof storage remains the producer and artifact image |
+| Claim/Derivation separation | transition scaffold implemented; not authoritative | accepted Claim/Derivation arenas and grounded closure exist, but are reconstructed from the legacy one-relation/one-proof candidates |
+| Atomic derivation construction | missing at producer boundary | discharge scoped solver obligations, preserve complete selected evidence and exact source Claim keys, then remove semantic late resolution |
 | Canonical effect-row fixed point | complete for the current row language | add direct stability assertions and retain free external atoms as explicit residuals |
 | Operation structural validation | implemented for all current Operation tags | consolidate the older `prototype_operation_graph_validate()` checks with `prototype_judgement_validate_operation_typing()` during P0.3/P0.7 |
 | Non-Operation authority separation | P0.5 work | split binder, declaration, type-formation, and Universe queries from generic `subject` lookup |
@@ -725,6 +953,128 @@ latent thunk effects. External free-row obligations remain residual.
 This is the immediate implementation slice. It precedes every remaining P0
 check and is not a P1 storage optimization.
 
+#### P0-R0A first invariant: authority-complete evidence flow
+
+P0-R0A cannot proceed to authoritative Claim/Derivation storage by only
+replacing relation/proof arrays. Every producer
+must first stop separating a classifier from the authority that selected it.
+The re-audit against the `062b7cd` checkpoint found two concrete failures:
+
+- the request-internal APP helper knew its source child Operations in
+  `ast.c`, but the APP recording API accepted only Core subjects and
+  classifiers;
+- a computation-body effect weakening was generated in a different Context
+  from the actual shared-Core binder assumption, and tuple lookup could only
+  hide that mismatch by inventing an edge.
+
+The P0 premise is therefore:
+
+```text
+classifier selection
+    -> SelectedEvidence(full Claim key)
+    -> complete candidate Derivation
+    -> Claim interning
+    -> least grounded atomic publication
+```
+
+For structural rules, use a descriptor that retains the direct child
+Operation, the child's Context, and the final evidence authority separately.
+Do not map VAR or constructor children to `INVALID` before their Context and
+binding/declaration authority have been captured.
+
+- [x] Add one authority-complete evidence selection/result record.
+- [ ] Migrate classifier lookup APIs used by proof-producing code to return
+  that record, not a classifier Term ID alone.
+- [x] Preserve the structural-premise descriptor fields: direct child
+  Operation, child Context, authority kind/ID, subject projection, and
+  classifier. These fields currently live in the candidate Derivation rather
+  than a second wrapper type; adding another tag-bearing structure is not a P0
+  requirement.
+- [x] Migrate APP first, including request-internal helper APPs, because this
+  is the smallest reproduced authority-loss path.
+- [x] Migrate source Lambda, Match, constructor spine, request, computation
+  fold, and source CBPV structural premises. IH deliberately remains a
+  premise-free scoped eliminator rule and stores the exact Match motive as an
+  immutable rule parameter; adding the parent Match Claim as a premise would
+  create a Match -> branch -> IH -> Match cycle.
+- [ ] Migrate authority-neutral generated RETURN/THUNK/Lambda/APP/Match helper
+  paths. They still call `add_delta_relation_with_premises()` with only Core
+  tuples and therefore cannot become accepted evidence by guessing an
+  Operation authority.
+- [ ] Migrate conversion, expected-type exposure, Context weakening, effect
+  weakening, integer admissibility, declaration linking, and Universe
+  constraints as explicit derived-source boundaries.
+- [ ] Reject no-op derived candidates that become self-premises after
+  canonicalization.
+- [ ] Delete all unique/first/latest Core-tuple authority recovery.
+- [ ] Add adversarial tests for shared Core under distinct Contexts and
+  authorities before replacing the publication image.
+
+Re-audited implementation state:
+
+- [x] APP recorders retain selected function and argument Operation IDs.
+- [x] direct structural child Context is retained before VAR/constructor
+  authority is projected to ContextDB/TypeDeclarationDB.
+- [x] Lambda binder premises are classified as ContextBinding authority.
+- [x] final generic tuple-pruning was removed from ordinary publication after
+  it deleted a valid zero-clause computation fold.
+- [x] authority-ambiguous Core-helper candidates remain unpublished rather
+  than borrowing one typed occurrence.
+- [x] legacy one-to-one candidate coverage and whole-candidate-graph
+  acyclicity no longer override the least grounded accepted closure.
+- [x] add the first-class `prototype_judgement_selected_evidence` record and
+  use it for generic APP candidate collection and selected CBPV child evidence.
+- [x] keep a structural child Operation ID distinct from selected evidence
+  authority; a VAR or constructor child is not relabelled as Operation-owned.
+- [ ] replace every remaining proof-producing classifier-only lookup with
+  `SelectedEvidence`. Source structural producers are migrated; generated
+  Core-helper facts and derived boundaries still lose source Claim keys.
+- [x] make IH validation independent of a global classifier scan. The IH
+  candidate stores `induction_motive` and validates `M recursive_argument`
+  locally while remaining premise-free.
+- [ ] finish generated Lambda/RETURN/THUNK/APP/Match helper migration. Source
+  Lambda and CBPV child propagation exists, but generated helper candidates
+  still use transitional tuple fields.
+- [ ] make candidate Derivations refer to complete candidate Claim keys rather
+  than repaired proof IDs.
+- [ ] validate and publish only the accepted Claim/Derivation image.
+
+This checklist is the implementation premise of P0-R0A.1 and P0-R0A.2. P1 and
+object-level Higher Observational equality remain blocked until it is complete.
+
+The code-level migration inventory is:
+
+| Boundary | Current authority loss | Required P0 form |
+| --- | --- | --- |
+| `lookup_classifier()` / `lookup_delta_proven_classifier()` | returns only classifier | return one complete selected Claim candidate or explicit ambiguity |
+| `collect_subject_classifiers()` and APP candidate collection | deduplicates classifier values | retain evidence identity for each function/argument candidate pair |
+| `prototype_judgement_delta_record_app_elim()` | accepts Core subject and classifier only | accept complete function and argument evidence; request helper uses the same API |
+| source Lambda/Match/constructor/CBPV recorders | migrated to direct child Operations and Contexts | preserve this path while Claim IDs replace tuple payloads |
+| scoped IH rule | formerly recovered motive by global Match classifier search | keep zero premises; store and validate the exact motive as a rule parameter |
+| generated Core helper recorders | RETURN/THUNK/Lambda/APP/Match premises contain Core tuples only | either provide exact generated authority or keep the helper unpublished; never borrow a source Operation |
+| conversion, exposure, Context/effect weakening | source is tuple or current Operation approximation | carry one exact source Claim key and validate the rule transition |
+| linked declaration completion | scans global Core support | consume relocated export/declaration authority |
+| Universe constraint insertion | keeps inequality but loses selected occurrence | keep authority/provenance beside the constraint reason |
+
+Implementation order is strict:
+
+1. add characterization tests for request APP and shared-Core/different-Context
+   binder premises;
+2. introduce the evidence and structural-premise records without changing
+   accepted publication;
+3. migrate APP end to end and restore all source tests;
+4. migrate source Match, constructor spine, scoped IH, Lambda/CBPV tails,
+   request, and computation fold so every structural producer consumes full
+   evidence; Match/request/constructor are substantially migrated, but
+   Lambda/fold local-obligation discharge remains the immediate gate;
+5. close the local-obligation/Claim boundary, then migrate generated Core
+   helpers and derived boundaries, link authority,
+   and Universe provenance;
+6. replace candidate tuple edges with Claim IDs and atomic grounded
+   publication;
+7. remove the old resolver and one-to-one coverage invariant;
+8. migrate the artifact schema only after the in-memory model is final.
+
 #### P0-R0A.0 Transition checkpoint implemented on 2026-08-08
 
 - [x] Add separate in-memory `prototype_judgement_claim` and
@@ -733,16 +1083,19 @@ check and is not a P1 storage optimization.
 - [x] Reconstruct source Claim edges from the exact resolved proof IDs at the
   existing publication boundary, then compute a least grounded closure rank.
 - [x] Reject a reconstructed certificate containing an unsupported cycle.
-- [x] Preserve all existing source, CBPV, shared-Core, artifact, and HOTT
-  substrate behavior; all 15 `src/prototype/test_*.sh` scripts pass.
+- [x] At committed checkpoint `062b7cd`, preserve the existing source, CBPV,
+  shared-Core, artifact, and HOTT substrate behavior; all 15
+  `src/prototype/test_*.sh` scripts passed there. The active P0-R0A.1 worktree
+  now passes artifact flow with the occurrence-preserving v64 boundary; native
+  accepted Claim/Derivation serialization remains a P0 exit condition.
 - [x] Rename the generated ancestor-context rule from `CONTEXT_REINDEX` to the
   semantically accurate `CONTEXT_WEAKEN` and validate ancestry.
 - [x] Replace unexplained fold/premise capacity literals with named constants.
 - [ ] Remove the transitional relation/proof arrays. They remain the input to
   Claim reconstruction in this checkpoint.
-- [ ] Remove `prototype_judgement_resolve_proof_edges()`. It still resolves the
-  legacy proof IDs before Claim reconstruction and is therefore the immediate
-  authority-preservation target.
+- [ ] Remove `prototype_judgement_resolve_proof_edges()`. Its source/artifact
+  call sites are gone, but the dead implementation and legacy proof-ID fields
+  remain.
 
 This checkpoint deliberately does not intern Claims during each solver delta
 commit. At that point premise candidates may still appear later in the same
@@ -772,28 +1125,60 @@ authority-complete candidate generation
 The first order is a migration scaffold. The second order is the P0 completion
 condition and must replace it without a compatibility resolver.
 
-#### P0-R0A.1 Accepted data model
+#### P0-R0A.1 Local-obligation and closed-Claim boundary
 
-- [ ] Replace `prototype_judgement_relation` with an interned Claim record whose
+This is the immediate implementation phase. Complete the eight code-target
+steps under P0-P22 before treating a structural producer as migrated.
+
+- [ ] Distinguish scoped solver operands from Claim premises.
+- [ ] Discharge fold clause Lambda residuals under the fold carrier.
+- [ ] Reject exported roots without accepted authority-matching Claims.
+- [ ] Pass the higher-order handler forged-artifact regression.
+
+#### P0-R0A.2 Authority-complete producer and accepted data model
+
+This phase follows structural closure. Its order is mandatory:
+
+```text
+SelectedEvidence API
+    -> structural and derived producers retain complete Claim keys
+    -> candidate Derivations refer to Claim keys
+    -> accepted Claims and Derivations become the sole publication image
+```
+
+The existing accepted arenas are a useful scaffold, but they do not satisfy
+this phase while they are rebuilt from `premise_proof_ids` after a resolver.
+
+- [x] Add a transitional interned Claim record whose
   key is `(kind, authority, context_id, subject_projection, classifier)`.
-- [ ] Represent authority explicitly. Operation-backed claims carry an exact
-  `operation_id`; Context, declaration, type-formation, intrinsic, and Universe
-  claims use their own authority kind and ID rather than `INVALID` as an
-  ambiguous fallback.
-- [ ] Replace `proof_kind/proof_id` ownership on a relation with a one-to-many
-  Claim-to-Derivation adjacency. An accepted Claim has at least one grounded
-  Derivation; zero-derivation entries remain unpublished candidates only.
-- [ ] Store each Derivation as `(conclusion_claim_id, rule_kind,
+- [x] Add explicit authority kind/ID fields to candidate and accepted Claims.
+- [ ] Make every proof-producing selection return `SelectedEvidence`; do not
+  select a candidate by reverse/forward insertion order.
+- [ ] Represent authority completely at every producer. Operation-backed claims
+  carry an exact `operation_id`; Context, declaration, type-formation,
+  intrinsic, and Universe claims use their own authority kind and ID rather
+  than `INVALID` as an ambiguous fallback.
+- [ ] Replace `proof_kind/proof_id` ownership on a candidate relation with a
+  one-to-many Claim-to-Derivation adjacency. An accepted Claim has at least one
+  grounded Derivation; zero-derivation entries remain unpublished candidates
+  only.
+- [x] Add a transitional accepted Derivation record with conclusion and source
+  Claim IDs and least-closure rank.
+- [ ] Store each authoritative Derivation as `(conclusion_claim_id, rule_kind,
   rule_parameters, derived_source_claim_ids)`.
 - [ ] Do not duplicate APP/Lambda/Match/IH/CBPV structural child tuples in the
   Derivation. Reconstruct them from the conclusion OperationGraph node.
 - [ ] Retain the erased Core subject only as a validated projection for
   normalization, diagnostics, and artifact reachability.
 
-#### P0-R0A.2 Candidate generation and publication
+#### P0-R0A.3 Candidate generation and publication
 
 - [ ] Keep solver candidates separate from accepted Claims and Derivations.
-- [ ] Generate structural candidates from exact Operation IDs, never from a
+- [ ] Generate source APP, Lambda, constructor-spine, request, fold, and solved
+  Match candidates from exact child Operation IDs and child Contexts. APP,
+  constructor, request, and Match are substantially migrated; Lambda/fold
+  closure and generic Core-helper paths remain open.
+- [ ] Generate every remaining structural candidate from exact Operation IDs, never from a
   JudgementDB tuple lookup.
 - [ ] Give conversion/exposure, integer admissibility, effect weakening, and
   context weakening an exact source Claim key before commit.
@@ -804,7 +1189,7 @@ condition and must replace it without a compatibility resolver.
 - [ ] Publish atomically after classifier, effect-row, Context, and authority
   validation has stabilized.
 
-#### P0-R0A.3 Grounded closure
+#### P0-R0A.4 Grounded closure
 
 - [ ] Classify declaration, intrinsic, Context-binding, and other primitive
   introductions as explicit closure seeds.
@@ -819,7 +1204,7 @@ condition and must replace it without a compatibility resolver.
 - [ ] Validate recursive source programs through the scoped IH/eliminator rule,
   never through a back-edge to the conclusion Claim.
 
-#### P0-R0A.4 Consumer migration order
+#### P0-R0A.5 Consumer migration order
 
 - [ ] Migrate construction and validation in `src/prototype/typing.c` first.
 - [ ] Migrate Operation solver materialization and expectation checks in
@@ -830,23 +1215,35 @@ condition and must replace it without a compatibility resolver.
 - [ ] Remove `prototype_judgement_resolve_proof_edges()`; no compatibility
   resolver or old relation/proof representation remains.
 
-The immediate next code change is the first item, scoped more precisely as:
+The immediate next code change remains the first item, now scoped from the
+implemented evidence/APP slice as:
 
-1. change solver candidates from relation/proof tuples to
-   Claim-candidate/Derivation-candidate records;
-2. represent premise authority as an explicit tagged authority, never an
-   overloaded invalid Operation ID;
-3. propagate exact source identity through NAME, ASCRIPTION, conversion,
-   expectation exposure, weakening, literal admissibility, and link completion;
-4. intern every Claim in an atomic candidate batch before attaching any
+1. close the fold/Lambda local-obligation boundary described by P0-P22;
+2. finish migrating authority-neutral generated helper construction and
+   derived rules from classifier-only selection to exact Claim keys; IH motive
+   validation is already local and must remain premise-free;
+3. make every migrated candidate Derivation retain the selected Claim key,
+   rather than projecting back to a tuple before insertion;
+4. propagate exact source identity through NAME, ASCRIPTION, conversion,
+   expectation exposure, weakening, literal admissibility, and link completion.
+   In particular, `prototype_judgement_delta_record_context_weaken()`,
+   `prototype_judgement_delta_record_effect_weaken()`, and
+   `prototype_judgement_delta_add_conversion()` must consume the selected
+   source Claim, not manufacture a premise from `current_operation_id`;
+5. intern every Claim in an atomic candidate batch before attaching any
    Derivation;
-5. delete tuple-based proof-edge repair and rebuild Claims directly from the
-   accepted candidate batch.
+6. rewrite validation to traverse accepted Claim IDs rather than candidate
+   `premise_proof_ids`;
+7. delete the dead tuple-based proof-edge resolver, temporary-pruning helper,
+   and legacy tuple/proof-ID fields;
+8. replace provisional v64 candidate serialization with native accepted
+   Claim/Derivation serialization only after this in-memory boundary is final;
+   continue rejecting v62 without a compatibility reconstruction path.
 
 This sequence is the premise for the remaining P0 phases. Artifact migration,
 Universe provenance cleanup, and HOTT witness work must not bypass it.
 
-#### P0-R0A.5 Characterization and adversarial tests
+#### P0-R0A.6 Characterization and adversarial tests
 
 - [ ] One Core identity Lambda used as Bool and Nat remains two Operation
   Claims and cannot lend evidence across occurrences.
@@ -861,6 +1258,9 @@ Universe provenance cleanup, and HOTT witness work must not bypass it.
   accepted through a finite scoped-IH derivation DAG.
 - [ ] Artifact round-trip and append preserve Claim/Derivation identity exactly
   after the later schema migration.
+- [ ] A fold clause carrying a parent-owned effect-row residual is discharged
+  into replayable evidence; its exported artifact has non-zero accepted Claim
+  and Derivation closure and rejects a forged operation identity.
 
 ### P0.1 Add characterization tests before changing storage
 
@@ -1079,9 +1479,15 @@ V2-P0 is complete only when:
 | --- | --- | --- | --- |
 | 2026-08-07 | P0.0 code re-audit | complete | Verified Operation-indexed solver, Term-indexed materialization, mixed non-Operation facts, and integer literal overload counterexample. |
 | 2026-08-07 | P0 premise correction | complete | Removed mandatory one-certificate, conversion-budget serialization, tagged payload, and premise-arena assumptions. |
-| 2026-08-07 | P0 entry code re-audit | complete | Found remaining Core-keyed proof borrowing, destructive proof replacement, expected-type/conversion conflation, and a fold return-edge dependency error. Added them as mandatory P0 premises. |
-| 2026-08-08 | P0 reopened after certificate audit | active | `prototype_judgement_relation` still owns one proof; premise proof IDs are cleared at insertion and recovered by first/latest tuple search. P0-P10 and P0-P14 are not satisfied. |
-| 2026-08-08 | P0-R0A Claim/Derivation normalization | pending; next | Intern Claims, append immutable Derivations, retain exact derived source Claims, reconstruct structural premises from OperationGraph, and compute grounded closure. |
+| 2026-08-07 | P0 internal-premise code re-audit | complete | Found remaining Core-keyed proof borrowing, relation/derivation identity conflation, expected-type/conversion conflation, and a fold return-edge dependency error. Added them as mandatory P0 premises. |
+| 2026-08-08 | P0 reopened after certificate audit | active | Each transitional `prototype_judgement_claim_candidate` still owns one candidate proof; premise proof IDs are cleared at insertion and recovered by first/latest tuple search. P0-P10, P0-P14, and P0-P20 are not satisfied. |
+| 2026-08-08 | P0-R0A transition scaffold | complete | Separate accepted Claim/Derivation arenas and least grounded compaction exist, but are reconstructed from transitional candidate relation/proof records. |
+| 2026-08-08 | P0-R0A.1 local-obligation boundary | complete for current calculus | Scoped fold/Lambda obligations are not published as standalone Claims; exact fold rule parameters are replayed locally. Export publication distinguishes grounded Claims from exact occurrence-owned residual constraints. |
+| 2026-08-08 | P0-R0A.2 authority-complete producer migration | in progress | `SelectedEvidence` and the source structural slice exist. Complete remaining generated APP/Match helper and derived-source migration before making accepted Claims/Derivations the sole publication image. |
+| 2026-08-08 | P0-R0A.1 evidence API and APP slice | partial; implemented | Generic APP candidate collection retains function/argument evidence; Lambda and CBPV APIs retain direct child Operations separately from evidence authority. Normalization-equal and proof-kind selection now return evidence instead of classifier-only results. |
+| 2026-08-08 | P0-R0A.1 structural producer slice | implemented for current fold rules | Fold clause Lambdas and the request-internal APP are scoped rule parameters replayed by their enclosing validators, not independent Claims. Return-body effect weakening retains the exact body Operation, occurrence Context, and Core projection rather than reconstructing them from an alpha-interned Lambda representative. The CBPV surface suite, including higher-order handlers and forged artifacts, passes. |
+| 2026-08-08 | P0-R0A.1 fixed-point publication boundary | implemented | Operation-owned source candidates are publishable only when their classifier equals the final Operation classifier; explicit conversion, weakening, exposure, and admissibility rules remain allowed derived classifiers. Superseded solver-frontier candidates are retained as history but cannot become Claims. |
+| 2026-08-08 | P0-R0A.1 fold effect authority | implemented | Operation-owned folds compute clause rows from their exact clause Operation classifiers. Global candidate scanning remains only for authority-neutral Core inference. Local clause/resumption rows require inclusion in the carrier; the validator separately checks that their exact union equals the final fold row. |
 | 2026-08-08 | P0 authority validator probes | partial; uncommitted | Context movement was narrowed to ancestor weakening, context/effect premise Operation ownership was tightened, and fold capacities received named constants. A premature Operation-only integer check broke authority-neutral Core helper facts and was removed; exact integer source Claims must wait for P0-R0A. |
 | 2026-08-08 | P0.1 characterization tests | partial; revalidation required | Existing shared-Core and solver tests pass, but insertion-order-independent Claim derivation and unsupported-cycle tests do not yet exist. |
 | 2026-08-08 | P0.2 authority-specific APIs | partial; revalidation required | Operation APIs retain exact occurrence IDs, but accepted non-Operation Claims still encode authority through generic relation fields and `INVALID`; P0-R0A must make the distinction explicit. |
@@ -1091,12 +1497,15 @@ V2-P0 is complete only when:
 | 2026-08-07 | P0-R0 effect-row solver | complete for current row language | Canonical finite bits plus unresolved atoms are compared outside TermDB union syntax and materialized only after stabilization. Residual handling removes higher-order atoms by declared labels without exposing latent thunk effects. Force-once, force-twice, and multi-clause handler strict checks pass; unresolved external rows remain artifact residuals. |
 | 2026-08-07 | P0-R0 effect residual closure | complete for current row rules | Recursive reification rejects unowned open rows. This is not the grounded Claim closure required by P0-R0A. |
 | 2026-08-07 | P0-R0 regression restoration | complete | CBPV surface, definition-block, computation-block sequence, and artifact-flow suites pass. |
-| 2026-08-08 | P0.3 structural rules | partial; revalidation required | Operation structural validation follows exact graph edges, but accepted proof premises are still copied as tuples and later resolved. P0-R0A must remove that second authority path. |
-| 2026-08-08 | P0.4 derived boundaries | partial; revalidation required | ASCRIPTION/exposure is Operation-indexed, but context/effect/literal/link boundaries still require exact source Claim validation under P0-R0A. |
+| 2026-08-08 | P0.3 structural rules | source slice implemented; generated helpers open | Source Operation structural validation follows exact graph edges, and IH stores its motive locally. Generated Core helpers and accepted proof premises still use transitional tuples. |
+| 2026-08-08 | P0.4 derived boundaries | next code slice | ASCRIPTION/exposure retains a source Operation, but conversion, context/effect weakening, literal admissibility, link completion, and Universe provenance do not yet consume exact source Claims. |
 | 2026-08-08 | P0.5 non-Operation facts | partial; revalidation required | Binder input is binding-indexed and named APIs exist, but link and Universe provenance are not yet represented as exact Claim authorities. |
-| 2026-08-08 | P0.6 obsolete reconstruction | reopened | `prototype_judgement_resolve_proof_edges()` still performs semantic first/latest tuple selection and must be removed. |
-| 2026-08-08 | P0.7 validation/artifact | reopened | Proof-node acyclicity is weaker than grounded Claim closure; artifact v62 encodes the hybrid relation/proof model. |
+| 2026-08-08 | P0.6 obsolete reconstruction | reopened | Source/artifact calls to `prototype_judgement_resolve_proof_edges()` are removed; its dead implementation, temporary pruning code, and legacy proof-ID fields must be deleted after producer closure. |
+| 2026-08-08 | P0.7 validation/artifact | active | Grounded Claim closure exists as a transition validator. Provisional v64 preserves `term_export.operation` and rejects closed exports without accepted evidence, but still serializes transitional candidates rather than native accepted Claims/Derivations. |
 | 2026-08-08 | P0.8 P1 re-audit | superseded | The audit correctly found Claim/Derivation debt but classified it too late. It is now P0-R0A. |
+| 2026-08-08 | P0-R0A premise re-audit | complete | Rechecked the active `062b7cd` worktree: structural authority propagation is partial; calls to the late resolver and handler tuple pruning are gone, but classifier-only helper selection, candidate proof IDs, and provisional v64 candidate serialization remain. |
+| 2026-08-08 | P0-R0A.1 next | completed; P0-R0A.2 next | The fold/Lambda local-obligation boundary is established for the current calculus. Continue authority-complete migration for generated helpers and derived-source consumers before making accepted Claim/Derivation storage authoritative. |
+| 2026-08-08 | P0 entry premise finalized from active code | complete | P0 is already active. Typed conclusions belong to Operation/type-view occurrences; TermDB remains shared erased computation; closed Claims and residual obligations are distinct. R0A.2 now continues generated-helper/derived-source Claim preservation before Claim-ID publication and dead resolver deletion. |
 
 ## 10. Mandatory Ordering
 

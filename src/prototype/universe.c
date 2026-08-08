@@ -266,20 +266,20 @@ static int collect_pi_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_judgement_relation* relation
+	const struct prototype_judgement_claim_candidate* relation
 ) {
 	uint32_t result_level;
 	uint32_t domain;
 	uint32_t codomain_family;
-	if (!relation || relation->proof_id >= judgement->proof_count ||
+	if (!relation || relation->proof_id >= judgement->derivation_candidate_count ||
 		term_universe_level_var(terms, relation->classifier, &result_level) != 0 ||
 		prototype_judgement_pi_parts(
 			terms, relation->subject, &domain, &codomain_family
 		) != 0) {
 		return 0;
 	}
-	const struct prototype_judgement_proof* proof =
-		&judgement->proofs[relation->proof_id];
+	const struct prototype_judgement_derivation_candidate* proof =
+		&judgement->derivation_candidates[relation->proof_id];
 	if (proof->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO ||
 		proof->premise_count < 2) {
 		return 0;
@@ -410,7 +410,7 @@ static int collect_match_branch_constraints(
 	const struct prototype_term_db* terms,
 	const struct prototype_operation_graph* operations,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_judgement_relation* relation
+	const struct prototype_judgement_claim_candidate* relation
 ) {
 	uint32_t result_level;
 	if (!db || !terms || !judgement || !relation ||
@@ -453,11 +453,11 @@ static int collect_match_branch_constraints(
 				) == 0) {
 				found_branch_level = 1;
 			}
-		} else if (relation->proof_id < judgement->proof_count &&
-			i < judgement->proofs[relation->proof_id].premise_count &&
+		} else if (relation->proof_id < judgement->derivation_candidate_count &&
+			i < judgement->derivation_candidates[relation->proof_id].premise_count &&
 			term_universe_level_var(
 				terms,
-				judgement->proofs[relation->proof_id].premise_classifiers[i],
+				judgement->derivation_candidates[relation->proof_id].premise_classifiers[i],
 				&branch_level
 			) == 0) {
 			found_branch_level = 1;
@@ -572,15 +572,15 @@ static int collect_app_elim_cumulativity_constraint(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_judgement_relation* relation
+	const struct prototype_judgement_claim_candidate* relation
 ) {
 	if (!db || !terms || !judgement || !relation ||
 		relation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM ||
-		relation->proof_id >= judgement->proof_count) {
+		relation->proof_id >= judgement->derivation_candidate_count) {
 		return 0;
 	}
-	const struct prototype_judgement_proof* proof =
-		&judgement->proofs[relation->proof_id];
+	const struct prototype_judgement_derivation_candidate* proof =
+		&judgement->derivation_candidates[relation->proof_id];
 	if (proof->premise_count != 2 ||
 		proof->premise_classifiers[0] >= terms->term_count ||
 		proof->premise_classifiers[1] >= terms->term_count) {
@@ -609,16 +609,16 @@ static int collect_expected_type_exposure_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_judgement_relation* relation
+	const struct prototype_judgement_claim_candidate* relation
 ) {
 	if (!db || !terms || !judgement || !relation ||
 		relation->proof_kind !=
 			PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE ||
-		relation->proof_id >= judgement->proof_count) {
+		relation->proof_id >= judgement->derivation_candidate_count) {
 		return 0;
 	}
-	const struct prototype_judgement_proof* proof =
-		&judgement->proofs[relation->proof_id];
+	const struct prototype_judgement_derivation_candidate* proof =
+		&judgement->derivation_candidates[relation->proof_id];
 	if (proof->premise_count != 1 ||
 		proof->premise_classifiers[0] >= terms->term_count) {
 		return -1;
@@ -639,7 +639,7 @@ static int collect_relation_constraints(
 	const struct prototype_term_db* terms,
 	const struct prototype_operation_graph* operations,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_judgement_relation* relation
+	const struct prototype_judgement_claim_candidate* relation
 ) {
 	if (!relation || relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
 		return 0;
@@ -778,9 +778,9 @@ int prototype_universe_collect(
 		}
 	}
 
-	for (size_t i = 0; i < judgement->relation_count; ++i) {
+	for (size_t i = 0; i < judgement->claim_candidate_count; ++i) {
 		if (collect_relation_constraints(
-				db, terms, operations, judgement, &judgement->relations[i]
+				db, terms, operations, judgement, &judgement->claim_candidates[i]
 			) != 0) {
 			return -1;
 		}

@@ -893,7 +893,7 @@ grep -q 'interface term main ' \
 
 awk -v effect_row_operation_tag="$effect_row_operation_tag" '
 	BEGIN { changed = 0 }
-	$1 == "term_node" && $3 == effect_row_operation_tag && !changed {
+	$1 == "term_node" && $3 == effect_row_operation_tag {
 		$4 = "print"
 		changed = 1
 	}
@@ -909,7 +909,7 @@ fi
 
 awk -v effect_row_operation_tag="$effect_row_operation_tag" '
 	BEGIN { changed = 0 }
-	$1 == "term_node" && $3 == effect_row_operation_tag && !changed {
+	$1 == "term_node" && $3 == effect_row_operation_tag {
 		$5 = 999999
 		changed = 1
 	}
