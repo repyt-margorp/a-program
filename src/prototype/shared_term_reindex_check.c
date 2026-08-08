@@ -16,7 +16,7 @@ static int expect_reindex(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* types,
 	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
+	struct prototype_substitution_db* substitutions,
 	uint32_t source,
 	uint32_t substitution,
 	uint32_t expected,

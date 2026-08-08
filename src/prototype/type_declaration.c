@@ -604,9 +604,10 @@ int prototype_type_constructor_derive_curried_classifier(
 	for (uint32_t i = field_count; i > 0; --i) {
 		const struct prototype_context* field =
 			prototype_context_get(contexts, field_path[i - 1]);
+		uint32_t field_classifier = prototype_context_classifier_term(field);
 		uint32_t codomain_family;
 		uint32_t pi_classifier;
-		if (!field || field->classifier == PROTOTYPE_INVALID_ID ||
+		if (!field || field_classifier == PROTOTYPE_INVALID_ID ||
 			prototype_term_pure_family(
 				terms,
 				field->binding_id,
@@ -615,7 +616,7 @@ int prototype_type_constructor_derive_curried_classifier(
 			) != 0 ||
 			prototype_term_pi_family(
 				terms,
-				field->classifier,
+				field_classifier,
 				codomain_family,
 				&pi_classifier
 			) != 0) {
@@ -1051,12 +1052,16 @@ static int representation_types_equal_at_depth(
 			prototype_context_get(env->contexts, left_parameter_path[i]);
 		const struct prototype_context* right_parameter =
 			prototype_context_get(env->contexts, right_parameter_path[i]);
+		uint32_t left_classifier =
+			prototype_context_classifier_term(left_parameter);
+		uint32_t right_classifier =
+			prototype_context_classifier_term(right_parameter);
 		if (!left_parameter || !right_parameter ||
-			left_parameter->classifier == PROTOTYPE_INVALID_ID ||
-			right_parameter->classifier == PROTOTYPE_INVALID_ID ||
+			left_classifier == PROTOTYPE_INVALID_ID ||
+			right_classifier == PROTOTYPE_INVALID_ID ||
 			!representation_terms_equal_at_depth(
-				terms, db, left_parameter->classifier,
-				right_parameter->classifier, env, depth + 1
+				terms, db, left_classifier,
+				right_classifier, env, depth + 1
 			) ||
 			representation_push_binder(
 				env, left_parameter->binding_id, right_parameter->binding_id
@@ -1100,12 +1105,16 @@ static int representation_types_equal_at_depth(
 				prototype_context_get(env->contexts, left_fields[j]);
 			const struct prototype_context* right_field =
 				prototype_context_get(env->contexts, right_fields[j]);
+			uint32_t left_classifier =
+				prototype_context_classifier_term(left_field);
+			uint32_t right_classifier =
+				prototype_context_classifier_term(right_field);
 			if (!left_field || !right_field ||
-				left_field->classifier == PROTOTYPE_INVALID_ID ||
-				right_field->classifier == PROTOTYPE_INVALID_ID ||
+				left_classifier == PROTOTYPE_INVALID_ID ||
+				right_classifier == PROTOTYPE_INVALID_ID ||
 				!representation_terms_equal_at_depth(
-					terms, db, left_field->classifier,
-					right_field->classifier, env, depth + 1
+					terms, db, left_classifier,
+					right_classifier, env, depth + 1
 				) ||
 				representation_push_binder(
 					env, left_field->binding_id, right_field->binding_id
@@ -1648,7 +1657,9 @@ int prototype_type_declaration_code_shape_key(
 	for (uint32_t i = 0; i < type->parameter_count; ++i) {
 		const struct prototype_context* parameter =
 			prototype_context_get(contexts, parameter_path[i]);
-		if (!parameter || parameter->classifier == PROTOTYPE_INVALID_ID) {
+		uint32_t parameter_classifier =
+			prototype_context_classifier_term(parameter);
+		if (!parameter || parameter_classifier == PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
 		type_code_shape_key_hash_mix_tag(&hash, 0x7061726dU);
@@ -1656,7 +1667,7 @@ int prototype_type_declaration_code_shape_key(
 				terms,
 				db,
 				type_id,
-				parameter->classifier,
+				parameter_classifier,
 				&env,
 				p_key,
 				&hash,
@@ -1695,7 +1706,9 @@ int prototype_type_declaration_code_shape_key(
 		for (uint32_t j = 0; j < field_count; ++j) {
 			const struct prototype_context* field =
 				prototype_context_get(contexts, field_path[j]);
-			if (!field || field->classifier == PROTOTYPE_INVALID_ID) {
+			uint32_t field_classifier =
+				prototype_context_classifier_term(field);
+			if (!field || field_classifier == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
 			type_code_shape_key_hash_mix_tag(&hash, 0x6669656cU);
@@ -1703,7 +1716,7 @@ int prototype_type_declaration_code_shape_key(
 					terms,
 					db,
 					type_id,
-					field->classifier,
+					field_classifier,
 					&env,
 					p_key,
 					&hash,

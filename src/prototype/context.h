@@ -9,23 +9,62 @@ struct prototype_type_declaration_db;
 
 #define PROTOTYPE_CONTEXT_CAPACITY 8192
 #define PROTOTYPE_SUBSTITUTION_CAPACITY 8192
+#define PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT 1021
+#define PROTOTYPE_CONTEXT_ACTION_CACHE_COUNT 1021
+
+struct prototype_context_pullback_cache_entry {
+	int present;
+	uint32_t base_context;
+	uint32_t source_extension;
+	uint32_t target_extension;
+	uint32_t substitution;
+};
+
+struct prototype_reindex_cache_entry {
+	int present;
+	uint32_t term;
+	uint32_t substitution;
+	uint32_t result;
+};
 
 /*
  * Contexts are objects of the compiler's syntactic CwF. Entry zero is the
  * empty context; every other entry is an immutable context extension.
  */
+enum prototype_context_classifier_ref_kind {
+	PROTOTYPE_CONTEXT_CLASSIFIER_REF_INVALID = 0,
+	PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM = 1,
+	PROTOTYPE_CONTEXT_CLASSIFIER_REF_VARIABLE = 2,
+	PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL = 3
+};
+
+struct prototype_context_classifier_ref {
+	int kind;
+	uint32_t term_id;
+	uint32_t variable_id;
+};
+
 struct prototype_context {
 	uint32_t parent;
 	uint32_t binding_id;
-	uint32_t classifier;
-	uint32_t classifier_variable;
+	struct prototype_context_classifier_ref classifier_ref;
 	uint32_t depth;
+	uint64_t key_hash;
+	uint32_t hash_next;
 };
 
 struct prototype_context_db {
 	struct prototype_context* contexts;
 	size_t context_count;
 	size_t context_capacity;
+	uint32_t index_heads[PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT];
+	uint64_t intern_requests;
+	uint64_t intern_hits;
+	uint64_t intern_probes;
+	struct prototype_context_pullback_cache_entry
+		pullback_cache[PROTOTYPE_CONTEXT_ACTION_CACHE_COUNT];
+	uint64_t pullback_requests;
+	uint64_t pullback_hits;
 };
 
 enum prototype_substitution_kind {
@@ -49,12 +88,22 @@ struct prototype_substitution {
 	uint32_t second;
 	uint32_t term;
 	uint32_t term_classifier;
+	uint64_t key_hash;
+	uint32_t hash_next;
 };
 
 struct prototype_substitution_db {
 	struct prototype_substitution* substitutions;
 	size_t substitution_count;
 	size_t substitution_capacity;
+	uint32_t index_heads[PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT];
+	uint64_t intern_requests;
+	uint64_t intern_hits;
+	uint64_t intern_probes;
+	struct prototype_reindex_cache_entry
+		reindex_cache[PROTOTYPE_CONTEXT_ACTION_CACHE_COUNT];
+	uint64_t reindex_requests;
+	uint64_t reindex_hits;
 };
 
 void prototype_context_db_init(
@@ -62,6 +111,7 @@ void prototype_context_db_init(
 	struct prototype_context* contexts,
 	size_t context_capacity
 );
+int prototype_context_db_rebuild_index(struct prototype_context_db* db);
 uint32_t prototype_context_empty(const struct prototype_context_db* db);
 int prototype_context_extend(
 	struct prototype_context_db* db,
@@ -74,6 +124,12 @@ int prototype_context_extend(
 const struct prototype_context* prototype_context_get(
 	const struct prototype_context_db* db,
 	uint32_t context_id
+);
+uint32_t prototype_context_classifier_term(
+	const struct prototype_context* context
+);
+uint32_t prototype_context_classifier_variable(
+	const struct prototype_context* context
 );
 int prototype_context_contains_binding(
 	const struct prototype_context_db* db,
@@ -125,6 +181,9 @@ void prototype_substitution_db_init(
 	struct prototype_substitution* substitutions,
 	size_t substitution_capacity
 );
+int prototype_substitution_db_rebuild_index(
+	struct prototype_substitution_db* db
+);
 int prototype_substitution_identity(
 	struct prototype_substitution_db* db,
 	const struct prototype_context_db* contexts,
@@ -142,6 +201,20 @@ int prototype_substitution_projection(
 	const struct prototype_context_db* contexts,
 	uint32_t extended_context,
 	uint32_t* p_substitution
+);
+int prototype_substitution_projection_path(
+	struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t descendant_context,
+	uint32_t ancestor_context,
+	uint32_t* p_substitution
+);
+int prototype_substitution_is_projection_path(
+	const struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t substitution_id,
+	uint32_t descendant_context,
+	uint32_t ancestor_context
 );
 int prototype_substitution_extend(
 	struct prototype_substitution_db* db,
@@ -171,7 +244,7 @@ int prototype_substitution_db_validate(
 	const struct prototype_term_db* terms
 );
 int prototype_substitution_db_validate_typed(
-	const struct prototype_substitution_db* db,
+	struct prototype_substitution_db* db,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations
@@ -181,13 +254,15 @@ int prototype_substitution_db_append_relocated(
 	const struct prototype_substitution_db* source,
 	const uint32_t* context_relocation,
 	size_t context_relocation_count,
-	uint32_t term_offset
+	uint32_t term_offset,
+	uint32_t* relocation,
+	size_t relocation_capacity
 );
 int prototype_term_reindex(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
+	struct prototype_substitution_db* substitutions,
 	uint32_t term,
 	uint32_t substitution,
 	uint32_t* p_reindexed

@@ -51,6 +51,9 @@ canonicalize_derivations() {
 					$(position + 3) ":" $(position + 4) ":" $(position + 5)
 				position += 6
 			}
+			if ($position != "action") exit 1
+			line = line "|action=" $(position + 1) ":" $(position + 2)
+			position += 3
 			if ($position != "sources") exit 1
 			source_count = $(position + 1)
 			line = line "|sources=" source_count
@@ -66,6 +69,58 @@ canonicalize_derivations "$TMP_DIR/original.apo" | sort \
 canonicalize_derivations "$TMP_DIR/regrounded.apo" | sort \
 	>"$TMP_DIR/regrounded-derivations.txt"
 cmp "$TMP_DIR/original-derivations.txt" "$TMP_DIR/regrounded-derivations.txt"
+
+# Context weakening is certified by an exact projection/composition
+# Substitution edge. A proof-kind tag and ancestor Contexts are insufficient.
+cat >"$TMP_DIR/context-weaken.p" <<'EOF_CONTEXT_WEAKEN'
+Bool := @{
+	true : *;
+	false : *;
+};
+
+Nat := @{
+	zero : *;
+	succ : * -> *;
+};
+
+identityBool :: Bool -> Bool;
+identityBool := \x : Bool => x;
+
+identityNat :: Nat -> Nat;
+identityNat := \x : Nat => x;
+
+higherBool := \f : Bool -> Bool => f;
+useHigherBool := higherBool &identityBool;
+
+main := {
+	b := (identityBool :: Bool -> Bool) Bool.true;
+	b @true => (identityNat :: Nat -> Nat) Nat.zero
+	  @false => (identityNat :: Nat -> Nat) (Nat.succ Nat.zero);
+};
+EOF_CONTEXT_WEAKEN
+./read_file.out --write-artifact "$TMP_DIR/context-weaken.apo" \
+	"$TMP_DIR/context-weaken.p" >"$TMP_DIR/context-weaken.out"
+grep -q '^derivation [0-9][0-9]* 31 .* action 1 [0-9][0-9]* sources ' \
+	"$TMP_DIR/context-weaken.apo"
+awk '
+	$1 == "derivation" && $3 == 31 && !done {
+		for (i = 1; i <= NF; ++i) {
+			if ($i == "action") {
+				$(i + 2) = 4294967295
+				done = 1
+				break
+			}
+		}
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/context-weaken.apo" >"$TMP_DIR/forged-context-weaken.apo"
+if ./read_file.out --read-graph "$TMP_DIR/forged-context-weaken.apo" \
+		>"$TMP_DIR/forged-context-weaken.out" \
+		2>"$TMP_DIR/forged-context-weaken.err"; then
+	echo "context weakening without its projection authority unexpectedly passed" >&2
+	exit 1
+fi
 
 # Equal numerical Universe edges retain separate exact source Claims. The two
 # identity exports share erased Core and classifier terms, but their Operation

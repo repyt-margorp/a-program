@@ -70,7 +70,13 @@ enum prototype_judgement_authority_kind {
 	PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT = 8
 };
 
+enum prototype_judgement_semantic_action_kind {
+	PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID = 0,
+	PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION = 1
+};
+
 #define PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES 31
+#define PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT 2053
 #define PROTOTYPE_COMPUTATION_FOLD_STRUCTURAL_PREMISE_COUNT(clause_count) \
 	(2u + 2u * (clause_count))
 #define PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES \
@@ -101,6 +107,10 @@ struct prototype_judgement_derivation_candidate {
 	uint32_t induction_motive;
 	uint32_t induction_case_index;
 	uint32_t induction_field_index;
+	/* Exact graph operation certified by this rule. This is distinct from a
+	 * premise Claim and from rule-local diagnostic parameters. */
+	int semantic_action_kind;
+	uint32_t semantic_action_id;
 	uint32_t premise_count;
 	int premise_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
@@ -149,10 +159,12 @@ struct prototype_judgement_claim {
 	uint32_t subject;
 	uint32_t classifier;
 	uint32_t closure_rank;
+	uint64_t key_hash;
+	uint32_t hash_next;
 };
 
-/* Accepted rule application. source_claim_ids retain irreducible derived
- * dependencies; structural dependencies come from OperationGraph. */
+/* Accepted rule application. Valid premise Claim ids are graph edges;
+ * structural dependencies also remain available from OperationGraph. */
 struct prototype_judgement_derivation {
 	int proof_kind;
 	uint32_t conclusion_claim_id;
@@ -164,6 +176,8 @@ struct prototype_judgement_derivation {
 	uint32_t induction_motive;
 	uint32_t induction_case_index;
 	uint32_t induction_field_index;
+	int semantic_action_kind;
+	uint32_t semantic_action_id;
 	/* Rule-premise order is part of the derivation. A valid Claim id denotes an
 	 * accepted proposition dependency. INVALID denotes a scoped rule parameter
 	 * whose local tuple is retained below and replayed by the rule validator. */
@@ -173,8 +187,8 @@ struct prototype_judgement_derivation {
 	uint32_t scoped_premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t scoped_premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t scoped_premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t source_claim_count;
-	uint32_t source_claim_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint64_t key_hash;
+	uint32_t hash_next;
 };
 
 struct prototype_judgement_match_motive_result {
@@ -280,9 +294,21 @@ struct prototype_judgement_db {
 	size_t claim_capacity;
 	size_t derivation_count;
 	size_t derivation_capacity;
+	uint32_t claim_index_heads[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
+	uint32_t derivation_index_heads[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
+	uint64_t claim_intern_requests;
+	uint64_t claim_intern_hits;
+	uint64_t claim_intern_probes;
+	uint64_t derivation_intern_requests;
+	uint64_t derivation_intern_hits;
+	uint64_t derivation_intern_probes;
 
 	uint32_t next_universe_var;
 };
+
+int prototype_judgement_db_rebuild_index(
+	struct prototype_judgement_db* judgement
+);
 
 enum prototype_judgement_category {
 	PROTOTYPE_JUDGEMENT_CATEGORY_INVALID = 0,
@@ -303,6 +329,11 @@ int prototype_judgement_find_exact_claim(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_claim* identity,
 	uint32_t* p_claim_id
+);
+int prototype_judgement_find_exact_derivation(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_derivation* identity,
+	uint32_t* p_derivation_id
 );
 int prototype_judgement_claim_derivations(
 	const struct prototype_judgement_db* judgement,
@@ -611,7 +642,8 @@ int prototype_judgement_specialize_fold_operation_classifier(
 );
 int prototype_judgement_delta_record_context_weaken(
 	struct prototype_judgement_delta* delta,
-	const struct prototype_judgement_selected_evidence* source_evidence
+	const struct prototype_judgement_selected_evidence* source_evidence,
+	uint32_t substitution_id
 );
 /* Select one complete Claim authority from the provisional and committed
  * candidate images. Returns 0 for one Claim, 1 for missing, 2 for ambiguous,

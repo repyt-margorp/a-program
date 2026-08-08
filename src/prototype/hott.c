@@ -142,14 +142,16 @@ static int context_formation_certificate_is_valid(
 	const struct prototype_context* context = prototype_context_get(
 		contexts, certificate->context_id
 	);
-	return context && context->classifier_variable == PROTOTYPE_INVALID_ID &&
+	uint32_t classifier = prototype_context_classifier_term(context);
+	return context && classifier != PROTOTYPE_INVALID_ID &&
+		prototype_context_classifier_variable(context) == PROTOTYPE_INVALID_ID &&
 		hott_is_type_claim_matches(
 			terms,
 			type_declarations,
 			judgement,
 			certificate->classifier_claim_id,
 			context->parent,
-			context->classifier
+			classifier
 		);
 }
 

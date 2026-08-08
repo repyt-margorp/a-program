@@ -1,7 +1,102 @@
 #include "ast.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+static int check_judgement_graph_collisions(void) {
+	size_t count = PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT + 1;
+	struct prototype_judgement_claim* claims = calloc(count, sizeof(*claims));
+	struct prototype_judgement_derivation* derivations =
+		calloc(count, sizeof(*derivations));
+	if (!claims || !derivations) {
+		free(claims);
+		free(derivations);
+		return -1;
+	}
+	struct prototype_judgement_db judgement;
+	prototype_judgement_db_init(
+		&judgement, NULL, NULL, claims, derivations, count
+	);
+	judgement.claim_count = count;
+	judgement.derivation_count = count;
+	for (uint32_t i = 0; i < count; ++i) {
+		claims[i] = (struct prototype_judgement_claim){
+			.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+			.authority_id = i,
+			.context_id = 0,
+			.operation_id = PROTOTYPE_INVALID_ID,
+			.subject = i,
+			.classifier = i + 1,
+			.closure_rank = 0
+		};
+		derivations[i] = (struct prototype_judgement_derivation){
+			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
+			.conclusion_claim_id = i,
+			.closure_rank = 0,
+			.semantic_action_kind =
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID,
+			.semantic_action_id = PROTOTYPE_INVALID_ID
+		};
+	}
+	if (prototype_judgement_db_rebuild_index(&judgement) != 0) {
+		free(claims);
+		free(derivations);
+		return -1;
+	}
+	uint32_t claim_buckets[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
+	uint32_t derivation_buckets[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
+	for (size_t i = 0;
+		i < PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
+		++i) {
+		claim_buckets[i] = PROTOTYPE_INVALID_ID;
+		derivation_buckets[i] = PROTOTYPE_INVALID_ID;
+	}
+	uint32_t claim_left = PROTOTYPE_INVALID_ID;
+	uint32_t claim_right = PROTOTYPE_INVALID_ID;
+	uint32_t derivation_left = PROTOTYPE_INVALID_ID;
+	uint32_t derivation_right = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < count; ++i) {
+		size_t claim_bucket = claims[i].key_hash %
+			PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
+		if (claim_buckets[claim_bucket] != PROTOTYPE_INVALID_ID &&
+			claim_left == PROTOTYPE_INVALID_ID) {
+			claim_left = claim_buckets[claim_bucket];
+			claim_right = i;
+		}
+		claim_buckets[claim_bucket] = i;
+		size_t derivation_bucket = derivations[i].key_hash %
+			PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
+		if (derivation_buckets[derivation_bucket] != PROTOTYPE_INVALID_ID &&
+			derivation_left == PROTOTYPE_INVALID_ID) {
+			derivation_left = derivation_buckets[derivation_bucket];
+			derivation_right = i;
+		}
+		derivation_buckets[derivation_bucket] = i;
+	}
+	uint32_t found_claim_left;
+	uint32_t found_claim_right;
+	uint32_t found_derivation_left;
+	uint32_t found_derivation_right;
+	int status = claim_left == PROTOTYPE_INVALID_ID ||
+		derivation_left == PROTOTYPE_INVALID_ID ||
+		prototype_judgement_find_exact_claim(
+			&judgement, &claims[claim_left], &found_claim_left
+		) != 0 || prototype_judgement_find_exact_claim(
+			&judgement, &claims[claim_right], &found_claim_right
+		) != 0 || prototype_judgement_find_exact_derivation(
+			&judgement, &derivations[derivation_left], &found_derivation_left
+		) != 0 || prototype_judgement_find_exact_derivation(
+			&judgement, &derivations[derivation_right], &found_derivation_right
+		) != 0 || found_claim_left != claim_left ||
+		found_claim_right != claim_right ||
+		found_derivation_left != derivation_left ||
+		found_derivation_right != derivation_right;
+	free(claims);
+	free(derivations);
+	return status ? -1 : 0;
+}
 
 int main(void) {
 	struct prototype_term terms[128];
@@ -36,6 +131,9 @@ int main(void) {
 	uint32_t identity;
 	uint32_t composed;
 	uint32_t projection;
+	uint32_t identity_projection_path;
+	uint32_t one_step_projection_path;
+	uint32_t nested_projection_path;
 	uint32_t variable;
 	uint32_t literal;
 	uint32_t constant_family;
@@ -189,6 +287,34 @@ int main(void) {
 		prototype_substitution_projection(
 			&substitutions, &contexts, int_context, &projection
 		) != 0 ||
+		prototype_substitution_projection_path(
+			&substitutions,
+			&contexts,
+			int_context,
+			int_context,
+			&identity_projection_path
+		) != 0 ||
+		prototype_substitution_projection_path(
+			&substitutions,
+			&contexts,
+			int_context,
+			prototype_context_empty(&contexts),
+			&one_step_projection_path
+		) != 0 ||
+		prototype_substitution_projection_path(
+			&substitutions,
+			&contexts,
+			nested_context,
+			prototype_context_empty(&contexts),
+			&nested_projection_path
+		) != 0 ||
+		prototype_substitution_projection_path(
+			&substitutions,
+			&contexts,
+			int_context,
+			nested_context,
+			&(uint32_t){0}
+		) != -1 ||
 		prototype_substitution_compose(
 			&substitutions, &contexts, identity, section, &composed
 		) != 0 ||
@@ -264,11 +390,75 @@ int main(void) {
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ||
 		prototype_substitution_get(&substitutions, dependent_section) == NULL ||
 		prototype_substitution_get(&substitutions, projection) == NULL ||
+		!prototype_substitution_is_projection_path(
+			&substitutions,
+			&contexts,
+			identity_projection_path,
+			int_context,
+			int_context
+		) ||
+		!prototype_substitution_is_projection_path(
+			&substitutions,
+			&contexts,
+			one_step_projection_path,
+			int_context,
+			prototype_context_empty(&contexts)
+		) ||
+		!prototype_substitution_is_projection_path(
+			&substitutions,
+			&contexts,
+			nested_projection_path,
+			nested_context,
+			prototype_context_empty(&contexts)
+		) ||
+		prototype_substitution_is_projection_path(
+			&substitutions,
+			&contexts,
+			nested_projection_path,
+			int_context,
+			prototype_context_empty(&contexts)
+		) ||
 		prototype_substitution_db_validate_typed(
 			&substitutions, &contexts, &term_db, &type_declarations
 		) != 0) {
 		fprintf(stderr, "categorical substitution law failed\n");
 		return 1;
+	}
+	{
+		uint32_t cached_reindexed;
+		uint32_t cached_binder_count;
+		uint32_t cached_context;
+		uint32_t cached_substitution;
+		uint32_t binding_count_before_cache = term_db.next_binding_id;
+		if (prototype_term_reindex(
+				&term_db,
+				&type_declarations,
+				&contexts,
+				&substitutions,
+				dependent_classifier,
+				section,
+				&cached_reindexed
+			) != 0 || cached_reindexed != dependent_reindexed ||
+			prototype_context_fresh_reindex_extension(
+				&contexts,
+				&substitutions,
+				&term_db,
+				&type_declarations,
+				prototype_context_empty(&contexts),
+				dependent_context,
+				cloned_binders,
+				2,
+				&cached_binder_count,
+				&cached_context,
+				&cached_substitution
+			) != 0 || cached_binder_count != cloned_binder_count ||
+			cached_context != cloned_context ||
+			cached_substitution != clone_substitution ||
+			term_db.next_binding_id != binding_count_before_cache ||
+			substitutions.reindex_hits == 0 || contexts.pullback_hits == 0) {
+			fprintf(stderr, "memoized context action law failed\n");
+			return 1;
+		}
 	}
 	if (prototype_substitution_identity(
 			&substitutions,
@@ -489,6 +679,7 @@ int main(void) {
 		uint32_t source_empty;
 		uint32_t source_section;
 		uint32_t context_relocation[4];
+		uint32_t substitution_relocation[4];
 
 		prototype_context_db_init(
 			&source_contexts, source_context_storage, 4
@@ -536,14 +727,20 @@ int main(void) {
 				&source_substitutions,
 				context_relocation,
 				source_contexts.context_count,
-				3
+				3,
+				substitution_relocation,
+				4
 			) != 0 || source_section != 1 ||
 			target_contexts.context_count != 2 ||
 			target_contexts.contexts[context_relocation[source_context]].binding_id !=
 				141 ||
 			target_contexts.contexts[
 				context_relocation[source_context]
-			].classifier != int_type + 3 ||
+			].classifier_ref.kind !=
+				PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM ||
+			target_contexts.contexts[
+				context_relocation[source_context]
+			].classifier_ref.term_id != int_type + 3 ||
 			target_substitutions.substitution_count != 2 ||
 			target_substitutions.substitutions[1].source_context !=
 				context_relocation[source_context] ||
@@ -553,6 +750,79 @@ int main(void) {
 			target_substitutions.substitutions[1].term != literal + 3 ||
 			target_substitutions.substitutions[1].term_classifier != int_type + 3) {
 			fprintf(stderr, "context/substitution relocation law failed\n");
+			return 1;
+		}
+	}
+	{
+		enum { COLLISION_ENTRY_COUNT = 1030 };
+		static struct prototype_context collision_context_storage[
+			COLLISION_ENTRY_COUNT + 1
+		];
+		static struct prototype_substitution collision_substitution_storage[
+			COLLISION_ENTRY_COUNT
+		];
+		struct prototype_context_db collision_contexts;
+		struct prototype_substitution_db collision_substitutions;
+		uint32_t first_context = PROTOTYPE_INVALID_ID;
+		uint32_t first_identity = PROTOTYPE_INVALID_ID;
+		prototype_context_db_init(
+			&collision_contexts,
+			collision_context_storage,
+			COLLISION_ENTRY_COUNT + 1
+		);
+		prototype_substitution_db_init(
+			&collision_substitutions,
+			collision_substitution_storage,
+			COLLISION_ENTRY_COUNT
+		);
+		for (uint32_t i = 0; i < COLLISION_ENTRY_COUNT; ++i) {
+			uint32_t context_id;
+			uint32_t identity_id;
+			if (prototype_context_extend(
+					&collision_contexts,
+					prototype_context_empty(&collision_contexts),
+					1000 + i,
+					int_type,
+					PROTOTYPE_INVALID_ID,
+					&context_id
+				) != 0 || context_id != i + 1 ||
+				prototype_substitution_identity(
+					&collision_substitutions,
+					&collision_contexts,
+					context_id,
+					&identity_id
+				) != 0 || identity_id != i) {
+				fprintf(stderr, "graph index collision insertion failed\n");
+				return 1;
+			}
+			if (i == 0) {
+				first_context = context_id;
+				first_identity = identity_id;
+			}
+		}
+		uint32_t repeated_context;
+		uint32_t repeated_identity;
+		if (prototype_context_extend(
+				&collision_contexts,
+				prototype_context_empty(&collision_contexts),
+				1000,
+				int_type,
+				PROTOTYPE_INVALID_ID,
+				&repeated_context
+			) != 0 || repeated_context != first_context ||
+			prototype_substitution_identity(
+				&collision_substitutions,
+				&collision_contexts,
+				first_context,
+				&repeated_identity
+			) != 0 || repeated_identity != first_identity ||
+			collision_contexts.intern_hits == 0 ||
+			collision_substitutions.intern_hits == 0 ||
+			collision_contexts.intern_probes <=
+				collision_contexts.intern_hits ||
+			collision_substitutions.intern_probes <=
+				collision_substitutions.intern_hits) {
+			fprintf(stderr, "collision-safe graph interning law failed\n");
 			return 1;
 		}
 	}
@@ -627,6 +897,10 @@ int main(void) {
 			&operation_graph, &term_db, &contexts
 		) == 0) {
 		fprintf(stderr, "saturated effect APP escaped request validation\n");
+		return 1;
+	}
+	if (check_judgement_graph_collisions() != 0) {
+		fprintf(stderr, "judgement graph collision law failed\n");
 		return 1;
 	}
 	printf("context category checks passed\n");
