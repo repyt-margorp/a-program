@@ -30,12 +30,21 @@ static struct prototype_type_constructor_declaration constructors[CONSTRUCTOR_CA
 static struct prototype_type_parameter_declaration parameters[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
-static struct prototype_judgement_claim_candidate judgement_relations[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_proposition judgement_relations[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation_candidate judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_claim_candidate delta_relations[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_candidate_premise judgement_candidate_premises[
+	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+];
+static struct prototype_judgement_premise_edge judgement_accepted_premises[
+	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+];
+static struct prototype_judgement_proposition delta_relations[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation_candidate delta_proofs[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_candidate_premise delta_premises[
+	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+];
 static struct prototype_judgement_match_motive_result motive_results[8];
 static struct prototype_judgement_computation_constraint computation_constraints[8];
 static struct prototype_judgement_effect_row_constraint effect_row_constraints[8];
@@ -71,10 +80,16 @@ int main(void) {
 		judgement_proofs,
 		judgement_claims,
 		judgement_derivations,
-		JUDGEMENT_CAPACITY
+		JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
 	prototype_judgement_delta_init(
 		&delta, &judgement, delta_relations, delta_proofs, JUDGEMENT_CAPACITY,
+		delta_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
 		motive_results, 8, computation_constraints, 8, effect_row_constraints, 8
 	);
 	prototype_context_db_init(&contexts, context_entries, CONTEXT_CAPACITY);
@@ -259,6 +274,8 @@ int main(void) {
 	}
 	prototype_judgement_delta_init(
 		&delta, &judgement, delta_relations, delta_proofs, JUDGEMENT_CAPACITY,
+		delta_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
 		motive_results, 8, computation_constraints, 8, effect_row_constraints, 8
 	);
 	prototype_judgement_delta_set_context_store(

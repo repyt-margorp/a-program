@@ -29,6 +29,8 @@ fi
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/hott_goal_check.c \
 	src/prototype/hott.c \
+	src/prototype/cwf_certificate.c \
+	src/prototype/kernel_view.c \
 	src/prototype/context.c \
 	src/prototype/term.c \
 	src/prototype/type_declaration.c \

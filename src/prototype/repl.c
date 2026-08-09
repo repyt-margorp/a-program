@@ -87,10 +87,16 @@ static struct prototype_match_case match_cases[MATCH_CASE_CAPACITY];
 static int match_case_label_symbols[MATCH_CASE_CAPACITY];
 static struct prototype_case_binder match_binders[MATCH_BINDER_CAPACITY];
 static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
-static struct prototype_judgement_claim_candidate judgements[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_proposition judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation_candidate judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_candidate_premise judgement_candidate_premises[
+	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+];
+static struct prototype_judgement_premise_edge judgement_accepted_premises[
+	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+];
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
@@ -1042,7 +1048,11 @@ int main(int argc, char** argv) {
 		judgement_proofs,
 		judgement_claims,
 		judgement_derivations,
-		JUDGEMENT_CAPACITY
+		JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
 
 	program.symbols = &symbols;

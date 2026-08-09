@@ -1,19 +1,31 @@
 #ifndef __PROTOTYPE_HOTT_H__
 #define __PROTOTYPE_HOTT_H__
 
+#include "cwf_certificate.h"
 #include "judgement.h"
+#include "kernel_view.h"
 
 enum prototype_hott_observation_category {
 	PROTOTYPE_HOTT_OBSERVATION_VALUE = 1,
 	PROTOTYPE_HOTT_OBSERVATION_COMPUTATION = 2
 };
 
-enum prototype_hott_work_state {
-	PROTOTYPE_HOTT_WORK_PENDING = 1,
-	PROTOTYPE_HOTT_WORK_READY = 2,
-	PROTOTYPE_HOTT_WORK_RESIDUAL = 3,
-	PROTOTYPE_HOTT_WORK_UNSUPPORTED = 4
+enum prototype_hott_outcome_state {
+	PROTOTYPE_HOTT_OUTCOME_PENDING = 1,
+	PROTOTYPE_HOTT_OUTCOME_READY = 2,
+	PROTOTYPE_HOTT_OUTCOME_RESIDUAL = 3,
+	PROTOTYPE_HOTT_OUTCOME_UNSUPPORTED = 4
 };
+
+#define PROTOTYPE_HOTT_WORK_PENDING PROTOTYPE_HOTT_OUTCOME_PENDING
+#define PROTOTYPE_HOTT_WORK_READY PROTOTYPE_HOTT_OUTCOME_READY
+#define PROTOTYPE_HOTT_WORK_RESIDUAL PROTOTYPE_HOTT_OUTCOME_RESIDUAL
+#define PROTOTYPE_HOTT_WORK_UNSUPPORTED PROTOTYPE_HOTT_OUTCOME_UNSUPPORTED
+
+#define PROTOTYPE_HOTT_ACTION_RESULT_READY PROTOTYPE_HOTT_OUTCOME_READY
+#define PROTOTYPE_HOTT_ACTION_RESULT_RESIDUAL PROTOTYPE_HOTT_OUTCOME_RESIDUAL
+#define PROTOTYPE_HOTT_ACTION_RESULT_UNSUPPORTED \
+	PROTOTYPE_HOTT_OUTCOME_UNSUPPORTED
 
 enum prototype_hott_residual_reason {
 	PROTOTYPE_HOTT_RESIDUAL_NONE = 0,
@@ -28,6 +40,16 @@ enum prototype_hott_residual_reason {
 	PROTOTYPE_HOTT_RESIDUAL_TYPE_VIEW,
 	PROTOTYPE_HOTT_RESIDUAL_UNIVERSE,
 	PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE
+};
+
+struct prototype_hott_deterministic_outcome {
+	int state;
+	int residual_reason;
+	int normalization_profile;
+	uint64_t step_limit;
+	uint64_t steps_used;
+	uint64_t term_graph_revision;
+	char calculus_fingerprint[65];
 };
 
 enum prototype_hott_type_former_kind {
@@ -51,6 +73,22 @@ enum prototype_hott_type_action_rule {
 	PROTOTYPE_HOTT_TYPE_ACTION_RULE_OBSERVATION_HIGHER = 6
 };
 
+enum prototype_hott_capability_status {
+	PROTOTYPE_HOTT_CAPABILITY_UNDECLARED = 0,
+	PROTOTYPE_HOTT_CAPABILITY_SUPPORTED = 1,
+	PROTOTYPE_HOTT_CAPABILITY_DEFERRED = 2,
+	PROTOTYPE_HOTT_CAPABILITY_NOT_APPLICABLE = 3
+};
+
+struct prototype_hott_type_former_capabilities {
+	int type_action;
+	int term_action;
+	int ordinary_reindex;
+	int purity;
+	int resource_hook;
+	int artifact;
+};
+
 struct prototype_hott_type_former_descriptor {
 	int kind;
 	int admitted;
@@ -58,6 +96,8 @@ struct prototype_hott_type_former_descriptor {
 	int residual_reason;
 	uint32_t source_claim_id;
 	uint32_t source_type_term_id;
+	struct prototype_hott_type_former_capabilities capabilities;
+	uint64_t child_role_mask;
 };
 
 int prototype_hott_type_former_descriptor_query(
@@ -105,40 +145,6 @@ enum prototype_hott_child_role {
 	PROTOTYPE_HOTT_CHILD_REINDEX_NATURALITY = 19
 };
 
-struct prototype_context_formation_certificate {
-	uint32_t context_id;
-	uint32_t classifier_claim_id;
-};
-
-struct prototype_context_formation_certificate_db {
-	struct prototype_context_formation_certificate* certificates;
-	size_t certificate_count;
-	size_t certificate_capacity;
-};
-
-void prototype_context_formation_certificate_db_init(
-	struct prototype_context_formation_certificate_db* db,
-	struct prototype_context_formation_certificate* certificates,
-	size_t certificate_capacity
-);
-int prototype_context_formation_certificate_db_add(
-	struct prototype_context_formation_certificate_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
-	uint32_t context_id,
-	uint32_t classifier_claim_id,
-	uint32_t* p_certificate_id
-);
-int prototype_context_formation_certificate_db_validate(
-	const struct prototype_context_formation_certificate_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
-);
-
 struct prototype_hott_bridge {
 	uint32_t id;
 	uint32_t source_context_id;
@@ -181,25 +187,13 @@ const struct prototype_hott_bridge* prototype_hott_bridge_db_get(
 );
 int prototype_hott_bridge_db_construct(
 	struct prototype_hott_bridge_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
+	struct prototype_kernel_builder* kernel,
 	uint32_t source_context_id,
 	uint32_t* p_bridge_id
 );
 int prototype_hott_bridge_db_validate(
 	const struct prototype_hott_bridge_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_kernel_view* kernel
 );
 
 struct prototype_hott_observation_goal {
@@ -293,15 +287,9 @@ struct prototype_hott_candidate_db {
 struct prototype_hott_work_item {
 	uint32_t id;
 	uint32_t goal_id;
-	int state;
 	uint32_t selected_candidate_id;
-	int residual_reason;
 	uint32_t source_ast;
-	int normalization_profile;
-	uint64_t step_limit;
-	uint64_t steps_used;
-	uint64_t term_graph_revision;
-	char calculus_fingerprint[65];
+	struct prototype_hott_deterministic_outcome outcome;
 };
 
 struct prototype_hott_work_db {
@@ -322,15 +310,8 @@ prototype_hott_observation_goal_db_get(
 );
 int prototype_hott_observation_goal_db_intern(
 	struct prototype_hott_observation_goal_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	int category,
 	uint32_t carrier_claim_id,
 	uint32_t left_claim_id,
@@ -340,15 +321,8 @@ int prototype_hott_observation_goal_db_intern(
 );
 int prototype_hott_observation_goal_db_validate(
 	const struct prototype_hott_observation_goal_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_kernel_view* kernel,
+	const struct prototype_hott_bridge_db* bridges
 );
 
 void prototype_hott_candidate_db_init(
@@ -373,14 +347,7 @@ const struct prototype_hott_candidate* prototype_hott_candidate_db_get(
 int prototype_hott_candidate_db_validate(
 	const struct prototype_hott_candidate_db* db,
 	const struct prototype_hott_observation_goal_db* goals,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement,
-	const struct prototype_operation_graph* operations
+	const struct prototype_kernel_view* kernel
 );
 
 void prototype_hott_work_db_init(
@@ -401,16 +368,9 @@ int prototype_hott_observation_plan(
 	struct prototype_hott_observation_goal_db* goals,
 	struct prototype_hott_candidate_db* candidates,
 	struct prototype_hott_work_db* work,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	uint32_t goal_id,
 	uint32_t source_ast,
 	int normalization_profile,
@@ -453,12 +413,6 @@ enum prototype_hott_action_kind {
 	PROTOTYPE_HOTT_ACTION_SUBSTITUTION = 2,
 	PROTOTYPE_HOTT_ACTION_TYPE = 3,
 	PROTOTYPE_HOTT_ACTION_TERM = 4
-};
-
-enum prototype_hott_action_result_state {
-	PROTOTYPE_HOTT_ACTION_RESULT_READY = 1,
-	PROTOTYPE_HOTT_ACTION_RESULT_RESIDUAL = 2,
-	PROTOTYPE_HOTT_ACTION_RESULT_UNSUPPORTED = 3
 };
 
 enum prototype_hott_action_certificate_kind {
@@ -553,19 +507,16 @@ struct prototype_hott_action_certificate {
 struct prototype_hott_action_result {
 	uint32_t id;
 	uint32_t request_id;
-	int state;
-	int residual_reason;
 	uint32_t certificate_id;
-	int normalization_profile;
-	uint64_t step_limit;
-	uint64_t term_graph_revision;
-	char calculus_fingerprint[65];
+	struct prototype_hott_deterministic_outcome outcome;
 };
 
 struct prototype_hott_action_db {
 	struct prototype_hott_action_request* requests;
 	size_t request_count;
 	size_t request_capacity;
+	uint64_t request_intern_requests;
+	uint64_t request_intern_hits;
 	uint32_t request_index_heads[PROTOTYPE_HOTT_ACTION_INDEX_BUCKET_COUNT];
 	struct prototype_hott_action_certificate* certificates;
 	size_t certificate_count;
@@ -573,6 +524,7 @@ struct prototype_hott_action_db {
 	struct prototype_hott_action_result* results;
 	size_t result_count;
 	size_t result_capacity;
+	uint64_t outcome_publish_requests;
 };
 
 void prototype_hott_action_db_init(
@@ -594,29 +546,15 @@ const struct prototype_hott_action_result* prototype_hott_action_result_get(
 );
 int prototype_hott_action_request_intern(
 	struct prototype_hott_action_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	struct prototype_hott_action_request request,
 	uint32_t* p_request_id
 );
 int prototype_hott_action_certificate_add(
 	struct prototype_hott_action_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	struct prototype_hott_action_certificate certificate,
 	uint32_t* p_certificate_id
 );
@@ -627,41 +565,20 @@ int prototype_hott_action_result_publish(
 );
 int prototype_hott_action_db_validate(
 	const struct prototype_hott_action_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_kernel_view* kernel,
+	const struct prototype_hott_bridge_db* bridges
 );
 int prototype_hott_execute_type_action(
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t request_id,
 	uint32_t* p_result_id
 );
 int prototype_hott_execute_substitution_action(
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t request_id,
 	int normalization_profile,
 	uint64_t step_limit,
@@ -669,28 +586,15 @@ int prototype_hott_execute_substitution_action(
 );
 int prototype_hott_execute_term_action(
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t request_id,
 	uint32_t* p_result_id
 );
 int prototype_hott_bridge_db_construct_extension(
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	const struct prototype_hott_action_db* actions,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement,
 	uint32_t source_context_id,
 	uint32_t type_action_request_id,
 	uint32_t* p_bridge_id
@@ -709,16 +613,9 @@ int prototype_hott_observation_plan_and_execute(
 	struct prototype_hott_candidate_db* candidates,
 	struct prototype_hott_work_db* work,
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t goal_id,
 	uint32_t source_ast,
 	int normalization_profile,

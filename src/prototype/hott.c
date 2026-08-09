@@ -10,14 +10,28 @@ static int hott_category_is_valid(int category) {
 		category == PROTOTYPE_HOTT_OBSERVATION_COMPUTATION;
 }
 
-static int hott_work_state_is_valid(int state) {
-	return state >= PROTOTYPE_HOTT_WORK_PENDING &&
-		state <= PROTOTYPE_HOTT_WORK_UNSUPPORTED;
-}
-
 static int hott_residual_reason_is_valid(int reason) {
 	return reason >= PROTOTYPE_HOTT_RESIDUAL_NONE &&
 		reason <= PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
+}
+
+static int hott_deterministic_outcome_is_valid(
+	const struct prototype_hott_deterministic_outcome* outcome,
+	int allow_pending
+) {
+	if (!outcome ||
+		outcome->state < (allow_pending ? PROTOTYPE_HOTT_OUTCOME_PENDING :
+			PROTOTYPE_HOTT_OUTCOME_READY) ||
+		outcome->state > PROTOTYPE_HOTT_OUTCOME_UNSUPPORTED ||
+		!hott_residual_reason_is_valid(outcome->residual_reason) ||
+		strcmp(
+			outcome->calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT
+		) != 0) {
+		return 0;
+	}
+	return ((outcome->state == PROTOTYPE_HOTT_OUTCOME_RESIDUAL ||
+		outcome->state == PROTOTYPE_HOTT_OUTCOME_UNSUPPORTED) ==
+		(outcome->residual_reason != PROTOTYPE_HOTT_RESIDUAL_NONE));
 }
 
 static int hott_rule_is_valid(int rule) {
@@ -75,13 +89,13 @@ static int hott_is_type_claim_matches(
 	const struct prototype_judgement_claim* claim =
 		prototype_judgement_claim_get(judgement, claim_id);
 	uint32_t classifier;
-	if (!claim || claim->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
-		claim->context_id != context_id || claim->subject != subject ||
-		claim->operation_id != PROTOTYPE_INVALID_ID ||
-		claim->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-		claim->classifier >= terms->term_count ||
+	if (!claim || claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		claim->proposition->context_id != context_id || claim->proposition->subject != subject ||
+		claim->proposition->operation_id != PROTOTYPE_INVALID_ID ||
+		claim->proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+		claim->proposition->classifier >= terms->term_count ||
 		prototype_judgement_classifier_value_whnf(
-			terms, type_declarations, claim->classifier, &classifier
+			terms, type_declarations, claim->proposition->classifier, &classifier
 		) != 0) {
 		return 0;
 	}
@@ -96,144 +110,33 @@ static int hott_operation_matches_claim(
 	if (!claim) {
 		return 0;
 	}
-	if (claim->operation_id == PROTOTYPE_INVALID_ID) {
-		return claim->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
+	if (claim->proposition->operation_id == PROTOTYPE_INVALID_ID) {
+		return claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
 	}
-	if (!operations || claim->operation_id >= operations->operation_count ||
-		claim->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-		claim->authority_id != claim->operation_id) {
+	if (!operations || claim->proposition->operation_id >= operations->operation_count ||
+		claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+		claim->proposition->authority_id != claim->proposition->operation_id) {
 		return 0;
 	}
 	const struct prototype_operation_node* operation =
-		&operations->operations[claim->operation_id];
-	return operation->context_id == claim->context_id &&
-		operation->core_term == claim->subject &&
-		operation->classifier == claim->classifier;
-}
-
-void prototype_context_formation_certificate_db_init(
-	struct prototype_context_formation_certificate_db* db,
-	struct prototype_context_formation_certificate* certificates,
-	size_t certificate_capacity
-) {
-	if (!db) {
-		return;
-	}
-	db->certificates = certificates;
-	db->certificate_count = 0;
-	db->certificate_capacity = certificate_capacity;
-}
-
-static int context_formation_certificate_is_valid(
-	const struct prototype_context_formation_certificate* certificate,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
-) {
-	if (!certificate || !contexts || !terms || !type_declarations || !judgement ||
-		certificate->context_id == prototype_context_empty(contexts)) {
-		return 0;
-	}
-	const struct prototype_context* context = prototype_context_get(
-		contexts, certificate->context_id
-	);
-	uint32_t classifier = prototype_context_classifier_term(context);
-	return context && classifier != PROTOTYPE_INVALID_ID &&
-		prototype_context_classifier_variable(context) == PROTOTYPE_INVALID_ID &&
-		hott_is_type_claim_matches(
-			terms,
-			type_declarations,
-			judgement,
-			certificate->classifier_claim_id,
-			context->parent,
-			classifier
-		);
-}
-
-int prototype_context_formation_certificate_db_add(
-	struct prototype_context_formation_certificate_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
-	uint32_t context_id,
-	uint32_t classifier_claim_id,
-	uint32_t* p_certificate_id
-) {
-	struct prototype_context_formation_certificate certificate = {
-		.context_id = context_id,
-		.classifier_claim_id = classifier_claim_id
-	};
-	if (!db || !p_certificate_id || !db->certificates ||
-		!context_formation_certificate_is_valid(
-			&certificate, contexts, terms, type_declarations, judgement
-		)) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < db->certificate_count; ++i) {
-		if (db->certificates[i].context_id == context_id &&
-			db->certificates[i].classifier_claim_id == classifier_claim_id) {
-			*p_certificate_id = i;
-			return 0;
-		}
-	}
-	if (db->certificate_count >= db->certificate_capacity) {
-		return -1;
-	}
-	uint32_t id = (uint32_t)db->certificate_count++;
-	db->certificates[id] = certificate;
-	*p_certificate_id = id;
-	return 0;
-}
-
-int prototype_context_formation_certificate_db_validate(
-	const struct prototype_context_formation_certificate_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
-) {
-	if (!db || db->certificate_count > db->certificate_capacity ||
-		(db->certificate_count != 0 && !db->certificates)) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < db->certificate_count; ++i) {
-		if (!context_formation_certificate_is_valid(
-				&db->certificates[i], contexts, terms, type_declarations, judgement
-			)) {
-			return -1;
-		}
-		for (uint32_t j = 0; j < i; ++j) {
-			if (db->certificates[i].context_id ==
-					db->certificates[j].context_id &&
-				db->certificates[i].classifier_claim_id ==
-					db->certificates[j].classifier_claim_id) {
-				return -1;
-			}
-		}
-	}
-	return 0;
+		&operations->operations[claim->proposition->operation_id];
+	return operation->context_id == claim->proposition->context_id &&
+		operation->core_term == claim->proposition->subject &&
+		operation->classifier == claim->proposition->classifier;
 }
 
 static int context_has_formation_certificate(
-	const struct prototype_context_formation_certificate_db* certificates,
+	const struct prototype_cwf_certificate_db* certificates,
 	uint32_t context_id
 ) {
-	if (!certificates) {
-		return 0;
-	}
-	for (uint32_t i = 0; i < certificates->certificate_count; ++i) {
-		if (certificates->certificates[i].context_id == context_id) {
-			return 1;
-		}
-	}
-	return 0;
+	return prototype_cwf_certificate_db_has(
+		certificates, PROTOTYPE_CWF_CERTIFICATE_CONTEXT_FORMATION, context_id
+	);
 }
 
 static int hott_context_is_formed(
 	const struct prototype_context_db* contexts,
-	const struct prototype_context_formation_certificate_db* certificates,
+	const struct prototype_cwf_certificate_db* certificates,
 	uint32_t context_id
 ) {
 	if (!contexts || context_id >= contexts->context_count) {
@@ -284,17 +187,16 @@ static int hott_bridge_record_is_valid(
 	uint32_t expected_id,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates
+	const struct prototype_cwf_certificate_db* cwf_certificates
 ) {
-	if (!bridge || !contexts || !substitutions || !context_certificates ||
-		!certificates || bridge->id != expected_id ||
+	if (!bridge || !contexts || !substitutions || !cwf_certificates ||
+		bridge->id != expected_id ||
 		bridge->source_context_id >= contexts->context_count ||
 		bridge->bridge_context_id >= contexts->context_count ||
 		!hott_context_is_formed(
-			contexts, context_certificates, bridge->source_context_id
+			contexts, cwf_certificates, bridge->source_context_id
 		) || !hott_context_is_formed(
-			contexts, context_certificates, bridge->bridge_context_id
+			contexts, cwf_certificates, bridge->bridge_context_id
 		)) {
 		return 0;
 	}
@@ -322,27 +224,31 @@ static int hott_bridge_record_is_valid(
 
 int prototype_hott_bridge_db_construct(
 	struct prototype_hott_bridge_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
+	struct prototype_kernel_builder* kernel,
 	uint32_t source_context_id,
 	uint32_t* p_bridge_id
 ) {
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
 	if (!db || !db->bridges || !contexts || !substitutions ||
-		!context_certificates || !certificates || !terms || !type_declarations ||
+		prototype_kernel_builder_validate(kernel) != 0 || !terms || !type_declarations ||
 		!judgement || !p_bridge_id ||
 		source_context_id >= contexts->context_count ||
-		prototype_context_formation_certificate_db_validate(
-			context_certificates, contexts, terms, type_declarations, judgement
+		prototype_cwf_certificate_db_validate_contexts(
+			cwf_certificates, contexts, terms, type_declarations, judgement
 		) != 0 ||
-		prototype_substitution_certificate_db_validate(
-			certificates, substitutions, judgement
+		prototype_cwf_certificate_db_validate_substitutions(
+			cwf_certificates, substitutions, judgement
 		) != 0 ||
-		!hott_context_is_formed(contexts, context_certificates, source_context_id)) {
+		!hott_context_is_formed(contexts, cwf_certificates, source_context_id)) {
 		return -1;
 	}
 	if (source_context_id != prototype_context_empty(contexts)) {
@@ -368,8 +274,7 @@ int prototype_hott_bridge_db_construct(
 		.right_substitution_id = identity
 	};
 	if (!hott_bridge_record_is_valid(
-			&bridge, bridge.id, contexts, substitutions, context_certificates,
-			certificates
+			&bridge, bridge.id, contexts, substitutions, cwf_certificates
 		)) {
 		return -1;
 	}
@@ -395,23 +300,28 @@ int prototype_hott_bridge_db_construct(
 
 int prototype_hott_bridge_db_validate(
 	const struct prototype_hott_bridge_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_kernel_view* kernel
 ) {
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	const struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
 	if (!db || db->bridge_count > db->bridge_capacity ||
+		prototype_kernel_view_validate(kernel) != 0 ||
 		db->certificate_count > db->certificate_capacity ||
 		db->certificate_count != db->bridge_count ||
 		(db->bridge_count != 0 && !db->bridges) ||
 		(db->certificate_count != 0 && !db->certificates) ||
-		prototype_context_formation_certificate_db_validate(
-			context_certificates, contexts, terms, type_declarations, judgement
-		) != 0 || prototype_substitution_certificate_db_validate(
-			certificates, substitutions, judgement
+		prototype_cwf_certificate_db_validate_contexts(
+			cwf_certificates, contexts, terms, type_declarations, judgement
+		) != 0 || prototype_cwf_certificate_db_validate_substitutions(
+			cwf_certificates, substitutions, judgement
 		) != 0) {
 		return -1;
 	}
@@ -420,7 +330,7 @@ int prototype_hott_bridge_db_validate(
 			&db->certificates[i];
 		if (!hott_bridge_record_is_valid(
 				&db->bridges[i], i, contexts, substitutions,
-				context_certificates, certificates
+				cwf_certificates
 			) || certificate->id != i || certificate->bridge_id != i ||
 			(certificate->parent_bridge_id == PROTOTYPE_INVALID_ID) !=
 				(db->bridges[i].source_context_id ==
@@ -447,13 +357,17 @@ int prototype_hott_bridge_db_validate(
 			);
 			const struct prototype_hott_bridge* parent =
 				prototype_hott_bridge_db_get(db, certificate->parent_bridge_id);
-			const struct prototype_substitution_certificate* left_certificate =
-				prototype_substitution_certificate_db_get(
-					certificates, certificate->left_substitution_certificate_id
+			const struct prototype_cwf_certificate* left_certificate =
+				prototype_cwf_certificate_db_get_kind(
+					cwf_certificates,
+					certificate->left_substitution_certificate_id,
+					PROTOTYPE_CWF_CERTIFICATE_SUBSTITUTION_FORMATION
 				);
-			const struct prototype_substitution_certificate* right_certificate =
-				prototype_substitution_certificate_db_get(
-					certificates, certificate->right_substitution_certificate_id
+			const struct prototype_cwf_certificate* right_certificate =
+				prototype_cwf_certificate_db_get_kind(
+					cwf_certificates,
+					certificate->right_substitution_certificate_id,
+					PROTOTYPE_CWF_CERTIFICATE_SUBSTITUTION_FORMATION
 				);
 			if (!source || !relation || !parent ||
 				certificate->parent_bridge_id >= i ||
@@ -461,26 +375,26 @@ int prototype_hott_bridge_db_validate(
 				relation->parent == prototype_context_empty(contexts) ||
 				certificate->type_action_certificate_id == PROTOTYPE_INVALID_ID ||
 				certificate->left_endpoint_context_certificate_id >=
-					context_certificates->certificate_count ||
+					cwf_certificates->certificate_count ||
 				certificate->right_endpoint_context_certificate_id >=
-					context_certificates->certificate_count ||
+					cwf_certificates->certificate_count ||
 				certificate->relation_context_certificate_id >=
-					context_certificates->certificate_count ||
-				context_certificates->certificates[
+					cwf_certificates->certificate_count ||
+				cwf_certificates->certificates[
 					certificate->right_endpoint_context_certificate_id
-				].context_id != relation->parent ||
-				context_certificates->certificates[
+				].structural_id != relation->parent ||
+				cwf_certificates->certificates[
 					certificate->left_endpoint_context_certificate_id
-				].context_id != prototype_context_get(
+				].structural_id != prototype_context_get(
 					contexts, relation->parent
 				)->parent ||
-				context_certificates->certificates[
+				cwf_certificates->certificates[
 					certificate->relation_context_certificate_id
-				].context_id != db->bridges[i].bridge_context_id ||
+				].structural_id != db->bridges[i].bridge_context_id ||
 				!left_certificate || !right_certificate ||
-				left_certificate->substitution_id !=
+				left_certificate->structural_id !=
 					db->bridges[i].left_substitution_id ||
-				right_certificate->substitution_id !=
+				right_certificate->structural_id !=
 					db->bridges[i].right_substitution_id) {
 				return -1;
 			}
@@ -515,8 +429,7 @@ static int hott_observation_goal_is_valid(
 	uint32_t expected_id,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_hott_bridge_db* bridges,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -524,10 +437,10 @@ static int hott_observation_goal_is_valid(
 	const struct prototype_judgement_db* judgement
 ) {
 	if (!goal || !hott_category_is_valid(goal->category) || goal->id != expected_id ||
-		prototype_context_formation_certificate_db_validate(
-			context_certificates, contexts, terms, type_declarations, judgement
-		) != 0 || prototype_substitution_certificate_db_validate(
-			certificates, substitutions, judgement
+		prototype_cwf_certificate_db_validate_contexts(
+			cwf_certificates, contexts, terms, type_declarations, judgement
+		) != 0 || prototype_cwf_certificate_db_validate_substitutions(
+			cwf_certificates, substitutions, judgement
 		) != 0) {
 		return 0;
 	}
@@ -537,17 +450,17 @@ static int hott_observation_goal_is_valid(
 		prototype_judgement_claim_get(judgement, goal->left_claim_id);
 	const struct prototype_judgement_claim* right =
 		prototype_judgement_claim_get(judgement, goal->right_claim_id);
-	if (!carrier || !left || !right || left->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		right->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		left->context_id != right->context_id ||
-		left->classifier != right->classifier ||
-		carrier->subject != left->classifier ||
+	if (!carrier || !left || !right || left->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		right->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		left->proposition->context_id != right->proposition->context_id ||
+		left->proposition->classifier != right->proposition->classifier ||
+		carrier->proposition->subject != left->proposition->classifier ||
 		!hott_is_type_claim_matches(
 			terms, type_declarations, judgement, goal->carrier_claim_id,
-			left->context_id, carrier->subject
+			left->proposition->context_id, carrier->proposition->subject
 		) || !hott_operation_matches_claim(operations, left) ||
 		!hott_operation_matches_claim(operations, right) ||
-		!hott_context_is_formed(contexts, context_certificates, left->context_id)) {
+		!hott_context_is_formed(contexts, cwf_certificates, left->proposition->context_id)) {
 		return 0;
 	}
 	int left_category;
@@ -568,24 +481,17 @@ static int hott_observation_goal_is_valid(
 	const struct prototype_hott_bridge* bridge = prototype_hott_bridge_db_get(
 		bridges, goal->bridge_id
 	);
-	return bridge && bridge->source_context_id == left->context_id &&
+	return bridge && bridge->source_context_id == left->proposition->context_id &&
 		hott_bridge_record_is_valid(
 			bridge, goal->bridge_id, contexts, substitutions,
-			context_certificates, certificates
+			cwf_certificates
 		);
 }
 
 int prototype_hott_observation_goal_db_intern(
 	struct prototype_hott_observation_goal_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	int category,
 	uint32_t carrier_claim_id,
 	uint32_t left_claim_id,
@@ -593,7 +499,20 @@ int prototype_hott_observation_goal_db_intern(
 	uint32_t bridge_id,
 	uint32_t* p_goal_id
 ) {
-	if (!db || !p_goal_id || !db->goals) {
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	const struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_operation_graph* operations =
+		kernel ? kernel->operations : NULL;
+	const struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
+	if (!db || !p_goal_id || !db->goals ||
+		prototype_kernel_view_validate(kernel) != 0) {
 		return -1;
 	}
 	struct prototype_hott_observation_goal goal = {
@@ -605,8 +524,8 @@ int prototype_hott_observation_goal_db_intern(
 		.bridge_id = bridge_id
 	};
 	if (!hott_observation_goal_is_valid(
-			&goal, goal.id, contexts, substitutions, context_certificates,
-			certificates, bridges, terms, type_declarations, operations, judgement
+			&goal, goal.id, contexts, substitutions, cwf_certificates,
+			bridges, terms, type_declarations, operations, judgement
 		)) {
 		return -1;
 	}
@@ -630,24 +549,31 @@ int prototype_hott_observation_goal_db_intern(
 
 int prototype_hott_observation_goal_db_validate(
 	const struct prototype_hott_observation_goal_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_kernel_view* kernel,
+	const struct prototype_hott_bridge_db* bridges
 ) {
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	const struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_operation_graph* operations =
+		kernel ? kernel->operations : NULL;
+	const struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
 	if (!db || db->goal_count > db->goal_capacity ||
-		(db->goal_count != 0 && !db->goals)) {
+		(db->goal_count != 0 && !db->goals) ||
+		prototype_kernel_view_validate(kernel) != 0 ||
+		prototype_hott_bridge_db_validate(bridges, kernel) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < db->goal_count; ++i) {
 		if (!hott_observation_goal_is_valid(
-				&db->goals[i], i, contexts, substitutions, context_certificates,
-				certificates, bridges, terms, type_declarations, operations, judgement
+				&db->goals[i], i, contexts, substitutions, cwf_certificates,
+				bridges, terms, type_declarations, operations, judgement
 			)) {
 			return -1;
 		}
@@ -875,22 +801,24 @@ static int candidate_cycle_visit(
 int prototype_hott_candidate_db_validate(
 	const struct prototype_hott_candidate_db* db,
 	const struct prototype_hott_observation_goal_db* goals,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement,
-	const struct prototype_operation_graph* operations
+	const struct prototype_kernel_view* kernel
 ) {
-	if (!db || !goals || !contexts || !substitutions || !context_certificates ||
-		!substitution_certificates || !terms || !type_declarations || !judgement ||
-		!operations || prototype_context_formation_certificate_db_validate(
-			context_certificates, contexts, terms, type_declarations, judgement
-		) != 0 || prototype_substitution_certificate_db_validate(
-			substitution_certificates, substitutions, judgement
-		) != 0 || db->candidate_count > db->candidate_capacity ||
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	const struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	struct prototype_judgement_db* judgement = kernel ?
+		(struct prototype_judgement_db*)kernel->judgement : NULL;
+	const struct prototype_operation_graph* operations =
+		kernel ? kernel->operations : NULL;
+	if (!db || !goals || !contexts || !substitutions || !cwf_certificates ||
+		!cwf_certificates || !terms || !type_declarations || !judgement ||
+		!operations || prototype_kernel_view_validate(kernel) != 0 ||
+		db->candidate_count > db->candidate_capacity ||
 		db->claim_premise_count > db->claim_premise_capacity ||
 		db->child_edge_count > db->child_edge_capacity ||
 		db->conversion_premise_count > db->conversion_premise_capacity ||
@@ -948,7 +876,7 @@ int prototype_hott_candidate_db_validate(
 				];
 			if (edge->candidate_id != i || !hott_role_is_valid(edge->role) ||
 				!hott_rule_allows_role(candidate->rule, edge->role) ||
-				edge->certificate_id >= context_certificates->certificate_count) {
+				edge->certificate_id >= cwf_certificates->certificate_count) {
 				return -1;
 			}
 		}
@@ -960,7 +888,7 @@ int prototype_hott_candidate_db_validate(
 				];
 			if (edge->candidate_id != i || !hott_role_is_valid(edge->role) ||
 				!hott_rule_allows_role(candidate->rule, edge->role) ||
-				edge->certificate_id >= substitution_certificates->certificate_count) {
+				edge->certificate_id >= cwf_certificates->certificate_count) {
 				return -1;
 			}
 		}
@@ -1033,15 +961,8 @@ int prototype_hott_work_db_validate(
 	for (uint32_t i = 0; i < db->item_count; ++i) {
 		const struct prototype_hott_work_item* item = &db->items[i];
 		if (item->id != i || item->goal_id >= goals->goal_count ||
-			!hott_work_state_is_valid(item->state) ||
-			!hott_residual_reason_is_valid(item->residual_reason) ||
-			strcmp(
-				item->calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT
-			) != 0 ||
-			((item->state == PROTOTYPE_HOTT_WORK_RESIDUAL ||
-			  item->state == PROTOTYPE_HOTT_WORK_UNSUPPORTED) !=
-			 (item->residual_reason != PROTOTYPE_HOTT_RESIDUAL_NONE)) ||
-			(item->state == PROTOTYPE_HOTT_WORK_READY &&
+			!hott_deterministic_outcome_is_valid(&item->outcome, 1) ||
+			(item->outcome.state == PROTOTYPE_HOTT_WORK_READY &&
 			 item->selected_candidate_id == PROTOTYPE_INVALID_ID) ||
 			(item->selected_candidate_id != PROTOTYPE_INVALID_ID &&
 			 (item->selected_candidate_id >= candidates->candidate_count ||
@@ -1195,16 +1116,9 @@ static int hott_candidate_rule_for_type_view(
 static int hott_plan_add_conversion(
 	struct prototype_hott_observation_goal_db* goals,
 	struct prototype_hott_candidate_db* candidates,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	const struct prototype_hott_observation_goal* goal,
 	uint32_t goal_id,
 	uint32_t context_id,
@@ -1215,6 +1129,10 @@ static int hott_plan_add_conversion(
 	uint64_t step_limit,
 	uint64_t* p_steps
 ) {
+	const struct prototype_context_db* contexts = kernel->contexts;
+	struct prototype_term_db* terms = kernel->terms;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel->type_declarations;
 	struct prototype_kernel_conversion_goal request = {
 		.id = (uint32_t)candidates->conversion_premise_count,
 		.context_id = context_id,
@@ -1247,9 +1165,7 @@ static int hott_plan_add_conversion(
 	}
 	uint32_t anchor_goal;
 	if (prototype_hott_observation_goal_db_intern(
-			goals, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, goal->category, goal->carrier_claim_id,
+			goals, kernel, bridges, goal->category, goal->carrier_claim_id,
 			goal->left_claim_id, goal->left_claim_id, goal->bridge_id, &anchor_goal
 		) != 0 || hott_candidate_add_child(
 			candidates, candidate_id, anchor_goal,
@@ -1313,8 +1229,8 @@ static int hott_find_unique_claim(
 	}
 	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (claim->kind != kind || claim->context_id != context_id ||
-			claim->subject != subject || claim->classifier != classifier) {
+		if (claim->proposition->kind != kind || claim->proposition->context_id != context_id ||
+			claim->proposition->subject != subject || claim->proposition->classifier != classifier) {
 			continue;
 		}
 		if (found != PROTOTYPE_INVALID_ID) {
@@ -1349,12 +1265,12 @@ static int hott_find_unique_derivation_premise(
 			continue;
 		}
 		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
-			uint32_t claim_id = derivation->premise_claim_ids[j];
+			uint32_t claim_id = derivation->premises[j].claim_id;
 			const struct prototype_judgement_claim* claim =
 				prototype_judgement_claim_get(judgement, claim_id);
-			if (!claim || claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				claim->subject != expected_subject ||
-				claim->classifier != expected_classifier) {
+			if (!claim || claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				claim->proposition->subject != expected_subject ||
+				claim->proposition->classifier != expected_classifier) {
 				continue;
 			}
 			if (found != PROTOTYPE_INVALID_ID && found != claim_id) {
@@ -1374,26 +1290,32 @@ int prototype_hott_observation_plan(
 	struct prototype_hott_observation_goal_db* goals,
 	struct prototype_hott_candidate_db* candidates,
 	struct prototype_hott_work_db* work,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	uint32_t goal_id,
 	uint32_t source_ast,
 	int normalization_profile,
 	uint64_t step_limit,
 	uint32_t* p_work_item_id
 ) {
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	const struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_operation_graph* operations =
+		kernel ? kernel->operations : NULL;
+	const struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
 	const struct prototype_hott_observation_goal* goal =
 		prototype_hott_observation_goal_db_get(goals, goal_id);
-	if (!goal || !candidates || !work || !contexts || !substitutions ||
-		!context_certificates || !substitution_certificates || !bridges || !terms ||
+	if (prototype_kernel_view_validate(kernel) != 0 || !goal || !candidates ||
+		!work || !contexts || !substitutions ||
+		!cwf_certificates || !cwf_certificates || !bridges || !terms ||
 		!type_declarations || !operations || !judgement || !p_work_item_id ||
 		!work->items ||
 		work->item_count >= work->item_capacity) {
@@ -1406,24 +1328,26 @@ int prototype_hott_observation_plan(
 	const struct prototype_judgement_claim* right_claim =
 		prototype_judgement_claim_get(judgement, goal->right_claim_id);
 	if (!carrier_claim || !left_claim || !right_claim ||
-		carrier_claim->subject >= terms->term_count ||
-		left_claim->subject >= terms->term_count ||
-		right_claim->subject >= terms->term_count) {
+		carrier_claim->proposition->subject >= terms->term_count ||
+		left_claim->proposition->subject >= terms->term_count ||
+		right_claim->proposition->subject >= terms->term_count) {
 		return -1;
 	}
-	uint32_t carrier = carrier_claim->subject;
-	uint32_t left = left_claim->subject;
-	uint32_t right = right_claim->subject;
+	uint32_t carrier = carrier_claim->proposition->subject;
+	uint32_t left = left_claim->proposition->subject;
+	uint32_t right = right_claim->proposition->subject;
 	struct prototype_hott_work_item item = {
 		.id = (uint32_t)work->item_count,
 		.goal_id = goal_id,
-		.state = PROTOTYPE_HOTT_WORK_PENDING,
 		.selected_candidate_id = PROTOTYPE_INVALID_ID,
-		.residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE,
 		.source_ast = source_ast,
-		.normalization_profile = normalization_profile,
-		.step_limit = step_limit,
-		.term_graph_revision = terms->normalization_graph_revision
+		.outcome = {
+			.state = PROTOTYPE_HOTT_WORK_PENDING,
+			.residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE,
+			.normalization_profile = normalization_profile,
+			.step_limit = step_limit,
+			.term_graph_revision = terms->normalization_graph_revision
+		}
 	};
 	size_t goal_mark = goals->goal_count;
 	size_t candidate_mark = candidates->candidate_count;
@@ -1434,9 +1358,9 @@ int prototype_hott_observation_plan(
 	size_t substitution_premise_mark =
 		candidates->substitution_certificate_premise_count;
 	memcpy(
-		item.calculus_fingerprint,
+		item.outcome.calculus_fingerprint,
 		PROTOTYPE_HOTT_CALCULUS_FINGERPRINT,
-		sizeof(item.calculus_fingerprint)
+		sizeof(item.outcome.calculus_fingerprint)
 	);
 	int reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
 	int status = hott_term_fragment_scan(terms, left, 0, &reason);
@@ -1447,16 +1371,16 @@ int prototype_hott_observation_plan(
 		return -1;
 	}
 	if (status > 0) {
-		item.state = reason == PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL ||
+		item.outcome.state = reason == PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL ||
 			reason == PROTOTYPE_HOTT_RESIDUAL_EFFECT_ROW_UNRESOLVED ?
 			PROTOTYPE_HOTT_WORK_RESIDUAL : PROTOTYPE_HOTT_WORK_UNSUPPORTED;
-		item.residual_reason = reason;
+		item.outcome.residual_reason = reason;
 		goto commit;
 	}
 	const struct prototype_term* carrier_term = &terms->terms[carrier];
 	if (carrier_term->tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
-		item.state = PROTOTYPE_HOTT_WORK_UNSUPPORTED;
-		item.residual_reason = PROTOTYPE_HOTT_RESIDUAL_UNIVERSE;
+		item.outcome.state = PROTOTYPE_HOTT_WORK_UNSUPPORTED;
+		item.outcome.residual_reason = PROTOTYPE_HOTT_RESIDUAL_UNIVERSE;
 		goto commit;
 	}
 	if (left == right) {
@@ -1470,11 +1394,9 @@ int prototype_hott_observation_plan(
 	}
 	if (left != right) {
 		status = hott_plan_add_conversion(
-			goals, candidates, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			definitions, operations, judgement, goal, goal_id,
-			left_claim->context_id, carrier, left, right, normalization_profile,
-			step_limit, &item.steps_used
+			goals, candidates, kernel, bridges, definitions, goal, goal_id,
+			left_claim->proposition->context_id, carrier, left, right, normalization_profile,
+			step_limit, &item.outcome.steps_used
 		);
 		if (status < 0) {
 			return -1;
@@ -1505,8 +1427,8 @@ int prototype_hott_observation_plan(
 			return -1;
 		}
 		if (status > 0) {
-			item.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
-			item.residual_reason = reason;
+			item.outcome.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
+			item.outcome.residual_reason = reason;
 			goto commit;
 		}
 		uint32_t candidate_id;
@@ -1521,8 +1443,8 @@ int prototype_hott_observation_plan(
 			terms, carrier_term->as.computation_type.label
 		);
 		if (purity != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
-			item.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
-			item.residual_reason = purity == PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL ?
+			item.outcome.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
+			item.outcome.residual_reason = purity == PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL ?
 				PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL :
 				PROTOTYPE_HOTT_RESIDUAL_EFFECT_ROW_UNRESOLVED;
 			goto commit;
@@ -1538,15 +1460,15 @@ int prototype_hott_observation_plan(
 			) != 0) {
 			return -1;
 		}
-		item.steps_used += left_result.steps_used + right_result.steps_used;
+		item.outcome.steps_used += left_result.steps_used + right_result.steps_used;
 		if (left_result.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
 			right_result.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
 			left_result.term_id >= terms->term_count ||
 			right_result.term_id >= terms->term_count ||
 			terms->terms[left_result.term_id].tag != PROTOTYPE_TERM_RETURN ||
 			terms->terms[right_result.term_id].tag != PROTOTYPE_TERM_RETURN) {
-			item.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
-			item.residual_reason =
+			item.outcome.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
+			item.outcome.residual_reason =
 				PROTOTYPE_HOTT_RESIDUAL_NEUTRAL_PURE_COMPUTATION;
 			goto commit;
 		}
@@ -1556,16 +1478,16 @@ int prototype_hott_observation_plan(
 				&candidate_id
 			) != 0 || hott_candidate_add_exposure(
 				candidates, contexts, terms, type_declarations, definitions,
-				candidate_id, left_claim->context_id, carrier, left,
+				candidate_id, left_claim->proposition->context_id, carrier, left,
 				left_result.term_id,
 				PROTOTYPE_HOTT_CHILD_COMP_LEFT_RETURN_EXPOSURE, 0,
-				normalization_profile, step_limit, &item.steps_used
+				normalization_profile, step_limit, &item.outcome.steps_used
 			) != 0 || hott_candidate_add_exposure(
 				candidates, contexts, terms, type_declarations, definitions,
-				candidate_id, right_claim->context_id, carrier, right,
+				candidate_id, right_claim->proposition->context_id, carrier, right,
 				right_result.term_id,
 				PROTOTYPE_HOTT_CHILD_COMP_RIGHT_RETURN_EXPOSURE, 0,
-				normalization_profile, step_limit, &item.steps_used
+				normalization_profile, step_limit, &item.outcome.steps_used
 			) != 0) {
 			return -1;
 		}
@@ -1579,7 +1501,7 @@ int prototype_hott_observation_plan(
 		uint32_t right_value_claim;
 		int result_authority = hott_find_unique_claim(
 			judgement, PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
-			left_claim->context_id, result_classifier, carrier_claim->classifier,
+			left_claim->proposition->context_id, result_classifier, carrier_claim->proposition->classifier,
 			&result_carrier_claim
 		);
 		int left_authority = hott_find_unique_derivation_premise(
@@ -1594,15 +1516,13 @@ int prototype_hott_observation_plan(
 			return -1;
 		}
 		if (result_authority != 0 || left_authority != 0 || right_authority != 0) {
-			item.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
-			item.residual_reason = PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
+			item.outcome.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
+			item.outcome.residual_reason = PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
 			goto commit;
 		}
 		uint32_t result_goal;
 		if (prototype_hott_observation_goal_db_intern(
-				goals, contexts, substitutions, context_certificates,
-				substitution_certificates, bridges, terms, type_declarations,
-				operations, judgement, PROTOTYPE_HOTT_OBSERVATION_VALUE,
+				goals, kernel, bridges, PROTOTYPE_HOTT_OBSERVATION_VALUE,
 				result_carrier_claim, left_value_claim, right_value_claim,
 				goal->bridge_id, &result_goal
 			) != 0 || hott_candidate_add_child(
@@ -1620,8 +1540,8 @@ int prototype_hott_observation_plan(
 			if (status < 0) {
 				return -1;
 			}
-			item.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
-			item.residual_reason = reason;
+			item.outcome.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
+			item.outcome.residual_reason = reason;
 			goto commit;
 		}
 		struct prototype_term_normalization_result left_result;
@@ -1635,15 +1555,15 @@ int prototype_hott_observation_plan(
 			) != 0) {
 			return -1;
 		}
-		item.steps_used += left_result.steps_used + right_result.steps_used;
+		item.outcome.steps_used += left_result.steps_used + right_result.steps_used;
 		if (left_result.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
 			right_result.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
 			left_result.term_id >= terms->term_count ||
 			right_result.term_id >= terms->term_count ||
 			terms->terms[left_result.term_id].tag != PROTOTYPE_TERM_THUNK ||
 			terms->terms[right_result.term_id].tag != PROTOTYPE_TERM_THUNK) {
-			item.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
-			item.residual_reason =
+			item.outcome.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
+			item.outcome.residual_reason =
 				PROTOTYPE_HOTT_RESIDUAL_NEUTRAL_PURE_COMPUTATION;
 			goto commit;
 		}
@@ -1657,7 +1577,7 @@ int prototype_hott_observation_plan(
 		uint32_t right_computation_claim;
 		int carrier_authority = hott_find_unique_claim(
 			judgement, PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
-			left_claim->context_id, computation_carrier, carrier_claim->classifier,
+			left_claim->proposition->context_id, computation_carrier, carrier_claim->proposition->classifier,
 			&computation_carrier_claim
 		);
 		int left_authority = hott_find_unique_derivation_premise(
@@ -1672,8 +1592,8 @@ int prototype_hott_observation_plan(
 			return -1;
 		}
 		if (carrier_authority != 0 || left_authority != 0 || right_authority != 0) {
-			item.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
-			item.residual_reason = PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
+			item.outcome.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
+			item.outcome.residual_reason = PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE;
 			goto commit;
 		}
 		uint32_t candidate_id;
@@ -1685,9 +1605,7 @@ int prototype_hott_observation_plan(
 		}
 		uint32_t computation_goal;
 		if (prototype_hott_observation_goal_db_intern(
-				goals, contexts, substitutions, context_certificates,
-				substitution_certificates, bridges, terms, type_declarations,
-				operations, judgement, PROTOTYPE_HOTT_OBSERVATION_COMPUTATION,
+				goals, kernel, bridges, PROTOTYPE_HOTT_OBSERVATION_COMPUTATION,
 				computation_carrier_claim, left_computation_claim,
 				right_computation_claim, goal->bridge_id, &computation_goal
 			) != 0 || hott_candidate_add_child(
@@ -1705,20 +1623,20 @@ int prototype_hott_observation_plan(
 		}
 	}
 	if (selected_candidate != PROTOTYPE_INVALID_ID) {
-		item.state = PROTOTYPE_HOTT_WORK_READY;
+		item.outcome.state = PROTOTYPE_HOTT_WORK_READY;
 		item.selected_candidate_id = selected_candidate;
 	} else if (carrier_term->tag == PROTOTYPE_TERM_PRIMITIVE_TEXT ||
 		carrier_term->tag == PROTOTYPE_TERM_PRIMITIVE_INT ||
 		carrier_term->tag == PROTOTYPE_TERM_PRIMITIVE_INT64) {
-		item.state = PROTOTYPE_HOTT_WORK_UNSUPPORTED;
-		item.residual_reason = PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE;
+		item.outcome.state = PROTOTYPE_HOTT_WORK_UNSUPPORTED;
+		item.outcome.residual_reason = PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE;
 	} else {
-		item.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
-		item.residual_reason = PROTOTYPE_HOTT_RESIDUAL_CONVERSION;
+		item.outcome.state = PROTOTYPE_HOTT_WORK_RESIDUAL;
+		item.outcome.residual_reason = PROTOTYPE_HOTT_RESIDUAL_CONVERSION;
 	}
 
 commit:
-	if (item.state != PROTOTYPE_HOTT_WORK_READY) {
+	if (item.outcome.state != PROTOTYPE_HOTT_WORK_READY) {
 		goals->goal_count = goal_mark;
 		candidates->candidate_count = candidate_mark;
 		candidates->claim_premise_count = claim_premise_mark;
@@ -1757,8 +1675,8 @@ int prototype_hott_residual_db_add_from_work(
 		work, work_item_id
 	);
 	if (!db || !p_obligation_id || !db->obligations || !item ||
-		(item->state != PROTOTYPE_HOTT_WORK_RESIDUAL &&
-		 item->state != PROTOTYPE_HOTT_WORK_UNSUPPORTED) ||
+		(item->outcome.state != PROTOTYPE_HOTT_WORK_RESIDUAL &&
+		 item->outcome.state != PROTOTYPE_HOTT_WORK_UNSUPPORTED) ||
 		db->obligation_count >= db->obligation_capacity) {
 		return -1;
 	}
@@ -1792,10 +1710,10 @@ int prototype_hott_residual_db_validate(
 			work, obligation->work_item_id
 		);
 		if (obligation->obligation_id != i || !item ||
-			(item->state != PROTOTYPE_HOTT_WORK_RESIDUAL &&
-			 item->state != PROTOTYPE_HOTT_WORK_UNSUPPORTED) ||
+			(item->outcome.state != PROTOTYPE_HOTT_WORK_RESIDUAL &&
+			 item->outcome.state != PROTOTYPE_HOTT_WORK_UNSUPPORTED) ||
 			strcmp(
-				item->calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT
+				item->outcome.calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT
 			) != 0) {
 			return -1;
 		}
@@ -1927,7 +1845,7 @@ static int hott_action_request_is_valid(
 	uint32_t expected_id,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
+	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_hott_bridge_db* bridges,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -1944,7 +1862,7 @@ static int hott_action_request_is_valid(
 		return request->key.context.source_context_id < contexts->context_count &&
 			hott_context_is_formed(
 				contexts,
-				context_certificates,
+				cwf_certificates,
 				request->key.context.source_context_id
 			);
 	case PROTOTYPE_HOTT_ACTION_SUBSTITUTION:
@@ -1979,14 +1897,14 @@ static int hott_action_request_is_valid(
 					bridges, request->key.type.source_bridge_id
 				);
 			return claim && bridge &&
-				bridge->source_context_id == claim->context_id &&
+				bridge->source_context_id == claim->proposition->context_id &&
 				hott_is_type_claim_matches(
 					terms,
 					type_declarations,
 					judgement,
 					request->key.type.source_claim_id,
-					claim->context_id,
-					claim->subject
+					claim->proposition->context_id,
+					claim->proposition->subject
 				);
 		}
 	case PROTOTYPE_HOTT_ACTION_TERM:
@@ -2010,17 +1928,17 @@ static int hott_action_request_is_valid(
 					judgement, type_request->key.type.source_claim_id
 				) : NULL;
 			return claim &&
-				claim->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
 				hott_operation_matches_claim(operations, claim) &&
 				bridge &&
-				bridge->source_context_id == claim->context_id &&
+				bridge->source_context_id == claim->proposition->context_id &&
 				type_request &&
 				type_request->key.type.source_bridge_id ==
 					request->key.term.source_bridge_id &&
 				type_claim &&
-				type_claim->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-				type_claim->context_id == claim->context_id &&
-				type_claim->subject == claim->classifier;
+				type_claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+				type_claim->proposition->context_id == claim->proposition->context_id &&
+				type_claim->proposition->subject == claim->proposition->classifier;
 		}
 	default:
 		return 0;
@@ -2029,26 +1947,29 @@ static int hott_action_request_is_valid(
 
 int prototype_hott_action_request_intern(
 	struct prototype_hott_action_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	struct prototype_hott_action_request request,
 	uint32_t* p_request_id
 ) {
+	if (db) {
+		db->request_intern_requests++;
+	}
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	const struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_operation_graph* operations =
+		kernel ? kernel->operations : NULL;
+	const struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
 	if (!db || !p_request_id || !db->requests ||
 		db->request_count >= db->request_capacity ||
-		prototype_context_formation_certificate_db_validate(
-			context_certificates, contexts, terms, type_declarations, judgement
-		) != 0 ||
-		prototype_substitution_certificate_db_validate(
-			substitution_certificates, substitutions, judgement
-		) != 0) {
+		prototype_kernel_view_validate(kernel) != 0) {
 		return -1;
 	}
 	request.id = (uint32_t)db->request_count;
@@ -2060,7 +1981,7 @@ int prototype_hott_action_request_intern(
 			request.id,
 			contexts,
 			substitutions,
-			context_certificates,
+			cwf_certificates,
 			bridges,
 			terms,
 			type_declarations,
@@ -2079,6 +2000,7 @@ int prototype_hott_action_request_intern(
 		}
 		if (db->requests[i].key_hash == request.key_hash &&
 			hott_action_request_key_equal(&db->requests[i], &request)) {
+			db->request_intern_hits++;
 			*p_request_id = i;
 			return 0;
 		}
@@ -2097,8 +2019,7 @@ static int hott_action_certificate_is_valid(
 	uint32_t expected_id,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_hott_bridge_db* bridges,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -2106,7 +2027,7 @@ static int hott_action_certificate_is_valid(
 	const struct prototype_judgement_db* judgement
 ) {
 	(void)substitutions;
-	(void)substitution_certificates;
+	(void)cwf_certificates;
 	(void)operations;
 	(void)type_declarations;
 	const struct prototype_hott_action_request* request =
@@ -2156,15 +2077,15 @@ static int hott_action_certificate_is_valid(
 			if (request->kind != PROTOTYPE_HOTT_ACTION_TYPE || !source || !bridge ||
 				!right_context || !left_context || !relation ||
 				type->left_context_certificate_id >=
-					context_certificates->certificate_count ||
+					cwf_certificates->certificate_count ||
 				type->right_context_certificate_id >=
-					context_certificates->certificate_count ||
-				context_certificates->certificates[
+					cwf_certificates->certificate_count ||
+				cwf_certificates->certificates[
 					type->left_context_certificate_id
-				].context_id != right_context->parent ||
-				context_certificates->certificates[
+				].structural_id != right_context->parent ||
+				cwf_certificates->certificates[
 					type->right_context_certificate_id
-				].context_id != type->endpoint_context_id ||
+				].structural_id != type->endpoint_context_id ||
 				left_context->binding_id != type->left_endpoint_binding_id ||
 				right_context->binding_id != type->right_endpoint_binding_id ||
 				prototype_term_observation_type_info(
@@ -2177,7 +2098,7 @@ static int hott_action_certificate_is_valid(
 				) != 0) {
 				return 0;
 			}
-			return bridge->source_context_id == source->context_id &&
+			return bridge->source_context_id == source->proposition->context_id &&
 				left_type == prototype_context_classifier_term(left_context) &&
 				right_type == prototype_context_classifier_term(right_context) &&
 				left_endpoint < terms->term_count &&
@@ -2188,10 +2109,10 @@ static int hott_action_certificate_is_valid(
 				terms->terms[right_endpoint].tag == PROTOTYPE_TERM_VAR &&
 				terms->terms[right_endpoint].as.var.binding_id ==
 					type->right_endpoint_binding_id &&
-				relation->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-				relation->context_id == type->endpoint_context_id &&
-				relation->subject == type->relation_type_term_id &&
-				relation->classifier == source->classifier;
+				relation->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+				relation->proposition->context_id == type->endpoint_context_id &&
+				relation->proposition->subject == type->relation_type_term_id &&
+				relation->proposition->classifier == source->proposition->classifier;
 		}
 	case PROTOTYPE_HOTT_ACTION_CERTIFICATE_SUBSTITUTION_NATURALITY:
 		{
@@ -2248,12 +2169,13 @@ static int hott_action_certificate_is_valid(
 				return 0;
 			}
 			if (result->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
-				const struct prototype_substitution_certificate* extension =
-					prototype_substitution_certificate_db_get(
-						substitution_certificates,
-						action->result_substitution_certificate_id
+				const struct prototype_cwf_certificate* extension =
+					prototype_cwf_certificate_db_get_kind(
+						cwf_certificates,
+						action->result_substitution_certificate_id,
+						PROTOTYPE_CWF_CERTIFICATE_SUBSTITUTION_FORMATION
 					);
-				return extension && extension->substitution_id ==
+				return extension && extension->structural_id ==
 					action->result_substitution_id;
 			}
 			return action->result_substitution_certificate_id ==
@@ -2277,7 +2199,7 @@ static int hott_action_certificate_is_valid(
 			for (uint32_t i = 0; i < db->result_count; ++i) {
 				const struct prototype_hott_action_result* result = &db->results[i];
 				if (result->request_id == request->key.term.type_action_request_id &&
-					result->state == PROTOTYPE_HOTT_ACTION_RESULT_READY &&
+					result->outcome.state == PROTOTYPE_HOTT_ACTION_RESULT_READY &&
 					result->certificate_id < db->certificate_count) {
 					type_certificate = &db->certificates[result->certificate_id];
 					break;
@@ -2289,15 +2211,17 @@ static int hott_action_certificate_is_valid(
 				prototype_substitution_get(
 					substitutions, term->endpoint_instantiation_substitution_id
 				);
-			const struct prototype_substitution_certificate* left_extension =
-				prototype_substitution_certificate_db_get(
-					substitution_certificates,
-					term->left_endpoint_substitution_certificate_id
+			const struct prototype_cwf_certificate* left_extension =
+				prototype_cwf_certificate_db_get_kind(
+					cwf_certificates,
+					term->left_endpoint_substitution_certificate_id,
+					PROTOTYPE_CWF_CERTIFICATE_SUBSTITUTION_FORMATION
 				);
-			const struct prototype_substitution_certificate* right_extension =
-				prototype_substitution_certificate_db_get(
-					substitution_certificates,
-					term->right_endpoint_substitution_certificate_id
+			const struct prototype_cwf_certificate* right_extension =
+				prototype_cwf_certificate_db_get_kind(
+					cwf_certificates,
+					term->right_endpoint_substitution_certificate_id,
+					PROTOTYPE_CWF_CERTIFICATE_SUBSTITUTION_FORMATION
 				);
 			const struct prototype_judgement_claim* witness_claim =
 				prototype_judgement_claim_get(
@@ -2320,12 +2244,12 @@ static int hott_action_certificate_is_valid(
 				endpoint->target_context !=
 					type_certificate->data.type.endpoint_context_id ||
 				endpoint->kind != PROTOTYPE_SUBSTITUTION_EXTEND ||
-				left_extension->substitution_id != endpoint->first ||
-				right_extension->substitution_id !=
+				left_extension->structural_id != endpoint->first ||
+				right_extension->structural_id !=
 					term->endpoint_instantiation_substitution_id ||
-				witness_claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				witness_claim->context_id != bridge->bridge_context_id ||
-				witness_claim->subject != term->witness_term_id) {
+				witness_claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				witness_claim->proposition->context_id != bridge->bridge_context_id ||
+				witness_claim->proposition->subject != term->witness_term_id) {
 				return 0;
 			}
 			uint32_t relation;
@@ -2337,7 +2261,7 @@ static int hott_action_certificate_is_valid(
 				type_certificate->data.type.relation_type_term_id,
 				term->endpoint_instantiation_substitution_id,
 				&relation
-			) == 0 && relation == witness_claim->classifier;
+			) == 0 && relation == witness_claim->proposition->classifier;
 		}
 	default:
 		return 0;
@@ -2346,20 +2270,26 @@ static int hott_action_certificate_is_valid(
 
 int prototype_hott_action_certificate_add(
 	struct prototype_hott_action_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
 	struct prototype_hott_action_certificate certificate,
 	uint32_t* p_certificate_id
 ) {
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	const struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_operation_graph* operations =
+		kernel ? kernel->operations : NULL;
+	const struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
 	if (!db || !p_certificate_id || !db->certificates ||
-		db->certificate_count >= db->certificate_capacity) {
+		db->certificate_count >= db->certificate_capacity ||
+		prototype_kernel_view_validate(kernel) != 0) {
 		return -1;
 	}
 	certificate.id = (uint32_t)db->certificate_count;
@@ -2369,8 +2299,7 @@ int prototype_hott_action_certificate_add(
 			certificate.id,
 			contexts,
 			substitutions,
-			context_certificates,
-			substitution_certificates,
+			cwf_certificates,
 			bridges,
 			terms,
 			type_declarations,
@@ -2394,25 +2323,24 @@ int prototype_hott_action_result_publish(
 	struct prototype_hott_action_result result,
 	uint32_t* p_result_id
 ) {
+	if (db) {
+		db->outcome_publish_requests++;
+	}
 	if (!db || !p_result_id || !db->results ||
 		db->result_count >= db->result_capacity ||
 		!prototype_hott_action_request_get(db, result.request_id) ||
-		strcmp(
-			result.calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT
-		) != 0 ||
-		result.state < PROTOTYPE_HOTT_ACTION_RESULT_READY ||
-		result.state > PROTOTYPE_HOTT_ACTION_RESULT_UNSUPPORTED) {
+		!hott_deterministic_outcome_is_valid(&result.outcome, 0)) {
 		return -1;
 	}
-	if (result.state == PROTOTYPE_HOTT_ACTION_RESULT_READY) {
-		if (result.residual_reason != PROTOTYPE_HOTT_RESIDUAL_NONE ||
+	if (result.outcome.state == PROTOTYPE_HOTT_ACTION_RESULT_READY) {
+		if (result.outcome.residual_reason != PROTOTYPE_HOTT_RESIDUAL_NONE ||
 			result.certificate_id >= db->certificate_count ||
 			db->certificates[result.certificate_id].request_id !=
 				result.request_id) {
 			return -1;
 		}
-	} else if (!hott_residual_reason_is_valid(result.residual_reason) ||
-		result.residual_reason == PROTOTYPE_HOTT_RESIDUAL_NONE ||
+	} else if (!hott_residual_reason_is_valid(result.outcome.residual_reason) ||
+		result.outcome.residual_reason == PROTOTYPE_HOTT_RESIDUAL_NONE ||
 		result.certificate_id != PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
@@ -2485,6 +2413,57 @@ static int hott_zero_field_ordinary_adt(
 	return 1;
 }
 
+static int hott_type_former_descriptor_finalize(
+	struct prototype_hott_type_former_descriptor* descriptor
+) {
+	if (!descriptor || !descriptor->admitted) {
+		return 0;
+	}
+	descriptor->capabilities =
+		(struct prototype_hott_type_former_capabilities) {
+			.type_action = PROTOTYPE_HOTT_CAPABILITY_SUPPORTED,
+			.term_action = PROTOTYPE_HOTT_CAPABILITY_SUPPORTED,
+			.ordinary_reindex = PROTOTYPE_HOTT_CAPABILITY_SUPPORTED,
+			.purity = PROTOTYPE_HOTT_CAPABILITY_SUPPORTED,
+			.resource_hook = PROTOTYPE_HOTT_CAPABILITY_DEFERRED,
+			.artifact = PROTOTYPE_HOTT_CAPABILITY_DEFERRED
+		};
+	switch (descriptor->kind) {
+	case PROTOTYPE_HOTT_TYPE_FORMER_ORDINARY_ADT:
+		descriptor->child_role_mask =
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_ADT_FIELD) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_ADT_DEPENDENT_REINDEX);
+		break;
+	case PROTOTYPE_HOTT_TYPE_FORMER_PI:
+		descriptor->child_role_mask =
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_PI_DOMAIN_ACTION) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_PI_RELATED_INPUT) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_PI_CODOMAIN_OBSERVATION);
+		break;
+	case PROTOTYPE_HOTT_TYPE_FORMER_PURE_COMPUTATION:
+		descriptor->child_role_mask =
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_COMP_LEFT_RETURN_EXPOSURE) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_COMP_RIGHT_RETURN_EXPOSURE) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_COMP_RESULT_OBSERVATION);
+		break;
+	case PROTOTYPE_HOTT_TYPE_FORMER_THUNK:
+		descriptor->child_role_mask = UINT64_C(1) <<
+			PROTOTYPE_HOTT_CHILD_THUNK_COMPUTATION_OBSERVATION;
+		break;
+	case PROTOTYPE_HOTT_TYPE_FORMER_OBSERVATION:
+		descriptor->child_role_mask =
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_CONTEXT_ACTION) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_SUBSTITUTION_ACTION) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_TYPE_ACTION) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_TERM_ACTION) |
+			(UINT64_C(1) << PROTOTYPE_HOTT_CHILD_REINDEX_NATURALITY);
+		break;
+	default:
+		return -1;
+	}
+	return descriptor->child_role_mask != 0 ? 0 : -1;
+}
+
 int prototype_hott_type_former_descriptor_query(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -2496,8 +2475,8 @@ int prototype_hott_type_former_descriptor_query(
 	const struct prototype_judgement_claim* source =
 		prototype_judgement_claim_get(judgement, source_claim_id);
 	if (!terms || !type_declarations || !contexts || !source || !p_descriptor ||
-		source->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
-		source->subject >= terms->term_count) {
+		source->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		source->proposition->subject >= terms->term_count) {
 		return -1;
 	}
 	struct prototype_hott_type_former_descriptor descriptor = {
@@ -2506,16 +2485,16 @@ int prototype_hott_type_former_descriptor_query(
 		.type_action_rule = PROTOTYPE_HOTT_TYPE_ACTION_RULE_NONE,
 		.residual_reason = PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE,
 		.source_claim_id = source_claim_id,
-		.source_type_term_id = source->subject
+		.source_type_term_id = source->proposition->subject
 	};
-	uint32_t exposed_type = source->subject;
+	uint32_t exposed_type = source->proposition->subject;
 	struct prototype_term_normalization_result exposure;
 	if (prototype_term_normalize_with_profile(
 			terms,
 			type_declarations,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-			source->subject,
+			source->proposition->subject,
 			64,
 			&exposure
 		) == 0 && exposure.status ==
@@ -2560,7 +2539,7 @@ int prototype_hott_type_former_descriptor_query(
 			{
 				int reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
 				int status = hott_term_fragment_scan(
-					terms, source->subject, 0, &reason
+					terms, source->proposition->subject, 0, &reason
 				);
 				if (status < 0) {
 					return -1;
@@ -2631,7 +2610,7 @@ int prototype_hott_type_former_descriptor_query(
 		default:
 			if (prototype_term_observation_type_info(
 					terms,
-					source->subject,
+					source->proposition->subject,
 					&observation_left_type,
 					&observation_right_type,
 					&observation_left,
@@ -2646,6 +2625,9 @@ int prototype_hott_type_former_descriptor_query(
 			break;
 		}
 	}
+	if (hott_type_former_descriptor_finalize(&descriptor) != 0) {
+		return -1;
+	}
 	*p_descriptor = descriptor;
 	return 0;
 }
@@ -2659,17 +2641,19 @@ static int hott_publish_action_residual(
 ) {
 	struct prototype_hott_action_result result = {
 		.request_id = request_id,
-		.state = reason == PROTOTYPE_HOTT_RESIDUAL_UNIVERSE ||
-			reason == PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE ?
-			PROTOTYPE_HOTT_ACTION_RESULT_UNSUPPORTED :
-			PROTOTYPE_HOTT_ACTION_RESULT_RESIDUAL,
-		.residual_reason = reason,
 		.certificate_id = PROTOTYPE_INVALID_ID,
-		.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-		.step_limit = 0,
-		.term_graph_revision = terms->term_count
+		.outcome = {
+			.state = reason == PROTOTYPE_HOTT_RESIDUAL_UNIVERSE ||
+				reason == PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE ?
+				PROTOTYPE_HOTT_ACTION_RESULT_UNSUPPORTED :
+				PROTOTYPE_HOTT_ACTION_RESULT_RESIDUAL,
+			.residual_reason = reason,
+			.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			.step_limit = 0,
+			.term_graph_revision = terms->term_count
+		}
 	};
-	memcpy(result.calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT, 65);
+	memcpy(result.outcome.calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT, 65);
 	return prototype_hott_action_result_publish(actions, result, p_result_id);
 }
 
@@ -2690,14 +2674,16 @@ static int hott_publish_ready_action_result(
 	}
 	struct prototype_hott_action_result result = {
 		.request_id = request_id,
-		.state = PROTOTYPE_HOTT_ACTION_RESULT_READY,
-		.residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE,
 		.certificate_id = certificate_id,
-		.normalization_profile = normalization_profile,
-		.step_limit = step_limit,
-		.term_graph_revision = terms->term_count
+		.outcome = {
+			.state = PROTOTYPE_HOTT_ACTION_RESULT_READY,
+			.residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE,
+			.normalization_profile = normalization_profile,
+			.step_limit = step_limit,
+			.term_graph_revision = terms->term_count
+		}
 	};
-	memcpy(result.calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT, 65);
+	memcpy(result.outcome.calculus_fingerprint, PROTOTYPE_HOTT_CALCULUS_FINGERPRINT, 65);
 	if (prototype_hott_action_result_publish(actions, result, p_result_id) != 0) {
 		memset(&actions->certificates[certificate_id], 0,
 			sizeof(actions->certificates[certificate_id]));
@@ -2709,21 +2695,22 @@ static int hott_publish_ready_action_result(
 
 int prototype_hott_execute_type_action(
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t request_id,
 	uint32_t* p_result_id
 ) {
-	if (!actions || !contexts || !substitutions || !context_certificates ||
-		!substitution_certificates || !bridges || !terms || !type_declarations ||
-		!judgement || !p_result_id) {
+	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	struct prototype_substitution_db* substitutions = kernel ? kernel->substitutions : NULL;
+	struct prototype_cwf_certificate_db* cwf_certificates = kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations = kernel ? kernel->type_declarations : NULL;
+	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
+	struct prototype_kernel_view view;
+	if (!actions || !contexts || !substitutions || !cwf_certificates ||
+		!cwf_certificates || !bridges || !terms || !type_declarations ||
+		!judgement || !p_result_id ||
+		prototype_kernel_builder_view(kernel, &view) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(
@@ -2743,8 +2730,8 @@ int prototype_hott_execute_type_action(
 		prototype_hott_bridge_db_get(
 			bridges, request->key.type.source_bridge_id
 		) : NULL;
-	if (!source || !bridge || source->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
-		source->context_id != bridge->source_context_id) {
+	if (!source || !bridge || source->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		source->proposition->context_id != bridge->source_context_id) {
 		return -1;
 	}
 	struct prototype_hott_type_former_descriptor descriptor;
@@ -2819,7 +2806,7 @@ int prototype_hott_execute_type_action(
 	if (!left_type_evidence) {
 		return -1;
 	}
-	left_type = left_type_evidence->subject;
+	left_type = left_type_evidence->proposition->subject;
 	if (
 		prototype_context_extend(
 			contexts,
@@ -2829,8 +2816,8 @@ int prototype_hott_execute_type_action(
 			PROTOTYPE_INVALID_ID,
 			&left_context
 		) != 0 ||
-		prototype_context_formation_certificate_db_add(
-			context_certificates,
+		prototype_cwf_certificate_db_add_context(
+			cwf_certificates,
 			contexts,
 			terms,
 			type_declarations,
@@ -2868,7 +2855,7 @@ int prototype_hott_execute_type_action(
 	if (!right_type_evidence) {
 		return -1;
 	}
-	right_type = right_type_evidence->subject;
+	right_type = right_type_evidence->proposition->subject;
 	if (
 		prototype_context_extend(
 			contexts,
@@ -2878,8 +2865,8 @@ int prototype_hott_execute_type_action(
 			PROTOTYPE_INVALID_ID,
 			&endpoint_context
 		) != 0 ||
-		prototype_context_formation_certificate_db_add(
-			context_certificates,
+		prototype_cwf_certificate_db_add_context(
+			cwf_certificates,
 			contexts,
 			terms,
 			type_declarations,
@@ -2953,7 +2940,7 @@ int prototype_hott_execute_type_action(
 			relation_type,
 			prototype_judgement_claim_get(
 				judgement, endpoint_left_type_claim
-			)->classifier,
+			)->proposition->classifier,
 			endpoint_left_type_claim,
 			endpoint_type_claim,
 			left_endpoint_claim,
@@ -2977,16 +2964,7 @@ int prototype_hott_execute_type_action(
 	};
 	uint32_t certificate_id;
 	if (prototype_hott_action_certificate_add(
-			actions,
-			contexts,
-			substitutions,
-			context_certificates,
-			substitution_certificates,
-			bridges,
-			terms,
-			type_declarations,
-			operations,
-			judgement,
+			actions, &view, bridges,
 			certificate,
 			&certificate_id
 		) != 0) {
@@ -3074,8 +3052,8 @@ static uint32_t hott_is_type_claim_for_subject(
 	}
 	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (claim->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-			claim->context_id == context_id && claim->subject == subject) {
+		if (claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+			claim->proposition->context_id == context_id && claim->proposition->subject == subject) {
 			return i;
 		}
 	}
@@ -3093,10 +3071,10 @@ static uint32_t hott_has_type_claim_for_subject(
 	}
 	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (claim->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			claim->context_id == context_id && claim->subject == subject) {
+		if (claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			claim->proposition->context_id == context_id && claim->proposition->subject == subject) {
 			if (found != PROTOTYPE_INVALID_ID &&
-				judgement->claims[found].classifier != claim->classifier) {
+				judgement->claims[found].proposition->classifier != claim->proposition->classifier) {
 				return PROTOTYPE_INVALID_ID;
 			}
 			found = i;
@@ -3150,7 +3128,7 @@ static int hott_ensure_is_type_claim_in_context(
 			}
 			const struct prototype_judgement_claim* reindexed =
 				prototype_judgement_claim_get(judgement, reindexed_claim_id);
-			if (!reindexed || reindexed->subject != subject) {
+			if (!reindexed || reindexed->proposition->subject != subject) {
 				return 1;
 			}
 			*p_claim_id = reindexed_claim_id;
@@ -3163,16 +3141,18 @@ static int hott_ensure_is_type_claim_in_context(
 	return 1;
 }
 
-static const struct prototype_context_formation_certificate*
+static const struct prototype_cwf_certificate*
 hott_context_formation_certificate_for_context(
-	const struct prototype_context_formation_certificate_db* certificates,
+	const struct prototype_cwf_certificate_db* certificates,
 	uint32_t context_id
 ) {
 	if (!certificates) {
 		return NULL;
 	}
 	for (uint32_t i = 0; i < certificates->certificate_count; ++i) {
-		if (certificates->certificates[i].context_id == context_id) {
+		if (certificates->certificates[i].kind ==
+				PROTOTYPE_CWF_CERTIFICATE_CONTEXT_FORMATION &&
+			certificates->certificates[i].structural_id == context_id) {
 			return &certificates->certificates[i];
 		}
 	}
@@ -3181,22 +3161,23 @@ hott_context_formation_certificate_for_context(
 
 static int hott_ensure_bridge_for_context(
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t source_context_id,
 	uint32_t* p_bridge_id,
 	int* p_residual_reason
 ) {
-	if (!actions || !contexts || !substitutions || !context_certificates ||
-		!substitution_certificates || !bridges || !terms || !type_declarations ||
-		!judgement || !p_bridge_id || !p_residual_reason) {
+	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	struct prototype_substitution_db* substitutions = kernel ? kernel->substitutions : NULL;
+	struct prototype_cwf_certificate_db* cwf_certificates = kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations = kernel ? kernel->type_declarations : NULL;
+	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
+	struct prototype_kernel_view view;
+	if (!actions || !contexts || !substitutions || !cwf_certificates ||
+		!cwf_certificates || !bridges || !terms || !type_declarations ||
+		!judgement || !p_bridge_id || !p_residual_reason ||
+		prototype_kernel_builder_view(kernel, &view) != 0) {
 		return -1;
 	}
 	if (hott_bridge_for_source_context(
@@ -3207,27 +3188,20 @@ static int hott_ensure_bridge_for_context(
 	}
 	const struct prototype_context* source_context =
 		prototype_context_get(contexts, source_context_id);
-	const struct prototype_context_formation_certificate* source_certificate =
+	const struct prototype_cwf_certificate* source_certificate =
 		hott_context_formation_certificate_for_context(
-			context_certificates, source_context_id
+			cwf_certificates, source_context_id
 		);
 	if (!source_context || !source_certificate ||
 		source_context->parent == PROTOTYPE_INVALID_ID ||
-		source_certificate->classifier_claim_id == PROTOTYPE_INVALID_ID) {
+		source_certificate->claim_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
 	uint32_t parent_bridge_id;
 	int parent_status = hott_ensure_bridge_for_context(
 		actions,
-		contexts,
-		substitutions,
-		context_certificates,
-		substitution_certificates,
+		kernel,
 		bridges,
-		terms,
-		type_declarations,
-		operations,
-		judgement,
 		source_context->parent,
 		&parent_bridge_id,
 		p_residual_reason
@@ -3238,20 +3212,16 @@ static int hott_ensure_bridge_for_context(
 	struct prototype_hott_action_request type_request = {
 		.kind = PROTOTYPE_HOTT_ACTION_TYPE,
 		.key.type = {
-			.source_claim_id = source_certificate->classifier_claim_id,
+			.source_claim_id = source_certificate->claim_id,
 			.source_bridge_id = parent_bridge_id
 		}
 	};
 	uint32_t type_request_id;
 	uint32_t type_result_id;
 	if (prototype_hott_action_request_intern(
-			actions, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, type_request, &type_request_id
+			actions, &view, bridges, type_request, &type_request_id
 		) != 0 || prototype_hott_execute_type_action(
-			actions, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, type_request_id, &type_result_id
+			actions, kernel, bridges, type_request_id, &type_result_id
 		) != 0) {
 		return -1;
 	}
@@ -3260,20 +3230,14 @@ static int hott_ensure_bridge_for_context(
 	if (!type_result) {
 		return -1;
 	}
-	if (type_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
-		*p_residual_reason = type_result->residual_reason;
+	if (type_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
+		*p_residual_reason = type_result->outcome.residual_reason;
 		return 1;
 	}
 	if (prototype_hott_bridge_db_construct_extension(
 			bridges,
-			contexts,
-			substitutions,
-			context_certificates,
-			substitution_certificates,
+			kernel,
 			actions,
-			terms,
-			type_declarations,
-			judgement,
 			source_context_id,
 			type_request_id,
 			p_bridge_id
@@ -3308,21 +3272,21 @@ static int hott_match_case_context_valid(
 
 static int hott_execute_child_term_action(
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	const struct prototype_hott_bridge* bridge,
 	uint32_t source_context_id,
 	uint32_t child_claim_id,
 	uint32_t* p_witness_claim_id,
 	int* p_residual_reason
 ) {
+	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	struct prototype_substitution_db* substitutions = kernel ? kernel->substitutions : NULL;
+	struct prototype_cwf_certificate_db* cwf_certificates = kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations = kernel ? kernel->type_declarations : NULL;
+	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
+	struct prototype_kernel_view view;
 	const struct prototype_judgement_claim* child_claim =
 		prototype_judgement_claim_get(judgement, child_claim_id);
 	uint32_t child_type_claim_id = PROTOTYPE_INVALID_ID;
@@ -3333,14 +3297,15 @@ static int hott_execute_child_term_action(
 		contexts,
 		substitutions,
 		source_context_id,
-		child_claim->classifier,
+		child_claim->proposition->classifier,
 		&child_type_claim_id
 	) : -1;
-	if (!actions || !contexts || !substitutions || !context_certificates ||
-		!substitution_certificates || !bridges || !terms || !type_declarations ||
+	if (!actions || !contexts || !substitutions || !cwf_certificates ||
+		!cwf_certificates || !bridges || !terms || !type_declarations ||
 		!judgement || !bridge || !p_witness_claim_id || !p_residual_reason ||
-		!child_claim || child_claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		child_claim->context_id != source_context_id || child_type_status < 0) {
+		!child_claim || child_claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		child_claim->proposition->context_id != source_context_id || child_type_status < 0 ||
+		prototype_kernel_builder_view(kernel, &view) != 0) {
 		return -1;
 	}
 	if (child_type_status > 0 || child_type_claim_id == PROTOTYPE_INVALID_ID) {
@@ -3357,13 +3322,9 @@ static int hott_execute_child_term_action(
 	uint32_t type_request_id;
 	uint32_t type_result_id;
 	if (prototype_hott_action_request_intern(
-			actions, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, type_request, &type_request_id
+			actions, &view, bridges, type_request, &type_request_id
 		) != 0 || prototype_hott_execute_type_action(
-			actions, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, type_request_id, &type_result_id
+			actions, kernel, bridges, type_request_id, &type_result_id
 		) != 0) {
 		return -1;
 	}
@@ -3372,8 +3333,8 @@ static int hott_execute_child_term_action(
 	if (!type_result) {
 		return -1;
 	}
-	if (type_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
-		*p_residual_reason = type_result->residual_reason;
+	if (type_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
+		*p_residual_reason = type_result->outcome.residual_reason;
 		return 1;
 	}
 	struct prototype_hott_action_request term_request = {
@@ -3387,13 +3348,9 @@ static int hott_execute_child_term_action(
 	uint32_t term_request_id;
 	uint32_t term_result_id;
 	if (prototype_hott_action_request_intern(
-			actions, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, term_request, &term_request_id
+			actions, &view, bridges, term_request, &term_request_id
 		) != 0 || prototype_hott_execute_term_action(
-			actions, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, term_request_id, &term_result_id
+			actions, kernel, bridges, term_request_id, &term_result_id
 		) != 0) {
 		return -1;
 	}
@@ -3402,8 +3359,8 @@ static int hott_execute_child_term_action(
 	if (!term_result) {
 		return -1;
 	}
-	if (term_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
-		*p_residual_reason = term_result->residual_reason;
+	if (term_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
+		*p_residual_reason = term_result->outcome.residual_reason;
 		return 1;
 	}
 	if (term_result->certificate_id >= actions->certificate_count ||
@@ -3420,21 +3377,22 @@ static int hott_execute_child_term_action(
 
 int prototype_hott_execute_term_action(
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t request_id,
 	uint32_t* p_result_id
 ) {
-	if (!actions || !contexts || !substitutions || !context_certificates ||
-		!substitution_certificates || !bridges || !terms || !type_declarations ||
-		!judgement || !p_result_id) {
+	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	struct prototype_substitution_db* substitutions = kernel ? kernel->substitutions : NULL;
+	struct prototype_cwf_certificate_db* cwf_certificates = kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations = kernel ? kernel->type_declarations : NULL;
+	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
+	struct prototype_kernel_view view;
+	if (!actions || !contexts || !substitutions || !cwf_certificates ||
+		!cwf_certificates || !bridges || !terms || !type_declarations ||
+		!judgement || !p_result_id ||
+		prototype_kernel_builder_view(kernel, &view) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(
@@ -3455,8 +3413,8 @@ int prototype_hott_execute_term_action(
 			bridges, request->key.term.source_bridge_id
 		) : NULL;
 	uint32_t type_result_id;
-	if (!source || !bridge || source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		source->context_id != bridge->source_context_id) {
+	if (!source || !bridge || source->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		source->proposition->context_id != bridge->source_context_id) {
 		return -1;
 	}
 	if (hott_action_result_for_request(
@@ -3469,12 +3427,12 @@ int prototype_hott_execute_term_action(
 	if (!type_result) {
 		return -1;
 	}
-	if (type_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
+	if (type_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 		return hott_publish_action_residual(
 			actions,
 			terms,
 			request_id,
-			type_result->residual_reason,
+			type_result->outcome.residual_reason,
 			p_result_id
 		);
 	}
@@ -3556,8 +3514,8 @@ int prototype_hott_execute_term_action(
 			type_declarations,
 			base_substitution,
 			prototype_context_get(contexts, type->endpoint_context_id)->parent,
-			left_endpoint_evidence->subject,
-			left_endpoint_evidence->classifier,
+			left_endpoint_evidence->proposition->subject,
+			left_endpoint_evidence->proposition->classifier,
 			&left_extension
 		) != 0 || prototype_substitution_extend(
 			substitutions,
@@ -3566,23 +3524,23 @@ int prototype_hott_execute_term_action(
 			type_declarations,
 			left_extension,
 			type->endpoint_context_id,
-			right_endpoint_evidence->subject,
-			right_endpoint_evidence->classifier,
+			right_endpoint_evidence->proposition->subject,
+			right_endpoint_evidence->proposition->classifier,
 			&endpoint_instantiation
 		) != 0) {
 		return -1;
 	}
 	uint32_t left_extension_certificate;
 	uint32_t right_extension_certificate;
-	if (prototype_substitution_certificate_db_add(
-			substitution_certificates,
+	if (prototype_cwf_certificate_db_add_substitution(
+			cwf_certificates,
 			substitutions,
 			judgement,
 			left_extension,
 			left_endpoint_claim,
 			&left_extension_certificate
-		) != 0 || prototype_substitution_certificate_db_add(
-			substitution_certificates,
+		) != 0 || prototype_cwf_certificate_db_add_substitution(
+			cwf_certificates,
 			substitutions,
 			judgement,
 			endpoint_instantiation,
@@ -3603,10 +3561,10 @@ int prototype_hott_execute_term_action(
 			&relation_type
 		) != 0 || prototype_term_observation_type(
 			terms,
-			left_endpoint_evidence->classifier,
-			right_endpoint_evidence->classifier,
-			left_endpoint_evidence->subject,
-			right_endpoint_evidence->subject,
+			left_endpoint_evidence->proposition->classifier,
+			right_endpoint_evidence->proposition->classifier,
+			left_endpoint_evidence->proposition->subject,
+			right_endpoint_evidence->proposition->subject,
 			&expected_relation
 		) != 0 || relation_type != expected_relation) {
 		return -1;
@@ -3619,7 +3577,7 @@ int prototype_hott_execute_term_action(
 			terms,
 			bridge->bridge_context_id,
 			relation_type,
-			prototype_judgement_claim_get(judgement, left_type_claim)->classifier,
+			prototype_judgement_claim_get(judgement, left_type_claim)->proposition->classifier,
 			left_type_claim,
 			right_type_claim,
 			left_endpoint_claim,
@@ -3629,13 +3587,13 @@ int prototype_hott_execute_term_action(
 		return -1;
 	}
 	int used_relation_binding = 0;
-	if (source->subject < terms->term_count &&
-		terms->terms[source->subject].tag == PROTOTYPE_TERM_VAR) {
+	if (source->proposition->subject < terms->term_count &&
+		terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_VAR) {
 		uint32_t source_entry_context;
-		uint32_t source_binding = terms->terms[source->subject].as.var.binding_id;
+		uint32_t source_binding = terms->terms[source->proposition->subject].as.var.binding_id;
 		if (prototype_context_find_binding(
 				contexts,
-				source->context_id,
+				source->proposition->context_id,
 				source_binding,
 				&source_entry_context
 			) == 0) {
@@ -3672,8 +3630,8 @@ int prototype_hott_execute_term_action(
 				type_declarations,
 				NULL,
 				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-				left_endpoint_evidence->subject,
-				right_endpoint_evidence->subject,
+				left_endpoint_evidence->proposition->subject,
+				right_endpoint_evidence->proposition->subject,
 				64,
 				&endpoint_comparison
 			) != 0) {
@@ -3696,13 +3654,13 @@ int prototype_hott_execute_term_action(
 					request->key.term.source_claim_id,
 					PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM
 				);
-			if (induction_derivation && source->subject < terms->term_count &&
-				terms->terms[source->subject].tag ==
+			if (induction_derivation && source->proposition->subject < terms->term_count &&
+				terms->terms[source->proposition->subject].tag ==
 					PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
-				uint32_t argument = terms->terms[source->subject].
+				uint32_t argument = terms->terms[source->proposition->subject].
 					as.induction_hypothesis.argument;
 				uint32_t argument_claim_id = hott_has_type_claim_for_subject(
-					judgement, source->context_id, argument
+					judgement, source->proposition->context_id, argument
 				);
 				if (argument_claim_id == PROTOTYPE_INVALID_ID) {
 					return hott_publish_action_residual(
@@ -3715,17 +3673,10 @@ int prototype_hott_execute_term_action(
 				int residual_reason;
 				int argument_status = hott_execute_child_term_action(
 					actions,
-					contexts,
-					substitutions,
-					context_certificates,
-					substitution_certificates,
+					kernel,
 					bridges,
-					terms,
-					type_declarations,
-					operations,
-					judgement,
 					bridge,
-					source->context_id,
+					source->proposition->context_id,
 					argument_claim_id,
 					&argument_witness_claim,
 					&residual_reason
@@ -3740,8 +3691,8 @@ int prototype_hott_execute_term_action(
 				}
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->subject,
-						right_endpoint_evidence->subject,
+						left_endpoint_evidence->proposition->subject,
+						right_endpoint_evidence->proposition->subject,
 						&witness
 					) != 0 ||
 					prototype_judgement_add_observation_induction_hypothesis_witness(
@@ -3768,54 +3719,50 @@ int prototype_hott_execute_term_action(
 					PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO
 				);
 			if (!used_relation_binding && lambda_derivation &&
-				source->subject < terms->term_count &&
-				terms->terms[source->subject].tag == PROTOTYPE_TERM_LAMBDA) {
+				source->proposition->subject < terms->term_count &&
+				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_LAMBDA) {
 				if (lambda_derivation->premise_count != 2) {
 					return -1;
 				}
 				const struct prototype_judgement_claim* binder_claim =
 					prototype_judgement_claim_get(
-						judgement, lambda_derivation->premise_claim_ids[0]
+						judgement, lambda_derivation->premises[0].claim_id
 					);
 				const struct prototype_judgement_claim* body_claim =
 					prototype_judgement_claim_get(
-						judgement, lambda_derivation->premise_claim_ids[1]
+						judgement, lambda_derivation->premises[1].claim_id
 					);
 				const struct prototype_context* body_context = body_claim ?
-					prototype_context_get(contexts, body_claim->context_id) : NULL;
-				const struct prototype_context_formation_certificate* body_context_proof =
+					prototype_context_get(contexts, body_claim->proposition->context_id) : NULL;
+				const struct prototype_cwf_certificate* body_context_proof =
 					body_context ? hott_context_formation_certificate_for_context(
-						context_certificates, body_claim->context_id
+						cwf_certificates, body_claim->proposition->context_id
 					) : NULL;
 				if (!binder_claim || !body_claim || !body_context ||
-					!body_context_proof || binder_claim->kind !=
+					!body_context_proof || binder_claim->proposition->kind !=
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					body_claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					binder_claim->context_id != body_claim->context_id ||
-					body_context->parent != source->context_id ||
+					body_claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+					binder_claim->proposition->context_id != body_claim->proposition->context_id ||
+					body_context->parent != source->proposition->context_id ||
 					body_context->binding_id !=
-						terms->terms[source->subject].as.lambda.binding_id ||
-					body_context_proof->classifier_claim_id == PROTOTYPE_INVALID_ID) {
+						terms->terms[source->proposition->subject].as.lambda.binding_id ||
+					body_context_proof->claim_id == PROTOTYPE_INVALID_ID) {
 					return -1;
 				}
 				struct prototype_hott_action_request binder_type_request = {
 					.kind = PROTOTYPE_HOTT_ACTION_TYPE,
 					.key.type = {
-						.source_claim_id = body_context_proof->classifier_claim_id,
+						.source_claim_id = body_context_proof->claim_id,
 						.source_bridge_id = bridge->id
 					}
 				};
 				uint32_t binder_type_request_id;
 				uint32_t binder_type_result_id;
 				if (prototype_hott_action_request_intern(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, &view, bridges,
 						binder_type_request, &binder_type_request_id
 					) != 0 || prototype_hott_execute_type_action(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, kernel, bridges,
 						binder_type_request_id, &binder_type_result_id
 					) != 0) {
 					return -1;
@@ -3825,25 +3772,19 @@ int prototype_hott_execute_term_action(
 				if (!binder_type_result) {
 					return -1;
 				}
-				if (binder_type_result->state !=
+				if (binder_type_result->outcome.state !=
 					PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 					return hott_publish_action_residual(
 						actions, terms, request_id,
-						binder_type_result->residual_reason, p_result_id
+						binder_type_result->outcome.residual_reason, p_result_id
 					);
 				}
 				uint32_t body_bridge_id;
 				if (prototype_hott_bridge_db_construct_extension(
 						bridges,
-						contexts,
-						substitutions,
-						context_certificates,
-						substitution_certificates,
+						kernel,
 						actions,
-						terms,
-						type_declarations,
-						judgement,
-						body_claim->context_id,
+						body_claim->proposition->context_id,
 						binder_type_request_id,
 						&body_bridge_id
 					) != 0) {
@@ -3855,18 +3796,11 @@ int prototype_hott_execute_term_action(
 				int residual_reason;
 				int body_status = hott_execute_child_term_action(
 					actions,
-					contexts,
-					substitutions,
-					context_certificates,
-					substitution_certificates,
+					kernel,
 					bridges,
-					terms,
-					type_declarations,
-					operations,
-					judgement,
 					body_bridge,
-					body_claim->context_id,
-					lambda_derivation->premise_claim_ids[1],
+					body_claim->proposition->context_id,
+					lambda_derivation->premises[1].claim_id,
 					&body_witness_claim,
 					&residual_reason
 				);
@@ -3880,8 +3814,8 @@ int prototype_hott_execute_term_action(
 				}
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->subject,
-						right_endpoint_evidence->subject,
+						left_endpoint_evidence->proposition->subject,
+						right_endpoint_evidence->proposition->subject,
 						&witness
 					) != 0 || prototype_judgement_add_observation_lambda_witness(
 						judgement,
@@ -3907,10 +3841,10 @@ int prototype_hott_execute_term_action(
 					PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM
 				);
 			if (!used_relation_binding && match_derivation &&
-				source->subject < terms->term_count &&
-				terms->terms[source->subject].tag == PROTOTYPE_TERM_MATCH) {
+				source->proposition->subject < terms->term_count &&
+				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_MATCH) {
 				const struct prototype_term* source_match =
-					&terms->terms[source->subject];
+					&terms->terms[source->proposition->subject];
 				if (source_match->as.match.case_count + 1 !=
 						match_derivation->premise_count ||
 					source_match->as.match.case_count + 4 >
@@ -3918,7 +3852,7 @@ int prototype_hott_execute_term_action(
 					return -1;
 				}
 				uint32_t scrutinee_claim_id = hott_has_type_claim_for_subject(
-					judgement, source->context_id, source_match->as.match.scrutinee
+					judgement, source->proposition->context_id, source_match->as.match.scrutinee
 				);
 				if (scrutinee_claim_id == PROTOTYPE_INVALID_ID) {
 					return hott_publish_action_residual(
@@ -3931,17 +3865,10 @@ int prototype_hott_execute_term_action(
 				int residual_reason;
 				int scrutinee_status = hott_execute_child_term_action(
 					actions,
-					contexts,
-					substitutions,
-					context_certificates,
-					substitution_certificates,
+					kernel,
 					bridges,
-					terms,
-					type_declarations,
-					operations,
-					judgement,
 					bridge,
-					source->context_id,
+					source->proposition->context_id,
 					scrutinee_claim_id,
 					&scrutinee_witness_claim,
 					&residual_reason
@@ -3961,14 +3888,14 @@ int prototype_hott_execute_term_action(
 					uint32_t case_id = source_match->as.match.first_case + i;
 					const struct prototype_judgement_claim* case_claim =
 						prototype_judgement_claim_get(
-							judgement, match_derivation->premise_claim_ids[i + 1]
+							judgement, match_derivation->premises[i + 1].claim_id
 						);
 					if (case_id >= terms->case_count || !case_claim ||
-						case_claim->subject != terms->cases[case_id].body ||
+						case_claim->proposition->subject != terms->cases[case_id].body ||
 						!hott_match_case_context_valid(
 							contexts,
-							source->context_id,
-							case_claim->context_id,
+							source->proposition->context_id,
+							case_claim->proposition->context_id,
 							&terms->case_binders[
 								terms->cases[case_id].first_binder
 							],
@@ -3983,16 +3910,9 @@ int prototype_hott_execute_term_action(
 					uint32_t case_bridge_id;
 					int case_bridge_status = hott_ensure_bridge_for_context(
 						actions,
-						contexts,
-						substitutions,
-						context_certificates,
-						substitution_certificates,
+						kernel,
 						bridges,
-						terms,
-						type_declarations,
-						operations,
-						judgement,
-						case_claim->context_id,
+						case_claim->proposition->context_id,
 						&case_bridge_id,
 						&residual_reason
 					);
@@ -4010,19 +3930,12 @@ int prototype_hott_execute_term_action(
 						return -1;
 					}
 					int case_status = hott_execute_child_term_action(
-						actions,
-						contexts,
-						substitutions,
-						context_certificates,
-						substitution_certificates,
-						bridges,
-						terms,
-						type_declarations,
-						operations,
-						judgement,
+					actions,
+					kernel,
+					bridges,
 						case_bridge,
-						case_claim->context_id,
-						match_derivation->premise_claim_ids[i + 1],
+						case_claim->proposition->context_id,
+						match_derivation->premises[i + 1].claim_id,
 						&case_witness_claims[i],
 						&residual_reason
 					);
@@ -4037,8 +3950,8 @@ int prototype_hott_execute_term_action(
 				}
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->subject,
-						right_endpoint_evidence->subject,
+						left_endpoint_evidence->proposition->subject,
+						right_endpoint_evidence->proposition->subject,
 						&witness
 					) != 0 || prototype_judgement_add_observation_match_witness(
 						judgement,
@@ -4068,8 +3981,8 @@ int prototype_hott_execute_term_action(
 					PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM
 				);
 			if (!used_relation_binding && app_derivation &&
-				source->subject < terms->term_count &&
-				terms->terms[source->subject].tag == PROTOTYPE_TERM_APP) {
+				source->proposition->subject < terms->term_count &&
+				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_APP) {
 				if (app_derivation->premise_count != 2) {
 					return -1;
 				}
@@ -4077,33 +3990,26 @@ int prototype_hott_execute_term_action(
 				for (uint32_t i = 0; i < 2; ++i) {
 					const struct prototype_judgement_claim* child_claim =
 						prototype_judgement_claim_get(
-							judgement, app_derivation->premise_claim_ids[i]
+							judgement, app_derivation->premises[i].claim_id
 						);
 					uint32_t expected_subject = i == 0 ?
-						terms->terms[source->subject].as.app.function :
-						terms->terms[source->subject].as.app.argument;
+						terms->terms[source->proposition->subject].as.app.function :
+						terms->terms[source->proposition->subject].as.app.argument;
 					int matches = 0;
-					if (!child_claim || child_claim->context_id != source->context_id ||
+					if (!child_claim || child_claim->proposition->context_id != source->proposition->context_id ||
 						prototype_term_core_shape_equal(
-							terms, child_claim->subject, expected_subject, &matches
+							terms, child_claim->proposition->subject, expected_subject, &matches
 						) != 0 || !matches) {
 						return -1;
 					}
 					int residual_reason;
 					int child_status = hott_execute_child_term_action(
-						actions,
-						contexts,
-						substitutions,
-						context_certificates,
-						substitution_certificates,
-						bridges,
-						terms,
-						type_declarations,
-						operations,
-						judgement,
+					actions,
+					kernel,
+					bridges,
 						bridge,
-						source->context_id,
-						app_derivation->premise_claim_ids[i],
+						source->proposition->context_id,
+						app_derivation->premises[i].claim_id,
 						&child_witness_claims[i],
 						&residual_reason
 					);
@@ -4122,8 +4028,8 @@ int prototype_hott_execute_term_action(
 				}
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->subject,
-						right_endpoint_evidence->subject,
+						left_endpoint_evidence->proposition->subject,
+						right_endpoint_evidence->proposition->subject,
 						&witness
 					) != 0 || prototype_judgement_add_observation_app_witness(
 						judgement,
@@ -4145,18 +4051,18 @@ int prototype_hott_execute_term_action(
 			int unary_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_INVALID;
 			int unary_witness_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_INVALID;
 			uint32_t unary_payload = PROTOTYPE_INVALID_ID;
-			if (source->subject < terms->term_count &&
-				terms->terms[source->subject].tag == PROTOTYPE_TERM_RETURN) {
+			if (source->proposition->subject < terms->term_count &&
+				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_RETURN) {
 				unary_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO;
 				unary_witness_proof_kind =
 					PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_RETURN_WITNESS;
-				unary_payload = terms->terms[source->subject].as.return_term.value;
-			} else if (source->subject < terms->term_count &&
-				terms->terms[source->subject].tag == PROTOTYPE_TERM_THUNK) {
+				unary_payload = terms->terms[source->proposition->subject].as.return_term.value;
+			} else if (source->proposition->subject < terms->term_count &&
+				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_THUNK) {
 				unary_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO;
 				unary_witness_proof_kind =
 					PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_THUNK_WITNESS;
-				unary_payload = terms->terms[source->subject].as.thunk.computation;
+				unary_payload = terms->terms[source->proposition->subject].as.thunk.computation;
 			}
 			const struct prototype_judgement_derivation* unary_derivation =
 				unary_proof_kind != PROTOTYPE_JUDGEMENT_PROOF_INVALID ?
@@ -4169,17 +4075,17 @@ int prototype_hott_execute_term_action(
 				if (unary_derivation->premise_count != 1) {
 					return -1;
 				}
-				uint32_t child_claim_id = unary_derivation->premise_claim_ids[0];
+				uint32_t child_claim_id = unary_derivation->premises[0].claim_id;
 				const struct prototype_judgement_claim* child_claim =
 					prototype_judgement_claim_get(judgement, child_claim_id);
 				uint32_t child_type_claim_id = child_claim ?
 					hott_is_type_claim_for_subject(
-						judgement, source->context_id, child_claim->classifier
+						judgement, source->proposition->context_id, child_claim->proposition->classifier
 					) : PROTOTYPE_INVALID_ID;
-				if (!child_claim || child_claim->kind !=
+				if (!child_claim || child_claim->proposition->kind !=
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					child_claim->context_id != source->context_id ||
-					child_claim->subject != unary_payload ||
+					child_claim->proposition->context_id != source->proposition->context_id ||
+					child_claim->proposition->subject != unary_payload ||
 					child_type_claim_id == PROTOTYPE_INVALID_ID) {
 					return hott_publish_action_residual(
 						actions, terms, request_id,
@@ -4197,14 +4103,10 @@ int prototype_hott_execute_term_action(
 				uint32_t child_type_request_id;
 				uint32_t child_type_result_id;
 				if (prototype_hott_action_request_intern(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, &view, bridges,
 						child_type_request, &child_type_request_id
 					) != 0 || prototype_hott_execute_type_action(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, kernel, bridges,
 						child_type_request_id, &child_type_result_id
 					) != 0) {
 					return -1;
@@ -4214,11 +4116,11 @@ int prototype_hott_execute_term_action(
 				if (!child_type_result) {
 					return -1;
 				}
-				if (child_type_result->state !=
+				if (child_type_result->outcome.state !=
 					PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 					return hott_publish_action_residual(
 						actions, terms, request_id,
-						child_type_result->residual_reason, p_result_id
+						child_type_result->outcome.residual_reason, p_result_id
 					);
 				}
 				struct prototype_hott_action_request child_term_request = {
@@ -4232,14 +4134,10 @@ int prototype_hott_execute_term_action(
 				uint32_t child_term_request_id;
 				uint32_t child_term_result_id;
 				if (prototype_hott_action_request_intern(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, &view, bridges,
 						child_term_request, &child_term_request_id
 					) != 0 || prototype_hott_execute_term_action(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, kernel, bridges,
 						child_term_request_id, &child_term_result_id
 					) != 0) {
 					return -1;
@@ -4249,19 +4147,19 @@ int prototype_hott_execute_term_action(
 				if (!child_term_result) {
 					return -1;
 				}
-				if (child_term_result->state !=
+				if (child_term_result->outcome.state !=
 					PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 					return hott_publish_action_residual(
 						actions, terms, request_id,
-						child_term_result->residual_reason, p_result_id
+						child_term_result->outcome.residual_reason, p_result_id
 					);
 				}
 				const struct prototype_hott_action_certificate* child_certificate =
 					&actions->certificates[child_term_result->certificate_id];
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->subject,
-						right_endpoint_evidence->subject,
+						left_endpoint_evidence->proposition->subject,
+						right_endpoint_evidence->proposition->subject,
 						&witness
 					) != 0 || prototype_judgement_add_observation_unary_witness(
 						judgement,
@@ -4292,7 +4190,7 @@ int prototype_hott_execute_term_action(
 			if (!used_relation_binding && (!constructor_derivation ||
 				prototype_term_constructor_spine_info(
 					terms,
-					source->subject,
+					source->proposition->subject,
 					&source_head,
 					&source_owner,
 					&source_constructor,
@@ -4315,17 +4213,17 @@ int prototype_hott_execute_term_action(
 			for (uint32_t i = 0; !used_relation_binding &&
 				i < source_argument_count; ++i) {
 				uint32_t field_claim_id =
-					constructor_derivation->premise_claim_ids[i];
+					constructor_derivation->premises[i].claim_id;
 				const struct prototype_judgement_claim* field_claim =
 					prototype_judgement_claim_get(judgement, field_claim_id);
 				uint32_t field_type_claim_id = field_claim ?
 					hott_is_type_claim_for_subject(
-						judgement, source->context_id, field_claim->classifier
+						judgement, source->proposition->context_id, field_claim->proposition->classifier
 					) : PROTOTYPE_INVALID_ID;
-				if (!field_claim || field_claim->kind !=
+				if (!field_claim || field_claim->proposition->kind !=
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					field_claim->context_id != source->context_id ||
-					field_claim->subject != source_arguments[i] ||
+					field_claim->proposition->context_id != source->proposition->context_id ||
+					field_claim->proposition->subject != source_arguments[i] ||
 					field_type_claim_id == PROTOTYPE_INVALID_ID) {
 					return hott_publish_action_residual(
 						actions,
@@ -4345,15 +4243,10 @@ int prototype_hott_execute_term_action(
 				uint32_t field_type_request_id;
 				uint32_t field_type_result_id;
 				if (prototype_hott_action_request_intern(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, &view, bridges,
 						field_type_request, &field_type_request_id
 					) != 0 || prototype_hott_execute_type_action(
-						actions, contexts, substitutions,
-						context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, kernel, bridges,
 						field_type_request_id, &field_type_result_id
 					) != 0) {
 					return -1;
@@ -4365,11 +4258,11 @@ int prototype_hott_execute_term_action(
 				if (!field_type_result) {
 					return -1;
 				}
-				if (field_type_result->state !=
+				if (field_type_result->outcome.state !=
 					PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 					return hott_publish_action_residual(
 						actions, terms, request_id,
-						field_type_result->residual_reason, p_result_id
+						field_type_result->outcome.residual_reason, p_result_id
 					);
 				}
 				struct prototype_hott_action_request field_term_request = {
@@ -4383,14 +4276,10 @@ int prototype_hott_execute_term_action(
 				uint32_t field_term_request_id;
 				uint32_t field_term_result_id;
 				if (prototype_hott_action_request_intern(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, &view, bridges,
 						field_term_request, &field_term_request_id
 					) != 0 || prototype_hott_execute_term_action(
-						actions, contexts, substitutions, context_certificates,
-						substitution_certificates, bridges, terms,
-						type_declarations, operations, judgement,
+						actions, kernel, bridges,
 						field_term_request_id, &field_term_result_id
 					) != 0) {
 					return -1;
@@ -4402,11 +4291,11 @@ int prototype_hott_execute_term_action(
 				if (!field_term_result) {
 					return -1;
 				}
-				if (field_term_result->state !=
+				if (field_term_result->outcome.state !=
 					PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 					return hott_publish_action_residual(
 						actions, terms, request_id,
-						field_term_result->residual_reason, p_result_id
+						field_term_result->outcome.residual_reason, p_result_id
 					);
 				}
 				const struct prototype_hott_action_certificate* field_certificate =
@@ -4416,8 +4305,8 @@ int prototype_hott_execute_term_action(
 			}
 			if (!used_relation_binding && (prototype_term_observation_witness(
 					terms,
-					left_endpoint_evidence->subject,
-					right_endpoint_evidence->subject,
+					left_endpoint_evidence->proposition->subject,
+					right_endpoint_evidence->proposition->subject,
 					&witness
 				) != 0 || prototype_judgement_add_observation_constructor_witness(
 					judgement,
@@ -4444,8 +4333,8 @@ int prototype_hott_execute_term_action(
 		if (!used_relation_binding &&
 			(prototype_term_observation_witness(
 				terms,
-				left_endpoint_evidence->subject,
-				right_endpoint_evidence->subject,
+				left_endpoint_evidence->proposition->subject,
+				right_endpoint_evidence->proposition->subject,
 				&witness
 			) != 0 || prototype_judgement_add_observation_witness_intro(
 				judgement,
@@ -4477,9 +4366,7 @@ int prototype_hott_execute_term_action(
 	};
 	uint32_t certificate_id;
 	if (prototype_hott_action_certificate_add(
-			actions, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, certificate, &certificate_id
+			actions, &view, bridges, certificate, &certificate_id
 		) != 0) {
 		return -1;
 	}
@@ -4496,24 +4383,26 @@ int prototype_hott_execute_term_action(
 
 int prototype_hott_execute_substitution_action(
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t request_id,
 	int normalization_profile,
 	uint64_t step_limit,
 	uint32_t* p_result_id
 ) {
-	if (!actions || !contexts || !substitutions || !context_certificates ||
-		!substitution_certificates || !bridges || !terms || !type_declarations ||
+	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	struct prototype_substitution_db* substitutions = kernel ? kernel->substitutions : NULL;
+	struct prototype_cwf_certificate_db* cwf_certificates = kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations = kernel ? kernel->type_declarations : NULL;
+	const struct prototype_operation_graph* operations = kernel ? kernel->operations : NULL;
+	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
+	struct prototype_kernel_view view;
+	if (!actions || !contexts || !substitutions || !cwf_certificates ||
+		!cwf_certificates || !bridges || !terms || !type_declarations ||
 		!judgement || !p_result_id || normalization_profile !=
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF) {
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
+		prototype_kernel_builder_view(kernel, &view) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(
@@ -4613,22 +4502,14 @@ int prototype_hott_execute_substitution_action(
 			uint32_t inner_result_id;
 			uint32_t outer_result_id;
 			if (prototype_hott_action_request_intern(
-					actions, contexts, substitutions, context_certificates,
-					substitution_certificates, bridges, terms, type_declarations,
-					operations, judgement, inner_request, &inner_request_id
+					actions, &view, bridges, inner_request, &inner_request_id
 				) != 0 || prototype_hott_action_request_intern(
-					actions, contexts, substitutions, context_certificates,
-					substitution_certificates, bridges, terms, type_declarations,
-					operations, judgement, outer_request, &outer_request_id
+					actions, &view, bridges, outer_request, &outer_request_id
 				) != 0 || prototype_hott_execute_substitution_action(
-					actions, contexts, substitutions, context_certificates,
-					substitution_certificates, bridges, terms, type_declarations,
-					operations, judgement, inner_request_id, normalization_profile,
+					actions, kernel, bridges, inner_request_id, normalization_profile,
 					step_limit, &inner_result_id
 				) != 0 || prototype_hott_execute_substitution_action(
-					actions, contexts, substitutions, context_certificates,
-					substitution_certificates, bridges, terms, type_declarations,
-					operations, judgement, outer_request_id, normalization_profile,
+					actions, kernel, bridges, outer_request_id, normalization_profile,
 					step_limit, &outer_result_id
 				) != 0) {
 				return -1;
@@ -4638,8 +4519,8 @@ int prototype_hott_execute_substitution_action(
 			const struct prototype_hott_action_result* outer_result =
 				prototype_hott_action_result_get(actions, outer_result_id);
 			if (!inner_result || !outer_result ||
-				inner_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY ||
-				outer_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
+				inner_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY ||
+				outer_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 				return 1;
 			}
 			const struct prototype_hott_action_certificate* inner_certificate =
@@ -4670,10 +4551,10 @@ int prototype_hott_execute_substitution_action(
 			uint32_t term_claim_id = PROTOTYPE_INVALID_ID;
 			for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 				const struct prototype_judgement_claim* claim = &judgement->claims[i];
-				if (claim->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-					claim->context_id == source->source_context &&
-					claim->subject == source->term &&
-					claim->classifier == source->term_classifier &&
+				if (claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+					claim->proposition->context_id == source->source_context &&
+					claim->proposition->subject == source->term &&
+					claim->proposition->classifier == source->term_classifier &&
 					hott_operation_matches_claim(operations, claim)) {
 					term_claim_id = i;
 					break;
@@ -4691,12 +4572,12 @@ int prototype_hott_execute_substitution_action(
 				uint32_t candidate_result;
 				if (type_claim && parent_bridge &&
 					candidate->key.type.source_bridge_id == parent_bridge_id &&
-					type_claim->context_id == target->parent &&
-					type_claim->subject ==
+					type_claim->proposition->context_id == target->parent &&
+					type_claim->proposition->subject ==
 						prototype_context_classifier_term(target) &&
 					hott_action_result_for_request(
 						actions, i, &candidate_result
-					) == 0 && actions->results[candidate_result].state ==
+					) == 0 && actions->results[candidate_result].outcome.state ==
 						PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 					type_request_id = i;
 					break;
@@ -4727,23 +4608,14 @@ int prototype_hott_execute_substitution_action(
 			uint32_t prefix_result_id;
 			uint32_t term_result_id;
 			if (prototype_hott_action_request_intern(
-					actions, contexts, substitutions, context_certificates,
-					substitution_certificates, bridges, terms, type_declarations,
-					operations, judgement, prefix_request, &prefix_request_id
+					actions, &view, bridges, prefix_request, &prefix_request_id
 				) != 0 || prototype_hott_action_request_intern(
-					actions, contexts, substitutions, context_certificates,
-					substitution_certificates, bridges, terms, type_declarations,
-					operations, judgement, term_request, &term_request_id
+					actions, &view, bridges, term_request, &term_request_id
 				) != 0 || prototype_hott_execute_substitution_action(
-					actions, contexts, substitutions, context_certificates,
-					substitution_certificates, bridges, terms, type_declarations,
-					operations, judgement, prefix_request_id, normalization_profile,
+					actions, kernel, bridges, prefix_request_id, normalization_profile,
 					step_limit, &prefix_result_id
 				) != 0 || prototype_hott_execute_term_action(
-					actions, contexts, substitutions, context_certificates,
-					substitution_certificates,
-					bridges, terms, type_declarations, operations,
-					judgement,
+					actions, kernel, bridges,
 					term_request_id, &term_result_id
 				) != 0) {
 				return -1;
@@ -4753,8 +4625,8 @@ int prototype_hott_execute_substitution_action(
 			const struct prototype_hott_action_result* term_result =
 				prototype_hott_action_result_get(actions, term_result_id);
 			if (!prefix_result || !term_result ||
-				prefix_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY ||
-				term_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
+				prefix_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY ||
+				term_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY) {
 				return 1;
 			}
 			const struct prototype_hott_action_certificate* term_certificate =
@@ -4774,10 +4646,10 @@ int prototype_hott_execute_substitution_action(
 						endpoint_instantiation_substitution_id,
 					target_bridge->bridge_context_id,
 					term_certificate->data.term.witness_term_id,
-					witness_claim->classifier,
+					witness_claim->proposition->classifier,
 					&result_substitution
-				) != 0 || prototype_substitution_certificate_db_add(
-					substitution_certificates,
+				) != 0 || prototype_cwf_certificate_db_add_substitution(
+					cwf_certificates,
 					substitutions,
 					judgement,
 					result_substitution,
@@ -4852,15 +4724,17 @@ int prototype_hott_execute_substitution_action(
 		}
 		struct prototype_hott_action_result residual = {
 			.request_id = request_id,
-			.state = PROTOTYPE_HOTT_ACTION_RESULT_RESIDUAL,
-			.residual_reason = PROTOTYPE_HOTT_RESIDUAL_CONVERSION_EXHAUSTED,
 			.certificate_id = PROTOTYPE_INVALID_ID,
-			.normalization_profile = normalization_profile,
-			.step_limit = step_limit,
-			.term_graph_revision = terms->term_count
+			.outcome = {
+				.state = PROTOTYPE_HOTT_ACTION_RESULT_RESIDUAL,
+				.residual_reason = PROTOTYPE_HOTT_RESIDUAL_CONVERSION_EXHAUSTED,
+				.normalization_profile = normalization_profile,
+				.step_limit = step_limit,
+				.term_graph_revision = terms->term_count
+			}
 		};
 		memcpy(
-			residual.calculus_fingerprint,
+			residual.outcome.calculus_fingerprint,
 			PROTOTYPE_HOTT_CALCULUS_FINGERPRINT,
 			65
 		);
@@ -4885,9 +4759,7 @@ int prototype_hott_execute_substitution_action(
 	};
 	uint32_t certificate_id;
 	if (prototype_hott_action_certificate_add(
-			actions, contexts, substitutions, context_certificates,
-			substitution_certificates, bridges, terms, type_declarations,
-			operations, judgement, certificate, &certificate_id
+			actions, &view, bridges, certificate, &certificate_id
 		) != 0) {
 		return -1;
 	}
@@ -4904,27 +4776,28 @@ int prototype_hott_execute_substitution_action(
 
 int prototype_hott_bridge_db_construct_extension(
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	const struct prototype_hott_action_db* actions,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement,
 	uint32_t source_context_id,
 	uint32_t type_action_request_id,
 	uint32_t* p_bridge_id
 ) {
+	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	struct prototype_substitution_db* substitutions = kernel ? kernel->substitutions : NULL;
+	struct prototype_cwf_certificate_db* cwf_certificates = kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations = kernel ? kernel->type_declarations : NULL;
+	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
 	const struct prototype_context* source = prototype_context_get(
 		contexts, source_context_id
 	);
 	const struct prototype_hott_action_request* request =
 		prototype_hott_action_request_get(actions, type_action_request_id);
 	uint32_t result_id;
-	if (!bridges || !contexts || !substitutions || !context_certificates ||
-		!substitution_certificates || !actions || !terms || !type_declarations ||
+	if (!bridges || !contexts || !substitutions || !cwf_certificates ||
+		!cwf_certificates || !actions || !terms || !type_declarations ||
 		!judgement || !source || !request || !p_bridge_id ||
+		prototype_kernel_builder_validate(kernel) != 0 ||
 		source_context_id == prototype_context_empty(contexts) ||
 		request->kind != PROTOTYPE_HOTT_ACTION_TYPE ||
 		hott_action_result_for_request(
@@ -4935,7 +4808,7 @@ int prototype_hott_bridge_db_construct_extension(
 	const struct prototype_hott_action_result* result =
 		prototype_hott_action_result_get(actions, result_id);
 	const struct prototype_hott_action_certificate* type_certificate = result &&
-		result->state == PROTOTYPE_HOTT_ACTION_RESULT_READY &&
+		result->outcome.state == PROTOTYPE_HOTT_ACTION_RESULT_READY &&
 		result->certificate_id < actions->certificate_count ?
 		&actions->certificates[result->certificate_id] : NULL;
 	const struct prototype_judgement_claim* source_type =
@@ -4949,8 +4822,8 @@ int prototype_hott_bridge_db_construct_extension(
 	if (!type_certificate ||
 		type_certificate->kind != PROTOTYPE_HOTT_ACTION_CERTIFICATE_TYPE ||
 		!source_type || !parent || source->parent != parent->source_context_id ||
-		source_type->context_id != source->parent ||
-		source_type->subject != prototype_context_classifier_term(source)) {
+		source_type->proposition->context_id != source->parent ||
+		source_type->proposition->subject != prototype_context_classifier_term(source)) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < bridges->bridge_count; ++i) {
@@ -4986,8 +4859,8 @@ int prototype_hott_bridge_db_construct_extension(
 			PROTOTYPE_INVALID_ID,
 			&bridge_context
 		) != 0 ||
-		prototype_context_formation_certificate_db_add(
-			context_certificates,
+		prototype_cwf_certificate_db_add_context(
+			cwf_certificates,
 			contexts,
 			terms,
 			type_declarations,
@@ -5078,16 +4951,16 @@ int prototype_hott_bridge_db_construct_extension(
 			right_endpoint_classifier,
 			&right_claim
 		) != 0 ||
-		prototype_substitution_certificate_db_add(
-			substitution_certificates,
+		prototype_cwf_certificate_db_add_substitution(
+			cwf_certificates,
 			substitutions,
 			judgement,
 			left_substitution,
 			left_claim,
 			&left_substitution_certificate
 		) != 0 ||
-		prototype_substitution_certificate_db_add(
-			substitution_certificates,
+		prototype_cwf_certificate_db_add_substitution(
+			cwf_certificates,
 			substitutions,
 			judgement,
 			right_substitution,
@@ -5109,8 +4982,7 @@ int prototype_hott_bridge_db_construct_extension(
 			bridge.id,
 			contexts,
 			substitutions,
-			context_certificates,
-			substitution_certificates
+			cwf_certificates
 		)) {
 		return -1;
 	}
@@ -5138,26 +5010,32 @@ int prototype_hott_observation_plan_and_execute(
 	struct prototype_hott_candidate_db* candidates,
 	struct prototype_hott_work_db* work,
 	struct prototype_hott_action_db* actions,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_context_formation_certificate_db* context_certificates,
-	struct prototype_substitution_certificate_db* substitution_certificates,
+	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	const struct prototype_operation_graph* operations,
-	struct prototype_judgement_db* judgement,
 	uint32_t goal_id,
 	uint32_t source_ast,
 	int normalization_profile,
 	uint64_t step_limit,
 	struct prototype_hott_observation_execution* p_execution
 ) {
+	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_operation_graph* operations =
+		kernel ? kernel->operations : NULL;
+	struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
+	struct prototype_kernel_view view;
 	if (!goals || !candidates || !work || !actions || !contexts ||
-		!substitutions || !context_certificates || !substitution_certificates ||
+		!substitutions || !cwf_certificates || !cwf_certificates ||
 		!bridges || !terms || !type_declarations || !operations || !judgement ||
-		!p_execution) {
+		!p_execution || prototype_kernel_builder_view(kernel, &view) != 0) {
 		return -1;
 	}
 	struct prototype_hott_observation_execution execution = {
@@ -5171,16 +5049,9 @@ int prototype_hott_observation_plan_and_execute(
 			goals,
 			candidates,
 			work,
-			contexts,
-			substitutions,
-			context_certificates,
-			substitution_certificates,
+			&view,
 			bridges,
-			terms,
-			type_declarations,
 			definitions,
-			operations,
-			judgement,
 			goal_id,
 			source_ast,
 			normalization_profile,
@@ -5196,7 +5067,7 @@ int prototype_hott_observation_plan_and_execute(
 	if (!item || !goal) {
 		return -1;
 	}
-	if (item->state != PROTOTYPE_HOTT_WORK_READY) {
+	if (item->outcome.state != PROTOTYPE_HOTT_WORK_READY) {
 		*p_execution = execution;
 		return 0;
 	}
@@ -5208,29 +5079,11 @@ int prototype_hott_observation_plan_and_execute(
 		}
 	};
 	if (prototype_hott_action_request_intern(
-			actions,
-			contexts,
-			substitutions,
-			context_certificates,
-			substitution_certificates,
-			bridges,
-			terms,
-			type_declarations,
-			operations,
-			judgement,
+			actions, &view, bridges,
 			type_request,
 			&execution.type_action_request_id
 		) != 0 || prototype_hott_execute_type_action(
-			actions,
-			contexts,
-			substitutions,
-			context_certificates,
-			substitution_certificates,
-			bridges,
-			terms,
-			type_declarations,
-			operations,
-			judgement,
+			actions, kernel, bridges,
 			execution.type_action_request_id,
 			&execution.type_action_result_id
 		) != 0) {
@@ -5247,7 +5100,7 @@ int prototype_hott_observation_plan_and_execute(
 	if (!type_result || !selected) {
 		return -1;
 	}
-	if (type_result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY ||
+	if (type_result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY ||
 		selected->rule != PROTOTYPE_HOTT_RULE_OBS_DIAGONAL) {
 		*p_execution = execution;
 		return 0;
@@ -5261,29 +5114,11 @@ int prototype_hott_observation_plan_and_execute(
 		}
 	};
 	if (prototype_hott_action_request_intern(
-			actions,
-			contexts,
-			substitutions,
-			context_certificates,
-			substitution_certificates,
-			bridges,
-			terms,
-			type_declarations,
-			operations,
-			judgement,
+			actions, &view, bridges,
 			term_request,
 			&execution.term_action_request_id
 		) != 0 || prototype_hott_execute_term_action(
-			actions,
-			contexts,
-			substitutions,
-			context_certificates,
-			substitution_certificates,
-			bridges,
-			terms,
-			type_declarations,
-			operations,
-			judgement,
+			actions, kernel, bridges,
 			execution.term_action_request_id,
 			&execution.term_action_result_id
 		) != 0) {
@@ -5295,28 +5130,28 @@ int prototype_hott_observation_plan_and_execute(
 
 int prototype_hott_action_db_validate(
 	const struct prototype_hott_action_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_kernel_view* kernel,
+	const struct prototype_hott_bridge_db* bridges
 ) {
+	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
+	const struct prototype_substitution_db* substitutions =
+		kernel ? kernel->substitutions : NULL;
+	const struct prototype_cwf_certificate_db* cwf_certificates =
+		kernel ? kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* type_declarations =
+		kernel ? kernel->type_declarations : NULL;
+	const struct prototype_operation_graph* operations =
+		kernel ? kernel->operations : NULL;
+	const struct prototype_judgement_db* judgement =
+		kernel ? kernel->judgement : NULL;
 	if (!db || db->request_count > db->request_capacity ||
 		db->certificate_count > db->certificate_capacity ||
 		db->result_count > db->result_capacity ||
 		(db->request_count != 0 && !db->requests) ||
 		(db->certificate_count != 0 && !db->certificates) ||
 		(db->result_count != 0 && !db->results) ||
-		prototype_context_formation_certificate_db_validate(
-			context_certificates, contexts, terms, type_declarations, judgement
-		) != 0 ||
-		prototype_substitution_certificate_db_validate(
-			substitution_certificates, substitutions, judgement
-		) != 0) {
+		prototype_kernel_view_validate(kernel) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < bridges->bridge_count; ++i) {
@@ -5348,16 +5183,16 @@ int prototype_hott_action_db_validate(
 			type_request->key.type.source_bridge_id !=
 				bridge_certificate->parent_bridge_id ||
 			!source_type || !source || !relation ||
-			source_type->context_id != source->parent ||
-			source_type->subject != prototype_context_classifier_term(source) ||
+			source_type->proposition->context_id != source->parent ||
+			source_type->proposition->subject != prototype_context_classifier_term(source) ||
 			type_certificate->data.type.endpoint_context_id != relation->parent ||
 			type_certificate->data.type.relation_type_term_id !=
 				prototype_context_classifier_term(relation) ||
 			bridge_certificate->relation_context_certificate_id >=
-				context_certificates->certificate_count ||
-			context_certificates->certificates[
+				cwf_certificates->certificate_count ||
+			cwf_certificates->certificates[
 				bridge_certificate->relation_context_certificate_id
-			].classifier_claim_id !=
+			].claim_id !=
 				type_certificate->data.type.relation_is_type_claim_id) {
 			return -1;
 		}
@@ -5370,7 +5205,7 @@ int prototype_hott_action_db_validate(
 				i,
 				contexts,
 				substitutions,
-				context_certificates,
+				cwf_certificates,
 				bridges,
 				terms,
 				type_declarations,
@@ -5406,8 +5241,7 @@ int prototype_hott_action_db_validate(
 				i,
 				contexts,
 				substitutions,
-				context_certificates,
-				substitution_certificates,
+				cwf_certificates,
 				bridges,
 				terms,
 				type_declarations,
@@ -5427,21 +5261,13 @@ int prototype_hott_action_db_validate(
 		const struct prototype_hott_action_result* result = &db->results[i];
 		if (result->id != i ||
 			!prototype_hott_action_request_get(db, result->request_id) ||
-			strcmp(
-				result->calculus_fingerprint,
-				PROTOTYPE_HOTT_CALCULUS_FINGERPRINT
-			) != 0 ||
-			result->state < PROTOTYPE_HOTT_ACTION_RESULT_READY ||
-			result->state > PROTOTYPE_HOTT_ACTION_RESULT_UNSUPPORTED ||
-			(result->state == PROTOTYPE_HOTT_ACTION_RESULT_READY &&
-			 (result->residual_reason != PROTOTYPE_HOTT_RESIDUAL_NONE ||
-			  result->certificate_id >= db->certificate_count ||
+			!hott_deterministic_outcome_is_valid(&result->outcome, 0) ||
+			(result->outcome.state == PROTOTYPE_HOTT_ACTION_RESULT_READY &&
+			 (result->certificate_id >= db->certificate_count ||
 			  db->certificates[result->certificate_id].request_id !=
 				result->request_id)) ||
-			(result->state != PROTOTYPE_HOTT_ACTION_RESULT_READY &&
-			 (result->certificate_id != PROTOTYPE_INVALID_ID ||
-			  result->residual_reason == PROTOTYPE_HOTT_RESIDUAL_NONE ||
-			  !hott_residual_reason_is_valid(result->residual_reason)))) {
+			(result->outcome.state != PROTOTYPE_HOTT_ACTION_RESULT_READY &&
+			 result->certificate_id != PROTOTYPE_INVALID_ID)) {
 			return -1;
 		}
 		for (uint32_t j = 0; j < i; ++j) {

@@ -106,10 +106,16 @@ static struct prototype_match_case match_cases[MATCH_CASE_CAPACITY];
 static int match_case_label_symbols[MATCH_CASE_CAPACITY];
 static struct prototype_case_binder match_binders[MATCH_BINDER_CAPACITY];
 static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
-static struct prototype_judgement_claim_candidate judgements[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_proposition judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation_candidate judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_candidate_premise judgement_candidate_premises[
+	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+];
+static struct prototype_judgement_premise_edge judgement_accepted_premises[
+	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+];
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
@@ -182,10 +188,18 @@ static struct prototype_match_case provider_match_cases[MATCH_CASE_CAPACITY];
 static int provider_match_case_label_symbols[MATCH_CASE_CAPACITY];
 static struct prototype_case_binder provider_match_binders[MATCH_BINDER_CAPACITY];
 static struct prototype_ih_scope provider_ih_scopes[MATCH_FRAME_CAPACITY];
-static struct prototype_judgement_claim_candidate provider_judgements[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_proposition provider_judgements[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation_candidate provider_judgement_proofs[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_claim provider_judgement_claims[JUDGEMENT_CAPACITY];
 static struct prototype_judgement_derivation provider_judgement_derivations[JUDGEMENT_CAPACITY];
+static struct prototype_judgement_candidate_premise
+	provider_judgement_candidate_premises[
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	];
+static struct prototype_judgement_premise_edge
+	provider_judgement_accepted_premises[
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	];
 static struct prototype_artifact_term_export provider_artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
 static struct prototype_artifact_type_export provider_artifact_type_exports[ARTIFACT_TYPE_EXPORT_CAPACITY];
 static struct prototype_artifact_type_parameter_export provider_artifact_type_parameter_exports[ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY];
@@ -715,12 +729,12 @@ static int artifact_export_claim_ids_match_loaded_image(
 		}
 		const struct prototype_judgement_claim* claim =
 			&judgement->claims[export->source_claim_id];
-		if (claim->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			claim->subject != export->local_term ||
-			claim->classifier != export->classifier ||
-			(claim->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
-			 (claim->authority_id != export->operation ||
-			  claim->operation_id != export->operation))) {
+		if (claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			claim->proposition->subject != export->local_term ||
+			claim->proposition->classifier != export->classifier ||
+			(claim->proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+			 (claim->proposition->authority_id != export->operation ||
+			  claim->proposition->operation_id != export->operation))) {
 			return -1;
 		}
 	}
@@ -731,26 +745,17 @@ static uint32_t artifact_find_grounded_export_claim(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_artifact_term_export* export
 ) {
-	if (!judgement || !export ||
-		export->source_claim_id >= judgement->claim_candidate_count) {
-		return PROTOTYPE_INVALID_ID;
-	}
-	const struct prototype_judgement_claim_candidate* source =
-		&judgement->claim_candidates[export->source_claim_id];
-	if (source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		source->subject != export->local_term ||
-		source->classifier != export->classifier) {
+	if (!judgement || !export) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
 		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (claim->kind == source->kind &&
-			claim->authority_kind == source->authority_kind &&
-			claim->authority_id == source->authority_id &&
-			claim->context_id == source->context_id &&
-			claim->operation_id == source->operation_id &&
-			claim->subject == source->subject &&
-			claim->classifier == source->classifier &&
+		if (claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			claim->proposition->subject == export->local_term &&
+			claim->proposition->classifier == export->classifier &&
+			(claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+			 (claim->proposition->authority_id == export->operation &&
+			  claim->proposition->operation_id == export->operation)) &&
 			claim->closure_rank != PROTOTYPE_INVALID_ID) {
 			return i;
 		}
@@ -796,13 +801,13 @@ static int artifact_exports_have_accepted_claims(
 			}
 			const struct prototype_judgement_claim* claim =
 				&judgement->claims[grounded_claim_id];
-			found = claim->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-				claim->subject == export->local_term &&
-				claim->classifier == export->classifier &&
+			found = claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				claim->proposition->subject == export->local_term &&
+				claim->proposition->classifier == export->classifier &&
 				claim->closure_rank != PROTOTYPE_INVALID_ID &&
-				(claim->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-				 (claim->authority_id == export->operation &&
-				  claim->operation_id == export->operation));
+				(claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+				 (claim->proposition->authority_id == export->operation &&
+				  claim->proposition->operation_id == export->operation));
 			if (!found) {
 				return -1;
 			}
@@ -940,7 +945,7 @@ static int read_artifact_interface_and_graph(
 		) != 0 || prototype_universe_validate_provenance(
 			universe_db, judgement_db
 		) != 0 || artifact_exports_have_accepted_claims(
-			artifact_interface, term_db, judgement_db, metadata, 0
+			artifact_interface, term_db, judgement_db, metadata, 1
 		) != 0) {
 		status = -1;
 	}
@@ -1368,7 +1373,11 @@ static int check_export_normalization_equal(
 		judgement_proofs,
 		judgement_claims,
 		judgement_derivations,
-		JUDGEMENT_CAPACITY
+		JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
 	prototype_universe_db_init(
 		&universe_db,
@@ -1576,7 +1585,11 @@ static int check_exports_normalization_equal(
 		judgement_proofs,
 		judgement_claims,
 		judgement_derivations,
-		JUDGEMENT_CAPACITY
+		JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
 	prototype_universe_db_init(
 		&universe_db,
@@ -1804,7 +1817,11 @@ static int check_exports_shape_equal(
 		judgement_proofs,
 		judgement_claims,
 		judgement_derivations,
-		JUDGEMENT_CAPACITY
+		JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
 	prototype_universe_db_init(
 		&universe_db,
@@ -1963,7 +1980,11 @@ static int check_export_classifier_compatible(
 		judgement_proofs,
 		judgement_claims,
 		judgement_derivations,
-		JUDGEMENT_CAPACITY
+		JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
 	prototype_universe_db_init(
 		&universe_db,
@@ -2222,7 +2243,11 @@ static void init_provider_artifact_storage(
 		provider_judgement_proofs,
 		provider_judgement_claims,
 		provider_judgement_derivations,
-		JUDGEMENT_CAPACITY
+		JUDGEMENT_CAPACITY,
+		provider_judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		provider_judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
 }
 
@@ -3419,7 +3444,11 @@ int main(int argc, char** argv) {
 			judgement_proofs,
 			judgement_claims,
 			judgement_derivations,
-			JUDGEMENT_CAPACITY
+			JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 		);
 		prototype_universe_db_init(
 			&universe_db,
@@ -3574,7 +3603,11 @@ int main(int argc, char** argv) {
 				provider_judgement_proofs,
 				provider_judgement_claims,
 				provider_judgement_derivations,
-				JUDGEMENT_CAPACITY
+				JUDGEMENT_CAPACITY,
+		provider_judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		provider_judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 			);
 			prototype_compile_metadata_init(
 				&provider_metadata,
@@ -3859,7 +3892,7 @@ int main(int argc, char** argv) {
 			term_db.term_count,
 			before_types,
 			type_declarations.type_count,
-			judgement_db.claim_candidate_count,
+			judgement_db.proposition_count,
 			artifact_interface.term_export_count,
 			total_provider_exports,
 			artifact_interface.dependency_count,
@@ -3989,7 +4022,11 @@ int main(int argc, char** argv) {
 				judgement_proofs,
 				judgement_claims,
 				judgement_derivations,
-				JUDGEMENT_CAPACITY
+				JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 			);
 			prototype_universe_db_init(
 				&universe_db,
@@ -4151,7 +4188,7 @@ int main(int argc, char** argv) {
 				type_declarations.type_count,
 				type_declarations.constructor_count,
 				type_declarations.expr_count,
-				judgement_db.claim_candidate_count,
+				judgement_db.proposition_count,
 				judgement_db.derivation_candidate_count
 			);
 			printf(
@@ -4354,7 +4391,11 @@ int main(int argc, char** argv) {
 		judgement_proofs,
 		judgement_claims,
 		judgement_derivations,
-		JUDGEMENT_CAPACITY
+		JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
 
 	program.symbols = &symbols;
@@ -4668,9 +4709,9 @@ int main(int argc, char** argv) {
 	for (size_t i = 0; i < metadata.label_count; ++i) {
 		mark_reachable_external_refs(&term_db, metadata.labels[i].term, 0);
 	}
-	for (size_t i = 0; i < judgement_db.claim_candidate_count; ++i) {
-		mark_reachable_external_refs(&term_db, judgement_db.claim_candidates[i].subject, 0);
-		mark_reachable_external_refs(&term_db, judgement_db.claim_candidates[i].classifier, 0);
+	for (size_t i = 0; i < judgement_db.proposition_count; ++i) {
+		mark_reachable_external_refs(&term_db, judgement_db.propositions[i].subject, 0);
+		mark_reachable_external_refs(&term_db, judgement_db.propositions[i].classifier, 0);
 	}
 	size_t external_ref_count = 0;
 	for (size_t i = 0; i < term_db.term_count; ++i) {

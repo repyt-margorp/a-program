@@ -907,44 +907,55 @@ static int parse_parameterized_type_or_lambda_def(
 	uint32_t binder_types[32];
 	uint32_t binder_count = 0;
 	struct local_binder binders[32];
+	struct local_binder* outer_binders = parser->binders;
 
 	while (parser->current.kind == TOKEN_BACKSLASH) {
 		if (binder_count >= 32) {
 			set_error(parser, "too many lambda/type parameters");
+			parser->binders = outer_binders;
 			return -1;
 		}
 		if (expect(parser, TOKEN_BACKSLASH, "expected lambda") != 0) {
+			parser->binders = outer_binders;
 			return -1;
 		}
 		if (parser->current.kind != TOKEN_IDENT) {
 			set_error(parser, "expected binder name");
+			parser->binders = outer_binders;
 			return -1;
 		}
 		binder_symbols[binder_count] = parser->current.symbol_id;
 		ast_binder_ids[binder_count] = prototype_ast_new_binder(parser->program->asts);
 		if (ast_binder_ids[binder_count] == PROTOTYPE_INVALID_ID) {
 			set_error(parser, "binder table is full");
+			parser->binders = outer_binders;
 			return -1;
 		}
 		if (read_token(parser) != 0) {
+			parser->binders = outer_binders;
 			return -1;
 		}
 		if (expect(parser, TOKEN_COLON, "expected ':' after binder") != 0) {
+			parser->binders = outer_binders;
 			return -1;
 		}
 		if (parser->current.kind == TOKEN_AT) {
 			struct prototype_source_span span = current_span(parser);
 			if (read_token(parser) != 0) {
+				parser->binders = outer_binders;
 				return -1;
 			}
 			if (prototype_ast_type_expr_fresh_universe(parser->program->asts, span, &binder_types[binder_count]) != 0) {
 				set_error(parser, "type expression table is full");
+				parser->binders = outer_binders;
 				return -1;
 			}
 		} else if (parse_type_expr(parser, &binder_types[binder_count]) != 0) {
+			parser->binders = outer_binders;
 			return -1;
 		}
 		if (expect(parser, TOKEN_FATARROW, "expected '=>' after binder") != 0) {
+			parser->binders = outer_binders;
 			return -1;
 		}
 		binders[binder_count].symbol_id = binder_symbols[binder_count];
@@ -965,6 +976,7 @@ static int parse_parameterized_type_or_lambda_def(
 				&ast_type_def_id
 			) != 0) {
 			set_error(parser, "type table is full");
+			parser->binders = outer_binders;
 			return -1;
 		}
 		for (uint32_t i = 0; i < binder_count; ++i) {
@@ -974,20 +986,17 @@ static int parse_parameterized_type_or_lambda_def(
 				ast_binder_ids[i],
 				binder_symbols[i],
 				binder_types[i]
-			) != 0) {
+				) != 0) {
 				set_error(parser, "type parameter table is full");
+				parser->binders = outer_binders;
 				return -1;
 			}
 		}
 		if (parse_type_body(parser, ast_type_def_id) != 0) {
-			for (uint32_t i = 0; i < binder_count; ++i) {
-				parser->binders = binders[binder_count - i - 1].next;
-			}
+			parser->binders = outer_binders;
 			return -1;
 		}
-		for (uint32_t i = 0; i < binder_count; ++i) {
-			parser->binders = binders[binder_count - i - 1].next;
-		}
+		parser->binders = outer_binders;
 		uint32_t term;
 		if (prototype_ast_type_formation(
 			parser->program->asts,
@@ -1015,15 +1024,11 @@ static int parse_parameterized_type_or_lambda_def(
 
 	uint32_t body;
 	if (parse_term(parser, &body) != 0) {
-		for (uint32_t i = 0; i < binder_count; ++i) {
-			parser->binders = binders[binder_count - i - 1].next;
-		}
+		parser->binders = outer_binders;
 		return -1;
 	}
 
-	for (uint32_t i = 0; i < binder_count; ++i) {
-		parser->binders = binders[binder_count - i - 1].next;
-	}
+	parser->binders = outer_binders;
 
 	uint32_t term = body;
 	for (uint32_t i = binder_count; i > 0; --i) {
@@ -2776,7 +2781,7 @@ int prototype_link_external_refs(struct prototype_program* program) {
 	 * Bound the fixed point by the finite linked graph rather than a magic
 	 * pass count unrelated to the artifact size. */
 	size_t pass_limit = program->terms->term_count +
-		program->judgement->claim_candidate_count + program->judgement->derivation_candidate_count + 1;
+		program->judgement->proposition_count + program->judgement->derivation_candidate_count + 1;
 	for (size_t pass = 0; pass < pass_limit; ++pass) {
 		int changed = 0;
 		for (size_t i = 0; i < program->metadata->label_count; ++i) {
@@ -2792,11 +2797,11 @@ int prototype_link_external_refs(struct prototype_program* program) {
 					changed = 1;
 				}
 			}
-		for (size_t i = 0; i < program->judgement->claim_candidate_count; ++i) {
+		for (size_t i = 0; i < program->judgement->proposition_count; ++i) {
 			uint32_t linked_subject;
 			uint32_t linked_classifier;
-			struct prototype_judgement_claim_candidate* relation =
-				&program->judgement->claim_candidates[i];
+			struct prototype_judgement_proposition* relation =
+				&program->judgement->propositions[i];
 			if (link_term_against_labels(program, relation->subject, &linked_subject) != 0 ||
 				link_term_against_labels(program, relation->classifier, &linked_classifier) != 0) {
 				return -1;
@@ -2834,67 +2839,72 @@ int prototype_link_external_refs(struct prototype_program* program) {
 					proof->conclusion_classifier = linked_classifier;
 					changed = 1;
 				}
-				if (proof->constructor_owner_view != PROTOTYPE_INVALID_ID) {
+				if (proof->proof_kind ==
+						PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION ||
+					proof->proof_kind ==
+						PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) {
 					uint32_t linked_owner;
 					if (link_term_against_labels(
 							program,
-							proof->constructor_owner_view,
+							proof->rule_data.constructor.owner_view,
 							&linked_owner
 						) != 0) {
 						return -1;
 					}
-					if (linked_owner != proof->constructor_owner_view) {
-						proof->constructor_owner_view = linked_owner;
+					if (linked_owner != proof->rule_data.constructor.owner_view) {
+						proof->rule_data.constructor.owner_view = linked_owner;
 						changed = 1;
 					}
 				}
-				if (proof->induction_match != PROTOTYPE_INVALID_ID) {
+				if (proof->proof_kind ==
+					PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
 					uint32_t linked_match;
 					if (link_term_against_labels(
 							program,
-							proof->induction_match,
+							proof->rule_data.induction.match,
 							&linked_match
 						) != 0) {
 						return -1;
 					}
-					if (linked_match != proof->induction_match) {
-						proof->induction_match = linked_match;
+					if (linked_match != proof->rule_data.induction.match) {
+						proof->rule_data.induction.match = linked_match;
 						changed = 1;
 					}
 				}
-				if (proof->induction_motive != PROTOTYPE_INVALID_ID) {
+				if (proof->proof_kind ==
+					PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
 					uint32_t linked_motive;
 					if (link_term_against_labels(
 							program,
-							proof->induction_motive,
+							proof->rule_data.induction.motive,
 							&linked_motive
 						) != 0) {
 						return -1;
 					}
-					if (linked_motive != proof->induction_motive) {
-						proof->induction_motive = linked_motive;
+					if (linked_motive != proof->rule_data.induction.motive) {
+						proof->rule_data.induction.motive = linked_motive;
 						changed = 1;
 					}
 				}
 				for (uint32_t j = 0; j < proof->premise_count; ++j) {
 				if (link_term_against_labels(
 						program,
-						proof->premise_subjects[j],
+						proof->premises[j].proposition.subject,
 						&linked_subject
 					) != 0 ||
 					link_term_against_labels(
 						program,
-						proof->premise_classifiers[j],
+						proof->premises[j].proposition.classifier,
 						&linked_classifier
 					) != 0) {
 					return -1;
 				}
-				if (linked_subject != proof->premise_subjects[j]) {
-					proof->premise_subjects[j] = linked_subject;
+				if (linked_subject != proof->premises[j].proposition.subject) {
+					proof->premises[j].proposition.subject = linked_subject;
 					changed = 1;
 				}
-				if (linked_classifier != proof->premise_classifiers[j]) {
-					proof->premise_classifiers[j] = linked_classifier;
+				if (linked_classifier != proof->premises[j].proposition.classifier) {
+					proof->premises[j].proposition.classifier = linked_classifier;
 					changed = 1;
 				}
 			}

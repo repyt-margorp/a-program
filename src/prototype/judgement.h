@@ -94,13 +94,54 @@ enum prototype_judgement_semantic_action_kind {
 		PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES \
 	)
 
-/* Solver-local candidate. Premise tuples are permitted here because they have
- * not crossed the accepted certificate boundary. */
+/* Immutable proposition identity shared by solver candidates and accepted
+ * Claims. Lifecycle state is deliberately not part of this record. */
+struct prototype_judgement_proposition {
+	int kind;
+	int authority_kind;
+	uint32_t authority_id;
+	uint32_t context_id;
+	uint32_t operation_id;
+	uint32_t subject;
+	uint32_t classifier;
+	uint64_t key_hash;
+	uint32_t hash_next;
+};
+
+/* One ordered solver premise. Keeping the proposition fields together makes
+ * malformed cross-column combinations unrepresentable. */
+struct prototype_judgement_candidate_premise {
+	struct prototype_judgement_proposition proposition;
+};
+
+/* One ordered accepted premise. A valid Claim id is a DAG edge. INVALID marks
+ * a rule-local proposition which is replayed without publishing a Claim. */
+struct prototype_judgement_premise_edge {
+	uint32_t claim_id;
+	struct prototype_judgement_proposition scoped_proposition;
+};
+
+union prototype_judgement_rule_data {
+	uint32_t words[4];
+	struct {
+		uint32_t owner_view;
+		uint32_t constructor_index;
+		uint32_t field_index;
+	} constructor;
+	struct {
+		uint32_t match;
+		uint32_t motive;
+		uint32_t case_index;
+		uint32_t field_index;
+	} induction;
+};
+
+/* Solver-local candidate. */
 struct prototype_judgement_derivation_candidate {
 	int proof_kind;
 	/* Solver-local adjacency. Claim candidates are propositions; derivation
 	 * candidates independently point at the proposition they establish. */
-	uint32_t conclusion_claim_candidate_id;
+	uint32_t conclusion_proposition_id;
 	int conclusion_kind;
 	uint32_t conclusion_context_id;
 	/* INVALID denotes a non-Operation kernel/declaration fact. */
@@ -109,38 +150,13 @@ struct prototype_judgement_derivation_candidate {
 	uint32_t conclusion_classifier;
 	/* Rule parameters for Match-pattern assumptions. The Match core erases
 	 * owner views, so the derivation retains the selected declaration. */
-	uint32_t constructor_owner_view;
-	uint32_t constructor_index;
-	uint32_t constructor_field_index;
-	/* Rule parameters for guarded induction-hypothesis elimination. */
-	uint32_t induction_match;
-	uint32_t induction_motive;
-	uint32_t induction_case_index;
-	uint32_t induction_field_index;
+	union prototype_judgement_rule_data rule_data;
 	/* Exact graph operation certified by this rule. This is distinct from a
 	 * premise Claim and from rule-local diagnostic parameters. */
 	int semantic_action_kind;
 	uint32_t semantic_action_id;
 	uint32_t premise_count;
-	int premise_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	int premise_authority_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t premise_authority_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t premise_operation_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-};
-
-struct prototype_judgement_claim_candidate {
-	int kind;
-	int authority_kind;
-	uint32_t authority_id;
-	uint32_t context_id;
-	/* Typed source/generated occurrence. The Core subject remains the erased
-	 * computation projection and is never used to recover this identity. */
-	uint32_t operation_id;
-	uint32_t subject;
-	uint32_t classifier;
+	struct prototype_judgement_candidate_premise* premises;
 };
 
 /* Complete evidence selected by a proof-producing lookup. Classifier-only
@@ -161,13 +177,8 @@ struct prototype_judgement_selected_evidence {
 
 /* Accepted proposition identity. Rule identity is deliberately absent. */
 struct prototype_judgement_claim {
-	int kind;
-	int authority_kind;
-	uint32_t authority_id;
-	uint32_t context_id;
-	uint32_t operation_id;
-	uint32_t subject;
-	uint32_t classifier;
+	uint32_t proposition_id;
+	const struct prototype_judgement_proposition* proposition;
 	uint32_t closure_rank;
 	uint64_t key_hash;
 	uint32_t hash_next;
@@ -179,24 +190,14 @@ struct prototype_judgement_derivation {
 	int proof_kind;
 	uint32_t conclusion_claim_id;
 	uint32_t closure_rank;
-	uint32_t constructor_owner_view;
-	uint32_t constructor_index;
-	uint32_t constructor_field_index;
-	uint32_t induction_match;
-	uint32_t induction_motive;
-	uint32_t induction_case_index;
-	uint32_t induction_field_index;
+	union prototype_judgement_rule_data rule_data;
 	int semantic_action_kind;
 	uint32_t semantic_action_id;
 	/* Rule-premise order is part of the derivation. A valid Claim id denotes an
 	 * accepted proposition dependency. INVALID denotes a scoped rule parameter
 	 * whose local tuple is retained below and replayed by the rule validator. */
 	uint32_t premise_count;
-	uint32_t premise_claim_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	int scoped_premise_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t scoped_premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t scoped_premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t scoped_premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	struct prototype_judgement_premise_edge* premises;
 	uint64_t key_hash;
 	uint32_t hash_next;
 };
@@ -292,26 +293,41 @@ struct prototype_judgement_db {
 	/* Mutable solver frontier. These records are reconstructed after artifact
 	 * readback when linking or further solving needs a local candidate view;
 	 * they are not the accepted certificate image. */
-	struct prototype_judgement_claim_candidate* claim_candidates;
+	struct prototype_judgement_proposition* propositions;
 	struct prototype_judgement_derivation_candidate* derivation_candidates;
-	size_t claim_candidate_count;
-	size_t claim_candidate_capacity;
+	size_t proposition_count;
+	size_t proposition_capacity;
 	size_t derivation_candidate_count;
 	size_t derivation_candidate_capacity;
 	struct prototype_judgement_claim* claims;
 	struct prototype_judgement_derivation* derivations;
+	struct prototype_judgement_candidate_premise* candidate_premises;
+	struct prototype_judgement_premise_edge* accepted_premises;
 	size_t claim_count;
 	size_t claim_capacity;
 	size_t derivation_count;
 	size_t derivation_capacity;
+	size_t candidate_premise_count;
+	size_t candidate_premise_capacity;
+	size_t accepted_premise_count;
+	size_t accepted_premise_capacity;
 	uint32_t claim_index_heads[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
+	uint32_t proposition_index_heads[
+		PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT
+	];
 	uint32_t derivation_index_heads[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
 	uint64_t claim_intern_requests;
 	uint64_t claim_intern_hits;
 	uint64_t claim_intern_probes;
+	uint64_t proposition_intern_requests;
+	uint64_t proposition_intern_hits;
+	uint64_t proposition_intern_probes;
 	uint64_t derivation_intern_requests;
 	uint64_t derivation_intern_hits;
 	uint64_t derivation_intern_probes;
+	uint64_t candidate_premise_allocations;
+	uint64_t accepted_premise_allocations;
+	uint64_t accepted_premise_reuses;
 
 	uint32_t next_universe_var;
 };
@@ -362,55 +378,23 @@ int prototype_judgement_claim_category(
 	int* p_category
 );
 
-struct prototype_substitution_certificate {
-	uint32_t substitution_id;
-	uint32_t claim_id;
-};
-
-struct prototype_substitution_certificate_db {
-	struct prototype_substitution_certificate* certificates;
-	size_t certificate_count;
-	size_t certificate_capacity;
-};
-
-void prototype_substitution_certificate_db_init(
-	struct prototype_substitution_certificate_db* db,
-	struct prototype_substitution_certificate* certificates,
-	size_t certificate_capacity
-);
-const struct prototype_substitution_certificate*
-prototype_substitution_certificate_db_get(
-	const struct prototype_substitution_certificate_db* db,
-	uint32_t certificate_id
-);
-int prototype_substitution_certificate_db_add(
-	struct prototype_substitution_certificate_db* db,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_judgement_db* judgement,
-	uint32_t substitution_id,
-	uint32_t claim_id,
-	uint32_t* p_certificate_id
-);
-int prototype_substitution_certificate_db_validate(
-	const struct prototype_substitution_certificate_db* db,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_judgement_db* judgement
-);
-
 /* Temporary overlay for judgement facts produced while compiling one graph
  * fragment. Successful paths commit the delta into JudgementDB; failed paths
  * rewind it. This is not a semantic typing context. */
 struct prototype_judgement_delta {
 	struct prototype_judgement_db* db;
-	struct prototype_judgement_claim_candidate* claim_candidates;
+	struct prototype_judgement_proposition* propositions;
 	struct prototype_judgement_derivation_candidate* derivation_candidates;
+	struct prototype_judgement_candidate_premise* candidate_premises;
 	struct prototype_judgement_match_motive_result* match_motive_results;
 	struct prototype_judgement_computation_constraint* computation_constraints;
 	struct prototype_judgement_effect_row_constraint* effect_row_constraints;
-	size_t claim_candidate_count;
-	size_t claim_candidate_capacity;
+	size_t proposition_count;
+	size_t proposition_capacity;
 	size_t derivation_candidate_count;
 	size_t derivation_candidate_capacity;
+	size_t candidate_premise_count;
+	size_t candidate_premise_capacity;
 	size_t match_motive_result_count;
 	size_t match_motive_result_capacity;
 	size_t computation_constraint_count;
@@ -451,19 +435,25 @@ struct prototype_induction_hypothesis_resolution_request {
 
 void prototype_judgement_db_init(
 	struct prototype_judgement_db* db,
-	struct prototype_judgement_claim_candidate* relations,
+	struct prototype_judgement_proposition* relations,
 	struct prototype_judgement_derivation_candidate* proofs,
 	struct prototype_judgement_claim* claims,
 	struct prototype_judgement_derivation* derivations,
-	size_t claim_capacity
+	size_t claim_capacity,
+	struct prototype_judgement_candidate_premise* candidate_premises,
+	size_t candidate_premise_capacity,
+	struct prototype_judgement_premise_edge* accepted_premises,
+	size_t accepted_premise_capacity
 );
 
 void prototype_judgement_delta_init(
 	struct prototype_judgement_delta* delta,
 	struct prototype_judgement_db* db,
-	struct prototype_judgement_claim_candidate* relations,
+	struct prototype_judgement_proposition* relations,
 	struct prototype_judgement_derivation_candidate* proofs,
-	size_t claim_candidate_capacity,
+	size_t proposition_capacity,
+	struct prototype_judgement_candidate_premise* candidate_premises,
+	size_t candidate_premise_capacity,
 	struct prototype_judgement_match_motive_result* match_motive_results,
 	size_t match_motive_result_capacity,
 	struct prototype_judgement_computation_constraint* computation_constraints,
@@ -501,7 +491,7 @@ int prototype_judgement_delta_commit(
  * Initialize *p_cursor to zero. Returns 0 with one result, 1 at the end, and
  * -1 for malformed input. No Derivation is designated as the Claim's proof. */
 int prototype_judgement_candidate_derivation_next(
-	const struct prototype_judgement_claim_candidate* claims,
+	const struct prototype_judgement_proposition* claims,
 	size_t claim_count,
 	const struct prototype_judgement_derivation_candidate* derivations,
 	size_t derivation_count,
@@ -511,7 +501,7 @@ int prototype_judgement_candidate_derivation_next(
 );
 
 int prototype_judgement_candidate_find_derivation_kind(
-	const struct prototype_judgement_claim_candidate* claims,
+	const struct prototype_judgement_proposition* claims,
 	size_t claim_count,
 	const struct prototype_judgement_derivation_candidate* derivations,
 	size_t derivation_count,
@@ -521,7 +511,7 @@ int prototype_judgement_candidate_find_derivation_kind(
 );
 
 int prototype_judgement_candidate_find_derivation_other_than(
-	const struct prototype_judgement_claim_candidate* claims,
+	const struct prototype_judgement_proposition* claims,
 	size_t claim_count,
 	const struct prototype_judgement_derivation_candidate* derivations,
 	size_t derivation_count,

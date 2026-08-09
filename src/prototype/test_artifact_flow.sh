@@ -2851,6 +2851,40 @@ if ./read_file.out --read-graph "$TMP_DIR/BadExternalDeclarationClassifier.apo" 
 	exit 1
 fi
 
+# A rule-local premise is serialized as an expanded v69 tuple rather than as
+# an accepted Claim edge. Exercise every tuple column independently.
+./read_file.out --write-artifact "$TMP_DIR/ScopedPremise.apo" \
+	src/prototype/effect_weaken_handler_check.p \
+	>"$TMP_DIR/scoped-premise-write.out"
+./read_file.out --read-graph "$TMP_DIR/ScopedPremise.apo" \
+	>"$TMP_DIR/scoped-premise-read.out"
+for scoped_field in kind context subject classifier; do
+	awk -v field="$scoped_field" '
+		{
+			for (i = 1; i + 5 <= NF; ++i) {
+				if ($i != "premise" || $(i + 1) != 4294967295 || done) {
+					continue;
+				}
+				if (field == "kind") $(i + 2) = $(i + 2) == 1 ? 2 : 1;
+				if (field == "context") $(i + 3) = $(i + 3) + 1;
+				if (field == "subject") $(i + 4) = $(i + 5);
+				if (field == "classifier") $(i + 5) = $(i + 4);
+				done = 1;
+			}
+			print
+		}
+		END { if (!done) exit 1 }
+	' "$TMP_DIR/ScopedPremise.apo" \
+		>"$TMP_DIR/ScopedPremise-forged-$scoped_field.apo"
+	if ./read_file.out --read-graph \
+		"$TMP_DIR/ScopedPremise-forged-$scoped_field.apo" \
+		>"$TMP_DIR/scoped-premise-forged-$scoped_field.out" \
+		2>"$TMP_DIR/scoped-premise-forged-$scoped_field.err"; then
+		echo "artifact accepted forged scoped premise $scoped_field" >&2
+		exit 1
+	fi
+done
+
 cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
 	src/prototype/core_view_representation_check.c \
 	src/prototype/ast.c src/prototype/context.c src/prototype/ast_inspect.c \

@@ -7,28 +7,37 @@
 static int check_judgement_graph_collisions(void) {
 	size_t count = PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT + 1;
 	struct prototype_judgement_claim* claims = calloc(count, sizeof(*claims));
+	struct prototype_judgement_proposition* propositions =
+		calloc(count, sizeof(*propositions));
 	struct prototype_judgement_derivation* derivations =
 		calloc(count, sizeof(*derivations));
-	if (!claims || !derivations) {
+	if (!claims || !propositions || !derivations) {
 		free(claims);
+		free(propositions);
 		free(derivations);
 		return -1;
 	}
 	struct prototype_judgement_db judgement;
 	prototype_judgement_db_init(
-		&judgement, NULL, NULL, claims, derivations, count
+		&judgement, propositions, NULL, claims, derivations, count,
+		NULL, 0, NULL, 0
 	);
 	judgement.claim_count = count;
 	judgement.derivation_count = count;
+	judgement.proposition_count = count;
 	for (uint32_t i = 0; i < count; ++i) {
-		claims[i] = (struct prototype_judgement_claim){
+		propositions[i] = (struct prototype_judgement_proposition){
 			.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 			.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
 			.authority_id = i,
 			.context_id = 0,
 			.operation_id = PROTOTYPE_INVALID_ID,
 			.subject = i,
-			.classifier = i + 1,
+			.classifier = i + 1
+		};
+		claims[i] = (struct prototype_judgement_claim){
+			.proposition_id = i,
+			.proposition = &propositions[i],
 			.closure_rank = 0
 		};
 		derivations[i] = (struct prototype_judgement_derivation){
@@ -42,6 +51,7 @@ static int check_judgement_graph_collisions(void) {
 	}
 	if (prototype_judgement_db_rebuild_index(&judgement) != 0) {
 		free(claims);
+		free(propositions);
 		free(derivations);
 		return -1;
 	}
@@ -94,7 +104,88 @@ static int check_judgement_graph_collisions(void) {
 		found_derivation_left != derivation_left ||
 		found_derivation_right != derivation_right;
 	free(claims);
+	free(propositions);
 	free(derivations);
+	return status ? -1 : 0;
+}
+
+static int check_judgement_premise_arenas(void) {
+	enum { CLAIM_COUNT = 4, DERIVATION_COUNT = 5, STORAGE_CAPACITY = 5 };
+	const size_t premise_capacity =
+		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES + 4;
+	struct prototype_judgement_proposition propositions[STORAGE_CAPACITY];
+	struct prototype_judgement_claim claims[STORAGE_CAPACITY];
+	struct prototype_judgement_derivation derivations[DERIVATION_COUNT];
+	struct prototype_judgement_premise_edge* premises = calloc(
+		premise_capacity, sizeof(*premises)
+	);
+	if (!premises) {
+		return -1;
+	}
+	memset(propositions, 0, sizeof(propositions));
+	memset(claims, 0, sizeof(claims));
+	memset(derivations, 0, sizeof(derivations));
+	for (uint32_t i = 0; i < CLAIM_COUNT; ++i) {
+		propositions[i] = (struct prototype_judgement_proposition) {
+			.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+			.authority_id = i,
+			.context_id = 0,
+			.operation_id = PROTOTYPE_INVALID_ID,
+			.subject = i,
+			.classifier = i + 1
+		};
+		claims[i] = (struct prototype_judgement_claim) {
+			.proposition_id = i,
+			.proposition = &propositions[i],
+			.closure_rank = i
+		};
+	}
+	uint32_t counts[DERIVATION_COUNT] = {
+		0, 1, 2, PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES, 1
+	};
+	size_t first = 0;
+	for (uint32_t i = 0; i < DERIVATION_COUNT; ++i) {
+		memset(&derivations[i].rule_data, 0xff, sizeof(derivations[i].rule_data));
+		derivations[i].proof_kind = i == 4 ?
+			PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO :
+			PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION;
+		derivations[i].conclusion_claim_id = i == 4 ? 2 : i;
+		derivations[i].closure_rank = i;
+		derivations[i].premise_count = counts[i];
+		derivations[i].premises = counts[i] == 0 ? NULL : &premises[first];
+		derivations[i].semantic_action_kind =
+			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
+		derivations[i].semantic_action_id = PROTOTYPE_INVALID_ID;
+		for (uint32_t j = 0; j < counts[i]; ++j) {
+			premises[first + j].claim_id = i == 2 && j == 1 ? 1 : 0;
+		}
+		first += counts[i];
+	}
+	struct prototype_judgement_db judgement;
+	prototype_judgement_db_init(
+		&judgement, propositions, NULL, claims, derivations, STORAGE_CAPACITY,
+		NULL, 0, premises, premise_capacity
+	);
+	judgement.proposition_count = CLAIM_COUNT;
+	judgement.claim_count = CLAIM_COUNT;
+	judgement.derivation_count = DERIVATION_COUNT;
+	judgement.accepted_premise_count = first;
+	uint32_t found;
+	struct prototype_judgement_derivation reordered = derivations[2];
+	struct prototype_judgement_premise_edge reordered_premises[2] = {
+		derivations[2].premises[1], derivations[2].premises[0]
+	};
+	reordered.premises = reordered_premises;
+	int status = prototype_judgement_db_rebuild_index(&judgement) != 0 ||
+		judgement.claims[2].proposition != &judgement.propositions[
+			judgement.claims[2].proposition_id
+		] || prototype_judgement_find_exact_derivation(
+			&judgement, &judgement.derivations[3], &found
+		) != 0 || found != 3 || prototype_judgement_find_exact_derivation(
+			&judgement, &reordered, &found
+		) != 1;
+	free(premises);
 	return status ? -1 : 0;
 }
 
@@ -1031,6 +1122,10 @@ int main(void) {
 	}
 	if (check_judgement_graph_collisions() != 0) {
 		fprintf(stderr, "judgement graph collision law failed\n");
+		return 1;
+	}
+	if (check_judgement_premise_arenas() != 0) {
+		fprintf(stderr, "judgement premise arena law failed\n");
 		return 1;
 	}
 	printf("context category checks passed\n");
