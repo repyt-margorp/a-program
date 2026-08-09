@@ -98,6 +98,132 @@ static int check_judgement_graph_collisions(void) {
 	return status ? -1 : 0;
 }
 
+static int check_comprehension_action_collisions(void) {
+	enum { ACTION_COUNT = PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT + 9 };
+	static struct prototype_term term_storage[ACTION_COUNT + 8];
+	static struct prototype_match_case case_storage[1];
+	static int case_labels[1];
+	static struct prototype_case_binder case_binders[1];
+	static struct prototype_ih_scope frames[1];
+	static struct prototype_context context_storage[ACTION_COUNT * 2 + 1];
+	static struct prototype_substitution substitution_storage[ACTION_COUNT * 3 + 1];
+	static struct prototype_context_db contexts;
+	static struct prototype_substitution_db substitutions;
+	struct prototype_term_db terms;
+	struct prototype_type_declaration_db type_declarations;
+	struct prototype_type_declaration type_storage[1];
+	struct prototype_type_constructor_declaration constructor_storage[1];
+	struct prototype_type_parameter_declaration parameter_storage[1];
+	uint32_t field_type_storage[1];
+	struct prototype_type_expr type_expr_storage[1];
+	uint32_t sources[ACTION_COUNT];
+	uint32_t target_bindings[ACTION_COUNT];
+	uint32_t targets[ACTION_COUNT];
+	uint32_t lifted[ACTION_COUNT];
+	uint32_t int_type;
+	uint32_t base_substitution;
+
+	prototype_term_db_init(
+		&terms,
+		term_storage,
+		ACTION_COUNT + 8,
+		case_storage,
+		case_labels,
+		1,
+		case_binders,
+		1,
+		frames,
+		1
+	);
+	prototype_type_declaration_db_init(
+		&type_declarations,
+		type_storage,
+		1,
+		constructor_storage,
+		1,
+		parameter_storage,
+		1,
+		field_type_storage,
+		1,
+		type_expr_storage,
+		1
+	);
+	prototype_context_db_init(
+		&contexts, context_storage, ACTION_COUNT * 2 + 1
+	);
+	prototype_substitution_db_init(
+		&substitutions,
+		substitution_storage,
+		ACTION_COUNT * 3 + 1
+	);
+	if (prototype_term_primitive_int(&terms, &int_type) != 0 ||
+		prototype_substitution_identity(
+			&substitutions,
+			&contexts,
+			prototype_context_empty(&contexts),
+			&base_substitution
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < ACTION_COUNT; ++i) {
+		if (prototype_context_extend(
+				&contexts,
+				prototype_context_empty(&contexts),
+				ACTION_COUNT + i,
+				int_type,
+				PROTOTYPE_INVALID_ID,
+				&sources[i]
+			) != 0) {
+			return -1;
+		}
+	}
+	for (uint32_t i = 0; i < ACTION_COUNT; ++i) {
+		if (prototype_context_comprehension_action(
+				&contexts,
+				&substitutions,
+				&terms,
+				&type_declarations,
+				sources[i],
+				base_substitution,
+				&target_bindings[i],
+				&targets[i],
+				&lifted[i]
+			) != 0) {
+			return -1;
+		}
+	}
+	uint32_t binding_count = terms.next_binding_id;
+	uint32_t context_count = (uint32_t)contexts.context_count;
+	uint32_t substitution_count = (uint32_t)substitutions.substitution_count;
+	for (uint32_t i = 0; i < ACTION_COUNT; ++i) {
+		uint32_t repeated_binding;
+		uint32_t repeated_target;
+		uint32_t repeated_lifted;
+		if (prototype_context_comprehension_action(
+				&contexts,
+				&substitutions,
+				&terms,
+				&type_declarations,
+				sources[i],
+				base_substitution,
+				&repeated_binding,
+				&repeated_target,
+				&repeated_lifted
+			) != 0 || repeated_binding != target_bindings[i] ||
+			repeated_target != targets[i] || repeated_lifted != lifted[i]) {
+			return -1;
+		}
+	}
+	return terms.next_binding_id != binding_count ||
+		contexts.context_count != context_count ||
+		substitutions.substitution_count != substitution_count ||
+		contexts.pullback_hits != ACTION_COUNT ||
+		contexts.pullback_probes <= contexts.pullback_hits ||
+		prototype_context_comprehension_actions_validate(
+			&contexts, &substitutions
+		) != 0 ? -1 : 0;
+}
+
 int main(void) {
 	struct prototype_term terms[128];
 	struct prototype_match_case cases[8];
@@ -345,7 +471,7 @@ int main(void) {
 			section,
 			&dependent_reindexed
 		) != 0 ||
-		prototype_context_fresh_reindex_extension(
+		prototype_context_reindex_telescope(
 			&contexts,
 			&substitutions,
 			&term_db,
@@ -439,7 +565,7 @@ int main(void) {
 				section,
 				&cached_reindexed
 			) != 0 || cached_reindexed != dependent_reindexed ||
-			prototype_context_fresh_reindex_extension(
+			prototype_context_reindex_telescope(
 				&contexts,
 				&substitutions,
 				&term_db,
@@ -825,6 +951,10 @@ int main(void) {
 			fprintf(stderr, "collision-safe graph interning law failed\n");
 			return 1;
 		}
+	}
+	if (check_comprehension_action_collisions() != 0) {
+		fprintf(stderr, "comprehension action collision law failed\n");
+		return 1;
 	}
 	prototype_operation_graph_init(
 		&operation_graph,

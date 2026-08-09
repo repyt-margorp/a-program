@@ -68,7 +68,9 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_COMPUTATION_FOLD = 30,
 	/* Static effect-row atom for one higher-order operation family and the
 	 * latent effects of its suspended computation argument. */
-	PROTOTYPE_TERM_EFFECT_ROW_OPERATION = 31
+	PROTOTYPE_TERM_EFFECT_ROW_OPERATION = 31,
+	PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER = 32,
+	PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER = 33
 };
 
 enum prototype_term_category {
@@ -707,6 +709,34 @@ int prototype_term_induction_hypothesis(
 );
 int prototype_term_universe_var(struct prototype_term_db* db, uint32_t level_var, uint32_t* p_ret);
 int prototype_term_primitive_text(struct prototype_term_db* db, uint32_t* p_ret);
+int prototype_term_observation_type(
+	struct prototype_term_db* db,
+	uint32_t left_classifier,
+	uint32_t right_classifier,
+	uint32_t left_endpoint,
+	uint32_t right_endpoint,
+	uint32_t* p_ret
+);
+int prototype_term_observation_witness(
+	struct prototype_term_db* db,
+	uint32_t left_endpoint,
+	uint32_t right_endpoint,
+	uint32_t* p_ret
+);
+int prototype_term_observation_type_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_left_classifier,
+	uint32_t* p_right_classifier,
+	uint32_t* p_left_endpoint,
+	uint32_t* p_right_endpoint
+);
+int prototype_term_observation_witness_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_left_endpoint,
+	uint32_t* p_right_endpoint
+);
 int prototype_term_text_literal(struct prototype_term_db* db, int text_symbol_id, uint32_t* p_ret);
 int prototype_term_primitive_int(struct prototype_term_db* db, uint32_t* p_ret);
 int prototype_term_primitive_int64(struct prototype_term_db* db, uint32_t* p_ret);

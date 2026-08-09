@@ -2,13 +2,17 @@
 
 Date: 2026-08-08
 
-Status: active; V2-P1 is complete, V3-G1 graph-consing is the mandatory next
-stage; G1.0/G1.1 are complete locally, and V2-O1 remains reordered after it.
-Local identity, artifact-link
-comparison, kernel conversion, immutable observation goals, and compiler-local
-candidate search have separate semantic ownership, but Context, Substitution,
-and Judgement still use different interning and adjacency representations. V3
-repairs that substrate before object-level HOTT action is implemented.
+Status: active; V2-P1, V3-G1 graph-consing, and compiler-local V2-O1
+type-directed observational action are complete. V2-A1 artifact publication is
+the next stage. The post-G1 O1 audit found one pullback-interning correction
+and one Type-action endpoint-context correction; both were completed before
+non-empty bridge construction.
+Local identity, artifact-link comparison, kernel conversion, immutable
+observation goals, and compiler-local candidate search have separate semantic
+ownership. V3-G1 has repaired the former Context/Substitution/Judgement
+interning and adjacency split. O1.1 replaced the former direct-mapped pullback
+memo with the general interned comprehension action without reopening the whole
+G1 migration.
 
 This V3 document copies V2 in full as historical evidence and updates its active
 plan against the implementation at commit `942bed7`. Requirements taken
@@ -41,20 +45,20 @@ Derivations retain copied scoped-premise tuples. V3-G1 applies one explicit
 graph-consing discipline to Context, Substitution, and Judgement while retaining
 their distinct categorical sorts and the one shared TermDB.
 
+V3-G1 was completed at commit `575d6c0`. The detailed V2-O1 implementation
+audit and progress plan is
+`doc/2026-08-09T07-10-00-V2-O1-OBSERVATIONAL-ACTION-IMPLEMENTATION-PLAN.md`.
+It corrects the Type-action contract to include the two-endpoint Context,
+separates immutable action requests from generated results, and requires the
+remaining direct-mapped pullback cache to become a true interned CwF action
+before relational Contexts are generated.
+
 ## 1. Baseline
 
 The inherited historical audit begins at the following repository state:
 
 - branch: `main`;
 - Git commit: `474867ea31331bcf93821f9bf106184602715e58`;
-
-The active V3 delta is pinned to:
-
-- branch: `main`;
-- Git commit: `942bed77e6d825b9b9965b480ea1faf80afcc737`;
-- artifact format at the pinned baseline: v68;
-- current local artifact format after V3-G1.1: v69;
-- prototype test scripts: 16.
 - short commit: `474867e`;
 - commit date: `2026-08-06T23:04:09+09:00`;
 - commit subject: `refactor: structure kernel conversion outcomes`;
@@ -63,6 +67,21 @@ The active V3 delta is pinned to:
 - artifact format: `A_PROGRAM_ARTIFACT 62`;
 - verification-obligation schema: version `1` for
   `PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT`.
+
+The active V3 delta is pinned to:
+
+- branch: `main`;
+- Git commit: `942bed77e6d825b9b9965b480ea1faf80afcc737`;
+- artifact format at the pinned baseline: v68;
+- current local artifact format after V3-G1.1: v69;
+- prototype test scripts: 16.
+
+The current O1 planning baseline is:
+
+- branch: `main`;
+- Git commit: `575d6c0`;
+- artifact format: v69;
+- prototype test scripts: 16.
 
 The artifact writer emits version 61 at `src/prototype/ast.c:7368`, and the
 reader accepts only version 61 at `src/prototype/ast.c:7694-7699`. The existing
@@ -1257,9 +1276,9 @@ At commit `474867e`:
 | V2-P0 | Make OperationGraph authoritative for operation typing and normalize accepted Claim/Derivation ownership | complete at `4025532` | v67 publishes accepted Claims/Derivations with exact link and Universe provenance | all 16 scripts, examples 01-07/09, forged artifacts, schema fingerprint, and exit audit pass |
 | V2-P1-R0 | Repair the typed HOTT-goal entry substrate discovered by the P1 audit | complete at `564a2ee` | v68 removes untrusted solver wire state; structural substitutions replay typing; the first admitted bridge is terminal | adversarial typed-goal, conversion, bridge, substitution, polarity, artifact, all 16 scripts, and examples 01-07/09 pass |
 | V2-P1 | Select irreducible HOTT certificate payload after P1-R0 | complete | compiler-local ownership split; no v68 change | immutable observation-family goals, multiple rule candidates, exact authority premises, dedicated HOTT manifest, all 16 scripts, and examples 01-07/09 pass |
-| V3-G1 | Graph-cons Context, Substitution, and Judgement over direct binding identity | complete locally | v69 records exact weakening action; hash indices and caches are rebuilt, not serialized | all 16 scripts pass; collision-safe identity, provisional Context finalization, pullback reuse, direct premise DAG edges, and resource boundary audited |
-| V2-O1 | Implement type-directed observational action over shared terms | next after publishing V3-G1 | breaking | substitution/naturality tests over the G1 graph substrate |
-| V2-A1 | Add the later object-HOTT artifact schema selected after O1 | blocked by O1 | breaking, version after v69 | HOTT witness/link matrix for the schema selected after O1 |
+| V3-G1 | Graph-cons Context, Substitution, and Judgement over direct binding identity | complete locally; general pullback interning corrected in O1.1 | v69 records exact weakening action; hash indices and caches are rebuilt, not serialized | all 16 scripts pass; collision-safe Context/Substitution/Judgement identity, provisional Context finalization, warm-cache pullback reuse, direct premise DAG edges, and resource boundary audited |
+| V2-O1 | Implement type-directed observational action over shared terms | complete locally | compiler-local HOTT fragment v2; artifact remains v69 | non-empty bridge, substitution/naturality, typed ADT/Pi/CBPV/Match/IH family and witness tests |
+| V2-A1 | Add the object-HOTT artifact schema selected after O1 | next | breaking, version after v69 | HOTT witness/link matrix for the object and proof forms frozen by O1 |
 
 ### 23.3 Non-negotiable boundaries
 
@@ -1309,10 +1328,12 @@ The completed V2-P1 implementation and exit record is in
 It separates immutable observation-family identity, candidate rule
 applications, mutable work state, and future object witnesses; freezes exact
 typed premise edges and a dedicated HOTT fingerprint; and corrects the
-distinct-constructor family/contradiction conflation before O1. V2-O1 is now
-blocked until V3-G1 removes the remaining Context/Substitution/Judgement graph
-identity split. V3-G1 is the next implementation stage. Its detailed execution
-plan is
+distinct-constructor family/contradiction conflation before O1. V3-G1 has now
+removed the remaining Context/Substitution/Judgement graph identity split.
+V2-O1 is complete locally. Its post-G1 implementation and verification record is
+`doc/2026-08-09T07-10-00-V2-O1-OBSERVATIONAL-ACTION-IMPLEMENTATION-PLAN.md`.
+V2-A1 artifact publication is the next implementation stage.
+The completed G1 execution record remains in
 `doc/2026-08-08T22-51-04-CONTEXT-SUBSTITUTION-JUDGEMENT-GRAPH-CONSING-V3-G1-PLAN.md`.
 The completed P0
 execution record is in
@@ -1777,7 +1798,7 @@ key and validators before accepting identity.
 | V3-G1.3 | Migrate Context classifier references and extension interning | complete locally | provisional classifier provenance survives iteration and resolves before publication |
 | V3-G1.4 | Migrate Substitution interning and constructor simplification | complete locally | category identity/composition and typed validation pass |
 | V3-G1.5 | Replace repeated reindex work with memoized action | complete locally | exact reindex requests hit a non-authoritative cache; shared-term laws pass |
-| V3-G1.6 | Intern comprehension pullback actions | complete locally | repeated exact pullback allocates no fresh binding and reuses graph IDs |
+| V3-G1.6 | Memoize comprehension pullback actions | complete for an uncollided cache entry; general collision-stable interning is O1.1 | repeated exact warm-cache pullback allocates no fresh binding; collision-forcing identity test remains O1.1 |
 | V3-G1.7 | Intern Judgement propositions, derivations, and semantic action edges | complete locally | multiple derivations retained; premise Claim IDs are direct DAG edges; duplicate source list removed |
 | V3-G1.8 | Resolve conversion/effect/context certificate duplication audit | audit complete | deterministic derived checks documented; UniverseDB inequality witness remains independent kernel work |
 | V3-G1.9 | Freeze resource-ready usage boundary | complete locally | usage remains outside TermDB and Context identity |

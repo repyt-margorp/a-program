@@ -1,0 +1,101 @@
+A_PROGRAM_HOTT_FRAGMENT 2
+
+observation_category VALUE=1 COMPUTATION=2
+work_state PENDING=1 READY=2 RESIDUAL=3 UNSUPPORTED=4
+rule NONE=0 OBS_DIAGONAL=1 OBS_CONVERT=2 OBS_ADT_CONSTRUCTOR=3 OBS_ADT_DISTINCT=4 OBS_MATCH_ACTION=5 OBS_COMP_RETURN=6 OBS_PI_POINTWISE=7 OBS_THUNK_PURE=8 OBS_REINDEX=9
+child_role NONE=0 ADT_FIELD=1 ADT_DEPENDENT_REINDEX=2 MATCH_SCRUTINEE=3 MATCH_MOTIVE_ACTION=4 MATCH_CASE_ACTION=5 MATCH_RECURSIVE_IH=6 COMP_LEFT_RETURN_EXPOSURE=7 COMP_RIGHT_RETURN_EXPOSURE=8 COMP_RESULT_OBSERVATION=9 PI_DOMAIN_ACTION=10 PI_RELATED_INPUT=11 PI_CODOMAIN_OBSERVATION=12 THUNK_COMPUTATION_OBSERVATION=13 CONVERT_ANCHOR_OBSERVATION=14 CONTEXT_ACTION=15 SUBSTITUTION_ACTION=16 TYPE_ACTION=17 TERM_ACTION=18 REINDEX_NATURALITY=19
+action_kind CONTEXT=1 SUBSTITUTION=2 TYPE=3 TERM=4
+action_result_state READY=1 RESIDUAL=2 UNSUPPORTED=3
+residual_reason NONE=0 CONVERSION=1 CONVERSION_EXHAUSTED=2 EFFECTFUL=3 EFFECT_ROW_UNRESOLVED=4 NEUTRAL_PURE_COMPUTATION=5 OPERATION_REQUEST=6 COMPUTATION_FOLD=7 HOST_PRIMITIVE=8 TYPE_VIEW=9 UNIVERSE=10 DEFERRED_OBJECT_RULE=11
+certificate_kind CONTEXT_BRIDGE=1 SUBSTITUTION_NATURALITY=2 TYPE_ACTION=3 TERM_ACTION=4
+judgement_proof OBSERVATION_TYPE_FORMATION=33 OBSERVATION_WITNESS_INTRO=34 SUBSTITUTION_REINDEX=35 OBSERVATION_CONSTRUCTOR_WITNESS=36 OBSERVATION_RETURN_WITNESS=37 OBSERVATION_THUNK_WITNESS=38 OBSERVATION_APP_WITNESS=39 OBSERVATION_LAMBDA_WITNESS=40 OBSERVATION_MATCH_WITNESS=41 OBSERVATION_INDUCTION_HYPOTHESIS_WITNESS=42
+type_former_kind UNKNOWN=0 ORDINARY_ADT=1 PI=2 PURE_COMPUTATION=3 THUNK=4 UNIVERSE=5 HOST_PRIMITIVE=6 OBSERVATION=7
+type_action_rule NONE=0 ZERO_FIELD_ADT=1 ADT_TELESCOPE=2 PI_POINTWISE=3 PURE_COMPUTATION=4 THUNK=5 OBSERVATION_HIGHER=6
+
+An observation-family goal is immutable and is identified by category, exact
+carrier IS_TYPE Claim, exact left and right HAS_TYPE Claims, and Context bridge.
+A goal stores no selected rule, search state, source position, conversion cache,
+or object witness.
+
+Action requests are immutable and graph-consed by their complete typed keys.
+Action results are separate records keyed by request ID. A request is never
+solved by mutating its identity. Context, Substitution, Operation, Claim,
+Derivation, action, certificate, and compiler-work IDs never occur in object
+Term identity.
+
+For Gamma |- A type, Type action first constructs
+Gamma^R.x0:A[pi0].x1:A[pi1]. Its relation type is formed in that endpoint
+Context. A Type result contains the endpoint Context, both endpoint bindings,
+the relation type Term, its exact IS_TYPE Claim, and Context certificates.
+
+The first-fragment object forms are OBSERVATION_TYPE(A0,A1,a0,a1) and
+OBSERVATION_WITNESS(a0,a1). All operands are ordinary Term IDs. Homogeneous Eq
+is OBSERVATION_TYPE(A,A,a,b). The ap operation is a typed compiler action that
+generates exact HAS_TYPE Derivations. A diagonal action may generate an
+OBSERVATION_WITNESS Term. The action of a Context variable is the corresponding
+relation binding already present in the Context bridge. A witness Term stores
+no action ID and is not evidence without its Derivation.
+Reflexivity is the diagonal instance of ap, not a separate primitive REFL node.
+
+Type-action dispatch is selected by one declarative type-former descriptor.
+Ordinary ADTs, pure Pi, pure Comp, pure Thunk, and OBSERVATION_HIGHER are
+admitted. Universe and host primitive actions are explicitly unsupported;
+effectful and unresolved computation rows are residual.
+
+Observation planning is repeatable: an already interned candidate remains a
+valid candidate even when a later planning run allocates no new record. The
+plan-and-execute boundary starts exact Type actions and starts Term actions only
+for exact diagonal candidates; forming an uninhabited distinct-constructor
+family never fabricates an inhabitant.
+
+For a same-constructor ordinary ADT action, the object witness remains
+OBSERVATION_WITNESS(left,right). Its exact Derivation is
+OBSERVATION_CONSTRUCTOR_WITNESS and contains one accepted field-witness Claim
+per constructor argument in telescope order. Field evidence is proof authority,
+not part of TermDB object identity. Recursive constructor action recursively
+uses the same immutable Type and Term action requests.
+
+For Comp(empty,A), RETURN action recursively acts on its value and records the
+resulting witness Claim as an OBSERVATION_RETURN_WITNESS premise. THUNK action
+does the same for its enclosed pure computation using
+OBSERVATION_THUNK_WITNESS. Neither rule admits an effectful or unresolved row.
+
+APP action recursively acts on its function and argument premises. Its exact
+OBSERVATION_APP_WITNESS derivation stores both child witness Claims. A child
+witness may be any inhabitant of the generated observation type, including a
+Context relation variable; it need not have OBSERVATION_WITNESS object syntax.
+
+LAMBDA action constructs or reuses the bridge for its binder Context. The body
+witness lives under the ordered x0, x1, and input-relation extensions. Replay
+requires that this Context extends the outer bridge Context by exactly those
+three fields and that abstracting the body endpoints reconstructs both outer
+Lambda endpoints up to shared Core alpha shape.
+
+MATCH action recursively acts on its scrutinee and every branch body in the
+relational bridge of that branch Context and records all child witnesses. A
+Match whose branches share one graph body independent of all pattern binders is
+a constant eliminator and reduces to that body under the ordinary Match
+reduction profile, including for a neutral scrutinee.
+
+An OBSERVATION_MATCH_WITNESS derivation records the accepted source Match Claim
+in addition to both endpoint Match Claims, the scrutinee witness, and every
+branch witness. Branch witnesses act on the source branch body under the
+left/right branch Context extensions. The enclosing Match derivation closes the
+source IH frame against the independently reindexed endpoint Match frames; an
+IH frame ID is never treated as an ordinary binder ID or silently renamed by a
+branch-local substitution.
+
+INDUCTION_HYPOTHESIS action is guarded by an accepted source
+INDUCTION_HYPOTHESIS_ELIM Claim and the observation witness of its recursive
+argument. It does not recursively invoke the enclosing Match action and cannot
+introduce a cycle in the Derivation DAG.
+
+A substitution action owns a typed naturality certificate for both endpoint
+squares under an exact pure conversion profile and deterministic step budget.
+Exhaustion is residual and never equality. Definitional conversion remains
+meta-level evidence and successful object proofs never extend global DefEq.
+
+Family formation and family inhabitation are distinct. OBS_ADT_DISTINCT forms
+an uninhabited observation family; it is not compiler contradiction. Work
+items and residual obligations are compiler-local and are not artifact roots
+in fragment version 2.

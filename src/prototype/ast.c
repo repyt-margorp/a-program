@@ -26016,7 +26016,7 @@ static int build_operation_motive(
 		uint32_t motive_case_context;
 		uint32_t case_substitution;
 		if (source_case->binder_count > 64 ||
-			prototype_context_fresh_reindex_extension(
+			prototype_context_reindex_telescope(
 				&ctx->metadata->contexts,
 				&ctx->metadata->substitutions,
 				ctx->terms,
@@ -26647,7 +26647,7 @@ static int build_operation_guarded_recursive_motive(
 		uint32_t motive_case_context;
 		uint32_t case_substitution;
 		if (source_case->binder_count > 64 ||
-			prototype_context_fresh_reindex_extension(
+			prototype_context_reindex_telescope(
 				&ctx->metadata->contexts,
 				&ctx->metadata->substitutions,
 				ctx->terms,

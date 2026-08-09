@@ -55,7 +55,17 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_UNIVERSE_CUMULATIVITY = 29,
 	PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO = 30,
 	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN = 31,
-	PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN = 32
+	PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN = 32,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_TYPE_FORMATION = 33,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_WITNESS_INTRO = 34,
+	PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX = 35,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_CONSTRUCTOR_WITNESS = 36,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_RETURN_WITNESS = 37,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_THUNK_WITNESS = 38,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_APP_WITNESS = 39,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_LAMBDA_WITNESS = 40,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_MATCH_WITNESS = 41,
+	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_INDUCTION_HYPOTHESIS_WITNESS = 42
 };
 
 enum prototype_judgement_authority_kind {
@@ -645,6 +655,140 @@ int prototype_judgement_delta_record_context_weaken(
 	const struct prototype_judgement_selected_evidence* source_evidence,
 	uint32_t substitution_id
 );
+int prototype_judgement_add_context_weakened_claim(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions,
+	uint32_t source_claim_id,
+	uint32_t target_context_id,
+	uint32_t projection_substitution_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_reindexed_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_claim_id,
+	uint32_t substitution_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_context_binding_assumption(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
+	uint32_t context_id,
+	uint32_t binding_id,
+	uint32_t classifier,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_observation_type_formation(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t observation_type,
+	uint32_t universe,
+	uint32_t left_type_claim_id,
+	uint32_t right_type_claim_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_observation_witness_intro(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t witness,
+	uint32_t observation_type,
+	uint32_t relation_type_claim_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_observation_constructor_witness(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t witness,
+	uint32_t observation_type,
+	uint32_t relation_type_claim_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	const uint32_t* field_witness_claim_ids,
+	uint32_t field_witness_count,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_observation_unary_witness(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t witness,
+	uint32_t observation_type,
+	uint32_t relation_type_claim_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t child_witness_claim_id,
+	int proof_kind,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_observation_app_witness(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t witness,
+	uint32_t observation_type,
+	uint32_t relation_type_claim_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t function_witness_claim_id,
+	uint32_t argument_witness_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_observation_lambda_witness(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
+	uint32_t context_id,
+	uint32_t witness,
+	uint32_t observation_type,
+	uint32_t relation_type_claim_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t body_witness_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_observation_match_witness(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	uint32_t context_id,
+	uint32_t witness,
+	uint32_t observation_type,
+	uint32_t relation_type_claim_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t source_match_claim_id,
+	uint32_t scrutinee_witness_claim_id,
+	const uint32_t* case_witness_claim_ids,
+	uint32_t case_witness_count,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_observation_induction_hypothesis_witness(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t witness,
+	uint32_t observation_type,
+	uint32_t relation_type_claim_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t source_induction_claim_id,
+	uint32_t argument_witness_claim_id,
+	uint32_t* p_claim_id
+);
 /* Select one complete Claim authority from the provisional and committed
  * candidate images. Returns 0 for one Claim, 1 for missing, 2 for ambiguous,
  * and -1 for malformed input. */
@@ -1028,463 +1172,6 @@ int prototype_judgement_kernel_conversion_goal_execute(
 	int require_carrier
 );
 
-enum prototype_hott_observation_category {
-	PROTOTYPE_HOTT_OBSERVATION_VALUE = 1,
-	PROTOTYPE_HOTT_OBSERVATION_COMPUTATION = 2
-};
-
-enum prototype_hott_work_state {
-	PROTOTYPE_HOTT_WORK_PENDING = 1,
-	PROTOTYPE_HOTT_WORK_READY = 2,
-	PROTOTYPE_HOTT_WORK_RESIDUAL = 3,
-	PROTOTYPE_HOTT_WORK_UNSUPPORTED = 4
-};
-
-enum prototype_hott_residual_reason {
-	PROTOTYPE_HOTT_RESIDUAL_NONE = 0,
-	PROTOTYPE_HOTT_RESIDUAL_CONVERSION,
-	PROTOTYPE_HOTT_RESIDUAL_CONVERSION_EXHAUSTED,
-	PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL,
-	PROTOTYPE_HOTT_RESIDUAL_EFFECT_ROW_UNRESOLVED,
-	PROTOTYPE_HOTT_RESIDUAL_NEUTRAL_PURE_COMPUTATION,
-	PROTOTYPE_HOTT_RESIDUAL_OPERATION_REQUEST,
-	PROTOTYPE_HOTT_RESIDUAL_COMPUTATION_FOLD,
-	PROTOTYPE_HOTT_RESIDUAL_HOST_PRIMITIVE,
-	PROTOTYPE_HOTT_RESIDUAL_TYPE_VIEW,
-	PROTOTYPE_HOTT_RESIDUAL_UNIVERSE,
-	PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE
-};
-
-enum prototype_hott_rule {
-	PROTOTYPE_HOTT_RULE_NONE = 0,
-	PROTOTYPE_HOTT_RULE_OBS_DIAGONAL = 1,
-	PROTOTYPE_HOTT_RULE_OBS_CONVERT = 2,
-	PROTOTYPE_HOTT_RULE_OBS_ADT_CONSTRUCTOR = 3,
-	PROTOTYPE_HOTT_RULE_OBS_ADT_DISTINCT = 4,
-	PROTOTYPE_HOTT_RULE_OBS_MATCH_ACTION = 5,
-	PROTOTYPE_HOTT_RULE_OBS_COMP_RETURN = 6,
-	PROTOTYPE_HOTT_RULE_OBS_PI_POINTWISE = 7,
-	PROTOTYPE_HOTT_RULE_OBS_THUNK_PURE = 8,
-	PROTOTYPE_HOTT_RULE_OBS_REINDEX = 9
-};
-
-enum prototype_hott_child_role {
-	PROTOTYPE_HOTT_CHILD_NONE = 0,
-	PROTOTYPE_HOTT_CHILD_ADT_FIELD = 1,
-	PROTOTYPE_HOTT_CHILD_ADT_DEPENDENT_REINDEX = 2,
-	PROTOTYPE_HOTT_CHILD_MATCH_SCRUTINEE = 3,
-	PROTOTYPE_HOTT_CHILD_MATCH_MOTIVE_ACTION = 4,
-	PROTOTYPE_HOTT_CHILD_MATCH_CASE_ACTION = 5,
-	PROTOTYPE_HOTT_CHILD_MATCH_RECURSIVE_IH = 6,
-	PROTOTYPE_HOTT_CHILD_COMP_LEFT_RETURN_EXPOSURE = 7,
-	PROTOTYPE_HOTT_CHILD_COMP_RIGHT_RETURN_EXPOSURE = 8,
-	PROTOTYPE_HOTT_CHILD_COMP_RESULT_OBSERVATION = 9,
-	PROTOTYPE_HOTT_CHILD_PI_DOMAIN_ACTION = 10,
-	PROTOTYPE_HOTT_CHILD_PI_RELATED_INPUT = 11,
-	PROTOTYPE_HOTT_CHILD_PI_CODOMAIN_OBSERVATION = 12,
-	PROTOTYPE_HOTT_CHILD_THUNK_COMPUTATION_OBSERVATION = 13,
-	PROTOTYPE_HOTT_CHILD_CONVERT_ANCHOR_OBSERVATION = 14,
-	PROTOTYPE_HOTT_CHILD_CONTEXT_ACTION = 15,
-	PROTOTYPE_HOTT_CHILD_SUBSTITUTION_ACTION = 16,
-	PROTOTYPE_HOTT_CHILD_TYPE_ACTION = 17,
-	PROTOTYPE_HOTT_CHILD_TERM_ACTION = 18,
-	PROTOTYPE_HOTT_CHILD_REINDEX_NATURALITY = 19
-};
-
-struct prototype_context_formation_certificate {
-	uint32_t context_id;
-	uint32_t classifier_claim_id;
-};
-
-struct prototype_context_formation_certificate_db {
-	struct prototype_context_formation_certificate* certificates;
-	size_t certificate_count;
-	size_t certificate_capacity;
-};
-
-void prototype_context_formation_certificate_db_init(
-	struct prototype_context_formation_certificate_db* db,
-	struct prototype_context_formation_certificate* certificates,
-	size_t certificate_capacity
-);
-int prototype_context_formation_certificate_db_add(
-	struct prototype_context_formation_certificate_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
-	uint32_t context_id,
-	uint32_t classifier_claim_id,
-	uint32_t* p_certificate_id
-);
-int prototype_context_formation_certificate_db_validate(
-	const struct prototype_context_formation_certificate_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
-);
-
-struct prototype_hott_bridge {
-	uint32_t id;
-	uint32_t source_context_id;
-	uint32_t bridge_context_id;
-	uint32_t left_substitution_id;
-	uint32_t right_substitution_id;
-	uint32_t left_certificate_id;
-	uint32_t right_certificate_id;
-};
-
-struct prototype_hott_bridge_db {
-	struct prototype_hott_bridge* bridges;
-	size_t bridge_count;
-	size_t bridge_capacity;
-};
-
-void prototype_hott_bridge_db_init(
-	struct prototype_hott_bridge_db* db,
-	struct prototype_hott_bridge* bridges,
-	size_t bridge_capacity
-);
-const struct prototype_hott_bridge* prototype_hott_bridge_db_get(
-	const struct prototype_hott_bridge_db* db,
-	uint32_t bridge_id
-);
-int prototype_hott_bridge_db_construct(
-	struct prototype_hott_bridge_db* db,
-	const struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
-	uint32_t source_context_id,
-	uint32_t* p_bridge_id
-);
-int prototype_hott_bridge_db_validate(
-	const struct prototype_hott_bridge_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
-);
-
-struct prototype_hott_observation_goal {
-	uint32_t id;
-	int category;
-	uint32_t carrier_claim_id;
-	uint32_t left_claim_id;
-	uint32_t right_claim_id;
-	uint32_t bridge_id;
-};
-
-struct prototype_hott_observation_goal_db {
-	struct prototype_hott_observation_goal* goals;
-	size_t goal_count;
-	size_t goal_capacity;
-};
-
-struct prototype_hott_candidate {
-	uint32_t id;
-	uint32_t conclusion_goal_id;
-	int rule;
-	uint32_t first_claim_premise;
-	uint32_t claim_premise_count;
-	uint32_t first_child_edge;
-	uint32_t child_edge_count;
-	uint32_t first_conversion_premise;
-	uint32_t conversion_premise_count;
-	uint32_t first_context_certificate_premise;
-	uint32_t context_certificate_premise_count;
-	uint32_t first_substitution_certificate_premise;
-	uint32_t substitution_certificate_premise_count;
-};
-
-struct prototype_hott_claim_premise {
-	uint32_t candidate_id;
-	uint32_t claim_id;
-	int role;
-	uint32_t ordinal;
-};
-
-struct prototype_hott_child_edge {
-	uint32_t candidate_id;
-	uint32_t child_goal_id;
-	int role;
-	uint32_t ordinal;
-};
-
-struct prototype_hott_conversion_premise {
-	uint32_t candidate_id;
-	int role;
-	uint32_t ordinal;
-	struct prototype_kernel_conversion_goal request;
-	uint64_t conversion_graph_revision;
-};
-
-struct prototype_hott_context_certificate_premise {
-	uint32_t candidate_id;
-	uint32_t certificate_id;
-	int role;
-	uint32_t ordinal;
-};
-
-struct prototype_hott_substitution_certificate_premise {
-	uint32_t candidate_id;
-	uint32_t certificate_id;
-	int role;
-	uint32_t ordinal;
-};
-
-struct prototype_hott_candidate_db {
-	struct prototype_hott_candidate* candidates;
-	size_t candidate_count;
-	size_t candidate_capacity;
-	struct prototype_hott_claim_premise* claim_premises;
-	size_t claim_premise_count;
-	size_t claim_premise_capacity;
-	struct prototype_hott_child_edge* child_edges;
-	size_t child_edge_count;
-	size_t child_edge_capacity;
-	struct prototype_hott_conversion_premise* conversion_premises;
-	size_t conversion_premise_count;
-	size_t conversion_premise_capacity;
-	struct prototype_hott_context_certificate_premise* context_certificate_premises;
-	size_t context_certificate_premise_count;
-	size_t context_certificate_premise_capacity;
-	struct prototype_hott_substitution_certificate_premise* substitution_certificate_premises;
-	size_t substitution_certificate_premise_count;
-	size_t substitution_certificate_premise_capacity;
-};
-
-struct prototype_hott_work_item {
-	uint32_t id;
-	uint32_t goal_id;
-	int state;
-	uint32_t selected_candidate_id;
-	int residual_reason;
-	uint32_t source_ast;
-	int normalization_profile;
-	uint64_t step_limit;
-	uint64_t steps_used;
-	uint64_t term_graph_revision;
-	char calculus_fingerprint[65];
-};
-
-struct prototype_hott_work_db {
-	struct prototype_hott_work_item* items;
-	size_t item_count;
-	size_t item_capacity;
-};
-
-void prototype_hott_observation_goal_db_init(
-	struct prototype_hott_observation_goal_db* db,
-	struct prototype_hott_observation_goal* goals,
-	size_t goal_capacity
-);
-const struct prototype_hott_observation_goal*
-prototype_hott_observation_goal_db_get(
-	const struct prototype_hott_observation_goal_db* db,
-	uint32_t goal_id
-);
-int prototype_hott_observation_goal_db_intern(
-	struct prototype_hott_observation_goal_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
-	int category,
-	uint32_t carrier_claim_id,
-	uint32_t left_claim_id,
-	uint32_t right_claim_id,
-	uint32_t bridge_id,
-	uint32_t* p_goal_id
-);
-int prototype_hott_observation_goal_db_validate(
-	const struct prototype_hott_observation_goal_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement
-);
-
-void prototype_hott_candidate_db_init(
-	struct prototype_hott_candidate_db* db,
-	struct prototype_hott_candidate* candidates,
-	size_t candidate_capacity,
-	struct prototype_hott_claim_premise* claim_premises,
-	size_t claim_premise_capacity,
-	struct prototype_hott_child_edge* child_edges,
-	size_t child_edge_capacity,
-	struct prototype_hott_conversion_premise* conversion_premises,
-	size_t conversion_premise_capacity,
-	struct prototype_hott_context_certificate_premise* context_certificate_premises,
-	size_t context_certificate_premise_capacity,
-	struct prototype_hott_substitution_certificate_premise* substitution_certificate_premises,
-	size_t substitution_certificate_premise_capacity
-);
-const struct prototype_hott_candidate* prototype_hott_candidate_db_get(
-	const struct prototype_hott_candidate_db* db,
-	uint32_t candidate_id
-);
-int prototype_hott_candidate_db_validate(
-	const struct prototype_hott_candidate_db* db,
-	const struct prototype_hott_observation_goal_db* goals,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
-	const struct prototype_operation_graph* operations
-);
-
-void prototype_hott_work_db_init(
-	struct prototype_hott_work_db* db,
-	struct prototype_hott_work_item* items,
-	size_t item_capacity
-);
-const struct prototype_hott_work_item* prototype_hott_work_db_get(
-	const struct prototype_hott_work_db* db,
-	uint32_t work_item_id
-);
-int prototype_hott_work_db_validate(
-	const struct prototype_hott_work_db* db,
-	const struct prototype_hott_observation_goal_db* goals,
-	const struct prototype_hott_candidate_db* candidates
-);
-int prototype_hott_observation_plan(
-	struct prototype_hott_observation_goal_db* goals,
-	struct prototype_hott_candidate_db* candidates,
-	struct prototype_hott_work_db* work,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
-	uint32_t goal_id,
-	uint32_t source_ast,
-	int normalization_profile,
-	uint64_t step_limit,
-	uint32_t* p_work_item_id
-);
-
-struct prototype_hott_residual_obligation {
-	uint32_t obligation_id;
-	uint32_t work_item_id;
-};
-
-struct prototype_hott_residual_db {
-	struct prototype_hott_residual_obligation* obligations;
-	size_t obligation_count;
-	size_t obligation_capacity;
-};
-
-void prototype_hott_residual_db_init(
-	struct prototype_hott_residual_db* db,
-	struct prototype_hott_residual_obligation* obligations,
-	size_t obligation_capacity
-);
-int prototype_hott_residual_db_add_from_work(
-	struct prototype_hott_residual_db* db,
-	const struct prototype_hott_work_db* work,
-	uint32_t work_item_id,
-	uint32_t* p_obligation_id
-);
-int prototype_hott_residual_db_validate(
-	const struct prototype_hott_residual_db* db,
-	const struct prototype_hott_work_db* work
-);
-int prototype_hott_residual_db_require_artifact_empty(
-	const struct prototype_hott_residual_db* db
-);
-
-enum prototype_hott_action_kind {
-	PROTOTYPE_HOTT_ACTION_CONTEXT = 1,
-	PROTOTYPE_HOTT_ACTION_SUBSTITUTION = 2,
-	PROTOTYPE_HOTT_ACTION_TYPE = 3,
-	PROTOTYPE_HOTT_ACTION_TERM = 4
-};
-
-enum prototype_hott_action_state {
-	PROTOTYPE_HOTT_ACTION_DEFERRED = 1,
-	PROTOTYPE_HOTT_ACTION_READY = 2
-};
-
-struct prototype_hott_action {
-	uint32_t id;
-	int kind;
-	int state;
-	uint32_t source_context_id;
-	uint32_t source_substitution_id;
-	uint32_t source_claim_id;
-	uint32_t source_bridge_id;
-	uint32_t target_bridge_id;
-	uint32_t type_action_id;
-	uint32_t result_bridge_id;
-	uint32_t result_substitution_id;
-	uint32_t result_certificate_id;
-	uint32_t result_term_id;
-	uint32_t result_claim_id;
-};
-
-struct prototype_hott_action_db {
-	struct prototype_hott_action* actions;
-	size_t action_count;
-	size_t action_capacity;
-};
-
-void prototype_hott_action_db_init(
-	struct prototype_hott_action_db* db,
-	struct prototype_hott_action* actions,
-	size_t action_capacity
-);
-int prototype_hott_action_db_add(
-	struct prototype_hott_action_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement,
-	struct prototype_hott_action action,
-	uint32_t* p_action_id
-);
-int prototype_hott_action_db_validate(
-	const struct prototype_hott_action_db* db,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_context_formation_certificate_db* context_certificates,
-	const struct prototype_substitution_certificate_db* substitution_certificates,
-	const struct prototype_hott_bridge_db* bridges,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement
-);
 
 /* Normalize a classifier expression at the pure type profile and expose the
  * value type returned by a type-family computation. */

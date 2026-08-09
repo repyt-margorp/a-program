@@ -485,11 +485,13 @@ int prototype_term_semantics(
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 		case PROTOTYPE_TERM_THUNK_TYPE:
+		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
 				p_ret->layer = PROTOTYPE_TERM_LAYER_TYPE_FORMER;
 					break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 		case PROTOTYPE_TERM_THUNK:
 		case PROTOTYPE_TERM_TEXT_LITERAL:
+		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
 				case PROTOTYPE_TERM_INT_LITERAL:
 					p_ret->layer = PROTOTYPE_TERM_LAYER_DATA;
 				break;
@@ -1163,6 +1165,9 @@ static int shape_terms_equal_at_depth(
 		}
 		case PROTOTYPE_TERM_UNIVERSE_VAR:
 			return left->as.universe_var.level_var == right->as.universe_var.level_var;
+		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
+			return 1;
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 1;
 			case PROTOTYPE_TERM_TEXT_LITERAL:
@@ -1754,6 +1759,9 @@ static int cross_shape_terms_equal_at_depth(
 		}
 		case PROTOTYPE_TERM_UNIVERSE_VAR:
 			return left->as.universe_var.level_var == right->as.universe_var.level_var;
+		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
+			return 1;
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 1;
 			case PROTOTYPE_TERM_TEXT_LITERAL:
@@ -2444,6 +2452,9 @@ static int canonical_hash_term_at_depth(
 			);
 		case PROTOTYPE_TERM_UNIVERSE_VAR:
 			canonical_hash_mix_u32(p_hash, term->as.universe_var.level_var);
+			return 0;
+		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
 			return 0;
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 0;
@@ -3580,6 +3591,133 @@ int prototype_term_primitive_text(struct prototype_term_db* db, uint32_t* p_ret)
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_PRIMITIVE_TEXT;
 	return add_term(db, term, p_ret);
+}
+
+int prototype_term_observation_type(
+	struct prototype_term_db* db,
+	uint32_t left_classifier,
+	uint32_t right_classifier,
+	uint32_t left_endpoint,
+	uint32_t right_endpoint,
+	uint32_t* p_ret
+) {
+	if (!db || left_classifier >= db->term_count ||
+		right_classifier >= db->term_count || left_endpoint >= db->term_count ||
+		right_endpoint >= db->term_count || !p_ret) {
+		return -1;
+	}
+	struct prototype_term former;
+	memset(&former, 0, sizeof(former));
+	former.tag = PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER;
+	uint32_t term;
+	if (add_term(db, former, &term) != 0 ||
+		prototype_term_app(db, term, left_classifier, &term) != 0 ||
+		prototype_term_app(db, term, right_classifier, &term) != 0 ||
+		prototype_term_app(db, term, left_endpoint, &term) != 0 ||
+		prototype_term_app(db, term, right_endpoint, &term) != 0) {
+		return -1;
+	}
+	*p_ret = term;
+	return 0;
+}
+
+int prototype_term_observation_witness(
+	struct prototype_term_db* db,
+	uint32_t left_endpoint,
+	uint32_t right_endpoint,
+	uint32_t* p_ret
+) {
+	if (!db || left_endpoint >= db->term_count ||
+		right_endpoint >= db->term_count || !p_ret) {
+		return -1;
+	}
+	struct prototype_term former;
+	memset(&former, 0, sizeof(former));
+	former.tag = PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER;
+	uint32_t term;
+	if (add_term(db, former, &term) != 0 ||
+		prototype_term_app(db, term, left_endpoint, &term) != 0 ||
+		prototype_term_app(db, term, right_endpoint, &term) != 0) {
+		return -1;
+	}
+	*p_ret = term;
+	return 0;
+}
+
+static int observation_spine(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	int former_tag,
+	uint32_t* arguments,
+	uint32_t argument_count
+) {
+	if (!db || !arguments || term_id >= db->term_count) {
+		return -1;
+	}
+	uint32_t cursor = term_id;
+	for (uint32_t i = argument_count; i > 0; --i) {
+		if (cursor >= db->term_count ||
+			db->terms[cursor].tag != PROTOTYPE_TERM_APP) {
+			return -1;
+		}
+		arguments[i - 1] = db->terms[cursor].as.app.argument;
+		cursor = db->terms[cursor].as.app.function;
+	}
+	return cursor < db->term_count && db->terms[cursor].tag == former_tag ?
+		0 : -1;
+}
+
+int prototype_term_observation_type_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_left_classifier,
+	uint32_t* p_right_classifier,
+	uint32_t* p_left_endpoint,
+	uint32_t* p_right_endpoint
+) {
+	if (!p_left_classifier || !p_right_classifier || !p_left_endpoint ||
+		!p_right_endpoint) {
+		return -1;
+	}
+	uint32_t arguments[4];
+	if (observation_spine(
+			db,
+			term_id,
+			PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER,
+			arguments,
+			4
+		) != 0) {
+		return -1;
+	}
+	*p_left_classifier = arguments[0];
+	*p_right_classifier = arguments[1];
+	*p_left_endpoint = arguments[2];
+	*p_right_endpoint = arguments[3];
+	return 0;
+}
+
+int prototype_term_observation_witness_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_left_endpoint,
+	uint32_t* p_right_endpoint
+) {
+	if (!p_left_endpoint || !p_right_endpoint) {
+		return -1;
+	}
+	uint32_t arguments[2];
+	if (observation_spine(
+			db,
+			term_id,
+			PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER,
+			arguments,
+			2
+		) != 0) {
+		return -1;
+	}
+	*p_left_endpoint = arguments[0];
+	*p_right_endpoint = arguments[1];
+	return 0;
 }
 
 int prototype_term_text_literal(struct prototype_term_db* db, int text_symbol_id, uint32_t* p_ret) {
@@ -4980,6 +5118,9 @@ static int substitute_term_uncached_internal(
 			struct prototype_match_case_input case_inputs[64];
 			struct prototype_case_binder binder_storage[256];
 			struct substitution_binding_scope scope_storage[256];
+			memset(case_inputs, 0, sizeof(case_inputs));
+			memset(binder_storage, 0, sizeof(binder_storage));
+			memset(scope_storage, 0, sizeof(scope_storage));
 			uint32_t binder_cursor = 0;
 			int changed = scrutinee != term->as.match.scrutinee;
 			if (term->as.match.case_count > 64) {
@@ -6485,6 +6626,62 @@ static struct prototype_term_normalization_cache_entry* normalization_cache_rese
 	return entry;
 }
 
+static int constant_match_is_exhaustive(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* types,
+	const struct prototype_term* match
+) {
+	if (!terms || !types || !match || match->tag != PROTOTYPE_TERM_MATCH ||
+		match->as.match.case_count == 0 || match->as.match.case_count > 64) {
+		return 0;
+	}
+	const struct prototype_match_case* first_case =
+		&terms->cases[match->as.match.first_case];
+	if (first_case->constructor_owner == PROTOTYPE_INVALID_ID ||
+		first_case->constructor_owner >= terms->term_count) {
+		return 0;
+	}
+	uint32_t type_id;
+	uint32_t arguments[16];
+	uint32_t argument_count;
+	const struct prototype_term* owner =
+		&terms->terms[first_case->constructor_owner];
+	if (owner->tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		type_id = owner->as.type_view.view_type_id;
+	} else if (prototype_term_type_instance_info(
+				terms,
+				first_case->constructor_owner,
+				&type_id,
+				arguments,
+				&argument_count
+			) != 0) {
+		return 0;
+	}
+	if (type_id >= types->type_count) {
+		return 0;
+	}
+	const struct prototype_type_declaration* type =
+		&types->type_declarations[type_id];
+	if (type->constructor_count != match->as.match.case_count) {
+		return 0;
+	}
+	uint64_t seen = 0;
+	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
+		const struct prototype_match_case* match_case =
+			&terms->cases[match->as.match.first_case + i];
+		if (match_case->constructor_owner != first_case->constructor_owner ||
+			match_case->constructor_id >= type->constructor_count) {
+			return 0;
+		}
+		uint64_t bit = UINT64_C(1) << match_case->constructor_id;
+		if (seen & bit) {
+			return 0;
+		}
+		seen |= bit;
+	}
+	return 1;
+}
+
 static int evaluate_steps(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -6657,6 +6854,43 @@ static int evaluate_steps(
 			decompose_app(db, scrutinee, &head, args, &arg_count);
 			if (head >= db->term_count) {
 				return -1;
+			}
+
+			/* A match whose branches share one body independent of every pattern
+			 * binder is a constant eliminator. This is a general reduction rule,
+			 * not a typing shortcut: every normalization client observes the same
+			 * result even while the scrutinee is neutral. */
+			if (constant_match_is_exhaustive(db, type_declarations, term)) {
+				const struct prototype_match_case* first_case =
+					&db->cases[term->as.match.first_case];
+				int uniform = 1;
+				for (uint32_t i = 0; uniform &&
+					i < term->as.match.case_count; ++i) {
+					const struct prototype_match_case* match_case =
+						&db->cases[term->as.match.first_case + i];
+					uniform = match_case->body == first_case->body;
+					for (uint32_t j = 0; uniform &&
+						j < match_case->binder_count; ++j) {
+						uniform = !prototype_term_contains_free_binding(
+							db,
+							first_case->body,
+							db->case_binders[
+								match_case->first_binder + j
+							].binding_id
+						);
+					}
+				}
+				if (uniform) {
+					return evaluate_steps(
+						db,
+						type_declarations,
+						definitions,
+						options,
+						first_case->body,
+						p_ret,
+						depth - 1
+					);
+				}
 			}
 
 			if (term_is_constructor_like(&db->terms[head]) != 0) {
@@ -8758,6 +8992,12 @@ static void print_term_depth(
 				term->as.effect_operation.operation_id
 			));
 			break;
+		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
+			fprintf(output, "<observation-type>");
+			break;
+		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
+			fprintf(output, "<observation-witness>");
+			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR: {
 			uint32_t type_id;
 			if (type_instance_type_id(terms, term->as.constructor.owner, &type_id) != 0 ||
@@ -9046,6 +9286,12 @@ static void print_term_debug_depth(
 					PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 					term->as.effect_operation.operation_id
 				));
+			break;
+		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
+			fprintf(output, "OBSERVATION_TYPE_FORMER");
+			break;
+		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
+			fprintf(output, "OBSERVATION_WITNESS_FORMER");
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			fprintf(output, "CONSTRUCTOR(");

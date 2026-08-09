@@ -11,6 +11,6 @@
  * ownership contract. It is intentionally independent of the artifact wire
  * manifest until object HOTT records become publication roots. */
 #define PROTOTYPE_HOTT_CALCULUS_FINGERPRINT \
-	"bc3a8eba64fc16ace410ed022cabc62fef91d29c2fd85d9367eccf1e378cc4c2"
+	"45d3c0002d5541788ee5b038397aeae718be88237f59d2b88b8117b562c3a0ab"
 
 #endif

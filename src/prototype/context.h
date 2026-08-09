@@ -6,18 +6,27 @@
 
 struct prototype_term_db;
 struct prototype_type_declaration_db;
+struct prototype_term_conversion_result;
 
 #define PROTOTYPE_CONTEXT_CAPACITY 8192
 #define PROTOTYPE_SUBSTITUTION_CAPACITY 8192
 #define PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT 1021
-#define PROTOTYPE_CONTEXT_ACTION_CACHE_COUNT 1021
+#define PROTOTYPE_REINDEX_CACHE_COUNT 1021
+#define PROTOTYPE_CONTEXT_COMPREHENSION_ACTION_CAPACITY 8192
 
-struct prototype_context_pullback_cache_entry {
-	int present;
-	uint32_t base_context;
+/*
+ * The comprehension action is an interned CwF pullback, not a disposable
+ * cache entry.  A base substitution sigma : Delta -> Gamma and one source
+ * extension Gamma.A determine Delta.A[sigma] and its lifted substitution.
+ */
+struct prototype_context_comprehension_action {
 	uint32_t source_extension;
+	uint32_t base_substitution;
 	uint32_t target_extension;
-	uint32_t substitution;
+	uint32_t lifted_substitution;
+	uint32_t target_binding_id;
+	uint64_t key_hash;
+	uint32_t hash_next;
 };
 
 struct prototype_reindex_cache_entry {
@@ -61,10 +70,15 @@ struct prototype_context_db {
 	uint64_t intern_requests;
 	uint64_t intern_hits;
 	uint64_t intern_probes;
-	struct prototype_context_pullback_cache_entry
-		pullback_cache[PROTOTYPE_CONTEXT_ACTION_CACHE_COUNT];
+	struct prototype_context_comprehension_action
+		comprehension_actions[PROTOTYPE_CONTEXT_COMPREHENSION_ACTION_CAPACITY];
+	size_t comprehension_action_count;
+	uint32_t comprehension_action_index_heads[
+		PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT
+	];
 	uint64_t pullback_requests;
 	uint64_t pullback_hits;
+	uint64_t pullback_probes;
 };
 
 enum prototype_substitution_kind {
@@ -101,7 +115,7 @@ struct prototype_substitution_db {
 	uint64_t intern_hits;
 	uint64_t intern_probes;
 	struct prototype_reindex_cache_entry
-		reindex_cache[PROTOTYPE_CONTEXT_ACTION_CACHE_COUNT];
+		reindex_cache[PROTOTYPE_REINDEX_CACHE_COUNT];
 	uint64_t reindex_requests;
 	uint64_t reindex_hits;
 };
@@ -162,7 +176,22 @@ int prototype_context_extension_path(
 	uint32_t path_capacity,
 	uint32_t* p_count
 );
-int prototype_context_fresh_reindex_extension(
+int prototype_context_comprehension_action(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t source_extension,
+	uint32_t base_substitution,
+	uint32_t* p_target_binding_id,
+	uint32_t* p_target_extension,
+	uint32_t* p_lifted_substitution
+);
+int prototype_context_comprehension_actions_validate(
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions
+);
+int prototype_context_reindex_telescope(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
@@ -257,6 +286,17 @@ int prototype_substitution_db_append_relocated(
 	uint32_t term_offset,
 	uint32_t* relocation,
 	size_t relocation_capacity
+);
+int prototype_substitution_compare_pointwise(
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t left_substitution,
+	uint32_t right_substitution,
+	int normalization_profile,
+	uint64_t step_limit,
+	struct prototype_term_conversion_result* p_result
 );
 int prototype_term_reindex(
 	struct prototype_term_db* terms,

@@ -51,6 +51,16 @@ static uint64_t substitution_key_hash(
 	return hash;
 }
 
+static uint64_t comprehension_action_key_hash(
+	uint32_t source_extension,
+	uint32_t base_substitution
+) {
+	uint64_t hash = UINT64_C(1469598103934665603);
+	hash = graph_key_hash_mix(hash, source_extension);
+	hash = graph_key_hash_mix(hash, base_substitution);
+	return hash;
+}
+
 static void graph_index_clear(uint32_t* heads) {
 	for (size_t i = 0;
 		i < PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
@@ -69,6 +79,7 @@ void prototype_context_db_init(
 	}
 	memset(db, 0, sizeof(*db));
 	graph_index_clear(db->index_heads);
+	graph_index_clear(db->comprehension_action_index_heads);
 	db->contexts = contexts;
 	db->context_capacity = context_capacity;
 	db->context_count = 1;
@@ -89,7 +100,8 @@ int prototype_context_db_rebuild_index(struct prototype_context_db* db) {
 		return -1;
 	}
 	graph_index_clear(db->index_heads);
-	memset(db->pullback_cache, 0, sizeof(db->pullback_cache));
+	graph_index_clear(db->comprehension_action_index_heads);
+	db->comprehension_action_count = 0;
 	for (uint32_t i = 0; i < db->context_count; ++i) {
 		db->contexts[i].hash_next = PROTOTYPE_INVALID_ID;
 		if (i == 0) {
@@ -921,7 +933,7 @@ int prototype_term_reindex(
 	size_t cache_slot = graph_key_hash_mix(
 		graph_key_hash_mix(UINT64_C(1469598103934665603), term),
 		substitution_id
-	) % PROTOTYPE_CONTEXT_ACTION_CACHE_COUNT;
+	) % PROTOTYPE_REINDEX_CACHE_COUNT;
 	struct prototype_reindex_cache_entry* cached =
 		&substitutions->reindex_cache[cache_slot];
 	if (cached->present && cached->term == term &&
@@ -1068,6 +1080,94 @@ static int prototype_substitution_lookup_term(
 	}
 }
 
+int prototype_substitution_compare_pointwise(
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t left_substitution,
+	uint32_t right_substitution,
+	int normalization_profile,
+	uint64_t step_limit,
+	struct prototype_term_conversion_result* p_result
+) {
+	const struct prototype_substitution* left = prototype_substitution_get(
+		substitutions, left_substitution
+	);
+	const struct prototype_substitution* right = prototype_substitution_get(
+		substitutions, right_substitution
+	);
+	if (!left || !right || !contexts || !terms || !type_declarations ||
+		!p_result || left->source_context != right->source_context ||
+		left->target_context != right->target_context) {
+		return -1;
+	}
+	memset(p_result, 0, sizeof(*p_result));
+	p_result->status = PROTOTYPE_TERM_CONVERSION_EQUAL;
+	p_result->reason = PROTOTYPE_TERM_CONVERSION_REASON_NONE;
+	p_result->profile = normalization_profile;
+	p_result->left = PROTOTYPE_INVALID_ID;
+	p_result->right = PROTOTYPE_INVALID_ID;
+	p_result->left_observation = PROTOTYPE_INVALID_ID;
+	p_result->right_observation = PROTOTYPE_INVALID_ID;
+	p_result->step_limit = step_limit;
+	p_result->graph_revision = terms->normalization_graph_revision;
+	uint64_t remaining = step_limit;
+	uint32_t context_id = left->target_context;
+	while (context_id != prototype_context_empty(contexts)) {
+		const struct prototype_context* entry = prototype_context_get(
+			contexts, context_id
+		);
+		uint32_t left_term;
+		uint32_t right_term;
+		if (!entry || prototype_substitution_lookup_term(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				left_substitution,
+				entry->binding_id,
+				&left_term
+			) != 0 || prototype_substitution_lookup_term(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				right_substitution,
+				entry->binding_id,
+				&right_term
+			) != 0) {
+			return -1;
+		}
+		struct prototype_term_conversion_result comparison;
+		if (prototype_term_compare_for_conversion(
+				terms,
+				type_declarations,
+				NULL,
+				normalization_profile,
+				left_term,
+				right_term,
+				remaining,
+				&comparison
+			) != 0) {
+			return -1;
+		}
+		if (comparison.steps_used > remaining) {
+			return -1;
+		}
+		remaining -= comparison.steps_used;
+		p_result->steps_used += comparison.steps_used;
+		if (comparison.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			*p_result = comparison;
+			p_result->step_limit = step_limit;
+			p_result->steps_used = step_limit - remaining;
+			return 0;
+		}
+		context_id = entry->parent;
+	}
+	return 0;
+}
+
 int prototype_context_extension_path(
 	const struct prototype_context_db* contexts,
 	uint32_t ancestor,
@@ -1101,7 +1201,207 @@ int prototype_context_extension_path(
 	return 0;
 }
 
-int prototype_context_fresh_reindex_extension(
+int prototype_context_comprehension_action(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t source_extension,
+	uint32_t base_substitution,
+	uint32_t* p_target_binding_id,
+	uint32_t* p_target_extension,
+	uint32_t* p_lifted_substitution
+) {
+	if (!contexts || !substitutions || !terms || !type_declarations ||
+		!p_target_binding_id || !p_target_extension || !p_lifted_substitution) {
+		return -1;
+	}
+	contexts->pullback_requests++;
+	const struct prototype_context* source_entry = prototype_context_get(
+		contexts, source_extension
+	);
+	const struct prototype_substitution* base = prototype_substitution_get(
+		substitutions, base_substitution
+	);
+	if (!source_entry || source_extension == prototype_context_empty(contexts) ||
+		!base || base->target_context != source_entry->parent ||
+		prototype_context_classifier_term(source_entry) == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	uint64_t key_hash = comprehension_action_key_hash(
+		source_extension, base_substitution
+	);
+	size_t bucket = key_hash % PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
+	for (uint32_t i = contexts->comprehension_action_index_heads[bucket];
+		i != PROTOTYPE_INVALID_ID;
+		i = contexts->comprehension_actions[i].hash_next) {
+		contexts->pullback_probes++;
+		if (i >= contexts->comprehension_action_count) {
+			return -1;
+		}
+		const struct prototype_context_comprehension_action* action =
+			&contexts->comprehension_actions[i];
+		if (action->key_hash == key_hash &&
+			action->source_extension == source_extension &&
+			action->base_substitution == base_substitution) {
+			if (!prototype_context_get(contexts, action->target_extension) ||
+				!prototype_substitution_get(
+					substitutions, action->lifted_substitution
+				)) {
+				return -1;
+			}
+			contexts->pullback_hits++;
+			*p_target_binding_id = action->target_binding_id;
+			*p_target_extension = action->target_extension;
+			*p_lifted_substitution = action->lifted_substitution;
+			return 0;
+		}
+	}
+	if (contexts->comprehension_action_count >=
+		PROTOTYPE_CONTEXT_COMPREHENSION_ACTION_CAPACITY) {
+		return -1;
+	}
+	uint32_t classifier;
+	uint32_t candidate_binder;
+	uint32_t target_extension;
+	if (prototype_term_reindex(
+			terms,
+			type_declarations,
+			contexts,
+			substitutions,
+			prototype_context_classifier_term(source_entry),
+			base_substitution,
+			&classifier
+		) != 0 ||
+		(candidate_binder = prototype_term_new_binding(terms)) ==
+			PROTOTYPE_INVALID_ID ||
+		prototype_context_extend(
+			contexts,
+			base->source_context,
+			candidate_binder,
+			classifier,
+			PROTOTYPE_INVALID_ID,
+			&target_extension
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_context* target_entry = prototype_context_get(
+		contexts, target_extension
+	);
+	uint32_t projection;
+	uint32_t weakened_substitution;
+	uint32_t variable;
+	uint32_t lifted_substitution;
+	if (!target_entry ||
+		prototype_substitution_projection(
+			substitutions, contexts, target_extension, &projection
+		) != 0 ||
+		prototype_substitution_compose(
+			substitutions,
+			contexts,
+			base_substitution,
+			projection,
+			&weakened_substitution
+		) != 0 ||
+		prototype_term_var(
+			terms, target_entry->binding_id, &variable
+		) != 0 ||
+		prototype_substitution_extend(
+			substitutions,
+			contexts,
+			terms,
+			type_declarations,
+			weakened_substitution,
+			source_extension,
+			variable,
+			classifier,
+			&lifted_substitution
+		) != 0) {
+		return -1;
+	}
+	uint32_t action_id = (uint32_t)contexts->comprehension_action_count++;
+	contexts->comprehension_actions[action_id] =
+		(struct prototype_context_comprehension_action) {
+		.source_extension = source_extension,
+		.base_substitution = base_substitution,
+		.target_extension = target_extension,
+		.lifted_substitution = lifted_substitution,
+		.target_binding_id = target_entry->binding_id,
+		.key_hash = key_hash,
+		.hash_next = contexts->comprehension_action_index_heads[bucket]
+	};
+	contexts->comprehension_action_index_heads[bucket] = action_id;
+	*p_target_binding_id = target_entry->binding_id;
+	*p_target_extension = target_extension;
+	*p_lifted_substitution = lifted_substitution;
+	return 0;
+}
+
+int prototype_context_comprehension_actions_validate(
+	const struct prototype_context_db* contexts,
+	const struct prototype_substitution_db* substitutions
+) {
+	if (!contexts || !substitutions ||
+		contexts->comprehension_action_count >
+			PROTOTYPE_CONTEXT_COMPREHENSION_ACTION_CAPACITY) {
+		return -1;
+	}
+	for (uint32_t i = 0;
+		i < contexts->comprehension_action_count;
+		++i) {
+		const struct prototype_context_comprehension_action* action =
+			&contexts->comprehension_actions[i];
+		const struct prototype_context* source = prototype_context_get(
+			contexts, action->source_extension
+		);
+		const struct prototype_context* target = prototype_context_get(
+			contexts, action->target_extension
+		);
+		const struct prototype_substitution* base = prototype_substitution_get(
+			substitutions, action->base_substitution
+		);
+		const struct prototype_substitution* lifted = prototype_substitution_get(
+			substitutions, action->lifted_substitution
+		);
+		uint64_t key_hash = comprehension_action_key_hash(
+			action->source_extension, action->base_substitution
+		);
+		if (!source || action->source_extension ==
+				prototype_context_empty(contexts) ||
+			!target || !base || !lifted || action->key_hash != key_hash ||
+			base->target_context != source->parent ||
+			target->parent != base->source_context ||
+			target->binding_id != action->target_binding_id ||
+			lifted->source_context != action->target_extension ||
+			lifted->target_context != action->source_extension) {
+			return -1;
+		}
+		uint32_t found = PROTOTYPE_INVALID_ID;
+		size_t bucket = key_hash % PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
+		for (uint32_t j = contexts->comprehension_action_index_heads[bucket];
+			j != PROTOTYPE_INVALID_ID;
+			j = contexts->comprehension_actions[j].hash_next) {
+			if (j >= contexts->comprehension_action_count) {
+				return -1;
+			}
+			const struct prototype_context_comprehension_action* indexed =
+				&contexts->comprehension_actions[j];
+			if (indexed->source_extension == action->source_extension &&
+				indexed->base_substitution == action->base_substitution) {
+				if (found != PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				found = j;
+			}
+		}
+		if (found != i) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+int prototype_context_reindex_telescope(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
@@ -1118,7 +1418,6 @@ int prototype_context_fresh_reindex_extension(
 		!binders || !p_binder_count || !p_target_extension || !p_substitution) {
 		return -1;
 	}
-	contexts->pullback_requests++;
 	uint32_t source_path[128];
 	uint32_t source_count;
 	if (prototype_context_extension_path(
@@ -1131,44 +1430,6 @@ int prototype_context_fresh_reindex_extension(
 		) != 0 || source_count > binder_capacity) {
 		return -1;
 	}
-	size_t cache_slot = graph_key_hash_mix(
-		graph_key_hash_mix(
-			UINT64_C(1469598103934665603), base_context
-		),
-		source_extension
-	) % PROTOTYPE_CONTEXT_ACTION_CACHE_COUNT;
-	struct prototype_context_pullback_cache_entry* cached =
-		&contexts->pullback_cache[cache_slot];
-	if (cached->present && cached->base_context == base_context &&
-		cached->source_extension == source_extension &&
-		prototype_context_get(contexts, cached->target_extension) &&
-		prototype_substitution_get(substitutions, cached->substitution)) {
-		uint32_t target_path[128];
-		uint32_t target_count;
-		if (prototype_context_extension_path(
-				contexts,
-				base_context,
-				cached->target_extension,
-				target_path,
-				128,
-				&target_count
-			) == 0 && target_count == source_count &&
-			target_count <= binder_capacity) {
-			for (uint32_t i = 0; i < target_count; ++i) {
-				const struct prototype_context* target_entry =
-					prototype_context_get(contexts, target_path[i]);
-				if (!target_entry) {
-					return -1;
-				}
-				binders[i] = target_entry->binding_id;
-			}
-			contexts->pullback_hits++;
-			*p_binder_count = target_count;
-			*p_target_extension = cached->target_extension;
-			*p_substitution = cached->substitution;
-			return 0;
-		}
-	}
 	uint32_t substitution;
 	if (prototype_substitution_identity(
 			substitutions, contexts, base_context, &substitution
@@ -1177,81 +1438,23 @@ int prototype_context_fresh_reindex_extension(
 	}
 	uint32_t target_context = base_context;
 	for (uint32_t i = 0; i < source_count; ++i) {
-		const struct prototype_context* source_entry =
-			prototype_context_get(contexts, source_path[i]);
-		uint32_t classifier;
-		uint32_t candidate_binder;
-		uint32_t extended_context;
-		if (!source_entry || prototype_context_classifier_term(source_entry) ==
-				PROTOTYPE_INVALID_ID ||
-			prototype_term_reindex(
+		if (prototype_context_comprehension_action(
+				contexts,
+				substitutions,
 				terms,
 				type_declarations,
-				contexts,
-				substitutions,
-				prototype_context_classifier_term(source_entry),
-				substitution,
-				&classifier
-			) != 0 ||
-			(candidate_binder = prototype_term_new_binding(terms)) ==
-				PROTOTYPE_INVALID_ID ||
-			prototype_context_extend(
-				contexts,
-				target_context,
-				candidate_binder,
-				classifier,
-				PROTOTYPE_INVALID_ID,
-				&extended_context
-			) != 0) {
-			return -1;
-		}
-		const struct prototype_context* target_entry =
-			prototype_context_get(contexts, extended_context);
-		uint32_t projection;
-		uint32_t weakened_substitution;
-		uint32_t variable;
-		uint32_t extended_substitution;
-		if (!target_entry ||
-			prototype_substitution_projection(
-				substitutions, contexts, extended_context, &projection
-			) != 0 ||
-			prototype_substitution_compose(
-				substitutions,
-				contexts,
-				substitution,
-				projection,
-				&weakened_substitution
-			) != 0 ||
-			prototype_term_var(
-				terms, target_entry->binding_id, &variable
-			) != 0 ||
-			prototype_substitution_extend(
-				substitutions,
-				contexts,
-				terms,
-				type_declarations,
-				weakened_substitution,
 				source_path[i],
-				variable,
-				classifier,
-				&extended_substitution
+				substitution,
+				&binders[i],
+				&target_context,
+				&substitution
 			) != 0) {
 			return -1;
 		}
-		binders[i] = target_entry->binding_id;
-		target_context = extended_context;
-		substitution = extended_substitution;
 	}
 	*p_binder_count = source_count;
 	*p_target_extension = target_context;
 	*p_substitution = substitution;
-	*cached = (struct prototype_context_pullback_cache_entry) {
-		.present = 1,
-		.base_context = base_context,
-		.source_extension = source_extension,
-		.target_extension = target_context,
-		.substitution = substitution
-	};
 	return 0;
 }
 
