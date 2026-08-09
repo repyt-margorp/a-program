@@ -204,6 +204,28 @@ awk '
 	END { exit bad }
 ' "$TMP_DIR/identity.apo"
 awk '
+	!done {
+		for (i = 1; i <= NF - 5; ++i) {
+			if ($i == "premise" && $(i + 1) != 4294967295) {
+				$(i + 2) = 1
+				$(i + 3) = 0
+				$(i + 4) = 0
+				$(i + 5) = 0
+				done = 1
+				break
+			}
+		}
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-both-premise-ids.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-both-premise-ids.apo" \
+	>"$TMP_DIR/identity-both-premise-ids.out" \
+	2>"$TMP_DIR/identity-both-premise-ids.err"; then
+	echo "artifact accepted Claim premise with a scoped Proposition tuple" >&2
+	exit 1
+fi
+awk '
 	$1 == "operation" && $4 == 2 && !done {
 		$4 = 1
 		done = 1

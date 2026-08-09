@@ -117,7 +117,6 @@ static uint32_t fixture_add_claim(
 	uint32_t id = (uint32_t)judgement->claim_count++;
 	judgement->claims[id] = (struct prototype_judgement_claim) {
 		.proposition_id = proposition_id,
-		.proposition = &judgement->propositions[proposition_id],
 		.closure_rank = 0
 	};
 	if (prototype_judgement_db_rebuild_index(judgement) != 0) {
@@ -918,14 +917,20 @@ int main(void) {
 			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO,
 			.conclusion_claim_id = returned_left_claim,
 			.premise_count = 1,
-			.premises = (struct prototype_judgement_premise_edge[]) { { .claim_id = left_has_type } }
+			.premises = (struct prototype_judgement_premise_edge[]) { {
+				.claim_id = left_has_type,
+				.scoped_proposition_id = PROTOTYPE_INVALID_ID
+			} }
 		};
 	judgement.derivations[judgement.derivation_count++] =
 		(struct prototype_judgement_derivation){
 			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO,
 			.conclusion_claim_id = returned_right_claim,
 			.premise_count = 1,
-			.premises = (struct prototype_judgement_premise_edge[]) { { .claim_id = right_has_type } }
+			.premises = (struct prototype_judgement_premise_edge[]) { {
+				.claim_id = right_has_type,
+				.scoped_proposition_id = PROTOTYPE_INVALID_ID
+			} }
 		};
 	uint32_t computation_goal;
 	if (prototype_hott_observation_goal_db_intern(
@@ -973,14 +978,20 @@ int main(void) {
 			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO,
 			.conclusion_claim_id = thunk_left_claim,
 			.premise_count = 1,
-			.premises = (struct prototype_judgement_premise_edge[]) { { .claim_id = returned_left_claim } }
+			.premises = (struct prototype_judgement_premise_edge[]) { {
+				.claim_id = returned_left_claim,
+				.scoped_proposition_id = PROTOTYPE_INVALID_ID
+			} }
 		};
 	judgement.derivations[judgement.derivation_count++] =
 		(struct prototype_judgement_derivation){
 			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO,
 			.conclusion_claim_id = thunk_right_claim,
 			.premise_count = 1,
-			.premises = (struct prototype_judgement_premise_edge[]) { { .claim_id = returned_right_claim } }
+			.premises = (struct prototype_judgement_premise_edge[]) { {
+				.claim_id = returned_right_claim,
+				.scoped_proposition_id = PROTOTYPE_INVALID_ID
+			} }
 		};
 	uint32_t thunk_goal;
 	if (prototype_hott_observation_goal_db_intern(
@@ -1712,6 +1723,7 @@ int main(void) {
 		judgement.accepted_premise_count++
 	];
 	boxed_derivation->premises[0].claim_id = bool_variable_claim;
+	boxed_derivation->premises[0].scoped_proposition_id = PROTOTYPE_INVALID_ID;
 	struct prototype_hott_action_request box_type_action = {
 		.kind = PROTOTYPE_HOTT_ACTION_TYPE,
 		.key.type = {
@@ -1808,7 +1820,10 @@ int main(void) {
 			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO,
 			.conclusion_claim_id = returned_box_claim,
 			.premise_count = 1,
-			.premises = (struct prototype_judgement_premise_edge[]) { { .claim_id = boxed_claim } }
+			.premises = (struct prototype_judgement_premise_edge[]) { {
+				.claim_id = boxed_claim,
+				.scoped_proposition_id = PROTOTYPE_INVALID_ID
+			} }
 		};
 	struct prototype_hott_action_request pure_box_type_action = {
 		.kind = PROTOTYPE_HOTT_ACTION_TYPE,
@@ -1908,7 +1923,10 @@ int main(void) {
 			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO,
 			.conclusion_claim_id = thunked_box_claim,
 			.premise_count = 1,
-			.premises = (struct prototype_judgement_premise_edge[]) { { .claim_id = returned_box_claim } }
+			.premises = (struct prototype_judgement_premise_edge[]) { {
+				.claim_id = returned_box_claim,
+				.scoped_proposition_id = PROTOTYPE_INVALID_ID
+			} }
 		};
 	struct prototype_hott_action_request pure_box_thunk_type_action = {
 		.kind = PROTOTYPE_HOTT_ACTION_TYPE,
@@ -2110,8 +2128,10 @@ int main(void) {
 			.conclusion_claim_id = app_claim,
 			.premise_count = 2,
 			.premises = (struct prototype_judgement_premise_edge[]) {
-				{ .claim_id = function_variable_claim },
-				{ .claim_id = bool_variable_in_function_context_claim }
+				{ .claim_id = function_variable_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID },
+				{ .claim_id = bool_variable_in_function_context_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID }
 			}
 		};
 	uint32_t function_to_empty;
@@ -2340,7 +2360,10 @@ int main(void) {
 			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO,
 			.conclusion_claim_id = returned_outer_bool_claim,
 			.premise_count = 1,
-			.premises = (struct prototype_judgement_premise_edge[]) { { .claim_id = outer_bool_in_lambda_body_claim } }
+			.premises = (struct prototype_judgement_premise_edge[]) { {
+				.claim_id = outer_bool_in_lambda_body_claim,
+				.scoped_proposition_id = PROTOTYPE_INVALID_ID
+			} }
 		};
 	uint32_t dependent_lambda;
 	if (prototype_term_lambda(
@@ -2371,8 +2394,10 @@ int main(void) {
 			.conclusion_claim_id = lambda_claim,
 			.premise_count = 2,
 			.premises = (struct prototype_judgement_premise_edge[]) {
-				{ .claim_id = lambda_binder_claim },
-				{ .claim_id = returned_outer_bool_claim }
+				{ .claim_id = lambda_binder_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID },
+				{ .claim_id = returned_outer_bool_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID }
 			}
 		};
 	struct prototype_hott_action_request lambda_action = {
@@ -2528,9 +2553,12 @@ int main(void) {
 			.conclusion_claim_id = value_match_claim,
 			.premise_count = 3,
 			.premises = (struct prototype_judgement_premise_edge[]) {
-				{ .claim_id = value_match_classifier_claim },
-				{ .claim_id = bool_true_in_context_claim },
-				{ .claim_id = bool_false_in_context_claim }
+				{ .claim_id = value_match_classifier_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID },
+				{ .claim_id = bool_true_in_context_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID },
+				{ .claim_id = bool_false_in_context_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID }
 			}
 		};
 	struct prototype_hott_action_request value_match_type_action = {
@@ -2729,8 +2757,10 @@ int main(void) {
 			.conclusion_claim_id = unbox_claim,
 			.premise_count = 2,
 			.premises = (struct prototype_judgement_premise_edge[]) {
-				{ .claim_id = unbox_classifier_claim },
-				{ .claim_id = unbox_body_claim }
+				{ .claim_id = unbox_classifier_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID },
+				{ .claim_id = unbox_body_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID }
 			}
 		};
 	struct prototype_hott_action_request unbox_type_action = {
@@ -3067,9 +3097,12 @@ int main(void) {
 			.conclusion_claim_id = nat_match_claim,
 			.premise_count = 3,
 			.premises = (struct prototype_judgement_premise_edge[]) {
-				{ .claim_id = nat_classifier_claim },
-				{ .claim_id = nat_zero_in_context_claim },
-				{ .claim_id = nat_ih_claim }
+				{ .claim_id = nat_classifier_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID },
+				{ .claim_id = nat_zero_in_context_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID },
+				{ .claim_id = nat_ih_claim,
+				  .scoped_proposition_id = PROTOTYPE_INVALID_ID }
 			}
 		};
 	struct prototype_hott_action_request nat_type_action = {

@@ -23,13 +23,13 @@ static int context_certificate_is_valid(
 		certificate->structural_id != prototype_context_empty(contexts) &&
 		context && classifier != PROTOTYPE_INVALID_ID &&
 		prototype_context_classifier_variable(context) == PROTOTYPE_INVALID_ID &&
-		claim && claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-		claim->proposition->context_id == context->parent && claim->proposition->subject == classifier &&
-		claim->proposition->operation_id == PROTOTYPE_INVALID_ID &&
-		claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
-		claim->proposition->classifier < terms->term_count &&
+		claim && prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id == context->parent && prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == classifier &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id == PROTOTYPE_INVALID_ID &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier < terms->term_count &&
 		prototype_judgement_classifier_value_whnf(
-			terms, type_declarations, claim->proposition->classifier, &classifier_classifier
+			terms, type_declarations, prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier, &classifier_classifier
 		) == 0 && classifier_classifier < terms->term_count &&
 		terms->terms[classifier_classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR;
 }
@@ -47,10 +47,10 @@ static int substitution_certificate_is_valid(
 		certificate->kind == PROTOTYPE_CWF_CERTIFICATE_SUBSTITUTION_FORMATION &&
 		substitution && claim &&
 		substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND &&
-		claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-		claim->proposition->context_id == substitution->source_context &&
-		claim->proposition->subject == substitution->term &&
-		claim->proposition->classifier == substitution->term_classifier;
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id == substitution->source_context &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == substitution->term &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier == substitution->term_classifier;
 }
 
 void prototype_cwf_certificate_db_init(

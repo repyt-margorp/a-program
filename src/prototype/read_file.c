@@ -721,20 +721,29 @@ static int artifact_export_claim_ids_match_loaded_image(
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		const struct prototype_artifact_term_export* export =
 			&interface->term_exports[i];
-		if (export->source_claim_id == PROTOTYPE_INVALID_ID) {
+		if (export->source_evidence.kind ==
+			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
+			if (export->source_evidence.id != PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
 			continue;
 		}
-		if (export->source_claim_id >= judgement->claim_count) {
+		if (export->source_evidence.kind !=
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM ||
+			export->source_evidence.id >= judgement->claim_count) {
 			return -1;
 		}
 		const struct prototype_judgement_claim* claim =
-			&judgement->claims[export->source_claim_id];
-		if (claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			claim->proposition->subject != export->local_term ||
-			claim->proposition->classifier != export->classifier ||
-			(claim->proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
-			 (claim->proposition->authority_id != export->operation ||
-			  claim->proposition->operation_id != export->operation))) {
+			prototype_judgement_claim_get(judgement, export->source_evidence.id);
+		const struct prototype_judgement_proposition* proposition = claim ?
+			prototype_judgement_proposition_get(judgement, claim->proposition_id) :
+			NULL;
+		if (!proposition || proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			proposition->subject != export->local_term ||
+			proposition->classifier != export->classifier ||
+			(proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+			 (proposition->authority_id != export->operation ||
+			  proposition->operation_id != export->operation))) {
 			return -1;
 		}
 	}
@@ -749,13 +758,17 @@ static uint32_t artifact_find_grounded_export_claim(
 		return PROTOTYPE_INVALID_ID;
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
-		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			claim->proposition->subject == export->local_term &&
-			claim->proposition->classifier == export->classifier &&
-			(claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-			 (claim->proposition->authority_id == export->operation &&
-			  claim->proposition->operation_id == export->operation)) &&
+		const struct prototype_judgement_claim* claim =
+			prototype_judgement_claim_get(judgement, i);
+		const struct prototype_judgement_proposition* proposition = claim ?
+			prototype_judgement_proposition_get(judgement, claim->proposition_id) :
+			NULL;
+		if (proposition && proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			proposition->subject == export->local_term &&
+			proposition->classifier == export->classifier &&
+			(proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+			 (proposition->authority_id == export->operation &&
+			  proposition->operation_id == export->operation)) &&
 			claim->closure_rank != PROTOTYPE_INVALID_ID) {
 			return i;
 		}
@@ -792,7 +805,8 @@ static int artifact_exports_have_accepted_claims(
 			return -1;
 		}
 		int found = 0;
-		if (export->source_claim_id != PROTOTYPE_INVALID_ID) {
+		if (export->source_evidence.kind !=
+			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
 			uint32_t grounded_claim_id = artifact_find_grounded_export_claim(
 				judgement, export
 			);
@@ -801,18 +815,20 @@ static int artifact_exports_have_accepted_claims(
 			}
 			const struct prototype_judgement_claim* claim =
 				&judgement->claims[grounded_claim_id];
-			found = claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-				claim->proposition->subject == export->local_term &&
-				claim->proposition->classifier == export->classifier &&
+			found = prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == export->local_term &&
+				prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier == export->classifier &&
 				claim->closure_rank != PROTOTYPE_INVALID_ID &&
-				(claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-				 (claim->proposition->authority_id == export->operation &&
-				  claim->proposition->operation_id == export->operation));
+				(prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+				 (prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id == export->operation &&
+				  prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id == export->operation));
 			if (!found) {
 				return -1;
 			}
 			if (rebind_source_claim_ids) {
-				export->source_claim_id = grounded_claim_id;
+				export->source_evidence.kind =
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM;
+				export->source_evidence.id = grounded_claim_id;
 			}
 		}
 		if (!found) {

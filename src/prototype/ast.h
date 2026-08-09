@@ -562,6 +562,17 @@ enum prototype_artifact_export_transparency {
 	PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT = 2
 };
 
+enum prototype_artifact_evidence_reference_kind {
+	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID = 0,
+	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM = 1,
+	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_PROPOSITION = 2
+};
+
+struct prototype_artifact_evidence_reference {
+	int kind;
+	uint32_t id;
+};
+
 struct prototype_artifact_term_export {
 	/*
 	 * A named typed-operation boundary. local_term is deliberately an erased
@@ -577,9 +588,9 @@ struct prototype_artifact_term_export {
 	/* Source typed occurrence authorizing this export. The erased local_term
 	 * alone cannot identify a Claim or a residual solver obligation. */
 	uint32_t operation;
-	/* Exact accepted HAS_TYPE Claim authorizing this export. INVALID is allowed
-	 * only when the Operation has an explicit residual obligation. */
-	uint32_t source_claim_id;
+	/* Exact evidence authorizing this export. Source artifacts use an accepted
+	 * Claim; an appended, not-yet-republished graph uses its Proposition. */
+	struct prototype_artifact_evidence_reference source_evidence;
 	int transparency;
 	struct prototype_term_canonical_key canonical_key;
 	struct prototype_term_canonical_key classifier_key;

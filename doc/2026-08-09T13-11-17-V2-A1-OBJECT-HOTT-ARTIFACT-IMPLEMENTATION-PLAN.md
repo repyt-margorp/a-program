@@ -2,32 +2,45 @@
 
 Date: 2026-08-09
 
-Status: planned; V3-SC1 prerequisite complete, A1.1 is next
+Status: planned; unblocked by completed V3-PC1 normalization
 
 Repository baseline:
 
 - branch: `main`;
 - SC1 measurement baseline: `31e5446`;
-- A1 implementation baseline: the SC1 completion commit containing this
-  document update;
+- PC1 implementation baseline: `7cc6dc9` (`Consolidate semantic proof
+  infrastructure`);
+- A1 implementation baseline: the V3-PC1 completion commit recorded by this
+  implementation series;
 - artifact format: v69;
 - object-action manifest: `src/prototype/hott_fragment_v2.schema`;
 - prerequisite V2-O1: complete;
 - prerequisite V3-SC1: complete; compact graph verified against `31e5446`;
+- prerequisite V3-PC1: complete;
 - baseline verification: all 16 prototype scripts, examples 01-07 and 09,
-  optimized `-Werror`, and ASan/UBSan passed at the O1 checkpoint.
+  optimized `-Werror`, ASan/UBSan, deterministic v69 output, artifact
+  append/link, CwF/reindex laws, HOTT actions, and scoped-premise forgeries
+  passed at the SC1 checkpoint.
 
-This is the executable plan for V2-A1, the next publication stage selected by
+This is the executable plan for V2-A1, the publication stage after V3-PC1
+selected by
 `2026-08-08T22-51-03-HIGHER-OBSERVATIONAL-TT-REFACTOR-AUDIT-V3.md`.
 It is derived from the completed O1 implementation rather than from the older
 pre-O1 artifact sketches.
 
+The `V2-A1` identifier is retained from the stage where artifact publication
+was first planned. It is not a rollback to the V2 architecture: V3 places this
+existing stage after `V3-SC1`, and it consumes only the consolidated V3 graph.
+
 The mandatory consolidation and progress plan immediately before this stage
 is `2026-08-09T13-35-50-V3-SC1-SEMANTIC-CONSOLIDATION-IMPLEMENTATION-PLAN.md`.
-A1 consumes its interned proposition table, ordered premise-edge graph, typed
-CwF certificate arena, checked HOTT views, and deletion report. A1 must not
-reintroduce the pre-SC1 fixed premise arrays or feature-owned certificate
-stores.
+The post-SC1 persistent-reference gate is
+`2026-08-09T17-13-30-V3-PC1-PERSISTENT-PROPOSITION-REFERENCE-NORMALIZATION-PLAN.md`.
+A1 consumes its interned proposition table, pointer-free Claims,
+ID-referenced ordered premise-edge graph, typed CwF certificate arena, checked
+HOTT views, and deletion report. A1 must not reintroduce copied scoped
+Proposition tuples, cached Claim pointers, pre-SC1 fixed premise arrays, or
+feature-owned certificate stores.
 
 ## 1. Objective
 
@@ -161,6 +174,35 @@ the action-result fingerprint, graph revision, or fuel budget. Tests must still
 ensure that the shared numeric object tags and proof kinds agree between C
 headers and both manifests where their domains overlap.
 
+### 2.6 Preserve rule identity across the artifact boundary
+
+Computational encodability in Lambda/App does not identify kernel rules.
+`APP_ELIM`, `MATCH_ELIM`, `INDUCTION_HYPOTHESIS_ELIM`, and
+`COMPUTATION_FOLD_ELIM` continue to denote different typed derivations with
+different premise contracts.
+
+The v70 graph therefore preserves each derivation's exact proof kind, ordered
+premise edges, scoped propositions, and rule-specific data. Readback replays
+the validator selected by that proof kind. It must not lower these derivations
+to a generic Lambda/App proof before validation, and it must not infer a proof
+kind from the shape of an erased CoreTerm.
+
+The wire implementation may share proposition, premise-edge, relocation, and
+bounds-checking machinery. This is infrastructure sharing, not semantic rule
+collapse. The complete design decision is recorded in section 3.9 of the SC1
+plan.
+
+### 2.7 A1 does not introduce another reference adapter
+
+V3-PC1 must complete before v70 is frozen. The v70 writer serializes the
+accepted in-memory Proposition, Claim, Derivation, and premise-edge IDs
+directly. It must not translate an accepted copied scoped tuple into a wire
+Proposition ID, and it must not serialize or reconstruct cached Claim pointers.
+
+An accepted premise record contains either an accepted Claim ID or a scoped
+Proposition ID, never both. This exact-one-valid invariant is preserved by
+write, read, sparse marking, append, and link.
+
 ## 3. Current Codebase Audit
 
 ### 3.1 O1 object terms exist but v69 cannot write them
@@ -180,8 +222,8 @@ The artifact boundary is incomplete:
 
 - `write_artifact_term()` in `src/prototype/ast.c:3391` has no cases for tags
   32 and 33;
-- `read_artifact_term()` at `src/prototype/ast.c:7693` has no cases for them;
-- `artifact_validate_term_refs()` at `src/prototype/ast.c:8128` does not admit
+- `read_artifact_term()` at `src/prototype/ast.c:7811` has no cases for them;
+- `artifact_validate_term_refs()` at `src/prototype/ast.c:8246` does not admit
   them as leaf nodes; and
 - `artifact_v69.schema` ends at term tag 31.
 
@@ -210,27 +252,29 @@ OBSERVATION_INDUCTION_HYPOTHESIS_WITNESS
 `src/prototype/typing.c`. The graph writer is generic enough to print their
 accepted Derivations.
 
-The v69 reader at `src/prototype/ast.c:9072` rejects every proof kind greater
+The v69 derivation reader near `src/prototype/ast.c:9190` rejects every proof kind greater
 than `PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN` (32). The v70 reader must use the
 frozen last O1 proof kind and must still reject unknown future integers.
 
-### 3.3 Scoped-premise readback is currently miswired
+### 3.3 Scoped-premise readback repair is a frozen prerequisite
 
-The derivation reader passes
-`scoped_premise_context_ids[j]` twice to one `fscanf` call. Consequently the
-wire tokens intended for subject and classifier are shifted and the classifier
-destination is not populated correctly.
+The pre-SC1 audit suspected that the derivation reader passed a Context
+destination twice to one `fscanf` call. The `7cc6dc9` A1 baseline does not have
+that bug: it reads Context, subject, and classifier into distinct fields of one
+`prototype_judgement_premise_edge`.
 
-Existing artifact fixtures do not expose this because their accepted replay
-closure does not adequately exercise nontrivial scoped premise tuples after
-readback. O1 Lambda and Match witnesses do.
+SC1 also added exact scoped-premise round-trip coverage and independent forged
+Context, subject, and classifier rejection. A1 must preserve those tests while
+replacing the expanded v69 tuple with the compact v70 proposition/premise
+records.
 
-This is a precondition bug, not an optional cleanup. It must be fixed and given
-an independent v69-baseline regression fixture before adding HOTT roots.
+This item is no longer an implementation repair. It is a migration invariant:
+the compact reader must not regress the field separation while changing the
+wire layout.
 
 ### 3.4 Sparse publication has no root for unnamed HOTT objects
 
-`artifact_mark_roots()` at `src/prototype/ast.c:6033` starts from named term
+`artifact_mark_roots()` at `src/prototype/ast.c:6126` starts from named term
 exports, type exports, constructor exports, and compile metadata. It has no
 root path from a completed O1 action.
 
@@ -262,21 +306,22 @@ rather than adding duplicate HOTT context records.
 
 ### 3.6 Append/link must relocate observation roots
 
-`prototype_artifact_append_graph()` at `src/prototype/ast.c:11338` relocates
+`prototype_artifact_append_graph()` at `src/prototype/ast.c:11524` relocates
 Terms, binders, Contexts, Substitutions, Claim candidates, Derivation
 candidates, and existing interface exports. It currently knows nothing about
 observation roots.
 
-For each appended root it must relocate:
+For each appended root it must use an explicit Claim relocation map:
 
 ```text
-relation_is_type_claim_id += claim_candidate_offset
-witness_has_type_claim_id += claim_candidate_offset, unless INVALID
+relation_is_type_claim_id = claim_relocation[source_relation_claim_id]
+witness_has_type_claim_id = claim_relocation[source_witness_claim_id], unless INVALID
 ```
 
-The capacity preflight, interface initialization, copy path, and validation
-must include the new root arena. No post-link search by Term shape may replace
-this exact Claim-id relocation.
+Claim relocation must not be derived from a Proposition offset: PC1 made Claim
+and Proposition identity independent. The capacity preflight, interface
+initialization, copy path, and validation must include the new root arena. No
+post-link search by Term shape may replace this exact Claim-id relocation.
 
 ### 3.7 Relocation and dependency discovery should remain generic
 
@@ -369,7 +414,7 @@ remain later stages.
 
 ### A1.0: Baseline and prerequisite repair
 
-Status: complete
+Status: pending; prerequisite V3-PC1 complete
 
 - [x] Verify every V3-SC1 phase is complete and its deletion report contains
       measured per-file additions, deletions, final LOC, and removed semantic
@@ -380,25 +425,30 @@ Status: complete
 - [x] Verify no fixed candidate/accepted Derivation premise arrays remain.
 - [x] Verify no HOTT-owned Context-formation certificate store remains.
 - [x] Verify the v69 expanded-tuple adapter is the only remaining legacy wire
-      representation and no legacy in-memory proof path remains.
-- [x] Re-run all 16 prototype scripts and examples 01-07/09 on the compact
-      graph baseline.
-- [x] Use the SC1 completion commit containing this document as the A1
-      implementation baseline; do not continue to use `31e5446` as if no
-      consolidation occurred.
+      representation and no pre-SC1 fixed-array proof path remains.
+- [ ] Verify V3-PC1 removed copied accepted scoped Proposition tuples and
+      cached Claim Proposition pointers.
+- [ ] Verify Proposition and Claim slices have independent counts, IDs, and
+      relocation maps.
+- [ ] Re-run all 16 prototype scripts and examples 01-07/09 on the PC1
+      completion baseline.
+- [ ] Record the V3-PC1 completion commit as the A1 implementation baseline;
+      do not use `31e5446` or `7cc6dc9` as if PC1 had not occurred.
 
-Exit gate: the compact SC1 graph is the sole in-memory authority, scoped
-premise tuples round-trip through v69, and forged tuples fail before any
-object-HOTT root is published.
+Exit gate: the PC1 graph is the sole persistent in-memory authority, scoped
+premise IDs expand and round-trip only through the v69 adapter, and forged
+tuples fail before any object-HOTT root is published.
 
 ### A1.1: Freeze the v70 manifest and root ownership
 
-Status: pending
+Status: pending; blocked on A1.0
 
 - [ ] Create `src/prototype/artifact_v70.schema` from v69.
 - [ ] Add term tags 32 and 33 and proof kinds 33 through 42.
 - [ ] Replace the v69 expanded proposition/premise tuples with direct compact
       proposition and ordered premise-edge wire records.
+- [ ] Enumerate every admitted proof kind independently; do not replace
+      APP/Match/IH/computation-fold derivations with a generic encoded rule.
 - [ ] Specify the dense observation-root interface table.
 - [ ] State explicitly that action/work/bridge/certificate DBs are absent.
 - [ ] Increment `PROTOTYPE_ARTIFACT_FORMAT_VERSION` to 70.
@@ -458,6 +508,8 @@ Status: pending
       `OBSERVATION_INDUCTION_HYPOTHESIS_WITNESS`.
 - [ ] Reconstruct accepted candidates from read Claims/Derivations exactly as
       for existing proof kinds.
+- [ ] Preserve exact proof-kind identity and dispatch each derivation to its
+      rule-specific replay validator after readback.
 - [ ] Run full `prototype_judgement_db_validate()` after readback.
 
 Exit gate: every O1 object term and proof kind round-trips independently and an
@@ -529,6 +581,9 @@ Status: pending
 - [ ] Non-HOTT Claim pair presented as an observation root.
 - [ ] Wrong witness classifier.
 - [ ] Missing or reordered premise Claim.
+- [ ] A valid premise graph paired with the wrong eliminator proof kind.
+- [ ] An artifact that replaces Match, IH, or computation-fold proof identity
+      with `APP_ELIM` solely because the computation is Lambda/App encodable.
 - [ ] Forged scoped premise Context, subject, or classifier.
 - [ ] Unknown HOTT proof kind.
 - [ ] Unknown observation term tag.
@@ -565,7 +620,7 @@ replay after link, and no compiler-local HOTT search state is persistent.
 | File | Required change |
 | --- | --- |
 | `src/prototype/ast.h` | v70 version, observation-root record/interface arena, API declarations |
-| `src/prototype/ast.c` | root registration, sparse marking, wire read/write, validation, append relocation, scoped-premise fix |
+| `src/prototype/ast.c` | root registration, sparse marking, compact wire read/write, validation, append relocation, scoped-premise invariant |
 | `src/prototype/hott.h` | publication-root extraction API and declarative result type if ownership remains HOTT-side |
 | `src/prototype/hott.c` | extract exact accepted Claim ids from validated READY results only |
 | `src/prototype/term.h` | no new tags; verify frozen values 32/33 |
@@ -592,6 +647,10 @@ or accepted build rule is in scope without separate approval.
 | Match/IH witness | Match/case/frame Terms | exact accepted derivation closure | none |
 | Return/Thunk witness | ordinary CBPV Terms | exact accepted derivation closure | none |
 | residual/unsupported action | none | none | none |
+
+For every row, a common CoreTerm encoding does not replace the exact accepted
+proof kind. In particular, APP, Match, IH, and computation-fold closures remain
+distinguishable after write, read, append, and link.
 
 ## 8. Risks and Required Resolutions
 
@@ -655,8 +714,8 @@ V2-A1 does not:
 
 | Phase | Status | Blocking condition | Completion evidence |
 | --- | --- | --- | --- |
-| A1.0 Baseline/prerequisite repair | complete | V3-SC1 | exact tuple roundtrip, four field forgeries, compact graph audit |
-| A1.1 v70 manifest | pending | A1.0 | fingerprint and old-version rejection |
+| A1.0 Baseline/prerequisite repair | pending | V3-PC1 complete | pointer-free Claims, ID-only accepted edges, full PC1 exit evidence |
+| A1.1 v70 manifest | pending | A1.0 | fingerprint, exact rule identities, and old-version rejection |
 | A1.2 Root data/API | pending | A1.1 | exact-pair interning and action extraction |
 | A1.3 Sparse reachability | pending | A1.2 | minimal accepted Claim closure |
 | A1.4 Term/proof wire | pending | A1.1 | tags 32/33 and proofs 33-42 replay |
@@ -669,7 +728,8 @@ V2-A1 does not:
 ## 11. Recommended Execution Order
 
 ```text
-A1.0
+V3-PC1
+  -> A1.0
   -> A1.1
   -> A1.2
   -> A1.3 and A1.4

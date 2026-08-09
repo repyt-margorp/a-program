@@ -114,11 +114,11 @@ struct prototype_judgement_candidate_premise {
 	struct prototype_judgement_proposition proposition;
 };
 
-/* One ordered accepted premise. A valid Claim id is a DAG edge. INVALID marks
- * a rule-local proposition which is replayed without publishing a Claim. */
+/* One ordered accepted premise. Exactly one id is valid. A Claim id is a DAG
+ * edge; a scoped Proposition id is replayed without publishing a Claim. */
 struct prototype_judgement_premise_edge {
 	uint32_t claim_id;
-	struct prototype_judgement_proposition scoped_proposition;
+	uint32_t scoped_proposition_id;
 };
 
 union prototype_judgement_rule_data {
@@ -178,7 +178,6 @@ struct prototype_judgement_selected_evidence {
 /* Accepted proposition identity. Rule identity is deliberately absent. */
 struct prototype_judgement_claim {
 	uint32_t proposition_id;
-	const struct prototype_judgement_proposition* proposition;
 	uint32_t closure_rank;
 	uint64_t key_hash;
 	uint32_t hash_next;
@@ -346,6 +345,23 @@ enum prototype_judgement_category {
 const struct prototype_judgement_claim* prototype_judgement_claim_get(
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id
+);
+const struct prototype_judgement_proposition* prototype_judgement_proposition_get(
+	const struct prototype_judgement_db* judgement,
+	uint32_t proposition_id
+);
+int prototype_judgement_proposition_intern(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_proposition* proposition,
+	uint32_t* p_proposition_id
+);
+const struct prototype_judgement_proposition* prototype_judgement_claim_proposition(
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id
+);
+const struct prototype_judgement_proposition* prototype_judgement_premise_proposition(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_premise_edge* premise
 );
 const struct prototype_judgement_derivation* prototype_judgement_derivation_get(
 	const struct prototype_judgement_db* judgement,

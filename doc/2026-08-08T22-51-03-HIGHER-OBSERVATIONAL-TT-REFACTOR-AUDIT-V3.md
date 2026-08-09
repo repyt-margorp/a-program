@@ -4,7 +4,9 @@ Date: 2026-08-08
 
 Status: active; V2-P1, V3-G1 graph-consing, compiler-local V2-O1
 type-directed observational action, and V3-SC1 semantic consolidation are
-complete. V2-A1 artifact publication is the next stage. The post-G1 O1 audit found one pullback-interning correction
+complete. V3-PC1 persistent Proposition-reference normalization is complete;
+V2-A1 artifact publication is the next
+stage, followed by V2-A1 artifact publication. The post-G1 O1 audit found one pullback-interning correction
 and one Type-action endpoint-context correction; both were completed before
 non-empty bridge construction.
 Local identity, artifact-link comparison, kernel conversion, immutable
@@ -1279,6 +1281,7 @@ At commit `474867e`:
 | V3-G1 | Graph-cons Context, Substitution, and Judgement over direct binding identity | complete locally; general pullback interning corrected in O1.1 | v69 records exact weakening action; hash indices and caches are rebuilt, not serialized | all 16 scripts pass; collision-safe Context/Substitution/Judgement identity, provisional Context finalization, warm-cache pullback reuse, direct premise DAG edges, and resource boundary audited |
 | V2-O1 | Implement type-directed observational action over shared terms | complete locally | compiler-local HOTT fragment v2; artifact remains v69 | non-empty bridge, substitution/naturality, typed ADT/Pi/CBPV/Match/IH family and witness tests |
 | V3-SC1 | Consolidate proposition/premise, CwF certificate, reindex, and HOTT execution infrastructure before publication | complete | v69 wire retained through one expanded-tuple adapter | all old in-memory paths deleted; full suite, forgeries, sanitizers, and measured per-file report pass |
+| V3-PC1 | Normalize persistent Claim and accepted-premise Proposition references before publication | complete | v69 retained through the existing adapter | pointer-free Claims, discriminated accepted premise IDs, full replay and artifact suite |
 | V2-A1 | Add the object-HOTT artifact schema selected after O1 | next | breaking, version after v69 | compact proposition/premise wire plus HOTT witness/link matrix frozen by O1 |
 
 ### 23.3 Non-negotiable boundaries
@@ -1333,13 +1336,15 @@ distinct-constructor family/contradiction conflation before O1. V3-G1 has now
 removed the remaining Context/Substitution/Judgement graph identity split.
 V2-O1 is complete locally. Its post-G1 implementation and verification record is
 `doc/2026-08-09T07-10-00-V2-O1-OBSERVATIONAL-ACTION-IMPLEMENTATION-PLAN.md`.
-V3-SC1 semantic consolidation is the next implementation stage. It must remove
-the remaining duplicated proposition/premise, base-CwF certificate, reindex
-wrapper, HOTT store-bundle, and deterministic-outcome paths before publication.
-Its codebase-aligned implementation and progress plan is
+V3-SC1 semantic consolidation is complete at `7cc6dc9`. It removed the
+duplicated proposition/premise, base-CwF certificate, reindex wrapper, HOTT
+store-bundle, and deterministic-outcome paths required before publication. Its
+implementation and completion record is
 `doc/2026-08-09T13-35-50-V3-SC1-SEMANTIC-CONSOLIDATION-IMPLEMENTATION-PLAN.md`.
+V3-PC1 persistent Proposition-reference normalization is complete. V2-A1 is now the next
+implementation stage; V2-A1 follows its completion.
 
-### 27.6 Completion evidence
+### 23.5 SC1 completion evidence
 
 SC1 is complete relative to `31e5446`. The in-memory proof graph now uses one
 interned proposition table, ordered candidate/accepted premise arenas, a
@@ -1352,8 +1357,8 @@ All 16 prototype scripts, examples 01-07/09, optimized `-Werror`, ASan/UBSan,
 deterministic v69 output, artifact append/link, CwF/reindex laws, HOTT actions,
 and field-level scoped-premise forgeries pass. The exact file-by-file
 `+4,195/-3,616` accounting and semantic-path deletion table are recorded in
-the SC1 plan. V2-A1 is therefore unblocked.
-V2-A1 artifact publication follows V3-SC1.
+the SC1 plan. V3-PC1 is therefore unblocked.
+V2-A1 artifact publication follows V3-PC1.
 Its codebase-aligned implementation and progress plan is
 `doc/2026-08-09T13-11-17-V2-A1-OBJECT-HOTT-ARTIFACT-IMPLEMENTATION-PLAN.md`.
 The completed G1 execution record remains in
@@ -1439,7 +1444,7 @@ typed goal records. V2-C2 was therefore completed before V2-S1:
 
 ```text
 V2-C2 -> V2-B1 -> V2-S1 -> V2-P0/P0-R0A (including v63)
-    -> V2-P1-R0 -> V2-P1 -> V2-O1 -> V3-SC1 -> V2-A1
+    -> V2-P1-R0 -> V2-P1 -> V2-O1 -> V3-SC1 -> V3-PC1 -> V2-A1
 ```
 
 V2-C2 changes no artifact schema and adds no HOTT object term. Its complete
@@ -1594,7 +1599,7 @@ their current allocation history part of equality evidence.
 V3 therefore inserts one mandatory stage:
 
 ```text
-V2-P1 -> V3-G1 -> V2-O1 -> V3-SC1 -> V2-A1
+V2-P1 -> V3-G1 -> V2-O1 -> V3-SC1 -> V3-PC1 -> V2-A1
 ```
 
 The detailed implementation and progress plan is:
@@ -1867,7 +1872,7 @@ artifact contract and make later deletion more expensive. V3 therefore inserts
 one mandatory consolidation stage:
 
 ```text
-V3-G1 -> V2-O1 -> V3-SC1 -> V2-A1
+V3-G1 -> V2-O1 -> V3-SC1 -> V3-PC1 -> V2-A1
 ```
 
 ### 27.2 Scope correction
@@ -1913,3 +1918,28 @@ The implementation phases, progress table, validation matrix, stop
 conditions, and mandatory deletion accounting are in:
 
 `doc/2026-08-09T13-35-50-V3-SC1-SEMANTIC-CONSOLIDATION-IMPLEMENTATION-PLAN.md`.
+
+### 27.6 Encoding boundary for rule consolidation
+
+SC1 does not collapse `APP_ELIM`, `MATCH_ELIM`,
+`INDUCTION_HYPOTHESIS_ELIM`, or `COMPUTATION_FOLD_ELIM` into one generic
+Lambda/App rule. Their computations may be encodable in a shared core, but
+their typed premises and kernel theorems remain distinct. Section 3.9 of the
+SC1 plan records the full decision and the infrastructure that may still be
+shared.
+
+### 27.7 Next implementation stage
+
+The post-SC1 physical audit found one persistent representation issue which
+must be resolved before v70: accepted scoped premises still copy Proposition
+tuples, and Claims cache pointers in addition to Proposition IDs. V3-PC1
+normalizes those persistent references while retaining v69 through the one
+existing adapter.
+
+Its implementation and progress plan is:
+
+`doc/2026-08-09T17-13-30-V3-PC1-PERSISTENT-PROPOSITION-REFERENCE-NORMALIZATION-PLAN.md`.
+
+V2-A1 follows PC1. Artifact v70 then publishes the compact
+proposition/premise graph and O1 observation roots without collapsing
+rule-specific eliminators into a generic Lambda/App derivation.

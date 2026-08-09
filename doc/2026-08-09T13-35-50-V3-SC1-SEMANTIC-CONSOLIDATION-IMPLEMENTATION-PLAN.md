@@ -2,7 +2,7 @@
 
 Date: 2026-08-09
 
-Status: complete; verified against baseline `31e5446`
+Status: complete at `7cc6dc9`; measured against baseline `31e5446`
 
 Repository baseline:
 
@@ -11,7 +11,8 @@ Repository baseline:
 - artifact format: v69;
 - compiler-local HOTT manifest: `src/prototype/hott_fragment_v2.schema`;
 - V2-O1: complete locally;
-- V2-A1: blocked on this consolidation gate.
+- V3-PC1: complete.
+- V2-A1: unblocked and next.
 
 Source audit:
 
@@ -62,7 +63,8 @@ CwF object/morphism formation evidence
   -> feature-specific validators over that store
 ```
 
-V2-A1 starts only after these paths are stable and measured.
+V3-PC1 starts from these stable paths. V2-A1 starts after PC1 removes the
+remaining persistent Proposition tuple/pointer aliases.
 
 ## 2. Baseline Size and Duplication Evidence
 
@@ -296,6 +298,43 @@ Gamma ; U |- operation : A
 identity. A projection is a structural morphism, not permission to discard a
 linear value. SC1 only preserves the extension point.
 
+### 3.9 Computational encoding is not a reason to collapse kernel rules
+
+The following eliminators may share computational encodings in a sufficiently
+expressive Lambda/App calculus:
+
+- `APP_ELIM`;
+- `MATCH_ELIM`;
+- `INDUCTION_HYPOTHESIS_ELIM`; and
+- `COMPUTATION_FOLD_ELIM`.
+
+That encodability is not a proof that these kernel rules are identical. Each
+rule records a different typed operation, requires different premises, and
+justifies a different source-level elimination before any erasure or lowering
+to a common computation graph. An encoding from one rule into Lambda/App is a
+translation whose preservation and reflection properties must themselves be
+stated and checked; it is not definitional equality between the rules.
+
+Consequently, these rule kinds and their rule-specific replay checks remain
+explicit. They are not code-reduction targets merely because their dynamic
+behavior can be encoded using a smaller computational basis. Replacing them
+with one generic Lambda/App validator would hide the encoding-correctness
+obligation inside the trusted kernel.
+
+The implementation may still consolidate genuinely shared infrastructure:
+
+- proposition interning and ordered premise edges;
+- Context, Substitution, and reindex traversal;
+- rule-data storage and bounds checking;
+- artifact relocation; and
+- lowering into the common computation graph.
+
+This boundary follows A Program's layer distinction: the common CoreTerm graph
+captures computation, while the typed Operation/Judgement layer records which
+source operation was justified and by which premises. A future formal encoding
+may reduce the trusted rule surface only if the translation and its proof are
+made explicit and independently replayable.
+
 ## 4. Artifact Boundary Strategy
 
 SC1 must not cause two permanent artifact migrations immediately before A1.
@@ -309,9 +348,12 @@ v69 read tuple -> intern proposition -> append premise edge
 premise edge -> expand proposition tuple -> v69 write tuple
 ```
 
-Only one in-memory representation exists after migration. V2-A1 then performs
-the planned single v70 break and writes the compact proposition/premise graph
-directly together with object-HOTT Terms, proof kinds, and observation roots.
+Only one semantic authority exists after migration, but the post-SC1 audit
+found two remaining physical aliases in the persistent graph: scoped premise
+tuples and cached Claim Proposition pointers. V3-PC1 removes those aliases.
+V2-A1 then performs the planned single v70 break and writes the compact
+proposition/premise graph directly together with object-HOTT Terms, proof
+kinds, and observation roots.
 
 The temporary v69 adapter is deleted in A1, not retained as a compatibility
 reader. The A1 plan owns that deletion gate.
@@ -485,7 +527,7 @@ Status: complete
 Exit gate: successful fixtures are shorter without reducing malformed-record
 coverage or making constructor and validator share unchecked setup.
 
-### SC1.8 Exit audit and A1 handoff
+### SC1.8 Exit audit and post-SC1 handoff
 
 Status: complete
 
@@ -498,10 +540,11 @@ Status: complete
 - [x] Re-run all O1 Type/Term action and forged-certificate tests.
 - [x] Produce the final file-by-file deletion report defined in section 8.
 - [x] Update V3 and the A1 plan with actual completion evidence.
-- [x] Freeze the compact in-memory schema consumed by A1/v70.
+- [x] Freeze the consolidated semantic graph refined physically by V3-PC1
+      before A1/v70.
 
 Exit gate: no old in-memory path remains, all tests pass, actual code-size and
-authority-path reductions are recorded, and V2-A1 is unblocked.
+authority-path reductions are recorded, and V3-PC1 is unblocked.
 
 ## 6. Required File Changes
 
@@ -713,6 +756,7 @@ V2-O1
   -> SC1.6
   -> SC1.7
   -> SC1.8
+  -> V3-PC1
   -> V2-A1/v70
 ```
 
@@ -738,9 +782,9 @@ Stop and revise SC1 if implementation requires:
 - deleting independent replay or forgery tests for LOC reduction; or
 - starting runtime-environment or resource semantics changes inside SC1.
 
-## 13. A1 Handoff Contract
+## 13. Post-SC1 Handoff Contract
 
-V2-A1 receives:
+V3-PC1 receives:
 
 1. one interned proposition table;
 2. accepted Claims referring to proposition IDs;
@@ -751,7 +795,10 @@ V2-A1 receives:
 7. shared deterministic HOTT outcome validation; and
 8. a complete actual code-size/deletion report.
 
-A1 then:
+PC1 then removes copied scoped Proposition tuples and cached Claim Proposition
+pointers without changing semantic rule identity or the v69 wire version.
+
+A1 receives that normalized persistent graph and then:
 
 - removes the temporary v69 expanded-tuple adapter;
 - defines the compact v70 proposition and premise-edge wire records;

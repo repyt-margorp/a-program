@@ -89,13 +89,13 @@ static int hott_is_type_claim_matches(
 	const struct prototype_judgement_claim* claim =
 		prototype_judgement_claim_get(judgement, claim_id);
 	uint32_t classifier;
-	if (!claim || claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
-		claim->proposition->context_id != context_id || claim->proposition->subject != subject ||
-		claim->proposition->operation_id != PROTOTYPE_INVALID_ID ||
-		claim->proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-		claim->proposition->classifier >= terms->term_count ||
+	if (!claim || prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id != context_id || prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject != subject ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id != PROTOTYPE_INVALID_ID ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier >= terms->term_count ||
 		prototype_judgement_classifier_value_whnf(
-			terms, type_declarations, claim->proposition->classifier, &classifier
+			terms, type_declarations, prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier, &classifier
 		) != 0) {
 		return 0;
 	}
@@ -105,24 +105,25 @@ static int hott_is_type_claim_matches(
 
 static int hott_operation_matches_claim(
 	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_claim* claim
 ) {
 	if (!claim) {
 		return 0;
 	}
-	if (claim->proposition->operation_id == PROTOTYPE_INVALID_ID) {
-		return claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
+	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id == PROTOTYPE_INVALID_ID) {
+		return prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
 	}
-	if (!operations || claim->proposition->operation_id >= operations->operation_count ||
-		claim->proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-		claim->proposition->authority_id != claim->proposition->operation_id) {
+	if (!operations || prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id >= operations->operation_count ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id != prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id) {
 		return 0;
 	}
 	const struct prototype_operation_node* operation =
-		&operations->operations[claim->proposition->operation_id];
-	return operation->context_id == claim->proposition->context_id &&
-		operation->core_term == claim->proposition->subject &&
-		operation->classifier == claim->proposition->classifier;
+		&operations->operations[prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id];
+	return operation->context_id == prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id &&
+		operation->core_term == prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject &&
+		operation->classifier == prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier;
 }
 
 static int context_has_formation_certificate(
@@ -450,17 +451,17 @@ static int hott_observation_goal_is_valid(
 		prototype_judgement_claim_get(judgement, goal->left_claim_id);
 	const struct prototype_judgement_claim* right =
 		prototype_judgement_claim_get(judgement, goal->right_claim_id);
-	if (!carrier || !left || !right || left->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		right->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		left->proposition->context_id != right->proposition->context_id ||
-		left->proposition->classifier != right->proposition->classifier ||
-		carrier->proposition->subject != left->proposition->classifier ||
+	if (!carrier || !left || !right || prototype_judgement_proposition_get(judgement, left->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		prototype_judgement_proposition_get(judgement, right->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		prototype_judgement_proposition_get(judgement, left->proposition_id)->context_id != prototype_judgement_proposition_get(judgement, right->proposition_id)->context_id ||
+		prototype_judgement_proposition_get(judgement, left->proposition_id)->classifier != prototype_judgement_proposition_get(judgement, right->proposition_id)->classifier ||
+		prototype_judgement_proposition_get(judgement, carrier->proposition_id)->subject != prototype_judgement_proposition_get(judgement, left->proposition_id)->classifier ||
 		!hott_is_type_claim_matches(
 			terms, type_declarations, judgement, goal->carrier_claim_id,
-			left->proposition->context_id, carrier->proposition->subject
-		) || !hott_operation_matches_claim(operations, left) ||
-		!hott_operation_matches_claim(operations, right) ||
-		!hott_context_is_formed(contexts, cwf_certificates, left->proposition->context_id)) {
+			prototype_judgement_proposition_get(judgement, left->proposition_id)->context_id, prototype_judgement_proposition_get(judgement, carrier->proposition_id)->subject
+		) || !hott_operation_matches_claim(operations, judgement, left) ||
+		!hott_operation_matches_claim(operations, judgement, right) ||
+		!hott_context_is_formed(contexts, cwf_certificates, prototype_judgement_proposition_get(judgement, left->proposition_id)->context_id)) {
 		return 0;
 	}
 	int left_category;
@@ -481,7 +482,7 @@ static int hott_observation_goal_is_valid(
 	const struct prototype_hott_bridge* bridge = prototype_hott_bridge_db_get(
 		bridges, goal->bridge_id
 	);
-	return bridge && bridge->source_context_id == left->proposition->context_id &&
+	return bridge && bridge->source_context_id == prototype_judgement_proposition_get(judgement, left->proposition_id)->context_id &&
 		hott_bridge_record_is_valid(
 			bridge, goal->bridge_id, contexts, substitutions,
 			cwf_certificates
@@ -1229,8 +1230,8 @@ static int hott_find_unique_claim(
 	}
 	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (claim->proposition->kind != kind || claim->proposition->context_id != context_id ||
-			claim->proposition->subject != subject || claim->proposition->classifier != classifier) {
+		if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != kind || prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id != context_id ||
+			prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject != subject || prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier != classifier) {
 			continue;
 		}
 		if (found != PROTOTYPE_INVALID_ID) {
@@ -1268,9 +1269,9 @@ static int hott_find_unique_derivation_premise(
 			uint32_t claim_id = derivation->premises[j].claim_id;
 			const struct prototype_judgement_claim* claim =
 				prototype_judgement_claim_get(judgement, claim_id);
-			if (!claim || claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				claim->proposition->subject != expected_subject ||
-				claim->proposition->classifier != expected_classifier) {
+			if (!claim || prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject != expected_subject ||
+				prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier != expected_classifier) {
 				continue;
 			}
 			if (found != PROTOTYPE_INVALID_ID && found != claim_id) {
@@ -1328,14 +1329,14 @@ int prototype_hott_observation_plan(
 	const struct prototype_judgement_claim* right_claim =
 		prototype_judgement_claim_get(judgement, goal->right_claim_id);
 	if (!carrier_claim || !left_claim || !right_claim ||
-		carrier_claim->proposition->subject >= terms->term_count ||
-		left_claim->proposition->subject >= terms->term_count ||
-		right_claim->proposition->subject >= terms->term_count) {
+		prototype_judgement_proposition_get(judgement, carrier_claim->proposition_id)->subject >= terms->term_count ||
+		prototype_judgement_proposition_get(judgement, left_claim->proposition_id)->subject >= terms->term_count ||
+		prototype_judgement_proposition_get(judgement, right_claim->proposition_id)->subject >= terms->term_count) {
 		return -1;
 	}
-	uint32_t carrier = carrier_claim->proposition->subject;
-	uint32_t left = left_claim->proposition->subject;
-	uint32_t right = right_claim->proposition->subject;
+	uint32_t carrier = prototype_judgement_proposition_get(judgement, carrier_claim->proposition_id)->subject;
+	uint32_t left = prototype_judgement_proposition_get(judgement, left_claim->proposition_id)->subject;
+	uint32_t right = prototype_judgement_proposition_get(judgement, right_claim->proposition_id)->subject;
 	struct prototype_hott_work_item item = {
 		.id = (uint32_t)work->item_count,
 		.goal_id = goal_id,
@@ -1395,7 +1396,7 @@ int prototype_hott_observation_plan(
 	if (left != right) {
 		status = hott_plan_add_conversion(
 			goals, candidates, kernel, bridges, definitions, goal, goal_id,
-			left_claim->proposition->context_id, carrier, left, right, normalization_profile,
+			prototype_judgement_proposition_get(judgement, left_claim->proposition_id)->context_id, carrier, left, right, normalization_profile,
 			step_limit, &item.outcome.steps_used
 		);
 		if (status < 0) {
@@ -1478,13 +1479,13 @@ int prototype_hott_observation_plan(
 				&candidate_id
 			) != 0 || hott_candidate_add_exposure(
 				candidates, contexts, terms, type_declarations, definitions,
-				candidate_id, left_claim->proposition->context_id, carrier, left,
+				candidate_id, prototype_judgement_proposition_get(judgement, left_claim->proposition_id)->context_id, carrier, left,
 				left_result.term_id,
 				PROTOTYPE_HOTT_CHILD_COMP_LEFT_RETURN_EXPOSURE, 0,
 				normalization_profile, step_limit, &item.outcome.steps_used
 			) != 0 || hott_candidate_add_exposure(
 				candidates, contexts, terms, type_declarations, definitions,
-				candidate_id, right_claim->proposition->context_id, carrier, right,
+				candidate_id, prototype_judgement_proposition_get(judgement, right_claim->proposition_id)->context_id, carrier, right,
 				right_result.term_id,
 				PROTOTYPE_HOTT_CHILD_COMP_RIGHT_RETURN_EXPOSURE, 0,
 				normalization_profile, step_limit, &item.outcome.steps_used
@@ -1501,7 +1502,7 @@ int prototype_hott_observation_plan(
 		uint32_t right_value_claim;
 		int result_authority = hott_find_unique_claim(
 			judgement, PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
-			left_claim->proposition->context_id, result_classifier, carrier_claim->proposition->classifier,
+			prototype_judgement_proposition_get(judgement, left_claim->proposition_id)->context_id, result_classifier, prototype_judgement_proposition_get(judgement, carrier_claim->proposition_id)->classifier,
 			&result_carrier_claim
 		);
 		int left_authority = hott_find_unique_derivation_premise(
@@ -1577,7 +1578,7 @@ int prototype_hott_observation_plan(
 		uint32_t right_computation_claim;
 		int carrier_authority = hott_find_unique_claim(
 			judgement, PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
-			left_claim->proposition->context_id, computation_carrier, carrier_claim->proposition->classifier,
+			prototype_judgement_proposition_get(judgement, left_claim->proposition_id)->context_id, computation_carrier, prototype_judgement_proposition_get(judgement, carrier_claim->proposition_id)->classifier,
 			&computation_carrier_claim
 		);
 		int left_authority = hott_find_unique_derivation_premise(
@@ -1897,14 +1898,14 @@ static int hott_action_request_is_valid(
 					bridges, request->key.type.source_bridge_id
 				);
 			return claim && bridge &&
-				bridge->source_context_id == claim->proposition->context_id &&
+				bridge->source_context_id == prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id &&
 				hott_is_type_claim_matches(
 					terms,
 					type_declarations,
 					judgement,
 					request->key.type.source_claim_id,
-					claim->proposition->context_id,
-					claim->proposition->subject
+					prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id,
+					prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject
 				);
 		}
 	case PROTOTYPE_HOTT_ACTION_TERM:
@@ -1928,17 +1929,17 @@ static int hott_action_request_is_valid(
 					judgement, type_request->key.type.source_claim_id
 				) : NULL;
 			return claim &&
-				claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-				hott_operation_matches_claim(operations, claim) &&
+				prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				hott_operation_matches_claim(operations, judgement, claim) &&
 				bridge &&
-				bridge->source_context_id == claim->proposition->context_id &&
+				bridge->source_context_id == prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id &&
 				type_request &&
 				type_request->key.type.source_bridge_id ==
 					request->key.term.source_bridge_id &&
 				type_claim &&
-				type_claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-				type_claim->proposition->context_id == claim->proposition->context_id &&
-				type_claim->proposition->subject == claim->proposition->classifier;
+				prototype_judgement_proposition_get(judgement, type_claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+				prototype_judgement_proposition_get(judgement, type_claim->proposition_id)->context_id == prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id &&
+				prototype_judgement_proposition_get(judgement, type_claim->proposition_id)->subject == prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier;
 		}
 	default:
 		return 0;
@@ -2098,7 +2099,7 @@ static int hott_action_certificate_is_valid(
 				) != 0) {
 				return 0;
 			}
-			return bridge->source_context_id == source->proposition->context_id &&
+			return bridge->source_context_id == prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id &&
 				left_type == prototype_context_classifier_term(left_context) &&
 				right_type == prototype_context_classifier_term(right_context) &&
 				left_endpoint < terms->term_count &&
@@ -2109,10 +2110,10 @@ static int hott_action_certificate_is_valid(
 				terms->terms[right_endpoint].tag == PROTOTYPE_TERM_VAR &&
 				terms->terms[right_endpoint].as.var.binding_id ==
 					type->right_endpoint_binding_id &&
-				relation->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-				relation->proposition->context_id == type->endpoint_context_id &&
-				relation->proposition->subject == type->relation_type_term_id &&
-				relation->proposition->classifier == source->proposition->classifier;
+				prototype_judgement_proposition_get(judgement, relation->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+				prototype_judgement_proposition_get(judgement, relation->proposition_id)->context_id == type->endpoint_context_id &&
+				prototype_judgement_proposition_get(judgement, relation->proposition_id)->subject == type->relation_type_term_id &&
+				prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier == prototype_judgement_proposition_get(judgement, source->proposition_id)->classifier;
 		}
 	case PROTOTYPE_HOTT_ACTION_CERTIFICATE_SUBSTITUTION_NATURALITY:
 		{
@@ -2247,9 +2248,9 @@ static int hott_action_certificate_is_valid(
 				left_extension->structural_id != endpoint->first ||
 				right_extension->structural_id !=
 					term->endpoint_instantiation_substitution_id ||
-				witness_claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				witness_claim->proposition->context_id != bridge->bridge_context_id ||
-				witness_claim->proposition->subject != term->witness_term_id) {
+				prototype_judgement_proposition_get(judgement, witness_claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				prototype_judgement_proposition_get(judgement, witness_claim->proposition_id)->context_id != bridge->bridge_context_id ||
+				prototype_judgement_proposition_get(judgement, witness_claim->proposition_id)->subject != term->witness_term_id) {
 				return 0;
 			}
 			uint32_t relation;
@@ -2261,7 +2262,7 @@ static int hott_action_certificate_is_valid(
 				type_certificate->data.type.relation_type_term_id,
 				term->endpoint_instantiation_substitution_id,
 				&relation
-			) == 0 && relation == witness_claim->proposition->classifier;
+			) == 0 && relation == prototype_judgement_proposition_get(judgement, witness_claim->proposition_id)->classifier;
 		}
 	default:
 		return 0;
@@ -2475,8 +2476,8 @@ int prototype_hott_type_former_descriptor_query(
 	const struct prototype_judgement_claim* source =
 		prototype_judgement_claim_get(judgement, source_claim_id);
 	if (!terms || !type_declarations || !contexts || !source || !p_descriptor ||
-		source->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
-		source->proposition->subject >= terms->term_count) {
+		prototype_judgement_proposition_get(judgement, source->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		prototype_judgement_proposition_get(judgement, source->proposition_id)->subject >= terms->term_count) {
 		return -1;
 	}
 	struct prototype_hott_type_former_descriptor descriptor = {
@@ -2485,16 +2486,16 @@ int prototype_hott_type_former_descriptor_query(
 		.type_action_rule = PROTOTYPE_HOTT_TYPE_ACTION_RULE_NONE,
 		.residual_reason = PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE,
 		.source_claim_id = source_claim_id,
-		.source_type_term_id = source->proposition->subject
+		.source_type_term_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->subject
 	};
-	uint32_t exposed_type = source->proposition->subject;
+	uint32_t exposed_type = prototype_judgement_proposition_get(judgement, source->proposition_id)->subject;
 	struct prototype_term_normalization_result exposure;
 	if (prototype_term_normalize_with_profile(
 			terms,
 			type_declarations,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-			source->proposition->subject,
+			prototype_judgement_proposition_get(judgement, source->proposition_id)->subject,
 			64,
 			&exposure
 		) == 0 && exposure.status ==
@@ -2539,7 +2540,7 @@ int prototype_hott_type_former_descriptor_query(
 			{
 				int reason = PROTOTYPE_HOTT_RESIDUAL_NONE;
 				int status = hott_term_fragment_scan(
-					terms, source->proposition->subject, 0, &reason
+					terms, prototype_judgement_proposition_get(judgement, source->proposition_id)->subject, 0, &reason
 				);
 				if (status < 0) {
 					return -1;
@@ -2610,7 +2611,7 @@ int prototype_hott_type_former_descriptor_query(
 		default:
 			if (prototype_term_observation_type_info(
 					terms,
-					source->proposition->subject,
+					prototype_judgement_proposition_get(judgement, source->proposition_id)->subject,
 					&observation_left_type,
 					&observation_right_type,
 					&observation_left,
@@ -2730,8 +2731,8 @@ int prototype_hott_execute_type_action(
 		prototype_hott_bridge_db_get(
 			bridges, request->key.type.source_bridge_id
 		) : NULL;
-	if (!source || !bridge || source->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
-		source->proposition->context_id != bridge->source_context_id) {
+	if (!source || !bridge || prototype_judgement_proposition_get(judgement, source->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id != bridge->source_context_id) {
 		return -1;
 	}
 	struct prototype_hott_type_former_descriptor descriptor;
@@ -2806,7 +2807,7 @@ int prototype_hott_execute_type_action(
 	if (!left_type_evidence) {
 		return -1;
 	}
-	left_type = left_type_evidence->proposition->subject;
+	left_type = prototype_judgement_proposition_get(judgement, left_type_evidence->proposition_id)->subject;
 	if (
 		prototype_context_extend(
 			contexts,
@@ -2855,7 +2856,7 @@ int prototype_hott_execute_type_action(
 	if (!right_type_evidence) {
 		return -1;
 	}
-	right_type = right_type_evidence->proposition->subject;
+	right_type = prototype_judgement_proposition_get(judgement, right_type_evidence->proposition_id)->subject;
 	if (
 		prototype_context_extend(
 			contexts,
@@ -2938,9 +2939,9 @@ int prototype_hott_execute_type_action(
 			terms,
 			endpoint_context,
 			relation_type,
-			prototype_judgement_claim_get(
+			prototype_judgement_claim_proposition(
 				judgement, endpoint_left_type_claim
-			)->proposition->classifier,
+			)->classifier,
 			endpoint_left_type_claim,
 			endpoint_type_claim,
 			left_endpoint_claim,
@@ -3052,8 +3053,8 @@ static uint32_t hott_is_type_claim_for_subject(
 	}
 	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-			claim->proposition->context_id == context_id && claim->proposition->subject == subject) {
+		if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+			prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id == context_id && prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == subject) {
 			return i;
 		}
 	}
@@ -3071,10 +3072,12 @@ static uint32_t hott_has_type_claim_for_subject(
 	}
 	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			claim->proposition->context_id == context_id && claim->proposition->subject == subject) {
+		if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id == context_id && prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == subject) {
 			if (found != PROTOTYPE_INVALID_ID &&
-				judgement->claims[found].proposition->classifier != claim->proposition->classifier) {
+				prototype_judgement_claim_proposition(
+					judgement, found
+				)->classifier != prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier) {
 				return PROTOTYPE_INVALID_ID;
 			}
 			found = i;
@@ -3128,7 +3131,7 @@ static int hott_ensure_is_type_claim_in_context(
 			}
 			const struct prototype_judgement_claim* reindexed =
 				prototype_judgement_claim_get(judgement, reindexed_claim_id);
-			if (!reindexed || reindexed->proposition->subject != subject) {
+			if (!reindexed || prototype_judgement_proposition_get(judgement, reindexed->proposition_id)->subject != subject) {
 				return 1;
 			}
 			*p_claim_id = reindexed_claim_id;
@@ -3297,14 +3300,14 @@ static int hott_execute_child_term_action(
 		contexts,
 		substitutions,
 		source_context_id,
-		child_claim->proposition->classifier,
+		prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->classifier,
 		&child_type_claim_id
 	) : -1;
 	if (!actions || !contexts || !substitutions || !cwf_certificates ||
 		!cwf_certificates || !bridges || !terms || !type_declarations ||
 		!judgement || !bridge || !p_witness_claim_id || !p_residual_reason ||
-		!child_claim || child_claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		child_claim->proposition->context_id != source_context_id || child_type_status < 0 ||
+		!child_claim || prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->context_id != source_context_id || child_type_status < 0 ||
 		prototype_kernel_builder_view(kernel, &view) != 0) {
 		return -1;
 	}
@@ -3413,8 +3416,8 @@ int prototype_hott_execute_term_action(
 			bridges, request->key.term.source_bridge_id
 		) : NULL;
 	uint32_t type_result_id;
-	if (!source || !bridge || source->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		source->proposition->context_id != bridge->source_context_id) {
+	if (!source || !bridge || prototype_judgement_proposition_get(judgement, source->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id != bridge->source_context_id) {
 		return -1;
 	}
 	if (hott_action_result_for_request(
@@ -3514,8 +3517,8 @@ int prototype_hott_execute_term_action(
 			type_declarations,
 			base_substitution,
 			prototype_context_get(contexts, type->endpoint_context_id)->parent,
-			left_endpoint_evidence->proposition->subject,
-			left_endpoint_evidence->proposition->classifier,
+			prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+			prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->classifier,
 			&left_extension
 		) != 0 || prototype_substitution_extend(
 			substitutions,
@@ -3524,8 +3527,8 @@ int prototype_hott_execute_term_action(
 			type_declarations,
 			left_extension,
 			type->endpoint_context_id,
-			right_endpoint_evidence->proposition->subject,
-			right_endpoint_evidence->proposition->classifier,
+			prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
+			prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->classifier,
 			&endpoint_instantiation
 		) != 0) {
 		return -1;
@@ -3561,10 +3564,10 @@ int prototype_hott_execute_term_action(
 			&relation_type
 		) != 0 || prototype_term_observation_type(
 			terms,
-			left_endpoint_evidence->proposition->classifier,
-			right_endpoint_evidence->proposition->classifier,
-			left_endpoint_evidence->proposition->subject,
-			right_endpoint_evidence->proposition->subject,
+			prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->classifier,
+			prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->classifier,
+			prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+			prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 			&expected_relation
 		) != 0 || relation_type != expected_relation) {
 		return -1;
@@ -3577,7 +3580,9 @@ int prototype_hott_execute_term_action(
 			terms,
 			bridge->bridge_context_id,
 			relation_type,
-			prototype_judgement_claim_get(judgement, left_type_claim)->proposition->classifier,
+			prototype_judgement_claim_proposition(
+				judgement, left_type_claim
+			)->classifier,
 			left_type_claim,
 			right_type_claim,
 			left_endpoint_claim,
@@ -3587,13 +3592,13 @@ int prototype_hott_execute_term_action(
 		return -1;
 	}
 	int used_relation_binding = 0;
-	if (source->proposition->subject < terms->term_count &&
-		terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_VAR) {
+	if (prototype_judgement_proposition_get(judgement, source->proposition_id)->subject < terms->term_count &&
+		terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].tag == PROTOTYPE_TERM_VAR) {
 		uint32_t source_entry_context;
-		uint32_t source_binding = terms->terms[source->proposition->subject].as.var.binding_id;
+		uint32_t source_binding = terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].as.var.binding_id;
 		if (prototype_context_find_binding(
 				contexts,
-				source->proposition->context_id,
+				prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id,
 				source_binding,
 				&source_entry_context
 			) == 0) {
@@ -3630,8 +3635,8 @@ int prototype_hott_execute_term_action(
 				type_declarations,
 				NULL,
 				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-				left_endpoint_evidence->proposition->subject,
-				right_endpoint_evidence->proposition->subject,
+				prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+				prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 				64,
 				&endpoint_comparison
 			) != 0) {
@@ -3654,13 +3659,13 @@ int prototype_hott_execute_term_action(
 					request->key.term.source_claim_id,
 					PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM
 				);
-			if (induction_derivation && source->proposition->subject < terms->term_count &&
-				terms->terms[source->proposition->subject].tag ==
+			if (induction_derivation && prototype_judgement_proposition_get(judgement, source->proposition_id)->subject < terms->term_count &&
+				terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].tag ==
 					PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
-				uint32_t argument = terms->terms[source->proposition->subject].
+				uint32_t argument = terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].
 					as.induction_hypothesis.argument;
 				uint32_t argument_claim_id = hott_has_type_claim_for_subject(
-					judgement, source->proposition->context_id, argument
+					judgement, prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id, argument
 				);
 				if (argument_claim_id == PROTOTYPE_INVALID_ID) {
 					return hott_publish_action_residual(
@@ -3676,7 +3681,7 @@ int prototype_hott_execute_term_action(
 					kernel,
 					bridges,
 					bridge,
-					source->proposition->context_id,
+					prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id,
 					argument_claim_id,
 					&argument_witness_claim,
 					&residual_reason
@@ -3691,8 +3696,8 @@ int prototype_hott_execute_term_action(
 				}
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->proposition->subject,
-						right_endpoint_evidence->proposition->subject,
+						prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+						prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 						&witness
 					) != 0 ||
 					prototype_judgement_add_observation_induction_hypothesis_witness(
@@ -3719,8 +3724,8 @@ int prototype_hott_execute_term_action(
 					PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO
 				);
 			if (!used_relation_binding && lambda_derivation &&
-				source->proposition->subject < terms->term_count &&
-				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_LAMBDA) {
+				prototype_judgement_proposition_get(judgement, source->proposition_id)->subject < terms->term_count &&
+				terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].tag == PROTOTYPE_TERM_LAMBDA) {
 				if (lambda_derivation->premise_count != 2) {
 					return -1;
 				}
@@ -3733,19 +3738,19 @@ int prototype_hott_execute_term_action(
 						judgement, lambda_derivation->premises[1].claim_id
 					);
 				const struct prototype_context* body_context = body_claim ?
-					prototype_context_get(contexts, body_claim->proposition->context_id) : NULL;
+					prototype_context_get(contexts, prototype_judgement_proposition_get(judgement, body_claim->proposition_id)->context_id) : NULL;
 				const struct prototype_cwf_certificate* body_context_proof =
 					body_context ? hott_context_formation_certificate_for_context(
-						cwf_certificates, body_claim->proposition->context_id
+						cwf_certificates, prototype_judgement_proposition_get(judgement, body_claim->proposition_id)->context_id
 					) : NULL;
 				if (!binder_claim || !body_claim || !body_context ||
-					!body_context_proof || binder_claim->proposition->kind !=
+					!body_context_proof || prototype_judgement_proposition_get(judgement, binder_claim->proposition_id)->kind !=
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					body_claim->proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					binder_claim->proposition->context_id != body_claim->proposition->context_id ||
-					body_context->parent != source->proposition->context_id ||
+					prototype_judgement_proposition_get(judgement, body_claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+					prototype_judgement_proposition_get(judgement, binder_claim->proposition_id)->context_id != prototype_judgement_proposition_get(judgement, body_claim->proposition_id)->context_id ||
+					body_context->parent != prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id ||
 					body_context->binding_id !=
-						terms->terms[source->proposition->subject].as.lambda.binding_id ||
+						terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].as.lambda.binding_id ||
 					body_context_proof->claim_id == PROTOTYPE_INVALID_ID) {
 					return -1;
 				}
@@ -3784,7 +3789,7 @@ int prototype_hott_execute_term_action(
 						bridges,
 						kernel,
 						actions,
-						body_claim->proposition->context_id,
+						prototype_judgement_proposition_get(judgement, body_claim->proposition_id)->context_id,
 						binder_type_request_id,
 						&body_bridge_id
 					) != 0) {
@@ -3799,7 +3804,7 @@ int prototype_hott_execute_term_action(
 					kernel,
 					bridges,
 					body_bridge,
-					body_claim->proposition->context_id,
+					prototype_judgement_proposition_get(judgement, body_claim->proposition_id)->context_id,
 					lambda_derivation->premises[1].claim_id,
 					&body_witness_claim,
 					&residual_reason
@@ -3814,8 +3819,8 @@ int prototype_hott_execute_term_action(
 				}
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->proposition->subject,
-						right_endpoint_evidence->proposition->subject,
+						prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+						prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 						&witness
 					) != 0 || prototype_judgement_add_observation_lambda_witness(
 						judgement,
@@ -3841,10 +3846,10 @@ int prototype_hott_execute_term_action(
 					PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM
 				);
 			if (!used_relation_binding && match_derivation &&
-				source->proposition->subject < terms->term_count &&
-				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_MATCH) {
+				prototype_judgement_proposition_get(judgement, source->proposition_id)->subject < terms->term_count &&
+				terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].tag == PROTOTYPE_TERM_MATCH) {
 				const struct prototype_term* source_match =
-					&terms->terms[source->proposition->subject];
+					&terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject];
 				if (source_match->as.match.case_count + 1 !=
 						match_derivation->premise_count ||
 					source_match->as.match.case_count + 4 >
@@ -3852,7 +3857,7 @@ int prototype_hott_execute_term_action(
 					return -1;
 				}
 				uint32_t scrutinee_claim_id = hott_has_type_claim_for_subject(
-					judgement, source->proposition->context_id, source_match->as.match.scrutinee
+					judgement, prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id, source_match->as.match.scrutinee
 				);
 				if (scrutinee_claim_id == PROTOTYPE_INVALID_ID) {
 					return hott_publish_action_residual(
@@ -3868,7 +3873,7 @@ int prototype_hott_execute_term_action(
 					kernel,
 					bridges,
 					bridge,
-					source->proposition->context_id,
+					prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id,
 					scrutinee_claim_id,
 					&scrutinee_witness_claim,
 					&residual_reason
@@ -3891,11 +3896,11 @@ int prototype_hott_execute_term_action(
 							judgement, match_derivation->premises[i + 1].claim_id
 						);
 					if (case_id >= terms->case_count || !case_claim ||
-						case_claim->proposition->subject != terms->cases[case_id].body ||
+						prototype_judgement_proposition_get(judgement, case_claim->proposition_id)->subject != terms->cases[case_id].body ||
 						!hott_match_case_context_valid(
 							contexts,
-							source->proposition->context_id,
-							case_claim->proposition->context_id,
+							prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id,
+							prototype_judgement_proposition_get(judgement, case_claim->proposition_id)->context_id,
 							&terms->case_binders[
 								terms->cases[case_id].first_binder
 							],
@@ -3912,7 +3917,7 @@ int prototype_hott_execute_term_action(
 						actions,
 						kernel,
 						bridges,
-						case_claim->proposition->context_id,
+						prototype_judgement_proposition_get(judgement, case_claim->proposition_id)->context_id,
 						&case_bridge_id,
 						&residual_reason
 					);
@@ -3934,7 +3939,7 @@ int prototype_hott_execute_term_action(
 					kernel,
 					bridges,
 						case_bridge,
-						case_claim->proposition->context_id,
+						prototype_judgement_proposition_get(judgement, case_claim->proposition_id)->context_id,
 						match_derivation->premises[i + 1].claim_id,
 						&case_witness_claims[i],
 						&residual_reason
@@ -3950,8 +3955,8 @@ int prototype_hott_execute_term_action(
 				}
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->proposition->subject,
-						right_endpoint_evidence->proposition->subject,
+						prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+						prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 						&witness
 					) != 0 || prototype_judgement_add_observation_match_witness(
 						judgement,
@@ -3981,8 +3986,8 @@ int prototype_hott_execute_term_action(
 					PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM
 				);
 			if (!used_relation_binding && app_derivation &&
-				source->proposition->subject < terms->term_count &&
-				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_APP) {
+				prototype_judgement_proposition_get(judgement, source->proposition_id)->subject < terms->term_count &&
+				terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].tag == PROTOTYPE_TERM_APP) {
 				if (app_derivation->premise_count != 2) {
 					return -1;
 				}
@@ -3993,12 +3998,12 @@ int prototype_hott_execute_term_action(
 							judgement, app_derivation->premises[i].claim_id
 						);
 					uint32_t expected_subject = i == 0 ?
-						terms->terms[source->proposition->subject].as.app.function :
-						terms->terms[source->proposition->subject].as.app.argument;
+						terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].as.app.function :
+						terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].as.app.argument;
 					int matches = 0;
-					if (!child_claim || child_claim->proposition->context_id != source->proposition->context_id ||
+					if (!child_claim || prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->context_id != prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id ||
 						prototype_term_core_shape_equal(
-							terms, child_claim->proposition->subject, expected_subject, &matches
+							terms, prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->subject, expected_subject, &matches
 						) != 0 || !matches) {
 						return -1;
 					}
@@ -4008,7 +4013,7 @@ int prototype_hott_execute_term_action(
 					kernel,
 					bridges,
 						bridge,
-						source->proposition->context_id,
+						prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id,
 						app_derivation->premises[i].claim_id,
 						&child_witness_claims[i],
 						&residual_reason
@@ -4028,8 +4033,8 @@ int prototype_hott_execute_term_action(
 				}
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->proposition->subject,
-						right_endpoint_evidence->proposition->subject,
+						prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+						prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 						&witness
 					) != 0 || prototype_judgement_add_observation_app_witness(
 						judgement,
@@ -4051,18 +4056,18 @@ int prototype_hott_execute_term_action(
 			int unary_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_INVALID;
 			int unary_witness_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_INVALID;
 			uint32_t unary_payload = PROTOTYPE_INVALID_ID;
-			if (source->proposition->subject < terms->term_count &&
-				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_RETURN) {
+			if (prototype_judgement_proposition_get(judgement, source->proposition_id)->subject < terms->term_count &&
+				terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].tag == PROTOTYPE_TERM_RETURN) {
 				unary_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO;
 				unary_witness_proof_kind =
 					PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_RETURN_WITNESS;
-				unary_payload = terms->terms[source->proposition->subject].as.return_term.value;
-			} else if (source->proposition->subject < terms->term_count &&
-				terms->terms[source->proposition->subject].tag == PROTOTYPE_TERM_THUNK) {
+				unary_payload = terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].as.return_term.value;
+			} else if (prototype_judgement_proposition_get(judgement, source->proposition_id)->subject < terms->term_count &&
+				terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].tag == PROTOTYPE_TERM_THUNK) {
 				unary_proof_kind = PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO;
 				unary_witness_proof_kind =
 					PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_THUNK_WITNESS;
-				unary_payload = terms->terms[source->proposition->subject].as.thunk.computation;
+				unary_payload = terms->terms[prototype_judgement_proposition_get(judgement, source->proposition_id)->subject].as.thunk.computation;
 			}
 			const struct prototype_judgement_derivation* unary_derivation =
 				unary_proof_kind != PROTOTYPE_JUDGEMENT_PROOF_INVALID ?
@@ -4080,12 +4085,12 @@ int prototype_hott_execute_term_action(
 					prototype_judgement_claim_get(judgement, child_claim_id);
 				uint32_t child_type_claim_id = child_claim ?
 					hott_is_type_claim_for_subject(
-						judgement, source->proposition->context_id, child_claim->proposition->classifier
+						judgement, prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id, prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->classifier
 					) : PROTOTYPE_INVALID_ID;
-				if (!child_claim || child_claim->proposition->kind !=
+				if (!child_claim || prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->kind !=
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					child_claim->proposition->context_id != source->proposition->context_id ||
-					child_claim->proposition->subject != unary_payload ||
+					prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->context_id != prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id ||
+					prototype_judgement_proposition_get(judgement, child_claim->proposition_id)->subject != unary_payload ||
 					child_type_claim_id == PROTOTYPE_INVALID_ID) {
 					return hott_publish_action_residual(
 						actions, terms, request_id,
@@ -4158,8 +4163,8 @@ int prototype_hott_execute_term_action(
 					&actions->certificates[child_term_result->certificate_id];
 				if (prototype_term_observation_witness(
 						terms,
-						left_endpoint_evidence->proposition->subject,
-						right_endpoint_evidence->proposition->subject,
+						prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+						prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 						&witness
 					) != 0 || prototype_judgement_add_observation_unary_witness(
 						judgement,
@@ -4190,7 +4195,7 @@ int prototype_hott_execute_term_action(
 			if (!used_relation_binding && (!constructor_derivation ||
 				prototype_term_constructor_spine_info(
 					terms,
-					source->proposition->subject,
+					prototype_judgement_proposition_get(judgement, source->proposition_id)->subject,
 					&source_head,
 					&source_owner,
 					&source_constructor,
@@ -4218,12 +4223,12 @@ int prototype_hott_execute_term_action(
 					prototype_judgement_claim_get(judgement, field_claim_id);
 				uint32_t field_type_claim_id = field_claim ?
 					hott_is_type_claim_for_subject(
-						judgement, source->proposition->context_id, field_claim->proposition->classifier
+						judgement, prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id, prototype_judgement_proposition_get(judgement, field_claim->proposition_id)->classifier
 					) : PROTOTYPE_INVALID_ID;
-				if (!field_claim || field_claim->proposition->kind !=
+				if (!field_claim || prototype_judgement_proposition_get(judgement, field_claim->proposition_id)->kind !=
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					field_claim->proposition->context_id != source->proposition->context_id ||
-					field_claim->proposition->subject != source_arguments[i] ||
+					prototype_judgement_proposition_get(judgement, field_claim->proposition_id)->context_id != prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id ||
+					prototype_judgement_proposition_get(judgement, field_claim->proposition_id)->subject != source_arguments[i] ||
 					field_type_claim_id == PROTOTYPE_INVALID_ID) {
 					return hott_publish_action_residual(
 						actions,
@@ -4305,8 +4310,8 @@ int prototype_hott_execute_term_action(
 			}
 			if (!used_relation_binding && (prototype_term_observation_witness(
 					terms,
-					left_endpoint_evidence->proposition->subject,
-					right_endpoint_evidence->proposition->subject,
+					prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+					prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 					&witness
 				) != 0 || prototype_judgement_add_observation_constructor_witness(
 					judgement,
@@ -4333,8 +4338,8 @@ int prototype_hott_execute_term_action(
 		if (!used_relation_binding &&
 			(prototype_term_observation_witness(
 				terms,
-				left_endpoint_evidence->proposition->subject,
-				right_endpoint_evidence->proposition->subject,
+				prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
+				prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 				&witness
 			) != 0 || prototype_judgement_add_observation_witness_intro(
 				judgement,
@@ -4551,11 +4556,11 @@ int prototype_hott_execute_substitution_action(
 			uint32_t term_claim_id = PROTOTYPE_INVALID_ID;
 			for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 				const struct prototype_judgement_claim* claim = &judgement->claims[i];
-				if (claim->proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-					claim->proposition->context_id == source->source_context &&
-					claim->proposition->subject == source->term &&
-					claim->proposition->classifier == source->term_classifier &&
-					hott_operation_matches_claim(operations, claim)) {
+				if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+					prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id == source->source_context &&
+					prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == source->term &&
+					prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier == source->term_classifier &&
+					hott_operation_matches_claim(operations, judgement, claim)) {
 					term_claim_id = i;
 					break;
 				}
@@ -4572,8 +4577,8 @@ int prototype_hott_execute_substitution_action(
 				uint32_t candidate_result;
 				if (type_claim && parent_bridge &&
 					candidate->key.type.source_bridge_id == parent_bridge_id &&
-					type_claim->proposition->context_id == target->parent &&
-					type_claim->proposition->subject ==
+					prototype_judgement_proposition_get(judgement, type_claim->proposition_id)->context_id == target->parent &&
+					prototype_judgement_proposition_get(judgement, type_claim->proposition_id)->subject ==
 						prototype_context_classifier_term(target) &&
 					hott_action_result_for_request(
 						actions, i, &candidate_result
@@ -4646,7 +4651,7 @@ int prototype_hott_execute_substitution_action(
 						endpoint_instantiation_substitution_id,
 					target_bridge->bridge_context_id,
 					term_certificate->data.term.witness_term_id,
-					witness_claim->proposition->classifier,
+					prototype_judgement_proposition_get(judgement, witness_claim->proposition_id)->classifier,
 					&result_substitution
 				) != 0 || prototype_cwf_certificate_db_add_substitution(
 					cwf_certificates,
@@ -4822,8 +4827,8 @@ int prototype_hott_bridge_db_construct_extension(
 	if (!type_certificate ||
 		type_certificate->kind != PROTOTYPE_HOTT_ACTION_CERTIFICATE_TYPE ||
 		!source_type || !parent || source->parent != parent->source_context_id ||
-		source_type->proposition->context_id != source->parent ||
-		source_type->proposition->subject != prototype_context_classifier_term(source)) {
+		prototype_judgement_proposition_get(judgement, source_type->proposition_id)->context_id != source->parent ||
+		prototype_judgement_proposition_get(judgement, source_type->proposition_id)->subject != prototype_context_classifier_term(source)) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < bridges->bridge_count; ++i) {
@@ -5183,8 +5188,8 @@ int prototype_hott_action_db_validate(
 			type_request->key.type.source_bridge_id !=
 				bridge_certificate->parent_bridge_id ||
 			!source_type || !source || !relation ||
-			source_type->proposition->context_id != source->parent ||
-			source_type->proposition->subject != prototype_context_classifier_term(source) ||
+			prototype_judgement_proposition_get(judgement, source_type->proposition_id)->context_id != source->parent ||
+			prototype_judgement_proposition_get(judgement, source_type->proposition_id)->subject != prototype_context_classifier_term(source) ||
 			type_certificate->data.type.endpoint_context_id != relation->parent ||
 			type_certificate->data.type.relation_type_term_id !=
 				prototype_context_classifier_term(relation) ||

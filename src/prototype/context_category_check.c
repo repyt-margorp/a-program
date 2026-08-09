@@ -37,7 +37,6 @@ static int check_judgement_graph_collisions(void) {
 		};
 		claims[i] = (struct prototype_judgement_claim){
 			.proposition_id = i,
-			.proposition = &propositions[i],
 			.closure_rank = 0
 		};
 		derivations[i] = (struct prototype_judgement_derivation){
@@ -137,7 +136,6 @@ static int check_judgement_premise_arenas(void) {
 		};
 		claims[i] = (struct prototype_judgement_claim) {
 			.proposition_id = i,
-			.proposition = &propositions[i],
 			.closure_rank = i
 		};
 	}
@@ -159,6 +157,7 @@ static int check_judgement_premise_arenas(void) {
 		derivations[i].semantic_action_id = PROTOTYPE_INVALID_ID;
 		for (uint32_t j = 0; j < counts[i]; ++j) {
 			premises[first + j].claim_id = i == 2 && j == 1 ? 1 : 0;
+			premises[first + j].scoped_proposition_id = PROTOTYPE_INVALID_ID;
 		}
 		first += counts[i];
 	}
@@ -178,13 +177,66 @@ static int check_judgement_premise_arenas(void) {
 	};
 	reordered.premises = reordered_premises;
 	int status = prototype_judgement_db_rebuild_index(&judgement) != 0 ||
-		judgement.claims[2].proposition != &judgement.propositions[
-			judgement.claims[2].proposition_id
-		] || prototype_judgement_find_exact_derivation(
+		prototype_judgement_claim_proposition(&judgement, 2) !=
+			&judgement.propositions[judgement.claims[2].proposition_id] ||
+		prototype_judgement_find_exact_derivation(
 			&judgement, &judgement.derivations[3], &found
 		) != 0 || found != 3 || prototype_judgement_find_exact_derivation(
 			&judgement, &reordered, &found
 		) != 1;
+	struct prototype_judgement_proposition scoped = {
+		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID,
+		.authority_id = PROTOTYPE_INVALID_ID,
+		.context_id = 0,
+		.operation_id = PROTOTYPE_INVALID_ID,
+		.subject = 99,
+		.classifier = 100
+	};
+	uint32_t scoped_id = PROTOTYPE_INVALID_ID;
+	size_t claim_count_before = judgement.claim_count;
+	status = status || prototype_judgement_proposition_intern(
+		&judgement, &scoped, &scoped_id
+	) != 0 || judgement.claim_count != claim_count_before;
+	struct prototype_judgement_premise_edge accepted = {
+		.claim_id = 0,
+		.scoped_proposition_id = PROTOTYPE_INVALID_ID
+	};
+	struct prototype_judgement_premise_edge local = {
+		.claim_id = PROTOTYPE_INVALID_ID,
+		.scoped_proposition_id = scoped_id
+	};
+	struct prototype_judgement_premise_edge both = {
+		.claim_id = 0,
+		.scoped_proposition_id = scoped_id
+	};
+	struct prototype_judgement_premise_edge neither = {
+		.claim_id = PROTOTYPE_INVALID_ID,
+		.scoped_proposition_id = PROTOTYPE_INVALID_ID
+	};
+	status = status || !prototype_judgement_premise_proposition(
+		&judgement, &accepted
+	) || prototype_judgement_premise_proposition(&judgement, &local) !=
+		prototype_judgement_proposition_get(&judgement, scoped_id) ||
+		prototype_judgement_premise_proposition(&judgement, &both) ||
+		prototype_judgement_premise_proposition(&judgement, &neither);
+	status = status || prototype_judgement_claim_proposition(
+		&judgement, PROTOTYPE_INVALID_ID
+	);
+	struct prototype_judgement_premise_edge* checked_edge =
+		&judgement.derivations[1].premises[0];
+	struct prototype_judgement_premise_edge saved_edge = *checked_edge;
+	checked_edge->claim_id = PROTOTYPE_INVALID_ID;
+	checked_edge->scoped_proposition_id = PROTOTYPE_INVALID_ID;
+	status = status || prototype_judgement_db_rebuild_index(&judgement) == 0;
+	*checked_edge = saved_edge;
+	status = status || prototype_judgement_db_rebuild_index(&judgement) != 0;
+	checked_edge = &judgement.derivations[1].premises[0];
+	saved_edge = *checked_edge;
+	checked_edge->scoped_proposition_id = scoped_id;
+	status = status || prototype_judgement_db_rebuild_index(&judgement) == 0;
+	*checked_edge = saved_edge;
+	status = status || prototype_judgement_db_rebuild_index(&judgement) != 0;
 	free(premises);
 	return status ? -1 : 0;
 }
