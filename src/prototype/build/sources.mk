@@ -11,12 +11,15 @@ PROTOTYPE_AST_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/frontend/ast.c \
 	$(PROTOTYPE_ROOT)/src/frontend/lowering.c
 
+PROTOTYPE_TYPING_SOURCES := \
+	$(PROTOTYPE_ROOT)/src/kernel/judgement.c
+
 PROTOTYPE_KERNEL_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
 	$(PROTOTYPE_ROOT)/src/core/term.c \
 	$(PROTOTYPE_ROOT)/src/kernel/type_declaration.c \
-	$(PROTOTYPE_ROOT)/typing.c \
+	$(PROTOTYPE_TYPING_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/universe.c \
 	$(PROTOTYPE_ROOT)/src/support/symbol.c
 
@@ -26,7 +29,7 @@ PROTOTYPE_GRAPH_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/frontend/reader.c \
 	$(PROTOTYPE_ROOT)/src/core/term.c \
 	$(PROTOTYPE_ROOT)/src/kernel/type_declaration.c \
-	$(PROTOTYPE_ROOT)/typing.c \
+	$(PROTOTYPE_TYPING_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/universe.c \
 	$(PROTOTYPE_ROOT)/src/support/symbol.c
 
@@ -37,7 +40,7 @@ PROTOTYPE_COMPILER_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/frontend/reader.c \
 	$(PROTOTYPE_ROOT)/src/core/term.c \
 	$(PROTOTYPE_ROOT)/src/kernel/type_declaration.c \
-	$(PROTOTYPE_ROOT)/typing.c \
+	$(PROTOTYPE_TYPING_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/universe.c \
 	$(PROTOTYPE_ROOT)/src/support/symbol.c
 
@@ -49,7 +52,7 @@ PROTOTYPE_HOTT_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
 	$(PROTOTYPE_ROOT)/src/core/term.c \
 	$(PROTOTYPE_ROOT)/src/kernel/type_declaration.c \
-	$(PROTOTYPE_ROOT)/typing.c \
+	$(PROTOTYPE_TYPING_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/universe.c \
 	$(PROTOTYPE_ROOT)/src/support/symbol.c
 

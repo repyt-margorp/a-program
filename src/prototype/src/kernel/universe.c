@@ -3,7 +3,10 @@
 #include <string.h>
 
 #include "a_program/frontend/lowering.h"
-#include "judgement.h"
+#include "a_program/kernel/judgement/db.h"
+#include "a_program/kernel/judgement/rules.h"
+#include "a_program/kernel/judgement/conversion.h"
+#include "a_program/kernel/judgement/classifier_solver.h"
 
 #define PROTOTYPE_UNIVERSE_DERIVED_LEVEL_FLAG 0x80000000u
 

@@ -1,6 +1,9 @@
 #include "a_program/core/term.h"
 #include "a_program/kernel/type_declaration.h"
-#include "judgement.h"
+#include "a_program/kernel/judgement/db.h"
+#include "a_program/kernel/judgement/rules.h"
+#include "a_program/kernel/judgement/conversion.h"
+#include "a_program/kernel/judgement/classifier_solver.h"
 
 #include <stdint.h>
 

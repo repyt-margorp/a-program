@@ -4,7 +4,10 @@
 #include "a_program/frontend/lowering.h"
 #include "a_program/support/symbol.h"
 #include "a_program/core/term.h"
-#include "judgement.h"
+#include "a_program/kernel/judgement/db.h"
+#include "a_program/kernel/judgement/rules.h"
+#include "a_program/kernel/judgement/conversion.h"
+#include "a_program/kernel/judgement/classifier_solver.h"
 #include "a_program/kernel/type_declaration.h"
 #include "a_program/kernel/universe.h"
 

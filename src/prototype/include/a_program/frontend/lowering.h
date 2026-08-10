@@ -4,7 +4,10 @@
 #include "a_program/artifact/interface.h"
 #include "a_program/frontend/ast.h"
 #include "a_program/graph/compile_metadata.h"
-#include "judgement.h"
+#include "a_program/kernel/judgement/db.h"
+#include "a_program/kernel/judgement/rules.h"
+#include "a_program/kernel/judgement/conversion.h"
+#include "a_program/kernel/judgement/classifier_solver.h"
 
 int prototype_ast_compile_pending(
 	struct prototype_ast_db* asts,

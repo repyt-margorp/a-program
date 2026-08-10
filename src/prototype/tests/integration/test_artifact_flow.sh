@@ -95,7 +95,8 @@ c_enum_value_in() {
 }
 
 c_enum_value() {
-	c_enum_value_in src/prototype/judgement.h "$1" "$2"
+	c_enum_value_in \
+		src/prototype/include/a_program/kernel/judgement/types.h "$1" "$2"
 }
 
 JUDGEMENT_KIND_HAS_TYPE=$(c_enum_value prototype_judgement_kind PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE)
@@ -134,11 +135,8 @@ OPERATION_TAG_LAMBDA=$(c_enum_value_in \
 	src/prototype/include/a_program/graph/operation_graph.h \
 	prototype_operation_tag PROTOTYPE_OPERATION_LAMBDA)
 
-if grep -q 'prototype_type_declaration_find_by_code_shape_key' src/prototype/typing.c; then
-	echo "typing must not resolve imported type expressions by TypeCodeShapeKey" >&2
-	exit 1
-fi
-if rg -q 'prototype_type_declaration_find_by_code_shape_key' src/prototype --glob '*.[ch]'; then
+if rg -q 'prototype_type_declaration_find_by_code_shape_key' \
+	src/prototype --glob '*.[ch]' --glob '*.inc'; then
 	echo "import resolution must not expose a TypeCodeShapeKey lookup path" >&2
 	exit 1
 fi

@@ -7,7 +7,10 @@
 #include "a_program/frontend/ast.h"
 #include "a_program/kernel/context.h"
 #include "a_program/kernel/type_declaration.h"
-#include "judgement.h"
+#include "a_program/kernel/judgement/db.h"
+#include "a_program/kernel/judgement/rules.h"
+#include "a_program/kernel/judgement/conversion.h"
+#include "a_program/kernel/judgement/classifier_solver.h"
 
 struct prototype_compile_metadata;
 

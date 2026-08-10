@@ -10,7 +10,10 @@
 #include "a_program/graph/compile_metadata.h"
 #include "a_program/kernel/context.h"
 #include "a_program/kernel/universe.h"
-#include "judgement.h"
+#include "a_program/kernel/judgement/db.h"
+#include "a_program/kernel/judgement/rules.h"
+#include "a_program/kernel/judgement/conversion.h"
+#include "a_program/kernel/judgement/classifier_solver.h"
 
 #define PROTOTYPE_ARTIFACT_FORMAT_VERSION 70
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \

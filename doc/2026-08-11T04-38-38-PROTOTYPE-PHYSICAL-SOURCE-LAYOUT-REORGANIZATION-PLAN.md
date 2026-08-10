@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0-L4 complete, L5 next
+Status: in progress; L0-L5 complete, L6 next
 
 Repository baseline:
 
@@ -450,7 +450,7 @@ and no umbrella header is required to access unrelated graph sorts.
 
 ### L5: Decompose `typing.c` and `judgement.h`
 
-Status: pending; blocked on L4
+Status: complete
 
 Target ownership:
 
@@ -467,17 +467,35 @@ kernel/rules/match.*
 kernel/rules/cbpv.*
 ```
 
-- [ ] Preserve the Proposition/Claim/Derivation authority model exactly.
-- [ ] Preserve multiple Derivations per Claim.
-- [ ] Preserve premise order and rule-specific payloads.
-- [ ] Keep candidate publication and accepted replay separate.
-- [ ] Keep conversion result states and normalization profiles unchanged.
-- [ ] Keep each proof rule visible as a named validator.
-- [ ] Extract storage/index code before rule code so rule commits remain
+- [x] Preserve the Proposition/Claim/Derivation authority model exactly.
+- [x] Preserve multiple Derivations per Claim.
+- [x] Preserve premise order and rule-specific payloads.
+- [x] Keep candidate publication and accepted replay separate.
+- [x] Keep conversion result states and normalization profiles unchanged.
+- [x] Keep each proof rule visible as a named validator.
+- [x] Extract storage/index code before rule code so rule commits remain
       reviewable.
-- [ ] Do not introduce a generic eliminator rule to reduce file count.
-- [ ] Delete the old translation unit only after direct includes replace the
+- [x] Do not introduce a generic eliminator rule to reduce file count.
+- [x] Delete the old translation unit only after direct includes replace the
       umbrella declaration path.
+
+The first extraction attempt made the target owners independent translation
+units. That exposed roughly eighty former `static` helpers across module
+boundaries and would have changed the executable's global symbol surface merely
+to move code. L5 therefore uses owner-named source partitions included by one
+`kernel/judgement.c` translation unit. This preserves static linkage, declaration
+order, traversal order, and proof construction byte-for-byte while making the
+storage, conversion, solver, publication, replay, formation, introduction,
+elimination, Match, and CBPV regions physically navigable. A later semantic
+refactor may define narrower private interfaces, but that is outside this
+layout-only goal.
+
+The old `judgement.h` umbrella was deleted. Persistent data types, DB APIs,
+rule APIs, conversion APIs, and classifier-solver APIs now have direct owner
+headers under `include/a_program/kernel/judgement/`. All sixteen integration
+entry points pass, the v70 artifact remains byte-identical, and the global
+symbol delta remains exactly the five private artifact helpers already recorded
+at L4.
 
 Exit gate: the kernel's storage, solver, conversion, and rule ownership are
 visible without changing any accepted judgement graph.
@@ -640,7 +658,7 @@ Stop and revise this plan if any phase requires:
 | L2 stale snapshot removal | complete | L1 | removed 13 files/989 lines; one active implementation tree |
 | L3 cohesive module moves | complete | L2 | owner directories; 16 tests; artifact and symbol equality |
 | L4 `ast` decomposition | complete | L3 | frontend/graph/artifact ownership; 16 tests; identical v70 bytes |
-| L5 kernel decomposition | pending | L4 | storage/solver/rules separated; identical proof DAGs |
+| L5 kernel decomposition | complete | L4 | owner source partitions and direct headers; 16 tests; identical v70 bytes and symbol delta |
 | L6 identity decomposition | pending | L5 | relation/object/artifact boundaries explicit |
 | L7 audit decomposition | pending | L6 | stable complete test entry points |
 | L8 documentation/dead-path audit | pending | L7 | no stale paths or umbrella ownership |
@@ -659,7 +677,7 @@ only net lines.
 | L2 | pending | | | | | | |
 | L3 | pending | | | | | | |
 | L4 | pending | | | | | | |
-| L5 | pending | | | | | | |
+| L5 | pending commit | | | | `typing.c`, `judgement.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
 | L6 | pending | | | | | | |
 | L7 | pending | | | | | | |
 | L8 | pending | | | | | | |
