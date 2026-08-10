@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0-L3 complete, L4 next
+Status: in progress; L0-L4 complete, L5 next
 
 Repository baseline:
 
@@ -403,7 +403,7 @@ compatibility layer.
 
 ### L4: Decompose `ast.c` and `ast.h`
 
-Status: pending; blocked on L3
+Status: complete in the working tree
 
 This is the highest-priority physical split. Use mechanical extraction commits
 with unchanged function bodies and call order.
@@ -421,18 +421,29 @@ Target ownership:
 | append/link/dependency resolution | `artifact/link.*` |
 | relocation and canonical publication ordering | `artifact/relocation.*` |
 
-- [ ] Inventory every function and assign exactly one owner before extraction.
-- [ ] Record the pre-split call graph and public declaration inventory.
-- [ ] Move one ownership group per commit.
-- [ ] Introduce private headers only for declarations genuinely shared across
+- [x] Inventory every function and assign exactly one owner before extraction.
+- [x] Record the pre-split function and public declaration inventories with
+      GCC `-aux-info` and the L0 symbol bundle.
+- [x] Extract contiguous ownership groups without changing function bodies or
+      traversal order.
+- [x] Introduce private headers only for declarations genuinely shared across
       extracted translation units.
-- [ ] Prefix newly externalized private helpers with `prototype_internal_` or
+- [x] Prefix newly externalized private helpers with `prototype_internal_` or
       otherwise keep them out of prototype-public headers.
-- [ ] Do not change loop order, traversal order, allocation order, error order,
+- [x] Do not change loop order, traversal order, allocation order, error order,
       or hash-table behavior.
-- [ ] Compare baseline artifact bytes after every extraction commit.
-- [ ] Delete `ast.c` and the umbrella `ast.h` only after all consumers include
+- [x] Compare baseline artifact bytes after each extraction gate.
+- [x] Delete `ast.c` and the umbrella `ast.h` after all consumers include
       their actual owner interfaces.
+- [x] Split the former implementation into frontend AST/lowering,
+      OperationGraph/compile metadata, and artifact interface/publication,
+      v70 wire, relocation, and link units.
+- [x] Run all 16 integration tests after the implementation extraction and
+      again after header/artifact decomposition. The v70 artifact remains
+      byte-identical to the L0 baseline.
+- [x] Confirm no baseline global symbol was removed. Five newly externalized
+      implementation symbols are prefixed `prototype_internal_` and are
+      declared only by private headers under `src/artifact/`.
 
 Exit gate: no artifact implementation remains under a frontend AST filename,
 and no umbrella header is required to access unrelated graph sorts.
@@ -628,7 +639,7 @@ Stop and revise this plan if any phase requires:
 | L1 tests/spec separation | complete | L0 | 16 tests pass; no root-level tests/fixtures/schemas; identical artifact |
 | L2 stale snapshot removal | complete | L1 | removed 13 files/989 lines; one active implementation tree |
 | L3 cohesive module moves | complete | L2 | owner directories; 16 tests; artifact and symbol equality |
-| L4 `ast` decomposition | pending | L3 | frontend/graph/artifact ownership; identical v70 bytes |
+| L4 `ast` decomposition | complete | L3 | frontend/graph/artifact ownership; 16 tests; identical v70 bytes |
 | L5 kernel decomposition | pending | L4 | storage/solver/rules separated; identical proof DAGs |
 | L6 identity decomposition | pending | L5 | relation/object/artifact boundaries explicit |
 | L7 audit decomposition | pending | L6 | stable complete test entry points |

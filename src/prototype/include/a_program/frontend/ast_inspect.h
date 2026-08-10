@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include "ast.h"
+#include "a_program/frontend/lowering.h"
 #include "a_program/support/symbol.h"
 
 void prototype_ast_inspect_print(

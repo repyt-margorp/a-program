@@ -10,27 +10,36 @@ Accepted implementation code belongs in `src/` outside this directory and in
 
 ## Current Prototype Files
 
-- `symbol.h`, `symbol.c`: prototype-owned symbol table used by the current
+- `include/a_program/support/symbol.h`, `src/support/symbol.c`:
+  prototype-owned symbol table used by the current
   prototype reader and REPL.
-- `type_declaration.h`, `type_declaration.c`: source-derived type formation declaration
+- `include/a_program/kernel/type_declaration.h`,
+  `src/kernel/type_declaration.c`: source-derived type formation declaration
   indexes used while lowering AST into graph nodes. Concrete types themselves
   live in the term graph as `TYPE_FORMER` applications; classifier facts live in
   JudgementDB.
-- `term.h`, `term.c`: prototype data structures for lambda terms and graph
+- `include/a_program/core/term.h`, `src/core/term.c`: prototype data structures
+  for lambda terms and graph
   nodes. Top-level names are published as compile metadata labels that point to
   term graph roots. The terms preserve syntax structure before evaluation; for
   example, `x := id Bool.true;` is stored as an application of the term pointed
   to by `id` to the constructor term `Bool.true`.
-- `ast.h`, `ast.c`: AST lowering also creates an operation graph in compile
-  metadata. An operation node records the source occurrence, its typed binder
-  and match information, and a pointer to the erased `core_term`. It is not an
-  evaluator environment. Distinct source operations such as `\x : Bool => x`
-  and `\y : Nat => y` therefore retain distinct operation nodes and
-  classifiers while intentionally sharing one erased core lambda node.
-- `reader.h`, `reader.c`: prototype reader for a small `.p` subset.
-- `read_file.c`: temporary CLI used to compile and inspect the prototype reader.
-- `repl.c`: temporary interactive CLI that keeps the loaded program state and
+- `include/a_program/frontend/ast.h`, `src/frontend/ast.c`, and
+  `src/frontend/lowering.c`: surface AST storage and lowering.
+- `include/a_program/graph/`: typed OperationGraph and compile metadata. An
+  operation node records the source occurrence, its typed binder and Match
+  information, and a pointer to the erased `core_term`.
+- `include/a_program/artifact/`, `src/artifact/`: artifact interface,
+  publication closure, v70 wire reader/writer, relocation, and linking.
+- `include/a_program/frontend/reader.h`, `src/frontend/reader.c`: prototype
+  reader for a small `.p` subset.
+- `src/driver/read_file.c`: CLI used to compile and inspect source/artifacts.
+- `src/driver/repl.c`: interactive CLI that keeps the loaded program state and
   accepts additional top-level code entries.
+
+Distinct source operations such as `\x : Bool => x` and `\y : Nat => y`
+therefore retain distinct operation nodes and classifiers while intentionally
+sharing one erased core lambda node.
 
 The type prototype models each type as a finite set of constructors. Constructor
 names are stored together with their owning type and constructor index, so a

@@ -1,4 +1,4 @@
-#include "ast.h"
+#include "a_program/frontend/lowering.h"
 #include "a_program/core/term.h"
 #include "a_program/kernel/type_declaration.h"
 

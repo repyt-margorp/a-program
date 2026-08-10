@@ -1,4 +1,4 @@
-#include "ast.h"
+#include "a_program/frontend/lowering.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include "ast.h"
+#include "a_program/frontend/lowering.h"
 #include "judgement.h"
 
 #define PROTOTYPE_UNIVERSE_DERIVED_LEVEL_FLAG 0x80000000u

@@ -1,7 +1,7 @@
 #ifndef __PROTOTYPE_READER_H__
 #define __PROTOTYPE_READER_H__
 
-#include "ast.h"
+#include "a_program/frontend/lowering.h"
 #include "a_program/support/symbol.h"
 #include "a_program/core/term.h"
 #include "judgement.h"

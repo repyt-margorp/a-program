@@ -7,7 +7,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cat >"$tmp_dir/operation_constants.c" <<'EOF_CONSTANTS'
 #include <stdio.h>
 
-#include "ast.h"
+#include "a_program/graph/operation_graph.h"
 #include "a_program/core/term.h"
 
 int main(void) {

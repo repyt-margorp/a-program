@@ -1,5 +1,5 @@
 #include "judgement.h"
-#include "ast.h"
+#include "a_program/frontend/lowering.h"
 
 #include <stdint.h>
 #include <stdio.h>
