@@ -12,6 +12,8 @@
 #include "type_declaration.h"
 
 struct prototype_operation_graph;
+struct prototype_operation_node;
+struct prototype_operation_match_case;
 
 enum prototype_judgement_kind {
 	PROTOTYPE_JUDGEMENT_KIND_UNKNOWN = 0,
@@ -56,16 +58,18 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO = 30,
 	PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN = 31,
 	PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN = 32,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_TYPE_FORMATION = 33,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_WITNESS_INTRO = 34,
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION = 33,
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_WITNESS_INTRO = 34,
 	PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX = 35,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_CONSTRUCTOR_WITNESS = 36,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_RETURN_WITNESS = 37,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_THUNK_WITNESS = 38,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_APP_WITNESS = 39,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_LAMBDA_WITNESS = 40,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_MATCH_WITNESS = 41,
-	PROTOTYPE_JUDGEMENT_PROOF_OBSERVATION_INDUCTION_HYPOTHESIS_WITNESS = 42
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_CONSTRUCTOR_WITNESS = 36,
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_RETURN_WITNESS = 37,
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_THUNK_WITNESS = 38,
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_APP_WITNESS = 39,
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_LAMBDA_WITNESS = 40,
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_MATCH_WITNESS = 41,
+	PROTOTYPE_JUDGEMENT_PROOF_RELATION_INDUCTION_HYPOTHESIS_WITNESS = 42,
+	PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_TYPE_FORMATION = 43,
+	PROTOTYPE_JUDGEMENT_PROOF_THUNK_TYPE_FORMATION = 44
 };
 
 enum prototype_judgement_authority_kind {
@@ -112,6 +116,8 @@ struct prototype_judgement_proposition {
  * malformed cross-column combinations unrepresentable. */
 struct prototype_judgement_candidate_premise {
 	struct prototype_judgement_proposition proposition;
+	int semantic_action_kind;
+	uint32_t semantic_action_id;
 };
 
 /* One ordered accepted premise. Exactly one id is valid. A Claim id is a DAG
@@ -119,6 +125,8 @@ struct prototype_judgement_candidate_premise {
 struct prototype_judgement_premise_edge {
 	uint32_t claim_id;
 	uint32_t scoped_proposition_id;
+	int semantic_action_kind;
+	uint32_t semantic_action_id;
 };
 
 union prototype_judgement_rule_data {
@@ -355,6 +363,16 @@ int prototype_judgement_proposition_intern(
 	const struct prototype_judgement_proposition* proposition,
 	uint32_t* p_proposition_id
 );
+int prototype_judgement_claim_intern_exact(
+	struct prototype_judgement_db* judgement,
+	uint32_t proposition_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_derivation_intern_exact(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_derivation* derivation,
+	uint32_t* p_derivation_id
+);
 const struct prototype_judgement_proposition* prototype_judgement_claim_proposition(
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id
@@ -393,6 +411,11 @@ int prototype_judgement_claim_category(
 	uint32_t claim_id,
 	int* p_category
 );
+int prototype_judgement_selected_evidence_from_claim(
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	struct prototype_judgement_selected_evidence* p_evidence
+);
 
 /* Temporary overlay for judgement facts produced while compiling one graph
  * fragment. Successful paths commit the delta into JudgementDB; failed paths
@@ -422,6 +445,10 @@ struct prototype_judgement_delta {
 	int* solver_exhausted;
 	struct prototype_context_db* contexts;
 	struct prototype_substitution_db* substitutions;
+	const struct prototype_operation_node* operations;
+	size_t operation_count;
+	const struct prototype_operation_match_case* operation_cases;
+	size_t operation_case_count;
 	/* Context for relations emitted by the current elaboration rule. This is
 	 * an explicit CwF object ID, not the old proof provenance fields. */
 	uint32_t current_context_id;
@@ -497,10 +524,24 @@ void prototype_judgement_delta_set_context_store(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions
 );
+void prototype_judgement_delta_set_operation_store(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_operation_node* operations,
+	size_t operation_count,
+	const struct prototype_operation_match_case* operation_cases,
+	size_t operation_case_count
+);
 
 int prototype_judgement_delta_commit(
 	struct prototype_judgement_delta* delta,
 	size_t mark
+);
+
+/* Publish one solver delta as an append-only accepted proof DAG. Existing
+ * Claim and Derivation ids remain stable; unlike final candidate publication,
+ * this operation never compacts accepted storage. */
+int prototype_judgement_delta_publish_complete(
+	struct prototype_judgement_delta* delta
 );
 
 /* Enumerates every solver candidate Derivation concluding one candidate Claim.
@@ -543,13 +584,59 @@ int prototype_judgement_expand_type_def(
 	uint32_t subject,
 	uint32_t classifier
 );
-
+int prototype_judgement_add_type_formation_claim(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t* p_claim_id
+);
 int prototype_judgement_expand_constructor_def(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier
+);
+int prototype_judgement_add_constructor_intro_claim(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_constructor_spine_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	const uint32_t* argument_claim_ids,
+	uint32_t argument_claim_count,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_indexed_branch_refinement(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t scrutinee_context_id,
+	uint32_t scrutinee_term,
+	uint32_t scrutinee_classifier,
+	uint32_t constructor_index,
+	uint32_t branch_context_id,
+	const struct prototype_case_binder* branch_binders,
+	uint32_t branch_binder_count,
+	uint32_t* p_refined_context_id,
+	uint32_t* p_refinement_substitution_id,
+	uint32_t* p_constructor_term
 );
 
 int prototype_judgement_delta_record_context_binding_assumption(
@@ -689,11 +776,131 @@ int prototype_judgement_add_context_binding_assumption(
 	uint32_t classifier,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_observation_type_formation(
+int prototype_judgement_add_lambda_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t binder_claim_id,
+	uint32_t body_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_app_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t function_claim_id,
+	uint32_t argument_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_return_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t value_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_thunk_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t computation_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_force_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t value_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_computation_fold_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	const uint32_t* premise_claim_ids,
+	uint32_t premise_count,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_conversion_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t expected_classifier,
+	uint32_t source_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_match_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_operation_graph* operations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t classifier_claim_id,
+	const uint32_t* branch_claim_ids,
+	uint32_t branch_claim_count,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_indexed_match_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_operation_graph* operations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t classifier_claim_id,
+	const uint32_t* branch_claim_ids,
+	const uint32_t* branch_substitution_ids,
+	uint32_t branch_claim_count,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_induction_hypothesis_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t match,
+	uint32_t motive,
+	uint32_t case_index,
+	uint32_t field_index,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_relation_type_formation(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
 	uint32_t context_id,
-	uint32_t observation_type,
+	uint32_t relation_type,
 	uint32_t universe,
 	uint32_t left_type_claim_id,
 	uint32_t right_type_claim_id,
@@ -701,24 +908,24 @@ int prototype_judgement_add_observation_type_formation(
 	uint32_t right_endpoint_claim_id,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_observation_witness_intro(
+int prototype_judgement_add_relation_witness_intro(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t context_id,
 	uint32_t witness,
-	uint32_t observation_type,
+	uint32_t relation_type,
 	uint32_t relation_type_claim_id,
 	uint32_t left_endpoint_claim_id,
 	uint32_t right_endpoint_claim_id,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_observation_constructor_witness(
+int prototype_judgement_add_relation_constructor_witness(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
 	uint32_t context_id,
 	uint32_t witness,
-	uint32_t observation_type,
+	uint32_t relation_type,
 	uint32_t relation_type_claim_id,
 	uint32_t left_endpoint_claim_id,
 	uint32_t right_endpoint_claim_id,
@@ -726,12 +933,12 @@ int prototype_judgement_add_observation_constructor_witness(
 	uint32_t field_witness_count,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_observation_unary_witness(
+int prototype_judgement_add_relation_unary_witness(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
 	uint32_t context_id,
 	uint32_t witness,
-	uint32_t observation_type,
+	uint32_t relation_type,
 	uint32_t relation_type_claim_id,
 	uint32_t left_endpoint_claim_id,
 	uint32_t right_endpoint_claim_id,
@@ -739,12 +946,12 @@ int prototype_judgement_add_observation_unary_witness(
 	int proof_kind,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_observation_app_witness(
+int prototype_judgement_add_relation_app_witness(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
 	uint32_t context_id,
 	uint32_t witness,
-	uint32_t observation_type,
+	uint32_t relation_type,
 	uint32_t relation_type_claim_id,
 	uint32_t left_endpoint_claim_id,
 	uint32_t right_endpoint_claim_id,
@@ -752,27 +959,27 @@ int prototype_judgement_add_observation_app_witness(
 	uint32_t argument_witness_claim_id,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_observation_lambda_witness(
+int prototype_judgement_add_relation_lambda_witness(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
 	const struct prototype_context_db* contexts,
 	uint32_t context_id,
 	uint32_t witness,
-	uint32_t observation_type,
+	uint32_t relation_type,
 	uint32_t relation_type_claim_id,
 	uint32_t left_endpoint_claim_id,
 	uint32_t right_endpoint_claim_id,
 	uint32_t body_witness_claim_id,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_observation_match_witness(
+int prototype_judgement_add_relation_match_witness(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
 	uint32_t context_id,
 	uint32_t witness,
-	uint32_t observation_type,
+	uint32_t relation_type,
 	uint32_t relation_type_claim_id,
 	uint32_t left_endpoint_claim_id,
 	uint32_t right_endpoint_claim_id,
@@ -782,12 +989,12 @@ int prototype_judgement_add_observation_match_witness(
 	uint32_t case_witness_count,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_observation_induction_hypothesis_witness(
+int prototype_judgement_add_relation_induction_hypothesis_witness(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
 	uint32_t context_id,
 	uint32_t witness,
-	uint32_t observation_type,
+	uint32_t relation_type,
 	uint32_t relation_type_claim_id,
 	uint32_t left_endpoint_claim_id,
 	uint32_t right_endpoint_claim_id,
@@ -827,6 +1034,19 @@ int prototype_judgement_constructor_spine_classifier(
 	uint32_t argument_classifier_count,
 	uint32_t* p_classifier,
 	int* p_saturated
+);
+int prototype_judgement_constructor_field_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_context,
+	uint32_t owner,
+	uint32_t constructor_index,
+	const struct prototype_case_binder* previous_binders,
+	uint32_t previous_binder_count,
+	uint32_t field_index,
+	uint32_t* p_classifier
 );
 int prototype_judgement_delta_record_constructor_spine(
 	struct prototype_judgement_delta* delta,
@@ -868,6 +1088,31 @@ int prototype_judgement_delta_record_type_formation(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier
+);
+
+/* Synthesize an exact type-formation candidate in the current Context. This
+ * is prior computation over the ordinary typing rules; callers must publish
+ * and select its Claim before using it as certificate authority. */
+int prototype_judgement_delta_ensure_type_at_universe(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t universe
+);
+
+/* Run ordinary structural type formation as prior computation and append its
+ * complete Claim/Derivation DAG without renumbering accepted evidence. */
+int prototype_judgement_add_structural_type_formation_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t universe,
+	uint32_t* p_claim_id
 );
 
 int prototype_judgement_delta_record_pure_primitive_type(
@@ -944,6 +1189,19 @@ int prototype_judgement_delta_build_match_motive(
 	uint32_t* p_motive_result
 );
 
+/* Build the constant dependent motive (lambda _ : S. P) scrutinee together
+ * with its ordinary Lambda/APP formation derivation. */
+int prototype_judgement_delta_build_constant_match_motive(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t scrutinee,
+	uint32_t scrutinee_classifier,
+	uint32_t result_type,
+	uint32_t universe_level_var,
+	uint32_t* p_motive_result
+);
+
 int prototype_judgement_delta_type_match_from_cases(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -987,16 +1245,6 @@ int prototype_judgement_delta_build_match_motive_from_branch_hints(
 	uint32_t universe_level_var,
 	uint32_t* p_motive_result
 );
-int prototype_judgement_delta_expand_match_with_branch_hints(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t classifier,
-	const uint32_t* branch_classifiers,
-	uint32_t branch_count
-);
-
 int prototype_judgement_expand_match(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
@@ -1081,7 +1329,7 @@ int prototype_judgement_delta_has_pending_classifier_state(
 	const struct prototype_judgement_delta* delta
 );
 
-int prototype_judgement_validate_proofs(
+int prototype_judgement_validate_accepted_graph(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
@@ -1100,7 +1348,7 @@ int prototype_judgement_validate_operation_typing(
 	uint32_t operation_id
 );
 
-int prototype_judgement_ground_claims(
+int prototype_judgement_publish_candidates(
 	const struct prototype_operation_graph* operations,
 	struct prototype_judgement_db* judgement
 );
@@ -1117,6 +1365,15 @@ int prototype_judgement_add_is_type(
 	const struct prototype_term_db* terms,
 	uint32_t subject,
 	uint32_t universe
+);
+int prototype_judgement_add_is_type_claim(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t universe,
+	uint32_t has_type_claim_id,
+	uint32_t* p_claim_id
 );
 
 int prototype_judgement_lookup_authority_neutral_core_classifier(
@@ -1386,3 +1643,7 @@ void prototype_judgement_print(
 );
 
 #endif
+int prototype_judgement_recompute_closure_ranks(
+	const struct prototype_operation_graph* operations,
+	struct prototype_judgement_db* judgement
+);

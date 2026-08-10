@@ -29,10 +29,6 @@
 #define AST_TYPE_PARAMETER_CAPACITY 128
 #define AST_TYPE_CONSTRUCTOR_CAPACITY 256
 #define AST_TYPE_FIELD_EXPR_CAPACITY 512
-#define UNIVERSE_NODE_CAPACITY 256
-#define UNIVERSE_EDGE_CAPACITY 512
-#define UNIVERSE_LEVEL_CAPACITY 1024
-#define UNIVERSE_CONSTRAINT_CAPACITY 4096
 #define TERM_CAPACITY 262144
 #define MATCH_CASE_CAPACITY 262144
 #define MATCH_BINDER_CAPACITY 262144
@@ -56,6 +52,7 @@
 #define ARTIFACT_CONSTRUCTOR_EXPORT_CAPACITY 512
 #define ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY 1024
 #define ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY 2048
+#define ARTIFACT_IDENTITY_ROOT_CAPACITY 512
 #define ARTIFACT_DEPENDENCY_CAPACITY 512
 #define ARTIFACT_EXTERNAL_TERM_REF_CAPACITY 512
 #define ARTIFACT_RESOLVED_EXTERNAL_TERM_REF_CAPACITY 512
@@ -97,10 +94,14 @@ static struct prototype_ast_type_constructor ast_type_constructors[AST_TYPE_CONS
 static uint32_t ast_type_field_exprs[AST_TYPE_FIELD_EXPR_CAPACITY];
 static uint32_t ast_type_field_binder_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
 static int ast_type_field_name_symbol_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
-static struct prototype_universe_node universe_nodes[UNIVERSE_NODE_CAPACITY];
-static struct prototype_universe_edge universe_edges[UNIVERSE_EDGE_CAPACITY];
-static struct prototype_universe_level universe_levels[UNIVERSE_LEVEL_CAPACITY];
-static struct prototype_universe_constraint universe_constraints[UNIVERSE_CONSTRAINT_CAPACITY];
+static struct prototype_universe_node
+	universe_nodes[PROTOTYPE_UNIVERSE_NODE_CAPACITY];
+static struct prototype_universe_edge
+	universe_edges[PROTOTYPE_UNIVERSE_EDGE_CAPACITY];
+static struct prototype_universe_level
+	universe_levels[PROTOTYPE_UNIVERSE_LEVEL_CAPACITY];
+static struct prototype_universe_constraint
+	universe_constraints[PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY];
 static struct prototype_term terms[TERM_CAPACITY];
 static struct prototype_match_case match_cases[MATCH_CASE_CAPACITY];
 static int match_case_label_symbols[MATCH_CASE_CAPACITY];
@@ -165,6 +166,8 @@ static struct prototype_artifact_type_parameter_export artifact_type_parameter_e
 static struct prototype_artifact_constructor_export artifact_constructor_exports[ARTIFACT_CONSTRUCTOR_EXPORT_CAPACITY];
 static uint32_t artifact_constructor_field_type_exprs[ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY];
 static struct prototype_type_expr artifact_interface_type_exprs[ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY];
+static struct prototype_artifact_identity_root
+	artifact_identity_roots[ARTIFACT_IDENTITY_ROOT_CAPACITY];
 static struct prototype_artifact_dependency artifact_dependencies[ARTIFACT_DEPENDENCY_CAPACITY];
 static struct prototype_artifact_external_term_ref artifact_external_term_refs[ARTIFACT_EXTERNAL_TERM_REF_CAPACITY];
 static struct prototype_artifact_resolved_external_term_ref artifact_resolved_external_term_refs[ARTIFACT_RESOLVED_EXTERNAL_TERM_REF_CAPACITY];
@@ -206,6 +209,8 @@ static struct prototype_artifact_type_parameter_export provider_artifact_type_pa
 static struct prototype_artifact_constructor_export provider_artifact_constructor_exports[ARTIFACT_CONSTRUCTOR_EXPORT_CAPACITY];
 static uint32_t provider_artifact_constructor_field_type_exprs[ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY];
 static struct prototype_type_expr provider_artifact_interface_type_exprs[ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY];
+static struct prototype_artifact_identity_root
+	provider_artifact_identity_roots[ARTIFACT_IDENTITY_ROOT_CAPACITY];
 static struct prototype_artifact_dependency provider_artifact_dependencies[ARTIFACT_DEPENDENCY_CAPACITY];
 static struct prototype_artifact_term_export appended_artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
 static struct prototype_artifact_type_export appended_artifact_type_exports[ARTIFACT_TYPE_EXPORT_CAPACITY];
@@ -213,6 +218,8 @@ static struct prototype_artifact_type_parameter_export appended_artifact_type_pa
 static struct prototype_artifact_constructor_export appended_artifact_constructor_exports[ARTIFACT_CONSTRUCTOR_EXPORT_CAPACITY];
 static uint32_t appended_artifact_constructor_field_type_exprs[ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY];
 static struct prototype_type_expr appended_artifact_interface_type_exprs[ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY];
+static struct prototype_artifact_identity_root
+	appended_artifact_identity_roots[ARTIFACT_IDENTITY_ROOT_CAPACITY];
 static struct prototype_artifact_dependency appended_artifact_dependencies[ARTIFACT_DEPENDENCY_CAPACITY];
 static struct prototype_artifact_interface imported_artifact_interfaces[IMPORT_INTERFACE_CAPACITY];
 static struct prototype_artifact_term_export imported_artifact_term_exports[IMPORT_INTERFACE_CAPACITY][ARTIFACT_TERM_EXPORT_CAPACITY];
@@ -221,6 +228,8 @@ static struct prototype_artifact_type_parameter_export imported_artifact_type_pa
 static struct prototype_artifact_constructor_export imported_artifact_constructor_exports[IMPORT_INTERFACE_CAPACITY][ARTIFACT_CONSTRUCTOR_EXPORT_CAPACITY];
 static uint32_t imported_artifact_constructor_field_type_exprs[IMPORT_INTERFACE_CAPACITY][ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY];
 static struct prototype_type_expr imported_artifact_interface_type_exprs[IMPORT_INTERFACE_CAPACITY][ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY];
+static struct prototype_artifact_identity_root
+	imported_artifact_identity_roots[IMPORT_INTERFACE_CAPACITY][ARTIFACT_IDENTITY_ROOT_CAPACITY];
 static struct prototype_artifact_dependency imported_artifact_dependencies[IMPORT_INTERFACE_CAPACITY][ARTIFACT_DEPENDENCY_CAPACITY];
 static char auto_link_provider_paths[LINK_PROVIDER_CAPACITY][LINK_AUTO_PROVIDER_PATH_CAPACITY];
 static unsigned char reachable_external_refs[TERM_CAPACITY];
@@ -750,32 +759,6 @@ static int artifact_export_claim_ids_match_loaded_image(
 	return 0;
 }
 
-static uint32_t artifact_find_grounded_export_claim(
-	const struct prototype_judgement_db* judgement,
-	const struct prototype_artifact_term_export* export
-) {
-	if (!judgement || !export) {
-		return PROTOTYPE_INVALID_ID;
-	}
-	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
-		const struct prototype_judgement_claim* claim =
-			prototype_judgement_claim_get(judgement, i);
-		const struct prototype_judgement_proposition* proposition = claim ?
-			prototype_judgement_proposition_get(judgement, claim->proposition_id) :
-			NULL;
-		if (proposition && proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			proposition->subject == export->local_term &&
-			proposition->classifier == export->classifier &&
-			(proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-			 (proposition->authority_id == export->operation &&
-			  proposition->operation_id == export->operation)) &&
-			claim->closure_rank != PROTOTYPE_INVALID_ID) {
-			return i;
-		}
-	}
-	return PROTOTYPE_INVALID_ID;
-}
-
 static int artifact_exports_have_accepted_claims(
 	struct prototype_artifact_interface* interface,
 	struct prototype_term_db* terms,
@@ -807,14 +790,13 @@ static int artifact_exports_have_accepted_claims(
 		int found = 0;
 		if (export->source_evidence.kind !=
 			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
-			uint32_t grounded_claim_id = artifact_find_grounded_export_claim(
-				judgement, export
-			);
-			if (grounded_claim_id == PROTOTYPE_INVALID_ID) {
+			if (export->source_evidence.kind !=
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM ||
+				export->source_evidence.id >= judgement->claim_count) {
 				return -1;
 			}
 			const struct prototype_judgement_claim* claim =
-				&judgement->claims[grounded_claim_id];
+				&judgement->claims[export->source_evidence.id];
 			found = prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
 				prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == export->local_term &&
 				prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier == export->classifier &&
@@ -824,11 +806,6 @@ static int artifact_exports_have_accepted_claims(
 				  prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id == export->operation));
 			if (!found) {
 				return -1;
-			}
-			if (rebind_source_claim_ids) {
-				export->source_evidence.kind =
-					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM;
-				export->source_evidence.id = grounded_claim_id;
 			}
 		}
 		if (!found) {
@@ -885,6 +862,7 @@ static int artifact_exports_have_accepted_claims(
 			return -1;
 		}
 	}
+	(void)rebind_source_claim_ids;
 	return 0;
 }
 
@@ -929,8 +907,6 @@ static int read_artifact_interface_and_graph(
 		prototype_artifact_read_text_universe(
 			artifact_file,
 			universe_db
-		) != 0 || prototype_universe_validate_provenance(
-			universe_db, judgement_db
 		) != 0 || artifact_export_claim_ids_match_loaded_image(
 			artifact_interface, judgement_db
 		) != 0 ||
@@ -939,7 +915,7 @@ static int read_artifact_interface_and_graph(
 			&metadata->contexts,
 			term_db
 		) != 0) ||
-		prototype_judgement_validate_proofs(
+		prototype_judgement_validate_accepted_graph(
 			term_db,
 			type_declarations,
 			&metadata->contexts,
@@ -956,8 +932,12 @@ static int read_artifact_interface_and_graph(
 				.fold_clause_capacity = metadata->operation_fold_clause_capacity
 			},
 			judgement_db
-		) != 0 || prototype_universe_rebind_provenance(
-			universe_db, judgement_db
+		) != 0 || prototype_artifact_interface_validate_identity_roots(
+			artifact_interface,
+			term_db,
+			type_declarations,
+			&metadata->contexts,
+			judgement_db
 		) != 0 || prototype_universe_validate_provenance(
 			universe_db, judgement_db
 		) != 0 || artifact_exports_have_accepted_claims(
@@ -1042,14 +1022,19 @@ static int operation_graph_next_source_binder_id(
 static int append_link_operation_graph(
 	struct prototype_compile_metadata* target,
 	const struct prototype_compile_metadata* source,
-	uint32_t term_offset,
-	uint32_t binder_offset
+	const uint32_t* term_relocation,
+	size_t term_relocation_count,
+	const uint32_t* context_relocation,
+	size_t context_relocation_count,
+	const uint32_t* binding_relocation,
+	size_t binding_relocation_count
 ) {
 	struct prototype_operation_graph target_graph;
 	struct prototype_operation_graph source_graph;
 	prototype_compile_metadata_operation_graph(target, &target_graph);
 	prototype_compile_metadata_operation_graph_const(source, &source_graph);
-	if (!target || !source ||
+	if (!target || !source || !term_relocation || !context_relocation ||
+		!binding_relocation ||
 		prototype_operation_graph_count(&target_graph) +
 			prototype_operation_graph_count(&source_graph) >
 			target_graph.operation_capacity ||
@@ -1104,17 +1089,6 @@ static int append_link_operation_graph(
 	uint32_t case_offset =
 		(uint32_t)prototype_operation_graph_case_count(&target_graph);
 	uint32_t fold_clause_offset = (uint32_t)target_graph.fold_clause_count;
-	uint32_t context_relocation[PROTOTYPE_CONTEXT_CAPACITY];
-	if (prototype_context_db_append_relocated(
-		&target->contexts,
-		&source->contexts,
-		term_offset,
-		binder_offset,
-		context_relocation,
-		PROTOTYPE_CONTEXT_CAPACITY
-	) != 0) {
-		return -1;
-	}
 	uint32_t source_binder_offset;
 	if (operation_graph_next_source_binder_id(target, &source_binder_offset) != 0) {
 		return -1;
@@ -1126,21 +1100,36 @@ static int append_link_operation_graph(
 			return -1;
 		}
 		struct prototype_operation_node operation = *source_operation;
-		if (operation.context_id >= source->contexts.context_count) {
+		if (operation.context_id >= source->contexts.context_count ||
+			operation.context_id >= context_relocation_count) {
 			return -1;
 		}
 		operation.context_id = context_relocation[operation.context_id];
-		operation.core_term = offset_link_graph_id(operation.core_term, term_offset);
-		operation.known_classifier = offset_link_graph_id(
-			operation.known_classifier, term_offset
-		);
-		operation.classifier = offset_link_graph_id(operation.classifier, term_offset);
-		operation.binder_classifier = offset_link_graph_id(
-			operation.binder_classifier, term_offset
-		);
-		operation.fold_return_binder_id = offset_link_graph_id(
-			operation.fold_return_binder_id, binder_offset
-		);
+#define RELOCATE_TERM_FIELD(field) \
+	do { \
+		if ((field) != PROTOTYPE_INVALID_ID) { \
+			if ((field) >= term_relocation_count || \
+				term_relocation[(field)] == PROTOTYPE_INVALID_ID) { \
+				return -1; \
+			} \
+			(field) = term_relocation[(field)]; \
+		} \
+	} while (0)
+#define RELOCATE_BINDING_FIELD(field) \
+	do { \
+		if ((field) != PROTOTYPE_INVALID_ID) { \
+			if ((field) >= binding_relocation_count || \
+				binding_relocation[(field)] == PROTOTYPE_INVALID_ID) { \
+				return -1; \
+			} \
+			(field) = binding_relocation[(field)]; \
+		} \
+	} while (0)
+		RELOCATE_TERM_FIELD(operation.core_term);
+		RELOCATE_TERM_FIELD(operation.known_classifier);
+		RELOCATE_TERM_FIELD(operation.classifier);
+		RELOCATE_TERM_FIELD(operation.binder_classifier);
+		RELOCATE_BINDING_FIELD(operation.fold_return_binder_id);
 		operation.fold_return_operation = offset_link_graph_id(
 			operation.fold_return_operation, operation_offset
 		);
@@ -1151,9 +1140,7 @@ static int append_link_operation_graph(
 		operation.referenced_ast_binder_id = offset_link_graph_id(
 			operation.referenced_ast_binder_id, source_binder_offset
 		);
-		operation.binding_id = offset_link_graph_id(
-			operation.binding_id, binder_offset
-		);
+		RELOCATE_BINDING_FIELD(operation.binding_id);
 		operation.fold_return_ast_binder_id = offset_link_graph_id(
 			operation.fold_return_ast_binder_id, source_binder_offset
 		);
@@ -1162,9 +1149,7 @@ static int append_link_operation_graph(
 			operation.first_fold_clause, fold_clause_offset
 		);
 		for (uint32_t j = 0; j < operation.implicit_effect_row_count; ++j) {
-			operation.implicit_effect_row_binders[j] = offset_link_graph_id(
-				operation.implicit_effect_row_binders[j], binder_offset
-			);
+			RELOCATE_BINDING_FIELD(operation.implicit_effect_row_binders[j]);
 		}
 		if (prototype_operation_graph_add(
 				&target_graph, &target->contexts, operation, NULL
@@ -1175,7 +1160,9 @@ static int append_link_operation_graph(
 	for (size_t i = 0; i < source_graph.fold_clause_count; ++i) {
 		const struct prototype_operation_computation_fold_clause* source_clause =
 			prototype_operation_graph_get_fold_clause(&source_graph, (uint32_t)i);
-		if (!source_clause || source_clause->context_id >= source->contexts.context_count) {
+		if (!source_clause || source_clause->context_id >=
+				source->contexts.context_count || source_clause->context_id >=
+				context_relocation_count) {
 			return -1;
 		}
 		struct prototype_operation_computation_fold_clause clause = *source_clause;
@@ -1195,12 +1182,8 @@ static int append_link_operation_graph(
 		clause.continuation_ast_binder_id = offset_link_graph_id(
 			clause.continuation_ast_binder_id, source_binder_offset
 		);
-		clause.argument_binder_id = offset_link_graph_id(
-			clause.argument_binder_id, binder_offset
-		);
-		clause.continuation_binder_id = offset_link_graph_id(
-			clause.continuation_binder_id, binder_offset
-		);
+		RELOCATE_BINDING_FIELD(clause.argument_binder_id);
+		RELOCATE_BINDING_FIELD(clause.continuation_binder_id);
 		if (prototype_operation_graph_add_fold_clause(
 				&target_graph, &target->contexts, clause, NULL
 			) != 0) {
@@ -1224,9 +1207,7 @@ static int append_link_operation_graph(
 		operation_case.body_operation = offset_link_graph_id(
 			operation_case.body_operation, operation_offset
 		);
-		operation_case.constructor_owner = offset_link_graph_id(
-			operation_case.constructor_owner, term_offset
-		);
+		RELOCATE_TERM_FIELD(operation_case.constructor_owner);
 		for (uint32_t j = 0; j < operation_case.binder_count; ++j) {
 			operation_case.ast_binder_ids[j] = offset_link_graph_id(
 				operation_case.ast_binder_ids[j], source_binder_offset
@@ -1244,15 +1225,9 @@ static int append_link_operation_graph(
 		constraint.operation = offset_link_graph_id(
 			constraint.operation, operation_offset
 		);
-		constraint.result_row = offset_link_graph_id(
-			constraint.result_row, term_offset
-		);
-		constraint.left_row = offset_link_graph_id(
-			constraint.left_row, term_offset
-		);
-		constraint.right_row = offset_link_graph_id(
-			constraint.right_row, term_offset
-		);
+		RELOCATE_TERM_FIELD(constraint.result_row);
+		RELOCATE_TERM_FIELD(constraint.left_row);
+		RELOCATE_TERM_FIELD(constraint.right_row);
 		target->effect_constraints[target->effect_constraint_count++] = constraint;
 	}
 	for (size_t i = 0;
@@ -1265,40 +1240,34 @@ static int append_link_operation_graph(
 		}
 		struct prototype_verification_obligation obligation = *source_obligation;
 		obligation.operation = offset_link_graph_id(obligation.operation, operation_offset);
-		obligation.core_term = offset_link_graph_id(obligation.core_term, term_offset);
+		RELOCATE_TERM_FIELD(obligation.core_term);
 		obligation.computation_operation = offset_link_graph_id(
 			obligation.computation_operation, operation_offset
 		);
 		obligation.continuation_operation = offset_link_graph_id(
 			obligation.continuation_operation, operation_offset
 		);
-		obligation.continuation_binder_id = offset_link_graph_id(
-			obligation.continuation_binder_id, binder_offset
-		);
-		obligation.input_classifier = offset_link_graph_id(
-			obligation.input_classifier, term_offset
-		);
-		obligation.classifier_family = offset_link_graph_id(
-			obligation.classifier_family, term_offset
-		);
-		obligation.effect_row = offset_link_graph_id(obligation.effect_row, term_offset);
+		RELOCATE_BINDING_FIELD(obligation.continuation_binder_id);
+		RELOCATE_TERM_FIELD(obligation.input_classifier);
+		RELOCATE_TERM_FIELD(obligation.classifier_family);
+		RELOCATE_TERM_FIELD(obligation.effect_row);
 		if (prototype_verification_db_add(&target->verification, obligation, NULL) != 0) {
 			return -1;
 		}
 	}
 	if (source->selected_entry_operation != PROTOTYPE_INVALID_ID) {
 		target->selected_entry_symbol_id = source->selected_entry_symbol_id;
-		target->selected_entry_term = offset_link_graph_id(
-			source->selected_entry_term, term_offset
-		);
-		target->selected_entry_classifier = offset_link_graph_id(
-			source->selected_entry_classifier, term_offset
-		);
+		target->selected_entry_term = source->selected_entry_term;
+		target->selected_entry_classifier = source->selected_entry_classifier;
+		RELOCATE_TERM_FIELD(target->selected_entry_term);
+		RELOCATE_TERM_FIELD(target->selected_entry_classifier);
 		target->selected_entry_operation = offset_link_graph_id(
 			source->selected_entry_operation, operation_offset
 		);
 	}
 	prototype_compile_metadata_commit_operation_graph(target, &target_graph);
+#undef RELOCATE_BINDING_FIELD
+#undef RELOCATE_TERM_FIELD
 	return 0;
 }
 
@@ -1355,6 +1324,8 @@ static int check_export_normalization_equal(
 		ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 		artifact_interface_type_exprs,
 		ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		artifact_identity_roots,
+		ARTIFACT_IDENTITY_ROOT_CAPACITY,
 		artifact_dependencies,
 		ARTIFACT_DEPENDENCY_CAPACITY
 	);
@@ -1398,13 +1369,13 @@ static int check_export_normalization_equal(
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
-		UNIVERSE_NODE_CAPACITY,
+		PROTOTYPE_UNIVERSE_NODE_CAPACITY,
 		universe_edges,
-		UNIVERSE_EDGE_CAPACITY,
+		PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
 		universe_levels,
-		UNIVERSE_LEVEL_CAPACITY,
+		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
 	);
 	prototype_compile_metadata_init(
 		&metadata,
@@ -1567,6 +1538,8 @@ static int check_exports_normalization_equal(
 		ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 		artifact_interface_type_exprs,
 		ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		artifact_identity_roots,
+		ARTIFACT_IDENTITY_ROOT_CAPACITY,
 		artifact_dependencies,
 		ARTIFACT_DEPENDENCY_CAPACITY
 	);
@@ -1610,13 +1583,13 @@ static int check_exports_normalization_equal(
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
-		UNIVERSE_NODE_CAPACITY,
+		PROTOTYPE_UNIVERSE_NODE_CAPACITY,
 		universe_edges,
-		UNIVERSE_EDGE_CAPACITY,
+		PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
 		universe_levels,
-		UNIVERSE_LEVEL_CAPACITY,
+		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
 	);
 	prototype_compile_metadata_init(
 		&metadata,
@@ -1799,6 +1772,8 @@ static int check_exports_shape_equal(
 		ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 		artifact_interface_type_exprs,
 		ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		artifact_identity_roots,
+		ARTIFACT_IDENTITY_ROOT_CAPACITY,
 		artifact_dependencies,
 		ARTIFACT_DEPENDENCY_CAPACITY
 	);
@@ -1842,13 +1817,13 @@ static int check_exports_shape_equal(
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
-		UNIVERSE_NODE_CAPACITY,
+		PROTOTYPE_UNIVERSE_NODE_CAPACITY,
 		universe_edges,
-		UNIVERSE_EDGE_CAPACITY,
+		PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
 		universe_levels,
-		UNIVERSE_LEVEL_CAPACITY,
+		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
 	);
 	prototype_compile_metadata_init(
 		&metadata,
@@ -1962,6 +1937,8 @@ static int check_export_classifier_compatible(
 		ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 		artifact_interface_type_exprs,
 		ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		artifact_identity_roots,
+		ARTIFACT_IDENTITY_ROOT_CAPACITY,
 		artifact_dependencies,
 		ARTIFACT_DEPENDENCY_CAPACITY
 	);
@@ -2005,13 +1982,13 @@ static int check_export_classifier_compatible(
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
-		UNIVERSE_NODE_CAPACITY,
+		PROTOTYPE_UNIVERSE_NODE_CAPACITY,
 		universe_edges,
-		UNIVERSE_EDGE_CAPACITY,
+		PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
 		universe_levels,
-		UNIVERSE_LEVEL_CAPACITY,
+		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
 	);
 	prototype_compile_metadata_init(
 		&metadata,
@@ -2177,6 +2154,8 @@ static void init_imported_interface_slot(size_t index) {
 		ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 		imported_artifact_interface_type_exprs[index],
 		ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		imported_artifact_identity_roots[index],
+		ARTIFACT_IDENTITY_ROOT_CAPACITY,
 		imported_artifact_dependencies[index],
 		ARTIFACT_DEPENDENCY_CAPACITY
 	);
@@ -2225,6 +2204,8 @@ static void init_provider_artifact_storage(
 		ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 		provider_artifact_interface_type_exprs,
 		ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		provider_artifact_identity_roots,
+		ARTIFACT_IDENTITY_ROOT_CAPACITY,
 		provider_artifact_dependencies,
 		ARTIFACT_DEPENDENCY_CAPACITY
 	);
@@ -2334,7 +2315,14 @@ static int read_import_artifact_into_slot(
 	) != 0) {
 		return -1;
 	}
-	return prototype_artifact_append_graph(
+	size_t provider_term_relocation_count = provider_term_db.term_count == 0 ?
+		1 : provider_term_db.term_count;
+	size_t provider_context_relocation_count =
+		provider_metadata.contexts.context_count == 0 ?
+			1 : provider_metadata.contexts.context_count;
+	uint32_t provider_term_relocation[provider_term_relocation_count];
+	uint32_t provider_context_relocation[provider_context_relocation_count];
+	if (prototype_artifact_append_graph(
 			&imported_artifact_interfaces[slot],
 			program->terms,
 			program->type_declarations,
@@ -2347,8 +2335,17 @@ static int read_import_artifact_into_slot(
 			&provider_judgement_db,
 			&provider_metadata.contexts,
 			&provider_metadata.substitutions,
-			PROTOTYPE_INVALID_ID
-	);
+			PROTOTYPE_INVALID_ID,
+			provider_term_relocation,
+			provider_term_relocation_count,
+		provider_context_relocation,
+		provider_context_relocation_count,
+		NULL,
+		1
+		) != 0) {
+		return -1;
+	}
+	return 0;
 }
 
 static int add_source_import_from_search_dirs(
@@ -2409,6 +2406,8 @@ static int add_source_import_from_search_dirs(
 				ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 				provider_artifact_interface_type_exprs,
 				ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+				provider_artifact_identity_roots,
+				ARTIFACT_IDENTITY_ROOT_CAPACITY,
 				provider_artifact_dependencies,
 				ARTIFACT_DEPENDENCY_CAPACITY
 			);
@@ -2512,6 +2511,8 @@ static int count_provider_paths_for_dependency(
 			ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 			provider_artifact_interface_type_exprs,
 			ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+			provider_artifact_identity_roots,
+			ARTIFACT_IDENTITY_ROOT_CAPACITY,
 			provider_artifact_dependencies,
 			ARTIFACT_DEPENDENCY_CAPACITY
 		);
@@ -2600,6 +2601,8 @@ static int add_provider_from_search_dirs(
 					ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 					provider_artifact_interface_type_exprs,
 					ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+					provider_artifact_identity_roots,
+					ARTIFACT_IDENTITY_ROOT_CAPACITY,
 					provider_artifact_dependencies,
 					ARTIFACT_DEPENDENCY_CAPACITY
 				);
@@ -2655,6 +2658,7 @@ static int read_provider_interface_for_ordering(
 	struct prototype_artifact_constructor_export* constructor_exports,
 	uint32_t* constructor_field_type_exprs,
 	struct prototype_type_expr* interface_type_exprs,
+	struct prototype_artifact_identity_root* identity_roots,
 	struct prototype_artifact_dependency* dependencies
 );
 
@@ -2698,6 +2702,7 @@ static int add_provider_closure_from_search_dirs(
 				provider_artifact_constructor_exports,
 				provider_artifact_constructor_field_type_exprs,
 				provider_artifact_interface_type_exprs,
+				provider_artifact_identity_roots,
 				provider_artifact_dependencies
 			) != 0) {
 			return -1;
@@ -2729,6 +2734,7 @@ static int read_provider_interface_for_ordering(
 	struct prototype_artifact_constructor_export* constructor_exports,
 	uint32_t* constructor_field_type_exprs,
 	struct prototype_type_expr* interface_type_exprs,
+	struct prototype_artifact_identity_root* identity_roots,
 	struct prototype_artifact_dependency* dependencies
 ) {
 	prototype_artifact_interface_init(
@@ -2745,6 +2751,8 @@ static int read_provider_interface_for_ordering(
 		ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 		interface_type_exprs,
 		ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		identity_roots,
+		ARTIFACT_IDENTITY_ROOT_CAPACITY,
 		dependencies,
 		ARTIFACT_DEPENDENCY_CAPACITY
 	);
@@ -2790,6 +2798,7 @@ static int order_link_providers_by_interface_dependencies(
 						provider_artifact_constructor_exports,
 						provider_artifact_constructor_field_type_exprs,
 						provider_artifact_interface_type_exprs,
+						provider_artifact_identity_roots,
 						provider_artifact_dependencies
 					) != 0 ||
 					read_provider_interface_for_ordering(
@@ -2802,6 +2811,7 @@ static int order_link_providers_by_interface_dependencies(
 						appended_artifact_constructor_exports,
 						appended_artifact_constructor_field_type_exprs,
 						appended_artifact_interface_type_exprs,
+						appended_artifact_identity_roots,
 						appended_artifact_dependencies
 					) != 0) {
 					return -1;
@@ -3426,6 +3436,8 @@ int main(int argc, char** argv) {
 			ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 			artifact_interface_type_exprs,
 			ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+			artifact_identity_roots,
+			ARTIFACT_IDENTITY_ROOT_CAPACITY,
 			artifact_dependencies,
 			ARTIFACT_DEPENDENCY_CAPACITY
 		);
@@ -3469,13 +3481,13 @@ int main(int argc, char** argv) {
 		prototype_universe_db_init(
 			&universe_db,
 			universe_nodes,
-			UNIVERSE_NODE_CAPACITY,
+			PROTOTYPE_UNIVERSE_NODE_CAPACITY,
 			universe_edges,
-			UNIVERSE_EDGE_CAPACITY,
+			PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
 			universe_levels,
-			UNIVERSE_LEVEL_CAPACITY,
+			PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 			universe_constraints,
-			UNIVERSE_CONSTRAINT_CAPACITY
+			PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
 		);
 		prototype_compile_metadata_init(
 			&metadata,
@@ -3568,6 +3580,8 @@ int main(int argc, char** argv) {
 				ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 				provider_artifact_interface_type_exprs,
 				ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+				provider_artifact_identity_roots,
+				ARTIFACT_IDENTITY_ROOT_CAPACITY,
 				provider_artifact_dependencies,
 				ARTIFACT_DEPENDENCY_CAPACITY
 			);
@@ -3585,6 +3599,8 @@ int main(int argc, char** argv) {
 				ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 				appended_artifact_interface_type_exprs,
 				ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+				appended_artifact_identity_roots,
+				ARTIFACT_IDENTITY_ROOT_CAPACITY,
 				appended_artifact_dependencies,
 				ARTIFACT_DEPENDENCY_CAPACITY
 			);
@@ -3682,10 +3698,25 @@ int main(int argc, char** argv) {
 				symbol_table_free(&symbols);
 				return 1;
 			}
-			uint32_t provider_term_offset = (uint32_t)term_db.term_count;
-			uint32_t provider_binder_offset = term_db.next_binding_id;
 			uint32_t provider_operation_offset =
 				(uint32_t)metadata.operation_count;
+			size_t provider_term_relocation_count =
+				provider_term_db.term_count == 0 ? 1 : provider_term_db.term_count;
+			size_t provider_context_relocation_count =
+				provider_metadata.contexts.context_count == 0 ?
+					1 : provider_metadata.contexts.context_count;
+			uint32_t provider_term_relocation[provider_term_relocation_count];
+			uint32_t provider_context_relocation[provider_context_relocation_count];
+			size_t provider_binding_relocation_count =
+				provider_term_db.next_binding_id == 0 ?
+					1 : provider_term_db.next_binding_id;
+			uint32_t provider_binding_relocation[
+				provider_binding_relocation_count
+			];
+			struct prototype_artifact_graph_relocation provider_additional = {
+				.binding_ids = provider_binding_relocation,
+				.binding_id_capacity = provider_binding_relocation_count
+			};
 			if (prototype_artifact_append_graph(
 					&appended_interface,
 					&term_db,
@@ -3699,12 +3730,22 @@ int main(int argc, char** argv) {
 					&provider_judgement_db,
 					&provider_metadata.contexts,
 					&provider_metadata.substitutions,
-					provider_operation_offset
+					provider_operation_offset,
+					provider_term_relocation,
+					provider_term_relocation_count,
+					provider_context_relocation,
+					provider_context_relocation_count,
+					&provider_additional,
+					1
 				) != 0 || append_link_operation_graph(
 					&metadata,
 					&provider_metadata,
-					provider_term_offset,
-					provider_binder_offset
+					provider_term_relocation,
+					provider_term_relocation_count,
+					provider_context_relocation,
+					provider_context_relocation_count,
+					provider_binding_relocation,
+					provider_binding_relocation_count
 				) != 0) {
 				fprintf(stderr, "%s + %s: failed to link artifacts\n", link_target_path, provider_path);
 				symbol_table_free(&symbols);
@@ -3812,7 +3853,7 @@ int main(int argc, char** argv) {
 		prototype_compile_metadata_operation_graph(
 			&metadata, &linked_operation_graph
 		);
-		if (prototype_judgement_validate_proofs(
+		if (prototype_judgement_validate_accepted_graph(
 				&term_db,
 				&type_declarations,
 				&metadata.contexts,
@@ -3943,6 +3984,8 @@ int main(int argc, char** argv) {
 			ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 			artifact_interface_type_exprs,
 			ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+			artifact_identity_roots,
+			ARTIFACT_IDENTITY_ROOT_CAPACITY,
 			artifact_dependencies,
 			ARTIFACT_DEPENDENCY_CAPACITY
 		);
@@ -4047,13 +4090,13 @@ int main(int argc, char** argv) {
 			prototype_universe_db_init(
 				&universe_db,
 				universe_nodes,
-				UNIVERSE_NODE_CAPACITY,
+				PROTOTYPE_UNIVERSE_NODE_CAPACITY,
 				universe_edges,
-				UNIVERSE_EDGE_CAPACITY,
+				PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
 				universe_levels,
-				UNIVERSE_LEVEL_CAPACITY,
+				PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 				universe_constraints,
-				UNIVERSE_CONSTRAINT_CAPACITY
+				PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
 			);
 			if (prototype_artifact_read_text_graph(
 					artifact_file,
@@ -4072,8 +4115,6 @@ int main(int argc, char** argv) {
 				prototype_artifact_read_text_universe(
 					artifact_file,
 					&universe_db
-				) != 0 || prototype_universe_validate_provenance(
-					&universe_db, &judgement_db
 				) != 0 || artifact_export_claim_ids_match_loaded_image(
 					&artifact_interface, &judgement_db
 				) != 0 ||
@@ -4087,7 +4128,7 @@ int main(int argc, char** argv) {
 					&symbols,
 					&relocation_table
 				) != 0 ||
-				prototype_judgement_validate_proofs(
+				prototype_judgement_validate_accepted_graph(
 					&term_db,
 					&type_declarations,
 					&artifact_metadata.contexts,
@@ -4104,8 +4145,12 @@ int main(int argc, char** argv) {
 						.fold_clause_capacity = artifact_metadata.operation_fold_clause_capacity
 					},
 					&judgement_db
-				) != 0 || prototype_universe_rebind_provenance(
-					&universe_db, &judgement_db
+				) != 0 || prototype_artifact_interface_validate_identity_roots(
+					&artifact_interface,
+					&term_db,
+					&type_declarations,
+					&artifact_metadata.contexts,
+					&judgement_db
 				) != 0 || prototype_universe_validate_provenance(
 					&universe_db, &judgement_db
 				) != 0 || artifact_exports_have_accepted_claims(
@@ -4350,13 +4395,13 @@ int main(int argc, char** argv) {
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
-		UNIVERSE_NODE_CAPACITY,
+		PROTOTYPE_UNIVERSE_NODE_CAPACITY,
 		universe_edges,
-		UNIVERSE_EDGE_CAPACITY,
+		PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
 		universe_levels,
-		UNIVERSE_LEVEL_CAPACITY,
+		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
 	);
 	prototype_term_db_init(
 		&term_db,
@@ -4533,6 +4578,8 @@ int main(int argc, char** argv) {
 		ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
 		artifact_interface_type_exprs,
 		ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		artifact_identity_roots,
+		ARTIFACT_IDENTITY_ROOT_CAPACITY,
 		artifact_dependencies,
 		ARTIFACT_DEPENDENCY_CAPACITY
 	);

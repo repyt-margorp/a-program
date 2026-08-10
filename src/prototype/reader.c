@@ -2560,6 +2560,8 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 	program->type_declarations->type_declarations[type_id].formation_classifier = universe;
 	program->type_declarations->type_declarations[type_id].parameter_context =
 		empty_context;
+	program->type_declarations->type_declarations[type_id].index_context =
+		empty_context;
 	if (prototype_judgement_expand_type_def(
 			program->judgement,
 			program->terms,

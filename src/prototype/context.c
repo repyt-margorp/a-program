@@ -315,12 +315,15 @@ int prototype_context_db_validate(
 int prototype_context_db_append_relocated(
 	struct prototype_context_db* target,
 	const struct prototype_context_db* source,
-	uint32_t term_offset,
-	uint32_t binder_offset,
+	const uint32_t* term_relocation,
+	size_t term_relocation_count,
+	const uint32_t* binding_relocation,
+	size_t binding_relocation_count,
 	uint32_t* relocation,
 	size_t relocation_capacity
 ) {
-	if (!target || !source || !relocation ||
+	if (!target || !source || !term_relocation || !binding_relocation ||
+		!relocation ||
 		source->context_count == 0 ||
 		source->context_count > relocation_capacity ||
 		prototype_context_empty(target) == PROTOTYPE_INVALID_ID ||
@@ -331,27 +334,34 @@ int prototype_context_db_append_relocated(
 	for (uint32_t i = 1; i < source->context_count; ++i) {
 		const struct prototype_context* context =
 			prototype_context_get(source, i);
+		uint32_t source_classifier = context ?
+			prototype_context_classifier_term(context) : PROTOTYPE_INVALID_ID;
 		uint32_t classifier = context &&
 			context->classifier_ref.kind ==
-				PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM
-			? context->classifier_ref.term_id + term_offset
+				PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM &&
+			source_classifier < term_relocation_count
+			? term_relocation[source_classifier]
 			: (context && context->classifier_ref.kind ==
-				PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL ?
-				context->classifier_ref.term_id + term_offset : PROTOTYPE_INVALID_ID);
+				PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL &&
+				source_classifier < term_relocation_count ?
+				term_relocation[source_classifier] : PROTOTYPE_INVALID_ID);
 		/* Linking needs only concrete classifier provenance once resolved. */
 		uint32_t classifier_variable = context &&
 			context->classifier_ref.kind ==
-				PROTOTYPE_CONTEXT_CLASSIFIER_REF_VARIABLE
-			? context->classifier_ref.variable_id + binder_offset
+				PROTOTYPE_CONTEXT_CLASSIFIER_REF_VARIABLE &&
+			context->classifier_ref.variable_id < binding_relocation_count
+			? binding_relocation[context->classifier_ref.variable_id]
 			: PROTOTYPE_INVALID_ID;
 		if (!context || context->parent >= i ||
 			(classifier == PROTOTYPE_INVALID_ID) ==
 				(classifier_variable == PROTOTYPE_INVALID_ID) ||
 			context->binding_id == PROTOTYPE_INVALID_ID ||
+			context->binding_id >= binding_relocation_count ||
+			binding_relocation[context->binding_id] == PROTOTYPE_INVALID_ID ||
 			prototype_context_extend(
 				target,
 				relocation[context->parent],
-				context->binding_id + binder_offset,
+				binding_relocation[context->binding_id],
 				classifier,
 				classifier_variable,
 				&relocation[i]
@@ -373,11 +383,13 @@ int prototype_substitution_db_append_relocated(
 	const struct prototype_substitution_db* source,
 	const uint32_t* context_relocation,
 	size_t context_relocation_count,
-	uint32_t term_offset,
+	const uint32_t* term_relocation,
+	size_t term_relocation_count,
 	uint32_t* relocation,
 	size_t relocation_capacity
 ) {
-	if (!target || !source || !context_relocation || !relocation ||
+	if (!target || !source || !context_relocation || !term_relocation ||
+		!relocation ||
 		source->substitution_count > relocation_capacity) {
 		return -1;
 	}
@@ -402,10 +414,20 @@ int prototype_substitution_db_append_relocated(
 			substitution.second = relocation[substitution.second];
 		}
 		if (substitution.term != PROTOTYPE_INVALID_ID) {
-			substitution.term += term_offset;
+			if (substitution.term >= term_relocation_count ||
+				term_relocation[substitution.term] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			substitution.term = term_relocation[substitution.term];
 		}
 		if (substitution.term_classifier != PROTOTYPE_INVALID_ID) {
-			substitution.term_classifier += term_offset;
+			if (substitution.term_classifier >= term_relocation_count ||
+				term_relocation[substitution.term_classifier] ==
+					PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			substitution.term_classifier =
+				term_relocation[substitution.term_classifier];
 		}
 		if (prototype_substitution_add(
 			target, substitution, &relocation[i]

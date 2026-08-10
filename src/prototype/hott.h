@@ -5,9 +5,11 @@
 #include "judgement.h"
 #include "kernel_view.h"
 
-enum prototype_hott_observation_category {
-	PROTOTYPE_HOTT_OBSERVATION_VALUE = 1,
-	PROTOTYPE_HOTT_OBSERVATION_COMPUTATION = 2
+struct prototype_artifact_interface;
+
+enum prototype_hott_relation_category {
+	PROTOTYPE_HOTT_RELATION_VALUE = 1,
+	PROTOTYPE_HOTT_RELATION_COMPUTATION = 2
 };
 
 enum prototype_hott_outcome_state {
@@ -60,17 +62,23 @@ enum prototype_hott_type_former_kind {
 	PROTOTYPE_HOTT_TYPE_FORMER_THUNK = 4,
 	PROTOTYPE_HOTT_TYPE_FORMER_UNIVERSE = 5,
 	PROTOTYPE_HOTT_TYPE_FORMER_HOST_PRIMITIVE = 6,
-	PROTOTYPE_HOTT_TYPE_FORMER_OBSERVATION = 7
+	PROTOTYPE_HOTT_TYPE_FORMER_RELATION = 7
 };
 
-enum prototype_hott_type_action_rule {
-	PROTOTYPE_HOTT_TYPE_ACTION_RULE_NONE = 0,
-	PROTOTYPE_HOTT_TYPE_ACTION_RULE_ZERO_FIELD_ADT = 1,
-	PROTOTYPE_HOTT_TYPE_ACTION_RULE_ADT_TELESCOPE = 2,
-	PROTOTYPE_HOTT_TYPE_ACTION_RULE_PI_POINTWISE = 3,
-	PROTOTYPE_HOTT_TYPE_ACTION_RULE_PURE_COMPUTATION = 4,
-	PROTOTYPE_HOTT_TYPE_ACTION_RULE_THUNK = 5,
-	PROTOTYPE_HOTT_TYPE_ACTION_RULE_OBSERVATION_HIGHER = 6
+enum prototype_hott_relation_type_action_rule {
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_NONE = 0,
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_ZERO_FIELD_ADT = 1,
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_ADT_TELESCOPE = 2,
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_PI_POINTWISE = 3,
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_PURE_COMPUTATION = 4,
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_THUNK = 5,
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_RELATION_HIGHER = 6
+};
+
+enum prototype_hott_relation_family_semantics {
+	PROTOTYPE_HOTT_RELATION_FAMILY_INVALID = 0,
+	/* Internal-parametricity action; this is not object identity evidence. */
+	PROTOTYPE_HOTT_RELATION_FAMILY_PARAMETRIC_ACTION = 1
 };
 
 enum prototype_hott_capability_status {
@@ -81,10 +89,15 @@ enum prototype_hott_capability_status {
 };
 
 struct prototype_hott_type_former_capabilities {
-	int type_action;
+	/* Relational type/term action is the internal-parametricity substrate. */
+	int relation_type_action;
 	int term_action;
 	int ordinary_reindex;
 	int purity;
+	/* HOTT identity requires type-directed computation plus fibrancy data. */
+	int identity_computation;
+	int transport;
+	int lifting;
 	int resource_hook;
 	int artifact;
 };
@@ -92,7 +105,7 @@ struct prototype_hott_type_former_capabilities {
 struct prototype_hott_type_former_descriptor {
 	int kind;
 	int admitted;
-	int type_action_rule;
+	int relation_type_action_rule;
 	int residual_reason;
 	uint32_t source_claim_id;
 	uint32_t source_type_term_id;
@@ -111,15 +124,22 @@ int prototype_hott_type_former_descriptor_query(
 
 enum prototype_hott_rule {
 	PROTOTYPE_HOTT_RULE_NONE = 0,
-	PROTOTYPE_HOTT_RULE_OBS_DIAGONAL = 1,
-	PROTOTYPE_HOTT_RULE_OBS_CONVERT = 2,
-	PROTOTYPE_HOTT_RULE_OBS_ADT_CONSTRUCTOR = 3,
-	PROTOTYPE_HOTT_RULE_OBS_ADT_DISTINCT = 4,
-	PROTOTYPE_HOTT_RULE_OBS_MATCH_ACTION = 5,
-	PROTOTYPE_HOTT_RULE_OBS_COMP_RETURN = 6,
-	PROTOTYPE_HOTT_RULE_OBS_PI_POINTWISE = 7,
-	PROTOTYPE_HOTT_RULE_OBS_THUNK_PURE = 8,
-	PROTOTYPE_HOTT_RULE_OBS_REINDEX = 9
+	PROTOTYPE_HOTT_RULE_REL_DIAGONAL = 1,
+	PROTOTYPE_HOTT_RULE_REL_CONVERT = 2,
+	PROTOTYPE_HOTT_RULE_REL_ADT_CONSTRUCTOR = 3,
+	PROTOTYPE_HOTT_RULE_REL_ADT_DISTINCT = 4,
+	PROTOTYPE_HOTT_RULE_REL_MATCH_ACTION = 5,
+	PROTOTYPE_HOTT_RULE_REL_COMP_RETURN = 6,
+	PROTOTYPE_HOTT_RULE_REL_PI_POINTWISE = 7,
+	PROTOTYPE_HOTT_RULE_REL_THUNK_PURE = 8,
+	PROTOTYPE_HOTT_RULE_REL_REINDEX = 9
+};
+
+enum prototype_hott_candidate_object_result {
+	PROTOTYPE_HOTT_CANDIDATE_OBJECT_INVALID = 0,
+	PROTOTYPE_HOTT_CANDIDATE_OBJECT_RELATION_WITNESS = 1,
+	PROTOTYPE_HOTT_CANDIDATE_OBJECT_EMPTY_FAMILY = 2,
+	PROTOTYPE_HOTT_CANDIDATE_OBJECT_DEFERRED = 3
 };
 
 enum prototype_hott_child_role {
@@ -132,15 +152,15 @@ enum prototype_hott_child_role {
 	PROTOTYPE_HOTT_CHILD_MATCH_RECURSIVE_IH = 6,
 	PROTOTYPE_HOTT_CHILD_COMP_LEFT_RETURN_EXPOSURE = 7,
 	PROTOTYPE_HOTT_CHILD_COMP_RIGHT_RETURN_EXPOSURE = 8,
-	PROTOTYPE_HOTT_CHILD_COMP_RESULT_OBSERVATION = 9,
+	PROTOTYPE_HOTT_CHILD_COMP_RESULT_RELATION = 9,
 	PROTOTYPE_HOTT_CHILD_PI_DOMAIN_ACTION = 10,
 	PROTOTYPE_HOTT_CHILD_PI_RELATED_INPUT = 11,
-	PROTOTYPE_HOTT_CHILD_PI_CODOMAIN_OBSERVATION = 12,
-	PROTOTYPE_HOTT_CHILD_THUNK_COMPUTATION_OBSERVATION = 13,
-	PROTOTYPE_HOTT_CHILD_CONVERT_ANCHOR_OBSERVATION = 14,
+	PROTOTYPE_HOTT_CHILD_PI_CODOMAIN_RELATION = 12,
+	PROTOTYPE_HOTT_CHILD_THUNK_COMPUTATION_RELATION = 13,
+	PROTOTYPE_HOTT_CHILD_CONVERT_ANCHOR_RELATION = 14,
 	PROTOTYPE_HOTT_CHILD_CONTEXT_ACTION = 15,
 	PROTOTYPE_HOTT_CHILD_SUBSTITUTION_ACTION = 16,
-	PROTOTYPE_HOTT_CHILD_TYPE_ACTION = 17,
+	PROTOTYPE_HOTT_CHILD_RELATION_TYPE_ACTION = 17,
 	PROTOTYPE_HOTT_CHILD_TERM_ACTION = 18,
 	PROTOTYPE_HOTT_CHILD_REINDEX_NATURALITY = 19
 };
@@ -153,11 +173,19 @@ struct prototype_hott_bridge {
 	uint32_t right_substitution_id;
 };
 
+enum prototype_hott_bridge_semantics {
+	PROTOTYPE_HOTT_BRIDGE_SEMANTICS_EMPTY_IDENTITY = 1,
+	PROTOTYPE_HOTT_BRIDGE_SEMANTICS_PARAMETRIC_RELATION = 2,
+	PROTOTYPE_HOTT_BRIDGE_SEMANTICS_OBJECT_IDENTITY = 3
+};
+
 struct prototype_hott_bridge_certificate {
 	uint32_t id;
 	uint32_t bridge_id;
+	int semantics;
 	uint32_t parent_bridge_id;
-	uint32_t type_action_certificate_id;
+	uint32_t fiber_action_certificate_id;
+	uint32_t fiber_witness_claim_id;
 	uint32_t left_endpoint_context_certificate_id;
 	uint32_t right_endpoint_context_certificate_id;
 	uint32_t relation_context_certificate_id;
@@ -196,17 +224,18 @@ int prototype_hott_bridge_db_validate(
 	const struct prototype_kernel_view* kernel
 );
 
-struct prototype_hott_observation_goal {
+struct prototype_hott_relation_goal {
 	uint32_t id;
 	int category;
-	uint32_t carrier_claim_id;
+	uint32_t left_carrier_claim_id;
+	uint32_t right_carrier_claim_id;
 	uint32_t left_claim_id;
 	uint32_t right_claim_id;
 	uint32_t bridge_id;
 };
 
-struct prototype_hott_observation_goal_db {
-	struct prototype_hott_observation_goal* goals;
+struct prototype_hott_relation_goal_db {
+	struct prototype_hott_relation_goal* goals;
 	size_t goal_count;
 	size_t goal_capacity;
 };
@@ -215,6 +244,7 @@ struct prototype_hott_candidate {
 	uint32_t id;
 	uint32_t conclusion_goal_id;
 	int rule;
+	int object_result;
 	uint32_t first_claim_premise;
 	uint32_t claim_premise_count;
 	uint32_t first_child_edge;
@@ -298,29 +328,30 @@ struct prototype_hott_work_db {
 	size_t item_capacity;
 };
 
-void prototype_hott_observation_goal_db_init(
-	struct prototype_hott_observation_goal_db* db,
-	struct prototype_hott_observation_goal* goals,
+void prototype_hott_relation_goal_db_init(
+	struct prototype_hott_relation_goal_db* db,
+	struct prototype_hott_relation_goal* goals,
 	size_t goal_capacity
 );
-const struct prototype_hott_observation_goal*
-prototype_hott_observation_goal_db_get(
-	const struct prototype_hott_observation_goal_db* db,
+const struct prototype_hott_relation_goal*
+prototype_hott_relation_goal_db_get(
+	const struct prototype_hott_relation_goal_db* db,
 	uint32_t goal_id
 );
-int prototype_hott_observation_goal_db_intern(
-	struct prototype_hott_observation_goal_db* db,
+int prototype_hott_relation_goal_db_intern(
+	struct prototype_hott_relation_goal_db* db,
 	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
 	int category,
-	uint32_t carrier_claim_id,
+	uint32_t left_carrier_claim_id,
+	uint32_t right_carrier_claim_id,
 	uint32_t left_claim_id,
 	uint32_t right_claim_id,
 	uint32_t bridge_id,
 	uint32_t* p_goal_id
 );
-int prototype_hott_observation_goal_db_validate(
-	const struct prototype_hott_observation_goal_db* db,
+int prototype_hott_relation_goal_db_validate(
+	const struct prototype_hott_relation_goal_db* db,
 	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges
 );
@@ -346,7 +377,7 @@ const struct prototype_hott_candidate* prototype_hott_candidate_db_get(
 );
 int prototype_hott_candidate_db_validate(
 	const struct prototype_hott_candidate_db* db,
-	const struct prototype_hott_observation_goal_db* goals,
+	const struct prototype_hott_relation_goal_db* goals,
 	const struct prototype_kernel_view* kernel
 );
 
@@ -361,11 +392,11 @@ const struct prototype_hott_work_item* prototype_hott_work_db_get(
 );
 int prototype_hott_work_db_validate(
 	const struct prototype_hott_work_db* db,
-	const struct prototype_hott_observation_goal_db* goals,
+	const struct prototype_hott_relation_goal_db* goals,
 	const struct prototype_hott_candidate_db* candidates
 );
-int prototype_hott_observation_plan(
-	struct prototype_hott_observation_goal_db* goals,
+int prototype_hott_relation_plan(
+	struct prototype_hott_relation_goal_db* goals,
 	struct prototype_hott_candidate_db* candidates,
 	struct prototype_hott_work_db* work,
 	const struct prototype_kernel_view* kernel,
@@ -411,15 +442,19 @@ int prototype_hott_residual_db_require_artifact_empty(
 enum prototype_hott_action_kind {
 	PROTOTYPE_HOTT_ACTION_CONTEXT = 1,
 	PROTOTYPE_HOTT_ACTION_SUBSTITUTION = 2,
-	PROTOTYPE_HOTT_ACTION_TYPE = 3,
-	PROTOTYPE_HOTT_ACTION_TERM = 4
+	PROTOTYPE_HOTT_ACTION_RELATION_TYPE = 3,
+	PROTOTYPE_HOTT_ACTION_TERM = 4,
+	PROTOTYPE_HOTT_ACTION_IDENTITY_TYPE_COMPUTATION = 5,
+	PROTOTYPE_HOTT_ACTION_OBJECT_TERM = 6
 };
 
 enum prototype_hott_action_certificate_kind {
 	PROTOTYPE_HOTT_ACTION_CERTIFICATE_CONTEXT_BRIDGE = 1,
 	PROTOTYPE_HOTT_ACTION_CERTIFICATE_SUBSTITUTION_NATURALITY = 2,
-	PROTOTYPE_HOTT_ACTION_CERTIFICATE_TYPE = 3,
-	PROTOTYPE_HOTT_ACTION_CERTIFICATE_TERM = 4
+	PROTOTYPE_HOTT_ACTION_CERTIFICATE_RELATION_TYPE = 3,
+	PROTOTYPE_HOTT_ACTION_CERTIFICATE_TERM = 4,
+	PROTOTYPE_HOTT_ACTION_CERTIFICATE_IDENTITY_TYPE_COMPUTATION = 5,
+	PROTOTYPE_HOTT_ACTION_CERTIFICATE_OBJECT_TERM = 6
 };
 
 #define PROTOTYPE_HOTT_ACTION_INDEX_BUCKET_COUNT 257
@@ -434,7 +469,12 @@ struct prototype_hott_substitution_action_key {
 	uint32_t target_bridge_id;
 };
 
-struct prototype_hott_type_action_key {
+struct prototype_hott_relation_type_action_key {
+	uint32_t source_claim_id;
+	uint32_t source_bridge_id;
+};
+
+struct prototype_hott_identity_type_computation_key {
 	uint32_t source_claim_id;
 	uint32_t source_bridge_id;
 };
@@ -442,7 +482,13 @@ struct prototype_hott_type_action_key {
 struct prototype_hott_term_action_key {
 	uint32_t source_claim_id;
 	uint32_t source_bridge_id;
-	uint32_t type_action_request_id;
+	uint32_t relation_type_action_request_id;
+};
+
+struct prototype_hott_object_term_action_key {
+	uint32_t source_claim_id;
+	uint32_t source_bridge_id;
+	uint32_t identity_type_action_request_id;
 };
 
 struct prototype_hott_action_request {
@@ -451,8 +497,10 @@ struct prototype_hott_action_request {
 	union {
 		struct prototype_hott_context_action_key context;
 		struct prototype_hott_substitution_action_key substitution;
-		struct prototype_hott_type_action_key type;
+		struct prototype_hott_relation_type_action_key relation_type;
 		struct prototype_hott_term_action_key term;
+		struct prototype_hott_identity_type_computation_key identity_type;
+		struct prototype_hott_object_term_action_key object_term;
 	} key;
 	uint64_t key_hash;
 	uint32_t hash_next;
@@ -474,10 +522,12 @@ struct prototype_hott_substitution_action_certificate {
 	uint64_t term_graph_revision;
 };
 
-struct prototype_hott_type_action_certificate {
+struct prototype_hott_relation_type_action_certificate {
 	uint32_t endpoint_context_id;
 	uint32_t left_endpoint_binding_id;
 	uint32_t right_endpoint_binding_id;
+	int relation_family_semantics;
+	uint32_t relation_family_term_id;
 	uint32_t relation_type_term_id;
 	uint32_t relation_is_type_claim_id;
 	uint32_t left_context_certificate_id;
@@ -492,6 +542,32 @@ struct prototype_hott_term_action_certificate {
 	uint32_t witness_has_type_claim_id;
 };
 
+struct prototype_hott_identity_type_computation_certificate {
+	int computation_rule;
+	uint32_t endpoint_context_id;
+	uint32_t left_endpoint_binding_id;
+	uint32_t right_endpoint_binding_id;
+	uint32_t generated_type_declaration_id;
+	uint32_t backing_type_former_term_id;
+	uint32_t backing_type_former_has_type_claim_id;
+	uint32_t identity_type_term_id;
+	uint32_t identity_type_has_type_claim_id;
+	uint32_t identity_type_is_type_claim_id;
+	uint32_t left_context_certificate_id;
+	uint32_t right_context_certificate_id;
+	uint32_t pointwise_left_input_binding_id;
+	uint32_t pointwise_right_input_binding_id;
+	uint32_t pointwise_input_identity_binding_id;
+};
+
+struct prototype_hott_object_term_action_certificate {
+	uint32_t left_endpoint_claim_id;
+	uint32_t right_endpoint_claim_id;
+	uint32_t identity_family_has_type_claim_id;
+	uint32_t witness_term_id;
+	uint32_t witness_has_type_claim_id;
+};
+
 struct prototype_hott_action_certificate {
 	uint32_t id;
 	uint32_t request_id;
@@ -499,8 +575,10 @@ struct prototype_hott_action_certificate {
 	union {
 		struct prototype_hott_context_action_certificate context;
 		struct prototype_hott_substitution_action_certificate substitution;
-		struct prototype_hott_type_action_certificate type;
+		struct prototype_hott_relation_type_action_certificate relation_type;
 		struct prototype_hott_term_action_certificate term;
+		struct prototype_hott_identity_type_computation_certificate identity_type;
+		struct prototype_hott_object_term_action_certificate object_term;
 	} data;
 };
 
@@ -568,12 +646,95 @@ int prototype_hott_action_db_validate(
 	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges
 );
-int prototype_hott_execute_type_action(
+int prototype_hott_register_identity_root(
+	struct prototype_artifact_interface* interface,
+	const struct prototype_hott_action_db* actions,
+	const struct prototype_kernel_view* kernel,
+	const struct prototype_hott_bridge_db* bridges,
+	uint32_t identity_result_id,
+	uint32_t witness_has_type_claim_id,
+	uint32_t* p_root_id
+);
+int prototype_hott_execute_relation_type_action(
 	struct prototype_hott_action_db* actions,
 	struct prototype_kernel_builder* kernel,
 	const struct prototype_hott_bridge_db* bridges,
 	uint32_t request_id,
 	uint32_t* p_result_id
+);
+int prototype_hott_execute_identity_type_computation(
+	struct prototype_hott_action_db* actions,
+	struct prototype_kernel_builder* kernel,
+	struct prototype_hott_bridge_db* bridges,
+	uint32_t request_id,
+	uint32_t* p_result_id
+);
+int prototype_hott_execute_object_term_action(
+	struct prototype_hott_action_db* actions,
+	struct prototype_kernel_builder* kernel,
+	struct prototype_hott_bridge_db* bridges,
+	uint32_t request_id,
+	uint32_t* p_result_id
+);
+int prototype_hott_construct_degeneracy(
+	const struct prototype_hott_action_db* actions,
+	struct prototype_kernel_builder* kernel,
+	const struct prototype_hott_bridge_db* bridges,
+	uint32_t identity_result_id,
+	uint32_t source_claim_id,
+	uint32_t* p_identity_family_claim_id,
+	uint32_t* p_witness_term_id,
+	uint32_t* p_witness_claim_id
+);
+
+enum prototype_hott_universe_correspondence_projection {
+	PROTOTYPE_HOTT_UNIVERSE_PROJECT_RELATION = 2,
+	PROTOTYPE_HOTT_UNIVERSE_PROJECT_TRANSPORT_RIGHT = 3,
+	PROTOTYPE_HOTT_UNIVERSE_PROJECT_TRANSPORT_LEFT = 4,
+	PROTOTYPE_HOTT_UNIVERSE_PROJECT_LIFT_RIGHT = 5,
+	PROTOTYPE_HOTT_UNIVERSE_PROJECT_LIFT_LEFT = 6
+};
+
+int prototype_hott_construct_universe_correspondence_projection(
+	const struct prototype_hott_action_db* actions,
+	struct prototype_kernel_builder* kernel,
+	const struct prototype_hott_bridge_db* bridges,
+	uint32_t universe_identity_result_id,
+	uint32_t correspondence_claim_id,
+	int projection,
+	uint32_t* p_projection_term_id,
+	uint32_t* p_projection_claim_id
+);
+
+int prototype_hott_construct_object_term_action(
+	const struct prototype_hott_action_db* actions,
+	struct prototype_kernel_builder* kernel,
+	const struct prototype_hott_bridge_db* bridges,
+	uint32_t identity_result_id,
+	uint32_t source_claim_id,
+	uint32_t* p_identity_family_claim_id,
+	uint32_t* p_witness_term_id,
+	uint32_t* p_witness_claim_id
+);
+int prototype_hott_instantiate_object_identity_family(
+	const struct prototype_hott_action_db* actions,
+	struct prototype_kernel_builder* kernel,
+	const struct prototype_hott_bridge_db* bridges,
+	uint32_t identity_result_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t* p_identity_family_claim_id
+);
+int prototype_hott_check_object_identity_witness(
+	const struct prototype_hott_action_db* actions,
+	struct prototype_kernel_builder* kernel,
+	const struct prototype_hott_bridge_db* bridges,
+	uint32_t identity_result_id,
+	uint32_t left_endpoint_claim_id,
+	uint32_t right_endpoint_claim_id,
+	uint32_t witness_claim_id,
+	uint32_t* p_identity_family_claim_id,
+	uint32_t* p_checked_witness_claim_id
 );
 int prototype_hott_execute_substitution_action(
 	struct prototype_hott_action_db* actions,
@@ -596,20 +757,45 @@ int prototype_hott_bridge_db_construct_extension(
 	struct prototype_kernel_builder* kernel,
 	const struct prototype_hott_action_db* actions,
 	uint32_t source_context_id,
-	uint32_t type_action_request_id,
+	uint32_t relation_type_action_request_id,
 	uint32_t* p_bridge_id
 );
+int prototype_hott_bridge_db_construct_identity_extension(
+	struct prototype_hott_bridge_db* bridges,
+	struct prototype_kernel_builder* kernel,
+	const struct prototype_hott_action_db* actions,
+	uint32_t source_context_id,
+	uint32_t identity_type_action_request_id,
+	uint32_t* p_bridge_id
+);
+int prototype_hott_bridge_db_ensure_identity_context(
+	struct prototype_hott_bridge_db* bridges,
+	struct prototype_kernel_builder* kernel,
+	struct prototype_hott_action_db* actions,
+	uint32_t source_context_id,
+	uint32_t* p_bridge_id,
+	int* p_residual_reason
+);
 
-struct prototype_hott_observation_execution {
+struct prototype_hott_relation_execution {
 	uint32_t work_item_id;
-	uint32_t type_action_request_id;
-	uint32_t type_action_result_id;
+	uint32_t relation_type_action_request_id;
+	uint32_t relation_type_action_result_id;
 	uint32_t term_action_request_id;
 	uint32_t term_action_result_id;
+	int materialization_state;
+	uint32_t relation_witness_claim_id;
 };
 
-int prototype_hott_observation_plan_and_execute(
-	struct prototype_hott_observation_goal_db* goals,
+enum prototype_hott_materialization_state {
+	PROTOTYPE_HOTT_MATERIALIZATION_INVALID = 0,
+	PROTOTYPE_HOTT_MATERIALIZATION_RELATION_WITNESS = 1,
+	PROTOTYPE_HOTT_MATERIALIZATION_EMPTY_FAMILY = 2,
+	PROTOTYPE_HOTT_MATERIALIZATION_RESIDUAL = 3
+};
+
+int prototype_hott_relation_plan_and_execute(
+	struct prototype_hott_relation_goal_db* goals,
 	struct prototype_hott_candidate_db* candidates,
 	struct prototype_hott_work_db* work,
 	struct prototype_hott_action_db* actions,
@@ -620,7 +806,7 @@ int prototype_hott_observation_plan_and_execute(
 	uint32_t source_ast,
 	int normalization_profile,
 	uint64_t step_limit,
-	struct prototype_hott_observation_execution* p_execution
+	struct prototype_hott_relation_execution* p_execution
 );
 
 #endif

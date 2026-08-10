@@ -114,7 +114,8 @@ int main(void) {
 			&delta, &term_db, &type_db
 		) != 0 ||
 		prototype_judgement_delta_commit(&delta, 0) != 0 ||
-		prototype_judgement_validate_proofs(
+		prototype_judgement_publish_candidates(NULL, &judgement) != 0 ||
+		prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
 			&contexts,
@@ -306,7 +307,8 @@ int main(void) {
 			&returned_evidence,
 			wrong_result_classifier
 		) == 0 || prototype_judgement_delta_commit(&delta, 0) != 0 ||
-		prototype_judgement_validate_proofs(
+		prototype_judgement_publish_candidates(NULL, &judgement) != 0 ||
+		prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
 			&contexts,

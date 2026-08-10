@@ -1,19 +1,29 @@
-A_PROGRAM_HOTT_FRAGMENT 2
+A_PROGRAM_HOTT_FRAGMENT 5
 
-observation_category VALUE=1 COMPUTATION=2
+relation_category VALUE=1 COMPUTATION=2
 work_state PENDING=1 READY=2 RESIDUAL=3 UNSUPPORTED=4
-rule NONE=0 OBS_DIAGONAL=1 OBS_CONVERT=2 OBS_ADT_CONSTRUCTOR=3 OBS_ADT_DISTINCT=4 OBS_MATCH_ACTION=5 OBS_COMP_RETURN=6 OBS_PI_POINTWISE=7 OBS_THUNK_PURE=8 OBS_REINDEX=9
-child_role NONE=0 ADT_FIELD=1 ADT_DEPENDENT_REINDEX=2 MATCH_SCRUTINEE=3 MATCH_MOTIVE_ACTION=4 MATCH_CASE_ACTION=5 MATCH_RECURSIVE_IH=6 COMP_LEFT_RETURN_EXPOSURE=7 COMP_RIGHT_RETURN_EXPOSURE=8 COMP_RESULT_OBSERVATION=9 PI_DOMAIN_ACTION=10 PI_RELATED_INPUT=11 PI_CODOMAIN_OBSERVATION=12 THUNK_COMPUTATION_OBSERVATION=13 CONVERT_ANCHOR_OBSERVATION=14 CONTEXT_ACTION=15 SUBSTITUTION_ACTION=16 TYPE_ACTION=17 TERM_ACTION=18 REINDEX_NATURALITY=19
-action_kind CONTEXT=1 SUBSTITUTION=2 TYPE=3 TERM=4
+rule NONE=0 REL_DIAGONAL=1 REL_CONVERT=2 REL_ADT_CONSTRUCTOR=3 REL_ADT_DISTINCT=4 REL_MATCH_ACTION=5 REL_COMP_RETURN=6 REL_PI_POINTWISE=7 REL_THUNK_PURE=8 REL_REINDEX=9
+candidate_object_result INVALID=0 RELATION_WITNESS=1 EMPTY_FAMILY=2 DEFERRED=3
+materialization_state INVALID=0 RELATION_WITNESS=1 EMPTY_FAMILY=2 RESIDUAL=3
+child_role NONE=0 ADT_FIELD=1 ADT_DEPENDENT_REINDEX=2 MATCH_SCRUTINEE=3 MATCH_MOTIVE_ACTION=4 MATCH_CASE_ACTION=5 MATCH_RECURSIVE_IH=6 COMP_LEFT_RETURN_EXPOSURE=7 COMP_RIGHT_RETURN_EXPOSURE=8 COMP_RESULT_RELATION=9 PI_DOMAIN_ACTION=10 PI_RELATED_INPUT=11 PI_CODOMAIN_RELATION=12 THUNK_COMPUTATION_RELATION=13 CONVERT_ANCHOR_RELATION=14 CONTEXT_ACTION=15 SUBSTITUTION_ACTION=16 RELATION_TYPE_ACTION=17 TERM_ACTION=18 REINDEX_NATURALITY=19
+action_kind CONTEXT=1 SUBSTITUTION=2 RELATION_TYPE=3 TERM=4 IDENTITY_TYPE_COMPUTATION=5 OBJECT_TERM=6
 action_result_state READY=1 RESIDUAL=2 UNSUPPORTED=3
 residual_reason NONE=0 CONVERSION=1 CONVERSION_EXHAUSTED=2 EFFECTFUL=3 EFFECT_ROW_UNRESOLVED=4 NEUTRAL_PURE_COMPUTATION=5 OPERATION_REQUEST=6 COMPUTATION_FOLD=7 HOST_PRIMITIVE=8 TYPE_VIEW=9 UNIVERSE=10 DEFERRED_OBJECT_RULE=11
-certificate_kind CONTEXT_BRIDGE=1 SUBSTITUTION_NATURALITY=2 TYPE_ACTION=3 TERM_ACTION=4
-judgement_proof OBSERVATION_TYPE_FORMATION=33 OBSERVATION_WITNESS_INTRO=34 SUBSTITUTION_REINDEX=35 OBSERVATION_CONSTRUCTOR_WITNESS=36 OBSERVATION_RETURN_WITNESS=37 OBSERVATION_THUNK_WITNESS=38 OBSERVATION_APP_WITNESS=39 OBSERVATION_LAMBDA_WITNESS=40 OBSERVATION_MATCH_WITNESS=41 OBSERVATION_INDUCTION_HYPOTHESIS_WITNESS=42
-type_former_kind UNKNOWN=0 ORDINARY_ADT=1 PI=2 PURE_COMPUTATION=3 THUNK=4 UNIVERSE=5 HOST_PRIMITIVE=6 OBSERVATION=7
-type_action_rule NONE=0 ZERO_FIELD_ADT=1 ADT_TELESCOPE=2 PI_POINTWISE=3 PURE_COMPUTATION=4 THUNK=5 OBSERVATION_HIGHER=6
+certificate_kind CONTEXT_BRIDGE=1 SUBSTITUTION_NATURALITY=2 RELATION_TYPE_ACTION=3 TERM_ACTION=4 IDENTITY_TYPE_COMPUTATION=5 OBJECT_TERM_ACTION=6
+bridge_semantics EMPTY_IDENTITY=1 PARAMETRIC_RELATION=2 OBJECT_IDENTITY=3
+identity_computation_rule INVALID=0 ORDINARY_ADT=1 THUNK_RETURN=2 PI_POINTWISE=3 CONSTANT_FAMILY_LIFT=4 INDEXED_HIGHER_LIFT=5 UNIVERSE_CORRESPONDENCE=6 UNIVERSE_FIBER=7
+judgement_proof RELATION_TYPE_FORMATION=33 RELATION_WITNESS_INTRO=34 SUBSTITUTION_REINDEX=35 RELATION_CONSTRUCTOR_WITNESS=36 RELATION_RETURN_WITNESS=37 RELATION_THUNK_WITNESS=38 RELATION_APP_WITNESS=39 RELATION_LAMBDA_WITNESS=40 RELATION_MATCH_WITNESS=41 RELATION_INDUCTION_HYPOTHESIS_WITNESS=42
+judgement_proof COMPUTATION_TYPE_FORMATION=43 THUNK_TYPE_FORMATION=44
+object_action_proof LAMBDA_INTRO=6 APP_ELIM=7 RETURN_INTRO=8 THUNK_INTRO=9 FORCE_ELIM=10 COMPUTATION_FOLD_ELIM=12 MATCH_ELIM=13 CONVERSION=20
+type_former_kind UNKNOWN=0 ORDINARY_ADT=1 PI=2 PURE_COMPUTATION=3 THUNK=4 UNIVERSE=5 HOST_PRIMITIVE=6 RELATION=7
+relation_type_action_rule NONE=0 ZERO_FIELD_ADT=1 ADT_TELESCOPE=2 PI_POINTWISE=3 PURE_COMPUTATION=4 THUNK=5 RELATION_HIGHER=6
+relation_family_semantics INVALID=0 PARAMETRIC_ACTION=1
+type_former_capability UNDECLARED=0 SUPPORTED=1 DEFERRED=2 NOT_APPLICABLE=3 fields=RELATION_TYPE_ACTION,TERM_ACTION,ORDINARY_REINDEX,PURITY,IDENTITY_COMPUTATION,TRANSPORT,LIFTING,RESOURCE_HOOK,ARTIFACT
 
-An observation-family goal is immutable and is identified by category, exact
-carrier IS_TYPE Claim, exact left and right HAS_TYPE Claims, and Context bridge.
+An internal relation-family goal is immutable and is identified by category, exact
+left and right carrier IS_TYPE Claims, exact left and right HAS_TYPE Claims,
+and Context bridge. The two carrier Claims may differ for dependent fibers;
+unsupported heterogeneous carrier action is residual, not an invalid goal.
 A goal stores no selected rule, search state, source position, conversion cache,
 or object witness.
 
@@ -23,47 +33,260 @@ solved by mutating its identity. Context, Substitution, Operation, Claim,
 Derivation, action, certificate, and compiler-work IDs never occur in object
 Term identity.
 
+OBJECT_TERM is the object-language `ap_t` action. Its request selects one
+ordinary HAS_TYPE source Claim, one OBJECT_IDENTITY Context bridge, and the
+exact IDENTITY_TYPE_COMPUTATION request for the source classifier. Its
+certificate retains the two reindexed endpoint Claims, the instantiated
+ordinary identity-family Claim, and an ordinary witness Term/HAS_TYPE Claim.
+It is distinct from TERM, which remains the compiler-local PARAMETRIC_ACTION
+term action. Neither action ID occurs in the witness Term identity.
+
+A Context bridge is one shared span representation for endpoint substitutions.
+Its certificate has an explicit semantic kind. EMPTY_IDENTITY is the unique
+empty-telescope identity. PARAMETRIC_RELATION means each non-empty extension is
+classified by the compiler-local relation action and cannot authorize object
+identity. OBJECT_IDENTITY marks an extension classified by an exact computed
+identity family and ordinary Context-binding witness Claim. Its action
+certificate must be IDENTITY_TYPE_COMPUTATION; replay rejects a relation-action
+certificate in that slot. The graph shape alone never upgrades
+PARAMETRIC_RELATION to OBJECT_IDENTITY. The executable cases extend an object
+bridge by a closed homogeneous carrier and compute the eight-boundary square
+family for generated identity datatypes with nullary or nondependent fields.
+General dependent fiber lifting remains residual.
+
+CONSTANT_FAMILY_LIFT is the type-side computation law ap_const(delta)=refl.
+For a closed carrier family A weakened into a non-empty object bridge, it
+reuses the type-former-directed identity computation selected in the empty
+Context and forms its endpoint Context and exact Claims over that bridge.
+Generated ADT and pure-Return identities retain their generated declaration;
+nondependent pure Pi retains its direct pointwise identity family and its three
+pointwise Binding identities. It is not general dependent lifting.
+INDEXED_HIGHER_LIFT acts on IdA(x0,x1) over the six-face bridge of its
+endpoint Context. It generates an eight-index higher identity datatype: four
+corner values, two vertical endpoint proofs, and two horizontal Context-bridge
+proofs. A constructor exists only when all eight boundary faces specialize a
+source identity constructor coherently. For each nondependent source field the
+higher constructor has nine fields: four corner values, four edge identities,
+and one field-square center. This is genuine square-center computation, but it
+does not yet lift a later field classifier that depends on earlier fields.
+
 For Gamma |- A type, Type action first constructs
 Gamma^R.x0:A[pi0].x1:A[pi1]. Its relation type is formed in that endpoint
 Context. A Type result contains the endpoint Context, both endpoint bindings,
-the relation type Term, its exact IS_TYPE Claim, and Context certificates.
+the relation type Term, a nested pure-family abstraction over both endpoint
+bindings, PARAMETRIC_ACTION semantics, its exact IS_TYPE Claim, and Context
+certificates. PARAMETRIC_ACTION is rejected if presented as another semantic
+kind; it does not certify object identity. The abstraction
+uses the same THUNK(LAMBDA(...RETURN...)) representation as every dependent Pi
+codomain family; it is not a HOTT-specific function tag. Certificate replay
+checks the family body against the endpoint relation under an explicit
+two-binding alpha correspondence.
 
-The first-fragment object forms are OBSERVATION_TYPE(A0,A1,a0,a1) and
-OBSERVATION_WITNESS(a0,a1). All operands are ordinary Term IDs. Homogeneous Eq
-is OBSERVATION_TYPE(A,A,a,b). The ap operation is a typed compiler action that
+Relation instantiation is one typed operation shared by diagonal Term action
+and arbitrary-endpoint candidate materialization. It reindexes the exact left
+and right endpoint and carrier Claims through the bridge, constructs the two
+endpoint extensions and their CwF certificates, specializes the relation body,
+and publishes its exact IS_TYPE Claim. Candidate materialization returns an
+exact witness Claim, EMPTY_FAMILY, or RESIDUAL; a READY family plan alone is
+never reported as a witness.
+
+The first-fragment compiler forms are RELATION_TYPE(A0,A1,a0,a1) and
+RELATION_WITNESS(a0,a1). They encode the current relational action only.
+They are not yet object-language homogeneous identity: the type form does not
+retain a selected relation between A0 and A1, and the endpoint-only witness
+does not retain proof payload. The ap operation is a typed compiler action that
 generates exact HAS_TYPE Derivations. A diagonal action may generate an
-OBSERVATION_WITNESS Term. The action of a Context variable is the corresponding
+RELATION_WITNESS Term. The action of a Context variable is the corresponding
 relation binding already present in the Context bridge. A witness Term stores
-no action ID and is not evidence without its Derivation.
-Reflexivity is the diagonal instance of ap, not a separate primitive REFL node.
+no action ID and is not evidence without its Derivation. Artifact persistence
+and the interpretation as reflexivity remain deferred until the A1.T0
+relation-to-identity gate replaces these provisional object forms.
 
 Type-action dispatch is selected by one declarative type-former descriptor.
-Ordinary ADTs, pure Pi, pure Comp, pure Thunk, and OBSERVATION_HIGHER are
+Ordinary ADTs, pure Pi, pure Comp, pure Thunk, and RELATION_HIGHER are
 admitted. Universe and host primitive actions are explicitly unsupported;
 effectful and unresolved computation rows are residual.
 
+Admission currently means that the internal-parametricity relation action is
+implemented. IDENTITY_COMPUTATION, TRANSPORT, and LIFTING are independent
+capabilities. IDENTITY_COMPUTATION is SUPPORTED for closed ordinary ADTs whose
+constructor fields are nondependent and whose field identity declarations are
+available; a recursive field uses the identity declaration currently being
+generated. It is also SUPPORTED for one exact fiber of a parameter-free indexed
+ADT when every admitted source constructor is nullary and its result classifier
+is exactly that fiber. This indexed-nullary rule admits identity computation on
+the generated IdBool(false,false) family itself. It is SUPPORTED for
+ThunkType(Comp(empty,A)) when the identity of A is available and for the listed
+nondependent pure Pi pointwise fragment. TRANSPORT and general LIFTING remain
+DEFERRED for every former in fragment version 4. A descriptor must not be
+interpreted as complete Higher Observational Identity support until the
+relevant lifting operations and their higher instances are implemented and
+their object terms and computation rules have been replayed by the kernel.
+
+For a nondependent pure computation function Pi(A,Comp(empty,B)), object
+identity on ThunkType(Pi(...)) computes directly to the value type of a
+three-argument pointwise proof over x0:A, x1:A, and IdA(x0,x1). Its result is
+the identity between the thunked applications of the forced endpoint
+functions. This direct computed Pi type is not wrapped in a generated
+one-constructor declaration. Dependent codomains remain deferred until family
+lifting is implemented.
+The computation certificate retains the three pointwise Binding identities of
+the identity template; accepted replay reconstructs no fresh binder and mutates
+no semantic arena. Endpoint specialization may alpha-intern with an existing
+concrete family that uses different physical Binding IDs. Object proof
+construction therefore reads the three binders from the specialized family
+graph and never requires them to equal the template Binding IDs.
+
+IDENTITY_TYPE_COMPUTATION is a distinct action kind keyed by the exact source
+IS_TYPE Claim and Context bridge. It does not depend on a preceding
+RELATION_TYPE request: the parametricity relation is not authority for object
+identity. It is never interned as the same request as RELATION_TYPE. Until a
+type former has an ordinary generated identity-family graph and exact typing
+Claim, execution publishes DEFERRED_OBJECT_RULE with no certificate.
+
+UNIVERSE_FIBER is the first bridge-selected dependent identity rule. If an
+object Context bridge for Gamma,A:Universe retains an exact Universe identity
+witness whose correspondence projection is R:A0->A1->Universe, identity
+computation for the following fiber b:A is R(b0,b1). The dispatcher selects
+this rule from the preceding OBJECT_IDENTITY bridge certificate before it
+consults the syntactic type-former descriptor for A. It never substitutes the
+compiler-local PARAMETRIC_ACTION relation. Context weakening and substitution
+reindex preserve their exact premise Claims and semantic substitution edges.
+The object-telescope driver recursively ensures the parent object bridge,
+executes the exact identity computation selected by each Context-formation
+Claim, and extends the bridge only from a READY object certificate. The rule
+therefore repeats across every supported Context extension. A valid but
+unsupported fiber publishes a residual result and never falls back to a
+PARAMETRIC_RELATION bridge. General type-family action B(a), symmetry,
+composition, and univalence remain outside this rule.
+
+The seven-field Universe correspondence currently stores A0, A1, R, trr, trl,
+liftr, and liftl. It is a finite executable fibrancy interface, not a complete
+higher bisimulation. In particular it does not yet store the higher-recursive
+coherence field that makes the bisimulation structure itself stable under
+identity. Consequently the manifest does not claim generic groupoid inversion,
+composition, box filling, J, or full Higher Observational Type Theory.
+
+Object term action for a Context variable is independent of the source type
+former. It instantiates the exact family retained by the
+IDENTITY_TYPE_COMPUTATION certificate at the two reindexed variable endpoints,
+then uses the identity witness introduced with that Context binding. It does
+not require a generated ADT identity declaration and therefore applies equally
+to generated ADT families and direct pointwise Pi identity families. A mapped
+witness may be converted only after the exact instantiated family has been
+formed and checked.
+
+Object action for a typed THUNK(LAMBDA(x,body)) at a direct pointwise Pi
+identity is derivation-driven. It extends the outer object bridge by x0, x1,
+and xR, composes the outer endpoint substitutions with the three-field
+projection, and adds the source Lambda Binding identity to the same object
+action environment. A RETURN(v) body recursively acts on v. A pure raw-CBPV
+APP(FORCE(f),x) body recursively acts on f and x, applies the pointwise function
+identity witness to x0, x1, and xR, and sequences its intermediate computation
+results with zero-clause COMPUTATION_FOLD nodes. Generated intermediate
+pointwise types receive ordinary structural type-formation DAGs. Convertible
+but nonidentical specialized families are connected by an explicit CONVERSION
+Derivation. Identity Claims inherited from the outer telescope are reindexed
+into the pointwise body Context before use. The resulting ordinary three-Lambda
+witness inhabits the exact endpoint-instantiated Pi family. Inspecting a shared
+Core Lambda without its accepted THUNK/LAMBDA and body Derivations is not
+authority for this action. Effectful APP and general computation bodies remain
+residual.
+
+Object action for THUNK(RETURN(v)) in a non-empty object bridge reads the
+accepted THUNK_INTRO and RETURN_INTRO premises, acts on v under the same
+endpoint substitutions, and applies the generated three-field thunk identity
+constructor to v0, v1, and vR. The final classifier is the exact family
+obtained by instantiating the identity-computation certificate at the two
+reindexed thunk endpoints. A constant-family computation rule may reuse this
+action only when its retained source carrier is a pure ThunkType; the rule name
+alone does not reinterpret another generated identity declaration as CBPV.
+The third field may use either an ordinary generated identity declaration or a
+direct pointwise Pi identity family. The generated THUNK_RETURN declaration,
+its action certificate, and accepted replay all validate that choice through
+the one TypeDeclarationDB generated-identity validator; no HOTT-local duplicate
+validator defines a narrower identity fragment.
+
+Ordinary object action is recursively type-directed. Constructor fields,
+RETURN values, and Lambda bodies enter one dispatcher which computes the exact
+local identity family from the subterm classifier and the inherited object
+bridge. Generated ADT/Thunk families and direct pointwise Pi families share
+this path; no source-Term tag is treated as proof authority without its
+accepted Derivation. If the two reindexed classifiers do not convert, or the
+required dependent family lifting is unavailable, the subaction is residual
+rather than replaced by compiler-local RELATION evidence.
+
+Object action for a nullary ordinary Match is derivation-driven. The accepted
+MATCH_ELIM classifier premise must itself have an accepted APP_ELIM derivation
+that identifies the exact scrutinee Claim. The action recursively acts on that
+scrutinee and every branch body, then eliminates the resulting indexed identity
+witness with an ordinary indexed MATCH_ELIM. Its motive is the exact identity
+family instantiated at the two endpoint Matches. Convertible source motives
+are connected by explicit CONVERSION Claims; raw Term equality is not required.
+This rule is the nullary base case only. Pattern fields, recursive IH, dependent
+motives, and effectful branch computations remain residual.
+
+For a supported closed unindexed ordinary ADT T, identity computation generates
+an indexed ordinary declaration IdT : T -> T -> Universe. The two endpoints are
+an index telescope, not uniform parameters. For every source constructor C with
+fields a it generates one ordinary constructor CR whose telescope contains a0,
+a1, and IdA(a0,a1) for each source field, and whose result is
+IdT(C a0)(C a1). Nullary constructors are the empty-telescope case. For a
+supported indexed-nullary source fiber, only source constructors whose exact
+result classifier is that fiber generate constructors. Generated constructor
+ordinals are local; replay derives the source ordinal from the two endpoint
+constructor spines in the generated result classifier. No parallel provenance
+table is authoritative. The generated declaration has exact source-carrier
+provenance, and its unsaturated family is certified by the existing
+TYPE_FORMATION_INTRO rule. The computation certificate additionally owns the
+endpoint Context, its two binding identities, the concrete type IdT(x0,x1) in
+that Context, and its exact formation Claim. The unsaturated former alone is
+not a computed identity result. Distinct source constructors have no generated
+identity constructor between them. This computes an identity family; it does
+not fabricate an endpoint-only witness and does not extend DefEq.
+
+The indexed-nullary closure is the first executable identity-of-identity case:
+an ordinary proof p : IdBool(false,false) can be used as an endpoint of the
+generated family Id_(IdBool(false,false))(p,p), and ordinary degeneracy builds
+its constructor witness. This demonstrates one additional dimension without
+proof irrelevance. Nondependent fields are also executable through the
+four-corner, four-edge, one-center constructor telescope. It does not implement
+general higher closure: dependent fields need identity-selected lifting through
+their preceding field and index telescopes and remain residual.
+
+For ThunkType(Comp(empty,A)), identity computation generates an indexed
+ordinary declaration whose endpoints are thunk values. Its RETURN higher
+constructor has fields v0:A, v1:A, and vR:IdA(v0,v1), and result indices
+THUNK(RETURN(v0)) and THUNK(RETURN(v1)). This is the object realization of
+computation equivalence at the pure returning computation type. It adds no
+computation endpoint to ordinary type dependency; neutral or effectful
+computations remain residual.
+
 Observation planning is repeatable: an already interned candidate remains a
 valid candidate even when a later planning run allocates no new record. The
+work result is graph-consed by exact goal, normalization profile, step limit,
+TermDB revision, and calculus fingerprint; source position is diagnostic data
+and does not split the prior-computation result. The
 plan-and-execute boundary starts exact Type actions and starts Term actions only
 for exact diagonal candidates; forming an uninhabited distinct-constructor
 family never fabricates an inhabitant.
 
 For a same-constructor ordinary ADT action, the object witness remains
-OBSERVATION_WITNESS(left,right). Its exact Derivation is
-OBSERVATION_CONSTRUCTOR_WITNESS and contains one accepted field-witness Claim
+RELATION_WITNESS(left,right). Its exact Derivation is
+RELATION_CONSTRUCTOR_WITNESS and contains one accepted field-witness Claim
 per constructor argument in telescope order. Field evidence is proof authority,
 not part of TermDB object identity. Recursive constructor action recursively
 uses the same immutable Type and Term action requests.
 
 For Comp(empty,A), RETURN action recursively acts on its value and records the
-resulting witness Claim as an OBSERVATION_RETURN_WITNESS premise. THUNK action
+resulting witness Claim as an RELATION_RETURN_WITNESS premise. THUNK action
 does the same for its enclosed pure computation using
-OBSERVATION_THUNK_WITNESS. Neither rule admits an effectful or unresolved row.
+RELATION_THUNK_WITNESS. Neither rule admits an effectful or unresolved row.
 
 APP action recursively acts on its function and argument premises. Its exact
-OBSERVATION_APP_WITNESS derivation stores both child witness Claims. A child
-witness may be any inhabitant of the generated observation type, including a
-Context relation variable; it need not have OBSERVATION_WITNESS object syntax.
+RELATION_APP_WITNESS derivation stores both child witness Claims. A child
+witness may be any inhabitant of the generated relation type, including a
+Context relation variable; it need not have RELATION_WITNESS object syntax.
 
 LAMBDA action constructs or reuses the bridge for its binder Context. The body
 witness lives under the ordered x0, x1, and input-relation extensions. Replay
@@ -77,7 +300,15 @@ Match whose branches share one graph body independent of all pattern binders is
 a constant eliminator and reduces to that body under the ordinary Match
 reduction profile, including for a neutral scrutinee.
 
-An OBSERVATION_MATCH_WITNESS derivation records the accepted source Match Claim
+Elimination of a generated nullary ADT identity family is indexed elimination,
+not ordinary branch-hint checking. Each branch owns a Context substitution that
+maps both endpoint indices and the relation witness to the exact result of the
+selected higher constructor. The branch body and motive are reindexed through
+that substitution. Accepted replay recomputes the canonical substitution and
+rejects a branch edge carrying another constructor's solution. This first
+fragment deliberately leaves indexed constructors with fields unsupported.
+
+An RELATION_MATCH_WITNESS derivation records the accepted source Match Claim
 in addition to both endpoint Match Claims, the scrutinee witness, and every
 branch witness. Branch witnesses act on the source branch body under the
 left/right branch Context extensions. The enclosing Match derivation closes the
@@ -86,7 +317,7 @@ IH frame ID is never treated as an ordinary binder ID or silently renamed by a
 branch-local substitution.
 
 INDUCTION_HYPOTHESIS action is guarded by an accepted source
-INDUCTION_HYPOTHESIS_ELIM Claim and the observation witness of its recursive
+INDUCTION_HYPOTHESIS_ELIM Claim and the relation witness of its recursive
 argument. It does not recursively invoke the enclosing Match action and cannot
 introduce a cycle in the Derivation DAG.
 
@@ -94,8 +325,14 @@ A substitution action owns a typed naturality certificate for both endpoint
 squares under an exact pure conversion profile and deterministic step budget.
 Exhaustion is residual and never equality. Definitional conversion remains
 meta-level evidence and successful object proofs never extend global DefEq.
+Reindexing a Claim along the identity Context substitution returns that Claim
+itself. It does not add a SUBSTITUTION_REINDEX derivation with the same Claim as
+both conclusion and premise; accepted evidence remains a DAG.
 
-Family formation and family inhabitation are distinct. OBS_ADT_DISTINCT forms
-an uninhabited observation family; it is not compiler contradiction. Work
+Family formation and family inhabitation are distinct. REL_ADT_DISTINCT forms
+an EMPTY_FAMILY candidate; it is not a witness and not compiler contradiction.
+Candidate object results distinguish WITNESS construction, EMPTY_FAMILY
+computation, and a DEFERRED object rule even when relation-family planning is
+otherwise ready. Work
 items and residual obligations are compiler-local and are not artifact roots
 in fragment version 2.

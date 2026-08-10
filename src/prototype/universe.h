@@ -7,6 +7,14 @@
 #include "term.h"
 #include "type_declaration.h"
 
+/* These are compiler acceptance limits, not counts from a particular graph.
+ * Re-publication may derive Universe data that was absent from the source
+ * cache, so every collector must use the same stable capacity boundary. */
+#define PROTOTYPE_UNIVERSE_NODE_CAPACITY 256
+#define PROTOTYPE_UNIVERSE_EDGE_CAPACITY 512
+#define PROTOTYPE_UNIVERSE_LEVEL_CAPACITY 1024
+#define PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY 4096
+
 struct prototype_operation_graph;
 struct prototype_judgement_db;
 
@@ -141,11 +149,6 @@ int prototype_universe_collect(
 
 int prototype_universe_validate_provenance(
 	const struct prototype_universe_db* db,
-	const struct prototype_judgement_db* judgement
-);
-
-int prototype_universe_rebind_provenance(
-	struct prototype_universe_db* db,
 	const struct prototype_judgement_db* judgement
 );
 

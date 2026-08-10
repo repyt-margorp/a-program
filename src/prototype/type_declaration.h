@@ -4,6 +4,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+enum prototype_identity_computation_rule {
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_INVALID = 0,
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT = 1,
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN = 2,
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE = 3,
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_CONSTANT_FAMILY_LIFT = 4,
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_INDEXED_HIGHER_LIFT = 5,
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE = 6,
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_FIBER = 7
+};
+
 struct prototype_term_db;
 struct prototype_context_db;
 
@@ -50,6 +61,7 @@ struct prototype_type_code_shape_key {
 	uint64_t hash;
 	uint32_t node_count;
 	uint32_t parameter_count;
+	uint32_t index_count;
 	uint32_t constructor_count;
 	uint32_t bound_binder_count;
 	uint32_t free_binder_count;
@@ -132,6 +144,11 @@ struct prototype_type_constructor_declaration {
 	uint32_t curried_classifier_cache;
 };
 
+enum prototype_type_declaration_origin_kind {
+	PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE = 0,
+	PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY = 1
+};
+
 struct prototype_type_declaration {
 	int name_symbol_id;
 	/* Stable TypeView identity.  The local type_index remains an arena handle;
@@ -149,8 +166,17 @@ struct prototype_type_declaration {
 	/* Readback/index cache; validation requires this to equal the depth of
 	 * parameter_context. Semantic parameter classifiers live in ContextDB. */
 	uint32_t parameter_count;
+	/* The index telescope extends parameter_context. Constructors quantify
+	 * only over uniform parameters and specialize indices in their result. */
+	uint32_t index_context;
+	uint32_t index_count;
 	uint32_t first_constructor;
 	uint32_t constructor_count;
+	/* Generated semantic declarations have no surface name. Their object
+	 * identity is selected by the exact source carrier Term, never by an
+	 * invented Symbol ID or allocation-order-sensitive display name. */
+	int origin_kind;
+	uint32_t origin_source_carrier_term_id;
 };
 
 /*
@@ -237,6 +263,36 @@ int prototype_type_declaration_add(
 	struct prototype_type_declaration_db* db,
 	int name_symbol_id,
 	uint32_t* p_type_id
+);
+
+int prototype_type_declaration_add_generated_identity(
+	struct prototype_type_declaration_db* db,
+	uint32_t source_carrier_term_id,
+	uint32_t parameter_context_id,
+	uint32_t* p_type_id
+);
+
+int prototype_type_declaration_origins_validate(
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_term_db* terms
+);
+int prototype_type_declaration_find_generated_identity(
+	const struct prototype_type_declaration_db* db,
+	uint32_t source_carrier_term_id,
+	uint32_t parameter_context_id,
+	uint32_t* p_type_id
+);
+int prototype_type_declaration_generated_identity_rule_for_source(
+	const struct prototype_term_db* terms,
+	uint32_t source_carrier_term_id
+);
+int prototype_type_declaration_validate_generated_identity(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t source_carrier_term_id,
+	uint32_t generated_type_id,
+	int computation_rule
 );
 
 int prototype_type_declaration_add_parameter(
@@ -369,6 +425,17 @@ int prototype_type_declaration_rebuild_representations(
 	const struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* db,
 	const struct prototype_context_db* contexts
+);
+int prototype_type_declaration_representations_equal(
+	const struct prototype_term_db* left_terms,
+	const struct prototype_type_declaration_db* left_db,
+	const struct prototype_context_db* left_contexts,
+	uint32_t left_type_id,
+	const struct prototype_term_db* right_terms,
+	const struct prototype_type_declaration_db* right_db,
+	const struct prototype_context_db* right_contexts,
+	uint32_t right_type_id,
+	int* p_equal
 );
 
 #endif

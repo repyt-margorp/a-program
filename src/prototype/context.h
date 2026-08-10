@@ -163,8 +163,10 @@ int prototype_context_db_validate(
 int prototype_context_db_append_relocated(
 	struct prototype_context_db* target,
 	const struct prototype_context_db* source,
-	uint32_t term_offset,
-	uint32_t binder_offset,
+	const uint32_t* term_relocation,
+	size_t term_relocation_count,
+	const uint32_t* binding_relocation,
+	size_t binding_relocation_count,
 	uint32_t* relocation,
 	size_t relocation_capacity
 );
@@ -283,7 +285,8 @@ int prototype_substitution_db_append_relocated(
 	const struct prototype_substitution_db* source,
 	const uint32_t* context_relocation,
 	size_t context_relocation_count,
-	uint32_t term_offset,
+	const uint32_t* term_relocation,
+	size_t term_relocation_count,
 	uint32_t* relocation,
 	size_t relocation_capacity
 );

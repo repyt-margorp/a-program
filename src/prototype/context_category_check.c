@@ -158,6 +158,9 @@ static int check_judgement_premise_arenas(void) {
 		for (uint32_t j = 0; j < counts[i]; ++j) {
 			premises[first + j].claim_id = i == 2 && j == 1 ? 1 : 0;
 			premises[first + j].scoped_proposition_id = PROTOTYPE_INVALID_ID;
+			premises[first + j].semantic_action_kind =
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
+			premises[first + j].semantic_action_id = PROTOTYPE_INVALID_ID;
 		}
 		first += counts[i];
 	}
@@ -949,6 +952,8 @@ int main(void) {
 		uint32_t source_section;
 		uint32_t context_relocation[4];
 		uint32_t substitution_relocation[4];
+		uint32_t term_relocation[8];
+		uint32_t binding_relocation[42];
 
 		prototype_context_db_init(
 			&source_contexts, source_context_storage, 4
@@ -962,6 +967,13 @@ int main(void) {
 		prototype_substitution_db_init(
 			&target_substitutions, target_substitution_storage, 4
 		);
+		for (uint32_t i = 0; i < 8; ++i) {
+			term_relocation[i] = i + 3;
+		}
+		for (uint32_t i = 0; i < 42; ++i) {
+			binding_relocation[i] = PROTOTYPE_INVALID_ID;
+		}
+		binding_relocation[41] = 141;
 		if (prototype_context_extend(
 				&source_contexts,
 				prototype_context_empty(&source_contexts),
@@ -987,8 +999,10 @@ int main(void) {
 			) != 0 || prototype_context_db_append_relocated(
 				&target_contexts,
 				&source_contexts,
-				3,
-				100,
+				term_relocation,
+				8,
+				binding_relocation,
+				42,
 				context_relocation,
 				4
 			) != 0 || prototype_substitution_db_append_relocated(
@@ -996,7 +1010,8 @@ int main(void) {
 				&source_substitutions,
 				context_relocation,
 				source_contexts.context_count,
-				3,
+				term_relocation,
+				8,
 				substitution_relocation,
 				4
 			) != 0 || source_section != 1 ||

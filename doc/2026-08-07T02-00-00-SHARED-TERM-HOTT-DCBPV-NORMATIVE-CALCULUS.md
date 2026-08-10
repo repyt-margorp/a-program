@@ -1,5 +1,13 @@
 # Shared-Term HOTT and Dependent-CBPV Normative Calculus
 
+> **Superseded observation object model (2026-08-09):** Sections describing
+> `OBSERVATION_TYPE(A0,A1,a0,a1)` as homogeneous equality and
+> `OBSERVATION_WITNESS(a0,a1)` as a proof-relevant witness are not normative.
+> The endpoint-only witness graph-conses all proofs with common endpoints, and
+> the type form does not retain the selected relation between endpoint types.
+> Replacement requirements are defined by
+> `2026-08-09T19-46-59-A1-T0-RELATION-TO-HIGHER-OBSERVATIONAL-IDENTITY-AUDIT.md`.
+
 Date: 2026-08-07
 
 Status: frozen V2-T1/T2 first-fragment specification

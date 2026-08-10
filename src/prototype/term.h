@@ -69,8 +69,8 @@ enum prototype_term_tag {
 	/* Static effect-row atom for one higher-order operation family and the
 	 * latent effects of its suspended computation argument. */
 	PROTOTYPE_TERM_EFFECT_ROW_OPERATION = 31,
-	PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER = 32,
-	PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER = 33
+	PROTOTYPE_TERM_RELATION_TYPE_FORMER = 32,
+	PROTOTYPE_TERM_RELATION_WITNESS_FORMER = 33
 };
 
 enum prototype_term_category {
@@ -617,6 +617,22 @@ void prototype_term_db_init(
 	size_t ih_scope_capacity
 );
 
+int prototype_term_db_append_relocated(
+	struct prototype_term_db* target,
+	const struct prototype_term_db* source,
+	const uint32_t* type_relocation,
+	size_t type_relocation_count,
+	const uint32_t* binding_relocation,
+	size_t binding_relocation_count,
+	uint32_t universe_offset,
+	const uint32_t* representation_relocation,
+	size_t representation_relocation_count,
+	const uint32_t* source_order,
+	size_t source_order_count,
+	uint32_t* term_relocation,
+	size_t term_relocation_capacity
+);
+
 uint32_t prototype_term_binding_for_scope_slot(struct prototype_term_db* db, uint32_t scope_slot);
 uint32_t prototype_term_new_binding(struct prototype_term_db* db);
 uint32_t prototype_term_new_ih_scope(struct prototype_term_db* db);
@@ -675,6 +691,14 @@ int prototype_term_type_instance_make(
 	uint32_t arg_count,
 	uint32_t* p_ret
 );
+int prototype_term_type_instance_source_make(
+	struct prototype_term_db* db,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t type_id,
+	const uint32_t* args,
+	uint32_t arg_count,
+	uint32_t* p_ret
+);
 int prototype_term_type_instance_info(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
@@ -688,6 +712,9 @@ int prototype_term_type_instance_info(
 int prototype_term_rebind_type_former_anchors(
 	struct prototype_term_db* db,
 	const struct prototype_type_declaration_db* type_declarations
+);
+int prototype_term_canonicalize_type_former_references(
+	struct prototype_term_db* db
 );
 int prototype_term_type_instance_extend(
 	struct prototype_term_db* db,
@@ -709,7 +736,7 @@ int prototype_term_induction_hypothesis(
 );
 int prototype_term_universe_var(struct prototype_term_db* db, uint32_t level_var, uint32_t* p_ret);
 int prototype_term_primitive_text(struct prototype_term_db* db, uint32_t* p_ret);
-int prototype_term_observation_type(
+int prototype_term_relation_type(
 	struct prototype_term_db* db,
 	uint32_t left_classifier,
 	uint32_t right_classifier,
@@ -717,13 +744,13 @@ int prototype_term_observation_type(
 	uint32_t right_endpoint,
 	uint32_t* p_ret
 );
-int prototype_term_observation_witness(
+int prototype_term_relation_witness(
 	struct prototype_term_db* db,
 	uint32_t left_endpoint,
 	uint32_t right_endpoint,
 	uint32_t* p_ret
 );
-int prototype_term_observation_type_info(
+int prototype_term_relation_type_info(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
 	uint32_t* p_left_classifier,
@@ -731,7 +758,7 @@ int prototype_term_observation_type_info(
 	uint32_t* p_left_endpoint,
 	uint32_t* p_right_endpoint
 );
-int prototype_term_observation_witness_info(
+int prototype_term_relation_witness_info(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
 	uint32_t* p_left_endpoint,
@@ -935,6 +962,15 @@ int prototype_term_core_shape_equal_under_binder(
 	uint32_t left_binder,
 	uint32_t left,
 	uint32_t right_binder,
+	uint32_t right,
+	int* p_equal
+);
+int prototype_term_core_shape_equal_under_binders(
+	const struct prototype_term_db* db,
+	const uint32_t* left_binders,
+	const uint32_t* right_binders,
+	size_t binder_count,
+	uint32_t left,
 	uint32_t right,
 	int* p_equal
 );

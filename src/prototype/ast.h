@@ -11,7 +11,7 @@
 #include "type_declaration.h"
 #include "universe.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 69
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 70
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
 
@@ -564,8 +564,7 @@ enum prototype_artifact_export_transparency {
 
 enum prototype_artifact_evidence_reference_kind {
 	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID = 0,
-	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM = 1,
-	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_PROPOSITION = 2
+	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM = 1
 };
 
 struct prototype_artifact_evidence_reference {
@@ -629,6 +628,13 @@ struct prototype_artifact_constructor_export {
 struct prototype_artifact_dependency {
 	int namespace_symbol_id;
 	int name_symbol_id;
+};
+
+struct prototype_artifact_identity_root {
+	uint32_t source_type_claim_id;
+	uint32_t identity_family_has_type_claim_id;
+	uint32_t witness_has_type_claim_id;
+	int computation_rule;
 };
 
 struct prototype_artifact_external_term_ref {
@@ -767,6 +773,10 @@ struct prototype_artifact_interface {
 	struct prototype_type_expr* type_exprs;
 	size_t type_expr_count;
 	size_t type_expr_capacity;
+
+	struct prototype_artifact_identity_root* identity_roots;
+	size_t identity_root_count;
+	size_t identity_root_capacity;
 
 	struct prototype_artifact_dependency* dependencies;
 	size_t dependency_count;
@@ -1541,8 +1551,29 @@ void prototype_artifact_interface_init(
 	size_t constructor_field_type_expr_capacity,
 	struct prototype_type_expr* type_exprs,
 	size_t type_expr_capacity,
+	struct prototype_artifact_identity_root* identity_roots,
+	size_t identity_root_capacity,
 	struct prototype_artifact_dependency* dependencies,
 	size_t dependency_capacity
+);
+int prototype_artifact_interface_add_identity_root(
+	struct prototype_artifact_interface* interface,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_judgement_db* judgement,
+	uint32_t source_type_claim_id,
+	uint32_t identity_family_has_type_claim_id,
+	uint32_t witness_has_type_claim_id,
+	int computation_rule,
+	uint32_t* p_root_id
+);
+int prototype_artifact_interface_validate_identity_roots(
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_judgement_db* judgement
 );
 void prototype_artifact_relocation_table_init(
 	struct prototype_artifact_relocation_table* table,
@@ -1723,6 +1754,27 @@ int prototype_artifact_apply_type_expr_relocations(
 	const struct prototype_artifact_interface* provider_interface
 );
 
+struct prototype_artifact_graph_relocation {
+	uint32_t* binding_ids;
+	size_t binding_id_capacity;
+	uint32_t* type_ids;
+	size_t type_id_capacity;
+	uint32_t* type_expr_ids;
+	size_t type_expr_id_capacity;
+	uint32_t* parameter_ids;
+	size_t parameter_id_capacity;
+	uint32_t* constructor_ids;
+	size_t constructor_id_capacity;
+	uint32_t* field_type_ids;
+	size_t field_type_id_capacity;
+	uint32_t* proposition_ids;
+	size_t proposition_id_capacity;
+	uint32_t* claim_ids;
+	size_t claim_id_capacity;
+	uint32_t* substitution_ids;
+	size_t substitution_id_capacity;
+};
+
 int prototype_artifact_append_graph(
 	struct prototype_artifact_interface* appended_interface,
 	struct prototype_term_db* target_terms,
@@ -1736,7 +1788,13 @@ int prototype_artifact_append_graph(
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
-	uint32_t operation_offset
+	uint32_t operation_offset,
+	uint32_t* term_relocation,
+	size_t term_relocation_capacity,
+	uint32_t* context_relocation,
+	size_t context_relocation_capacity,
+	struct prototype_artifact_graph_relocation* additional_relocation,
+	int canonicalize_link_references
 );
 
 int prototype_artifact_align_export_operations(

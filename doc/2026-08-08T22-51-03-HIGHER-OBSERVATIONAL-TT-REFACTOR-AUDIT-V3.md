@@ -1943,3 +1943,44 @@ Its implementation and progress plan is:
 V2-A1 follows PC1. Artifact v70 then publishes the compact
 proposition/premise graph and O1 observation roots without collapsing
 rule-specific eliminators into a generic Lambda/App derivation.
+
+## 28. 2026-08-11 A1 Admitted-Fragment Handoff
+
+A1 now publishes artifact v70 for an explicitly scoped object-identity
+fragment. The persistent graph contains ordinary generated ADT, Pi, Thunk,
+constructor, Lambda, APP, Match, and accepted Derivation objects. Sixteen exact
+family/witness roots survive readback and aggregation. Compiler-local action,
+bridge, work, fuel, `RELATION_TYPE`, and `RELATION_WITNESS` state is not object
+identity authority and is absent from those roots.
+
+This does not establish complete Higher Observational Type Theory. The retained
+meaning is:
+
+```text
+IDENTITY_TYPE_COMPUTATION(A,x0,x1)
+  computes the exact Id_A(x0,x1) family for an admitted type former
+
+p : Id_A(x0,x1)
+  is introduced only by an ordinary Term and accepted kernel Derivation
+```
+
+The non-DefEq Bool identity-versus-exhaustive-Match fixture supplies one such
+ordinary pointwise proof. It is not a contextual-equivalence decision
+procedure. Adequacy with respect to admitted eliminators remains a
+metatheoretic obligation; completeness and full abstraction are not claimed.
+
+The next theory stage must proceed in this order:
+
+1. compute genuinely dependent Pi result identity through exact codomain
+   object action;
+2. replace the finite Universe correspondence scaffold with replayable
+   recursive bisimulation/equivalence and higher coherence;
+3. consume its transport/lifting while extending dependent telescopes and
+   higher constructor fields; and
+4. derive symmetry and composition as ordinary object Terms for every widened
+   admitted family.
+
+Do not define equality by the compiler-local logical relation, by bounded
+endpoint search, or merely by adding reflexivity/symmetry/transitivity to an
+arbitrary relation. Surface `==`, general rewrite, univalence, and effectful
+identity remain after this theory gate.

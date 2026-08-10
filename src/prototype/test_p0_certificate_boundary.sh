@@ -26,6 +26,7 @@ awk '
 	>"$TMP_DIR/reversed-derivations.apo"
 ./read_file.out --aggregate-artifact "$TMP_DIR/regrounded.apo" \
 	"$TMP_DIR/reversed-derivations.apo" >"$TMP_DIR/regrounded.out"
+cmp "$TMP_DIR/original.apo" "$TMP_DIR/regrounded.apo"
 awk '$1 == "claim" { $2 = ""; print }' "$TMP_DIR/original.apo" | sort \
 	>"$TMP_DIR/original-claims.txt"
 awk '$1 == "claim" { $2 = ""; print }' "$TMP_DIR/regrounded.apo" | sort \
@@ -33,36 +34,22 @@ awk '$1 == "claim" { $2 = ""; print }' "$TMP_DIR/regrounded.apo" | sort \
 cmp "$TMP_DIR/original-claims.txt" "$TMP_DIR/regrounded-claims.txt"
 canonicalize_derivations() {
 	awk '
-		FNR == NR && $1 == "claim" {
-			claim[$2] = $3 ":" $5 ":" $6 ":" $8 ":" $10 ":" $11 ":" $12
+		function flush() {
+			if (line != "") print line
+			line = ""
+		}
+		$1 == "derivation" {
+			flush()
+			line = $3 "|" $4 ":" $5 "|" $6 ":" $7
 			next
 		}
-		FNR != NR && $1 == "derivation" {
-			line = $3 "|" claim[$5] "|" $7
-			for (i = 8; i <= 14; ++i) line = line "|" $i
-			premise_count = $15
-			position = 16
-			line = line "|premises=" premise_count
-			for (i = 0; i < premise_count; ++i) {
-				if ($position != "premise") exit 1
-				premise_id = $(position + 1)
-				premise = premise_id == 4294967295 ? premise_id : claim[premise_id]
-				line = line "|" premise ":" $(position + 2) ":" \
-					$(position + 3) ":" $(position + 4) ":" $(position + 5)
-				position += 6
-			}
-			if ($position != "action") exit 1
-			line = line "|action=" $(position + 1) ":" $(position + 2)
-			position += 3
-			if ($position != "sources") exit 1
-			source_count = $(position + 1)
-			line = line "|sources=" source_count
-			for (i = 0; i < source_count; ++i) {
-				line = line "|" claim[$(position + 2 + i)]
-			}
-			print line
+		line != "" && ($1 == "payload" || $1 == "action" || $1 == "premise") {
+			line = line "|" $0
+			next
 		}
-	' "$1" "$1"
+		line != "" { flush() }
+		END { flush() }
+	' "$1"
 }
 canonicalize_derivations "$TMP_DIR/original.apo" | sort \
 	>"$TMP_DIR/original-derivations.txt"
@@ -100,17 +87,17 @@ main := {
 EOF_CONTEXT_WEAKEN
 ./read_file.out --write-artifact "$TMP_DIR/context-weaken.apo" \
 	"$TMP_DIR/context-weaken.p" >"$TMP_DIR/context-weaken.out"
-grep -q '^derivation [0-9][0-9]* 31 .* action 1 [0-9][0-9]* sources ' \
-	"$TMP_DIR/context-weaken.apo"
 awk '
-	$1 == "derivation" && $3 == 31 && !done {
-		for (i = 1; i <= NF; ++i) {
-			if ($i == "action") {
-				$(i + 2) = 4294967295
-				done = 1
-				break
-			}
-		}
+	$1 == "derivation" { weakening = ($3 == 31) }
+	weakening && $1 == "action" && $2 == 1 && $3 != 4294967295 { found = 1 }
+	END { if (!found) exit 1 }
+' "$TMP_DIR/context-weaken.apo"
+awk '
+	$1 == "derivation" { weakening = ($3 == 31) }
+	weakening && $1 == "action" && !done {
+		$3 = 4294967295
+		done = 1
+		weakening = 0
 	}
 	{ print }
 	END { if (!done) exit 1 }
@@ -142,11 +129,15 @@ test -n "$id1_claim"
 test -n "$id2_claim"
 test "$id1_claim" != "$id2_claim"
 awk -v id1_claim="$id1_claim" -v id2_claim="$id2_claim" '
+	FNR == NR && $1 == "proposition" {
+		authority_kind[$2] = $4
+		authority_id[$2] = $5
+		subject[$2] = $8
+		classifier[$2] = $9
+		next
+	}
 	FNR == NR && $1 == "claim" {
-		authority_kind[$2] = $5
-		authority_id[$2] = $6
-		subject[$2] = $11
-		classifier[$2] = $12
+		claim_proposition[$2] = $4
 		next
 	}
 	FNR != NR && $1 == "SECTION" && $2 == "universe" {
@@ -170,18 +161,20 @@ awk -v id1_claim="$id1_claim" -v id2_claim="$id2_claim" '
 		next
 	}
 	FNR != NR && $1 == "universe_constraint" && !done {
+		id1_proposition = claim_proposition[id1_claim]
+		id2_proposition = claim_proposition[id2_claim]
 		$9 = id1_claim
-		$10 = authority_kind[id1_claim]
-		$11 = authority_id[id1_claim]
-		$12 = subject[id1_claim]
-		$13 = classifier[id1_claim]
+		$10 = authority_kind[id1_proposition]
+		$11 = authority_id[id1_proposition]
+		$12 = subject[id1_proposition]
+		$13 = classifier[id1_proposition]
 		print
 		$2 = $2 + 1
 		$9 = id2_claim
-		$10 = authority_kind[id2_claim]
-		$11 = authority_id[id2_claim]
-		$12 = subject[id2_claim]
-		$13 = classifier[id2_claim]
+		$10 = authority_kind[id2_proposition]
+		$11 = authority_id[id2_proposition]
+		$12 = subject[id2_proposition]
+		$13 = classifier[id2_proposition]
 		print
 		done = 1
 		next

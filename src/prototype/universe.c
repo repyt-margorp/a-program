@@ -784,20 +784,25 @@ static int collect_relation_constraints(
 		return -1;
 	}
 	const struct prototype_judgement_claim* relation =
-		&judgement->claims[claim_id];
-	if (!relation || prototype_judgement_proposition_get(judgement, relation->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
+		prototype_judgement_claim_get(judgement, claim_id);
+	if (!relation) {
+		return 0;
+	}
+	const struct prototype_judgement_proposition* proposition =
+		prototype_judgement_proposition_get(judgement, relation->proposition_id);
+	if (proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
 		return 0;
 	}
 	uint32_t classifier_level;
 	(void)collect_type_level_at_depth(
 		db,
 		terms,
-		prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier,
+		proposition->classifier,
 		claim_id,
-		prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_kind,
-		prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_id,
-		prototype_judgement_proposition_get(judgement, relation->proposition_id)->subject,
-		prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier,
+		proposition->authority_kind,
+		proposition->authority_id,
+		proposition->subject,
+		proposition->classifier,
 		&classifier_level,
 		0
 	);
@@ -812,11 +817,11 @@ static int collect_relation_constraints(
 		if (collect_universe_term_constraints(
 				db,
 				terms,
-				prototype_judgement_proposition_get(judgement, relation->proposition_id)->subject,
-				prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier,
+				proposition->subject,
+				proposition->classifier,
 				claim_id,
-				prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_kind,
-				prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_id
+				proposition->authority_kind,
+				proposition->authority_id
 			) != 0 ||
 			collect_pi_constraints(
 				db, terms, judgement, claim_id, relation, proof
@@ -909,6 +914,7 @@ int prototype_universe_collect(
 		const struct prototype_type_declaration* type = &type_declarations->type_declarations[i];
 		uint32_t type_node;
 		if (prototype_universe_add_type_node(db, i, type->name_symbol_id, &type_node) != 0) {
+			fprintf(stderr, "universe collection failed at type node=%u\n", i);
 			return -1;
 		}
 		for (uint32_t j = 0; j < type->parameter_count; ++j) {
@@ -923,6 +929,12 @@ int prototype_universe_collect(
 				parameter->type_expr,
 				&parameter_node
 			) != 0) {
+				fprintf(
+					stderr,
+					"universe collection failed at parameter type=%u parameter=%u\n",
+					i,
+					parameter_id
+				);
 				return -1;
 			}
 			if (prototype_universe_add_edge(
@@ -931,6 +943,12 @@ int prototype_universe_collect(
 				parameter_node,
 				type_node
 			) != 0) {
+				fprintf(
+					stderr,
+					"universe collection failed at parameter edge type=%u parameter=%u\n",
+					i,
+					parameter_id
+				);
 				return -1;
 			}
 		}
@@ -940,6 +958,7 @@ int prototype_universe_collect(
 		if (terms->terms[i].tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
 			uint32_t index;
 			if (ensure_level(db, terms->terms[i].as.universe_var.level_var, &index) != 0) {
+				fprintf(stderr, "universe collection failed at term level term=%u\n", i);
 				return -1;
 			}
 		}
@@ -949,14 +968,20 @@ int prototype_universe_collect(
 		if (collect_relation_constraints(
 				db, terms, operations, judgement, (uint32_t)i
 			) != 0) {
+			fprintf(stderr, "universe collection failed at claim=%zu\n", i);
 			return -1;
 		}
 	}
 
 	if (solve_constraints(db) != 0) {
+		fprintf(stderr, "universe collection constraint solver failed\n");
 		return -1;
 	}
-	return prototype_universe_validate_provenance(db, judgement);
+	if (prototype_universe_validate_provenance(db, judgement) != 0) {
+		fprintf(stderr, "universe collection provenance validation failed\n");
+		return -1;
+	}
+	return 0;
 }
 
 int prototype_universe_validate_provenance(
@@ -975,65 +1000,60 @@ int prototype_universe_validate_provenance(
 				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_CODOMAIN ||
 			constraint->source_authority_kind ==
 				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
+			fprintf(stderr, "invalid universe provenance header constraint=%zu\n", i);
 			return -1;
 		}
 		if (constraint->source_claim_id == PROTOTYPE_INVALID_ID) {
 			if (constraint->source_authority_kind !=
 					PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER ||
 				constraint->source_authority_id == PROTOTYPE_INVALID_ID) {
+				fprintf(stderr, "invalid helper universe provenance constraint=%zu\n", i);
 				return -1;
 			}
 			continue;
 		}
-		if (constraint->source_claim_id >= judgement->claim_count) {
-			return -1;
-		}
-		const struct prototype_judgement_claim* claim =
-			&judgement->claims[constraint->source_claim_id];
-		if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			claim->closure_rank == PROTOTYPE_INVALID_ID ||
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != constraint->source_authority_kind ||
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id != constraint->source_authority_id ||
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject != constraint->source_subject ||
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier != constraint->source_classifier) {
-			return -1;
-		}
-	}
-	return 0;
-}
-
-int prototype_universe_rebind_provenance(
-	struct prototype_universe_db* db,
-	const struct prototype_judgement_db* judgement
-) {
-	if (!db || !judgement) {
-		return -1;
-	}
-	for (size_t i = 0; i < db->constraint_count; ++i) {
-		struct prototype_universe_constraint* constraint = &db->constraints[i];
-		if (constraint->source_claim_id == PROTOTYPE_INVALID_ID) {
-			continue;
-		}
-		uint32_t found = PROTOTYPE_INVALID_ID;
-		for (uint32_t j = 0; j < (uint32_t)judgement->claim_count; ++j) {
-			const struct prototype_judgement_claim* claim = &judgement->claims[j];
-			if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != constraint->source_authority_kind ||
-				prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id != constraint->source_authority_id ||
-				prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject != constraint->source_subject ||
-				prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier != constraint->source_classifier ||
-				claim->closure_rank == PROTOTYPE_INVALID_ID) {
-				continue;
-			}
-			if (found != PROTOTYPE_INVALID_ID) {
+			const struct prototype_judgement_claim* claim =
+				prototype_judgement_claim_get(
+					judgement, constraint->source_claim_id
+				);
+			if (!claim) {
+				fprintf(
+					stderr,
+					"missing universe provenance claim constraint=%zu claim=%u\n",
+					i,
+					constraint->source_claim_id
+				);
 				return -1;
 			}
-			found = j;
+			const struct prototype_judgement_proposition* proposition =
+				prototype_judgement_proposition_get(judgement, claim->proposition_id);
+			if (proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				claim->closure_rank == PROTOTYPE_INVALID_ID ||
+				proposition->authority_kind != constraint->source_authority_kind ||
+				proposition->authority_id != constraint->source_authority_id ||
+				proposition->subject != constraint->source_subject ||
+				proposition->classifier != constraint->source_classifier) {
+				fprintf(
+					stderr,
+					"mismatched universe provenance constraint=%zu claim=%u "
+					"kind=%d/%d authority=%d:%u/%d:%u subject=%u/%u "
+					"classifier=%u/%u rank=%u\n",
+					i,
+					constraint->source_claim_id,
+					proposition->kind,
+					PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+					proposition->authority_kind,
+					proposition->authority_id,
+					constraint->source_authority_kind,
+					constraint->source_authority_id,
+					proposition->subject,
+					constraint->source_subject,
+					proposition->classifier,
+					constraint->source_classifier,
+					claim->closure_rank
+				);
+				return -1;
 		}
-		if (found == PROTOTYPE_INVALID_ID) {
-			return -1;
-		}
-		constraint->source_claim_id = found;
 	}
 	return 0;
 }

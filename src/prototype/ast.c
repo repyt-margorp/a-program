@@ -10,6 +10,14 @@ static void compile_metadata_refresh_runtime_capabilities(
 	const struct prototype_term_db* terms
 );
 
+static uint32_t relocate_artifact_authority_id(
+	int authority_kind,
+	uint32_t authority_id,
+	const uint32_t* term_relocation,
+	size_t term_relocation_count,
+	uint32_t operation_offset
+);
+
 static int reserve_slot(size_t count, size_t capacity) {
 	return count < capacity ? 0 : -1;
 }
@@ -2463,6 +2471,8 @@ void prototype_artifact_interface_init(
 	size_t constructor_field_type_expr_capacity,
 	struct prototype_type_expr* type_exprs,
 	size_t type_expr_capacity,
+	struct prototype_artifact_identity_root* identity_roots,
+	size_t identity_root_capacity,
 	struct prototype_artifact_dependency* dependencies,
 	size_t dependency_capacity
 ) {
@@ -2482,8 +2492,415 @@ void prototype_artifact_interface_init(
 	interface->constructor_field_type_expr_capacity = constructor_field_type_expr_capacity;
 	interface->type_exprs = type_exprs;
 	interface->type_expr_capacity = type_expr_capacity;
+	interface->identity_roots = identity_roots;
+	interface->identity_root_capacity = identity_root_capacity;
 	interface->dependencies = dependencies;
 	interface->dependency_capacity = dependency_capacity;
+}
+
+static int artifact_term_has_compiler_relation_head(
+	const struct prototype_term_db* terms,
+	uint32_t term_id
+);
+
+static int artifact_term_is_binding_var(
+	const struct prototype_term_db* terms,
+	uint32_t term_id,
+	uint32_t binding_id
+) {
+	return terms && term_id < terms->term_count &&
+		terms->terms[term_id].tag == PROTOTYPE_TERM_VAR &&
+		terms->terms[term_id].as.var.binding_id == binding_id;
+}
+
+static int artifact_parse_pure_pointwise_pi_level(
+	const struct prototype_term_db* terms,
+	uint32_t thunk_type,
+	uint32_t expected_domain,
+	uint32_t* p_binding_id,
+	uint32_t* p_result
+) {
+	if (!terms || !p_binding_id || !p_result ||
+		thunk_type >= terms->term_count ||
+		terms->terms[thunk_type].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		return 0;
+	}
+	uint32_t pi = terms->terms[thunk_type].as.thunk_type.computation;
+	uint32_t codomain;
+	if (pi >= terms->term_count || terms->terms[pi].tag != PROTOTYPE_TERM_PI ||
+		terms->terms[pi].as.pi.domain != expected_domain ||
+		prototype_term_pure_family_parts(
+			terms,
+			terms->terms[pi].as.pi.codomain_family,
+			p_binding_id,
+			&codomain
+		) != 0 || codomain >= terms->term_count ||
+		terms->terms[codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
+		prototype_term_effect_row_purity(
+			terms, terms->terms[codomain].as.computation_type.label
+		) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
+		return 0;
+	}
+	*p_result = terms->terms[codomain].as.computation_type.result;
+	return 1;
+}
+
+static int artifact_pi_identity_family_matches_source(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_judgement_proposition* source,
+	const struct prototype_judgement_proposition* family
+) {
+	if (!terms || !type_declarations || !contexts || !source || !family ||
+		source->subject >= terms->term_count ||
+		terms->terms[source->subject].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		return 0;
+	}
+	uint32_t source_pi = terms->terms[source->subject].as.thunk_type.computation;
+	uint32_t source_codomain_binding;
+	uint32_t source_codomain;
+	if (source_pi >= terms->term_count ||
+		terms->terms[source_pi].tag != PROTOTYPE_TERM_PI ||
+		prototype_term_pure_family_parts(
+			terms,
+			terms->terms[source_pi].as.pi.codomain_family,
+			&source_codomain_binding,
+			&source_codomain
+		) != 0 || source_codomain >= terms->term_count ||
+		terms->terms[source_codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
+		prototype_term_contains_free_binding(
+			terms, source_codomain, source_codomain_binding
+		) || prototype_term_effect_row_purity(
+			terms, terms->terms[source_codomain].as.computation_type.label
+		) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
+		return 0;
+	}
+	uint32_t domain = terms->terms[source_pi].as.pi.domain;
+	uint32_t x0_binding;
+	uint32_t x1_binding;
+	uint32_t xr_binding;
+	uint32_t after_x0;
+	uint32_t after_x1;
+	uint32_t result_identity;
+	if (!artifact_parse_pure_pointwise_pi_level(
+			terms, family->subject, domain, &x0_binding, &after_x0
+		) || !artifact_parse_pure_pointwise_pi_level(
+			terms, after_x0, domain, &x1_binding, &after_x1
+		)) {
+		return 0;
+	}
+	if (after_x1 >= terms->term_count ||
+		terms->terms[after_x1].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		return 0;
+	}
+	uint32_t third_pi = terms->terms[after_x1].as.thunk_type.computation;
+	uint32_t input_identity = third_pi < terms->term_count &&
+		terms->terms[third_pi].tag == PROTOTYPE_TERM_PI ?
+		terms->terms[third_pi].as.pi.domain : PROTOTYPE_INVALID_ID;
+	if (input_identity == PROTOTYPE_INVALID_ID ||
+		!artifact_parse_pure_pointwise_pi_level(
+			terms, after_x1, input_identity, &xr_binding, &result_identity
+		)) {
+		return 0;
+	}
+	uint32_t domain_identity_type_id;
+	uint32_t input_identity_arguments[2];
+	uint32_t input_identity_argument_count;
+	if (prototype_term_type_instance_info(
+			terms,
+			input_identity,
+			&domain_identity_type_id,
+			input_identity_arguments,
+			&input_identity_argument_count
+		) != 0 || input_identity_argument_count != 2 ||
+		domain_identity_type_id >= type_declarations->type_count ||
+		type_declarations->type_declarations[
+			domain_identity_type_id
+		].origin_source_carrier_term_id != domain ||
+		!artifact_term_is_binding_var(
+			terms, input_identity_arguments[0], x0_binding
+		) || !artifact_term_is_binding_var(
+			terms, input_identity_arguments[1], x1_binding
+		)) {
+		return 0;
+	}
+	uint32_t result_type_id;
+	uint32_t result_arguments[2];
+	uint32_t result_argument_count;
+	if (prototype_term_type_instance_info(
+			terms,
+			result_identity,
+			&result_type_id,
+			result_arguments,
+			&result_argument_count
+		) != 0 || result_type_id >= type_declarations->type_count ||
+		result_argument_count != 2) {
+		return 0;
+	}
+	uint32_t result_thunk = type_declarations->type_declarations[
+		result_type_id
+	].origin_source_carrier_term_id;
+	if (result_thunk >= terms->term_count ||
+		terms->terms[result_thunk].tag != PROTOTYPE_TERM_THUNK_TYPE ||
+		terms->terms[result_thunk].as.thunk_type.computation != source_codomain ||
+		!prototype_type_declaration_validate_generated_identity(
+			terms,
+			type_declarations,
+			contexts,
+			domain,
+			domain_identity_type_id,
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT
+		) || !prototype_type_declaration_validate_generated_identity(
+			terms,
+			type_declarations,
+			contexts,
+			result_thunk,
+			result_type_id,
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN
+		)) {
+		return 0;
+	}
+	uint32_t endpoints[2];
+	uint32_t arguments[2] = {
+		input_identity_arguments[0],
+		input_identity_arguments[1]
+	};
+	for (uint32_t i = 0; i < 2; ++i) {
+		uint32_t thunked = result_arguments[i];
+		uint32_t applied = thunked < terms->term_count &&
+			terms->terms[thunked].tag == PROTOTYPE_TERM_THUNK ?
+			terms->terms[thunked].as.thunk.computation : PROTOTYPE_INVALID_ID;
+		uint32_t forced = applied < terms->term_count &&
+			terms->terms[applied].tag == PROTOTYPE_TERM_APP ?
+			terms->terms[applied].as.app.function : PROTOTYPE_INVALID_ID;
+		if (applied >= terms->term_count ||
+			terms->terms[applied].tag != PROTOTYPE_TERM_APP ||
+			terms->terms[applied].as.app.argument != arguments[i] ||
+			forced >= terms->term_count ||
+			terms->terms[forced].tag != PROTOTYPE_TERM_FORCE) {
+			return 0;
+		}
+		endpoints[i] = terms->terms[forced].as.force.value;
+	}
+	const struct prototype_context* family_context = prototype_context_get(
+		contexts, family->context_id
+	);
+	if (!family_context) {
+		return 0;
+	}
+	if (family->context_id != source->context_id) {
+		const struct prototype_context* left_context = prototype_context_get(
+			contexts, family_context->parent
+		);
+		if (!left_context || left_context->parent != source->context_id ||
+			prototype_context_classifier_term(left_context) != source->subject ||
+			prototype_context_classifier_term(family_context) != source->subject ||
+			!artifact_term_is_binding_var(
+				terms, endpoints[0], left_context->binding_id
+			) || !artifact_term_is_binding_var(
+				terms, endpoints[1], family_context->binding_id
+			)) {
+			return 0;
+		}
+	}
+	(void)xr_binding;
+	return 1;
+}
+
+static int artifact_identity_family_matches_source(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_judgement_proposition* source,
+	const struct prototype_judgement_proposition* family,
+	int computation_rule
+) {
+	if (!terms || !type_declarations || !contexts || !source || !family ||
+		source->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		family->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		source->subject >= terms->term_count ||
+		source->classifier >= terms->term_count ||
+		family->subject >= terms->term_count ||
+		family->classifier != source->classifier ||
+		terms->terms[source->classifier].tag != PROTOTYPE_TERM_UNIVERSE_VAR ||
+		artifact_term_has_compiler_relation_head(terms, family->subject) != 0) {
+		return 0;
+	}
+	if (computation_rule == PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE) {
+		return artifact_pi_identity_family_matches_source(
+			terms, type_declarations, contexts, source, family
+		);
+	}
+	/* The current Universe correspondence has only one-dimensional transport
+	 * and lifting. It is compiler-local until recursive bisimulation evidence
+	 * is represented and replayable, so rule 6 is not an artifact identity. */
+	if (computation_rule !=
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT &&
+		computation_rule !=
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN) {
+		return 0;
+	}
+	uint32_t generated_type_id;
+	uint32_t arguments[16];
+	uint32_t argument_count;
+	if (prototype_term_type_instance_info(
+			terms,
+			family->subject,
+			&generated_type_id,
+			arguments,
+			&argument_count
+		) != 0 || argument_count != 2 ||
+		generated_type_id >= type_declarations->type_count) {
+		return 0;
+	}
+	return prototype_type_declaration_validate_generated_identity(
+		terms,
+		type_declarations,
+		contexts,
+		source->subject,
+		generated_type_id,
+		computation_rule
+	);
+}
+
+int prototype_artifact_interface_add_identity_root(
+	struct prototype_artifact_interface* interface,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_judgement_db* judgement,
+	uint32_t source_type_claim_id,
+	uint32_t identity_family_has_type_claim_id,
+	uint32_t witness_has_type_claim_id,
+	int computation_rule,
+	uint32_t* p_root_id
+) {
+	const struct prototype_judgement_proposition* source =
+		prototype_judgement_claim_proposition(
+			judgement, source_type_claim_id
+		);
+	const struct prototype_judgement_proposition* family =
+		prototype_judgement_claim_proposition(
+			judgement, identity_family_has_type_claim_id
+		);
+	if (!interface || !terms || !type_declarations || !contexts || !judgement ||
+		!p_root_id ||
+		!artifact_identity_family_matches_source(
+			terms, type_declarations, contexts, source, family, computation_rule
+		)) {
+		return -1;
+	}
+	if (witness_has_type_claim_id != PROTOTYPE_INVALID_ID) {
+		const struct prototype_judgement_proposition* witness =
+			prototype_judgement_claim_proposition(
+				judgement, witness_has_type_claim_id
+			);
+		if (!witness || witness->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			witness->context_id != family->context_id ||
+			witness->classifier != family->subject) {
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < interface->identity_root_count; ++i) {
+		const struct prototype_artifact_identity_root* root =
+			&interface->identity_roots[i];
+		if (root->source_type_claim_id == source_type_claim_id &&
+			root->identity_family_has_type_claim_id ==
+				identity_family_has_type_claim_id &&
+			root->witness_has_type_claim_id == witness_has_type_claim_id &&
+			root->computation_rule == computation_rule) {
+			*p_root_id = (uint32_t)i;
+			return 0;
+		}
+	}
+	if (!interface->identity_roots || interface->identity_root_count >=
+		interface->identity_root_capacity) {
+		return -1;
+	}
+	uint32_t root_id = (uint32_t)interface->identity_root_count++;
+	interface->identity_roots[root_id] =
+		(struct prototype_artifact_identity_root) {
+			.source_type_claim_id = source_type_claim_id,
+			.identity_family_has_type_claim_id =
+				identity_family_has_type_claim_id,
+			.witness_has_type_claim_id = witness_has_type_claim_id,
+			.computation_rule = computation_rule
+		};
+	*p_root_id = root_id;
+	return 0;
+}
+
+static int artifact_term_has_compiler_relation_head(
+	const struct prototype_term_db* terms,
+	uint32_t term_id
+) {
+	if (!terms || term_id >= terms->term_count) {
+		return -1;
+	}
+	uint32_t head = term_id;
+	for (size_t depth = 0; depth <= terms->term_count; ++depth) {
+		const struct prototype_term* term = &terms->terms[head];
+		if (term->tag != PROTOTYPE_TERM_APP) {
+			return term->tag == PROTOTYPE_TERM_RELATION_TYPE_FORMER ||
+				term->tag == PROTOTYPE_TERM_RELATION_WITNESS_FORMER;
+		}
+		if (term->as.app.function >= terms->term_count) {
+			return -1;
+		}
+		head = term->as.app.function;
+	}
+	return -1;
+}
+
+int prototype_artifact_interface_validate_identity_roots(
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!interface || !terms || !type_declarations || !contexts || !judgement) {
+		return -1;
+	}
+	for (size_t i = 0; i < interface->identity_root_count; ++i) {
+		const struct prototype_artifact_identity_root* root =
+			&interface->identity_roots[i];
+		const struct prototype_judgement_proposition* source =
+			prototype_judgement_claim_proposition(
+				judgement, root->source_type_claim_id
+			);
+		const struct prototype_judgement_proposition* family =
+			prototype_judgement_claim_proposition(
+				judgement, root->identity_family_has_type_claim_id
+			);
+		if (!artifact_identity_family_matches_source(
+				terms,
+				type_declarations,
+				contexts,
+				source,
+				family,
+				root->computation_rule
+			)) {
+			return -1;
+		}
+		if (root->witness_has_type_claim_id != PROTOTYPE_INVALID_ID) {
+			const struct prototype_judgement_proposition* witness =
+				prototype_judgement_claim_proposition(
+					judgement, root->witness_has_type_claim_id
+				);
+			if (!witness || witness->kind !=
+					PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				witness->context_id != family->context_id ||
+				witness->classifier != family->subject ||
+				artifact_term_has_compiler_relation_head(
+					terms, witness->subject
+				) != 0) {
+				return -1;
+			}
+		}
+	}
+	return 0;
 }
 
 void prototype_artifact_relocation_table_init(
@@ -2581,6 +2998,23 @@ static int artifact_interface_exports_term_name(
 	return 0;
 }
 
+static int artifact_interface_exports_type_name(
+	const struct prototype_artifact_interface* interface,
+	struct prototype_qualified_name name
+) {
+	if (!interface || name.name_symbol_id < 0) {
+		return 0;
+	}
+	for (size_t i = 0; i < interface->type_export_count; ++i) {
+		if (interface->type_exports[i].namespace_symbol_id ==
+				name.namespace_symbol_id &&
+			interface->type_exports[i].name_symbol_id == name.name_symbol_id) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static int lookup_export_classifier(
 	const struct prototype_judgement_db* judgement,
 	uint32_t subject,
@@ -2614,17 +3048,23 @@ static uint32_t find_export_source_claim(
 	uint32_t unique_claim = PROTOTYPE_INVALID_ID;
 	int ambiguous = 0;
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
-		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id != context_id || prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject != subject ||
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier != classifier ||
+		const struct prototype_judgement_claim* claim =
+			prototype_judgement_claim_get(judgement, i);
+		if (!claim) {
+			continue;
+		}
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_proposition_get(judgement, claim->proposition_id);
+		if (proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			proposition->context_id != context_id || proposition->subject != subject ||
+			proposition->classifier != classifier ||
 			claim->closure_rank == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
 		if (
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id == operation &&
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id == operation) {
+			proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+			proposition->authority_id == operation &&
+			proposition->operation_id == operation) {
 			return i;
 		}
 		if (unique_claim != PROTOTYPE_INVALID_ID) {
@@ -3109,10 +3549,57 @@ int prototype_artifact_interface_collect_dependencies(
 			return -1;
 		}
 		if (expr->tag == PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM &&
+			!artifact_interface_exports_term_name(
+				interface, expr->as.external_term.name
+			) &&
 			prototype_artifact_interface_add_dependency_in_namespace(
 				interface,
 				expr->as.external_term.name.namespace_symbol_id,
 				expr->as.external_term.name.name_symbol_id
+			) != 0) {
+			return -1;
+		}
+		if (expr->tag == PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE &&
+			!artifact_interface_exports_type_name(
+				interface, expr->as.imported_type.name
+			) &&
+			prototype_artifact_interface_add_dependency_in_namespace(
+				interface,
+				expr->as.imported_type.name.namespace_symbol_id,
+				expr->as.imported_type.name.name_symbol_id
+			) != 0) {
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < interface->type_expr_count; ++i) {
+		const struct prototype_type_expr* expr = &interface->type_exprs[i];
+		if (expr->tag == PROTOTYPE_TYPE_EXPR_NAME &&
+			!prototype_type_declaration_lookup(
+				type_declarations, expr->as.name.symbol_id
+			) && prototype_artifact_interface_add_dependency(
+				interface, expr->as.name.symbol_id
+			) != 0) {
+			return -1;
+		}
+		if (expr->tag == PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM &&
+			!artifact_interface_exports_term_name(
+				interface, expr->as.external_term.name
+			) &&
+			prototype_artifact_interface_add_dependency_in_namespace(
+				interface,
+				expr->as.external_term.name.namespace_symbol_id,
+				expr->as.external_term.name.name_symbol_id
+			) != 0) {
+			return -1;
+		}
+		if (expr->tag == PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE &&
+			!artifact_interface_exports_type_name(
+				interface, expr->as.imported_type.name
+			) &&
+			prototype_artifact_interface_add_dependency_in_namespace(
+				interface,
+				expr->as.imported_type.name.namespace_symbol_id,
+				expr->as.imported_type.name.name_symbol_id
 			) != 0) {
 			return -1;
 		}
@@ -3620,8 +4107,23 @@ struct artifact_graph_marks {
 	unsigned char* constructors;
 	unsigned char* readback_field_types;
 	unsigned char* type_exprs;
+	unsigned char* propositions;
 	unsigned char* claims;
 	unsigned char* derivations;
+	unsigned char* substitutions;
+	uint32_t* term_order;
+	uint32_t* case_order;
+	uint32_t* case_binder_order;
+	uint32_t* frame_order;
+	uint32_t* type_order;
+	uint32_t* parameter_order;
+	uint32_t* constructor_order;
+	uint32_t* readback_field_type_order;
+	uint32_t* type_expr_order;
+	uint32_t* proposition_order;
+	uint32_t* claim_order;
+	uint32_t* derivation_order;
+	uint32_t* substitution_order;
 	size_t term_count;
 	size_t case_count;
 	size_t case_binder_count;
@@ -3631,8 +4133,23 @@ struct artifact_graph_marks {
 	size_t constructor_count;
 	size_t readback_field_type_count;
 	size_t type_expr_count;
+	size_t proposition_count;
 	size_t claim_count;
 	size_t derivation_count;
+	size_t substitution_count;
+	size_t ordered_term_count;
+	size_t ordered_case_count;
+	size_t ordered_case_binder_count;
+	size_t ordered_frame_count;
+	size_t ordered_type_count;
+	size_t ordered_parameter_count;
+	size_t ordered_constructor_count;
+	size_t ordered_readback_field_type_count;
+	size_t ordered_type_expr_count;
+	size_t ordered_proposition_count;
+	size_t ordered_claim_count;
+	size_t ordered_derivation_count;
+	size_t ordered_substitution_count;
 };
 
 struct artifact_context_slice {
@@ -3640,6 +4157,13 @@ struct artifact_context_slice {
 	uint32_t* relocation;
 	size_t source_count;
 	size_t context_count;
+};
+
+struct artifact_substitution_slice {
+	unsigned char* reachable;
+	uint32_t* relocation;
+	size_t source_count;
+	size_t substitution_count;
 };
 
 static int artifact_constructor_present(
@@ -3659,6 +4183,153 @@ static void artifact_context_slice_free(struct artifact_context_slice* slice) {
 	free(slice->reachable);
 	free(slice->relocation);
 	memset(slice, 0, sizeof(*slice));
+}
+
+static void artifact_substitution_slice_free(
+	struct artifact_substitution_slice* slice
+) {
+	if (!slice) {
+		return;
+	}
+	free(slice->reachable);
+	free(slice->relocation);
+	memset(slice, 0, sizeof(*slice));
+}
+
+static int artifact_substitution_slice_mark(
+	struct artifact_substitution_slice* slice,
+	const struct prototype_substitution_db* substitutions,
+	uint32_t substitution_id,
+	uint32_t depth
+) {
+	if (!slice || !substitutions || depth > 512 ||
+		substitution_id >= slice->source_count) {
+		return -1;
+	}
+	if (slice->reachable[substitution_id] == 1) {
+		return 0;
+	}
+	if (slice->reachable[substitution_id] == 2) {
+		return -1;
+	}
+	slice->reachable[substitution_id] = 2;
+	const struct prototype_substitution* substitution =
+		prototype_substitution_get(substitutions, substitution_id);
+	if (!substitution) {
+		return -1;
+	}
+	if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
+		if (artifact_substitution_slice_mark(
+				slice, substitutions, substitution->first, depth + 1
+			) != 0) {
+			return -1;
+		}
+	} else if (substitution->kind == PROTOTYPE_SUBSTITUTION_COMPOSE) {
+		if (artifact_substitution_slice_mark(
+				slice, substitutions, substitution->first, depth + 1
+			) != 0 || artifact_substitution_slice_mark(
+				slice, substitutions, substitution->second, depth + 1
+			) != 0) {
+			return -1;
+		}
+	}
+	slice->reachable[substitution_id] = 1;
+	return 0;
+}
+
+static int artifact_substitution_slice_init(
+	struct artifact_substitution_slice* slice,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_substitution_db* substitutions
+) {
+	if (!slice || !judgement || !substitutions) {
+		return -1;
+	}
+	memset(slice, 0, sizeof(*slice));
+	slice->source_count = substitutions->substitution_count;
+	slice->reachable = calloc(
+		slice->source_count == 0 ? 1 : slice->source_count,
+		sizeof(*slice->reachable)
+	);
+	slice->relocation = malloc(
+		(slice->source_count == 0 ? 1 : slice->source_count) *
+			sizeof(*slice->relocation)
+	);
+	if (!slice->reachable || !slice->relocation) {
+		artifact_substitution_slice_free(slice);
+		return -1;
+	}
+	for (size_t i = 0; i < slice->source_count; ++i) {
+		slice->relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		const struct prototype_judgement_derivation* derivation =
+			prototype_judgement_derivation_get(judgement, (uint32_t)i);
+		if (!derivation) {
+			continue;
+		}
+		if (derivation->semantic_action_kind ==
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION &&
+			artifact_substitution_slice_mark(
+				slice, substitutions, derivation->semantic_action_id, 0
+			) != 0) {
+			artifact_substitution_slice_free(slice);
+			return -1;
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			if (derivation->premises[j].semantic_action_kind ==
+					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION &&
+				artifact_substitution_slice_mark(
+					slice,
+					substitutions,
+					derivation->premises[j].semantic_action_id,
+					0
+				) != 0) {
+				artifact_substitution_slice_free(slice);
+				return -1;
+			}
+		}
+	}
+	for (size_t i = 0; i < slice->source_count; ++i) {
+		if (slice->reachable[i]) {
+			slice->relocation[i] = (uint32_t)slice->substitution_count++;
+		}
+	}
+	return 0;
+}
+
+static int artifact_substitution_slice_canonicalize(
+	struct artifact_substitution_slice* slice,
+	const uint32_t* order,
+	size_t order_count
+) {
+	if (!slice || (order_count > 0 && !order)) {
+		return -1;
+	}
+	for (size_t i = 0; i < slice->source_count; ++i) {
+		slice->relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	slice->substitution_count = 0;
+	for (size_t position = 0; position < order_count; ++position) {
+		uint32_t substitution_id = order[position];
+		if (substitution_id >= slice->source_count ||
+			!slice->reachable[substitution_id] ||
+			slice->relocation[substitution_id] != PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		slice->relocation[substitution_id] =
+			(uint32_t)slice->substitution_count++;
+	}
+	for (uint32_t substitution_id = 0;
+		substitution_id < slice->source_count;
+		++substitution_id) {
+		if (slice->reachable[substitution_id] &&
+			slice->relocation[substitution_id] == PROTOTYPE_INVALID_ID) {
+			slice->relocation[substitution_id] =
+				(uint32_t)slice->substitution_count++;
+		}
+	}
+	return 0;
 }
 
 static int artifact_context_slice_mark(
@@ -3686,7 +4357,8 @@ static int artifact_context_slice_init(
 	struct artifact_context_slice* slice,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_compile_metadata* metadata
+	const struct prototype_compile_metadata* metadata,
+	const struct artifact_substitution_slice* substitution_slice
 ) {
 	if (!slice || !type_declarations || !judgement || !metadata ||
 		metadata->contexts.context_count == 0) {
@@ -3725,7 +4397,7 @@ static int artifact_context_slice_init(
 	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
 			&type_declarations->constructor_declarations[i];
-		if (!artifact_constructor_present(constructor)) {
+		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
 		if (artifact_context_slice_mark(
@@ -3783,6 +4455,11 @@ static int artifact_context_slice_init(
 	for (size_t i = 0;
 		i < metadata->substitutions.substitution_count;
 		++i) {
+		if (substitution_slice &&
+			(i >= substitution_slice->source_count ||
+			 !substitution_slice->reachable[i])) {
+			continue;
+		}
 		const struct prototype_substitution* substitution =
 			&metadata->substitutions.substitutions[i];
 		if (artifact_context_slice_mark(
@@ -3797,6 +4474,153 @@ static int artifact_context_slice_init(
 	for (uint32_t i = 0; i < slice->source_count; ++i) {
 		if (slice->reachable[i]) {
 			slice->relocation[i] = (uint32_t)slice->context_count++;
+		}
+	}
+	return 0;
+}
+
+static int artifact_context_slice_assign_path(
+	struct artifact_context_slice* slice,
+	const struct prototype_context_db* contexts,
+	uint32_t context_id
+) {
+	if (!slice || !contexts || context_id >= slice->source_count ||
+		!slice->reachable[context_id]) {
+		return -1;
+	}
+	if (slice->relocation[context_id] != PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	uint32_t empty = prototype_context_empty(contexts);
+	if (context_id != empty) {
+		const struct prototype_context* context =
+			prototype_context_get(contexts, context_id);
+		if (!context || artifact_context_slice_assign_path(
+				slice, contexts, context->parent
+			) != 0) {
+			return -1;
+		}
+	}
+	slice->relocation[context_id] = (uint32_t)slice->context_count++;
+	return 0;
+}
+
+static int artifact_context_slice_canonicalize(
+	struct artifact_context_slice* slice,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_compile_metadata* metadata,
+	const uint32_t* type_order,
+	size_t type_order_count,
+	const uint32_t* constructor_order,
+	size_t constructor_order_count,
+	const uint32_t* claim_order,
+	size_t claim_order_count,
+	const uint32_t* derivation_order,
+	size_t derivation_order_count,
+	const uint32_t* substitution_order,
+	size_t substitution_order_count
+) {
+	if (!slice || !type_declarations || !judgement || !metadata) {
+		return -1;
+	}
+	for (size_t i = 0; i < slice->source_count; ++i) {
+		slice->relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	slice->context_count = 0;
+	if (artifact_context_slice_assign_path(
+			slice,
+			&metadata->contexts,
+			prototype_context_empty(&metadata->contexts)
+		) != 0) {
+		return -1;
+	}
+	for (size_t position = 0; position < type_order_count; ++position) {
+		uint32_t type_id = type_order[position];
+		if (type_id >= type_declarations->type_count) {
+			return -1;
+		}
+		const struct prototype_type_declaration* type =
+			&type_declarations->type_declarations[type_id];
+		if (type->type_index == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (artifact_context_slice_assign_path(
+				slice, &metadata->contexts, type->parameter_context
+			) != 0 || artifact_context_slice_assign_path(
+				slice, &metadata->contexts, type->index_context
+			) != 0) {
+			return -1;
+		}
+	}
+	for (size_t position = 0; position < constructor_order_count; ++position) {
+		uint32_t constructor_id = constructor_order[position];
+		if (constructor_id >= type_declarations->constructor_count) {
+			return -1;
+		}
+		const struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->constructor_declarations[constructor_id];
+		if (!artifact_constructor_present(constructor)) {
+			continue;
+		}
+		if (artifact_context_slice_assign_path(
+				slice, &metadata->contexts, constructor->parameter_context
+			) != 0 || artifact_context_slice_assign_path(
+				slice, &metadata->contexts, constructor->field_context
+			) != 0) {
+			return -1;
+		}
+	}
+	for (size_t position = 0; position < claim_order_count; ++position) {
+		uint32_t claim_id = claim_order[position];
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_claim_proposition(judgement, claim_id);
+		if (!proposition || artifact_context_slice_assign_path(
+				slice, &metadata->contexts, proposition->context_id
+			) != 0) {
+			return -1;
+		}
+	}
+	for (size_t position = 0; position < derivation_order_count; ++position) {
+		uint32_t derivation_id = derivation_order[position];
+		const struct prototype_judgement_derivation* derivation =
+			prototype_judgement_derivation_get(judgement, derivation_id);
+		if (!derivation) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			if (derivation->premises[j].claim_id != PROTOTYPE_INVALID_ID) {
+				continue;
+			}
+			const struct prototype_judgement_proposition* proposition =
+				prototype_judgement_premise_proposition(
+					judgement, &derivation->premises[j]
+				);
+			if (!proposition || artifact_context_slice_assign_path(
+					slice, &metadata->contexts, proposition->context_id
+				) != 0) {
+				return -1;
+			}
+		}
+	}
+	for (size_t position = 0; position < substitution_order_count; ++position) {
+		uint32_t substitution_id = substitution_order[position];
+		const struct prototype_substitution* substitution =
+			prototype_substitution_get(&metadata->substitutions, substitution_id);
+		if (!substitution || artifact_context_slice_assign_path(
+				slice, &metadata->contexts, substitution->source_context
+			) != 0 || artifact_context_slice_assign_path(
+				slice, &metadata->contexts, substitution->target_context
+			) != 0) {
+			return -1;
+		}
+	}
+	for (uint32_t context_id = 0; context_id < slice->source_count; ++context_id) {
+		if (slice->reachable[context_id] &&
+			artifact_context_slice_assign_path(
+				slice, &metadata->contexts, context_id
+			) != 0) {
+			return -1;
 		}
 	}
 	return 0;
@@ -3843,12 +4667,230 @@ static int artifact_type_expr_present(const struct prototype_type_expr* expr) {
 	return expr && expr->tag != 0;
 }
 
+static int artifact_record_publication_order(
+	uint32_t* order,
+	size_t capacity,
+	size_t* count,
+	uint32_t id
+) {
+	if (!order || !count || *count >= capacity || id >= capacity) {
+		return -1;
+	}
+	order[(*count)++] = id;
+	return 0;
+}
+
 static int artifact_mark_term(
 	struct artifact_graph_marks* marks,
 	const struct prototype_term_db* terms,
 	uint32_t term_id,
 	uint32_t depth
 );
+
+static int artifact_mark_substitution(
+	struct artifact_graph_marks* marks,
+	const struct prototype_term_db* terms,
+	const struct prototype_substitution_db* substitutions,
+	uint32_t substitution_id,
+	uint32_t depth
+) {
+	if (!marks || !terms || !substitutions || depth > 512 ||
+		substitution_id >= substitutions->substitution_count ||
+		substitution_id >= marks->substitution_count) {
+		return -1;
+	}
+	if (marks->substitutions[substitution_id] == 1) {
+		return 0;
+	}
+	if (marks->substitutions[substitution_id] == 2) {
+		return -1;
+	}
+	marks->substitutions[substitution_id] = 2;
+	const struct prototype_substitution* substitution =
+		prototype_substitution_get(substitutions, substitution_id);
+	if (!substitution ||
+		(substitution->term != PROTOTYPE_INVALID_ID && artifact_mark_term(
+			marks, terms, substitution->term, depth + 1
+		) != 0) ||
+		(substitution->term_classifier != PROTOTYPE_INVALID_ID &&
+		 artifact_mark_term(
+			marks, terms, substitution->term_classifier, depth + 1
+		 ) != 0)) {
+		return -1;
+	}
+	if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
+		if (artifact_mark_substitution(
+				marks, terms, substitutions, substitution->first, depth + 1
+			) != 0) {
+			return -1;
+		}
+	} else if (substitution->kind == PROTOTYPE_SUBSTITUTION_COMPOSE) {
+		if (artifact_mark_substitution(
+				marks, terms, substitutions, substitution->first, depth + 1
+			) != 0 || artifact_mark_substitution(
+				marks, terms, substitutions, substitution->second, depth + 1
+			) != 0) {
+			return -1;
+		}
+	}
+	marks->substitutions[substitution_id] = 1;
+	return artifact_record_publication_order(
+		marks->substitution_order,
+		marks->substitution_count,
+		&marks->ordered_substitution_count,
+		substitution_id
+	);
+}
+
+static uint32_t artifact_term_publication_rank(
+	const struct artifact_graph_marks* marks,
+	uint32_t term_id
+) {
+	if (term_id == PROTOTYPE_INVALID_ID) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < marks->ordered_term_count; ++i) {
+		if (marks->term_order[i] == term_id) {
+			return (uint32_t)i;
+		}
+	}
+	return PROTOTYPE_INVALID_ID;
+}
+
+static int artifact_substitution_candidate_is_ready(
+	const struct prototype_substitution* substitution,
+	const uint32_t* ranks,
+	size_t rank_count
+) {
+	if (!substitution || !ranks) {
+		return 0;
+	}
+	if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
+		return substitution->first < rank_count &&
+			ranks[substitution->first] != PROTOTYPE_INVALID_ID;
+	}
+	if (substitution->kind == PROTOTYPE_SUBSTITUTION_COMPOSE) {
+		return substitution->first < rank_count &&
+			substitution->second < rank_count &&
+			ranks[substitution->first] != PROTOTYPE_INVALID_ID &&
+			ranks[substitution->second] != PROTOTYPE_INVALID_ID;
+	}
+	return 1;
+}
+
+static int artifact_substitution_candidate_compare(
+	const struct artifact_graph_marks* marks,
+	const struct prototype_substitution* left,
+	uint32_t left_id,
+	const struct prototype_substitution* right,
+	uint32_t right_id,
+	const uint32_t* ranks
+) {
+#define COMPARE_FIELD(a, b) \
+	do { \
+		if ((a) != (b)) { \
+			return (a) < (b) ? -1 : 1; \
+		} \
+	} while (0)
+	COMPARE_FIELD(left->kind, right->kind);
+	COMPARE_FIELD(left->source_context, right->source_context);
+	COMPARE_FIELD(left->target_context, right->target_context);
+	uint32_t left_first = left->kind == PROTOTYPE_SUBSTITUTION_EXTEND ||
+		left->kind == PROTOTYPE_SUBSTITUTION_COMPOSE ?
+		ranks[left->first] : PROTOTYPE_INVALID_ID;
+	uint32_t right_first = right->kind == PROTOTYPE_SUBSTITUTION_EXTEND ||
+		right->kind == PROTOTYPE_SUBSTITUTION_COMPOSE ?
+		ranks[right->first] : PROTOTYPE_INVALID_ID;
+	COMPARE_FIELD(left_first, right_first);
+	uint32_t left_second = left->kind == PROTOTYPE_SUBSTITUTION_COMPOSE ?
+		ranks[left->second] : PROTOTYPE_INVALID_ID;
+	uint32_t right_second = right->kind == PROTOTYPE_SUBSTITUTION_COMPOSE ?
+		ranks[right->second] : PROTOTYPE_INVALID_ID;
+	COMPARE_FIELD(left_second, right_second);
+	COMPARE_FIELD(
+		artifact_term_publication_rank(marks, left->term),
+		artifact_term_publication_rank(marks, right->term)
+	);
+	COMPARE_FIELD(
+		artifact_term_publication_rank(marks, left->term_classifier),
+		artifact_term_publication_rank(marks, right->term_classifier)
+	);
+	COMPARE_FIELD(left_id, right_id);
+#undef COMPARE_FIELD
+	return 0;
+}
+
+static int artifact_canonicalize_substitution_order(
+	struct artifact_graph_marks* marks,
+	const struct prototype_substitution_db* substitutions
+) {
+	if (!marks || !substitutions ||
+		marks->substitution_count != substitutions->substitution_count) {
+		return -1;
+	}
+	uint32_t* ranks = malloc(
+		(marks->substitution_count == 0 ? 1 : marks->substitution_count) *
+			sizeof(*ranks)
+	);
+	uint32_t* order = malloc(
+		(marks->ordered_substitution_count == 0 ? 1 :
+		 marks->ordered_substitution_count) * sizeof(*order)
+	);
+	if (!ranks || !order) {
+		free(ranks);
+		free(order);
+		return -1;
+	}
+	for (size_t i = 0; i < marks->substitution_count; ++i) {
+		ranks[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t position = 0;
+		position < marks->ordered_substitution_count;
+		++position) {
+		uint32_t best = PROTOTYPE_INVALID_ID;
+		for (uint32_t candidate = 0;
+			candidate < marks->substitution_count;
+			++candidate) {
+			if (!marks->substitutions[candidate] ||
+				ranks[candidate] != PROTOTYPE_INVALID_ID) {
+				continue;
+			}
+			const struct prototype_substitution* substitution =
+				prototype_substitution_get(substitutions, candidate);
+			if (!artifact_substitution_candidate_is_ready(
+					substitution, ranks, marks->substitution_count
+				)) {
+				continue;
+			}
+			if (best == PROTOTYPE_INVALID_ID ||
+				artifact_substitution_candidate_compare(
+					marks,
+					substitution,
+					candidate,
+					prototype_substitution_get(substitutions, best),
+					best,
+					ranks
+				) < 0) {
+				best = candidate;
+			}
+		}
+		if (best == PROTOTYPE_INVALID_ID) {
+			free(ranks);
+			free(order);
+			return -1;
+		}
+		order[position] = best;
+		ranks[best] = (uint32_t)position;
+	}
+	memcpy(
+		marks->substitution_order,
+		order,
+		marks->ordered_substitution_count * sizeof(*order)
+	);
+	free(ranks);
+	free(order);
+	return 0;
+}
 
 static int artifact_mark_subject_relations(
 	struct artifact_graph_marks* marks,
@@ -3889,6 +4931,14 @@ static int artifact_mark_type_expr(
 		return 0;
 	}
 	marks->type_exprs[expr_id] = 1;
+	if (artifact_record_publication_order(
+			marks->type_expr_order,
+			marks->type_expr_count,
+			&marks->ordered_type_expr_count,
+			expr_id
+		) != 0) {
+		return -1;
+	}
 	switch (expr->tag) {
 		case PROTOTYPE_TYPE_EXPR_NAME: {
 			const struct prototype_type_declaration* local_type =
@@ -3965,6 +5015,14 @@ static int artifact_mark_parameter(
 		return 0;
 	}
 	marks->parameters[parameter_id] = 1;
+	if (artifact_record_publication_order(
+			marks->parameter_order,
+			marks->parameter_count,
+			&marks->ordered_parameter_count,
+			parameter_id
+		) != 0) {
+		return -1;
+	}
 	return artifact_mark_type_expr(marks, terms, parameter->type_expr, depth + 1);
 }
 
@@ -3989,6 +5047,14 @@ static int artifact_mark_field_type(
 		return 0;
 	}
 	marks->readback_field_types[field_type_id] = 1;
+	if (artifact_record_publication_order(
+			marks->readback_field_type_order,
+			marks->readback_field_type_count,
+			&marks->ordered_readback_field_type_count,
+			field_type_id
+		) != 0) {
+		return -1;
+	}
 	return artifact_mark_type_expr(marks, terms, *field_type, depth + 1);
 }
 
@@ -4014,6 +5080,14 @@ static int artifact_mark_constructor(
 		return 0;
 	}
 	marks->constructors[constructor_id] = 1;
+	if (artifact_record_publication_order(
+			marks->constructor_order,
+			marks->constructor_count,
+			&marks->ordered_constructor_count,
+			constructor_id
+		) != 0) {
+		return -1;
+	}
 	if (artifact_mark_type(marks, terms, constructor->owner_type, depth + 1) != 0) {
 		return -1;
 	}
@@ -4046,13 +5120,9 @@ static int artifact_mark_constructor(
 				marks, terms, constructor->result_classifier, depth + 1
 			) != 0) ||
 		(constructor->curried_classifier_cache != PROTOTYPE_INVALID_ID &&
-		(artifact_mark_term(marks, terms, constructor->curried_classifier_cache, depth + 1) != 0 ||
-			artifact_mark_subject_relations(
-				marks,
-				terms,
-				marks->judgement,
-				constructor->curried_classifier_cache
-			) != 0))) {
+		 artifact_mark_term(
+			marks, terms, constructor->curried_classifier_cache, depth + 1
+		 ) != 0)) {
 		return -1;
 	}
 	return 0;
@@ -4080,24 +5150,69 @@ static int artifact_mark_type(
 	if (!artifact_type_present(type)) {
 		return -1;
 	}
+	if ((type->origin_kind != PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
+		 type->origin_kind !=
+			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) ||
+		type->parameter_context == PROTOTYPE_INVALID_ID ||
+		type->index_context == PROTOTYPE_INVALID_ID ||
+		(type->origin_kind == PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
+		 (type->name_symbol_id < 0 || type->origin_source_carrier_term_id !=
+			PROTOTYPE_INVALID_ID)) ||
+		(type->origin_kind ==
+			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
+			 (type->name_symbol_id != -1 || type->namespace_symbol_id != -1 ||
+			  type->origin_source_carrier_term_id == PROTOTYPE_INVALID_ID))) {
+		fprintf(
+			stderr,
+			"artifact closure: invalid type metadata type=%u origin=%d name=%d namespace=%d carrier=%u parameter_context=%u index_context=%u\n",
+			type_id,
+			type->origin_kind,
+			type->name_symbol_id,
+			type->namespace_symbol_id,
+			type->origin_source_carrier_term_id,
+			type->parameter_context,
+			type->index_context
+		);
+		return -1;
+	}
 	if (marks->types[type_id]) {
 		return 0;
 	}
+	/* Mark before following the generated declaration's source carrier. A
+	 * carrier TYPE_FORMER can select this declaration as its representation
+	 * anchor, so the origin edge is allowed to close a graph cycle. */
 	marks->types[type_id] = 1;
+	if (artifact_record_publication_order(
+			marks->type_order,
+			marks->type_count,
+			&marks->ordered_type_count,
+			type_id
+		) != 0) {
+		return -1;
+	}
+	if (type->origin_kind ==
+			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
+		artifact_mark_term(
+			marks,
+			terms,
+			type->origin_source_carrier_term_id,
+			depth + 1
+		) != 0) {
+		fprintf(stderr, "artifact closure: generated type origin failed type=%u carrier=%u\n",
+			type_id, type->origin_source_carrier_term_id);
+		return -1;
+	}
 	if (type->formation_classifier == PROTOTYPE_INVALID_ID ||
 		artifact_mark_term(
 			marks, terms, type->formation_classifier, depth + 1
-		) != 0 ||
-		artifact_mark_subject_relations(
-			marks,
-			terms,
-			marks->judgement,
-			type->formation_classifier
 		) != 0) {
+		fprintf(stderr, "artifact closure: type formation failed type=%u classifier=%u\n",
+			type_id, type->formation_classifier);
 		return -1;
 	}
 	if (type->first_parameter + type->parameter_count > marks->parameter_count ||
 		type->first_constructor + type->constructor_count > marks->constructor_count) {
+		fprintf(stderr, "artifact closure: type slice failed type=%u\n", type_id);
 		return -1;
 	}
 	for (uint32_t i = 0; i < type->parameter_count; ++i) {
@@ -4112,6 +5227,8 @@ static int artifact_mark_type(
 				type->first_constructor + i,
 				depth + 1
 			) != 0) {
+			fprintf(stderr, "artifact closure: constructor traversal failed type=%u constructor=%u\n",
+				type_id, type->first_constructor + i);
 			return -1;
 		}
 	}
@@ -4132,6 +5249,14 @@ static int artifact_mark_case(
 		return 0;
 	}
 	marks->cases[case_id] = 1;
+	if (artifact_record_publication_order(
+			marks->case_order,
+			marks->case_count,
+			&marks->ordered_case_count,
+			case_id
+		) != 0) {
+		return -1;
+	}
 	const struct prototype_match_case* match_case = &terms->cases[case_id];
 	if (match_case->constructor_owner != PROTOTYPE_INVALID_ID &&
 		artifact_mark_term(marks, terms, match_case->constructor_owner, depth + 1) != 0) {
@@ -4146,7 +5271,17 @@ static int artifact_mark_case(
 		if (binding_id >= marks->case_binder_count) {
 			return -1;
 		}
-		marks->case_binders[binding_id] = 1;
+		if (!marks->case_binders[binding_id]) {
+			marks->case_binders[binding_id] = 1;
+			if (artifact_record_publication_order(
+					marks->case_binder_order,
+					marks->case_binder_count,
+					&marks->ordered_case_binder_count,
+					binding_id
+				) != 0) {
+				return -1;
+			}
+		}
 	}
 	return 0;
 }
@@ -4170,6 +5305,14 @@ static int artifact_mark_frame(
 		return 0;
 	}
 	marks->frames[ih_scope_id] = 1;
+	if (artifact_record_publication_order(
+			marks->frame_order,
+			marks->frame_count,
+			&marks->ordered_frame_count,
+			ih_scope_id
+		) != 0) {
+		return -1;
+	}
 	if (terms->ih_scopes[ih_scope_id].match_term != PROTOTYPE_INVALID_ID &&
 		artifact_mark_term(
 			marks,
@@ -4201,13 +5344,29 @@ static int artifact_mark_term(
 		return 0;
 	}
 	marks->terms[term_id] = 1;
+	if (artifact_record_publication_order(
+			marks->term_order,
+			marks->term_count,
+			&marks->ordered_term_count,
+			term_id
+		) != 0) {
+		return -1;
+	}
 	const struct prototype_term* term = &terms->terms[term_id];
 	switch (term->tag) {
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			return artifact_mark_term(marks, terms, term->as.constructor.owner, depth + 1);
 		case PROTOTYPE_TERM_APP:
-			return artifact_mark_term(marks, terms, term->as.app.function, depth + 1) == 0 &&
-				artifact_mark_term(marks, terms, term->as.app.argument, depth + 1) == 0 ? 0 : -1;
+			if (artifact_mark_term(
+					marks, terms, term->as.app.function, depth + 1
+				) != 0 || artifact_mark_term(
+					marks, terms, term->as.app.argument, depth + 1
+				) != 0) {
+				fprintf(stderr, "artifact closure: APP traversal failed term=%u function=%u argument=%u\n",
+					term_id, term->as.app.function, term->as.app.argument);
+				return -1;
+			}
+			return 0;
 		case PROTOTYPE_TERM_LAMBDA:
 			return artifact_mark_term(marks, terms, term->as.lambda.body, depth + 1);
 		case PROTOTYPE_TERM_PI:
@@ -4231,12 +5390,23 @@ static int artifact_mark_term(
 			return 0;
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			{
+				for (uint32_t i = 0; i < marks->type_count; ++i) {
+					const struct prototype_type_declaration* marked_type =
+						&marks->type_declarations->type_declarations[i];
+					if (marks->types[i] && artifact_type_present(marked_type) &&
+						marked_type->representation_id ==
+							term->as.type_former.representation_id) {
+						return 0;
+					}
+				}
 				uint32_t representative_type_id;
 				if (prototype_type_declaration_representation_type_id(
 						marks->type_declarations,
 						term->as.type_former.representation_id,
 						&representative_type_id
 					) != 0) {
+					fprintf(stderr, "artifact closure: TYPE_FORMER representation failed term=%u representation=%u\n",
+						term_id, term->as.type_former.representation_id);
 					return -1;
 				}
 				return artifact_mark_type(marks, terms, representative_type_id, depth + 1);
@@ -4244,9 +5414,29 @@ static int artifact_mark_term(
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			return artifact_mark_type(marks, terms, term->as.type_declaration.type_id, depth + 1);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return artifact_mark_type(marks, terms, term->as.type_view.view_type_id, depth + 1) == 0 &&
-				artifact_mark_term(marks, terms, term->as.type_view.core, depth + 1) == 0 &&
-				artifact_mark_term(marks, terms, term->as.type_view.source, depth + 1) == 0 ? 0 : -1;
+			if (artifact_mark_type(
+					marks, terms, term->as.type_view.view_type_id, depth + 1
+				) != 0) {
+				fprintf(stderr, "artifact closure: type view declaration failed term=%u type=%u\n",
+					term_id, term->as.type_view.view_type_id);
+				return -1;
+			}
+			if (artifact_mark_term(
+					marks, terms, term->as.type_view.core, depth + 1
+				) != 0 || artifact_mark_term(
+					marks, terms, term->as.type_view.source, depth + 1
+				) != 0) {
+				fprintf(stderr, "artifact closure: type view payload failed term=%u core=%u(tag=%d) source=%u(tag=%d)\n",
+					term_id,
+					term->as.type_view.core,
+					term->as.type_view.core < terms->term_count ?
+						terms->terms[term->as.type_view.core].tag : -1,
+					term->as.type_view.source,
+					term->as.type_view.source < terms->term_count ?
+						terms->terms[term->as.type_view.source].tag : -1);
+				return -1;
+			}
+			return 0;
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 				return artifact_mark_frame(marks, terms, term->as.induction_hypothesis.ih_scope_id, depth + 1) == 0 &&
 					artifact_mark_term(marks, terms, term->as.induction_hypothesis.argument, depth + 1) == 0 ? 0 : -1;
@@ -4316,15 +5506,61 @@ static int artifact_mark_accepted_claim(
 	}
 	const struct prototype_judgement_proposition* claim_proposition =
 		prototype_judgement_claim_proposition(judgement, claim_id);
-	if (!claim_proposition) {
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, claim_id);
+	if (!claim_proposition || !claim || claim->proposition_id >=
+			marks->proposition_count) {
 		return -1;
 	}
-	if (marks->claims[claim_id]) {
+	if (marks->claims[claim_id] == 1) {
 		return 0;
 	}
-	marks->claims[claim_id] = 1;
+	if (marks->claims[claim_id] == 2) {
+		fprintf(stderr, "artifact closure: cyclic claim dependency claim=%u\n", claim_id);
+		return -1;
+	}
+	marks->claims[claim_id] = 2;
+	if (!marks->propositions[claim->proposition_id]) {
+		marks->propositions[claim->proposition_id] = 1;
+		if (artifact_record_publication_order(
+				marks->proposition_order,
+				marks->proposition_count,
+				&marks->ordered_proposition_count,
+				claim->proposition_id
+			) != 0) {
+			return -1;
+		}
+	}
+	if (artifact_record_publication_order(
+			marks->claim_order,
+			marks->claim_count,
+			&marks->ordered_claim_count,
+			claim_id
+		) != 0) {
+		return -1;
+	}
 	if (artifact_mark_term(marks, terms, claim_proposition->subject, depth + 1) != 0 ||
-		artifact_mark_term(marks, terms, claim_proposition->classifier, depth + 1) != 0) {
+		artifact_mark_term(marks, terms, claim_proposition->classifier, depth + 1) != 0 ||
+		(claim_proposition->authority_id != PROTOTYPE_INVALID_ID &&
+		 claim_proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+		 claim_proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT &&
+		 claim_proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID &&
+		 artifact_mark_term(
+			marks, terms, claim_proposition->authority_id, depth + 1
+			 ) != 0)) {
+		fprintf(
+			stderr,
+			"artifact closure: claim term traversal failed claim=%u subject=%u(tag=%d) classifier=%u(tag=%d) authority=%d:%u\n",
+			claim_id,
+			claim_proposition->subject,
+			claim_proposition->subject < terms->term_count ?
+				terms->terms[claim_proposition->subject].tag : -1,
+			claim_proposition->classifier,
+			claim_proposition->classifier < terms->term_count ?
+				terms->terms[claim_proposition->classifier].tag : -1,
+			claim_proposition->authority_kind,
+			claim_proposition->authority_id
+		);
 		return -1;
 	}
 	int found = 0;
@@ -4338,7 +5574,17 @@ static int artifact_mark_accepted_claim(
 		if (i >= marks->derivation_count) {
 			return -1;
 		}
-		marks->derivations[i] = 1;
+		if (!marks->derivations[i]) {
+			marks->derivations[i] = 1;
+			if (artifact_record_publication_order(
+					marks->derivation_order,
+					marks->derivation_count,
+					&marks->ordered_derivation_count,
+					i
+				) != 0) {
+				return -1;
+			}
+		}
 		if (derivation->proof_kind ==
 				PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
 			if (artifact_mark_term(
@@ -4360,9 +5606,17 @@ static int artifact_mark_accepted_claim(
 		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
 			if (derivation->premises[j].claim_id != PROTOTYPE_INVALID_ID) {
 				uint32_t source_claim_id = derivation->premises[j].claim_id;
-				if (source_claim_id >= judgement->claim_count ||
-					judgement->claims[source_claim_id].closure_rank >=
-						judgement->claims[claim_id].closure_rank) {
+				if (source_claim_id >= judgement->claim_count) {
+					return -1;
+				}
+				if (marks->claims[source_claim_id] == 2) {
+					fprintf(
+						stderr,
+						"artifact closure: claim cycle edge claim=%u derivation=%u premise=%u\n",
+						claim_id,
+						i,
+						source_claim_id
+					);
 					return -1;
 				}
 				if (artifact_mark_accepted_claim(
@@ -4376,17 +5630,48 @@ static int artifact_mark_accepted_claim(
 					prototype_judgement_premise_proposition(
 						judgement, &derivation->premises[j]
 					);
-				if (!proposition || artifact_mark_term(
+				uint32_t proposition_id =
+					derivation->premises[j].scoped_proposition_id;
+				if (!proposition || proposition_id >= marks->proposition_count) {
+					return -1;
+				}
+				if (!marks->propositions[proposition_id]) {
+					marks->propositions[proposition_id] = 1;
+					if (artifact_record_publication_order(
+							marks->proposition_order,
+							marks->proposition_count,
+							&marks->ordered_proposition_count,
+							proposition_id
+						) != 0) {
+						return -1;
+					}
+				}
+				if (artifact_mark_term(
 						marks, terms, proposition->subject, depth + 1
 					) != 0 || artifact_mark_term(
 						marks, terms, proposition->classifier, depth + 1
-					) != 0) {
+					) != 0 ||
+					(proposition->authority_id != PROTOTYPE_INVALID_ID &&
+					 proposition->authority_kind !=
+						PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+					 proposition->authority_kind !=
+						PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT &&
+					 proposition->authority_kind !=
+						PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID &&
+					 artifact_mark_term(
+						marks, terms, proposition->authority_id, depth + 1
+					 ) != 0)) {
 					return -1;
 				}
 			}
 		}
 	}
-	return found ? 0 : -1;
+	if (!found) {
+		fprintf(stderr, "artifact closure: accepted claim %u has no derivation\n", claim_id);
+		return -1;
+	}
+	marks->claims[claim_id] = 1;
+	return 0;
 }
 
 static int artifact_mark_exact_relation(
@@ -4400,22 +5685,34 @@ static int artifact_mark_exact_relation(
 		return -1;
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
-		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == subject && prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier == classifier) {
+		const struct prototype_judgement_claim* claim =
+			prototype_judgement_claim_get(judgement, i);
+		if (!claim) {
+			continue;
+		}
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_proposition_get(judgement, claim->proposition_id);
+		if (proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			proposition->subject == subject && proposition->classifier == classifier) {
 			return artifact_mark_accepted_claim(marks, terms, judgement, i, 0);
 		}
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
-		const struct prototype_judgement_claim* claim = &judgement->claims[i];
+		const struct prototype_judgement_claim* claim =
+			prototype_judgement_claim_get(judgement, i);
+		if (!claim) {
+			continue;
+		}
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_proposition_get(judgement, claim->proposition_id);
 		int same_projection = 0;
-		if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier != classifier) {
+		if (proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			proposition->classifier != classifier) {
 			continue;
 		}
 		if (prototype_term_core_shape_equal(
 				(struct prototype_term_db*)terms,
-				prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject,
+				proposition->subject,
 				subject,
 				&same_projection
 			) != 0) {
@@ -4488,8 +5785,11 @@ static int artifact_mark_subject_relations(
 		return -1;
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
-		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == subject &&
+		const struct prototype_judgement_claim* claim =
+			prototype_judgement_claim_get(judgement, i);
+		if (claim && prototype_judgement_proposition_get(
+				judgement, claim->proposition_id
+			)->subject == subject &&
 			artifact_mark_accepted_claim(marks, terms, judgement, i, 0) != 0) {
 			return -1;
 		}
@@ -4538,88 +5838,6 @@ static int artifact_derivation_present(
 	return derivation && derivation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_INVALID;
 }
 
-struct artifact_rule_data_wire {
-	uint32_t constructor_owner_view;
-	uint32_t constructor_index;
-	uint32_t constructor_field_index;
-	uint32_t induction_match;
-	uint32_t induction_motive;
-	uint32_t induction_case_index;
-	uint32_t induction_field_index;
-};
-
-static void artifact_rule_data_to_wire(
-	int proof_kind,
-	const union prototype_judgement_rule_data* rule_data,
-	struct artifact_rule_data_wire* wire
-) {
-	memset(wire, 0xff, sizeof(*wire));
-	if (proof_kind == PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION ||
-		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) {
-		wire->constructor_owner_view = rule_data->constructor.owner_view;
-		wire->constructor_index = rule_data->constructor.constructor_index;
-		wire->constructor_field_index = rule_data->constructor.field_index;
-	} else if (proof_kind ==
-		PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
-		wire->induction_match = rule_data->induction.match;
-		wire->induction_motive = rule_data->induction.motive;
-		wire->induction_case_index = rule_data->induction.case_index;
-		wire->induction_field_index = rule_data->induction.field_index;
-	}
-}
-
-static int artifact_rule_data_from_wire(
-	int proof_kind,
-	const struct artifact_rule_data_wire* wire,
-	union prototype_judgement_rule_data* rule_data
-) {
-	int constructor_unused =
-		wire->constructor_owner_view == PROTOTYPE_INVALID_ID &&
-		wire->constructor_index == PROTOTYPE_INVALID_ID &&
-		wire->constructor_field_index == PROTOTYPE_INVALID_ID;
-	int induction_unused = wire->induction_match == PROTOTYPE_INVALID_ID &&
-		wire->induction_motive == PROTOTYPE_INVALID_ID &&
-		wire->induction_case_index == PROTOTYPE_INVALID_ID &&
-		wire->induction_field_index == PROTOTYPE_INVALID_ID;
-	memset(rule_data, 0xff, sizeof(*rule_data));
-	if (proof_kind == PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION) {
-		if (wire->constructor_owner_view == PROTOTYPE_INVALID_ID ||
-			wire->constructor_index == PROTOTYPE_INVALID_ID ||
-			wire->constructor_field_index == PROTOTYPE_INVALID_ID ||
-			!induction_unused) {
-			return -1;
-		}
-		rule_data->constructor.owner_view = wire->constructor_owner_view;
-		rule_data->constructor.constructor_index = wire->constructor_index;
-		rule_data->constructor.field_index = wire->constructor_field_index;
-		return 0;
-	}
-	if (proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) {
-		if (wire->constructor_owner_view == PROTOTYPE_INVALID_ID ||
-			wire->constructor_index != PROTOTYPE_INVALID_ID ||
-			wire->constructor_field_index != PROTOTYPE_INVALID_ID ||
-			!induction_unused) {
-			return -1;
-		}
-		rule_data->constructor.owner_view = wire->constructor_owner_view;
-		return 0;
-	}
-	if (proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
-		if (!constructor_unused || wire->induction_match == PROTOTYPE_INVALID_ID ||
-			wire->induction_motive == PROTOTYPE_INVALID_ID ||
-			wire->induction_case_index == PROTOTYPE_INVALID_ID ||
-			wire->induction_field_index == PROTOTYPE_INVALID_ID) {
-			return -1;
-		}
-		rule_data->induction.match = wire->induction_match;
-		rule_data->induction.motive = wire->induction_motive;
-		rule_data->induction.case_index = wire->induction_case_index;
-		rule_data->induction.field_index = wire->induction_field_index;
-		return 0;
-	}
-	return constructor_unused && induction_unused ? 0 : -1;
-}
-
 static int artifact_universe_node_present(const struct prototype_universe_node* node) {
 	return node && node->tag != 0;
 }
@@ -4627,6 +5845,11 @@ static int artifact_universe_node_present(const struct prototype_universe_node* 
 static int artifact_universe_edge_present(const struct prototype_universe_edge* edge) {
 	return edge && edge->tag != 0;
 }
+
+static const char* artifact_optional_symbol_name(
+	const struct symbol_table* symbols,
+	int symbol_id
+);
 
 static int write_artifact_graph_section(
 	FILE* stream,
@@ -4650,6 +5873,7 @@ static int write_artifact_graph_section(
 	size_t present_constructor_count = 0;
 	size_t present_field_type_count = 0;
 	size_t present_type_expr_count = 0;
+	size_t present_proposition_count = 0;
 	size_t present_claim_count = 0;
 	size_t present_derivation_count = 0;
 	for (size_t i = 0; i < terms->term_count; ++i) {
@@ -4702,36 +5926,46 @@ static int write_artifact_graph_section(
 			present_claim_count++;
 		}
 	}
+	for (size_t i = 0; i < judgement->proposition_count; ++i) {
+		if (artifact_candidate_claim_present(&judgement->propositions[i])) {
+			present_proposition_count++;
+		}
+	}
 	for (size_t i = 0; i < judgement->derivation_count; ++i) {
 		if (artifact_derivation_present(&judgement->derivations[i])) {
 			present_derivation_count++;
 		}
 	}
+	if (present_term_count != terms->term_count ||
+		present_case_count != terms->case_count ||
+		present_case_binder_count != terms->case_binder_count ||
+		present_frame_count != terms->ih_scope_count ||
+		present_type_count != type_declarations->type_count ||
+		present_parameter_count != type_declarations->parameter_count ||
+		present_constructor_count != type_declarations->constructor_count ||
+		present_field_type_count !=
+			type_declarations->readback_field_type_count ||
+		present_type_expr_count != type_declarations->expr_count ||
+		present_proposition_count != judgement->proposition_count ||
+		present_claim_count != judgement->claim_count ||
+		present_derivation_count != judgement->derivation_count) {
+		return -1;
+	}
 	fprintf(
 		stream,
-		"counts term_slots %zu terms %zu case_slots %zu cases %zu case_binder_slots %zu case_binders %zu frame_slots %zu frames %zu type_slots %zu types %zu parameter_slots %zu parameters %zu constructor_slots %zu constructors %zu field_type_slots %zu field_types %zu type_expr_slots %zu type_exprs %zu claim_slots %zu claims %zu derivation_slots %zu derivations %zu\n",
+		"counts terms %zu cases %zu case_binders %zu frames %zu types %zu parameters %zu constructors %zu field_types %zu type_exprs %zu propositions %zu claims %zu derivations %zu\n",
 		terms->term_count,
-		present_term_count,
 		terms->case_count,
-		present_case_count,
 		terms->case_binder_count,
-		present_case_binder_count,
 		terms->ih_scope_count,
-		present_frame_count,
 		type_declarations->type_count,
-		present_type_count,
 		type_declarations->parameter_count,
-		present_parameter_count,
 		type_declarations->constructor_count,
-		present_constructor_count,
 		type_declarations->readback_field_type_count,
-		present_field_type_count,
 		type_declarations->expr_count,
-		present_type_expr_count,
+		judgement->proposition_count,
 		judgement->claim_count,
-		present_claim_count,
-		judgement->derivation_count,
-		present_derivation_count
+		judgement->derivation_count
 	);
 
 	fprintf(stream, "type_declarations %zu\n", present_type_count);
@@ -4741,13 +5975,21 @@ static int write_artifact_graph_section(
 		if (!artifact_type_present(type)) {
 			continue;
 		}
+		const char* type_name = artifact_optional_symbol_name(
+			symbols, type->name_symbol_id
+		);
+		const char* namespace_name = artifact_optional_symbol_name(
+			symbols, type->namespace_symbol_id
+		);
+		if (!type_name || !namespace_name) {
+			return -1;
+		}
 		fprintf(
 			stream,
-			"type_decl %zu %s %s %u %u %u %u %u %u %u\n",
+			"type_decl %zu %s %s %u %u %u %u %u %u %u %u %u %d %u\n",
 			i,
-			symbol_to_string(symbols, type->name_symbol_id),
-			type->namespace_symbol_id >= 0 ?
-				symbol_to_string(symbols, type->namespace_symbol_id) : "-",
+			type_name,
+			namespace_name,
 			type->type_index,
 			type->first_parameter,
 			type->parameter_count,
@@ -4756,7 +5998,13 @@ static int write_artifact_graph_section(
 			type->formation_classifier,
 			artifact_context_slice_relocate(
 				context_slice, type->parameter_context
-			)
+			),
+			artifact_context_slice_relocate(
+				context_slice, type->index_context
+			),
+			type->index_count,
+			type->origin_kind,
+			type->origin_source_carrier_term_id
 		);
 	}
 
@@ -4784,11 +6032,17 @@ static int write_artifact_graph_section(
 		if (!artifact_constructor_present(constructor)) {
 			continue;
 		}
+		const char* constructor_name = artifact_optional_symbol_name(
+			symbols, constructor->name_symbol_id
+		);
+		if (!constructor_name) {
+			return -1;
+		}
 		fprintf(
 			stream,
 			"type_constructor %zu %s %u %u %u %u %u %u %u %u %u\n",
 			i,
-			symbol_to_string(symbols, constructor->name_symbol_id),
+			constructor_name,
 				constructor->owner_type,
 				constructor->constructor_index,
 				constructor->readback.first_field_type,
@@ -4889,20 +6143,16 @@ static int write_artifact_graph_section(
 		fprintf(stream, "\n");
 	}
 
-	fprintf(stream, "claims %zu\n", present_claim_count);
-	for (size_t i = 0; i < judgement->claim_count; ++i) {
-		const struct prototype_judgement_claim* claim = &judgement->claims[i];
-		if (!artifact_claim_present(judgement, claim)) {
-			continue;
-		}
+	fprintf(stream, "propositions %zu\n", present_proposition_count);
+	for (size_t i = 0; i < judgement->proposition_count; ++i) {
 		const struct prototype_judgement_proposition* proposition =
-			prototype_judgement_claim_proposition(judgement, (uint32_t)i);
-		if (!proposition) {
+			&judgement->propositions[i];
+		if (!artifact_candidate_claim_present(proposition)) {
 			return -1;
 		}
 		fprintf(
 			stream,
-			"claim %zu %d authority %d %u context %u operation %u %u %u rank %u\n",
+			"proposition %zu %d %d %u %u %u %u %u\n",
 			i,
 			proposition->kind,
 			proposition->authority_kind,
@@ -4912,8 +6162,21 @@ static int write_artifact_graph_section(
 			),
 			proposition->operation_id,
 			proposition->subject,
-			proposition->classifier,
-			claim->closure_rank
+			proposition->classifier
+		);
+	}
+
+	fprintf(stream, "claims %zu\n", present_claim_count);
+	for (size_t i = 0; i < judgement->claim_count; ++i) {
+		const struct prototype_judgement_claim* claim = &judgement->claims[i];
+		if (!artifact_claim_present(judgement, claim)) {
+			return -1;
+		}
+		fprintf(
+			stream,
+			"claim %zu proposition %u\n",
+			i,
+			claim->proposition_id
 		);
 	}
 	fprintf(stream, "derivations %zu\n", present_derivation_count);
@@ -4923,85 +6186,76 @@ static int write_artifact_graph_section(
 		if (!artifact_derivation_present(derivation)) {
 			continue;
 		}
-		struct artifact_rule_data_wire rule_data;
-		artifact_rule_data_to_wire(
-			derivation->proof_kind, &derivation->rule_data, &rule_data
-		);
+		if ((derivation->proof_kind >=
+				PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION &&
+			 derivation->proof_kind <=
+				PROTOTYPE_JUDGEMENT_PROOF_RELATION_INDUCTION_HYPOTHESIS_WITNESS &&
+			 derivation->proof_kind !=
+				PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX) ||
+			derivation->proof_kind >
+				PROTOTYPE_JUDGEMENT_PROOF_THUNK_TYPE_FORMATION) {
+			return -1;
+		}
 		fprintf(
 			stream,
-			"derivation %zu %d claim %u rank %u %u %u %u %u %u %u %u %u",
+			"derivation %zu %d claim %u premises %u\n",
 			i,
 			derivation->proof_kind,
 			derivation->conclusion_claim_id,
-			derivation->closure_rank,
-			rule_data.constructor_owner_view,
-			rule_data.constructor_index,
-			rule_data.constructor_field_index,
-			rule_data.induction_match,
-			rule_data.induction_motive,
-			rule_data.induction_case_index,
-			rule_data.induction_field_index,
 			derivation->premise_count
 		);
+		if (derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION) {
+			fprintf(
+				stream,
+				"payload constructor %u %u %u\n",
+				derivation->rule_data.constructor.owner_view,
+				derivation->rule_data.constructor.constructor_index,
+				derivation->rule_data.constructor.field_index
+			);
+		} else if (derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) {
+			fprintf(
+				stream,
+				"payload constructor_spine %u\n",
+				derivation->rule_data.constructor.owner_view
+			);
+		} else if (derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
+			fprintf(
+				stream,
+				"payload induction %u %u %u %u\n",
+				derivation->rule_data.induction.match,
+				derivation->rule_data.induction.motive,
+				derivation->rule_data.induction.case_index,
+				derivation->rule_data.induction.field_index
+			);
+		} else {
+			fprintf(stream, "payload none\n");
+		}
+		fprintf(
+			stream,
+			"action %d %u\n",
+			derivation->semantic_action_kind,
+			derivation->semantic_action_id
+		);
 		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
-			struct prototype_judgement_proposition empty = {
-				.kind = PROTOTYPE_JUDGEMENT_KIND_UNKNOWN,
-				.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID,
-				.authority_id = PROTOTYPE_INVALID_ID,
-				.context_id = PROTOTYPE_INVALID_ID,
-				.operation_id = PROTOTYPE_INVALID_ID,
-				.subject = PROTOTYPE_INVALID_ID,
-				.classifier = PROTOTYPE_INVALID_ID
-			};
-			const struct prototype_judgement_proposition* proposition =
-				derivation->premises[j].claim_id == PROTOTYPE_INVALID_ID ?
-				prototype_judgement_premise_proposition(
-					judgement, &derivation->premises[j]
-				) : &empty;
-			if (!proposition) {
+			const struct prototype_judgement_premise_edge* premise =
+				&derivation->premises[j];
+			if ((premise->claim_id == PROTOTYPE_INVALID_ID) ==
+				(premise->scoped_proposition_id == PROTOTYPE_INVALID_ID)) {
 				return -1;
 			}
 			fprintf(
 				stream,
-				" premise %u %d %u %u %u",
-				derivation->premises[j].claim_id,
-				proposition->kind,
-				artifact_context_slice_relocate(
-					context_slice, proposition->context_id
-				),
-				proposition->subject,
-				proposition->classifier
+				"premise %s %u action %d %u\n",
+				premise->claim_id != PROTOTYPE_INVALID_ID ? "claim" : "scoped",
+				premise->claim_id != PROTOTYPE_INVALID_ID ?
+					premise->claim_id : premise->scoped_proposition_id,
+				premise->semantic_action_kind,
+				premise->semantic_action_id
 			);
 		}
-		uint32_t source_claim_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-		uint32_t source_claim_count = 0;
-		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
-			uint32_t claim_id = derivation->premises[j].claim_id;
-			if (claim_id == PROTOTYPE_INVALID_ID) {
-				continue;
-			}
-			int duplicate = 0;
-			for (uint32_t k = 0; k < source_claim_count; ++k) {
-				if (source_claim_ids[k] == claim_id) {
-					duplicate = 1;
-					break;
-				}
-			}
-			if (!duplicate) {
-				source_claim_ids[source_claim_count++] = claim_id;
-			}
-		}
-		fprintf(
-			stream,
-			" action %d %u sources %u",
-			derivation->semantic_action_kind,
-			derivation->semantic_action_id,
-			source_claim_count
-		);
-		for (uint32_t j = 0; j < source_claim_count; ++j) {
-			fprintf(stream, " %u", source_claim_ids[j]);
-		}
-		fprintf(stream, "\n");
 	}
 	fprintf(stream, "END graph\n");
 	return 0;
@@ -5969,7 +7223,10 @@ static int write_artifact_debug_section(
 	return 0;
 }
 
-struct artifact_sparse_graph {
+/* This graph retains source IDs only while computing reachability. It is not
+ * a serializable artifact graph. Publication must relocate it into dense,
+ * independently numbered arenas before writing. */
+struct artifact_closure_graph {
 	struct prototype_term_db terms;
 	struct prototype_type_declaration_db type_declarations;
 	struct prototype_judgement_db judgement;
@@ -5994,9 +7251,113 @@ struct artifact_sparse_graph {
 	struct prototype_universe_edge* universe_edges;
 	struct prototype_universe_level* universe_levels;
 	struct prototype_universe_constraint* universe_constraints;
+	uint32_t* term_order;
+	uint32_t* case_order;
+	uint32_t* case_binder_order;
+	uint32_t* frame_order;
+	uint32_t* type_order;
+	uint32_t* parameter_order;
+	uint32_t* constructor_order;
+	uint32_t* readback_field_type_order;
+	uint32_t* type_expr_order;
+	uint32_t* proposition_order;
+	uint32_t* claim_order;
+	uint32_t* derivation_order;
+	uint32_t* substitution_order;
+	size_t ordered_term_count;
+	size_t ordered_case_count;
+	size_t ordered_case_binder_count;
+	size_t ordered_frame_count;
+	size_t ordered_type_count;
+	size_t ordered_parameter_count;
+	size_t ordered_constructor_count;
+	size_t ordered_readback_field_type_count;
+	size_t ordered_type_expr_count;
+	size_t ordered_proposition_count;
+	size_t ordered_claim_count;
+	size_t ordered_derivation_count;
+	size_t ordered_substitution_count;
 };
 
-static void artifact_sparse_graph_free(struct artifact_sparse_graph* graph) {
+struct artifact_publication_graph {
+	struct artifact_closure_graph object;
+	struct prototype_artifact_interface interface;
+	struct prototype_compile_metadata metadata;
+	struct prototype_artifact_term_export* term_exports;
+	struct prototype_artifact_type_export* type_exports;
+	struct prototype_artifact_type_parameter_export* type_parameters;
+	struct prototype_artifact_constructor_export* constructor_exports;
+	uint32_t* constructor_field_type_exprs;
+	struct prototype_type_expr* interface_type_exprs;
+	struct prototype_artifact_identity_root* identity_roots;
+	struct prototype_artifact_dependency* dependencies;
+	struct prototype_context* contexts;
+	struct prototype_substitution* substitutions;
+	struct prototype_operation_node* operations;
+	struct prototype_operation_match_case* operation_cases;
+	struct prototype_operation_computation_fold_clause* operation_fold_clauses;
+	struct prototype_operation_effect_constraint* effect_constraints;
+	struct prototype_verification_obligation* verification_obligations;
+	uint32_t* term_relocation;
+	uint32_t* binding_relocation;
+	uint32_t* context_relocation;
+	uint32_t* type_relocation;
+	uint32_t* type_expr_relocation;
+	uint32_t* parameter_relocation;
+	uint32_t* constructor_relocation;
+	uint32_t* field_relocation;
+	uint32_t* proposition_relocation;
+	uint32_t* claim_relocation;
+	uint32_t* substitution_relocation;
+};
+
+struct artifact_append_order {
+	const uint32_t* terms;
+	size_t term_count;
+	const uint32_t* types;
+	size_t type_count;
+	const uint32_t* type_exprs;
+	size_t type_expr_count;
+	const uint32_t* fields;
+	size_t field_count;
+	const uint32_t* parameters;
+	size_t parameter_count;
+	const uint32_t* constructors;
+	size_t constructor_count;
+	const uint32_t* propositions;
+	size_t proposition_count;
+	const uint32_t* claims;
+	size_t claim_count;
+	const uint32_t* derivations;
+	size_t derivation_count;
+	const uint32_t* substitutions;
+	size_t substitution_count;
+};
+
+static int artifact_append_graph_ordered(
+	struct prototype_artifact_interface* appended_interface,
+	struct prototype_term_db* target_terms,
+	struct prototype_type_declaration_db* target_type_declarations,
+	struct prototype_judgement_db* target_judgement,
+	struct prototype_context_db* target_contexts,
+	struct prototype_substitution_db* target_substitutions,
+	const struct prototype_artifact_interface* source_interface,
+	const struct prototype_term_db* source_terms,
+	const struct prototype_type_declaration_db* source_type_declarations,
+	const struct prototype_judgement_db* source_judgement,
+	const struct prototype_context_db* source_contexts,
+	const struct prototype_substitution_db* source_substitutions,
+	uint32_t operation_offset,
+	uint32_t* term_relocation,
+	size_t term_relocation_capacity,
+	uint32_t* context_relocation,
+	size_t context_relocation_capacity,
+	struct prototype_artifact_graph_relocation* additional_relocation,
+	int canonicalize_link_references,
+	const struct artifact_append_order* order
+);
+
+static void artifact_closure_graph_free(struct artifact_closure_graph* graph) {
 	if (!graph) {
 		return;
 	}
@@ -6021,6 +7382,85 @@ static void artifact_sparse_graph_free(struct artifact_sparse_graph* graph) {
 	free(graph->universe_edges);
 	free(graph->universe_levels);
 	free(graph->universe_constraints);
+	free(graph->term_order);
+	free(graph->case_order);
+	free(graph->case_binder_order);
+	free(graph->frame_order);
+	free(graph->type_order);
+	free(graph->parameter_order);
+	free(graph->constructor_order);
+	free(graph->readback_field_type_order);
+	free(graph->type_expr_order);
+	free(graph->proposition_order);
+	free(graph->claim_order);
+	free(graph->derivation_order);
+	free(graph->substitution_order);
+	memset(graph, 0, sizeof(*graph));
+}
+
+static void artifact_closure_graph_take_publication_order(
+	struct artifact_closure_graph* graph,
+	struct artifact_graph_marks* marks
+) {
+	if (!graph || !marks) {
+		return;
+	}
+#define TAKE_ORDER(field, count_field) \
+	do { \
+		graph->field = marks->field; \
+		graph->count_field = marks->count_field; \
+		marks->field = NULL; \
+		marks->count_field = 0; \
+	} while (0)
+	TAKE_ORDER(term_order, ordered_term_count);
+	TAKE_ORDER(case_order, ordered_case_count);
+	TAKE_ORDER(case_binder_order, ordered_case_binder_count);
+	TAKE_ORDER(frame_order, ordered_frame_count);
+	TAKE_ORDER(type_order, ordered_type_count);
+	TAKE_ORDER(parameter_order, ordered_parameter_count);
+	TAKE_ORDER(constructor_order, ordered_constructor_count);
+	TAKE_ORDER(readback_field_type_order, ordered_readback_field_type_count);
+	TAKE_ORDER(type_expr_order, ordered_type_expr_count);
+	TAKE_ORDER(proposition_order, ordered_proposition_count);
+	TAKE_ORDER(claim_order, ordered_claim_count);
+	TAKE_ORDER(derivation_order, ordered_derivation_count);
+	TAKE_ORDER(substitution_order, ordered_substitution_count);
+#undef TAKE_ORDER
+}
+
+static void artifact_publication_graph_free(
+	struct artifact_publication_graph* graph
+) {
+	if (!graph) {
+		return;
+	}
+	artifact_closure_graph_free(&graph->object);
+	free(graph->term_exports);
+	free(graph->type_exports);
+	free(graph->type_parameters);
+	free(graph->constructor_exports);
+	free(graph->constructor_field_type_exprs);
+	free(graph->interface_type_exprs);
+	free(graph->identity_roots);
+	free(graph->dependencies);
+	free(graph->contexts);
+	free(graph->substitutions);
+	free(graph->operations);
+	free(graph->operation_cases);
+	free(graph->operation_fold_clauses);
+	free(graph->effect_constraints);
+	free(graph->verification_obligations);
+	free(graph->term_relocation);
+	free(graph->binding_relocation);
+	free(graph->context_relocation);
+	free(graph->type_relocation);
+	free(graph->type_expr_relocation);
+	free(graph->parameter_relocation);
+	free(graph->constructor_relocation);
+	free(graph->field_relocation);
+	free(graph->proposition_relocation);
+	free(graph->claim_relocation);
+	free(graph->substitution_relocation);
 	memset(graph, 0, sizeof(*graph));
 }
 
@@ -6036,7 +7476,7 @@ static int artifact_alloc_bytes(void** p_ret, size_t count, size_t size) {
 	return *p_ret ? 0 : -1;
 }
 
-static void artifact_init_sparse_defaults(struct artifact_sparse_graph* graph) {
+static void artifact_init_closure_defaults(struct artifact_closure_graph* graph) {
 	for (size_t i = 0; i < graph->judgement.claim_count; ++i) {
 		graph->judgement.claims[i].proposition_id = PROTOTYPE_INVALID_ID;
 	}
@@ -6055,6 +7495,8 @@ static void artifact_init_sparse_defaults(struct artifact_sparse_graph* graph) {
 		graph->type_declarations.type_declarations[i].name_symbol_id = -1;
 		graph->type_declarations.type_declarations[i].type_index = PROTOTYPE_INVALID_ID;
 		graph->type_declarations.type_declarations[i].representation_id = PROTOTYPE_INVALID_ID;
+		graph->type_declarations.type_declarations[i].parameter_context = PROTOTYPE_INVALID_ID;
+		graph->type_declarations.type_declarations[i].index_context = PROTOTYPE_INVALID_ID;
 		graph->type_declarations.type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
 		graph->type_declarations.type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
 	}
@@ -6097,8 +7539,23 @@ static void artifact_marks_free(struct artifact_graph_marks* marks) {
 	free(marks->constructors);
 	free(marks->readback_field_types);
 	free(marks->type_exprs);
+	free(marks->propositions);
 	free(marks->claims);
 	free(marks->derivations);
+	free(marks->substitutions);
+	free(marks->term_order);
+	free(marks->case_order);
+	free(marks->case_binder_order);
+	free(marks->frame_order);
+	free(marks->type_order);
+	free(marks->parameter_order);
+	free(marks->constructor_order);
+	free(marks->readback_field_type_order);
+	free(marks->type_expr_order);
+	free(marks->proposition_order);
+	free(marks->claim_order);
+	free(marks->derivation_order);
+	free(marks->substitution_order);
 	memset(marks, 0, sizeof(*marks));
 }
 
@@ -6106,7 +7563,8 @@ static int artifact_marks_init(
 	struct artifact_graph_marks* marks,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_compile_metadata* metadata
 ) {
 	if (!marks || !terms || !type_declarations || !judgement) {
 		return -1;
@@ -6123,8 +7581,11 @@ static int artifact_marks_init(
 	marks->constructor_count = type_declarations->constructor_count;
 	marks->readback_field_type_count = type_declarations->readback_field_type_count;
 	marks->type_expr_count = type_declarations->expr_count;
+	marks->proposition_count = judgement->proposition_count;
 	marks->claim_count = judgement->claim_count;
 	marks->derivation_count = judgement->derivation_count;
+	marks->substitution_count = metadata ?
+		metadata->substitutions.substitution_count : 0;
 	if (artifact_alloc_bytes((void**)&marks->terms, marks->term_count, sizeof(*marks->terms)) != 0 ||
 		artifact_alloc_bytes((void**)&marks->cases, marks->case_count, sizeof(*marks->cases)) != 0 ||
 		artifact_alloc_bytes(
@@ -6155,6 +7616,11 @@ static int artifact_marks_init(
 			sizeof(*marks->type_exprs)
 		) != 0 ||
 		artifact_alloc_bytes(
+			(void**)&marks->propositions,
+			marks->proposition_count,
+			sizeof(*marks->propositions)
+		) != 0 ||
+		artifact_alloc_bytes(
 			(void**)&marks->claims,
 			marks->claim_count,
 			sizeof(*marks->claims)
@@ -6163,6 +7629,62 @@ static int artifact_marks_init(
 			(void**)&marks->derivations,
 			marks->derivation_count,
 			sizeof(*marks->derivations)
+		) != 0 || artifact_alloc_bytes(
+		(void**)&marks->substitutions,
+			marks->substitution_count,
+			sizeof(*marks->substitutions)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->term_order,
+			marks->term_count,
+			sizeof(*marks->term_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->case_order,
+			marks->case_count,
+			sizeof(*marks->case_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->case_binder_order,
+			marks->case_binder_count,
+			sizeof(*marks->case_binder_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->frame_order,
+			marks->frame_count,
+			sizeof(*marks->frame_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->type_order,
+			marks->type_count,
+			sizeof(*marks->type_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->parameter_order,
+			marks->parameter_count,
+			sizeof(*marks->parameter_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->constructor_order,
+			marks->constructor_count,
+			sizeof(*marks->constructor_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->readback_field_type_order,
+			marks->readback_field_type_count,
+			sizeof(*marks->readback_field_type_order)
+		) != 0 || artifact_alloc_bytes(
+		(void**)&marks->type_expr_order,
+			marks->type_expr_count,
+			sizeof(*marks->type_expr_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->proposition_order,
+			marks->proposition_count,
+			sizeof(*marks->proposition_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->claim_order,
+			marks->claim_count,
+			sizeof(*marks->claim_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->derivation_order,
+			marks->derivation_count,
+			sizeof(*marks->derivation_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->substitution_order,
+			marks->substitution_count,
+			sizeof(*marks->substitution_order)
 		) != 0) {
 		artifact_marks_free(marks);
 		return -1;
@@ -6180,6 +7702,19 @@ static int artifact_mark_roots(
 ) {
 	if (!marks || !interface || !terms || !type_declarations || !judgement) {
 		return -1;
+	}
+	/* A structural TYPE_FORMER does not select a nominal declaration. Root the
+	 * exported TypeViews first so representation traversal cannot promote an
+	 * allocation-dependent representative declaration into the artifact. */
+	for (size_t i = 0; i < interface->type_export_count; ++i) {
+		if (artifact_mark_type(
+				marks,
+				terms,
+				interface->type_exports[i].local_type_id,
+				0
+			) != 0) {
+			return -1;
+		}
 	}
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		const struct prototype_artifact_term_export* export = &interface->term_exports[i];
@@ -6233,11 +7768,51 @@ static int artifact_mark_roots(
 			return -1;
 		}
 	}
+	for (size_t i = 0; i < interface->identity_root_count; ++i) {
+		const struct prototype_artifact_identity_root* root =
+			&interface->identity_roots[i];
+		if (artifact_mark_accepted_claim(
+				marks,
+				terms,
+				judgement,
+				root->source_type_claim_id,
+				0
+			) != 0 || artifact_mark_accepted_claim(
+				marks,
+				terms,
+				judgement,
+				root->identity_family_has_type_claim_id,
+				0
+			) != 0) {
+			fprintf(
+				stderr,
+				"artifact closure: identity claim traversal failed root=%zu source=%u family=%u\n",
+				i,
+				root->source_type_claim_id,
+				root->identity_family_has_type_claim_id
+			);
+			return -1;
+		}
+		if (root->witness_has_type_claim_id != PROTOTYPE_INVALID_ID &&
+			 artifact_mark_accepted_claim(
+				marks,
+				terms,
+				judgement,
+				root->witness_has_type_claim_id,
+				0
+			 ) != 0) {
+			fprintf(
+				stderr,
+				"artifact closure: identity witness claim traversal failed root=%zu claim=%u\n",
+				i,
+				root->witness_has_type_claim_id
+			);
+			return -1;
+		}
+	}
 	for (size_t i = 0; i < interface->type_export_count; ++i) {
 		const struct prototype_artifact_type_export* export = &interface->type_exports[i];
-		if (artifact_mark_type(marks, terms, export->local_type_id, 0) != 0 ||
-			artifact_mark_type(marks, terms, export->core_representation_anchor_type_id, 0) != 0 ||
-			export->formation_classifier == PROTOTYPE_INVALID_ID ||
+		if (export->formation_classifier == PROTOTYPE_INVALID_ID ||
 			artifact_mark_term(marks, terms, export->formation_classifier, 0) != 0 ||
 			artifact_mark_subject_relations(
 				marks, terms, judgement, export->formation_classifier
@@ -6299,22 +7874,55 @@ static int artifact_mark_roots(
 				}
 			}
 		}
-		for (size_t i = 0;
-			i < metadata->substitutions.substitution_count;
-			++i) {
+		for (size_t position = 0;
+			position < marks->ordered_derivation_count;
+			++position) {
+			uint32_t derivation_id = marks->derivation_order[position];
+			if (derivation_id >= marks->derivation_count ||
+				!marks->derivations[derivation_id]) {
+				return -1;
+			}
+			const struct prototype_judgement_derivation* derivation =
+				&judgement->derivations[derivation_id];
+			if (derivation->semantic_action_kind ==
+					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION &&
+				artifact_mark_substitution(
+					marks,
+					terms,
+					&metadata->substitutions,
+					derivation->semantic_action_id,
+					0
+				) != 0) {
+				return -1;
+			}
+			for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+				if (derivation->premises[j].semantic_action_kind ==
+						PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION &&
+					artifact_mark_substitution(
+						marks,
+						terms,
+						&metadata->substitutions,
+						derivation->premises[j].semantic_action_id,
+						0
+					) != 0) {
+					return -1;
+				}
+			}
+		}
+		if (artifact_canonicalize_substitution_order(
+				marks, &metadata->substitutions
+			) != 0) {
+			return -1;
+		}
+		for (size_t i = 0; i < marks->substitution_count; ++i) {
+			if (!marks->substitutions[i]) {
+				continue;
+			}
 			const struct prototype_substitution* substitution =
 				prototype_substitution_get(
 					&metadata->substitutions, (uint32_t)i
 				);
-			if (!substitution ||
-				(substitution->term != PROTOTYPE_INVALID_ID &&
-					artifact_mark_term(
-						marks, terms, substitution->term, 0
-					) != 0) ||
-				(substitution->term_classifier != PROTOTYPE_INVALID_ID &&
-					artifact_mark_term(
-						marks, terms, substitution->term_classifier, 0
-					) != 0)) {
+			if (!substitution) {
 				return -1;
 			}
 			uint32_t context_ids[] = {
@@ -6440,8 +8048,8 @@ static int artifact_mark_roots(
 	return 0;
 }
 
-static int artifact_sparse_graph_alloc(
-	struct artifact_sparse_graph* graph,
+static int artifact_closure_graph_alloc(
+	struct artifact_closure_graph* graph,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
@@ -6536,7 +8144,7 @@ static int artifact_sparse_graph_alloc(
 			universe->constraint_count,
 			sizeof(*graph->universe_constraints)
 		) != 0) {
-		artifact_sparse_graph_free(graph);
+		artifact_closure_graph_free(graph);
 		return -1;
 	}
 	prototype_term_db_init(
@@ -6607,12 +8215,12 @@ static int artifact_sparse_graph_alloc(
 	graph->universe.level_count = universe->level_count;
 	graph->universe.constraint_count = 0;
 	graph->universe.solved = universe->solved;
-	artifact_init_sparse_defaults(graph);
+	artifact_init_closure_defaults(graph);
 	return 0;
 }
 
-static int artifact_sparse_graph_copy_marked(
-	struct artifact_sparse_graph* graph,
+static int artifact_closure_graph_copy_marked(
+	struct artifact_closure_graph* graph,
 	const struct artifact_graph_marks* marks,
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement,
@@ -6785,8 +8393,8 @@ static int artifact_sparse_graph_copy_marked(
 	return 0;
 }
 
-static int artifact_build_sparse_graph(
-	struct artifact_sparse_graph* graph,
+static int artifact_build_closure_graph(
+	struct artifact_closure_graph* graph,
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -6799,22 +8407,977 @@ static int artifact_build_sparse_graph(
 	}
 	memset(graph, 0, sizeof(*graph));
 	struct artifact_graph_marks marks;
-	if (artifact_marks_init(&marks, terms, type_declarations, judgement) != 0) {
+	if (artifact_marks_init(
+			&marks, terms, type_declarations, judgement, metadata
+		) != 0) {
+		fprintf(stderr, "artifact closure: mark allocation failed\n");
 		return -1;
 	}
 	int status = 0;
 	if (artifact_mark_roots(
 			&marks, interface, terms, type_declarations, judgement, metadata
-		) != 0 ||
-		artifact_sparse_graph_alloc(graph, terms, type_declarations, judgement, universe) != 0 ||
-		artifact_sparse_graph_copy_marked(graph, &marks, terms, judgement, universe) != 0) {
+		) != 0) {
+		fprintf(stderr, "artifact closure: root traversal failed\n");
 		status = -1;
+	} else if (artifact_closure_graph_alloc(
+			graph, terms, type_declarations, judgement, universe
+		) != 0) {
+		fprintf(stderr, "artifact closure: graph allocation failed\n");
+		status = -1;
+	} else if (artifact_closure_graph_copy_marked(
+			graph, &marks, terms, judgement, universe
+		) != 0) {
+		fprintf(stderr, "artifact closure: marked graph copy failed\n");
+		status = -1;
+	} else {
+		artifact_closure_graph_take_publication_order(graph, &marks);
 	}
 	artifact_marks_free(&marks);
 	if (status != 0) {
-		artifact_sparse_graph_free(graph);
+		artifact_closure_graph_free(graph);
 	}
 	return status;
+}
+
+static void artifact_reset_object_graph_for_publication(
+	struct artifact_closure_graph* graph
+) {
+	graph->terms.term_count = 0;
+	graph->terms.case_count = 0;
+	graph->terms.case_binder_count = 0;
+	graph->terms.ih_scope_count = 0;
+	graph->terms.computation_fold_clause_count = 0;
+	graph->terms.next_binding_id = 0;
+	graph->type_declarations.type_count = 0;
+	graph->type_declarations.parameter_count = 0;
+	graph->type_declarations.constructor_count = 0;
+	graph->type_declarations.readback_field_type_count = 0;
+	graph->type_declarations.expr_count = 0;
+	graph->type_declarations.representation_count = 0;
+	graph->type_declarations.representations_dirty = 1;
+	graph->type_declarations.next_level_var = 0;
+	graph->judgement.proposition_count = 0;
+	graph->judgement.derivation_candidate_count = 0;
+	graph->judgement.claim_count = 0;
+	graph->judgement.derivation_count = 0;
+	graph->judgement.candidate_premise_count = 0;
+	graph->judgement.accepted_premise_count = 0;
+	graph->judgement.next_universe_var = 0;
+	graph->universe.node_count = 0;
+	graph->universe.edge_count = 0;
+	graph->universe.level_count = 0;
+	graph->universe.constraint_count = 0;
+	graph->universe.solved = 0;
+}
+
+static uint32_t artifact_relocate_optional_id(
+	uint32_t id,
+	const uint32_t* relocation,
+	size_t relocation_count
+) {
+	if (id == PROTOTYPE_INVALID_ID) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	if (!relocation || id >= relocation_count) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	return relocation[id];
+}
+
+static int artifact_publication_metadata_relocate(
+	struct artifact_publication_graph* publication,
+	const struct prototype_compile_metadata* source,
+	const struct artifact_closure_graph* closure
+) {
+	if (!publication || !source || !closure) {
+		return -1;
+	}
+	struct prototype_compile_metadata* target = &publication->metadata;
+	target->compile_policy = source->compile_policy;
+	target->definition_thunk_policy = source->definition_thunk_policy;
+	target->selected_entry_symbol_id = source->selected_entry_symbol_id;
+	target->selected_entry_term = artifact_relocate_optional_id(
+		source->selected_entry_term,
+		publication->term_relocation,
+		closure->terms.term_count
+	);
+	target->selected_entry_classifier = artifact_relocate_optional_id(
+		source->selected_entry_classifier,
+		publication->term_relocation,
+		closure->terms.term_count
+	);
+	target->selected_entry_operation = source->selected_entry_operation;
+	target->required_runtime_capabilities = source->required_runtime_capabilities;
+	target->normalization_step_limit = source->normalization_step_limit;
+	target->normalization_steps_used = source->normalization_steps_used;
+	target->solver_step_limit = source->solver_step_limit;
+	target->solver_steps_used = source->solver_steps_used;
+	target->solver_exhausted = source->solver_exhausted;
+	target->solver_constraint_count = source->solver_constraint_count;
+	target->solver_solved_count = source->solver_solved_count;
+	target->solver_residual_count = source->solver_residual_count;
+	target->solver_incomplete_count = source->solver_incomplete_count;
+	target->operation_count = source->operation_count;
+	for (size_t i = 0; i < source->operation_count; ++i) {
+		target->operations[i] = source->operations[i];
+		struct prototype_operation_node* operation = &target->operations[i];
+		uint32_t* term_fields[] = {
+			&operation->core_term,
+			&operation->known_classifier,
+			&operation->classifier,
+			&operation->binder_classifier
+		};
+		for (size_t j = 0; j < sizeof(term_fields) / sizeof(term_fields[0]); ++j) {
+			uint32_t relocated = artifact_relocate_optional_id(
+				*term_fields[j],
+				publication->term_relocation,
+				closure->terms.term_count
+			);
+			if (*term_fields[j] != PROTOTYPE_INVALID_ID &&
+				relocated == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			*term_fields[j] = relocated;
+		}
+		if (operation->context_id >= source->contexts.context_count ||
+			publication->context_relocation[operation->context_id] ==
+				PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		operation->context_id = publication->context_relocation[
+			operation->context_id
+		];
+		uint32_t* binding_fields[] = {
+			&operation->binding_id,
+			&operation->fold_return_binder_id
+		};
+		for (size_t j = 0; j < sizeof(binding_fields) /
+				sizeof(binding_fields[0]); ++j) {
+			uint32_t relocated = artifact_relocate_optional_id(
+				*binding_fields[j],
+				publication->binding_relocation,
+				closure->terms.next_binding_id
+			);
+			if (*binding_fields[j] != PROTOTYPE_INVALID_ID &&
+				relocated == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			*binding_fields[j] = relocated;
+		}
+		for (uint32_t j = 0; j < operation->implicit_effect_row_count; ++j) {
+			uint32_t relocated = artifact_relocate_optional_id(
+				operation->implicit_effect_row_binders[j],
+				publication->binding_relocation,
+				closure->terms.next_binding_id
+			);
+			if (relocated == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			operation->implicit_effect_row_binders[j] = relocated;
+		}
+	}
+	target->operation_case_count = source->operation_case_count;
+	for (size_t i = 0; i < source->operation_case_count; ++i) {
+		target->operation_cases[i] = source->operation_cases[i];
+		struct prototype_operation_match_case* operation_case =
+			&target->operation_cases[i];
+		if (operation_case->context_id >= source->contexts.context_count ||
+			operation_case->constructor_owner >= closure->terms.term_count ||
+			publication->context_relocation[operation_case->context_id] ==
+				PROTOTYPE_INVALID_ID ||
+			publication->term_relocation[operation_case->constructor_owner] ==
+				PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		operation_case->context_id = publication->context_relocation[
+			operation_case->context_id
+		];
+		operation_case->constructor_owner = publication->term_relocation[
+			operation_case->constructor_owner
+		];
+	}
+	target->operation_fold_clause_count = source->operation_fold_clause_count;
+	for (size_t i = 0; i < source->operation_fold_clause_count; ++i) {
+		target->operation_fold_clauses[i] = source->operation_fold_clauses[i];
+		if (target->operation_fold_clauses[i].context_id >=
+			source->contexts.context_count) {
+			return -1;
+		}
+		target->operation_fold_clauses[i].context_id =
+			publication->context_relocation[
+				target->operation_fold_clauses[i].context_id
+			];
+		uint32_t* binding_fields[] = {
+			&target->operation_fold_clauses[i].argument_binder_id,
+			&target->operation_fold_clauses[i].continuation_binder_id
+		};
+		for (size_t j = 0; j < sizeof(binding_fields) /
+				sizeof(binding_fields[0]); ++j) {
+			uint32_t relocated = artifact_relocate_optional_id(
+				*binding_fields[j],
+				publication->binding_relocation,
+				closure->terms.next_binding_id
+			);
+			if (*binding_fields[j] != PROTOTYPE_INVALID_ID &&
+				relocated == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			*binding_fields[j] = relocated;
+		}
+	}
+	target->effect_constraint_count = source->effect_constraint_count;
+	for (size_t i = 0; i < source->effect_constraint_count; ++i) {
+		target->effect_constraints[i] = source->effect_constraints[i];
+		uint32_t* rows[] = {
+			&target->effect_constraints[i].result_row,
+			&target->effect_constraints[i].left_row,
+			&target->effect_constraints[i].right_row
+		};
+		for (size_t j = 0; j < sizeof(rows) / sizeof(rows[0]); ++j) {
+			uint32_t relocated = artifact_relocate_optional_id(
+				*rows[j], publication->term_relocation, closure->terms.term_count
+			);
+			if (*rows[j] != PROTOTYPE_INVALID_ID && relocated == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			*rows[j] = relocated;
+		}
+	}
+	target->verification.obligation_count = source->verification.obligation_count;
+	for (size_t i = 0; i < source->verification.obligation_count; ++i) {
+		target->verification.obligations[i] = source->verification.obligations[i];
+		struct prototype_verification_obligation* obligation =
+			&target->verification.obligations[i];
+		uint32_t* term_fields[] = {
+			&obligation->core_term,
+			&obligation->input_classifier,
+			&obligation->classifier_family,
+			&obligation->effect_row
+		};
+		for (size_t j = 0; j < sizeof(term_fields) / sizeof(term_fields[0]); ++j) {
+			uint32_t relocated = artifact_relocate_optional_id(
+				*term_fields[j],
+				publication->term_relocation,
+				closure->terms.term_count
+			);
+			if (*term_fields[j] != PROTOTYPE_INVALID_ID &&
+				relocated == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			*term_fields[j] = relocated;
+		}
+		uint32_t relocated_binding = artifact_relocate_optional_id(
+			obligation->continuation_binder_id,
+			publication->binding_relocation,
+			closure->terms.next_binding_id
+		);
+		if (obligation->continuation_binder_id != PROTOTYPE_INVALID_ID &&
+			relocated_binding == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		obligation->continuation_binder_id = relocated_binding;
+	}
+	return 0;
+}
+
+static int artifact_publication_graph_alloc(
+	struct artifact_publication_graph* publication,
+	const struct artifact_closure_graph* closure,
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_compile_metadata* metadata
+) {
+	if (!publication || !closure || !interface || !metadata) {
+		return -1;
+	}
+	if (closure->terms.term_count > SIZE_MAX -
+			closure->type_declarations.expr_count ||
+		closure->terms.term_count + closure->type_declarations.expr_count >
+			SIZE_MAX - interface->type_expr_count ||
+		closure->terms.term_count + closure->type_declarations.expr_count +
+			interface->type_expr_count >
+			SIZE_MAX - closure->type_declarations.type_count ||
+		closure->terms.term_count + closure->type_declarations.expr_count +
+			interface->type_expr_count + closure->type_declarations.type_count >
+			SIZE_MAX - interface->dependency_count) {
+		return -1;
+	}
+	size_t dependency_capacity = interface->dependency_count +
+		closure->terms.term_count + closure->type_declarations.expr_count +
+		interface->type_expr_count + closure->type_declarations.type_count;
+	memset(publication, 0, sizeof(*publication));
+#define ALLOC_PUBLICATION(field, count) \
+	do { \
+		if (artifact_alloc_bytes( \
+				(void**)&publication->field, \
+				(count), \
+				sizeof(*publication->field) \
+			) != 0) { \
+			artifact_publication_graph_free(publication); \
+			return -1; \
+		} \
+	} while (0)
+	ALLOC_PUBLICATION(term_exports, interface->term_export_count);
+	ALLOC_PUBLICATION(type_exports, interface->type_export_count);
+	ALLOC_PUBLICATION(type_parameters, interface->type_parameter_count);
+	ALLOC_PUBLICATION(constructor_exports, interface->constructor_export_count);
+	ALLOC_PUBLICATION(
+		constructor_field_type_exprs,
+		interface->constructor_field_type_expr_count
+	);
+	ALLOC_PUBLICATION(interface_type_exprs, interface->type_expr_count);
+	ALLOC_PUBLICATION(identity_roots, interface->identity_root_count);
+	ALLOC_PUBLICATION(dependencies, dependency_capacity);
+	ALLOC_PUBLICATION(contexts, metadata->contexts.context_count);
+	ALLOC_PUBLICATION(substitutions, metadata->substitutions.substitution_count);
+	ALLOC_PUBLICATION(operations, metadata->operation_count);
+	ALLOC_PUBLICATION(operation_cases, metadata->operation_case_count);
+	ALLOC_PUBLICATION(
+		operation_fold_clauses, metadata->operation_fold_clause_count
+	);
+	ALLOC_PUBLICATION(effect_constraints, metadata->effect_constraint_count);
+	ALLOC_PUBLICATION(
+		verification_obligations, metadata->verification.obligation_count
+	);
+	ALLOC_PUBLICATION(term_relocation, closure->terms.term_count);
+	ALLOC_PUBLICATION(binding_relocation, closure->terms.next_binding_id);
+	ALLOC_PUBLICATION(context_relocation, metadata->contexts.context_count);
+	ALLOC_PUBLICATION(type_relocation, closure->type_declarations.type_count);
+	ALLOC_PUBLICATION(type_expr_relocation, closure->type_declarations.expr_count);
+	ALLOC_PUBLICATION(
+		parameter_relocation, closure->type_declarations.parameter_count
+	);
+	ALLOC_PUBLICATION(
+		constructor_relocation, closure->type_declarations.constructor_count
+	);
+	ALLOC_PUBLICATION(
+		field_relocation, closure->type_declarations.readback_field_type_count
+	);
+	ALLOC_PUBLICATION(
+		proposition_relocation, closure->judgement.proposition_count
+	);
+	ALLOC_PUBLICATION(claim_relocation, closure->judgement.claim_count);
+	ALLOC_PUBLICATION(
+		substitution_relocation, metadata->substitutions.substitution_count
+	);
+#undef ALLOC_PUBLICATION
+	size_t derived_classifier_term_capacity = 0;
+	for (size_t i = 0;
+		i < closure->type_declarations.constructor_count;
+		++i) {
+		const struct prototype_type_constructor_declaration* constructor =
+			&closure->type_declarations.constructor_declarations[i];
+		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		const struct prototype_context* parameter_context =
+			prototype_context_get(
+				&metadata->contexts, constructor->parameter_context
+			);
+		const struct prototype_context* field_context = prototype_context_get(
+			&metadata->contexts, constructor->field_context
+		);
+		if (!parameter_context || !field_context ||
+			field_context->depth < parameter_context->depth) {
+			artifact_publication_graph_free(publication);
+			return -1;
+		}
+		size_t parameter_terms = parameter_context->depth;
+		size_t field_terms =
+			(size_t)(field_context->depth - parameter_context->depth) * 4;
+		if (derived_classifier_term_capacity >
+				SIZE_MAX - parameter_terms ||
+			derived_classifier_term_capacity + parameter_terms >
+				SIZE_MAX - field_terms) {
+			artifact_publication_graph_free(publication);
+			return -1;
+		}
+		derived_classifier_term_capacity += parameter_terms + field_terms;
+	}
+	if (closure->terms.term_count >
+		SIZE_MAX - derived_classifier_term_capacity) {
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	struct prototype_term_db publication_term_capacity = closure->terms;
+	publication_term_capacity.term_count = closure->terms.term_count +
+		derived_classifier_term_capacity;
+	if (artifact_closure_graph_alloc(
+			&publication->object,
+			&publication_term_capacity,
+			&closure->type_declarations,
+			&closure->judgement,
+			&(struct prototype_universe_db){
+				.node_count = PROTOTYPE_UNIVERSE_NODE_CAPACITY,
+				.edge_count = PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
+				.level_count = PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
+				.constraint_count = PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
+			}
+		) != 0) {
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	artifact_reset_object_graph_for_publication(&publication->object);
+	prototype_artifact_interface_init(
+		&publication->interface,
+		publication->term_exports,
+		interface->term_export_count,
+		publication->type_exports,
+		interface->type_export_count,
+		publication->type_parameters,
+		interface->type_parameter_count,
+		publication->constructor_exports,
+		interface->constructor_export_count,
+		publication->constructor_field_type_exprs,
+		interface->constructor_field_type_expr_count,
+		publication->interface_type_exprs,
+		interface->type_expr_count,
+		publication->identity_roots,
+		interface->identity_root_count,
+		publication->dependencies,
+		dependency_capacity
+	);
+	prototype_compile_metadata_init(
+		&publication->metadata,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		publication->contexts,
+		metadata->contexts.context_count,
+		publication->substitutions,
+		metadata->substitutions.substitution_count,
+		publication->operations,
+		metadata->operation_count,
+		publication->operation_cases,
+		metadata->operation_case_count,
+		publication->operation_fold_clauses,
+		metadata->operation_fold_clause_count,
+		publication->effect_constraints,
+		metadata->effect_constraint_count,
+		publication->verification_obligations,
+		metadata->verification.obligation_count
+	);
+	return 0;
+}
+
+static int artifact_publication_universe_relocate(
+	struct artifact_publication_graph* publication,
+	const struct artifact_closure_graph* closure
+) {
+	if (!publication || !closure) {
+		return -1;
+	}
+	struct prototype_operation_graph operations;
+	prototype_compile_metadata_operation_graph(
+		&publication->metadata, &operations
+	);
+	if (prototype_universe_collect(
+		&publication->object.universe,
+		&publication->object.type_declarations,
+		&publication->object.terms,
+		&operations,
+		&publication->object.judgement
+	) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < publication->object.universe.node_count; ++i) {
+		/* The owning Type/Parameter carries the semantic name. This field is a
+		 * process-local diagnostic cache and must not affect artifact bytes. */
+		publication->object.universe.nodes[i].symbol_id = -1;
+	}
+	return 0;
+}
+
+static int artifact_build_publication_graph(
+	struct artifact_publication_graph* publication,
+	const struct artifact_closure_graph* closure,
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_compile_metadata* metadata
+) {
+	if (artifact_publication_graph_alloc(
+			publication, closure, interface, metadata
+		) != 0) {
+		return -1;
+	}
+	struct prototype_artifact_graph_relocation additional = {
+		.binding_ids = publication->binding_relocation,
+		.binding_id_capacity = closure->terms.next_binding_id,
+		.type_ids = publication->type_relocation,
+		.type_id_capacity = closure->type_declarations.type_count,
+		.type_expr_ids = publication->type_expr_relocation,
+		.type_expr_id_capacity = closure->type_declarations.expr_count,
+		.parameter_ids = publication->parameter_relocation,
+		.parameter_id_capacity = closure->type_declarations.parameter_count,
+		.constructor_ids = publication->constructor_relocation,
+		.constructor_id_capacity = closure->type_declarations.constructor_count,
+		.field_type_ids = publication->field_relocation,
+		.field_type_id_capacity = closure->type_declarations.readback_field_type_count,
+		.proposition_ids = publication->proposition_relocation,
+		.proposition_id_capacity = closure->judgement.proposition_count,
+		.claim_ids = publication->claim_relocation,
+		.claim_id_capacity = closure->judgement.claim_count,
+		.substitution_ids = publication->substitution_relocation,
+		.substitution_id_capacity = metadata->substitutions.substitution_count
+	};
+	struct artifact_substitution_slice substitution_slice;
+	if (artifact_substitution_slice_init(
+			&substitution_slice,
+			&closure->judgement,
+			&metadata->substitutions
+		) != 0 || artifact_substitution_slice_canonicalize(
+			&substitution_slice,
+			closure->substitution_order,
+			closure->ordered_substitution_count
+		) != 0) {
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	struct artifact_context_slice context_slice;
+	if (artifact_context_slice_init(
+			&context_slice,
+			&closure->type_declarations,
+			&closure->judgement,
+			metadata,
+			&substitution_slice
+		) != 0) {
+		artifact_substitution_slice_free(&substitution_slice);
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	if (artifact_context_slice_canonicalize(
+			&context_slice,
+			&closure->type_declarations,
+			&closure->judgement,
+			metadata,
+			closure->type_order,
+			closure->ordered_type_count,
+			closure->constructor_order,
+			closure->ordered_constructor_count,
+			closure->claim_order,
+			closure->ordered_claim_count,
+			closure->derivation_order,
+			closure->ordered_derivation_count,
+			closure->substitution_order,
+			closure->ordered_substitution_count
+		) != 0) {
+		artifact_context_slice_free(&context_slice);
+		artifact_substitution_slice_free(&substitution_slice);
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	struct prototype_context* compact_contexts = calloc(
+		context_slice.context_count,
+		sizeof(*compact_contexts)
+	);
+	struct prototype_substitution* compact_substitutions = calloc(
+		substitution_slice.substitution_count == 0 ? 1 :
+			substitution_slice.substitution_count,
+		sizeof(*compact_substitutions)
+	);
+	struct prototype_type_declaration* compact_types = malloc(
+		(closure->type_declarations.type_count == 0 ? 1 :
+		 closure->type_declarations.type_count) * sizeof(*compact_types)
+	);
+	struct prototype_type_constructor_declaration* compact_constructors = malloc(
+		(closure->type_declarations.constructor_count == 0 ? 1 :
+		 closure->type_declarations.constructor_count) * sizeof(*compact_constructors)
+	);
+	struct prototype_judgement_proposition* compact_propositions = malloc(
+		(closure->judgement.proposition_count == 0 ? 1 :
+		 closure->judgement.proposition_count) * sizeof(*compact_propositions)
+	);
+	uint32_t* compact_context_relocation = calloc(
+		context_slice.context_count,
+		sizeof(*compact_context_relocation)
+	);
+	if (!compact_contexts || !compact_substitutions || !compact_types ||
+		!compact_constructors || !compact_propositions ||
+		!compact_context_relocation) {
+		free(compact_contexts);
+		free(compact_substitutions);
+		free(compact_types);
+		free(compact_constructors);
+		free(compact_propositions);
+		free(compact_context_relocation);
+		artifact_context_slice_free(&context_slice);
+		artifact_substitution_slice_free(&substitution_slice);
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	struct prototype_context_db compact_context_db;
+	prototype_context_db_init(
+		&compact_context_db,
+		compact_contexts,
+		context_slice.context_count
+	);
+	for (size_t i = 0; i < metadata->contexts.context_count; ++i) {
+		if (!context_slice.reachable[i]) {
+			continue;
+		}
+		uint32_t compact_id = context_slice.relocation[i];
+		compact_contexts[compact_id] = metadata->contexts.contexts[i];
+		if (i == prototype_context_empty(&metadata->contexts)) {
+			continue;
+		}
+		compact_contexts[compact_id].parent = context_slice.relocation[
+			metadata->contexts.contexts[i].parent
+		];
+	}
+	compact_context_db.context_count = context_slice.context_count;
+	struct prototype_substitution_db compact_substitution_db;
+	prototype_substitution_db_init(
+		&compact_substitution_db,
+		compact_substitutions,
+		substitution_slice.substitution_count
+	);
+	compact_substitution_db.substitution_count =
+		substitution_slice.substitution_count;
+	for (size_t i = 0; i < metadata->substitutions.substitution_count; ++i) {
+		if (!substitution_slice.reachable[i]) {
+			continue;
+		}
+		uint32_t compact_id = substitution_slice.relocation[i];
+		compact_substitutions[compact_id] =
+			metadata->substitutions.substitutions[i];
+		compact_substitutions[compact_id].source_context = context_slice.relocation[
+			compact_substitutions[compact_id].source_context
+		];
+		compact_substitutions[compact_id].target_context = context_slice.relocation[
+			compact_substitutions[compact_id].target_context
+		];
+		if (compact_substitutions[compact_id].kind ==
+				PROTOTYPE_SUBSTITUTION_EXTEND) {
+			compact_substitutions[compact_id].first = substitution_slice.relocation[
+				compact_substitutions[compact_id].first
+			];
+		} else if (compact_substitutions[compact_id].kind ==
+				PROTOTYPE_SUBSTITUTION_COMPOSE) {
+			compact_substitutions[compact_id].first = substitution_slice.relocation[
+				compact_substitutions[compact_id].first
+			];
+			compact_substitutions[compact_id].second = substitution_slice.relocation[
+				compact_substitutions[compact_id].second
+			];
+		}
+	}
+	memcpy(
+		compact_types,
+		closure->type_declarations.type_declarations,
+		closure->type_declarations.type_count * sizeof(*compact_types)
+	);
+	memcpy(
+		compact_constructors,
+		closure->type_declarations.constructor_declarations,
+		closure->type_declarations.constructor_count * sizeof(*compact_constructors)
+	);
+	struct prototype_type_declaration_db compact_type_declarations =
+		closure->type_declarations;
+	compact_type_declarations.type_declarations = compact_types;
+	compact_type_declarations.constructor_declarations = compact_constructors;
+	for (size_t i = 0; i < compact_type_declarations.type_count; ++i) {
+		if (!artifact_type_present(&compact_types[i])) {
+			continue;
+		}
+		compact_types[i].parameter_context = context_slice.relocation[
+			compact_types[i].parameter_context
+		];
+		compact_types[i].index_context = context_slice.relocation[
+			compact_types[i].index_context
+		];
+	}
+	for (size_t i = 0; i < compact_type_declarations.constructor_count; ++i) {
+		if (!artifact_constructor_present(&compact_constructors[i])) {
+			continue;
+		}
+		if (compact_constructors[i].owner_type >=
+				compact_type_declarations.type_count) {
+			free(compact_contexts);
+			free(compact_substitutions);
+			free(compact_types);
+			free(compact_constructors);
+			free(compact_propositions);
+			free(compact_context_relocation);
+			artifact_context_slice_free(&context_slice);
+			artifact_substitution_slice_free(&substitution_slice);
+			artifact_publication_graph_free(publication);
+			return -1;
+		}
+		int incomplete_readback = 0;
+		if (compact_constructors[i].readback.field_count > 0) {
+			uint32_t first = compact_constructors[i].readback.first_field_type;
+			uint32_t count = compact_constructors[i].readback.field_count;
+			if (first == PROTOTYPE_INVALID_ID ||
+				first > closure->type_declarations.readback_field_type_count ||
+				count > closure->type_declarations.readback_field_type_count - first) {
+				incomplete_readback = 1;
+			} else {
+				for (uint32_t j = 0; j < count; ++j) {
+					if (closure->type_declarations.readback_field_types[first + j] ==
+						PROTOTYPE_INVALID_ID) {
+						incomplete_readback = 1;
+						break;
+					}
+				}
+			}
+		}
+		if (compact_types[compact_constructors[i].owner_type].origin_kind ==
+				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY ||
+			incomplete_readback) {
+			/* Generated declarations have no source readback schema. Their field
+			 * telescope and result classifier are the sole wire authority. The same
+			 * rule applies when optional source readback metadata is incomplete. */
+			compact_constructors[i].readback.first_field_type = PROTOTYPE_INVALID_ID;
+			compact_constructors[i].readback.field_count = 0;
+			if (compact_types[compact_constructors[i].owner_type].origin_kind ==
+				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) {
+				compact_constructors[i].readback.result_type = PROTOTYPE_INVALID_ID;
+			}
+		}
+		compact_constructors[i].parameter_context = context_slice.relocation[
+			compact_constructors[i].parameter_context
+		];
+		compact_constructors[i].field_context = context_slice.relocation[
+			compact_constructors[i].field_context
+		];
+	}
+	memcpy(
+		compact_propositions,
+		closure->judgement.propositions,
+		closure->judgement.proposition_count * sizeof(*compact_propositions)
+	);
+	struct prototype_judgement_db compact_judgement = closure->judgement;
+	compact_judgement.propositions = compact_propositions;
+	for (size_t i = 0; i < compact_judgement.proposition_count; ++i) {
+		if (!artifact_candidate_claim_present(&compact_propositions[i])) {
+			continue;
+		}
+		compact_propositions[i].context_id = context_slice.relocation[
+			compact_propositions[i].context_id
+		];
+	}
+	for (size_t i = 0; i < compact_judgement.derivation_count; ++i) {
+		struct prototype_judgement_derivation* derivation =
+			&compact_judgement.derivations[i];
+		if (!artifact_derivation_present(derivation)) {
+			continue;
+		}
+		if (derivation->semantic_action_kind ==
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+			if (derivation->semantic_action_id >=
+					substitution_slice.source_count ||
+				substitution_slice.relocation[derivation->semantic_action_id] ==
+					PROTOTYPE_INVALID_ID) {
+				free(compact_contexts);
+				free(compact_substitutions);
+				free(compact_types);
+				free(compact_constructors);
+				free(compact_propositions);
+				free(compact_context_relocation);
+				artifact_context_slice_free(&context_slice);
+				artifact_substitution_slice_free(&substitution_slice);
+				artifact_publication_graph_free(publication);
+				return -1;
+			}
+			derivation->semantic_action_id = substitution_slice.relocation[
+				derivation->semantic_action_id
+			];
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			if (derivation->premises[j].semantic_action_kind !=
+					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+				continue;
+			}
+			uint32_t substitution_id =
+				derivation->premises[j].semantic_action_id;
+			if (substitution_id >= substitution_slice.source_count ||
+				substitution_slice.relocation[substitution_id] ==
+					PROTOTYPE_INVALID_ID) {
+				free(compact_contexts);
+				free(compact_substitutions);
+				free(compact_types);
+				free(compact_constructors);
+				free(compact_propositions);
+				free(compact_context_relocation);
+				artifact_context_slice_free(&context_slice);
+				artifact_substitution_slice_free(&substitution_slice);
+				artifact_publication_graph_free(publication);
+				return -1;
+			}
+			derivation->premises[j].semantic_action_id =
+				substitution_slice.relocation[substitution_id];
+		}
+	}
+	const struct artifact_append_order publication_order = {
+		.terms = closure->term_order,
+		.term_count = closure->ordered_term_count,
+		.types = closure->type_order,
+		.type_count = closure->ordered_type_count,
+		.type_exprs = closure->type_expr_order,
+		.type_expr_count = closure->ordered_type_expr_count,
+		.fields = closure->readback_field_type_order,
+		.field_count = closure->ordered_readback_field_type_count,
+		.parameters = closure->parameter_order,
+		.parameter_count = closure->ordered_parameter_count,
+		.constructors = closure->constructor_order,
+		.constructor_count = closure->ordered_constructor_count,
+		.propositions = closure->proposition_order,
+		.proposition_count = closure->ordered_proposition_count,
+		.claims = closure->claim_order,
+		.claim_count = closure->ordered_claim_count,
+		.derivations = closure->derivation_order,
+		.derivation_count = closure->ordered_derivation_count,
+		.substitutions = closure->substitution_order,
+		.substitution_count = closure->ordered_substitution_count
+	};
+	if (artifact_append_graph_ordered(
+			&publication->interface,
+			&publication->object.terms,
+			&publication->object.type_declarations,
+			&publication->object.judgement,
+			&publication->metadata.contexts,
+			&publication->metadata.substitutions,
+			interface,
+			&closure->terms,
+			&compact_type_declarations,
+			&compact_judgement,
+			&compact_context_db,
+			&compact_substitution_db,
+			0,
+			publication->term_relocation,
+			closure->terms.term_count,
+				compact_context_relocation,
+				context_slice.context_count,
+				&additional,
+				0,
+				&publication_order
+			) != 0) {
+		fprintf(stderr, "artifact publication append failed\n");
+		free(compact_contexts);
+		free(compact_substitutions);
+		free(compact_types);
+		free(compact_constructors);
+		free(compact_propositions);
+		free(compact_context_relocation);
+		artifact_context_slice_free(&context_slice);
+		artifact_substitution_slice_free(&substitution_slice);
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	for (size_t i = 0; i < metadata->contexts.context_count; ++i) {
+		publication->context_relocation[i] = context_slice.reachable[i] ?
+			compact_context_relocation[context_slice.relocation[i]] :
+			PROTOTYPE_INVALID_ID;
+	}
+	int metadata_status = artifact_publication_metadata_relocate(
+		publication, metadata, closure
+	);
+	struct prototype_operation_graph publication_operations;
+	prototype_compile_metadata_operation_graph(
+		&publication->metadata, &publication_operations
+	);
+	int accepted_status = metadata_status == 0 ?
+		prototype_judgement_recompute_closure_ranks(
+			&publication_operations, &publication->object.judgement
+		) : -1;
+	int universe_status = accepted_status == 0 ?
+		artifact_publication_universe_relocate(publication, closure) : -1;
+	int key_status = metadata_status == 0 && universe_status == 0 ?
+		prototype_artifact_interface_recompute_keys(
+			&publication->interface,
+			&publication->object.terms,
+			&publication->object.type_declarations,
+			&publication->metadata.contexts
+		) : -1;
+	int status = metadata_status == 0 && accepted_status == 0 &&
+		universe_status == 0 && key_status == 0 ?
+		0 : -1;
+	if (status != 0) {
+		fprintf(
+			stderr,
+			"artifact publication relocation failed metadata=%d accepted=%d "
+			"universe=%d keys=%d\n",
+			metadata_status,
+			accepted_status,
+			universe_status,
+			key_status
+		);
+	}
+	free(compact_contexts);
+	free(compact_substitutions);
+	free(compact_types);
+	free(compact_constructors);
+	free(compact_propositions);
+	free(compact_context_relocation);
+	artifact_context_slice_free(&context_slice);
+	artifact_substitution_slice_free(&substitution_slice);
+	if (status != 0) {
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	return 0;
+}
+
+static int artifact_republish_publication_graph(
+	struct artifact_publication_graph* target,
+	const struct artifact_publication_graph* source
+) {
+	if (!target || !source) {
+		return -1;
+	}
+	struct artifact_closure_graph closure;
+	if (artifact_build_closure_graph(
+			&closure,
+			&source->interface,
+			&source->object.terms,
+			&source->object.type_declarations,
+			&source->object.judgement,
+			&source->object.universe,
+			&source->metadata
+		) != 0) {
+		return -1;
+	}
+	if (artifact_build_publication_graph(
+			target,
+			&closure,
+			&source->interface,
+			&source->metadata
+		) != 0) {
+		artifact_closure_graph_free(&closure);
+		return -1;
+	}
+	artifact_closure_graph_free(&closure);
+	if (prototype_artifact_interface_collect_dependencies(
+			&target->interface,
+			&target->object.terms,
+			&target->object.type_declarations,
+			&target->object.judgement
+		) != 0) {
+		artifact_publication_graph_free(target);
+		return -1;
+	}
+	for (size_t i = 0; i < source->interface.dependency_count; ++i) {
+		const struct prototype_artifact_dependency* dependency =
+			&source->interface.dependencies[i];
+		if (prototype_artifact_interface_add_dependency_in_namespace(
+				&target->interface,
+				dependency->namespace_symbol_id,
+				dependency->name_symbol_id
+			) != 0) {
+			artifact_publication_graph_free(target);
+			return -1;
+		}
+	}
+	return 0;
 }
 
 static const char* artifact_optional_symbol_name(
@@ -7100,6 +9663,7 @@ static int prototype_artifact_write_text_body(
 		!universe) {
 		return -1;
 	}
+	(void)asts;
 
 	fprintf(
 		stream,
@@ -7112,20 +9676,17 @@ static int prototype_artifact_write_text_body(
 	size_t present_interface_parameter_count = 0;
 	size_t present_interface_field_ref_count = 0;
 	for (size_t i = 0; i < interface->type_expr_count; ++i) {
-		if (i < type_declarations->expr_count &&
-			artifact_type_expr_present(&type_declarations->exprs[i])) {
+		if (artifact_type_expr_present(&interface->type_exprs[i])) {
 			present_interface_type_expr_count++;
 		}
 	}
 	for (size_t i = 0; i < interface->type_parameter_count; ++i) {
-		if (i < type_declarations->parameter_count &&
-			artifact_parameter_present(&type_declarations->parameter_declarations[i])) {
+		if (artifact_interface_parameter_present(&interface->type_parameters[i])) {
 			present_interface_parameter_count++;
 		}
 	}
 	for (size_t i = 0; i < interface->constructor_field_type_expr_count; ++i) {
-		if (i < type_declarations->readback_field_type_count &&
-			artifact_field_type_present(&type_declarations->readback_field_types[i])) {
+		if (interface->constructor_field_type_exprs[i] != PROTOTYPE_INVALID_ID) {
 			present_interface_field_ref_count++;
 		}
 	}
@@ -7136,8 +9697,7 @@ static int prototype_artifact_write_text_body(
 		present_interface_type_expr_count
 	);
 	for (size_t i = 0; i < interface->type_expr_count; ++i) {
-		if (i >= type_declarations->expr_count ||
-			!artifact_type_expr_present(&type_declarations->exprs[i])) {
+		if (!artifact_type_expr_present(&interface->type_exprs[i])) {
 			continue;
 		}
 		if (write_artifact_type_expr(
@@ -7158,8 +9718,7 @@ static int prototype_artifact_write_text_body(
 	for (size_t i = 0; i < interface->type_parameter_count; ++i) {
 		const struct prototype_artifact_type_parameter_export* parameter =
 			&interface->type_parameters[i];
-		if (i >= type_declarations->parameter_count ||
-			!artifact_parameter_present(&type_declarations->parameter_declarations[i])) {
+		if (!artifact_interface_parameter_present(parameter)) {
 			continue;
 		}
 		fprintf(
@@ -7178,8 +9737,7 @@ static int prototype_artifact_write_text_body(
 		present_interface_field_ref_count
 	);
 	for (size_t i = 0; i < interface->constructor_field_type_expr_count; ++i) {
-		if (i >= type_declarations->readback_field_type_count ||
-			!artifact_field_type_present(&type_declarations->readback_field_types[i])) {
+		if (interface->constructor_field_type_exprs[i] == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
 		fprintf(
@@ -7206,19 +9764,6 @@ static int prototype_artifact_write_text_body(
 				return -1;
 			}
 			source_claim_id = export->source_evidence.id;
-		} else if (export->source_evidence.kind ==
-			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_PROPOSITION) {
-			for (uint32_t j = 0; j < judgement->claim_count; ++j) {
-				const struct prototype_judgement_claim* claim =
-					prototype_judgement_claim_get(judgement, j);
-				if (claim && claim->proposition_id == export->source_evidence.id) {
-					source_claim_id = j;
-					break;
-				}
-			}
-			if (source_claim_id == PROTOTYPE_INVALID_ID) {
-				return -1;
-			}
 		} else if (export->source_evidence.kind !=
 			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID ||
 			export->source_evidence.id != PROTOTYPE_INVALID_ID) {
@@ -7288,6 +9833,21 @@ static int prototype_artifact_write_text_body(
 		);
 	}
 
+	fprintf(stream, "identity_roots %zu\n", interface->identity_root_count);
+	for (size_t i = 0; i < interface->identity_root_count; ++i) {
+		const struct prototype_artifact_identity_root* root =
+			&interface->identity_roots[i];
+		fprintf(
+			stream,
+			"identity_root %zu %u %u %u %d\n",
+			i,
+			root->source_type_claim_id,
+			root->identity_family_has_type_claim_id,
+			root->witness_has_type_claim_id,
+			root->computation_rule
+		);
+	}
+
 	fprintf(stream, "dependencies %zu\n", interface->dependency_count);
 	for (size_t i = 0; i < interface->dependency_count; ++i) {
 		const struct prototype_artifact_dependency* dependency = &interface->dependencies[i];
@@ -7307,7 +9867,8 @@ static int prototype_artifact_write_text_body(
 		&context_slice,
 		type_declarations,
 		judgement,
-		metadata
+		metadata,
+		NULL
 	) != 0) {
 		return -1;
 	}
@@ -7337,7 +9898,7 @@ static int prototype_artifact_write_text_body(
 	if (write_artifact_universe_section(stream, universe) != 0) {
 		return -1;
 	}
-	if (write_artifact_debug_section(stream, symbols, interface, asts) != 0) {
+	if (write_artifact_debug_section(stream, symbols, interface, NULL) != 0) {
 		return -1;
 	}
 	return write_artifact_relocation_section(
@@ -7373,32 +9934,117 @@ int prototype_artifact_write_text(
 		 prototype_constructor_telescopes_validate(
 			type_declarations, &metadata->contexts, terms
 		 ) != 0)) {
+		fprintf(stderr, "artifact source graph validation failed\n");
 		return -1;
 	}
-	struct artifact_sparse_graph sparse_graph;
-	if (artifact_build_sparse_graph(
-			&sparse_graph,
+	struct artifact_closure_graph closure_graph;
+	if (artifact_build_closure_graph(
+			&closure_graph,
 			interface,
 			terms,
 			type_declarations,
 			judgement,
 			universe,
-			metadata
-		) != 0) {
+		metadata
+	) != 0) {
+		fprintf(stderr, "artifact closure construction failed\n");
 		return -1;
+	}
+	struct artifact_publication_graph publication;
+	if (artifact_build_publication_graph(
+			&publication,
+			&closure_graph,
+			interface,
+		metadata
+	) != 0) {
+		fprintf(stderr, "artifact dense publication construction failed\n");
+		artifact_closure_graph_free(&closure_graph);
+		return -1;
+	}
+	/* Dependencies are part of the public rooted graph. Recompute them after
+	 * dense publication so unused accepted work cannot leak imports, while
+	 * external references reachable only through proof evidence are retained. */
+	if (prototype_artifact_interface_collect_dependencies(
+			&publication.interface,
+			&publication.object.terms,
+			&publication.object.type_declarations,
+			&publication.object.judgement
+		) != 0) {
+		fprintf(stderr, "artifact publication dependency collection failed\n");
+		artifact_publication_graph_free(&publication);
+		artifact_closure_graph_free(&closure_graph);
+		return -1;
+	}
+	if (asts) {
+		for (size_t i = 0; i < publication.object.terms.term_count; ++i) {
+			const struct prototype_term* term = &publication.object.terms.terms[i];
+			if (term->tag != PROTOTYPE_TERM_TYPE_DECLARATION) {
+				continue;
+			}
+			for (size_t j = 0; j < interface->dependency_count; ++j) {
+				const struct prototype_artifact_dependency* dependency =
+					&interface->dependencies[j];
+				if (dependency->namespace_symbol_id !=
+						term->as.type_declaration.identity.namespace_symbol_id ||
+					dependency->name_symbol_id !=
+						term->as.type_declaration.identity.name_symbol_id) {
+					continue;
+				}
+				if (prototype_artifact_interface_add_dependency_in_namespace(
+						&publication.interface,
+						dependency->namespace_symbol_id,
+						dependency->name_symbol_id
+					) != 0) {
+					fprintf(stderr, "artifact rooted type dependency collection failed\n");
+					artifact_publication_graph_free(&publication);
+					artifact_closure_graph_free(&closure_graph);
+					return -1;
+				}
+				break;
+			}
+		}
+		for (size_t i = 0; i < asts->import_count; ++i) {
+			if (prototype_artifact_interface_add_dependency(
+					&publication.interface, asts->imports[i].name_symbol_id
+				) != 0) {
+				fprintf(stderr, "artifact source import collection failed\n");
+				artifact_publication_graph_free(&publication);
+				artifact_closure_graph_free(&closure_graph);
+				return -1;
+			}
+		}
+	}
+	if (publication.object.terms.term_count != 0 ||
+		publication.object.type_declarations.type_count != 0 ||
+		publication.object.judgement.claim_count != 0) {
+		struct artifact_publication_graph normalized_publication;
+		if (artifact_republish_publication_graph(
+				&normalized_publication, &publication
+			) != 0) {
+			fprintf(stderr, "artifact publication normalization failed\n");
+			artifact_publication_graph_free(&publication);
+			artifact_closure_graph_free(&closure_graph);
+			return -1;
+		}
+		artifact_publication_graph_free(&publication);
+		publication = normalized_publication;
 	}
 	int status = prototype_artifact_write_text_body(
 		stream,
 		symbols,
-		interface,
-		&sparse_graph.terms,
-		&sparse_graph.type_declarations,
-		&sparse_graph.judgement,
-		&sparse_graph.universe,
+		&publication.interface,
+		&publication.object.terms,
+		&publication.object.type_declarations,
+		&publication.object.judgement,
+		&publication.object.universe,
 		asts,
-		metadata
+		&publication.metadata
 	);
-	artifact_sparse_graph_free(&sparse_graph);
+	if (status != 0) {
+		fprintf(stderr, "artifact dense publication write failed\n");
+	}
+	artifact_publication_graph_free(&publication);
+	artifact_closure_graph_free(&closure_graph);
 	return status;
 }
 
@@ -7485,6 +10131,7 @@ int prototype_artifact_read_text_interface(
 	interface->constructor_export_count = 0;
 	interface->constructor_field_type_expr_count = 0;
 	interface->type_expr_count = 0;
+	interface->identity_root_count = 0;
 	interface->dependency_count = 0;
 
 	size_t count;
@@ -7758,6 +10405,43 @@ int prototype_artifact_read_text_interface(
 		if (export->name_symbol_id < 0) {
 			return -1;
 		}
+	}
+
+	if (fscanf(stream, "%255s %zu", word, &count) != 2 ||
+		strcmp(word, "identity_roots") != 0 ||
+		count > interface->identity_root_capacity) {
+		return -1;
+	}
+	for (size_t i = 0; i < count; ++i) {
+		size_t id;
+		struct prototype_artifact_identity_root* root =
+			&interface->identity_roots[interface->identity_root_count];
+		if (fscanf(
+				stream,
+				"%255s %zu %u %u %u %d",
+				word,
+				&id,
+				&root->source_type_claim_id,
+				&root->identity_family_has_type_claim_id,
+				&root->witness_has_type_claim_id,
+				&root->computation_rule
+			) != 6 || strcmp(word, "identity_root") != 0 ||
+			id != interface->identity_root_count) {
+			return -1;
+		}
+		for (size_t j = 0; j < interface->identity_root_count; ++j) {
+			if (interface->identity_roots[j].source_type_claim_id ==
+					root->source_type_claim_id &&
+				interface->identity_roots[j].identity_family_has_type_claim_id ==
+					root->identity_family_has_type_claim_id &&
+				interface->identity_roots[j].witness_has_type_claim_id ==
+					root->witness_has_type_claim_id &&
+				interface->identity_roots[j].computation_rule ==
+					root->computation_rule) {
+				return -1;
+			}
+		}
+		interface->identity_root_count++;
 	}
 
 	if (fscanf(stream, "%255s %zu", word, &count) != 2 ||
@@ -8091,13 +10775,27 @@ static int read_artifact_term(
 			case PROTOTYPE_TERM_EFFECT_LABEL:
 				return fscanf(stream, "%u", &term->as.effect_label.effects) == 1 ? 0 : -1;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				return fscanf(stream, "%u", &term->as.effect_row_var.binding_id) == 1 ? 0 : -1;
+				if (fscanf(stream, "%u", &term->as.effect_row_var.binding_id) != 1) {
+					return -1;
+				}
+				if (term->as.effect_row_var.binding_id != PROTOTYPE_INVALID_ID &&
+					*p_next_binder_id <= term->as.effect_row_var.binding_id) {
+					*p_next_binder_id = term->as.effect_row_var.binding_id + 1;
+				}
+				return 0;
 			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				return fscanf(stream, "%u %u", &term->as.effect_row_union.left,
 					&term->as.effect_row_union.right) == 2 ? 0 : -1;
 			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-				return fscanf(stream, "%u %u", &term->as.effect_row_forall.binding_id,
-					&term->as.effect_row_forall.body) == 2 ? 0 : -1;
+				if (fscanf(stream, "%u %u", &term->as.effect_row_forall.binding_id,
+						&term->as.effect_row_forall.body) != 2) {
+					return -1;
+				}
+				if (term->as.effect_row_forall.binding_id != PROTOTYPE_INVALID_ID &&
+					*p_next_binder_id <= term->as.effect_row_forall.binding_id) {
+					*p_next_binder_id = term->as.effect_row_forall.binding_id + 1;
+				}
+				return 0;
 			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION: {
 				int symbol_id;
 				struct prototype_intrinsic_namespace_binding binding;
@@ -8752,132 +11450,74 @@ int prototype_artifact_read_text_graph(
 		return -1;
 	}
 
-	char label_term_slots[32];
 	char label_terms[32];
-	char label_case_slots[32];
 	char label_cases[32];
-	char label_case_binder_slots[32];
 	char label_case_binders[32];
-	char label_frame_slots[32];
 	char label_frames[32];
-	char label_type_slots[32];
 	char label_types[32];
-	char label_parameter_slots[32];
 	char label_parameters[32];
-	char label_constructor_slots[32];
 	char label_constructors[32];
-	char label_field_type_slots[32];
 	char label_field_types[32];
-	char label_type_expr_slots[32];
 	char label_type_exprs[32];
-	char label_claim_slots[32];
+	char label_propositions[32];
 	char label_claims[32];
-	char label_derivation_slots[32];
 	char label_derivations[32];
 	size_t term_slot_count;
-	size_t present_term_count;
 	size_t case_slot_count;
-	size_t present_case_count;
 	size_t case_binder_slot_count;
-	size_t present_case_binder_count;
 	size_t frame_slot_count;
-	size_t present_frame_count;
 	size_t type_slot_count;
-	size_t present_type_count;
 	size_t parameter_slot_count;
-	size_t present_parameter_count;
 	size_t constructor_slot_count;
-	size_t present_constructor_count;
 	size_t field_type_slot_count;
-	size_t present_field_type_count;
 	size_t expr_slot_count;
-	size_t present_expr_count;
+	size_t proposition_slot_count;
 	size_t claim_slot_count;
-	size_t present_claim_count;
 	size_t derivation_slot_count;
-	size_t present_derivation_count;
 	if (fscanf(
 			stream,
 			"%255s"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu"
-			" %31s %zu %31s %zu",
+			" %31s %zu %31s %zu %31s %zu %31s %zu"
+			" %31s %zu %31s %zu %31s %zu %31s %zu"
+			" %31s %zu %31s %zu %31s %zu %31s %zu",
 			word,
-			label_term_slots,
-			&term_slot_count,
 			label_terms,
-			&present_term_count,
-			label_case_slots,
-			&case_slot_count,
+			&term_slot_count,
 			label_cases,
-			&present_case_count,
-			label_case_binder_slots,
-			&case_binder_slot_count,
+			&case_slot_count,
 			label_case_binders,
-			&present_case_binder_count,
-			label_frame_slots,
-			&frame_slot_count,
+			&case_binder_slot_count,
 			label_frames,
-			&present_frame_count,
-			label_type_slots,
-			&type_slot_count,
+			&frame_slot_count,
 			label_types,
-			&present_type_count,
-			label_parameter_slots,
-			&parameter_slot_count,
+			&type_slot_count,
 			label_parameters,
-			&present_parameter_count,
-			label_constructor_slots,
-			&constructor_slot_count,
+			&parameter_slot_count,
 			label_constructors,
-			&present_constructor_count,
-			label_field_type_slots,
-			&field_type_slot_count,
+			&constructor_slot_count,
 			label_field_types,
-			&present_field_type_count,
-			label_type_expr_slots,
-			&expr_slot_count,
+			&field_type_slot_count,
 			label_type_exprs,
-			&present_expr_count,
-			label_claim_slots,
-			&claim_slot_count,
+			&expr_slot_count,
+			label_propositions,
+			&proposition_slot_count,
 			label_claims,
-			&present_claim_count,
-			label_derivation_slots,
-			&derivation_slot_count,
+			&claim_slot_count,
 			label_derivations,
-			&present_derivation_count
-		) != 45 ||
+			&derivation_slot_count
+		) != 25 ||
 		strcmp(word, "counts") != 0 ||
-		strcmp(label_term_slots, "term_slots") != 0 ||
 		strcmp(label_terms, "terms") != 0 ||
-		strcmp(label_case_slots, "case_slots") != 0 ||
 		strcmp(label_cases, "cases") != 0 ||
-		strcmp(label_case_binder_slots, "case_binder_slots") != 0 ||
 		strcmp(label_case_binders, "case_binders") != 0 ||
-		strcmp(label_frame_slots, "frame_slots") != 0 ||
 		strcmp(label_frames, "frames") != 0 ||
-		strcmp(label_type_slots, "type_slots") != 0 ||
 		strcmp(label_types, "types") != 0 ||
-		strcmp(label_parameter_slots, "parameter_slots") != 0 ||
 		strcmp(label_parameters, "parameters") != 0 ||
-		strcmp(label_constructor_slots, "constructor_slots") != 0 ||
 		strcmp(label_constructors, "constructors") != 0 ||
-		strcmp(label_field_type_slots, "field_type_slots") != 0 ||
 		strcmp(label_field_types, "field_types") != 0 ||
-		strcmp(label_type_expr_slots, "type_expr_slots") != 0 ||
 		strcmp(label_type_exprs, "type_exprs") != 0 ||
-		strcmp(label_claim_slots, "claim_slots") != 0 ||
+		strcmp(label_propositions, "propositions") != 0 ||
 		strcmp(label_claims, "claims") != 0 ||
-		strcmp(label_derivation_slots, "derivation_slots") != 0 ||
 		strcmp(label_derivations, "derivations") != 0) {
 		return -1;
 	}
@@ -8890,7 +11530,7 @@ int prototype_artifact_read_text_graph(
 		constructor_slot_count > type_declarations->constructor_capacity ||
 		field_type_slot_count > type_declarations->readback_field_type_capacity ||
 		expr_slot_count > type_declarations->expr_capacity ||
-		claim_slot_count > judgement->proposition_capacity ||
+		proposition_slot_count > judgement->proposition_capacity ||
 		claim_slot_count > judgement->claim_capacity ||
 		derivation_slot_count > judgement->derivation_candidate_capacity ||
 		derivation_slot_count > judgement->derivation_capacity) {
@@ -8906,8 +11546,16 @@ int prototype_artifact_read_text_graph(
 			PROTOTYPE_INVALID_ID;
 		type_declarations->type_declarations[i].parameter_context =
 			PROTOTYPE_INVALID_ID;
+		type_declarations->type_declarations[i].index_context =
+			PROTOTYPE_INVALID_ID;
+		type_declarations->type_declarations[i].index_count = 0;
 		type_declarations->type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
 		type_declarations->type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
+		type_declarations->type_declarations[i].origin_kind =
+			PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE;
+		type_declarations->type_declarations[
+			i
+		].origin_source_carrier_term_id = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < parameter_slot_count; ++i) {
 		type_declarations->parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
@@ -8937,7 +11585,7 @@ int prototype_artifact_read_text_graph(
 	memset(type_declarations->exprs, 0, sizeof(*type_declarations->exprs) * expr_slot_count);
 
 	if (expect_artifact_count(stream, "type_declarations", &count) != 0 ||
-		count != present_type_count) {
+		count != type_slot_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
@@ -8951,12 +11599,41 @@ int prototype_artifact_read_text_graph(
 		uint32_t constructor_count;
 		uint32_t formation_classifier;
 		uint32_t parameter_context;
-		if (fscanf(stream, "%255s %zu %255s %255s %u %u %u %u %u %u %u", word, &id, name, namespace_name, &type_index, &first_parameter, &parameter_count, &first_constructor, &constructor_count, &formation_classifier, &parameter_context) != 11 ||
+		uint32_t index_context;
+		uint32_t index_count;
+		int origin_kind;
+		uint32_t origin_source_carrier_term_id;
+		if (fscanf(
+				stream,
+				"%255s %zu %255s %255s %u %u %u %u %u %u %u %u %u %d %u",
+				word,
+				&id,
+				name,
+				namespace_name,
+				&type_index,
+				&first_parameter,
+				&parameter_count,
+				&first_constructor,
+				&constructor_count,
+				&formation_classifier,
+				&parameter_context,
+				&index_context,
+				&index_count,
+				&origin_kind,
+				&origin_source_carrier_term_id
+			) != 15 ||
 				strcmp(word, "type_decl") != 0 ||
 				id >= type_slot_count ||
 				type_index != id ||
 				formation_classifier >= term_slot_count ||
 				parameter_context == PROTOTYPE_INVALID_ID ||
+				index_context == PROTOTYPE_INVALID_ID ||
+				(origin_kind != PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
+				 origin_kind !=
+					PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) ||
+				(origin_kind ==
+					PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
+				 origin_source_carrier_term_id >= term_slot_count) ||
 				!artifact_range_within(first_parameter, parameter_count, parameter_slot_count) ||
 				!artifact_range_within(first_constructor, constructor_count, constructor_slot_count)) {
 				return -1;
@@ -8965,24 +11642,34 @@ int prototype_artifact_read_text_graph(
 		if (artifact_type_present(type)) {
 			return -1;
 		}
-		type->name_symbol_id = symbol_intern(symbols, name, strlen(name));
+		type->name_symbol_id = strcmp(name, "-") == 0 ? -1 :
+			symbol_intern(symbols, name, strlen(name));
 		type->namespace_symbol_id = strcmp(namespace_name, "-") == 0 ? -1 :
 			symbol_intern(symbols, namespace_name, strlen(namespace_name));
-		if (type->name_symbol_id < 0 || type->namespace_symbol_id < -1) {
+		if (type->namespace_symbol_id < -1 ||
+			(origin_kind == PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
+			 type->name_symbol_id < 0) ||
+			(origin_kind ==
+				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
+			 (type->name_symbol_id != -1 || type->namespace_symbol_id != -1))) {
 			return -1;
 		}
 		type->type_index = type_index;
 		type->formation_classifier = formation_classifier;
 		type->parameter_context = parameter_context;
+		type->index_context = index_context;
+		type->index_count = index_count;
 		type->first_parameter = first_parameter;
 		type->parameter_count = parameter_count;
 		type->first_constructor = first_constructor;
 		type->constructor_count = constructor_count;
+		type->origin_kind = origin_kind;
+		type->origin_source_carrier_term_id = origin_source_carrier_term_id;
 	}
 	type_declarations->type_count = type_slot_count;
 
 	if (expect_artifact_count(stream, "type_parameters", &count) != 0 ||
-		count != present_parameter_count) {
+		count != parameter_slot_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
@@ -9011,7 +11698,7 @@ int prototype_artifact_read_text_graph(
 	type_declarations->parameter_count = parameter_slot_count;
 
 	if (expect_artifact_count(stream, "type_constructors", &count) != 0 ||
-		count != present_constructor_count) {
+		count != constructor_slot_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
@@ -9061,8 +11748,9 @@ int prototype_artifact_read_text_graph(
 		if (artifact_constructor_present(constructor)) {
 			return -1;
 		}
-		constructor->name_symbol_id = symbol_intern(symbols, name, strlen(name));
-		if (constructor->name_symbol_id < 0) {
+		constructor->name_symbol_id = strcmp(name, "-") == 0 ? -1 :
+			symbol_intern(symbols, name, strlen(name));
+		if (constructor->name_symbol_id < -1) {
 			return -1;
 		}
 		constructor->owner_type = owner_type;
@@ -9078,7 +11766,7 @@ int prototype_artifact_read_text_graph(
 	type_declarations->constructor_count = constructor_slot_count;
 
 	if (expect_artifact_count(stream, "type_field_refs", &count) != 0 ||
-		count != present_field_type_count) {
+		count != field_type_slot_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
@@ -9098,7 +11786,7 @@ int prototype_artifact_read_text_graph(
 	type_declarations->readback_field_type_count = field_type_slot_count;
 
 	if (expect_artifact_count(stream, "type_exprs", &count) != 0 ||
-		count != present_expr_count) {
+		count != expr_slot_count) {
 		return -1;
 	}
 	uint32_t next_level_var = 0;
@@ -9132,7 +11820,7 @@ int prototype_artifact_read_text_graph(
 		terms->ih_scopes[i].match_term = PROTOTYPE_INVALID_ID;
 	}
 
-	if (expect_artifact_count(stream, "terms", &count) != 0 || count != present_term_count) {
+	if (expect_artifact_count(stream, "terms", &count) != 0 || count != term_slot_count) {
 		return -1;
 	}
 	uint32_t next_binding_id = 0;
@@ -9149,7 +11837,7 @@ int prototype_artifact_read_text_graph(
 	}
 	terms->term_count = term_slot_count;
 
-	if (expect_artifact_count(stream, "match_cases", &count) != 0 || count != present_case_count) {
+	if (expect_artifact_count(stream, "match_cases", &count) != 0 || count != case_slot_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
@@ -9183,7 +11871,7 @@ int prototype_artifact_read_text_graph(
 	}
 	terms->case_count = case_slot_count;
 
-		if (expect_artifact_count(stream, "case_binders", &count) != 0 || count != present_case_binder_count) {
+		if (expect_artifact_count(stream, "case_binders", &count) != 0 || count != case_binder_slot_count) {
 			return -1;
 		}
 		for (size_t i = 0; i < count; ++i) {
@@ -9210,7 +11898,7 @@ int prototype_artifact_read_text_graph(
 	terms->case_binder_count = case_binder_slot_count;
 	terms->next_binding_id = next_binding_id;
 
-	if (expect_artifact_count(stream, "match_frames", &count) != 0 || count != present_frame_count) {
+	if (expect_artifact_count(stream, "match_frames", &count) != 0 || count != frame_slot_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
@@ -9247,102 +11935,162 @@ int prototype_artifact_read_text_graph(
 	memset(judgement->derivations, 0, sizeof(*judgement->derivations) * derivation_slot_count);
 	judgement->accepted_premise_count = 0;
 	judgement->candidate_premise_count = 0;
-	if (expect_artifact_count(stream, "claims", &count) != 0 ||
-		count != present_claim_count) {
+	if (expect_artifact_count(stream, "propositions", &count) != 0 ||
+		count != proposition_slot_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
 		size_t id;
-		struct prototype_judgement_claim read_claim;
 		struct prototype_judgement_proposition read_proposition;
-		memset(&read_claim, 0, sizeof(read_claim));
 		memset(&read_proposition, 0, sizeof(read_proposition));
-		char authority_label[32];
-		char context_label[32];
-		char operation_label[32];
-		char rank_label[32];
 		if (fscanf(
 				stream,
-				"%255s %zu %d %31s %d %u %31s %u %31s %u %u %u %31s %u",
+				"%255s %zu %d %d %u %u %u %u %u",
 				word,
 				&id,
 				&read_proposition.kind,
-				authority_label,
 				&read_proposition.authority_kind,
 				&read_proposition.authority_id,
-				context_label,
 				&read_proposition.context_id,
-				operation_label,
 				&read_proposition.operation_id,
 				&read_proposition.subject,
-				&read_proposition.classifier,
-				rank_label,
-				&read_claim.closure_rank
-			) != 14 ||
-			strcmp(word, "claim") != 0 ||
-			strcmp(authority_label, "authority") != 0 ||
-			strcmp(context_label, "context") != 0 ||
-			strcmp(operation_label, "operation") != 0 ||
-			strcmp(rank_label, "rank") != 0 || id >= claim_slot_count ||
+				&read_proposition.classifier
+			) != 9 || strcmp(word, "proposition") != 0 || id != i ||
 			read_proposition.kind < PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 			read_proposition.kind > PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
-			read_proposition.authority_kind < PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-			read_proposition.authority_kind > PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT ||
-			artifact_claim_present(judgement, &judgement->claims[id])) {
+			read_proposition.authority_kind <
+				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
+			read_proposition.authority_kind >
+				PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT) {
 			return -1;
 		}
+		uint32_t proposition_id;
 		if (prototype_judgement_proposition_intern(
-				judgement, &read_proposition, &read_claim.proposition_id
-			) != 0) {
+				judgement, &read_proposition, &proposition_id
+			) != 0 || proposition_id != id) {
 			return -1;
 		}
-		judgement->claims[id] = read_claim;
 	}
-	judgement->claim_count = claim_slot_count;
-	if (expect_artifact_count(stream, "derivations", &count) != 0 ||
-		count != present_derivation_count) {
+	if (expect_artifact_count(stream, "claims", &count) != 0 ||
+		count != claim_slot_count) {
 		return -1;
 	}
 	for (size_t i = 0; i < count; ++i) {
 		size_t id;
-		struct prototype_judgement_derivation* derivation;
-		struct artifact_rule_data_wire rule_data;
-		uint32_t source_claim_count;
-		uint32_t source_claim_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-		char claim_label[32];
-		char rank_label[32];
-		if (fscanf(stream, "%255s %zu", word, &id) != 2 ||
-			strcmp(word, "derivation") != 0 || id >= derivation_slot_count) {
-			return -1;
-		}
-		derivation = &judgement->derivations[id];
-		if (artifact_derivation_present(derivation) || fscanf(
+		char proposition_label[32];
+		struct prototype_judgement_claim* claim = &judgement->claims[i];
+		if (fscanf(
 				stream,
-				"%d %31s %u %31s %u %u %u %u %u %u %u %u %u",
-				&derivation->proof_kind,
-				claim_label,
-				&derivation->conclusion_claim_id,
-				rank_label,
-				&derivation->closure_rank,
-				&rule_data.constructor_owner_view,
-				&rule_data.constructor_index,
-				&rule_data.constructor_field_index,
-				&rule_data.induction_match,
-				&rule_data.induction_motive,
-				&rule_data.induction_case_index,
-				&rule_data.induction_field_index,
-				&derivation->premise_count
-			) != 13 || strcmp(claim_label, "claim") != 0 ||
-			strcmp(rank_label, "rank") != 0 ||
-			derivation->proof_kind < PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
-			derivation->proof_kind > PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN ||
-			derivation->conclusion_claim_id >= claim_slot_count ||
-			derivation->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
+				"%255s %zu %31s %u",
+				word,
+				&id,
+				proposition_label,
+				&claim->proposition_id
+			) != 4 || strcmp(word, "claim") != 0 || id != i ||
+			strcmp(proposition_label, "proposition") != 0 ||
+			claim->proposition_id >= proposition_slot_count) {
 			return -1;
 		}
-		if (artifact_rule_data_from_wire(
-				derivation->proof_kind, &rule_data, &derivation->rule_data
-			) != 0) {
+		claim->closure_rank = PROTOTYPE_INVALID_ID;
+	}
+	judgement->claim_count = claim_slot_count;
+	if (expect_artifact_count(stream, "derivations", &count) != 0 ||
+		count != derivation_slot_count) {
+		return -1;
+	}
+	unsigned char derivation_ids_seen[
+		derivation_slot_count == 0 ? 1 : derivation_slot_count
+	];
+	memset(derivation_ids_seen, 0, sizeof(derivation_ids_seen));
+	for (size_t i = 0; i < count; ++i) {
+		size_t id;
+		struct prototype_judgement_derivation* derivation;
+		char claim_label[32];
+		char premise_count_label[32];
+		int proof_kind;
+		uint32_t conclusion_claim_id;
+		uint32_t premise_count;
+		if (fscanf(
+				stream,
+				"%255s %zu %d %31s %u %31s %u",
+				word,
+				&id,
+				&proof_kind,
+				claim_label,
+				&conclusion_claim_id,
+				premise_count_label,
+				&premise_count
+			) != 7 || strcmp(word, "derivation") != 0 ||
+			id >= derivation_slot_count || derivation_ids_seen[id] ||
+			strcmp(claim_label, "claim") != 0 ||
+			strcmp(premise_count_label, "premises") != 0 ||
+			proof_kind < PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
+			proof_kind >
+				PROTOTYPE_JUDGEMENT_PROOF_THUNK_TYPE_FORMATION ||
+			((proof_kind >=
+					PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION &&
+			  proof_kind <=
+					PROTOTYPE_JUDGEMENT_PROOF_RELATION_INDUCTION_HYPOTHESIS_WITNESS) &&
+			 proof_kind !=
+				PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX) ||
+			conclusion_claim_id >= claim_slot_count ||
+			premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
+			return -1;
+		}
+		derivation_ids_seen[id] = 1;
+		derivation = &judgement->derivations[id];
+		derivation->proof_kind = proof_kind;
+		derivation->conclusion_claim_id = conclusion_claim_id;
+		derivation->premise_count = premise_count;
+		derivation->closure_rank = PROTOTYPE_INVALID_ID;
+		memset(&derivation->rule_data, 0xff, sizeof(derivation->rule_data));
+		char payload_kind[32];
+		if (fscanf(stream, "%255s %31s", word, payload_kind) != 2 ||
+			strcmp(word, "payload") != 0) {
+			return -1;
+		}
+		if (derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION) {
+			if (strcmp(payload_kind, "constructor") != 0 || fscanf(
+					stream,
+					"%u %u %u",
+					&derivation->rule_data.constructor.owner_view,
+					&derivation->rule_data.constructor.constructor_index,
+					&derivation->rule_data.constructor.field_index
+				) != 3) {
+				return -1;
+			}
+		} else if (derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) {
+			if (strcmp(payload_kind, "constructor_spine") != 0 || fscanf(
+					stream,
+					"%u",
+					&derivation->rule_data.constructor.owner_view
+				) != 1) {
+				return -1;
+			}
+		} else if (derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
+			if (strcmp(payload_kind, "induction") != 0 || fscanf(
+					stream,
+					"%u %u %u %u",
+					&derivation->rule_data.induction.match,
+					&derivation->rule_data.induction.motive,
+					&derivation->rule_data.induction.case_index,
+					&derivation->rule_data.induction.field_index
+				) != 4) {
+				return -1;
+			}
+		} else if (strcmp(payload_kind, "none") != 0) {
+			return -1;
+		}
+		if (fscanf(
+				stream,
+				"%255s %d %u",
+				word,
+				&derivation->semantic_action_kind,
+				&derivation->semantic_action_id
+			) != 3 || strcmp(word, "action") != 0) {
 			return -1;
 		}
 		if (derivation->premise_count > judgement->accepted_premise_capacity -
@@ -9353,154 +12101,42 @@ int prototype_artifact_read_text_graph(
 			&judgement->accepted_premises[judgement->accepted_premise_count];
 		judgement->accepted_premise_count += derivation->premise_count;
 		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
-			char premise_label[32];
-			struct prototype_judgement_proposition scoped = {
-				.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID,
-				.authority_id = PROTOTYPE_INVALID_ID,
-				.operation_id = PROTOTYPE_INVALID_ID
-			};
+			char premise_kind[32];
+			char action_label[32];
+			uint32_t reference_id;
+			struct prototype_judgement_premise_edge* premise =
+				&derivation->premises[j];
 			if (fscanf(
 					stream,
-					"%31s %u %d %u %u %u",
-					premise_label,
-					&derivation->premises[j].claim_id,
-					&scoped.kind,
-					&scoped.context_id,
-					&scoped.subject,
-					&scoped.classifier
-				) != 6 || strcmp(premise_label, "premise") != 0 ||
-				(derivation->premises[j].claim_id != PROTOTYPE_INVALID_ID &&
-				 derivation->premises[j].claim_id >= claim_slot_count)) {
+					"%255s %31s %u %31s %d %u",
+					word,
+					premise_kind,
+					&reference_id,
+					action_label,
+					&premise->semantic_action_kind,
+					&premise->semantic_action_id
+				) != 6 || strcmp(word, "premise") != 0 ||
+				strcmp(action_label, "action") != 0) {
 				return -1;
 			}
-			derivation->premises[j].scoped_proposition_id = PROTOTYPE_INVALID_ID;
-			if (derivation->premises[j].claim_id != PROTOTYPE_INVALID_ID) {
-				if (scoped.kind != PROTOTYPE_JUDGEMENT_KIND_UNKNOWN ||
-					scoped.context_id != PROTOTYPE_INVALID_ID ||
-					scoped.subject != PROTOTYPE_INVALID_ID ||
-					scoped.classifier != PROTOTYPE_INVALID_ID) {
+			premise->claim_id = PROTOTYPE_INVALID_ID;
+			premise->scoped_proposition_id = PROTOTYPE_INVALID_ID;
+			if (strcmp(premise_kind, "claim") == 0) {
+				if (reference_id >= claim_slot_count) {
 					return -1;
 				}
-			} else if (scoped.kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN ||
-				prototype_judgement_proposition_intern(
-					judgement,
-					&scoped,
-					&derivation->premises[j].scoped_proposition_id
-				) != 0) {
-				return -1;
-			}
-		}
-		if (fscanf(
-				stream,
-				"%255s %d %u %255s %u",
-				word,
-				&derivation->semantic_action_kind,
-				&derivation->semantic_action_id,
-				section_name,
-				&source_claim_count
-			) != 5 || strcmp(word, "action") != 0 ||
-			strcmp(section_name, "sources") != 0 ||
-			source_claim_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
-			return -1;
-		}
-		for (uint32_t j = 0; j < source_claim_count; ++j) {
-			if (fscanf(stream, "%u", &source_claim_ids[j]) != 1 ||
-				source_claim_ids[j] >= claim_slot_count) {
-				return -1;
-			}
-			int found = 0;
-			for (uint32_t k = 0; k < derivation->premise_count; ++k) {
-				if (derivation->premises[k].claim_id == source_claim_ids[j]) {
-					found = 1;
-					break;
+				premise->claim_id = reference_id;
+			} else if (strcmp(premise_kind, "scoped") == 0) {
+				if (reference_id >= proposition_slot_count) {
+					return -1;
 				}
-			}
-			if (!found) {
+				premise->scoped_proposition_id = reference_id;
+			} else {
 				return -1;
 			}
-		}
-		uint32_t expected_source_count = 0;
-		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
-			uint32_t claim_id = derivation->premises[j].claim_id;
-			if (claim_id == PROTOTYPE_INVALID_ID) {
-				continue;
-			}
-			int duplicate = 0;
-			for (uint32_t k = 0; k < j; ++k) {
-				if (derivation->premises[k].claim_id == claim_id) {
-					duplicate = 1;
-					break;
-				}
-			}
-			expected_source_count += duplicate ? 0 : 1;
-		}
-		if (source_claim_count != expected_source_count) {
-			return -1;
 		}
 	}
 	judgement->derivation_count = derivation_slot_count;
-
-	memset(judgement->derivation_candidates, 0,
-		sizeof(*judgement->derivation_candidates) * derivation_slot_count);
-	for (uint32_t i = 0; i < derivation_slot_count; ++i) {
-		if (!artifact_derivation_present(&judgement->derivations[i])) {
-			continue;
-		}
-		const struct prototype_judgement_derivation* derivation =
-			&judgement->derivations[i];
-		const struct prototype_judgement_claim* conclusion =
-			&judgement->claims[derivation->conclusion_claim_id];
-		if (!artifact_claim_present(judgement, conclusion)) {
-			return -1;
-		}
-		struct prototype_judgement_derivation_candidate* proof =
-			&judgement->derivation_candidates[i];
-		proof->proof_kind = derivation->proof_kind;
-		proof->conclusion_proposition_id = conclusion->proposition_id;
-		proof->conclusion_kind = prototype_judgement_proposition_get(judgement, conclusion->proposition_id)->kind;
-		proof->conclusion_context_id = prototype_judgement_proposition_get(judgement, conclusion->proposition_id)->context_id;
-		proof->conclusion_operation_id = prototype_judgement_proposition_get(judgement, conclusion->proposition_id)->operation_id;
-		proof->conclusion_subject = prototype_judgement_proposition_get(judgement, conclusion->proposition_id)->subject;
-		proof->conclusion_classifier = prototype_judgement_proposition_get(judgement, conclusion->proposition_id)->classifier;
-		proof->rule_data = derivation->rule_data;
-		proof->semantic_action_kind = derivation->semantic_action_kind;
-		proof->semantic_action_id = derivation->semantic_action_id;
-		proof->premise_count = derivation->premise_count;
-		if (proof->premise_count > judgement->candidate_premise_capacity -
-			judgement->candidate_premise_count) {
-			return -1;
-		}
-		proof->premises = proof->premise_count == 0 ? NULL :
-			&judgement->candidate_premises[judgement->candidate_premise_count];
-		judgement->candidate_premise_count += proof->premise_count;
-		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
-			uint32_t premise_claim_id = derivation->premises[j].claim_id;
-			if (premise_claim_id != PROTOTYPE_INVALID_ID) {
-				const struct prototype_judgement_claim* premise =
-					&judgement->claims[premise_claim_id];
-				if (!artifact_claim_present(judgement, premise)) {
-					return -1;
-				}
-				proof->premises[j].proposition.kind = prototype_judgement_proposition_get(judgement, premise->proposition_id)->kind;
-				proof->premises[j].proposition.context_id = prototype_judgement_proposition_get(judgement, premise->proposition_id)->context_id;
-				proof->premises[j].proposition.subject = prototype_judgement_proposition_get(judgement, premise->proposition_id)->subject;
-				proof->premises[j].proposition.classifier = prototype_judgement_proposition_get(judgement, premise->proposition_id)->classifier;
-				proof->premises[j].proposition.authority_kind = prototype_judgement_proposition_get(judgement, premise->proposition_id)->authority_kind;
-				proof->premises[j].proposition.authority_id = prototype_judgement_proposition_get(judgement, premise->proposition_id)->authority_id;
-				proof->premises[j].proposition.operation_id = prototype_judgement_proposition_get(judgement, premise->proposition_id)->operation_id;
-			} else {
-				const struct prototype_judgement_proposition* scoped =
-					prototype_judgement_premise_proposition(
-						judgement, &derivation->premises[j]
-					);
-				if (!scoped) {
-					return -1;
-				}
-				proof->premises[j].proposition = *scoped;
-			}
-		}
-	}
-	judgement->derivation_candidate_count = derivation_slot_count;
 	if (prototype_judgement_db_rebuild_index(judgement) != 0) {
 		return -1;
 	}
@@ -9632,6 +12268,16 @@ int prototype_artifact_read_text_operation_graph(
 		context.classifier_ref.term_id = classifier;
 		context.classifier_ref.variable_id = PROTOTYPE_INVALID_ID;
 		if (metadata) {
+			if ((i == 0 && context.binding_id != PROTOTYPE_INVALID_ID) ||
+				(i != 0 && context.binding_id == PROTOTYPE_INVALID_ID)) {
+				return -1;
+			}
+			if (i != 0 && context.binding_id >= terms->next_binding_id) {
+				if (context.binding_id == PROTOTYPE_INVALID_ID - 1) {
+					return -1;
+				}
+				terms->next_binding_id = context.binding_id + 1;
+			}
 			metadata->contexts.contexts[i] = context;
 			metadata->contexts.context_count++;
 		}
@@ -10727,18 +13373,31 @@ static int artifact_existing_term_representative(
 
 static int attach_linked_declaration_support(
 	struct prototype_judgement_db* judgement,
-	uint32_t declaration_claim_id,
-	uint32_t source_claim_id
+	uint32_t declaration_proposition_id,
+	uint32_t source_proposition_id
 ) {
-	if (!judgement || declaration_claim_id >= judgement->proposition_count ||
-		source_claim_id >= judgement->proposition_count ||
-		declaration_claim_id == source_claim_id) {
+	if (!judgement || declaration_proposition_id >= judgement->proposition_count ||
+		source_proposition_id >= judgement->proposition_count ||
+		declaration_proposition_id == source_proposition_id) {
 		return -1;
 	}
 	const struct prototype_judgement_proposition* source =
-		&judgement->propositions[source_claim_id];
+		&judgement->propositions[source_proposition_id];
 	if (source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		source->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
+		return -1;
+	}
+	uint32_t source_claim_id = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
+		if (judgement->claims[i].proposition_id != source_proposition_id) {
+			continue;
+		}
+		if (source_claim_id != PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		source_claim_id = i;
+	}
+	if (source_claim_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
 	int attached = 0;
@@ -10746,7 +13405,7 @@ static int attach_linked_declaration_support(
 		struct prototype_judgement_derivation_candidate* derivation =
 			&judgement->derivation_candidates[i];
 		if (derivation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_DECLARATION ||
-			derivation->conclusion_proposition_id != declaration_claim_id) {
+			derivation->conclusion_proposition_id != declaration_proposition_id) {
 			continue;
 		}
 		if (derivation->premise_count != 0) {
@@ -10767,6 +13426,40 @@ static int attach_linked_declaration_support(
 		derivation->premises[0].proposition.authority_kind = source->authority_kind;
 		derivation->premises[0].proposition.authority_id = source->authority_id;
 		derivation->premises[0].proposition.operation_id = source->operation_id;
+		derivation->premises[0].semantic_action_kind =
+			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
+		derivation->premises[0].semantic_action_id = PROTOTYPE_INVALID_ID;
+		attached = 1;
+	}
+	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		struct prototype_judgement_derivation* derivation =
+			&judgement->derivations[i];
+		const struct prototype_judgement_claim* conclusion =
+			prototype_judgement_claim_get(
+				judgement, derivation->conclusion_claim_id
+			);
+		if (derivation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_DECLARATION ||
+			!conclusion || conclusion->proposition_id !=
+				declaration_proposition_id) {
+			continue;
+		}
+		if (derivation->premise_count != 0 ||
+			judgement->accepted_premise_count >=
+				judgement->accepted_premise_capacity) {
+			return -1;
+		}
+		derivation->premises = &judgement->accepted_premises[
+			judgement->accepted_premise_count++
+		];
+		derivation->premise_count = 1;
+		derivation->premises[0].claim_id = source_claim_id;
+		derivation->premises[0].scoped_proposition_id = PROTOTYPE_INVALID_ID;
+		derivation->premises[0].semantic_action_kind =
+			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
+		derivation->premises[0].semantic_action_id = PROTOTYPE_INVALID_ID;
+		derivation->closure_rank = PROTOTYPE_INVALID_ID;
+		derivation->key_hash = 0;
+		derivation->hash_next = PROTOTYPE_INVALID_ID;
 		attached = 1;
 	}
 	return attached ? 0 : -1;
@@ -10780,23 +13473,16 @@ static int artifact_export_source_proposition(
 	if (!export || !judgement || !p_proposition_id) {
 		return -1;
 	}
-	uint32_t proposition_id;
-	if (export->source_evidence.kind ==
+	if (export->source_evidence.kind !=
 		PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM) {
-		const struct prototype_judgement_claim* claim =
-			prototype_judgement_claim_get(
-				judgement, export->source_evidence.id
-			);
-		if (!claim) {
-			return -1;
-		}
-		proposition_id = claim->proposition_id;
-	} else if (export->source_evidence.kind ==
-		PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_PROPOSITION) {
-		proposition_id = export->source_evidence.id;
-	} else {
 		return -1;
 	}
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, export->source_evidence.id);
+	if (!claim) {
+		return -1;
+	}
+	uint32_t proposition_id = claim->proposition_id;
 	const struct prototype_judgement_proposition* proposition =
 		prototype_judgement_proposition_get(judgement, proposition_id);
 	if (!proposition || proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
@@ -11123,6 +13809,7 @@ int prototype_artifact_interface_recompute_keys(
 	if (prototype_constructor_curried_caches_rebuild(
 			type_declarations, contexts, terms
 		) != 0) {
+		fprintf(stderr, "artifact key recomputation failed rebuilding constructor caches\n");
 		return -1;
 	}
 	for (size_t i = 0; i < interface->type_export_count; ++i) {
@@ -11135,14 +13822,23 @@ int prototype_artifact_interface_recompute_keys(
 					export->local_type_id,
 					&export->code_shape_key
 				) != 0) {
-				return -1;
+			fprintf(stderr, "artifact key recomputation failed type export=%zu\n", i);
+			return -1;
 			}
 			uint32_t formation_classifier = type_declarations->type_declarations[
 				export->local_type_id
 			].formation_classifier;
-			if (formation_classifier == PROTOTYPE_INVALID_ID ||
-				formation_classifier >= terms->term_count) {
-				return -1;
+		if (formation_classifier == PROTOTYPE_INVALID_ID ||
+			formation_classifier >= terms->term_count) {
+			fprintf(
+				stderr,
+				"artifact key recomputation invalid formation classifier type export=%zu "
+				"classifier=%u terms=%zu\n",
+				i,
+				formation_classifier,
+				terms->term_count
+			);
+			return -1;
 			}
 			export->formation_classifier = formation_classifier;
 			if (prototype_type_declaration_representation_anchor_type_id(
@@ -11151,7 +13847,8 @@ int prototype_artifact_interface_recompute_keys(
 					export->local_type_id,
 					&export->core_representation_anchor_type_id
 				) != 0) {
-				return -1;
+			fprintf(stderr, "artifact key recomputation failed representation export=%zu\n", i);
+			return -1;
 			}
 	}
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
@@ -11163,6 +13860,7 @@ int prototype_artifact_interface_recompute_keys(
 				export->local_term,
 				&export->canonical_key
 			) != 0) {
+			fprintf(stderr, "artifact key recomputation failed term export=%zu\n", i);
 			return -1;
 		}
 		memset(&export->classifier_key, 0, sizeof(export->classifier_key));
@@ -11174,6 +13872,12 @@ int prototype_artifact_interface_recompute_keys(
 					export->classifier,
 					&export->classifier_key
 				) != 0)) {
+			fprintf(
+				stderr,
+				"artifact key recomputation failed classifier export=%zu classifier=%u\n",
+				i,
+				export->classifier
+			);
 			return -1;
 		}
 	}
@@ -11181,17 +13885,20 @@ int prototype_artifact_interface_recompute_keys(
 		struct prototype_artifact_constructor_export* export =
 			&interface->constructor_exports[i];
 		if (export->type_export_index >= interface->type_export_count) {
+			fprintf(stderr, "artifact key recomputation invalid constructor owner export=%zu\n", i);
 			return -1;
 		}
 		uint32_t type_id = interface->type_exports[
 			export->type_export_index
 		].local_type_id;
 		if (type_id >= type_declarations->type_count) {
+			fprintf(stderr, "artifact key recomputation missing constructor type export=%zu\n", i);
 			return -1;
 		}
 		const struct prototype_type_declaration* type =
 			&type_declarations->type_declarations[type_id];
 		if (export->ordinal >= type->constructor_count) {
+			fprintf(stderr, "artifact key recomputation invalid constructor ordinal export=%zu\n", i);
 			return -1;
 		}
 		export->curried_classifier_cache =
@@ -11264,17 +13971,11 @@ static uint32_t offset_artifact_id(uint32_t id, uint32_t offset) {
 	return id == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID : id + offset;
 }
 
-static uint32_t offset_artifact_binder_id(uint32_t id, uint32_t offset) {
-	if (id == PROTOTYPE_INVALID_ID) {
-		return id;
-	}
-	return id + offset;
-}
-
-static uint32_t offset_artifact_authority_id(
+static uint32_t relocate_artifact_authority_id(
 	int authority_kind,
 	uint32_t authority_id,
-	uint32_t term_offset,
+	const uint32_t* term_relocation,
+	size_t term_relocation_count,
 	uint32_t operation_offset
 ) {
 	if (authority_id == PROTOTYPE_INVALID_ID) {
@@ -11288,7 +13989,8 @@ static uint32_t offset_artifact_authority_id(
 		authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
 		return authority_id;
 	}
-	return offset_artifact_id(authority_id, term_offset);
+	return authority_id < term_relocation_count ?
+		term_relocation[authority_id] : PROTOTYPE_INVALID_ID;
 }
 
 static int canonicalize_type_view_core_refs(
@@ -11483,190 +14185,631 @@ static int canonicalize_constructor_owner_refs(
 	return 0;
 }
 
-static int canonicalize_appended_export_evidence(
-	struct prototype_judgement_db* judgement,
-	uint32_t source_proposition_id,
-	uint32_t old_subject,
-	uint32_t old_classifier,
-	uint32_t subject,
-	uint32_t classifier
-) {
-	if (!judgement || source_proposition_id >= judgement->proposition_count) {
-		return -1;
-	}
-	struct prototype_judgement_proposition* proposition =
-		&judgement->propositions[source_proposition_id];
-	if (proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		proposition->subject != old_subject ||
-		proposition->classifier != old_classifier) {
-		return -1;
-	}
-	proposition->subject = subject;
-	proposition->classifier = classifier;
-	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
-		struct prototype_judgement_derivation_candidate* derivation =
-			&judgement->derivation_candidates[i];
-		if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
-			continue;
-		}
-		if (derivation->conclusion_proposition_id == source_proposition_id) {
-			derivation->conclusion_subject = subject;
-			derivation->conclusion_classifier = classifier;
-		}
-		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
-			if (derivation->premises[j].proposition.authority_kind !=
-					proposition->authority_kind ||
-				derivation->premises[j].proposition.authority_id !=
-					proposition->authority_id ||
-				derivation->premises[j].proposition.operation_id !=
-					proposition->operation_id ||
-				derivation->premises[j].proposition.subject != old_subject ||
-				derivation->premises[j].proposition.classifier != old_classifier) {
-				continue;
-			}
-			derivation->premises[j].proposition.subject = subject;
-			derivation->premises[j].proposition.classifier = classifier;
-		}
-	}
-	return 0;
-}
-
-static void offset_artifact_type_expr(
+static int relocate_artifact_type_expr(
 	struct prototype_type_expr* expr,
-	uint32_t expr_offset,
-	uint32_t binder_offset,
+	const uint32_t* expr_relocation,
+	size_t expr_relocation_count,
+	const uint32_t* binding_relocation,
+	size_t binding_relocation_count,
 	uint32_t universe_offset
 ) {
+	if (!expr || !expr_relocation || !binding_relocation) {
+		return -1;
+	}
+#define RELOCATE_TYPE_EXPR_REF(field) \
+	do { \
+		if ((field) >= expr_relocation_count || \
+			expr_relocation[(field)] == PROTOTYPE_INVALID_ID) { \
+			return -1; \
+		} \
+		(field) = expr_relocation[(field)]; \
+	} while (0)
 	switch (expr->tag) {
 		case PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR:
 			expr->as.universe_var.level_var += universe_offset;
 			break;
 		case PROTOTYPE_TYPE_EXPR_VAR:
-			expr->as.var.binding_id =
-				offset_artifact_binder_id(expr->as.var.binding_id, binder_offset);
+			if (expr->as.var.binding_id >= binding_relocation_count ||
+				binding_relocation[expr->as.var.binding_id] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			expr->as.var.binding_id = binding_relocation[expr->as.var.binding_id];
 			break;
 		case PROTOTYPE_TYPE_EXPR_APP:
-			expr->as.app.function += expr_offset;
-			expr->as.app.argument += expr_offset;
+			RELOCATE_TYPE_EXPR_REF(expr->as.app.function);
+			RELOCATE_TYPE_EXPR_REF(expr->as.app.argument);
 			break;
 		case PROTOTYPE_TYPE_EXPR_ARROW:
-			expr->as.arrow.domain += expr_offset;
-			expr->as.arrow.codomain += expr_offset;
+			RELOCATE_TYPE_EXPR_REF(expr->as.arrow.domain);
+			RELOCATE_TYPE_EXPR_REF(expr->as.arrow.codomain);
 			break;
 		case PROTOTYPE_TYPE_EXPR_PI:
-			expr->as.pi.binding_id =
-				offset_artifact_binder_id(expr->as.pi.binding_id, binder_offset);
-			expr->as.pi.domain += expr_offset;
-			expr->as.pi.codomain += expr_offset;
+			if (expr->as.pi.binding_id >= binding_relocation_count ||
+				binding_relocation[expr->as.pi.binding_id] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			expr->as.pi.binding_id = binding_relocation[expr->as.pi.binding_id];
+			RELOCATE_TYPE_EXPR_REF(expr->as.pi.domain);
+			RELOCATE_TYPE_EXPR_REF(expr->as.pi.codomain);
 			break;
 		default:
 			break;
 	}
+	return 0;
+#undef RELOCATE_TYPE_EXPR_REF
 }
 
-static void offset_artifact_term(
-	struct prototype_term* term,
-	uint32_t term_offset,
-	uint32_t case_offset,
-	uint32_t frame_offset,
-	uint32_t type_offset,
-	uint32_t binder_offset,
-	uint32_t universe_offset
+static int artifact_compare_u32(uint32_t left, uint32_t right) {
+	return left < right ? -1 : (left > right ? 1 : 0);
+}
+
+static uint32_t artifact_relocated_semantic_action(
+	int kind,
+	uint32_t id,
+	const uint32_t* substitution_relocation,
+	size_t substitution_count
 ) {
-	switch (term->tag) {
-		case PROTOTYPE_TERM_VAR:
-			term->as.var.binding_id =
-				offset_artifact_binder_id(term->as.var.binding_id, binder_offset);
-			break;
-		case PROTOTYPE_TERM_CONSTRUCTOR:
-			term->as.constructor.owner = offset_artifact_id(term->as.constructor.owner, term_offset);
-			break;
-		case PROTOTYPE_TERM_APP:
-			term->as.app.function += term_offset;
-			term->as.app.argument += term_offset;
-			break;
-		case PROTOTYPE_TERM_LAMBDA:
-			term->as.lambda.binding_id =
-				offset_artifact_binder_id(term->as.lambda.binding_id, binder_offset);
-			term->as.lambda.body += term_offset;
-			break;
-		case PROTOTYPE_TERM_PI:
-			term->as.pi.domain += term_offset;
-			term->as.pi.codomain_family += term_offset;
-			break;
-		case PROTOTYPE_TERM_MATCH:
-			term->as.match.scrutinee += term_offset;
-			term->as.match.first_case += case_offset;
-			term->as.match.ih_scope_id = offset_artifact_id(term->as.match.ih_scope_id, frame_offset);
-			break;
-		case PROTOTYPE_TERM_TYPE_FORMER:
-			break;
-		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			term->as.type_declaration.type_id += type_offset;
-			break;
-		case PROTOTYPE_TERM_TYPE_VIEW:
-			term->as.type_view.view_type_id += type_offset;
-			term->as.type_view.core += term_offset;
-			term->as.type_view.source += term_offset;
-			break;
-			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			term->as.induction_hypothesis.ih_scope_id =
-				offset_artifact_id(term->as.induction_hypothesis.ih_scope_id, frame_offset);
-			term->as.induction_hypothesis.argument += term_offset;
-			break;
-			case PROTOTYPE_TERM_UNIVERSE_VAR:
-				term->as.universe_var.level_var += universe_offset;
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				term->as.effect_row_var.binding_id =
-					offset_artifact_binder_id(term->as.effect_row_var.binding_id, binder_offset);
-				break;
-		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			term->as.effect_operation.classifier += term_offset;
-			break;
-		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			term->as.computation_type.label += term_offset;
-			term->as.computation_type.result += term_offset;
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-			term->as.effect_row_union.left += term_offset;
-			term->as.effect_row_union.right += term_offset;
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			term->as.effect_row_forall.binding_id =
-				offset_artifact_binder_id(term->as.effect_row_forall.binding_id, binder_offset);
-			term->as.effect_row_forall.body += term_offset;
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			term->as.effect_row_operation.latent_row += term_offset;
-			break;
-		case PROTOTYPE_TERM_THUNK_TYPE:
-			term->as.thunk_type.computation += term_offset;
-			break;
-		case PROTOTYPE_TERM_RETURN:
-			term->as.return_term.value += term_offset;
-			break;
-		case PROTOTYPE_TERM_THUNK:
-			term->as.thunk.computation += term_offset;
-			break;
-		case PROTOTYPE_TERM_FORCE:
-			term->as.force.value += term_offset;
-			break;
-		case PROTOTYPE_TERM_COMPUTATION_FOLD:
-			term->as.computation_fold.computation += term_offset;
-			term->as.computation_fold.return_clause += term_offset;
-			break;
-		case PROTOTYPE_TERM_OPERATION_REQUEST:
-			term->as.operation_request.operation += term_offset;
-			term->as.operation_request.argument += term_offset;
-			term->as.operation_request.continuation += term_offset;
-			break;
-			default:
-				break;
-		}
+	if (kind != PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+		return id;
+	}
+	return id < substitution_count ?
+		substitution_relocation[id] : PROTOTYPE_INVALID_ID;
 }
 
-int prototype_artifact_append_graph(
+static uint32_t artifact_relocated_rule_word(
+	const struct prototype_judgement_derivation* derivation,
+	uint32_t word,
+	const uint32_t* term_relocation,
+	size_t term_count
+) {
+	uint32_t value = derivation->rule_data.words[word];
+	if ((derivation->proof_kind ==
+			PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM && word < 2) ||
+		((derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION ||
+		  derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) && word == 0)) {
+		return value < term_count ?
+			term_relocation[value] : PROTOTYPE_INVALID_ID;
+	}
+	return value;
+}
+
+static int artifact_compare_relocated_derivations(
+	const struct prototype_judgement_derivation* left,
+	const struct prototype_judgement_derivation* right,
+	const uint32_t* proposition_relocation,
+	const uint32_t* claim_relocation,
+	const uint32_t* substitution_relocation,
+	size_t substitution_count,
+	const uint32_t* term_relocation,
+	size_t term_count
+) {
+#define COMPARE_FIELD(lhs, rhs) do { \
+	int field_comparison = artifact_compare_u32((uint32_t)(lhs), (uint32_t)(rhs)); \
+	if (field_comparison != 0) { \
+		return field_comparison; \
+	} \
+} while (0)
+	COMPARE_FIELD(left->proof_kind, right->proof_kind);
+	COMPARE_FIELD(
+		claim_relocation[left->conclusion_claim_id],
+		claim_relocation[right->conclusion_claim_id]
+	);
+	for (uint32_t i = 0; i < 4; ++i) {
+		COMPARE_FIELD(
+			artifact_relocated_rule_word(left, i, term_relocation, term_count),
+			artifact_relocated_rule_word(right, i, term_relocation, term_count)
+		);
+	}
+	COMPARE_FIELD(left->semantic_action_kind, right->semantic_action_kind);
+	COMPARE_FIELD(
+		artifact_relocated_semantic_action(
+			left->semantic_action_kind,
+			left->semantic_action_id,
+			substitution_relocation,
+			substitution_count
+		),
+		artifact_relocated_semantic_action(
+			right->semantic_action_kind,
+			right->semantic_action_id,
+			substitution_relocation,
+			substitution_count
+		)
+	);
+	COMPARE_FIELD(left->premise_count, right->premise_count);
+	for (uint32_t i = 0; i < left->premise_count; ++i) {
+		const struct prototype_judgement_premise_edge* left_premise =
+			&left->premises[i];
+		const struct prototype_judgement_premise_edge* right_premise =
+			&right->premises[i];
+		COMPARE_FIELD(
+			left_premise->claim_id != PROTOTYPE_INVALID_ID,
+			right_premise->claim_id != PROTOTYPE_INVALID_ID
+		);
+		COMPARE_FIELD(
+			left_premise->claim_id != PROTOTYPE_INVALID_ID ?
+				claim_relocation[left_premise->claim_id] :
+				proposition_relocation[left_premise->scoped_proposition_id],
+			right_premise->claim_id != PROTOTYPE_INVALID_ID ?
+				claim_relocation[right_premise->claim_id] :
+				proposition_relocation[right_premise->scoped_proposition_id]
+		);
+		COMPARE_FIELD(
+			left_premise->semantic_action_kind,
+			right_premise->semantic_action_kind
+		);
+		COMPARE_FIELD(
+			artifact_relocated_semantic_action(
+				left_premise->semantic_action_kind,
+				left_premise->semantic_action_id,
+				substitution_relocation,
+				substitution_count
+			),
+			artifact_relocated_semantic_action(
+				right_premise->semantic_action_kind,
+				right_premise->semantic_action_id,
+				substitution_relocation,
+				substitution_count
+			)
+		);
+	}
+#undef COMPARE_FIELD
+	return 0;
+}
+
+static int artifact_append_accepted_judgement(
+	struct prototype_judgement_db* target,
+	const struct prototype_judgement_db* source,
+	const struct prototype_context_db* source_contexts,
+	const uint32_t* context_relocation,
+	const struct prototype_substitution_db* source_substitutions,
+	const uint32_t* substitution_relocation,
+	const uint32_t* term_relocation,
+	size_t term_relocation_count,
+	uint32_t operation_offset,
+	uint32_t* proposition_relocation,
+	uint32_t* claim_relocation,
+	const struct artifact_append_order* order
+) {
+	if (!target || !source || !source_contexts || !context_relocation ||
+		!source_substitutions || !substitution_relocation || !term_relocation ||
+		!proposition_relocation || !claim_relocation ||
+		prototype_judgement_db_rebuild_index(target) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < source->proposition_count; ++i) {
+		proposition_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	size_t proposition_count = order ?
+		order->proposition_count : source->proposition_count;
+	for (size_t position = 0; position < proposition_count; ++position) {
+		uint32_t i = order ? order->propositions[position] : (uint32_t)position;
+		if (i >= source->proposition_count) {
+			return -1;
+		}
+		const struct prototype_judgement_proposition* source_proposition =
+			prototype_judgement_proposition_get(source, i);
+		if (!source_proposition) {
+			continue;
+		}
+		struct prototype_judgement_proposition proposition =
+			*source_proposition;
+		if (proposition.context_id >= source_contexts->context_count ||
+			(proposition.operation_id != PROTOTYPE_INVALID_ID &&
+			 operation_offset == PROTOTYPE_INVALID_ID)) {
+			return -1;
+		}
+		if (proposition.subject >= term_relocation_count ||
+			proposition.classifier >= term_relocation_count) {
+			return -1;
+		}
+		proposition.subject = term_relocation[proposition.subject];
+		proposition.classifier = term_relocation[proposition.classifier];
+		proposition.context_id = context_relocation[proposition.context_id];
+		proposition.operation_id = proposition.operation_id ==
+			PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
+			offset_artifact_id(proposition.operation_id, operation_offset);
+		proposition.authority_id = relocate_artifact_authority_id(
+			proposition.authority_kind,
+			proposition.authority_id,
+			term_relocation,
+			term_relocation_count,
+			operation_offset
+		);
+		if (proposition.authority_id == PROTOTYPE_INVALID_ID &&
+			proposition.authority_kind !=
+				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
+			return -1;
+		}
+		proposition.key_hash = 0;
+		proposition.hash_next = PROTOTYPE_INVALID_ID;
+		if (prototype_judgement_proposition_intern(
+				target,
+				&proposition,
+				&proposition_relocation[i]
+			) != 0) {
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < source->claim_count; ++i) {
+		claim_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	size_t claim_count = order ? order->claim_count : source->claim_count;
+	for (size_t position = 0; position < claim_count; ++position) {
+		uint32_t i = order ? order->claims[position] : (uint32_t)position;
+		if (i >= source->claim_count) {
+			return -1;
+		}
+		const struct prototype_judgement_claim* source_claim =
+			prototype_judgement_claim_get(source, i);
+		if (!source_claim || source_claim->proposition_id >=
+				source->proposition_count || proposition_relocation[
+				source_claim->proposition_id] == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (prototype_judgement_claim_intern_exact(
+				target,
+				proposition_relocation[source_claim->proposition_id],
+				&claim_relocation[i]
+			) != 0) {
+			return -1;
+		}
+		if (target->claims[claim_relocation[i]].closure_rank ==
+				PROTOTYPE_INVALID_ID || source_claim->closure_rank <
+				target->claims[claim_relocation[i]].closure_rank) {
+			target->claims[claim_relocation[i]].closure_rank =
+				source_claim->closure_rank;
+		}
+	}
+	size_t derivation_count = order ?
+		order->derivation_count : source->derivation_count;
+	size_t derivation_order_capacity = derivation_count == 0 ? 1 : derivation_count;
+	uint32_t canonical_derivation_order[derivation_order_capacity];
+	for (size_t position = 0; position < derivation_count; ++position) {
+		uint32_t derivation_id = order ?
+			order->derivations[position] : (uint32_t)position;
+		if (derivation_id >= source->derivation_count ||
+			!prototype_judgement_derivation_get(source, derivation_id)) {
+			return -1;
+		}
+		canonical_derivation_order[position] = derivation_id;
+	}
+	if (order) {
+		for (size_t i = 1; i < derivation_count; ++i) {
+			uint32_t current = canonical_derivation_order[i];
+			size_t j = i;
+			while (j > 0 && artifact_compare_relocated_derivations(
+					prototype_judgement_derivation_get(source, current),
+					prototype_judgement_derivation_get(
+						source, canonical_derivation_order[j - 1]
+					),
+					proposition_relocation,
+					claim_relocation,
+					substitution_relocation,
+					source_substitutions->substitution_count,
+					term_relocation,
+					term_relocation_count
+				) < 0) {
+				canonical_derivation_order[j] =
+					canonical_derivation_order[j - 1];
+				--j;
+			}
+			canonical_derivation_order[j] = current;
+		}
+	}
+	for (size_t position = 0; position < derivation_count; ++position) {
+		uint32_t i = canonical_derivation_order[position];
+		const struct prototype_judgement_derivation* source_derivation =
+			prototype_judgement_derivation_get(source, i);
+		if (!source_derivation || source_derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
+			continue;
+		}
+		if (source_derivation->conclusion_claim_id >= source->claim_count ||
+			claim_relocation[source_derivation->conclusion_claim_id] ==
+				PROTOTYPE_INVALID_ID || source_derivation->premise_count >
+				PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
+			return -1;
+		}
+		struct prototype_judgement_premise_edge premises[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		];
+		struct prototype_judgement_derivation derivation =
+			*source_derivation;
+		derivation.conclusion_claim_id =
+			claim_relocation[source_derivation->conclusion_claim_id];
+		/* v69 still carries this derived cache. The accepted append preserves the
+		 * source DAG exactly, so its topological rank remains valid after ID
+		 * relocation. v70 removes rank from the wire and recomputes it on read. */
+		derivation.closure_rank = source_derivation->closure_rank;
+		derivation.premises = premises;
+		derivation.key_hash = 0;
+		derivation.hash_next = PROTOTYPE_INVALID_ID;
+		for (uint32_t j = 0; j < derivation.premise_count; ++j) {
+			premises[j].claim_id = PROTOTYPE_INVALID_ID;
+			premises[j].scoped_proposition_id = PROTOTYPE_INVALID_ID;
+			premises[j].semantic_action_kind =
+				source_derivation->premises[j].semantic_action_kind;
+			premises[j].semantic_action_id =
+				source_derivation->premises[j].semantic_action_id;
+			if (premises[j].semantic_action_kind ==
+					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+				if (premises[j].semantic_action_id >=
+					source_substitutions->substitution_count) {
+					return -1;
+				}
+				premises[j].semantic_action_id = substitution_relocation[
+					premises[j].semantic_action_id
+				];
+			} else if (premises[j].semantic_action_kind !=
+					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID ||
+				premises[j].semantic_action_id != PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			if (source_derivation->premises[j].claim_id !=
+					PROTOTYPE_INVALID_ID) {
+				uint32_t source_claim_id =
+					source_derivation->premises[j].claim_id;
+				if (source_claim_id >= source->claim_count ||
+					claim_relocation[source_claim_id] == PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				premises[j].claim_id = claim_relocation[source_claim_id];
+			} else {
+				uint32_t source_proposition_id =
+					source_derivation->premises[j].scoped_proposition_id;
+				if (source_proposition_id >= source->proposition_count ||
+					proposition_relocation[source_proposition_id] ==
+						PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				premises[j].scoped_proposition_id =
+					proposition_relocation[source_proposition_id];
+			}
+		}
+		if (derivation.proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
+			if (derivation.rule_data.induction.match >= term_relocation_count ||
+				derivation.rule_data.induction.motive >= term_relocation_count) {
+				return -1;
+			}
+			derivation.rule_data.induction.match = term_relocation[
+				derivation.rule_data.induction.match
+			];
+			derivation.rule_data.induction.motive = term_relocation[
+				derivation.rule_data.induction.motive
+			];
+		} else if (derivation.proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION ||
+			derivation.proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) {
+			if (derivation.rule_data.constructor.owner_view >=
+				term_relocation_count) {
+				return -1;
+			}
+			derivation.rule_data.constructor.owner_view = term_relocation[
+				derivation.rule_data.constructor.owner_view
+			];
+		}
+		if (derivation.semantic_action_kind ==
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+			if (derivation.semantic_action_id >=
+				source_substitutions->substitution_count) {
+				return -1;
+			}
+			derivation.semantic_action_id = substitution_relocation[
+				derivation.semantic_action_id
+			];
+		} else if (derivation.semantic_action_kind !=
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID ||
+			derivation.semantic_action_id != PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		uint32_t derivation_id;
+		if (prototype_judgement_derivation_intern_exact(
+				target, &derivation, &derivation_id
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int artifact_mark_binding(
+	unsigned char* used,
+	size_t count,
+	uint32_t binding_id
+) {
+	if (!used || binding_id == PROTOTYPE_INVALID_ID || binding_id >= count) {
+		return -1;
+	}
+	used[binding_id] = 1;
+	return 0;
+}
+
+static int artifact_build_binding_relocation(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct artifact_append_order* order,
+	uint32_t target_first_binding,
+	uint32_t* relocation,
+	size_t relocation_count,
+	uint32_t* p_next_binding
+) {
+	if (!terms || !type_declarations || !contexts || !relocation ||
+		!p_next_binding || relocation_count < terms->next_binding_id) {
+		return -1;
+	}
+	size_t used_count = terms->next_binding_id == 0 ? 1 : terms->next_binding_id;
+	unsigned char used[used_count];
+	memset(used, 0, sizeof(used));
+	for (size_t i = 0; i < relocation_count; ++i) {
+		relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < terms->term_count; ++i) {
+		const struct prototype_term* term = &terms->terms[i];
+		if (term->tag == PROTOTYPE_TERM_VAR) {
+			if (artifact_mark_binding(used, terms->next_binding_id,
+					term->as.var.binding_id) != 0) {
+				return -1;
+			}
+		} else if (term->tag == PROTOTYPE_TERM_LAMBDA) {
+			if (artifact_mark_binding(used, terms->next_binding_id,
+					term->as.lambda.binding_id) != 0) {
+				return -1;
+			}
+		} else if (term->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+			if (artifact_mark_binding(used, terms->next_binding_id,
+					term->as.effect_row_var.binding_id) != 0) {
+				return -1;
+			}
+		} else if (term->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
+			if (artifact_mark_binding(used, terms->next_binding_id,
+					term->as.effect_row_forall.binding_id) != 0) {
+				return -1;
+			}
+		} else if (term->tag == PROTOTYPE_TERM_MATCH) {
+			uint32_t first = term->as.match.first_case;
+			uint32_t count = term->as.match.case_count;
+			if (first > terms->case_count || count > terms->case_count - first) {
+				return -1;
+			}
+			for (uint32_t j = 0; j < count; ++j) {
+				const struct prototype_match_case* match_case =
+					&terms->cases[first + j];
+				if (match_case->first_binder > terms->case_binder_count ||
+					match_case->binder_count > terms->case_binder_count -
+						match_case->first_binder) {
+					return -1;
+				}
+				for (uint32_t k = 0; k < match_case->binder_count; ++k) {
+					if (artifact_mark_binding(
+							used,
+							terms->next_binding_id,
+							terms->case_binders[
+								match_case->first_binder + k
+							].binding_id
+						) != 0) {
+						return -1;
+					}
+				}
+			}
+		}
+	}
+	for (size_t i = 1; i < contexts->context_count; ++i) {
+		const struct prototype_context* context = &contexts->contexts[i];
+		if (artifact_mark_binding(
+				used, terms->next_binding_id, context->binding_id
+			) != 0) {
+			return -1;
+		}
+		if (context->classifier_ref.kind ==
+				PROTOTYPE_CONTEXT_CLASSIFIER_REF_VARIABLE &&
+			artifact_mark_binding(
+				used,
+				terms->next_binding_id,
+				context->classifier_ref.variable_id
+			) != 0) {
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
+		const struct prototype_type_expr* expr = &type_declarations->exprs[i];
+		uint32_t binding_id = PROTOTYPE_INVALID_ID;
+		if (!artifact_type_expr_present(expr)) {
+			continue;
+		}
+		if (expr->tag == PROTOTYPE_TYPE_EXPR_VAR) {
+			binding_id = expr->as.var.binding_id;
+		} else if (expr->tag == PROTOTYPE_TYPE_EXPR_PI) {
+			binding_id = expr->as.pi.binding_id;
+		}
+		if (binding_id != PROTOTYPE_INVALID_ID && artifact_mark_binding(
+				used, terms->next_binding_id, binding_id
+			) != 0) {
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < type_declarations->parameter_count; ++i) {
+		const struct prototype_type_parameter_declaration* parameter =
+			&type_declarations->parameter_declarations[i];
+		if (artifact_parameter_present(parameter) && artifact_mark_binding(
+				used, terms->next_binding_id, parameter->binding_id
+			) != 0) {
+			return -1;
+		}
+	}
+	uint32_t next = target_first_binding;
+	if (order) {
+#define ASSIGN_BINDING(binding) do { \
+	uint32_t assign_binding_id = (binding); \
+	if (assign_binding_id < terms->next_binding_id && used[assign_binding_id] && \
+		relocation[assign_binding_id] == PROTOTYPE_INVALID_ID) { \
+		relocation[assign_binding_id] = next++; \
+	} \
+} while (0)
+		for (size_t position = 0; position < order->term_count; ++position) {
+			uint32_t term_id = order->terms[position];
+			if (term_id >= terms->term_count) {
+				return -1;
+			}
+			const struct prototype_term* term = &terms->terms[term_id];
+			if (term->tag == PROTOTYPE_TERM_VAR) {
+				ASSIGN_BINDING(term->as.var.binding_id);
+			} else if (term->tag == PROTOTYPE_TERM_LAMBDA) {
+				ASSIGN_BINDING(term->as.lambda.binding_id);
+			} else if (term->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+				ASSIGN_BINDING(term->as.effect_row_var.binding_id);
+			} else if (term->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
+				ASSIGN_BINDING(term->as.effect_row_forall.binding_id);
+			} else if (term->tag == PROTOTYPE_TERM_MATCH) {
+				for (uint32_t j = 0; j < term->as.match.case_count; ++j) {
+					const struct prototype_match_case* match_case =
+						&terms->cases[term->as.match.first_case + j];
+					for (uint32_t k = 0; k < match_case->binder_count; ++k) {
+						ASSIGN_BINDING(terms->case_binders[
+							match_case->first_binder + k
+						].binding_id);
+					}
+				}
+			}
+		}
+		for (size_t position = 0; position < order->type_expr_count; ++position) {
+			uint32_t expr_id = order->type_exprs[position];
+			if (expr_id >= type_declarations->expr_count) {
+				return -1;
+			}
+			const struct prototype_type_expr* expr =
+				&type_declarations->exprs[expr_id];
+			if (expr->tag == PROTOTYPE_TYPE_EXPR_VAR) {
+				ASSIGN_BINDING(expr->as.var.binding_id);
+			} else if (expr->tag == PROTOTYPE_TYPE_EXPR_PI) {
+				ASSIGN_BINDING(expr->as.pi.binding_id);
+			}
+		}
+		for (size_t position = 0; position < order->parameter_count; ++position) {
+			uint32_t parameter_id = order->parameters[position];
+			if (parameter_id >= type_declarations->parameter_count) {
+				return -1;
+			}
+			ASSIGN_BINDING(
+				type_declarations->parameter_declarations[parameter_id].binding_id
+			);
+		}
+#undef ASSIGN_BINDING
+	}
+	for (uint32_t i = 0; i < terms->next_binding_id; ++i) {
+		if (used[i] && relocation[i] == PROTOTYPE_INVALID_ID) {
+			relocation[i] = next++;
+		}
+	}
+	*p_next_binding = next;
+	return 0;
+}
+
+static int artifact_append_graph_ordered(
 	struct prototype_artifact_interface* appended_interface,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
@@ -11679,67 +14822,426 @@ int prototype_artifact_append_graph(
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
-	uint32_t operation_offset
+	uint32_t operation_offset,
+	uint32_t* term_relocation,
+	size_t term_relocation_capacity,
+	uint32_t* context_relocation,
+	size_t context_relocation_capacity,
+	struct prototype_artifact_graph_relocation* additional_relocation,
+	int canonicalize_link_references,
+	const struct artifact_append_order* order
 ) {
 	if (!appended_interface || !target_terms || !target_type_declarations ||
 		!target_judgement || !target_contexts || !target_substitutions ||
 		!source_interface ||
 		!source_terms || !source_type_declarations || !source_judgement ||
-		!source_contexts || !source_substitutions) {
+		!source_contexts || !source_substitutions || !term_relocation ||
+		!context_relocation || source_terms->term_count >
+			term_relocation_capacity || source_contexts->context_count >
+			context_relocation_capacity) {
+		return -1;
+	}
+	if (additional_relocation &&
+		((additional_relocation->binding_ids &&
+		  additional_relocation->binding_id_capacity <
+			source_terms->next_binding_id) ||
+		 (additional_relocation->type_ids &&
+		  additional_relocation->type_id_capacity <
+			source_type_declarations->type_count) ||
+		 (additional_relocation->type_expr_ids &&
+		  additional_relocation->type_expr_id_capacity <
+			source_type_declarations->expr_count) ||
+		 (additional_relocation->parameter_ids &&
+		  additional_relocation->parameter_id_capacity <
+			source_type_declarations->parameter_count) ||
+		 (additional_relocation->constructor_ids &&
+		  additional_relocation->constructor_id_capacity <
+			source_type_declarations->constructor_count) ||
+		 (additional_relocation->field_type_ids &&
+		  additional_relocation->field_type_id_capacity <
+			source_type_declarations->readback_field_type_count) ||
+		 (additional_relocation->proposition_ids &&
+		  additional_relocation->proposition_id_capacity <
+			source_judgement->proposition_count) ||
+		 (additional_relocation->claim_ids &&
+		  additional_relocation->claim_id_capacity < source_judgement->claim_count) ||
+		 (additional_relocation->substitution_ids &&
+		  additional_relocation->substitution_id_capacity <
+			source_substitutions->substitution_count))) {
 		return -1;
 	}
 
-	uint32_t term_offset = (uint32_t)target_terms->term_count;
-	uint32_t case_offset = (uint32_t)target_terms->case_count;
-	uint32_t case_binder_offset = (uint32_t)target_terms->case_binder_count;
-	uint32_t frame_offset = (uint32_t)target_terms->ih_scope_count;
-	uint32_t computation_fold_clause_offset = (uint32_t)target_terms->computation_fold_clause_count;
 	uint32_t type_offset = (uint32_t)target_type_declarations->type_count;
-	uint32_t parameter_offset = (uint32_t)target_type_declarations->parameter_count;
-	uint32_t constructor_offset = (uint32_t)target_type_declarations->constructor_count;
-	uint32_t field_type_offset = (uint32_t)target_type_declarations->readback_field_type_count;
-	uint32_t expr_offset = (uint32_t)target_type_declarations->expr_count;
-	uint32_t binder_offset = target_terms->next_binding_id;
+	size_t type_relocation_count = source_type_declarations->type_count == 0 ?
+		1 : source_type_declarations->type_count;
+	uint32_t type_relocation[type_relocation_count];
+	size_t expr_relocation_count = source_type_declarations->expr_count == 0 ?
+		1 : source_type_declarations->expr_count;
+	size_t field_relocation_count =
+		source_type_declarations->readback_field_type_count == 0 ?
+		1 : source_type_declarations->readback_field_type_count;
+	size_t parameter_relocation_count =
+		source_type_declarations->parameter_count == 0 ?
+		1 : source_type_declarations->parameter_count;
+	size_t constructor_relocation_count =
+		source_type_declarations->constructor_count == 0 ?
+		1 : source_type_declarations->constructor_count;
+	uint32_t expr_relocation[expr_relocation_count];
+	uint32_t field_relocation[field_relocation_count];
+	uint32_t parameter_relocation[parameter_relocation_count];
+	uint32_t constructor_relocation[constructor_relocation_count];
+	uint32_t field_boundary_relocation[
+		source_type_declarations->readback_field_type_count + 1
+	];
+	uint32_t parameter_boundary_relocation[
+		source_type_declarations->parameter_count + 1
+	];
+	uint32_t constructor_boundary_relocation[
+		source_type_declarations->constructor_count + 1
+	];
+	size_t binding_relocation_count = source_terms->next_binding_id == 0 ?
+		1 : source_terms->next_binding_id;
+	uint32_t binding_relocation[binding_relocation_count];
+	uint32_t next_binding_id;
 	uint32_t universe_offset = target_type_declarations->next_level_var;
-	uint32_t proposition_offset =
-		(uint32_t)target_judgement->proposition_count;
-	uint32_t context_relocation[PROTOTYPE_CONTEXT_CAPACITY];
+	size_t proposition_relocation_count = source_judgement->proposition_count == 0 ?
+		1 : source_judgement->proposition_count;
+	size_t claim_relocation_count = source_judgement->claim_count == 0 ?
+		1 : source_judgement->claim_count;
+	uint32_t proposition_relocation[proposition_relocation_count];
+	uint32_t claim_relocation[claim_relocation_count];
+	for (size_t i = 0; i < proposition_relocation_count; ++i) {
+		proposition_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < claim_relocation_count; ++i) {
+		claim_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < expr_relocation_count; ++i) {
+		expr_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < field_relocation_count; ++i) {
+		field_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < parameter_relocation_count; ++i) {
+		parameter_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < constructor_relocation_count; ++i) {
+		constructor_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	if (artifact_build_binding_relocation(
+			source_terms,
+			source_type_declarations,
+			source_contexts,
+			order,
+			target_terms->next_binding_id,
+			binding_relocation,
+			binding_relocation_count,
+			&next_binding_id
+		) != 0) {
+		return -1;
+	}
+	if (additional_relocation && additional_relocation->binding_ids) {
+		memcpy(
+			additional_relocation->binding_ids,
+			binding_relocation,
+			source_terms->next_binding_id * sizeof(*binding_relocation)
+		);
+	}
 	uint32_t substitution_relocation[PROTOTYPE_SUBSTITUTION_CAPACITY];
-	uint32_t target_representation_anchors[512];
 	uint32_t source_representation_anchors[512];
+	uint32_t representation_relocation[512];
 	size_t old_target_representation_count = target_type_declarations->representation_count;
 	size_t source_representation_count = source_type_declarations->representation_count;
 	if (old_target_representation_count > 512 || source_representation_count > 512) {
 		return -1;
 	}
-	if (prototype_context_db_append_relocated(
-		target_contexts,
-		source_contexts,
-		term_offset,
-		binder_offset,
-		context_relocation,
-		PROTOTYPE_CONTEXT_CAPACITY
-	) != 0) {
-		return -1;
-	}
-	if (prototype_substitution_db_append_relocated(
-		target_substitutions,
-		source_substitutions,
-		context_relocation,
-		source_contexts->context_count,
-		term_offset,
-		substitution_relocation,
-		PROTOTYPE_SUBSTITUTION_CAPACITY
-	) != 0) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < old_target_representation_count; ++i) {
-		target_representation_anchors[i] =
-			target_type_declarations->representations[i].representative_type_id;
-	}
+	uint32_t next_representation_id = (uint32_t)old_target_representation_count;
 	for (uint32_t i = 0; i < source_representation_count; ++i) {
 		source_representation_anchors[i] =
 			source_type_declarations->representations[i].representative_type_id;
+		representation_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	if (order) {
+		if (old_target_representation_count != 0) {
+			return -1;
+		}
+		for (size_t position = 0; position < order->type_count; ++position) {
+			uint32_t type_id = order->types[position];
+			if (type_id >= source_type_declarations->type_count) {
+				return -1;
+			}
+			const struct prototype_type_declaration* type =
+				&source_type_declarations->type_declarations[type_id];
+			if (!artifact_type_present(type)) {
+				continue;
+			}
+			if (type->representation_id >= source_representation_count) {
+				return -1;
+			}
+			if (representation_relocation[type->representation_id] ==
+					PROTOTYPE_INVALID_ID) {
+				representation_relocation[type->representation_id] =
+					next_representation_id++;
+				source_representation_anchors[type->representation_id] = type_id;
+			}
+		}
+	} else {
+	for (uint32_t i = 0; i < source_representation_count; ++i) {
+		if (source_representation_anchors[i] >=
+				source_type_declarations->type_count ||
+			!artifact_type_present(&source_type_declarations->type_declarations[
+				source_representation_anchors[i]
+			])) {
+			continue;
+		}
+		for (uint32_t j = 0; j < old_target_representation_count; ++j) {
+			int representations_equal = 0;
+			if (prototype_type_code_shape_keys_equal(
+					&source_type_declarations->representations[i].fingerprint,
+					&target_type_declarations->representations[j].fingerprint
+				) && prototype_type_declaration_representations_equal(
+					source_terms,
+					source_type_declarations,
+					source_contexts,
+					source_representation_anchors[i],
+					target_terms,
+					target_type_declarations,
+					target_contexts,
+					target_type_declarations->representations[j].representative_type_id,
+					&representations_equal
+				) == 0 && representations_equal) {
+				representation_relocation[i] = j;
+				break;
+			}
+		}
+		if (representation_relocation[i] == PROTOTYPE_INVALID_ID) {
+			for (uint32_t j = 0; j < i; ++j) {
+				int representations_equal = 0;
+				if (representation_relocation[j] != PROTOTYPE_INVALID_ID &&
+					prototype_type_code_shape_keys_equal(
+						&source_type_declarations->representations[i].fingerprint,
+						&source_type_declarations->representations[j].fingerprint
+					) && prototype_type_declaration_representations_equal(
+						source_terms,
+						source_type_declarations,
+						source_contexts,
+						source_representation_anchors[i],
+						source_terms,
+						source_type_declarations,
+						source_contexts,
+						source_representation_anchors[j],
+						&representations_equal
+					) == 0 && representations_equal) {
+					representation_relocation[i] = representation_relocation[j];
+					break;
+				}
+			}
+		}
+		if (representation_relocation[i] == PROTOTYPE_INVALID_ID) {
+			representation_relocation[i] = next_representation_id++;
+		}
+	}
+	}
+	uint32_t next_type_id = type_offset;
+	for (uint32_t i = 0; i < source_type_declarations->type_count; ++i) {
+		type_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	size_t ordered_type_count = order ?
+		order->type_count : source_type_declarations->type_count;
+	if (order && type_offset != 0) {
+		return -1;
+	}
+	for (size_t position = 0; position < ordered_type_count; ++position) {
+		uint32_t i = order ? order->types[position] : (uint32_t)position;
+		if (i >= source_type_declarations->type_count) {
+			return -1;
+		}
+		const struct prototype_type_declaration* source_type =
+			&source_type_declarations->type_declarations[i];
+		if (!artifact_type_present(source_type)) {
+			continue;
+		}
+		if (source_type->origin_kind ==
+			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) {
+			type_relocation[i] = next_type_id++;
+			continue;
+		}
+		for (uint32_t j = 0; j < type_offset; ++j) {
+			const struct prototype_type_declaration* target_type =
+				&target_type_declarations->type_declarations[j];
+			if (!artifact_type_present(target_type) ||
+				target_type->namespace_symbol_id !=
+					source_type->namespace_symbol_id ||
+				target_type->name_symbol_id != source_type->name_symbol_id) {
+				continue;
+			}
+			struct prototype_type_code_shape_key target_key;
+			struct prototype_type_code_shape_key source_key;
+			int declarations_equal = 0;
+			if (prototype_type_declaration_code_shape_key(
+					target_terms,
+					target_type_declarations,
+					target_contexts,
+					j,
+					&target_key
+				) != 0 || prototype_type_declaration_code_shape_key(
+					source_terms,
+					source_type_declarations,
+					source_contexts,
+					i,
+					&source_key
+				) != 0 || !prototype_type_code_shape_keys_equal(
+					&target_key, &source_key
+				) || prototype_type_declaration_representations_equal(
+					target_terms,
+					target_type_declarations,
+					target_contexts,
+					j,
+					source_terms,
+					source_type_declarations,
+					source_contexts,
+					i,
+					&declarations_equal
+				) != 0 || !declarations_equal) {
+				return -1;
+			}
+			type_relocation[i] = j;
+			break;
+		}
+		if (type_relocation[i] == PROTOTYPE_INVALID_ID) {
+			type_relocation[i] = next_type_id++;
+		}
+	}
+	uint32_t next_expr_id = (uint32_t)target_type_declarations->expr_count;
+	size_t ordered_expr_count = order ?
+		order->type_expr_count : source_type_declarations->expr_count;
+	for (size_t position = 0; position < ordered_expr_count; ++position) {
+		uint32_t i = order ? order->type_exprs[position] : (uint32_t)position;
+		if (i >= source_type_declarations->expr_count) {
+			return -1;
+		}
+		if (artifact_type_expr_present(&source_type_declarations->exprs[i])) {
+			expr_relocation[i] = next_expr_id++;
+		}
+	}
+	uint32_t next_field_id =
+		(uint32_t)target_type_declarations->readback_field_type_count;
+	uint32_t next_parameter_id =
+		(uint32_t)target_type_declarations->parameter_count;
+	uint32_t next_constructor_id =
+		(uint32_t)target_type_declarations->constructor_count;
+	if (order) {
+		for (size_t position = 0; position < ordered_type_count; ++position) {
+			uint32_t type_id = order->types[position];
+			const struct prototype_type_declaration* type =
+				&source_type_declarations->type_declarations[type_id];
+			if (!artifact_type_present(type)) {
+				continue;
+			}
+			if (type->first_parameter > source_type_declarations->parameter_count ||
+				type->parameter_count > source_type_declarations->parameter_count -
+					type->first_parameter ||
+				type->first_constructor > source_type_declarations->constructor_count ||
+				type->constructor_count > source_type_declarations->constructor_count -
+					type->first_constructor) {
+				return -1;
+			}
+			parameter_boundary_relocation[type->first_parameter] = next_parameter_id;
+			for (uint32_t j = 0; j < type->parameter_count; ++j) {
+				uint32_t parameter_id = type->first_parameter + j;
+				if (!artifact_parameter_present(
+						&source_type_declarations->parameter_declarations[parameter_id]
+					)) {
+					return -1;
+				}
+				parameter_relocation[parameter_id] = next_parameter_id++;
+			}
+			constructor_boundary_relocation[type->first_constructor] =
+				next_constructor_id;
+			for (uint32_t j = 0; j < type->constructor_count; ++j) {
+				uint32_t constructor_id = type->first_constructor + j;
+				const struct prototype_type_constructor_declaration* constructor =
+					&source_type_declarations->constructor_declarations[constructor_id];
+				if (!artifact_constructor_present(constructor) ||
+					constructor->owner_type != type_id ||
+					constructor->constructor_index != j) {
+					return -1;
+				}
+				constructor_relocation[constructor_id] = next_constructor_id++;
+				if (constructor->readback.first_field_type != PROTOTYPE_INVALID_ID) {
+					if (constructor->readback.first_field_type >
+							source_type_declarations->readback_field_type_count ||
+						constructor->readback.field_count >
+							source_type_declarations->readback_field_type_count -
+							constructor->readback.first_field_type) {
+						return -1;
+					}
+					field_boundary_relocation[
+						constructor->readback.first_field_type
+					] = next_field_id;
+					for (uint32_t k = 0; k < constructor->readback.field_count; ++k) {
+						uint32_t field_id = constructor->readback.first_field_type + k;
+						if (!artifact_field_type_present(
+								&source_type_declarations->readback_field_types[field_id]
+							)) {
+							return -1;
+						}
+						field_relocation[field_id] = next_field_id++;
+					}
+				}
+			}
+		}
+	} else {
+		for (uint32_t i = 0;
+			i < source_type_declarations->readback_field_type_count;
+			++i) {
+			field_boundary_relocation[i] = next_field_id;
+			if (source_type_declarations->readback_field_types[i] !=
+				PROTOTYPE_INVALID_ID) {
+				field_relocation[i] = next_field_id++;
+			}
+		}
+		field_boundary_relocation[
+			source_type_declarations->readback_field_type_count
+		] = next_field_id;
+		for (uint32_t i = 0; i < source_type_declarations->parameter_count; ++i) {
+			parameter_boundary_relocation[i] = next_parameter_id;
+			if (artifact_parameter_present(
+					&source_type_declarations->parameter_declarations[i]
+				)) {
+				parameter_relocation[i] = next_parameter_id++;
+			}
+		}
+		parameter_boundary_relocation[source_type_declarations->parameter_count] =
+			next_parameter_id;
+		for (uint32_t i = 0; i < source_type_declarations->constructor_count; ++i) {
+			constructor_boundary_relocation[i] = next_constructor_id;
+			const struct prototype_type_constructor_declaration* constructor =
+				&source_type_declarations->constructor_declarations[i];
+			if (!artifact_constructor_present(constructor)) {
+				continue;
+			}
+			if (constructor->owner_type >= source_type_declarations->type_count ||
+				type_relocation[constructor->owner_type] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			if (type_relocation[constructor->owner_type] < type_offset) {
+				const struct prototype_type_declaration* target_owner =
+					&target_type_declarations->type_declarations[
+						type_relocation[constructor->owner_type]
+					];
+				if (constructor->constructor_index >= target_owner->constructor_count) {
+					return -1;
+				}
+				constructor_relocation[i] = target_owner->first_constructor +
+					constructor->constructor_index;
+			} else {
+				constructor_relocation[i] = next_constructor_id++;
+			}
+		}
+		constructor_boundary_relocation[
+			source_type_declarations->constructor_count
+		] = next_constructor_id;
 	}
 
 	if (target_terms->term_count + source_terms->term_count > target_terms->term_capacity ||
@@ -11754,10 +15256,13 @@ int prototype_artifact_append_graph(
 		target_type_declarations->readback_field_type_count + source_type_declarations->readback_field_type_count > target_type_declarations->readback_field_type_capacity ||
 		target_type_declarations->expr_count + source_type_declarations->expr_count > target_type_declarations->expr_capacity ||
 		target_judgement->proposition_count + source_judgement->proposition_count > target_judgement->proposition_capacity ||
-		target_judgement->derivation_candidate_count + source_judgement->derivation_candidate_count > target_judgement->derivation_candidate_capacity ||
-		target_judgement->candidate_premise_count +
-			source_judgement->candidate_premise_count >
-			target_judgement->candidate_premise_capacity ||
+		target_judgement->claim_count + source_judgement->claim_count >
+			target_judgement->claim_capacity ||
+		target_judgement->derivation_count + source_judgement->derivation_count >
+			target_judgement->derivation_capacity ||
+		target_judgement->accepted_premise_count +
+			source_judgement->accepted_premise_count >
+			target_judgement->accepted_premise_capacity ||
 		source_interface->term_export_count > appended_interface->term_export_capacity ||
 		source_interface->type_export_count > appended_interface->type_export_capacity ||
 		source_interface->type_parameter_count > appended_interface->type_parameter_capacity ||
@@ -11765,263 +15270,435 @@ int prototype_artifact_append_graph(
 		source_interface->constructor_field_type_expr_count >
 			appended_interface->constructor_field_type_expr_capacity ||
 		source_interface->type_expr_count > appended_interface->type_expr_capacity ||
-		source_interface->dependency_count > appended_interface->dependency_capacity) {
+		 source_interface->identity_root_count >
+				appended_interface->identity_root_capacity ||
+		 source_interface->dependency_count > appended_interface->dependency_capacity) {
+		fprintf(
+			stderr,
+			"artifact append: capacity check failed terms=%zu/%zu types=%zu/%zu "
+			"constructors=%zu/%zu propositions=%zu/%zu claims=%zu/%zu "
+			"derivations=%zu/%zu roots=%zu/%zu\n",
+			target_terms->term_count + source_terms->term_count,
+			target_terms->term_capacity,
+			target_type_declarations->type_count + source_type_declarations->type_count,
+			target_type_declarations->type_capacity,
+			target_type_declarations->constructor_count +
+				source_type_declarations->constructor_count,
+			target_type_declarations->constructor_capacity,
+			target_judgement->proposition_count + source_judgement->proposition_count,
+			target_judgement->proposition_capacity,
+			target_judgement->claim_count + source_judgement->claim_count,
+			target_judgement->claim_capacity,
+			target_judgement->derivation_count + source_judgement->derivation_count,
+			target_judgement->derivation_capacity,
+			source_interface->identity_root_count,
+			appended_interface->identity_root_capacity
+		);
 		return -1;
 	}
 
-	for (size_t i = 0; i < source_type_declarations->expr_count; ++i) {
+	if (prototype_term_db_append_relocated(
+			target_terms,
+			source_terms,
+			type_relocation,
+			type_relocation_count,
+			binding_relocation,
+			binding_relocation_count,
+			universe_offset,
+			representation_relocation,
+			source_representation_count,
+			order ? order->terms : NULL,
+			order ? order->term_count : 0,
+			term_relocation,
+			term_relocation_capacity
+		) != 0) {
+		fprintf(stderr, "artifact append: term relocation failed\n");
+		return -1;
+	}
+	for (uint32_t i = 0; i < source_type_declarations->type_count; ++i) {
+		if (type_relocation[i] >= type_offset) {
+			continue;
+		}
+		uint32_t source_classifier = source_type_declarations->type_declarations[
+			i
+		].formation_classifier;
+		uint32_t target_classifier = target_type_declarations->type_declarations[
+			type_relocation[i]
+		].formation_classifier;
+		if (source_classifier >= term_relocation_capacity ||
+			target_classifier == PROTOTYPE_INVALID_ID ||
+			target_classifier >= target_terms->term_count) {
+			return -1;
+		}
+		term_relocation[source_classifier] = target_classifier;
+	}
+	if (prototype_context_db_append_relocated(
+			target_contexts,
+			source_contexts,
+			term_relocation,
+			term_relocation_capacity,
+			binding_relocation,
+			binding_relocation_count,
+			context_relocation,
+			context_relocation_capacity
+		) != 0) {
+		fprintf(stderr, "artifact append: context relocation failed\n");
+		return -1;
+	}
+	if (prototype_substitution_db_append_relocated(
+			target_substitutions,
+			source_substitutions,
+			context_relocation,
+			source_contexts->context_count,
+			term_relocation,
+			term_relocation_capacity,
+			substitution_relocation,
+			PROTOTYPE_SUBSTITUTION_CAPACITY
+		) != 0) {
+		fprintf(stderr, "artifact append: substitution relocation failed\n");
+		return -1;
+	}
+
+	for (size_t position = 0; position < ordered_expr_count; ++position) {
+		uint32_t i = order ? order->type_exprs[position] : (uint32_t)position;
 		struct prototype_type_expr expr = source_type_declarations->exprs[i];
-		if (artifact_type_expr_present(&expr)) {
-			offset_artifact_type_expr(&expr, expr_offset, binder_offset, universe_offset);
+		if (!artifact_type_expr_present(&expr)) {
+			continue;
+		}
+		if (relocate_artifact_type_expr(
+				&expr,
+				expr_relocation,
+				source_type_declarations->expr_count,
+				binding_relocation,
+				binding_relocation_count,
+				universe_offset
+			) != 0 || target_type_declarations->expr_count != expr_relocation[i]) {
+			return -1;
 		}
 		target_type_declarations->exprs[target_type_declarations->expr_count++] = expr;
 	}
-	for (size_t i = 0; i < source_type_declarations->readback_field_type_count; ++i) {
+	size_t ordered_field_count = order ?
+		order->field_count : source_type_declarations->readback_field_type_count;
+	for (size_t position = 0; position < ordered_field_count; ++position) {
+		uint32_t i = (uint32_t)position;
+		if (order) {
+			i = PROTOTYPE_INVALID_ID;
+			for (uint32_t candidate = 0;
+				candidate < source_type_declarations->readback_field_type_count;
+				++candidate) {
+				if (field_relocation[candidate] ==
+					target_type_declarations->readback_field_type_count) {
+					i = candidate;
+					break;
+				}
+			}
+		}
+		if (i >= source_type_declarations->readback_field_type_count) {
+			return -1;
+		}
 		uint32_t field_type = source_type_declarations->readback_field_types[i];
-		field_type = offset_artifact_id(field_type, expr_offset);
+		if (field_type == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (field_type >= source_type_declarations->expr_count ||
+			expr_relocation[field_type] == PROTOTYPE_INVALID_ID ||
+			target_type_declarations->readback_field_type_count !=
+				field_relocation[i]) {
+			return -1;
+		}
+		field_type = expr_relocation[field_type];
 		target_type_declarations->readback_field_types[target_type_declarations->readback_field_type_count++] =
 			field_type;
 	}
-	for (size_t i = 0; i < source_type_declarations->parameter_count; ++i) {
+	size_t ordered_parameter_count = order ?
+		order->parameter_count : source_type_declarations->parameter_count;
+	for (size_t position = 0; position < ordered_parameter_count; ++position) {
+		uint32_t i = (uint32_t)position;
+		if (order) {
+			i = PROTOTYPE_INVALID_ID;
+			for (uint32_t candidate = 0;
+				candidate < source_type_declarations->parameter_count;
+				++candidate) {
+				if (parameter_relocation[candidate] ==
+					target_type_declarations->parameter_count) {
+					i = candidate;
+					break;
+				}
+			}
+		}
+		if (i >= source_type_declarations->parameter_count) {
+			return -1;
+		}
 		struct prototype_type_parameter_declaration parameter =
 			source_type_declarations->parameter_declarations[i];
-		if (artifact_parameter_present(&parameter)) {
-			parameter.binding_id =
-				offset_artifact_binder_id(parameter.binding_id, binder_offset);
-			parameter.type_expr = offset_artifact_id(parameter.type_expr, expr_offset);
+		if (!artifact_parameter_present(&parameter)) {
+			continue;
 		}
+		if (parameter.type_expr >= source_type_declarations->expr_count ||
+			expr_relocation[parameter.type_expr] == PROTOTYPE_INVALID_ID ||
+			target_type_declarations->parameter_count != parameter_relocation[i]) {
+			return -1;
+		}
+		if (parameter.binding_id >= binding_relocation_count ||
+			binding_relocation[parameter.binding_id] == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		parameter.binding_id = binding_relocation[parameter.binding_id];
+		parameter.type_expr = expr_relocation[parameter.type_expr];
 		target_type_declarations->parameter_declarations[target_type_declarations->parameter_count++] =
 			parameter;
 	}
-	for (size_t i = 0; i < source_type_declarations->constructor_count; ++i) {
+	size_t ordered_constructor_count = order ?
+		order->constructor_count : source_type_declarations->constructor_count;
+	for (size_t position = 0; position < ordered_constructor_count; ++position) {
+		uint32_t i = (uint32_t)position;
+		if (order) {
+			i = PROTOTYPE_INVALID_ID;
+			for (uint32_t candidate = 0;
+				candidate < source_type_declarations->constructor_count;
+				++candidate) {
+				if (constructor_relocation[candidate] ==
+					target_type_declarations->constructor_count) {
+					i = candidate;
+					break;
+				}
+			}
+		}
+		if (i >= source_type_declarations->constructor_count) {
+			return -1;
+		}
 		struct prototype_type_constructor_declaration constructor =
 			source_type_declarations->constructor_declarations[i];
-		if (artifact_constructor_present(&constructor)) {
-			constructor.owner_type = offset_artifact_id(constructor.owner_type, type_offset);
+		if (!artifact_constructor_present(&constructor)) {
+			continue;
+		}
+		if (constructor_relocation[i] <
+				target_type_declarations->constructor_count) {
+			continue;
+		}
+		if (constructor.owner_type >= source_type_declarations->type_count ||
+			type_relocation[constructor.owner_type] == PROTOTYPE_INVALID_ID ||
+			(constructor.readback.result_type != PROTOTYPE_INVALID_ID &&
+			 (constructor.readback.result_type >=
+				source_type_declarations->expr_count ||
+			  expr_relocation[constructor.readback.result_type] ==
+				PROTOTYPE_INVALID_ID)) ||
+			 target_type_declarations->constructor_count != constructor_relocation[i]) {
+			fprintf(
+				stderr,
+				"artifact append: constructor relocation invariant failed source=%u "
+				"owner=%u relocated=%u result_expr=%u target_index=%zu expected=%u\n",
+				i,
+				constructor.owner_type,
+				constructor.owner_type < source_type_declarations->type_count ?
+					type_relocation[constructor.owner_type] : PROTOTYPE_INVALID_ID,
+				constructor.readback.result_type,
+				target_type_declarations->constructor_count,
+				constructor_relocation[i]
+			);
+			return -1;
+		}
+		constructor.owner_type = type_relocation[constructor.owner_type];
+		if (constructor.readback.field_count == 0) {
+			if (constructor.readback.first_field_type == PROTOTYPE_INVALID_ID) {
+				/* A fieldless constructor has no readback slice to relocate. */
+			} else if (constructor.readback.first_field_type >
+					source_type_declarations->readback_field_type_count) {
+				fprintf(
+					stderr,
+					"artifact append: empty constructor readback boundary failed "
+					"source=%u first=%u fields=%zu\n",
+					i,
+					constructor.readback.first_field_type,
+					source_type_declarations->readback_field_type_count
+				);
+				return -1;
+			} else {
+				constructor.readback.first_field_type = field_boundary_relocation[
+					constructor.readback.first_field_type
+				];
+			}
+		} else {
+			if (constructor.readback.first_field_type >=
+					source_type_declarations->readback_field_type_count ||
+				field_relocation[constructor.readback.first_field_type] ==
+					PROTOTYPE_INVALID_ID) {
+				fprintf(stderr, "artifact append: constructor field relocation failed source=%u\n", i);
+				return -1;
+			}
 			constructor.readback.first_field_type =
-				offset_artifact_id(constructor.readback.first_field_type, field_type_offset);
-			constructor.readback.result_type =
-				offset_artifact_id(constructor.readback.result_type, expr_offset);
+				field_relocation[constructor.readback.first_field_type];
+		}
+		constructor.readback.result_type = artifact_relocate_optional_id(
+			constructor.readback.result_type,
+			expr_relocation,
+			source_type_declarations->expr_count
+		);
+		{
 			if (constructor.parameter_context >= source_contexts->context_count ||
 				constructor.field_context >= source_contexts->context_count) {
+				fprintf(stderr, "artifact append: constructor context relocation failed source=%u\n", i);
 				return -1;
 			}
 			constructor.parameter_context =
 				context_relocation[constructor.parameter_context];
 			constructor.field_context =
 				context_relocation[constructor.field_context];
+			if (constructor.result_classifier >= term_relocation_capacity ||
+				constructor.curried_classifier_cache >= term_relocation_capacity) {
+				fprintf(
+					stderr,
+					"artifact append: constructor term reference failed source=%u "
+					"owner=%u result=%u curried=%u term_slots=%zu\n",
+					i,
+					constructor.owner_type,
+					constructor.result_classifier,
+					constructor.curried_classifier_cache,
+					term_relocation_capacity
+				);
+				return -1;
+			}
 			constructor.result_classifier =
-				offset_artifact_id(constructor.result_classifier, term_offset);
+				term_relocation[constructor.result_classifier];
 			constructor.curried_classifier_cache =
-				offset_artifact_id(constructor.curried_classifier_cache, term_offset);
+				term_relocation[constructor.curried_classifier_cache];
 		}
 		target_type_declarations->constructor_declarations[target_type_declarations->constructor_count++] =
 			constructor;
 	}
-	for (size_t i = 0; i < source_type_declarations->type_count; ++i) {
+	for (size_t position = 0; position < ordered_type_count; ++position) {
+		uint32_t i = order ? order->types[position] : (uint32_t)position;
 		struct prototype_type_declaration type =
 			source_type_declarations->type_declarations[i];
-		if (artifact_type_present(&type)) {
-			if (type.parameter_context >= source_contexts->context_count) {
+		if (!artifact_type_present(&type) || type_relocation[i] < type_offset) {
+			continue;
+		}
+		if (target_type_declarations->type_count != type_relocation[i]) {
+			return -1;
+		}
+		{
+			if (type.parameter_context >= source_contexts->context_count ||
+				type.index_context >= source_contexts->context_count) {
 				return -1;
 			}
-			type.type_index = offset_artifact_id(type.type_index, type_offset);
+			if (type.type_index >= source_type_declarations->type_count ||
+				type_relocation[type.type_index] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			type.type_index = type_relocation[type.type_index];
 			type.representation_id = PROTOTYPE_INVALID_ID;
-			type.formation_classifier =
-				offset_artifact_id(type.formation_classifier, term_offset);
+			if (type.formation_classifier >= term_relocation_capacity) {
+				return -1;
+			}
+			type.formation_classifier = term_relocation[type.formation_classifier];
+			if (type.origin_source_carrier_term_id != PROTOTYPE_INVALID_ID) {
+				if (type.origin_source_carrier_term_id >= term_relocation_capacity ||
+					term_relocation[type.origin_source_carrier_term_id] ==
+						PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				type.origin_source_carrier_term_id = term_relocation[
+					type.origin_source_carrier_term_id
+				];
+			}
 			type.parameter_context =
 				context_relocation[type.parameter_context];
-			type.first_parameter = offset_artifact_id(type.first_parameter, parameter_offset);
-			type.first_constructor = offset_artifact_id(type.first_constructor, constructor_offset);
+			type.index_context = context_relocation[type.index_context];
+			if (type.parameter_count == 0) {
+				if (type.first_parameter >
+						source_type_declarations->parameter_count) {
+					return -1;
+				}
+				type.first_parameter =
+					parameter_boundary_relocation[type.first_parameter];
+			} else if (type.first_parameter >=
+					source_type_declarations->parameter_count ||
+				parameter_relocation[type.first_parameter] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			} else {
+				type.first_parameter = parameter_relocation[type.first_parameter];
+			}
+			if (type.constructor_count == 0) {
+				if (type.first_constructor >
+						source_type_declarations->constructor_count) {
+					return -1;
+				}
+				type.first_constructor =
+					constructor_boundary_relocation[type.first_constructor];
+			} else if (type.first_constructor >=
+					source_type_declarations->constructor_count ||
+				constructor_relocation[type.first_constructor] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			} else {
+				type.first_constructor = constructor_relocation[type.first_constructor];
+			}
 		}
 		target_type_declarations->type_declarations[target_type_declarations->type_count++] = type;
 	}
 	target_type_declarations->representations_dirty = 1;
-
-	for (size_t i = 0; i < source_terms->computation_fold_clause_count; ++i) {
-		struct prototype_computation_fold_clause clause = source_terms->computation_fold_clauses[i];
-		clause.operation += term_offset;
-		clause.body += term_offset;
-		target_terms->computation_fold_clauses[target_terms->computation_fold_clause_count++] = clause;
-	}
-	for (size_t i = 0; i < source_terms->term_count; ++i) {
-		struct prototype_term term = source_terms->terms[i];
-		offset_artifact_term(&term, term_offset, case_offset, frame_offset, type_offset, binder_offset, universe_offset);
-		if (term.tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
-			term.as.computation_fold.first_clause += computation_fold_clause_offset;
-		}
-		target_terms->terms[target_terms->term_count++] = term;
-	}
-	for (size_t i = 0; i < source_terms->case_count; ++i) {
-		struct prototype_match_case match_case = source_terms->cases[i];
-		match_case.constructor_owner = offset_artifact_id(match_case.constructor_owner, term_offset);
-		match_case.first_binder = offset_artifact_id(match_case.first_binder, case_binder_offset);
-		match_case.body = offset_artifact_id(match_case.body, term_offset);
-		target_terms->case_label_symbols[target_terms->case_count] =
-			source_terms->case_label_symbols[i];
-		target_terms->cases[target_terms->case_count++] = match_case;
-	}
-	for (size_t i = 0; i < source_terms->case_binder_count; ++i) {
-		struct prototype_case_binder binder = source_terms->case_binders[i];
-		binder.binding_id =
-			offset_artifact_binder_id(binder.binding_id, binder_offset);
-		target_terms->case_binders[target_terms->case_binder_count++] = binder;
-	}
-	for (size_t i = 0; i < source_terms->ih_scope_count; ++i) {
-		struct prototype_ih_scope frame = source_terms->ih_scopes[i];
-		frame.match_term = offset_artifact_id(frame.match_term, term_offset);
-		frame.key.is_linkable = 0;
-		target_terms->ih_scopes[target_terms->ih_scope_count++] = frame;
-	}
 
 	if (prototype_type_declaration_rebuild_representations(
 			target_terms,
 			target_type_declarations,
 			target_contexts
 		) != 0) {
+		fprintf(stderr, "artifact append: representation rebuild failed\n");
 		return -1;
 	}
-	for (size_t i = 0; i < target_terms->term_count; ++i) {
-		struct prototype_term* term = &target_terms->terms[i];
-		if (term->tag != PROTOTYPE_TERM_TYPE_FORMER) {
+	for (uint32_t i = 0; i < source_representation_count; ++i) {
+		if (representation_relocation[i] == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
-		uint32_t old_representation_id = term->as.type_former.representation_id;
-		uint32_t anchor_type_id;
-		if (i < term_offset) {
-			if (old_representation_id >= old_target_representation_count ||
-				old_representation_id >= 512) {
-				return -1;
-			}
-			anchor_type_id = target_representation_anchors[old_representation_id];
-		} else {
-			if (old_representation_id >= source_representation_count ||
-				old_representation_id >= 512) {
-				return -1;
-			}
-			anchor_type_id = source_representation_anchors[old_representation_id] + type_offset;
-		}
-		if (anchor_type_id >= target_type_declarations->type_count ||
-			target_type_declarations->type_declarations[anchor_type_id].representation_id ==
-				PROTOTYPE_INVALID_ID) {
+		uint32_t source_anchor_type_id = source_representation_anchors[i];
+		if (source_anchor_type_id >= type_relocation_count ||
+			type_relocation[source_anchor_type_id] >=
+				target_type_declarations->type_count ||
+			target_type_declarations->type_declarations[
+				type_relocation[source_anchor_type_id]
+			].representation_id != representation_relocation[i]) {
+			fprintf(
+				stderr,
+				"artifact append: representation relocation mismatch source=%u "
+				"anchor=%u relocated_type=%u expected_rep=%u actual_rep=%u\n",
+				i,
+				source_anchor_type_id,
+				source_anchor_type_id < type_relocation_count ?
+					type_relocation[source_anchor_type_id] : PROTOTYPE_INVALID_ID,
+				representation_relocation[i],
+				source_anchor_type_id < type_relocation_count &&
+					type_relocation[source_anchor_type_id] <
+						target_type_declarations->type_count ?
+					target_type_declarations->type_declarations[
+						type_relocation[source_anchor_type_id]
+					].representation_id : PROTOTYPE_INVALID_ID
+			);
 			return -1;
 		}
-		term->as.type_former.representation_id =
-			target_type_declarations->type_declarations[anchor_type_id].representation_id;
+	}
+	if (prototype_term_canonicalize_type_former_references(target_terms) != 0) {
+		return -1;
 	}
 
-	for (size_t i = 0; i < source_judgement->proposition_count; ++i) {
-		struct prototype_judgement_proposition relation = source_judgement->propositions[i];
-		if (relation.kind != PROTOTYPE_JUDGEMENT_KIND_UNKNOWN) {
-			relation.subject = offset_artifact_id(relation.subject, term_offset);
-			relation.classifier = offset_artifact_id(relation.classifier, term_offset);
-			if (relation.context_id >= source_contexts->context_count) {
-				return -1;
-			}
-			relation.context_id = context_relocation[relation.context_id];
-			relation.operation_id = operation_offset == PROTOTYPE_INVALID_ID ?
-				PROTOTYPE_INVALID_ID :
-				offset_artifact_id(relation.operation_id, operation_offset);
-			relation.authority_id = offset_artifact_authority_id(
-				relation.authority_kind,
-				relation.authority_id,
-				term_offset,
-				operation_offset
-			);
-		}
-		target_judgement->propositions[target_judgement->proposition_count++] = relation;
-	}
-	for (size_t i = 0; i < source_judgement->derivation_candidate_count; ++i) {
-		struct prototype_judgement_derivation_candidate proof = source_judgement->derivation_candidates[i];
-		if (proof.premise_count > target_judgement->candidate_premise_capacity -
-			target_judgement->candidate_premise_count) {
-			return -1;
-		}
-		struct prototype_judgement_candidate_premise* premises =
-			proof.premise_count == 0 ? NULL :
-			&target_judgement->candidate_premises[
-				target_judgement->candidate_premise_count];
-		if (proof.premise_count != 0) {
-			memcpy(
-				premises,
-				proof.premises,
-				proof.premise_count * sizeof(*premises)
-			);
-		}
-		proof.premises = premises;
-		target_judgement->candidate_premise_count += proof.premise_count;
-		if (proof.proof_kind != PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
-			proof.conclusion_proposition_id = offset_artifact_id(
-				proof.conclusion_proposition_id, proposition_offset
-			);
-			proof.conclusion_subject = offset_artifact_id(proof.conclusion_subject, term_offset);
-			proof.conclusion_classifier = offset_artifact_id(proof.conclusion_classifier, term_offset);
-			if (proof.conclusion_context_id >= source_contexts->context_count) {
-				return -1;
-			}
-			proof.conclusion_context_id =
-				context_relocation[proof.conclusion_context_id];
-			proof.conclusion_operation_id = operation_offset == PROTOTYPE_INVALID_ID ?
-				PROTOTYPE_INVALID_ID :
-				offset_artifact_id(
-					proof.conclusion_operation_id, operation_offset
-				);
-			if (proof.proof_kind ==
-					PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
-				proof.rule_data.induction.match = offset_artifact_id(
-					proof.rule_data.induction.match, term_offset
-				);
-				proof.rule_data.induction.motive = offset_artifact_id(
-					proof.rule_data.induction.motive, term_offset
-				);
-			} else if (proof.proof_kind ==
-					PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION ||
-				proof.proof_kind ==
-					PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION) {
-				proof.rule_data.constructor.owner_view = offset_artifact_id(
-					proof.rule_data.constructor.owner_view, term_offset
-				);
-			}
-			if (proof.semantic_action_kind ==
-					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
-				if (proof.semantic_action_id >=
-					source_substitutions->substitution_count) {
-					return -1;
-				}
-				proof.semantic_action_id =
-					substitution_relocation[proof.semantic_action_id];
-			} else if (proof.semantic_action_kind !=
-					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID ||
-				proof.semantic_action_id != PROTOTYPE_INVALID_ID) {
-				return -1;
-			}
-			for (uint32_t j = 0; j < proof.premise_count; ++j) {
-				proof.premises[j].proposition.subject =
-					offset_artifact_id(proof.premises[j].proposition.subject, term_offset);
-				proof.premises[j].proposition.classifier =
-					offset_artifact_id(proof.premises[j].proposition.classifier, term_offset);
-				proof.premises[j].proposition.operation_id =
-					operation_offset == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
-					offset_artifact_id(
-						proof.premises[j].proposition.operation_id, operation_offset
-					);
-				proof.premises[j].proposition.authority_id = offset_artifact_authority_id(
-					proof.premises[j].proposition.authority_kind,
-					proof.premises[j].proposition.authority_id,
-					term_offset,
-					operation_offset
-				);
-				if (proof.premises[j].proposition.context_id >= source_contexts->context_count) {
-					return -1;
-				}
-				proof.premises[j].proposition.context_id =
-					context_relocation[proof.premises[j].proposition.context_id];
-			}
-		}
-		target_judgement->derivation_candidates[target_judgement->derivation_candidate_count++] = proof;
+	if (operation_offset != PROTOTYPE_INVALID_ID &&
+		artifact_append_accepted_judgement(
+			target_judgement,
+			source_judgement,
+			source_contexts,
+			context_relocation,
+			source_substitutions,
+			substitution_relocation,
+			term_relocation,
+			source_terms->term_count,
+			operation_offset,
+			proposition_relocation,
+			claim_relocation,
+			order
+		) != 0) {
+		fprintf(stderr, "artifact append: accepted judgement relocation failed\n");
+		return -1;
 	}
 
-	target_terms->next_binding_id = binder_offset + source_terms->next_binding_id;
+	target_terms->next_binding_id = next_binding_id;
 	target_type_declarations->next_level_var =
 		universe_offset + source_type_declarations->next_level_var;
 	if (target_judgement->next_universe_var < target_type_declarations->next_level_var) {
@@ -12033,19 +15710,12 @@ int prototype_artifact_append_graph(
 		target_judgement
 	);
 
-	if (canonicalize_type_view_core_refs(
+	if (canonicalize_link_references &&
+		(canonicalize_type_view_core_refs(
 			target_terms, target_type_declarations, target_contexts
-		) != 0 ||
-		prototype_constructor_curried_caches_rebuild(
+		) != 0 || prototype_constructor_curried_caches_rebuild(
 			target_type_declarations, target_contexts, target_terms
-		) != 0) {
-		return -1;
-	}
-	if (canonicalize_constructor_owner_refs(
-			target_terms,
-			target_type_declarations,
-			term_offset
-		) != 0) {
+		) != 0)) {
 		return -1;
 	}
 
@@ -12056,6 +15726,7 @@ int prototype_artifact_append_graph(
 	appended_interface->constructor_field_type_expr_count =
 		source_interface->constructor_field_type_expr_count;
 	appended_interface->type_expr_count = source_interface->type_expr_count;
+	appended_interface->identity_root_count = source_interface->identity_root_count;
 	appended_interface->dependency_count = source_interface->dependency_count;
 	for (size_t i = 0; i < source_interface->type_expr_count; ++i) {
 		appended_interface->type_exprs[i] = source_interface->type_exprs[i];
@@ -12069,8 +15740,13 @@ int prototype_artifact_append_graph(
 	}
 	for (size_t i = 0; i < source_interface->term_export_count; ++i) {
 		appended_interface->term_exports[i] = source_interface->term_exports[i];
-		appended_interface->term_exports[i].local_term += term_offset;
-		uint32_t appended_subject = appended_interface->term_exports[i].local_term;
+		if (appended_interface->term_exports[i].local_term >=
+				term_relocation_capacity) {
+			return -1;
+		}
+		appended_interface->term_exports[i].local_term = term_relocation[
+			appended_interface->term_exports[i].local_term
+		];
 		appended_interface->term_exports[i].operation =
 			operation_offset == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
 			offset_artifact_id(
@@ -12078,18 +15754,26 @@ int prototype_artifact_append_graph(
 			);
 		if (source_interface->term_exports[i].source_evidence.kind !=
 				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
-			uint32_t source_proposition_id;
-			if (artifact_export_source_proposition(
-					source_interface->term_exports + i,
-					source_judgement,
-					&source_proposition_id
-				) != 0) {
+			if (operation_offset == PROTOTYPE_INVALID_ID) {
+				appended_interface->term_exports[i].source_evidence.kind =
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
+				appended_interface->term_exports[i].source_evidence.id =
+					PROTOTYPE_INVALID_ID;
+			} else if (source_interface->term_exports[i].source_evidence.kind !=
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM ||
+				source_interface->term_exports[i].source_evidence.id >=
+					source_judgement->claim_count || claim_relocation[
+					source_interface->term_exports[i].source_evidence.id
+				] == PROTOTYPE_INVALID_ID) {
 				return -1;
+			} else {
+				appended_interface->term_exports[i].source_evidence.kind =
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM;
+				appended_interface->term_exports[i].source_evidence.id =
+					claim_relocation[
+						source_interface->term_exports[i].source_evidence.id
+					];
 			}
-			appended_interface->term_exports[i].source_evidence.kind =
-				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_PROPOSITION;
-			appended_interface->term_exports[i].source_evidence.id =
-				offset_artifact_id(source_proposition_id, proposition_offset);
 		} else {
 			appended_interface->term_exports[i].source_evidence.kind =
 				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
@@ -12097,10 +15781,14 @@ int prototype_artifact_append_graph(
 				PROTOTYPE_INVALID_ID;
 		}
 		if (appended_interface->term_exports[i].classifier != PROTOTYPE_INVALID_ID) {
-			appended_interface->term_exports[i].classifier += term_offset;
+			if (appended_interface->term_exports[i].classifier >=
+					term_relocation_capacity) {
+				return -1;
+			}
+			appended_interface->term_exports[i].classifier = term_relocation[
+				appended_interface->term_exports[i].classifier
+			];
 		}
-		uint32_t appended_classifier =
-			appended_interface->term_exports[i].classifier;
 		if (prototype_term_canonical_key_with_types(
 				target_terms,
 				target_type_declarations,
@@ -12124,78 +15812,31 @@ int prototype_artifact_append_graph(
 				) != 0)) {
 			return -1;
 		}
-		if (appended_interface->term_exports[i].classifier != PROTOTYPE_INVALID_ID) {
-			uint32_t existing_classifier;
-			int found_existing_classifier = find_existing_term_by_canonical_key(
-				target_terms,
-				target_type_declarations,
-				term_offset,
-				&appended_interface->term_exports[i].classifier_key,
-				appended_interface->term_exports[i].classifier,
-				&existing_classifier
-			);
-			if (found_existing_classifier < 0) {
-				return -1;
-			}
-			if (found_existing_classifier > 0) {
-				appended_interface->term_exports[i].classifier = existing_classifier;
-				if (prototype_term_canonical_key_with_types(
-						target_terms,
-						target_type_declarations,
-						existing_classifier,
-						&appended_interface->term_exports[i].classifier_key
-					) != 0) {
-					return -1;
-				}
-			}
-		}
-		uint32_t existing_term;
-		int found_existing = find_existing_term_by_canonical_key(
-			target_terms,
-			target_type_declarations,
-			term_offset,
-			&appended_interface->term_exports[i].canonical_key,
-			appended_interface->term_exports[i].local_term,
-			&existing_term
-		);
-		if (found_existing < 0) {
-			return -1;
-		}
-		if (found_existing > 0) {
-			appended_interface->term_exports[i].local_term = existing_term;
-			if (prototype_term_canonical_key_with_types(
-					target_terms,
-					target_type_declarations,
-					existing_term,
-					&appended_interface->term_exports[i].canonical_key
-				) != 0) {
-				return -1;
-			}
-		}
-		if ((appended_interface->term_exports[i].local_term != appended_subject ||
-			 appended_interface->term_exports[i].classifier != appended_classifier) &&
-			canonicalize_appended_export_evidence(
-				target_judgement,
-				appended_interface->term_exports[i].source_evidence.id,
-				appended_subject,
-				appended_classifier,
-				appended_interface->term_exports[i].local_term,
-				appended_interface->term_exports[i].classifier
-			) != 0) {
-			return -1;
-		}
 	}
 	for (size_t i = 0; i < source_interface->type_export_count; ++i) {
 		appended_interface->type_exports[i] = source_interface->type_exports[i];
-		appended_interface->type_exports[i].local_type_id += type_offset;
-		if (appended_interface->type_exports[i].core_representation_anchor_type_id != PROTOTYPE_INVALID_ID) {
-			appended_interface->type_exports[i].core_representation_anchor_type_id += type_offset;
+		if (appended_interface->type_exports[i].local_type_id >=
+				type_relocation_count) {
+			return -1;
 		}
-		appended_interface->type_exports[i].formation_classifier =
-			offset_artifact_id(
-				appended_interface->type_exports[i].formation_classifier,
-				term_offset
-			);
+		appended_interface->type_exports[i].local_type_id = type_relocation[
+			appended_interface->type_exports[i].local_type_id
+		];
+		if (appended_interface->type_exports[i].core_representation_anchor_type_id != PROTOTYPE_INVALID_ID) {
+			if (appended_interface->type_exports[i].core_representation_anchor_type_id >=
+					type_relocation_count) {
+				return -1;
+			}
+			appended_interface->type_exports[i].core_representation_anchor_type_id =
+				type_relocation[appended_interface->type_exports[i].core_representation_anchor_type_id];
+		}
+		if (appended_interface->type_exports[i].formation_classifier >=
+				term_relocation_capacity) {
+			return -1;
+		}
+		appended_interface->type_exports[i].formation_classifier = term_relocation[
+			appended_interface->type_exports[i].formation_classifier
+		];
 			if (prototype_type_declaration_code_shape_key(
 					target_terms,
 					target_type_declarations,
@@ -12237,42 +15878,138 @@ int prototype_artifact_append_graph(
 				type->first_constructor + export->ordinal
 			].curried_classifier_cache;
 	}
+	for (size_t i = 0; i < source_interface->identity_root_count; ++i) {
+		const struct prototype_artifact_identity_root* source_root =
+			&source_interface->identity_roots[i];
+		struct prototype_artifact_identity_root* target_root =
+			&appended_interface->identity_roots[i];
+		if (source_root->source_type_claim_id >=
+				source_judgement->claim_count || claim_relocation[
+				source_root->source_type_claim_id
+			] == PROTOTYPE_INVALID_ID ||
+			source_root->identity_family_has_type_claim_id >=
+				source_judgement->claim_count || claim_relocation[
+				source_root->identity_family_has_type_claim_id
+			] == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		target_root->source_type_claim_id = claim_relocation[
+			source_root->source_type_claim_id
+		];
+		target_root->identity_family_has_type_claim_id = claim_relocation[
+			source_root->identity_family_has_type_claim_id
+		];
+		target_root->witness_has_type_claim_id = PROTOTYPE_INVALID_ID;
+		target_root->computation_rule = source_root->computation_rule;
+		if (source_root->witness_has_type_claim_id != PROTOTYPE_INVALID_ID) {
+			if (source_root->witness_has_type_claim_id >=
+					source_judgement->claim_count || claim_relocation[
+					source_root->witness_has_type_claim_id
+				] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			target_root->witness_has_type_claim_id = claim_relocation[
+				source_root->witness_has_type_claim_id
+			];
+		}
+	}
 	for (size_t i = 0; i < source_interface->dependency_count; ++i) {
 		appended_interface->dependencies[i] = source_interface->dependencies[i];
+	}
+	if (additional_relocation) {
+#define COPY_ADDITIONAL_RELOCATION(field, source, count) \
+		do { \
+			if (additional_relocation->field && (count) != 0) { \
+				memcpy( \
+					additional_relocation->field, \
+					(source), \
+					(count) * sizeof(*(source)) \
+				); \
+			} \
+		} while (0)
+		COPY_ADDITIONAL_RELOCATION(
+			type_ids, type_relocation, source_type_declarations->type_count
+		);
+		COPY_ADDITIONAL_RELOCATION(
+			type_expr_ids, expr_relocation, source_type_declarations->expr_count
+		);
+		COPY_ADDITIONAL_RELOCATION(
+			parameter_ids,
+			parameter_relocation,
+			source_type_declarations->parameter_count
+		);
+		COPY_ADDITIONAL_RELOCATION(
+			constructor_ids,
+			constructor_relocation,
+			source_type_declarations->constructor_count
+		);
+		COPY_ADDITIONAL_RELOCATION(
+			field_type_ids,
+			field_relocation,
+			source_type_declarations->readback_field_type_count
+		);
+		COPY_ADDITIONAL_RELOCATION(
+			proposition_ids,
+			proposition_relocation,
+			source_judgement->proposition_count
+		);
+		COPY_ADDITIONAL_RELOCATION(
+			claim_ids, claim_relocation, source_judgement->claim_count
+		);
+		COPY_ADDITIONAL_RELOCATION(
+			substitution_ids,
+			substitution_relocation,
+			source_substitutions->substitution_count
+		);
+#undef COPY_ADDITIONAL_RELOCATION
 	}
 	prototype_term_notify_graph_mutation(target_terms);
 	return 0;
 }
 
-static int align_operation_claim_subjects(
-	struct prototype_judgement_db* judgement,
-	uint32_t old_subject,
-	uint32_t subject
+int prototype_artifact_append_graph(
+	struct prototype_artifact_interface* appended_interface,
+	struct prototype_term_db* target_terms,
+	struct prototype_type_declaration_db* target_type_declarations,
+	struct prototype_judgement_db* target_judgement,
+	struct prototype_context_db* target_contexts,
+	struct prototype_substitution_db* target_substitutions,
+	const struct prototype_artifact_interface* source_interface,
+	const struct prototype_term_db* source_terms,
+	const struct prototype_type_declaration_db* source_type_declarations,
+	const struct prototype_judgement_db* source_judgement,
+	const struct prototype_context_db* source_contexts,
+	const struct prototype_substitution_db* source_substitutions,
+	uint32_t operation_offset,
+	uint32_t* term_relocation,
+	size_t term_relocation_capacity,
+	uint32_t* context_relocation,
+	size_t context_relocation_capacity,
+	struct prototype_artifact_graph_relocation* additional_relocation,
+	int canonicalize_link_references
 ) {
-	if (!judgement) {
-		return -1;
-	}
-	for (uint32_t i = 0;
-		i < (uint32_t)judgement->proposition_count;
-		++i) {
-		const struct prototype_judgement_proposition* proposition =
-			&judgement->propositions[i];
-		if (proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			proposition->subject != old_subject) {
-			continue;
-		}
-		if (canonicalize_appended_export_evidence(
-				judgement,
-				i,
-				old_subject,
-				proposition->classifier,
-				subject,
-				proposition->classifier
-			) != 0) {
-			return -1;
-		}
-	}
-	return 0;
+	return artifact_append_graph_ordered(
+		appended_interface,
+		target_terms,
+		target_type_declarations,
+		target_judgement,
+		target_contexts,
+		target_substitutions,
+		source_interface,
+		source_terms,
+		source_type_declarations,
+		source_judgement,
+		source_contexts,
+		source_substitutions,
+		operation_offset,
+		term_relocation,
+		term_relocation_capacity,
+		context_relocation,
+		context_relocation_capacity,
+		additional_relocation,
+		canonicalize_link_references,
+		NULL
+	);
 }
 
 static int align_operation_projection(
@@ -12293,9 +16030,7 @@ static int align_operation_projection(
 	}
 	visited[operation_id] = 1;
 	uint32_t old_core = operation->core_term;
-	if (old_core != core_term && align_operation_claim_subjects(
-			judgement, old_core, core_term
-		) != 0) {
+	if (old_core != core_term) {
 		return -1;
 	}
 	operation->core_term = core_term;
@@ -12496,7 +16231,9 @@ int prototype_canonical_link_table_add_metadata(
 				return -1;
 			}
 			if (!same_term) {
-				return -1;
+				/* Canonical keys are hash prefilters. Distinct Terms may collide and
+				 * must retain independent representatives. */
+				continue;
 			}
 			representative = candidate->representative;
 			break;
@@ -17958,6 +21695,8 @@ static int compile_ast_type_def(
 		return -1;
 	}
 	ctx->type_declarations->type_declarations[type_id].parameter_context =
+		ctx->context_ids[ctx->binder_count];
+	ctx->type_declarations->type_declarations[type_id].index_context =
 		ctx->context_ids[ctx->binder_count];
 
 	int has_recursive_constructor_field = 0;
@@ -30283,6 +34022,13 @@ static int compile_pending_with_workspace(
 	if (compile_phase_build_graph(&ctx) != 0) {
 		return -1;
 	}
+	prototype_judgement_delta_set_operation_store(
+		&ctx.judgement_delta,
+		metadata->operations,
+		metadata->operation_count,
+		metadata->operation_cases,
+		metadata->operation_case_count
+	);
 	if (validate_constructor_occurrence_saturation(&ctx) != 0) {
 		return -1;
 	}
@@ -30358,7 +34104,10 @@ static int compile_pending_with_workspace(
 		) != 0) {
 		return -1;
 	}
-	if (prototype_judgement_validate_proofs(
+	if (prototype_judgement_publish_candidates(
+			&operation_graph,
+			judgement
+		) != 0 || prototype_judgement_validate_accepted_graph(
 			terms,
 			type_declarations,
 			&metadata->contexts,

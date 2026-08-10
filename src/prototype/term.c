@@ -485,13 +485,13 @@ int prototype_term_semantics(
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 		case PROTOTYPE_TERM_THUNK_TYPE:
-		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 				p_ret->layer = PROTOTYPE_TERM_LAYER_TYPE_FORMER;
 					break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 		case PROTOTYPE_TERM_THUNK:
 		case PROTOTYPE_TERM_TEXT_LITERAL:
-		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 				case PROTOTYPE_TERM_INT_LITERAL:
 					p_ret->layer = PROTOTYPE_TERM_LAYER_DATA;
 				break;
@@ -1165,8 +1165,8 @@ static int shape_terms_equal_at_depth(
 		}
 		case PROTOTYPE_TERM_UNIVERSE_VAR:
 			return left->as.universe_var.level_var == right->as.universe_var.level_var;
-		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
-		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			return 1;
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 1;
@@ -1759,8 +1759,8 @@ static int cross_shape_terms_equal_at_depth(
 		}
 		case PROTOTYPE_TERM_UNIVERSE_VAR:
 			return left->as.universe_var.level_var == right->as.universe_var.level_var;
-		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
-		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			return 1;
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 1;
@@ -2040,13 +2040,38 @@ int prototype_term_core_shape_equal_under_binder(
 	uint32_t right,
 	int* p_equal
 ) {
-	if (!db || !p_equal || left >= db->term_count || right >= db->term_count) {
+	return prototype_term_core_shape_equal_under_binders(
+		db,
+		&left_binder,
+		&right_binder,
+		1,
+		left,
+		right,
+		p_equal
+	);
+}
+
+int prototype_term_core_shape_equal_under_binders(
+	const struct prototype_term_db* db,
+	const uint32_t* left_binders,
+	const uint32_t* right_binders,
+	size_t binder_count,
+	uint32_t left,
+	uint32_t right,
+	int* p_equal
+) {
+	if (!db || !p_equal || left >= db->term_count || right >= db->term_count ||
+		(binder_count > 0 && (!left_binders || !right_binders))) {
 		return -1;
 	}
 	struct term_scope_env env;
 	memset(&env, 0, sizeof(env));
-	if (term_scope_env_push_binder(&env, left_binder, right_binder) != 0) {
-		return -1;
+	for (size_t i = 0; i < binder_count; ++i) {
+		if (term_scope_env_push_binder(
+				&env, left_binders[i], right_binders[i]
+			) != 0) {
+			return -1;
+		}
 	}
 	*p_equal = shape_terms_equal_at_depth(
 		db, left, right, &env, PROTOTYPE_TYPE_VIEW_COMPARE_CORE, 0
@@ -2374,13 +2399,9 @@ static int canonical_hash_term_at_depth(
 			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			if (type_identity_is_stable(term->as.type_declaration.identity)) {
+				key->has_type_name_reference = 1;
 				canonical_hash_mix_u32(
-					p_hash,
-					(uint32_t)term->as.type_declaration.identity.namespace_symbol_id
-				);
-				canonical_hash_mix_u32(
-					p_hash,
-					(uint32_t)term->as.type_declaration.identity.name_symbol_id
+					p_hash, term->as.type_declaration.type_id
 				);
 			} else {
 				key->has_type_local_reference = 1;
@@ -2389,14 +2410,8 @@ static int canonical_hash_term_at_depth(
 			return 0;
 		case PROTOTYPE_TERM_TYPE_VIEW:
 			if (type_identity_is_stable(term->as.type_view.identity)) {
-				canonical_hash_mix_u32(
-					p_hash,
-					(uint32_t)term->as.type_view.identity.namespace_symbol_id
-				);
-				canonical_hash_mix_u32(
-					p_hash,
-					(uint32_t)term->as.type_view.identity.name_symbol_id
-				);
+				key->has_type_name_reference = 1;
+				canonical_hash_mix_u32(p_hash, term->as.type_view.view_type_id);
 			} else {
 				key->has_type_local_reference = 1;
 				canonical_hash_mix_u32(p_hash, term->as.type_view.view_type_id);
@@ -2453,13 +2468,12 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_UNIVERSE_VAR:
 			canonical_hash_mix_u32(p_hash, term->as.universe_var.level_var);
 			return 0;
-		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
-		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			return 0;
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 0;
 			case PROTOTYPE_TERM_TEXT_LITERAL:
-				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.text_literal.text_symbol_id);
 				return 0;
 			case PROTOTYPE_TERM_PRIMITIVE_INT:
 			case PROTOTYPE_TERM_PRIMITIVE_INT64:
@@ -2469,18 +2483,9 @@ static int canonical_hash_term_at_depth(
 				canonical_hash_mix_u32(p_hash, (uint32_t)((uint64_t)term->as.int_literal.value >> 32));
 				return 0;
 			case PROTOTYPE_TERM_EXTERNAL_REF:
-				canonical_hash_mix_u32(
-					p_hash,
-					(uint32_t)term->as.external_ref.name.namespace_symbol_id
-				);
-				canonical_hash_mix_u32(
-					p_hash,
-					(uint32_t)term->as.external_ref.name.name_symbol_id
-				);
 				return 0;
 		case PROTOTYPE_TERM_PURE_PRIMITIVE:
 				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.pure_primitive.primitive_id);
-				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.pure_primitive.type_symbol_id);
 				return 0;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			canonical_hash_mix_u32(p_hash, (uint32_t)term->as.effect_operation.operation_id);
@@ -2765,6 +2770,452 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 	db->terms[id] = term;
 	db->term_count++;
 	*p_ret = id;
+	return 0;
+}
+
+struct relocated_term_import {
+	struct prototype_term_db* target;
+	const struct prototype_term_db* source;
+	const uint32_t* type_relocation;
+	size_t type_relocation_count;
+	const uint32_t* binding_relocation;
+	size_t binding_relocation_count;
+	uint32_t universe_offset;
+	const uint32_t* representation_relocation;
+	size_t representation_relocation_count;
+	uint32_t* terms;
+	unsigned char* states;
+	uint32_t* ih_scopes;
+};
+
+static uint32_t relocate_import_binding(
+	uint32_t binding_id,
+	const uint32_t* relocation,
+	size_t relocation_count
+) {
+	if (binding_id == PROTOTYPE_INVALID_ID || !relocation ||
+		binding_id >= relocation_count) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	return relocation[binding_id];
+}
+
+static int import_relocated_term(
+	struct relocated_term_import* import,
+	uint32_t source_term_id,
+	uint32_t* p_target_term_id
+);
+
+static int import_relocated_ih_scope(
+	struct relocated_term_import* import,
+	uint32_t source_scope_id,
+	uint32_t* p_target_scope_id
+) {
+	if (!import || !p_target_scope_id ||
+		source_scope_id >= import->source->ih_scope_count) {
+		return -1;
+	}
+	if (import->ih_scopes[source_scope_id] == PROTOTYPE_INVALID_ID) {
+		uint32_t target_scope_id = prototype_term_new_ih_scope(import->target);
+		if (target_scope_id == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		import->ih_scopes[source_scope_id] = target_scope_id;
+	}
+	*p_target_scope_id = import->ih_scopes[source_scope_id];
+	return 0;
+}
+
+static int import_relocated_match(
+	struct relocated_term_import* import,
+	const struct prototype_term* source_term,
+	uint32_t* p_target_term_id
+) {
+	if (!import || !source_term || !p_target_term_id ||
+		source_term->as.match.first_case + source_term->as.match.case_count >
+			import->source->case_count) {
+		return -1;
+	}
+	uint32_t scrutinee;
+	if (import_relocated_term(
+			import, source_term->as.match.scrutinee, &scrutinee
+		) != 0) {
+		return -1;
+	}
+	uint32_t case_count = source_term->as.match.case_count;
+	size_t binder_capacity = import->source->case_binder_count == 0 ? 1 :
+		import->source->case_binder_count;
+	struct prototype_match_case_input cases[case_count == 0 ? 1 : case_count];
+	struct prototype_case_binder relocated_binders[binder_capacity];
+	uint32_t binder_count = 0;
+	for (uint32_t i = 0; i < case_count; ++i) {
+		uint32_t source_case_id = source_term->as.match.first_case + i;
+		const struct prototype_match_case* source_case =
+			&import->source->cases[source_case_id];
+		if (source_case->first_binder + source_case->binder_count >
+				import->source->case_binder_count ||
+			binder_count + source_case->binder_count > binder_capacity) {
+			return -1;
+		}
+		uint32_t owner = PROTOTYPE_INVALID_ID;
+		uint32_t body;
+		if ((source_case->constructor_owner != PROTOTYPE_INVALID_ID &&
+			 import_relocated_term(
+				import, source_case->constructor_owner, &owner
+			 ) != 0) || import_relocated_term(
+				import, source_case->body, &body
+			) != 0) {
+			return -1;
+		}
+		uint32_t first_binder = binder_count;
+		for (uint32_t j = 0; j < source_case->binder_count; ++j) {
+			relocated_binders[binder_count] = import->source->case_binders[
+				source_case->first_binder + j
+			];
+			relocated_binders[binder_count].binding_id = relocate_import_binding(
+				relocated_binders[binder_count].binding_id,
+				import->binding_relocation,
+				import->binding_relocation_count
+			);
+			if (relocated_binders[binder_count].binding_id == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			++binder_count;
+		}
+		cases[i] = (struct prototype_match_case_input) {
+			.case_label_symbol_id =
+				import->source->case_label_symbols[source_case_id],
+			.constructor_owner = owner,
+			.constructor_id = source_case->constructor_id,
+			.binders = &relocated_binders[first_binder],
+			.binder_count = source_case->binder_count,
+			.body = body
+		};
+	}
+	uint32_t target_scope_id = PROTOTYPE_INVALID_ID;
+	if (source_term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
+		import_relocated_ih_scope(
+			import, source_term->as.match.ih_scope_id, &target_scope_id
+		) != 0) {
+		return -1;
+	}
+	if (prototype_term_match_with_ih_scope(
+			import->target,
+			scrutinee,
+			cases,
+			case_count,
+			target_scope_id,
+			p_target_term_id
+		) != 0) {
+		return -1;
+	}
+	return target_scope_id == PROTOTYPE_INVALID_ID ? 0 :
+		prototype_term_set_ih_scope_term(
+			import->target, target_scope_id, *p_target_term_id
+		);
+}
+
+static int import_relocated_term(
+	struct relocated_term_import* import,
+	uint32_t source_term_id,
+	uint32_t* p_target_term_id
+) {
+	if (!import || !p_target_term_id ||
+		source_term_id >= import->source->term_count ||
+		import->source->terms[source_term_id].tag == 0) {
+		fprintf(
+			stderr,
+			"term relocation: invalid source term id=%u count=%zu tag=%d\n",
+			source_term_id,
+			import && import->source ? import->source->term_count : 0,
+			import && import->source && source_term_id < import->source->term_count ?
+				import->source->terms[source_term_id].tag : -1
+		);
+		return -1;
+	}
+	if (import->states[source_term_id] == 2) {
+		*p_target_term_id = import->terms[source_term_id];
+		return 0;
+	}
+	if (import->states[source_term_id] != 0) {
+		fprintf(
+			stderr,
+			"term relocation: cyclic source term id=%u tag=%d\n",
+			source_term_id,
+			import->source->terms[source_term_id].tag
+		);
+		return -1;
+	}
+	import->states[source_term_id] = 1;
+	struct prototype_term term = import->source->terms[source_term_id];
+	uint32_t result = PROTOTYPE_INVALID_ID;
+#define IMPORT_TERM_REF(field) \
+	do { \
+		if (import_relocated_term(import, (field), &(field)) != 0) { \
+			fprintf( \
+				stderr, \
+				"term relocation: parent id=%u tag=%d has invalid reference\n", \
+				source_term_id, \
+				term.tag \
+			); \
+			return -1; \
+		} \
+	} while (0)
+	switch (term.tag) {
+		case PROTOTYPE_TERM_VAR:
+			term.as.var.binding_id = relocate_import_binding(
+				term.as.var.binding_id,
+				import->binding_relocation,
+				import->binding_relocation_count
+			);
+			if (term.as.var.binding_id == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			break;
+		case PROTOTYPE_TERM_CONSTRUCTOR:
+			IMPORT_TERM_REF(term.as.constructor.owner);
+			break;
+		case PROTOTYPE_TERM_APP:
+			IMPORT_TERM_REF(term.as.app.function);
+			IMPORT_TERM_REF(term.as.app.argument);
+			break;
+		case PROTOTYPE_TERM_LAMBDA:
+			term.as.lambda.binding_id = relocate_import_binding(
+				term.as.lambda.binding_id,
+				import->binding_relocation,
+				import->binding_relocation_count
+			);
+			if (term.as.lambda.binding_id == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			IMPORT_TERM_REF(term.as.lambda.body);
+			break;
+		case PROTOTYPE_TERM_PI:
+			IMPORT_TERM_REF(term.as.pi.domain);
+			IMPORT_TERM_REF(term.as.pi.codomain_family);
+			break;
+		case PROTOTYPE_TERM_MATCH:
+			if (import_relocated_match(import, &term, &result) != 0) {
+				return -1;
+			}
+			goto imported;
+		case PROTOTYPE_TERM_TYPE_FORMER:
+			if (term.as.type_former.representation_id >=
+					import->representation_relocation_count) {
+				return -1;
+			}
+			term.as.type_former.representation_id =
+				import->representation_relocation[
+					term.as.type_former.representation_id
+				];
+			break;
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			if (term.as.type_declaration.type_id >=
+					import->type_relocation_count) {
+				return -1;
+			}
+			term.as.type_declaration.type_id = import->type_relocation[
+				term.as.type_declaration.type_id
+			];
+			break;
+		case PROTOTYPE_TERM_TYPE_VIEW:
+			if (term.as.type_view.view_type_id >= import->type_relocation_count) {
+				return -1;
+			}
+			term.as.type_view.view_type_id = import->type_relocation[
+				term.as.type_view.view_type_id
+			];
+			IMPORT_TERM_REF(term.as.type_view.core);
+			IMPORT_TERM_REF(term.as.type_view.source);
+			break;
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+			if (import_relocated_ih_scope(
+					import,
+					term.as.induction_hypothesis.ih_scope_id,
+					&term.as.induction_hypothesis.ih_scope_id
+				) != 0) {
+				return -1;
+			}
+			IMPORT_TERM_REF(term.as.induction_hypothesis.argument);
+			break;
+		case PROTOTYPE_TERM_UNIVERSE_VAR:
+			term.as.universe_var.level_var += import->universe_offset;
+			break;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			IMPORT_TERM_REF(term.as.effect_operation.classifier);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			term.as.effect_row_var.binding_id = relocate_import_binding(
+				term.as.effect_row_var.binding_id,
+				import->binding_relocation,
+				import->binding_relocation_count
+			);
+			if (term.as.effect_row_var.binding_id == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			IMPORT_TERM_REF(term.as.effect_row_union.left);
+			IMPORT_TERM_REF(term.as.effect_row_union.right);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			term.as.effect_row_forall.binding_id = relocate_import_binding(
+				term.as.effect_row_forall.binding_id,
+				import->binding_relocation,
+				import->binding_relocation_count
+			);
+			if (term.as.effect_row_forall.binding_id == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			IMPORT_TERM_REF(term.as.effect_row_forall.body);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			IMPORT_TERM_REF(term.as.effect_row_operation.latent_row);
+			break;
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			IMPORT_TERM_REF(term.as.computation_type.label);
+			IMPORT_TERM_REF(term.as.computation_type.result);
+			break;
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			IMPORT_TERM_REF(term.as.thunk_type.computation);
+			break;
+		case PROTOTYPE_TERM_RETURN:
+			IMPORT_TERM_REF(term.as.return_term.value);
+			break;
+		case PROTOTYPE_TERM_THUNK:
+			IMPORT_TERM_REF(term.as.thunk.computation);
+			break;
+		case PROTOTYPE_TERM_FORCE:
+			IMPORT_TERM_REF(term.as.force.value);
+			break;
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			IMPORT_TERM_REF(term.as.operation_request.operation);
+			IMPORT_TERM_REF(term.as.operation_request.argument);
+			IMPORT_TERM_REF(term.as.operation_request.continuation);
+			break;
+		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
+			IMPORT_TERM_REF(term.as.computation_fold.computation);
+			IMPORT_TERM_REF(term.as.computation_fold.return_clause);
+			if (term.as.computation_fold.first_clause +
+					term.as.computation_fold.clause_count >
+					import->source->computation_fold_clause_count) {
+				return -1;
+			}
+			uint32_t clause_count = term.as.computation_fold.clause_count;
+			struct prototype_computation_fold_clause clauses[
+				clause_count == 0 ? 1 : clause_count
+			];
+			for (uint32_t i = 0; i < clause_count; ++i) {
+				clauses[i] = import->source->computation_fold_clauses[
+					term.as.computation_fold.first_clause + i
+				];
+				IMPORT_TERM_REF(clauses[i].operation);
+				IMPORT_TERM_REF(clauses[i].body);
+			}
+			if (prototype_term_computation_fold(
+					import->target,
+					term.as.computation_fold.computation,
+					term.as.computation_fold.return_clause,
+					clauses,
+					clause_count,
+					&result
+				) != 0) {
+				return -1;
+			}
+			goto imported;
+		}
+		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
+		case PROTOTYPE_TERM_TEXT_LITERAL:
+		case PROTOTYPE_TERM_PRIMITIVE_INT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT64:
+		case PROTOTYPE_TERM_INT_LITERAL:
+		case PROTOTYPE_TERM_EXTERNAL_REF:
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+		case PROTOTYPE_TERM_EFFECT_LABEL:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+			break;
+		default:
+			return -1;
+	}
+	if (add_term(import->target, term, &result) != 0) {
+		return -1;
+	}
+imported:
+	import->terms[source_term_id] = result;
+	import->states[source_term_id] = 2;
+	*p_target_term_id = result;
+	return 0;
+#undef IMPORT_TERM_REF
+}
+
+int prototype_term_db_append_relocated(
+	struct prototype_term_db* target,
+	const struct prototype_term_db* source,
+	const uint32_t* type_relocation,
+	size_t type_relocation_count,
+	const uint32_t* binding_relocation,
+	size_t binding_relocation_count,
+	uint32_t universe_offset,
+	const uint32_t* representation_relocation,
+	size_t representation_relocation_count,
+	const uint32_t* source_order,
+	size_t source_order_count,
+	uint32_t* term_relocation,
+	size_t term_relocation_capacity
+) {
+	if (!target || !source || !type_relocation || !binding_relocation ||
+		!representation_relocation ||
+		!term_relocation ||
+		source->term_count > term_relocation_capacity ||
+		target->term_count + source->term_count > target->term_capacity) {
+		return -1;
+	}
+	size_t state_count = source->term_count == 0 ? 1 : source->term_count;
+	size_t scope_count = source->ih_scope_count == 0 ? 1 : source->ih_scope_count;
+	unsigned char states[state_count];
+	uint32_t ih_scope_relocation[scope_count];
+	memset(states, 0, sizeof(states));
+	for (size_t i = 0; i < term_relocation_capacity; ++i) {
+		term_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < scope_count; ++i) {
+		ih_scope_relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	struct relocated_term_import import = {
+		.target = target,
+		.source = source,
+		.type_relocation = type_relocation,
+		.type_relocation_count = type_relocation_count,
+		.binding_relocation = binding_relocation,
+		.binding_relocation_count = binding_relocation_count,
+		.universe_offset = universe_offset,
+		.representation_relocation = representation_relocation,
+		.representation_relocation_count = representation_relocation_count,
+		.terms = term_relocation,
+		.states = states,
+		.ih_scopes = ih_scope_relocation
+	};
+	size_t root_count = source_order ? source_order_count : source->term_count;
+	for (size_t i = 0; i < root_count; ++i) {
+		uint32_t source_id = source_order ? source_order[i] : (uint32_t)i;
+		if (source_id >= source->term_count) {
+			return -1;
+		}
+		if (source->terms[source_id].tag == 0) {
+			continue;
+		}
+		uint32_t ignored;
+		if (import_relocated_term(&import, source_id, &ignored) != 0) {
+			fprintf(
+				stderr,
+				"term relocation: failed root id=%u tag=%d\n",
+				source_id,
+				source->terms[source_id].tag
+			);
+			return -1;
+		}
+	}
 	return 0;
 }
 
@@ -3179,6 +3630,41 @@ static int prototype_term_type_declaration(
 	return add_term(db, term, p_ret);
 }
 
+int prototype_term_type_instance_source_make(
+	struct prototype_term_db* db,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t type_id,
+	const uint32_t* args,
+	uint32_t arg_count,
+	uint32_t* p_ret
+) {
+	if (!db || !type_declarations || !p_ret || arg_count > 16 ||
+		type_id >= type_declarations->type_count ||
+		(arg_count != 0 && !args)) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	if (type->parameter_count > UINT32_MAX - type->index_count ||
+		arg_count > type->parameter_count + type->index_count) {
+		return -1;
+	}
+	uint32_t current;
+	if (prototype_term_type_declaration(
+			db, type_declarations, type_id, &current
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < arg_count; ++i) {
+		if (args[i] >= db->term_count ||
+			prototype_term_app(db, current, args[i], &current) != 0) {
+			return -1;
+		}
+	}
+	*p_ret = current;
+	return 0;
+}
+
 static int prototype_term_type_view(
 	struct prototype_term_db* db,
 	uint32_t view_type_id,
@@ -3210,6 +3696,12 @@ int prototype_term_type_instance_make(
 ) {
 	if (!db || !type_declarations || !p_ret || arg_count > 16 ||
 		type_id >= type_declarations->type_count) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	if (type->parameter_count > UINT32_MAX - type->index_count ||
+		arg_count > type->parameter_count + type->index_count) {
 		return -1;
 	}
 	if (arg_count > 0 && !args) {
@@ -3335,13 +3827,6 @@ int prototype_term_rebind_type_former_anchors(
 	if (!db || !type_declarations || type_declarations->representations_dirty) {
 		return -1;
 	}
-	uint32_t* remap = calloc(db->term_count, sizeof(*remap));
-	if (!remap && db->term_count > 0) {
-		return -1;
-	}
-	for (size_t i = 0; i < db->term_count; ++i) {
-		remap[i] = (uint32_t)i;
-	}
 	for (size_t i = 0; i < db->term_count; ++i) {
 		struct prototype_term* term = &db->terms[i];
 		if (term->tag != PROTOTYPE_TERM_TYPE_FORMER) {
@@ -3355,6 +3840,22 @@ int prototype_term_rebind_type_former_anchors(
 		}
 		term->as.type_former.representation_id =
 			type_declarations->type_declarations[declaration_anchor].representation_id;
+	}
+	return prototype_term_canonicalize_type_former_references(db);
+}
+
+int prototype_term_canonicalize_type_former_references(
+	struct prototype_term_db* db
+) {
+	if (!db) {
+		return -1;
+	}
+	uint32_t* remap = calloc(db->term_count, sizeof(*remap));
+	if (!remap && db->term_count > 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < db->term_count; ++i) {
+		remap[i] = (uint32_t)i;
 	}
 	for (size_t i = 0; i < db->term_count; ++i) {
 		if (db->terms[i].tag != PROTOTYPE_TERM_TYPE_FORMER) {
@@ -3522,6 +4023,25 @@ static int prototype_term_type_view_rebuild_from_source(
 				&arg_count
 			) == 0 &&
 			source_type_id == view_type_id) {
+			const struct prototype_type_declaration* declaration =
+				&type_declarations->type_declarations[view_type_id];
+			if (declaration->origin_source_carrier_term_id < db->term_count &&
+				prototype_type_declaration_generated_identity_rule_for_source(
+					db, declaration->origin_source_carrier_term_id
+				) == PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE) {
+				for (uint32_t i = 0; i < arg_count; ++i) {
+					if (prototype_term_normalize_complete_with_profile(
+							db,
+							type_declarations,
+							NULL,
+							PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+							args[i],
+							&args[i]
+						) != 0) {
+						return -1;
+					}
+				}
+			}
 			return prototype_term_type_instance_make(
 				db,
 				type_declarations,
@@ -3557,7 +4077,10 @@ int prototype_term_type_instance_is_saturated(
 		type_id >= type_declarations->type_count) {
 		return 0;
 	}
-	return arg_count == type_declarations->type_declarations[type_id].parameter_count;
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	return type->parameter_count <= UINT32_MAX - type->index_count &&
+		arg_count == type->parameter_count + type->index_count;
 }
 
 int prototype_term_induction_hypothesis(
@@ -3593,7 +4116,7 @@ int prototype_term_primitive_text(struct prototype_term_db* db, uint32_t* p_ret)
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_observation_type(
+int prototype_term_relation_type(
 	struct prototype_term_db* db,
 	uint32_t left_classifier,
 	uint32_t right_classifier,
@@ -3608,7 +4131,7 @@ int prototype_term_observation_type(
 	}
 	struct prototype_term former;
 	memset(&former, 0, sizeof(former));
-	former.tag = PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER;
+	former.tag = PROTOTYPE_TERM_RELATION_TYPE_FORMER;
 	uint32_t term;
 	if (add_term(db, former, &term) != 0 ||
 		prototype_term_app(db, term, left_classifier, &term) != 0 ||
@@ -3621,7 +4144,7 @@ int prototype_term_observation_type(
 	return 0;
 }
 
-int prototype_term_observation_witness(
+int prototype_term_relation_witness(
 	struct prototype_term_db* db,
 	uint32_t left_endpoint,
 	uint32_t right_endpoint,
@@ -3633,7 +4156,7 @@ int prototype_term_observation_witness(
 	}
 	struct prototype_term former;
 	memset(&former, 0, sizeof(former));
-	former.tag = PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER;
+	former.tag = PROTOTYPE_TERM_RELATION_WITNESS_FORMER;
 	uint32_t term;
 	if (add_term(db, former, &term) != 0 ||
 		prototype_term_app(db, term, left_endpoint, &term) != 0 ||
@@ -3644,7 +4167,7 @@ int prototype_term_observation_witness(
 	return 0;
 }
 
-static int observation_spine(
+static int relation_spine(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
 	int former_tag,
@@ -3667,7 +4190,7 @@ static int observation_spine(
 		0 : -1;
 }
 
-int prototype_term_observation_type_info(
+int prototype_term_relation_type_info(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
 	uint32_t* p_left_classifier,
@@ -3680,10 +4203,10 @@ int prototype_term_observation_type_info(
 		return -1;
 	}
 	uint32_t arguments[4];
-	if (observation_spine(
+	if (relation_spine(
 			db,
 			term_id,
-			PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER,
+			PROTOTYPE_TERM_RELATION_TYPE_FORMER,
 			arguments,
 			4
 		) != 0) {
@@ -3696,7 +4219,7 @@ int prototype_term_observation_type_info(
 	return 0;
 }
 
-int prototype_term_observation_witness_info(
+int prototype_term_relation_witness_info(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
 	uint32_t* p_left_endpoint,
@@ -3706,10 +4229,10 @@ int prototype_term_observation_witness_info(
 		return -1;
 	}
 	uint32_t arguments[2];
-	if (observation_spine(
+	if (relation_spine(
 			db,
 			term_id,
-			PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER,
+			PROTOTYPE_TERM_RELATION_WITNESS_FORMER,
 			arguments,
 			2
 		) != 0) {
@@ -6036,6 +6559,9 @@ static int constructor_member_matches(
 	if (match_case->constructor_owner == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
+	if (term->as.constructor.owner == match_case->constructor_owner) {
+		return 1;
+	}
 	uint32_t term_representation_id;
 	uint32_t case_representation_id;
 	(void)type_declarations;
@@ -6706,7 +7232,10 @@ static int evaluate_steps(
 		return -1;
 	}
 
-	const struct prototype_term* term = &db->terms[term_id];
+	/* Reduction may append interned nodes and reallocate db->terms. Keep the
+	 * input node by value across recursive reduction and graph construction. */
+	struct prototype_term term_value = db->terms[term_id];
+	const struct prototype_term* term = &term_value;
 	switch (term->tag) {
 		case PROTOTYPE_TERM_EXTERNAL_REF: {
 			uint32_t definition_term;
@@ -7603,8 +8132,12 @@ static int conversion_equal_at_depth(
 		return 0;
 	}
 
-	const struct prototype_term* left_term = &db->terms[left_whnf];
-	const struct prototype_term* right_term = &db->terms[right_whnf];
+	/* Recursive conversion may reduce either side and grow the shared graph.
+	 * Values remain stable while pointers into db->terms do not. */
+	struct prototype_term left_term_value = db->terms[left_whnf];
+	struct prototype_term right_term_value = db->terms[right_whnf];
+	const struct prototype_term* left_term = &left_term_value;
+	const struct prototype_term* right_term = &right_term_value;
 	if (left_term->tag != right_term->tag) {
 		if (left_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
 			right_term->tag == PROTOTYPE_TERM_MATCH) {
@@ -8992,11 +9525,11 @@ static void print_term_depth(
 				term->as.effect_operation.operation_id
 			));
 			break;
-		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
-			fprintf(output, "<observation-type>");
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+			fprintf(output, "<relation-type>");
 			break;
-		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
-			fprintf(output, "<observation-witness>");
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+			fprintf(output, "<relation-witness>");
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR: {
 			uint32_t type_id;
@@ -9287,11 +9820,11 @@ static void print_term_debug_depth(
 					term->as.effect_operation.operation_id
 				));
 			break;
-		case PROTOTYPE_TERM_OBSERVATION_TYPE_FORMER:
-			fprintf(output, "OBSERVATION_TYPE_FORMER");
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+			fprintf(output, "RELATION_TYPE_FORMER");
 			break;
-		case PROTOTYPE_TERM_OBSERVATION_WITNESS_FORMER:
-			fprintf(output, "OBSERVATION_WITNESS_FORMER");
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+			fprintf(output, "RELATION_WITNESS_FORMER");
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			fprintf(output, "CONSTRUCTOR(");
