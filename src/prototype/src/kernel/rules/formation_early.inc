@@ -670,4 +670,3 @@ int prototype_judgement_delta_record_match_pattern(
 	proof.rule_data.constructor.field_index = constructor_field_index;
 	return add_complete_delta_relation(delta, &relation, &proof);
 }
-

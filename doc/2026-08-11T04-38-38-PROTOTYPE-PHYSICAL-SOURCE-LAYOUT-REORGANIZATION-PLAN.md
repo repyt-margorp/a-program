@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0-L8 complete, L9 next
+Status: complete; L0-L9 verified
 
 Repository baseline:
 
@@ -623,13 +623,13 @@ Physical LOC at this gate:
 
 | Area | Lines |
 | --- | ---: |
-| `src/` implementation | 100,342 |
+| `src/` implementation | 100,321 |
 | `include/` declarations | 6,829 |
-| `tests/` | 21,178 |
+| `tests/` | 21,177 |
 | `spec/` | 646 |
 | build manifests/support | 88 |
 | prototype README, Makefile, calculus header | 846 |
-| total | 129,929 |
+| total | 129,907 |
 
 The complete per-file inventory is recorded in
 `doc/2026-08-11T05-45-00-PROTOTYPE-SOURCE-LAYOUT-LOC-INVENTORY.md`.
@@ -638,22 +638,37 @@ Exit gate: documentation and includes describe exactly one active module graph.
 
 ### L9: Final equivalence audit and handoff
 
-Status: pending; blocked on L8
+Status: complete
 
-- [ ] Run both standard builds.
-- [ ] Compile all production-intent prototype sources with
+- [x] Run both standard builds.
+- [x] Compile all production-intent prototype sources with
       `-Wall -Wextra -Werror`.
-- [ ] Run all 16 baseline integration entry points.
-- [ ] Run examples 01-07 and 09 and permanent training fixtures.
-- [ ] Run focused ASan/UBSan checks.
-- [ ] Compare schema hashes and calculus fingerprints with the baseline.
-- [ ] Compare frozen enum/tag values with the baseline.
-- [ ] Compare public layouts and symbol inventories with the baseline.
-- [ ] Compare v70 artifacts byte-for-byte with the baseline.
-- [ ] Run `git diff --check`.
-- [ ] Review the diff with rename detection disabled and enabled: the former
+- [x] Run all 16 baseline integration entry points.
+- [x] Run examples 01-07 and 09 and permanent training fixtures.
+- [x] Run focused ASan/UBSan checks.
+- [x] Compare schema hashes and calculus fingerprints with the baseline.
+- [x] Compare frozen enum/tag values with the baseline.
+- [x] Compare public layouts and symbol inventories with the baseline.
+- [x] Compare v70 artifacts byte-for-byte with the baseline.
+- [x] Run `git diff --check`.
+- [x] Review the diff with rename detection disabled and enabled: the former
       catches hidden edits, while the latter confirms intended moves.
-- [ ] Record commits and push only after every gate passes.
+- [x] Record commits and push only after every gate passes.
+
+Both REPL and reader builds pass with `-Wall -Wextra -Werror`. All sixteen
+integration entry points, examples 01-07 and 09, `training/double.p`, and
+`training/list_nat_match.p` pass. Focused ASan/UBSan runs pass for Bool-to-Nat,
+addition, List induction, both training fixtures, and the complete HOTT audit.
+
+The v70 and HOTT schema hashes, calculus fingerprint, frozen Term and Operation
+tags, proof-kind values, nineteen representative public record sizes, and ten
+field offsets match baseline commit `97302c9`. Both executable symbol inventories
+retain every baseline symbol. Their only additions are the five L4 private
+artifact helpers prefixed `prototype_internal_`; L5-L9 add no symbols. The v70
+identity artifact remains byte-identical with SHA-256
+`2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514`.
+Both rename-aware and no-rename diffs were reviewed, and `git diff --check`
+passes after normalizing mechanically extracted EOF whitespace.
 
 Exit gate: the physical tree is reorganized and all recorded semantic,
 representational, proof, and artifact observations match the baseline.
@@ -706,7 +721,7 @@ Stop and revise this plan if any phase requires:
 
 | Phase | Status | Blocked by | Completion evidence |
 | --- | --- | --- | --- |
-| L0 build manifests and baseline | complete in working tree | none | centralized source list; baseline bundle; 16 scripts; symbol and artifact equality |
+| L0 build manifests and baseline | complete | none | centralized source list; baseline bundle; 16 scripts; symbol and artifact equality |
 | L1 tests/spec separation | complete | L0 | 16 tests pass; no root-level tests/fixtures/schemas; identical artifact |
 | L2 stale snapshot removal | complete | L1 | removed 13 files/989 lines; one active implementation tree |
 | L3 cohesive module moves | complete | L2 | owner directories; 16 tests; artifact and symbol equality |
@@ -715,7 +730,7 @@ Stop and revise this plan if any phase requires:
 | L6 identity decomposition | complete | L5 | relation/object/artifact partitions and direct headers; 16 tests; identical v70 bytes and symbols |
 | L7 audit decomposition | complete | L6 | ordered fixture partitions; stable complete entry points; 16 tests; identical v70 bytes |
 | L8 documentation/dead-path audit | complete | L7 | current path map; no active stale paths, duplicate sources, forwarding umbrellas, or reverse includes; LOC inventory |
-| L9 final equivalence audit | pending | L8 | full suite, sanitizers, ABI/schema/artifact comparison, commits |
+| L9 final equivalence audit | complete | L8 | Werror builds; full suite/examples; sanitizers; tag/layout/schema/symbol/artifact equivalence |
 
 ## 11. Measurement Record
 
@@ -725,16 +740,16 @@ only net lines.
 | Phase | Commit | Added | Deleted | Moved files | Old paths removed | Test result | Artifact hash |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
 | baseline | `97302c9` | 0 | 0 | 0 | none | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L0 | pending commit | 165 implementation/build | 146 | 0 | repeated compiler source lists | 16 scripts pass; symbols unchanged | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L1 | pending | | | | | | |
-| L2 | pending | | | | | | |
-| L3 | pending | | | | | | |
-| L4 | pending | | | | | | |
-| L5 | pending commit | | | | `typing.c`, `judgement.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L6 | pending commit | | | | `hott.c`, `hott.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L7 | pending commit | | | | `hott_goal_check.c` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L8 | pending commit | | | | active stale paths and umbrella ownership | audit-only; no semantic test delta | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L9 | pending | | | | | | |
+| L0 | `cb161cd` | 824 | 146 | 0 | repeated compiler source lists | 16 scripts pass; symbols unchanged | `2d64defe...` |
+| L1 | `58af2fc` | 91 | 78 | 67 | root tests, fixtures, schemas | 16 scripts pass | `2d64defe...` |
+| L2 | `2d2759e` | 11 | 1,006 | 0 | inactive `current/` snapshot | 16 scripts pass | `2d64defe...` |
+| L3 | `08c87f0` | 134 | 128 | 20 | cohesive root owner files | 16 scripts pass; symbols unchanged | `2d64defe...` |
+| L4 | `fbce404` | 36,337 | 36,059 | 0 | `ast.c`, `ast.h` | 16 scripts pass; five private symbols added | `2d64defe...` |
+| L5 | `05063a2` | 23,724 | 23,609 | 0 | `typing.c`, `judgement.h` | 16 scripts pass; symbol delta unchanged | `2d64defe...` |
+| L6 | `a76c622` | 18,591 | 18,491 | 1 | `hott.c`, `hott.h` | 16 scripts pass; symbols unchanged | `2d64defe...` |
+| L7 | `d9c62af` | 11,502 | 11,482 | 0 | `hott_goal_check.c` | 16 scripts pass | `2d64defe...` |
+| L8 | `538fbba` | 253 | 14 | 0 | active stale paths and umbrella ownership | audit-only; no semantic delta | `2d64defe...` |
+| L9 | final audit commit | | | 0 | EOF whitespace only | all gates pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
 
 ## 12. Recommended Execution Order
 

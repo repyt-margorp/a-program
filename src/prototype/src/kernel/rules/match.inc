@@ -2892,4 +2892,3 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	proof.rule_data.induction.field_index = field_index;
 	return add_complete_delta_relation(delta, &relation, &proof);
 }
-

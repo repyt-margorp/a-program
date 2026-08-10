@@ -1732,4 +1732,3 @@ static int hott_action_result_for_request(
 	}
 	return 1;
 }
-

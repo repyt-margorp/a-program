@@ -90,4 +90,3 @@ int prototype_hott_register_identity_root(
 		p_root_id
 	);
 }
-

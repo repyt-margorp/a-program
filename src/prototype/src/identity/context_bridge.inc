@@ -2558,4 +2558,3 @@ struct hott_object_action_environment {
 	const uint32_t* identity_claim_ids;
 	uint32_t binding_count;
 };
-

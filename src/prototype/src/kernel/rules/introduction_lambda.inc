@@ -201,4 +201,3 @@ int prototype_judgement_delta_expand_lambda(
 	}
 	return -1;
 }
-

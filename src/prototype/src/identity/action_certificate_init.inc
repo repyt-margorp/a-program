@@ -58,4 +58,3 @@ static int hott_term_has_compiler_relation_head(
 	}
 	return -1;
 }
-

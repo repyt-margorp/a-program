@@ -2245,4 +2245,3 @@ static int hott_action_request_key_equal(
 		return 0;
 	}
 }
-

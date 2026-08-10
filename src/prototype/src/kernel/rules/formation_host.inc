@@ -126,4 +126,3 @@ int prototype_judgement_expand_primitives(
 	}
 	return 0;
 }
-

@@ -2473,4 +2473,3 @@ int prototype_judgement_delta_infer_core_helper_facts(
 	}
 	return 0;
 }
-

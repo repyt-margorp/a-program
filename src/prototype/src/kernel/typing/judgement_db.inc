@@ -498,4 +498,3 @@ void prototype_judgement_delta_set_operation_store(
 	delta->operation_cases = operation_cases;
 	delta->operation_case_count = operation_case_count;
 }
-

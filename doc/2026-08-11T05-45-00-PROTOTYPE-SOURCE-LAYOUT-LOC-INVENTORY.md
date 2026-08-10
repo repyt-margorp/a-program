@@ -9,7 +9,7 @@ Counts use physical lines from active prototype implementation, headers, source
 partitions, tests, fixtures, schemas, manifests, and local documentation.
 Generated files and build outputs are excluded.
 
-Total: **129,929 lines** (baseline: 130,375; net: -446).
+Total: **129,907 lines** (baseline: 130,375; net: -468).
 
 | File | Lines |
 | --- | ---: |
@@ -56,7 +56,7 @@ Total: **129,929 lines** (baseline: 130,375; net: -446).
 | `src/prototype/src/artifact/interface.c` | 1299 |
 | `src/prototype/src/artifact/link.c` | 2299 |
 | `src/prototype/src/artifact/publication.c` | 6155 |
-| `src/prototype/src/artifact/relocation.c` | 631 |
+| `src/prototype/src/artifact/relocation.c` | 630 |
 | `src/prototype/src/artifact/wire_v70.c` | 3309 |
 | `src/prototype/src/core/term.c` | 10027 |
 | `src/prototype/src/driver/read_file.c` | 4862 |
@@ -66,37 +66,37 @@ Total: **129,929 lines** (baseline: 130,375; net: -446).
 | `src/prototype/src/frontend/lowering.c` | 16883 |
 | `src/prototype/src/frontend/reader.c` | 2947 |
 | `src/prototype/src/graph/compile_metadata.c` | 78 |
-| `src/prototype/src/graph/operation_graph.c` | 2325 |
-| `src/prototype/src/identity/action_certificate_init.inc` | 61 |
-| `src/prototype/src/identity/action_certificate_validation.inc` | 1735 |
+| `src/prototype/src/graph/operation_graph.c` | 2324 |
+| `src/prototype/src/identity/action_certificate_init.inc` | 60 |
+| `src/prototype/src/identity/action_certificate_validation.inc` | 1734 |
 | `src/prototype/src/identity/action_execution.inc` | 1438 |
-| `src/prototype/src/identity/artifact_root_extraction.inc` | 93 |
-| `src/prototype/src/identity/context_bridge.inc` | 2561 |
+| `src/prototype/src/identity/artifact_root_extraction.inc` | 92 |
+| `src/prototype/src/identity/context_bridge.inc` | 2560 |
 | `src/prototype/src/identity/hott.c` | 24 |
 | `src/prototype/src/identity/identity_computation.inc` | 3596 |
-| `src/prototype/src/identity/object_term_action.inc` | 5586 |
-| `src/prototype/src/identity/relation_action.inc` | 2248 |
-| `src/prototype/src/identity/telescope_action.inc` | 856 |
+| `src/prototype/src/identity/object_term_action.inc` | 5585 |
+| `src/prototype/src/identity/relation_action.inc` | 2247 |
+| `src/prototype/src/identity/telescope_action.inc` | 855 |
 | `src/prototype/src/internal/ast_common.h` | 8 |
 | `src/prototype/src/kernel/context.c` | 1629 |
 | `src/prototype/src/kernel/cwf_certificate.c` | 264 |
 | `src/prototype/src/kernel/judgement.c` | 26 |
 | `src/prototype/src/kernel/kernel_view.c` | 58 |
-| `src/prototype/src/kernel/rules/cbpv.inc` | 2476 |
-| `src/prototype/src/kernel/rules/elimination_app.inc` | 635 |
-| `src/prototype/src/kernel/rules/formation_early.inc` | 673 |
-| `src/prototype/src/kernel/rules/formation_host.inc` | 129 |
-| `src/prototype/src/kernel/rules/formation_recording.inc` | 476 |
-| `src/prototype/src/kernel/rules/introduction_identity.inc` | 1770 |
-| `src/prototype/src/kernel/rules/introduction_lambda.inc` | 204 |
-| `src/prototype/src/kernel/rules/match.inc` | 2895 |
+| `src/prototype/src/kernel/rules/cbpv.inc` | 2475 |
+| `src/prototype/src/kernel/rules/elimination_app.inc` | 634 |
+| `src/prototype/src/kernel/rules/formation_early.inc` | 672 |
+| `src/prototype/src/kernel/rules/formation_host.inc` | 128 |
+| `src/prototype/src/kernel/rules/formation_recording.inc` | 475 |
+| `src/prototype/src/kernel/rules/introduction_identity.inc` | 1769 |
+| `src/prototype/src/kernel/rules/introduction_lambda.inc` | 203 |
+| `src/prototype/src/kernel/rules/match.inc` | 2894 |
 | `src/prototype/src/kernel/type_declaration.c` | 3449 |
 | `src/prototype/src/kernel/typing/accepted_replay.inc` | 4959 |
-| `src/prototype/src/kernel/typing/candidate_publication.inc` | 1325 |
-| `src/prototype/src/kernel/typing/candidate_replay.inc` | 941 |
-| `src/prototype/src/kernel/typing/classifier_solver.inc` | 2030 |
+| `src/prototype/src/kernel/typing/candidate_publication.inc` | 1324 |
+| `src/prototype/src/kernel/typing/candidate_replay.inc` | 940 |
+| `src/prototype/src/kernel/typing/classifier_solver.inc` | 2029 |
 | `src/prototype/src/kernel/typing/conversion.inc` | 2912 |
-| `src/prototype/src/kernel/typing/judgement_db.inc` | 501 |
+| `src/prototype/src/kernel/typing/judgement_db.inc` | 500 |
 | `src/prototype/src/kernel/universe.c` | 1062 |
 | `src/prototype/src/support/symbol.c` | 109 |
 | `src/prototype/tests/checks/cbpv_boundary_check.c` | 380 |
@@ -110,7 +110,7 @@ Total: **129,929 lines** (baseline: 130,375; net: -446).
 | `src/prototype/tests/checks/hott/higher_identity.inc` | 687 |
 | `src/prototype/tests/checks/hott/main.c` | 10 |
 | `src/prototype/tests/checks/hott/pi_identity.inc` | 4934 |
-| `src/prototype/tests/checks/hott/test_support.inc` | 1596 |
+| `src/prototype/tests/checks/hott/test_support.inc` | 1595 |
 | `src/prototype/tests/checks/hott/universe_scaffold.inc` | 1000 |
 | `src/prototype/tests/checks/shared_term_reindex_check.c` | 501 |
 | `src/prototype/tests/checks/term_identity_frame_check.c` | 311 |
@@ -168,4 +168,3 @@ Total: **129,929 lines** (baseline: 130,375; net: -446).
 | `src/prototype/tests/integration/test_shared_core_occurrences.sh` | 34 |
 | `src/prototype/tests/integration/test_shared_term_hott_substrate.sh` | 33 |
 | `src/prototype/tests/integration/test_term_identity_frame.sh` | 11 |
-

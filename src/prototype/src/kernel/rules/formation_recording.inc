@@ -473,4 +473,3 @@ int prototype_judgement_delta_record_declaration_fact(
 		PROTOTYPE_JUDGEMENT_PROOF_DECLARATION
 	);
 }
-

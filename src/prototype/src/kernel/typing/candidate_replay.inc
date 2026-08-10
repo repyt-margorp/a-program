@@ -938,4 +938,3 @@ int prototype_judgement_publish_candidates(
 	 * Ungrounded solver slots remain distinguishable by an invalid closure rank. */
 	return prototype_judgement_db_rebuild_index(judgement);
 }
-

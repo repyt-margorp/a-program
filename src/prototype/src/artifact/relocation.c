@@ -628,4 +628,3 @@ int prototype_artifact_apply_type_expr_relocations(
 		target_judgement
 	);
 }
-

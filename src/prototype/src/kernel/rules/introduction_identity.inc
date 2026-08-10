@@ -1767,4 +1767,3 @@ int prototype_judgement_add_relation_induction_hypothesis_witness(
 		judgement, &result, &proof, premise_ids, p_claim_id
 	);
 }
-

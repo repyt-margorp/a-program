@@ -1322,4 +1322,3 @@ static void remove_match_motive_results_normalization_equal(
 	}
 	delta->match_motive_result_count = write;
 }
-

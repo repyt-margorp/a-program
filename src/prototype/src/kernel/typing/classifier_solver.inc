@@ -2027,4 +2027,3 @@ static void candidate_claim_authority(
 	int* p_authority_kind,
 	uint32_t* p_authority_id
 );
-

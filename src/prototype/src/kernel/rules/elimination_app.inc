@@ -632,4 +632,3 @@ static int select_delta_pi_classifier_for_domain(
 	}
 	return found ? 0 : 1;
 }
-

@@ -853,4 +853,3 @@ int prototype_hott_type_former_descriptor_query(
 	*p_descriptor = descriptor;
 	return 0;
 }
-

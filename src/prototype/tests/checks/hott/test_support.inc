@@ -1593,4 +1593,3 @@ static uint32_t add_nat_view(
 	prototype_term_notify_graph_mutation(terms_db);
 	return view;
 }
-

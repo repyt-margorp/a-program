@@ -5583,4 +5583,3 @@ int prototype_hott_execute_term_action(
 		p_result_id
 	);
 }
-
