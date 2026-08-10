@@ -1,12 +1,12 @@
-#include "reader.h"
+#include "a_program/frontend/reader.h"
 
 #include <stdio.h>
 #include <string.h>
 
-#include "ast_inspect.h"
-#include "symbol.h"
+#include "a_program/frontend/ast_inspect.h"
+#include "a_program/support/symbol.h"
 #include "judgement.h"
-#include "universe.h"
+#include "a_program/kernel/universe.h"
 
 #define SYMBOL_MAP_CAPACITY 1024
 #define SYMBOL_STORAGE_CAPACITY 512

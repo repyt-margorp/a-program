@@ -6,10 +6,10 @@
 #include <stdint.h>
 
 #include "calculus.h"
-#include "context.h"
-#include "symbol.h"
-#include "term.h"
-#include "type_declaration.h"
+#include "a_program/kernel/context.h"
+#include "a_program/support/symbol.h"
+#include "a_program/core/term.h"
+#include "a_program/kernel/type_declaration.h"
 
 struct prototype_operation_graph;
 struct prototype_operation_node;

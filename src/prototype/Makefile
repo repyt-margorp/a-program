@@ -1,7 +1,7 @@
 include src/prototype/build/sources.mk
 
 CC ?= cc
-CPPFLAGS += -I src/prototype
+CPPFLAGS += -I src/prototype/include -I src/prototype
 CFLAGS += -std=c11 -Wall -Wextra
 
 .PHONY: all reader clean print-kernel-sources print-graph-sources

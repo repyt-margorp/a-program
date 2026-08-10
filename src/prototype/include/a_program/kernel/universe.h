@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "term.h"
-#include "type_declaration.h"
+#include "a_program/core/term.h"
+#include "a_program/kernel/type_declaration.h"
 
 /* These are compiler acceptance limits, not counts from a particular graph.
  * Re-publication may derive Universe data that was absent from the source

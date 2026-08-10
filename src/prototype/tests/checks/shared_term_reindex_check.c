@@ -1,6 +1,6 @@
-#include "context.h"
-#include "term.h"
-#include "type_declaration.h"
+#include "a_program/kernel/context.h"
+#include "a_program/core/term.h"
+#include "a_program/kernel/type_declaration.h"
 
 #include <stdint.h>
 #include <stdio.h>

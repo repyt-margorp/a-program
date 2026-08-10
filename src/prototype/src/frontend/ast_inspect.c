@@ -1,4 +1,4 @@
-#include "ast_inspect.h"
+#include "a_program/frontend/ast_inspect.h"
 
 static const char* safe_symbol_name(const struct symbol_table* symbols, int symbol_id) {
 	const char* name = symbol_to_string(symbols, symbol_id);

@@ -1,11 +1,11 @@
-#include "context.h"
+#include "a_program/kernel/context.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "judgement.h"
-#include "term.h"
-#include "type_declaration.h"
+#include "a_program/core/term.h"
+#include "a_program/kernel/type_declaration.h"
 
 static uint64_t graph_key_hash_mix(uint64_t hash, uint32_t value) {
 	hash ^= value;

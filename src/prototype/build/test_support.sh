@@ -17,7 +17,7 @@ prototype_compile() {
 	# Source groups contain repository-controlled paths and are intentionally
 	# split into shell words for the compiler invocation.
 	# shellcheck disable=SC2046
-	cc "-std=$standard" -Wall -Wextra $werror -I src/prototype \
+	cc "-std=$standard" -Wall -Wextra $werror \
+		-I src/prototype/include -I src/prototype \
 		"$@" $(prototype_source_group "$group") -o "$output"
 }
-

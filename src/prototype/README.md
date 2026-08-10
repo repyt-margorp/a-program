@@ -719,21 +719,16 @@ the regression examples:
 For lambda binders, `@` is stored as `PROTOTYPE_INVALID_ID`, meaning the binder
 has no concrete type annotation yet.
 
-The interactive CLI can be built manually while the prototype is not part of the
-accepted build:
+Build the interactive CLI through the authoritative prototype source manifest:
 
 ```
-cc -std=c11 -Wall -Wextra -I src/prototype \
-	src/prototype/repl.c src/prototype/ast.c src/prototype/ast_inspect.c \
-	src/prototype/reader.c src/prototype/term.c src/prototype/type_declaration.c \
-	src/prototype/typing.c src/prototype/universe.c src/prototype/symbol.c \
-	-o /tmp/a-program-prototype-repl
+make
 ```
 
 Run it with optional initial files:
 
 ```
-/tmp/a-program-prototype-repl examples/01_bool.p
+./a.out examples/01_bool.p
 ```
 
 Inside the prompt, `:state` prints the current loaded state and `:quit` exits.

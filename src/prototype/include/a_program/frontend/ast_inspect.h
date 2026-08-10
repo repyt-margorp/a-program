@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "ast.h"
-#include "symbol.h"
+#include "a_program/support/symbol.h"
 
 void prototype_ast_inspect_print(
 	FILE* output,

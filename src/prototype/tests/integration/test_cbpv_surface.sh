@@ -47,7 +47,7 @@ c_enum_value_in() {
 }
 
 effect_row_operation_tag=$(c_enum_value_in \
-	src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
+	src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
 operation_request_proof_kind=$(c_enum_value_in \
 	src/prototype/judgement.h prototype_judgement_proof_kind \
 	PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO)

@@ -1,9 +1,9 @@
-#include "cwf_certificate.h"
+#include "a_program/kernel/cwf_certificate.h"
 
-#include "context.h"
+#include "a_program/kernel/context.h"
 #include "judgement.h"
-#include "term.h"
-#include "type_declaration.h"
+#include "a_program/core/term.h"
+#include "a_program/kernel/type_declaration.h"
 
 static int context_certificate_is_valid(
 	const struct prototype_cwf_certificate* certificate,

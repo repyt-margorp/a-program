@@ -2,11 +2,11 @@
 #define __PROTOTYPE_READER_H__
 
 #include "ast.h"
-#include "symbol.h"
-#include "term.h"
+#include "a_program/support/symbol.h"
+#include "a_program/core/term.h"
 #include "judgement.h"
-#include "type_declaration.h"
-#include "universe.h"
+#include "a_program/kernel/type_declaration.h"
+#include "a_program/kernel/universe.h"
 
 struct prototype_compile_options {
 	int compile_policy;

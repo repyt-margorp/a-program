@@ -5,8 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "symbol.h"
-#include "type_declaration.h"
+#include "a_program/support/symbol.h"
+#include "a_program/kernel/type_declaration.h"
 
 struct prototype_term_db;
 struct prototype_term_definition_env;

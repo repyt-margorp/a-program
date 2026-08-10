@@ -105,7 +105,7 @@ may erase distinctions that are irrelevant to computation.
 
 ## Surface Language
 
-The source reader is implemented in `src/prototype/reader.c`. The examples are
+The source reader is implemented in `src/prototype/src/frontend/reader.c`. The examples are
 the most reliable executable syntax reference.
 
 ### Definitions and declarations

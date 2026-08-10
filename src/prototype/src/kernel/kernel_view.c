@@ -1,6 +1,6 @@
-#include "kernel_view.h"
+#include "a_program/kernel/kernel_view.h"
 
-#include "cwf_certificate.h"
+#include "a_program/kernel/cwf_certificate.h"
 
 int prototype_kernel_view_validate(
 	const struct prototype_kernel_view* view

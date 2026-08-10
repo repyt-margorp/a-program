@@ -5,11 +5,11 @@
 #include <stdint.h>
 
 #include "calculus.h"
-#include "context.h"
-#include "term.h"
+#include "a_program/kernel/context.h"
+#include "a_program/core/term.h"
 #include "judgement.h"
-#include "type_declaration.h"
-#include "universe.h"
+#include "a_program/kernel/type_declaration.h"
+#include "a_program/kernel/universe.h"
 
 #define PROTOTYPE_ARTIFACT_FORMAT_VERSION 70
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \

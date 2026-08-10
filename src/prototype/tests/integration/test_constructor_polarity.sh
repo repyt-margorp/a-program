@@ -8,7 +8,7 @@ cat >"$tmp_dir/operation_constants.c" <<'EOF_CONSTANTS'
 #include <stdio.h>
 
 #include "ast.h"
-#include "term.h"
+#include "a_program/core/term.h"
 
 int main(void) {
 	printf(
@@ -23,7 +23,8 @@ int main(void) {
 }
 EOF_CONSTANTS
 
-cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
+cc -std=c11 -Wall -Wextra -Werror \
+	-I src/prototype/include -I src/prototype \
 	"$tmp_dir/operation_constants.c" -o "$tmp_dir/operation_constants"
 set -- $("$tmp_dir/operation_constants")
 operation_app=$1

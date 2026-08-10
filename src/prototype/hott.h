@@ -1,9 +1,9 @@
 #ifndef __PROTOTYPE_HOTT_H__
 #define __PROTOTYPE_HOTT_H__
 
-#include "cwf_certificate.h"
+#include "a_program/kernel/cwf_certificate.h"
 #include "judgement.h"
-#include "kernel_view.h"
+#include "a_program/kernel/kernel_view.h"
 
 struct prototype_artifact_interface;
 

@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0-L2 complete, L3 next
+Status: in progress; L0-L3 complete, L4 next
 
 Repository baseline:
 
@@ -361,7 +361,7 @@ snapshot that can be mistaken for an implementation choice.
 
 ### L3: Move cohesive implementation modules
 
-Status: pending; blocked on L2
+Status: complete in the working tree
 
 Move already cohesive translation units without splitting function bodies:
 
@@ -378,15 +378,25 @@ ast_inspect.*         -> frontend/
 repl.c, read_file.c   -> driver/
 ```
 
-- [ ] Move declarations to `include/a_program/<owner>/`.
-- [ ] Move implementations to `src/<owner>/`.
-- [ ] Change all includes and manifests in the same commit as each module move.
-- [ ] Preserve include guard values unless a separate mechanical guard-only
+- [x] Move declarations to `include/a_program/<owner>/`.
+- [x] Move implementations to `src/<owner>/`.
+- [x] Change all includes and manifests in the same commit as each module move.
+- [x] Preserve include guard values unless a separate mechanical guard-only
       commit is approved.
-- [ ] Do not rename functions, structs, fields, or enum constants.
-- [ ] Do not retain old headers as forwarding adapters.
-- [ ] Run the complete invariant matrix after each owner group, not only after
-      all files have moved.
+- [x] Do not rename functions, structs, fields, or enum constants.
+- [x] Do not retain old headers as forwarding adapters.
+- [x] Run the complete invariant matrix for the cohesive owner moves.
+- [x] Confirm all 16 integration scripts pass, the v70 artifact is byte-identical,
+      and the sorted REPL/reader global symbol name-and-kind inventories match
+      the L0 baseline.
+- [x] Verify no old implementation/header path remains in the active build,
+      tests, or current README files.
+- [x] Keep `ast`, `typing`/`judgement`, and `hott` at the prototype root until
+      their dedicated decomposition phases; this phase did not split them.
+
+The owner groups were moved as one atomic path-only change because their include
+rewrites are mutually dependent. The complete invariant matrix was run after
+all files had moved.
 
 Exit gate: cohesive modules live under explicit owners with no old-path
 compatibility layer.
@@ -617,7 +627,7 @@ Stop and revise this plan if any phase requires:
 | L0 build manifests and baseline | complete in working tree | none | centralized source list; baseline bundle; 16 scripts; symbol and artifact equality |
 | L1 tests/spec separation | complete | L0 | 16 tests pass; no root-level tests/fixtures/schemas; identical artifact |
 | L2 stale snapshot removal | complete | L1 | removed 13 files/989 lines; one active implementation tree |
-| L3 cohesive module moves | pending | L2 | owner directories; no compatibility paths; full suite |
+| L3 cohesive module moves | complete | L2 | owner directories; 16 tests; artifact and symbol equality |
 | L4 `ast` decomposition | pending | L3 | frontend/graph/artifact ownership; identical v70 bytes |
 | L5 kernel decomposition | pending | L4 | storage/solver/rules separated; identical proof DAGs |
 | L6 identity decomposition | pending | L5 | relation/object/artifact boundaries explicit |

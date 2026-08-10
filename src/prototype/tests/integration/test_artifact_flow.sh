@@ -20,7 +20,7 @@ grep -q 'failed to compile AST graph' "$TMP_DIR/recursive-motive-conflict.err"
 
 prototype_compile c11 werror compiler \
 	"$TMP_DIR/prototype-repl" \
-	src/prototype/repl.c
+	src/prototype/src/driver/repl.c
 
 prototype_compile c99 werror kernel \
 	"$TMP_DIR/whnf_profile_cache_check" \
@@ -121,15 +121,15 @@ PROOF_KIND_IS_TYPE_FROM_HAS_TYPE=$(c_enum_value prototype_judgement_proof_kind P
 PROOF_KIND_DECLARATION=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_DECLARATION)
 PROOF_KIND_UNIVERSE_CUMULATIVITY=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_UNIVERSE_CUMULATIVITY)
 PROOF_KIND_PI_FORMATION_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO)
-TERM_TAG_VAR=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_VAR)
-TERM_TAG_CONSTRUCTOR=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_CONSTRUCTOR)
-TERM_TAG_PI=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_PI)
-TERM_TAG_TEXT_LITERAL=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_TEXT_LITERAL)
-TERM_TAG_EXTERNAL_REF=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EXTERNAL_REF)
-TERM_TAG_PURE_PRIMITIVE=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_PURE_PRIMITIVE)
-TERM_TAG_EFFECT_OPERATION=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_OPERATION)
-TERM_TAG_EFFECT_LABEL=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_LABEL)
-TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in src/prototype/term.h prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
+TERM_TAG_VAR=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_VAR)
+TERM_TAG_CONSTRUCTOR=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_CONSTRUCTOR)
+TERM_TAG_PI=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_PI)
+TERM_TAG_TEXT_LITERAL=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_TEXT_LITERAL)
+TERM_TAG_EXTERNAL_REF=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EXTERNAL_REF)
+TERM_TAG_PURE_PRIMITIVE=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_PURE_PRIMITIVE)
+TERM_TAG_EFFECT_OPERATION=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_OPERATION)
+TERM_TAG_EFFECT_LABEL=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_LABEL)
+TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
 OPERATION_TAG_LAMBDA=$(c_enum_value_in src/prototype/ast.h prototype_operation_tag PROTOTYPE_OPERATION_LAMBDA)
 
 if grep -q 'prototype_type_declaration_find_by_code_shape_key' src/prototype/typing.c; then
