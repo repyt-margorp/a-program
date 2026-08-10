@@ -1199,7 +1199,7 @@ Status: complete for the admitted v70 object graph
       projection, reindexed Claim, and legacy relation Term. The second rooted
       publication remains byte-identical to the first.
 - [x] Keep publication normalization separate from TermDB interning and DefEq.
-- [ ] Measure per-file LOC before and after; do not judge correctness by LOC,
+- [x] Measure per-file LOC before and after; do not judge correctness by LOC,
       but record whether sparse adapters were actually deleted.
 
 Exit gate: two compiler sessions with the same rooted accepted object graph
@@ -1471,7 +1471,7 @@ interface, not compiler history.
 
 ### A1.8: Exit audit and handoff
 
-Status: verification complete in the working tree; commit/LOC record pending
+Status: complete for the admitted v70 fragment
 
 - [x] Run `make` and `make reader`. Passed again on 2026-08-11.
 - [x] Compile all touched prototype C with `-Wall -Wextra -Werror`.
@@ -1490,9 +1490,10 @@ Status: verification complete in the working tree; commit/LOC record pending
       on 2026-08-11 and compare byte-for-byte equal. The same hash survives
       Binding preallocation, reversed independent Type allocation, and complete
       reversal of the reachable Derivation arena.
-- [ ] Record final commit and verification evidence here.
-- [ ] Record per-file before/after LOC and deleted adapters/helpers.
-- [ ] Update V3 progress and select the next theory stage from remaining
+- [x] Record final implementation commit `99182a7` and verification evidence
+      here. The documentation-only handoff record follows this commit.
+- [x] Record per-file before/after LOC and deleted adapters/helpers.
+- [x] Update V3 progress and select the next theory stage from remaining
       dependencies.
 
 Exit gate: v70 is the only accepted format, all rooted object evidence replays
@@ -1634,7 +1635,7 @@ These are architecture violations, not deferred optimizations.
 | A1.5 append/link roots | complete for admitted fragment | T0 before widening | relocated exact Claims replay and aggregate |
 | A1.6 object matrix | complete for admitted fragment | dependent/higher/effect rules remain residual | all admitted forms round-trip/link; unsupported forms cannot become roots |
 | A1.7 adversarial/determinism | complete for admitted fragment | none | forged graph rejection and history-independent bytes |
-| A1.8 exit audit | in progress: verification complete, commit/LOC pending | final record | full suite, sanitizers, LOC/deletion report, final commit |
+| A1.8 exit audit | complete for admitted fragment | none | full suite, sanitizers, LOC/deletion report, implementation commit `99182a7` |
 
 ## 13. Recommended Execution Order
 
@@ -1671,7 +1672,7 @@ when it records deletion of obsolete authority paths.
 | Phase | Commit | `ast.c` +/- | `typing.c` +/- | `read_file.c` +/- | other prototype +/- | deleted paths | tests/hash |
 | --- | --- | ---: | ---: | ---: | ---: | --- | --- |
 | baseline | `d4c3c3d` | 0 | 0 | 0 | 0 | none | PC1 evidence |
-| combined A1 working tree | pending final commit | +3749 | +2428 | +47 | `hott.c` +12882; `hott_goal_check.c` +7888; `type_declaration.c` +1442; artifact test +100 | sparse publication; Proposition evidence references; accepted-graph rebinding; `OBSERVATION_*` object interpretation | all 16 scripts; examples 01-07/09; sanitizer; hash `2d64defe...` |
+| combined A1 | `99182a7` | +3749 | +2428 | +47 | `hott.c` +12882; `hott_goal_check.c` +7888; `type_declaration.c` +1442; artifact test +100 | sparse publication; Proposition evidence references; accepted-graph rebinding; `OBSERVATION_*` object interpretation | all 16 scripts; examples 01-07/09; sanitizer; hash `2d64defe...` |
 
 The growth is intentional and is not presented as compaction. Most of it is
 ordinary object identity generation/replay and adversarial fixtures. A later
