@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+. src/prototype/build/test_support.sh
+
 app_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_APP([[:space:]]*=|,)' src/prototype/term.h)
 lambda_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_LAMBDA([[:space:]]*=|,)' src/prototype/term.h)
 pi_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_PI([[:space:]]*=|,)' src/prototype/term.h)
@@ -23,17 +25,9 @@ if grep -Eq '^[[:space:]]*PROTOTYPE_TERM_(OBS_EQ|EQUALITY|PATH|TRANSPORT|COHEREN
 	exit 1
 fi
 
-cc -std=c11 -Wall -Wextra -I src/prototype \
-	src/prototype/shared_term_reindex_check.c \
-	src/prototype/ast.c \
-	src/prototype/context.c \
-	src/prototype/reader.c \
-	src/prototype/term.c \
-	src/prototype/type_declaration.c \
-	src/prototype/typing.c \
-	src/prototype/universe.c \
-	src/prototype/symbol.c \
-	-o /tmp/a-program-shared-term-reindex-check
+prototype_compile c11 warnings graph \
+	/tmp/a-program-shared-term-reindex-check \
+	src/prototype/shared_term_reindex_check.c
 
 /tmp/a-program-shared-term-reindex-check
 rm -f /tmp/a-program-shared-term-reindex-check

@@ -1,0 +1,40 @@
+include src/prototype/build/sources.mk
+
+CC ?= cc
+CPPFLAGS += -I src/prototype
+CFLAGS += -std=c11 -Wall -Wextra
+
+.PHONY: all reader clean print-kernel-sources print-graph-sources
+.PHONY: print-compiler-sources
+.PHONY: print-hott-sources print-repl-sources print-reader-sources
+
+all: a.out
+
+reader: read_file.out
+
+a.out: $(PROTOTYPE_REPL_SOURCES)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(PROTOTYPE_REPL_SOURCES) -o $@
+
+read_file.out: $(PROTOTYPE_READER_SOURCES)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(PROTOTYPE_READER_SOURCES) -o $@
+
+clean:
+	rm -f a.out read_file.out
+
+print-kernel-sources:
+	@printf '%s\n' $(PROTOTYPE_KERNEL_SOURCES)
+
+print-graph-sources:
+	@printf '%s\n' $(PROTOTYPE_GRAPH_SOURCES)
+
+print-compiler-sources:
+	@printf '%s\n' $(PROTOTYPE_COMPILER_SOURCES)
+
+print-hott-sources:
+	@printf '%s\n' $(PROTOTYPE_HOTT_SOURCES)
+
+print-repl-sources:
+	@printf '%s\n' $(PROTOTYPE_REPL_SOURCES)
+
+print-reader-sources:
+	@printf '%s\n' $(PROTOTYPE_READER_SOURCES)

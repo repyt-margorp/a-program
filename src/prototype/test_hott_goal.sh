@@ -3,6 +3,7 @@ set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$ROOT_DIR"
+. src/prototype/build/test_support.sh
 
 manifest_fingerprint=$(sha256sum src/prototype/hott_fragment_v2.schema | awk '{print $1}')
 header_fingerprint=$(awk '
@@ -26,19 +27,9 @@ if [ "$changed_fingerprint" = "$header_fingerprint" ]; then
 	exit 1
 fi
 
-cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
-	src/prototype/hott_goal_check.c \
-	src/prototype/hott.c \
-	src/prototype/ast.c \
-	src/prototype/cwf_certificate.c \
-	src/prototype/kernel_view.c \
-	src/prototype/context.c \
-	src/prototype/term.c \
-	src/prototype/type_declaration.c \
-	src/prototype/typing.c \
-	src/prototype/universe.c \
-	src/prototype/symbol.c \
-	-o /tmp/a-program-hott-goal-check
+prototype_compile c11 werror hott \
+	/tmp/a-program-hott-goal-check \
+	src/prototype/hott_goal_check.c
 
 /tmp/a-program-hott-goal-check
 

@@ -1,18 +1,11 @@
 #!/bin/sh
 set -eu
 
-cc -std=c11 -Wall -Wextra -I src/prototype \
-	src/prototype/cbpv_boundary_check.c \
-	src/prototype/ast.c \
-	src/prototype/context.c \
-	src/prototype/ast_inspect.c \
-	src/prototype/reader.c \
-	src/prototype/term.c \
-	src/prototype/type_declaration.c \
-	src/prototype/typing.c \
-	src/prototype/universe.c \
-	src/prototype/symbol.c \
-	-o /tmp/a-program-cbpv-boundary-check
+. src/prototype/build/test_support.sh
+
+prototype_compile c11 warnings compiler \
+	/tmp/a-program-cbpv-boundary-check \
+	src/prototype/cbpv_boundary_check.c
 
 /tmp/a-program-cbpv-boundary-check
 rm -f /tmp/a-program-cbpv-boundary-check

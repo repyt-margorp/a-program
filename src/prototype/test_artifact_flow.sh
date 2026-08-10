@@ -6,6 +6,7 @@ TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-artifact-flow.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 cd "$ROOT_DIR"
+. src/prototype/build/test_support.sh
 
 make reader >/dev/null
 make >/dev/null
@@ -17,41 +18,18 @@ if ./a.out examples/negative/04_recursive_motive_conflict.p \
 fi
 grep -q 'failed to compile AST graph' "$TMP_DIR/recursive-motive-conflict.err"
 
-cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
-	src/prototype/repl.c \
-	src/prototype/ast.c \
-	src/prototype/context.c \
-	src/prototype/ast_inspect.c \
-	src/prototype/reader.c \
-	src/prototype/term.c \
-	src/prototype/type_declaration.c \
-	src/prototype/typing.c \
-	src/prototype/universe.c \
-	src/prototype/symbol.c \
-	-o "$TMP_DIR/prototype-repl"
+prototype_compile c11 werror compiler \
+	"$TMP_DIR/prototype-repl" \
+	src/prototype/repl.c
 
-cc -std=c99 -Wall -Wextra -Werror -I src/prototype \
-	src/prototype/whnf_profile_cache_check.c \
-	src/prototype/ast.c \
-	src/prototype/context.c \
-	src/prototype/term.c \
-	src/prototype/type_declaration.c \
-	src/prototype/typing.c \
-	src/prototype/universe.c \
-	src/prototype/symbol.c \
-	-o "$TMP_DIR/whnf_profile_cache_check"
+prototype_compile c99 werror kernel \
+	"$TMP_DIR/whnf_profile_cache_check" \
+	src/prototype/whnf_profile_cache_check.c
 "$TMP_DIR/whnf_profile_cache_check"
 
-cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
-	src/prototype/universe_defeq_check.c \
-	src/prototype/ast.c \
-	src/prototype/context.c \
-	src/prototype/term.c \
-	src/prototype/type_declaration.c \
-	src/prototype/typing.c \
-	src/prototype/universe.c \
-	src/prototype/symbol.c \
-	-o "$TMP_DIR/universe_defeq_check"
+prototype_compile c11 werror kernel \
+	"$TMP_DIR/universe_defeq_check" \
+	src/prototype/universe_defeq_check.c
 "$TMP_DIR/universe_defeq_check"
 
 c_enum_value_in() {
@@ -3007,13 +2985,9 @@ for scoped_field in kind context subject classifier; do
 	fi
 done
 
-cc -std=c11 -Wall -Wextra -Werror -I src/prototype \
-	src/prototype/core_view_representation_check.c \
-	src/prototype/ast.c src/prototype/context.c src/prototype/ast_inspect.c \
-	src/prototype/reader.c \
-	src/prototype/term.c src/prototype/type_declaration.c src/prototype/typing.c \
-	src/prototype/universe.c src/prototype/symbol.c \
-	-o "$TMP_DIR/core-view-representation-check"
+prototype_compile c11 werror compiler \
+	"$TMP_DIR/core-view-representation-check" \
+	src/prototype/core_view_representation_check.c
 "$TMP_DIR/core-view-representation-check"
 
 echo "artifact flow tests passed"
