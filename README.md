@@ -477,8 +477,6 @@ positive conformance test.
 - `examples/`: executable examples, negative fixtures, and future drafts;
 - `training/`: small language exercises and dependent Match probes;
 - `doc/`: dated design decisions, implementation plans, and reviews;
-- `src/prototype/current/`: an older prototype-side snapshot, not the active
-  root build;
 - `DESIGN-PHILOSOPHY.md`: historical 2025 design note; several implementation
   claims there have been superseded;
 - `CODING_STYLE.md`: repository coding conventions.

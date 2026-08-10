@@ -10,8 +10,6 @@ Accepted implementation code belongs in `src/` outside this directory and in
 
 ## Current Prototype Files
 
-- `current/`: prototype-side snapshot of the current accepted compiler source,
-  including `main`, parser, lexer, environment, symbols, terms, and headers.
 - `symbol.h`, `symbol.c`: prototype-owned symbol table used by the current
   prototype reader and REPL.
 - `type_declaration.h`, `type_declaration.c`: source-derived type formation declaration

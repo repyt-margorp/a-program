@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0-L1 complete, L2 next
+Status: in progress; L0-L2 complete, L3 next
 
 Repository baseline:
 
@@ -342,16 +342,19 @@ and the baseline evidence remains identical.
 
 ### L2: Remove the inactive compiler snapshot
 
-Status: pending; blocked on L1
+Status: complete in the working tree
 
-- [ ] Compare `src/prototype/current/` against Git history and the accepted
+- [x] Compare `src/prototype/current/` against Git history and the accepted
       implementation to confirm that it contains no unique active source.
-- [ ] Confirm no build, test, documentation command, or include references it as
+- [x] Confirm no build, test, documentation command, or include references it as
       executable input.
-- [ ] Delete `src/prototype/current/`; do not move it to another source archive.
+- [x] Delete `src/prototype/current/`; do not move it to another source archive.
       Git history is the archive.
-- [ ] Update README references that describe it as an active prototype area.
-- [ ] Record removed file and line counts.
+- [x] Update README references that describe it as an active prototype area.
+- [x] Record removed file and line counts: 13 files and 989 physical lines.
+- [x] Verify that the 11 implementation/header files were byte-identical to the
+      accepted tree at parent commit `7d117e5`; the remaining two files only
+      built and described that frozen snapshot.
 
 Exit gate: there is one active prototype compiler tree and no stale source
 snapshot that can be mistaken for an implementation choice.
@@ -613,7 +616,7 @@ Stop and revise this plan if any phase requires:
 | --- | --- | --- | --- |
 | L0 build manifests and baseline | complete in working tree | none | centralized source list; baseline bundle; 16 scripts; symbol and artifact equality |
 | L1 tests/spec separation | complete | L0 | 16 tests pass; no root-level tests/fixtures/schemas; identical artifact |
-| L2 stale snapshot removal | pending | L1 | no active references; deleted-line record |
+| L2 stale snapshot removal | complete | L1 | removed 13 files/989 lines; one active implementation tree |
 | L3 cohesive module moves | pending | L2 | owner directories; no compatibility paths; full suite |
 | L4 `ast` decomposition | pending | L3 | frontend/graph/artifact ownership; identical v70 bytes |
 | L5 kernel decomposition | pending | L4 | storage/solver/rules separated; identical proof DAGs |
