@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0-L6 complete, L7 next
+Status: in progress; L0-L7 complete, L8 next
 
 Repository baseline:
 
@@ -546,7 +546,7 @@ adaptation have explicit physical owners and unchanged theory boundaries.
 
 ### L7: Split oversized audit executables
 
-Status: pending; blocked on L6
+Status: complete
 
 Split `hott_goal_check.c` by fixture ownership without weakening the integrated
 test:
@@ -566,12 +566,24 @@ Similarly divide the artifact integration script into sourced test libraries or
 separate executables only if one top-level command still runs the complete
 matrix.
 
-- [ ] Keep one canonical `test_hott_goal` entry point.
-- [ ] Keep one canonical `test_artifact_flow` entry point.
-- [ ] Select fixtures structurally, never by fixed numeric IDs.
-- [ ] Do not duplicate compiler construction helpers in each fixture file.
-- [ ] Keep negative tests adjacent to the rule boundary they attack.
-- [ ] Confirm the split test executes the same named checks and failure cases.
+- [x] Keep one canonical `test_hott_goal` entry point.
+- [x] Keep one canonical `test_artifact_flow` entry point.
+- [x] Select fixtures structurally, never by fixed numeric IDs.
+- [x] Do not duplicate compiler construction helpers in each fixture file.
+- [x] Keep negative tests adjacent to the rule boundary they attack.
+- [x] Confirm the split test executes the same named checks and failure cases.
+
+The HOTT audit intentionally remains one translation unit and one `main` lexical
+scope. Its fixture arena is stateful and tests allocation-history independence;
+turning each region into a separately initialized C function would be a test
+semantic change. `tests/checks/hott/main.c` therefore includes ordered fixture
+partitions for shared support, ADT identity, Pi identity, Universe scaffolding,
+higher identity, artifact roots, and forgery checks. The artifact shell matrix
+was not split because its existing single entry point already expresses the
+ordered wire-format workflow more clearly than sourced shell fragments would.
+
+All sixteen integration entry points pass and the generated v70 identity root
+remains byte-identical to the baseline.
 
 Exit gate: no individual audit source owns unrelated theory areas, while the
 same complete regression matrix remains available through stable entry points.
@@ -672,7 +684,7 @@ Stop and revise this plan if any phase requires:
 | L4 `ast` decomposition | complete | L3 | frontend/graph/artifact ownership; 16 tests; identical v70 bytes |
 | L5 kernel decomposition | complete | L4 | owner source partitions and direct headers; 16 tests; identical v70 bytes and symbol delta |
 | L6 identity decomposition | complete | L5 | relation/object/artifact partitions and direct headers; 16 tests; identical v70 bytes and symbols |
-| L7 audit decomposition | pending | L6 | stable complete test entry points |
+| L7 audit decomposition | complete | L6 | ordered fixture partitions; stable complete entry points; 16 tests; identical v70 bytes |
 | L8 documentation/dead-path audit | pending | L7 | no stale paths or umbrella ownership |
 | L9 final equivalence audit | pending | L8 | full suite, sanitizers, ABI/schema/artifact comparison, commits |
 
@@ -691,7 +703,7 @@ only net lines.
 | L4 | pending | | | | | | |
 | L5 | pending commit | | | | `typing.c`, `judgement.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
 | L6 | pending commit | | | | `hott.c`, `hott.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L7 | pending | | | | | | |
+| L7 | pending commit | | | | `hott_goal_check.c` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
 | L8 | pending | | | | | | |
 | L9 | pending | | | | | | |
 

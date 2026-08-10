@@ -29,7 +29,7 @@ fi
 
 prototype_compile c11 werror hott \
 	/tmp/a-program-hott-goal-check \
-	src/prototype/tests/checks/hott_goal_check.c
+	src/prototype/tests/checks/hott/main.c
 
 /tmp/a-program-hott-goal-check
 

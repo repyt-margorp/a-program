@@ -1,0 +1,1596 @@
+#include "a_program/frontend/lowering.h"
+#include "a_program/identity/types.h"
+#include "a_program/identity/telescope_action.h"
+#include "a_program/identity/context_bridge.h"
+#include "a_program/identity/relation_action.h"
+#include "a_program/identity/action_certificate.h"
+#include "a_program/identity/identity_computation.h"
+#include "a_program/identity/object_term_action.h"
+#include "a_program/identity/action_execution.h"
+#include "calculus.h"
+
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define TERM_CAPACITY 8192
+#define CLAIM_CAPACITY 2048
+#define CONTEXT_CAPACITY 1024
+#define SUBSTITUTION_CAPACITY 2048
+#define OPERATION_CAPACITY 64
+#define GOAL_CAPACITY 64
+#define CANDIDATE_CAPACITY 128
+#define PREMISE_CAPACITY 128
+
+static struct prototype_term terms[TERM_CAPACITY];
+static struct prototype_match_case cases[256];
+static int case_labels[256];
+static struct prototype_case_binder case_binders[256];
+static struct prototype_ih_scope ih_scopes[64];
+static struct prototype_type_declaration type_declarations[16];
+static struct prototype_type_constructor_declaration constructors[32];
+static struct prototype_type_parameter_declaration parameters[8];
+static uint32_t field_types[64];
+static struct prototype_type_expr type_exprs[32];
+static struct prototype_context contexts[CONTEXT_CAPACITY];
+static struct prototype_substitution substitutions[SUBSTITUTION_CAPACITY];
+static struct prototype_judgement_proposition propositions[CLAIM_CAPACITY];
+static struct prototype_judgement_derivation_candidate derivation_candidates[CLAIM_CAPACITY];
+static struct prototype_judgement_claim claims[CLAIM_CAPACITY];
+static struct prototype_judgement_derivation derivations[CLAIM_CAPACITY];
+static struct prototype_judgement_candidate_premise
+	judgement_candidate_premises[
+		CLAIM_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	];
+static struct prototype_judgement_premise_edge judgement_accepted_premises[
+	CLAIM_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+];
+static struct prototype_cwf_certificate cwf_certificates[1024];
+static struct prototype_operation_node operations[OPERATION_CAPACITY];
+static struct prototype_operation_match_case operation_cases[128];
+static struct prototype_hott_bridge bridges[128];
+static struct prototype_hott_bridge_certificate bridge_certificates[128];
+static struct prototype_hott_relation_goal goals[GOAL_CAPACITY];
+static struct prototype_hott_candidate candidates[CANDIDATE_CAPACITY];
+static struct prototype_hott_claim_premise claim_premises[PREMISE_CAPACITY];
+static struct prototype_hott_child_edge child_edges[PREMISE_CAPACITY];
+static struct prototype_hott_conversion_premise conversion_premises[PREMISE_CAPACITY];
+static struct prototype_hott_context_certificate_premise
+	context_certificate_premises[PREMISE_CAPACITY];
+static struct prototype_hott_substitution_certificate_premise
+	substitution_certificate_premises[PREMISE_CAPACITY];
+static struct prototype_hott_work_item work_items[GOAL_CAPACITY];
+static struct prototype_hott_residual_obligation residuals[32];
+static struct prototype_hott_action_request action_requests[256];
+static struct prototype_hott_action_certificate action_certificates[256];
+static struct prototype_hott_action_result action_results[256];
+
+static int write_identity_root_artifact(
+	const char* path,
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_term_db* term_db,
+	const struct prototype_type_declaration_db* type_db,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_context_db* context_db,
+	const struct prototype_substitution_db* substitution_db,
+	const struct prototype_operation_graph* operation_graph
+) {
+	if (!path || !interface || !term_db || !type_db || !judgement || !context_db ||
+		!substitution_db || !operation_graph) {
+		return -1;
+	}
+	int symbol_ids[1024];
+	uint32_t symbol_hashes[1024];
+	char* symbol_strings[512];
+	struct symbol_table symbols;
+	symbol_table_init(
+		&symbols,
+		symbol_ids,
+		symbol_hashes,
+		1024,
+		symbol_strings,
+		512
+	);
+	for (uint32_t i = 0; i <= 400; ++i) {
+		char name[32];
+		int length = snprintf(name, sizeof(name), "fixture_%u", i);
+		if (length < 0 || (size_t)length >= sizeof(name) ||
+			symbol_intern(&symbols, name, (size_t)length) != (int)i) {
+			symbol_table_free(&symbols);
+			return -1;
+		}
+	}
+	struct prototype_universe_node universe_nodes[1];
+	struct prototype_universe_edge universe_edges[1];
+	struct prototype_universe_level universe_levels[1];
+	struct prototype_universe_constraint universe_constraints[1];
+	struct prototype_universe_db universe;
+	prototype_universe_db_init(
+		&universe,
+		universe_nodes,
+		1,
+		universe_edges,
+		1,
+		universe_levels,
+		1,
+		universe_constraints,
+		1
+	);
+	universe.solved = 1;
+	struct prototype_compile_metadata metadata;
+	prototype_compile_metadata_init(
+		&metadata,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0,
+		NULL,
+		0
+	);
+	metadata.contexts = *context_db;
+	metadata.substitutions = *substitution_db;
+	metadata.operations = operation_graph->operations;
+	metadata.operation_count = operation_graph->operation_count;
+	metadata.operation_capacity = operation_graph->operation_capacity;
+	metadata.operation_cases = operation_graph->cases;
+	metadata.operation_case_count = operation_graph->case_count;
+	metadata.operation_case_capacity = operation_graph->case_capacity;
+	metadata.operation_fold_clauses = operation_graph->fold_clauses;
+	metadata.operation_fold_clause_count = operation_graph->fold_clause_count;
+	metadata.operation_fold_clause_capacity = operation_graph->fold_clause_capacity;
+	FILE* stream = fopen(path, "w");
+	if (!stream) {
+		symbol_table_free(&symbols);
+		return -1;
+	}
+	int status = prototype_artifact_write_text(
+		stream,
+		&symbols,
+		interface,
+		term_db,
+		type_db,
+		judgement,
+		&universe,
+		NULL,
+		&metadata
+	);
+	long written_size = ftell(stream);
+	if (status != 0) {
+		fprintf(
+			stderr,
+			"identity artifact writer failed: status=%d size=%ld error=%d\n",
+			status,
+			written_size,
+			ferror(stream)
+		);
+	}
+	if (status == 0 && (ferror(stream) || fflush(stream) != 0 || written_size <= 0)) {
+		fprintf(
+			stderr,
+			"identity artifact writer produced no output: status=%d size=%ld error=%d\n",
+			status,
+			written_size,
+			ferror(stream)
+		);
+		status = -1;
+	}
+	if (fclose(stream) != 0) {
+		status = -1;
+	}
+	symbol_table_free(&symbols);
+	return status;
+}
+
+static int fixture_proposition_equal(
+	const struct prototype_judgement_proposition* left,
+	const struct prototype_judgement_proposition* right
+) {
+	return left->kind == right->kind &&
+		left->authority_kind == right->authority_kind &&
+		left->authority_id == right->authority_id &&
+		left->context_id == right->context_id &&
+		left->operation_id == right->operation_id &&
+		left->subject == right->subject &&
+		left->classifier == right->classifier;
+}
+
+static uint32_t fixture_add_claim(
+	struct prototype_judgement_db* judgement,
+	int kind,
+	int authority_kind,
+	uint32_t authority_id,
+	uint32_t context_id,
+	uint32_t operation_id,
+	uint32_t subject,
+	uint32_t classifier
+) {
+	if (!judgement || !judgement->propositions || !judgement->claims) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	struct prototype_judgement_proposition proposition = {
+		.kind = kind,
+		.authority_kind = authority_kind,
+		.authority_id = authority_id,
+		.context_id = context_id,
+		.operation_id = operation_id,
+		.subject = subject,
+		.classifier = classifier
+	};
+	uint32_t proposition_id = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < judgement->proposition_count; ++i) {
+		if (fixture_proposition_equal(&judgement->propositions[i], &proposition)) {
+			proposition_id = i;
+			break;
+		}
+	}
+	if (proposition_id == PROTOTYPE_INVALID_ID) {
+		if (judgement->proposition_count >= judgement->proposition_capacity) {
+			return PROTOTYPE_INVALID_ID;
+		}
+		proposition_id = (uint32_t)judgement->proposition_count++;
+		judgement->propositions[proposition_id] = proposition;
+	}
+	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
+		if (judgement->claims[i].proposition_id == proposition_id) {
+			return i;
+		}
+	}
+	if (judgement->claim_count >= judgement->claim_capacity) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t id = (uint32_t)judgement->claim_count++;
+	judgement->claims[id] = (struct prototype_judgement_claim) {
+		.proposition_id = proposition_id,
+		.closure_rank = 0
+	};
+	if (prototype_judgement_db_rebuild_index(judgement) != 0) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	return id;
+}
+
+static struct prototype_judgement_derivation fixture_derivation(
+	int proof_kind,
+	uint32_t conclusion_claim_id
+) {
+	struct prototype_judgement_derivation derivation;
+	memset(&derivation, 0, sizeof(derivation));
+	derivation.proof_kind = proof_kind;
+	derivation.conclusion_claim_id = conclusion_claim_id;
+	memset(&derivation.rule_data, 0xff, sizeof(derivation.rule_data));
+	derivation.semantic_action_kind =
+		PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
+	derivation.semantic_action_id = PROTOTYPE_INVALID_ID;
+	derivation.hash_next = PROTOTYPE_INVALID_ID;
+	return derivation;
+}
+
+static struct prototype_judgement_premise_edge fixture_premise(
+	uint32_t claim_id
+) {
+	return (struct prototype_judgement_premise_edge) {
+		.claim_id = claim_id,
+		.scoped_proposition_id = PROTOTYPE_INVALID_ID,
+		.semantic_action_kind = PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID,
+		.semantic_action_id = PROTOTYPE_INVALID_ID
+	};
+}
+
+static uint32_t add_operation(
+	struct prototype_operation_graph* graph,
+	uint32_t context_id,
+	uint32_t core,
+	uint32_t classifier,
+	int polarity
+) {
+	uint32_t id = (uint32_t)graph->operation_count++;
+	graph->operations[id] = (struct prototype_operation_node){
+		.tag = PROTOTYPE_OPERATION_ATOM,
+		.polarity = polarity,
+		.context_id = context_id,
+		.core_term = core,
+		.known_classifier = classifier,
+		.classifier = classifier,
+		.classifier_variable = PROTOTYPE_INVALID_ID,
+		.source_ast = PROTOTYPE_INVALID_ID,
+		.referenced_ast_binder_id = PROTOTYPE_INVALID_ID,
+		.binding_id = PROTOTYPE_INVALID_ID,
+		.function = PROTOTYPE_INVALID_ID,
+		.argument = PROTOTYPE_INVALID_ID,
+		.body = PROTOTYPE_INVALID_ID,
+		.scrutinee = PROTOTYPE_INVALID_ID,
+		.binder_classifier = PROTOTYPE_INVALID_ID,
+		.fold_return_ast_binder_id = PROTOTYPE_INVALID_ID,
+		.fold_return_binder_id = PROTOTYPE_INVALID_ID,
+		.fold_return_operation = PROTOTYPE_INVALID_ID
+	};
+	return id;
+}
+
+static int apply_pure_thunk_function(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t function_value,
+	uint32_t argument,
+	uint32_t* p_result_value
+) {
+	uint32_t force;
+	uint32_t app;
+	uint32_t normalized;
+	if (!terms || !type_declarations || !p_result_value ||
+		prototype_term_force(terms, function_value, &force) != 0 ||
+		prototype_term_app(terms, force, argument, &app) != 0 ||
+		prototype_term_normalize_complete_with_profile(
+			terms,
+			type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
+			app,
+			&normalized
+		) != 0 || normalized >= terms->term_count ||
+		terms->terms[normalized].tag != PROTOTYPE_TERM_RETURN) {
+		return -1;
+	}
+	*p_result_value = terms->terms[normalized].as.return_term.value;
+	return 0;
+}
+
+static int check_bool_function_extensional_identity(
+	struct prototype_term_db* term_db,
+	struct prototype_type_declaration_db* type_db,
+	struct prototype_context_db* context_db,
+	struct prototype_substitution_db* substitution_db,
+	struct prototype_judgement_db* judgement,
+	struct prototype_operation_graph* operation_graph,
+	uint32_t empty_context,
+	uint32_t universe,
+	uint32_t bool_type,
+	uint32_t bool_false,
+	uint32_t bool_true,
+	uint32_t bool_identity_type_id,
+	uint32_t thunk_bool_identity_type_id,
+	uint32_t thunk_bool_identity_former,
+	uint32_t function_type,
+	const struct prototype_hott_identity_type_computation_certificate* certificate,
+	uint32_t* p_identity_family_claim,
+	uint32_t* p_witness_term,
+	uint32_t* p_witness_claim
+) {
+	if (!term_db || !type_db || !context_db || !substitution_db || !judgement ||
+		!operation_graph || !certificate || !p_identity_family_claim ||
+		!p_witness_term || !p_witness_claim) {
+		return 1;
+	}
+	uint32_t left_binder = prototype_term_new_binding(term_db);
+	uint32_t right_binder = prototype_term_new_binding(term_db);
+	uint32_t left_var;
+	uint32_t right_var;
+	uint32_t left_return;
+	uint32_t false_return;
+	uint32_t true_return;
+	uint32_t left_lambda;
+	uint32_t left_value;
+	uint32_t right_match;
+	uint32_t right_lambda;
+	uint32_t right_value;
+	if (left_binder == PROTOTYPE_INVALID_ID ||
+		right_binder == PROTOTYPE_INVALID_ID || prototype_term_var(
+			term_db, left_binder, &left_var
+		) != 0 || prototype_term_var(
+			term_db, right_binder, &right_var
+		) != 0 || prototype_term_return(
+			term_db, left_var, &left_return
+		) != 0 || prototype_term_return(
+			term_db, bool_false, &false_return
+		) != 0 || prototype_term_return(
+			term_db, bool_true, &true_return
+		) != 0 || prototype_term_lambda(
+			term_db, left_binder, left_return, &left_lambda
+		) != 0 || prototype_term_thunk(
+			term_db, left_lambda, &left_value
+		) != 0) {
+		return 2;
+	}
+	struct prototype_match_case_input right_cases[2] = {
+		{
+			.case_label_symbol_id = -1,
+			.constructor_owner = bool_type,
+			.constructor_id = 0,
+			.binders = NULL,
+			.binder_count = 0,
+			.body = false_return
+		},
+		{
+			.case_label_symbol_id = -1,
+			.constructor_owner = bool_type,
+			.constructor_id = 1,
+			.binders = NULL,
+			.binder_count = 0,
+			.body = true_return
+		}
+	};
+	if (prototype_term_match(
+			term_db, right_var, right_cases, 2, &right_match
+		) != 0 || prototype_term_lambda(
+			term_db, right_binder, right_match, &right_lambda
+		) != 0 || prototype_term_thunk(
+			term_db, right_lambda, &right_value
+		) != 0) {
+		return 2;
+	}
+	struct prototype_term_conversion_result conversion;
+	if (prototype_term_compare_for_conversion(
+			term_db,
+			type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			left_value,
+			right_value,
+			64,
+			&conversion
+		) != 0 || conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		return 3;
+	}
+	uint32_t concrete_identity;
+	if (prototype_term_graph_substitute_bound_var(
+			term_db,
+			type_db,
+			certificate->identity_type_term_id,
+			certificate->left_endpoint_binding_id,
+			left_value,
+			&concrete_identity
+		) != 0 || prototype_term_graph_substitute_bound_var(
+			term_db,
+			type_db,
+			concrete_identity,
+			certificate->right_endpoint_binding_id,
+			right_value,
+			&concrete_identity
+		) != 0 || concrete_identity >= term_db->term_count ||
+		term_db->terms[concrete_identity].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		return 4;
+	}
+	uint32_t pi0 = term_db->terms[concrete_identity].as.thunk_type.computation;
+	uint32_t x0_binding;
+	uint32_t x0_codomain;
+	if (pi0 >= term_db->term_count || term_db->terms[pi0].tag != PROTOTYPE_TERM_PI ||
+		prototype_term_pure_family_parts(
+			term_db,
+			term_db->terms[pi0].as.pi.codomain_family,
+			&x0_binding,
+			&x0_codomain
+		) != 0 || x0_binding != certificate->pointwise_left_input_binding_id ||
+		x0_codomain >= term_db->term_count ||
+		term_db->terms[x0_codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		return 5;
+	}
+	uint32_t thunk1 = term_db->terms[x0_codomain].as.computation_type.result;
+	uint32_t pi1 = thunk1 < term_db->term_count &&
+		term_db->terms[thunk1].tag == PROTOTYPE_TERM_THUNK_TYPE ?
+		term_db->terms[thunk1].as.thunk_type.computation : PROTOTYPE_INVALID_ID;
+	uint32_t x1_binding;
+	uint32_t x1_codomain;
+	if (pi1 >= term_db->term_count || term_db->terms[pi1].tag != PROTOTYPE_TERM_PI ||
+		prototype_term_pure_family_parts(
+			term_db,
+			term_db->terms[pi1].as.pi.codomain_family,
+			&x1_binding,
+			&x1_codomain
+		) != 0 || x1_binding != certificate->pointwise_right_input_binding_id ||
+		x1_codomain >= term_db->term_count ||
+		term_db->terms[x1_codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		return 6;
+	}
+	uint32_t thunk2 = term_db->terms[x1_codomain].as.computation_type.result;
+	uint32_t pi2 = thunk2 < term_db->term_count &&
+		term_db->terms[thunk2].tag == PROTOTYPE_TERM_THUNK_TYPE ?
+		term_db->terms[thunk2].as.thunk_type.computation : PROTOTYPE_INVALID_ID;
+	uint32_t xr_binding;
+	uint32_t xr_codomain;
+	if (pi2 >= term_db->term_count || term_db->terms[pi2].tag != PROTOTYPE_TERM_PI ||
+		prototype_term_pure_family_parts(
+			term_db,
+			term_db->terms[pi2].as.pi.codomain_family,
+			&xr_binding,
+			&xr_codomain
+		) != 0 || xr_binding != certificate->pointwise_input_identity_binding_id ||
+		xr_codomain >= term_db->term_count ||
+		term_db->terms[xr_codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		return 7;
+	}
+	uint32_t x0;
+	uint32_t x1;
+	uint32_t xr;
+	uint32_t x0_context;
+	uint32_t x1_context;
+	uint32_t xr_context;
+	uint32_t input_identity = term_db->terms[pi2].as.pi.domain;
+	if (prototype_term_var(term_db, x0_binding, &x0) != 0 ||
+		prototype_term_var(term_db, x1_binding, &x1) != 0 ||
+		prototype_term_var(term_db, xr_binding, &xr) != 0 ||
+		prototype_context_extend(
+			context_db, empty_context, x0_binding, bool_type,
+			PROTOTYPE_INVALID_ID, &x0_context
+		) != 0 || prototype_context_extend(
+			context_db, x0_context, x1_binding, bool_type,
+			PROTOTYPE_INVALID_ID, &x1_context
+		) != 0 || prototype_context_extend(
+			context_db, x1_context, xr_binding, input_identity,
+			PROTOTYPE_INVALID_ID, &xr_context
+		) != 0) {
+		return 8;
+	}
+	uint32_t false_identity_arguments[2] = { bool_false, bool_false };
+	uint32_t true_identity_arguments[2] = { bool_true, bool_true };
+	uint32_t false_identity;
+	uint32_t true_identity;
+	uint32_t false_identity_witness;
+	uint32_t true_identity_witness;
+	uint32_t false_thunk;
+	uint32_t true_thunk;
+	uint32_t false_computation_identity;
+	uint32_t true_computation_identity;
+	uint32_t false_computation_identity_arguments[2];
+	uint32_t true_computation_identity_arguments[2];
+	uint32_t false_computation_witness;
+	uint32_t true_computation_witness;
+	uint32_t false_witness_spine[4];
+	uint32_t true_witness_spine[4];
+	uint32_t false_witness_return;
+	uint32_t true_witness_return;
+	uint32_t false_branch_computation_identity;
+	uint32_t true_branch_computation_identity;
+	if (prototype_term_type_instance_make(
+			term_db, type_db, bool_identity_type_id,
+			false_identity_arguments, 2, &false_identity
+		) != 0 || prototype_term_type_instance_make(
+			term_db, type_db, bool_identity_type_id,
+			true_identity_arguments, 2, &true_identity
+		) != 0 || prototype_term_constructor(
+			term_db, false_identity, 0, &false_identity_witness
+		) != 0 || prototype_term_constructor(
+			term_db, true_identity, 1, &true_identity_witness
+		) != 0 || prototype_term_thunk(
+			term_db, false_return, &false_thunk
+		) != 0 || prototype_term_thunk(
+			term_db, true_return, &true_thunk
+		) != 0) {
+		return 9;
+	}
+	false_computation_identity_arguments[0] = false_thunk;
+	false_computation_identity_arguments[1] = false_thunk;
+	true_computation_identity_arguments[0] = true_thunk;
+	true_computation_identity_arguments[1] = true_thunk;
+	if (prototype_term_type_instance_make(
+			term_db, type_db, thunk_bool_identity_type_id,
+			false_computation_identity_arguments, 2,
+			&false_computation_identity
+		) != 0 || prototype_term_type_instance_make(
+			term_db, type_db, thunk_bool_identity_type_id,
+			true_computation_identity_arguments, 2,
+			&true_computation_identity
+		) != 0 || prototype_term_constructor(
+			term_db, thunk_bool_identity_former, 0, &false_witness_spine[0]
+		) != 0 || prototype_term_app(
+			term_db, false_witness_spine[0], bool_false,
+			&false_witness_spine[1]
+		) != 0 || prototype_term_app(
+			term_db, false_witness_spine[1], bool_false,
+			&false_witness_spine[2]
+		) != 0 || prototype_term_app(
+			term_db, false_witness_spine[2], false_identity_witness,
+			&false_witness_spine[3]
+		) != 0 || prototype_term_constructor(
+			term_db, thunk_bool_identity_former, 0, &true_witness_spine[0]
+		) != 0 || prototype_term_app(
+			term_db, true_witness_spine[0], bool_true,
+			&true_witness_spine[1]
+		) != 0 || prototype_term_app(
+			term_db, true_witness_spine[1], bool_true,
+			&true_witness_spine[2]
+		) != 0 || prototype_term_app(
+			term_db, true_witness_spine[2], true_identity_witness,
+			&true_witness_spine[3]
+		) != 0) {
+		return 10;
+	}
+	false_computation_witness = false_witness_spine[3];
+	true_computation_witness = true_witness_spine[3];
+	if (prototype_term_return(
+			term_db, false_computation_witness, &false_witness_return
+		) != 0 || prototype_term_return(
+			term_db, true_computation_witness, &true_witness_return
+		) != 0) {
+		return 10;
+	}
+	if (prototype_term_computation_type(
+			term_db,
+			term_db->terms[xr_codomain].as.computation_type.label,
+			false_computation_identity,
+			&false_branch_computation_identity
+		) != 0 || prototype_term_computation_type(
+			term_db,
+			term_db->terms[xr_codomain].as.computation_type.label,
+			true_computation_identity,
+			&true_branch_computation_identity
+		) != 0) {
+		return 10;
+	}
+	struct prototype_match_case_input proof_cases[2] = {
+		{
+			.case_label_symbol_id = -1,
+			.constructor_owner = input_identity,
+			.constructor_id = 0,
+			.binders = NULL,
+			.binder_count = 0,
+			.body = false_witness_return
+		},
+		{
+			.case_label_symbol_id = -1,
+			.constructor_owner = input_identity,
+			.constructor_id = 1,
+			.binders = NULL,
+			.binder_count = 0,
+			.body = true_witness_return
+		}
+	};
+	uint32_t proof_endpoint;
+	uint32_t proof_return2;
+	uint32_t proof_lambda2;
+	uint32_t proof_thunk2;
+	uint32_t proof_return1;
+	uint32_t proof_lambda1;
+	uint32_t proof_thunk1;
+	uint32_t proof_return0;
+	uint32_t proof_lambda0;
+	uint32_t proof_value;
+	if (prototype_term_match(
+			term_db, xr, proof_cases, 2, &proof_endpoint
+		) != 0) {
+		return 11;
+	}
+	proof_return2 = proof_endpoint;
+	if (prototype_term_lambda(
+			term_db, xr_binding, proof_return2, &proof_lambda2
+		) != 0 || prototype_term_thunk(
+			term_db, proof_lambda2, &proof_thunk2
+		) != 0 || prototype_term_return(
+			term_db, proof_thunk2, &proof_return1
+		) != 0 || prototype_term_lambda(
+			term_db, x1_binding, proof_return1, &proof_lambda1
+		) != 0 || prototype_term_thunk(
+			term_db, proof_lambda1, &proof_thunk1
+		) != 0 || prototype_term_return(
+			term_db, proof_thunk1, &proof_return0
+		) != 0 || prototype_term_lambda(
+			term_db, x0_binding, proof_return0, &proof_lambda0
+		) != 0 || prototype_term_thunk(
+			term_db, proof_lambda0, &proof_value
+		) != 0) {
+		return 11;
+	}
+	uint32_t bool_type_claim;
+	uint32_t function_type_claim;
+	uint32_t concrete_identity_claim;
+	if (prototype_judgement_add_type_formation_claim(
+		judgement, term_db, type_db, empty_context, bool_type, universe,
+			&bool_type_claim
+		) != 0 || prototype_judgement_add_structural_type_formation_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			empty_context,
+			function_type,
+			universe,
+			&function_type_claim
+		) != 0 || prototype_judgement_add_structural_type_formation_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			empty_context,
+			concrete_identity,
+			universe,
+			&concrete_identity_claim
+		) != 0) {
+		return 12;
+	}
+	uint32_t false_claim;
+	uint32_t true_claim;
+	uint32_t false_identity_claim;
+	uint32_t true_identity_claim;
+	if (prototype_judgement_add_constructor_intro_claim(
+			judgement, term_db, type_db, empty_context, bool_false, bool_type,
+			&false_claim
+		) != 0 || prototype_judgement_add_constructor_intro_claim(
+			judgement, term_db, type_db, empty_context, bool_true, bool_type,
+			&true_claim
+		) != 0 || prototype_judgement_add_constructor_intro_claim(
+			judgement, term_db, type_db, empty_context, false_identity_witness,
+			false_identity, &false_identity_claim
+		) != 0 || prototype_judgement_add_constructor_intro_claim(
+			judgement, term_db, type_db, empty_context, true_identity_witness,
+			true_identity, &true_identity_claim
+		) != 0) {
+		return 13;
+	}
+	uint32_t projection;
+	if (prototype_substitution_projection_path(
+			substitution_db, context_db, xr_context, empty_context, &projection
+		) != 0) {
+		return 14;
+	}
+	uint32_t false_in_context;
+	uint32_t true_in_context;
+	uint32_t false_identity_in_context;
+	uint32_t true_identity_in_context;
+	if (prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			false_claim, projection, &false_in_context
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			true_claim, projection, &true_in_context
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			false_identity_claim, projection, &false_identity_in_context
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			true_identity_claim, projection, &true_identity_in_context
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			judgement, term_db, context_db, x0_context, x0_binding, bool_type,
+			&(uint32_t){0}
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			judgement, term_db, context_db, x1_context, x1_binding, bool_type,
+			&(uint32_t){0}
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			judgement, term_db, context_db, xr_context, xr_binding, input_identity,
+			&(uint32_t){0}
+		) != 0) {
+		return 15;
+	}
+	if (operation_graph->operation_count > operation_graph->operation_capacity ||
+		operation_graph->operation_capacity - operation_graph->operation_count < 16 ||
+		operation_graph->case_count > operation_graph->case_capacity ||
+		operation_graph->case_capacity - operation_graph->case_count < 2) {
+		return 27;
+	}
+	uint32_t scrutinee_operation = add_operation(
+		operation_graph, xr_context, xr, input_identity,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t false_argument_operation = add_operation(
+		operation_graph, xr_context, bool_false, bool_type,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t false_identity_argument_operation = add_operation(
+		operation_graph, xr_context, false_identity_witness, false_identity,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t false_constructor_operation = add_operation(
+		operation_graph, xr_context, false_witness_spine[0], PROTOTYPE_INVALID_ID,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t false_app1_operation = add_operation(
+		operation_graph, xr_context, false_witness_spine[1], PROTOTYPE_INVALID_ID,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t false_app2_operation = add_operation(
+		operation_graph, xr_context, false_witness_spine[2], PROTOTYPE_INVALID_ID,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t false_witness_operation = add_operation(
+		operation_graph, xr_context, false_computation_witness,
+		false_computation_identity, PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t false_operation = add_operation(
+		operation_graph, xr_context, false_witness_return,
+		false_branch_computation_identity, PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+	);
+	uint32_t true_argument_operation = add_operation(
+		operation_graph, xr_context, bool_true, bool_type,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t true_identity_argument_operation = add_operation(
+		operation_graph, xr_context, true_identity_witness, true_identity,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t true_constructor_operation = add_operation(
+		operation_graph, xr_context, true_witness_spine[0], PROTOTYPE_INVALID_ID,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t true_app1_operation = add_operation(
+		operation_graph, xr_context, true_witness_spine[1], PROTOTYPE_INVALID_ID,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t true_app2_operation = add_operation(
+		operation_graph, xr_context, true_witness_spine[2], PROTOTYPE_INVALID_ID,
+		PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t true_witness_operation = add_operation(
+		operation_graph, xr_context, true_computation_witness,
+		true_computation_identity, PROTOTYPE_OPERATION_POLARITY_VALUE
+	);
+	uint32_t true_operation = add_operation(
+		operation_graph, xr_context, true_witness_return,
+		true_branch_computation_identity, PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+	);
+	uint32_t proof_operation = add_operation(
+		operation_graph, xr_context, proof_endpoint, PROTOTYPE_INVALID_ID,
+		PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+	);
+	uint32_t first_proof_case = operation_graph->case_count;
+	operation_graph->operations[scrutinee_operation].tag = PROTOTYPE_OPERATION_VAR;
+	operation_graph->operations[false_argument_operation].tag =
+		PROTOTYPE_OPERATION_CONSTRUCTOR;
+	operation_graph->operations[false_identity_argument_operation].tag =
+		PROTOTYPE_OPERATION_CONSTRUCTOR;
+	operation_graph->operations[false_constructor_operation].tag =
+		PROTOTYPE_OPERATION_ATOM;
+	operation_graph->operations[false_app1_operation].tag = PROTOTYPE_OPERATION_APP;
+	operation_graph->operations[false_app1_operation].application_role =
+		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
+	operation_graph->operations[false_app1_operation].function =
+		false_constructor_operation;
+	operation_graph->operations[false_app1_operation].argument =
+		false_argument_operation;
+	operation_graph->operations[false_app2_operation].tag = PROTOTYPE_OPERATION_APP;
+	operation_graph->operations[false_app2_operation].application_role =
+		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
+	operation_graph->operations[false_app2_operation].function = false_app1_operation;
+	operation_graph->operations[false_app2_operation].argument =
+		false_argument_operation;
+	operation_graph->operations[false_witness_operation].tag = PROTOTYPE_OPERATION_APP;
+	operation_graph->operations[false_witness_operation].application_role =
+		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
+	operation_graph->operations[false_witness_operation].function = false_app2_operation;
+	operation_graph->operations[false_witness_operation].argument =
+		false_identity_argument_operation;
+	operation_graph->operations[false_operation].tag = PROTOTYPE_OPERATION_RETURN;
+	operation_graph->operations[false_operation].argument = false_witness_operation;
+	operation_graph->operations[true_argument_operation].tag =
+		PROTOTYPE_OPERATION_CONSTRUCTOR;
+	operation_graph->operations[true_identity_argument_operation].tag =
+		PROTOTYPE_OPERATION_CONSTRUCTOR;
+	operation_graph->operations[true_constructor_operation].tag =
+		PROTOTYPE_OPERATION_ATOM;
+	operation_graph->operations[true_app1_operation].tag = PROTOTYPE_OPERATION_APP;
+	operation_graph->operations[true_app1_operation].application_role =
+		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
+	operation_graph->operations[true_app1_operation].function = true_constructor_operation;
+	operation_graph->operations[true_app1_operation].argument = true_argument_operation;
+	operation_graph->operations[true_app2_operation].tag = PROTOTYPE_OPERATION_APP;
+	operation_graph->operations[true_app2_operation].application_role =
+		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
+	operation_graph->operations[true_app2_operation].function = true_app1_operation;
+	operation_graph->operations[true_app2_operation].argument = true_argument_operation;
+	operation_graph->operations[true_witness_operation].tag = PROTOTYPE_OPERATION_APP;
+	operation_graph->operations[true_witness_operation].application_role =
+		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
+	operation_graph->operations[true_witness_operation].function = true_app2_operation;
+	operation_graph->operations[true_witness_operation].argument =
+		true_identity_argument_operation;
+	operation_graph->operations[true_operation].tag = PROTOTYPE_OPERATION_RETURN;
+	operation_graph->operations[true_operation].argument = true_witness_operation;
+	operation_graph->operations[proof_operation].tag = PROTOTYPE_OPERATION_MATCH;
+	operation_graph->operations[proof_operation].scrutinee = scrutinee_operation;
+	operation_graph->operations[proof_operation].first_case = first_proof_case;
+	operation_graph->operations[proof_operation].case_count = 2;
+	operation_graph->cases[first_proof_case] = (struct prototype_operation_match_case) {
+		.body_operation = false_operation,
+		.context_id = xr_context,
+		.constructor_owner = input_identity,
+		.constructor_id = 0,
+		.case_label_symbol_id = -1,
+		.binder_count = 0
+	};
+	operation_graph->cases[first_proof_case + 1] =
+		(struct prototype_operation_match_case) {
+		.body_operation = true_operation,
+		.context_id = xr_context,
+		.constructor_owner = input_identity,
+		.constructor_id = 1,
+		.case_label_symbol_id = -1,
+		.binder_count = 0
+	};
+	operation_graph->case_count += 2;
+	struct prototype_judgement_proposition delta_propositions[256];
+	struct prototype_judgement_derivation_candidate delta_candidates[256];
+	struct prototype_judgement_candidate_premise delta_premises[
+		256 * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	];
+	struct prototype_judgement_match_motive_result delta_motives[64];
+	struct prototype_judgement_computation_constraint delta_constraints[64];
+	struct prototype_judgement_effect_row_constraint delta_effect_rows[64];
+	struct prototype_judgement_delta delta;
+	prototype_judgement_delta_init(
+		&delta,
+		judgement,
+		delta_propositions,
+		delta_candidates,
+		256,
+		delta_premises,
+		256 * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		delta_motives,
+		64,
+		delta_constraints,
+		64,
+		delta_effect_rows,
+		64
+	);
+	prototype_judgement_delta_set_context_store(
+		&delta, context_db, substitution_db
+	);
+	prototype_judgement_delta_set_operation_store(
+		&delta,
+		operation_graph->operations,
+		operation_graph->operation_count,
+		operation_graph->cases,
+		operation_graph->case_count
+	);
+	prototype_judgement_delta_set_context(&delta, xr_context);
+	const struct prototype_type_declaration* thunk_identity_declaration =
+		&type_db->type_declarations[thunk_bool_identity_type_id];
+	const struct prototype_type_constructor_declaration* thunk_identity_constructor =
+		&type_db->constructor_declarations[
+			thunk_identity_declaration->first_constructor
+		];
+	uint32_t false_app1_classifier;
+	uint32_t false_app2_classifier;
+	uint32_t true_app1_classifier;
+	uint32_t true_app2_classifier;
+	if (prototype_judgement_delta_app_elim_classifier(
+			&delta, term_db, type_db,
+			thunk_identity_constructor->curried_classifier_cache,
+			bool_false, bool_type, &false_app1_classifier
+		) != 0 || prototype_judgement_delta_app_elim_classifier(
+			&delta, term_db, type_db, false_app1_classifier,
+			bool_false, bool_type, &false_app2_classifier
+		) != 0 || prototype_judgement_delta_app_elim_classifier(
+			&delta, term_db, type_db,
+			thunk_identity_constructor->curried_classifier_cache,
+			bool_true, bool_type, &true_app1_classifier
+		) != 0 || prototype_judgement_delta_app_elim_classifier(
+			&delta, term_db, type_db, true_app1_classifier,
+			bool_true, bool_type, &true_app2_classifier
+		) != 0) {
+		return 15;
+	}
+	operation_graph->operations[false_constructor_operation].classifier =
+		thunk_identity_constructor->curried_classifier_cache;
+	operation_graph->operations[false_constructor_operation].known_classifier =
+		thunk_identity_constructor->curried_classifier_cache;
+	operation_graph->operations[false_app1_operation].classifier =
+		false_app1_classifier;
+	operation_graph->operations[false_app1_operation].known_classifier =
+		false_app1_classifier;
+	operation_graph->operations[false_app2_operation].classifier =
+		false_app2_classifier;
+	operation_graph->operations[false_app2_operation].known_classifier =
+		false_app2_classifier;
+	operation_graph->operations[true_constructor_operation].classifier =
+		thunk_identity_constructor->curried_classifier_cache;
+	operation_graph->operations[true_constructor_operation].known_classifier =
+		thunk_identity_constructor->curried_classifier_cache;
+	operation_graph->operations[true_app1_operation].classifier = true_app1_classifier;
+	operation_graph->operations[true_app1_operation].known_classifier =
+		true_app1_classifier;
+	operation_graph->operations[true_app2_operation].classifier = true_app2_classifier;
+	operation_graph->operations[true_app2_operation].known_classifier =
+		true_app2_classifier;
+	struct prototype_judgement_selected_evidence constructor_evidence[3];
+	struct prototype_judgement_selected_evidence branch_evidence;
+	uint32_t constructor_operations[3] = {
+		PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID
+	};
+	if (prototype_judgement_selected_evidence_from_claim(
+			judgement, false_in_context,
+			&constructor_evidence[0]
+		) != 0 || prototype_judgement_selected_evidence_from_claim(
+			judgement, false_in_context,
+			&constructor_evidence[1]
+		) != 0 || prototype_judgement_selected_evidence_from_claim(
+			judgement, false_identity_in_context, &constructor_evidence[2]
+		) != 0) {
+		return 16;
+	}
+	prototype_judgement_delta_set_operation(&delta, false_witness_operation);
+	if (prototype_judgement_delta_record_constructor_spine(
+			&delta, term_db, type_db, false_computation_witness,
+			false_computation_identity, constructor_operations,
+			constructor_evidence, 3
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, false_witness_operation, xr_context, false_computation_witness,
+			false_computation_identity, &branch_evidence
+		) != 0) {
+		return 16;
+	}
+	prototype_judgement_delta_set_operation(&delta, false_operation);
+	if (prototype_judgement_delta_record_cbpv_boundary(
+			&delta, term_db, type_db, false_witness_return,
+			false_witness_operation, &branch_evidence
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, false_operation, xr_context, false_witness_return,
+			false_branch_computation_identity, &branch_evidence
+		) != 0) {
+		return 16;
+	}
+	if (prototype_judgement_selected_evidence_from_claim(
+			judgement, true_in_context,
+			&constructor_evidence[0]
+		) != 0 || prototype_judgement_selected_evidence_from_claim(
+			judgement, true_in_context,
+			&constructor_evidence[1]
+		) != 0 || prototype_judgement_selected_evidence_from_claim(
+			judgement, true_identity_in_context, &constructor_evidence[2]
+		) != 0) {
+		return 17;
+	}
+	prototype_judgement_delta_set_operation(&delta, true_witness_operation);
+	if (prototype_judgement_delta_record_constructor_spine(
+			&delta, term_db, type_db, true_computation_witness,
+			true_computation_identity, constructor_operations,
+			constructor_evidence, 3
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, true_witness_operation, xr_context, true_computation_witness,
+			true_computation_identity, &branch_evidence
+		) != 0) {
+		return 17;
+	}
+	prototype_judgement_delta_set_operation(&delta, true_operation);
+	if (prototype_judgement_delta_record_cbpv_boundary(
+			&delta, term_db, type_db, true_witness_return,
+			true_witness_operation, &branch_evidence
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, true_operation, xr_context, true_witness_return,
+			true_branch_computation_identity, &branch_evidence
+		) != 0) {
+		return 17;
+	}
+	struct prototype_judgement_selected_evidence current;
+	uint32_t match_classifier;
+	prototype_judgement_delta_set_operation(&delta, proof_operation);
+	if (prototype_judgement_delta_build_constant_match_motive(
+			&delta,
+			term_db,
+			type_db,
+			xr,
+			input_identity,
+			xr_codomain,
+			term_db->terms[universe].as.universe_var.level_var,
+			&match_classifier
+		) != 0) {
+		return 18;
+	}
+	operation_graph->operations[proof_operation].classifier = match_classifier;
+	operation_graph->operations[proof_operation].known_classifier = match_classifier;
+	if (prototype_judgement_delta_expand_match(
+			&delta, term_db, type_db, proof_endpoint, match_classifier
+		) != 0) {
+		return 191;
+	}
+	if (prototype_judgement_delta_select_evidence(
+			&delta, proof_operation, xr_context, proof_endpoint, match_classifier,
+			&current
+		) != 0) {
+		return 192;
+	}
+	struct prototype_judgement_selected_evidence binder_evidence;
+	if (prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, xr_context, xr, input_identity,
+			&binder_evidence
+		) != 0) {
+		return 20;
+	}
+	prototype_judgement_delta_set_context(&delta, x1_context);
+	prototype_judgement_delta_set_operation(&delta, PROTOTYPE_INVALID_ID);
+	if (prototype_judgement_delta_record_lambda_intro(
+			&delta, term_db, type_db, PROTOTYPE_INVALID_ID, proof_lambda2, pi2,
+			xr, proof_return2, &binder_evidence, proof_operation, &current
+		) != 0) {
+		return 211;
+	}
+	if (prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, x1_context, proof_lambda2, pi2, &current
+		) != 0) {
+		return 212;
+	}
+	if (prototype_judgement_delta_record_cbpv_boundary(
+			&delta, term_db, type_db, proof_thunk2, PROTOTYPE_INVALID_ID, &current
+		) != 0) {
+		return 213;
+	}
+	if (prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, x1_context, proof_thunk2, thunk2, &current
+		) != 0) {
+		return 214;
+	}
+	if (prototype_judgement_delta_record_cbpv_boundary(
+			&delta, term_db, type_db, proof_return1, PROTOTYPE_INVALID_ID, &current
+		) != 0) {
+		return 215;
+	}
+	if (prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, x1_context, proof_return1, x1_codomain,
+			&current
+		) != 0) {
+		return 216;
+	}
+	if (prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, x1_context, x1, bool_type,
+			&binder_evidence
+		) != 0) {
+		return 217;
+	}
+	prototype_judgement_delta_set_context(&delta, x0_context);
+	if (prototype_judgement_delta_record_lambda_intro(
+			&delta, term_db, type_db, PROTOTYPE_INVALID_ID, proof_lambda1, pi1,
+			x1, proof_return1, &binder_evidence, PROTOTYPE_INVALID_ID, &current
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, x0_context, proof_lambda1, pi1, &current
+		) != 0 || prototype_judgement_delta_record_cbpv_boundary(
+			&delta, term_db, type_db, proof_thunk1, PROTOTYPE_INVALID_ID, &current
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, x0_context, proof_thunk1, thunk1, &current
+		) != 0 || prototype_judgement_delta_record_cbpv_boundary(
+			&delta, term_db, type_db, proof_return0, PROTOTYPE_INVALID_ID, &current
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, x0_context, proof_return0, x0_codomain,
+			&current
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, x0_context, x0, bool_type,
+			&binder_evidence
+		) != 0) {
+		return 22;
+	}
+	prototype_judgement_delta_set_context(&delta, empty_context);
+	if (prototype_judgement_delta_record_lambda_intro(
+			&delta, term_db, type_db, PROTOTYPE_INVALID_ID, proof_lambda0, pi0,
+			x0, proof_return0, &binder_evidence, PROTOTYPE_INVALID_ID, &current
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, empty_context, proof_lambda0, pi0, &current
+		) != 0 || prototype_judgement_delta_record_cbpv_boundary(
+			&delta, term_db, type_db, proof_value, PROTOTYPE_INVALID_ID, &current
+		) != 0 || prototype_judgement_delta_select_evidence(
+			&delta, PROTOTYPE_INVALID_ID, empty_context, proof_value,
+			concrete_identity, &current
+		) != 0 || prototype_judgement_delta_publish_complete(
+			&delta
+		) != 0) {
+		return 23;
+	}
+	uint32_t constant_binder = prototype_term_new_binding(term_db);
+	uint32_t constant_lambda;
+	uint32_t constant_value;
+	uint32_t discriminating_identity;
+	if (constant_binder == PROTOTYPE_INVALID_ID || prototype_term_lambda(
+			term_db, constant_binder, false_return, &constant_lambda
+		) != 0 || prototype_term_thunk(
+			term_db, constant_lambda, &constant_value
+		) != 0 || prototype_term_graph_substitute_bound_var(
+			term_db,
+			type_db,
+			certificate->identity_type_term_id,
+			certificate->left_endpoint_binding_id,
+			left_value,
+			&discriminating_identity
+		) != 0 || prototype_term_graph_substitute_bound_var(
+			term_db,
+			type_db,
+			discriminating_identity,
+			certificate->right_endpoint_binding_id,
+			constant_value,
+			&discriminating_identity
+		) != 0) {
+		return 24;
+	}
+	if (prototype_judgement_classifier_conversion(
+			term_db, type_db, concrete_identity, discriminating_identity
+		).status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
+		return 25;
+	}
+	prototype_judgement_delta_set_context(&delta, empty_context);
+	prototype_judgement_delta_set_operation(&delta, PROTOTYPE_INVALID_ID);
+	if (prototype_judgement_delta_select_evidence(
+			&delta,
+			PROTOTYPE_INVALID_ID,
+			empty_context,
+			proof_value,
+			discriminating_identity,
+			&current
+		) == 0) {
+		return 26;
+	}
+	(void)bool_type_claim;
+	(void)function_type_claim;
+	(void)concrete_identity_claim;
+	(void)false_in_context;
+	(void)true_in_context;
+	(void)false_identity_in_context;
+	(void)true_identity_in_context;
+	*p_identity_family_claim = concrete_identity_claim;
+	*p_witness_term = proof_value;
+	*p_witness_claim = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_claim_proposition(judgement, i);
+		if (proposition && proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			proposition->context_id == empty_context &&
+			proposition->subject == proof_value &&
+			proposition->classifier == concrete_identity) {
+			*p_witness_claim = i;
+			break;
+		}
+	}
+	if (*p_witness_claim == PROTOTYPE_INVALID_ID) {
+		return 28;
+	}
+	return 0;
+}
+
+static uint32_t count_rule(
+	const struct prototype_hott_candidate_db* db,
+	uint32_t goal_id,
+	int rule
+) {
+	uint32_t count = 0;
+	for (uint32_t i = 0; i < db->candidate_count; ++i) {
+		if (db->candidates[i].conclusion_goal_id == goal_id &&
+			db->candidates[i].rule == rule) {
+			++count;
+		}
+	}
+	return count;
+}
+
+static uint32_t find_rule(
+	const struct prototype_hott_candidate_db* db,
+	uint32_t goal_id,
+	int rule
+) {
+	for (uint32_t i = 0; i < db->candidate_count; ++i) {
+		if (db->candidates[i].conclusion_goal_id == goal_id &&
+			db->candidates[i].rule == rule) {
+			return i;
+		}
+	}
+	return PROTOTYPE_INVALID_ID;
+}
+
+static uint32_t add_bool_view(
+	struct prototype_term_db* terms_db,
+	struct prototype_type_declaration_db* types_db,
+	uint32_t empty,
+	uint32_t universe,
+	uint32_t core
+) {
+	uint32_t view = (uint32_t)terms_db->term_count++;
+	memset(&terms_db->terms[view], 0, sizeof(terms_db->terms[view]));
+	terms_db->terms[view].tag = PROTOTYPE_TERM_TYPE_VIEW;
+	terms_db->terms[view].as.type_view.view_type_id = 0;
+	terms_db->terms[view].as.type_view.identity.namespace_symbol_id = -1;
+	terms_db->terms[view].as.type_view.identity.name_symbol_id = 100;
+	terms_db->terms[view].as.type_view.core = core;
+	terms_db->terms[view].as.type_view.source = core;
+	types_db->type_count = 1;
+		types_db->type_declarations[0] = (struct prototype_type_declaration){
+			.name_symbol_id = 100,
+			.namespace_symbol_id = -1,
+			.origin_kind = PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE,
+			.origin_source_carrier_term_id = PROTOTYPE_INVALID_ID,
+			.type_index = 0,
+		.representation_id = PROTOTYPE_INVALID_ID,
+		.formation_classifier = universe,
+		.parameter_context = empty,
+		.index_context = empty,
+		.first_constructor = 0,
+		.constructor_count = 2
+	};
+	types_db->constructor_count = 2;
+	for (uint32_t i = 0; i < 2; ++i) {
+		types_db->constructor_declarations[i] =
+			(struct prototype_type_constructor_declaration){
+					.name_symbol_id = 101 + (int)i,
+					.owner_type = 0,
+					.constructor_index = i,
+					.readback = {
+						.first_field_type = PROTOTYPE_INVALID_ID,
+						.result_type = PROTOTYPE_INVALID_ID
+					},
+					.parameter_context = empty,
+				.field_context = empty,
+				.result_classifier = view,
+				.curried_classifier_cache = view
+			};
+	}
+	if (terms_db->term_count >= terms_db->term_capacity) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t source = (uint32_t)terms_db->term_count++;
+	memset(&terms_db->terms[source], 0, sizeof(terms_db->terms[source]));
+	terms_db->terms[source].tag = PROTOTYPE_TERM_TYPE_DECLARATION;
+	terms_db->terms[source].as.type_declaration.type_id = 0;
+	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
+	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 100;
+	terms_db->terms[view].as.type_view.source = source;
+	prototype_term_notify_graph_mutation(terms_db);
+	return view;
+}
+
+static uint32_t add_box_view(
+	struct prototype_term_db* terms_db,
+	struct prototype_type_declaration_db* types_db,
+	struct prototype_context_db* contexts_db,
+	uint32_t empty,
+	uint32_t universe,
+	uint32_t bool_view,
+	uint32_t core
+) {
+	uint32_t type_id;
+	if (prototype_type_declaration_add(types_db, 200, &type_id) != 0) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	if (terms_db->term_count + 2 > terms_db->term_capacity) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t view = (uint32_t)terms_db->term_count++;
+	memset(&terms_db->terms[view], 0, sizeof(terms_db->terms[view]));
+	terms_db->terms[view].tag = PROTOTYPE_TERM_TYPE_VIEW;
+	terms_db->terms[view].as.type_view.view_type_id = type_id;
+	terms_db->terms[view].as.type_view.identity.namespace_symbol_id = -1;
+	terms_db->terms[view].as.type_view.identity.name_symbol_id = 200;
+	terms_db->terms[view].as.type_view.core = core;
+	uint32_t source = (uint32_t)terms_db->term_count++;
+	memset(&terms_db->terms[source], 0, sizeof(terms_db->terms[source]));
+	terms_db->terms[source].tag = PROTOTYPE_TERM_TYPE_DECLARATION;
+	terms_db->terms[source].as.type_declaration.type_id = type_id;
+	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
+	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 200;
+	terms_db->terms[view].as.type_view.source = source;
+	types_db->type_declarations[type_id].formation_classifier = universe;
+	types_db->type_declarations[type_id].parameter_context = empty;
+	types_db->type_declarations[type_id].index_context = empty;
+	uint32_t field_binding = prototype_term_new_binding(terms_db);
+	uint32_t field_context;
+	uint32_t curried_classifier;
+	uint32_t constructor_id;
+	uint32_t readback_field = PROTOTYPE_INVALID_ID;
+	if (field_binding == PROTOTYPE_INVALID_ID || prototype_context_extend(
+			contexts_db,
+			empty,
+			field_binding,
+			bool_view,
+			PROTOTYPE_INVALID_ID,
+			&field_context
+		) != 0 || prototype_type_constructor_derive_curried_classifier(
+			terms_db,
+			contexts_db,
+			empty,
+			field_context,
+			view,
+			&curried_classifier
+		) != 0 || prototype_type_declaration_add_constructor(
+			types_db,
+			type_id,
+			201,
+			&readback_field,
+			1,
+			PROTOTYPE_INVALID_ID,
+			empty,
+			field_context,
+			view,
+			curried_classifier,
+			&constructor_id
+		) != 0 || constructor_id >= types_db->constructor_count ||
+		types_db->constructor_declarations[constructor_id].owner_type != type_id ||
+		types_db->constructor_declarations[constructor_id].constructor_index != 0) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	prototype_term_notify_graph_mutation(terms_db);
+	return view;
+}
+
+static uint32_t add_dependent_box_view(
+	struct prototype_term_db* terms_db,
+	struct prototype_type_declaration_db* types_db,
+	struct prototype_context_db* contexts_db,
+	uint32_t empty,
+	uint32_t universe,
+	uint32_t bool_view,
+	uint32_t core
+) {
+	uint32_t type_id;
+	if (prototype_type_declaration_add(types_db, 210, &type_id) != 0 ||
+		terms_db->term_count + 2 > terms_db->term_capacity) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t view = (uint32_t)terms_db->term_count++;
+	memset(&terms_db->terms[view], 0, sizeof(terms_db->terms[view]));
+	terms_db->terms[view].tag = PROTOTYPE_TERM_TYPE_VIEW;
+	terms_db->terms[view].as.type_view.view_type_id = type_id;
+	terms_db->terms[view].as.type_view.identity.namespace_symbol_id = -1;
+	terms_db->terms[view].as.type_view.identity.name_symbol_id = 210;
+	terms_db->terms[view].as.type_view.core = core;
+	uint32_t source = (uint32_t)terms_db->term_count++;
+	memset(&terms_db->terms[source], 0, sizeof(terms_db->terms[source]));
+	terms_db->terms[source].tag = PROTOTYPE_TERM_TYPE_DECLARATION;
+	terms_db->terms[source].as.type_declaration.type_id = type_id;
+	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
+	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 210;
+	terms_db->terms[view].as.type_view.source = source;
+	types_db->type_declarations[type_id].formation_classifier = universe;
+	types_db->type_declarations[type_id].parameter_context = empty;
+	types_db->type_declarations[type_id].index_context = empty;
+
+	uint32_t first_binding = prototype_term_new_binding(terms_db);
+	uint32_t family_binding = prototype_term_new_binding(terms_db);
+	uint32_t second_binding = prototype_term_new_binding(terms_db);
+	uint32_t first_context;
+	uint32_t second_context;
+	uint32_t first_variable;
+	uint32_t family;
+	uint32_t dependent_classifier;
+	uint32_t curried_classifier;
+	uint32_t constructor_id;
+	uint32_t readback_fields[2] = {
+		PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID
+	};
+	if (first_binding == PROTOTYPE_INVALID_ID ||
+		family_binding == PROTOTYPE_INVALID_ID ||
+		second_binding == PROTOTYPE_INVALID_ID || prototype_context_extend(
+			contexts_db,
+			empty,
+			first_binding,
+			bool_view,
+			PROTOTYPE_INVALID_ID,
+			&first_context
+		) != 0 || prototype_term_var(
+			terms_db, first_binding, &first_variable
+		) != 0 || prototype_term_lambda(
+			terms_db, family_binding, bool_view, &family
+		) != 0 || prototype_term_app(
+			terms_db, family, first_variable, &dependent_classifier
+		) != 0 || prototype_context_extend(
+			contexts_db,
+			first_context,
+			second_binding,
+			dependent_classifier,
+			PROTOTYPE_INVALID_ID,
+			&second_context
+		) != 0 || prototype_type_constructor_derive_curried_classifier(
+			terms_db,
+			contexts_db,
+			empty,
+			second_context,
+			view,
+			&curried_classifier
+		) != 0 || prototype_type_declaration_add_constructor(
+			types_db,
+			type_id,
+			211,
+			readback_fields,
+			2,
+			PROTOTYPE_INVALID_ID,
+			empty,
+			second_context,
+			view,
+			curried_classifier,
+			&constructor_id
+		) != 0 || constructor_id >= types_db->constructor_count) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	prototype_term_notify_graph_mutation(terms_db);
+	return view;
+}
+
+static uint32_t add_nat_view(
+	struct prototype_term_db* terms_db,
+	struct prototype_type_declaration_db* types_db,
+	struct prototype_context_db* contexts_db,
+	uint32_t empty,
+	uint32_t universe,
+	uint32_t core
+) {
+	uint32_t type_id;
+	if (prototype_type_declaration_add(types_db, 300, &type_id) != 0) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	if (terms_db->term_count + 2 > terms_db->term_capacity) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t view = (uint32_t)terms_db->term_count++;
+	memset(&terms_db->terms[view], 0, sizeof(terms_db->terms[view]));
+	terms_db->terms[view].tag = PROTOTYPE_TERM_TYPE_VIEW;
+	terms_db->terms[view].as.type_view.view_type_id = type_id;
+	terms_db->terms[view].as.type_view.identity.namespace_symbol_id = -1;
+	terms_db->terms[view].as.type_view.identity.name_symbol_id = 300;
+	terms_db->terms[view].as.type_view.core = core;
+	uint32_t source = (uint32_t)terms_db->term_count++;
+	memset(&terms_db->terms[source], 0, sizeof(terms_db->terms[source]));
+	terms_db->terms[source].tag = PROTOTYPE_TERM_TYPE_DECLARATION;
+	terms_db->terms[source].as.type_declaration.type_id = type_id;
+	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
+	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 300;
+	terms_db->terms[view].as.type_view.source = source;
+	types_db->type_declarations[type_id].formation_classifier = universe;
+	types_db->type_declarations[type_id].parameter_context = empty;
+	types_db->type_declarations[type_id].index_context = empty;
+	uint32_t zero_constructor_id;
+	if (prototype_type_declaration_add_constructor(
+			types_db,
+			type_id,
+			301,
+			NULL,
+			0,
+			PROTOTYPE_INVALID_ID,
+			empty,
+			empty,
+			view,
+			view,
+			&zero_constructor_id
+		) != 0) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t field_binding = prototype_term_new_binding(terms_db);
+	uint32_t field_context;
+	uint32_t succ_classifier;
+	uint32_t succ_constructor_id;
+	uint32_t readback_field = PROTOTYPE_INVALID_ID;
+	if (field_binding == PROTOTYPE_INVALID_ID || prototype_context_extend(
+			contexts_db,
+			empty,
+			field_binding,
+			view,
+			PROTOTYPE_INVALID_ID,
+			&field_context
+		) != 0 || prototype_type_constructor_derive_curried_classifier(
+			terms_db,
+			contexts_db,
+			empty,
+			field_context,
+			view,
+			&succ_classifier
+		) != 0 || prototype_type_declaration_add_constructor(
+			types_db,
+			type_id,
+			302,
+			&readback_field,
+			1,
+			PROTOTYPE_INVALID_ID,
+			empty,
+			field_context,
+			view,
+			succ_classifier,
+			&succ_constructor_id
+		) != 0 || succ_constructor_id != zero_constructor_id + 1) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	prototype_term_notify_graph_mutation(terms_db);
+	return view;
+}
+
