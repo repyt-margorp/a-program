@@ -1,5 +1,12 @@
 #include "a_program/frontend/lowering.h"
-#include "hott.h"
+#include "a_program/identity/types.h"
+#include "a_program/identity/telescope_action.h"
+#include "a_program/identity/context_bridge.h"
+#include "a_program/identity/relation_action.h"
+#include "a_program/identity/action_certificate.h"
+#include "a_program/identity/identity_computation.h"
+#include "a_program/identity/object_term_action.h"
+#include "a_program/identity/action_execution.h"
 #include "calculus.h"
 
 #include <stdio.h>

@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0-L5 complete, L6 next
+Status: in progress; L0-L6 complete, L7 next
 
 Repository baseline:
 
@@ -502,7 +502,7 @@ visible without changing any accepted judgement graph.
 
 ### L6: Decompose `hott.c` and `hott.h`
 
-Status: pending; blocked on L5
+Status: complete
 
 Target ownership:
 
@@ -516,18 +516,30 @@ identity/action_certificate.*
 identity/artifact_root_extraction.*
 ```
 
-- [ ] Keep compiler-local parametric relation action physically distinct from
+- [x] Keep compiler-local parametric relation action physically distinct from
       object identity computation.
-- [ ] Keep action/work/certificate state outside persistent artifact ownership.
-- [ ] Preserve every residual boundary for unsupported dependent, higher,
+- [x] Keep action/work/certificate state outside persistent artifact ownership.
+- [x] Preserve every residual boundary for unsupported dependent, higher,
       Universe, and effectful cases.
-- [ ] Preserve exact request/result/certificate keys.
-- [ ] Preserve the distinction between family computation and ordinary proof
+- [x] Preserve exact request/result/certificate keys.
+- [x] Preserve the distinction between family computation and ordinary proof
       inhabitation.
-- [ ] Do not add symmetry, composition, transport, or higher coherence while
+- [x] Do not add symmetry, composition, transport, or higher coherence while
       moving code.
-- [ ] Move artifact root extraction under `identity/` only as the producer-side
+- [x] Move artifact root extraction under `identity/` only as the producer-side
       adapter; wire validation remains owned by `artifact/`.
+
+As in L5, the implementation remains one translation unit so that the dense
+set of identity-action `static` helpers does not become a new ABI. Owner-named
+source partitions now separate relation planning, action certificate storage
+and validation, telescope action, identity computation, context bridges,
+object-term action, execution, and the 93-line artifact-root producer adapter.
+The old `hott.h` umbrella was replaced by direct owner API headers under
+`include/a_program/identity/`.
+
+All sixteen integration entry points pass. The v70 root is byte-identical to
+the baseline, no global symbol changed from L5, and artifact implementation
+modules contain no HOTT planning or action-execution ownership.
 
 Exit gate: relation infrastructure, object identity, and persistent root
 adaptation have explicit physical owners and unchanged theory boundaries.
@@ -659,7 +671,7 @@ Stop and revise this plan if any phase requires:
 | L3 cohesive module moves | complete | L2 | owner directories; 16 tests; artifact and symbol equality |
 | L4 `ast` decomposition | complete | L3 | frontend/graph/artifact ownership; 16 tests; identical v70 bytes |
 | L5 kernel decomposition | complete | L4 | owner source partitions and direct headers; 16 tests; identical v70 bytes and symbol delta |
-| L6 identity decomposition | pending | L5 | relation/object/artifact boundaries explicit |
+| L6 identity decomposition | complete | L5 | relation/object/artifact partitions and direct headers; 16 tests; identical v70 bytes and symbols |
 | L7 audit decomposition | pending | L6 | stable complete test entry points |
 | L8 documentation/dead-path audit | pending | L7 | no stale paths or umbrella ownership |
 | L9 final equivalence audit | pending | L8 | full suite, sanitizers, ABI/schema/artifact comparison, commits |
@@ -678,7 +690,7 @@ only net lines.
 | L3 | pending | | | | | | |
 | L4 | pending | | | | | | |
 | L5 | pending commit | | | | `typing.c`, `judgement.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L6 | pending | | | | | | |
+| L6 | pending commit | | | | `hott.c`, `hott.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
 | L7 | pending | | | | | | |
 | L8 | pending | | | | | | |
 | L9 | pending | | | | | | |

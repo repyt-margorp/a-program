@@ -45,7 +45,7 @@ PROTOTYPE_COMPILER_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/support/symbol.c
 
 PROTOTYPE_HOTT_SOURCES := \
-	$(PROTOTYPE_ROOT)/hott.c \
+	$(PROTOTYPE_ROOT)/src/identity/hott.c \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/cwf_certificate.c \
 	$(PROTOTYPE_ROOT)/src/kernel/kernel_view.c \
