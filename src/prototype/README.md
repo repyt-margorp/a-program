@@ -10,6 +10,32 @@ Accepted implementation code belongs in `src/` outside this directory and in
 
 ## Current Prototype Files
 
+The active tree is organized by ownership:
+
+```text
+include/a_program/    prototype-public declarations
+src/support/          symbols and allocation-independent support
+src/core/             erased computation terms
+src/kernel/           contexts, declarations, universes, and judgements
+src/frontend/         reader, surface AST, and lowering
+src/graph/            typed OperationGraph and compile metadata
+src/artifact/         interface publication, v70 wire format, relocation, link
+src/identity/         relation action and object Identity computation
+src/driver/           command-line and REPL entry points
+tests/checks/         compiled audit programs
+tests/fixtures/       categorized source fixtures
+tests/integration/    canonical integration entry points
+spec/                 active wire/calculus schemas
+spec/archive/         historical schemas, never accepted by the active reader
+build/                centralized source manifests and test build support
+```
+
+The judgement and identity implementations use owner-named `.inc` source
+partitions assembled by `src/kernel/judgement.c` and `src/identity/hott.c`.
+They deliberately remain one translation unit each: physical ownership is
+visible without turning former `static` helpers into a new ABI or changing
+proof/action construction order.
+
 - `include/a_program/support/symbol.h`, `src/support/symbol.c`:
   prototype-owned symbol table used by the current
   prototype reader and REPL.
@@ -31,11 +57,24 @@ Accepted implementation code belongs in `src/` outside this directory and in
   information, and a pointer to the erased `core_term`.
 - `include/a_program/artifact/`, `src/artifact/`: artifact interface,
   publication closure, v70 wire reader/writer, relocation, and linking.
+- `include/a_program/kernel/judgement/`, `src/kernel/judgement.c`,
+  `src/kernel/typing/`, and `src/kernel/rules/`: Proposition, Claim, and
+  Derivation storage; classifier conversion and solving; candidate publication;
+  accepted replay; and named kernel rules.
+- `include/a_program/identity/`, `src/identity/`: compiler-local relation
+  planning, object Identity computation, context bridges, action certificates,
+  and artifact-root production. Persistent wire validation remains under
+  `src/artifact/`.
 - `include/a_program/frontend/reader.h`, `src/frontend/reader.c`: prototype
   reader for a small `.p` subset.
 - `src/driver/read_file.c`: CLI used to compile and inspect source/artifacts.
 - `src/driver/repl.c`: interactive CLI that keeps the loaded program state and
   accepts additional top-level code entries.
+
+Current commands and documentation must use these paths. Date-stamped files in
+`doc/` are historical design and implementation records; a path such as the old
+`src/prototype/typing.c` in one of those records identifies the file that
+existed at that document's baseline and is not an active build instruction.
 
 Distinct source operations such as `\x : Bool => x` and `\y : Nat => y`
 therefore retain distinct operation nodes and classifiers while intentionally

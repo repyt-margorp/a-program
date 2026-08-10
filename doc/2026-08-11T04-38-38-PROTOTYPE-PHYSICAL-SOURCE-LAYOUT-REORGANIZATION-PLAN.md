@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0-L7 complete, L8 next
+Status: in progress; L0-L8 complete, L9 next
 
 Repository baseline:
 
@@ -590,20 +590,49 @@ same complete regression matrix remains available through stable entry points.
 
 ### L8: Documentation, include, and dead-path audit
 
-Status: pending; blocked on L7
+Status: complete
 
-- [ ] Update `src/prototype/README.md` to describe the production-intent module
+- [x] Update `src/prototype/README.md` to describe the production-intent module
       graph and promotion boundary.
-- [ ] Update documentation links and commands to new paths.
-- [ ] Search the repository for every removed path.
-- [ ] Search for duplicate source files and forwarding headers.
-- [ ] Verify historical schemas are not compiled or accepted.
-- [ ] Verify implementation modules do not include test headers.
-- [ ] Verify kernel modules do not include driver headers.
-- [ ] Verify artifact modules do not execute HOTT action search.
-- [ ] Record final per-directory and per-file LOC.
-- [ ] Record each deleted umbrella, adapter, duplicate source list, and stale
+- [x] Update documentation links and commands to new paths.
+- [x] Search the repository for every removed path.
+- [x] Search for duplicate source files and forwarding headers.
+- [x] Verify historical schemas are not compiled or accepted.
+- [x] Verify implementation modules do not include test headers.
+- [x] Verify kernel modules do not include driver headers.
+- [x] Verify artifact modules do not execute HOTT action search.
+- [x] Record final per-directory and per-file LOC.
+- [x] Record each deleted umbrella, adapter, duplicate source list, and stale
       snapshot.
+
+The active path audit found no references to removed root implementation files
+in source, manifests, tests, or current README instructions. Date-stamped design
+documents retain their original paths because those paths identify the audited
+historical baseline; the README now states this policy explicitly. No duplicate
+implementation/header content, forwarding umbrella, implementation-to-test
+include, kernel-to-driver include, or artifact-owned HOTT search was found.
+
+Removed physical indirections and stale ownership include the repeated source
+lists replaced at L0, root-level tests/fixtures/schemas moved at L1, the 13-file
+`current/` snapshot removed at L2, root owner paths moved at L3, `ast.c`/`ast.h`
+removed at L4, `typing.c`/`judgement.h` removed at L5, `hott.c`/`hott.h` removed
+at L6, and `hott_goal_check.c` removed at L7. Historical v67-v69 schemas remain
+only under `spec/archive/` and are absent from every build manifest.
+
+Physical LOC at this gate:
+
+| Area | Lines |
+| --- | ---: |
+| `src/` implementation | 100,342 |
+| `include/` declarations | 6,829 |
+| `tests/` | 21,178 |
+| `spec/` | 646 |
+| build manifests/support | 88 |
+| prototype README, Makefile, calculus header | 846 |
+| total | 129,929 |
+
+The complete per-file inventory is recorded in
+`doc/2026-08-11T05-45-00-PROTOTYPE-SOURCE-LAYOUT-LOC-INVENTORY.md`.
 
 Exit gate: documentation and includes describe exactly one active module graph.
 
@@ -685,7 +714,7 @@ Stop and revise this plan if any phase requires:
 | L5 kernel decomposition | complete | L4 | owner source partitions and direct headers; 16 tests; identical v70 bytes and symbol delta |
 | L6 identity decomposition | complete | L5 | relation/object/artifact partitions and direct headers; 16 tests; identical v70 bytes and symbols |
 | L7 audit decomposition | complete | L6 | ordered fixture partitions; stable complete entry points; 16 tests; identical v70 bytes |
-| L8 documentation/dead-path audit | pending | L7 | no stale paths or umbrella ownership |
+| L8 documentation/dead-path audit | complete | L7 | current path map; no active stale paths, duplicate sources, forwarding umbrellas, or reverse includes; LOC inventory |
 | L9 final equivalence audit | pending | L8 | full suite, sanitizers, ABI/schema/artifact comparison, commits |
 
 ## 11. Measurement Record
@@ -704,7 +733,7 @@ only net lines.
 | L5 | pending commit | | | | `typing.c`, `judgement.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
 | L6 | pending commit | | | | `hott.c`, `hott.h` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
 | L7 | pending commit | | | | `hott_goal_check.c` | 16 scripts pass | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
-| L8 | pending | | | | | | |
+| L8 | pending commit | | | | active stale paths and umbrella ownership | audit-only; no semantic test delta | `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514` |
 | L9 | pending | | | | | | |
 
 ## 12. Recommended Execution Order
