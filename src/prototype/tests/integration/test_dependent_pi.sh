@@ -4,19 +4,19 @@ set -eu
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
 
-./read_file.out src/prototype/dependent_pi_identity_check.p \
+./read_file.out src/prototype/tests/fixtures/identity/dependent_pi_identity_check.p \
 	>"$tmp_dir/identity.out"
 grep -q '^term dependentIdentity := LAMBDA(' "$tmp_dir/identity.out"
 grep -q '^has-type LAMBDA(.*PI(UNIVERSE' "$tmp_dir/identity.out"
 
-./read_file.out src/prototype/dependent_pi_surface_check.p \
+./read_file.out src/prototype/tests/fixtures/typing/dependent_pi_surface_check.p \
 	>"$tmp_dir/match.out"
 grep -q '^term choose := LAMBDA(' "$tmp_dir/match.out"
 grep -q '^has-type LAMBDA(.*THUNK(LAMBDA(.*RETURN(APP(LAMBDA(.*MATCH(' \
 	"$tmp_dir/match.out"
 
 ./read_file.out --write-artifact "$tmp_dir/dependent-pi.apo" \
-	src/prototype/dependent_pi_surface_check.p >"$tmp_dir/write.out"
+	src/prototype/tests/fixtures/typing/dependent_pi_surface_check.p >"$tmp_dir/write.out"
 ./read_file.out --read-graph "$tmp_dir/dependent-pi.apo" \
 	>"$tmp_dir/read.out"
 grep -q '^interface term choose ' "$tmp_dir/read.out"

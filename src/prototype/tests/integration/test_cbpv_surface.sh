@@ -55,7 +55,7 @@ operation_request_proof_kind=$(c_enum_value_in \
 # Examples from 10 onward exercise the unfinished general Match-motive and
 # constraint-solving work. They are not CBPV surface regressions yet.
 
-./read_file.out src/prototype/computation_block_check.p \
+./read_file.out src/prototype/tests/fixtures/cbpv/computation_block_check.p \
 	>"$tmp_dir/computation-block.out"
 grep -q '^term main := COMPUTATION_FOLD(' "$tmp_dir/computation-block.out"
 grep -q '^term quotedIdentity := THUNK(LAMBDA(' \
@@ -64,7 +64,7 @@ grep -q '^term constructorBlock := COMPUTATION_FOLD(' "$tmp_dir/computation-bloc
 grep -q '^term matchBlock := MATCH(.*CASE(zero -> COMPUTATION_FOLD(' \
 	"$tmp_dir/computation-block.out"
 
-./read_file.out src/prototype/runtime_strict_value_check.p \
+./read_file.out src/prototype/tests/fixtures/cbpv/runtime_strict_value_check.p \
 	>"$tmp_dir/runtime-strict-value.out"
 grep -q '^term appArgument := COMPUTATION_FOLD(' "$tmp_dir/runtime-strict-value.out"
 grep -q '^term constructorArgument := COMPUTATION_FOLD(.*RETURN(APP(CONSTRUCTOR' \
@@ -72,21 +72,21 @@ grep -q '^term constructorArgument := COMPUTATION_FOLD(.*RETURN(APP(CONSTRUCTOR'
 grep -q '^term matchScrutinee := COMPUTATION_FOLD(.*MATCH(VAR' \
 	"$tmp_dir/runtime-strict-value.out"
 ./read_file.out --write-artifact "$tmp_dir/runtime-strict-value.apo" \
-	src/prototype/runtime_strict_value_check.p \
+	src/prototype/tests/fixtures/cbpv/runtime_strict_value_check.p \
 	>"$tmp_dir/runtime-strict-value-write.out"
 ./read_file.out --read-graph "$tmp_dir/runtime-strict-value.apo" \
 	>"$tmp_dir/runtime-strict-value-read.out"
 grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=6 verification_obligations=0' \
 	"$tmp_dir/runtime-strict-value-read.out"
 
-./read_file.out src/prototype/computation_reference_type_check.p \
+./read_file.out src/prototype/tests/fixtures/cbpv/computation_reference_type_check.p \
 	>"$tmp_dir/computation-reference.out"
 grep -q '^term run := LAMBDA(.*FORCE(VAR' \
 	"$tmp_dir/computation-reference.out"
 grep -q '^term preserve := LAMBDA(.*RETURN(VAR' \
 	"$tmp_dir/computation-reference.out"
 
-./read_file.out src/prototype/nested_computation_reference_check.p \
+./read_file.out src/prototype/tests/fixtures/cbpv/nested_computation_reference_check.p \
 	>"$tmp_dir/nested-computation-reference.out"
 grep -q '^term nest := LAMBDA(.*RETURN(THUNK(RETURN(VAR' \
 	"$tmp_dir/nested-computation-reference.out"
@@ -111,12 +111,12 @@ if ./read_file.out "$tmp_dir/removed-force-intrinsic.p" \
 	exit 1
 fi
 
-if ./read_file.out src/prototype/computation_block_invalid_argument.p \
+if ./read_file.out src/prototype/tests/fixtures/cbpv/computation_block_invalid_argument.p \
 	>"$tmp_dir/computation-argument.out" 2>&1; then
 	echo 'higher-order application accepted a raw function without quotation' >&2
 	exit 1
 fi
-if ./read_file.out src/prototype/computation_block_invalid_quote.p \
+if ./read_file.out src/prototype/tests/fixtures/cbpv/computation_block_invalid_quote.p \
 	>"$tmp_dir/value-quote.out" 2>&1; then
 	echo 'quotation accepted an ordinary value' >&2
 	exit 1
@@ -165,7 +165,7 @@ EOF
 grep -qx 'x' "$tmp_dir/quote-effects.out"
 grep -qx 'xx' "$tmp_dir/quote-effects.out"
 
-cp src/prototype/runtime_strict_effects_check.p \
+cp src/prototype/tests/fixtures/cbpv/runtime_strict_effects_check.p \
 	"$tmp_dir/runtime-strict-effects.p"
 
 ./read_file.out "$tmp_dir/runtime-strict-effects.p" \
@@ -523,7 +523,7 @@ if ./read_file.out "$tmp_dir/bind-requires-computation.p" \
 	exit 1
 fi
 
-./read_file.out src/prototype/computed_match_execution_check.p \
+./read_file.out src/prototype/tests/fixtures/cbpv/computed_match_execution_check.p \
 	>"$tmp_dir/computed-match.out"
 grep -q 'term main := COMPUTATION_FOLD(RETURN(CONSTRUCTOR' "$tmp_dir/computed-match.out"
 grep -q 'MATCH(VAR' "$tmp_dir/computed-match.out"
@@ -754,7 +754,7 @@ EOF
 grep -q 'value main := RETURN(TEXT_LITERAL("x"))' \
 	"$tmp_dir/deep-handle-bind-eval.out"
 
-cp src/prototype/dependent_handler_result_check.p \
+cp src/prototype/tests/fixtures/effects/dependent_handler_result_check.p \
 	"$tmp_dir/dependent-handler-result.p"
 
 ./read_file.out "$tmp_dir/dependent-handler-result.p" \
@@ -832,7 +832,7 @@ grep -q 'interface term main ' "$tmp_dir/lambda-handle-read.out"
 
 # A higher-order operation uses the ordinary request argument to carry a
 # thunked computation. The inner operation remains latent in the request.
-./read_file.out --policy strict src/prototype/higher_order_operation_check.p \
+./read_file.out --policy strict src/prototype/tests/fixtures/effects/higher_order_operation_check.p \
 	>"$tmp_dir/higher-order-operation.out"
 grep -q 'compile-budget .* residual=0 incomplete=0' \
 	"$tmp_dir/higher-order-operation.out"
@@ -841,7 +841,7 @@ grep -q 'THUNK(OPERATION_REQUEST(EFFECT_OPERATION(print)' \
 	"$tmp_dir/higher-order-operation.out"
 grep -q '\[operation-request-intro proof#' "$tmp_dir/higher-order-operation.out"
 ./read_file.out --policy strict --write-artifact "$tmp_dir/higher-order-operation.apo" \
-	src/prototype/higher_order_operation_check.p \
+	src/prototype/tests/fixtures/effects/higher_order_operation_check.p \
 	>"$tmp_dir/higher-order-operation-write.out"
 ./read_file.out --read-graph "$tmp_dir/higher-order-operation.apo" \
 	>"$tmp_dir/higher-order-operation-read.out"
@@ -850,7 +850,7 @@ grep -q 'interface term main ' "$tmp_dir/higher-order-operation-read.out"
 # Latent rows belong to request occurrences, not to the operation declaration.
 # Two uses of scope_text therefore retain distinct pure and print-bearing rows.
 ./read_file.out --policy strict \
-	src/prototype/higher_order_operation_distinct_latent_check.p \
+	src/prototype/tests/fixtures/effects/higher_order_operation_distinct_latent_check.p \
 	>"$tmp_dir/higher-order-operation-distinct-latent.out"
 grep -Eq 'EFFECT_ROW_OPERATION\([0-9]+, EFFECT_LABEL\(0\)\)' \
 	"$tmp_dir/higher-order-operation-distinct-latent.out"
@@ -861,7 +861,7 @@ grep -q 'compile-budget .* residual=0 incomplete=0' \
 
 # A handler receives the quoted inner computation as an opaque value. This
 # clause discards it, so the nested print must not execute.
-./read_file.out --policy strict src/prototype/higher_order_operation_handler_check.p \
+./read_file.out --policy strict src/prototype/tests/fixtures/effects/higher_order_operation_handler_check.p \
 	>"$tmp_dir/higher-order-operation-handler.out"
 grep -q 'compile-budget .* residual=0 incomplete=0' \
 	"$tmp_dir/higher-order-operation-handler.out"
@@ -874,7 +874,7 @@ grep -q '\[computation-fold-elim proof#' \
 grep -q '\[computation-fold-elim proof#[0-9][0-9]* premises=6' \
 	"$tmp_dir/higher-order-operation-handler.out"
 {
-	cat src/prototype/higher_order_operation_handler_check.p
+	cat src/prototype/tests/fixtures/effects/higher_order_operation_handler_check.p
 	printf 'main\n:q\n'
 } | ./a.out >"$tmp_dir/higher-order-operation-handler-eval.out"
 grep -q '^value main := RETURN(TEXT_LITERAL("handled"))$' \
@@ -884,7 +884,7 @@ if grep -qx 'inner' "$tmp_dir/higher-order-operation-handler-eval.out"; then
 	exit 1
 fi
 ./read_file.out --policy strict --write-artifact "$tmp_dir/higher-order-operation-handler.apo" \
-	src/prototype/higher_order_operation_handler_check.p \
+	src/prototype/tests/fixtures/effects/higher_order_operation_handler_check.p \
 	>"$tmp_dir/higher-order-operation-handler-write.out"
 ./read_file.out --read-graph "$tmp_dir/higher-order-operation-handler.apo" \
 	>"$tmp_dir/higher-order-operation-handler-read.out"
@@ -944,12 +944,12 @@ fi
 
 # A handled clause may introduce effects which the pure return clause does not
 # have. The fold carrier is their join, not the return clause classifier alone.
-./read_file.out --policy strict src/prototype/effect_weaken_handler_check.p \
+./read_file.out --policy strict src/prototype/tests/fixtures/effects/effect_weaken_handler_check.p \
 	>"$tmp_dir/effect-weaken-handler.out"
 grep -q 'has-type COMPUTATION_FOLD(.*COMPUTATION_TYPE(EFFECT_LABEL(1), PRIMITIVE(Text)) \[computation-fold-elim proof#' \
 	"$tmp_dir/effect-weaken-handler.out"
 {
-	cat src/prototype/effect_weaken_handler_check.p
+	cat src/prototype/tests/fixtures/effects/effect_weaken_handler_check.p
 	printf 'main\n:q\n'
 } | ./a.out >"$tmp_dir/effect-weaken-handler-eval.out"
 grep -qx 'handled' "$tmp_dir/effect-weaken-handler-eval.out"
@@ -957,7 +957,7 @@ grep -q '^value main := RETURN(TEXT_LITERAL("abort"))$' \
 	"$tmp_dir/effect-weaken-handler-eval.out"
 ./read_file.out --policy strict --write-artifact \
 	"$tmp_dir/effect-weaken-handler.apo" \
-	src/prototype/effect_weaken_handler_check.p \
+	src/prototype/tests/fixtures/effects/effect_weaken_handler_check.p \
 	>"$tmp_dir/effect-weaken-handler-write.out"
 ./read_file.out --read-graph "$tmp_dir/effect-weaken-handler.apo" \
 	>"$tmp_dir/effect-weaken-handler-read.out"
@@ -967,13 +967,13 @@ grep -q 'interface term main ' "$tmp_dir/effect-weaken-handler-read.out"
 # operation atom retains the thunk's latent row, and the handler clause exposes
 # that row only when it forces the thunk.
 ./read_file.out --policy strict \
-	src/prototype/higher_order_operation_force_once_check.p \
+	src/prototype/tests/fixtures/effects/higher_order_operation_force_once_check.p \
 	>"$tmp_dir/higher-order-operation-force-once.out"
 grep -q 'FORCE(VAR' "$tmp_dir/higher-order-operation-force-once.out"
 grep -q 'compile-budget .* residual=0 incomplete=0' \
 	"$tmp_dir/higher-order-operation-force-once.out"
 {
-	cat src/prototype/higher_order_operation_force_once_check.p
+	cat src/prototype/tests/fixtures/effects/higher_order_operation_force_once_check.p
 	printf 'main\n:q\n'
 } | ./a.out >"$tmp_dir/higher-order-operation-force-once-eval.out"
 test "$(grep -c '^inner$' "$tmp_dir/higher-order-operation-force-once-eval.out")" -eq 1
@@ -981,7 +981,7 @@ grep -q '^value main := RETURN(TEXT_LITERAL("inner"))$' \
 	"$tmp_dir/higher-order-operation-force-once-eval.out"
 ./read_file.out --policy strict --write-artifact \
 	"$tmp_dir/higher-order-operation-force-once.apo" \
-	src/prototype/higher_order_operation_force_once_check.p \
+	src/prototype/tests/fixtures/effects/higher_order_operation_force_once_check.p \
 	>"$tmp_dir/higher-order-operation-force-once-write.out"
 awk '$1 == "compile_policy" && $2 == 1 && $(NF - 1) == 0 && $NF == 0 {
 	found = 1
@@ -994,13 +994,13 @@ END { exit found ? 0 : 1 }' \
 grep -q 'interface term main .* classifier#[0-9][0-9]* ' \
 	"$tmp_dir/higher-order-operation-force-once-read.out"
 ./read_file.out --policy strict \
-	src/prototype/higher_order_operation_force_twice_check.p \
+	src/prototype/tests/fixtures/effects/higher_order_operation_force_twice_check.p \
 	>"$tmp_dir/higher-order-operation-force-twice.out"
 grep -q 'FORCE(VAR' "$tmp_dir/higher-order-operation-force-twice.out"
 grep -q 'compile-budget .* residual=0 incomplete=0' \
 	"$tmp_dir/higher-order-operation-force-twice.out"
 {
-	cat src/prototype/higher_order_operation_force_twice_check.p
+	cat src/prototype/tests/fixtures/effects/higher_order_operation_force_twice_check.p
 	printf 'main\n:q\n'
 } | ./a.out >"$tmp_dir/higher-order-operation-force-twice-eval.out"
 grep -q '^innerinner$' "$tmp_dir/higher-order-operation-force-twice-eval.out"

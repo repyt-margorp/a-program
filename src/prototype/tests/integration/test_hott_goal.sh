@@ -1,11 +1,11 @@
 #!/bin/sh
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh
 
-manifest_fingerprint=$(sha256sum src/prototype/hott_fragment_v2.schema | awk '{print $1}')
+manifest_fingerprint=$(sha256sum src/prototype/spec/hott_fragment_v2.schema | awk '{print $1}')
 header_fingerprint=$(awk '
 	/PROTOTYPE_HOTT_CALCULUS_FINGERPRINT/ {
 		getline
@@ -19,7 +19,7 @@ if [ "$manifest_fingerprint" != "$header_fingerprint" ]; then
 	exit 1
 fi
 changed_fingerprint=$(
-	{ cat src/prototype/hott_fragment_v2.schema; printf '\nsemantic-change\n'; } |
+	{ cat src/prototype/spec/hott_fragment_v2.schema; printf '\nsemantic-change\n'; } |
 		sha256sum | awk '{print $1}'
 )
 if [ "$changed_fingerprint" = "$header_fingerprint" ]; then
@@ -29,7 +29,7 @@ fi
 
 prototype_compile c11 werror hott \
 	/tmp/a-program-hott-goal-check \
-	src/prototype/hott_goal_check.c
+	src/prototype/tests/checks/hott_goal_check.c
 
 /tmp/a-program-hott-goal-check
 

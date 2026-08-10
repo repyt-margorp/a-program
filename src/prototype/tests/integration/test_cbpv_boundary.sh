@@ -5,7 +5,7 @@ set -eu
 
 prototype_compile c11 warnings compiler \
 	/tmp/a-program-cbpv-boundary-check \
-	src/prototype/cbpv_boundary_check.c
+	src/prototype/tests/checks/cbpv_boundary_check.c
 
 /tmp/a-program-cbpv-boundary-check
 rm -f /tmp/a-program-cbpv-boundary-check

@@ -27,7 +27,7 @@ fi
 
 prototype_compile c11 warnings graph \
 	/tmp/a-program-shared-term-reindex-check \
-	src/prototype/shared_term_reindex_check.c
+	src/prototype/tests/checks/shared_term_reindex_check.c
 
 /tmp/a-program-shared-term-reindex-check
 rm -f /tmp/a-program-shared-term-reindex-check

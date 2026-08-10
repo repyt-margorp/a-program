@@ -456,7 +456,7 @@ compiler.
 Run the full prototype suite:
 
 ```sh
-for test_script in src/prototype/test_*.sh; do
+for test_script in src/prototype/tests/integration/test_*.sh; do
 	sh "$test_script"
 done
 ```

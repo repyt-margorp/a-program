@@ -10,7 +10,7 @@ fi
 
 prototype_compile c11 werror graph \
 	/tmp/a-program-conversion-scope-check \
-	src/prototype/conversion_scope_check.c
+	src/prototype/tests/checks/conversion_scope_check.c
 
 /tmp/a-program-conversion-scope-check
 rm -f /tmp/a-program-conversion-scope-check

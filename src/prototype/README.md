@@ -633,7 +633,7 @@ The artifact/link invariants above are covered by the prototype regression
 script:
 
 ```
-sh src/prototype/test_artifact_flow.sh
+sh src/prototype/tests/integration/test_artifact_flow.sh
 ```
 
 It checks that `identityBool := \x : Bool => x;` and

@@ -12,7 +12,7 @@ fi
 
 prototype_compile c11 werror graph \
 	/tmp/a-program-conversion-result-check \
-	src/prototype/conversion_result_check.c
+	src/prototype/tests/checks/conversion_result_check.c
 
 /tmp/a-program-conversion-result-check
 rm -f /tmp/a-program-conversion-result-check

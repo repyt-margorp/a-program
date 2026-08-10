@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-p0-certificate.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -113,7 +113,7 @@ fi
 # identity exports share erased Core and classifier terms, but their Operation
 # authorities remain distinct.
 ./read_file.out --write-artifact "$TMP_DIR/shared-core.apo" \
-	src/prototype/shared_core_universe_provenance_check.p \
+	src/prototype/tests/fixtures/artifact/shared_core_universe_provenance_check.p \
 	>"$TMP_DIR/shared-core.out"
 id1_claim=$(awk '
 	$1 == "term" && $2 == "id1" {

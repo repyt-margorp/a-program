@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-artifact-flow.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -24,12 +24,12 @@ prototype_compile c11 werror compiler \
 
 prototype_compile c99 werror kernel \
 	"$TMP_DIR/whnf_profile_cache_check" \
-	src/prototype/whnf_profile_cache_check.c
+	src/prototype/tests/checks/whnf_profile_cache_check.c
 "$TMP_DIR/whnf_profile_cache_check"
 
 prototype_compile c11 werror kernel \
 	"$TMP_DIR/universe_defeq_check" \
-	src/prototype/universe_defeq_check.c
+	src/prototype/tests/checks/universe_defeq_check.c
 "$TMP_DIR/universe_defeq_check"
 
 c_enum_value_in() {
@@ -172,7 +172,7 @@ grep -q '^source-exports-normalization-equal natMain natExpected mode=default ye
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
 grep -q '^A_PROGRAM_ARTIFACT 70 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/artifact_v70.schema | awk '{print $1}')
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v70.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 awk '
@@ -622,7 +622,7 @@ if grep -q '^type_decl 0 #.Nat ' "$TMP_DIR/TypeSlice.apo"; then
 	exit 1
 fi
 ./read_file.out --write-artifact "$TMP_DIR/DenseList.apo" \
-	src/prototype/artifact_sparse_list_check.p >"$TMP_DIR/sparse-list.out"
+	src/prototype/tests/fixtures/artifact/artifact_sparse_list_check.p >"$TMP_DIR/sparse-list.out"
 graph_type_expr_count=$(
 	awk '
 		$1 == "SECTION" && $2 == "graph" {
@@ -750,7 +750,7 @@ grep -E 'metadata label matchAscribed -> operation#[0-9]+ -> term#' "$TMP_DIR/mu
 grep -F '[solved-match-motive proof#' "$TMP_DIR/multi-app.out" >/dev/null
 
 ./read_file.out --write-artifact "$TMP_DIR/AscribedRawFunction.apo" \
-	src/prototype/ascribed_raw_function_check.p \
+	src/prototype/tests/fixtures/typing/ascribed_raw_function_check.p \
 	>"$TMP_DIR/ascribed-raw-function.out"
 awk '
 	$1 == "operation" {
@@ -1105,7 +1105,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadLambdaIntroBinderPremise.apo" >"$TM
 	exit 1
 fi
 ./read_file.out --write-artifact "$TMP_DIR/ListInductionPattern.apo" \
-	src/prototype/artifact_list_induction_check.p >"$TMP_DIR/list-induction-pattern.out"
+	src/prototype/tests/fixtures/artifact/artifact_list_induction_check.p >"$TMP_DIR/list-induction-pattern.out"
 if grep -q 'TELESCOPE' "$TMP_DIR/list-induction-pattern.out"; then
 	echo "newly generated list induction graph unexpectedly contains TELESCOPE" >&2
 	exit 1
@@ -1445,7 +1445,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadProofEdgeMismatch.apo" >"$TMP_DIR/b
 	exit 1
 fi
 ./read_file.out --write-artifact "$TMP_DIR/AppPremiseKind.apo" \
-	src/prototype/artifact_add_check.p >"$TMP_DIR/app-premise-kind-artifact.out"
+	src/prototype/tests/fixtures/artifact/artifact_add_check.p >"$TMP_DIR/app-premise-kind-artifact.out"
 awk '
 	FNR == NR {
 		if ($1 == "claim") claim_proposition[$2] = $4;
@@ -1758,7 +1758,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadIhContextField.apo" >"$TMP_DIR/bad-
 	exit 1
 fi
 
-./read_file.out src/prototype/artifact_add_check.p >"$TMP_DIR/add-proof.out"
+./read_file.out src/prototype/tests/fixtures/artifact/artifact_add_check.p >"$TMP_DIR/add-proof.out"
 if grep -q 'expects-type' "$TMP_DIR/add-proof.out"; then
 	echo "expectation relation leaked into proof output" >&2
 	exit 1
@@ -1784,7 +1784,7 @@ grep -q 'metadata label double' "$TMP_DIR/source-view-nat-match.out"
 grep -q 'INDUCTION_HYPOTHESIS.*TYPE_VIEW(Nat' "$TMP_DIR/source-view-nat-match.out"
 
 ./read_file.out --write-artifact "$TMP_DIR/AddProof.apo" \
-	src/prototype/artifact_add_check.p >"$TMP_DIR/add-proof-artifact.out"
+	src/prototype/tests/fixtures/artifact/artifact_add_check.p >"$TMP_DIR/add-proof-artifact.out"
 awk '
 	$1 == "derivation" && $3 == lambda_intro_proof_kind && $7 > 0 && !target {
 		target = 1;
@@ -2955,7 +2955,7 @@ fi
 # A rule-local premise references one independent Proposition rather than an
 # accepted Claim. Exercise every referenced Proposition field independently.
 ./read_file.out --write-artifact "$TMP_DIR/ScopedPremise.apo" \
-	src/prototype/effect_weaken_handler_check.p \
+	src/prototype/tests/fixtures/effects/effect_weaken_handler_check.p \
 	>"$TMP_DIR/scoped-premise-write.out"
 ./read_file.out --read-graph "$TMP_DIR/ScopedPremise.apo" \
 	>"$TMP_DIR/scoped-premise-read.out"
@@ -2987,7 +2987,7 @@ done
 
 prototype_compile c11 werror compiler \
 	"$TMP_DIR/core-view-representation-check" \
-	src/prototype/core_view_representation_check.c
+	src/prototype/tests/checks/core_view_representation_check.c
 "$TMP_DIR/core-view-representation-check"
 
 echo "artifact flow tests passed"

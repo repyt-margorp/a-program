@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 
-Status: in progress; L0 complete, L1 next
+Status: in progress; L0-L1 complete, L2 next
 
 Repository baseline:
 
@@ -320,18 +320,22 @@ tests, symbols, and artifact bytes are unchanged.
 
 ### L1: Separate tests, fixtures, and schemas
 
-Status: pending; blocked on L0
+Status: complete in the working tree
 
-- [ ] Move all `test_*.sh` files to `tests/integration/` with `git mv`.
-- [ ] Move focused `*_check.c` programs to `tests/checks/`.
-- [ ] Classify every `.p` fixture by semantic owner and move it to the matching
+- [x] Move all 16 `test_*.sh` files to `tests/integration/` with `git mv`.
+- [x] Move 10 focused `*_check.c` programs to `tests/checks/`.
+- [x] Classify all 36 `.p` fixtures by semantic owner and move them to the matching
       `tests/fixtures/` directory.
-- [ ] Move active schemas to `spec/`.
-- [ ] Move v67-v69 schemas to `spec/archive/` and add the archive README.
-- [ ] Update all manifest, script, fingerprint, and fixture paths atomically.
-- [ ] Do not rename fixture contents or test functions in this phase.
-- [ ] Remove every old path; do not add symlinks or forwarding scripts.
-- [ ] Verify the inventory contains no active test/schema file at the old root.
+- [x] Move the two active schemas to `spec/`.
+- [x] Move v67-v69 schemas to `spec/archive/` and add the archive README.
+- [x] Update all manifest, script, fingerprint, and fixture paths atomically.
+- [x] Do not rename fixture contents or test functions in this phase.
+- [x] Remove every old path; do not add symlinks or forwarding scripts.
+- [x] Verify the inventory contains no active test/schema file at the old root.
+- [x] Run all 16 integration scripts from their new paths. All pass.
+- [x] Compare the generated HOTT v70 artifact against the L0 baseline. Its hash
+      remains `2d64defe38600f40e73bcb6bfa5b92e925f771783b8ea14de2641daba0496514`
+      and `cmp` reports byte identity.
 
 Exit gate: implementation files are physically separate from tests and specs,
 and the baseline evidence remains identical.
@@ -608,7 +612,7 @@ Stop and revise this plan if any phase requires:
 | Phase | Status | Blocked by | Completion evidence |
 | --- | --- | --- | --- |
 | L0 build manifests and baseline | complete in working tree | none | centralized source list; baseline bundle; 16 scripts; symbol and artifact equality |
-| L1 tests/spec separation | pending | L0 | no root-level tests/fixtures/schemas; identical artifacts |
+| L1 tests/spec separation | complete | L0 | 16 tests pass; no root-level tests/fixtures/schemas; identical artifact |
 | L2 stale snapshot removal | pending | L1 | no active references; deleted-line record |
 | L3 cohesive module moves | pending | L2 | owner directories; no compatibility paths; full suite |
 | L4 `ast` decomposition | pending | L3 | frontend/graph/artifact ownership; identical v70 bytes |

@@ -5,7 +5,7 @@ set -eu
 
 prototype_compile c11 werror compiler \
 	/tmp/a-program-term-identity-frame-check \
-	src/prototype/term_identity_frame_check.c
+	src/prototype/tests/checks/term_identity_frame_check.c
 
 /tmp/a-program-term-identity-frame-check
 rm -f /tmp/a-program-term-identity-frame-check

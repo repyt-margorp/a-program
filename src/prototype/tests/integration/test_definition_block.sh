@@ -1,13 +1,14 @@
 #!/bin/sh
 set -eu
 
-cd "$(dirname "$0")/../.."
+ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
+cd "$ROOT_DIR"
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
 
 ./read_file.out --write-artifact "$tmp_dir/definition.apo" \
-	src/prototype/definition_block_check.p >"$tmp_dir/definition.out"
+	src/prototype/tests/fixtures/typing/definition_block_check.p >"$tmp_dir/definition.out"
 grep -q '^term id := THUNK(LAMBDA(' "$tmp_dir/definition.out"
 grep -q '^term main := THUNK(RETURN(INT_LITERAL(1)))$' \
 	"$tmp_dir/definition.out"
@@ -47,7 +48,7 @@ if ./read_file.out --aggregate-artifact "$tmp_dir/two-entries.apo" \
 fi
 
 if ./read_file.out --no-implicit-definition-thunks \
-	src/prototype/definition_block_check.p >"$tmp_dir/implicit-disabled.out" \
+	src/prototype/tests/fixtures/typing/definition_block_check.p >"$tmp_dir/implicit-disabled.out" \
 	2>"$tmp_dir/implicit-disabled.err"; then
 	echo 'explicit definition policy accepted a bare computation' >&2
 	exit 1
@@ -55,17 +56,17 @@ fi
 grep -q 'metadata resolve-error kind=compile' "$tmp_dir/implicit-disabled.err"
 
 ./read_file.out --no-implicit-definition-thunks \
-	src/prototype/definition_block_explicit_check.p \
+	src/prototype/tests/fixtures/typing/definition_block_explicit_check.p \
 	>"$tmp_dir/explicit.out"
 grep -q '^term id := THUNK(LAMBDA(' "$tmp_dir/explicit.out"
 grep -q '^term main := THUNK(RETURN(INT_LITERAL(1)))$' "$tmp_dir/explicit.out"
 
-./read_file.out src/prototype/definition_block_forward_check.p \
+./read_file.out src/prototype/tests/fixtures/typing/definition_block_forward_check.p \
 	>"$tmp_dir/forward.out"
 grep -q '^term main := THUNK(APP(FORCE(THUNK(LAMBDA(' "$tmp_dir/forward.out"
 
 ./read_file.out --write-artifact "$tmp_dir/typed-shared-core.apo" \
-	src/prototype/typed_shared_core_definition_check.p \
+	src/prototype/tests/fixtures/typing/typed_shared_core_definition_check.p \
 	>"$tmp_dir/typed-shared-core.out"
 identity_bool_term=$(awk '/metadata label identityBool -> operation#[0-9]+ -> term#/ {
 	sub("term#", "", $7); print $7
@@ -80,13 +81,13 @@ identity_nat_classifier=$(awk '$1 == "term" && $2 == "identityNat" { print $4 }'
 test "$identity_bool_term" = "$identity_nat_term"
 test "$identity_bool_classifier" != "$identity_nat_classifier"
 
-./read_file.out src/prototype/definition_block_effect_check.p \
+./read_file.out src/prototype/tests/fixtures/typing/definition_block_effect_check.p \
 	>"$tmp_dir/effect-compile.out"
 if grep -qx 'definition-entry' "$tmp_dir/effect-compile.out"; then
 	echo 'definition entry executed while compiling' >&2
 	exit 1
 fi
-printf ':q\n' | ./a.out src/prototype/definition_block_effect_check.p \
+printf ':q\n' | ./a.out src/prototype/tests/fixtures/typing/definition_block_effect_check.p \
 	>"$tmp_dir/effect-run.out"
 test "$(grep -c '^definition-entry$' "$tmp_dir/effect-run.out")" -eq 1
 grep -q '^value main := RETURN(TEXT_LITERAL("definition-entry"))$' \
