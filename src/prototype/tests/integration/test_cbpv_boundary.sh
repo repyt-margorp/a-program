@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-10-INTRINSIC-ENVIRONMENT
+
 . src/prototype/build/test_support.sh
 
 prototype_compile c11 warnings compiler \

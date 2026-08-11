@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-5-TYPED-IH-OCCURRENCE
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-recursive-ih.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT

@@ -727,9 +727,22 @@ script:
 sh src/prototype/tests/integration/test_artifact_flow.sh
 ```
 
+Closed implementation issues #3 through #10 retain a machine-readable boundary
+audit index in `tests/audit/github_issues_3_10.tsv`. Each row names the semantic
+boundary, its permanent integration runner, a representative evidence fixture,
+and an ownership marker declared by that runner. The automatically
+discovered `test_issue_boundary_audit_manifest.sh` rejects missing issues,
+duplicate boundary identities, missing runners, missing evidence,
+and detached markers. It is an ownership index; the listed focused runners
+remain the authoritative behavioral tests and are all executed by:
+
+```
+make -f src/prototype/Makefile test-integration
+```
+
 It checks that `identityBool := \x : Bool => x;` and
 `identityNat := \y : Nat => y;` publish the same core lambda term, that artifact
-v8 debug/name records are readable, that term exports keep distinct classifier
+v72 debug/name records are readable, that term exports keep distinct classifier
 keys even when they share a core term, that a split `Nat.apo` + `List.apo`
 compile can build `(List Nat).nil` through explicit interface imports and
 through source-level `import Nat; import List;` plus `--import-search-dir`, and

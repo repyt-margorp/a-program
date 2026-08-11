@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-10-INTRINSIC-INT-PRINCIPAL
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-artifact-flow.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT

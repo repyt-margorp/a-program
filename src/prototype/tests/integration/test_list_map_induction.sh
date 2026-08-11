@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-6-MATCH-CARRIER-EFFECT-SPLIT
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-list-map.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT

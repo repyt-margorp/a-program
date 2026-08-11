@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-3-CWF-CANDIDATE-CERTIFICATE
+# Boundary audit: ISSUE-3-CWF-ARTIFACT-COVERAGE
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh

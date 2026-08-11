@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-8-EXECUTABLE-EXAMPLE-MANIFEST
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 SUITE_DIR=examples/type-infer-and-check
 MANIFEST=$SUITE_DIR/manifest.tsv

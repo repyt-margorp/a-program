@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-9-READ-ONLY-TYPE-INSPECTION
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-type-inspection.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT

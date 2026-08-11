@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-4-HOST-LITERAL-RECURSIVE-MOTIVE
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-host-expression.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT
