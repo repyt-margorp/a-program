@@ -51,45 +51,55 @@ static int computation_effect_row_is_union(
 		right->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
 		return 0;
 	}
-	unsigned result_effects;
-	unsigned left_effects;
-	unsigned right_effects;
-	if (prototype_term_effect_row_closed_bits(terms, result->effect_row, &result_effects) == 0 &&
-		prototype_term_effect_row_closed_bits(terms, left->effect_row, &left_effects) == 0 &&
-		prototype_term_effect_row_closed_bits(terms, right->effect_row, &right_effects) == 0) {
-		return result_effects == (left_effects | right_effects);
-	}
-	/* EFFECT_ROW_UNION normalizes the empty row away even when the other row is
-	 * symbolic. The proof validator must use the same unit law as TermDB. */
-	if (prototype_term_effect_row_closed_bits(terms, left->effect_row, &left_effects) == 0 &&
-		left_effects == PROTOTYPE_EFFECT_OPERATION_LABEL_NONE) {
-		int equal = 0;
-		return prototype_term_view_shape_equal(
-			terms, result->effect_row, right->effect_row, &equal
-		) == 0 && equal;
-	}
-	if (prototype_term_effect_row_closed_bits(terms, right->effect_row, &right_effects) == 0 &&
-		right_effects == PROTOTYPE_EFFECT_OPERATION_LABEL_NONE) {
-		int equal = 0;
-		return prototype_term_view_shape_equal(
-			terms, result->effect_row, left->effect_row, &equal
-		) == 0 && equal;
-	}
-	if (result->effect_row >= terms->term_count ||
-		terms->terms[result->effect_row].tag != PROTOTYPE_TERM_EFFECT_ROW_UNION) {
+	struct prototype_effect_row_normal_form result_normal;
+	struct prototype_effect_row_normal_form left_normal;
+	struct prototype_effect_row_normal_form right_normal;
+	if (prototype_term_effect_row_normal_form(
+			terms, result->effect_row, &result_normal
+		) != 0 || prototype_term_effect_row_normal_form(
+			terms, left->effect_row, &left_normal
+		) != 0 || prototype_term_effect_row_normal_form(
+			terms, right->effect_row, &right_normal
+		) != 0) {
 		return 0;
 	}
-	const struct prototype_term* row = &terms->terms[result->effect_row];
-	int left_equal = 0;
-	int right_equal = 0;
-	if (prototype_term_view_shape_equal(terms, row->as.effect_row_union.left,
-			left->effect_row, &left_equal) != 0 ||
-		prototype_term_view_shape_equal(terms, row->as.effect_row_union.right,
-			right->effect_row, &right_equal) != 0) {
-		return 0;
+	for (uint32_t i = 0; i < left_normal.atom_count; ++i) {
+		struct prototype_effect_row_normal_form singleton = {
+			.atom_count = 1,
+			.atoms = { left_normal.atoms[i] }
+		};
+		if (!prototype_term_effect_row_normal_form_includes(
+				&result_normal, &singleton
+			)) {
+			return 0;
+		}
+	}
+	for (uint32_t i = 0; i < right_normal.atom_count; ++i) {
+		struct prototype_effect_row_normal_form singleton = {
+			.atom_count = 1,
+			.atoms = { right_normal.atoms[i] }
+		};
+		if (!prototype_term_effect_row_normal_form_includes(
+				&result_normal, &singleton
+			)) {
+			return 0;
+		}
 	}
 	(void)type_declarations;
-	return left_equal && right_equal;
+	for (uint32_t i = 0; i < result_normal.atom_count; ++i) {
+		struct prototype_effect_row_normal_form singleton = {
+			.atom_count = 1,
+			.atoms = { result_normal.atoms[i] }
+		};
+		if (!prototype_term_effect_row_normal_form_includes(
+				&left_normal, &singleton
+			) && !prototype_term_effect_row_normal_form_includes(
+				&right_normal, &singleton
+			)) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 static int effect_row_operation_latent_union(
@@ -104,7 +114,7 @@ static int effect_row_operation_latent_union(
 	}
 	const struct prototype_term* term = &terms->terms[row];
 	switch (term->tag) {
-		case PROTOTYPE_TERM_EFFECT_LABEL:
+		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 			return 0;
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
 			if (term->as.effect_row_operation.operation_id != operation_id) {
@@ -160,8 +170,13 @@ int prototype_judgement_specialize_fold_operation_classifier(
 		return -1;
 	}
 	*p_specialized = classifier;
-	if (declaration->classifier_schema !=
-		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT) {
+	int has_suspended_argument;
+	if (prototype_term_effect_operation_classifier_has_suspended_argument(
+			terms, classifier, &has_suspended_argument
+		) != 0) {
+		return -1;
+	}
+	if (!has_suspended_argument) {
 		return 0;
 	}
 	uint32_t latent_row = PROTOTYPE_INVALID_ID;
@@ -217,9 +232,9 @@ static int instantiate_fold_clause_classifier(
 		*p_instantiated = classifier;
 		return 0;
 	}
-	if (conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
-		return -1;
-	}
+	/* An open effect-row domain is intentionally undecidable by conversion.
+	 * Recognize its scoped metavariable structure below and instantiate it
+	 * explicitly; INDETERMINATE is not a malformed classifier here. */
 	if (terms->terms[generic_domain].tag != PROTOTYPE_TERM_THUNK_TYPE ||
 		terms->terms[concrete_domain].tag != PROTOTYPE_TERM_THUNK_TYPE) {
 		return -1;
@@ -268,19 +283,15 @@ static int computation_fold_residual_row(
 	const struct prototype_term_classifier_view* operation,
 	uint32_t* p_residual
 ) {
-	unsigned operation_effects;
 	if (!terms || !input || !operation || !p_residual ||
 		input->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		operation->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		input->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		operation->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		prototype_term_effect_row_closed_bits(
-			terms, operation->effect_row, &operation_effects
-		) != 0) {
+		operation->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
 		return 1;
 	}
 	return prototype_term_effect_row_residual(
-		terms, input->effect_row, operation_effects, p_residual
+		terms, input->effect_row, operation->effect_row, p_residual
 	);
 }
 
@@ -355,21 +366,17 @@ static int solve_effect_row_constraints(
 	for (size_t i = 0; i < delta->effect_row_constraint_count; ++i) {
 		struct prototype_judgement_effect_row_constraint* constraint =
 			&delta->effect_row_constraints[i];
-		unsigned result;
-		if (prototype_term_effect_row_closed_bits(
-				terms, constraint->result_row, &result
-			) != 0) {
+		if (prototype_term_effect_row_is_closed(
+				terms, constraint->result_row
+			) != 1) {
 			constraint->solved = 0;
 			continue;
 		}
-		unsigned operand_bits[
-			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_MAX_OPERANDS
-		];
 		int closed = 1;
 		for (uint32_t j = 0; j < constraint->operand_count; ++j) {
-			if (prototype_term_effect_row_closed_bits(
-					terms, constraint->operands[j], &operand_bits[j]
-				) != 0) {
+			if (prototype_term_effect_row_is_closed(
+					terms, constraint->operands[j]
+				) != 1) {
 				closed = 0;
 				break;
 			}
@@ -378,29 +385,54 @@ static int solve_effect_row_constraints(
 			constraint->solved = 0;
 			continue;
 		}
+		uint32_t expected;
 		if (constraint->kind == PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_JOIN) {
-			unsigned joined = 0;
-			for (uint32_t j = 0; j < constraint->operand_count; ++j) {
-				joined |= operand_bits[j];
-			}
-			if (result != joined) {
+			if (prototype_term_effect_row_empty(terms, &expected) != 0) {
 				return -1;
+			}
+			for (uint32_t j = 0; j < constraint->operand_count; ++j) {
+				if (prototype_term_effect_row_union(
+						terms, expected, constraint->operands[j], &expected
+					) != 0) {
+					return -1;
+				}
 			}
 		} else if (constraint->kind ==
 			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_RESIDUAL) {
 			if (constraint->operand_count != 2 ||
-				(operand_bits[0] & operand_bits[1]) != operand_bits[1] ||
-				result != (operand_bits[0] & ~operand_bits[1])) {
+				prototype_term_effect_row_residual(
+					terms, constraint->operands[0], constraint->operands[1], &expected
+				) != 0) {
 				return -1;
 			}
 		} else if (constraint->kind ==
 			PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_INCLUSION) {
-			if (constraint->operand_count != 2 ||
-				(operand_bits[0] & operand_bits[1]) != operand_bits[0] ||
-				result != operand_bits[1]) {
+			struct prototype_effect_row_normal_form subset;
+			struct prototype_effect_row_normal_form superset;
+			if (constraint->operand_count != 2 || prototype_term_effect_row_normal_form(
+					terms, constraint->operands[0], &subset
+				) != 0 || prototype_term_effect_row_normal_form(
+					terms, constraint->operands[1], &superset
+				) != 0 || !prototype_term_effect_row_normal_form_includes(
+					&superset, &subset
+				)) {
 				return -1;
 			}
+			expected = constraint->operands[1];
 		} else {
+			return -1;
+		}
+		struct prototype_effect_row_normal_form result_normal;
+		struct prototype_effect_row_normal_form expected_normal;
+		if (prototype_term_effect_row_normal_form(
+				terms, constraint->result_row, &result_normal
+			) != 0 || prototype_term_effect_row_normal_form(
+				terms, expected, &expected_normal
+			) != 0 || !prototype_term_effect_row_normal_form_includes(
+				&result_normal, &expected_normal
+			) || !prototype_term_effect_row_normal_form_includes(
+				&expected_normal, &result_normal
+			)) {
 			return -1;
 		}
 		constraint->solved = 1;
@@ -990,11 +1022,6 @@ static int classifier_view_with_depth(
 		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
 		p_ret->effect_row = effect_row;
 		p_ret->result = result;
-		if (prototype_term_effect_row_closed_bits(
-				terms, effect_row, &p_ret->effects
-			) != 0) {
-			p_ret->effects = PROTOTYPE_EFFECT_OPERATION_LABEL_NONE;
-		}
 		return 0;
 	}
 	return prototype_term_classifier_view(terms, whnf, p_ret);
@@ -1034,18 +1061,18 @@ int prototype_judgement_claim_category(
 		return -1;
 	}
 	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION) {
-		int polarity;
+		int category;
 		if (!operations || prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id != prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id ||
 			judgement_operation_expected_polarity(
 				terms,
 				type_declarations,
 				operations,
 				prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id,
-				&polarity
+				&category
 			) != 0) {
 			return -1;
 		}
-		*p_category = polarity == PROTOTYPE_OPERATION_POLARITY_COMPUTATION ?
+		*p_category = category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
 			PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION :
 			PROTOTYPE_JUDGEMENT_CATEGORY_VALUE;
 		return 0;
@@ -1118,7 +1145,9 @@ static void selected_evidence_from_candidate(
 			PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
 			candidate->operation_id : PROTOTYPE_INVALID_ID,
 		.subject = candidate->subject,
-		.classifier = candidate->classifier
+		.classifier = candidate->classifier,
+		.resource_usage_count = candidate->resource_usage_count,
+		.resource_usage = candidate->resource_usage
 	};
 }
 
@@ -1132,7 +1161,20 @@ static int selected_evidence_equal(
 		left->context_id == right->context_id &&
 		left->operation_id == right->operation_id &&
 		left->subject == right->subject &&
-		left->classifier == right->classifier;
+		left->classifier == right->classifier &&
+		left->resource_usage_count == right->resource_usage_count &&
+		prototype_usage_vector_equal(
+			&(struct prototype_usage_vector) {
+				.entries = (struct prototype_usage_entry*)left->resource_usage,
+				.count = left->resource_usage_count,
+				.capacity = left->resource_usage_count
+			},
+			&(struct prototype_usage_vector) {
+				.entries = (struct prototype_usage_entry*)right->resource_usage,
+				.count = right->resource_usage_count,
+				.capacity = right->resource_usage_count
+			}
+		);
 }
 
 static int merge_exact_selected_evidence(

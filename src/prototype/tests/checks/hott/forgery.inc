@@ -57,7 +57,7 @@
 		nat_context,
 		nat_match,
 		nat_classifier,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t nat_match_claim = fixture_add_claim(
 		&judgement,
@@ -95,7 +95,7 @@
 	uint32_t nat_bridge;
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, nat_type_action, &nat_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, nat_type_action_id, &nat_type_result_id
 		) != 0 || action_results[nat_type_result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY ||
@@ -119,7 +119,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, nat_match_type_action,
 			&nat_match_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, nat_match_type_action_id,
 			&nat_match_type_result_id
 		) != 0 || action_results[nat_match_type_result_id].outcome.state !=
@@ -285,7 +285,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, relation_type_action,
 			&relation_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, relation_type_action_id,
 			&relation_type_result_id
 		) != 0 || action_results[relation_type_result_id].outcome.state !=
@@ -335,7 +335,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, higher_type_action,
 			&higher_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, higher_type_action_id,
 			&higher_type_result_id
 		) != 0 || action_results[higher_type_result_id].outcome.state !=
@@ -465,7 +465,7 @@
 		empty,
 		beta_false,
 		bool_view,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t beta_false_claim = fixture_add_claim(
 		&judgement,
@@ -478,7 +478,7 @@
 		bool_view
 	);
 	uint32_t bool_conversion_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db,
 			&kernel_view,
 			&bridge_db,
@@ -493,7 +493,7 @@
 		return 148;
 	}
 	struct prototype_hott_relation_execution conversion_execution;
-	if (prototype_hott_relation_plan_and_execute(
+	if (prototype_parametricity_relation_plan_and_execute(
 			&goal_db,
 			&candidate_db,
 			&work_db,
@@ -530,7 +530,7 @@
 		return 148;
 	}
 	struct prototype_hott_relation_execution distinct_execution;
-	if (prototype_hott_relation_plan_and_execute(
+	if (prototype_parametricity_relation_plan_and_execute(
 			&goal_db,
 			&candidate_db,
 			&work_db,
@@ -555,7 +555,7 @@
 		return 134;
 	}
 	struct prototype_hott_relation_execution diagonal_execution;
-	if (prototype_hott_relation_plan_and_execute(
+	if (prototype_parametricity_relation_plan_and_execute(
 			&goal_db,
 			&candidate_db,
 			&work_db,
@@ -618,7 +618,7 @@
 		return 135;
 	}
 	action_db.result_capacity = action_db.result_count;
-	int atomic_failure_status = prototype_hott_execute_relation_type_action(
+	int atomic_failure_status = prototype_parametricity_execute_relation_type_action(
 		&action_db, &kernel_builder, &bridge_db, atomic_failure_request_id, &ignored_result_id
 	);
 	action_db.result_capacity = saved_result_capacity;

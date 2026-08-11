@@ -4,8 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "a_program/core/term.h"
-#include "a_program/kernel/type_declaration.h"
+#include "a_program/support/schema.h"
 
 /* These are compiler acceptance limits, not counts from a particular graph.
  * Re-publication may derive Universe data that was absent from the source
@@ -14,9 +13,6 @@
 #define PROTOTYPE_UNIVERSE_EDGE_CAPACITY 512
 #define PROTOTYPE_UNIVERSE_LEVEL_CAPACITY 1024
 #define PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY 4096
-
-struct prototype_operation_graph;
-struct prototype_judgement_db;
 
 enum prototype_universe_node_tag {
 	PROTOTYPE_UNIVERSE_NODE_TYPE = 1,
@@ -39,8 +35,6 @@ enum prototype_universe_constraint_reason {
 	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_DOMAIN = 8,
 	PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_CODOMAIN = 9
 };
-
-struct prototype_judgement_db;
 
 struct prototype_universe_node {
 	int tag;
@@ -139,17 +133,27 @@ uint32_t prototype_universe_find_type_node(
 	uint32_t type_id
 );
 
-int prototype_universe_collect(
+int prototype_universe_ensure_level(
 	struct prototype_universe_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_db* terms,
-	const struct prototype_operation_graph* operations,
-	const struct prototype_judgement_db* judgement
+	uint32_t level_var,
+	uint32_t* p_index
 );
 
-int prototype_universe_validate_provenance(
-	const struct prototype_universe_db* db,
-	const struct prototype_judgement_db* judgement
+int prototype_universe_add_constraint(
+	struct prototype_universe_db* db,
+	uint32_t lower_level_var,
+	uint32_t upper_level_var,
+	int offset,
+	uint32_t subject,
+	uint32_t classifier,
+	int reason,
+	uint32_t source_claim_id,
+	int source_authority_kind,
+	uint32_t source_authority_id,
+	uint32_t source_subject,
+	uint32_t source_classifier
 );
+
+int prototype_universe_solve(struct prototype_universe_db* db);
 
 #endif

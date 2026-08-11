@@ -1,4 +1,6 @@
-#include "a_program/artifact/interface.h"
+#include "a_program/artifact/wire_v71.h"
+
+#include "a_program/graph/operation_graph.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -33,9 +35,9 @@ static int read_artifact_term_key(
 	return 0;
 }
 
-static int read_artifact_type_code_shape_key(
+static int read_artifact_type_representation_fingerprint(
 	FILE* stream,
-	struct prototype_type_code_shape_key* key
+	struct prototype_type_representation_fingerprint* key
 ) {
 	unsigned long long hash;
 	if (fscanf(
@@ -320,7 +322,7 @@ int prototype_artifact_read_text_interface(
 		}
 		export->name_symbol_id = symbol_intern(symbols, name, strlen(name));
 		if (export->name_symbol_id < 0 ||
-			read_artifact_type_code_shape_key(stream, &export->code_shape_key) != 0 ||
+			read_artifact_type_representation_fingerprint(stream, &export->representation_fingerprint) != 0 ||
 			fscanf(stream, "%255s %255s", namespace_word, namespace_name) != 2 ||
 			strcmp(namespace_word, "namespace") != 0) {
 			return -1;
@@ -552,7 +554,7 @@ static int read_artifact_type_expr(
 					read_artifact_symbol(stream, symbols, &expr->as.imported_type.name.name_symbol_id) != 0) {
 				return -1;
 			}
-				return read_artifact_type_code_shape_key(stream, &expr->as.imported_type.code_shape_key);
+				return read_artifact_type_representation_fingerprint(stream, &expr->as.imported_type.representation_fingerprint);
 			case PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM:
 				return read_artifact_optional_symbol(
 					stream,
@@ -734,8 +736,8 @@ static int read_artifact_term(
 					term->as.effect_operation.operation_id = binding.target_id;
 					return 0;
 				}
-			case PROTOTYPE_TERM_EFFECT_LABEL:
-				return fscanf(stream, "%u", &term->as.effect_label.effects) == 1 ? 0 : -1;
+			case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
+				return 0;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 				if (fscanf(stream, "%u", &term->as.effect_row_var.binding_id) != 1) {
 					return -1;
@@ -1042,7 +1044,7 @@ static int artifact_validate_term_refs(
 			case PROTOTYPE_TERM_INT_LITERAL:
 				case PROTOTYPE_TERM_EXTERNAL_REF:
 				case PROTOTYPE_TERM_PURE_PRIMITIVE:
-				case PROTOTYPE_TERM_EFFECT_LABEL:
+				case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 				case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 					return 0;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
@@ -1894,6 +1896,7 @@ int prototype_artifact_read_text_graph(
 		sizeof(judgement->proposition_index_heads)
 	);
 	judgement->proposition_count = 0;
+	judgement->proposition_resource_usage_count = 0;
 	memset(judgement->derivations, 0, sizeof(*judgement->derivations) * derivation_slot_count);
 	judgement->accepted_premise_count = 0;
 	judgement->candidate_premise_count = 0;
@@ -1905,9 +1908,10 @@ int prototype_artifact_read_text_graph(
 		size_t id;
 		struct prototype_judgement_proposition read_proposition;
 		memset(&read_proposition, 0, sizeof(read_proposition));
+		unsigned int usage_count;
 		if (fscanf(
 				stream,
-				"%255s %zu %d %d %u %u %u %u %u",
+				"%255s %zu %d %d %u %u %u %u %u %u",
 				word,
 				&id,
 				&read_proposition.kind,
@@ -1916,16 +1920,33 @@ int prototype_artifact_read_text_graph(
 				&read_proposition.context_id,
 				&read_proposition.operation_id,
 				&read_proposition.subject,
-				&read_proposition.classifier
-			) != 9 || strcmp(word, "proposition") != 0 || id != i ||
+				&read_proposition.classifier,
+				&usage_count
+			) != 10 || strcmp(word, "proposition") != 0 || id != i ||
 			read_proposition.kind < PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 			read_proposition.kind > PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
 			read_proposition.authority_kind <
 				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
 			read_proposition.authority_kind >
-				PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT) {
+				PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT ||
+			usage_count > judgement->proposition_resource_usage_capacity) {
 			return -1;
 		}
+		struct prototype_usage_entry usage[usage_count == 0 ? 1 : usage_count];
+		for (unsigned int usage_index = 0;
+			usage_index < usage_count;
+			++usage_index) {
+			if (fscanf(
+					stream,
+					"%u %d",
+					&usage[usage_index].binding_id,
+					&usage[usage_index].grade
+				) != 2) {
+				return -1;
+			}
+		}
+		read_proposition.resource_usage_count = usage_count;
+		read_proposition.resource_usage = usage_count == 0 ? NULL : usage;
 		uint32_t proposition_id;
 		if (prototype_judgement_proposition_intern(
 				judgement, &read_proposition, &proposition_id
@@ -2342,7 +2363,7 @@ int prototype_artifact_read_text_operation_graph(
 		memset(&operation, 0, sizeof(operation));
 	if (fscanf(stream, "%255s %zu %d %d %d %u %u %u %255s %255s"
 				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
-				word, &id, &operation.tag, &operation.polarity,
+				word, &id, &operation.tag, &operation.category,
 				&operation.application_role,
 				&operation.core_term, &operation.known_classifier, &operation.classifier,
 				source_name, binder_name,
@@ -2361,8 +2382,8 @@ int prototype_artifact_read_text_operation_graph(
 		}
 		if (operation.tag < PROTOTYPE_OPERATION_ATOM ||
 			operation.tag > PROTOTYPE_OPERATION_COMPUTATION_FOLD ||
-			operation.polarity < PROTOTYPE_OPERATION_POLARITY_UNKNOWN ||
-			operation.polarity > PROTOTYPE_OPERATION_POLARITY_COMPUTATION ||
+			operation.category < PROTOTYPE_TERM_CATEGORY_INVALID ||
+			operation.category > PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 			operation.application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
 			operation.application_role >
 				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION ||
@@ -3176,9 +3197,9 @@ int prototype_artifact_read_text_relocation(
 		}
 		int interned = symbol_intern(symbols, name, strlen(name));
 		if (interned < 0 ||
-			read_artifact_type_code_shape_key(
+			read_artifact_type_representation_fingerprint(
 				stream,
-				&relocation->resolved_external_type_expr_refs[i].code_shape_key
+				&relocation->resolved_external_type_expr_refs[i].representation_fingerprint
 			) != 0) {
 			return -1;
 		}
@@ -3249,9 +3270,9 @@ int prototype_artifact_read_text_relocation(
 		}
 		int interned = symbol_intern(symbols, name, strlen(name));
 		if (interned < 0 ||
-			read_artifact_type_code_shape_key(
+			read_artifact_type_representation_fingerprint(
 				stream,
-				&relocation->resolved_external_type_former_refs[i].code_shape_key
+				&relocation->resolved_external_type_former_refs[i].representation_fingerprint
 			) != 0) {
 			return -1;
 		}

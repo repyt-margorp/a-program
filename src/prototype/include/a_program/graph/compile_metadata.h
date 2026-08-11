@@ -5,7 +5,8 @@
 #include <stdint.h>
 
 #include "a_program/frontend/ast.h"
-#include "a_program/graph/operation_graph.h"
+#include "a_program/graph/operation_model.h"
+#include "a_program/graph/verification.h"
 #include "a_program/kernel/context.h"
 
 struct prototype_compile_constructor_export {
@@ -20,7 +21,7 @@ struct prototype_compile_constructor_export {
 struct prototype_compile_type_export {
 	int name_symbol_id;
 	uint32_t type_id;
-	struct prototype_type_code_shape_key code_shape_key;
+	struct prototype_type_representation_fingerprint representation_fingerprint;
 	uint32_t first_constructor_export;
 	uint32_t constructor_count;
 };

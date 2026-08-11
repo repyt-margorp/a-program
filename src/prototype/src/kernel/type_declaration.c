@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY 512
+#define PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY 512
 #define PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY 512
-#define PROTOTYPE_TYPE_CODE_SHAPE_KEY_HASH_OFFSET 1469598103934665603ULL
-#define PROTOTYPE_TYPE_CODE_SHAPE_KEY_HASH_PRIME 1099511628211ULL
+#define PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_HASH_OFFSET 1469598103934665603ULL
+#define PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_HASH_PRIME 1099511628211ULL
 
 static int reserve_slot(size_t count, size_t capacity) {
 	return count < capacity ? 0 : -1;
@@ -162,14 +162,14 @@ int prototype_constructor_curried_caches_rebuild(
 	return 0;
 }
 
-struct type_code_shape_key_binder_env {
+struct type_representation_fingerprint_binder_env {
 	const struct prototype_context_db* contexts;
-	uint32_t binding_id[PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY];
-	uint32_t slot[PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY];
+	uint32_t binding_id[PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY];
+	uint32_t slot[PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY];
 	uint32_t count;
 	uint32_t next_slot;
-	uint32_t level_var[PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY];
-	uint32_t level_slot[PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY];
+	uint32_t level_var[PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY];
+	uint32_t level_slot[PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY];
 	uint32_t level_count;
 	uint32_t next_level_slot;
 };
@@ -207,34 +207,34 @@ static int representation_terms_equal_at_depth(
 	uint32_t depth
 );
 
-static void type_code_shape_key_hash_mix_u32(uint64_t* p_hash, uint32_t value) {
+static void type_representation_fingerprint_hash_mix_u32(uint64_t* p_hash, uint32_t value) {
 	*p_hash ^= (uint64_t)value;
-	*p_hash *= PROTOTYPE_TYPE_CODE_SHAPE_KEY_HASH_PRIME;
+	*p_hash *= PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_HASH_PRIME;
 }
 
-static void type_code_shape_key_hash_mix_tag(uint64_t* p_hash, uint32_t tag) {
-	type_code_shape_key_hash_mix_u32(p_hash, 0x9e3779b9U);
-	type_code_shape_key_hash_mix_u32(p_hash, tag);
+static void type_representation_fingerprint_hash_mix_tag(uint64_t* p_hash, uint32_t tag) {
+	type_representation_fingerprint_hash_mix_u32(p_hash, 0x9e3779b9U);
+	type_representation_fingerprint_hash_mix_u32(p_hash, tag);
 }
 
-static void type_code_shape_key_hash_mix_key(
+static void type_representation_fingerprint_hash_mix_key(
 	uint64_t* p_hash,
-	const struct prototype_type_code_shape_key* key
+	const struct prototype_type_representation_fingerprint* key
 ) {
-	type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)key->hash);
-	type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)(key->hash >> 32));
-	type_code_shape_key_hash_mix_u32(p_hash, key->node_count);
-	type_code_shape_key_hash_mix_u32(p_hash, key->parameter_count);
-	type_code_shape_key_hash_mix_u32(p_hash, key->index_count);
-	type_code_shape_key_hash_mix_u32(p_hash, key->constructor_count);
-	type_code_shape_key_hash_mix_u32(p_hash, key->bound_binder_count);
-	type_code_shape_key_hash_mix_u32(p_hash, key->free_binder_count);
-	type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)key->has_local_universe_reference);
-	type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)key->has_name_reference);
+	type_representation_fingerprint_hash_mix_u32(p_hash, (uint32_t)key->hash);
+	type_representation_fingerprint_hash_mix_u32(p_hash, (uint32_t)(key->hash >> 32));
+	type_representation_fingerprint_hash_mix_u32(p_hash, key->node_count);
+	type_representation_fingerprint_hash_mix_u32(p_hash, key->parameter_count);
+	type_representation_fingerprint_hash_mix_u32(p_hash, key->index_count);
+	type_representation_fingerprint_hash_mix_u32(p_hash, key->constructor_count);
+	type_representation_fingerprint_hash_mix_u32(p_hash, key->bound_binder_count);
+	type_representation_fingerprint_hash_mix_u32(p_hash, key->free_binder_count);
+	type_representation_fingerprint_hash_mix_u32(p_hash, (uint32_t)key->has_local_universe_reference);
+	type_representation_fingerprint_hash_mix_u32(p_hash, (uint32_t)key->has_name_reference);
 }
 
-static int type_code_shape_key_env_lookup(
-	const struct type_code_shape_key_binder_env* env,
+static int type_representation_fingerprint_env_lookup(
+	const struct type_representation_fingerprint_binder_env* env,
 	uint32_t binding_id,
 	uint32_t* p_slot
 ) {
@@ -251,11 +251,11 @@ static int type_code_shape_key_env_lookup(
 	return 0;
 }
 
-static int type_code_shape_key_env_push(
-	struct type_code_shape_key_binder_env* env,
+static int type_representation_fingerprint_env_push(
+	struct type_representation_fingerprint_binder_env* env,
 	uint32_t binding_id
 ) {
-	if (!env || env->count >= PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY) {
+	if (!env || env->count >= PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY) {
 		return -1;
 	}
 	env->binding_id[env->count] = binding_id;
@@ -264,8 +264,8 @@ static int type_code_shape_key_env_push(
 	return 0;
 }
 
-static int type_code_shape_key_level_env_lookup(
-	const struct type_code_shape_key_binder_env* env,
+static int type_representation_fingerprint_level_env_lookup(
+	const struct type_representation_fingerprint_binder_env* env,
 	uint32_t level_var,
 	uint32_t* p_slot
 ) {
@@ -282,18 +282,18 @@ static int type_code_shape_key_level_env_lookup(
 	return 0;
 }
 
-static int type_code_shape_key_level_env_slot(
-	struct type_code_shape_key_binder_env* env,
+static int type_representation_fingerprint_level_env_slot(
+	struct type_representation_fingerprint_binder_env* env,
 	uint32_t level_var,
 	uint32_t* p_slot
 ) {
 	if (!env || !p_slot) {
 		return -1;
 	}
-	if (type_code_shape_key_level_env_lookup(env, level_var, p_slot)) {
+	if (type_representation_fingerprint_level_env_lookup(env, level_var, p_slot)) {
 		return 0;
 	}
-	if (env->level_count >= PROTOTYPE_TYPE_CODE_SHAPE_KEY_BINDER_CAPACITY) {
+	if (env->level_count >= PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY) {
 		return -1;
 	}
 	env->level_var[env->level_count] = level_var;
@@ -447,7 +447,7 @@ int prototype_type_expr_pi(
 int prototype_type_expr_imported_type(
 	struct prototype_type_declaration_db* db,
 	struct prototype_qualified_name name,
-	const struct prototype_type_code_shape_key* key,
+	const struct prototype_type_representation_fingerprint* key,
 	uint32_t* p_ret
 ) {
 	if (!key) {
@@ -458,7 +458,7 @@ int prototype_type_expr_imported_type(
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE;
 	expr.as.imported_type.name = name;
-	expr.as.imported_type.code_shape_key = *key;
+	expr.as.imported_type.representation_fingerprint = *key;
 	return add_expr(db, expr, p_ret);
 }
 
@@ -2172,8 +2172,8 @@ static int representation_terms_equal_at_depth(
 				left->as.induction_hypothesis.argument,
 				right->as.induction_hypothesis.argument
 			);
-		case PROTOTYPE_TERM_EFFECT_LABEL:
-			return left->as.effect_label.effects == right->as.effect_label.effects;
+		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
+			return 1;
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			return representation_binders_equal(
 				env, left->as.effect_row_var.binding_id, right->as.effect_row_var.binding_id
@@ -2484,9 +2484,9 @@ static int representation_types_equal_at_depth(
 	return 1;
 }
 
-static void type_code_shape_key_merge_referenced_key(
-	struct prototype_type_code_shape_key* key,
-	const struct prototype_type_code_shape_key* referenced
+static void type_representation_fingerprint_merge_referenced_key(
+	struct prototype_type_representation_fingerprint* key,
+	const struct prototype_type_representation_fingerprint* referenced
 ) {
 	key->node_count += referenced->node_count;
 	key->bound_binder_count += referenced->bound_binder_count;
@@ -2499,24 +2499,24 @@ static void type_code_shape_key_merge_referenced_key(
 	}
 }
 
-static int type_code_shape_key_term_at_depth(
+static int type_representation_fingerprint_term_at_depth(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	uint32_t self_type_id,
 	uint32_t term_id,
-	struct type_code_shape_key_binder_env* env,
-	struct prototype_type_code_shape_key* key,
+	struct type_representation_fingerprint_binder_env* env,
+	struct prototype_type_representation_fingerprint* key,
 	uint64_t* p_hash,
 	uint32_t depth
 );
 
-static int type_code_shape_key_type_instance_at_depth(
+static int type_representation_fingerprint_type_instance_at_depth(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	uint32_t self_type_id,
 	uint32_t term_id,
-	struct type_code_shape_key_binder_env* env,
-	struct prototype_type_code_shape_key* key,
+	struct type_representation_fingerprint_binder_env* env,
+	struct prototype_type_representation_fingerprint* key,
 	uint64_t* p_hash,
 	uint32_t depth,
 	int* p_handled
@@ -2539,12 +2539,12 @@ static int type_code_shape_key_type_instance_at_depth(
 
 	*p_handled = 1;
 	key->node_count++;
-	type_code_shape_key_hash_mix_tag(p_hash, 0x74797065U);
+	type_representation_fingerprint_hash_mix_tag(p_hash, 0x74797065U);
 	if (type_id == self_type_id) {
-		type_code_shape_key_hash_mix_tag(p_hash, 0x73656c66U);
+		type_representation_fingerprint_hash_mix_tag(p_hash, 0x73656c66U);
 	} else {
-		struct prototype_type_code_shape_key referenced;
-		if (prototype_type_declaration_code_shape_key(
+		struct prototype_type_representation_fingerprint referenced;
+		if (prototype_type_declaration_representation_fingerprint(
 				terms,
 				db,
 				env->contexts,
@@ -2553,13 +2553,13 @@ static int type_code_shape_key_type_instance_at_depth(
 			) != 0) {
 			return -1;
 		}
-		type_code_shape_key_hash_mix_tag(p_hash, 0x72656674U);
-		type_code_shape_key_hash_mix_key(p_hash, &referenced);
-		type_code_shape_key_merge_referenced_key(key, &referenced);
+		type_representation_fingerprint_hash_mix_tag(p_hash, 0x72656674U);
+		type_representation_fingerprint_hash_mix_key(p_hash, &referenced);
+		type_representation_fingerprint_merge_referenced_key(key, &referenced);
 	}
-	type_code_shape_key_hash_mix_u32(p_hash, arg_count);
+	type_representation_fingerprint_hash_mix_u32(p_hash, arg_count);
 	for (uint32_t i = 0; i < arg_count; ++i) {
-		if (type_code_shape_key_term_at_depth(
+		if (type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				self_type_id,
@@ -2575,13 +2575,13 @@ static int type_code_shape_key_type_instance_at_depth(
 	return 0;
 }
 
-static int type_code_shape_key_match_case_at_depth(
+static int type_representation_fingerprint_match_case_at_depth(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	uint32_t self_type_id,
 	const struct prototype_match_case* match_case,
-	struct type_code_shape_key_binder_env* env,
-	struct prototype_type_code_shape_key* key,
+	struct type_representation_fingerprint_binder_env* env,
+	struct prototype_type_representation_fingerprint* key,
 	uint64_t* p_hash,
 	uint32_t depth
 ) {
@@ -2590,11 +2590,11 @@ static int type_code_shape_key_match_case_at_depth(
 		match_case->first_binder + match_case->binder_count > terms->case_binder_count) {
 		return -1;
 	}
-	type_code_shape_key_hash_mix_u32(p_hash, match_case->constructor_id);
-	type_code_shape_key_hash_mix_u32(p_hash, match_case->binder_count);
+	type_representation_fingerprint_hash_mix_u32(p_hash, match_case->constructor_id);
+	type_representation_fingerprint_hash_mix_u32(p_hash, match_case->binder_count);
 	if (match_case->constructor_owner == PROTOTYPE_INVALID_ID) {
-		type_code_shape_key_hash_mix_u32(p_hash, PROTOTYPE_INVALID_ID);
-	} else if (type_code_shape_key_term_at_depth(
+		type_representation_fingerprint_hash_mix_u32(p_hash, PROTOTYPE_INVALID_ID);
+	} else if (type_representation_fingerprint_term_at_depth(
 			terms,
 			db,
 			self_type_id,
@@ -2612,14 +2612,14 @@ static int type_code_shape_key_match_case_at_depth(
 	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
 		const struct prototype_case_binder* binder =
 			&terms->case_binders[match_case->first_binder + i];
-		if (type_code_shape_key_env_push(env, binder->binding_id) != 0) {
+		if (type_representation_fingerprint_env_push(env, binder->binding_id) != 0) {
 			env->count = saved_count;
 			env->next_slot = saved_next_slot;
 			return -1;
 		}
 		key->bound_binder_count++;
 	}
-	int status = type_code_shape_key_term_at_depth(
+	int status = type_representation_fingerprint_term_at_depth(
 		terms,
 		db,
 		self_type_id,
@@ -2634,13 +2634,13 @@ static int type_code_shape_key_match_case_at_depth(
 	return status;
 }
 
-static int type_code_shape_key_term_at_depth(
+static int type_representation_fingerprint_term_at_depth(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	uint32_t self_type_id,
 	uint32_t term_id,
-	struct type_code_shape_key_binder_env* env,
-	struct prototype_type_code_shape_key* key,
+	struct type_representation_fingerprint_binder_env* env,
+	struct prototype_type_representation_fingerprint* key,
 	uint64_t* p_hash,
 	uint32_t depth
 ) {
@@ -2651,7 +2651,7 @@ static int type_code_shape_key_term_at_depth(
 	}
 
 	int handled = 0;
-	if (type_code_shape_key_type_instance_at_depth(
+	if (type_representation_fingerprint_type_instance_at_depth(
 			terms,
 			db,
 			self_type_id,
@@ -2670,23 +2670,23 @@ static int type_code_shape_key_term_at_depth(
 
 	const struct prototype_term* term = &terms->terms[term_id];
 	key->node_count++;
-	type_code_shape_key_hash_mix_tag(p_hash, (uint32_t)term->tag);
+	type_representation_fingerprint_hash_mix_tag(p_hash, (uint32_t)term->tag);
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR: {
 			uint32_t slot;
-			if (type_code_shape_key_env_lookup(env, term->as.var.binding_id, &slot)) {
-				type_code_shape_key_hash_mix_u32(p_hash, 1);
-				type_code_shape_key_hash_mix_u32(p_hash, slot);
+			if (type_representation_fingerprint_env_lookup(env, term->as.var.binding_id, &slot)) {
+				type_representation_fingerprint_hash_mix_u32(p_hash, 1);
+				type_representation_fingerprint_hash_mix_u32(p_hash, slot);
 			} else {
-				type_code_shape_key_hash_mix_u32(p_hash, 0);
-				type_code_shape_key_hash_mix_u32(p_hash, term->as.var.binding_id);
+				type_representation_fingerprint_hash_mix_u32(p_hash, 0);
+				type_representation_fingerprint_hash_mix_u32(p_hash, term->as.var.binding_id);
 				key->free_binder_count++;
 			}
 			return 0;
 		}
 		case PROTOTYPE_TERM_CONSTRUCTOR:
-			type_code_shape_key_hash_mix_u32(p_hash, term->as.constructor.constructor_id);
-			return type_code_shape_key_term_at_depth(
+			type_representation_fingerprint_hash_mix_u32(p_hash, term->as.constructor.constructor_id);
+			return type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				self_type_id,
@@ -2697,7 +2697,7 @@ static int type_code_shape_key_term_at_depth(
 				depth + 1
 			);
 		case PROTOTYPE_TERM_APP:
-			if (type_code_shape_key_term_at_depth(
+			if (type_representation_fingerprint_term_at_depth(
 					terms,
 					db,
 					self_type_id,
@@ -2709,7 +2709,7 @@ static int type_code_shape_key_term_at_depth(
 				) != 0) {
 				return -1;
 			}
-			return type_code_shape_key_term_at_depth(
+			return type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				self_type_id,
@@ -2722,11 +2722,11 @@ static int type_code_shape_key_term_at_depth(
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t saved_count = env->count;
 			uint32_t saved_next_slot = env->next_slot;
-			if (type_code_shape_key_env_push(env, term->as.lambda.binding_id) != 0) {
+			if (type_representation_fingerprint_env_push(env, term->as.lambda.binding_id) != 0) {
 				return -1;
 			}
 			key->bound_binder_count++;
-			int status = type_code_shape_key_term_at_depth(
+			int status = type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				self_type_id,
@@ -2744,7 +2744,7 @@ static int type_code_shape_key_term_at_depth(
 		{
 			uint32_t binding_id;
 			uint32_t body;
-			if (type_code_shape_key_term_at_depth(
+			if (type_representation_fingerprint_term_at_depth(
 					terms,
 					db,
 					self_type_id,
@@ -2766,11 +2766,11 @@ static int type_code_shape_key_term_at_depth(
 			}
 			uint32_t saved_count = env->count;
 			uint32_t saved_next_slot = env->next_slot;
-			if (type_code_shape_key_env_push(env, binding_id) != 0) {
+			if (type_representation_fingerprint_env_push(env, binding_id) != 0) {
 				return -1;
 			}
 			key->bound_binder_count++;
-			int status = type_code_shape_key_term_at_depth(
+			int status = type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				self_type_id,
@@ -2784,60 +2784,59 @@ static int type_code_shape_key_term_at_depth(
 			env->next_slot = saved_next_slot;
 			return status;
 		}
-		case PROTOTYPE_TERM_EFFECT_LABEL:
-			type_code_shape_key_hash_mix_u32(p_hash, term->as.effect_label.effects);
+		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 			return 0;
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			{
 				uint32_t slot;
-				if (type_code_shape_key_env_lookup(
+				if (type_representation_fingerprint_env_lookup(
 						env, term->as.effect_row_var.binding_id, &slot
 					)) {
-					type_code_shape_key_hash_mix_u32(p_hash, slot);
+					type_representation_fingerprint_hash_mix_u32(p_hash, slot);
 				} else {
-					type_code_shape_key_hash_mix_u32(p_hash, term->as.effect_row_var.binding_id);
+					type_representation_fingerprint_hash_mix_u32(p_hash, term->as.effect_row_var.binding_id);
 				}
 			}
 			return 0;
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-			if (type_code_shape_key_term_at_depth(
+			if (type_representation_fingerprint_term_at_depth(
 					terms, db, self_type_id, term->as.effect_row_union.left,
 					env, key, p_hash, depth + 1
 				) != 0) {
 				return -1;
 			}
-			return type_code_shape_key_term_at_depth(
+			return type_representation_fingerprint_term_at_depth(
 				terms, db, self_type_id, term->as.effect_row_union.right,
 				env, key, p_hash, depth + 1
 			);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			if (type_code_shape_key_term_at_depth(
+			if (type_representation_fingerprint_term_at_depth(
 					terms, db, self_type_id, term->as.computation_type.label,
 					env, key, p_hash, depth + 1
 				) != 0) {
 				return -1;
 			}
-			return type_code_shape_key_term_at_depth(
+			return type_representation_fingerprint_term_at_depth(
 				terms, db, self_type_id, term->as.computation_type.result,
 				env, key, p_hash, depth + 1
 			);
 		case PROTOTYPE_TERM_THUNK_TYPE:
-			return type_code_shape_key_term_at_depth(
+			return type_representation_fingerprint_term_at_depth(
 				terms, db, self_type_id, term->as.thunk_type.computation,
 				env, key, p_hash, depth + 1
 			);
 		case PROTOTYPE_TERM_RETURN:
-			return type_code_shape_key_term_at_depth(
+			return type_representation_fingerprint_term_at_depth(
 				terms, db, self_type_id, term->as.return_term.value,
 				env, key, p_hash, depth + 1
 			);
 		case PROTOTYPE_TERM_THUNK:
-			return type_code_shape_key_term_at_depth(
+			return type_representation_fingerprint_term_at_depth(
 				terms, db, self_type_id, term->as.thunk.computation,
 				env, key, p_hash, depth + 1
 			);
 		case PROTOTYPE_TERM_FORCE:
-			return type_code_shape_key_term_at_depth(
+			return type_representation_fingerprint_term_at_depth(
 				terms, db, self_type_id, term->as.force.value,
 				env, key, p_hash, depth + 1
 			);
@@ -2845,8 +2844,8 @@ static int type_code_shape_key_term_at_depth(
 			if (term->as.match.first_case + term->as.match.case_count > terms->case_count) {
 				return -1;
 			}
-			type_code_shape_key_hash_mix_u32(p_hash, term->as.match.case_count);
-			if (type_code_shape_key_term_at_depth(
+			type_representation_fingerprint_hash_mix_u32(p_hash, term->as.match.case_count);
+			if (type_representation_fingerprint_term_at_depth(
 					terms,
 					db,
 					self_type_id,
@@ -2861,7 +2860,7 @@ static int type_code_shape_key_term_at_depth(
 			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
 				const struct prototype_match_case* match_case =
 					&terms->cases[term->as.match.first_case + i];
-				if (type_code_shape_key_match_case_at_depth(
+				if (type_representation_fingerprint_match_case_at_depth(
 						terms,
 						db,
 						self_type_id,
@@ -2876,8 +2875,8 @@ static int type_code_shape_key_term_at_depth(
 			}
 			return 0;
 			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			type_code_shape_key_hash_mix_u32(p_hash, term->as.induction_hypothesis.ih_scope_id);
-			return type_code_shape_key_term_at_depth(
+			type_representation_fingerprint_hash_mix_u32(p_hash, term->as.induction_hypothesis.ih_scope_id);
+			return type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				self_type_id,
@@ -2890,60 +2889,60 @@ static int type_code_shape_key_term_at_depth(
 		case PROTOTYPE_TERM_UNIVERSE_VAR: {
 			uint32_t slot;
 			key->has_local_universe_reference = 1;
-			if (type_code_shape_key_level_env_slot(
+			if (type_representation_fingerprint_level_env_slot(
 					env,
 					term->as.universe_var.level_var,
 					&slot
 				) != 0) {
 				return -1;
 			}
-			type_code_shape_key_hash_mix_u32(p_hash, slot);
+			type_representation_fingerprint_hash_mix_u32(p_hash, slot);
 			return 0;
 		}
 		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 			return 0;
 			case PROTOTYPE_TERM_TEXT_LITERAL:
-				type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.text_literal.text_symbol_id);
+				type_representation_fingerprint_hash_mix_u32(p_hash, (uint32_t)term->as.text_literal.text_symbol_id);
 				return 0;
 				case PROTOTYPE_TERM_PRIMITIVE_INT:
 			case PROTOTYPE_TERM_PRIMITIVE_INT64:
 				return 0;
 			case PROTOTYPE_TERM_INT_LITERAL:
-				type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.int_literal.value);
-				type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)((uint64_t)term->as.int_literal.value >> 32));
+				type_representation_fingerprint_hash_mix_u32(p_hash, (uint32_t)term->as.int_literal.value);
+				type_representation_fingerprint_hash_mix_u32(p_hash, (uint32_t)((uint64_t)term->as.int_literal.value >> 32));
 				return 0;
 			case PROTOTYPE_TERM_EXTERNAL_REF:
 				key->has_name_reference = 1;
-				type_code_shape_key_hash_mix_u32(
+				type_representation_fingerprint_hash_mix_u32(
 					p_hash,
 					(uint32_t)term->as.external_ref.name.namespace_symbol_id
 				);
-				type_code_shape_key_hash_mix_u32(
+				type_representation_fingerprint_hash_mix_u32(
 					p_hash,
 					(uint32_t)term->as.external_ref.name.name_symbol_id
 				);
 				return 0;
 		case PROTOTYPE_TERM_PURE_PRIMITIVE:
-			type_code_shape_key_hash_mix_u32(
+			type_representation_fingerprint_hash_mix_u32(
 				p_hash, (uint32_t)term->as.pure_primitive.primitive_id
 			);
-			type_code_shape_key_hash_mix_u32(p_hash, (uint32_t)term->as.pure_primitive.type_symbol_id);
+			type_representation_fingerprint_hash_mix_u32(p_hash, (uint32_t)term->as.pure_primitive.type_symbol_id);
 			return 0;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			type_code_shape_key_hash_mix_u32(p_hash,
+			type_representation_fingerprint_hash_mix_u32(p_hash,
 				(uint32_t)term->as.effect_operation.operation_id);
 			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			if (term->as.type_declaration.type_id == self_type_id) {
-				type_code_shape_key_hash_mix_tag(p_hash, 0x73656c66U);
+				type_representation_fingerprint_hash_mix_tag(p_hash, 0x73656c66U);
 				return 0;
 			}
 			if (term->as.type_declaration.type_id >= db->type_count) {
 				return -1;
 			}
 			{
-				struct prototype_type_code_shape_key referenced;
-				if (prototype_type_declaration_code_shape_key(
+				struct prototype_type_representation_fingerprint referenced;
+				if (prototype_type_declaration_representation_fingerprint(
 						terms,
 						db,
 						env->contexts,
@@ -2952,12 +2951,12 @@ static int type_code_shape_key_term_at_depth(
 					) != 0) {
 					return -1;
 				}
-				type_code_shape_key_hash_mix_key(p_hash, &referenced);
-				type_code_shape_key_merge_referenced_key(key, &referenced);
+				type_representation_fingerprint_hash_mix_key(p_hash, &referenced);
+				type_representation_fingerprint_merge_referenced_key(key, &referenced);
 				return 0;
 			}
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return type_code_shape_key_term_at_depth(
+			return type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				self_type_id,
@@ -2974,12 +2973,12 @@ static int type_code_shape_key_term_at_depth(
 	}
 }
 
-int prototype_type_declaration_code_shape_key(
+int prototype_type_declaration_representation_fingerprint(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	const struct prototype_context_db* contexts,
 	uint32_t type_id,
-	struct prototype_type_code_shape_key* p_key
+	struct prototype_type_representation_fingerprint* p_key
 ) {
 	if (!terms || !db || !contexts || !p_key || type_id >= db->type_count ||
 		!type_declaration_present(&db->type_declarations[type_id])) {
@@ -2994,8 +2993,8 @@ int prototype_type_declaration_code_shape_key(
 		!prototype_context_get(contexts, type->index_context)) {
 		return -1;
 	}
-	struct type_code_shape_key_binder_env env;
-	uint64_t hash = PROTOTYPE_TYPE_CODE_SHAPE_KEY_HASH_OFFSET;
+	struct type_representation_fingerprint_binder_env env;
+	uint64_t hash = PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_HASH_OFFSET;
 	memset(&env, 0, sizeof(env));
 	env.contexts = contexts;
 	memset(p_key, 0, sizeof(*p_key));
@@ -3014,7 +3013,7 @@ int prototype_type_declaration_code_shape_key(
 		parameter_path[i - 1] = parameter_context;
 		parameter_context = entry->parent;
 	}
-	type_code_shape_key_hash_mix_u32(&hash, type->parameter_count);
+	type_representation_fingerprint_hash_mix_u32(&hash, type->parameter_count);
 	for (uint32_t i = 0; i < type->parameter_count; ++i) {
 		const struct prototype_context* parameter =
 			prototype_context_get(contexts, parameter_path[i]);
@@ -3023,8 +3022,8 @@ int prototype_type_declaration_code_shape_key(
 		if (!parameter || parameter_classifier == PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
-		type_code_shape_key_hash_mix_tag(&hash, 0x7061726dU);
-		if (type_code_shape_key_term_at_depth(
+		type_representation_fingerprint_hash_mix_tag(&hash, 0x7061726dU);
+		if (type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				type_id,
@@ -3034,7 +3033,7 @@ int prototype_type_declaration_code_shape_key(
 				&hash,
 				0
 			) != 0 ||
-			type_code_shape_key_env_push(&env, parameter->binding_id) != 0) {
+			type_representation_fingerprint_env_push(&env, parameter->binding_id) != 0) {
 			return -1;
 		}
 		p_key->bound_binder_count++;
@@ -3052,7 +3051,7 @@ int prototype_type_declaration_code_shape_key(
 		) != 0 || index_count != type->index_count) {
 		return -1;
 	}
-	type_code_shape_key_hash_mix_u32(&hash, type->index_count);
+	type_representation_fingerprint_hash_mix_u32(&hash, type->index_count);
 	for (uint32_t i = 0; i < index_count; ++i) {
 		const struct prototype_context* index =
 			prototype_context_get(contexts, index_path[i]);
@@ -3060,8 +3059,8 @@ int prototype_type_declaration_code_shape_key(
 		if (!index || index_classifier == PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
-		type_code_shape_key_hash_mix_tag(&hash, 0x696e6478U);
-		if (type_code_shape_key_term_at_depth(
+		type_representation_fingerprint_hash_mix_tag(&hash, 0x696e6478U);
+		if (type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				type_id,
@@ -3070,7 +3069,7 @@ int prototype_type_declaration_code_shape_key(
 				p_key,
 				&hash,
 				0
-			) != 0 || type_code_shape_key_env_push(
+			) != 0 || type_representation_fingerprint_env_push(
 				&env, index->binding_id
 			) != 0) {
 			return -1;
@@ -3079,7 +3078,7 @@ int prototype_type_declaration_code_shape_key(
 	}
 
 	uint32_t parameter_binder_count = type->parameter_count;
-	type_code_shape_key_hash_mix_u32(&hash, type->constructor_count);
+	type_representation_fingerprint_hash_mix_u32(&hash, type->constructor_count);
 	for (uint32_t i = 0; i < type->constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
 			&db->constructor_declarations[type->first_constructor + i];
@@ -3099,9 +3098,9 @@ int prototype_type_declaration_code_shape_key(
 			return -1;
 		}
 		env.count = parameter_binder_count;
-		type_code_shape_key_hash_mix_tag(&hash, 0x636f6e73U);
-		type_code_shape_key_hash_mix_u32(&hash, constructor->constructor_index);
-		type_code_shape_key_hash_mix_u32(&hash, field_count);
+		type_representation_fingerprint_hash_mix_tag(&hash, 0x636f6e73U);
+		type_representation_fingerprint_hash_mix_u32(&hash, constructor->constructor_index);
+		type_representation_fingerprint_hash_mix_u32(&hash, field_count);
 		for (uint32_t j = 0; j < field_count; ++j) {
 			const struct prototype_context* field =
 				prototype_context_get(contexts, field_path[j]);
@@ -3110,8 +3109,8 @@ int prototype_type_declaration_code_shape_key(
 			if (!field || field_classifier == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
-			type_code_shape_key_hash_mix_tag(&hash, 0x6669656cU);
-			if (type_code_shape_key_term_at_depth(
+			type_representation_fingerprint_hash_mix_tag(&hash, 0x6669656cU);
+			if (type_representation_fingerprint_term_at_depth(
 					terms,
 					db,
 					type_id,
@@ -3121,14 +3120,14 @@ int prototype_type_declaration_code_shape_key(
 					&hash,
 					0
 				) != 0 ||
-				type_code_shape_key_env_push(&env, field->binding_id) != 0) {
+				type_representation_fingerprint_env_push(&env, field->binding_id) != 0) {
 				return -1;
 			}
 			p_key->bound_binder_count++;
 		}
-		type_code_shape_key_hash_mix_tag(&hash, 0x72657375U);
+		type_representation_fingerprint_hash_mix_tag(&hash, 0x72657375U);
 		if (
-			type_code_shape_key_term_at_depth(
+			type_representation_fingerprint_term_at_depth(
 				terms,
 				db,
 				type_id,
@@ -3146,9 +3145,9 @@ int prototype_type_declaration_code_shape_key(
 	return 0;
 }
 
-int prototype_type_code_shape_keys_equal(
-	const struct prototype_type_code_shape_key* left,
-	const struct prototype_type_code_shape_key* right
+int prototype_type_representation_fingerprints_equal(
+	const struct prototype_type_representation_fingerprint* left,
+	const struct prototype_type_representation_fingerprint* right
 ) {
 	return left && right &&
 		left->hash == right->hash &&
@@ -3363,8 +3362,8 @@ int prototype_type_declaration_rebuild_representations(
 		if (!type_declaration_present(&db->type_declarations[type_id])) {
 			continue;
 		}
-		struct prototype_type_code_shape_key fingerprint;
-		if (prototype_type_declaration_code_shape_key(
+		struct prototype_type_representation_fingerprint fingerprint;
+		if (prototype_type_declaration_representation_fingerprint(
 				terms, db, contexts, type_id, &fingerprint
 			) != 0) {
 			fprintf(
@@ -3380,7 +3379,7 @@ int prototype_type_declaration_rebuild_representations(
 		for (uint32_t candidate_id = 0; candidate_id < db->representation_count; ++candidate_id) {
 			const struct prototype_type_representation* candidate =
 				&db->representations[candidate_id];
-			if (!prototype_type_code_shape_keys_equal(&fingerprint, &candidate->fingerprint)) {
+			if (!prototype_type_representation_fingerprints_equal(&fingerprint, &candidate->fingerprint)) {
 				continue;
 			}
 			struct representation_compare_env env;

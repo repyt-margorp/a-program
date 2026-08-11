@@ -398,7 +398,7 @@ int main(void) {
 	struct prototype_verification_obligation obligations[1];
 	struct prototype_verification_db verification;
 	if (residual_binder == PROTOTYPE_INVALID_ID ||
-		prototype_term_effect_label(&term_db, PROTOTYPE_HOST_EFFECT_NONE, &effect_row) != 0 ||
+		prototype_term_effect_row_empty(&term_db, &effect_row) != 0 ||
 		prototype_term_computation_type(&term_db, effect_row, owner, &residual_classifier) != 0 ||
 		prototype_term_pure_family(
 			&term_db, residual_binder, residual_classifier, &residual_family

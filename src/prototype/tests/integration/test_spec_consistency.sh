@@ -1,0 +1,83 @@
+#!/bin/sh
+set -eu
+
+ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
+cd "$ROOT_DIR"
+. src/prototype/build/test_support.sh
+
+artifact_schema=src/prototype/spec/artifact_v71.schema
+hott_schema=src/prototype/spec/hott_fragment_v5.schema
+calculus_header=src/prototype/calculus.h
+artifact_header=src/prototype/include/a_program/artifact/interface.h
+
+artifact_version=$(awk 'NR == 1 && $1 == "A_PROGRAM_ARTIFACT" { print $2 }' "$artifact_schema")
+header_version=$(awk '/^#define PROTOTYPE_ARTIFACT_FORMAT_VERSION / { print $3 }' "$artifact_header")
+if [ -z "$artifact_version" ] || [ "$artifact_version" != "$header_version" ]; then
+	echo "artifact schema and reader version disagree" >&2
+	exit 1
+fi
+
+artifact_fingerprint=$(sha256sum "$artifact_schema" | awk '{ print $1 }')
+hott_fingerprint=$(sha256sum "$hott_schema" | awk '{ print $1 }')
+header_artifact_fingerprint=$(awk '
+	/PROTOTYPE_CALCULUS_FINGERPRINT/ {
+		getline
+		gsub(/["\\]/, "")
+		gsub(/[[:space:]]/, "")
+		print
+	}
+' "$calculus_header")
+header_hott_fingerprint=$(awk '
+	/PROTOTYPE_HOTT_CALCULUS_FINGERPRINT/ {
+		getline
+		gsub(/["\\]/, "")
+		gsub(/[[:space:]]/, "")
+		print
+	}
+' "$calculus_header")
+if [ "$artifact_fingerprint" != "$header_artifact_fingerprint" ] ||
+	[ "$hott_fingerprint" != "$header_hott_fingerprint" ]; then
+	echo "semantic manifest fingerprint is stale" >&2
+	exit 1
+fi
+
+for readme in README.md src/prototype/README.md; do
+	if grep -Eio 'artifact( format)? v[0-9]+' "$readme" |
+		grep -Eiv "v${artifact_version}$" >/dev/null; then
+		echo "$readme advertises an obsolete artifact version" >&2
+		exit 1
+	fi
+	if grep -Eio 'A_PROGRAM_ARTIFACT [0-9]+' "$readme" |
+		grep -Eiv " ${artifact_version}$" >/dev/null; then
+		echo "$readme contains an obsolete artifact header" >&2
+		exit 1
+	fi
+done
+
+if [ "$(awk 'NR == 1 && $1 == "A_PROGRAM_HOTT_FRAGMENT" { print $2 }' "$hott_schema")" != 5 ] ||
+	grep -Eq 'fragment version [0-4]|A1\.T0|MATCH_ELIM=13' "$hott_schema"; then
+	echo "HOTT fragment manifest contains a stale version or proof number" >&2
+	exit 1
+fi
+if ! grep -q 'MATCH_TYPE_FORMATION_INTRO=13 MATCH_ELIM=14' "$hott_schema"; then
+	echo "HOTT object-action proof vocabulary disagrees with the kernel" >&2
+	exit 1
+fi
+
+if grep -q 'PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE' \
+	src/prototype/src/identity/artifact_root_extraction.inc; then
+	echo "compiler-local Universe correspondence is admitted as an artifact root" >&2
+	exit 1
+fi
+if ! grep -q 'finite Universe correspondence and Universe-fiber actions are' "$artifact_schema" ||
+	! grep -q 'a PENDING obligation is a runtime contract and never a Claim' "$artifact_schema"; then
+	echo "artifact manifest omits the current Identity or verification boundary" >&2
+	exit 1
+fi
+
+prototype_compile c11 werror kernel \
+	/tmp/a-program-spec-enum-check \
+	src/prototype/tests/checks/spec_enum_check.c
+/tmp/a-program-spec-enum-check
+
+echo "current specification consistency tests passed"

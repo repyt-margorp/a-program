@@ -3,13 +3,6 @@
 
 #include "a_program/identity/types.h"
 
-int prototype_hott_execute_relation_type_action(
-	struct prototype_hott_action_db* actions,
-	struct prototype_kernel_builder* kernel,
-	const struct prototype_hott_bridge_db* bridges,
-	uint32_t request_id,
-	uint32_t* p_result_id
-);
 int prototype_hott_execute_identity_type_computation(
 	struct prototype_hott_action_db* actions,
 	struct prototype_kernel_builder* kernel,

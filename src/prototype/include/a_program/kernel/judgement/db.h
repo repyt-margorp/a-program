@@ -22,6 +22,11 @@ const struct prototype_judgement_proposition* prototype_judgement_proposition_ge
 	const struct prototype_judgement_db* judgement,
 	uint32_t proposition_id
 );
+int prototype_judgement_proposition_find_exact(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_proposition* proposition,
+	uint32_t* p_proposition_id
+);
 int prototype_judgement_proposition_intern(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_proposition* proposition,
@@ -118,6 +123,16 @@ struct prototype_judgement_delta {
 	uint32_t current_context_id;
 	/* Operation identity for source/generated typing materialization. */
 	uint32_t current_operation_id;
+	/* Resource evidence is computed by the OperationGraph analysis and attached
+	 * while a proposition candidate is created. Candidate identity must never
+	 * transition from "unknown usage" to a different, completed proposition. */
+	void* operation_usage_provider_context;
+	int (*operation_usage_provider)(
+		void* context,
+		uint32_t operation_id,
+		const struct prototype_usage_entry** p_entries,
+		uint32_t* p_count
+	);
 };
 
 struct prototype_match_constructor_resolution {
@@ -153,6 +168,12 @@ void prototype_judgement_db_init(
 	size_t accepted_premise_capacity
 );
 
+void prototype_judgement_db_set_resource_usage_storage(
+	struct prototype_judgement_db* db,
+	struct prototype_usage_entry* entries,
+	size_t capacity
+);
+
 void prototype_judgement_delta_init(
 	struct prototype_judgement_delta* delta,
 	struct prototype_judgement_db* db,
@@ -182,6 +203,16 @@ void prototype_judgement_delta_set_context(
 void prototype_judgement_delta_set_operation(
 	struct prototype_judgement_delta* delta,
 	uint32_t operation_id
+);
+void prototype_judgement_delta_set_operation_usage_provider(
+	struct prototype_judgement_delta* delta,
+	void* context,
+	int (*provider)(
+		void* context,
+		uint32_t operation_id,
+		const struct prototype_usage_entry** p_entries,
+		uint32_t* p_count
+	)
 );
 void prototype_judgement_delta_set_context_store(
 	struct prototype_judgement_delta* delta,

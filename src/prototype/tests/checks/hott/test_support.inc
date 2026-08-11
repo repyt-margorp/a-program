@@ -1,12 +1,15 @@
 #include "a_program/frontend/lowering.h"
+#include "a_program/artifact/wire_v71.h"
+#include "a_program/graph/operation_usage.h"
 #include "a_program/identity/types.h"
 #include "a_program/identity/telescope_action.h"
 #include "a_program/identity/context_bridge.h"
-#include "a_program/identity/relation_action.h"
+#include "a_program/parametricity/relation_action.h"
+#include "a_program/parametricity/action_execution.h"
 #include "a_program/identity/action_certificate.h"
 #include "a_program/identity/identity_computation.h"
 #include "a_program/identity/object_term_action.h"
-#include "a_program/identity/action_execution.h"
+#include "a_program/parametricity/execution.h"
 #include "calculus.h"
 
 #include <stdio.h>
@@ -46,25 +49,67 @@ static struct prototype_judgement_candidate_premise
 static struct prototype_judgement_premise_edge judgement_accepted_premises[
 	CLAIM_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 ];
+static struct prototype_usage_entry judgement_resource_usage[CLAIM_CAPACITY * 8];
 static struct prototype_cwf_certificate cwf_certificates[1024];
 static struct prototype_operation_node operations[OPERATION_CAPACITY];
 static struct prototype_operation_match_case operation_cases[128];
 static struct prototype_hott_bridge bridges[128];
 static struct prototype_hott_bridge_certificate bridge_certificates[128];
-static struct prototype_hott_relation_goal goals[GOAL_CAPACITY];
-static struct prototype_hott_candidate candidates[CANDIDATE_CAPACITY];
-static struct prototype_hott_claim_premise claim_premises[PREMISE_CAPACITY];
-static struct prototype_hott_child_edge child_edges[PREMISE_CAPACITY];
-static struct prototype_hott_conversion_premise conversion_premises[PREMISE_CAPACITY];
-static struct prototype_hott_context_certificate_premise
+static struct prototype_parametricity_relation_goal goals[GOAL_CAPACITY];
+static struct prototype_parametricity_candidate candidates[CANDIDATE_CAPACITY];
+static struct prototype_parametricity_claim_premise claim_premises[PREMISE_CAPACITY];
+static struct prototype_parametricity_child_edge child_edges[PREMISE_CAPACITY];
+static struct prototype_parametricity_conversion_premise conversion_premises[PREMISE_CAPACITY];
+static struct prototype_parametricity_context_certificate_premise
 	context_certificate_premises[PREMISE_CAPACITY];
-static struct prototype_hott_substitution_certificate_premise
+static struct prototype_parametricity_substitution_certificate_premise
 	substitution_certificate_premises[PREMISE_CAPACITY];
-static struct prototype_hott_work_item work_items[GOAL_CAPACITY];
-static struct prototype_hott_residual_obligation residuals[32];
+static struct prototype_parametricity_work_item work_items[GOAL_CAPACITY];
+static struct prototype_parametricity_residual_obligation residuals[32];
 static struct prototype_hott_action_request action_requests[256];
 static struct prototype_hott_action_certificate action_certificates[256];
 static struct prototype_hott_action_result action_results[256];
+static const struct prototype_term_db* fixture_term_db;
+static const struct prototype_operation_graph* fixture_operation_graph;
+
+static void fixture_set_operation_graph(
+	const struct prototype_term_db* terms,
+	const struct prototype_operation_graph* operations
+) {
+	fixture_term_db = terms;
+	fixture_operation_graph = operations;
+}
+
+struct fixture_operation_usage_provider_context {
+	const struct prototype_operation_usage_solution* solutions;
+	size_t solution_count;
+	const struct prototype_usage_entry* entries;
+	size_t entry_count;
+};
+
+static int fixture_operation_usage_provider(
+	void* context,
+	uint32_t operation_id,
+	const struct prototype_usage_entry** p_entries,
+	uint32_t* p_count
+) {
+	struct fixture_operation_usage_provider_context* provider = context;
+	struct prototype_usage_vector usage;
+	if (!provider || !p_entries || !p_count ||
+		prototype_operation_usage_solution_view(
+			provider->solutions,
+			provider->solution_count,
+			provider->entries,
+			provider->entry_count,
+			operation_id,
+			&usage
+		) != 0 || usage.count > UINT32_MAX) {
+		return -1;
+	}
+	*p_entries = usage.entries;
+	*p_count = (uint32_t)usage.count;
+	return 0;
+}
 
 static int write_identity_root_artifact(
 	const char* path,
@@ -204,19 +249,6 @@ static int write_identity_root_artifact(
 	return status;
 }
 
-static int fixture_proposition_equal(
-	const struct prototype_judgement_proposition* left,
-	const struct prototype_judgement_proposition* right
-) {
-	return left->kind == right->kind &&
-		left->authority_kind == right->authority_kind &&
-		left->authority_id == right->authority_id &&
-		left->context_id == right->context_id &&
-		left->operation_id == right->operation_id &&
-		left->subject == right->subject &&
-		left->classifier == right->classifier;
-}
-
 static uint32_t fixture_add_claim(
 	struct prototype_judgement_db* judgement,
 	int kind,
@@ -239,19 +271,39 @@ static uint32_t fixture_add_claim(
 		.subject = subject,
 		.classifier = classifier
 	};
-	uint32_t proposition_id = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < judgement->proposition_count; ++i) {
-		if (fixture_proposition_equal(&judgement->propositions[i], &proposition)) {
-			proposition_id = i;
-			break;
-		}
-	}
-	if (proposition_id == PROTOTYPE_INVALID_ID) {
-		if (judgement->proposition_count >= judgement->proposition_capacity) {
+	struct prototype_operation_usage_solution usage_solutions[OPERATION_CAPACITY];
+	struct prototype_usage_entry usage_entries[CLAIM_CAPACITY * 8];
+	size_t usage_entry_count = 0;
+	struct prototype_usage_vector operation_usage = {0};
+	if (authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+		operation_id != PROTOTYPE_INVALID_ID) {
+		if (!fixture_term_db || !fixture_operation_graph ||
+			prototype_operation_usage_solve(
+				fixture_operation_graph,
+				fixture_term_db,
+				usage_solutions,
+				OPERATION_CAPACITY,
+				usage_entries,
+				CLAIM_CAPACITY * 8,
+				&usage_entry_count
+			) != 0 || prototype_operation_usage_solution_view(
+				usage_solutions,
+				fixture_operation_graph->operation_count,
+				usage_entries,
+				usage_entry_count,
+				operation_id,
+				&operation_usage
+			) != 0) {
 			return PROTOTYPE_INVALID_ID;
 		}
-		proposition_id = (uint32_t)judgement->proposition_count++;
-		judgement->propositions[proposition_id] = proposition;
+		proposition.resource_usage = operation_usage.entries;
+		proposition.resource_usage_count = (uint32_t)operation_usage.count;
+	}
+	uint32_t proposition_id = PROTOTYPE_INVALID_ID;
+	if (prototype_judgement_proposition_intern(
+			judgement, &proposition, &proposition_id
+		) != 0) {
+		return PROTOTYPE_INVALID_ID;
 	}
 	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
 		if (judgement->claims[i].proposition_id == proposition_id) {
@@ -304,12 +356,12 @@ static uint32_t add_operation(
 	uint32_t context_id,
 	uint32_t core,
 	uint32_t classifier,
-	int polarity
+	int category
 ) {
 	uint32_t id = (uint32_t)graph->operation_count++;
 	graph->operations[id] = (struct prototype_operation_node){
 		.tag = PROTOTYPE_OPERATION_ATOM,
-		.polarity = polarity,
+		.category = category,
 		.context_id = context_id,
 		.core_term = core,
 		.known_classifier = classifier,
@@ -782,67 +834,67 @@ static int check_bool_function_extensional_identity(
 	}
 	uint32_t scrutinee_operation = add_operation(
 		operation_graph, xr_context, xr, input_identity,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_argument_operation = add_operation(
 		operation_graph, xr_context, bool_false, bool_type,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_identity_argument_operation = add_operation(
 		operation_graph, xr_context, false_identity_witness, false_identity,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_constructor_operation = add_operation(
 		operation_graph, xr_context, false_witness_spine[0], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_app1_operation = add_operation(
 		operation_graph, xr_context, false_witness_spine[1], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_app2_operation = add_operation(
 		operation_graph, xr_context, false_witness_spine[2], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_witness_operation = add_operation(
 		operation_graph, xr_context, false_computation_witness,
-		false_computation_identity, PROTOTYPE_OPERATION_POLARITY_VALUE
+		false_computation_identity, PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_operation = add_operation(
 		operation_graph, xr_context, false_witness_return,
-		false_branch_computation_identity, PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		false_branch_computation_identity, PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t true_argument_operation = add_operation(
 		operation_graph, xr_context, bool_true, bool_type,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_identity_argument_operation = add_operation(
 		operation_graph, xr_context, true_identity_witness, true_identity,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_constructor_operation = add_operation(
 		operation_graph, xr_context, true_witness_spine[0], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_app1_operation = add_operation(
 		operation_graph, xr_context, true_witness_spine[1], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_app2_operation = add_operation(
 		operation_graph, xr_context, true_witness_spine[2], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_witness_operation = add_operation(
 		operation_graph, xr_context, true_computation_witness,
-		true_computation_identity, PROTOTYPE_OPERATION_POLARITY_VALUE
+		true_computation_identity, PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_operation = add_operation(
 		operation_graph, xr_context, true_witness_return,
-		true_branch_computation_identity, PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		true_branch_computation_identity, PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t proof_operation = add_operation(
 		operation_graph, xr_context, proof_endpoint, PROTOTYPE_INVALID_ID,
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t first_proof_case = operation_graph->case_count;
 	operation_graph->operations[scrutinee_operation].tag = PROTOTYPE_OPERATION_VAR;
@@ -919,6 +971,26 @@ static int check_bool_function_extensional_identity(
 		.binder_count = 0
 	};
 	operation_graph->case_count += 2;
+	struct prototype_operation_usage_solution proof_usage_solutions[OPERATION_CAPACITY];
+	struct prototype_usage_entry proof_usage_entries[CLAIM_CAPACITY * 8];
+	size_t proof_usage_entry_count;
+	if (prototype_operation_usage_solve(
+			operation_graph,
+			term_db,
+			proof_usage_solutions,
+			OPERATION_CAPACITY,
+			proof_usage_entries,
+			CLAIM_CAPACITY * 8,
+			&proof_usage_entry_count
+		) != 0) {
+		return 27;
+	}
+	struct fixture_operation_usage_provider_context proof_usage_provider = {
+		.solutions = proof_usage_solutions,
+		.solution_count = operation_graph->operation_count,
+		.entries = proof_usage_entries,
+		.entry_count = proof_usage_entry_count
+	};
 	struct prototype_judgement_proposition delta_propositions[256];
 	struct prototype_judgement_derivation_candidate delta_candidates[256];
 	struct prototype_judgement_candidate_premise delta_premises[
@@ -952,6 +1024,11 @@ static int check_bool_function_extensional_identity(
 		operation_graph->operation_count,
 		operation_graph->cases,
 		operation_graph->case_count
+	);
+	prototype_judgement_delta_set_operation_usage_provider(
+		&delta,
+		&proof_usage_provider,
+		fixture_operation_usage_provider
 	);
 	prototype_judgement_delta_set_context(&delta, xr_context);
 	const struct prototype_type_declaration* thunk_identity_declaration =
@@ -1254,7 +1331,7 @@ static int check_bool_function_extensional_identity(
 }
 
 static uint32_t count_rule(
-	const struct prototype_hott_candidate_db* db,
+	const struct prototype_parametricity_candidate_db* db,
 	uint32_t goal_id,
 	int rule
 ) {
@@ -1269,7 +1346,7 @@ static uint32_t count_rule(
 }
 
 static uint32_t find_rule(
-	const struct prototype_hott_candidate_db* db,
+	const struct prototype_parametricity_candidate_db* db,
 	uint32_t goal_id,
 	int rule
 ) {

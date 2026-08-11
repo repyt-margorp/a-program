@@ -925,7 +925,7 @@ int prototype_substitution_db_validate_typed(
 	return 0;
 }
 
-static int prototype_substitution_lookup_term(
+int prototype_substitution_binding_term(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
@@ -1002,7 +1002,7 @@ int prototype_term_reindex(
 			continue;
 		}
 		bindings[index].binding_id = context->binding_id;
-		if (prototype_substitution_lookup_term(
+		if (prototype_substitution_binding_term(
 				terms,
 				type_declarations,
 				contexts,
@@ -1037,7 +1037,7 @@ int prototype_term_reindex(
 	return status;
 }
 
-static int prototype_substitution_lookup_term(
+int prototype_substitution_binding_term(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
@@ -1067,7 +1067,7 @@ static int prototype_substitution_lookup_term(
 				*p_term = substitution->term;
 				return 0;
 			}
-			return prototype_substitution_lookup_term(
+			return prototype_substitution_binding_term(
 				terms,
 				type_declarations,
 				contexts,
@@ -1079,7 +1079,7 @@ static int prototype_substitution_lookup_term(
 		}
 		case PROTOTYPE_SUBSTITUTION_COMPOSE: {
 			uint32_t middle_term;
-			if (prototype_substitution_lookup_term(
+			if (prototype_substitution_binding_term(
 				terms,
 				type_declarations,
 				contexts,
@@ -1145,7 +1145,7 @@ int prototype_substitution_compare_pointwise(
 		);
 		uint32_t left_term;
 		uint32_t right_term;
-		if (!entry || prototype_substitution_lookup_term(
+		if (!entry || prototype_substitution_binding_term(
 				terms,
 				type_declarations,
 				contexts,
@@ -1153,7 +1153,7 @@ int prototype_substitution_compare_pointwise(
 				left_substitution,
 				entry->binding_id,
 				&left_term
-			) != 0 || prototype_substitution_lookup_term(
+			) != 0 || prototype_substitution_binding_term(
 				terms,
 				type_declarations,
 				contexts,

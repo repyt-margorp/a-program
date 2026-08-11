@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #include "calculus.h"
 #include "a_program/frontend/ast.h"
@@ -15,7 +14,7 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 70
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 71
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
 enum prototype_artifact_export_transparency {
@@ -64,7 +63,7 @@ struct prototype_artifact_type_export {
 	uint32_t core_representation_anchor_type_id;
 	/* Graph-level classifier of the unapplied type former. */
 	uint32_t formation_classifier;
-	struct prototype_type_code_shape_key code_shape_key;
+	struct prototype_type_representation_fingerprint representation_fingerprint;
 	uint32_t first_parameter;
 	uint32_t parameter_count;
 	uint32_t first_constructor_export;
@@ -123,14 +122,14 @@ struct prototype_artifact_resolved_external_type_expr_ref {
 	uint32_t type_expr;
 	uint32_t type_export_index;
 	struct prototype_qualified_name name;
-	struct prototype_type_code_shape_key code_shape_key;
+	struct prototype_type_representation_fingerprint representation_fingerprint;
 };
 
 struct prototype_artifact_resolved_external_type_former_ref {
 	uint32_t type_expr;
 	uint32_t type_export_index;
 	struct prototype_qualified_name name;
-	struct prototype_type_code_shape_key code_shape_key;
+	struct prototype_type_representation_fingerprint representation_fingerprint;
 };
 
 struct prototype_artifact_resolved_constructor_owner_ref {
@@ -412,57 +411,6 @@ int prototype_artifact_interface_find_constructor_export(
 	uint32_t type_export_id,
 	int name_symbol_id,
 	uint32_t* p_export_id
-);
-
-int prototype_artifact_write_text(
-	FILE* stream,
-	const struct symbol_table* symbols,
-	const struct prototype_artifact_interface* interface,
-	const struct prototype_term_db* terms,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
-	const struct prototype_universe_db* universe,
-	const struct prototype_ast_db* asts,
-	const struct prototype_compile_metadata* metadata
-);
-
-int prototype_artifact_read_text_interface(
-	FILE* stream,
-	struct symbol_table* symbols,
-	struct prototype_artifact_interface* interface
-);
-
-int prototype_artifact_read_text_graph(
-	FILE* stream,
-	struct symbol_table* symbols,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement
-);
-
-int prototype_artifact_read_text_operation_graph(
-	FILE* stream,
-	struct symbol_table* symbols,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_compile_metadata* metadata
-);
-
-int prototype_artifact_read_text_universe(
-	FILE* stream,
-	struct prototype_universe_db* universe
-);
-
-int prototype_artifact_read_text_debug(
-	FILE* stream,
-	struct symbol_table* symbols,
-	struct prototype_artifact_debug_table* debug
-);
-
-int prototype_artifact_read_text_relocation(
-	FILE* stream,
-	struct symbol_table* symbols,
-	struct prototype_artifact_relocation_table* relocation
 );
 
 int prototype_artifact_apply_term_relocations(

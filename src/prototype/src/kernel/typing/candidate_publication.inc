@@ -193,7 +193,20 @@ static int propositions_equal(
 		left->context_id == right->context_id &&
 		left->operation_id == right->operation_id &&
 		left->subject == right->subject &&
-		left->classifier == right->classifier;
+		left->classifier == right->classifier &&
+		left->resource_usage_count == right->resource_usage_count &&
+		prototype_usage_vector_equal(
+			&(struct prototype_usage_vector) {
+				.entries = (struct prototype_usage_entry*)left->resource_usage,
+				.count = left->resource_usage_count,
+				.capacity = left->resource_usage_count
+			},
+			&(struct prototype_usage_vector) {
+				.entries = (struct prototype_usage_entry*)right->resource_usage,
+				.count = right->resource_usage_count,
+				.capacity = right->resource_usage_count
+			}
+		);
 }
 
 static void candidate_claim_authority(
@@ -682,14 +695,12 @@ static int publish_complete_relation(
 	for (uint32_t i = 0; i < candidate_proof->premise_count; ++i) {
 		const struct prototype_judgement_claim* premise =
 			prototype_judgement_claim_get(judgement, premise_claim_ids[i]);
-		if (!premise || prototype_judgement_proposition_get(judgement, premise->proposition_id)->kind != candidate_proof->premises[i].proposition.kind ||
-			prototype_judgement_proposition_get(judgement, premise->proposition_id)->context_id != candidate_proof->premises[i].proposition.context_id ||
-			prototype_judgement_proposition_get(judgement, premise->proposition_id)->subject != candidate_proof->premises[i].proposition.subject ||
-			prototype_judgement_proposition_get(judgement, premise->proposition_id)->classifier != candidate_proof->premises[i].proposition.classifier ||
-			prototype_judgement_proposition_get(judgement, premise->proposition_id)->authority_kind !=
-				candidate_proof->premises[i].proposition.authority_kind ||
-			prototype_judgement_proposition_get(judgement, premise->proposition_id)->authority_id != candidate_proof->premises[i].proposition.authority_id ||
-			prototype_judgement_proposition_get(judgement, premise->proposition_id)->operation_id != candidate_proof->premises[i].proposition.operation_id) {
+		if (!premise || !propositions_equal(
+				prototype_judgement_proposition_get(
+					judgement, premise->proposition_id
+				),
+				&candidate_proof->premises[i].proposition
+			)) {
 			return -1;
 		}
 	}
@@ -974,6 +985,15 @@ static int add_complete_delta_relation(
 	}
 	struct prototype_judgement_proposition normalized_relation =
 		*candidate_relation;
+	if (normalized_relation.operation_id != PROTOTYPE_INVALID_ID &&
+		delta->operation_usage_provider && delta->operation_usage_provider(
+			delta->operation_usage_provider_context,
+			normalized_relation.operation_id,
+			&normalized_relation.resource_usage,
+			&normalized_relation.resource_usage_count
+		) != 0) {
+		return -1;
+	}
 	initialize_candidate_claim_authority(
 		&normalized_relation, candidate_proof->proof_kind
 	);
@@ -1095,6 +1115,10 @@ static int add_delta_relation_with_authority_and_explicit_premise_actions(
 				premise_evidence[i].authority_kind;
 			proof.premises[i].proposition.authority_id =
 				premise_evidence[i].authority_id;
+			proof.premises[i].proposition.resource_usage_count =
+				premise_evidence[i].resource_usage_count;
+			proof.premises[i].proposition.resource_usage =
+				premise_evidence[i].resource_usage;
 		}
 		proof.premises[i].proposition.subject = premise_subjects[i];
 		proof.premises[i].proposition.classifier = premise_classifiers[i];

@@ -890,9 +890,9 @@ int prototype_hott_bridge_db_ensure_identity_context(
 }
 
 static int hott_relation_plan_and_execute_depth(
-	struct prototype_hott_relation_goal_db* goals,
-	struct prototype_hott_candidate_db* candidates,
-	struct prototype_hott_work_db* work,
+	struct prototype_parametricity_relation_goal_db* goals,
+	struct prototype_parametricity_candidate_db* candidates,
+	struct prototype_parametricity_work_db* work,
 	struct prototype_hott_action_db* actions,
 	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,
@@ -933,7 +933,7 @@ static int hott_relation_plan_and_execute_depth(
 		.materialization_state = PROTOTYPE_HOTT_MATERIALIZATION_INVALID,
 		.relation_witness_claim_id = PROTOTYPE_INVALID_ID
 	};
-	if (prototype_hott_relation_plan(
+	if (prototype_parametricity_relation_plan(
 			goals,
 			candidates,
 			work,
@@ -948,10 +948,10 @@ static int hott_relation_plan_and_execute_depth(
 		) != 0) {
 		return -1;
 	}
-	const struct prototype_hott_work_item* item =
-		prototype_hott_work_db_get(work, execution.work_item_id);
-	const struct prototype_hott_relation_goal* goal =
-		prototype_hott_relation_goal_db_get(goals, goal_id);
+	const struct prototype_parametricity_work_item* item =
+		prototype_parametricity_work_db_get(work, execution.work_item_id);
+	const struct prototype_parametricity_relation_goal* goal =
+		prototype_parametricity_relation_goal_db_get(goals, goal_id);
 	if (!item || !goal) {
 		return -1;
 	}
@@ -970,7 +970,7 @@ static int hott_relation_plan_and_execute_depth(
 			actions, &view, bridges,
 			type_request,
 			&execution.relation_type_action_request_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			actions, kernel, bridges,
 			execution.relation_type_action_request_id,
 			&execution.relation_type_action_result_id
@@ -981,8 +981,8 @@ static int hott_relation_plan_and_execute_depth(
 		prototype_hott_action_result_get(
 			actions, execution.relation_type_action_result_id
 		);
-	const struct prototype_hott_candidate* selected =
-		prototype_hott_candidate_db_get(
+	const struct prototype_parametricity_candidate* selected =
+		prototype_parametricity_candidate_db_get(
 			candidates, item->selected_candidate_id
 		);
 	if (!type_result || !selected) {
@@ -1074,7 +1074,7 @@ static int hott_relation_plan_and_execute_depth(
 			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 		];
 		for (uint32_t i = 0; i < selected->child_edge_count; ++i) {
-			const struct prototype_hott_child_edge* edge =
+			const struct prototype_parametricity_child_edge* edge =
 				&candidates->child_edges[selected->first_child_edge + i];
 			struct prototype_hott_relation_execution child_execution;
 			if (edge->candidate_id != selected->id ||
@@ -1212,10 +1212,10 @@ static int hott_relation_plan_and_execute_depth(
 	return 0;
 }
 
-int prototype_hott_relation_plan_and_execute(
-	struct prototype_hott_relation_goal_db* goals,
-	struct prototype_hott_candidate_db* candidates,
-	struct prototype_hott_work_db* work,
+int prototype_parametricity_relation_plan_and_execute(
+	struct prototype_parametricity_relation_goal_db* goals,
+	struct prototype_parametricity_candidate_db* candidates,
+	struct prototype_parametricity_work_db* work,
 	struct prototype_hott_action_db* actions,
 	struct prototype_kernel_builder* kernel,
 	struct prototype_hott_bridge_db* bridges,

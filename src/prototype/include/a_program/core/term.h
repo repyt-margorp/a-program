@@ -5,12 +5,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "a_program/support/schema.h"
 #include "a_program/support/symbol.h"
-#include "a_program/kernel/type_declaration.h"
 
 struct prototype_term_db;
 struct prototype_term_definition_env;
 struct prototype_term_reduction_options;
+struct prototype_type_declaration_db;
 
 /* Runtime-only dispatch for an OPERATION_REQUEST. Returning 1 supplies a
  * result, 0 leaves the request unhandled, and -1 reports a runtime failure. */
@@ -26,7 +27,6 @@ typedef int (*prototype_term_operation_dispatch_fn)(
 	unsigned depth
 );
 
-#define PROTOTYPE_BASE_NAMESPACE_ID (-1)
 #define PROTOTYPE_SCOPE_BINDING_CAPACITY 512
 #define PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY 1024
 #define PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY 4096
@@ -53,7 +53,7 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_PURE_PRIMITIVE = 17,
 	PROTOTYPE_TERM_EFFECT_OPERATION = 18,
 	PROTOTYPE_TERM_TYPE_VIEW = 19,
-	PROTOTYPE_TERM_EFFECT_LABEL = 20,
+	PROTOTYPE_TERM_EFFECT_ROW_EMPTY = 20,
 	PROTOTYPE_TERM_EFFECT_ROW_VAR = 21,
 	PROTOTYPE_TERM_EFFECT_ROW_UNION = 22,
 	/* Classifier-only implicit quantification. The binder is erased at runtime
@@ -90,7 +90,6 @@ enum prototype_term_computation_kind {
 struct prototype_term_classifier_view {
 	int category;
 	int computation_kind;
-	unsigned effects;
 	uint32_t effect_row;
 	uint32_t result;
 };
@@ -157,14 +156,6 @@ enum prototype_host_effect_flag {
 	PROTOTYPE_HOST_EFFECT_TERMINAL = 1u << 0
 };
 
-enum prototype_effect_operation_label {
-	PROTOTYPE_EFFECT_OPERATION_LABEL_NONE = 0,
-	PROTOTYPE_EFFECT_OPERATION_LABEL_PRINT = 1u << 0,
-	PROTOTYPE_EFFECT_OPERATION_LABEL_SCOPE_TEXT = 1u << 1,
-	PROTOTYPE_EFFECT_OPERATION_LABEL_SCOPE_TEXT_ONCE = 1u << 2,
-	PROTOTYPE_EFFECT_OPERATION_LABEL_ABORT_TEXT = 1u << 3
-};
-
 enum prototype_effect_row_purity {
 	PROTOTYPE_EFFECT_ROW_PURITY_INVALID = 0,
 	PROTOTYPE_EFFECT_ROW_PURITY_PURE = 1,
@@ -187,7 +178,6 @@ struct prototype_pure_primitive_declaration {
 struct prototype_effect_operation_declaration {
 	int operation_id;
 	int classifier_schema;
-	unsigned operation_labels;
 	unsigned required_host_effects;
 	uint32_t arity;
 	int inner_policy;
@@ -441,9 +431,6 @@ struct prototype_term {
 			int operation_id;
 			uint32_t classifier;
 		} effect_operation;
-		struct {
-			unsigned effects;
-		} effect_label;
 		struct {
 			uint32_t binding_id;
 		} effect_row_var;
@@ -768,7 +755,10 @@ int prototype_term_text_literal(struct prototype_term_db* db, int text_symbol_id
 int prototype_term_primitive_int(struct prototype_term_db* db, uint32_t* p_ret);
 int prototype_term_primitive_int64(struct prototype_term_db* db, uint32_t* p_ret);
 int prototype_term_int_literal(struct prototype_term_db* db, int64_t value, uint32_t* p_ret);
-int prototype_term_effect_label(struct prototype_term_db* db, unsigned effects, uint32_t* p_ret);
+int prototype_term_effect_row_empty(
+	struct prototype_term_db* db,
+	uint32_t* p_ret
+);
 int prototype_term_effect_row_var(
 	struct prototype_term_db* db,
 	uint32_t binding_id,
@@ -776,12 +766,11 @@ int prototype_term_effect_row_var(
 );
 
 /* Effect rows form an idempotent commutative union. The normal form is solver
- * state, not a new Term tag: closed labels are accumulated in effects and each
- * unresolved variable or higher-order operation atom occurs at most once. */
+ * state, not a new Term tag. Each stable operation or unresolved row atom
+ * occurs at most once; the empty row has no atoms. */
 #define PROTOTYPE_EFFECT_ROW_NORMAL_FORM_ATOM_CAPACITY 512
 
 struct prototype_effect_row_normal_form {
-	unsigned effects;
 	uint32_t atom_count;
 	uint32_t atoms[PROTOTYPE_EFFECT_ROW_NORMAL_FORM_ATOM_CAPACITY];
 };
@@ -825,13 +814,11 @@ int prototype_term_effect_row_operation(
 	uint32_t latent_row,
 	uint32_t* p_ret
 );
-int prototype_term_effect_row_closed_bits(
+int prototype_term_effect_row_is_closed(
 	const struct prototype_term_db* db,
-	uint32_t row,
-	unsigned* p_effects
+	uint32_t row
 );
-/* Unlike classifier-view cached bits, this preserves unresolved rows as a
- * distinct result and is the authority for static purity checks. */
+/* Purity is derived from the normalized row rather than cached membership. */
 int prototype_term_effect_row_purity(
 	const struct prototype_term_db* db,
 	uint32_t row
@@ -839,7 +826,7 @@ int prototype_term_effect_row_purity(
 int prototype_term_effect_row_residual(
 	struct prototype_term_db* db,
 	uint32_t row,
-	unsigned handled_effects,
+	uint32_t handled_row,
 	uint32_t* p_residual
 );
 int prototype_term_computation_type(
@@ -930,6 +917,11 @@ int prototype_term_effect_operation_identity(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
 	int* p_operation_id
+);
+int prototype_term_effect_operation_classifier_has_suspended_argument(
+	const struct prototype_term_db* db,
+	uint32_t classifier,
+	int* p_has_suspended_argument
 );
 int prototype_term_contains_free_binding(
 	const struct prototype_term_db* db,

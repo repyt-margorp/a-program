@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "a_program/support/schema.h"
+
 enum prototype_identity_computation_rule {
 	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_INVALID = 0,
 	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT = 1,
@@ -19,23 +21,12 @@ struct prototype_term_db;
 struct prototype_context_db;
 
 /*
- * A qualified source-level address used only while a graph reference has not
- * been linked to a concrete node. It is not part of core computation identity.
- */
-struct prototype_qualified_name {
-	int namespace_symbol_id;
-	int name_symbol_id;
-};
-
-/*
  * Type declarations are source-derived formation metadata used while lowering
  * AST into graph nodes. They provide the named type view: declaration identity,
  * constructor names, and constructor ordinals. The nameless computational side
  * lives in the term graph as TYPE_FORMER/APP/TYPE_VIEW core spines, and
  * classifier facts live in JudgementDB.
  */
-
-#define PROTOTYPE_INVALID_ID UINT32_MAX
 
 enum prototype_type_expr_tag {
 	PROTOTYPE_TYPE_EXPR_UNIVERSE = 1,
@@ -53,7 +44,7 @@ enum prototype_type_expr_tag {
 	PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64 = 13
 };
 
-struct prototype_type_code_shape_key {
+struct prototype_type_representation_fingerprint {
 	/*
 	 * Structural fingerprint for the core shape layer. This is not declaration
 	 * identity and must not be used as typed conversion evidence by itself.
@@ -87,7 +78,7 @@ struct prototype_type_expr {
 	} name;
 		struct {
 			struct prototype_qualified_name name;
-			struct prototype_type_code_shape_key code_shape_key;
+			struct prototype_type_representation_fingerprint representation_fingerprint;
 		} imported_type;
 		struct {
 			struct prototype_qualified_name name;
@@ -185,7 +176,7 @@ struct prototype_type_declaration {
  */
 struct prototype_type_representation {
 	uint32_t representative_type_id;
-	struct prototype_type_code_shape_key fingerprint;
+	struct prototype_type_representation_fingerprint fingerprint;
 };
 
 struct prototype_type_declaration_db {
@@ -250,7 +241,7 @@ int prototype_type_expr_pi(
 int prototype_type_expr_imported_type(
 	struct prototype_type_declaration_db* db,
 	struct prototype_qualified_name name,
-	const struct prototype_type_code_shape_key* key,
+	const struct prototype_type_representation_fingerprint* key,
 	uint32_t* p_ret
 );
 int prototype_type_expr_external_term(
@@ -355,17 +346,17 @@ const struct prototype_type_constructor_declaration* prototype_type_declaration_
 	int name_symbol_id
 );
 
-int prototype_type_declaration_code_shape_key(
+int prototype_type_declaration_representation_fingerprint(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	const struct prototype_context_db* contexts,
 	uint32_t type_id,
-	struct prototype_type_code_shape_key* p_key
+	struct prototype_type_representation_fingerprint* p_key
 );
 
-int prototype_type_code_shape_keys_equal(
-	const struct prototype_type_code_shape_key* left,
-	const struct prototype_type_code_shape_key* right
+int prototype_type_representation_fingerprints_equal(
+	const struct prototype_type_representation_fingerprint* left,
+	const struct prototype_type_representation_fingerprint* right
 );
 
 int prototype_type_declaration_representation_anchor_type_id(

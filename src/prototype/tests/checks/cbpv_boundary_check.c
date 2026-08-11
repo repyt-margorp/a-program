@@ -136,7 +136,8 @@ int main(void) {
 		) != 0 ||
 		prototype_judgement_classifier_view(&term_db, &type_db, NULL, classifier, &view) != 0 ||
 		view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		view.effects != PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ||
+		prototype_term_effect_row_purity(&term_db, view.effect_row) !=
+			PROTOTYPE_EFFECT_ROW_PURITY_PURE ||
 		prototype_judgement_lookup_authority_neutral_core_classifier(
 			&judgement, forced, &classifier
 		) != 0 ||
@@ -160,20 +161,24 @@ int main(void) {
 	uint32_t once_scoped_symbolic_row;
 	uint32_t scoped_terminal_row;
 	uint32_t substituted_scoped_row;
-	unsigned closed_effects;
-	if (prototype_term_effect_label(&term_db, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &empty_effect_row) != 0 ||
-		prototype_term_effect_label(&term_db, PROTOTYPE_HOST_EFFECT_TERMINAL, &terminal_effect_row) != 0 ||
+	if (prototype_term_effect_row_empty(&term_db, &empty_effect_row) != 0 ||
+		prototype_term_effect_row_operation(
+			&term_db,
+			PROTOTYPE_EFFECT_OPERATION_PRINT,
+			empty_effect_row,
+			&terminal_effect_row
+		) != 0 ||
 		prototype_term_effect_row_union(
 			&term_db, empty_effect_row, terminal_effect_row, &closed_effect_union
-		) != 0 || prototype_term_effect_row_closed_bits(
-			&term_db, closed_effect_union, &closed_effects
-		) != 0 || closed_effects != PROTOTYPE_HOST_EFFECT_TERMINAL ||
+		) != 0 || prototype_term_effect_row_is_closed(
+			&term_db, closed_effect_union
+		) != 1 ||
 		prototype_term_effect_row_var(&term_db, 99, &symbolic_effect_row) != 0 ||
 		prototype_term_effect_row_union(
 			&term_db, symbolic_effect_row, terminal_effect_row, &symbolic_effect_union
-		) != 0 || prototype_term_effect_row_closed_bits(
-			&term_db, symbolic_effect_union, &closed_effects
-		) != 1 || prototype_term_effect_row_operation(
+		) != 0 || prototype_term_effect_row_is_closed(
+			&term_db, symbolic_effect_union
+		) != 0 || prototype_term_effect_row_operation(
 			&term_db,
 			PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT,
 			symbolic_effect_row,
@@ -211,7 +216,6 @@ int main(void) {
 			&term_db, symbolic_effect_union, value, &row_computation
 		) != 0 || prototype_term_classifier_view(&term_db, row_computation, &view) != 0 ||
 		view.effect_row != symbolic_effect_union ||
-		view.effects != PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ||
 		prototype_term_computation_type(
 			&term_db, empty_effect_row, value, &pure_computation
 		) != 0 ||

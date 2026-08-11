@@ -7,6 +7,7 @@
 
 #include "calculus.h"
 #include "a_program/kernel/context.h"
+#include "a_program/kernel/resource_usage.h"
 #include "a_program/support/symbol.h"
 #include "a_program/core/term.h"
 #include "a_program/kernel/type_declaration.h"
@@ -72,6 +73,17 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_THUNK_TYPE_FORMATION = 44
 };
 
+/* Reconstruction role is a property of an accepted rule application, not of
+ * a proof tag alone. The same syntax-directed tag may conclude an Operation
+ * proposition or a declaration/helper proposition. */
+enum prototype_judgement_proof_reconstruction_role {
+	PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_INVALID = 0,
+	PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_PRINCIPAL = 1,
+	PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_DERIVED_OPERATION = 2,
+	PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_SCOPED = 3,
+	PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_NON_OPERATION = 4
+};
+
 enum prototype_judgement_authority_kind {
 	PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID = 0,
 	PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION = 1,
@@ -108,6 +120,9 @@ struct prototype_judgement_proposition {
 	uint32_t operation_id;
 	uint32_t subject;
 	uint32_t classifier;
+	/* Quantitative Context usage is part of the judgement identity. */
+	uint32_t resource_usage_count;
+	const struct prototype_usage_entry* resource_usage;
 	uint64_t key_hash;
 	uint32_t hash_next;
 };
@@ -181,6 +196,8 @@ struct prototype_judgement_selected_evidence {
 	uint32_t operation_id;
 	uint32_t subject;
 	uint32_t classifier;
+	uint32_t resource_usage_count;
+	const struct prototype_usage_entry* resource_usage;
 };
 
 /* Accepted proposition identity. Rule identity is deliberately absent. */
@@ -274,6 +291,10 @@ struct prototype_judgement_computation_constraint {
 	 * validating the same rule are evidence candidates, not the source of this
 	 * classifier. */
 	uint32_t solved_classifier;
+	/* Exact Operation-solver representative to use for an operation-owned proof.
+	 * The kernel must independently derive a convertible classifier before it may
+	 * publish this representative. INVALID keeps authority-neutral Core closure. */
+	uint32_t projected_classifier;
 };
 
 enum prototype_judgement_effect_row_constraint_kind {
@@ -310,6 +331,7 @@ struct prototype_judgement_db {
 	struct prototype_judgement_derivation* derivations;
 	struct prototype_judgement_candidate_premise* candidate_premises;
 	struct prototype_judgement_premise_edge* accepted_premises;
+	struct prototype_usage_entry* proposition_resource_usage;
 	size_t claim_count;
 	size_t claim_capacity;
 	size_t derivation_count;
@@ -318,6 +340,8 @@ struct prototype_judgement_db {
 	size_t candidate_premise_capacity;
 	size_t accepted_premise_count;
 	size_t accepted_premise_capacity;
+	size_t proposition_resource_usage_count;
+	size_t proposition_resource_usage_capacity;
 	uint32_t claim_index_heads[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
 	uint32_t proposition_index_heads[
 		PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT

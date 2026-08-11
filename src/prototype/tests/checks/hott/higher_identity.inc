@@ -3,7 +3,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, pure_box_thunk_type_action,
 			&pure_box_thunk_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, pure_box_thunk_type_action_id,
 			&pure_box_thunk_type_result_id
 		) != 0 || action_results[pure_box_thunk_type_result_id].outcome.state !=
@@ -77,7 +77,7 @@
 	uint32_t pi_type_result_id;
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, pi_type_action, &pi_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, pi_type_action_id, &pi_type_result_id
 		) != 0 || action_results[pi_type_result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY) {
@@ -173,7 +173,7 @@
 		function_context,
 		applied_function,
 		pure_comp,
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t app_claim = fixture_add_claim(
 		&judgement,
@@ -225,7 +225,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, app_result_type_action,
 			&app_result_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, app_result_type_action_id,
 			&app_result_type_result_id
 		) != 0 || action_results[app_result_type_result_id].outcome.state !=
@@ -309,7 +309,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, lambda_type_action,
 			&lambda_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, lambda_type_action_id,
 			&lambda_type_result_id
 		) != 0 || action_results[lambda_type_result_id].outcome.state !=
@@ -410,7 +410,7 @@
 		lambda_body_context,
 		returned_outer_bool,
 		pure_bool_computation,
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t returned_outer_bool_claim = fixture_add_claim(
 		&judgement,
@@ -443,7 +443,7 @@
 		bool_context,
 		dependent_lambda,
 		bool_to_pure_bool_computation,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t lambda_claim = fixture_add_claim(
 		&judgement,
@@ -602,7 +602,7 @@
 		bool_context,
 		value_match,
 		value_match_classifier,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t value_match_claim = fixture_add_claim(
 		&judgement,
@@ -640,7 +640,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, value_match_type_action,
 			&value_match_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, value_match_type_action_id,
 			&value_match_type_result_id
 		) != 0 || action_results[value_match_type_result_id].outcome.state !=

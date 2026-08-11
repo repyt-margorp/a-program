@@ -2,7 +2,7 @@
 #include "a_program/kernel/judgement/rules.h"
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
-#include "a_program/frontend/lowering.h"
+#include "a_program/graph/operation_graph.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -61,7 +61,7 @@ static int judgement_operation_expected_polarity(
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_operation_graph* operations,
 	uint32_t operation_id,
-	int* p_polarity
+	int* p_category
 );
 
 void prototype_judgement_db_init(
@@ -94,6 +94,19 @@ void prototype_judgement_db_init(
 	judgement_index_clear(db->derivation_index_heads);
 }
 
+void prototype_judgement_db_set_resource_usage_storage(
+	struct prototype_judgement_db* db,
+	struct prototype_usage_entry* entries,
+	size_t capacity
+) {
+	if (!db) {
+		return;
+	}
+	db->proposition_resource_usage = entries;
+	db->proposition_resource_usage_capacity = capacity;
+	db->proposition_resource_usage_count = 0;
+}
+
 static int judgement_proposition_equal(
 	const struct prototype_judgement_proposition* left,
 	const struct prototype_judgement_proposition* right
@@ -104,7 +117,20 @@ static int judgement_proposition_equal(
 		left->context_id == right->context_id &&
 		left->operation_id == right->operation_id &&
 		left->subject == right->subject &&
-		left->classifier == right->classifier;
+		left->classifier == right->classifier &&
+		left->resource_usage_count == right->resource_usage_count &&
+		prototype_usage_vector_equal(
+			&(struct prototype_usage_vector) {
+				.entries = (struct prototype_usage_entry*)left->resource_usage,
+				.count = left->resource_usage_count,
+				.capacity = left->resource_usage_count
+			},
+			&(struct prototype_usage_vector) {
+				.entries = (struct prototype_usage_entry*)right->resource_usage,
+				.count = right->resource_usage_count,
+				.capacity = right->resource_usage_count
+			}
+		);
 }
 
 static int selected_evidence_is_subject_local(
@@ -208,6 +234,15 @@ static uint64_t judgement_proposition_key_hash(
 	hash = judgement_key_hash_mix(hash, proposition->operation_id);
 	hash = judgement_key_hash_mix(hash, proposition->subject);
 	hash = judgement_key_hash_mix(hash, proposition->classifier);
+	hash = judgement_key_hash_mix(hash, proposition->resource_usage_count);
+	for (uint32_t i = 0; i < proposition->resource_usage_count; ++i) {
+		hash = judgement_key_hash_mix(
+			hash, proposition->resource_usage[i].binding_id
+		);
+		hash = judgement_key_hash_mix(
+			hash, (uint32_t)proposition->resource_usage[i].grade
+		);
+	}
 	return hash;
 }
 
@@ -218,6 +253,20 @@ int prototype_judgement_proposition_intern(
 ) {
 	if (!judgement || !identity || !p_proposition_id) {
 		return -1;
+	}
+	if ((identity->resource_usage_count != 0 && !identity->resource_usage) ||
+		identity->resource_usage_count >
+			judgement->proposition_resource_usage_capacity -
+			judgement->proposition_resource_usage_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < identity->resource_usage_count; ++i) {
+		if (identity->resource_usage[i].grade <= PROTOTYPE_USAGE_ZERO ||
+			identity->resource_usage[i].grade > PROTOTYPE_USAGE_MANY ||
+			(i != 0 && identity->resource_usage[i - 1].binding_id >=
+				identity->resource_usage[i].binding_id)) {
+			return -1;
+		}
 	}
 	uint64_t key_hash = judgement_proposition_key_hash(identity);
 	size_t bucket = key_hash % PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
@@ -243,12 +292,52 @@ int prototype_judgement_proposition_intern(
 	}
 	uint32_t proposition_id = (uint32_t)judgement->proposition_count++;
 	judgement->propositions[proposition_id] = *identity;
+	struct prototype_usage_entry* resource_usage =
+		identity->resource_usage_count == 0 ? NULL :
+		&judgement->proposition_resource_usage[
+			judgement->proposition_resource_usage_count
+		];
+	if (identity->resource_usage_count != 0) {
+		memcpy(
+			resource_usage,
+			identity->resource_usage,
+			identity->resource_usage_count * sizeof(*resource_usage)
+		);
+	}
+	judgement->proposition_resource_usage_count +=
+		identity->resource_usage_count;
+	judgement->propositions[proposition_id].resource_usage = resource_usage;
 	judgement->propositions[proposition_id].key_hash = key_hash;
 	judgement->propositions[proposition_id].hash_next =
 		judgement->proposition_index_heads[bucket];
 	judgement->proposition_index_heads[bucket] = proposition_id;
 	*p_proposition_id = proposition_id;
 	return 0;
+}
+
+int prototype_judgement_proposition_find_exact(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_proposition* identity,
+	uint32_t* p_proposition_id
+) {
+	if (!judgement || !identity || !p_proposition_id) {
+		return -1;
+	}
+	uint64_t key_hash = judgement_proposition_key_hash(identity);
+	size_t bucket = key_hash % PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
+	for (uint32_t i = judgement->proposition_index_heads[bucket];
+		i != PROTOTYPE_INVALID_ID;
+		i = judgement->propositions[i].hash_next) {
+		if (i >= judgement->proposition_count) {
+			return -1;
+		}
+		if (judgement->propositions[i].key_hash == key_hash &&
+			judgement_proposition_equal(&judgement->propositions[i], identity)) {
+			*p_proposition_id = i;
+			return 0;
+		}
+	}
+	return 1;
 }
 
 const struct prototype_judgement_claim* prototype_judgement_claim_get(
@@ -469,6 +558,23 @@ void prototype_judgement_delta_set_operation(
 		return;
 	}
 	delta->current_operation_id = operation_id;
+}
+
+void prototype_judgement_delta_set_operation_usage_provider(
+	struct prototype_judgement_delta* delta,
+	void* context,
+	int (*provider)(
+		void* context,
+		uint32_t operation_id,
+		const struct prototype_usage_entry** p_entries,
+		uint32_t* p_count
+	)
+) {
+	if (!delta) {
+		return;
+	}
+	delta->operation_usage_provider_context = context;
+	delta->operation_usage_provider = provider;
 }
 
 void prototype_judgement_delta_set_context_store(

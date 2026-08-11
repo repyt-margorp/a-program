@@ -14,8 +14,8 @@ int main(void) {
 	printf(
 		"%d %d %d %d %d\n",
 		PROTOTYPE_OPERATION_APP,
-		PROTOTYPE_OPERATION_POLARITY_VALUE,
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION,
+		PROTOTYPE_TERM_CATEGORY_VALUE,
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION,
 		PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION,
 		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION
 	);
@@ -33,7 +33,7 @@ polarity_computation=$3
 function_elimination=$4
 constructor_formation=$5
 
-cat >"$tmp_dir/constructor-polarity.p" <<'EOF_SOURCE'
+cat >"$tmp_dir/constructor-category.p" <<'EOF_SOURCE'
 Nat := @{ zero : *; succ : * -> *; };
 Box := \A : @ => @{ box : A -> *; };
 
@@ -49,28 +49,28 @@ ConstNat := \x : Nat => Nat;
 pair := (Sigma Nat ConstNat).mk Nat.zero Nat.zero;
 EOF_SOURCE
 
-./read_file.out --write-artifact "$tmp_dir/constructor-polarity.apo" \
-	"$tmp_dir/constructor-polarity.p" >"$tmp_dir/constructor-polarity.out"
+./read_file.out --write-artifact "$tmp_dir/constructor-category.apo" \
+	"$tmp_dir/constructor-category.p" >"$tmp_dir/constructor-category.out"
 
-grep -q '\[constructor-spine-formation proof#' "$tmp_dir/constructor-polarity.out"
-grep -q 'metadata label wrapped ' "$tmp_dir/constructor-polarity.out"
-grep -q 'metadata label pair ' "$tmp_dir/constructor-polarity.out"
+grep -q '\[constructor-spine-formation proof#' "$tmp_dir/constructor-category.out"
+grep -q 'metadata label wrapped ' "$tmp_dir/constructor-category.out"
+grep -q 'metadata label pair ' "$tmp_dir/constructor-category.out"
 
-awk -v app="$operation_app" -v polarity="$polarity_value" \
+awk -v app="$operation_app" -v category="$polarity_value" \
 	-v role="$constructor_formation" '
-	$1 == "operation" && $3 == app && $4 == polarity && $5 == role { found = 1 }
+	$1 == "operation" && $3 == app && $4 == category && $5 == role { found = 1 }
 	END { exit found ? 0 : 1 }
-' "$tmp_dir/constructor-polarity.apo"
+' "$tmp_dir/constructor-category.apo"
 
-awk -v app="$operation_app" -v polarity="$polarity_computation" \
+awk -v app="$operation_app" -v category="$polarity_computation" \
 	-v role="$function_elimination" '
-	$1 == "operation" && $3 == app && $4 == polarity && $5 == role { found = 1 }
+	$1 == "operation" && $3 == app && $4 == category && $5 == role { found = 1 }
 	END { exit found ? 0 : 1 }
-' "$tmp_dir/constructor-polarity.apo"
+' "$tmp_dir/constructor-category.apo"
 
-./read_file.out --read-graph "$tmp_dir/constructor-polarity.apo" \
-	>"$tmp_dir/constructor-polarity-read.out"
-grep -q '^operation_occurrences=' "$tmp_dir/constructor-polarity-read.out"
+./read_file.out --read-graph "$tmp_dir/constructor-category.apo" \
+	>"$tmp_dir/constructor-category-read.out"
+grep -q '^operation_occurrences=' "$tmp_dir/constructor-category-read.out"
 
 cat >"$tmp_dir/partial-constructor.p" <<'EOF_PARTIAL'
 Nat := @{ zero : *; succ : * -> *; };
@@ -98,4 +98,4 @@ if ./read_file.out "$tmp_dir/nested-partial-constructor.p" \
 	exit 1
 fi
 
-echo "constructor polarity tests passed"
+echo "constructor category tests passed"

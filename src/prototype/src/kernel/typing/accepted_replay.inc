@@ -1416,8 +1416,8 @@ static int validate_effect_weaken_proof(
 	}
 	struct prototype_term_classifier_view source;
 	struct prototype_term_classifier_view target;
-	unsigned source_effects;
-	unsigned target_effects;
+	struct prototype_effect_row_normal_form source_effects;
+	struct prototype_effect_row_normal_form target_effects;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL,
 			proof->premises[0].proposition.classifier, &source
@@ -1429,11 +1429,13 @@ static int validate_effect_weaken_proof(
 		target.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, source.result, target.result
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_closed_bits(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_normal_form(
 			terms, source.effect_row, &source_effects
-		) != 0 || prototype_term_effect_row_closed_bits(
+		) != 0 || prototype_term_effect_row_normal_form(
 			terms, target.effect_row, &target_effects
-		) != 0 || (source_effects & target_effects) != source_effects) {
+		) != 0 || !prototype_term_effect_row_normal_form_includes(
+			&target_effects, &source_effects
+		)) {
 		return -1;
 	}
 	return 0;
@@ -1757,7 +1759,6 @@ static int validate_return_intro_proof(
 		return -1;
 	}
 	const struct prototype_term* classifier = &terms->terms[relation->classifier];
-	unsigned effects;
 	return proof->premises[0].proposition.subject == terms->terms[relation->subject].as.return_term.value &&
 		prototype_judgement_classifier_conversion(
 			terms,
@@ -1765,9 +1766,9 @@ static int validate_return_intro_proof(
 			proof->premises[0].proposition.classifier,
 			classifier->as.computation_type.result
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL &&
-		prototype_term_effect_row_closed_bits(
-			terms, classifier->as.computation_type.label, &effects
-		) == 0 && effects == PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ? 0 : -1;
+		prototype_term_effect_row_purity(
+			terms, classifier->as.computation_type.label
+		) == PROTOTYPE_EFFECT_ROW_PURITY_PURE ? 0 : -1;
 }
 
 static int validate_thunk_intro_proof(
@@ -1832,11 +1833,11 @@ static int computation_fold_carrier_compatible(
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return 0;
 	}
-	unsigned left_effects;
-	unsigned right_effects;
-	if (prototype_term_effect_row_closed_bits(
+	struct prototype_effect_row_normal_form left_effects;
+	struct prototype_effect_row_normal_form right_effects;
+	if (prototype_term_effect_row_normal_form(
 			terms, left_view.effect_row, &left_effects
-		) != 0 || prototype_term_effect_row_closed_bits(
+		) != 0 || prototype_term_effect_row_normal_form(
 			terms, right_view.effect_row, &right_effects
 		) != 0) {
 		/* Partial-policy artifacts retain this equality as a residual obligation.
@@ -1846,7 +1847,9 @@ static int computation_fold_carrier_compatible(
 	/* A return clause, operation clause, or resumption may use fewer effects
 	 * than the fold carrier. The validator checks the exact union of all local
 	 * rows against the result row after validating these inclusions. */
-	return (left_effects & right_effects) == left_effects;
+	return prototype_term_effect_row_normal_form_includes(
+		&right_effects, &left_effects
+	);
 }
 
 static int validate_computation_fold_elim_proof(
@@ -1934,7 +1937,11 @@ static int validate_computation_fold_elim_proof(
 			return -1;
 		}
 		(void)return_binder;
-		unsigned handled_effects = 0;
+		uint32_t handled_row;
+		if (prototype_term_effect_row_empty(terms, &handled_row
+			) != 0) {
+			return -1;
+		}
 		uint32_t clause_body_rows[
 			PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES
 		];
@@ -1954,7 +1961,18 @@ static int validate_computation_fold_elim_proof(
 			if (!declaration) {
 				return -1;
 			}
-			handled_effects |= declaration->operation_labels;
+			uint32_t empty_row;
+			uint32_t operation_atom;
+			uint32_t next_handled_row;
+			if (prototype_term_effect_row_empty(terms, &empty_row
+				) != 0 || prototype_term_effect_row_operation(
+					terms, operation_identity, empty_row, &operation_atom
+				) != 0 || prototype_term_effect_row_union(
+					terms, handled_row, operation_atom, &next_handled_row
+				) != 0) {
+				return -1;
+			}
+			handled_row = next_handled_row;
 
 			uint32_t operation_classifier = proof->premises[2 + 2 * i].proposition.classifier;
 			int specialization_status = prototype_judgement_specialize_fold_operation_classifier(
@@ -2100,7 +2118,7 @@ static int validate_computation_fold_elim_proof(
 		}
 		uint32_t residual_row;
 		int residual_status = prototype_term_effect_row_residual(
-			terms, input.effect_row, handled_effects, &residual_row
+			terms, input.effect_row, handled_row, &residual_row
 		);
 		if (residual_status != 0) {
 			return -1;
@@ -2345,8 +2363,15 @@ static int validate_operation_request_intro_proof(
 	}
 	struct prototype_term_classifier_view continuation;
 	struct prototype_term_classifier_view request_operation = operation;
-	if (declaration->classifier_schema ==
-		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT) {
+	int has_suspended_argument;
+	if (prototype_term_effect_operation_classifier_has_suspended_argument(
+			terms,
+			terms->terms[operation_head].as.effect_operation.classifier,
+			&has_suspended_argument
+		) != 0) {
+		return -1;
+	}
+	if (has_suspended_argument) {
 		if (terms->terms[proof->premises[1].proposition.classifier].tag !=
 			PROTOTYPE_TERM_THUNK_TYPE) {
 			return -1;
@@ -2447,8 +2472,7 @@ static int validate_host_signature_classifier(
 	uint32_t classifier,
 	uint32_t arity,
 	const int* argument_types,
-	int result_type,
-	unsigned expected_effects
+	int result_type
 ) {
 	if (!terms || !argument_types || result_type == PROTOTYPE_HOST_TYPE_INVALID) {
 		return -1;
@@ -2476,10 +2500,9 @@ static int validate_host_signature_classifier(
 	}
 	uint32_t label = terms->terms[current].as.computation_type.label;
 	uint32_t result = terms->terms[current].as.computation_type.result;
-	unsigned effects;
 	if (!term_exists(terms, label) ||
-		prototype_term_effect_row_closed_bits(terms, label, &effects) != 0 ||
-		effects != expected_effects) {
+		prototype_term_effect_row_purity(terms, label) !=
+			PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
 		return -1;
 	}
 	return term_is_host_type_id(terms, result, result_type) ? 0 : -1;
@@ -2527,8 +2550,7 @@ static int validate_pure_primitive_type_intro_proof(
 				relation->classifier,
 				signature->arity,
 				signature->argument_types,
-				signature->result_type,
-				PROTOTYPE_EFFECT_OPERATION_LABEL_NONE
+				signature->result_type
 			);
 		}
 	}
@@ -2538,12 +2560,11 @@ static int validate_pure_primitive_type_intro_proof(
 		return -1;
 	}
 
-	uint32_t effect_label = terms->terms[codomain].as.computation_type.label;
+	uint32_t effect_row = terms->terms[codomain].as.computation_type.label;
 	uint32_t result = terms->terms[codomain].as.computation_type.result;
-	unsigned effects;
-	if (effect_label >= terms->term_count || result >= terms->term_count ||
-		prototype_term_effect_row_closed_bits(terms, effect_label, &effects) != 0 ||
-		effects != PROTOTYPE_EFFECT_OPERATION_LABEL_NONE) {
+	if (effect_row >= terms->term_count || result >= terms->term_count ||
+		prototype_term_effect_row_purity(terms, effect_row) !=
+			PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
 		return -1;
 	}
 	if (primitive->as.pure_primitive.primitive_id == PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT) {
@@ -3323,10 +3344,9 @@ static int validate_pi_formation_intro_proof(
 		terms->terms[returned_classifier].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
 		return -1;
 	}
-	unsigned effects;
 	uint32_t effect_row = terms->terms[returned_classifier].as.computation_type.label;
-	if (prototype_term_effect_row_closed_bits(terms, effect_row, &effects) != 0 ||
-		effects != PROTOTYPE_EFFECT_OPERATION_LABEL_NONE ||
+	if (prototype_term_effect_row_purity(terms, effect_row) !=
+			PROTOTYPE_EFFECT_ROW_PURITY_PURE ||
 		terms->terms[returned_classifier].as.computation_type.result != relation->classifier) {
 		return -1;
 	}
@@ -3818,9 +3838,9 @@ static int judgement_operation_expected_polarity(
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_operation_graph* operations,
 	uint32_t operation_id,
-	int* p_polarity
+	int* p_category
 ) {
-	if (!terms || !type_declarations || !operations || !p_polarity ||
+	if (!terms || !type_declarations || !operations || !p_category ||
 		operation_id >= operations->operation_count) {
 		return -1;
 	}
@@ -3840,14 +3860,14 @@ static int judgement_operation_expected_polarity(
 		) != 0) {
 		return -1;
 	}
-	int polarity = classifier_view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION :
-		PROTOTYPE_OPERATION_POLARITY_VALUE;
+	int category = classifier_view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION :
+		PROTOTYPE_TERM_CATEGORY_VALUE;
 	int core_tag = terms->terms[operation->core_term].tag;
 	switch (operation->tag) {
 		case PROTOTYPE_OPERATION_CONSTRUCTOR:
 		case PROTOTYPE_OPERATION_THUNK:
-			polarity = PROTOTYPE_OPERATION_POLARITY_VALUE;
+			category = PROTOTYPE_TERM_CATEGORY_VALUE;
 			break;
 		case PROTOTYPE_OPERATION_LAMBDA:
 		case PROTOTYPE_OPERATION_MATCH:
@@ -3856,22 +3876,22 @@ static int judgement_operation_expected_polarity(
 		case PROTOTYPE_OPERATION_FORCE:
 		case PROTOTYPE_OPERATION_REQUEST:
 		case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
-			polarity = PROTOTYPE_OPERATION_POLARITY_COMPUTATION;
+			category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
 			break;
 		case PROTOTYPE_OPERATION_ATOM:
 			if (core_tag == PROTOTYPE_TERM_TYPE_VIEW ||
 				core_tag == PROTOTYPE_TERM_TYPE_FORMER ||
 				core_tag == PROTOTYPE_TERM_TYPE_DECLARATION) {
-				polarity = PROTOTYPE_OPERATION_POLARITY_VALUE;
+				category = PROTOTYPE_TERM_CATEGORY_VALUE;
 			}
 			break;
 		case PROTOTYPE_OPERATION_APP:
 			if (operation->application_role ==
 				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
-				polarity = PROTOTYPE_OPERATION_POLARITY_VALUE;
+				category = PROTOTYPE_TERM_CATEGORY_VALUE;
 			} else if (operation->application_role ==
 				PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION) {
-				polarity = PROTOTYPE_OPERATION_POLARITY_COMPUTATION;
+				category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
 			} else {
 				return -1;
 			}
@@ -3886,7 +3906,7 @@ static int judgement_operation_expected_polarity(
 					type_declarations,
 					operations,
 					source_operation,
-					&polarity
+					&category
 				) != 0) {
 				return -1;
 			}
@@ -3897,7 +3917,7 @@ static int judgement_operation_expected_polarity(
 		default:
 			return -1;
 	}
-	*p_polarity = polarity;
+	*p_category = category;
 	return 0;
 }
 
@@ -4125,6 +4145,359 @@ int prototype_judgement_validate_operation_typing(
 	}
 }
 
+int prototype_judgement_project_principal_operation_proposition(
+	const struct prototype_operation_graph* operations,
+	uint32_t operation_id,
+	struct prototype_judgement_proposition* p_proposition
+) {
+	if (!operations || !p_proposition ||
+		operation_id >= operations->operation_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* operation =
+		&operations->operations[operation_id];
+	if (operation->context_id == PROTOTYPE_INVALID_ID ||
+		operation->core_term == PROTOTYPE_INVALID_ID ||
+		operation->classifier == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	*p_proposition = (struct prototype_judgement_proposition){
+		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		.authority_id = operation_id,
+		.context_id = operation->context_id,
+		.operation_id = operation_id,
+		.subject = operation->core_term,
+		.classifier = operation->classifier,
+		.hash_next = PROTOTYPE_INVALID_ID
+	};
+	return 0;
+}
+
+static int judgement_principal_rule_matches_operation(
+	const struct prototype_operation_node* operation,
+	int proof_kind
+) {
+	if (!operation) {
+		return 0;
+	}
+	switch (operation->tag) {
+	case PROTOTYPE_OPERATION_ATOM:
+		return proof_kind == PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_TEXT_TYPE_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INT_TYPE_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_HOST_TYPE_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_TYPE_FORMATION ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_THUNK_TYPE_FORMATION;
+	case PROTOTYPE_OPERATION_CONSTRUCTOR:
+		return proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_INTRO;
+	case PROTOTYPE_OPERATION_APP:
+		return operation->application_role ==
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION ?
+			proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION :
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM;
+	case PROTOTYPE_OPERATION_LAMBDA:
+		return proof_kind == PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO;
+	case PROTOTYPE_OPERATION_MATCH:
+		return proof_kind == PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM ||
+			proof_kind == PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE;
+	case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+		return proof_kind ==
+			PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM;
+	case PROTOTYPE_OPERATION_RETURN:
+		return proof_kind == PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO;
+	case PROTOTYPE_OPERATION_THUNK:
+		return proof_kind == PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO;
+	case PROTOTYPE_OPERATION_FORCE:
+		return proof_kind == PROTOTYPE_JUDGEMENT_PROOF_FORCE_ELIM;
+	case PROTOTYPE_OPERATION_REQUEST:
+		return proof_kind ==
+			PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO;
+	case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
+		return proof_kind == PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM;
+	case PROTOTYPE_OPERATION_VAR:
+	case PROTOTYPE_OPERATION_NAME:
+	case PROTOTYPE_OPERATION_ASCRIPTION:
+	default:
+		return 0;
+	}
+}
+
+int prototype_judgement_audit_principal_operation_claims(
+	const struct prototype_term_db* terms,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
+	struct prototype_judgement_principal_operation_audit* p_audit
+) {
+	if (!terms || !operations || !judgement || !p_audit ||
+		operations->operation_count >
+			PROTOTYPE_OPERATION_USAGE_SOLUTION_CAPACITY) {
+		return -1;
+	}
+	struct prototype_operation_usage_solution usage_solutions[
+		PROTOTYPE_OPERATION_USAGE_SOLUTION_CAPACITY
+	];
+	struct prototype_usage_entry usage_entries[
+		PROTOTYPE_OPERATION_USAGE_ENTRY_CAPACITY
+	];
+	size_t usage_entry_count;
+	if (prototype_operation_usage_solve(
+			operations,
+			terms,
+			usage_solutions,
+			PROTOTYPE_OPERATION_USAGE_SOLUTION_CAPACITY,
+			usage_entries,
+			PROTOTYPE_OPERATION_USAGE_ENTRY_CAPACITY,
+			&usage_entry_count
+		) != 0) {
+		fprintf(stderr, "principal operation audit: usage solve failed\n");
+		return -1;
+	}
+	for (uint32_t operation_id = 0;
+		operation_id < operations->operation_count;
+		++operation_id) {
+		const struct prototype_operation_node* fold =
+			&operations->operations[operation_id];
+		if (fold->tag != PROTOTYPE_OPERATION_COMPUTATION_FOLD) {
+			continue;
+		}
+		if (fold->fold_clause_count == 0) {
+			continue;
+		}
+		if (fold->first_fold_clause > operations->fold_clause_count ||
+			fold->fold_clause_count > operations->fold_clause_count -
+				fold->first_fold_clause) {
+			return -1;
+		}
+		for (uint32_t clause_index = 0;
+			clause_index < fold->fold_clause_count;
+			++clause_index) {
+			const struct prototype_operation_computation_fold_clause* clause =
+				&operations->fold_clauses[
+					fold->first_fold_clause + clause_index
+				];
+			if (clause->operation_operation >= operations->operation_count ||
+				clause->clause_operation >= operations->operation_count) {
+				return -1;
+			}
+			int operation_identity;
+			if (prototype_term_effect_operation_identity(
+					terms,
+					operations->operations[
+						clause->operation_operation
+					].core_term,
+					&operation_identity
+				) != 0) {
+				return -1;
+			}
+			const struct prototype_effect_operation_declaration* declaration =
+				prototype_term_effect_operation_declaration(operation_identity);
+			const struct prototype_operation_node* outer =
+				&operations->operations[clause->clause_operation];
+			if (!declaration || outer->tag != PROTOTYPE_OPERATION_LAMBDA ||
+				outer->body >= operations->operation_count) {
+				return -1;
+			}
+			const struct prototype_operation_node* continuation =
+				&operations->operations[outer->body];
+			if (continuation->tag != PROTOTYPE_OPERATION_LAMBDA ||
+				continuation->binding_id != clause->continuation_binder_id ||
+				(declaration->resumption_multiplicity ==
+					PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ABORTIVE &&
+				 usage_solutions[outer->body].binder_usage !=
+					PROTOTYPE_USAGE_ZERO) ||
+				(declaration->resumption_multiplicity ==
+					PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT &&
+				 usage_solutions[outer->body].binder_usage ==
+					PROTOTYPE_USAGE_MANY)) {
+				return -1;
+			}
+		}
+	}
+	memset(p_audit, 0, sizeof(*p_audit));
+	p_audit->total_proposition_count = judgement->proposition_count;
+	p_audit->total_accepted_claim_count = judgement->claim_count;
+	p_audit->claim_wrapper_bytes =
+		judgement->claim_count * sizeof(*judgement->claims);
+	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		const struct prototype_judgement_derivation* derivation =
+			&judgement->derivations[i];
+		if (derivation->closure_rank == PROTOTYPE_INVALID_ID ||
+			derivation->conclusion_claim_id >= judgement->claim_count) {
+			continue;
+		}
+		const struct prototype_judgement_proposition* conclusion =
+			prototype_judgement_claim_proposition(
+				judgement, derivation->conclusion_claim_id
+			);
+		int role = prototype_judgement_proof_reconstruction_role(
+			derivation->proof_kind, conclusion
+		);
+		if (role <= PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_INVALID ||
+			role > PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_NON_OPERATION) {
+			return -1;
+		}
+		p_audit->proof_role_counts[role]++;
+	}
+	for (uint32_t claim_id = 0;
+		claim_id < (uint32_t)judgement->claim_count;
+		++claim_id) {
+		const struct prototype_judgement_claim* accepted =
+			prototype_judgement_claim_get(judgement, claim_id);
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_claim_proposition(judgement, claim_id);
+		if (!accepted || !proposition ||
+			accepted->closure_rank == PROTOTYPE_INVALID_ID ||
+			proposition->authority_kind !=
+				PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION) {
+			continue;
+		}
+		uint32_t operation_id = proposition->operation_id;
+		struct prototype_judgement_proposition projected;
+		int projection_status =
+			prototype_judgement_project_principal_operation_proposition(
+				operations, operation_id, &projected
+			);
+		if (projection_status > 0) {
+			continue;
+		}
+		if (projection_status < 0) {
+			return -1;
+		}
+		struct prototype_usage_vector projected_usage;
+		if (prototype_operation_usage_solution_view(
+				usage_solutions,
+				operations->operation_count,
+				usage_entries,
+				usage_entry_count,
+				operation_id,
+				&projected_usage
+			) != 0) {
+			return -1;
+		}
+		projected.resource_usage_count = (uint32_t)projected_usage.count;
+		projected.resource_usage = projected_usage.entries;
+		size_t derivation_count = 0;
+		for (size_t i = 0; i < judgement->derivation_count; ++i) {
+			const struct prototype_judgement_derivation* derivation =
+				&judgement->derivations[i];
+			if (derivation->conclusion_claim_id != claim_id ||
+				derivation->closure_rank == PROTOTYPE_INVALID_ID) {
+				continue;
+			}
+			int reconstruction_role =
+				prototype_judgement_proof_reconstruction_role(
+					derivation->proof_kind, proposition
+				);
+			if (reconstruction_role ==
+				PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_INVALID) {
+				return -1;
+			}
+			if (reconstruction_role ==
+					PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_PRINCIPAL) {
+				struct prototype_judgement_proposition relation_storage;
+				struct prototype_judgement_derivation_candidate proof_storage;
+				struct prototype_judgement_candidate_premise
+					premise_storage[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+				if (!judgement_principal_rule_matches_operation(
+						&operations->operations[operation_id],
+						derivation->proof_kind
+					) || accepted_derivation_replay_view(
+						judgement,
+						derivation,
+						&relation_storage,
+						&proof_storage,
+						premise_storage
+					) != 0 || !judgement_proposition_equal(
+						&relation_storage, &projected
+					)) {
+					fprintf(
+						stderr,
+						"principal operation audit: replay mismatch claim=%u "
+						"operation=%u rule=%d stored_usage=%u projected_usage=%u\n",
+						claim_id,
+						operation_id,
+						derivation->proof_kind,
+						proposition->resource_usage_count,
+						projected.resource_usage_count
+					);
+					fprintf(
+						stderr,
+						"principal operation audit: operation tag=%d context=%u "
+						"core=%u classifier=%u body=%u argument=%u\n",
+						operations->operations[operation_id].tag,
+						operations->operations[operation_id].context_id,
+						operations->operations[operation_id].core_term,
+						operations->operations[operation_id].classifier,
+						operations->operations[operation_id].body,
+						operations->operations[operation_id].argument
+					);
+					return -1;
+				}
+				for (uint32_t premise_index = 0;
+					premise_index < proof_storage.premise_count;
+					++premise_index) {
+					uint32_t expected_operation_id = PROTOTYPE_INVALID_ID;
+					int expected_status = judgement_expected_premise_operation(
+						operations,
+						&proof_storage,
+						premise_index,
+						&expected_operation_id
+					);
+					if (expected_status < 0 ||
+						(expected_status == 0 &&
+						 premise_storage[premise_index].proposition.authority_kind ==
+							PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+						 premise_storage[premise_index].proposition.operation_id !=
+							expected_operation_id)) {
+						return -1;
+					}
+				}
+				derivation_count++;
+			}
+		}
+		if (derivation_count == 0) {
+			continue;
+		}
+		p_audit->principal_operation_count++;
+		uint32_t proposition_id;
+		if (prototype_judgement_proposition_find_exact(
+				judgement, &projected, &proposition_id
+			) != 0) {
+			fprintf(
+				stderr,
+				"principal operation audit: projected proposition missing "
+				"claim=%u operation=%u stored_usage=%u projected_usage=%u\n",
+				claim_id,
+				operation_id,
+				proposition->resource_usage_count,
+				projected.resource_usage_count
+			);
+			return -1;
+		}
+		p_audit->proposition_count++;
+		struct prototype_judgement_claim claim_identity = {
+			.proposition_id = proposition_id
+		};
+		uint32_t projected_claim_id;
+		if (prototype_judgement_find_exact_claim(
+				judgement, &claim_identity, &projected_claim_id
+			) != 0 || projected_claim_id != claim_id) {
+			return -1;
+		}
+		p_audit->accepted_claim_count++;
+		p_audit->derivation_count += derivation_count;
+	}
+	return 0;
+}
+
 int prototype_judgement_validate_accepted_graph(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -4157,6 +4530,56 @@ int prototype_judgement_validate_accepted_graph(
 			);
 			return -1;
 		}
+		if (proposition->resource_usage_count != 0 &&
+			!proposition->resource_usage) {
+			return -1;
+		}
+		for (uint32_t usage_index = 0;
+			usage_index < proposition->resource_usage_count;
+			++usage_index) {
+			const struct prototype_usage_entry* entry =
+				&proposition->resource_usage[usage_index];
+			if (entry->grade <= PROTOTYPE_USAGE_ZERO ||
+				entry->grade > PROTOTYPE_USAGE_MANY ||
+				(usage_index != 0 &&
+				 proposition->resource_usage[usage_index - 1].binding_id >=
+					entry->binding_id) ||
+				!prototype_context_contains_binding(
+					contexts, proposition->context_id, entry->binding_id
+				)) {
+				fprintf(
+					stderr,
+					"P0 proposition resource usage failed proposition=%u "
+					"context=%u operation=%u subject=%u classifier=%u "
+					"binding=%u grade=%d\n",
+					i,
+					proposition->context_id,
+					proposition->operation_id,
+					proposition->subject,
+					proposition->classifier,
+					entry->binding_id,
+					entry->grade
+				);
+				if (operations && proposition->operation_id <
+					operations->operation_count) {
+					const struct prototype_operation_node* failed_operation =
+						&operations->operations[proposition->operation_id];
+					fprintf(
+						stderr,
+						"P0 resource operation tag=%d function=%u argument=%u "
+						"body=%u scrutinee=%u return=%u clauses=%u\n",
+						failed_operation->tag,
+						failed_operation->function,
+						failed_operation->argument,
+						failed_operation->body,
+						failed_operation->scrutinee,
+						failed_operation->fold_return_operation,
+						failed_operation->fold_clause_count
+					);
+				}
+				return -1;
+			}
+		}
 	}
 	if (prototype_judgement_recompute_closure_ranks(operations, judgement) != 0) {
 		fprintf(stderr, "P0 accepted rank computation failed\n");
@@ -4186,6 +4609,15 @@ int prototype_judgement_validate_accepted_graph(
 			}
 			if (proposition->operation_id >= operations->operation_count ||
 				proposition->authority_id != proposition->operation_id) {
+				fprintf(
+					stderr,
+					"P0 operation authority failed claim=%u operation=%u "
+					"authority=%u operation_count=%zu\n",
+					claim_id,
+					proposition->operation_id,
+					proposition->authority_id,
+					operations->operation_count
+				);
 				return -1;
 			}
 			int expected_polarity;
@@ -4195,11 +4627,11 @@ int prototype_judgement_validate_accepted_graph(
 					operations,
 					proposition->operation_id,
 					&expected_polarity
-				) != 0 || operations->operations[proposition->operation_id].polarity !=
+				) != 0 || operations->operations[proposition->operation_id].category !=
 					expected_polarity) {
 				fprintf(
 					stderr,
-					"P1-R0 accepted operation polarity failed claim=%u operation=%u\n",
+					"P1-R0 accepted operation category failed claim=%u operation=%u\n",
 					claim_id,
 					proposition->operation_id
 				);
@@ -4232,6 +4664,13 @@ int prototype_judgement_validate_accepted_graph(
 				);
 				return -1;
 			}
+		}
+		struct prototype_judgement_principal_operation_audit principal_audit;
+		if (prototype_judgement_audit_principal_operation_claims(
+				terms, operations, judgement, &principal_audit
+			) != 0) {
+			fprintf(stderr, "P0 principal operation reconstruction audit failed\n");
+			return -1;
 		}
 	}
 	for (size_t i = 0; i < judgement->derivation_count; ++i) {
@@ -4299,7 +4738,7 @@ int prototype_judgement_validate_accepted_graph(
 				for (uint32_t premise_index = 0;
 					premise_index < proof->premise_count;
 					++premise_index) {
-					uint32_t expected_operation_id;
+					uint32_t expected_operation_id = PROTOTYPE_INVALID_ID;
 					int expected_status = judgement_expected_premise_operation(
 						operations,
 						proof,
@@ -4400,6 +4839,20 @@ int prototype_judgement_validate_accepted_graph(
 						relation,
 						proof
 					) != 0) {
+						fprintf(
+							stderr,
+							"P0 assumption replay failed derivation=%zu claim=%u "
+							"context=%u subject=%u classifier=%u operation=%u "
+							"authority=%d:%u\n",
+							i,
+							derivation->conclusion_claim_id,
+							relation->context_id,
+							relation->subject,
+							relation->classifier,
+							relation->operation_id,
+							relation->authority_kind,
+							relation->authority_id
+						);
 					return -1;
 				}
 				break;
@@ -4415,6 +4868,15 @@ int prototype_judgement_validate_accepted_graph(
 							relation,
 							proof
 						) != 0) {
+						fprintf(
+							stderr,
+							"P0 lambda replay failed derivation=%zu claim=%u "
+							"operation=%u classifier=%u\n",
+							i,
+							derivation->conclusion_claim_id,
+							relation->operation_id,
+							relation->classifier
+						);
 						return -1;
 					}
 				break;
@@ -4456,6 +4918,16 @@ int prototype_judgement_validate_accepted_graph(
 				if (validate_computation_fold_elim_proof(
 						terms, type_declarations, relation, proof
 					) != 0) {
+					fprintf(
+						stderr,
+						"P0 computation-fold replay failed derivation=%zu claim=%u "
+						"operation=%u classifier=%u premises=%u\n",
+						i,
+						derivation->conclusion_claim_id,
+						relation->operation_id,
+						relation->classifier,
+						proof->premise_count
+					);
 					return -1;
 				}
 				break;
@@ -4631,6 +5103,21 @@ int prototype_judgement_validate_accepted_graph(
 				if (validate_context_weaken_proof(
 						contexts, substitutions, relation, proof
 					) != 0) {
+					fprintf(
+						stderr,
+						"P0 context-weaken replay failed derivation=%zu context=%u "
+						"classifier=%u premise_context=%u premise_classifier=%u "
+						"action=%d:%u\n",
+						i,
+						relation->context_id,
+						relation->classifier,
+						proof->premise_count ?
+							proof->premises[0].proposition.context_id : PROTOTYPE_INVALID_ID,
+						proof->premise_count ?
+							proof->premises[0].proposition.classifier : PROTOTYPE_INVALID_ID,
+						proof->semantic_action_kind,
+						proof->semantic_action_id
+					);
 					return -1;
 				}
 				break;

@@ -8,7 +8,7 @@ judgement_kind UNKNOWN=0 HAS_TYPE=1 IS_TYPE=2
 judgement_authority INVALID=0 OPERATION=1 CONTEXT_BINDING=2 TYPE_DECLARATION=3 INTRINSIC=4 TYPE_FORMATION=5 UNIVERSE=6 CORE_HELPER=7 EXPORT=8
 judgement_proof INVALID=0 TYPE_FORMATION_INTRO=1 CONSTRUCTOR_INTRO=2 CONSTRUCTOR_SPINE_FORMATION=3 BINDER_ASSUMPTION=4 MATCH_PATTERN_ASSUMPTION=5 LAMBDA_INTRO=6 APP_ELIM=7 RETURN_INTRO=8 THUNK_INTRO=9 FORCE_ELIM=10 OPERATION_REQUEST_INTRO=11 COMPUTATION_FOLD_ELIM=12 MATCH_TYPE_FORMATION_INTRO=13 MATCH_ELIM=14 SOLVED_MATCH_MOTIVE=15 INDUCTION_HYPOTHESIS_ELIM=16 TEXT_LITERAL_INTRO=17 PURE_PRIMITIVE_TYPE_INTRO=18 EFFECT_OPERATION_TYPE_INTRO=19 CONVERSION=20 EXPECTED_TYPE_EXPOSURE=21 TEXT_TYPE_INTRO=22 INT_LITERAL_INTRO=23 INT_LITERAL_ADMISSIBILITY=24 INT_TYPE_INTRO=25 HOST_TYPE_INTRO=26 IS_TYPE_FROM_HAS_TYPE=27 DECLARATION=28 UNIVERSE_CUMULATIVITY=29 PI_FORMATION_INTRO=30 CONTEXT_WEAKEN=31 EFFECT_WEAKEN=32
 
-term_tag VAR=1 CONSTRUCTOR=2 APP=3 LAMBDA=4 PI=5 MATCH=6 TYPE_FORMER=7 TYPE_DECLARATION=8 INDUCTION_HYPOTHESIS=9 UNIVERSE_VAR=10 PRIMITIVE_TEXT=11 TEXT_LITERAL=12 PRIMITIVE_INT=13 PRIMITIVE_INT64=14 INT_LITERAL=15 EXTERNAL_REF=16 PURE_PRIMITIVE=17 EFFECT_OPERATION=18 TYPE_VIEW=19 EFFECT_LABEL=20 EFFECT_ROW_VAR=21 EFFECT_ROW_UNION=22 EFFECT_ROW_FORALL=23 COMPUTATION_TYPE=24 THUNK_TYPE=25 RETURN=26 THUNK=27 FORCE=28 OPERATION_REQUEST=29 COMPUTATION_FOLD=30 EFFECT_ROW_OPERATION=31
+term_tag VAR=1 CONSTRUCTOR=2 APP=3 LAMBDA=4 PI=5 MATCH=6 TYPE_FORMER=7 TYPE_DECLARATION=8 INDUCTION_HYPOTHESIS=9 UNIVERSE_VAR=10 PRIMITIVE_TEXT=11 TEXT_LITERAL=12 PRIMITIVE_INT=13 PRIMITIVE_INT64=14 INT_LITERAL=15 EXTERNAL_REF=16 PURE_PRIMITIVE=17 EFFECT_OPERATION=18 TYPE_VIEW=19 EFFECT_ROW_EMPTY=20 EFFECT_ROW_VAR=21 EFFECT_ROW_UNION=22 EFFECT_ROW_FORALL=23 COMPUTATION_TYPE=24 THUNK_TYPE=25 RETURN=26 THUNK=27 FORCE=28 OPERATION_REQUEST=29 COMPUTATION_FOLD=30 EFFECT_ROW_OPERATION=31
 type_expr_tag UNIVERSE=1 UNIVERSE_VAR=2 SELF=3 VAR=4 NAME=5 APP=6 ARROW=7 PI=8 IMPORTED_TYPE=9 EXTERNAL_TERM=10 PRIMITIVE_TEXT=11 PRIMITIVE_INT=12 PRIMITIVE_INT64=13
 operation_tag ATOM=1 VAR=2 NAME=3 CONSTRUCTOR=4 APP=5 LAMBDA=6 MATCH=7 INDUCTION_HYPOTHESIS=8 ASCRIPTION=9 RETURN=10 THUNK=11 FORCE=12 REQUEST=13 COMPUTATION_FOLD=14
 operation_polarity UNKNOWN=0 VALUE=1 COMPUTATION=2
@@ -31,13 +31,13 @@ Operation graph wire contract:
   and depth. It never stores a classifier solver variable.
 - The writer resolves every reachable non-empty Context classifier before
   publication. The reader reconstructs classifier_variable as INVALID.
-- An Operation record stores tag, polarity, application role, Core projection,
+- An Operation record stores tag, category, application role, Core projection,
   known/source classifier, solved classifier, diagnostic names, structural
   child edges, binder identities, case/fold slices, and Context identity.
 - Operation classifier variables, source AST ids, and computation-kind caches
   are not serialized. The reader reconstructs them from accepted structure or
   sets them to INVALID.
-- UNKNOWN polarity is not valid for a closed Operation-backed accepted Claim.
+- UNKNOWN category is not valid for a closed Operation-backed accepted Claim.
 
 Substitution wire contract:
 - Structural identity is kind, source/target Contexts, structural child
@@ -65,6 +65,6 @@ Accepted certificate contract:
 - Substitution-extension certificates remain compiler-local in v69. No accepted
   interface or admitted terminal HOTT bridge roots an EXTEND certificate, so
   the reachable certificate set is empty and no certificate section is written.
-- Closed Operation polarity is validated from the accepted typed occurrence,
+- Closed Operation category is validated from the accepted typed occurrence,
   its solved classifier, and its Operation rule. Computation kind is a
   reconstructible cache and is not accepted wire authority.

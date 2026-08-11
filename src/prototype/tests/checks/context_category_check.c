@@ -1,4 +1,5 @@
 #include "a_program/frontend/lowering.h"
+#include "a_program/graph/operation_graph.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -241,6 +242,144 @@ static int check_judgement_premise_arenas(void) {
 	*checked_edge = saved_edge;
 	status = status || prototype_judgement_db_rebuild_index(&judgement) != 0;
 	free(premises);
+	return status ? -1 : 0;
+}
+
+static int check_principal_operation_projection(void) {
+	struct prototype_term term_storage[32];
+	struct prototype_match_case term_case_storage[1];
+	int term_case_label_storage[1];
+	struct prototype_case_binder term_case_binder_storage[1];
+	struct prototype_ih_scope term_ih_scope_storage[1];
+	struct prototype_term_db term_db;
+	prototype_term_db_init(
+		&term_db,
+		term_storage,
+		32,
+		term_case_storage,
+		term_case_label_storage,
+		1,
+		term_case_binder_storage,
+		1,
+		term_ih_scope_storage,
+		1
+	);
+	uint32_t text_type;
+	uint32_t text_literal;
+	if (prototype_term_primitive_text(&term_db, &text_type) != 0 ||
+		prototype_term_text_literal(&term_db, 0, &text_literal) != 0) {
+		return -1;
+	}
+	struct prototype_operation_node operation_storage[1];
+	struct prototype_operation_match_case case_storage[1];
+	struct prototype_operation_computation_fold_clause fold_storage[1];
+	struct prototype_operation_graph operations;
+	memset(operation_storage, 0xff, sizeof(operation_storage));
+	prototype_operation_graph_init(
+		&operations,
+		operation_storage,
+		1,
+		case_storage,
+		1,
+		fold_storage,
+		1
+	);
+	operations.operation_count = 1;
+	operation_storage[0].tag = PROTOTYPE_OPERATION_ATOM;
+	operation_storage[0].context_id = 0;
+	operation_storage[0].core_term = text_literal;
+	operation_storage[0].classifier = text_type;
+
+	struct prototype_judgement_proposition propositions[1];
+	struct prototype_judgement_claim claims[1];
+	struct prototype_judgement_derivation derivations[1];
+	struct prototype_judgement_db judgement;
+	memset(propositions, 0, sizeof(propositions));
+	memset(claims, 0, sizeof(claims));
+	memset(derivations, 0, sizeof(derivations));
+	if (prototype_judgement_project_principal_operation_proposition(
+			&operations, 0, &propositions[0]
+		) != 0) {
+		return -1;
+	}
+	claims[0].proposition_id = 0;
+	claims[0].closure_rank = 0;
+	derivations[0].proof_kind = PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO;
+	derivations[0].conclusion_claim_id = 0;
+	derivations[0].closure_rank = 0;
+	derivations[0].semantic_action_kind =
+		PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
+	derivations[0].semantic_action_id = PROTOTYPE_INVALID_ID;
+	prototype_judgement_db_init(
+		&judgement,
+		propositions,
+		NULL,
+		claims,
+		derivations,
+		1,
+		NULL,
+		0,
+		NULL,
+		0
+	);
+	judgement.proposition_count = 1;
+	judgement.claim_count = 1;
+	judgement.derivation_count = 1;
+	if (prototype_judgement_db_rebuild_index(&judgement) != 0) {
+		return -1;
+	}
+	size_t proposition_count = judgement.proposition_count;
+	size_t claim_count = judgement.claim_count;
+	size_t derivation_count = judgement.derivation_count;
+	uint64_t proposition_hits = judgement.proposition_intern_hits;
+	uint64_t claim_hits = judgement.claim_intern_hits;
+	uint64_t derivation_hits = judgement.derivation_intern_hits;
+	struct prototype_judgement_principal_operation_audit audit;
+	if (prototype_judgement_audit_principal_operation_claims(
+			&term_db, &operations, &judgement, &audit
+		) != 0 || audit.principal_operation_count != 1 ||
+		audit.proposition_count != 1 || audit.accepted_claim_count != 1 ||
+		audit.derivation_count != 1 ||
+		audit.total_proposition_count != proposition_count ||
+		audit.total_accepted_claim_count != claim_count ||
+		audit.claim_wrapper_bytes != sizeof(claims[0]) ||
+		audit.proof_role_counts[
+			PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_PRINCIPAL
+		] != 1 || judgement.proposition_count != proposition_count ||
+		judgement.claim_count != claim_count ||
+		judgement.derivation_count != derivation_count ||
+		judgement.proposition_intern_hits != proposition_hits ||
+		judgement.claim_intern_hits != claim_hits ||
+		judgement.derivation_intern_hits != derivation_hits) {
+		return -1;
+	}
+	struct prototype_judgement_proposition scoped = propositions[0];
+	scoped.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CONTEXT_BINDING;
+	scoped.authority_id = 3;
+	scoped.operation_id = PROTOTYPE_INVALID_ID;
+	struct prototype_judgement_proposition non_operation = scoped;
+	non_operation.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_FORMATION;
+	int status = prototype_judgement_proof_reconstruction_role(
+			PROTOTYPE_JUDGEMENT_PROOF_CONVERSION, &propositions[0]
+		) != PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_DERIVED_OPERATION ||
+		prototype_judgement_proof_reconstruction_role(
+			PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION, &scoped
+		) != PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_SCOPED ||
+		prototype_judgement_proof_reconstruction_role(
+			PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO, &non_operation
+		) != PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_NON_OPERATION;
+	for (int proof_kind = PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO;
+		proof_kind <= PROTOTYPE_JUDGEMENT_PROOF_THUNK_TYPE_FORMATION;
+		++proof_kind) {
+		status = status || prototype_judgement_proof_reconstruction_role(
+			proof_kind, &non_operation
+		) == PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_INVALID;
+	}
+	propositions[0].classifier++;
+	status = status || prototype_judgement_db_rebuild_index(&judgement) != 0 ||
+		prototype_judgement_audit_principal_operation_claims(
+			&term_db, &operations, &judgement, &audit
+		) == 0;
 	return status ? -1 : 0;
 }
 
@@ -1125,7 +1264,7 @@ int main(void) {
 	);
 	memset(&int_occurrence, 0xff, sizeof(int_occurrence));
 	int_occurrence.tag = PROTOTYPE_OPERATION_ATOM;
-	int_occurrence.polarity = PROTOTYPE_OPERATION_POLARITY_VALUE;
+	int_occurrence.category = PROTOTYPE_TERM_CATEGORY_VALUE;
 	int_occurrence.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
 	int_occurrence.application_role = PROTOTYPE_TERM_APPLICATION_NONE;
 	int_occurrence.context_id = int_context;
@@ -1168,7 +1307,7 @@ int main(void) {
 	}
 	saturated_effect_occurrence = int_occurrence;
 	saturated_effect_occurrence.tag = PROTOTYPE_OPERATION_APP;
-	saturated_effect_occurrence.polarity = PROTOTYPE_OPERATION_POLARITY_COMPUTATION;
+	saturated_effect_occurrence.category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
 	saturated_effect_occurrence.computation_kind =
 		PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
 	saturated_effect_occurrence.application_role =
@@ -1193,6 +1332,10 @@ int main(void) {
 	}
 	if (check_judgement_premise_arenas() != 0) {
 		fprintf(stderr, "judgement premise arena law failed\n");
+		return 1;
+	}
+	if (check_principal_operation_projection() != 0) {
+		fprintf(stderr, "principal operation projection law failed\n");
 		return 1;
 	}
 	printf("context category checks passed\n");

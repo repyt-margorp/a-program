@@ -2260,8 +2260,7 @@ static int hott_construct_object_app_action(
 		);
 	uint32_t empty_effects;
 	uint32_t expected_classifier;
-	if (!witness_evidence || prototype_term_effect_label(
-			terms, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &empty_effects
+	if (!witness_evidence || prototype_term_effect_row_empty(terms, &empty_effects
 		) != 0 || prototype_term_computation_type(
 			terms, empty_effects, identity_family, &expected_classifier
 		) != 0 || prototype_judgement_classifier_conversion(
@@ -4095,6 +4094,26 @@ int prototype_hott_execute_object_term_action(
 	if (!request || request->kind != PROTOTYPE_HOTT_ACTION_OBJECT_TERM) {
 		return -1;
 	}
+	const struct prototype_judgement_proposition* source_proposition =
+		prototype_judgement_claim_proposition(
+			judgement, request->key.object_term.source_claim_id
+		);
+	/* The current bridge duplicates source bindings into left endpoint, right
+	 * endpoint, and relation-witness bindings. Until those maps carry an
+	 * explicit graded modality, a resource-sensitive source action is residual
+	 * rather than an implicit contraction. */
+	if (!source_proposition) {
+		return -1;
+	}
+	if (source_proposition->resource_usage_count != 0) {
+		return hott_publish_action_residual(
+			actions,
+			terms,
+			request_id,
+			PROTOTYPE_HOTT_RESIDUAL_DEFERRED_OBJECT_RULE,
+			p_result_id
+		);
+	}
 	uint32_t identity_result_id;
 	if (prototype_hott_execute_identity_type_computation(
 			actions,
@@ -4345,7 +4364,7 @@ static int hott_ensure_bridge_for_context(
 	uint32_t type_result_id;
 	if (prototype_hott_action_request_intern(
 			actions, &view, bridges, type_request, &type_request_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			actions, kernel, bridges, type_request_id, &type_result_id
 		) != 0) {
 		return -1;
@@ -4448,7 +4467,7 @@ static int hott_execute_child_term_action(
 	uint32_t type_result_id;
 	if (prototype_hott_action_request_intern(
 			actions, &view, bridges, type_request, &type_request_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			actions, kernel, bridges, type_request_id, &type_result_id
 		) != 0) {
 		return -1;
@@ -4964,7 +4983,7 @@ int prototype_hott_execute_term_action(
 				if (prototype_hott_action_request_intern(
 						actions, &view, bridges,
 						binder_type_request, &binder_type_request_id
-					) != 0 || prototype_hott_execute_relation_type_action(
+					) != 0 || prototype_parametricity_execute_relation_type_action(
 						actions, kernel, bridges,
 						binder_type_request_id, &binder_type_result_id
 					) != 0) {
@@ -5308,7 +5327,7 @@ int prototype_hott_execute_term_action(
 				if (prototype_hott_action_request_intern(
 						actions, &view, bridges,
 						child_type_request, &child_type_request_id
-					) != 0 || prototype_hott_execute_relation_type_action(
+					) != 0 || prototype_parametricity_execute_relation_type_action(
 						actions, kernel, bridges,
 						child_type_request_id, &child_type_result_id
 					) != 0) {
@@ -5448,7 +5467,7 @@ int prototype_hott_execute_term_action(
 				if (prototype_hott_action_request_intern(
 						actions, &view, bridges,
 						field_type_request, &field_type_request_id
-					) != 0 || prototype_hott_execute_relation_type_action(
+					) != 0 || prototype_parametricity_execute_relation_type_action(
 						actions, kernel, bridges,
 						field_type_request_id, &field_type_result_id
 					) != 0) {

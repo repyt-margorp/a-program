@@ -1921,8 +1921,7 @@
 	uint32_t thunk_bool_type;
 	uint32_t thunk_bool_has_type;
 	uint32_t thunk_bool_is_type;
-	if (prototype_term_effect_label(
-			&term_db, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &empty_effect_row
+	if (prototype_term_effect_row_empty(&term_db, &empty_effect_row
 		) != 0 || prototype_term_computation_type(
 			&term_db, empty_effect_row, bool_view, &pure_bool_computation_type
 		) != 0 || prototype_term_thunk_type(
@@ -4893,42 +4892,42 @@
 		indexed_proof_context,
 		indexed_proof_var,
 		indexed_relation_type,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t indexed_false_body_operation = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_left_var,
 		bool_view,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t indexed_false_return_operation = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_false_return,
 		indexed_branch_classifier,
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t indexed_true_body_operation = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_left_var,
 		bool_view,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t indexed_true_return_operation = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_true_return,
 		indexed_branch_classifier,
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t indexed_match_operation = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_match_term,
 		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	indexed_match_operations[indexed_scrutinee_operation].tag =
 		PROTOTYPE_OPERATION_VAR;

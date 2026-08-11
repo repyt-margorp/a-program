@@ -81,13 +81,7 @@ static int attach_linked_declaration_support(
 			judgement->candidate_premise_count++
 		];
 		derivation->premise_count = 1;
-		derivation->premises[0].proposition.kind = source->kind;
-		derivation->premises[0].proposition.context_id = source->context_id;
-		derivation->premises[0].proposition.subject = source->subject;
-		derivation->premises[0].proposition.classifier = source->classifier;
-		derivation->premises[0].proposition.authority_kind = source->authority_kind;
-		derivation->premises[0].proposition.authority_id = source->authority_id;
-		derivation->premises[0].proposition.operation_id = source->operation_id;
+		derivation->premises[0].proposition = *source;
 		derivation->premises[0].semantic_action_kind =
 			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
 		derivation->premises[0].semantic_action_id = PROTOTYPE_INVALID_ID;
@@ -477,12 +471,12 @@ int prototype_artifact_interface_recompute_keys(
 	for (size_t i = 0; i < interface->type_export_count; ++i) {
 		struct prototype_artifact_type_export* export = &interface->type_exports[i];
 			if (export->local_type_id >= type_declarations->type_count ||
-				prototype_type_declaration_code_shape_key(
+				prototype_type_declaration_representation_fingerprint(
 					terms,
 					type_declarations,
 					contexts,
 					export->local_type_id,
-					&export->code_shape_key
+					&export->representation_fingerprint
 				) != 0) {
 			fprintf(stderr, "artifact key recomputation failed type export=%zu\n", i);
 			return -1;
@@ -610,7 +604,7 @@ int prototype_artifact_apply_type_expr_relocations(
 			export->namespace_symbol_id,
 			symbol_id
 		);
-		expr->as.imported_type.code_shape_key = export->code_shape_key;
+		expr->as.imported_type.representation_fingerprint = export->representation_fingerprint;
 	}
 
 	if (prototype_artifact_interface_recompute_keys(

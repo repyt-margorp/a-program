@@ -14,7 +14,7 @@ bridge_semantics EMPTY_IDENTITY=1 PARAMETRIC_RELATION=2 OBJECT_IDENTITY=3
 identity_computation_rule INVALID=0 ORDINARY_ADT=1 THUNK_RETURN=2 PI_POINTWISE=3 CONSTANT_FAMILY_LIFT=4 INDEXED_HIGHER_LIFT=5 UNIVERSE_CORRESPONDENCE=6 UNIVERSE_FIBER=7
 judgement_proof RELATION_TYPE_FORMATION=33 RELATION_WITNESS_INTRO=34 SUBSTITUTION_REINDEX=35 RELATION_CONSTRUCTOR_WITNESS=36 RELATION_RETURN_WITNESS=37 RELATION_THUNK_WITNESS=38 RELATION_APP_WITNESS=39 RELATION_LAMBDA_WITNESS=40 RELATION_MATCH_WITNESS=41 RELATION_INDUCTION_HYPOTHESIS_WITNESS=42
 judgement_proof COMPUTATION_TYPE_FORMATION=43 THUNK_TYPE_FORMATION=44
-object_action_proof LAMBDA_INTRO=6 APP_ELIM=7 RETURN_INTRO=8 THUNK_INTRO=9 FORCE_ELIM=10 COMPUTATION_FOLD_ELIM=12 MATCH_ELIM=13 CONVERSION=20
+object_action_proof LAMBDA_INTRO=6 APP_ELIM=7 RETURN_INTRO=8 THUNK_INTRO=9 FORCE_ELIM=10 COMPUTATION_FOLD_ELIM=12 MATCH_TYPE_FORMATION_INTRO=13 MATCH_ELIM=14 CONVERSION=20
 type_former_kind UNKNOWN=0 ORDINARY_ADT=1 PI=2 PURE_COMPUTATION=3 THUNK=4 UNIVERSE=5 HOST_PRIMITIVE=6 RELATION=7
 relation_type_action_rule NONE=0 ZERO_FIELD_ADT=1 ADT_TELESCOPE=2 PI_POINTWISE=3 PURE_COMPUTATION=4 THUNK=5 RELATION_HIGHER=6
 relation_family_semantics INVALID=0 PARAMETRIC_ACTION=1
@@ -98,9 +98,10 @@ does not retain proof payload. The ap operation is a typed compiler action that
 generates exact HAS_TYPE Derivations. A diagonal action may generate an
 RELATION_WITNESS Term. The action of a Context variable is the corresponding
 relation binding already present in the Context bridge. A witness Term stores
-no action ID and is not evidence without its Derivation. Artifact persistence
-and the interpretation as reflexivity remain deferred until the A1.T0
-relation-to-identity gate replaces these provisional object forms.
+no action ID and is not evidence without its Derivation. These compiler-local
+forms are excluded from artifact object-identity roots. Artifact persistence
+uses only ordinary identity families and witness Terms accepted by the object
+Identity computation and replay rules below.
 
 Type-action dispatch is selected by one declarative type-former descriptor.
 Ordinary ADTs, pure Pi, pure Comp, pure Thunk, and RELATION_HIGHER are
@@ -118,7 +119,7 @@ is exactly that fiber. This indexed-nullary rule admits identity computation on
 the generated IdBool(false,false) family itself. It is SUPPORTED for
 ThunkType(Comp(empty,A)) when the identity of A is available and for the listed
 nondependent pure Pi pointwise fragment. TRANSPORT and general LIFTING remain
-DEFERRED for every former in fragment version 4. A descriptor must not be
+DEFERRED for every former in fragment version 5. A descriptor must not be
 interpreted as complete Higher Observational Identity support until the
 relevant lifting operations and their higher instances are implemented and
 their object terms and computation rules have been replayed by the kernel.
@@ -166,6 +167,36 @@ higher bisimulation. In particular it does not yet store the higher-recursive
 coherence field that makes the bisimulation structure itself stable under
 identity. Consequently the manifest does not claim generic groupoid inversion,
 composition, box filling, J, or full Higher Observational Type Theory.
+UNIVERSE_CORRESPONDENCE and UNIVERSE_FIBER results are compiler-local in this
+fragment. They cannot be artifact identity roots until that recursive
+coherence is represented by ordinary replayable object evidence.
+
+Implemented type-former capability matrix:
+- ORDINARY_ADT: internal relation/type/term action and ordinary reindex are
+  supported. Identity computation is supported only for the closed
+  nondependent and indexed-nullary fragments described below. Artifact roots
+  are supported only for those closed computations after ordinary accepted
+  replay. General transport, dependent lifting, and resource hooks are
+  deferred.
+- PI: internal relation/type/term action and ordinary reindex are supported for
+  the admitted pure fragment. Identity computation and artifact roots are
+  supported only for nondependent pure pointwise Pi. Dependent codomain
+  lifting, transport, and resource hooks are deferred.
+- PURE_COMPUTATION: internal relation/type/term action and ordinary reindex are
+  supported for an empty effect row. Object identity computation, transport,
+  lifting, resource hooks, and artifact roots are deferred.
+- THUNK: internal relation/type/term action and ordinary reindex are supported
+  for admitted pure computations/functions. Identity computation and artifact
+  roots are supported for the exact THUNK_RETURN and pointwise-Pi fragments.
+  General transport, lifting, and resource hooks are deferred.
+- UNIVERSE: finite correspondence and fiber computation are compiler-local.
+  Internal generic relation action, complete transport/lifting, resource hooks,
+  and artifact roots are not admitted.
+- HOST_PRIMITIVE: relation action, object identity computation, transport,
+  lifting, resource hooks, and artifact roots are not admitted.
+- RELATION: internal parametricity relation/type/term action and reindex are
+  supported. It is not object Identity; object identity computation, transport,
+  lifting, resource hooks, and artifact roots are deferred.
 
 Object term action for a Context variable is independent of the source type
 former. It instantiates the exact family retained by the
@@ -335,4 +366,4 @@ Candidate object results distinguish WITNESS construction, EMPTY_FAMILY
 computation, and a DEFERRED object rule even when relation-family planning is
 otherwise ready. Work
 items and residual obligations are compiler-local and are not artifact roots
-in fragment version 2.
+in fragment version 5.

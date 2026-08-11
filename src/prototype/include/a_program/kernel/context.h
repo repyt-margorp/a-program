@@ -310,6 +310,15 @@ int prototype_term_reindex(
 	uint32_t substitution,
 	uint32_t* p_reindexed
 );
+int prototype_substitution_binding_term(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t substitution_id,
+	uint32_t target_binding_id,
+	uint32_t* p_term
+);
 int prototype_context_substitution_from_terms(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,

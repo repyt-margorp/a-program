@@ -1,5 +1,7 @@
 #include "a_program/artifact/interface.h"
 
+#include "a_program/graph/operation_graph.h"
+
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -409,6 +411,8 @@ static int artifact_append_accepted_judgement(
 	const uint32_t* substitution_relocation,
 	const uint32_t* term_relocation,
 	size_t term_relocation_count,
+	const uint32_t* binding_relocation,
+	size_t binding_relocation_count,
 	uint32_t operation_offset,
 	uint32_t* proposition_relocation,
 	uint32_t* claim_relocation,
@@ -416,6 +420,7 @@ static int artifact_append_accepted_judgement(
 ) {
 	if (!target || !source || !source_contexts || !context_relocation ||
 		!source_substitutions || !substitution_relocation || !term_relocation ||
+		!binding_relocation ||
 		!proposition_relocation || !claim_relocation ||
 		prototype_judgement_db_rebuild_index(target) != 0) {
 		return -1;
@@ -437,6 +442,10 @@ static int artifact_append_accepted_judgement(
 		}
 		struct prototype_judgement_proposition proposition =
 			*source_proposition;
+		struct prototype_usage_entry relocated_usage[
+			source_proposition->resource_usage_count == 0 ?
+				1 : source_proposition->resource_usage_count
+		];
 		if (proposition.context_id >= source_contexts->context_count ||
 			(proposition.operation_id != PROTOTYPE_INVALID_ID &&
 			 operation_offset == PROTOTYPE_INVALID_ID)) {
@@ -464,6 +473,36 @@ static int artifact_append_accepted_judgement(
 				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
 			return -1;
 		}
+		for (uint32_t usage_index = 0;
+			usage_index < source_proposition->resource_usage_count;
+			++usage_index) {
+			uint32_t source_binding = source_proposition->resource_usage[
+				usage_index
+			].binding_id;
+			if (source_binding >= binding_relocation_count ||
+				binding_relocation[source_binding] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			relocated_usage[usage_index] = source_proposition->resource_usage[
+				usage_index
+			];
+			relocated_usage[usage_index].binding_id =
+				binding_relocation[source_binding];
+		}
+		for (uint32_t usage_index = 1;
+			usage_index < source_proposition->resource_usage_count;
+			++usage_index) {
+			struct prototype_usage_entry current = relocated_usage[usage_index];
+			uint32_t destination = usage_index;
+			while (destination != 0 &&
+				relocated_usage[destination - 1].binding_id > current.binding_id) {
+				relocated_usage[destination] = relocated_usage[destination - 1];
+				--destination;
+			}
+			relocated_usage[destination] = current;
+		}
+		proposition.resource_usage = source_proposition->resource_usage_count == 0 ?
+			NULL : relocated_usage;
 		proposition.key_hash = 0;
 		proposition.hash_next = PROTOTYPE_INVALID_ID;
 		if (prototype_judgement_proposition_intern(
@@ -471,6 +510,16 @@ static int artifact_append_accepted_judgement(
 				&proposition,
 				&proposition_relocation[i]
 			) != 0) {
+			fprintf(
+				stderr,
+				"artifact judgement proposition intern failed source=%u context=%u "
+				"usage=%u usage_arena=%zu/%zu\n",
+				i,
+				proposition.context_id,
+				proposition.resource_usage_count,
+				target->proposition_resource_usage_count,
+				target->proposition_resource_usage_capacity
+			);
 			return -1;
 		}
 	}
@@ -561,9 +610,9 @@ static int artifact_append_accepted_judgement(
 			*source_derivation;
 		derivation.conclusion_claim_id =
 			claim_relocation[source_derivation->conclusion_claim_id];
-		/* v69 still carries this derived cache. The accepted append preserves the
-		 * source DAG exactly, so its topological rank remains valid after ID
-		 * relocation. v70 removes rank from the wire and recomputes it on read. */
+		/* Older wire formats carried this derived cache. The accepted append
+		 * preserves the source DAG exactly, so its topological rank remains valid
+		 * after ID relocation. v71 recomputes rank on read. */
 		derivation.closure_rank = source_derivation->closure_rank;
 		derivation.premises = premises;
 		derivation.key_hash = 0;
@@ -1038,7 +1087,7 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 		for (uint32_t j = 0; j < old_target_representation_count; ++j) {
 			int representations_equal = 0;
-			if (prototype_type_code_shape_keys_equal(
+			if (prototype_type_representation_fingerprints_equal(
 					&source_type_declarations->representations[i].fingerprint,
 					&target_type_declarations->representations[j].fingerprint
 				) && prototype_type_declaration_representations_equal(
@@ -1060,7 +1109,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			for (uint32_t j = 0; j < i; ++j) {
 				int representations_equal = 0;
 				if (representation_relocation[j] != PROTOTYPE_INVALID_ID &&
-					prototype_type_code_shape_keys_equal(
+					prototype_type_representation_fingerprints_equal(
 						&source_type_declarations->representations[i].fingerprint,
 						&source_type_declarations->representations[j].fingerprint
 					) && prototype_type_declaration_representations_equal(
@@ -1117,22 +1166,22 @@ int prototype_internal_artifact_append_graph_ordered(
 				target_type->name_symbol_id != source_type->name_symbol_id) {
 				continue;
 			}
-			struct prototype_type_code_shape_key target_key;
-			struct prototype_type_code_shape_key source_key;
+			struct prototype_type_representation_fingerprint target_key;
+			struct prototype_type_representation_fingerprint source_key;
 			int declarations_equal = 0;
-			if (prototype_type_declaration_code_shape_key(
+			if (prototype_type_declaration_representation_fingerprint(
 					target_terms,
 					target_type_declarations,
 					target_contexts,
 					j,
 					&target_key
-				) != 0 || prototype_type_declaration_code_shape_key(
+				) != 0 || prototype_type_declaration_representation_fingerprint(
 					source_terms,
 					source_type_declarations,
 					source_contexts,
 					i,
 					&source_key
-				) != 0 || !prototype_type_code_shape_keys_equal(
+				) != 0 || !prototype_type_representation_fingerprints_equal(
 					&target_key, &source_key
 				) || prototype_type_declaration_representations_equal(
 					target_terms,
@@ -1731,6 +1780,8 @@ int prototype_internal_artifact_append_graph_ordered(
 			substitution_relocation,
 			term_relocation,
 			source_terms->term_count,
+			binding_relocation,
+			binding_relocation_count,
 			operation_offset,
 			proposition_relocation,
 			claim_relocation,
@@ -1879,12 +1930,12 @@ int prototype_internal_artifact_append_graph_ordered(
 		appended_interface->type_exports[i].formation_classifier = term_relocation[
 			appended_interface->type_exports[i].formation_classifier
 		];
-			if (prototype_type_declaration_code_shape_key(
+			if (prototype_type_declaration_representation_fingerprint(
 					target_terms,
 					target_type_declarations,
 					target_contexts,
 					appended_interface->type_exports[i].local_type_id,
-					&appended_interface->type_exports[i].code_shape_key
+					&appended_interface->type_exports[i].representation_fingerprint
 				) != 0) {
 				return -1;
 			}

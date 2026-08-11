@@ -1,9 +1,10 @@
-A_PROGRAM_ARTIFACT 70
+A_PROGRAM_ARTIFACT 71
 
-This file is the canonical semantic manifest for artifact version 70. The
+This file is the canonical semantic manifest for artifact version 71. The
 artifact header carries the SHA-256 digest of these exact bytes. A reader must
 reject a different version or digest before reading the interface. Version 69
-is not accepted and has no compatibility parser.
+is not accepted and has no compatibility parser. Version 70 is archived and
+has no compatibility parser because it did not serialize proposition usage.
 
 The artifact is one dense accepted object graph. Every section uses IDs in
 0..count-1 with no holes. Solver candidates, work queues, HOTT actions,
@@ -18,7 +19,7 @@ Compiler-local relation-action proof kinds 33,34,36,37,38,39,40,41,42 are
 not accepted wire proof kinds. SUBSTITUTION_REINDEX=35 is object evidence for
 a Context/Substitution action and is intentionally retained.
 
-term_tag VAR=1 CONSTRUCTOR=2 APP=3 LAMBDA=4 PI=5 MATCH=6 TYPE_FORMER=7 TYPE_DECLARATION=8 INDUCTION_HYPOTHESIS=9 UNIVERSE_VAR=10 PRIMITIVE_TEXT=11 TEXT_LITERAL=12 PRIMITIVE_INT=13 PRIMITIVE_INT64=14 INT_LITERAL=15 EXTERNAL_REF=16 PURE_PRIMITIVE=17 EFFECT_OPERATION=18 TYPE_VIEW=19 EFFECT_LABEL=20 EFFECT_ROW_VAR=21 EFFECT_ROW_UNION=22 EFFECT_ROW_FORALL=23 COMPUTATION_TYPE=24 THUNK_TYPE=25 RETURN=26 THUNK=27 FORCE=28 OPERATION_REQUEST=29 COMPUTATION_FOLD=30 EFFECT_ROW_OPERATION=31
+term_tag VAR=1 CONSTRUCTOR=2 APP=3 LAMBDA=4 PI=5 MATCH=6 TYPE_FORMER=7 TYPE_DECLARATION=8 INDUCTION_HYPOTHESIS=9 UNIVERSE_VAR=10 PRIMITIVE_TEXT=11 TEXT_LITERAL=12 PRIMITIVE_INT=13 PRIMITIVE_INT64=14 INT_LITERAL=15 EXTERNAL_REF=16 PURE_PRIMITIVE=17 EFFECT_OPERATION=18 TYPE_VIEW=19 EFFECT_ROW_EMPTY=20 EFFECT_ROW_VAR=21 EFFECT_ROW_UNION=22 EFFECT_ROW_FORALL=23 COMPUTATION_TYPE=24 THUNK_TYPE=25 RETURN=26 THUNK=27 FORCE=28 OPERATION_REQUEST=29 COMPUTATION_FOLD=30 EFFECT_ROW_OPERATION=31
 
 Compiler-local RELATION_TYPE_FORMER=32 and
 RELATION_WITNESS_FORMER=33 are not accepted identity-root syntax.
@@ -37,6 +38,7 @@ normalization_profile CORE_WHNF=1 COMPUTATION_WHNF=2 PURE_TYPE_WHNF=3
 export_transparency OPAQUE=1 TRANSPARENT=2
 compile_policy STRICT=1 HYBRID=2 EXPLORATORY=3
 definition_thunk_policy IMPLICIT=1 EXPLICIT=2
+usage_grade ZERO=0 ONE=1 MANY=2
 universe_node TYPE=1 PARAMETER=2
 universe_edge PARAMETER_TO_TYPE=1
 universe_reason INVALID=0 TERM_LEVEL_SUCCESSOR=1 PI_DOMAIN=2 PI_CODOMAIN=3 MATCH_BRANCH=4 APP_CUMULATIVITY=5 EXPECTED_TYPE_CUMULATIVITY=6 DERIVED_UNIVERSE_LEVEL=7 DERIVED_PI_DOMAIN=8 DERIVED_PI_CODOMAIN=9
@@ -60,7 +62,7 @@ present only in unrooted solver or HOTT work are not dependencies.
 
 Dense accepted proof grammar:
 propositions N
-proposition ID KIND AUTHORITY_KIND AUTHORITY_ID CONTEXT OPERATION SUBJECT CLASSIFIER
+proposition ID KIND AUTHORITY_KIND AUTHORITY_ID CONTEXT OPERATION SUBJECT CLASSIFIER USAGE_COUNT [BINDING_ID USAGE_GRADE]*
 claims N
 claim ID proposition PROPOSITION_ID
 derivations N
@@ -81,6 +83,17 @@ Exactly one premise reference is valid. Proposition identity is serialized
 once; Claims and scoped premises refer to it directly. Derivation sources are
 exactly the ordered premise edges and are not repeated in a sources list.
 
+Resource usage is part of Proposition identity. Usage entries are strictly
+increasing persistent Context binding IDs; ZERO entries are omitted. ONE is
+one use and MANY is the saturated image of every count greater than one.
+Sequential composition uses saturated addition, mutually exclusive branches
+use maximum, and substitution multiplies each target grade by the usage vector
+of its source assignment before adding columns. Projection weakening preserves
+the vector because persistent binding IDs remain stable. Thunk is
+grade-preserving and never grants contraction to a captured resource or
+resumption. Until object-identity Context bridges carry an explicit graded
+modality, an object-term action with nonempty resource usage is residual.
+
 Type declarations serialize parameter and index Contexts independently,
 index count, origin, and generated source carrier. Generated identity
 declarations and constructors have no invented names. Their Context telescope,
@@ -96,9 +109,6 @@ least-fixed-point replay after readback.
 Observational identity fragment admitted by roots:
 - closed homogeneous ordinary ADT identity families and ordinary constructor
   witnesses checked against them;
-- a finite Universe correspondence family with relation, left/right transport,
-  and selected left/right path-lifting fields, plus ordinary constructor
-  witnesses checked against that exact family;
 - identities of closed concrete generated-identity fibers whose source
   constructors are nullary or have only nondependent fields. Such a concrete
   fiber is treated as the source carrier of another closed ORDINARY_ADT root;
@@ -119,8 +129,28 @@ results into identity, and they do not claim completeness for contextual
 equivalence. Dependent constructor fields, general dependent APP/Match/IH
 action, and generic lifting through an index telescope remain residual.
 
-Full Universe bisimulation/coherence, generic transport/lifting elimination,
-dependent telescope identity, effectful requests/folds, host primitives, HIT,
-quotient, and IADT identity computation remain residual and cannot be roots.
+The finite Universe correspondence and Universe-fiber actions are
+compiler-local scaffolding. Full Universe bisimulation/coherence, generic
+transport/lifting elimination, dependent telescope identity, effectful
+requests/folds, host primitives, HIT, quotient, and IADT identity computation
+remain residual and cannot be roots.
+
+Dependent computation-fold verification lifecycle:
+- a fold whose result family closes by deterministic pure normalization may
+  contribute ordinary static typing evidence;
+- blocked-effect or exhausted pure normalization creates one versioned
+  COMPUTATION_FOLD_RESULT obligation keyed by the typed Operation occurrence;
+- a PENDING obligation is a runtime contract and never a Claim or Derivation;
+- strict compilation and Verilog admission reject PENDING obligations;
+- hybrid compilation may publish PENDING obligations only when the selected
+  backend declares the computation-fold result verifier and handler
+  capabilities;
+- artifact v71 persists only PENDING obligations. DISCHARGED and FAILED are
+  execution-instance outcomes and are rejected on readback;
+- execution discharges an obligation by applying its retained pure classifier
+  family to the returned value and checking conversion with the continuation
+  result classifier under the retained normalization profile; and
+- failed discharge aborts that execution and cannot retroactively create or
+  alter accepted static evidence.
 Contextual equivalence is a metatheoretic adequacy target, not an artifact
 record or kernel proof-search rule.

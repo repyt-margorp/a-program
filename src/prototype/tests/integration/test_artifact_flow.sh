@@ -20,7 +20,8 @@ grep -q 'failed to compile AST graph' "$TMP_DIR/recursive-motive-conflict.err"
 
 prototype_compile c11 werror compiler \
 	"$TMP_DIR/prototype-repl" \
-	src/prototype/src/driver/repl.c
+	src/prototype/src/driver/repl.c \
+	src/prototype/src/driver/diagnostics.c
 
 prototype_compile c99 werror kernel \
 	"$TMP_DIR/whnf_profile_cache_check" \
@@ -129,13 +130,14 @@ TERM_TAG_TEXT_LITERAL=$(c_enum_value_in src/prototype/include/a_program/core/ter
 TERM_TAG_EXTERNAL_REF=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EXTERNAL_REF)
 TERM_TAG_PURE_PRIMITIVE=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_PURE_PRIMITIVE)
 TERM_TAG_EFFECT_OPERATION=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_OPERATION)
-TERM_TAG_EFFECT_LABEL=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_LABEL)
+TERM_TAG_EFFECT_ROW_EMPTY=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_EMPTY)
+TERM_TAG_EFFECT_ROW_OPERATION=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
 TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
 OPERATION_TAG_LAMBDA=$(c_enum_value_in \
-	src/prototype/include/a_program/graph/operation_graph.h \
+	src/prototype/include/a_program/graph/operation_model.h \
 	prototype_operation_tag PROTOTYPE_OPERATION_LAMBDA)
 
-if rg -q 'prototype_type_declaration_find_by_code_shape_key' \
+if rg -q 'prototype_type_declaration_find_by_representation_fingerprint' \
 	src/prototype --glob '*.[ch]' --glob '*.inc'; then
 	echo "import resolution must not expose a TypeCodeShapeKey lookup path" >&2
 	exit 1
@@ -171,8 +173,8 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 70 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v70.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 71 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v71.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 awk '
@@ -202,11 +204,11 @@ awk '
 	}
 	{ print }
 	END { if (!done) exit 1 }
-' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-forged-polarity.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-forged-polarity.apo" \
-	>"$TMP_DIR/identity-forged-polarity.out" \
-	2>"$TMP_DIR/identity-forged-polarity.err"; then
-	echo "artifact accepted forged Operation polarity" >&2
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-forged-category.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-forged-category.apo" \
+	>"$TMP_DIR/identity-forged-category.out" \
+	2>"$TMP_DIR/identity-forged-category.err"; then
+	echo "artifact accepted forged Operation category" >&2
 	exit 1
 fi
 ./read_file.out --check-backend c "$TMP_DIR/identity.apo" \
@@ -243,10 +245,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 70/A_PROGRAM_ARTIFACT 69/' \
+sed '1s/A_PROGRAM_ARTIFACT 71/A_PROGRAM_ARTIFACT 70/' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v67.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-v67.apo" >"$TMP_DIR/identity-v67.out" 2>"$TMP_DIR/identity-v67.err"; then
-	echo "obsolete artifact unexpectedly passed after v70 format bump" >&2
+	echo "obsolete artifact unexpectedly passed after v71 format bump" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -271,6 +273,56 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-authority.apo" \
 	>"$TMP_DIR/identity-unknown-authority.out" \
 	2>"$TMP_DIR/identity-unknown-authority.err"; then
 	echo "artifact with an unknown Claim authority unexpectedly passed" >&2
+	exit 1
+fi
+awk '
+	$1 == "proposition" && $10 > 0 && !done {
+		$12 = 99
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-invalid-usage-grade.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-invalid-usage-grade.apo" \
+	>"$TMP_DIR/identity-invalid-usage-grade.out" \
+	2>"$TMP_DIR/identity-invalid-usage-grade.err"; then
+	echo "artifact accepted an invalid resource usage grade" >&2
+	exit 1
+fi
+awk '
+	$1 == "proposition" && $10 > 0 && !done {
+		$11 = 4294967294
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-foreign-usage-binding.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-foreign-usage-binding.apo" \
+	>"$TMP_DIR/identity-foreign-usage-binding.out" \
+	2>"$TMP_DIR/identity-foreign-usage-binding.err"; then
+	echo "artifact accepted resource usage outside its Context" >&2
+	exit 1
+fi
+cat >"$TMP_DIR/resource-usage-order.p" <<'EOF'
+sum := \x : #.Int => \y : #.Int => #.int_add x y;
+EOF
+./read_file.out --write-artifact "$TMP_DIR/resource-usage-order.apo" \
+	"$TMP_DIR/resource-usage-order.p" >"$TMP_DIR/resource-usage-order.out"
+awk '
+	$1 == "proposition" && $10 > 1 && !done {
+		binding = $11
+		$11 = $13
+		$13 = binding
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/resource-usage-order.apo" \
+	>"$TMP_DIR/resource-usage-unsorted.apo"
+if ./read_file.out --read-graph "$TMP_DIR/resource-usage-unsorted.apo" \
+	>"$TMP_DIR/resource-usage-unsorted.out" \
+	2>"$TMP_DIR/resource-usage-unsorted.err"; then
+	echo "artifact accepted an unsorted resource usage vector" >&2
 	exit 1
 fi
 awk '
@@ -1656,9 +1708,9 @@ EOF_DEPENDENT_MATCH
 
 ./read_file.out "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive proof#' "$TMP_DIR/dependent-match.out"
-grep -q 'CASE(true -> COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Nat' \
+grep -q 'CASE(true -> COMPUTATION_TYPE(EFFECT_ROW_EMPTY, TYPE_VIEW(Nat' \
 	"$TMP_DIR/dependent-match.out"
-grep -q 'CASE(false -> COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Bool' \
+grep -q 'CASE(false -> COMPUTATION_TYPE(EFFECT_ROW_EMPTY, TYPE_VIEW(Bool' \
 	"$TMP_DIR/dependent-match.out"
 ./read_file.out --write-artifact "$TMP_DIR/DependentMatch.apo" "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match-artifact.out"
 awk '
@@ -1718,7 +1770,7 @@ len := \A : @ =>
 EOF_IH_MOTIVE
 
 ./read_file.out "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive.out"
-grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_LABEL(0), TYPE_VIEW(Nat.* \[ih-elim proof#' \
+grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_ROW_EMPTY, TYPE_VIEW(Nat.* \[ih-elim proof#' \
 	"$TMP_DIR/ih-motive.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive proof#' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"
@@ -2256,7 +2308,9 @@ if ./read_file.out --read-graph "$TMP_DIR/TerminalEffectBadKind.apo" \
 fi
 awk '$1 == "compile_policy" && $2 == 2 && $8 == 10 { found = 1 }
 END { exit found ? 0 : 1 }' "$TMP_DIR/TerminalEffect.apo"
-grep -q "^term_node .* $TERM_TAG_EFFECT_LABEL 1$" "$TMP_DIR/TerminalEffect.apo"
+grep -q "^term_node .* $TERM_TAG_EFFECT_ROW_EMPTY$" "$TMP_DIR/TerminalEffect.apo"
+grep -q "^term_node .* $TERM_TAG_EFFECT_ROW_OPERATION print [0-9][0-9]*$" \
+	"$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_COMPUTATION_TYPE " "$TMP_DIR/TerminalEffect.apo"
 grep -Eq '^effect_constraint [0-9]+ 3 2 ' "$TMP_DIR/TerminalEffect.apo"
 awk '

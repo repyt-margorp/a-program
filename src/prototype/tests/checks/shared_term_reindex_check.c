@@ -101,10 +101,9 @@ int main(void) {
 	if (prototype_term_primitive_int(&terms, &int_type) != 0 ||
 		prototype_term_int_literal(&terms, 7, &literal_seven) != 0 ||
 		prototype_term_int_literal(&terms, 9, &literal_nine) != 0 ||
-		prototype_term_effect_label(
-			&terms, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &empty_row
-		) != 0 || prototype_term_effect_label(
-			&terms, PROTOTYPE_EFFECT_OPERATION_LABEL_PRINT, &terminal_row
+		prototype_term_effect_row_empty(&terms, &empty_row
+		) != 0 || prototype_term_effect_row_operation(
+			&terms, PROTOTYPE_EFFECT_OPERATION_PRINT, empty_row, &terminal_row
 		) != 0 || prototype_term_effect_row_var(
 			&terms, 400, &symbolic_row
 		) != 0 || prototype_term_effect_row_union(

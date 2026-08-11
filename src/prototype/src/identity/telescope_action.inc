@@ -850,6 +850,17 @@ int prototype_hott_type_former_descriptor_query(
 				PROTOTYPE_HOTT_CAPABILITY_SUPPORTED;
 		}
 	}
+	const struct prototype_judgement_proposition* source_proposition =
+		prototype_judgement_proposition_get(judgement, source->proposition_id);
+	if (source_proposition &&
+		source_proposition->context_id == prototype_context_empty(contexts) &&
+		descriptor.capabilities.identity_computation ==
+			PROTOTYPE_HOTT_CAPABILITY_SUPPORTED &&
+		(descriptor.kind == PROTOTYPE_HOTT_TYPE_FORMER_ORDINARY_ADT ||
+		 descriptor.kind == PROTOTYPE_HOTT_TYPE_FORMER_PI ||
+		 descriptor.kind == PROTOTYPE_HOTT_TYPE_FORMER_THUNK)) {
+		descriptor.capabilities.artifact = PROTOTYPE_HOTT_CAPABILITY_SUPPORTED;
+	}
 	*p_descriptor = descriptor;
 	return 0;
 }

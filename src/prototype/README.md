@@ -19,7 +19,7 @@ src/core/             erased computation terms
 src/kernel/           contexts, declarations, universes, and judgements
 src/frontend/         reader, surface AST, and lowering
 src/graph/            typed OperationGraph and compile metadata
-src/artifact/         interface publication, v70 wire format, relocation, link
+src/artifact/         interface publication, v71 wire format, relocation, link
 src/identity/         relation action and object Identity computation
 src/driver/           command-line and REPL entry points
 tests/checks/         compiled audit programs
@@ -56,7 +56,7 @@ proof/action construction order.
   operation node records the source occurrence, its typed binder and Match
   information, and a pointer to the erased `core_term`.
 - `include/a_program/artifact/`, `src/artifact/`: artifact interface,
-  publication closure, v70 wire reader/writer, relocation, and linking.
+  publication closure, v71 wire reader/writer, relocation, and linking.
 - `include/a_program/kernel/judgement/`, `src/kernel/judgement.c`,
   `src/kernel/typing/`, and `src/kernel/rules/`: Proposition, Claim, and
   Derivation storage; classifier conversion and solving; candidate publication;
@@ -302,7 +302,7 @@ but it makes the intended separation observable.
 - Eliminator layer: `MATCH`
 - Type-former layer: `PI`, `TYPE_FORMER`, `UNIVERSE_VAR`, host primitive types
   such as `PRIMITIVE_TEXT`, `PRIMITIVE_INT`, and `PRIMITIVE_INT64`, and effect
-  classifier nodes such as `EFFECT_LABEL` and `COMPUTATION_TYPE`
+  classifier nodes such as `EFFECT_ROW_EMPTY` and `COMPUTATION_TYPE`
 - Data layer: `CONSTRUCTOR`, host literal values such as `TEXT_LITERAL` and
   `INT_LITERAL`
 - Link layer: `EXTERNAL_REF`
@@ -476,43 +476,37 @@ result. The current implementation rejects arbitrary incomplete solver work;
 `hybrid` permits only residual obligations with a defined runtime verifier.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 44`. The reader accepts that format only; old artifact
-versions are intentionally rejected instead of being kept as compatibility paths.
+`A_PROGRAM_ARTIFACT 71 <calculus-fingerprint>`. The reader accepts that version
+and exact fingerprint only; old artifact versions are intentionally rejected
+instead of being kept as compatibility paths. The canonical format and trust
+boundary are specified by `spec/artifact_v71.schema`; the implemented
+HOTT/Identity fragment is specified by `spec/hott_fragment_v5.schema`.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor
 ordinal/field-count exports, constructor field type closures, dependency
 records, classifiers, transparency flags, term canonical keys, and classifier
 canonical keys. Term and type exports carry their provider namespace; dependency
 records carry either a provider namespace or `-` for unresolved unqualified
-dependencies. Interface-local type expressions, type parameter records, and
-constructor field type references are serialized as sparse slot tables, so
-unreachable holes keep their ids without being emitted as live entries. It also
-writes a `graph` section with local term nodes, type declarations, type
-expressions, match cases, match frames, judgement relations, and proof objects.
-The graph section uses the same slot/present-count shape for the type side:
-unreached type declarations, parameters, constructors, field type references,
-and type expressions remain holes rather than silently becoming exported
-metadata.
-Each proof object records its introduction/elimination reason, conclusion
-judgement kind, conclusion subject/classifier, and premises as
-`(judgement kind, subject, classifier, proof id)` edges, so artifact validation
-checks both the premise judgement and the proof node that derives it.
-Proof validation also rejects cyclic premise edges; proof objects form a DAG
-over the judgement graph, not a circular justification table. Every proof object
-must be referenced by exactly one judgement relation, so serialized artifacts
-cannot hide orphan proof nodes.
+dependencies. Before serialization, every rooted arena is sliced and
+renumbered densely to `0..count-1`. Unreachable terms, declarations,
+propositions, solver candidates, HOTT work state, and normalization state are
+not written. The `graph` section contains the dense Term, declaration, Context,
+Substitution, Operation, Universe, Proposition, Claim, Derivation, and ordered
+premise-edge closure. Propositions are serialized once; accepted Claims refer
+to them, and Derivations refer to their conclusion Claim plus ordered
+Claim/scoped premises and exact semantic actions. Readback rejects cyclic,
+orphaned, out-of-range, or semantically invalid proof evidence and replays
+accepted rules without search.
 An `operation_graph` section stores occurrence-local operation nodes, Match
-case edges, HANDLE operation/return clause bodies and binder identities,
+case edges, computation-fold operation/return clause bodies and binder identities,
 residual verification obligations, deterministic normalization and solver step
 budgets, compile policy, and required runtime capabilities. Runtime capability
 metadata is recomputed from the loaded graph and rejected when the serialized
 declaration understates its requirements. Source binder identities are
 relocated independently from TermDB binder ids when artifacts are combined.
-A `universe`
-section stores universe nodes, edges, solved levels, and constraints. Universe
-nodes and edges are also sparse: only nodes reachable through exported type
-declarations and parameters, and only edges whose endpoints are both present, are
-written. A `debug` section stores exported term display-name annotations plus source
+A `universe` section stores the densely relocated reachable Universe nodes,
+edges, solved levels, and constraints. A `debug` section stores exported term
+display-name annotations plus source
 entry/name/body spans, exported type display-name annotations plus name/body
 spans, and constructor display names plus constructor-name spans separate from
 the graph ids. A
@@ -523,7 +517,7 @@ type-expression names, and resolved imported type expressions carrying their
 also mirrored as explicit external type-former relocation records, and graph
 readback preserves those records as `external type former type_expr#... -> Name`
 lines. Resolved imported type formers are likewise preserved as
-`resolved external type former type_expr#... -> type_export#...Name code_shape_key=...`
+`resolved external type former type_expr#... -> type_export#...Name representation_fingerprint=...`
 lines. It also records resolved constructor owner references for
 constructor terms and match cases; each record stores the owner graph key plus
 the constructor ordinal. The prototype regression suite now includes a graph

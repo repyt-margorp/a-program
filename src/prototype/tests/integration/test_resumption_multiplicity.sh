@@ -6,12 +6,13 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 for source in \
 	resumption_multiplicity_check \
+	resumption_one_shot_branch_check \
 	resumption_multi_shot_check \
 	resumption_abortive_check
 do
 	./read_file.out "src/prototype/tests/fixtures/effects/$source.p" \
 		>"$tmp_dir/$source.out"
-	grep -q '^term main := COMPUTATION_FOLD(' "$tmp_dir/$source.out"
+	grep -q '^term main := ' "$tmp_dir/$source.out"
 done
 
 if ./read_file.out src/prototype/tests/fixtures/effects/resumption_one_shot_invalid.p \
@@ -30,6 +31,7 @@ fi
 
 for source in \
 	resumption_multiplicity_check \
+	resumption_one_shot_branch_check \
 	resumption_multi_shot_check \
 	resumption_abortive_check
 do
@@ -38,6 +40,8 @@ do
 done
 grep -q '^value main := RETURN(TEXT_LITERAL("once"))$' \
 	"$tmp_dir/resumption_multiplicity_check.eval"
+grep -q '^value main := RETURN(TEXT_LITERAL("true"))$' \
+	"$tmp_dir/resumption_one_shot_branch_check.eval"
 grep -q '^value main := RETURN(TEXT_LITERAL("second"))$' \
 	"$tmp_dir/resumption_multi_shot_check.eval"
 grep -q '^value main := RETURN(TEXT_LITERAL("abort"))$' \

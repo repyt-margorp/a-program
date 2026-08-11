@@ -3,6 +3,11 @@
 
 #include "a_program/kernel/judgement/types.h"
 
+struct prototype_induction_hypothesis_resolution_request;
+struct prototype_judgement_delta;
+struct prototype_match_constructor_resolution;
+struct prototype_match_resolution_request;
+
 int prototype_judgement_type_expr_term(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -114,6 +119,11 @@ int prototype_judgement_delta_solve_computation_constraints(
 	struct prototype_type_declaration_db* type_declarations
 );
 int prototype_judgement_delta_solve_recorded_computation_constraints(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations
+);
+int prototype_judgement_delta_solve_recorded_computation_requests(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations

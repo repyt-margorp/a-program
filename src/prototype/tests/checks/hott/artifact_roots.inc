@@ -348,7 +348,7 @@
 		bool_context,
 		unbox_match,
 		unbox_classifier,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t unbox_claim = fixture_add_claim(
 		&judgement,
@@ -384,7 +384,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, unbox_type_action,
 			&unbox_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, unbox_type_action_id,
 			&unbox_type_result_id
 		) != 0 || action_results[unbox_type_result_id].outcome.state !=
@@ -919,13 +919,13 @@
 	(void)unused_projection;
 	(void)unused_relation;
 	uint32_t nat_constructor_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db,
 			PROTOTYPE_HOTT_RELATION_VALUE,
 			nat_is_type, nat_is_type,
 			nat_succ_zero_claim, nat_succ_succ_zero_claim,
 			bridge, &nat_constructor_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db,
 			NULL, nat_constructor_goal, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32, &work_id
@@ -950,12 +950,12 @@
 		candidate_db.candidates[nat_constructor_candidate].child_edge_count != 1) {
 		return 145;
 	}
-	const struct prototype_hott_child_edge* nat_field_edge =
+	const struct prototype_parametricity_child_edge* nat_field_edge =
 		&candidate_db.child_edges[
 			candidate_db.candidates[nat_constructor_candidate].first_child_edge
 		];
-	const struct prototype_hott_relation_goal* nat_field_goal =
-		prototype_hott_relation_goal_db_get(
+	const struct prototype_parametricity_relation_goal* nat_field_goal =
+		prototype_parametricity_relation_goal_db_get(
 			&goal_db, nat_field_edge->child_goal_id
 		);
 	if (!nat_field_goal || nat_field_edge->role !=

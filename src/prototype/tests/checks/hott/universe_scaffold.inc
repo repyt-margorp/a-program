@@ -35,6 +35,32 @@
 			.binder_count = 0
 		};
 	indexed_match_operation_graph.case_count = 2;
+	struct prototype_usage_entry indexed_match_resource_usage[256];
+	prototype_judgement_db_set_resource_usage_storage(
+		&indexed_match_judgement,
+		indexed_match_resource_usage,
+		256
+	);
+	struct prototype_operation_usage_solution indexed_usage_solutions[6];
+	struct prototype_usage_entry indexed_usage_entries[64];
+	size_t indexed_usage_entry_count;
+	if (prototype_operation_usage_solve(
+			&indexed_match_operation_graph,
+			&term_db,
+			indexed_usage_solutions,
+			6,
+			indexed_usage_entries,
+			64,
+			&indexed_usage_entry_count
+		) != 0) {
+		return 143;
+	}
+	struct fixture_operation_usage_provider_context indexed_usage_provider = {
+		.solutions = indexed_usage_solutions,
+		.solution_count = indexed_match_operation_graph.operation_count,
+		.entries = indexed_usage_entries,
+		.entry_count = indexed_usage_entry_count
+	};
 	struct prototype_judgement_proposition indexed_delta_propositions[64];
 	struct prototype_judgement_derivation_candidate indexed_delta_candidates[64];
 	struct prototype_judgement_candidate_premise indexed_delta_premises[
@@ -68,6 +94,11 @@
 		indexed_match_operation_graph.operation_count,
 		indexed_match_operation_graph.cases,
 		indexed_match_operation_graph.case_count
+	);
+	prototype_judgement_delta_set_operation_usage_provider(
+		&indexed_delta,
+		&indexed_usage_provider,
+		fixture_operation_usage_provider
 	);
 	prototype_judgement_delta_set_context(
 		&indexed_delta, indexed_proof_context
@@ -389,7 +420,7 @@
 		return 250;
 	}
 	uint32_t bool_type_result_id;
-	if (prototype_hott_execute_relation_type_action(
+	if (prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, bool_type_action_id,
 			&bool_type_result_id
 		) != 0 || bool_type_result_id != result_id) {
@@ -464,7 +495,7 @@
 	}
 	action_certificates[type_certificate_id].data.relation_type.relation_family_term_id =
 		relation_family;
-	if (prototype_hott_execute_relation_type_action(
+	if (prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, type_action_id, &result_id
 		) != 0 || action_results[result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_UNSUPPORTED ||
@@ -631,7 +662,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, contextual_bool_type_action,
 			&contextual_bool_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, contextual_bool_type_action_id,
 			&contextual_bool_type_result_id
 		) != 0 || action_results[contextual_bool_type_result_id].outcome.state !=
@@ -732,7 +763,7 @@
 		bool_context,
 		boxed_bool_variable,
 		box_view,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t boxed_claim = fixture_add_claim(
 		&judgement,
@@ -798,7 +829,7 @@
 	uint32_t box_type_result_id;
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, box_type_action, &box_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, box_type_action_id, &box_type_result_id
 		) != 0 || action_results[box_type_result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY) {
@@ -866,7 +897,7 @@
 		bool_context,
 		returned_box,
 		pure_box_computation,
-		PROTOTYPE_OPERATION_POLARITY_COMPUTATION
+		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t returned_box_claim = fixture_add_claim(
 		&judgement,
@@ -903,7 +934,7 @@
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, pure_box_type_action,
 			&pure_box_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, pure_box_type_action_id,
 			&pure_box_type_result_id
 		) != 0 || action_results[pure_box_type_result_id].outcome.state !=
@@ -969,7 +1000,7 @@
 		bool_context,
 		thunked_box,
 		pure_box_thunk_type,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t thunked_box_claim = fixture_add_claim(
 		&judgement,

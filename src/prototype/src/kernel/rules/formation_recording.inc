@@ -15,8 +15,8 @@ int prototype_judgement_delta_record_effect_weaken(
 	}
 	struct prototype_term_classifier_view source;
 	struct prototype_term_classifier_view target;
-	unsigned source_effects;
-	unsigned target_effects;
+	struct prototype_effect_row_normal_form source_effects;
+	struct prototype_effect_row_normal_form target_effects;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, source_evidence->classifier, &source
 		) != 0 || prototype_judgement_classifier_view(
@@ -27,11 +27,13 @@ int prototype_judgement_delta_record_effect_weaken(
 		target.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, source.result, target.result
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_closed_bits(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_normal_form(
 			terms, source.effect_row, &source_effects
-		) != 0 || prototype_term_effect_row_closed_bits(
+		) != 0 || prototype_term_effect_row_normal_form(
 			terms, target.effect_row, &target_effects
-		) != 0 || (source_effects & target_effects) != source_effects) {
+		) != 0 || !prototype_term_effect_row_normal_form_includes(
+			&target_effects, &source_effects
+		)) {
 		return -1;
 	}
 	uint32_t premise_subjects[1] = { source_evidence->subject };

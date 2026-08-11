@@ -1817,10 +1817,7 @@ static int hott_build_nondependent_pi_identity_type(
 		uint32_t family_body = classifier;
 		if (is_computation_function) {
 			uint32_t empty_effects;
-			if (prototype_term_effect_label(
-					terms,
-					PROTOTYPE_EFFECT_OPERATION_LABEL_NONE,
-					&empty_effects
+			if (prototype_term_effect_row_empty(terms, &empty_effects
 				) != 0 || prototype_term_computation_type(
 					terms, empty_effects, classifier, &family_body
 				) != 0) {
@@ -2267,7 +2264,7 @@ static int hott_add_ordinary_adt_identity_constructor(
 	);
 }
 
-int prototype_hott_execute_relation_type_action(
+int prototype_parametricity_execute_relation_type_action(
 	struct prototype_hott_action_db* actions,
 	struct prototype_kernel_builder* kernel,
 	const struct prototype_hott_bridge_db* bridges,

@@ -55,9 +55,7 @@ int prototype_hott_register_identity_root(
 		 identity->computation_rule !=
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN &&
 		 identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE &&
-		 identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE) ||
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE) ||
 		hott_term_has_compiler_relation_head(
 			terms, family->subject
 		) != 0) {

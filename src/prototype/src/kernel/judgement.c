@@ -2,7 +2,8 @@
 #include "a_program/kernel/judgement/rules.h"
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
-#include "a_program/frontend/lowering.h"
+#include "a_program/graph/operation_graph.h"
+#include "a_program/graph/operation_usage.h"
 
 #include <stdint.h>
 #include <stdio.h>

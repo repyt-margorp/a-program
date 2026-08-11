@@ -774,6 +774,35 @@ int prototype_judgement_validate_operation_typing(
 	uint32_t operation_id
 );
 
+struct prototype_judgement_principal_operation_audit {
+	size_t principal_operation_count;
+	size_t proposition_count;
+	size_t accepted_claim_count;
+	size_t derivation_count;
+	size_t total_proposition_count;
+	size_t total_accepted_claim_count;
+	size_t claim_wrapper_bytes;
+	size_t proof_role_counts[5];
+};
+
+int prototype_judgement_proof_reconstruction_role(
+	int proof_kind,
+	const struct prototype_judgement_proposition* proposition
+);
+
+int prototype_judgement_project_principal_operation_proposition(
+	const struct prototype_operation_graph* operations,
+	uint32_t operation_id,
+	struct prototype_judgement_proposition* p_proposition
+);
+
+int prototype_judgement_audit_principal_operation_claims(
+	const struct prototype_term_db* terms,
+	const struct prototype_operation_graph* operations,
+	const struct prototype_judgement_db* judgement,
+	struct prototype_judgement_principal_operation_audit* p_audit
+);
+
 int prototype_judgement_publish_candidates(
 	const struct prototype_operation_graph* operations,
 	struct prototype_judgement_db* judgement

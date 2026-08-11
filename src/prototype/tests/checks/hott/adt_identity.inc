@@ -6,10 +6,10 @@
 	struct prototype_cwf_certificate_db cwf_certificate_db;
 	struct prototype_operation_graph operation_graph;
 	struct prototype_hott_bridge_db bridge_db;
-	struct prototype_hott_relation_goal_db goal_db;
-	struct prototype_hott_candidate_db candidate_db;
-	struct prototype_hott_work_db work_db;
-	struct prototype_hott_residual_db residual_db;
+	struct prototype_parametricity_relation_goal_db goal_db;
+	struct prototype_parametricity_candidate_db candidate_db;
+	struct prototype_parametricity_work_db work_db;
+	struct prototype_parametricity_residual_db residual_db;
 	struct prototype_hott_action_db action_db;
 	struct prototype_kernel_builder kernel_builder;
 	struct prototype_kernel_view kernel_view;
@@ -38,6 +38,11 @@
 		judgement_accepted_premises,
 		CLAIM_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
+	prototype_judgement_db_set_resource_usage_storage(
+		&judgement,
+		judgement_resource_usage,
+		CLAIM_CAPACITY * 8
+	);
 	prototype_cwf_certificate_db_init(
 		&cwf_certificate_db, cwf_certificates, 1024
 	);
@@ -46,6 +51,7 @@
 	operation_graph.operation_capacity = OPERATION_CAPACITY;
 	operation_graph.cases = operation_cases;
 	operation_graph.case_capacity = 128;
+	fixture_set_operation_graph(&term_db, &operation_graph);
 	kernel_builder = (struct prototype_kernel_builder) {
 		.contexts = &context_db,
 		.substitutions = &substitution_db,
@@ -61,16 +67,16 @@
 	prototype_hott_bridge_db_init(
 		&bridge_db, bridges, 128, bridge_certificates, 128
 	);
-	prototype_hott_relation_goal_db_init(&goal_db, goals, GOAL_CAPACITY);
-	prototype_hott_candidate_db_init(
+	prototype_parametricity_relation_goal_db_init(&goal_db, goals, GOAL_CAPACITY);
+	prototype_parametricity_candidate_db_init(
 		&candidate_db, candidates, CANDIDATE_CAPACITY,
 		claim_premises, PREMISE_CAPACITY, child_edges, PREMISE_CAPACITY,
 		conversion_premises, PREMISE_CAPACITY,
 		context_certificate_premises, PREMISE_CAPACITY,
 		substitution_certificate_premises, PREMISE_CAPACITY
 	);
-	prototype_hott_work_db_init(&work_db, work_items, GOAL_CAPACITY);
-	prototype_hott_residual_db_init(&residual_db, residuals, 32);
+	prototype_parametricity_work_db_init(&work_db, work_items, GOAL_CAPACITY);
+	prototype_parametricity_residual_db_init(&residual_db, residuals, 32);
 	prototype_hott_action_db_init(
 		&action_db,
 		action_requests,
@@ -97,15 +103,15 @@
 
 	uint32_t left_operation = add_operation(
 		&operation_graph, empty, left_text, text,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t right_operation = add_operation(
 		&operation_graph, empty, right_text, text,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t sibling_operation = add_operation(
 		&operation_graph, empty, left_text, text,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t text_is_type = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
@@ -160,25 +166,25 @@
 	}
 
 	uint32_t text_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			text_is_type, text_is_type, left_has_type, right_has_type, bridge,
 			&text_goal
 		) != 0 || text_goal != 0 ||
-		prototype_hott_relation_goal_db_validate(
+		prototype_parametricity_relation_goal_db_validate(
 			&goal_db, &kernel_view, &bridge_db
 		) != 0) {
 		return 4;
 	}
 	uint32_t interned;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			text_is_type, text_is_type, left_has_type, right_has_type, bridge,
 			&interned
 		) != 0 || interned != text_goal || goal_db.goal_count != 1) {
 		return 5;
 	}
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			text_is_type, text_is_type, sibling_has_type, right_has_type, bridge,
 			&interned
@@ -187,7 +193,7 @@
 	}
 
 	uint32_t work_id;
-	if (prototype_hott_relation_plan(
+	if (prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, text_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -201,22 +207,22 @@
 		return 7;
 	}
 	uint32_t residual_id;
-	if (prototype_hott_residual_db_add_from_work(
+	if (prototype_parametricity_residual_db_add_from_work(
 			&residual_db, &work_db, work_id, &residual_id
-		) != 0 || prototype_hott_residual_db_validate(
+		) != 0 || prototype_parametricity_residual_db_validate(
 			&residual_db, &work_db
-		) != 0 || prototype_hott_residual_db_require_artifact_empty(
+		) != 0 || prototype_parametricity_residual_db_require_artifact_empty(
 			&residual_db
 		) == 0) {
 		return 8;
 	}
 
 	uint32_t diagonal_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			text_is_type, text_is_type, left_has_type, left_has_type, bridge,
 			&diagonal_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, diagonal_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -229,7 +235,7 @@
 	uint32_t repeated_diagonal_work;
 	size_t work_count_before_repeat = work_db.item_count;
 	size_t candidate_count_before_repeat = candidate_db.candidate_count;
-	if (prototype_hott_relation_plan(
+	if (prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db,
 			NULL, diagonal_goal, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32,
@@ -254,7 +260,7 @@
 	}
 	uint32_t beta_operation = add_operation(
 		&operation_graph, empty, beta_text, text,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t beta_claim = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
@@ -262,11 +268,11 @@
 		beta_operation, beta_text, text
 	);
 	uint32_t conversion_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			text_is_type, text_is_type, beta_claim, left_has_type, bridge,
 			&conversion_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL,
 			conversion_goal, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32, &work_id
@@ -442,11 +448,11 @@
 	}
 	uint32_t false_operation = add_operation(
 		&operation_graph, empty, bool_false, bool_view,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_operation = add_operation(
 		&operation_graph, empty, bool_true, bool_view,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t bool_has_type;
 	uint32_t bool_is_type;
@@ -468,6 +474,22 @@
 			&bool_is_type
 		) != 0) {
 		return 221;
+	}
+	struct prototype_hott_type_former_descriptor bool_descriptor;
+	if (prototype_hott_type_former_descriptor_query(
+			&term_db,
+			&type_db,
+			&context_db,
+			&judgement,
+			bool_is_type,
+			&bool_descriptor
+		) != 0 || bool_descriptor.kind !=
+			PROTOTYPE_HOTT_TYPE_FORMER_ORDINARY_ADT ||
+		bool_descriptor.capabilities.identity_computation !=
+			PROTOTYPE_HOTT_CAPABILITY_SUPPORTED ||
+		bool_descriptor.capabilities.artifact !=
+			PROTOTYPE_HOTT_CAPABILITY_SUPPORTED) {
+		return 222;
 	}
 	uint32_t box_has_type;
 	uint32_t box_is_type;
@@ -752,11 +774,11 @@
 	false_claim = bool_false_constructor_claim;
 	true_claim = bool_true_constructor_claim;
 	uint32_t bool_distinct_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			bool_is_type, bool_is_type, false_claim, true_claim, bridge,
 			&bool_distinct_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, bool_distinct_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -778,14 +800,14 @@
 		return 147;
 	}
 	uint32_t heterogeneous_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db,
 			PROTOTYPE_HOTT_RELATION_VALUE,
 			bool_is_type, text_is_type,
 			false_claim, left_has_type, bridge, &heterogeneous_goal
-		) != 0 || prototype_hott_relation_goal_db_validate(
+		) != 0 || prototype_parametricity_relation_goal_db_validate(
 			&goal_db, &kernel_view, &bridge_db
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db,
 			NULL, heterogeneous_goal, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32, &work_id
@@ -796,11 +818,11 @@
 		return 144;
 	}
 	uint32_t bool_diagonal_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			bool_is_type, bool_is_type, false_claim, false_claim, bridge,
 			&bool_diagonal_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, bool_diagonal_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -836,7 +858,7 @@
 	}
 	uint32_t neutral_operation = add_operation(
 		&operation_graph, empty, neutral, bool_view,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t neutral_claim = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
@@ -844,11 +866,11 @@
 		neutral_operation, neutral, bool_view
 	);
 	uint32_t neutral_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			bool_is_type, bool_is_type, neutral_claim, false_claim, bridge,
 			&neutral_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, neutral_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -876,11 +898,11 @@
 	}
 	uint32_t bool_type_operation = add_operation(
 		&operation_graph, empty, bool_view, universe,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t text_type_operation = add_operation(
 		&operation_graph, empty, text, universe,
-		PROTOTYPE_OPERATION_POLARITY_VALUE
+		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t universe_has_type = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
@@ -917,12 +939,12 @@
 		text_type_operation, text, universe
 	);
 	uint32_t universe_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			universe_is_type, universe_is_type,
 			bool_has_universe, text_has_universe, bridge,
 			&universe_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, universe_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -937,10 +959,9 @@
 	uint32_t effect_comp;
 	uint32_t returned_left;
 	uint32_t returned_right;
-	if (prototype_term_effect_label(
-			&term_db, PROTOTYPE_EFFECT_OPERATION_LABEL_NONE, &empty_row
-		) != 0 || prototype_term_effect_label(
-			&term_db, PROTOTYPE_EFFECT_OPERATION_LABEL_PRINT, &print_row
+	if (prototype_term_effect_row_empty(&term_db, &empty_row
+		) != 0 || prototype_term_effect_row_operation(
+			&term_db, PROTOTYPE_EFFECT_OPERATION_PRINT, empty_row, &print_row
 		) != 0 || prototype_term_computation_type(
 			&term_db, empty_row, text, &pure_comp
 		) != 0 || prototype_term_computation_type(
@@ -984,12 +1005,12 @@
 			fixture_premise(right_has_type)
 		};
 	uint32_t computation_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_COMPUTATION,
 			pure_comp_is_type, pure_comp_is_type,
 			returned_left_claim, returned_right_claim, bridge,
 			&computation_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, computation_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -1042,12 +1063,12 @@
 			fixture_premise(returned_right_claim)
 		};
 	uint32_t thunk_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,
 			thunk_type_is_type, thunk_type_is_type,
 			thunk_left_claim, thunk_right_claim, bridge,
 			&thunk_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, thunk_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -1073,12 +1094,12 @@
 		PROTOTYPE_INVALID_ID, returned_right, effect_comp
 	);
 	uint32_t effect_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_COMPUTATION,
 			effect_comp_is_type, effect_comp_is_type,
 			effect_left_claim, effect_right_claim, bridge,
 			&effect_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, effect_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -1115,12 +1136,12 @@
 		PROTOTYPE_INVALID_ID, request, effect_comp
 	);
 	uint32_t request_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_COMPUTATION,
 			effect_comp_is_type, effect_comp_is_type,
 			request_claim, request_claim, bridge,
 			&request_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, request_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -1183,23 +1204,23 @@
 	);
 	uint32_t pure_pi_goal;
 	uint32_t effect_pi_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_COMPUTATION,
 			pure_pi_is_type, pure_pi_is_type,
 			pure_function_claim, pure_function_claim, bridge,
 			&pure_pi_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, pure_pi_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
 		) != 0 || count_rule(
 			&candidate_db, pure_pi_goal, PROTOTYPE_HOTT_RULE_REL_PI_POINTWISE
-		) != 1 || prototype_hott_relation_goal_db_intern(
+		) != 1 || prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_COMPUTATION,
 			effect_pi_is_type, effect_pi_is_type,
 			effect_function_claim, effect_function_claim, bridge,
 			&effect_pi_goal
-		) != 0 || prototype_hott_relation_plan(
+		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, effect_pi_goal,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 			32, &work_id
@@ -1208,9 +1229,9 @@
 		return 24;
 	}
 
-	if (prototype_hott_candidate_db_validate(
+	if (prototype_parametricity_candidate_db_validate(
 			&candidate_db, &goal_db, &kernel_view
-		) != 0 || prototype_hott_work_db_validate(
+		) != 0 || prototype_parametricity_work_db_validate(
 			&work_db, &goal_db, &candidate_db
 		) != 0) {
 		return 25;
@@ -1226,7 +1247,7 @@
 	uint64_t saved_revision =
 		candidate_db.conversion_premises[conversion_edge].conversion_graph_revision;
 	++candidate_db.conversion_premises[conversion_edge].conversion_graph_revision;
-	if (prototype_hott_candidate_db_validate(
+	if (prototype_parametricity_candidate_db_validate(
 			&candidate_db, &goal_db, &kernel_view
 		) == 0) {
 		return 42;
@@ -1235,7 +1256,7 @@
 		saved_revision;
 
 	/* Two derivations may share one child goal; adjacency belongs to candidates. */
-	struct prototype_hott_candidate shared_candidates[2] = {
+	struct prototype_parametricity_candidate shared_candidates[2] = {
 		{
 			.id = 0,
 			.conclusion_goal_id = bool_distinct_goal,
@@ -1253,26 +1274,26 @@
 			.child_edge_count = 1
 		}
 	};
-	struct prototype_hott_child_edge shared_edges[2] = {
+	struct prototype_parametricity_child_edge shared_edges[2] = {
 		{ .candidate_id = 0, .child_goal_id = diagonal_goal,
 			.role = PROTOTYPE_HOTT_CHILD_ADT_FIELD, .ordinal = 0 },
 		{ .candidate_id = 1, .child_goal_id = diagonal_goal,
 			.role = PROTOTYPE_HOTT_CHILD_ADT_FIELD, .ordinal = 0 }
 	};
-	struct prototype_hott_candidate_db shared_db;
-	prototype_hott_candidate_db_init(
+	struct prototype_parametricity_candidate_db shared_db;
+	prototype_parametricity_candidate_db_init(
 		&shared_db, shared_candidates, 2, NULL, 0, shared_edges, 2,
 		NULL, 0, NULL, 0, NULL, 0
 	);
 	shared_db.candidate_count = 2;
 	shared_db.child_edge_count = 2;
-	if (prototype_hott_candidate_db_validate(
+	if (prototype_parametricity_candidate_db_validate(
 			&shared_db, &goal_db, &kernel_view
 		) != 0) {
 		return 26;
 	}
 	shared_edges[1].child_goal_id = bool_diagonal_goal;
-	if (prototype_hott_candidate_db_validate(
+	if (prototype_parametricity_candidate_db_validate(
 			&shared_db, &goal_db, &kernel_view
 		) == 0) {
 		return 27;
@@ -1400,7 +1421,7 @@
 	uint32_t bool_relation_result_id;
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, bool_type_action, &bool_type_action_id
-		) != 0 || prototype_hott_execute_relation_type_action(
+		) != 0 || prototype_parametricity_execute_relation_type_action(
 			&action_db, &kernel_builder, &bridge_db, bool_type_action_id, &result_id
 		) != 0 || action_results[result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY ||

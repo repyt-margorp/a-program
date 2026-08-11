@@ -569,8 +569,8 @@ static int select_delta_pi_classifier_for_domain(
 			uint32_t candidate_body;
 			struct prototype_term_classifier_view selected_view;
 			struct prototype_term_classifier_view candidate_view;
-			unsigned selected_effects;
-			unsigned candidate_effects;
+			struct prototype_effect_row_normal_form selected_effects;
+			struct prototype_effect_row_normal_form candidate_effects;
 			if (classifier_kernel_as_pi(
 					terms,
 					type_declarations,
@@ -613,16 +613,20 @@ static int select_delta_pi_classifier_for_domain(
 					type_declarations,
 					selected_view.result,
 					candidate_view.result
-				).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_closed_bits(
+				).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_normal_form(
 					terms, selected_view.effect_row, &selected_effects
-				) != 0 || prototype_term_effect_row_closed_bits(
+				) != 0 || prototype_term_effect_row_normal_form(
 					terms, candidate_view.effect_row, &candidate_effects
 				) != 0) {
 				return -1;
 			}
-			if ((candidate_effects & selected_effects) == candidate_effects) {
+			if (prototype_term_effect_row_normal_form_includes(
+					&selected_effects, &candidate_effects
+				)) {
 				*selected = candidates[i];
-			} else if ((selected_effects & candidate_effects) != selected_effects) {
+			} else if (!prototype_term_effect_row_normal_form_includes(
+					&candidate_effects, &selected_effects
+				)) {
 				return -1;
 			}
 			(void)selected_domain;

@@ -754,7 +754,7 @@ int prototype_artifact_interface_build_from_metadata(
 		export->namespace_symbol_id = -1;
 		export->name_symbol_id = type_export->name_symbol_id;
 		export->local_type_id = type_export->type_id;
-		export->code_shape_key = type_export->code_shape_key;
+		export->representation_fingerprint = type_export->representation_fingerprint;
 		if (type_export->type_id >= type_declarations->type_count) {
 			return -1;
 		}

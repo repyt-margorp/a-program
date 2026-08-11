@@ -1,5 +1,9 @@
 #include "a_program/frontend/reader.h"
 
+#include "a_program/driver/compiler_session.h"
+#include "a_program/driver/diagnostics.h"
+#include "a_program/graph/operation_runtime.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -100,6 +104,9 @@ static struct prototype_judgement_candidate_premise judgement_candidate_premises
 static struct prototype_judgement_premise_edge judgement_accepted_premises[
 	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 ];
+static struct prototype_usage_entry judgement_resource_usage[
+	JUDGEMENT_CAPACITY * 32
+];
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
@@ -118,29 +125,6 @@ static struct prototype_operation_effect_constraint
 	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
-
-static const char* resolve_error_kind_name(int kind) {
-	switch (kind) {
-		case PROTOTYPE_RESOLVE_ERROR_NAME:
-			return "name";
-		case PROTOTYPE_RESOLVE_ERROR_NAMESPACE:
-			return "namespace";
-		case PROTOTYPE_RESOLVE_ERROR_RECURSIVE:
-			return "recursive";
-		case PROTOTYPE_RESOLVE_ERROR_DUPLICATE_EXPECTATION:
-			return "duplicate-expectation";
-		case PROTOTYPE_RESOLVE_ERROR_DUPLICATE_ASSIGNMENT:
-			return "duplicate-assignment";
-		case PROTOTYPE_RESOLVE_ERROR_AMBIGUOUS_ASSIGNMENT:
-			return "ambiguous-assignment";
-		case PROTOTYPE_RESOLVE_ERROR_DUPLICATE_DEFINITION:
-			return "duplicate-definition";
-		case PROTOTYPE_RESOLVE_ERROR_COMPILE:
-			return "compile";
-		default:
-			return "unknown";
-	}
-}
 
 static const struct prototype_compile_label* lookup_label(
 	const struct prototype_compile_metadata* metadata,
@@ -175,322 +159,6 @@ static void label_evaluation_root(
 	}
 }
 
-static void print_metadata_resolve_errors(
-	FILE* stream,
-	const struct symbol_table* symbols,
-	const struct prototype_compile_metadata* metadata
-) {
-	if (!metadata || metadata->resolve_error_count == 0) {
-		return;
-	}
-	for (size_t i = 0; i < metadata->resolve_error_count; ++i) {
-		const struct prototype_resolve_error* resolve_error = &metadata->resolve_errors[i];
-		fprintf(stream, "metadata resolve-error kind=%s name=%s",
-			resolve_error_kind_name(resolve_error->kind),
-			symbol_to_string(symbols, resolve_error->name_symbol_id));
-		if (resolve_error->member_symbol_id >= 0) {
-			fprintf(stream, ".%s", symbol_to_string(symbols, resolve_error->member_symbol_id));
-		}
-		fprintf(
-			stream,
-			" ast#%u span=%u:%u\n",
-			resolve_error->ast,
-			resolve_error->span.line,
-			resolve_error->span.column
-		);
-	}
-}
-
-static const char* resolution_event_kind_name(int kind) {
-	switch (kind) {
-		case PROTOTYPE_RESOLUTION_EVENT_MATCH_CONSTRUCTOR:
-			return "match-constructor";
-		default:
-			return "unknown";
-	}
-}
-
-static const char* resolution_item_state_name(int state) {
-	switch (state) {
-		case PROTOTYPE_RESOLUTION_ITEM_UNRESOLVED:
-			return "unresolved";
-		case PROTOTYPE_RESOLUTION_ITEM_RESOLVED:
-			return "resolved";
-		case PROTOTYPE_RESOLUTION_ITEM_ERROR:
-			return "error";
-		default:
-			return "unknown";
-	}
-}
-
-static void print_resolution_trace(
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_db* term_db,
-	const struct prototype_compile_metadata* metadata
-) {
-	if (!metadata) {
-		return;
-	}
-	printf(
-		"resolution_items=%zu resolution_iterations=%zu resolution_events=%zu\n",
-		metadata->resolution_item_count,
-		metadata->resolution_iteration_count,
-		metadata->resolution_event_count
-	);
-	for (size_t i = 0; i < metadata->resolution_item_count; ++i) {
-		const struct prototype_resolution_item* item = &metadata->resolution_items[i];
-		printf(
-			"resolution-item item#%u kind=%s state=%s created=%u resolved=%u ast#%u case#%u @%s scrutinee=term#%u",
-			item->id,
-			resolution_event_kind_name(item->kind),
-			resolution_item_state_name(item->state),
-			item->created_iteration,
-			item->resolved_iteration,
-			item->ast,
-			item->case_index,
-			symbol_to_string(symbols, item->symbol_id),
-			item->scrutinee_term
-		);
-		if (item->state == PROTOTYPE_RESOLUTION_ITEM_RESOLVED) {
-			printf(" -> ");
-			if (item->resolved_owner < term_db->term_count) {
-				prototype_term_print_debug(
-					stdout,
-					symbols,
-					type_declarations,
-					term_db,
-					item->resolved_owner
-				);
-			} else {
-				printf("<bad-owner:%u>", item->resolved_owner);
-			}
-			printf(".#%u", item->resolved_id);
-		}
-		printf("\n");
-	}
-	for (size_t i = 0; i < metadata->resolution_iteration_count; ++i) {
-		const struct prototype_resolution_iteration* iteration =
-			&metadata->resolution_iterations[i];
-		printf(
-			"resolution iter=%u unresolved=%zu->%zu events=%zu\n",
-			iteration->iteration,
-			iteration->unresolved_before,
-			iteration->unresolved_after,
-			iteration->event_count
-		);
-		for (size_t j = 0; j < iteration->event_count; ++j) {
-			const struct prototype_resolution_event* event =
-				&metadata->resolution_events[iteration->event_start + j];
-			printf(
-				"resolution-event iter=%u item#%u kind=%s %s->%s ast#%u case#%u @%s scrutinee=term#%u -> ",
-				event->iteration,
-				event->item_id,
-				resolution_event_kind_name(event->kind),
-				resolution_item_state_name(event->from_state),
-				resolution_item_state_name(event->to_state),
-				event->ast,
-				event->case_index,
-				symbol_to_string(symbols, event->symbol_id),
-				event->scrutinee_term
-			);
-			if (event->resolved_owner < term_db->term_count) {
-				prototype_term_print_debug(
-					stdout,
-					symbols,
-					type_declarations,
-					term_db,
-					event->resolved_owner
-				);
-			} else {
-				printf("<bad-owner:%u>", event->resolved_owner);
-			}
-			printf(".#%u\n", event->resolved_id);
-		}
-	}
-}
-
-static void print_type_namespace(
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_type_declaration* type
-) {
-	if (type->parameter_count == 0) {
-		printf("%s", symbol_to_string(symbols, type->name_symbol_id));
-		return;
-	}
-
-	printf("(%s", symbol_to_string(symbols, type->name_symbol_id));
-	for (uint32_t i = 0; i < type->parameter_count; ++i) {
-		const struct prototype_type_parameter_declaration* parameter =
-			&type_declarations->parameter_declarations[type->first_parameter + i];
-		printf(" %s", symbol_to_string(symbols, parameter->name_symbol_id));
-	}
-	printf(")");
-}
-
-static void print_type_expr_debug(
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t type_expr
-) {
-	if (type_expr == PROTOTYPE_INVALID_ID) {
-		printf("UNSPECIFIED_TYPE");
-		return;
-	}
-	if (type_expr >= type_declarations->expr_count) {
-		printf("BAD_TYPE(%u)", type_expr);
-		return;
-	}
-
-	const struct prototype_type_expr* expr = &type_declarations->exprs[type_expr];
-	switch (expr->tag) {
-		case PROTOTYPE_TYPE_EXPR_UNIVERSE:
-			printf("TYPE(%u)", expr->as.universe.level);
-			break;
-		case PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR:
-			printf("TYPE(?u%u)", expr->as.universe_var.level_var);
-			break;
-		case PROTOTYPE_TYPE_EXPR_SELF:
-			printf("SELF");
-			break;
-		case PROTOTYPE_TYPE_EXPR_VAR:
-			printf("VAR(%s#%u)", symbol_to_string(symbols, expr->as.var.symbol_id), expr->as.var.binding_id);
-			break;
-		case PROTOTYPE_TYPE_EXPR_NAME:
-			printf("CONST(%s)", symbol_to_string(symbols, expr->as.name.symbol_id));
-			break;
-		case PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE:
-			printf("IMPORTED_TYPE(%s)", symbol_to_string(symbols, expr->as.imported_type.name.name_symbol_id));
-			break;
-		case PROTOTYPE_TYPE_EXPR_APP:
-			printf("APP(");
-			print_type_expr_debug(symbols, type_declarations, expr->as.app.function);
-			printf(", ");
-			print_type_expr_debug(symbols, type_declarations, expr->as.app.argument);
-			printf(")");
-			break;
-		case PROTOTYPE_TYPE_EXPR_ARROW:
-			printf("ARROW(");
-			print_type_expr_debug(symbols, type_declarations, expr->as.arrow.domain);
-			printf(", ");
-			print_type_expr_debug(symbols, type_declarations, expr->as.arrow.codomain);
-			printf(")");
-			break;
-		case PROTOTYPE_TYPE_EXPR_PI:
-			printf("PI(%s#%u : ",
-				symbol_to_string(symbols, expr->as.pi.symbol_id),
-				expr->as.pi.binding_id);
-			print_type_expr_debug(symbols, type_declarations, expr->as.pi.domain);
-			printf(", ");
-			print_type_expr_debug(symbols, type_declarations, expr->as.pi.codomain);
-			printf(")");
-			break;
-		default:
-			printf("UNKNOWN_TYPE");
-			break;
-	}
-}
-
-static void print_type_declaration(
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_type_declaration* type
-) {
-	printf("type ");
-	print_type_namespace(symbols, type_declarations, type);
-	printf(" constructors=%u\n", type->constructor_count);
-}
-
-static void print_universe_node(
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_universe_db* universe_db,
-	uint32_t node_id
-) {
-	if (node_id >= universe_db->node_count) {
-		printf("universe-node #%u <bad>\n", node_id);
-		return;
-	}
-
-	const struct prototype_universe_node* node = &universe_db->nodes[node_id];
-	printf("universe-node #%u ", node_id);
-	if (node->tag == PROTOTYPE_UNIVERSE_NODE_TYPE) {
-		printf("type ");
-		if (node->type_id < type_declarations->type_count) {
-			print_type_namespace(symbols, type_declarations, &type_declarations->type_declarations[node->type_id]);
-		} else {
-			printf("<bad-type:%u>", node->type_id);
-		}
-	} else if (node->tag == PROTOTYPE_UNIVERSE_NODE_PARAMETER) {
-		printf("parameter %s : ", symbol_to_string(symbols, node->symbol_id));
-		print_type_expr_debug(symbols, type_declarations, node->type_expr);
-	} else {
-		printf("<unknown>");
-	}
-	printf("\n");
-}
-
-static void print_universe_level_ref(uint32_t level_var) {
-	if ((level_var & 0x80000000u) != 0) {
-		printf("level(term#%u)", level_var & ~0x80000000u);
-	} else {
-		printf("?u%u", level_var);
-	}
-}
-
-static void print_universe_graph(
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_universe_db* universe_db
-) {
-	printf(
-		"universe-graph nodes=%zu edges=%zu\n",
-		universe_db->node_count,
-		universe_db->edge_count
-	);
-	for (size_t i = 0; i < universe_db->node_count; ++i) {
-		print_universe_node(symbols, type_declarations, universe_db, (uint32_t)i);
-	}
-	for (size_t i = 0; i < universe_db->edge_count; ++i) {
-		const struct prototype_universe_edge* edge = &universe_db->edges[i];
-		const char* tag = edge->tag == PROTOTYPE_UNIVERSE_EDGE_PARAMETER_TO_TYPE
-			? "parameter-to-type"
-			: "unknown";
-		printf("universe-edge #%zu %s #%u -> #%u\n", i, tag, edge->from_node, edge->to_node);
-	}
-	printf(
-		"universe-levels=%zu universe-constraints=%zu solved=%s\n",
-		universe_db->level_count,
-		universe_db->constraint_count,
-		universe_db->solved ? "yes" : "no"
-	);
-	for (size_t i = 0; i < universe_db->level_count; ++i) {
-		const struct prototype_universe_level* level = &universe_db->levels[i];
-		printf("universe-level ");
-		print_universe_level_ref(level->level_var);
-		printf(" = %d\n", level->value);
-	}
-	for (size_t i = 0; i < universe_db->constraint_count; ++i) {
-		const struct prototype_universe_constraint* constraint = &universe_db->constraints[i];
-		printf("universe-constraint #%zu ", i);
-		print_universe_level_ref(constraint->lower_level_var);
-		printf(" + %d <= ", constraint->offset);
-		print_universe_level_ref(constraint->upper_level_var);
-		printf(
-			" subject=term#%u classifier=term#%u reason=%d source-claim=%u authority=%d:%u source=term#%u:term#%u\n",
-			constraint->subject,
-			constraint->classifier,
-			constraint->reason,
-			constraint->source_claim_id,
-			constraint->source_authority_kind,
-			constraint->source_authority_id,
-			constraint->source_subject,
-			constraint->source_classifier
-		);
-	}
-}
-
 static void print_state(
 	const struct symbol_table* symbols,
 	const struct prototype_ast_db* ast_db,
@@ -516,12 +184,12 @@ static void print_state(
 	);
 	for (size_t i = 0; i < type_declarations->type_count; ++i) {
 		const struct prototype_type_declaration* type = &type_declarations->type_declarations[i];
-		print_type_declaration(symbols, type_declarations, type);
+		prototype_diagnostic_print_type_declaration(stdout, symbols, type_declarations, type);
 		for (uint32_t j = 0; j < type->constructor_count; ++j) {
 			const struct prototype_type_constructor_declaration* constructor =
 				&type_declarations->constructor_declarations[type->first_constructor + j];
 			printf("constructor ");
-			print_type_namespace(symbols, type_declarations, type);
+			prototype_diagnostic_print_type_namespace(stdout, symbols, type_declarations, type);
 			printf(".%s readback_fields=%u curried_classifier_cache=%u\n",
 				symbol_to_string(symbols, constructor->name_symbol_id),
 				constructor->readback.field_count,
@@ -556,7 +224,7 @@ static void print_state(
 		for (size_t i = 0; i < metadata->resolve_error_count; ++i) {
 			const struct prototype_resolve_error* resolve_error = &metadata->resolve_errors[i];
 			printf("metadata resolve-error kind=%s name=%s",
-				resolve_error_kind_name(resolve_error->kind),
+				prototype_diagnostic_resolve_error_kind_name(resolve_error->kind),
 				symbol_to_string(symbols, resolve_error->name_symbol_id));
 			if (resolve_error->member_symbol_id >= 0) {
 				printf(".%s", symbol_to_string(symbols, resolve_error->member_symbol_id));
@@ -570,9 +238,11 @@ static void print_state(
 		}
 	}
 	printf("\n#### Resolution ####\n");
-	print_resolution_trace(symbols, type_declarations, term_db, metadata);
+	prototype_diagnostic_print_resolution_trace(stdout, symbols, type_declarations, term_db, metadata);
 	printf("\n#### Universe ####\n");
-	print_universe_graph(symbols, type_declarations, universe_db);
+	prototype_diagnostic_print_universe_graph(
+		stdout, symbols, type_declarations, universe_db, 0
+	);
 }
 
 static int entry_complete(const char* input) {
@@ -1057,6 +727,11 @@ int main(int argc, char** argv) {
 		judgement_accepted_premises,
 		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	);
+	prototype_judgement_db_set_resource_usage_storage(
+		&judgement_db,
+		judgement_resource_usage,
+		JUDGEMENT_CAPACITY * 32
+	);
 
 	program.symbols = &symbols;
 	program.namespace_symbol_id = -1;
@@ -1089,7 +764,7 @@ int main(int argc, char** argv) {
 				error.column,
 				error.message[0] ? error.message : "graph compile failed"
 			);
-			print_metadata_resolve_errors(stderr, &symbols, &metadata);
+			prototype_diagnostic_print_resolve_errors(stderr, &symbols, &metadata);
 			symbol_table_free(&symbols);
 			return 1;
 		}
@@ -1192,7 +867,7 @@ int main(int argc, char** argv) {
 				error.column,
 				error.message[0] ? error.message : "graph compile failed"
 			);
-			print_metadata_resolve_errors(stderr, &symbols, &metadata);
+			prototype_diagnostic_print_resolve_errors(stderr, &symbols, &metadata);
 		} else {
 			print_state(&symbols, &ast_db, &type_declarations, &term_db, &universe_db, &judgement_db, &metadata);
 		}

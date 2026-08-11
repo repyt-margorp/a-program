@@ -2,11 +2,11 @@
 #include "a_program/identity/types.h"
 #include "a_program/identity/telescope_action.h"
 #include "a_program/identity/context_bridge.h"
-#include "a_program/identity/relation_action.h"
+#include "a_program/parametricity/relation_action.h"
 #include "a_program/identity/action_certificate.h"
 #include "a_program/identity/identity_computation.h"
 #include "a_program/identity/object_term_action.h"
-#include "a_program/identity/action_execution.h"
+#include "a_program/parametricity/execution.h"
 #include "calculus.h"
 
 #include <stdlib.h>
@@ -500,9 +500,9 @@ int prototype_hott_bridge_db_validate(
 	return 0;
 }
 
-void prototype_hott_relation_goal_db_init(
-	struct prototype_hott_relation_goal_db* db,
-	struct prototype_hott_relation_goal* goals,
+void prototype_parametricity_relation_goal_db_init(
+	struct prototype_parametricity_relation_goal_db* db,
+	struct prototype_parametricity_relation_goal* goals,
 	size_t goal_capacity
 ) {
 	if (!db) {
@@ -513,16 +513,16 @@ void prototype_hott_relation_goal_db_init(
 	db->goal_capacity = goal_capacity;
 }
 
-const struct prototype_hott_relation_goal*
-prototype_hott_relation_goal_db_get(
-	const struct prototype_hott_relation_goal_db* db,
+const struct prototype_parametricity_relation_goal*
+prototype_parametricity_relation_goal_db_get(
+	const struct prototype_parametricity_relation_goal_db* db,
 	uint32_t goal_id
 ) {
 	return db && goal_id < db->goal_count ? &db->goals[goal_id] : NULL;
 }
 
 static int hott_relation_goal_is_valid(
-	const struct prototype_hott_relation_goal* goal,
+	const struct prototype_parametricity_relation_goal* goal,
 	uint32_t expected_id,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
@@ -594,8 +594,8 @@ static int hott_relation_goal_is_valid(
 		);
 }
 
-int prototype_hott_relation_goal_db_intern(
-	struct prototype_hott_relation_goal_db* db,
+int prototype_parametricity_relation_goal_db_intern(
+	struct prototype_parametricity_relation_goal_db* db,
 	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
 	int category,
@@ -622,7 +622,7 @@ int prototype_hott_relation_goal_db_intern(
 		prototype_kernel_view_validate(kernel) != 0) {
 		return -1;
 	}
-	struct prototype_hott_relation_goal goal = {
+	struct prototype_parametricity_relation_goal goal = {
 		.id = (uint32_t)db->goal_count,
 		.category = category,
 		.left_carrier_claim_id = left_carrier_claim_id,
@@ -638,7 +638,7 @@ int prototype_hott_relation_goal_db_intern(
 		return -1;
 	}
 	for (uint32_t i = 0; i < db->goal_count; ++i) {
-		const struct prototype_hott_relation_goal* old = &db->goals[i];
+		const struct prototype_parametricity_relation_goal* old = &db->goals[i];
 		if (old->category == category &&
 			old->left_carrier_claim_id == left_carrier_claim_id &&
 			old->right_carrier_claim_id == right_carrier_claim_id &&
@@ -656,8 +656,8 @@ int prototype_hott_relation_goal_db_intern(
 	return 0;
 }
 
-int prototype_hott_relation_goal_db_validate(
-	const struct prototype_hott_relation_goal_db* db,
+int prototype_parametricity_relation_goal_db_validate(
+	const struct prototype_parametricity_relation_goal_db* db,
 	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges
 ) {
@@ -687,8 +687,8 @@ int prototype_hott_relation_goal_db_validate(
 			return -1;
 		}
 		for (uint32_t j = 0; j < i; ++j) {
-			const struct prototype_hott_relation_goal* a = &db->goals[i];
-			const struct prototype_hott_relation_goal* b = &db->goals[j];
+			const struct prototype_parametricity_relation_goal* a = &db->goals[i];
+			const struct prototype_parametricity_relation_goal* b = &db->goals[j];
 			if (a->category == b->category &&
 				a->left_carrier_claim_id == b->left_carrier_claim_id &&
 				a->right_carrier_claim_id == b->right_carrier_claim_id &&
@@ -702,19 +702,19 @@ int prototype_hott_relation_goal_db_validate(
 	return 0;
 }
 
-void prototype_hott_candidate_db_init(
-	struct prototype_hott_candidate_db* db,
-	struct prototype_hott_candidate* candidates,
+void prototype_parametricity_candidate_db_init(
+	struct prototype_parametricity_candidate_db* db,
+	struct prototype_parametricity_candidate* candidates,
 	size_t candidate_capacity,
-	struct prototype_hott_claim_premise* claim_premises,
+	struct prototype_parametricity_claim_premise* claim_premises,
 	size_t claim_premise_capacity,
-	struct prototype_hott_child_edge* child_edges,
+	struct prototype_parametricity_child_edge* child_edges,
 	size_t child_edge_capacity,
-	struct prototype_hott_conversion_premise* conversion_premises,
+	struct prototype_parametricity_conversion_premise* conversion_premises,
 	size_t conversion_premise_capacity,
-	struct prototype_hott_context_certificate_premise* context_certificate_premises,
+	struct prototype_parametricity_context_certificate_premise* context_certificate_premises,
 	size_t context_certificate_premise_capacity,
-	struct prototype_hott_substitution_certificate_premise* substitution_certificate_premises,
+	struct prototype_parametricity_substitution_certificate_premise* substitution_certificate_premises,
 	size_t substitution_certificate_premise_capacity
 ) {
 	if (!db) {
@@ -736,8 +736,8 @@ void prototype_hott_candidate_db_init(
 		substitution_certificate_premise_capacity;
 }
 
-const struct prototype_hott_candidate* prototype_hott_candidate_db_get(
-	const struct prototype_hott_candidate_db* db,
+const struct prototype_parametricity_candidate* prototype_parametricity_candidate_db_get(
+	const struct prototype_parametricity_candidate_db* db,
 	uint32_t candidate_id
 ) {
 	return db && candidate_id < db->candidate_count ?
@@ -745,7 +745,7 @@ const struct prototype_hott_candidate* prototype_hott_candidate_db_get(
 }
 
 static int hott_candidate_add(
-	struct prototype_hott_candidate_db* db,
+	struct prototype_parametricity_candidate_db* db,
 	uint32_t goal_id,
 	int rule,
 	uint32_t* p_candidate_id
@@ -764,7 +764,7 @@ static int hott_candidate_add(
 		return -1;
 	}
 	uint32_t id = (uint32_t)db->candidate_count++;
-	db->candidates[id] = (struct prototype_hott_candidate){
+	db->candidates[id] = (struct prototype_parametricity_candidate){
 		.id = id,
 		.conclusion_goal_id = goal_id,
 		.rule = rule,
@@ -782,7 +782,7 @@ static int hott_candidate_add(
 }
 
 static int hott_candidate_add_conversion(
-	struct prototype_hott_candidate_db* db,
+	struct prototype_parametricity_candidate_db* db,
 	uint32_t candidate_id,
 	int role,
 	uint32_t ordinal,
@@ -794,13 +794,13 @@ static int hott_candidate_add_conversion(
 		!db->conversion_premises || !hott_role_is_valid(role)) {
 		return -1;
 	}
-	struct prototype_hott_candidate* candidate = &db->candidates[candidate_id];
+	struct prototype_parametricity_candidate* candidate = &db->candidates[candidate_id];
 	if (candidate->first_conversion_premise + candidate->conversion_premise_count !=
 		db->conversion_premise_count) {
 		return -1;
 	}
 	db->conversion_premises[db->conversion_premise_count++] =
-		(struct prototype_hott_conversion_premise){
+		(struct prototype_parametricity_conversion_premise){
 			.candidate_id = candidate_id,
 			.role = role,
 			.ordinal = ordinal,
@@ -812,7 +812,7 @@ static int hott_candidate_add_conversion(
 }
 
 static int hott_candidate_add_child(
-	struct prototype_hott_candidate_db* db,
+	struct prototype_parametricity_candidate_db* db,
 	uint32_t candidate_id,
 	uint32_t child_goal_id,
 	int role,
@@ -823,12 +823,12 @@ static int hott_candidate_add_child(
 		!hott_rule_allows_role(db->candidates[candidate_id].rule, role)) {
 		return -1;
 	}
-	struct prototype_hott_candidate* candidate = &db->candidates[candidate_id];
+	struct prototype_parametricity_candidate* candidate = &db->candidates[candidate_id];
 	if (candidate->first_child_edge + candidate->child_edge_count !=
 		db->child_edge_count) {
 		return -1;
 	}
-	db->child_edges[db->child_edge_count++] = (struct prototype_hott_child_edge){
+	db->child_edges[db->child_edge_count++] = (struct prototype_parametricity_child_edge){
 		.candidate_id = candidate_id,
 		.child_goal_id = child_goal_id,
 		.role = role,
@@ -839,7 +839,7 @@ static int hott_candidate_add_child(
 }
 
 static int conversion_premise_is_valid(
-	const struct prototype_hott_conversion_premise* premise,
+	const struct prototype_parametricity_conversion_premise* premise,
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms
 ) {
@@ -860,8 +860,8 @@ static int conversion_premise_is_valid(
 }
 
 static int candidate_slices_are_valid(
-	const struct prototype_hott_candidate_db* db,
-	const struct prototype_hott_candidate* candidate
+	const struct prototype_parametricity_candidate_db* db,
+	const struct prototype_parametricity_candidate* candidate
 ) {
 	return candidate->first_claim_premise + candidate->claim_premise_count <=
 			db->claim_premise_count &&
@@ -878,7 +878,7 @@ static int candidate_slices_are_valid(
 }
 
 static int candidate_cycle_visit(
-	const struct prototype_hott_candidate_db* db,
+	const struct prototype_parametricity_candidate_db* db,
 	uint32_t goal_id,
 	unsigned char* colors,
 	size_t goal_count
@@ -891,12 +891,12 @@ static int candidate_cycle_visit(
 	}
 	colors[goal_id] = 1;
 	for (uint32_t i = 0; i < db->candidate_count; ++i) {
-		const struct prototype_hott_candidate* candidate = &db->candidates[i];
+		const struct prototype_parametricity_candidate* candidate = &db->candidates[i];
 		if (candidate->conclusion_goal_id != goal_id) {
 			continue;
 		}
 		for (uint32_t j = 0; j < candidate->child_edge_count; ++j) {
-			const struct prototype_hott_child_edge* edge =
+			const struct prototype_parametricity_child_edge* edge =
 				&db->child_edges[candidate->first_child_edge + j];
 			if (candidate_cycle_visit(
 					db, edge->child_goal_id, colors, goal_count
@@ -909,9 +909,9 @@ static int candidate_cycle_visit(
 	return 0;
 }
 
-int prototype_hott_candidate_db_validate(
-	const struct prototype_hott_candidate_db* db,
-	const struct prototype_hott_relation_goal_db* goals,
+int prototype_parametricity_candidate_db_validate(
+	const struct prototype_parametricity_candidate_db* db,
+	const struct prototype_parametricity_relation_goal_db* goals,
 	const struct prototype_kernel_view* kernel
 ) {
 	const struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
@@ -940,7 +940,7 @@ int prototype_hott_candidate_db_validate(
 		return -1;
 	}
 	for (uint32_t i = 0; i < db->candidate_count; ++i) {
-		const struct prototype_hott_candidate* candidate = &db->candidates[i];
+		const struct prototype_parametricity_candidate* candidate = &db->candidates[i];
 		if (candidate->id != i || candidate->conclusion_goal_id >= goals->goal_count ||
 			!hott_rule_is_valid(candidate->rule) ||
 			candidate->object_result !=
@@ -956,7 +956,7 @@ int prototype_hott_candidate_db_validate(
 			}
 		}
 		for (uint32_t j = 0; j < candidate->claim_premise_count; ++j) {
-			const struct prototype_hott_claim_premise* edge =
+			const struct prototype_parametricity_claim_premise* edge =
 				&db->claim_premises[candidate->first_claim_premise + j];
 			if (edge->candidate_id != i || !hott_role_is_valid(edge->role) ||
 				!hott_rule_allows_role(candidate->rule, edge->role) ||
@@ -965,7 +965,7 @@ int prototype_hott_candidate_db_validate(
 			}
 		}
 		for (uint32_t j = 0; j < candidate->child_edge_count; ++j) {
-			const struct prototype_hott_child_edge* edge =
+			const struct prototype_parametricity_child_edge* edge =
 				&db->child_edges[candidate->first_child_edge + j];
 			if (edge->candidate_id != i || !hott_role_is_valid(edge->role) ||
 				!hott_rule_allows_role(candidate->rule, edge->role) ||
@@ -974,7 +974,7 @@ int prototype_hott_candidate_db_validate(
 			}
 		}
 		for (uint32_t j = 0; j < candidate->conversion_premise_count; ++j) {
-			const struct prototype_hott_conversion_premise* edge =
+			const struct prototype_parametricity_conversion_premise* edge =
 				&db->conversion_premises[candidate->first_conversion_premise + j];
 			if (edge->candidate_id != i ||
 				!hott_rule_allows_role(candidate->rule, edge->role) ||
@@ -983,7 +983,7 @@ int prototype_hott_candidate_db_validate(
 			}
 		}
 		for (uint32_t j = 0; j < candidate->context_certificate_premise_count; ++j) {
-			const struct prototype_hott_context_certificate_premise* edge =
+			const struct prototype_parametricity_context_certificate_premise* edge =
 				&db->context_certificate_premises[
 					candidate->first_context_certificate_premise + j
 				];
@@ -995,7 +995,7 @@ int prototype_hott_candidate_db_validate(
 		}
 		for (uint32_t j = 0; j < candidate->substitution_certificate_premise_count;
 			++j) {
-			const struct prototype_hott_substitution_certificate_premise* edge =
+			const struct prototype_parametricity_substitution_certificate_premise* edge =
 				&db->substitution_certificate_premises[
 					candidate->first_substitution_certificate_premise + j
 				];
@@ -1042,9 +1042,9 @@ int prototype_hott_candidate_db_validate(
 	return result;
 }
 
-void prototype_hott_work_db_init(
-	struct prototype_hott_work_db* db,
-	struct prototype_hott_work_item* items,
+void prototype_parametricity_work_db_init(
+	struct prototype_parametricity_work_db* db,
+	struct prototype_parametricity_work_item* items,
 	size_t item_capacity
 ) {
 	if (!db) {
@@ -1055,24 +1055,24 @@ void prototype_hott_work_db_init(
 	db->item_capacity = item_capacity;
 }
 
-const struct prototype_hott_work_item* prototype_hott_work_db_get(
-	const struct prototype_hott_work_db* db,
+const struct prototype_parametricity_work_item* prototype_parametricity_work_db_get(
+	const struct prototype_parametricity_work_db* db,
 	uint32_t work_item_id
 ) {
 	return db && work_item_id < db->item_count ? &db->items[work_item_id] : NULL;
 }
 
-int prototype_hott_work_db_validate(
-	const struct prototype_hott_work_db* db,
-	const struct prototype_hott_relation_goal_db* goals,
-	const struct prototype_hott_candidate_db* candidates
+int prototype_parametricity_work_db_validate(
+	const struct prototype_parametricity_work_db* db,
+	const struct prototype_parametricity_relation_goal_db* goals,
+	const struct prototype_parametricity_candidate_db* candidates
 ) {
 	if (!db || !goals || !candidates || db->item_count > db->item_capacity ||
 		(db->item_count != 0 && !db->items)) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < db->item_count; ++i) {
-		const struct prototype_hott_work_item* item = &db->items[i];
+		const struct prototype_parametricity_work_item* item = &db->items[i];
 		if (item->id != i || item->goal_id >= goals->goal_count ||
 			!hott_deterministic_outcome_is_valid(&item->outcome, 1) ||
 			(item->outcome.state == PROTOTYPE_HOTT_WORK_READY &&
@@ -1227,12 +1227,12 @@ static int hott_candidate_rule_for_type_view(
 }
 
 static int hott_plan_add_conversion(
-	struct prototype_hott_relation_goal_db* goals,
-	struct prototype_hott_candidate_db* candidates,
+	struct prototype_parametricity_relation_goal_db* goals,
+	struct prototype_parametricity_candidate_db* candidates,
 	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
 	const struct prototype_term_definition_env* definitions,
-	const struct prototype_hott_relation_goal* goal,
+	const struct prototype_parametricity_relation_goal* goal,
 	uint32_t goal_id,
 	uint32_t context_id,
 	uint32_t carrier,
@@ -1277,7 +1277,7 @@ static int hott_plan_add_conversion(
 		return -1;
 	}
 	uint32_t anchor_goal;
-	if (prototype_hott_relation_goal_db_intern(
+	if (prototype_parametricity_relation_goal_db_intern(
 			goals, kernel, bridges, goal->category,
 			goal->left_carrier_claim_id, goal->right_carrier_claim_id,
 			goal->left_claim_id, goal->left_claim_id, goal->bridge_id, &anchor_goal
@@ -1291,7 +1291,7 @@ static int hott_plan_add_conversion(
 }
 
 static int hott_candidate_add_exposure(
-	struct prototype_hott_candidate_db* candidates,
+	struct prototype_parametricity_candidate_db* candidates,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -1503,11 +1503,11 @@ hott_constructor_derivation_for_claim(
 );
 
 static int hott_plan_add_adt_field_goals(
-	struct prototype_hott_relation_goal_db* goals,
-	struct prototype_hott_candidate_db* candidates,
+	struct prototype_parametricity_relation_goal_db* goals,
+	struct prototype_parametricity_candidate_db* candidates,
 	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
-	const struct prototype_hott_relation_goal* goal,
+	const struct prototype_parametricity_relation_goal* goal,
 	uint32_t candidate_id
 ) {
 	const struct prototype_judgement_db* judgement = kernel->judgement;
@@ -1626,7 +1626,7 @@ static int hott_plan_add_adt_field_goals(
 			return 1;
 		}
 		uint32_t child_goal_id;
-		if (prototype_hott_relation_goal_db_intern(
+		if (prototype_parametricity_relation_goal_db_intern(
 				goals,
 				kernel,
 				bridges,
@@ -1653,10 +1653,10 @@ static int hott_plan_add_adt_field_goals(
 	return 0;
 }
 
-int prototype_hott_relation_plan(
-	struct prototype_hott_relation_goal_db* goals,
-	struct prototype_hott_candidate_db* candidates,
-	struct prototype_hott_work_db* work,
+int prototype_parametricity_relation_plan(
+	struct prototype_parametricity_relation_goal_db* goals,
+	struct prototype_parametricity_candidate_db* candidates,
+	struct prototype_parametricity_work_db* work,
 	const struct prototype_kernel_view* kernel,
 	const struct prototype_hott_bridge_db* bridges,
 	const struct prototype_term_definition_env* definitions,
@@ -1678,8 +1678,8 @@ int prototype_hott_relation_plan(
 		kernel ? kernel->operations : NULL;
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
-	const struct prototype_hott_relation_goal* goal =
-		prototype_hott_relation_goal_db_get(goals, goal_id);
+	const struct prototype_parametricity_relation_goal* goal =
+		prototype_parametricity_relation_goal_db_get(goals, goal_id);
 	if (prototype_kernel_view_validate(kernel) != 0 || !goal || !candidates ||
 		!work || !contexts || !substitutions ||
 		!cwf_certificates || !cwf_certificates || !bridges || !terms ||
@@ -1688,7 +1688,7 @@ int prototype_hott_relation_plan(
 		return -1;
 	}
 	for (uint32_t i = 0; i < work->item_count; ++i) {
-		const struct prototype_hott_work_item* existing = &work->items[i];
+		const struct prototype_parametricity_work_item* existing = &work->items[i];
 		if (existing->goal_id == goal_id &&
 			existing->outcome.normalization_profile == normalization_profile &&
 			existing->outcome.step_limit == step_limit &&
@@ -1729,7 +1729,7 @@ int prototype_hott_relation_plan(
 	)->subject;
 	uint32_t left = prototype_judgement_proposition_get(judgement, left_claim->proposition_id)->subject;
 	uint32_t right = prototype_judgement_proposition_get(judgement, right_claim->proposition_id)->subject;
-	struct prototype_hott_work_item item = {
+	struct prototype_parametricity_work_item item = {
 		.id = (uint32_t)work->item_count,
 		.goal_id = goal_id,
 		.selected_candidate_id = PROTOTYPE_INVALID_ID,
@@ -1936,7 +1936,7 @@ int prototype_hott_relation_plan(
 			goto commit;
 		}
 		uint32_t result_goal;
-		if (prototype_hott_relation_goal_db_intern(
+		if (prototype_parametricity_relation_goal_db_intern(
 				goals, kernel, bridges, PROTOTYPE_HOTT_RELATION_VALUE,
 				result_carrier_claim, result_carrier_claim,
 				left_value_claim, right_value_claim,
@@ -2020,7 +2020,7 @@ int prototype_hott_relation_plan(
 			return -1;
 		}
 		uint32_t computation_goal;
-		if (prototype_hott_relation_goal_db_intern(
+		if (prototype_parametricity_relation_goal_db_intern(
 				goals, kernel, bridges, PROTOTYPE_HOTT_RELATION_COMPUTATION,
 				computation_carrier_claim, computation_carrier_claim,
 				left_computation_claim,
@@ -2069,9 +2069,9 @@ commit:
 	return 0;
 }
 
-void prototype_hott_residual_db_init(
-	struct prototype_hott_residual_db* db,
-	struct prototype_hott_residual_obligation* obligations,
+void prototype_parametricity_residual_db_init(
+	struct prototype_parametricity_residual_db* db,
+	struct prototype_parametricity_residual_obligation* obligations,
 	size_t obligation_capacity
 ) {
 	if (!db) {
@@ -2082,13 +2082,13 @@ void prototype_hott_residual_db_init(
 	db->obligation_capacity = obligation_capacity;
 }
 
-int prototype_hott_residual_db_add_from_work(
-	struct prototype_hott_residual_db* db,
-	const struct prototype_hott_work_db* work,
+int prototype_parametricity_residual_db_add_from_work(
+	struct prototype_parametricity_residual_db* db,
+	const struct prototype_parametricity_work_db* work,
 	uint32_t work_item_id,
 	uint32_t* p_obligation_id
 ) {
-	const struct prototype_hott_work_item* item = prototype_hott_work_db_get(
+	const struct prototype_parametricity_work_item* item = prototype_parametricity_work_db_get(
 		work, work_item_id
 	);
 	if (!db || !p_obligation_id || !db->obligations || !item ||
@@ -2104,7 +2104,7 @@ int prototype_hott_residual_db_add_from_work(
 		}
 	}
 	uint32_t id = (uint32_t)db->obligation_count++;
-	db->obligations[id] = (struct prototype_hott_residual_obligation){
+	db->obligations[id] = (struct prototype_parametricity_residual_obligation){
 		.obligation_id = id,
 		.work_item_id = work_item_id
 	};
@@ -2112,18 +2112,18 @@ int prototype_hott_residual_db_add_from_work(
 	return 0;
 }
 
-int prototype_hott_residual_db_validate(
-	const struct prototype_hott_residual_db* db,
-	const struct prototype_hott_work_db* work
+int prototype_parametricity_residual_db_validate(
+	const struct prototype_parametricity_residual_db* db,
+	const struct prototype_parametricity_work_db* work
 ) {
 	if (!db || !work || db->obligation_count > db->obligation_capacity ||
 		(db->obligation_count != 0 && !db->obligations)) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < db->obligation_count; ++i) {
-		const struct prototype_hott_residual_obligation* obligation =
+		const struct prototype_parametricity_residual_obligation* obligation =
 			&db->obligations[i];
-		const struct prototype_hott_work_item* item = prototype_hott_work_db_get(
+		const struct prototype_parametricity_work_item* item = prototype_parametricity_work_db_get(
 			work, obligation->work_item_id
 		);
 		if (obligation->obligation_id != i || !item ||
@@ -2138,8 +2138,8 @@ int prototype_hott_residual_db_validate(
 	return 0;
 }
 
-int prototype_hott_residual_db_require_artifact_empty(
-	const struct prototype_hott_residual_db* db
+int prototype_parametricity_residual_db_require_artifact_empty(
+	const struct prototype_parametricity_residual_db* db
 ) {
 	return db && db->obligation_count == 0 ? 0 : -1;
 }
