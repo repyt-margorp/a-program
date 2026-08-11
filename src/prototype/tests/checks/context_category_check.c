@@ -829,7 +829,7 @@ int main(void) {
 			int_context,
 			prototype_context_empty(&contexts)
 		) ||
-		prototype_substitution_db_validate_typed(
+		prototype_substitution_db_validate_classifier_coherence(
 			&substitutions, &contexts, &term_db, &type_declarations
 		) != 0) {
 		fprintf(stderr, "categorical substitution law failed\n");
@@ -1026,7 +1026,7 @@ int main(void) {
 				&large_terms, 1000 + LARGE_CONTEXT_DEPTH - 1, &large_variable
 			) != 0 || prototype_context_db_validate(
 				&large_contexts, &large_terms
-			) != 0 || prototype_substitution_db_validate_typed(
+			) != 0 || prototype_substitution_db_validate_classifier_coherence(
 				&large_substitutions,
 				&large_contexts,
 				&large_terms,

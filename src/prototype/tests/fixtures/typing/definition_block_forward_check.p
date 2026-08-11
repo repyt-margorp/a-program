@@ -1,4 +1,4 @@
 {{
 	main := id #1;
-	id := \x : #.Int64 => x;
+	id := \x : #.Int => x;
 }}.main

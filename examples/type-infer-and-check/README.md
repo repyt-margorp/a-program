@@ -1,141 +1,69 @@
-# Type Inference and Checking Test Suite
+# Type Inference and Checking Examples
 
-This directory contains test cases for the type system, organized by the type hierarchy levels documented in `2025-10-05-TYPE-INFER-AND-CHECK.md`.
+This directory is an executable specification of the currently accepted type
+inference and checking boundary. `manifest.tsv` is authoritative. The
+integration runner rejects duplicate entries, missing files, unlisted `.p`
+files, unexpected exit status, unstable diagnostic categories, missing source
+locations, and failed artifact replay.
 
-## Directory Structure
+The levels describe language features, not separate compiler modes:
 
-```
-type-infer-and-check/
-├── level0/          # Primitive types
-├── level1/          # Finite & non-recursive data types
-├── level2/          # Simple inductive types (W-type equivalent)
-└── level3/          # Indexed inductive families (future)
-```
+- `level0`: Universe and Pi formation;
+- `level1`: finite and parameterized non-recursive ADTs;
+- `level2`: structural recursion and induction;
+- `level3`: indexed inductive families, retained as explicit negative
+  boundaries until index refinement is implemented.
 
-## Test Status
+<!-- BEGIN MANIFEST STATUS -->
+| File | Description | Expected result | Diagnostic | Runtime | Artifact replay |
+| --- | --- | --- | --- | --- | --- |
+| `level0/00_universe.p` | Universe and type-level identity | pass | `-` | checked | yes |
+| `level0/01_function.p` | Function types and type-level composition | pass | `-` | checked | yes |
+| `level0/02_dependent.p` | Dependent Pi types | pass | `-` | checked | yes |
+| `level1/00_bool.p` | Boolean elimination | pass | `-` | checked | yes |
+| `level1/01_unit.p` | Unit elimination | pass | `-` | checked | yes |
+| `level1/02_sum.p` | Parameterized sum type | pass | `-` | checked | yes |
+| `level1/03_product.p` | Parameterized product type | pass | `-` | checked | yes |
+| `level1/04_maybe.p` | Parameterized optional type | pass | `-` | checked | yes |
+| `level2/00_nat.p` | Natural-number structural induction | pass | `-` | checked | yes |
+| `level2/01_list.p` | List recursion and append | pass | `-` | checked | yes |
+| `level2/02_tree.p` | Binary-tree recursion | pass | `-` | checked | yes |
+| `level2/03_rose.p` | Nested recursive occurrence through List | expected failure | `unsupported-nested-recursion` | - | no |
+| `level3/00_vec.p` | Length-indexed vectors | expected failure | `unsupported-indexed-family` | - | no |
+| `level3/01_fin.p` | Finite sets indexed by Nat | expected failure | `unsupported-indexed-family` | - | no |
+| `level3/02_eq.p` | Indexed propositional equality declaration | expected failure | `unsupported-indexed-family` | - | no |
+| `level3/03_matrix.p` | Matrices with multiple indices | expected failure | `unsupported-indexed-family` | - | no |
+<!-- END MANIFEST STATUS -->
 
-### Level 0: Primitive Types
+Run the suite from the repository root:
 
-| File | Description | Status |
-|------|-------------|--------|
-| `00_universe.p` | Universe type `@` | ✅ Should pass |
-| `01_function.p` | Simple function types | ✅ Should pass |
-| `02_dependent.p` | Dependent function types (Π-types) | ✅ Should pass |
-
-### Level 1: Finite & Non-recursive Data Types
-
-| File | Description | Status |
-|------|-------------|--------|
-| `00_bool.p` | Boolean type and operations | ✅ Should pass |
-| `01_unit.p` | Unit type | ✅ Should pass |
-| `02_sum.p` | Sum type (Either) | ✅ Should pass |
-| `03_product.p` | Product type (Pair) | ✅ Should pass |
-| `04_maybe.p` | Maybe/Option type | ✅ Should pass |
-
-### Level 2: Simple Inductive Types
-
-| File | Description | Status |
-|------|-------------|--------|
-| `00_nat.p` | Natural numbers with addition | ⚠️ IH implementation in progress |
-| `01_list.p` | Lists with length, append, map | ⚠️ IH implementation in progress |
-| `02_tree.p` | Binary trees with size, height | ⚠️ IH implementation in progress |
-| `03_rose.p` | Rose trees (nested recursion) | ⚠️ IH implementation in progress |
-
-**Current Issue**: Induction hypothesis (`*k` notation) evaluation needs fixing.
-See ongoing work on T_IH_CALL implementation.
-
-### Level 3: Indexed Inductive Families
-
-| File | Description | Status |
-|------|-------------|--------|
-| `00_vec.p` | Length-indexed vectors | ❌ Type checker not implemented |
-| `01_fin.p` | Finite sets | ❌ Type checker not implemented |
-| `02_eq.p` | Propositional equality | ❌ Type checker not implemented |
-| `03_matrix.p` | 2D indexed matrices | ❌ Type checker not implemented |
-
-**Note**: These files demonstrate that the **syntax already supports** indexed inductive families through lambda abstraction. However, the type checker doesn't yet handle:
-- Index unification
-- Dependent pattern matching
-- Index refinement in match branches
-- Motive inference for indexed types
-
-## Running Tests
-
-### Run individual test:
-```bash
-./bin/program examples/type-infer-and-check/level1/00_bool.p
+```sh
+make -f src/prototype/Makefile test-type-infer-and-check
 ```
 
-### Run all tests in a level:
-```bash
-for f in examples/type-infer-and-check/level1/*.p; do
-  echo "Testing $f"
-  ./bin/program "$f"
-done
+Run one source file directly:
+
+```sh
+make -f src/prototype/Makefile reader
+./read_file.out examples/type-infer-and-check/level1/00_bool.p
 ```
 
-### Expected Output
+Passing rows compile from source, publish an artifact, and read the artifact
+graph back through the current wire contract. Expected failures must reach the
+named unsupported boundary and include a source location; they are not treated
+as successful feature tests.
 
-**Passing tests** should output:
-```
-parse ok: N decls
-elab ok: consts=X inds=Y
-passes ok
-eval demo ok: ...
-main => <result>
-```
+Algorithms that close cross-cutting compiler issues remain focused fixtures
+rather than being duplicated in this 16-file progression:
 
-**Failing tests** (Level 3) will show type errors during elaboration.
+- `src/prototype/tests/fixtures/typing/host_expression_evaluator_check.p`
+  checks Host fields, recursive motives, accepted evidence, and artifact replay;
+- `src/prototype/tests/fixtures/typing/recursive_ih_field_identity_check.p`
+  checks exact Match/case/field induction identity;
+- `src/prototype/tests/fixtures/typing/list_map_induction_check.p` and
+  `src/prototype/tests/fixtures/effects/list_map_effect_check.p` check pure and
+  effectful higher-order List mapping; and
+- `src/prototype/tests/fixtures/typing/insertion_sort_check.p` checks nested
+  recursive comparison, branch-sensitive insertion, and complete sorting.
 
-## What Each Level Tests
-
-### Level 0: Foundation
-- Universe hierarchy
-- Function type formation
-- Dependent types (Π-types)
-
-### Level 1: Basic Data Structures
-- Non-recursive algebraic data types
-- Pattern matching without recursion
-- Simple case analysis
-
-### Level 2: Recursion and Induction
-- Recursive data structures
-- Induction hypothesis generation
-- `*k` notation for recursive calls
-- Structural recursion
-
-### Level 3: Advanced Type Features
-- Index-dependent constructors
-- Dependent pattern matching
-- Type-level computation
-- Index refinement
-
-## Development Workflow
-
-1. **Add new test**: Create `.p` file in appropriate level directory
-2. **Update this README**: Add entry to the table
-3. **Test manually**: `./bin/program examples/type-infer-and-check/levelN/XX_name.p`
-4. **Document behavior**: Note whether it passes, fails, or is expected to fail
-
-## Future Work
-
-### Phase 1: Complete Level 2 Support
-- [ ] Fix T_IH_CALL evaluation
-- [ ] Ensure all Level 2 tests pass
-- [ ] Add more complex inductive types
-
-### Phase 2: Implement Level 3 Support
-- [ ] Index unification algorithm
-- [ ] Dependent pattern matching
-- [ ] Index refinement in branches
-- [ ] Motive inference
-
-### Phase 3: Advanced Features
-- [ ] Universe polymorphism
-- [ ] Proof irrelevance
-- [ ] Better error messages for indexed types
-
-## References
-
-See `2025-10-05-TYPE-INFER-AND-CHECK.md` for detailed documentation of the type system design and capabilities.
+They are run by the normal `test-integration` target alongside the manifest.

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 struct prototype_compile_metadata;
+struct prototype_intrinsic_environment;
 struct prototype_term_db;
 struct prototype_type_declaration;
 struct prototype_type_declaration_db;
@@ -11,6 +12,8 @@ struct prototype_universe_db;
 struct symbol_table;
 
 const char* prototype_diagnostic_resolve_error_kind_name(int kind);
+const char* prototype_compile_diagnostic_phase_name(int phase);
+const char* prototype_compile_diagnostic_reason_name(int reason);
 
 void prototype_diagnostic_print_resolve_errors(
 	FILE* stream,
@@ -18,9 +21,15 @@ void prototype_diagnostic_print_resolve_errors(
 	const struct prototype_compile_metadata* metadata
 );
 
+void prototype_diagnostic_print_compile_diagnostics(
+	FILE* stream,
+	const struct prototype_compile_metadata* metadata
+);
+
 void prototype_diagnostic_print_resolution_trace(
 	FILE* stream,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	const struct prototype_compile_metadata* metadata

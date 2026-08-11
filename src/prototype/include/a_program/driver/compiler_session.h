@@ -23,6 +23,7 @@ struct prototype_compile_options {
 /* Driver-owned composition root. Parser APIs receive this object but do not
  * own semantic initialization, system declarations, linking, or solving. */
 struct prototype_program {
+	const struct prototype_intrinsic_environment* intrinsic_environment;
 	struct symbol_table* symbols;
 	int namespace_symbol_id;
 	struct prototype_ast_db* asts;

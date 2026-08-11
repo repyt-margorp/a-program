@@ -509,14 +509,18 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	uint32_t match_term,
 	uint32_t motive,
 	uint32_t case_index,
-	uint32_t field_index
+	uint32_t field_index,
+	const struct prototype_judgement_selected_evidence* context_evidence,
+	uint32_t context_evidence_count
 ) {
 	if (!delta ||
 		!term_has_tag(terms, subject, PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) ||
 		!term_exists(terms, classifier) ||
 		!term_exists(terms, motive) ||
 		match_term >= terms->term_count ||
-		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
+		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH ||
+		context_evidence_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
+		(!context_evidence && context_evidence_count != 0)) {
 		return -1;
 	}
 	struct prototype_judgement_proposition relation = {
@@ -541,5 +545,18 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	proof.rule_data.induction.motive = motive;
 	proof.rule_data.induction.case_index = case_index;
 	proof.rule_data.induction.field_index = field_index;
+	proof.premise_count = context_evidence_count;
+	for (uint32_t i = 0; i < context_evidence_count; ++i) {
+		proof.premises[i].proposition.kind = context_evidence[i].kind;
+		proof.premises[i].proposition.authority_kind =
+			context_evidence[i].authority_kind;
+		proof.premises[i].proposition.authority_id =
+			context_evidence[i].authority_id;
+		proof.premises[i].proposition.context_id = context_evidence[i].context_id;
+		proof.premises[i].proposition.operation_id =
+			context_evidence[i].operation_id;
+		proof.premises[i].proposition.subject = context_evidence[i].subject;
+		proof.premises[i].proposition.classifier = context_evidence[i].classifier;
+	}
 	return add_complete_delta_relation(delta, &relation, &proof);
 }

@@ -1353,6 +1353,25 @@ static int evaluate_steps(
 				}
 
 				uint32_t body = match_case->body;
+				if (term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID) {
+					if (term->as.match.ih_scope_id >= db->ih_scope_count) {
+						return -1;
+					}
+					uint32_t subject_binding = db->ih_scopes[
+						term->as.match.ih_scope_id
+					].scrutinee_binding_id;
+					if (subject_binding != PROTOTYPE_INVALID_ID &&
+						substitute_term(
+							db,
+							type_declarations,
+							body,
+							subject_binding,
+							scrutinee,
+							&body
+						) != 0) {
+						return -1;
+					}
+				}
 				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
 					struct prototype_case_binder binder = db->case_binders[match_case->first_binder + j];
 					if (substitute_term(
@@ -1444,6 +1463,9 @@ static int evaluate_steps(
 				&recursive_match
 			) != 0) {
 				return -1;
+			}
+			if (options.p_induction_hypothesis_reductions) {
+				(*options.p_induction_hypothesis_reductions)++;
 			}
 			return evaluate_steps(
 				db,
@@ -3356,15 +3378,31 @@ static void print_type_head(
 	fprintf(output, "%s", safe_symbol_name(symbols, type_declarations->type_declarations[type_id].name_symbol_id));
 }
 
-static void print_term_depth(
+static void print_term_depth_impl(
 	FILE* output,
 	const struct symbol_table* symbols,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
+	const struct prototype_intrinsic_environment* environment,
+	uint32_t term_id,
+	unsigned depth
+);
+
+#define print_term_depth(output, symbols, type_declarations, terms, term_id, depth) \
+	print_term_depth_impl( \
+		output, symbols, type_declarations, terms, environment, term_id, depth \
+	)
+
+static void print_term_depth_impl(
+	FILE* output,
+	const struct symbol_table* symbols,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_db* terms,
+	const struct prototype_intrinsic_environment* environment,
 	uint32_t term_id,
 	unsigned depth
 ) {
-	if (!output || !symbols || !type_declarations || !terms) {
+	if (!output || !symbols || !environment || !type_declarations || !terms) {
 		return;
 	}
 	if (term_id >= terms->term_count) {
@@ -3390,12 +3428,14 @@ static void print_term_depth(
 			break;
 		case PROTOTYPE_TERM_PURE_PRIMITIVE:
 			fprintf(output, "#.%s", prototype_intrinsic_namespace_source_name(
+				environment,
 				PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
 				term->as.pure_primitive.primitive_id
 			));
 			break;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			fprintf(output, "#.%s", prototype_intrinsic_namespace_source_name(
+				environment,
 				PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 				term->as.effect_operation.operation_id
 			));
@@ -3594,6 +3634,7 @@ static void print_term_depth(
 void prototype_term_print(
 	FILE* output,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	uint32_t term_id
@@ -3601,20 +3642,29 @@ void prototype_term_print(
 	print_term_depth(output, symbols, type_declarations, terms, term_id, 64);
 }
 
-static void print_term_debug_depth(
+#undef print_term_depth
+
+static void print_term_debug_depth_impl(
 	FILE* output,
 	const struct symbol_table* symbols,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
+	const struct prototype_intrinsic_environment* environment,
 	uint32_t term_id,
 	unsigned depth
 );
+
+#define print_term_debug_depth(output, symbols, type_declarations, terms, term_id, depth) \
+	print_term_debug_depth_impl( \
+		output, symbols, type_declarations, terms, environment, term_id, depth \
+	)
 
 static void print_constructor_name(
 	FILE* output,
 	const struct symbol_table* symbols,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
+	const struct prototype_intrinsic_environment* environment,
 	const struct prototype_term* term
 ) {
 	uint32_t type_id;
@@ -3646,15 +3696,16 @@ static void print_constructor_name(
 	fprintf(output, ".%s", safe_symbol_name(symbols, constructor->name_symbol_id));
 }
 
-static void print_term_debug_depth(
+static void print_term_debug_depth_impl(
 	FILE* output,
 	const struct symbol_table* symbols,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
+	const struct prototype_intrinsic_environment* environment,
 	uint32_t term_id,
 	unsigned depth
 ) {
-	if (!output || !symbols || !type_declarations || !terms) {
+	if (!output || !symbols || !environment || !type_declarations || !terms) {
 		return;
 	}
 	if (term_id >= terms->term_count) {
@@ -3680,6 +3731,7 @@ static void print_term_debug_depth(
 			break;
 		case PROTOTYPE_TERM_PURE_PRIMITIVE:
 			fprintf(output, "PURE_PRIMITIVE(%s", prototype_intrinsic_namespace_source_name(
+				environment,
 				PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
 				term->as.pure_primitive.primitive_id
 			));
@@ -3691,6 +3743,7 @@ static void print_term_debug_depth(
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			fprintf(output, "EFFECT_OPERATION(%s)",
 				prototype_intrinsic_namespace_source_name(
+					environment,
 					PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 					term->as.effect_operation.operation_id
 				));
@@ -3703,7 +3756,9 @@ static void print_term_debug_depth(
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			fprintf(output, "CONSTRUCTOR(");
-			print_constructor_name(output, symbols, type_declarations, terms, term);
+			print_constructor_name(
+				output, symbols, type_declarations, terms, environment, term
+			);
 			fprintf(output, ")");
 			break;
 		case PROTOTYPE_TERM_APP:
@@ -3894,9 +3949,12 @@ static void print_term_debug_depth(
 void prototype_term_print_debug(
 	FILE* output,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	uint32_t term_id
 ) {
 	print_term_debug_depth(output, symbols, type_declarations, terms, term_id, 64);
 }
+
+#undef print_term_debug_depth

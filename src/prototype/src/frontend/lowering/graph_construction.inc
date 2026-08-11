@@ -27,6 +27,7 @@ static int create_match_pattern_binders(
 	struct compile_context* ctx,
 	struct match_compile_state* state,
 	const struct prototype_ast_match_case* old_case,
+	uint32_t case_index,
 	uint32_t previous_binder_count,
 	uint32_t previous_ih_scope_count,
 	uint32_t* p_binder_start
@@ -58,6 +59,8 @@ static int create_match_pattern_binders(
 		ctx->ih_scopes[ctx->ih_scope_count].ast_binder_id =
 			ast_binder->ast_binder_id;
 		ctx->ih_scopes[ctx->ih_scope_count].ih_scope_id = state->ih_scope_id;
+		ctx->ih_scopes[ctx->ih_scope_count].case_index = case_index;
+		ctx->ih_scopes[ctx->ih_scope_count].field_index = j;
 		ctx->ih_scope_count++;
 		state->binder_storage[state->binder_cursor + j].binding_id = graph_binder_id;
 	}
@@ -68,6 +71,7 @@ static int prepare_match_pattern_environment(
 	struct compile_context* ctx,
 	struct match_compile_state* state,
 	const struct prototype_ast_match_case* old_case,
+	uint32_t case_index,
 	uint32_t previous_binder_count,
 	uint32_t previous_ih_scope_count,
 	uint32_t* p_binder_start
@@ -76,6 +80,7 @@ static int prepare_match_pattern_environment(
 		ctx,
 		state,
 		old_case,
+		case_index,
 		previous_binder_count,
 		previous_ih_scope_count,
 		p_binder_start
@@ -157,6 +162,7 @@ static int compile_match_branch(
 		ctx,
 		state,
 		old_case,
+		case_index,
 		previous_binder_count,
 		previous_ih_scope_count,
 		&binder_start
@@ -350,7 +356,7 @@ static int compile_ast_match_from_value_with_branch_compiler(
 		struct prototype_operation_node* operation =
 			&ctx->metadata->operations[operation_id];
 		if (operation->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS ||
-			operation->first_case != state.ih_scope_id) {
+			operation->ih_scope_id != state.ih_scope_id) {
 			continue;
 		}
 		if (operation->scrutinee != PROTOTYPE_INVALID_ID &&
@@ -408,6 +414,45 @@ static int type_expr_contains_self(
 		case PROTOTYPE_TYPE_EXPR_PI:
 			return type_expr_contains_self(db, expr->as.pi.domain) ||
 				type_expr_contains_self(db, expr->as.pi.codomain);
+		default:
+			return 0;
+	}
+}
+
+static int ast_type_expr_contains_name(
+	const struct prototype_ast_db* asts,
+	uint32_t expr_id,
+	int name_symbol_id
+) {
+	if (!asts || expr_id >= asts->type_expr_count) {
+		return 0;
+	}
+	const struct prototype_ast_type_expr* expr = &asts->type_exprs[expr_id];
+	switch (expr->tag) {
+		case PROTOTYPE_AST_TYPE_EXPR_NAME:
+			return expr->as.name.symbol_id == name_symbol_id;
+		case PROTOTYPE_AST_TYPE_EXPR_APP:
+			return ast_type_expr_contains_name(
+				asts, expr->as.app.function, name_symbol_id
+			) || ast_type_expr_contains_name(
+				asts, expr->as.app.argument, name_symbol_id
+			);
+		case PROTOTYPE_AST_TYPE_EXPR_ARROW:
+			return ast_type_expr_contains_name(
+				asts, expr->as.arrow.domain, name_symbol_id
+			) || ast_type_expr_contains_name(
+				asts, expr->as.arrow.codomain, name_symbol_id
+			);
+		case PROTOTYPE_AST_TYPE_EXPR_PI:
+			return ast_type_expr_contains_name(
+				asts, expr->as.pi.domain, name_symbol_id
+			) || ast_type_expr_contains_name(
+				asts, expr->as.pi.codomain, name_symbol_id
+			);
+		case PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE:
+			return ast_type_expr_contains_name(
+				asts, expr->as.computation_reference.result, name_symbol_id
+			);
 		default:
 			return 0;
 	}
@@ -602,6 +647,24 @@ static int compile_ast_type_def(
 			int field_symbol_id = ctx->asts->type_field_name_symbol_ids ?
 				ctx->asts->type_field_name_symbol_ids[field_id] :
 				-1;
+			if (ast_type_expr_contains_name(
+					ctx->asts, field_type, ast_type->name_symbol_id
+				)) {
+				(void)add_compile_diagnostic(
+					ctx,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_NESTED_RECURSION,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					ctx->asts->type_exprs[field_type].span
+				);
+				ctx->binder_count = previous_binder_count;
+				ast_type->compiling = 0;
+				return -1;
+			}
 			if (compile_ast_type_expr(ctx, field_type, &compiled_field_types[j]) != 0) {
 				ctx->binder_count = previous_binder_count;
 				ast_type->compiling = 0;
@@ -621,6 +684,23 @@ static int compile_ast_type_def(
 					ctx->type_declarations,
 					compiled_field_types[j]
 			)) {
+				if (type_expr_contains_self(
+						ctx->type_declarations, compiled_field_types[j]
+					) && !type_expr_is_direct_self(
+						ctx->type_declarations, compiled_field_types[j]
+					)) {
+					(void)add_compile_diagnostic(
+						ctx,
+						PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION,
+						PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_NESTED_RECURSION,
+						PROTOTYPE_INVALID_ID,
+						PROTOTYPE_INVALID_ID,
+						PROTOTYPE_INVALID_ID,
+						PROTOTYPE_INVALID_ID,
+						compiled_field_terms[j],
+						ctx->asts->type_exprs[field_type].span
+					);
+				}
 				ctx->binder_count = previous_binder_count;
 				ast_type->compiling = 0;
 				return -1;
@@ -1748,7 +1828,8 @@ static int validate_constructor_occurrence_saturation(
 		for (size_t label_id = 0;
 			label_id < ctx->metadata->label_count;
 			++label_id) {
-			if (ctx->metadata->labels[label_id].operation == i) {
+			if (ctx->metadata->labels[label_id].exposed_operation == i ||
+				ctx->metadata->labels[label_id].body_operation == i) {
 				return -1;
 			}
 		}
@@ -1991,6 +2072,26 @@ static int compile_ast_atomic_ref(
 		}
 		case PROTOTYPE_AST_INT_LITERAL: {
 			uint32_t term;
+			int bit_width = prototype_term_host_type_bit_width(
+				ctx->intrinsic_environment->default_integer_host_type
+			);
+			if ((bit_width == 32 &&
+					(node->as.int_literal.value < INT32_MIN ||
+					 node->as.int_literal.value > INT32_MAX)) ||
+				(bit_width != 32 && bit_width != 64)) {
+				(void)add_compile_diagnostic(
+					ctx,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_INTEGER_LITERAL_RANGE,
+					ast_id,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					node->span
+				);
+				return -1;
+			}
 			if (prototype_term_int_literal(
 					ctx->terms, node->as.int_literal.value, &term
 				) != 0) {
@@ -2039,14 +2140,20 @@ static int compile_ast_atomic_ref(
 		{
 			uint32_t binding_id;
 			uint32_t ih_scope_id;
+			uint32_t ih_case_index;
+			uint32_t ih_field_index;
 			uint32_t argument_term;
 			uint32_t argument_operation;
 			uint32_t ih_term;
 			if (lookup_graph_binder(
 					ctx, node->as.induction_hypothesis.ast_binder_id, &binding_id
 				) != 0 ||
-				lookup_ih_scope_id(
-					ctx, node->as.induction_hypothesis.ast_binder_id, &ih_scope_id
+				lookup_ih_edge(
+					ctx,
+					node->as.induction_hypothesis.ast_binder_id,
+					&ih_scope_id,
+					&ih_case_index,
+					&ih_field_index
 				) != 0 ||
 				prototype_term_var(ctx->terms, binding_id, &argument_term) != 0 ||
 				operation_add(
@@ -2067,12 +2174,22 @@ static int compile_ast_atomic_ref(
 			p_ret->classifier = PROTOTYPE_INVALID_ID;
 			p_ret->category = PROTOTYPE_TERM_CATEGORY_INVALID;
 			p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
-			return operation_add(
+			if (operation_add(
 				ctx, PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS, ih_term,
 				PROTOTYPE_INVALID_ID, ast_id, PROTOTYPE_INVALID_ID,
 				argument_operation, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
-				PROTOTYPE_INVALID_ID, ih_scope_id, 0, &p_ret->operation
-			);
+				PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, 0, &p_ret->operation
+			) != 0) {
+				return -1;
+			}
+			struct prototype_operation_node* ih_operation =
+				&ctx->metadata->operations[p_ret->operation];
+			ih_operation->referenced_ast_binder_id =
+				node->as.induction_hypothesis.ast_binder_id;
+			ih_operation->ih_scope_id = ih_scope_id;
+			ih_operation->ih_case_index = ih_case_index;
+			ih_operation->ih_field_index = ih_field_index;
+			return 0;
 		}
 		case PROTOTYPE_AST_VAR: {
 			const struct local_ref_map_entry* local = lookup_local_ref(
@@ -4901,6 +5018,95 @@ static int constructor_telescope_field_classifier(
 	);
 }
 
+/* Once the outer scrutinee classifier is known, an otherwise impossible
+ * sibling label can still be recognized as a constructor of an earlier case
+ * body. This is the typed evidence for the missing-parentheses diagnostic; it
+ * does not re-associate or reinterpret the parsed AST. */
+static int diagnose_nested_match_grouping(
+	struct compile_context* ctx,
+	const struct pending_match_resolution* resolution,
+	const struct prototype_resolution_item* item,
+	uint32_t outer_scrutinee_classifier
+) {
+	if (!ctx || !resolution || !item || item->ast >= ctx->asts->node_count ||
+		ctx->asts->nodes[item->ast].tag != PROTOTYPE_AST_MATCH) {
+		return -1;
+	}
+	const struct prototype_ast_node* source_match = &ctx->asts->nodes[item->ast];
+	if (item->case_index >= source_match->as.match.case_count ||
+		source_match->as.match.first_case + item->case_index >=
+			ctx->asts->case_count) {
+		return -1;
+	}
+	uint32_t match_operation_id = PROTOTYPE_INVALID_ID;
+	const struct prototype_operation_node* match_operation = NULL;
+	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
+		const struct prototype_operation_node* candidate =
+			&ctx->metadata->operations[i];
+		if (candidate->tag == PROTOTYPE_OPERATION_MATCH &&
+			candidate->source_ast == item->ast &&
+			candidate->core_term == resolution->match_term) {
+			match_operation_id = i;
+			match_operation = candidate;
+			break;
+		}
+	}
+	if (!match_operation || item->case_index > match_operation->case_count ||
+		match_operation->first_case + item->case_index >
+			ctx->metadata->operation_case_count) {
+		return 0;
+	}
+	for (uint32_t prior = item->case_index; prior > 0; --prior) {
+		uint32_t case_index = prior - 1;
+		const struct prototype_operation_match_case* operation_case =
+			&ctx->metadata->operation_cases[
+				match_operation->first_case + case_index
+			];
+		if (operation_case->body_operation >= ctx->metadata->operation_count) {
+			return -1;
+		}
+		const struct prototype_operation_node* body_operation =
+			&ctx->metadata->operations[operation_case->body_operation];
+		uint32_t body_classifier = operation_available_classifier(body_operation);
+		if (body_classifier == PROTOTYPE_INVALID_ID &&
+			body_operation->tag == PROTOTYPE_OPERATION_RETURN &&
+			body_operation->argument < ctx->metadata->operation_count) {
+			/* Surface Match branches are computation positions. The implicit
+			 * RETURN is not the nested elimination scrutinee; its value is. */
+			body_classifier = operation_available_classifier(
+				&ctx->metadata->operations[body_operation->argument]
+			);
+		}
+		struct prototype_match_constructor_resolution nested_constructor;
+		if (body_classifier == PROTOTYPE_INVALID_ID ||
+			prototype_judgement_resolve_match_constructor(
+				ctx->terms,
+				ctx->type_declarations,
+				&ctx->metadata->contexts,
+				body_classifier,
+				resolution->constructor_symbol_id,
+				&nested_constructor
+			) != 0) {
+			continue;
+		}
+		const struct prototype_ast_match_case* source_case = &ctx->asts->cases[
+			source_match->as.match.first_case + item->case_index
+		];
+		return add_compile_diagnostic(
+			ctx,
+			PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION,
+			PROTOTYPE_COMPILE_DIAGNOSTIC_NESTED_MATCH_GROUPING,
+			item->ast,
+			match_operation_id,
+			PROTOTYPE_INVALID_ID,
+			body_classifier,
+			outer_scrutinee_classifier,
+			source_case->span
+		) == 0 ? 1 : -1;
+	}
+	return 0;
+}
+
 static int compile_phase_resolve_pending_match_items(struct compile_context* ctx) {
 	if (!ctx) {
 		return -1;
@@ -4940,15 +5146,44 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				scrutinee_classifier,
 				resolution->constructor_symbol_id,
 				&resolved
-			) != 0 ||
-			prototype_term_resolve_match_case(
+			) != 0) {
+			int diagnostic_status = diagnose_nested_match_grouping(
+				ctx, resolution, item, scrutinee_classifier
+			);
+			(void)diagnostic_status;
+			return -1;
+		}
+		for (uint32_t previous_id = 0;
+			previous_id < ctx->metadata->resolution_item_count;
+			++previous_id) {
+			const struct prototype_resolution_item* previous =
+				&ctx->metadata->resolution_items[previous_id];
+			if (previous_id == resolution->item_id ||
+				previous->state != PROTOTYPE_RESOLUTION_ITEM_RESOLVED ||
+				previous->ast != item->ast ||
+				previous->match_term != resolution->match_term ||
+				previous->resolved_owner == PROTOTYPE_INVALID_ID ||
+				prototype_judgement_classifier_conversion(
+					ctx->terms,
+					ctx->type_declarations,
+					previous->resolved_owner,
+					resolved.constructor_owner
+				).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+				continue;
+			}
+			int diagnostic_status = diagnose_nested_match_grouping(
+				ctx, resolution, item, scrutinee_classifier
+			);
+			(void)diagnostic_status;
+			return -1;
+		}
+		if (prototype_term_resolve_match_case(
 				ctx->terms,
 				resolution->match_term,
 				item->case_index,
 				resolved.constructor_owner,
 				resolved.constructor_id
-			) != 0 ||
-			resolve_match_constructor_resolution_item(
+			) != 0 || resolve_match_constructor_resolution_item(
 				ctx,
 				resolution->item_id,
 				resolution->match_term,
@@ -5365,8 +5600,9 @@ static int operation_solver_bind(
 }
 
 /* Merge two returning-computation classifier equations into one monotone
- * solver representative. A closed row discharges unresolved row atoms at this
- * occurrence; known operation labels are accumulated. This is solver-local
+ * solver representative. Every row atom is retained: in particular, a
+ * quantified row captured from a higher-order argument is not an elaboration
+ * metavariable and a pure equation cannot discharge it. This is solver-local
  * refinement and does not make effect-row union a global Term reduction. */
 static int operation_solver_merge_computation_classifiers(
 	struct compile_context* ctx,
@@ -5404,34 +5640,12 @@ static int operation_solver_merge_computation_classifiers(
 	}
 	struct prototype_effect_row_normal_form merged;
 	memset(&merged, 0, sizeof(merged));
-	int before_has_variable = 0;
-	int after_has_variable = 0;
-	for (uint32_t i = 0; i < before_row.atom_count; ++i) {
-		before_has_variable = before_has_variable ||
-			(before_row.atoms[i] < ctx->terms->term_count &&
-			 ctx->terms->terms[before_row.atoms[i]].tag ==
-				PROTOTYPE_TERM_EFFECT_ROW_VAR);
-	}
-	for (uint32_t i = 0; i < after_row.atom_count; ++i) {
-		after_has_variable = after_has_variable ||
-			(after_row.atoms[i] < ctx->terms->term_count &&
-			 ctx->terms->terms[after_row.atoms[i]].tag ==
-				PROTOTYPE_TERM_EFFECT_ROW_VAR);
-	}
-	/* A ground equation discharges row variables on the other side. Stable
-	 * operation atoms are always retained. */
 	struct prototype_effect_row_normal_form* rows[2] = {
 		&before_row, &after_row
 	};
 	for (uint32_t row_index = 0; row_index < 2; ++row_index) {
 		for (uint32_t i = 0; i < rows[row_index]->atom_count; ++i) {
 			uint32_t candidate_atom = rows[row_index]->atoms[i];
-			int is_variable = candidate_atom < ctx->terms->term_count &&
-				ctx->terms->terms[candidate_atom].tag ==
-					PROTOTYPE_TERM_EFFECT_ROW_VAR;
-			if (is_variable && !(before_has_variable && after_has_variable)) {
-				continue;
-			}
 			int found = 0;
 			for (uint32_t j = 0; j < merged.atom_count; ++j) {
 				if (merged.atoms[j] == candidate_atom) {
@@ -5655,62 +5869,6 @@ static int operation_solver_widen_continuation_binding(
 	return operation_solver_enqueue_dependents(ctx, operation);
 }
 
-static int operation_solver_specialize_integer_literal(
-	struct compile_context* ctx,
-	uint32_t function_classifier,
-	uint32_t argument_operation,
-	uint32_t* p_argument_classifier,
-	int* p_changed
-) {
-	uint32_t whnf;
-	uint32_t domain;
-	if (!ctx || !p_argument_classifier || !p_changed ||
-		argument_operation >= ctx->metadata->operation_count ||
-		function_classifier == PROTOTYPE_INVALID_ID) {
-		return -1;
-	}
-	const struct prototype_operation_node* argument =
-		&ctx->metadata->operations[argument_operation];
-	if (argument->core_term >= ctx->terms->term_count ||
-		ctx->terms->terms[argument->core_term].tag != PROTOTYPE_TERM_INT_LITERAL ||
-		prototype_term_normalize_complete_with_profile(
-			ctx->terms,
-			ctx->type_declarations,
-			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-			function_classifier,
-			&whnf
-		) != 0 || whnf >= ctx->terms->term_count ||
-		ctx->terms->terms[whnf].tag != PROTOTYPE_TERM_PI) {
-		return 0;
-	}
-	domain = ctx->terms->terms[whnf].as.pi.domain;
-	if (domain >= ctx->terms->term_count ||
-		(ctx->terms->terms[domain].tag != PROTOTYPE_TERM_PRIMITIVE_INT &&
-		 ctx->terms->terms[domain].tag != PROTOTYPE_TERM_PRIMITIVE_INT64) ||
-		(ctx->terms->terms[domain].tag == PROTOTYPE_TERM_PRIMITIVE_INT &&
-			(ctx->terms->terms[argument->core_term].as.int_literal.value < INT32_MIN ||
-			 ctx->terms->terms[argument->core_term].as.int_literal.value > INT32_MAX))) {
-		return 0;
-	}
-	uint32_t previous =
-		ctx->classifier_solver.solutions[argument_operation].classifier;
-	if (previous != domain) {
-		/* Literal typing is an unresolved overload choice, not a conversion
-		 * between Int and Int64. This is the sole solver rule allowed to
-		 * replace its provisional default classifier. */
-		operation_solver_store_classifier_solution(
-			ctx, argument_operation, domain
-		);
-		*p_changed = 1;
-		if (operation_solver_enqueue_dependents(ctx, argument_operation) != 0) {
-			return -1;
-		}
-	}
-	*p_argument_classifier = domain;
-	return 0;
-}
-
 static uint32_t operation_solver_classifier(
 	const struct compile_context* ctx,
 	uint32_t operation
@@ -5743,6 +5901,12 @@ static uint32_t operation_solver_classifier(
 /* Solve a constructor APP from its dependent telescope. The curried cache is
  * used only to describe a residual, under-applied builder; a saturated value's
  * classifier is reindexed directly from the authoritative result schema. */
+enum operation_solver_constructor_spine_status {
+	OPERATION_SOLVER_CONSTRUCTOR_SPINE_SOLVED = 0,
+	OPERATION_SOLVER_CONSTRUCTOR_SPINE_WAITING = 1,
+	OPERATION_SOLVER_CONSTRUCTOR_SPINE_CONTRADICTION = 2
+};
+
 static int operation_solver_constructor_spine_classifier(
 	struct compile_context* ctx,
 	uint32_t operation_id,
@@ -5790,7 +5954,7 @@ static int operation_solver_constructor_spine_classifier(
 		argument_classifiers[i] = argument_classifier;
 	}
 	int saturated;
-	return prototype_judgement_constructor_spine_classifier(
+	int status = prototype_judgement_constructor_spine_classifier(
 		ctx->terms,
 		ctx->type_declarations,
 		&ctx->metadata->contexts,
@@ -5803,7 +5967,18 @@ static int operation_solver_constructor_spine_classifier(
 		p_classifier,
 		&saturated
 	);
+	if (status == PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_DOMAIN_MISMATCH) {
+		return OPERATION_SOLVER_CONSTRUCTOR_SPINE_CONTRADICTION;
+	}
+	return status;
 }
+
+static int operation_solver_join_match_classifiers(
+	struct compile_context* ctx,
+	uint32_t left,
+	uint32_t right,
+	uint32_t* p_joined
+);
 
 static int operation_solver_seed_motive(
 	struct compile_context* ctx,
@@ -5866,7 +6041,7 @@ static int operation_solver_seed_motive(
 				&ctx->classifier_solver.constraints[constraint_id];
 			if (constraint->kind != OPERATION_CONSTRAINT_IH_EXPECTED ||
 				constraint->classifier_variable >= ctx->metadata->operation_count ||
-				ctx->metadata->operations[constraint->classifier_variable].first_case !=
+				ctx->metadata->operations[constraint->classifier_variable].ih_scope_id !=
 					ih_scope) {
 				continue;
 			}
@@ -5876,9 +6051,23 @@ static int operation_solver_seed_motive(
 		}
 		return 0;
 	}
-	return (prototype_judgement_classifier_conversion(
-		ctx->terms, ctx->type_declarations, previous, classifier
-	).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ? 0 : -1;
+	uint32_t joined;
+	int join_status = operation_solver_join_match_classifiers(
+		ctx, previous, classifier, &joined
+	);
+	if (join_status != 0) {
+		return join_status < 0 ? -1 : 1;
+	}
+	if (prototype_judgement_classifier_conversion(
+			ctx->terms, ctx->type_declarations, previous, joined
+		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		ctx->classifier_solver.motive_constant_candidates[operation] = joined;
+		*p_changed = 1;
+		if (operation_solver_enqueue_dependents(ctx, operation) != 0) {
+			return -1;
+		}
+	}
+	return 0;
 }
 
 static int operation_solver_set_ih_motive_application(
@@ -5894,17 +6083,29 @@ static int operation_solver_set_ih_motive_application(
 		argument_operation >= ctx->metadata->operation_count) {
 		return -1;
 	}
+	struct prototype_operation_graph graph;
+	struct prototype_operation_induction_edge edge;
+	prototype_compile_metadata_operation_graph_const(ctx->metadata, &graph);
+	if (prototype_operation_graph_induction_edge(
+			&graph, ctx->terms, operation, &edge
+		) != 0 || edge.owner_match_operation != motive_operation ||
+		edge.argument_operation != argument_operation) {
+		return -1;
+	}
 	uint32_t previous =
 		ctx->classifier_solver.ih_motive_application_ids[operation];
 	if (previous == PROTOTYPE_INVALID_ID) {
 		if (ctx->classifier_solver.motive_application_count >= 4096) {
 			return -1;
 		}
-		uint32_t scope_frame = ctx->metadata->operations[operation].first_case;
 		ctx->classifier_solver.motive_applications[
 			ctx->classifier_solver.motive_application_count
 		] = (struct operation_solver_motive_application){
-			motive_operation, argument_operation, scope_frame
+			motive_operation,
+			argument_operation,
+			edge.scope_id,
+			edge.case_index,
+			edge.field_index
 		};
 		ctx->classifier_solver.ih_motive_application_ids[operation] =
 			ctx->classifier_solver.motive_application_count++;
@@ -5917,7 +6118,10 @@ static int operation_solver_set_ih_motive_application(
 	const struct operation_solver_motive_application* application =
 		&ctx->classifier_solver.motive_applications[previous];
 	return application->motive_operation == motive_operation &&
-		application->argument_operation == argument_operation ? 0 : -1;
+		application->argument_operation == argument_operation &&
+		application->scope_frame == edge.scope_id &&
+		application->case_index == edge.case_index &&
+		application->field_index == edge.field_index ? 0 : -1;
 }
 
 static int operation_solver_add_input_fact(
@@ -6152,12 +6356,22 @@ static int operation_solver_validate_classifier_goal(
 				motive->ih_scope_id == match->as.match.ih_scope_id ? 0 : -1;
 		}
 		case OPERATION_CONSTRAINT_IH_EXPECTED:
-			return operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS &&
+		{
+			struct prototype_operation_graph graph;
+			struct prototype_operation_induction_edge edge;
+			prototype_compile_metadata_operation_graph_const(ctx->metadata, &graph);
+			return prototype_operation_graph_induction_edge(
+					&graph, ctx->terms, goal->classifier_variable, &edge
+				) == 0 &&
+				goal->payload.induction_hypothesis.owner_match_operation ==
+					edge.owner_match_operation &&
 				goal->payload.induction_hypothesis.recursive_argument_operation ==
-					operation->argument && operation->argument <
-					ctx->metadata->operation_count &&
-				goal->payload.induction_hypothesis.ih_scope_id ==
-					operation->first_case ? 0 : -1;
+					edge.argument_operation &&
+				goal->payload.induction_hypothesis.ih_scope_id == edge.scope_id &&
+				goal->payload.induction_hypothesis.case_index == edge.case_index &&
+				goal->payload.induction_hypothesis.field_index == edge.field_index ?
+				0 : -1;
+		}
 		case OPERATION_CONSTRAINT_CBPV_BOUNDARY:
 			return (operation->tag == PROTOTYPE_OPERATION_RETURN ||
 					operation->tag == PROTOTYPE_OPERATION_THUNK ||
@@ -6207,8 +6421,28 @@ static int operation_solver_index_constraints(struct compile_context* ctx) {
 	for (uint32_t i = 0; i < ctx->classifier_solver.constraint_count; ++i) {
 		const struct operation_classifier_constraint* constraint =
 			&ctx->classifier_solver.constraints[i];
-		if (constraint->id != i ||
-			operation_solver_validate_classifier_goal(ctx, constraint) != 0) {
+		if (constraint->id != i) {
+			return -1;
+		}
+		if (operation_solver_validate_classifier_goal(ctx, constraint) != 0) {
+			if (constraint->kind == OPERATION_CONSTRAINT_IH_EXPECTED &&
+				constraint->source_operation < ctx->metadata->operation_count) {
+				const struct prototype_operation_node* operation =
+					&ctx->metadata->operations[constraint->source_operation];
+				(void)add_compile_diagnostic(
+					ctx,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_IH_OWNERSHIP,
+					operation->source_ast,
+					constraint->source_operation,
+					constraint->id,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					operation->source_ast < ctx->asts->node_count ?
+						ctx->asts->nodes[operation->source_ast].span :
+						(struct prototype_source_span) { 0, 0 }
+				);
+			}
 			return -1;
 		}
 		if (operation_solver_add_constraint_dependency(

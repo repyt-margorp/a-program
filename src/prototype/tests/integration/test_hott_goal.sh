@@ -105,7 +105,17 @@ fi
 
 make reader >/dev/null
 ./read_file.out --read-interface "$identity_artifact" >/dev/null
-./read_file.out --read-graph "$identity_artifact" >/dev/null
+cwf_inspection=/tmp/a-program-hott-cwf-inspection.out
+./read_file.out --read-graph "$identity_artifact" >"$cwf_inspection"
+grep -q '^#### Static Context and Substitution ####$' "$cwf_inspection"
+grep -Eq '^context#[1-9][0-9]* parent=context#[0-9]+ depth=[1-9][0-9]* binding=binding#[0-9]+ classifier=term#[0-9]+$' \
+	"$cwf_inspection"
+grep -Eq '^substitution#[0-9]+ kind=extend .* evidence=claim#[0-9]+$' \
+	"$cwf_inspection"
+grep -Eq '^  core-value term#[0-9]+ = ' "$cwf_inspection"
+grep -q '^#### Runtime Environment Boundary ####$' "$cwf_inspection"
+grep -Eq '^intrinsic-environment fingerprint=[1-9][0-9]* default-integer=#\.Int32$' \
+	"$cwf_inspection"
 forged_source_artifact=/tmp/a-program-hott-forged-identity-source.apo
 awk '
 	$1 == "identity_root" && $2 == 0 { $3 = $4 }
@@ -189,6 +199,48 @@ awk '
 if ./read_file.out --read-graph "$forged_substitution_classifier_artifact" \
 	>/dev/null 2>&1; then
 	echo "artifact reader accepted a forged identity substitution classifier" >&2
+	exit 1
+fi
+forged_missing_substitution_evidence_artifact=\
+/tmp/a-program-hott-forged-missing-substitution-evidence.apo
+awk '
+	!changed && $1 == "substitution" && $3 == 4 {
+		$10 = 4294967295
+		changed = 1
+	}
+	{ print }
+	END { if (!changed) exit 1 }
+' "$identity_artifact" >"$forged_missing_substitution_evidence_artifact"
+if ./read_file.out --read-graph "$forged_missing_substitution_evidence_artifact" \
+	>/dev/null 2>&1; then
+	echo "artifact reader accepted EXTEND without its exact evidence Claim" >&2
+	exit 1
+fi
+forged_substitution_claim_classifier_artifact=\
+/tmp/a-program-hott-forged-substitution-claim-classifier.apo
+awk '
+	FNR == NR {
+		if ($1 == "claim") {
+			claim_proposition[$2] = $4
+		}
+		if (!found && $1 == "substitution" && $3 == 4) {
+			target_claim = $10
+			target_proposition = claim_proposition[target_claim]
+			found = 1
+		}
+		next
+	}
+	$1 == "proposition" && $2 == target_proposition && !changed {
+		$9 = $9 == 2 ? 3 : 2
+		changed = 1
+	}
+	{ print }
+	END { if (!found || !changed) exit 1 }
+' "$identity_artifact" "$identity_artifact" \
+	>"$forged_substitution_claim_classifier_artifact"
+if ./read_file.out --read-graph "$forged_substitution_claim_classifier_artifact" \
+	>/dev/null 2>&1; then
+	echo "artifact reader accepted an EXTEND Claim with a forged classifier" >&2
 	exit 1
 fi
 forged_proof_kind_artifact=/tmp/a-program-hott-forged-proof-kind.apo

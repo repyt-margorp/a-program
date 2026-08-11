@@ -143,6 +143,7 @@ int prototype_judgement_delta_generate_computation_constraints(
 void prototype_judgement_print(
 	FILE* output,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement

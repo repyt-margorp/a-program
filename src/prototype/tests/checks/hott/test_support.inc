@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v71.h"
+#include "a_program/artifact/wire_v72.h"
 #include "a_program/graph/operation_usage.h"
 #include "a_program/identity/types.h"
 #include "a_program/identity/telescope_action.h"
@@ -111,18 +111,20 @@ static int fixture_operation_usage_provider(
 	return 0;
 }
 
-static int write_identity_root_artifact(
+static int write_identity_root_artifact_with_environment(
 	const char* path,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* term_db,
 	const struct prototype_type_declaration_db* type_db,
 	const struct prototype_judgement_db* judgement,
+	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_context_db* context_db,
 	const struct prototype_substitution_db* substitution_db,
 	const struct prototype_operation_graph* operation_graph
 ) {
-	if (!path || !interface || !term_db || !type_db || !judgement || !context_db ||
-		!substitution_db || !operation_graph) {
+	if (!path || !intrinsic_environment || !interface || !term_db || !type_db || !judgement ||
+		!cwf_certificates || !context_db || !substitution_db || !operation_graph) {
 		return -1;
 	}
 	int symbol_ids[1024];
@@ -211,13 +213,22 @@ static int write_identity_root_artifact(
 		symbol_table_free(&symbols);
 		return -1;
 	}
+	struct prototype_artifact_interface write_interface = *interface;
+	write_interface.intrinsic_environment_fingerprint =
+		prototype_intrinsic_environment_fingerprint(
+			intrinsic_environment
+		);
+	write_interface.default_integer_host_type =
+		intrinsic_environment->default_integer_host_type;
 	int status = prototype_artifact_write_text(
 		stream,
 		&symbols,
-		interface,
+		intrinsic_environment,
+		&write_interface,
 		term_db,
 		type_db,
 		judgement,
+		cwf_certificates,
 		&universe,
 		NULL,
 		&metadata
@@ -246,6 +257,182 @@ static int write_identity_root_artifact(
 		status = -1;
 	}
 	symbol_table_free(&symbols);
+	return status;
+}
+
+static int write_identity_root_artifact(
+	const char* path,
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_term_db* term_db,
+	const struct prototype_type_declaration_db* type_db,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_cwf_certificate_db* cwf_certificates,
+	const struct prototype_context_db* context_db,
+	const struct prototype_substitution_db* substitution_db,
+	const struct prototype_operation_graph* operation_graph
+) {
+	return write_identity_root_artifact_with_environment(
+		path,
+		prototype_default_intrinsic_environment(),
+		interface,
+		term_db,
+		type_db,
+		judgement,
+		cwf_certificates,
+		context_db,
+		substitution_db,
+		operation_graph
+	);
+}
+
+static int fixture_int64_intrinsic_environment(
+	struct prototype_intrinsic_namespace_binding* bindings,
+	size_t binding_capacity,
+	struct prototype_intrinsic_environment* p_environment
+) {
+	const struct prototype_intrinsic_environment* base =
+		prototype_default_intrinsic_environment();
+	if (!bindings || !p_environment ||
+		base->namespace_binding_count > binding_capacity) {
+		return -1;
+	}
+	memcpy(
+		bindings,
+		base->namespace_bindings,
+		base->namespace_binding_count * sizeof(*bindings)
+	);
+	int found = 0;
+	for (size_t i = 0; i < base->namespace_binding_count; ++i) {
+		if (strcmp(bindings[i].source_name, "Int") == 0) {
+			bindings[i].target_id = PROTOTYPE_HOST_TYPE_INT64;
+			found = 1;
+		}
+	}
+	*p_environment = (struct prototype_intrinsic_environment) {
+		.namespace_bindings = bindings,
+		.namespace_binding_count = base->namespace_binding_count,
+		.pure_primitives = base->pure_primitives,
+		.pure_primitive_count = base->pure_primitive_count,
+		.effect_operations = base->effect_operations,
+		.effect_operation_count = base->effect_operation_count,
+		.default_integer_host_type = PROTOTYPE_HOST_TYPE_INT64
+	};
+	return found ? 0 : -1;
+}
+
+static int fixture_artifact_interface_environment_round_trip(
+	const char* path,
+	const struct prototype_intrinsic_environment* accepted_environment,
+	const struct prototype_intrinsic_environment* rejected_environment,
+	const struct prototype_artifact_interface* shape
+) {
+	if (!path || !accepted_environment || !rejected_environment || !shape) {
+		return -1;
+	}
+#define FIXTURE_ALLOC(type, name, capacity) \
+	struct type* name = calloc((capacity) == 0 ? 1 : (capacity), sizeof(*name))
+	FIXTURE_ALLOC(
+		prototype_artifact_term_export,
+		term_exports,
+		shape->term_export_capacity
+	);
+	FIXTURE_ALLOC(
+		prototype_artifact_type_export,
+		type_exports,
+		shape->type_export_capacity
+	);
+	FIXTURE_ALLOC(
+		prototype_artifact_type_parameter_export,
+		type_parameters,
+		shape->type_parameter_capacity
+	);
+	FIXTURE_ALLOC(
+		prototype_artifact_constructor_export,
+		constructor_exports,
+		shape->constructor_export_capacity
+	);
+	uint32_t* field_type_exprs = calloc(
+		shape->constructor_field_type_expr_capacity == 0 ? 1 :
+			shape->constructor_field_type_expr_capacity,
+		sizeof(*field_type_exprs)
+	);
+	FIXTURE_ALLOC(prototype_type_expr, type_exprs, shape->type_expr_capacity);
+	FIXTURE_ALLOC(
+		prototype_artifact_identity_root,
+		identity_roots,
+		shape->identity_root_capacity
+	);
+	FIXTURE_ALLOC(
+		prototype_artifact_dependency,
+		dependencies,
+		shape->dependency_capacity
+	);
+#undef FIXTURE_ALLOC
+	if (!term_exports || !type_exports || !type_parameters ||
+		!constructor_exports || !field_type_exprs || !type_exprs ||
+		!identity_roots || !dependencies) {
+		free(term_exports);
+		free(type_exports);
+		free(type_parameters);
+		free(constructor_exports);
+		free(field_type_exprs);
+		free(type_exprs);
+		free(identity_roots);
+		free(dependencies);
+		return -1;
+	}
+	struct prototype_artifact_interface read_interface;
+	prototype_artifact_interface_init(
+		&read_interface,
+		term_exports,
+		shape->term_export_capacity,
+		type_exports,
+		shape->type_export_capacity,
+		type_parameters,
+		shape->type_parameter_capacity,
+		constructor_exports,
+		shape->constructor_export_capacity,
+		field_type_exprs,
+		shape->constructor_field_type_expr_capacity,
+		type_exprs,
+		shape->type_expr_capacity,
+		identity_roots,
+		shape->identity_root_capacity,
+		dependencies,
+		shape->dependency_capacity
+	);
+	int symbol_ids[1024];
+	uint32_t symbol_hashes[1024];
+	char* symbol_strings[512];
+	struct symbol_table symbols;
+	symbol_table_init(
+		&symbols, symbol_ids, symbol_hashes, 1024, symbol_strings, 512
+	);
+	FILE* stream = fopen(path, "r");
+	int status = stream ? prototype_artifact_read_text_interface(
+		stream, &symbols, accepted_environment, &read_interface
+	) : -1;
+	if (stream && fclose(stream) != 0) {
+		status = -1;
+	}
+	stream = status == 0 ? fopen(path, "r") : NULL;
+	if (!stream || prototype_artifact_read_text_interface(
+			stream, &symbols, rejected_environment, &read_interface
+		) == 0) {
+		status = -1;
+	}
+	if (stream && fclose(stream) != 0) {
+		status = -1;
+	}
+	symbol_table_free(&symbols);
+	free(term_exports);
+	free(type_exports);
+	free(type_parameters);
+	free(constructor_exports);
+	free(field_type_exprs);
+	free(type_exprs);
+	free(identity_roots);
+	free(dependencies);
 	return status;
 }
 

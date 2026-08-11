@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v71.h"
+#include "a_program/artifact/wire_v72.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/operation_graph.h"
@@ -126,12 +126,14 @@ static int write_artifact_type_expr(
 static int write_artifact_term(
 	FILE* stream,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	uint32_t term_id,
 	const struct prototype_term* term
 ) {
-	if (!stream || !symbols || !type_declarations || !terms || !term) {
+	if (!stream || !symbols || !intrinsic_environment || !type_declarations ||
+		!terms || !term) {
 		return -1;
 	}
 	fprintf(stream, "term_node %u %d", term_id, term->tag);
@@ -252,6 +254,7 @@ static int write_artifact_term(
 					stream,
 					" %s %s",
 					prototype_intrinsic_namespace_source_name(
+						intrinsic_environment,
 						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
 						term->as.pure_primitive.primitive_id
 					),
@@ -265,6 +268,7 @@ static int write_artifact_term(
 					stream,
 					" %s %u",
 					prototype_intrinsic_namespace_source_name(
+						intrinsic_environment,
 						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 						term->as.effect_operation.operation_id
 					),
@@ -289,6 +293,7 @@ static int write_artifact_term(
 					stream,
 					" %s %u",
 					prototype_intrinsic_namespace_source_name(
+						intrinsic_environment,
 						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 						term->as.effect_row_operation.operation_id
 					),

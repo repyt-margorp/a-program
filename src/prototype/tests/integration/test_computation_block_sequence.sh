@@ -35,7 +35,7 @@ grep -q '^term main := RETURN(INT_LITERAL(1))$' \
 	"$tmp_dir/final-binding-expression.out"
 
 run_case discard-computation \
-	'main := { (#.int64_add #1 #2); #3; };'
+	'main := { (#.int_add #1 #2); #3; };'
 grep -q '^term main := COMPUTATION_FOLD(.*RETURN(INT_LITERAL(3)))' \
 	"$tmp_dir/discard-computation.out"
 
@@ -49,7 +49,7 @@ grep -q 'resolve_errors=0' "$tmp_dir/selected-cutoff.out"
 	"$tmp_dir/selected-cutoff.p" >"$tmp_dir/selected-cutoff-write.out"
 ./read_file.out --read-graph "$tmp_dir/selected-cutoff.apo" \
 	>"$tmp_dir/selected-cutoff-read.out"
-grep -q '^A_PROGRAM_ARTIFACT 71 [0-9a-f]\{64\}$' "$tmp_dir/selected-cutoff.apo"
+grep -q '^A_PROGRAM_ARTIFACT 72 [0-9a-f]\{64\}$' "$tmp_dir/selected-cutoff.apo"
 ! grep -q 'OPERATION_REQUEST' "$tmp_dir/selected-cutoff.apo"
 ! grep -q 'missing' "$tmp_dir/selected-cutoff.apo"
 
@@ -64,14 +64,14 @@ grep -q 'duplicate computation block binding' "$tmp_dir/duplicate-binding.out"
 
 reject_case intermediate-value 'main := { #1; #2; };'
 reject_case intermediate-function \
-	'main := { (\x : #.Int64 => x); #2; };'
+	'main := { (\x : #.Int => x); #2; };'
 
-run_case lambda-exit 'main := \x : #.Int64 => { !x; #2; };'
+run_case lambda-exit 'main := \x : #.Int => { !x; #2; };'
 grep -q '^term main := LAMBDA(.*RETURN(VAR' "$tmp_dir/lambda-exit.out"
 ! grep -q 'INT_LITERAL(2)' "$tmp_dir/lambda-exit.out"
 
 run_case nested-block-exit \
-	'main := \x : #.Int64 => { { !x; }; #2; };'
+	'main := \x : #.Int => { { !x; }; #2; };'
 grep -q '^term main := LAMBDA(.*RETURN(VAR' "$tmp_dir/nested-block-exit.out"
 ! grep -q 'INT_LITERAL(2)' "$tmp_dir/nested-block-exit.out"
 
@@ -103,7 +103,7 @@ grep -q 'mode=default yes$' "$tmp_dir/match-exit-false.out"
 	"$tmp_dir/match-exit.p" >"$tmp_dir/match-exit-write.out"
 ./read_file.out --read-graph "$tmp_dir/match-exit.apo" \
 	>"$tmp_dir/match-exit-read.out"
-grep -q '^A_PROGRAM_ARTIFACT 71 [0-9a-f]\{64\}$' "$tmp_dir/match-exit.apo"
+grep -q '^A_PROGRAM_ARTIFACT 72 [0-9a-f]\{64\}$' "$tmp_dir/match-exit.apo"
 ./read_file.out --check-exports-normalization-equal "$tmp_dir/match-exit.apo" \
 	trueResult zeroExpected --reduction-mode default \
 	>"$tmp_dir/match-exit-artifact-true.out"
@@ -127,17 +127,17 @@ grep -q 'CASE(true -> RETURN(CONSTRUCTOR' "$tmp_dir/binding-rhs-exit.out"
 grep -q 'CASE(false -> COMPUTATION_FOLD(' "$tmp_dir/binding-rhs-exit.out"
 
 run_case nested-lambda-exit \
-	'outer := \x : #.Int64 => { inner := \y : #.Int64 => { !y; #3; }; inner; };'
+	'outer := \x : #.Int => { inner := \y : #.Int => { !y; #3; }; inner; };'
 grep -q '^term outer := LAMBDA(.*LAMBDA(.*RETURN(VAR' \
 	"$tmp_dir/nested-lambda-exit.out"
 ! grep -q 'INT_LITERAL(3)' "$tmp_dir/nested-lambda-exit.out"
 
 reject_case lambda-exit-outside-lambda 'main := { !#1; };'
 reject_case lambda-exit-under-quote \
-	'main := \x : #.Int64 => &{ !x; };'
+	'main := \x : #.Int => &{ !x; };'
 reject_case lambda-exit-under-handler \
 	'main := \x : #.Text => ({ !x; }) @#.return z => z @#.print y k => k y;'
 reject_case lambda-exit-as-app-argument \
-	'id := \y : #.Int64 => y; main := \x : #.Int64 => id { !x; };'
+	'id := \y : #.Int => y; main := \x : #.Int => id { !x; };'
 
 echo 'computation block sequence tests passed'

@@ -390,7 +390,10 @@
 	struct prototype_hott_action_request repeated_bool_extension_action = {
 		.kind = PROTOTYPE_HOTT_ACTION_SUBSTITUTION,
 		.key.substitution = {
-			.source_substitution_id = repeated_bool_extension,
+			.source = {
+				.substitution_id = repeated_bool_extension,
+				.certificate_id = repeated_bool_extension_certificate
+			},
 			.source_bridge_id = bool_bridge,
 			.target_bridge_id = second_bool_bridge
 		}

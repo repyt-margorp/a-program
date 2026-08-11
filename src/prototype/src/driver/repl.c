@@ -47,6 +47,7 @@
 #define COMPILE_TYPE_EXPORT_CAPACITY 256
 #define COMPILE_CONSTRUCTOR_EXPORT_CAPACITY 512
 #define RESOLVE_ERROR_CAPACITY 512
+#define COMPILE_DIAGNOSTIC_CAPACITY 512
 #define RESOLUTION_ITEM_CAPACITY 2048
 #define RESOLUTION_ITERATION_CAPACITY 128
 #define RESOLUTION_EVENT_CAPACITY 2048
@@ -111,6 +112,8 @@ static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
 static struct prototype_resolve_error resolve_errors[RESOLVE_ERROR_CAPACITY];
+static struct prototype_compile_diagnostic
+	compile_diagnostics[COMPILE_DIAGNOSTIC_CAPACITY];
 static struct prototype_resolution_item resolution_items[RESOLUTION_ITEM_CAPACITY];
 static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
@@ -149,7 +152,7 @@ static void label_evaluation_root(
 	uint32_t* p_operation,
 	uint32_t* p_term
 ) {
-	*p_operation = label->operation;
+	*p_operation = label->exposed_operation;
 	*p_term = label->term;
 	if (metadata->selected_entry_symbol_id == symbol_id &&
 		metadata->selected_entry_operation < metadata->operation_count &&
@@ -161,6 +164,7 @@ static void label_evaluation_root(
 
 static void print_state(
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_ast_db* ast_db,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* term_db,
@@ -200,19 +204,36 @@ static void print_state(
 		for (size_t i = 0; i < metadata->label_count; ++i) {
 			const struct prototype_compile_label* label = &metadata->labels[i];
 			printf("term %s := ", symbol_to_string(symbols, label->name_symbol_id));
-			prototype_term_print_debug(stdout, symbols, type_declarations, term_db, label->term);
+			prototype_term_print_debug(
+				stdout, symbols, intrinsic_environment,
+				type_declarations, term_db, label->term
+			);
 			printf("\n");
 		}
 	}
 	printf("\n#### Judgements ####\n");
-	prototype_judgement_print(stdout, symbols, type_declarations, term_db, judgement_db);
+	prototype_judgement_print(
+		stdout, symbols, intrinsic_environment,
+		type_declarations, term_db, judgement_db
+	);
 	printf(
 		"\n"
 		"#### Metadata ####\n"
-		"labels=%zu resolve_errors=%zu self_contained=%s\n",
+		"labels=%zu resolve_errors=%zu self_contained=%s\n"
+		"operations=%zu terms=%zu propositions=%zu claims=%zu derivations=%zu "
+		"normalization-budget=%llu/%llu solver-budget=%llu/%llu\n",
 		metadata ? metadata->label_count : 0,
 		metadata ? metadata->resolve_error_count : 0,
-		metadata && metadata->resolve_error_count == 0 ? "yes" : "no"
+		metadata && metadata->resolve_error_count == 0 ? "yes" : "no",
+		metadata ? metadata->operation_count : 0,
+		term_db->term_count,
+		judgement_db->proposition_count,
+		judgement_db->claim_count,
+		judgement_db->derivation_count,
+		(unsigned long long)(metadata ? metadata->normalization_steps_used : 0),
+		(unsigned long long)(metadata ? metadata->normalization_step_limit : 0),
+		(unsigned long long)(metadata ? metadata->solver_steps_used : 0),
+		(unsigned long long)(metadata ? metadata->solver_step_limit : 0)
 	);
 	if (metadata) {
 		for (size_t i = 0; i < metadata->label_count; ++i) {
@@ -238,7 +259,10 @@ static void print_state(
 		}
 	}
 	printf("\n#### Resolution ####\n");
-	prototype_diagnostic_print_resolution_trace(stdout, symbols, type_declarations, term_db, metadata);
+	prototype_diagnostic_print_resolution_trace(
+		stdout, symbols, intrinsic_environment,
+		type_declarations, term_db, metadata
+	);
 	printf("\n#### Universe ####\n");
 	prototype_diagnostic_print_universe_graph(
 		stdout, symbols, type_declarations, universe_db, 0
@@ -414,6 +438,7 @@ static int evaluate_for_output(
 
 static void query_value(
 	struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
 	struct prototype_compile_metadata* metadata,
@@ -429,7 +454,10 @@ static void query_value(
 	}
 
 	printf("term %s := ", name);
-	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, label->term);
+	prototype_term_print_debug(
+		stdout, symbols, intrinsic_environment,
+		type_declarations, term_db, label->term
+	);
 	printf("\n");
 
 	int host_ran;
@@ -465,12 +493,16 @@ static void query_value(
 		printf("verification %s := discharged\n", name);
 	}
 	printf("value %s := ", name);
-	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, evaluated);
+	prototype_term_print_debug(
+		stdout, symbols, intrinsic_environment,
+		type_declarations, term_db, evaluated
+	);
 	printf("\n");
 }
 
 static void query_normal_form(
 	struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
 	struct prototype_compile_metadata* metadata,
@@ -511,12 +543,78 @@ static void query_normal_form(
 		return;
 	}
 	printf("%s %s := ", mode_name, name);
-	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, normalized);
+	prototype_term_print_debug(
+		stdout, symbols, intrinsic_environment,
+		type_declarations, term_db, normalized
+	);
 	printf("\n");
+}
+
+static void query_type(
+	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_db* term_db,
+	const struct prototype_compile_metadata* metadata,
+	const char* name
+) {
+	int symbol_id = -1;
+	if (!symbols || !type_declarations || !term_db || !metadata || !name) {
+		return;
+	}
+	for (size_t i = metadata->label_count; i > 0; --i) {
+		const char* candidate = symbol_to_string(
+			symbols, metadata->labels[i - 1].name_symbol_id
+		);
+		if (candidate && strcmp(candidate, name) == 0) {
+			symbol_id = metadata->labels[i - 1].name_symbol_id;
+			break;
+		}
+	}
+	struct prototype_type_inspection inspection;
+	enum prototype_type_inspection_state state = symbol_id < 0 ?
+		PROTOTYPE_TYPE_INSPECTION_UNAVAILABLE :
+		prototype_compile_metadata_inspect_type(
+			metadata, symbol_id, &inspection
+		);
+	if (state == PROTOTYPE_TYPE_INSPECTION_AMBIGUOUS) {
+		printf("%s has ambiguous type inspection metadata\n", name);
+		return;
+	}
+	if (state != PROTOTYPE_TYPE_INSPECTION_AVAILABLE) {
+		printf("%s has no available type inspection\n", name);
+		return;
+	}
+	printf("type %s := ", name);
+	prototype_term_print_debug(
+		stdout,
+		symbols,
+		intrinsic_environment,
+		type_declarations,
+		term_db,
+		inspection.body_classifier
+	);
+	printf("\n");
+	if (inspection.expectation_classifier != PROTOTYPE_INVALID_ID) {
+		printf("expected %s := ", name);
+		prototype_term_print_debug(
+			stdout,
+			symbols,
+			intrinsic_environment,
+			type_declarations,
+			term_db,
+			inspection.expectation_classifier
+		);
+		printf(
+			" [accepted claim#%u]\n",
+			inspection.expectation_claim_id
+		);
+	}
 }
 
 static int query_existing_value(
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
 	struct prototype_compile_metadata* metadata,
@@ -532,7 +630,10 @@ static int query_existing_value(
 
 	name = symbol_to_string(symbols, symbol_id);
 	printf("term %s := ", name ? name : "<unknown>");
-	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, label->term);
+	prototype_term_print_debug(
+		stdout, symbols, intrinsic_environment,
+		type_declarations, term_db, label->term
+	);
 	printf("\n");
 
 	int host_ran;
@@ -568,7 +669,10 @@ static int query_existing_value(
 		printf("verification %s := discharged\n", name ? name : "<unknown>");
 	}
 	printf("value %s := ", name ? name : "<unknown>");
-	prototype_term_print_debug(stdout, symbols, type_declarations, term_db, evaluated);
+	prototype_term_print_debug(
+		stdout, symbols, intrinsic_environment,
+		type_declarations, term_db, evaluated
+	);
 	printf("\n");
 	return 1;
 }
@@ -715,6 +819,11 @@ int main(int argc, char** argv) {
 		verification_obligations,
 		VERIFICATION_OBLIGATION_CAPACITY
 	);
+	prototype_compile_metadata_set_diagnostic_storage(
+		&metadata,
+		compile_diagnostics,
+		COMPILE_DIAGNOSTIC_CAPACITY
+	);
 	prototype_judgement_db_init(
 		&judgement_db,
 		judgements,
@@ -733,6 +842,7 @@ int main(int argc, char** argv) {
 		JUDGEMENT_CAPACITY * 32
 	);
 
+	program.intrinsic_environment = prototype_default_intrinsic_environment();
 	program.symbols = &symbols;
 	program.namespace_symbol_id = -1;
 	program.asts = &ast_db;
@@ -765,6 +875,7 @@ int main(int argc, char** argv) {
 				error.message[0] ? error.message : "graph compile failed"
 			);
 			prototype_diagnostic_print_resolve_errors(stderr, &symbols, &metadata);
+			prototype_diagnostic_print_compile_diagnostics(stderr, &metadata);
 			symbol_table_free(&symbols);
 			return 1;
 		}
@@ -776,9 +887,15 @@ int main(int argc, char** argv) {
 		symbol_table_free(&symbols);
 		return 1;
 	}
-	print_state(&symbols, &ast_db, &type_declarations, &term_db, &universe_db, &judgement_db, &metadata);
+	print_state(
+		&symbols, program.intrinsic_environment, &ast_db, &type_declarations,
+		&term_db, &universe_db, &judgement_db, &metadata
+	);
 	if (lookup_label(&metadata, main_symbol)) {
-		query_existing_value(&symbols, &type_declarations, &term_db, &metadata, main_symbol);
+		query_existing_value(
+			&symbols, program.intrinsic_environment,
+			&type_declarations, &term_db, &metadata, main_symbol
+		);
 	}
 
 	printf("prototype> ");
@@ -795,7 +912,10 @@ int main(int argc, char** argv) {
 			break;
 		}
 		if (input_len == 0 && strcmp(line, ":state\n") == 0) {
-			print_state(&symbols, &ast_db, &type_declarations, &term_db, &universe_db, &judgement_db, &metadata);
+			print_state(
+				&symbols, program.intrinsic_environment, &ast_db,
+				&type_declarations, &term_db, &universe_db, &judgement_db, &metadata
+			);
 			printf("prototype> ");
 			fflush(stdout);
 			continue;
@@ -808,9 +928,19 @@ int main(int argc, char** argv) {
 		}
 		if (input_len == 0) {
 			char query_name[128];
+			if (is_named_command(line, ":type", query_name, sizeof(query_name))) {
+				query_type(
+					&symbols, program.intrinsic_environment,
+					&type_declarations, &term_db, &metadata, query_name
+				);
+				printf("prototype> ");
+				fflush(stdout);
+				continue;
+			}
 			if (is_named_command(line, ":whnf", query_name, sizeof(query_name))) {
 				query_normal_form(
-					&symbols, &type_declarations, &term_db, &metadata, query_name, 0
+					&symbols, program.intrinsic_environment,
+					&type_declarations, &term_db, &metadata, query_name, 0
 				);
 				printf("prototype> ");
 				fflush(stdout);
@@ -818,14 +948,18 @@ int main(int argc, char** argv) {
 			}
 			if (is_named_command(line, ":nf", query_name, sizeof(query_name))) {
 				query_normal_form(
-					&symbols, &type_declarations, &term_db, &metadata, query_name, 1
+					&symbols, program.intrinsic_environment,
+					&type_declarations, &term_db, &metadata, query_name, 1
 				);
 				printf("prototype> ");
 				fflush(stdout);
 				continue;
 			}
 			if (is_query_line(line, query_name, sizeof(query_name))) {
-				query_value(&symbols, &type_declarations, &term_db, &metadata, query_name);
+				query_value(
+					&symbols, program.intrinsic_environment,
+					&type_declarations, &term_db, &metadata, query_name
+				);
 				printf("prototype> ");
 				fflush(stdout);
 				continue;
@@ -868,8 +1002,12 @@ int main(int argc, char** argv) {
 				error.message[0] ? error.message : "graph compile failed"
 			);
 			prototype_diagnostic_print_resolve_errors(stderr, &symbols, &metadata);
+			prototype_diagnostic_print_compile_diagnostics(stderr, &metadata);
 		} else {
-			print_state(&symbols, &ast_db, &type_declarations, &term_db, &universe_db, &judgement_db, &metadata);
+			print_state(
+				&symbols, program.intrinsic_environment, &ast_db,
+				&type_declarations, &term_db, &universe_db, &judgement_db, &metadata
+			);
 		}
 
 		input[0] = '\0';

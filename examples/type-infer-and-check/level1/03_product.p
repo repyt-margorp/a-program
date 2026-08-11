@@ -5,13 +5,13 @@ Prod := \A : @ => \B : @ => @{
 };
 
 /* Projections */
-fst : (A : @) -> (B : @) -> Prod A B -> A :=
-  \A : @ => \B : @ => \p : Prod A B =>
+fst := \A : @ => \B : @ => \p : Prod A B =>
     p @pair a b => a;
+fst :: (A : @) -> (B : @) -> Prod A B -> A;
 
-snd : (A : @) -> (B : @) -> Prod A B -> B :=
-  \A : @ => \B : @ => \p : Prod A B =>
+snd := \A : @ => \B : @ => \p : Prod A B =>
     p @pair a b => b;
+snd :: (A : @) -> (B : @) -> Prod A B -> B;
 
 Bool := @{
   true : *;
@@ -24,7 +24,7 @@ Nat := @{
 };
 
 /* Example: Bool × Nat */
-example_pair : Prod Bool Nat :=
-  (Prod Bool Nat).pair Bool.true Nat.zero;
+example_pair := (Prod Bool Nat).pair Bool.true Nat.zero;
+example_pair :: Prod Bool Nat;
 
 main := fst Bool Nat example_pair;

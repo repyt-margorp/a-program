@@ -34,8 +34,9 @@ int prototype_hott_execute_substitution_action(
 		request->kind == PROTOTYPE_HOTT_ACTION_SUBSTITUTION ?
 		prototype_substitution_get(
 			substitutions,
-			request->key.substitution.source_substitution_id
+			request->key.substitution.source.substitution_id
 		) : NULL;
+	struct prototype_certified_substitution_ref certified_source;
 	const struct prototype_hott_bridge* source_bridge = request ?
 		prototype_hott_bridge_db_get(
 			bridges, request->key.substitution.source_bridge_id
@@ -44,7 +45,14 @@ int prototype_hott_execute_substitution_action(
 		prototype_hott_bridge_db_get(
 			bridges, request->key.substitution.target_bridge_id
 		) : NULL;
-	if (!source || !source_bridge || !target_bridge ||
+	if (!source || prototype_cwf_certified_substitution_ref_get(
+			cwf_certificates,
+			substitutions,
+			judgement,
+			request->key.substitution.source.substitution_id,
+			request->key.substitution.source.certificate_id,
+			&certified_source
+		) != 0 || !source_bridge || !target_bridge ||
 		source->source_context != source_bridge->source_context_id ||
 		source->target_context != target_bridge->source_context_id) {
 		return -1;
@@ -106,7 +114,10 @@ int prototype_hott_execute_substitution_action(
 			struct prototype_hott_action_request inner_request = {
 				.kind = PROTOTYPE_HOTT_ACTION_SUBSTITUTION,
 				.key.substitution = {
-					.source_substitution_id = source->second,
+					.source = {
+						.substitution_id = source->second,
+						.certificate_id = PROTOTYPE_INVALID_ID
+					},
 					.source_bridge_id = source_bridge->id,
 					.target_bridge_id = middle_bridge_id
 				}
@@ -114,11 +125,29 @@ int prototype_hott_execute_substitution_action(
 			struct prototype_hott_action_request outer_request = {
 				.kind = PROTOTYPE_HOTT_ACTION_SUBSTITUTION,
 				.key.substitution = {
-					.source_substitution_id = source->first,
+					.source = {
+						.substitution_id = source->first,
+						.certificate_id = PROTOTYPE_INVALID_ID
+					},
 					.source_bridge_id = middle_bridge_id,
 					.target_bridge_id = target_bridge->id
 				}
 			};
+			if (prototype_cwf_certificate_db_certify_substitution_root(
+					cwf_certificates,
+					substitutions,
+					judgement,
+					source->second,
+					&inner_request.key.substitution.source.certificate_id
+				) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+					cwf_certificates,
+					substitutions,
+					judgement,
+					source->first,
+					&outer_request.key.substitution.source.certificate_id
+				) != 0) {
+				return -1;
+			}
 			uint32_t inner_request_id;
 			uint32_t outer_request_id;
 			uint32_t inner_result_id;
@@ -162,6 +191,10 @@ int prototype_hott_execute_substitution_action(
 		break;
 	case PROTOTYPE_SUBSTITUTION_EXTEND:
 		{
+			const struct prototype_cwf_certificate* source_certificate =
+				prototype_cwf_certificate_db_get(
+					cwf_certificates, certified_source.certificate_id
+				);
 			const struct prototype_context* target = prototype_context_get(
 				contexts, source->target_context
 			);
@@ -175,18 +208,12 @@ int prototype_hott_execute_substitution_action(
 						bridges->certificates[target_bridge->id].semantics,
 					&parent_bridge_id
 				) : NULL;
-			uint32_t term_claim_id = PROTOTYPE_INVALID_ID;
-			for (uint32_t i = 0; i < judgement->claim_count; ++i) {
-				const struct prototype_judgement_claim* claim = &judgement->claims[i];
-				if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-					prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id == source->source_context &&
-					prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == source->term &&
-					prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier == source->term_classifier &&
-					hott_operation_matches_claim(operations, judgement, claim)) {
-					term_claim_id = i;
-					break;
-				}
-			}
+			const struct prototype_judgement_claim* term_claim =
+				source_certificate ? prototype_judgement_claim_get(
+					judgement, source_certificate->claim_id
+				) : NULL;
+			uint32_t term_claim_id = term_claim ? source_certificate->claim_id :
+				PROTOTYPE_INVALID_ID;
 			uint32_t type_request_id = PROTOTYPE_INVALID_ID;
 			for (uint32_t i = 0; i < actions->request_count; ++i) {
 				const struct prototype_hott_action_request* candidate =
@@ -210,14 +237,19 @@ int prototype_hott_execute_substitution_action(
 					break;
 				}
 			}
-			if (!target || !parent_bridge || term_claim_id == PROTOTYPE_INVALID_ID ||
+			if (!target || !parent_bridge || !term_claim ||
+				!hott_operation_matches_claim(operations, judgement, term_claim) ||
+				term_claim_id == PROTOTYPE_INVALID_ID ||
 				type_request_id == PROTOTYPE_INVALID_ID) {
 				return 1;
 			}
 			struct prototype_hott_action_request prefix_request = {
 				.kind = PROTOTYPE_HOTT_ACTION_SUBSTITUTION,
 				.key.substitution = {
-					.source_substitution_id = source->first,
+					.source = {
+						.substitution_id = source->first,
+						.certificate_id = PROTOTYPE_INVALID_ID
+					},
 					.source_bridge_id = source_bridge->id,
 					.target_bridge_id = parent_bridge_id
 				}
@@ -234,7 +266,13 @@ int prototype_hott_execute_substitution_action(
 			uint32_t term_request_id;
 			uint32_t prefix_result_id;
 			uint32_t term_result_id;
-			if (prototype_hott_action_request_intern(
+			if (prototype_cwf_certificate_db_certify_substitution_root(
+					cwf_certificates,
+					substitutions,
+					judgement,
+					source->first,
+					&prefix_request.key.substitution.source.certificate_id
+				) != 0 || prototype_hott_action_request_intern(
 					actions, &view, bridges, prefix_request, &prefix_request_id
 				) != 0 || prototype_hott_action_request_intern(
 					actions, &view, bridges, term_request, &term_request_id
@@ -305,7 +343,7 @@ int prototype_hott_execute_substitution_action(
 		) != 0 || prototype_substitution_compose(
 			substitutions,
 			contexts,
-			request->key.substitution.source_substitution_id,
+			request->key.substitution.source.substitution_id,
 			source_bridge->left_substitution_id,
 			&left_rhs
 		) != 0 || prototype_substitution_compose(
@@ -317,7 +355,7 @@ int prototype_hott_execute_substitution_action(
 		) != 0 || prototype_substitution_compose(
 			substitutions,
 			contexts,
-			request->key.substitution.source_substitution_id,
+			request->key.substitution.source.substitution_id,
 			source_bridge->right_substitution_id,
 			&right_rhs
 		) != 0 || prototype_substitution_compare_pointwise(
@@ -368,6 +406,15 @@ int prototype_hott_execute_substitution_action(
 		return prototype_hott_action_result_publish(
 			actions, residual, p_result_id
 		);
+	}
+	if (prototype_cwf_certificate_db_certify_substitution_root(
+			cwf_certificates,
+			substitutions,
+			judgement,
+			result_substitution,
+			&result_substitution_certificate
+		) != 0) {
+		return -1;
 	}
 	struct prototype_hott_action_certificate certificate = {
 		.request_id = request_id,
@@ -630,7 +677,7 @@ int prototype_hott_bridge_db_construct_extension(
 	if (!bridges || !contexts || !substitutions || !cwf_certificates ||
 		!cwf_certificates || !actions || !terms || !type_declarations ||
 		!judgement || !source || !request || !p_bridge_id ||
-		prototype_kernel_builder_validate(kernel) != 0 ||
+		prototype_kernel_builder_validate_stores(kernel) != 0 ||
 		source_context_id == prototype_context_empty(contexts) ||
 		request->kind != PROTOTYPE_HOTT_ACTION_RELATION_TYPE ||
 		hott_action_result_for_request(
@@ -708,7 +755,7 @@ int prototype_hott_bridge_db_construct_identity_extension(
 		prototype_hott_action_request_get(actions, identity_type_action_request_id);
 	uint32_t result_id;
 	if (!bridges || !contexts || !judgement || !actions || !source || !request ||
-		!p_bridge_id || prototype_kernel_builder_validate(kernel) != 0 ||
+		!p_bridge_id || prototype_kernel_builder_validate_stores(kernel) != 0 ||
 		source_context_id == prototype_context_empty(contexts) ||
 		request->kind != PROTOTYPE_HOTT_ACTION_IDENTITY_TYPE_COMPUTATION ||
 		hott_action_result_for_request(
@@ -1266,7 +1313,7 @@ int prototype_hott_action_db_validate(
 		(db->request_count != 0 && !db->requests) ||
 		(db->certificate_count != 0 && !db->certificates) ||
 		(db->result_count != 0 && !db->results) ||
-		prototype_kernel_view_validate(kernel) != 0) {
+		prototype_kernel_view_validate_stores(kernel) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < bridges->bridge_count; ++i) {

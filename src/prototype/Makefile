@@ -8,7 +8,8 @@ PROTOTYPE_IMPLEMENTATION_DEPENDENCIES := $(shell find \
 	src/prototype/include src/prototype/src -type f \
 	\( -name '*.h' -o -name '*.inc' \))
 
-.PHONY: all reader clean print-kernel-sources print-graph-sources
+.PHONY: all reader clean test-type-infer-and-check test-integration
+.PHONY: print-kernel-sources print-graph-sources
 .PHONY: print-compiler-sources
 .PHONY: print-hott-sources print-repl-sources print-reader-sources
 
@@ -24,6 +25,15 @@ read_file.out: $(PROTOTYPE_READER_SOURCES) $(PROTOTYPE_IMPLEMENTATION_DEPENDENCI
 
 clean:
 	rm -f a.out read_file.out
+
+test-type-infer-and-check: reader
+	sh src/prototype/tests/integration/test_type_infer_and_check_examples.sh
+
+test-integration: reader
+	@set -e; for test_script in src/prototype/tests/integration/test_*.sh; do \
+		printf '==> %s\n' "$$test_script"; \
+		sh "$$test_script"; \
+	done
 
 print-kernel-sources:
 	@printf '%s\n' $(PROTOTYPE_KERNEL_SOURCES)

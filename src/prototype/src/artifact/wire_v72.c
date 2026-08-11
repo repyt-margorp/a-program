@@ -1,6 +1,7 @@
-#include "a_program/artifact/wire_v71.h"
+#include "a_program/artifact/wire_v72.h"
 
 #include "a_program/graph/operation_graph.h"
+#include "a_program/kernel/cwf_certificate.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -69,9 +70,10 @@ static int read_artifact_type_expr(
 int prototype_artifact_read_text_interface(
 	FILE* stream,
 	struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_artifact_interface* interface
 ) {
-	if (!stream || !symbols || !interface) {
+	if (!stream || !symbols || !intrinsic_environment || !interface) {
 		return -1;
 	}
 
@@ -84,6 +86,24 @@ int prototype_artifact_read_text_interface(
 		strcmp(fingerprint, PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT) != 0) {
 		return -1;
 	}
+	unsigned long long intrinsic_fingerprint;
+	int default_integer_host_type;
+	if (fscanf(
+			stream,
+			"%255s %llu %d",
+			word,
+			&intrinsic_fingerprint,
+			&default_integer_host_type
+		) != 3 || strcmp(word, "intrinsic_environment") != 0 ||
+		(uint64_t)intrinsic_fingerprint !=
+			prototype_intrinsic_environment_fingerprint(intrinsic_environment) ||
+		default_integer_host_type !=
+			intrinsic_environment->default_integer_host_type) {
+		return -1;
+	}
+	interface->intrinsic_environment_fingerprint =
+		(uint64_t)intrinsic_fingerprint;
+	interface->default_integer_host_type = default_integer_host_type;
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
 		fscanf(stream, "%255s", word) != 1 || strcmp(word, "interface") != 0) {
 		return -1;
@@ -578,6 +598,7 @@ static int read_artifact_type_expr(
 static int read_artifact_term(
 	FILE* stream,
 	struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_term_db* terms,
 	uint32_t expected_id,
 	uint32_t* p_next_binder_id
@@ -585,7 +606,8 @@ static int read_artifact_term(
 	char word[256];
 	uint32_t term_id;
 	int tag;
-	if (!stream || !symbols || !terms || !p_next_binder_id ||
+	if (!stream || !symbols || !intrinsic_environment || !terms ||
+		!p_next_binder_id ||
 		fscanf(stream, "%255s %u %d", word, &term_id, &tag) != 3 ||
 		strcmp(word, "term_node") != 0 ||
 		(expected_id != PROTOTYPE_INVALID_ID && term_id != expected_id) ||
@@ -709,6 +731,7 @@ static int read_artifact_term(
 					}
 					struct prototype_intrinsic_namespace_binding binding;
 					if (prototype_intrinsic_namespace_lookup(
+							intrinsic_environment,
 							symbol_to_string(symbols, symbol_id),
 							&binding
 						) != 0 ||
@@ -727,6 +750,7 @@ static int read_artifact_term(
 					}
 					struct prototype_intrinsic_namespace_binding binding;
 					if (prototype_intrinsic_namespace_lookup(
+							intrinsic_environment,
 							symbol_to_string(symbols, symbol_id),
 							&binding
 						) != 0 ||
@@ -766,6 +790,7 @@ static int read_artifact_term(
 				if (read_artifact_symbol(stream, symbols, &symbol_id) != 0 ||
 					fscanf(stream, "%u", &term->as.effect_row_operation.latent_row) != 1 ||
 					prototype_intrinsic_namespace_lookup(
+						intrinsic_environment,
 						symbol_to_string(symbols, symbol_id), &binding
 					) != 0 || binding.kind !=
 						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION) {
@@ -1218,6 +1243,18 @@ static int artifact_validate_term_graph_refs(
 		if (!artifact_read_term_present(terms, frame->match_term)) {
 			return -1;
 		}
+		const struct prototype_term* match = &terms->terms[frame->match_term];
+		if (match->tag != PROTOTYPE_TERM_MATCH ||
+			!artifact_read_term_present(terms, match->as.match.scrutinee)) {
+			return -1;
+		}
+		const struct prototype_term* scrutinee =
+			&terms->terms[match->as.match.scrutinee];
+		if (scrutinee->tag == PROTOTYPE_TERM_VAR &&
+			(frame->scrutinee_binding_id == PROTOTYPE_INVALID_ID ||
+			 scrutinee->as.var.binding_id != frame->scrutinee_binding_id)) {
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -1398,11 +1435,13 @@ void prototype_internal_sync_artifact_universe_level_counters(
 int prototype_artifact_read_text_graph(
 	FILE* stream,
 	struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement
 ) {
-	if (!stream || !symbols || !terms || !type_declarations || !judgement) {
+	if (!stream || !symbols || !intrinsic_environment || !terms ||
+		!type_declarations || !judgement) {
 		return -1;
 	}
 
@@ -1782,6 +1821,7 @@ int prototype_artifact_read_text_graph(
 	}
 	for (size_t i = 0; i < frame_slot_count; ++i) {
 		terms->ih_scopes[i].match_term = PROTOTYPE_INVALID_ID;
+		terms->ih_scopes[i].scrutinee_binding_id = PROTOTYPE_INVALID_ID;
 	}
 
 	if (expect_artifact_count(stream, "terms", &count) != 0 || count != term_slot_count) {
@@ -1792,6 +1832,7 @@ int prototype_artifact_read_text_graph(
 		if (read_artifact_term(
 					stream,
 					symbols,
+					intrinsic_environment,
 					terms,
 					PROTOTYPE_INVALID_ID,
 					&next_binding_id
@@ -1877,9 +1918,20 @@ int prototype_artifact_read_text_graph(
 			if (artifact_frame_present(frame)) {
 				return -1;
 			}
-			if (fscanf(stream, "%u %u %d", &frame->match_term, &frame->key.case_count, &frame->key.is_linkable) != 3 ||
+			if (fscanf(
+					stream,
+					"%u %u %u %d",
+					&frame->match_term,
+					&frame->scrutinee_binding_id,
+					&frame->key.case_count,
+					&frame->key.is_linkable
+				) != 4 ||
 				read_artifact_term_key(stream, &frame->key.match_key) != 0) {
 				return -1;
+		}
+		if (frame->scrutinee_binding_id != PROTOTYPE_INVALID_ID &&
+			frame->scrutinee_binding_id >= terms->next_binding_id) {
+			return -1;
 		}
 	}
 	terms->ih_scope_count = frame_slot_count;
@@ -2147,9 +2199,10 @@ int prototype_artifact_read_text_operation_graph(
 	struct symbol_table* symbols,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
 	struct prototype_compile_metadata* metadata
 ) {
-	if (!stream || !symbols || !terms || !type_declarations) {
+	if (!stream || !symbols || !terms || !type_declarations || !judgement) {
 		return -1;
 	}
 	char word[256];
@@ -2281,9 +2334,10 @@ int prototype_artifact_read_text_operation_graph(
 	for (size_t i = 0; i < substitution_count; ++i) {
 		size_t id;
 		struct prototype_substitution substitution;
+		uint32_t evidence_claim_id;
 		if (fscanf(
 				stream,
-				"%255s %zu %d %u %u %u %u %u %u",
+				"%255s %zu %d %u %u %u %u %u %u %u",
 				word,
 				&id,
 				&substitution.kind,
@@ -2292,8 +2346,9 @@ int prototype_artifact_read_text_operation_graph(
 				&substitution.first,
 				&substitution.second,
 				&substitution.term,
-				&substitution.term_classifier
-			) != 9 ||
+				&substitution.term_classifier,
+				&evidence_claim_id
+			) != 10 ||
 			strcmp(word, "substitution") != 0 ||
 			id != i ||
 			substitution.kind < PROTOTYPE_SUBSTITUTION_IDENTITY ||
@@ -2307,12 +2362,37 @@ int prototype_artifact_read_text_operation_graph(
 			(substitution.first != PROTOTYPE_INVALID_ID &&
 				substitution.first >= i) ||
 			(substitution.second != PROTOTYPE_INVALID_ID &&
-				substitution.second >= i)) {
+				substitution.second >= i) ||
+			(substitution.kind == PROTOTYPE_SUBSTITUTION_EXTEND) !=
+				(evidence_claim_id != PROTOTYPE_INVALID_ID) ||
+			(evidence_claim_id != PROTOTYPE_INVALID_ID &&
+			 evidence_claim_id >= judgement->claim_count)) {
 			return -1;
 		}
 		if (metadata) {
 			metadata->substitutions.substitutions[i] = substitution;
 			metadata->substitutions.substitution_count++;
+			if (substitution.kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
+				int has_derivation = 0;
+				for (size_t j = 0; j < judgement->derivation_count; ++j) {
+					if (judgement->derivations[j].conclusion_claim_id ==
+							evidence_claim_id) {
+						has_derivation = 1;
+						break;
+					}
+				}
+				if (!has_derivation ||
+					!prototype_cwf_substitution_claim_certifies(
+						&metadata->substitutions,
+						judgement,
+						(uint32_t)i,
+						evidence_claim_id
+					) || prototype_compile_metadata_record_accepted_substitution_claim(
+						metadata, (uint32_t)i, evidence_claim_id
+					) != 0) {
+					return -1;
+				}
+			}
 		}
 	}
 	if (metadata && prototype_substitution_db_rebuild_index(
@@ -2362,7 +2442,7 @@ int prototype_artifact_read_text_operation_graph(
 		char binder_name[256];
 		memset(&operation, 0, sizeof(operation));
 	if (fscanf(stream, "%255s %zu %d %d %d %u %u %u %255s %255s"
-				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
 				word, &id, &operation.tag, &operation.category,
 				&operation.application_role,
 				&operation.core_term, &operation.known_classifier, &operation.classifier,
@@ -2370,13 +2450,16 @@ int prototype_artifact_read_text_operation_graph(
 				&operation.referenced_ast_binder_id, &operation.binding_id,
 				&operation.function, &operation.argument,
 				&operation.body, &operation.scrutinee, &operation.binder_classifier,
+				&operation.ih_scope_id,
+				&operation.ih_case_index,
+				&operation.ih_field_index,
 				&operation.fold_return_ast_binder_id,
 				&operation.fold_return_binder_id,
 				&operation.fold_return_operation,
 				&operation.implicit_effect_row_count,
 				&operation.first_case, &operation.case_count,
 				&operation.first_fold_clause, &operation.fold_clause_count,
-				&operation.context_id) != 26 ||
+				&operation.context_id) != 29 ||
 			strcmp(word, "operation") != 0 || id != i) {
 			return -1;
 		}
@@ -2495,11 +2578,13 @@ int prototype_artifact_read_text_operation_graph(
 	}
 	if (metadata) {
 		if (prototype_context_db_validate(&metadata->contexts, terms) != 0 ||
-			prototype_substitution_db_validate_typed(
+			prototype_substitution_db_validate_classifier_coherence(
 				&metadata->substitutions,
 				&metadata->contexts,
 				terms,
 				type_declarations
+				) != 0 || prototype_cwf_validate_accepted_semantic_action_coverage(
+				&metadata->substitutions, judgement
 			) != 0) {
 			return -1;
 		}

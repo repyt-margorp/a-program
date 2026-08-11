@@ -92,6 +92,33 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 		if (operation >= ctx->metadata->operation_count ||
 			ctx->classifier_solver.solutions[operation].classifier ==
 				PROTOTYPE_INVALID_ID) {
+			fprintf(
+				stderr,
+				"pending Match classifier missing index=%u operation=%u operation-count=%zu classifier=%u\n",
+				i,
+				operation,
+				ctx->metadata->operation_count,
+				operation < ctx->metadata->operation_count ?
+					ctx->classifier_solver.solutions[operation].classifier :
+					PROTOTYPE_INVALID_ID
+			);
+			if (operation < ctx->metadata->operation_count) {
+				const struct prototype_operation_node* node =
+					&ctx->metadata->operations[operation];
+				(void)add_compile_diagnostic(
+					ctx,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_MATCH_RESULT_MOTIVE,
+					node->source_ast,
+					operation,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					node->source_ast < ctx->asts->node_count ?
+						ctx->asts->nodes[node->source_ast].span :
+						(struct prototype_source_span) { 0, 0 }
+				);
+			}
 			return -1;
 		}
 	}
@@ -159,6 +186,19 @@ static int compile_phase_check_ascriptions(struct compile_context* ctx) {
 					-1,
 					check->ast
 				);
+				(void)add_compile_diagnostic(
+					ctx,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_EXPECTATION_CHECK,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_ASCRIPTION_MISMATCH,
+					check->ast,
+					check->operation,
+					PROTOTYPE_INVALID_ID,
+					check->expected_classifier,
+					operation_classifier,
+					check->ast < ctx->asts->node_count ?
+						ctx->asts->nodes[check->ast].span :
+						(struct prototype_source_span) { 0, 0 }
+				);
 				continue;
 			}
 		}
@@ -176,6 +216,19 @@ static int compile_phase_check_ascriptions(struct compile_context* ctx) {
 				-1,
 				-1,
 				check->ast
+			);
+			(void)add_compile_diagnostic(
+				ctx,
+				PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_EXPECTATION_CHECK,
+				PROTOTYPE_COMPILE_DIAGNOSTIC_ASCRIPTION_MISMATCH,
+				check->ast,
+				check->operation,
+				PROTOTYPE_INVALID_ID,
+				solved_expected_classifier,
+				operation_classifier,
+				check->ast < ctx->asts->node_count ?
+					ctx->asts->nodes[check->ast].span :
+					(struct prototype_source_span) { 0, 0 }
 			);
 			continue;
 		}
@@ -653,16 +706,19 @@ static int compile_pending_with_workspace(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement,
 	struct prototype_compile_metadata* metadata,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	int namespace_symbol_id,
 	const struct prototype_artifact_interface* const* imported_interfaces,
 	size_t imported_interface_count,
 	struct compile_judgement_workspace* workspace
 ) {
-	if (!asts || !terms || !type_declarations || !judgement || !workspace) {
+	if (!asts || !terms || !type_declarations || !judgement ||
+		!intrinsic_environment || !workspace) {
 		return -1;
 	}
 	struct compile_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
+	ctx.intrinsic_environment = intrinsic_environment;
 	ctx.asts = asts;
 	ctx.terms = terms;
 	ctx.type_declarations = type_declarations;
@@ -684,6 +740,9 @@ static int compile_pending_with_workspace(
 		PROTOTYPE_JUDGEMENT_DELTA_CAPACITY,
 		workspace->effect_row_constraints,
 		PROTOTYPE_JUDGEMENT_DELTA_CAPACITY
+	);
+	prototype_judgement_delta_set_intrinsic_environment(
+		&ctx.judgement_delta, intrinsic_environment
 	);
 	ctx.metadata = metadata;
 	if (!metadata || prototype_context_empty(&metadata->contexts) == PROTOTYPE_INVALID_ID) {
@@ -819,6 +878,7 @@ static int compile_pending_with_workspace(
 	if (prototype_judgement_validate_accepted_graph(
 			terms,
 			type_declarations,
+			intrinsic_environment,
 			&metadata->contexts,
 			&metadata->substitutions,
 			&operation_graph,
@@ -853,6 +913,7 @@ int prototype_ast_compile_pending_with_imports(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement,
 	struct prototype_compile_metadata* metadata,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	int namespace_symbol_id,
 	const struct prototype_artifact_interface* const* imported_interfaces,
 	size_t imported_interface_count
@@ -867,6 +928,7 @@ int prototype_ast_compile_pending_with_imports(
 		type_declarations,
 		judgement,
 		metadata,
+		intrinsic_environment,
 		namespace_symbol_id,
 		imported_interfaces,
 		imported_interface_count,
@@ -889,6 +951,7 @@ int prototype_ast_compile_pending(
 		type_declarations,
 		judgement,
 		metadata,
+		prototype_default_intrinsic_environment(),
 		-1,
 		NULL,
 		0

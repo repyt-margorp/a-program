@@ -102,14 +102,17 @@ int main(void) {
 	prototype_judgement_delta_set_context_store(
 		&delta, &contexts, &substitutions
 	);
+	prototype_judgement_delta_set_intrinsic_environment(
+		&delta, prototype_default_intrinsic_environment()
+	);
 
 	uint32_t value;
 	uint32_t returned;
 	uint32_t suspended;
 	uint32_t forced;
-	/* Keep the boundary test authority-neutral. Small literals deliberately have
-	 * both Int32 and Int64 Claims, which must not be resolved by insertion order. */
-	if (prototype_term_int_literal(&term_db, (int64_t)INT32_MAX + 1, &value) != 0 ||
+	/* The literal helper fact is replayed against the same immutable Intrinsic
+	 * environment that selects the source-level unsuffixed literal principal. */
+	if (prototype_term_int_literal(&term_db, 42, &value) != 0 ||
 		prototype_term_return(&term_db, value, &returned) != 0 ||
 		prototype_term_thunk(&term_db, returned, &suspended) != 0 ||
 		prototype_term_force(&term_db, suspended, &forced) != 0 ||
@@ -121,6 +124,7 @@ int main(void) {
 		prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
+			prototype_default_intrinsic_environment(),
 			&contexts,
 			&substitutions,
 			NULL,
@@ -289,6 +293,9 @@ int main(void) {
 	prototype_judgement_delta_set_context_store(
 		&delta, &contexts, &substitutions
 	);
+	prototype_judgement_delta_set_intrinsic_environment(
+		&delta, prototype_default_intrinsic_environment()
+	);
 	prototype_judgement_delta_set_context(
 		&delta, prototype_context_empty(&contexts)
 	);
@@ -318,6 +325,7 @@ int main(void) {
 		prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
+			prototype_default_intrinsic_environment(),
 			&contexts,
 			&substitutions,
 			NULL,
@@ -377,6 +385,143 @@ int main(void) {
 		) != 0 || prototype_term_operation_request(
 			&term_db, operation, value, continuation_thunk, &request
 		) != 0) {
+		return 1;
+	}
+
+	const struct prototype_intrinsic_environment* default_environment =
+		prototype_default_intrinsic_environment();
+	struct prototype_intrinsic_namespace_binding int64_bindings[32];
+	if (default_environment->namespace_binding_count > 32) {
+		return 1;
+	}
+	memcpy(
+		int64_bindings,
+		default_environment->namespace_bindings,
+		default_environment->namespace_binding_count * sizeof(int64_bindings[0])
+	);
+	int remapped_int = 0;
+	int remapped_add_name = 0;
+	for (size_t i = 0; i < default_environment->namespace_binding_count; ++i) {
+		if (strcmp(int64_bindings[i].source_name, "Int") == 0) {
+			int64_bindings[i].target_id = PROTOTYPE_HOST_TYPE_INT64;
+			remapped_int = 1;
+		}
+		if (int64_bindings[i].kind ==
+				PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE &&
+			int64_bindings[i].target_id == PROTOTYPE_PURE_PRIMITIVE_INT_ADD) {
+			int64_bindings[i].source_name = "alternate_add";
+			remapped_add_name = 1;
+		}
+	}
+	const struct prototype_intrinsic_environment int64_environment = {
+		.namespace_bindings = int64_bindings,
+		.namespace_binding_count = default_environment->namespace_binding_count,
+		.pure_primitives = default_environment->pure_primitives,
+		.pure_primitive_count = default_environment->pure_primitive_count,
+		.effect_operations = default_environment->effect_operations,
+		.effect_operation_count = default_environment->effect_operation_count,
+		.default_integer_host_type = PROTOTYPE_HOST_TYPE_INT64
+	};
+	if (!remapped_int || !remapped_add_name || prototype_intrinsic_environment_fingerprint(
+			&int64_environment
+		) == prototype_intrinsic_environment_fingerprint(default_environment)) {
+		return 1;
+	}
+
+	/* Reinitialize the stores so the accepted image contains only evidence
+	 * produced under the alternate immutable environment. */
+	prototype_term_db_init(
+		&term_db, terms, TERM_CAPACITY, cases, case_label_symbols, CASE_CAPACITY,
+		case_binders, CASE_BINDER_CAPACITY, ih_scopes, MATCH_FRAME_CAPACITY
+	);
+	prototype_type_declaration_db_init(
+		&type_db, type_declarations, TYPE_CAPACITY, constructors, CONSTRUCTOR_CAPACITY,
+		parameters, PARAMETER_CAPACITY, field_types, FIELD_TYPE_CAPACITY,
+		type_exprs, TYPE_EXPR_CAPACITY
+	);
+	prototype_judgement_db_init(
+		&judgement,
+		judgement_relations,
+		judgement_proofs,
+		judgement_claims,
+		judgement_derivations,
+		JUDGEMENT_CAPACITY,
+		judgement_candidate_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		judgement_accepted_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	);
+	prototype_context_db_init(&contexts, context_entries, CONTEXT_CAPACITY);
+	prototype_substitution_db_init(
+		&substitutions, substitution_entries, SUBSTITUTION_CAPACITY
+	);
+	prototype_judgement_delta_init(
+		&delta, &judgement, delta_relations, delta_proofs, JUDGEMENT_CAPACITY,
+		delta_premises,
+		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+		motive_results, 8, computation_constraints, 8, effect_row_constraints, 8
+	);
+	prototype_judgement_delta_set_context_store(
+		&delta, &contexts, &substitutions
+	);
+	prototype_judgement_delta_set_intrinsic_environment(
+		&delta, &int64_environment
+	);
+	uint32_t int64_literal;
+	uint32_t int64_classifier;
+	uint32_t readback_primitive;
+	FILE* readback_file = tmpfile();
+	char readback[64];
+	if (prototype_term_int_literal(&term_db, 42, &int64_literal) != 0 ||
+		prototype_term_pure_primitive(
+			&term_db, PROTOTYPE_PURE_PRIMITIVE_INT_ADD, -1, &readback_primitive
+		) != 0 || !readback_file) {
+		if (readback_file) {
+			fclose(readback_file);
+		}
+		return 1;
+	}
+	prototype_term_print_debug(
+		readback_file,
+		&symbols,
+		&int64_environment,
+		&type_db,
+		&term_db,
+		readback_primitive
+	);
+	rewind(readback_file);
+	if (!fgets(readback, sizeof(readback), readback_file) ||
+		strcmp(readback, "PURE_PRIMITIVE(alternate_add)") != 0) {
+		fclose(readback_file);
+		return 1;
+	}
+	fclose(readback_file);
+	if (
+		prototype_judgement_delta_infer_core_helper_facts(
+			&delta, &term_db, &type_db
+		) != 0 || prototype_judgement_delta_commit(&delta, 0) != 0 ||
+		prototype_judgement_publish_candidates(NULL, &judgement) != 0 ||
+		prototype_judgement_lookup_authority_neutral_core_classifier(
+			&judgement, int64_literal, &int64_classifier
+		) != 0 || int64_classifier >= term_db.term_count ||
+		term_db.terms[int64_classifier].tag != PROTOTYPE_TERM_PRIMITIVE_INT64 ||
+		prototype_judgement_validate_accepted_graph(
+			&term_db,
+			&type_db,
+			&int64_environment,
+			&contexts,
+			&substitutions,
+			NULL,
+			&judgement
+		) != 0 || prototype_judgement_validate_accepted_graph(
+			&term_db,
+			&type_db,
+			default_environment,
+			&contexts,
+			&substitutions,
+			NULL,
+			&judgement
+		) == 0) {
 		return 1;
 	}
 	symbol_table_free(&symbols);

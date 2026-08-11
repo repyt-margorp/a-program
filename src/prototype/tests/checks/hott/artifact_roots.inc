@@ -827,11 +827,41 @@
 			&term_db,
 			&type_db,
 			&judgement,
+			&cwf_certificate_db,
 			&context_db,
 			&substitution_db,
 			&operation_graph
 		) != 0) {
 		return 244;
+	}
+	struct prototype_intrinsic_namespace_binding int64_bindings[32];
+	struct prototype_intrinsic_environment int64_environment;
+	if (fixture_int64_intrinsic_environment(
+			int64_bindings,
+			sizeof(int64_bindings) / sizeof(int64_bindings[0]),
+			&int64_environment
+		) != 0 || prototype_intrinsic_environment_fingerprint(
+			&int64_environment
+		) == prototype_intrinsic_environment_fingerprint(
+			prototype_default_intrinsic_environment()
+		) || write_identity_root_artifact_with_environment(
+			"/tmp/a-program-hott-identity-root-int64.apo",
+			&int64_environment,
+			&identity_interface,
+			&term_db,
+			&type_db,
+			&judgement,
+			&cwf_certificate_db,
+			&context_db,
+			&substitution_db,
+			&operation_graph
+		) != 0 || fixture_artifact_interface_environment_round_trip(
+			"/tmp/a-program-hott-identity-root-int64.apo",
+			&int64_environment,
+			prototype_default_intrinsic_environment(),
+			&identity_interface
+		) != 0) {
+		return 274;
 	}
 	(void)neutral_identity_witness;
 	uint32_t unused_binding = prototype_term_new_binding(&term_db);
@@ -908,9 +938,10 @@
 			"/tmp/a-program-hott-identity-root-perturbed.apo",
 			&identity_interface,
 			&term_db,
-			&type_db,
-				&judgement,
-				&context_db,
+				&type_db,
+					&judgement,
+					&cwf_certificate_db,
+					&context_db,
 				&substitution_db,
 				&operation_graph
 		) != 0) {

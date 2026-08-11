@@ -32,10 +32,13 @@ struct prototype_kernel_builder {
 	struct prototype_judgement_db* judgement;
 };
 
-int prototype_kernel_view_validate(
+/* Validates the component stores and every certificate already present. It
+ * deliberately does not assert global certificate coverage for all candidate
+ * substitutions; consumers validate explicit certified roots. */
+int prototype_kernel_view_validate_stores(
 	const struct prototype_kernel_view* view
 );
-int prototype_kernel_builder_validate(
+int prototype_kernel_builder_validate_stores(
 	const struct prototype_kernel_builder* builder
 );
 int prototype_kernel_builder_view(

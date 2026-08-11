@@ -198,6 +198,19 @@ struct prototype_intrinsic_namespace_binding {
 	int target_id;
 };
 
+/* Immutable language/runtime boundary selected for one compilation.  The
+ * descriptor, rather than a source spelling or an expected type, owns the
+ * principal representation of an unsuffixed integer literal. */
+struct prototype_intrinsic_environment {
+	const struct prototype_intrinsic_namespace_binding* namespace_bindings;
+	size_t namespace_binding_count;
+	const struct prototype_pure_primitive_declaration* pure_primitives;
+	size_t pure_primitive_count;
+	const struct prototype_effect_operation_declaration* effect_operations;
+	size_t effect_operation_count;
+	int default_integer_host_type;
+};
+
 enum prototype_term_layer {
 	PROTOTYPE_TERM_LAYER_LAMBDA_CORE = 1,
 	PROTOTYPE_TERM_LAYER_ELIMINATOR = 2,
@@ -352,6 +365,7 @@ struct prototype_term_reduction_options {
 	int* p_normalization_reason;
 	uint64_t* p_steps_remaining;
 	uint64_t* p_steps_used;
+	uint64_t* p_induction_hypothesis_reductions;
 	prototype_term_operation_dispatch_fn operation_dispatch;
 	void* operation_dispatch_context;
 };
@@ -522,6 +536,10 @@ struct prototype_ih_scope_key {
 
 struct prototype_ih_scope {
 	uint32_t match_term;
+	/* When the recursive Match scrutinizes a bound variable, its branch bodies
+	 * retain that binding until iota reduction. Each recursive invocation then
+	 * substitutes the current scrutinee, not the first invocation's value. */
+	uint32_t scrutinee_binding_id;
 	struct prototype_ih_scope_key key;
 };
 
@@ -870,10 +888,17 @@ int prototype_term_computation_fold(
 	uint32_t clause_count,
 	uint32_t* p_ret
 );
-int prototype_term_host_type_from_source_name(const char* name, int* p_type_id);
+int prototype_term_host_type_from_source_name(
+	const struct prototype_intrinsic_environment* environment,
+	const char* name,
+	int* p_type_id
+);
 int prototype_term_host_type_from_term_tag(int tag, int* p_type_id);
 int prototype_term_host_type_from_type_expr_tag(int tag, int* p_type_id);
-const char* prototype_term_host_type_source_name(int type_id);
+const char* prototype_term_host_type_source_name(
+	const struct prototype_intrinsic_environment* environment,
+	int type_id
+);
 const char* prototype_term_host_type_debug_name(int type_id);
 int prototype_term_host_type_term_tag(int type_id);
 int prototype_term_host_type_expr_tag(int type_id);
@@ -886,10 +911,20 @@ int prototype_term_make_host_type(
 	uint32_t* p_ret
 );
 int prototype_intrinsic_namespace_lookup(
+	const struct prototype_intrinsic_environment* environment,
 	const char* name,
 	struct prototype_intrinsic_namespace_binding* p_binding
 );
-const char* prototype_intrinsic_namespace_source_name(int kind, int target_id);
+const char* prototype_intrinsic_namespace_source_name(
+	const struct prototype_intrinsic_environment* environment,
+	int kind,
+	int target_id
+);
+const struct prototype_intrinsic_environment*
+prototype_default_intrinsic_environment(void);
+uint64_t prototype_intrinsic_environment_fingerprint(
+	const struct prototype_intrinsic_environment* environment
+);
 const struct prototype_pure_primitive_declaration*
 prototype_term_pure_primitive_declaration(int primitive_id);
 const struct prototype_effect_operation_declaration*
@@ -962,6 +997,17 @@ int prototype_term_core_shape_equal_under_binders(
 	const uint32_t* left_binders,
 	const uint32_t* right_binders,
 	size_t binder_count,
+	uint32_t left,
+	uint32_t right,
+	int* p_equal
+);
+int prototype_term_core_shape_equal_under_binders_and_ih_scope(
+	const struct prototype_term_db* db,
+	const uint32_t* left_binders,
+	const uint32_t* right_binders,
+	size_t binder_count,
+	uint32_t left_ih_scope,
+	uint32_t right_ih_scope,
 	uint32_t left,
 	uint32_t right,
 	int* p_equal
@@ -1146,6 +1192,7 @@ void prototype_term_normalization_cache_get_stats(
 void prototype_term_print(
 	FILE* output,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	uint32_t term_id
@@ -1154,6 +1201,7 @@ void prototype_term_print(
 void prototype_term_print_debug(
 	FILE* output,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	uint32_t term_id

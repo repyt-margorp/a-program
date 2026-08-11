@@ -26,11 +26,12 @@ static int hott_action_request_is_valid(
 			);
 	case PROTOTYPE_HOTT_ACTION_SUBSTITUTION:
 		{
-			const struct prototype_substitution* substitution =
-				prototype_substitution_get(
-					substitutions,
-					request->key.substitution.source_substitution_id
-				);
+				const struct prototype_substitution* substitution =
+					prototype_substitution_get(
+						substitutions,
+						request->key.substitution.source.substitution_id
+					);
+				struct prototype_certified_substitution_ref certified_source;
 			const struct prototype_hott_bridge* source_bridge =
 				prototype_hott_bridge_db_get(
 					bridges, request->key.substitution.source_bridge_id
@@ -39,7 +40,14 @@ static int hott_action_request_is_valid(
 				prototype_hott_bridge_db_get(
 					bridges, request->key.substitution.target_bridge_id
 				);
-			return substitution && source_bridge && target_bridge &&
+				return substitution && prototype_cwf_certified_substitution_ref_get(
+						cwf_certificates,
+						substitutions,
+						judgement,
+						request->key.substitution.source.substitution_id,
+						request->key.substitution.source.certificate_id,
+						&certified_source
+					) == 0 && source_bridge && target_bridge &&
 				source_bridge->source_context_id ==
 					substitution->source_context &&
 				target_bridge->source_context_id ==
@@ -208,7 +216,7 @@ int prototype_hott_action_request_intern(
 		kernel ? kernel->judgement : NULL;
 	if (!db || !p_request_id || !db->requests ||
 		db->request_count >= db->request_capacity ||
-		prototype_kernel_view_validate(kernel) != 0) {
+		prototype_kernel_view_validate_stores(kernel) != 0) {
 		return -1;
 	}
 	request.id = (uint32_t)db->request_count;
@@ -620,11 +628,11 @@ static int hott_action_certificate_is_valid(
 		}
 	case PROTOTYPE_HOTT_ACTION_CERTIFICATE_SUBSTITUTION_NATURALITY:
 		{
-			const struct prototype_substitution* source =
-				prototype_substitution_get(
-					substitutions,
-					request->key.substitution.source_substitution_id
-				);
+				const struct prototype_substitution* source =
+					prototype_substitution_get(
+						substitutions,
+						request->key.substitution.source.substitution_id
+					);
 			const struct prototype_hott_bridge* source_bridge =
 				prototype_hott_bridge_db_get(
 					bridges, request->key.substitution.source_bridge_id
@@ -639,10 +647,19 @@ static int hott_action_certificate_is_valid(
 				prototype_substitution_get(
 					substitutions, action->result_substitution_id
 				);
-			struct prototype_term_conversion_result left;
-			struct prototype_term_conversion_result right;
-			if (request->kind != PROTOTYPE_HOTT_ACTION_SUBSTITUTION || !source ||
-				!source_bridge || !target_bridge || !result ||
+				struct prototype_term_conversion_result left;
+				struct prototype_term_conversion_result right;
+				struct prototype_certified_substitution_ref certified_result;
+				if (request->kind != PROTOTYPE_HOTT_ACTION_SUBSTITUTION || !source ||
+					!source_bridge || !target_bridge || !result ||
+					prototype_cwf_certified_substitution_ref_get(
+						cwf_certificates,
+						substitutions,
+						judgement,
+						action->result_substitution_id,
+						action->result_substitution_certificate_id,
+						&certified_result
+					) != 0 ||
 				result->source_context != source_bridge->bridge_context_id ||
 				result->target_context != target_bridge->bridge_context_id ||
 				action->normalization_profile !=
@@ -672,18 +689,7 @@ static int hott_action_certificate_is_valid(
 				) != 0 || right.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 				return 0;
 			}
-			if (result->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
-				const struct prototype_cwf_certificate* extension =
-					prototype_cwf_certificate_db_get_kind(
-						cwf_certificates,
-						action->result_substitution_certificate_id,
-						PROTOTYPE_CWF_CERTIFICATE_SUBSTITUTION_FORMATION
-					);
-				return extension && extension->structural_id ==
-					action->result_substitution_id;
-			}
-			return action->result_substitution_certificate_id ==
-				PROTOTYPE_INVALID_ID;
+			return 1;
 		}
 	case PROTOTYPE_HOTT_ACTION_CERTIFICATE_IDENTITY_TYPE_COMPUTATION:
 		{
@@ -1650,7 +1656,7 @@ int prototype_hott_action_certificate_add(
 		kernel ? kernel->judgement : NULL;
 	if (!db || !p_certificate_id || !db->certificates ||
 		db->certificate_count >= db->certificate_capacity ||
-		prototype_kernel_view_validate(kernel) != 0) {
+		prototype_kernel_view_validate_stores(kernel) != 0) {
 		return -1;
 	}
 	certificate.id = (uint32_t)db->certificate_count;

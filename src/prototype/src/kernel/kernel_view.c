@@ -2,7 +2,7 @@
 
 #include "a_program/kernel/cwf_certificate.h"
 
-int prototype_kernel_view_validate(
+int prototype_kernel_view_validate_stores(
 	const struct prototype_kernel_view* view
 ) {
 	if (!view || !view->contexts || !view->substitutions ||
@@ -20,7 +20,7 @@ int prototype_kernel_view_validate(
 	);
 }
 
-int prototype_kernel_builder_validate(
+int prototype_kernel_builder_validate_stores(
 	const struct prototype_kernel_builder* builder
 ) {
 	if (!builder) {
@@ -35,14 +35,14 @@ int prototype_kernel_builder_validate(
 		.operations = builder->operations,
 		.judgement = builder->judgement
 	};
-	return prototype_kernel_view_validate(&view);
+	return prototype_kernel_view_validate_stores(&view);
 }
 
 int prototype_kernel_builder_view(
 	const struct prototype_kernel_builder* builder,
 	struct prototype_kernel_view* p_view
 ) {
-	if (!p_view || prototype_kernel_builder_validate(builder) != 0) {
+	if (!p_view || prototype_kernel_builder_validate_stores(builder) != 0) {
 		return -1;
 	}
 	*p_view = (struct prototype_kernel_view) {

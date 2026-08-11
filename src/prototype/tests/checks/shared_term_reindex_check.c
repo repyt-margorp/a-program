@@ -444,13 +444,20 @@ int main(void) {
 	}
 	const struct prototype_match_case* reindexed_ih_case =
 		&terms.cases[terms.terms[reindexed_ih_match].as.match.first_case];
+	uint32_t reindexed_ih_scope =
+		terms.terms[reindexed_ih_match].as.match.ih_scope_id;
 	if (reindexed_ih_case->body >= terms.term_count ||
 		terms.terms[reindexed_ih_case->body].tag !=
 			PROTOTYPE_TERM_INDUCTION_HYPOTHESIS ||
 		terms.terms[reindexed_ih_case->body].as.induction_hypothesis.ih_scope_id !=
-			terms.terms[reindexed_ih_match].as.match.ih_scope_id ||
+			reindexed_ih_scope ||
+		reindexed_ih_scope >= terms.ih_scope_count ||
+		terms.ih_scopes[reindexed_ih_scope].match_term != reindexed_ih_match ||
+		terms.ih_scopes[reindexed_ih_scope].scrutinee_binding_id !=
+			terms.ih_scopes[ih_frame].scrutinee_binding_id ||
+		terms.terms[reindexed_ih_match].as.match.scrutinee != literal_seven ||
 		terms.terms[reindexed_ih_case->body].as.induction_hypothesis.argument !=
-			literal_seven) {
+			outer_variable) {
 		fprintf(stderr, "scoped IH frame remap law failed\n");
 		return 1;
 	}
@@ -488,7 +495,7 @@ int main(void) {
 	}
 
 	if (prototype_context_db_validate(&contexts, &terms) != 0 ||
-		prototype_substitution_db_validate_typed(
+		prototype_substitution_db_validate_classifier_coherence(
 			&substitutions, &contexts, &terms, &types
 		) != 0) {
 		fprintf(stderr, "shared-term categorical stores are invalid\n");

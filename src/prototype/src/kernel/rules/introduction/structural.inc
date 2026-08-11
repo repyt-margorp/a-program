@@ -37,8 +37,12 @@ int prototype_judgement_delta_record_lambda_intro(
 	uint32_t expected_body_classifier;
 	uint32_t lambda_classifier;
 	uint32_t binder_id = terms->terms[binder_subject].as.var.binding_id;
-	if (classifier_kernel_strip_effect_row_foralls(
-			terms, type_declarations, NULL, classifier, &lambda_classifier
+	if (prototype_judgement_specialize_effect_rows_for_argument(
+			terms,
+			type_declarations,
+			classifier,
+			binder_classifier,
+			&lambda_classifier
 		) != 0 || classifier_kernel_as_pi(
 			terms,
 			type_declarations,

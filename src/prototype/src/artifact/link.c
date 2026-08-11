@@ -612,7 +612,7 @@ static int artifact_append_accepted_judgement(
 			claim_relocation[source_derivation->conclusion_claim_id];
 		/* Older wire formats carried this derived cache. The accepted append
 		 * preserves the source DAG exactly, so its topological rank remains valid
-		 * after ID relocation. v71 recomputes rank on read. */
+		 * after ID relocation. v72 recomputes rank on read. */
 		derivation.closure_rank = source_derivation->closure_rank;
 		derivation.premises = premises;
 		derivation.key_hash = 0;
@@ -1812,6 +1812,10 @@ int prototype_internal_artifact_append_graph_ordered(
 		return -1;
 	}
 
+	appended_interface->intrinsic_environment_fingerprint =
+		source_interface->intrinsic_environment_fingerprint;
+	appended_interface->default_integer_host_type =
+		source_interface->default_integer_host_type;
 	appended_interface->term_export_count = source_interface->term_export_count;
 	appended_interface->type_export_count = source_interface->type_export_count;
 	appended_interface->type_parameter_count = source_interface->type_parameter_count;

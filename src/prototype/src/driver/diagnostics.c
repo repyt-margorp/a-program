@@ -20,6 +20,72 @@ const char* prototype_diagnostic_resolve_error_kind_name(int kind) {
 	}
 }
 
+const char* prototype_compile_diagnostic_phase_name(int phase) {
+	switch (phase) {
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION:
+			return "graph-construction";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER:
+			return "constraint-solver";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_EXPECTATION_CHECK:
+			return "expectation-check";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_PROOF_REPLAY:
+			return "proof-replay";
+		default:
+			return "unknown";
+	}
+}
+
+const char* prototype_compile_diagnostic_reason_name(int reason) {
+	switch (reason) {
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_UNSOLVED_CLASSIFIER:
+			return "unsolved-classifier";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_CONSTRUCTOR_DOMAIN_MISMATCH:
+			return "constructor-domain-mismatch";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_IH_OWNERSHIP:
+			return "ih-ownership";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_MATCH_RESULT_MOTIVE:
+			return "match-result-motive";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_INTEGER_LITERAL_RANGE:
+			return "integer-literal-range";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_ASCRIPTION_MISMATCH:
+			return "ascription-mismatch";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_NESTED_RECURSION:
+			return "unsupported-nested-recursion";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_INDEXED_FAMILY:
+			return "unsupported-indexed-family";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_NESTED_MATCH_GROUPING:
+			return "nested-match-grouping";
+		default:
+			return "unknown";
+	}
+}
+
+void prototype_diagnostic_print_compile_diagnostics(
+	FILE* stream,
+	const struct prototype_compile_metadata* metadata
+) {
+	if (!stream || !metadata) {
+		return;
+	}
+	for (size_t i = 0; i < metadata->compile_diagnostic_count; ++i) {
+		const struct prototype_compile_diagnostic* diagnostic =
+			&metadata->compile_diagnostics[i];
+		fprintf(
+			stream,
+			"compile-diagnostic diagnostic-code=%s phase=%s ast#%u span=%u:%u operation#%u constraint#%u expected=term#%u actual=term#%u\n",
+			prototype_compile_diagnostic_reason_name(diagnostic->reason),
+			prototype_compile_diagnostic_phase_name(diagnostic->phase),
+			diagnostic->source_ast,
+			diagnostic->span.line,
+			diagnostic->span.column,
+			diagnostic->operation_id,
+			diagnostic->constraint_id,
+			diagnostic->expected_classifier,
+			diagnostic->actual_classifier
+		);
+	}
+}
+
 void prototype_diagnostic_print_resolve_errors(
 	FILE* stream,
 	const struct symbol_table* symbols,
@@ -60,11 +126,12 @@ static const char* resolution_item_state_name(int state) {
 void prototype_diagnostic_print_resolution_trace(
 	FILE* stream,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	const struct prototype_compile_metadata* metadata
 ) {
-	if (!stream || !metadata) {
+	if (!stream || !intrinsic_environment || !metadata) {
 		return;
 	}
 	fprintf(
@@ -92,7 +159,10 @@ void prototype_diagnostic_print_resolution_trace(
 		if (item->state == PROTOTYPE_RESOLUTION_ITEM_RESOLVED) {
 			fprintf(stream, " -> ");
 			if (item->resolved_owner < terms->term_count) {
-				prototype_term_print_debug(stream, symbols, type_declarations, terms, item->resolved_owner);
+				prototype_term_print_debug(
+					stream, symbols, intrinsic_environment, type_declarations,
+					terms, item->resolved_owner
+				);
 			} else {
 				fprintf(stream, "<bad-owner:%u>", item->resolved_owner);
 			}
@@ -127,7 +197,10 @@ void prototype_diagnostic_print_resolution_trace(
 				event->scrutinee_term
 			);
 			if (event->resolved_owner < terms->term_count) {
-				prototype_term_print_debug(stream, symbols, type_declarations, terms, event->resolved_owner);
+				prototype_term_print_debug(
+					stream, symbols, intrinsic_environment, type_declarations,
+					terms, event->resolved_owner
+				);
 			} else {
 				fprintf(stream, "<bad-owner:%u>", event->resolved_owner);
 			}

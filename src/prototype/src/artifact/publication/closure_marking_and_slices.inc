@@ -1,6 +1,10 @@
 struct artifact_graph_marks {
 	const struct prototype_type_declaration_db* type_declarations;
 	const struct prototype_judgement_db* judgement;
+	const struct prototype_cwf_certificate_db* cwf_certificates;
+	const uint32_t* source_substitution_evidence_claims;
+	size_t source_substitution_evidence_count;
+	uint32_t* substitution_evidence_claims;
 	unsigned char* terms;
 	unsigned char* cases;
 	unsigned char* case_binders;
@@ -553,6 +557,30 @@ static int artifact_mark_term(
 	uint32_t term_id,
 	uint32_t depth
 );
+static int artifact_mark_accepted_claim(
+	struct artifact_graph_marks* marks,
+	const struct prototype_term_db* terms,
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id,
+	uint32_t depth
+);
+
+static int artifact_claim_has_derivation(
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id
+) {
+	if (!judgement || claim_id >= judgement->claim_count) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < judgement->derivation_count; ++i) {
+		const struct prototype_judgement_derivation* derivation =
+			prototype_judgement_derivation_get(judgement, i);
+		if (derivation && derivation->conclusion_claim_id == claim_id) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
 static int artifact_mark_substitution(
 	struct artifact_graph_marks* marks,
@@ -601,6 +629,63 @@ static int artifact_mark_substitution(
 		}
 	}
 	marks->substitutions[substitution_id] = 1;
+	if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
+		uint32_t evidence_claim = PROTOTYPE_INVALID_ID;
+		if (substitution_id < marks->source_substitution_evidence_count &&
+			marks->source_substitution_evidence_claims &&
+			marks->source_substitution_evidence_claims[substitution_id] !=
+				PROTOTYPE_INVALID_ID) {
+			evidence_claim = marks->source_substitution_evidence_claims[
+				substitution_id
+			];
+			if (!prototype_cwf_substitution_claim_certifies(
+					substitutions,
+					marks->judgement,
+					substitution_id,
+					evidence_claim
+				) || !artifact_claim_has_derivation(
+					marks->judgement, evidence_claim
+				)) {
+				return -1;
+			}
+		} else if (marks->cwf_certificates) {
+			if (prototype_cwf_certificate_db_substitution_evidence(
+					marks->cwf_certificates,
+					substitutions,
+					marks->judgement,
+					substitution_id,
+					&evidence_claim
+				) != 0 || !artifact_claim_has_derivation(
+					marks->judgement, evidence_claim
+				)) {
+				evidence_claim = PROTOTYPE_INVALID_ID;
+			}
+		}
+		if (evidence_claim == PROTOTYPE_INVALID_ID) {
+			for (uint32_t i = 0; i < marks->judgement->claim_count; ++i) {
+				if (!prototype_cwf_substitution_claim_certifies(
+						substitutions, marks->judgement, substitution_id, i
+					) || !artifact_claim_has_derivation(marks->judgement, i)) {
+					continue;
+				}
+				if (evidence_claim != PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				evidence_claim = i;
+			}
+		}
+		if (evidence_claim == PROTOTYPE_INVALID_ID ||
+			artifact_mark_accepted_claim(
+				marks,
+				terms,
+				marks->judgement,
+				evidence_claim,
+				depth + 1
+			) != 0) {
+			return -1;
+		}
+		marks->substitution_evidence_claims[substitution_id] = evidence_claim;
+	}
 	return artifact_record_publication_order(
 		marks->substitution_order,
 		marks->substitution_count,

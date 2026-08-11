@@ -3,10 +3,18 @@
 
 struct prototype_program;
 
+enum prototype_read_diagnostic_code {
+	PROTOTYPE_READ_DIAGNOSTIC_NONE = 0,
+	PROTOTYPE_READ_DIAGNOSTIC_SYNTAX = 1,
+	PROTOTYPE_READ_DIAGNOSTIC_UNSUPPORTED_INDEXED_FAMILY = 2,
+	PROTOTYPE_READ_DIAGNOSTIC_NESTED_MATCH_GROUPING = 3
+};
+
 struct prototype_read_error {
 	const char* filename;
 	unsigned line;
 	unsigned column;
+	int diagnostic_code;
 	char message[160];
 };
 

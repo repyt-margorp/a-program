@@ -1,0 +1,17 @@
+path	expectation	diagnostic_code	main_pattern	runtime_pattern	artifact	description
+level0/00_universe.p	pass	-	^term main :=	^value main := LAMBDA\(_#[0-9]+, RETURN\(VAR\(_#[0-9]+\)\)\)$	yes	Universe and type-level identity
+level0/01_function.p	pass	-	^term main :=	^value main := LAMBDA\(_#[0-9]+, RETURN\(VAR\(_#[0-9]+\)\)\)$	yes	Function types and type-level composition
+level0/02_dependent.p	pass	-	^term main :=	^value main := LAMBDA\(_#[0-9]+, LAMBDA\(_#[0-9]+, RETURN\(VAR\(_#[0-9]+\)\)\)\)$	yes	Dependent Pi types
+level1/00_bool.p	pass	-	^term main :=	^value main := RETURN\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\)\)$	yes	Boolean elimination
+level1/01_unit.p	pass	-	^term main :=	^value main := CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)$	yes	Unit elimination
+level1/02_sum.p	pass	-	^term main :=	^value main := APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)$	yes	Parameterized sum type
+level1/03_product.p	pass	-	^term main :=	^value main := RETURN\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)$	yes	Parameterized product type
+level1/04_maybe.p	pass	-	^term main :=	^value main := APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)$	yes	Parameterized optional type
+level2/00_nat.p	pass	-	^term main :=	^value main := RETURN\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)\)\)\)\)$	yes	Natural-number structural induction
+level2/01_list.p	pass	-	^term main :=	^value main := RETURN\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)$	yes	List recursion and append
+level2/02_tree.p	pass	-	^term main :=	^value main := RETURN\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)\)\)$	yes	Binary-tree recursion
+level2/03_rose.p	fail	unsupported-nested-recursion	-	-	no	Nested recursive occurrence through List
+level3/00_vec.p	fail	unsupported-indexed-family	-	-	no	Length-indexed vectors
+level3/01_fin.p	fail	unsupported-indexed-family	-	-	no	Finite sets indexed by Nat
+level3/02_eq.p	fail	unsupported-indexed-family	-	-	no	Indexed propositional equality declaration
+level3/03_matrix.p	fail	unsupported-indexed-family	-	-	no	Matrices with multiple indices

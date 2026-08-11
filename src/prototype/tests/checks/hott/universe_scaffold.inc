@@ -194,6 +194,7 @@
 		) != 0 || prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
+			prototype_default_intrinsic_environment(),
 			&context_db,
 			&substitution_db,
 			&indexed_match_operation_graph,
@@ -233,6 +234,7 @@
 	if (prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
+			prototype_default_intrinsic_environment(),
 			&context_db,
 			&substitution_db,
 			&indexed_match_operation_graph,
@@ -245,6 +247,7 @@
 	if (prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
+			prototype_default_intrinsic_environment(),
 			&context_db,
 			&substitution_db,
 			&indexed_match_operation_graph,
@@ -513,15 +516,25 @@
 		return 48;
 	}
 	uint32_t bool_projection;
+	uint32_t bool_projection_certificate;
 	if (prototype_substitution_projection(
 			&substitution_db, &context_db, bool_context, &bool_projection
+		) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			bool_projection,
+			&bool_projection_certificate
 		) != 0) {
 		return 49;
 	}
 	struct prototype_hott_action_request projection_action = {
 		.kind = PROTOTYPE_HOTT_ACTION_SUBSTITUTION,
 		.key.substitution = {
-			.source_substitution_id = bool_projection,
+			.source = {
+				.substitution_id = bool_projection,
+				.certificate_id = bool_projection_certificate
+			},
 			.source_bridge_id = bool_bridge,
 			.target_bridge_id = bridge
 		}
@@ -541,6 +554,7 @@
 	}
 	uint32_t bool_identity;
 	uint32_t composed_projection;
+	uint32_t composed_projection_certificate;
 	if (prototype_substitution_identity(
 			&substitution_db, &context_db, bool_context, &bool_identity
 		) != 0 || prototype_substitution_compose(
@@ -549,13 +563,22 @@
 			bool_projection,
 			bool_identity,
 			&composed_projection
+		) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			composed_projection,
+			&composed_projection_certificate
 		) != 0) {
 		return 51;
 	}
 	struct prototype_hott_action_request composition_action = {
 		.kind = PROTOTYPE_HOTT_ACTION_SUBSTITUTION,
 		.key.substitution = {
-			.source_substitution_id = composed_projection,
+			.source = {
+				.substitution_id = composed_projection,
+				.certificate_id = composed_projection_certificate
+			},
 			.source_bridge_id = bool_bridge,
 			.target_bridge_id = bridge
 		}
@@ -588,23 +611,255 @@
 			&type_db,
 			empty_to_empty,
 			bool_context,
-			bool_false,
-			bool_view,
-			&false_extension
-		) != 0 || prototype_cwf_certificate_db_add_substitution(
-			&cwf_certificate_db,
+				bool_false,
+				bool_view,
+				&false_extension
+			) != 0 || prototype_substitution_db_validate_classifier_coherence(
+				&substitution_db, &context_db, &term_db, &type_db
+			) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+				&cwf_certificate_db,
+				&substitution_db,
+				&judgement,
+				false_extension,
+				&false_extension_certificate
+			) == 0 || prototype_cwf_certificate_db_add_substitution(
+				&cwf_certificate_db,
+				&substitution_db,
+				&judgement,
+				false_extension,
+				bool_is_type,
+				&false_extension_certificate
+			) == 0 || prototype_cwf_certificate_db_add_substitution(
+				&cwf_certificate_db,
 			&substitution_db,
 			&judgement,
 			false_extension,
 			false_claim,
-			&false_extension_certificate
-		) != 0) {
+				&false_extension_certificate
+			) != 0) {
 		return 55;
+	}
+	struct prototype_certified_substitution_ref false_extension_ref;
+	if (prototype_cwf_certified_substitution_ref_get(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			false_extension,
+			false_extension_certificate,
+			&false_extension_ref
+		) != 0 || false_extension_ref.substitution_id != false_extension) {
+		return 146;
+	}
+	uint32_t ignored_substitution;
+	if (prototype_substitution_extend(
+			&substitution_db,
+			&context_db,
+			&term_db,
+			&type_db,
+			PROTOTYPE_INVALID_ID,
+			bool_context,
+			bool_false,
+			bool_view,
+			&ignored_substitution
+		) != PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_PREFIX ||
+		prototype_substitution_extend(
+			&substitution_db,
+			&context_db,
+			&term_db,
+			&type_db,
+			empty_to_empty,
+			bool_context,
+			(uint32_t)term_db.term_count,
+			bool_view,
+			&ignored_substitution
+		) != PROTOTYPE_SUBSTITUTION_EXTEND_TERM_OUT_OF_RANGE ||
+		prototype_substitution_extend(
+			&substitution_db,
+			&context_db,
+			&term_db,
+			&type_db,
+			empty_to_empty,
+			bool_context,
+			bool_false,
+			(uint32_t)term_db.term_count,
+			&ignored_substitution
+		) != PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_OUT_OF_RANGE ||
+		prototype_substitution_extend(
+			&substitution_db,
+			&context_db,
+			&term_db,
+			&type_db,
+			empty_to_empty,
+			empty,
+			bool_false,
+			bool_view,
+			&ignored_substitution
+		) != PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_TARGET ||
+		prototype_substitution_extend(
+			&substitution_db,
+			&context_db,
+			&term_db,
+			&type_db,
+			bool_identity,
+			bool_context,
+			bool_false,
+			bool_view,
+			&ignored_substitution
+		) != PROTOTYPE_SUBSTITUTION_EXTEND_TARGET_PARENT_MISMATCH ||
+		prototype_substitution_extend(
+			&substitution_db,
+			&context_db,
+			&term_db,
+			&type_db,
+			empty_to_empty,
+			bool_context,
+			bool_false,
+			universe,
+			&ignored_substitution
+		) != PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_MISMATCH ||
+		strcmp(prototype_substitution_extend_result_name(
+			PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_MISMATCH
+		), "extension classifier mismatch") != 0) {
+		return 147;
+	}
+	uint32_t false_proposition_id = judgement.claims[
+		false_claim
+	].proposition_id;
+	if (false_proposition_id >= judgement.proposition_count) {
+		return 148;
+	}
+	struct prototype_judgement_proposition saved_false_proposition =
+		judgement.propositions[false_proposition_id];
+	struct prototype_certified_substitution_ref rejected_ref;
+	if (saved_false_proposition.context_id != empty ||
+		saved_false_proposition.subject != bool_false ||
+		saved_false_proposition.classifier != bool_view ||
+		prototype_cwf_certified_substitution_ref_get(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			bool_projection,
+			false_extension_certificate,
+			&rejected_ref
+		) == 0) {
+		return 148;
+	}
+	judgement.propositions[false_proposition_id].context_id = bool_context;
+	if (prototype_cwf_certified_substitution_ref_get(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			false_extension,
+			false_extension_certificate,
+			&rejected_ref
+		) == 0) {
+		return 148;
+	}
+	judgement.propositions[false_proposition_id] = saved_false_proposition;
+	judgement.propositions[false_proposition_id].subject = universe;
+	if (prototype_cwf_certified_substitution_ref_get(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			false_extension,
+			false_extension_certificate,
+			&rejected_ref
+		) == 0) {
+		return 148;
+	}
+	judgement.propositions[false_proposition_id] = saved_false_proposition;
+	judgement.propositions[false_proposition_id].classifier = universe;
+	if (prototype_cwf_certified_substitution_ref_get(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			false_extension,
+			false_extension_certificate,
+			&rejected_ref
+		) == 0) {
+		return 148;
+	}
+	judgement.propositions[false_proposition_id] = saved_false_proposition;
+	if (prototype_cwf_certificate_db_validate_substitutions(
+			&cwf_certificate_db, &substitution_db, &judgement
+		) != 0) {
+		return 148;
+	}
+
+	uint32_t covered_composition;
+	uint32_t covered_composition_certificate;
+	uint32_t coverage_second_bool_binding = prototype_term_new_binding(&term_db);
+	uint32_t coverage_second_bool_context;
+	uint32_t uncovered_extension;
+	uint32_t uncovered_composition;
+	uint32_t uncovered_extension_certificate;
+	uint32_t uncovered_composition_certificate;
+	if (prototype_substitution_compose(
+			&substitution_db,
+			&context_db,
+			false_extension,
+			empty_to_empty,
+			&covered_composition
+		) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			covered_composition,
+			&covered_composition_certificate
+		) != 0 || coverage_second_bool_binding == PROTOTYPE_INVALID_ID ||
+		prototype_context_extend(
+			&context_db,
+			bool_context,
+			coverage_second_bool_binding,
+			bool_view,
+			PROTOTYPE_INVALID_ID,
+			&coverage_second_bool_context
+		) != 0 || prototype_substitution_extend(
+			&substitution_db,
+			&context_db,
+			&term_db,
+			&type_db,
+			false_extension,
+			coverage_second_bool_context,
+			bool_false,
+			bool_view,
+			&uncovered_extension
+		) != PROTOTYPE_SUBSTITUTION_EXTEND_OK ||
+		prototype_substitution_compose(
+			&substitution_db,
+			&context_db,
+			uncovered_extension,
+			empty_to_empty,
+			&uncovered_composition
+		) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			uncovered_composition,
+			&uncovered_composition_certificate
+		) == 0 || prototype_cwf_certificate_db_add_substitution(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			uncovered_extension,
+			false_claim,
+			&uncovered_extension_certificate
+		) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			uncovered_composition,
+			&uncovered_composition_certificate
+		) != 0) {
+		return 149;
 	}
 	struct prototype_hott_action_request extension_action = {
 		.kind = PROTOTYPE_HOTT_ACTION_SUBSTITUTION,
 		.key.substitution = {
-			.source_substitution_id = false_extension,
+			.source = {
+				.substitution_id = false_extension,
+				.certificate_id = false_extension_certificate
+			},
 			.source_bridge_id = bridge,
 			.target_bridge_id = bool_bridge
 		}

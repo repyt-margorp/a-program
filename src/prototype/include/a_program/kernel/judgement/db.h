@@ -90,6 +90,7 @@ int prototype_judgement_selected_evidence_from_claim(
  * fragment. Successful paths commit the delta into JudgementDB; failed paths
  * rewind it. This is not a semantic typing context. */
 struct prototype_judgement_delta {
+	const struct prototype_intrinsic_environment* intrinsic_environment;
 	struct prototype_judgement_db* db;
 	struct prototype_judgement_proposition* propositions;
 	struct prototype_judgement_derivation_candidate* derivation_candidates;
@@ -188,6 +189,11 @@ void prototype_judgement_delta_init(
 	size_t computation_constraint_capacity,
 	struct prototype_judgement_effect_row_constraint* effect_row_constraints,
 	size_t effect_row_constraint_capacity
+);
+
+void prototype_judgement_delta_set_intrinsic_environment(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_intrinsic_environment* intrinsic_environment
 );
 
 void prototype_judgement_delta_set_solver_budget(

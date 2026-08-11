@@ -6,18 +6,21 @@ Bool := @{
 };
 
 /* Boolean negation */
-not : Bool -> Bool := \b : Bool =>
+not := \b : Bool =>
   b @true => Bool.false
     @false => Bool.true;
+not :: Bool -> Bool;
 
 /* Boolean and */
-and : Bool -> Bool -> Bool := \a : Bool => \b : Bool =>
+and := \a : Bool => \b : Bool =>
   a @true => b
     @false => Bool.false;
+and :: Bool -> Bool -> Bool;
 
 /* Boolean or */
-or : Bool -> Bool -> Bool := \a : Bool => \b : Bool =>
+or := \a : Bool => \b : Bool =>
   a @true => Bool.true
     @false => b;
+or :: Bool -> Bool -> Bool;
 
 main := not Bool.true;

@@ -713,6 +713,15 @@ static int substitute_term_uncached_internal(
 			);
 			}
 		case PROTOTYPE_TERM_MATCH: {
+			uint32_t recursive_subject_binding = PROTOTYPE_INVALID_ID;
+			if (term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID) {
+				if (term->as.match.ih_scope_id >= db->ih_scope_count) {
+					return -1;
+				}
+				recursive_subject_binding = db->ih_scopes[
+					term->as.match.ih_scope_id
+				].scrutinee_binding_id;
+			}
 			uint32_t scrutinee;
 			if (substitute_term_internal(
 					db,
@@ -721,6 +730,19 @@ static int substitute_term_uncached_internal(
 					&scrutinee
 				) != 0) {
 				return -1;
+			}
+			uint32_t relocated_recursive_subject_binding =
+				recursive_subject_binding;
+			int preserve_recursive_subject_binding =
+				recursive_subject_binding != PROTOTYPE_INVALID_ID;
+			if (recursive_subject_binding != PROTOTYPE_INVALID_ID &&
+				scrutinee < db->term_count &&
+				db->terms[scrutinee].tag == PROTOTYPE_TERM_VAR) {
+				relocated_recursive_subject_binding =
+					db->terms[scrutinee].as.var.binding_id;
+				preserve_recursive_subject_binding =
+					relocated_recursive_subject_binding ==
+						recursive_subject_binding;
 			}
 
 			struct prototype_match_case_input case_inputs[64];
@@ -748,6 +770,14 @@ static int substitute_term_uncached_internal(
 				}
 				const struct substitution_binding_scope* saved_binding_scope =
 					ctx->binding_scope;
+				struct substitution_binding_scope subject_scope;
+				if (ctx->binding_count > 0 &&
+					preserve_recursive_subject_binding) {
+					subject_scope.binding_id = recursive_subject_binding;
+					subject_scope.scope_key = ++ctx->next_scope_key;
+					subject_scope.previous = ctx->binding_scope;
+					ctx->binding_scope = &subject_scope;
+				}
 				if (ctx->binding_count > 0) {
 					for (uint32_t j = 0; j < old_case->binder_count; ++j) {
 						scope_storage[binder_cursor + j].binding_id =
@@ -795,6 +825,8 @@ static int substitute_term_uncached_internal(
 				ih_scope_clone.scope_key = ++ctx->next_scope_key;
 				ih_scope_clone.previous = saved_ih_scope_clone;
 				ctx->ih_scope_clone = &ih_scope_clone;
+				db->ih_scopes[new_ih_scope_id].scrutinee_binding_id =
+					relocated_recursive_subject_binding;
 				ih_scope_id = new_ih_scope_id;
 			}
 
@@ -811,6 +843,14 @@ static int substitute_term_uncached_internal(
 				}
 				const struct substitution_binding_scope* saved_binding_scope =
 					ctx->binding_scope;
+				struct substitution_binding_scope subject_scope;
+				if (ctx->binding_count > 0 &&
+					preserve_recursive_subject_binding) {
+					subject_scope.binding_id = recursive_subject_binding;
+					subject_scope.scope_key = ++ctx->next_scope_key;
+					subject_scope.previous = ctx->binding_scope;
+					ctx->binding_scope = &subject_scope;
+				}
 				if (ctx->binding_count > 0) {
 					for (uint32_t j = 0; j < old_case->binder_count; ++j) {
 						scope_storage[binder_cursor + j].binding_id =

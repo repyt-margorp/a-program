@@ -6,7 +6,7 @@ PROTOTYPE_AST_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/graph/compile_metadata.c \
 	$(PROTOTYPE_ROOT)/src/artifact/interface.c \
 	$(PROTOTYPE_ROOT)/src/artifact/publication.c \
-	$(PROTOTYPE_ROOT)/src/artifact/wire_v71.c \
+	$(PROTOTYPE_ROOT)/src/artifact/wire_v72.c \
 	$(PROTOTYPE_ROOT)/src/artifact/relocation.c \
 	$(PROTOTYPE_ROOT)/src/artifact/link.c \
 	$(PROTOTYPE_ROOT)/src/frontend/ast.c \
@@ -16,9 +16,13 @@ PROTOTYPE_AST_SOURCES := \
 PROTOTYPE_TYPING_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/kernel/judgement.c
 
+PROTOTYPE_CWF_SOURCES := \
+	$(PROTOTYPE_ROOT)/src/kernel/cwf_certificate.c
+
 PROTOTYPE_KERNEL_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
+	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/resource_usage.c \
 	$(PROTOTYPE_ROOT)/src/core/term.c \
 	$(PROTOTYPE_ROOT)/src/kernel/type_declaration.c \
@@ -32,6 +36,7 @@ PROTOTYPE_COMPILER_SESSION_SOURCES := \
 PROTOTYPE_GRAPH_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
+	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/resource_usage.c \
 	$(PROTOTYPE_ROOT)/src/frontend/reader.c \
 	$(PROTOTYPE_COMPILER_SESSION_SOURCES) \
@@ -43,6 +48,7 @@ PROTOTYPE_GRAPH_SOURCES := \
 PROTOTYPE_COMPILER_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
+	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/resource_usage.c \
 	$(PROTOTYPE_ROOT)/src/frontend/ast_inspect.c \
 	$(PROTOTYPE_ROOT)/src/frontend/reader.c \
@@ -56,7 +62,7 @@ PROTOTYPE_COMPILER_SOURCES := \
 PROTOTYPE_HOTT_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/identity/hott.c \
 	$(PROTOTYPE_AST_SOURCES) \
-	$(PROTOTYPE_ROOT)/src/kernel/cwf_certificate.c \
+	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/kernel_view.c \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
 	$(PROTOTYPE_ROOT)/src/kernel/resource_usage.c \

@@ -4771,7 +4771,7 @@
 			refinement_substitution,
 			&refined_proof
 		) != 0 || refined_proof != refined_constructor ||
-		prototype_substitution_db_validate_typed(
+		prototype_substitution_db_validate_classifier_coherence(
 			&substitution_db, &context_db, &term_db, &type_db
 		) != 0) {
 		return 142;

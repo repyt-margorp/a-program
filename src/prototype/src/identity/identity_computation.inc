@@ -3100,7 +3100,7 @@ int prototype_hott_execute_identity_type_computation(
 		kernel ? kernel->judgement : NULL;
 	if (!actions || !terms || !type_declarations || !contexts || !judgement ||
 		!bridges || !p_result_id ||
-		prototype_kernel_builder_validate(kernel) != 0) {
+		prototype_kernel_builder_validate_stores(kernel) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(

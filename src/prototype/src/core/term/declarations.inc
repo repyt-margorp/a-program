@@ -193,6 +193,19 @@ static const struct prototype_intrinsic_namespace_binding intrinsic_namespace[] 
 	{ "return", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_COMPUTATION_FOLD_RETURN, 0 }
 };
 
+static const struct prototype_intrinsic_environment default_intrinsic_environment = {
+	.namespace_bindings = intrinsic_namespace,
+	.namespace_binding_count = sizeof(intrinsic_namespace) /
+		sizeof(intrinsic_namespace[0]),
+	.pure_primitives = pure_primitive_declarations,
+	.pure_primitive_count = sizeof(pure_primitive_declarations) /
+		sizeof(pure_primitive_declarations[0]),
+	.effect_operations = effect_operation_declarations,
+	.effect_operation_count = sizeof(effect_operation_declarations) /
+		sizeof(effect_operation_declarations[0]),
+	.default_integer_host_type = PROTOTYPE_HOST_TYPE_INT32
+};
+
 struct host_pure_primitive_implementation {
 	int primitive_id;
 	int oracle_kind;
@@ -231,12 +244,18 @@ static const struct prototype_host_type_descriptor* host_type_by_id(int type_id)
 	return NULL;
 }
 
-int prototype_term_host_type_from_source_name(const char* name, int* p_type_id) {
-	if (!name || !p_type_id) {
+int prototype_term_host_type_from_source_name(
+	const struct prototype_intrinsic_environment* environment,
+	const char* name,
+	int* p_type_id
+) {
+	if (!environment || !name || !p_type_id) {
 		return -1;
 	}
 	struct prototype_intrinsic_namespace_binding binding;
-	int status = prototype_intrinsic_namespace_lookup(name, &binding);
+	int status = prototype_intrinsic_namespace_lookup(
+		environment, name, &binding
+	);
 	if (status != 0) {
 		return status;
 	}
@@ -273,8 +292,12 @@ int prototype_term_host_type_from_type_expr_tag(int tag, int* p_type_id) {
 	return 1;
 }
 
-const char* prototype_term_host_type_source_name(int type_id) {
+const char* prototype_term_host_type_source_name(
+	const struct prototype_intrinsic_environment* environment,
+	int type_id
+) {
 	return prototype_intrinsic_namespace_source_name(
+		environment,
 		PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, type_id
 	);
 }
@@ -312,29 +335,123 @@ int prototype_term_host_type_at(size_t index, int* p_type_id) {
 }
 
 int prototype_intrinsic_namespace_lookup(
+	const struct prototype_intrinsic_environment* environment,
 	const char* name,
 	struct prototype_intrinsic_namespace_binding* p_binding
 ) {
-	if (!name || !p_binding) {
+	if (!environment || !name || !p_binding ||
+		(!environment->namespace_bindings &&
+			environment->namespace_binding_count != 0)) {
 		return -1;
 	}
-	for (size_t i = 0; i < sizeof(intrinsic_namespace) / sizeof(intrinsic_namespace[0]); ++i) {
-		if (strcmp(name, intrinsic_namespace[i].source_name) == 0) {
-			*p_binding = intrinsic_namespace[i];
+	for (size_t i = 0; i < environment->namespace_binding_count; ++i) {
+		if (strcmp(name, environment->namespace_bindings[i].source_name) == 0) {
+			*p_binding = environment->namespace_bindings[i];
 			return 0;
 		}
 	}
 	return 1;
 }
 
-const char* prototype_intrinsic_namespace_source_name(int kind, int target_id) {
-	for (size_t i = 0; i < sizeof(intrinsic_namespace) / sizeof(intrinsic_namespace[0]); ++i) {
-		if (intrinsic_namespace[i].kind == kind &&
-			intrinsic_namespace[i].target_id == target_id) {
-			return intrinsic_namespace[i].source_name;
+const char* prototype_intrinsic_namespace_source_name(
+	const struct prototype_intrinsic_environment* environment,
+	int kind,
+	int target_id
+) {
+	if (!environment || (!environment->namespace_bindings &&
+		environment->namespace_binding_count != 0)) {
+		return NULL;
+	}
+	for (size_t i = 0; i < environment->namespace_binding_count; ++i) {
+		if (environment->namespace_bindings[i].kind == kind &&
+			environment->namespace_bindings[i].target_id == target_id) {
+			return environment->namespace_bindings[i].source_name;
 		}
 	}
 	return NULL;
+}
+
+const struct prototype_intrinsic_environment*
+prototype_default_intrinsic_environment(void) {
+	return &default_intrinsic_environment;
+}
+
+static void intrinsic_fingerprint_mix_u64(uint64_t* p_hash, uint64_t value) {
+	for (unsigned i = 0; i < 8; ++i) {
+		*p_hash ^= (value >> (i * 8)) & 0xffu;
+		*p_hash *= UINT64_C(1099511628211);
+	}
+}
+
+static void intrinsic_fingerprint_mix_string(uint64_t* p_hash, const char* value) {
+	if (!value) {
+		intrinsic_fingerprint_mix_u64(p_hash, UINT64_MAX);
+		return;
+	}
+	for (const unsigned char* cursor = (const unsigned char*)value;
+		*cursor != '\0'; ++cursor) {
+		*p_hash ^= *cursor;
+		*p_hash *= UINT64_C(1099511628211);
+	}
+	*p_hash ^= 0;
+	*p_hash *= UINT64_C(1099511628211);
+}
+
+uint64_t prototype_intrinsic_environment_fingerprint(
+	const struct prototype_intrinsic_environment* environment
+) {
+	if (!environment) {
+		return 0;
+	}
+	uint64_t hash = UINT64_C(1469598103934665603);
+	intrinsic_fingerprint_mix_u64(
+		&hash, (uint64_t)(uint32_t)environment->default_integer_host_type
+	);
+	intrinsic_fingerprint_mix_u64(&hash, environment->namespace_binding_count);
+	for (size_t i = 0; i < environment->namespace_binding_count; ++i) {
+		const struct prototype_intrinsic_namespace_binding* binding =
+			&environment->namespace_bindings[i];
+		intrinsic_fingerprint_mix_string(&hash, binding->source_name);
+		intrinsic_fingerprint_mix_u64(&hash, (uint64_t)(uint32_t)binding->kind);
+		intrinsic_fingerprint_mix_u64(&hash, (uint64_t)(uint32_t)binding->target_id);
+	}
+	intrinsic_fingerprint_mix_u64(&hash, environment->pure_primitive_count);
+	for (size_t i = 0; i < environment->pure_primitive_count; ++i) {
+		const struct prototype_pure_primitive_declaration* declaration =
+			&environment->pure_primitives[i];
+		intrinsic_fingerprint_mix_u64(
+			&hash, (uint64_t)(uint32_t)declaration->primitive_id
+		);
+		intrinsic_fingerprint_mix_u64(&hash, declaration->arity);
+		for (size_t j = 0; j < PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY; ++j) {
+			intrinsic_fingerprint_mix_u64(
+				&hash, (uint64_t)(uint32_t)declaration->argument_types[j]
+			);
+		}
+		intrinsic_fingerprint_mix_u64(
+			&hash, (uint64_t)(uint32_t)declaration->result_type
+		);
+	}
+	intrinsic_fingerprint_mix_u64(&hash, environment->effect_operation_count);
+	for (size_t i = 0; i < environment->effect_operation_count; ++i) {
+		const struct prototype_effect_operation_declaration* declaration =
+			&environment->effect_operations[i];
+		intrinsic_fingerprint_mix_u64(
+			&hash, (uint64_t)(uint32_t)declaration->operation_id
+		);
+		intrinsic_fingerprint_mix_u64(
+			&hash, (uint64_t)(uint32_t)declaration->classifier_schema
+		);
+		intrinsic_fingerprint_mix_u64(&hash, declaration->required_host_effects);
+		intrinsic_fingerprint_mix_u64(&hash, declaration->arity);
+		intrinsic_fingerprint_mix_u64(
+			&hash, (uint64_t)(uint32_t)declaration->inner_policy
+		);
+		intrinsic_fingerprint_mix_u64(
+			&hash, (uint64_t)(uint32_t)declaration->resumption_multiplicity
+		);
+	}
+	return hash;
 }
 
 const struct prototype_pure_primitive_declaration*

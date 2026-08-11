@@ -178,7 +178,7 @@ struct prototype_hott_context_action_key {
 };
 
 struct prototype_hott_substitution_action_key {
-	uint32_t source_substitution_id;
+	struct prototype_certified_substitution_ref source;
 	uint32_t source_bridge_id;
 	uint32_t target_bridge_id;
 };

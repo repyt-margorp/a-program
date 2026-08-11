@@ -526,6 +526,16 @@ void prototype_judgement_delta_init(
 	delta->current_operation_id = PROTOTYPE_INVALID_ID;
 }
 
+void prototype_judgement_delta_set_intrinsic_environment(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_intrinsic_environment* intrinsic_environment
+) {
+	if (!delta) {
+		return;
+	}
+	delta->intrinsic_environment = intrinsic_environment;
+}
+
 void prototype_judgement_delta_set_solver_budget(
 	struct prototype_judgement_delta* delta,
 	uint64_t step_limit,

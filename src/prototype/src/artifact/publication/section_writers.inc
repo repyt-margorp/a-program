@@ -1,13 +1,14 @@
 static int write_artifact_graph_section(
 	FILE* stream,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
 	const struct artifact_context_slice* context_slice
 ) {
-	if (!stream || !symbols || !terms || !type_declarations || !judgement ||
-		!context_slice) {
+	if (!stream || !symbols || !intrinsic_environment || !terms ||
+		!type_declarations || !judgement || !context_slice) {
 		return -1;
 	}
 	fprintf(stream, "SECTION graph\n");
@@ -96,6 +97,37 @@ static int write_artifact_graph_section(
 		present_proposition_count != judgement->proposition_count ||
 		present_claim_count != judgement->claim_count ||
 		present_derivation_count != judgement->derivation_count) {
+		fprintf(
+			stderr,
+			"artifact graph density failed terms=%zu/%zu cases=%zu/%zu "
+			"binders=%zu/%zu frames=%zu/%zu types=%zu/%zu parameters=%zu/%zu "
+			"constructors=%zu/%zu fields=%zu/%zu exprs=%zu/%zu "
+			"propositions=%zu/%zu claims=%zu/%zu derivations=%zu/%zu\n",
+			present_term_count,
+			terms->term_count,
+			present_case_count,
+			terms->case_count,
+			present_case_binder_count,
+			terms->case_binder_count,
+			present_frame_count,
+			terms->ih_scope_count,
+			present_type_count,
+			type_declarations->type_count,
+			present_parameter_count,
+			type_declarations->parameter_count,
+			present_constructor_count,
+			type_declarations->constructor_count,
+			present_field_type_count,
+			type_declarations->readback_field_type_count,
+			present_type_expr_count,
+			type_declarations->expr_count,
+			present_proposition_count,
+			judgement->proposition_count,
+			present_claim_count,
+			judgement->claim_count,
+			present_derivation_count,
+			judgement->derivation_count
+		);
 		return -1;
 	}
 	fprintf(
@@ -237,6 +269,7 @@ static int write_artifact_graph_section(
 		if (write_artifact_term(
 				stream,
 				symbols,
+				intrinsic_environment,
 				type_declarations,
 				terms,
 				(uint32_t)i,
@@ -285,7 +318,29 @@ static int write_artifact_graph_section(
 		if (!artifact_frame_present(frame)) {
 			continue;
 		}
-		fprintf(stream, "match_frame %zu %u %u %d ", i, frame->match_term, frame->key.case_count, frame->key.is_linkable);
+		if (frame->match_term >= terms->term_count ||
+			terms->terms[frame->match_term].tag != PROTOTYPE_TERM_MATCH ||
+			terms->terms[frame->match_term].as.match.scrutinee >=
+				terms->term_count) {
+			return -1;
+		}
+		const struct prototype_term* scrutinee = &terms->terms[
+			terms->terms[frame->match_term].as.match.scrutinee
+		];
+		if (scrutinee->tag == PROTOTYPE_TERM_VAR &&
+			(frame->scrutinee_binding_id == PROTOTYPE_INVALID_ID ||
+			 scrutinee->as.var.binding_id != frame->scrutinee_binding_id)) {
+			return -1;
+		}
+		fprintf(
+			stream,
+			"match_frame %zu %u %u %u %d ",
+			i,
+			frame->match_term,
+			frame->scrutinee_binding_id,
+			frame->key.case_count,
+			frame->key.is_linkable
+		);
 		print_artifact_key(stream, &frame->key.match_key);
 		fprintf(stream, "\n");
 	}

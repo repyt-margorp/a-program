@@ -193,7 +193,7 @@ int prototype_ast_type_expr_host_type(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 ) {
-	if (!prototype_term_host_type_source_name(host_type_id)) {
+	if (!prototype_term_host_type_debug_name(host_type_id)) {
 		return -1;
 	}
 	struct prototype_ast_type_expr expr;
@@ -545,6 +545,7 @@ int prototype_ast_match(
 		stored_case->first_binder = (uint32_t)db->case_binder_count;
 		stored_case->binder_count = cases[i].binder_count;
 		stored_case->body = cases[i].body;
+		stored_case->span = cases[i].span;
 		for (uint32_t j = 0; j < cases[i].binder_count; ++j) {
 			db->case_binders[db->case_binder_count++] = cases[i].binders[j];
 		}

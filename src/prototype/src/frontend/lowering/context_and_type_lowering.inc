@@ -5,6 +5,7 @@
 #include "a_program/kernel/resource_usage.h"
 
 #include <inttypes.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,6 +130,8 @@ struct type_expr_map_entry {
 struct ih_scope_map_entry {
 	uint32_t ast_binder_id;
 	uint32_t ih_scope_id;
+	uint32_t case_index;
+	uint32_t field_index;
 };
 
 struct pending_match_resolution {
@@ -281,8 +284,11 @@ union operation_classifier_goal_payload {
 	} constructor_formation;
 	struct operation_classifier_motive_case_goal motive_case;
 	struct {
+		uint32_t owner_match_operation;
 		uint32_t recursive_argument_operation;
 		uint32_t ih_scope_id;
+		uint32_t case_index;
+		uint32_t field_index;
 	} induction_hypothesis;
 	struct {
 		uint32_t child_operation;
@@ -348,6 +354,8 @@ struct operation_solver_motive_application {
 	uint32_t motive_operation;
 	uint32_t argument_operation;
 	uint32_t scope_frame;
+	uint32_t case_index;
+	uint32_t field_index;
 };
 
 /*
@@ -446,6 +454,7 @@ struct compile_judgement_workspace {
 };
 
 struct compile_context {
+	const struct prototype_intrinsic_environment* intrinsic_environment;
 	struct prototype_ast_db* asts;
 	struct prototype_term_db* terms;
 	struct prototype_type_declaration_db* type_declarations;
@@ -1437,6 +1446,9 @@ static int operation_add(
 	node.body = body;
 	node.scrutinee = scrutinee;
 	node.binder_classifier = binder_classifier;
+	node.ih_scope_id = PROTOTYPE_INVALID_ID;
+	node.ih_case_index = PROTOTYPE_INVALID_ID;
+	node.ih_field_index = PROTOTYPE_INVALID_ID;
 	node.fold_return_ast_binder_id = PROTOTYPE_INVALID_ID;
 	node.fold_return_binder_id = PROTOTYPE_INVALID_ID;
 	node.fold_return_operation = PROTOTYPE_INVALID_ID;
@@ -1746,9 +1758,16 @@ static int compile_ref_from_term(
 			return -1;
 		}
 	} else if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_INT_LITERAL) {
+		int integer_type = ctx->intrinsic_environment->default_integer_host_type;
+		int bit_width = prototype_term_host_type_bit_width(integer_type);
+		int64_t value = ctx->terms->terms[term].as.int_literal.value;
+		if ((bit_width == 32 && (value < INT32_MIN || value > INT32_MAX)) ||
+			(bit_width != 32 && bit_width != 64)) {
+			return -1;
+		}
 		if (prototype_term_make_host_type(
 				ctx->terms,
-				PROTOTYPE_HOST_TYPE_INT64,
+				integer_type,
 				&p_ref->classifier
 			) != 0) {
 			return -1;
@@ -1918,18 +1937,22 @@ static int lookup_graph_binder(
 	return -1;
 }
 
-static int lookup_ih_scope_id(
+static int lookup_ih_edge(
 	const struct compile_context* ctx,
 	uint32_t ast_binder_id,
-	uint32_t* p_frame_id
+	uint32_t* p_frame_id,
+	uint32_t* p_case_index,
+	uint32_t* p_field_index
 ) {
-	if (!ctx || !p_frame_id) {
+	if (!ctx || !p_frame_id || !p_case_index || !p_field_index) {
 		return -1;
 	}
 	for (uint32_t i = ctx->ih_scope_count; i > 0; --i) {
 		const struct ih_scope_map_entry* entry = &ctx->ih_scopes[i - 1];
 		if (entry->ast_binder_id == ast_binder_id) {
 			*p_frame_id = entry->ih_scope_id;
+			*p_case_index = entry->case_index;
+			*p_field_index = entry->field_index;
 			return 0;
 		}
 	}
@@ -1940,8 +1963,8 @@ static int add_compile_label(
 	struct compile_context* ctx,
 	int name_symbol_id,
 	uint32_t term,
-	uint32_t classifier,
-	uint32_t operation
+	uint32_t exposed_classifier,
+	uint32_t exposed_operation
 ) {
 	if (!ctx || !ctx->metadata) {
 		return 0;
@@ -1953,8 +1976,54 @@ static int add_compile_label(
 	uint32_t id = (uint32_t)ctx->metadata->label_count;
 	ctx->metadata->labels[id].name_symbol_id = name_symbol_id;
 	ctx->metadata->labels[id].term = term;
-	ctx->metadata->labels[id].classifier = classifier;
-	ctx->metadata->labels[id].operation = operation;
+	ctx->metadata->labels[id].exposed_classifier = exposed_classifier;
+	ctx->metadata->labels[id].exposed_operation = exposed_operation;
+	ctx->metadata->labels[id].body_operation = exposed_operation;
+	if (exposed_operation < ctx->metadata->operation_count &&
+		ctx->metadata->operations[exposed_operation].tag ==
+			PROTOTYPE_OPERATION_ASCRIPTION) {
+		ctx->metadata->labels[id].body_operation =
+			ctx->metadata->operations[exposed_operation].body;
+		ctx->metadata->labels[id].expectation_classifier =
+			ctx->metadata->operations[exposed_operation].classifier;
+	} else {
+		ctx->metadata->labels[id].expectation_classifier = PROTOTYPE_INVALID_ID;
+	}
+	ctx->metadata->labels[id].body_classifier =
+		ctx->metadata->labels[id].body_operation < ctx->metadata->operation_count ?
+			ctx->metadata->operations[
+				ctx->metadata->labels[id].body_operation
+			].classifier : PROTOTYPE_INVALID_ID;
+	ctx->metadata->labels[id].expectation_claim_id = PROTOTYPE_INVALID_ID;
+	if (ctx->metadata->labels[id].expectation_classifier !=
+			PROTOTYPE_INVALID_ID &&
+		exposed_operation < ctx->metadata->operation_count) {
+		uint32_t context_id =
+			ctx->metadata->operations[exposed_operation].context_id;
+		for (uint32_t claim_id = 0;
+			claim_id < (uint32_t)ctx->judgement->claim_count;
+			++claim_id) {
+			const struct prototype_judgement_proposition* proposition =
+				prototype_judgement_claim_proposition(ctx->judgement, claim_id);
+			if (proposition && proposition->kind ==
+					PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				proposition->authority_kind ==
+					PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+				proposition->authority_id == exposed_operation &&
+				proposition->operation_id == exposed_operation &&
+				proposition->context_id == context_id &&
+				proposition->subject == term &&
+				proposition->classifier ==
+					ctx->metadata->labels[id].expectation_classifier) {
+				ctx->metadata->labels[id].expectation_claim_id = claim_id;
+				break;
+			}
+		}
+		if (ctx->metadata->labels[id].expectation_claim_id ==
+			PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+	}
 	if (prototype_term_canonical_key_with_types(
 			ctx->terms,
 			ctx->type_declarations,
@@ -2067,6 +2136,36 @@ static int add_resolve_error_at_span(
 		ctx->metadata->resolve_errors[ctx->metadata->resolve_error_count - 1].span = span;
 	}
 	return status;
+}
+
+static int add_compile_diagnostic(
+	struct compile_context* ctx,
+	int phase,
+	int reason,
+	uint32_t ast,
+	uint32_t operation,
+	uint32_t constraint,
+	uint32_t expected_classifier,
+	uint32_t actual_classifier,
+	struct prototype_source_span span
+) {
+	if (!ctx || !ctx->metadata) {
+		return -1;
+	}
+	ctx->had_error = 1;
+	return prototype_compile_metadata_add_diagnostic(
+		ctx->metadata,
+		(struct prototype_compile_diagnostic) {
+			.phase = phase,
+			.reason = reason,
+			.source_ast = ast,
+			.span = span,
+			.operation_id = operation,
+			.constraint_id = constraint,
+			.expected_classifier = expected_classifier,
+			.actual_classifier = actual_classifier
+		}
+	);
 }
 
 static int begin_resolution_iteration(
@@ -2262,7 +2361,10 @@ static int queue_match_typing(
 		return -1;
 	}
 	for (uint32_t i = 0; i < ctx->pending_match_typing_count; ++i) {
-		if (ctx->pending_match_typings[i].match_term == match_term) {
+		/* Distinct typed Match occurrences may intentionally share one erased
+		 * Core term.  Motive constraints and IH edges belong to the Operation,
+		 * so only repeated registration of that exact Operation is redundant. */
+		if (ctx->pending_match_typings[i].operation == operation) {
 			return 0;
 		}
 	}

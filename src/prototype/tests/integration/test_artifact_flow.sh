@@ -116,7 +116,6 @@ PROOF_KIND_TEXT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROT
 PROOF_KIND_PURE_PRIMITIVE_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_PURE_PRIMITIVE_TYPE_INTRO)
 PROOF_KIND_EFFECT_OPERATION_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_EFFECT_OPERATION_TYPE_INTRO)
 PROOF_KIND_INT_LITERAL_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO)
-PROOF_KIND_INT_LITERAL_ADMISSIBILITY=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_ADMISSIBILITY)
 PROOF_KIND_CONVERSION=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_CONVERSION)
 PROOF_KIND_HOST_TYPE_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_HOST_TYPE_INTRO)
 PROOF_KIND_IS_TYPE_FROM_HAS_TYPE=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE)
@@ -173,13 +172,29 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 71 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v71.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 72 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v72.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
+grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
+awk '
+	$1 == "intrinsic_environment" && !done {
+		$2 = $2 == 1 ? 2 : 1
+		$3 = 3
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-foreign-intrinsics.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-foreign-intrinsics.apo" \
+	>"$TMP_DIR/identity-foreign-intrinsics.out" \
+	2>"$TMP_DIR/identity-foreign-intrinsics.err"; then
+	echo "artifact with a foreign Intrinsic environment unexpectedly passed" >&2
+	exit 1
+fi
 awk '
 	$1 == "context" && NF != 6 { bad = 1 }
-	$1 == "operation" && NF != 26 { bad = 1 }
+	$1 == "operation" && NF != 29 { bad = 1 }
 	$1 == "substitution" && NF != 9 { bad = 1 }
 	END { exit bad }
 ' "$TMP_DIR/identity.apo"
@@ -245,10 +260,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 71/A_PROGRAM_ARTIFACT 70/' \
+sed '1s/A_PROGRAM_ARTIFACT 72/A_PROGRAM_ARTIFACT 71/' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v67.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-v67.apo" >"$TMP_DIR/identity-v67.out" 2>"$TMP_DIR/identity-v67.err"; then
-	echo "obsolete artifact unexpectedly passed after v71 format bump" >&2
+	echo "obsolete artifact unexpectedly passed after v72 format bump" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -1708,10 +1723,10 @@ EOF_DEPENDENT_MATCH
 
 ./read_file.out "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive proof#' "$TMP_DIR/dependent-match.out"
-grep -q 'CASE(true -> COMPUTATION_TYPE(EFFECT_ROW_EMPTY, TYPE_VIEW(Nat' \
+grep -q 'COMPUTATION_TYPE(EFFECT_ROW_EMPTY, MATCH' \
 	"$TMP_DIR/dependent-match.out"
-grep -q 'CASE(false -> COMPUTATION_TYPE(EFFECT_ROW_EMPTY, TYPE_VIEW(Bool' \
-	"$TMP_DIR/dependent-match.out"
+grep -q 'CASE(true -> TYPE_VIEW(Nat' "$TMP_DIR/dependent-match.out"
+grep -q 'CASE(false -> TYPE_VIEW(Bool' "$TMP_DIR/dependent-match.out"
 ./read_file.out --write-artifact "$TMP_DIR/DependentMatch.apo" "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match-artifact.out"
 awk '
 	NR == FNR {
@@ -2061,8 +2076,9 @@ main := #42;
 EOF_INT_LITERAL
 ./read_file.out --write-artifact "$TMP_DIR/IntLiteral.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal.out"
-grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int64) \[int-literal-intro proof#' "$TMP_DIR/int-literal.out"
-grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int) \[int-literal-admissibility proof#' "$TMP_DIR/int-literal.out"
+grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int) \[int-literal-intro proof#' "$TMP_DIR/int-literal.out"
+! grep -q 'INT_LITERAL(42) PRIMITIVE(Int64)' "$TMP_DIR/int-literal.out"
+! grep -q 'int-literal-admissibility' "$TMP_DIR/int-literal.out"
 grep -q '\[host-type-intro proof#' "$TMP_DIR/int-literal.out"
 awk '
 	$1 == "operation" && $3 == 1 {
@@ -2078,58 +2094,7 @@ awk '
 		claim_operation[$2] = proposition_operation[$4];
 		claim_classifier[$2] = proposition_classifier[$4];
 	}
-	$1 == "derivation" &&
-		($3 == int_literal_intro || $3 == int_literal_admissibility) {
-		admissible[claim_operation[$5] SUBSEP claim_classifier[$5]] = 1;
-	}
-	END {
-		classifier_count = 0;
-		for (entry in admissible) {
-			split(entry, parts, SUBSEP);
-			if (parts[1] == literal_operation) {
-				classifier_count++;
-			}
-		}
-		if (literal_count != 1 ||
-			!admissible[literal_operation SUBSEP selected_classifier] ||
-			classifier_count != 2) {
-			exit 1;
-		}
-	}
-' int_literal_intro="$PROOF_KIND_INT_LITERAL_INTRO" \
-	int_literal_admissibility="$PROOF_KIND_INT_LITERAL_ADMISSIBILITY" \
-	"$TMP_DIR/IntLiteral.apo"
-./read_file.out --write-artifact "$TMP_DIR/IntLiteralRepeat.apo" \
-	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-repeat.out"
-awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteral.apo" \
-	>"$TMP_DIR/int-literal-selected.txt"
-awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteralRepeat.apo" \
-	>"$TMP_DIR/int-literal-repeat-selected.txt"
-cmp "$TMP_DIR/int-literal-selected.txt" "$TMP_DIR/int-literal-repeat-selected.txt"
-
-cat >"$TMP_DIR/int-literal-specialization.p" <<'EOF_INT_LITERAL_SPECIALIZATION'
-id := \x : #.Int => x;
-main := id #42;
-EOF_INT_LITERAL_SPECIALIZATION
-./read_file.out --write-artifact "$TMP_DIR/IntLiteralSpecialization.apo" \
-	"$TMP_DIR/int-literal-specialization.p" \
-	>"$TMP_DIR/int-literal-specialization.out"
-awk '
-	$1 == "operation" && $3 == 1 {
-		literal_operation = $2;
-		selected_classifier = $8;
-		literal_count++;
-	}
-	$1 == "proposition" {
-		proposition_operation[$2] = $7;
-		proposition_classifier[$2] = $9;
-	}
-	$1 == "claim" {
-		claim_operation[$2] = proposition_operation[$4];
-		claim_classifier[$2] = proposition_classifier[$4];
-	}
-	$1 == "derivation" &&
-		($3 == int_literal_intro || $3 == int_literal_admissibility) {
+	$1 == "derivation" && $3 == int_literal_intro {
 		admissible[claim_operation[$5] SUBSEP claim_classifier[$5]] = 1;
 	}
 	END {
@@ -2146,7 +2111,74 @@ awk '
 		}
 	}
 ' int_literal_intro="$PROOF_KIND_INT_LITERAL_INTRO" \
-	int_literal_admissibility="$PROOF_KIND_INT_LITERAL_ADMISSIBILITY" \
+	"$TMP_DIR/IntLiteral.apo"
+./read_file.out --write-artifact "$TMP_DIR/IntLiteralRepeat.apo" \
+	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-repeat.out"
+./read_file.out --solver-steps 200000 \
+	--write-artifact "$TMP_DIR/IntLiteralMoreFuel.apo" \
+	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-more-fuel.out"
+awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteral.apo" \
+	>"$TMP_DIR/int-literal-selected.txt"
+awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteralRepeat.apo" \
+	>"$TMP_DIR/int-literal-repeat-selected.txt"
+awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteralMoreFuel.apo" \
+	>"$TMP_DIR/int-literal-more-fuel-selected.txt"
+cmp "$TMP_DIR/int-literal-selected.txt" "$TMP_DIR/int-literal-repeat-selected.txt"
+cmp "$TMP_DIR/int-literal-selected.txt" "$TMP_DIR/int-literal-more-fuel-selected.txt"
+
+cat >"$TMP_DIR/int-ascriptions.p" <<'EOF_INT_ASCRIPTIONS'
+top := #40;
+top :: #.Int;
+inline := (#40 :: #.Int);
+EOF_INT_ASCRIPTIONS
+./read_file.out "$TMP_DIR/int-ascriptions.p" >"$TMP_DIR/int-ascriptions.out"
+test "$(grep -c 'has-type INT_LITERAL(40) PRIMITIVE(Int) \[int-literal-intro proof#' \
+	"$TMP_DIR/int-ascriptions.out")" -ge 2
+grep -q 'has-type INT_LITERAL(40) PRIMITIVE(Int) \[conversion proof#' \
+	"$TMP_DIR/int-ascriptions.out"
+
+cat >"$TMP_DIR/int-literal-specialization.p" <<'EOF_INT_LITERAL_SPECIALIZATION'
+id := \x : #.Int => x;
+main := id #42;
+EOF_INT_LITERAL_SPECIALIZATION
+./read_file.out --write-artifact "$TMP_DIR/IntLiteralSpecialization.apo" \
+	"$TMP_DIR/int-literal-specialization.p" \
+	>"$TMP_DIR/int-literal-specialization.out"
+./read_file.out --read-graph "$TMP_DIR/IntLiteralSpecialization.apo" \
+	>"$TMP_DIR/int-literal-specialization-read.out"
+grep -q 'core-value term#[0-9][0-9]* = INT_LITERAL(42) human-value=#42' \
+	"$TMP_DIR/int-literal-specialization-read.out"
+awk '
+	$1 == "operation" && $3 == 1 {
+		literal_operation = $2;
+		selected_classifier = $8;
+		literal_count++;
+	}
+	$1 == "proposition" {
+		proposition_operation[$2] = $7;
+		proposition_classifier[$2] = $9;
+	}
+	$1 == "claim" {
+		claim_operation[$2] = proposition_operation[$4];
+		claim_classifier[$2] = proposition_classifier[$4];
+	}
+	$1 == "derivation" && $3 == int_literal_intro {
+		admissible[claim_operation[$5] SUBSEP claim_classifier[$5]] = 1;
+	}
+	END {
+		classifier_count = 0;
+		for (entry in admissible) {
+			split(entry, parts, SUBSEP);
+			if (parts[1] == literal_operation) {
+				classifier_count++;
+			}
+		}
+		if (literal_count != 1 || classifier_count != 1 ||
+			!admissible[literal_operation SUBSEP selected_classifier]) {
+			exit 1;
+		}
+	}
+' int_literal_intro="$PROOF_KIND_INT_LITERAL_INTRO" \
 	"$TMP_DIR/IntLiteralSpecialization.apo"
 
 ./read_file.out --write-artifact "$TMP_DIR/MultipleDerivations.apo" \
@@ -2209,24 +2241,48 @@ if ./read_file.out --read-graph "$TMP_DIR/BadIntLiteralClassifier.apo" >"$TMP_DI
 fi
 
 cat >"$TMP_DIR/int64-literal.p" <<'EOF_INT64_LITERAL'
-main := (#9223372036854775807 :: #.Int64);
+main := (#40 :: #.Int64);
 EOF_INT64_LITERAL
-./read_file.out --write-artifact "$TMP_DIR/Int64Literal.apo" \
-	"$TMP_DIR/int64-literal.p" >"$TMP_DIR/int64-literal.out"
-grep -q 'has-type INT_LITERAL(9223372036854775807) PRIMITIVE(Int64) \[int-literal-intro proof#' "$TMP_DIR/int64-literal.out"
-! grep -q 'has-type INT_LITERAL(9223372036854775807) PRIMITIVE(Int) \[int-literal-intro proof#' "$TMP_DIR/int64-literal.out"
+if ./read_file.out "$TMP_DIR/int64-literal.p" \
+	>"$TMP_DIR/int64-literal.out" 2>"$TMP_DIR/int64-literal.err"; then
+	echo "unsuffixed literal acquired Int64 from its expected position" >&2
+	exit 1
+fi
+grep -q 'diagnostic-code=ascription-mismatch' "$TMP_DIR/int64-literal.err"
+
+cat >"$TMP_DIR/int32-range-good.p" <<'EOF_INT32_RANGE_GOOD'
+minimum := #-2147483648;
+maximum := #2147483647;
+main := maximum;
+EOF_INT32_RANGE_GOOD
+./read_file.out --write-artifact "$TMP_DIR/Int32RangeGood.apo" \
+	"$TMP_DIR/int32-range-good.p" >"$TMP_DIR/int32-range-good.out"
+grep -q 'has-type INT_LITERAL(-2147483648) PRIMITIVE(Int) \[int-literal-intro proof#' \
+	"$TMP_DIR/int32-range-good.out"
+grep -q 'has-type INT_LITERAL(2147483647) PRIMITIVE(Int) \[int-literal-intro proof#' \
+	"$TMP_DIR/int32-range-good.out"
 
 cat >"$TMP_DIR/int32-range-bad.p" <<'EOF_INT32_RANGE_BAD'
-main := (#9223372036854775807 :: #.Int);
+main := #2147483648;
 EOF_INT32_RANGE_BAD
 if ./read_file.out "$TMP_DIR/int32-range-bad.p" >"$TMP_DIR/int32-range-bad.out" 2>"$TMP_DIR/int32-range-bad.err"; then
 	echo "out-of-range Int literal compiled successfully" >&2
 	exit 1
 fi
-grep -q 'metadata resolve-error kind=compile' "$TMP_DIR/int32-range-bad.err"
+grep -q 'diagnostic-code=integer-literal-range' "$TMP_DIR/int32-range-bad.err"
+
+cat >"$TMP_DIR/int32-range-low-bad.p" <<'EOF_INT32_RANGE_LOW_BAD'
+main := #-2147483649;
+EOF_INT32_RANGE_LOW_BAD
+if ./read_file.out "$TMP_DIR/int32-range-low-bad.p" \
+	>"$TMP_DIR/int32-range-low-bad.out" 2>"$TMP_DIR/int32-range-low-bad.err"; then
+	echo "literal below the configured Int range compiled successfully" >&2
+	exit 1
+fi
+grep -q 'diagnostic-code=integer-literal-range' "$TMP_DIR/int32-range-low-bad.err"
 
 cat >"$TMP_DIR/int-arithmetic.p" <<'EOF_INT_ARITHMETIC'
-main := #.int64_add #40 #2;
+main := #.int_add #40 #2;
 EOF_INT_ARITHMETIC
 ./a.out "$TMP_DIR/int-arithmetic.p" >"$TMP_DIR/int-arithmetic-repl.out"
 grep -q 'value main := RETURN(INT_LITERAL(42))' "$TMP_DIR/int-arithmetic-repl.out"
@@ -2234,11 +2290,11 @@ grep -q 'value main := RETURN(INT_LITERAL(42))' "$TMP_DIR/int-arithmetic-repl.ou
 	"$TMP_DIR/int-arithmetic.p" >"$TMP_DIR/int-arithmetic-artifact.out"
 ./read_file.out --read-graph "$TMP_DIR/IntArithmetic.apo" \
 	>"$TMP_DIR/int-arithmetic-read.out"
-grep -q "^term_node .* $TERM_TAG_PURE_PRIMITIVE int64_add -$" \
+grep -q "^term_node .* $TERM_TAG_PURE_PRIMITIVE int_add -$" \
 	"$TMP_DIR/IntArithmetic.apo"
 awk -v primitive_tag="$TERM_TAG_PURE_PRIMITIVE" \
 	-v effect_tag="$TERM_TAG_EFFECT_OPERATION" '
-	$1 == "term_node" && $3 == primitive_tag && $4 == "int64_add" { $3 = effect_tag }
+	$1 == "term_node" && $3 == primitive_tag && $4 == "int_add" { $3 = effect_tag }
 	{ print }
 ' "$TMP_DIR/IntArithmetic.apo" >"$TMP_DIR/IntArithmeticBadKind.apo"
 if ./read_file.out --read-graph "$TMP_DIR/IntArithmeticBadKind.apo" \
@@ -2250,18 +2306,21 @@ fi
 
 cat >"$TMP_DIR/nested-int-arithmetic.p" <<'EOF_NESTED_INT_ARITHMETIC'
 main := {
-	x := #.int64_add #1 #2;
-	#.int64_add x #3;
+	x := #.int_add #1 #2;
+	#.int_add x #3;
 };
 EOF_NESTED_INT_ARITHMETIC
 ./a.out "$TMP_DIR/nested-int-arithmetic.p" >"$TMP_DIR/nested-int-arithmetic-repl.out"
 grep -q 'value main := RETURN(INT_LITERAL(6))' "$TMP_DIR/nested-int-arithmetic-repl.out"
 
 cat >"$TMP_DIR/int64-arithmetic.p" <<'EOF_INT64_ARITHMETIC'
-main := #.int64_add #9223372036854775800 #7;
+add64 := \x : #.Int64 => \y : #.Int64 => #.int64_add x y;
+main := add64;
 EOF_INT64_ARITHMETIC
-./a.out "$TMP_DIR/int64-arithmetic.p" >"$TMP_DIR/int64-arithmetic-repl.out"
-grep -q 'value main := RETURN(INT_LITERAL(9223372036854775807))' "$TMP_DIR/int64-arithmetic-repl.out"
+./read_file.out --write-artifact "$TMP_DIR/Int64Arithmetic.apo" \
+	"$TMP_DIR/int64-arithmetic.p" >"$TMP_DIR/int64-arithmetic.out"
+grep -q "^term_node .* $TERM_TAG_PURE_PRIMITIVE int64_add -$" \
+	"$TMP_DIR/Int64Arithmetic.apo"
 
 cat >"$TMP_DIR/text-to-nat-runtime.p" <<'EOF_TEXT_TO_NAT_RUNTIME'
 Nat := @{
@@ -2494,7 +2553,6 @@ Nat := @{
 
 idNat : Nat -> Nat;
 main := idNat Nat.zero;
-main :: Nat;
 EOF_ID_USER_DECLARED
 
 cat >"$TMP_DIR/id-user-imported-classifier.p" <<'EOF_ID_USER_IMPORTED_CLASSIFIER'

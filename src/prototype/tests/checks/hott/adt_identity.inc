@@ -380,7 +380,7 @@
 	);
 	struct prototype_kernel_view mixed_kernel_view = kernel_view;
 	mixed_kernel_view.judgement = &foreign_judgement;
-	if (prototype_kernel_view_validate(&mixed_kernel_view) == 0) {
+	if (prototype_kernel_view_validate_stores(&mixed_kernel_view) == 0) {
 		return 139;
 	}
 
@@ -1388,19 +1388,43 @@
 		return 34;
 	}
 	uint32_t identity;
+	uint32_t identity_certificate;
 	if (prototype_substitution_identity(
 			&substitution_db, &context_db, empty, &identity
+		) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+			&cwf_certificate_db,
+			&substitution_db,
+			&judgement,
+			identity,
+			&identity_certificate
 		) != 0) {
 		return 35;
 	}
 	struct prototype_hott_action_request substitution_action = {
 		.kind = PROTOTYPE_HOTT_ACTION_SUBSTITUTION,
 		.key.substitution = {
-			.source_substitution_id = identity,
+			.source = {
+				.substitution_id = identity,
+				.certificate_id = identity_certificate
+			},
 			.source_bridge_id = bridge,
 			.target_bridge_id = bridge
 		}
 	};
+	struct prototype_hott_action_request uncertified_substitution_action =
+		substitution_action;
+	uncertified_substitution_action.key.substitution.source.certificate_id =
+		PROTOTYPE_INVALID_ID;
+	uint32_t rejected_action_id;
+	if (prototype_hott_action_request_intern(
+			&action_db,
+			&kernel_view,
+			&bridge_db,
+			uncertified_substitution_action,
+			&rejected_action_id
+		) == 0) {
+		return 145;
+	}
 	if (prototype_hott_action_request_intern(
 			&action_db, &kernel_view, &bridge_db, substitution_action, &action_id
 		) != 0 || prototype_hott_action_db_validate(

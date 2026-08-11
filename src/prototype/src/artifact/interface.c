@@ -605,16 +605,48 @@ static uint32_t find_export_source_claim(
 	return ambiguous ? PROTOTYPE_INVALID_ID : unique_claim;
 }
 
+/* A top-level name is a source projection onto an existing typed operation;
+ * it does not introduce a new kernel judgement.  Preserve the exported name,
+ * but publish evidence owned by the first non-NAME operation in its chain. */
+static int resolve_export_evidence_operation(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t operation,
+	uint32_t* p_evidence_operation
+) {
+	if (!metadata || !p_evidence_operation) {
+		return -1;
+	}
+	for (size_t depth = 0; depth <= metadata->operation_count; ++depth) {
+		if (operation >= metadata->operation_count) {
+			return -1;
+		}
+		const struct prototype_operation_node* node =
+			&metadata->operations[operation];
+		if (node->tag != PROTOTYPE_OPERATION_NAME) {
+			*p_evidence_operation = operation;
+			return 0;
+		}
+		operation = node->function;
+	}
+	return -1;
+}
+
 int prototype_artifact_interface_build_from_metadata(
 	struct prototype_artifact_interface* interface,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_compile_metadata* metadata,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement
 ) {
-	if (!interface || !metadata || !terms || !type_declarations || !judgement) {
+	if (!interface || !intrinsic_environment || !metadata || !terms ||
+		!type_declarations || !judgement) {
 		return -1;
 	}
+	interface->intrinsic_environment_fingerprint =
+		prototype_intrinsic_environment_fingerprint(intrinsic_environment);
+	interface->default_integer_host_type =
+		intrinsic_environment->default_integer_host_type;
 	if (metadata->label_count > interface->term_export_capacity ||
 		metadata->type_export_count > interface->type_export_capacity ||
 		metadata->constructor_export_count > interface->constructor_export_capacity ||
@@ -658,18 +690,22 @@ int prototype_artifact_interface_build_from_metadata(
 		export->namespace_symbol_id = -1;
 		export->name_symbol_id = label->name_symbol_id;
 		export->local_term = label->term;
-		export->operation = label->operation;
+		if (resolve_export_evidence_operation(
+				metadata, label->exposed_operation, &export->operation
+			) != 0) {
+			return -1;
+		}
 		export->source_evidence.kind =
 			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
 		export->source_evidence.id = PROTOTYPE_INVALID_ID;
 		export->canonical_key = label->canonical_key;
 		export->transparency = PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT;
-		if (label->operation < metadata->operation_count &&
-			metadata->operations[label->operation].classifier !=
+		if (metadata->operations[export->operation].classifier !=
 				PROTOTYPE_INVALID_ID) {
-			export->classifier = metadata->operations[label->operation].classifier;
-		} else if (label->classifier != PROTOTYPE_INVALID_ID) {
-			export->classifier = label->classifier;
+			export->classifier =
+				metadata->operations[export->operation].classifier;
+		} else if (label->exposed_classifier != PROTOTYPE_INVALID_ID) {
+			export->classifier = label->exposed_classifier;
 		} else if (lookup_export_classifier(judgement, label->term, &export->classifier) != 0) {
 			export->classifier = PROTOTYPE_INVALID_ID;
 		}

@@ -1290,15 +1290,19 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		if (case_id >= terms->case_count ||
 			branch_operation_ids[i] == PROTOTYPE_INVALID_ID ||
 			branch_evidence[i].kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			branch_evidence[i].operation_id != branch_operation_ids[i] ||
 			branch_evidence[i].authority_kind ==
 				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
+			branch_evidence[i].subject >= terms->term_count ||
 			branch_evidence[i].classifier >= terms->term_count) {
 			return -1;
 		}
-		premise_subjects[i] = terms->cases[case_id].body;
-		if (branch_evidence[i].subject != premise_subjects[i]) {
-			return -1;
-		}
+		/* A typed Match occurrence can share an alpha-interned Core Match with
+		 * another occurrence while retaining occurrence-local branch Operations.
+		 * Publish those actual branch subjects; accepted replay checks them against
+		 * the principal Match Operation rather than a canonical representative's
+		 * case slots. */
+		premise_subjects[i] = branch_evidence[i].subject;
 		premise_context_ids[i] = branch_evidence[i].context_id;
 		premise_classifiers[i] = branch_evidence[i].classifier;
 	}

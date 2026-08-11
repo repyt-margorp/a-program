@@ -1,3 +1,5 @@
+#include "a_program/kernel/cwf_certificate.h"
+
 /* Publication remains one translation unit so closure traversal and dense ID
  * assignment retain their exact order. These partitions separate ownership. */
 #include "publication/wire_primitives.inc"

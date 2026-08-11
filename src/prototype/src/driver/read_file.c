@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v71.h"
+#include "a_program/artifact/wire_v72.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -47,6 +47,7 @@
 #define COMPILE_TYPE_EXPORT_CAPACITY 256
 #define COMPILE_CONSTRUCTOR_EXPORT_CAPACITY 512
 #define RESOLVE_ERROR_CAPACITY 512
+#define COMPILE_DIAGNOSTIC_CAPACITY 512
 #define RESOLUTION_ITEM_CAPACITY 2048
 #define RESOLUTION_ITERATION_CAPACITY 128
 #define RESOLUTION_EVENT_CAPACITY 2048
@@ -133,6 +134,8 @@ static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
 static struct prototype_resolve_error resolve_errors[RESOLVE_ERROR_CAPACITY];
+static struct prototype_compile_diagnostic
+	compile_diagnostics[COMPILE_DIAGNOSTIC_CAPACITY];
 static struct prototype_resolution_item resolution_items[RESOLUTION_ITEM_CAPACITY];
 static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
 static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
@@ -145,12 +148,21 @@ static struct prototype_substitution
 	provider_substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
 static struct prototype_substitution
 	artifact_substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
+static uint32_t accepted_substitution_claims[PROTOTYPE_SUBSTITUTION_CAPACITY];
+static uint32_t provider_accepted_substitution_claims[
+	PROTOTYPE_SUBSTITUTION_CAPACITY
+];
+static uint32_t artifact_accepted_substitution_claims[
+	PROTOTYPE_SUBSTITUTION_CAPACITY
+];
 static struct prototype_compile_label provider_compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export
 	provider_compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export
 	provider_compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
 static struct prototype_resolve_error provider_resolve_errors[RESOLVE_ERROR_CAPACITY];
+static struct prototype_compile_diagnostic
+	provider_compile_diagnostics[COMPILE_DIAGNOSTIC_CAPACITY];
 static struct prototype_resolution_item provider_resolution_items[RESOLUTION_ITEM_CAPACITY];
 static struct prototype_resolution_iteration
 	provider_resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
@@ -387,6 +399,136 @@ static const char* operation_tag_name(int tag) {
 	}
 }
 
+static const char* substitution_kind_name(int kind) {
+	switch (kind) {
+		case PROTOTYPE_SUBSTITUTION_IDENTITY: return "identity";
+		case PROTOTYPE_SUBSTITUTION_EMPTY: return "empty";
+		case PROTOTYPE_SUBSTITUTION_PROJECTION: return "projection";
+		case PROTOTYPE_SUBSTITUTION_EXTEND: return "extend";
+		case PROTOTYPE_SUBSTITUTION_COMPOSE: return "compose";
+		default: return "unknown";
+	}
+}
+
+static void print_artifact_context_and_substitution_inspection(
+	FILE* stream,
+	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_db* term_db,
+	const struct prototype_compile_metadata* metadata
+) {
+	if (!stream || !symbols || !intrinsic_environment || !interface ||
+		!type_declarations || !term_db || !metadata) {
+		return;
+	}
+	int default_integer_width = prototype_term_host_type_bit_width(
+		interface->default_integer_host_type
+	);
+	fprintf(
+		stream,
+		"\n#### Static Context and Substitution ####\n"
+		"contexts=%zu substitutions=%zu\n",
+		metadata->contexts.context_count,
+		metadata->substitutions.substitution_count
+	);
+	for (size_t i = 0; i < metadata->contexts.context_count; ++i) {
+		const struct prototype_context* context = &metadata->contexts.contexts[i];
+		fprintf(
+			stream,
+			"context#%zu parent=context#%u depth=%u binding=",
+			i,
+			context->parent,
+			context->depth
+		);
+		if (context->binding_id == PROTOTYPE_INVALID_ID) {
+			fprintf(stream, "none");
+		} else {
+			fprintf(stream, "binding#%u", context->binding_id);
+		}
+		fprintf(stream, " classifier=");
+		switch (context->classifier_ref.kind) {
+			case PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM:
+				fprintf(stream, "term#%u", context->classifier_ref.term_id);
+				break;
+			case PROTOTYPE_CONTEXT_CLASSIFIER_REF_VARIABLE:
+				fprintf(stream, "variable#%u", context->classifier_ref.variable_id);
+				break;
+			case PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL:
+				fprintf(
+					stream,
+					"provisional(term#%u,variable#%u)",
+					context->classifier_ref.term_id,
+					context->classifier_ref.variable_id
+				);
+				break;
+			default:
+				fprintf(stream, "none");
+				break;
+		}
+		fprintf(stream, "\n");
+	}
+	for (size_t i = 0; i < metadata->substitutions.substitution_count; ++i) {
+		const struct prototype_substitution* substitution =
+			&metadata->substitutions.substitutions[i];
+		uint32_t evidence = prototype_compile_metadata_accepted_substitution_claim(
+			metadata, (uint32_t)i
+		);
+		fprintf(
+			stream,
+			"substitution#%zu kind=%s source=context#%u target=context#%u "
+			"first=substitution#%u second=substitution#%u term=term#%u "
+			"classifier=term#%u evidence=",
+			i,
+			substitution_kind_name(substitution->kind),
+			substitution->source_context,
+			substitution->target_context,
+			substitution->first,
+			substitution->second,
+			substitution->term,
+			substitution->term_classifier
+		);
+		if (evidence == PROTOTYPE_INVALID_ID) {
+			fprintf(stream, "none");
+		} else {
+			fprintf(stream, "claim#%u", evidence);
+		}
+		fprintf(stream, "\n");
+		if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND &&
+			substitution->term < term_db->term_count) {
+			fprintf(stream, "  core-value term#%u = ", substitution->term);
+			prototype_term_print_debug(
+				stream,
+				symbols,
+				intrinsic_environment,
+				type_declarations,
+				term_db,
+				substitution->term
+			);
+			const struct prototype_term* term = &term_db->terms[substitution->term];
+			if (term->tag == PROTOTYPE_TERM_INT_LITERAL) {
+				fprintf(stream, " human-value=#%" PRId64, term->as.int_literal.value);
+			} else if (term->tag == PROTOTYPE_TERM_TEXT_LITERAL) {
+				fprintf(
+					stream,
+					" human-value=#\"%s\"",
+					symbol_to_string(symbols, term->as.text_literal.text_symbol_id)
+				);
+			}
+			fprintf(stream, "\n");
+		}
+	}
+	fprintf(
+		stream,
+		"\n#### Runtime Environment Boundary ####\n"
+		"intrinsic-environment fingerprint=%" PRIu64
+		" default-integer=#.Int%d\n",
+		interface->intrinsic_environment_fingerprint,
+		default_integer_width
+	);
+}
+
 static int artifact_export_claim_ids_match_loaded_image(
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_judgement_db* judgement
@@ -536,6 +678,7 @@ static int artifact_exports_have_accepted_claims(
 static int read_artifact_interface_and_graph(
 	const char* path,
 	struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_artifact_interface* artifact_interface,
 	struct prototype_term_db* term_db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -543,7 +686,7 @@ static int read_artifact_interface_and_graph(
 	struct prototype_universe_db* universe_db,
 	struct prototype_compile_metadata* metadata
 ) {
-	if (!path || !symbols || !artifact_interface || !term_db ||
+	if (!path || !symbols || !intrinsic_environment || !artifact_interface || !term_db ||
 		!type_declarations || !judgement_db || !universe_db || !metadata) {
 		return -1;
 	}
@@ -555,11 +698,13 @@ static int read_artifact_interface_and_graph(
 	if (prototype_artifact_read_text_interface(
 			artifact_file,
 			symbols,
+			intrinsic_environment,
 			artifact_interface
 		) != 0 ||
 		prototype_artifact_read_text_graph(
 			artifact_file,
 			symbols,
+			intrinsic_environment,
 			term_db,
 			type_declarations,
 			judgement_db
@@ -569,6 +714,7 @@ static int read_artifact_interface_and_graph(
 			symbols,
 			term_db,
 			type_declarations,
+			judgement_db,
 			metadata
 		) != 0 ||
 		prototype_artifact_read_text_universe(
@@ -585,6 +731,7 @@ static int read_artifact_interface_and_graph(
 		prototype_judgement_validate_accepted_graph(
 			term_db,
 			type_declarations,
+			intrinsic_environment,
 			&metadata->contexts,
 			&metadata->substitutions,
 			&(struct prototype_operation_graph) {
@@ -689,6 +836,7 @@ static int operation_graph_next_source_binder_id(
 static int append_link_operation_graph(
 	struct prototype_compile_metadata* target,
 	const struct prototype_compile_metadata* source,
+	const struct prototype_term_db* target_terms,
 	const uint32_t* term_relocation,
 	size_t term_relocation_count,
 	const uint32_t* context_relocation,
@@ -700,7 +848,7 @@ static int append_link_operation_graph(
 	struct prototype_operation_graph source_graph;
 	prototype_compile_metadata_operation_graph(target, &target_graph);
 	prototype_compile_metadata_operation_graph_const(source, &source_graph);
-	if (!target || !source || !term_relocation || !context_relocation ||
+	if (!target || !source || !target_terms || !term_relocation || !context_relocation ||
 		!binding_relocation ||
 		prototype_operation_graph_count(&target_graph) +
 			prototype_operation_graph_count(&source_graph) >
@@ -796,6 +944,16 @@ static int append_link_operation_graph(
 		RELOCATE_TERM_FIELD(operation.known_classifier);
 		RELOCATE_TERM_FIELD(operation.classifier);
 		RELOCATE_TERM_FIELD(operation.binder_classifier);
+		if (operation.tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+			if (operation.core_term >= target_terms->term_count ||
+				target_terms->terms[operation.core_term].tag !=
+					PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+				return -1;
+			}
+			operation.ih_scope_id = target_terms->terms[
+				operation.core_term
+			].as.induction_hypothesis.ih_scope_id;
+		}
 		RELOCATE_BINDING_FIELD(operation.fold_return_binder_id);
 		operation.fold_return_operation = offset_link_graph_id(
 			operation.fold_return_operation, operation_offset
@@ -811,7 +969,11 @@ static int append_link_operation_graph(
 		operation.fold_return_ast_binder_id = offset_link_graph_id(
 			operation.fold_return_ast_binder_id, source_binder_offset
 		);
-		operation.first_case = offset_link_graph_id(operation.first_case, case_offset);
+		if (operation.tag == PROTOTYPE_OPERATION_MATCH) {
+			operation.first_case = offset_link_graph_id(
+				operation.first_case, case_offset
+			);
+		}
 		operation.first_fold_clause = offset_link_graph_id(
 			operation.first_fold_clause, fold_clause_offset
 		);
@@ -953,6 +1115,7 @@ static int read_artifact_interface_only(
 	int status = prototype_artifact_read_text_interface(
 		artifact_file,
 		symbols,
+		prototype_default_intrinsic_environment(),
 		artifact_interface
 	);
 	if (fclose(artifact_file) != 0) {
@@ -1066,9 +1229,15 @@ static int check_export_normalization_equal(
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
+	prototype_compile_metadata_set_accepted_substitution_claim_storage(
+		&metadata,
+		artifact_accepted_substitution_claims,
+		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
+			prototype_default_intrinsic_environment(),
 			&artifact_interface,
 			&term_db,
 			&type_declarations,
@@ -1285,9 +1454,15 @@ static int check_exports_normalization_equal(
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
+	prototype_compile_metadata_set_accepted_substitution_claim_storage(
+		&metadata,
+		artifact_accepted_substitution_claims,
+		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
+			prototype_default_intrinsic_environment(),
 			&artifact_interface,
 			&term_db,
 			&type_declarations,
@@ -1418,6 +1593,61 @@ static int check_compiled_exports_normalization_equal(
 	return conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL ? 0 : 1;
 }
 
+static int trace_compiled_export_evaluation(
+	struct symbol_table* symbols,
+	const struct prototype_artifact_interface* interface,
+	struct prototype_term_db* term_db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const char* name
+) {
+	struct prototype_term_definition_env definition_env;
+	uint64_t induction_hypothesis_reductions = 0;
+	uint32_t result;
+	int name_symbol;
+	uint32_t export_id;
+
+	if (!symbols || !interface || !term_db || !type_declarations ||
+		!intrinsic_environment ||
+		!name || prototype_artifact_interface_build_definition_env(
+			interface,
+			artifact_definitions,
+			ARTIFACT_DEFINITION_CAPACITY,
+			&definition_env
+		) != 0) {
+		return -1;
+	}
+	name_symbol = symbol_intern(symbols, name, strlen(name));
+	if (name_symbol < 0 || prototype_artifact_interface_find_term_export(
+			interface, name_symbol, &export_id
+		) != 0 || prototype_term_perform_with_options(
+			term_db,
+			type_declarations,
+			&definition_env,
+			(struct prototype_term_reduction_options) {
+				.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT |
+					PROTOTYPE_TERM_REDUCE_DEFINITIONS,
+				.p_induction_hypothesis_reductions =
+					&induction_hypothesis_reductions
+			},
+			interface->term_exports[export_id].local_term,
+			&result
+		) != 0) {
+		return -1;
+	}
+	printf(
+		"evaluation-trace export=%s induction-hypothesis-reductions=%" PRIu64 "\n",
+		name,
+		induction_hypothesis_reductions
+	);
+	printf("evaluation-result ");
+	prototype_term_print_debug(
+		stdout, symbols, intrinsic_environment, type_declarations, term_db, result
+	);
+	printf("\n");
+	return 0;
+}
+
 static int check_exports_shape_equal(
 	const char* path,
 	const char* left_name,
@@ -1524,9 +1754,15 @@ static int check_exports_shape_equal(
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
+	prototype_compile_metadata_set_accepted_substitution_claim_storage(
+		&metadata,
+		artifact_accepted_substitution_claims,
+		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
+			prototype_default_intrinsic_environment(),
 			&artifact_interface,
 			&term_db,
 			&type_declarations,
@@ -1694,9 +1930,15 @@ static int check_export_classifier_compatible(
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
+	prototype_compile_metadata_set_accepted_substitution_claim_storage(
+		&metadata,
+		artifact_accepted_substitution_claims,
+		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
+			prototype_default_intrinsic_environment(),
 			&artifact_interface,
 			&term_db,
 			&type_declarations,
@@ -1994,10 +2236,21 @@ static int read_import_artifact_into_slot(
 		provider_verification_obligations,
 		VERIFICATION_OBLIGATION_CAPACITY
 	);
+	prototype_compile_metadata_set_accepted_substitution_claim_storage(
+		&provider_metadata,
+		provider_accepted_substitution_claims,
+		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
+	prototype_compile_metadata_set_diagnostic_storage(
+		&provider_metadata,
+		provider_compile_diagnostics,
+		COMPILE_DIAGNOSTIC_CAPACITY
+	);
 	init_imported_interface_slot(slot);
 	if (read_artifact_interface_and_graph(
 			path,
 			symbols,
+			prototype_default_intrinsic_environment(),
 			&provider_interface,
 			&provider_term_db,
 			&provider_type_declarations,
@@ -2014,6 +2267,22 @@ static int read_import_artifact_into_slot(
 			1 : provider_metadata.contexts.context_count;
 	uint32_t provider_term_relocation[provider_term_relocation_count];
 	uint32_t provider_context_relocation[provider_context_relocation_count];
+	size_t provider_substitution_relocation_count =
+		provider_metadata.substitutions.substitution_count == 0 ? 1 :
+		provider_metadata.substitutions.substitution_count;
+	uint32_t provider_substitution_relocation[
+		provider_substitution_relocation_count
+	];
+	size_t provider_claim_relocation_count =
+		provider_judgement_db.claim_count == 0 ? 1 :
+		provider_judgement_db.claim_count;
+	uint32_t provider_claim_relocation[provider_claim_relocation_count];
+	struct prototype_artifact_graph_relocation provider_additional = {
+		.claim_ids = provider_claim_relocation,
+		.claim_id_capacity = provider_claim_relocation_count,
+		.substitution_ids = provider_substitution_relocation,
+		.substitution_id_capacity = provider_substitution_relocation_count
+	};
 	if (prototype_artifact_append_graph(
 			&imported_artifact_interfaces[slot],
 			program->terms,
@@ -2032,8 +2301,16 @@ static int read_import_artifact_into_slot(
 			provider_term_relocation_count,
 		provider_context_relocation,
 		provider_context_relocation_count,
-		NULL,
-		1
+			&provider_additional,
+			1
+		) != 0 ||
+		prototype_compile_metadata_append_accepted_substitution_claims(
+			program->metadata,
+			&provider_metadata,
+			provider_substitution_relocation,
+			provider_substitution_relocation_count,
+			provider_claim_relocation,
+			provider_claim_relocation_count
 		) != 0) {
 		return -1;
 	}
@@ -2730,6 +3007,7 @@ int main(int argc, char** argv) {
 	const char* check_exports_normalization_equal_right_name = NULL;
 	const char* check_source_exports_normalization_equal_left_name = NULL;
 	const char* check_source_exports_normalization_equal_right_name = NULL;
+	const char* trace_source_export_evaluation_name = NULL;
 	const char* reduction_mode = "default";
 	const char* check_exports_shape_equal_path = NULL;
 	const char* check_exports_shape_equal_left_name = NULL;
@@ -2883,6 +3161,14 @@ int main(int argc, char** argv) {
 			check_source_exports_normalization_equal_right_name = argv[++file_arg];
 			continue;
 		}
+		if (strcmp(argv[file_arg], "--trace-source-export-evaluation") == 0) {
+			if (file_arg + 1 >= argc) {
+				fprintf(stderr, "--trace-source-export-evaluation requires a term name\n");
+				return 1;
+			}
+			trace_source_export_evaluation_name = argv[++file_arg];
+			continue;
+		}
 			if (strcmp(argv[file_arg], "--reduction-mode") == 0) {
 				if (file_arg + 1 >= argc) {
 					fprintf(stderr, "--reduction-mode requires default, beta, match, or none\n");
@@ -3017,6 +3303,7 @@ int main(int argc, char** argv) {
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
 		fprintf(stderr, "       %s --check-exports-normalization-equal file.ao left right [--reduction-mode mode]\n", argv[0]);
 		fprintf(stderr, "       %s --check-source-exports-normalization-equal left right [--reduction-mode mode] file.p\n", argv[0]);
+		fprintf(stderr, "       %s --trace-source-export-evaluation name file.p\n", argv[0]);
 			fprintf(stderr, "       %s --check-exports-view-shape-equal file.ao left right\n", argv[0]);
 			fprintf(stderr, "       %s --check-exports-core-shape-equal file.ao left right\n", argv[0]);
 			fprintf(stderr, "       %s --check-export-classifiers-compatible file.ao expected actual\n", argv[0]);
@@ -3080,6 +3367,7 @@ int main(int argc, char** argv) {
 			fprintf(stderr, "       %s --check-export-normalization-equal file.ao name\n", argv[0]);
 		fprintf(stderr, "       %s --check-exports-normalization-equal file.ao left right [--reduction-mode mode]\n", argv[0]);
 		fprintf(stderr, "       %s --check-source-exports-normalization-equal left right [--reduction-mode mode] file.p\n", argv[0]);
+		fprintf(stderr, "       %s --trace-source-export-evaluation name file.p\n", argv[0]);
 			fprintf(stderr, "       %s --check-exports-view-shape-equal file.ao left right\n", argv[0]);
 			fprintf(stderr, "       %s --check-exports-core-shape-equal file.ao left right\n", argv[0]);
 			fprintf(stderr, "       %s --link-artifacts target.ao provider.ao [--link-provider provider2.ao ...] [--link-search-dir dir] [--link-reexport-providers] [--link-output linked.ao]\n", argv[0]);
@@ -3217,10 +3505,16 @@ int main(int argc, char** argv) {
 			verification_obligations,
 			VERIFICATION_OBLIGATION_CAPACITY
 		);
+		prototype_compile_metadata_set_accepted_substitution_claim_storage(
+			&metadata,
+			accepted_substitution_claims,
+			PROTOTYPE_SUBSTITUTION_CAPACITY
+		);
 
 		if (read_artifact_interface_and_graph(
 				link_target_path,
 				&symbols,
+				prototype_default_intrinsic_environment(),
 				&artifact_interface,
 				&term_db,
 				&type_declarations,
@@ -3374,9 +3668,20 @@ int main(int argc, char** argv) {
 				provider_verification_obligations,
 				VERIFICATION_OBLIGATION_CAPACITY
 			);
+			prototype_compile_metadata_set_accepted_substitution_claim_storage(
+				&provider_metadata,
+				provider_accepted_substitution_claims,
+				PROTOTYPE_SUBSTITUTION_CAPACITY
+			);
+			prototype_compile_metadata_set_diagnostic_storage(
+				&provider_metadata,
+				provider_compile_diagnostics,
+				COMPILE_DIAGNOSTIC_CAPACITY
+			);
 			if (read_artifact_interface_and_graph(
 					provider_path,
 					&symbols,
+					prototype_default_intrinsic_environment(),
 					&provider_interface,
 					&provider_term_db,
 					&provider_type_declarations,
@@ -3409,16 +3714,33 @@ int main(int argc, char** argv) {
 					1 : provider_metadata.contexts.context_count;
 			uint32_t provider_term_relocation[provider_term_relocation_count];
 			uint32_t provider_context_relocation[provider_context_relocation_count];
-			size_t provider_binding_relocation_count =
-				provider_term_db.next_binding_id == 0 ?
-					1 : provider_term_db.next_binding_id;
-			uint32_t provider_binding_relocation[
-				provider_binding_relocation_count
-			];
-			struct prototype_artifact_graph_relocation provider_additional = {
-				.binding_ids = provider_binding_relocation,
-				.binding_id_capacity = provider_binding_relocation_count
-			};
+				size_t provider_binding_relocation_count =
+					provider_term_db.next_binding_id == 0 ?
+						1 : provider_term_db.next_binding_id;
+				uint32_t provider_binding_relocation[
+					provider_binding_relocation_count
+				];
+				size_t provider_substitution_relocation_count =
+					provider_metadata.substitutions.substitution_count == 0 ? 1 :
+					provider_metadata.substitutions.substitution_count;
+				uint32_t provider_substitution_relocation[
+					provider_substitution_relocation_count
+				];
+				size_t provider_claim_relocation_count =
+					provider_judgement_db.claim_count == 0 ? 1 :
+					provider_judgement_db.claim_count;
+				uint32_t provider_claim_relocation[
+					provider_claim_relocation_count
+				];
+				struct prototype_artifact_graph_relocation provider_additional = {
+					.binding_ids = provider_binding_relocation,
+					.binding_id_capacity = provider_binding_relocation_count,
+					.claim_ids = provider_claim_relocation,
+					.claim_id_capacity = provider_claim_relocation_count,
+					.substitution_ids = provider_substitution_relocation,
+					.substitution_id_capacity =
+						provider_substitution_relocation_count
+				};
 			if (prototype_artifact_append_graph(
 					&appended_interface,
 					&term_db,
@@ -3439,9 +3761,18 @@ int main(int argc, char** argv) {
 					provider_context_relocation_count,
 					&provider_additional,
 					1
-				) != 0 || append_link_operation_graph(
+					) != 0 ||
+					prototype_compile_metadata_append_accepted_substitution_claims(
+						&metadata,
+						&provider_metadata,
+						provider_substitution_relocation,
+						provider_substitution_relocation_count,
+						provider_claim_relocation,
+						provider_claim_relocation_count
+					) != 0 || append_link_operation_graph(
 					&metadata,
 					&provider_metadata,
+					&term_db,
 					provider_term_relocation,
 					provider_term_relocation_count,
 					provider_context_relocation,
@@ -3558,6 +3889,7 @@ int main(int argc, char** argv) {
 		if (prototype_judgement_validate_accepted_graph(
 				&term_db,
 				&type_declarations,
+				prototype_default_intrinsic_environment(),
 				&metadata.contexts,
 				&metadata.substitutions,
 				&linked_operation_graph,
@@ -3613,10 +3945,12 @@ int main(int argc, char** argv) {
 			int write_status = prototype_artifact_write_text(
 				output,
 				&symbols,
+				prototype_default_intrinsic_environment(),
 				&artifact_interface,
 				&term_db,
 				&type_declarations,
 				&judgement_db,
+				NULL,
 				&universe_db,
 				NULL,
 				&metadata
@@ -3726,6 +4060,7 @@ int main(int argc, char** argv) {
 		int read_status = prototype_artifact_read_text_interface(
 			artifact_file,
 			&symbols,
+			prototype_default_intrinsic_environment(),
 			&artifact_interface
 		);
 		if (read_status != 0) {
@@ -3751,6 +4086,11 @@ int main(int argc, char** argv) {
 				operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 				effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 				verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+			);
+			prototype_compile_metadata_set_accepted_substitution_claim_storage(
+				&artifact_metadata,
+				artifact_accepted_substitution_claims,
+				PROTOTYPE_SUBSTITUTION_CAPACITY
 			);
 			prototype_type_declaration_db_init(
 				&type_declarations,
@@ -3808,6 +4148,7 @@ int main(int argc, char** argv) {
 			if (prototype_artifact_read_text_graph(
 					artifact_file,
 					&symbols,
+					prototype_default_intrinsic_environment(),
 					&term_db,
 					&type_declarations,
 					&judgement_db
@@ -3817,6 +4158,7 @@ int main(int argc, char** argv) {
 					&symbols,
 					&term_db,
 					&type_declarations,
+					&judgement_db,
 					&artifact_metadata
 				) != 0 ||
 				prototype_artifact_read_text_universe(
@@ -3838,6 +4180,7 @@ int main(int argc, char** argv) {
 				prototype_judgement_validate_accepted_graph(
 					&term_db,
 					&type_declarations,
+					prototype_default_intrinsic_environment(),
 					&artifact_metadata.contexts,
 					&artifact_metadata.substitutions,
 					&(struct prototype_operation_graph) {
@@ -3993,6 +4336,15 @@ int main(int argc, char** argv) {
 				debug_table.term_name_count,
 				debug_table.type_name_count,
 				debug_table.constructor_name_count
+			);
+			print_artifact_context_and_substitution_inspection(
+				stdout,
+				&symbols,
+				prototype_default_intrinsic_environment(),
+				&artifact_interface,
+				&type_declarations,
+				&term_db,
+				&artifact_metadata
 			);
 			for (size_t i = 0; i < relocation_table.resolved_external_term_ref_count; ++i) {
 				const struct prototype_artifact_resolved_external_term_ref* ref =
@@ -4153,6 +4505,16 @@ int main(int argc, char** argv) {
 		verification_obligations,
 		VERIFICATION_OBLIGATION_CAPACITY
 	);
+	prototype_compile_metadata_set_accepted_substitution_claim_storage(
+		&metadata,
+		accepted_substitution_claims,
+		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
+	prototype_compile_metadata_set_diagnostic_storage(
+		&metadata,
+		compile_diagnostics,
+		COMPILE_DIAGNOSTIC_CAPACITY
+	);
 	prototype_judgement_db_init(
 		&judgement_db,
 		judgements,
@@ -4171,6 +4533,7 @@ int main(int argc, char** argv) {
 		JUDGEMENT_CAPACITY * 32
 	);
 
+	program.intrinsic_environment = prototype_default_intrinsic_environment();
 	program.symbols = &symbols;
 	program.namespace_symbol_id = -1;
 	program.asts = &ast_db;
@@ -4197,6 +4560,15 @@ int main(int argc, char** argv) {
 				error.column,
 				error.message[0] ? error.message : "read failed"
 			);
+			if (error.diagnostic_code ==
+				PROTOTYPE_READ_DIAGNOSTIC_UNSUPPORTED_INDEXED_FAMILY) {
+				fprintf(stderr, "read-diagnostic diagnostic-code=unsupported-indexed-family span=%u:%u\n",
+					error.line, error.column);
+			} else if (error.diagnostic_code ==
+				PROTOTYPE_READ_DIAGNOSTIC_NESTED_MATCH_GROUPING) {
+				fprintf(stderr, "read-diagnostic diagnostic-code=nested-match-grouping span=%u:%u\n",
+					error.line, error.column);
+			}
 			symbol_table_free(&symbols);
 			return 1;
 		}
@@ -4272,6 +4644,7 @@ int main(int argc, char** argv) {
 			error.message[0] ? error.message : "graph compile failed"
 		);
 		prototype_diagnostic_print_resolve_errors(stderr, &symbols, &metadata);
+		prototype_diagnostic_print_compile_diagnostics(stderr, &metadata);
 		symbol_table_free(&symbols);
 		return 1;
 	}
@@ -4297,6 +4670,7 @@ int main(int argc, char** argv) {
 	);
 	if (prototype_artifact_interface_build_from_metadata(
 			&artifact_interface,
+			program.intrinsic_environment,
 			&metadata,
 			&term_db,
 			&type_declarations,
@@ -4356,6 +4730,26 @@ int main(int argc, char** argv) {
 		symbol_table_free(&symbols);
 		return check_status == 0 ? 0 : 1;
 	}
+	if (trace_source_export_evaluation_name) {
+		int trace_status = trace_compiled_export_evaluation(
+			&symbols,
+			&artifact_interface,
+			&term_db,
+			&type_declarations,
+			program.intrinsic_environment,
+			trace_source_export_evaluation_name
+		);
+		if (trace_status < 0) {
+			fprintf(
+				stderr,
+				"%s: failed to trace source export evaluation: %s\n",
+				argv[file_arg],
+				trace_source_export_evaluation_name
+			);
+		}
+		symbol_table_free(&symbols);
+		return trace_status == 0 ? 0 : 1;
+	}
 	if (artifact_output_path) {
 		FILE* artifact_file = fopen(artifact_output_path, "w");
 		if (!artifact_file) {
@@ -4366,10 +4760,12 @@ int main(int argc, char** argv) {
 		int write_status = prototype_artifact_write_text(
 			artifact_file,
 			&symbols,
+			program.intrinsic_environment,
 			&artifact_interface,
 			&term_db,
 			&type_declarations,
 			&judgement_db,
+			NULL,
 			&universe_db,
 			&ast_db,
 			&metadata
@@ -4420,7 +4816,10 @@ int main(int argc, char** argv) {
 	for (size_t i = 0; i < metadata.label_count; ++i) {
 		const struct prototype_compile_label* label = &metadata.labels[i];
 		printf("term %s := ", symbol_to_string(&symbols, label->name_symbol_id));
-		prototype_term_print_debug(stdout, &symbols, &type_declarations, &term_db, label->term);
+		prototype_term_print_debug(
+			stdout, &symbols, program.intrinsic_environment,
+			&type_declarations, &term_db, label->term
+		);
 		printf("\n");
 	}
 	printf("\n#### Operations ####\noperations=%zu cases=%zu\n",
@@ -4462,6 +4861,18 @@ int main(int argc, char** argv) {
 			printf(" scrutinee-operation#%u cases=%u", operation->scrutinee,
 				operation->case_count);
 		}
+		if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+			printf(
+				" owner-match-operation#%u ih-scope#%u case=%u field=%u "
+				"ast-binder#%u argument-operation#%u",
+				operation->scrutinee,
+				operation->ih_scope_id,
+				operation->ih_case_index,
+				operation->ih_field_index,
+				operation->referenced_ast_binder_id,
+				operation->argument
+			);
+		}
 		printf("\n");
 	}
 	for (size_t i = 0; i < metadata.operation_case_count; ++i) {
@@ -4479,7 +4890,10 @@ int main(int argc, char** argv) {
 		printf("\n");
 	}
 	printf("\n#### Judgements ####\n");
-	prototype_judgement_print(stdout, &symbols, &type_declarations, &term_db, &judgement_db);
+	prototype_judgement_print(
+		stdout, &symbols, program.intrinsic_environment,
+		&type_declarations, &term_db, &judgement_db
+	);
 	memset(reachable_external_refs, 0, sizeof(reachable_external_refs));
 	for (size_t i = 0; i < metadata.label_count; ++i) {
 		mark_reachable_external_refs(&term_db, metadata.labels[i].term, 0);
@@ -4507,7 +4921,7 @@ int main(int argc, char** argv) {
 		const struct prototype_compile_label* label = &metadata.labels[i];
 		printf("metadata label %s -> operation#%u -> term#%u\n",
 			symbol_to_string(&symbols, label->name_symbol_id),
-			label->operation,
+			label->exposed_operation,
 			label->term);
 	}
 	for (size_t i = 0; i < metadata.resolve_error_count; ++i) {
@@ -4562,7 +4976,10 @@ int main(int argc, char** argv) {
 			constructor_export->curried_classifier_cache);
 	}
 	printf("\n#### Resolution ####\n");
-	prototype_diagnostic_print_resolution_trace(stdout, &symbols, &type_declarations, &term_db, &metadata);
+	prototype_diagnostic_print_resolution_trace(
+		stdout, &symbols, program.intrinsic_environment,
+		&type_declarations, &term_db, &metadata
+	);
 	printf("\n#### Universe ####\n");
 	prototype_diagnostic_print_universe_graph(
 		stdout, &symbols, &type_declarations, &universe_db, 1

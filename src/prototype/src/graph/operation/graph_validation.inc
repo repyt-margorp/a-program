@@ -23,6 +23,93 @@ static int term_is_saturated_effect_application(
 	return declaration && argument_count >= declaration->arity;
 }
 
+int prototype_operation_graph_induction_edge(
+	const struct prototype_operation_graph* graph,
+	const struct prototype_term_db* terms,
+	uint32_t operation_id,
+	struct prototype_operation_induction_edge* p_edge
+) {
+	if (!graph || !terms || !p_edge || operation_id >= graph->operation_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* induction =
+		prototype_operation_graph_get(graph, operation_id);
+	if (!induction || induction->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS ||
+		induction->argument >= graph->operation_count ||
+		induction->scrutinee >= graph->operation_count ||
+		induction->referenced_ast_binder_id == PROTOTYPE_INVALID_ID ||
+		induction->ih_scope_id >= terms->ih_scope_count ||
+		induction->ih_case_index == PROTOTYPE_INVALID_ID ||
+		induction->ih_field_index == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	const struct prototype_operation_node* owner =
+		prototype_operation_graph_get(graph, induction->scrutinee);
+	const struct prototype_operation_node* argument =
+		prototype_operation_graph_get(graph, induction->argument);
+	if (!owner || !argument || owner->tag != PROTOTYPE_OPERATION_MATCH ||
+		argument->tag != PROTOTYPE_OPERATION_VAR ||
+		argument->referenced_ast_binder_id !=
+			induction->referenced_ast_binder_id ||
+		owner->core_term >= terms->term_count ||
+		induction->core_term >= terms->term_count ||
+		argument->core_term >= terms->term_count ||
+		terms->terms[owner->core_term].tag != PROTOTYPE_TERM_MATCH ||
+		terms->terms[induction->core_term].tag !=
+			PROTOTYPE_TERM_INDUCTION_HYPOTHESIS ||
+		terms->terms[argument->core_term].tag != PROTOTYPE_TERM_VAR) {
+		return -1;
+	}
+	const struct prototype_term* core_match = &terms->terms[owner->core_term];
+	const struct prototype_term* core_induction =
+		&terms->terms[induction->core_term];
+	if (induction->ih_case_index >= owner->case_count ||
+		induction->ih_case_index >= core_match->as.match.case_count ||
+		owner->first_case > graph->case_count ||
+		owner->case_count > graph->case_count - owner->first_case ||
+		core_match->as.match.first_case > terms->case_count ||
+		core_match->as.match.case_count >
+			terms->case_count - core_match->as.match.first_case ||
+		core_induction->as.induction_hypothesis.ih_scope_id !=
+			induction->ih_scope_id ||
+		terms->ih_scopes[induction->ih_scope_id].match_term != owner->core_term ||
+		core_induction->as.induction_hypothesis.argument != argument->core_term) {
+		return -1;
+	}
+	const struct prototype_operation_match_case* typed_case =
+		&graph->cases[owner->first_case + induction->ih_case_index];
+	const struct prototype_match_case* core_case =
+		&terms->cases[
+			core_match->as.match.first_case + induction->ih_case_index
+		];
+	if (induction->ih_field_index >= typed_case->binder_count ||
+		induction->ih_field_index >= core_case->binder_count ||
+		typed_case->ast_binder_ids[induction->ih_field_index] !=
+			induction->referenced_ast_binder_id ||
+		core_case->first_binder > terms->case_binder_count ||
+		core_case->binder_count >
+			terms->case_binder_count - core_case->first_binder) {
+		return -1;
+	}
+	const struct prototype_case_binder* core_binder =
+		&terms->case_binders[core_case->first_binder + induction->ih_field_index];
+	if (!core_binder->is_recursive ||
+		core_binder->binding_id !=
+			terms->terms[argument->core_term].as.var.binding_id) {
+		return -1;
+	}
+	*p_edge = (struct prototype_operation_induction_edge){
+		.induction_operation = operation_id,
+		.owner_match_operation = induction->scrutinee,
+		.scope_id = induction->ih_scope_id,
+		.case_index = induction->ih_case_index,
+		.field_index = induction->ih_field_index,
+		.source_ast_binder_id = induction->referenced_ast_binder_id,
+		.argument_operation = induction->argument
+	};
+	return 0;
+}
+
 int prototype_operation_graph_validate(
 	const struct prototype_operation_graph* graph,
 	const struct prototype_term_db* terms,
@@ -78,6 +165,14 @@ int prototype_operation_graph_validate(
 				return -1;
 			}
 		}
+		if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+			struct prototype_operation_induction_edge edge;
+			if (prototype_operation_graph_induction_edge(
+					graph, terms, i, &edge
+				) != 0) {
+				return -1;
+			}
+		}
 		uint32_t operation_references[] = {
 			operation->function,
 			operation->argument,
@@ -93,7 +188,8 @@ int prototype_operation_graph_validate(
 				return -1;
 			}
 		}
-		if (operation->first_case != PROTOTYPE_INVALID_ID &&
+		if (operation->tag == PROTOTYPE_OPERATION_MATCH &&
+			operation->first_case != PROTOTYPE_INVALID_ID &&
 			(operation->first_case > graph->case_count ||
 			 operation->case_count > graph->case_count - operation->first_case)) {
 			return -1;

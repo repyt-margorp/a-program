@@ -1,0 +1,40 @@
+#ifndef A_PROGRAM_PROTOTYPE_GRAPH_COMPILE_DIAGNOSTIC_H
+#define A_PROGRAM_PROTOTYPE_GRAPH_COMPILE_DIAGNOSTIC_H
+
+#include <stdint.h>
+
+#include "a_program/frontend/ast.h"
+
+enum prototype_compile_diagnostic_phase {
+	PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION = 1,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER = 2,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_EXPECTATION_CHECK = 3,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_PROOF_REPLAY = 4
+};
+
+enum prototype_compile_diagnostic_reason {
+	PROTOTYPE_COMPILE_DIAGNOSTIC_UNSOLVED_CLASSIFIER = 1,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_CONSTRUCTOR_DOMAIN_MISMATCH = 2,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_IH_OWNERSHIP = 3,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_MATCH_RESULT_MOTIVE = 4,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_INTEGER_LITERAL_RANGE = 5,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_ASCRIPTION_MISMATCH = 6,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_NESTED_RECURSION = 7,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_INDEXED_FAMILY = 8,
+	PROTOTYPE_COMPILE_DIAGNOSTIC_NESTED_MATCH_GROUPING = 9
+};
+
+/* A compile diagnostic describes a failed attempt to produce accepted graph
+ * evidence. It is not a Proposition, Claim, Derivation, or artifact root. */
+struct prototype_compile_diagnostic {
+	int phase;
+	int reason;
+	uint32_t source_ast;
+	struct prototype_source_span span;
+	uint32_t operation_id;
+	uint32_t constraint_id;
+	uint32_t expected_classifier;
+	uint32_t actual_classifier;
+};
+
+#endif

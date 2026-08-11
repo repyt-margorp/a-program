@@ -20,15 +20,17 @@ RoseTree := \A : @ => @{
    RoseTree appears nested inside List */
 
 /* Example construction */
-empty_children : List (RoseTree Nat) := (List (RoseTree Nat)).nil;
+empty_children := (List (RoseTree Nat)).nil;
+empty_children :: List (RoseTree Nat);
 
-leaf : Nat -> RoseTree Nat := \x : Nat =>
+leaf := \x : Nat =>
   (RoseTree Nat).rose x empty_children;
+leaf :: Nat -> RoseTree Nat;
 
-example_rose : RoseTree Nat :=
-  (RoseTree Nat).rose Nat.zero
+example_rose := (RoseTree Nat).rose Nat.zero
     ((List (RoseTree Nat)).cons
       (leaf Nat.zero)
       empty_children);
+example_rose :: RoseTree Nat;
 
 main := example_rose;

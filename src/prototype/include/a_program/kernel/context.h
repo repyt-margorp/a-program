@@ -8,6 +8,23 @@ struct prototype_term_db;
 struct prototype_type_declaration_db;
 struct prototype_term_conversion_result;
 
+/* EXTEND remains a classifier-coherent candidate constructor. These results
+ * identify which structural/coherence premise failed; they do not report CwF
+ * formation evidence, which belongs to cwf_certificate.h. */
+enum prototype_substitution_extend_result {
+	PROTOTYPE_SUBSTITUTION_EXTEND_OK = 0,
+	PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_ARGUMENT = -1,
+	PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_PREFIX = -2,
+	PROTOTYPE_SUBSTITUTION_EXTEND_TERM_OUT_OF_RANGE = -3,
+	PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_OUT_OF_RANGE = -4,
+	PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_TARGET = -5,
+	PROTOTYPE_SUBSTITUTION_EXTEND_TARGET_PARENT_MISMATCH = -6,
+	PROTOTYPE_SUBSTITUTION_EXTEND_REINDEX_FAILED = -7,
+	PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_NORMALIZATION_FAILED = -8,
+	PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_MISMATCH = -9,
+	PROTOTYPE_SUBSTITUTION_EXTEND_STORAGE_FAILED = -10
+};
+
 #define PROTOTYPE_CONTEXT_CAPACITY 8192
 #define PROTOTYPE_SUBSTITUTION_CAPACITY 8192
 #define PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT 1021
@@ -274,12 +291,15 @@ int prototype_substitution_db_validate(
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms
 );
-int prototype_substitution_db_validate_typed(
+/* Validates the candidate graph's reindexed classifiers. This is not proof of
+ * CwF formation; proof-bearing consumers use prototype_certified_substitution_ref. */
+int prototype_substitution_db_validate_classifier_coherence(
 	struct prototype_substitution_db* db,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations
 );
+const char* prototype_substitution_extend_result_name(int result);
 int prototype_substitution_db_append_relocated(
 	struct prototype_substitution_db* target,
 	const struct prototype_substitution_db* source,

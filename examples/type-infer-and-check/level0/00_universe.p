@@ -1,9 +1,7 @@
 /* Level 0: Universe type */
 
-/* Universe itself */
-U : * := @;
+/* A type variable ranges over the universe. */
+TypeIdentity := \A : @ => A;
+TypeIdentity :: (A : @) -> @;
 
-/* Types inhabit the universe */
-TypeExample : * := *;
-
-main := U;
+main := TypeIdentity;

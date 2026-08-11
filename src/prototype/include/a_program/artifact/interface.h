@@ -14,7 +14,7 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 71
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 72
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
 enum prototype_artifact_export_transparency {
@@ -210,6 +210,8 @@ struct prototype_artifact_debug_table {
 };
 
 struct prototype_artifact_interface {
+	uint64_t intrinsic_environment_fingerprint;
+	int default_integer_host_type;
 	struct prototype_artifact_term_export* term_exports;
 	size_t term_export_count;
 	size_t term_export_capacity;
@@ -333,6 +335,7 @@ void prototype_artifact_debug_table_init(
 
 int prototype_artifact_interface_build_from_metadata(
 	struct prototype_artifact_interface* interface,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_compile_metadata* metadata,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,

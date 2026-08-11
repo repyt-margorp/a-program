@@ -5,7 +5,7 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh
 
-artifact_schema=src/prototype/spec/artifact_v71.schema
+artifact_schema=src/prototype/spec/artifact_v72.schema
 hott_schema=src/prototype/spec/hott_fragment_v5.schema
 calculus_header=src/prototype/calculus.h
 artifact_header=src/prototype/include/a_program/artifact/interface.h

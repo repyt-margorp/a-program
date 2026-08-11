@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "a_program/frontend/ast.h"
+#include "a_program/graph/compile_diagnostic.h"
 #include "a_program/graph/operation_model.h"
 #include "a_program/graph/verification.h"
 #include "a_program/kernel/context.h"
@@ -126,6 +127,11 @@ struct prototype_compile_metadata {
 
 	struct prototype_context_db contexts;
 	struct prototype_substitution_db substitutions;
+	/* Accepted artifact authority for EXTEND nodes. This table is separate from
+	 * SubstitutionDB so structurally valid compiler candidates remain usable
+	 * without pretending that every candidate is a certified CwF morphism. */
+	uint32_t* accepted_substitution_claims;
+	size_t accepted_substitution_claim_capacity;
 
 	struct prototype_operation_node* operations;
 	size_t operation_count;
@@ -161,6 +167,10 @@ struct prototype_compile_metadata {
 	size_t resolve_error_count;
 	size_t resolve_error_capacity;
 
+	struct prototype_compile_diagnostic* compile_diagnostics;
+	size_t compile_diagnostic_count;
+	size_t compile_diagnostic_capacity;
+
 	struct prototype_resolution_item* resolution_items;
 	size_t resolution_item_count;
 	size_t resolution_item_capacity;
@@ -173,6 +183,55 @@ struct prototype_compile_metadata {
 	size_t resolution_event_count;
 	size_t resolution_event_capacity;
 };
+
+struct prototype_type_inspection {
+	uint32_t body_operation;
+	uint32_t body_classifier;
+	uint32_t exposed_operation;
+	uint32_t exposed_classifier;
+	uint32_t expectation_classifier;
+	uint32_t expectation_claim_id;
+};
+
+enum prototype_type_inspection_state {
+	PROTOTYPE_TYPE_INSPECTION_INVALID = 0,
+	PROTOTYPE_TYPE_INSPECTION_AVAILABLE = 1,
+	PROTOTYPE_TYPE_INSPECTION_UNAVAILABLE = 2,
+	PROTOTYPE_TYPE_INSPECTION_AMBIGUOUS = 3
+};
+
+/* Read-only projection of already accepted compilation metadata. It performs
+ * no synthesis, normalization, interning, or proof construction. AMBIGUOUS
+ * means that a published label exists but does not carry one coherent selected
+ * Operation principal; the query never falls back to Term-ID evidence. */
+enum prototype_type_inspection_state prototype_compile_metadata_inspect_type(
+	const struct prototype_compile_metadata* metadata,
+	int name_symbol_id,
+	struct prototype_type_inspection* p_inspection
+);
+
+void prototype_compile_metadata_set_accepted_substitution_claim_storage(
+	struct prototype_compile_metadata* metadata,
+	uint32_t* claim_ids,
+	size_t claim_id_capacity
+);
+int prototype_compile_metadata_record_accepted_substitution_claim(
+	struct prototype_compile_metadata* metadata,
+	uint32_t substitution_id,
+	uint32_t claim_id
+);
+uint32_t prototype_compile_metadata_accepted_substitution_claim(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t substitution_id
+);
+int prototype_compile_metadata_append_accepted_substitution_claims(
+	struct prototype_compile_metadata* target,
+	const struct prototype_compile_metadata* source,
+	const uint32_t* substitution_relocation,
+	size_t substitution_relocation_count,
+	const uint32_t* claim_relocation,
+	size_t claim_relocation_count
+);
 
 void prototype_compile_metadata_init(
 	struct prototype_compile_metadata* metadata,
@@ -204,6 +263,17 @@ void prototype_compile_metadata_init(
 	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
 	size_t verification_obligation_capacity
+);
+
+void prototype_compile_metadata_set_diagnostic_storage(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_compile_diagnostic* diagnostics,
+	size_t diagnostic_capacity
+);
+
+int prototype_compile_metadata_add_diagnostic(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_compile_diagnostic diagnostic
 );
 
 #endif

@@ -762,7 +762,7 @@ int prototype_judgement_constructor_spine_classifier(
 				normalized_expected,
 				argument_classifiers[i]
 			)) {
-			return -1;
+			return PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_DOMAIN_MISMATCH;
 		}
 		if (pi_codomain_after_argument_in_context(
 				contexts,
@@ -1568,7 +1568,9 @@ static int prototype_judgement_delta_resolve_induction_hypothesis_for_app_argume
 		match_term,
 		motive,
 		context_case_index,
-		context_field_index
+		context_field_index,
+		NULL,
+		0
 	);
 }
 
@@ -1684,10 +1686,12 @@ int prototype_judgement_delta_resolve_induction_hypothesis_request(
 		request->subject,
 		classifier,
 		match_term,
-		motive,
-		context_case_index,
-		context_field_index
-	);
+			motive,
+			context_case_index,
+			context_field_index,
+			NULL,
+			0
+		);
 }
 
 static int type_instance_has_known_type(

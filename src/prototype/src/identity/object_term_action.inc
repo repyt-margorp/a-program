@@ -669,6 +669,61 @@ static int hott_construct_object_computation_action_depth(
 	uint32_t* p_witness_computation_claim_id
 );
 
+static int hott_certify_nullary_constructor_refinement(
+	struct prototype_kernel_builder* kernel,
+	uint32_t substitution_id,
+	uint32_t depth,
+	uint32_t* p_certificate_id
+) {
+	struct prototype_substitution_db* substitutions = kernel ?
+		kernel->substitutions : NULL;
+	struct prototype_cwf_certificate_db* cwf = kernel ?
+		kernel->cwf_certificates : NULL;
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_type_declaration_db* types = kernel ?
+		kernel->type_declarations : NULL;
+	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
+	const struct prototype_substitution* substitution =
+		prototype_substitution_get(substitutions, substitution_id);
+	if (!substitutions || !cwf || !terms || !types || !judgement ||
+		!substitution || !p_certificate_id ||
+		depth > substitutions->substitution_count) {
+		return -1;
+	}
+	if (substitution->kind != PROTOTYPE_SUBSTITUTION_EXTEND) {
+		return prototype_cwf_certificate_db_certify_substitution_root(
+			cwf, substitutions, judgement, substitution_id, p_certificate_id
+		);
+	}
+	uint32_t prefix_certificate;
+	if (hott_certify_nullary_constructor_refinement(
+			kernel, substitution->first, depth + 1, &prefix_certificate
+		) != 0 || substitution->term >= terms->term_count ||
+		terms->terms[substitution->term].tag != PROTOTYPE_TERM_CONSTRUCTOR) {
+		return -1;
+	}
+	uint32_t claim_id;
+	if (prototype_judgement_add_constructor_intro_claim(
+			judgement,
+			terms,
+			types,
+			substitution->source_context,
+			substitution->term,
+			substitution->term_classifier,
+			&claim_id
+		) != 0) {
+		return -1;
+	}
+	return prototype_cwf_certificate_db_add_substitution(
+		cwf,
+		substitutions,
+		judgement,
+		substitution_id,
+		claim_id,
+		p_certificate_id
+	);
+}
+
 static int hott_construct_nullary_match_object_action(
 	struct prototype_kernel_builder* kernel,
 	const struct prototype_hott_identity_type_computation_certificate* identity,
@@ -991,6 +1046,7 @@ static int hott_construct_nullary_match_object_action(
 
 	uint32_t refined_branch_claims[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t refinement_substitutions[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t refinement_certificates[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	for (uint32_t i = 0; i < source_type->constructor_count; ++i) {
 		uint32_t refined_context;
 		uint32_t constructor_term;
@@ -1009,6 +1065,11 @@ static int hott_construct_nullary_match_object_action(
 				&refined_context,
 				&refinement_substitutions[i],
 				&constructor_term
+			) != 0 || hott_certify_nullary_constructor_refinement(
+				kernel,
+				refinement_substitutions[i],
+				0,
+				&refinement_certificates[i]
 			) != 0 || prototype_judgement_add_reindexed_claim(
 				judgement,
 				terms,
@@ -4080,7 +4141,7 @@ int prototype_hott_execute_object_term_action(
 	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
 	if (!actions || !kernel || !bridges || !terms || !types || !contexts ||
 		!substitutions || !judgement || !p_result_id ||
-		prototype_kernel_builder_validate(kernel) != 0) {
+		prototype_kernel_builder_validate_stores(kernel) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(

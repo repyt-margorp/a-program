@@ -532,6 +532,43 @@ int prototype_term_db_append_relocated(
 			return -1;
 		}
 	}
+	/* An occurrence-local IH scope can be reached through an IH term while its
+	 * alpha-interned Match uses a different canonical scope. Importing the IH
+	 * allocates the occurrence scope, but only the Match-owned scope is closed
+	 * during recursive term import. Once every term relocation is known, close
+	 * every reached scope over the relocated Match explicitly. */
+	for (size_t source_scope = 0; source_scope < source->ih_scope_count;
+		++source_scope) {
+		uint32_t target_scope = ih_scope_relocation[source_scope];
+		if (target_scope == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		uint32_t source_match = source->ih_scopes[source_scope].match_term;
+		uint32_t source_scrutinee_binding =
+			source->ih_scopes[source_scope].scrutinee_binding_id;
+		uint32_t target_scrutinee_binding = source_scrutinee_binding ==
+			PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID : relocate_import_binding(
+				source_scrutinee_binding,
+				binding_relocation,
+				binding_relocation_count
+			);
+		if (source_match >= source->term_count ||
+			term_relocation[source_match] == PROTOTYPE_INVALID_ID ||
+			(source_scrutinee_binding != PROTOTYPE_INVALID_ID &&
+			 target_scrutinee_binding == PROTOTYPE_INVALID_ID)) {
+			return -1;
+		}
+		target->ih_scopes[target_scope].scrutinee_binding_id =
+			target_scrutinee_binding;
+		if (
+			prototype_term_set_ih_scope_term(
+				target,
+				target_scope,
+				term_relocation[source_match]
+			) != 0) {
+			return -1;
+		}
+	}
 	return 0;
 }
 
@@ -563,6 +600,7 @@ uint32_t prototype_term_new_ih_scope(struct prototype_term_db* db) {
 	}
 	uint32_t id = (uint32_t)db->ih_scope_count;
 	db->ih_scopes[id].match_term = PROTOTYPE_INVALID_ID;
+	db->ih_scopes[id].scrutinee_binding_id = PROTOTYPE_INVALID_ID;
 	memset(&db->ih_scopes[id].key, 0, sizeof(db->ih_scopes[id].key));
 	db->ih_scope_count++;
 	return id;
@@ -577,6 +615,14 @@ int prototype_term_set_ih_scope_term(
 		return -1;
 	}
 	db->ih_scopes[ih_scope_id].match_term = match_term;
+	const struct prototype_term* match = &db->terms[match_term];
+	if (db->ih_scopes[ih_scope_id].scrutinee_binding_id == PROTOTYPE_INVALID_ID &&
+		match->tag == PROTOTYPE_TERM_MATCH &&
+		match->as.match.scrutinee < db->term_count &&
+		db->terms[match->as.match.scrutinee].tag == PROTOTYPE_TERM_VAR) {
+		db->ih_scopes[ih_scope_id].scrutinee_binding_id =
+			db->terms[match->as.match.scrutinee].as.var.binding_id;
+	}
 	if (compute_ih_scope_key(db, match_term, &db->ih_scopes[ih_scope_id].key) != 0) {
 		memset(&db->ih_scopes[ih_scope_id].key, 0, sizeof(db->ih_scopes[ih_scope_id].key));
 		return -1;

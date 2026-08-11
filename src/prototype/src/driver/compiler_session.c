@@ -144,7 +144,9 @@ int prototype_compile_graph_with_imports(
 	if (error) {
 		memset(error, 0, sizeof(*error));
 	}
-	if (!program || !program->asts || !program->type_declarations || !program->terms || !program->judgement || !program->metadata) {
+	if (!program || !program->intrinsic_environment || !program->asts ||
+		!program->type_declarations || !program->terms || !program->judgement ||
+		!program->metadata) {
 		if (error) {
 			snprintf(error->message, sizeof(error->message), "%s", "invalid graph compile arguments");
 		}
@@ -177,12 +179,20 @@ int prototype_compile_graph_with_imports(
 		program->type_declarations,
 		program->judgement,
 		program->metadata,
+		program->intrinsic_environment,
 		program->namespace_symbol_id,
 		imported_interfaces,
 		imported_interface_count
 	) != 0) {
 		if (error) {
-			if (program->metadata && program->metadata->resolve_error_count > 0) {
+			if (program->metadata &&
+				program->metadata->compile_diagnostic_count > 0) {
+				const struct prototype_compile_diagnostic* diagnostic =
+					&program->metadata->compile_diagnostics[0];
+				error->line = diagnostic->span.line;
+				error->column = diagnostic->span.column;
+			} else if (program->metadata &&
+				program->metadata->resolve_error_count > 0) {
 				const struct prototype_resolve_error* resolve_error =
 					&program->metadata->resolve_errors[0];
 				error->line = resolve_error->span.line;

@@ -238,6 +238,7 @@ struct prototype_ast_match_case {
 	uint32_t first_binder;
 	uint32_t binder_count;
 	uint32_t body;
+	struct prototype_source_span span;
 };
 
 struct prototype_ast_binder {
@@ -250,6 +251,7 @@ struct prototype_ast_match_case_input {
 	const struct prototype_ast_binder* binders;
 	uint32_t binder_count;
 	uint32_t body;
+	struct prototype_source_span span;
 };
 
 struct prototype_ast_computation_fold_clause {

@@ -233,24 +233,29 @@ int prototype_judgement_delta_record_text_literal(
 int prototype_judgement_delta_record_int_literal(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	uint32_t subject,
 	uint32_t classifier
 ) {
 	uint32_t integer;
-	uint32_t integer64;
-	if (!delta || !terms ||
+	if (!delta || !terms || !intrinsic_environment ||
 		!term_has_tag(terms, subject, PROTOTYPE_TERM_INT_LITERAL) ||
 		!term_exists(terms, classifier) ||
-		prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_INT64, &integer64) != 0) {
+		prototype_term_make_host_type(
+			terms,
+			intrinsic_environment->default_integer_host_type,
+			&integer
+		) != 0 || classifier != integer) {
 		return -1;
 	}
-	if (classifier != integer64) {
-		if (terms->terms[subject].as.int_literal.value < INT32_MIN ||
-			terms->terms[subject].as.int_literal.value > INT32_MAX ||
-			prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_INT32, &integer) != 0 ||
-			classifier != integer) {
-			return -1;
-		}
+	int bit_width = prototype_term_host_type_bit_width(
+		intrinsic_environment->default_integer_host_type
+	);
+	if ((bit_width == 32 &&
+		(terms->terms[subject].as.int_literal.value < INT32_MIN ||
+		 terms->terms[subject].as.int_literal.value > INT32_MAX)) ||
+		(bit_width != 32 && bit_width != 64)) {
+		return -1;
 	}
 	return add_delta_relation(
 		delta,

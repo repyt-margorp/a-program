@@ -448,6 +448,13 @@ int prototype_judgement_select_evidence(
 	struct prototype_judgement_selected_evidence* selected
 );
 
+enum prototype_judgement_constructor_spine_status {
+	PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_VALID = 0,
+	PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_DOMAIN_MISMATCH = 1
+};
+
+/* Returns a prototype_judgement_constructor_spine_status, or -1 when the
+ * constructor spine or its stored schema is malformed. */
 int prototype_judgement_constructor_spine_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -566,6 +573,7 @@ int prototype_judgement_delta_record_text_literal(
 int prototype_judgement_delta_record_int_literal(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	uint32_t subject,
 	uint32_t classifier
 );
@@ -695,7 +703,9 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	uint32_t match_term,
 	uint32_t motive,
 	uint32_t case_index,
-	uint32_t field_index
+	uint32_t field_index,
+	const struct prototype_judgement_selected_evidence* context_evidence,
+	uint32_t context_evidence_count
 );
 
 int prototype_judgement_expand_text_literal(
@@ -758,6 +768,7 @@ int prototype_judgement_delta_has_pending_classifier_state(
 int prototype_judgement_validate_accepted_graph(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	const struct prototype_operation_graph* operations,

@@ -41,6 +41,12 @@ prototype_operation_graph_get_fold_clause(
 	const struct prototype_operation_graph* graph,
 	uint32_t clause_id
 );
+int prototype_operation_graph_induction_edge(
+	const struct prototype_operation_graph* graph,
+	const struct prototype_term_db* terms,
+	uint32_t operation_id,
+	struct prototype_operation_induction_edge* p_edge
+);
 int prototype_operation_graph_add(
 	struct prototype_operation_graph* graph,
 	const struct prototype_context_db* contexts,

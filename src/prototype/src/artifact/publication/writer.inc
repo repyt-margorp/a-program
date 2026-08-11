@@ -4,6 +4,8 @@ static int write_artifact_operation_graph_section(
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_compile_metadata* metadata,
+	const uint32_t* substitution_evidence_claims,
+	size_t substitution_evidence_count,
 	const struct artifact_context_slice* context_slice
 ) {
 	if (!stream || !symbols || !type_declarations || !judgement ||
@@ -87,9 +89,22 @@ static int write_artifact_operation_graph_section(
 	for (size_t i = 0; i < substitution_count; ++i) {
 		const struct prototype_substitution* substitution =
 			&metadata->substitutions.substitutions[i];
+		uint32_t evidence_claim_id = i < substitution_evidence_count ?
+			substitution_evidence_claims[i] : PROTOTYPE_INVALID_ID;
+		if ((substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) !=
+			(evidence_claim_id != PROTOTYPE_INVALID_ID) ||
+			(evidence_claim_id != PROTOTYPE_INVALID_ID &&
+			 !prototype_cwf_substitution_claim_certifies(
+				&metadata->substitutions,
+				judgement,
+				(uint32_t)i,
+				evidence_claim_id
+			 ))) {
+			return -1;
+		}
 		fprintf(
 			stream,
-			"substitution %zu %d %u %u %u %u %u %u\n",
+			"substitution %zu %d %u %u %u %u %u %u %u\n",
 			i,
 			substitution->kind,
 			artifact_context_slice_relocate(
@@ -101,7 +116,8 @@ static int write_artifact_operation_graph_section(
 			substitution->first,
 			substitution->second,
 			substitution->term,
-			substitution->term_classifier
+			substitution->term_classifier,
+			evidence_claim_id
 		);
 	}
 	fprintf(stream, "operations %zu\n", operation_count);
@@ -123,7 +139,7 @@ static int write_artifact_operation_graph_section(
 		fprintf(
 			stream,
 			"operation %zu %d %d %d %u %u %u %s %s %u %u %u %u %u %u %u"
-			" %u %u %u %u %u %u %u %u %u\n",
+			" %u %u %u %u %u %u %u %u %u %u %u %u\n",
 			i,
 			operation->tag,
 			operation->category,
@@ -140,6 +156,9 @@ static int write_artifact_operation_graph_section(
 			operation->body,
 			operation->scrutinee,
 			operation->binder_classifier,
+			operation->ih_scope_id,
+			operation->ih_case_index,
+			operation->ih_field_index,
 			operation->fold_return_ast_binder_id,
 			operation->fold_return_binder_id,
 			operation->fold_return_operation,
@@ -259,15 +278,26 @@ static int write_artifact_operation_graph_section(
 static int prototype_artifact_write_text_body(
 	FILE* stream,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_universe_db* universe,
 	const struct prototype_ast_db* asts,
-	const struct prototype_compile_metadata* metadata
+	const struct prototype_compile_metadata* metadata,
+	const uint32_t* substitution_evidence_claims,
+	size_t substitution_evidence_count
 ) {
-	if (!stream || !symbols || !interface || !terms || !type_declarations || !judgement ||
+	if (!stream || !symbols || !intrinsic_environment || !interface ||
+		interface->intrinsic_environment_fingerprint == 0 ||
+		interface->intrinsic_environment_fingerprint !=
+			prototype_intrinsic_environment_fingerprint(intrinsic_environment) ||
+		interface->default_integer_host_type !=
+			intrinsic_environment->default_integer_host_type ||
+		prototype_term_host_type_bit_width(
+			interface->default_integer_host_type
+		) == 0 || !terms || !type_declarations || !judgement ||
 		!universe) {
 		return -1;
 	}
@@ -278,6 +308,12 @@ static int prototype_artifact_write_text_body(
 		"A_PROGRAM_ARTIFACT %d %s\n",
 		PROTOTYPE_ARTIFACT_FORMAT_VERSION,
 		PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT
+	);
+	fprintf(
+		stream,
+		"intrinsic_environment %" PRIu64 " %d\n",
+		interface->intrinsic_environment_fingerprint,
+		interface->default_integer_host_type
 	);
 	fprintf(stream, "SECTION interface\n");
 	size_t present_interface_type_expr_count = 0;
@@ -478,16 +514,19 @@ static int prototype_artifact_write_text_body(
 		metadata,
 		NULL
 	) != 0) {
+		fprintf(stderr, "artifact write: context slice construction failed\n");
 		return -1;
 	}
 	if (write_artifact_graph_section(
 			stream,
 			symbols,
+			intrinsic_environment,
 			terms,
 			type_declarations,
-			judgement,
-			&context_slice
-		) != 0) {
+		judgement,
+		&context_slice
+	) != 0) {
+		fprintf(stderr, "artifact write: object graph section failed\n");
 		artifact_context_slice_free(&context_slice);
 		return -1;
 	}
@@ -497,19 +536,24 @@ static int prototype_artifact_write_text_body(
 		type_declarations,
 		judgement,
 		metadata,
+		substitution_evidence_claims,
+		substitution_evidence_count,
 		&context_slice
 	) != 0) {
+		fprintf(stderr, "artifact write: operation graph section failed\n");
 		artifact_context_slice_free(&context_slice);
 		return -1;
 	}
 	artifact_context_slice_free(&context_slice);
 	if (write_artifact_universe_section(stream, universe) != 0) {
+		fprintf(stderr, "artifact write: universe section failed\n");
 		return -1;
 	}
 	if (write_artifact_debug_section(stream, symbols, interface, NULL) != 0) {
+		fprintf(stderr, "artifact write: debug section failed\n");
 		return -1;
 	}
-	return write_artifact_relocation_section(
+	int relocation_status = write_artifact_relocation_section(
 		stream,
 		symbols,
 		interface,
@@ -517,21 +561,27 @@ static int prototype_artifact_write_text_body(
 		type_declarations,
 		judgement
 	);
+	if (relocation_status != 0) {
+		fprintf(stderr, "artifact write: relocation section failed\n");
+	}
+	return relocation_status;
 }
 
 int prototype_artifact_write_text(
 	FILE* stream,
 	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
+	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_universe_db* universe,
 	const struct prototype_ast_db* asts,
 	const struct prototype_compile_metadata* metadata
 ) {
-	if (!stream || !symbols || !interface || !terms || !type_declarations || !judgement ||
-		!universe) {
+	if (!stream || !symbols || !intrinsic_environment || !interface || !terms ||
+		!type_declarations || !judgement || !universe) {
 		return -1;
 	}
 	if (metadata &&
@@ -563,8 +613,11 @@ int prototype_artifact_write_text(
 			terms,
 			type_declarations,
 			judgement,
+			cwf_certificates,
+			metadata ? metadata->accepted_substitution_claims : NULL,
+			metadata ? metadata->accepted_substitution_claim_capacity : 0,
 			universe,
-		metadata
+			metadata
 	) != 0) {
 		fprintf(stderr, "artifact closure construction failed\n");
 		return -1;
@@ -666,16 +719,28 @@ int prototype_artifact_write_text(
 		artifact_closure_graph_free(&closure_graph);
 		return -1;
 	}
+	if (prototype_cwf_validate_accepted_semantic_action_coverage(
+			&publication.metadata.substitutions,
+			&publication.object.judgement
+		) != 0) {
+		fprintf(stderr, "artifact CwF semantic-action coverage failed\n");
+		artifact_publication_graph_free(&publication);
+		artifact_closure_graph_free(&closure_graph);
+		return -1;
+	}
 	int status = prototype_artifact_write_text_body(
 		stream,
 		symbols,
+		intrinsic_environment,
 		&publication.interface,
 		&publication.object.terms,
 		&publication.object.type_declarations,
 		&publication.object.judgement,
 		&publication.object.universe,
 		asts,
-		&publication.metadata
+		&publication.metadata,
+		publication.substitution_evidence_claims,
+		publication.metadata.substitutions.substitution_count
 	);
 	if (status != 0) {
 		fprintf(stderr, "artifact dense publication write failed\n");

@@ -1908,6 +1908,11 @@ static int find_effect_row_argument(
 				terms, type_declarations, left->as.thunk_type.computation,
 				right->as.thunk_type.computation, row_binder, depth + 1, p_row
 			);
+		case PROTOTYPE_TERM_THUNK:
+			return find_effect_row_argument(
+				terms, type_declarations, left->as.thunk.computation,
+				right->as.thunk.computation, row_binder, depth + 1, p_row
+			);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			status = find_effect_row_argument(
 				terms, type_declarations, left->as.computation_type.label,
@@ -2642,6 +2647,46 @@ static int expected_effect_row_solve_classifier(
 	actual = normalized_actual;
 	const struct prototype_term* expected_term = &solver->terms->terms[expected];
 	const struct prototype_term* actual_term = &solver->terms->terms[actual];
+	/* A synthesized lambda may expose a classifier-level row scheme while the
+	 * surface expectation contains open rows at the corresponding arrows.
+	 * Instantiate the scheme from that structure before solving the expected
+	 * rows. This is elimination of the classifier quantifier, not conversion of
+	 * every row variable to an arbitrary row. */
+	if (actual_term->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
+		uint32_t row;
+		int row_status = find_effect_row_argument(
+			solver->terms,
+			solver->type_declarations,
+			actual_term->as.effect_row_forall.body,
+			expected,
+			actual_term->as.effect_row_forall.binding_id,
+			0,
+			&row
+		);
+		uint32_t instantiated;
+		if (row_status < 0 || (row_status > 0 &&
+			expected_effect_row_bind(
+				solver,
+				actual_term->as.effect_row_forall.binding_id,
+				row
+			) != 0) || (row_status > 0 &&
+			prototype_term_graph_substitute_bound_var(
+				solver->terms,
+				solver->type_declarations,
+				actual_term->as.effect_row_forall.body,
+				actual_term->as.effect_row_forall.binding_id,
+				row,
+				&instantiated
+			) != 0)) {
+			return -1;
+		}
+		if (row_status == 0) {
+			return 1;
+		}
+		return expected_effect_row_solve_classifier(
+			solver, expected, instantiated, depth + 1
+		);
+	}
 	if (expected_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
 		actual_term->tag == PROTOTYPE_TERM_MATCH) {
 		struct prototype_term expected_computation = *expected_term;
@@ -2911,15 +2956,13 @@ int prototype_judgement_solve_expected_effect_rows(
 			return -1;
 		}
 	}
-	if (!classifier_kernel_compatible_at_depth(
-			terms,
-			type_declarations,
-			definitions,
-			solved,
-			actual,
-			0
-		)) {
-		return 1;
+	/* Recheck with the solved expectation through the same structural procedure.
+	 * Generic conversion deliberately does not instantiate classifier-level row
+	 * schemes and therefore cannot validate a forall nested below dependent Pi
+	 * binders. Row-scheme elimination belongs to this solver, not to DefEq. */
+	status = expected_effect_row_solve_classifier(&solver, solved, actual, 0);
+	if (status != 0) {
+		return status;
 	}
 	*p_solved_expected = solved;
 	return 0;

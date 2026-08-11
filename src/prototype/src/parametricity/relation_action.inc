@@ -314,7 +314,7 @@ int prototype_hott_bridge_db_construct(
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	if (!db || !db->bridges || !contexts || !substitutions ||
-		prototype_kernel_builder_validate(kernel) != 0 || !terms || !type_declarations ||
+		prototype_kernel_builder_validate_stores(kernel) != 0 || !terms || !type_declarations ||
 		!judgement || !p_bridge_id ||
 		source_context_id >= contexts->context_count ||
 		prototype_cwf_certificate_db_validate_contexts(
@@ -390,7 +390,7 @@ int prototype_hott_bridge_db_validate(
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	if (!db || db->bridge_count > db->bridge_capacity ||
-		prototype_kernel_view_validate(kernel) != 0 ||
+		prototype_kernel_view_validate_stores(kernel) != 0 ||
 		db->certificate_count > db->certificate_capacity ||
 		db->certificate_count != db->bridge_count ||
 		(db->bridge_count != 0 && !db->bridges) ||
@@ -619,7 +619,7 @@ int prototype_parametricity_relation_goal_db_intern(
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	if (!db || !p_goal_id || !db->goals ||
-		prototype_kernel_view_validate(kernel) != 0) {
+		prototype_kernel_view_validate_stores(kernel) != 0) {
 		return -1;
 	}
 	struct prototype_parametricity_relation_goal goal = {
@@ -675,7 +675,7 @@ int prototype_parametricity_relation_goal_db_validate(
 		kernel ? kernel->judgement : NULL;
 	if (!db || db->goal_count > db->goal_capacity ||
 		(db->goal_count != 0 && !db->goals) ||
-		prototype_kernel_view_validate(kernel) != 0 ||
+		prototype_kernel_view_validate_stores(kernel) != 0 ||
 		prototype_hott_bridge_db_validate(bridges, kernel) != 0) {
 		return -1;
 	}
@@ -928,7 +928,7 @@ int prototype_parametricity_candidate_db_validate(
 		kernel ? kernel->operations : NULL;
 	if (!db || !goals || !contexts || !substitutions || !cwf_certificates ||
 		!cwf_certificates || !terms || !type_declarations || !judgement ||
-		!operations || prototype_kernel_view_validate(kernel) != 0 ||
+		!operations || prototype_kernel_view_validate_stores(kernel) != 0 ||
 		db->candidate_count > db->candidate_capacity ||
 		db->claim_premise_count > db->claim_premise_capacity ||
 		db->child_edge_count > db->child_edge_capacity ||
@@ -1680,7 +1680,7 @@ int prototype_parametricity_relation_plan(
 		kernel ? kernel->judgement : NULL;
 	const struct prototype_parametricity_relation_goal* goal =
 		prototype_parametricity_relation_goal_db_get(goals, goal_id);
-	if (prototype_kernel_view_validate(kernel) != 0 || !goal || !candidates ||
+	if (prototype_kernel_view_validate_stores(kernel) != 0 || !goal || !candidates ||
 		!work || !contexts || !substitutions ||
 		!cwf_certificates || !cwf_certificates || !bridges || !terms ||
 		!type_declarations || !operations || !judgement || !p_work_item_id ||
@@ -2160,7 +2160,10 @@ static uint64_t hott_action_request_hash(
 		return hott_action_hash_mix(hash, request->key.context.source_context_id);
 	case PROTOTYPE_HOTT_ACTION_SUBSTITUTION:
 		hash = hott_action_hash_mix(
-			hash, request->key.substitution.source_substitution_id
+			hash, request->key.substitution.source.substitution_id
+		);
+		hash = hott_action_hash_mix(
+			hash, request->key.substitution.source.certificate_id
 		);
 		hash = hott_action_hash_mix(
 			hash, request->key.substitution.source_bridge_id
@@ -2211,8 +2214,10 @@ static int hott_action_request_key_equal(
 		return left->key.context.source_context_id ==
 			right->key.context.source_context_id;
 	case PROTOTYPE_HOTT_ACTION_SUBSTITUTION:
-		return left->key.substitution.source_substitution_id ==
-				right->key.substitution.source_substitution_id &&
+		return left->key.substitution.source.substitution_id ==
+				right->key.substitution.source.substitution_id &&
+			left->key.substitution.source.certificate_id ==
+				right->key.substitution.source.certificate_id &&
 			left->key.substitution.source_bridge_id ==
 				right->key.substitution.source_bridge_id &&
 			left->key.substitution.target_bridge_id ==

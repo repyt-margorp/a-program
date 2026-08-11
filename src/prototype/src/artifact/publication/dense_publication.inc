@@ -37,6 +37,7 @@ struct artifact_closure_graph {
 	uint32_t* claim_order;
 	uint32_t* derivation_order;
 	uint32_t* substitution_order;
+	uint32_t* substitution_evidence_claims;
 	size_t ordered_term_count;
 	size_t ordered_case_count;
 	size_t ordered_case_binder_count;
@@ -82,6 +83,7 @@ struct artifact_publication_graph {
 	uint32_t* proposition_relocation;
 	uint32_t* claim_relocation;
 	uint32_t* substitution_relocation;
+	uint32_t* substitution_evidence_claims;
 };
 
 static void artifact_closure_graph_free(struct artifact_closure_graph* graph) {
@@ -123,6 +125,7 @@ static void artifact_closure_graph_free(struct artifact_closure_graph* graph) {
 	free(graph->claim_order);
 	free(graph->derivation_order);
 	free(graph->substitution_order);
+	free(graph->substitution_evidence_claims);
 	memset(graph, 0, sizeof(*graph));
 }
 
@@ -153,6 +156,8 @@ static void artifact_closure_graph_take_publication_order(
 	TAKE_ORDER(claim_order, ordered_claim_count);
 	TAKE_ORDER(derivation_order, ordered_derivation_count);
 	TAKE_ORDER(substitution_order, ordered_substitution_count);
+	graph->substitution_evidence_claims = marks->substitution_evidence_claims;
+	marks->substitution_evidence_claims = NULL;
 #undef TAKE_ORDER
 }
 
@@ -189,6 +194,7 @@ static void artifact_publication_graph_free(
 	free(graph->proposition_relocation);
 	free(graph->claim_relocation);
 	free(graph->substitution_relocation);
+	free(graph->substitution_evidence_claims);
 	memset(graph, 0, sizeof(*graph));
 }
 
@@ -218,6 +224,7 @@ static void artifact_init_closure_defaults(struct artifact_closure_graph* graph)
 	}
 	for (size_t i = 0; i < graph->terms.ih_scope_count; ++i) {
 		graph->terms.ih_scopes[i].match_term = PROTOTYPE_INVALID_ID;
+		graph->terms.ih_scopes[i].scrutinee_binding_id = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < graph->type_declarations.type_count; ++i) {
 		graph->type_declarations.type_declarations[i].name_symbol_id = -1;
@@ -284,6 +291,7 @@ static void artifact_marks_free(struct artifact_graph_marks* marks) {
 	free(marks->claim_order);
 	free(marks->derivation_order);
 	free(marks->substitution_order);
+	free(marks->substitution_evidence_claims);
 	memset(marks, 0, sizeof(*marks));
 }
 
@@ -413,9 +421,16 @@ static int artifact_marks_init(
 			(void**)&marks->substitution_order,
 			marks->substitution_count,
 			sizeof(*marks->substitution_order)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&marks->substitution_evidence_claims,
+			marks->substitution_count,
+			sizeof(*marks->substitution_evidence_claims)
 		) != 0) {
 		artifact_marks_free(marks);
 		return -1;
+	}
+	for (size_t i = 0; i < marks->substitution_count; ++i) {
+		marks->substitution_evidence_claims[i] = PROTOTYPE_INVALID_ID;
 	}
 	return 0;
 }
@@ -1163,6 +1178,9 @@ static int artifact_build_closure_graph(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
+	const struct prototype_cwf_certificate_db* cwf_certificates,
+	const uint32_t* substitution_evidence_claims,
+	size_t substitution_evidence_count,
 	const struct prototype_universe_db* universe,
 	const struct prototype_compile_metadata* metadata
 ) {
@@ -1177,6 +1195,9 @@ static int artifact_build_closure_graph(
 		fprintf(stderr, "artifact closure: mark allocation failed\n");
 		return -1;
 	}
+	marks.cwf_certificates = cwf_certificates;
+	marks.source_substitution_evidence_claims = substitution_evidence_claims;
+	marks.source_substitution_evidence_count = substitution_evidence_count;
 	int status = 0;
 	if (artifact_mark_roots(
 			&marks, interface, terms, type_declarations, judgement, metadata
@@ -1289,6 +1310,16 @@ static int artifact_publication_metadata_relocate(
 				return -1;
 			}
 			*term_fields[j] = relocated;
+		}
+		if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+			if (operation->core_term >= publication->object.terms.term_count ||
+				publication->object.terms.terms[operation->core_term].tag !=
+					PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+				return -1;
+			}
+			operation->ih_scope_id = publication->object.terms.terms[
+				operation->core_term
+			].as.induction_hypothesis.ih_scope_id;
 		}
 		if (operation->context_id >= source->contexts.context_count ||
 			publication->context_relocation[operation->context_id] ==
@@ -1480,6 +1511,10 @@ static int artifact_publication_graph_alloc(
 	ALLOC_PUBLICATION(dependencies, dependency_capacity);
 	ALLOC_PUBLICATION(contexts, metadata->contexts.context_count);
 	ALLOC_PUBLICATION(substitutions, metadata->substitutions.substitution_count);
+	ALLOC_PUBLICATION(
+		substitution_evidence_claims,
+		metadata->substitutions.substitution_count
+	);
 	ALLOC_PUBLICATION(operations, metadata->operation_count);
 	ALLOC_PUBLICATION(operation_cases, metadata->operation_case_count);
 	ALLOC_PUBLICATION(
@@ -1511,6 +1546,9 @@ static int artifact_publication_graph_alloc(
 		substitution_relocation, metadata->substitutions.substitution_count
 	);
 #undef ALLOC_PUBLICATION
+	for (size_t i = 0; i < metadata->substitutions.substitution_count; ++i) {
+		publication->substitution_evidence_claims[i] = PROTOTYPE_INVALID_ID;
+	}
 	size_t derived_classifier_term_capacity = 0;
 	for (size_t i = 0;
 		i < closure->type_declarations.constructor_count;
@@ -2024,6 +2062,41 @@ static int artifact_build_publication_graph(
 		artifact_publication_graph_free(publication);
 		return -1;
 	}
+	for (size_t i = 0; i < metadata->substitutions.substitution_count; ++i) {
+		uint32_t source_claim = closure->substitution_evidence_claims[i];
+		if (source_claim == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (i >= substitution_slice.source_count ||
+			!substitution_slice.reachable[i]) {
+			artifact_context_slice_free(&context_slice);
+			artifact_substitution_slice_free(&substitution_slice);
+			artifact_publication_graph_free(publication);
+			return -1;
+		}
+		uint32_t compact_substitution = substitution_slice.relocation[i];
+		if (compact_substitution >= additional.substitution_id_capacity ||
+			publication->substitution_relocation[compact_substitution] ==
+				PROTOTYPE_INVALID_ID ||
+			source_claim >= additional.claim_id_capacity ||
+			publication->claim_relocation[source_claim] == PROTOTYPE_INVALID_ID) {
+			artifact_context_slice_free(&context_slice);
+			artifact_substitution_slice_free(&substitution_slice);
+			artifact_publication_graph_free(publication);
+			return -1;
+		}
+		uint32_t published_substitution =
+			publication->substitution_relocation[compact_substitution];
+		uint32_t published_claim = publication->claim_relocation[source_claim];
+		uint32_t selected_claim = publication->substitution_evidence_claims[
+			published_substitution
+		];
+		if (selected_claim == PROTOTYPE_INVALID_ID ||
+			published_claim < selected_claim) {
+			publication->substitution_evidence_claims[published_substitution] =
+				published_claim;
+		}
+	}
 	for (size_t i = 0; i < metadata->contexts.context_count; ++i) {
 		publication->context_relocation[i] = context_slice.reachable[i] ?
 			compact_context_relocation[context_slice.relocation[i]] :
@@ -2092,6 +2165,9 @@ static int artifact_republish_publication_graph(
 			&source->object.terms,
 			&source->object.type_declarations,
 			&source->object.judgement,
+			NULL,
+			source->substitution_evidence_claims,
+			source->metadata.substitutions.substitution_count,
 			&source->object.universe,
 			&source->metadata
 		) != 0) {

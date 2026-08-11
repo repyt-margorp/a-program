@@ -9,8 +9,15 @@
 struct prototype_compile_label {
 	int name_symbol_id;
 	uint32_t term;
-	uint32_t classifier;
-	uint32_t operation;
+	/* The assignment RHS occurrence and its independently synthesized
+	 * principal. For an ASCRIPTION root this is the operation below it. */
+	uint32_t body_operation;
+	uint32_t body_classifier;
+	/* Published/evaluation view. An outer ASCRIPTION may differ from body. */
+	uint32_t exposed_operation;
+	uint32_t exposed_classifier;
+	uint32_t expectation_classifier;
+	uint32_t expectation_claim_id;
 	struct prototype_term_canonical_key canonical_key;
 };
 
@@ -72,6 +79,13 @@ struct prototype_operation_node {
 	uint32_t body;
 	uint32_t scrutinee;
 	uint32_t binder_classifier;
+	/* An IH edge belongs to one exact typed Match case field. The erased Core
+	 * VAR binding is alpha-canonical and cannot recover this occurrence
+	 * identity. `scrutinee` and `argument` remain the owner Match and recursive
+	 * argument Operation IDs respectively. */
+	uint32_t ih_scope_id;
+	uint32_t ih_case_index;
+	uint32_t ih_field_index;
 	/* The return branch remains singular. Operation clauses live in the
 	 * computation-fold clause arena below. */
 	uint32_t fold_return_ast_binder_id;
@@ -122,6 +136,16 @@ struct prototype_operation_graph {
 	struct prototype_operation_computation_fold_clause* fold_clauses;
 	size_t fold_clause_count;
 	size_t fold_clause_capacity;
+};
+
+struct prototype_operation_induction_edge {
+	uint32_t induction_operation;
+	uint32_t owner_match_operation;
+	uint32_t scope_id;
+	uint32_t case_index;
+	uint32_t field_index;
+	uint32_t source_ast_binder_id;
+	uint32_t argument_operation;
 };
 
 #endif

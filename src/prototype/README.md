@@ -19,7 +19,7 @@ src/core/             erased computation terms
 src/kernel/           contexts, declarations, universes, and judgements
 src/frontend/         reader, surface AST, and lowering
 src/graph/            typed OperationGraph and compile metadata
-src/artifact/         interface publication, v71 wire format, relocation, link
+src/artifact/         interface publication, v72 wire format, relocation, link
 src/identity/         relation action and object Identity computation
 src/driver/           command-line and REPL entry points
 tests/checks/         compiled audit programs
@@ -56,7 +56,7 @@ proof/action construction order.
   operation node records the source occurrence, its typed binder and Match
   information, and a pointer to the erased `core_term`.
 - `include/a_program/artifact/`, `src/artifact/`: artifact interface,
-  publication closure, v71 wire reader/writer, relocation, and linking.
+  publication closure, v72 wire reader/writer, relocation, and linking.
 - `include/a_program/kernel/judgement/`, `src/kernel/judgement.c`,
   `src/kernel/typing/`, and `src/kernel/rules/`: Proposition, Claim, and
   Derivation storage; classifier conversion and solving; candidate publication;
@@ -101,6 +101,42 @@ surface AST + resolved signature
 IDs. Identity, empty substitution, projection, extension, composition, and
 term reindexing are represented directly.
 
+The CwF boundary has three deliberately separate guarantees:
+
+| Guarantee | Representation | Meaning |
+| --- | --- | --- |
+| structural validity | `SubstitutionDB` | endpoints, constructor shape, and acyclic references are valid |
+| classifier coherence | `prototype_substitution_db_validate_classifier_coherence` | every EXTEND payload classifier agrees with the target telescope after reindexing |
+| certified formation | `prototype_certified_substitution_ref` | the exact root is usable as a CwF morphism and every reachable EXTEND has an accepted `HAS_TYPE` Claim |
+
+Interning a substitution establishes only the first two guarantees. This is
+intentional: lowering and proof search may construct candidate substitutions
+that are never selected. A proof-bearing consumer must accept a certified
+reference rather than infer certification from a raw numeric ID.
+
+Context identity is generative. Extending the same parent twice creates the
+same telescope shape only when the binding identities are intentionally shared;
+ContextDB does not alpha-quotient distinct bindings. TermDB may erase two typed
+operations to one computation node, but that many-to-one erasure never merges
+their Context binding identities or typing evidence.
+
+The stores below are related but not interchangeable:
+
+| Store/object | Static meaning |
+| --- | --- |
+| `ContextDB` | A telescope of typed binding identities; it is not a runtime variable map |
+| `SubstitutionDB` | A structural Context morphism candidate and its term mapping |
+| `prototype_certified_substitution_ref` | Capability proving that an exact substitution root and every reachable EXTEND are backed by accepted Claims |
+| Proposition | A judgement statement, whether or not it is accepted |
+| Claim | Acceptance identity for one exact Proposition |
+| Derivation | Replayable rule application concluding a Claim from ordered premises |
+| `VerificationDB` | A supported residual runtime obligation, not a static proof Claim |
+| Runtime Environment | Host resources and operation implementations used when computations execute; never a static Context |
+
+Core debug readback deliberately prints graph structure and stable identities.
+Human-facing value readback may be shown beside it, but never replaces the
+Core form used for proof and artifact auditing.
+
 Every OperationGraph node and Match case is inserted with an existing Context
 ID. Lambda bodies extend the outer Context. Match case bodies use an
 instantiated constructor-field telescope. APP remains in the outer Context.
@@ -119,6 +155,21 @@ formation/Lambda/APP rules. A constructor's semantic schema is
 `parameter_context`, `field_context`, and `result_classifier`.
 `curried_classifier_cache` is derived from that schema for current Pi
 consumers and is rebuilt after artifact relocation.
+
+Nested postfix eliminations require parentheses around the inner elimination
+body. Without grouping, subsequent `@case` clauses belong to the outer suffix:
+
+```a-program
+xs @nil => base
+   @cons head tail =>
+      (predicate head
+         @true => early
+         @false => *tail)
+```
+
+The reader reports `nested-match-grouping` when a later sibling clause refers
+to an induction binder that the ambiguous unparenthesized spelling has already
+closed. It never performs type-directed reassociation.
 
 ## Canonical Term Identity
 
@@ -476,10 +527,10 @@ result. The current implementation rejects arbitrary incomplete solver work;
 `hybrid` permits only residual obligations with a defined runtime verifier.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 71 <calculus-fingerprint>`. The reader accepts that version
+`A_PROGRAM_ARTIFACT 72 <calculus-fingerprint>`. The reader accepts that version
 and exact fingerprint only; old artifact versions are intentionally rejected
 instead of being kept as compatibility paths. The canonical format and trust
-boundary are specified by `spec/artifact_v71.schema`; the implemented
+boundary are specified by `spec/artifact_v72.schema`; the implemented
 HOTT/Identity fragment is specified by `spec/hott_fragment_v5.schema`.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor

@@ -30,7 +30,7 @@ Implemented in the prototype:
   policies;
 - JudgementDB typing derivations and VerificationDB residual obligations;
 - profile-specific pure normalization with memoized WHNF results;
-- artifact v71, namespace-qualified interfaces, relocation, linking,
+- artifact v72, namespace-qualified interfaces, relocation, linking,
   aggregation, and backend capability checks;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
@@ -422,7 +422,7 @@ this elaboration boundary.
 
 ## Artifacts and Linking
 
-Artifact format v71 serializes the dense reachable accepted object graph of:
+Artifact format v72 serializes the dense reachable accepted object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
 - TermDB and OperationGraph;
@@ -440,7 +440,7 @@ export identity, and may share alpha-equivalent Core representatives without
 merging the exports.
 
 The exact current wire and semantic contract is
-[`src/prototype/spec/artifact_v71.schema`](src/prototype/spec/artifact_v71.schema).
+[`src/prototype/spec/artifact_v72.schema`](src/prototype/spec/artifact_v72.schema).
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v5.schema`](src/prototype/spec/hott_fragment_v5.schema).
 

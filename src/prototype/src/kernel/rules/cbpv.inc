@@ -175,27 +175,17 @@ static int infer_int_literal_classifier(
 	struct prototype_term_db* terms,
 	uint32_t term_id
 ) {
-	if (!delta || !terms || !term_has_tag(terms, term_id, PROTOTYPE_TERM_INT_LITERAL)) {
+	if (!delta || !delta->intrinsic_environment || !terms ||
+		!term_has_tag(terms, term_id, PROTOTYPE_TERM_INT_LITERAL)) {
 		return -1;
 	}
 	uint32_t integer;
-	uint32_t integer64;
-	if (prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_INT64, &integer64) != 0 ||
-		add_delta_relation(
-			delta,
-			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
-			term_id,
-			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-			term_id,
-			integer64,
-			PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO
-		) != 0) {
-		return -1;
-	}
-	if (!int_literal_fits_int32(terms->terms[term_id].as.int_literal.value)) {
-		return 0;
-	}
-	if (prototype_term_make_host_type(terms, PROTOTYPE_HOST_TYPE_INT32, &integer) != 0) {
+	int integer_type = delta->intrinsic_environment->default_integer_host_type;
+	int bit_width = prototype_term_host_type_bit_width(integer_type);
+	int64_t value = terms->terms[term_id].as.int_literal.value;
+	if ((bit_width == 32 && (value < INT32_MIN || value > INT32_MAX)) ||
+		(bit_width != 32 && bit_width != 64) ||
+		prototype_term_make_host_type(terms, integer_type, &integer) != 0) {
 		return -1;
 	}
 	return add_delta_relation(
@@ -586,6 +576,8 @@ int prototype_judgement_computation_fold_result_classifier(
 	uint32_t codomain_family;
 	uint32_t codomain_binder;
 	uint32_t codomain;
+	uint32_t dependency_codomain;
+	uint32_t normalized_dependency_codomain;
 	uint32_t normalized_input;
 	struct prototype_term_normalization_result input_normalization;
 	uint32_t codomain_lambda;
@@ -614,10 +606,28 @@ int prototype_judgement_computation_fold_result_classifier(
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		return -1;
 	}
+	dependency_codomain = codomain;
+	if (terms->terms[dependency_codomain].tag == PROTOTYPE_TERM_RETURN) {
+		dependency_codomain =
+			terms->terms[dependency_codomain].as.return_term.value;
+	}
+	/* Dependency is semantic, not a property of an unreduced classifier
+	 * expression. In particular, APP(\_. C, x) must not force a neutral input
+	 * computation merely because x occurs before beta reduction. */
+	if (prototype_term_normalize_complete_with_profile(
+			terms,
+			type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			dependency_codomain,
+			&normalized_dependency_codomain
+		) != 0) {
+		return -1;
+	}
 	if (!prototype_term_contains_free_binding(
-			terms, codomain, codomain_binder
+			terms, normalized_dependency_codomain, codomain_binder
 		)) {
-		applied_codomain = codomain;
+		applied_codomain = normalized_dependency_codomain;
 	} else {
 		if (prototype_term_normalize_with_profile(
 				terms,

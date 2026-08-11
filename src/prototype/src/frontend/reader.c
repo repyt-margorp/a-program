@@ -63,10 +63,20 @@ struct parser {
 	struct prototype_program* program;
 	struct prototype_read_error* error;
 	struct local_binder* binders;
+	/* Case binders closed while a postfix elimination suffix is still being
+	 * parsed. They distinguish a missing pair of grouping parentheses from a
+	 * genuinely nonlocal induction-hypothesis name. */
+	int closed_case_binder_symbols[256];
+	uint32_t closed_case_binder_count;
 	struct prototype_read_options options;
+	unsigned type_definition_depth;
 };
 
-static void set_error(struct parser* parser, const char* message) {
+static void set_error_code(
+	struct parser* parser,
+	int diagnostic_code,
+	const char* message
+) {
 	if (!parser->error || parser->error->message[0] != '\0') {
 		return;
 	}
@@ -74,7 +84,12 @@ static void set_error(struct parser* parser, const char* message) {
 	parser->error->filename = parser->filename;
 	parser->error->line = parser->current.line;
 	parser->error->column = parser->current.column;
+	parser->error->diagnostic_code = diagnostic_code;
 	snprintf(parser->error->message, sizeof(parser->error->message), "%s", message);
+}
+
+static void set_error(struct parser* parser, const char* message) {
+	set_error_code(parser, PROTOTYPE_READ_DIAGNOSTIC_SYNTAX, message);
 }
 
 static char peek_char(const struct parser* parser) {
@@ -439,6 +454,21 @@ static const struct local_binder* lookup_binder(const struct parser* parser, int
 	return NULL;
 }
 
+static int lookup_closed_case_binder(
+	const struct parser* parser,
+	int symbol_id
+) {
+	if (!parser) {
+		return 0;
+	}
+	for (uint32_t i = parser->closed_case_binder_count; i > 0; --i) {
+		if (parser->closed_case_binder_symbols[i - 1] == symbol_id) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 	struct prototype_source_span span = current_span(parser);
 	if (accept(parser, TOKEN_AMPERSAND)) {
@@ -467,7 +497,9 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 		}
 		name = symbol_to_string(parser->program->symbols, parser->current.symbol_id);
 		int host_type;
-		int host_status = prototype_term_host_type_from_source_name(name, &host_type);
+		int host_status = prototype_term_host_type_from_source_name(
+			parser->program->intrinsic_environment, name, &host_type
+		);
 		if (host_status < 0) {
 			return -1;
 		}
@@ -524,7 +556,17 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 		if (parse_type_expr(parser, p_ret) != 0) {
 			return -1;
 		}
-		return expect(parser, TOKEN_RPAREN, "expected ')' after type expression");
+		if (parser->current.kind != TOKEN_RPAREN) {
+			set_error_code(
+				parser,
+				parser->type_definition_depth > 0 ?
+					PROTOTYPE_READ_DIAGNOSTIC_UNSUPPORTED_INDEXED_FAMILY :
+					PROTOTYPE_READ_DIAGNOSTIC_SYNTAX,
+				"expected ')' after type expression"
+			);
+			return -1;
+		}
+		return read_token(parser);
 	}
 
 	set_error(parser, "expected type expression");
@@ -751,7 +793,11 @@ static int parse_constructor_type(
 			}
 			if (!type_expr_is_self(parser->program->asts, field_type)) {
 				parser->binders = initial_binders;
-				set_error(parser, "constructor result type must end in '*'");
+				set_error_code(
+					parser,
+					PROTOTYPE_READ_DIAGNOSTIC_UNSUPPORTED_INDEXED_FAMILY,
+					"constructor result type must end in '*'"
+				);
 				return -1;
 			}
 			*p_field_count = field_count;
@@ -860,7 +906,10 @@ static int parse_anonymous_type_literal(
 		set_error(parser, "type table is full");
 		return -1;
 	}
-	if (parse_type_body(parser, ast_type_def_id) != 0) {
+	parser->type_definition_depth++;
+	int body_status = parse_type_body(parser, ast_type_def_id);
+	parser->type_definition_depth--;
+	if (body_status != 0) {
 		return -1;
 	}
 	if (prototype_ast_type_literal(parser->program->asts, ast_type_def_id, span, p_ret) != 0) {
@@ -995,7 +1044,10 @@ static int parse_parameterized_type_or_lambda_def(
 				return -1;
 			}
 		}
-		if (parse_type_body(parser, ast_type_def_id) != 0) {
+		parser->type_definition_depth++;
+		int body_status = parse_type_body(parser, ast_type_def_id);
+		parser->type_definition_depth--;
+		if (body_status != 0) {
 			parser->binders = outer_binders;
 			return -1;
 		}
@@ -1335,7 +1387,9 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				);
 			}
 			struct prototype_intrinsic_namespace_binding binding;
-			int binding_status = prototype_intrinsic_namespace_lookup(name, &binding);
+			int binding_status = prototype_intrinsic_namespace_lookup(
+				parser->program->intrinsic_environment, name, &binding
+			);
 			if (binding_status < 0) {
 				return -1;
 			}
@@ -1415,7 +1469,15 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		symbol_id = parser->current.symbol_id;
 		binder = lookup_binder(parser, symbol_id);
 		if (!binder) {
-			set_error(parser, "induction hypothesis must refer to a local binder");
+			if (lookup_closed_case_binder(parser, symbol_id)) {
+				set_error_code(
+					parser,
+					PROTOTYPE_READ_DIAGNOSTIC_NESTED_MATCH_GROUPING,
+					"nested elimination body requires parentheses before sibling '@' clauses"
+				);
+			} else {
+				set_error(parser, "induction hypothesis must refer to a local binder");
+			}
 			return -1;
 		}
 		if (!binder->induction_allowed) {
@@ -1574,7 +1636,9 @@ static int parse_elimination_head(
 		symbol_id = parser->current.symbol_id;
 		name = symbol_to_string(parser->program->symbols, symbol_id);
 		if (namespace_symbol_id < 0 || !name ||
-			prototype_intrinsic_namespace_lookup(name, &binding) != 0) {
+			prototype_intrinsic_namespace_lookup(
+				parser->program->intrinsic_environment, name, &binding
+			) != 0) {
 			set_error(parser, "unknown intrinsic elimination label");
 			return -1;
 		}
@@ -1667,6 +1731,7 @@ static int parse_elimination_suffix(
 	uint32_t clause_count = 0;
 	uint32_t binder_cursor = 0;
 	uint32_t return_clause = PROTOTYPE_INVALID_ID;
+	uint32_t closed_binder_base = parser->closed_case_binder_count;
 
 	while (accept(parser, TOKEN_AT)) {
 		if (clause_count >= 64) {
@@ -1711,6 +1776,15 @@ static int parse_elimination_suffix(
 		}
 		for (uint32_t i = 0; i < clause->binder_count; ++i) {
 			parser->binders = local_binders[binder_cursor - i - 1].next;
+		}
+		for (uint32_t i = 0; i < clause->binder_count; ++i) {
+			if (parser->closed_case_binder_count >= 256) {
+				set_error(parser, "too many closed elimination binders");
+				return -1;
+			}
+			parser->closed_case_binder_symbols[
+				parser->closed_case_binder_count++
+			] = clause->binders[i].symbol_id;
 		}
 		if (clause->head_kind == PARSED_ELIMINATION_HEAD_RETURN) {
 			if (return_clause != PROTOTYPE_INVALID_ID) {
@@ -1757,7 +1831,7 @@ static int parse_elimination_suffix(
 			fold_clauses[fold_clause_count].span = clauses[i].span;
 			fold_clause_count++;
 		}
-		return prototype_ast_computation_fold(
+		int status = prototype_ast_computation_fold(
 			parser->program->asts,
 			scrutinee,
 			fold_clauses,
@@ -1768,6 +1842,8 @@ static int parse_elimination_suffix(
 			span,
 			p_ret
 		);
+		parser->closed_case_binder_count = closed_binder_base;
+		return status;
 	}
 	struct prototype_ast_match_case_input match_cases[64];
 	for (uint32_t i = 0; i < clause_count; ++i) {
@@ -1785,10 +1861,13 @@ static int parse_elimination_suffix(
 		match_cases[i].binders = clauses[i].binders;
 		match_cases[i].binder_count = clauses[i].binder_count;
 		match_cases[i].body = clauses[i].body;
+		match_cases[i].span = clauses[i].span;
 	}
-	return prototype_ast_match(
+	int status = prototype_ast_match(
 		parser->program->asts, scrutinee, match_cases, clause_count, span, p_ret
 	);
+	parser->closed_case_binder_count = closed_binder_base;
+	return status;
 }
 
 static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {

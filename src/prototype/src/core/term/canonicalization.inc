@@ -1399,8 +1399,34 @@ int prototype_term_core_shape_equal_under_binders(
 	uint32_t right,
 	int* p_equal
 ) {
+	return prototype_term_core_shape_equal_under_binders_and_ih_scope(
+		db,
+		left_binders,
+		right_binders,
+		binder_count,
+		PROTOTYPE_INVALID_ID,
+		PROTOTYPE_INVALID_ID,
+		left,
+		right,
+		p_equal
+	);
+}
+
+int prototype_term_core_shape_equal_under_binders_and_ih_scope(
+	const struct prototype_term_db* db,
+	const uint32_t* left_binders,
+	const uint32_t* right_binders,
+	size_t binder_count,
+	uint32_t left_ih_scope,
+	uint32_t right_ih_scope,
+	uint32_t left,
+	uint32_t right,
+	int* p_equal
+) {
 	if (!db || !p_equal || left >= db->term_count || right >= db->term_count ||
-		(binder_count > 0 && (!left_binders || !right_binders))) {
+		(binder_count > 0 && (!left_binders || !right_binders)) ||
+		((left_ih_scope == PROTOTYPE_INVALID_ID) !=
+		 (right_ih_scope == PROTOTYPE_INVALID_ID))) {
 		return -1;
 	}
 	struct term_scope_env env;
@@ -1411,6 +1437,12 @@ int prototype_term_core_shape_equal_under_binders(
 			) != 0) {
 			return -1;
 		}
+	}
+	if (left_ih_scope != PROTOTYPE_INVALID_ID &&
+		term_scope_env_push_frame(
+			&env, left_ih_scope, right_ih_scope
+		) != 0) {
+		return -1;
 	}
 	*p_equal = shape_terms_equal_at_depth(
 		db, left, right, &env, PROTOTYPE_TYPE_VIEW_COMPARE_CORE, 0

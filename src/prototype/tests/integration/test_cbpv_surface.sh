@@ -507,7 +507,7 @@ grep -Eq '^operation_case_binders [0-9]+ 1 [0-9]+$' \
 	>"$tmp_dir/recursive-dependent-match-read.out"
 
 cat >"$tmp_dir/bind.p" <<'EOF'
-main := { x : #.Int64 := { #1; }; x; };
+main := { x : #.Int := { #1; }; x; };
 EOF
 
 ./read_file.out "$tmp_dir/bind.p" >"$tmp_dir/bind.out"
@@ -515,7 +515,7 @@ grep -q 'term main := COMPUTATION_FOLD(' "$tmp_dir/bind.out"
 grep -q '\[computation-fold-elim proof#' "$tmp_dir/bind.out"
 
 cat >"$tmp_dir/bind-requires-computation.p" <<'EOF'
-main := { x : #.Int64 := { #1; }; \y : #.Int64 => x; };
+main := { x : #.Int := { #1; }; \y : #.Int => x; };
 EOF
 
 if ./read_file.out "$tmp_dir/bind-requires-computation.p" \
@@ -590,14 +590,14 @@ grep -q 'value main := RETURN(TEXT_LITERAL("x"))' \
 	"$tmp_dir/direct-operation-request-eval.out"
 
 cat >"$tmp_dir/pure-operation.p" <<'EOF'
-direct := ((#.int64_add #1) #2);
+direct := ((#.int_add #1) #2);
 EOF
 
 ./read_file.out "$tmp_dir/pure-operation.p" >"$tmp_dir/pure-operation.out"
-grep -q 'term direct := APP(APP(PURE_PRIMITIVE(int64_add), INT_LITERAL(1)), INT_LITERAL(2))' \
+grep -q 'term direct := APP(APP(PURE_PRIMITIVE(int_add), INT_LITERAL(1)), INT_LITERAL(2))' \
 	"$tmp_dir/pure-operation.out"
 printf '%s\n' \
-	'direct := ((#.int64_add #1) #2);' \
+	'direct := ((#.int_add #1) #2);' \
 	'direct' \
 	':q' | ./a.out >"$tmp_dir/pure-operation-eval.out"
 grep -q 'value direct := RETURN(INT_LITERAL(3))' \
@@ -607,7 +607,7 @@ grep -q 'value direct := RETURN(INT_LITERAL(3))' \
 ./read_file.out --read-graph "$tmp_dir/pure-operation.apo" \
 	>"$tmp_dir/pure-operation-read.out"
 grep -q 'interface term direct ' "$tmp_dir/pure-operation-read.out"
-grep -Eq '^term_node [0-9]+ [0-9]+ int64_add -$' "$tmp_dir/pure-operation.apo"
+grep -Eq '^term_node [0-9]+ [0-9]+ int_add -$' "$tmp_dir/pure-operation.apo"
 
 cat >"$tmp_dir/operation-alias.p" <<'EOF'
 output := #.print;

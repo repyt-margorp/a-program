@@ -22,6 +22,7 @@ int prototype_ast_compile_pending_with_imports(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement,
 	struct prototype_compile_metadata* metadata,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
 	int namespace_symbol_id,
 	const struct prototype_artifact_interface* const* imported_interfaces,
 	size_t imported_interface_count

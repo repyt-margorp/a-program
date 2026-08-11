@@ -609,19 +609,29 @@ int prototype_substitution_extend(
 	uint32_t term_classifier,
 	uint32_t* p_substitution
 ) {
+	if (!db || !contexts || !terms || !type_declarations || !p_substitution) {
+		return PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_ARGUMENT;
+	}
 	const struct prototype_substitution* prefix =
 		prototype_substitution_get(db, prefix_substitution);
-	if (!prefix || !terms || !type_declarations ||
-		term == PROTOTYPE_INVALID_ID ||
-		term_classifier == PROTOTYPE_INVALID_ID) {
-		return -1;
+	if (!prefix) {
+		return PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_PREFIX;
+	}
+	if (term == PROTOTYPE_INVALID_ID || term >= terms->term_count) {
+		return PROTOTYPE_SUBSTITUTION_EXTEND_TERM_OUT_OF_RANGE;
+	}
+	if (term_classifier == PROTOTYPE_INVALID_ID ||
+		term_classifier >= terms->term_count) {
+		return PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_OUT_OF_RANGE;
 	}
 	const struct prototype_context* target =
 		prototype_context_get(contexts, target_context);
 	if (!target || target_context == prototype_context_empty(contexts) ||
-		target->parent != prefix->target_context ||
 		prototype_context_classifier_term(target) == PROTOTYPE_INVALID_ID) {
-		return -1;
+		return PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_TARGET;
+	}
+	if (target->parent != prefix->target_context) {
+		return PROTOTYPE_SUBSTITUTION_EXTEND_TARGET_PARENT_MISMATCH;
 	}
 	uint32_t expected_classifier;
 	if (prototype_term_reindex(
@@ -632,16 +642,21 @@ int prototype_substitution_extend(
 			prototype_context_classifier_term(target),
 			prefix_substitution,
 			&expected_classifier
-		) != 0 || prototype_judgement_classifier_value_whnf(
+		) != 0) {
+		return PROTOTYPE_SUBSTITUTION_EXTEND_REINDEX_FAILED;
+	}
+	if (prototype_judgement_classifier_value_whnf(
 			terms, type_declarations, expected_classifier, &expected_classifier
-		) != 0 ||
-		!prototype_judgement_classifier_reference_equal(
+		) != 0) {
+		return PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_NORMALIZATION_FAILED;
+	}
+	if (!prototype_judgement_classifier_reference_equal(
 			terms,
 			type_declarations,
 			expected_classifier,
 			term_classifier
 		)) {
-		return -1;
+		return PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_MISMATCH;
 	}
 	struct prototype_substitution substitution = {
 		.kind = PROTOTYPE_SUBSTITUTION_EXTEND,
@@ -652,7 +667,38 @@ int prototype_substitution_extend(
 		.term = term,
 		.term_classifier = term_classifier
 	};
-	return prototype_substitution_add(db, substitution, p_substitution);
+	return prototype_substitution_add(db, substitution, p_substitution) == 0 ?
+		PROTOTYPE_SUBSTITUTION_EXTEND_OK :
+		PROTOTYPE_SUBSTITUTION_EXTEND_STORAGE_FAILED;
+}
+
+const char* prototype_substitution_extend_result_name(int result) {
+	switch (result) {
+		case PROTOTYPE_SUBSTITUTION_EXTEND_OK:
+			return "ok";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_ARGUMENT:
+			return "invalid argument";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_PREFIX:
+			return "invalid prefix substitution";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_TERM_OUT_OF_RANGE:
+			return "extension term out of range";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_OUT_OF_RANGE:
+			return "extension classifier out of range";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_INVALID_TARGET:
+			return "invalid target context extension";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_TARGET_PARENT_MISMATCH:
+			return "target parent does not match prefix target";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_REINDEX_FAILED:
+			return "target classifier reindex failed";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_NORMALIZATION_FAILED:
+			return "target classifier normalization failed";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_CLASSIFIER_MISMATCH:
+			return "extension classifier mismatch";
+		case PROTOTYPE_SUBSTITUTION_EXTEND_STORAGE_FAILED:
+			return "substitution storage failed";
+		default:
+			return "unknown substitution extension result";
+	}
 }
 
 int prototype_substitution_compose(
@@ -866,7 +912,7 @@ int prototype_substitution_db_validate(
 	return 0;
 }
 
-int prototype_substitution_db_validate_typed(
+int prototype_substitution_db_validate_classifier_coherence(
 	struct prototype_substitution_db* db,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
