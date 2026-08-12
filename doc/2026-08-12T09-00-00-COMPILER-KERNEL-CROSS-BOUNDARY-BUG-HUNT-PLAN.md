@@ -2,8 +2,10 @@
 
 Date: 2026-08-12
 
-Status: planned; no finding in this document is a confirmed bug until it passes
-the reproduction gate in section 6.
+Status: discovery-only plan. The hunt must not modify implementation, schemas,
+or permanent tests. No finding is confirmed until it passes the reproduction
+gate, and no confirmed bug is fixed until a later, separately approved
+remediation plan exists.
 
 Baseline:
 
@@ -40,14 +42,53 @@ have:
 3. a demonstrated incorrect result, rejection, acceptance, mutation, crash, or
    artifact inconsistency;
 4. a root-cause owner;
-5. a permanent positive and negative boundary test; and
-6. a check that the same invariant survives artifact publication and replay when
-   the affected object is persistent.
+5. a specification for later positive and negative boundary tests; and
+6. a specified artifact publication/replay check when the affected object is
+   persistent.
 
 This is a bug hunt, not a request to redesign every unfinished theory. Missing
 HOTT, dependent CBPV, IADT, resource, or effect functionality is a bug only when
 the implementation claims to support it, accepts an invalid program, rejects a
 program inside the documented fragment, or serializes unverifiable evidence.
+
+### 1.1 Hard discovery/remediation boundary
+
+The hunt has two deliberately separate programs of work:
+
+```text
+Program A: discovery
+    inspect -> reproduce -> classify -> cluster -> prioritize -> report
+
+Program B: remediation
+    approve batch -> add permanent boundary tests -> fix root owner
+    -> update replay/artifact paths -> verify -> publish
+```
+
+This document authorizes only Program A.
+
+[!] During Program A, do not edit implementation, public headers, schemas,
+fixtures, permanent integration tests, examples, build manifests, or generated
+source. Finding a bug is not permission to fix it.
+
+Discovery artifacts must remain outside the repository, normally under:
+
+```text
+/tmp/a-program-bug-hunt/<baseline-commit>/<finding-id>/
+```
+
+Reproducers, sanitizer binaries, generated programs, mutated artifacts, debugger
+scripts, and draft patches remain outside the worktree. Repository writes are
+limited to progress and finding reports in documentation.
+
+Program A ends only after BH0 through BH10 have been surveyed and a consolidated
+finding/dependency report has been reviewed. Program B requires a new Markdown
+implementation plan and explicit user approval. Remediation is batched by shared
+root cause and dependency order, not by discovery order.
+
+Emergency exception: if discovery indicates active memory corruption, data loss,
+or unsound acceptance of invalid proof evidence, stop the affected audit slice,
+record and report it immediately, and wait for direction. Do not silently patch
+even an emergency finding.
 
 ## 2. Authority and Related Documents
 
@@ -78,10 +119,11 @@ them again as new bugs without a new executable counterexample.
 | `[~]` | audit in progress or hypothesis not yet reproduced |
 | `[x]` | completed with recorded evidence |
 | `[!]` | invariant or stop condition that must be preserved |
-| `[?]` | requires a language/theory decision before implementation |
+| `[?]` | requires a language/theory decision before remediation planning |
 
-Each work package has separate `inventory`, `reproduction`, `fix`, and
-`regression` states. Finding suspicious code completes none of those states.
+Each work package has separate `inventory`, `reproduction`, and `classification`
+states. Fix and regression status belongs only to the future remediation plan.
+Finding suspicious code completes none of these states.
 
 ## 4. Non-Goals
 
@@ -93,6 +135,9 @@ Each work package has separate `inventory`, `reproduction`, `fix`, and
 - Do not merge distinct kernel proof rules because their C plumbing is similar.
 - Do not add compatibility readers or remapping layers to reduce migration work.
 - Do not mutate accepted implementation outside `src/prototype/`.
+- Do not mutate prototype implementation inside `src/prototype/` during Program
+  A either.
+- Do not add permanent tests while hunting; specify them for Program B.
 - Do not change wire format until a confirmed persistent invariant requires it.
 - Do not characterize an inconclusive fuel exhaustion as logical disproof.
 
@@ -169,15 +214,41 @@ is not a rejected theorem.
 
 [!] Diagnostics and artifacts must preserve this distinction.
 
-## 6. Finding Lifecycle and Evidence Gate
+## 6. Discovery Freeze and Working-State Rules
+
+Before every audit slice:
+
+- record `git rev-parse HEAD` and the approved implementation baseline;
+- require implementation, schema, test, example, and build paths to have no
+  semantic diff from that baseline; documentation-only commits may advance HEAD;
+- require `git status --short` to contain no implementation/test/schema changes;
+- use an external temporary directory for all generated material;
+- do not apply or retain a candidate fix, even to validate a root-cause theory;
+- test root-cause theories through diagnostics, debugger observation, input
+  variation, or an isolated copied source tree outside the repository.
+
+If any non-documentation baseline path changes for an unrelated reason, stop the
+hunt, rerun BH0, and explicitly rebase all unresolved reproductions. Do not audit
+a moving compiler baseline. A documentation-only progress commit does not change
+the implementation baseline.
+
+Permitted repository writes during Program A are limited to this plan's progress,
+documentation-only finding records, and the consolidated triage report. All
+implementation, schema, permanent test, example, and build changes are
+prohibited.
+
+## 7. Finding Lifecycle and Evidence Gate
 
 Every hypothesis receives a stable ID `BH-<AREA>-NNN` and one status:
 
 ```text
-hypothesis -> reproduced -> confirmed -> fixed -> regression-owned -> closed
+hypothesis -> reproduced -> confirmed -> triaged -> remediation-backlog
                     \-> disproved
                     \-> theory-decision-required
 ```
+
+`fixed`, `regression-owned`, and `closed` are intentionally absent. They belong
+to Program B, not to this hunt.
 
 A finding is `confirmed` only if all applicable questions have answers:
 
@@ -193,7 +264,8 @@ A finding is `confirmed` only if all applicable questions have answers:
 - Could the apparent bug instead be unsupported syntax or an undecided theory
   rule?
 
-Confirmed findings are recorded in a future machine-readable file:
+Confirmed findings are recorded in a documentation-only register during the
+hunt. A later remediation plan may promote approved entries to:
 
 ```text
 src/prototype/tests/audit/bug_hunt_findings.tsv
@@ -205,10 +277,16 @@ Required fields:
 finding_id severity invariant owner reproducer positive_test negative_test artifact_test status commit
 ```
 
-The audit manifest itself receives an integration test. Closed findings may not
-lose their runner, fixture, marker, or artifact evidence unnoticed.
+The discovery register is not an integration-test manifest. Program B owns the
+permanent manifest and the enforcement that closed findings cannot lose their
+runner, fixture, marker, or artifact evidence.
 
-## 7. Baseline Freeze (BH0)
+Unless a step explicitly says it reads an existing permanent test, every
+`test`, `fixture`, `checker`, `generator`, or `artifact mutation` requested by
+BH0-BH10 is temporary discovery evidence under `/tmp`. Such a step produces a
+later test specification, not a repository test change.
+
+## 8. Baseline Freeze (BH0)
 
 ### BH0.1 Reproducible baseline
 
@@ -223,11 +301,13 @@ lose their runner, fixture, marker, or artifact evidence unnoticed.
 
 ### BH0.2 Diagnostic build profiles
 
-- [ ] Add prototype-only build recipes for `-O0 -g3`.
-- [ ] Add AddressSanitizer and UndefinedBehaviorSanitizer profiles where the host
-  compiler supports them.
-- [ ] Add a strict warning profile including conversion, shadowing, missing
-  prototypes, and format checks after auditing intentional exceptions.
+- [ ] Invoke a one-off copied build under `/tmp` with `-O0 -g3`; do not edit the
+  prototype Makefile.
+- [ ] Invoke AddressSanitizer and UndefinedBehaviorSanitizer in that copied build
+  where the host compiler supports them.
+- [ ] Run a one-off strict warning profile including conversion, shadowing,
+  missing prototypes, and format checks; record intentional exceptions without
+  weakening repository flags.
 - [ ] Keep sanitizer binaries and generated outputs outside source control.
 - [ ] Do not weaken warnings globally to accommodate one module.
 
@@ -241,9 +321,10 @@ lose their runner, fixture, marker, or artifact evidence unnoticed.
 - [ ] Inventory all authoritative versus derived fields in Operation and
   artifact records.
 
-Deliverable: `BH0-BASELINE.md` or an appended execution section in this file.
+Deliverable: an appended documentation-only execution section in this file or a
+separately requested Markdown report.
 
-## 8. Static Cross-Boundary Audit (BH1)
+## 9. Static Cross-Boundary Audit (BH1)
 
 ### BH1.1 ID domain audit
 
@@ -304,7 +385,7 @@ proof premise arrays, Match case arrays, and Term application spines.
 Deliverable: an inventory table. Suspicious code remains a hypothesis until BH2
 or BH3 reproduces it.
 
-## 9. Typed Occurrence and Shared-Core Hunt (BH2)
+## 10. Typed Occurrence and Shared-Core Hunt (BH2)
 
 This work package generalizes Issues #4, #5, #9, and #10.
 
@@ -342,10 +423,11 @@ surface language intentionally exposes the distinction:
 - compiling directly versus importing an artifact;
 - splitting one artifact provider into two providers with the same exports.
 
-[ ] Add a table specifying exactly which IDs may differ and which semantic keys,
+[ ] Produce a temporary comparison table specifying exactly which IDs may differ
+and which semantic keys,
 Claims, outputs, and diagnostics must remain equal.
 
-## 10. Constraint Generation and Solver Hunt (BH3)
+## 11. Constraint Generation and Solver Hunt (BH3)
 
 ### BH3.1 Constraint completeness
 
@@ -370,8 +452,10 @@ core: unique / deliberately shared
 result: closed / universe variable / residual
 ```
 
-- [ ] Every supported cell receives a positive fixture.
-- [ ] Every forbidden cell receives a stable negative fixture.
+- [ ] Every supported cell receives a temporary positive reproducer and a later
+  permanent-test specification.
+- [ ] Every forbidden cell receives a temporary negative reproducer and a later
+  permanent-test specification.
 - [ ] Unsupported cells remain residual or diagnostic, never accepted by
   fallback.
 - [ ] Branch permutation does not change the solved least effect row.
@@ -397,7 +481,7 @@ result: closed / universe variable / residual
 - [ ] Verify fuel exhaustion returns a residual result and cannot be cached as
   rejection.
 
-## 11. Context, Substitution, and Proof DAG Hunt (BH4)
+## 12. Context, Substitution, and Proof DAG Hunt (BH4)
 
 ### BH4.1 Context and binding identity
 
@@ -445,7 +529,7 @@ persistent accepted use
 - [ ] Shared graph nodes do not accidentally count as one source occurrence.
 - [ ] One-shot resumptions are not validated solely by Core occurrence count.
 
-## 12. Evaluation, Conversion, and Cache Hunt (BH5)
+## 13. Evaluation, Conversion, and Cache Hunt (BH5)
 
 ### BH5.1 Reduction-profile matrix
 
@@ -484,7 +568,7 @@ Build explicit profiles from supported reduction dimensions:
 - [ ] Ensure observational/object Identity witnesses are never globally promoted
   to definitional equality.
 
-## 13. CBPV and Effect Hunt (BH6)
+## 14. CBPV and Effect Hunt (BH6)
 
 ### BH6.1 Value/computation boundaries
 
@@ -518,7 +602,7 @@ Build explicit profiles from supported reduction dimensions:
 - [ ] Unsupported higher-order forwarding is explicit; it must not masquerade
   as first-order success.
 
-## 14. Artifact and Linker Adversarial Hunt (BH7)
+## 15. Artifact and Linker Adversarial Hunt (BH7)
 
 ### BH7.1 Producer/consumer invariant table
 
@@ -563,7 +647,7 @@ accepted state, with no partial publication.
 - [ ] shared Core plus distinct typed exports remains distinct after relocation;
 - [ ] alternate intrinsic environments cannot be linked accidentally.
 
-## 15. Identity, Parametricity, and HOTT Fragment Hunt (BH8)
+## 16. Identity, Parametricity, and HOTT Fragment Hunt (BH8)
 
 This package audits implemented claims only. It does not declare full Higher
 Observational Type Theory complete.
@@ -596,7 +680,7 @@ Observational Type Theory complete.
 - [ ] Treat a mismatch as a theory decision unless one side clearly claims
   authority and the other violates it.
 
-## 16. Frontend, Surface, and Driver Hunt (BH9)
+## 17. Frontend, Surface, and Driver Hunt (BH9)
 
 ### BH9.1 Parser and grouping
 
@@ -625,7 +709,7 @@ Observational Type Theory complete.
   not mutate accepted proof state unexpectedly.
 - [ ] All documented examples are manifest-owned executable specifications.
 
-## 17. Automated Input Generation (BH10)
+## 18. Automated Input Generation (BH10)
 
 ### BH10.1 Parser fuzzing
 
@@ -636,7 +720,8 @@ Observational Type Theory complete.
 
 ### BH10.2 Artifact fuzzing
 
-- [ ] Add structure-aware v72 mutation rather than relying only on random bytes.
+- [ ] Run a temporary structure-aware v72 mutator rather than relying only on
+  random bytes.
 - [ ] Preserve enough framing to reach each section validator.
 - [ ] Assert clean rejection, no leak, no partial accepted state, and bounded
   resource use.
@@ -658,7 +743,7 @@ and one/two effect atoms.
 The generator is an audit tool, not an oracle. Semantic mismatches require manual
 reduction to a stated invariant.
 
-## 18. Execution Order
+## 19. Execution Order
 
 | Order | Package | Reason |
 | ---: | --- | --- |
@@ -674,12 +759,13 @@ reduction to a stated invariant.
 | 9 | BH9 frontend/driver | Cross-checks surface ownership and user diagnostics. |
 | 10 | BH10 generated testing | Broadens search after deterministic oracles exist. |
 
-BH2 through BH6 may produce artifact tests immediately; BH7 is the systematic
-closure, not permission to defer obvious persistence regressions.
+BH2 through BH6 may produce temporary artifact reproductions immediately. BH7
+is the systematic discovery closure. None of these packages may add a permanent
+artifact test during Program A.
 
-## 19. Progress Dashboard
+## 20. Progress Dashboard
 
-| Package | Inventory | Reproduction | Fixes | Permanent regression | Status |
+| Package | Inventory | Temporary reproduction | Classification | Test specification | Status |
 | --- | --- | --- | --- | --- | --- |
 | BH0 baseline | [ ] | [ ] | N/A | [ ] | not started |
 | BH1 C/ID/static boundaries | [ ] | [ ] | [ ] | [ ] | not started |
@@ -693,29 +779,42 @@ closure, not permission to defer obvious persistence regressions.
 | BH9 frontend/driver | [ ] | [ ] | [ ] | [ ] | not started |
 | BH10 generated testing | [ ] | [ ] | [ ] | [ ] | not started |
 
-## 20. Per-Finding Implementation Discipline
+## 21. Remediation Handoff Discipline
 
-For each confirmed bug:
+Program A does not implement fixes. For each confirmed bug it prepares a handoff
+record containing:
 
-1. Commit the minimal failing test or retain it visibly failing in the same
-   reviewable change when the repository policy requires green commits.
-2. Put the fix in the authoritative owner; do not add a remap/fallback at the
-   later consumer merely to pass the fixture.
-3. Update all proof materialization, verifier, artifact, and replay paths that
-   carry the changed invariant.
-4. Add a positive boundary test, an adjacent negative test, and an artifact test
-   when persistent.
-5. Add the finding to `bug_hunt_findings.tsv` with a stable marker in the
-   authoritative runner.
-6. Run the focused test, sanitizer profile where applicable, full integration,
-   `git diff --check`, and a clean-worktree check.
-7. Record whether the fix changes artifact schema. If yes, create one deliberate
-   version transition without compatibility fallback unless explicitly approved.
+1. the minimized temporary reproducer and deterministic invocation;
+2. the violated invariant and authoritative root owner;
+3. neighboring positive and negative test specifications;
+4. all proof materialization, verifier, artifact, and replay paths likely to
+   carry the invariant;
+5. dependency links to other findings sharing the same root cause;
+6. severity, user-visible impact, and schema risk; and
+7. an explicit statement of what evidence would disprove the proposed root
+   cause.
 
-No issue is closed because a showcase example passes. The root invariant and
-its nearest counterexample must both be permanently owned.
+After the complete hunt, findings are grouped into remediation batches. A batch
+must have its own Markdown implementation/progress plan, review ordering,
+artifact-version decision, and explicit user approval before any source or test
+change begins.
 
-## 21. Reporting Format
+The future Program B plan should require the following, but those actions are
+not authorized here:
+
+1. add the permanent failing boundary test;
+2. fix the authoritative owner without late remap/fallback workarounds;
+3. update all proof, verifier, artifact, and replay paths;
+4. add adjacent negative and persistence tests;
+5. register stable test ownership; and
+6. run focused, sanitizer, full integration, and diff checks.
+
+No finding is patched because it was encountered early or appears locally easy.
+No future issue is closed because a showcase example passes. The root invariant
+and its nearest counterexample must eventually be permanently owned by Program
+B.
+
+## 22. Reporting Format
 
 Each audit slice reports findings first, ordered by severity:
 
@@ -729,10 +828,10 @@ observed:
 expected:
 root owner:
 cross-layer impact:
-fix direction:
-permanent tests:
+proposed remediation direction:
+later permanent test specification:
 artifact impact:
-commit:
+discovery baseline:
 ```
 
 Severity is based on consequence:
@@ -749,25 +848,32 @@ Severity is based on consequence:
 Disproved hypotheses are retained briefly with the decisive test so the same
 non-bug is not repeatedly rediscovered.
 
-## 22. Completion Gates
+## 23. Completion Gates
 
 The comprehensive hunt is complete only when:
 
 - [ ] every package BH0-BH10 has a completed inventory and recorded result;
-- [ ] every confirmed bug has stable machine-readable ownership;
-- [ ] every persistent invariant has producer, wire, linker, replay, and
-  republish coverage;
+- [ ] every confirmed bug has a stable documentation record and minimized
+  temporary reproducer;
+- [ ] every persistent finding specifies producer, wire, linker, replay, and
+  republish tests for Program B;
 - [ ] all sanitizer and strict-warning runs have no unexplained failures;
 - [ ] generated-test seeds and limits are reproducible;
 - [ ] full integration passes from a clean build;
 - [ ] no audit tool mutates accepted state merely by inspecting it;
 - [ ] unsupported theory remains explicitly distinguished from falsehood;
-- [ ] a final report separates confirmed bugs, fixed bugs, remaining design
-  decisions, unsupported features, and disproved hypotheses;
-- [ ] file-by-file and total added/deleted LOC are reported for implementation,
-  tests, generated audit tools, and documentation separately.
+- [ ] a final report separates confirmed bugs, remediation backlog, remaining
+  design decisions, unsupported features, and disproved hypotheses;
+- [ ] findings are clustered by root cause and dependency order rather than
+  discovery order;
+- [ ] no implementation, schema, permanent test, example, or build file changed
+  during Program A;
+- [ ] a separate Program B plan is drafted only after consolidated review and is
+  not executed without explicit approval;
+- [ ] documentation-only LOC changes are reported; implementation and permanent
+  test LOC changes must remain zero during Program A.
 
 The expected result is not “no suspicious code.” It is that the supported
-compiler fragment has explicit cross-layer invariants, adversarial tests for its
-known failure families, and a durable process for turning future reports into
-minimal permanent boundary tests.
+compiler fragment has explicit cross-layer invariants, minimized evidence for
+its likely failure families, and a prioritized remediation backlog from which a
+separate plan can later create permanent boundary tests and fixes.
