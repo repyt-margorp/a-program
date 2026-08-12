@@ -669,5 +669,4 @@
 		) != 0) {
 		return 222;
 	}
-	free(type_db.representations);
 	return 0;

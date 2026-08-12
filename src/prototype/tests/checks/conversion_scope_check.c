@@ -25,6 +25,7 @@ struct test_storage {
 	struct prototype_type_parameter_declaration parameters[PARAMETER_CAPACITY];
 	uint32_t field_types[FIELD_TYPE_CAPACITY];
 	struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
+	struct prototype_type_representation type_representations[TYPE_CAPACITY];
 };
 
 static void init_databases(
@@ -55,7 +56,9 @@ static void init_databases(
 		storage->field_types,
 		FIELD_TYPE_CAPACITY,
 		storage->type_exprs,
-		TYPE_EXPR_CAPACITY
+		TYPE_EXPR_CAPACITY,
+		storage->type_representations,
+		TYPE_CAPACITY
 	);
 }
 

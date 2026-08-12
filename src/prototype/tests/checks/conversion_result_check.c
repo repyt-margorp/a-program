@@ -30,6 +30,7 @@ static struct prototype_type_parameter_declaration
 	parameter_declarations[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
+static struct prototype_type_representation type_representations[TYPE_CAPACITY];
 static struct prototype_context contexts[CONTEXT_CAPACITY];
 
 static int expect_status(
@@ -102,7 +103,9 @@ int main(void) {
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
-		TYPE_EXPR_CAPACITY
+		TYPE_EXPR_CAPACITY,
+		type_representations,
+		TYPE_CAPACITY
 	);
 
 	uint32_t universe_u;

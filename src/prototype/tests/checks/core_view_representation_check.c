@@ -23,6 +23,7 @@ static struct prototype_type_constructor_declaration constructor_declarations[CO
 static struct prototype_type_parameter_declaration parameter_declarations[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
+static struct prototype_type_representation type_representations[TYPE_CAPACITY];
 static struct prototype_context contexts[8];
 
 static int add_nullary_type(
@@ -95,7 +96,9 @@ int main(void) {
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
-		TYPE_EXPR_CAPACITY
+		TYPE_EXPR_CAPACITY,
+		type_representations,
+		TYPE_CAPACITY
 	);
 	prototype_context_db_init(&context_db, contexts, 8);
 
@@ -238,6 +241,7 @@ int main(void) {
 	struct prototype_type_parameter_declaration cross_parameters[4];
 	uint32_t cross_fields[8];
 	struct prototype_type_expr cross_exprs[8];
+	struct prototype_type_representation cross_representations[4];
 	struct prototype_context cross_contexts[4];
 	struct prototype_term_db cross_term_db;
 	struct prototype_type_declaration_db cross_type_db;
@@ -265,7 +269,9 @@ int main(void) {
 		cross_fields,
 		8,
 		cross_exprs,
-		8
+		8,
+		cross_representations,
+		4
 	);
 	prototype_context_db_init(&cross_context_db, cross_contexts, 4);
 	uint32_t cross_two_type;

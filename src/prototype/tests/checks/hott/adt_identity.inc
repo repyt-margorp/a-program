@@ -24,7 +24,7 @@
 	}
 	prototype_type_declaration_db_init(
 		&type_db, type_declarations, 16, constructors, 32, parameters, 8,
-		field_types, 64, type_exprs, 32
+		field_types, 64, type_exprs, 32, type_representations, 16
 	);
 	prototype_context_db_init(&context_db, contexts, CONTEXT_CAPACITY);
 	prototype_substitution_db_init(

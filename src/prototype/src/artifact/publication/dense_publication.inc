@@ -13,6 +13,7 @@ struct artifact_closure_graph {
 	struct prototype_type_constructor_declaration* constructor_declarations;
 	uint32_t* readback_field_types;
 	struct prototype_type_expr* type_exprs;
+	struct prototype_type_representation* type_representations;
 	struct prototype_judgement_proposition* propositions;
 	struct prototype_judgement_derivation_candidate* derivation_candidates;
 	struct prototype_judgement_claim* claims;
@@ -100,7 +101,7 @@ static void artifact_closure_graph_free(struct artifact_closure_graph* graph) {
 	free(graph->constructor_declarations);
 	free(graph->readback_field_types);
 	free(graph->type_exprs);
-	free(graph->type_declarations.representations);
+	free(graph->type_representations);
 	free(graph->claims);
 	free(graph->derivations);
 	free(graph->propositions);
@@ -848,6 +849,11 @@ static int artifact_closure_graph_alloc(
 			sizeof(*graph->type_exprs)
 		) != 0 ||
 		artifact_alloc_bytes(
+			(void**)&graph->type_representations,
+			type_declarations->type_count,
+			sizeof(*graph->type_representations)
+		) != 0 ||
+		artifact_alloc_bytes(
 			(void**)&graph->claims, judgement_capacity, sizeof(*graph->claims)
 		) != 0 ||
 		artifact_alloc_bytes(
@@ -918,7 +924,9 @@ static int artifact_closure_graph_alloc(
 		graph->readback_field_types,
 		type_declarations->readback_field_type_count,
 		graph->type_exprs,
-		type_declarations->expr_count
+		type_declarations->expr_count,
+		graph->type_representations,
+		type_declarations->type_count
 	);
 	prototype_judgement_db_init(
 		&graph->judgement,

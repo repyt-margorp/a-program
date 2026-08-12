@@ -68,6 +68,7 @@ static struct prototype_type_constructor_declaration constructor_declaration_sto
 static struct prototype_type_parameter_declaration parameter_declaration_storage[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
+static struct prototype_type_representation type_representations[TYPE_CAPACITY];
 static struct prototype_ast_node ast_nodes[AST_CAPACITY];
 static struct prototype_ast_type_expectation_def ast_expectations[AST_DEF_CAPACITY];
 static struct prototype_ast_term_assignment_def ast_assignments[AST_DEF_CAPACITY];
@@ -728,7 +729,9 @@ int main(int argc, char** argv) {
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
-		TYPE_EXPR_CAPACITY
+		TYPE_EXPR_CAPACITY,
+		type_representations,
+		TYPE_CAPACITY
 	);
 	prototype_ast_db_init(
 		&ast_db,

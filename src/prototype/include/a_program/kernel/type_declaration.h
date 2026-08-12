@@ -179,6 +179,7 @@ struct prototype_type_representation {
 	struct prototype_type_representation_fingerprint fingerprint;
 };
 
+/* All storage referenced by this database is borrowed from its owner. */
 struct prototype_type_declaration_db {
 	struct prototype_type_declaration* type_declarations;
 	size_t type_count;
@@ -219,7 +220,9 @@ void prototype_type_declaration_db_init(
 	uint32_t* readback_field_types,
 	size_t readback_field_type_capacity,
 	struct prototype_type_expr* exprs,
-	size_t expr_capacity
+	size_t expr_capacity,
+	struct prototype_type_representation* representations,
+	size_t representation_capacity
 );
 
 int prototype_type_expr_universe(struct prototype_type_declaration_db* db, uint32_t level, uint32_t* p_ret);

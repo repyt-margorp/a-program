@@ -401,6 +401,7 @@ static int check_comprehension_action_collisions(void) {
 	struct prototype_type_parameter_declaration parameter_storage[1];
 	uint32_t field_type_storage[1];
 	struct prototype_type_expr type_expr_storage[1];
+	struct prototype_type_representation representation_storage[1];
 	uint32_t sources[ACTION_COUNT];
 	uint32_t target_bindings[ACTION_COUNT];
 	uint32_t targets[ACTION_COUNT];
@@ -431,6 +432,8 @@ static int check_comprehension_action_collisions(void) {
 		field_type_storage,
 		1,
 		type_expr_storage,
+		1,
+		representation_storage,
 		1
 	);
 	prototype_context_db_init(
@@ -526,6 +529,7 @@ int main(void) {
 	struct prototype_type_parameter_declaration parameter_storage[4];
 	uint32_t field_type_storage[8];
 	struct prototype_type_expr type_expr_storage[8];
+	struct prototype_type_representation representation_storage[4];
 	uint32_t int_type;
 	uint32_t text_type;
 	uint32_t int_context;
@@ -600,7 +604,9 @@ int main(void) {
 		field_type_storage,
 		8,
 		type_expr_storage,
-		8
+		8,
+		representation_storage,
+		4
 	);
 	prototype_context_db_init(&contexts, context_storage, 16);
 	prototype_substitution_db_init(

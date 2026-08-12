@@ -36,6 +36,7 @@ static struct prototype_type_constructor_declaration constructors[32];
 static struct prototype_type_parameter_declaration parameters[8];
 static uint32_t field_types[64];
 static struct prototype_type_expr type_exprs[32];
+static struct prototype_type_representation type_representations[16];
 static struct prototype_context contexts[CONTEXT_CAPACITY];
 static struct prototype_substitution substitutions[SUBSTITUTION_CAPACITY];
 static struct prototype_judgement_proposition propositions[CLAIM_CAPACITY];

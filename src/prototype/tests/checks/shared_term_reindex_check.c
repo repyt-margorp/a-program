@@ -50,6 +50,7 @@ int main(void) {
 	struct prototype_type_parameter_declaration parameter_storage[1];
 	uint32_t field_type_storage[1];
 	struct prototype_type_expr type_expr_storage[1];
+	struct prototype_type_representation representation_storage[1];
 	struct prototype_type_declaration_db types;
 	struct prototype_context context_storage[CONTEXT_CAPACITY];
 	struct prototype_context_db contexts;
@@ -79,6 +80,8 @@ int main(void) {
 		field_type_storage,
 		1,
 		type_expr_storage,
+		1,
+		representation_storage,
 		1
 	);
 	prototype_context_db_init(&contexts, context_storage, CONTEXT_CAPACITY);

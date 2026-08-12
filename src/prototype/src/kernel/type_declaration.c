@@ -2,7 +2,6 @@
 #include "a_program/kernel/context.h"
 #include "a_program/core/term.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 #define PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY 512
@@ -314,7 +313,9 @@ void prototype_type_declaration_db_init(
 	uint32_t* readback_field_types,
 	size_t readback_field_type_capacity,
 	struct prototype_type_expr* exprs,
-	size_t expr_capacity
+	size_t expr_capacity,
+	struct prototype_type_representation* representations,
+	size_t representation_capacity
 ) {
 	memset(db, 0, sizeof(*db));
 	db->type_declarations = type_declarations;
@@ -327,10 +328,8 @@ void prototype_type_declaration_db_init(
 	db->readback_field_type_capacity = readback_field_type_capacity;
 	db->exprs = exprs;
 	db->expr_capacity = expr_capacity;
-	db->representations = calloc(type_capacity, sizeof(*db->representations));
-	if (db->representations) {
-		db->representation_capacity = type_capacity;
-	}
+	db->representations = representations;
+	db->representation_capacity = representation_capacity;
 	db->representations_dirty = 1;
 }
 
@@ -3353,11 +3352,17 @@ int prototype_type_declaration_rebuild_representations(
 	struct prototype_type_declaration_db* db,
 	const struct prototype_context_db* contexts
 ) {
-	if (!terms || !db || !contexts || !db->representations ||
-		db->representation_capacity < db->type_count) {
+	if (!terms || !db || !contexts) {
 		return -1;
 	}
 	db->representation_count = 0;
+	if (db->type_count == 0) {
+		db->representations_dirty = 0;
+		return 0;
+	}
+	if (!db->representations || db->representation_capacity < db->type_count) {
+		return -1;
+	}
 	for (uint32_t type_id = 0; type_id < db->type_count; ++type_id) {
 		if (!type_declaration_present(&db->type_declarations[type_id])) {
 			continue;
