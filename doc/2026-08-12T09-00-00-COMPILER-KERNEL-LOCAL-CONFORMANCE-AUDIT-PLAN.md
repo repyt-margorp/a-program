@@ -1,26 +1,26 @@
-# Compiler and Kernel Cross-Boundary Bug Hunt Plan
+# Compiler and Kernel Local Correctness Audit Plan
 
 Date: 2026-08-12
 
-Status: discovery-only plan. The hunt must not modify implementation, schemas,
-or permanent tests. No finding is confirmed until it passes the reproduction
-gate, and no confirmed bug is fixed until a later, separately approved
-remediation plan exists.
+Status: conformance-survey-only plan. The survey must not modify implementation,
+schemas, or permanent tests. No finding is confirmed until it passes the
+reproduction gate, and no confirmed discrepancy is corrected until a later,
+separately approved remediation plan exists.
 
 Baseline:
 
 ```text
 branch: main
-commit: 41e22dd617883325fd623a280d6470c7ea82c6c7
-        (Add permanent issue boundary audit coverage)
+commit: 7d3be10bf0a7cd09abfc9b11e58431dd22f07e39
+        (Fix TypeDeclarationDB representation leak)
 artifact: v72
 HOTT fragment schema: v5
 ```
 
 ## 1. Purpose
 
-GitHub Issues #3 through #10 exposed several bugs that were not isolated local
-mistakes. They belonged to recurring bug families:
+GitHub Issues #3 through #10 exposed several implementation discrepancies that
+were not isolated local mistakes. They belonged to recurring families:
 
 - an erased Core Term was used where a typed Operation occurrence was required;
 - a structurally valid candidate ID was consumed as if it carried a certificate;
@@ -32,28 +32,49 @@ mistakes. They belonged to recurring bug families:
   always enforce the same invariant;
 - examples and documentation described behavior without an executable owner.
 
-The purpose of this plan is to search the entire current prototype for other
-instances of those bug families and for adjacent C implementation defects. The
+The purpose of this plan is to compare the entire current prototype against the
+same compiler invariants and adjacent C implementation contracts. The
 result must be more than a list of suspicious lines. Every accepted finding must
 have:
 
 1. a stated invariant;
 2. a minimal reproducer or a mechanical checker;
-3. a demonstrated incorrect result, rejection, acceptance, mutation, crash, or
-   artifact inconsistency;
+3. a demonstrated incorrect result, rejection, acceptance, unintended state
+   change, abnormal local termination, or artifact inconsistency;
 4. a root-cause owner;
 5. a specification for later positive and negative boundary tests; and
 6. a specified artifact publication/replay check when the affected object is
    persistent.
 
-This is a bug hunt, not a request to redesign every unfinished theory. Missing
-HOTT, dependent CBPV, IADT, resource, or effect functionality is a bug only when
+This is a conformance survey, not a request to redesign every unfinished theory.
+Missing HOTT, dependent CBPV, IADT, resource, or effect functionality is a
+finding only when
 the implementation claims to support it, accepts an invalid program, rejects a
 program inside the documented fragment, or serializes unverifiable evidence.
 
-### 1.1 Hard discovery/remediation boundary
+### 1.1 Scope: A Program compiler conformance
 
-The hunt has two deliberately separate programs of work:
+This plan studies only the A Program source tree and executions of A Program
+binaries built for the current survey. Work consists of:
+
+- reading this repository's source, schemas, documentation, and tests;
+- compiling and running this repository in an isolated local temporary tree;
+- constructing small A Program source examples from the documented grammar;
+- constructing bounded artifact variants from artifacts produced locally by the
+  same build, solely to verify that wire/schema inconsistencies are rejected;
+- using compiler diagnostics, runtime checkers, static warnings, and execution
+  traces from survey-owned compiler runs; and
+- recording deterministic compiler correctness evidence under `/tmp` and in
+  documentation-only reports.
+
+All generated inputs must be bounded, deterministic, local, and derived from A
+Program's own grammar or artifact schema. The survey ends at the smallest local
+counterexample that identifies the violated compiler invariant and its owning
+module.
+
+### 1.2 Hard discovery/remediation boundary
+
+The survey has two deliberately separate programs of work:
 
 ```text
 Program A: discovery
@@ -68,27 +89,26 @@ This document authorizes only Program A.
 
 [!] During Program A, do not edit implementation, public headers, schemas,
 fixtures, permanent integration tests, examples, build manifests, or generated
-source. Finding a bug is not permission to fix it.
+source. Finding a discrepancy is not permission to fix it.
 
 Discovery artifacts must remain outside the repository, normally under:
 
 ```text
-/tmp/a-program-bug-hunt/<baseline-commit>/<finding-id>/
+/tmp/a-program-conformance/<baseline-commit>/<finding-id>/
 ```
 
-Reproducers, sanitizer binaries, generated programs, mutated artifacts, debugger
-scripts, and draft patches remain outside the worktree. Repository writes are
-limited to progress and finding reports in documentation.
+Counterexamples, diagnostic binaries, generated programs, bounded artifact
+variants, execution traces, and draft patches remain outside the worktree.
+Repository writes are limited to progress and finding reports in documentation.
 
 Program A ends only after BH0 through BH10 have been surveyed and a consolidated
 finding/dependency report has been reviewed. Program B requires a new Markdown
 implementation plan and explicit user approval. Remediation is batched by shared
 root cause and dependency order, not by discovery order.
 
-Emergency exception: if discovery indicates active memory corruption, data loss,
-or unsound acceptance of invalid proof evidence, stop the affected audit slice,
-record and report it immediately, and wait for direction. Do not silently patch
-even an emergency finding.
+Stop condition: if a run reports a C runtime contract violation, loses generated
+survey data, or accepts invalid proof evidence, stop that audit slice, preserve
+the local diagnostic, and report it before continuing.
 
 ## 2. Authority and Related Documents
 
@@ -109,7 +129,7 @@ substitute for current-code verification:
 - `2026-08-11T08-10-57-PROTOTYPE-SEMANTICS-PRESERVING-CODEBASE-ORGANIZATION-PLAN.md`
 
 Known design findings F1 through F18 remain inputs. This plan must not report
-them again as new bugs without a new executable counterexample.
+them again as new findings without a new executable counterexample.
 
 ## 3. Progress Legend
 
@@ -137,11 +157,11 @@ Finding suspicious code completes none of these states.
 - Do not mutate accepted implementation outside `src/prototype/`.
 - Do not mutate prototype implementation inside `src/prototype/` during Program
   A either.
-- Do not add permanent tests while hunting; specify them for Program B.
+- Do not add permanent tests while surveying; specify them for Program B.
 - Do not change wire format until a confirmed persistent invariant requires it.
 - Do not characterize an inconclusive fuel exhaustion as logical disproof.
 
-## 5. Bug Model and Invariants
+## 5. Finding Model and Invariants
 
 ### 5.1 Identity ownership
 
@@ -224,11 +244,24 @@ Before every audit slice:
 - require `git status --short` to contain no implementation/test/schema changes;
 - use an external temporary directory for all generated material;
 - do not apply or retain a candidate fix, even to validate a root-cause theory;
-- test root-cause theories through diagnostics, debugger observation, input
+- test root-cause theories through diagnostics, execution traces, input
   variation, or an isolated copied source tree outside the repository.
 
+Operational rules for every slice:
+
+- operate only on this repository, its isolated temporary copy, and compiler
+  processes started by the current survey slice;
+- use an isolated temporary directory and never overwrite a user artifact;
+- set explicit bounds for generated term depth, artifact count, input size,
+  reduction fuel, and wall-clock duration;
+- prefer finite matrices derived from documented tags and schema fields over
+  open-ended random input generation;
+- stop after reproducing the local compiler invariant violation; and
+- record exact compiler commit, command, input bound, and exit status so the
+  result remains a reproducible compiler conformance finding.
+
 If any non-documentation baseline path changes for an unrelated reason, stop the
-hunt, rerun BH0, and explicitly rebase all unresolved reproductions. Do not audit
+survey, rerun BH0, and explicitly rebase all unresolved reproductions. Do not audit
 a moving compiler baseline. A documentation-only progress commit does not change
 the implementation baseline.
 
@@ -248,27 +281,27 @@ hypothesis -> reproduced -> confirmed -> triaged -> remediation-backlog
 ```
 
 `fixed`, `regression-owned`, and `closed` are intentionally absent. They belong
-to Program B, not to this hunt.
+to Program B, not to this survey.
 
 A finding is `confirmed` only if all applicable questions have answers:
 
 - What documented or kernel invariant is violated?
-- What is the smallest source program, C checker, or corrupted artifact that
-  demonstrates it?
+- What is the smallest source program, C checker, or schema-invalid artifact
+  variant that demonstrates it?
 - Is the observed behavior deterministic?
-- Is it a false acceptance, false rejection, wrong result, mutation, crash,
-  leak, nondeterminism, or persistence mismatch?
+- Is it a false acceptance, false rejection, wrong result, unintended state
+  change, abnormal termination, leak, nondeterminism, or persistence mismatch?
 - Does it reproduce in a clean build at the recorded commit?
 - Does an adjacent negative case prove that the test is boundary-sensitive?
 - Which layer owns the correction?
-- Could the apparent bug instead be unsupported syntax or an undecided theory
+- Could the apparent discrepancy instead be unsupported syntax or an undecided theory
   rule?
 
 Confirmed findings are recorded in a documentation-only register during the
-hunt. A later remediation plan may promote approved entries to:
+survey. A later remediation plan may promote approved entries to:
 
 ```text
-src/prototype/tests/audit/bug_hunt_findings.tsv
+src/prototype/tests/audit/conformance_findings.tsv
 ```
 
 Required fields:
@@ -282,7 +315,7 @@ permanent manifest and the enforcement that closed findings cannot lose their
 runner, fixture, marker, or artifact evidence.
 
 Unless a step explicitly says it reads an existing permanent test, every
-`test`, `fixture`, `checker`, `generator`, or `artifact mutation` requested by
+`test`, `fixture`, `checker`, `generator`, or `artifact variant` requested by
 BH0-BH10 is temporary discovery evidence under `/tmp`. Such a step produces a
 later test specification, not a repository test change.
 
@@ -297,18 +330,18 @@ later test specification, not a repository test change.
   `make -f src/prototype/Makefile test-integration`.
 - [ ] Record test names, elapsed time, and exit status without relying only on
   aggregate success.
-- [ ] Run `git diff --check` and require a clean worktree before each hunt slice.
+- [ ] Run `git diff --check` and require a clean worktree before each survey slice.
 
 ### BH0.2 Diagnostic build profiles
 
 - [ ] Invoke a one-off copied build under `/tmp` with `-O0 -g3`; do not edit the
   prototype Makefile.
-- [ ] Invoke AddressSanitizer and UndefinedBehaviorSanitizer in that copied build
-  where the host compiler supports them.
+- [ ] Invoke the host compiler's C memory and undefined-operation runtime checks
+  in that copied build where supported.
 - [ ] Run a one-off strict warning profile including conversion, shadowing,
   missing prototypes, and format checks; record intentional exceptions without
   weakening repository flags.
-- [ ] Keep sanitizer binaries and generated outputs outside source control.
+- [ ] Keep runtime-checker binaries and generated outputs outside source control.
 - [ ] Do not weaken warnings globally to accommodate one module.
 
 ### BH0.3 Inventory snapshot
@@ -372,20 +405,20 @@ proof premise arrays, Match case arrays, and Term application spines.
 - [ ] Check aliasing before `memcpy` and use `memmove` where overlap is legal.
 - [ ] Check recursive visitors for cycle assumptions and depth exhaustion.
 
-### BH1.4 Constness and mutation audit
+### BH1.4 Constness and unintended-state-change audit
 
 - [ ] Trace every inspection, conversion, validation, replay, and readback API
   that receives a mutable database pointer.
 - [ ] Snapshot counts/revisions before and after read-only operations.
-- [ ] Distinguish intentional normalizer graph extension from accidental
-  metadata/proof mutation.
+- [ ] Distinguish intentional normalizer graph extension from unintended
+  metadata/proof state changes.
 - [ ] Verify failed checks do not leave accepted Claims, cache entries, labels,
   or artifact roots behind.
 
 Deliverable: an inventory table. Suspicious code remains a hypothesis until BH2
 or BH3 reproduces it.
 
-## 10. Typed Occurrence and Shared-Core Hunt (BH2)
+## 10. Typed Occurrence and Shared-Core Audit (BH2)
 
 This work package generalizes Issues #4, #5, #9, and #10.
 
@@ -427,7 +460,7 @@ surface language intentionally exposes the distinction:
 and which semantic keys,
 Claims, outputs, and diagnostics must remain equal.
 
-## 11. Constraint Generation and Solver Hunt (BH3)
+## 11. Constraint Generation and Solver Audit (BH3)
 
 ### BH3.1 Constraint completeness
 
@@ -481,7 +514,7 @@ result: closed / universe variable / residual
 - [ ] Verify fuel exhaustion returns a residual result and cannot be cached as
   rejection.
 
-## 12. Context, Substitution, and Proof DAG Hunt (BH4)
+## 12. Context, Substitution, and Proof DAG Audit (BH4)
 
 ### BH4.1 Context and binding identity
 
@@ -507,7 +540,7 @@ persistent accepted use
 ```
 
 - [ ] Structural consumers accept valid candidates without fabricated proof.
-- [ ] Certified consumers reject absent, mismatched, or forged Claim coverage.
+- [ ] Certified consumers reject absent or mismatched Claim coverage.
 - [ ] Artifact roots include all reachable certificate premises.
 - [ ] Readback validates exact propositions, not merely Claim ID range.
 
@@ -529,7 +562,7 @@ persistent accepted use
 - [ ] Shared graph nodes do not accidentally count as one source occurrence.
 - [ ] One-shot resumptions are not validated solely by Core occurrence count.
 
-## 13. Evaluation, Conversion, and Cache Hunt (BH5)
+## 13. Evaluation, Conversion, and Cache Audit (BH5)
 
 ### BH5.1 Reduction-profile matrix
 
@@ -568,7 +601,7 @@ Build explicit profiles from supported reduction dimensions:
 - [ ] Ensure observational/object Identity witnesses are never globally promoted
   to definitional equality.
 
-## 14. CBPV and Effect Hunt (BH6)
+## 14. CBPV and Effect Audit (BH6)
 
 ### BH6.1 Value/computation boundaries
 
@@ -602,7 +635,7 @@ Build explicit profiles from supported reduction dimensions:
 - [ ] Unsupported higher-order forwarding is explicit; it must not masquerade
   as first-order success.
 
-## 15. Artifact and Linker Adversarial Hunt (BH7)
+## 15. Artifact and Linker Schema-Boundary Audit (BH7)
 
 ### BH7.1 Producer/consumer invariant table
 
@@ -617,16 +650,18 @@ For every v72 section, record:
 - replay consumer;
 - republish behavior.
 
-### BH7.2 Systematic corruption tests
+### BH7.2 Systematic invalid-field rejection tests
 
-Starting from valid minimal artifacts, mutate one field at a time:
+Starting from valid minimal artifacts produced by the local compiler, change one
+field at a time to an adjacent schema-invalid value and record deterministic
+local acceptance/rejection behavior:
 
 - [ ] reference equals count;
 - [ ] reference points into a sparse hole;
 - [ ] reference points to the wrong section/kind;
 - [ ] duplicated export key;
 - [ ] missing reachable premise;
-- [ ] forged Claim/Proposition pairing;
+- [ ] mismatched Claim/Proposition pairing;
 - [ ] cyclic Derivation premise;
 - [ ] wrong Context or Substitution source/target;
 - [ ] wrong constructor owner/case/field;
@@ -635,8 +670,8 @@ Starting from valid minimal artifacts, mutate one field at a time:
 - [ ] overflowed count/offset/size and truncated section;
 - [ ] valid checksum/shape with invalid semantic payload, where applicable.
 
-Every malformed artifact must be rejected before semantic objects become
-accepted state, with no partial publication.
+Every schema-invalid artifact variant must be rejected before semantic objects
+become accepted state, with no partial publication.
 
 ### BH7.3 Round-trip and composition tests
 
@@ -647,7 +682,7 @@ accepted state, with no partial publication.
 - [ ] shared Core plus distinct typed exports remains distinct after relocation;
 - [ ] alternate intrinsic environments cannot be linked accidentally.
 
-## 16. Identity, Parametricity, and HOTT Fragment Hunt (BH8)
+## 16. Identity, Parametricity, and HOTT Fragment Audit (BH8)
 
 This package audits implemented claims only. It does not declare full Higher
 Observational Type Theory complete.
@@ -680,7 +715,7 @@ Observational Type Theory complete.
 - [ ] Treat a mismatch as a theory decision unless one side clearly claims
   authority and the other violates it.
 
-## 17. Frontend, Surface, and Driver Hunt (BH9)
+## 17. Frontend, Surface, and Driver Audit (BH9)
 
 ### BH9.1 Parser and grouping
 
@@ -711,22 +746,24 @@ Observational Type Theory complete.
 
 ## 18. Automated Input Generation (BH10)
 
-### BH10.1 Parser fuzzing
+### BH10.1 Bounded grammar enumeration
 
 - [ ] Build a bounded grammar generator from current surface productions.
 - [ ] Seed it with all positive and stable-negative fixtures.
-- [ ] Run under ASan/UBSan with deterministic seeds and strict timeouts.
-- [ ] Minimize crashes and assertion failures before filing findings.
+- [ ] Run under ASan/UBSan with deterministic seeds, small depth limits, and
+  strict local timeouts.
+- [ ] Minimize abnormal terminations and assertion failures to a compiler
+  invariant counterexample before filing findings.
 
-### BH10.2 Artifact fuzzing
+### BH10.2 Bounded artifact field enumeration
 
-- [ ] Run a temporary structure-aware v72 mutator rather than relying only on
-  random bytes.
+- [ ] Run a temporary structure-aware v72 field enumerator over locally produced
+  minimal artifacts; do not use random byte streams.
 - [ ] Preserve enough framing to reach each section validator.
 - [ ] Assert clean rejection, no leak, no partial accepted state, and bounded
   resource use.
-- [ ] Keep minimized corrupt artifacts as generated fixtures or compact mutator
-  recipes, not opaque large binaries.
+- [ ] Keep minimized schema-invalid artifacts as generated fixtures or compact
+  field-change recipes, not opaque large binaries.
 
 ### BH10.3 Small-model semantic enumeration
 
@@ -754,7 +791,7 @@ reduction to a stated invariant.
 | 4 | BH4 Context/proof DAG | Audits certificate and persistent premise authority. |
 | 5 | BH5 evaluation/cache | Requires stable typed and proof identities as oracle inputs. |
 | 6 | BH6 CBPV/effects | Builds on corrected constraints and conversion results. |
-| 7 | BH7 artifact/link | Adversarially checks all prior persistent invariants. |
+| 7 | BH7 artifact/link | Checks persisted invariants at local schema boundaries. |
 | 8 | BH8 HOTT fragment | Audits exact implemented fragment after proof persistence. |
 | 9 | BH9 frontend/driver | Cross-checks surface ownership and user diagnostics. |
 | 10 | BH10 generated testing | Broadens search after deterministic oracles exist. |
@@ -781,7 +818,7 @@ artifact test during Program A.
 
 ## 21. Remediation Handoff Discipline
 
-Program A does not implement fixes. For each confirmed bug it prepares a handoff
+Program A does not implement fixes. For each confirmed finding it prepares a handoff
 record containing:
 
 1. the minimized temporary reproducer and deterministic invocation;
@@ -794,7 +831,7 @@ record containing:
 7. an explicit statement of what evidence would disprove the proposed root
    cause.
 
-After the complete hunt, findings are grouped into remediation batches. A batch
+After the complete survey, findings are grouped into remediation batches. A batch
 must have its own Markdown implementation/progress plan, review ordering,
 artifact-version decision, and explicit user approval before any source or test
 change begins.
@@ -807,7 +844,7 @@ not authorized here:
 3. update all proof, verifier, artifact, and replay paths;
 4. add adjacent negative and persistence tests;
 5. register stable test ownership; and
-6. run focused, sanitizer, full integration, and diff checks.
+6. run focused, runtime-checker, full integration, and diff checks.
 
 No finding is patched because it was encountered early or appears locally easy.
 No future issue is closed because a showcase example passes. The root invariant
@@ -836,33 +873,33 @@ discovery baseline:
 
 Severity is based on consequence:
 
-- `critical`: invalid proof/artifact accepted, memory corruption, or unsound
+- `critical`: invalid proof/artifact accepted, C runtime contract violation, or unsound
   conversion;
 - `high`: wrong typed identity, false acceptance/rejection of supported code,
   proof loss, or persistent semantic mismatch;
 - `medium`: deterministic wrong evaluation/inspection, cache contamination,
-  misleading unsupported handling, or recoverable malformed-input crash;
+  misleading unsupported handling, or abnormal termination on a bounded invalid input;
 - `low`: diagnostic/source ownership defects that do not change accepted
   semantics.
 
 Disproved hypotheses are retained briefly with the decisive test so the same
-non-bug is not repeatedly rediscovered.
+non-discrepancy is not repeatedly rediscovered.
 
 ## 23. Completion Gates
 
-The comprehensive hunt is complete only when:
+The comprehensive survey is complete only when:
 
 - [ ] every package BH0-BH10 has a completed inventory and recorded result;
-- [ ] every confirmed bug has a stable documentation record and minimized
+- [ ] every confirmed finding has a stable documentation record and minimized
   temporary reproducer;
 - [ ] every persistent finding specifies producer, wire, linker, replay, and
   republish tests for Program B;
-- [ ] all sanitizer and strict-warning runs have no unexplained failures;
+- [ ] all runtime-checker and strict-warning runs have no unexplained failures;
 - [ ] generated-test seeds and limits are reproducible;
 - [ ] full integration passes from a clean build;
 - [ ] no audit tool mutates accepted state merely by inspecting it;
 - [ ] unsupported theory remains explicitly distinguished from falsehood;
-- [ ] a final report separates confirmed bugs, remediation backlog, remaining
+- [ ] a final report separates confirmed findings, remediation backlog, remaining
   design decisions, unsupported features, and disproved hypotheses;
 - [ ] findings are clustered by root cause and dependency order rather than
   discovery order;
