@@ -11,7 +11,7 @@ level2/00_nat.p	pass	-	^term main :=	^value main := RETURN\(APP\(CONSTRUCTOR\(re
 level2/01_list.p	pass	-	^term main :=	^value main := RETURN\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)$	yes	List recursion and append
 level2/02_tree.p	pass	-	^term main :=	^value main := RETURN\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)\)\)$	yes	Binary-tree recursion
 level2/03_rose.p	fail	unsupported-nested-recursion	-	-	no	Nested recursive occurrence through List
-level3/00_vec.p	fail	unsupported-indexed-family	-	-	no	Length-indexed vectors
-level3/01_fin.p	fail	unsupported-indexed-family	-	-	no	Finite sets indexed by Nat
-level3/02_eq.p	fail	unsupported-indexed-family	-	-	no	Indexed propositional equality declaration
-level3/03_matrix.p	fail	unsupported-indexed-family	-	-	no	Matrices with multiple indices
+level3/00_vec.p	pass	-	^term main :=	^value main := RETURN\(APP\(APP\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)$	yes	Length-indexed vectors
+level3/01_fin.p	pass	-	^term main :=	^value main := APP\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)$	yes	Finite sets indexed by Nat
+level3/02_eq.p	pass	-	^term main :=	^value main := APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)$	yes	Indexed propositional equality declaration
+level3/03_matrix.p	pass	-	^term main :=	^value main := APP\(APP\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)$	yes	Matrices with multiple indices

@@ -545,6 +545,13 @@ static int push_graph_binder(
 	int symbol_id,
 	uint32_t* p_graph_binder_id
 );
+static int resolve_namespace_member(
+	struct compile_context* ctx,
+	uint32_t namespace_term,
+	int member_symbol_id,
+	uint32_t* p_ret,
+	uint32_t* p_classifier
+);
 
 /* Operation declarations own their classifier graph before clause-body
  * lowering. Exposing only the outer domain here is declaration readback, not
@@ -2450,7 +2457,8 @@ static int queue_binder_assumption(
 		context_id >= ctx->metadata->contexts.context_count ||
 		binder_var >= ctx->terms->term_count ||
 		classifier >= ctx->terms->term_count ||
-		source_operation >= ctx->metadata->operation_count ||
+		(source_operation != PROTOTYPE_INVALID_ID &&
+		 source_operation >= ctx->metadata->operation_count) ||
 		ctx->pending_binder_assumption_count >= 1024) {
 		return -1;
 	}
@@ -2479,6 +2487,12 @@ static int materialize_pending_binder_assumptions(struct compile_context* ctx) {
 	for (uint32_t i = 0; i < ctx->pending_binder_assumption_count; ++i) {
 		const struct pending_binder_assumption* pending =
 			&ctx->pending_binder_assumptions[i];
+		/* Match pattern assumptions have their own rule and authority. Their
+		 * pending entry exists only to resolve the Context classifier when the
+		 * pattern variable is unused by the branch operation graph. */
+		if (pending->source_operation == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
 		uint32_t classifier = pending->classifier;
 		uint32_t assumption_context_id;
 		if (pending->binder_var >= ctx->terms->term_count ||
@@ -2733,31 +2747,6 @@ static int push_graph_binder(
 	return 0;
 }
 
-static int resolve_current_graph_binder_classifier(
-	struct compile_context* ctx,
-	uint32_t classifier
-) {
-	if (!ctx || !ctx->metadata || ctx->binder_count == 0 ||
-		classifier >= ctx->terms->term_count) {
-		return -1;
-	}
-	struct binder_map_entry* binder = &ctx->binders[ctx->binder_count - 1];
-	uint32_t context_id;
-	if (prototype_context_extend(
-			&ctx->metadata->contexts,
-			ctx->context_ids[ctx->binder_count - 1],
-			binder->graph_binder_id,
-			classifier,
-			binder->ast_binder_id,
-			&context_id
-		) != 0) {
-		return -1;
-	}
-	binder->classifier = classifier;
-	ctx->context_ids[ctx->binder_count] = context_id;
-	return 0;
-}
-
 static int lookup_graph_binder_classifier(
 	const struct compile_context* ctx,
 	uint32_t ast_binder_id,
@@ -2873,7 +2862,12 @@ static int compile_type_expr_name_as_keyed_type_ref(
 				continue;
 			}
 			uint32_t type_id;
-			if (compile_ast_type_def(ctx, i, &type_id) != 0 ||
+			if (ctx->asts->type_defs[i].compiling) {
+				type_id = ctx->asts->type_defs[i].compiled_type;
+			} else if (compile_ast_type_def(ctx, i, &type_id) != 0) {
+				return -1;
+			}
+			if (
 				type_id >= ctx->type_declarations->type_count) {
 				return -1;
 			}
@@ -3019,7 +3013,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			}
 			break;
 		}
-			case PROTOTYPE_AST_TYPE_EXPR_NAME: {
+		case PROTOTYPE_AST_TYPE_EXPR_NAME: {
 				int status = compile_type_expr_name_as_keyed_type_ref(
 					ctx,
 				expr.as.name.symbol_id,
@@ -3062,6 +3056,16 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			}
 			break;
 		}
+		case PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE:
+			if (prototype_type_expr_local_type_member(
+					ctx->type_declarations,
+					expr.as.name_in_namespace.namespace_symbol_id,
+					expr.as.name_in_namespace.symbol_id,
+					&compiled_type_expr
+				) != 0) {
+				return -1;
+			}
+			break;
 		case PROTOTYPE_AST_TYPE_EXPR_ARROW: {
 			uint32_t domain;
 			uint32_t codomain;
@@ -3262,15 +3266,22 @@ static int compile_ast_type_expr_term_with_self(
 			}
 			return prototype_term_var(ctx->terms, graph_binder_id, p_ret);
 		}
-			case PROTOTYPE_AST_TYPE_EXPR_NAME: {
-				struct prototype_ast_term_assignment_def* def;
-				int status = resolve_unique_assignment_if_present(ctx, expr.as.name.symbol_id, &def);
-				if (status == 1) {
-					if (compile_type_declaration_term_by_symbol(ctx, expr.as.name.symbol_id, p_ret) == 0) {
-						return 0;
-					}
-					struct prototype_qualified_name imported_name;
-					int imported_status = resolve_imported_term_name(
+		case PROTOTYPE_AST_TYPE_EXPR_NAME: {
+			struct prototype_ast_term_assignment_def* def;
+			/* A type formation is also represented by a top-level assignment. During
+			 * its constructor lowering, resolve the allocated type declaration before
+			 * considering that assignment or compile_def would report false recursion. */
+			if (compile_type_declaration_term_by_symbol(
+					ctx, expr.as.name.symbol_id, p_ret
+				) == 0) {
+				return 0;
+			}
+			int status = resolve_unique_assignment_if_present(
+				ctx, expr.as.name.symbol_id, &def
+			);
+			if (status == 1) {
+				struct prototype_qualified_name imported_name;
+				int imported_status = resolve_imported_term_name(
 						ctx,
 						expr.as.name.symbol_id,
 						&imported_name
@@ -3281,7 +3292,7 @@ static int compile_ast_type_expr_term_with_self(
 					if (imported_status == 0) {
 						return prototype_term_external_ref(ctx->terms, imported_name, p_ret);
 					}
-						return prototype_term_external_ref(
+				return prototype_term_external_ref(
 						ctx->terms,
 						qualified_name_make(-1, expr.as.name.symbol_id),
 						p_ret
@@ -3289,9 +3300,26 @@ static int compile_ast_type_expr_term_with_self(
 			}
 			if (status != 0) {
 				return -1;
-				}
-					return compile_def(ctx, def, p_ret);
 			}
+			return compile_def(ctx, def, p_ret);
+		}
+		case PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE: {
+			uint32_t owner;
+			if (compile_type_declaration_term_by_symbol(
+					ctx,
+					expr.as.name_in_namespace.namespace_symbol_id,
+					&owner
+				) != 0) {
+				return -1;
+			}
+			return resolve_namespace_member(
+				ctx,
+				owner,
+				expr.as.name_in_namespace.symbol_id,
+				p_ret,
+				NULL
+			);
+		}
 				case PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE: {
 					return prototype_term_make_host_type(
 						ctx->terms,
@@ -3620,7 +3648,7 @@ static int compile_shared_app(
 			return -1;
 		}
 		const struct prototype_type_declaration* type = &ctx->type_declarations->type_declarations[type_id];
-		if (arg_count < type->parameter_count) {
+		if (arg_count < type->parameter_count + type->index_count) {
 			return prototype_term_type_instance_extend(
 				ctx->terms,
 				ctx->type_declarations,
@@ -3704,6 +3732,21 @@ static int compile_imported_type_expr_term(
 			return prototype_term_external_ref(
 				ctx->terms, expr->as.external_term.name, p_ret
 			);
+		case PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER: {
+			uint32_t owner;
+			if (compile_type_declaration_term_by_symbol(
+					ctx, expr->as.local_type_member.owner_symbol_id, &owner
+				) != 0) {
+				return -1;
+			}
+			return resolve_namespace_member(
+				ctx,
+				owner,
+				expr->as.local_type_member.member_symbol_id,
+				p_ret,
+				NULL
+			);
+		}
 		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT:
 			return prototype_term_make_host_type(
 				ctx->terms, PROTOTYPE_HOST_TYPE_TEXT, p_ret
@@ -3915,7 +3958,12 @@ static int compile_type_declaration_term_by_symbol(
 				continue;
 			}
 			uint32_t type_id;
-			if (compile_ast_type_def(ctx, i, &type_id) != 0 ||
+			if (ctx->asts->type_defs[i].compiling) {
+				type_id = ctx->asts->type_defs[i].compiled_type;
+			} else if (compile_ast_type_def(ctx, i, &type_id) != 0) {
+				return -1;
+			}
+			if (
 				type_id >= ctx->type_declarations->type_count) {
 				return -1;
 			}
@@ -3937,9 +3985,6 @@ static int compile_type_declaration_term_by_symbol(
 		type = prototype_type_declaration_lookup(ctx->type_declarations, symbol_id);
 	}
 	if (!type) {
-		return -1;
-	}
-	if (type->parameter_count != 0) {
 		return -1;
 	}
 	return prototype_term_type_instance_make(

@@ -112,9 +112,10 @@ static int compile_match_branch_body(
 	state->case_inputs[case_index].constructor_id = PROTOTYPE_INVALID_ID;
 	state->case_inputs[case_index].binders = &state->binder_storage[state->binder_cursor];
 	state->case_inputs[case_index].binder_count = old_case->binder_count;
-	if (!state->compile_branch_body || state->compile_branch_body(
-			ctx, old_case->body, state->compile_branch_data, &body_ref
-		) != 0 ||
+	int branch_status = state->compile_branch_body ? state->compile_branch_body(
+		ctx, old_case->body, state->compile_branch_data, &body_ref
+	) : -1;
+	if (branch_status != 0 ||
 		body_ref.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
 		return -1;
 	}
@@ -431,6 +432,8 @@ static int ast_type_expr_contains_name(
 	switch (expr->tag) {
 		case PROTOTYPE_AST_TYPE_EXPR_NAME:
 			return expr->as.name.symbol_id == name_symbol_id;
+		case PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE:
+			return expr->as.name_in_namespace.namespace_symbol_id == name_symbol_id;
 		case PROTOTYPE_AST_TYPE_EXPR_APP:
 			return ast_type_expr_contains_name(
 				asts, expr->as.app.function, name_symbol_id
@@ -476,6 +479,115 @@ static int constructor_field_is_valid_inductive_field(
 	return !type_expr_contains_self(db, expr_id);
 }
 
+enum constructor_recursive_shape_kind {
+	CONSTRUCTOR_RECURSIVE_SHAPE_NONE = 0,
+	CONSTRUCTOR_RECURSIVE_SHAPE_DIRECT,
+	CONSTRUCTOR_RECURSIVE_SHAPE_PI_CODOMAIN,
+	CONSTRUCTOR_RECURSIVE_SHAPE_NEGATIVE,
+	CONSTRUCTOR_RECURSIVE_SHAPE_UNSUPPORTED
+};
+
+static int constructor_recursive_shape_merge(int left, int right) {
+	if (left == CONSTRUCTOR_RECURSIVE_SHAPE_NEGATIVE ||
+		right == CONSTRUCTOR_RECURSIVE_SHAPE_NEGATIVE) {
+		return CONSTRUCTOR_RECURSIVE_SHAPE_NEGATIVE;
+	}
+	if (left == CONSTRUCTOR_RECURSIVE_SHAPE_UNSUPPORTED ||
+		right == CONSTRUCTOR_RECURSIVE_SHAPE_UNSUPPORTED) {
+		return CONSTRUCTOR_RECURSIVE_SHAPE_UNSUPPORTED;
+	}
+	if (left == CONSTRUCTOR_RECURSIVE_SHAPE_PI_CODOMAIN ||
+		right == CONSTRUCTOR_RECURSIVE_SHAPE_PI_CODOMAIN) {
+		return CONSTRUCTOR_RECURSIVE_SHAPE_PI_CODOMAIN;
+	}
+	if (left == CONSTRUCTOR_RECURSIVE_SHAPE_DIRECT ||
+		right == CONSTRUCTOR_RECURSIVE_SHAPE_DIRECT) {
+		return CONSTRUCTOR_RECURSIVE_SHAPE_DIRECT;
+	}
+	return CONSTRUCTOR_RECURSIVE_SHAPE_NONE;
+}
+
+static int constructor_recursive_shape(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t term_id,
+	uint32_t self_type_id,
+	uint32_t depth
+) {
+	if (!terms || !type_declarations || term_id >= terms->term_count || depth > 128) {
+		return CONSTRUCTOR_RECURSIVE_SHAPE_UNSUPPORTED;
+	}
+	uint32_t candidate_type_id;
+	uint32_t arguments[32];
+	uint32_t argument_count;
+	if (prototype_term_type_instance_info(
+			terms, term_id, &candidate_type_id, arguments, &argument_count
+		) == 0 && candidate_type_id == self_type_id) {
+		return CONSTRUCTOR_RECURSIVE_SHAPE_DIRECT;
+	}
+	const struct prototype_term* term = &terms->terms[term_id];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_PI: {
+			int domain = constructor_recursive_shape(
+				terms, type_declarations, term->as.pi.domain, self_type_id, depth + 1
+			);
+			if (domain != CONSTRUCTOR_RECURSIVE_SHAPE_NONE) {
+				return CONSTRUCTOR_RECURSIVE_SHAPE_NEGATIVE;
+			}
+			int codomain = constructor_recursive_shape(
+				terms, type_declarations, term->as.pi.codomain_family,
+				self_type_id, depth + 1
+			);
+			return codomain == CONSTRUCTOR_RECURSIVE_SHAPE_DIRECT ||
+				codomain == CONSTRUCTOR_RECURSIVE_SHAPE_PI_CODOMAIN ?
+				CONSTRUCTOR_RECURSIVE_SHAPE_PI_CODOMAIN : codomain;
+		}
+		case PROTOTYPE_TERM_LAMBDA:
+			return constructor_recursive_shape(
+				terms, type_declarations, term->as.lambda.body,
+				self_type_id, depth + 1
+			);
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return constructor_recursive_shape(
+				terms, type_declarations, term->as.computation_type.result,
+				self_type_id, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return constructor_recursive_shape(
+				terms, type_declarations, term->as.thunk_type.computation,
+				self_type_id, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return constructor_recursive_shape(
+				terms, type_declarations, term->as.thunk.computation,
+				self_type_id, depth + 1
+			);
+		case PROTOTYPE_TERM_RETURN:
+			return constructor_recursive_shape(
+				terms, type_declarations, term->as.return_term.value,
+				self_type_id, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return constructor_recursive_shape(
+				terms, type_declarations, term->as.effect_row_forall.body,
+				self_type_id, depth + 1
+			);
+		case PROTOTYPE_TERM_APP:
+			return constructor_recursive_shape_merge(
+				constructor_recursive_shape(
+					terms, type_declarations, term->as.app.function,
+					self_type_id, depth + 1
+				),
+				constructor_recursive_shape(
+					terms, type_declarations, term->as.app.argument,
+					self_type_id, depth + 1
+				)
+			);
+		default:
+			return CONSTRUCTOR_RECURSIVE_SHAPE_NONE;
+	}
+}
+
 static int compile_type_formation_classifier_family(
 	struct compile_context* ctx,
 	const struct prototype_ast_type_def* ast_type,
@@ -492,9 +604,10 @@ static int compile_type_formation_classifier_family(
 		) != 0) {
 		return -1;
 	}
-	for (uint32_t i = ast_type->parameter_count; i > 0; --i) {
-		const struct prototype_ast_type_parameter* parameter =
-			&ctx->asts->type_parameters[ast_type->first_parameter + i - 1];
+	uint32_t family_binder_count = ast_type->parameter_count + ast_type->index_count;
+	for (uint32_t i = family_binder_count; i > 0; --i) {
+		const struct prototype_ast_family_binder* parameter =
+			&ctx->asts->family_binders[ast_type->first_family_binder + i - 1];
 		uint32_t domain;
 		uint32_t binding_id;
 		uint32_t codomain_family;
@@ -538,12 +651,18 @@ static int compile_ast_type_def(
 	ctx->type_declarations->type_declarations[type_id].namespace_symbol_id =
 		ctx->namespace_symbol_id;
 	uint32_t type_term;
+	uint32_t family_binder_count = ast_type->parameter_count + ast_type->index_count;
+	if (family_binder_count > ctx->binder_count) {
+		ast_type->compiling = 0;
+		return -1;
+	}
+	uint32_t family_base_binder_count = ctx->binder_count - family_binder_count;
 
 	ast_type->compiling = 1;
 	ast_type->compiled_type = type_id;
 	for (uint32_t i = 0; i < ast_type->parameter_count; ++i) {
-		const struct prototype_ast_type_parameter* parameter =
-			&ctx->asts->type_parameters[ast_type->first_parameter + i];
+		const struct prototype_ast_family_binder* parameter =
+			&ctx->asts->family_binders[ast_type->first_family_binder + i];
 		uint32_t compiled_type_expr;
 		uint32_t graph_binder_id;
 		if (lookup_graph_binder(ctx, parameter->ast_binder_id, &graph_binder_id) != 0) {
@@ -565,6 +684,12 @@ static int compile_ast_type_def(
 			return -1;
 		}
 	}
+	ctx->type_declarations->type_declarations[type_id].parameter_context =
+		ctx->context_ids[family_base_binder_count + ast_type->parameter_count];
+	ctx->type_declarations->type_declarations[type_id].index_context =
+		ctx->context_ids[family_base_binder_count + family_binder_count];
+	ctx->type_declarations->type_declarations[type_id].index_count =
+		ast_type->index_count;
 
 	uint32_t type_args[16];
 	if (ast_type->parameter_count > 16) {
@@ -572,8 +697,8 @@ static int compile_ast_type_def(
 		return -1;
 	}
 	for (uint32_t i = 0; i < ast_type->parameter_count; ++i) {
-		const struct prototype_ast_type_parameter* parameter =
-			&ctx->asts->type_parameters[ast_type->first_parameter + i];
+		const struct prototype_ast_family_binder* parameter =
+			&ctx->asts->family_binders[ast_type->first_family_binder + i];
 		uint32_t graph_binder_id;
 		if (lookup_graph_binder(ctx, parameter->ast_binder_id, &graph_binder_id) != 0) {
 			ast_type->compiling = 0;
@@ -607,17 +732,15 @@ static int compile_ast_type_def(
 		ast_type->compiling = 0;
 		return -1;
 	}
-	ctx->type_declarations->type_declarations[type_id].parameter_context =
-		ctx->context_ids[ctx->binder_count];
-	ctx->type_declarations->type_declarations[type_id].index_context =
-		ctx->context_ids[ctx->binder_count];
+	ctx->binder_count = family_base_binder_count + ast_type->parameter_count;
 
-	int has_recursive_constructor_field = 0;
+	int has_direct_recursive_constructor_field = 0;
 	int has_structural_seed_constructor = 0;
 	for (uint32_t i = 0; i < ast_type->constructor_count; ++i) {
 		const struct prototype_ast_type_constructor* constructor =
 			&ctx->asts->type_constructors[ast_type->first_constructor + i];
 		uint32_t compiled_result_type;
+		uint32_t compiled_result_term;
 		uint32_t compiled_field_types[64];
 		uint32_t compiled_field_terms[64];
 		uint32_t constructor_id;
@@ -630,14 +753,6 @@ static int compile_ast_type_def(
 			ast_type->compiling = 0;
 			return -1;
 		}
-		if (compile_ast_type_expr(ctx, constructor->result_type, &compiled_result_type) != 0) {
-			ast_type->compiling = 0;
-			return -1;
-		}
-		if (!type_expr_is_direct_self(ctx->type_declarations, compiled_result_type)) {
-			ast_type->compiling = 0;
-			return -1;
-		}
 		for (uint32_t j = 0; j < constructor->field_count; ++j) {
 			uint32_t field_id = constructor->first_field_type + j;
 			uint32_t field_type = ctx->asts->type_field_exprs[field_id];
@@ -647,24 +762,6 @@ static int compile_ast_type_def(
 			int field_symbol_id = ctx->asts->type_field_name_symbol_ids ?
 				ctx->asts->type_field_name_symbol_ids[field_id] :
 				-1;
-			if (ast_type_expr_contains_name(
-					ctx->asts, field_type, ast_type->name_symbol_id
-				)) {
-				(void)add_compile_diagnostic(
-					ctx,
-					PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION,
-					PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_NESTED_RECURSION,
-					PROTOTYPE_INVALID_ID,
-					PROTOTYPE_INVALID_ID,
-					PROTOTYPE_INVALID_ID,
-					PROTOTYPE_INVALID_ID,
-					PROTOTYPE_INVALID_ID,
-					ctx->asts->type_exprs[field_type].span
-				);
-				ctx->binder_count = previous_binder_count;
-				ast_type->compiling = 0;
-				return -1;
-			}
 			if (compile_ast_type_expr(ctx, field_type, &compiled_field_types[j]) != 0) {
 				ctx->binder_count = previous_binder_count;
 				ast_type->compiling = 0;
@@ -680,34 +777,63 @@ static int compile_ast_type_def(
 				ast_type->compiling = 0;
 				return -1;
 			}
-			if (!constructor_field_is_valid_inductive_field(
-					ctx->type_declarations,
-					compiled_field_types[j]
-			)) {
-				if (type_expr_contains_self(
-						ctx->type_declarations, compiled_field_types[j]
-					) && !type_expr_is_direct_self(
-						ctx->type_declarations, compiled_field_types[j]
-					)) {
-					(void)add_compile_diagnostic(
-						ctx,
-						PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION,
-						PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_NESTED_RECURSION,
-						PROTOTYPE_INVALID_ID,
-						PROTOTYPE_INVALID_ID,
-						PROTOTYPE_INVALID_ID,
-						PROTOTYPE_INVALID_ID,
-						compiled_field_terms[j],
-						ctx->asts->type_exprs[field_type].span
-					);
-				}
+			uint32_t recursive_type_id;
+			uint32_t recursive_args[16];
+			uint32_t recursive_arg_count;
+			int direct_recursive = prototype_term_type_instance_info(
+				ctx->terms,
+				compiled_field_terms[j],
+				&recursive_type_id,
+				recursive_args,
+				&recursive_arg_count
+			) == 0 && recursive_type_id == type_id &&
+				recursive_arg_count == ast_type->parameter_count + ast_type->index_count;
+			int recursive_shape = constructor_recursive_shape(
+				ctx->terms, ctx->type_declarations,
+				compiled_field_terms[j], type_id, 0
+			);
+			/* Recursive occurrences inside a declaration must use SELF (`*`).
+			 * Referring to the declaration by name would re-enter top-level name
+			 * resolution and would not denote the parameter-specialized family. */
+			if (ast_type_expr_contains_name(
+					ctx->asts, field_type, ast_type->name_symbol_id
+				) || recursive_shape == CONSTRUCTOR_RECURSIVE_SHAPE_NEGATIVE ||
+				recursive_shape == CONSTRUCTOR_RECURSIVE_SHAPE_UNSUPPORTED) {
+				(void)add_compile_diagnostic(
+					ctx,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION,
+					PROTOTYPE_COMPILE_DIAGNOSTIC_UNSUPPORTED_NESTED_RECURSION,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID,
+					compiled_field_terms[j],
+					ctx->asts->type_exprs[field_type].span
+				);
 				ctx->binder_count = previous_binder_count;
 				ast_type->compiling = 0;
 				return -1;
 			}
-			if (type_expr_is_direct_self(ctx->type_declarations, compiled_field_types[j])) {
+			if (recursive_shape == CONSTRUCTOR_RECURSIVE_SHAPE_NONE &&
+				!direct_recursive && !constructor_field_is_valid_inductive_field(
+					ctx->type_declarations, compiled_field_types[j]
+				)) {
+				ctx->binder_count = previous_binder_count;
+				ast_type->compiling = 0;
+				return -1;
+			}
+			if (recursive_shape == CONSTRUCTOR_RECURSIVE_SHAPE_DIRECT ||
+				recursive_shape == CONSTRUCTOR_RECURSIVE_SHAPE_PI_CODOMAIN ||
+				direct_recursive ||
+				type_expr_is_direct_self(ctx->type_declarations, compiled_field_types[j])) {
 				constructor_has_recursive_field = 1;
-				has_recursive_constructor_field = 1;
+			}
+			if (recursive_shape == CONSTRUCTOR_RECURSIVE_SHAPE_DIRECT ||
+				direct_recursive ||
+				type_expr_is_direct_self(
+					ctx->type_declarations, compiled_field_types[j]
+				)) {
+				has_direct_recursive_constructor_field = 1;
 			}
 			uint32_t graph_binder_id;
 			if (push_graph_binder(
@@ -726,12 +852,57 @@ static int compile_ast_type_def(
 			has_structural_seed_constructor = 1;
 		}
 		uint32_t field_context = ctx->context_ids[ctx->binder_count];
+		/* Both readback and semantic result classifiers may refer to constructor
+		 * fields, so compile them only after the complete field telescope exists. */
+		if (compile_ast_type_expr(
+				ctx, constructor->result_type, &compiled_result_type
+			) != 0 || compile_ast_type_expr_term_with_self(
+				ctx,
+				constructor->result_type,
+				type_term,
+				&compiled_result_term
+			) != 0) {
+			ctx->binder_count = previous_binder_count;
+			ast_type->compiling = 0;
+			return -1;
+		}
+		uint32_t result_type_id;
+		uint32_t result_args[16];
+		uint32_t result_arg_count;
+		if (prototype_term_type_instance_info(
+				ctx->terms,
+				compiled_result_term,
+				&result_type_id,
+				result_args,
+				&result_arg_count
+			) != 0 || result_type_id != type_id ||
+			result_arg_count != ast_type->parameter_count + ast_type->index_count) {
+			ctx->binder_count = previous_binder_count;
+			ast_type->compiling = 0;
+			return -1;
+		}
+		for (uint32_t j = 0; j < ast_type->parameter_count; ++j) {
+			if (result_args[j] != type_args[j]) {
+				struct prototype_term_conversion_result conversion =
+					prototype_judgement_classifier_conversion(
+						ctx->terms,
+						ctx->type_declarations,
+						result_args[j],
+						type_args[j]
+					);
+				if (conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+					ctx->binder_count = previous_binder_count;
+					ast_type->compiling = 0;
+					return -1;
+				}
+			}
+		}
 		if (prototype_type_constructor_derive_curried_classifier(
 				ctx->terms,
 				&ctx->metadata->contexts,
 				parameter_context,
 				field_context,
-				type_term,
+				compiled_result_term,
 				&curried_classifier_cache
 			) != 0) {
 			ctx->binder_count = previous_binder_count;
@@ -748,7 +919,7 @@ static int compile_ast_type_def(
 				compiled_result_type,
 				parameter_context,
 				field_context,
-				type_term,
+				compiled_result_term,
 				curried_classifier_cache,
 				&constructor_id
 			) != 0) {
@@ -757,7 +928,8 @@ static int compile_ast_type_def(
 		}
 		(void)constructor_id;
 	}
-	if (has_recursive_constructor_field && !has_structural_seed_constructor) {
+	if (has_direct_recursive_constructor_field &&
+		!has_structural_seed_constructor) {
 		ast_type->compiling = 0;
 		return -1;
 	}
@@ -2354,28 +2526,27 @@ static int compile_ast_atomic_ref(
 			uint32_t type_id;
 			const struct prototype_ast_type_def* ast_type =
 				&ctx->asts->type_defs[node->as.type_formation.ast_type_def_id];
-			if (ast_type->parameter_count > 32) {
+			uint32_t family_binder_count =
+				ast_type->parameter_count + ast_type->index_count;
+			if (family_binder_count > 32) {
 				return -1;
 			}
-			for (uint32_t i = 0; i < ast_type->parameter_count; ++i) {
-				const struct prototype_ast_type_parameter* parameter =
-					&ctx->asts->type_parameters[ast_type->first_parameter + i];
+			for (uint32_t i = 0; i < family_binder_count; ++i) {
+				const struct prototype_ast_family_binder* parameter =
+					&ctx->asts->family_binders[ast_type->first_family_binder + i];
 				uint32_t binding_id;
 				uint32_t binder_classifier;
-				if (push_graph_binder(
+				/* A telescope domain is checked in the preceding context. Extending
+				 * first would incorrectly make the binder visible in its own domain and
+				 * lets lazy compilation of a named domain reset that extension. */
+				if (compile_ast_type_expr_term(
+						ctx, parameter->type_expr, &binder_classifier
+					) != 0 || push_graph_binder(
 						ctx,
 						parameter->ast_binder_id,
-						PROTOTYPE_INVALID_ID,
+						binder_classifier,
 						parameter->name_symbol_id,
 						&binding_id
-					) != 0 || compile_ast_type_expr_term(
-						ctx, parameter->type_expr, &binder_classifier
-					) != 0) {
-					ctx->binder_count = previous_binder_count;
-					return -1;
-				}
-				if (resolve_current_graph_binder_classifier(
-						ctx, binder_classifier
 					) != 0) {
 					ctx->binder_count = previous_binder_count;
 					return -1;
@@ -2393,14 +2564,42 @@ static int compile_ast_atomic_ref(
 			return compile_ref_from_term(ctx, p_ret->term, p_ret);
 		}
 		case PROTOTYPE_AST_TYPE_LITERAL: {
+			uint32_t previous_binder_count = ctx->binder_count;
 			uint32_t type_id;
+			const struct prototype_ast_type_def* ast_type =
+				&ctx->asts->type_defs[node->as.type_literal.ast_type_def_id];
+			uint32_t family_binder_count =
+				ast_type->parameter_count + ast_type->index_count;
+			if (family_binder_count > 32) {
+				return -1;
+			}
+			for (uint32_t i = 0; i < family_binder_count; ++i) {
+				const struct prototype_ast_family_binder* binder =
+					&ctx->asts->family_binders[ast_type->first_family_binder + i];
+				uint32_t binding_id;
+				uint32_t classifier;
+				if (compile_ast_type_expr_term(
+						ctx, binder->type_expr, &classifier
+					) != 0 || push_graph_binder(
+						ctx,
+						binder->ast_binder_id,
+						classifier,
+						binder->name_symbol_id,
+						&binding_id
+					) != 0) {
+					ctx->binder_count = previous_binder_count;
+					return -1;
+				}
+			}
 			if (compile_ast_type_def(
 					ctx, node->as.type_literal.ast_type_def_id, &type_id
 				) != 0 || prototype_term_type_instance_make(
 					ctx->terms, ctx->type_declarations, type_id, NULL, 0, &p_ret->term
 				) != 0) {
+				ctx->binder_count = previous_binder_count;
 				return -1;
 			}
+			ctx->binder_count = previous_binder_count;
 			return compile_ref_from_term(ctx, p_ret->term, p_ret);
 		}
 		default:
@@ -5262,18 +5461,25 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				) != 0) {
 				return -1;
 			}
-			struct prototype_term_conversion_result conversion =
-				prototype_judgement_classifier_conversion(
+			if (prototype_judgement_classifier_is_strictly_positive_recursive_field(
 					ctx->terms,
 					ctx->type_declarations,
 					binder_classifier,
-					scrutinee_classifier
-				);
-			if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
-				binder->is_recursive = 1;
-			} else if (conversion.status == PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
-				binder->is_recursive = 0;
-			} else {
+					scrutinee_classifier,
+					&binder->is_recursive
+				) != 0) {
+				return -1;
+			}
+			uint32_t binder_var;
+			if (prototype_term_var(
+					ctx->terms, binder->binding_id, &binder_var
+				) != 0 || queue_binder_assumption(
+					ctx,
+					case_context,
+					binder_var,
+					binder_classifier,
+					PROTOTYPE_INVALID_ID
+				) != 0) {
 				return -1;
 			}
 			for (uint32_t operation_id = 0;
@@ -5907,6 +6113,248 @@ enum operation_solver_constructor_spine_status {
 	OPERATION_SOLVER_CONSTRUCTOR_SPINE_CONTRADICTION = 2
 };
 
+static int operation_solver_refine_sequenced_ih_result(
+	struct compile_context* ctx,
+	uint32_t value_operation,
+	uint32_t expected_result,
+	int* p_changed
+) {
+	if (!ctx || !ctx->metadata || !p_changed ||
+		value_operation >= ctx->metadata->operation_count ||
+		expected_result >= ctx->terms->term_count) {
+		return -1;
+	}
+	const struct prototype_operation_node* value =
+		&ctx->metadata->operations[value_operation];
+	if (value->tag != PROTOTYPE_OPERATION_VAR ||
+		value->referenced_ast_binder_id == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	for (uint32_t fold_id = 0; fold_id < ctx->metadata->operation_count; ++fold_id) {
+		const struct prototype_operation_node* fold =
+			&ctx->metadata->operations[fold_id];
+		if (fold->tag != PROTOTYPE_OPERATION_COMPUTATION_FOLD ||
+			fold->function >= ctx->metadata->operation_count ||
+			fold->argument >= ctx->metadata->operation_count ||
+			fold->core_term >= ctx->terms->term_count ||
+			ctx->terms->terms[fold->core_term].tag !=
+				PROTOTYPE_TERM_COMPUTATION_FOLD ||
+			ctx->terms->terms[fold->core_term].as.computation_fold.clause_count != 0) {
+			continue;
+		}
+		const struct prototype_operation_node* continuation =
+			&ctx->metadata->operations[fold->argument];
+		const struct prototype_operation_node* input =
+			&ctx->metadata->operations[fold->function];
+		if (continuation->tag != PROTOTYPE_OPERATION_LAMBDA ||
+			continuation->referenced_ast_binder_id !=
+				value->referenced_ast_binder_id ||
+			input->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS ||
+			input->scrutinee >= ctx->metadata->operation_count) {
+			continue;
+		}
+		uint32_t input_classifier = operation_solver_classifier(ctx, fold->function);
+		struct prototype_term_classifier_view input_view;
+		if (input_classifier == PROTOTYPE_INVALID_ID) {
+			uint32_t row;
+			uint32_t seeded_classifier;
+			/* Materializing an induction hypothesis constructs a recursive
+			 * function value; it does not execute that function's latent effects. */
+			if (prototype_term_effect_row_empty(ctx->terms, &row) != 0 ||
+				prototype_term_computation_type(
+					ctx->terms, row, expected_result, &seeded_classifier
+				) != 0) {
+				return -1;
+			}
+			operation_solver_store_classifier_solution(
+				ctx, fold->function, seeded_classifier
+			);
+			operation_solver_store_classifier_solution(
+				ctx, value_operation, expected_result
+			);
+			ctx->metadata->operations[fold->argument].binder_classifier =
+				expected_result;
+			*p_changed = 1;
+			if (operation_solver_enqueue_dependents(ctx, fold->function) != 0 ||
+				operation_solver_enqueue_dependents(ctx, fold_id) != 0) {
+				return -1;
+			}
+			return 0;
+		}
+		if (prototype_judgement_classifier_view(
+				ctx->terms, ctx->type_declarations, NULL,
+				input_classifier, &input_view
+			) != 0 || input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			input_view.computation_kind !=
+				PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+			return 0;
+		}
+		if (prototype_judgement_classifier_conversion(
+				ctx->terms,
+				ctx->type_declarations,
+				input_view.result,
+				expected_result
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			uint32_t owner_match = input->scrutinee;
+			if (owner_match >= ctx->metadata->operation_count ||
+				ctx->metadata->operations[owner_match].tag !=
+					PROTOTYPE_OPERATION_MATCH) {
+				return -1;
+			}
+			if (ctx->classifier_solver.motive_solution_states[owner_match] ==
+					OPERATION_MOTIVE_SOLUTION_MATERIALIZED) {
+				ctx->classifier_solver.motive_constant_candidates[owner_match] =
+					PROTOTYPE_INVALID_ID;
+				ctx->classifier_solver.motive_terms[owner_match] =
+					PROTOTYPE_INVALID_ID;
+				ctx->classifier_solver.motive_solution_states[owner_match] =
+					OPERATION_MOTIVE_SOLUTION_READY;
+				ctx->classifier_solver.solutions[owner_match].classifier =
+					PROTOTYPE_INVALID_ID;
+				ctx->metadata->operations[owner_match].classifier =
+					PROTOTYPE_INVALID_ID;
+				*p_changed = 1;
+				return 0;
+			}
+			return 1;
+		}
+		uint32_t refined_classifier;
+		if (prototype_term_computation_type(
+				ctx->terms, input_view.effect_row, expected_result,
+				&refined_classifier
+			) != 0) {
+			return -1;
+		}
+		uint32_t owner_match = input->scrutinee;
+		if (owner_match >= ctx->metadata->operation_count ||
+			ctx->metadata->operations[owner_match].tag !=
+				PROTOTYPE_OPERATION_MATCH) {
+			return -1;
+		}
+		/* The constructor telescope supplies one missing equation: the recursive
+		 * result must have the expected indexed field type.  Record only that
+		 * equation here.  The ordinary Match solver must still construct M from
+		 * every branch, otherwise a lambda inferred from this one occurrence would
+		 * incorrectly impose the recursive index on non-recursive branches. */
+		operation_solver_store_classifier_solution(
+			ctx, value_operation, expected_result
+		);
+		ctx->metadata->operations[fold->argument].binder_classifier = expected_result;
+		if (ctx->classifier_solver.solutions[fold->function].classifier !=
+				refined_classifier) {
+			operation_solver_store_classifier_solution(
+				ctx, fold->function, refined_classifier
+			);
+			*p_changed = 1;
+			if (operation_solver_enqueue_dependents(ctx, fold->function) != 0 ||
+				operation_solver_enqueue_dependents(ctx, fold_id) != 0 ||
+				operation_solver_enqueue_dependents(ctx, owner_match) != 0) {
+				return -1;
+			}
+		}
+		return 0;
+	}
+	return 1;
+}
+
+static int operation_solver_propagate_constructor_domains(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	int* p_changed
+) {
+	if (!ctx || !ctx->metadata || !p_changed ||
+		operation_id >= ctx->metadata->operation_count) {
+		return -1;
+	}
+	uint32_t reverse_arguments[64];
+	uint32_t argument_count = 0;
+	uint32_t cursor = operation_id;
+	while (cursor < ctx->metadata->operation_count) {
+		const struct prototype_operation_node* operation =
+			&ctx->metadata->operations[cursor];
+		if (operation->tag != PROTOTYPE_OPERATION_APP ||
+			operation->application_role !=
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
+			break;
+		}
+		if (argument_count >= 64 ||
+			operation->argument >= ctx->metadata->operation_count) {
+			return -1;
+		}
+		reverse_arguments[argument_count++] = operation->argument;
+		cursor = operation->function;
+	}
+	uint32_t expected_domains[64];
+	uint32_t expected_domain_count;
+	if (prototype_judgement_constructor_spine_expected_domains(
+			ctx->terms,
+			ctx->type_declarations,
+			&ctx->metadata->contexts,
+			&ctx->metadata->substitutions,
+			ctx->metadata->operations[operation_id].context_id,
+			ctx->metadata->operations[operation_id].core_term,
+			PROTOTYPE_INVALID_ID,
+			expected_domains,
+			64,
+			&expected_domain_count
+		) != 0 || expected_domain_count != argument_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < argument_count; ++i) {
+		uint32_t argument_operation = reverse_arguments[argument_count - i - 1];
+		uint32_t expected = expected_domains[i];
+		uint32_t actual = operation_solver_classifier(ctx, argument_operation);
+		int ih_refinement = operation_solver_refine_sequenced_ih_result(
+			ctx, argument_operation, expected, p_changed
+		);
+		if (ih_refinement < 0) {
+			return -1;
+		}
+		if (ih_refinement == 0) {
+			return 0;
+		}
+		if (ctx->metadata->operations[argument_operation].tag ==
+				PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+			uint32_t owner_match =
+				ctx->metadata->operations[argument_operation].scrutinee;
+			if (owner_match >= ctx->metadata->operation_count ||
+				ctx->metadata->operations[owner_match].tag !=
+					PROTOTYPE_OPERATION_MATCH) {
+				return -1;
+			}
+			ctx->classifier_solver.motive_constant_candidates[owner_match] =
+				PROTOTYPE_INVALID_ID;
+			if (actual == PROTOTYPE_INVALID_ID ||
+				prototype_judgement_classifier_conversion(
+					ctx->terms, ctx->type_declarations, actual, expected
+				).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+				operation_solver_store_classifier_solution(
+					ctx, argument_operation, expected
+				);
+				*p_changed = 1;
+				if (operation_solver_enqueue_dependents(
+						ctx, argument_operation
+					) != 0 || operation_solver_enqueue_dependents(
+						ctx, owner_match
+					) != 0) {
+					return -1;
+				}
+			}
+			actual = expected;
+		}
+		if (actual == PROTOTYPE_INVALID_ID) {
+			return 0;
+		}
+		if (!prototype_judgement_classifier_compatible(
+				ctx->terms, ctx->type_declarations, expected, actual
+			)) {
+			return 0;
+		}
+	}
+	(void)cursor;
+	return 0;
+}
+
 static int operation_solver_constructor_spine_classifier(
 	struct compile_context* ctx,
 	uint32_t operation_id,
@@ -6190,6 +6638,9 @@ static int operation_solver_initialize_input_facts(struct compile_context* ctx) 
 	for (uint32_t i = 0; i < ctx->pending_binder_assumption_count; ++i) {
 		const struct pending_binder_assumption* pending =
 			&ctx->pending_binder_assumptions[i];
+		if (pending->source_operation == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
 		uint32_t ast_binder_id;
 		if (operation_solver_lambda_ast_binder(
 				ctx, pending->source_operation, &ast_binder_id
@@ -6360,9 +6811,10 @@ static int operation_solver_validate_classifier_goal(
 			struct prototype_operation_graph graph;
 			struct prototype_operation_induction_edge edge;
 			prototype_compile_metadata_operation_graph_const(ctx->metadata, &graph);
-			return prototype_operation_graph_induction_edge(
+			int edge_status = prototype_operation_graph_induction_edge(
 					&graph, ctx->terms, goal->classifier_variable, &edge
-				) == 0 &&
+				);
+			return edge_status == 0 &&
 				goal->payload.induction_hypothesis.owner_match_operation ==
 					edge.owner_match_operation &&
 				goal->payload.induction_hypothesis.recursive_argument_operation ==

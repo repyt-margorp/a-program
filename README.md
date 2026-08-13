@@ -30,14 +30,19 @@ Implemented in the prototype:
   policies;
 - JudgementDB typing derivations and VerificationDB residual obligations;
 - profile-specific pure normalization with memoized WHNF results;
-- artifact v72, namespace-qualified interfaces, relocation, linking,
+- a compiler-local logical-relation substrate, closed nondependent ADT object
+  Identity, pure Return/Thunk Identity, nondependent pure Pi pointwise
+  Identity, and selected higher square constructions;
+- artifact v73, namespace-qualified interfaces, relocation, linking,
   aggregation, and backend capability checks;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
-This remains a research prototype. In particular, propositional equality,
-`refl`, transport/J, general IADT index refinement, general higher-order
-unification, linear resources, user-defined operations, and production C or
-Verilog code generation are not complete language features.
+This remains a research prototype. The implemented Identity fragment is not a
+complete Higher Observational Type Theory: surface equality and `refl`,
+transport/J, general dependent lifting, and Universe coherence are not complete.
+General IADT index refinement, general higher-order unification, linear
+resources, user-defined operations, and production C or Verilog code generation
+are also not complete language features.
 
 ## Build
 
@@ -105,8 +110,10 @@ may erase distinctions that are irrelevant to computation.
 
 ## Surface Language
 
-The source reader is implemented in `src/prototype/src/frontend/reader.c`. The examples are
-the most reliable executable syntax reference.
+The source reader is implemented in `src/prototype/src/frontend/reader.c`.
+Integration-test fixtures are the most reliable executable syntax reference;
+examples 01-07 and 09 cover the stable introductory subset. Later examples may
+be drafts for incomplete features.
 
 ### Definitions and declarations
 
@@ -151,6 +158,19 @@ List := \A : @ => @{
 	cons : A -> * -> *;
 };
 ```
+
+An indexed family separates uniform parameters from explicit indices:
+
+```ap
+Vec := \A : @ => @\n : Nat => {
+	nil  : * Nat.zero;
+	cons : (k : Nat) -> A -> * k -> * (Nat.succ k);
+};
+```
+
+Recursive occurrences use only `*` plus index arguments. The declaration name
+is not a recursive alias: `List A` inside `List`, or `Vec A n` inside `Vec`, is
+rejected.
 
 `*` in a constructor schema means the current instantiated owner type. Field
 binders may be dependent:
@@ -372,15 +392,19 @@ worklist/fixed-point solver attempts to solve them under configured step
 budgets. Solved results are reconstructed as explicit JudgementDB proof nodes,
 including lambda/app, Match motive, constructor, CBPV, request, and fold rules.
 
-VerificationDB stores obligations that remain residual. A residual is not a
-negative proof and is not silently published as a completed `HAS_TYPE`
-judgement.
+VerificationDB currently stores pending runtime checks for dependent
+computation-fold results. Other residual state remains in the subsystem that
+owns it: effect constraints, classifier-solver state, or Identity/parametricity
+actions. A residual is not a negative proof and is not silently published as a
+completed `HAS_TYPE` judgement.
 
 Compile policies control admission:
 
 - `strict`: requires the configured static obligations to close;
 - `hybrid`: preserves supported residual verification for runtime discharge;
-- `exploratory`: permits broader incomplete prototype exploration.
+- `exploratory`: records experimental admission metadata and restricts backend
+  admission to the interpreter; it does not turn an unresolved classifier into
+  an accepted judgement.
 
 The normalization and solver step limits are explicit artifact metadata, so
 verification coverage is reproducible as data even when a build chooses a
@@ -422,25 +446,26 @@ this elaboration boundary.
 
 ## Artifacts and Linking
 
-Artifact format v72 serializes the dense reachable accepted object graph of:
+Artifact format v73 serializes the dense reachable accepted object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
 - TermDB and OperationGraph;
 - contexts, substitutions, constructor schemas, and type views;
-- JudgementDB proofs, constraints, residual verification, and budgets;
+- JudgementDB proofs, effect constraints, pending runtime verification, and
+  compile budgets;
 - universe constraints and runtime/backend capabilities;
 - relocation and debug/readback metadata.
 
-Every serialized arena is renumbered densely to `0..count-1`; compiler-local
-solver candidates, HOTT work queues, normalization fuel, and unrooted graph
-nodes are absent. The reader validates ranges, tags, relocation closure, the
-artifact calculus fingerprint, and accepted proof replay. The linker resolves
-qualified external names, relocates binders/contexts/terms, preserves typed
-export identity, and may share alpha-equivalent Core representatives without
-merging the exports.
+Every serialized arena is renumbered densely to `0..count-1`; classifier-solver
+candidates, work queues, HOTT actions and certificates, normalization fuel,
+graph revisions, and unrooted graph nodes are absent. The reader validates
+ranges, tags, relocation closure, the artifact calculus fingerprint, and
+accepted proof replay. The linker resolves qualified external names, relocates
+binders/contexts/terms, preserves typed export identity, and may share
+alpha-equivalent Core representatives without merging the exports.
 
 The exact current wire and semantic contract is
-[`src/prototype/spec/artifact_v72.schema`](src/prototype/spec/artifact_v72.schema).
+[`src/prototype/spec/artifact_v73.schema`](src/prototype/spec/artifact_v73.schema).
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v5.schema`](src/prototype/spec/hott_fragment_v5.schema).
 

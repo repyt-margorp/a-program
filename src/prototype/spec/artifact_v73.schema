@@ -1,10 +1,10 @@
-A_PROGRAM_ARTIFACT 72
+A_PROGRAM_ARTIFACT 73
 
-This file is the canonical semantic manifest for artifact version 72. The
+This file is the canonical semantic manifest for artifact version 73. The
 artifact header carries the SHA-256 digest of these exact bytes. A reader must
-reject a different version or digest before reading the interface. Version 69
-is not accepted and has no compatibility parser. Version 70 is archived and
-has no compatibility parser because it did not serialize proposition usage.
+reject a different version or digest before reading the interface. Version 72
+is not accepted and has no compatibility parser because it cannot encode the
+LOCAL_TYPE_MEMBER expression used by exact indexed constructor results.
 
 The header is followed by one immutable Intrinsic-environment contract:
 
@@ -18,7 +18,7 @@ literal or primitive Claims. In the default environment, Int and Int32 name
 HOST_TYPE_INT32 and unsuffixed integer literals have exactly that principal;
 Int64 remains distinct. INT_LITERAL_ADMISSIBILITY is retained in the numeric
 wire vocabulary only as a reserved historical ordinal and is not emitted or
-accepted by the v72 compiler.
+accepted by the v73 compiler.
 
 The artifact is one dense accepted object graph. Every section uses IDs in
 0..count-1 with no holes. Solver candidates, work queues, HOTT actions,
@@ -39,7 +39,7 @@ Compiler-local RELATION_TYPE_FORMER=32 and
 RELATION_WITNESS_FORMER=33 are not accepted identity-root syntax.
 
 type_origin SOURCE=0 GENERATED_IDENTITY=1
-type_expr_tag UNIVERSE=1 UNIVERSE_VAR=2 SELF=3 VAR=4 NAME=5 APP=6 ARROW=7 PI=8 IMPORTED_TYPE=9 EXTERNAL_TERM=10 PRIMITIVE_TEXT=11 PRIMITIVE_INT=12 PRIMITIVE_INT64=13
+type_expr_tag UNIVERSE=1 UNIVERSE_VAR=2 SELF=3 VAR=4 NAME=5 APP=6 ARROW=7 PI=8 IMPORTED_TYPE=9 EXTERNAL_TERM=10 PRIMITIVE_TEXT=11 PRIMITIVE_INT=12 PRIMITIVE_INT64=13 LOCAL_TYPE_MEMBER=14
 operation_tag ATOM=1 VAR=2 NAME=3 CONSTRUCTOR=4 APP=5 LAMBDA=6 MATCH=7 INDUCTION_HYPOTHESIS=8 ASCRIPTION=9 RETURN=10 THUNK=11 FORCE=12 REQUEST=13 COMPUTATION_FOLD=14
 operation_polarity UNKNOWN=0 VALUE=1 COMPUTATION=2
 operation_application_role NONE=0 FUNCTION_ELIMINATION=1 CONSTRUCTOR_FORMATION=2
@@ -166,7 +166,7 @@ Dependent computation-fold verification lifecycle:
 - hybrid compilation may publish PENDING obligations only when the selected
   backend declares the computation-fold result verifier and handler
   capabilities;
-- artifact v72 persists only PENDING obligations. DISCHARGED and FAILED are
+- artifact v73 persists only PENDING obligations. DISCHARGED and FAILED are
   execution-instance outcomes and are rejected on readback;
 - execution discharges an obligation by applying its retained pure classifier
   family to the returned value and checking conversion with the continuation

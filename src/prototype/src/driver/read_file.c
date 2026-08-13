@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v72.h"
+#include "a_program/artifact/wire_v73.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -35,7 +35,7 @@
 #define AST_DEFINITION_ITEM_CAPACITY 4096
 #define AST_TYPE_EXPR_CAPACITY 1024
 #define AST_TYPE_DEF_CAPACITY 64
-#define AST_TYPE_PARAMETER_CAPACITY 128
+#define AST_FAMILY_BINDER_CAPACITY 128
 #define AST_TYPE_CONSTRUCTOR_CAPACITY 256
 #define AST_TYPE_FIELD_EXPR_CAPACITY 512
 #define TERM_CAPACITY 262144
@@ -100,7 +100,7 @@ static uint32_t ast_block_items[AST_BLOCK_ITEM_CAPACITY];
 static uint32_t ast_definition_items[AST_DEFINITION_ITEM_CAPACITY];
 static struct prototype_ast_type_expr ast_type_exprs[AST_TYPE_EXPR_CAPACITY];
 static struct prototype_ast_type_def ast_type_defs[AST_TYPE_DEF_CAPACITY];
-static struct prototype_ast_type_parameter ast_type_parameters[AST_TYPE_PARAMETER_CAPACITY];
+static struct prototype_ast_family_binder ast_family_binders[AST_FAMILY_BINDER_CAPACITY];
 static struct prototype_ast_type_constructor ast_type_constructors[AST_TYPE_CONSTRUCTOR_CAPACITY];
 static uint32_t ast_type_field_exprs[AST_TYPE_FIELD_EXPR_CAPACITY];
 static uint32_t ast_type_field_binder_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
@@ -4462,8 +4462,8 @@ int main(int argc, char** argv) {
 		AST_TYPE_EXPR_CAPACITY,
 		ast_type_defs,
 		AST_TYPE_DEF_CAPACITY,
-		ast_type_parameters,
-		AST_TYPE_PARAMETER_CAPACITY,
+		ast_family_binders,
+		AST_FAMILY_BINDER_CAPACITY,
 		ast_type_constructors,
 		AST_TYPE_CONSTRUCTOR_CAPACITY,
 		ast_type_field_exprs,

@@ -237,7 +237,23 @@ int prototype_judgement_resolve_match_constructor(
 			type_id,
 			constructor_symbol_id
 		);
-	if (!constructor) {
+	if (!constructor || type_id >= type_declarations->type_count) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	if (ignored_arg_count != type->parameter_count + type->index_count) {
+		return -1;
+	}
+	uint32_t constructor_owner;
+	if (prototype_term_type_instance_make(
+			terms,
+			type_declarations,
+			type_id,
+			ignored_args,
+			type->parameter_count,
+			&constructor_owner
+		) != 0) {
 		return -1;
 	}
 
@@ -254,10 +270,299 @@ int prototype_judgement_resolve_match_constructor(
 		return -1;
 	}
 
-	p_resolution->constructor_owner = normalized_classifier;
+	/* Constructor fields are specialized by family parameters. Indices belong
+	 * to the constructor result and are refined by Match typing, so retaining
+	 * them in the owner would misapply the declaration telescope. */
+	p_resolution->constructor_owner = constructor_owner;
 	p_resolution->constructor_id = constructor->constructor_index;
 	p_resolution->field_count = field_count;
 	return 0;
+}
+
+int prototype_judgement_classifier_is_recursive_family_instance(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t candidate,
+	uint32_t scrutinee_classifier,
+	int* p_recursive
+) {
+	if (!terms || !type_declarations || !p_recursive ||
+		candidate >= terms->term_count || scrutinee_classifier >= terms->term_count) {
+		return -1;
+	}
+	*p_recursive = 0;
+	while (candidate < terms->term_count &&
+		terms->terms[candidate].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		candidate = terms->terms[candidate].as.type_view.core;
+	}
+	while (scrutinee_classifier < terms->term_count &&
+		terms->terms[scrutinee_classifier].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		scrutinee_classifier =
+			terms->terms[scrutinee_classifier].as.type_view.core;
+	}
+	if (candidate >= terms->term_count ||
+		scrutinee_classifier >= terms->term_count) {
+		return -1;
+	}
+	uint32_t candidate_type_id;
+	uint32_t scrutinee_type_id;
+	uint32_t candidate_arguments[16];
+	uint32_t scrutinee_arguments[16];
+	uint32_t candidate_argument_count;
+	uint32_t scrutinee_argument_count;
+	if (prototype_type_declaration_instance_info(
+			type_declarations,
+			terms,
+			candidate,
+			&candidate_type_id,
+			candidate_arguments,
+			16,
+			&candidate_argument_count
+		) != 0 || prototype_type_declaration_instance_info(
+			type_declarations,
+			terms,
+			scrutinee_classifier,
+			&scrutinee_type_id,
+			scrutinee_arguments,
+			16,
+			&scrutinee_argument_count
+		) != 0) {
+		return 0;
+	}
+	if (candidate_type_id != scrutinee_type_id ||
+		candidate_type_id >= type_declarations->type_count) {
+		return 0;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[candidate_type_id];
+	if (type->parameter_count > 16 || type->index_count > 16 ||
+		candidate_argument_count != type->parameter_count + type->index_count ||
+		(scrutinee_argument_count != type->parameter_count &&
+		 scrutinee_argument_count != type->parameter_count + type->index_count)) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < type->parameter_count; ++i) {
+		struct prototype_term_conversion_result conversion =
+			prototype_judgement_classifier_conversion(
+				terms,
+				type_declarations,
+				candidate_arguments[i],
+				scrutinee_arguments[i]
+			);
+		if (conversion.status == PROTOTYPE_TERM_CONVERSION_NOT_EQUAL) {
+			return 0;
+		}
+		if (conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			return -1;
+		}
+	}
+	*p_recursive = 1;
+	return 0;
+}
+
+static int recursive_family_occurrence(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t candidate,
+	uint32_t scrutinee_classifier,
+	uint32_t depth
+) {
+	if (!terms || !type_declarations || candidate >= terms->term_count ||
+		depth > 128) {
+		return -1;
+	}
+	int direct;
+	if (prototype_judgement_classifier_is_recursive_family_instance(
+			terms, type_declarations, candidate, scrutinee_classifier, &direct
+		) != 0) {
+		return -1;
+	}
+	if (direct) {
+		return 1;
+	}
+	const struct prototype_term* term = &terms->terms[candidate];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_PI: {
+			int domain = recursive_family_occurrence(
+				terms, type_declarations, term->as.pi.domain,
+				scrutinee_classifier, depth + 1
+			);
+			uint32_t binder;
+			uint32_t codomain;
+			if (domain != 0 || prototype_term_pure_family_parts(
+					terms, term->as.pi.codomain_family, &binder, &codomain
+				) != 0) {
+				return domain < 0 ? -1 : 2;
+			}
+			return recursive_family_occurrence(
+				terms, type_declarations, codomain,
+				scrutinee_classifier, depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return recursive_family_occurrence(
+				terms, type_declarations, term->as.computation_type.result,
+				scrutinee_classifier, depth + 1
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return recursive_family_occurrence(
+				terms, type_declarations, term->as.thunk_type.computation,
+				scrutinee_classifier, depth + 1
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return recursive_family_occurrence(
+				terms, type_declarations, term->as.effect_row_forall.body,
+				scrutinee_classifier, depth + 1
+			);
+		default:
+			return 0;
+	}
+}
+
+static int lift_recursive_field_classifier_inner(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t candidate,
+	uint32_t field_value,
+	uint32_t scrutinee_classifier,
+	uint32_t motive,
+	uint32_t depth,
+	uint32_t* p_classifier
+) {
+	if (!p_classifier || candidate >= terms->term_count ||
+		field_value >= terms->term_count || depth > 128) {
+		return -1;
+	}
+	int direct;
+	if (prototype_judgement_classifier_is_recursive_family_instance(
+			terms, type_declarations, candidate, scrutinee_classifier, &direct
+		) != 0) {
+		return -1;
+	}
+	if (direct) {
+		return prototype_judgement_apply_indexed_motive(
+			terms, type_declarations, motive, field_value, candidate, 1,
+			p_classifier
+		);
+	}
+	const struct prototype_term* term = &terms->terms[candidate];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_PI: {
+			if (recursive_family_occurrence(
+					terms, type_declarations, term->as.pi.domain,
+					scrutinee_classifier, depth + 1
+				) != 0) {
+				return -1;
+			}
+			uint32_t binder;
+			uint32_t codomain;
+			uint32_t argument;
+			uint32_t applied_value;
+			uint32_t lifted_codomain;
+			uint32_t family;
+			if (prototype_term_pure_family_parts(
+					terms, term->as.pi.codomain_family, &binder, &codomain
+				) != 0 || prototype_term_var(terms, binder, &argument) != 0 ||
+				prototype_term_app(
+					terms, field_value, argument, &applied_value
+				) != 0 || lift_recursive_field_classifier_inner(
+					terms, type_declarations, codomain, applied_value,
+					scrutinee_classifier, motive, depth + 1, &lifted_codomain
+				) != 0 || prototype_term_pure_family(
+					terms, binder, lifted_codomain, &family
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_pi_family(
+				terms, term->as.pi.domain, family, p_classifier
+			);
+		}
+		case PROTOTYPE_TERM_COMPUTATION_TYPE: {
+			uint32_t lifted;
+			if (lift_recursive_field_classifier_inner(
+					terms, type_declarations, term->as.computation_type.result,
+					field_value, scrutinee_classifier, motive, depth + 1,
+					&lifted
+				) != 0) {
+				return -1;
+			}
+			struct prototype_term_classifier_view lifted_view;
+			if (prototype_judgement_classifier_view(
+					terms, type_declarations, NULL, lifted, &lifted_view
+				) == 0 && lifted_view.category ==
+					PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
+				lifted_view.computation_kind ==
+					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+				uint32_t joined_row;
+				if (prototype_term_effect_row_union(
+						terms, term->as.computation_type.label,
+						lifted_view.effect_row, &joined_row
+					) != 0) {
+					return -1;
+				}
+				return prototype_term_computation_type(
+					terms, joined_row, lifted_view.result, p_classifier
+				);
+			}
+			return prototype_term_computation_type(
+				terms, term->as.computation_type.label, lifted, p_classifier
+			);
+		}
+		case PROTOTYPE_TERM_THUNK_TYPE: {
+			uint32_t lifted;
+			if (lift_recursive_field_classifier_inner(
+					terms, type_declarations, term->as.thunk_type.computation,
+					field_value, scrutinee_classifier, motive, depth + 1,
+					&lifted
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_thunk_type(terms, lifted, p_classifier);
+		}
+		default:
+			return -1;
+	}
+}
+
+int prototype_judgement_classifier_is_strictly_positive_recursive_field(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t candidate,
+	uint32_t scrutinee_classifier,
+	int* p_recursive
+) {
+	if (!p_recursive) {
+		return -1;
+	}
+	int occurrence = recursive_family_occurrence(
+		terms, type_declarations, candidate, scrutinee_classifier, 0
+	);
+	if (occurrence < 0) {
+		return -1;
+	}
+	*p_recursive = occurrence == 1;
+	return 0;
+}
+
+int prototype_judgement_lift_recursive_field_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t candidate,
+	uint32_t field_value,
+	uint32_t scrutinee_classifier,
+	uint32_t motive,
+	uint32_t* p_classifier
+) {
+	int occurrence = recursive_family_occurrence(
+		terms, type_declarations, candidate, scrutinee_classifier, 0
+	);
+	if (occurrence != 1) {
+		return occurrence < 0 ? -1 : 1;
+	}
+	return lift_recursive_field_classifier_inner(
+		terms, type_declarations, candidate, field_value,
+		scrutinee_classifier, motive, 0, p_classifier
+	);
 }
 
 static const struct prototype_type_constructor_declaration* lookup_constructor_for_owner_index(
@@ -816,6 +1121,168 @@ int prototype_judgement_constructor_spine_classifier(
 	return 0;
 }
 
+int prototype_judgement_constructor_spine_expected_domains(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_context,
+	uint32_t subject,
+	uint32_t constructor_owner_view,
+	uint32_t* expected_domains,
+	uint32_t expected_domain_capacity,
+	uint32_t* p_domain_count
+) {
+	if (!terms || !type_declarations || !contexts || !substitutions ||
+		!expected_domains || !p_domain_count) {
+		return -1;
+	}
+	uint32_t constructor_head;
+	uint32_t structural_owner;
+	uint32_t constructor_index;
+	uint32_t field_terms[64];
+	uint32_t field_count;
+	if (prototype_term_constructor_spine_info(
+			terms, subject, &constructor_head, &structural_owner,
+			&constructor_index, field_terms, 64, &field_count
+		) != 0 || field_count > expected_domain_capacity) {
+		return -1;
+	}
+	uint32_t owner = constructor_owner_view == PROTOTYPE_INVALID_ID ?
+		structural_owner : constructor_owner_view;
+	uint32_t type_id;
+	uint32_t owner_arguments[64];
+	uint32_t owner_argument_count;
+	if (prototype_type_declaration_instance_info(
+			type_declarations, terms, owner, &type_id,
+			owner_arguments, 64, &owner_argument_count
+		) != 0 || type_id >= type_declarations->type_count) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	if (owner_argument_count != type->parameter_count ||
+		constructor_index >= type->constructor_count) {
+		return -1;
+	}
+	const struct prototype_type_constructor_declaration* constructor =
+		&type_declarations->constructor_declarations[
+			type->first_constructor + constructor_index
+		];
+	uint32_t substitution;
+	if (prototype_context_substitution_from_terms(
+			contexts, substitutions, terms, type_declarations,
+			source_context, constructor->parameter_context,
+			owner_arguments, owner_argument_count, &substitution
+		) != 0) {
+		return -1;
+	}
+	uint32_t declared_field_count;
+	if (prototype_context_extension_path(
+			contexts, constructor->parameter_context, constructor->field_context,
+			(uint32_t[64]) { 0 }, 64, &declared_field_count
+		) != 0 || field_count > declared_field_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < field_count; ++i) {
+		if (prototype_context_telescope_entry_classifier(
+				contexts, substitutions, terms, type_declarations,
+				substitution, constructor->parameter_context,
+				constructor->field_context, field_terms, i, i,
+				&expected_domains[i]
+			) != 0) {
+			return -1;
+		}
+	}
+	(void)constructor_head;
+	*p_domain_count = field_count;
+	return 0;
+}
+
+int prototype_judgement_apply_indexed_motive(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t motive,
+	uint32_t value,
+	uint32_t value_classifier,
+	int beta_reduce,
+	uint32_t* p_result
+) {
+	if (!terms || !type_declarations || !p_result ||
+		motive >= terms->term_count || value >= terms->term_count ||
+		value_classifier >= terms->term_count) {
+		return -1;
+	}
+	uint32_t type_id;
+	uint32_t arguments[32];
+	uint32_t argument_count;
+	if (prototype_term_type_instance_info(
+			terms, value_classifier, &type_id, arguments,
+			&argument_count
+		) != 0 || type_id >= type_declarations->type_count) {
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	if (type->parameter_count + type->index_count != argument_count) {
+		return -1;
+	}
+	uint32_t lambda_count = 0;
+	uint32_t lambda_cursor = motive;
+	while (lambda_cursor < terms->term_count &&
+		terms->terms[lambda_cursor].tag == PROTOTYPE_TERM_LAMBDA &&
+		lambda_count <= type->index_count) {
+		++lambda_count;
+		lambda_cursor = terms->terms[lambda_cursor].as.lambda.body;
+	}
+	uint32_t motive_index_count;
+	if (lambda_count == 1) {
+		motive_index_count = 0;
+	} else if (lambda_count == type->index_count + 1) {
+		motive_index_count = type->index_count;
+	} else {
+		return -1;
+	}
+	uint32_t current = motive;
+	for (uint32_t i = 0; i < motive_index_count; ++i) {
+		uint32_t argument = arguments[type->parameter_count + i];
+		if (current >= terms->term_count ||
+			terms->terms[current].tag != PROTOTYPE_TERM_LAMBDA) {
+			return -1;
+		}
+		if (beta_reduce) {
+			if (prototype_term_graph_substitute_bound_var(
+					terms, type_declarations,
+					terms->terms[current].as.lambda.body,
+					terms->terms[current].as.lambda.binding_id,
+					argument, &current
+				) != 0) {
+				return -1;
+			}
+		} else if (prototype_term_app(
+				terms, current, argument, &current
+			) != 0) {
+			return -1;
+		}
+	}
+	if (beta_reduce) {
+		if (current >= terms->term_count ||
+			terms->terms[current].tag != PROTOTYPE_TERM_LAMBDA ||
+			prototype_term_graph_substitute_bound_var(
+				terms, type_declarations,
+				terms->terms[current].as.lambda.body,
+				terms->terms[current].as.lambda.binding_id,
+				value, &current
+			) != 0) {
+			return -1;
+		}
+	} else if (prototype_term_app(terms, current, value, &current) != 0) {
+		return -1;
+	}
+	*p_result = current;
+	return 0;
+}
+
 int prototype_judgement_delta_record_constructor_spine(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -1077,13 +1544,11 @@ int prototype_judgement_resolve_match_case_request(
 				) != 0) {
 				return -1;
 			}
-			if (classifier_conversion_decision(
-					prototype_judgement_classifier_conversion(
-						terms,
-						type_declarations,
-						binder_classifier,
-						request->scrutinee_classifier
-					),
+			if (prototype_judgement_classifier_is_strictly_positive_recursive_field(
+					terms,
+					type_declarations,
+					binder_classifier,
+					request->scrutinee_classifier,
 					&binder->is_recursive
 				) != 0) {
 				return -1;
@@ -1134,12 +1599,17 @@ static int match_case_binder_is_recursive_self_field(
 		) != 0) {
 		return -1;
 	}
-	return (prototype_judgement_classifier_conversion(
-		terms,
-		type_declarations,
-		field_classifier,
-		match_case->constructor_owner
-	).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ? 0 : -1;
+	int recursive;
+	if (prototype_judgement_classifier_is_strictly_positive_recursive_field(
+			terms,
+			type_declarations,
+			field_classifier,
+			match_case->constructor_owner,
+			&recursive
+		) != 0) {
+		return -1;
+	}
+	return recursive ? 0 : -1;
 }
 
 static int induction_hypothesis_classifier_from_match_motive(
@@ -1148,6 +1618,8 @@ static int induction_hypothesis_classifier_from_match_motive(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t match_term,
 	uint32_t argument,
+	uint32_t case_index,
+	uint32_t field_index,
 	uint32_t* p_classifier,
 	uint32_t* p_motive
 ) {
@@ -1247,15 +1719,38 @@ static int induction_hypothesis_classifier_from_match_motive(
 			!term_has_tag(terms, motive_app->as.app.function, PROTOTYPE_TERM_LAMBDA)) {
 			continue;
 		}
-		uint32_t candidate;
-		if (prototype_term_app(
-				terms,
-				motive_app->as.app.function,
-				argument,
-				&candidate
-			) != 0) {
-			return -1;
-		}
+			if (case_index >= match->as.match.case_count) {
+				return -1;
+			}
+			uint32_t case_id = match->as.match.first_case + case_index;
+			if (case_id >= terms->case_count ||
+				field_index >= terms->cases[case_id].binder_count) {
+				return -1;
+			}
+			const struct prototype_match_case* match_case = &terms->cases[case_id];
+			uint32_t field_classifier;
+			uint32_t candidate;
+			if (constructor_field_classifier_from_spine(
+					delta,
+					terms,
+					type_declarations,
+					match_case->constructor_owner,
+					match_case->constructor_id,
+					&terms->case_binders[match_case->first_binder],
+					field_index,
+					field_index,
+					&field_classifier
+				) != 0 || prototype_judgement_lift_recursive_field_classifier(
+					terms,
+					type_declarations,
+					field_classifier,
+					argument,
+					match_case->constructor_owner,
+					motive_app->as.app.function,
+					&candidate
+				) != 0) {
+				return -1;
+			}
 		if (selected != PROTOTYPE_INVALID_ID &&
 			!(prototype_judgement_classifier_conversion(
 				terms,
@@ -1550,6 +2045,8 @@ static int prototype_judgement_delta_resolve_induction_hypothesis_for_app_argume
 		type_declarations,
 		match_term,
 		ih->as.induction_hypothesis.argument,
+		context_case_index,
+		context_field_index,
 		&classifier,
 		&motive
 	);
@@ -1652,6 +2149,8 @@ int prototype_judgement_delta_resolve_induction_hypothesis_request(
 		type_declarations,
 		match_term,
 		request->argument,
+		context_case_index,
+		context_field_index,
 		&classifier,
 		&motive
 	);
@@ -1762,7 +2261,42 @@ static int classifier_returns_owner(
 	uint32_t classifier,
 	uint32_t owner
 ) {
-	(void)type_declarations;
+	uint32_t owner_type_id;
+	uint32_t owner_arguments[16];
+	uint32_t owner_argument_count;
+	int owner_is_type_instance = prototype_term_type_instance_info(
+		terms,
+		owner,
+		&owner_type_id,
+		owner_arguments,
+		&owner_argument_count
+	) == 0 && owner_type_id < type_declarations->type_count;
+	if (!owner_is_type_instance && owner < terms->term_count) {
+		uint32_t reversed[16];
+		uint32_t current_owner = owner;
+		owner_argument_count = 0;
+		while (current_owner < terms->term_count &&
+			terms->terms[current_owner].tag == PROTOTYPE_TERM_APP) {
+			if (owner_argument_count >= 16) {
+				return 0;
+			}
+			reversed[owner_argument_count++] =
+				terms->terms[current_owner].as.app.argument;
+			current_owner = terms->terms[current_owner].as.app.function;
+		}
+		if (current_owner < terms->term_count &&
+			terms->terms[current_owner].tag == PROTOTYPE_TERM_TYPE_FORMER &&
+			prototype_type_declaration_representation_type_id(
+				type_declarations,
+				terms->terms[current_owner].as.type_former.representation_id,
+				&owner_type_id
+			) == 0) {
+			for (uint32_t i = 0; i < owner_argument_count; ++i) {
+				owner_arguments[i] = reversed[owner_argument_count - i - 1];
+			}
+			owner_is_type_instance = 1;
+		}
+	}
 	uint32_t current = classifier;
 	while (current < terms->term_count) {
 		int same_owner = 0;
@@ -1784,6 +2318,43 @@ static int classifier_returns_owner(
 		}
 		if (same_owner) {
 			return 1;
+		}
+		/* An indexed constructor is selected through its parameterized owner view,
+		 * while the classifier terminates in a fully indexed instance. Declaration
+		 * identity and uniform parameters, not index equality, establish ownership. */
+		if (owner_is_type_instance) {
+			uint32_t result_type_id;
+			uint32_t result_arguments[16];
+			uint32_t result_argument_count;
+			const struct prototype_type_declaration* declaration =
+				&type_declarations->type_declarations[owner_type_id];
+			if (prototype_term_type_instance_info(
+					terms,
+					current,
+					&result_type_id,
+					result_arguments,
+					&result_argument_count
+				) == 0 && result_type_id == owner_type_id &&
+				owner_argument_count == declaration->parameter_count &&
+				result_argument_count == declaration->parameter_count +
+					declaration->index_count) {
+				int parameters_match = 1;
+				for (uint32_t i = 0; i < owner_argument_count; ++i) {
+					int equal = 0;
+					if (prototype_term_core_shape_equal(
+							terms,
+							owner_arguments[i],
+							result_arguments[i],
+							&equal
+						) != 0 || !equal) {
+						parameters_match = 0;
+						break;
+					}
+				}
+				if (parameters_match) {
+					return 1;
+				}
+			}
 		}
 		uint32_t domain;
 		uint32_t codomain_lambda;
@@ -1850,22 +2421,23 @@ static int constructor_belongs_to_owner(
 	const struct prototype_type_declaration* type =
 		&type_declarations->type_declarations[type_id];
 	if (type->parameter_count > UINT32_MAX - type->index_count ||
-		arg_count != type->parameter_count + type->index_count) {
+		(arg_count != type->parameter_count &&
+		 arg_count != type->parameter_count + type->index_count)) {
 		return 0;
 	}
 	for (uint32_t i = 0; i < type->constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
 			&type_declarations->constructor_declarations[type->first_constructor + i];
 		if (constructor->constructor_index == constructor_index) {
-			if (type->index_count == 0) {
+			/* A constructor head is owned by the family after uniform parameters.
+			 * Its fields subsequently determine the exact result indices. */
+			if (arg_count == type->parameter_count) {
 				return 1;
 			}
-			/* Indexed constructors must specialize the exact owner indices. The
-			 * first fragment admits only nullary generated identity constructors;
-			 * field and parameter substitution is added with general IADT support. */
+			/* A fully indexed owner is valid only when it is the exact constructor
+			 * result without unspecialized fields. */
 			int same_result = 0;
-			return type->parameter_count == 0 &&
-				constructor->field_context == constructor->parameter_context &&
+			return constructor->field_context == constructor->parameter_context &&
 				prototype_term_source_shape_equal(
 					terms,
 					constructor->result_classifier,

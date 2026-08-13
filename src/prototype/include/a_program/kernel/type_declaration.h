@@ -41,7 +41,9 @@ enum prototype_type_expr_tag {
 	PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM = 10,
 	PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT = 11,
 	PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT = 12,
-	PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64 = 13
+	PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64 = 13,
+	/* Source-local value selected through a named type view, such as Nat.zero. */
+	PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER = 14
 };
 
 struct prototype_type_representation_fingerprint {
@@ -83,6 +85,10 @@ struct prototype_type_expr {
 		struct {
 			struct prototype_qualified_name name;
 		} external_term;
+		struct {
+			int owner_symbol_id;
+			int member_symbol_id;
+		} local_type_member;
 		struct {
 			uint32_t function;
 			uint32_t argument;
@@ -250,6 +256,12 @@ int prototype_type_expr_imported_type(
 int prototype_type_expr_external_term(
 	struct prototype_type_declaration_db* db,
 	struct prototype_qualified_name name,
+	uint32_t* p_ret
+);
+int prototype_type_expr_local_type_member(
+	struct prototype_type_declaration_db* db,
+	int owner_symbol_id,
+	int member_symbol_id,
 	uint32_t* p_ret
 );
 

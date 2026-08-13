@@ -1,22 +1,25 @@
 /* Level 3: Multiple indices - Matrix type */
-/* NOTE: This currently fails type checking */
-
 Nat := @{
   zero : *;
   succ : * -> *;
 };
 
-/* Matrix indexed by rows and columns */
-Matrix := \A : @ => \rows : Nat => \cols : Nat => @{
-  empty : Matrix A Nat.zero Nat.zero;
-  row : Vec A cols -> Matrix A rows cols -> Matrix A (Nat.succ rows) cols;
+/* Vec is needed for row type */
+Vec := \A : @ => @\n : Nat => {
+  nil  : * Nat.zero;
+  cons : (k : Nat) -> A -> * k -> * (Nat.succ k);
 };
 
-/* Vec is needed for row type */
-Vec := \A : @ => \n : Nat => @{
-  nil  : Vec A Nat.zero;
-  cons : A -> Vec A n -> Vec A (Nat.succ n);
-};
+/* Matrix indexed by rows and columns */
+Matrix :=
+  \A : @ =>
+  @\rows : Nat =>
+  @\cols : Nat =>
+  {
+    empty : * Nat.zero Nat.zero;
+    row : (r : Nat) -> (c : Nat) ->
+      Vec A c -> * r c -> * (Nat.succ r) c;
+  };
 
 /* Examples: */
 /* empty_matrix : (A : @) -> Matrix A Nat.zero Nat.zero := */
@@ -30,4 +33,10 @@ Vec := \A : @ => \n : Nat => @{
 /*       vec */
 /*       (empty_matrix A); */
 
-main := Matrix;
+empty_matrix := \A : @ => (Matrix A).empty;
+empty_matrix :: (A : @) -> Matrix A Nat.zero Nat.zero;
+
+one_vec := (Vec Nat).cons Nat.zero Nat.zero (Vec Nat).nil;
+one_vec :: Vec Nat (Nat.succ Nat.zero);
+
+main := one_vec;

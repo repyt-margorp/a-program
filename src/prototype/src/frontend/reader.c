@@ -550,6 +550,24 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 		if (binder) {
 			return prototype_ast_type_expr_var(parser->program->asts, binder->ast_binder_id, symbol_id, span, p_ret);
 		}
+		if (accept(parser, TOKEN_DOT)) {
+			int member_symbol_id;
+			if (parser->current.kind != TOKEN_IDENT) {
+				set_error(parser, "expected member name after type namespace dot");
+				return -1;
+			}
+			member_symbol_id = parser->current.symbol_id;
+			if (read_token(parser) != 0) {
+				return -1;
+			}
+			return prototype_ast_type_expr_name_in_namespace(
+				parser->program->asts,
+				symbol_id,
+				member_symbol_id,
+				span,
+				p_ret
+			);
+		}
 		return prototype_ast_type_expr_name(parser->program->asts, symbol_id, span, p_ret);
 	}
 	if (accept(parser, TOKEN_LPAREN)) {
@@ -699,11 +717,6 @@ static int parse_type_expr(struct parser* parser, uint32_t* p_ret) {
 	return 0;
 }
 
-static int type_expr_is_self(const struct prototype_ast_db* asts, uint32_t type_expr) {
-	return type_expr < asts->type_expr_count &&
-		asts->type_exprs[type_expr].tag == PROTOTYPE_AST_TYPE_EXPR_SELF;
-}
-
 static int try_parse_constructor_field_binder(
 	struct parser* parser,
 	uint32_t* p_ast_binder_id,
@@ -791,15 +804,6 @@ static int parse_constructor_type(
 				set_error(parser, "expected '->' after constructor field binder");
 				return -1;
 			}
-			if (!type_expr_is_self(parser->program->asts, field_type)) {
-				parser->binders = initial_binders;
-				set_error_code(
-					parser,
-					PROTOTYPE_READ_DIAGNOSTIC_UNSUPPORTED_INDEXED_FAMILY,
-					"constructor result type must end in '*'"
-				);
-				return -1;
-			}
 			*p_field_count = field_count;
 			*p_result_type = field_type;
 			parser->binders = initial_binders;
@@ -824,11 +828,8 @@ static int parse_constructor_type(
 	}
 }
 
-static int parse_type_body(struct parser* parser, uint32_t ast_type_def_id) {
-	if (expect(parser, TOKEN_AT, "expected '@{' after ':='") != 0) {
-		return -1;
-	}
-	if (expect(parser, TOKEN_LBRACE, "expected '{' after '@'") != 0) {
+static int parse_constructor_block(struct parser* parser, uint32_t ast_type_def_id) {
+	if (expect(parser, TOKEN_LBRACE, "expected '{' before constructors") != 0) {
 		return -1;
 	}
 
@@ -888,6 +889,85 @@ static int parse_type_body(struct parser* parser, uint32_t ast_type_def_id) {
 	return expect(parser, TOKEN_SEMI, "expected ';' after type definition");
 }
 
+static int parse_family_body(struct parser* parser, uint32_t ast_type_def_id) {
+	struct local_binder index_binders[32];
+	struct local_binder* parameter_binders;
+	uint32_t index_count = 0;
+
+	if (!parser || ast_type_def_id >= parser->program->asts->type_def_count) {
+		return -1;
+	}
+	parameter_binders = parser->binders;
+	if (expect(parser, TOKEN_AT, "expected '@{' or '@\\index' after family parameters") != 0) {
+		return -1;
+	}
+	if (parser->current.kind == TOKEN_LBRACE) {
+		return parse_constructor_block(parser, ast_type_def_id);
+	}
+
+	for (;;) {
+		int symbol_id;
+		uint32_t ast_binder_id;
+		uint32_t classifier;
+		struct prototype_source_span span;
+
+		if (expect(parser, TOKEN_BACKSLASH, "expected '\\' after '@' in index binder") != 0) {
+			parser->binders = parameter_binders;
+			return -1;
+		}
+		if (index_count >= 32) {
+			parser->binders = parameter_binders;
+			set_error(parser, "too many family indices");
+			return -1;
+		}
+		if (parser->current.kind != TOKEN_IDENT) {
+			parser->binders = parameter_binders;
+			set_error(parser, "expected index binder name");
+			return -1;
+		}
+		span = current_span(parser);
+		symbol_id = parser->current.symbol_id;
+		ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+		if (ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
+			expect(parser, TOKEN_COLON, "expected ':' after index binder") != 0 ||
+			parse_type_expr(parser, &classifier) != 0 ||
+			expect(parser, TOKEN_FATARROW, "expected '=>' after index binder") != 0 ||
+			prototype_ast_type_add_family_binder(
+				parser->program->asts,
+				ast_type_def_id,
+				ast_binder_id,
+				symbol_id,
+				classifier,
+				PROTOTYPE_AST_FAMILY_BINDER_INDEX,
+				span
+			) != 0) {
+			parser->binders = parameter_binders;
+			if (ast_binder_id == PROTOTYPE_INVALID_ID) {
+				set_error(parser, "binder table is full");
+			}
+			return -1;
+		}
+		index_binders[index_count].symbol_id = symbol_id;
+		index_binders[index_count].ast_binder_id = ast_binder_id;
+		index_binders[index_count].induction_allowed = 0;
+		index_binders[index_count].next = parser->binders;
+		parser->binders = &index_binders[index_count++];
+
+		if (parser->current.kind == TOKEN_LBRACE) {
+			break;
+		}
+		if (expect(parser, TOKEN_AT, "expected another '@\\index' or '{'") != 0) {
+			parser->binders = parameter_binders;
+			return -1;
+		}
+	}
+
+	/* Family indices describe the arity. Constructor-local index variables must
+	 * be bound explicitly in each constructor telescope. */
+	parser->binders = parameter_binders;
+	return parse_constructor_block(parser, ast_type_def_id);
+}
+
 static int parse_anonymous_type_literal(
 	struct parser* parser,
 	int namespace_symbol_id,
@@ -907,7 +987,7 @@ static int parse_anonymous_type_literal(
 		return -1;
 	}
 	parser->type_definition_depth++;
-	int body_status = parse_type_body(parser, ast_type_def_id);
+	int body_status = parse_family_body(parser, ast_type_def_id);
 	parser->type_definition_depth--;
 	if (body_status != 0) {
 		return -1;
@@ -957,6 +1037,7 @@ static int parse_parameterized_type_or_lambda_def(
 	int binder_symbols[32];
 	uint32_t ast_binder_ids[32];
 	uint32_t binder_types[32];
+	struct prototype_source_span binder_spans[32];
 	uint32_t binder_count = 0;
 	struct local_binder binders[32];
 	struct local_binder* outer_binders = parser->binders;
@@ -976,7 +1057,8 @@ static int parse_parameterized_type_or_lambda_def(
 			parser->binders = outer_binders;
 			return -1;
 		}
-		binder_symbols[binder_count] = parser->current.symbol_id;
+			binder_symbols[binder_count] = parser->current.symbol_id;
+			binder_spans[binder_count] = current_span(parser);
 		ast_binder_ids[binder_count] = prototype_ast_new_binder(parser->program->asts);
 		if (ast_binder_ids[binder_count] == PROTOTYPE_INVALID_ID) {
 			set_error(parser, "binder table is full");
@@ -1032,20 +1114,22 @@ static int parse_parameterized_type_or_lambda_def(
 			return -1;
 		}
 		for (uint32_t i = 0; i < binder_count; ++i) {
-			if (prototype_ast_type_add_parameter(
-				parser->program->asts,
-				ast_type_def_id,
-				ast_binder_ids[i],
-				binder_symbols[i],
-				binder_types[i]
-				) != 0) {
+				if (prototype_ast_type_add_family_binder(
+					parser->program->asts,
+					ast_type_def_id,
+					ast_binder_ids[i],
+					binder_symbols[i],
+					binder_types[i],
+					PROTOTYPE_AST_FAMILY_BINDER_PARAMETER,
+					binder_spans[i]
+					) != 0) {
 				set_error(parser, "type parameter table is full");
 				parser->binders = outer_binders;
 				return -1;
 			}
 		}
 		parser->type_definition_depth++;
-		int body_status = parse_type_body(parser, ast_type_def_id);
+			int body_status = parse_family_body(parser, ast_type_def_id);
 		parser->type_definition_depth--;
 		if (body_status != 0) {
 			parser->binders = outer_binders;

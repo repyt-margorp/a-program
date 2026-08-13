@@ -65,6 +65,30 @@ int prototype_judgement_indexed_branch_refinement(
 	uint32_t* p_constructor_term
 );
 
+enum prototype_index_refinement_status {
+	PROTOTYPE_INDEX_REFINEMENT_SOLVED = 0,
+	PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE = 1,
+	PROTOTYPE_INDEX_REFINEMENT_RESIDUAL = 2,
+	PROTOTYPE_INDEX_REFINEMENT_INVALID = -1
+};
+
+int prototype_judgement_source_indexed_branch_refinement(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t scrutinee_context_id,
+	uint32_t scrutinee_term,
+	uint32_t scrutinee_classifier,
+	uint32_t constructor_index,
+	uint32_t branch_context_id,
+	const struct prototype_case_binder* branch_binders,
+	uint32_t branch_binder_count,
+	uint32_t* p_refined_context_id,
+	uint32_t* p_refinement_substitution_id,
+	uint32_t* p_constructor_term
+);
+
 int prototype_judgement_delta_record_context_binding_assumption(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -480,6 +504,31 @@ int prototype_judgement_constructor_field_classifier(
 	uint32_t previous_binder_count,
 	uint32_t field_index,
 	uint32_t* p_classifier
+);
+int prototype_judgement_constructor_spine_expected_domains(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_context,
+	uint32_t subject,
+	uint32_t constructor_owner_view,
+	uint32_t* expected_domains,
+	uint32_t expected_domain_capacity,
+	uint32_t* p_domain_count
+);
+
+/* Apply an indexed Match motive to the index spine recovered from
+ * `value_classifier`, then to `value`.  The motive is an ordinary curried
+ * Lambda graph; no polarity-specific or indexed-motive Term tag is required. */
+int prototype_judgement_apply_indexed_motive(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t motive,
+	uint32_t value,
+	uint32_t value_classifier,
+	int beta_reduce,
+	uint32_t* p_result
 );
 int prototype_judgement_delta_record_constructor_spine(
 	struct prototype_judgement_delta* delta,

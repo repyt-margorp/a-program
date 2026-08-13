@@ -6,7 +6,8 @@ CFLAGS += -std=c11 -Wall -Wextra
 
 PROTOTYPE_IMPLEMENTATION_DEPENDENCIES := $(shell find \
 	src/prototype/include src/prototype/src -type f \
-	\( -name '*.h' -o -name '*.inc' \))
+	\( -name '*.h' -o -name '*.inc' \)) \
+	src/prototype/calculus.h
 
 .PHONY: all reader clean test-type-infer-and-check test-integration
 .PHONY: print-kernel-sources print-graph-sources

@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v72.h"
+#include "a_program/artifact/wire_v73.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/operation_graph.h"
@@ -98,6 +98,14 @@ static int write_artifact_type_expr(
 					expr->as.external_term.name.namespace_symbol_id >= 0 ?
 						symbol_to_string(symbols, expr->as.external_term.name.namespace_symbol_id) : "-",
 					symbol_to_string(symbols, expr->as.external_term.name.name_symbol_id)
+				);
+				break;
+			case PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER:
+				fprintf(
+					stream,
+					" %s %s",
+					symbol_to_string(symbols, expr->as.local_type_member.owner_symbol_id),
+					symbol_to_string(symbols, expr->as.local_type_member.member_symbol_id)
 				);
 				break;
 		case PROTOTYPE_TYPE_EXPR_APP:

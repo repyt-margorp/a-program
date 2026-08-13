@@ -291,6 +291,339 @@ int prototype_judgement_add_constructor_spine_claim(
 	);
 }
 
+static int solve_source_index_pattern(
+	const struct prototype_term_db* terms,
+	uint32_t binding_id,
+	uint32_t pattern,
+	uint32_t value,
+	uint32_t* p_solution
+) {
+	if (!terms || !p_solution || pattern >= terms->term_count ||
+		value >= terms->term_count) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	const struct prototype_term* left = &terms->terms[pattern];
+	const struct prototype_term* right = &terms->terms[value];
+	if (left->tag == PROTOTYPE_TERM_VAR &&
+		left->as.var.binding_id == binding_id) {
+		*p_solution = value;
+		return PROTOTYPE_INDEX_REFINEMENT_SOLVED;
+	}
+	uint32_t left_head = pattern;
+	uint32_t right_head = value;
+	while (left_head < terms->term_count &&
+		terms->terms[left_head].tag == PROTOTYPE_TERM_APP) {
+		left_head = terms->terms[left_head].as.app.function;
+	}
+	while (right_head < terms->term_count &&
+		terms->terms[right_head].tag == PROTOTYPE_TERM_APP) {
+		right_head = terms->terms[right_head].as.app.function;
+	}
+	if (left_head < terms->term_count && right_head < terms->term_count &&
+		terms->terms[left_head].tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+		terms->terms[right_head].tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+		terms->terms[left_head].as.constructor.owner ==
+			terms->terms[right_head].as.constructor.owner &&
+		terms->terms[left_head].as.constructor.constructor_id !=
+			terms->terms[right_head].as.constructor.constructor_id) {
+		return PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE;
+	}
+	if (left->tag != PROTOTYPE_TERM_APP || right->tag != PROTOTYPE_TERM_APP) {
+		if (left->tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+			right->tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+			left->as.constructor.owner == right->as.constructor.owner &&
+			left->as.constructor.constructor_id !=
+				right->as.constructor.constructor_id) {
+			return PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE;
+		}
+		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+	}
+	int same_function = 0;
+	if (prototype_term_core_shape_equal(
+			terms, left->as.app.function, right->as.app.function,
+			&same_function
+		) != 0) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	if (!same_function) {
+		const struct prototype_term* left_function =
+			&terms->terms[left->as.app.function];
+		const struct prototype_term* right_function =
+			&terms->terms[right->as.app.function];
+		if (left_function->tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+			right_function->tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+			left_function->as.constructor.owner ==
+				right_function->as.constructor.owner &&
+			left_function->as.constructor.constructor_id !=
+				right_function->as.constructor.constructor_id) {
+			return PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE;
+		}
+		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+	}
+	return solve_source_index_pattern(
+		terms, binding_id, left->as.app.argument, right->as.app.argument,
+		p_solution
+	);
+}
+
+int prototype_judgement_source_indexed_branch_refinement(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t scrutinee_context_id,
+	uint32_t scrutinee_term,
+	uint32_t scrutinee_classifier,
+	uint32_t constructor_index,
+	uint32_t branch_context_id,
+	const struct prototype_case_binder* branch_binders,
+	uint32_t branch_binder_count,
+	uint32_t* p_refined_context_id,
+	uint32_t* p_refinement_substitution_id,
+	uint32_t* p_constructor_term
+) {
+	uint32_t type_id;
+	uint32_t scrutinee_arguments[32];
+	uint32_t scrutinee_argument_count;
+	if (!contexts || !substitutions || !terms || !type_declarations ||
+		!p_refined_context_id || !p_refinement_substitution_id ||
+		!p_constructor_term || branch_binder_count > 64 ||
+		(branch_binder_count != 0 && !branch_binders) ||
+		scrutinee_term >= terms->term_count ||
+		terms->terms[scrutinee_term].tag != PROTOTYPE_TERM_VAR ||
+		prototype_term_type_instance_info(
+			terms, scrutinee_classifier, &type_id, scrutinee_arguments,
+			&scrutinee_argument_count
+		) != 0 || type_id >= type_declarations->type_count) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->type_declarations[type_id];
+	if (type->origin_kind != PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE ||
+		type->index_count == 0 || type->parameter_count + type->index_count !=
+			scrutinee_argument_count || constructor_index >= type->constructor_count ||
+		type->first_constructor + constructor_index >=
+			type_declarations->constructor_count) {
+		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+	}
+	uint32_t index_context_path[32];
+	uint32_t index_context_count;
+	if (type->index_count > 32 || prototype_context_extension_path(
+			contexts, type->parameter_context, type->index_context,
+			index_context_path, 32, &index_context_count
+		) != 0 || index_context_count != type->index_count) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	uint32_t scrutinee_binding_context;
+	const struct prototype_context* scrutinee_context;
+	if (prototype_context_find_binding(
+			contexts, scrutinee_context_id,
+			terms->terms[scrutinee_term].as.var.binding_id,
+			&scrutinee_binding_context
+		) != 0 || !(scrutinee_context = prototype_context_get(
+			contexts, scrutinee_binding_context
+		)) || scrutinee_binding_context != scrutinee_context_id) {
+		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+	}
+	uint32_t source_index_contexts[32];
+	uint32_t context_cursor = scrutinee_context->parent;
+	for (uint32_t reverse = type->index_count; reverse > 0; --reverse) {
+		const struct prototype_context* index_context = prototype_context_get(
+			contexts, context_cursor
+		);
+		if (!index_context || context_cursor == prototype_context_empty(contexts)) {
+			return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+		}
+		source_index_contexts[reverse - 1] = context_cursor;
+		context_cursor = index_context->parent;
+	}
+	uint32_t base_context = prototype_context_get(
+		contexts, source_index_contexts[0]
+	)->parent;
+	const struct prototype_type_constructor_declaration* constructor =
+		&type_declarations->constructor_declarations[
+			type->first_constructor + constructor_index
+		];
+	uint32_t branch_path[64];
+	uint32_t branch_path_count;
+	if (constructor->constructor_index != constructor_index ||
+		prototype_context_extension_path(
+			contexts, scrutinee_context_id, branch_context_id,
+			branch_path, 64, &branch_path_count
+		) != 0 || branch_path_count != branch_binder_count) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	uint32_t owner_arguments[32];
+	for (uint32_t i = 0; i < type->parameter_count; ++i) {
+		owner_arguments[i] = scrutinee_arguments[i];
+	}
+	uint32_t owner;
+	if (prototype_term_type_instance_make(
+			terms, type_declarations, type_id, owner_arguments,
+			type->parameter_count, &owner
+		) != 0) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	uint32_t refined_context = base_context;
+	uint32_t refined_path[64];
+	for (uint32_t i = 0; i < branch_binder_count; ++i) {
+		const struct prototype_context* target = prototype_context_get(
+			contexts, branch_path[i]
+		);
+		uint32_t field_classifier;
+		if (!target || target->binding_id != branch_binders[i].binding_id ||
+			prototype_judgement_constructor_field_classifier(
+				terms, type_declarations, contexts, substitutions,
+				refined_context, owner, constructor_index,
+				branch_binders, i, i, &field_classifier
+			) != 0 || prototype_context_extend(
+				contexts, refined_context, branch_binders[i].binding_id,
+				field_classifier, PROTOTYPE_INVALID_ID, &refined_context
+			) != 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+		refined_path[i] = refined_context;
+	}
+	uint32_t declaration_substitution;
+	if (prototype_context_substitution_from_terms(
+			contexts, substitutions, terms, type_declarations,
+			refined_context, constructor->parameter_context,
+			scrutinee_arguments, type->parameter_count,
+			&declaration_substitution
+		) != 0) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	uint32_t declaration_path[64];
+	uint32_t declaration_count;
+	if (prototype_context_extension_path(
+			contexts, constructor->parameter_context, constructor->field_context,
+			declaration_path, 64, &declaration_count
+		) != 0 || declaration_count != branch_binder_count) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	for (uint32_t i = 0; i < branch_binder_count; ++i) {
+		const struct prototype_context* field_context = prototype_context_get(
+			contexts, refined_path[i]
+		);
+		uint32_t field;
+		if (!field_context || prototype_term_var(
+				terms, branch_binders[i].binding_id, &field
+			) != 0 || prototype_substitution_extend(
+				substitutions, contexts, terms, type_declarations,
+				declaration_substitution, declaration_path[i], field,
+				prototype_context_classifier_term(field_context),
+				&declaration_substitution
+			) != 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+	}
+	uint32_t result_type_id;
+	uint32_t result_arguments[32];
+	uint32_t result_argument_count;
+	if (prototype_term_type_instance_info(
+			terms, constructor->result_classifier, &result_type_id,
+			result_arguments, &result_argument_count
+		) != 0 || result_type_id != type_id || result_argument_count !=
+			type->parameter_count + type->index_count) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	uint32_t specialized_arguments[32];
+	for (uint32_t i = 0; i < result_argument_count; ++i) {
+		if (prototype_term_reindex(
+				terms, type_declarations, contexts, substitutions,
+				result_arguments[i], declaration_substitution,
+				&specialized_arguments[i]
+			) != 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+	}
+	uint32_t index_solutions[32];
+	for (uint32_t i = 0; i < type->index_count; ++i) {
+		const struct prototype_context* source_index = prototype_context_get(
+			contexts, source_index_contexts[i]
+		);
+		if (!source_index) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+		int solve_status = solve_source_index_pattern(
+			terms,
+			source_index->binding_id,
+			scrutinee_arguments[type->parameter_count + i],
+			specialized_arguments[type->parameter_count + i],
+			&index_solutions[i]
+		);
+		if (solve_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED) {
+			return solve_status;
+		}
+	}
+	uint32_t constructor_result;
+	uint32_t constructor_term;
+	if (prototype_term_type_instance_make(
+			terms, type_declarations, type_id, specialized_arguments,
+			result_argument_count, &constructor_result
+		) != 0 || prototype_term_constructor(
+			terms, owner, constructor_index, &constructor_term
+		) != 0) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	for (uint32_t i = 0; i < branch_binder_count; ++i) {
+		uint32_t field;
+		if (prototype_term_var(
+				terms, branch_binders[i].binding_id, &field
+			) != 0 || prototype_term_app(
+				terms, constructor_term, field, &constructor_term
+			) != 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+	}
+	uint32_t substitution;
+	if (prototype_substitution_projection_path(
+			substitutions, contexts, refined_context, base_context,
+			&substitution
+		) != 0) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	for (uint32_t i = 0; i < type->index_count; ++i) {
+		const struct prototype_context* target = prototype_context_get(
+			contexts, source_index_contexts[i]
+		);
+		if (!target || prototype_substitution_extend(
+				substitutions, contexts, terms, type_declarations,
+				substitution, source_index_contexts[i],
+				index_solutions[i],
+				prototype_context_classifier_term(target), &substitution
+			) != 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+	}
+	if (prototype_substitution_extend(
+			substitutions, contexts, terms, type_declarations,
+			substitution, scrutinee_binding_context, constructor_term,
+			constructor_result, &substitution
+		) != 0) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	for (uint32_t i = 0; i < branch_binder_count; ++i) {
+		const struct prototype_context* field_context = prototype_context_get(
+			contexts, refined_path[i]
+		);
+		uint32_t field;
+		if (!field_context || prototype_term_var(
+				terms, branch_binders[i].binding_id, &field
+			) != 0 || prototype_substitution_extend(
+				substitutions, contexts, terms, type_declarations,
+				substitution, branch_path[i], field,
+				prototype_context_classifier_term(field_context), &substitution
+			) != 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+	}
+	*p_refined_context_id = refined_context;
+	*p_refinement_substitution_id = substitution;
+	*p_constructor_term = constructor_term;
+	return PROTOTYPE_INDEX_REFINEMENT_SOLVED;
+}
+
 int prototype_judgement_indexed_branch_refinement(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,

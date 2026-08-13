@@ -288,9 +288,11 @@ static int artifact_context_slice_init(
 		const struct prototype_type_declaration* type =
 			&type_declarations->type_declarations[i];
 		if (type->type_index != PROTOTYPE_INVALID_ID &&
-			artifact_context_slice_mark(
+			(artifact_context_slice_mark(
 				slice, &metadata->contexts, type->parameter_context
-			) != 0) {
+			) != 0 || artifact_context_slice_mark(
+				slice, &metadata->contexts, type->index_context
+			) != 0)) {
 			artifact_context_slice_free(slice);
 			return -1;
 		}
@@ -907,6 +909,24 @@ static int artifact_mark_type_expr(
 				);
 			}
 			return 0;
+		}
+		case PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER: {
+
+			const struct prototype_type_declaration* local_type =
+				prototype_type_declaration_lookup(
+					type_declarations,
+					expr->as.local_type_member.owner_symbol_id
+				);
+			if (!local_type || !prototype_type_declaration_lookup_constructor(
+					type_declarations,
+					local_type->type_index,
+					expr->as.local_type_member.member_symbol_id
+				)) {
+				return -1;
+			}
+			return artifact_mark_type(
+				marks, terms, local_type->type_index, depth + 1
+			);
 		}
 		case PROTOTYPE_TYPE_EXPR_APP:
 			return artifact_mark_type_expr(

@@ -33,8 +33,8 @@ void prototype_ast_db_init(
 	size_t type_expr_capacity,
 	struct prototype_ast_type_def* type_defs,
 	size_t type_def_capacity,
-	struct prototype_ast_type_parameter* type_parameters,
-	size_t type_parameter_capacity,
+	struct prototype_ast_family_binder* family_binders,
+	size_t family_binder_capacity,
 	struct prototype_ast_type_constructor* type_constructors,
 	size_t type_constructor_capacity,
 	uint32_t* type_field_exprs,
@@ -69,8 +69,8 @@ void prototype_ast_db_init(
 	db->type_expr_capacity = type_expr_capacity;
 	db->type_defs = type_defs;
 	db->type_def_capacity = type_def_capacity;
-	db->type_parameters = type_parameters;
-	db->type_parameter_capacity = type_parameter_capacity;
+	db->family_binders = family_binders;
+	db->family_binder_capacity = family_binder_capacity;
 	db->type_constructors = type_constructors;
 	db->type_constructor_capacity = type_constructor_capacity;
 	db->type_field_exprs = type_field_exprs;
@@ -184,6 +184,25 @@ int prototype_ast_type_expr_name(
 	expr.tag = PROTOTYPE_AST_TYPE_EXPR_NAME;
 	expr.span = span;
 	expr.as.name.symbol_id = symbol_id;
+	return add_type_expr(db, expr, p_ret);
+}
+
+int prototype_ast_type_expr_name_in_namespace(
+	struct prototype_ast_db* db,
+	int namespace_symbol_id,
+	int symbol_id,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	struct prototype_ast_type_expr expr;
+	if (!db || !p_ret || namespace_symbol_id < 0 || symbol_id < 0) {
+		return -1;
+	}
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE;
+	expr.span = span;
+	expr.as.name_in_namespace.namespace_symbol_id = namespace_symbol_id;
+	expr.as.name_in_namespace.symbol_id = symbol_id;
 	return add_type_expr(db, expr, p_ret);
 }
 
@@ -304,7 +323,7 @@ int prototype_ast_type_add(
 	type->name_symbol_id = name_symbol_id;
 	type->name_span = name_span;
 	type->body_span = body_span;
-	type->first_parameter = (uint32_t)db->type_parameter_count;
+	type->first_family_binder = (uint32_t)db->family_binder_count;
 	type->first_constructor = (uint32_t)db->type_constructor_count;
 	type->compiled_type = PROTOTYPE_INVALID_ID;
 	db->type_def_count++;
@@ -312,31 +331,44 @@ int prototype_ast_type_add(
 	return 0;
 }
 
-int prototype_ast_type_add_parameter(
+int prototype_ast_type_add_family_binder(
 	struct prototype_ast_db* db,
 	uint32_t ast_type_def_id,
 	uint32_t ast_binder_id,
 	int name_symbol_id,
-	uint32_t type_expr
+	uint32_t type_expr,
+	int role,
+	struct prototype_source_span span
 ) {
-	if (!db || ast_type_def_id >= db->type_def_count || type_expr >= db->type_expr_count) {
+	if (!db || ast_type_def_id >= db->type_def_count ||
+		type_expr >= db->type_expr_count ||
+		(role != PROTOTYPE_AST_FAMILY_BINDER_PARAMETER &&
+		 role != PROTOTYPE_AST_FAMILY_BINDER_INDEX)) {
 		return -1;
 	}
-	if (reserve_slot(db->type_parameter_count, db->type_parameter_capacity) != 0) {
+	if (reserve_slot(db->family_binder_count, db->family_binder_capacity) != 0) {
 		return -1;
 	}
 
 	struct prototype_ast_type_def* type = &db->type_defs[ast_type_def_id];
-	if ((uint32_t)db->type_parameter_count != type->first_parameter + type->parameter_count) {
+	if ((uint32_t)db->family_binder_count != type->first_family_binder +
+			type->parameter_count + type->index_count ||
+		(role == PROTOTYPE_AST_FAMILY_BINDER_PARAMETER && type->index_count != 0)) {
 		return -1;
 	}
 
-	uint32_t id = (uint32_t)db->type_parameter_count;
-	db->type_parameters[id].ast_binder_id = ast_binder_id;
-	db->type_parameters[id].name_symbol_id = name_symbol_id;
-	db->type_parameters[id].type_expr = type_expr;
-	db->type_parameter_count++;
-	type->parameter_count++;
+	uint32_t id = (uint32_t)db->family_binder_count;
+	db->family_binders[id].ast_binder_id = ast_binder_id;
+	db->family_binders[id].name_symbol_id = name_symbol_id;
+	db->family_binders[id].type_expr = type_expr;
+	db->family_binders[id].role = role;
+	db->family_binders[id].span = span;
+	db->family_binder_count++;
+	if (role == PROTOTYPE_AST_FAMILY_BINDER_PARAMETER) {
+		type->parameter_count++;
+	} else {
+		type->index_count++;
+	}
 	return 0;
 }
 

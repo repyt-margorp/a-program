@@ -476,6 +476,23 @@ int prototype_type_expr_external_term(
 	return add_expr(db, expr, p_ret);
 }
 
+int prototype_type_expr_local_type_member(
+	struct prototype_type_declaration_db* db,
+	int owner_symbol_id,
+	int member_symbol_id,
+	uint32_t* p_ret
+) {
+	if (owner_symbol_id < 0 || member_symbol_id < 0) {
+		return -1;
+	}
+	struct prototype_type_expr expr;
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER;
+	expr.as.local_type_member.owner_symbol_id = owner_symbol_id;
+	expr.as.local_type_member.member_symbol_id = member_symbol_id;
+	return add_expr(db, expr, p_ret);
+}
+
 int prototype_type_declaration_add(
 	struct prototype_type_declaration_db* db,
 	int name_symbol_id,
@@ -2966,6 +2983,32 @@ static int type_representation_fingerprint_term_at_depth(
 				depth + 1
 			);
 		case PROTOTYPE_TERM_TYPE_FORMER:
+			for (uint32_t candidate = 0; candidate < db->type_count; ++candidate) {
+				if (!type_declaration_present(&db->type_declarations[candidate]) ||
+					db->type_declarations[candidate].representation_id !=
+						term->as.type_former.representation_id) {
+					continue;
+				}
+				if (candidate == self_type_id) {
+					type_representation_fingerprint_hash_mix_tag(
+						p_hash, 0x73656c66U
+					);
+					return 0;
+				}
+				struct prototype_type_representation_fingerprint referenced;
+				if (prototype_type_declaration_representation_fingerprint(
+						terms,
+						db,
+						env->contexts,
+						candidate,
+						&referenced
+					) != 0) {
+					return -1;
+				}
+				type_representation_fingerprint_hash_mix_key(p_hash, &referenced);
+				type_representation_fingerprint_merge_referenced_key(key, &referenced);
+				return 0;
+			}
 			return -1;
 		default:
 			return -1;

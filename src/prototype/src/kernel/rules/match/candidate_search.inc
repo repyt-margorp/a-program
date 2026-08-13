@@ -318,9 +318,16 @@ static int match_motive_result_classifier(
 	}
 	const struct prototype_term* match = &terms->terms[match_term];
 	const struct prototype_term* app = &terms->terms[classifier];
-	return app->as.app.argument == match->as.match.scrutinee &&
-		app->as.app.function < terms->term_count &&
-		terms->terms[app->as.app.function].tag == PROTOTYPE_TERM_LAMBDA;
+	if (app->as.app.argument != match->as.match.scrutinee) {
+		return 0;
+	}
+	uint32_t head = app->as.app.function;
+	while (head < terms->term_count &&
+		terms->terms[head].tag == PROTOTYPE_TERM_APP) {
+		head = terms->terms[head].as.app.function;
+	}
+	return head < terms->term_count &&
+		terms->terms[head].tag == PROTOTYPE_TERM_LAMBDA;
 }
 
 static int select_existing_match_motive_result(

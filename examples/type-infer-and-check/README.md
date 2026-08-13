@@ -11,8 +11,7 @@ The levels describe language features, not separate compiler modes:
 - `level0`: Universe and Pi formation;
 - `level1`: finite and parameterized non-recursive ADTs;
 - `level2`: structural recursion and induction;
-- `level3`: indexed inductive families, retained as explicit negative
-  boundaries until index refinement is implemented.
+- `level3`: indexed inductive families with explicit parameter/index binders.
 
 <!-- BEGIN MANIFEST STATUS -->
 | File | Description | Expected result | Diagnostic | Runtime | Artifact replay |
@@ -29,10 +28,10 @@ The levels describe language features, not separate compiler modes:
 | `level2/01_list.p` | List recursion and append | pass | `-` | checked | yes |
 | `level2/02_tree.p` | Binary-tree recursion | pass | `-` | checked | yes |
 | `level2/03_rose.p` | Nested recursive occurrence through List | expected failure | `unsupported-nested-recursion` | - | no |
-| `level3/00_vec.p` | Length-indexed vectors | expected failure | `unsupported-indexed-family` | - | no |
-| `level3/01_fin.p` | Finite sets indexed by Nat | expected failure | `unsupported-indexed-family` | - | no |
-| `level3/02_eq.p` | Indexed propositional equality declaration | expected failure | `unsupported-indexed-family` | - | no |
-| `level3/03_matrix.p` | Matrices with multiple indices | expected failure | `unsupported-indexed-family` | - | no |
+| `level3/00_vec.p` | Length-indexed vectors | pass | `-` | checked | yes |
+| `level3/01_fin.p` | Finite sets indexed by Nat | pass | `-` | checked | yes |
+| `level3/02_eq.p` | Indexed propositional equality declaration | pass | `-` | checked | yes |
+| `level3/03_matrix.p` | Matrices with multiple indices | pass | `-` | checked | yes |
 <!-- END MANIFEST STATUS -->
 
 Run the suite from the repository root:

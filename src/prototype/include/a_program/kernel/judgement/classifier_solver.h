@@ -25,6 +25,36 @@ int prototype_judgement_resolve_match_constructor(
 	struct prototype_match_constructor_resolution* p_resolution
 );
 
+/* A recursive field may change family indices, but it must retain the same
+ * nominal family and uniform parameter spine as the matched scrutinee. */
+int prototype_judgement_classifier_is_recursive_family_instance(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t candidate,
+	uint32_t scrutinee_classifier,
+	int* p_recursive
+);
+int prototype_judgement_classifier_is_strictly_positive_recursive_field(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t candidate,
+	uint32_t scrutinee_classifier,
+	int* p_recursive
+);
+
+/* Lift one strictly-positive recursive field through its Pi codomains. The
+ * direct recursive leaf is replaced by the Match motive applied to the field
+ * value at that leaf; Pi domains are required to be non-recursive. */
+int prototype_judgement_lift_recursive_field_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t candidate,
+	uint32_t field_value,
+	uint32_t scrutinee_classifier,
+	uint32_t motive,
+	uint32_t* p_classifier
+);
+
 int prototype_judgement_synthesize_match_pattern_classifier(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,

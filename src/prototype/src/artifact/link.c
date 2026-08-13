@@ -612,7 +612,7 @@ static int artifact_append_accepted_judgement(
 			claim_relocation[source_derivation->conclusion_claim_id];
 		/* Older wire formats carried this derived cache. The accepted append
 		 * preserves the source DAG exactly, so its topological rank remains valid
-		 * after ID relocation. v72 recomputes rank on read. */
+		 * after ID relocation. v73 recomputes rank on read. */
 		derivation.closure_rank = source_derivation->closure_rank;
 		derivation.premises = premises;
 		derivation.key_hash = 0;
@@ -1677,7 +1677,16 @@ int prototype_internal_artifact_append_graph_ordered(
 				return -1;
 			}
 			type.type_index = type_relocation[type.type_index];
-			type.representation_id = PROTOTYPE_INVALID_ID;
+				if (type.representation_id >= source_representation_count ||
+					representation_relocation[type.representation_id] ==
+						PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				/* Keep the already-computed relocation available while fingerprints
+				 * are rebuilt. Indexed result terms can contain erased TYPE_FORMER
+				 * references to an earlier declaration. */
+				type.representation_id =
+					representation_relocation[type.representation_id];
 			if (type.formation_classifier >= term_relocation_capacity) {
 				return -1;
 			}

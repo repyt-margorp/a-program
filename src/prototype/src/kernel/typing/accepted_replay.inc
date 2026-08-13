@@ -517,6 +517,8 @@ static int validate_match_elim_proof(
 static int validate_induction_hypothesis_elim_proof(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_proposition* relation,
 	const struct prototype_judgement_derivation_candidate* proof
@@ -558,30 +560,90 @@ static int validate_induction_hypothesis_elim_proof(
 	if (!binder->is_recursive) {
 		return -1;
 	}
-	uint32_t match_classifier;
 	uint32_t expected_classifier;
-	if (prototype_term_app(
-			terms,
-			proof->rule_data.induction.motive,
-			match->as.match.scrutinee,
-			&match_classifier
-		) != 0 || !match_motive_result_classifier(
-			terms, proof->rule_data.induction.match, match_classifier
-		) || prototype_term_app(
-			terms,
-			proof->rule_data.induction.motive,
-			ih->as.induction_hypothesis.argument,
-			&expected_classifier
-		) != 0) {
-		return -1;
+	int schema_status = -1;
+	if (contexts && substitutions) {
+		uint32_t field_classifier;
+		schema_status = prototype_judgement_constructor_field_classifier(
+			terms, type_declarations, contexts, substitutions,
+			relation->context_id,
+			terms->cases[case_id].constructor_owner,
+			terms->cases[case_id].constructor_id,
+			&terms->case_binders[terms->cases[case_id].first_binder],
+			proof->rule_data.induction.field_index,
+			proof->rule_data.induction.field_index,
+			&field_classifier
+		);
+		if (schema_status == 0) {
+			schema_status = prototype_judgement_lift_recursive_field_classifier(
+				terms, type_declarations, field_classifier,
+				ih->as.induction_hypothesis.argument,
+				terms->cases[case_id].constructor_owner,
+				proof->rule_data.induction.motive,
+				&expected_classifier
+			);
+		}
+	}
+	if (schema_status != 0) {
+		/* Source operations are replayed from the authoritative constructor
+		 * schema. Compiler-generated helper claims, including relation actions,
+		 * may intentionally have no matching source Context and retain the
+		 * original direct-motive replay rule. */
+		if (relation->authority_kind ==
+			PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION) {
+			return -1;
+		}
+		if (prototype_term_app(
+				terms, proof->rule_data.induction.motive,
+				ih->as.induction_hypothesis.argument,
+				&expected_classifier
+			) != 0) {
+			return -1;
+		}
 	}
 	(void)judgement;
-	return prototype_judgement_classifier_conversion(
+	int conversion = prototype_judgement_classifier_conversion(
 		terms,
 		type_declarations,
 		expected_classifier,
 		relation->classifier
-	).status == PROTOTYPE_TERM_CONVERSION_EQUAL ? 0 : -1;
+	).status;
+	if (conversion == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		return 0;
+	}
+	/* A higher-order recursive field lifts to a function value.  The IH
+	 * operation constructs that value purely, so its operation classifier is
+	 * Comp({}, lifted-field), unlike a direct recursive leaf whose motive is
+	 * already a computation classifier. */
+	struct prototype_term_classifier_view relation_view;
+	struct prototype_effect_row_normal_form row;
+	if (prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, relation->classifier, &relation_view
+		) != 0 || relation_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		relation_view.computation_kind !=
+			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		prototype_term_effect_row_normal_form(
+			terms, relation_view.effect_row, &row
+		) != 0 || row.atom_count != 0) {
+		return -1;
+	}
+	int inner_conversion = prototype_judgement_classifier_conversion(
+		terms, type_declarations, expected_classifier, relation_view.result
+	).status;
+	if (inner_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		uint32_t solved_expected;
+		int solve_status = prototype_judgement_solve_expected_effect_rows(
+				terms, type_declarations, NULL, expected_classifier,
+				relation_view.result, &solved_expected
+			);
+		int compatible = solve_status == 0 && prototype_judgement_classifier_compatible(
+				terms, type_declarations, solved_expected, relation_view.result
+			);
+		if (solve_status != 0 || !compatible) {
+			return -1;
+		}
+	}
+	return 0;
 }
 
 /* Match is the elimination boundary that joins branch effects. Its branch
@@ -633,12 +695,15 @@ static int match_branch_classifier_satisfies_motive(
 static int validate_solved_match_motive_proof(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
 	const struct prototype_operation_graph* operations,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_proposition* relation,
 	const struct prototype_judgement_derivation_candidate* proof
 ) {
-	if (!terms || !type_declarations || !judgement || !relation || !proof ||
+	if (!terms || !type_declarations || !contexts || !substitutions ||
+		!judgement || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		!match_motive_result_classifier(terms, relation->subject, relation->classifier)) {
 		fprintf(stderr, "P0 motive validator header failed\n");
@@ -665,8 +730,16 @@ static int validate_solved_match_motive_proof(
 		}
 	}
 	const struct prototype_term* motive_app = &terms->terms[relation->classifier];
-	const struct prototype_term* motive =
-		&terms->terms[motive_app->as.app.function];
+	uint32_t motive_id = motive_app->as.app.function;
+	while (motive_id < terms->term_count &&
+		terms->terms[motive_id].tag == PROTOTYPE_TERM_APP) {
+		motive_id = terms->terms[motive_id].as.app.function;
+	}
+	if (motive_id >= terms->term_count ||
+		terms->terms[motive_id].tag != PROTOTYPE_TERM_LAMBDA) {
+		return -1;
+	}
+	const struct prototype_term* motive = &terms->terms[motive_id];
 	if (motive->as.lambda.body >= terms->term_count) {
 		return -1;
 	}
@@ -678,6 +751,9 @@ static int validate_solved_match_motive_proof(
 		for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
 			uint32_t case_id = match->as.match.first_case + i;
 			uint32_t expected_classifier;
+			uint32_t constructor;
+			uint32_t constructor_classifier;
+			uint32_t argument_classifiers[16];
 			if (case_id >= terms->case_count) {
 				return -1;
 			}
@@ -693,14 +769,70 @@ static int validate_solved_match_motive_proof(
 				expected_subject =
 					operations->operations[typed_case->body_operation].core_term;
 			}
-			if (proof->premises[i].proposition.kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			const struct prototype_match_case* match_case = &terms->cases[case_id];
+			uint32_t owner_type_id;
+			uint32_t owner_arguments[16];
+			uint32_t owner_argument_count;
+			if (prototype_type_declaration_instance_info(
+					type_declarations, terms, match_case->constructor_owner,
+					&owner_type_id, owner_arguments, 16, &owner_argument_count
+				) != 0 || owner_type_id >= type_declarations->type_count) {
+				return -1;
+			}
+			if (type_declarations->type_declarations[owner_type_id].index_count == 0) {
+				if (proof->premises[i].proposition.kind !=
+						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+					proof->premises[i].proposition.subject != expected_subject ||
+					match_case_motive_classifier(
+						terms, match_case, motive_app->as.app.function,
+						&expected_classifier
+					) != 0 || !match_branch_classifier_satisfies_motive(
+						terms, type_declarations,
+						proof->premises[i].proposition.classifier,
+						expected_classifier
+					)) {
+					return -1;
+				}
+				continue;
+			}
+			if (match_case->binder_count > 16 ||
+				match_case_constructor_term(terms, match_case, &constructor) != 0) {
+				return -1;
+			}
+			for (uint32_t j = 0; j < match_case->binder_count; ++j) {
+				uint32_t binding_context;
+				const struct prototype_context* binding_entry;
+				if (prototype_context_find_binding(
+						contexts, proof->premises[i].proposition.context_id,
+						terms->case_binders[match_case->first_binder + j].binding_id,
+						&binding_context
+					) != 0 || !(binding_entry = prototype_context_get(
+						contexts, binding_context
+					))) {
+					return -1;
+				}
+				argument_classifiers[j] =
+					prototype_context_classifier_term(binding_entry);
+			}
+			int saturated;
+			int constructor_status = prototype_judgement_constructor_spine_classifier(
+					terms, type_declarations, contexts, substitutions,
+					proof->premises[i].proposition.context_id,
+					constructor, match_case->constructor_owner,
+					argument_classifiers, match_case->binder_count,
+					&constructor_classifier, &saturated
+				);
+			int motive_status = constructor_status ==
+				PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_VALID && saturated ?
+				prototype_judgement_apply_indexed_motive(
+					terms, type_declarations, motive_id, constructor,
+					constructor_classifier, 1, &expected_classifier
+				) : -1;
+			if (constructor_status != PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_VALID ||
+				!saturated || motive_status != 0 ||
+				proof->premises[i].proposition.kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 				proof->premises[i].proposition.subject != expected_subject ||
-				match_case_motive_classifier(
-					terms,
-					&terms->cases[case_id],
-					motive_app->as.app.function,
-					&expected_classifier
-				) != 0) {
+				proof->premises[i].proposition.context_id == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
 			if (!match_branch_classifier_satisfies_motive(
@@ -709,7 +841,38 @@ static int validate_solved_match_motive_proof(
 					proof->premises[i].proposition.classifier,
 					expected_classifier
 				)) {
-				return -1;
+				uint32_t refined_context;
+				uint32_t refinement_substitution;
+				uint32_t refined_constructor;
+				uint32_t refined_expected;
+				if (!match_operation || match_operation->scrutinee >=
+						operations->operation_count ||
+					prototype_judgement_source_indexed_branch_refinement(
+						contexts, substitutions, terms, type_declarations,
+						operations->operations[match_operation->scrutinee].context_id,
+						match->as.match.scrutinee,
+						operations->operations[match_operation->scrutinee].classifier,
+						match_case->constructor_id,
+						proof->premises[i].proposition.context_id,
+						&terms->case_binders[match_case->first_binder],
+						match_case->binder_count, &refined_context,
+						&refinement_substitution, &refined_constructor
+					) != PROTOTYPE_INDEX_REFINEMENT_SOLVED ||
+					prototype_term_reindex(
+						terms, type_declarations, contexts, substitutions,
+						expected_classifier, refinement_substitution,
+						&refined_expected
+					) != 0) {
+					return -1;
+				}
+				if (!match_branch_classifier_satisfies_motive(
+						terms, type_declarations,
+						proof->premises[i].proposition.classifier,
+						refined_expected
+					)) {
+					return -1;
+				}
+				(void)refined_constructor;
 			}
 		}
 		return 0;
@@ -1171,7 +1334,7 @@ int prototype_judgement_add_induction_hypothesis_claim(
 	proof.rule_data.induction.case_index = case_index;
 	proof.rule_data.induction.field_index = field_index;
 	if (validate_induction_hypothesis_elim_proof(
-			terms, type_declarations, judgement, &conclusion, &proof
+			terms, type_declarations, NULL, NULL, judgement, &conclusion, &proof
 		) != 0) {
 		return -1;
 	}
@@ -5217,6 +5380,8 @@ int prototype_judgement_validate_accepted_graph(
 					if (validate_solved_match_motive_proof(
 							terms,
 							type_declarations,
+							contexts,
+							substitutions,
 							operations,
 							judgement,
 							relation,
@@ -5229,6 +5394,8 @@ int prototype_judgement_validate_accepted_graph(
 				if (validate_induction_hypothesis_elim_proof(
 						terms,
 						type_declarations,
+						contexts,
+						substitutions,
 						judgement,
 						relation,
 						proof

@@ -1082,6 +1082,124 @@ static int constant_match_is_exhaustive(
 	return 1;
 }
 
+static int induction_hypothesis_recursive_match(
+	struct prototype_term_db* db,
+	uint32_t ih_scope_id,
+	uint32_t argument,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || argument >= db->term_count ||
+		ih_scope_id >= db->ih_scope_count) {
+		return -1;
+	}
+	uint32_t match_term = db->ih_scopes[ih_scope_id].match_term;
+	if (match_term >= db->term_count ||
+		db->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
+		return 1;
+	}
+	const struct prototype_term* frame_match = &db->terms[match_term];
+	struct prototype_match_case_input case_inputs[64];
+	struct prototype_case_binder binder_storage[256];
+	uint32_t binder_cursor = 0;
+	if (frame_match->as.match.case_count > 64) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < frame_match->as.match.case_count; ++i) {
+		const struct prototype_match_case* old_case =
+			&db->cases[frame_match->as.match.first_case + i];
+		if (binder_cursor + old_case->binder_count > 256) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < old_case->binder_count; ++j) {
+			binder_storage[binder_cursor + j] =
+				db->case_binders[old_case->first_binder + j];
+		}
+		case_inputs[i].case_label_symbol_id =
+			db->case_label_symbols[frame_match->as.match.first_case + i];
+		case_inputs[i].constructor_owner = old_case->constructor_owner;
+		case_inputs[i].constructor_id = old_case->constructor_id;
+		case_inputs[i].binders = &binder_storage[binder_cursor];
+		case_inputs[i].binder_count = old_case->binder_count;
+		case_inputs[i].body = old_case->body;
+		binder_cursor += old_case->binder_count;
+	}
+	return prototype_term_match_with_ih_scope(
+		db,
+		argument,
+		case_inputs,
+		frame_match->as.match.case_count,
+		ih_scope_id,
+		p_ret
+	);
+}
+
+/* Map the recursive eliminator through the runtime representation of a
+ * strictly-positive field. A source function value is THUNK(LAMBDA(...)); its
+ * body is sequenced and mapped again until the recursive ADT value is reached.
+ * This is the operational action of the existing CBPV constructors, not a
+ * second persisted positivity schema. */
+static int induction_hypothesis_map_value(
+	struct prototype_term_db* db,
+	uint32_t ih_scope_id,
+	uint32_t value,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || value >= db->term_count ||
+		ih_scope_id >= db->ih_scope_count) {
+		return -1;
+	}
+	if (db->terms[value].tag != PROTOTYPE_TERM_THUNK) {
+		return induction_hypothesis_recursive_match(
+			db, ih_scope_id, value, p_ret
+		);
+	}
+	uint32_t computation = db->terms[value].as.thunk.computation;
+	if (computation >= db->term_count) {
+		return -1;
+	}
+	uint32_t result_binding = prototype_term_new_binding(db);
+	uint32_t result_var;
+	uint32_t recursive_result;
+	uint32_t continuation;
+	if (result_binding == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(db, result_binding, &result_var) != 0 ||
+		prototype_term_induction_hypothesis(
+			db, ih_scope_id, result_var, &recursive_result
+		) != 0 || prototype_term_lambda(
+			db, result_binding, recursive_result, &continuation
+		) != 0) {
+		return -1;
+	}
+	if (db->terms[computation].tag == PROTOTYPE_TERM_LAMBDA) {
+		const struct prototype_term* function = &db->terms[computation];
+		uint32_t mapped_body;
+		uint32_t mapped_function;
+		uint32_t mapped_thunk;
+		if (prototype_term_computation_fold(
+				db, function->as.lambda.body, continuation, NULL, 0,
+				&mapped_body
+			) != 0 || prototype_term_lambda(
+				db, function->as.lambda.binding_id, mapped_body,
+				&mapped_function
+			) != 0 || prototype_term_thunk(
+				db, mapped_function, &mapped_thunk
+			) != 0) {
+			return -1;
+		}
+		return prototype_term_return(db, mapped_thunk, p_ret);
+	}
+	uint32_t mapped_computation;
+	uint32_t mapped_thunk;
+	if (prototype_term_computation_fold(
+			db, computation, continuation, NULL, 0, &mapped_computation
+		) != 0 || prototype_term_thunk(
+			db, mapped_computation, &mapped_thunk
+		) != 0) {
+		return -1;
+	}
+	return prototype_term_return(db, mapped_thunk, p_ret);
+}
+
 static int evaluate_steps(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -1417,52 +1535,19 @@ static int evaluate_steps(
 				return -1;
 			}
 
-			if (term->as.induction_hypothesis.ih_scope_id >= db->ih_scope_count) {
+			uint32_t mapped;
+			int map_status = induction_hypothesis_map_value(
+				db,
+				term->as.induction_hypothesis.ih_scope_id,
+				argument,
+				&mapped
+			);
+			if (map_status < 0) {
 				return -1;
 			}
-			uint32_t match_term = db->ih_scopes[term->as.induction_hypothesis.ih_scope_id].match_term;
-			if (match_term >= db->term_count || db->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
+			if (map_status > 0) {
 				*p_ret = term_id;
 				return 0;
-			}
-
-			const struct prototype_term* frame_match = &db->terms[match_term];
-			struct prototype_match_case_input case_inputs[64];
-			struct prototype_case_binder binder_storage[256];
-			uint32_t binder_cursor = 0;
-			if (frame_match->as.match.case_count > 64) {
-				return -1;
-			}
-			for (uint32_t i = 0; i < frame_match->as.match.case_count; ++i) {
-				const struct prototype_match_case* old_case =
-					&db->cases[frame_match->as.match.first_case + i];
-				if (binder_cursor + old_case->binder_count > 256) {
-					return -1;
-				}
-				for (uint32_t j = 0; j < old_case->binder_count; ++j) {
-					binder_storage[binder_cursor + j] =
-						db->case_binders[old_case->first_binder + j];
-				}
-				case_inputs[i].case_label_symbol_id =
-					db->case_label_symbols[frame_match->as.match.first_case + i];
-				case_inputs[i].constructor_owner = old_case->constructor_owner;
-				case_inputs[i].constructor_id = old_case->constructor_id;
-				case_inputs[i].binders = &binder_storage[binder_cursor];
-				case_inputs[i].binder_count = old_case->binder_count;
-				case_inputs[i].body = old_case->body;
-				binder_cursor += old_case->binder_count;
-			}
-
-			uint32_t recursive_match;
-			if (prototype_term_match_with_ih_scope(
-				db,
-				argument,
-				case_inputs,
-				frame_match->as.match.case_count,
-				term->as.induction_hypothesis.ih_scope_id,
-				&recursive_match
-			) != 0) {
-				return -1;
 			}
 			if (options.p_induction_hypothesis_reductions) {
 				(*options.p_induction_hypothesis_reductions)++;
@@ -1472,7 +1557,7 @@ static int evaluate_steps(
 				type_declarations,
 				definitions,
 				options,
-				recursive_match,
+				mapped,
 				p_ret,
 				depth - 1
 			);

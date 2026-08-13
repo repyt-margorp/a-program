@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v72.h"
+#include "a_program/artifact/wire_v73.h"
 
 #include "a_program/graph/operation_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -582,6 +582,12 @@ static int read_artifact_type_expr(
 					&expr->as.external_term.name.namespace_symbol_id
 				) == 0 &&
 					read_artifact_symbol(stream, symbols, &expr->as.external_term.name.name_symbol_id) == 0 ? 0 : -1;
+			case PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER:
+				return read_artifact_symbol(
+						stream, symbols, &expr->as.local_type_member.owner_symbol_id
+					) == 0 && read_artifact_symbol(
+						stream, symbols, &expr->as.local_type_member.member_symbol_id
+					) == 0 ? 0 : -1;
 		case PROTOTYPE_TYPE_EXPR_APP:
 			return fscanf(stream, "%u %u", &expr->as.app.function, &expr->as.app.argument) == 2 ? 0 : -1;
 		case PROTOTYPE_TYPE_EXPR_ARROW:
@@ -943,6 +949,7 @@ static int artifact_validate_type_expr_refs(
 			case PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64:
 			case PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE:
 			case PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM:
+			case PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER:
 				return 0;
 		case PROTOTYPE_TYPE_EXPR_APP:
 			return artifact_read_type_expr_present(type_declarations, expr->as.app.function) &&

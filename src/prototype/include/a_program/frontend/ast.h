@@ -55,7 +55,8 @@ enum prototype_ast_type_expr_tag {
 	PROTOTYPE_AST_TYPE_EXPR_ARROW,
 	PROTOTYPE_AST_TYPE_EXPR_PI,
 	PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE,
-	PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE
+	PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE,
+	PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE
 };
 
 struct prototype_source_span {
@@ -80,6 +81,10 @@ struct prototype_ast_type_expr {
 		struct {
 			int symbol_id;
 		} name;
+		struct {
+			int namespace_symbol_id;
+			int symbol_id;
+		} name_in_namespace;
 		struct {
 			uint32_t function;
 			uint32_t argument;
@@ -206,10 +211,17 @@ struct prototype_ast_node {
 	} as;
 };
 
-struct prototype_ast_type_parameter {
+enum prototype_ast_family_binder_role {
+	PROTOTYPE_AST_FAMILY_BINDER_PARAMETER = 1,
+	PROTOTYPE_AST_FAMILY_BINDER_INDEX = 2
+};
+
+struct prototype_ast_family_binder {
 	uint32_t ast_binder_id;
 	int name_symbol_id;
 	uint32_t type_expr;
+	int role;
+	struct prototype_source_span span;
 };
 
 struct prototype_ast_type_constructor {
@@ -224,8 +236,9 @@ struct prototype_ast_type_def {
 	int name_symbol_id;
 	struct prototype_source_span name_span;
 	struct prototype_source_span body_span;
-	uint32_t first_parameter;
+	uint32_t first_family_binder;
 	uint32_t parameter_count;
+	uint32_t index_count;
 	uint32_t first_constructor;
 	uint32_t constructor_count;
 	uint32_t compiled_type;
@@ -386,9 +399,9 @@ struct prototype_ast_db {
 	size_t type_def_count;
 	size_t type_def_capacity;
 
-	struct prototype_ast_type_parameter* type_parameters;
-	size_t type_parameter_count;
-	size_t type_parameter_capacity;
+	struct prototype_ast_family_binder* family_binders;
+	size_t family_binder_count;
+	size_t family_binder_capacity;
 
 	struct prototype_ast_type_constructor* type_constructors;
 	size_t type_constructor_count;
@@ -431,8 +444,8 @@ void prototype_ast_db_init(
 	size_t type_expr_capacity,
 	struct prototype_ast_type_def* type_defs,
 	size_t type_def_capacity,
-	struct prototype_ast_type_parameter* type_parameters,
-	size_t type_parameter_capacity,
+	struct prototype_ast_family_binder* family_binders,
+	size_t family_binder_capacity,
 	struct prototype_ast_type_constructor* type_constructors,
 	size_t type_constructor_capacity,
 	uint32_t* type_field_exprs,
@@ -506,6 +519,13 @@ int prototype_ast_type_expr_computation_reference(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
+int prototype_ast_type_expr_name_in_namespace(
+	struct prototype_ast_db* db,
+	int namespace_symbol_id,
+	int symbol_id,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
 int prototype_ast_type_add(
 	struct prototype_ast_db* db,
 	int name_symbol_id,
@@ -513,12 +533,14 @@ int prototype_ast_type_add(
 	struct prototype_source_span body_span,
 	uint32_t* p_type_def_id
 );
-int prototype_ast_type_add_parameter(
+int prototype_ast_type_add_family_binder(
 	struct prototype_ast_db* db,
 	uint32_t ast_type_def_id,
 	uint32_t ast_binder_id,
 	int name_symbol_id,
-	uint32_t type_expr
+	uint32_t type_expr,
+	int role,
+	struct prototype_source_span span
 );
 int prototype_ast_type_add_constructor(
 	struct prototype_ast_db* db,

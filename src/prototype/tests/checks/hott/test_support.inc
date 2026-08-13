@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v72.h"
+#include "a_program/artifact/wire_v73.h"
 #include "a_program/graph/operation_usage.h"
 #include "a_program/identity/types.h"
 #include "a_program/identity/telescope_action.h"

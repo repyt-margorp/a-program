@@ -19,7 +19,7 @@ src/core/             erased computation terms
 src/kernel/           contexts, declarations, universes, and judgements
 src/frontend/         reader, surface AST, and lowering
 src/graph/            typed OperationGraph and compile metadata
-src/artifact/         interface publication, v72 wire format, relocation, link
+src/artifact/         interface publication, v73 wire format, relocation, link
 src/identity/         relation action and object Identity computation
 src/driver/           command-line and REPL entry points
 tests/checks/         compiled audit programs
@@ -56,7 +56,7 @@ proof/action construction order.
   operation node records the source occurrence, its typed binder and Match
   information, and a pointer to the erased `core_term`.
 - `include/a_program/artifact/`, `src/artifact/`: artifact interface,
-  publication closure, v72 wire reader/writer, relocation, and linking.
+  publication closure, v73 wire reader/writer, relocation, and linking.
 - `include/a_program/kernel/judgement/`, `src/kernel/judgement.c`,
   `src/kernel/typing/`, and `src/kernel/rules/`: Proposition, Claim, and
   Derivation storage; classifier conversion and solving; candidate publication;
@@ -527,10 +527,10 @@ result. The current implementation rejects arbitrary incomplete solver work;
 `hybrid` permits only residual obligations with a defined runtime verifier.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 72 <calculus-fingerprint>`. The reader accepts that version
+`A_PROGRAM_ARTIFACT 73 <calculus-fingerprint>`. The reader accepts that version
 and exact fingerprint only; old artifact versions are intentionally rejected
 instead of being kept as compatibility paths. The canonical format and trust
-boundary are specified by `spec/artifact_v72.schema`; the implemented
+boundary are specified by `spec/artifact_v73.schema`; the implemented
 HOTT/Identity fragment is specified by `spec/hott_fragment_v5.schema`.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor
@@ -742,7 +742,7 @@ make -f src/prototype/Makefile test-integration
 
 It checks that `identityBool := \x : Bool => x;` and
 `identityNat := \y : Nat => y;` publish the same core lambda term, that artifact
-v72 debug/name records are readable, that term exports keep distinct classifier
+v73 debug/name records are readable, that term exports keep distinct classifier
 keys even when they share a core term, that a split `Nat.apo` + `List.apo`
 compile can build `(List Nat).nil` through explicit interface imports and
 through source-level `import Nat; import List;` plus `--import-search-dir`, and

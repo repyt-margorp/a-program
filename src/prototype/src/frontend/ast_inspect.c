@@ -78,6 +78,8 @@ static const char* type_expr_tag_name(int tag) {
 				return "computation-reference";
 			case PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE:
 				return "host-type";
+			case PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE:
+				return "name-in-namespace";
 			default:
 				return "unknown";
 	}
