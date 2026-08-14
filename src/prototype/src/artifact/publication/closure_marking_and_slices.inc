@@ -1639,7 +1639,7 @@ static int artifact_mark_accepted_claim(
 		}
 	}
 	if (!found) {
-		fprintf(stderr, "artifact closure: accepted claim %u has no derivation\n", claim_id);
+		fprintf(stderr, "artifact closure: accepted claim %u proposition=%u has no derivation\n", claim_id, claim->proposition_id);
 		return -1;
 	}
 	marks->claims[claim_id] = 1;

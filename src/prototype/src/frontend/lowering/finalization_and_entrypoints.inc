@@ -157,6 +157,28 @@ static int operation_check_classifier(
 	}
 	const struct prototype_operation_node* operation =
 		&ctx->metadata->operations[operation_id];
+	/* Nested surface lambdas are represented by a direct OperationGraph edge,
+	 * while their enclosing Pi codomain records the implicit
+	 * RETURN(THUNK(lambda)) boundary. Expose the raw Pi before checking the
+	 * lambda occurrence itself. */
+	if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
+		ctx->terms->terms[expected_classifier].tag ==
+			PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		uint32_t result = ctx->terms->terms[
+			expected_classifier
+		].as.computation_type.result;
+		if (result < ctx->terms->term_count &&
+			ctx->terms->terms[result].tag == PROTOTYPE_TERM_THUNK_TYPE) {
+			expected_classifier =
+				ctx->terms->terms[result].as.thunk_type.computation;
+		}
+	}
+	if (operation->tag == PROTOTYPE_OPERATION_NAME &&
+		operation->function < ctx->metadata->operation_count) {
+		return operation_check_classifier(
+			ctx, operation->function, expected_classifier, depth + 1
+		);
+	}
 	if (operation->tag == PROTOTYPE_OPERATION_ASCRIPTION &&
 		operation->body < ctx->metadata->operation_count) {
 		return operation_check_classifier(
@@ -164,12 +186,26 @@ static int operation_check_classifier(
 		);
 	}
 	uint32_t actual_classifier = operation_available_classifier(operation);
-	if (actual_classifier < ctx->terms->term_count &&
-		prototype_judgement_classifier_conversion(
-			ctx->terms, ctx->type_declarations,
-			expected_classifier, actual_classifier
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
-		return 1;
+	if (operation->tag == PROTOTYPE_OPERATION_THUNK &&
+		operation->argument < ctx->metadata->operation_count &&
+		ctx->terms->terms[expected_classifier].tag == PROTOTYPE_TERM_THUNK_TYPE) {
+		return operation_check_classifier(
+			ctx,
+			operation->argument,
+			ctx->terms->terms[expected_classifier].as.thunk_type.computation,
+			depth + 1
+		);
+	}
+	if (operation->tag == PROTOTYPE_OPERATION_RETURN &&
+		operation->argument < ctx->metadata->operation_count &&
+		ctx->terms->terms[expected_classifier].tag ==
+			PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		return operation_check_classifier(
+			ctx,
+			operation->argument,
+			ctx->terms->terms[expected_classifier].as.computation_type.result,
+			depth + 1
+		);
 	}
 	if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
 		operation->body < ctx->metadata->operation_count &&
@@ -181,6 +217,7 @@ static int operation_check_classifier(
 		uint32_t expected_body;
 		uint32_t body_binder_var;
 		uint32_t specialized_body;
+		uint32_t solved_expected_domain;
 		int pi_status = prototype_judgement_pi_parts(
 				ctx->terms, expected_classifier,
 				&expected_domain, &expected_family
@@ -191,14 +228,20 @@ static int operation_check_classifier(
 			) : -1;
 		int domain_equal = pi_status == 0 && family_status == 0 &&
 			operation->binder_classifier < ctx->terms->term_count &&
-			(prototype_judgement_classifier_conversion(
+			(prototype_judgement_classifier_reference_equal(
 				ctx->terms, ctx->type_declarations,
 				expected_domain, operation->binder_classifier
-			).status == PROTOTYPE_TERM_CONVERSION_EQUAL ||
-			 prototype_judgement_classifier_compatible(
-				ctx->terms, ctx->type_declarations,
-				expected_domain, operation->binder_classifier
-			));
+			) || (prototype_judgement_solve_expected_effect_rows(
+					ctx->terms, ctx->type_declarations, NULL,
+					expected_domain, operation->binder_classifier,
+					&solved_expected_domain
+				) == 0 && prototype_judgement_classifier_reference_equal(
+					ctx->terms, ctx->type_declarations,
+					solved_expected_domain, operation->binder_classifier
+				)) || prototype_judgement_classifier_compatible(
+					ctx->terms, ctx->type_declarations,
+					expected_domain, operation->binder_classifier
+				));
 		if (pi_status != 0 || family_status != 0 || !domain_equal ||
 			prototype_term_var(
 				ctx->terms,
@@ -383,7 +426,181 @@ static int operation_check_classifier(
 		}
 		return 1;
 	}
-	return 0;
+	return actual_classifier < ctx->terms->term_count &&
+		prototype_judgement_classifier_conversion(
+			ctx->terms, ctx->type_declarations,
+			expected_classifier, actual_classifier
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL;
+}
+
+/* Propagate an independently established expected classifier through the
+ * source-operation structure. This is a later constraint-solving step, not
+ * bidirectional surface elaboration: synthesis has already built every node.
+ * In particular, an all-impossible indexed Match may acquire its motive from
+ * a constructor domain without allowing an unreachable branch body to choose
+ * that motive. */
+static int operation_refine_classifier_from_expected(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t expected_classifier,
+	uint32_t depth,
+	int* p_changed
+) {
+	if (!ctx || !p_changed || operation_id >= ctx->metadata->operation_count ||
+		expected_classifier >= ctx->terms->term_count || depth > 128) {
+		return -1;
+	}
+	const struct prototype_operation_node* operation =
+		&ctx->metadata->operations[operation_id];
+	if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
+		ctx->terms->terms[expected_classifier].tag ==
+			PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		uint32_t result = ctx->terms->terms[
+			expected_classifier
+		].as.computation_type.result;
+		if (result < ctx->terms->term_count &&
+			ctx->terms->terms[result].tag == PROTOTYPE_TERM_THUNK_TYPE) {
+			expected_classifier =
+				ctx->terms->terms[result].as.thunk_type.computation;
+		}
+	}
+	int check = operation_check_classifier(
+		ctx, operation_id, expected_classifier, depth
+	);
+	if (check <= 0) {
+		return check;
+	}
+	if (operation->tag == PROTOTYPE_OPERATION_ASCRIPTION &&
+		operation->body < ctx->metadata->operation_count) {
+		int status = operation_refine_classifier_from_expected(
+			ctx, operation->body, expected_classifier, depth + 1, p_changed
+		);
+		if (status <= 0) {
+			return status;
+		}
+	} else if (operation->tag == PROTOTYPE_OPERATION_NAME &&
+		operation->function < ctx->metadata->operation_count) {
+		int status = operation_refine_classifier_from_expected(
+			ctx, operation->function, expected_classifier, depth + 1, p_changed
+		);
+		if (status <= 0) {
+			return status;
+		}
+	} else if (operation->tag == PROTOTYPE_OPERATION_THUNK &&
+		operation->argument < ctx->metadata->operation_count &&
+		ctx->terms->terms[expected_classifier].tag == PROTOTYPE_TERM_THUNK_TYPE) {
+		int status = operation_refine_classifier_from_expected(
+			ctx, operation->argument,
+			ctx->terms->terms[expected_classifier].as.thunk_type.computation,
+			depth + 1, p_changed
+		);
+		if (status <= 0) {
+			return status;
+		}
+	} else if (operation->tag == PROTOTYPE_OPERATION_RETURN &&
+		operation->argument < ctx->metadata->operation_count &&
+		ctx->terms->terms[expected_classifier].tag ==
+			PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		int status = operation_refine_classifier_from_expected(
+			ctx, operation->argument,
+			ctx->terms->terms[expected_classifier].as.computation_type.result,
+			depth + 1, p_changed
+		);
+		if (status <= 0) {
+			return status;
+		}
+	} else if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
+		operation->body < ctx->metadata->operation_count &&
+		operation->core_term < ctx->terms->term_count &&
+		ctx->terms->terms[operation->core_term].tag == PROTOTYPE_TERM_LAMBDA) {
+		uint32_t expected_domain;
+		uint32_t expected_family;
+		uint32_t expected_binder;
+		uint32_t expected_body;
+		uint32_t body_binder_var;
+		uint32_t specialized_body;
+		if (prototype_judgement_pi_parts(
+				ctx->terms, expected_classifier,
+				&expected_domain, &expected_family
+			) != 0 || prototype_term_pure_family_parts(
+				ctx->terms, expected_family,
+				&expected_binder, &expected_body
+			) != 0 || prototype_term_var(
+				ctx->terms,
+				ctx->terms->terms[operation->core_term].as.lambda.binding_id,
+				&body_binder_var
+			) != 0 || prototype_term_graph_substitute_bound_var(
+				ctx->terms, ctx->type_declarations, expected_body,
+				expected_binder, body_binder_var, &specialized_body
+			) != 0) {
+			return -1;
+		}
+		int status = operation_refine_classifier_from_expected(
+			ctx, operation->body, specialized_body, depth + 1, p_changed
+		);
+		if (status <= 0) {
+			return status;
+		}
+	}
+	if (operation->tag == PROTOTYPE_OPERATION_MATCH) {
+		if (operation->scrutinee >= ctx->metadata->operation_count) {
+			return -1;
+		}
+		uint32_t scrutinee = ctx->metadata->operations[
+			operation->scrutinee
+		].core_term;
+		if (scrutinee >= ctx->terms->term_count ||
+			ctx->terms->terms[scrutinee].tag != PROTOTYPE_TERM_VAR) {
+			return -1;
+		}
+		uint32_t motive_binder = prototype_term_new_binding(ctx->terms);
+		uint32_t motive_var;
+		uint32_t motive_body;
+		uint32_t motive;
+		uint32_t motive_application;
+		if (motive_binder == PROTOTYPE_INVALID_ID || prototype_term_var(
+				ctx->terms, motive_binder, &motive_var
+			) != 0 || prototype_term_graph_substitute_bound_var(
+				ctx->terms, ctx->type_declarations, expected_classifier,
+				ctx->terms->terms[scrutinee].as.var.binding_id,
+				motive_var, &motive_body
+			) != 0 || prototype_term_lambda(
+				ctx->terms, motive_binder, motive_body, &motive
+			) != 0 || prototype_term_app(
+				ctx->terms, motive, scrutinee, &motive_application
+			) != 0 || operation_solver_bind_proven_classifier(
+				ctx, operation_id, motive_application, p_changed
+			) != 0) {
+			return -1;
+		}
+		ctx->classifier_solver.motive_terms[operation_id] = motive;
+		ctx->classifier_solver.motive_constant_candidates[operation_id] =
+			PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.motive_solution_states[operation_id] =
+			OPERATION_MOTIVE_SOLUTION_MATERIALIZED;
+		if (ctx->materializing_checked_classifiers) {
+			ctx->metadata->operations[operation_id].known_classifier =
+				motive_application;
+			ctx->metadata->operations[operation_id].classifier =
+				motive_application;
+		}
+	}
+	if (ctx->materializing_checked_classifiers &&
+		operation->tag != PROTOTYPE_OPERATION_MATCH) {
+		operation_solver_store_classifier_solution(
+			ctx, operation_id, expected_classifier
+		);
+		ctx->metadata->operations[operation_id].known_classifier =
+			expected_classifier;
+		ctx->metadata->operations[operation_id].classifier = expected_classifier;
+	} else if (operation->tag != PROTOTYPE_OPERATION_NAME &&
+		operation_solver_classifier(ctx, operation_id) == PROTOTYPE_INVALID_ID &&
+		operation_solver_bind_proven_classifier(
+			ctx, operation_id, expected_classifier, p_changed
+		) != 0) {
+		return -1;
+	}
+	return 1;
 }
 
 static int compile_phase_check_ascriptions(struct compile_context* ctx) {
@@ -412,14 +629,25 @@ static int compile_phase_check_ascriptions(struct compile_context* ctx) {
 			ctx->metadata->operations[check->operation].classifier !=
 				PROTOTYPE_INVALID_ID) {
 			operation_classifier = ctx->metadata->operations[check->operation].classifier;
-			if (prototype_judgement_solve_expected_effect_rows(
+			int solve_status = prototype_judgement_solve_expected_effect_rows(
 					ctx->terms,
 					ctx->type_declarations,
 					&imported_definition_env,
 					check->expected_classifier,
 					operation_classifier,
 					&solved_expected_classifier
-				) != 0) {
+				);
+			if (solve_status != 0) {
+				int structural_status = operation_check_classifier(
+					ctx, check->operation, check->expected_classifier, 0
+				);
+				if (structural_status < 0) {
+					return -1;
+				}
+				if (structural_status > 0) {
+					solved_expected_classifier = check->expected_classifier;
+					goto ascription_classifier_checked;
+				}
 				(void)add_resolve_error(
 					ctx,
 					PROTOTYPE_RESOLVE_ERROR_COMPILE,
@@ -443,6 +671,7 @@ static int compile_phase_check_ascriptions(struct compile_context* ctx) {
 				continue;
 			}
 		}
+	ascription_classifier_checked:
 		int structurally_checked = operation_check_classifier(
 			ctx, check->operation, solved_expected_classifier, 0
 		);

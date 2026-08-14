@@ -3188,6 +3188,38 @@ enum compile_intrinsic_spine_kind {
 	COMPILE_INTRINSIC_SPINE_EFFECT_OPERATION
 };
 
+/* A value whose classifier is a raw Pi is a pure type-family value. It is
+ * directly applicable in the shared APP graph; ordinary suspended functions
+ * have Thunk(Pi) classifiers and still require FORCE. */
+static int compile_ref_has_direct_pi_classifier(
+	struct compile_context* ctx,
+	const struct compile_ref* ref,
+	int* p_ret
+) {
+	uint32_t classifier_whnf;
+	if (!ctx || !ref || !p_ret) {
+		return -1;
+	}
+	*p_ret = 0;
+	if (ref->classifier == PROTOTYPE_INVALID_ID ||
+		ref->classifier >= ctx->terms->term_count) {
+		return 0;
+	}
+	if (prototype_term_normalize_complete_with_profile(
+			ctx->terms,
+			ctx->type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			ref->classifier,
+			&classifier_whnf
+		) != 0) {
+		return -1;
+	}
+	*p_ret = classifier_whnf < ctx->terms->term_count &&
+		ctx->terms->terms[classifier_whnf].tag == PROTOTYPE_TERM_PI;
+	return 0;
+}
+
 static int compile_intrinsic_spine_info(
 	const struct prototype_term_db* terms,
 	uint32_t term_id,
@@ -3307,15 +3339,56 @@ static int compile_application_make_computation(
 		}
 		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
 		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
-		return operation_add(
+		if (operation_add(
 			ctx, PROTOTYPE_OPERATION_APP, term, p_ret->classifier,
 			source_ast, function->operation, argument->operation,
 			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
 			PROTOTYPE_INVALID_ID, 0, &p_ret->operation
-		);
+		) != 0) {
+			return -1;
+		}
+		ctx->metadata->operations[p_ret->operation].category = p_ret->category;
+		ctx->metadata->operations[p_ret->operation].computation_kind =
+			p_ret->computation_kind;
+		return 0;
 	}
 	applied_function = *function;
 	if (function->category == PROTOTYPE_TERM_CATEGORY_VALUE) {
+		int direct_pi;
+		if (compile_ref_has_direct_pi_classifier(ctx, function, &direct_pi) != 0) {
+			return -1;
+		}
+		if (direct_pi) {
+			uint32_t result_classifier = PROTOTYPE_INVALID_ID;
+			if (argument->classifier != PROTOTYPE_INVALID_ID &&
+				operation_apply_classifier(
+					ctx,
+					function->classifier,
+					argument->classifier,
+					argument->term,
+					&result_classifier
+				) != 0) {
+				return -1;
+			}
+			if (prototype_term_app(
+					ctx->terms, function->term, argument->term, &term
+				) != 0 || operation_add(
+					ctx, PROTOTYPE_OPERATION_APP, term, result_classifier,
+					source_ast, function->operation, argument->operation,
+					PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
+					PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, 0,
+					&p_ret->operation
+				) != 0) {
+				return -1;
+			}
+			p_ret->term = term;
+			p_ret->classifier = result_classifier;
+			p_ret->category = PROTOTYPE_TERM_CATEGORY_VALUE;
+			p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
+			ctx->metadata->operations[p_ret->operation].category =
+				PROTOTYPE_TERM_CATEGORY_VALUE;
+			return 0;
+		}
 		if (compile_ref_make_force(ctx, function, source_ast, &applied_function) != 0) {
 			return -1;
 		}
@@ -3393,8 +3466,15 @@ static int compile_application_spine_step(
 		return -1;
 	}
 	if (index == spine->argument_count) {
-		*p_ret = *function;
-		return function->category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ? 0 : -1;
+		if (function->category == PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
+			*p_ret = *function;
+			return 0;
+		}
+		if (function->category == PROTOTYPE_TERM_CATEGORY_VALUE) {
+			uint32_t source_ast = spine->applications[spine->argument_count - 1];
+			return compile_ref_make_return(ctx, function, source_ast, p_ret);
+		}
+		return -1;
 	}
 	struct compile_application_spine_step_context context = {
 		spine, *function, index
@@ -6304,6 +6384,75 @@ static int operation_solver_propagate_constructor_domains(
 		uint32_t argument_operation = reverse_arguments[argument_count - i - 1];
 		uint32_t expected = expected_domains[i];
 		uint32_t actual = operation_solver_classifier(ctx, argument_operation);
+		if (ctx->materializing_checked_classifiers &&
+			actual < ctx->terms->term_count) {
+			int requires_index_refinement = 0;
+			uint32_t inspect = argument_operation;
+			for (uint32_t depth = 0; depth < 128 &&
+				inspect < ctx->metadata->operation_count; ++depth) {
+				const struct prototype_operation_node* node =
+					&ctx->metadata->operations[inspect];
+				if (node->tag == PROTOTYPE_OPERATION_MATCH) {
+					int all_impossible = node->case_count != 0;
+					for (uint32_t case_index = 0;
+						case_index < node->case_count; ++case_index) {
+						const struct prototype_operation_match_case* operation_case =
+							&ctx->metadata->operation_cases[
+								node->first_case + case_index
+							];
+						const struct prototype_term* match =
+							&ctx->terms->terms[node->core_term];
+						const struct prototype_match_case* term_case =
+							&ctx->terms->cases[
+								match->as.match.first_case + case_index
+							];
+						uint32_t ignored_context;
+						uint32_t ignored_substitution;
+						uint32_t ignored_constructor;
+						if (prototype_judgement_source_indexed_branch_refinement(
+								&ctx->metadata->contexts,
+								&ctx->metadata->substitutions,
+								ctx->terms, ctx->type_declarations,
+								ctx->metadata->operations[node->scrutinee].context_id,
+								ctx->metadata->operations[node->scrutinee].core_term,
+								ctx->metadata->operations[node->scrutinee].classifier,
+								operation_case->constructor_id,
+								operation_case->context_id,
+								&ctx->terms->case_binders[term_case->first_binder],
+								term_case->binder_count, &ignored_context,
+								&ignored_substitution, &ignored_constructor
+							) != PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
+							all_impossible = 0;
+							break;
+						}
+					}
+					requires_index_refinement = all_impossible;
+					break;
+				}
+				if (node->tag == PROTOTYPE_OPERATION_NAME) {
+					inspect = node->function;
+				} else if (node->tag == PROTOTYPE_OPERATION_ASCRIPTION) {
+					inspect = node->body;
+				} else if (node->tag == PROTOTYPE_OPERATION_THUNK ||
+					node->tag == PROTOTYPE_OPERATION_RETURN) {
+					inspect = node->argument;
+				} else if (node->tag == PROTOTYPE_OPERATION_LAMBDA) {
+					inspect = node->body;
+				} else {
+					break;
+				}
+			}
+			if (!requires_index_refinement) {
+				continue;
+			}
+		}
+		int expected_refinement = operation_refine_classifier_from_expected(
+			ctx, argument_operation, expected, 0, p_changed
+		);
+		if (expected_refinement < 0) {
+			return -1;
+		}
+		actual = operation_solver_classifier(ctx, argument_operation);
 		int ih_refinement = operation_solver_refine_sequenced_ih_result(
 			ctx, argument_operation, expected, p_changed
 		);
@@ -6345,11 +6494,18 @@ static int operation_solver_propagate_constructor_domains(
 		if (actual == PROTOTYPE_INVALID_ID) {
 			return 0;
 		}
-		if (!prototype_judgement_classifier_compatible(
-				ctx->terms, ctx->type_declarations, expected, actual
-			)) {
+		uint32_t solved_expected;
+		if (prototype_judgement_solve_expected_effect_rows(
+				ctx->terms,
+				ctx->type_declarations,
+				NULL,
+				expected,
+				actual,
+				&solved_expected
+			) != 0) {
 			return 0;
 		}
+		(void)solved_expected;
 	}
 	(void)cursor;
 	return 0;
@@ -6391,6 +6547,22 @@ static int operation_solver_constructor_spine_classifier(
 		cursor = cursor_operation->function;
 	}
 	uint32_t argument_classifiers[64];
+	uint32_t expected_domains[64];
+	uint32_t expected_domain_count;
+	if (prototype_judgement_constructor_spine_expected_domains(
+			ctx->terms,
+			ctx->type_declarations,
+			&ctx->metadata->contexts,
+			&ctx->metadata->substitutions,
+			operation->context_id,
+			operation->core_term,
+			PROTOTYPE_INVALID_ID,
+			expected_domains,
+			64,
+			&expected_domain_count
+		) != 0 || expected_domain_count != argument_operation_count) {
+		return -1;
+	}
 	for (uint32_t i = 0; i < argument_operation_count; ++i) {
 		uint32_t argument_operation =
 			reverse_argument_operations[argument_operation_count - i - 1];
@@ -6399,7 +6571,14 @@ static int operation_solver_constructor_spine_classifier(
 		if (argument_classifier == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
-		argument_classifiers[i] = argument_classifier;
+		int expected_check = operation_check_classifier(
+			ctx, argument_operation, expected_domains[i], 0
+		);
+		if (expected_check < 0) {
+			return -1;
+		}
+		argument_classifiers[i] = expected_check > 0 ?
+			expected_domains[i] : argument_classifier;
 	}
 	int saturated;
 	int status = prototype_judgement_constructor_spine_classifier(

@@ -1285,10 +1285,16 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_operation_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	struct prototype_judgement_selected_evidence
+		premise_evidence[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_count = 0;
 	for (uint32_t i = 0; i < branch_count; ++i) {
 		uint32_t case_id = terms->terms[match_term].as.match.first_case + i;
+		if (branch_operation_ids[i] == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
 		if (case_id >= terms->case_count ||
-			branch_operation_ids[i] == PROTOTYPE_INVALID_ID ||
 			branch_evidence[i].kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 			branch_evidence[i].operation_id != branch_operation_ids[i] ||
 			branch_evidence[i].authority_kind ==
@@ -1302,9 +1308,12 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		 * Publish those actual branch subjects; accepted replay checks them against
 		 * the principal Match Operation rather than a canonical representative's
 		 * case slots. */
-		premise_subjects[i] = branch_evidence[i].subject;
-		premise_context_ids[i] = branch_evidence[i].context_id;
-		premise_classifiers[i] = branch_evidence[i].classifier;
+		premise_subjects[premise_count] = branch_evidence[i].subject;
+		premise_context_ids[premise_count] = branch_evidence[i].context_id;
+		premise_classifiers[premise_count] = branch_evidence[i].classifier;
+		premise_operation_ids[premise_count] = branch_operation_ids[i];
+		premise_evidence[premise_count] = branch_evidence[i];
+		premise_count++;
 	}
 	return add_delta_relation_with_explicit_premises(
 		delta,
@@ -1313,11 +1322,11 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE,
 		premise_context_ids,
-		branch_operation_ids,
+		premise_operation_ids,
 		premise_subjects,
 		premise_classifiers,
-		branch_evidence,
-		branch_count
+		premise_evidence,
+		premise_count
 	);
 }
 

@@ -128,5 +128,16 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 	uint32_t* p_ret
 );
 
+/* Select the term substituted into a dependent classifier family. Explicit
+ * lambda quotation remains a runtime THUNK, but its family index is the pure
+ * lambda computation represented by that quotation. This is elaboration-only;
+ * it does not add THUNK/FORCE conversion. */
+int prototype_judgement_dependent_classifier_argument(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t expected_domain,
+	uint32_t argument,
+	uint32_t* p_ret
+);
 
 #endif

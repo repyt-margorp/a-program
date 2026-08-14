@@ -180,14 +180,18 @@ static int validate_app_elim_proof(
 	if (terms->terms[domain_whnf].tag == PROTOTYPE_TERM_RETURN) {
 		domain_whnf = terms->terms[domain_whnf].as.return_term.value;
 	}
-	if (!prototype_judgement_classifier_compatible(
+	uint32_t solved_domain;
+	if (prototype_judgement_solve_expected_effect_rows(
 			terms,
 			type_declarations,
+			NULL,
 			domain_whnf,
-			proof->premises[1].proposition.classifier
-		)) {
+			proof->premises[1].proposition.classifier,
+			&solved_domain
+		) != 0) {
 		return -1;
 	}
+	(void)solved_domain;
 	uint32_t result_classifier;
 	uint32_t identity;
 	if (prototype_substitution_identity(
@@ -710,7 +714,7 @@ static int validate_solved_match_motive_proof(
 		return -1;
 	}
 	const struct prototype_term* match = &terms->terms[relation->subject];
-	if (proof->premise_count != match->as.match.case_count) {
+	if (proof->premise_count > match->as.match.case_count) {
 		return -1;
 	}
 	const struct prototype_operation_node* match_operation = NULL;
@@ -748,6 +752,7 @@ static int validate_solved_match_motive_proof(
 		/* A direct dependent motive is checked by applying it to the constructor
 		 * pattern represented by each branch. Constant motives are the special
 		 * case in which this beta-reduces to the same classifier. */
+		uint32_t premise_index = 0;
 		for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
 			uint32_t case_id = match->as.match.first_case + i;
 			uint32_t expected_classifier;
@@ -756,18 +761,6 @@ static int validate_solved_match_motive_proof(
 			uint32_t argument_classifiers[16];
 			if (case_id >= terms->case_count) {
 				return -1;
-			}
-			uint32_t expected_subject = terms->cases[case_id].body;
-			if (match_operation) {
-				const struct prototype_operation_match_case* typed_case =
-					&operations->cases[match_operation->first_case + i];
-				if (typed_case->body_operation >= operations->operation_count ||
-					proof->premises[i].proposition.operation_id !=
-						typed_case->body_operation) {
-					return -1;
-				}
-				expected_subject =
-					operations->operations[typed_case->body_operation].core_term;
 			}
 			const struct prototype_match_case* match_case = &terms->cases[case_id];
 			uint32_t owner_type_id;
@@ -779,16 +772,63 @@ static int validate_solved_match_motive_proof(
 				) != 0 || owner_type_id >= type_declarations->type_count) {
 				return -1;
 			}
+			if (match_operation &&
+				type_declarations->type_declarations[owner_type_id].index_count != 0) {
+				const struct prototype_operation_match_case* typed_case =
+					&operations->cases[match_operation->first_case + i];
+				if (typed_case->body_operation >= operations->operation_count ||
+					match_operation->scrutinee >= operations->operation_count) {
+					return -1;
+				}
+				uint32_t ignored_context;
+				uint32_t ignored_substitution;
+				uint32_t ignored_constructor;
+				int refinement_status =
+					prototype_judgement_source_indexed_branch_refinement(
+						contexts, substitutions, terms, type_declarations,
+						operations->operations[match_operation->scrutinee].context_id,
+						match->as.match.scrutinee,
+						operations->operations[match_operation->scrutinee].classifier,
+						match_case->constructor_id,
+						operations->operations[typed_case->body_operation].context_id,
+						&terms->case_binders[match_case->first_binder],
+						match_case->binder_count, &ignored_context,
+						&ignored_substitution, &ignored_constructor
+					);
+				if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
+					continue;
+				}
+				if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_INVALID) {
+					return -1;
+				}
+			}
+			if (premise_index >= proof->premise_count) {
+				return -1;
+			}
+			const struct prototype_judgement_candidate_premise* premise =
+				&proof->premises[premise_index++];
+			uint32_t expected_subject = terms->cases[case_id].body;
+			if (match_operation) {
+				const struct prototype_operation_match_case* typed_case =
+					&operations->cases[match_operation->first_case + i];
+				if (typed_case->body_operation >= operations->operation_count ||
+					premise->proposition.operation_id !=
+						typed_case->body_operation) {
+					return -1;
+				}
+				expected_subject =
+					operations->operations[typed_case->body_operation].core_term;
+			}
 			if (type_declarations->type_declarations[owner_type_id].index_count == 0) {
-				if (proof->premises[i].proposition.kind !=
+				if (premise->proposition.kind !=
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-					proof->premises[i].proposition.subject != expected_subject ||
+					premise->proposition.subject != expected_subject ||
 					match_case_motive_classifier(
 						terms, match_case, motive_app->as.app.function,
 						&expected_classifier
 					) != 0 || !match_branch_classifier_satisfies_motive(
 						terms, type_declarations,
-						proof->premises[i].proposition.classifier,
+						premise->proposition.classifier,
 						expected_classifier
 					)) {
 					return -1;
@@ -803,7 +843,7 @@ static int validate_solved_match_motive_proof(
 				uint32_t binding_context;
 				const struct prototype_context* binding_entry;
 				if (prototype_context_find_binding(
-						contexts, proof->premises[i].proposition.context_id,
+						contexts, premise->proposition.context_id,
 						terms->case_binders[match_case->first_binder + j].binding_id,
 						&binding_context
 					) != 0 || !(binding_entry = prototype_context_get(
@@ -817,7 +857,7 @@ static int validate_solved_match_motive_proof(
 			int saturated;
 			int constructor_status = prototype_judgement_constructor_spine_classifier(
 					terms, type_declarations, contexts, substitutions,
-					proof->premises[i].proposition.context_id,
+					premise->proposition.context_id,
 					constructor, match_case->constructor_owner,
 					argument_classifiers, match_case->binder_count,
 					&constructor_classifier, &saturated
@@ -830,15 +870,15 @@ static int validate_solved_match_motive_proof(
 				) : -1;
 			if (constructor_status != PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_VALID ||
 				!saturated || motive_status != 0 ||
-				proof->premises[i].proposition.kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				proof->premises[i].proposition.subject != expected_subject ||
-				proof->premises[i].proposition.context_id == PROTOTYPE_INVALID_ID) {
+				premise->proposition.kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				premise->proposition.subject != expected_subject ||
+				premise->proposition.context_id == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
 			if (!match_branch_classifier_satisfies_motive(
 					terms,
 					type_declarations,
-					proof->premises[i].proposition.classifier,
+					premise->proposition.classifier,
 					expected_classifier
 				)) {
 				uint32_t refined_context;
@@ -853,7 +893,7 @@ static int validate_solved_match_motive_proof(
 						match->as.match.scrutinee,
 						operations->operations[match_operation->scrutinee].classifier,
 						match_case->constructor_id,
-						proof->premises[i].proposition.context_id,
+						premise->proposition.context_id,
 						&terms->case_binders[match_case->first_binder],
 						match_case->binder_count, &refined_context,
 						&refinement_substitution, &refined_constructor
@@ -867,7 +907,7 @@ static int validate_solved_match_motive_proof(
 				}
 				if (!match_branch_classifier_satisfies_motive(
 						terms, type_declarations,
-						proof->premises[i].proposition.classifier,
+						premise->proposition.classifier,
 						refined_expected
 					)) {
 					return -1;
@@ -875,7 +915,7 @@ static int validate_solved_match_motive_proof(
 				(void)refined_constructor;
 			}
 		}
-		return 0;
+		return premise_index == proof->premise_count ? 0 : -1;
 	}
 	if (motive_body->as.match.case_count != match->as.match.case_count ||
 		motive_body->as.match.scrutinee >= terms->term_count ||
@@ -885,6 +925,7 @@ static int validate_solved_match_motive_proof(
 		fprintf(stderr, "P0 motive validator structure failed\n");
 		return -1;
 	}
+	uint32_t premise_index = 0;
 	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
 		uint32_t case_id = match->as.match.first_case + i;
 		uint32_t motive_case_id = motive_body->as.match.first_case + i;
@@ -899,20 +940,64 @@ static int validate_solved_match_motive_proof(
 			fprintf(stderr, "P0 motive validator case shape failed branch=%u\n", i);
 			return -1;
 		}
+		uint32_t owner_type_id;
+		uint32_t owner_arguments[16];
+		uint32_t owner_argument_count;
+		if (prototype_type_declaration_instance_info(
+				type_declarations, terms, match_case->constructor_owner,
+				&owner_type_id, owner_arguments, 16, &owner_argument_count
+			) != 0 || owner_type_id >= type_declarations->type_count) {
+			return -1;
+		}
+		if (match_operation &&
+			type_declarations->type_declarations[owner_type_id].index_count != 0) {
+			const struct prototype_operation_match_case* typed_case =
+				&operations->cases[match_operation->first_case + i];
+			if (typed_case->body_operation >= operations->operation_count ||
+				match_operation->scrutinee >= operations->operation_count) {
+				return -1;
+			}
+			uint32_t ignored_context;
+			uint32_t ignored_substitution;
+			uint32_t ignored_constructor;
+			int refinement_status =
+				prototype_judgement_source_indexed_branch_refinement(
+					contexts, substitutions, terms, type_declarations,
+					operations->operations[match_operation->scrutinee].context_id,
+					match->as.match.scrutinee,
+					operations->operations[match_operation->scrutinee].classifier,
+					match_case->constructor_id,
+					operations->operations[typed_case->body_operation].context_id,
+					&terms->case_binders[match_case->first_binder],
+					match_case->binder_count, &ignored_context,
+					&ignored_substitution, &ignored_constructor
+				);
+			if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
+				continue;
+			}
+			if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_INVALID) {
+				return -1;
+			}
+		}
+		if (premise_index >= proof->premise_count) {
+			return -1;
+		}
+		const struct prototype_judgement_candidate_premise* premise =
+			&proof->premises[premise_index++];
 		uint32_t expected_subject = match_case->body;
 		if (match_operation) {
 			const struct prototype_operation_match_case* typed_case =
 				&operations->cases[match_operation->first_case + i];
 			if (typed_case->body_operation >= operations->operation_count ||
-				proof->premises[i].proposition.operation_id !=
+				premise->proposition.operation_id !=
 					typed_case->body_operation) {
 				return -1;
 			}
 			expected_subject =
 				operations->operations[typed_case->body_operation].core_term;
 		}
-		if (proof->premises[i].proposition.kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			proof->premises[i].proposition.subject != expected_subject) {
+		if (premise->proposition.kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			premise->proposition.subject != expected_subject) {
 			return -1;
 		}
 		int found = 0;
@@ -922,7 +1007,7 @@ static int validate_solved_match_motive_proof(
 					terms, type_declarations,
 					&terms->case_binders[match_case->first_binder],
 					&terms->case_binders[motive_case->first_binder],
-					match_case->binder_count, proof->premises[i].proposition.classifier,
+					match_case->binder_count, premise->proposition.classifier,
 					&expected_motive_case_body
 				);
 			if (prepare_status == 0) {
@@ -935,7 +1020,6 @@ static int validate_solved_match_motive_proof(
 				);
 				if (equal) {
 					found = 1;
-					break;
 				}
 			}
 			/* A structurally recursive motive records M(rest) as an IH node in
@@ -955,7 +1039,6 @@ static int validate_solved_match_motive_proof(
 					expected_app->as.app.function == motive_app->as.app.function &&
 					expected_app->as.app.argument == motive_ih->as.induction_hypothesis.argument) {
 					found = 1;
-					break;
 				}
 			}
 		}
@@ -970,6 +1053,9 @@ static int validate_solved_match_motive_proof(
 			);
 			return -1;
 		}
+	}
+	if (premise_index != proof->premise_count) {
+		return -1;
 	}
 	return 0;
 }
@@ -1501,12 +1587,16 @@ static int validate_constructor_spine_formation_proof(
 			argument_count,
 			&expected_classifier,
 			&saturated
-		) != 0 || !(prototype_judgement_classifier_conversion(
+		) != 0 ||
+		(!(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			expected_classifier,
 			relation->classifier
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) &&
+		 !prototype_judgement_classifier_reference_equal(
+			terms, type_declarations, expected_classifier, relation->classifier
+		))) {
 		return -1;
 	}
 	(void)head;
@@ -4280,12 +4370,35 @@ static int judgement_operation_expected_polarity(
 			}
 			break;
 		case PROTOTYPE_OPERATION_APP:
+			if (core_tag == PROTOTYPE_TERM_APP) {
+				uint32_t head = operation->core_term;
+				while (head < terms->term_count &&
+					terms->terms[head].tag == PROTOTYPE_TERM_APP) {
+					head = terms->terms[head].as.app.function;
+				}
+				if (head < terms->term_count &&
+					(terms->terms[head].tag == PROTOTYPE_TERM_PURE_PRIMITIVE ||
+					 terms->terms[head].tag == PROTOTYPE_TERM_EFFECT_OPERATION)) {
+					category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
+					break;
+				}
+			}
 			if (operation->application_role ==
 				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
 				category = PROTOTYPE_TERM_CATEGORY_VALUE;
 			} else if (operation->application_role ==
 				PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION) {
-				category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
+				/* Pi elimination is shared by computation functions and pure
+				 * type-family values. A partial type-family application has a Pi
+				 * classifier but remains a value, so its function occurrence owns
+				 * the polarity of this APP edge. */
+				if (operation->function >= operations->operation_count) {
+					return -1;
+				}
+				category = operations->operations[operation->function].category ==
+					PROTOTYPE_TERM_CATEGORY_VALUE ?
+					PROTOTYPE_TERM_CATEGORY_VALUE :
+					PROTOTYPE_TERM_CATEGORY_COMPUTATION;
 			} else {
 				return -1;
 			}

@@ -840,22 +840,43 @@ int prototype_judgement_classifier_value_whnf(
 	uint32_t* p_value_classifier
 ) {
 	if (!terms || !type_declarations || !p_value_classifier ||
-		classifier >= terms->term_count ||
-		prototype_term_normalize_complete_with_profile(
-			terms,
-			type_declarations,
-			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-			classifier,
-			&classifier
-		) != 0 || classifier >= terms->term_count) {
+		classifier >= terms->term_count) {
 		return -1;
 	}
-	if (terms->terms[classifier].tag == PROTOTYPE_TERM_RETURN) {
+	for (uint32_t depth = 0; depth < 64; ++depth) {
+		uint32_t normalized;
+		if (prototype_term_normalize_complete_with_profile(
+				terms,
+				type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				classifier,
+				&normalized
+			) != 0 || normalized >= terms->term_count) {
+			return -1;
+		}
+		classifier = normalized;
+		if (terms->terms[classifier].tag != PROTOTYPE_TERM_RETURN) {
+			uint32_t type_id;
+			uint32_t arguments[16];
+			uint32_t argument_count;
+			if (prototype_term_type_instance_info(
+					terms, classifier, &type_id, arguments, &argument_count
+				) == 0 && prototype_term_type_instance_make(
+					terms, type_declarations, type_id, arguments,
+					argument_count, &classifier
+				) != 0) {
+				return -1;
+			}
+			*p_value_classifier = classifier;
+			return 0;
+		}
 		classifier = terms->terms[classifier].as.return_term.value;
+		if (classifier >= terms->term_count) {
+			return -1;
+		}
 	}
-	*p_value_classifier = classifier;
-	return 0;
+	return -1;
 }
 
 int prototype_judgement_classifier_reference_equal(
@@ -1898,11 +1919,75 @@ static int find_effect_row_argument(
 		*p_row = actual_whnf;
 		return 1;
 	}
+	if (left->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
+		right->tag == PROTOTYPE_TERM_PI) {
+		uint32_t expected_value;
+		if (classifier_kernel_whnf(
+				terms,
+				type_declarations,
+				NULL,
+				left->as.computation_type.result,
+				&expected_value
+			) != 0 || expected_value >= terms->term_count ||
+			terms->terms[expected_value].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+			return 0;
+		}
+		uint32_t empty_row;
+		if (prototype_term_effect_row_empty(terms, &empty_row) != 0) {
+			return -1;
+		}
+		int row_status = find_effect_row_argument(
+			terms,
+			type_declarations,
+			left->as.computation_type.label,
+			empty_row,
+			row_binder,
+			depth + 1,
+			p_row
+		);
+		if (row_status != 0) {
+			return row_status;
+		}
+		return find_effect_row_argument(
+			terms,
+			type_declarations,
+			terms->terms[expected_value].as.thunk_type.computation,
+			actual_whnf,
+			row_binder,
+			depth + 1,
+			p_row
+		);
+	}
+	if (left->tag == PROTOTYPE_TERM_PI &&
+		right->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		uint32_t actual_value;
+		if (classifier_kernel_whnf(
+				terms,
+				type_declarations,
+				NULL,
+				right->as.computation_type.result,
+				&actual_value
+			) != 0 || actual_value >= terms->term_count ||
+			terms->terms[actual_value].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+			return 0;
+		}
+		*p_row = right->as.computation_type.label;
+		return 1;
+	}
 	if (left->tag != right->tag) {
 		return 0;
 	}
 	int status;
 	switch (left->tag) {
+		case PROTOTYPE_TERM_APP:
+			status = find_effect_row_argument(
+				terms, type_declarations, left->as.app.function,
+				right->as.app.function, row_binder, depth + 1, p_row
+			);
+			return status != 0 ? status : find_effect_row_argument(
+				terms, type_declarations, left->as.app.argument,
+				right->as.app.argument, row_binder, depth + 1, p_row
+			);
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return find_effect_row_argument(
 				terms, type_declarations, left->as.thunk_type.computation,
@@ -1912,6 +1997,11 @@ static int find_effect_row_argument(
 			return find_effect_row_argument(
 				terms, type_declarations, left->as.thunk.computation,
 				right->as.thunk.computation, row_binder, depth + 1, p_row
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return find_effect_row_argument(
+				terms, type_declarations, left->as.force.value,
+				right->as.force.value, row_binder, depth + 1, p_row
 			);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			status = find_effect_row_argument(
@@ -2002,110 +2092,31 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 			) != 0) {
 			return 1;
 		}
-		uint32_t expected_thunk;
-		uint32_t actual_thunk;
-		if (classifier_kernel_whnf(
-				terms, type_declarations, NULL, domain, &expected_thunk
-			) != 0 || classifier_kernel_whnf(
-				terms, type_declarations, NULL, argument_classifier, &actual_thunk
-			) != 0 || expected_thunk >= terms->term_count ||
-			actual_thunk >= terms->term_count ||
-			terms->terms[expected_thunk].tag != PROTOTYPE_TERM_THUNK_TYPE ||
-			terms->terms[actual_thunk].tag != PROTOTYPE_TERM_THUNK_TYPE) {
-			return 1;
+		uint32_t solved_domain;
+		int solve_status = prototype_judgement_solve_expected_effect_rows(
+			terms,
+			type_declarations,
+			NULL,
+			domain,
+			argument_classifier,
+			&solved_domain
+		);
+		if (solve_status != 0) {
+			return solve_status;
 		}
-		uint32_t expected_computation =
-			terms->terms[expected_thunk].as.thunk_type.computation;
-		uint32_t actual_computation =
-			terms->terms[actual_thunk].as.thunk_type.computation;
-		uint32_t expected_computation_whnf;
-		uint32_t actual_computation_whnf;
-		if (classifier_kernel_whnf(
-				terms,
-				type_declarations,
-				NULL,
-				expected_computation,
-				&expected_computation_whnf
-			) != 0 ||
-			classifier_kernel_whnf(
-				terms,
-				type_declarations,
-				NULL,
-				actual_computation,
-				&actual_computation_whnf
-			) != 0 ||
-			expected_computation_whnf >= terms->term_count ||
-			actual_computation_whnf >= terms->term_count) {
-			return -1;
+		uint32_t row;
+		int row_status = find_effect_row_argument(
+			terms,
+			type_declarations,
+			domain,
+			solved_domain,
+			quantified->as.effect_row_forall.binding_id,
+			0,
+			&row
+		);
+		if (row_status <= 0) {
+			return row_status < 0 ? -1 : 1;
 		}
-		if (terms->terms[expected_computation_whnf].tag ==
-				PROTOTYPE_TERM_COMPUTATION_TYPE &&
-			terms->terms[actual_computation_whnf].tag ==
-				PROTOTYPE_TERM_COMPUTATION_TYPE) {
-			uint32_t row;
-			int row_status = find_effect_row_argument(
-				terms,
-				type_declarations,
-				expected_thunk,
-				actual_thunk,
-				quantified->as.effect_row_forall.binding_id,
-				0,
-				&row
-			);
-			if (row_status <= 0 || prototype_term_graph_substitute_bound_var(
-					terms,
-					type_declarations,
-					quantified->as.effect_row_forall.body,
-					quantified->as.effect_row_forall.binding_id,
-					row,
-					&function_classifier
-				) != 0) {
-				return -1;
-			}
-			continue;
-		}
-		uint32_t expected_pi;
-		uint32_t actual_pi;
-		uint32_t expected_domain;
-		uint32_t expected_family;
-		uint32_t actual_domain;
-		uint32_t actual_family;
-		if (classifier_kernel_as_pi(
-				terms,
-				type_declarations,
-				NULL,
-				expected_computation,
-				&expected_pi,
-				&expected_domain,
-				&expected_family
-			) != 0 || classifier_kernel_as_pi(
-				terms,
-				type_declarations,
-				NULL,
-				actual_computation,
-				&actual_pi,
-				&actual_domain,
-				&actual_family
-			) != 0 || !prototype_judgement_classifier_compatible(
-				terms, type_declarations, expected_domain, actual_domain
-			)) {
-			return -1;
-		}
-		uint32_t expected_binder;
-		uint32_t expected_result;
-		uint32_t actual_binder;
-		uint32_t actual_result;
-		if (prototype_term_pure_family_parts(
-				terms, expected_family, &expected_binder, &expected_result
-			) != 0 || prototype_term_pure_family_parts(
-				terms, actual_family, &actual_binder, &actual_result
-			) != 0 || expected_result >= terms->term_count ||
-			actual_result >= terms->term_count ||
-			terms->terms[expected_result].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
-			terms->terms[actual_result].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
-			return 1;
-		}
-		uint32_t row = terms->terms[actual_result].as.computation_type.label;
 		if (row >= terms->term_count ||
 			prototype_term_graph_substitute_bound_var(
 				terms,
@@ -2119,12 +2130,42 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 		}
 		(void)pi;
 		(void)family;
-		(void)expected_pi;
-		(void)actual_pi;
-		(void)expected_binder;
-		(void)actual_binder;
 	}
 	return -1;
+}
+
+int prototype_judgement_dependent_classifier_argument(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t expected_domain,
+	uint32_t argument,
+	uint32_t* p_ret
+) {
+	if (!terms || !type_declarations || !p_ret ||
+		expected_domain >= terms->term_count || argument >= terms->term_count) {
+		return -1;
+	}
+	uint32_t domain_whnf;
+	if (classifier_kernel_whnf(
+			terms,
+			type_declarations,
+			NULL,
+			expected_domain,
+			&domain_whnf
+		) != 0 || domain_whnf >= terms->term_count) {
+		return -1;
+	}
+	*p_ret = argument;
+	if (terms->terms[domain_whnf].tag != PROTOTYPE_TERM_THUNK_TYPE ||
+		terms->terms[argument].tag != PROTOTYPE_TERM_THUNK) {
+		return 0;
+	}
+	uint32_t computation = terms->terms[argument].as.thunk.computation;
+	if (computation < terms->term_count &&
+		terms->terms[computation].tag == PROTOTYPE_TERM_LAMBDA) {
+		*p_ret = computation;
+	}
+	return 0;
 }
 
 static int instantiate_pure_family_in_context(
@@ -2146,6 +2187,16 @@ static int instantiate_pure_family_in_context(
 		domain >= terms->term_count || family >= terms->term_count ||
 		argument >= terms->term_count ||
 		argument_classifier >= terms->term_count) {
+		return -1;
+	}
+	uint32_t classifier_argument;
+	if (prototype_judgement_dependent_classifier_argument(
+			terms,
+			type_declarations,
+			domain,
+			argument,
+			&classifier_argument
+		) != 0) {
 		return -1;
 	}
 	uint32_t binding_id;
@@ -2196,10 +2247,10 @@ static int instantiate_pure_family_in_context(
 			contexts,
 			terms,
 			type_declarations,
-			prefix_substitution,
-			family_context,
-			argument,
-			argument_classifier,
+		prefix_substitution,
+		family_context,
+		classifier_argument,
+		argument_classifier,
 			&section
 		) != 0) {
 		return -1;
@@ -2355,20 +2406,19 @@ static int classifier_kernel_compatible_at_depth(
 	}
 	uint32_t normalized_expected = expected;
 	uint32_t normalized_actual = actual;
-	if (classifier_kernel_whnf(
-			terms,
-			type_declarations,
-			definitions,
-			expected,
-			&normalized_expected
-		) != 0 ||
-		classifier_kernel_whnf(
-			terms,
-			type_declarations,
-			definitions,
-			actual,
-			&normalized_actual
-		) != 0) {
+	int expected_status = definitions ? classifier_kernel_whnf(
+			terms, type_declarations, definitions,
+			expected, &normalized_expected
+		) : prototype_judgement_classifier_value_whnf(
+			terms, type_declarations, expected, &normalized_expected
+		);
+	int actual_status = definitions ? classifier_kernel_whnf(
+			terms, type_declarations, definitions,
+			actual, &normalized_actual
+		) : prototype_judgement_classifier_value_whnf(
+			terms, type_declarations, actual, &normalized_actual
+		);
+	if (expected_status != 0 || actual_status != 0) {
 		return 0;
 	}
 	expected = normalized_expected;
@@ -2407,6 +2457,37 @@ static int classifier_kernel_compatible_at_depth(
 			expected_term->as.type_view.identity.name_symbol_id) {
 		return 1;
 	}
+	/* One nominal type instance may be present either as its canonical TYPE_VIEW
+	 * or as an APP spine headed by that view while constructor domains are being
+	 * specialized. This is an elaboration representation boundary, not
+	 * structural equality between different declarations. */
+	uint32_t expected_type_id;
+	uint32_t expected_arguments[16];
+	uint32_t expected_argument_count;
+	uint32_t actual_type_id;
+	uint32_t actual_arguments[16];
+	uint32_t actual_argument_count;
+	if (prototype_term_type_instance_info(
+			terms, expected, &expected_type_id,
+			expected_arguments, &expected_argument_count
+		) == 0 && prototype_term_type_instance_info(
+			terms, actual, &actual_type_id,
+			actual_arguments, &actual_argument_count
+		) == 0 && expected_type_id == actual_type_id &&
+		expected_argument_count == actual_argument_count) {
+		for (uint32_t i = 0; i < expected_argument_count; ++i) {
+			if (!(classifier_kernel_conversion(
+					terms,
+					type_declarations,
+					definitions,
+					expected_arguments[i],
+					actual_arguments[i]
+				).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
+				return 0;
+			}
+		}
+		return 1;
+	}
 	/* Universe variables are not judgementally equal unless their level ids
 	 * match. They are nevertheless conversion-compatible here: the compiler
 	 * records the corresponding level inequality and UniverseDB checks it after
@@ -2414,6 +2495,32 @@ static int classifier_kernel_compatible_at_depth(
 	if (term_is_universe_var(terms, expected) &&
 		term_is_universe_var(terms, actual)) {
 		return 1;
+	}
+	/* Surface nested lambdas remain raw computation terms. In a computation
+	 * result position, elaboration may expose such a term through the canonical
+	 * pure quotation Comp({}, Thunk(C)). This rule is directional and requires
+	 * the empty row; it neither executes a computation nor adds THUNK/FORCE to
+	 * kernel conversion. */
+	if (terms->terms[expected].tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
+		terms->terms[actual].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		const struct prototype_term* computation = &terms->terms[expected];
+		if (computation->as.computation_type.label < terms->term_count &&
+			terms->terms[computation->as.computation_type.label].tag ==
+				PROTOTYPE_TERM_EFFECT_ROW_EMPTY &&
+			computation->as.computation_type.result < terms->term_count &&
+			terms->terms[computation->as.computation_type.result].tag ==
+				PROTOTYPE_TERM_THUNK_TYPE) {
+			return classifier_kernel_compatible_at_depth(
+				terms,
+				type_declarations,
+				definitions,
+				terms->terms[
+					computation->as.computation_type.result
+				].as.thunk_type.computation,
+				actual,
+				depth + 1
+			);
+		}
 	}
 	if (terms->terms[expected].tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
 		terms->terms[actual].tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
@@ -2563,6 +2670,39 @@ struct expected_effect_row_solver {
 	uint32_t solution_count;
 };
 
+static int expected_effect_row_reaches_binding(
+	const struct expected_effect_row_solver* solver,
+	uint32_t row,
+	uint32_t target_binding
+) {
+	if (!solver) {
+		return -1;
+	}
+	for (uint32_t depth = 0; depth <= solver->solution_count; ++depth) {
+		if (row >= solver->terms->term_count ||
+			solver->terms->terms[row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+			return 0;
+		}
+		uint32_t binding_id =
+			solver->terms->terms[row].as.effect_row_var.binding_id;
+		if (binding_id == target_binding) {
+			return 1;
+		}
+		int found = 0;
+		for (uint32_t i = 0; i < solver->solution_count; ++i) {
+			if (solver->solutions[i].binding_id == binding_id) {
+				row = solver->solutions[i].row;
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			return 0;
+		}
+	}
+	return -1;
+}
+
 static int expected_effect_row_bind(
 	struct expected_effect_row_solver* solver,
 	uint32_t binding_id,
@@ -2571,17 +2711,46 @@ static int expected_effect_row_bind(
 	if (!solver || row >= solver->terms->term_count) {
 		return -1;
 	}
+	int closes_existing_equation = expected_effect_row_reaches_binding(
+		solver, row, binding_id
+	);
+	if (closes_existing_equation != 0) {
+		return closes_existing_equation > 0 ? 0 : -1;
+	}
 	for (uint32_t i = 0; i < solver->solution_count; ++i) {
 		if (solver->solutions[i].binding_id != binding_id) {
 			continue;
 		}
-		return (classifier_kernel_conversion(
+		uint32_t existing = solver->solutions[i].row;
+		if (existing < solver->terms->term_count &&
+			solver->terms->terms[existing].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+			uint32_t existing_binder =
+				solver->terms->terms[existing].as.effect_row_var.binding_id;
+			if (existing_binder == binding_id) {
+				solver->solutions[i].row = row;
+				return 0;
+			}
+			return expected_effect_row_bind(solver, existing_binder, row);
+		}
+		if (row < solver->terms->term_count &&
+			solver->terms->terms[row].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+			uint32_t row_binder =
+				solver->terms->terms[row].as.effect_row_var.binding_id;
+			if (row_binder == binding_id) {
+				return 0;
+			}
+			return expected_effect_row_bind(
+				solver, row_binder, existing
+			);
+		}
+		int same = classifier_kernel_conversion(
 			solver->terms,
 			solver->type_declarations,
 			solver->definitions,
 			solver->solutions[i].row,
 			row
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ? 0 : 1;
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL;
+		return same ? 0 : 1;
 	}
 	if (solver->solution_count >= 64) {
 		return -1;
@@ -2605,6 +2774,12 @@ static int expected_effect_row_solve_row(
 	if (expected_term->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 		return expected_effect_row_bind(
 			solver, expected_term->as.effect_row_var.binding_id, actual
+		);
+	}
+	const struct prototype_term* actual_term = &solver->terms->terms[actual];
+	if (actual_term->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		return expected_effect_row_bind(
+			solver, actual_term->as.effect_row_var.binding_id, expected
 		);
 	}
 	return (classifier_kernel_conversion(
@@ -2647,6 +2822,22 @@ static int expected_effect_row_solve_classifier(
 	actual = normalized_actual;
 	const struct prototype_term* expected_term = &solver->terms->terms[expected];
 	const struct prototype_term* actual_term = &solver->terms->terms[actual];
+	if (expected_term->tag == PROTOTYPE_TERM_RETURN) {
+		return expected_effect_row_solve_classifier(
+			solver,
+			expected_term->as.return_term.value,
+			actual,
+			depth + 1
+		);
+	}
+	if (actual_term->tag == PROTOTYPE_TERM_RETURN) {
+		return expected_effect_row_solve_classifier(
+			solver,
+			expected,
+			actual_term->as.return_term.value,
+			depth + 1
+		);
+	}
 	/* A synthesized lambda may expose a classifier-level row scheme while the
 	 * surface expectation contains open rows at the corresponding arrows.
 	 * Instantiate the scheme from that structure before solving the expected
@@ -2664,20 +2855,25 @@ static int expected_effect_row_solve_classifier(
 			&row
 		);
 		uint32_t instantiated;
-		if (row_status < 0 || (row_status > 0 &&
-			expected_effect_row_bind(
-				solver,
-				actual_term->as.effect_row_forall.binding_id,
-				row
-			) != 0) || (row_status > 0 &&
-			prototype_term_graph_substitute_bound_var(
+		if (row_status < 0) {
+			return -1;
+		}
+		if (row_status > 0) {
+			int bind_status = expected_effect_row_bind(
+				solver, actual_term->as.effect_row_forall.binding_id, row
+			);
+			if (bind_status != 0) {
+				return bind_status;
+			}
+		}
+		if (row_status > 0 && prototype_term_graph_substitute_bound_var(
 				solver->terms,
 				solver->type_declarations,
 				actual_term->as.effect_row_forall.body,
 				actual_term->as.effect_row_forall.binding_id,
 				row,
 				&instantiated
-			) != 0)) {
+			) != 0) {
 			return -1;
 		}
 		if (row_status == 0) {
@@ -2836,12 +3032,63 @@ static int expected_effect_row_solve_classifier(
 			depth + 1
 		);
 	}
+	/* Nested lambdas remain raw Pi computations. A value-position arrow may
+	 * expect a pure computation returning a suspended Pi. Solve that local
+	 * elaboration boundary without making raw Pi and Comp definitionally equal. */
+	if (expected_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
+		actual_term->tag == PROTOTYPE_TERM_PI) {
+		uint32_t expected_value;
+		if (classifier_kernel_whnf(
+				solver->terms,
+				solver->type_declarations,
+				solver->definitions,
+				expected_term->as.computation_type.result,
+				&expected_value
+			) != 0 || expected_value >= solver->terms->term_count ||
+			solver->terms->terms[expected_value].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+			return 1;
+		}
+		uint32_t empty_row;
+		if (prototype_term_effect_row_empty(solver->terms, &empty_row) != 0) {
+			return -1;
+		}
+		int row_status = expected_effect_row_solve_row(
+			solver, expected_term->as.computation_type.label, empty_row
+		);
+		if (row_status != 0) {
+			return row_status;
+		}
+		return expected_effect_row_solve_classifier(
+			solver,
+			solver->terms->terms[expected_value].as.thunk_type.computation,
+			actual,
+			depth + 1
+		);
+	}
 	if (expected_term->tag == PROTOTYPE_TERM_THUNK_TYPE &&
 		actual_term->tag == PROTOTYPE_TERM_THUNK_TYPE) {
 		return expected_effect_row_solve_classifier(
 			solver,
 			expected_term->as.thunk_type.computation,
 			actual_term->as.thunk_type.computation,
+			depth + 1
+		);
+	}
+	if (expected_term->tag == PROTOTYPE_TERM_APP &&
+		actual_term->tag == PROTOTYPE_TERM_APP) {
+		int function_status = expected_effect_row_solve_classifier(
+			solver,
+			expected_term->as.app.function,
+			actual_term->as.app.function,
+			depth + 1
+		);
+		if (function_status != 0) {
+			return function_status;
+		}
+		return expected_effect_row_solve_classifier(
+			solver,
+			expected_term->as.app.argument,
+			actual_term->as.app.argument,
 			depth + 1
 		);
 	}
@@ -2944,6 +3191,7 @@ int prototype_judgement_solve_expected_effect_rows(
 		return status;
 	}
 	uint32_t solved = expected;
+	uint32_t solved_actual = actual;
 	for (uint32_t i = 0; i < solver.solution_count; ++i) {
 		if (prototype_term_graph_substitute_bound_var(
 				terms,
@@ -2952,6 +3200,13 @@ int prototype_judgement_solve_expected_effect_rows(
 				solver.solutions[i].binding_id,
 				solver.solutions[i].row,
 				&solved
+			) != 0 || prototype_term_graph_substitute_bound_var(
+				terms,
+				type_declarations,
+				solved_actual,
+				solver.solutions[i].binding_id,
+				solver.solutions[i].row,
+				&solved_actual
 			) != 0) {
 			return -1;
 		}
@@ -2960,7 +3215,9 @@ int prototype_judgement_solve_expected_effect_rows(
 	 * Generic conversion deliberately does not instantiate classifier-level row
 	 * schemes and therefore cannot validate a forall nested below dependent Pi
 	 * binders. Row-scheme elimination belongs to this solver, not to DefEq. */
-	status = expected_effect_row_solve_classifier(&solver, solved, actual, 0);
+	status = expected_effect_row_solve_classifier(
+		&solver, solved, solved_actual, 0
+	);
 	if (status != 0) {
 		return status;
 	}

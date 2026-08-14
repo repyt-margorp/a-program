@@ -409,6 +409,23 @@ enum operation_effect_row_meta_state {
 	OPERATION_EFFECT_ROW_META_SOLVED
 };
 
+struct compile_context;
+
+static int operation_refine_classifier_from_expected(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t expected_classifier,
+	uint32_t depth,
+	int* p_changed
+);
+
+static int operation_check_classifier(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t expected_classifier,
+	uint32_t depth
+);
+
 /* Effect-row metavariables are owned by source occurrences. The placeholder
  * row is only a location in the current classifier graph; binder identity is
  * never the identity of the solver cell. */
@@ -463,6 +480,7 @@ struct compile_context {
 	struct prototype_compile_metadata* metadata;
 	struct operation_classifier_solver classifier_solver;
 	struct operation_effect_solver effect_solver;
+	int materializing_checked_classifiers;
 	struct prototype_operation_usage_solution
 		operation_usage_solutions[PROTOTYPE_OPERATION_USAGE_SOLUTION_CAPACITY];
 	struct prototype_usage_entry* operation_usage_entries;
@@ -1567,10 +1585,16 @@ static int operation_apply_classifier(
 		) != 0 || expected_domain >= ctx->terms->term_count) {
 		return -1;
 	}
-	if (!prototype_judgement_classifier_compatible(
-			ctx->terms, ctx->type_declarations,
-			expected_domain, argument_classifier
-		)) {
+	uint32_t solved_expected_domain;
+	int domain_solve_status = prototype_judgement_solve_expected_effect_rows(
+		ctx->terms,
+		ctx->type_declarations,
+		NULL,
+		expected_domain,
+		argument_classifier,
+		&solved_expected_domain
+	);
+	if (domain_solve_status != 0) {
 		return -1;
 	}
 	uint32_t family_id;
@@ -1590,12 +1614,22 @@ static int operation_apply_classifier(
 		return -1;
 	}
 	(void)family_id;
+	uint32_t classifier_argument;
+	if (prototype_judgement_dependent_classifier_argument(
+			ctx->terms,
+			ctx->type_declarations,
+			expected_domain,
+			argument_term,
+			&classifier_argument
+		) != 0) {
+		return -1;
+	}
 	return prototype_term_graph_substitute_bound_var(
 		ctx->terms,
 		ctx->type_declarations,
 		body,
 		binding_id,
-		argument_term,
+		classifier_argument,
 		p_classifier
 	);
 }

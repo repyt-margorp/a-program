@@ -2,7 +2,8 @@
 
 Date: 2026-08-13
 
-Status: IF0-IF6 complete; IF7 partial and dependency-blocked; IF8 blocked
+Status: IF0-IF7 complete; IF8 blocked on equality/transport; IF9 complete for
+the implemented fragment
 
 Repository baseline:
 
@@ -953,9 +954,9 @@ not-started | in-progress | blocked | complete | superseded
 | IF4 Index refinement | complete | IF3 | Vec/Fin solved and impossible branch refinement tests |
 | IF5 Motive and indexed IH | complete | IF4 | head/tail/map synthesis without expected-type seeding |
 | IF6 Pi-codomain positivity | complete | IF5 | Acc formation, negative occurrence rejection, lifted-IH typing/replay, and Core runtime lifting test |
-| IF7 Acc/well-founded library | in-progress | IF6 | Generic eliminator compiles and replays; its parameter specialization and lifted-IH runtime action are permanent tests; a concrete higher-order step remains blocked on dependent APP row-scheme solving |
+| IF7 Acc/well-founded library | complete | IF6 | Generic eliminator, full specialization, concrete `accFalse`, impossible-fiber refinement, and v73 artifact replay pass |
 | IF8 Fuel-free QuickSort | blocked | IF7 | Requires public equality/transport, decrease proofs, and completed surface well-founded recursion |
-| IF9 Documentation/cleanup | in-progress | IF8 | Implemented-fragment docs, strengthened artifact boundaries, full checks, and LOC report are being closed independently of blocked IF8 |
+| IF9 Documentation/cleanup | complete | IF7 | Implemented-fragment docs, strengthened artifact boundaries, full integration checks, and implementation report are current; IF8 remains a separate equality-dependent phase |
 
 ### 10.1 Progress log
 
@@ -971,14 +972,17 @@ not-started | in-progress | blocked | complete | superseded
 | 2026-08-13 | IF6 artifact | Made recursive-family inspection TypeView-transparent and replayed IH classifiers from authoritative constructor schemas | Acc v73 write/read/accepted-replay round trip succeeds | Runtime lifted-IH reduction remains before IF6 can complete |
 | 2026-08-14 | IF6 runtime | Lifted IH through existing `THUNK`/`LAMBDA`/`COMPUTATION_FOLD` structure, without a runtime schema or new Term tag | `lifted_ih_runtime_check.c` distinguishes functorial lifting from the old direct-Match reduction | Surface application of the generic combinator is a separate IF7 constraint |
 | 2026-08-14 | IF7 partial | Added a surface fixture that declares the generic Acc eliminator and specializes its uniform type parameter; retained the executable Core test for higher-order IH mapping | `explicit_index_family_acc_parameter_specialization_check.p` and `lifted_ih_runtime_check.c` pass in the permanent suite | Applying the remaining relation, motive, and step arguments crosses nested `EFFECT_ROW_FORALL`, pure `Comp`, quotation, and dependent APP forms that the current row solver does not normalize as one equation |
-| 2026-08-14 | IF9 partial | Updated README and the historical-design amendments to make `* indices` authoritative and named recursive self-reference explicitly invalid; bumped v72 to v73 for the new `LOCAL_TYPE_MEMBER` wire tag; strengthened Vec and Acc artifact round trips | `-Werror` reader build and the complete integration suite pass | IF9 cannot be called complete while IF7/IF8 deliverables remain open |
+| 2026-08-14 | IF7 row specialization | Extended the local expected-effect-row solver across dependent APP, nested pure computation/quotation boundaries, and transitive row-variable equations without adding global conversion rules | `explicit_index_family_acc_full_specialization_check.p` specializes `A`, `R`, `P`, and `step`; source compilation and v73 accepted artifact replay are permanent tests | Constructing a concrete finite `Acc` proof still requires elimination of an indexed relation fiber with no compatible constructor |
+| 2026-08-14 | IF7 completion | Reused declaration-driven constructor disjointness to omit only impossible indexed branches, completed concrete `Acc` construction, and made accepted Claim publication follow a grounded Derivation fixed point | `explicit_index_family_acc_concrete_check.p` compiles; `accFalse` survives v73 write/read; reachable branch type mismatch is rejected; the complete integration suite passes | General index unification beyond constructor disjointness remains intentionally residual |
+| 2026-08-14 | IF9 | Updated README and the historical-design amendments to make `* indices` authoritative and named recursive self-reference explicitly invalid; bumped v72 to v73 for the new `LOCAL_TYPE_MEMBER` wire tag; strengthened Vec and Acc artifact round trips | `-Werror` reader build and the complete integration suite pass | IF8 remains explicitly deferred rather than being reported as implemented |
 
 ### 10.2 Blocker log
 
 | Date | Phase | Blocker | Required decision/evidence | Resolution |
 |---|---|---|---|---|
 | 2026-08-13 | IF6 | The evaluator mapped `IH(scope, down)` directly to `Match(down, ...)`; a higher-order field requires mapping through its CBPV function representation | Implemented structurally with existing `THUNK`/`LAMBDA`/`COMPUTATION_FOLD`; no second schema authority | Closed 2026-08-14 |
-| 2026-08-14 | IF7 | Applying the generic `accElim` to a concrete higher-order step leaves classifier-level effect-row schemes under dependent Pi/APP structure. A trial that treated pure `Comp`/quotation wrappers as global conversion compatibility regressed the existing indexed `map`, so that shortcut was rejected and removed. A finite Bool relation also showed that impossible indexed relation branches are not yet eliminated while checking a constructor argument. | Extend the dedicated expected-effect-row constraint solver to normalize dependent APP and quotation boundaries while retaining occurrence-scoped row variables, then make certified impossible-branch refinement available at constructor-argument lambda checking; do not alter DefEq and do not seed either result from `::` | Open |
+| 2026-08-14 | IF7 row schemes | Applying the generic `accElim` across relation, motive, and step arguments required classifier-level row schemes under dependent Pi/APP structure | Solved in the dedicated expected-effect-row solver, including transitive row-variable equations; no global DefEq rule was added | Closed 2026-08-14 |
+| 2026-08-14 | IF7 empty fiber | A concrete `accFalse` proof requires checking a branch from `Precedes y false`, although the sole constructor has result `Precedes false true`; the current fixed point did not turn that incompatible index equation into certified branch impossibility inside a higher-order constructor argument | Reuse the declaration-driven impossible-branch refinement already used by indexed Match, preserving a proof/certificate that the constructor result cannot unify with the scrutinee fiber; do not accept the branch merely because synthesis failed | Closed 2026-08-14; constructor-disjoint indexed branches omit only the unreachable premise, while a reachable ill-typed branch is rejected |
 | 2026-08-13 | IF8 | The planned decrease proofs and algorithmic correctness statements require public equality/transport not supplied by this syntax milestone | Finish the equality/transport boundary before claiming fuel-free QuickSort | Open |
 
 ## 11. Permanent Test Matrix
@@ -1076,17 +1080,18 @@ Pause for design review at these boundaries:
 ```text
 baseline commit: 2ef4564
 artifact version before/after: v72 -> v73
-implemented phases: IF0-IF6 and the generic-eliminator/lifted-IH subset of IF7
-deferred phases: completion of IF7, IF8, and final IF9 closure
+implemented phases: IF0-IF7 and IF9 for the implemented indexed-family/Acc
+                    fragment
+deferred phases: IF8 fuel-free QuickSort, pending public equality/transport
 positive fixtures: Vec, Fin, Eq, Matrix, head, tail, map, Acc formation,
-                   generic accElim declaration/parameter specialization,
-                   and lifted-IH Core execution
+                   generic accElim declaration/full parameter specialization,
+                   concrete accFalse, and lifted-IH Core execution
 negative fixtures: malformed binder order, named recursive self-reference,
                    invalid recursive result, and negative Acc occurrence
 artifact replay evidence: Vec and Acc v73 write/read/accepted-replay paths
-remaining residual boundaries: dependent APP effect-row solving, certified
-                               impossible branches in constructor arguments,
-                               and public equality/transport
+remaining residual boundaries: general index unification beyond constructor
+                               disjointness and public equality/transport for
+                               IF8
 ```
 
 The final commit identifier is intentionally recorded by Git rather than copied

@@ -43,12 +43,22 @@ for fixture in \
 	explicit_index_family_map_check \
 	explicit_index_family_acc_check \
 	explicit_index_family_acc_eliminator_check \
-	explicit_index_family_acc_parameter_specialization_check
+	explicit_index_family_acc_parameter_specialization_check \
+	explicit_index_family_acc_full_specialization_check \
+	explicit_index_family_acc_concrete_check
 do
 	./read_file.out \
 		"src/prototype/tests/fixtures/typing/$fixture.p" \
 		>"$tmp_dir/$fixture.out"
 done
+
+./read_file.out --write-artifact "$tmp_dir/AccSpecialized.apo" \
+	src/prototype/tests/fixtures/typing/explicit_index_family_acc_full_specialization_check.p \
+	>"$tmp_dir/acc-specialized-write.out"
+./read_file.out --read-graph "$tmp_dir/AccSpecialized.apo" \
+	>"$tmp_dir/acc-specialized-read.out"
+grep -q '^interface type Acc ' "$tmp_dir/acc-specialized-read.out"
+grep -q '^operation_occurrences=' "$tmp_dir/acc-specialized-read.out"
 
 ./read_file.out --write-artifact "$tmp_dir/Acc.apo" \
 	src/prototype/tests/fixtures/typing/explicit_index_family_acc_eliminator_check.p \
@@ -57,6 +67,34 @@ done
 	>"$tmp_dir/acc-read.out"
 grep -q '^interface type Acc ' "$tmp_dir/acc-read.out"
 grep -q '^operation_occurrences=' "$tmp_dir/acc-read.out"
+
+./read_file.out --write-artifact "$tmp_dir/AccConcrete.apo" \
+	src/prototype/tests/fixtures/typing/explicit_index_family_acc_concrete_check.p \
+	>"$tmp_dir/acc-concrete-write.out"
+./read_file.out --read-graph "$tmp_dir/AccConcrete.apo" \
+	>"$tmp_dir/acc-concrete-read.out"
+grep -q '^interface term accFalse ' "$tmp_dir/acc-concrete-read.out"
+grep -q '^interface type Acc ' "$tmp_dir/acc-concrete-read.out"
+grep -q '^operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=0$' \
+	"$tmp_dir/acc-concrete-read.out"
+
+cat >"$tmp_dir/reachable-branch-mismatch.p" <<'EOF'
+Bool := @{ false : *; true : *; };
+Nat := @{ zero : *; succ : * -> *; };
+Precedes := @\left : Bool => @\right : Bool => {
+	falseBeforeTrue : * Bool.false Bool.true;
+};
+Holder := @{ hold : ((edge : Precedes Bool.false Bool.true) -> Nat) -> *; };
+bad := Holder.hold &(\edge : Precedes Bool.false Bool.true =>
+	edge @falseBeforeTrue => Bool.false);
+EOF
+if ./read_file.out "$tmp_dir/reachable-branch-mismatch.p" \
+	>"$tmp_dir/reachable-branch-mismatch.out" \
+	2>"$tmp_dir/reachable-branch-mismatch.err"
+then
+	echo "reachable indexed branch with the wrong result type unexpectedly passed" >&2
+	exit 1
+fi
 
 if ./read_file.out \
 	src/prototype/tests/fixtures/typing/explicit_index_family_named_self_negative.p \

@@ -1154,8 +1154,28 @@ static int type_instance_app_spine_info(
 		reversed[count++] = db->terms[current].as.app.argument;
 		current = db->terms[current].as.app.function;
 	}
-	if (current >= db->term_count ||
-		db->terms[current].tag != PROTOTYPE_TERM_TYPE_DECLARATION) {
+	if (current >= db->term_count) {
+		return -1;
+	}
+	if (db->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		uint32_t prefix[16];
+		uint32_t prefix_count;
+		if (type_instance_app_spine_info(
+				db, current, p_type_id, prefix, &prefix_count
+			) != 0 || prefix_count + count > 16 ||
+			(prefix_count + count > 0 && !args)) {
+			return -1;
+		}
+		for (uint32_t i = 0; i < prefix_count; ++i) {
+			args[i] = prefix[i];
+		}
+		for (uint32_t i = 0; i < count; ++i) {
+			args[prefix_count + i] = reversed[count - i - 1];
+		}
+		*p_arg_count = prefix_count + count;
+		return 0;
+	}
+	if (db->terms[current].tag != PROTOTYPE_TERM_TYPE_DECLARATION) {
 		return -1;
 	}
 	if (count > 0 && !args) {

@@ -175,11 +175,18 @@ int prototype_judgement_delta_app_elim_classifier(
 	if (terms->terms[domain_whnf].tag == PROTOTYPE_TERM_RETURN) {
 		domain_whnf = terms->terms[domain_whnf].as.return_term.value;
 	}
-	if (!prototype_judgement_classifier_compatible(
-			terms, type_declarations, domain_whnf, argument_classifier
-		)) {
+	uint32_t solved_domain;
+	if (prototype_judgement_solve_expected_effect_rows(
+			terms,
+			type_declarations,
+			NULL,
+			domain_whnf,
+			argument_classifier,
+			&solved_domain
+		) != 0) {
 		return -1;
 	}
+	(void)solved_domain;
 	(void)codomain_family;
 	return pi_codomain_after_argument_in_context(
 		delta->contexts,

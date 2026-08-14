@@ -1061,14 +1061,18 @@ int prototype_judgement_constructor_spine_classifier(
 			) != 0) {
 			return -1;
 		}
-		if (!prototype_judgement_classifier_reference_equal(
+		uint32_t solved_expected;
+		if (prototype_judgement_solve_expected_effect_rows(
 				terms,
 				type_declarations,
+				NULL,
 				normalized_expected,
-				argument_classifiers[i]
-			)) {
+				argument_classifiers[i],
+				&solved_expected
+			) != 0) {
 			return PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_DOMAIN_MISMATCH;
 		}
+		(void)solved_expected;
 		if (pi_codomain_after_argument_in_context(
 				contexts,
 				substitutions,

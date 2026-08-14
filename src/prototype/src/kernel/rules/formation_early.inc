@@ -251,9 +251,13 @@ int prototype_judgement_add_constructor_spine_claim(
 			argument_count,
 			&expected_classifier,
 			&saturated
-		) != 0 || !saturated || prototype_judgement_classifier_conversion(
+		) != 0 || !saturated ||
+		(!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, expected_classifier, classifier
-		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) &&
+		 !prototype_judgement_classifier_reference_equal(
+			terms, type_declarations, expected_classifier, classifier
+		))) {
 		return -1;
 	}
 	struct prototype_judgement_proposition proposition = {
@@ -366,6 +370,56 @@ static int solve_source_index_pattern(
 	);
 }
 
+/* Return 1 only for a constructor-disjoint equation, 0 when the terms may
+ * still unify, and -1 for malformed input. This deliberately proves less than
+ * full index unification: it is the context-layout-independent contradiction
+ * check needed before source index binders are available. */
+static int source_index_terms_are_constructor_disjoint(
+	const struct prototype_term_db* terms,
+	uint32_t left,
+	uint32_t right,
+	uint32_t depth
+) {
+	if (!terms || left >= terms->term_count || right >= terms->term_count ||
+		depth > 64) {
+		return -1;
+	}
+	while (left < terms->term_count &&
+		terms->terms[left].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		left = terms->terms[left].as.type_view.core;
+	}
+	while (right < terms->term_count &&
+		terms->terms[right].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		right = terms->terms[right].as.type_view.core;
+	}
+	if (left >= terms->term_count || right >= terms->term_count) {
+		return -1;
+	}
+	const struct prototype_term* left_term = &terms->terms[left];
+	const struct prototype_term* right_term = &terms->terms[right];
+	if (left_term->tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+		right_term->tag == PROTOTYPE_TERM_CONSTRUCTOR &&
+		left_term->as.constructor.owner == right_term->as.constructor.owner) {
+		return left_term->as.constructor.constructor_id !=
+			right_term->as.constructor.constructor_id;
+	}
+	if (left_term->tag == PROTOTYPE_TERM_APP &&
+		right_term->tag == PROTOTYPE_TERM_APP) {
+		int head = source_index_terms_are_constructor_disjoint(
+			terms, left_term->as.app.function,
+			right_term->as.app.function, depth + 1
+		);
+		if (head != 0) {
+			return head;
+		}
+		return source_index_terms_are_constructor_disjoint(
+			terms, left_term->as.app.argument,
+			right_term->as.app.argument, depth + 1
+		);
+	}
+	return 0;
+}
+
 int prototype_judgement_source_indexed_branch_refinement(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
@@ -406,6 +460,34 @@ int prototype_judgement_source_indexed_branch_refinement(
 			type_declarations->constructor_count) {
 		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
 	}
+	const struct prototype_type_constructor_declaration* constructor =
+		&type_declarations->constructor_declarations[
+			type->first_constructor + constructor_index
+		];
+	uint32_t raw_result_type_id;
+	uint32_t raw_result_arguments[32];
+	uint32_t raw_result_argument_count;
+	if (prototype_term_type_instance_info(
+			terms, constructor->result_classifier, &raw_result_type_id,
+			raw_result_arguments, &raw_result_argument_count
+		) != 0 || raw_result_type_id != type_id || raw_result_argument_count !=
+			type->parameter_count + type->index_count) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	for (uint32_t i = 0; i < type->index_count; ++i) {
+		int disjoint = source_index_terms_are_constructor_disjoint(
+			terms,
+			scrutinee_arguments[type->parameter_count + i],
+			raw_result_arguments[type->parameter_count + i],
+			0
+		);
+		if (disjoint < 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+		if (disjoint > 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE;
+		}
+	}
 	uint32_t index_context_path[32];
 	uint32_t index_context_count;
 	if (type->index_count > 32 || prototype_context_extension_path(
@@ -440,10 +522,6 @@ int prototype_judgement_source_indexed_branch_refinement(
 	uint32_t base_context = prototype_context_get(
 		contexts, source_index_contexts[0]
 	)->parent;
-	const struct prototype_type_constructor_declaration* constructor =
-		&type_declarations->constructor_declarations[
-			type->first_constructor + constructor_index
-		];
 	uint32_t branch_path[64];
 	uint32_t branch_path_count;
 	if (constructor->constructor_index != constructor_index ||

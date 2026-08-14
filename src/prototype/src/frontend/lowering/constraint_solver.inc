@@ -2343,9 +2343,13 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 							PROTOTYPE_INVALID_ID) {
 						break;
 					}
-					if (operation_solver_bind(
+					if ((ctx->metadata->operations[target].tag ==
+							PROTOTYPE_OPERATION_NAME ?
+						operation_solver_bind_proven_classifier(
 							ctx, target, classifier, &pass_changed
-						) != 0) {
+						) : operation_solver_bind(
+							ctx, target, classifier, &pass_changed
+						)) != 0) {
 						return -1;
 					}
 					break;
@@ -2753,13 +2757,22 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 					if (child_classifier == PROTOTYPE_INVALID_ID) {
 						break;
 					}
-					if (prototype_judgement_cbpv_boundary_classifier(
+					int boundary_status = prototype_judgement_cbpv_boundary_classifier(
 							ctx->terms,
 							ctx->type_declarations,
 							ctx->metadata->operations[target].core_term,
 							child_classifier,
 							&classifier
-						) != 0 || operation_solver_bind_proven_classifier(
+						);
+					/* A child may still carry its synthesis frontier while a later
+					 * constructor-domain or APP constraint supplies the value/computation
+					 * boundary. Keep this equation pending instead of turning worklist
+					 * order into a typing error. The strict kernel helper is rerun once
+					 * that occurrence classifier changes. */
+					if (boundary_status != 0) {
+						break;
+					}
+					if (operation_solver_bind_proven_classifier(
 							ctx, target, classifier, &pass_changed
 						) != 0) {
 						return -1;
@@ -2800,7 +2813,9 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 			return -1;
 		}
 		int materialized = 0;
-		if (operation_solver_materialize_solved_motives(ctx, &materialized) != 0) {
+		if (operation_solver_materialize_solved_motives(
+				ctx, &materialized
+			) != 0) {
 			return -1;
 		}
 		if (!materialized) {
@@ -5228,7 +5243,6 @@ static int operation_solver_reify_core_proof(
 			return 0;
 		}
 	}
-
 	switch (operation->tag) {
 		case PROTOTYPE_OPERATION_LAMBDA: {
 			if (term->tag != PROTOTYPE_TERM_LAMBDA ||
@@ -5305,6 +5319,60 @@ static int operation_solver_reify_core_proof(
 			prototype_judgement_delta_set_operation(
 				&ctx->judgement_delta, operation_id
 			);
+			struct prototype_judgement_selected_evidence binder_evidence;
+			int binder_status = operation_solver_select_evidence_in_context(
+				ctx,
+				PROTOTYPE_INVALID_ID,
+				body->context_id,
+				binder_var,
+				operation->binder_classifier,
+				&binder_evidence
+			);
+			if (binder_status != 0) {
+				return binder_status;
+			}
+			uint32_t proof_binder_classifier = operation->binder_classifier;
+			uint32_t classifier_domain;
+			uint32_t classifier_family;
+			if (prototype_judgement_pi_parts(
+					ctx->terms, classifier,
+					&classifier_domain, &classifier_family
+				) == 0 && prototype_judgement_classifier_value_whnf(
+					ctx->terms,
+					ctx->type_declarations,
+					classifier_domain,
+					&classifier_domain
+				) == 0 && classifier_domain != proof_binder_classifier) {
+				prototype_judgement_delta_set_context(
+					&ctx->judgement_delta, body->context_id
+				);
+				prototype_judgement_delta_set_operation(
+					&ctx->judgement_delta, PROTOTYPE_INVALID_ID
+				);
+				int binder_exposure_status =
+					prototype_judgement_delta_record_expected_type_exposure(
+						&ctx->judgement_delta,
+						ctx->terms,
+						ctx->type_declarations,
+						&binder_evidence,
+						classifier_domain,
+						binder_var
+					);
+				int exposed_binder_status = binder_exposure_status == 0 ?
+					operation_solver_delta_select_evidence(
+						ctx,
+						PROTOTYPE_INVALID_ID,
+						body->context_id,
+						binder_var,
+						classifier_domain,
+						&binder_evidence
+					) : -1;
+				if (binder_exposure_status != 0 || exposed_binder_status != 0) {
+					return -1;
+				}
+				proof_binder_classifier = classifier_domain;
+			}
+			(void)classifier_family;
 			uint32_t expected_family;
 			uint32_t expected_classifier;
 			if (prototype_term_pure_family(
@@ -5314,7 +5382,7 @@ static int operation_solver_reify_core_proof(
 					&expected_family
 				) != 0 || prototype_term_pi_family(
 					ctx->terms,
-					operation->binder_classifier,
+					proof_binder_classifier,
 					expected_family,
 					&expected_classifier
 				) != 0 || operation_solver_generalize_lambda_effect_rows(
@@ -5322,56 +5390,75 @@ static int operation_solver_reify_core_proof(
 				) != 0) {
 				return -1;
 			}
-			if (!(prototype_judgement_classifier_conversion(
+			int classifier_is_derived = expected_classifier != classifier;
+			if (classifier_is_derived && !prototype_judgement_classifier_compatible(
 					ctx->terms,
 					ctx->type_declarations,
 					classifier,
 					expected_classifier
-				).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
-					return 1;
-				}
-				struct prototype_judgement_selected_evidence binder_evidence;
-				int binder_status = operation_solver_select_evidence_in_context(
-					ctx,
-					PROTOTYPE_INVALID_ID,
-					body->context_id,
-					binder_var,
-					operation->binder_classifier,
-					&binder_evidence
-				);
-				struct prototype_judgement_selected_evidence body_evidence;
-				int body_status = binder_status == 0 ?
-					operation_solver_select_evidence_in_context(
-						ctx,
-						operation_solver_evidence_owner(ctx, operation->body),
-						body->context_id,
-						body->core_term,
-						body->classifier,
-						&body_evidence
-					) : binder_status;
-				if (body_status != 0) {
-					return body_status;
-				}
-				prototype_judgement_delta_set_context(
-					&ctx->judgement_delta, operation->context_id
-				);
-				prototype_judgement_delta_set_operation(
-					&ctx->judgement_delta, operation_id
-				);
-				if (prototype_judgement_delta_record_lambda_intro(
+				)) {
+				return 1;
+			}
+			struct prototype_judgement_selected_evidence body_evidence;
+			int body_status = operation_solver_select_evidence_in_context(
+				ctx,
+				operation_solver_evidence_owner(ctx, operation->body),
+				body->context_id,
+				body->core_term,
+				body->classifier,
+				&body_evidence
+			);
+			if (body_status != 0) {
+				return body_status;
+			}
+			prototype_judgement_delta_set_context(
+				&ctx->judgement_delta, operation->context_id
+			);
+			uint32_t lambda_intro_operation = classifier_is_derived ?
+				PROTOTYPE_INVALID_ID : operation_id;
+			prototype_judgement_delta_set_operation(
+				&ctx->judgement_delta, lambda_intro_operation
+			);
+			if (prototype_judgement_delta_record_lambda_intro(
 					&ctx->judgement_delta,
 					ctx->terms,
 					ctx->type_declarations,
-					operation_id,
+					lambda_intro_operation,
 					core_term,
-					classifier,
+					expected_classifier,
 					binder_var,
 					body->core_term,
 						&binder_evidence,
 						operation->body,
-						&body_evidence
+					&body_evidence
 				) != 0) {
 				return -1;
+			}
+			if (classifier_is_derived) {
+				struct prototype_judgement_selected_evidence lambda_evidence;
+				if (operation_solver_delta_select_evidence(
+						ctx,
+						PROTOTYPE_INVALID_ID,
+						operation->context_id,
+						core_term,
+						expected_classifier,
+						&lambda_evidence
+					) != 0) {
+					return -1;
+				}
+				prototype_judgement_delta_set_operation(
+					&ctx->judgement_delta, operation_id
+				);
+				if (prototype_judgement_delta_record_expected_type_exposure(
+						&ctx->judgement_delta,
+						ctx->terms,
+						ctx->type_declarations,
+						&lambda_evidence,
+						classifier,
+						core_term
+					) != 0) {
+					return -1;
+				}
 			}
 			return 0;
 		}
@@ -5390,6 +5477,8 @@ static int operation_solver_reify_core_proof(
 				uint32_t argument_count;
 				uint32_t reverse_argument_operations[64];
 				uint32_t argument_operation_count = 0;
+				uint32_t expected_domains[64];
+				uint32_t expected_domain_count;
 				uint32_t cursor = operation_id;
 				if (prototype_term_constructor_spine_info(
 						ctx->terms,
@@ -5400,6 +5489,20 @@ static int operation_solver_reify_core_proof(
 						arguments,
 						64,
 						&argument_count
+					) != 0) {
+					return -1;
+				}
+				if (prototype_judgement_constructor_spine_expected_domains(
+						ctx->terms,
+						ctx->type_declarations,
+						&ctx->metadata->contexts,
+						&ctx->metadata->substitutions,
+						operation->context_id,
+						core_term,
+						PROTOTYPE_INVALID_ID,
+						expected_domains,
+						64,
+						&expected_domain_count
 					) != 0) {
 					return -1;
 				}
@@ -5423,6 +5526,9 @@ static int operation_solver_reify_core_proof(
 				if (argument_operation_count != argument_count) {
 					return -1;
 				}
+				if (expected_domain_count != argument_count) {
+					return -1;
+				}
 					uint32_t argument_operations[64];
 					uint32_t argument_classifiers[64];
 					struct prototype_judgement_selected_evidence argument_evidence[64];
@@ -5443,9 +5549,9 @@ static int operation_solver_reify_core_proof(
 						arguments[i],
 						depth + 1
 					);
-					if (status != 0) {
-						return status;
-					}
+						if (status != 0) {
+							return status;
+						}
 						status = operation_solver_select_evidence_in_context(
 							ctx,
 						operation_solver_evidence_owner(ctx, argument_operation),
@@ -5454,8 +5560,38 @@ static int operation_solver_reify_core_proof(
 							argument_classifiers[i],
 							&argument_evidence[i]
 					);
-					if (status != 0) {
-						return status;
+						if (status != 0) {
+							return status;
+					}
+					if (argument_classifiers[i] != expected_domains[i]) {
+						prototype_judgement_delta_set_context(
+							&ctx->judgement_delta, operation->context_id
+						);
+						prototype_judgement_delta_set_operation(
+							&ctx->judgement_delta, argument_operation
+						);
+						int exposure_status =
+							prototype_judgement_delta_record_expected_type_exposure(
+								&ctx->judgement_delta,
+								ctx->terms,
+								ctx->type_declarations,
+								&argument_evidence[i],
+								expected_domains[i],
+								arguments[i]
+							);
+						int expected_evidence_status = exposure_status == 0 ?
+							operation_solver_delta_select_evidence(
+								ctx,
+								argument_operation,
+								operation->context_id,
+								arguments[i],
+								expected_domains[i],
+								&argument_evidence[i]
+							) : -1;
+						if (exposure_status != 0 || expected_evidence_status != 0) {
+							return -1;
+						}
+						argument_classifiers[i] = expected_domains[i];
 					}
 				}
 				prototype_judgement_delta_set_context(
@@ -6106,6 +6242,28 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 		fprintf(stderr, "judgement materialization: invalid solution projection\n");
 		return -1;
 	}
+	/* Constructor-domain checking may establish a more precise classifier for
+	 * a higher-order argument than standalone synthesis can choose (notably an
+	 * empty indexed Match). Commit those already-checked occurrence classifiers
+	 * once, after fixed-point solving and before constructing the proof DAG. */
+	ctx->materializing_checked_classifiers = 1;
+	for (uint32_t i = 0; i < ctx->metadata->operation_count; ++i) {
+		const struct prototype_operation_node* operation =
+			&ctx->metadata->operations[i];
+		if (operation->tag != PROTOTYPE_OPERATION_APP ||
+			operation->application_role !=
+				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
+			continue;
+		}
+		int ignored_changed = 0;
+		if (operation_solver_propagate_constructor_domains(
+				ctx, i, &ignored_changed
+			) != 0) {
+			ctx->materializing_checked_classifiers = 0;
+			return -1;
+		}
+	}
+	ctx->materializing_checked_classifiers = 0;
 	if (materialize_pending_binder_assumptions(ctx) != 0 ||
 		materialize_pending_declaration_facts(ctx) != 0) {
 		fprintf(stderr, "judgement materialization: pending input facts failed\n");
@@ -6155,6 +6313,34 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 			}
 			const struct prototype_operation_node* body =
 				&ctx->metadata->operations[operation_case->body_operation];
+			const struct prototype_term* match =
+				&ctx->terms->terms[operation->core_term];
+			uint32_t term_case_id = match->as.match.first_case + case_index;
+			if (term_case_id >= ctx->terms->case_count) {
+				return -1;
+			}
+			const struct prototype_match_case* term_case =
+				&ctx->terms->cases[term_case_id];
+			uint32_t ignored_context;
+			uint32_t ignored_substitution;
+			uint32_t ignored_constructor;
+			int refinement_status = prototype_judgement_source_indexed_branch_refinement(
+				&ctx->metadata->contexts, &ctx->metadata->substitutions,
+				ctx->terms, ctx->type_declarations,
+				ctx->metadata->operations[operation->scrutinee].context_id,
+				ctx->metadata->operations[operation->scrutinee].core_term,
+				ctx->metadata->operations[operation->scrutinee].classifier,
+				operation_case->constructor_id, operation_case->context_id,
+				&ctx->terms->case_binders[term_case->first_binder],
+				term_case->binder_count, &ignored_context,
+				&ignored_substitution, &ignored_constructor
+			);
+			if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
+				branch_operation_ids[case_index] = PROTOTYPE_INVALID_ID;
+				memset(&branch_evidence[case_index], 0,
+					sizeof(branch_evidence[case_index]));
+				continue;
+			}
 			if (body->classifier == PROTOTYPE_INVALID_ID) {
 				branches_ready = 0;
 				break;
@@ -6190,6 +6376,8 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 				branch_evidence,
 				operation->case_count
 			) != 0) {
+			fprintf(stderr, "judgement materialization: match motive failed operation=%u\n",
+				i);
 			return -1;
 		}
 	}
@@ -6946,13 +7134,17 @@ static int bind_cbpv_operation_classifiers(
 			continue;
 		}
 		uint32_t classifier;
-		if (prototype_judgement_cbpv_boundary_classifier(
+		int boundary_status = prototype_judgement_cbpv_boundary_classifier(
 				ctx->terms,
 				ctx->type_declarations,
 				operation->core_term,
 				child_classifier,
 				&classifier
-			) != 0 || operation_solver_bind_proven_classifier(
+			);
+		if (boundary_status != 0) {
+			continue;
+		}
+		if (operation_solver_bind_proven_classifier(
 				ctx, operation_id, classifier, p_changed
 			) != 0) {
 			return -1;
