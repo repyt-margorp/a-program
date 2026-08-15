@@ -612,7 +612,7 @@ static int artifact_append_accepted_judgement(
 			claim_relocation[source_derivation->conclusion_claim_id];
 		/* Older wire formats carried this derived cache. The accepted append
 		 * preserves the source DAG exactly, so its topological rank remains valid
-		 * after ID relocation. v73 recomputes rank on read. */
+		 * after ID relocation. v74 recomputes rank on read. */
 		derivation.closure_rank = source_derivation->closure_rank;
 		derivation.premises = premises;
 		derivation.key_hash = 0;

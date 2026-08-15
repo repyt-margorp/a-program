@@ -72,6 +72,13 @@ enum prototype_index_refinement_status {
 	PROTOTYPE_INDEX_REFINEMENT_INVALID = -1
 };
 
+int prototype_judgement_solve_index_pattern(
+	const struct prototype_term_db* terms,
+	uint32_t binding_id,
+	uint32_t pattern,
+	uint32_t value,
+	uint32_t* p_solution
+);
 int prototype_judgement_source_indexed_branch_refinement(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
@@ -88,12 +95,19 @@ int prototype_judgement_source_indexed_branch_refinement(
 	uint32_t* p_refinement_substitution_id,
 	uint32_t* p_constructor_term
 );
-
 int prototype_judgement_delta_record_context_binding_assumption(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	uint32_t binding_id,
 	uint32_t classifier
+);
+int prototype_judgement_delta_record_substitution_reindex(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_selected_evidence* source,
+	uint32_t substitution_id,
+	struct prototype_judgement_selected_evidence* evidence
 );
 
 int prototype_judgement_delta_record_match_pattern(
@@ -103,7 +117,8 @@ int prototype_judgement_delta_record_match_pattern(
 	uint32_t classifier,
 	uint32_t constructor_owner_view,
 	uint32_t constructor_index,
-	uint32_t constructor_field_index
+	uint32_t constructor_field_index,
+	uint32_t refinement_substitution_id
 );
 
 int prototype_judgement_delta_record_effect_weaken(
@@ -463,9 +478,27 @@ int prototype_judgement_delta_select_evidence(
 	uint32_t classifier,
 	struct prototype_judgement_selected_evidence* selected
 );
+int prototype_judgement_delta_select_evidence_by_authority(
+	const struct prototype_judgement_delta* delta,
+	int authority_kind,
+	uint32_t authority_id,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	struct prototype_judgement_selected_evidence* selected
+);
 int prototype_judgement_select_evidence(
 	const struct prototype_judgement_db* judgement,
 	uint32_t operation_id,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	struct prototype_judgement_selected_evidence* selected
+);
+int prototype_judgement_select_evidence_by_authority(
+	const struct prototype_judgement_db* judgement,
+	int authority_kind,
+	uint32_t authority_id,
 	uint32_t context_id,
 	uint32_t subject,
 	uint32_t classifier,
@@ -539,6 +572,13 @@ int prototype_judgement_delta_record_constructor_spine(
 	const uint32_t* argument_operation_ids,
 	const struct prototype_judgement_selected_evidence* argument_evidence,
 	uint32_t argument_count
+);
+int prototype_judgement_delta_record_constructor_intro(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t classifier
 );
 int prototype_judgement_delta_record_computation_fold_elim(
 	struct prototype_judgement_delta* delta,
@@ -830,6 +870,7 @@ int prototype_judgement_validate_operation_typing(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
 	const struct prototype_operation_graph* operations,
 	uint32_t operation_id
 );
@@ -858,6 +899,7 @@ int prototype_judgement_project_principal_operation_proposition(
 
 int prototype_judgement_audit_principal_operation_claims(
 	const struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
 	const struct prototype_operation_graph* operations,
 	const struct prototype_judgement_db* judgement,
 	struct prototype_judgement_principal_operation_audit* p_audit

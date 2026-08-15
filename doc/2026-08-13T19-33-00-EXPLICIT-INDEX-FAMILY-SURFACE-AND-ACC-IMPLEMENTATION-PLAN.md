@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 
-Status: IF0-IF7 complete; IF8 blocked on equality/transport; IF9 complete for
-the implemented fragment
+Status: IF0-IF9 complete for the implemented fragment; IF8 completed under its
+delegated implementation plan
 
 Repository baseline:
 
@@ -905,20 +905,15 @@ Exit gate:
 
 ### IF8: Fuel-free QuickSort
 
-Deliverables:
+Implementation and progress authority:
 
-- define the list-size `Smaller` relation;
-- prove both partition outputs decrease;
-- define QuickSort through Acc;
-- execute representative inputs; and
-- retain the fuel implementation as a comparison fixture.
+`doc/2026-08-14T18-07-35-IF8-EQUALITY-TRANSPORT-AND-FUEL-FREE-QUICKSORT-IMPLEMENTATION-PLAN.md`
 
-Exit gate:
+- [x] Mark IF8 complete after the delegated plan's completion definition
+      and parent-plan synchronization checklist both pass.
 
-- generic fuel-free QuickSort compiles and executes;
-- sortedness/termination obligations are separate;
-- artifact replay passes; and
-- GitHub Issue #11 acceptance criteria are fully reviewed before closure.
+All intermediate phases, blockers, decisions, and evidence are tracked only in
+the delegated plan. They are not duplicated here.
 
 ### IF9: Documentation, cleanup, and accounting
 
@@ -955,8 +950,8 @@ not-started | in-progress | blocked | complete | superseded
 | IF5 Motive and indexed IH | complete | IF4 | head/tail/map synthesis without expected-type seeding |
 | IF6 Pi-codomain positivity | complete | IF5 | Acc formation, negative occurrence rejection, lifted-IH typing/replay, and Core runtime lifting test |
 | IF7 Acc/well-founded library | complete | IF6 | Generic eliminator, full specialization, concrete `accFalse`, impossible-fiber refinement, and v73 artifact replay pass |
-| IF8 Fuel-free QuickSort | blocked | IF7 | Requires public equality/transport, decrease proofs, and completed surface well-founded recursion |
-| IF9 Documentation/cleanup | complete | IF7 | Implemented-fragment docs, strengthened artifact boundaries, full integration checks, and implementation report are current; IF8 remains a separate equality-dependent phase |
+| IF8 Fuel-free QuickSort | complete | IF7 | Generic Acc-driven implementation, exact decrease witnesses, six-case normalization, and artifact v74 accepted replay pass |
+| IF9 Documentation/cleanup | complete | IF7 | Implemented-fragment docs, strengthened artifact boundaries, full integration checks, and implementation report are current; delegated IF8 is now complete under its dedicated plan |
 
 ### 10.1 Progress log
 
@@ -975,6 +970,7 @@ not-started | in-progress | blocked | complete | superseded
 | 2026-08-14 | IF7 row specialization | Extended the local expected-effect-row solver across dependent APP, nested pure computation/quotation boundaries, and transitive row-variable equations without adding global conversion rules | `explicit_index_family_acc_full_specialization_check.p` specializes `A`, `R`, `P`, and `step`; source compilation and v73 accepted artifact replay are permanent tests | Constructing a concrete finite `Acc` proof still requires elimination of an indexed relation fiber with no compatible constructor |
 | 2026-08-14 | IF7 completion | Reused declaration-driven constructor disjointness to omit only impossible indexed branches, completed concrete `Acc` construction, and made accepted Claim publication follow a grounded Derivation fixed point | `explicit_index_family_acc_concrete_check.p` compiles; `accFalse` survives v73 write/read; reachable branch type mismatch is rejected; the complete integration suite passes | General index unification beyond constructor disjointness remains intentionally residual |
 | 2026-08-14 | IF9 | Updated README and the historical-design amendments to make `* indices` authoritative and named recursive self-reference explicitly invalid; bumped v72 to v73 for the new `LOCAL_TYPE_MEMBER` wire tag; strengthened Vec and Acc artifact round trips | `-Werror` reader build and the complete integration suite pass | IF8 remains explicitly deferred rather than being reported as implemented |
+| 2026-08-15 | IF8 | Completed generic Acc-driven fuel-free QuickSort, certified dependent branch Contexts, and v74 replay | six-case complete normalization, malformed-evidence rejection, deterministic artifact rewrite, and full integration pass | public Eq/transport and general IADT unification remain separate work |
 
 ### 10.2 Blocker log
 
@@ -983,7 +979,6 @@ not-started | in-progress | blocked | complete | superseded
 | 2026-08-13 | IF6 | The evaluator mapped `IH(scope, down)` directly to `Match(down, ...)`; a higher-order field requires mapping through its CBPV function representation | Implemented structurally with existing `THUNK`/`LAMBDA`/`COMPUTATION_FOLD`; no second schema authority | Closed 2026-08-14 |
 | 2026-08-14 | IF7 row schemes | Applying the generic `accElim` across relation, motive, and step arguments required classifier-level row schemes under dependent Pi/APP structure | Solved in the dedicated expected-effect-row solver, including transitive row-variable equations; no global DefEq rule was added | Closed 2026-08-14 |
 | 2026-08-14 | IF7 empty fiber | A concrete `accFalse` proof requires checking a branch from `Precedes y false`, although the sole constructor has result `Precedes false true`; the current fixed point did not turn that incompatible index equation into certified branch impossibility inside a higher-order constructor argument | Reuse the declaration-driven impossible-branch refinement already used by indexed Match, preserving a proof/certificate that the constructor result cannot unify with the scrutinee fiber; do not accept the branch merely because synthesis failed | Closed 2026-08-14; constructor-disjoint indexed branches omit only the unreachable premise, while a reachable ill-typed branch is rejected |
-| 2026-08-13 | IF8 | The planned decrease proofs and algorithmic correctness statements require public equality/transport not supplied by this syntax milestone | Finish the equality/transport boundary before claiming fuel-free QuickSort | Open |
 
 ## 11. Permanent Test Matrix
 
@@ -1072,26 +1067,30 @@ Pause for design review at these boundaries:
 5. after IF6, compare the accepted positivity grammar with the Acc example;
 6. before any artifact bump, identify the exact missing wire vocabulary (v73
    was required because v72 lacked `LOCAL_TYPE_MEMBER`); and
-7. before closing Issue #11, run the full acceptance matrix including Acc and
-   fuel-free QuickSort.
+7. before closing Issue #11, complete the delegated IF8 plan and run the full
+   acceptance matrix including Acc and fuel-free QuickSort.
 
 ## 14. Implementation Report
 
 ```text
 baseline commit: 2ef4564
-artifact version before/after: v72 -> v73
-implemented phases: IF0-IF7 and IF9 for the implemented indexed-family/Acc
+artifact version before/after: v72 -> v74
+implemented phases: IF0-IF9 for the implemented indexed-family/Acc/QuickSort
                     fragment
-deferred phases: IF8 fuel-free QuickSort, pending public equality/transport
+completed delegated phase: IF8 generic fuel-free QuickSort, tracked by the
+                            dedicated IF8 plan
 positive fixtures: Vec, Fin, Eq, Matrix, head, tail, map, Acc formation,
                    generic accElim declaration/full parameter specialization,
-                   concrete accFalse, and lifted-IH Core execution
+                   concrete accFalse, lifted-IH Core execution, order,
+                   partition, and generic fuel-free QuickSort
 negative fixtures: malformed binder order, named recursive self-reference,
-                   invalid recursive result, and negative Acc occurrence
-artifact replay evidence: Vec and Acc v73 write/read/accepted-replay paths
+                   invalid recursive result, negative Acc occurrence, swapped
+                   decrease evidence, and forged v74 case binding
+artifact replay evidence: Vec, Acc, and fuel-free QuickSort v74
+                          write/read/accepted-replay paths
 remaining residual boundaries: general index unification beyond constructor
-                               disjointness and public equality/transport for
-                               IF8
+                               disjointness; public Eq/transport and the
+                               remaining Issue #11 criteria are separate work
 ```
 
 The final commit identifier is intentionally recorded by Git rather than copied

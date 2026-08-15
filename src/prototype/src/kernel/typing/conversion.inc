@@ -1233,6 +1233,49 @@ static int merge_exact_selected_evidence(
 	return 0;
 }
 
+static int merge_authority_selected_evidence(
+	const struct prototype_judgement_proposition* candidates,
+	size_t candidate_count,
+	int authority_kind,
+	uint32_t authority_id,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	struct prototype_judgement_selected_evidence* selected,
+	int* p_found
+) {
+	if ((!candidates && candidate_count != 0) || !selected || !p_found ||
+		authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
+		authority_id == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	for (size_t i = 0; i < candidate_count; ++i) {
+		const struct prototype_judgement_proposition* candidate = &candidates[i];
+		int candidate_authority_kind;
+		uint32_t candidate_authority_id;
+		candidate_claim_authority(
+			candidate, &candidate_authority_kind, &candidate_authority_id
+		);
+		if (candidate->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			candidate_authority_kind != authority_kind ||
+			candidate_authority_id != authority_id ||
+			candidate->context_id != context_id ||
+			candidate->subject != subject ||
+			candidate->classifier != classifier) {
+			continue;
+		}
+		struct prototype_judgement_selected_evidence current;
+		selected_evidence_from_candidate(candidate, &current);
+		if (!*p_found) {
+			*selected = current;
+			*p_found = 1;
+		} else if (!selected_evidence_equal(selected, &current)) {
+			return 2;
+		}
+	}
+	return 0;
+}
+
 int prototype_judgement_delta_select_evidence(
 	const struct prototype_judgement_delta* delta,
 	uint32_t operation_id,
@@ -1276,6 +1319,52 @@ int prototype_judgement_delta_select_evidence(
 	return found ? 0 : 1;
 }
 
+int prototype_judgement_delta_select_evidence_by_authority(
+	const struct prototype_judgement_delta* delta,
+	int authority_kind,
+	uint32_t authority_id,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	struct prototype_judgement_selected_evidence* selected
+) {
+	if (!delta || !selected) {
+		return -1;
+	}
+	int found = 0;
+	int status = merge_authority_selected_evidence(
+		delta->propositions,
+		delta->proposition_count,
+		authority_kind,
+		authority_id,
+		context_id,
+		subject,
+		classifier,
+		selected,
+		&found
+	);
+	if (status != 0) {
+		return status;
+	}
+	if (delta->db) {
+		status = merge_authority_selected_evidence(
+			delta->db->propositions,
+			delta->db->proposition_count,
+			authority_kind,
+			authority_id,
+			context_id,
+			subject,
+			classifier,
+			selected,
+			&found
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
+	return found ? 0 : 1;
+}
+
 int prototype_judgement_select_evidence(
 	const struct prototype_judgement_db* judgement,
 	uint32_t operation_id,
@@ -1292,6 +1381,36 @@ int prototype_judgement_select_evidence(
 		judgement->propositions,
 		judgement->proposition_count,
 		operation_id,
+		context_id,
+		subject,
+		classifier,
+		selected,
+		&found
+	);
+	if (status != 0) {
+		return status;
+	}
+	return found ? 0 : 1;
+}
+
+int prototype_judgement_select_evidence_by_authority(
+	const struct prototype_judgement_db* judgement,
+	int authority_kind,
+	uint32_t authority_id,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	struct prototype_judgement_selected_evidence* selected
+) {
+	if (!judgement || !selected) {
+		return -1;
+	}
+	int found = 0;
+	int status = merge_authority_selected_evidence(
+		judgement->propositions,
+		judgement->proposition_count,
+		authority_kind,
+		authority_id,
 		context_id,
 		subject,
 		classifier,
@@ -2053,6 +2172,41 @@ static int find_effect_row_argument(
 	}
 }
 
+int prototype_judgement_expose_callable_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t classifier,
+	uint32_t* p_ret
+) {
+	if (!terms || !type_declarations || !p_ret ||
+		classifier >= terms->term_count) {
+		return -1;
+	}
+	for (uint32_t depth = 0; depth < 16; ++depth) {
+		struct prototype_term_classifier_view view;
+		if (prototype_judgement_classifier_view(
+				terms, type_declarations, NULL, classifier, &view
+			) == 0 && view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
+			view.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+			classifier = view.result;
+			continue;
+		}
+		uint32_t whnf;
+		if (prototype_judgement_classifier_value_whnf(
+				terms, type_declarations, classifier, &whnf
+			) != 0 || whnf >= terms->term_count) {
+			return -1;
+		}
+		if (terms->terms[whnf].tag == PROTOTYPE_TERM_THUNK_TYPE) {
+			classifier = terms->terms[whnf].as.thunk_type.computation;
+			continue;
+		}
+		*p_ret = classifier;
+		return 0;
+	}
+	return -1;
+}
+
 int prototype_judgement_specialize_effect_rows_for_argument(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -2114,8 +2268,42 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 			0,
 			&row
 		);
-		if (row_status <= 0) {
-			return row_status < 0 ? -1 : 1;
+		if (row_status < 0) {
+			return -1;
+		}
+		if (row_status == 0) {
+			/* The quantified row may occur only in the codomain.  In that case the
+			 * argument cannot constrain it, so instantiate the least row. Any fixed
+			 * effects remain in the codomain's row union. */
+			if (prototype_term_effect_row_empty(terms, &row) != 0) {
+				return -1;
+			}
+		}
+		/* Solving a latent row from a provisionally classified argument may
+		 * produce E = E union F.  Effect rows form an idempotent union semilattice,
+		 * so its least solution is F.  Remove the quantified variable itself
+		 * before substituting; retaining it would turn the local forall binder into
+		 * a free row variable at the call site. */
+		struct prototype_effect_row_normal_form normal;
+		if (prototype_term_effect_row_normal_form(terms, row, &normal) != 0) {
+			return -1;
+		}
+		uint32_t retained = 0;
+		for (uint32_t i = 0; i < normal.atom_count; ++i) {
+			uint32_t atom = normal.atoms[i];
+			if (atom < terms->term_count &&
+				terms->terms[atom].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
+				terms->terms[atom].as.effect_row_var.binding_id ==
+					quantified->as.effect_row_forall.binding_id) {
+				continue;
+			}
+			normal.atoms[retained++] = atom;
+		}
+		normal.atom_count = retained;
+		if (prototype_term_effect_row_materialize_normal_form(
+				terms, &normal, &row
+			) != 0) {
+			return -1;
 		}
 		if (row >= terms->term_count ||
 			prototype_term_graph_substitute_bound_var(
@@ -2476,13 +2664,10 @@ static int classifier_kernel_compatible_at_depth(
 		) == 0 && expected_type_id == actual_type_id &&
 		expected_argument_count == actual_argument_count) {
 		for (uint32_t i = 0; i < expected_argument_count; ++i) {
-			if (!(classifier_kernel_conversion(
-					terms,
-					type_declarations,
-					definitions,
-					expected_arguments[i],
-					actual_arguments[i]
-				).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
+			if (!classifier_kernel_compatible_at_depth(
+					terms, type_declarations, definitions,
+					expected_arguments[i], actual_arguments[i], depth + 1
+				)) {
 				return 0;
 			}
 		}
@@ -2801,6 +2986,9 @@ static int expected_effect_row_solve_classifier(
 		actual >= solver->terms->term_count || depth > 32) {
 		return -1;
 	}
+	if (expected == actual) {
+		return 0;
+	}
 	uint32_t normalized_expected;
 	uint32_t normalized_actual;
 	if (classifier_kernel_whnf(
@@ -2820,6 +3008,9 @@ static int expected_effect_row_solve_classifier(
 	}
 	expected = normalized_expected;
 	actual = normalized_actual;
+	if (expected == actual) {
+		return 0;
+	}
 	const struct prototype_term* expected_term = &solver->terms->terms[expected];
 	const struct prototype_term* actual_term = &solver->terms->terms[actual];
 	if (expected_term->tag == PROTOTYPE_TERM_RETURN) {

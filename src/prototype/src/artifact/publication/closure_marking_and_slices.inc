@@ -141,9 +141,10 @@ static int artifact_substitution_slice_mark(
 static int artifact_substitution_slice_init(
 	struct artifact_substitution_slice* slice,
 	const struct prototype_judgement_db* judgement,
-	const struct prototype_substitution_db* substitutions
+	const struct prototype_substitution_db* substitutions,
+	const struct prototype_compile_metadata* metadata
 ) {
-	if (!slice || !judgement || !substitutions) {
+	if (!slice || !judgement || !substitutions || !metadata) {
 		return -1;
 	}
 	memset(slice, 0, sizeof(*slice));
@@ -189,6 +190,34 @@ static int artifact_substitution_slice_init(
 				artifact_substitution_slice_free(slice);
 				return -1;
 			}
+		}
+	}
+	for (size_t i = 0; i < metadata->operation_count; ++i) {
+		const struct prototype_operation_node* operation =
+			&metadata->operations[i];
+		if (operation->context_action_substitution != PROTOTYPE_INVALID_ID &&
+			artifact_substitution_slice_mark(
+				slice,
+				substitutions,
+				operation->context_action_substitution,
+				0
+			) != 0) {
+			artifact_substitution_slice_free(slice);
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < metadata->operation_case_count; ++i) {
+		const struct prototype_operation_match_case* operation_case =
+			&metadata->operation_cases[i];
+		if (operation_case->has_refinement &&
+			artifact_substitution_slice_mark(
+				slice,
+				substitutions,
+				operation_case->refinement_substitution,
+				0
+			) != 0) {
+			artifact_substitution_slice_free(slice);
+			return -1;
 		}
 	}
 	for (size_t i = 0; i < slice->source_count; ++i) {
@@ -594,12 +623,21 @@ static int artifact_mark_substitution(
 	if (!marks || !terms || !substitutions || depth > 512 ||
 		substitution_id >= substitutions->substitution_count ||
 		substitution_id >= marks->substitution_count) {
+		fprintf(stderr,
+			"artifact closure: invalid substitution traversal substitution=%u depth=%u "
+			"source_count=%zu mark_count=%zu\n",
+			substitution_id,
+			depth,
+			substitutions ? substitutions->substitution_count : 0,
+			marks ? marks->substitution_count : 0);
 		return -1;
 	}
 	if (marks->substitutions[substitution_id] == 1) {
 		return 0;
 	}
 	if (marks->substitutions[substitution_id] == 2) {
+		fprintf(stderr, "artifact closure: cyclic substitution dependency substitution=%u\n",
+			substitution_id);
 		return -1;
 	}
 	marks->substitutions[substitution_id] = 2;
@@ -613,12 +651,22 @@ static int artifact_mark_substitution(
 		 artifact_mark_term(
 			marks, terms, substitution->term_classifier, depth + 1
 		 ) != 0)) {
+		fprintf(stderr,
+			"artifact closure: substitution term traversal failed substitution=%u "
+			"kind=%d term=%u classifier=%u\n",
+			substitution_id,
+			substitution ? substitution->kind : 0,
+			substitution ? substitution->term : PROTOTYPE_INVALID_ID,
+			substitution ? substitution->term_classifier : PROTOTYPE_INVALID_ID);
 		return -1;
 	}
 	if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
 		if (artifact_mark_substitution(
 				marks, terms, substitutions, substitution->first, depth + 1
 			) != 0) {
+			fprintf(stderr,
+				"artifact closure: substitution prefix traversal failed substitution=%u prefix=%u\n",
+				substitution_id, substitution->first);
 			return -1;
 		}
 	} else if (substitution->kind == PROTOTYPE_SUBSTITUTION_COMPOSE) {
@@ -627,6 +675,10 @@ static int artifact_mark_substitution(
 			) != 0 || artifact_mark_substitution(
 				marks, terms, substitutions, substitution->second, depth + 1
 			) != 0) {
+			fprintf(stderr,
+				"artifact closure: composed substitution traversal failed substitution=%u "
+				"first=%u second=%u\n",
+				substitution_id, substitution->first, substitution->second);
 			return -1;
 		}
 	}
@@ -670,10 +722,9 @@ static int artifact_mark_substitution(
 					) || !artifact_claim_has_derivation(marks->judgement, i)) {
 					continue;
 				}
-				if (evidence_claim != PROTOTYPE_INVALID_ID) {
-					return -1;
+				if (evidence_claim == PROTOTYPE_INVALID_ID) {
+					evidence_claim = i;
 				}
-				evidence_claim = i;
 			}
 		}
 		if (evidence_claim == PROTOTYPE_INVALID_ID ||
@@ -684,6 +735,18 @@ static int artifact_mark_substitution(
 				evidence_claim,
 				depth + 1
 			) != 0) {
+			fprintf(stderr,
+				"artifact closure: substitution evidence unavailable substitution=%u claim=%u "
+				"source=%u target=%u prefix=%u term=%u tag=%d classifier=%u\n",
+				substitution_id,
+				evidence_claim,
+				substitution->source_context,
+				substitution->target_context,
+				substitution->first,
+				substitution->term,
+				substitution->term < terms->term_count ?
+					terms->terms[substitution->term].tag : -1,
+				substitution->term_classifier);
 			return -1;
 		}
 		marks->substitution_evidence_claims[substitution_id] = evidence_claim;
@@ -1265,6 +1328,10 @@ static int artifact_mark_frame(
 	uint32_t depth
 ) {
 	if (!marks || !terms || depth > 512) {
+		if (depth > 512) {
+			fprintf(stderr, "artifact closure: IH frame traversal depth exceeded frame=%u depth=%u\n",
+				ih_scope_id, depth);
+		}
 		return -1;
 	}
 	if (ih_scope_id == PROTOTYPE_INVALID_ID) {
@@ -1304,6 +1371,10 @@ static int artifact_mark_term(
 	uint32_t depth
 ) {
 	if (!marks || !terms || depth > 512) {
+		if (depth > 512) {
+			fprintf(stderr, "artifact closure: term traversal depth exceeded term=%u depth=%u\n",
+				term_id, depth);
+		}
 		return -1;
 	}
 	if (term_id == PROTOTYPE_INVALID_ID) {

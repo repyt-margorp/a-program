@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v73.h"
+#include "a_program/artifact/wire_v74.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -41,7 +41,7 @@
 #define TERM_CAPACITY 262144
 #define MATCH_CASE_CAPACITY 262144
 #define MATCH_BINDER_CAPACITY 262144
-#define MATCH_FRAME_CAPACITY 256
+#define MATCH_FRAME_CAPACITY 4096
 #define JUDGEMENT_CAPACITY 4096
 #define COMPILE_LABEL_CAPACITY 512
 #define COMPILE_TYPE_EXPORT_CAPACITY 256
@@ -844,14 +844,16 @@ static int append_link_operation_graph(
 	const uint32_t* context_relocation,
 	size_t context_relocation_count,
 	const uint32_t* binding_relocation,
-	size_t binding_relocation_count
+	size_t binding_relocation_count,
+	const uint32_t* substitution_relocation,
+	size_t substitution_relocation_count
 ) {
 	struct prototype_operation_graph target_graph;
 	struct prototype_operation_graph source_graph;
 	prototype_compile_metadata_operation_graph(target, &target_graph);
 	prototype_compile_metadata_operation_graph_const(source, &source_graph);
 	if (!target || !source || !target_terms || !term_relocation || !context_relocation ||
-		!binding_relocation ||
+		!binding_relocation || !substitution_relocation ||
 		prototype_operation_graph_count(&target_graph) +
 			prototype_operation_graph_count(&source_graph) >
 			target_graph.operation_capacity ||
@@ -946,6 +948,20 @@ static int append_link_operation_graph(
 		RELOCATE_TERM_FIELD(operation.known_classifier);
 		RELOCATE_TERM_FIELD(operation.classifier);
 		RELOCATE_TERM_FIELD(operation.binder_classifier);
+		RELOCATE_TERM_FIELD(operation.source_core_term);
+		RELOCATE_TERM_FIELD(operation.source_classifier);
+		if (operation.context_action_substitution != PROTOTYPE_INVALID_ID) {
+			if (operation.context_action_substitution >=
+					substitution_relocation_count ||
+				substitution_relocation[
+					operation.context_action_substitution
+				] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			operation.context_action_substitution = substitution_relocation[
+				operation.context_action_substitution
+			];
+		}
 		if (operation.tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
 			if (operation.core_term >= target_terms->term_count ||
 				target_terms->terms[operation.core_term].tag !=
@@ -1035,6 +1051,18 @@ static int append_link_operation_graph(
 		}
 		operation_case.context_id =
 			context_relocation[operation_case.context_id];
+		if (operation_case.has_refinement) {
+			if (operation_case.refinement_substitution >=
+					substitution_relocation_count ||
+				substitution_relocation[
+					operation_case.refinement_substitution
+				] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			operation_case.refinement_substitution = substitution_relocation[
+				operation_case.refinement_substitution
+			];
+		}
 		operation_case.body_operation = offset_link_graph_id(
 			operation_case.body_operation, operation_offset
 		);
@@ -3794,7 +3822,9 @@ int main(int argc, char** argv) {
 					provider_context_relocation,
 					provider_context_relocation_count,
 					provider_binding_relocation,
-					provider_binding_relocation_count
+					provider_binding_relocation_count,
+					provider_substitution_relocation,
+					provider_substitution_relocation_count
 				) != 0) {
 				fprintf(stderr, "%s + %s: failed to link artifacts\n", link_target_path, provider_path);
 				symbol_table_free(&symbols);

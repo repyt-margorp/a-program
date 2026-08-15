@@ -10,6 +10,8 @@
 #define PROTOTYPE_OPERATION_USAGE_SOLUTION_CAPACITY 4096
 #define PROTOTYPE_OPERATION_USAGE_ENTRY_CAPACITY 131072
 
+struct prototype_context_db;
+
 struct prototype_operation_usage_solution {
 	uint32_t first_entry;
 	uint32_t entry_count;
@@ -19,6 +21,7 @@ struct prototype_operation_usage_solution {
 int prototype_operation_usage_solve(
 	const struct prototype_operation_graph* operations,
 	const struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
 	struct prototype_operation_usage_solution* solutions,
 	size_t solution_capacity,
 	struct prototype_usage_entry* entries,

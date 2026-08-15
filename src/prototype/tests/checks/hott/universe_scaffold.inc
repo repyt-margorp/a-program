@@ -20,6 +20,7 @@
 		(struct prototype_operation_match_case) {
 			.body_operation = indexed_false_return_operation,
 			.context_id = indexed_proof_context,
+			.refinement_substitution = PROTOTYPE_INVALID_ID,
 			.constructor_owner = indexed_relation_type,
 			.constructor_id = 0,
 			.case_label_symbol_id = -1,
@@ -29,6 +30,7 @@
 		(struct prototype_operation_match_case) {
 			.body_operation = indexed_true_return_operation,
 			.context_id = indexed_proof_context,
+			.refinement_substitution = PROTOTYPE_INVALID_ID,
 			.constructor_owner = indexed_relation_type,
 			.constructor_id = 1,
 			.case_label_symbol_id = -1,
@@ -47,6 +49,7 @@
 	if (prototype_operation_usage_solve(
 			&indexed_match_operation_graph,
 			&term_db,
+			NULL,
 			indexed_usage_solutions,
 			6,
 			indexed_usage_entries,

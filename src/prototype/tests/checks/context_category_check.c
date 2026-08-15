@@ -336,7 +336,7 @@ static int check_principal_operation_projection(void) {
 	uint64_t derivation_hits = judgement.derivation_intern_hits;
 	struct prototype_judgement_principal_operation_audit audit;
 	if (prototype_judgement_audit_principal_operation_claims(
-			&term_db, &operations, &judgement, &audit
+			&term_db, NULL, &operations, &judgement, &audit
 		) != 0 || audit.principal_operation_count != 1 ||
 		audit.proposition_count != 1 || audit.accepted_claim_count != 1 ||
 		audit.derivation_count != 1 ||
@@ -378,7 +378,7 @@ static int check_principal_operation_projection(void) {
 	propositions[0].classifier++;
 	status = status || prototype_judgement_db_rebuild_index(&judgement) != 0 ||
 		prototype_judgement_audit_principal_operation_claims(
-			&term_db, &operations, &judgement, &audit
+			&term_db, NULL, &operations, &judgement, &audit
 		) == 0;
 	return status ? -1 : 0;
 }

@@ -51,6 +51,7 @@ struct prototype_reindex_cache_entry {
 	uint32_t term;
 	uint32_t substitution;
 	uint32_t result;
+	uint64_t graph_revision;
 };
 
 /*
@@ -152,6 +153,15 @@ int prototype_context_extend(
 	uint32_t classifier_variable,
 	uint32_t* p_context
 );
+
+int prototype_context_extend_occurrence(
+	struct prototype_context_db* db,
+	uint32_t parent,
+	uint32_t binding_id,
+	uint32_t classifier,
+	uint32_t classifier_variable,
+	uint32_t* p_context
+);
 const struct prototype_context* prototype_context_get(
 	const struct prototype_context_db* db,
 	uint32_t context_id
@@ -222,6 +232,31 @@ int prototype_context_reindex_telescope(
 	uint32_t* p_binder_count,
 	uint32_t* p_target_extension,
 	uint32_t* p_substitution
+);
+int prototype_context_pullback_telescope(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t source_base,
+	uint32_t source_extension,
+	uint32_t base_substitution,
+	uint32_t* binders,
+	uint32_t binder_capacity,
+	uint32_t* p_binder_count,
+	uint32_t* p_target_extension,
+	uint32_t* p_lifted_substitution
+);
+int prototype_context_pullback_occurrence_telescope(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t source_base,
+	uint32_t source_extension,
+	uint32_t base_substitution,
+	uint32_t* p_target_extension,
+	uint32_t* p_lifted_substitution
 );
 
 void prototype_substitution_db_init(

@@ -1318,18 +1318,25 @@ static int record_computation_lambda_body_effect_weaken(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t body_operation_id,
-	uint32_t body_context_id,
-	uint32_t body_subject,
 	uint32_t lambda,
 	uint32_t source_classifier,
 	uint32_t target_effect_row,
 	uint32_t* p_target_classifier
 ) {
-	if (!delta || !terms || !type_declarations || !p_target_classifier ||
+	if (!delta || !delta->operations ||
+		body_operation_id >= delta->operation_count || !terms ||
+		!type_declarations || !p_target_classifier ||
 		lambda >= terms->term_count ||
 		terms->terms[lambda].tag != PROTOTYPE_TERM_LAMBDA ||
 		source_classifier >= terms->term_count || target_effect_row >= terms->term_count ||
-		!delta->contexts || body_context_id >= delta->contexts->context_count ||
+		!delta->contexts) {
+		return -1;
+	}
+	const struct prototype_operation_node* body_operation =
+		&delta->operations[body_operation_id];
+	uint32_t body_context_id = body_operation->context_id;
+	uint32_t body_subject = body_operation->core_term;
+	if (body_context_id >= delta->contexts->context_count ||
 		body_subject >= terms->term_count) {
 		return -1;
 	}
@@ -1909,8 +1916,6 @@ static int solve_clause_computation_fold_constraint(
 				terms,
 				type_declarations,
 				constraint->return_body_operation_id,
-				constraint->return_body_context_id,
-				constraint->return_body_subject,
 				fold->as.computation_fold.return_clause,
 				return_classifier,
 				handled_effect_row,

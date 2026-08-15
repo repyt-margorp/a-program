@@ -246,6 +246,7 @@ enum operation_classifier_goal_reason {
 
 enum operation_motive_solution_state {
 	OPERATION_MOTIVE_SOLUTION_UNRESOLVED = 0,
+	OPERATION_MOTIVE_SOLUTION_PROVISIONAL,
 	OPERATION_MOTIVE_SOLUTION_READY,
 	OPERATION_MOTIVE_SOLUTION_GUARDED_RECURSIVE,
 	OPERATION_MOTIVE_SOLUTION_MATERIALIZED
@@ -373,6 +374,7 @@ struct operation_solver_motive_application {
  * metavariable identified by its operation id.
  */
 struct operation_classifier_solver {
+	uint64_t solution_revision;
 	struct operation_solver_solution solutions[4096];
 	/* A candidate is a solver equation M(_) == T. It is never represented by
 	 * a provisional TermDB APP node. */
@@ -470,6 +472,26 @@ struct compile_judgement_workspace {
 		operation_usage_entries[PROTOTYPE_OPERATION_USAGE_ENTRY_CAPACITY];
 };
 
+#define OPERATION_REINDEX_CACHE_CAPACITY 16384
+#define OPERATION_BRANCH_REFINEMENT_CAPACITY 4096
+
+struct operation_reindex_cache_entry {
+	uint32_t operation_id;
+	uint32_t context_id;
+	uint32_t term;
+	uint32_t reindexed;
+	uint64_t dependency_signature;
+	int occupied;
+};
+
+struct operation_branch_refinement {
+	int present;
+	int status;
+	uint32_t source_context;
+	uint32_t refined_context;
+	uint32_t substitution;
+};
+
 struct compile_context {
 	const struct prototype_intrinsic_environment* intrinsic_environment;
 	struct prototype_ast_db* asts;
@@ -481,6 +503,11 @@ struct compile_context {
 	struct operation_classifier_solver classifier_solver;
 	struct operation_effect_solver effect_solver;
 	int materializing_checked_classifiers;
+	struct operation_reindex_cache_entry
+		operation_reindex_cache[OPERATION_REINDEX_CACHE_CAPACITY];
+	struct operation_branch_refinement branch_refinements[
+		OPERATION_BRANCH_REFINEMENT_CAPACITY
+	];
 	struct prototype_operation_usage_solution
 		operation_usage_solutions[PROTOTYPE_OPERATION_USAGE_SOLUTION_CAPACITY];
 	struct prototype_usage_entry* operation_usage_entries;
@@ -618,6 +645,39 @@ static int compile_known_operation_domain(
 		) != 0) {
 		return 1;
 	}
+	return 0;
+}
+
+static int push_graph_pattern_binder(
+	struct compile_context* ctx,
+	uint32_t ast_binder_id,
+	uint32_t classifier,
+	int symbol_id,
+	uint32_t* p_graph_binder_id
+) {
+	if (!ctx || !p_graph_binder_id || ctx->binder_count >= 512) {
+		return -1;
+	}
+	uint32_t graph_binder_id = prototype_term_new_binding(ctx->terms);
+	uint32_t context_id;
+	if (graph_binder_id == PROTOTYPE_INVALID_ID ||
+		prototype_context_extend_occurrence(
+			&ctx->metadata->contexts,
+			ctx->context_ids[ctx->binder_count],
+			graph_binder_id,
+			classifier,
+			ast_binder_id,
+			&context_id
+		) != 0) {
+		return -1;
+	}
+	ctx->binders[ctx->binder_count].ast_binder_id = ast_binder_id;
+	ctx->binders[ctx->binder_count].graph_binder_id = graph_binder_id;
+	ctx->binders[ctx->binder_count].classifier = classifier;
+	ctx->binders[ctx->binder_count].symbol_id = symbol_id;
+	ctx->binder_count++;
+	ctx->context_ids[ctx->binder_count] = context_id;
+	*p_graph_binder_id = graph_binder_id;
 	return 0;
 }
 
@@ -1457,6 +1517,9 @@ static int operation_add(
 			ctx->metadata->operations[body].computation_kind;
 	}
 	node.context_id = ctx->context_ids[ctx->binder_count];
+	node.context_action_substitution = PROTOTYPE_INVALID_ID;
+	node.source_core_term = PROTOTYPE_INVALID_ID;
+	node.source_classifier = PROTOTYPE_INVALID_ID;
 	node.core_term = core_term;
 	node.known_classifier = classifier;
 	node.classifier = PROTOTYPE_INVALID_ID;
@@ -1466,6 +1529,10 @@ static int operation_add(
 	node.binder_symbol_id = -1;
 	node.referenced_ast_binder_id = PROTOTYPE_INVALID_ID;
 	node.binding_id = PROTOTYPE_INVALID_ID;
+	if (tag == PROTOTYPE_OPERATION_VAR &&
+		ctx->terms->terms[core_term].tag == PROTOTYPE_TERM_VAR) {
+		node.binding_id = ctx->terms->terms[core_term].as.var.binding_id;
+	}
 	node.function = function;
 	node.argument = argument;
 	node.body = body;
@@ -1509,10 +1576,12 @@ static int operation_add_match_case(
 	uint32_t constructor_owner,
 	uint32_t constructor_id,
 	const struct prototype_ast_match_case* ast_case,
+	const struct prototype_case_binder* occurrence_binders,
 	uint32_t* p_case
 ) {
 	if (!ctx || !ctx->metadata || !p_case ||
-		!ast_case || ast_case->binder_count > 16 ||
+		!ast_case || (ast_case->binder_count != 0 && !occurrence_binders) ||
+		ast_case->binder_count > 16 ||
 		ast_case->first_binder + ast_case->binder_count >
 			ctx->asts->case_binder_count) {
 		return -1;
@@ -1522,11 +1591,14 @@ static int operation_add_match_case(
 	match_case.body_operation = body_operation;
 	match_case.context_id =
 		ctx->metadata->operations[body_operation].context_id;
+	match_case.has_refinement = 0;
+	match_case.refinement_substitution = PROTOTYPE_INVALID_ID;
 	match_case.constructor_owner = constructor_owner;
 	match_case.constructor_id = constructor_id;
 	match_case.case_label_symbol_id = -1;
 	match_case.binder_count = ast_case->binder_count;
 	for (uint32_t i = 0; i < ast_case->binder_count; ++i) {
+		match_case.binder_ids[i] = occurrence_binders[i].binding_id;
 		match_case.ast_binder_ids[i] =
 			ctx->asts->case_binders[ast_case->first_binder + i].ast_binder_id;
 	}
@@ -1555,6 +1627,15 @@ static int operation_apply_classifier(
 		function_classifier >= ctx->terms->term_count ||
 		argument_classifier >= ctx->terms->term_count || argument_term >= ctx->terms->term_count) {
 		return 1;
+	}
+	/* Surface function application implicitly forces a suspended function value.
+	 * Domain propagation already exposes this boundary; expose it here as well
+	 * before specializing latent effect rows and applying the Pi classifier. */
+	if (prototype_judgement_expose_callable_classifier(
+			ctx->terms, ctx->type_declarations,
+			function_classifier, &function_classifier
+		) != 0) {
+		return -1;
 	}
 	int specialization_status = prototype_judgement_specialize_effect_rows_for_argument(
 		ctx->terms,
@@ -2062,6 +2143,24 @@ static int add_compile_label(
 		}
 		if (ctx->metadata->labels[id].expectation_claim_id ==
 			PROTOTYPE_INVALID_ID) {
+			fprintf(stderr,
+				"compile label is missing an ascription expectation claim: "
+				"term=%u classifier=%u operation=%u context=%u\n",
+				term, ctx->metadata->labels[id].expectation_classifier,
+				exposed_operation, context_id);
+			for (uint32_t proposition_id = 0;
+				proposition_id < (uint32_t)ctx->judgement->proposition_count;
+				++proposition_id) {
+				const struct prototype_judgement_proposition* candidate =
+					&ctx->judgement->propositions[proposition_id];
+				if (candidate->operation_id == exposed_operation) {
+					fprintf(stderr,
+						"expectation operation proposition=%u subject=%u classifier=%u context=%u authority=%d:%u\n",
+						proposition_id, candidate->subject, candidate->classifier,
+						candidate->context_id, candidate->authority_kind,
+						candidate->authority_id);
+				}
+			}
 			return -1;
 		}
 	}
@@ -2071,6 +2170,10 @@ static int add_compile_label(
 			term,
 			&ctx->metadata->labels[id].canonical_key
 		) != 0) {
+		fprintf(stderr,
+			"compile label canonical key generation failed: term=%u "
+			"classifier=%u operation=%u\n",
+			term, exposed_classifier, exposed_operation);
 		return -1;
 	}
 	ctx->metadata->label_count++;
@@ -2761,7 +2864,7 @@ static int push_graph_binder(
 	 * available. Fixed-point elaboration may later refine that classifier and
 	 * must then relocate this immutable context extension. */
 	uint32_t classifier_variable = ast_binder_id;
-	if (prototype_context_extend(
+	if (prototype_context_extend_occurrence(
 			&ctx->metadata->contexts,
 			parent_context,
 			graph_binder_id,
@@ -4030,3 +4133,10 @@ static int compile_type_declaration_term_by_symbol(
 		p_ret
 	);
 }
+static int operation_solver_reindex_in_enclosing_indexed_branches(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t context_id,
+	uint32_t term,
+	uint32_t* p_reindexed
+);

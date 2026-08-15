@@ -1041,7 +1041,8 @@ int prototype_judgement_delta_build_match_motive(
 					binder_classifier,
 					scrutinee_classifier,
 					motive_case->constructor_id,
-					j
+					j,
+					PROTOTYPE_INVALID_ID
 			) != 0) {
 				return -1;
 			}

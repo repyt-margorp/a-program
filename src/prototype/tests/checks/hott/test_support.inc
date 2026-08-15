@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v73.h"
+#include "a_program/artifact/wire_v74.h"
 #include "a_program/graph/operation_usage.h"
 #include "a_program/identity/types.h"
 #include "a_program/identity/telescope_action.h"
@@ -469,6 +469,7 @@ static uint32_t fixture_add_claim(
 			prototype_operation_usage_solve(
 				fixture_operation_graph,
 				fixture_term_db,
+				NULL,
 				usage_solutions,
 				OPERATION_CAPACITY,
 				usage_entries,
@@ -551,6 +552,9 @@ static uint32_t add_operation(
 		.tag = PROTOTYPE_OPERATION_ATOM,
 		.category = category,
 		.context_id = context_id,
+		.context_action_substitution = PROTOTYPE_INVALID_ID,
+		.source_core_term = PROTOTYPE_INVALID_ID,
+		.source_classifier = PROTOTYPE_INVALID_ID,
 		.core_term = core,
 		.known_classifier = classifier,
 		.classifier = classifier,
@@ -567,6 +571,11 @@ static uint32_t add_operation(
 		.fold_return_binder_id = PROTOTYPE_INVALID_ID,
 		.fold_return_operation = PROTOTYPE_INVALID_ID
 	};
+	if (fixture_term_db && core < fixture_term_db->term_count &&
+		fixture_term_db->terms[core].tag == PROTOTYPE_TERM_VAR) {
+		graph->operations[id].binding_id =
+			fixture_term_db->terms[core].as.var.binding_id;
+	}
 	return id;
 }
 
@@ -1144,6 +1153,7 @@ static int check_bool_function_extensional_identity(
 	operation_graph->cases[first_proof_case] = (struct prototype_operation_match_case) {
 		.body_operation = false_operation,
 		.context_id = xr_context,
+		.refinement_substitution = PROTOTYPE_INVALID_ID,
 		.constructor_owner = input_identity,
 		.constructor_id = 0,
 		.case_label_symbol_id = -1,
@@ -1151,9 +1161,10 @@ static int check_bool_function_extensional_identity(
 	};
 	operation_graph->cases[first_proof_case + 1] =
 		(struct prototype_operation_match_case) {
-		.body_operation = true_operation,
-		.context_id = xr_context,
-		.constructor_owner = input_identity,
+			.body_operation = true_operation,
+			.context_id = xr_context,
+			.refinement_substitution = PROTOTYPE_INVALID_ID,
+			.constructor_owner = input_identity,
 		.constructor_id = 1,
 		.case_label_symbol_id = -1,
 		.binder_count = 0
@@ -1165,6 +1176,7 @@ static int check_bool_function_extensional_identity(
 	if (prototype_operation_usage_solve(
 			operation_graph,
 			term_db,
+			NULL,
 			proof_usage_solutions,
 			OPERATION_CAPACITY,
 			proof_usage_entries,

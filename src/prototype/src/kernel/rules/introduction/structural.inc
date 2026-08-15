@@ -37,13 +37,47 @@ int prototype_judgement_delta_record_lambda_intro(
 	uint32_t expected_body_classifier;
 	uint32_t lambda_classifier;
 	uint32_t binder_id = terms->terms[binder_subject].as.var.binding_id;
-	if (prototype_judgement_specialize_effect_rows_for_argument(
+	uint32_t generalized_lambda_classifier;
+	uint32_t generalized_pi;
+	uint32_t generalized_domain;
+	uint32_t generalized_codomain;
+	if (classifier_kernel_strip_effect_row_foralls(
+			terms,
+			type_declarations,
+			NULL,
+			classifier,
+			&generalized_lambda_classifier
+		) != 0 || classifier_kernel_as_pi(
+			terms,
+			type_declarations,
+			NULL,
+			generalized_lambda_classifier,
+			&generalized_pi,
+			&generalized_domain,
+			&generalized_codomain
+		) != 0) {
+		return -1;
+	}
+	(void)generalized_pi;
+	(void)generalized_codomain;
+	if (prototype_judgement_classifier_conversion(
+			terms,
+			type_declarations,
+			generalized_domain,
+			binder_classifier
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		/* Introduction preserves a row quantified only by the codomain. */
+		lambda_classifier = generalized_lambda_classifier;
+	} else if (prototype_judgement_specialize_effect_rows_for_argument(
 			terms,
 			type_declarations,
 			classifier,
 			binder_classifier,
 			&lambda_classifier
-		) != 0 || classifier_kernel_as_pi(
+		) != 0) {
+		return -1;
+	}
+	if (classifier_kernel_as_pi(
 			terms,
 			type_declarations,
 			NULL,
@@ -138,10 +172,16 @@ int prototype_judgement_delta_app_elim_classifier(
 		return -1;
 	}
 	uint32_t specialized_function_classifier;
-	if (prototype_judgement_specialize_effect_rows_for_argument(
+	uint32_t callable_function_classifier;
+	if (prototype_judgement_expose_callable_classifier(
 			terms,
 			type_declarations,
 			function_classifier,
+			&callable_function_classifier
+		) != 0 || prototype_judgement_specialize_effect_rows_for_argument(
+			terms,
+			type_declarations,
+			callable_function_classifier,
 			argument_classifier,
 			&specialized_function_classifier
 		) != 0) {

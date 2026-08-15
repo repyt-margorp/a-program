@@ -93,9 +93,10 @@ int prototype_operation_graph_induction_edge(
 	}
 	const struct prototype_case_binder* core_binder =
 		&terms->case_binders[core_case->first_binder + induction->ih_field_index];
-	if (!core_binder->is_recursive ||
-		core_binder->binding_id !=
-			terms->terms[argument->core_term].as.var.binding_id) {
+	/* Core Match binders are alpha-interned, while the Operation argument keeps
+	 * the exact source-occurrence Binding ID. The AST binder edge above is the
+	 * authoritative correspondence between those two layers. */
+	if (!core_binder->is_recursive) {
 		return -1;
 	}
 	*p_edge = (struct prototype_operation_induction_edge){
@@ -143,7 +144,9 @@ int prototype_operation_graph_validate(
 			operation->core_term,
 			operation->known_classifier,
 			operation->classifier,
-			operation->binder_classifier
+			operation->binder_classifier,
+			operation->source_core_term,
+			operation->source_classifier
 		};
 		for (size_t j = 0; j < sizeof(term_references) / sizeof(term_references[0]); ++j) {
 			if (term_references[j] != PROTOTYPE_INVALID_ID &&
@@ -151,6 +154,12 @@ int prototype_operation_graph_validate(
 				 terms->terms[term_references[j]].tag == 0)) {
 				return -1;
 			}
+		}
+		if ((operation->context_action_substitution == PROTOTYPE_INVALID_ID) !=
+				(operation->source_core_term == PROTOTYPE_INVALID_ID) ||
+			(operation->context_action_substitution == PROTOTYPE_INVALID_ID) !=
+				(operation->source_classifier == PROTOTYPE_INVALID_ID)) {
+			return -1;
 		}
 		if (operation->tag == PROTOTYPE_OPERATION_APP) {
 			struct prototype_term_semantics semantics;
@@ -273,8 +282,19 @@ int prototype_operation_graph_validate(
 			operation_case->body_operation >= graph->operation_count ||
 			!prototype_context_get(contexts, operation_case->context_id) ||
 			operation_case->constructor_owner >= terms->term_count ||
-			terms->terms[operation_case->constructor_owner].tag == 0) {
+			terms->terms[operation_case->constructor_owner].tag == 0 ||
+			(operation_case->has_refinement != 0) !=
+				(operation_case->refinement_substitution != PROTOTYPE_INVALID_ID)) {
 			return -1;
+		}
+		for (uint32_t binder_index = 0;
+			binder_index < operation_case->binder_count; ++binder_index) {
+			if (!prototype_context_contains_binding(
+					contexts, operation_case->context_id,
+					operation_case->binder_ids[binder_index]
+				)) {
+				return -1;
+			}
 		}
 	}
 	for (uint32_t i = 0; i < graph->fold_clause_count; ++i) {

@@ -119,7 +119,8 @@ static int resolver_type_expr_term_with_self(
 					}
 					const struct prototype_type_declaration* type =
 						&type_declarations->type_declarations[type_id];
-					if (arg_count < type->parameter_count) {
+					if (type->parameter_count <= UINT32_MAX - type->index_count &&
+						arg_count < type->parameter_count + type->index_count) {
 						return prototype_term_type_instance_extend(
 							terms,
 							type_declarations,
@@ -1544,7 +1545,8 @@ int prototype_judgement_resolve_match_case_request(
 					binder_classifier,
 					request->scrutinee_classifier,
 					resolution.constructor_id,
-					j
+					j,
+					PROTOTYPE_INVALID_ID
 				) != 0) {
 				return -1;
 			}

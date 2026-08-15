@@ -116,7 +116,7 @@ int prototype_judgement_expand_match(
 	);
 }
 
-static int delta_record_substitution_reindex(
+int prototype_judgement_delta_record_substitution_reindex(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -131,7 +131,14 @@ static int delta_record_substitution_reindex(
 	if (!delta || !terms || !type_declarations || !source || !evidence ||
 		!substitution || source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		source->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
-		substitution->target_context != source->context_id ||
+		substitution->target_context != source->context_id) {
+		return -1;
+	}
+	if (substitution->kind == PROTOTYPE_SUBSTITUTION_IDENTITY) {
+		*evidence = *source;
+		return 0;
+	}
+	if (
 		prototype_term_reindex(
 			terms,
 			type_declarations,
@@ -387,7 +394,7 @@ int prototype_judgement_delta_expand_match(
 								body_operation->core_term,
 								body_operation->classifier,
 								&source_evidence
-							) != 0 || delta_record_substitution_reindex(
+							) != 0 || prototype_judgement_delta_record_substitution_reindex(
 								delta,
 								terms,
 								type_declarations,

@@ -88,6 +88,7 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	uint32_t classifier,
 	const uint32_t* branch_operation_ids,
 	const struct prototype_judgement_selected_evidence* branch_evidence,
+	const uint32_t* branch_substitution_ids,
 	uint32_t branch_count
 );
 

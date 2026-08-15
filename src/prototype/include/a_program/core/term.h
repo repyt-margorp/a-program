@@ -1104,6 +1104,16 @@ int prototype_term_graph_substitute_bound_var(
 	uint32_t replacement,
 	uint32_t* p_ret
 );
+/* Rebuild a graph after replacing one exact interned subterm. The replacement
+ * is structural and does not assert typed conversion between the two terms. */
+int prototype_term_graph_replace_exact(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t term_id,
+	uint32_t exact_term,
+	uint32_t replacement,
+	uint32_t* p_ret
+);
 struct prototype_binding_replacement {
 	uint32_t binding_id;
 	uint32_t replacement;

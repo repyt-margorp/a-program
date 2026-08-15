@@ -983,6 +983,24 @@ static int add_complete_delta_relation(
 		candidate_proof->conclusion_classifier != candidate_relation->classifier) {
 		return -1;
 	}
+	if (candidate_proof->proof_kind ==
+			PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX &&
+		candidate_proof->semantic_action_kind ==
+			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+		const struct prototype_substitution* action = prototype_substitution_get(
+			delta->substitutions, candidate_proof->semantic_action_id
+		);
+		if (!action || (action->kind == PROTOTYPE_SUBSTITUTION_IDENTITY &&
+			(candidate_proof->premise_count != 1 ||
+			 candidate_proof->premises[0].proposition.context_id !=
+				candidate_relation->context_id ||
+			 candidate_proof->premises[0].proposition.subject !=
+				candidate_relation->subject ||
+			 candidate_proof->premises[0].proposition.classifier !=
+				candidate_relation->classifier))) {
+			return -1;
+		}
+	}
 	struct prototype_judgement_proposition normalized_relation =
 		*candidate_relation;
 	if (normalized_relation.operation_id != PROTOTYPE_INVALID_ID &&
@@ -1269,6 +1287,7 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	uint32_t classifier,
 	const uint32_t* branch_operation_ids,
 	const struct prototype_judgement_selected_evidence* branch_evidence,
+	const uint32_t* branch_substitution_ids,
 	uint32_t branch_count
 ) {
 	if (!delta || !terms || !branch_operation_ids || !branch_evidence ||
@@ -1288,6 +1307,8 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	uint32_t premise_operation_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	struct prototype_judgement_selected_evidence
 		premise_evidence[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	int premise_semantic_action_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_semantic_action_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_count = 0;
 	for (uint32_t i = 0; i < branch_count; ++i) {
 		uint32_t case_id = terms->terms[match_term].as.match.first_case + i;
@@ -1313,10 +1334,26 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		premise_classifiers[premise_count] = branch_evidence[i].classifier;
 		premise_operation_ids[premise_count] = branch_operation_ids[i];
 		premise_evidence[premise_count] = branch_evidence[i];
+		premise_semantic_action_kinds[premise_count] =
+			branch_substitution_ids && branch_substitution_ids[i] !=
+				PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION :
+			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
+		premise_semantic_action_ids[premise_count] = branch_substitution_ids ?
+			branch_substitution_ids[i] : PROTOTYPE_INVALID_ID;
 		premise_count++;
 	}
-	return add_delta_relation_with_explicit_premises(
+	int authority_kind = delta->current_operation_id != PROTOTYPE_INVALID_ID ?
+		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION :
+		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER;
+	uint32_t authority_id = authority_kind ==
+		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
+		delta->current_operation_id : match_term;
+	return add_delta_relation_with_authority_and_explicit_premise_actions(
 		delta,
+		authority_kind,
+		authority_id,
+		delta->current_operation_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		match_term,
 		classifier,
@@ -1326,6 +1363,8 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		premise_subjects,
 		premise_classifiers,
 		premise_evidence,
+		premise_semantic_action_kinds,
+		premise_semantic_action_ids,
 		premise_count
 	);
 }

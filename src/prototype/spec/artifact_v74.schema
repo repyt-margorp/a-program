@@ -1,10 +1,11 @@
-A_PROGRAM_ARTIFACT 73
+A_PROGRAM_ARTIFACT 74
 
-This file is the canonical semantic manifest for artifact version 73. The
+This file is the canonical semantic manifest for artifact version 74. The
 artifact header carries the SHA-256 digest of these exact bytes. A reader must
-reject a different version or digest before reading the interface. Version 72
+reject a different version or digest before reading the interface. Version 73
 is not accepted and has no compatibility parser because it cannot encode the
-LOCAL_TYPE_MEMBER expression used by exact indexed constructor results.
+exact occurrence Binding identities and certified refinement substitutions
+required to replay indexed Match branches.
 
 The header is followed by one immutable Intrinsic-environment contract:
 
@@ -18,7 +19,7 @@ literal or primitive Claims. In the default environment, Int and Int32 name
 HOST_TYPE_INT32 and unsuffixed integer literals have exactly that principal;
 Int64 remains distinct. INT_LITERAL_ADMISSIBILITY is retained in the numeric
 wire vocabulary only as a reserved historical ordinal and is not emitted or
-accepted by the v73 compiler.
+accepted by the v74 compiler.
 
 The artifact is one dense accepted object graph. Every section uses IDs in
 0..count-1 with no holes. Solver candidates, work queues, HOTT actions,
@@ -120,6 +121,23 @@ arenas are dense. Context and Operation solver variables and source AST IDs are
 not wire authority. Closure rank and lookup indices are reconstructed by
 least-fixed-point replay after readback.
 
+An Operation occurrence carries the action triple
+CONTEXT_ACTION_SUBSTITUTION, SOURCE_CORE_TERM, SOURCE_CLASSIFIER. All three are
+INVALID for an untransformed source occurrence, or all three are valid. For a
+transformed occurrence the Substitution source is the Operation Context;
+SOURCE_CORE_TERM and SOURCE_CLASSIFIER must both be reindexable through that
+Substitution, and the projected source term must be CORE_TERM. The projected
+source classifier is pullback-time evidence: the final structural classifier
+may be refined later by the Operation fixed point, so equality with the final
+classifier is not required. Keeping this triple is necessary to reconstruct
+typed evidence after indexed branch pullback without treating shared Core Term
+identity as occurrence identity.
+
+Each operation-case binder entry stores both its diagnostic AST binder ID and
+its authoritative persistent Binding ID. Replay uses the Binding ID rather
+than assuming that case binders are the final Context extensions: indexed
+pullback may retain free branch variables after the constructor telescope.
+
 Each operation-graph Substitution record ends with an evidence Claim ID.
 IDENTITY, EMPTY, PROJECTION, and COMPOSE use INVALID. EXTEND must name the exact
 accepted HAS_TYPE Claim for its source Context, assigned Term, and reindexed
@@ -166,7 +184,7 @@ Dependent computation-fold verification lifecycle:
 - hybrid compilation may publish PENDING obligations only when the selected
   backend declares the computation-fold result verifier and handler
   capabilities;
-- artifact v73 persists only PENDING obligations. DISCHARGED and FAILED are
+- artifact v74 persists only PENDING obligations. DISCHARGED and FAILED are
   execution-instance outcomes and are rejected on readback;
 - execution discharges an obligation by applying its retained pure classifier
   family to the returned value and checking conversion with the continuation

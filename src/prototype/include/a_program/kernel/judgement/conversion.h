@@ -66,6 +66,13 @@ int prototype_judgement_classifier_value_whnf(
 	uint32_t* p_value_classifier
 );
 
+int prototype_judgement_expose_callable_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t classifier,
+	uint32_t* p_ret
+);
+
 /* Elaboration equality for an unresolved qualified type reference and the
  * imported TYPE_VIEW carrying the same identity. This is not DefEq. */
 int prototype_judgement_classifier_reference_equal(

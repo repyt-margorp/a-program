@@ -501,10 +501,29 @@ grep -q 'has-type MATCH(.*\[solved-match-motive proof#' \
 ./read_file.out --write-artifact "$tmp_dir/recursive-dependent-match.apo" \
 	training/recursive_dependent_match.p \
 	>"$tmp_dir/recursive-dependent-match-write.out"
-grep -Eq '^operation_case_binders [0-9]+ 1 [0-9]+$' \
+grep -Eq '^operation_case_binders [0-9]+ 1 [0-9]+ [0-9]+$' \
 	"$tmp_dir/recursive-dependent-match.apo"
 ./read_file.out --read-graph "$tmp_dir/recursive-dependent-match.apo" \
 	>"$tmp_dir/recursive-dependent-match-read.out"
+awk '
+	$1 == "operation_case_binders" && $3 > 0 && !forged {
+		$5 = 4294967294;
+		forged = 1;
+	}
+	{
+		for (i = 1; i <= NF; ++i) {
+			printf "%s%s", $i, i == NF ? ORS : OFS;
+		}
+	}
+' "$tmp_dir/recursive-dependent-match.apo" \
+	>"$tmp_dir/recursive-dependent-match-forged-binder.apo"
+if ./read_file.out --read-graph \
+	"$tmp_dir/recursive-dependent-match-forged-binder.apo" \
+	>"$tmp_dir/recursive-dependent-match-forged-binder.out" \
+	2>"$tmp_dir/recursive-dependent-match-forged-binder.err"; then
+	echo 'artifact accepted a forged Match occurrence binder identity' >&2
+	exit 1
+fi
 
 cat >"$tmp_dir/bind.p" <<'EOF'
 main := { x : #.Int := { #1; }; x; };

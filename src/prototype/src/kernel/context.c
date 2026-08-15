@@ -231,6 +231,45 @@ int prototype_context_extend(
 	return 0;
 }
 
+int prototype_context_extend_occurrence(
+	struct prototype_context_db* db,
+	uint32_t parent,
+	uint32_t binding_id,
+	uint32_t classifier,
+	uint32_t classifier_variable,
+	uint32_t* p_context
+) {
+	if (!db || !p_context || parent >= db->context_count ||
+		binding_id == PROTOTYPE_INVALID_ID ||
+		(classifier == PROTOTYPE_INVALID_ID &&
+		 classifier_variable == PROTOTYPE_INVALID_ID) ||
+		db->context_count >= db->context_capacity) {
+		return -1;
+	}
+	uint64_t key_hash = context_key_hash(
+		parent, binding_id, classifier, classifier_variable
+	);
+	uint32_t id = (uint32_t)db->context_count++;
+	db->contexts[id].parent = parent;
+	db->contexts[id].binding_id = binding_id;
+	db->contexts[id].classifier_ref.kind =
+		classifier != PROTOTYPE_INVALID_ID &&
+		classifier_variable != PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL :
+			(classifier != PROTOTYPE_INVALID_ID ?
+				PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM :
+				PROTOTYPE_CONTEXT_CLASSIFIER_REF_VARIABLE);
+	db->contexts[id].classifier_ref.term_id = classifier;
+	db->contexts[id].classifier_ref.variable_id = classifier_variable;
+	db->contexts[id].depth = db->contexts[parent].depth + 1;
+	db->contexts[id].key_hash = key_hash;
+	size_t bucket = key_hash % PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
+	db->contexts[id].hash_next = db->index_heads[bucket];
+	db->index_heads[bucket] = id;
+	*p_context = id;
+	return 0;
+}
+
 int prototype_context_contains_binding(
 	const struct prototype_context_db* db,
 	uint32_t context_id,
@@ -361,7 +400,7 @@ int prototype_context_db_append_relocated(
 			context->binding_id == PROTOTYPE_INVALID_ID ||
 			context->binding_id >= binding_relocation_count ||
 			binding_relocation[context->binding_id] == PROTOTYPE_INVALID_ID ||
-			prototype_context_extend(
+			prototype_context_extend_occurrence(
 				target,
 				relocation[context->parent],
 				binding_relocation[context->binding_id],
@@ -1009,6 +1048,7 @@ int prototype_term_reindex(
 		&substitutions->reindex_cache[cache_slot];
 	if (cached->present && cached->term == term &&
 		cached->substitution == substitution_id &&
+		cached->graph_revision == terms->normalization_graph_revision &&
 		cached->result < terms->term_count) {
 		substitutions->reindex_hits++;
 		*p_reindexed = cached->result;
@@ -1077,7 +1117,8 @@ int prototype_term_reindex(
 			.present = 1,
 			.term = term,
 			.substitution = substitution_id,
-			.result = *p_reindexed
+			.result = *p_reindexed,
+			.graph_revision = terms->normalization_graph_revision
 		};
 	}
 	return status;
@@ -1472,28 +1513,36 @@ int prototype_context_comprehension_actions_validate(
 	return 0;
 }
 
-int prototype_context_reindex_telescope(
+int prototype_context_pullback_telescope(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	uint32_t base_context,
+	uint32_t source_base,
 	uint32_t source_extension,
+	uint32_t base_substitution,
 	uint32_t* binders,
 	uint32_t binder_capacity,
 	uint32_t* p_binder_count,
 	uint32_t* p_target_extension,
-	uint32_t* p_substitution
+	uint32_t* p_lifted_substitution
 ) {
 	if (!contexts || !substitutions || !terms || !type_declarations ||
-		!binders || !p_binder_count || !p_target_extension || !p_substitution) {
+		!binders || !p_binder_count || !p_target_extension ||
+		!p_lifted_substitution) {
+		return -1;
+	}
+	const struct prototype_substitution* base = prototype_substitution_get(
+		substitutions, base_substitution
+	);
+	if (!base || base->target_context != source_base) {
 		return -1;
 	}
 	uint32_t source_path[128];
 	uint32_t source_count;
 	if (prototype_context_extension_path(
 			contexts,
-			base_context,
+			source_base,
 			source_extension,
 			source_path,
 			128,
@@ -1501,13 +1550,8 @@ int prototype_context_reindex_telescope(
 		) != 0 || source_count > binder_capacity) {
 		return -1;
 	}
-	uint32_t substitution;
-	if (prototype_substitution_identity(
-			substitutions, contexts, base_context, &substitution
-		) != 0) {
-		return -1;
-	}
-	uint32_t target_context = base_context;
+	uint32_t substitution = base_substitution;
+	uint32_t target_context = base->source_context;
 	for (uint32_t i = 0; i < source_count; ++i) {
 		if (prototype_context_comprehension_action(
 				contexts,
@@ -1525,8 +1569,133 @@ int prototype_context_reindex_telescope(
 	}
 	*p_binder_count = source_count;
 	*p_target_extension = target_context;
-	*p_substitution = substitution;
+	*p_lifted_substitution = substitution;
 	return 0;
+}
+
+int prototype_context_pullback_occurrence_telescope(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t source_base,
+	uint32_t source_extension,
+	uint32_t base_substitution,
+	uint32_t* p_target_extension,
+	uint32_t* p_lifted_substitution
+) {
+	if (!contexts || !substitutions || !terms || !type_declarations ||
+		!p_target_extension || !p_lifted_substitution) {
+		return -1;
+	}
+	const struct prototype_substitution* base = prototype_substitution_get(
+		substitutions, base_substitution
+	);
+	uint32_t source_path[128];
+	uint32_t source_count;
+	if (!base || base->target_context != source_base ||
+		prototype_context_extension_path(
+			contexts,
+			source_base,
+			source_extension,
+			source_path,
+			128,
+			&source_count
+		) != 0) {
+		return -1;
+	}
+	uint32_t target_context = base->source_context;
+	uint32_t substitution = base_substitution;
+	for (uint32_t i = 0; i < source_count; ++i) {
+		const struct prototype_context* source = prototype_context_get(
+			contexts, source_path[i]
+		);
+		uint32_t classifier;
+		uint32_t target_extension;
+		uint32_t projection;
+		uint32_t weakened_substitution;
+		uint32_t variable;
+		if (!source || source->binding_id == PROTOTYPE_INVALID_ID ||
+			prototype_context_contains_binding(
+				contexts, target_context, source->binding_id
+			) || prototype_term_reindex(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				prototype_context_classifier_term(source),
+				substitution,
+				&classifier
+			) != 0 || prototype_context_extend(
+				contexts,
+				target_context,
+				source->binding_id,
+				classifier,
+				PROTOTYPE_INVALID_ID,
+				&target_extension
+			) != 0 || prototype_substitution_projection(
+				substitutions, contexts, target_extension, &projection
+			) != 0 || prototype_substitution_compose(
+				substitutions,
+				contexts,
+				substitution,
+				projection,
+				&weakened_substitution
+			) != 0 || prototype_term_var(
+				terms, source->binding_id, &variable
+			) != 0 || prototype_substitution_extend(
+				substitutions,
+				contexts,
+				terms,
+				type_declarations,
+				weakened_substitution,
+				source_path[i],
+				variable,
+				classifier,
+				&substitution
+			) != 0) {
+			return -1;
+		}
+		target_context = target_extension;
+	}
+	*p_target_extension = target_context;
+	*p_lifted_substitution = substitution;
+	return 0;
+}
+
+int prototype_context_reindex_telescope(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t base_context,
+	uint32_t source_extension,
+	uint32_t* binders,
+	uint32_t binder_capacity,
+	uint32_t* p_binder_count,
+	uint32_t* p_target_extension,
+	uint32_t* p_substitution
+) {
+	uint32_t identity;
+	if (!substitutions || !contexts || prototype_substitution_identity(
+			substitutions, contexts, base_context, &identity
+		) != 0) {
+		return -1;
+	}
+	return prototype_context_pullback_telescope(
+		contexts,
+		substitutions,
+		terms,
+		type_declarations,
+		base_context,
+		source_extension,
+		identity,
+		binders,
+		binder_capacity,
+		p_binder_count,
+		p_target_extension,
+		p_substitution
+	);
 }
 
 int prototype_context_substitution_from_terms(

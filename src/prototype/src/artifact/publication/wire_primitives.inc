@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v73.h"
+#include "a_program/artifact/wire_v74.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/operation_graph.h"

@@ -145,7 +145,8 @@ static uint32_t judgement_operation_evidence_owner(
 	const struct prototype_operation_node* operation =
 		&operations->operations[operation_id];
 	if (operation->tag == PROTOTYPE_OPERATION_VAR) {
-		return PROTOTYPE_INVALID_ID;
+		return operation->context_action_substitution == PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_INVALID_ID : operation_id;
 	}
 	if (operation->tag == PROTOTYPE_OPERATION_NAME) {
 		return judgement_operation_evidence_owner(

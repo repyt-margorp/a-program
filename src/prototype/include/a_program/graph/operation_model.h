@@ -57,6 +57,13 @@ struct prototype_operation_node {
 	/* Typed occurrences are indexed by a value context. This ID is deliberately
 	 * not part of the erased TermDB node or its canonical key. */
 	uint32_t context_id;
+	/* INVALID denotes the source occurrence. Otherwise this substitution maps
+	 * the Context above back to the occurrence's source Context. The source tag
+	 * remains authoritative; core_term is projected through this action when
+	 * reconstructing usage and Judgement evidence. */
+	uint32_t context_action_substitution;
+	uint32_t source_core_term;
+	uint32_t source_classifier;
 	uint32_t core_term;
 	/* A lowering-time fact supplied to the solver. It is not a solved
 	 * operation classifier and must never be published as one. */
@@ -71,7 +78,8 @@ struct prototype_operation_node {
 	/* Source-operation binder identity for VAR occurrences. The core VAR may
 	 * alias another scoped occurrence after tagless canonicalization. */
 	uint32_t referenced_ast_binder_id;
-	/* Graph binding introduced by a Lambda occurrence. This cannot be recovered
+	/* Exact source-occurrence Binding identity. Lambda stores the binding it
+	 * introduces; VAR stores the binding it references. This cannot be recovered
 	 * from core_term after alpha-interning selects another representative. */
 	uint32_t binding_id;
 	uint32_t function;
@@ -80,7 +88,7 @@ struct prototype_operation_node {
 	uint32_t scrutinee;
 	uint32_t binder_classifier;
 	/* An IH edge belongs to one exact typed Match case field. The erased Core
-	 * VAR binding is alpha-canonical and cannot recover this occurrence
+	 * VAR binding may be alpha-canonical and cannot recover this occurrence
 	 * identity. `scrutinee` and `argument` remain the owner Match and recursive
 	 * argument Operation IDs respectively. */
 	uint32_t ih_scope_id;
@@ -107,10 +115,17 @@ struct prototype_operation_match_case {
 	uint32_t body_operation;
 	/* Semantic case telescope. Source binder IDs below are occurrence metadata. */
 	uint32_t context_id;
+	/* A solved indexed branch owns the pullback Context above. This morphism
+	 * maps its refined Context back to the source constructor telescope. */
+	int has_refinement;
+	uint32_t refinement_substitution;
 	uint32_t constructor_owner;
 	uint32_t constructor_id;
 	int case_label_symbol_id;
 	uint32_t binder_count;
+	/* Exact source-occurrence Binding identities. Core Match binders may be
+	 * alpha-interned and refined Contexts need not end in the case telescope. */
+	uint32_t binder_ids[16];
 	uint32_t ast_binder_ids[16];
 };
 

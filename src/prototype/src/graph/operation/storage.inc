@@ -108,8 +108,21 @@ int prototype_operation_graph_add_case(
 ) {
 	if (!graph || !contexts || !graph->cases ||
 		!prototype_context_get(contexts, operation_case.context_id) ||
+		operation_case.binder_count > 16 ||
 		reserve_slot(graph->case_count, graph->case_capacity) != 0) {
 		return -1;
+	}
+	for (uint32_t binder_index = 0;
+		binder_index < operation_case.binder_count; ++binder_index) {
+		if (!prototype_context_contains_binding(
+				contexts, operation_case.context_id,
+				operation_case.binder_ids[binder_index]
+			)) {
+			return -1;
+		}
+	}
+	if (!operation_case.has_refinement) {
+		operation_case.refinement_substitution = PROTOTYPE_INVALID_ID;
 	}
 	if (p_case_id) {
 		*p_case_id = (uint32_t)graph->case_count;

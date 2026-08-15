@@ -1267,6 +1267,29 @@ static int evaluate_steps(
 				return -1;
 			}
 
+			/* Typed APP occurrences may expose a recursively produced callable as
+			 * Comp({}, Thunk(Pi)). RETURN and THUNK make this administrative force
+			 * pure and explicit, so the erased evaluator can recover the callable
+			 * without consulting OperationGraph annotations. */
+			if ((options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS) != 0 &&
+				function < db->term_count &&
+				db->terms[function].tag == PROTOTYPE_TERM_RETURN) {
+				uint32_t value = db->terms[function].as.return_term.value;
+				if (value < db->term_count &&
+					db->terms[value].tag == PROTOTYPE_TERM_THUNK &&
+					evaluate_steps(
+						db,
+						type_declarations,
+						definitions,
+						options,
+						db->terms[value].as.thunk.computation,
+						&function,
+						depth - 1
+					) != 0) {
+					return -1;
+				}
+			}
+
 			const struct prototype_term* reduced_function = &db->terms[function];
 			if ((options.flags & PROTOTYPE_TERM_REDUCE_BETA) &&
 				reduced_function->tag == PROTOTYPE_TERM_LAMBDA) {
@@ -1303,7 +1326,11 @@ static int evaluate_steps(
 				if (prototype_term_type_instance_info(
 						db, function, &type_id, arguments, &argument_count
 					) == 0 && type_id < type_declarations->type_count &&
-					argument_count < type_declarations->type_declarations[type_id].parameter_count) {
+					type_declarations->type_declarations[type_id].parameter_count <=
+						UINT32_MAX - type_declarations->type_declarations[type_id].index_count &&
+					argument_count <
+						type_declarations->type_declarations[type_id].parameter_count +
+						type_declarations->type_declarations[type_id].index_count) {
 					return prototype_term_type_instance_extend(
 						db,
 						type_declarations,
@@ -1601,6 +1628,24 @@ static int evaluate_steps(
 					term->as.computation_fold.computation, &computation, depth - 1
 				) != 0) {
 				return -1;
+			}
+			/* Nested surface lambdas elide their pure
+			 * RETURN(THUNK(lambda)) boundary in TermDB. A computation fold is
+			 * precisely where that returned value is consumed, so reconstruct the
+			 * value before applying the return algebra. */
+			if (computation < db->term_count &&
+				db->terms[computation].tag == PROTOTYPE_TERM_LAMBDA) {
+				uint32_t thunk;
+				uint32_t applied;
+				if (prototype_term_thunk(db, computation, &thunk) != 0 ||
+					prototype_term_app(
+						db, term->as.computation_fold.return_clause, thunk, &applied
+					) != 0) {
+					return -1;
+				}
+				return evaluate_steps(
+					db, type_declarations, definitions, options, applied, p_ret, depth - 1
+				);
 			}
 			if (computation < db->term_count &&
 				db->terms[computation].tag == PROTOTYPE_TERM_RETURN) {
@@ -2385,7 +2430,7 @@ static int conversion_equal_at_depth(
 			}
 			return 0;
 		}
-		case PROTOTYPE_TERM_TYPE_VIEW:
+		case PROTOTYPE_TERM_TYPE_VIEW: {
 			if (type_identity_is_stable(left_term->as.type_view.identity) ||
 				type_identity_is_stable(right_term->as.type_view.identity) ?
 					!type_identity_equal(
@@ -2396,31 +2441,53 @@ static int conversion_equal_at_depth(
 				*p_equal = 0;
 				return 0;
 			}
-			if (conversion_equal_at_depth(
+			uint32_t left_type_id;
+			uint32_t right_type_id;
+			uint32_t left_arguments[16];
+			uint32_t right_arguments[16];
+			uint32_t left_argument_count;
+			uint32_t right_argument_count;
+			if (prototype_term_type_instance_info(
 					db,
-					type_declarations,
-					definitions,
-					options,
-					scope,
-					left_term->as.type_view.core,
-					right_term->as.type_view.core,
-					p_equal,
-					depth + 1
-				) != 0 ||
-				!*p_equal) {
-				return 0;
+					left_whnf,
+					&left_type_id,
+					left_arguments,
+					&left_argument_count
+				) != 0 || prototype_term_type_instance_info(
+					db,
+					right_whnf,
+					&right_type_id,
+					right_arguments,
+					&right_argument_count
+				) != 0 || left_argument_count != right_argument_count) {
+				return -1;
 			}
-			return conversion_equal_at_depth(
-				db,
-				type_declarations,
-				definitions,
-				options,
-				scope,
-				left_term->as.type_view.source,
-				right_term->as.type_view.source,
-				p_equal,
-				depth + 1
-			);
+			/* TYPE_VIEW is the nominal boundary for a declaration application.
+			 * Its core and source spines are two representations of these same
+			 * arguments. Re-normalizing a complete indexed core application would
+			 * materialize this TYPE_VIEW again, so compare the authoritative
+			 * application arguments exactly once. */
+			for (uint32_t i = 0; i < left_argument_count; ++i) {
+				int equal = 0;
+				if (conversion_equal_at_depth(
+						db,
+						type_declarations,
+						definitions,
+						options,
+						scope,
+						left_arguments[i],
+						right_arguments[i],
+						&equal,
+						depth + 1
+					) != 0 || !equal) {
+					return 0;
+				}
+			}
+			*p_equal = 1;
+			(void)left_type_id;
+			(void)right_type_id;
+			return 0;
+		}
 		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 			*p_equal = 1;
 			return 0;

@@ -1,6 +1,7 @@
 #include "a_program/graph/operation_usage.h"
 
 #include "a_program/kernel/context.h"
+#include "a_program/kernel/resource_usage.h"
 
 #include <string.h>
 
@@ -81,35 +82,34 @@ static int accumulate_child(
 	) != 0 || usage_accumulate(target, &child, scalar, join) != 0 ? -1 : 0;
 }
 
-static int binding_for_ast(
-	const struct prototype_operation_graph* operations,
-	const struct prototype_term_db* terms,
-	uint32_t before_operation,
-	uint32_t ast_binder_id,
-	uint32_t* p_binding_id
+static int clear_case_local_usage(
+	const struct prototype_context_db* contexts,
+	uint32_t match_context,
+	uint32_t case_context,
+	struct prototype_usage_vector* usage
 ) {
-	if (!operations || !terms || !p_binding_id) {
+	if (!contexts || !usage || !prototype_context_get(
+			contexts, match_context
+		) || !prototype_context_get(contexts, case_context)) {
 		return -1;
 	}
-	uint32_t found = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < before_operation && i < operations->operation_count;
-		++i) {
-		const struct prototype_operation_node* operation = &operations->operations[i];
-		if (operation->tag != PROTOTYPE_OPERATION_VAR ||
-			operation->referenced_ast_binder_id != ast_binder_id ||
-			operation->core_term >= terms->term_count ||
-			terms->terms[operation->core_term].tag != PROTOTYPE_TERM_VAR) {
-			continue;
-		}
-		uint32_t binding_id = terms->terms[
-			operation->core_term
-		].as.var.binding_id;
-		if (found != PROTOTYPE_INVALID_ID && found != binding_id) {
+	uint32_t cursor = case_context;
+	while (cursor != prototype_context_empty(contexts)) {
+		const struct prototype_context* entry = prototype_context_get(
+			contexts, cursor
+		);
+		if (!entry) {
 			return -1;
 		}
-		found = binding_id;
+		if (!prototype_context_contains_binding(
+				contexts, match_context, entry->binding_id
+			) && prototype_usage_vector_set(
+				usage, entry->binding_id, PROTOTYPE_USAGE_ZERO
+			) != 0) {
+			return -1;
+		}
+		cursor = entry->parent;
 	}
-	*p_binding_id = found;
 	return 0;
 }
 
@@ -183,6 +183,7 @@ static int store_solution(
 int prototype_operation_usage_solve(
 	const struct prototype_operation_graph* operations,
 	const struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
 	struct prototype_operation_usage_solution* solutions,
 	size_t solution_capacity,
 	struct prototype_usage_entry* entries,
@@ -219,11 +220,20 @@ int prototype_operation_usage_solve(
 		case PROTOTYPE_OPERATION_CONSTRUCTOR:
 			break;
 		case PROTOTYPE_OPERATION_VAR:
+			if (operation->context_action_substitution != PROTOTYPE_INVALID_ID) {
+				if (prototype_term_usage_analyze(
+						terms, operation->core_term, &usage
+					) != 0) {
+					return -1;
+				}
+				break;
+			}
 			if (operation->core_term >= terms->term_count ||
 				terms->terms[operation->core_term].tag != PROTOTYPE_TERM_VAR ||
+				operation->binding_id == PROTOTYPE_INVALID_ID ||
 				prototype_usage_vector_set(
 					&usage,
-					terms->terms[operation->core_term].as.var.binding_id,
+					operation->binding_id,
 					PROTOTYPE_USAGE_ONE
 				) != 0) {
 				return -1;
@@ -335,22 +345,13 @@ int prototype_operation_usage_solve(
 					) != 0) {
 					return -1;
 				}
-				for (uint32_t binder = 0;
-					binder < operation_case->binder_count;
-					++binder) {
-					uint32_t binding_id;
-					if (binding_for_ast(
-							operations,
-							terms,
-							operation_id,
-							operation_case->ast_binder_ids[binder],
-							&binding_id
-						) != 0 || (binding_id != PROTOTYPE_INVALID_ID &&
-						 prototype_usage_vector_set(
-							&case_usage, binding_id, PROTOTYPE_USAGE_ZERO
-						 ) != 0)) {
-						return -1;
-					}
+				if (contexts && clear_case_local_usage(
+						contexts,
+						operation->context_id,
+						operation_case->context_id,
+						&case_usage
+					) != 0) {
+					return -1;
 				}
 				if (usage_accumulate(
 						&branches, &case_usage, PROTOTYPE_USAGE_ONE, 1

@@ -457,6 +457,8 @@ static int artifact_mark_roots(
 				interface->type_exports[i].local_type_id,
 				0
 			) != 0) {
+			fprintf(stderr, "artifact closure: type root traversal failed export=%zu type=%u\n",
+				i, interface->type_exports[i].local_type_id);
 			return -1;
 		}
 	}
@@ -464,10 +466,22 @@ static int artifact_mark_roots(
 		const struct prototype_artifact_term_export* export = &interface->term_exports[i];
 		if (!metadata || export->operation >= metadata->operation_count ||
 			metadata->operations[export->operation].classifier != export->classifier) {
+			fprintf(stderr,
+				"artifact closure: term export metadata mismatch export=%zu operation=%u "
+				"classifier=%u operation_classifier=%u\n",
+				i,
+				export->operation,
+				export->classifier,
+				metadata && export->operation < metadata->operation_count ?
+					metadata->operations[export->operation].classifier :
+					PROTOTYPE_INVALID_ID);
 			return -1;
 		}
 		if (artifact_mark_term(marks, terms, export->local_term, 0) != 0 ||
 			artifact_mark_subject_relations(marks, terms, judgement, export->local_term) != 0) {
+			fprintf(stderr,
+				"artifact closure: term export traversal failed export=%zu term=%u\n",
+				i, export->local_term);
 			return -1;
 		}
 		if (export->classifier != PROTOTYPE_INVALID_ID) {
@@ -587,6 +601,8 @@ static int artifact_mark_roots(
 		for (size_t i = 0; i < interface->type_export_count; ++i) {
 			uint32_t type_id = interface->type_exports[i].local_type_id;
 			if (type_id >= type_declarations->type_count) {
+				fprintf(stderr, "artifact closure: exported type out of range export=%zu type=%u\n",
+					i, type_id);
 				return -1;
 			}
 			const struct prototype_type_declaration* type =
@@ -610,6 +626,10 @@ static int artifact_mark_roots(
 								&metadata->contexts, context_id
 							);
 						if (!context || context_id >= PROTOTYPE_CONTEXT_CAPACITY) {
+							fprintf(stderr,
+								"artifact closure: constructor Context traversal failed "
+								"type=%u constructor=%u context=%u\n",
+								type_id, j, context_id);
 							return -1;
 						}
 						reachable_contexts[context_id] = 1;
@@ -624,6 +644,9 @@ static int artifact_mark_roots(
 			uint32_t derivation_id = marks->derivation_order[position];
 			if (derivation_id >= marks->derivation_count ||
 				!marks->derivations[derivation_id]) {
+				fprintf(stderr,
+					"artifact closure: invalid ordered derivation position=%zu derivation=%u\n",
+					position, derivation_id);
 				return -1;
 			}
 			const struct prototype_judgement_derivation* derivation =
@@ -637,6 +660,10 @@ static int artifact_mark_roots(
 					derivation->semantic_action_id,
 					0
 				) != 0) {
+				fprintf(stderr,
+					"artifact closure: derivation substitution traversal failed "
+					"derivation=%u substitution=%u\n",
+					derivation_id, derivation->semantic_action_id);
 				return -1;
 			}
 			for (uint32_t j = 0; j < derivation->premise_count; ++j) {
@@ -649,8 +676,50 @@ static int artifact_mark_roots(
 						derivation->premises[j].semantic_action_id,
 						0
 					) != 0) {
+					fprintf(stderr,
+						"artifact closure: premise substitution traversal failed "
+						"derivation=%u premise=%u substitution=%u\n",
+						derivation_id,
+						j,
+						derivation->premises[j].semantic_action_id);
 					return -1;
 				}
+			}
+		}
+		for (size_t i = 0; i < metadata->operation_case_count; ++i) {
+			const struct prototype_operation_match_case* operation_case =
+				&metadata->operation_cases[i];
+			if (operation_case->has_refinement &&
+				artifact_mark_substitution(
+					marks,
+					terms,
+					&metadata->substitutions,
+					operation_case->refinement_substitution,
+					0
+				) != 0) {
+				fprintf(stderr,
+					"artifact closure: Match refinement traversal failed "
+					"case=%zu substitution=%u\n",
+					i, operation_case->refinement_substitution);
+				return -1;
+			}
+		}
+		for (size_t i = 0; i < metadata->operation_count; ++i) {
+			const struct prototype_operation_node* operation =
+				&metadata->operations[i];
+			if (operation->context_action_substitution != PROTOTYPE_INVALID_ID &&
+				artifact_mark_substitution(
+					marks,
+					terms,
+					&metadata->substitutions,
+					operation->context_action_substitution,
+					0
+				) != 0) {
+				fprintf(stderr,
+					"artifact closure: operation Context action traversal failed "
+					"operation=%zu substitution=%u\n",
+					i, operation->context_action_substitution);
+				return -1;
 			}
 		}
 		if (artifact_canonicalize_substitution_order(
@@ -704,7 +773,9 @@ static int artifact_mark_roots(
 				operation->core_term,
 				operation->known_classifier,
 				operation->classifier,
-				operation->binder_classifier
+				operation->binder_classifier,
+				operation->source_core_term,
+				operation->source_classifier
 			};
 			for (size_t j = 0; j < sizeof(references) / sizeof(references[0]); ++j) {
 				if (references[j] != PROTOTYPE_INVALID_ID &&
@@ -1305,7 +1376,9 @@ static int artifact_publication_metadata_relocate(
 			&operation->core_term,
 			&operation->known_classifier,
 			&operation->classifier,
-			&operation->binder_classifier
+			&operation->binder_classifier,
+			&operation->source_core_term,
+			&operation->source_classifier
 		};
 		for (size_t j = 0; j < sizeof(term_fields) / sizeof(term_fields[0]); ++j) {
 			uint32_t relocated = artifact_relocate_optional_id(
@@ -1337,6 +1410,22 @@ static int artifact_publication_metadata_relocate(
 		operation->context_id = publication->context_relocation[
 			operation->context_id
 		];
+		if (operation->context_action_substitution != PROTOTYPE_INVALID_ID) {
+			if (operation->context_action_substitution >=
+					source->substitutions.substitution_count ||
+				publication->substitution_relocation[
+					operation->context_action_substitution
+				] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			operation->context_action_substitution =
+				publication->substitution_relocation[
+					operation->context_action_substitution
+				];
+		} else if (operation->source_core_term != PROTOTYPE_INVALID_ID ||
+			operation->source_classifier != PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
 		uint32_t* binding_fields[] = {
 			&operation->binding_id,
 			&operation->fold_return_binder_id
@@ -1382,9 +1471,35 @@ static int artifact_publication_metadata_relocate(
 		operation_case->context_id = publication->context_relocation[
 			operation_case->context_id
 		];
+		if (operation_case->has_refinement) {
+			if (operation_case->refinement_substitution >=
+					source->substitutions.substitution_count ||
+				publication->substitution_relocation[
+					operation_case->refinement_substitution
+				] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			operation_case->refinement_substitution =
+				publication->substitution_relocation[
+					operation_case->refinement_substitution
+				];
+		} else {
+			operation_case->refinement_substitution = PROTOTYPE_INVALID_ID;
+		}
 		operation_case->constructor_owner = publication->term_relocation[
 			operation_case->constructor_owner
 		];
+		for (uint32_t j = 0; j < operation_case->binder_count; ++j) {
+			uint32_t relocated = artifact_relocate_optional_id(
+				operation_case->binder_ids[j],
+				publication->binding_relocation,
+				closure->terms.next_binding_id
+			);
+			if (relocated == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			operation_case->binder_ids[j] = relocated;
+		}
 	}
 	target->operation_fold_clause_count = source->operation_fold_clause_count;
 	for (size_t i = 0; i < source->operation_fold_clause_count; ++i) {
@@ -1730,7 +1845,8 @@ static int artifact_build_publication_graph(
 	if (artifact_substitution_slice_init(
 			&substitution_slice,
 			&closure->judgement,
-			&metadata->substitutions
+			&metadata->substitutions,
+			metadata
 		) != 0 || artifact_substitution_slice_canonicalize(
 			&substitution_slice,
 			closure->substitution_order,
@@ -2105,6 +2221,45 @@ static int artifact_build_publication_graph(
 				published_claim;
 		}
 	}
+	/* The append relocation is indexed by compact substitution ID. Operation
+	 * metadata still refers to source IDs, so compose both relocation stages
+	 * before relocating that metadata. */
+	uint32_t* source_substitution_relocation = malloc(
+		(metadata->substitutions.substitution_count == 0 ? 1 :
+		 metadata->substitutions.substitution_count) *
+		sizeof(*source_substitution_relocation)
+	);
+	if (!source_substitution_relocation) {
+		artifact_context_slice_free(&context_slice);
+		artifact_substitution_slice_free(&substitution_slice);
+		artifact_publication_graph_free(publication);
+		return -1;
+	}
+	for (size_t i = 0; i < metadata->substitutions.substitution_count; ++i) {
+		source_substitution_relocation[i] = PROTOTYPE_INVALID_ID;
+		if (!substitution_slice.reachable[i]) {
+			continue;
+		}
+		uint32_t compact_substitution = substitution_slice.relocation[i];
+		if (compact_substitution >= substitution_slice.substitution_count ||
+			publication->substitution_relocation[compact_substitution] ==
+				PROTOTYPE_INVALID_ID) {
+			free(source_substitution_relocation);
+			artifact_context_slice_free(&context_slice);
+			artifact_substitution_slice_free(&substitution_slice);
+			artifact_publication_graph_free(publication);
+			return -1;
+		}
+		source_substitution_relocation[i] =
+			publication->substitution_relocation[compact_substitution];
+	}
+	memcpy(
+		publication->substitution_relocation,
+		source_substitution_relocation,
+		metadata->substitutions.substitution_count *
+			sizeof(*source_substitution_relocation)
+	);
+	free(source_substitution_relocation);
 	for (size_t i = 0; i < metadata->contexts.context_count; ++i) {
 		publication->context_relocation[i] = context_slice.reachable[i] ?
 			compact_context_relocation[context_slice.relocation[i]] :

@@ -139,7 +139,7 @@ static int write_artifact_operation_graph_section(
 		fprintf(
 			stream,
 			"operation %zu %d %d %d %u %u %u %s %s %u %u %u %u %u %u %u"
-			" %u %u %u %u %u %u %u %u %u %u %u %u\n",
+			" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
 			i,
 			operation->tag,
 			operation->category,
@@ -169,7 +169,10 @@ static int write_artifact_operation_graph_section(
 			operation->fold_clause_count,
 			artifact_context_slice_relocate(
 				context_slice, operation->context_id
-			)
+			),
+			operation->context_action_substitution,
+			operation->source_core_term,
+			operation->source_classifier
 		);
 		fprintf(stream, "operation_rows %zu", i);
 		for (uint32_t j = 0; j < operation->implicit_effect_row_count; ++j) {
@@ -213,19 +216,22 @@ static int write_artifact_operation_graph_section(
 		}
 		fprintf(
 			stream,
-			"operation_case %zu %u %u %u %u %s\n",
+			"operation_case %zu %u %u %d %u %u %u %s\n",
 			i,
 			operation_case->body_operation,
 			artifact_context_slice_relocate(
 				context_slice, operation_case->context_id
 			),
+			operation_case->has_refinement,
+			operation_case->refinement_substitution,
 			operation_case->constructor_owner,
 			operation_case->constructor_id,
 			label
 		);
 		fprintf(stream, "operation_case_binders %zu %u", i, operation_case->binder_count);
 		for (uint32_t j = 0; j < operation_case->binder_count; ++j) {
-			fprintf(stream, " %u", operation_case->ast_binder_ids[j]);
+			fprintf(stream, " %u %u", operation_case->ast_binder_ids[j],
+				operation_case->binder_ids[j]);
 		}
 		fprintf(stream, "\n");
 	}

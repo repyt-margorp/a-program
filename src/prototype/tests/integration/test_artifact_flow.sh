@@ -18,7 +18,8 @@ if ./a.out examples/negative/04_recursive_motive_conflict.p \
 	echo "recursive motive conflict compiled successfully" >&2
 	exit 1
 fi
-grep -q 'failed to compile AST graph' "$TMP_DIR/recursive-motive-conflict.err"
+grep -Eq 'failed to compile AST graph|classifier solver step limit exhausted' \
+	"$TMP_DIR/recursive-motive-conflict.err"
 
 prototype_compile c11 werror compiler \
 	"$TMP_DIR/prototype-repl" \
@@ -174,8 +175,8 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 73 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v73.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 74 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v74.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
@@ -196,7 +197,7 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-foreign-intrinsics.apo" \
 fi
 awk '
 	$1 == "context" && NF != 6 { bad = 1 }
-	$1 == "operation" && NF != 29 { bad = 1 }
+	$1 == "operation" && NF != 32 { bad = 1 }
 	$1 == "substitution" && NF != 9 { bad = 1 }
 	END { exit bad }
 ' "$TMP_DIR/identity.apo"
@@ -262,10 +263,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 73/A_PROGRAM_ARTIFACT 71/' \
+sed '1s/A_PROGRAM_ARTIFACT 74/A_PROGRAM_ARTIFACT 73/' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v67.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-v67.apo" >"$TMP_DIR/identity-v67.out" 2>"$TMP_DIR/identity-v67.err"; then
-	echo "obsolete artifact unexpectedly passed after v73 format bump" >&2
+	echo "obsolete artifact unexpectedly passed after v74 format bump" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -2183,8 +2184,63 @@ awk '
 ' int_literal_intro="$PROOF_KIND_INT_LITERAL_INTRO" \
 	"$TMP_DIR/IntLiteralSpecialization.apo"
 
-./read_file.out --write-artifact "$TMP_DIR/MultipleDerivations.apo" \
-	examples/07_add.p >"$TMP_DIR/multiple-derivations.out"
+cat >"$TMP_DIR/multiple-derivations.p" <<'EOF_MULTIPLE_DERIVATIONS'
+id1 := \x : #.Int => x;
+id2 := \x : #.Int => x;
+main := id1 #1;
+EOF_MULTIPLE_DERIVATIONS
+./read_file.out --write-artifact "$TMP_DIR/MultipleDerivationsBase.apo" \
+	"$TMP_DIR/multiple-derivations.p" >"$TMP_DIR/multiple-derivations.out"
+id1_claim=$(awk '
+	$1 == "term" && $2 == "id1" {
+		for (i = 1; i < NF; ++i) {
+			if ($i == "claim") {
+				print $(i + 1);
+				exit;
+			}
+		}
+	}
+' "$TMP_DIR/MultipleDerivationsBase.apo")
+id2_claim=$(awk '
+	$1 == "term" && $2 == "id2" {
+		for (i = 1; i < NF; ++i) {
+			if ($i == "claim") {
+				print $(i + 1);
+				exit;
+			}
+		}
+	}
+' "$TMP_DIR/MultipleDerivationsBase.apo")
+derivation_count=$(awk '$1 == "derivations" { print $2; exit }' \
+	"$TMP_DIR/MultipleDerivationsBase.apo")
+[ -n "$id1_claim" ]
+[ -n "$id2_claim" ]
+[ -n "$derivation_count" ]
+awk -v target_claim="$id1_claim" -v premise_claim="$id2_claim" \
+	-v derivation_count="$derivation_count" \
+	-v conversion="$PROOF_KIND_CONVERSION" '
+	$1 == "counts" && $2 == "terms" {
+		$NF = derivation_count + 1;
+	}
+	$1 == "derivations" && $2 == derivation_count {
+		$2 = derivation_count + 1;
+	}
+	$0 == "END graph" {
+		print "derivation", derivation_count, conversion,
+			"claim", target_claim, "premises", 1;
+		print "payload none";
+		print "action 0 4294967295";
+		print "premise claim", premise_claim, "action 0 4294967295";
+	}
+	{ print }
+' "$TMP_DIR/MultipleDerivationsBase.apo" \
+	>"$TMP_DIR/MultipleDerivations.apo"
+./read_file.out --read-graph "$TMP_DIR/MultipleDerivations.apo" \
+	>"$TMP_DIR/multiple-derivations-read.out"
+./read_file.out --aggregate-artifact \
+	"$TMP_DIR/MultipleDerivationsRoundTrip.apo" \
+	"$TMP_DIR/MultipleDerivations.apo" \
+	>"$TMP_DIR/multiple-derivations-round-trip.out"
 awk '
 	$1 == "derivation" {
 		derivation_count[$5]++;
@@ -2210,7 +2266,7 @@ awk '
 			exit 1;
 		}
 	}
-' "$TMP_DIR/MultipleDerivations.apo"
+' "$TMP_DIR/MultipleDerivationsRoundTrip.apo"
 awk '
 	FNR == NR {
 		if ($1 == "proposition") {

@@ -592,6 +592,10 @@ static int substitute_term_internal(
 	if (!db || !p_ret || !ctx || term_id >= db->term_count) {
 		return -1;
 	}
+	if (ctx->replace_exact_term && term_id == ctx->exact_term) {
+		*p_ret = ctx->exact_replacement;
+		return 0;
+	}
 	if (substitution_memo_lookup(ctx, term_id, p_ret)) {
 		return 0;
 	}
@@ -614,7 +618,10 @@ static int substitute_term_uncached_internal(
 		return -1;
 	}
 
-	const struct prototype_term* term = &db->terms[term_id];
+	/* Recursive substitution may intern new terms and grow db->terms. Keep a
+	 * stable value copy rather than a pointer into the reallocatable array. */
+	const struct prototype_term term_value = db->terms[term_id];
+	const struct prototype_term* term = &term_value;
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR: {
 			uint32_t direct_replacement;
@@ -1204,6 +1211,29 @@ int prototype_term_graph_substitute_bound_var(
 	uint32_t* p_ret
 ) {
 	return substitute_term(db, type_declarations, term_id, binding_id, replacement, p_ret);
+}
+
+int prototype_term_graph_replace_exact(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t term_id,
+	uint32_t exact_term,
+	uint32_t replacement,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || term_id >= db->term_count ||
+		exact_term >= db->term_count || replacement >= db->term_count) {
+		return -1;
+	}
+	struct substitution_context ctx;
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.type_declarations = type_declarations;
+	ctx.exact_term = exact_term;
+	ctx.exact_replacement = replacement;
+	ctx.replace_exact_term = 1;
+	int status = substitute_term_internal(db, term_id, &ctx, p_ret);
+	free(ctx.memo);
+	return status;
 }
 
 int prototype_term_graph_reindex_bindings(

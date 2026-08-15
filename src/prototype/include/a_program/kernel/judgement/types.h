@@ -262,11 +262,9 @@ struct prototype_judgement_computation_constraint {
 	 * promoted to an independently publishable Claim. */
 	unsigned char premise_states[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	/* Exact body occurrence used when the fold solver weakens the computation
-	 * returned by its return-clause lambda. The Core subject is stored separately
-	 * because alpha interning may give the Lambda representative another binder. */
+	 * returned by its return-clause lambda. Context and Core subject are read
+	 * from this Operation authority when the constraint is solved. */
 	uint32_t return_body_operation_id;
-	uint32_t return_body_context_id;
-	uint32_t return_body_subject;
 	/* Current fixed-point operands selected by the exact premise Operations.
 	 * These are refreshed by the Operation solver before each kernel pass. */
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];

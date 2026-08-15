@@ -33,7 +33,7 @@ Implemented in the prototype:
 - a compiler-local logical-relation substrate, closed nondependent ADT object
   Identity, pure Return/Thunk Identity, nondependent pure Pi pointwise
   Identity, and selected higher square constructions;
-- artifact v73, namespace-qualified interfaces, relocation, linking,
+- artifact v74, namespace-qualified interfaces, relocation, linking,
   aggregation, and backend capability checks;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
@@ -212,6 +212,12 @@ Match uses elimination clauses:
 n @zero => Nat.zero
   @succ predecessor => predecessor
 ```
+
+The implemented indexed-family fragment includes ordinary source-defined
+`Acc`, exact decrease witnesses, and a generic fuel-free QuickSort. Recursive
+calls consume the lifted induction hypothesis supplied by `Acc`; there is no
+primitive Acc or QuickSort kernel rule. Public Eq and transport remain future
+work and are not used to justify this termination proof.
 
 Inside a recursive constructor branch, `*field` denotes the guarded induction
 hypothesis associated with a recursive field:
@@ -446,7 +452,7 @@ this elaboration boundary.
 
 ## Artifacts and Linking
 
-Artifact format v73 serializes the dense reachable accepted object graph of:
+Artifact format v74 serializes the dense reachable accepted object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
 - TermDB and OperationGraph;
@@ -465,7 +471,7 @@ binders/contexts/terms, preserves typed export identity, and may share
 alpha-equivalent Core representatives without merging the exports.
 
 The exact current wire and semantic contract is
-[`src/prototype/spec/artifact_v73.schema`](src/prototype/spec/artifact_v73.schema).
+[`src/prototype/spec/artifact_v74.schema`](src/prototype/spec/artifact_v74.schema).
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v5.schema`](src/prototype/spec/hott_fragment_v5.schema).
 

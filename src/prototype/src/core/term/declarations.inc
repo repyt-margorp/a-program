@@ -762,6 +762,9 @@ struct substitution_context {
 	struct prototype_type_declaration_db* type_declarations;
 	const struct prototype_binding_replacement* bindings;
 	size_t binding_count;
+	uint32_t exact_term;
+	uint32_t exact_replacement;
+	int replace_exact_term;
 	struct substitution_memo_entry* memo;
 	size_t memo_count;
 	size_t memo_capacity;

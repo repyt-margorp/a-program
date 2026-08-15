@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v73.h"
+#include "a_program/artifact/wire_v74.h"
 
 #include "a_program/graph/operation_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -2373,7 +2373,7 @@ int prototype_artifact_read_text_operation_graph(
 			(substitution.kind == PROTOTYPE_SUBSTITUTION_EXTEND) !=
 				(evidence_claim_id != PROTOTYPE_INVALID_ID) ||
 			(evidence_claim_id != PROTOTYPE_INVALID_ID &&
-			 evidence_claim_id >= judgement->claim_count)) {
+				evidence_claim_id >= judgement->claim_count)) {
 			return -1;
 		}
 		if (metadata) {
@@ -2388,13 +2388,14 @@ int prototype_artifact_read_text_operation_graph(
 						break;
 					}
 				}
-				if (!has_derivation ||
-					!prototype_cwf_substitution_claim_certifies(
+				int certifies = prototype_cwf_substitution_claim_certifies(
 						&metadata->substitutions,
 						judgement,
 						(uint32_t)i,
 						evidence_claim_id
-					) || prototype_compile_metadata_record_accepted_substitution_claim(
+					);
+				if (!has_derivation || !certifies ||
+					prototype_compile_metadata_record_accepted_substitution_claim(
 						metadata, (uint32_t)i, evidence_claim_id
 					) != 0) {
 					return -1;
@@ -2449,7 +2450,7 @@ int prototype_artifact_read_text_operation_graph(
 		char binder_name[256];
 		memset(&operation, 0, sizeof(operation));
 	if (fscanf(stream, "%255s %zu %d %d %d %u %u %u %255s %255s"
-				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
 				word, &id, &operation.tag, &operation.category,
 				&operation.application_role,
 				&operation.core_term, &operation.known_classifier, &operation.classifier,
@@ -2466,7 +2467,10 @@ int prototype_artifact_read_text_operation_graph(
 				&operation.implicit_effect_row_count,
 				&operation.first_case, &operation.case_count,
 				&operation.first_fold_clause, &operation.fold_clause_count,
-				&operation.context_id) != 29 ||
+				&operation.context_id,
+				&operation.context_action_substitution,
+				&operation.source_core_term,
+				&operation.source_classifier) != 32 ||
 			strcmp(word, "operation") != 0 || id != i) {
 			return -1;
 		}
@@ -2500,7 +2504,15 @@ int prototype_artifact_read_text_operation_graph(
 					classifier_view.computation_kind :
 					PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
 		}
-		if (metadata && operation.context_id >= context_count) {
+		if ((operation.context_action_substitution == PROTOTYPE_INVALID_ID) !=
+				(operation.source_core_term == PROTOTYPE_INVALID_ID) ||
+			(operation.context_action_substitution == PROTOTYPE_INVALID_ID) !=
+				(operation.source_classifier == PROTOTYPE_INVALID_ID) ||
+			(metadata && (operation.context_id >= context_count ||
+			 (operation.context_action_substitution != PROTOTYPE_INVALID_ID &&
+			  (operation.context_action_substitution >= substitution_count ||
+			   operation.source_core_term >= terms->term_count ||
+			   operation.source_classifier >= terms->term_count))))) {
 			return -1;
 		}
 		if (strcmp(source_name, "-") == 0) {
@@ -2584,15 +2596,23 @@ int prototype_artifact_read_text_operation_graph(
 		}
 	}
 	if (metadata) {
-		if (prototype_context_db_validate(&metadata->contexts, terms) != 0 ||
-			prototype_substitution_db_validate_classifier_coherence(
+		if (prototype_context_db_validate(&metadata->contexts, terms) != 0) {
+			fprintf(stderr, "artifact operation graph: Context validation failed\n");
+			return -1;
+		}
+		if (prototype_substitution_db_validate_classifier_coherence(
 				&metadata->substitutions,
 				&metadata->contexts,
 				terms,
 				type_declarations
-				) != 0 || prototype_cwf_validate_accepted_semantic_action_coverage(
+				) != 0) {
+			fprintf(stderr, "artifact operation graph: Substitution validation failed\n");
+			return -1;
+		}
+		if (prototype_cwf_validate_accepted_semantic_action_coverage(
 				&metadata->substitutions, judgement
 			) != 0) {
+			fprintf(stderr, "artifact operation graph: semantic action validation failed\n");
 			return -1;
 		}
 	}
@@ -2605,14 +2625,22 @@ int prototype_artifact_read_text_operation_graph(
 		struct prototype_operation_match_case operation_case;
 		char label[256];
 		memset(&operation_case, 0, sizeof(operation_case));
-		if (fscanf(stream, "%255s %zu %u %u %u %u %255s", word, &id,
+		if (fscanf(stream, "%255s %zu %u %u %d %u %u %u %255s", word, &id,
 				&operation_case.body_operation, &operation_case.context_id,
+				&operation_case.has_refinement,
+				&operation_case.refinement_substitution,
 				&operation_case.constructor_owner,
-				&operation_case.constructor_id, label) != 7 ||
+				&operation_case.constructor_id, label) != 9 ||
 			strcmp(word, "operation_case") != 0 || id != i) {
 			return -1;
 		}
-		if (metadata && operation_case.context_id >= context_count) {
+		if ((operation_case.has_refinement != 0 &&
+			 operation_case.has_refinement != 1) ||
+			(!operation_case.has_refinement &&
+			 operation_case.refinement_substitution != PROTOTYPE_INVALID_ID) ||
+			(metadata && (operation_case.context_id >= context_count ||
+			 (operation_case.has_refinement &&
+			  operation_case.refinement_substitution >= substitution_count)))) {
 			return -1;
 		}
 		if (strcmp(label, "-") == 0) {
@@ -2633,7 +2661,10 @@ int prototype_artifact_read_text_operation_graph(
 			return -1;
 		}
 		for (uint32_t j = 0; j < operation_case.binder_count; ++j) {
-			if (fscanf(stream, "%u", &operation_case.ast_binder_ids[j]) != 1) {
+			if (fscanf(
+					stream, "%u %u", &operation_case.ast_binder_ids[j],
+					&operation_case.binder_ids[j]
+				) != 2) {
 				return -1;
 			}
 		}
@@ -2641,6 +2672,9 @@ int prototype_artifact_read_text_operation_graph(
 			if (prototype_operation_graph_add_case(
 					&graph, &metadata->contexts, operation_case, NULL
 				) != 0) {
+				fprintf(stderr,
+					"artifact operation graph: case validation failed case=%zu context=%u binders=%u\n",
+					i, operation_case.context_id, operation_case.binder_count);
 				return -1;
 			}
 		}
