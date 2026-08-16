@@ -1226,7 +1226,7 @@ int prototype_term_rebind_type_former_anchors(
 	struct prototype_term_db* db,
 	const struct prototype_type_declaration_db* type_declarations
 ) {
-	if (!db || !type_declarations || type_declarations->representations_dirty) {
+	if (!db || !type_declarations || type_declarations->representation_db.cache_dirty) {
 		return -1;
 	}
 	for (size_t i = 0; i < db->term_count; ++i) {

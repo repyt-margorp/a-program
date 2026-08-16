@@ -28,4 +28,7 @@ grep -q 'has-type THUNK(RETURN(INT_LITERAL(1))) Thunk(COMPUTATION_TYPE(EFFECT_RO
 grep -q 'has-type FORCE(THUNK(RETURN(INT_LITERAL(1)))) COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int)) \[force-elim proof#' "$tmp_dir/output"
 ./read_file.out --write-artifact "$tmp_dir/boundary.apo" \
 	"$tmp_dir/boundary.p" >"$tmp_dir/boundary-write.out"
-grep -Eq '^effect_constraint [0-9]+ 1 2 ' "$tmp_dir/boundary.apo"
+if grep -Eq '^(effect_constraints|effect_constraint) ' "$tmp_dir/boundary.apo"; then
+	echo "CBPV artifact persisted compiler-local effect constraints" >&2
+	exit 1
+fi

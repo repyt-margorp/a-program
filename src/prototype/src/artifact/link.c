@@ -45,7 +45,7 @@ int prototype_internal_canonicalize_type_view_core_refs(
 	if (!terms || !type_declarations || !contexts) {
 		return -1;
 	}
-	if (type_declarations->representations_dirty) {
+	if (type_declarations->representation_db.cache_dirty) {
 		if (prototype_type_declaration_rebuild_representations(
 				terms, type_declarations, contexts
 			) != 0) {
@@ -806,8 +806,8 @@ static int artifact_build_binding_relocation(
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		const struct prototype_type_expr* expr = &type_declarations->exprs[i];
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		uint32_t binding_id = PROTOTYPE_INVALID_ID;
 		if (!artifact_type_expr_present(expr)) {
 			continue;
@@ -823,9 +823,9 @@ static int artifact_build_binding_relocation(
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->parameter_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.parameter_count; ++i) {
 		const struct prototype_type_parameter_declaration* parameter =
-			&type_declarations->parameter_declarations[i];
+			&type_declarations->readback.parameter_declarations[i];
 		if (artifact_parameter_present(parameter) && artifact_mark_binding(
 				used, terms->next_binding_id, parameter->binding_id
 			) != 0) {
@@ -869,11 +869,11 @@ static int artifact_build_binding_relocation(
 		}
 		for (size_t position = 0; position < order->type_expr_count; ++position) {
 			uint32_t expr_id = order->type_exprs[position];
-			if (expr_id >= type_declarations->expr_count) {
+			if (expr_id >= type_declarations->readback.expr_count) {
 				return -1;
 			}
 			const struct prototype_type_expr* expr =
-				&type_declarations->exprs[expr_id];
+				&type_declarations->readback.exprs[expr_id];
 			if (expr->tag == PROTOTYPE_TYPE_EXPR_VAR) {
 				ASSIGN_BINDING(expr->as.var.binding_id);
 			} else if (expr->tag == PROTOTYPE_TYPE_EXPR_PI) {
@@ -882,11 +882,11 @@ static int artifact_build_binding_relocation(
 		}
 		for (size_t position = 0; position < order->parameter_count; ++position) {
 			uint32_t parameter_id = order->parameters[position];
-			if (parameter_id >= type_declarations->parameter_count) {
+			if (parameter_id >= type_declarations->readback.parameter_count) {
 				return -1;
 			}
 			ASSIGN_BINDING(
-				type_declarations->parameter_declarations[parameter_id].binding_id
+				type_declarations->readback.parameter_declarations[parameter_id].binding_id
 			);
 		}
 #undef ASSIGN_BINDING
@@ -941,16 +941,16 @@ int prototype_internal_artifact_append_graph_ordered(
 			source_type_declarations->type_count) ||
 		 (additional_relocation->type_expr_ids &&
 		  additional_relocation->type_expr_id_capacity <
-			source_type_declarations->expr_count) ||
+			source_type_declarations->readback.expr_count) ||
 		 (additional_relocation->parameter_ids &&
 		  additional_relocation->parameter_id_capacity <
-			source_type_declarations->parameter_count) ||
+			source_type_declarations->readback.parameter_count) ||
 		 (additional_relocation->constructor_ids &&
 		  additional_relocation->constructor_id_capacity <
 			source_type_declarations->constructor_count) ||
 		 (additional_relocation->field_type_ids &&
 		  additional_relocation->field_type_id_capacity <
-			source_type_declarations->readback_field_type_count) ||
+			source_type_declarations->readback.field_type_count) ||
 		 (additional_relocation->proposition_ids &&
 		  additional_relocation->proposition_id_capacity <
 			source_judgement->proposition_count) ||
@@ -966,14 +966,14 @@ int prototype_internal_artifact_append_graph_ordered(
 	size_t type_relocation_count = source_type_declarations->type_count == 0 ?
 		1 : source_type_declarations->type_count;
 	uint32_t type_relocation[type_relocation_count];
-	size_t expr_relocation_count = source_type_declarations->expr_count == 0 ?
-		1 : source_type_declarations->expr_count;
+	size_t expr_relocation_count = source_type_declarations->readback.expr_count == 0 ?
+		1 : source_type_declarations->readback.expr_count;
 	size_t field_relocation_count =
-		source_type_declarations->readback_field_type_count == 0 ?
-		1 : source_type_declarations->readback_field_type_count;
+		source_type_declarations->readback.field_type_count == 0 ?
+		1 : source_type_declarations->readback.field_type_count;
 	size_t parameter_relocation_count =
-		source_type_declarations->parameter_count == 0 ?
-		1 : source_type_declarations->parameter_count;
+		source_type_declarations->readback.parameter_count == 0 ?
+		1 : source_type_declarations->readback.parameter_count;
 	size_t constructor_relocation_count =
 		source_type_declarations->constructor_count == 0 ?
 		1 : source_type_declarations->constructor_count;
@@ -982,10 +982,10 @@ int prototype_internal_artifact_append_graph_ordered(
 	uint32_t parameter_relocation[parameter_relocation_count];
 	uint32_t constructor_relocation[constructor_relocation_count];
 	uint32_t field_boundary_relocation[
-		source_type_declarations->readback_field_type_count + 1
+		source_type_declarations->readback.field_type_count + 1
 	];
 	uint32_t parameter_boundary_relocation[
-		source_type_declarations->parameter_count + 1
+		source_type_declarations->readback.parameter_count + 1
 	];
 	uint32_t constructor_boundary_relocation[
 		source_type_declarations->constructor_count + 1
@@ -994,7 +994,7 @@ int prototype_internal_artifact_append_graph_ordered(
 		1 : source_terms->next_binding_id;
 	uint32_t binding_relocation[binding_relocation_count];
 	uint32_t next_binding_id;
-	uint32_t universe_offset = target_type_declarations->next_level_var;
+	uint32_t universe_offset = target_type_declarations->readback.next_level_var;
 	size_t proposition_relocation_count = source_judgement->proposition_count == 0 ?
 		1 : source_judgement->proposition_count;
 	size_t claim_relocation_count = source_judgement->claim_count == 0 ?
@@ -1041,15 +1041,15 @@ int prototype_internal_artifact_append_graph_ordered(
 	uint32_t substitution_relocation[PROTOTYPE_SUBSTITUTION_CAPACITY];
 	uint32_t source_representation_anchors[512];
 	uint32_t representation_relocation[512];
-	size_t old_target_representation_count = target_type_declarations->representation_count;
-	size_t source_representation_count = source_type_declarations->representation_count;
+	size_t old_target_representation_count = target_type_declarations->representation_db.representation_count;
+	size_t source_representation_count = source_type_declarations->representation_db.representation_count;
 	if (old_target_representation_count > 512 || source_representation_count > 512) {
 		return -1;
 	}
 	uint32_t next_representation_id = (uint32_t)old_target_representation_count;
 	for (uint32_t i = 0; i < source_representation_count; ++i) {
 		source_representation_anchors[i] =
-			source_type_declarations->representations[i].representative_type_id;
+			source_type_declarations->representation_db.representations[i].representative_type_id;
 		representation_relocation[i] = PROTOTYPE_INVALID_ID;
 	}
 	if (order) {
@@ -1088,8 +1088,8 @@ int prototype_internal_artifact_append_graph_ordered(
 		for (uint32_t j = 0; j < old_target_representation_count; ++j) {
 			int representations_equal = 0;
 			if (prototype_type_representation_fingerprints_equal(
-					&source_type_declarations->representations[i].fingerprint,
-					&target_type_declarations->representations[j].fingerprint
+					&source_type_declarations->representation_db.representations[i].fingerprint,
+					&target_type_declarations->representation_db.representations[j].fingerprint
 				) && prototype_type_declaration_representations_equal(
 					source_terms,
 					source_type_declarations,
@@ -1098,7 +1098,7 @@ int prototype_internal_artifact_append_graph_ordered(
 					target_terms,
 					target_type_declarations,
 					target_contexts,
-					target_type_declarations->representations[j].representative_type_id,
+					target_type_declarations->representation_db.representations[j].representative_type_id,
 					&representations_equal
 				) == 0 && representations_equal) {
 				representation_relocation[i] = j;
@@ -1110,8 +1110,8 @@ int prototype_internal_artifact_append_graph_ordered(
 				int representations_equal = 0;
 				if (representation_relocation[j] != PROTOTYPE_INVALID_ID &&
 					prototype_type_representation_fingerprints_equal(
-						&source_type_declarations->representations[i].fingerprint,
-						&source_type_declarations->representations[j].fingerprint
+						&source_type_declarations->representation_db.representations[i].fingerprint,
+						&source_type_declarations->representation_db.representations[j].fingerprint
 					) && prototype_type_declaration_representations_equal(
 						source_terms,
 						source_type_declarations,
@@ -1203,22 +1203,22 @@ int prototype_internal_artifact_append_graph_ordered(
 			type_relocation[i] = next_type_id++;
 		}
 	}
-	uint32_t next_expr_id = (uint32_t)target_type_declarations->expr_count;
+	uint32_t next_expr_id = (uint32_t)target_type_declarations->readback.expr_count;
 	size_t ordered_expr_count = order ?
-		order->type_expr_count : source_type_declarations->expr_count;
+		order->type_expr_count : source_type_declarations->readback.expr_count;
 	for (size_t position = 0; position < ordered_expr_count; ++position) {
 		uint32_t i = order ? order->type_exprs[position] : (uint32_t)position;
-		if (i >= source_type_declarations->expr_count) {
+		if (i >= source_type_declarations->readback.expr_count) {
 			return -1;
 		}
-		if (artifact_type_expr_present(&source_type_declarations->exprs[i])) {
+		if (artifact_type_expr_present(&source_type_declarations->readback.exprs[i])) {
 			expr_relocation[i] = next_expr_id++;
 		}
 	}
 	uint32_t next_field_id =
-		(uint32_t)target_type_declarations->readback_field_type_count;
+		(uint32_t)target_type_declarations->readback.field_type_count;
 	uint32_t next_parameter_id =
-		(uint32_t)target_type_declarations->parameter_count;
+		(uint32_t)target_type_declarations->readback.parameter_count;
 	uint32_t next_constructor_id =
 		(uint32_t)target_type_declarations->constructor_count;
 	if (order) {
@@ -1229,8 +1229,8 @@ int prototype_internal_artifact_append_graph_ordered(
 			if (!artifact_type_present(type)) {
 				continue;
 			}
-			if (type->first_parameter > source_type_declarations->parameter_count ||
-				type->parameter_count > source_type_declarations->parameter_count -
+			if (type->first_parameter > source_type_declarations->readback.parameter_count ||
+				type->parameter_count > source_type_declarations->readback.parameter_count -
 					type->first_parameter ||
 				type->first_constructor > source_type_declarations->constructor_count ||
 				type->constructor_count > source_type_declarations->constructor_count -
@@ -1241,7 +1241,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			for (uint32_t j = 0; j < type->parameter_count; ++j) {
 				uint32_t parameter_id = type->first_parameter + j;
 				if (!artifact_parameter_present(
-						&source_type_declarations->parameter_declarations[parameter_id]
+						&source_type_declarations->readback.parameter_declarations[parameter_id]
 					)) {
 					return -1;
 				}
@@ -1253,27 +1253,31 @@ int prototype_internal_artifact_append_graph_ordered(
 				uint32_t constructor_id = type->first_constructor + j;
 				const struct prototype_type_constructor_declaration* constructor =
 					&source_type_declarations->constructor_declarations[constructor_id];
-				if (!artifact_constructor_present(constructor) ||
+				const struct prototype_type_constructor_readback* readback =
+					prototype_type_constructor_readback_get(
+						source_type_declarations, constructor_id
+					);
+				if (!readback || !artifact_constructor_present(constructor) ||
 					constructor->owner_type != type_id ||
 					constructor->constructor_index != j) {
 					return -1;
 				}
 				constructor_relocation[constructor_id] = next_constructor_id++;
-				if (constructor->readback.first_field_type != PROTOTYPE_INVALID_ID) {
-					if (constructor->readback.first_field_type >
-							source_type_declarations->readback_field_type_count ||
-						constructor->readback.field_count >
-							source_type_declarations->readback_field_type_count -
-							constructor->readback.first_field_type) {
+				if (readback->first_field_type != PROTOTYPE_INVALID_ID) {
+					if (readback->first_field_type >
+							source_type_declarations->readback.field_type_count ||
+						readback->field_count >
+							source_type_declarations->readback.field_type_count -
+							readback->first_field_type) {
 						return -1;
 					}
 					field_boundary_relocation[
-						constructor->readback.first_field_type
+						readback->first_field_type
 					] = next_field_id;
-					for (uint32_t k = 0; k < constructor->readback.field_count; ++k) {
-						uint32_t field_id = constructor->readback.first_field_type + k;
+					for (uint32_t k = 0; k < readback->field_count; ++k) {
+						uint32_t field_id = readback->first_field_type + k;
 						if (!artifact_field_type_present(
-								&source_type_declarations->readback_field_types[field_id]
+								&source_type_declarations->readback.field_types[field_id]
 							)) {
 							return -1;
 						}
@@ -1284,26 +1288,26 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 	} else {
 		for (uint32_t i = 0;
-			i < source_type_declarations->readback_field_type_count;
+			i < source_type_declarations->readback.field_type_count;
 			++i) {
 			field_boundary_relocation[i] = next_field_id;
-			if (source_type_declarations->readback_field_types[i] !=
+			if (source_type_declarations->readback.field_types[i] !=
 				PROTOTYPE_INVALID_ID) {
 				field_relocation[i] = next_field_id++;
 			}
 		}
 		field_boundary_relocation[
-			source_type_declarations->readback_field_type_count
+			source_type_declarations->readback.field_type_count
 		] = next_field_id;
-		for (uint32_t i = 0; i < source_type_declarations->parameter_count; ++i) {
+		for (uint32_t i = 0; i < source_type_declarations->readback.parameter_count; ++i) {
 			parameter_boundary_relocation[i] = next_parameter_id;
 			if (artifact_parameter_present(
-					&source_type_declarations->parameter_declarations[i]
+					&source_type_declarations->readback.parameter_declarations[i]
 				)) {
 				parameter_relocation[i] = next_parameter_id++;
 			}
 		}
-		parameter_boundary_relocation[source_type_declarations->parameter_count] =
+		parameter_boundary_relocation[source_type_declarations->readback.parameter_count] =
 			next_parameter_id;
 		for (uint32_t i = 0; i < source_type_declarations->constructor_count; ++i) {
 			constructor_boundary_relocation[i] = next_constructor_id;
@@ -1342,10 +1346,10 @@ int prototype_internal_artifact_append_graph_ordered(
 		target_terms->computation_fold_clause_count + source_terms->computation_fold_clause_count >
 			PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY ||
 		target_type_declarations->type_count + source_type_declarations->type_count > target_type_declarations->type_capacity ||
-		target_type_declarations->parameter_count + source_type_declarations->parameter_count > target_type_declarations->parameter_capacity ||
+		target_type_declarations->readback.parameter_count + source_type_declarations->readback.parameter_count > target_type_declarations->readback.parameter_capacity ||
 		target_type_declarations->constructor_count + source_type_declarations->constructor_count > target_type_declarations->constructor_capacity ||
-		target_type_declarations->readback_field_type_count + source_type_declarations->readback_field_type_count > target_type_declarations->readback_field_type_capacity ||
-		target_type_declarations->expr_count + source_type_declarations->expr_count > target_type_declarations->expr_capacity ||
+		target_type_declarations->readback.field_type_count + source_type_declarations->readback.field_type_count > target_type_declarations->readback.field_type_capacity ||
+		target_type_declarations->readback.expr_count + source_type_declarations->readback.expr_count > target_type_declarations->readback.expr_capacity ||
 		target_judgement->proposition_count + source_judgement->proposition_count > target_judgement->proposition_capacity ||
 		target_judgement->claim_count + source_judgement->claim_count >
 			target_judgement->claim_capacity ||
@@ -1452,82 +1456,82 @@ int prototype_internal_artifact_append_graph_ordered(
 
 	for (size_t position = 0; position < ordered_expr_count; ++position) {
 		uint32_t i = order ? order->type_exprs[position] : (uint32_t)position;
-		struct prototype_type_expr expr = source_type_declarations->exprs[i];
+		struct prototype_type_expr expr = source_type_declarations->readback.exprs[i];
 		if (!artifact_type_expr_present(&expr)) {
 			continue;
 		}
 		if (relocate_artifact_type_expr(
 				&expr,
 				expr_relocation,
-				source_type_declarations->expr_count,
+				source_type_declarations->readback.expr_count,
 				binding_relocation,
 				binding_relocation_count,
 				universe_offset
-			) != 0 || target_type_declarations->expr_count != expr_relocation[i]) {
+			) != 0 || target_type_declarations->readback.expr_count != expr_relocation[i]) {
 			return -1;
 		}
-		target_type_declarations->exprs[target_type_declarations->expr_count++] = expr;
+		target_type_declarations->readback.exprs[target_type_declarations->readback.expr_count++] = expr;
 	}
 	size_t ordered_field_count = order ?
-		order->field_count : source_type_declarations->readback_field_type_count;
+		order->field_count : source_type_declarations->readback.field_type_count;
 	for (size_t position = 0; position < ordered_field_count; ++position) {
 		uint32_t i = (uint32_t)position;
 		if (order) {
 			i = PROTOTYPE_INVALID_ID;
 			for (uint32_t candidate = 0;
-				candidate < source_type_declarations->readback_field_type_count;
+				candidate < source_type_declarations->readback.field_type_count;
 				++candidate) {
 				if (field_relocation[candidate] ==
-					target_type_declarations->readback_field_type_count) {
+					target_type_declarations->readback.field_type_count) {
 					i = candidate;
 					break;
 				}
 			}
 		}
-		if (i >= source_type_declarations->readback_field_type_count) {
+		if (i >= source_type_declarations->readback.field_type_count) {
 			return -1;
 		}
-		uint32_t field_type = source_type_declarations->readback_field_types[i];
+		uint32_t field_type = source_type_declarations->readback.field_types[i];
 		if (field_type == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
-		if (field_type >= source_type_declarations->expr_count ||
+		if (field_type >= source_type_declarations->readback.expr_count ||
 			expr_relocation[field_type] == PROTOTYPE_INVALID_ID ||
-			target_type_declarations->readback_field_type_count !=
+			target_type_declarations->readback.field_type_count !=
 				field_relocation[i]) {
 			return -1;
 		}
 		field_type = expr_relocation[field_type];
-		target_type_declarations->readback_field_types[target_type_declarations->readback_field_type_count++] =
+		target_type_declarations->readback.field_types[target_type_declarations->readback.field_type_count++] =
 			field_type;
 	}
 	size_t ordered_parameter_count = order ?
-		order->parameter_count : source_type_declarations->parameter_count;
+		order->parameter_count : source_type_declarations->readback.parameter_count;
 	for (size_t position = 0; position < ordered_parameter_count; ++position) {
 		uint32_t i = (uint32_t)position;
 		if (order) {
 			i = PROTOTYPE_INVALID_ID;
 			for (uint32_t candidate = 0;
-				candidate < source_type_declarations->parameter_count;
+				candidate < source_type_declarations->readback.parameter_count;
 				++candidate) {
 				if (parameter_relocation[candidate] ==
-					target_type_declarations->parameter_count) {
+					target_type_declarations->readback.parameter_count) {
 					i = candidate;
 					break;
 				}
 			}
 		}
-		if (i >= source_type_declarations->parameter_count) {
+		if (i >= source_type_declarations->readback.parameter_count) {
 			return -1;
 		}
 		struct prototype_type_parameter_declaration parameter =
-			source_type_declarations->parameter_declarations[i];
+			source_type_declarations->readback.parameter_declarations[i];
 		if (!artifact_parameter_present(&parameter)) {
 			continue;
 		}
-		if (parameter.type_expr >= source_type_declarations->expr_count ||
+		if (parameter.type_expr >= source_type_declarations->readback.expr_count ||
 			expr_relocation[parameter.type_expr] == PROTOTYPE_INVALID_ID ||
-			target_type_declarations->parameter_count != parameter_relocation[i]) {
+			target_type_declarations->readback.parameter_count != parameter_relocation[i]) {
 			return -1;
 		}
 		if (parameter.binding_id >= binding_relocation_count ||
@@ -1536,7 +1540,7 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 		parameter.binding_id = binding_relocation[parameter.binding_id];
 		parameter.type_expr = expr_relocation[parameter.type_expr];
-		target_type_declarations->parameter_declarations[target_type_declarations->parameter_count++] =
+		target_type_declarations->readback.parameter_declarations[target_type_declarations->readback.parameter_count++] =
 			parameter;
 	}
 	size_t ordered_constructor_count = order ?
@@ -1560,6 +1564,10 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 		struct prototype_type_constructor_declaration constructor =
 			source_type_declarations->constructor_declarations[i];
+		struct prototype_type_constructor_readback readback =
+			source_type_declarations->readback.constructor_readbacks[i];
+		struct prototype_constructor_classifier_cache_entry cache =
+			source_type_declarations->constructor_classifier_cache.entries[i];
 		if (!artifact_constructor_present(&constructor)) {
 			continue;
 		}
@@ -1569,10 +1577,10 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 		if (constructor.owner_type >= source_type_declarations->type_count ||
 			type_relocation[constructor.owner_type] == PROTOTYPE_INVALID_ID ||
-			(constructor.readback.result_type != PROTOTYPE_INVALID_ID &&
-			 (constructor.readback.result_type >=
-				source_type_declarations->expr_count ||
-			  expr_relocation[constructor.readback.result_type] ==
+			(readback.result_type != PROTOTYPE_INVALID_ID &&
+			 (readback.result_type >=
+				source_type_declarations->readback.expr_count ||
+			  expr_relocation[readback.result_type] ==
 				PROTOTYPE_INVALID_ID)) ||
 			 target_type_declarations->constructor_count != constructor_relocation[i]) {
 			fprintf(
@@ -1583,47 +1591,46 @@ int prototype_internal_artifact_append_graph_ordered(
 				constructor.owner_type,
 				constructor.owner_type < source_type_declarations->type_count ?
 					type_relocation[constructor.owner_type] : PROTOTYPE_INVALID_ID,
-				constructor.readback.result_type,
+				readback.result_type,
 				target_type_declarations->constructor_count,
 				constructor_relocation[i]
 			);
 			return -1;
 		}
 		constructor.owner_type = type_relocation[constructor.owner_type];
-		if (constructor.readback.field_count == 0) {
-			if (constructor.readback.first_field_type == PROTOTYPE_INVALID_ID) {
+		if (readback.field_count == 0) {
+			if (readback.first_field_type == PROTOTYPE_INVALID_ID) {
 				/* A fieldless constructor has no readback slice to relocate. */
-			} else if (constructor.readback.first_field_type >
-					source_type_declarations->readback_field_type_count) {
+			} else if (readback.first_field_type >
+					source_type_declarations->readback.field_type_count) {
 				fprintf(
 					stderr,
 					"artifact append: empty constructor readback boundary failed "
 					"source=%u first=%u fields=%zu\n",
 					i,
-					constructor.readback.first_field_type,
-					source_type_declarations->readback_field_type_count
+					readback.first_field_type,
+					source_type_declarations->readback.field_type_count
 				);
 				return -1;
 			} else {
-				constructor.readback.first_field_type = field_boundary_relocation[
-					constructor.readback.first_field_type
+				readback.first_field_type = field_boundary_relocation[
+					readback.first_field_type
 				];
 			}
 		} else {
-			if (constructor.readback.first_field_type >=
-					source_type_declarations->readback_field_type_count ||
-				field_relocation[constructor.readback.first_field_type] ==
+			if (readback.first_field_type >=
+					source_type_declarations->readback.field_type_count ||
+				field_relocation[readback.first_field_type] ==
 					PROTOTYPE_INVALID_ID) {
 				fprintf(stderr, "artifact append: constructor field relocation failed source=%u\n", i);
 				return -1;
 			}
-			constructor.readback.first_field_type =
-				field_relocation[constructor.readback.first_field_type];
+			readback.first_field_type = field_relocation[readback.first_field_type];
 		}
-		constructor.readback.result_type = artifact_relocate_optional_id(
-			constructor.readback.result_type,
+		readback.result_type = artifact_relocate_optional_id(
+			readback.result_type,
 			expr_relocation,
-			source_type_declarations->expr_count
+			source_type_declarations->readback.expr_count
 		);
 		{
 			if (constructor.parameter_context >= source_contexts->context_count ||
@@ -1636,7 +1643,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			constructor.field_context =
 				context_relocation[constructor.field_context];
 			if (constructor.result_classifier >= term_relocation_capacity ||
-				constructor.curried_classifier_cache >= term_relocation_capacity) {
+				cache.classifier >= term_relocation_capacity) {
 				fprintf(
 					stderr,
 					"artifact append: constructor term reference failed source=%u "
@@ -1644,18 +1651,21 @@ int prototype_internal_artifact_append_graph_ordered(
 					i,
 					constructor.owner_type,
 					constructor.result_classifier,
-					constructor.curried_classifier_cache,
+					cache.classifier,
 					term_relocation_capacity
 				);
 				return -1;
 			}
 			constructor.result_classifier =
 				term_relocation[constructor.result_classifier];
-			constructor.curried_classifier_cache =
-				term_relocation[constructor.curried_classifier_cache];
+			cache.classifier = term_relocation[cache.classifier];
 		}
-		target_type_declarations->constructor_declarations[target_type_declarations->constructor_count++] =
-			constructor;
+		uint32_t target_constructor_id =
+			(uint32_t)target_type_declarations->constructor_count;
+		target_type_declarations->constructor_declarations[target_constructor_id] = constructor;
+		target_type_declarations->readback.constructor_readbacks[target_constructor_id] = readback;
+		target_type_declarations->constructor_classifier_cache.entries[target_constructor_id] = cache;
+		target_type_declarations->constructor_count++;
 	}
 	for (size_t position = 0; position < ordered_type_count; ++position) {
 		uint32_t i = order ? order->types[position] : (uint32_t)position;
@@ -1706,13 +1716,13 @@ int prototype_internal_artifact_append_graph_ordered(
 			type.index_context = context_relocation[type.index_context];
 			if (type.parameter_count == 0) {
 				if (type.first_parameter >
-						source_type_declarations->parameter_count) {
+						source_type_declarations->readback.parameter_count) {
 					return -1;
 				}
 				type.first_parameter =
 					parameter_boundary_relocation[type.first_parameter];
 			} else if (type.first_parameter >=
-					source_type_declarations->parameter_count ||
+					source_type_declarations->readback.parameter_count ||
 				parameter_relocation[type.first_parameter] == PROTOTYPE_INVALID_ID) {
 				return -1;
 			} else {
@@ -1735,7 +1745,7 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 		target_type_declarations->type_declarations[target_type_declarations->type_count++] = type;
 	}
-	target_type_declarations->representations_dirty = 1;
+	target_type_declarations->representation_db.cache_dirty = 1;
 
 	if (prototype_type_declaration_rebuild_representations(
 			target_terms,
@@ -1801,10 +1811,10 @@ int prototype_internal_artifact_append_graph_ordered(
 	}
 
 	target_terms->next_binding_id = next_binding_id;
-	target_type_declarations->next_level_var =
-		universe_offset + source_type_declarations->next_level_var;
-	if (target_judgement->next_universe_var < target_type_declarations->next_level_var) {
-		target_judgement->next_universe_var = target_type_declarations->next_level_var;
+	target_type_declarations->readback.next_level_var =
+		universe_offset + source_type_declarations->readback.next_level_var;
+	if (target_judgement->next_universe_var < target_type_declarations->readback.next_level_var) {
+		target_judgement->next_universe_var = target_type_declarations->readback.next_level_var;
 	}
 	prototype_internal_sync_artifact_universe_level_counters(
 		target_terms,
@@ -1979,10 +1989,16 @@ int prototype_internal_artifact_append_graph_ordered(
 		if (export->ordinal >= type->constructor_count) {
 			return -1;
 		}
-		appended_interface->constructor_exports[i].curried_classifier_cache =
-			target_type_declarations->constructor_declarations[
+		const struct prototype_constructor_classifier_cache_entry* cache =
+			prototype_type_constructor_classifier_cache_get(
+				target_type_declarations,
 				type->first_constructor + export->ordinal
-			].curried_classifier_cache;
+			);
+		if (!cache) {
+			return -1;
+		}
+		appended_interface->constructor_exports[i].curried_classifier_cache =
+			cache->classifier;
 	}
 	for (size_t i = 0; i < source_interface->identity_root_count; ++i) {
 		const struct prototype_artifact_identity_root* source_root =
@@ -2037,12 +2053,12 @@ int prototype_internal_artifact_append_graph_ordered(
 			type_ids, type_relocation, source_type_declarations->type_count
 		);
 		COPY_ADDITIONAL_RELOCATION(
-			type_expr_ids, expr_relocation, source_type_declarations->expr_count
+			type_expr_ids, expr_relocation, source_type_declarations->readback.expr_count
 		);
 		COPY_ADDITIONAL_RELOCATION(
 			parameter_ids,
 			parameter_relocation,
-			source_type_declarations->parameter_count
+			source_type_declarations->readback.parameter_count
 		);
 		COPY_ADDITIONAL_RELOCATION(
 			constructor_ids,
@@ -2052,7 +2068,7 @@ int prototype_internal_artifact_append_graph_ordered(
 		COPY_ADDITIONAL_RELOCATION(
 			field_type_ids,
 			field_relocation,
-			source_type_declarations->readback_field_type_count
+			source_type_declarations->readback.field_type_count
 		);
 		COPY_ADDITIONAL_RELOCATION(
 			proposition_ids,

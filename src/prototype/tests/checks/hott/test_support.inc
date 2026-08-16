@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v75.h"
+#include "a_program/artifact/wire_v76.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
@@ -35,11 +35,37 @@ static struct prototype_case_binder case_binders[256];
 static struct prototype_ih_scope ih_scopes[64];
 static struct prototype_type_declaration type_declarations[16];
 static struct prototype_type_constructor_declaration constructors[32];
+static struct prototype_type_constructor_readback constructor_readbacks[32];
+static struct prototype_constructor_classifier_cache_entry constructor_caches[32];
 static struct prototype_type_parameter_declaration parameters[8];
 static uint32_t field_types[64];
 static struct prototype_type_expr type_exprs[32];
 static struct prototype_type_representation type_representations[16];
 static struct prototype_context contexts[CONTEXT_CAPACITY];
+
+static int fixture_publish_constructor_schema(
+	struct prototype_type_declaration_db* types,
+	uint32_t type_id,
+	int name_symbol_id,
+	const uint32_t* readback_fields,
+	uint32_t readback_field_count,
+	uint32_t readback_result,
+	uint32_t parameter_context,
+	uint32_t field_context,
+	uint32_t result_classifier,
+	uint32_t curried_classifier,
+	uint32_t* p_constructor_id
+) {
+	return prototype_type_declaration_add_constructor_schema(
+		types, type_id, name_symbol_id, parameter_context, field_context,
+		result_classifier, p_constructor_id
+	) != 0 || prototype_type_readback_attach_constructor(
+		types, *p_constructor_id, readback_fields, readback_field_count,
+		readback_result
+	) != 0 || prototype_type_constructor_classifier_cache_set(
+		types, *p_constructor_id, curried_classifier
+	) != 0 ? -1 : 0;
+}
 static struct prototype_substitution substitutions[SUBSTITUTION_CAPACITY];
 static struct prototype_judgement_proposition propositions[CLAIM_CAPACITY];
 static struct prototype_judgement_derivation_candidate derivation_candidates[CLAIM_CAPACITY];
@@ -1298,24 +1324,27 @@ static int check_bool_function_extensional_identity(
 	prototype_judgement_delta_set_context(&delta, xr_context);
 	const struct prototype_type_declaration* thunk_identity_declaration =
 		&type_db->type_declarations[thunk_bool_identity_type_id];
-	const struct prototype_type_constructor_declaration* thunk_identity_constructor =
-		&type_db->constructor_declarations[
-			thunk_identity_declaration->first_constructor
-		];
+	const struct prototype_constructor_classifier_cache_entry* thunk_identity_cache =
+		prototype_type_constructor_classifier_cache_get(
+			type_db, thunk_identity_declaration->first_constructor
+		);
+	if (!thunk_identity_cache) {
+		return 15;
+	}
 	uint32_t false_app1_classifier;
 	uint32_t false_app2_classifier;
 	uint32_t true_app1_classifier;
 	uint32_t true_app2_classifier;
 	if (prototype_judgement_delta_app_elim_classifier(
 			&delta, term_db, type_db,
-			thunk_identity_constructor->curried_classifier_cache,
+			thunk_identity_cache->classifier,
 			bool_false, bool_type, &false_app1_classifier
 		) != 0 || prototype_judgement_delta_app_elim_classifier(
 			&delta, term_db, type_db, false_app1_classifier,
 			bool_false, bool_type, &false_app2_classifier
 		) != 0 || prototype_judgement_delta_app_elim_classifier(
 			&delta, term_db, type_db,
-			thunk_identity_constructor->curried_classifier_cache,
+			thunk_identity_cache->classifier,
 			bool_true, bool_type, &true_app1_classifier
 		) != 0 || prototype_judgement_delta_app_elim_classifier(
 			&delta, term_db, type_db, true_app1_classifier,
@@ -1324,13 +1353,13 @@ static int check_bool_function_extensional_identity(
 		return 15;
 	}
 	operation_graph->occurrences[false_constructor_operation].classifier =
-		thunk_identity_constructor->curried_classifier_cache;
+		thunk_identity_cache->classifier;
 	operation_graph->occurrences[false_app1_operation].classifier =
 		false_app1_classifier;
 	operation_graph->occurrences[false_app2_operation].classifier =
 		false_app2_classifier;
 	operation_graph->occurrences[true_constructor_operation].classifier =
-		thunk_identity_constructor->curried_classifier_cache;
+		thunk_identity_cache->classifier;
 	operation_graph->occurrences[true_app1_operation].classifier = true_app1_classifier;
 	operation_graph->occurrences[true_app2_operation].classifier = true_app2_classifier;
 	struct prototype_judgement_selected_evidence constructor_evidence[3];
@@ -1647,14 +1676,20 @@ static uint32_t add_bool_view(
 					.name_symbol_id = 101 + (int)i,
 					.owner_type = 0,
 					.constructor_index = i,
-					.readback = {
-						.first_field_type = PROTOTYPE_INVALID_ID,
-						.result_type = PROTOTYPE_INVALID_ID
-					},
 					.parameter_context = empty,
 				.field_context = empty,
 				.result_classifier = view,
-				.curried_classifier_cache = view
+				.schema_revision = 1
+			};
+		types_db->readback.constructor_readbacks[i] =
+			(struct prototype_type_constructor_readback){
+				.first_field_type = PROTOTYPE_INVALID_ID,
+				.result_type = PROTOTYPE_INVALID_ID
+			};
+		types_db->constructor_classifier_cache.entries[i] =
+			(struct prototype_constructor_classifier_cache_entry){
+				.classifier = view,
+				.schema_revision = 1
 			};
 	}
 	if (terms_db->term_count >= terms_db->term_capacity) {
@@ -1723,7 +1758,7 @@ static uint32_t add_box_view(
 			field_context,
 			view,
 			&curried_classifier
-		) != 0 || prototype_type_declaration_add_constructor(
+		) != 0 || fixture_publish_constructor_schema(
 			types_db,
 			type_id,
 			201,
@@ -1818,7 +1853,7 @@ static uint32_t add_dependent_box_view(
 			second_context,
 			view,
 			&curried_classifier
-		) != 0 || prototype_type_declaration_add_constructor(
+		) != 0 || fixture_publish_constructor_schema(
 			types_db,
 			type_id,
 			211,
@@ -1870,7 +1905,7 @@ static uint32_t add_nat_view(
 	types_db->type_declarations[type_id].parameter_context = empty;
 	types_db->type_declarations[type_id].index_context = empty;
 	uint32_t zero_constructor_id;
-	if (prototype_type_declaration_add_constructor(
+	if (fixture_publish_constructor_schema(
 			types_db,
 			type_id,
 			301,
@@ -1904,7 +1939,7 @@ static uint32_t add_nat_view(
 			field_context,
 			view,
 			&succ_classifier
-		) != 0 || prototype_type_declaration_add_constructor(
+		) != 0 || fixture_publish_constructor_schema(
 			types_db,
 			type_id,
 			302,

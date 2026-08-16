@@ -937,10 +937,10 @@ static int artifact_mark_type_expr(
 	if (expr_id == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
-	if (expr_id >= marks->type_expr_count || expr_id >= type_declarations->expr_count) {
+	if (expr_id >= marks->type_expr_count || expr_id >= type_declarations->readback.expr_count) {
 		return -1;
 	}
-	const struct prototype_type_expr* expr = &type_declarations->exprs[expr_id];
+	const struct prototype_type_expr* expr = &type_declarations->readback.exprs[expr_id];
 	if (!artifact_type_expr_present(expr)) {
 		return -1;
 	}
@@ -1038,11 +1038,11 @@ static int artifact_mark_parameter(
 		marks ? marks->type_declarations : NULL;
 	if (!marks || !terms || !type_declarations || depth > 512 ||
 		parameter_id >= marks->parameter_count ||
-		parameter_id >= type_declarations->parameter_count) {
+		parameter_id >= type_declarations->readback.parameter_count) {
 		return -1;
 	}
 	const struct prototype_type_parameter_declaration* parameter =
-		&type_declarations->parameter_declarations[parameter_id];
+		&type_declarations->readback.parameter_declarations[parameter_id];
 	if (!artifact_parameter_present(parameter)) {
 		return -1;
 	}
@@ -1071,10 +1071,10 @@ static int artifact_mark_field_type(
 		marks ? marks->type_declarations : NULL;
 	if (!marks || !terms || !type_declarations || depth > 512 ||
 		field_type_id >= marks->readback_field_type_count ||
-		field_type_id >= type_declarations->readback_field_type_count) {
+		field_type_id >= type_declarations->readback.field_type_count) {
 		return -1;
 	}
-	const uint32_t* field_type = &type_declarations->readback_field_types[field_type_id];
+	const uint32_t* field_type = &type_declarations->readback.field_types[field_type_id];
 	if (!artifact_field_type_present(field_type)) {
 		return -1;
 	}
@@ -1108,7 +1108,13 @@ static int artifact_mark_constructor(
 	}
 	const struct prototype_type_constructor_declaration* constructor =
 		&type_declarations->constructor_declarations[constructor_id];
-	if (!artifact_constructor_present(constructor)) {
+	const struct prototype_type_constructor_readback* readback =
+		prototype_type_constructor_readback_get(type_declarations, constructor_id);
+	const struct prototype_constructor_classifier_cache_entry* cache =
+		prototype_type_constructor_classifier_cache_get(
+			type_declarations, constructor_id
+		);
+	if (!artifact_constructor_present(constructor) || !readback || !cache) {
 		return -1;
 	}
 	if (marks->constructors[constructor_id]) {
@@ -1126,18 +1132,18 @@ static int artifact_mark_constructor(
 	if (artifact_mark_type(marks, terms, constructor->owner_type, depth + 1) != 0) {
 		return -1;
 	}
-	if (constructor->readback.result_type != PROTOTYPE_INVALID_ID &&
+	if (readback->result_type != PROTOTYPE_INVALID_ID &&
 		artifact_mark_type_expr(
-			marks, terms, constructor->readback.result_type, depth + 1
+			marks, terms, readback->result_type, depth + 1
 		) != 0) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < constructor->readback.field_count; ++i) {
-		uint32_t field_id = constructor->readback.first_field_type + i;
-		if (constructor->readback.first_field_type == PROTOTYPE_INVALID_ID ||
-			field_id >= type_declarations->readback_field_type_count ||
+	for (uint32_t i = 0; i < readback->field_count; ++i) {
+		uint32_t field_id = readback->first_field_type + i;
+		if (readback->first_field_type == PROTOTYPE_INVALID_ID ||
+			field_id >= type_declarations->readback.field_type_count ||
 			!artifact_field_type_present(
-				&type_declarations->readback_field_types[field_id]
+				&type_declarations->readback.field_types[field_id]
 			)) {
 			continue;
 		}
@@ -1154,9 +1160,9 @@ static int artifact_mark_constructor(
 			artifact_mark_term(
 				marks, terms, constructor->result_classifier, depth + 1
 			) != 0) ||
-		(constructor->curried_classifier_cache != PROTOTYPE_INVALID_ID &&
+		(cache->classifier != PROTOTYPE_INVALID_ID &&
 		 artifact_mark_term(
-			marks, terms, constructor->curried_classifier_cache, depth + 1
+			marks, terms, cache->classifier, depth + 1
 		 ) != 0)) {
 		return -1;
 	}
@@ -1778,19 +1784,6 @@ static int artifact_export_has_residual_constraint(
 	}
 	const struct prototype_typed_occurrence_graph* graph =
 		prototype_compile_metadata_typed_occurrences_const(metadata);
-	for (size_t i = 0; i < metadata->effect_constraint_count; ++i) {
-		const struct prototype_occurrence_effect_constraint* constraint =
-			&metadata->effect_constraints[i];
-		if (constraint->state == PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
-			continue;
-		}
-		int reaches = prototype_typed_occurrence_graph_reaches(
-			graph, terms, operation, constraint->occurrence
-		);
-		if (reaches != 0) {
-			return reaches;
-		}
-	}
 	for (size_t i = 0;
 		i < prototype_verification_db_count(&metadata->verification);
 		++i) {

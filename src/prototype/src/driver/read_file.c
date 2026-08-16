@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v75.h"
+#include "a_program/artifact/wire_v76.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -84,6 +84,9 @@ static char* symbol_strings[SYMBOL_STORAGE_CAPACITY];
 
 static struct prototype_type_declaration type_declaration_storage[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration constructor_declaration_storage[CONSTRUCTOR_CAPACITY];
+static struct prototype_type_constructor_readback constructor_readback_storage[CONSTRUCTOR_CAPACITY];
+static struct prototype_constructor_classifier_cache_entry
+	constructor_classifier_cache_storage[CONSTRUCTOR_CAPACITY];
 static struct prototype_type_parameter_declaration parameter_declaration_storage[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
@@ -213,6 +216,9 @@ static struct prototype_term_definition artifact_definitions[ARTIFACT_DEFINITION
 
 static struct prototype_type_declaration provider_type_declaration_storage[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration provider_constructor_declaration_storage[CONSTRUCTOR_CAPACITY];
+static struct prototype_type_constructor_readback provider_constructor_readback_storage[CONSTRUCTOR_CAPACITY];
+static struct prototype_constructor_classifier_cache_entry
+	provider_constructor_classifier_cache_storage[CONSTRUCTOR_CAPACITY];
 static struct prototype_type_parameter_declaration provider_parameter_declaration_storage[PARAMETER_CAPACITY];
 static uint32_t provider_field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr provider_type_exprs[TYPE_EXPR_CAPACITY];
@@ -1132,12 +1138,16 @@ static int check_export_normalization_equal(
 		CONSTRUCTOR_CAPACITY,
 		parameter_declaration_storage,
 		PARAMETER_CAPACITY,
+		constructor_readback_storage,
+		CONSTRUCTOR_CAPACITY,
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
 		TYPE_EXPR_CAPACITY,
 		type_representations,
-		TYPE_CAPACITY
+		TYPE_CAPACITY,
+		constructor_classifier_cache_storage,
+		CONSTRUCTOR_CAPACITY
 	);
 	prototype_term_db_init(
 		&term_db,
@@ -1360,12 +1370,16 @@ static int check_exports_normalization_equal(
 		CONSTRUCTOR_CAPACITY,
 		parameter_declaration_storage,
 		PARAMETER_CAPACITY,
+		constructor_readback_storage,
+		CONSTRUCTOR_CAPACITY,
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
 		TYPE_EXPR_CAPACITY,
 		type_representations,
-		TYPE_CAPACITY
+		TYPE_CAPACITY,
+		constructor_classifier_cache_storage,
+		CONSTRUCTOR_CAPACITY
 	);
 	prototype_term_db_init(
 		&term_db,
@@ -1671,12 +1685,16 @@ static int check_exports_shape_equal(
 		CONSTRUCTOR_CAPACITY,
 		parameter_declaration_storage,
 		PARAMETER_CAPACITY,
+		constructor_readback_storage,
+		CONSTRUCTOR_CAPACITY,
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
 		TYPE_EXPR_CAPACITY,
 		type_representations,
-		TYPE_CAPACITY
+		TYPE_CAPACITY,
+		constructor_classifier_cache_storage,
+		CONSTRUCTOR_CAPACITY
 	);
 	prototype_term_db_init(
 		&term_db,
@@ -1850,12 +1868,16 @@ static int check_export_classifier_compatible(
 		CONSTRUCTOR_CAPACITY,
 		parameter_declaration_storage,
 		PARAMETER_CAPACITY,
+		constructor_readback_storage,
+		CONSTRUCTOR_CAPACITY,
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
 		TYPE_EXPR_CAPACITY,
 		type_representations,
-		TYPE_CAPACITY
+		TYPE_CAPACITY,
+		constructor_classifier_cache_storage,
+		CONSTRUCTOR_CAPACITY
 	);
 	prototype_term_db_init(
 		&term_db,
@@ -2131,12 +2153,16 @@ static void init_provider_artifact_storage(
 		CONSTRUCTOR_CAPACITY,
 		provider_parameter_declaration_storage,
 		PARAMETER_CAPACITY,
+		provider_constructor_readback_storage,
+		CONSTRUCTOR_CAPACITY,
 		provider_field_types,
 		FIELD_TYPE_CAPACITY,
 		provider_type_exprs,
 		TYPE_EXPR_CAPACITY,
 		provider_type_representations,
-		TYPE_CAPACITY
+		TYPE_CAPACITY,
+		provider_constructor_classifier_cache_storage,
+		CONSTRUCTOR_CAPACITY
 	);
 	prototype_term_db_init(
 		term_db,
@@ -3417,12 +3443,16 @@ int main(int argc, char** argv) {
 			CONSTRUCTOR_CAPACITY,
 			parameter_declaration_storage,
 			PARAMETER_CAPACITY,
+			constructor_readback_storage,
+			CONSTRUCTOR_CAPACITY,
 			field_types,
 			FIELD_TYPE_CAPACITY,
 			type_exprs,
 			TYPE_EXPR_CAPACITY,
 			type_representations,
-			TYPE_CAPACITY
+			TYPE_CAPACITY,
+			constructor_classifier_cache_storage,
+			CONSTRUCTOR_CAPACITY
 		);
 		prototype_term_db_init(
 			&term_db,
@@ -3605,12 +3635,16 @@ int main(int argc, char** argv) {
 				CONSTRUCTOR_CAPACITY,
 				provider_parameter_declaration_storage,
 				PARAMETER_CAPACITY,
+				provider_constructor_readback_storage,
+				CONSTRUCTOR_CAPACITY,
 				provider_field_types,
 				FIELD_TYPE_CAPACITY,
 				provider_type_exprs,
 				TYPE_EXPR_CAPACITY,
 				provider_type_representations,
-				TYPE_CAPACITY
+				TYPE_CAPACITY,
+				provider_constructor_classifier_cache_storage,
+				CONSTRUCTOR_CAPACITY
 			);
 			prototype_term_db_init(
 				&provider_term_db,
@@ -4113,12 +4147,16 @@ int main(int argc, char** argv) {
 				CONSTRUCTOR_CAPACITY,
 				parameter_declaration_storage,
 				PARAMETER_CAPACITY,
+				constructor_readback_storage,
+				CONSTRUCTOR_CAPACITY,
 				field_types,
 				FIELD_TYPE_CAPACITY,
 				type_exprs,
 				TYPE_EXPR_CAPACITY,
 				type_representations,
-				TYPE_CAPACITY
+				TYPE_CAPACITY,
+				constructor_classifier_cache_storage,
+				CONSTRUCTOR_CAPACITY
 			);
 			prototype_term_db_init(
 				&term_db,
@@ -4303,7 +4341,7 @@ int main(int argc, char** argv) {
 				term_db.ih_scope_count,
 				type_declarations.type_count,
 				type_declarations.constructor_count,
-				type_declarations.expr_count,
+				type_declarations.readback.expr_count,
 				judgement_db.proposition_count,
 				judgement_db.derivation_candidate_count
 			);
@@ -4317,7 +4355,7 @@ int main(int argc, char** argv) {
 			);
 			printf(
 				"graph_next_level_var=%u judgement_next_universe_var=%u\n",
-				type_declarations.next_level_var,
+				type_declarations.readback.next_level_var,
 				judgement_db.next_universe_var
 			);
 			printf(
@@ -4416,12 +4454,16 @@ int main(int argc, char** argv) {
 		CONSTRUCTOR_CAPACITY,
 		parameter_declaration_storage,
 		PARAMETER_CAPACITY,
+		constructor_readback_storage,
+		CONSTRUCTOR_CAPACITY,
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
 		TYPE_EXPR_CAPACITY,
 		type_representations,
-		TYPE_CAPACITY
+		TYPE_CAPACITY,
+		constructor_classifier_cache_storage,
+		CONSTRUCTOR_CAPACITY
 	);
 	prototype_ast_db_init(
 		&ast_db,
@@ -4807,18 +4849,27 @@ int main(int argc, char** argv) {
 		}
 		prototype_diagnostic_print_type_declaration(stdout, &symbols, &type_declarations, type);
 		for (uint32_t j = 0; j < type->constructor_count; ++j) {
+			uint32_t constructor_id = type->first_constructor + j;
 			const struct prototype_type_constructor_declaration* constructor =
-				&type_declarations.constructor_declarations[type->first_constructor + j];
+				&type_declarations.constructor_declarations[constructor_id];
+			const struct prototype_type_constructor_readback* readback =
+				prototype_type_constructor_readback_get(
+					&type_declarations, constructor_id
+				);
+			const struct prototype_constructor_classifier_cache_entry* cache =
+				prototype_type_constructor_classifier_cache_get(
+					&type_declarations, constructor_id
+				);
 			if (constructor->name_symbol_id < 0 ||
-				constructor->owner_type == PROTOTYPE_INVALID_ID) {
+				constructor->owner_type == PROTOTYPE_INVALID_ID || !readback || !cache) {
 				continue;
 			}
 			printf("constructor ");
 			prototype_diagnostic_print_type_namespace(stdout, &symbols, &type_declarations, type);
 			printf(".%s readback_fields=%u curried_classifier_cache=%u\n",
 				symbol_to_string(&symbols, constructor->name_symbol_id),
-				constructor->readback.field_count,
-				constructor->curried_classifier_cache);
+				readback->field_count,
+				cache->classifier);
 		}
 	}
 	for (size_t i = 0; i < metadata.label_count; ++i) {

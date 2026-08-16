@@ -49,8 +49,8 @@ static int write_artifact_graph_section(
 			present_type_count++;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->parameter_count; ++i) {
-		if (artifact_parameter_present(&type_declarations->parameter_declarations[i])) {
+	for (size_t i = 0; i < type_declarations->readback.parameter_count; ++i) {
+		if (artifact_parameter_present(&type_declarations->readback.parameter_declarations[i])) {
 			present_parameter_count++;
 		}
 	}
@@ -59,13 +59,13 @@ static int write_artifact_graph_section(
 			present_constructor_count++;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->readback_field_type_count; ++i) {
-		if (artifact_field_type_present(&type_declarations->readback_field_types[i])) {
+	for (size_t i = 0; i < type_declarations->readback.field_type_count; ++i) {
+		if (artifact_field_type_present(&type_declarations->readback.field_types[i])) {
 			present_field_type_count++;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		if (artifact_type_expr_present(&type_declarations->exprs[i])) {
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		if (artifact_type_expr_present(&type_declarations->readback.exprs[i])) {
 			present_type_expr_count++;
 		}
 	}
@@ -89,11 +89,11 @@ static int write_artifact_graph_section(
 		present_case_binder_count != terms->case_binder_count ||
 		present_frame_count != terms->ih_scope_count ||
 		present_type_count != type_declarations->type_count ||
-		present_parameter_count != type_declarations->parameter_count ||
+		present_parameter_count != type_declarations->readback.parameter_count ||
 		present_constructor_count != type_declarations->constructor_count ||
 		present_field_type_count !=
-			type_declarations->readback_field_type_count ||
-		present_type_expr_count != type_declarations->expr_count ||
+			type_declarations->readback.field_type_count ||
+		present_type_expr_count != type_declarations->readback.expr_count ||
 		present_proposition_count != judgement->proposition_count ||
 		present_claim_count != judgement->claim_count ||
 		present_derivation_count != judgement->derivation_count) {
@@ -114,13 +114,13 @@ static int write_artifact_graph_section(
 			present_type_count,
 			type_declarations->type_count,
 			present_parameter_count,
-			type_declarations->parameter_count,
+			type_declarations->readback.parameter_count,
 			present_constructor_count,
 			type_declarations->constructor_count,
 			present_field_type_count,
-			type_declarations->readback_field_type_count,
+			type_declarations->readback.field_type_count,
 			present_type_expr_count,
-			type_declarations->expr_count,
+			type_declarations->readback.expr_count,
 			present_proposition_count,
 			judgement->proposition_count,
 			present_claim_count,
@@ -138,10 +138,10 @@ static int write_artifact_graph_section(
 		terms->case_binder_count,
 		terms->ih_scope_count,
 		type_declarations->type_count,
-		type_declarations->parameter_count,
+		type_declarations->readback.parameter_count,
 		type_declarations->constructor_count,
-		type_declarations->readback_field_type_count,
-		type_declarations->expr_count,
+		type_declarations->readback.field_type_count,
+		type_declarations->readback.expr_count,
 		judgement->proposition_count,
 		judgement->claim_count,
 		judgement->derivation_count
@@ -188,9 +188,9 @@ static int write_artifact_graph_section(
 	}
 
 	fprintf(stream, "type_parameters %zu\n", present_parameter_count);
-	for (size_t i = 0; i < type_declarations->parameter_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.parameter_count; ++i) {
 		const struct prototype_type_parameter_declaration* parameter =
-			&type_declarations->parameter_declarations[i];
+			&type_declarations->readback.parameter_declarations[i];
 		if (!artifact_parameter_present(parameter)) {
 			continue;
 		}
@@ -208,8 +208,17 @@ static int write_artifact_graph_section(
 	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
 			&type_declarations->constructor_declarations[i];
+		const struct prototype_type_constructor_readback* readback =
+			prototype_type_constructor_readback_get(type_declarations, (uint32_t)i);
+		const struct prototype_constructor_classifier_cache_entry* cache =
+			prototype_type_constructor_classifier_cache_get(
+				type_declarations, (uint32_t)i
+			);
 		if (!artifact_constructor_present(constructor)) {
 			continue;
+		}
+		if (!readback || !cache) {
+			return -1;
 		}
 		const char* constructor_name = artifact_optional_symbol_name(
 			symbols, constructor->name_symbol_id
@@ -224,9 +233,9 @@ static int write_artifact_graph_section(
 			constructor_name,
 				constructor->owner_type,
 				constructor->constructor_index,
-				constructor->readback.first_field_type,
-				constructor->readback.field_count,
-				constructor->readback.result_type,
+				readback->first_field_type,
+				readback->field_count,
+				readback->result_type,
 				artifact_context_slice_relocate(
 					context_slice, constructor->parameter_context
 				),
@@ -234,28 +243,28 @@ static int write_artifact_graph_section(
 					context_slice, constructor->field_context
 				),
 				constructor->result_classifier,
-				constructor->curried_classifier_cache
+				cache->classifier
 			);
 	}
 
 	fprintf(stream, "type_field_refs %zu\n", present_field_type_count);
-	for (size_t i = 0; i < type_declarations->readback_field_type_count; ++i) {
-		if (!artifact_field_type_present(&type_declarations->readback_field_types[i])) {
+	for (size_t i = 0; i < type_declarations->readback.field_type_count; ++i) {
+		if (!artifact_field_type_present(&type_declarations->readback.field_types[i])) {
 			continue;
 		}
-		fprintf(stream, "type_field_ref %zu %u\n", i, type_declarations->readback_field_types[i]);
+		fprintf(stream, "type_field_ref %zu %u\n", i, type_declarations->readback.field_types[i]);
 	}
 
 	fprintf(stream, "type_exprs %zu\n", present_type_expr_count);
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		if (!artifact_type_expr_present(&type_declarations->exprs[i])) {
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		if (!artifact_type_expr_present(&type_declarations->readback.exprs[i])) {
 			continue;
 		}
 		if (write_artifact_type_expr(
 				stream,
 				symbols,
 				(uint32_t)i,
-				&type_declarations->exprs[i]
+				&type_declarations->readback.exprs[i]
 			) != 0) {
 			return -1;
 		}
@@ -826,11 +835,11 @@ static int artifact_count_external_type_expr_refs(
 		return -1;
 	}
 	*p_count = 0;
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		if (type_declarations->exprs[i].tag == PROTOTYPE_TYPE_EXPR_NAME &&
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		if (type_declarations->readback.exprs[i].tag == PROTOTYPE_TYPE_EXPR_NAME &&
 			!prototype_type_declaration_lookup(
 				type_declarations,
-				type_declarations->exprs[i].as.name.symbol_id
+				type_declarations->readback.exprs[i].as.name.symbol_id
 			)) {
 			(*p_count)++;
 		}
@@ -846,8 +855,8 @@ static int artifact_count_resolved_external_type_expr_refs(
 		return -1;
 	}
 	*p_count = 0;
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		if (type_declarations->exprs[i].tag == PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE) {
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		if (type_declarations->readback.exprs[i].tag == PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE) {
 			(*p_count)++;
 		}
 	}
@@ -1062,8 +1071,8 @@ static int write_artifact_relocation_section(
 	}
 
 	fprintf(stream, "external_type_expr_refs %zu\n", external_type_expr_ref_count);
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		const struct prototype_type_expr* expr = &type_declarations->exprs[i];
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		if (expr->tag != PROTOTYPE_TYPE_EXPR_NAME ||
 			prototype_type_declaration_lookup(type_declarations, expr->as.name.symbol_id)) {
 			continue;
@@ -1076,8 +1085,8 @@ static int write_artifact_relocation_section(
 	}
 
 	fprintf(stream, "resolved_external_type_expr_refs %zu\n", resolved_external_type_expr_ref_count);
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		const struct prototype_type_expr* expr = &type_declarations->exprs[i];
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		uint32_t export_id = PROTOTYPE_INVALID_ID;
 		if (expr->tag != PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE) {
 			continue;
@@ -1106,8 +1115,8 @@ static int write_artifact_relocation_section(
 	}
 
 	fprintf(stream, "external_type_former_refs %zu\n", external_type_expr_ref_count);
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		const struct prototype_type_expr* expr = &type_declarations->exprs[i];
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		if (expr->tag != PROTOTYPE_TYPE_EXPR_NAME ||
 			prototype_type_declaration_lookup(type_declarations, expr->as.name.symbol_id)) {
 			continue;
@@ -1119,8 +1128,8 @@ static int write_artifact_relocation_section(
 		fprintf(stream, "external_type_former_ref %zu %d %s\n", i, expr->as.name.symbol_id, name);
 	}
 	fprintf(stream, "resolved_external_type_former_refs %zu\n", resolved_external_type_expr_ref_count);
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		const struct prototype_type_expr* expr = &type_declarations->exprs[i];
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		uint32_t export_id = PROTOTYPE_INVALID_ID;
 		if (expr->tag != PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE) {
 			continue;

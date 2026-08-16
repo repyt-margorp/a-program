@@ -125,22 +125,18 @@ struct prototype_type_constructor_declaration {
 	uint32_t owner_type;
 	uint32_t constructor_index;
 	/*
-	 * Source/interface field and result expressions are readback metadata only.
-	 * Constructor field typing, shape keys, import reconstruction, and semantic
-	 * owner checks must use the context telescope and result classifier.
-	 */
-	struct prototype_type_constructor_readback readback;
-	/*
 	 * The constructor telescope is the ContextDB path from parameter_context
 	 * to field_context. result_classifier is meaningful in field_context.
-	 * curried_classifier_cache is a derived curried cache used to classify constructor
-	 * terms through existing Pi elimination. It is generated from the
-	 * telescope and is not a second schema authority.
 	 */
 	uint32_t parameter_context;
 	uint32_t field_context;
 	uint32_t result_classifier;
-	uint32_t curried_classifier_cache;
+	uint32_t schema_revision;
+};
+
+struct prototype_constructor_classifier_cache_entry {
+	uint32_t classifier;
+	uint32_t schema_revision;
 };
 
 enum prototype_type_declaration_origin_kind {
@@ -187,7 +183,43 @@ struct prototype_type_representation {
 	struct prototype_type_representation_fingerprint fingerprint;
 };
 
-/* All storage referenced by this database is borrowed from its owner. */
+/* Source reconstruction and diagnostics only. None of these records may be
+ * consulted to validate constructor fields or result classifiers. */
+struct prototype_type_readback_db {
+	struct prototype_type_parameter_declaration* parameter_declarations;
+	size_t parameter_count;
+	size_t parameter_capacity;
+	struct prototype_type_constructor_readback* constructor_readbacks;
+	size_t constructor_readback_capacity;
+	uint32_t* field_types;
+	size_t field_type_count;
+	size_t field_type_capacity;
+	struct prototype_type_expr* exprs;
+	size_t expr_count;
+	size_t expr_capacity;
+	uint32_t next_level_var;
+};
+
+/* Persistent representation identity plus its rebuildable lookup cache. The
+ * declaration schema refers to representation IDs, never fingerprints. */
+struct prototype_type_representation_db {
+	struct prototype_type_representation* representations;
+	size_t representation_count;
+	size_t representation_capacity;
+	int cache_dirty;
+};
+
+/* Rebuildable constructor materialization. The cache is indexed by the
+ * semantic constructor ID, but is not part of ConstructorSchema. */
+struct prototype_constructor_classifier_cache {
+	struct prototype_constructor_classifier_cache_entry* entries;
+	size_t capacity;
+};
+
+/* All storage referenced by this composition view is borrowed from its owner.
+ * Its nested stores have separate authority even though one session keeps
+ * them physically adjacent. Semantic consumers use schema queries and cannot
+ * derive acceptance from readback or cache presence. */
 struct prototype_type_declaration_db {
 	struct prototype_type_declaration* type_declarations;
 	size_t type_count;
@@ -197,24 +229,9 @@ struct prototype_type_declaration_db {
 	size_t constructor_count;
 	size_t constructor_capacity;
 
-	struct prototype_type_parameter_declaration* parameter_declarations;
-	size_t parameter_count;
-	size_t parameter_capacity;
-
-	uint32_t* readback_field_types;
-	size_t readback_field_type_count;
-	size_t readback_field_type_capacity;
-
-	struct prototype_type_expr* exprs;
-	size_t expr_count;
-	size_t expr_capacity;
-
-	struct prototype_type_representation* representations;
-	size_t representation_count;
-	size_t representation_capacity;
-	int representations_dirty;
-
-	uint32_t next_level_var;
+	struct prototype_type_readback_db readback;
+	struct prototype_type_representation_db representation_db;
+	struct prototype_constructor_classifier_cache constructor_classifier_cache;
 };
 
 void prototype_type_declaration_db_init(
@@ -225,12 +242,16 @@ void prototype_type_declaration_db_init(
 	size_t constructor_capacity,
 	struct prototype_type_parameter_declaration* parameter_declarations,
 	size_t parameter_capacity,
+	struct prototype_type_constructor_readback* constructor_readbacks,
+	size_t constructor_readback_capacity,
 	uint32_t* readback_field_types,
 	size_t readback_field_type_capacity,
 	struct prototype_type_expr* exprs,
 	size_t expr_capacity,
 	struct prototype_type_representation* representations,
-	size_t representation_capacity
+	size_t representation_capacity,
+	struct prototype_constructor_classifier_cache_entry* constructor_classifier_cache_entries,
+	size_t constructor_classifier_cache_capacity
 );
 int prototype_type_declaration_project_reduction_environment(
 	struct prototype_term_db* terms,
@@ -317,18 +338,47 @@ int prototype_type_declaration_add_parameter(
 	uint32_t type_expr
 );
 
-int prototype_type_declaration_add_constructor(
+int prototype_type_declaration_add_constructor_schema(
 	struct prototype_type_declaration_db* db,
 	uint32_t type_id,
 	int name_symbol_id,
-	const uint32_t* readback_field_type_exprs,
-	uint32_t readback_field_count,
-	uint32_t readback_result_type_expr,
 	uint32_t parameter_context,
 	uint32_t field_context,
 	uint32_t result_classifier,
-	uint32_t curried_classifier_cache,
 	uint32_t* p_constructor_id
+);
+
+int prototype_type_readback_attach_constructor(
+	struct prototype_type_declaration_db* db,
+	uint32_t constructor_id,
+	const uint32_t* field_type_exprs,
+	uint32_t field_count,
+	uint32_t result_type_expr
+);
+
+int prototype_type_constructor_classifier_cache_set(
+	struct prototype_type_declaration_db* db,
+	uint32_t constructor_id,
+	uint32_t classifier
+);
+
+int prototype_type_constructor_classifier(
+	struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	uint32_t constructor_id,
+	uint32_t* p_classifier
+);
+
+const struct prototype_type_constructor_readback* prototype_type_constructor_readback_get(
+	const struct prototype_type_declaration_db* db,
+	uint32_t constructor_id
+);
+
+const struct prototype_constructor_classifier_cache_entry*
+prototype_type_constructor_classifier_cache_get(
+	const struct prototype_type_declaration_db* db,
+	uint32_t constructor_id
 );
 
 int prototype_type_constructor_derive_curried_classifier(

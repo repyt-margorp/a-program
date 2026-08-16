@@ -70,23 +70,24 @@ int prototype_judgement_add_relation_type_formation(
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind =
 		PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION;
-	proof.conclusion_kind = relation.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = relation_type;
-	proof.conclusion_classifier = universe;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.premise_count = 4;
 	for (uint32_t i = 0; i < 4; ++i) {
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise_claims[i], &evidence);
-		proof.premises[i].proposition.kind = evidence.kind;
-		proof.premises[i].proposition.context_id = evidence.context_id;
-		proof.premises[i].proposition.subject = evidence.subject;
-		proof.premises[i].proposition.classifier = evidence.classifier;
-		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
+		proof.premises[i].proposition->kind = evidence.kind;
+		proof.premises[i].proposition->context_id = evidence.context_id;
+		proof.premises[i].proposition->subject = evidence.subject;
+		proof.premises[i].proposition->classifier = evidence.classifier;
+		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].proposition->authority_id = evidence.authority_id;
+		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &relation, &proof, premise_ids, p_claim_id
@@ -162,12 +163,13 @@ int prototype_judgement_add_relation_witness_intro(
 		proof_premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RELATION_WITNESS_INTRO;
-	proof.conclusion_kind = result.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = witness;
-	proof.conclusion_classifier = relation_type;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	uint32_t premise_ids[3] = {
 		relation_type_claim_id,
 		left_endpoint_claim_id,
@@ -182,13 +184,13 @@ int prototype_judgement_add_relation_witness_intro(
 	for (uint32_t i = 0; i < 3; ++i) {
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premises[i], &evidence);
-		proof.premises[i].proposition.kind = evidence.kind;
-		proof.premises[i].proposition.context_id = evidence.context_id;
-		proof.premises[i].proposition.subject = evidence.subject;
-		proof.premises[i].proposition.classifier = evidence.classifier;
-		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
+		proof.premises[i].proposition->kind = evidence.kind;
+		proof.premises[i].proposition->context_id = evidence.context_id;
+		proof.premises[i].proposition->subject = evidence.subject;
+		proof.premises[i].proposition->classifier = evidence.classifier;
+		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].proposition->authority_id = evidence.authority_id;
+		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -319,25 +321,26 @@ int prototype_judgement_add_relation_constructor_witness(
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind =
 		PROTOTYPE_JUDGEMENT_PROOF_RELATION_CONSTRUCTOR_WITNESS;
-	proof.conclusion_kind = result.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = witness;
-	proof.conclusion_classifier = relation_type;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.premise_count = field_witness_count + 3;
 	for (uint32_t i = 0; i < proof.premise_count; ++i) {
 		const struct prototype_judgement_claim* premise =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition.kind = evidence.kind;
-		proof.premises[i].proposition.context_id = evidence.context_id;
-		proof.premises[i].proposition.subject = evidence.subject;
-		proof.premises[i].proposition.classifier = evidence.classifier;
-		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
+		proof.premises[i].proposition->kind = evidence.kind;
+		proof.premises[i].proposition->context_id = evidence.context_id;
+		proof.premises[i].proposition->subject = evidence.subject;
+		proof.premises[i].proposition->classifier = evidence.classifier;
+		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].proposition->authority_id = evidence.authority_id;
+		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
 	}
 	(void)left_head;
 	(void)right_head;
@@ -449,25 +452,26 @@ int prototype_judgement_add_relation_unary_witness(
 		proof_premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = proof_kind;
-	proof.conclusion_kind = result.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = witness;
-	proof.conclusion_classifier = relation_type;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.premise_count = 4;
 	for (uint32_t i = 0; i < 4; ++i) {
 		const struct prototype_judgement_claim* premise =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition.kind = evidence.kind;
-		proof.premises[i].proposition.context_id = evidence.context_id;
-		proof.premises[i].proposition.subject = evidence.subject;
-		proof.premises[i].proposition.classifier = evidence.classifier;
-		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
+		proof.premises[i].proposition->kind = evidence.kind;
+		proof.premises[i].proposition->context_id = evidence.context_id;
+		proof.premises[i].proposition->subject = evidence.subject;
+		proof.premises[i].proposition->classifier = evidence.classifier;
+		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].proposition->authority_id = evidence.authority_id;
+		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -578,25 +582,26 @@ int prototype_judgement_add_relation_app_witness(
 		proof_premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RELATION_APP_WITNESS;
-	proof.conclusion_kind = result.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = witness;
-	proof.conclusion_classifier = relation_type;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.premise_count = 5;
 	for (uint32_t i = 0; i < 5; ++i) {
 		const struct prototype_judgement_claim* premise =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition.kind = evidence.kind;
-		proof.premises[i].proposition.context_id = evidence.context_id;
-		proof.premises[i].proposition.subject = evidence.subject;
-		proof.premises[i].proposition.classifier = evidence.classifier;
-		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
+		proof.premises[i].proposition->kind = evidence.kind;
+		proof.premises[i].proposition->context_id = evidence.context_id;
+		proof.premises[i].proposition->subject = evidence.subject;
+		proof.premises[i].proposition->classifier = evidence.classifier;
+		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].proposition->authority_id = evidence.authority_id;
+		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -769,25 +774,26 @@ int prototype_judgement_add_relation_lambda_witness(
 		proof_premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RELATION_LAMBDA_WITNESS;
-	proof.conclusion_kind = result.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = witness;
-	proof.conclusion_classifier = relation_type;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.premise_count = 4;
 	for (uint32_t i = 0; i < 4; ++i) {
 		const struct prototype_judgement_claim* premise =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition.kind = evidence.kind;
-		proof.premises[i].proposition.context_id = evidence.context_id;
-		proof.premises[i].proposition.subject = evidence.subject;
-		proof.premises[i].proposition.classifier = evidence.classifier;
-		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
+		proof.premises[i].proposition->kind = evidence.kind;
+		proof.premises[i].proposition->context_id = evidence.context_id;
+		proof.premises[i].proposition->subject = evidence.subject;
+		proof.premises[i].proposition->classifier = evidence.classifier;
+		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].proposition->authority_id = evidence.authority_id;
+		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -1045,25 +1051,26 @@ int prototype_judgement_add_relation_match_witness(
 		proof_premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RELATION_MATCH_WITNESS;
-	proof.conclusion_kind = result.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = witness;
-	proof.conclusion_classifier = relation_type;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.premise_count = case_witness_count + 5;
 	for (uint32_t i = 0; i < proof.premise_count; ++i) {
 		const struct prototype_judgement_claim* premise =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition.kind = evidence.kind;
-		proof.premises[i].proposition.context_id = evidence.context_id;
-		proof.premises[i].proposition.subject = evidence.subject;
-		proof.premises[i].proposition.classifier = evidence.classifier;
-		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
+		proof.premises[i].proposition->kind = evidence.kind;
+		proof.premises[i].proposition->context_id = evidence.context_id;
+		proof.premises[i].proposition->subject = evidence.subject;
+		proof.premises[i].proposition->classifier = evidence.classifier;
+		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].proposition->authority_id = evidence.authority_id;
+		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -1173,25 +1180,26 @@ int prototype_judgement_add_relation_induction_hypothesis_witness(
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind =
 		PROTOTYPE_JUDGEMENT_PROOF_RELATION_INDUCTION_HYPOTHESIS_WITNESS;
-	proof.conclusion_kind = result.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = witness;
-	proof.conclusion_classifier = relation_type;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.premise_count = 5;
 	for (uint32_t i = 0; i < 5; ++i) {
 		const struct prototype_judgement_claim* premise =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition.kind = evidence.kind;
-		proof.premises[i].proposition.context_id = evidence.context_id;
-		proof.premises[i].proposition.subject = evidence.subject;
-		proof.premises[i].proposition.classifier = evidence.classifier;
-		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
+		proof.premises[i].proposition->kind = evidence.kind;
+		proof.premises[i].proposition->context_id = evidence.context_id;
+		proof.premises[i].proposition->subject = evidence.subject;
+		proof.premises[i].proposition->classifier = evidence.classifier;
+		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].proposition->authority_id = evidence.authority_id;
+		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id

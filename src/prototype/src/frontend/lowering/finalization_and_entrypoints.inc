@@ -41,9 +41,11 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 		if (prototype_judgement_delta_solve_recorded_computation_requests(
 				&ctx->judgement_delta,
 				ctx->terms,
-				ctx->type_declarations
+				ctx->type_declarations,
+				ctx->computation_constraint_results,
+				ctx->computation_constraint_result_capacity
 			) != 0 || operation_solver_bind_computation_constraint_solutions(
-				ctx, &request_changed
+				ctx, &request_changed, 1
 			) != 0 || operation_solver_refresh_computation_constraint_operands(ctx) != 0) {
 			fprintf(stderr, "typing fixed point: operation request closure failed\n");
 			return -1;
@@ -55,13 +57,15 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 		if (prototype_judgement_delta_solve_recorded_computation_constraints(
 				&ctx->judgement_delta,
 				ctx->terms,
-				ctx->type_declarations
+				ctx->type_declarations,
+				ctx->computation_constraint_results,
+				ctx->computation_constraint_result_capacity
 			) != 0) {
 			fprintf(stderr, "typing fixed point: computation constraint solving failed\n");
 			return -1;
 		}
 		if (operation_solver_bind_computation_constraint_solutions(
-				ctx, &cbpv_changed
+				ctx, &cbpv_changed, 1
 			) != 0) {
 			fprintf(stderr, "typing fixed point: computation solution binding failed\n");
 			return -1;
@@ -1893,8 +1897,8 @@ static void sync_universe_level_counters(struct compile_context* ctx) {
 	if (ctx->judgement && ctx->judgement->next_universe_var < next_level_var) {
 		ctx->judgement->next_universe_var = next_level_var;
 	}
-	if (ctx->type_declarations && ctx->type_declarations->next_level_var < next_level_var) {
-		ctx->type_declarations->next_level_var = next_level_var;
+	if (ctx->type_declarations && ctx->type_declarations->readback.next_level_var < next_level_var) {
+		ctx->type_declarations->readback.next_level_var = next_level_var;
 	}
 }
 
@@ -1929,6 +1933,8 @@ static int compile_pending_with_workspace(
 	ctx.type_declarations = type_declarations;
 	ctx.judgement = judgement;
 	ctx.operation_usage_entries = workspace->operation_usage_entries;
+	ctx.computation_constraint_results = workspace->computation_constraint_results;
+	ctx.computation_constraint_result_capacity = PROTOTYPE_JUDGEMENT_DELTA_CAPACITY;
 	ctx.operation_usage_entry_capacity = PROTOTYPE_TYPED_OCCURRENCE_USAGE_ENTRY_CAPACITY;
 	prototype_judgement_delta_init(
 		&ctx.judgement_delta,
@@ -2039,16 +2045,23 @@ static int compile_pending_with_workspace(
 		return -1;
 	}
 	/* The fixed point above has already solved and committed source-operation
-	 * computation constraints in their contexts. Rebuilding constraints from
-	 * TermDB here would erase occurrence contexts and create false closed
-	 * derivations for shared core terms. */
-	if (operation_effect_generate_constraints(&ctx) != 0 ||
+	 * computation constraints in their contexts. The final classifier pass
+	 * rebuilds the classifier prefix, so rebuild the occurrence-owned
+	 * computation suffix and its explicit effect-equation edges before freezing
+	 * residual state. This never scans TermDB for replacement authority. */
+	int final_computation_changed = 0;
+	if (operation_solver_relink_recorded_computation_constraints(&ctx) != 0 ||
+		operation_solver_bind_computation_constraint_solutions(
+			&ctx, &final_computation_changed, 0
+		) != 0 || operation_effect_generate_constraints(&ctx) != 0 ||
 			prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
+			compile_phase_record_residual_effect_constraints(&ctx) != 0 ||
 			compile_phase_record_residual_dependent_folds(&ctx) != 0 ||
 			compile_phase_record_residual_computation_fold_results(&ctx) != 0) {
 		fprintf(stderr, "compile pending failed: effect/commit/residual\n");
 		return -1;
 	}
+	(void)final_computation_changed;
 	operation_solver_refresh_constraint_states(&ctx, ctx.metadata->solver_exhausted);
 	compile_metadata_refresh_runtime_capabilities(metadata, terms);
 	if (metadata && metadata->compile_policy == PROTOTYPE_COMPILE_POLICY_STRICT &&

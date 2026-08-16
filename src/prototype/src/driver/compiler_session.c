@@ -53,18 +53,24 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 		(empty_context = prototype_context_empty(
 			&program->metadata->contexts
 		)) == PROTOTYPE_INVALID_ID ||
-		prototype_type_declaration_add_constructor(
+		prototype_type_declaration_add_constructor_schema(
 			program->type_declarations,
 			type_id,
 			zero_symbol,
-			NULL,
-			0,
-			self_expr,
 			empty_context,
 			empty_context,
-			nat_term,
 			nat_term,
 			&zero_constructor_id
+		) != 0 || prototype_type_readback_attach_constructor(
+			program->type_declarations,
+			zero_constructor_id,
+			NULL,
+			0,
+			self_expr
+		) != 0 || prototype_type_constructor_classifier_cache_set(
+			program->type_declarations,
+			zero_constructor_id,
+			nat_term
 		) != 0) {
 		return -1;
 	}
@@ -81,18 +87,24 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 		) != 0) {
 		return -1;
 	}
-	if (prototype_type_declaration_add_constructor(
+	if (prototype_type_declaration_add_constructor_schema(
 			program->type_declarations,
 			type_id,
 			succ_symbol,
-			&succ_field,
-			1,
-			self_expr,
 			empty_context,
 			succ_field_context,
 			nat_term,
-			succ_classifier,
 			&succ_constructor_id
+		) != 0 || prototype_type_readback_attach_constructor(
+			program->type_declarations,
+			succ_constructor_id,
+			&succ_field,
+			1,
+			self_expr
+		) != 0 || prototype_type_constructor_classifier_cache_set(
+			program->type_declarations,
+			succ_constructor_id,
+			succ_classifier
 		) != 0 ||
 		prototype_term_universe_var(
 			program->terms, program->judgement->next_universe_var++, &universe
@@ -392,28 +404,13 @@ int prototype_link_external_refs(struct prototype_program* program) {
 		}
 		for (size_t i = 0; i < program->judgement->derivation_candidate_count; ++i) {
 			struct prototype_judgement_derivation_candidate* proof = &program->judgement->derivation_candidates[i];
-			uint32_t linked_subject;
-			uint32_t linked_classifier;
-			if (link_term_against_labels(
-					program,
-					proof->conclusion_subject,
-					&linked_subject
-				) != 0 ||
-				link_term_against_labels(
-					program,
-					proof->conclusion_classifier,
-					&linked_classifier
-				) != 0) {
+			if (proof->conclusion_proposition_id >=
+				program->judgement->proposition_count) {
 				return -1;
 			}
-			if (linked_subject != proof->conclusion_subject) {
-				proof->conclusion_subject = linked_subject;
-				changed = 1;
-			}
-				if (linked_classifier != proof->conclusion_classifier) {
-					proof->conclusion_classifier = linked_classifier;
-					changed = 1;
-				}
+			proof->conclusion = &program->judgement->propositions[
+				proof->conclusion_proposition_id
+			];
 				if (proof->proof_kind ==
 						PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION ||
 					proof->proof_kind ==
@@ -461,28 +458,6 @@ int prototype_link_external_refs(struct prototype_program* program) {
 						changed = 1;
 					}
 				}
-				for (uint32_t j = 0; j < proof->premise_count; ++j) {
-				if (link_term_against_labels(
-						program,
-						proof->premises[j].proposition.subject,
-						&linked_subject
-					) != 0 ||
-					link_term_against_labels(
-						program,
-						proof->premises[j].proposition.classifier,
-						&linked_classifier
-					) != 0) {
-					return -1;
-				}
-				if (linked_subject != proof->premises[j].proposition.subject) {
-					proof->premises[j].proposition.subject = linked_subject;
-					changed = 1;
-				}
-				if (linked_classifier != proof->premises[j].proposition.classifier) {
-					proof->premises[j].proposition.classifier = linked_classifier;
-					changed = 1;
-				}
-			}
 		}
 		if (!changed) {
 			for (size_t i = 0; i < program->metadata->label_count; ++i) {

@@ -30,6 +30,8 @@ static struct prototype_case_binder case_binders[CASE_BINDER_CAPACITY];
 static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration constructors[CONSTRUCTOR_CAPACITY];
+static struct prototype_type_constructor_readback constructor_readbacks[CONSTRUCTOR_CAPACITY];
+static struct prototype_constructor_classifier_cache_entry constructor_caches[CONSTRUCTOR_CAPACITY];
 static struct prototype_type_parameter_declaration parameters[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
@@ -75,8 +77,9 @@ int main(void) {
 	);
 	prototype_type_declaration_db_init(
 		&type_db, type_declarations, TYPE_CAPACITY, constructors, CONSTRUCTOR_CAPACITY,
-		parameters, PARAMETER_CAPACITY, field_types, FIELD_TYPE_CAPACITY,
-		type_exprs, TYPE_EXPR_CAPACITY, type_representations, TYPE_CAPACITY
+		parameters, PARAMETER_CAPACITY, constructor_readbacks, CONSTRUCTOR_CAPACITY,
+		field_types, FIELD_TYPE_CAPACITY, type_exprs, TYPE_EXPR_CAPACITY,
+		type_representations, TYPE_CAPACITY, constructor_caches, CONSTRUCTOR_CAPACITY
 	);
 	prototype_judgement_db_init(
 		&judgement,
@@ -437,8 +440,9 @@ int main(void) {
 	);
 	prototype_type_declaration_db_init(
 		&type_db, type_declarations, TYPE_CAPACITY, constructors, CONSTRUCTOR_CAPACITY,
-		parameters, PARAMETER_CAPACITY, field_types, FIELD_TYPE_CAPACITY,
-		type_exprs, TYPE_EXPR_CAPACITY, type_representations, TYPE_CAPACITY
+		parameters, PARAMETER_CAPACITY, constructor_readbacks, CONSTRUCTOR_CAPACITY,
+		field_types, FIELD_TYPE_CAPACITY, type_exprs, TYPE_EXPR_CAPACITY,
+		type_representations, TYPE_CAPACITY, constructor_caches, CONSTRUCTOR_CAPACITY
 	);
 	prototype_judgement_db_init(
 		&judgement,

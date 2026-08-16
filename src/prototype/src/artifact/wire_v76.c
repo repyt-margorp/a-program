@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v75.h"
+#include "a_program/artifact/wire_v76.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -141,9 +141,9 @@ int prototype_artifact_read_text_interface(
 	memset(interface->type_exprs, 0, sizeof(*interface->type_exprs) * slot_count);
 	struct prototype_type_declaration_db interface_type_expr_db;
 	memset(&interface_type_expr_db, 0, sizeof(interface_type_expr_db));
-	interface_type_expr_db.exprs = interface->type_exprs;
-	interface_type_expr_db.expr_capacity = interface->type_expr_capacity;
-	interface_type_expr_db.expr_count = slot_count;
+	interface_type_expr_db.readback.exprs = interface->type_exprs;
+	interface_type_expr_db.readback.expr_capacity = interface->type_expr_capacity;
+	interface_type_expr_db.readback.expr_count = slot_count;
 	uint32_t next_level_var = 0;
 	for (size_t i = 0; i < present_count; ++i) {
 		if (read_artifact_type_expr(
@@ -533,11 +533,11 @@ static int read_artifact_type_expr(
 		fscanf(stream, "%255s %u %d", word, &expr_id, &tag) != 3 ||
 		strcmp(word, "type_expr") != 0 ||
 		(expected_id != PROTOTYPE_INVALID_ID && expr_id != expected_id) ||
-		expr_id >= type_declarations->expr_capacity) {
+		expr_id >= type_declarations->readback.expr_capacity) {
 		return -1;
 	}
 
-	struct prototype_type_expr* expr = &type_declarations->exprs[expr_id];
+	struct prototype_type_expr* expr = &type_declarations->readback.exprs[expr_id];
 	if (artifact_type_expr_present(expr)) {
 		return -1;
 	}
@@ -872,8 +872,8 @@ static int artifact_read_parameter_present(
 	uint32_t parameter_id
 ) {
 	return type_declarations &&
-		parameter_id < type_declarations->parameter_count &&
-		artifact_parameter_present(&type_declarations->parameter_declarations[parameter_id]);
+		parameter_id < type_declarations->readback.parameter_count &&
+		artifact_parameter_present(&type_declarations->readback.parameter_declarations[parameter_id]);
 }
 
 static int artifact_read_constructor_present(
@@ -890,8 +890,8 @@ static int artifact_read_type_expr_present(
 	uint32_t expr_id
 ) {
 	return type_declarations &&
-		expr_id < type_declarations->expr_count &&
-		artifact_type_expr_present(&type_declarations->exprs[expr_id]);
+		expr_id < type_declarations->readback.expr_count &&
+		artifact_type_expr_present(&type_declarations->readback.exprs[expr_id]);
 }
 
 static int artifact_read_term_present(
@@ -937,7 +937,7 @@ static int artifact_validate_type_expr_refs(
 	if (!artifact_read_type_expr_present(type_declarations, expr_id)) {
 		return -1;
 	}
-	const struct prototype_type_expr* expr = &type_declarations->exprs[expr_id];
+	const struct prototype_type_expr* expr = &type_declarations->readback.exprs[expr_id];
 	switch (expr->tag) {
 		case PROTOTYPE_TYPE_EXPR_UNIVERSE:
 		case PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR:
@@ -984,7 +984,7 @@ static int artifact_validate_type_graph_refs(
 			!artifact_range_within(
 				type->first_parameter,
 				type->parameter_count,
-				type_declarations->parameter_count
+				type_declarations->readback.parameter_count
 			) ||
 			!artifact_range_within(
 				type->first_constructor,
@@ -1010,9 +1010,9 @@ static int artifact_validate_type_graph_refs(
 			}
 		}
 	}
-	for (size_t i = 0; i < type_declarations->parameter_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.parameter_count; ++i) {
 		const struct prototype_type_parameter_declaration* parameter =
-			&type_declarations->parameter_declarations[i];
+			&type_declarations->readback.parameter_declarations[i];
 		if (!artifact_parameter_present(parameter)) {
 			continue;
 		}
@@ -1023,30 +1023,34 @@ static int artifact_validate_type_graph_refs(
 	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
 			&type_declarations->constructor_declarations[i];
+		const struct prototype_constructor_classifier_cache_entry* cache =
+			prototype_type_constructor_classifier_cache_get(
+				type_declarations, (uint32_t)i
+			);
 		if (!artifact_constructor_present(constructor)) {
 			continue;
 		}
-		if (!artifact_read_type_present(type_declarations, constructor->owner_type) ||
+		if (!cache || !artifact_read_type_present(type_declarations, constructor->owner_type) ||
 			constructor->result_classifier == PROTOTYPE_INVALID_ID ||
 			!artifact_read_term_present(terms, constructor->result_classifier) ||
-			constructor->curried_classifier_cache == PROTOTYPE_INVALID_ID ||
-			!artifact_read_term_present(terms, constructor->curried_classifier_cache)) {
+			cache->classifier == PROTOTYPE_INVALID_ID ||
+			!artifact_read_term_present(terms, cache->classifier)) {
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->readback_field_type_count; ++i) {
-		if (!artifact_field_type_present(&type_declarations->readback_field_types[i])) {
+	for (size_t i = 0; i < type_declarations->readback.field_type_count; ++i) {
+		if (!artifact_field_type_present(&type_declarations->readback.field_types[i])) {
 			continue;
 		}
 		if (!artifact_read_type_expr_present(
 				type_declarations,
-				type_declarations->readback_field_types[i]
+				type_declarations->readback.field_types[i]
 			)) {
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		if (!artifact_type_expr_present(&type_declarations->exprs[i])) {
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		if (!artifact_type_expr_present(&type_declarations->readback.exprs[i])) {
 			continue;
 		}
 		if (artifact_validate_type_expr_refs(type_declarations, (uint32_t)i) != 0) {
@@ -1124,11 +1128,11 @@ static int artifact_validate_term_refs(
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			if (representation_handles_resolved) {
 				if (term->as.type_former.representation_id >=
-					type_declarations->representation_count) {
+					type_declarations->representation_db.representation_count) {
 					return -1;
 				}
 				return term->as.type_former.constructor_count ==
-					type_declarations->representations[
+					type_declarations->representation_db.representations[
 						term->as.type_former.representation_id
 					].fingerprint.constructor_count ? 0 : -1;
 			}
@@ -1293,7 +1297,7 @@ static int artifact_resolve_representation_handles(
 		uint32_t representation_id =
 			type_declarations->type_declarations[representative_type_id].representation_id;
 		if (representation_id == PROTOTYPE_INVALID_ID ||
-			representation_id >= type_declarations->representation_count) {
+			representation_id >= type_declarations->representation_db.representation_count) {
 			return -1;
 		}
 		term->as.type_former.representation_id = representation_id;
@@ -1332,8 +1336,8 @@ static int artifact_validate_judgement_graph_refs(
 			!artifact_candidate_claim_present(
 				&judgement->propositions[proof->conclusion_proposition_id]
 			) ||
-			!artifact_read_term_present(terms, proof->conclusion_subject) ||
-			!artifact_read_term_present(terms, proof->conclusion_classifier) ||
+			!artifact_read_term_present(terms, proof->conclusion->subject) ||
+			!artifact_read_term_present(terms, proof->conclusion->classifier) ||
 			proof->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 			return -1;
 		}
@@ -1354,16 +1358,16 @@ static int artifact_validate_judgement_graph_refs(
 		}
 		const struct prototype_judgement_proposition* conclusion =
 			&judgement->propositions[proof->conclusion_proposition_id];
-		if (conclusion->kind != proof->conclusion_kind ||
-			conclusion->context_id != proof->conclusion_context_id ||
-			conclusion->occurrence_id != proof->conclusion_occurrence_id ||
-			conclusion->subject != proof->conclusion_subject ||
-			conclusion->classifier != proof->conclusion_classifier) {
+		if (conclusion->kind != proof->conclusion->kind ||
+			conclusion->context_id != proof->conclusion->context_id ||
+			conclusion->occurrence_id != proof->conclusion->occurrence_id ||
+			conclusion->subject != proof->conclusion->subject ||
+			conclusion->classifier != proof->conclusion->classifier) {
 			return -1;
 		}
 		for (uint32_t j = 0; j < proof->premise_count; ++j) {
-			if (!artifact_read_term_present(terms, proof->premises[j].proposition.subject) ||
-				!artifact_read_term_present(terms, proof->premises[j].proposition.classifier)) {
+			if (!artifact_read_term_present(terms, proof->premises[j].proposition->subject) ||
+				!artifact_read_term_present(terms, proof->premises[j].proposition->classifier)) {
 				return -1;
 			}
 		}
@@ -1433,7 +1437,7 @@ void prototype_internal_sync_artifact_universe_level_counters(
 	if (!terms || !type_declarations || !judgement) {
 		return;
 	}
-	uint32_t next_level_var = type_declarations->next_level_var;
+	uint32_t next_level_var = type_declarations->readback.next_level_var;
 	for (size_t i = 0; i < terms->term_count; ++i) {
 		const struct prototype_term* term = &terms->terms[i];
 		if (term->tag == PROTOTYPE_TERM_UNIVERSE_VAR &&
@@ -1441,8 +1445,8 @@ void prototype_internal_sync_artifact_universe_level_counters(
 			next_level_var = term->as.universe_var.level_var + 1;
 		}
 	}
-	if (type_declarations->next_level_var < next_level_var) {
-		type_declarations->next_level_var = next_level_var;
+	if (type_declarations->readback.next_level_var < next_level_var) {
+		type_declarations->readback.next_level_var = next_level_var;
 	}
 	if (judgement->next_universe_var < next_level_var) {
 		judgement->next_universe_var = next_level_var;
@@ -1546,10 +1550,10 @@ int prototype_artifact_read_text_graph(
 		case_binder_slot_count > terms->case_binder_capacity ||
 		frame_slot_count > terms->ih_scope_capacity ||
 		type_slot_count > type_declarations->type_capacity ||
-		parameter_slot_count > type_declarations->parameter_capacity ||
+		parameter_slot_count > type_declarations->readback.parameter_capacity ||
 		constructor_slot_count > type_declarations->constructor_capacity ||
-		field_type_slot_count > type_declarations->readback_field_type_capacity ||
-		expr_slot_count > type_declarations->expr_capacity ||
+		field_type_slot_count > type_declarations->readback.field_type_capacity ||
+		expr_slot_count > type_declarations->readback.expr_capacity ||
 		proposition_slot_count > judgement->proposition_capacity ||
 		claim_slot_count > judgement->claim_capacity ||
 		derivation_slot_count > judgement->derivation_candidate_capacity ||
@@ -1578,16 +1582,16 @@ int prototype_artifact_read_text_graph(
 		].origin_source_carrier_term_id = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < parameter_slot_count; ++i) {
-		type_declarations->parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
-		type_declarations->parameter_declarations[i].name_symbol_id = -1;
-		type_declarations->parameter_declarations[i].type_expr = PROTOTYPE_INVALID_ID;
+		type_declarations->readback.parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
+		type_declarations->readback.parameter_declarations[i].name_symbol_id = -1;
+		type_declarations->readback.parameter_declarations[i].type_expr = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < constructor_slot_count; ++i) {
 		type_declarations->constructor_declarations[i].name_symbol_id = -1;
 		type_declarations->constructor_declarations[i].owner_type = PROTOTYPE_INVALID_ID;
-		type_declarations->constructor_declarations[i].readback.first_field_type =
+		type_declarations->readback.constructor_readbacks[i].first_field_type =
 			PROTOTYPE_INVALID_ID;
-		type_declarations->constructor_declarations[i].readback.result_type =
+		type_declarations->readback.constructor_readbacks[i].result_type =
 			PROTOTYPE_INVALID_ID;
 		type_declarations->constructor_declarations[i].parameter_context =
 			PROTOTYPE_INVALID_ID;
@@ -1595,14 +1599,14 @@ int prototype_artifact_read_text_graph(
 			PROTOTYPE_INVALID_ID;
 		type_declarations->constructor_declarations[i].result_classifier =
 			PROTOTYPE_INVALID_ID;
-		type_declarations->constructor_declarations[
-			i
-		].curried_classifier_cache = PROTOTYPE_INVALID_ID;
+		type_declarations->constructor_classifier_cache.entries[i].classifier =
+			PROTOTYPE_INVALID_ID;
+		type_declarations->constructor_classifier_cache.entries[i].schema_revision = 0;
 	}
 	for (size_t i = 0; i < field_type_slot_count; ++i) {
-		type_declarations->readback_field_types[i] = PROTOTYPE_INVALID_ID;
+		type_declarations->readback.field_types[i] = PROTOTYPE_INVALID_ID;
 	}
-	memset(type_declarations->exprs, 0, sizeof(*type_declarations->exprs) * expr_slot_count);
+	memset(type_declarations->readback.exprs, 0, sizeof(*type_declarations->readback.exprs) * expr_slot_count);
 
 	if (expect_artifact_count(stream, "type_declarations", &count) != 0 ||
 		count != type_slot_count) {
@@ -1704,7 +1708,7 @@ int prototype_artifact_read_text_graph(
 			return -1;
 		}
 		struct prototype_type_parameter_declaration* parameter =
-			&type_declarations->parameter_declarations[id];
+			&type_declarations->readback.parameter_declarations[id];
 		if (artifact_parameter_present(parameter)) {
 			return -1;
 		}
@@ -1715,7 +1719,7 @@ int prototype_artifact_read_text_graph(
 			return -1;
 		}
 	}
-	type_declarations->parameter_count = parameter_slot_count;
+	type_declarations->readback.parameter_count = parameter_slot_count;
 
 	if (expect_artifact_count(stream, "type_constructors", &count) != 0 ||
 		count != constructor_slot_count) {
@@ -1775,13 +1779,21 @@ int prototype_artifact_read_text_graph(
 		}
 		constructor->owner_type = owner_type;
 		constructor->constructor_index = constructor_index;
-		constructor->readback.first_field_type = first_field_type;
-		constructor->readback.field_count = field_count;
-		constructor->readback.result_type = result_type;
+		constructor->schema_revision = 1;
+		type_declarations->readback.constructor_readbacks[id] =
+			(struct prototype_type_constructor_readback){
+				.first_field_type = first_field_type,
+				.field_count = field_count,
+				.result_type = result_type
+			};
 		constructor->parameter_context = parameter_context;
 		constructor->field_context = field_context;
 		constructor->result_classifier = result_classifier;
-		constructor->curried_classifier_cache = curried_classifier_cache;
+		type_declarations->constructor_classifier_cache.entries[id] =
+			(struct prototype_constructor_classifier_cache_entry){
+				.classifier = curried_classifier_cache,
+				.schema_revision = constructor->schema_revision
+			};
 	}
 	type_declarations->constructor_count = constructor_slot_count;
 
@@ -1798,12 +1810,12 @@ int prototype_artifact_read_text_graph(
 			type_expr >= expr_slot_count) {
 			return -1;
 		}
-		if (artifact_field_type_present(&type_declarations->readback_field_types[id])) {
+		if (artifact_field_type_present(&type_declarations->readback.field_types[id])) {
 			return -1;
 		}
-		type_declarations->readback_field_types[id] = type_expr;
+		type_declarations->readback.field_types[id] = type_expr;
 	}
-	type_declarations->readback_field_type_count = field_type_slot_count;
+	type_declarations->readback.field_type_count = field_type_slot_count;
 
 	if (expect_artifact_count(stream, "type_exprs", &count) != 0 ||
 		count != expr_slot_count) {
@@ -1821,8 +1833,8 @@ int prototype_artifact_read_text_graph(
 			return -1;
 		}
 	}
-	type_declarations->expr_count = expr_slot_count;
-	type_declarations->next_level_var = next_level_var;
+	type_declarations->readback.expr_count = expr_slot_count;
+	type_declarations->readback.next_level_var = next_level_var;
 
 	memset(terms->terms, 0, sizeof(*terms->terms) * term_slot_count);
 	memset(terms->cases, 0, sizeof(*terms->cases) * case_slot_count);
@@ -2200,7 +2212,7 @@ int prototype_artifact_read_text_graph(
 			) != 0) {
 			return -1;
 		}
-		judgement->next_universe_var = type_declarations->next_level_var;
+		judgement->next_universe_var = type_declarations->readback.next_level_var;
 		prototype_internal_sync_artifact_universe_level_counters(terms, type_declarations, judgement);
 
 	if (fscanf(stream, "%255s %255s", word, section_name) != 2 ||
@@ -2224,15 +2236,6 @@ int prototype_artifact_read_text_typed_occurrences(
 	}
 	char word[256];
 	char section_name[256];
-	uint64_t normalization_step_limit;
-	uint64_t normalization_steps_used;
-	uint64_t solver_step_limit;
-	uint64_t solver_steps_used;
-	int solver_exhausted;
-	uint64_t solver_constraint_count;
-	uint64_t solver_solved_count;
-	uint64_t solver_residual_count;
-	uint64_t solver_incomplete_count;
 	int compile_policy;
 	int definition_thunk_policy;
 	char selected_entry_name[256];
@@ -2246,7 +2249,6 @@ int prototype_artifact_read_text_typed_occurrences(
 	size_t substitution_count;
 	size_t case_count;
 	size_t fold_clause_count;
-	size_t effect_constraint_count;
 	size_t obligation_count;
 	struct prototype_typed_occurrence_graph empty_graph;
 	memset(&empty_graph, 0, sizeof(empty_graph));
@@ -2256,8 +2258,7 @@ int prototype_artifact_read_text_typed_occurrences(
 		strcmp(word, "SECTION") != 0 || strcmp(section_name, "typed_occurrences") != 0 ||
 		fscanf(
 			stream,
-			" %255s %d %d %255s %u %u %u %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64
-			" %d %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64,
+			" %255s %d %d %255s %u %u %u %" SCNu64,
 			word,
 			&compile_policy,
 			&definition_thunk_policy,
@@ -2265,17 +2266,8 @@ int prototype_artifact_read_text_typed_occurrences(
 			&selected_entry_term,
 			&selected_entry_classifier,
 			&selected_entry_occurrence,
-			&required_runtime_capabilities,
-			&normalization_step_limit,
-			&normalization_steps_used,
-			&solver_step_limit,
-			&solver_steps_used,
-			&solver_exhausted,
-			&solver_constraint_count,
-			&solver_solved_count,
-			&solver_residual_count,
-			&solver_incomplete_count
-		) != 17 || strcmp(word, "compile_policy") != 0 ||
+			&required_runtime_capabilities
+		) != 8 || strcmp(word, "compile_policy") != 0 ||
 		(compile_policy < PROTOTYPE_COMPILE_POLICY_STRICT ||
 		 compile_policy > PROTOTYPE_COMPILE_POLICY_EXPLORATORY) ||
 		(definition_thunk_policy < PROTOTYPE_DEFINITION_THUNK_IMPLICIT ||
@@ -2287,8 +2279,6 @@ int prototype_artifact_read_text_typed_occurrences(
 		(selected_entry_term != PROTOTYPE_INVALID_ID &&
 			(!artifact_read_term_present(terms, selected_entry_term) ||
 			 !artifact_read_term_present(terms, selected_entry_classifier))) ||
-		(solver_exhausted != 0 && solver_exhausted != 1) ||
-		solver_exhausted != 0 || solver_incomplete_count != 0 ||
 		expect_artifact_count(stream, "contexts", &context_count) != 0 ||
 		(metadata && context_count > metadata->contexts.context_capacity)) {
 		return -1;
@@ -2441,15 +2431,6 @@ int prototype_artifact_read_text_typed_occurrences(
 		metadata->selected_entry_classifier = selected_entry_classifier;
 		metadata->selected_entry_occurrence = selected_entry_occurrence;
 		metadata->required_runtime_capabilities = required_runtime_capabilities;
-		metadata->normalization_step_limit = normalization_step_limit;
-		metadata->normalization_steps_used = normalization_steps_used;
-		metadata->solver_step_limit = solver_step_limit;
-		metadata->solver_steps_used = solver_steps_used;
-		metadata->solver_exhausted = solver_exhausted;
-		metadata->solver_constraint_count = solver_constraint_count;
-		metadata->solver_solved_count = solver_solved_count;
-		metadata->solver_residual_count = solver_residual_count;
-		metadata->solver_incomplete_count = solver_incomplete_count;
 		graph->occurrence_count = 0;
 		graph->edge_count = 0;
 		graph->case_count = 0;
@@ -2726,58 +2707,6 @@ int prototype_artifact_read_text_typed_occurrences(
 					i, operation_case.context_id, operation_case.binder_count);
 				return -1;
 			}
-		}
-	}
-	if (expect_artifact_count(
-			stream, "effect_constraints", &effect_constraint_count
-		) != 0 ||
-		(metadata && effect_constraint_count >
-			metadata->effect_constraint_capacity)) {
-		return -1;
-	}
-	for (size_t i = 0; i < effect_constraint_count; ++i) {
-		size_t id;
-		struct prototype_occurrence_effect_constraint constraint;
-		if (fscanf(
-				stream,
-				"%255s %zu %d %d %u %u %u %u",
-				word,
-				&id,
-				&constraint.kind,
-				&constraint.state,
-				&constraint.occurrence,
-				&constraint.result_row,
-				&constraint.left_row,
-				&constraint.right_row
-			) != 8 || strcmp(word, "effect_constraint") != 0 || id != i ||
-			constraint.kind <
-				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_EXACT ||
-			constraint.kind >
-				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_RESIDUAL ||
-			constraint.state <
-				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_PENDING ||
-			constraint.state >
-				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_INCOMPLETE ||
-			constraint.occurrence >= occurrence_count ||
-			!artifact_read_term_present(terms, constraint.result_row) ||
-			!artifact_read_term_present(terms, constraint.left_row) ||
-			(constraint.right_row != PROTOTYPE_INVALID_ID &&
-				!artifact_read_term_present(terms, constraint.right_row))) {
-			return -1;
-		}
-		if (!metadata && constraint.state !=
-			PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
-			return -1;
-		}
-		if (compile_policy == PROTOTYPE_COMPILE_POLICY_STRICT &&
-			constraint.state !=
-				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
-			return -1;
-		}
-		if (metadata) {
-			metadata->effect_constraints[
-				metadata->effect_constraint_count++
-			] = constraint;
 		}
 	}
 	if (expect_artifact_count(stream, "verification_obligations", &obligation_count) != 0 ||

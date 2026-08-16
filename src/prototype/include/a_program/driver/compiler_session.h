@@ -35,6 +35,25 @@ struct prototype_program {
 	struct prototype_compile_options compile_options;
 };
 
+struct prototype_program_storage_backing;
+
+/* Owns the typed backing arrays for one compiler session. The semantic DBs
+ * remain separate typed stores; the backing object only centralizes lifetime. */
+struct prototype_program_storage {
+	struct prototype_program program;
+	struct symbol_table symbols;
+	struct prototype_type_declaration_db type_declarations;
+	struct prototype_ast_db asts;
+	struct prototype_term_db terms;
+	struct prototype_judgement_db judgement;
+	struct prototype_compile_metadata metadata;
+	struct prototype_universe_db universe;
+	struct prototype_program_storage_backing* backing;
+};
+
+int prototype_program_storage_init(struct prototype_program_storage* storage);
+void prototype_program_storage_destroy(struct prototype_program_storage* storage);
+
 int prototype_compile_graph(
 	struct prototype_program* program,
 	struct prototype_read_error* error

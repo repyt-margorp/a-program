@@ -22,6 +22,8 @@ struct test_storage {
 	struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 	struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
 	struct prototype_type_constructor_declaration constructors[CONSTRUCTOR_CAPACITY];
+	struct prototype_type_constructor_readback constructor_readbacks[CONSTRUCTOR_CAPACITY];
+	struct prototype_constructor_classifier_cache_entry constructor_caches[CONSTRUCTOR_CAPACITY];
 	struct prototype_type_parameter_declaration parameters[PARAMETER_CAPACITY];
 	uint32_t field_types[FIELD_TYPE_CAPACITY];
 	struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
@@ -53,12 +55,16 @@ static void init_databases(
 		CONSTRUCTOR_CAPACITY,
 		storage->parameters,
 		PARAMETER_CAPACITY,
+		storage->constructor_readbacks,
+		CONSTRUCTOR_CAPACITY,
 		storage->field_types,
 		FIELD_TYPE_CAPACITY,
 		storage->type_exprs,
 		TYPE_EXPR_CAPACITY,
 		storage->type_representations,
-		TYPE_CAPACITY
+		TYPE_CAPACITY,
+		storage->constructor_caches,
+		CONSTRUCTOR_CAPACITY
 	);
 }
 

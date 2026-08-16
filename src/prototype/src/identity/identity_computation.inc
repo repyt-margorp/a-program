@@ -1,3 +1,37 @@
+static int hott_publish_constructor_schema(
+	struct prototype_type_declaration_db* types,
+	uint32_t type_id,
+	int name_symbol_id,
+	const uint32_t* readback_fields,
+	uint32_t readback_field_count,
+	uint32_t readback_result,
+	uint32_t parameter_context,
+	uint32_t field_context,
+	uint32_t result_classifier,
+	uint32_t curried_classifier,
+	uint32_t* p_constructor_id
+) {
+	return prototype_type_declaration_add_constructor_schema(
+		types,
+		type_id,
+		name_symbol_id,
+		parameter_context,
+		field_context,
+		result_classifier,
+		p_constructor_id
+	) != 0 || prototype_type_readback_attach_constructor(
+		types,
+		*p_constructor_id,
+		readback_fields,
+		readback_field_count,
+		readback_result
+	) != 0 || prototype_type_constructor_classifier_cache_set(
+		types,
+		*p_constructor_id,
+		curried_classifier
+	) != 0 ? -1 : 0;
+}
+
 static int hott_publish_action_residual(
 	struct prototype_hott_action_db* actions,
 	const struct prototype_term_db* terms,
@@ -320,7 +354,7 @@ static int hott_add_universe_correspondence_constructor(
 	for (uint32_t i = 0; i < 7; ++i) {
 		readback_fields[i] = PROTOTYPE_INVALID_ID;
 	}
-	return prototype_type_declaration_add_constructor(
+	return hott_publish_constructor_schema(
 		types,
 		generated_type_id,
 		-1,
@@ -660,7 +694,7 @@ static int hott_initialize_indexed_higher_identity_declaration(
 			readback_fields[j] = PROTOTYPE_INVALID_ID;
 		}
 		uint32_t constructor_id;
-		if (prototype_type_declaration_add_constructor(
+		if (hott_publish_constructor_schema(
 				types,
 				generated_type_id,
 				-1,
@@ -809,7 +843,7 @@ static int hott_add_thunk_return_identity_constructor(
 		PROTOTYPE_INVALID_ID
 	};
 	uint32_t constructor_id;
-	if (prototype_type_declaration_add_constructor(
+	if (hott_publish_constructor_schema(
 			type_declarations,
 			generated_type_id,
 			-1,
@@ -2107,7 +2141,7 @@ static int hott_add_contextual_adt_identity_constructor(
 	for (uint32_t i = 0; i < generated_field_count; ++i) {
 		readback_fields[i] = PROTOTYPE_INVALID_ID;
 	}
-	return prototype_type_declaration_add_constructor(
+	return hott_publish_constructor_schema(
 		types,
 		generated_type_id,
 		-1,
@@ -2256,7 +2290,7 @@ static int hott_add_ordinary_adt_identity_constructor(
 	for (uint32_t i = 0; i < generated_field_count; ++i) {
 		readback_fields[i] = PROTOTYPE_INVALID_ID;
 	}
-	return prototype_type_declaration_add_constructor(
+	return hott_publish_constructor_schema(
 		type_declarations, generated_type_id, -1, readback_fields,
 		generated_field_count, PROTOTYPE_INVALID_ID,
 		generated->parameter_context, generated_field_context, result_classifier,

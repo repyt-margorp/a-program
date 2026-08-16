@@ -198,6 +198,8 @@ struct local_ref_map_entry {
  * rows of function values mentioned by a lambda binder annotation. */
 #define PROTOTYPE_JUDGEMENT_DELTA_CAPACITY 4096
 #define PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY 16384
+#define PROTOTYPE_COMPILER_CONSTRAINT_CAPACITY \
+	PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
 #define PROTOTYPE_TYPED_OCCURRENCE_SOLVER_INPUT_FACT_CAPACITY 2048
 #define PROTOTYPE_TYPED_OCCURRENCE_EFFECT_ROW_META_CAPACITY 4096
 #define PROTOTYPE_TYPED_OCCURRENCE_EFFECT_ROW_SOLUTION_ATOM_CAPACITY 16384
@@ -218,11 +220,11 @@ enum operation_classifier_goal_kind {
 };
 
 enum operation_classifier_goal_state {
-	OPERATION_CONSTRAINT_STATE_PENDING = 0,
-	OPERATION_CONSTRAINT_STATE_SOLVED,
-	OPERATION_CONSTRAINT_STATE_RESIDUAL,
-	OPERATION_CONSTRAINT_STATE_CONTRADICTION,
-	OPERATION_CONSTRAINT_STATE_INCOMPLETE
+	OPERATION_CONSTRAINT_STATE_PENDING = 1,
+	OPERATION_CONSTRAINT_STATE_SOLVED = 2,
+	OPERATION_CONSTRAINT_STATE_RESIDUAL = 3,
+	OPERATION_CONSTRAINT_STATE_INCOMPLETE = 4,
+	OPERATION_CONSTRAINT_STATE_CONTRADICTION = 5
 };
 
 enum operation_classifier_goal_reason {
@@ -306,25 +308,91 @@ union operation_classifier_goal_payload {
 	} computation;
 };
 
-struct operation_classifier_constraint {
+enum operation_constraint_domain {
+	OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER = 1,
+	OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW = 2,
+	OPERATION_CONSTRAINT_DOMAIN_COMPUTATION = 3
+};
+
+struct operation_constraint {
 	uint32_t id;
+	int domain;
 	int kind;
-	uint32_t source_operation;
+	uint32_t source_occurrence;
 	uint32_t source_ast;
 	uint32_t context_id;
-	uint32_t classifier_variable;
-	union operation_classifier_goal_payload payload;
-};
-
-struct operation_classifier_constraint_result {
 	int state;
 	int reason;
+	uint32_t result_term;
+	uint32_t evidence_id;
+	/* Explicit edge to the compiler constraint which emitted this obligation.
+	 * INVALID denotes an independently generated equation. */
+	uint32_t origin_constraint_id;
 	struct prototype_kernel_conversion_goal conversion_goal;
+	union {
+		struct {
+			uint32_t classifier_variable;
+			union operation_classifier_goal_payload goal;
+		} classifier;
+		struct {
+			uint32_t result_row;
+			uint32_t left_row;
+			uint32_t right_row;
+		} effect;
+		struct {
+			uint32_t judgement_delta_constraint_id;
+		} computation;
+	} payload;
 };
 
-/* The solver owns one result cell per typed source occurrence. TypedOccurrenceGraph
- * fields are checked projections of these cells, not a second source of solver
- * truth. */
+/*
+ * Mutable elaboration constraints have one compiler-local owner. Classifier
+ * and effect equations retain typed payload arrays, but their counts,
+ * lifecycle records, dependency edges, and scheduling state are owned by this
+ * database rather than compile metadata or TypedOccurrenceGraph.
+ *
+	 * JudgementDelta computation payloads are linked by checked IDs; immutable
+	 * kernel effect equations are imported with that computation dependency.
+ */
+struct operation_constraint_db {
+	struct operation_constraint
+		constraints[PROTOTYPE_COMPILER_CONSTRAINT_CAPACITY];
+	uint32_t constraint_count;
+	uint32_t classifier_constraint_count;
+	uint32_t first_computation_constraint;
+	uint32_t computation_constraint_count;
+	uint32_t first_effect_constraint;
+	uint32_t effect_constraint_count;
+	uint32_t first_dependent_constraint[4096];
+	struct {
+		uint32_t source_occurrence;
+		uint32_t constraint;
+		uint32_t next;
+	} dependent_constraints[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY * 4];
+	uint32_t dependent_constraint_count;
+	uint32_t worklist[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY];
+	uint8_t constraint_queued[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY];
+	uint32_t worklist_head;
+	uint32_t worklist_count;
+};
+
+struct operation_constraint_db_mark {
+	uint32_t constraint_count;
+	uint32_t classifier_constraint_count;
+	uint32_t first_computation_constraint;
+	uint32_t computation_constraint_count;
+	uint32_t first_effect_constraint;
+	uint32_t effect_constraint_count;
+	uint32_t dependent_constraint_count;
+	uint32_t worklist_head;
+	uint32_t worklist_count;
+};
+
+/* The classifier solver currently owns one result cell per typed source
+ * occurrence. TypedOccurrenceGraph fields are checked projections of these
+ * cells, not a second source of solver truth. The classifier constraint and
+ * result arrays below are the pre-ConstraintDB authority and must migrate as
+ * one unit; no new consumer may retain either array independently. */
 struct operation_solver_solution {
 	uint32_t classifier;
 	uint32_t effect_row;
@@ -393,21 +461,6 @@ struct operation_classifier_solver {
 	struct operation_solver_motive_application motive_applications[4096];
 	uint32_t motive_application_count;
 	uint32_t motive_terms[4096];
-	struct operation_classifier_constraint
-		constraints[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY];
-	struct operation_classifier_constraint_result
-		constraint_results[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY];
-	uint32_t constraint_count;
-	uint32_t first_dependent_constraint[4096];
-	struct {
-		uint32_t constraint;
-		uint32_t next;
-	} dependent_constraints[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY * 4];
-	uint32_t dependent_constraint_count;
-	uint32_t worklist[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY];
-	uint8_t constraint_queued[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY];
-	uint32_t worklist_head;
-	uint32_t worklist_count;
 	struct operation_solver_input_fact
 		input_facts[PROTOTYPE_TYPED_OCCURRENCE_SOLVER_INPUT_FACT_CAPACITY];
 	uint32_t input_fact_count;
@@ -463,9 +516,6 @@ struct operation_effect_solver {
 		PROTOTYPE_TYPED_OCCURRENCE_EFFECT_ROW_SOLUTION_ATOM_CAPACITY
 	];
 	uint32_t solution_atom_count;
-	/* Equation records live in compile metadata for diagnostics/artifacts, but
-	 * solver progress is separate so solving cannot mutate equation identity. */
-	int constraint_states[PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY];
 };
 
 struct compile_judgement_workspace {
@@ -481,6 +531,8 @@ struct compile_judgement_workspace {
 		match_motive_results[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
 	struct prototype_judgement_computation_constraint
 		computation_constraints[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
+	struct prototype_judgement_computation_constraint_result
+		computation_constraint_results[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
 	struct prototype_judgement_effect_row_constraint
 		effect_row_constraints[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
 	struct prototype_usage_entry
@@ -514,7 +566,11 @@ struct compile_context {
 	struct prototype_type_declaration_db* type_declarations;
 	struct prototype_judgement_db* judgement;
 	struct prototype_judgement_delta judgement_delta;
+	struct prototype_judgement_computation_constraint_result*
+		computation_constraint_results;
+	size_t computation_constraint_result_capacity;
 	struct prototype_compile_metadata* metadata;
+	struct operation_constraint_db constraints;
 	struct operation_classifier_solver classifier_solver;
 	/* Lowering facts are mutable compiler workspace and never frozen into a
 	 * typed occurrence or artifact. */
@@ -2455,16 +2511,28 @@ static int add_compile_type_export(
 	}
 
 	for (uint32_t i = 0; i < type->constructor_count; ++i) {
+		uint32_t constructor_id = type->first_constructor + i;
 		const struct prototype_type_constructor_declaration* constructor =
-			&ctx->type_declarations->constructor_declarations[type->first_constructor + i];
+			&ctx->type_declarations->constructor_declarations[constructor_id];
+		const struct prototype_type_constructor_readback* readback =
+			prototype_type_constructor_readback_get(
+				ctx->type_declarations, constructor_id
+			);
+		const struct prototype_constructor_classifier_cache_entry* cache =
+			prototype_type_constructor_classifier_cache_get(
+				ctx->type_declarations, constructor_id
+			);
+		if (!readback || !cache) {
+			return -1;
+		}
 		struct prototype_compile_constructor_export* constructor_export =
 			&ctx->metadata->constructor_exports[ctx->metadata->constructor_export_count++];
 		constructor_export->type_export_index = export_id;
 		constructor_export->name_symbol_id = constructor->name_symbol_id;
 		constructor_export->ordinal = constructor->constructor_index;
-		constructor_export->readback_first_field_type = constructor->readback.first_field_type;
-		constructor_export->readback_field_count = constructor->readback.field_count;
-		constructor_export->curried_classifier_cache = constructor->curried_classifier_cache;
+		constructor_export->readback_first_field_type = readback->first_field_type;
+		constructor_export->readback_field_count = readback->field_count;
+		constructor_export->curried_classifier_cache = cache->classifier;
 	}
 
 	ctx->metadata->type_export_count++;
@@ -3611,14 +3679,14 @@ static int compile_ast_type_expr_term_with_self(
 					expr.as.universe_var.level_var,
 					&graph_type_expr
 				) != 0 ||
-				graph_type_expr >= ctx->type_declarations->expr_count ||
-				ctx->type_declarations->exprs[graph_type_expr].tag !=
+				graph_type_expr >= ctx->type_declarations->readback.expr_count ||
+				ctx->type_declarations->readback.exprs[graph_type_expr].tag !=
 					PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR) {
 				return -1;
 			}
 			return prototype_term_universe_var(
 				ctx->terms,
-				ctx->type_declarations->exprs[graph_type_expr].as.universe_var.level_var,
+				ctx->type_declarations->readback.exprs[graph_type_expr].as.universe_var.level_var,
 				p_ret
 			);
 		}
@@ -4073,7 +4141,7 @@ static int compile_imported_type_expr_term(
 		case PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR:
 			return prototype_term_universe_var(
 				ctx->terms,
-				ctx->type_declarations->next_level_var++,
+				ctx->type_declarations->readback.next_level_var++,
 				p_ret
 			);
 		case PROTOTYPE_TYPE_EXPR_VAR: {
@@ -4285,7 +4353,7 @@ static int imported_type_formation_classifier(
 	uint32_t classifier;
 	if (prototype_term_universe_var(
 			ctx->terms,
-			ctx->type_declarations->next_level_var++,
+			ctx->type_declarations->readback.next_level_var++,
 			&classifier
 		) != 0) {
 		return -1;

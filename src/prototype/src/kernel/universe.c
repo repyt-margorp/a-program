@@ -1,10 +1,9 @@
 #include "a_program/kernel/universe.h"
+#include "a_program/support/storage.h"
 
 #include <string.h>
 
-static int reserve_slot(size_t count, size_t capacity) {
-	return count < capacity ? 0 : -1;
-}
+#define reserve_slot prototype_storage_reserve_slot
 
 void prototype_universe_db_init(
 	struct prototype_universe_db* db,

@@ -302,6 +302,7 @@ static int term_exists(const struct prototype_term_db* terms, uint32_t term_id) 
 static int add_effect_row_constraint(
 	struct prototype_judgement_delta* delta,
 	int kind,
+	uint32_t computation_constraint_id,
 	uint32_t subject,
 	uint32_t result_row,
 	const uint32_t* operands,
@@ -320,7 +321,9 @@ static int add_effect_row_constraint(
 	for (size_t i = 0; i < delta->effect_row_constraint_count; ++i) {
 		const struct prototype_judgement_effect_row_constraint* constraint =
 			&delta->effect_row_constraints[i];
-		if (constraint->kind != kind || constraint->subject != subject ||
+		if (constraint->kind != kind ||
+			constraint->computation_constraint_id != computation_constraint_id ||
+			constraint->subject != subject ||
 			constraint->result_row != result_row ||
 			constraint->operand_count != operand_count) {
 			continue;
@@ -343,13 +346,13 @@ static int add_effect_row_constraint(
 	}
 	struct prototype_judgement_effect_row_constraint* constraint =
 		&delta->effect_row_constraints[delta->effect_row_constraint_count++];
-	*constraint = (struct prototype_judgement_effect_row_constraint){
-			.kind = kind,
-			.subject = subject,
-			.result_row = result_row,
-			.operand_count = operand_count,
-			.solved = 0
-		};
+		*constraint = (struct prototype_judgement_effect_row_constraint){
+				.kind = kind,
+				.computation_constraint_id = computation_constraint_id,
+				.subject = subject,
+				.result_row = result_row,
+				.operand_count = operand_count
+			};
 	memcpy(constraint->operands, operands, operand_count * sizeof(*operands));
 	return 0;
 }
@@ -369,7 +372,6 @@ static int solve_effect_row_constraints(
 		if (prototype_term_effect_row_is_closed(
 				terms, constraint->result_row
 			) != 1) {
-			constraint->solved = 0;
 			continue;
 		}
 		int closed = 1;
@@ -382,7 +384,6 @@ static int solve_effect_row_constraints(
 			}
 		}
 		if (!closed) {
-			constraint->solved = 0;
 			continue;
 		}
 		uint32_t expected;
@@ -435,7 +436,6 @@ static int solve_effect_row_constraints(
 			)) {
 			return -1;
 		}
-		constraint->solved = 1;
 	}
 	return 0;
 }
@@ -520,6 +520,7 @@ static int add_complete_delta_relation(
 );
 static void initialize_proof_premises(
 	struct prototype_judgement_derivation_candidate* proof,
+	uint32_t default_context_id,
 	const uint32_t* premise_context_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
@@ -527,7 +528,8 @@ static void initialize_proof_premises(
 );
 static void initialize_proof_rule_parameters(
 	struct prototype_judgement_derivation_candidate* proof,
-	struct prototype_judgement_candidate_premise* premises
+	struct prototype_judgement_candidate_premise* premises,
+	struct prototype_judgement_proposition* premise_propositions
 );
 static int add_match_motive_result(
 	struct prototype_judgement_delta* delta,
@@ -1834,19 +1836,19 @@ static int merge_app_elim_argument_evidence(
 				&proofs[derivation_id];
 			if (proof->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM ||
 				proof->premise_count != 2 ||
-				proof->premises[1].proposition.subject != argument) {
+				proof->premises[1].proposition->subject != argument) {
 				continue;
 			}
 			struct prototype_judgement_selected_evidence current = {
-				.kind = proof->premises[1].proposition.kind,
-				.authority_kind = proof->premises[1].proposition.authority_kind,
-				.authority_id = proof->premises[1].proposition.authority_id,
-				.context_id = proof->premises[1].proposition.context_id,
-				.occurrence_id = proof->premises[1].proposition.authority_kind ==
+				.kind = proof->premises[1].proposition->kind,
+				.authority_kind = proof->premises[1].proposition->authority_kind,
+				.authority_id = proof->premises[1].proposition->authority_id,
+				.context_id = proof->premises[1].proposition->context_id,
+				.occurrence_id = proof->premises[1].proposition->authority_kind ==
 					PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
-					proof->premises[1].proposition.occurrence_id : PROTOTYPE_INVALID_ID,
-				.subject = proof->premises[1].proposition.subject,
-				.classifier = proof->premises[1].proposition.classifier
+					proof->premises[1].proposition->occurrence_id : PROTOTYPE_INVALID_ID,
+				.subject = proof->premises[1].proposition->subject,
+				.classifier = proof->premises[1].proposition->classifier
 			};
 			if (!*p_found) {
 				*selected = current;
@@ -3437,5 +3439,3 @@ int prototype_judgement_classifier_compatible_with_definitions(
 		0
 	);
 }
-
-static int owner_parameter_argument(

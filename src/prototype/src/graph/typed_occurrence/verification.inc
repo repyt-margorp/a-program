@@ -14,6 +14,7 @@ void prototype_verification_db_init(
 uint32_t prototype_verification_obligation_schema_version(int kind) {
 	switch (kind) {
 		case PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT:
+		case PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION:
 			return 1;
 		default:
 			return 0;
@@ -113,6 +114,21 @@ int prototype_verification_db_validate(
 					return -1;
 				}
 				break;
+			case PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION:
+				if (obligation->computation_occurrence != PROTOTYPE_INVALID_ID ||
+					obligation->continuation_occurrence != PROTOTYPE_INVALID_ID ||
+					obligation->continuation_binder_id != PROTOTYPE_INVALID_ID ||
+					!verification_term_reference_present(
+						terms, obligation->input_classifier
+					) || (obligation->classifier_family != PROTOTYPE_INVALID_ID &&
+					 !verification_term_reference_present(
+						terms, obligation->classifier_family
+					 )) || !verification_term_reference_present(
+						terms, obligation->effect_row
+					)) {
+					return -1;
+				}
+				break;
 			default:
 				return -1;
 		}
@@ -153,6 +169,10 @@ int prototype_verification_db_coverage(
 				p_coverage->required_runtime_capabilities |=
 					PROTOTYPE_RUNTIME_CAPABILITY_COMPUTATION_FOLD_RESULT_VERIFIER |
 					PROTOTYPE_RUNTIME_CAPABILITY_HANDLER;
+				break;
+			case PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION:
+				/* Link- or host-discharge contract; it requires no runtime
+				 * handler capability merely to preserve the equation. */
 				break;
 			default:
 				return -1;

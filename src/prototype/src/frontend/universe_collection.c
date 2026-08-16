@@ -644,7 +644,7 @@ int prototype_universe_collect(
 		}
 		for (uint32_t j = 0; j < type->parameter_count; ++j) {
 			uint32_t parameter_id = type->first_parameter + j;
-			const struct prototype_type_parameter_declaration* parameter = &type_declarations->parameter_declarations[parameter_id];
+			const struct prototype_type_parameter_declaration* parameter = &type_declarations->readback.parameter_declarations[parameter_id];
 			uint32_t parameter_node;
 			if (prototype_universe_add_parameter_node(
 				db,

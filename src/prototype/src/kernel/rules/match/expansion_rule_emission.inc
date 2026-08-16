@@ -202,23 +202,24 @@ int prototype_judgement_delta_record_substitution_reindex(
 		premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX;
-	proof.conclusion_kind = relation.kind;
-	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	proof.conclusion_subject = subject;
-	proof.conclusion_classifier = classifier;
-	initialize_proof_rule_parameters(&proof, premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.semantic_action_kind =
 		PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION;
 	proof.semantic_action_id = substitution_id;
 	proof.premise_count = 1;
-	proof.premises[0].proposition.kind = source->kind;
-	proof.premises[0].proposition.authority_kind = source->authority_kind;
-	proof.premises[0].proposition.authority_id = source->authority_id;
-	proof.premises[0].proposition.context_id = source->context_id;
-	proof.premises[0].proposition.occurrence_id = source->occurrence_id;
-	proof.premises[0].proposition.subject = source->subject;
-	proof.premises[0].proposition.classifier = source->classifier;
+	proof.premises[0].proposition->kind = source->kind;
+	proof.premises[0].proposition->authority_kind = source->authority_kind;
+	proof.premises[0].proposition->authority_id = source->authority_id;
+	proof.premises[0].proposition->context_id = source->context_id;
+	proof.premises[0].proposition->occurrence_id = source->occurrence_id;
+	proof.premises[0].proposition->subject = source->subject;
+	proof.premises[0].proposition->classifier = source->classifier;
 	if (add_complete_delta_relation(delta, &relation, &proof) != 0) {
 		return -1;
 	}
@@ -579,28 +580,29 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 		proof_premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM;
-	proof.conclusion_kind = relation.kind;
-	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_occurrence_id = relation.occurrence_id;
-	proof.conclusion_subject = relation.subject;
-	proof.conclusion_classifier = relation.classifier;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.rule_data.induction.match = match_term;
 	proof.rule_data.induction.motive = motive;
 	proof.rule_data.induction.case_index = case_index;
 	proof.rule_data.induction.field_index = field_index;
 	proof.premise_count = context_evidence_count;
 	for (uint32_t i = 0; i < context_evidence_count; ++i) {
-		proof.premises[i].proposition.kind = context_evidence[i].kind;
-		proof.premises[i].proposition.authority_kind =
+		proof.premises[i].proposition->kind = context_evidence[i].kind;
+		proof.premises[i].proposition->authority_kind =
 			context_evidence[i].authority_kind;
-		proof.premises[i].proposition.authority_id =
+		proof.premises[i].proposition->authority_id =
 			context_evidence[i].authority_id;
-		proof.premises[i].proposition.context_id = context_evidence[i].context_id;
-		proof.premises[i].proposition.occurrence_id =
+		proof.premises[i].proposition->context_id = context_evidence[i].context_id;
+		proof.premises[i].proposition->occurrence_id =
 			context_evidence[i].occurrence_id;
-		proof.premises[i].proposition.subject = context_evidence[i].subject;
-		proof.premises[i].proposition.classifier = context_evidence[i].classifier;
+		proof.premises[i].proposition->subject = context_evidence[i].subject;
+		proof.premises[i].proposition->classifier = context_evidence[i].classifier;
 	}
 	return add_complete_delta_relation(delta, &relation, &proof);
 }

@@ -175,8 +175,8 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 75 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v75.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 76 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v76.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
@@ -236,7 +236,11 @@ grep -q '^backend c compatible yes$' "$TMP_DIR/identity-c-backend.out"
 	>"$TMP_DIR/identity-verilog-backend.out"
 grep -q '^backend verilog compatible yes$' \
 	"$TMP_DIR/identity-verilog-backend.out"
-grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0 100000 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' "$TMP_DIR/identity.apo"
+grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0$' "$TMP_DIR/identity.apo"
+if grep -Eq '^(effect_constraints|effect_constraint) ' "$TMP_DIR/identity.apo"; then
+	echo "artifact persisted compiler-local effect constraints" >&2
+	exit 1
+fi
 ./read_file.out --policy strict --write-artifact "$TMP_DIR/identity-strict.apo" \
 	"$TMP_DIR/identity.p" >"$TMP_DIR/identity-strict.out"
 grep -q '^compile_policy 1 ' "$TMP_DIR/identity-strict.apo"
@@ -251,8 +255,9 @@ test "$(cat "$TMP_DIR/mixed-policy.apo")" = 'unpublished-sentinel'
 ./read_file.out --normalization-steps 7 --solver-steps 100000 \
 	--write-artifact "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-budget.out"
-grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0 7 [0-9][0-9]* 100000 [0-9][0-9]* 0 [0-9][0-9]* [0-9][0-9]* 0 0$' \
+grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0$' \
 	"$TMP_DIR/identity-budget.apo"
+cmp "$TMP_DIR/identity.apo" "$TMP_DIR/identity-budget.apo"
 ./read_file.out --normalization-steps 7 --solver-steps 100000 \
 	--write-artifact "$TMP_DIR/identity-budget-repeat.apo" "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-budget-repeat.out"
@@ -263,10 +268,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 75/A_PROGRAM_ARTIFACT 74/' \
-	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v74.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v74.apo" >"$TMP_DIR/identity-v74.out" 2>"$TMP_DIR/identity-v74.err"; then
-	echo "obsolete artifact unexpectedly passed at the v75 version boundary" >&2
+sed '1s/A_PROGRAM_ARTIFACT 76/A_PROGRAM_ARTIFACT 75/' \
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v75.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v75.apo" >"$TMP_DIR/identity-v75.out" 2>"$TMP_DIR/identity-v75.err"; then
+	echo "obsolete artifact unexpectedly passed at the v76 version boundary" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -532,7 +537,7 @@ grep -q '^interface term identityBool ' "$TMP_DIR/identity-read.out"
 grep -q '^interface term identityNat ' "$TMP_DIR/identity-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/identity-read.out"
 awk '
-	$1 == "compile_policy" { $17 = 1 }
+	$1 == "compile_policy" { print $0 " legacy_solver_state"; next }
 	{ print }
 ' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-incomplete.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-incomplete.apo" \
@@ -2429,7 +2434,10 @@ grep -q "^term_node .* $TERM_TAG_EFFECT_ROW_EMPTY$" "$TMP_DIR/TerminalEffect.apo
 grep -q "^term_node .* $TERM_TAG_EFFECT_ROW_OPERATION print [0-9][0-9]*$" \
 	"$TMP_DIR/TerminalEffect.apo"
 grep -q "^term_node .* $TERM_TAG_COMPUTATION_TYPE " "$TMP_DIR/TerminalEffect.apo"
-grep -Eq '^effect_constraint [0-9]+ 3 2 ' "$TMP_DIR/TerminalEffect.apo"
+if grep -Eq '^(effect_constraints|effect_constraint) ' "$TMP_DIR/TerminalEffect.apo"; then
+	echo "effectful artifact persisted compiler-local constraints" >&2
+	exit 1
+fi
 awk '
 	$1 == "compile_policy" { $8 = 0 }
 	{ print }
@@ -2741,7 +2749,7 @@ if grep -q 'has-type EXTERNAL_REF(id-user-declared.idNat)' "$TMP_DIR/id-user-dec
 	echo "unresolved external effect row was materialized in JudgementDB" >&2
 	exit 1
 fi
-grep -Eq '^effect_constraint [0-9]+ 2 3 ' "$TMP_DIR/IdUserDeclared.apo"
+grep -Eq '^verification [0-9]+ 2 1 ' "$TMP_DIR/IdUserDeclared.apo"
 ./read_file.out --read-graph "$TMP_DIR/IdUserDeclared.apo" >"$TMP_DIR/id-user-declared-read.out"
 if ./read_file.out --policy strict --write-artifact "$TMP_DIR/IdUserDeclaredStrict.apo" \
 	"$TMP_DIR/id-user-declared.p" >"$TMP_DIR/id-user-declared-strict.out" \
@@ -3089,7 +3097,7 @@ mkdir "$TMP_DIR/residual-link"
 ./read_file.out --link-artifacts "$TMP_DIR/IdUserDeclared.apo" \
 	--link-output "$TMP_DIR/residual-link/IdUserDeclared.linked.apo" \
 	>"$TMP_DIR/id-user-declared-link.out"
-grep -Eq '^effect_constraint [0-9]+ 2 3 ' \
+grep -Eq '^verification [0-9]+ 2 1 ' \
 	"$TMP_DIR/residual-link/IdUserDeclared.linked.apo"
 ./read_file.out --read-graph "$TMP_DIR/residual-link/IdUserDeclared.linked.apo" \
 	>"$TMP_DIR/id-user-declared-linked-read.out"

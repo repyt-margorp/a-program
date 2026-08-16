@@ -3,15 +3,14 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 #include "a_program/graph/typed_occurrence_graph.h"
+#include "a_program/support/storage.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static int reserve_slot(size_t count, size_t capacity) {
-	return count < capacity ? 0 : -1;
-}
+#define reserve_slot prototype_storage_reserve_slot
 
 static uint64_t judgement_key_hash_mix(uint64_t hash, uint32_t value) {
 	hash ^= value;
@@ -20,11 +19,21 @@ static uint64_t judgement_key_hash_mix(uint64_t hash, uint32_t value) {
 }
 
 static void judgement_index_clear(uint32_t* heads) {
-	for (size_t i = 0;
-		i < PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
-		++i) {
-		heads[i] = PROTOTYPE_INVALID_ID;
-	}
+	prototype_intern_index_clear(
+		heads,
+		PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT,
+		PROTOTYPE_INVALID_ID
+	);
+}
+
+static size_t judgement_index_bucket(uint64_t key_hash) {
+	size_t bucket = 0;
+	(void)prototype_intern_index_bucket(
+		key_hash,
+		PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT,
+		&bucket
+	);
+	return bucket;
 }
 
 static void candidate_claim_authority(
@@ -269,7 +278,7 @@ int prototype_judgement_proposition_intern(
 		}
 	}
 	uint64_t key_hash = judgement_proposition_key_hash(identity);
-	size_t bucket = key_hash % PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
+	size_t bucket = judgement_index_bucket(key_hash);
 	judgement->proposition_intern_requests++;
 	for (uint32_t i = judgement->proposition_index_heads[bucket];
 		i != PROTOTYPE_INVALID_ID;
@@ -324,7 +333,7 @@ int prototype_judgement_proposition_find_exact(
 		return -1;
 	}
 	uint64_t key_hash = judgement_proposition_key_hash(identity);
-	size_t bucket = key_hash % PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
+	size_t bucket = judgement_index_bucket(key_hash);
 	for (uint32_t i = judgement->proposition_index_heads[bucket];
 		i != PROTOTYPE_INVALID_ID;
 		i = judgement->propositions[i].hash_next) {
@@ -452,7 +461,7 @@ int prototype_judgement_find_exact_claim(
 		return -1;
 	}
 	uint64_t key_hash = judgement_claim_key_hash(identity);
-	size_t bucket = key_hash % PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
+	size_t bucket = judgement_index_bucket(key_hash);
 	for (uint32_t i = judgement->claim_index_heads[bucket];
 		i != PROTOTYPE_INVALID_ID;
 		i = judgement->claims[i].hash_next) {

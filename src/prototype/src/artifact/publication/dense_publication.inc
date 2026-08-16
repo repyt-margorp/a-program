@@ -11,6 +11,9 @@ struct artifact_closure_graph {
 	struct prototype_type_declaration* type_nodes;
 	struct prototype_type_parameter_declaration* parameter_declarations;
 	struct prototype_type_constructor_declaration* constructor_declarations;
+	struct prototype_type_constructor_readback* constructor_readbacks;
+	struct prototype_constructor_classifier_cache_entry*
+		constructor_classifier_cache_entries;
 	uint32_t* readback_field_types;
 	struct prototype_type_expr* type_exprs;
 	struct prototype_type_representation* type_representations;
@@ -72,7 +75,6 @@ struct artifact_publication_graph {
 	struct prototype_typed_occurrence_edge* occurrence_edges;
 	struct prototype_typed_occurrence_match_case* occurrence_match_cases;
 	struct prototype_typed_occurrence_fold_clause* occurrence_fold_clauses;
-	struct prototype_occurrence_effect_constraint* effect_constraints;
 	struct prototype_verification_obligation* verification_obligations;
 	uint32_t* term_relocation;
 	uint32_t* binding_relocation;
@@ -100,6 +102,8 @@ static void artifact_closure_graph_free(struct artifact_closure_graph* graph) {
 	free(graph->type_nodes);
 	free(graph->parameter_declarations);
 	free(graph->constructor_declarations);
+	free(graph->constructor_readbacks);
+	free(graph->constructor_classifier_cache_entries);
 	free(graph->readback_field_types);
 	free(graph->type_exprs);
 	free(graph->type_representations);
@@ -184,7 +188,6 @@ static void artifact_publication_graph_free(
 	free(graph->occurrence_edges);
 	free(graph->occurrence_match_cases);
 	free(graph->occurrence_fold_clauses);
-	free(graph->effect_constraints);
 	free(graph->verification_obligations);
 	free(graph->term_relocation);
 	free(graph->binding_relocation);
@@ -238,17 +241,17 @@ static void artifact_init_closure_defaults(struct artifact_closure_graph* graph)
 		graph->type_declarations.type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
 		graph->type_declarations.type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
 	}
-	for (size_t i = 0; i < graph->type_declarations.parameter_count; ++i) {
-		graph->type_declarations.parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
-		graph->type_declarations.parameter_declarations[i].name_symbol_id = -1;
-		graph->type_declarations.parameter_declarations[i].type_expr = PROTOTYPE_INVALID_ID;
+	for (size_t i = 0; i < graph->type_declarations.readback.parameter_count; ++i) {
+		graph->type_declarations.readback.parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
+		graph->type_declarations.readback.parameter_declarations[i].name_symbol_id = -1;
+		graph->type_declarations.readback.parameter_declarations[i].type_expr = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < graph->type_declarations.constructor_count; ++i) {
 		graph->type_declarations.constructor_declarations[i].name_symbol_id = -1;
 		graph->type_declarations.constructor_declarations[i].owner_type = PROTOTYPE_INVALID_ID;
-		graph->type_declarations.constructor_declarations[i].readback.first_field_type =
+		graph->type_declarations.readback.constructor_readbacks[i].first_field_type =
 			PROTOTYPE_INVALID_ID;
-		graph->type_declarations.constructor_declarations[i].readback.result_type =
+		graph->type_declarations.readback.constructor_readbacks[i].result_type =
 			PROTOTYPE_INVALID_ID;
 		graph->type_declarations.constructor_declarations[i].parameter_context =
 			PROTOTYPE_INVALID_ID;
@@ -256,11 +259,12 @@ static void artifact_init_closure_defaults(struct artifact_closure_graph* graph)
 			PROTOTYPE_INVALID_ID;
 		graph->type_declarations.constructor_declarations[i].result_classifier =
 			PROTOTYPE_INVALID_ID;
-		graph->type_declarations.constructor_declarations[i].curried_classifier_cache =
+		graph->type_declarations.constructor_classifier_cache.entries[i].classifier =
 			PROTOTYPE_INVALID_ID;
+		graph->type_declarations.constructor_classifier_cache.entries[i].schema_revision = 0;
 	}
-	for (size_t i = 0; i < graph->type_declarations.readback_field_type_count; ++i) {
-		graph->type_declarations.readback_field_types[i] = PROTOTYPE_INVALID_ID;
+	for (size_t i = 0; i < graph->type_declarations.readback.field_type_count; ++i) {
+		graph->type_declarations.readback.field_types[i] = PROTOTYPE_INVALID_ID;
 	}
 }
 
@@ -316,10 +320,10 @@ static int artifact_marks_init(
 	marks->case_binder_count = terms->case_binder_count;
 	marks->frame_count = terms->ih_scope_count;
 	marks->type_count = type_declarations->type_count;
-	marks->parameter_count = type_declarations->parameter_count;
+	marks->parameter_count = type_declarations->readback.parameter_count;
 	marks->constructor_count = type_declarations->constructor_count;
-	marks->readback_field_type_count = type_declarations->readback_field_type_count;
-	marks->type_expr_count = type_declarations->expr_count;
+	marks->readback_field_type_count = type_declarations->readback.field_type_count;
+	marks->type_expr_count = type_declarations->readback.expr_count;
 	marks->proposition_count = judgement->proposition_count;
 	marks->claim_count = judgement->claim_count;
 	marks->derivation_count = judgement->derivation_count;
@@ -785,25 +789,6 @@ static int artifact_mark_roots(
 				}
 				}
 			}
-			for (size_t i = 0; i < metadata->effect_constraint_count; ++i) {
-				const struct prototype_occurrence_effect_constraint* constraint =
-					&metadata->effect_constraints[i];
-				uint32_t references[] = {
-					constraint->result_row,
-					constraint->left_row,
-					constraint->right_row
-				};
-				for (size_t j = 0;
-					j < sizeof(references) / sizeof(references[0]);
-					++j) {
-					if (references[j] != PROTOTYPE_INVALID_ID &&
-						artifact_mark_term(
-							marks, terms, references[j], 0
-						) != 0) {
-						return -1;
-					}
-				}
-			}
 			for (size_t i = 0;
 			i < prototype_verification_db_count(&metadata->verification);
 			++i) {
@@ -902,7 +887,7 @@ static int artifact_closure_graph_alloc(
 		) != 0 ||
 		artifact_alloc_bytes(
 			(void**)&graph->parameter_declarations,
-			type_declarations->parameter_count,
+			type_declarations->readback.parameter_count,
 			sizeof(*graph->parameter_declarations)
 		) != 0 ||
 		artifact_alloc_bytes(
@@ -911,13 +896,23 @@ static int artifact_closure_graph_alloc(
 			sizeof(*graph->constructor_declarations)
 		) != 0 ||
 		artifact_alloc_bytes(
+			(void**)&graph->constructor_readbacks,
+			type_declarations->constructor_count,
+			sizeof(*graph->constructor_readbacks)
+		) != 0 ||
+		artifact_alloc_bytes(
+			(void**)&graph->constructor_classifier_cache_entries,
+			type_declarations->constructor_count,
+			sizeof(*graph->constructor_classifier_cache_entries)
+		) != 0 ||
+		artifact_alloc_bytes(
 			(void**)&graph->readback_field_types,
-			type_declarations->readback_field_type_count,
+			type_declarations->readback.field_type_count,
 			sizeof(*graph->readback_field_types)
 		) != 0 ||
 		artifact_alloc_bytes(
 			(void**)&graph->type_exprs,
-			type_declarations->expr_count,
+			type_declarations->readback.expr_count,
 			sizeof(*graph->type_exprs)
 		) != 0 ||
 		artifact_alloc_bytes(
@@ -992,13 +987,17 @@ static int artifact_closure_graph_alloc(
 		graph->constructor_declarations,
 		type_declarations->constructor_count,
 		graph->parameter_declarations,
-		type_declarations->parameter_count,
+		type_declarations->readback.parameter_count,
+		graph->constructor_readbacks,
+		type_declarations->constructor_count,
 		graph->readback_field_types,
-		type_declarations->readback_field_type_count,
+		type_declarations->readback.field_type_count,
 		graph->type_exprs,
-		type_declarations->expr_count,
+		type_declarations->readback.expr_count,
 		graph->type_representations,
-		type_declarations->type_count
+		type_declarations->type_count,
+		graph->constructor_classifier_cache_entries,
+		type_declarations->constructor_count
 	);
 	prototype_judgement_db_init(
 		&graph->judgement,
@@ -1035,11 +1034,11 @@ static int artifact_closure_graph_alloc(
 	graph->terms.computation_fold_clause_count = terms->computation_fold_clause_count;
 	graph->terms.next_binding_id = terms->next_binding_id;
 	graph->type_declarations.type_count = type_declarations->type_count;
-	graph->type_declarations.parameter_count = type_declarations->parameter_count;
+	graph->type_declarations.readback.parameter_count = type_declarations->readback.parameter_count;
 	graph->type_declarations.constructor_count = type_declarations->constructor_count;
-	graph->type_declarations.readback_field_type_count = type_declarations->readback_field_type_count;
-	graph->type_declarations.expr_count = type_declarations->expr_count;
-	graph->type_declarations.next_level_var = type_declarations->next_level_var;
+	graph->type_declarations.readback.field_type_count = type_declarations->readback.field_type_count;
+	graph->type_declarations.readback.expr_count = type_declarations->readback.expr_count;
+	graph->type_declarations.readback.next_level_var = type_declarations->readback.next_level_var;
 	graph->judgement.claim_count = judgement->claim_count;
 	graph->judgement.derivation_count = judgement->derivation_count;
 	graph->judgement.next_universe_var = judgement->next_universe_var;
@@ -1096,40 +1095,44 @@ static int artifact_closure_graph_copy_marked(
 				type_declarations->type_declarations[i];
 		}
 	}
-	for (size_t i = 0; i < type_declarations->parameter_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.parameter_count; ++i) {
 		if (marks->parameters[i]) {
-			graph->type_declarations.parameter_declarations[i] =
-				type_declarations->parameter_declarations[i];
+			graph->type_declarations.readback.parameter_declarations[i] =
+				type_declarations->readback.parameter_declarations[i];
 		}
 	}
 	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
 		if (marks->constructors[i]) {
 			graph->type_declarations.constructor_declarations[i] =
 				type_declarations->constructor_declarations[i];
+			graph->type_declarations.readback.constructor_readbacks[i] =
+				type_declarations->readback.constructor_readbacks[i];
+			graph->type_declarations.constructor_classifier_cache.entries[i] =
+				type_declarations->constructor_classifier_cache.entries[i];
 		}
 	}
-	for (size_t i = 0; i < type_declarations->readback_field_type_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.field_type_count; ++i) {
 		if (marks->readback_field_types[i]) {
-			graph->type_declarations.readback_field_types[i] =
-				type_declarations->readback_field_types[i];
+			graph->type_declarations.readback.field_types[i] =
+				type_declarations->readback.field_types[i];
 		}
 	}
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		if (marks->type_exprs[i]) {
-			graph->type_declarations.exprs[i] = type_declarations->exprs[i];
+			graph->type_declarations.readback.exprs[i] = type_declarations->readback.exprs[i];
 		}
 	}
-	if (graph->type_declarations.representation_capacity <
-		type_declarations->representation_count) {
+	if (graph->type_declarations.representation_db.representation_capacity <
+		type_declarations->representation_db.representation_count) {
 		return -1;
 	}
 	memcpy(
-		graph->type_declarations.representations,
-		type_declarations->representations,
-		type_declarations->representation_count * sizeof(*type_declarations->representations)
+		graph->type_declarations.representation_db.representations,
+		type_declarations->representation_db.representations,
+		type_declarations->representation_db.representation_count * sizeof(*type_declarations->representation_db.representations)
 	);
-	graph->type_declarations.representation_count = type_declarations->representation_count;
-	graph->type_declarations.representations_dirty = type_declarations->representations_dirty;
+	graph->type_declarations.representation_db.representation_count = type_declarations->representation_db.representation_count;
+	graph->type_declarations.representation_db.cache_dirty = type_declarations->representation_db.cache_dirty;
 	graph->judgement.proposition_count = judgement->proposition_count;
 	for (size_t i = 0; i < judgement->claim_count; ++i) {
 		if (marks->claims[i]) {
@@ -1314,13 +1317,13 @@ static void artifact_reset_object_graph_for_publication(
 	graph->terms.computation_fold_clause_count = 0;
 	graph->terms.next_binding_id = 0;
 	graph->type_declarations.type_count = 0;
-	graph->type_declarations.parameter_count = 0;
+	graph->type_declarations.readback.parameter_count = 0;
 	graph->type_declarations.constructor_count = 0;
-	graph->type_declarations.readback_field_type_count = 0;
-	graph->type_declarations.expr_count = 0;
-	graph->type_declarations.representation_count = 0;
-	graph->type_declarations.representations_dirty = 1;
-	graph->type_declarations.next_level_var = 0;
+	graph->type_declarations.readback.field_type_count = 0;
+	graph->type_declarations.readback.expr_count = 0;
+	graph->type_declarations.representation_db.representation_count = 0;
+	graph->type_declarations.representation_db.cache_dirty = 1;
+	graph->type_declarations.readback.next_level_var = 0;
 	graph->judgement.proposition_count = 0;
 	graph->judgement.derivation_candidate_count = 0;
 	graph->judgement.claim_count = 0;
@@ -1360,15 +1363,6 @@ static int artifact_publication_metadata_relocate(
 	);
 	target->selected_entry_occurrence = source->selected_entry_occurrence;
 	target->required_runtime_capabilities = source->required_runtime_capabilities;
-	target->normalization_step_limit = source->normalization_step_limit;
-	target->normalization_steps_used = source->normalization_steps_used;
-	target->solver_step_limit = source->solver_step_limit;
-	target->solver_steps_used = source->solver_steps_used;
-	target->solver_exhausted = source->solver_exhausted;
-	target->solver_constraint_count = source->solver_constraint_count;
-	target->solver_solved_count = source->solver_solved_count;
-	target->solver_residual_count = source->solver_residual_count;
-	target->solver_incomplete_count = source->solver_incomplete_count;
 	target->typed_occurrences.occurrence_count = source->typed_occurrences.occurrence_count;
 	for (size_t i = 0; i < source->typed_occurrences.occurrence_count; ++i) {
 		target->typed_occurrences.occurrences[i] = source->typed_occurrences.occurrences[i];
@@ -1538,24 +1532,6 @@ static int artifact_publication_metadata_relocate(
 			*binding_fields[j] = relocated;
 		}
 	}
-	target->effect_constraint_count = source->effect_constraint_count;
-	for (size_t i = 0; i < source->effect_constraint_count; ++i) {
-		target->effect_constraints[i] = source->effect_constraints[i];
-		uint32_t* rows[] = {
-			&target->effect_constraints[i].result_row,
-			&target->effect_constraints[i].left_row,
-			&target->effect_constraints[i].right_row
-		};
-		for (size_t j = 0; j < sizeof(rows) / sizeof(rows[0]); ++j) {
-			uint32_t relocated = artifact_relocate_optional_id(
-				*rows[j], publication->term_relocation, closure->terms.term_count
-			);
-			if (*rows[j] != PROTOTYPE_INVALID_ID && relocated == PROTOTYPE_INVALID_ID) {
-				return -1;
-			}
-			*rows[j] = relocated;
-		}
-	}
 	target->verification.obligation_count = source->verification.obligation_count;
 	for (size_t i = 0; i < source->verification.obligation_count; ++i) {
 		target->verification.obligations[i] = source->verification.obligations[i];
@@ -1603,19 +1579,19 @@ static int artifact_publication_graph_alloc(
 		return -1;
 	}
 	if (closure->terms.term_count > SIZE_MAX -
-			closure->type_declarations.expr_count ||
-		closure->terms.term_count + closure->type_declarations.expr_count >
+			closure->type_declarations.readback.expr_count ||
+		closure->terms.term_count + closure->type_declarations.readback.expr_count >
 			SIZE_MAX - interface->type_expr_count ||
-		closure->terms.term_count + closure->type_declarations.expr_count +
+		closure->terms.term_count + closure->type_declarations.readback.expr_count +
 			interface->type_expr_count >
 			SIZE_MAX - closure->type_declarations.type_count ||
-		closure->terms.term_count + closure->type_declarations.expr_count +
+		closure->terms.term_count + closure->type_declarations.readback.expr_count +
 			interface->type_expr_count + closure->type_declarations.type_count >
 			SIZE_MAX - interface->dependency_count) {
 		return -1;
 	}
 	size_t dependency_capacity = interface->dependency_count +
-		closure->terms.term_count + closure->type_declarations.expr_count +
+		closure->terms.term_count + closure->type_declarations.readback.expr_count +
 		interface->type_expr_count + closure->type_declarations.type_count;
 	memset(publication, 0, sizeof(*publication));
 #define ALLOC_PUBLICATION(field, count) \
@@ -1652,7 +1628,6 @@ static int artifact_publication_graph_alloc(
 	ALLOC_PUBLICATION(
 		occurrence_fold_clauses, metadata->typed_occurrences.fold_clause_count
 	);
-	ALLOC_PUBLICATION(effect_constraints, metadata->effect_constraint_count);
 	ALLOC_PUBLICATION(
 		verification_obligations, metadata->verification.obligation_count
 	);
@@ -1660,15 +1635,15 @@ static int artifact_publication_graph_alloc(
 	ALLOC_PUBLICATION(binding_relocation, closure->terms.next_binding_id);
 	ALLOC_PUBLICATION(context_relocation, metadata->contexts.context_count);
 	ALLOC_PUBLICATION(type_relocation, closure->type_declarations.type_count);
-	ALLOC_PUBLICATION(type_expr_relocation, closure->type_declarations.expr_count);
+	ALLOC_PUBLICATION(type_expr_relocation, closure->type_declarations.readback.expr_count);
 	ALLOC_PUBLICATION(
-		parameter_relocation, closure->type_declarations.parameter_count
+		parameter_relocation, closure->type_declarations.readback.parameter_count
 	);
 	ALLOC_PUBLICATION(
 		constructor_relocation, closure->type_declarations.constructor_count
 	);
 	ALLOC_PUBLICATION(
-		field_relocation, closure->type_declarations.readback_field_type_count
+		field_relocation, closure->type_declarations.readback.field_type_count
 	);
 	ALLOC_PUBLICATION(
 		proposition_relocation, closure->judgement.proposition_count
@@ -1785,8 +1760,8 @@ static int artifact_publication_graph_alloc(
 		metadata->typed_occurrences.case_count,
 		publication->occurrence_fold_clauses,
 		metadata->typed_occurrences.fold_clause_count,
-		publication->effect_constraints,
-		metadata->effect_constraint_count,
+		NULL,
+		0,
 		publication->verification_obligations,
 		metadata->verification.obligation_count
 	);
@@ -1836,13 +1811,13 @@ static int artifact_build_publication_graph(
 		.type_ids = publication->type_relocation,
 		.type_id_capacity = closure->type_declarations.type_count,
 		.type_expr_ids = publication->type_expr_relocation,
-		.type_expr_id_capacity = closure->type_declarations.expr_count,
+		.type_expr_id_capacity = closure->type_declarations.readback.expr_count,
 		.parameter_ids = publication->parameter_relocation,
-		.parameter_id_capacity = closure->type_declarations.parameter_count,
+		.parameter_id_capacity = closure->type_declarations.readback.parameter_count,
 		.constructor_ids = publication->constructor_relocation,
 		.constructor_id_capacity = closure->type_declarations.constructor_count,
 		.field_type_ids = publication->field_relocation,
-		.field_type_id_capacity = closure->type_declarations.readback_field_type_count,
+		.field_type_id_capacity = closure->type_declarations.readback.field_type_count,
 		.proposition_ids = publication->proposition_relocation,
 		.proposition_id_capacity = closure->judgement.proposition_count,
 		.claim_ids = publication->claim_relocation,
@@ -1914,6 +1889,14 @@ static int artifact_build_publication_graph(
 		(closure->type_declarations.constructor_count == 0 ? 1 :
 		 closure->type_declarations.constructor_count) * sizeof(*compact_constructors)
 	);
+	struct prototype_type_constructor_readback* compact_constructor_readbacks = malloc(
+		(closure->type_declarations.constructor_count == 0 ? 1 :
+		 closure->type_declarations.constructor_count) * sizeof(*compact_constructor_readbacks)
+	);
+	struct prototype_constructor_classifier_cache_entry* compact_constructor_caches = malloc(
+		(closure->type_declarations.constructor_count == 0 ? 1 :
+		 closure->type_declarations.constructor_count) * sizeof(*compact_constructor_caches)
+	);
 	struct prototype_judgement_proposition* compact_propositions = malloc(
 		(closure->judgement.proposition_count == 0 ? 1 :
 		 closure->judgement.proposition_count) * sizeof(*compact_propositions)
@@ -1923,12 +1906,15 @@ static int artifact_build_publication_graph(
 		sizeof(*compact_context_relocation)
 	);
 	if (!compact_contexts || !compact_substitutions || !compact_types ||
-		!compact_constructors || !compact_propositions ||
+		!compact_constructors || !compact_constructor_readbacks ||
+		!compact_constructor_caches || !compact_propositions ||
 		!compact_context_relocation) {
 		free(compact_contexts);
 		free(compact_substitutions);
 		free(compact_types);
 		free(compact_constructors);
+		free(compact_constructor_readbacks);
+		free(compact_constructor_caches);
 		free(compact_propositions);
 		free(compact_context_relocation);
 		artifact_context_slice_free(&context_slice);
@@ -2002,10 +1988,22 @@ static int artifact_build_publication_graph(
 		closure->type_declarations.constructor_declarations,
 		closure->type_declarations.constructor_count * sizeof(*compact_constructors)
 	);
+	memcpy(
+		compact_constructor_readbacks,
+		closure->type_declarations.readback.constructor_readbacks,
+		closure->type_declarations.constructor_count * sizeof(*compact_constructor_readbacks)
+	);
+	memcpy(
+		compact_constructor_caches,
+		closure->type_declarations.constructor_classifier_cache.entries,
+		closure->type_declarations.constructor_count * sizeof(*compact_constructor_caches)
+	);
 	struct prototype_type_declaration_db compact_type_declarations =
 		closure->type_declarations;
 	compact_type_declarations.type_declarations = compact_types;
 	compact_type_declarations.constructor_declarations = compact_constructors;
+	compact_type_declarations.readback.constructor_readbacks = compact_constructor_readbacks;
+	compact_type_declarations.constructor_classifier_cache.entries = compact_constructor_caches;
 	for (size_t i = 0; i < compact_type_declarations.type_count; ++i) {
 		if (!artifact_type_present(&compact_types[i])) {
 			continue;
@@ -2027,6 +2025,8 @@ static int artifact_build_publication_graph(
 			free(compact_substitutions);
 			free(compact_types);
 			free(compact_constructors);
+		free(compact_constructor_readbacks);
+		free(compact_constructor_caches);
 			free(compact_propositions);
 			free(compact_context_relocation);
 			artifact_context_slice_free(&context_slice);
@@ -2035,16 +2035,16 @@ static int artifact_build_publication_graph(
 			return -1;
 		}
 		int incomplete_readback = 0;
-		if (compact_constructors[i].readback.field_count > 0) {
-			uint32_t first = compact_constructors[i].readback.first_field_type;
-			uint32_t count = compact_constructors[i].readback.field_count;
+		if (compact_constructor_readbacks[i].field_count > 0) {
+			uint32_t first = compact_constructor_readbacks[i].first_field_type;
+			uint32_t count = compact_constructor_readbacks[i].field_count;
 			if (first == PROTOTYPE_INVALID_ID ||
-				first > closure->type_declarations.readback_field_type_count ||
-				count > closure->type_declarations.readback_field_type_count - first) {
+				first > closure->type_declarations.readback.field_type_count ||
+				count > closure->type_declarations.readback.field_type_count - first) {
 				incomplete_readback = 1;
 			} else {
 				for (uint32_t j = 0; j < count; ++j) {
-					if (closure->type_declarations.readback_field_types[first + j] ==
+					if (closure->type_declarations.readback.field_types[first + j] ==
 						PROTOTYPE_INVALID_ID) {
 						incomplete_readback = 1;
 						break;
@@ -2058,11 +2058,11 @@ static int artifact_build_publication_graph(
 			/* Generated declarations have no source readback schema. Their field
 			 * telescope and result classifier are the sole wire authority. The same
 			 * rule applies when optional source readback metadata is incomplete. */
-			compact_constructors[i].readback.first_field_type = PROTOTYPE_INVALID_ID;
-			compact_constructors[i].readback.field_count = 0;
+			compact_constructor_readbacks[i].first_field_type = PROTOTYPE_INVALID_ID;
+			compact_constructor_readbacks[i].field_count = 0;
 			if (compact_types[compact_constructors[i].owner_type].origin_kind ==
 				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) {
-				compact_constructors[i].readback.result_type = PROTOTYPE_INVALID_ID;
+				compact_constructor_readbacks[i].result_type = PROTOTYPE_INVALID_ID;
 			}
 		}
 		compact_constructors[i].parameter_context = context_slice.relocation[
@@ -2103,6 +2103,8 @@ static int artifact_build_publication_graph(
 				free(compact_substitutions);
 				free(compact_types);
 				free(compact_constructors);
+		free(compact_constructor_readbacks);
+		free(compact_constructor_caches);
 				free(compact_propositions);
 				free(compact_context_relocation);
 				artifact_context_slice_free(&context_slice);
@@ -2128,6 +2130,8 @@ static int artifact_build_publication_graph(
 				free(compact_substitutions);
 				free(compact_types);
 				free(compact_constructors);
+		free(compact_constructor_readbacks);
+		free(compact_constructor_caches);
 				free(compact_propositions);
 				free(compact_context_relocation);
 				artifact_context_slice_free(&context_slice);
@@ -2188,6 +2192,8 @@ static int artifact_build_publication_graph(
 		free(compact_substitutions);
 		free(compact_types);
 		free(compact_constructors);
+		free(compact_constructor_readbacks);
+		free(compact_constructor_caches);
 		free(compact_propositions);
 		free(compact_context_relocation);
 		artifact_context_slice_free(&context_slice);
@@ -2310,6 +2316,8 @@ static int artifact_build_publication_graph(
 	free(compact_substitutions);
 	free(compact_types);
 	free(compact_constructors);
+		free(compact_constructor_readbacks);
+		free(compact_constructor_caches);
 	free(compact_propositions);
 	free(compact_context_relocation);
 	artifact_context_slice_free(&context_slice);

@@ -33,7 +33,7 @@ Implemented in the prototype:
 - a compiler-local logical-relation substrate, closed nondependent ADT object
   Identity, pure Return/Thunk Identity, nondependent pure Pi pointwise
   Identity, and selected higher square constructions;
-- artifact v75, namespace-qualified interfaces, relocation, linking,
+- artifact v76, namespace-qualified interfaces, relocation, linking,
   aggregation, and backend capability checks;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
@@ -413,9 +413,9 @@ Compile policies control admission:
   admission to the interpreter; it does not turn an unresolved classifier into
   an accepted judgement.
 
-The normalization and solver step limits are explicit artifact metadata, so
-verification coverage is reproducible as data even when a build chooses a
-different budget.
+Normalization and solver step limits are compiler-session policy, not artifact
+authority. The resulting frontier is persistent: each occurrence contains a
+solved classifier or references a versioned residual verification obligation.
 
 ### Normalization and definitional equality
 
@@ -453,26 +453,26 @@ this elaboration boundary.
 
 ## Artifacts and Linking
 
-Artifact format v75 serializes the dense reachable accepted object graph of:
+Artifact format v76 serializes the dense reachable accepted object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
 - TermDB and TypedOccurrenceGraph occurrence metadata;
 - contexts, substitutions, constructor schemas, and type views;
-- JudgementDB proofs, effect constraints, pending runtime verification, and
-  compile budgets;
+- JudgementDB proofs and pending runtime verification obligations;
 - universe constraints and runtime/backend capabilities;
 - relocation and debug/readback metadata.
 
 Every serialized arena is renumbered densely to `0..count-1`; classifier-solver
 candidates, work queues, HOTT actions and certificates, normalization fuel,
-graph revisions, and unrooted graph nodes are absent. The reader validates
+effect-constraint diagnostics, compile budgets, graph revisions, and unrooted
+graph nodes are absent. The reader validates
 ranges, tags, relocation closure, the artifact calculus fingerprint, and
 accepted proof replay. The linker resolves qualified external names, relocates
 binders/contexts/terms, preserves typed export identity, and may share
 alpha-equivalent Core representatives without merging the exports.
 
 The exact current wire and semantic contract is
-[`src/prototype/spec/artifact_v75.schema`](src/prototype/spec/artifact_v75.schema).
+[`src/prototype/spec/artifact_v76.schema`](src/prototype/spec/artifact_v76.schema).
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v5.schema`](src/prototype/spec/hott_fragment_v5.schema).
 

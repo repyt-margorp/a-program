@@ -9,6 +9,7 @@
 #include "a_program/kernel/judgement/classifier_solver.h"
 #include "a_program/core/term.h"
 #include "a_program/kernel/type_declaration.h"
+#include "a_program/support/storage.h"
 
 static uint64_t graph_key_hash_mix(uint64_t hash, uint32_t value) {
 	hash ^= value;
@@ -65,11 +66,21 @@ static uint64_t comprehension_action_key_hash(
 }
 
 static void graph_index_clear(uint32_t* heads) {
-	for (size_t i = 0;
-		i < PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
-		++i) {
-		heads[i] = PROTOTYPE_INVALID_ID;
-	}
+	prototype_intern_index_clear(
+		heads,
+		PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT,
+		PROTOTYPE_INVALID_ID
+	);
+}
+
+static size_t graph_index_bucket(uint64_t key_hash) {
+	size_t bucket = 0;
+	(void)prototype_intern_index_bucket(
+		key_hash,
+		PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT,
+		&bucket
+	);
+	return bucket;
 }
 
 void prototype_context_db_init(
@@ -187,7 +198,7 @@ int prototype_context_extend(
 	uint64_t key_hash = context_key_hash(
 		parent, binding_id, classifier, classifier_variable
 	);
-	size_t bucket = key_hash % PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
+	size_t bucket = graph_index_bucket(key_hash);
 	for (uint32_t i = db->index_heads[bucket];
 		i != PROTOTYPE_INVALID_ID;
 		i = db->contexts[i].hash_next) {
@@ -263,7 +274,7 @@ int prototype_context_extend_occurrence(
 	db->contexts[id].classifier_ref.variable_id = classifier_variable;
 	db->contexts[id].depth = db->contexts[parent].depth + 1;
 	db->contexts[id].key_hash = key_hash;
-	size_t bucket = key_hash % PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
+	size_t bucket = graph_index_bucket(key_hash);
 	db->contexts[id].hash_next = db->index_heads[bucket];
 	db->index_heads[bucket] = id;
 	*p_context = id;
@@ -1343,7 +1354,7 @@ int prototype_context_comprehension_action(
 	uint64_t key_hash = comprehension_action_key_hash(
 		source_extension, base_substitution
 	);
-	size_t bucket = key_hash % PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
+	size_t bucket = graph_index_bucket(key_hash);
 	for (uint32_t i = contexts->comprehension_action_index_heads[bucket];
 		i != PROTOTYPE_INVALID_ID;
 		i = contexts->comprehension_actions[i].hash_next) {
@@ -1489,7 +1500,7 @@ int prototype_context_comprehension_actions_validate(
 			return -1;
 		}
 		uint32_t found = PROTOTYPE_INVALID_ID;
-		size_t bucket = key_hash % PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
+		size_t bucket = graph_index_bucket(key_hash);
 		for (uint32_t j = contexts->comprehension_action_index_heads[bucket];
 			j != PROTOTYPE_INVALID_ID;
 			j = contexts->comprehension_actions[j].hash_next) {

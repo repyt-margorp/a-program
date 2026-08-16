@@ -676,7 +676,10 @@ grep -q '\[computation-fold-elim proof#' "$tmp_dir/handle.out"
 ./read_file.out --write-artifact "$tmp_dir/handle.apo" "$tmp_dir/handle.p" >"$tmp_dir/handle-write.out"
 awk '$1 == "compile_policy" && $2 == 2 && $8 == 14 { found = 1 }
 END { exit found ? 0 : 1 }' "$tmp_dir/handle.apo"
-grep -Eq '^effect_constraint [0-9]+ 2 2 ' "$tmp_dir/handle.apo"
+if grep -Eq '^(effect_constraints|effect_constraint) ' "$tmp_dir/handle.apo"; then
+	echo "handled computation artifact persisted compiler-local constraints" >&2
+	exit 1
+fi
 ./read_file.out --read-graph "$tmp_dir/handle.apo" >"$tmp_dir/handle-read.out"
 grep -q 'interface term main ' "$tmp_dir/handle-read.out"
 ./read_file.out --check-backend c "$tmp_dir/handle.apo" \
@@ -1005,7 +1008,7 @@ grep -q '^value main := RETURN(TEXT_LITERAL("inner"))$' \
 	"$tmp_dir/higher-order-operation-force-once.apo" \
 	src/prototype/tests/fixtures/effects/higher_order_operation_force_once_check.p \
 	>"$tmp_dir/higher-order-operation-force-once-write.out"
-awk '$1 == "compile_policy" && $2 == 1 && $(NF - 1) == 0 && $NF == 0 {
+awk '$1 == "compile_policy" && NF == 8 && $2 == 1 {
 	found = 1
 }
 END { exit found ? 0 : 1 }' \

@@ -81,7 +81,12 @@ static int attach_linked_declaration_support(
 			judgement->candidate_premise_count++
 		];
 		derivation->premise_count = 1;
-		derivation->premises[0].proposition = *source;
+		derivation->premises[0].proposition_store_kind =
+			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
+		derivation->premises[0].proposition_id =
+			judgement->claims[source_claim_id].proposition_id;
+		derivation->premises[0].proposition =
+			(struct prototype_judgement_proposition*)source;
 		derivation->premises[0].semantic_action_kind =
 			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
 		derivation->premises[0].semantic_action_id = PROTOTYPE_INVALID_ID;
@@ -377,22 +382,13 @@ int prototype_artifact_apply_term_relocations(
 			if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
 				continue;
 			}
-			if (prototype_term_resolve_external_ref(
-					target_terms,
-					proof->conclusion_subject,
-					provider_name,
-					provider_term,
-					&proof->conclusion_subject
-				) != 0 ||
-				prototype_term_resolve_external_ref(
-					target_terms,
-					proof->conclusion_classifier,
-					provider_name,
-					provider_term,
-					&proof->conclusion_classifier
-				) != 0) {
+			if (proof->conclusion_proposition_id >=
+				target_judgement->proposition_count) {
 				return -1;
 			}
+			proof->conclusion = &target_judgement->propositions[
+				proof->conclusion_proposition_id
+			];
 			if (proof->proof_kind ==
 					PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
 				if (prototype_term_resolve_external_ref(
@@ -422,24 +418,6 @@ int prototype_artifact_apply_term_relocations(
 					&proof->rule_data.constructor.owner_view
 				) != 0) {
 				return -1;
-			}
-			for (uint32_t k = 0; k < proof->premise_count; ++k) {
-				if (prototype_term_resolve_external_ref(
-						target_terms,
-						proof->premises[k].proposition.subject,
-						provider_name,
-						provider_term,
-						&proof->premises[k].proposition.subject
-					) != 0 ||
-					prototype_term_resolve_external_ref(
-						target_terms,
-						proof->premises[k].proposition.classifier,
-						provider_name,
-						provider_term,
-						&proof->premises[k].proposition.classifier
-					) != 0) {
-					return -1;
-				}
 			}
 		}
 	}
@@ -556,10 +534,15 @@ int prototype_artifact_interface_recompute_keys(
 			fprintf(stderr, "artifact key recomputation invalid constructor ordinal export=%zu\n", i);
 			return -1;
 		}
-		export->curried_classifier_cache =
-			type_declarations->constructor_declarations[
+		const struct prototype_constructor_classifier_cache_entry* cache =
+			prototype_type_constructor_classifier_cache_get(
+				type_declarations,
 				type->first_constructor + export->ordinal
-			].curried_classifier_cache;
+			);
+		if (!cache) {
+			return -1;
+		}
+		export->curried_classifier_cache = cache->classifier;
 	}
 	return 0;
 }
@@ -577,8 +560,8 @@ int prototype_artifact_apply_type_expr_relocations(
 		return -1;
 	}
 
-	for (size_t i = 0; i < target_type_declarations->expr_count; ++i) {
-		struct prototype_type_expr* expr = &target_type_declarations->exprs[i];
+	for (size_t i = 0; i < target_type_declarations->readback.expr_count; ++i) {
+		struct prototype_type_expr* expr = &target_type_declarations->readback.exprs[i];
 		if (expr->tag != PROTOTYPE_TYPE_EXPR_NAME) {
 			continue;
 		}

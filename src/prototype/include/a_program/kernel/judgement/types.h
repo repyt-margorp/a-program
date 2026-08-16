@@ -127,10 +127,22 @@ struct prototype_judgement_proposition {
 	uint32_t hash_next;
 };
 
-/* One ordered solver premise. Keeping the proposition fields together makes
- * malformed cross-column combinations unrepresentable. */
+enum prototype_judgement_proposition_store_kind {
+	PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_INVALID = 0,
+	PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB = 1,
+	PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DELTA = 2
+};
+
+/* One ordered candidate premise. The store-qualified Proposition ID is the
+ * authority. proposition is a checked read-only resolution used by rule views;
+ * it is neither identity nor serialized authority. */
 struct prototype_judgement_candidate_premise {
-	struct prototype_judgement_proposition proposition;
+	int proposition_store_kind;
+	uint32_t proposition_id;
+	/* Transient builders may populate caller-owned Proposition storage through
+	 * this pointer. Once normalized into a DB or delta, it resolves the ID above
+	 * and must be treated as read-only. */
+	struct prototype_judgement_proposition* proposition;
 	int semantic_action_kind;
 	uint32_t semantic_action_id;
 };
@@ -165,12 +177,7 @@ struct prototype_judgement_derivation_candidate {
 	/* Solver-local adjacency. Claim candidates are propositions; derivation
 	 * candidates independently point at the proposition they establish. */
 	uint32_t conclusion_proposition_id;
-	int conclusion_kind;
-	uint32_t conclusion_context_id;
-	/* INVALID denotes a non-Operation kernel/declaration fact. */
-	uint32_t conclusion_occurrence_id;
-	uint32_t conclusion_subject;
-	uint32_t conclusion_classifier;
+	const struct prototype_judgement_proposition* conclusion;
 	/* Rule parameters for Match-pattern assumptions. The Match core erases
 	 * owner views, so the derivation retains the selected declaration. */
 	union prototype_judgement_rule_data rule_data;
@@ -180,6 +187,18 @@ struct prototype_judgement_derivation_candidate {
 	uint32_t semantic_action_id;
 	uint32_t premise_count;
 	struct prototype_judgement_candidate_premise* premises;
+};
+
+/* Immutable validator input shared by candidate and accepted replay. It owns
+ * no Proposition and carries no solver lifecycle state. */
+struct prototype_judgement_rule_application_view {
+	int proof_kind;
+	const struct prototype_judgement_proposition* conclusion;
+	union prototype_judgement_rule_data rule_data;
+	int semantic_action_kind;
+	uint32_t semantic_action_id;
+	uint32_t premise_count;
+	const struct prototype_judgement_candidate_premise* premises;
 };
 
 /* Complete evidence selected by a proof-producing lookup. Classifier-only
@@ -242,9 +261,9 @@ enum prototype_judgement_constraint_operand_state {
 	PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_LOCAL = 2
 };
 
-/* A computation constraint records the two operands required to solve a CBPV
- * computation judgement. It is compiler-local state, not a TermDB node and
- * not a runtime environment. */
+/* A computation constraint is the immutable, typed input payload required to
+ * validate one CBPV computation rule. It is neither solver lifecycle state nor
+ * a runtime environment. The caller owns lifecycle and result publication. */
 struct prototype_judgement_computation_constraint {
 	int kind;
 	uint32_t context_id;
@@ -279,20 +298,18 @@ struct prototype_judgement_computation_constraint {
 	uint32_t continuation;
 	uint32_t argument;
 	uint32_t application;
-	/* An unresolved fold residual is solver-local state. It must not be
-	 * represented by a fresh EFFECT_ROW_VAR in TermDB. */
+};
+
+/* Invocation-local output for one computation constraint. The kernel resets
+ * and fills this record but does not retain it in JudgementDelta. A frontend
+ * may provide a projected classifier as an expected representative; the
+ * kernel publishes it only after independently deriving a convertible result. */
+struct prototype_judgement_computation_constraint_result {
+	uint32_t projected_classifier;
+	uint32_t solved_classifier;
 	int effect_residual_pending;
 	uint32_t effect_residual_row;
-	/* Current solved approximation of a clause-bearing fold's output row. */
 	uint32_t effect_output_row;
-	/* Solver output for this exact Operation occurrence. Relations emitted while
-	 * validating the same rule are evidence candidates, not the source of this
-	 * classifier. */
-	uint32_t solved_classifier;
-	/* Exact Operation-solver representative to use for an operation-owned proof.
-	 * The kernel must independently derive a convertible classifier before it may
-	 * publish this representative. INVALID keeps authority-neutral Core closure. */
-	uint32_t projected_classifier;
 };
 
 enum prototype_judgement_effect_row_constraint_kind {
@@ -301,18 +318,20 @@ enum prototype_judgement_effect_row_constraint_kind {
 	PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_INCLUSION = 3
 };
 
-/* Effect-row constraints belong to the compile-time solver. JOIN is n-ary;
- * RESIDUAL uses input and removed rows; INCLUSION uses source and target rows.
- * They are neither TermDB nodes nor runtime handler state. */
+/* Immutable kernel output consumed by the compile-time ConstraintDB. JOIN is
+ * n-ary; RESIDUAL uses input and removed rows; INCLUSION uses source and target
+ * rows. These are neither TermDB nodes nor solver lifecycle state. */
 #define PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_MAX_OPERANDS 34
 
 struct prototype_judgement_effect_row_constraint {
 	int kind;
+	/* Exact computation obligation which emitted this equation. INVALID denotes
+	 * an authority-neutral helper equation. */
+	uint32_t computation_constraint_id;
 	uint32_t subject;
 	uint32_t result_row;
 	uint32_t operand_count;
 	uint32_t operands[PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_MAX_OPERANDS];
-	int solved;
 };
 
 struct prototype_judgement_db {

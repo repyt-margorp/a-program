@@ -85,13 +85,14 @@ int prototype_judgement_add_type_formation_claim(
 	];
 	memset(&derivation, 0, sizeof(derivation));
 	derivation.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO;
-	derivation.conclusion_kind = proposition.kind;
-	derivation.conclusion_context_id = context_id;
-	derivation.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	derivation.conclusion_subject = subject;
-	derivation.conclusion_classifier = classifier;
-	initialize_proof_rule_parameters(&derivation, premises);
-	initialize_proof_premises(&derivation, NULL, NULL, NULL, 0);
+	initialize_proof_rule_parameters(
+		&derivation,
+		premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
+	initialize_proof_premises(&derivation, context_id, NULL, NULL, NULL, 0);
 	return publish_complete_relation(
 		judgement,
 		&proposition,
@@ -171,13 +172,14 @@ int prototype_judgement_add_constructor_intro_claim(
 	];
 	memset(&derivation, 0, sizeof(derivation));
 	derivation.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_INTRO;
-	derivation.conclusion_kind = proposition.kind;
-	derivation.conclusion_context_id = context_id;
-	derivation.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	derivation.conclusion_subject = subject;
-	derivation.conclusion_classifier = classifier;
-	initialize_proof_rule_parameters(&derivation, premises);
-	initialize_proof_premises(&derivation, NULL, NULL, NULL, 0);
+	initialize_proof_rule_parameters(
+		&derivation,
+		premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
+	initialize_proof_premises(&derivation, context_id, NULL, NULL, NULL, 0);
 	return publish_complete_relation(
 		judgement,
 		&proposition,
@@ -307,16 +309,22 @@ int prototype_judgement_add_constructor_spine_claim(
 	memset(&derivation, 0, sizeof(derivation));
 	derivation.proof_kind =
 		PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION;
-	derivation.conclusion_kind = proposition.kind;
-	derivation.conclusion_context_id = context_id;
-	derivation.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
-	derivation.conclusion_subject = subject;
-	derivation.conclusion_classifier = classifier;
-	initialize_proof_rule_parameters(&derivation, premises);
+	initialize_proof_rule_parameters(
+		&derivation,
+		premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	derivation.rule_data.constructor.owner_view = owner;
 	derivation.premise_count = argument_count;
 	for (uint32_t i = 0; i < argument_count; ++i) {
-		premises[i].proposition = *prototype_judgement_claim_proposition(
+		premises[i].proposition_store_kind =
+			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
+		premises[i].proposition_id =
+			judgement->claims[argument_claim_ids[i]].proposition_id;
+		premises[i].proposition =
+			(struct prototype_judgement_proposition*)prototype_judgement_claim_proposition(
 			judgement, argument_claim_ids[i]
 		);
 	}
@@ -1267,12 +1275,13 @@ int prototype_judgement_delta_record_match_pattern(
 		proof_premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION;
-	proof.conclusion_kind = relation.kind;
-	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_occurrence_id = relation.occurrence_id;
-	proof.conclusion_subject = relation.subject;
-	proof.conclusion_classifier = relation.classifier;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.rule_data.constructor.owner_view = constructor_owner_view;
 	proof.rule_data.constructor.constructor_index = constructor_index;
 	proof.rule_data.constructor.field_index = constructor_field_index;

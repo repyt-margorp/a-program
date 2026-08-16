@@ -22,8 +22,7 @@ static int write_artifact_typed_occurrence_section(
 	fprintf(stream, "SECTION typed_occurrences\n");
 	fprintf(
 		stream,
-		"compile_policy %d %d %s %u %u %u %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64
-		" %d %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+		"compile_policy %d %d %s %u %u %u %" PRIu64 "\n",
 		metadata ? metadata->compile_policy : PROTOTYPE_COMPILE_POLICY_HYBRID,
 		metadata ? metadata->definition_thunk_policy :
 			PROTOTYPE_DEFINITION_THUNK_IMPLICIT,
@@ -33,16 +32,7 @@ static int write_artifact_typed_occurrence_section(
 		metadata ? metadata->selected_entry_term : PROTOTYPE_INVALID_ID,
 		metadata ? metadata->selected_entry_classifier : PROTOTYPE_INVALID_ID,
 		metadata ? metadata->selected_entry_occurrence : PROTOTYPE_INVALID_ID,
-		metadata ? metadata->required_runtime_capabilities : 0,
-		metadata ? metadata->normalization_step_limit : 0,
-		metadata ? metadata->normalization_steps_used : 0,
-		metadata ? metadata->solver_step_limit : 0,
-		metadata ? metadata->solver_steps_used : 0,
-		metadata ? metadata->solver_exhausted : 0,
-		metadata ? metadata->solver_constraint_count : 0,
-		metadata ? metadata->solver_solved_count : 0,
-		metadata ? metadata->solver_residual_count : 0,
-		metadata ? metadata->solver_incomplete_count : 0
+		metadata ? metadata->required_runtime_capabilities : 0
 	);
 	fprintf(stream, "contexts %zu\n", context_slice->context_count);
 	for (size_t i = 0; i < metadata->contexts.context_count; ++i) {
@@ -251,24 +241,6 @@ static int write_artifact_typed_occurrence_section(
 			fprintf(stream, " %u", operation_case->binder_ids[j]);
 		}
 		fprintf(stream, "\n");
-	}
-	size_t effect_constraint_count = metadata ?
-		metadata->effect_constraint_count : 0;
-	fprintf(stream, "effect_constraints %zu\n", effect_constraint_count);
-	for (size_t i = 0; i < effect_constraint_count; ++i) {
-		const struct prototype_occurrence_effect_constraint* constraint =
-			&metadata->effect_constraints[i];
-		fprintf(
-			stream,
-			"effect_constraint %zu %d %d %u %u %u %u\n",
-			i,
-			constraint->kind,
-			constraint->state,
-			constraint->occurrence,
-			constraint->result_row,
-			constraint->left_row,
-			constraint->right_row
-		);
 	}
 	fprintf(stream, "verification_obligations %zu\n", obligation_count);
 	for (size_t i = 0; i < obligation_count; ++i) {

@@ -1,8 +1,8 @@
 #ifndef A_PROGRAM_PROTOTYPE_INTERNAL_AST_COMMON_H
 #define A_PROGRAM_PROTOTYPE_INTERNAL_AST_COMMON_H
 
-static int reserve_slot(size_t count, size_t capacity) {
-	return count < capacity ? 0 : -1;
-}
+#include "a_program/support/storage.h"
+
+#define reserve_slot prototype_storage_reserve_slot
 
 #endif

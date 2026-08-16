@@ -47,6 +47,8 @@ int main(void) {
 	struct prototype_term_db terms;
 	struct prototype_type_declaration type_storage[1];
 	struct prototype_type_constructor_declaration constructor_storage[1];
+	struct prototype_type_constructor_readback constructor_readbacks[1];
+	struct prototype_constructor_classifier_cache_entry constructor_caches[1];
 	struct prototype_type_parameter_declaration parameter_storage[1];
 	uint32_t field_type_storage[1];
 	struct prototype_type_expr type_expr_storage[1];
@@ -77,11 +79,15 @@ int main(void) {
 		1,
 		parameter_storage,
 		1,
+		constructor_readbacks,
+		1,
 		field_type_storage,
 		1,
 		type_expr_storage,
 		1,
 		representation_storage,
+		1,
+		constructor_caches,
 		1
 	);
 	prototype_context_db_init(&contexts, context_storage, CONTEXT_CAPACITY);

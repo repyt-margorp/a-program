@@ -387,20 +387,21 @@ int prototype_judgement_add_expected_type_exposure(
 		proof_premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	memset(&proof, 0, sizeof(proof));
 	proof.proof_kind = proof_kind;
-	proof.conclusion_kind = relation.kind;
-	proof.conclusion_context_id = context_id;
-	proof.conclusion_occurrence_id = operation_id;
-	proof.conclusion_subject = subject;
-	proof.conclusion_classifier = expected;
-	initialize_proof_rule_parameters(&proof, proof_premises);
+	initialize_proof_rule_parameters(
+		&proof,
+		proof_premises,
+		(struct prototype_judgement_proposition[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		]){{0}}
+	);
 	proof.premise_count = 1;
-	proof.premises[0].proposition.kind = source_evidence->kind;
-	proof.premises[0].proposition.context_id = source_evidence->context_id;
-	proof.premises[0].proposition.subject = premise_subjects[0];
-	proof.premises[0].proposition.classifier = premise_classifiers[0];
-	proof.premises[0].proposition.authority_kind = source_evidence->authority_kind;
-	proof.premises[0].proposition.authority_id = source_evidence->authority_id;
-	proof.premises[0].proposition.occurrence_id = source_evidence->occurrence_id;
+	proof.premises[0].proposition->kind = source_evidence->kind;
+	proof.premises[0].proposition->context_id = source_evidence->context_id;
+	proof.premises[0].proposition->subject = premise_subjects[0];
+	proof.premises[0].proposition->classifier = premise_classifiers[0];
+	proof.premises[0].proposition->authority_kind = source_evidence->authority_kind;
+	proof.premises[0].proposition->authority_id = source_evidence->authority_id;
+	proof.premises[0].proposition->occurrence_id = source_evidence->occurrence_id;
 	return add_complete_relation(judgement, &relation, &proof);
 }
 

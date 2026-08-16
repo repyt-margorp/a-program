@@ -49,6 +49,7 @@ static int judgement_candidate_claim_has_derivation(
 
 static void initialize_proof_premises(
 	struct prototype_judgement_derivation_candidate* proof,
+	uint32_t default_context_id,
 	const uint32_t* premise_context_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
@@ -56,23 +57,24 @@ static void initialize_proof_premises(
 ) {
 	proof->premise_count = premise_count;
 	for (uint32_t i = 0; i < premise_count; ++i) {
-		proof->premises[i].proposition.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
-		proof->premises[i].proposition.context_id = premise_context_ids ?
-			premise_context_ids[i] : proof->conclusion_context_id;
-		proof->premises[i].proposition.subject = premise_subjects[i];
-		proof->premises[i].proposition.classifier = premise_classifiers[i];
-		proof->premises[i].proposition.authority_kind =
+		proof->premises[i].proposition->kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
+		proof->premises[i].proposition->context_id = premise_context_ids ?
+			premise_context_ids[i] : default_context_id;
+		proof->premises[i].proposition->subject = premise_subjects[i];
+		proof->premises[i].proposition->classifier = premise_classifiers[i];
+		proof->premises[i].proposition->authority_kind =
 			PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID;
-		proof->premises[i].proposition.authority_id = PROTOTYPE_INVALID_ID;
-		proof->premises[i].proposition.occurrence_id = PROTOTYPE_INVALID_ID;
+		proof->premises[i].proposition->authority_id = PROTOTYPE_INVALID_ID;
+		proof->premises[i].proposition->occurrence_id = PROTOTYPE_INVALID_ID;
 	}
 }
 
 static void initialize_proof_rule_parameters(
 	struct prototype_judgement_derivation_candidate* proof,
-	struct prototype_judgement_candidate_premise* premises
+	struct prototype_judgement_candidate_premise* premises,
+	struct prototype_judgement_proposition* premise_propositions
 ) {
-	if (!proof || !premises) {
+	if (!proof || !premises || !premise_propositions) {
 		return;
 	}
 	memset(
@@ -80,15 +82,25 @@ static void initialize_proof_rule_parameters(
 		0,
 		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES * sizeof(*premises)
 	);
+	memset(
+		premise_propositions,
+		0,
+		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES *
+			sizeof(*premise_propositions)
+	);
 	proof->premises = premises;
 	memset(&proof->rule_data, 0xff, sizeof(proof->rule_data));
 	proof->semantic_action_kind = PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
 	proof->semantic_action_id = PROTOTYPE_INVALID_ID;
 	for (uint32_t i = 0; i < PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES; ++i) {
-		proof->premises[i].proposition.authority_kind =
+		proof->premises[i].proposition_store_kind =
+			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_INVALID;
+		proof->premises[i].proposition_id = PROTOTYPE_INVALID_ID;
+		proof->premises[i].proposition = &premise_propositions[i];
+		premise_propositions[i].authority_kind =
 			PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID;
-		proof->premises[i].proposition.authority_id = PROTOTYPE_INVALID_ID;
-		proof->premises[i].proposition.occurrence_id = PROTOTYPE_INVALID_ID;
+		premise_propositions[i].authority_id = PROTOTYPE_INVALID_ID;
+		premise_propositions[i].occurrence_id = PROTOTYPE_INVALID_ID;
 		proof->premises[i].semantic_action_kind =
 			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
 		proof->premises[i].semantic_action_id = PROTOTYPE_INVALID_ID;
@@ -204,35 +216,37 @@ static int judgement_occurrence_child(
 
 static int judgement_structural_premise_child(
 	const struct prototype_typed_occurrence_graph* operations,
-	const struct prototype_judgement_derivation_candidate* proof,
+	int proof_kind,
+	uint32_t conclusion_occurrence_id,
+	uint32_t premise_count,
 	uint32_t premise_index,
 	uint32_t* p_child_operation_id
 ) {
-	if (!operations || !proof || !p_child_operation_id ||
-		proof->conclusion_occurrence_id == PROTOTYPE_INVALID_ID ||
-		proof->conclusion_occurrence_id >= operations->occurrence_count ||
-		premise_index >= proof->premise_count) {
+	if (!operations || !p_child_operation_id ||
+		conclusion_occurrence_id == PROTOTYPE_INVALID_ID ||
+		conclusion_occurrence_id >= operations->occurrence_count ||
+		premise_index >= premise_count) {
 		return 1;
 	}
 	const struct prototype_typed_occurrence* operation =
-		&operations->occurrences[proof->conclusion_occurrence_id];
-	switch (proof->proof_kind) {
+		&operations->occurrences[conclusion_occurrence_id];
+	switch (proof_kind) {
 	case PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO:
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
-			proof->premise_count != 2) {
+			premise_count != 2) {
 			return -1;
 		}
 		return judgement_occurrence_child(
-			operations, proof->conclusion_occurrence_id,
+			operations, conclusion_occurrence_id,
 			PROTOTYPE_TERM_CHILD_BODY, 0, p_child_operation_id
 		);
 	case PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM:
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_APP ||
-			proof->premise_count != 2) {
+			premise_count != 2) {
 			return -1;
 		}
 		return judgement_occurrence_child(
-			operations, proof->conclusion_occurrence_id,
+			operations, conclusion_occurrence_id,
 			premise_index == 0 ? PROTOTYPE_TERM_CHILD_FUNCTION :
 				PROTOTYPE_TERM_CHILD_ARGUMENT,
 			0, p_child_operation_id
@@ -245,7 +259,7 @@ static int judgement_structural_premise_child(
 		}
 		uint32_t reverse_arguments[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 		uint32_t argument_count = 0;
-		uint32_t cursor = proof->conclusion_occurrence_id;
+		uint32_t cursor = conclusion_occurrence_id;
 		while (cursor < operations->occurrence_count) {
 			const struct prototype_typed_occurrence* cursor_operation =
 				&operations->occurrences[cursor];
@@ -269,7 +283,7 @@ static int judgement_structural_premise_child(
 			reverse_arguments[argument_count++] = argument;
 			cursor = function;
 		}
-		if (argument_count != proof->premise_count) {
+		if (argument_count != premise_count) {
 			return -1;
 		}
 		*p_child_operation_id =
@@ -279,11 +293,11 @@ static int judgement_structural_premise_child(
 	case PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE:
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
 			operation->first_case + operation->case_count > operations->case_count ||
-			proof->premise_count != operation->case_count) {
+			premise_count != operation->case_count) {
 			return -1;
 		}
 		return judgement_occurrence_child(
-			operations, proof->conclusion_occurrence_id,
+			operations, conclusion_occurrence_id,
 			PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, premise_index,
 			p_child_operation_id
 		);
@@ -293,11 +307,11 @@ static int judgement_structural_premise_child(
 		if ((operation->tag != PROTOTYPE_TYPED_OCCURRENCE_RETURN &&
 			 operation->tag != PROTOTYPE_TYPED_OCCURRENCE_THUNK &&
 			 operation->tag != PROTOTYPE_TYPED_OCCURRENCE_FORCE) ||
-			proof->premise_count != 1) {
+			premise_count != 1) {
 			return -1;
 		}
 		return judgement_occurrence_child(
-			operations, proof->conclusion_occurrence_id,
+			operations, conclusion_occurrence_id,
 			operation->tag == PROTOTYPE_TYPED_OCCURRENCE_RETURN ?
 				PROTOTYPE_TERM_CHILD_RETURN_VALUE :
 				(operation->tag == PROTOTYPE_TYPED_OCCURRENCE_THUNK ?
@@ -307,7 +321,7 @@ static int judgement_structural_premise_child(
 		);
 	case PROTOTYPE_JUDGEMENT_PROOF_OPERATION_REQUEST_INTRO:
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_REQUEST ||
-			proof->premise_count != 3) {
+			premise_count != 3) {
 			return -1;
 		}
 		if (premise_index == 0) {
@@ -315,19 +329,19 @@ static int judgement_structural_premise_child(
 			return 0;
 		}
 		return judgement_occurrence_child(
-			operations, proof->conclusion_occurrence_id,
+			operations, conclusion_occurrence_id,
 			premise_index == 1 ? PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT :
 				PROTOTYPE_TERM_CHILD_REQUEST_CONTINUATION,
 			0, p_child_operation_id
 		);
 	case PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM:
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
-			proof->premise_count != 2 + 2 * operation->fold_clause_count) {
+			premise_count != 2 + 2 * operation->fold_clause_count) {
 			return -1;
 		}
 		if (premise_index < 2) {
 			return judgement_occurrence_child(
-				operations, proof->conclusion_occurrence_id,
+				operations, conclusion_occurrence_id,
 				premise_index == 0 ? PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION :
 					PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE,
 				0, p_child_operation_id
@@ -346,7 +360,7 @@ static int judgement_structural_premise_child(
 				];
 			(void)clause;
 			if (judgement_occurrence_child(
-					operations, proof->conclusion_occurrence_id,
+					operations, conclusion_occurrence_id,
 					(premise_index - 2) % 2 == 0 ?
 						PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION :
 						PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY,
@@ -358,7 +372,7 @@ static int judgement_structural_premise_child(
 		return 0;
 	case PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM:
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
-			proof->premise_count != operation->case_count + 1 ||
+			premise_count != operation->case_count + 1 ||
 			operation->first_case > operations->case_count ||
 			operation->case_count > operations->case_count - operation->first_case) {
 			return -1;
@@ -371,7 +385,7 @@ static int judgement_structural_premise_child(
 		}
 		{
 			if (judgement_occurrence_child(
-					operations, proof->conclusion_occurrence_id,
+					operations, conclusion_occurrence_id,
 					PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
 					premise_index - 1, p_child_operation_id
 				) != 0) {
@@ -384,7 +398,7 @@ static int judgement_structural_premise_child(
 	case PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_ADMISSIBILITY:
 	case PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN:
 	case PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN:
-		if (proof->premise_count != 1) {
+		if (premise_count != 1) {
 			return -1;
 		}
 		/* These are derived boundaries, not syntax-directed eliminators. Their
@@ -410,7 +424,12 @@ static int judgement_expected_premise_operation(
 	}
 	uint32_t child_operation_id;
 	int status = judgement_structural_premise_child(
-		operations, proof, premise_index, &child_operation_id
+		operations,
+		proof ? proof->proof_kind : PROTOTYPE_JUDGEMENT_PROOF_INVALID,
+		proof ? proof->conclusion->occurrence_id : PROTOTYPE_INVALID_ID,
+		proof ? proof->premise_count : 0,
+		premise_index,
+		&child_operation_id
 	);
 	if (status != 0) {
 		return status;
@@ -550,13 +569,13 @@ static int judgement_candidate_source_claim(
 		return -1;
 	}
 	uint32_t expected_operation_id =
-		derivation->premises[premise_index].proposition.occurrence_id;
+		derivation->premises[premise_index].proposition->occurrence_id;
 	int expected_authority_kind =
-		derivation->premises[premise_index].proposition.authority_kind;
+		derivation->premises[premise_index].proposition->authority_kind;
 	uint32_t expected_authority_id =
-		derivation->premises[premise_index].proposition.authority_id;
+		derivation->premises[premise_index].proposition->authority_id;
 	uint32_t expected_context_id =
-		derivation->premises[premise_index].proposition.context_id;
+		derivation->premises[premise_index].proposition->context_id;
 	uint32_t structural_child_operation_id;
 	/* A substitution edge is the explicit proof that moves a structural child
 	 * into its branch-local Context. Reconstructing the premise from the source
@@ -567,7 +586,12 @@ static int judgement_candidate_source_claim(
 		derivation->premises[premise_index].semantic_action_kind ==
 			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION ?
 		1 : judgement_structural_premise_child(
-			operations, derivation, premise_index, &structural_child_operation_id
+			operations,
+			derivation->proof_kind,
+			derivation->conclusion->occurrence_id,
+			derivation->premise_count,
+			premise_index,
+			&structural_child_operation_id
 		);
 	if (structural_status < 0) {
 		fprintf(
@@ -575,7 +599,7 @@ static int judgement_candidate_source_claim(
 			"P0 structural premise shape failed rule=%d conclusion_occurrence=%u "
 			"index=%u count=%u\n",
 			derivation->proof_kind,
-			derivation->conclusion_occurrence_id,
+			derivation->conclusion->occurrence_id,
 			premise_index,
 			derivation->premise_count
 		);
@@ -588,7 +612,7 @@ static int judgement_candidate_source_claim(
 				expected_authority_kind =
 					PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER;
 				expected_authority_id =
-					derivation->premises[premise_index].proposition.subject;
+					derivation->premises[premise_index].proposition->subject;
 			}
 		} else {
 			const struct prototype_typed_occurrence* child =
@@ -605,11 +629,11 @@ static int judgement_candidate_source_claim(
 				judgement_operation_evidence_owner(
 					operations, structural_child_operation_id, 0
 				);
-			if (derivation->premises[premise_index].proposition.occurrence_id !=
+			if (derivation->premises[premise_index].proposition->occurrence_id !=
 					PROTOTYPE_INVALID_ID &&
-				derivation->premises[premise_index].proposition.occurrence_id !=
+				derivation->premises[premise_index].proposition->occurrence_id !=
 					structural_child_operation_id &&
-				derivation->premises[premise_index].proposition.occurrence_id !=
+				derivation->premises[premise_index].proposition->occurrence_id !=
 					structural_operation_id) {
 				fprintf(
 					stderr,
@@ -617,7 +641,7 @@ static int judgement_candidate_source_claim(
 					"stored=%u expected=%u\n",
 					derivation->proof_kind,
 					premise_index,
-					derivation->premises[premise_index].proposition.occurrence_id,
+					derivation->premises[premise_index].proposition->occurrence_id,
 					structural_child_operation_id
 				);
 				return -1;
@@ -636,7 +660,7 @@ static int judgement_candidate_source_claim(
 					expected_authority_kind =
 						PROTOTYPE_JUDGEMENT_AUTHORITY_CONTEXT_BINDING;
 					expected_authority_id =
-						derivation->premises[premise_index].proposition.subject;
+						derivation->premises[premise_index].proposition->subject;
 					expected_operation_id = PROTOTYPE_INVALID_ID;
 				} else if (structural_operation_id != PROTOTYPE_INVALID_ID) {
 					expected_authority_kind =
@@ -657,13 +681,13 @@ static int judgement_candidate_source_claim(
 						expected_authority_kind =
 							PROTOTYPE_JUDGEMENT_AUTHORITY_CONTEXT_BINDING;
 						expected_authority_id =
-							derivation->premises[premise_index].proposition.subject;
+							derivation->premises[premise_index].proposition->subject;
 					} else if (authority_source->tag ==
 						PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR) {
 						expected_authority_kind =
 							PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_DECLARATION;
 						expected_authority_id =
-							derivation->premises[premise_index].proposition.subject;
+							derivation->premises[premise_index].proposition->subject;
 					} else {
 						fprintf(
 							stderr,
@@ -695,11 +719,11 @@ static int judgement_candidate_source_claim(
 		const struct prototype_judgement_proposition* candidate =
 			prototype_judgement_claim_proposition(judgement, claim_id);
 		if (!candidate ||
-			candidate->kind != derivation->premises[premise_index].proposition.kind ||
+			candidate->kind != derivation->premises[premise_index].proposition->kind ||
 			candidate->context_id != expected_context_id ||
-			candidate->subject != derivation->premises[premise_index].proposition.subject ||
+			candidate->subject != derivation->premises[premise_index].proposition->subject ||
 			candidate->classifier !=
-				derivation->premises[premise_index].proposition.classifier) {
+				derivation->premises[premise_index].proposition->classifier) {
 			continue;
 		}
 		int candidate_authority_kind;
@@ -756,11 +780,11 @@ static int judgement_candidate_is_publishable(
 		proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
 		return 0;
 	}
-	if (proof->conclusion_kind != candidate->kind ||
-		proof->conclusion_context_id != candidate->context_id ||
-		proof->conclusion_occurrence_id != candidate->occurrence_id ||
-		proof->conclusion_subject != candidate->subject ||
-		proof->conclusion_classifier != candidate->classifier) {
+	if (proof->conclusion->kind != candidate->kind ||
+		proof->conclusion->context_id != candidate->context_id ||
+		proof->conclusion->occurrence_id != candidate->occurrence_id ||
+		proof->conclusion->subject != candidate->subject ||
+		proof->conclusion->classifier != candidate->classifier) {
 		return 0;
 	}
 	if (candidate->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE) {
@@ -838,7 +862,7 @@ static int judgement_rebuild_claim_derivations(
 			int sources_resolved = 1;
 			for (uint32_t j = 0; j < proof->premise_count; ++j) {
 				if (judgement_premise_is_scoped_rule_parameter(proof, j)) {
-					if (proof->premises[j].proposition.kind ==
+					if (proof->premises[j].proposition->kind ==
 						PROTOTYPE_JUDGEMENT_KIND_UNKNOWN) {
 						fprintf(
 							stderr,
@@ -846,13 +870,13 @@ static int judgement_rebuild_claim_derivations(
 							"index=%u subject=%u classifier=%u\n",
 							proof->proof_kind,
 							j,
-							proof->premises[j].proposition.subject,
-							proof->premises[j].proposition.classifier
+							proof->premises[j].proposition->subject,
+							proof->premises[j].proposition->classifier
 						);
 						return -1;
 					}
 					struct prototype_judgement_proposition scoped =
-						proof->premises[j].proposition;
+						*proof->premises[j].proposition;
 					scoped.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID;
 					scoped.authority_id = PROTOTYPE_INVALID_ID;
 					scoped.occurrence_id = PROTOTYPE_INVALID_ID;

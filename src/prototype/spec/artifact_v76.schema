@@ -1,11 +1,11 @@
-A_PROGRAM_ARTIFACT 75
+A_PROGRAM_ARTIFACT 76
 
-This file is the canonical semantic manifest for artifact version 75. The
+This file is the canonical semantic manifest for artifact version 76. The
 artifact header carries the SHA-256 digest of these exact bytes. A reader must
-reject a different version or digest before reading the interface. Version 74
-is not accepted and has no compatibility parser. It stored a second Operation
-syntax topology and source AST binder identities instead of one typed-occurrence
-projection over the authoritative Core graph.
+reject a different version or digest before reading the interface. Version 75
+is not accepted and has no compatibility parser. It persisted compiler-local
+solver counters and effect-constraint snapshots instead of only accepted
+semantic evidence and explicit residual verification contracts.
 
 The header is followed by one immutable Intrinsic-environment contract:
 
@@ -19,7 +19,7 @@ literal or primitive Claims. In the default environment, Int and Int32 name
 HOST_TYPE_INT32 and unsuffixed integer literals have exactly that principal;
 Int64 remains distinct. INT_LITERAL_ADMISSIBILITY is retained in the numeric
 wire vocabulary only as a reserved historical ordinal and is not emitted or
-accepted by the v75 compiler.
+accepted by the v76 compiler.
 
 The artifact is one dense accepted object graph. Every section uses IDs in
 0..count-1 with no holes. Solver candidates, work queues, HOTT actions,
@@ -46,9 +46,7 @@ typed_occurrence_category INVALID=0 VALUE=1 COMPUTATION=2 TYPE=3
 typed_occurrence_application_role NONE=0 FUNCTION_ELIMINATION=1 CONSTRUCTOR_FORMATION=2 PURE_TYPE_FAMILY_EVALUATION=3
 typed_occurrence_classifier_status PENDING=0 SOLVED=1 RESIDUAL_VERIFICATION=2
 substitution_kind IDENTITY=1 EMPTY=2 PROJECTION=3 EXTEND=4 COMPOSE=5
-effect_constraint_kind EXACT=1 COPY=2 UNION=3 RESIDUAL=4
-effect_constraint_state PENDING=1 SOLVED=2 UNSOLVED_RESIDUAL=3 INCOMPLETE=4
-verification_kind COMPUTATION_FOLD_RESULT=1
+verification_kind COMPUTATION_FOLD_RESULT=1 EFFECT_ROW_EQUATION=2
 verification_state PENDING=1 DISCHARGED=2 FAILED=3
 normalization_profile CORE_WHNF=1 COMPUTATION_WHNF=2 PURE_TYPE_WHNF=3
 export_transparency OPAQUE=1 TRANSPARENT=2
@@ -122,6 +120,7 @@ and duplicate Core child columns are absent. Closure rank and lookup indices
 are reconstructed by least-fixed-point replay after readback.
 
 Typed occurrence grammar:
+compile_policy POLICY THUNK_POLICY ENTRY_NAME_OR_DASH ENTRY_TERM_OR_INVALID ENTRY_CLASSIFIER_OR_INVALID ENTRY_OCCURRENCE_OR_INVALID REQUIRED_RUNTIME_CAPABILITIES
 typed_occurrences N
 typed_occurrence ID KIND CATEGORY APPLICATION_ROLE CORE_TERM CLASSIFIER_STATUS CLASSIFIER_OR_INVALID VERIFICATION_OBLIGATION_OR_INVALID SOURCE_NAME_OR_DASH BINDER_NAME_OR_DASH BINDING_ID_OR_INVALID WRAPPED_OCCURRENCE_OR_INVALID BINDER_CLASSIFIER_OR_INVALID IH_OWNER_OCCURRENCE_OR_INVALID IH_SCOPE_OR_INVALID IH_CASE_OR_INVALID IH_FIELD_OR_INVALID FOLD_RETURN_BINDING_OR_INVALID IMPLICIT_ROW_COUNT FIRST_CASE_OR_INVALID CASE_COUNT FIRST_FOLD_CLAUSE_OR_INVALID FOLD_CLAUSE_COUNT CONTEXT CONTEXT_ACTION_SUBSTITUTION_OR_INVALID SOURCE_CORE_TERM_OR_INVALID SOURCE_CLASSIFIER_OR_INVALID
 typed_occurrence_rows ID [BINDING_ID]*
@@ -144,6 +143,12 @@ A frozen occurrence has exactly one closure state. SOLVED names one present
 classifier and has no verification obligation. RESIDUAL_VERIFICATION has no
 classifier and names one persisted pending obligation. PENDING is a compiler
 workspace state and is rejected by publication and readback.
+
+Normalization and solver budgets, consumed steps, worklist state, solved
+constraint counts, and effect-constraint diagnostic snapshots are compiler
+session state. They are not serialized. Any deferred semantic requirement is
+represented only by a versioned verification obligation referenced from a
+RESIDUAL_VERIFICATION occurrence.
 
 A typed occurrence carries the action triple
 CONTEXT_ACTION_SUBSTITUTION, SOURCE_CORE_TERM, SOURCE_CLASSIFIER. All three are
@@ -208,13 +213,19 @@ Dependent computation-fold verification lifecycle:
 - hybrid compilation may publish PENDING obligations only when the selected
   backend declares the computation-fold result verifier and handler
   capabilities;
-- artifact v75 persists only PENDING obligations. DISCHARGED and FAILED are
+- artifact v76 persists only PENDING obligations. DISCHARGED and FAILED are
   execution-instance outcomes and are rejected on readback;
 - execution discharges an obligation by applying its retained pure classifier
   family to the returned value and checking conversion with the continuation
   result classifier under the retained normalization profile; and
 - failed discharge aborts that execution and cannot retroactively create or
   alter accepted static evidence.
+
+An unresolved effect equation is persisted as an EFFECT_ROW_EQUATION
+obligation containing its occurrence and result/operand rows. This immutable
+contract replaces the compiler-local mutable effect-constraint snapshot. It
+may be discharged by linking or a declared host boundary; it is never an
+accepted typing Claim by itself.
 Contextual equivalence is a metatheoretic adequacy target, not an artifact
 record or kernel proof-search rule.
 

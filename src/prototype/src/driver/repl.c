@@ -15,123 +15,8 @@
 #include "a_program/kernel/judgement/classifier_solver.h"
 #include "a_program/kernel/universe.h"
 
-#define SYMBOL_MAP_CAPACITY 1024
-#define SYMBOL_STORAGE_CAPACITY 512
-#define TYPE_CAPACITY 64
-#define CONSTRUCTOR_CAPACITY 256
-#define PARAMETER_CAPACITY 128
-#define FIELD_TYPE_CAPACITY 512
-#define TYPE_EXPR_CAPACITY 1024
-#define AST_CAPACITY 1024
-#define AST_DEF_CAPACITY 256
-#define AST_MATCH_CASE_CAPACITY 256
-#define AST_MATCH_BINDER_CAPACITY 512
-#define AST_COMPUTATION_FOLD_CLAUSE_CAPACITY 256
-#define AST_BLOCK_ITEM_CAPACITY 4096
-#define AST_DEFINITION_ITEM_CAPACITY 4096
-#define AST_TYPE_EXPR_CAPACITY 1024
-#define AST_TYPE_DEF_CAPACITY 64
-#define AST_FAMILY_BINDER_CAPACITY 128
-#define AST_TYPE_CONSTRUCTOR_CAPACITY 256
-#define AST_TYPE_FIELD_EXPR_CAPACITY 512
-#define UNIVERSE_NODE_CAPACITY 256
-#define UNIVERSE_EDGE_CAPACITY 512
-#define UNIVERSE_LEVEL_CAPACITY 1024
-#define UNIVERSE_CONSTRAINT_CAPACITY 4096
-#define TERM_CAPACITY 262144
-#define MATCH_CASE_CAPACITY 262144
-#define MATCH_BINDER_CAPACITY 262144
-#define MATCH_FRAME_CAPACITY 4096
-#define JUDGEMENT_CAPACITY 4096
-#define COMPILE_LABEL_CAPACITY 512
-#define COMPILE_TYPE_EXPORT_CAPACITY 256
-#define COMPILE_CONSTRUCTOR_EXPORT_CAPACITY 512
-#define RESOLVE_ERROR_CAPACITY 512
-#define COMPILE_DIAGNOSTIC_CAPACITY 512
-#define RESOLUTION_ITEM_CAPACITY 2048
-#define RESOLUTION_ITERATION_CAPACITY 128
-#define RESOLUTION_EVENT_CAPACITY 2048
-#define OPERATION_CAPACITY 4096
-#define OCCURRENCE_EDGE_CAPACITY (OPERATION_CAPACITY * 8)
-#define OPERATION_CASE_CAPACITY 4096
-#define OPERATION_FOLD_CLAUSE_CAPACITY 4096
-#define EFFECT_CONSTRAINT_CAPACITY 8192
-#define VERIFICATION_OBLIGATION_CAPACITY 4096
 #define INPUT_CAPACITY 8192
 #define LINE_CAPACITY 1024
-
-static int symbol_ids[SYMBOL_MAP_CAPACITY];
-static uint32_t symbol_hashes[SYMBOL_MAP_CAPACITY];
-static char* symbol_strings[SYMBOL_STORAGE_CAPACITY];
-
-static struct prototype_type_declaration type_declaration_storage[TYPE_CAPACITY];
-static struct prototype_type_constructor_declaration constructor_declaration_storage[CONSTRUCTOR_CAPACITY];
-static struct prototype_type_parameter_declaration parameter_declaration_storage[PARAMETER_CAPACITY];
-static uint32_t field_types[FIELD_TYPE_CAPACITY];
-static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
-static struct prototype_type_representation type_representations[TYPE_CAPACITY];
-static struct prototype_ast_node ast_nodes[AST_CAPACITY];
-static struct prototype_ast_type_expectation_def ast_expectations[AST_DEF_CAPACITY];
-static struct prototype_ast_term_assignment_def ast_assignments[AST_DEF_CAPACITY];
-static struct prototype_ast_import_def ast_imports[AST_DEF_CAPACITY];
-static struct prototype_ast_def_open_address_entry ast_def_index[AST_DEF_CAPACITY];
-static struct prototype_ast_match_case ast_match_cases[AST_MATCH_CASE_CAPACITY];
-static struct prototype_ast_binder ast_match_binders[AST_MATCH_BINDER_CAPACITY];
-static struct prototype_ast_computation_fold_clause
-	ast_computation_fold_clauses[AST_COMPUTATION_FOLD_CLAUSE_CAPACITY];
-static uint32_t ast_block_items[AST_BLOCK_ITEM_CAPACITY];
-static uint32_t ast_definition_items[AST_DEFINITION_ITEM_CAPACITY];
-static struct prototype_ast_type_expr ast_type_exprs[AST_TYPE_EXPR_CAPACITY];
-static struct prototype_ast_type_def ast_type_defs[AST_TYPE_DEF_CAPACITY];
-static struct prototype_ast_family_binder ast_family_binders[AST_FAMILY_BINDER_CAPACITY];
-static struct prototype_ast_type_constructor ast_type_constructors[AST_TYPE_CONSTRUCTOR_CAPACITY];
-static uint32_t ast_type_field_exprs[AST_TYPE_FIELD_EXPR_CAPACITY];
-static uint32_t ast_type_field_binder_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
-static int ast_type_field_name_symbol_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
-static struct prototype_universe_node universe_nodes[UNIVERSE_NODE_CAPACITY];
-static struct prototype_universe_edge universe_edges[UNIVERSE_EDGE_CAPACITY];
-static struct prototype_universe_level universe_levels[UNIVERSE_LEVEL_CAPACITY];
-static struct prototype_universe_constraint universe_constraints[UNIVERSE_CONSTRAINT_CAPACITY];
-static struct prototype_term terms[TERM_CAPACITY];
-static struct prototype_match_case match_cases[MATCH_CASE_CAPACITY];
-static int match_case_label_symbols[MATCH_CASE_CAPACITY];
-static struct prototype_case_binder match_binders[MATCH_BINDER_CAPACITY];
-static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
-static struct prototype_judgement_proposition judgements[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_derivation_candidate judgement_proofs[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_claim judgement_claims[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_derivation judgement_derivations[JUDGEMENT_CAPACITY];
-static struct prototype_judgement_candidate_premise judgement_candidate_premises[
-	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-];
-static struct prototype_judgement_premise_edge judgement_accepted_premises[
-	JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-];
-static struct prototype_usage_entry judgement_resource_usage[
-	JUDGEMENT_CAPACITY * 32
-];
-static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
-static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
-static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
-static struct prototype_resolve_error resolve_errors[RESOLVE_ERROR_CAPACITY];
-static struct prototype_compile_diagnostic
-	compile_diagnostics[COMPILE_DIAGNOSTIC_CAPACITY];
-static struct prototype_resolution_item resolution_items[RESOLUTION_ITEM_CAPACITY];
-static struct prototype_resolution_iteration resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
-static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPACITY];
-static struct prototype_context contexts[PROTOTYPE_CONTEXT_CAPACITY];
-static struct prototype_substitution
-	substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
-static struct prototype_typed_occurrence operations[OPERATION_CAPACITY];
-static struct prototype_typed_occurrence_edge
-	occurrence_edges[OCCURRENCE_EDGE_CAPACITY];
-static struct prototype_typed_occurrence_match_case occurrence_match_cases[OPERATION_CASE_CAPACITY];
-static struct prototype_typed_occurrence_fold_clause
-	occurrence_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
-static struct prototype_occurrence_effect_constraint
-	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
-static struct prototype_verification_obligation
-	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
 
 static const struct prototype_compile_label* lookup_label(
 	const struct prototype_compile_metadata* metadata,
@@ -194,14 +79,24 @@ static void print_state(
 		const struct prototype_type_declaration* type = &type_declarations->type_declarations[i];
 		prototype_diagnostic_print_type_declaration(stdout, symbols, type_declarations, type);
 		for (uint32_t j = 0; j < type->constructor_count; ++j) {
+			uint32_t constructor_id = type->first_constructor + j;
 			const struct prototype_type_constructor_declaration* constructor =
-				&type_declarations->constructor_declarations[type->first_constructor + j];
+				&type_declarations->constructor_declarations[constructor_id];
+			const struct prototype_type_constructor_readback* readback =
+				prototype_type_constructor_readback_get(type_declarations, constructor_id);
+			const struct prototype_constructor_classifier_cache_entry* cache =
+				prototype_type_constructor_classifier_cache_get(
+					type_declarations, constructor_id
+				);
+			if (!readback || !cache) {
+				continue;
+			}
 			printf("constructor ");
 			prototype_diagnostic_print_type_namespace(stdout, symbols, type_declarations, type);
 			printf(".%s readback_fields=%u curried_classifier_cache=%u\n",
 				symbol_to_string(symbols, constructor->name_symbol_id),
-				constructor->readback.field_count,
-				constructor->curried_classifier_cache);
+				readback->field_count,
+				cache->classifier);
 		}
 	}
 	if (metadata) {
@@ -695,14 +590,15 @@ static int query_existing_value(
 }
 
 int main(int argc, char** argv) {
-	struct symbol_table symbols;
-	struct prototype_type_declaration_db type_declarations;
-	struct prototype_ast_db ast_db;
-	struct prototype_term_db term_db;
-	struct prototype_universe_db universe_db;
-	struct prototype_judgement_db judgement_db;
-	struct prototype_compile_metadata metadata;
-	struct prototype_program program;
+	struct prototype_program_storage storage;
+	struct symbol_table* symbols;
+	struct prototype_type_declaration_db* type_declarations;
+	struct prototype_ast_db* ast_db;
+	struct prototype_term_db* term_db;
+	struct prototype_universe_db* universe_db;
+	struct prototype_judgement_db* judgement_db;
+	struct prototype_compile_metadata* metadata;
+	struct prototype_program* program;
 	struct prototype_read_options read_options;
 	struct prototype_read_error error;
 	char input[INPUT_CAPACITY];
@@ -726,155 +622,21 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	symbol_table_init(
-		&symbols,
-		symbol_ids,
-		symbol_hashes,
-		SYMBOL_MAP_CAPACITY,
-		symbol_strings,
-		SYMBOL_STORAGE_CAPACITY
-	);
-	prototype_type_declaration_db_init(
-		&type_declarations,
-		type_declaration_storage,
-		TYPE_CAPACITY,
-		constructor_declaration_storage,
-		CONSTRUCTOR_CAPACITY,
-		parameter_declaration_storage,
-		PARAMETER_CAPACITY,
-		field_types,
-		FIELD_TYPE_CAPACITY,
-		type_exprs,
-		TYPE_EXPR_CAPACITY,
-		type_representations,
-		TYPE_CAPACITY
-	);
-	prototype_ast_db_init(
-		&ast_db,
-		ast_nodes,
-		AST_CAPACITY,
-		ast_expectations,
-		AST_DEF_CAPACITY,
-		ast_assignments,
-		AST_DEF_CAPACITY,
-		ast_imports,
-		AST_DEF_CAPACITY,
-		ast_def_index,
-		AST_DEF_CAPACITY,
-		ast_match_cases,
-		AST_MATCH_CASE_CAPACITY,
-		ast_match_binders,
-		AST_MATCH_BINDER_CAPACITY,
-		ast_computation_fold_clauses,
-		AST_COMPUTATION_FOLD_CLAUSE_CAPACITY,
-		ast_block_items,
-		AST_BLOCK_ITEM_CAPACITY,
-		ast_definition_items,
-		AST_DEFINITION_ITEM_CAPACITY,
-		ast_type_exprs,
-		AST_TYPE_EXPR_CAPACITY,
-		ast_type_defs,
-		AST_TYPE_DEF_CAPACITY,
-		ast_family_binders,
-		AST_FAMILY_BINDER_CAPACITY,
-		ast_type_constructors,
-		AST_TYPE_CONSTRUCTOR_CAPACITY,
-		ast_type_field_exprs,
-		ast_type_field_binder_ids,
-		ast_type_field_name_symbol_ids,
-		AST_TYPE_FIELD_EXPR_CAPACITY
-	);
-	prototype_universe_db_init(
-		&universe_db,
-		universe_nodes,
-		UNIVERSE_NODE_CAPACITY,
-		universe_edges,
-		UNIVERSE_EDGE_CAPACITY,
-		universe_levels,
-		UNIVERSE_LEVEL_CAPACITY,
-		universe_constraints,
-		UNIVERSE_CONSTRAINT_CAPACITY
-	);
-	prototype_term_db_init(
-		&term_db,
-		terms,
-		TERM_CAPACITY,
-		match_cases,
-		match_case_label_symbols,
-		MATCH_CASE_CAPACITY,
-		match_binders,
-		MATCH_BINDER_CAPACITY,
-		ih_scopes,
-		MATCH_FRAME_CAPACITY
-	);
-		prototype_compile_metadata_init(
-			&metadata,
-			compile_labels,
-			COMPILE_LABEL_CAPACITY,
-			compile_type_exports,
-			COMPILE_TYPE_EXPORT_CAPACITY,
-			compile_constructor_exports,
-			COMPILE_CONSTRUCTOR_EXPORT_CAPACITY,
-			resolve_errors,
-			RESOLVE_ERROR_CAPACITY,
-			resolution_items,
-			RESOLUTION_ITEM_CAPACITY,
-			resolution_iterations,
-			RESOLUTION_ITERATION_CAPACITY,
-			resolution_events,
-			RESOLUTION_EVENT_CAPACITY,
-			contexts,
-			PROTOTYPE_CONTEXT_CAPACITY,
-			substitutions,
-			PROTOTYPE_SUBSTITUTION_CAPACITY,
-		operations,
-		OPERATION_CAPACITY,
-		occurrence_edges,
-		OCCURRENCE_EDGE_CAPACITY,
-		occurrence_match_cases,
-		OPERATION_CASE_CAPACITY,
-		occurrence_fold_clauses,
-		OPERATION_FOLD_CLAUSE_CAPACITY,
-		effect_constraints,
-		EFFECT_CONSTRAINT_CAPACITY,
-		verification_obligations,
-		VERIFICATION_OBLIGATION_CAPACITY
-	);
-	prototype_compile_metadata_set_diagnostic_storage(
-		&metadata,
-		compile_diagnostics,
-		COMPILE_DIAGNOSTIC_CAPACITY
-	);
-	prototype_judgement_db_init(
-		&judgement_db,
-		judgements,
-		judgement_proofs,
-		judgement_claims,
-		judgement_derivations,
-		JUDGEMENT_CAPACITY,
-		judgement_candidate_premises,
-		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
-		judgement_accepted_premises,
-		JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	);
-	prototype_judgement_db_set_resource_usage_storage(
-		&judgement_db,
-		judgement_resource_usage,
-		JUDGEMENT_CAPACITY * 32
-	);
-
-	program.intrinsic_environment = prototype_default_intrinsic_environment();
-	program.symbols = &symbols;
-	program.namespace_symbol_id = -1;
-	program.asts = &ast_db;
-	program.type_declarations = &type_declarations;
-	program.terms = &term_db;
-	program.judgement = &judgement_db;
-	program.metadata = &metadata;
-	program.universe = &universe_db;
-	program.compile_options.definition_thunk_policy = definition_thunk_policy;
+	if (prototype_program_storage_init(&storage) != 0) {
+		fprintf(stderr, "failed to initialize compiler storage\n");
+		return 1;
+	}
+	symbols = &storage.symbols;
+	type_declarations = &storage.type_declarations;
+	ast_db = &storage.asts;
+	term_db = &storage.terms;
+	universe_db = &storage.universe;
+	judgement_db = &storage.judgement;
+	metadata = &storage.metadata;
+	program = &storage.program;
+	program->compile_options.definition_thunk_policy = definition_thunk_policy;
 	for (int i = first_file_arg; i < argc; ++i) {
-		if (prototype_read_ast_file_with_options(argv[i], &program, &read_options, &error) != 0) {
+		if (prototype_read_ast_file_with_options(argv[i], program, &read_options, &error) != 0) {
 			fprintf(
 				stderr,
 				"%s:%u:%u: %s\n",
@@ -883,10 +645,10 @@ int main(int argc, char** argv) {
 				error.column,
 				error.message[0] ? error.message : "read failed"
 			);
-			symbol_table_free(&symbols);
+			prototype_program_storage_destroy(&storage);
 			return 1;
 		}
-		if (prototype_compile_graph(&program, &error) != 0) {
+		if (prototype_compile_graph(program, &error) != 0) {
 			fprintf(
 				stderr,
 				"%s:%u:%u: %s\n",
@@ -895,27 +657,27 @@ int main(int argc, char** argv) {
 				error.column,
 				error.message[0] ? error.message : "graph compile failed"
 			);
-			prototype_diagnostic_print_resolve_errors(stderr, &symbols, &metadata);
-			prototype_diagnostic_print_compile_diagnostics(stderr, &metadata);
-			symbol_table_free(&symbols);
+			prototype_diagnostic_print_resolve_errors(stderr, symbols, metadata);
+			prototype_diagnostic_print_compile_diagnostics(stderr, metadata);
+			prototype_program_storage_destroy(&storage);
 			return 1;
 		}
 	}
-	int main_symbol = metadata.selected_entry_symbol_id >= 0 ?
-		metadata.selected_entry_symbol_id : symbol_intern(&symbols, "main", 4);
+	int main_symbol = metadata->selected_entry_symbol_id >= 0 ?
+		metadata->selected_entry_symbol_id : symbol_intern(symbols, "main", 4);
 	if (main_symbol < 0) {
 		fprintf(stderr, "failed to intern main symbol\n");
-		symbol_table_free(&symbols);
+		prototype_program_storage_destroy(&storage);
 		return 1;
 	}
 	print_state(
-		&symbols, program.intrinsic_environment, &ast_db, &type_declarations,
-		&term_db, &universe_db, &judgement_db, &metadata
+		symbols, program->intrinsic_environment, ast_db, type_declarations,
+		term_db, universe_db, judgement_db, metadata
 	);
-	if (lookup_label(&metadata, main_symbol)) {
+	if (lookup_label(metadata, main_symbol)) {
 		query_existing_value(
-			&symbols, program.intrinsic_environment,
-			&type_declarations, &term_db, &metadata, main_symbol
+			symbols, program->intrinsic_environment,
+			type_declarations, term_db, metadata, main_symbol
 		);
 	}
 
@@ -934,15 +696,15 @@ int main(int argc, char** argv) {
 		}
 		if (input_len == 0 && strcmp(line, ":state\n") == 0) {
 			print_state(
-				&symbols, program.intrinsic_environment, &ast_db,
-				&type_declarations, &term_db, &universe_db, &judgement_db, &metadata
+				symbols, program->intrinsic_environment, ast_db,
+				type_declarations, term_db, universe_db, judgement_db, metadata
 			);
 			printf("prototype> ");
 			fflush(stdout);
 			continue;
 		}
 		if (input_len == 0 && strcmp(line, ":ast\n") == 0) {
-			prototype_ast_inspect_print(stdout, &symbols, &ast_db);
+			prototype_ast_inspect_print(stdout, symbols, ast_db);
 			printf("prototype> ");
 			fflush(stdout);
 			continue;
@@ -951,8 +713,8 @@ int main(int argc, char** argv) {
 			char query_name[128];
 			if (is_named_command(line, ":type", query_name, sizeof(query_name))) {
 				query_type(
-					&symbols, program.intrinsic_environment,
-					&type_declarations, &term_db, &metadata, query_name
+					symbols, program->intrinsic_environment,
+					type_declarations, term_db, metadata, query_name
 				);
 				printf("prototype> ");
 				fflush(stdout);
@@ -960,8 +722,8 @@ int main(int argc, char** argv) {
 			}
 			if (is_named_command(line, ":whnf", query_name, sizeof(query_name))) {
 				query_normal_form(
-					&symbols, program.intrinsic_environment,
-					&type_declarations, &term_db, &metadata, query_name, 0
+					symbols, program->intrinsic_environment,
+					type_declarations, term_db, metadata, query_name, 0
 				);
 				printf("prototype> ");
 				fflush(stdout);
@@ -969,8 +731,8 @@ int main(int argc, char** argv) {
 			}
 			if (is_named_command(line, ":nf", query_name, sizeof(query_name))) {
 				query_normal_form(
-					&symbols, program.intrinsic_environment,
-					&type_declarations, &term_db, &metadata, query_name, 1
+					symbols, program->intrinsic_environment,
+					type_declarations, term_db, metadata, query_name, 1
 				);
 				printf("prototype> ");
 				fflush(stdout);
@@ -978,8 +740,8 @@ int main(int argc, char** argv) {
 			}
 			if (is_query_line(line, query_name, sizeof(query_name))) {
 				query_value(
-					&symbols, program.intrinsic_environment,
-					&type_declarations, &term_db, &metadata, query_name
+					symbols, program->intrinsic_environment,
+					type_declarations, term_db, metadata, query_name
 				);
 				printf("prototype> ");
 				fflush(stdout);
@@ -1004,7 +766,7 @@ int main(int argc, char** argv) {
 
 		char name[48];
 		snprintf(name, sizeof(name), "<interactive:%u>", entry_index++);
-		if (prototype_read_ast_string_with_options(name, input, &program, &read_options, &error) != 0) {
+		if (prototype_read_ast_string_with_options(name, input, program, &read_options, &error) != 0) {
 			fprintf(
 				stderr,
 				"%s:%u:%u: %s\n",
@@ -1013,7 +775,7 @@ int main(int argc, char** argv) {
 				error.column,
 				error.message[0] ? error.message : "read failed"
 			);
-		} else if (prototype_compile_graph(&program, &error) != 0) {
+		} else if (prototype_compile_graph(program, &error) != 0) {
 			fprintf(
 				stderr,
 				"%s:%u:%u: %s\n",
@@ -1022,12 +784,12 @@ int main(int argc, char** argv) {
 				error.column,
 				error.message[0] ? error.message : "graph compile failed"
 			);
-			prototype_diagnostic_print_resolve_errors(stderr, &symbols, &metadata);
-			prototype_diagnostic_print_compile_diagnostics(stderr, &metadata);
+			prototype_diagnostic_print_resolve_errors(stderr, symbols, metadata);
+			prototype_diagnostic_print_compile_diagnostics(stderr, metadata);
 		} else {
 			print_state(
-				&symbols, program.intrinsic_environment, &ast_db,
-				&type_declarations, &term_db, &universe_db, &judgement_db, &metadata
+				symbols, program->intrinsic_environment, ast_db,
+				type_declarations, term_db, universe_db, judgement_db, metadata
 			);
 		}
 
@@ -1037,6 +799,6 @@ int main(int argc, char** argv) {
 		fflush(stdout);
 	}
 
-	symbol_table_free(&symbols);
+	prototype_program_storage_destroy(&storage);
 	return 0;
 }

@@ -20,13 +20,12 @@ enum prototype_occurrence_effect_constraint_state {
 	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_INCOMPLETE = 4
 };
 
-/*
- * Effect constraints are occurrence-level compiler state. Row fields are
- * TermDB ids; operation identifies the typed source occurrence whose
- * classifier owns result_row. EXACT uses left_row as the required row and
- * leaves right_row invalid.
- */
+/* Immutable compiler-local diagnostic snapshot of an occurrence-level effect
+ * equation. Row fields are TermDB ids; occurrence identifies the typed source
+ * occurrence whose classifier owns result_row. The solver never reads this
+ * projection, and artifacts contain only explicit residual obligations. */
 struct prototype_occurrence_effect_constraint {
+	uint32_t id;
 	int kind;
 	int state;
 	uint32_t occurrence;
@@ -38,7 +37,8 @@ struct prototype_occurrence_effect_constraint {
 /* Residual verification is distinct from JudgementDB: a record here is a
  * conditional runtime obligation, never a closed has-type derivation. */
 enum prototype_verification_obligation_kind {
-	PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT = 1
+	PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT = 1,
+	PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION = 2
 };
 
 enum prototype_verification_obligation_state {

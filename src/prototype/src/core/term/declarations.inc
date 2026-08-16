@@ -1,6 +1,7 @@
 #include "a_program/core/term.h"
 
 #include "a_program/kernel/type_declaration.h"
+#include "a_program/support/storage.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -13,9 +14,7 @@
 #define PROTOTYPE_CANONICAL_HASH_OFFSET 1469598103934665603ULL
 #define PROTOTYPE_CANONICAL_HASH_PRIME 1099511628211ULL
 
-static int reserve_slot(size_t count, size_t capacity) {
-	return count < capacity ? 0 : -1;
-}
+#define reserve_slot prototype_storage_reserve_slot
 
 static int qualified_names_equal(
 	struct prototype_qualified_name left,

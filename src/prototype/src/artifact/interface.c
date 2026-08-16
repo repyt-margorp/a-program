@@ -650,9 +650,9 @@ int prototype_artifact_interface_build_from_metadata(
 	if (metadata->label_count > interface->term_export_capacity ||
 		metadata->type_export_count > interface->type_export_capacity ||
 		metadata->constructor_export_count > interface->constructor_export_capacity ||
-		type_declarations->parameter_count > interface->type_parameter_capacity ||
-		type_declarations->readback_field_type_count > interface->constructor_field_type_expr_capacity ||
-		type_declarations->expr_count > interface->type_expr_capacity) {
+		type_declarations->readback.parameter_count > interface->type_parameter_capacity ||
+		type_declarations->readback.field_type_count > interface->constructor_field_type_expr_capacity ||
+		type_declarations->readback.expr_count > interface->type_expr_capacity) {
 		return -1;
 	}
 
@@ -664,23 +664,23 @@ int prototype_artifact_interface_build_from_metadata(
 	interface->type_expr_count = 0;
 	interface->dependency_count = 0;
 
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		interface->type_exprs[interface->type_expr_count++] =
-			type_declarations->exprs[i];
+			type_declarations->readback.exprs[i];
 	}
-	for (size_t i = 0; i < type_declarations->parameter_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.parameter_count; ++i) {
 		const struct prototype_type_parameter_declaration* parameter =
-			&type_declarations->parameter_declarations[i];
+			&type_declarations->readback.parameter_declarations[i];
 		struct prototype_artifact_type_parameter_export* export =
 			&interface->type_parameters[interface->type_parameter_count++];
 		export->binding_id = parameter->binding_id;
 		export->name_symbol_id = parameter->name_symbol_id;
 		export->type_expr = parameter->type_expr;
 	}
-	for (size_t i = 0; i < type_declarations->readback_field_type_count; ++i) {
+	for (size_t i = 0; i < type_declarations->readback.field_type_count; ++i) {
 		interface->constructor_field_type_exprs[
 			interface->constructor_field_type_expr_count++
-		] = type_declarations->readback_field_types[i];
+		] = type_declarations->readback.field_types[i];
 	}
 
 	for (size_t i = 0; i < metadata->label_count; ++i) {
@@ -1106,8 +1106,8 @@ int prototype_artifact_interface_collect_dependencies(
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->expr_count; ++i) {
-		const struct prototype_type_expr* expr = &type_declarations->exprs[i];
+	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
+		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		if (expr->tag == PROTOTYPE_TYPE_EXPR_NAME &&
 			!prototype_type_declaration_lookup(type_declarations, expr->as.name.symbol_id) &&
 			prototype_artifact_interface_add_dependency(interface, expr->as.name.symbol_id) != 0) {

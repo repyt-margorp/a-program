@@ -20,11 +20,30 @@ static struct prototype_case_binder case_binders[CASE_BINDER_CAPACITY];
 static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration constructor_declarations[CONSTRUCTOR_CAPACITY];
+static struct prototype_type_constructor_readback constructor_readbacks[CONSTRUCTOR_CAPACITY];
+static struct prototype_constructor_classifier_cache_entry constructor_caches[CONSTRUCTOR_CAPACITY];
 static struct prototype_type_parameter_declaration parameter_declarations[PARAMETER_CAPACITY];
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
 static struct prototype_type_representation type_representations[TYPE_CAPACITY];
 static struct prototype_context contexts[8];
+
+static int add_nullary_constructor(
+	struct prototype_type_declaration_db* types,
+	uint32_t type_id,
+	int name_symbol_id,
+	uint32_t self_expr,
+	uint32_t classifier,
+	uint32_t* p_constructor_id
+) {
+	return prototype_type_declaration_add_constructor_schema(
+		types, type_id, name_symbol_id, 0, 0, classifier, p_constructor_id
+	) != 0 || prototype_type_readback_attach_constructor(
+		types, *p_constructor_id, NULL, 0, self_expr
+	) != 0 || prototype_type_constructor_classifier_cache_set(
+		types, *p_constructor_id, classifier
+	) != 0 ? -1 : 0;
+}
 
 static int add_nullary_type(
 	struct prototype_term_db* terms_db,
@@ -50,18 +69,9 @@ static int add_nullary_type(
 		return -1;
 	}
 	for (uint32_t i = 0; i < constructor_count; ++i) {
-		if (prototype_type_declaration_add_constructor(
-				types_db,
-				*p_type_id,
-				name_symbol_id + i + 1,
-				NULL,
-				0,
-				self_expr,
-				0,
-				0,
-				view,
-				view,
-				&constructor_id
+		if (add_nullary_constructor(
+				types_db, *p_type_id, name_symbol_id + i + 1,
+				self_expr, view, &constructor_id
 			) != 0) {
 			return -1;
 		}
@@ -93,12 +103,16 @@ int main(void) {
 		CONSTRUCTOR_CAPACITY,
 		parameter_declarations,
 		PARAMETER_CAPACITY,
+		constructor_readbacks,
+		CONSTRUCTOR_CAPACITY,
 		field_types,
 		FIELD_TYPE_CAPACITY,
 		type_exprs,
 		TYPE_EXPR_CAPACITY,
 		type_representations,
-		TYPE_CAPACITY
+		TYPE_CAPACITY,
+		constructor_caches,
+		CONSTRUCTOR_CAPACITY
 	);
 	prototype_context_db_init(&context_db, contexts, 8);
 
@@ -113,26 +127,37 @@ int main(void) {
 	type_db.type_declarations[bool_type_id].index_context = 0;
 	if (prototype_type_expr_self(&type_db, &self_expr) != 0) return 12;
 	if (prototype_term_type_instance_make(&term_db, &type_db, bool_type_id, NULL, 0, &bool_view) != 0) return 13;
-	if (prototype_type_declaration_add_constructor(
-		&type_db, bool_type_id, 11, NULL, 0, self_expr,
-		0, 0, bool_view, bool_view, &ignored_constructor
+	if (add_nullary_constructor(
+		&type_db, bool_type_id, 11, self_expr, bool_view, &ignored_constructor
 	) != 0) return 15;
-	if (prototype_type_declaration_add_constructor(
-		&type_db, bool_type_id, 12, NULL, 0, self_expr,
-		0, 0, bool_view, bool_view, &ignored_constructor
+	if (add_nullary_constructor(
+		&type_db, bool_type_id, 12, self_expr, bool_view, &ignored_constructor
 	) != 0) return 16;
 	if (prototype_type_declaration_add(&type_db, 2, &two_type_id) != 0) return 11;
 	type_db.type_declarations[two_type_id].parameter_context = 0;
 	type_db.type_declarations[two_type_id].index_context = 0;
 	if (prototype_term_type_instance_make(&term_db, &type_db, two_type_id, NULL, 0, &two_view) != 0) return 14;
-	if (prototype_type_declaration_add_constructor(
-		&type_db, two_type_id, 21, NULL, 0, self_expr,
-		0, 0, two_view, two_view, &ignored_constructor
+	if (add_nullary_constructor(
+		&type_db, two_type_id, 21, self_expr, two_view, &ignored_constructor
 	) != 0) return 17;
-	if (prototype_type_declaration_add_constructor(
-		&type_db, two_type_id, 22, NULL, 0, self_expr,
-		0, 0, two_view, two_view, &ignored_constructor
+	if (add_nullary_constructor(
+		&type_db, two_type_id, 22, self_expr, two_view, &ignored_constructor
 	) != 0) return 18;
+
+	/* Constructor classification is schema-derived. Neither a missing cache nor
+	 * corrupted source readback may change the semantic classifier. */
+	type_db.readback.constructor_readbacks[0].result_type = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < type_db.constructor_count; ++i) {
+		type_db.constructor_classifier_cache.entries[i].classifier = PROTOTYPE_INVALID_ID;
+		type_db.constructor_classifier_cache.entries[i].schema_revision = 0;
+		uint32_t rebuilt_classifier;
+		if (prototype_type_constructor_classifier(
+				&type_db, &context_db, &term_db, i, &rebuilt_classifier
+			) != 0 || rebuilt_classifier !=
+				(i < 2 ? bool_view : two_view)) {
+			return 21;
+		}
+	}
 	if (prototype_type_declaration_rebuild_representations(
 			&term_db, &type_db, &context_db
 		) != 0) return 19;
@@ -238,6 +263,8 @@ int main(void) {
 	struct prototype_ih_scope cross_ih_scopes[8];
 	struct prototype_type_declaration cross_types[4];
 	struct prototype_type_constructor_declaration cross_constructors[8];
+	struct prototype_type_constructor_readback cross_constructor_readbacks[8];
+	struct prototype_constructor_classifier_cache_entry cross_constructor_caches[8];
 	struct prototype_type_parameter_declaration cross_parameters[4];
 	uint32_t cross_fields[8];
 	struct prototype_type_expr cross_exprs[8];
@@ -266,12 +293,16 @@ int main(void) {
 		8,
 		cross_parameters,
 		4,
+		cross_constructor_readbacks,
+		8,
 		cross_fields,
 		8,
 		cross_exprs,
 		8,
 		cross_representations,
-		4
+		4,
+		cross_constructor_caches,
+		8
 	);
 	prototype_context_db_init(&cross_context_db, cross_contexts, 4);
 	uint32_t cross_two_type;
@@ -303,14 +334,17 @@ int main(void) {
 		type_db.type_declarations[bool_type_id].representation_id;
 	uint32_t one_representation =
 		cross_type_db.type_declarations[cross_one_type].representation_id;
-	if (bool_representation >= type_db.representation_count ||
-		one_representation >= cross_type_db.representation_count) {
+	if (bool_representation >= type_db.representation_db.representation_count ||
+		one_representation >= cross_type_db.representation_db.representation_count) {
 		return 23;
 	}
 	/* A fingerprint is only a prefilter. Simulating a collision must not make
 	 * structurally different constructor schemas equal. */
-	cross_type_db.representations[one_representation].fingerprint =
-		type_db.representations[bool_representation].fingerprint;
+	cross_type_db.representation_db.representations[
+		one_representation
+	].fingerprint = type_db.representation_db.representations[
+		bool_representation
+	].fingerprint;
 	if (prototype_type_declaration_representations_equal(
 			&term_db,
 			&type_db,

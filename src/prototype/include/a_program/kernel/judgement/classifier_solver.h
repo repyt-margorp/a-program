@@ -8,14 +8,6 @@ struct prototype_judgement_delta;
 struct prototype_match_constructor_resolution;
 struct prototype_match_resolution_request;
 
-int prototype_judgement_type_expr_term(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t type_expr,
-	uint32_t self_type,
-	uint32_t* p_ret
-);
-
 int prototype_judgement_resolve_match_constructor(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -139,7 +131,9 @@ int prototype_judgement_delta_record_cbpv_boundary(
 int prototype_judgement_delta_infer_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_judgement_computation_constraint_result* results,
+	size_t result_capacity
 );
 
 /* Solve COMPUTATION_FOLD and OPERATION_REQUEST constraints after source lowering
@@ -147,17 +141,23 @@ int prototype_judgement_delta_infer_computation_constraints(
 int prototype_judgement_delta_solve_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_judgement_computation_constraint_result* results,
+	size_t result_capacity
 );
 int prototype_judgement_delta_solve_recorded_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_judgement_computation_constraint_result* results,
+	size_t result_capacity
 );
 int prototype_judgement_delta_solve_recorded_computation_requests(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_judgement_computation_constraint_result* results,
+	size_t result_capacity
 );
 int prototype_judgement_delta_record_computation_constraint(
 	struct prototype_judgement_delta* delta,

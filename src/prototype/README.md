@@ -19,7 +19,7 @@ src/core/             erased computation terms
 src/kernel/           contexts, declarations, universes, and judgements
 src/frontend/         reader, surface AST, and lowering
 src/graph/            typed-occurrence metadata, runtime annotations, compile metadata
-src/artifact/         interface publication, v75 wire format, relocation, link
+src/artifact/         interface publication, v76 wire format, relocation, link
 src/identity/         relation action and object Identity computation
 src/driver/           command-line and REPL entry points
 tests/checks/         compiled audit programs
@@ -56,7 +56,7 @@ proof/action construction order.
   occurrence record stores the source Context, classifier/provenance data, and
   a reference to the shared `core_term`; it is not a second runtime syntax tree.
 - `include/a_program/artifact/`, `src/artifact/`: artifact interface,
-  publication closure, v75 wire reader/writer, relocation, and linking.
+  publication closure, v76 wire reader/writer, relocation, and linking.
 - `include/a_program/kernel/judgement/`, `src/kernel/judgement.c`,
   `src/kernel/typing/`, and `src/kernel/rules/`: Proposition, Claim, and
   Derivation storage; classifier conversion and solving; candidate publication;
@@ -519,16 +519,18 @@ wall-clock time:
 ```
 
 The same source, linked interfaces, reduction profile, policy, and step limits
-must produce the same verification frontier and artifact. Different limits may
-close different amounts of pure work, but machine speed does not affect the
-result. The current implementation rejects arbitrary incomplete solver work;
-`hybrid` permits only residual obligations with a defined runtime verifier.
+must produce the same verification frontier. Different limits may close
+different amounts of pure work, but machine speed does not affect the result.
+Budgets and consumed-step counters stay compiler-local; the artifact records
+only the resulting solved classifiers and versioned residual obligations. The
+current implementation rejects arbitrary incomplete solver work; `hybrid`
+permits only residual obligations with a defined runtime verifier.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 75 <calculus-fingerprint>`. The reader accepts that version
+`A_PROGRAM_ARTIFACT 76 <calculus-fingerprint>`. The reader accepts that version
 and exact fingerprint only; old artifact versions are intentionally rejected
 instead of being kept as compatibility paths. The canonical format and trust
-boundary are specified by `spec/artifact_v75.schema`; the implemented
+boundary are specified by `spec/artifact_v76.schema`; the implemented
 HOTT/Identity fragment is specified by `spec/hott_fragment_v5.schema`.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor
@@ -548,8 +550,8 @@ orphaned, out-of-range, or semantically invalid proof evidence and replays
 accepted rules without search.
 The `typed_occurrences` section stores occurrence-local records, role-indexed
 edges, Match cases, computation-fold clause bodies and binder identities,
-residual verification obligations, deterministic normalization and solver step
-budgets, compile policy, and required runtime capabilities. Runtime capability
+residual verification obligations, compile policy, and required runtime
+capabilities. Runtime capability
 metadata is recomputed from the loaded graph and rejected when the serialized
 declaration understates its requirements. Source binder identities are
 relocated independently from TermDB binder ids when artifacts are combined.
@@ -740,7 +742,7 @@ make -f src/prototype/Makefile test-integration
 
 It checks that `identityBool := \x : Bool => x;` and
 `identityNat := \y : Nat => y;` publish the same core lambda term, that artifact
-v75 debug/name records are readable, that term exports keep distinct classifier
+v76 debug/name records are readable, that term exports keep distinct classifier
 keys even when they share a core term, that a split `Nat.apo` + `List.apo`
 compile can build `(List Nat).nil` through explicit interface imports and
 through source-level `import Nat; import List;` plus `--import-search-dir`, and

@@ -222,7 +222,7 @@ void prototype_diagnostic_print_type_namespace(
 	fprintf(stream, "(%s", symbol_to_string(symbols, type->name_symbol_id));
 	for (uint32_t i = 0; i < type->parameter_count; ++i) {
 		const struct prototype_type_parameter_declaration* parameter =
-			&type_declarations->parameter_declarations[type->first_parameter + i];
+			&type_declarations->readback.parameter_declarations[type->first_parameter + i];
 		fprintf(stream, " %s", symbol_to_string(symbols, parameter->name_symbol_id));
 	}
 	fprintf(stream, ")");
@@ -239,11 +239,11 @@ static void print_type_expr(
 		fprintf(stream, "UNSPECIFIED_TYPE");
 		return;
 	}
-	if (type_expr >= types->expr_count) {
+	if (type_expr >= types->readback.expr_count) {
 		fprintf(stream, "BAD_TYPE(%u)", type_expr);
 		return;
 	}
-	const struct prototype_type_expr* expr = &types->exprs[type_expr];
+	const struct prototype_type_expr* expr = &types->readback.exprs[type_expr];
 	switch (expr->tag) {
 		case PROTOTYPE_TYPE_EXPR_UNIVERSE:
 			fprintf(stream, "TYPE(%u)", expr->as.universe.level);
