@@ -8,7 +8,7 @@ static int hott_action_request_is_valid(
 	const struct prototype_hott_bridge_db* bridges,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement
 ) {
 	if (!db || !request || request->id != expected_id ||
@@ -210,8 +210,8 @@ int prototype_hott_action_request_intern(
 	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
 	struct prototype_type_declaration_db* type_declarations =
 		kernel ? kernel->type_declarations : NULL;
-	const struct prototype_operation_graph* operations =
-		kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations =
+		kernel ? kernel->occurrences : NULL;
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	if (!db || !p_request_id || !db->requests ||
@@ -499,7 +499,7 @@ static int hott_action_certificate_is_valid(
 	const struct prototype_hott_bridge_db* bridges,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement
 ) {
 	(void)substitutions;
@@ -1650,8 +1650,8 @@ int prototype_hott_action_certificate_add(
 	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
 	struct prototype_type_declaration_db* type_declarations =
 		kernel ? kernel->type_declarations : NULL;
-	const struct prototype_operation_graph* operations =
-		kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations =
+		kernel ? kernel->occurrences : NULL;
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	if (!db || !p_certificate_id || !db->certificates ||

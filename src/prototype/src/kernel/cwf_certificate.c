@@ -28,8 +28,8 @@ static int context_certificate_is_valid(
 		prototype_context_classifier_variable(context) == PROTOTYPE_INVALID_ID &&
 		claim && prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
 		prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id == context->parent && prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == classifier &&
-		prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id == PROTOTYPE_INVALID_ID &&
-		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id == PROTOTYPE_INVALID_ID &&
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
 		prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier < terms->term_count &&
 		prototype_judgement_classifier_value_whnf(
 			terms, type_declarations, prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier, &classifier_classifier

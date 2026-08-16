@@ -60,7 +60,7 @@ int prototype_judgement_add_relation_type_formation(
 	struct prototype_judgement_proposition relation = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = relation_type,
 		.classifier = universe
 	};
@@ -72,7 +72,7 @@ int prototype_judgement_add_relation_type_formation(
 		PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = relation_type;
 	proof.conclusion_classifier = universe;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -86,7 +86,7 @@ int prototype_judgement_add_relation_type_formation(
 		proof.premises[i].proposition.classifier = evidence.classifier;
 		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
 		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.operation_id = evidence.operation_id;
+		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &relation, &proof, premise_ids, p_claim_id
@@ -153,7 +153,7 @@ int prototype_judgement_add_relation_witness_intro(
 	struct prototype_judgement_proposition result = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = witness,
 		.classifier = relation_type
 	};
@@ -164,7 +164,7 @@ int prototype_judgement_add_relation_witness_intro(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RELATION_WITNESS_INTRO;
 	proof.conclusion_kind = result.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = witness;
 	proof.conclusion_classifier = relation_type;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -188,7 +188,7 @@ int prototype_judgement_add_relation_witness_intro(
 		proof.premises[i].proposition.classifier = evidence.classifier;
 		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
 		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.operation_id = evidence.operation_id;
+		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -309,7 +309,7 @@ int prototype_judgement_add_relation_constructor_witness(
 	struct prototype_judgement_proposition result = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = witness,
 		.classifier = relation_type
 	};
@@ -321,7 +321,7 @@ int prototype_judgement_add_relation_constructor_witness(
 		PROTOTYPE_JUDGEMENT_PROOF_RELATION_CONSTRUCTOR_WITNESS;
 	proof.conclusion_kind = result.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = witness;
 	proof.conclusion_classifier = relation_type;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -337,7 +337,7 @@ int prototype_judgement_add_relation_constructor_witness(
 		proof.premises[i].proposition.classifier = evidence.classifier;
 		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
 		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.operation_id = evidence.operation_id;
+		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
 	}
 	(void)left_head;
 	(void)right_head;
@@ -440,7 +440,7 @@ int prototype_judgement_add_relation_unary_witness(
 	struct prototype_judgement_proposition result = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = witness,
 		.classifier = relation_type
 	};
@@ -451,7 +451,7 @@ int prototype_judgement_add_relation_unary_witness(
 	proof.proof_kind = proof_kind;
 	proof.conclusion_kind = result.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = witness;
 	proof.conclusion_classifier = relation_type;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -467,7 +467,7 @@ int prototype_judgement_add_relation_unary_witness(
 		proof.premises[i].proposition.classifier = evidence.classifier;
 		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
 		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.operation_id = evidence.operation_id;
+		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -569,7 +569,7 @@ int prototype_judgement_add_relation_app_witness(
 	struct prototype_judgement_proposition result = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = witness,
 		.classifier = relation_type
 	};
@@ -580,7 +580,7 @@ int prototype_judgement_add_relation_app_witness(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RELATION_APP_WITNESS;
 	proof.conclusion_kind = result.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = witness;
 	proof.conclusion_classifier = relation_type;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -596,7 +596,7 @@ int prototype_judgement_add_relation_app_witness(
 		proof.premises[i].proposition.classifier = evidence.classifier;
 		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
 		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.operation_id = evidence.operation_id;
+		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -760,7 +760,7 @@ int prototype_judgement_add_relation_lambda_witness(
 	struct prototype_judgement_proposition result = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = witness,
 		.classifier = relation_type
 	};
@@ -771,7 +771,7 @@ int prototype_judgement_add_relation_lambda_witness(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RELATION_LAMBDA_WITNESS;
 	proof.conclusion_kind = result.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = witness;
 	proof.conclusion_classifier = relation_type;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -787,7 +787,7 @@ int prototype_judgement_add_relation_lambda_witness(
 		proof.premises[i].proposition.classifier = evidence.classifier;
 		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
 		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.operation_id = evidence.operation_id;
+		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -1036,7 +1036,7 @@ int prototype_judgement_add_relation_match_witness(
 	struct prototype_judgement_proposition result = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = witness,
 		.classifier = relation_type
 	};
@@ -1047,7 +1047,7 @@ int prototype_judgement_add_relation_match_witness(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_RELATION_MATCH_WITNESS;
 	proof.conclusion_kind = result.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = witness;
 	proof.conclusion_classifier = relation_type;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -1063,7 +1063,7 @@ int prototype_judgement_add_relation_match_witness(
 		proof.premises[i].proposition.classifier = evidence.classifier;
 		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
 		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.operation_id = evidence.operation_id;
+		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -1163,7 +1163,7 @@ int prototype_judgement_add_relation_induction_hypothesis_witness(
 	struct prototype_judgement_proposition result = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = witness,
 		.classifier = relation_type
 	};
@@ -1175,7 +1175,7 @@ int prototype_judgement_add_relation_induction_hypothesis_witness(
 		PROTOTYPE_JUDGEMENT_PROOF_RELATION_INDUCTION_HYPOTHESIS_WITNESS;
 	proof.conclusion_kind = result.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = witness;
 	proof.conclusion_classifier = relation_type;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -1191,7 +1191,7 @@ int prototype_judgement_add_relation_induction_hypothesis_witness(
 		proof.premises[i].proposition.classifier = evidence.classifier;
 		proof.premises[i].proposition.authority_kind = evidence.authority_kind;
 		proof.premises[i].proposition.authority_id = evidence.authority_id;
-		proof.premises[i].proposition.operation_id = evidence.operation_id;
+		proof.premises[i].proposition.occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id

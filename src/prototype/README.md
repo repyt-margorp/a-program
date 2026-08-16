@@ -18,8 +18,8 @@ src/support/          symbols and allocation-independent support
 src/core/             erased computation terms
 src/kernel/           contexts, declarations, universes, and judgements
 src/frontend/         reader, surface AST, and lowering
-src/graph/            typed OperationGraph and compile metadata
-src/artifact/         interface publication, v74 wire format, relocation, link
+src/graph/            typed-occurrence metadata, runtime annotations, compile metadata
+src/artifact/         interface publication, v75 wire format, relocation, link
 src/identity/         relation action and object Identity computation
 src/driver/           command-line and REPL entry points
 tests/checks/         compiled audit programs
@@ -52,11 +52,11 @@ proof/action construction order.
   to by `id` to the constructor term `Bool.true`.
 - `include/a_program/frontend/ast.h`, `src/frontend/ast.c`, and
   `src/frontend/lowering.c`: surface AST storage and lowering.
-- `include/a_program/graph/`: typed OperationGraph and compile metadata. An
-  operation node records the source occurrence, its typed binder and Match
-  information, and a pointer to the erased `core_term`.
+- `include/a_program/graph/`: TypedOccurrenceGraph and compile metadata. An
+  occurrence record stores the source Context, classifier/provenance data, and
+  a reference to the shared `core_term`; it is not a second runtime syntax tree.
 - `include/a_program/artifact/`, `src/artifact/`: artifact interface,
-  publication closure, v74 wire reader/writer, relocation, and linking.
+  publication closure, v75 wire reader/writer, relocation, and linking.
 - `include/a_program/kernel/judgement/`, `src/kernel/judgement.c`,
   `src/kernel/typing/`, and `src/kernel/rules/`: Proposition, Claim, and
   Derivation storage; classifier conversion and solving; candidate publication;
@@ -77,7 +77,7 @@ Current commands and documentation must use these paths. Date-stamped files in
 existed at that document's baseline and is not an active build instruction.
 
 Distinct source operations such as `\x : Bool => x` and `\y : Nat => y`
-therefore retain distinct operation nodes and classifiers while intentionally
+therefore retain distinct occurrence records and classifiers while intentionally
 sharing one erased core lambda node.
 
 The type prototype models each type as a finite set of constructors. Constructor
@@ -91,8 +91,8 @@ The current lowering boundary is:
 
 ```text
 surface AST + resolved signature
-  -> Context-indexed OperationGraph
   -> shared context-erased TermDB
+  -> Context-indexed TypedOccurrenceGraph over that TermDB
   -> Context-indexed constraints and JudgementDB proofs
 ```
 
@@ -137,15 +137,15 @@ Core debug readback deliberately prints graph structure and stable identities.
 Human-facing value readback may be shown beside it, but never replaces the
 Core form used for proof and artifact auditing.
 
-Every OperationGraph node and Match case is inserted with an existing Context
+Every TypedOccurrenceGraph node and Match case is inserted with an existing Context
 ID. Lambda bodies extend the outer Context. Match case bodies use an
 instantiated constructor-field telescope. APP remains in the outer Context.
 The AST itself is not treated as a categorical object because unresolved names
 and parser scope have not yet formed typed syntax.
 
-Erasure from OperationGraph to TermDB is intentionally many-to-one. Thus
+Erasure from TypedOccurrenceGraph to TermDB is intentionally many-to-one. Thus
 `identityBool` and `identityNat` can point to one core identity lambda while
-their operation occurrences, Contexts, classifiers, proofs, TypeViews, and
+their typed occurrences, Contexts, classifiers, proofs, TypeViews, and
 names remain distinct.
 
 Constructor fields and Pi binders share Context telescope and reindexing
@@ -173,20 +173,20 @@ closed. It never performs type-directed reassociation.
 
 ## Canonical Term Identity
 
-The core term graph is the computation representation only. It intentionally
+The Core Term graph is the computation representation. It intentionally
 does not decide which typed source operation a shared node denotes. The
-operation graph is the AST-lowered annotation layer: its `APP`, `LAMBDA`, and
+typed-occurrence graph is the AST-lowered annotation layer: its `APP`, `LAMBDA`, and
 `MATCH` nodes retain the source-level type views and resolved constructor
 owners, and each points to a core term. Evaluation and graph interning operate
-only on the core graph. Classifier synthesis uses operation edges when it needs
+only on the core graph. Classifier synthesis uses occurrence edges when it needs
 the classifier of a particular source occurrence, rather than collecting all
 classifiers ever attached to the shared core node.
-Operation nodes also retain their source symbol, lambda binder symbol, and
+Typed occurrence records also retain their source symbol, lambda binder symbol, and
 match-case label where applicable; these labels are never inputs to core graph
 interning or evaluation.
 
 A top-level `name :: T` is represented as an `ASCRIPTION` operation whose body
-is the lowered definition operation. It guides operation-layer synthesis for
+is the lowered definition operation. It guides occurrence-layer synthesis for
 uses of `name`; checking compares the body operation's synthesized classifier
 with `T`. It is not emitted as an unproved core `HAS_TYPE` declaration merely
 because the core term is shared with another source operation.
@@ -234,20 +234,18 @@ instead of the numeric frame id. Terms that still contain unrelocated frame-loca
 references are flagged so an artifact linker can reject or relocate them
 explicitly.
 
-## Artifact Operation Boundaries
+## Artifact Typed-Occurrence Boundaries
 
-The operation graph is the serialized occurrence-level executable view. Each
-operation points to an erased TermDB root, but it also retains the source
-children, selected classifier, source binder identities, Match cases, and
-HANDLE clause scope needed to execute the typed occurrence without choosing a
-classifier from every judgement attached to the shared core root. TermDB
-remains the shared computation and classifier-expression graph; it is not the
-runtime environment.
+The typed-occurrence graph is the serialized static occurrence view. Each
+record points to a Core Term root and retains its selected classifier, Context,
+source binder identities, Match/fold side-table references, and role-indexed
+occurrence edges. Runtime reduction follows Core Term topology. Occurrence data
+is consulted only for tracing and explicit residual verification.
 
-The artifact interface exposes named operation boundaries as:
+The artifact interface exposes named occurrence boundaries as:
 
 ```
-(qualified name, local operation root, local erased core root,
+(qualified name, local occurrence root, local erased core root,
  classifier-or-residual, transparency)
 ```
 
@@ -255,7 +253,7 @@ Two exports may intentionally
 have the same `local_term` and distinct classifiers, such as `identityBool` and
 `identityNat`; the qualified export names remain distinct API entries. The
 linker may intern their core roots, but must not merge their export records or
-classifiers. Nested operations are serialized because BIND, Match, handler
+classifiers. Nested occurrences are serialized because BIND, Match, handler
 resumption, and residual verification must preserve occurrence identity across
 artifact readback and linking. Source display names and spans remain debug
 information rather than core graph identity.
@@ -267,11 +265,11 @@ step-bounded pure normalization and
 `prototype_term_normalization_equal_with_profile` for profile-specific
 conversion. Only a `COMPLETE` normalization result may establish kernel
 conversion. `BLOCKED_EFFECT` and `EXHAUSTED` preserve a residual frontier; they
-are not negative equality proofs. Runtime operation dispatch uses the
-OperationGraph machine and is not a normalization profile.
+are not negative equality proofs. Runtime effect dispatch uses Core
+`OPERATION_REQUEST` nodes and is not a normalization profile.
 
 `*rest` typing uses the generated Match motive and guarded recursive equations.
-The operation-classifier solver keeps explicit motive constraints and a stable
+The occurrence-classifier solver keeps explicit motive constraints and a stable
 dependency-indexed worklist. Expected/ascribed classifiers live in a separate
 expected-classifier table and are not allowed to seed IH typing. General IADT
 index refinement and arbitrary higher-order unification remain beyond the
@@ -363,7 +361,7 @@ but it makes the intended separation observable.
 
 The key distinction is that alpha/canonical identity is still structural, while
 normalization equality is computational. `APP(left, right)` is a shared
-structural edge. At a typed operation occurrence, an ordinary function
+structural edge. At a typed typed occurrence, an ordinary function
 application reduces by beta when its WHNF function is a lambda, while a
 constructor-headed application forms a data value and is not itself beta
 elimination. `MATCH` evaluates its scrutinee and reduces when the scrutinee head
@@ -527,10 +525,10 @@ result. The current implementation rejects arbitrary incomplete solver work;
 `hybrid` permits only residual obligations with a defined runtime verifier.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 74 <calculus-fingerprint>`. The reader accepts that version
+`A_PROGRAM_ARTIFACT 75 <calculus-fingerprint>`. The reader accepts that version
 and exact fingerprint only; old artifact versions are intentionally rejected
 instead of being kept as compatibility paths. The canonical format and trust
-boundary are specified by `spec/artifact_v74.schema`; the implemented
+boundary are specified by `spec/artifact_v75.schema`; the implemented
 HOTT/Identity fragment is specified by `spec/hott_fragment_v5.schema`.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor
@@ -542,14 +540,14 @@ dependencies. Before serialization, every rooted arena is sliced and
 renumbered densely to `0..count-1`. Unreachable terms, declarations,
 propositions, solver candidates, HOTT work state, and normalization state are
 not written. The `graph` section contains the dense Term, declaration, Context,
-Substitution, Operation, Universe, Proposition, Claim, Derivation, and ordered
+Substitution, TypedOccurrence, Universe, Proposition, Claim, Derivation, and ordered
 premise-edge closure. Propositions are serialized once; accepted Claims refer
 to them, and Derivations refer to their conclusion Claim plus ordered
 Claim/scoped premises and exact semantic actions. Readback rejects cyclic,
 orphaned, out-of-range, or semantically invalid proof evidence and replays
 accepted rules without search.
-An `operation_graph` section stores occurrence-local operation nodes, Match
-case edges, computation-fold operation/return clause bodies and binder identities,
+The `typed_occurrences` section stores occurrence-local records, role-indexed
+edges, Match cases, computation-fold clause bodies and binder identities,
 residual verification obligations, deterministic normalization and solver step
 budgets, compile policy, and required runtime capabilities. Runtime capability
 metadata is recomputed from the loaded graph and rejected when the serialized
@@ -742,7 +740,7 @@ make -f src/prototype/Makefile test-integration
 
 It checks that `identityBool := \x : Bool => x;` and
 `identityNat := \y : Nat => y;` publish the same core lambda term, that artifact
-v74 debug/name records are readable, that term exports keep distinct classifier
+v75 debug/name records are readable, that term exports keep distinct classifier
 keys even when they share a core term, that a split `Nat.apo` + `List.apo`
 compile can build `(List Nat).nil` through explicit interface imports and
 through source-level `import Nat; import List;` plus `--import-search-dir`, and

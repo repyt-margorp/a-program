@@ -1,5 +1,5 @@
-#ifndef A_PROGRAM_PROTOTYPE_ARTIFACT_WIRE_V74_H
-#define A_PROGRAM_PROTOTYPE_ARTIFACT_WIRE_V74_H
+#ifndef A_PROGRAM_PROTOTYPE_ARTIFACT_WIRE_V75_H
+#define A_PROGRAM_PROTOTYPE_ARTIFACT_WIRE_V75_H
 
 #include <stdio.h>
 
@@ -37,7 +37,7 @@ int prototype_artifact_read_text_graph(
 	struct prototype_judgement_db* judgement
 );
 
-int prototype_artifact_read_text_operation_graph(
+int prototype_artifact_read_text_typed_occurrences(
 	FILE* stream,
 	struct symbol_table* symbols,
 	struct prototype_term_db* terms,

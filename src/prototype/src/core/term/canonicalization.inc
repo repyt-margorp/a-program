@@ -188,12 +188,15 @@ static int shape_match_cases_equal_at_depth(
 		if (left_case->constructor_owner != right_case->constructor_owner) {
 			return 0;
 		}
+		/* A case owner selects an operational constructor representation. Its
+		 * nominal TypeView belongs to the typed occurrence, not Core Match
+		 * topology, so compare the owner through its Core projection. */
 		} else if (!shape_terms_equal_at_depth(
 				db,
 				left_case->constructor_owner,
 				right_case->constructor_owner,
 				env,
-				type_view_compare_mode,
+				PROTOTYPE_TYPE_VIEW_COMPARE_CORE,
 				depth + 1
 			)) {
 		return 0;
@@ -451,7 +454,8 @@ static int shape_terms_equal_at_depth(
 			return 1;
 		}
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			return left->as.type_former.representation_id == right->as.type_former.representation_id;
+			return left->as.type_former.representation_id ==
+				right->as.type_former.representation_id;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			if (type_identity_is_stable(left->as.type_declaration.identity) ||
 				type_identity_is_stable(right->as.type_declaration.identity)) {

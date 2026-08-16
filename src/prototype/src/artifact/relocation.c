@@ -301,12 +301,11 @@ int prototype_artifact_apply_term_relocations(
 				}
 			}
 		}
-		for (size_t j = 0; j < target_metadata->operation_count; ++j) {
-			struct prototype_operation_node* operation =
-				&target_metadata->operations[j];
+		for (size_t j = 0; j < target_metadata->typed_occurrences.occurrence_count; ++j) {
+			struct prototype_typed_occurrence* operation =
+				&target_metadata->typed_occurrences.occurrences[j];
 			uint32_t* projections[] = {
 				&operation->core_term,
-				&operation->known_classifier,
 				&operation->classifier,
 				&operation->binder_classifier
 			};

@@ -178,7 +178,7 @@
 	uint32_t app_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		app_operation,
 		function_context,
 		app_operation,
@@ -415,7 +415,7 @@
 	uint32_t returned_outer_bool_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		returned_outer_bool_operation,
 		lambda_body_context,
 		returned_outer_bool_operation,
@@ -448,7 +448,7 @@
 	uint32_t lambda_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		lambda_operation,
 		bool_context,
 		lambda_operation,
@@ -607,7 +607,7 @@
 	uint32_t value_match_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		value_match_operation,
 		bool_context,
 		value_match_operation,

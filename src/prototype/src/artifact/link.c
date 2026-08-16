@@ -1,6 +1,6 @@
 #include "a_program/artifact/interface.h"
 
-#include "a_program/graph/operation_graph.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -20,14 +20,14 @@ static uint32_t relocate_artifact_authority_id(
 	uint32_t authority_id,
 	const uint32_t* term_relocation,
 	size_t term_relocation_count,
-	uint32_t operation_offset
+	uint32_t occurrence_offset
 ) {
 	if (authority_id == PROTOTYPE_INVALID_ID) {
 		return authority_id;
 	}
-	if (authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION) {
-		return operation_offset == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
-			offset_artifact_id(authority_id, operation_offset);
+	if (authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE) {
+		return occurrence_offset == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
+			offset_artifact_id(authority_id, occurrence_offset);
 	}
 	if (authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT ||
 		authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
@@ -413,7 +413,7 @@ static int artifact_append_accepted_judgement(
 	size_t term_relocation_count,
 	const uint32_t* binding_relocation,
 	size_t binding_relocation_count,
-	uint32_t operation_offset,
+	uint32_t occurrence_offset,
 	uint32_t* proposition_relocation,
 	uint32_t* claim_relocation,
 	const struct artifact_append_order* order
@@ -447,8 +447,8 @@ static int artifact_append_accepted_judgement(
 				1 : source_proposition->resource_usage_count
 		];
 		if (proposition.context_id >= source_contexts->context_count ||
-			(proposition.operation_id != PROTOTYPE_INVALID_ID &&
-			 operation_offset == PROTOTYPE_INVALID_ID)) {
+			(proposition.occurrence_id != PROTOTYPE_INVALID_ID &&
+			 occurrence_offset == PROTOTYPE_INVALID_ID)) {
 			return -1;
 		}
 		if (proposition.subject >= term_relocation_count ||
@@ -458,15 +458,15 @@ static int artifact_append_accepted_judgement(
 		proposition.subject = term_relocation[proposition.subject];
 		proposition.classifier = term_relocation[proposition.classifier];
 		proposition.context_id = context_relocation[proposition.context_id];
-		proposition.operation_id = proposition.operation_id ==
+		proposition.occurrence_id = proposition.occurrence_id ==
 			PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
-			offset_artifact_id(proposition.operation_id, operation_offset);
+			offset_artifact_id(proposition.occurrence_id, occurrence_offset);
 		proposition.authority_id = relocate_artifact_authority_id(
 			proposition.authority_kind,
 			proposition.authority_id,
 			term_relocation,
 			term_relocation_count,
-			operation_offset
+			occurrence_offset
 		);
 		if (proposition.authority_id == PROTOTYPE_INVALID_ID &&
 			proposition.authority_kind !=
@@ -612,7 +612,7 @@ static int artifact_append_accepted_judgement(
 			claim_relocation[source_derivation->conclusion_claim_id];
 		/* Older wire formats carried this derived cache. The accepted append
 		 * preserves the source DAG exactly, so its topological rank remains valid
-		 * after ID relocation. v74 recomputes rank on read. */
+		 * after ID relocation. The current reader recomputes rank from the accepted DAG. */
 		derivation.closure_rank = source_derivation->closure_rank;
 		derivation.premises = premises;
 		derivation.key_hash = 0;
@@ -913,7 +913,7 @@ int prototype_internal_artifact_append_graph_ordered(
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
-	uint32_t operation_offset,
+	uint32_t occurrence_offset,
 	uint32_t* term_relocation,
 	size_t term_relocation_capacity,
 	uint32_t* context_relocation,
@@ -1779,7 +1779,7 @@ int prototype_internal_artifact_append_graph_ordered(
 		return -1;
 	}
 
-	if (operation_offset != PROTOTYPE_INVALID_ID &&
+	if (occurrence_offset != PROTOTYPE_INVALID_ID &&
 		artifact_append_accepted_judgement(
 			target_judgement,
 			source_judgement,
@@ -1791,7 +1791,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			source_terms->term_count,
 			binding_relocation,
 			binding_relocation_count,
-			operation_offset,
+			occurrence_offset,
 			proposition_relocation,
 			claim_relocation,
 			order
@@ -1853,14 +1853,14 @@ int prototype_internal_artifact_append_graph_ordered(
 		appended_interface->term_exports[i].local_term = term_relocation[
 			appended_interface->term_exports[i].local_term
 		];
-		appended_interface->term_exports[i].operation =
-			operation_offset == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
+		appended_interface->term_exports[i].occurrence =
+			occurrence_offset == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID :
 			offset_artifact_id(
-				source_interface->term_exports[i].operation, operation_offset
+				source_interface->term_exports[i].occurrence, occurrence_offset
 			);
 		if (source_interface->term_exports[i].source_evidence.kind !=
 				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
-			if (operation_offset == PROTOTYPE_INVALID_ID) {
+			if (occurrence_offset == PROTOTYPE_INVALID_ID) {
 				appended_interface->term_exports[i].source_evidence.kind =
 					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
 				appended_interface->term_exports[i].source_evidence.id =
@@ -2086,7 +2086,7 @@ int prototype_artifact_append_graph(
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
-	uint32_t operation_offset,
+	uint32_t occurrence_offset,
 	uint32_t* term_relocation,
 	size_t term_relocation_capacity,
 	uint32_t* context_relocation,
@@ -2107,7 +2107,7 @@ int prototype_artifact_append_graph(
 		source_judgement,
 		source_contexts,
 		source_substitutions,
-		operation_offset,
+		occurrence_offset,
 		term_relocation,
 		term_relocation_capacity,
 		context_relocation,
@@ -2118,19 +2118,19 @@ int prototype_artifact_append_graph(
 	);
 }
 
-static int align_operation_projection(
+static int align_occurrence_projection(
 	const struct prototype_term_db* terms,
 	struct prototype_judgement_db* judgement,
-	struct prototype_operation_graph* graph,
+	struct prototype_typed_occurrence_graph* graph,
 	uint32_t operation_id,
 	uint32_t core_term,
 	unsigned char* visited
 ) {
 	if (!terms || !judgement || !graph || !visited ||
-		operation_id >= graph->operation_count || core_term >= terms->term_count) {
+		operation_id >= graph->occurrence_count || core_term >= terms->term_count) {
 		return -1;
 	}
-	struct prototype_operation_node* operation = &graph->operations[operation_id];
+	struct prototype_typed_occurrence* operation = &graph->occurrences[operation_id];
 	if (visited[operation_id]) {
 		return operation->core_term == core_term ? 0 : -1;
 	}
@@ -2142,15 +2142,17 @@ static int align_operation_projection(
 	operation->core_term = core_term;
 	const struct prototype_term* term = &terms->terms[core_term];
 	switch (operation->tag) {
-		case PROTOTYPE_OPERATION_NAME:
-			return align_operation_projection(
-				terms, judgement, graph, operation->function, core_term, visited
+		case PROTOTYPE_TYPED_OCCURRENCE_REFERENCE:
+			return align_occurrence_projection(
+				terms, judgement, graph, operation->wrapped_occurrence, core_term,
+				visited
 			);
-		case PROTOTYPE_OPERATION_ASCRIPTION:
-			return align_operation_projection(
-				terms, judgement, graph, operation->body, core_term, visited
+		case PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE:
+			return align_occurrence_projection(
+				terms, judgement, graph, operation->wrapped_occurrence, core_term,
+				visited
 			);
-		case PROTOTYPE_OPERATION_LAMBDA:
+		case PROTOTYPE_TYPED_OCCURRENCE_LAMBDA:
 			if (term->tag != PROTOTYPE_TERM_LAMBDA) {
 				return -1;
 			}
@@ -2158,84 +2160,157 @@ static int align_operation_projection(
 			 * occurrence retains the provider binder. The Lambda validator
 			 * compares those bodies under the two binder identities. */
 			return 0;
-		case PROTOTYPE_OPERATION_APP:
-			if (term->tag != PROTOTYPE_TERM_APP ||
-				align_operation_projection(
-					terms, judgement, graph, operation->function,
+		case PROTOTYPE_TYPED_OCCURRENCE_APP:
+		{
+			uint32_t function_occurrence;
+			uint32_t argument_occurrence;
+			if (term->tag != PROTOTYPE_TERM_APP || prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_FUNCTION, 0,
+					&function_occurrence
+				) != 0 || prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_ARGUMENT, 0,
+					&argument_occurrence
+				) != 0 ||
+				align_occurrence_projection(
+					terms, judgement, graph, function_occurrence,
 					term->as.app.function, visited
 				) != 0) {
 				return -1;
 			}
-			return align_operation_projection(
-				terms, judgement, graph, operation->argument,
+			return align_occurrence_projection(
+				terms, judgement, graph, argument_occurrence,
 				term->as.app.argument, visited
 			);
-		case PROTOTYPE_OPERATION_RETURN:
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_RETURN:
+		{
+			uint32_t child_occurrence;
 			if (term->tag != PROTOTYPE_TERM_RETURN) {
 				return -1;
 			}
-			return align_operation_projection(
-				terms, judgement, graph, operation->argument,
+			if (prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0,
+					&child_occurrence
+				) != 0) {
+				return -1;
+			}
+			return align_occurrence_projection(
+				terms, judgement, graph, child_occurrence,
 				term->as.return_term.value, visited
 			);
-		case PROTOTYPE_OPERATION_THUNK:
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_THUNK:
+		{
+			uint32_t child_occurrence;
 			if (term->tag != PROTOTYPE_TERM_THUNK) {
 				return -1;
 			}
-			return align_operation_projection(
-				terms, judgement, graph, operation->argument,
+			if (prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION, 0,
+					&child_occurrence
+				) != 0) {
+				return -1;
+			}
+			return align_occurrence_projection(
+				terms, judgement, graph, child_occurrence,
 				term->as.thunk.computation, visited
 			);
-		case PROTOTYPE_OPERATION_FORCE:
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_FORCE:
+		{
+			uint32_t child_occurrence;
 			if (term->tag != PROTOTYPE_TERM_FORCE) {
 				return -1;
 			}
-			return align_operation_projection(
-				terms, judgement, graph, operation->argument,
+			if (prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_FORCE_VALUE, 0,
+					&child_occurrence
+				) != 0) {
+				return -1;
+			}
+			return align_occurrence_projection(
+				terms, judgement, graph, child_occurrence,
 				term->as.force.value, visited
 			);
-		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS:
+		{
+			uint32_t child_occurrence;
 			if (term->tag != PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
 				return -1;
 			}
-			return align_operation_projection(
-				terms, judgement, graph, operation->argument,
+			if (prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_INDUCTION_ARGUMENT, 0,
+					&child_occurrence
+				) != 0) {
+				return -1;
+			}
+			return align_occurrence_projection(
+				terms, judgement, graph, child_occurrence,
 				term->as.induction_hypothesis.argument, visited
 			);
-		case PROTOTYPE_OPERATION_REQUEST:
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_REQUEST:
+		{
+			uint32_t request_operation;
+			uint32_t request_argument;
+			uint32_t request_continuation;
 			if (term->tag != PROTOTYPE_TERM_OPERATION_REQUEST ||
-				align_operation_projection(
-					terms, judgement, graph, operation->function,
+				prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_REQUEST_OPERATION, 0,
+					&request_operation
+				) != 0 || prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT, 0,
+					&request_argument
+				) != 0 || prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_REQUEST_CONTINUATION, 0,
+					&request_continuation
+				) != 0 ||
+				align_occurrence_projection(
+					terms, judgement, graph, request_operation,
 					term->as.operation_request.operation, visited
-				) != 0 || align_operation_projection(
-					terms, judgement, graph, operation->argument,
+				) != 0 || align_occurrence_projection(
+					terms, judgement, graph, request_argument,
 					term->as.operation_request.argument, visited
 				) != 0) {
 				return -1;
 			}
-			return align_operation_projection(
-				terms, judgement, graph, operation->body,
+			return align_occurrence_projection(
+				terms, judgement, graph, request_continuation,
 				term->as.operation_request.continuation, visited
 			);
-		case PROTOTYPE_OPERATION_MATCH:
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_MATCH:
+		{
+			uint32_t scrutinee_occurrence;
 			if (term->tag != PROTOTYPE_TERM_MATCH ||
 				operation->case_count != term->as.match.case_count ||
 				operation->first_case > graph->case_count ||
 				operation->case_count > graph->case_count - operation->first_case ||
 				term->as.match.first_case > terms->case_count ||
 				term->as.match.case_count > terms->case_count - term->as.match.first_case ||
-				align_operation_projection(
-					terms, judgement, graph, operation->scrutinee,
+				prototype_typed_occurrence_graph_child(
+					graph, operation_id, PROTOTYPE_TERM_CHILD_SCRUTINEE, 0,
+					&scrutinee_occurrence
+				) != 0 || align_occurrence_projection(
+					terms, judgement, graph, scrutinee_occurrence,
 					term->as.match.scrutinee, visited
 				) != 0) {
 				return -1;
 			}
 			for (uint32_t i = 0; i < operation->case_count; ++i) {
-				if (align_operation_projection(
+				uint32_t body_occurrence;
+				if (prototype_typed_occurrence_graph_child(
+						graph, operation_id, PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, i,
+						&body_occurrence
+					) != 0) {
+					return -1;
+				}
+				if (align_occurrence_projection(
 						terms,
 						judgement,
 						graph,
-						graph->cases[operation->first_case + i].body_operation,
+						body_occurrence,
 						terms->cases[term->as.match.first_case + i].body,
 						visited
 					) != 0) {
@@ -2243,20 +2318,21 @@ static int align_operation_projection(
 				}
 			}
 			return 0;
-		case PROTOTYPE_OPERATION_COMPUTATION_FOLD:
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD:
 			/* Fold projection alignment needs clause-by-clause continuation
 			 * transport and is not guessed from a root canonical key. */
 			return old_core == core_term ? 0 : -1;
-		case PROTOTYPE_OPERATION_ATOM:
-		case PROTOTYPE_OPERATION_VAR:
-		case PROTOTYPE_OPERATION_CONSTRUCTOR:
+		case PROTOTYPE_TYPED_OCCURRENCE_ATOM:
+		case PROTOTYPE_TYPED_OCCURRENCE_VAR:
+		case PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR:
 			return 0;
 		default:
 			return -1;
 	}
 }
 
-int prototype_artifact_align_export_operations(
+int prototype_artifact_align_export_occurrences(
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	struct prototype_judgement_db* judgement,
@@ -2265,28 +2341,28 @@ int prototype_artifact_align_export_operations(
 	if (!interface || !terms || !judgement || !metadata) {
 		return -1;
 	}
-	struct prototype_operation_graph graph;
-	prototype_compile_metadata_operation_graph(metadata, &graph);
-	unsigned char visited[graph.operation_count];
+	struct prototype_typed_occurrence_graph* graph =
+		prototype_compile_metadata_typed_occurrences(metadata);
+	unsigned char visited[graph->occurrence_count];
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		const struct prototype_artifact_term_export* export =
 			&interface->term_exports[i];
-		if (export->operation >= graph.operation_count ||
+		if (export->occurrence >= graph->occurrence_count ||
 			export->local_term >= terms->term_count) {
 			return -1;
 		}
 		memset(visited, 0, sizeof(visited));
-		if (align_operation_projection(
+		if (align_occurrence_projection(
 				terms,
 				judgement,
-				&graph,
-				export->operation,
+				graph,
+				export->occurrence,
 				export->local_term,
 				visited
 			) != 0) {
 			return -1;
 		}
-		graph.operations[export->operation].classifier = export->classifier;
+		graph->occurrences[export->occurrence].classifier = export->classifier;
 	}
 	return 0;
 }

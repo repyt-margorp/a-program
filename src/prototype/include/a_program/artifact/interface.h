@@ -14,7 +14,7 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 74
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 75
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
 enum prototype_artifact_export_transparency {
@@ -37,7 +37,7 @@ struct prototype_artifact_term_export {
 	 * A named typed-operation boundary. local_term is deliberately an erased
 	 * core root and may be shared by several exports; the qualified name and
 	 * classifier retain the distinct source operation selected by the API.
-	 * Nested operation nodes are compiler-local annotation data and are not
+	 * Nested typed occurrences are compiler-local annotation data and are not
 	 * serialized as linkable runtime graph nodes.
 	 */
 	int namespace_symbol_id;
@@ -46,7 +46,7 @@ struct prototype_artifact_term_export {
 	uint32_t classifier;
 	/* Source typed occurrence authorizing this export. The erased local_term
 	 * alone cannot identify a Claim or a residual solver obligation. */
-	uint32_t operation;
+	uint32_t occurrence;
 	/* Exact evidence authorizing this export. Source artifacts use an accepted
 	 * Claim; an appended, not-yet-republished graph uses its Proposition. */
 	struct prototype_artifact_evidence_reference source_evidence;
@@ -469,7 +469,7 @@ int prototype_artifact_append_graph(
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
-	uint32_t operation_offset,
+	uint32_t occurrence_offset,
 	uint32_t* term_relocation,
 	size_t term_relocation_capacity,
 	uint32_t* context_relocation,
@@ -478,7 +478,7 @@ int prototype_artifact_append_graph(
 	int canonicalize_link_references
 );
 
-int prototype_artifact_align_export_operations(
+int prototype_artifact_align_export_occurrences(
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	struct prototype_judgement_db* judgement,

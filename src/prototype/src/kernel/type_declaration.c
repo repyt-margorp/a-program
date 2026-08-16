@@ -1,6 +1,7 @@
 #include "a_program/kernel/type_declaration.h"
 #include "a_program/kernel/context.h"
 #include "a_program/core/term.h"
+#include "a_program/support/symbol.h"
 
 #include <string.h>
 
@@ -1910,6 +1911,64 @@ const struct prototype_type_constructor_declaration* prototype_type_declaration_
 		}
 	}
 	return NULL;
+}
+
+int prototype_type_declaration_project_reduction_environment(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct symbol_table* symbols,
+	struct prototype_term_reduction_environment* p_environment
+) {
+	if (!terms || !type_declarations || !symbols || !p_environment) {
+		return -1;
+	}
+	memset(p_environment, 0xff, sizeof(*p_environment));
+	const struct prototype_type_declaration* nat = NULL;
+	for (size_t i = 0; i < type_declarations->type_count; ++i) {
+		const struct prototype_type_declaration* candidate =
+			&type_declarations->type_declarations[i];
+		const char* name = type_declaration_present(candidate) ?
+			symbol_to_string(symbols, candidate->name_symbol_id) : NULL;
+		if (name && strcmp(name, "#.Nat") == 0) {
+			nat = candidate;
+			break;
+		}
+	}
+	if (!nat) {
+		/* Programs not using the host Nat/Text bridge still have a complete
+		 * operational environment; the optional system-Nat descriptor is absent. */
+		return 0;
+	}
+	const struct prototype_type_constructor_declaration* zero = NULL;
+	const struct prototype_type_constructor_declaration* succ = NULL;
+	for (uint32_t i = 0; i < nat->constructor_count; ++i) {
+		uint32_t constructor_id = nat->first_constructor + i;
+		if (constructor_id >= type_declarations->constructor_count) {
+			return -1;
+		}
+		const struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->constructor_declarations[constructor_id];
+		const char* name = constructor_declaration_present(constructor) ?
+			symbol_to_string(symbols, constructor->name_symbol_id) : NULL;
+		if (name && strcmp(name, "zero") == 0) {
+			zero = constructor;
+		} else if (name && strcmp(name, "succ") == 0) {
+			succ = constructor;
+		}
+	}
+	if (!zero || !succ || prototype_term_type_instance_make(
+			terms,
+			type_declarations,
+			nat->type_index,
+			NULL,
+			0,
+			&p_environment->system_nat_owner
+		) != 0) {
+		return -1;
+	}
+	p_environment->system_nat_zero_constructor = zero->constructor_index;
+	p_environment->system_nat_succ_constructor = succ->constructor_index;
+	return 0;
 }
 
 static int representation_binders_equal(

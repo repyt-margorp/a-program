@@ -165,8 +165,8 @@ static int hott_is_type_claim_matches(
 	uint32_t classifier;
 	if (!claim || prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
 		prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id != context_id || prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject != subject ||
-		prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id != PROTOTYPE_INVALID_ID ||
-		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id != PROTOTYPE_INVALID_ID ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ||
 		prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier >= terms->term_count ||
 		prototype_judgement_classifier_value_whnf(
 			terms, type_declarations, prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier, &classifier
@@ -178,23 +178,23 @@ static int hott_is_type_claim_matches(
 }
 
 static int hott_operation_matches_claim(
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_claim* claim
 ) {
 	if (!claim) {
 		return 0;
 	}
-	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id == PROTOTYPE_INVALID_ID) {
-		return prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
+	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id == PROTOTYPE_INVALID_ID) {
+		return prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE;
 	}
-	if (!operations || prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id >= operations->operation_count ||
-		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id != prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id) {
+	if (!operations || prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id >= operations->occurrence_count ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ||
+		prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id != prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id) {
 		return 0;
 	}
-	const struct prototype_operation_node* operation =
-		&operations->operations[prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id];
+	const struct prototype_typed_occurrence* operation =
+		&operations->occurrences[prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id];
 	return operation->context_id == prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id &&
 		operation->core_term == prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject &&
 		operation->classifier == prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier;
@@ -530,7 +530,7 @@ static int hott_relation_goal_is_valid(
 	const struct prototype_hott_bridge_db* bridges,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement
 ) {
 	if (!goal || !hott_category_is_valid(goal->category) || goal->id != expected_id ||
@@ -614,8 +614,8 @@ int prototype_parametricity_relation_goal_db_intern(
 	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
 	struct prototype_type_declaration_db* type_declarations =
 		kernel ? kernel->type_declarations : NULL;
-	const struct prototype_operation_graph* operations =
-		kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations =
+		kernel ? kernel->occurrences : NULL;
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	if (!db || !p_goal_id || !db->goals ||
@@ -669,8 +669,8 @@ int prototype_parametricity_relation_goal_db_validate(
 	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
 	struct prototype_type_declaration_db* type_declarations =
 		kernel ? kernel->type_declarations : NULL;
-	const struct prototype_operation_graph* operations =
-		kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations =
+		kernel ? kernel->occurrences : NULL;
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	if (!db || db->goal_count > db->goal_capacity ||
@@ -924,8 +924,8 @@ int prototype_parametricity_candidate_db_validate(
 		kernel ? kernel->type_declarations : NULL;
 	struct prototype_judgement_db* judgement = kernel ?
 		(struct prototype_judgement_db*)kernel->judgement : NULL;
-	const struct prototype_operation_graph* operations =
-		kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations =
+		kernel ? kernel->occurrences : NULL;
 	if (!db || !goals || !contexts || !substitutions || !cwf_certificates ||
 		!cwf_certificates || !terms || !type_declarations || !judgement ||
 		!operations || prototype_kernel_view_validate_stores(kernel) != 0 ||
@@ -1674,8 +1674,8 @@ int prototype_parametricity_relation_plan(
 	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
 	struct prototype_type_declaration_db* type_declarations =
 		kernel ? kernel->type_declarations : NULL;
-	const struct prototype_operation_graph* operations =
-		kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations =
+		kernel ? kernel->occurrences : NULL;
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	const struct prototype_parametricity_relation_goal* goal =

@@ -44,46 +44,45 @@ grep -q 'mode=default yes$' "$TMP_DIR/artifact-right.out"
 grep -q 'mode=default yes$' "$TMP_DIR/artifact-size.out"
 
 # The two recursive ChoiceTree cases occupy the same telescope position but
-# introduce distinct persistent bindings. Each IH argument Operation, its Core
-# VAR, and the authoritative operation-case binder must agree exactly.
+# introduce distinct persistent bindings. Each IH argument occurrence, its Core
+# VAR, and the authoritative occurrence-case binder must agree exactly.
 awk '
 	$1 == "term_node" && $3 == 1 { var_binding[$2] = $4 }
 	$1 == "term_node" && $3 == 9 { ih_argument[$2] = $5 }
-	$1 == "operation" {
+	$1 == "typed_occurrence" {
 		op_tag[$2] = $3
 		op_core[$2] = $6
 		op_binding[$2] = $12
-		op_argument[$2] = $14
 		if ($3 == 7) {
-			match_first_case[$2] = $25
+			match_first_case[$2] = $21
 		}
 		if ($3 == 8) {
 			ih_count++
 			ih_operation[ih_count] = $2
-			ih_owner[ih_count] = $16
-			ih_case[ih_count] = $19
-			ih_field[ih_count] = $20
-			ih_ast_binder[ih_count] = $11
+			ih_owner[ih_count] = $15
+			ih_case[ih_count] = $17
+			ih_field[ih_count] = $18
 		}
 	}
-	$1 == "operation_case_binders" {
+	$1 == "occurrence_edge" && $4 == 10 {
+		op_argument[$3] = $6
+	}
+	$1 == "occurrence_match_case_binders" {
 		case_binder_count[$2] = $3
 		for (i = 0; i < $3; ++i) {
-			case_ast_binder[$2, i] = $(4 + i * 2)
-			case_binding[$2, i] = $(5 + i * 2)
+			case_binding[$2, i] = $(4 + i)
 		}
 	}
 	END {
 		for (i = 1; i <= ih_count; ++i) {
 			case_id = match_first_case[ih_owner[i]] + ih_case[i]
-			argument_operation = op_argument[ih_operation[i]]
-			argument_binding = op_binding[argument_operation]
+			argument_occurrence = op_argument[ih_operation[i]]
+			argument_binding = op_binding[argument_occurrence]
 			core_binding = var_binding[ih_argument[op_core[ih_operation[i]]]]
 			if (case_binder_count[case_id] <= ih_field[i] ||
 				argument_binding == "" || core_binding == "" ||
 				argument_binding != core_binding ||
-				argument_binding != case_binding[case_id, ih_field[i]] ||
-				ih_ast_binder[i] != case_ast_binder[case_id, ih_field[i]]) {
+				argument_binding != case_binding[case_id, ih_field[i]]) {
 				exit 1
 			}
 			for (j = i + 1; j <= ih_count; ++j) {
@@ -91,7 +90,6 @@ awk '
 				right_binding = op_binding[op_argument[ih_operation[j]]]
 				if (ih_owner[i] == ih_owner[j] && ih_case[i] != ih_case[j] &&
 					ih_field[i] == 0 && ih_field[j] == 0 &&
-					ih_ast_binder[i] != ih_ast_binder[j] &&
 					left_binding != right_binding) {
 					found = 1
 				}
@@ -101,12 +99,12 @@ awk '
 	}
 ' "$TMP_DIR/tree.apo"
 
-# Operation identity is wire authority. Changing an IH from fork.right to
+# Typed-occurrence identity is wire authority. Changing an IH from fork.right to
 # leaf.value must fail before accepted proof replay can use the forged edge.
 awk '
-	$1 == "operation" && $3 == 8 && $19 == 1 && $20 == 1 && !changed {
-		$19 = 0
-		$20 = 0
+	$1 == "typed_occurrence" && $3 == 8 && $17 == 1 && $18 == 1 && !changed {
+		$17 = 0
+		$18 = 0
 		changed = 1
 	}
 	{ print }
@@ -119,8 +117,8 @@ if ./read_file.out --read-graph "$TMP_DIR/wrong-edge.apo" \
 fi
 
 awk '
-	$1 == "operation" && $3 == 8 && !changed {
-		$18 = $18 + 1
+	$1 == "typed_occurrence" && $3 == 8 && !changed {
+		$16 = $16 + 1
 		changed = 1
 	}
 	{ print }

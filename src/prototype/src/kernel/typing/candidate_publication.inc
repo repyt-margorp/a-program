@@ -7,7 +7,7 @@ static int proof_candidates_equal(
 			right->conclusion_proposition_id ||
 		left->conclusion_kind != right->conclusion_kind ||
 		left->conclusion_context_id != right->conclusion_context_id ||
-		left->conclusion_operation_id != right->conclusion_operation_id ||
+		left->conclusion_occurrence_id != right->conclusion_occurrence_id ||
 		left->conclusion_subject != right->conclusion_subject ||
 		left->conclusion_classifier != right->conclusion_classifier ||
 		memcmp(&left->rule_data, &right->rule_data, sizeof(left->rule_data)) != 0 ||
@@ -25,8 +25,8 @@ static int proof_candidates_equal(
 				right->premises[i].proposition.authority_kind ||
 			left->premises[i].proposition.authority_id !=
 				right->premises[i].proposition.authority_id ||
-			left->premises[i].proposition.operation_id !=
-				right->premises[i].proposition.operation_id ||
+			left->premises[i].proposition.occurrence_id !=
+				right->premises[i].proposition.occurrence_id ||
 			left->premises[i].semantic_action_kind !=
 				right->premises[i].semantic_action_kind ||
 			left->premises[i].semantic_action_id !=
@@ -191,7 +191,7 @@ static int propositions_equal(
 		left_authority_kind == right_authority_kind &&
 		left_authority_id == right_authority_id &&
 		left->context_id == right->context_id &&
-		left->operation_id == right->operation_id &&
+		left->occurrence_id == right->occurrence_id &&
 		left->subject == right->subject &&
 		left->classifier == right->classifier &&
 		left->resource_usage_count == right->resource_usage_count &&
@@ -219,9 +219,9 @@ static void candidate_claim_authority(
 		*p_authority_id = relation->authority_id;
 		return;
 	}
-	if (relation->operation_id != PROTOTYPE_INVALID_ID) {
-		*p_authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
-		*p_authority_id = relation->operation_id;
+	if (relation->occurrence_id != PROTOTYPE_INVALID_ID) {
+		*p_authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE;
+		*p_authority_id = relation->occurrence_id;
 		return;
 	}
 	*p_authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID;
@@ -236,9 +236,9 @@ static void initialize_candidate_claim_authority(
 		candidate->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
 		return;
 	}
-	if (candidate->operation_id != PROTOTYPE_INVALID_ID) {
-		candidate->authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
-		candidate->authority_id = candidate->operation_id;
+	if (candidate->occurrence_id != PROTOTYPE_INVALID_ID) {
+		candidate->authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE;
+		candidate->authority_id = candidate->occurrence_id;
 		return;
 	}
 	switch (proof_kind) {
@@ -287,12 +287,12 @@ static int judgement_intern_claim(
 	uint32_t authority_id;
 	candidate_claim_authority(relation, &authority_kind, &authority_id);
 	uint32_t operation_id = authority_kind ==
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
-		relation->operation_id : PROTOTYPE_INVALID_ID;
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
+		relation->occurrence_id : PROTOTYPE_INVALID_ID;
 	struct prototype_judgement_proposition proposition = *relation;
 	proposition.authority_kind = authority_kind;
 	proposition.authority_id = authority_id;
-	proposition.operation_id = operation_id;
+	proposition.occurrence_id = operation_id;
 	uint32_t proposition_id;
 	if (prototype_judgement_proposition_intern(
 			judgement, &proposition, &proposition_id
@@ -611,7 +611,7 @@ static int add_complete_candidate(
 		candidate_proof->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
 		candidate_proof->conclusion_kind != candidate_relation->kind ||
 		candidate_proof->conclusion_context_id != candidate_relation->context_id ||
-		candidate_proof->conclusion_operation_id != candidate_relation->operation_id ||
+		candidate_proof->conclusion_occurrence_id != candidate_relation->occurrence_id ||
 		candidate_proof->conclusion_subject != candidate_relation->subject ||
 		candidate_proof->conclusion_classifier != candidate_relation->classifier) {
 		return -1;
@@ -871,7 +871,7 @@ int prototype_judgement_delta_publish_complete(
 							stderr,
 							"complete derivation blocked rule=%d subject=%u "
 							"classifier=%u premise=%u:%u context=%u authority=%d:%u "
-							"operation=%u\n",
+							"occurrence=%u\n",
 							derivation->proof_kind,
 							derivation->conclusion_subject,
 							derivation->conclusion_classifier,
@@ -880,7 +880,7 @@ int prototype_judgement_delta_publish_complete(
 							derivation->premises[j].proposition.context_id,
 							derivation->premises[j].proposition.authority_kind,
 							derivation->premises[j].proposition.authority_id,
-							derivation->premises[j].proposition.operation_id
+							derivation->premises[j].proposition.occurrence_id
 						);
 						break;
 					}
@@ -920,7 +920,7 @@ static int add_relation_with_premises(
 	struct prototype_judgement_proposition relation = {
 		.kind = kind,
 		.context_id = context_id,
-		.operation_id = operation_id,
+		.occurrence_id = operation_id,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -931,7 +931,7 @@ static int add_relation_with_premises(
 	proof.proof_kind = proof_kind;
 	proof.conclusion_kind = kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = operation_id;
+	proof.conclusion_occurrence_id = operation_id;
 	proof.conclusion_subject = subject;
 	proof.conclusion_classifier = classifier;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -978,7 +978,7 @@ static int add_complete_delta_relation(
 		candidate_proof->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
 		candidate_proof->conclusion_kind != candidate_relation->kind ||
 		candidate_proof->conclusion_context_id != candidate_relation->context_id ||
-		candidate_proof->conclusion_operation_id != candidate_relation->operation_id ||
+		candidate_proof->conclusion_occurrence_id != candidate_relation->occurrence_id ||
 		candidate_proof->conclusion_subject != candidate_relation->subject ||
 		candidate_proof->conclusion_classifier != candidate_relation->classifier) {
 		return -1;
@@ -1003,10 +1003,10 @@ static int add_complete_delta_relation(
 	}
 	struct prototype_judgement_proposition normalized_relation =
 		*candidate_relation;
-	if (normalized_relation.operation_id != PROTOTYPE_INVALID_ID &&
-		delta->operation_usage_provider && delta->operation_usage_provider(
-			delta->operation_usage_provider_context,
-			normalized_relation.operation_id,
+	if (normalized_relation.occurrence_id != PROTOTYPE_INVALID_ID &&
+		delta->occurrence_usage_provider && delta->occurrence_usage_provider(
+			delta->occurrence_usage_provider_context,
+			normalized_relation.occurrence_id,
 			&normalized_relation.resource_usage,
 			&normalized_relation.resource_usage_count
 		) != 0) {
@@ -1074,13 +1074,13 @@ static int add_delta_relation_with_authority_and_explicit_premise_actions(
 	struct prototype_judgement_delta* delta,
 	int authority_kind,
 	uint32_t authority_id,
-	uint32_t conclusion_operation_id,
+	uint32_t conclusion_occurrence_id,
 	int kind,
 	uint32_t subject,
 	uint32_t classifier,
 	int proof_kind,
 	const uint32_t* premise_context_ids,
-	const uint32_t* premise_operation_ids,
+	const uint32_t* premise_occurrence_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
 	const struct prototype_judgement_selected_evidence* premise_evidence,
@@ -1097,7 +1097,7 @@ static int add_delta_relation_with_authority_and_explicit_premise_actions(
 		.authority_kind = authority_kind,
 		.authority_id = authority_id,
 		.context_id = delta->current_context_id,
-		.operation_id = conclusion_operation_id,
+		.occurrence_id = conclusion_occurrence_id,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -1108,7 +1108,7 @@ static int add_delta_relation_with_authority_and_explicit_premise_actions(
 	proof.proof_kind = proof_kind;
 	proof.conclusion_kind = kind;
 	proof.conclusion_context_id = delta->current_context_id;
-	proof.conclusion_operation_id = conclusion_operation_id;
+	proof.conclusion_occurrence_id = conclusion_occurrence_id;
 	proof.conclusion_subject = subject;
 	proof.conclusion_classifier = classifier;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -1119,9 +1119,9 @@ static int add_delta_relation_with_authority_and_explicit_premise_actions(
 		proof.premises[i].proposition.context_id = premise_context_ids ?
 			premise_context_ids[i] : (premise_evidence ?
 				premise_evidence[i].context_id : delta->current_context_id);
-		proof.premises[i].proposition.operation_id = premise_operation_ids ?
-			premise_operation_ids[i] : (premise_evidence ?
-				premise_evidence[i].operation_id : PROTOTYPE_INVALID_ID);
+		proof.premises[i].proposition.occurrence_id = premise_occurrence_ids ?
+			premise_occurrence_ids[i] : (premise_evidence ?
+				premise_evidence[i].occurrence_id : PROTOTYPE_INVALID_ID);
 		if (premise_evidence && premise_evidence[i].kind != 0) {
 			if (premise_evidence[i].subject != premise_subjects[i] ||
 				premise_evidence[i].classifier != premise_classifiers[i] ||
@@ -1154,13 +1154,13 @@ static int add_delta_relation_with_authority_and_explicit_premises(
 	struct prototype_judgement_delta* delta,
 	int authority_kind,
 	uint32_t authority_id,
-	uint32_t conclusion_operation_id,
+	uint32_t conclusion_occurrence_id,
 	int kind,
 	uint32_t subject,
 	uint32_t classifier,
 	int proof_kind,
 	const uint32_t* premise_context_ids,
-	const uint32_t* premise_operation_ids,
+	const uint32_t* premise_occurrence_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
 	const struct prototype_judgement_selected_evidence* premise_evidence,
@@ -1170,13 +1170,13 @@ static int add_delta_relation_with_authority_and_explicit_premises(
 		delta,
 		authority_kind,
 		authority_id,
-		conclusion_operation_id,
+		conclusion_occurrence_id,
 		kind,
 		subject,
 		classifier,
 		proof_kind,
 		premise_context_ids,
-		premise_operation_ids,
+		premise_occurrence_ids,
 		premise_subjects,
 		premise_classifiers,
 		premise_evidence,
@@ -1193,30 +1193,30 @@ static int add_delta_relation_with_explicit_premises(
 	uint32_t classifier,
 	int proof_kind,
 	const uint32_t* premise_context_ids,
-	const uint32_t* premise_operation_ids,
+	const uint32_t* premise_occurrence_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
 	const struct prototype_judgement_selected_evidence* premise_evidence,
 	uint32_t premise_count
 ) {
-	int authority_kind = delta && delta->current_operation_id !=
+	int authority_kind = delta && delta->current_occurrence_id !=
 		PROTOTYPE_INVALID_ID ?
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION :
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE :
 		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER;
 	uint32_t authority_id = authority_kind ==
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
-		delta->current_operation_id : subject;
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
+		delta->current_occurrence_id : subject;
 	return add_delta_relation_with_authority_and_explicit_premises(
 		delta,
 		authority_kind,
 		authority_id,
-		delta ? delta->current_operation_id : PROTOTYPE_INVALID_ID,
+		delta ? delta->current_occurrence_id : PROTOTYPE_INVALID_ID,
 		kind,
 		subject,
 		classifier,
 		proof_kind,
 		premise_context_ids,
-		premise_operation_ids,
+		premise_occurrence_ids,
 		premise_subjects,
 		premise_classifiers,
 		premise_evidence,
@@ -1233,14 +1233,14 @@ static int add_delta_relation(
 	uint32_t classifier,
 	int proof_kind
 ) {
-	uint32_t conclusion_operation_id = authority_kind ==
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
+	uint32_t conclusion_occurrence_id = authority_kind ==
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
 		authority_id : PROTOTYPE_INVALID_ID;
 	return add_delta_relation_with_authority_and_explicit_premises(
 		delta,
 		authority_kind,
 		authority_id,
-		conclusion_operation_id,
+		conclusion_occurrence_id,
 		kind,
 		subject,
 		classifier,
@@ -1285,12 +1285,12 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	const struct prototype_term_db* terms,
 	uint32_t match_term,
 	uint32_t classifier,
-	const uint32_t* branch_operation_ids,
+	const uint32_t* branch_occurrence_ids,
 	const struct prototype_judgement_selected_evidence* branch_evidence,
 	const uint32_t* branch_substitution_ids,
 	uint32_t branch_count
 ) {
-	if (!delta || !terms || !branch_operation_ids || !branch_evidence ||
+	if (!delta || !terms || !branch_occurrence_ids || !branch_evidence ||
 		match_term >= terms->term_count ||
 		classifier >= terms->term_count ||
 		!match_motive_result_classifier(terms, match_term, classifier) ||
@@ -1304,7 +1304,7 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	uint32_t premise_subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_context_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t premise_operation_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_occurrence_ids[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	struct prototype_judgement_selected_evidence
 		premise_evidence[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	int premise_semantic_action_kinds[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
@@ -1312,12 +1312,12 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	uint32_t premise_count = 0;
 	for (uint32_t i = 0; i < branch_count; ++i) {
 		uint32_t case_id = terms->terms[match_term].as.match.first_case + i;
-		if (branch_operation_ids[i] == PROTOTYPE_INVALID_ID) {
+		if (branch_occurrence_ids[i] == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
 		if (case_id >= terms->case_count ||
 			branch_evidence[i].kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			branch_evidence[i].operation_id != branch_operation_ids[i] ||
+			branch_evidence[i].occurrence_id != branch_occurrence_ids[i] ||
 			branch_evidence[i].authority_kind ==
 				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
 			branch_evidence[i].subject >= terms->term_count ||
@@ -1332,7 +1332,7 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		premise_subjects[premise_count] = branch_evidence[i].subject;
 		premise_context_ids[premise_count] = branch_evidence[i].context_id;
 		premise_classifiers[premise_count] = branch_evidence[i].classifier;
-		premise_operation_ids[premise_count] = branch_operation_ids[i];
+		premise_occurrence_ids[premise_count] = branch_occurrence_ids[i];
 		premise_evidence[premise_count] = branch_evidence[i];
 		premise_semantic_action_kinds[premise_count] =
 			branch_substitution_ids && branch_substitution_ids[i] !=
@@ -1343,23 +1343,23 @@ int prototype_judgement_delta_record_materialized_match_motive(
 			branch_substitution_ids[i] : PROTOTYPE_INVALID_ID;
 		premise_count++;
 	}
-	int authority_kind = delta->current_operation_id != PROTOTYPE_INVALID_ID ?
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION :
+	int authority_kind = delta->current_occurrence_id != PROTOTYPE_INVALID_ID ?
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE :
 		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER;
 	uint32_t authority_id = authority_kind ==
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
-		delta->current_operation_id : match_term;
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
+		delta->current_occurrence_id : match_term;
 	return add_delta_relation_with_authority_and_explicit_premise_actions(
 		delta,
 		authority_kind,
 		authority_id,
-		delta->current_operation_id,
+		delta->current_occurrence_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		match_term,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE,
 		premise_context_ids,
-		premise_operation_ids,
+		premise_occurrence_ids,
 		premise_subjects,
 		premise_classifiers,
 		premise_evidence,

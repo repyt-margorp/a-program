@@ -17,12 +17,11 @@ struct operation_runtime_environment {
 
 static int operation_runtime_instantiate_term(
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct operation_runtime_environment* environment,
 	uint32_t term,
 	uint32_t* p_ret
 ) {
-	if (!terms || !type_declarations || !environment || !p_ret || term >= terms->term_count) {
+	if (!terms || !environment || !p_ret || term >= terms->term_count) {
 		return -1;
 	}
 	uint32_t current = term;
@@ -32,7 +31,7 @@ static int operation_runtime_instantiate_term(
 		}
 		if (prototype_term_graph_substitute_bound_var(
 				terms,
-				type_declarations,
+				NULL,
 				current,
 				environment->bindings[i].binding_id,
 				environment->bindings[i].value.as.term,
@@ -47,7 +46,6 @@ static int operation_runtime_instantiate_term(
 
 static int operation_runtime_extend_environment(
 	const struct operation_runtime_environment* source,
-	uint32_t ast_binder_id,
 	uint32_t binding_id,
 	struct operation_runtime_value value,
 	struct operation_runtime_environment* p_ret
@@ -59,7 +57,6 @@ static int operation_runtime_extend_environment(
 	*p_ret = *source;
 	p_ret->bindings[p_ret->count++] =
 		(struct operation_runtime_binding){
-			.ast_binder_id = ast_binder_id,
 			.binding_id = binding_id,
 			.value = value
 		};
@@ -68,7 +65,6 @@ static int operation_runtime_extend_environment(
 
 static int operation_runtime_extend_term_environment(
 	const struct operation_runtime_environment* source,
-	uint32_t ast_binder_id,
 	uint32_t binding_id,
 	uint32_t term,
 	struct operation_runtime_environment* p_ret
@@ -79,7 +75,6 @@ static int operation_runtime_extend_term_environment(
 	}
 	return operation_runtime_extend_environment(
 		source,
-		ast_binder_id,
 		binding_id,
 		operation_runtime_term_value(term),
 		p_ret
@@ -88,7 +83,6 @@ static int operation_runtime_extend_term_environment(
 
 static int operation_runtime_extend_resumption_environment(
 	const struct operation_runtime_environment* source,
-	uint32_t ast_binder_id,
 	uint32_t binding_id,
 	uint32_t resumption,
 	struct operation_runtime_environment* p_ret
@@ -98,7 +92,6 @@ static int operation_runtime_extend_resumption_environment(
 	}
 	return operation_runtime_extend_environment(
 		source,
-		ast_binder_id,
 		binding_id,
 		operation_runtime_resumption_value(resumption),
 		p_ret
@@ -107,13 +100,13 @@ static int operation_runtime_extend_resumption_environment(
 
 static const struct operation_runtime_binding* operation_runtime_lookup_binding(
 	const struct operation_runtime_environment* environment,
-	uint32_t ast_binder_id
+	uint32_t binding_id
 ) {
-	if (!environment || ast_binder_id == PROTOTYPE_INVALID_ID) {
+	if (!environment || binding_id == PROTOTYPE_INVALID_ID) {
 		return NULL;
 	}
 	for (uint32_t i = environment->count; i > 0; --i) {
-		if (environment->bindings[i - 1].ast_binder_id == ast_binder_id) {
+		if (environment->bindings[i - 1].binding_id == binding_id) {
 			return &environment->bindings[i - 1];
 		}
 	}
@@ -122,14 +115,14 @@ static const struct operation_runtime_binding* operation_runtime_lookup_binding(
 
 static int operation_runtime_lookup_value(
 	const struct operation_runtime_environment* environment,
-	uint32_t ast_binder_id,
+	uint32_t binding_id,
 	struct operation_runtime_value* p_value
 ) {
-	if (!environment || !p_value || ast_binder_id == PROTOTYPE_INVALID_ID) {
+	if (!environment || !p_value || binding_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
 	const struct operation_runtime_binding* binding =
-		operation_runtime_lookup_binding(environment, ast_binder_id);
+		operation_runtime_lookup_binding(environment, binding_id);
 	if (binding) {
 		*p_value = binding->value;
 		return 0;
@@ -138,20 +131,21 @@ static int operation_runtime_lookup_value(
 }
 
 static uint32_t operation_runtime_unwrap_name(
-	const struct prototype_compile_metadata* metadata,
+	const struct prototype_typed_occurrence_graph* graph,
 	uint32_t operation_id
 ) {
 	for (size_t visited = 0;
-		metadata && operation_id < metadata->operation_count &&
-		visited < metadata->operation_count;
+		graph && operation_id < graph->occurrence_count &&
+		visited < graph->occurrence_count;
 		++visited) {
-		const struct prototype_operation_node* operation = &metadata->operations[operation_id];
-		if (operation->tag == PROTOTYPE_OPERATION_NAME) {
-			operation_id = operation->function;
+		const struct prototype_typed_occurrence* operation =
+			&graph->occurrences[operation_id];
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REFERENCE) {
+			operation_id = operation->wrapped_occurrence;
 			continue;
 		}
-		if (operation->tag == PROTOTYPE_OPERATION_ASCRIPTION) {
-			operation_id = operation->body;
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) {
+			operation_id = operation->wrapped_occurrence;
 			continue;
 		}
 		break;
@@ -159,8 +153,63 @@ static uint32_t operation_runtime_unwrap_name(
 	return operation_id;
 }
 
+static int operation_runtime_child(
+	const struct prototype_typed_occurrence_graph* graph,
+	uint32_t parent_occurrence,
+	int role,
+	uint32_t ordinal,
+	uint32_t* p_child_occurrence
+) {
+	if (!graph || !p_child_occurrence) {
+		return -1;
+	}
+	return prototype_typed_occurrence_graph_child(
+		graph, parent_occurrence, role, ordinal, p_child_occurrence
+	) == 0 ? 0 : -1;
+}
+
+static uint32_t operation_runtime_trace_child(
+	const struct prototype_typed_occurrence_graph* graph,
+	uint32_t parent_occurrence,
+	int role,
+	uint32_t ordinal
+) {
+	uint32_t child = PROTOTYPE_INVALID_ID;
+	if (parent_occurrence != PROTOTYPE_INVALID_ID) {
+		(void)operation_runtime_child(
+			graph, parent_occurrence, role, ordinal, &child
+		);
+	}
+	return child;
+}
+
+static int operation_runtime_core_child(
+	const struct prototype_term_db* terms,
+	uint32_t parent_term,
+	int role,
+	uint32_t ordinal,
+	uint32_t* p_child_term
+) {
+	uint32_t count;
+	if (!terms || !p_child_term ||
+		prototype_term_child_count(terms, parent_term, &count) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < count; ++i) {
+		struct prototype_term_child child;
+		if (prototype_term_child_at(terms, parent_term, i, &child) != 0) {
+			return -1;
+		}
+		if (child.role == role && child.ordinal == ordinal) {
+			*p_child_term = child.term;
+			return 0;
+		}
+	}
+	return 1;
+}
+
 static int operation_runtime_discharge_sequence_fold(
-	struct prototype_compile_metadata* metadata,
+	const struct prototype_runtime_annotations* annotations,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
@@ -169,9 +218,13 @@ static int operation_runtime_discharge_sequence_fold(
 	uint32_t returned_value,
 	int* p_verification_state
 ) {
+	if (!annotations || !annotations->verification || !annotations->occurrences ||
+		operation_id == PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
 	uint32_t obligation_id = PROTOTYPE_INVALID_ID;
-	int find_status = prototype_verification_db_find_operation(
-		&metadata->verification,
+	int find_status = prototype_verification_db_find_occurrence(
+		annotations->verification,
 		PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT,
 		operation_id,
 		&obligation_id
@@ -183,17 +236,25 @@ static int operation_runtime_discharge_sequence_fold(
 		return -1;
 	}
 	const struct prototype_verification_obligation* obligation =
-		prototype_verification_db_get(&metadata->verification, obligation_id);
+		prototype_verification_db_get(annotations->verification, obligation_id);
 	if (!obligation) {
 		return -1;
 	}
-	const struct prototype_operation_node* operation = &metadata->operations[operation_id];
-	const struct prototype_operation_node* continuation =
-		&metadata->operations[operation->argument];
+	uint32_t continuation_occurrence;
+	if (operation_runtime_child(
+			annotations->occurrences,
+			operation_id,
+			PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE,
+			0,
+			&continuation_occurrence
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence* continuation =
+		&annotations->occurrences->occurrences[continuation_occurrence];
 	uint32_t continuation_classifier;
 	if (operation_runtime_instantiate_term(
 			terms,
-			type_declarations,
 			environment,
 			continuation->classifier,
 			&continuation_classifier
@@ -266,7 +327,8 @@ enum operation_runtime_frame_kind {
 
 struct operation_runtime_frame {
 	int kind;
-	uint32_t operation;
+	uint32_t core_term;
+	uint32_t trace_occurrence;
 	uint32_t environment_count;
 	uint32_t handler_count;
 	uint32_t obligation_instance;
@@ -275,7 +337,7 @@ struct operation_runtime_frame {
 
 struct operation_runtime_obligation_instance {
 	uint32_t obligation;
-	uint32_t operation;
+	uint32_t occurrence;
 	uint32_t returned_value;
 	int state;
 };
@@ -300,9 +362,9 @@ struct operation_runtime_resumption_return {
 };
 
 struct operation_runtime_machine {
-	struct prototype_compile_metadata* metadata;
+	const struct prototype_runtime_annotations* annotations;
 	struct prototype_term_db* terms;
-	struct prototype_type_declaration_db* type_declarations;
+	struct prototype_type_declaration_db* verification_type_declarations;
 	const struct prototype_term_definition_env* definitions;
 	struct prototype_term_reduction_options options;
 	struct operation_runtime_environment environment;
@@ -318,20 +380,35 @@ struct operation_runtime_machine {
 	uint32_t resumption_return_count;
 	struct operation_runtime_request request;
 	int has_request;
-	uint32_t current_operation;
+	uint32_t current_term;
+	uint32_t current_occurrence;
 	struct operation_runtime_value result;
 	int evaluating;
 	int verification_state;
 	int failure_kind;
 };
 
+static const struct prototype_typed_occurrence_graph* operation_runtime_occurrences(
+	const struct operation_runtime_machine* machine
+) {
+	return machine && machine->annotations ? machine->annotations->occurrences : NULL;
+}
+
+static const struct prototype_verification_db* operation_runtime_verification(
+	const struct operation_runtime_machine* machine
+) {
+	return machine && machine->annotations ? machine->annotations->verification : NULL;
+}
+
 static int operation_runtime_machine_push(
 	struct operation_runtime_machine* machine,
 	int kind,
-	uint32_t operation,
+	uint32_t core_term,
+	uint32_t trace_occurrence,
 	uint32_t obligation_instance
 ) {
-	if (!machine || machine->frame_count >= 2048) {
+	if (!machine || core_term >= machine->terms->term_count ||
+		machine->frame_count >= 2048) {
 		if (machine) {
 			machine->failure_kind = PROTOTYPE_RUNTIME_FAILURE_STACK_CAPACITY;
 		}
@@ -339,7 +416,8 @@ static int operation_runtime_machine_push(
 	}
 	machine->frames[machine->frame_count++] = (struct operation_runtime_frame){
 		.kind = kind,
-		.operation = operation,
+		.core_term = core_term,
+		.trace_occurrence = trace_occurrence,
 		.environment_count = machine->environment.count,
 		.handler_count = machine->handler_count,
 		.obligation_instance = obligation_instance,
@@ -357,9 +435,15 @@ static int operation_runtime_machine_add_obligation_instance(
 	if (!machine || !p_instance) {
 		return -1;
 	}
+	const struct prototype_verification_db* verification =
+		operation_runtime_verification(machine);
+	if (!verification || operation == PROTOTYPE_INVALID_ID) {
+		*p_instance = PROTOTYPE_INVALID_ID;
+		return 0;
+	}
 	uint32_t obligation;
-	int status = prototype_verification_db_find_operation(
-		&machine->metadata->verification,
+	int status = prototype_verification_db_find_occurrence(
+		verification,
 		kind,
 		operation,
 		&obligation
@@ -378,7 +462,7 @@ static int operation_runtime_machine_add_obligation_instance(
 	machine->obligation_instances[instance] =
 		(struct operation_runtime_obligation_instance){
 			.obligation = obligation,
-			.operation = operation,
+			.occurrence = operation,
 			.returned_value = PROTOTYPE_INVALID_ID,
 			.state = PROTOTYPE_VERIFICATION_OBLIGATION_PENDING
 		};
@@ -398,24 +482,25 @@ static int operation_runtime_discharge_computation_fold_result(
 	}
 	struct operation_runtime_obligation_instance* instance =
 		&machine->obligation_instances[instance_id];
+	const struct prototype_verification_db* verification =
+		operation_runtime_verification(machine);
+	const struct prototype_typed_occurrence_graph* occurrences =
+		operation_runtime_occurrences(machine);
 	const struct prototype_verification_obligation* obligation =
-		prototype_verification_db_get(
-			&machine->metadata->verification, instance->obligation
-		);
-	if (!obligation ||
+		prototype_verification_db_get(verification, instance->obligation);
+	if (!verification || !occurrences || !obligation ||
 		obligation->kind != PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT ||
-		instance->operation >= machine->metadata->operation_count ||
-		obligation->continuation_operation >= machine->metadata->operation_count ||
+		instance->occurrence >= occurrences->occurrence_count ||
+		obligation->continuation_occurrence >= occurrences->occurrence_count ||
 		instance->returned_value >= machine->terms->term_count) {
 		return -1;
 	}
-	const struct prototype_operation_node* return_operation =
-		&machine->metadata->operations[obligation->continuation_operation];
+	const struct prototype_typed_occurrence* return_operation =
+		&occurrences->occurrences[obligation->continuation_occurrence];
 	uint32_t return_classifier;
 	if (return_operation->classifier == PROTOTYPE_INVALID_ID ||
 		operation_runtime_instantiate_term(
 			machine->terms,
-			machine->type_declarations,
 			&machine->environment,
 			return_operation->classifier,
 			&return_classifier
@@ -431,7 +516,7 @@ static int operation_runtime_discharge_computation_fold_result(
 		) != 0 || prototype_verification_db_discharge_computation_fold_result(
 			&frame_verification,
 			machine->terms,
-			machine->type_declarations,
+			machine->verification_type_declarations,
 			0,
 			instance->returned_value,
 			return_classifier
@@ -498,35 +583,23 @@ static int operation_runtime_machine_capture_frame(
 
 static int operation_runtime_machine_resumption_function(
 	const struct operation_runtime_machine* machine,
-	uint32_t function_operation,
+	uint32_t function_term,
 	uint32_t* p_resumption
 ) {
-	if (!machine || !p_resumption) {
+	if (!machine || !p_resumption || function_term >= machine->terms->term_count) {
 		return -1;
 	}
-	uint32_t operation_id = operation_runtime_unwrap_name(
-		machine->metadata, function_operation
-	);
-	if (operation_id >= machine->metadata->operation_count) {
-		return 1;
+	if (machine->terms->terms[function_term].tag == PROTOTYPE_TERM_FORCE) {
+		function_term = machine->terms->terms[function_term].as.force.value;
 	}
-	const struct prototype_operation_node* operation =
-		&machine->metadata->operations[operation_id];
-	if (operation->tag == PROTOTYPE_OPERATION_FORCE) {
-		operation_id = operation_runtime_unwrap_name(
-			machine->metadata, operation->argument
-		);
-		if (operation_id >= machine->metadata->operation_count) {
-			return 1;
-		}
-		operation = &machine->metadata->operations[operation_id];
-	}
-	if (operation->tag != PROTOTYPE_OPERATION_VAR) {
+	if (function_term >= machine->terms->term_count ||
+		machine->terms->terms[function_term].tag != PROTOTYPE_TERM_VAR) {
 		return 1;
 	}
 	const struct operation_runtime_binding* binding =
 		operation_runtime_lookup_binding(
-			&machine->environment, operation->referenced_ast_binder_id
+			&machine->environment,
+			machine->terms->terms[function_term].as.var.binding_id
 		);
 	if (!binding || binding->value.kind != OPERATION_RUNTIME_VALUE_RESUMPTION ||
 		binding->value.as.resumption >= machine->resumption_count) {
@@ -576,7 +649,8 @@ static int operation_runtime_machine_invoke_resumption(
 	if (operation_runtime_machine_push(
 			machine,
 			OPERATION_RUNTIME_FRAME_RESUMPTION_RETURN,
-			machine->current_operation,
+			machine->current_term,
+			machine->current_occurrence,
 			return_state
 		) != 0) {
 		return -1;
@@ -597,7 +671,7 @@ static int operation_runtime_machine_invoke_resumption(
 			machine->terms, forced, argument_term, &application
 		) != 0 || prototype_term_perform_with_options(
 			machine->terms,
-			machine->type_declarations,
+			NULL,
 			machine->definitions,
 			machine->options,
 			application,
@@ -616,27 +690,18 @@ static int operation_runtime_machine_invoke_resumption(
 
 static int operation_runtime_machine_enter_lambda_body(
 	struct operation_runtime_machine* machine,
-	uint32_t lambda_operation,
+	uint32_t lambda_term,
+	uint32_t lambda_occurrence,
 	struct operation_runtime_value argument
 ) {
-	if (!machine || lambda_operation >= machine->metadata->operation_count) {
+	if (!machine || lambda_term >= machine->terms->term_count ||
+		machine->terms->terms[lambda_term].tag != PROTOTYPE_TERM_LAMBDA) {
 		return -1;
 	}
-	const struct prototype_operation_node* lambda_operation_node =
-		&machine->metadata->operations[lambda_operation];
-	if (lambda_operation_node->tag != PROTOTYPE_OPERATION_LAMBDA ||
-		lambda_operation_node->core_term >= machine->terms->term_count ||
-		machine->terms->terms[lambda_operation_node->core_term].tag !=
-			PROTOTYPE_TERM_LAMBDA ||
-		lambda_operation_node->body >= machine->metadata->operation_count) {
-		return -1;
-	}
-	const struct prototype_term* lambda =
-		&machine->terms->terms[lambda_operation_node->core_term];
+	const struct prototype_term* lambda = &machine->terms->terms[lambda_term];
 	struct operation_runtime_environment extended;
 	if (operation_runtime_extend_environment(
 			&machine->environment,
-			lambda_operation_node->referenced_ast_binder_id,
 			lambda->as.lambda.binding_id,
 			argument,
 			&extended
@@ -644,27 +709,25 @@ static int operation_runtime_machine_enter_lambda_body(
 		return -1;
 	}
 	machine->environment = extended;
-	machine->current_operation = lambda_operation_node->body;
+	machine->current_term = lambda->as.lambda.body;
+	machine->current_occurrence = operation_runtime_trace_child(
+		operation_runtime_occurrences(machine),
+		lambda_occurrence,
+		PROTOTYPE_TERM_CHILD_BODY,
+		0
+	);
 	machine->evaluating = 1;
 	return 0;
 }
 
 static int operation_runtime_machine_enter_match_case(
 	struct operation_runtime_machine* machine,
-	uint32_t match_operation_id,
+	uint32_t match_term,
+	uint32_t match_occurrence,
 	uint32_t scrutinee
 ) {
-	if (!machine || match_operation_id >= machine->metadata->operation_count) {
-		return -1;
-	}
-	const struct prototype_operation_node* operation =
-		&machine->metadata->operations[match_operation_id];
-	if (operation->tag != PROTOTYPE_OPERATION_MATCH ||
-		operation->core_term >= machine->terms->term_count ||
-		machine->terms->terms[operation->core_term].tag != PROTOTYPE_TERM_MATCH ||
-		operation->first_case == PROTOTYPE_INVALID_ID ||
-		operation->first_case + operation->case_count >
-			machine->metadata->operation_case_count) {
+	if (!machine || match_term >= machine->terms->term_count ||
+		machine->terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
 		return -1;
 	}
 	if (scrutinee < machine->terms->term_count &&
@@ -690,17 +753,21 @@ static int operation_runtime_machine_enter_match_case(
 	}
 	(void)constructor_head;
 	const struct prototype_term* match =
-		&machine->terms->terms[operation->core_term];
-	for (uint32_t i = 0; i < operation->case_count; ++i) {
-		const struct prototype_operation_match_case* operation_case =
-			&machine->metadata->operation_cases[operation->first_case + i];
-		if (operation_case->constructor_id != constructor_id) {
+		&machine->terms->terms[match_term];
+	if ((size_t)match->as.match.first_case + match->as.match.case_count >
+		machine->terms->case_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
+		const struct prototype_match_case* term_case =
+			&machine->terms->cases[match->as.match.first_case + i];
+		if (term_case->constructor_id != constructor_id) {
 			continue;
 		}
 		int owner_equal = 0;
 		if (prototype_term_core_shape_equal(
 				machine->terms,
-				operation_case->constructor_owner,
+				term_case->constructor_owner,
 				owner,
 				&owner_equal
 			) != 0) {
@@ -709,14 +776,7 @@ static int operation_runtime_machine_enter_match_case(
 		if (!owner_equal) {
 			continue;
 		}
-		uint32_t term_case_id = match->as.match.first_case + i;
-		if (term_case_id >= machine->terms->case_count) {
-			return -1;
-		}
-		const struct prototype_match_case* term_case =
-			&machine->terms->cases[term_case_id];
-		if (operation_case->binder_count != term_case->binder_count ||
-			term_case->binder_count != argument_count ||
+		if (term_case->binder_count != argument_count ||
 			term_case->first_binder + term_case->binder_count >
 				machine->terms->case_binder_count) {
 			return -1;
@@ -725,7 +785,6 @@ static int operation_runtime_machine_enter_match_case(
 			struct operation_runtime_environment extended;
 			if (operation_runtime_extend_term_environment(
 					&machine->environment,
-					operation_case->ast_binder_ids[j],
 					machine->terms->case_binders[
 						term_case->first_binder + j
 					].binding_id,
@@ -736,7 +795,13 @@ static int operation_runtime_machine_enter_match_case(
 			}
 			machine->environment = extended;
 		}
-		machine->current_operation = operation_case->body_operation;
+		machine->current_term = term_case->body;
+		machine->current_occurrence = operation_runtime_trace_child(
+			operation_runtime_occurrences(machine),
+			match_occurrence,
+			PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+			i
+		);
 		machine->evaluating = 1;
 		return 0;
 	}
@@ -745,21 +810,20 @@ static int operation_runtime_machine_enter_match_case(
 
 static int operation_runtime_machine_leaf(
 	struct operation_runtime_machine* machine,
-	const struct prototype_operation_node* operation
+	uint32_t core_term
 ) {
 	uint32_t instantiated;
 	uint32_t performed;
-	if (!machine || !operation ||
+	if (!machine || core_term >= machine->terms->term_count ||
 		operation_runtime_instantiate_term(
 			machine->terms,
-			machine->type_declarations,
 			&machine->environment,
-			operation->core_term,
+			core_term,
 			&instantiated
 		) != 0 ||
 		prototype_term_perform_with_options(
 			machine->terms,
-			machine->type_declarations,
+			NULL,
 			machine->definitions,
 			machine->options,
 			instantiated,
@@ -779,26 +843,16 @@ static int operation_runtime_machine_leaf(
 static int operation_runtime_machine_step_evaluate(
 	struct operation_runtime_machine* machine
 ) {
-	if (!machine ||
-		machine->current_operation >= machine->metadata->operation_count) {
+	if (!machine || machine->current_term >= machine->terms->term_count) {
 		return -1;
 	}
-	machine->current_operation = operation_runtime_unwrap_name(
-		machine->metadata, machine->current_operation
-	);
-	if (machine->current_operation >= machine->metadata->operation_count) {
-		return -1;
-	}
-	const struct prototype_operation_node* operation =
-		&machine->metadata->operations[machine->current_operation];
-	if (operation->core_term >= machine->terms->term_count) {
-		return -1;
-	}
-	if (operation->tag == PROTOTYPE_OPERATION_VAR) {
+	const struct prototype_term* core =
+		&machine->terms->terms[machine->current_term];
+	if (core->tag == PROTOTYPE_TERM_VAR) {
 		struct operation_runtime_value value;
 		int lookup_status = operation_runtime_lookup_value(
 			&machine->environment,
-			operation->referenced_ast_binder_id,
+			core->as.var.binding_id,
 			&value
 		);
 		if (lookup_status == 0) {
@@ -810,127 +864,180 @@ static int operation_runtime_machine_step_evaluate(
 			return -1;
 		}
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_RETURN) {
-		if (operation->argument >= machine->metadata->operation_count ||
-			operation_runtime_machine_push(
+	if (core->tag == PROTOTYPE_TERM_RETURN) {
+		uint32_t value_term;
+		if (operation_runtime_core_child(
+				machine->terms, machine->current_term,
+				PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0, &value_term
+			) != 0 || operation_runtime_machine_push(
 				machine,
 				OPERATION_RUNTIME_FRAME_RETURN,
-				machine->current_operation,
+				machine->current_term,
+				machine->current_occurrence,
 				PROTOTYPE_INVALID_ID
 			) != 0) {
 			return -1;
 		}
-		machine->current_operation = operation->argument;
+		machine->current_term = value_term;
+		machine->current_occurrence = operation_runtime_trace_child(
+			operation_runtime_occurrences(machine), machine->current_occurrence,
+			PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0
+		);
 		return 0;
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD) {
+	if (core->tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
 		uint32_t obligation_instance;
-		if (operation->core_term >= machine->terms->term_count ||
-			machine->terms->terms[operation->core_term].tag != PROTOTYPE_TERM_COMPUTATION_FOLD ||
-			operation->function >= machine->metadata->operation_count ||
-			operation_runtime_machine_add_obligation_instance(
+		uint32_t computation_term;
+		if (operation_runtime_core_child(
+				machine->terms, machine->current_term,
+				PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION, 0, &computation_term
+			) != 0 || operation_runtime_machine_add_obligation_instance(
 				machine,
 				PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT,
-				machine->current_operation,
+				machine->current_occurrence,
 				&obligation_instance
 			) != 0 ||
 			operation_runtime_machine_push(machine,
-				machine->terms->terms[operation->core_term].as.computation_fold.clause_count == 0 ?
+				core->as.computation_fold.clause_count == 0 ?
 					OPERATION_RUNTIME_FRAME_SEQUENCE_FOLD : OPERATION_RUNTIME_FRAME_HANDLE,
-				machine->current_operation, obligation_instance) != 0) {
+				machine->current_term, machine->current_occurrence,
+				obligation_instance) != 0) {
 			return -1;
 		}
-		if (machine->terms->terms[operation->core_term].as.computation_fold.clause_count > 0) {
+		if (core->as.computation_fold.clause_count > 0) {
 			if (machine->handler_count >= 256) {
 				return -1;
 			}
-			machine->handlers[machine->handler_count++] = machine->current_operation;
+			machine->handlers[machine->handler_count++] = machine->current_term;
 			machine->options.flags &= ~PROTOTYPE_TERM_PERFORM_HOST_EFFECT;
 			machine->options.operation_dispatch = NULL;
 			machine->options.operation_dispatch_context = NULL;
 		}
-		machine->current_operation = operation->function;
+		machine->current_term = computation_term;
+		machine->current_occurrence = operation_runtime_trace_child(
+			operation_runtime_occurrences(machine), machine->current_occurrence,
+			PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION, 0
+		);
 		return 0;
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_MATCH) {
-		if (operation->scrutinee >= machine->metadata->operation_count ||
-			operation_runtime_machine_push(
+	if (core->tag == PROTOTYPE_TERM_MATCH) {
+		uint32_t scrutinee_term;
+		if (operation_runtime_core_child(
+				machine->terms, machine->current_term,
+				PROTOTYPE_TERM_CHILD_SCRUTINEE, 0, &scrutinee_term
+			) != 0 || operation_runtime_machine_push(
 				machine,
 				OPERATION_RUNTIME_FRAME_MATCH,
-				machine->current_operation,
+				machine->current_term,
+				machine->current_occurrence,
 				PROTOTYPE_INVALID_ID
 			) != 0) {
 			return -1;
 		}
-		machine->current_operation = operation->scrutinee;
+		machine->current_term = scrutinee_term;
+		machine->current_occurrence = operation_runtime_trace_child(
+			operation_runtime_occurrences(machine), machine->current_occurrence,
+			PROTOTYPE_TERM_CHILD_SCRUTINEE, 0
+		);
 		return 0;
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_APP) {
+	if (core->tag == PROTOTYPE_TERM_APP) {
+		uint32_t function_term;
+		uint32_t argument_term;
+		if (operation_runtime_core_child(
+				machine->terms, machine->current_term,
+				PROTOTYPE_TERM_CHILD_FUNCTION, 0, &function_term
+			) != 0 || operation_runtime_core_child(
+				machine->terms, machine->current_term,
+				PROTOTYPE_TERM_CHILD_ARGUMENT, 0, &argument_term
+			) != 0) {
+			return -1;
+		}
 		uint32_t resumption;
 		int resumption_status = operation_runtime_machine_resumption_function(
-			machine, operation->function, &resumption
+			machine, function_term, &resumption
 		);
 		if (resumption_status < 0) {
 			return -1;
 		}
 		if (resumption_status == 0) {
-			if (operation->argument >= machine->metadata->operation_count ||
-				operation_runtime_machine_push(
+			if (operation_runtime_machine_push(
 					machine,
 					OPERATION_RUNTIME_FRAME_RESUME,
-					machine->current_operation,
+					machine->current_term,
+					machine->current_occurrence,
 					resumption
 				) != 0) {
 				return -1;
 			}
-			machine->current_operation = operation->argument;
+			machine->current_term = argument_term;
+			machine->current_occurrence = operation_runtime_trace_child(
+				operation_runtime_occurrences(machine), machine->current_occurrence,
+				PROTOTYPE_TERM_CHILD_ARGUMENT, 0
+			);
 			return 0;
 		}
-		if (operation->function >= machine->metadata->operation_count ||
-			operation->argument >= machine->metadata->operation_count ||
-			operation_runtime_machine_push(
+		if (operation_runtime_machine_push(
 				machine,
 				OPERATION_RUNTIME_FRAME_APP,
-				machine->current_operation,
+				machine->current_term,
+				machine->current_occurrence,
 				PROTOTYPE_INVALID_ID
 			) != 0) {
 			return -1;
 		}
-		machine->current_operation = operation->argument;
+		machine->current_term = argument_term;
+		machine->current_occurrence = operation_runtime_trace_child(
+			operation_runtime_occurrences(machine), machine->current_occurrence,
+			PROTOTYPE_TERM_CHILD_ARGUMENT, 0
+		);
 		return 0;
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_REQUEST) {
-		if (operation->function >= machine->metadata->operation_count ||
-			operation->argument >= machine->metadata->operation_count ||
-			operation->body >= machine->metadata->operation_count ||
-			operation_runtime_machine_push(
+	if (core->tag == PROTOTYPE_TERM_OPERATION_REQUEST) {
+		uint32_t argument_term;
+		if (operation_runtime_core_child(
+				machine->terms, machine->current_term,
+				PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT, 0, &argument_term
+			) != 0 || operation_runtime_machine_push(
 				machine,
 				OPERATION_RUNTIME_FRAME_PERFORM_ARGUMENT,
-				machine->current_operation,
+				machine->current_term,
+				machine->current_occurrence,
 				PROTOTYPE_INVALID_ID
 			) != 0) {
 			return -1;
 		}
-		machine->current_operation = operation->argument;
+		machine->current_term = argument_term;
+		machine->current_occurrence = operation_runtime_trace_child(
+			operation_runtime_occurrences(machine), machine->current_occurrence,
+			PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT, 0
+		);
 		return 0;
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_FORCE) {
-		uint32_t value_operation = operation_runtime_unwrap_name(
-			machine->metadata, operation->argument
-		);
-		if (value_operation < machine->metadata->operation_count &&
-			machine->metadata->operations[value_operation].tag ==
-				PROTOTYPE_OPERATION_THUNK) {
-			uint32_t computation =
-				machine->metadata->operations[value_operation].argument;
-			if (computation >= machine->metadata->operation_count) {
-				return -1;
-			}
-			machine->current_operation = computation;
+	if (core->tag == PROTOTYPE_TERM_FORCE) {
+		uint32_t forced_term;
+		if (operation_runtime_core_child(
+				machine->terms, machine->current_term,
+				PROTOTYPE_TERM_CHILD_FORCE_VALUE, 0, &forced_term
+			) != 0) {
+			return -1;
+		}
+		if (forced_term < machine->terms->term_count &&
+			machine->terms->terms[forced_term].tag == PROTOTYPE_TERM_THUNK) {
+			machine->current_term =
+				machine->terms->terms[forced_term].as.thunk.computation;
+			uint32_t forced_occurrence = operation_runtime_trace_child(
+				operation_runtime_occurrences(machine), machine->current_occurrence,
+				PROTOTYPE_TERM_CHILD_FORCE_VALUE, 0
+			);
+			machine->current_occurrence = operation_runtime_trace_child(
+				operation_runtime_occurrences(machine), forced_occurrence,
+				PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION, 0
+			);
 			return 0;
 		}
 	}
-	return operation_runtime_machine_leaf(machine, operation);
+	return operation_runtime_machine_leaf(machine, machine->current_term);
 }
 
 static int operation_runtime_machine_step_unwind(
@@ -943,7 +1050,7 @@ static int operation_runtime_machine_step_unwind(
 		machine->frames[--machine->frame_count];
 	if ((frame.kind != OPERATION_RUNTIME_FRAME_RESUMPTION_RETURN &&
 			frame.environment_count > machine->environment.count) ||
-		frame.operation >= machine->metadata->operation_count) {
+		frame.core_term >= machine->terms->term_count) {
 		return -1;
 	}
 	if (frame.kind != OPERATION_RUNTIME_FRAME_RESUMPTION_RETURN) {
@@ -954,8 +1061,7 @@ static int operation_runtime_machine_step_unwind(
 	if (machine->has_request && frame.kind != OPERATION_RUNTIME_FRAME_HANDLE) {
 		return operation_runtime_machine_capture_frame(machine, &frame);
 	}
-	const struct prototype_operation_node* operation =
-		&machine->metadata->operations[frame.operation];
+	const struct prototype_term* core = &machine->terms->terms[frame.core_term];
 	switch (frame.kind) {
 		case OPERATION_RUNTIME_FRAME_RETURN: {
 			uint32_t value;
@@ -981,18 +1087,22 @@ static int operation_runtime_machine_step_unwind(
 				argument.as.term =
 					machine->terms->terms[argument.as.term].as.return_term.value;
 			}
-			uint32_t function_operation = operation_runtime_unwrap_name(
-				machine->metadata, operation->function
-			);
-			if (function_operation < machine->metadata->operation_count &&
-				machine->metadata->operations[function_operation].tag ==
-					PROTOTYPE_OPERATION_LAMBDA) {
-				return operation_runtime_machine_enter_lambda_body(
-					machine, function_operation, argument
-				);
-			}
-			if (function_operation >= machine->metadata->operation_count) {
+			uint32_t function_term;
+			if (operation_runtime_core_child(
+					machine->terms, frame.core_term,
+					PROTOTYPE_TERM_CHILD_FUNCTION, 0, &function_term
+				) != 0) {
 				return -1;
+			}
+			uint32_t function_occurrence = operation_runtime_trace_child(
+				operation_runtime_occurrences(machine), frame.trace_occurrence,
+				PROTOTYPE_TERM_CHILD_FUNCTION, 0
+			);
+			if (function_term < machine->terms->term_count &&
+				machine->terms->terms[function_term].tag == PROTOTYPE_TERM_LAMBDA) {
+				return operation_runtime_machine_enter_lambda_body(
+					machine, function_term, function_occurrence, argument
+				);
 			}
 			uint32_t argument_term;
 			uint32_t function;
@@ -1001,15 +1111,14 @@ static int operation_runtime_machine_step_unwind(
 			if (operation_runtime_value_term(argument, &argument_term) != 0 ||
 				operation_runtime_instantiate_term(
 					machine->terms,
-					machine->type_declarations,
 					&machine->environment,
-					machine->metadata->operations[function_operation].core_term,
+					function_term,
 					&function
 				) != 0 || prototype_term_app(
 					machine->terms, function, argument_term, &application
 				) != 0 || prototype_term_perform_with_options(
 					machine->terms,
-					machine->type_declarations,
+					NULL,
 					machine->definitions,
 					machine->options,
 					application,
@@ -1034,17 +1143,24 @@ static int operation_runtime_machine_step_unwind(
 			uint32_t continuation;
 			uint32_t request;
 			uint32_t performed;
-			if (operation_runtime_instantiate_term(
+			uint32_t operation_child;
+			uint32_t continuation_child;
+			if (operation_runtime_core_child(
+					machine->terms, frame.core_term,
+					PROTOTYPE_TERM_CHILD_REQUEST_OPERATION, 0, &operation_child
+				) != 0 || operation_runtime_core_child(
+					machine->terms, frame.core_term,
+					PROTOTYPE_TERM_CHILD_REQUEST_CONTINUATION, 0,
+					&continuation_child
+				) != 0 || operation_runtime_instantiate_term(
 					machine->terms,
-					machine->type_declarations,
 					&machine->environment,
-					machine->metadata->operations[operation->function].core_term,
+					operation_child,
 					&operation_term
 				) != 0 || operation_runtime_instantiate_term(
 					machine->terms,
-					machine->type_declarations,
 					&machine->environment,
-					machine->metadata->operations[operation->body].core_term,
+					continuation_child,
 					&continuation
 				) != 0 || prototype_term_operation_request(
 					machine->terms,
@@ -1054,7 +1170,7 @@ static int operation_runtime_machine_step_unwind(
 					&request
 				) != 0 || prototype_term_perform_with_options(
 					machine->terms,
-					machine->type_declarations,
+					NULL,
 					machine->definitions,
 					machine->options,
 					request,
@@ -1100,7 +1216,7 @@ static int operation_runtime_machine_step_unwind(
 				return -1;
 			}
 			return operation_runtime_machine_enter_match_case(
-				machine, frame.operation, scrutinee
+				machine, frame.core_term, frame.trace_occurrence, scrutinee
 			);
 		}
 		case OPERATION_RUNTIME_FRAME_SEQUENCE_FOLD: {
@@ -1113,12 +1229,12 @@ static int operation_runtime_machine_step_unwind(
 			uint32_t returned_value =
 				machine->terms->terms[result].as.return_term.value;
 			if (operation_runtime_discharge_sequence_fold(
-					machine->metadata,
+					machine->annotations,
 					machine->terms,
-					machine->type_declarations,
+					machine->verification_type_declarations,
 					machine->definitions,
 					&machine->environment,
-					frame.operation,
+					frame.trace_occurrence,
 					returned_value,
 					&machine->verification_state
 				) != 0) {
@@ -1134,12 +1250,22 @@ static int operation_runtime_machine_step_unwind(
 				machine->obligation_instances[frame.obligation_instance].state =
 					PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED;
 			}
-			uint32_t continuation_operation = operation_runtime_unwrap_name(
-				machine->metadata, operation->argument
+			uint32_t continuation_term;
+			if (operation_runtime_core_child(
+					machine->terms, frame.core_term,
+					PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0,
+					&continuation_term
+				) != 0) {
+				return -1;
+			}
+			uint32_t continuation_occurrence = operation_runtime_trace_child(
+				operation_runtime_occurrences(machine), frame.trace_occurrence,
+				PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0
 			);
 			return operation_runtime_machine_enter_lambda_body(
 				machine,
-				continuation_operation,
+				continuation_term,
+				continuation_occurrence,
 				operation_runtime_term_value(returned_value)
 			);
 		}
@@ -1158,20 +1284,13 @@ static int operation_runtime_machine_step_unwind(
 				machine, frame.obligation_instance
 			);
 		case OPERATION_RUNTIME_FRAME_HANDLE: {
-			if (operation->core_term >= machine->terms->term_count ||
-				machine->terms->terms[operation->core_term].tag !=
-					PROTOTYPE_TERM_COMPUTATION_FOLD) {
+			if (core->tag != PROTOTYPE_TERM_COMPUTATION_FOLD) {
 				return -1;
 			}
-			const struct prototype_term* fold_term =
-				&machine->terms->terms[operation->core_term];
+			const struct prototype_term* fold_term = core;
 			if ((size_t)fold_term->as.computation_fold.first_clause +
 					fold_term->as.computation_fold.clause_count >
-					machine->terms->computation_fold_clause_count ||
-				operation->fold_clause_count !=
-					fold_term->as.computation_fold.clause_count ||
-				(size_t)operation->first_fold_clause + operation->fold_clause_count >
-					machine->metadata->operation_fold_clause_count) {
+					machine->terms->computation_fold_clause_count) {
 				return -1;
 			}
 			uint32_t result = PROTOTYPE_INVALID_ID;
@@ -1181,11 +1300,26 @@ static int operation_runtime_machine_step_unwind(
 				machine->terms->terms[result].tag == PROTOTYPE_TERM_RETURN) {
 				uint32_t returned_value =
 					machine->terms->terms[result].as.return_term.value;
+				uint32_t return_clause_term;
+				if (operation_runtime_core_child(
+						machine->terms, frame.core_term,
+						PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0,
+						&return_clause_term
+					) != 0 || return_clause_term >= machine->terms->term_count ||
+					machine->terms->terms[return_clause_term].tag !=
+						PROTOTYPE_TERM_LAMBDA) {
+					return -1;
+				}
+				const struct prototype_term* return_clause =
+					&machine->terms->terms[return_clause_term];
+				uint32_t return_clause_occurrence = operation_runtime_trace_child(
+					operation_runtime_occurrences(machine), frame.trace_occurrence,
+					PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0
+				);
 				struct operation_runtime_environment extended;
 				if (operation_runtime_extend_term_environment(
 						&machine->environment,
-						operation->fold_return_ast_binder_id,
-						operation->fold_return_binder_id,
+						return_clause->as.lambda.binding_id,
 						returned_value,
 						&extended
 					) != 0) {
@@ -1204,12 +1338,17 @@ static int operation_runtime_machine_step_unwind(
 				if (operation_runtime_machine_push(
 						machine,
 						OPERATION_RUNTIME_FRAME_COMPUTATION_FOLD_RESULT,
-						frame.operation,
+						frame.core_term,
+						frame.trace_occurrence,
 						frame.obligation_instance
 					) != 0) {
 					return -1;
 				}
-				machine->current_operation = operation->scrutinee;
+				machine->current_term = return_clause->as.lambda.body;
+				machine->current_occurrence = operation_runtime_trace_child(
+					operation_runtime_occurrences(machine), return_clause_occurrence,
+					PROTOTYPE_TERM_CHILD_BODY, 0
+				);
 				machine->evaluating = 1;
 				return 0;
 			}
@@ -1240,10 +1379,34 @@ static int operation_runtime_machine_step_unwind(
 			if (selected_clause == PROTOTYPE_INVALID_ID) {
 				return 0;
 			}
-			const struct prototype_operation_computation_fold_clause* occurrence_clause =
-				&machine->metadata->operation_fold_clauses[
-					operation->first_fold_clause + selected_clause
-				];
+			uint32_t argument_lambda_term;
+			if (operation_runtime_core_child(
+					machine->terms, frame.core_term,
+					PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY,
+					selected_clause, &argument_lambda_term
+				) != 0 || argument_lambda_term >= machine->terms->term_count ||
+				machine->terms->terms[argument_lambda_term].tag !=
+					PROTOTYPE_TERM_LAMBDA) {
+				return -1;
+			}
+			const struct prototype_term* argument_lambda =
+				&machine->terms->terms[argument_lambda_term];
+			uint32_t continuation_lambda_term = argument_lambda->as.lambda.body;
+			if (continuation_lambda_term >= machine->terms->term_count ||
+				machine->terms->terms[continuation_lambda_term].tag !=
+					PROTOTYPE_TERM_LAMBDA) {
+				return -1;
+			}
+			const struct prototype_term* continuation_lambda =
+				&machine->terms->terms[continuation_lambda_term];
+			uint32_t argument_lambda_occurrence = operation_runtime_trace_child(
+				operation_runtime_occurrences(machine), frame.trace_occurrence,
+				PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY, selected_clause
+			);
+			uint32_t continuation_lambda_occurrence = operation_runtime_trace_child(
+				operation_runtime_occurrences(machine), argument_lambda_occurrence,
+				PROTOTYPE_TERM_CHILD_BODY, 0
+			);
 			if (machine->resumption_count >= 64) {
 				machine->failure_kind = PROTOTYPE_RUNTIME_FAILURE_STACK_CAPACITY;
 				return -1;
@@ -1256,21 +1419,23 @@ static int operation_runtime_machine_step_unwind(
 			struct operation_runtime_environment clause_environment;
 			if (operation_runtime_extend_environment(
 					&machine->environment,
-					occurrence_clause->argument_ast_binder_id,
-					occurrence_clause->argument_binder_id,
+					argument_lambda->as.lambda.binding_id,
 					request_argument,
 					&argument_environment
 				) != 0 || operation_runtime_extend_resumption_environment(
 					&argument_environment,
-					occurrence_clause->continuation_ast_binder_id,
-					occurrence_clause->continuation_binder_id,
+					continuation_lambda->as.lambda.binding_id,
 					resumption,
 					&clause_environment
 				) != 0) {
 				return -1;
 			}
 			machine->environment = clause_environment;
-			machine->current_operation = occurrence_clause->body_operation;
+			machine->current_term = continuation_lambda->as.lambda.body;
+			machine->current_occurrence = operation_runtime_trace_child(
+				operation_runtime_occurrences(machine), continuation_lambda_occurrence,
+				PROTOTYPE_TERM_CHILD_BODY, 0
+			);
 			machine->evaluating = 1;
 			return 0;
 		}
@@ -1281,15 +1446,25 @@ static int operation_runtime_machine_step_unwind(
 
 static int operation_runtime_machine_run(
 	struct operation_runtime_machine* machine,
-	uint32_t operation_id,
+	uint32_t core_term,
+	uint32_t trace_occurrence,
 	uint32_t* p_ret,
 	int* p_verification_state,
 	struct prototype_runtime_trace* p_trace
 ) {
-	if (!machine || !p_ret || operation_id >= machine->metadata->operation_count) {
+	if (!machine || !p_ret || core_term >= machine->terms->term_count ||
+		(trace_occurrence != PROTOTYPE_INVALID_ID &&
+		 (!operation_runtime_occurrences(machine) ||
+		  trace_occurrence >= operation_runtime_occurrences(machine)->occurrence_count))) {
 		return -1;
 	}
-	machine->current_operation = operation_id;
+	machine->current_occurrence = trace_occurrence;
+	if (trace_occurrence != PROTOTYPE_INVALID_ID) {
+		machine->current_occurrence = operation_runtime_unwrap_name(
+			operation_runtime_occurrences(machine), trace_occurrence
+		);
+	}
+	machine->current_term = core_term;
 	machine->evaluating = 1;
 	for (;;) {
 		int status = machine->evaluating ?
@@ -1309,14 +1484,14 @@ static int operation_runtime_machine_run(
 			if (p_trace) {
 				memset(p_trace, 0, sizeof(*p_trace));
 				p_trace->failure_kind = machine->failure_kind;
-				p_trace->failed_operation = machine->current_operation;
+				p_trace->failed_occurrence = machine->current_occurrence;
 				p_trace->frame_count = machine->frame_count < 64 ?
 					machine->frame_count : 64;
 				for (uint32_t i = 0; i < p_trace->frame_count; ++i) {
 					const struct operation_runtime_frame* frame =
 						&machine->frames[machine->frame_count - i - 1];
 					p_trace->frame_kinds[i] = frame->kind;
-					p_trace->frame_operations[i] = frame->operation;
+					p_trace->frame_occurrences[i] = frame->trace_occurrence;
 				}
 				p_trace->obligation_instance_count =
 					machine->obligation_instance_count < 64 ?
@@ -1326,19 +1501,21 @@ static int operation_runtime_machine_run(
 					++i) {
 					p_trace->obligation_states[i] =
 						machine->obligation_instances[i].state;
-					p_trace->obligation_operations[i] =
-						machine->obligation_instances[i].operation;
+					p_trace->obligation_occurrences[i] =
+					machine->obligation_instances[i].occurrence;
 				}
 			}
 			return -1;
 		}
 		if (status > 0) {
+			const struct prototype_verification_db* verification =
+				operation_runtime_verification(machine);
 			for (uint32_t i = 0; i < machine->obligation_instance_count; ++i) {
 				const struct operation_runtime_obligation_instance* instance =
 					&machine->obligation_instances[i];
 				const struct prototype_verification_obligation* obligation =
 					prototype_verification_db_get(
-						&machine->metadata->verification, instance->obligation
+						verification, instance->obligation
 					);
 				if (obligation &&
 					obligation->kind ==
@@ -1367,13 +1544,13 @@ static int operation_runtime_machine_run(
 	}
 }
 
-int prototype_operation_evaluate_with_trace(
-	struct prototype_compile_metadata* metadata,
+int prototype_runtime_evaluate_core_with_annotations(
+	const struct prototype_runtime_annotations* annotations,
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
-	uint32_t operation_id,
+	uint32_t core_term,
+	uint32_t trace_occurrence,
 	uint32_t* p_ret,
 	int* p_verification_state,
 	struct prototype_runtime_trace* p_trace
@@ -1381,7 +1558,9 @@ int prototype_operation_evaluate_with_trace(
 	if (p_verification_state) {
 		*p_verification_state = 0;
 	}
-	if (!metadata || !terms || !type_declarations || !p_ret) {
+	if (!terms || !p_ret ||
+		(annotations && annotations->verification &&
+			!annotations->verification_type_declarations)) {
 		return -1;
 	}
 	if (p_trace) {
@@ -1391,37 +1570,35 @@ int prototype_operation_evaluate_with_trace(
 	if (!machine) {
 		return -1;
 	}
-	machine->metadata = metadata;
+	machine->annotations = annotations;
 	machine->terms = terms;
-	machine->type_declarations = type_declarations;
+	machine->verification_type_declarations = annotations ?
+		annotations->verification_type_declarations : NULL;
 	machine->definitions = definitions;
 	machine->options = options;
 	int status = operation_runtime_machine_run(
-		machine, operation_id, p_ret, p_verification_state, p_trace
+		machine, core_term, trace_occurrence, p_ret, p_verification_state, p_trace
 	);
 	free(machine);
 	return status;
 }
 
-int prototype_operation_evaluate_with_verification(
-	struct prototype_compile_metadata* metadata,
+int prototype_runtime_evaluate_core(
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
-	uint32_t operation_id,
-	uint32_t* p_ret,
-	int* p_verification_state
+	uint32_t core_term,
+	uint32_t* p_ret
 ) {
-	return prototype_operation_evaluate_with_trace(
-		metadata,
+	return prototype_runtime_evaluate_core_with_annotations(
+		NULL,
 		terms,
-		type_declarations,
 		definitions,
 		options,
-		operation_id,
+		core_term,
+		PROTOTYPE_INVALID_ID,
 		p_ret,
-		p_verification_state,
+		NULL,
 		NULL
 	);
 }

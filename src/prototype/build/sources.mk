@@ -1,12 +1,12 @@
 PROTOTYPE_ROOT := src/prototype
 
 PROTOTYPE_AST_SOURCES := \
-	$(PROTOTYPE_ROOT)/src/graph/operation_graph.c \
-	$(PROTOTYPE_ROOT)/src/graph/operation_usage.c \
+	$(PROTOTYPE_ROOT)/src/graph/typed_occurrence_graph.c \
+	$(PROTOTYPE_ROOT)/src/graph/occurrence_usage.c \
 	$(PROTOTYPE_ROOT)/src/graph/compile_metadata.c \
 	$(PROTOTYPE_ROOT)/src/artifact/interface.c \
 	$(PROTOTYPE_ROOT)/src/artifact/publication.c \
-	$(PROTOTYPE_ROOT)/src/artifact/wire_v74.c \
+	$(PROTOTYPE_ROOT)/src/artifact/wire_v75.c \
 	$(PROTOTYPE_ROOT)/src/artifact/relocation.c \
 	$(PROTOTYPE_ROOT)/src/artifact/link.c \
 	$(PROTOTYPE_ROOT)/src/frontend/ast.c \

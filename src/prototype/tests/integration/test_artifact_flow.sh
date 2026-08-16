@@ -135,9 +135,9 @@ TERM_TAG_EFFECT_OPERATION=$(c_enum_value_in src/prototype/include/a_program/core
 TERM_TAG_EFFECT_ROW_EMPTY=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_EMPTY)
 TERM_TAG_EFFECT_ROW_OPERATION=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
 TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
-OPERATION_TAG_LAMBDA=$(c_enum_value_in \
-	src/prototype/include/a_program/graph/operation_model.h \
-	prototype_operation_tag PROTOTYPE_OPERATION_LAMBDA)
+OCCURRENCE_TAG_LAMBDA=$(c_enum_value_in \
+	src/prototype/include/a_program/graph/typed_occurrence_model.h \
+	prototype_typed_occurrence_kind PROTOTYPE_TYPED_OCCURRENCE_LAMBDA)
 
 if rg -q 'prototype_type_declaration_find_by_representation_fingerprint' \
 	src/prototype --glob '*.[ch]' --glob '*.inc'; then
@@ -175,8 +175,8 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 74 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v74.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 75 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v75.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
@@ -197,7 +197,7 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-foreign-intrinsics.apo" \
 fi
 awk '
 	$1 == "context" && NF != 6 { bad = 1 }
-	$1 == "operation" && NF != 32 { bad = 1 }
+	$1 == "typed_occurrence" && NF != 28 { bad = 1 }
 	$1 == "substitution" && NF != 9 { bad = 1 }
 	END { exit bad }
 ' "$TMP_DIR/identity.apo"
@@ -216,7 +216,7 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-both-premise-ids.apo" \
 	exit 1
 fi
 awk '
-	$1 == "operation" && $4 == 2 && !done {
+	$1 == "typed_occurrence" && $4 == 2 && !done {
 		$4 = 1
 		done = 1
 	}
@@ -263,10 +263,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 74/A_PROGRAM_ARTIFACT 73/' \
-	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v67.apo"
-if ./read_file.out --read-graph "$TMP_DIR/identity-v67.apo" >"$TMP_DIR/identity-v67.out" 2>"$TMP_DIR/identity-v67.err"; then
-	echo "obsolete artifact unexpectedly passed after v74 format bump" >&2
+sed '1s/A_PROGRAM_ARTIFACT 75/A_PROGRAM_ARTIFACT 74/' \
+	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v74.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-v74.apo" >"$TMP_DIR/identity-v74.out" 2>"$TMP_DIR/identity-v74.err"; then
+	echo "obsolete artifact unexpectedly passed at the v75 version boundary" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -396,19 +396,19 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-universe-reason.apo" 
 	echo "Universe constraint accepted an unknown provenance reason" >&2
 	exit 1
 fi
-grep -q '^term identityBool .* namespace identity operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/identity.apo"
+grep -q '^term identityBool .* namespace identity occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/identity.apo"
 grep -q '^type Bool .* namespace identity$' "$TMP_DIR/identity.apo"
-grep -q 'metadata label identityBool -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
-grep -q 'metadata label identityNat -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
-identity_bool_operation=$(awk '/metadata label identityBool -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/identity.out")
-identity_nat_operation=$(awk '/metadata label identityNat -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/identity.out")
+grep -q 'metadata label identityBool -> occurrence#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
+grep -q 'metadata label identityNat -> occurrence#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
+identity_bool_operation=$(awk '/metadata label identityBool -> occurrence#[0-9]+ -> term#/ { sub("occurrence#", "", $5); print $5 }' "$TMP_DIR/identity.out")
+identity_nat_operation=$(awk '/metadata label identityNat -> occurrence#[0-9]+ -> term#/ { sub("occurrence#", "", $5); print $5 }' "$TMP_DIR/identity.out")
 test -n "$identity_bool_operation"
 test -n "$identity_nat_operation"
 test "$identity_bool_operation" != "$identity_nat_operation"
 awk -v wrong_operation="$identity_nat_operation" '
 	$1 == "term" && $2 == "identityBool" {
 		for (i = 1; i <= NF; ++i) {
-			if ($i == "operation") {
+			if ($i == "occurrence") {
 				$(i + 1) = wrong_operation
 			}
 		}
@@ -436,9 +436,9 @@ EOF_SHARED_CORE_PROOF_OWNER
 
 ./read_file.out --write-artifact "$TMP_DIR/SharedCoreProofOwner.apo" \
 	"$TMP_DIR/shared-core-proof-owner.p" >"$TMP_DIR/shared-core-proof-owner.out"
-id1_operation=$(awk '/metadata label id1 -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
-id2_operation=$(awk '/metadata label id2 -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
-use1_operation=$(awk '/metadata label use1 -> operation#[0-9]+ -> term#/ { sub("operation#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
+id1_operation=$(awk '/metadata label id1 -> occurrence#[0-9]+ -> term#/ { sub("occurrence#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
+id2_operation=$(awk '/metadata label id2 -> occurrence#[0-9]+ -> term#/ { sub("occurrence#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
+use1_operation=$(awk '/metadata label use1 -> occurrence#[0-9]+ -> term#/ { sub("occurrence#", "", $5); print $5 }' "$TMP_DIR/shared-core-proof-owner.out")
 test -n "$id1_operation"
 test -n "$id2_operation"
 test -n "$use1_operation"
@@ -630,13 +630,13 @@ addNat := \n : Nat =>
 EOF_OPERATION_LAYER
 
 ./read_file.out "$TMP_DIR/operation-layer.p" >"$TMP_DIR/operation-layer.out"
-and_true_operation=$(awk '$1 ~ /^operation-case#/ && $NF == "label=true" { sub("body-operation#", "", $2); print $2; exit }' "$TMP_DIR/operation-layer.out")
-add_nat_zero_operation=$(awk '$1 ~ /^operation-case#/ && $NF == "label=zero" { sub("body-operation#", "", $2); print $2; exit }' "$TMP_DIR/operation-layer.out")
+and_true_operation=$(awk '$1 ~ /^occurrence-case#/ && $NF == "label=true" { sub("body-occurrence#", "", $2); print $2; exit }' "$TMP_DIR/operation-layer.out")
+add_nat_zero_operation=$(awk '$1 ~ /^occurrence-case#/ && $NF == "label=zero" { sub("body-occurrence#", "", $2); print $2; exit }' "$TMP_DIR/operation-layer.out")
 test -n "$and_true_operation"
 test -n "$add_nat_zero_operation"
 test "$and_true_operation" != "$add_nat_zero_operation"
-and_true_core=$(awk -v operation="$and_true_operation" '$1 == "operation#" operation { sub("core#", "", $3); print $3; exit }' "$TMP_DIR/operation-layer.out")
-add_nat_zero_core=$(awk -v operation="$add_nat_zero_operation" '$1 == "operation#" operation { sub("core#", "", $3); print $3; exit }' "$TMP_DIR/operation-layer.out")
+and_true_core=$(awk -v operation="$and_true_operation" '$1 == "occurrence#" operation { sub("core#", "", $3); print $3; exit }' "$TMP_DIR/operation-layer.out")
+add_nat_zero_core=$(awk -v operation="$add_nat_zero_operation" '$1 == "occurrence#" operation { sub("core#", "", $3); print $3; exit }' "$TMP_DIR/operation-layer.out")
 test -n "$and_true_core"
 test "$and_true_core" = "$add_nat_zero_core"
 
@@ -799,15 +799,15 @@ matchAscribed := {
 EOF_MULTI_APP
 
 ./read_file.out "$TMP_DIR/multi-app.p" >"$TMP_DIR/multi-app.out"
-multi_identity_bool_term=$(awk '/metadata label identityBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
-multi_identity_nat_term=$(awk '/metadata label identityNat -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
-multi_higher_bool_term=$(awk '/metadata label higherBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
-multi_higher_nat_term=$(awk '/metadata label higherNat -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
-multi_use_higher_bool_term=$(awk '/metadata label useHigherBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
-multi_use_higher_nat_term=$(awk '/metadata label useHigherNat -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
-multi_use_ascribed_bool_term=$(awk '/metadata label useAscribedBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
-multi_use_ascribed_nat_term=$(awk '/metadata label useAscribedNat -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
-multi_match_ascribed_term=$(awk '/metadata label matchAscribed -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_identity_bool_term=$(awk '/metadata label identityBool -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_identity_nat_term=$(awk '/metadata label identityNat -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_higher_bool_term=$(awk '/metadata label higherBool -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_higher_nat_term=$(awk '/metadata label higherNat -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_use_higher_bool_term=$(awk '/metadata label useHigherBool -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_use_higher_nat_term=$(awk '/metadata label useHigherNat -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_use_ascribed_bool_term=$(awk '/metadata label useAscribedBool -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_use_ascribed_nat_term=$(awk '/metadata label useAscribedNat -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
+multi_match_ascribed_term=$(awk '/metadata label matchAscribed -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/multi-app.out")
 test "$multi_identity_bool_term" = "$multi_identity_nat_term"
 test "$multi_higher_bool_term" = "$multi_higher_nat_term"
 test "$multi_use_higher_bool_term" = "$multi_use_higher_nat_term"
@@ -816,19 +816,19 @@ test -n "$multi_use_ascribed_nat_term"
 test -n "$multi_match_ascribed_term"
 multi_app_elim_count=$(grep -F -c '[app-elim proof#' "$TMP_DIR/multi-app.out")
 test "$multi_app_elim_count" -ge 2
-grep -E 'metadata label matchAscribed -> operation#[0-9]+ -> term#' "$TMP_DIR/multi-app.out" >/dev/null
+grep -E 'metadata label matchAscribed -> occurrence#[0-9]+ -> term#' "$TMP_DIR/multi-app.out" >/dev/null
 grep -F '[solved-match-motive proof#' "$TMP_DIR/multi-app.out" >/dev/null
 
 ./read_file.out --write-artifact "$TMP_DIR/AscribedRawFunction.apo" \
 	src/prototype/tests/fixtures/typing/ascribed_raw_function_check.p \
 	>"$TMP_DIR/ascribed-raw-function.out"
 awk '
-	$1 == "operation" {
+	$1 == "typed_occurrence" {
 		core[$2] = $6;
 		classifier[$2] = $8;
 		if ($3 == 9) {
 			ascription = $2;
-			body = $15;
+			body = $13;
 		}
 	}
 	END {
@@ -857,8 +857,8 @@ EOF_TYPE_VIEW_SHARING
 
 ./read_file.out "$TMP_DIR/type-view-sharing.p" >"$TMP_DIR/type-view-sharing.out"
 ./read_file.out --write-artifact "$TMP_DIR/type-view-sharing.apo" "$TMP_DIR/type-view-sharing.p" >"$TMP_DIR/type-view-sharing-artifact.out"
-view_id_bool_term=$(awk '/metadata label idBool -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
-view_id_two_term=$(awk '/metadata label idTwo -> operation#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
+view_id_bool_term=$(awk '/metadata label idBool -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
+view_id_two_term=$(awk '/metadata label idTwo -> occurrence#[0-9]+ -> term#/ { sub("term#", "", $7); print $7 }' "$TMP_DIR/type-view-sharing.out")
 test "$view_id_bool_term" = "$view_id_two_term"
 view_bool_shape=$(awk '/interface type Bool / { sub("core_representation_anchor_type#", "", $5); print $5 }' "$TMP_DIR/type-view-sharing.out")
 view_two_shape=$(awk '/interface type Two / { sub("core_representation_anchor_type#", "", $5); print $5 }' "$TMP_DIR/type-view-sharing.out")
@@ -908,7 +908,7 @@ first := \A : @ => \B : A -> @ => \p : Sigma A B =>
 EOF_DEPENDENT_CONSTRUCTOR_FIELD
 
 ./read_file.out "$TMP_DIR/dependent-constructor-field.p" >"$TMP_DIR/dependent-constructor-field.out"
-grep -q 'metadata label first -> operation#[0-9][0-9]* -> term#' "$TMP_DIR/dependent-constructor-field.out"
+grep -q 'metadata label first -> occurrence#[0-9][0-9]* -> term#' "$TMP_DIR/dependent-constructor-field.out"
 grep -q 'interface constructor type_export#0.mk ordinal=0 fields=2 curried_classifier_cache=' "$TMP_DIR/dependent-constructor-field.out"
 grep -E 'has-type VAR\(_#[0-9]+\) APP\(VAR\(_#[0-9]+\), VAR\(_#[0-9]+\)\) \[match-pattern-assumption proof#' "$TMP_DIR/dependent-constructor-field.out" >/dev/null
 
@@ -940,7 +940,7 @@ test "$sigma_formation_classifier" != 4294967295
 ./read_file.out --write-artifact "$TMP_DIR/SigmaUser.apo" \
 	--import-interface "$TMP_DIR/Sigma.apo" \
 	"$TMP_DIR/dependent-constructor-import-user.p" >"$TMP_DIR/dependent-constructor-import-user.out"
-grep -Eq 'metadata label main -> operation#[0-9]+ -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
+grep -Eq 'metadata label main -> occurrence#[0-9]+ -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'metadata external-ref Sigma -> term#' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Eq 'has-type CONSTRUCTOR\(rep#[0-9]+\.ordinal#[0-9]+\) PI\(' "$TMP_DIR/dependent-constructor-import-user.out"
 grep -Fq 'APP(LAMBDA(_#' "$TMP_DIR/dependent-constructor-import-user.out"
@@ -1382,13 +1382,13 @@ EOF_SHARED_NAMESPACE_B
 	--namespace Shared \
 	"$TMP_DIR/shared-namespace-a.p" \
 	"$TMP_DIR/shared-namespace-b.p" >"$TMP_DIR/shared-namespace.out"
-grep -q '^term Nat .* namespace Shared operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
-grep -q '^term id .* namespace Shared operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
+grep -q '^term Nat .* namespace Shared occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
+grep -q '^term id .* namespace Shared occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
 grep -q '^type Nat .* namespace Shared$' "$TMP_DIR/Shared.apo"
 ./read_file.out --write-artifact "$TMP_DIR/DottedNamespace.apo" \
 	--namespace Shared.Core \
 	"$TMP_DIR/shared-namespace-a.p" >"$TMP_DIR/dotted-namespace.out"
-grep -q '^term Nat .* namespace Shared.Core operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DottedNamespace.apo"
+grep -q '^term Nat .* namespace Shared.Core occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DottedNamespace.apo"
 
 cat >"$TMP_DIR/match-graph.p" <<'EOF_MATCH_GRAPH'
 Bool := @{
@@ -2084,7 +2084,7 @@ grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int) \[int-literal-intro proof#' "$T
 ! grep -q 'int-literal-admissibility' "$TMP_DIR/int-literal.out"
 grep -q '\[host-type-intro proof#' "$TMP_DIR/int-literal.out"
 awk '
-	$1 == "operation" && $3 == 1 {
+	$1 == "typed_occurrence" && $3 == 1 {
 		literal_operation = $2;
 		selected_classifier = $8;
 		literal_count++;
@@ -2120,11 +2120,11 @@ awk '
 ./read_file.out --solver-steps 200000 \
 	--write-artifact "$TMP_DIR/IntLiteralMoreFuel.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-more-fuel.out"
-awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteral.apo" \
+awk '$1 == "typed_occurrence" { print $2, $8 }' "$TMP_DIR/IntLiteral.apo" \
 	>"$TMP_DIR/int-literal-selected.txt"
-awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteralRepeat.apo" \
+awk '$1 == "typed_occurrence" { print $2, $8 }' "$TMP_DIR/IntLiteralRepeat.apo" \
 	>"$TMP_DIR/int-literal-repeat-selected.txt"
-awk '$1 == "operation" { print $2, $8 }' "$TMP_DIR/IntLiteralMoreFuel.apo" \
+awk '$1 == "typed_occurrence" { print $2, $8 }' "$TMP_DIR/IntLiteralMoreFuel.apo" \
 	>"$TMP_DIR/int-literal-more-fuel-selected.txt"
 cmp "$TMP_DIR/int-literal-selected.txt" "$TMP_DIR/int-literal-repeat-selected.txt"
 cmp "$TMP_DIR/int-literal-selected.txt" "$TMP_DIR/int-literal-more-fuel-selected.txt"
@@ -2152,7 +2152,7 @@ EOF_INT_LITERAL_SPECIALIZATION
 grep -q 'core-value term#[0-9][0-9]* = INT_LITERAL(42) human-value=#42' \
 	"$TMP_DIR/int-literal-specialization-read.out"
 awk '
-	$1 == "operation" && $3 == 1 {
+	$1 == "typed_occurrence" && $3 == 1 {
 		literal_operation = $2;
 		selected_classifier = $8;
 		literal_count++;
@@ -2646,8 +2646,8 @@ grep -q '^export-normalization-equal idNat yes$' "$TMP_DIR/id-provider-normaliza
 	"$TMP_DIR/DuplicateNatB.apo" >"$TMP_DIR/duplicate-nat-ab.out"
 ./read_file.out --read-graph "$TMP_DIR/DuplicateNatAB.apo" >"$TMP_DIR/duplicate-nat-ab-read.out"
 grep -q 'term_exports=4 type_exports=2 constructor_exports=4 dependencies=0' "$TMP_DIR/duplicate-nat-ab-read.out"
-grep -q '^term Nat .* namespace duplicate-nat-a operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
-grep -q '^term Nat .* namespace duplicate-nat-b operation [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
+grep -q '^term Nat .* namespace duplicate-nat-a occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
+grep -q '^term Nat .* namespace duplicate-nat-b occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
 grep -q '^type Nat .* namespace duplicate-nat-a$' "$TMP_DIR/DuplicateNatAB.apo"
 grep -q '^type Nat .* namespace duplicate-nat-b$' "$TMP_DIR/DuplicateNatAB.apo"
 duplicate_nat_a_term=$(awk '$1 == "term" && $2 == "idA" { print $3 }' "$TMP_DIR/DuplicateNatAB.apo")
@@ -2659,8 +2659,8 @@ duplicate_nat_b_key=$(awk '$1 == "term" && $2 == "idB" { print $6 ":" $7 ":" $8 
 test "$duplicate_nat_a_term" = "$duplicate_nat_b_term"
 test "$duplicate_nat_a_classifier" != "$duplicate_nat_b_classifier"
 test "$duplicate_nat_a_key" = "$duplicate_nat_b_key"
-awk -v lambda_tag="$OPERATION_TAG_LAMBDA" '
-	$1 == "operation" && $3 == lambda_tag && $12 != 4294967295 {
+awk -v lambda_tag="$OCCURRENCE_TAG_LAMBDA" '
+	$1 == "typed_occurrence" && $3 == lambda_tag && $12 != 4294967295 {
 		seen[$12] = 1;
 	}
 	END {

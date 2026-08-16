@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "a_program/frontend/lowering.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/judgement/db.h"
 #include "a_program/kernel/judgement/rules.h"
 #include "a_program/kernel/judgement/conversion.h"
@@ -283,7 +284,7 @@ static int collect_type_level_at_depth(
 static int collect_match_branch_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id,
 	const struct prototype_judgement_claim* relation,
@@ -298,14 +299,14 @@ static int collect_match_branch_constraints(
 	}
 
 	const struct prototype_term* match = &terms->terms[prototype_judgement_proposition_get(judgement, relation->proposition_id)->subject];
-	const struct prototype_operation_node* match_operation = NULL;
-	if (prototype_judgement_proposition_get(judgement, relation->proposition_id)->operation_id != PROTOTYPE_INVALID_ID) {
-		if (!operations || prototype_judgement_proposition_get(judgement, relation->proposition_id)->operation_id >= operations->operation_count ||
-			operations->operations[prototype_judgement_proposition_get(judgement, relation->proposition_id)->operation_id].tag !=
-				PROTOTYPE_OPERATION_MATCH) {
+	const struct prototype_typed_occurrence* match_operation = NULL;
+	if (prototype_judgement_proposition_get(judgement, relation->proposition_id)->occurrence_id != PROTOTYPE_INVALID_ID) {
+		if (!operations || prototype_judgement_proposition_get(judgement, relation->proposition_id)->occurrence_id >= operations->occurrence_count ||
+			operations->occurrences[prototype_judgement_proposition_get(judgement, relation->proposition_id)->occurrence_id].tag !=
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
 			return -1;
 		}
-		match_operation = &operations->operations[prototype_judgement_proposition_get(judgement, relation->proposition_id)->operation_id];
+		match_operation = &operations->occurrences[prototype_judgement_proposition_get(judgement, relation->proposition_id)->occurrence_id];
 	}
 	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
 		uint32_t case_id = match->as.match.first_case + i;
@@ -317,14 +318,17 @@ static int collect_match_branch_constraints(
 		int found_branch_level = 0;
 		if (match_operation && i < match_operation->case_count &&
 			match_operation->first_case + i < operations->case_count) {
-			uint32_t branch_operation = operations->cases[
-				match_operation->first_case + i
-			].body_operation;
-			if (branch_operation >= operations->operation_count) {
+			uint32_t match_occurrence =
+				(uint32_t)(match_operation - operations->occurrences);
+			uint32_t branch_operation;
+			if (prototype_typed_occurrence_graph_child(
+					operations, match_occurrence,
+					PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, i, &branch_operation
+				) != 0) {
 				return -1;
 			}
 			uint32_t branch_classifier =
-				operations->operations[branch_operation].classifier;
+				operations->occurrences[branch_operation].classifier;
 			if (term_universe_level_var(
 					terms, branch_classifier, &branch_level
 				) == 0) {
@@ -553,7 +557,7 @@ static int collect_expected_type_exposure_constraints(
 static int collect_relation_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id
 ) {
@@ -622,7 +626,7 @@ int prototype_universe_collect(
 	struct prototype_universe_db* db,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement
 ) {
 	if (!db || !type_declarations || !terms || !judgement) {

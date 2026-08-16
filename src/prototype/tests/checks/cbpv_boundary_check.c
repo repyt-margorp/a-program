@@ -305,7 +305,7 @@ int main(void) {
 		.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
 		.authority_id = returned,
 		.context_id = prototype_context_empty(&contexts),
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = returned,
 		.classifier = returned_classifier
 	};

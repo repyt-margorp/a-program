@@ -192,9 +192,9 @@ static int artifact_substitution_slice_init(
 			}
 		}
 	}
-	for (size_t i = 0; i < metadata->operation_count; ++i) {
-		const struct prototype_operation_node* operation =
-			&metadata->operations[i];
+	for (size_t i = 0; i < metadata->typed_occurrences.occurrence_count; ++i) {
+		const struct prototype_typed_occurrence* operation =
+			&metadata->typed_occurrences.occurrences[i];
 		if (operation->context_action_substitution != PROTOTYPE_INVALID_ID &&
 			artifact_substitution_slice_mark(
 				slice,
@@ -206,9 +206,9 @@ static int artifact_substitution_slice_init(
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < metadata->operation_case_count; ++i) {
-		const struct prototype_operation_match_case* operation_case =
-			&metadata->operation_cases[i];
+	for (size_t i = 0; i < metadata->typed_occurrences.case_count; ++i) {
+		const struct prototype_typed_occurrence_match_case* operation_case =
+			&metadata->typed_occurrences.cases[i];
 		if (operation_case->has_refinement &&
 			artifact_substitution_slice_mark(
 				slice,
@@ -376,9 +376,9 @@ static int artifact_context_slice_init(
 			}
 		}
 	}
-	for (size_t i = 0; i < metadata->operation_count; ++i) {
+	for (size_t i = 0; i < metadata->typed_occurrences.occurrence_count; ++i) {
 		if (artifact_context_slice_mark(
-			slice, &metadata->contexts, metadata->operations[i].context_id
+			slice, &metadata->contexts, metadata->typed_occurrences.occurrences[i].context_id
 		) != 0) {
 			artifact_context_slice_free(slice);
 			return -1;
@@ -1585,7 +1585,7 @@ static int artifact_mark_accepted_claim(
 	if (artifact_mark_term(marks, terms, claim_proposition->subject, depth + 1) != 0 ||
 		artifact_mark_term(marks, terms, claim_proposition->classifier, depth + 1) != 0 ||
 		(claim_proposition->authority_id != PROTOTYPE_INVALID_ID &&
-		 claim_proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+		 claim_proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
 		 claim_proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT &&
 		 claim_proposition->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID &&
 		 artifact_mark_term(
@@ -1696,7 +1696,7 @@ static int artifact_mark_accepted_claim(
 					) != 0 ||
 					(proposition->authority_id != PROTOTYPE_INVALID_ID &&
 					 proposition->authority_kind !=
-						PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+						PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
 					 proposition->authority_kind !=
 						PROTOTYPE_JUDGEMENT_AUTHORITY_EXPORT &&
 					 proposition->authority_kind !=
@@ -1770,30 +1770,22 @@ static int artifact_mark_exact_relation(
 
 static int artifact_export_has_residual_constraint(
 	const struct prototype_compile_metadata* metadata,
+	const struct prototype_term_db* terms,
 	uint32_t operation
 ) {
-	if (!metadata || operation >= metadata->operation_count) {
+	if (!metadata || !terms || operation >= metadata->typed_occurrences.occurrence_count) {
 		return -1;
 	}
-	const struct prototype_operation_graph graph = {
-		.operations = metadata->operations,
-		.operation_count = metadata->operation_count,
-		.operation_capacity = metadata->operation_capacity,
-		.cases = metadata->operation_cases,
-		.case_count = metadata->operation_case_count,
-		.case_capacity = metadata->operation_case_capacity,
-		.fold_clauses = metadata->operation_fold_clauses,
-		.fold_clause_count = metadata->operation_fold_clause_count,
-		.fold_clause_capacity = metadata->operation_fold_clause_capacity
-	};
+	const struct prototype_typed_occurrence_graph* graph =
+		prototype_compile_metadata_typed_occurrences_const(metadata);
 	for (size_t i = 0; i < metadata->effect_constraint_count; ++i) {
-		const struct prototype_operation_effect_constraint* constraint =
+		const struct prototype_occurrence_effect_constraint* constraint =
 			&metadata->effect_constraints[i];
-		if (constraint->state == PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED) {
+		if (constraint->state == PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
 			continue;
 		}
-		int reaches = prototype_operation_graph_reaches(
-			&graph, operation, constraint->operation
+		int reaches = prototype_typed_occurrence_graph_reaches(
+			graph, terms, operation, constraint->occurrence
 		);
 		if (reaches != 0) {
 			return reaches;
@@ -1808,8 +1800,8 @@ static int artifact_export_has_residual_constraint(
 				PROTOTYPE_VERIFICATION_OBLIGATION_PENDING) {
 			continue;
 		}
-		int reaches = prototype_operation_graph_reaches(
-			&graph, operation, obligation->operation
+		int reaches = prototype_typed_occurrence_graph_reaches(
+			graph, terms, operation, obligation->occurrence
 		);
 		if (reaches != 0) {
 			return reaches;

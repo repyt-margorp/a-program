@@ -220,19 +220,37 @@ int prototype_compile_graph_with_imports(
 			program->universe,
 			program->type_declarations,
 			program->terms,
-			&(struct prototype_operation_graph) {
-				.operations = program->metadata->operations,
-				.operation_count = program->metadata->operation_count,
-				.cases = program->metadata->operation_cases,
-				.case_count = program->metadata->operation_case_count,
-				.fold_clauses = program->metadata->operation_fold_clauses,
+			&(struct prototype_typed_occurrence_graph) {
+				.occurrences = program->metadata->typed_occurrences.occurrences,
+				.occurrence_count = program->metadata->typed_occurrences.occurrence_count,
+				.edges = program->metadata->typed_occurrences.edges,
+				.edge_count = program->metadata->typed_occurrences.edge_count,
+				.cases = program->metadata->typed_occurrences.cases,
+				.case_count = program->metadata->typed_occurrences.case_count,
+				.fold_clauses = program->metadata->typed_occurrences.fold_clauses,
 				.fold_clause_count =
-					program->metadata->operation_fold_clause_count
+					program->metadata->typed_occurrences.fold_clause_count
 			},
 			program->judgement
 		) != 0) {
 		if (error) {
 			snprintf(error->message, sizeof(error->message), "%s", "failed to collect universe constraints");
+		}
+		return -1;
+	}
+	if (prototype_type_declaration_project_reduction_environment(
+			program->terms,
+			program->type_declarations,
+			program->symbols,
+			&program->metadata->reduction_environment
+		) != 0) {
+		if (error) {
+			snprintf(
+				error->message,
+				sizeof(error->message),
+				"%s",
+				"failed to project the Core reduction environment"
+			);
 		}
 		return -1;
 	}

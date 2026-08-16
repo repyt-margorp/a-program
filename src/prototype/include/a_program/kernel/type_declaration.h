@@ -19,6 +19,8 @@ enum prototype_identity_computation_rule {
 
 struct prototype_term_db;
 struct prototype_context_db;
+struct prototype_term_reduction_environment;
+struct symbol_table;
 
 /*
  * Type declarations are source-derived formation metadata used while lowering
@@ -229,6 +231,12 @@ void prototype_type_declaration_db_init(
 	size_t expr_capacity,
 	struct prototype_type_representation* representations,
 	size_t representation_capacity
+);
+int prototype_type_declaration_project_reduction_environment(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct symbol_table* symbols,
+	struct prototype_term_reduction_environment* p_environment
 );
 
 int prototype_type_expr_universe(struct prototype_type_declaration_db* db, uint32_t level, uint32_t* p_ret);

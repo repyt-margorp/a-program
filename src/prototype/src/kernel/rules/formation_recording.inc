@@ -108,7 +108,7 @@ int prototype_judgement_delta_record_type_formation(
 			.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_FORMATION,
 			.authority_id = subject,
 			.context_id = delta->current_context_id,
-			.operation_id = PROTOTYPE_INVALID_ID,
+			.occurrence_id = PROTOTYPE_INVALID_ID,
 			.subject = subject,
 			.classifier = type->formation_classifier
 		};
@@ -218,11 +218,11 @@ int prototype_judgement_delta_record_text_literal(
 	}
 	return add_delta_relation(
 		delta,
-		delta->current_operation_id == PROTOTYPE_INVALID_ID ?
+		delta->current_occurrence_id == PROTOTYPE_INVALID_ID ?
 			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER :
-			PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
-		delta->current_operation_id == PROTOTYPE_INVALID_ID ?
-			subject : delta->current_operation_id,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
+		delta->current_occurrence_id == PROTOTYPE_INVALID_ID ?
+			subject : delta->current_occurrence_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -259,11 +259,11 @@ int prototype_judgement_delta_record_int_literal(
 	}
 	return add_delta_relation(
 		delta,
-		delta->current_operation_id == PROTOTYPE_INVALID_ID ?
+		delta->current_occurrence_id == PROTOTYPE_INVALID_ID ?
 			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER :
-			PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
-		delta->current_operation_id == PROTOTYPE_INVALID_ID ?
-			subject : delta->current_operation_id,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
+		delta->current_occurrence_id == PROTOTYPE_INVALID_ID ?
+			subject : delta->current_occurrence_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -348,7 +348,7 @@ int prototype_judgement_add_expected_type_exposure(
 		!term_exists(terms, source_evidence->classifier)) {
 		return -1;
 	}
-	if (operation_id == source_evidence->operation_id &&
+	if (operation_id == source_evidence->occurrence_id &&
 		context_id == source_evidence->context_id &&
 		expected == source_evidence->classifier) {
 		return 0;
@@ -378,7 +378,7 @@ int prototype_judgement_add_expected_type_exposure(
 	struct prototype_judgement_proposition relation = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = operation_id,
+		.occurrence_id = operation_id,
 		.subject = subject,
 		.classifier = expected
 	};
@@ -389,7 +389,7 @@ int prototype_judgement_add_expected_type_exposure(
 	proof.proof_kind = proof_kind;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = operation_id;
+	proof.conclusion_occurrence_id = operation_id;
 	proof.conclusion_subject = subject;
 	proof.conclusion_classifier = expected;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -400,7 +400,7 @@ int prototype_judgement_add_expected_type_exposure(
 	proof.premises[0].proposition.classifier = premise_classifiers[0];
 	proof.premises[0].proposition.authority_kind = source_evidence->authority_kind;
 	proof.premises[0].proposition.authority_id = source_evidence->authority_id;
-	proof.premises[0].proposition.operation_id = source_evidence->operation_id;
+	proof.premises[0].proposition.occurrence_id = source_evidence->occurrence_id;
 	return add_complete_relation(judgement, &relation, &proof);
 }
 
@@ -420,7 +420,7 @@ int prototype_judgement_delta_record_expected_type_exposure(
 		!term_exists(terms, source_evidence->classifier)) {
 		return -1;
 	}
-	if (delta->current_operation_id == source_evidence->operation_id &&
+	if (delta->current_occurrence_id == source_evidence->occurrence_id &&
 		expected == source_evidence->classifier) {
 		return 0;
 	}

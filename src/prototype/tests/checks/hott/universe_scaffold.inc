@@ -1,25 +1,19 @@
-	indexed_match_operations[indexed_false_body_operation].tag =
-		PROTOTYPE_OPERATION_VAR;
-	indexed_match_operations[indexed_true_body_operation].tag =
-		PROTOTYPE_OPERATION_VAR;
+	indexed_match_operations[indexed_false_body_occurrence].tag =
+		PROTOTYPE_TYPED_OCCURRENCE_VAR;
+	indexed_match_operations[indexed_true_body_occurrence].tag =
+		PROTOTYPE_TYPED_OCCURRENCE_VAR;
 	indexed_match_operations[indexed_false_return_operation].tag =
-		PROTOTYPE_OPERATION_RETURN;
-	indexed_match_operations[indexed_false_return_operation].argument =
-		indexed_false_body_operation;
+		PROTOTYPE_TYPED_OCCURRENCE_RETURN;
 	indexed_match_operations[indexed_true_return_operation].tag =
-		PROTOTYPE_OPERATION_RETURN;
-	indexed_match_operations[indexed_true_return_operation].argument =
-		indexed_true_body_operation;
+		PROTOTYPE_TYPED_OCCURRENCE_RETURN;
 	indexed_match_operations[indexed_match_operation].tag =
-		PROTOTYPE_OPERATION_MATCH;
-	indexed_match_operations[indexed_match_operation].scrutinee =
-		indexed_scrutinee_operation;
+		PROTOTYPE_TYPED_OCCURRENCE_MATCH;
 	indexed_match_operations[indexed_match_operation].first_case = 0;
 	indexed_match_operations[indexed_match_operation].case_count = 2;
 	indexed_match_operation_cases[0] =
-		(struct prototype_operation_match_case) {
-			.body_operation = indexed_false_return_operation,
+		(struct prototype_typed_occurrence_match_case) {
 			.context_id = indexed_proof_context,
+			.has_refinement = 0,
 			.refinement_substitution = PROTOTYPE_INVALID_ID,
 			.constructor_owner = indexed_relation_type,
 			.constructor_id = 0,
@@ -27,9 +21,9 @@
 			.binder_count = 0
 		};
 	indexed_match_operation_cases[1] =
-		(struct prototype_operation_match_case) {
-			.body_operation = indexed_true_return_operation,
+		(struct prototype_typed_occurrence_match_case) {
 			.context_id = indexed_proof_context,
+			.has_refinement = 0,
 			.refinement_substitution = PROTOTYPE_INVALID_ID,
 			.constructor_owner = indexed_relation_type,
 			.constructor_id = 1,
@@ -37,16 +31,49 @@
 			.binder_count = 0
 		};
 	indexed_match_operation_graph.case_count = 2;
+	if (fixture_add_occurrence_edge(
+			&indexed_match_operation_graph,
+			indexed_false_return_operation,
+			PROTOTYPE_TERM_CHILD_RETURN_VALUE,
+			0,
+			indexed_false_body_occurrence
+		) != 0 || fixture_add_occurrence_edge(
+			&indexed_match_operation_graph,
+			indexed_true_return_operation,
+			PROTOTYPE_TERM_CHILD_RETURN_VALUE,
+			0,
+			indexed_true_body_occurrence
+		) != 0 || fixture_add_occurrence_edge(
+			&indexed_match_operation_graph,
+			indexed_match_operation,
+			PROTOTYPE_TERM_CHILD_SCRUTINEE,
+			0,
+			indexed_scrutinee_operation
+		) != 0 || fixture_add_occurrence_edge(
+			&indexed_match_operation_graph,
+			indexed_match_operation,
+			PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+			0,
+			indexed_false_return_operation
+		) != 0 || fixture_add_occurrence_edge(
+			&indexed_match_operation_graph,
+			indexed_match_operation,
+			PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+			1,
+			indexed_true_return_operation
+		) != 0) {
+		return 143;
+	}
 	struct prototype_usage_entry indexed_match_resource_usage[256];
 	prototype_judgement_db_set_resource_usage_storage(
 		&indexed_match_judgement,
 		indexed_match_resource_usage,
 		256
 	);
-	struct prototype_operation_usage_solution indexed_usage_solutions[6];
+	struct prototype_occurrence_usage_solution indexed_usage_solutions[6];
 	struct prototype_usage_entry indexed_usage_entries[64];
 	size_t indexed_usage_entry_count;
-	if (prototype_operation_usage_solve(
+	if (prototype_occurrence_usage_solve(
 			&indexed_match_operation_graph,
 			&term_db,
 			NULL,
@@ -58,9 +85,9 @@
 		) != 0) {
 		return 143;
 	}
-	struct fixture_operation_usage_provider_context indexed_usage_provider = {
+	struct fixture_occurrence_usage_provider_context indexed_usage_provider = {
 		.solutions = indexed_usage_solutions,
-		.solution_count = indexed_match_operation_graph.operation_count,
+		.solution_count = indexed_match_operation_graph.occurrence_count,
 		.entries = indexed_usage_entries,
 		.entry_count = indexed_usage_entry_count
 	};
@@ -91,22 +118,24 @@
 	prototype_judgement_delta_set_context_store(
 		&indexed_delta, &context_db, &substitution_db
 	);
-	prototype_judgement_delta_set_operation_store(
+	prototype_judgement_delta_set_occurrence_store(
 		&indexed_delta,
-		indexed_match_operation_graph.operations,
-		indexed_match_operation_graph.operation_count,
+		indexed_match_operation_graph.occurrences,
+		indexed_match_operation_graph.occurrence_count,
+		indexed_match_operation_graph.edges,
+		indexed_match_operation_graph.edge_count,
 		indexed_match_operation_graph.cases,
 		indexed_match_operation_graph.case_count
 	);
-	prototype_judgement_delta_set_operation_usage_provider(
+	prototype_judgement_delta_set_occurrence_usage_provider(
 		&indexed_delta,
 		&indexed_usage_provider,
-		fixture_operation_usage_provider
+		fixture_occurrence_usage_provider
 	);
 	prototype_judgement_delta_set_context(
 		&indexed_delta, indexed_proof_context
 	);
-	prototype_judgement_delta_set_operation(
+	prototype_judgement_delta_set_occurrence(
 		&indexed_delta, indexed_scrutinee_operation
 	);
 	if (prototype_judgement_delta_record_context_binding_assumption(
@@ -117,8 +146,8 @@
 		) != 0) {
 		return 143;
 	}
-	prototype_judgement_delta_set_operation(
-		&indexed_delta, indexed_false_body_operation
+	prototype_judgement_delta_set_occurrence(
+		&indexed_delta, indexed_false_body_occurrence
 	);
 	if (prototype_judgement_delta_record_context_binding_assumption(
 			&indexed_delta,
@@ -128,8 +157,8 @@
 		) != 0) {
 		return 143;
 	}
-	prototype_judgement_delta_set_operation(
-		&indexed_delta, indexed_true_body_operation
+	prototype_judgement_delta_set_occurrence(
+		&indexed_delta, indexed_true_body_occurrence
 	);
 	if (prototype_judgement_delta_record_context_binding_assumption(
 			&indexed_delta,
@@ -147,7 +176,7 @@
 		) != 0) {
 		return 143;
 	}
-	prototype_judgement_delta_set_operation(
+	prototype_judgement_delta_set_occurrence(
 		&indexed_delta, indexed_false_return_operation
 	);
 	if (prototype_judgement_delta_record_cbpv_boundary(
@@ -155,12 +184,12 @@
 			&term_db,
 			&type_db,
 			indexed_false_return,
-			indexed_false_body_operation,
+			indexed_false_body_occurrence,
 			&indexed_branch_evidence
 		) != 0) {
 		return 143;
 	}
-	prototype_judgement_delta_set_operation(
+	prototype_judgement_delta_set_occurrence(
 		&indexed_delta, indexed_true_return_operation
 	);
 	if (prototype_judgement_delta_record_cbpv_boundary(
@@ -168,12 +197,12 @@
 			&term_db,
 			&type_db,
 			indexed_true_return,
-			indexed_true_body_operation,
+			indexed_true_body_occurrence,
 			&indexed_branch_evidence
 		) != 0) {
 		return 143;
 	}
-	prototype_judgement_delta_set_operation(
+	prototype_judgement_delta_set_occurrence(
 		&indexed_delta, indexed_match_operation
 	);
 	uint32_t indexed_match_classifier;
@@ -187,13 +216,15 @@
 		) != 0) {
 		return 143;
 	}
-	indexed_match_operations[indexed_match_operation].known_classifier =
-		indexed_match_classifier;
 	indexed_match_operations[indexed_match_operation].classifier =
 		indexed_match_classifier;
+	indexed_match_operations[indexed_match_operation].classifier_status =
+		PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED;
 	if (prototype_judgement_delta_commit(&indexed_delta, 0) != 0 ||
 		prototype_judgement_publish_candidates(
 			&indexed_match_operation_graph, &indexed_match_judgement
+		) != 0 || prototype_typed_occurrence_graph_seal(
+			&indexed_match_operation_graph, &term_db, &context_db
 		) != 0 || prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
@@ -216,7 +247,7 @@
 			) : NULL;
 		if (conclusion && derivation->proof_kind ==
 				PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM &&
-			conclusion->operation_id == indexed_match_operation) {
+			conclusion->occurrence_id == indexed_match_operation) {
 			indexed_match_derivation = derivation;
 			break;
 		}
@@ -1026,7 +1057,7 @@
 	uint32_t boxed_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		boxed_operation,
 		bool_context,
 		boxed_operation,
@@ -1160,7 +1191,7 @@
 	uint32_t returned_box_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		returned_box_operation,
 		bool_context,
 		returned_box_operation,
@@ -1263,7 +1294,7 @@
 	uint32_t thunked_box_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		thunked_box_operation,
 		bool_context,
 		thunked_box_operation,

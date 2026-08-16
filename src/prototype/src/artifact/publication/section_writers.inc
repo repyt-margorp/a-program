@@ -362,7 +362,7 @@ static int write_artifact_graph_section(
 			artifact_context_slice_relocate(
 				context_slice, proposition->context_id
 			),
-			proposition->operation_id,
+			proposition->occurrence_id,
 			proposition->subject,
 			proposition->classifier,
 			proposition->resource_usage_count

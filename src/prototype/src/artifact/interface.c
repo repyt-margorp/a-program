@@ -591,9 +591,9 @@ static uint32_t find_export_source_claim(
 			continue;
 		}
 		if (
-			proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+			proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
 			proposition->authority_id == operation &&
-			proposition->operation_id == operation) {
+			proposition->occurrence_id == operation) {
 			return i;
 		}
 		if (unique_claim != PROTOTYPE_INVALID_ID) {
@@ -608,25 +608,25 @@ static uint32_t find_export_source_claim(
 /* A top-level name is a source projection onto an existing typed operation;
  * it does not introduce a new kernel judgement.  Preserve the exported name,
  * but publish evidence owned by the first non-NAME operation in its chain. */
-static int resolve_export_evidence_operation(
+static int resolve_export_evidence_occurrence(
 	const struct prototype_compile_metadata* metadata,
 	uint32_t operation,
-	uint32_t* p_evidence_operation
+	uint32_t* p_evidence_occurrence
 ) {
-	if (!metadata || !p_evidence_operation) {
+	if (!metadata || !p_evidence_occurrence) {
 		return -1;
 	}
-	for (size_t depth = 0; depth <= metadata->operation_count; ++depth) {
-		if (operation >= metadata->operation_count) {
+	for (size_t depth = 0; depth <= metadata->typed_occurrences.occurrence_count; ++depth) {
+		if (operation >= metadata->typed_occurrences.occurrence_count) {
 			return -1;
 		}
-		const struct prototype_operation_node* node =
-			&metadata->operations[operation];
-		if (node->tag != PROTOTYPE_OPERATION_NAME) {
-			*p_evidence_operation = operation;
+		const struct prototype_typed_occurrence* node =
+			&metadata->typed_occurrences.occurrences[operation];
+		if (node->tag != PROTOTYPE_TYPED_OCCURRENCE_REFERENCE) {
+			*p_evidence_occurrence = operation;
 			return 0;
 		}
-		operation = node->function;
+		operation = node->wrapped_occurrence;
 	}
 	return -1;
 }
@@ -690,8 +690,8 @@ int prototype_artifact_interface_build_from_metadata(
 		export->namespace_symbol_id = -1;
 		export->name_symbol_id = label->name_symbol_id;
 		export->local_term = label->term;
-		if (resolve_export_evidence_operation(
-				metadata, label->exposed_operation, &export->operation
+		if (resolve_export_evidence_occurrence(
+				metadata, label->exposed_occurrence, &export->occurrence
 			) != 0) {
 			return -1;
 		}
@@ -700,10 +700,10 @@ int prototype_artifact_interface_build_from_metadata(
 		export->source_evidence.id = PROTOTYPE_INVALID_ID;
 		export->canonical_key = label->canonical_key;
 		export->transparency = PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT;
-		if (metadata->operations[export->operation].classifier !=
+		if (metadata->typed_occurrences.occurrences[export->occurrence].classifier !=
 				PROTOTYPE_INVALID_ID) {
 			export->classifier =
-				metadata->operations[export->operation].classifier;
+				metadata->typed_occurrences.occurrences[export->occurrence].classifier;
 		} else if (label->exposed_classifier != PROTOTYPE_INVALID_ID) {
 			export->classifier = label->exposed_classifier;
 		} else if (lookup_export_classifier(judgement, label->term, &export->classifier) != 0) {
@@ -746,9 +746,9 @@ int prototype_artifact_interface_build_from_metadata(
 		}
 		export->source_evidence.id = find_export_source_claim(
 			judgement,
-			export->operation,
-			export->operation < metadata->operation_count ?
-				metadata->operations[export->operation].context_id :
+			export->occurrence,
+			export->occurrence < metadata->typed_occurrences.occurrence_count ?
+				metadata->typed_occurrences.occurrences[export->occurrence].context_id :
 				PROTOTYPE_INVALID_ID,
 			export->local_term,
 			export->classifier

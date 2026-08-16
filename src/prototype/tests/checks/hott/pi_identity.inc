@@ -2099,7 +2099,7 @@
 	);
 	prototype_judgement_delta_set_context(&thunk_delta, empty);
 	struct prototype_judgement_selected_evidence thunk_argument_evidence[3];
-	uint32_t thunk_argument_operations[3] = {
+	uint32_t thunk_argument_occurrences[3] = {
 		false_operation, false_operation, PROTOTYPE_INVALID_ID
 	};
 	if (prototype_judgement_delta_select_evidence(
@@ -2129,7 +2129,7 @@
 			&type_db,
 			thunk_false_identity_witness,
 			thunk_false_identity_type,
-			thunk_argument_operations,
+			thunk_argument_occurrences,
 			thunk_argument_evidence,
 			3
 		) != 0 || thunk_delta.proposition_count != 1 ||
@@ -2140,7 +2140,7 @@
 			&type_db,
 			thunk_false_identity_witness,
 			thunk_false_true_identity_type,
-			thunk_argument_operations,
+			thunk_argument_occurrences,
 			thunk_argument_evidence,
 			3
 		) == 0) {
@@ -4628,7 +4628,7 @@
 	);
 	prototype_judgement_delta_set_context(&box_delta, empty);
 	struct prototype_judgement_selected_evidence box_argument_evidence[3];
-	uint32_t box_argument_operations[3] = {
+	uint32_t box_argument_occurrences[3] = {
 		false_operation, false_operation, PROTOTYPE_INVALID_ID
 	};
 	if (prototype_judgement_delta_select_evidence(
@@ -4658,7 +4658,7 @@
 			&type_db,
 			box_identity_witness,
 			box_identity_type,
-			box_argument_operations,
+			box_argument_occurrences,
 			box_argument_evidence,
 			3
 		) != 0 || box_delta.proposition_count != 1 ||
@@ -4879,12 +4879,15 @@
 		) != 0) {
 		return 143;
 	}
-	struct prototype_operation_node indexed_match_operations[6];
-	struct prototype_operation_match_case indexed_match_operation_cases[2];
-	struct prototype_operation_graph indexed_match_operation_graph;
+	struct prototype_typed_occurrence indexed_match_operations[6];
+	struct prototype_typed_occurrence_edge indexed_match_operation_edges[8];
+	struct prototype_typed_occurrence_match_case indexed_match_operation_cases[2];
+	struct prototype_typed_occurrence_graph indexed_match_operation_graph;
 	memset(&indexed_match_operation_graph, 0, sizeof(indexed_match_operation_graph));
-	indexed_match_operation_graph.operations = indexed_match_operations;
-	indexed_match_operation_graph.operation_capacity = 6;
+	indexed_match_operation_graph.occurrences = indexed_match_operations;
+	indexed_match_operation_graph.occurrence_capacity = 6;
+	indexed_match_operation_graph.edges = indexed_match_operation_edges;
+	indexed_match_operation_graph.edge_capacity = 8;
 	indexed_match_operation_graph.cases = indexed_match_operation_cases;
 	indexed_match_operation_graph.case_capacity = 2;
 	uint32_t indexed_scrutinee_operation = add_operation(
@@ -4894,7 +4897,7 @@
 		indexed_relation_type,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
-	uint32_t indexed_false_body_operation = add_operation(
+	uint32_t indexed_false_body_occurrence = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_left_var,
@@ -4908,7 +4911,7 @@
 		indexed_branch_classifier,
 		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
-	uint32_t indexed_true_body_operation = add_operation(
+	uint32_t indexed_true_body_occurrence = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_left_var,
@@ -4930,4 +4933,4 @@
 		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	indexed_match_operations[indexed_scrutinee_operation].tag =
-		PROTOTYPE_OPERATION_VAR;
+		PROTOTYPE_TYPED_OCCURRENCE_VAR;

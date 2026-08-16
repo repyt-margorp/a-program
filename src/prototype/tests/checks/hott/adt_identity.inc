@@ -4,7 +4,7 @@
 	struct prototype_substitution_db substitution_db;
 	struct prototype_judgement_db judgement;
 	struct prototype_cwf_certificate_db cwf_certificate_db;
-	struct prototype_operation_graph operation_graph;
+	struct prototype_typed_occurrence_graph operation_graph;
 	struct prototype_hott_bridge_db bridge_db;
 	struct prototype_parametricity_relation_goal_db goal_db;
 	struct prototype_parametricity_candidate_db candidate_db;
@@ -47,9 +47,11 @@
 		&cwf_certificate_db, cwf_certificates, 1024
 	);
 	memset(&operation_graph, 0, sizeof(operation_graph));
-	operation_graph.operations = operations;
-	operation_graph.operation_capacity = OPERATION_CAPACITY;
-	operation_graph.cases = operation_cases;
+	operation_graph.occurrences = operations;
+	operation_graph.occurrence_capacity = OPERATION_CAPACITY;
+	operation_graph.edges = occurrence_edges;
+	operation_graph.edge_capacity = OCCURRENCE_EDGE_CAPACITY;
+	operation_graph.cases = occurrence_match_cases;
 	operation_graph.case_capacity = 128;
 	fixture_set_operation_graph(&term_db, &operation_graph);
 	kernel_builder = (struct prototype_kernel_builder) {
@@ -58,7 +60,7 @@
 		.cwf_certificates = &cwf_certificate_db,
 		.terms = &term_db,
 		.type_declarations = &type_db,
-		.operations = &operation_graph,
+		.occurrences = &operation_graph,
 		.judgement = &judgement
 	};
 	if (prototype_kernel_builder_view(&kernel_builder, &kernel_view) != 0) {
@@ -120,17 +122,17 @@
 	);
 	uint32_t left_has_type = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, left_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, left_operation, empty,
 		left_operation, left_text, text
 	);
 	uint32_t right_has_type = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, right_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, right_operation, empty,
 		right_operation, right_text, text
 	);
 	uint32_t sibling_has_type = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, sibling_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, sibling_operation, empty,
 		sibling_operation, left_text, text
 	);
 	judgement.derivations[0] = fixture_derivation(
@@ -264,7 +266,7 @@
 	);
 	uint32_t beta_claim = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, beta_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, beta_operation, empty,
 		beta_operation, beta_text, text
 	);
 	uint32_t conversion_goal;
@@ -742,12 +744,12 @@
 	(void)dependent_family_context_certificate;
 	uint32_t false_claim = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, false_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, false_operation, empty,
 		false_operation, bool_false, bool_view
 	);
 	uint32_t true_claim = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, true_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, true_operation, empty,
 		true_operation, bool_true, bool_view
 	);
 	uint32_t bool_false_constructor_claim;
@@ -862,7 +864,7 @@
 	);
 	uint32_t neutral_claim = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, neutral_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, neutral_operation, empty,
 		neutral_operation, neutral, bool_view
 	);
 	uint32_t neutral_goal;
@@ -930,12 +932,12 @@
 	}
 	uint32_t bool_has_universe = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, bool_type_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, bool_type_operation, empty,
 		bool_type_operation, bool_view, universe
 	);
 	uint32_t text_has_universe = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION, text_type_operation, empty,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, text_type_operation, empty,
 		text_type_operation, text, universe
 	);
 	uint32_t universe_goal;

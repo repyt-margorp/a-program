@@ -31,7 +31,7 @@ struct prototype_compile_diagnostic {
 	int reason;
 	uint32_t source_ast;
 	struct prototype_source_span span;
-	uint32_t operation_id;
+	uint32_t occurrence_id;
 	uint32_t constraint_id;
 	uint32_t expected_classifier;
 	uint32_t actual_classifier;

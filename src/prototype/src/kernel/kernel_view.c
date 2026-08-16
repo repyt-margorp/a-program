@@ -7,7 +7,7 @@ int prototype_kernel_view_validate_stores(
 ) {
 	if (!view || !view->contexts || !view->substitutions ||
 		!view->cwf_certificates || !view->terms || !view->type_declarations ||
-		!view->operations || !view->judgement) {
+		!view->occurrences || !view->judgement) {
 		return -1;
 	}
 	return prototype_cwf_certificate_db_validate(
@@ -32,7 +32,7 @@ int prototype_kernel_builder_validate_stores(
 		.cwf_certificates = builder->cwf_certificates,
 		.terms = builder->terms,
 		.type_declarations = builder->type_declarations,
-		.operations = builder->operations,
+		.occurrences = builder->occurrences,
 		.judgement = builder->judgement
 	};
 	return prototype_kernel_view_validate_stores(&view);
@@ -51,7 +51,7 @@ int prototype_kernel_builder_view(
 		.cwf_certificates = builder->cwf_certificates,
 		.terms = builder->terms,
 		.type_declarations = builder->type_declarations,
-		.operations = builder->operations,
+		.occurrences = builder->occurrences,
 		.judgement = builder->judgement
 	};
 	return 0;

@@ -1,8 +1,8 @@
 # A Program
 
 A Program is an experimental dependently typed language and compiler
-prototype. It compiles a compact source language into a shared canonical term
-graph, preserves typed source occurrences in a separate operation graph,
+prototype. It compiles a compact source language into a shared canonical Core
+Term graph, preserves static source occurrences in a separate typed-occurrence graph,
 synthesizes classifiers through constraints, records checkable typing proofs,
 and can execute CBPV computations with algebraic effect requests.
 
@@ -33,7 +33,7 @@ Implemented in the prototype:
 - a compiler-local logical-relation substrate, closed nondependent ADT object
   Identity, pure Return/Thunk Identity, nondependent pure Pi pointwise
   Identity, and selected higher square constructions;
-- artifact v74, namespace-qualified interfaces, relocation, linking,
+- artifact v75, namespace-qualified interfaces, relocation, linking,
   aggregation, and backend capability checks;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
@@ -352,7 +352,7 @@ The implemented pipeline is:
 source text
   -> surface AST and source binders
   -> name/type-declaration indexing
-  -> ContextDB-indexed OperationGraph + shared TermDB
+  -> shared TermDB + ContextDB-indexed TypedOccurrenceGraph
   -> classifier/effect constraint generation
   -> bounded fixed-point solving
   -> JudgementDB proof reconstruction and validation
@@ -370,26 +370,27 @@ TermDB is not the runtime machine state. Evaluation may intern pure
 intermediate/result terms, but live environments, handler stacks, resumptions,
 and host resources remain outside canonical term identity.
 
-### ContextDB, SubstitutionDB, and OperationGraph
+### ContextDB, SubstitutionDB, and TypedOccurrenceGraph
 
 ContextDB entries are objects of the syntactic context category.
 SubstitutionDB stores explicit identity, projection, extension, composition,
 and reindexing morphisms.
 
-OperationGraph stores typed source occurrences. Each occurrence points to a
-TermDB node and retains its context, polarity, classifier variable, source and
-binder provenance, and occurrence edges. Two typed identities can therefore
+TypedOccurrenceGraph stores typed source occurrences. Each occurrence points to a
+TermDB node and retains its Context, selected classifier or residual obligation,
+source/binder provenance, and role-indexed occurrence edges. Two typed identities can therefore
 share one erased Core lambda without merging their classifiers or exported
 names.
 
 This many-to-one erasure is deliberate:
 
 ```text
-typed/source operation occurrences  --many-to-one-->  canonical TermDB
+typed source occurrences  --many-to-one-->  canonical TermDB
 ```
 
-Runtime execution follows validated operation roots; it does not choose an
-arbitrary classifier attached to a shared Core node.
+Runtime dispatch follows Core Term tags and child topology. An optional frozen
+occurrence snapshot supplies source traces and residual verification plans; it
+never chooses reduction behavior from a classifier attached to a shared Core node.
 
 ### Constraints, judgements, and verification
 
@@ -447,15 +448,15 @@ never dispatches observable host effects. Only executable runtime mode may
 send an unhandled request to an enabled host dispatcher.
 
 Every accepted saturated effect operation source occurrence must lower to one
-request. OperationGraph validation rejects a saturated effect APP that escapes
+request. TypedOccurrenceGraph validation rejects a saturated effect APP that escapes
 this elaboration boundary.
 
 ## Artifacts and Linking
 
-Artifact format v74 serializes the dense reachable accepted object graph of:
+Artifact format v75 serializes the dense reachable accepted object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
-- TermDB and OperationGraph;
+- TermDB and TypedOccurrenceGraph occurrence metadata;
 - contexts, substitutions, constructor schemas, and type views;
 - JudgementDB proofs, effect constraints, pending runtime verification, and
   compile budgets;
@@ -471,7 +472,7 @@ binders/contexts/terms, preserves typed export identity, and may share
 alpha-equivalent Core representatives without merging the exports.
 
 The exact current wire and semantic contract is
-[`src/prototype/spec/artifact_v74.schema`](src/prototype/spec/artifact_v74.schema).
+[`src/prototype/spec/artifact_v75.schema`](src/prototype/spec/artifact_v75.schema).
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v5.schema`](src/prototype/spec/hott_fragment_v5.schema).
 

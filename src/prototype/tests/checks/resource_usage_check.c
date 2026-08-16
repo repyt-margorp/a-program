@@ -174,7 +174,7 @@ int main(void) {
 		.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
 		.authority_id = 1,
 		.context_id = 0,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = 1,
 		.classifier = 2,
 		.resource_usage_count = 1,

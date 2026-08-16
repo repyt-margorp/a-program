@@ -1,23 +1,23 @@
 #ifndef A_PROGRAM_PROTOTYPE_GRAPH_VERIFICATION_H
 #define A_PROGRAM_PROTOTYPE_GRAPH_VERIFICATION_H
 
-#include "a_program/graph/operation_model.h"
+#include "a_program/graph/typed_occurrence_model.h"
 
 struct prototype_compile_metadata;
 struct prototype_type_declaration_db;
 
-enum prototype_operation_effect_constraint_kind {
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_EXACT = 1,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_COPY = 2,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNION = 3,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_RESIDUAL = 4
+enum prototype_occurrence_effect_constraint_kind {
+	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_EXACT = 1,
+	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_COPY = 2,
+	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_UNION = 3,
+	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_RESIDUAL = 4
 };
 
-enum prototype_operation_effect_constraint_state {
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_PENDING = 1,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED = 2,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_UNSOLVED_RESIDUAL = 3,
-	PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_INCOMPLETE = 4
+enum prototype_occurrence_effect_constraint_state {
+	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_PENDING = 1,
+	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED = 2,
+	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_UNSOLVED_RESIDUAL = 3,
+	PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_INCOMPLETE = 4
 };
 
 /*
@@ -26,10 +26,10 @@ enum prototype_operation_effect_constraint_state {
  * classifier owns result_row. EXACT uses left_row as the required row and
  * leaves right_row invalid.
  */
-struct prototype_operation_effect_constraint {
+struct prototype_occurrence_effect_constraint {
 	int kind;
 	int state;
-	uint32_t operation;
+	uint32_t occurrence;
 	uint32_t result_row;
 	uint32_t left_row;
 	uint32_t right_row;
@@ -50,10 +50,10 @@ enum prototype_verification_obligation_state {
 struct prototype_verification_obligation {
 	int kind;
 	int state;
-	uint32_t operation;
+	uint32_t occurrence;
 	uint32_t core_term;
-	uint32_t computation_operation;
-	uint32_t continuation_operation;
+	uint32_t computation_occurrence;
+	uint32_t continuation_occurrence;
 	uint32_t continuation_binder_id;
 	uint32_t input_classifier;
 	uint32_t classifier_family;
@@ -99,15 +99,15 @@ struct prototype_verification_obligation* prototype_verification_db_get_mutable(
 	struct prototype_verification_db* db,
 	uint32_t obligation_id
 );
-int prototype_verification_db_find_operation(
+int prototype_verification_db_find_occurrence(
 	const struct prototype_verification_db* db,
 	int kind,
-	uint32_t operation,
+	uint32_t occurrence,
 	uint32_t* p_obligation_id
 );
 int prototype_verification_db_validate(
 	const struct prototype_verification_db* db,
-	const struct prototype_operation_graph* graph,
+	const struct prototype_typed_occurrence_graph* graph,
 	const struct prototype_term_db* terms
 );
 int prototype_verification_db_coverage(
@@ -126,15 +126,5 @@ int prototype_verification_db_discharge_computation_fold_result(
 	uint32_t obligation_id,
 	uint32_t returned_value,
 	uint32_t return_result_classifier
-);
-int prototype_operation_evaluate_with_verification(
-	struct prototype_compile_metadata* metadata,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	struct prototype_term_reduction_options options,
-	uint32_t operation_id,
-	uint32_t* p_ret,
-	int* p_verification_state
 );
 #endif

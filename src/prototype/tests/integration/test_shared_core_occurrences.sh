@@ -13,8 +13,8 @@ EOF
 
 ./read_file.out "$tmp_dir/shared-id.p" >"$tmp_dir/output"
 
-int_term=$(sed -n 's/^metadata label identityInt -> operation#[0-9][0-9]* -> term#\([0-9][0-9]*\)$/\1/p' "$tmp_dir/output")
-text_term=$(sed -n 's/^metadata label identityText -> operation#[0-9][0-9]* -> term#\([0-9][0-9]*\)$/\1/p' "$tmp_dir/output")
+int_term=$(sed -n 's/^metadata label identityInt -> occurrence#[0-9][0-9]* -> term#\([0-9][0-9]*\)$/\1/p' "$tmp_dir/output")
+text_term=$(sed -n 's/^metadata label identityText -> occurrence#[0-9][0-9]* -> term#\([0-9][0-9]*\)$/\1/p' "$tmp_dir/output")
 
 test -n "$int_term"
 test "$int_term" = "$text_term"
@@ -25,10 +25,10 @@ grep -q 'metadata label textResult ' "$tmp_dir/output"
 
 ./read_file.out training/list_nat_match.p >"$tmp_dir/list-match-output"
 grep -q 'metadata label main ' "$tmp_dir/list-match-output"
-grep -q 'operation#[0-9][0-9]* match ' "$tmp_dir/list-match-output"
+grep -q 'occurrence#[0-9][0-9]* match ' "$tmp_dir/list-match-output"
 
 ./read_file.out training/recursive_dependent_match.p \
 	>"$tmp_dir/recursive-dependent-match-output"
 grep -q 'metadata label fold ' "$tmp_dir/recursive-dependent-match-output"
-grep -q 'operation#[0-9][0-9]* induction-hypothesis ' \
+grep -q 'occurrence#[0-9][0-9]* induction-hypothesis ' \
 	"$tmp_dir/recursive-dependent-match-output"

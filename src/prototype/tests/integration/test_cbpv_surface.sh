@@ -77,7 +77,7 @@ grep -q '^term matchScrutinee := COMPUTATION_FOLD(.*MATCH(VAR' \
 	>"$tmp_dir/runtime-strict-value-write.out"
 ./read_file.out --read-graph "$tmp_dir/runtime-strict-value.apo" \
 	>"$tmp_dir/runtime-strict-value-read.out"
-grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=6 verification_obligations=0' \
+grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=6 verification_obligations=0' \
 	"$tmp_dir/runtime-strict-value-read.out"
 
 ./read_file.out src/prototype/tests/fixtures/cbpv/computation_reference_type_check.p \
@@ -287,7 +287,7 @@ grep -q 'has-type THUNK(LAMBDA(.*\[thunk-intro proof#' \
 ./read_file.out --read-graph "$tmp_dir/higher-order-function.apo" \
 	>"$tmp_dir/higher-order-function-read.out"
 grep -q 'interface term main ' "$tmp_dir/higher-order-function-read.out"
-grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=0 verification_obligations=0' \
+grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=0 verification_obligations=0' \
 	"$tmp_dir/higher-order-function-read.out"
 
 cat >"$tmp_dir/dependent-fold-residual.p" <<'EOF'
@@ -313,9 +313,9 @@ if ./read_file.out --policy strict "$tmp_dir/dependent-fold-residual.p" \
 fi
 grep -q 'failed to compile AST graph' "$tmp_dir/dependent-fold-strict.err"
 residual_fold_operation=$(awk '
-	/^operation#/ && $2 == "computation-fold" && $NF == "name=main" {
+	/^occurrence#/ && $2 == "computation-fold" && $NF == "name=main" {
 		id = $1
-		sub(/^operation#/, "", id)
+		sub(/^occurrence#/, "", id)
 		print id
 		exit
 	}
@@ -328,7 +328,7 @@ awk '$1 == "verification" { print $5; exit }' \
 grep -q '^verification_obligations 1$' "$tmp_dir/dependent-fold-residual.apo"
 ./read_file.out --read-graph "$tmp_dir/dependent-fold-residual.apo" \
 	>"$tmp_dir/dependent-fold-residual-read.out"
-grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=1' \
+grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=1' \
 	"$tmp_dir/dependent-fold-residual-read.out"
 ./read_file.out --check-backend c "$tmp_dir/dependent-fold-residual.apo" \
 	>"$tmp_dir/dependent-fold-residual-c.out"
@@ -349,7 +349,7 @@ grep -q 'backend verilog is incompatible' \
 	2>"$tmp_dir/higher-order-function-residual-link.err"
 ./read_file.out --read-graph "$tmp_dir/residual-link.apo" \
 	>"$tmp_dir/residual-link-read.out"
-grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=1' \
+grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=1' \
 	"$tmp_dir/residual-link-read.out"
 cat >"$tmp_dir/link-base.p" <<'EOF'
 root := #1;
@@ -361,7 +361,7 @@ EOF
 	>"$tmp_dir/provider-residual-link.out"
 ./read_file.out --read-graph "$tmp_dir/provider-residual-link.apo" \
 	>"$tmp_dir/provider-residual-link-read.out"
-grep -Eq 'operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=1' \
+grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=1' \
 	"$tmp_dir/provider-residual-link-read.out"
 
 # A residual obligation is immutable artifact data. At evaluation, the input
@@ -501,13 +501,13 @@ grep -q 'has-type MATCH(.*\[solved-match-motive proof#' \
 ./read_file.out --write-artifact "$tmp_dir/recursive-dependent-match.apo" \
 	training/recursive_dependent_match.p \
 	>"$tmp_dir/recursive-dependent-match-write.out"
-grep -Eq '^operation_case_binders [0-9]+ 1 [0-9]+ [0-9]+$' \
+grep -Eq '^occurrence_match_case_binders [0-9]+ 1 [0-9]+$' \
 	"$tmp_dir/recursive-dependent-match.apo"
 ./read_file.out --read-graph "$tmp_dir/recursive-dependent-match.apo" \
 	>"$tmp_dir/recursive-dependent-match-read.out"
 awk '
-	$1 == "operation_case_binders" && $3 > 0 && !forged {
-		$5 = 4294967294;
+	$1 == "occurrence_match_case_binders" && $3 > 0 && !forged {
+		$4 = 4294967294;
 		forged = 1;
 	}
 	{

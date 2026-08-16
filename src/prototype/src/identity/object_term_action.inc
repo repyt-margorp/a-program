@@ -1093,7 +1093,7 @@ static int hott_construct_nullary_match_object_action(
 			types,
 			contexts,
 			substitutions,
-			kernel->operations,
+			kernel->occurrences,
 			environment->target_context_id,
 			witness,
 			match_classifier,

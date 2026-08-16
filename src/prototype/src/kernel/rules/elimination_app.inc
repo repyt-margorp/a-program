@@ -82,18 +82,18 @@ static int ensure_lambda_binder_assumption(
 	}
 	size_t before = delta->proposition_count;
 	uint32_t outer_context = delta->current_context_id;
-	uint32_t outer_operation = delta->current_operation_id;
+	uint32_t outer_operation = delta->current_occurrence_id;
 	prototype_judgement_delta_set_context(delta, binder_context);
-	prototype_judgement_delta_set_operation(delta, PROTOTYPE_INVALID_ID);
+	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 	if (prototype_judgement_delta_record_context_binding_assumption(
 			delta, terms, lambda->as.lambda.binding_id, argument_classifier
 		) != 0 || delta->proposition_count != before + 1) {
 		prototype_judgement_delta_set_context(delta, outer_context);
-		prototype_judgement_delta_set_operation(delta, outer_operation);
+		prototype_judgement_delta_set_occurrence(delta, outer_operation);
 		return -1;
 	}
 	prototype_judgement_delta_set_context(delta, outer_context);
-	prototype_judgement_delta_set_operation(delta, outer_operation);
+	prototype_judgement_delta_set_occurrence(delta, outer_operation);
 	return 0;
 }
 
@@ -110,7 +110,7 @@ int prototype_judgement_delta_expand_app(
 	/* Generic Core inference does not own a typed source occurrence. Operation
 	 * reification uses prototype_judgement_delta_record_app_elim() after
 	 * selecting the owning Operation explicitly. */
-	prototype_judgement_delta_set_operation(delta, PROTOTYPE_INVALID_ID);
+	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 	const struct prototype_term* app = &terms->terms[subject];
 	struct app_classifier_candidate candidates[64];
 	uint32_t candidate_count = 0;
@@ -467,12 +467,12 @@ static int infer_lambda_classifier_for_app_argument(
 		!term_exists(terms, argument_classifier)) {
 		return -1;
 	}
-	uint32_t saved_operation_id = delta->current_operation_id;
-	prototype_judgement_delta_set_operation(delta, PROTOTYPE_INVALID_ID);
+	uint32_t saved_operation_id = delta->current_occurrence_id;
+	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 	if (ensure_lambda_binder_assumption(
 			delta, terms, lambda_term, argument_classifier
 		) != 0) {
-		prototype_judgement_delta_set_operation(delta, saved_operation_id);
+		prototype_judgement_delta_set_occurrence(delta, saved_operation_id);
 		return -1;
 	}
 	int changed = 0;
@@ -483,12 +483,12 @@ static int infer_lambda_classifier_for_app_argument(
 		lambda_term,
 		&changed
 	);
-	prototype_judgement_delta_set_operation(delta, saved_operation_id);
+	prototype_judgement_delta_set_occurrence(delta, saved_operation_id);
 	return status;
 }
 
 /* A source lambda can have several provisional classifier candidates while the
- * operation graph fixed point is being solved. Consumers with a known input
+ * typed-occurrence graph fixed point is being solved. Consumers with a known input
  * domain must select the compatible Pi candidate, rather than depend on
  * relation insertion order. */
 static int select_delta_pi_classifier_for_domain(

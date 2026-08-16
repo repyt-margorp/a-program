@@ -12,7 +12,7 @@ int prototype_hott_execute_substitution_action(
 	struct prototype_cwf_certificate_db* cwf_certificates = kernel ? kernel->cwf_certificates : NULL;
 	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
 	struct prototype_type_declaration_db* type_declarations = kernel ? kernel->type_declarations : NULL;
-	const struct prototype_operation_graph* operations = kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations = kernel ? kernel->occurrences : NULL;
 	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
 	struct prototype_kernel_view view;
 	if (!actions || !contexts || !substitutions || !cwf_certificates ||
@@ -959,8 +959,8 @@ static int hott_relation_plan_and_execute_depth(
 	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
 	struct prototype_type_declaration_db* type_declarations =
 		kernel ? kernel->type_declarations : NULL;
-	const struct prototype_operation_graph* operations =
-		kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations =
+		kernel ? kernel->occurrences : NULL;
 	struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	struct prototype_kernel_view view;
@@ -1303,8 +1303,8 @@ int prototype_hott_action_db_validate(
 	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
 	struct prototype_type_declaration_db* type_declarations =
 		kernel ? kernel->type_declarations : NULL;
-	const struct prototype_operation_graph* operations =
-		kernel ? kernel->operations : NULL;
+	const struct prototype_typed_occurrence_graph* operations =
+		kernel ? kernel->occurrences : NULL;
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
 	if (!db || db->request_count > db->request_capacity ||

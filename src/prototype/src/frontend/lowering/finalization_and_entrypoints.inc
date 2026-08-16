@@ -92,7 +92,7 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 	}
 	for (uint32_t i = 0; i < ctx->pending_match_typing_count; ++i) {
 		uint32_t operation = ctx->pending_match_typings[i].operation;
-		if (operation >= ctx->metadata->operation_count ||
+		if (operation >= ctx->metadata->typed_occurrences.occurrence_count ||
 			ctx->classifier_solver.solutions[operation].classifier ==
 				PROTOTYPE_INVALID_ID) {
 			fprintf(
@@ -100,14 +100,14 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 				"pending Match classifier missing index=%u operation=%u operation-count=%zu classifier=%u\n",
 				i,
 				operation,
-				ctx->metadata->operation_count,
-				operation < ctx->metadata->operation_count ?
+				ctx->metadata->typed_occurrences.occurrence_count,
+				operation < ctx->metadata->typed_occurrences.occurrence_count ?
 					ctx->classifier_solver.solutions[operation].classifier :
 					PROTOTYPE_INVALID_ID
 			);
-			if (operation < ctx->metadata->operation_count) {
-				const struct prototype_operation_node* node =
-					&ctx->metadata->operations[operation];
+			if (operation < ctx->metadata->typed_occurrences.occurrence_count) {
+				const struct prototype_typed_occurrence* node =
+					&ctx->metadata->typed_occurrences.occurrences[operation];
 				(void)add_compile_diagnostic(
 					ctx,
 					PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER,
@@ -140,12 +140,27 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 		fprintf(stderr, "typing fixed point: refined Match motive rebuilding failed\n");
 		return -1;
 	}
-	if (operation_solver_refresh_usage_solutions(ctx) != 0) {
-		fprintf(stderr, "typing fixed point: refined branch usage solving failed\n");
+	/* Indexed pullbacks change the Context in which motive equations live.
+	 * Reclose the classifier fixed point in that final Context before any
+	 * classifier is projected into a frozen occurrence or a proof Claim. */
+	status = compile_phase_infer_general_classifiers(ctx, 1);
+	if (status != 0) {
+		fprintf(stderr,
+			"typing fixed point: refined classifier inference failed status=%d "
+			"steps=%" PRIu64 " limit=%" PRIu64 " exhausted=%u\n",
+			status, ctx->metadata->solver_steps_used,
+			ctx->metadata->solver_step_limit, ctx->metadata->solver_exhausted);
 		return -1;
 	}
-	if (operation_solver_materialize_judgements(ctx) != 0) {
-		fprintf(stderr, "typing fixed point: judgement materialization failed\n");
+	/* Indexed motive refinement can change a Lambda binder classifier after the
+	 * first immutable Context canonicalization. Re-intern the affected Context
+	 * extensions and relocate their occurrences before proof materialization. */
+	if (operation_solver_resolve_contexts(ctx, 1) != 0) {
+		fprintf(stderr, "typing fixed point: refined context resolution failed\n");
+		return -1;
+	}
+	if (operation_solver_refresh_usage_solutions(ctx) != 0) {
+		fprintf(stderr, "typing fixed point: refined branch usage solving failed\n");
 		return -1;
 	}
 	/* Candidate publication is decided by the authority-complete Claim closure.
@@ -171,17 +186,23 @@ static int operation_check_classifier(
 	uint32_t expected_classifier,
 	uint32_t depth
 ) {
-	if (!ctx || operation_id >= ctx->metadata->operation_count ||
+	if (!ctx || operation_id >= ctx->metadata->typed_occurrences.occurrence_count ||
 		expected_classifier >= ctx->terms->term_count || depth > 128) {
+		fprintf(stderr,
+			"classifier check: invalid input operation=%u occurrence-count=%zu expected=%u "
+			"term-count=%zu depth=%u\n",
+			operation_id,
+			ctx && ctx->metadata ? ctx->metadata->typed_occurrences.occurrence_count : 0,
+			expected_classifier, ctx && ctx->terms ? ctx->terms->term_count : 0, depth);
 		return -1;
 	}
-	const struct prototype_operation_node* operation =
-		&ctx->metadata->operations[operation_id];
-	/* Nested surface lambdas are represented by a direct OperationGraph edge,
+	const struct prototype_typed_occurrence* operation =
+		&ctx->metadata->typed_occurrences.occurrences[operation_id];
+	/* Nested surface lambdas are represented by a direct TypedOccurrenceGraph edge,
 	 * while their enclosing Pi codomain records the implicit
 	 * RETURN(THUNK(lambda)) boundary. Expose the raw Pi before checking the
 	 * lambda occurrence itself. */
-	if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
 		ctx->terms->terms[expected_classifier].tag ==
 			PROTOTYPE_TERM_COMPUTATION_TYPE) {
 		uint32_t result = ctx->terms->terms[
@@ -193,45 +214,55 @@ static int operation_check_classifier(
 				ctx->terms->terms[result].as.thunk_type.computation;
 		}
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_NAME &&
-		operation->function < ctx->metadata->operation_count) {
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REFERENCE &&
+		operation->wrapped_occurrence < ctx->metadata->typed_occurrences.occurrence_count) {
 		return operation_check_classifier(
-			ctx, operation->function, expected_classifier, depth + 1
+			ctx, operation->wrapped_occurrence, expected_classifier, depth + 1
 		);
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_ASCRIPTION &&
-		operation->body < ctx->metadata->operation_count) {
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE &&
+		operation->wrapped_occurrence < ctx->metadata->typed_occurrences.occurrence_count) {
 		return operation_check_classifier(
-			ctx, operation->body, expected_classifier, depth + 1
+			ctx, operation->wrapped_occurrence, expected_classifier, depth + 1
 		);
 	}
 	uint32_t actual_classifier = operation_solver_classifier(ctx, operation_id);
 	if (actual_classifier == PROTOTYPE_INVALID_ID) {
-		actual_classifier = operation_available_classifier(operation);
+		actual_classifier = operation_available_classifier(ctx, operation_id);
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_THUNK &&
-		operation->argument < ctx->metadata->operation_count &&
+	uint32_t child_occurrence;
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_THUNK &&
+		compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION, 0,
+			&child_occurrence
+		) == 0 &&
 		ctx->terms->terms[expected_classifier].tag == PROTOTYPE_TERM_THUNK_TYPE) {
 		return operation_check_classifier(
 			ctx,
-			operation->argument,
+			child_occurrence,
 			ctx->terms->terms[expected_classifier].as.thunk_type.computation,
 			depth + 1
 		);
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_RETURN &&
-		operation->argument < ctx->metadata->operation_count &&
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_RETURN &&
+		compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0,
+			&child_occurrence
+		) == 0 &&
 		ctx->terms->terms[expected_classifier].tag ==
 			PROTOTYPE_TERM_COMPUTATION_TYPE) {
 		return operation_check_classifier(
 			ctx,
-			operation->argument,
+			child_occurrence,
 			ctx->terms->terms[expected_classifier].as.computation_type.result,
 			depth + 1
 		);
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
-		operation->body < ctx->metadata->operation_count &&
+	uint32_t body_occurrence;
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
+		compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_BODY, 0, &body_occurrence
+		) == 0 &&
 		operation->core_term < ctx->terms->term_count &&
 		ctx->terms->terms[operation->core_term].tag == PROTOTYPE_TERM_LAMBDA) {
 		uint32_t expected_domain;
@@ -277,25 +308,31 @@ static int operation_check_classifier(
 			return 0;
 		}
 		return operation_check_classifier(
-			ctx, operation->body, specialized_body, depth + 1
+			ctx, body_occurrence, specialized_body, depth + 1
 		);
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_MATCH &&
-		operation->scrutinee < ctx->metadata->operation_count &&
+	uint32_t scrutinee_occurrence;
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH &&
+		compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_SCRUTINEE, 0,
+			&scrutinee_occurrence
+		) == 0 &&
 		operation->core_term < ctx->terms->term_count &&
 		ctx->terms->terms[operation->core_term].tag == PROTOTYPE_TERM_MATCH &&
 		operation->first_case + operation->case_count <=
-			ctx->metadata->operation_case_count) {
-		const struct prototype_operation_node* scrutinee =
-			&ctx->metadata->operations[operation->scrutinee];
+			ctx->metadata->typed_occurrences.case_count) {
+		const struct prototype_typed_occurrence* scrutinee =
+			&ctx->metadata->typed_occurrences.occurrences[scrutinee_occurrence];
 		const struct prototype_term match_value =
 			ctx->terms->terms[operation->core_term];
 		const struct prototype_term* match = &match_value;
 		uint32_t scrutinee_classifier = operation_solver_classifier(
-			ctx, operation->scrutinee
+			ctx, scrutinee_occurrence
 		);
 		if (scrutinee_classifier == PROTOTYPE_INVALID_ID) {
-			scrutinee_classifier = operation_available_classifier(scrutinee);
+			scrutinee_classifier = operation_available_classifier(
+				ctx, scrutinee_occurrence
+			);
 		}
 		if (scrutinee_classifier == PROTOTYPE_INVALID_ID &&
 			scrutinee->core_term < ctx->terms->term_count &&
@@ -315,6 +352,9 @@ static int operation_check_classifier(
 				}
 			}
 		}
+		if (scrutinee_classifier == PROTOTYPE_INVALID_ID) {
+			return 0;
+		}
 		uint32_t match_type_id;
 		uint32_t match_type_arguments[32];
 		uint32_t match_type_argument_count;
@@ -329,11 +369,18 @@ static int operation_check_classifier(
 				match_type_id
 			].index_count != 0;
 		for (uint32_t i = 0; i < operation->case_count; ++i) {
-			const struct prototype_operation_match_case* operation_case =
-				&ctx->metadata->operation_cases[operation->first_case + i];
+			const struct prototype_typed_occurrence_match_case* operation_case =
+				&ctx->metadata->typed_occurrences.cases[operation->first_case + i];
+			uint32_t branch_occurrence;
 			uint32_t term_case_id = match->as.match.first_case + i;
 			if (term_case_id >= ctx->terms->case_count ||
-				operation_case->body_operation >= ctx->metadata->operation_count) {
+				compile_occurrence_child(
+					ctx, operation_id, PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, i,
+					&branch_occurrence
+				) != 0) {
+				fprintf(stderr,
+					"classifier check: invalid match case edge match=%u case=%u term-case=%u\n",
+					operation_id, i, term_case_id);
 				return -1;
 			}
 			const struct prototype_match_case* term_case =
@@ -341,6 +388,10 @@ static int operation_check_classifier(
 			struct prototype_case_binder occurrence_binders[64];
 			if (term_case->binder_count > 64 || term_case->binder_count !=
 					operation_case->binder_count) {
+				fprintf(stderr,
+					"classifier check: match binder mismatch match=%u case=%u term=%u occurrence=%u\n",
+					operation_id, i, term_case->binder_count,
+					operation_case->binder_count);
 				return -1;
 			}
 			for (uint32_t binder = 0; binder < term_case->binder_count; ++binder) {
@@ -361,6 +412,12 @@ static int operation_check_classifier(
 						operation_case->refinement_substitution
 					);
 				if (!stored || stored->source_context != operation_case->context_id) {
+					fprintf(stderr,
+						"classifier check: stale branch refinement match=%u case=%u substitution=%u "
+						"source=%u expected-source=%u\n",
+						operation_id, i, operation_case->refinement_substitution,
+						stored ? stored->source_context : PROTOTYPE_INVALID_ID,
+						operation_case->context_id);
 					return -1;
 				}
 				refined_context = operation_case->context_id;
@@ -426,15 +483,20 @@ static int operation_check_classifier(
 				continue;
 			}
 			if (refinement_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED) {
+				fprintf(stderr,
+					"classifier check: branch refinement unavailable match=%u case=%u "
+					"status=%d indexed=%d stored=%u scrutinee-classifier=%u\n",
+					operation_id, i, refinement_status, indexed_scrutinee,
+					operation_case->has_refinement, scrutinee_classifier);
 				return refinement_status == PROTOTYPE_INDEX_REFINEMENT_INVALID ? -1 : 0;
 			}
 			uint32_t refined_expected;
 			uint32_t branch_classifier = operation_solver_classifier(
-				ctx, operation_case->body_operation
+				ctx, branch_occurrence
 			);
 			if (branch_classifier == PROTOTYPE_INVALID_ID) {
 				branch_classifier = operation_available_classifier(
-					&ctx->metadata->operations[operation_case->body_operation]
+					ctx, branch_occurrence
 				);
 			}
 			uint32_t refined_actual;
@@ -462,7 +524,7 @@ static int operation_check_classifier(
 				refined_actual = branch_classifier;
 			} else if (operation_solver_reindex_in_enclosing_indexed_branches(
 					ctx,
-					operation_case->body_operation,
+					branch_occurrence,
 					operation_case->context_id,
 					branch_classifier,
 					&refined_actual
@@ -506,7 +568,7 @@ static int operation_check_classifier(
 				for (uint32_t case_index = 0;
 					case_index < operation->case_count;
 					++case_index) {
-					if (ctx->metadata->operation_cases[
+					if (ctx->metadata->typed_occurrences.cases[
 						operation->first_case + case_index
 					].constructor_id == constructor_index) {
 						covered = 1;
@@ -528,6 +590,11 @@ static int operation_check_classifier(
 						constructor->field_context,
 						declaration_fields, 64, &field_count
 					) != 0) {
+					fprintf(stderr,
+						"classifier check: omitted constructor context path failed match=%u "
+						"constructor=%u parameter-context=%u field-context=%u\n",
+						operation_id, constructor_index, constructor->parameter_context,
+						constructor->field_context);
 					return -1;
 				}
 				struct prototype_case_binder binders[64];
@@ -538,6 +605,11 @@ static int operation_check_classifier(
 						scrutinee_type_id, scrutinee_arguments,
 						declaration->parameter_count, &owner
 					) != 0) {
+					fprintf(stderr,
+						"classifier check: omitted constructor owner failed match=%u "
+						"constructor=%u type=%u arguments=%u parameters=%u\n",
+						operation_id, constructor_index, scrutinee_type_id,
+						scrutinee_argument_count, declaration->parameter_count);
 					return -1;
 				}
 				for (uint32_t field = 0; field < field_count; ++field) {
@@ -556,6 +628,10 @@ static int operation_check_classifier(
 							binders[field].binding_id, field_classifier,
 							PROTOTYPE_INVALID_ID, &synthetic_context
 						) != 0) {
+						fprintf(stderr,
+							"classifier check: omitted constructor field failed match=%u "
+							"constructor=%u field=%u synthetic-context=%u owner=%u\n",
+							operation_id, constructor_index, field, synthetic_context, owner);
 						return -1;
 					}
 				}
@@ -603,7 +679,7 @@ static int operation_refine_classifier_from_expected(
 	uint32_t depth,
 	int* p_changed
 ) {
-	if (!ctx || !p_changed || operation_id >= ctx->metadata->operation_count ||
+	if (!ctx || !p_changed || operation_id >= ctx->metadata->typed_occurrences.occurrence_count ||
 		expected_classifier >= ctx->terms->term_count || depth > 128) {
 		return -1;
 	}
@@ -611,9 +687,12 @@ static int operation_refine_classifier_from_expected(
 		operation_solver_resolve_contexts(ctx, 0) != 0) {
 		return -1;
 	}
-	const struct prototype_operation_node* operation =
-		&ctx->metadata->operations[operation_id];
-	if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
+	const struct prototype_typed_occurrence* operation =
+		&ctx->metadata->typed_occurrences.occurrences[operation_id];
+	uint32_t child_occurrence;
+	uint32_t body_occurrence;
+	uint32_t scrutinee_occurrence;
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
 		ctx->terms->terms[expected_classifier].tag ==
 			PROTOTYPE_TERM_COMPUTATION_TYPE) {
 		uint32_t result = ctx->terms->terms[
@@ -629,6 +708,11 @@ static int operation_refine_classifier_from_expected(
 		ctx, operation_id, expected_classifier, depth
 	);
 	if (check < 0) {
+		fprintf(stderr,
+			"expected refinement: classifier check failed operation=%u tag=%u "
+			"expected=%u depth=%u synthesized=%u\n",
+			operation_id, operation->tag, expected_classifier, depth,
+			operation_solver_classifier(ctx, operation_id));
 		return check;
 	}
 	/* Expected classifiers solve missing equations; they do not replace a
@@ -638,15 +722,15 @@ static int operation_refine_classifier_from_expected(
 		ctx, operation_id
 	);
 	if (check == 0 && synthesized_classifier < ctx->terms->term_count &&
-		operation->tag != PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS &&
-		operation->tag != PROTOTYPE_OPERATION_LAMBDA &&
-		operation->tag != PROTOTYPE_OPERATION_MATCH) {
+		operation->tag != PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS &&
+		operation->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
+		operation->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
 		return 0;
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS &&
-		operation->scrutinee < ctx->metadata->operation_count &&
-		ctx->metadata->operations[operation->scrutinee].tag ==
-			PROTOTYPE_OPERATION_MATCH) {
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS &&
+		operation->ih_owner_occurrence < ctx->metadata->typed_occurrences.occurrence_count &&
+		ctx->metadata->typed_occurrences.occurrences[operation->ih_owner_occurrence].tag ==
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
 		uint32_t current_classifier = operation_solver_classifier(
 			ctx, operation_id
 		);
@@ -659,65 +743,93 @@ static int operation_refine_classifier_from_expected(
 				ctx, operation_id, expected_classifier
 			);
 			ctx->classifier_solver.motive_constant_candidates[
-				operation->scrutinee
+				operation->ih_owner_occurrence
 			] = PROTOTYPE_INVALID_ID;
 			*p_changed = 1;
 			if (operation_solver_enqueue_dependents(ctx, operation_id) != 0 ||
 				operation_solver_enqueue_dependents(
-					ctx, operation->scrutinee
+					ctx, operation->ih_owner_occurrence
 				) != 0) {
 				return -1;
 			}
 		}
 		return 1;
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_ASCRIPTION &&
-		operation->body < ctx->metadata->operation_count) {
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR) {
+		int sequence_status = operation_solver_refine_sequenced_ih_result(
+			ctx, operation_id, expected_classifier, p_changed
+		);
+		if (sequence_status < 0) {
+			return -1;
+		}
+		if (sequence_status == 0) {
+			return 1;
+		}
+	}
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE &&
+		operation->wrapped_occurrence < ctx->metadata->typed_occurrences.occurrence_count) {
 		int status = operation_refine_classifier_from_expected(
-			ctx, operation->body, expected_classifier, depth + 1, p_changed
+			ctx, operation->wrapped_occurrence, expected_classifier, depth + 1,
+			p_changed
 		);
 		if (status <= 0) {
 			return status;
 		}
-	} else if (operation->tag == PROTOTYPE_OPERATION_NAME &&
-		operation->function < ctx->metadata->operation_count) {
+	} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REFERENCE &&
+		operation->wrapped_occurrence < ctx->metadata->typed_occurrences.occurrence_count) {
 		int status = operation_refine_classifier_from_expected(
-			ctx, operation->function, expected_classifier, depth + 1, p_changed
+			ctx, operation->wrapped_occurrence, expected_classifier, depth + 1,
+			p_changed
 		);
 		if (status <= 0) {
 			return status;
 		}
-	} else if (operation->tag == PROTOTYPE_OPERATION_THUNK &&
-		operation->argument < ctx->metadata->operation_count &&
+	} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_THUNK &&
+		compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION, 0,
+			&child_occurrence
+		) == 0 &&
 		ctx->terms->terms[expected_classifier].tag == PROTOTYPE_TERM_THUNK_TYPE) {
 		int status = operation_refine_classifier_from_expected(
-			ctx, operation->argument,
+			ctx, child_occurrence,
 			ctx->terms->terms[expected_classifier].as.thunk_type.computation,
 			depth + 1, p_changed
 		);
 		if (status <= 0) {
 			return status;
 		}
-	} else if (operation->tag == PROTOTYPE_OPERATION_RETURN &&
-		operation->argument < ctx->metadata->operation_count &&
+	} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_RETURN &&
+		compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0,
+			&child_occurrence
+		) == 0 &&
 		ctx->terms->terms[expected_classifier].tag ==
 			PROTOTYPE_TERM_COMPUTATION_TYPE) {
 		int status = operation_refine_classifier_from_expected(
-			ctx, operation->argument,
+			ctx, child_occurrence,
 			ctx->terms->terms[expected_classifier].as.computation_type.result,
 			depth + 1, p_changed
 		);
 		if (status <= 0) {
 			return status;
 		}
-	} else if (operation->tag == PROTOTYPE_OPERATION_APP &&
-		operation->function < ctx->metadata->operation_count &&
-		operation->argument < ctx->metadata->operation_count) {
+	} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_APP) {
+		uint32_t function_occurrence;
+		uint32_t argument_occurrence;
+		if (compile_occurrence_child(
+				ctx, operation_id, PROTOTYPE_TERM_CHILD_FUNCTION, 0,
+				&function_occurrence
+			) != 0 || compile_occurrence_child(
+				ctx, operation_id, PROTOTYPE_TERM_CHILD_ARGUMENT, 0,
+				&argument_occurrence
+			) != 0) {
+			return -1;
+		}
 		uint32_t argument_classifier = operation_solver_classifier(
-			ctx, operation->argument
+			ctx, argument_occurrence
 		);
-		uint32_t argument_term = ctx->metadata->operations[
-			operation->argument
+		uint32_t argument_term = ctx->metadata->typed_occurrences.occurrences[
+			argument_occurrence
 		].core_term;
 		if (argument_classifier >= ctx->terms->term_count ||
 			argument_term >= ctx->terms->term_count) {
@@ -756,8 +868,8 @@ static int operation_refine_classifier_from_expected(
 			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			return 0;
 		}
-		const struct prototype_operation_node* function_operation =
-			&ctx->metadata->operations[operation->function];
+		const struct prototype_typed_occurrence* function_operation =
+			&ctx->metadata->typed_occurrences.occurrences[function_occurrence];
 		if (function_operation->category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
 			function_operation->computation_kind ==
 				PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
@@ -772,13 +884,15 @@ static int operation_refine_classifier_from_expected(
 			}
 		}
 		int status = operation_refine_classifier_from_expected(
-			ctx, operation->function, function_expected, depth + 1, p_changed
+			ctx, function_occurrence, function_expected, depth + 1, p_changed
 		);
 		if (status <= 0) {
 			return status;
 		}
-	} else if (operation->tag == PROTOTYPE_OPERATION_LAMBDA &&
-		operation->body < ctx->metadata->operation_count &&
+	} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
+		compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_BODY, 0, &body_occurrence
+		) == 0 &&
 		operation->core_term < ctx->terms->term_count &&
 		ctx->terms->terms[operation->core_term].tag == PROTOTYPE_TERM_LAMBDA) {
 		uint32_t expected_domain;
@@ -804,21 +918,50 @@ static int operation_refine_classifier_from_expected(
 			return -1;
 		}
 		int status = operation_refine_classifier_from_expected(
-			ctx, operation->body, specialized_body, depth + 1, p_changed
+			ctx, body_occurrence, specialized_body, depth + 1, p_changed
 		);
 		if (status <= 0) {
 			return status;
 		}
-	} else if (operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD &&
-		operation->function < ctx->metadata->operation_count &&
-		operation->argument < ctx->metadata->operation_count &&
+	} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD &&
+		compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION, 0,
+			&child_occurrence
+		) == 0 && compile_occurrence_child(
+			ctx, operation_id, PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0,
+			&body_occurrence
+		) == 0 &&
 		operation->core_term < ctx->terms->term_count &&
 		ctx->terms->terms[operation->core_term].tag ==
 			PROTOTYPE_TERM_COMPUTATION_FOLD &&
 		ctx->terms->terms[operation->core_term].as.computation_fold.clause_count == 0) {
 		uint32_t input_classifier = operation_solver_classifier(
-			ctx, operation->function
+			ctx, child_occurrence
 		);
+		uint32_t continuation_body;
+		if (compile_occurrence_child(
+				ctx, body_occurrence, PROTOTYPE_TERM_CHILD_BODY, 0,
+				&continuation_body
+			) != 0) {
+			return -1;
+		}
+		if (input_classifier == PROTOTYPE_INVALID_ID) {
+			int body_status = operation_refine_classifier_from_expected(
+				ctx, continuation_body, expected_classifier, depth + 1, p_changed
+			);
+			if (body_status < 0) {
+				fprintf(stderr,
+					"fold expected refinement: continuation failed fold=%u continuation=%u "
+					"body=%u body-tag=%u expected=%u depth=%u\n",
+					operation_id, body_occurrence, continuation_body,
+					ctx->metadata->typed_occurrences.occurrences[continuation_body].tag,
+					expected_classifier, depth);
+				return -1;
+			}
+			input_classifier = operation_solver_classifier(
+				ctx, child_occurrence
+			);
+		}
 		struct prototype_term_classifier_view input_view;
 		uint32_t continuation_classifier;
 		if (input_classifier >= ctx->terms->term_count ||
@@ -835,14 +978,17 @@ static int operation_refine_classifier_from_expected(
 			return 0;
 		}
 		int status = operation_refine_classifier_from_expected(
-			ctx, operation->argument, continuation_classifier, depth + 1, p_changed
+			ctx, body_occurrence, continuation_classifier, depth + 1, p_changed
 		);
 		if (status <= 0) {
 			return status;
 		}
 	}
-	if (operation->tag == PROTOTYPE_OPERATION_MATCH) {
-		if (operation->scrutinee >= ctx->metadata->operation_count ||
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
+		if (compile_occurrence_child(
+				ctx, operation_id, PROTOTYPE_TERM_CHILD_SCRUTINEE, 0,
+				&scrutinee_occurrence
+			) != 0 ||
 			operation->core_term >= ctx->terms->term_count ||
 			ctx->terms->terms[operation->core_term].tag !=
 				PROTOTYPE_TERM_MATCH) {
@@ -850,8 +996,8 @@ static int operation_refine_classifier_from_expected(
 		}
 		const struct prototype_term* match =
 			&ctx->terms->terms[operation->core_term];
-		uint32_t scrutinee = ctx->metadata->operations[
-			operation->scrutinee
+		uint32_t scrutinee = ctx->metadata->typed_occurrences.occurrences[
+			scrutinee_occurrence
 		].core_term;
 		if (scrutinee >= ctx->terms->term_count) {
 			return -1;
@@ -924,10 +1070,7 @@ static int operation_refine_classifier_from_expected(
 		ctx->classifier_solver.motive_solution_states[operation_id] =
 			OPERATION_MOTIVE_SOLUTION_MATERIALIZED;
 		if (ctx->materializing_checked_classifiers) {
-			ctx->metadata->operations[operation_id].known_classifier =
-				motive_application;
-			ctx->metadata->operations[operation_id].classifier =
-				motive_application;
+			ctx->classifier_hints[operation_id] = motive_application;
 		}
 		if (check > 0) {
 			/* The structural check above has already validated every branch in its
@@ -937,13 +1080,13 @@ static int operation_refine_classifier_from_expected(
 			return 1;
 		}
 		uint32_t scrutinee_classifier = operation_solver_classifier(
-			ctx, operation->scrutinee
+			ctx, scrutinee_occurrence
 		);
-		const struct prototype_operation_node* scrutinee_operation =
-			&ctx->metadata->operations[operation->scrutinee];
+		const struct prototype_typed_occurrence* scrutinee_operation =
+			&ctx->metadata->typed_occurrences.occurrences[scrutinee_occurrence];
 		if (scrutinee_classifier == PROTOTYPE_INVALID_ID) {
 			scrutinee_classifier = operation_available_classifier(
-				scrutinee_operation
+				ctx, scrutinee_occurrence
 			);
 		}
 		if (scrutinee_classifier == PROTOTYPE_INVALID_ID &&
@@ -966,6 +1109,9 @@ static int operation_refine_classifier_from_expected(
 				}
 			}
 		}
+		if (scrutinee_classifier == PROTOTYPE_INVALID_ID) {
+			return 0;
+		}
 		uint32_t match_type_id;
 		uint32_t match_type_arguments[32];
 		uint32_t match_type_argument_count;
@@ -981,8 +1127,16 @@ static int operation_refine_classifier_from_expected(
 			].index_count != 0;
 		for (uint32_t case_index = 0;
 			case_index < operation->case_count; ++case_index) {
-			const struct prototype_operation_match_case* operation_case =
-				&ctx->metadata->operation_cases[
+			uint32_t branch_occurrence;
+			if (compile_occurrence_child(
+					ctx, operation_id,
+					PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, case_index,
+					&branch_occurrence
+				) != 0) {
+				return -1;
+			}
+			const struct prototype_typed_occurrence_match_case* operation_case =
+				&ctx->metadata->typed_occurrences.cases[
 					operation->first_case + case_index
 				];
 			const struct prototype_match_case* term_case = &ctx->terms->cases[
@@ -1088,13 +1242,27 @@ static int operation_refine_classifier_from_expected(
 					expected_classifier, refinement_substitution,
 					&branch_expected
 				 )) != 0) {
+				fprintf(stderr,
+					"match expected refinement: branch expectation failed match=%u case=%u "
+					"indexed=%d stored-refinement=%u expected=%u substitution=%u\n",
+					operation_id, case_index, indexed_scrutinee,
+					operation_case->has_refinement, expected_classifier,
+					refinement_substitution);
 				return -1;
 			}
 			int branch_status = operation_refine_classifier_from_expected(
-				ctx, operation_case->body_operation, branch_expected,
+				ctx, branch_occurrence, branch_expected,
 				depth + 1, p_changed
 			);
 			if (branch_status <= 0) {
+				if (branch_status < 0) {
+					fprintf(stderr,
+						"match expected refinement: branch failed match=%u case=%u branch=%u "
+						"tag=%u expected=%u depth=%u\n",
+						operation_id, case_index, branch_occurrence,
+						ctx->metadata->typed_occurrences.occurrences[branch_occurrence].tag,
+						branch_expected, depth);
+				}
 				return branch_status;
 			}
 		}
@@ -1107,14 +1275,12 @@ static int operation_refine_classifier_from_expected(
 		return check;
 	}
 	if (ctx->materializing_checked_classifiers &&
-		operation->tag != PROTOTYPE_OPERATION_MATCH &&
+		operation->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH &&
 		synthesized_classifier == PROTOTYPE_INVALID_ID) {
 		operation_solver_store_classifier_solution(
 			ctx, operation_id, expected_classifier
 		);
-		ctx->metadata->operations[operation_id].known_classifier =
-			expected_classifier;
-		ctx->metadata->operations[operation_id].classifier = expected_classifier;
+		ctx->classifier_hints[operation_id] = expected_classifier;
 	}
 	return 1;
 }
@@ -1141,10 +1307,10 @@ static int compile_phase_check_ascriptions(struct compile_context* ctx) {
 		uint32_t operation_classifier = PROTOTYPE_INVALID_ID;
 		uint32_t ascription_operation = PROTOTYPE_INVALID_ID;
 		uint32_t solved_expected_classifier = check->expected_classifier;
-		if (check->operation < ctx->metadata->operation_count &&
-			ctx->metadata->operations[check->operation].classifier !=
-				PROTOTYPE_INVALID_ID) {
-			operation_classifier = ctx->metadata->operations[check->operation].classifier;
+		if (check->operation < ctx->metadata->typed_occurrences.occurrence_count &&
+			(operation_classifier = operation_available_classifier(
+				ctx, check->operation
+			)) != PROTOTYPE_INVALID_ID) {
 			int solve_status = prototype_judgement_solve_expected_effect_rows(
 					ctx->terms,
 					ctx->type_declarations,
@@ -1227,14 +1393,17 @@ static int compile_phase_check_ascriptions(struct compile_context* ctx) {
 			continue;
 		}
 		for (uint32_t operation = 0;
-			operation < ctx->metadata->operation_count;
+			operation < ctx->metadata->typed_occurrences.occurrence_count;
 			++operation) {
-			if (ctx->metadata->operations[operation].tag ==
-					PROTOTYPE_OPERATION_ASCRIPTION &&
-				ctx->metadata->operations[operation].body == check->operation &&
-				ctx->metadata->operations[operation].source_ast == check->ast) {
-				ctx->metadata->operations[operation].classifier =
-					solved_expected_classifier;
+			if (ctx->metadata->typed_occurrences.occurrences[operation].tag ==
+					PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE &&
+				ctx->metadata->typed_occurrences.occurrences[operation].wrapped_occurrence ==
+					check->operation &&
+				ctx->metadata->typed_occurrences.occurrences[operation].source_ast == check->ast) {
+				operation_solver_store_classifier_solution(
+					ctx, operation, solved_expected_classifier
+				);
+				ctx->classifier_hints[operation] = solved_expected_classifier;
 				ascription_operation = operation;
 			}
 		}
@@ -1292,9 +1461,9 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 		}
 		if (def->definition_value_required && def->ast < ctx->asts->node_count &&
 			ctx->asts->nodes[def->ast].tag != PROTOTYPE_AST_QUOTE &&
-			def->compiled_operation < ctx->metadata->operation_count &&
-			ctx->metadata->operations[def->compiled_operation].tag ==
-				PROTOTYPE_OPERATION_THUNK) {
+			def->compiled_operation < ctx->metadata->typed_occurrences.occurrence_count &&
+			ctx->metadata->typed_occurrences.occurrences[def->compiled_operation].tag ==
+				PROTOTYPE_TYPED_OCCURRENCE_THUNK) {
 			/*
 			 * The ascription checks the explicit definition RHS before the definition
 			 * boundary inserts its implicit thunk. The exported definition retains
@@ -1304,7 +1473,7 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 		}
 		struct compile_ref expected_ref;
 		compile_ref_clear(&expected_ref);
-		if (def->compiled_operation >= ctx->metadata->operation_count) {
+		if (def->compiled_operation >= ctx->metadata->typed_occurrences.occurrence_count) {
 			(void)add_resolve_error_at_span(
 				ctx,
 				PROTOTYPE_RESOLVE_ERROR_COMPILE,
@@ -1316,9 +1485,9 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 			continue;
 		}
 		expected_ref.category =
-			ctx->metadata->operations[def->compiled_operation].category;
+			ctx->metadata->typed_occurrences.occurrences[def->compiled_operation].category;
 		expected_ref.computation_kind =
-			ctx->metadata->operations[def->compiled_operation].computation_kind;
+			ctx->metadata->typed_occurrences.occurrences[def->compiled_operation].computation_kind;
 		if (compile_expected_classifier_for_ref(
 				ctx, &expected_ref, expected_classifier, &expected_classifier
 			) != 0) {
@@ -1332,34 +1501,41 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 			);
 			continue;
 		}
-		if (def->compiled_operation < ctx->metadata->operation_count &&
-			ctx->metadata->operations[def->compiled_operation].tag ==
-				PROTOTYPE_OPERATION_ASCRIPTION &&
-			ctx->metadata->operations[def->compiled_operation].body <
-				ctx->metadata->operation_count &&
-			ctx->metadata->operations[
-				ctx->metadata->operations[def->compiled_operation].body
-			].classifier != PROTOTYPE_INVALID_ID) {
+		if (def->compiled_operation < ctx->metadata->typed_occurrences.occurrence_count &&
+			ctx->metadata->typed_occurrences.occurrences[def->compiled_operation].tag ==
+				PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE &&
+			ctx->metadata->typed_occurrences.occurrences[def->compiled_operation].wrapped_occurrence <
+				ctx->metadata->typed_occurrences.occurrence_count &&
+			operation_available_classifier(
+				ctx,
+				ctx->metadata->typed_occurrences.occurrences[
+					def->compiled_operation
+				].wrapped_occurrence
+			) != PROTOTYPE_INVALID_ID) {
 			/* The ascription is an annotation; its body supplies the evidence. */
-			actual_classifier = ctx->metadata->operations[
-				ctx->metadata->operations[def->compiled_operation].body
-			].classifier;
+			actual_classifier = operation_available_classifier(
+				ctx,
+				ctx->metadata->typed_occurrences.occurrences[
+					def->compiled_operation
+				].wrapped_occurrence
+			);
 			actual_from_operation = 1;
-		} else if (def->compiled_operation < ctx->metadata->operation_count &&
-			ctx->metadata->operations[def->compiled_operation].tag !=
-				PROTOTYPE_OPERATION_ASCRIPTION &&
-			ctx->metadata->operations[def->compiled_operation].classifier !=
+		} else if (def->compiled_operation < ctx->metadata->typed_occurrences.occurrence_count &&
+			ctx->metadata->typed_occurrences.occurrences[def->compiled_operation].tag !=
+				PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE &&
+			operation_available_classifier(ctx, def->compiled_operation) !=
 				PROTOTYPE_INVALID_ID) {
 			/*
 			 * A source definition denotes an operation-layer node. Its classifier
 			 * must not be recovered by collecting every classifier ever assigned to
 			 * the shared erased core term.
 			 */
-			actual_classifier =
-				ctx->metadata->operations[def->compiled_operation].classifier;
-		} else if (def->compiled_operation < ctx->metadata->operation_count &&
-			ctx->metadata->operations[def->compiled_operation].tag !=
-				PROTOTYPE_OPERATION_ASCRIPTION &&
+			actual_classifier = operation_available_classifier(
+				ctx, def->compiled_operation
+			);
+		} else if (def->compiled_operation < ctx->metadata->typed_occurrences.occurrence_count &&
+			ctx->metadata->typed_occurrences.occurrences[def->compiled_operation].tag !=
+				PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE &&
 			def->compiled_classifier != PROTOTYPE_INVALID_ID) {
 			actual_classifier = def->compiled_classifier;
 		} else {
@@ -1434,7 +1610,7 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 		}
 			if (actual_from_operation) {
 				struct prototype_judgement_selected_evidence source_evidence;
-				uint32_t conclusion_context = ctx->metadata->operations[
+				uint32_t conclusion_context = ctx->metadata->typed_occurrences.occurrences[
 					def->compiled_operation
 				].context_id;
 				if (prototype_judgement_select_evidence(
@@ -1449,20 +1625,20 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 					continue;
 				}
 				uint32_t source_operation = def->compiled_operation;
-				const struct prototype_operation_node* compiled_operation =
-					&ctx->metadata->operations[source_operation];
-				if (compiled_operation->tag == PROTOTYPE_OPERATION_ASCRIPTION) {
+				const struct prototype_typed_occurrence* compiled_operation =
+					&ctx->metadata->typed_occurrences.occurrences[source_operation];
+				if (compiled_operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) {
 					/* The direct body Operation supplied actual_classifier above. Nested
 					 * annotations retain distinct evidence and must not be stripped to an
 					 * untyped VAR or CONSTRUCTOR occurrence. */
-					source_operation = compiled_operation->body;
+					source_operation = compiled_operation->wrapped_occurrence;
 				}
-				if (source_operation >= ctx->metadata->operation_count) {
+				if (source_operation >= ctx->metadata->typed_occurrences.occurrence_count) {
 					fprintf(stderr, "expectation %u: invalid source operation\n", i);
 					return -1;
 				}
 				uint32_t source_context =
-					ctx->metadata->operations[source_operation].context_id;
+					ctx->metadata->typed_occurrences.occurrences[source_operation].context_id;
 				int source_status = prototype_judgement_select_evidence(
 						ctx->judgement,
 						source_operation,
@@ -1595,8 +1771,8 @@ static int compile_phase_publish_labels(struct compile_context* ctx) {
 			continue;
 		}
 		if (def->compiled_classifier == PROTOTYPE_INVALID_ID &&
-			def->compiled_operation < ctx->metadata->operation_count) {
-			def->compiled_classifier = ctx->metadata->operations[
+			def->compiled_operation < ctx->metadata->typed_occurrences.occurrence_count) {
+			def->compiled_classifier = ctx->metadata->typed_occurrences.occurrences[
 				def->compiled_operation
 			].classifier;
 		}
@@ -1623,19 +1799,19 @@ static int compile_phase_publish_labels(struct compile_context* ctx) {
 		}
 		(void)select;
 		if (!selected || !selected->compiled ||
-			selected->compiled_operation >= ctx->metadata->operation_count ||
-			ctx->metadata->operations[selected->compiled_operation].category !=
+			selected->compiled_operation >= ctx->metadata->typed_occurrences.occurrence_count ||
+			ctx->metadata->typed_occurrences.occurrences[selected->compiled_operation].category !=
 				PROTOTYPE_TERM_CATEGORY_VALUE) {
 			return -1;
 		}
 		if (ctx->metadata->selected_entry_symbol_id != selected->name_symbol_id ||
 			ctx->metadata->selected_entry_term >= ctx->terms->term_count ||
-			ctx->metadata->selected_entry_operation >=
-				ctx->metadata->operation_count) {
+			ctx->metadata->selected_entry_occurrence >=
+				ctx->metadata->typed_occurrences.occurrence_count) {
 			return -1;
 		}
-		ctx->metadata->selected_entry_classifier = ctx->metadata->operations[
-			ctx->metadata->selected_entry_operation
+		ctx->metadata->selected_entry_classifier = ctx->metadata->typed_occurrences.occurrences[
+			ctx->metadata->selected_entry_occurrence
 		].classifier;
 		if (ctx->metadata->selected_entry_classifier == PROTOTYPE_INVALID_ID) {
 			return -1;
@@ -1658,15 +1834,15 @@ static void compile_metadata_refresh_runtime_capabilities(
 		) == 0) {
 		capabilities |= coverage.required_runtime_capabilities;
 	}
-	for (size_t i = 0; i < metadata->operation_count; ++i) {
-		const struct prototype_operation_node* operation = &metadata->operations[i];
-		if (operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD &&
+	for (size_t i = 0; i < metadata->typed_occurrences.occurrence_count; ++i) {
+		const struct prototype_typed_occurrence* operation = &metadata->typed_occurrences.occurrences[i];
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD &&
 			operation->core_term < terms->term_count &&
 			terms->terms[operation->core_term].tag == PROTOTYPE_TERM_COMPUTATION_FOLD &&
 			terms->terms[operation->core_term].as.computation_fold.clause_count != 0) {
 			capabilities |= PROTOTYPE_RUNTIME_CAPABILITY_HANDLER;
 		}
-		if (operation->tag != PROTOTYPE_OPERATION_REQUEST ||
+		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_REQUEST ||
 			operation->core_term >= terms->term_count ||
 			terms->terms[operation->core_term].tag != PROTOTYPE_TERM_OPERATION_REQUEST) {
 			continue;
@@ -1740,13 +1916,20 @@ static int compile_pending_with_workspace(
 	}
 	struct compile_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
+	for (size_t i = 0;
+		i < sizeof(ctx.classifier_hints) / sizeof(ctx.classifier_hints[0]);
+		++i) {
+		ctx.classifier_hints[i] = PROTOTYPE_INVALID_ID;
+		ctx.classifier_solver.solutions[i].classifier = PROTOTYPE_INVALID_ID;
+		ctx.classifier_solver.solutions[i].effect_row = PROTOTYPE_INVALID_ID;
+	}
 	ctx.intrinsic_environment = intrinsic_environment;
 	ctx.asts = asts;
 	ctx.terms = terms;
 	ctx.type_declarations = type_declarations;
 	ctx.judgement = judgement;
 	ctx.operation_usage_entries = workspace->operation_usage_entries;
-	ctx.operation_usage_entry_capacity = PROTOTYPE_OPERATION_USAGE_ENTRY_CAPACITY;
+	ctx.operation_usage_entry_capacity = PROTOTYPE_TYPED_OCCURRENCE_USAGE_ENTRY_CAPACITY;
 	prototype_judgement_delta_init(
 		&ctx.judgement_delta,
 		judgement,
@@ -1768,6 +1951,11 @@ static int compile_pending_with_workspace(
 	);
 	ctx.metadata = metadata;
 	if (!metadata || prototype_context_empty(&metadata->contexts) == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	if (prototype_typed_occurrence_graph_begin_transaction(
+			&metadata->typed_occurrences, terms, &metadata->contexts
+		) != 0) {
 		return -1;
 	}
 	prototype_judgement_delta_set_context_store(
@@ -1796,14 +1984,16 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "compile pending failed: build graph\n");
 		return -1;
 	}
-	prototype_judgement_delta_set_operation_store(
+	prototype_judgement_delta_set_occurrence_store(
 		&ctx.judgement_delta,
-		metadata->operations,
-		metadata->operation_count,
-		metadata->operation_cases,
-		metadata->operation_case_count
+		metadata->typed_occurrences.occurrences,
+		metadata->typed_occurrences.occurrence_count,
+		metadata->typed_occurrences.edges,
+		metadata->typed_occurrences.edge_count,
+		metadata->typed_occurrences.cases,
+		metadata->typed_occurrences.case_count
 	);
-	prototype_judgement_delta_set_operation_usage_provider(
+	prototype_judgement_delta_set_occurrence_usage_provider(
 		&ctx.judgement_delta, &ctx, operation_solver_proposition_usage
 	);
 	/* Match resolution and imported-classifier inference may emit candidates
@@ -1811,15 +2001,18 @@ static int compile_pending_with_workspace(
 	 * Proposition identity, so its graph solution must exist before either
 	 * phase can publish a candidate. */
 	if (operation_solver_refresh_usage_solutions(&ctx) != 0) {
+		fprintf(stderr, "compile pending failed: initial usage solutions\n");
 		return -1;
 	}
 	if (validate_constructor_occurrence_saturation(&ctx) != 0) {
+		fprintf(stderr, "compile pending failed: constructor saturation\n");
 		return -1;
 	}
 	if (begin_resolution_iteration(&ctx, 0, count_unresolved_resolution_items(&ctx)) != 0) {
 		return -1;
 	}
 	if (compile_phase_infer_imported_constructor_classifiers(&ctx) != 0) {
+		fprintf(stderr, "compile pending failed: imported constructor classifiers\n");
 		return -1;
 	}
 	if (prototype_internal_canonicalize_type_view_core_refs(
@@ -1829,6 +2022,7 @@ static int compile_pending_with_workspace(
 		return -1;
 	}
 	if (compile_phase_resolve_pending_match_items(&ctx) < 0) {
+		fprintf(stderr, "compile pending failed: initial Match resolution\n");
 		return -1;
 	}
 	if (finish_resolution_iteration(&ctx, count_unresolved_resolution_items(&ctx)) != 0) {
@@ -1867,6 +2061,14 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "post-synthesis ascription checking failed\n");
 		return -1;
 	}
+	if (operation_solver_materialize_judgements(&ctx) != 0) {
+		fprintf(stderr, "post-expectation judgement materialization failed\n");
+		return -1;
+	}
+	if (prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0) {
+		fprintf(stderr, "post-expectation judgement commit failed\n");
+		return -1;
+	}
 	if (compile_phase_check_expectations(&ctx) != 0) {
 		fprintf(stderr, "post-synthesis expectation checking failed\n");
 		return -1;
@@ -1886,22 +2088,32 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "primitive judgement expansion failed\n");
 		return -1;
 	}
-	struct prototype_operation_graph operation_graph;
-	prototype_compile_metadata_operation_graph(metadata, &operation_graph);
+	if (prototype_term_erase_constructor_view_owners(terms) != 0) {
+		fprintf(stderr, "constructor owner erasure failed\n");
+		return -1;
+	}
+	struct prototype_typed_occurrence_graph* occurrence_graph =
+		prototype_compile_metadata_typed_occurrences(metadata);
 	if (prototype_judgement_add_normalization_premise_conversions(
 			terms,
 			type_declarations,
-			&operation_graph,
+			occurrence_graph,
 			judgement
 		) != 0) {
 		fprintf(stderr, "normalization premise conversion expansion failed\n");
 		return -1;
 	}
 	if (prototype_judgement_publish_candidates(
-			&operation_graph,
+			occurrence_graph,
 			judgement
 		) != 0) {
 		fprintf(stderr, "P0 proof candidate publication failed\n");
+		return -1;
+	}
+	if (prototype_typed_occurrence_graph_seal(
+			occurrence_graph, terms, &metadata->contexts
+		) != 0) {
+		fprintf(stderr, "typed-occurrence graph sealing failed before accepted replay\n");
 		return -1;
 	}
 	if (prototype_judgement_validate_accepted_graph(
@@ -1910,16 +2122,16 @@ static int compile_pending_with_workspace(
 			intrinsic_environment,
 			&metadata->contexts,
 			&metadata->substitutions,
-			&operation_graph,
+			occurrence_graph,
 			judgement
 		) != 0) {
 		fprintf(stderr, "P0 accepted proof graph validation failed\n");
 		return -1;
 	}
-	if (prototype_operation_graph_validate(
-			&operation_graph, terms, &metadata->contexts
+	if (prototype_typed_occurrence_graph_validate(
+			occurrence_graph, terms, &metadata->contexts
 		) != 0) {
-		fprintf(stderr, "operation graph validation failed after accepted replay\n");
+		fprintf(stderr, "typed-occurrence graph validation failed after accepted replay\n");
 		return -1;
 	}
 	if (prototype_constructor_curried_caches_validate(
@@ -1928,16 +2140,20 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "constructor cache validation failed after accepted replay\n");
 		return -1;
 	}
-	if (prototype_term_erase_constructor_view_owners(terms) != 0) {
-		fprintf(stderr, "constructor owner erasure failed\n");
-		return -1;
-	}
 	if (compile_phase_publish_labels(&ctx) != 0) {
 		fprintf(stderr, "label publication failed\n");
 		return -1;
 	}
 	if (ctx.had_error) {
 		fprintf(stderr, "compilation retained an earlier lowering error\n");
+		return -1;
+	}
+	if (prototype_typed_occurrence_graph_freeze(
+			&metadata->typed_occurrences,
+			terms,
+			&metadata->contexts
+		) != 0) {
+		fprintf(stderr, "typed occurrence transaction commit failed\n");
 		return -1;
 	}
 	return 0;
@@ -1970,6 +2186,12 @@ int prototype_ast_compile_pending_with_imports(
 		imported_interface_count,
 		workspace
 	);
+	if (status != 0 && metadata &&
+		metadata->typed_occurrences.transaction_active) {
+		(void)prototype_typed_occurrence_graph_rollback_transaction(
+			&metadata->typed_occurrences
+		);
+	}
 	free(workspace);
 	return status;
 }

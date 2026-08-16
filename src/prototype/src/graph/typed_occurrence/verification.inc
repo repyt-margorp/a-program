@@ -50,7 +50,7 @@ struct prototype_verification_obligation* prototype_verification_db_get_mutable(
 		&db->obligations[obligation_id] : NULL;
 }
 
-int prototype_verification_db_find_operation(
+int prototype_verification_db_find_occurrence(
 	const struct prototype_verification_db* db,
 	int kind,
 	uint32_t operation,
@@ -64,7 +64,7 @@ int prototype_verification_db_find_operation(
 		const struct prototype_verification_obligation* obligation =
 			prototype_verification_db_get(db, i);
 		if (obligation && obligation->kind == kind &&
-			obligation->operation == operation) {
+			obligation->occurrence == operation) {
 			*p_obligation_id = i;
 			return 0;
 		}
@@ -81,7 +81,7 @@ static int verification_term_reference_present(
 
 int prototype_verification_db_validate(
 	const struct prototype_verification_db* db,
-	const struct prototype_operation_graph* graph,
+	const struct prototype_typed_occurrence_graph* graph,
 	const struct prototype_term_db* terms
 ) {
 	if (!db || !graph || !terms) {
@@ -95,14 +95,14 @@ int prototype_verification_db_validate(
 				prototype_verification_obligation_schema_version(obligation->kind) ||
 			obligation->state < PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
 			obligation->state > PROTOTYPE_VERIFICATION_OBLIGATION_FAILED ||
-			obligation->operation >= graph->operation_count ||
+			obligation->occurrence >= graph->occurrence_count ||
 			!verification_term_reference_present(terms, obligation->core_term)) {
 			return -1;
 		}
 		switch (obligation->kind) {
 			case PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT:
-				if (obligation->computation_operation >= graph->operation_count ||
-					obligation->continuation_operation >= graph->operation_count ||
+				if (obligation->computation_occurrence >= graph->occurrence_count ||
+					obligation->continuation_occurrence >= graph->occurrence_count ||
 					!verification_term_reference_present(
 						terms, obligation->input_classifier
 					) ||
@@ -344,7 +344,6 @@ struct operation_runtime_value {
 };
 
 struct operation_runtime_binding {
-	uint32_t ast_binder_id;
 	uint32_t binding_id;
 	struct operation_runtime_value value;
 };

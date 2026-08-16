@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/graph/operation_graph.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,7 +32,7 @@ static int check_judgement_graph_collisions(void) {
 			.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
 			.authority_id = i,
 			.context_id = 0,
-			.operation_id = PROTOTYPE_INVALID_ID,
+			.occurrence_id = PROTOTYPE_INVALID_ID,
 			.subject = i,
 			.classifier = i + 1
 		};
@@ -131,7 +131,7 @@ static int check_judgement_premise_arenas(void) {
 			.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
 			.authority_id = i,
 			.context_id = 0,
-			.operation_id = PROTOTYPE_INVALID_ID,
+			.occurrence_id = PROTOTYPE_INVALID_ID,
 			.subject = i,
 			.classifier = i + 1
 		};
@@ -193,7 +193,7 @@ static int check_judgement_premise_arenas(void) {
 		.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID,
 		.authority_id = PROTOTYPE_INVALID_ID,
 		.context_id = 0,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = 99,
 		.classifier = 100
 	};
@@ -245,7 +245,7 @@ static int check_judgement_premise_arenas(void) {
 	return status ? -1 : 0;
 }
 
-static int check_principal_operation_projection(void) {
+static int check_principal_occurrence_projection(void) {
 	struct prototype_term term_storage[32];
 	struct prototype_match_case term_case_storage[1];
 	int term_case_label_storage[1];
@@ -270,25 +270,32 @@ static int check_principal_operation_projection(void) {
 		prototype_term_text_literal(&term_db, 0, &text_literal) != 0) {
 		return -1;
 	}
-	struct prototype_operation_node operation_storage[1];
-	struct prototype_operation_match_case case_storage[1];
-	struct prototype_operation_computation_fold_clause fold_storage[1];
-	struct prototype_operation_graph operations;
+	struct prototype_typed_occurrence operation_storage[1];
+	struct prototype_typed_occurrence_edge edge_storage[1];
+	struct prototype_typed_occurrence_match_case case_storage[1];
+	struct prototype_typed_occurrence_fold_clause fold_storage[1];
+	struct prototype_typed_occurrence_graph operations;
 	memset(operation_storage, 0xff, sizeof(operation_storage));
-	prototype_operation_graph_init(
+	prototype_typed_occurrence_graph_init(
 		&operations,
 		operation_storage,
+		1,
+		edge_storage,
 		1,
 		case_storage,
 		1,
 		fold_storage,
 		1
 	);
-	operations.operation_count = 1;
-	operation_storage[0].tag = PROTOTYPE_OPERATION_ATOM;
+	operations.occurrence_count = 1;
+	operation_storage[0].tag = PROTOTYPE_TYPED_OCCURRENCE_ATOM;
 	operation_storage[0].context_id = 0;
 	operation_storage[0].core_term = text_literal;
 	operation_storage[0].classifier = text_type;
+	operation_storage[0].classifier_status =
+		PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED;
+	operations.sealed = 1;
+	operations.frozen = 1;
 
 	struct prototype_judgement_proposition propositions[1];
 	struct prototype_judgement_claim claims[1];
@@ -297,7 +304,7 @@ static int check_principal_operation_projection(void) {
 	memset(propositions, 0, sizeof(propositions));
 	memset(claims, 0, sizeof(claims));
 	memset(derivations, 0, sizeof(derivations));
-	if (prototype_judgement_project_principal_operation_proposition(
+	if (prototype_judgement_project_principal_occurrence_proposition(
 			&operations, 0, &propositions[0]
 		) != 0) {
 		return -1;
@@ -334,10 +341,10 @@ static int check_principal_operation_projection(void) {
 	uint64_t proposition_hits = judgement.proposition_intern_hits;
 	uint64_t claim_hits = judgement.claim_intern_hits;
 	uint64_t derivation_hits = judgement.derivation_intern_hits;
-	struct prototype_judgement_principal_operation_audit audit;
-	if (prototype_judgement_audit_principal_operation_claims(
+	struct prototype_judgement_principal_occurrence_audit audit;
+	if (prototype_judgement_audit_principal_occurrence_claims(
 			&term_db, NULL, &operations, &judgement, &audit
-		) != 0 || audit.principal_operation_count != 1 ||
+		) != 0 || audit.principal_occurrence_count != 1 ||
 		audit.proposition_count != 1 || audit.accepted_claim_count != 1 ||
 		audit.derivation_count != 1 ||
 		audit.total_proposition_count != proposition_count ||
@@ -356,7 +363,7 @@ static int check_principal_operation_projection(void) {
 	struct prototype_judgement_proposition scoped = propositions[0];
 	scoped.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CONTEXT_BINDING;
 	scoped.authority_id = 3;
-	scoped.operation_id = PROTOTYPE_INVALID_ID;
+	scoped.occurrence_id = PROTOTYPE_INVALID_ID;
 	struct prototype_judgement_proposition non_operation = scoped;
 	non_operation.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_TYPE_FORMATION;
 	int status = prototype_judgement_proof_reconstruction_role(
@@ -377,7 +384,7 @@ static int check_principal_operation_projection(void) {
 	}
 	propositions[0].classifier++;
 	status = status || prototype_judgement_db_rebuild_index(&judgement) != 0 ||
-		prototype_judgement_audit_principal_operation_claims(
+		prototype_judgement_audit_principal_occurrence_claims(
 			&term_db, NULL, &operations, &judgement, &audit
 		) == 0;
 	return status ? -1 : 0;
@@ -567,16 +574,18 @@ int main(void) {
 	uint32_t associative_left;
 	uint32_t associative_right;
 	uint32_t law_reindexed;
-	struct prototype_operation_node operation_storage[3];
-	struct prototype_operation_match_case operation_case_storage[1];
-	struct prototype_operation_computation_fold_clause operation_fold_clause_storage[1];
-	struct prototype_operation_graph operation_graph;
-	struct prototype_operation_node int_occurrence;
-	struct prototype_operation_node text_occurrence;
-	struct prototype_operation_node invalid_occurrence;
-	struct prototype_operation_node saturated_effect_occurrence;
+	struct prototype_typed_occurrence operation_storage[3];
+	struct prototype_typed_occurrence_edge operation_edge_storage[3];
+	struct prototype_typed_occurrence_match_case operation_case_storage[1];
+	struct prototype_typed_occurrence_fold_clause operation_fold_clause_storage[1];
+	struct prototype_typed_occurrence_graph operation_graph;
+	struct prototype_typed_occurrence int_occurrence;
+	struct prototype_typed_occurrence text_occurrence;
+	struct prototype_typed_occurrence invalid_occurrence;
+	struct prototype_typed_occurrence saturated_effect_occurrence;
 	uint32_t int_operation;
 	uint32_t text_operation;
+	uint32_t saturated_effect_operation;
 	uint32_t effect_operation;
 	uint32_t effect_application;
 	uint32_t found_context;
@@ -1259,9 +1268,11 @@ int main(void) {
 		fprintf(stderr, "comprehension action collision law failed\n");
 		return 1;
 	}
-	prototype_operation_graph_init(
+	prototype_typed_occurrence_graph_init(
 		&operation_graph,
 		operation_storage,
+		3,
+		operation_edge_storage,
 		3,
 		operation_case_storage,
 		1,
@@ -1269,7 +1280,7 @@ int main(void) {
 		1
 	);
 	memset(&int_occurrence, 0xff, sizeof(int_occurrence));
-	int_occurrence.tag = PROTOTYPE_OPERATION_ATOM;
+	int_occurrence.tag = PROTOTYPE_TYPED_OCCURRENCE_ATOM;
 	int_occurrence.category = PROTOTYPE_TERM_CATEGORY_VALUE;
 	int_occurrence.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
 	int_occurrence.application_role = PROTOTYPE_TERM_APPLICATION_NONE;
@@ -1278,29 +1289,31 @@ int main(void) {
 	int_occurrence.source_symbol_id = -1;
 	int_occurrence.binder_symbol_id = -1;
 	int_occurrence.case_count = 0;
+	int_occurrence.first_edge = PROTOTYPE_INVALID_ID;
+	int_occurrence.edge_count = 0;
 	memset(&text_occurrence, 0xff, sizeof(text_occurrence));
 	text_occurrence = int_occurrence;
 	text_occurrence.context_id = text_context;
 	invalid_occurrence = int_occurrence;
 	invalid_occurrence.context_id = 99;
-	if (prototype_operation_graph_add(
+	if (prototype_typed_occurrence_graph_add(
 			&operation_graph, &contexts, int_occurrence, &int_operation
 		) != 0 ||
-		prototype_operation_graph_add(
+		prototype_typed_occurrence_graph_add(
 			&operation_graph, &contexts, text_occurrence, &text_operation
 		) != 0 ||
-		prototype_operation_graph_add(
+		prototype_typed_occurrence_graph_add(
 			&operation_graph, &contexts, invalid_occurrence, NULL
 		) == 0 ||
 		int_operation == text_operation ||
-		operation_graph.operations[int_operation].core_term !=
-			operation_graph.operations[text_operation].core_term ||
-		operation_graph.operations[int_operation].context_id ==
-			operation_graph.operations[text_operation].context_id ||
-		prototype_operation_graph_validate(
+		operation_graph.occurrences[int_operation].core_term !=
+			operation_graph.occurrences[text_operation].core_term ||
+		operation_graph.occurrences[int_operation].context_id ==
+			operation_graph.occurrences[text_operation].context_id ||
+		prototype_typed_occurrence_graph_validate(
 			&operation_graph, &term_db, &contexts
 		) != 0) {
-		fprintf(stderr, "context-indexed operation graph law failed\n");
+		fprintf(stderr, "context-indexed typed-occurrence graph law failed\n");
 		return 1;
 	}
 	if (prototype_term_effect_operation(
@@ -1312,21 +1325,31 @@ int main(void) {
 		return 1;
 	}
 	saturated_effect_occurrence = int_occurrence;
-	saturated_effect_occurrence.tag = PROTOTYPE_OPERATION_APP;
+	saturated_effect_occurrence.tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
 	saturated_effect_occurrence.category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
 	saturated_effect_occurrence.computation_kind =
 		PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
 	saturated_effect_occurrence.application_role =
 		PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION;
 	saturated_effect_occurrence.core_term = effect_application;
-	saturated_effect_occurrence.function = int_operation;
-	saturated_effect_occurrence.argument = text_operation;
-	if (prototype_operation_graph_add(
+	if (prototype_typed_occurrence_graph_add(
 			&operation_graph,
 			&contexts,
 			saturated_effect_occurrence,
-			NULL
-		) != 0 || prototype_operation_graph_validate(
+			&saturated_effect_operation
+		) != 0 || prototype_typed_occurrence_graph_add_edge(
+			&operation_graph,
+			saturated_effect_operation,
+			(struct prototype_typed_occurrence_edge) {
+				PROTOTYPE_TERM_CHILD_FUNCTION, 0, int_operation
+			}
+		) != 0 || prototype_typed_occurrence_graph_add_edge(
+			&operation_graph,
+			saturated_effect_operation,
+			(struct prototype_typed_occurrence_edge) {
+				PROTOTYPE_TERM_CHILD_ARGUMENT, 0, text_operation
+			}
+		) != 0 || prototype_typed_occurrence_graph_validate(
 			&operation_graph, &term_db, &contexts
 		) == 0) {
 		fprintf(stderr, "saturated effect APP escaped request validation\n");
@@ -1340,8 +1363,8 @@ int main(void) {
 		fprintf(stderr, "judgement premise arena law failed\n");
 		return 1;
 	}
-	if (check_principal_operation_projection() != 0) {
-		fprintf(stderr, "principal operation projection law failed\n");
+	if (check_principal_occurrence_projection() != 0) {
+		fprintf(stderr, "principal occurrence projection law failed\n");
 		return 1;
 	}
 	printf("context category checks passed\n");

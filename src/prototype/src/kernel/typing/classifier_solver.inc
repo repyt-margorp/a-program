@@ -1294,14 +1294,14 @@ int prototype_judgement_delta_record_constructor_spine(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
-	const uint32_t* argument_operation_ids,
+	const uint32_t* argument_occurrence_ids,
 	const struct prototype_judgement_selected_evidence* argument_evidence,
 	uint32_t argument_evidence_count
 ) {
 	if (!delta || !terms || !type_declarations || !delta->contexts ||
 		!delta->substitutions || argument_evidence_count == 0 ||
 		argument_evidence_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
-		!argument_operation_ids || !argument_evidence) {
+		!argument_occurrence_ids || !argument_evidence) {
 		return -1;
 	}
 	struct prototype_judgement_selected_evidence
@@ -1327,8 +1327,8 @@ int prototype_judgement_delta_record_constructor_spine(
 				) != 0 || prototype_judgement_delta_select_evidence(
 					delta,
 					argument_evidence[i].authority_kind ==
-						PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
-						argument_evidence[i].operation_id : PROTOTYPE_INVALID_ID,
+						PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
+						argument_evidence[i].occurrence_id : PROTOTYPE_INVALID_ID,
 					delta->current_context_id,
 					argument_evidence[i].subject,
 					argument_evidence[i].classifier,
@@ -1379,7 +1379,7 @@ int prototype_judgement_delta_record_constructor_spine(
 	struct prototype_judgement_proposition relation = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = delta->current_context_id,
-		.operation_id = delta->current_operation_id,
+		.occurrence_id = delta->current_occurrence_id,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -1390,7 +1390,7 @@ int prototype_judgement_delta_record_constructor_spine(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_operation_id = relation.operation_id;
+	proof.conclusion_occurrence_id = relation.occurrence_id;
 	proof.conclusion_subject = relation.subject;
 	proof.conclusion_classifier = relation.classifier;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -1403,7 +1403,7 @@ int prototype_judgement_delta_record_constructor_spine(
 		proof.premises[i].proposition.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
 		proof.premises[i].proposition.context_id =
 			current_argument_evidence[i].context_id;
-		proof.premises[i].proposition.operation_id = argument_operation_ids[i];
+		proof.premises[i].proposition.occurrence_id = argument_occurrence_ids[i];
 		proof.premises[i].proposition.subject = arguments[i];
 		proof.premises[i].proposition.classifier =
 			current_argument_evidence[i].classifier;

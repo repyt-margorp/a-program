@@ -3,23 +3,25 @@
 #include "a_program/graph/compile_metadata.h"
 
 int main(void) {
-	struct prototype_operation_node operation = {
-		.tag = PROTOTYPE_OPERATION_ATOM,
+	struct prototype_typed_occurrence operation = {
+		.tag = PROTOTYPE_TYPED_OCCURRENCE_ATOM,
 		.classifier = 17
 	};
 	struct prototype_compile_label label = {
 		.name_symbol_id = 5,
-		.body_operation = 0,
+		.body_occurrence = 0,
 		.body_classifier = 17,
-		.exposed_operation = 0,
+		.exposed_occurrence = 0,
 		.exposed_classifier = 17,
 		.expectation_classifier = PROTOTYPE_INVALID_ID,
 		.expectation_claim_id = PROTOTYPE_INVALID_ID
 	};
 	struct prototype_compile_metadata metadata = {
-		.operations = &operation,
-		.operation_count = 1,
-		.operation_capacity = 1,
+		.typed_occurrences = {
+			.occurrences = &operation,
+			.occurrence_count = 1,
+			.occurrence_capacity = 1
+		},
 		.labels = &label,
 		.label_count = 1,
 		.label_capacity = 1
@@ -29,7 +31,7 @@ int main(void) {
 	if (prototype_compile_metadata_inspect_type(
 			&metadata, 5, &inspection
 		) != PROTOTYPE_TYPE_INSPECTION_AVAILABLE ||
-		inspection.body_operation != 0 || inspection.body_classifier != 17 ||
+		inspection.body_occurrence != 0 || inspection.body_classifier != 17 ||
 		prototype_compile_metadata_inspect_type(
 			&metadata, 6, &inspection
 		) != PROTOTYPE_TYPE_INSPECTION_UNAVAILABLE ||
@@ -39,7 +41,7 @@ int main(void) {
 		return 1;
 	}
 
-	/* A published label is Operation-authoritative. If that selected principal
+	/* A published label is occurrence-authoritative. If that selected principal
 	 * is incoherent, inspection must report ambiguity instead of searching for
 	 * a convenient HAS_TYPE proposition attached to the shared Core Term. */
 	label.body_classifier = 18;

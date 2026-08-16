@@ -86,7 +86,7 @@ int prototype_judgement_delta_record_materialized_match_motive(
 	const struct prototype_term_db* terms,
 	uint32_t match_term,
 	uint32_t classifier,
-	const uint32_t* branch_operation_ids,
+	const uint32_t* branch_occurrence_ids,
 	const struct prototype_judgement_selected_evidence* branch_evidence,
 	const uint32_t* branch_substitution_ids,
 	uint32_t branch_count
@@ -94,7 +94,7 @@ int prototype_judgement_delta_record_materialized_match_motive(
 
 /* Infer authority-neutral Core helper facts. This API never publishes a
  * source-Operation derivation; callers must reify any selected result through
- * the exact OperationGraph occurrence before commit. */
+ * the exact TypedOccurrenceGraph occurrence before commit. */
 int prototype_judgement_delta_infer_core_helper_facts(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,

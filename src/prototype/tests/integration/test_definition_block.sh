@@ -12,7 +12,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 grep -q '^term id := THUNK(LAMBDA(' "$tmp_dir/definition.out"
 grep -q '^term main := THUNK(RETURN(INT_LITERAL(1)))$' \
 	"$tmp_dir/definition.out"
-grep -q '^A_PROGRAM_ARTIFACT 74 [0-9a-f]\{64\}$' "$tmp_dir/definition.apo"
+grep -q '^A_PROGRAM_ARTIFACT 75 [0-9a-f]\{64\}$' "$tmp_dir/definition.apo"
 awk '$1 == "compile_policy" && $2 == 2 && $3 == 1 && $4 == "main" &&
 	$5 != 4294967295 && $6 != 4294967295 && $7 != 4294967295 {
 	found = 1
@@ -68,10 +68,10 @@ grep -q '^term main := THUNK(APP(FORCE(THUNK(LAMBDA(' "$tmp_dir/forward.out"
 ./read_file.out --write-artifact "$tmp_dir/typed-shared-core.apo" \
 	src/prototype/tests/fixtures/typing/typed_shared_core_definition_check.p \
 	>"$tmp_dir/typed-shared-core.out"
-identity_bool_term=$(awk '/metadata label identityBool -> operation#[0-9]+ -> term#/ {
+identity_bool_term=$(awk '/metadata label identityBool -> occurrence#[0-9]+ -> term#/ {
 	sub("term#", "", $7); print $7
 }' "$tmp_dir/typed-shared-core.out")
-identity_nat_term=$(awk '/metadata label identityNat -> operation#[0-9]+ -> term#/ {
+identity_nat_term=$(awk '/metadata label identityNat -> occurrence#[0-9]+ -> term#/ {
 	sub("term#", "", $7); print $7
 }' "$tmp_dir/typed-shared-core.out")
 identity_bool_classifier=$(awk '$1 == "term" && $2 == "identityBool" { print $4 }' \

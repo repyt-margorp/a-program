@@ -2,13 +2,13 @@ int prototype_judgement_delta_record_lambda_intro(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	uint32_t conclusion_operation_id,
+	uint32_t conclusion_occurrence_id,
 	uint32_t subject,
 	uint32_t classifier,
 	uint32_t binder_subject,
 	uint32_t body_subject,
 	const struct prototype_judgement_selected_evidence* binder_evidence,
-	uint32_t body_operation_id,
+	uint32_t body_occurrence_id,
 	const struct prototype_judgement_selected_evidence* body_evidence
 ) {
 	if (!delta || !terms || !type_declarations ||
@@ -125,30 +125,30 @@ int prototype_judgement_delta_record_lambda_intro(
 		binder_evidence->context_id,
 		body_evidence->context_id
 	};
-	uint32_t premise_operation_ids[2] = {
+	uint32_t premise_occurrence_ids[2] = {
 		PROTOTYPE_INVALID_ID,
-		body_operation_id
+		body_occurrence_id
 	};
 	struct prototype_judgement_selected_evidence premise_evidence[2] = {
 		*binder_evidence,
 		*body_evidence
 	};
-	int authority_kind = conclusion_operation_id == PROTOTYPE_INVALID_ID ?
+	int authority_kind = conclusion_occurrence_id == PROTOTYPE_INVALID_ID ?
 		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER :
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION;
-	uint32_t authority_id = conclusion_operation_id == PROTOTYPE_INVALID_ID ?
-		subject : conclusion_operation_id;
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE;
+	uint32_t authority_id = conclusion_occurrence_id == PROTOTYPE_INVALID_ID ?
+		subject : conclusion_occurrence_id;
 	return add_delta_relation_with_authority_and_explicit_premises(
 		delta,
 		authority_kind,
 		authority_id,
-		conclusion_operation_id,
+		conclusion_occurrence_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
 		PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO,
 		premise_context_ids,
-		premise_operation_ids,
+		premise_occurrence_ids,
 		premise_subjects,
 		premise_classifiers,
 		premise_evidence,
@@ -355,9 +355,9 @@ int prototype_judgement_delta_record_context_weaken(
 		.authority_kind = source_evidence->authority_kind,
 		.authority_id = source_evidence->authority_id,
 		.context_id = delta->current_context_id,
-		.operation_id = source_evidence->authority_kind ==
-			PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
-			source_evidence->operation_id : PROTOTYPE_INVALID_ID,
+		.occurrence_id = source_evidence->authority_kind ==
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
+			source_evidence->occurrence_id : PROTOTYPE_INVALID_ID,
 		.subject = source_evidence->subject,
 		.classifier = source_evidence->classifier,
 		.resource_usage_count = source_evidence->resource_usage_count,
@@ -370,7 +370,7 @@ int prototype_judgement_delta_record_context_weaken(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_operation_id = relation.operation_id;
+	proof.conclusion_occurrence_id = relation.occurrence_id;
 	proof.conclusion_subject = relation.subject;
 	proof.conclusion_classifier = relation.classifier;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -384,7 +384,7 @@ int prototype_judgement_delta_record_context_weaken(
 	proof.premises[0].proposition.classifier = source_evidence->classifier;
 	proof.premises[0].proposition.authority_kind = source_evidence->authority_kind;
 	proof.premises[0].proposition.authority_id = source_evidence->authority_id;
-	proof.premises[0].proposition.operation_id = source_evidence->operation_id;
+	proof.premises[0].proposition.occurrence_id = source_evidence->occurrence_id;
 	proof.premises[0].proposition.resource_usage_count =
 		source_evidence->resource_usage_count;
 	proof.premises[0].proposition.resource_usage = source_evidence->resource_usage;
@@ -401,7 +401,7 @@ static void selected_evidence_from_accepted_claim(
 	evidence->authority_kind = prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind;
 	evidence->authority_id = prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id;
 	evidence->context_id = prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id;
-	evidence->operation_id = prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id;
+	evidence->occurrence_id = prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id;
 	evidence->subject = prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject;
 	evidence->classifier = prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier;
 	evidence->resource_usage_count = prototype_judgement_proposition_get(
@@ -566,19 +566,19 @@ static int add_claim_reindexed_by_substitution(
 		.kind = source_proposition->kind,
 		.authority_kind = prototype_judgement_proposition_get(
 			judgement, source->proposition_id
-		)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
+		)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
 			PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID :
 			prototype_judgement_proposition_get(
 				judgement, source->proposition_id
 			)->authority_kind,
 		.authority_id = prototype_judgement_proposition_get(
 			judgement, source->proposition_id
-		)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
+		)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
 			PROTOTYPE_INVALID_ID : prototype_judgement_proposition_get(
 				judgement, source->proposition_id
 			)->authority_id,
 		.context_id = substitution->source_context,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = subject,
 		.classifier = classifier,
 		.resource_usage_count = (uint32_t)transformed_usage.count,
@@ -591,7 +591,7 @@ static int add_claim_reindexed_by_substitution(
 	proof.proof_kind = proof_kind;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = relation.subject;
 	proof.conclusion_classifier = relation.classifier;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -605,7 +605,7 @@ static int add_claim_reindexed_by_substitution(
 	proof.premises[0].proposition.classifier = prototype_judgement_proposition_get(judgement, source->proposition_id)->classifier;
 	proof.premises[0].proposition.authority_kind = prototype_judgement_proposition_get(judgement, source->proposition_id)->authority_kind;
 	proof.premises[0].proposition.authority_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->authority_id;
-	proof.premises[0].proposition.operation_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->operation_id;
+	proof.premises[0].proposition.occurrence_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->occurrence_id;
 	proof.premises[0].proposition.resource_usage_count =
 		prototype_judgement_proposition_get(
 			judgement, source->proposition_id
@@ -697,7 +697,7 @@ int prototype_judgement_add_context_binding_assumption(
 	struct prototype_judgement_proposition relation = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -708,7 +708,7 @@ int prototype_judgement_add_context_binding_assumption(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = subject;
 	proof.conclusion_classifier = classifier;
 	initialize_proof_rule_parameters(&proof, proof_premises);

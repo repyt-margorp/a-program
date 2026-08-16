@@ -2,7 +2,7 @@
 #include "a_program/kernel/judgement/rules.h"
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
-#include "a_program/graph/operation_graph.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -59,7 +59,7 @@ static int candidate_has_derivation_other_than(
 static int judgement_operation_expected_polarity(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t operation_id,
 	int* p_category
 );
@@ -115,7 +115,7 @@ static int judgement_proposition_equal(
 		left->authority_kind == right->authority_kind &&
 		left->authority_id == right->authority_id &&
 		left->context_id == right->context_id &&
-		left->operation_id == right->operation_id &&
+		left->occurrence_id == right->occurrence_id &&
 		left->subject == right->subject &&
 		left->classifier == right->classifier &&
 		left->resource_usage_count == right->resource_usage_count &&
@@ -231,7 +231,7 @@ static uint64_t judgement_proposition_key_hash(
 	hash = judgement_key_hash_mix(hash, (uint32_t)proposition->authority_kind);
 	hash = judgement_key_hash_mix(hash, proposition->authority_id);
 	hash = judgement_key_hash_mix(hash, proposition->context_id);
-	hash = judgement_key_hash_mix(hash, proposition->operation_id);
+	hash = judgement_key_hash_mix(hash, proposition->occurrence_id);
 	hash = judgement_key_hash_mix(hash, proposition->subject);
 	hash = judgement_key_hash_mix(hash, proposition->classifier);
 	hash = judgement_key_hash_mix(hash, proposition->resource_usage_count);
@@ -523,7 +523,7 @@ void prototype_judgement_delta_init(
 	delta->match_motive_result_capacity = match_motive_result_capacity;
 	delta->computation_constraint_capacity = computation_constraint_capacity;
 	delta->effect_row_constraint_capacity = effect_row_constraint_capacity;
-	delta->current_operation_id = PROTOTYPE_INVALID_ID;
+	delta->current_occurrence_id = PROTOTYPE_INVALID_ID;
 }
 
 void prototype_judgement_delta_set_intrinsic_environment(
@@ -560,17 +560,17 @@ void prototype_judgement_delta_set_context(
 	delta->current_context_id = context_id;
 }
 
-void prototype_judgement_delta_set_operation(
+void prototype_judgement_delta_set_occurrence(
 	struct prototype_judgement_delta* delta,
 	uint32_t operation_id
 ) {
 	if (!delta) {
 		return;
 	}
-	delta->current_operation_id = operation_id;
+	delta->current_occurrence_id = operation_id;
 }
 
-void prototype_judgement_delta_set_operation_usage_provider(
+void prototype_judgement_delta_set_occurrence_usage_provider(
 	struct prototype_judgement_delta* delta,
 	void* context,
 	int (*provider)(
@@ -583,8 +583,8 @@ void prototype_judgement_delta_set_operation_usage_provider(
 	if (!delta) {
 		return;
 	}
-	delta->operation_usage_provider_context = context;
-	delta->operation_usage_provider = provider;
+	delta->occurrence_usage_provider_context = context;
+	delta->occurrence_usage_provider = provider;
 }
 
 void prototype_judgement_delta_set_context_store(
@@ -599,18 +599,22 @@ void prototype_judgement_delta_set_context_store(
 	delta->substitutions = substitutions;
 }
 
-void prototype_judgement_delta_set_operation_store(
+void prototype_judgement_delta_set_occurrence_store(
 	struct prototype_judgement_delta* delta,
-	const struct prototype_operation_node* operations,
-	size_t operation_count,
-	const struct prototype_operation_match_case* operation_cases,
-	size_t operation_case_count
+	const struct prototype_typed_occurrence* operations,
+	size_t occurrence_count,
+	const struct prototype_typed_occurrence_edge* occurrence_edges,
+	size_t occurrence_edge_count,
+	const struct prototype_typed_occurrence_match_case* occurrence_match_cases,
+	size_t occurrence_match_case_count
 ) {
 	if (!delta) {
 		return;
 	}
-	delta->operations = operations;
-	delta->operation_count = operation_count;
-	delta->operation_cases = operation_cases;
-	delta->operation_case_count = operation_case_count;
+	delta->occurrences = operations;
+	delta->occurrence_count = occurrence_count;
+	delta->occurrence_edges = occurrence_edges;
+	delta->occurrence_edge_count = occurrence_edge_count;
+	delta->occurrence_match_cases = occurrence_match_cases;
+	delta->occurrence_match_case_count = occurrence_match_case_count;
 }

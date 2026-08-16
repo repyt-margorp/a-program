@@ -234,7 +234,10 @@ enum prototype_term_application_role {
 	/* The function may expose a lambda after permitted normalization. */
 	PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION = 1,
 	/* The APP chain is assembling fields under a constructor telescope. */
-	PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION = 2
+	PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION = 2,
+	/* Pure type formation exposes a suspended family lambda for compile-time
+	 * evaluation. This role has no distinct Core APP representation. */
+	PROTOTYPE_TERM_APPLICATION_PURE_TYPE_FAMILY_EVALUATION = 3
 };
 
 enum prototype_term_definition_transparency {
@@ -341,6 +344,15 @@ struct prototype_term_normalization_cache_stats {
 	uint64_t miss_count;
 };
 
+/* Immutable operational data projected by compilation. It contains only the
+ * Core identities required by host-backed reduction and no classifier,
+ * Context, constructor telescope, or proof information. */
+struct prototype_term_reduction_environment {
+	uint32_t system_nat_owner;
+	uint32_t system_nat_zero_constructor;
+	uint32_t system_nat_succ_constructor;
+};
+
 #define PROTOTYPE_TERM_REDUCE_CORE \
 	(PROTOTYPE_TERM_REDUCE_BETA)
 #define PROTOTYPE_TERM_REDUCE_ELIMINATORS \
@@ -355,6 +367,7 @@ struct prototype_term_normalization_cache_stats {
 
 struct prototype_term_reduction_options {
 	unsigned flags;
+	const struct prototype_term_reduction_environment* reduction_environment;
 	FILE* effect_output;
 	struct symbol_table* symbols;
 	unsigned effect_capabilities;
@@ -378,6 +391,46 @@ struct prototype_term_semantics {
 	int evaluates_scrutinee;
 	int reduces_by_beta;
 	int link_boundary;
+};
+
+/* A child role describes one structural edge in the shared Term graph. It is
+ * independent of typing occurrences, source syntax, and evaluation strategy. */
+enum prototype_term_child_role {
+	PROTOTYPE_TERM_CHILD_INVALID = 0,
+	PROTOTYPE_TERM_CHILD_FUNCTION = 1,
+	PROTOTYPE_TERM_CHILD_ARGUMENT = 2,
+	PROTOTYPE_TERM_CHILD_BODY = 3,
+	PROTOTYPE_TERM_CHILD_DOMAIN = 4,
+	PROTOTYPE_TERM_CHILD_CODOMAIN_FAMILY = 5,
+	PROTOTYPE_TERM_CHILD_SCRUTINEE = 6,
+	PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY = 7,
+	PROTOTYPE_TERM_CHILD_TYPE_VIEW_CORE = 8,
+	PROTOTYPE_TERM_CHILD_TYPE_VIEW_SOURCE = 9,
+	PROTOTYPE_TERM_CHILD_INDUCTION_ARGUMENT = 10,
+	PROTOTYPE_TERM_CHILD_EFFECT_OPERATION_CLASSIFIER = 11,
+	PROTOTYPE_TERM_CHILD_EFFECT_ROW_LEFT = 12,
+	PROTOTYPE_TERM_CHILD_EFFECT_ROW_RIGHT = 13,
+	PROTOTYPE_TERM_CHILD_EFFECT_ROW_BODY = 14,
+	PROTOTYPE_TERM_CHILD_EFFECT_ROW_LATENT = 15,
+	PROTOTYPE_TERM_CHILD_COMPUTATION_EFFECT_ROW = 16,
+	PROTOTYPE_TERM_CHILD_COMPUTATION_RESULT = 17,
+	PROTOTYPE_TERM_CHILD_THUNK_TYPE_COMPUTATION = 18,
+	PROTOTYPE_TERM_CHILD_RETURN_VALUE = 19,
+	PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION = 20,
+	PROTOTYPE_TERM_CHILD_FORCE_VALUE = 21,
+	PROTOTYPE_TERM_CHILD_REQUEST_OPERATION = 22,
+	PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT = 23,
+	PROTOTYPE_TERM_CHILD_REQUEST_CONTINUATION = 24,
+	PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION = 25,
+	PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE = 26,
+	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION = 27,
+	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY = 28
+};
+
+struct prototype_term_child {
+	int role;
+	uint32_t ordinal;
+	uint32_t term;
 };
 
 struct prototype_term {
@@ -410,6 +463,10 @@ struct prototype_term {
 		} match;
 		struct {
 			uint32_t representation_id;
+			/* Number of constructor ordinals in this erased algebra signature.
+			 * This is operational reduction data, not a source declaration or
+			 * classifier fact. */
+			uint32_t constructor_count;
 		} type_former;
 		struct {
 			uint32_t type_id;
@@ -593,6 +650,24 @@ int prototype_term_semantics(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
 	struct prototype_term_semantics* p_ret
+);
+/* Project through nominal TYPE_VIEW boundaries to the context-free Core term.
+ * This is a structural projection, not a typed conversion between views. */
+int prototype_term_core_projection(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_core_term
+);
+int prototype_term_child_count(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_count
+);
+int prototype_term_child_at(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t child_index,
+	struct prototype_term_child* p_child
 );
 int prototype_term_constructor_spine_info(
 	const struct prototype_term_db* db,

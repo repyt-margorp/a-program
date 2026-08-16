@@ -391,12 +391,12 @@ static int type_instance_type_id(
 	return -1;
 }
 
-static int constructor_owner_representation_id(
+static int constructor_owner_type_former(
 	const struct prototype_term_db* terms,
 	uint32_t owner,
-	uint32_t* p_representation_id
+	const struct prototype_term** p_type_former
 ) {
-	if (!terms || !p_representation_id || owner >= terms->term_count) {
+	if (!terms || !p_type_former || owner >= terms->term_count) {
 		return -1;
 	}
 	uint32_t current = owner;
@@ -409,14 +409,27 @@ static int constructor_owner_representation_id(
 	if (current >= terms->term_count || terms->terms[current].tag != PROTOTYPE_TERM_TYPE_FORMER) {
 		return -1;
 	}
-	*p_representation_id = terms->terms[current].as.type_former.representation_id;
+	*p_type_former = &terms->terms[current];
+	return 0;
+}
+
+static int constructor_owner_representation_id(
+	const struct prototype_term_db* terms,
+	uint32_t owner,
+	uint32_t* p_representation_id
+) {
+	const struct prototype_term* type_former;
+	if (!p_representation_id || constructor_owner_type_former(
+			terms, owner, &type_former
+		) != 0) {
+		return -1;
+	}
+	*p_representation_id = type_former->as.type_former.representation_id;
 	return 0;
 }
 
 static int constructor_member_matches(
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
 	uint32_t term_id,
 	const struct prototype_match_case* match_case
 ) {
@@ -438,8 +451,6 @@ static int constructor_member_matches(
 	}
 	uint32_t term_representation_id;
 	uint32_t case_representation_id;
-	(void)type_declarations;
-	(void)definitions;
 	/*
 	 * Constructor matching belongs to the erased computation graph. A source
 	 * TYPE_VIEW may remain inside a substituted type application, so structural
@@ -872,6 +883,15 @@ static int reduction_is_pure_type(
 	return (options.flags & PROTOTYPE_TERM_REDUCE_PURE_TYPE) != 0;
 }
 
+static struct prototype_type_declaration_db* reduction_substitution_types(
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_term_reduction_options options
+) {
+	/* TypeView rematerialization is part of pure-type normalization. Ordinary
+	 * beta/iota computation performs only structural Core substitution. */
+	return reduction_is_pure_type(options) ? type_declarations : NULL;
+}
+
 static void normalization_mark_status(
 	struct prototype_term_reduction_options options,
 	int status,
@@ -1031,7 +1051,7 @@ static int constant_match_is_exhaustive(
 	const struct prototype_type_declaration_db* types,
 	const struct prototype_term* match
 ) {
-	if (!terms || !types || !match || match->tag != PROTOTYPE_TERM_MATCH ||
+	if (!terms || !match || match->tag != PROTOTYPE_TERM_MATCH ||
 		match->as.match.case_count == 0 || match->as.match.case_count > 64) {
 		return 0;
 	}
@@ -1041,28 +1061,29 @@ static int constant_match_is_exhaustive(
 		first_case->constructor_owner >= terms->term_count) {
 		return 0;
 	}
-	uint32_t type_id;
-	uint32_t arguments[16];
-	uint32_t argument_count;
-	const struct prototype_term* owner =
-		&terms->terms[first_case->constructor_owner];
-	if (owner->tag == PROTOTYPE_TERM_TYPE_VIEW) {
-		type_id = owner->as.type_view.view_type_id;
-	} else if (prototype_term_type_instance_info(
-				terms,
-				first_case->constructor_owner,
-				&type_id,
-				arguments,
-				&argument_count
+	uint32_t constructor_count = 0;
+	const struct prototype_term* type_former;
+	if (constructor_owner_type_former(
+			terms, first_case->constructor_owner, &type_former
+		) == 0) {
+		constructor_count = type_former->as.type_former.constructor_count;
+	} else if (types) {
+		uint32_t type_id;
+		const struct prototype_term* owner =
+			&terms->terms[first_case->constructor_owner];
+		if (owner->tag == PROTOTYPE_TERM_TYPE_VIEW) {
+			type_id = owner->as.type_view.view_type_id;
+		} else if (type_instance_type_id(
+				terms, first_case->constructor_owner, &type_id
 			) != 0) {
-		return 0;
+			type_id = PROTOTYPE_INVALID_ID;
+		}
+		if (type_id < types->type_count) {
+			constructor_count =
+				types->type_declarations[type_id].constructor_count;
+		}
 	}
-	if (type_id >= types->type_count) {
-		return 0;
-	}
-	const struct prototype_type_declaration* type =
-		&types->type_declarations[type_id];
-	if (type->constructor_count != match->as.match.case_count) {
+	if (constructor_count != match->as.match.case_count) {
 		return 0;
 	}
 	uint64_t seen = 0;
@@ -1070,7 +1091,7 @@ static int constant_match_is_exhaustive(
 		const struct prototype_match_case* match_case =
 			&terms->cases[match->as.match.first_case + i];
 		if (match_case->constructor_owner != first_case->constructor_owner ||
-			match_case->constructor_id >= type->constructor_count) {
+			match_case->constructor_id >= constructor_count) {
 			return 0;
 		}
 		uint64_t bit = UINT64_C(1) << match_case->constructor_id;
@@ -1270,7 +1291,7 @@ static int evaluate_steps(
 			/* Typed APP occurrences may expose a recursively produced callable as
 			 * Comp({}, Thunk(Pi)). RETURN and THUNK make this administrative force
 			 * pure and explicit, so the erased evaluator can recover the callable
-			 * without consulting OperationGraph annotations. */
+			 * without consulting TypedOccurrenceGraph annotations. */
 			if ((options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS) != 0 &&
 				function < db->term_count &&
 				db->terms[function].tag == PROTOTYPE_TERM_RETURN) {
@@ -1296,7 +1317,7 @@ static int evaluate_steps(
 				uint32_t substituted;
 				if (substitute_term(
 					db,
-					type_declarations,
+					reduction_substitution_types(type_declarations, options),
 					reduced_function->as.lambda.body,
 					reduced_function->as.lambda.binding_id,
 					term->as.app.argument,
@@ -1408,7 +1429,11 @@ static int evaluate_steps(
 			 * binder is a constant eliminator. This is a general reduction rule,
 			 * not a typing shortcut: every normalization client observes the same
 			 * result even while the scrutinee is neutral. */
-			if (constant_match_is_exhaustive(db, type_declarations, term)) {
+			if (constant_match_is_exhaustive(
+					db,
+					reduction_is_pure_type(options) ? type_declarations : NULL,
+					term
+				)) {
 				const struct prototype_match_case* first_case =
 					&db->cases[term->as.match.first_case];
 				int uniform = 1;
@@ -1486,8 +1511,6 @@ static int evaluate_steps(
 					&db->cases[term->as.match.first_case + i];
 				if (!constructor_member_matches(
 						db,
-						type_declarations,
-						definitions,
 						head,
 						match_case
 					)) {
@@ -1508,7 +1531,9 @@ static int evaluate_steps(
 					if (subject_binding != PROTOTYPE_INVALID_ID &&
 						substitute_term(
 							db,
-							type_declarations,
+							reduction_substitution_types(
+								type_declarations, options
+							),
 							body,
 							subject_binding,
 							scrutinee,
@@ -1521,7 +1546,9 @@ static int evaluate_steps(
 					struct prototype_case_binder binder = db->case_binders[match_case->first_binder + j];
 					if (substitute_term(
 							db,
-							type_declarations,
+							reduction_substitution_types(
+								type_declarations, options
+							),
 							body,
 							binder.binding_id,
 							args[j],
@@ -1640,6 +1667,21 @@ static int evaluate_steps(
 				if (prototype_term_thunk(db, computation, &thunk) != 0 ||
 					prototype_term_app(
 						db, term->as.computation_fold.return_clause, thunk, &applied
+					) != 0) {
+					return -1;
+				}
+				return evaluate_steps(
+					db, type_declarations, definitions, options, applied, p_ret, depth - 1
+				);
+			}
+			if (computation < db->term_count &&
+				db->terms[computation].tag == PROTOTYPE_TERM_THUNK) {
+				uint32_t applied;
+				if (prototype_term_app(
+						db,
+						term->as.computation_fold.return_clause,
+						computation,
+						&applied
 					) != 0) {
 					return -1;
 				}
@@ -2351,19 +2393,17 @@ static int conversion_equal_at_depth(
 				if (!use_labels &&
 					(left_case->constructor_owner != PROTOTYPE_INVALID_ID ||
 					right_case->constructor_owner != PROTOTYPE_INVALID_ID)) {
+					/* Constructor-owner TypeViews are typed-occurrence evidence.
+					 * Core Match conversion observes only their computation shape. */
+					int owners_equal = 0;
 					if (left_case->constructor_owner == PROTOTYPE_INVALID_ID ||
 						right_case->constructor_owner == PROTOTYPE_INVALID_ID ||
-						conversion_equal_at_depth(
+						prototype_term_core_shape_equal(
 							db,
-							type_declarations,
-							definitions,
-							options,
-							&match_scope,
 							left_case->constructor_owner,
 							right_case->constructor_owner,
-							&equal,
-							depth + 1
-						) != 0 || !equal) {
+							&owners_equal
+						) != 0 || !owners_equal) {
 						return 0;
 					}
 				}
@@ -3012,49 +3052,6 @@ static int reduce_host_pure_primitive_rebuild_if_changed(
 	return rebuild_app_spine(db, head, args, arg_count, p_ret) == 0 ? 1 : -1;
 }
 
-static int lookup_nat_runtime_shape(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	struct symbol_table* symbols,
-	uint32_t* p_nat_owner,
-	const struct prototype_type_constructor_declaration** p_zero_constructor,
-	const struct prototype_type_constructor_declaration** p_succ_constructor
-) {
-	if (!db || !type_declarations || !symbols || !p_nat_owner ||
-		!p_zero_constructor || !p_succ_constructor) {
-		return -1;
-	}
-	int nat_symbol = symbol_intern(symbols, "#.Nat", 5);
-	int zero_symbol = symbol_intern(symbols, "zero", 4);
-	int succ_symbol = symbol_intern(symbols, "succ", 4);
-	if (nat_symbol < 0 || zero_symbol < 0 || succ_symbol < 0) {
-		return -1;
-	}
-	const struct prototype_type_declaration* nat_type =
-		prototype_type_declaration_lookup(type_declarations, nat_symbol);
-	if (!nat_type) {
-		return 1;
-	}
-	*p_zero_constructor =
-		prototype_type_declaration_lookup_constructor(type_declarations, nat_type->type_index, zero_symbol);
-	*p_succ_constructor =
-		prototype_type_declaration_lookup_constructor(type_declarations, nat_type->type_index, succ_symbol);
-	if (!*p_zero_constructor || !*p_succ_constructor) {
-		return -1;
-	}
-	if (prototype_term_type_instance_make(
-			db,
-			type_declarations,
-			nat_type->type_index,
-			NULL,
-			0,
-			p_nat_owner
-		) != 0) {
-		return -1;
-	}
-	return 0;
-}
-
 static int reduce_host_pure_primitive_step(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -3064,7 +3061,7 @@ static int reduce_host_pure_primitive_step(
 	uint32_t* p_ret,
 	unsigned depth
 ) {
-	if (!db || !type_declarations || !p_ret || term_id >= db->term_count) {
+	if (!db || !p_ret || term_id >= db->term_count) {
 		return -1;
 	}
 	if (depth == 0 || db->terms[term_id].tag != PROTOTYPE_TERM_APP) {
@@ -3149,21 +3146,13 @@ static int reduce_host_pure_primitive_step(
 		);
 	}
 
-	uint32_t nat_owner;
-	const struct prototype_type_constructor_declaration* zero_constructor;
-	const struct prototype_type_constructor_declaration* succ_constructor;
-	int nat_status = lookup_nat_runtime_shape(
-		db,
-		type_declarations,
-		options.symbols,
-		&nat_owner,
-		&zero_constructor,
-		&succ_constructor
-	);
-	if (nat_status < 0) {
-		return -1;
-	}
-	if (nat_status > 0) {
+	const struct prototype_term_reduction_environment* reduction_environment =
+		options.reduction_environment;
+	if (!reduction_environment ||
+		reduction_environment->system_nat_owner == PROTOTYPE_INVALID_ID ||
+		reduction_environment->system_nat_owner >= db->term_count ||
+		reduction_environment->system_nat_zero_constructor == PROTOTYPE_INVALID_ID ||
+		reduction_environment->system_nat_succ_constructor == PROTOTYPE_INVALID_ID) {
 		return reduce_host_pure_primitive_rebuild_if_changed(
 			db,
 			head,
@@ -3174,6 +3163,11 @@ static int reduce_host_pure_primitive_step(
 			p_ret
 		);
 	}
+	uint32_t nat_owner = reduction_environment->system_nat_owner;
+	uint32_t zero_constructor =
+		reduction_environment->system_nat_zero_constructor;
+	uint32_t succ_constructor =
+		reduction_environment->system_nat_succ_constructor;
 
 	if (implementation->oracle_kind == PROTOTYPE_HOST_ORACLE_TEXT_TO_NAT) {
 		if (arg_count != 1 ||
@@ -3210,7 +3204,7 @@ static int reduce_host_pure_primitive_step(
 		if (prototype_term_constructor(
 				db,
 				nat_owner,
-				zero_constructor->constructor_index,
+				zero_constructor,
 				&current
 			) != 0) {
 			return -1;
@@ -3220,7 +3214,7 @@ static int reduce_host_pure_primitive_step(
 			if (prototype_term_constructor(
 					db,
 					nat_owner,
-					succ_constructor->constructor_index,
+					succ_constructor,
 					&succ
 				) != 0 ||
 				prototype_term_app(db, succ, current, &current) != 0) {
@@ -3297,12 +3291,12 @@ static int reduce_host_pure_primitive_step(
 				);
 			}
 			if (db->terms[nat_head].as.constructor.constructor_id ==
-					zero_constructor->constructor_index &&
+					zero_constructor &&
 				nat_arg_count == 0) {
 				break;
 			}
 			if (db->terms[nat_head].as.constructor.constructor_id !=
-					succ_constructor->constructor_index ||
+					succ_constructor ||
 				nat_arg_count != 1) {
 				return -1;
 			}
@@ -3402,7 +3396,7 @@ static int dispatch_operation_request_step(
 	uint32_t* p_ret,
 	unsigned depth
 ) {
-	if (!db || !type_declarations || !p_ret || term_id >= db->term_count || depth == 0 ||
+	if (!db || !p_ret || term_id >= db->term_count || depth == 0 ||
 		db->terms[term_id].tag != PROTOTYPE_TERM_OPERATION_REQUEST) {
 		return -1;
 	}

@@ -185,7 +185,7 @@ int prototype_internal_artifact_append_graph_ordered(
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
-	uint32_t operation_offset,
+	uint32_t occurrence_offset,
 	uint32_t* term_relocation,
 	size_t term_relocation_capacity,
 	uint32_t* context_relocation,

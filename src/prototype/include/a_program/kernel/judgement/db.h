@@ -76,7 +76,7 @@ int prototype_judgement_claim_category(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t claim_id,
 	int* p_category
 );
@@ -115,20 +115,22 @@ struct prototype_judgement_delta {
 	int* solver_exhausted;
 	struct prototype_context_db* contexts;
 	struct prototype_substitution_db* substitutions;
-	const struct prototype_operation_node* operations;
-	size_t operation_count;
-	const struct prototype_operation_match_case* operation_cases;
-	size_t operation_case_count;
+	const struct prototype_typed_occurrence* occurrences;
+	size_t occurrence_count;
+	const struct prototype_typed_occurrence_edge* occurrence_edges;
+	size_t occurrence_edge_count;
+	const struct prototype_typed_occurrence_match_case* occurrence_match_cases;
+	size_t occurrence_match_case_count;
 	/* Context for relations emitted by the current elaboration rule. This is
 	 * an explicit CwF object ID, not the old proof provenance fields. */
 	uint32_t current_context_id;
 	/* Operation identity for source/generated typing materialization. */
-	uint32_t current_operation_id;
-	/* Resource evidence is computed by the OperationGraph analysis and attached
+	uint32_t current_occurrence_id;
+	/* Resource evidence is computed by the TypedOccurrenceGraph analysis and attached
 	 * while a proposition candidate is created. Candidate identity must never
 	 * transition from "unknown usage" to a different, completed proposition. */
-	void* operation_usage_provider_context;
-	int (*operation_usage_provider)(
+	void* occurrence_usage_provider_context;
+	int (*occurrence_usage_provider)(
 		void* context,
 		uint32_t operation_id,
 		const struct prototype_usage_entry** p_entries,
@@ -206,11 +208,11 @@ void prototype_judgement_delta_set_context(
 	struct prototype_judgement_delta* delta,
 	uint32_t context_id
 );
-void prototype_judgement_delta_set_operation(
+void prototype_judgement_delta_set_occurrence(
 	struct prototype_judgement_delta* delta,
 	uint32_t operation_id
 );
-void prototype_judgement_delta_set_operation_usage_provider(
+void prototype_judgement_delta_set_occurrence_usage_provider(
 	struct prototype_judgement_delta* delta,
 	void* context,
 	int (*provider)(
@@ -225,12 +227,14 @@ void prototype_judgement_delta_set_context_store(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions
 );
-void prototype_judgement_delta_set_operation_store(
+void prototype_judgement_delta_set_occurrence_store(
 	struct prototype_judgement_delta* delta,
-	const struct prototype_operation_node* operations,
-	size_t operation_count,
-	const struct prototype_operation_match_case* operation_cases,
-	size_t operation_case_count
+	const struct prototype_typed_occurrence* operations,
+	size_t occurrence_count,
+	const struct prototype_typed_occurrence_edge* occurrence_edges,
+	size_t occurrence_edge_count,
+	const struct prototype_typed_occurrence_match_case* occurrence_match_cases,
+	size_t occurrence_match_case_count
 );
 
 int prototype_judgement_delta_commit(

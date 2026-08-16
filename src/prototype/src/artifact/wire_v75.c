@@ -1,6 +1,6 @@
-#include "a_program/artifact/wire_v74.h"
+#include "a_program/artifact/wire_v75.h"
 
-#include "a_program/graph/operation_graph.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
 
 #include <inttypes.h>
@@ -254,7 +254,7 @@ int prototype_artifact_read_text_interface(
 		char name[256];
 		char namespace_word[256];
 		char namespace_name[256];
-		char operation_word[256];
+		char occurrence_word[256];
 		char claim_word[256];
 		uint32_t source_claim_id;
 		struct prototype_artifact_term_export* export =
@@ -280,13 +280,13 @@ int prototype_artifact_read_text_interface(
 				"%255s %255s %255s %u %255s %u",
 				namespace_word,
 				namespace_name,
-				operation_word,
-				&export->operation,
+				occurrence_word,
+				&export->occurrence,
 				claim_word,
 				&source_claim_id
 			) != 6 ||
 			strcmp(namespace_word, "namespace") != 0 ||
-			strcmp(operation_word, "operation") != 0 ||
+			strcmp(occurrence_word, "occurrence") != 0 ||
 			strcmp(claim_word, "claim") != 0) {
 			return -1;
 		}
@@ -1123,8 +1123,14 @@ static int artifact_validate_term_refs(
 			return 0;
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			if (representation_handles_resolved) {
-				return term->as.type_former.representation_id <
-					type_declarations->representation_count ? 0 : -1;
+				if (term->as.type_former.representation_id >=
+					type_declarations->representation_count) {
+					return -1;
+				}
+				return term->as.type_former.constructor_count ==
+					type_declarations->representations[
+						term->as.type_former.representation_id
+					].fingerprint.constructor_count ? 0 : -1;
 			}
 			return artifact_read_type_present(
 				type_declarations,
@@ -1291,6 +1297,10 @@ static int artifact_resolve_representation_handles(
 			return -1;
 		}
 		term->as.type_former.representation_id = representation_id;
+		term->as.type_former.constructor_count =
+			type_declarations->type_declarations[
+				representative_type_id
+			].constructor_count;
 	}
 	return 0;
 }
@@ -1346,7 +1356,7 @@ static int artifact_validate_judgement_graph_refs(
 			&judgement->propositions[proof->conclusion_proposition_id];
 		if (conclusion->kind != proof->conclusion_kind ||
 			conclusion->context_id != proof->conclusion_context_id ||
-			conclusion->operation_id != proof->conclusion_operation_id ||
+			conclusion->occurrence_id != proof->conclusion_occurrence_id ||
 			conclusion->subject != proof->conclusion_subject ||
 			conclusion->classifier != proof->conclusion_classifier) {
 			return -1;
@@ -1977,7 +1987,7 @@ int prototype_artifact_read_text_graph(
 				&read_proposition.authority_kind,
 				&read_proposition.authority_id,
 				&read_proposition.context_id,
-				&read_proposition.operation_id,
+				&read_proposition.occurrence_id,
 				&read_proposition.subject,
 				&read_proposition.classifier,
 				&usage_count
@@ -2201,7 +2211,7 @@ int prototype_artifact_read_text_graph(
 	return 0;
 }
 
-int prototype_artifact_read_text_operation_graph(
+int prototype_artifact_read_text_typed_occurrences(
 	FILE* stream,
 	struct symbol_table* symbols,
 	struct prototype_term_db* terms,
@@ -2228,19 +2238,22 @@ int prototype_artifact_read_text_operation_graph(
 	char selected_entry_name[256];
 	uint32_t selected_entry_term;
 	uint32_t selected_entry_classifier;
-	uint32_t selected_entry_operation;
+	uint32_t selected_entry_occurrence;
 	uint64_t required_runtime_capabilities;
-	size_t operation_count;
+	size_t occurrence_count;
+	size_t occurrence_edge_count;
 	size_t context_count;
 	size_t substitution_count;
 	size_t case_count;
 	size_t fold_clause_count;
 	size_t effect_constraint_count;
 	size_t obligation_count;
-	struct prototype_operation_graph graph;
-	prototype_compile_metadata_operation_graph(metadata, &graph);
+	struct prototype_typed_occurrence_graph empty_graph;
+	memset(&empty_graph, 0, sizeof(empty_graph));
+	struct prototype_typed_occurrence_graph* graph = metadata ?
+		prototype_compile_metadata_typed_occurrences(metadata) : &empty_graph;
 	if (fscanf(stream, "%255s %255s", word, section_name) != 2 ||
-		strcmp(word, "SECTION") != 0 || strcmp(section_name, "operation_graph") != 0 ||
+		strcmp(word, "SECTION") != 0 || strcmp(section_name, "typed_occurrences") != 0 ||
 		fscanf(
 			stream,
 			" %255s %d %d %255s %u %u %u %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64
@@ -2251,7 +2264,7 @@ int prototype_artifact_read_text_operation_graph(
 			selected_entry_name,
 			&selected_entry_term,
 			&selected_entry_classifier,
-			&selected_entry_operation,
+			&selected_entry_occurrence,
 			&required_runtime_capabilities,
 			&normalization_step_limit,
 			&normalization_steps_used,
@@ -2270,7 +2283,7 @@ int prototype_artifact_read_text_operation_graph(
 		((strcmp(selected_entry_name, "-") == 0) !=
 			(selected_entry_term == PROTOTYPE_INVALID_ID &&
 			 selected_entry_classifier == PROTOTYPE_INVALID_ID &&
-			 selected_entry_operation == PROTOTYPE_INVALID_ID)) ||
+			 selected_entry_occurrence == PROTOTYPE_INVALID_ID)) ||
 		(selected_entry_term != PROTOTYPE_INVALID_ID &&
 			(!artifact_read_term_present(terms, selected_entry_term) ||
 			 !artifact_read_term_present(terms, selected_entry_classifier))) ||
@@ -2411,8 +2424,8 @@ int prototype_artifact_read_text_operation_graph(
 	if ((metadata && prototype_substitution_db_validate(
 			&metadata->substitutions, &metadata->contexts, terms
 		) != 0) ||
-		expect_artifact_count(stream, "operations", &operation_count) != 0 ||
-		(metadata && operation_count > graph.operation_capacity)) {
+		expect_artifact_count(stream, "typed_occurrences", &occurrence_count) != 0 ||
+		(metadata && occurrence_count > graph->occurrence_capacity)) {
 		return -1;
 	}
 	if (metadata) {
@@ -2426,7 +2439,7 @@ int prototype_artifact_read_text_operation_graph(
 		}
 		metadata->selected_entry_term = selected_entry_term;
 		metadata->selected_entry_classifier = selected_entry_classifier;
-		metadata->selected_entry_operation = selected_entry_operation;
+		metadata->selected_entry_occurrence = selected_entry_occurrence;
 		metadata->required_runtime_capabilities = required_runtime_capabilities;
 		metadata->normalization_step_limit = normalization_step_limit;
 		metadata->normalization_steps_used = normalization_steps_used;
@@ -2437,57 +2450,72 @@ int prototype_artifact_read_text_operation_graph(
 		metadata->solver_solved_count = solver_solved_count;
 		metadata->solver_residual_count = solver_residual_count;
 		metadata->solver_incomplete_count = solver_incomplete_count;
-		graph.operation_count = 0;
-		graph.case_count = 0;
-		graph.fold_clause_count = 0;
+		graph->occurrence_count = 0;
+		graph->edge_count = 0;
+		graph->case_count = 0;
+		graph->fold_clause_count = 0;
 		metadata->effect_constraint_count = 0;
 		prototype_verification_db_clear(&metadata->verification);
 	}
-	for (size_t i = 0; i < operation_count; ++i) {
+	for (size_t i = 0; i < occurrence_count; ++i) {
 		size_t id;
-		struct prototype_operation_node operation;
+		struct prototype_typed_occurrence operation;
 		char source_name[256];
 		char binder_name[256];
 		memset(&operation, 0, sizeof(operation));
-	if (fscanf(stream, "%255s %zu %d %d %d %u %u %u %255s %255s"
-				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+		if (fscanf(stream, "%255s %zu %d %d %d %u %d %u %u %255s %255s"
+				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
 				word, &id, &operation.tag, &operation.category,
 				&operation.application_role,
-				&operation.core_term, &operation.known_classifier, &operation.classifier,
+				&operation.core_term,
+				&operation.classifier_status,
+				&operation.classifier,
+				&operation.classifier_verification_obligation,
 				source_name, binder_name,
-				&operation.referenced_ast_binder_id, &operation.binding_id,
-				&operation.function, &operation.argument,
-				&operation.body, &operation.scrutinee, &operation.binder_classifier,
+				&operation.binding_id, &operation.wrapped_occurrence,
+				&operation.binder_classifier, &operation.ih_owner_occurrence,
 				&operation.ih_scope_id,
 				&operation.ih_case_index,
 				&operation.ih_field_index,
-				&operation.fold_return_ast_binder_id,
 				&operation.fold_return_binder_id,
-				&operation.fold_return_operation,
 				&operation.implicit_effect_row_count,
 				&operation.first_case, &operation.case_count,
 				&operation.first_fold_clause, &operation.fold_clause_count,
 				&operation.context_id,
 				&operation.context_action_substitution,
 				&operation.source_core_term,
-				&operation.source_classifier) != 32 ||
-			strcmp(word, "operation") != 0 || id != i) {
+				&operation.source_classifier) != 28 ||
+			strcmp(word, "typed_occurrence") != 0 || id != i) {
 			return -1;
 		}
-		if (operation.tag < PROTOTYPE_OPERATION_ATOM ||
-			operation.tag > PROTOTYPE_OPERATION_COMPUTATION_FOLD ||
+		if (operation.tag < PROTOTYPE_TYPED_OCCURRENCE_ATOM ||
+			operation.tag > PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
+			operation.classifier_status <
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED ||
+			operation.classifier_status >
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION ||
+			(operation.classifier_status ==
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED &&
+			 operation.classifier == PROTOTYPE_INVALID_ID) ||
+			(operation.classifier_status ==
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION &&
+			 (operation.classifier != PROTOTYPE_INVALID_ID ||
+			  operation.classifier_verification_obligation == PROTOTYPE_INVALID_ID)) ||
 			operation.category < PROTOTYPE_TERM_CATEGORY_INVALID ||
-			operation.category > PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			operation.category > PROTOTYPE_TERM_CATEGORY_TYPE ||
 			operation.application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
 			operation.application_role >
-				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION ||
-			(operation.tag != PROTOTYPE_OPERATION_APP &&
+				PROTOTYPE_TERM_APPLICATION_PURE_TYPE_FAMILY_EVALUATION ||
+			(operation.tag != PROTOTYPE_TYPED_OCCURRENCE_APP &&
 			 operation.application_role != PROTOTYPE_TERM_APPLICATION_NONE)) {
 			return -1;
 		}
-		operation.classifier_variable = PROTOTYPE_INVALID_ID;
 		operation.source_ast = PROTOTYPE_INVALID_ID;
+		operation.referenced_ast_binder_id = PROTOTYPE_INVALID_ID;
+		operation.fold_return_ast_binder_id = PROTOTYPE_INVALID_ID;
 		operation.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
+		operation.first_edge = PROTOTYPE_INVALID_ID;
+		operation.edge_count = 0;
 		if (operation.classifier != PROTOTYPE_INVALID_ID) {
 			struct prototype_term_classifier_view classifier_view;
 			if (prototype_judgement_classifier_view(
@@ -2531,7 +2559,7 @@ int prototype_artifact_read_text_operation_graph(
 		}
 		size_t row_id;
 		if (fscanf(stream, "%255s %zu", word, &row_id) != 2 ||
-			strcmp(word, "operation_rows") != 0 || row_id != i ||
+			strcmp(word, "typed_occurrence_rows") != 0 || row_id != i ||
 			operation.implicit_effect_row_count > 16) {
 			return -1;
 		}
@@ -2541,23 +2569,50 @@ int prototype_artifact_read_text_operation_graph(
 			}
 		}
 		if (metadata) {
-			if (prototype_operation_graph_add(
-					&graph, &metadata->contexts, operation, NULL
+			if (prototype_typed_occurrence_graph_add(
+					graph, &metadata->contexts, operation, NULL
 				) != 0) {
 				return -1;
 			}
 		}
 	}
-	if (selected_entry_operation != PROTOTYPE_INVALID_ID) {
-		if (selected_entry_operation >= operation_count ||
+	if (expect_artifact_count(
+			stream, "occurrence_edges", &occurrence_edge_count
+		) != 0 || (metadata && occurrence_edge_count > graph->edge_capacity)) {
+		return -1;
+	}
+	for (size_t i = 0; i < occurrence_edge_count; ++i) {
+		size_t id;
+		uint32_t parent_occurrence;
+		struct prototype_typed_occurrence_edge edge;
+		if (fscanf(
+				stream,
+				"%255s %zu %u %d %u %u",
+				word,
+				&id,
+				&parent_occurrence,
+				&edge.role,
+				&edge.ordinal,
+				&edge.child_occurrence
+			) != 6 || strcmp(word, "occurrence_edge") != 0 || id != i ||
+			parent_occurrence >= occurrence_count ||
+			edge.child_occurrence >= occurrence_count ||
+			(metadata && prototype_typed_occurrence_graph_add_edge(
+				graph, parent_occurrence, edge
+			) != 0)) {
+			return -1;
+		}
+	}
+	if (selected_entry_occurrence != PROTOTYPE_INVALID_ID) {
+		if (selected_entry_occurrence >= occurrence_count ||
 			selected_entry_term >= terms->term_count ||
 			terms->terms[selected_entry_term].tag != PROTOTYPE_TERM_FORCE) {
 			return -1;
 		}
 		if (metadata) {
-			const struct prototype_operation_node* entry =
-				&graph.operations[selected_entry_operation];
-			if (entry->tag != PROTOTYPE_OPERATION_FORCE ||
+			const struct prototype_typed_occurrence* entry =
+				&graph->occurrences[selected_entry_occurrence];
+			if (entry->tag != PROTOTYPE_TYPED_OCCURRENCE_FORCE ||
 				entry->core_term != selected_entry_term ||
 				entry->classifier != selected_entry_classifier) {
 				return -1;
@@ -2565,39 +2620,35 @@ int prototype_artifact_read_text_operation_graph(
 		}
 	}
 	if (expect_artifact_count(
-			stream, "operation_fold_clauses", &fold_clause_count
-		) != 0 || (metadata && fold_clause_count > graph.fold_clause_capacity)) {
+			stream, "occurrence_fold_clauses", &fold_clause_count
+		) != 0 || (metadata && fold_clause_count > graph->fold_clause_capacity)) {
 		return -1;
 	}
 	for (size_t i = 0; i < fold_clause_count; ++i) {
 		size_t id;
-		struct prototype_operation_computation_fold_clause clause;
+		struct prototype_typed_occurrence_fold_clause clause;
+		memset(&clause, 0xff, sizeof(clause));
 		if (fscanf(
 				stream,
-				"%255s %zu %u %u %u %u %u %u %u %u",
+				"%255s %zu %u %u %u",
 				word,
 				&id,
-				&clause.operation_operation,
-				&clause.body_operation,
-				&clause.clause_operation,
 				&clause.context_id,
-				&clause.argument_ast_binder_id,
 				&clause.argument_binder_id,
-				&clause.continuation_ast_binder_id,
 				&clause.continuation_binder_id
-			) != 10 || strcmp(word, "operation_fold_clause") != 0 || id != i ||
+			) != 5 || strcmp(word, "occurrence_fold_clause") != 0 || id != i ||
 			(metadata && clause.context_id >= context_count)) {
 			return -1;
 		}
-		if (metadata && prototype_operation_graph_add_fold_clause(
-				&graph, &metadata->contexts, clause, NULL
+		if (metadata && prototype_typed_occurrence_graph_add_fold_clause(
+				graph, &metadata->contexts, clause, NULL
 			) != 0) {
 			return -1;
 		}
 	}
 	if (metadata) {
 		if (prototype_context_db_validate(&metadata->contexts, terms) != 0) {
-			fprintf(stderr, "artifact operation graph: Context validation failed\n");
+			fprintf(stderr, "artifact typed-occurrence graph: Context validation failed\n");
 			return -1;
 		}
 		if (prototype_substitution_db_validate_classifier_coherence(
@@ -2606,32 +2657,32 @@ int prototype_artifact_read_text_operation_graph(
 				terms,
 				type_declarations
 				) != 0) {
-			fprintf(stderr, "artifact operation graph: Substitution validation failed\n");
+			fprintf(stderr, "artifact typed-occurrence graph: Substitution validation failed\n");
 			return -1;
 		}
 		if (prototype_cwf_validate_accepted_semantic_action_coverage(
 				&metadata->substitutions, judgement
 			) != 0) {
-			fprintf(stderr, "artifact operation graph: semantic action validation failed\n");
+			fprintf(stderr, "artifact typed-occurrence graph: semantic action validation failed\n");
 			return -1;
 		}
 	}
-	if (expect_artifact_count(stream, "operation_cases", &case_count) != 0 ||
-		(metadata && case_count > graph.case_capacity)) {
+	if (expect_artifact_count(stream, "occurrence_match_cases", &case_count) != 0 ||
+		(metadata && case_count > graph->case_capacity)) {
 		return -1;
 	}
 	for (size_t i = 0; i < case_count; ++i) {
 		size_t id;
-		struct prototype_operation_match_case operation_case;
+		struct prototype_typed_occurrence_match_case operation_case;
 		char label[256];
 		memset(&operation_case, 0, sizeof(operation_case));
-		if (fscanf(stream, "%255s %zu %u %u %d %u %u %u %255s", word, &id,
-				&operation_case.body_operation, &operation_case.context_id,
+		if (fscanf(stream, "%255s %zu %u %d %u %u %u %255s", word, &id,
+				&operation_case.context_id,
 				&operation_case.has_refinement,
 				&operation_case.refinement_substitution,
 				&operation_case.constructor_owner,
-				&operation_case.constructor_id, label) != 9 ||
-			strcmp(word, "operation_case") != 0 || id != i) {
+				&operation_case.constructor_id, label) != 8 ||
+			strcmp(word, "occurrence_match_case") != 0 || id != i) {
 			return -1;
 		}
 		if ((operation_case.has_refinement != 0 &&
@@ -2656,24 +2707,22 @@ int prototype_artifact_read_text_operation_graph(
 				word,
 				&binder_case_id,
 				&operation_case.binder_count
-			) != 3 || strcmp(word, "operation_case_binders") != 0 ||
+			) != 3 || strcmp(word, "occurrence_match_case_binders") != 0 ||
 			binder_case_id != i || operation_case.binder_count > 16) {
 			return -1;
 		}
 		for (uint32_t j = 0; j < operation_case.binder_count; ++j) {
-			if (fscanf(
-					stream, "%u %u", &operation_case.ast_binder_ids[j],
-					&operation_case.binder_ids[j]
-				) != 2) {
+			operation_case.ast_binder_ids[j] = PROTOTYPE_INVALID_ID;
+			if (fscanf(stream, "%u", &operation_case.binder_ids[j]) != 1) {
 				return -1;
 			}
 		}
 		if (metadata) {
-			if (prototype_operation_graph_add_case(
-					&graph, &metadata->contexts, operation_case, NULL
+			if (prototype_typed_occurrence_graph_add_case(
+					graph, &metadata->contexts, operation_case, NULL
 				) != 0) {
 				fprintf(stderr,
-					"artifact operation graph: case validation failed case=%zu context=%u binders=%u\n",
+					"artifact typed-occurrence graph: case validation failed case=%zu context=%u binders=%u\n",
 					i, operation_case.context_id, operation_case.binder_count);
 				return -1;
 			}
@@ -2688,7 +2737,7 @@ int prototype_artifact_read_text_operation_graph(
 	}
 	for (size_t i = 0; i < effect_constraint_count; ++i) {
 		size_t id;
-		struct prototype_operation_effect_constraint constraint;
+		struct prototype_occurrence_effect_constraint constraint;
 		if (fscanf(
 				stream,
 				"%255s %zu %d %d %u %u %u %u",
@@ -2696,20 +2745,20 @@ int prototype_artifact_read_text_operation_graph(
 				&id,
 				&constraint.kind,
 				&constraint.state,
-				&constraint.operation,
+				&constraint.occurrence,
 				&constraint.result_row,
 				&constraint.left_row,
 				&constraint.right_row
 			) != 8 || strcmp(word, "effect_constraint") != 0 || id != i ||
 			constraint.kind <
-				PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_EXACT ||
+				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_EXACT ||
 			constraint.kind >
-				PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_RESIDUAL ||
+				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_RESIDUAL ||
 			constraint.state <
-				PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_PENDING ||
+				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_PENDING ||
 			constraint.state >
-				PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_INCOMPLETE ||
-			constraint.operation >= operation_count ||
+				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_INCOMPLETE ||
+			constraint.occurrence >= occurrence_count ||
 			!artifact_read_term_present(terms, constraint.result_row) ||
 			!artifact_read_term_present(terms, constraint.left_row) ||
 			(constraint.right_row != PROTOTYPE_INVALID_ID &&
@@ -2717,12 +2766,12 @@ int prototype_artifact_read_text_operation_graph(
 			return -1;
 		}
 		if (!metadata && constraint.state !=
-			PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED) {
+			PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
 			return -1;
 		}
 		if (compile_policy == PROTOTYPE_COMPILE_POLICY_STRICT &&
 			constraint.state !=
-				PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED) {
+				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
 			return -1;
 		}
 		if (metadata) {
@@ -2749,9 +2798,9 @@ int prototype_artifact_read_text_operation_graph(
 		size_t id;
 		struct prototype_verification_obligation obligation;
 		if (fscanf(stream, "%255s %zu %d %d %u %u %u %u %u %u %u %u %d %u", word, &id,
-				&obligation.kind, &obligation.state, &obligation.operation,
-				&obligation.core_term, &obligation.computation_operation,
-				&obligation.continuation_operation, &obligation.continuation_binder_id,
+				&obligation.kind, &obligation.state, &obligation.occurrence,
+				&obligation.core_term, &obligation.computation_occurrence,
+				&obligation.continuation_occurrence, &obligation.continuation_binder_id,
 				&obligation.input_classifier, &obligation.classifier_family,
 				&obligation.effect_row, &obligation.normalization_profile,
 				&obligation.schema_version) != 14 ||
@@ -2770,25 +2819,23 @@ int prototype_artifact_read_text_operation_graph(
 		}
 	}
 	if (fscanf(stream, "%255s %255s", word, section_name) != 2 ||
-		strcmp(word, "END") != 0 || strcmp(section_name, "operation_graph") != 0) {
+		strcmp(word, "END") != 0 || strcmp(section_name, "typed_occurrences") != 0) {
 		return -1;
 	}
 	if (metadata) {
-		if (prototype_operation_graph_validate(
-				&graph, terms, &metadata->contexts
+		if (prototype_typed_occurrence_graph_freeze(
+				graph, terms, &metadata->contexts
 			) != 0) {
 			return -1;
 		}
-		prototype_compile_metadata_commit_operation_graph(metadata, &graph);
-		for (size_t i = 0; i < prototype_operation_graph_count(&graph); ++i) {
-			const struct prototype_operation_node* operation =
-				prototype_operation_graph_get(&graph, (uint32_t)i);
+		for (size_t i = 0; i < prototype_typed_occurrence_graph_count(graph); ++i) {
+			const struct prototype_typed_occurrence* operation =
+				prototype_typed_occurrence_graph_get(graph, (uint32_t)i);
 			if (!operation) {
 				return -1;
 			}
 			uint32_t term_references[] = {
 				operation->core_term,
-				operation->known_classifier,
 				operation->classifier,
 				operation->binder_classifier
 			};
@@ -2798,23 +2845,20 @@ int prototype_artifact_read_text_operation_graph(
 					return -1;
 				}
 			}
-			if (operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD &&
+			if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD &&
 				terms->terms[operation->core_term].tag == PROTOTYPE_TERM_COMPUTATION_FOLD &&
 				terms->terms[operation->core_term].as.computation_fold.clause_count > 0 &&
-				(operation->scrutinee == PROTOTYPE_INVALID_ID ||
-				 operation->fold_return_operation == PROTOTYPE_INVALID_ID ||
-				 operation->fold_clause_count !=
+				(operation->fold_clause_count !=
 					terms->terms[operation->core_term].as.computation_fold.clause_count ||
 				 (size_t)operation->first_fold_clause + operation->fold_clause_count >
-					metadata->operation_fold_clause_count ||
-				 operation->fold_return_ast_binder_id == PROTOTYPE_INVALID_ID ||
-				 operation->fold_return_binder_id == PROTOTYPE_INVALID_ID ||
+					metadata->typed_occurrences.fold_clause_count ||
+					 operation->fold_return_binder_id == PROTOTYPE_INVALID_ID ||
 				 terms->terms[operation->core_term].tag != PROTOTYPE_TERM_COMPUTATION_FOLD)) {
 				return -1;
 			}
 		}
 		if (prototype_verification_db_validate(
-				&metadata->verification, &graph, terms
+				&metadata->verification, graph, terms
 			) != 0) {
 			return -1;
 		}

@@ -68,10 +68,11 @@ struct artifact_publication_graph {
 	struct prototype_artifact_dependency* dependencies;
 	struct prototype_context* contexts;
 	struct prototype_substitution* substitutions;
-	struct prototype_operation_node* operations;
-	struct prototype_operation_match_case* operation_cases;
-	struct prototype_operation_computation_fold_clause* operation_fold_clauses;
-	struct prototype_operation_effect_constraint* effect_constraints;
+	struct prototype_typed_occurrence* occurrences;
+	struct prototype_typed_occurrence_edge* occurrence_edges;
+	struct prototype_typed_occurrence_match_case* occurrence_match_cases;
+	struct prototype_typed_occurrence_fold_clause* occurrence_fold_clauses;
+	struct prototype_occurrence_effect_constraint* effect_constraints;
 	struct prototype_verification_obligation* verification_obligations;
 	uint32_t* term_relocation;
 	uint32_t* binding_relocation;
@@ -179,9 +180,10 @@ static void artifact_publication_graph_free(
 	free(graph->dependencies);
 	free(graph->contexts);
 	free(graph->substitutions);
-	free(graph->operations);
-	free(graph->operation_cases);
-	free(graph->operation_fold_clauses);
+	free(graph->occurrences);
+	free(graph->occurrence_edges);
+	free(graph->occurrence_match_cases);
+	free(graph->occurrence_fold_clauses);
 	free(graph->effect_constraints);
 	free(graph->verification_obligations);
 	free(graph->term_relocation);
@@ -464,16 +466,16 @@ static int artifact_mark_roots(
 	}
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		const struct prototype_artifact_term_export* export = &interface->term_exports[i];
-		if (!metadata || export->operation >= metadata->operation_count ||
-			metadata->operations[export->operation].classifier != export->classifier) {
+		if (!metadata || export->occurrence >= metadata->typed_occurrences.occurrence_count ||
+			metadata->typed_occurrences.occurrences[export->occurrence].classifier != export->classifier) {
 			fprintf(stderr,
-				"artifact closure: term export metadata mismatch export=%zu operation=%u "
+				"artifact closure: term export metadata mismatch export=%zu occurrence=%u "
 				"classifier=%u operation_classifier=%u\n",
 				i,
-				export->operation,
+				export->occurrence,
 				export->classifier,
-				metadata && export->operation < metadata->operation_count ?
-					metadata->operations[export->operation].classifier :
+				metadata && export->occurrence < metadata->typed_occurrences.occurrence_count ?
+					metadata->typed_occurrences.occurrences[export->occurrence].classifier :
 					PROTOTYPE_INVALID_ID);
 			return -1;
 		}
@@ -494,7 +496,7 @@ static int artifact_mark_roots(
 				);
 			if (claim_status < 0 ||
 				(claim_status > 0 && artifact_export_has_residual_constraint(
-					metadata, export->operation
+					metadata, terms, export->occurrence
 				) <= 0) ||
 				artifact_mark_term(marks, terms, export->classifier, 0) != 0 ||
 				artifact_mark_subject_relations(
@@ -506,21 +508,21 @@ static int artifact_mark_roots(
 				fprintf(
 					stderr,
 					"artifact export has neither accepted claim nor residual obligation "
-					"operation=%u subject=%u classifier=%u\n",
-					export->operation,
+					"occurrence=%u subject=%u classifier=%u\n",
+					export->occurrence,
 					export->local_term,
 					export->classifier
 				);
 				return -1;
 			}
 		} else if (artifact_export_has_residual_constraint(
-			metadata, export->operation
+			metadata, terms, export->occurrence
 		) <= 0) {
 			fprintf(
 				stderr,
 				"artifact export has neither classifier Claim nor residual obligation "
-				"operation=%u subject=%u\n",
-				export->operation,
+				"occurrence=%u subject=%u\n",
+				export->occurrence,
 				export->local_term
 			);
 			return -1;
@@ -686,9 +688,9 @@ static int artifact_mark_roots(
 				}
 			}
 		}
-		for (size_t i = 0; i < metadata->operation_case_count; ++i) {
-			const struct prototype_operation_match_case* operation_case =
-				&metadata->operation_cases[i];
+		for (size_t i = 0; i < metadata->typed_occurrences.case_count; ++i) {
+			const struct prototype_typed_occurrence_match_case* operation_case =
+				&metadata->typed_occurrences.cases[i];
 			if (operation_case->has_refinement &&
 				artifact_mark_substitution(
 					marks,
@@ -704,9 +706,9 @@ static int artifact_mark_roots(
 				return -1;
 			}
 		}
-		for (size_t i = 0; i < metadata->operation_count; ++i) {
-			const struct prototype_operation_node* operation =
-				&metadata->operations[i];
+		for (size_t i = 0; i < metadata->typed_occurrences.occurrence_count; ++i) {
+			const struct prototype_typed_occurrence* operation =
+				&metadata->typed_occurrences.occurrences[i];
 			if (operation->context_action_substitution != PROTOTYPE_INVALID_ID &&
 				artifact_mark_substitution(
 					marks,
@@ -717,7 +719,7 @@ static int artifact_mark_roots(
 				) != 0) {
 				fprintf(stderr,
 					"artifact closure: operation Context action traversal failed "
-					"operation=%zu substitution=%u\n",
+					"occurrence=%zu substitution=%u\n",
 					i, operation->context_action_substitution);
 				return -1;
 			}
@@ -757,8 +759,8 @@ static int artifact_mark_roots(
 				}
 			}
 		}
-		for (size_t i = 0; i < metadata->operation_count; ++i) {
-			const struct prototype_operation_node* operation = &metadata->operations[i];
+		for (size_t i = 0; i < metadata->typed_occurrences.occurrence_count; ++i) {
+			const struct prototype_typed_occurrence* operation = &metadata->typed_occurrences.occurrences[i];
 			uint32_t context_id = operation->context_id;
 			while (context_id != prototype_context_empty(&metadata->contexts)) {
 				const struct prototype_context* context =
@@ -771,7 +773,6 @@ static int artifact_mark_roots(
 			}
 			uint32_t references[] = {
 				operation->core_term,
-				operation->known_classifier,
 				operation->classifier,
 				operation->binder_classifier,
 				operation->source_core_term,
@@ -785,7 +786,7 @@ static int artifact_mark_roots(
 				}
 			}
 			for (size_t i = 0; i < metadata->effect_constraint_count; ++i) {
-				const struct prototype_operation_effect_constraint* constraint =
+				const struct prototype_occurrence_effect_constraint* constraint =
 					&metadata->effect_constraints[i];
 				uint32_t references[] = {
 					constraint->result_row,
@@ -1357,7 +1358,7 @@ static int artifact_publication_metadata_relocate(
 		publication->term_relocation,
 		closure->terms.term_count
 	);
-	target->selected_entry_operation = source->selected_entry_operation;
+	target->selected_entry_occurrence = source->selected_entry_occurrence;
 	target->required_runtime_capabilities = source->required_runtime_capabilities;
 	target->normalization_step_limit = source->normalization_step_limit;
 	target->normalization_steps_used = source->normalization_steps_used;
@@ -1368,13 +1369,12 @@ static int artifact_publication_metadata_relocate(
 	target->solver_solved_count = source->solver_solved_count;
 	target->solver_residual_count = source->solver_residual_count;
 	target->solver_incomplete_count = source->solver_incomplete_count;
-	target->operation_count = source->operation_count;
-	for (size_t i = 0; i < source->operation_count; ++i) {
-		target->operations[i] = source->operations[i];
-		struct prototype_operation_node* operation = &target->operations[i];
+	target->typed_occurrences.occurrence_count = source->typed_occurrences.occurrence_count;
+	for (size_t i = 0; i < source->typed_occurrences.occurrence_count; ++i) {
+		target->typed_occurrences.occurrences[i] = source->typed_occurrences.occurrences[i];
+		struct prototype_typed_occurrence* operation = &target->typed_occurrences.occurrences[i];
 		uint32_t* term_fields[] = {
 			&operation->core_term,
-			&operation->known_classifier,
 			&operation->classifier,
 			&operation->binder_classifier,
 			&operation->source_core_term,
@@ -1392,7 +1392,7 @@ static int artifact_publication_metadata_relocate(
 			}
 			*term_fields[j] = relocated;
 		}
-		if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS) {
 			if (operation->core_term >= publication->object.terms.term_count ||
 				publication->object.terms.terms[operation->core_term].tag !=
 					PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
@@ -1455,11 +1455,19 @@ static int artifact_publication_metadata_relocate(
 			operation->implicit_effect_row_binders[j] = relocated;
 		}
 	}
-	target->operation_case_count = source->operation_case_count;
-	for (size_t i = 0; i < source->operation_case_count; ++i) {
-		target->operation_cases[i] = source->operation_cases[i];
-		struct prototype_operation_match_case* operation_case =
-			&target->operation_cases[i];
+	target->typed_occurrences.edge_count = source->typed_occurrences.edge_count;
+	for (size_t i = 0; i < source->typed_occurrences.edge_count; ++i) {
+		target->typed_occurrences.edges[i] = source->typed_occurrences.edges[i];
+		if (target->typed_occurrences.edges[i].child_occurrence >=
+			source->typed_occurrences.occurrence_count) {
+			return -1;
+		}
+	}
+	target->typed_occurrences.case_count = source->typed_occurrences.case_count;
+	for (size_t i = 0; i < source->typed_occurrences.case_count; ++i) {
+		target->typed_occurrences.cases[i] = source->typed_occurrences.cases[i];
+		struct prototype_typed_occurrence_match_case* operation_case =
+			&target->typed_occurrences.cases[i];
 		if (operation_case->context_id >= source->contexts.context_count ||
 			operation_case->constructor_owner >= closure->terms.term_count ||
 			publication->context_relocation[operation_case->context_id] ==
@@ -1501,20 +1509,20 @@ static int artifact_publication_metadata_relocate(
 			operation_case->binder_ids[j] = relocated;
 		}
 	}
-	target->operation_fold_clause_count = source->operation_fold_clause_count;
-	for (size_t i = 0; i < source->operation_fold_clause_count; ++i) {
-		target->operation_fold_clauses[i] = source->operation_fold_clauses[i];
-		if (target->operation_fold_clauses[i].context_id >=
+	target->typed_occurrences.fold_clause_count = source->typed_occurrences.fold_clause_count;
+	for (size_t i = 0; i < source->typed_occurrences.fold_clause_count; ++i) {
+		target->typed_occurrences.fold_clauses[i] = source->typed_occurrences.fold_clauses[i];
+		if (target->typed_occurrences.fold_clauses[i].context_id >=
 			source->contexts.context_count) {
 			return -1;
 		}
-		target->operation_fold_clauses[i].context_id =
+		target->typed_occurrences.fold_clauses[i].context_id =
 			publication->context_relocation[
-				target->operation_fold_clauses[i].context_id
+				target->typed_occurrences.fold_clauses[i].context_id
 			];
 		uint32_t* binding_fields[] = {
-			&target->operation_fold_clauses[i].argument_binder_id,
-			&target->operation_fold_clauses[i].continuation_binder_id
+			&target->typed_occurrences.fold_clauses[i].argument_binder_id,
+			&target->typed_occurrences.fold_clauses[i].continuation_binder_id
 		};
 		for (size_t j = 0; j < sizeof(binding_fields) /
 				sizeof(binding_fields[0]); ++j) {
@@ -1638,10 +1646,11 @@ static int artifact_publication_graph_alloc(
 		substitution_evidence_claims,
 		metadata->substitutions.substitution_count
 	);
-	ALLOC_PUBLICATION(operations, metadata->operation_count);
-	ALLOC_PUBLICATION(operation_cases, metadata->operation_case_count);
+	ALLOC_PUBLICATION(occurrences, metadata->typed_occurrences.occurrence_count);
+	ALLOC_PUBLICATION(occurrence_edges, metadata->typed_occurrences.edge_count);
+	ALLOC_PUBLICATION(occurrence_match_cases, metadata->typed_occurrences.case_count);
 	ALLOC_PUBLICATION(
-		operation_fold_clauses, metadata->operation_fold_clause_count
+		occurrence_fold_clauses, metadata->typed_occurrences.fold_clause_count
 	);
 	ALLOC_PUBLICATION(effect_constraints, metadata->effect_constraint_count);
 	ALLOC_PUBLICATION(
@@ -1768,12 +1777,14 @@ static int artifact_publication_graph_alloc(
 		metadata->contexts.context_count,
 		publication->substitutions,
 		metadata->substitutions.substitution_count,
-		publication->operations,
-		metadata->operation_count,
-		publication->operation_cases,
-		metadata->operation_case_count,
-		publication->operation_fold_clauses,
-		metadata->operation_fold_clause_count,
+		publication->occurrences,
+		metadata->typed_occurrences.occurrence_count,
+		publication->occurrence_edges,
+		metadata->typed_occurrences.edge_count,
+		publication->occurrence_match_cases,
+		metadata->typed_occurrences.case_count,
+		publication->occurrence_fold_clauses,
+		metadata->typed_occurrences.fold_clause_count,
 		publication->effect_constraints,
 		metadata->effect_constraint_count,
 		publication->verification_obligations,
@@ -1789,15 +1800,13 @@ static int artifact_publication_universe_relocate(
 	if (!publication || !closure) {
 		return -1;
 	}
-	struct prototype_operation_graph operations;
-	prototype_compile_metadata_operation_graph(
-		&publication->metadata, &operations
-	);
+	struct prototype_typed_occurrence_graph* occurrences =
+		prototype_compile_metadata_typed_occurrences(&publication->metadata);
 	if (prototype_universe_collect(
 		&publication->object.universe,
 		&publication->object.type_declarations,
 		&publication->object.terms,
-		&operations,
+		occurrences,
 		&publication->object.judgement
 	) != 0) {
 		return -1;
@@ -2268,13 +2277,11 @@ static int artifact_build_publication_graph(
 	int metadata_status = artifact_publication_metadata_relocate(
 		publication, metadata, closure
 	);
-	struct prototype_operation_graph publication_operations;
-	prototype_compile_metadata_operation_graph(
-		&publication->metadata, &publication_operations
-	);
+	struct prototype_typed_occurrence_graph* publication_operations =
+		prototype_compile_metadata_typed_occurrences(&publication->metadata);
 	int accepted_status = metadata_status == 0 ?
 		prototype_judgement_recompute_closure_ranks(
-			&publication_operations, &publication->object.judgement
+			publication_operations, &publication->object.judgement
 		) : -1;
 	int universe_status = accepted_status == 0 ?
 		artifact_publication_universe_relocate(publication, closure) : -1;

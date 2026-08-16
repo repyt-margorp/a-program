@@ -28,15 +28,15 @@ static void compile_metadata_refresh_runtime_capabilities(
 		) == 0) {
 		capabilities |= coverage.required_runtime_capabilities;
 	}
-	for (size_t i = 0; i < metadata->operation_count; ++i) {
-		const struct prototype_operation_node* operation = &metadata->operations[i];
-		if (operation->tag == PROTOTYPE_OPERATION_COMPUTATION_FOLD &&
+	for (size_t i = 0; i < metadata->typed_occurrences.occurrence_count; ++i) {
+		const struct prototype_typed_occurrence* operation = &metadata->typed_occurrences.occurrences[i];
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD &&
 			operation->core_term < terms->term_count &&
 			terms->terms[operation->core_term].tag == PROTOTYPE_TERM_COMPUTATION_FOLD &&
 			terms->terms[operation->core_term].as.computation_fold.clause_count != 0) {
 			capabilities |= PROTOTYPE_RUNTIME_CAPABILITY_HANDLER;
 		}
-		if (operation->tag != PROTOTYPE_OPERATION_REQUEST ||
+		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_REQUEST ||
 			operation->core_term >= terms->term_count ||
 			terms->terms[operation->core_term].tag != PROTOTYPE_TERM_OPERATION_REQUEST) {
 			continue;

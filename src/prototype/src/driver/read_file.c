@@ -1,10 +1,10 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v74.h"
+#include "a_program/artifact/wire_v75.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
-#include "a_program/graph/operation_graph.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 
 #include <dirent.h>
 #include <inttypes.h>
@@ -52,6 +52,7 @@
 #define RESOLUTION_ITERATION_CAPACITY 128
 #define RESOLUTION_EVENT_CAPACITY 2048
 #define OPERATION_CAPACITY 4096
+#define OCCURRENCE_EDGE_CAPACITY (OPERATION_CAPACITY * 8)
 #define OPERATION_CASE_CAPACITY 4096
 #define OPERATION_FOLD_CLAUSE_CAPACITY 4096
 #define EFFECT_CONSTRAINT_CAPACITY 8192
@@ -169,19 +170,23 @@ static struct prototype_resolution_iteration
 	provider_resolution_iterations[RESOLUTION_ITERATION_CAPACITY];
 static struct prototype_resolution_event
 	provider_resolution_events[RESOLUTION_EVENT_CAPACITY];
-static struct prototype_operation_node operations[OPERATION_CAPACITY];
-static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
-static struct prototype_operation_computation_fold_clause
-	operation_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
-static struct prototype_operation_effect_constraint
+static struct prototype_typed_occurrence operations[OPERATION_CAPACITY];
+static struct prototype_typed_occurrence_edge
+	occurrence_edges[OCCURRENCE_EDGE_CAPACITY];
+static struct prototype_typed_occurrence_match_case occurrence_match_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_typed_occurrence_fold_clause
+	occurrence_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
+static struct prototype_occurrence_effect_constraint
 	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
-static struct prototype_operation_node provider_operations[OPERATION_CAPACITY];
-static struct prototype_operation_match_case provider_operation_cases[OPERATION_CASE_CAPACITY];
-static struct prototype_operation_computation_fold_clause
+static struct prototype_typed_occurrence provider_operations[OPERATION_CAPACITY];
+static struct prototype_typed_occurrence_edge
+	provider_occurrence_edges[OCCURRENCE_EDGE_CAPACITY];
+static struct prototype_typed_occurrence_match_case provider_operation_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_typed_occurrence_fold_clause
 	provider_operation_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
-static struct prototype_operation_effect_constraint
+static struct prototype_occurrence_effect_constraint
 	provider_effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	provider_verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
@@ -383,20 +388,20 @@ static void mark_reachable_external_refs(
 
 static const char* operation_tag_name(int tag) {
 	switch (tag) {
-		case PROTOTYPE_OPERATION_ATOM: return "atom";
-		case PROTOTYPE_OPERATION_VAR: return "var";
-		case PROTOTYPE_OPERATION_NAME: return "name";
-		case PROTOTYPE_OPERATION_CONSTRUCTOR: return "constructor";
-		case PROTOTYPE_OPERATION_APP: return "app";
-		case PROTOTYPE_OPERATION_LAMBDA: return "lambda";
-		case PROTOTYPE_OPERATION_MATCH: return "match";
-		case PROTOTYPE_OPERATION_RETURN: return "return";
-		case PROTOTYPE_OPERATION_THUNK: return "thunk";
-		case PROTOTYPE_OPERATION_FORCE: return "force";
-		case PROTOTYPE_OPERATION_COMPUTATION_FOLD: return "computation-fold";
-		case PROTOTYPE_OPERATION_REQUEST: return "operation-request";
-		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS: return "induction-hypothesis";
-		case PROTOTYPE_OPERATION_ASCRIPTION: return "ascription";
+		case PROTOTYPE_TYPED_OCCURRENCE_ATOM: return "atom";
+		case PROTOTYPE_TYPED_OCCURRENCE_VAR: return "var";
+		case PROTOTYPE_TYPED_OCCURRENCE_REFERENCE: return "name";
+		case PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR: return "constructor";
+		case PROTOTYPE_TYPED_OCCURRENCE_APP: return "app";
+		case PROTOTYPE_TYPED_OCCURRENCE_LAMBDA: return "lambda";
+		case PROTOTYPE_TYPED_OCCURRENCE_MATCH: return "match";
+		case PROTOTYPE_TYPED_OCCURRENCE_RETURN: return "return";
+		case PROTOTYPE_TYPED_OCCURRENCE_THUNK: return "thunk";
+		case PROTOTYPE_TYPED_OCCURRENCE_FORCE: return "force";
+		case PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD: return "computation-fold";
+		case PROTOTYPE_TYPED_OCCURRENCE_REQUEST: return "operation-request";
+		case PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS: return "induction-hypothesis";
+		case PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE: return "ascription";
 		default: return "unknown";
 	}
 }
@@ -561,9 +566,9 @@ static int artifact_export_claim_ids_match_loaded_image(
 		if (!proposition || proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 			proposition->subject != export->local_term ||
 			proposition->classifier != export->classifier ||
-			(proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
-			 (proposition->authority_id != export->operation ||
-			  proposition->operation_id != export->operation))) {
+			(proposition->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
+			 (proposition->authority_id != export->occurrence ||
+			  proposition->occurrence_id != export->occurrence))) {
 			return -1;
 		}
 	}
@@ -580,22 +585,13 @@ static int artifact_exports_have_accepted_claims(
 	if (!interface || !terms || !judgement || !metadata) {
 		return -1;
 	}
-	const struct prototype_operation_graph graph = {
-		.operations = metadata->operations,
-		.operation_count = metadata->operation_count,
-		.operation_capacity = metadata->operation_capacity,
-		.cases = metadata->operation_cases,
-		.case_count = metadata->operation_case_count,
-		.case_capacity = metadata->operation_case_capacity,
-		.fold_clauses = metadata->operation_fold_clauses,
-		.fold_clause_count = metadata->operation_fold_clause_count,
-		.fold_clause_capacity = metadata->operation_fold_clause_capacity
-	};
+	const struct prototype_typed_occurrence_graph* graph =
+		prototype_compile_metadata_typed_occurrences_const(metadata);
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		struct prototype_artifact_term_export* export =
 			&interface->term_exports[i];
-		if (export->operation >= metadata->operation_count ||
-			metadata->operations[export->operation].classifier != export->classifier) {
+		if (export->occurrence >= metadata->typed_occurrences.occurrence_count ||
+			metadata->typed_occurrences.occurrences[export->occurrence].classifier != export->classifier) {
 			return -1;
 		}
 		int found = 0;
@@ -612,23 +608,23 @@ static int artifact_exports_have_accepted_claims(
 				prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == export->local_term &&
 				prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier == export->classifier &&
 				claim->closure_rank != PROTOTYPE_INVALID_ID &&
-				(prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ||
-				 (prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id == export->operation &&
-				  prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id == export->operation));
+				(prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ||
+				 (prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id == export->occurrence &&
+				  prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id == export->occurrence));
 			if (!found) {
 				return -1;
 			}
 		}
 		if (!found) {
 			for (size_t j = 0; j < metadata->effect_constraint_count; ++j) {
-				const struct prototype_operation_effect_constraint* constraint =
+				const struct prototype_occurrence_effect_constraint* constraint =
 					&metadata->effect_constraints[j];
 				if (constraint->state ==
-						PROTOTYPE_OPERATION_EFFECT_CONSTRAINT_SOLVED) {
+						PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
 					continue;
 				}
-				int reaches = prototype_operation_graph_reaches(
-					&graph, export->operation, constraint->operation
+				int reaches = prototype_typed_occurrence_graph_reaches(
+					graph, terms, export->occurrence, constraint->occurrence
 				);
 				if (reaches < 0) {
 					return -1;
@@ -651,8 +647,8 @@ static int artifact_exports_have_accepted_claims(
 						PROTOTYPE_VERIFICATION_OBLIGATION_PENDING) {
 					continue;
 				}
-				int reaches = prototype_operation_graph_reaches(
-					&graph, export->operation, obligation->operation
+				int reaches = prototype_typed_occurrence_graph_reaches(
+					graph, terms, export->occurrence, obligation->occurrence
 				);
 				if (reaches < 0) {
 					return -1;
@@ -711,7 +707,7 @@ static int read_artifact_interface_and_graph(
 			type_declarations,
 			judgement_db
 		) != 0 ||
-		prototype_artifact_read_text_operation_graph(
+		prototype_artifact_read_text_typed_occurrences(
 			artifact_file,
 			symbols,
 			term_db,
@@ -736,17 +732,7 @@ static int read_artifact_interface_and_graph(
 			intrinsic_environment,
 			&metadata->contexts,
 			&metadata->substitutions,
-			&(struct prototype_operation_graph) {
-				.operations = metadata->operations,
-				.operation_count = metadata->operation_count,
-				.operation_capacity = metadata->operation_capacity,
-				.cases = metadata->operation_cases,
-				.case_count = metadata->operation_case_count,
-				.case_capacity = metadata->operation_case_capacity,
-				.fold_clauses = metadata->operation_fold_clauses,
-				.fold_clause_count = metadata->operation_fold_clause_count,
-				.fold_clause_capacity = metadata->operation_fold_clause_capacity
-			},
+			&metadata->typed_occurrences,
 			judgement_db
 		) != 0 || prototype_artifact_interface_validate_identity_roots(
 			artifact_interface,
@@ -786,56 +772,7 @@ static uint32_t offset_link_graph_id(uint32_t id, uint32_t offset) {
 	return id == PROTOTYPE_INVALID_ID ? PROTOTYPE_INVALID_ID : id + offset;
 }
 
-static int operation_graph_next_source_binder_id(
-	const struct prototype_compile_metadata* metadata,
-	uint32_t* p_ret
-) {
-	if (!metadata || !p_ret) {
-		return -1;
-	}
-	uint32_t next = 0;
-	for (size_t i = 0; i < metadata->operation_count; ++i) {
-		const struct prototype_operation_node* operation = &metadata->operations[i];
-		uint32_t ids[] = {
-			operation->referenced_ast_binder_id,
-			operation->fold_return_ast_binder_id
-		};
-		for (size_t j = 0; j < sizeof(ids) / sizeof(ids[0]); ++j) {
-			if (ids[j] == PROTOTYPE_INVALID_ID) {
-				continue;
-			}
-			if (ids[j] == UINT32_MAX - 1) {
-				return -1;
-			}
-			if (next <= ids[j]) {
-				next = ids[j] + 1;
-			}
-		}
-	}
-	for (size_t i = 0; i < metadata->operation_fold_clause_count; ++i) {
-		const struct prototype_operation_computation_fold_clause* clause =
-			&metadata->operation_fold_clauses[i];
-		uint32_t ids[] = {
-			clause->argument_ast_binder_id,
-			clause->continuation_ast_binder_id
-		};
-		for (size_t j = 0; j < sizeof(ids) / sizeof(ids[0]); ++j) {
-			if (ids[j] == PROTOTYPE_INVALID_ID) {
-				continue;
-			}
-			if (ids[j] == UINT32_MAX - 1) {
-				return -1;
-			}
-			if (next <= ids[j]) {
-				next = ids[j] + 1;
-			}
-		}
-	}
-	*p_ret = next;
-	return 0;
-}
-
-static int append_link_operation_graph(
+static int append_link_typed_occurrence_graph(
 	struct prototype_compile_metadata* target,
 	const struct prototype_compile_metadata* source,
 	const struct prototype_term_db* target_terms,
@@ -848,20 +785,8 @@ static int append_link_operation_graph(
 	const uint32_t* substitution_relocation,
 	size_t substitution_relocation_count
 ) {
-	struct prototype_operation_graph target_graph;
-	struct prototype_operation_graph source_graph;
-	prototype_compile_metadata_operation_graph(target, &target_graph);
-	prototype_compile_metadata_operation_graph_const(source, &source_graph);
 	if (!target || !source || !target_terms || !term_relocation || !context_relocation ||
 		!binding_relocation || !substitution_relocation ||
-		prototype_operation_graph_count(&target_graph) +
-			prototype_operation_graph_count(&source_graph) >
-			target_graph.operation_capacity ||
-		prototype_operation_graph_case_count(&target_graph) +
-			prototype_operation_graph_case_count(&source_graph) >
-			target_graph.case_capacity ||
-		target_graph.fold_clause_count + source_graph.fold_clause_count >
-			target_graph.fold_clause_capacity ||
 		target->effect_constraint_count + source->effect_constraint_count >
 			target->effect_constraint_capacity ||
 		prototype_verification_db_count(&target->verification) +
@@ -869,11 +794,27 @@ static int append_link_operation_graph(
 			prototype_verification_db_capacity(&target->verification)) {
 		return -1;
 	}
-	int target_is_empty = prototype_operation_graph_count(&target_graph) == 0 &&
+	struct prototype_typed_occurrence_graph* target_graph =
+		prototype_compile_metadata_typed_occurrences(target);
+	const struct prototype_typed_occurrence_graph* source_graph =
+		prototype_compile_metadata_typed_occurrences_const(source);
+	if (prototype_typed_occurrence_graph_count(target_graph) +
+			prototype_typed_occurrence_graph_count(source_graph) >
+			target_graph->occurrence_capacity ||
+		target_graph->edge_count + source_graph->edge_count >
+			target_graph->edge_capacity ||
+		prototype_typed_occurrence_graph_case_count(target_graph) +
+			prototype_typed_occurrence_graph_case_count(source_graph) >
+			target_graph->case_capacity ||
+		target_graph->fold_clause_count + source_graph->fold_clause_count >
+			target_graph->fold_clause_capacity) {
+		return -1;
+	}
+	int target_is_empty = prototype_typed_occurrence_graph_count(target_graph) == 0 &&
 		target->solver_constraint_count == 0 &&
 		prototype_verification_db_count(&target->verification) == 0;
-	if (target->selected_entry_operation != PROTOTYPE_INVALID_ID &&
-		source->selected_entry_operation != PROTOTYPE_INVALID_ID) {
+	if (target->selected_entry_occurrence != PROTOTYPE_INVALID_ID &&
+		source->selected_entry_occurrence != PROTOTYPE_INVALID_ID) {
 		/* Aggregation has no syntax for choosing between executable entries. */
 		return -1;
 	}
@@ -903,22 +844,29 @@ static int append_link_operation_graph(
 	target->solver_residual_count += source->solver_residual_count;
 	target->solver_incomplete_count += source->solver_incomplete_count;
 	target->required_runtime_capabilities |= source->required_runtime_capabilities;
-	uint32_t operation_offset =
-		(uint32_t)prototype_operation_graph_count(&target_graph);
+	uint32_t occurrence_offset =
+		(uint32_t)prototype_typed_occurrence_graph_count(target_graph);
+	uint32_t edge_offset = (uint32_t)target_graph->edge_count;
 	uint32_t case_offset =
-		(uint32_t)prototype_operation_graph_case_count(&target_graph);
-	uint32_t fold_clause_offset = (uint32_t)target_graph.fold_clause_count;
-	uint32_t source_binder_offset;
-	if (operation_graph_next_source_binder_id(target, &source_binder_offset) != 0) {
-		return -1;
-	}
-	for (size_t i = 0; i < prototype_operation_graph_count(&source_graph); ++i) {
-		const struct prototype_operation_node* source_operation =
-			prototype_operation_graph_get(&source_graph, (uint32_t)i);
+		(uint32_t)prototype_typed_occurrence_graph_case_count(target_graph);
+	uint32_t fold_clause_offset = (uint32_t)target_graph->fold_clause_count;
+	for (size_t i = 0; i < prototype_typed_occurrence_graph_count(source_graph); ++i) {
+		const struct prototype_typed_occurrence* source_operation =
+			prototype_typed_occurrence_graph_get(source_graph, (uint32_t)i);
 		if (!source_operation) {
 			return -1;
 		}
-		struct prototype_operation_node operation = *source_operation;
+		struct prototype_typed_occurrence operation = *source_operation;
+		if (operation.edge_count == 0) {
+			operation.first_edge = PROTOTYPE_INVALID_ID;
+		} else if (operation.first_edge == PROTOTYPE_INVALID_ID ||
+			operation.first_edge > source_graph->edge_count ||
+			operation.edge_count > source_graph->edge_count -
+				operation.first_edge) {
+			return -1;
+		} else {
+			operation.first_edge += edge_offset;
+		}
 		if (operation.context_id >= source->contexts.context_count ||
 			operation.context_id >= context_relocation_count) {
 			return -1;
@@ -945,7 +893,6 @@ static int append_link_operation_graph(
 		} \
 	} while (0)
 		RELOCATE_TERM_FIELD(operation.core_term);
-		RELOCATE_TERM_FIELD(operation.known_classifier);
 		RELOCATE_TERM_FIELD(operation.classifier);
 		RELOCATE_TERM_FIELD(operation.binder_classifier);
 		RELOCATE_TERM_FIELD(operation.source_core_term);
@@ -962,7 +909,7 @@ static int append_link_operation_graph(
 				operation.context_action_substitution
 			];
 		}
-		if (operation.tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+		if (operation.tag == PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS) {
 			if (operation.core_term >= target_terms->term_count ||
 				target_terms->terms[operation.core_term].tag !=
 					PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
@@ -973,21 +920,16 @@ static int append_link_operation_graph(
 			].as.induction_hypothesis.ih_scope_id;
 		}
 		RELOCATE_BINDING_FIELD(operation.fold_return_binder_id);
-		operation.fold_return_operation = offset_link_graph_id(
-			operation.fold_return_operation, operation_offset
+		operation.wrapped_occurrence = offset_link_graph_id(
+			operation.wrapped_occurrence, occurrence_offset
 		);
-		operation.function = offset_link_graph_id(operation.function, operation_offset);
-		operation.argument = offset_link_graph_id(operation.argument, operation_offset);
-		operation.body = offset_link_graph_id(operation.body, operation_offset);
-		operation.scrutinee = offset_link_graph_id(operation.scrutinee, operation_offset);
-		operation.referenced_ast_binder_id = offset_link_graph_id(
-			operation.referenced_ast_binder_id, source_binder_offset
+		operation.ih_owner_occurrence = offset_link_graph_id(
+			operation.ih_owner_occurrence, occurrence_offset
 		);
+		operation.referenced_ast_binder_id = PROTOTYPE_INVALID_ID;
 		RELOCATE_BINDING_FIELD(operation.binding_id);
-		operation.fold_return_ast_binder_id = offset_link_graph_id(
-			operation.fold_return_ast_binder_id, source_binder_offset
-		);
-		if (operation.tag == PROTOTYPE_OPERATION_MATCH) {
+		operation.fold_return_ast_binder_id = PROTOTYPE_INVALID_ID;
+		if (operation.tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
 			operation.first_case = offset_link_graph_id(
 				operation.first_case, case_offset
 			);
@@ -998,54 +940,52 @@ static int append_link_operation_graph(
 		for (uint32_t j = 0; j < operation.implicit_effect_row_count; ++j) {
 			RELOCATE_BINDING_FIELD(operation.implicit_effect_row_binders[j]);
 		}
-		if (prototype_operation_graph_add(
-				&target_graph, &target->contexts, operation, NULL
+		if (prototype_typed_occurrence_graph_add(
+				target_graph, &target->contexts, operation, NULL
 			) != 0) {
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < source_graph.fold_clause_count; ++i) {
-		const struct prototype_operation_computation_fold_clause* source_clause =
-			prototype_operation_graph_get_fold_clause(&source_graph, (uint32_t)i);
+	for (size_t i = 0; i < source_graph->edge_count; ++i) {
+		const struct prototype_typed_occurrence_edge* source_edge =
+			prototype_typed_occurrence_graph_get_edge(source_graph, (uint32_t)i);
+		if (!source_edge || source_edge->child_occurrence >=
+			prototype_typed_occurrence_graph_count(source_graph)) {
+			return -1;
+		}
+		struct prototype_typed_occurrence_edge edge = *source_edge;
+		edge.child_occurrence += occurrence_offset;
+		target_graph->edges[target_graph->edge_count++] = edge;
+	}
+	for (size_t i = 0; i < source_graph->fold_clause_count; ++i) {
+		const struct prototype_typed_occurrence_fold_clause* source_clause =
+			prototype_typed_occurrence_graph_get_fold_clause(source_graph, (uint32_t)i);
 		if (!source_clause || source_clause->context_id >=
 				source->contexts.context_count || source_clause->context_id >=
 				context_relocation_count) {
 			return -1;
 		}
-		struct prototype_operation_computation_fold_clause clause = *source_clause;
-		clause.operation_operation = offset_link_graph_id(
-			clause.operation_operation, operation_offset
-		);
-		clause.body_operation = offset_link_graph_id(
-			clause.body_operation, operation_offset
-		);
-		clause.clause_operation = offset_link_graph_id(
-			clause.clause_operation, operation_offset
-		);
+		struct prototype_typed_occurrence_fold_clause clause = *source_clause;
 		clause.context_id = context_relocation[clause.context_id];
-		clause.argument_ast_binder_id = offset_link_graph_id(
-			clause.argument_ast_binder_id, source_binder_offset
-		);
-		clause.continuation_ast_binder_id = offset_link_graph_id(
-			clause.continuation_ast_binder_id, source_binder_offset
-		);
+		clause.argument_ast_binder_id = PROTOTYPE_INVALID_ID;
+		clause.continuation_ast_binder_id = PROTOTYPE_INVALID_ID;
 		RELOCATE_BINDING_FIELD(clause.argument_binder_id);
 		RELOCATE_BINDING_FIELD(clause.continuation_binder_id);
-		if (prototype_operation_graph_add_fold_clause(
-				&target_graph, &target->contexts, clause, NULL
+		if (prototype_typed_occurrence_graph_add_fold_clause(
+				target_graph, &target->contexts, clause, NULL
 			) != 0) {
 			return -1;
 		}
 	}
 	for (size_t i = 0;
-		i < prototype_operation_graph_case_count(&source_graph);
+		i < prototype_typed_occurrence_graph_case_count(source_graph);
 		++i) {
-		const struct prototype_operation_match_case* source_case =
-			prototype_operation_graph_get_case(&source_graph, (uint32_t)i);
+		const struct prototype_typed_occurrence_match_case* source_case =
+			prototype_typed_occurrence_graph_get_case(source_graph, (uint32_t)i);
 		if (!source_case) {
 			return -1;
 		}
-		struct prototype_operation_match_case operation_case = *source_case;
+		struct prototype_typed_occurrence_match_case operation_case = *source_case;
 		if (operation_case.context_id >= source->contexts.context_count) {
 			return -1;
 		}
@@ -1063,26 +1003,22 @@ static int append_link_operation_graph(
 				operation_case.refinement_substitution
 			];
 		}
-		operation_case.body_operation = offset_link_graph_id(
-			operation_case.body_operation, operation_offset
-		);
 		RELOCATE_TERM_FIELD(operation_case.constructor_owner);
 		for (uint32_t j = 0; j < operation_case.binder_count; ++j) {
-			operation_case.ast_binder_ids[j] = offset_link_graph_id(
-				operation_case.ast_binder_ids[j], source_binder_offset
-			);
+			operation_case.ast_binder_ids[j] = PROTOTYPE_INVALID_ID;
+			RELOCATE_BINDING_FIELD(operation_case.binder_ids[j]);
 		}
-		if (prototype_operation_graph_add_case(
-				&target_graph, &target->contexts, operation_case, NULL
+		if (prototype_typed_occurrence_graph_add_case(
+				target_graph, &target->contexts, operation_case, NULL
 			) != 0) {
 			return -1;
 		}
 	}
 	for (size_t i = 0; i < source->effect_constraint_count; ++i) {
-		struct prototype_operation_effect_constraint constraint =
+		struct prototype_occurrence_effect_constraint constraint =
 			source->effect_constraints[i];
-		constraint.operation = offset_link_graph_id(
-			constraint.operation, operation_offset
+		constraint.occurrence = offset_link_graph_id(
+			constraint.occurrence, occurrence_offset
 		);
 		RELOCATE_TERM_FIELD(constraint.result_row);
 		RELOCATE_TERM_FIELD(constraint.left_row);
@@ -1098,13 +1034,13 @@ static int append_link_operation_graph(
 			return -1;
 		}
 		struct prototype_verification_obligation obligation = *source_obligation;
-		obligation.operation = offset_link_graph_id(obligation.operation, operation_offset);
+		obligation.occurrence = offset_link_graph_id(obligation.occurrence, occurrence_offset);
 		RELOCATE_TERM_FIELD(obligation.core_term);
-		obligation.computation_operation = offset_link_graph_id(
-			obligation.computation_operation, operation_offset
+		obligation.computation_occurrence = offset_link_graph_id(
+			obligation.computation_occurrence, occurrence_offset
 		);
-		obligation.continuation_operation = offset_link_graph_id(
-			obligation.continuation_operation, operation_offset
+		obligation.continuation_occurrence = offset_link_graph_id(
+			obligation.continuation_occurrence, occurrence_offset
 		);
 		RELOCATE_BINDING_FIELD(obligation.continuation_binder_id);
 		RELOCATE_TERM_FIELD(obligation.input_classifier);
@@ -1114,17 +1050,16 @@ static int append_link_operation_graph(
 			return -1;
 		}
 	}
-	if (source->selected_entry_operation != PROTOTYPE_INVALID_ID) {
+	if (source->selected_entry_occurrence != PROTOTYPE_INVALID_ID) {
 		target->selected_entry_symbol_id = source->selected_entry_symbol_id;
 		target->selected_entry_term = source->selected_entry_term;
 		target->selected_entry_classifier = source->selected_entry_classifier;
 		RELOCATE_TERM_FIELD(target->selected_entry_term);
 		RELOCATE_TERM_FIELD(target->selected_entry_classifier);
-		target->selected_entry_operation = offset_link_graph_id(
-			source->selected_entry_operation, operation_offset
+		target->selected_entry_occurrence = offset_link_graph_id(
+			source->selected_entry_occurrence, occurrence_offset
 		);
 	}
-	prototype_compile_metadata_commit_operation_graph(target, &target_graph);
 #undef RELOCATE_BINDING_FIELD
 #undef RELOCATE_TERM_FIELD
 	return 0;
@@ -1256,8 +1191,9 @@ static int check_export_normalization_equal(
 		artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
 		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations, OPERATION_CAPACITY,
-		operation_cases, OPERATION_CASE_CAPACITY,
-		operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
+		occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
+		occurrence_match_cases, OPERATION_CASE_CAPACITY,
+		occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -1483,8 +1419,9 @@ static int check_exports_normalization_equal(
 		artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
 		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations, OPERATION_CAPACITY,
-		operation_cases, OPERATION_CASE_CAPACITY,
-		operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
+		occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
+		occurrence_match_cases, OPERATION_CASE_CAPACITY,
+		occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -1636,6 +1573,7 @@ static int trace_compiled_export_evaluation(
 	const char* name
 ) {
 	struct prototype_term_definition_env definition_env;
+	struct prototype_term_reduction_environment reduction_environment;
 	uint64_t induction_hypothesis_reductions = 0;
 	uint32_t result;
 	int name_symbol;
@@ -1648,6 +1586,11 @@ static int trace_compiled_export_evaluation(
 			artifact_definitions,
 			ARTIFACT_DEFINITION_CAPACITY,
 			&definition_env
+		) != 0 || prototype_type_declaration_project_reduction_environment(
+			term_db,
+			type_declarations,
+			symbols,
+			&reduction_environment
 		) != 0) {
 		return -1;
 	}
@@ -1656,11 +1599,13 @@ static int trace_compiled_export_evaluation(
 			interface, name_symbol, &export_id
 		) != 0 || prototype_term_perform_with_options(
 			term_db,
-			type_declarations,
+			NULL,
 			&definition_env,
 			(struct prototype_term_reduction_options) {
 				.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT |
 					PROTOTYPE_TERM_REDUCE_DEFINITIONS,
+				.symbols = symbols,
+				.reduction_environment = &reduction_environment,
 				.p_induction_hypothesis_reductions =
 					&induction_hypothesis_reductions
 			},
@@ -1785,8 +1730,9 @@ static int check_exports_shape_equal(
 		artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
 		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations, OPERATION_CAPACITY,
-		operation_cases, OPERATION_CASE_CAPACITY,
-		operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
+		occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
+		occurrence_match_cases, OPERATION_CASE_CAPACITY,
+		occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -1963,8 +1909,9 @@ static int check_export_classifier_compatible(
 		artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
 		artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations, OPERATION_CAPACITY,
-		operation_cases, OPERATION_CASE_CAPACITY,
-		operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
+		occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
+		occurrence_match_cases, OPERATION_CASE_CAPACITY,
+		occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 	);
@@ -2267,6 +2214,7 @@ static int read_import_artifact_into_slot(
 		PROTOTYPE_SUBSTITUTION_CAPACITY,
 		provider_operations,
 		OPERATION_CAPACITY,
+		provider_occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
 		provider_operation_cases,
 		OPERATION_CASE_CAPACITY,
 		provider_operation_fold_clauses,
@@ -3538,9 +3486,10 @@ int main(int argc, char** argv) {
 			PROTOTYPE_SUBSTITUTION_CAPACITY,
 			operations,
 			OPERATION_CAPACITY,
-			operation_cases,
+		occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
+			occurrence_match_cases,
 			OPERATION_CASE_CAPACITY,
-			operation_fold_clauses,
+			occurrence_fold_clauses,
 			OPERATION_FOLD_CLAUSE_CAPACITY,
 			effect_constraints,
 			EFFECT_CONSTRAINT_CAPACITY,
@@ -3590,6 +3539,17 @@ int main(int argc, char** argv) {
 				&symbols
 			) != 0) {
 			fprintf(stderr, "%s: failed to order provider artifacts\n", link_target_path);
+			symbol_table_free(&symbols);
+			return 1;
+		}
+		struct prototype_typed_occurrence_graph* linked_occurrences =
+			prototype_compile_metadata_typed_occurrences(&metadata);
+		if (link_provider_count != 0 &&
+			prototype_typed_occurrence_graph_begin_transaction(
+				linked_occurrences, &term_db, &metadata.contexts
+			) != 0) {
+			fprintf(stderr, "%s: failed to begin linked occurrence transaction\n",
+				link_target_path);
 			symbol_table_free(&symbols);
 			return 1;
 		}
@@ -3703,6 +3663,7 @@ int main(int argc, char** argv) {
 				PROTOTYPE_SUBSTITUTION_CAPACITY,
 				provider_operations,
 				OPERATION_CAPACITY,
+		provider_occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
 				provider_operation_cases,
 				OPERATION_CASE_CAPACITY,
 				provider_operation_fold_clauses,
@@ -3749,8 +3710,8 @@ int main(int argc, char** argv) {
 				symbol_table_free(&symbols);
 				return 1;
 			}
-			uint32_t provider_operation_offset =
-				(uint32_t)metadata.operation_count;
+			uint32_t provider_occurrence_offset =
+				(uint32_t)metadata.typed_occurrences.occurrence_count;
 			size_t provider_term_relocation_count =
 				provider_term_db.term_count == 0 ? 1 : provider_term_db.term_count;
 			size_t provider_context_relocation_count =
@@ -3798,7 +3759,7 @@ int main(int argc, char** argv) {
 					&provider_judgement_db,
 					&provider_metadata.contexts,
 					&provider_metadata.substitutions,
-					provider_operation_offset,
+					provider_occurrence_offset,
 					provider_term_relocation,
 					provider_term_relocation_count,
 					provider_context_relocation,
@@ -3813,7 +3774,7 @@ int main(int argc, char** argv) {
 						provider_substitution_relocation_count,
 						provider_claim_relocation,
 						provider_claim_relocation_count
-					) != 0 || append_link_operation_graph(
+					) != 0 || append_link_typed_occurrence_graph(
 					&metadata,
 					&provider_metadata,
 					&term_db,
@@ -3830,7 +3791,7 @@ int main(int argc, char** argv) {
 				symbol_table_free(&symbols);
 				return 1;
 			}
-			if (prototype_artifact_align_export_operations(
+			if (prototype_artifact_align_export_occurrences(
 					&appended_interface,
 					&term_db,
 					&judgement_db,
@@ -3912,6 +3873,15 @@ int main(int argc, char** argv) {
 					export->local_term);
 			}
 		}
+		if (link_provider_count != 0 &&
+			prototype_typed_occurrence_graph_freeze(
+				linked_occurrences, &term_db, &metadata.contexts
+			) != 0) {
+			fprintf(stderr, "%s: failed to freeze linked occurrence snapshot\n",
+				link_target_path);
+			symbol_table_free(&symbols);
+			return 1;
+		}
 		if (prototype_artifact_interface_recompute_keys(
 				&artifact_interface,
 				&term_db,
@@ -3928,17 +3898,13 @@ int main(int argc, char** argv) {
 			symbol_table_free(&symbols);
 			return 1;
 		}
-		struct prototype_operation_graph linked_operation_graph;
-		prototype_compile_metadata_operation_graph(
-			&metadata, &linked_operation_graph
-		);
 		if (prototype_judgement_validate_accepted_graph(
 				&term_db,
 				&type_declarations,
 				prototype_default_intrinsic_environment(),
 				&metadata.contexts,
 				&metadata.substitutions,
-				&linked_operation_graph,
+				linked_occurrences,
 				&judgement_db
 			) != 0) {
 			fprintf(stderr, "%s: linked artifact proof validation failed\n", link_target_path);
@@ -3961,7 +3927,7 @@ int main(int argc, char** argv) {
 					&universe_db,
 					&type_declarations,
 					&term_db,
-					&linked_operation_graph,
+					linked_occurrences,
 					&judgement_db
 				) != 0) {
 				fprintf(stderr, "%s: failed to collect linked universe graph\n", link_output_path);
@@ -4128,8 +4094,9 @@ int main(int argc, char** argv) {
 				artifact_contexts, PROTOTYPE_CONTEXT_CAPACITY,
 				artifact_substitutions, PROTOTYPE_SUBSTITUTION_CAPACITY,
 				operations, OPERATION_CAPACITY,
-				operation_cases, OPERATION_CASE_CAPACITY,
-				operation_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
+		occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
+				occurrence_match_cases, OPERATION_CASE_CAPACITY,
+				occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 				effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
 				verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
 			);
@@ -4201,7 +4168,7 @@ int main(int argc, char** argv) {
 					&type_declarations,
 					&judgement_db
 				) != 0 ||
-				prototype_artifact_read_text_operation_graph(
+				prototype_artifact_read_text_typed_occurrences(
 					artifact_file,
 					&symbols,
 					&term_db,
@@ -4231,17 +4198,7 @@ int main(int argc, char** argv) {
 					prototype_default_intrinsic_environment(),
 					&artifact_metadata.contexts,
 					&artifact_metadata.substitutions,
-					&(struct prototype_operation_graph) {
-						.operations = artifact_metadata.operations,
-						.operation_count = artifact_metadata.operation_count,
-						.operation_capacity = artifact_metadata.operation_capacity,
-						.cases = artifact_metadata.operation_cases,
-						.case_count = artifact_metadata.operation_case_count,
-						.case_capacity = artifact_metadata.operation_case_capacity,
-						.fold_clauses = artifact_metadata.operation_fold_clauses,
-						.fold_clause_count = artifact_metadata.operation_fold_clause_count,
-						.fold_clause_capacity = artifact_metadata.operation_fold_clause_capacity
-					},
+					&artifact_metadata.typed_occurrences,
 					&judgement_db
 				) != 0 || prototype_artifact_interface_validate_identity_roots(
 					&artifact_interface,
@@ -4364,9 +4321,9 @@ int main(int argc, char** argv) {
 				judgement_db.next_universe_var
 			);
 			printf(
-				"operation_occurrences=%zu operation_cases=%zu verification_obligations=%zu\n",
-				artifact_metadata.operation_count,
-				artifact_metadata.operation_case_count,
+				"typed_occurrences=%zu occurrence_match_cases=%zu verification_obligations=%zu\n",
+				artifact_metadata.typed_occurrences.occurrence_count,
+				artifact_metadata.typed_occurrences.case_count,
 				prototype_verification_db_count(&artifact_metadata.verification)
 			);
 			printf(
@@ -4546,9 +4503,10 @@ int main(int argc, char** argv) {
 		PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations,
 		OPERATION_CAPACITY,
-		operation_cases,
+		occurrence_edges, OCCURRENCE_EDGE_CAPACITY,
+		occurrence_match_cases,
 		OPERATION_CASE_CAPACITY,
-		operation_fold_clauses,
+		occurrence_fold_clauses,
 		OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints,
 		EFFECT_CONSTRAINT_CAPACITY,
@@ -4872,9 +4830,11 @@ int main(int argc, char** argv) {
 		);
 		printf("\n");
 	}
-	printf("\n#### Operations ####\noperations=%zu cases=%zu\n",
-		metadata.operation_count,
-		metadata.operation_case_count);
+	printf("\n#### Typed Occurrences ####\ntyped-occurrences=%zu cases=%zu\n",
+		metadata.typed_occurrences.occurrence_count,
+		metadata.typed_occurrences.case_count);
+	const struct prototype_typed_occurrence_graph* debug_occurrences =
+		prototype_compile_metadata_typed_occurrences_const(&metadata);
 	printf(
 		"compile-budget policy=%d capabilities=%" PRIu64
 		" normalization=%" PRIu64 " used=%" PRIu64
@@ -4893,9 +4853,10 @@ int main(int argc, char** argv) {
 		metadata.solver_residual_count,
 		metadata.solver_incomplete_count
 	);
-	for (size_t i = 0; i < metadata.operation_count; ++i) {
-		const struct prototype_operation_node* operation = &metadata.operations[i];
-		printf("operation#%zu %s core#%u classifier#%u ast#%u",
+	for (size_t i = 0; i < metadata.typed_occurrences.occurrence_count; ++i) {
+		const struct prototype_typed_occurrence* operation =
+			&metadata.typed_occurrences.occurrences[i];
+		printf("occurrence#%zu %s core#%u classifier#%u ast#%u",
 			i,
 			operation_tag_name(operation->tag),
 			operation->core_term,
@@ -4907,30 +4868,59 @@ int main(int argc, char** argv) {
 		if (operation->binder_symbol_id >= 0) {
 			printf(" binder=%s", symbol_to_string(&symbols, operation->binder_symbol_id));
 		}
-		if (operation->tag == PROTOTYPE_OPERATION_MATCH) {
-			printf(" scrutinee-operation#%u cases=%u", operation->scrutinee,
-				operation->case_count);
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
+			uint32_t scrutinee_occurrence;
+			if (prototype_typed_occurrence_graph_child(
+					debug_occurrences, (uint32_t)i,
+					PROTOTYPE_TERM_CHILD_SCRUTINEE, 0, &scrutinee_occurrence
+				) == 0) {
+				printf(" scrutinee-occurrence#%u cases=%u", scrutinee_occurrence,
+					operation->case_count);
+			}
 		}
-		if (operation->tag == PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS) {
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS) {
+			uint32_t argument_occurrence = PROTOTYPE_INVALID_ID;
+			(void)prototype_typed_occurrence_graph_child(
+				debug_occurrences, (uint32_t)i,
+				PROTOTYPE_TERM_CHILD_INDUCTION_ARGUMENT, 0,
+				&argument_occurrence
+			);
 			printf(
-				" owner-match-operation#%u ih-scope#%u case=%u field=%u "
-				"ast-binder#%u argument-operation#%u",
-				operation->scrutinee,
+				" owner-match-occurrence#%u ih-scope#%u case=%u field=%u "
+				"ast-binder#%u argument-occurrence#%u",
+				operation->ih_owner_occurrence,
 				operation->ih_scope_id,
 				operation->ih_case_index,
 				operation->ih_field_index,
 				operation->referenced_ast_binder_id,
-				operation->argument
+				argument_occurrence
 			);
 		}
 		printf("\n");
 	}
-	for (size_t i = 0; i < metadata.operation_case_count; ++i) {
-		const struct prototype_operation_match_case* operation_case =
-			&metadata.operation_cases[i];
-		printf("operation-case#%zu body-operation#%u owner#%u ordinal#%u",
+	for (size_t i = 0; i < metadata.typed_occurrences.case_count; ++i) {
+		const struct prototype_typed_occurrence_match_case* operation_case =
+			&metadata.typed_occurrences.cases[i];
+		uint32_t body_occurrence = PROTOTYPE_INVALID_ID;
+		for (uint32_t parent = 0;
+			parent < metadata.typed_occurrences.occurrence_count;
+			++parent) {
+			const struct prototype_typed_occurrence* candidate =
+				&metadata.typed_occurrences.occurrences[parent];
+			if (candidate->tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH &&
+				i >= candidate->first_case &&
+				i < candidate->first_case + candidate->case_count) {
+				(void)prototype_typed_occurrence_graph_child(
+					debug_occurrences, parent,
+					PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+					(uint32_t)i - candidate->first_case, &body_occurrence
+				);
+				break;
+			}
+		}
+		printf("occurrence-case#%zu body-occurrence#%u owner#%u ordinal#%u",
 			i,
-			operation_case->body_operation,
+			body_occurrence,
 			operation_case->constructor_owner,
 			operation_case->constructor_id);
 		if (operation_case->case_label_symbol_id >= 0) {
@@ -4969,9 +4959,9 @@ int main(int argc, char** argv) {
 	);
 	for (size_t i = 0; i < metadata.label_count; ++i) {
 		const struct prototype_compile_label* label = &metadata.labels[i];
-		printf("metadata label %s -> operation#%u -> term#%u\n",
+		printf("metadata label %s -> occurrence#%u -> term#%u\n",
 			symbol_to_string(&symbols, label->name_symbol_id),
-			label->exposed_operation,
+			label->exposed_occurrence,
 			label->term);
 	}
 	for (size_t i = 0; i < metadata.resolve_error_count; ++i) {

@@ -20,9 +20,9 @@ main := { x := delayed; x; };
 EOF
 
 ./read_file.out "$tmp_dir/boundary.p" >"$tmp_dir/output"
-grep -q 'operation#[0-9][0-9]* return ' "$tmp_dir/output"
-grep -q 'operation#[0-9][0-9]* thunk ' "$tmp_dir/output"
-grep -q 'operation#[0-9][0-9]* force ' "$tmp_dir/output"
+grep -q 'occurrence#[0-9][0-9]* return ' "$tmp_dir/output"
+grep -q 'occurrence#[0-9][0-9]* thunk ' "$tmp_dir/output"
+grep -q 'occurrence#[0-9][0-9]* force ' "$tmp_dir/output"
 grep -q 'has-type RETURN(INT_LITERAL(1)) COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int)) \[return-intro proof#' "$tmp_dir/output"
 grep -q 'has-type THUNK(RETURN(INT_LITERAL(1))) Thunk(COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int))) \[thunk-intro proof#' "$tmp_dir/output"
 grep -q 'has-type FORCE(THUNK(RETURN(INT_LITERAL(1)))) COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int)) \[force-elim proof#' "$tmp_dir/output"

@@ -75,7 +75,7 @@ int prototype_judgement_add_type_formation_claim(
 	struct prototype_judgement_proposition proposition = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -87,7 +87,7 @@ int prototype_judgement_add_type_formation_claim(
 	derivation.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO;
 	derivation.conclusion_kind = proposition.kind;
 	derivation.conclusion_context_id = context_id;
-	derivation.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	derivation.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	derivation.conclusion_subject = subject;
 	derivation.conclusion_classifier = classifier;
 	initialize_proof_rule_parameters(&derivation, premises);
@@ -161,7 +161,7 @@ int prototype_judgement_add_constructor_intro_claim(
 	struct prototype_judgement_proposition proposition = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -173,7 +173,7 @@ int prototype_judgement_add_constructor_intro_claim(
 	derivation.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_INTRO;
 	derivation.conclusion_kind = proposition.kind;
 	derivation.conclusion_context_id = context_id;
-	derivation.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	derivation.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	derivation.conclusion_subject = subject;
 	derivation.conclusion_classifier = classifier;
 	initialize_proof_rule_parameters(&derivation, premises);
@@ -299,7 +299,7 @@ int prototype_judgement_add_constructor_spine_claim(
 	struct prototype_judgement_proposition proposition = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = context_id,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -309,7 +309,7 @@ int prototype_judgement_add_constructor_spine_claim(
 		PROTOTYPE_JUDGEMENT_PROOF_CONSTRUCTOR_SPINE_FORMATION;
 	derivation.conclusion_kind = proposition.kind;
 	derivation.conclusion_context_id = context_id;
-	derivation.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	derivation.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	derivation.conclusion_subject = subject;
 	derivation.conclusion_classifier = classifier;
 	initialize_proof_rule_parameters(&derivation, premises);
@@ -1258,7 +1258,7 @@ int prototype_judgement_delta_record_match_pattern(
 	struct prototype_judgement_proposition relation = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = delta->current_context_id,
-		.operation_id = delta->current_operation_id,
+		.occurrence_id = delta->current_occurrence_id,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -1269,7 +1269,7 @@ int prototype_judgement_delta_record_match_pattern(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_operation_id = relation.operation_id;
+	proof.conclusion_occurrence_id = relation.occurrence_id;
 	proof.conclusion_subject = relation.subject;
 	proof.conclusion_classifier = relation.classifier;
 	initialize_proof_rule_parameters(&proof, proof_premises);

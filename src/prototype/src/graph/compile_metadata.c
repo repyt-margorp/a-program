@@ -1,6 +1,30 @@
 #include "a_program/graph/compile_metadata.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 
 #include <string.h>
+
+int prototype_compile_metadata_frozen_snapshot(
+	const struct prototype_compile_metadata* metadata,
+	struct prototype_frozen_module_snapshot* p_snapshot
+) {
+	if (!metadata || !p_snapshot || !metadata->typed_occurrences.frozen ||
+		!metadata->typed_occurrences.sealed ||
+		metadata->typed_occurrences.transaction_active) {
+		return -1;
+	}
+	*p_snapshot = (struct prototype_frozen_module_snapshot) {
+		.reduction_environment = metadata->reduction_environment,
+		.contexts = metadata->contexts,
+		.substitutions = metadata->substitutions,
+		.typed_occurrences = metadata->typed_occurrences,
+		.verification = metadata->verification,
+		.selected_entry_term = metadata->selected_entry_term,
+		.selected_entry_classifier = metadata->selected_entry_classifier,
+		.selected_entry_occurrence = metadata->selected_entry_occurrence,
+		.required_runtime_capabilities = metadata->required_runtime_capabilities
+	};
+	return 0;
+}
 
 void prototype_compile_metadata_set_accepted_substitution_claim_storage(
 	struct prototype_compile_metadata* metadata,
@@ -104,20 +128,20 @@ enum prototype_type_inspection_state prototype_compile_metadata_inspect_type(
 		if (label->name_symbol_id != name_symbol_id) {
 			continue;
 		}
-		if (label->body_operation >= metadata->operation_count ||
-			label->exposed_operation >= metadata->operation_count ||
+		if (label->body_occurrence >= metadata->typed_occurrences.occurrence_count ||
+			label->exposed_occurrence >= metadata->typed_occurrences.occurrence_count ||
 			label->body_classifier == PROTOTYPE_INVALID_ID ||
 			label->exposed_classifier == PROTOTYPE_INVALID_ID ||
-			metadata->operations[label->body_operation].classifier !=
+			metadata->typed_occurrences.occurrences[label->body_occurrence].classifier !=
 				label->body_classifier ||
-			metadata->operations[label->exposed_operation].classifier !=
+			metadata->typed_occurrences.occurrences[label->exposed_occurrence].classifier !=
 				label->exposed_classifier) {
 			return PROTOTYPE_TYPE_INSPECTION_AMBIGUOUS;
 		}
 		*p_inspection = (struct prototype_type_inspection) {
-			.body_operation = label->body_operation,
+			.body_occurrence = label->body_occurrence,
 			.body_classifier = label->body_classifier,
-			.exposed_operation = label->exposed_operation,
+			.exposed_occurrence = label->exposed_occurrence,
 			.exposed_classifier = label->exposed_classifier,
 			.expectation_classifier = label->expectation_classifier,
 			.expectation_claim_id = label->expectation_claim_id
@@ -147,13 +171,15 @@ void prototype_compile_metadata_init(
 	size_t context_capacity,
 	struct prototype_substitution* substitutions,
 	size_t substitution_capacity,
-	struct prototype_operation_node* operations,
-	size_t operation_capacity,
-	struct prototype_operation_match_case* operation_cases,
-	size_t operation_case_capacity,
-	struct prototype_operation_computation_fold_clause* operation_fold_clauses,
-	size_t operation_fold_clause_capacity,
-	struct prototype_operation_effect_constraint* effect_constraints,
+	struct prototype_typed_occurrence* occurrences,
+	size_t occurrence_capacity,
+	struct prototype_typed_occurrence_edge* occurrence_edges,
+	size_t occurrence_edge_capacity,
+	struct prototype_typed_occurrence_match_case* occurrence_match_cases,
+	size_t occurrence_match_case_capacity,
+	struct prototype_typed_occurrence_fold_clause* occurrence_fold_clauses,
+	size_t occurrence_fold_clause_capacity,
+	struct prototype_occurrence_effect_constraint* effect_constraints,
 	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
 	size_t verification_obligation_capacity
@@ -164,7 +190,12 @@ void prototype_compile_metadata_init(
 	metadata->selected_entry_symbol_id = -1;
 	metadata->selected_entry_term = PROTOTYPE_INVALID_ID;
 	metadata->selected_entry_classifier = PROTOTYPE_INVALID_ID;
-	metadata->selected_entry_operation = PROTOTYPE_INVALID_ID;
+	metadata->selected_entry_occurrence = PROTOTYPE_INVALID_ID;
+	metadata->reduction_environment.system_nat_owner = PROTOTYPE_INVALID_ID;
+	metadata->reduction_environment.system_nat_zero_constructor =
+		PROTOTYPE_INVALID_ID;
+	metadata->reduction_environment.system_nat_succ_constructor =
+		PROTOTYPE_INVALID_ID;
 	metadata->normalization_step_limit = PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT;
 	metadata->solver_step_limit = PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT;
 	prototype_context_db_init(&metadata->contexts, contexts, context_capacity);
@@ -187,12 +218,17 @@ void prototype_compile_metadata_init(
 	metadata->resolution_iteration_capacity = resolution_iteration_capacity;
 	metadata->resolution_events = resolution_events;
 	metadata->resolution_event_capacity = resolution_event_capacity;
-	metadata->operations = operations;
-	metadata->operation_capacity = operation_capacity;
-	metadata->operation_cases = operation_cases;
-	metadata->operation_case_capacity = operation_case_capacity;
-	metadata->operation_fold_clauses = operation_fold_clauses;
-	metadata->operation_fold_clause_capacity = operation_fold_clause_capacity;
+	prototype_typed_occurrence_graph_init(
+		&metadata->typed_occurrences,
+		occurrences,
+		occurrence_capacity,
+		occurrence_edges,
+		occurrence_edge_capacity,
+		occurrence_match_cases,
+		occurrence_match_case_capacity,
+		occurrence_fold_clauses,
+		occurrence_fold_clause_capacity
+	);
 	metadata->effect_constraints = effect_constraints;
 	metadata->effect_constraint_capacity = effect_constraint_capacity;
 	prototype_verification_db_init(

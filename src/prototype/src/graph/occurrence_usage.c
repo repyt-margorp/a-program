@@ -1,12 +1,14 @@
-#include "a_program/graph/operation_usage.h"
+#include "a_program/graph/occurrence_usage.h"
+
+#include "a_program/graph/typed_occurrence_graph.h"
 
 #include "a_program/kernel/context.h"
 #include "a_program/kernel/resource_usage.h"
 
 #include <string.h>
 
-int prototype_operation_usage_solution_view(
-	const struct prototype_operation_usage_solution* solutions,
+int prototype_occurrence_usage_solution_view(
+	const struct prototype_occurrence_usage_solution* solutions,
 	size_t solution_count,
 	const struct prototype_usage_entry* entries,
 	size_t entry_count,
@@ -16,7 +18,7 @@ int prototype_operation_usage_solution_view(
 	if (!solutions || !p_usage || operation_id >= solution_count) {
 		return -1;
 	}
-	const struct prototype_operation_usage_solution* solution =
+	const struct prototype_occurrence_usage_solution* solution =
 		&solutions[operation_id];
 	if (solution->first_entry > entry_count ||
 		solution->entry_count > entry_count - solution->first_entry ||
@@ -62,7 +64,7 @@ static int usage_accumulate(
 }
 
 static int accumulate_child(
-	const struct prototype_operation_usage_solution* solutions,
+	const struct prototype_occurrence_usage_solution* solutions,
 	size_t solution_count,
 	const struct prototype_usage_entry* entries,
 	size_t entry_count,
@@ -72,7 +74,7 @@ static int accumulate_child(
 	int join
 ) {
 	struct prototype_usage_vector child;
-	return prototype_operation_usage_solution_view(
+	return prototype_occurrence_usage_solution_view(
 		solutions,
 		solution_count,
 		entries,
@@ -114,37 +116,51 @@ static int clear_case_local_usage(
 }
 
 static int callable_binder_grade(
-	const struct prototype_operation_graph* operations,
-	const struct prototype_operation_usage_solution* solutions,
+	const struct prototype_typed_occurrence_graph* occurrences,
+	const struct prototype_occurrence_usage_solution* solutions,
 	uint32_t operation_id,
 	int* p_grade
 ) {
-	if (!operations || !solutions || !p_grade) {
+	if (!occurrences || !solutions || !p_grade) {
 		return -1;
 	}
 	for (size_t depth = 0;
-		operation_id < operations->operation_count &&
-		depth < operations->operation_count;
+		operation_id < occurrences->occurrence_count &&
+		depth < occurrences->occurrence_count;
 		++depth) {
-		const struct prototype_operation_node* operation =
-			&operations->operations[operation_id];
-		if (operation->tag == PROTOTYPE_OPERATION_LAMBDA) {
+		const struct prototype_typed_occurrence* operation =
+			&occurrences->occurrences[operation_id];
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA) {
 			*p_grade = solutions[operation_id].binder_usage;
 			return 0;
 		}
-		if (operation->tag == PROTOTYPE_OPERATION_NAME) {
-			operation_id = operation->function;
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REFERENCE) {
+			operation_id = operation->wrapped_occurrence;
 			continue;
 		}
-		if (operation->tag == PROTOTYPE_OPERATION_ASCRIPTION) {
-			operation_id = operation->body;
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) {
+			operation_id = operation->wrapped_occurrence;
 			continue;
 		}
-		if (operation->tag == PROTOTYPE_OPERATION_FORCE &&
-			operation->argument < operations->operation_count &&
-			operations->operations[operation->argument].tag ==
-				PROTOTYPE_OPERATION_THUNK) {
-			operation_id = operations->operations[operation->argument].argument;
+		uint32_t forced_value;
+		uint32_t thunk_computation;
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_FORCE &&
+			prototype_typed_occurrence_graph_child(
+				occurrences,
+				operation_id,
+				PROTOTYPE_TERM_CHILD_FORCE_VALUE,
+				0,
+				&forced_value
+			) == 0 && occurrences->occurrences[forced_value].tag ==
+				PROTOTYPE_TYPED_OCCURRENCE_THUNK &&
+			prototype_typed_occurrence_graph_child(
+				occurrences,
+				forced_value,
+				PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION,
+				0,
+				&thunk_computation
+			) == 0) {
+			operation_id = thunk_computation;
 			continue;
 		}
 		/* Quantitative Pi domains are not represented yet. Conservatively permit
@@ -156,7 +172,7 @@ static int callable_binder_grade(
 }
 
 static int store_solution(
-	struct prototype_operation_usage_solution* solutions,
+	struct prototype_occurrence_usage_solution* solutions,
 	uint32_t operation_id,
 	struct prototype_usage_entry* entries,
 	size_t entry_capacity,
@@ -180,18 +196,18 @@ static int store_solution(
 	return 0;
 }
 
-int prototype_operation_usage_solve(
-	const struct prototype_operation_graph* operations,
+int prototype_occurrence_usage_solve(
+	const struct prototype_typed_occurrence_graph* occurrences,
 	const struct prototype_term_db* terms,
 	const struct prototype_context_db* contexts,
-	struct prototype_operation_usage_solution* solutions,
+	struct prototype_occurrence_usage_solution* solutions,
 	size_t solution_capacity,
 	struct prototype_usage_entry* entries,
 	size_t entry_capacity,
 	size_t* p_entry_count
 ) {
-	if (!operations || !terms || !solutions || !p_entry_count ||
-		operations->operation_count > solution_capacity ||
+	if (!occurrences || !terms || !solutions || !p_entry_count ||
+		occurrences->occurrence_count > solution_capacity ||
 		(entry_capacity != 0 && !entries)) {
 		return -1;
 	}
@@ -199,27 +215,27 @@ int prototype_operation_usage_solve(
 	memset(
 		solutions,
 		0,
-		operations->operation_count * sizeof(*solutions)
+		occurrences->occurrence_count * sizeof(*solutions)
 	);
 	for (uint32_t operation_id = 0;
-		operation_id < operations->operation_count;
+		operation_id < occurrences->occurrence_count;
 		++operation_id) {
 		struct prototype_usage_entry local_entries[PROTOTYPE_CONTEXT_CAPACITY];
 		struct prototype_usage_vector usage;
 		prototype_usage_vector_init(
 			&usage, local_entries, PROTOTYPE_CONTEXT_CAPACITY
 		);
-		const struct prototype_operation_node* operation =
-			&operations->operations[operation_id];
+		const struct prototype_typed_occurrence* operation =
+			&occurrences->occurrences[operation_id];
 		int binder_usage = PROTOTYPE_USAGE_ZERO;
 #define ACCUMULATE_CHILD(target, child, scalar, join) \
 	accumulate_child(solutions, operation_id, entries, *p_entry_count, \
 		(target), (child), (scalar), (join))
 		switch (operation->tag) {
-		case PROTOTYPE_OPERATION_ATOM:
-		case PROTOTYPE_OPERATION_CONSTRUCTOR:
+		case PROTOTYPE_TYPED_OCCURRENCE_ATOM:
+		case PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR:
 			break;
-		case PROTOTYPE_OPERATION_VAR:
+		case PROTOTYPE_TYPED_OCCURRENCE_VAR:
 			if (operation->context_action_substitution != PROTOTYPE_INVALID_ID) {
 				if (prototype_term_usage_analyze(
 						terms, operation->core_term, &usage
@@ -239,23 +255,33 @@ int prototype_operation_usage_solve(
 				return -1;
 			}
 			break;
-		case PROTOTYPE_OPERATION_NAME:
+		case PROTOTYPE_TYPED_OCCURRENCE_REFERENCE:
 			if (ACCUMULATE_CHILD(
-					&usage, operation->function, PROTOTYPE_USAGE_ONE, 0
+					&usage, operation->wrapped_occurrence, PROTOTYPE_USAGE_ONE, 0
 				) != 0) {
 				return -1;
 			}
 			break;
-		case PROTOTYPE_OPERATION_ASCRIPTION:
+		case PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE:
 			if (ACCUMULATE_CHILD(
-					&usage, operation->body, PROTOTYPE_USAGE_ONE, 0
+					&usage, operation->wrapped_occurrence, PROTOTYPE_USAGE_ONE, 0
 				) != 0) {
 				return -1;
 			}
 			break;
-		case PROTOTYPE_OPERATION_LAMBDA:
+		case PROTOTYPE_TYPED_OCCURRENCE_LAMBDA: {
+			uint32_t lambda_body;
+			if (prototype_typed_occurrence_graph_child(
+					occurrences,
+					operation_id,
+					PROTOTYPE_TERM_CHILD_BODY,
+					0,
+					&lambda_body
+				) != 0) {
+				return -1;
+			}
 			if (ACCUMULATE_CHILD(
-					&usage, operation->body, PROTOTYPE_USAGE_ONE, 0
+					&usage, lambda_body, PROTOTYPE_USAGE_ONE, 0
 				) != 0 || prototype_usage_vector_get(
 					&usage, operation->binding_id, &binder_usage
 				) != 0 || prototype_usage_vector_set(
@@ -264,37 +290,79 @@ int prototype_operation_usage_solve(
 				return -1;
 			}
 			break;
-		case PROTOTYPE_OPERATION_APP: {
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_APP: {
 			int argument_scale;
+			uint32_t function_occurrence;
+			uint32_t argument_occurrence;
+			if (prototype_typed_occurrence_graph_child(
+					occurrences, operation_id, PROTOTYPE_TERM_CHILD_FUNCTION, 0,
+					&function_occurrence
+				) != 0 || prototype_typed_occurrence_graph_child(
+					occurrences, operation_id, PROTOTYPE_TERM_CHILD_ARGUMENT, 0,
+					&argument_occurrence
+				) != 0) {
+				return -1;
+			}
 			if (ACCUMULATE_CHILD(
-					&usage, operation->function, PROTOTYPE_USAGE_ONE, 0
+					&usage, function_occurrence, PROTOTYPE_USAGE_ONE, 0
 				) != 0 || callable_binder_grade(
-					operations, solutions, operation->function, &argument_scale
+					occurrences, solutions, function_occurrence, &argument_scale
 				) != 0 || ACCUMULATE_CHILD(
-					&usage, operation->argument, argument_scale, 0
+					&usage, argument_occurrence, argument_scale, 0
 				) != 0) {
 				return -1;
 			}
 			break;
 		}
-		case PROTOTYPE_OPERATION_RETURN:
-		case PROTOTYPE_OPERATION_THUNK:
-		case PROTOTYPE_OPERATION_FORCE:
+		case PROTOTYPE_TYPED_OCCURRENCE_RETURN:
+		case PROTOTYPE_TYPED_OCCURRENCE_THUNK:
+		case PROTOTYPE_TYPED_OCCURRENCE_FORCE: {
+			int child_role = operation->tag == PROTOTYPE_TYPED_OCCURRENCE_RETURN ?
+				PROTOTYPE_TERM_CHILD_RETURN_VALUE :
+				operation->tag == PROTOTYPE_TYPED_OCCURRENCE_THUNK ?
+				PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION :
+				PROTOTYPE_TERM_CHILD_FORCE_VALUE;
+			uint32_t unary_child;
+			if (prototype_typed_occurrence_graph_child(
+					occurrences, operation_id, child_role, 0, &unary_child
+				) != 0) {
+				return -1;
+			}
 			if (ACCUMULATE_CHILD(
-					&usage, operation->argument, PROTOTYPE_USAGE_ONE, 0
+					&usage, unary_child, PROTOTYPE_USAGE_ONE, 0
 				) != 0) {
 				return -1;
 			}
 			break;
-		case PROTOTYPE_OPERATION_REQUEST: {
+		}
+		case PROTOTYPE_TYPED_OCCURRENCE_REQUEST: {
 			int operation_identity;
+			uint32_t operation_occurrence;
+			uint32_t argument_occurrence;
+			uint32_t continuation_occurrence;
+			if (prototype_typed_occurrence_graph_child(
+					occurrences, operation_id,
+					PROTOTYPE_TERM_CHILD_REQUEST_OPERATION, 0,
+					&operation_occurrence
+				) != 0 || prototype_typed_occurrence_graph_child(
+					occurrences, operation_id,
+					PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT, 0,
+					&argument_occurrence
+				) != 0 || prototype_typed_occurrence_graph_child(
+					occurrences, operation_id,
+					PROTOTYPE_TERM_CHILD_REQUEST_CONTINUATION, 0,
+					&continuation_occurrence
+				) != 0) {
+				return -1;
+			}
 			if (ACCUMULATE_CHILD(
-					&usage, operation->function, PROTOTYPE_USAGE_ONE, 0
+					&usage, operation_occurrence, PROTOTYPE_USAGE_ONE, 0
 				) != 0 || ACCUMULATE_CHILD(
-					&usage, operation->argument, PROTOTYPE_USAGE_ONE, 0
+					&usage, argument_occurrence, PROTOTYPE_USAGE_ONE, 0
 				) != 0 || prototype_term_effect_operation_identity(
 					terms,
-					operations->operations[operation->function].core_term,
+					occurrences->occurrences[operation_occurrence].core_term,
 					&operation_identity
 				) != 0) {
 				return -1;
@@ -310,17 +378,22 @@ int prototype_operation_usage_solve(
 					PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT ?
 					PROTOTYPE_USAGE_ONE : PROTOTYPE_USAGE_MANY;
 			if (ACCUMULATE_CHILD(
-					&usage, operation->body, continuation_scale, 0
+					&usage, continuation_occurrence, continuation_scale, 0
 				) != 0) {
 				return -1;
 			}
 			break;
 		}
-		case PROTOTYPE_OPERATION_MATCH: {
-			if (operation->first_case > operations->case_count ||
-				operation->case_count > operations->case_count -
-					operation->first_case || ACCUMULATE_CHILD(
-					&usage, operation->scrutinee, PROTOTYPE_USAGE_ONE, 0
+		case PROTOTYPE_TYPED_OCCURRENCE_MATCH: {
+			uint32_t scrutinee_occurrence;
+			if (operation->first_case > occurrences->case_count ||
+				operation->case_count > occurrences->case_count -
+					operation->first_case ||
+				prototype_typed_occurrence_graph_child(
+					occurrences, operation_id, PROTOTYPE_TERM_CHILD_SCRUTINEE, 0,
+					&scrutinee_occurrence
+				) != 0 || ACCUMULATE_CHILD(
+					&usage, scrutinee_occurrence, PROTOTYPE_USAGE_ONE, 0
 				) != 0) {
 				return -1;
 			}
@@ -330,16 +403,23 @@ int prototype_operation_usage_solve(
 				&branches, branch_entries, PROTOTYPE_CONTEXT_CAPACITY
 			);
 			for (uint32_t i = 0; i < operation->case_count; ++i) {
-				const struct prototype_operation_match_case* operation_case =
-					&operations->cases[operation->first_case + i];
+				const struct prototype_typed_occurrence_match_case* operation_case =
+					&occurrences->cases[operation->first_case + i];
 				struct prototype_usage_entry case_entries[PROTOTYPE_CONTEXT_CAPACITY];
 				struct prototype_usage_vector case_usage;
+				uint32_t case_body;
 				prototype_usage_vector_init(
 					&case_usage, case_entries, PROTOTYPE_CONTEXT_CAPACITY
 				);
-				if (ACCUMULATE_CHILD(
+				if (prototype_typed_occurrence_graph_child(
+						occurrences,
+						operation_id,
+						PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+						i,
+						&case_body
+					) != 0 || ACCUMULATE_CHILD(
 						&case_usage,
-						operation_case->body_operation,
+						case_body,
 						PROTOTYPE_USAGE_ONE,
 						0
 					) != 0) {
@@ -366,22 +446,39 @@ int prototype_operation_usage_solve(
 			}
 			break;
 		}
-		case PROTOTYPE_OPERATION_COMPUTATION_FOLD: {
-			if (ACCUMULATE_CHILD(
-					&usage, operation->function, PROTOTYPE_USAGE_ONE, 0
+		case PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD: {
+			uint32_t computation_occurrence;
+			if (prototype_typed_occurrence_graph_child(
+					occurrences,
+					operation_id,
+					PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION,
+					0,
+					&computation_occurrence
+				) != 0 || ACCUMULATE_CHILD(
+					&usage, computation_occurrence, PROTOTYPE_USAGE_ONE, 0
 				) != 0) {
 				return -1;
 			}
 			if (operation->fold_clause_count == 0) {
+				uint32_t return_clause;
+				if (prototype_typed_occurrence_graph_child(
+						occurrences,
+						operation_id,
+						PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE,
+						0,
+						&return_clause
+					) != 0) {
+					return -1;
+				}
 				if (ACCUMULATE_CHILD(
-						&usage, operation->argument, PROTOTYPE_USAGE_ONE, 0
+						&usage, return_clause, PROTOTYPE_USAGE_ONE, 0
 					) != 0) {
 					return -1;
 				}
 				break;
 			}
-			if (operation->first_fold_clause > operations->fold_clause_count ||
-				operation->fold_clause_count > operations->fold_clause_count -
+			if (operation->first_fold_clause > occurrences->fold_clause_count ||
+				operation->fold_clause_count > occurrences->fold_clause_count -
 					operation->first_fold_clause) {
 				return -1;
 			}
@@ -390,30 +487,62 @@ int prototype_operation_usage_solve(
 			prototype_usage_vector_init(
 				&branches, branch_entries, PROTOTYPE_CONTEXT_CAPACITY
 			);
-			if (operation->fold_return_operation >= operations->operation_count ||
-				operations->operations[operation->fold_return_operation].tag !=
-					PROTOTYPE_OPERATION_LAMBDA || ACCUMULATE_CHILD(
-					&branches, operation->scrutinee, PROTOTYPE_USAGE_ONE, 1
+			uint32_t return_clause;
+			uint32_t return_body;
+			if (prototype_typed_occurrence_graph_child(
+					occurrences,
+					operation_id,
+					PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE,
+					0,
+					&return_clause
+				) != 0 || prototype_typed_occurrence_graph_child(
+					occurrences,
+					return_clause,
+					PROTOTYPE_TERM_CHILD_BODY,
+					0,
+					&return_body
+				) != 0 || occurrences->occurrences[return_clause].tag !=
+					PROTOTYPE_TYPED_OCCURRENCE_LAMBDA || ACCUMULATE_CHILD(
+					&branches, return_body, PROTOTYPE_USAGE_ONE, 1
 				) != 0 || prototype_usage_vector_set(
 					&branches,
-					operations->operations[
-						operation->fold_return_operation
-					].binding_id,
+					occurrences->occurrences[return_clause].binding_id,
 					PROTOTYPE_USAGE_ZERO
 				) != 0) {
 				return -1;
 			}
 			for (uint32_t i = 0; i < operation->fold_clause_count; ++i) {
-				const struct prototype_operation_computation_fold_clause* clause =
-					&operations->fold_clauses[operation->first_fold_clause + i];
+				const struct prototype_typed_occurrence_fold_clause* clause =
+					&occurrences->fold_clauses[operation->first_fold_clause + i];
 				struct prototype_usage_entry clause_entries[PROTOTYPE_CONTEXT_CAPACITY];
 				struct prototype_usage_vector clause_usage;
+				uint32_t argument_lambda;
+				uint32_t continuation_lambda;
+				uint32_t clause_body;
 				prototype_usage_vector_init(
 					&clause_usage, clause_entries, PROTOTYPE_CONTEXT_CAPACITY
 				);
-				if (ACCUMULATE_CHILD(
+				if (prototype_typed_occurrence_graph_child(
+						occurrences,
+						operation_id,
+						PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY,
+						i,
+						&argument_lambda
+					) != 0 || prototype_typed_occurrence_graph_child(
+						occurrences,
+						argument_lambda,
+						PROTOTYPE_TERM_CHILD_BODY,
+						0,
+						&continuation_lambda
+					) != 0 || prototype_typed_occurrence_graph_child(
+						occurrences,
+						continuation_lambda,
+						PROTOTYPE_TERM_CHILD_BODY,
+						0,
+						&clause_body
+					) != 0 || ACCUMULATE_CHILD(
 						&clause_usage,
-						clause->body_operation,
+						clause_body,
 						PROTOTYPE_USAGE_ONE,
 						0
 					) != 0 || prototype_usage_vector_set(
@@ -437,13 +566,24 @@ int prototype_operation_usage_solve(
 			}
 			break;
 		}
-		case PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS:
+		case PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS: {
+			uint32_t induction_argument;
+			if (prototype_typed_occurrence_graph_child(
+					occurrences,
+					operation_id,
+					PROTOTYPE_TERM_CHILD_INDUCTION_ARGUMENT,
+					0,
+					&induction_argument
+				) != 0) {
+				return -1;
+			}
 			if (ACCUMULATE_CHILD(
-					&usage, operation->argument, PROTOTYPE_USAGE_ONE, 0
+					&usage, induction_argument, PROTOTYPE_USAGE_ONE, 0
 				) != 0) {
 				return -1;
 			}
 			break;
+		}
 		default:
 			return -1;
 		}

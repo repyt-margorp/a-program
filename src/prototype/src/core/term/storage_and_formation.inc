@@ -962,12 +962,30 @@ int prototype_term_erase_constructor_view_owners(struct prototype_term_db* db) {
 static int prototype_term_type_former(
 	struct prototype_term_db* db,
 	uint32_t representation_id,
+	uint32_t constructor_count,
 	uint32_t* p_ret
 ) {
+	if (!db || !p_ret) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->term_count; ++i) {
+		struct prototype_term* existing = &db->terms[i];
+		if (existing->tag != PROTOTYPE_TERM_TYPE_FORMER ||
+			existing->as.type_former.representation_id != representation_id) {
+			continue;
+		}
+		if (existing->as.type_former.constructor_count != constructor_count) {
+			existing->as.type_former.constructor_count = constructor_count;
+			invalidate_normalization_cache(db);
+		}
+		*p_ret = i;
+		return 0;
+	}
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_TYPE_FORMER;
 	term.as.type_former.representation_id = representation_id;
+	term.as.type_former.constructor_count = constructor_count;
 	return add_term(db, term, p_ret);
 }
 
@@ -1085,7 +1103,9 @@ int prototype_term_type_instance_make(
 		return -1;
 	}
 	uint32_t current;
-	if (prototype_term_type_former(db, representation_id, &current) != 0) {
+	if (prototype_term_type_former(
+			db, representation_id, type->constructor_count, &current
+		) != 0) {
 		return -1;
 	}
 	uint32_t source_current;
@@ -1222,6 +1242,8 @@ int prototype_term_rebind_type_former_anchors(
 		}
 		term->as.type_former.representation_id =
 			type_declarations->type_declarations[declaration_anchor].representation_id;
+		term->as.type_former.constructor_count =
+			type_declarations->type_declarations[declaration_anchor].constructor_count;
 	}
 	return prototype_term_canonicalize_type_former_references(db);
 }
@@ -1390,10 +1412,11 @@ static int prototype_term_type_view_rebuild_from_source(
 	uint32_t source,
 	uint32_t* p_ret
 ) {
-	if (!db || !p_ret || core >= db->term_count || source >= db->term_count) {
+	if (!db || !type_declarations || !p_ret || core >= db->term_count ||
+		source >= db->term_count || view_type_id >= type_declarations->type_count) {
 		return -1;
 	}
-	if (type_declarations) {
+	{
 		uint32_t source_type_id;
 		uint32_t args[16];
 		uint32_t arg_count;

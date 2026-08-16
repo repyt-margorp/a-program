@@ -170,13 +170,13 @@ int prototype_judgement_delta_record_lambda_intro(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	uint32_t conclusion_operation_id,
+	uint32_t conclusion_occurrence_id,
 	uint32_t subject,
 	uint32_t classifier,
 	uint32_t binder_subject,
 	uint32_t body_subject,
 	const struct prototype_judgement_selected_evidence* binder_evidence,
-	uint32_t body_operation_id,
+	uint32_t body_occurrence_id,
 	const struct prototype_judgement_selected_evidence* body_evidence
 );
 
@@ -323,7 +323,7 @@ int prototype_judgement_add_match_claim(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t context_id,
 	uint32_t subject,
 	uint32_t classifier,
@@ -338,7 +338,7 @@ int prototype_judgement_add_indexed_match_claim(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t context_id,
 	uint32_t subject,
 	uint32_t classifier,
@@ -569,7 +569,7 @@ int prototype_judgement_delta_record_constructor_spine(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
-	const uint32_t* argument_operation_ids,
+	const uint32_t* argument_occurrence_ids,
 	const struct prototype_judgement_selected_evidence* argument_evidence,
 	uint32_t argument_count
 );
@@ -586,7 +586,7 @@ int prototype_judgement_delta_record_computation_fold_elim(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
-	const uint32_t* premise_operation_ids,
+	const uint32_t* premise_occurrence_ids,
 	const struct prototype_judgement_selected_evidence* premise_evidence,
 	uint32_t premise_count
 );
@@ -860,23 +860,23 @@ int prototype_judgement_validate_accepted_graph(
 	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	struct prototype_judgement_db* judgement
 );
 
-/* Validate one selected typed occurrence from its authoritative OperationGraph
+/* Validate one selected typed occurrence from its authoritative graph
  * identity. TermDB fields are checked only as erased projections. */
-int prototype_judgement_validate_operation_typing(
+int prototype_judgement_validate_occurrence_typing(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t operation_id
 );
 
-struct prototype_judgement_principal_operation_audit {
-	size_t principal_operation_count;
+struct prototype_judgement_principal_occurrence_audit {
+	size_t principal_occurrence_count;
 	size_t proposition_count;
 	size_t accepted_claim_count;
 	size_t derivation_count;
@@ -891,29 +891,29 @@ int prototype_judgement_proof_reconstruction_role(
 	const struct prototype_judgement_proposition* proposition
 );
 
-int prototype_judgement_project_principal_operation_proposition(
-	const struct prototype_operation_graph* operations,
+int prototype_judgement_project_principal_occurrence_proposition(
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t operation_id,
 	struct prototype_judgement_proposition* p_proposition
 );
 
-int prototype_judgement_audit_principal_operation_claims(
+int prototype_judgement_audit_principal_occurrence_claims(
 	const struct prototype_term_db* terms,
 	const struct prototype_context_db* contexts,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement,
-	struct prototype_judgement_principal_operation_audit* p_audit
+	struct prototype_judgement_principal_occurrence_audit* p_audit
 );
 
 int prototype_judgement_publish_candidates(
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	struct prototype_judgement_db* judgement
 );
 
 int prototype_judgement_add_normalization_premise_conversions(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	struct prototype_judgement_db* judgement
 );
 
@@ -940,7 +940,7 @@ int prototype_judgement_lookup_authority_neutral_core_classifier(
 );
 
 int prototype_judgement_recompute_closure_ranks(
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	struct prototype_judgement_db* judgement
 );
 

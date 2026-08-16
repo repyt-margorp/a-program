@@ -353,7 +353,7 @@
 	uint32_t unbox_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		unbox_operation,
 		bool_context,
 		unbox_operation,

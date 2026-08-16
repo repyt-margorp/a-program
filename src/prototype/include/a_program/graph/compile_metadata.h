@@ -6,7 +6,7 @@
 
 #include "a_program/frontend/ast.h"
 #include "a_program/graph/compile_diagnostic.h"
-#include "a_program/graph/operation_model.h"
+#include "a_program/graph/typed_occurrence_model.h"
 #include "a_program/graph/verification.h"
 #include "a_program/kernel/context.h"
 
@@ -113,7 +113,7 @@ struct prototype_compile_metadata {
 	int selected_entry_symbol_id;
 	uint32_t selected_entry_term;
 	uint32_t selected_entry_classifier;
-	uint32_t selected_entry_operation;
+	uint32_t selected_entry_occurrence;
 	uint64_t required_runtime_capabilities;
 	uint64_t normalization_step_limit;
 	uint64_t normalization_steps_used;
@@ -124,6 +124,9 @@ struct prototype_compile_metadata {
 	uint64_t solver_solved_count;
 	uint64_t solver_residual_count;
 	uint64_t solver_incomplete_count;
+	/* Frozen operational projection consumed by Core execution. It deliberately
+	 * excludes static type declarations and proof state. */
+	struct prototype_term_reduction_environment reduction_environment;
 
 	struct prototype_context_db contexts;
 	struct prototype_substitution_db substitutions;
@@ -133,19 +136,9 @@ struct prototype_compile_metadata {
 	uint32_t* accepted_substitution_claims;
 	size_t accepted_substitution_claim_capacity;
 
-	struct prototype_operation_node* operations;
-	size_t operation_count;
-	size_t operation_capacity;
+	struct prototype_typed_occurrence_graph typed_occurrences;
 
-	struct prototype_operation_match_case* operation_cases;
-	size_t operation_case_count;
-	size_t operation_case_capacity;
-
-	struct prototype_operation_computation_fold_clause* operation_fold_clauses;
-	size_t operation_fold_clause_count;
-	size_t operation_fold_clause_capacity;
-
-	struct prototype_operation_effect_constraint* effect_constraints;
+	struct prototype_occurrence_effect_constraint* effect_constraints;
 	size_t effect_constraint_count;
 	size_t effect_constraint_capacity;
 
@@ -184,10 +177,31 @@ struct prototype_compile_metadata {
 	size_t resolution_event_capacity;
 };
 
+/* Immutable-by-contract publication view. The contained DB values are shallow
+ * snapshots whose counts fix the published prefixes; backing storage remains
+ * owned by the compiler session. Mutable solver and diagnostic state is not
+ * exposed through this boundary. */
+struct prototype_frozen_module_snapshot {
+	struct prototype_term_reduction_environment reduction_environment;
+	struct prototype_context_db contexts;
+	struct prototype_substitution_db substitutions;
+	struct prototype_typed_occurrence_graph typed_occurrences;
+	struct prototype_verification_db verification;
+	uint32_t selected_entry_term;
+	uint32_t selected_entry_classifier;
+	uint32_t selected_entry_occurrence;
+	uint64_t required_runtime_capabilities;
+};
+
+int prototype_compile_metadata_frozen_snapshot(
+	const struct prototype_compile_metadata* metadata,
+	struct prototype_frozen_module_snapshot* p_snapshot
+);
+
 struct prototype_type_inspection {
-	uint32_t body_operation;
+	uint32_t body_occurrence;
 	uint32_t body_classifier;
-	uint32_t exposed_operation;
+	uint32_t exposed_occurrence;
 	uint32_t exposed_classifier;
 	uint32_t expectation_classifier;
 	uint32_t expectation_claim_id;
@@ -253,13 +267,15 @@ void prototype_compile_metadata_init(
 	size_t context_capacity,
 	struct prototype_substitution* substitutions,
 	size_t substitution_capacity,
-	struct prototype_operation_node* operations,
-	size_t operation_capacity,
-	struct prototype_operation_match_case* operation_cases,
-	size_t operation_case_capacity,
-	struct prototype_operation_computation_fold_clause* operation_fold_clauses,
-	size_t operation_fold_clause_capacity,
-	struct prototype_operation_effect_constraint* effect_constraints,
+	struct prototype_typed_occurrence* occurrences,
+	size_t occurrence_capacity,
+	struct prototype_typed_occurrence_edge* occurrence_edges,
+	size_t occurrence_edge_capacity,
+	struct prototype_typed_occurrence_match_case* occurrence_match_cases,
+	size_t occurrence_match_case_capacity,
+	struct prototype_typed_occurrence_fold_clause* occurrence_fold_clauses,
+	size_t occurrence_fold_clause_capacity,
+	struct prototype_occurrence_effect_constraint* effect_constraints,
 	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
 	size_t verification_obligation_capacity

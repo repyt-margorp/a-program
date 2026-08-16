@@ -2,8 +2,8 @@
 #include "a_program/kernel/judgement/rules.h"
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
-#include "a_program/graph/operation_graph.h"
-#include "a_program/graph/operation_usage.h"
+#include "a_program/graph/typed_occurrence_graph.h"
+#include "a_program/graph/occurrence_usage.h"
 
 #include <stdint.h>
 #include <stdio.h>

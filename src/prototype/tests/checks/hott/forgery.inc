@@ -62,7 +62,7 @@
 	uint32_t nat_match_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		nat_match_operation,
 		nat_context,
 		nat_match_operation,
@@ -473,7 +473,7 @@
 	uint32_t beta_false_claim = fixture_add_claim(
 		&judgement,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
 		beta_false_operation,
 		empty,
 		beta_false_operation,

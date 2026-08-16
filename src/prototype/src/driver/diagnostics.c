@@ -72,13 +72,13 @@ void prototype_diagnostic_print_compile_diagnostics(
 			&metadata->compile_diagnostics[i];
 		fprintf(
 			stream,
-			"compile-diagnostic diagnostic-code=%s phase=%s ast#%u span=%u:%u operation#%u constraint#%u expected=term#%u actual=term#%u\n",
+			"compile-diagnostic diagnostic-code=%s phase=%s ast#%u span=%u:%u occurrence#%u constraint#%u expected=term#%u actual=term#%u\n",
 			prototype_compile_diagnostic_reason_name(diagnostic->reason),
 			prototype_compile_diagnostic_phase_name(diagnostic->phase),
 			diagnostic->source_ast,
 			diagnostic->span.line,
 			diagnostic->span.column,
-			diagnostic->operation_id,
+			diagnostic->occurrence_id,
 			diagnostic->constraint_id,
 			diagnostic->expected_classifier,
 			diagnostic->actual_classifier

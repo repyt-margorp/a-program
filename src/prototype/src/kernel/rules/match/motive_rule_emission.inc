@@ -234,7 +234,7 @@ int prototype_judgement_delta_ensure_type_at_universe(
 			return -1;
 		}
 		uint32_t outer_context = delta->current_context_id;
-		uint32_t outer_operation = delta->current_operation_id;
+		uint32_t outer_operation = delta->current_occurrence_id;
 		if (ensure_lambda_binder_assumption(
 				delta, terms, codomain_lambda, domain
 			) != 0 || prototype_judgement_delta_ensure_type_at_universe(
@@ -279,7 +279,7 @@ int prototype_judgement_delta_ensure_type_at_universe(
 			return -1;
 		}
 		prototype_judgement_delta_set_context(delta, binder_context);
-		prototype_judgement_delta_set_operation(delta, PROTOTYPE_INVALID_ID);
+		prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 		if ((has_outer_codomain_evidence &&
 			 prototype_judgement_delta_record_context_weaken(
 				delta, &outer_codomain_evidence, binder_projection
@@ -291,7 +291,7 @@ int prototype_judgement_delta_ensure_type_at_universe(
 				universe
 			) != 0) {
 			prototype_judgement_delta_set_context(delta, outer_context);
-			prototype_judgement_delta_set_operation(delta, outer_operation);
+			prototype_judgement_delta_set_occurrence(delta, outer_operation);
 			return -1;
 		}
 		uint32_t lambda_universe_family;
@@ -313,7 +313,7 @@ int prototype_judgement_delta_ensure_type_at_universe(
 			codomain_family >= terms->term_count ||
 			terms->terms[subject].as.pi.codomain_family >= terms->term_count) {
 			prototype_judgement_delta_set_context(delta, outer_context);
-			prototype_judgement_delta_set_operation(delta, outer_operation);
+			prototype_judgement_delta_set_occurrence(delta, outer_operation);
 			return -1;
 		}
 		uint32_t family = terms->terms[subject].as.pi.codomain_family;
@@ -325,14 +325,14 @@ int prototype_judgement_delta_ensure_type_at_universe(
 			terms->terms[terms->terms[returned].as.lambda.body].tag != PROTOTYPE_TERM_RETURN ||
 			terms->terms[terms->terms[returned].as.lambda.body].as.return_term.value != codomain) {
 			prototype_judgement_delta_set_context(delta, outer_context);
-			prototype_judgement_delta_set_operation(delta, outer_operation);
+			prototype_judgement_delta_set_occurrence(delta, outer_operation);
 			return -1;
 		}
 		uint32_t returned_body = terms->terms[returned].as.lambda.body;
 		uint32_t returned_binder;
 		if (prototype_term_var(terms, codomain_binder, &returned_binder) != 0) {
 			prototype_judgement_delta_set_context(delta, outer_context);
-			prototype_judgement_delta_set_operation(delta, outer_operation);
+			prototype_judgement_delta_set_occurrence(delta, outer_operation);
 			return -1;
 		}
 		struct prototype_judgement_selected_evidence codomain_evidence;
@@ -345,7 +345,7 @@ int prototype_judgement_delta_ensure_type_at_universe(
 				&codomain_evidence
 			) != 0) {
 			prototype_judgement_delta_set_context(delta, outer_context);
-			prototype_judgement_delta_set_operation(delta, outer_operation);
+			prototype_judgement_delta_set_occurrence(delta, outer_operation);
 			return -1;
 		}
 		uint32_t return_subjects[1] = { codomain };
@@ -367,7 +367,7 @@ int prototype_judgement_delta_ensure_type_at_universe(
 				1
 			) != 0) {
 			prototype_judgement_delta_set_context(delta, outer_context);
-			prototype_judgement_delta_set_operation(delta, outer_operation);
+			prototype_judgement_delta_set_occurrence(delta, outer_operation);
 			return -1;
 		}
 		struct prototype_judgement_selected_evidence binder_evidence;
@@ -388,11 +388,11 @@ int prototype_judgement_delta_ensure_type_at_universe(
 				&body_evidence
 			) != 0) {
 			prototype_judgement_delta_set_context(delta, outer_context);
-			prototype_judgement_delta_set_operation(delta, outer_operation);
+			prototype_judgement_delta_set_occurrence(delta, outer_operation);
 			return -1;
 		}
 		prototype_judgement_delta_set_context(delta, outer_context);
-		prototype_judgement_delta_set_operation(delta, outer_operation);
+		prototype_judgement_delta_set_occurrence(delta, outer_operation);
 		if (prototype_judgement_delta_record_lambda_intro(
 				delta,
 				terms,
@@ -728,7 +728,7 @@ int prototype_judgement_delta_ensure_type_at_universe(
 	struct prototype_judgement_selected_evidence source_evidence;
 	if (prototype_judgement_delta_select_evidence(
 			delta,
-			delta->current_operation_id,
+			delta->current_occurrence_id,
 			delta->current_context_id,
 			subject,
 			actual,
@@ -985,7 +985,7 @@ int prototype_judgement_delta_build_match_motive(
 		return -1;
 	}
 	uint32_t outer_context = delta->current_context_id;
-	uint32_t outer_operation = delta->current_operation_id;
+	uint32_t outer_operation = delta->current_occurrence_id;
 	uint32_t motive_context;
 	if (!delta->contexts || prototype_context_extend(
 			delta->contexts,
@@ -998,7 +998,7 @@ int prototype_judgement_delta_build_match_motive(
 		return -1;
 	}
 	prototype_judgement_delta_set_context(delta, motive_context);
-	prototype_judgement_delta_set_operation(delta, PROTOTYPE_INVALID_ID);
+	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 	if (prototype_judgement_delta_record_context_binding_assumption(
 			delta,
 			terms,
@@ -1137,7 +1137,7 @@ int prototype_judgement_delta_build_match_motive(
 		return -1;
 	}
 	prototype_judgement_delta_set_context(delta, outer_context);
-	prototype_judgement_delta_set_operation(delta, outer_operation);
+	prototype_judgement_delta_set_occurrence(delta, outer_operation);
 	if (add_delta_relation_with_authority_and_explicit_premises(
 			delta,
 			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
@@ -1231,7 +1231,7 @@ int prototype_judgement_delta_build_constant_match_motive(
 	uint32_t motive_pi;
 	uint32_t motive_context;
 	uint32_t outer_context = delta->current_context_id;
-	uint32_t outer_operation = delta->current_operation_id;
+	uint32_t outer_operation = delta->current_occurrence_id;
 	if (motive_binding == PROTOTYPE_INVALID_ID || prototype_term_var(
 			terms, motive_binding, &motive_var
 		) != 0 || prototype_term_lambda(
@@ -1249,7 +1249,7 @@ int prototype_judgement_delta_build_constant_match_motive(
 		return -1;
 	}
 	prototype_judgement_delta_set_context(delta, motive_context);
-	prototype_judgement_delta_set_operation(delta, PROTOTYPE_INVALID_ID);
+	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 	if (prototype_judgement_delta_record_context_binding_assumption(
 			delta, terms, motive_binding, scrutinee_classifier
 		) != 0 || prototype_judgement_delta_ensure_type_at_universe(
@@ -1283,7 +1283,7 @@ int prototype_judgement_delta_build_constant_match_motive(
 	};
 	uint32_t lambda_contexts[2] = { motive_context, motive_context };
 	prototype_judgement_delta_set_context(delta, outer_context);
-	prototype_judgement_delta_set_operation(delta, outer_operation);
+	prototype_judgement_delta_set_occurrence(delta, outer_operation);
 	if (add_delta_relation_with_authority_and_explicit_premises(
 			delta,
 			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,

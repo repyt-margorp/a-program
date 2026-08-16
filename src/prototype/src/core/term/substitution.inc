@@ -1187,6 +1187,19 @@ static int substitute_term_uncached_internal(
 				*p_ret = term_id;
 				return 0;
 			}
+			if (!ctx->type_declarations) {
+				/* Erased computation substitutes the graph structurally. Recomputing
+				 * a named TypeView is a pure-type elaboration action and must not make
+				 * beta or iota reduction depend on TypeDeclarationDB. */
+				return prototype_term_type_view(
+					db,
+					term->as.type_view.view_type_id,
+					term->as.type_view.identity,
+					core,
+					source,
+					p_ret
+				);
+			}
 			return prototype_term_type_view_rebuild_from_source(
 				db,
 				ctx->type_declarations,

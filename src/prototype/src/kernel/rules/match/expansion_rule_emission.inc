@@ -1,3 +1,33 @@
+static int judgement_delta_occurrence_child(
+	const struct prototype_judgement_delta* delta,
+	uint32_t parent_occurrence,
+	int role,
+	uint32_t ordinal,
+	uint32_t* p_child_occurrence
+) {
+	if (!delta || !p_child_occurrence || !delta->occurrences ||
+		parent_occurrence >= delta->occurrence_count) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence* parent =
+		&delta->occurrences[parent_occurrence];
+	if (!delta->occurrence_edges || parent->first_edge >
+		delta->occurrence_edge_count || parent->edge_count >
+		delta->occurrence_edge_count - parent->first_edge) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < parent->edge_count; ++i) {
+		const struct prototype_typed_occurrence_edge* edge =
+			&delta->occurrence_edges[parent->first_edge + i];
+		if (edge->role == role && edge->ordinal == ordinal &&
+			edge->child_occurrence < delta->occurrence_count) {
+			*p_child_occurrence = edge->child_occurrence;
+			return 0;
+		}
+	}
+	return 1;
+}
+
 int prototype_judgement_expand_match(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
@@ -163,7 +193,7 @@ int prototype_judgement_delta_record_substitution_reindex(
 		.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
 		.authority_id = subject,
 		.context_id = substitution->source_context,
-		.operation_id = PROTOTYPE_INVALID_ID,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -174,7 +204,7 @@ int prototype_judgement_delta_record_substitution_reindex(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_operation_id = PROTOTYPE_INVALID_ID;
+	proof.conclusion_occurrence_id = PROTOTYPE_INVALID_ID;
 	proof.conclusion_subject = subject;
 	proof.conclusion_classifier = classifier;
 	initialize_proof_rule_parameters(&proof, premises);
@@ -186,7 +216,7 @@ int prototype_judgement_delta_record_substitution_reindex(
 	proof.premises[0].proposition.authority_kind = source->authority_kind;
 	proof.premises[0].proposition.authority_id = source->authority_id;
 	proof.premises[0].proposition.context_id = source->context_id;
-	proof.premises[0].proposition.operation_id = source->operation_id;
+	proof.premises[0].proposition.occurrence_id = source->occurrence_id;
 	proof.premises[0].proposition.subject = source->subject;
 	proof.premises[0].proposition.classifier = source->classifier;
 	if (add_complete_delta_relation(delta, &relation, &proof) != 0) {
@@ -329,16 +359,19 @@ int prototype_judgement_delta_expand_match(
 		}
 		premise_subjects[i + 1] = terms->cases[case_id].body;
 		int refined = 0;
-		if (delta->operations && delta->operation_cases &&
-			delta->current_operation_id < delta->operation_count) {
-			const struct prototype_operation_node* operation =
-				&delta->operations[delta->current_operation_id];
-			if (operation->tag == PROTOTYPE_OPERATION_MATCH &&
-				operation->core_term == subject && operation->scrutinee <
-					delta->operation_count && operation->first_case + i <
-					delta->operation_case_count) {
-				const struct prototype_operation_node* scrutinee_operation =
-					&delta->operations[operation->scrutinee];
+		if (delta->occurrences && delta->occurrence_match_cases &&
+			delta->current_occurrence_id < delta->occurrence_count) {
+			const struct prototype_typed_occurrence* operation =
+				&delta->occurrences[delta->current_occurrence_id];
+			uint32_t scrutinee_occurrence;
+			if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH &&
+				operation->core_term == subject && judgement_delta_occurrence_child(
+					delta, delta->current_occurrence_id,
+					PROTOTYPE_TERM_CHILD_SCRUTINEE, 0, &scrutinee_occurrence
+				) == 0 && operation->first_case + i <
+					delta->occurrence_match_case_count) {
+				const struct prototype_typed_occurrence* scrutinee_operation =
+					&delta->occurrences[scrutinee_occurrence];
 				uint32_t indexed_type_id;
 				uint32_t indexed_arguments[16];
 				uint32_t indexed_argument_count;
@@ -356,18 +389,22 @@ int prototype_judgement_delta_expand_match(
 						indexed_type->parameter_count == 0 &&
 						indexed_type->index_count == 2 &&
 						indexed_argument_count == 2) {
-						const struct prototype_operation_match_case* operation_case =
-							&delta->operation_cases[operation->first_case + i];
-						const struct prototype_operation_node* body_operation =
-							operation_case->body_operation < delta->operation_count ?
-							&delta->operations[operation_case->body_operation] : NULL;
+						const struct prototype_typed_occurrence_match_case* operation_case =
+							&delta->occurrence_match_cases[operation->first_case + i];
+						uint32_t body_occurrence_id;
+						const struct prototype_typed_occurrence* body_occurrence =
+							judgement_delta_occurrence_child(
+								delta, delta->current_occurrence_id,
+								PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, i,
+								&body_occurrence_id
+							) == 0 ? &delta->occurrences[body_occurrence_id] : NULL;
 						uint32_t refined_context;
 						uint32_t refinement_substitution;
 						uint32_t constructor_term;
 						struct prototype_judgement_selected_evidence source_evidence;
 						uint32_t saved_context = delta->current_context_id;
-						uint32_t saved_operation = delta->current_operation_id;
-						if (!body_operation ||
+						uint32_t saved_operation = delta->current_occurrence_id;
+						if (!body_occurrence ||
 							operation_case->constructor_id != match_case->constructor_id ||
 							prototype_judgement_indexed_branch_refinement(
 								delta->contexts,
@@ -389,10 +426,10 @@ int prototype_judgement_delta_expand_match(
 									delta->substitutions, refinement_substitution
 								)->target_context || prototype_judgement_delta_select_evidence(
 								delta,
-								operation_case->body_operation,
+								body_occurrence_id,
 								operation_case->context_id,
-								body_operation->core_term,
-								body_operation->classifier,
+								body_occurrence->core_term,
+								body_occurrence->classifier,
 								&source_evidence
 							) != 0 || prototype_judgement_delta_record_substitution_reindex(
 								delta,
@@ -419,7 +456,7 @@ int prototype_judgement_delta_expand_match(
 							prototype_judgement_delta_set_context(
 								delta, refined_context
 							);
-							prototype_judgement_delta_set_operation(
+							prototype_judgement_delta_set_occurrence(
 								delta, PROTOTYPE_INVALID_ID
 							);
 							if (prototype_judgement_delta_record_expected_type_exposure(
@@ -442,7 +479,7 @@ int prototype_judgement_delta_expand_match(
 							prototype_judgement_delta_set_context(
 								delta, saved_context
 							);
-							prototype_judgement_delta_set_operation(
+							prototype_judgement_delta_set_occurrence(
 								delta, saved_operation
 							);
 						}
@@ -469,20 +506,20 @@ int prototype_judgement_delta_expand_match(
 			return -1;
 		}
 	}
-	int conclusion_authority = delta->current_operation_id <
-		delta->operation_count ? PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION :
+	int conclusion_authority = delta->current_occurrence_id <
+		delta->occurrence_count ? PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE :
 		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER;
 	uint32_t conclusion_authority_id = conclusion_authority ==
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ? delta->current_operation_id :
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ? delta->current_occurrence_id :
 		subject;
-	uint32_t conclusion_operation_id = conclusion_authority ==
-		PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ? delta->current_operation_id :
+	uint32_t conclusion_occurrence_id = conclusion_authority ==
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ? delta->current_occurrence_id :
 		PROTOTYPE_INVALID_ID;
 	int status = add_delta_relation_with_authority_and_explicit_premise_actions(
 		delta,
 		conclusion_authority,
 		conclusion_authority_id,
-		conclusion_operation_id,
+		conclusion_occurrence_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
@@ -533,7 +570,7 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	struct prototype_judgement_proposition relation = {
 		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		.context_id = delta->current_context_id,
-		.operation_id = delta->current_operation_id,
+		.occurrence_id = delta->current_occurrence_id,
 		.subject = subject,
 		.classifier = classifier
 	};
@@ -544,7 +581,7 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	proof.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM;
 	proof.conclusion_kind = relation.kind;
 	proof.conclusion_context_id = relation.context_id;
-	proof.conclusion_operation_id = relation.operation_id;
+	proof.conclusion_occurrence_id = relation.occurrence_id;
 	proof.conclusion_subject = relation.subject;
 	proof.conclusion_classifier = relation.classifier;
 	initialize_proof_rule_parameters(&proof, proof_premises);
@@ -560,8 +597,8 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 		proof.premises[i].proposition.authority_id =
 			context_evidence[i].authority_id;
 		proof.premises[i].proposition.context_id = context_evidence[i].context_id;
-		proof.premises[i].proposition.operation_id =
-			context_evidence[i].operation_id;
+		proof.premises[i].proposition.occurrence_id =
+			context_evidence[i].occurrence_id;
 		proof.premises[i].proposition.subject = context_evidence[i].subject;
 		proof.premises[i].proposition.classifier = context_evidence[i].classifier;
 	}

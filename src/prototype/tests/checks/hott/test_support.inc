@@ -1,6 +1,7 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v74.h"
-#include "a_program/graph/operation_usage.h"
+#include "a_program/artifact/wire_v75.h"
+#include "a_program/graph/typed_occurrence_graph.h"
+#include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
 #include "a_program/identity/telescope_action.h"
 #include "a_program/identity/context_bridge.h"
@@ -22,6 +23,7 @@
 #define CONTEXT_CAPACITY 1024
 #define SUBSTITUTION_CAPACITY 2048
 #define OPERATION_CAPACITY 64
+#define OCCURRENCE_EDGE_CAPACITY (OPERATION_CAPACITY * 8)
 #define GOAL_CAPACITY 64
 #define CANDIDATE_CAPACITY 128
 #define PREMISE_CAPACITY 128
@@ -52,8 +54,10 @@ static struct prototype_judgement_premise_edge judgement_accepted_premises[
 ];
 static struct prototype_usage_entry judgement_resource_usage[CLAIM_CAPACITY * 8];
 static struct prototype_cwf_certificate cwf_certificates[1024];
-static struct prototype_operation_node operations[OPERATION_CAPACITY];
-static struct prototype_operation_match_case operation_cases[128];
+static struct prototype_typed_occurrence operations[OPERATION_CAPACITY];
+static struct prototype_typed_occurrence_edge
+	occurrence_edges[OCCURRENCE_EDGE_CAPACITY];
+static struct prototype_typed_occurrence_match_case occurrence_match_cases[128];
 static struct prototype_hott_bridge bridges[128];
 static struct prototype_hott_bridge_certificate bridge_certificates[128];
 static struct prototype_parametricity_relation_goal goals[GOAL_CAPACITY];
@@ -71,33 +75,33 @@ static struct prototype_hott_action_request action_requests[256];
 static struct prototype_hott_action_certificate action_certificates[256];
 static struct prototype_hott_action_result action_results[256];
 static const struct prototype_term_db* fixture_term_db;
-static const struct prototype_operation_graph* fixture_operation_graph;
+static const struct prototype_typed_occurrence_graph* fixture_operation_graph;
 
 static void fixture_set_operation_graph(
 	const struct prototype_term_db* terms,
-	const struct prototype_operation_graph* operations
+	const struct prototype_typed_occurrence_graph* operations
 ) {
 	fixture_term_db = terms;
 	fixture_operation_graph = operations;
 }
 
-struct fixture_operation_usage_provider_context {
-	const struct prototype_operation_usage_solution* solutions;
+struct fixture_occurrence_usage_provider_context {
+	const struct prototype_occurrence_usage_solution* solutions;
 	size_t solution_count;
 	const struct prototype_usage_entry* entries;
 	size_t entry_count;
 };
 
-static int fixture_operation_usage_provider(
+static int fixture_occurrence_usage_provider(
 	void* context,
 	uint32_t operation_id,
 	const struct prototype_usage_entry** p_entries,
 	uint32_t* p_count
 ) {
-	struct fixture_operation_usage_provider_context* provider = context;
+	struct fixture_occurrence_usage_provider_context* provider = context;
 	struct prototype_usage_vector usage;
 	if (!provider || !p_entries || !p_count ||
-		prototype_operation_usage_solution_view(
+		prototype_occurrence_usage_solution_view(
 			provider->solutions,
 			provider->solution_count,
 			provider->entries,
@@ -122,7 +126,7 @@ static int write_identity_root_artifact_with_environment(
 	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_context_db* context_db,
 	const struct prototype_substitution_db* substitution_db,
-	const struct prototype_operation_graph* operation_graph
+	const struct prototype_typed_occurrence_graph* operation_graph
 ) {
 	if (!path || !intrinsic_environment || !interface || !term_db || !type_db || !judgement ||
 		!cwf_certificates || !context_db || !substitution_db || !operation_graph) {
@@ -196,19 +200,20 @@ static int write_identity_root_artifact_with_environment(
 		NULL,
 		0,
 		NULL,
+		0,
+		NULL,
 		0
 	);
 	metadata.contexts = *context_db;
 	metadata.substitutions = *substitution_db;
-	metadata.operations = operation_graph->operations;
-	metadata.operation_count = operation_graph->operation_count;
-	metadata.operation_capacity = operation_graph->operation_capacity;
-	metadata.operation_cases = operation_graph->cases;
-	metadata.operation_case_count = operation_graph->case_count;
-	metadata.operation_case_capacity = operation_graph->case_capacity;
-	metadata.operation_fold_clauses = operation_graph->fold_clauses;
-	metadata.operation_fold_clause_count = operation_graph->fold_clause_count;
-	metadata.operation_fold_clause_capacity = operation_graph->fold_clause_capacity;
+	metadata.typed_occurrences = *operation_graph;
+	if (!metadata.typed_occurrences.frozen &&
+		prototype_typed_occurrence_graph_freeze(
+			&metadata.typed_occurrences, term_db, &metadata.contexts
+		) != 0) {
+		symbol_table_free(&symbols);
+		return -1;
+	}
 	FILE* stream = fopen(path, "w");
 	if (!stream) {
 		symbol_table_free(&symbols);
@@ -270,7 +275,7 @@ static int write_identity_root_artifact(
 	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_context_db* context_db,
 	const struct prototype_substitution_db* substitution_db,
-	const struct prototype_operation_graph* operation_graph
+	const struct prototype_typed_occurrence_graph* operation_graph
 ) {
 	return write_identity_root_artifact_with_environment(
 		path,
@@ -455,18 +460,18 @@ static uint32_t fixture_add_claim(
 		.authority_kind = authority_kind,
 		.authority_id = authority_id,
 		.context_id = context_id,
-		.operation_id = operation_id,
+		.occurrence_id = operation_id,
 		.subject = subject,
 		.classifier = classifier
 	};
-	struct prototype_operation_usage_solution usage_solutions[OPERATION_CAPACITY];
+	struct prototype_occurrence_usage_solution usage_solutions[OPERATION_CAPACITY];
 	struct prototype_usage_entry usage_entries[CLAIM_CAPACITY * 8];
 	size_t usage_entry_count = 0;
 	struct prototype_usage_vector operation_usage = {0};
-	if (authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION &&
+	if (authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
 		operation_id != PROTOTYPE_INVALID_ID) {
 		if (!fixture_term_db || !fixture_operation_graph ||
-			prototype_operation_usage_solve(
+			prototype_occurrence_usage_solve(
 				fixture_operation_graph,
 				fixture_term_db,
 				NULL,
@@ -475,9 +480,9 @@ static uint32_t fixture_add_claim(
 				usage_entries,
 				CLAIM_CAPACITY * 8,
 				&usage_entry_count
-			) != 0 || prototype_operation_usage_solution_view(
+			) != 0 || prototype_occurrence_usage_solution_view(
 				usage_solutions,
-				fixture_operation_graph->operation_count,
+				fixture_operation_graph->occurrence_count,
 				usage_entries,
 				usage_entry_count,
 				operation_id,
@@ -541,42 +546,64 @@ static struct prototype_judgement_premise_edge fixture_premise(
 }
 
 static uint32_t add_operation(
-	struct prototype_operation_graph* graph,
+	struct prototype_typed_occurrence_graph* graph,
 	uint32_t context_id,
 	uint32_t core,
 	uint32_t classifier,
 	int category
 ) {
-	uint32_t id = (uint32_t)graph->operation_count++;
-	graph->operations[id] = (struct prototype_operation_node){
-		.tag = PROTOTYPE_OPERATION_ATOM,
-		.category = category,
-		.context_id = context_id,
-		.context_action_substitution = PROTOTYPE_INVALID_ID,
-		.source_core_term = PROTOTYPE_INVALID_ID,
-		.source_classifier = PROTOTYPE_INVALID_ID,
-		.core_term = core,
-		.known_classifier = classifier,
-		.classifier = classifier,
-		.classifier_variable = PROTOTYPE_INVALID_ID,
-		.source_ast = PROTOTYPE_INVALID_ID,
-		.referenced_ast_binder_id = PROTOTYPE_INVALID_ID,
-		.binding_id = PROTOTYPE_INVALID_ID,
-		.function = PROTOTYPE_INVALID_ID,
-		.argument = PROTOTYPE_INVALID_ID,
-		.body = PROTOTYPE_INVALID_ID,
-		.scrutinee = PROTOTYPE_INVALID_ID,
-		.binder_classifier = PROTOTYPE_INVALID_ID,
-		.fold_return_ast_binder_id = PROTOTYPE_INVALID_ID,
-		.fold_return_binder_id = PROTOTYPE_INVALID_ID,
-		.fold_return_operation = PROTOTYPE_INVALID_ID
-	};
+	uint32_t id = (uint32_t)graph->occurrence_count++;
+	struct prototype_typed_occurrence occurrence;
+	memset(&occurrence, 0, sizeof(occurrence));
+	occurrence.tag = PROTOTYPE_TYPED_OCCURRENCE_ATOM;
+	occurrence.category = category;
+	occurrence.context_id = context_id;
+	occurrence.context_action_substitution = PROTOTYPE_INVALID_ID;
+	occurrence.source_core_term = PROTOTYPE_INVALID_ID;
+	occurrence.source_classifier = PROTOTYPE_INVALID_ID;
+	occurrence.core_term = core;
+	occurrence.classifier = classifier;
+	occurrence.source_ast = PROTOTYPE_INVALID_ID;
+	occurrence.source_symbol_id = -1;
+	occurrence.binder_symbol_id = -1;
+	occurrence.referenced_ast_binder_id = PROTOTYPE_INVALID_ID;
+	occurrence.binding_id = PROTOTYPE_INVALID_ID;
+	occurrence.first_edge = PROTOTYPE_INVALID_ID;
+	occurrence.wrapped_occurrence = PROTOTYPE_INVALID_ID;
+	occurrence.binder_classifier = PROTOTYPE_INVALID_ID;
+	occurrence.ih_owner_occurrence = PROTOTYPE_INVALID_ID;
+	occurrence.ih_scope_id = PROTOTYPE_INVALID_ID;
+	occurrence.ih_case_index = PROTOTYPE_INVALID_ID;
+	occurrence.ih_field_index = PROTOTYPE_INVALID_ID;
+	occurrence.fold_return_ast_binder_id = PROTOTYPE_INVALID_ID;
+	occurrence.fold_return_binder_id = PROTOTYPE_INVALID_ID;
+	occurrence.first_case = PROTOTYPE_INVALID_ID;
+	occurrence.first_fold_clause = PROTOTYPE_INVALID_ID;
+	graph->occurrences[id] = occurrence;
 	if (fixture_term_db && core < fixture_term_db->term_count &&
 		fixture_term_db->terms[core].tag == PROTOTYPE_TERM_VAR) {
-		graph->operations[id].binding_id =
+		graph->occurrences[id].binding_id =
 			fixture_term_db->terms[core].as.var.binding_id;
 	}
 	return id;
+}
+
+static int fixture_add_occurrence_edge(
+	struct prototype_typed_occurrence_graph* graph,
+	uint32_t parent,
+	int role,
+	uint32_t ordinal,
+	uint32_t child
+) {
+	return prototype_typed_occurrence_graph_add_edge(
+		graph,
+		parent,
+		(struct prototype_typed_occurrence_edge) {
+			.role = role,
+			.ordinal = ordinal,
+			.child_occurrence = child
+		}
+	);
 }
 
 static int apply_pure_thunk_function(
@@ -613,7 +640,7 @@ static int check_bool_function_extensional_identity(
 	struct prototype_context_db* context_db,
 	struct prototype_substitution_db* substitution_db,
 	struct prototype_judgement_db* judgement,
-	struct prototype_operation_graph* operation_graph,
+	struct prototype_typed_occurrence_graph* operation_graph,
 	uint32_t empty_context,
 	uint32_t universe,
 	uint32_t bool_type,
@@ -1023,8 +1050,8 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 15;
 	}
-	if (operation_graph->operation_count > operation_graph->operation_capacity ||
-		operation_graph->operation_capacity - operation_graph->operation_count < 16 ||
+	if (operation_graph->occurrence_count > operation_graph->occurrence_capacity ||
+		operation_graph->occurrence_capacity - operation_graph->occurrence_count < 16 ||
 		operation_graph->case_count > operation_graph->case_capacity ||
 		operation_graph->case_capacity - operation_graph->case_count < 2) {
 		return 27;
@@ -1033,11 +1060,11 @@ static int check_bool_function_extensional_identity(
 		operation_graph, xr_context, xr, input_identity,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
-	uint32_t false_argument_operation = add_operation(
+	uint32_t false_argument_occurrence = add_operation(
 		operation_graph, xr_context, bool_false, bool_type,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
-	uint32_t false_identity_argument_operation = add_operation(
+	uint32_t false_identity_argument_occurrence = add_operation(
 		operation_graph, xr_context, false_identity_witness, false_identity,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
@@ -1061,11 +1088,11 @@ static int check_bool_function_extensional_identity(
 		operation_graph, xr_context, false_witness_return,
 		false_branch_computation_identity, PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
-	uint32_t true_argument_operation = add_operation(
+	uint32_t true_argument_occurrence = add_operation(
 		operation_graph, xr_context, bool_true, bool_type,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
-	uint32_t true_identity_argument_operation = add_operation(
+	uint32_t true_identity_argument_occurrence = add_operation(
 		operation_graph, xr_context, true_identity_witness, true_identity,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
@@ -1094,65 +1121,45 @@ static int check_bool_function_extensional_identity(
 		PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t first_proof_case = operation_graph->case_count;
-	operation_graph->operations[scrutinee_operation].tag = PROTOTYPE_OPERATION_VAR;
-	operation_graph->operations[false_argument_operation].tag =
-		PROTOTYPE_OPERATION_CONSTRUCTOR;
-	operation_graph->operations[false_identity_argument_operation].tag =
-		PROTOTYPE_OPERATION_CONSTRUCTOR;
-	operation_graph->operations[false_constructor_operation].tag =
-		PROTOTYPE_OPERATION_ATOM;
-	operation_graph->operations[false_app1_operation].tag = PROTOTYPE_OPERATION_APP;
-	operation_graph->operations[false_app1_operation].application_role =
+	operation_graph->occurrences[scrutinee_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_VAR;
+	operation_graph->occurrences[false_argument_occurrence].tag =
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR;
+	operation_graph->occurrences[false_identity_argument_occurrence].tag =
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR;
+	operation_graph->occurrences[false_constructor_operation].tag =
+		PROTOTYPE_TYPED_OCCURRENCE_ATOM;
+	operation_graph->occurrences[false_app1_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
+	operation_graph->occurrences[false_app1_operation].application_role =
 		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->operations[false_app1_operation].function =
-		false_constructor_operation;
-	operation_graph->operations[false_app1_operation].argument =
-		false_argument_operation;
-	operation_graph->operations[false_app2_operation].tag = PROTOTYPE_OPERATION_APP;
-	operation_graph->operations[false_app2_operation].application_role =
+	operation_graph->occurrences[false_app2_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
+	operation_graph->occurrences[false_app2_operation].application_role =
 		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->operations[false_app2_operation].function = false_app1_operation;
-	operation_graph->operations[false_app2_operation].argument =
-		false_argument_operation;
-	operation_graph->operations[false_witness_operation].tag = PROTOTYPE_OPERATION_APP;
-	operation_graph->operations[false_witness_operation].application_role =
+	operation_graph->occurrences[false_witness_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
+	operation_graph->occurrences[false_witness_operation].application_role =
 		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->operations[false_witness_operation].function = false_app2_operation;
-	operation_graph->operations[false_witness_operation].argument =
-		false_identity_argument_operation;
-	operation_graph->operations[false_operation].tag = PROTOTYPE_OPERATION_RETURN;
-	operation_graph->operations[false_operation].argument = false_witness_operation;
-	operation_graph->operations[true_argument_operation].tag =
-		PROTOTYPE_OPERATION_CONSTRUCTOR;
-	operation_graph->operations[true_identity_argument_operation].tag =
-		PROTOTYPE_OPERATION_CONSTRUCTOR;
-	operation_graph->operations[true_constructor_operation].tag =
-		PROTOTYPE_OPERATION_ATOM;
-	operation_graph->operations[true_app1_operation].tag = PROTOTYPE_OPERATION_APP;
-	operation_graph->operations[true_app1_operation].application_role =
+	operation_graph->occurrences[false_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_RETURN;
+	operation_graph->occurrences[true_argument_occurrence].tag =
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR;
+	operation_graph->occurrences[true_identity_argument_occurrence].tag =
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR;
+	operation_graph->occurrences[true_constructor_operation].tag =
+		PROTOTYPE_TYPED_OCCURRENCE_ATOM;
+	operation_graph->occurrences[true_app1_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
+	operation_graph->occurrences[true_app1_operation].application_role =
 		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->operations[true_app1_operation].function = true_constructor_operation;
-	operation_graph->operations[true_app1_operation].argument = true_argument_operation;
-	operation_graph->operations[true_app2_operation].tag = PROTOTYPE_OPERATION_APP;
-	operation_graph->operations[true_app2_operation].application_role =
+	operation_graph->occurrences[true_app2_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
+	operation_graph->occurrences[true_app2_operation].application_role =
 		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->operations[true_app2_operation].function = true_app1_operation;
-	operation_graph->operations[true_app2_operation].argument = true_argument_operation;
-	operation_graph->operations[true_witness_operation].tag = PROTOTYPE_OPERATION_APP;
-	operation_graph->operations[true_witness_operation].application_role =
+	operation_graph->occurrences[true_witness_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
+	operation_graph->occurrences[true_witness_operation].application_role =
 		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->operations[true_witness_operation].function = true_app2_operation;
-	operation_graph->operations[true_witness_operation].argument =
-		true_identity_argument_operation;
-	operation_graph->operations[true_operation].tag = PROTOTYPE_OPERATION_RETURN;
-	operation_graph->operations[true_operation].argument = true_witness_operation;
-	operation_graph->operations[proof_operation].tag = PROTOTYPE_OPERATION_MATCH;
-	operation_graph->operations[proof_operation].scrutinee = scrutinee_operation;
-	operation_graph->operations[proof_operation].first_case = first_proof_case;
-	operation_graph->operations[proof_operation].case_count = 2;
-	operation_graph->cases[first_proof_case] = (struct prototype_operation_match_case) {
-		.body_operation = false_operation,
+	operation_graph->occurrences[true_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_RETURN;
+	operation_graph->occurrences[proof_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_MATCH;
+	operation_graph->occurrences[proof_operation].first_case = first_proof_case;
+	operation_graph->occurrences[proof_operation].case_count = 2;
+	operation_graph->cases[first_proof_case] = (struct prototype_typed_occurrence_match_case) {
 		.context_id = xr_context,
+		.has_refinement = 0,
 		.refinement_substitution = PROTOTYPE_INVALID_ID,
 		.constructor_owner = input_identity,
 		.constructor_id = 0,
@@ -1160,20 +1167,76 @@ static int check_bool_function_extensional_identity(
 		.binder_count = 0
 	};
 	operation_graph->cases[first_proof_case + 1] =
-		(struct prototype_operation_match_case) {
-			.body_operation = true_operation,
+		(struct prototype_typed_occurrence_match_case) {
 			.context_id = xr_context,
+			.has_refinement = 0,
 			.refinement_substitution = PROTOTYPE_INVALID_ID,
 			.constructor_owner = input_identity,
 		.constructor_id = 1,
 		.case_label_symbol_id = -1,
-		.binder_count = 0
+			.binder_count = 0
 	};
 	operation_graph->case_count += 2;
-	struct prototype_operation_usage_solution proof_usage_solutions[OPERATION_CAPACITY];
+	if (fixture_add_occurrence_edge(
+			operation_graph, false_app1_operation,
+			PROTOTYPE_TERM_CHILD_FUNCTION, 0, false_constructor_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, false_app1_operation,
+			PROTOTYPE_TERM_CHILD_ARGUMENT, 0, false_argument_occurrence
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, false_app2_operation,
+			PROTOTYPE_TERM_CHILD_FUNCTION, 0, false_app1_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, false_app2_operation,
+			PROTOTYPE_TERM_CHILD_ARGUMENT, 0, false_argument_occurrence
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, false_witness_operation,
+			PROTOTYPE_TERM_CHILD_FUNCTION, 0, false_app2_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, false_witness_operation,
+			PROTOTYPE_TERM_CHILD_ARGUMENT, 0,
+			false_identity_argument_occurrence
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, false_operation,
+			PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0, false_witness_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, true_app1_operation,
+			PROTOTYPE_TERM_CHILD_FUNCTION, 0, true_constructor_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, true_app1_operation,
+			PROTOTYPE_TERM_CHILD_ARGUMENT, 0, true_argument_occurrence
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, true_app2_operation,
+			PROTOTYPE_TERM_CHILD_FUNCTION, 0, true_app1_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, true_app2_operation,
+			PROTOTYPE_TERM_CHILD_ARGUMENT, 0, true_argument_occurrence
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, true_witness_operation,
+			PROTOTYPE_TERM_CHILD_FUNCTION, 0, true_app2_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, true_witness_operation,
+			PROTOTYPE_TERM_CHILD_ARGUMENT, 0,
+			true_identity_argument_occurrence
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, true_operation,
+			PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0, true_witness_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, proof_operation,
+			PROTOTYPE_TERM_CHILD_SCRUTINEE, 0, scrutinee_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, proof_operation,
+			PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, 0, false_operation
+		) != 0 || fixture_add_occurrence_edge(
+			operation_graph, proof_operation,
+			PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, 1, true_operation
+		) != 0) {
+		return 27;
+	}
+	struct prototype_occurrence_usage_solution proof_usage_solutions[OPERATION_CAPACITY];
 	struct prototype_usage_entry proof_usage_entries[CLAIM_CAPACITY * 8];
 	size_t proof_usage_entry_count;
-	if (prototype_operation_usage_solve(
+	if (prototype_occurrence_usage_solve(
 			operation_graph,
 			term_db,
 			NULL,
@@ -1185,9 +1248,9 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 27;
 	}
-	struct fixture_operation_usage_provider_context proof_usage_provider = {
+	struct fixture_occurrence_usage_provider_context proof_usage_provider = {
 		.solutions = proof_usage_solutions,
-		.solution_count = operation_graph->operation_count,
+		.solution_count = operation_graph->occurrence_count,
 		.entries = proof_usage_entries,
 		.entry_count = proof_usage_entry_count
 	};
@@ -1218,17 +1281,19 @@ static int check_bool_function_extensional_identity(
 	prototype_judgement_delta_set_context_store(
 		&delta, context_db, substitution_db
 	);
-	prototype_judgement_delta_set_operation_store(
+	prototype_judgement_delta_set_occurrence_store(
 		&delta,
-		operation_graph->operations,
-		operation_graph->operation_count,
+		operation_graph->occurrences,
+		operation_graph->occurrence_count,
+		operation_graph->edges,
+		operation_graph->edge_count,
 		operation_graph->cases,
 		operation_graph->case_count
 	);
-	prototype_judgement_delta_set_operation_usage_provider(
+	prototype_judgement_delta_set_occurrence_usage_provider(
 		&delta,
 		&proof_usage_provider,
-		fixture_operation_usage_provider
+		fixture_occurrence_usage_provider
 	);
 	prototype_judgement_delta_set_context(&delta, xr_context);
 	const struct prototype_type_declaration* thunk_identity_declaration =
@@ -1258,28 +1323,16 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 15;
 	}
-	operation_graph->operations[false_constructor_operation].classifier =
+	operation_graph->occurrences[false_constructor_operation].classifier =
 		thunk_identity_constructor->curried_classifier_cache;
-	operation_graph->operations[false_constructor_operation].known_classifier =
-		thunk_identity_constructor->curried_classifier_cache;
-	operation_graph->operations[false_app1_operation].classifier =
+	operation_graph->occurrences[false_app1_operation].classifier =
 		false_app1_classifier;
-	operation_graph->operations[false_app1_operation].known_classifier =
-		false_app1_classifier;
-	operation_graph->operations[false_app2_operation].classifier =
+	operation_graph->occurrences[false_app2_operation].classifier =
 		false_app2_classifier;
-	operation_graph->operations[false_app2_operation].known_classifier =
-		false_app2_classifier;
-	operation_graph->operations[true_constructor_operation].classifier =
+	operation_graph->occurrences[true_constructor_operation].classifier =
 		thunk_identity_constructor->curried_classifier_cache;
-	operation_graph->operations[true_constructor_operation].known_classifier =
-		thunk_identity_constructor->curried_classifier_cache;
-	operation_graph->operations[true_app1_operation].classifier = true_app1_classifier;
-	operation_graph->operations[true_app1_operation].known_classifier =
-		true_app1_classifier;
-	operation_graph->operations[true_app2_operation].classifier = true_app2_classifier;
-	operation_graph->operations[true_app2_operation].known_classifier =
-		true_app2_classifier;
+	operation_graph->occurrences[true_app1_operation].classifier = true_app1_classifier;
+	operation_graph->occurrences[true_app2_operation].classifier = true_app2_classifier;
 	struct prototype_judgement_selected_evidence constructor_evidence[3];
 	struct prototype_judgement_selected_evidence branch_evidence;
 	uint32_t constructor_operations[3] = {
@@ -1296,7 +1349,7 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 16;
 	}
-	prototype_judgement_delta_set_operation(&delta, false_witness_operation);
+	prototype_judgement_delta_set_occurrence(&delta, false_witness_operation);
 	if (prototype_judgement_delta_record_constructor_spine(
 			&delta, term_db, type_db, false_computation_witness,
 			false_computation_identity, constructor_operations,
@@ -1307,7 +1360,7 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 16;
 	}
-	prototype_judgement_delta_set_operation(&delta, false_operation);
+	prototype_judgement_delta_set_occurrence(&delta, false_operation);
 	if (prototype_judgement_delta_record_cbpv_boundary(
 			&delta, term_db, type_db, false_witness_return,
 			false_witness_operation, &branch_evidence
@@ -1328,7 +1381,7 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 17;
 	}
-	prototype_judgement_delta_set_operation(&delta, true_witness_operation);
+	prototype_judgement_delta_set_occurrence(&delta, true_witness_operation);
 	if (prototype_judgement_delta_record_constructor_spine(
 			&delta, term_db, type_db, true_computation_witness,
 			true_computation_identity, constructor_operations,
@@ -1339,7 +1392,7 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 17;
 	}
-	prototype_judgement_delta_set_operation(&delta, true_operation);
+	prototype_judgement_delta_set_occurrence(&delta, true_operation);
 	if (prototype_judgement_delta_record_cbpv_boundary(
 			&delta, term_db, type_db, true_witness_return,
 			true_witness_operation, &branch_evidence
@@ -1351,7 +1404,7 @@ static int check_bool_function_extensional_identity(
 	}
 	struct prototype_judgement_selected_evidence current;
 	uint32_t match_classifier;
-	prototype_judgement_delta_set_operation(&delta, proof_operation);
+	prototype_judgement_delta_set_occurrence(&delta, proof_operation);
 	if (prototype_judgement_delta_build_constant_match_motive(
 			&delta,
 			term_db,
@@ -1364,8 +1417,7 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 18;
 	}
-	operation_graph->operations[proof_operation].classifier = match_classifier;
-	operation_graph->operations[proof_operation].known_classifier = match_classifier;
+	operation_graph->occurrences[proof_operation].classifier = match_classifier;
 	if (prototype_judgement_delta_expand_match(
 			&delta, term_db, type_db, proof_endpoint, match_classifier
 		) != 0) {
@@ -1385,7 +1437,7 @@ static int check_bool_function_extensional_identity(
 		return 20;
 	}
 	prototype_judgement_delta_set_context(&delta, x1_context);
-	prototype_judgement_delta_set_operation(&delta, PROTOTYPE_INVALID_ID);
+	prototype_judgement_delta_set_occurrence(&delta, PROTOTYPE_INVALID_ID);
 	if (prototype_judgement_delta_record_lambda_intro(
 			&delta, term_db, type_db, PROTOTYPE_INVALID_ID, proof_lambda2, pi2,
 			xr, proof_return2, &binder_evidence, proof_operation, &current
@@ -1492,7 +1544,7 @@ static int check_bool_function_extensional_identity(
 		return 25;
 	}
 	prototype_judgement_delta_set_context(&delta, empty_context);
-	prototype_judgement_delta_set_operation(&delta, PROTOTYPE_INVALID_ID);
+	prototype_judgement_delta_set_occurrence(&delta, PROTOTYPE_INVALID_ID);
 	if (prototype_judgement_delta_select_evidence(
 			&delta,
 			PROTOTYPE_INVALID_ID,

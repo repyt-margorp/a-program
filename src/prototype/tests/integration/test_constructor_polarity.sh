@@ -7,13 +7,13 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cat >"$tmp_dir/operation_constants.c" <<'EOF_CONSTANTS'
 #include <stdio.h>
 
-#include "a_program/graph/operation_graph.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/core/term.h"
 
 int main(void) {
 	printf(
 		"%d %d %d %d %d\n",
-		PROTOTYPE_OPERATION_APP,
+		PROTOTYPE_TYPED_OCCURRENCE_APP,
 		PROTOTYPE_TERM_CATEGORY_VALUE,
 		PROTOTYPE_TERM_CATEGORY_COMPUTATION,
 		PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION,
@@ -58,19 +58,19 @@ grep -q 'metadata label pair ' "$tmp_dir/constructor-category.out"
 
 awk -v app="$operation_app" -v category="$polarity_value" \
 	-v role="$constructor_formation" '
-	$1 == "operation" && $3 == app && $4 == category && $5 == role { found = 1 }
+	$1 == "typed_occurrence" && $3 == app && $4 == category && $5 == role { found = 1 }
 	END { exit found ? 0 : 1 }
 ' "$tmp_dir/constructor-category.apo"
 
 awk -v app="$operation_app" -v category="$polarity_computation" \
 	-v role="$function_elimination" '
-	$1 == "operation" && $3 == app && $4 == category && $5 == role { found = 1 }
+	$1 == "typed_occurrence" && $3 == app && $4 == category && $5 == role { found = 1 }
 	END { exit found ? 0 : 1 }
 ' "$tmp_dir/constructor-category.apo"
 
 ./read_file.out --read-graph "$tmp_dir/constructor-category.apo" \
 	>"$tmp_dir/constructor-category-read.out"
-grep -q '^operation_occurrences=' "$tmp_dir/constructor-category-read.out"
+grep -q '^typed_occurrences=' "$tmp_dir/constructor-category-read.out"
 
 cat >"$tmp_dir/partial-constructor.p" <<'EOF_PARTIAL'
 Nat := @{ zero : *; succ : * -> *; };

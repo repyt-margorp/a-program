@@ -489,7 +489,7 @@ static int add_delta_relation_with_explicit_premises(
 	uint32_t classifier,
 	int proof_kind,
 	const uint32_t* premise_context_ids,
-	const uint32_t* premise_operation_ids,
+	const uint32_t* premise_occurrence_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
 	const struct prototype_judgement_selected_evidence* premise_evidence,
@@ -499,13 +499,13 @@ static int add_delta_relation_with_authority_and_explicit_premise_actions(
 	struct prototype_judgement_delta* delta,
 	int authority_kind,
 	uint32_t authority_id,
-	uint32_t conclusion_operation_id,
+	uint32_t conclusion_occurrence_id,
 	int kind,
 	uint32_t subject,
 	uint32_t classifier,
 	int proof_kind,
 	const uint32_t* premise_context_ids,
-	const uint32_t* premise_operation_ids,
+	const uint32_t* premise_occurrence_ids,
 	const uint32_t* premise_subjects,
 	const uint32_t* premise_classifiers,
 	const struct prototype_judgement_selected_evidence* premise_evidence,
@@ -603,12 +603,8 @@ static int term_core_app(
 	if (!terms || !p_app || term_id >= terms->term_count) {
 		return -1;
 	}
-	uint32_t current = term_id;
-	while (current < terms->term_count &&
-		terms->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW) {
-		current = terms->terms[current].as.type_view.core;
-	}
-	if (current >= terms->term_count ||
+	uint32_t current;
+	if (prototype_term_core_projection(terms, term_id, &current) != 0 ||
 		terms->terms[current].tag != PROTOTYPE_TERM_APP) {
 		return -1;
 	}
@@ -1065,7 +1061,7 @@ int prototype_judgement_claim_category(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	const struct prototype_operation_graph* operations,
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t claim_id,
 	int* p_category
 ) {
@@ -1081,14 +1077,14 @@ int prototype_judgement_claim_category(
 	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
 		return -1;
 	}
-	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION) {
+	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE) {
 		int category;
-		if (!operations || prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id != prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id ||
+		if (!operations || prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id != prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id ||
 			judgement_operation_expected_polarity(
 				terms,
 				type_declarations,
 				operations,
-				prototype_judgement_proposition_get(judgement, claim->proposition_id)->operation_id,
+				prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id,
 				&category
 			) != 0) {
 			return -1;
@@ -1162,9 +1158,9 @@ static void selected_evidence_from_candidate(
 		.authority_kind = authority_kind,
 		.authority_id = authority_id,
 		.context_id = candidate->context_id,
-		.operation_id = authority_kind ==
-			PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
-			candidate->operation_id : PROTOTYPE_INVALID_ID,
+		.occurrence_id = authority_kind ==
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
+			candidate->occurrence_id : PROTOTYPE_INVALID_ID,
 		.subject = candidate->subject,
 		.classifier = candidate->classifier,
 		.resource_usage_count = candidate->resource_usage_count,
@@ -1180,7 +1176,7 @@ static int selected_evidence_equal(
 		left->authority_kind == right->authority_kind &&
 		left->authority_id == right->authority_id &&
 		left->context_id == right->context_id &&
-		left->operation_id == right->operation_id &&
+		left->occurrence_id == right->occurrence_id &&
 		left->subject == right->subject &&
 		left->classifier == right->classifier &&
 		left->resource_usage_count == right->resource_usage_count &&
@@ -1215,7 +1211,7 @@ static int merge_exact_selected_evidence(
 		const struct prototype_judgement_proposition* candidate =
 			&candidates[i];
 		if (candidate->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			candidate->operation_id != operation_id ||
+			candidate->occurrence_id != operation_id ||
 			candidate->context_id != context_id ||
 			candidate->subject != subject ||
 			candidate->classifier != classifier) {
@@ -1846,9 +1842,9 @@ static int merge_app_elim_argument_evidence(
 				.authority_kind = proof->premises[1].proposition.authority_kind,
 				.authority_id = proof->premises[1].proposition.authority_id,
 				.context_id = proof->premises[1].proposition.context_id,
-				.operation_id = proof->premises[1].proposition.authority_kind ==
-					PROTOTYPE_JUDGEMENT_AUTHORITY_OPERATION ?
-					proof->premises[1].proposition.operation_id : PROTOTYPE_INVALID_ID,
+				.occurrence_id = proof->premises[1].proposition.authority_kind ==
+					PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
+					proof->premises[1].proposition.occurrence_id : PROTOTYPE_INVALID_ID,
 				.subject = proof->premises[1].proposition.subject,
 				.classifier = proof->premises[1].proposition.classifier
 			};

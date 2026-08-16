@@ -1,5 +1,5 @@
-#ifndef A_PROGRAM_PROTOTYPE_GRAPH_OPERATION_MODEL_H
-#define A_PROGRAM_PROTOTYPE_GRAPH_OPERATION_MODEL_H
+#ifndef A_PROGRAM_PROTOTYPE_GRAPH_TYPED_OCCURRENCE_MODEL_H
+#define A_PROGRAM_PROTOTYPE_GRAPH_TYPED_OCCURRENCE_MODEL_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -11,10 +11,10 @@ struct prototype_compile_label {
 	uint32_t term;
 	/* The assignment RHS occurrence and its independently synthesized
 	 * principal. For an ASCRIPTION root this is the operation below it. */
-	uint32_t body_operation;
+	uint32_t body_occurrence;
 	uint32_t body_classifier;
 	/* Published/evaluation view. An outer ASCRIPTION may differ from body. */
-	uint32_t exposed_operation;
+	uint32_t exposed_occurrence;
 	uint32_t exposed_classifier;
 	uint32_t expectation_classifier;
 	uint32_t expectation_claim_id;
@@ -22,29 +22,35 @@ struct prototype_compile_label {
 };
 
 /*
- * Operation nodes preserve the typed/source occurrence graph produced by AST
+ * Typed occurrences preserve the static/source occurrence graph produced by AST
  * lowering.  Their core_term fields may intentionally alias: for example,
  * \x : Bool => x and \y : Nat => y share one core lambda but have distinct
- * operation nodes and classifiers.
+ * occurrences and classifiers.
  */
-enum prototype_operation_tag {
-	PROTOTYPE_OPERATION_ATOM = 1,
-	PROTOTYPE_OPERATION_VAR = 2,
-	PROTOTYPE_OPERATION_NAME = 3,
-	PROTOTYPE_OPERATION_CONSTRUCTOR = 4,
-	PROTOTYPE_OPERATION_APP = 5,
-	PROTOTYPE_OPERATION_LAMBDA = 6,
-	PROTOTYPE_OPERATION_MATCH = 7,
-	PROTOTYPE_OPERATION_INDUCTION_HYPOTHESIS = 8,
-	PROTOTYPE_OPERATION_ASCRIPTION = 9,
-	PROTOTYPE_OPERATION_RETURN = 10,
-	PROTOTYPE_OPERATION_THUNK = 11,
-	PROTOTYPE_OPERATION_FORCE = 12,
-	PROTOTYPE_OPERATION_REQUEST = 13,
-	PROTOTYPE_OPERATION_COMPUTATION_FOLD = 14
+enum prototype_typed_occurrence_kind {
+	PROTOTYPE_TYPED_OCCURRENCE_ATOM = 1,
+	PROTOTYPE_TYPED_OCCURRENCE_VAR = 2,
+	PROTOTYPE_TYPED_OCCURRENCE_REFERENCE = 3,
+	PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR = 4,
+	PROTOTYPE_TYPED_OCCURRENCE_APP = 5,
+	PROTOTYPE_TYPED_OCCURRENCE_LAMBDA = 6,
+	PROTOTYPE_TYPED_OCCURRENCE_MATCH = 7,
+	PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS = 8,
+	PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE = 9,
+	PROTOTYPE_TYPED_OCCURRENCE_RETURN = 10,
+	PROTOTYPE_TYPED_OCCURRENCE_THUNK = 11,
+	PROTOTYPE_TYPED_OCCURRENCE_FORCE = 12,
+	PROTOTYPE_TYPED_OCCURRENCE_REQUEST = 13,
+	PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD = 14
 };
 
-struct prototype_operation_node {
+enum prototype_typed_occurrence_classifier_status {
+	PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING = 0,
+	PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED = 1,
+	PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION = 2
+};
+
+struct prototype_typed_occurrence {
 	int tag;
 	/* This belongs to the source operation occurrence, not to the erased core
 	 * term. A shared core lambda can be raw in one occurrence and thunked in
@@ -65,13 +71,12 @@ struct prototype_operation_node {
 	uint32_t source_core_term;
 	uint32_t source_classifier;
 	uint32_t core_term;
-	/* A lowering-time fact supplied to the solver. It is not a solved
-	 * operation classifier and must never be published as one. */
-	uint32_t known_classifier;
 	/* The solver result for this source operation. */
 	uint32_t classifier;
-	/* Solver-local classifier variable. It is an operation identity, not a TermDB id. */
-	uint32_t classifier_variable;
+	/* Frozen result status. Residual typing has no principal classifier and must
+	 * name the runtime verification obligation that closes the occurrence. */
+	int classifier_status;
+	uint32_t classifier_verification_obligation;
 	uint32_t source_ast;
 	int source_symbol_id;
 	int binder_symbol_id;
@@ -82,15 +87,16 @@ struct prototype_operation_node {
 	 * introduces; VAR stores the binding it references. This cannot be recovered
 	 * from core_term after alpha-interning selects another representative. */
 	uint32_t binding_id;
-	uint32_t function;
-	uint32_t argument;
-	uint32_t body;
-	uint32_t scrutinee;
+	uint32_t first_edge;
+	uint32_t edge_count;
+	/* NAME and ASCRIPTION are source wrappers, not Core constructors. */
+	uint32_t wrapped_occurrence;
 	uint32_t binder_classifier;
 	/* An IH edge belongs to one exact typed Match case field. The erased Core
 	 * VAR binding may be alpha-canonical and cannot recover this occurrence
-	 * identity. `scrutinee` and `argument` remain the owner Match and recursive
-	 * argument Operation IDs respectively. */
+	 * identity. The owner Match is occurrence semantics rather than a Core
+	 * child, while the recursive argument is an occurrence edge. */
+	uint32_t ih_owner_occurrence;
 	uint32_t ih_scope_id;
 	uint32_t ih_case_index;
 	uint32_t ih_field_index;
@@ -98,9 +104,6 @@ struct prototype_operation_node {
 	 * computation-fold clause arena below. */
 	uint32_t fold_return_ast_binder_id;
 	uint32_t fold_return_binder_id;
-	/* Generated return-clause lambda occurrence. The return body remains in
-	 * scrutinee for source propagation and runtime evaluation. */
-	uint32_t fold_return_operation;
 	/* Classifier-only row binders generalized by this lambda. They are never
 	 * runtime lambda arguments. */
 	uint32_t implicit_effect_row_binders[16];
@@ -111,8 +114,13 @@ struct prototype_operation_node {
 	uint32_t fold_clause_count;
 };
 
-struct prototype_operation_match_case {
-	uint32_t body_operation;
+struct prototype_typed_occurrence_edge {
+	int role;
+	uint32_t ordinal;
+	uint32_t child_occurrence;
+};
+
+struct prototype_typed_occurrence_match_case {
 	/* Semantic case telescope. Source binder IDs below are occurrence metadata. */
 	uint32_t context_id;
 	/* A solved indexed branch owns the pullback Context above. This morphism
@@ -129,11 +137,7 @@ struct prototype_operation_match_case {
 	uint32_t ast_binder_ids[16];
 };
 
-struct prototype_operation_computation_fold_clause {
-	uint32_t operation_operation;
-	uint32_t body_operation;
-	/* Generated outer lambda which binds the request and resumption. */
-	uint32_t clause_operation;
+struct prototype_typed_occurrence_fold_clause {
 	uint32_t context_id;
 	uint32_t argument_ast_binder_id;
 	uint32_t argument_binder_id;
@@ -141,26 +145,41 @@ struct prototype_operation_computation_fold_clause {
 	uint32_t continuation_binder_id;
 };
 
-struct prototype_operation_graph {
-	struct prototype_operation_node* operations;
-	size_t operation_count;
-	size_t operation_capacity;
-	struct prototype_operation_match_case* cases;
+struct prototype_typed_occurrence_graph {
+	/* A sealed graph is immutable and may be projected into proof propositions.
+	 * A frozen graph is a sealed graph published as a module snapshot. */
+	int sealed;
+	int frozen;
+	/* A transaction appends to an immutable prefix. Copies of a previously
+	 * frozen graph remain valid snapshots because prefix records are unchanged. */
+	int transaction_active;
+	int transaction_base_frozen;
+	size_t transaction_occurrence_start;
+	size_t transaction_edge_start;
+	size_t transaction_case_start;
+	size_t transaction_fold_clause_start;
+	struct prototype_typed_occurrence* occurrences;
+	size_t occurrence_count;
+	size_t occurrence_capacity;
+	struct prototype_typed_occurrence_edge* edges;
+	size_t edge_count;
+	size_t edge_capacity;
+	struct prototype_typed_occurrence_match_case* cases;
 	size_t case_count;
 	size_t case_capacity;
-	struct prototype_operation_computation_fold_clause* fold_clauses;
+	struct prototype_typed_occurrence_fold_clause* fold_clauses;
 	size_t fold_clause_count;
 	size_t fold_clause_capacity;
 };
 
-struct prototype_operation_induction_edge {
-	uint32_t induction_operation;
-	uint32_t owner_match_operation;
+struct prototype_typed_occurrence_induction_edge {
+	uint32_t induction_occurrence;
+	uint32_t owner_match_occurrence;
 	uint32_t scope_id;
 	uint32_t case_index;
 	uint32_t field_index;
-	uint32_t source_ast_binder_id;
-	uint32_t argument_operation;
+	uint32_t binding_id;
+	uint32_t argument_occurrence;
 };
 
 #endif

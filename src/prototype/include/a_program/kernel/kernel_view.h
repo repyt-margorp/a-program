@@ -6,7 +6,7 @@ struct prototype_substitution_db;
 struct prototype_cwf_certificate_db;
 struct prototype_term_db;
 struct prototype_type_declaration_db;
-struct prototype_operation_graph;
+struct prototype_typed_occurrence_graph;
 struct prototype_judgement_db;
 
 /* A checked capability bundle. Term reduction may extend TermDB with computed
@@ -18,7 +18,7 @@ struct prototype_kernel_view {
 	const struct prototype_cwf_certificate_db* cwf_certificates;
 	struct prototype_term_db* terms;
 	struct prototype_type_declaration_db* type_declarations;
-	const struct prototype_operation_graph* operations;
+	const struct prototype_typed_occurrence_graph* occurrences;
 	const struct prototype_judgement_db* judgement;
 };
 
@@ -28,7 +28,7 @@ struct prototype_kernel_builder {
 	struct prototype_cwf_certificate_db* cwf_certificates;
 	struct prototype_term_db* terms;
 	struct prototype_type_declaration_db* type_declarations;
-	const struct prototype_operation_graph* operations;
+	const struct prototype_typed_occurrence_graph* occurrences;
 	struct prototype_judgement_db* judgement;
 };
 

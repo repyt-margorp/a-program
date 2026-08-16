@@ -414,10 +414,10 @@ int main(void) {
 			(struct prototype_verification_obligation){
 				.kind = PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT,
 				.state = PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
-				.operation = 0,
+				.occurrence = 0,
 				.core_term = bound_constructor,
-				.computation_operation = 0,
-				.continuation_operation = 0,
+				.computation_occurrence = 0,
+				.continuation_occurrence = 0,
 				.continuation_binder_id = residual_binder,
 				.input_classifier = owner,
 				.classifier_family = residual_family,

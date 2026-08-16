@@ -1,4 +1,4 @@
-static int write_artifact_operation_graph_section(
+static int write_artifact_typed_occurrence_section(
 	FILE* stream,
 	const struct symbol_table* symbols,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -12,14 +12,14 @@ static int write_artifact_operation_graph_section(
 		!metadata || !context_slice) {
 		return -1;
 	}
-	struct prototype_operation_graph graph;
-	prototype_compile_metadata_operation_graph_const(metadata, &graph);
-	size_t operation_count = prototype_operation_graph_count(&graph);
-	size_t case_count = prototype_operation_graph_case_count(&graph);
-	size_t fold_clause_count = graph.fold_clause_count;
+	const struct prototype_typed_occurrence_graph* graph =
+		prototype_compile_metadata_typed_occurrences_const(metadata);
+	size_t occurrence_count = prototype_typed_occurrence_graph_count(graph);
+	size_t case_count = prototype_typed_occurrence_graph_case_count(graph);
+	size_t fold_clause_count = graph->fold_clause_count;
 	size_t obligation_count = metadata ?
 		prototype_verification_db_count(&metadata->verification) : 0;
-	fprintf(stream, "SECTION operation_graph\n");
+	fprintf(stream, "SECTION typed_occurrences\n");
 	fprintf(
 		stream,
 		"compile_policy %d %d %s %u %u %u %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64
@@ -32,7 +32,7 @@ static int write_artifact_operation_graph_section(
 		) : "-",
 		metadata ? metadata->selected_entry_term : PROTOTYPE_INVALID_ID,
 		metadata ? metadata->selected_entry_classifier : PROTOTYPE_INVALID_ID,
-		metadata ? metadata->selected_entry_operation : PROTOTYPE_INVALID_ID,
+		metadata ? metadata->selected_entry_occurrence : PROTOTYPE_INVALID_ID,
 		metadata ? metadata->required_runtime_capabilities : 0,
 		metadata ? metadata->normalization_step_limit : 0,
 		metadata ? metadata->normalization_steps_used : 0,
@@ -56,9 +56,9 @@ static int write_artifact_operation_graph_section(
 			prototype_context_classifier_variable(context);
 		if (classifier == PROTOTYPE_INVALID_ID &&
 			classifier_variable != PROTOTYPE_INVALID_ID) {
-			const struct prototype_operation_node* classifier_operation =
-				prototype_operation_graph_get(
-					&graph, classifier_variable
+			const struct prototype_typed_occurrence* classifier_operation =
+				prototype_typed_occurrence_graph_get(
+					graph, classifier_variable
 				);
 			if (!classifier_operation ||
 				classifier_operation->classifier == PROTOTYPE_INVALID_ID) {
@@ -120,91 +120,109 @@ static int write_artifact_operation_graph_section(
 			evidence_claim_id
 		);
 	}
-	fprintf(stream, "operations %zu\n", operation_count);
-	for (size_t i = 0; i < operation_count; ++i) {
-		const struct prototype_operation_node* operation =
-			prototype_operation_graph_get(&graph, (uint32_t)i);
-		if (!operation) {
+	fprintf(stream, "typed_occurrences %zu\n", occurrence_count);
+	for (size_t i = 0; i < occurrence_count; ++i) {
+		const struct prototype_typed_occurrence* occurrence =
+			prototype_typed_occurrence_graph_get(graph, (uint32_t)i);
+		if (!occurrence) {
 			return -1;
 		}
 		const char* source_name = artifact_optional_symbol_name(
-			symbols, operation->source_symbol_id
+			symbols, occurrence->source_symbol_id
 		);
 		const char* binder_name = artifact_optional_symbol_name(
-			symbols, operation->binder_symbol_id
+			symbols, occurrence->binder_symbol_id
 		);
 		if (!source_name || !binder_name) {
 			return -1;
 		}
 		fprintf(
 			stream,
-			"operation %zu %d %d %d %u %u %u %s %s %u %u %u %u %u %u %u"
-			" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
+			"typed_occurrence %zu %d %d %d %u %d %u %u %s %s"
+			" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
 			i,
-			operation->tag,
-			operation->category,
-			operation->application_role,
-			operation->core_term,
-			operation->known_classifier,
-			operation->classifier,
+			occurrence->tag,
+			occurrence->category,
+			occurrence->application_role,
+			occurrence->core_term,
+			occurrence->classifier_status,
+			occurrence->classifier,
+			occurrence->classifier_verification_obligation,
 			source_name,
 			binder_name,
-			operation->referenced_ast_binder_id,
-			operation->binding_id,
-			operation->function,
-			operation->argument,
-			operation->body,
-			operation->scrutinee,
-			operation->binder_classifier,
-			operation->ih_scope_id,
-			operation->ih_case_index,
-			operation->ih_field_index,
-			operation->fold_return_ast_binder_id,
-			operation->fold_return_binder_id,
-			operation->fold_return_operation,
-			operation->implicit_effect_row_count,
-			operation->first_case,
-			operation->case_count,
-			operation->first_fold_clause,
-			operation->fold_clause_count,
+			occurrence->binding_id,
+			occurrence->wrapped_occurrence,
+			occurrence->binder_classifier,
+			occurrence->ih_owner_occurrence,
+			occurrence->ih_scope_id,
+			occurrence->ih_case_index,
+			occurrence->ih_field_index,
+			occurrence->fold_return_binder_id,
+			occurrence->implicit_effect_row_count,
+			occurrence->first_case,
+			occurrence->case_count,
+			occurrence->first_fold_clause,
+			occurrence->fold_clause_count,
 			artifact_context_slice_relocate(
-				context_slice, operation->context_id
+				context_slice, occurrence->context_id
 			),
-			operation->context_action_substitution,
-			operation->source_core_term,
-			operation->source_classifier
+			occurrence->context_action_substitution,
+			occurrence->source_core_term,
+			occurrence->source_classifier
 		);
-		fprintf(stream, "operation_rows %zu", i);
-		for (uint32_t j = 0; j < operation->implicit_effect_row_count; ++j) {
-			fprintf(stream, " %u", operation->implicit_effect_row_binders[j]);
+		fprintf(stream, "typed_occurrence_rows %zu", i);
+		for (uint32_t j = 0; j < occurrence->implicit_effect_row_count; ++j) {
+			fprintf(stream, " %u", occurrence->implicit_effect_row_binders[j]);
 		}
 		fprintf(stream, "\n");
 	}
-	fprintf(stream, "operation_fold_clauses %zu\n", fold_clause_count);
+	fprintf(stream, "occurrence_edges %zu\n", graph->edge_count);
+	for (size_t parent_id = 0; parent_id < occurrence_count; ++parent_id) {
+		const struct prototype_typed_occurrence* parent =
+			prototype_typed_occurrence_graph_get(graph, (uint32_t)parent_id);
+		if (!parent || (parent->edge_count != 0 &&
+			(parent->first_edge > graph->edge_count ||
+			 parent->edge_count > graph->edge_count - parent->first_edge))) {
+			return -1;
+		}
+		for (uint32_t offset = 0; offset < parent->edge_count; ++offset) {
+			uint32_t edge_id = parent->first_edge + offset;
+			const struct prototype_typed_occurrence_edge* edge =
+				prototype_typed_occurrence_graph_get_edge(graph, edge_id);
+			if (!edge) {
+				return -1;
+			}
+			fprintf(
+				stream,
+				"occurrence_edge %u %zu %d %u %u\n",
+				edge_id,
+				parent_id,
+				edge->role,
+				edge->ordinal,
+				edge->child_occurrence
+			);
+		}
+	}
+	fprintf(stream, "occurrence_fold_clauses %zu\n", fold_clause_count);
 	for (size_t i = 0; i < fold_clause_count; ++i) {
-		const struct prototype_operation_computation_fold_clause* clause =
-			prototype_operation_graph_get_fold_clause(&graph, (uint32_t)i);
+		const struct prototype_typed_occurrence_fold_clause* clause =
+			prototype_typed_occurrence_graph_get_fold_clause(graph, (uint32_t)i);
 		if (!clause) {
 			return -1;
 		}
 		fprintf(
 			stream,
-			"operation_fold_clause %zu %u %u %u %u %u %u %u %u\n",
+			"occurrence_fold_clause %zu %u %u %u\n",
 			i,
-			clause->operation_operation,
-			clause->body_operation,
-			clause->clause_operation,
 			artifact_context_slice_relocate(context_slice, clause->context_id),
-			clause->argument_ast_binder_id,
 			clause->argument_binder_id,
-			clause->continuation_ast_binder_id,
 			clause->continuation_binder_id
 		);
 	}
-	fprintf(stream, "operation_cases %zu\n", case_count);
+	fprintf(stream, "occurrence_match_cases %zu\n", case_count);
 	for (size_t i = 0; i < case_count; ++i) {
-		const struct prototype_operation_match_case* operation_case =
-			prototype_operation_graph_get_case(&graph, (uint32_t)i);
+		const struct prototype_typed_occurrence_match_case* operation_case =
+			prototype_typed_occurrence_graph_get_case(graph, (uint32_t)i);
 		if (!operation_case) {
 			return -1;
 		}
@@ -216,9 +234,8 @@ static int write_artifact_operation_graph_section(
 		}
 		fprintf(
 			stream,
-			"operation_case %zu %u %u %d %u %u %u %s\n",
+			"occurrence_match_case %zu %u %d %u %u %u %s\n",
 			i,
-			operation_case->body_operation,
 			artifact_context_slice_relocate(
 				context_slice, operation_case->context_id
 			),
@@ -228,10 +245,10 @@ static int write_artifact_operation_graph_section(
 			operation_case->constructor_id,
 			label
 		);
-		fprintf(stream, "operation_case_binders %zu %u", i, operation_case->binder_count);
+		fprintf(stream, "occurrence_match_case_binders %zu %u", i,
+			operation_case->binder_count);
 		for (uint32_t j = 0; j < operation_case->binder_count; ++j) {
-			fprintf(stream, " %u %u", operation_case->ast_binder_ids[j],
-				operation_case->binder_ids[j]);
+			fprintf(stream, " %u", operation_case->binder_ids[j]);
 		}
 		fprintf(stream, "\n");
 	}
@@ -239,7 +256,7 @@ static int write_artifact_operation_graph_section(
 		metadata->effect_constraint_count : 0;
 	fprintf(stream, "effect_constraints %zu\n", effect_constraint_count);
 	for (size_t i = 0; i < effect_constraint_count; ++i) {
-		const struct prototype_operation_effect_constraint* constraint =
+		const struct prototype_occurrence_effect_constraint* constraint =
 			&metadata->effect_constraints[i];
 		fprintf(
 			stream,
@@ -247,7 +264,7 @@ static int write_artifact_operation_graph_section(
 			i,
 			constraint->kind,
 			constraint->state,
-			constraint->operation,
+			constraint->occurrence,
 			constraint->result_row,
 			constraint->left_row,
 			constraint->right_row
@@ -266,10 +283,10 @@ static int write_artifact_operation_graph_section(
 			i,
 			obligation->kind,
 			obligation->state,
-			obligation->operation,
+			obligation->occurrence,
 			obligation->core_term,
-			obligation->computation_operation,
-			obligation->continuation_operation,
+			obligation->computation_occurrence,
+			obligation->continuation_occurrence,
 			obligation->continuation_binder_id,
 			obligation->input_classifier,
 			obligation->classifier_family,
@@ -278,7 +295,7 @@ static int write_artifact_operation_graph_section(
 			obligation->schema_version
 		);
 	}
-	return fprintf(stream, "END operation_graph\n") < 0 ? -1 : 0;
+	return fprintf(stream, "END typed_occurrences\n") < 0 ? -1 : 0;
 }
 
 static int prototype_artifact_write_text_body(
@@ -432,9 +449,9 @@ static int prototype_artifact_write_text_body(
 		print_artifact_key(stream, &export->classifier_key);
 		fprintf(
 			stream,
-			" namespace %s operation %u claim %u\n",
+			" namespace %s occurrence %u claim %u\n",
 			namespace_name,
-			export->operation,
+			export->occurrence,
 			source_claim_id
 		);
 	}
@@ -536,7 +553,7 @@ static int prototype_artifact_write_text_body(
 		artifact_context_slice_free(&context_slice);
 		return -1;
 	}
-	if (write_artifact_operation_graph_section(
+	if (write_artifact_typed_occurrence_section(
 		stream,
 		symbols,
 		type_declarations,
@@ -546,7 +563,7 @@ static int prototype_artifact_write_text_body(
 		substitution_evidence_count,
 		&context_slice
 	) != 0) {
-		fprintf(stderr, "artifact write: operation graph section failed\n");
+		fprintf(stderr, "artifact write: typed-occurrence graph section failed\n");
 		artifact_context_slice_free(&context_slice);
 		return -1;
 	}

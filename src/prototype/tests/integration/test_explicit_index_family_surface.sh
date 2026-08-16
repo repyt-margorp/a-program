@@ -58,7 +58,7 @@ done
 ./read_file.out --read-graph "$tmp_dir/AccSpecialized.apo" \
 	>"$tmp_dir/acc-specialized-read.out"
 grep -q '^interface type Acc ' "$tmp_dir/acc-specialized-read.out"
-grep -q '^operation_occurrences=' "$tmp_dir/acc-specialized-read.out"
+grep -q '^typed_occurrences=' "$tmp_dir/acc-specialized-read.out"
 
 ./read_file.out --write-artifact "$tmp_dir/Acc.apo" \
 	src/prototype/tests/fixtures/typing/explicit_index_family_acc_eliminator_check.p \
@@ -66,7 +66,7 @@ grep -q '^operation_occurrences=' "$tmp_dir/acc-specialized-read.out"
 ./read_file.out --read-graph "$tmp_dir/Acc.apo" \
 	>"$tmp_dir/acc-read.out"
 grep -q '^interface type Acc ' "$tmp_dir/acc-read.out"
-grep -q '^operation_occurrences=' "$tmp_dir/acc-read.out"
+grep -q '^typed_occurrences=' "$tmp_dir/acc-read.out"
 
 ./read_file.out --write-artifact "$tmp_dir/AccConcrete.apo" \
 	src/prototype/tests/fixtures/typing/explicit_index_family_acc_concrete_check.p \
@@ -75,7 +75,7 @@ grep -q '^operation_occurrences=' "$tmp_dir/acc-read.out"
 	>"$tmp_dir/acc-concrete-read.out"
 grep -q '^interface term accFalse ' "$tmp_dir/acc-concrete-read.out"
 grep -q '^interface type Acc ' "$tmp_dir/acc-concrete-read.out"
-grep -q '^operation_occurrences=[1-9][0-9]* operation_cases=2 verification_obligations=0$' \
+grep -q '^typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=0$' \
 	"$tmp_dir/acc-concrete-read.out"
 
 cat >"$tmp_dir/reachable-branch-mismatch.p" <<'EOF'

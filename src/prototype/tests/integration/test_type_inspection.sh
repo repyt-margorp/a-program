@@ -37,7 +37,7 @@ for pattern in \
 	'^types=' \
 	'^judgements=' \
 	'^labels=' \
-	'^operations=' \
+	'^typed-occurrences=' \
 	'^resolution_items=' \
 	'^universe-levels='
 do

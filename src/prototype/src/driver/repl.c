@@ -2,7 +2,7 @@
 
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
-#include "a_program/graph/operation_runtime.h"
+#include "a_program/graph/runtime.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -52,6 +52,7 @@
 #define RESOLUTION_ITERATION_CAPACITY 128
 #define RESOLUTION_EVENT_CAPACITY 2048
 #define OPERATION_CAPACITY 4096
+#define OCCURRENCE_EDGE_CAPACITY (OPERATION_CAPACITY * 8)
 #define OPERATION_CASE_CAPACITY 4096
 #define OPERATION_FOLD_CLAUSE_CAPACITY 4096
 #define EFFECT_CONSTRAINT_CAPACITY 8192
@@ -121,11 +122,13 @@ static struct prototype_resolution_event resolution_events[RESOLUTION_EVENT_CAPA
 static struct prototype_context contexts[PROTOTYPE_CONTEXT_CAPACITY];
 static struct prototype_substitution
 	substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
-static struct prototype_operation_node operations[OPERATION_CAPACITY];
-static struct prototype_operation_match_case operation_cases[OPERATION_CASE_CAPACITY];
-static struct prototype_operation_computation_fold_clause
-	operation_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
-static struct prototype_operation_effect_constraint
+static struct prototype_typed_occurrence operations[OPERATION_CAPACITY];
+static struct prototype_typed_occurrence_edge
+	occurrence_edges[OCCURRENCE_EDGE_CAPACITY];
+static struct prototype_typed_occurrence_match_case occurrence_match_cases[OPERATION_CASE_CAPACITY];
+static struct prototype_typed_occurrence_fold_clause
+	occurrence_fold_clauses[OPERATION_FOLD_CLAUSE_CAPACITY];
+static struct prototype_occurrence_effect_constraint
 	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
@@ -153,12 +156,12 @@ static void label_evaluation_root(
 	uint32_t* p_operation,
 	uint32_t* p_term
 ) {
-	*p_operation = label->exposed_operation;
+	*p_operation = label->exposed_occurrence;
 	*p_term = label->term;
 	if (metadata->selected_entry_symbol_id == symbol_id &&
-		metadata->selected_entry_operation < metadata->operation_count &&
+		metadata->selected_entry_occurrence < metadata->typed_occurrences.occurrence_count &&
 		metadata->selected_entry_term != PROTOTYPE_INVALID_ID) {
-		*p_operation = metadata->selected_entry_operation;
+		*p_operation = metadata->selected_entry_occurrence;
 		*p_term = metadata->selected_entry_term;
 	}
 }
@@ -221,12 +224,12 @@ static void print_state(
 		"\n"
 		"#### Metadata ####\n"
 		"labels=%zu resolve_errors=%zu self_contained=%s\n"
-		"operations=%zu terms=%zu propositions=%zu claims=%zu derivations=%zu "
+		"typed-occurrences=%zu terms=%zu propositions=%zu claims=%zu derivations=%zu "
 		"normalization-budget=%llu/%llu solver-budget=%llu/%llu\n",
 		metadata ? metadata->label_count : 0,
 		metadata ? metadata->resolve_error_count : 0,
 		metadata && metadata->resolve_error_count == 0 ? "yes" : "no",
-		metadata ? metadata->operation_count : 0,
+		metadata ? metadata->typed_occurrences.occurrence_count : 0,
 		term_db->term_count,
 		judgement_db->proposition_count,
 		judgement_db->claim_count,
@@ -387,22 +390,35 @@ static int evaluate_for_output(
 
 	*p_host_ran = 0;
 	*p_verification_state = 0;
+	struct prototype_frozen_module_snapshot snapshot;
+	int has_snapshot = metadata &&
+		prototype_compile_metadata_frozen_snapshot(metadata, &snapshot) == 0;
+	if (metadata && !has_snapshot) {
+		return -1;
+	}
 	struct prototype_term_reduction_options options = {
 		.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT |
 			PROTOTYPE_TERM_PERFORM_HOST_EFFECT,
 		.effect_output = output,
 		.symbols = symbols,
+		.reduction_environment = has_snapshot ?
+			&snapshot.reduction_environment : NULL,
 		.effect_capabilities = PROTOTYPE_HOST_EFFECT_TERMINAL,
 		.p_effect_performed = p_host_ran
 	};
-	if (metadata && operation < metadata->operation_count) {
+	if (has_snapshot && operation < snapshot.typed_occurrences.occurrence_count) {
 		struct prototype_runtime_trace trace;
-		int status = prototype_operation_evaluate_with_trace(
-			metadata,
+		const struct prototype_runtime_annotations annotations = {
+			.occurrences = &snapshot.typed_occurrences,
+			.verification = &snapshot.verification,
+			.verification_type_declarations = type_declarations
+		};
+		int status = prototype_runtime_evaluate_core_with_annotations(
+			&annotations,
 			term_db,
-			type_declarations,
 			NULL,
 			options,
+			term,
 			operation,
 			p_ret,
 			p_verification_state,
@@ -411,17 +427,17 @@ static int evaluate_for_output(
 		if (status != 0) {
 			fprintf(
 				output,
-				"runtime failure kind=%d operation#%u\n",
+				"runtime failure kind=%d occurrence#%u\n",
 				trace.failure_kind,
-				trace.failed_operation
+				trace.failed_occurrence
 			);
 			for (uint32_t i = 0; i < trace.frame_count; ++i) {
 				fprintf(
 					output,
-					"runtime frame %u kind=%d operation#%u\n",
+					"runtime frame %u kind=%d occurrence#%u\n",
 					i,
 					trace.frame_kinds[i],
-					trace.frame_operations[i]
+					trace.frame_occurrences[i]
 				);
 			}
 		}
@@ -429,7 +445,7 @@ static int evaluate_for_output(
 	}
 	return prototype_term_perform_with_options(
 		term_db,
-		type_declarations,
+		NULL,
 		NULL,
 		options,
 		term,
@@ -813,9 +829,11 @@ int main(int argc, char** argv) {
 			PROTOTYPE_SUBSTITUTION_CAPACITY,
 		operations,
 		OPERATION_CAPACITY,
-		operation_cases,
+		occurrence_edges,
+		OCCURRENCE_EDGE_CAPACITY,
+		occurrence_match_cases,
 		OPERATION_CASE_CAPACITY,
-		operation_fold_clauses,
+		occurrence_fold_clauses,
 		OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints,
 		EFFECT_CONSTRAINT_CAPACITY,

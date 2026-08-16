@@ -671,6 +671,290 @@ int prototype_term_semantics(
 	return 0;
 }
 
+int prototype_term_core_projection(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_core_term
+) {
+	if (!db || !p_core_term || term_id >= db->term_count) {
+		return -1;
+	}
+	uint32_t current = term_id;
+	while (current < db->term_count &&
+		db->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		uint32_t next = db->terms[current].as.type_view.core;
+		if (next >= db->term_count || next == current) {
+			return -1;
+		}
+		current = next;
+	}
+	if (current >= db->term_count) {
+		return -1;
+	}
+	*p_core_term = current;
+	return 0;
+}
+
+int prototype_term_child_count(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_count
+) {
+	if (!db || !p_count || term_id >= db->term_count) {
+		return -1;
+	}
+	const struct prototype_term* term = &db->terms[term_id];
+	uint32_t count = 0;
+	switch (term->tag) {
+		case PROTOTYPE_TERM_APP:
+		case PROTOTYPE_TERM_PI:
+		case PROTOTYPE_TERM_TYPE_VIEW:
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			count = 2;
+			break;
+		case PROTOTYPE_TERM_LAMBDA:
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+		case PROTOTYPE_TERM_THUNK_TYPE:
+		case PROTOTYPE_TERM_RETURN:
+		case PROTOTYPE_TERM_THUNK:
+		case PROTOTYPE_TERM_FORCE:
+			count = 1;
+			break;
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			count = 3;
+			break;
+		case PROTOTYPE_TERM_MATCH:
+			if (term->as.match.first_case > db->case_count ||
+				term->as.match.case_count >
+					db->case_count - term->as.match.first_case) {
+				return -1;
+			}
+			count = 1 + term->as.match.case_count;
+			break;
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+			if (term->as.computation_fold.first_clause >
+					db->computation_fold_clause_count ||
+				term->as.computation_fold.clause_count >
+					db->computation_fold_clause_count -
+						term->as.computation_fold.first_clause ||
+				term->as.computation_fold.clause_count > (UINT32_MAX - 2) / 2) {
+				return -1;
+			}
+			count = 2 + 2 * term->as.computation_fold.clause_count;
+			break;
+		case PROTOTYPE_TERM_VAR:
+		case PROTOTYPE_TERM_CONSTRUCTOR:
+		case PROTOTYPE_TERM_TYPE_FORMER:
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+		case PROTOTYPE_TERM_UNIVERSE_VAR:
+		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
+		case PROTOTYPE_TERM_TEXT_LITERAL:
+		case PROTOTYPE_TERM_PRIMITIVE_INT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT64:
+		case PROTOTYPE_TERM_INT_LITERAL:
+		case PROTOTYPE_TERM_EXTERNAL_REF:
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+			break;
+		default:
+			return -1;
+	}
+	*p_count = count;
+	return 0;
+}
+
+static int term_child_result(
+	const struct prototype_term_db* db,
+	int role,
+	uint32_t ordinal,
+	uint32_t term,
+	struct prototype_term_child* p_child
+) {
+	if (!db || !p_child || term >= db->term_count) {
+		return -1;
+	}
+	p_child->role = role;
+	p_child->ordinal = ordinal;
+	p_child->term = term;
+	return 0;
+}
+
+int prototype_term_child_at(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t child_index,
+	struct prototype_term_child* p_child
+) {
+	uint32_t child_count;
+	if (!p_child || prototype_term_child_count(db, term_id, &child_count) != 0 ||
+		child_index >= child_count) {
+		return -1;
+	}
+	const struct prototype_term* term = &db->terms[term_id];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_APP:
+			return term_child_result(
+				db,
+				child_index == 0 ? PROTOTYPE_TERM_CHILD_FUNCTION :
+					PROTOTYPE_TERM_CHILD_ARGUMENT,
+				0,
+				child_index == 0 ? term->as.app.function : term->as.app.argument,
+				p_child
+			);
+		case PROTOTYPE_TERM_LAMBDA:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_BODY, 0, term->as.lambda.body, p_child
+			);
+		case PROTOTYPE_TERM_PI:
+			return term_child_result(
+				db,
+				child_index == 0 ? PROTOTYPE_TERM_CHILD_DOMAIN :
+					PROTOTYPE_TERM_CHILD_CODOMAIN_FAMILY,
+				0,
+				child_index == 0 ? term->as.pi.domain : term->as.pi.codomain_family,
+				p_child
+			);
+		case PROTOTYPE_TERM_MATCH:
+			if (child_index == 0) {
+				return term_child_result(
+					db, PROTOTYPE_TERM_CHILD_SCRUTINEE, 0,
+					term->as.match.scrutinee, p_child
+				);
+			}
+			return term_child_result(
+				db,
+				PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+				child_index - 1,
+				db->cases[term->as.match.first_case + child_index - 1].body,
+				p_child
+			);
+		case PROTOTYPE_TERM_TYPE_VIEW:
+			return term_child_result(
+				db,
+				child_index == 0 ? PROTOTYPE_TERM_CHILD_TYPE_VIEW_CORE :
+					PROTOTYPE_TERM_CHILD_TYPE_VIEW_SOURCE,
+				0,
+				child_index == 0 ? term->as.type_view.core : term->as.type_view.source,
+				p_child
+			);
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_INDUCTION_ARGUMENT, 0,
+				term->as.induction_hypothesis.argument, p_child
+			);
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_EFFECT_OPERATION_CLASSIFIER, 0,
+				term->as.effect_operation.classifier, p_child
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			return term_child_result(
+				db,
+				child_index == 0 ? PROTOTYPE_TERM_CHILD_EFFECT_ROW_LEFT :
+					PROTOTYPE_TERM_CHILD_EFFECT_ROW_RIGHT,
+				0,
+				child_index == 0 ? term->as.effect_row_union.left :
+					term->as.effect_row_union.right,
+				p_child
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_EFFECT_ROW_BODY, 0,
+				term->as.effect_row_forall.body, p_child
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_EFFECT_ROW_LATENT, 0,
+				term->as.effect_row_operation.latent_row, p_child
+			);
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return term_child_result(
+				db,
+				child_index == 0 ? PROTOTYPE_TERM_CHILD_COMPUTATION_EFFECT_ROW :
+					PROTOTYPE_TERM_CHILD_COMPUTATION_RESULT,
+				0,
+				child_index == 0 ? term->as.computation_type.label :
+					term->as.computation_type.result,
+				p_child
+			);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_THUNK_TYPE_COMPUTATION, 0,
+				term->as.thunk_type.computation, p_child
+			);
+		case PROTOTYPE_TERM_RETURN:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0,
+				term->as.return_term.value, p_child
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION, 0,
+				term->as.thunk.computation, p_child
+			);
+		case PROTOTYPE_TERM_FORCE:
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_FORCE_VALUE, 0,
+				term->as.force.value, p_child
+			);
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			if (child_index == 0) {
+				return term_child_result(
+					db, PROTOTYPE_TERM_CHILD_REQUEST_OPERATION, 0,
+					term->as.operation_request.operation, p_child
+				);
+			}
+			if (child_index == 1) {
+				return term_child_result(
+					db, PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT, 0,
+					term->as.operation_request.argument, p_child
+				);
+			}
+			return term_child_result(
+				db, PROTOTYPE_TERM_CHILD_REQUEST_CONTINUATION, 0,
+				term->as.operation_request.continuation, p_child
+			);
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+			if (child_index == 0) {
+				return term_child_result(
+					db, PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION, 0,
+					term->as.computation_fold.computation, p_child
+				);
+			}
+			if (child_index == 1) {
+				return term_child_result(
+					db, PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0,
+					term->as.computation_fold.return_clause, p_child
+				);
+			}
+			{
+				uint32_t clause_offset = (child_index - 2) / 2;
+				const struct prototype_computation_fold_clause* clause =
+					&db->computation_fold_clauses[
+						term->as.computation_fold.first_clause + clause_offset
+					];
+				return term_child_result(
+					db,
+					(child_index - 2) % 2 == 0 ?
+						PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION :
+						PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY,
+					clause_offset,
+					(child_index - 2) % 2 == 0 ? clause->operation : clause->body,
+					p_child
+				);
+			}
+		default:
+			return -1;
+	}
+}
+
 int prototype_term_classifier_view(
 	const struct prototype_term_db* db,
 	uint32_t classifier,
