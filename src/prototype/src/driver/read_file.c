@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v76.h"
+#include "a_program/artifact/wire_v77.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -997,7 +997,8 @@ static int append_link_typed_occurrence_graph(
 		}
 		operation_case.context_id =
 			context_relocation[operation_case.context_id];
-		if (operation_case.has_refinement) {
+		if (operation_case.refinement_status ==
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED) {
 			if (operation_case.refinement_substitution >=
 					substitution_relocation_count ||
 				substitution_relocation[
@@ -4198,6 +4199,7 @@ int main(int argc, char** argv) {
 				universe_constraints,
 				PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
 			);
+			const char* artifact_graph_stage = "graph";
 			if (prototype_artifact_read_text_graph(
 					artifact_file,
 					&symbols,
@@ -4206,6 +4208,7 @@ int main(int argc, char** argv) {
 					&type_declarations,
 					&judgement_db
 				) != 0 ||
+				((artifact_graph_stage = "typed-occurrences"),
 				prototype_artifact_read_text_typed_occurrences(
 					artifact_file,
 					&symbols,
@@ -4213,23 +4216,29 @@ int main(int argc, char** argv) {
 					&type_declarations,
 					&judgement_db,
 					&artifact_metadata
-				) != 0 ||
+				) != 0) ||
+				((artifact_graph_stage = "universe"),
 				prototype_artifact_read_text_universe(
 					artifact_file,
 					&universe_db
-				) != 0 || artifact_export_claim_ids_match_loaded_image(
+				) != 0) ||
+				((artifact_graph_stage = "export-claims"),
+				 artifact_export_claim_ids_match_loaded_image(
 					&artifact_interface, &judgement_db
-				) != 0 ||
+				) != 0) ||
+				((artifact_graph_stage = "debug"),
 				prototype_artifact_read_text_debug(
 					artifact_file,
 					&symbols,
 					&debug_table
-				) != 0 ||
+				) != 0) ||
+				((artifact_graph_stage = "relocation"),
 				prototype_artifact_read_text_relocation(
 					artifact_file,
 					&symbols,
 					&relocation_table
-				) != 0 ||
+				) != 0) ||
+				((artifact_graph_stage = "accepted-graph"),
 				prototype_judgement_validate_accepted_graph(
 					&term_db,
 					&type_declarations,
@@ -4238,23 +4247,32 @@ int main(int argc, char** argv) {
 					&artifact_metadata.substitutions,
 					&artifact_metadata.typed_occurrences,
 					&judgement_db
-				) != 0 || prototype_artifact_interface_validate_identity_roots(
+				) != 0) ||
+				((artifact_graph_stage = "identity-roots"),
+				 prototype_artifact_interface_validate_identity_roots(
 					&artifact_interface,
 					&term_db,
 					&type_declarations,
 					&artifact_metadata.contexts,
 					&judgement_db
-				) != 0 || prototype_universe_validate_provenance(
+				) != 0) ||
+				((artifact_graph_stage = "universe-provenance"),
+				 prototype_universe_validate_provenance(
 					&universe_db, &judgement_db
-				) != 0 || artifact_exports_have_accepted_claims(
+				) != 0) ||
+				((artifact_graph_stage = "accepted-exports"),
+				 artifact_exports_have_accepted_claims(
 					&artifact_interface,
 					&term_db,
 					&judgement_db,
 					&artifact_metadata,
 					0
-				) != 0) {
+				) != 0)) {
 				fclose(artifact_file);
-				fprintf(stderr, "%s: failed to read artifact graph/universe/relocation\n", interface_input_path);
+				fprintf(stderr,
+					"%s: failed to read artifact graph/universe/relocation "
+					"stage=%s\n",
+					interface_input_path, artifact_graph_stage);
 				symbol_table_free(&symbols);
 				return 1;
 			}
@@ -4974,6 +4992,11 @@ int main(int argc, char** argv) {
 			body_occurrence,
 			operation_case->constructor_owner,
 			operation_case->constructor_id);
+		printf(" refinement-status=%d", operation_case->refinement_status);
+		if (prototype_typed_occurrence_match_case_is_solved(operation_case)) {
+			printf(" refinement-substitution#%u",
+				operation_case->refinement_substitution);
+		}
 		if (operation_case->case_label_symbol_id >= 0) {
 			printf(" label=%s",
 				symbol_to_string(&symbols, operation_case->case_label_symbol_id));

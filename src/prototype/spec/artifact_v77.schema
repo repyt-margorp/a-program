@@ -1,6 +1,6 @@
-A_PROGRAM_ARTIFACT 76
+A_PROGRAM_ARTIFACT 77
 
-This file is the canonical semantic manifest for artifact version 76. The
+This file is the canonical semantic manifest for artifact version 77. The
 artifact header carries the SHA-256 digest of these exact bytes. A reader must
 reject a different version or digest before reading the interface. Version 75
 is not accepted and has no compatibility parser. It persisted compiler-local
@@ -19,7 +19,7 @@ literal or primitive Claims. In the default environment, Int and Int32 name
 HOST_TYPE_INT32 and unsuffixed integer literals have exactly that principal;
 Int64 remains distinct. INT_LITERAL_ADMISSIBILITY is retained in the numeric
 wire vocabulary only as a reserved historical ordinal and is not emitted or
-accepted by the v76 compiler.
+accepted by the v77 compiler.
 
 The artifact is one dense accepted object graph. Every section uses IDs in
 0..count-1 with no holes. Solver candidates, work queues, HOTT actions,
@@ -129,8 +129,13 @@ occurrence_edge ID PARENT_OCCURRENCE CHILD_ROLE ORDINAL CHILD_OCCURRENCE
 occurrence_fold_clauses N
 occurrence_fold_clause ID CONTEXT ARGUMENT_BINDING CONTINUATION_BINDING
 occurrence_match_cases N
-occurrence_match_case ID CONTEXT HAS_REFINEMENT REFINEMENT_SUBSTITUTION_OR_INVALID CONSTRUCTOR_OWNER CONSTRUCTOR_ID LABEL_OR_DASH
+occurrence_match_case ID CONTEXT REFINEMENT_STATUS REFINEMENT_SUBSTITUTION_OR_INVALID CONSTRUCTOR_OWNER CONSTRUCTOR_ID LABEL_OR_DASH
 occurrence_match_case_binders ID BINDER_COUNT [BINDING_ID]*
+
+REFINEMENT_STATUS is SOLVED (1) or IMPOSSIBLE (2). SOLVED requires one
+refinement Substitution whose source is the stored branch Context. IMPOSSIBLE
+requires INVALID substitution. Compiler-workspace PENDING and RESIDUAL states
+are rejected at publication and readback.
 
 Occurrence edges are the only typed-layer correspondence topology. APP,
 Lambda, Match, CBPV, request, and computation-fold children are not repeated
@@ -213,7 +218,7 @@ Dependent computation-fold verification lifecycle:
 - hybrid compilation may publish PENDING obligations only when the selected
   backend declares the computation-fold result verifier and handler
   capabilities;
-- artifact v76 persists only PENDING obligations. DISCHARGED and FAILED are
+- artifact v77 persists only PENDING obligations. DISCHARGED and FAILED are
   execution-instance outcomes and are rejected on readback;
 - execution discharges an obligation by applying its retained pure classifier
   family to the returned value and checking conversion with the continuation

@@ -33,7 +33,7 @@ Implemented in the prototype:
 - a compiler-local logical-relation substrate, closed nondependent ADT object
   Identity, pure Return/Thunk Identity, nondependent pure Pi pointwise
   Identity, and selected higher square constructions;
-- artifact v76, namespace-qualified interfaces, relocation, linking,
+- artifact v77, namespace-qualified interfaces, relocation, linking,
   aggregation, and backend capability checks;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
@@ -453,7 +453,7 @@ this elaboration boundary.
 
 ## Artifacts and Linking
 
-Artifact format v76 serializes the dense reachable accepted object graph of:
+Artifact format v77 serializes the dense reachable accepted object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
 - TermDB and TypedOccurrenceGraph occurrence metadata;
@@ -472,7 +472,7 @@ binders/contexts/terms, preserves typed export identity, and may share
 alpha-equivalent Core representatives without merging the exports.
 
 The exact current wire and semantic contract is
-[`src/prototype/spec/artifact_v76.schema`](src/prototype/spec/artifact_v76.schema).
+[`src/prototype/spec/artifact_v77.schema`](src/prototype/spec/artifact_v77.schema).
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v5.schema`](src/prototype/spec/hott_fragment_v5.schema).
 

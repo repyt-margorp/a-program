@@ -221,6 +221,9 @@ struct prototype_constructor_classifier_cache {
  * them physically adjacent. Semantic consumers use schema queries and cannot
  * derive acceptance from readback or cache presence. */
 struct prototype_type_declaration_db {
+	/* Reindexing TYPE_VIEW nodes depends on semantic declaration state as well
+	 * as the Term graph.  Cache users include this revision in their key. */
+	uint64_t semantic_revision;
 	struct prototype_type_declaration* type_declarations;
 	size_t type_count;
 	size_t type_capacity;
@@ -233,6 +236,10 @@ struct prototype_type_declaration_db {
 	struct prototype_type_representation_db representation_db;
 	struct prototype_constructor_classifier_cache constructor_classifier_cache;
 };
+
+void prototype_type_declaration_db_mark_semantic_change(
+	struct prototype_type_declaration_db* db
+);
 
 void prototype_type_declaration_db_init(
 	struct prototype_type_declaration_db* db,

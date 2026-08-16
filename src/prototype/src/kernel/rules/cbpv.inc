@@ -2316,6 +2316,9 @@ static int solve_computation_constraints(
 				&delta->computation_constraints[i];
 			struct prototype_judgement_computation_constraint_result* result =
 				&results[i];
+			if (constraint->occurrence_id == PROTOTYPE_INVALID_ID) {
+				continue;
+			}
 			int is_request = constraint->kind ==
 				PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST;
 			if ((pass == 0) != is_request) {

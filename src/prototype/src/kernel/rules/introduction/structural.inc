@@ -85,12 +85,27 @@ int prototype_judgement_delta_record_lambda_intro(
 			&lambda_pi,
 			&domain,
 			&codomain_family
-		) != 0 ||
-		prototype_term_lambda(terms, binder_id, body_subject, &occurrence_lambda) != 0 ||
-		prototype_term_core_shape_equal(
+		) != 0) {
+		fprintf(stderr,
+			"lambda intro: classifier is not Pi subject=%u classifier=%u exposed=%u\n",
+			subject, classifier, lambda_classifier);
+		return -1;
+	}
+	if (prototype_term_lambda(
+			terms, binder_id, body_subject, &occurrence_lambda
+		) != 0 || prototype_term_core_shape_equal(
 			terms, occurrence_lambda, subject, &occurrence_matches
-		) != 0 || !occurrence_matches ||
-		pi_codomain_at_binder_in_context(
+		) != 0 || !occurrence_matches) {
+		fprintf(stderr,
+			"lambda intro: occurrence shape mismatch subject=%u rebuilt=%u "
+			"binding=%u body=%u subject-binding=%u subject-body=%u matches=%d\n",
+			subject, occurrence_lambda, binder_id, body_subject,
+			terms->terms[subject].as.lambda.binding_id,
+			terms->terms[subject].as.lambda.body,
+			occurrence_matches);
+		return -1;
+	}
+	if (pi_codomain_at_binder_in_context(
 			delta,
 			terms,
 			type_declarations,
@@ -100,16 +115,39 @@ int prototype_judgement_delta_record_lambda_intro(
 			binder_classifier,
 			PROTOTYPE_INVALID_ID,
 			&expected_body_classifier
-		) != 0 ||
-		!(prototype_judgement_classifier_conversion(
+		) != 0) {
+		fprintf(stderr,
+			"lambda intro: codomain instantiation failed subject=%u context=%u "
+			"pi=%u binder=%u classifier=%u\n",
+			subject, body_evidence->context_id, lambda_pi,
+			binder_subject, binder_classifier);
+		return -1;
+	}
+	struct prototype_term_conversion_result domain_conversion =
+		prototype_judgement_classifier_conversion(
 			terms, type_declarations, domain, binder_classifier
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ||
-		!(prototype_judgement_classifier_conversion(
+		);
+	if (domain_conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		fprintf(stderr,
+			"lambda intro: domain mismatch subject=%u domain=%u binder=%u "
+			"status=%d reason=%d\n",
+			subject, domain, binder_classifier,
+			domain_conversion.status, domain_conversion.reason);
+		return -1;
+	}
+	struct prototype_term_conversion_result body_conversion =
+		prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			expected_body_classifier,
 			body_classifier
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
+		);
+	if (body_conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		fprintf(stderr,
+			"lambda intro: codomain mismatch subject=%u expected=%u actual=%u "
+			"status=%d reason=%d\n",
+			subject, expected_body_classifier, body_classifier,
+			body_conversion.status, body_conversion.reason);
 		return -1;
 	}
 	(void)codomain_family;

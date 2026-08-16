@@ -48,7 +48,10 @@ int prototype_judgement_add_constructor_spine_claim(
 	uint32_t argument_claim_count,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_indexed_branch_refinement(
+/* Generated observational Identity relations use a two-endpoint Context shape
+ * which is not the general source dependent-Match rule. Keep that theorem
+ * explicit instead of disguising it as source index unification. */
+int prototype_judgement_identity_relation_branch_refinement(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
@@ -79,7 +82,19 @@ int prototype_judgement_solve_index_pattern(
 	uint32_t value,
 	uint32_t* p_solution
 );
-int prototype_judgement_source_indexed_branch_refinement(
+/* Construct the branch-local CwF action for source Match elimination.
+ *
+ * A solved action always maps the source scrutinee to the selected constructor
+ * spine. Indexed families additionally map solvable source index bindings to
+ * the constructor result indices. The action is local to this branch and must
+ * never be installed as global conversion evidence.
+ *
+ * SOLVED      refined Context and substitution are returned.
+ * IMPOSSIBLE  rigid constructor indices are disjoint.
+ * RESIDUAL    the supported first-order pattern solver cannot decide.
+ * INVALID     schema, scope, binder, or substitution data is malformed.
+ */
+int prototype_judgement_source_match_branch_refinement(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
@@ -93,7 +108,9 @@ int prototype_judgement_source_indexed_branch_refinement(
 	uint32_t branch_binder_count,
 	uint32_t* p_refined_context_id,
 	uint32_t* p_refinement_substitution_id,
-	uint32_t* p_constructor_term
+	uint32_t* p_constructor_term,
+	uint32_t* p_residual_pattern,
+	uint32_t* p_residual_value
 );
 int prototype_judgement_delta_record_context_binding_assumption(
 	struct prototype_judgement_delta* delta,
@@ -827,11 +844,26 @@ int prototype_judgement_add_expected_type_exposure(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t context_id,
 	uint32_t operation_id,
 	const struct prototype_judgement_selected_evidence* source_evidence,
 	uint32_t expected,
 	uint32_t subject
+);
+
+/* Check an expected classifier against one completed TypedOccurrence using
+ * only persisted graph facts and branch refinement actions. */
+int prototype_judgement_occurrence_classifier_satisfies(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_typed_occurrence_graph* operations,
+	uint32_t operation_id,
+	uint32_t expected_classifier
 );
 
 int prototype_judgement_delta_record_expected_type_exposure(

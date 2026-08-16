@@ -405,9 +405,20 @@ int prototype_judgement_delta_expand_match(
 						struct prototype_judgement_selected_evidence source_evidence;
 						uint32_t saved_context = delta->current_context_id;
 						uint32_t saved_operation = delta->current_occurrence_id;
+						int already_refined =
+							prototype_typed_occurrence_match_case_is_solved(operation_case);
+						const struct prototype_substitution* stored_refinement =
+							already_refined ? prototype_substitution_get(
+								delta->substitutions,
+								operation_case->refinement_substitution
+							) : NULL;
+						uint32_t source_branch_context = already_refined && stored_refinement ?
+							stored_refinement->target_context : operation_case->context_id;
 						if (!body_occurrence ||
 							operation_case->constructor_id != match_case->constructor_id ||
-							prototype_judgement_indexed_branch_refinement(
+							(already_refined && (!stored_refinement ||
+							 stored_refinement->source_context != operation_case->context_id)) ||
+							prototype_judgement_identity_relation_branch_refinement(
 								delta->contexts,
 								delta->substitutions,
 								terms,
@@ -416,30 +427,43 @@ int prototype_judgement_delta_expand_match(
 								scrutinee_operation->core_term,
 								scrutinee_operation->classifier,
 								match_case->constructor_id,
-								operation_case->context_id,
+								source_branch_context,
 								&terms->case_binders[match_case->first_binder],
 								match_case->binder_count,
 								&refined_context,
 								&refinement_substitution,
 								&constructor_term
-							) != 0 || operation_case->context_id !=
+							) != 0 || (already_refined &&
+							 (refined_context != operation_case->context_id ||
+							  refinement_substitution !=
+								operation_case->refinement_substitution)) ||
+							(!already_refined && source_branch_context !=
 								prototype_substitution_get(
 									delta->substitutions, refinement_substitution
-								)->target_context || prototype_judgement_delta_select_evidence(
+								)->target_context) || prototype_judgement_delta_select_evidence(
 								delta,
 								body_occurrence_id,
-								operation_case->context_id,
+								body_occurrence->context_id,
 								body_occurrence->core_term,
 								body_occurrence->classifier,
 								&source_evidence
-							) != 0 || prototype_judgement_delta_record_substitution_reindex(
+							) != 0 || (already_refined &&
+							 body_occurrence->context_id != operation_case->context_id)) {
+							return -1;
+						}
+						if (already_refined) {
+							premise_evidence[i + 1] = source_evidence;
+						} else if (prototype_judgement_delta_record_substitution_reindex(
 								delta,
 								terms,
 								type_declarations,
 								&source_evidence,
 								refinement_substitution,
 								&premise_evidence[i + 1]
-							) != 0 || prototype_term_reindex(
+							) != 0) {
+							return -1;
+						}
+						if (prototype_term_reindex(
 								terms,
 								type_declarations,
 								delta->contexts,

@@ -119,6 +119,9 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 		empty_context;
 	program->type_declarations->type_declarations[type_id].index_context =
 		empty_context;
+	prototype_type_declaration_db_mark_semantic_change(
+		program->type_declarations
+	);
 	if (prototype_judgement_expand_type_def(
 			program->judgement,
 			program->terms,

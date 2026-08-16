@@ -50,6 +50,13 @@ enum prototype_typed_occurrence_classifier_status {
 	PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION = 2
 };
 
+enum prototype_typed_occurrence_match_refinement_status {
+	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING = 0,
+	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED = 1,
+	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE = 2,
+	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_RESIDUAL = 3
+};
+
 struct prototype_typed_occurrence {
 	int tag;
 	/* This belongs to the source operation occurrence, not to the erased core
@@ -123,9 +130,11 @@ struct prototype_typed_occurrence_edge {
 struct prototype_typed_occurrence_match_case {
 	/* Semantic case telescope. Source binder IDs below are occurrence metadata. */
 	uint32_t context_id;
-	/* A solved indexed branch owns the pullback Context above. This morphism
-	 * maps its refined Context back to the source constructor telescope. */
-	int has_refinement;
+	/* A solved dependent branch owns the pullback Context above. This morphism
+	 * maps its refined Context back to the source branch Context. Ordinary ADTs
+	 * map the scrutinee to the constructor spine; indexed ADTs additionally map
+	 * the solved family indices. */
+	int refinement_status;
 	uint32_t refinement_substitution;
 	uint32_t constructor_owner;
 	uint32_t constructor_id;
@@ -136,6 +145,13 @@ struct prototype_typed_occurrence_match_case {
 	uint32_t binder_ids[16];
 	uint32_t ast_binder_ids[16];
 };
+
+static inline int prototype_typed_occurrence_match_case_is_solved(
+	const struct prototype_typed_occurrence_match_case* operation_case
+) {
+	return operation_case && operation_case->refinement_status ==
+		PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED;
+}
 
 struct prototype_typed_occurrence_fold_clause {
 	uint32_t context_id;

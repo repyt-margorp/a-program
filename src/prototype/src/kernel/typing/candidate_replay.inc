@@ -292,15 +292,34 @@ static int judgement_structural_premise_child(
 	}
 	case PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE:
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
-			operation->first_case + operation->case_count > operations->case_count ||
-			premise_count != operation->case_count) {
+			operation->first_case + operation->case_count > operations->case_count) {
 			return -1;
 		}
-		return judgement_occurrence_child(
-			operations, conclusion_occurrence_id,
-			PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, premise_index,
-			p_child_operation_id
-		);
+		{
+			uint32_t reachable_index = 0;
+			for (uint32_t case_index = 0;
+				case_index < operation->case_count; ++case_index) {
+				const struct prototype_typed_occurrence_match_case* operation_case =
+					&operations->cases[operation->first_case + case_index];
+				if (operation_case->refinement_status ==
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE) {
+					continue;
+				}
+				if (operation_case->refinement_status !=
+						PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED ||
+					reachable_index >= premise_count) {
+					return -1;
+				}
+				if (reachable_index++ == premise_index) {
+					return judgement_occurrence_child(
+						operations, conclusion_occurrence_id,
+						PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, case_index,
+						p_child_operation_id
+					);
+				}
+			}
+			return reachable_index == premise_count ? 1 : -1;
+		}
 	case PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO:
 	case PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO:
 	case PROTOTYPE_JUDGEMENT_PROOF_FORCE_ELIM:

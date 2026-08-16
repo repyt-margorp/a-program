@@ -209,7 +209,7 @@ static int artifact_substitution_slice_init(
 	for (size_t i = 0; i < metadata->typed_occurrences.case_count; ++i) {
 		const struct prototype_typed_occurrence_match_case* operation_case =
 			&metadata->typed_occurrences.cases[i];
-		if (operation_case->has_refinement &&
+		if (prototype_typed_occurrence_match_case_is_solved(operation_case) &&
 			artifact_substitution_slice_mark(
 				slice,
 				substitutions,

@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v76.h"
+#include "a_program/artifact/wire_v77.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -2220,6 +2220,7 @@ int prototype_artifact_read_text_graph(
 		strcmp(section_name, "graph") != 0) {
 		return -1;
 	}
+	prototype_type_declaration_db_mark_semantic_change(type_declarations);
 	return 0;
 }
 
@@ -2513,15 +2514,17 @@ int prototype_artifact_read_text_typed_occurrences(
 					classifier_view.computation_kind :
 					PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
 		}
-		if ((operation.context_action_substitution == PROTOTYPE_INVALID_ID) !=
-				(operation.source_core_term == PROTOTYPE_INVALID_ID) ||
-			(operation.context_action_substitution == PROTOTYPE_INVALID_ID) !=
-				(operation.source_classifier == PROTOTYPE_INVALID_ID) ||
+		if ((operation.context_action_substitution == PROTOTYPE_INVALID_ID &&
+			 (operation.source_core_term != PROTOTYPE_INVALID_ID ||
+			  operation.source_classifier != PROTOTYPE_INVALID_ID)) ||
+			(operation.context_action_substitution != PROTOTYPE_INVALID_ID &&
+			 operation.source_core_term == PROTOTYPE_INVALID_ID) ||
 			(metadata && (operation.context_id >= context_count ||
 			 (operation.context_action_substitution != PROTOTYPE_INVALID_ID &&
 			  (operation.context_action_substitution >= substitution_count ||
 			   operation.source_core_term >= terms->term_count ||
-			   operation.source_classifier >= terms->term_count))))) {
+			   (operation.source_classifier != PROTOTYPE_INVALID_ID &&
+			    operation.source_classifier >= terms->term_count)))))) {
 			return -1;
 		}
 		if (strcmp(source_name, "-") == 0) {
@@ -2659,19 +2662,23 @@ int prototype_artifact_read_text_typed_occurrences(
 		memset(&operation_case, 0, sizeof(operation_case));
 		if (fscanf(stream, "%255s %zu %u %d %u %u %u %255s", word, &id,
 				&operation_case.context_id,
-				&operation_case.has_refinement,
+				&operation_case.refinement_status,
 				&operation_case.refinement_substitution,
 				&operation_case.constructor_owner,
 				&operation_case.constructor_id, label) != 8 ||
 			strcmp(word, "occurrence_match_case") != 0 || id != i) {
 			return -1;
 		}
-		if ((operation_case.has_refinement != 0 &&
-			 operation_case.has_refinement != 1) ||
-			(!operation_case.has_refinement &&
+		if ((operation_case.refinement_status !=
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED &&
+			 operation_case.refinement_status !=
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE) ||
+			(operation_case.refinement_status ==
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE &&
 			 operation_case.refinement_substitution != PROTOTYPE_INVALID_ID) ||
 			(metadata && (operation_case.context_id >= context_count ||
-			 (operation_case.has_refinement &&
+			 (operation_case.refinement_status ==
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED &&
 			  operation_case.refinement_substitution >= substitution_count)))) {
 			return -1;
 		}

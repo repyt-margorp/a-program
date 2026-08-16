@@ -362,7 +362,7 @@ static int hott_prepare_local_object_identity(
 	}
 	uint32_t left_claim_id;
 	uint32_t right_claim_id;
-	if (prototype_judgement_add_reindexed_claim(
+	int left_reindex_status = prototype_judgement_add_reindexed_claim(
 			judgement,
 			terms,
 			types,
@@ -371,7 +371,9 @@ static int hott_prepare_local_object_identity(
 			source_claim_id,
 			environment->left_substitution_id,
 			&left_claim_id
-		) != 0 || prototype_judgement_add_reindexed_claim(
+		);
+	int right_reindex_status = left_reindex_status == 0 ?
+		prototype_judgement_add_reindexed_claim(
 			judgement,
 			terms,
 			types,
@@ -380,7 +382,14 @@ static int hott_prepare_local_object_identity(
 			source_claim_id,
 			environment->right_substitution_id,
 			&right_claim_id
-		) != 0) {
+		) : -1;
+	if (left_reindex_status != 0 || right_reindex_status != 0) {
+		fprintf(stderr,
+			"HOTT object action endpoint reindex failed source-claim=%u "
+			"left=%d right=%d left-substitution=%u right-substitution=%u\n",
+			source_claim_id, left_reindex_status, right_reindex_status,
+			environment->left_substitution_id,
+			environment->right_substitution_id);
 		return -1;
 	}
 	const struct prototype_judgement_proposition* left =
@@ -1050,7 +1059,7 @@ static int hott_construct_nullary_match_object_action(
 	for (uint32_t i = 0; i < source_type->constructor_count; ++i) {
 		uint32_t refined_context;
 		uint32_t constructor_term;
-		if (prototype_judgement_indexed_branch_refinement(
+		if (prototype_judgement_identity_relation_branch_refinement(
 				contexts,
 				substitutions,
 				terms,
@@ -1168,6 +1177,17 @@ static int hott_construct_adt_value_action(
 		right->target_context != source->context_id ||
 		(environment->binding_count > 0 && (!environment->source_binding_ids ||
 			!environment->identity_claim_ids))) {
+		fprintf(stderr,
+			"HOTT ADT action precondition failed source-claim=%u source-context=%u "
+			"target-context=%u left=%u->%u right=%u->%u depth=%u\n",
+			source_claim_id,
+			source ? source->context_id : PROTOTYPE_INVALID_ID,
+			environment ? environment->target_context_id : PROTOTYPE_INVALID_ID,
+			left ? left->source_context : PROTOTYPE_INVALID_ID,
+			left ? left->target_context : PROTOTYPE_INVALID_ID,
+			right ? right->source_context : PROTOTYPE_INVALID_ID,
+			right ? right->target_context : PROTOTYPE_INVALID_ID,
+			remaining_depth);
 		return -1;
 	}
 	uint32_t left_claim_id;
@@ -1197,15 +1217,25 @@ static int hott_construct_adt_value_action(
 		prototype_judgement_claim_proposition(judgement, left_claim_id);
 	const struct prototype_judgement_proposition* right_endpoint =
 		prototype_judgement_claim_proposition(judgement, right_claim_id);
-	if (!left_endpoint || !right_endpoint ||
-		left_endpoint->context_id != environment->target_context_id ||
-		right_endpoint->context_id != environment->target_context_id ||
+	int endpoint_conversion = left_endpoint && right_endpoint ?
 		prototype_judgement_classifier_conversion(
 			terms,
 			types,
 			left_endpoint->classifier,
 			right_endpoint->classifier
-		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		).status : -1;
+	if (!left_endpoint || !right_endpoint ||
+		left_endpoint->context_id != environment->target_context_id ||
+		right_endpoint->context_id != environment->target_context_id ||
+		endpoint_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		fprintf(stderr,
+			"HOTT object action endpoint validation failed source-claim=%u "
+			"left-claim=%u right-claim=%u left-context=%u right-context=%u "
+			"target-context=%u conversion=%d\n",
+			source_claim_id, left_claim_id, right_claim_id,
+			left_endpoint ? left_endpoint->context_id : PROTOTYPE_INVALID_ID,
+			right_endpoint ? right_endpoint->context_id : PROTOTYPE_INVALID_ID,
+			environment->target_context_id, endpoint_conversion);
 		return -1;
 	}
 	uint32_t generated_type_id;
@@ -1223,14 +1253,16 @@ static int hott_construct_adt_value_action(
 	};
 	uint32_t identity_family;
 	uint32_t identity_family_claim;
-	if (prototype_term_type_instance_make(
+	int identity_family_status = prototype_term_type_instance_make(
 			terms,
 			types,
 			generated_type_id,
 			identity_arguments,
 			2,
 			&identity_family
-		) != 0 || prototype_judgement_add_type_formation_claim(
+		);
+	int identity_family_claim_status = identity_family_status == 0 ?
+		prototype_judgement_add_type_formation_claim(
 			judgement,
 			terms,
 			types,
@@ -1238,7 +1270,13 @@ static int hott_construct_adt_value_action(
 			identity_family,
 			universe,
 			&identity_family_claim
-		) != 0) {
+		) : -1;
+	if (identity_family_status != 0 || identity_family_claim_status != 0) {
+		fprintf(stderr,
+			"HOTT object action family formation failed source-claim=%u "
+			"generated-type=%u family=%d claim=%d\n",
+			source_claim_id, generated_type_id, identity_family_status,
+			identity_family_claim_status);
 		return -1;
 	}
 	if (source->subject < terms->term_count &&
@@ -1320,6 +1358,13 @@ static int hott_construct_adt_value_action(
 	if (!generated || source_owner != left_endpoint->classifier ||
 		generated_constructor_status < 0 ||
 		source_argument_count * 3 > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
+		fprintf(stderr,
+			"HOTT ADT constructor mapping failed source-claim=%u source-owner=%u "
+			"endpoint-classifier=%u generated-type=%u generated-status=%d "
+			"argument-count=%u\n",
+			source_claim_id, source_owner, left_endpoint->classifier,
+			generated_type_id, generated_constructor_status,
+			source_argument_count);
 		return -1;
 	}
 	if (generated_constructor_status > 0) {
@@ -1328,9 +1373,11 @@ static int hott_construct_adt_value_action(
 	uint32_t witness;
 	if (source_argument_count == 0) {
 		uint32_t witness_claim;
-		if (prototype_term_constructor(
+		int witness_constructor_status = prototype_term_constructor(
 				terms, identity_family, generated_constructor_index, &witness
-			) != 0 || prototype_judgement_add_constructor_intro_claim(
+			);
+		int witness_claim_status = witness_constructor_status == 0 ?
+			prototype_judgement_add_constructor_intro_claim(
 				judgement,
 				terms,
 				types,
@@ -1338,7 +1385,13 @@ static int hott_construct_adt_value_action(
 				witness,
 				identity_family,
 				&witness_claim
-			) != 0) {
+			) : -1;
+		if (witness_constructor_status != 0 || witness_claim_status != 0) {
+			fprintf(stderr,
+				"HOTT nullary ADT witness failed source-claim=%u family=%u "
+				"constructor=%u constructor-status=%d claim-status=%d\n",
+				source_claim_id, identity_family, generated_constructor_index,
+				witness_constructor_status, witness_claim_status);
 			return -1;
 		}
 		*p_left_claim_id = left_claim_id;
@@ -1384,6 +1437,22 @@ static int hott_construct_adt_value_action(
 			&field_witness_claim
 		);
 		if (status != 0) {
+			const struct prototype_judgement_proposition* failed_field =
+				prototype_judgement_claim_proposition(
+					judgement, source_derivation->premises[i].claim_id
+				);
+			fprintf(stderr,
+				"HOTT ADT field action failed source-claim=%u field=%u "
+				"field-claim=%u subject=%u subject-tag=%d classifier=%u "
+				"context=%u status=%d\n",
+				source_claim_id, i,
+				source_derivation->premises[i].claim_id,
+				failed_field ? failed_field->subject : PROTOTYPE_INVALID_ID,
+				failed_field && failed_field->subject < terms->term_count ?
+					terms->terms[failed_field->subject].tag : -1,
+				failed_field ? failed_field->classifier : PROTOTYPE_INVALID_ID,
+				failed_field ? failed_field->context_id : PROTOTYPE_INVALID_ID,
+				status);
 			return status;
 		}
 		const struct prototype_judgement_proposition* field_left =
@@ -3202,11 +3271,23 @@ static int hott_construct_object_value_action_depth(
 			source_claim_id,
 			PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX
 		);
-	if (!identity && reindex_derivation) {
+	const struct prototype_judgement_derivation* direct_constructor_derivation =
+		hott_constructor_derivation_for_claim(judgement, source_claim_id);
+	/* Accepted Claims may have several Derivations. A constructor introduction
+	 * is the structural action authority for a constructor subject; a later
+	 * reindex derivation is an alternative proof path, not a replacement. */
+	if (!identity && reindex_derivation && !direct_constructor_derivation) {
+		const struct prototype_substitution* reindex_action =
+			reindex_derivation->semantic_action_kind ==
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION ?
+			prototype_substitution_get(
+				substitutions, reindex_derivation->semantic_action_id
+			) : NULL;
 		if (reindex_derivation->premise_count != 1 ||
 			reindex_derivation->premises[0].claim_id == PROTOTYPE_INVALID_ID ||
 			reindex_derivation->semantic_action_kind !=
-				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION ||
+			!reindex_action) {
 			return -1;
 		}
 		uint32_t left_substitution;
@@ -3224,24 +3305,27 @@ static int hott_construct_object_value_action_depth(
 				environment->right_substitution_id,
 				&right_substitution
 			) != 0) {
-			return -1;
+			/* A Claim may have both a direct structural derivation and later
+			 * reindex derivations. An unrelated reindex edge is not the canonical
+			 * decomposition of that Claim for the current object action. */
+		} else {
+			struct hott_object_action_environment source_environment = *environment;
+			source_environment.left_substitution_id = left_substitution;
+			source_environment.right_substitution_id = right_substitution;
+			return hott_construct_object_value_action_depth(
+				kernel,
+				NULL,
+				reindex_derivation->premises[0].claim_id,
+				&source_environment,
+				universe,
+				remaining_depth - 1,
+				p_left_claim_id,
+				p_right_claim_id,
+				p_identity_family_claim_id,
+				p_witness_term_id,
+				p_witness_claim_id
+			);
 		}
-		struct hott_object_action_environment source_environment = *environment;
-		source_environment.left_substitution_id = left_substitution;
-		source_environment.right_substitution_id = right_substitution;
-		return hott_construct_object_value_action_depth(
-			kernel,
-			NULL,
-			reindex_derivation->premises[0].claim_id,
-			&source_environment,
-			universe,
-			remaining_depth - 1,
-			p_left_claim_id,
-			p_right_claim_id,
-			p_identity_family_claim_id,
-			p_witness_term_id,
-			p_witness_claim_id
-		);
 	}
 	uint32_t left_claim_id;
 	uint32_t right_claim_id;
@@ -3276,6 +3360,10 @@ static int hott_construct_object_value_action_depth(
 			&local_identity
 		);
 		if (identity_status != 0) {
+			fprintf(stderr,
+				"HOTT object action local Identity failed source-claim=%u "
+				"status=%d\n",
+				source_claim_id, identity_status);
 			return identity_status;
 		}
 		identity = &local_identity;
@@ -3309,6 +3397,12 @@ static int hott_construct_object_value_action_depth(
 			&converted_witness_claim
 		);
 		if (converted_status != 0) {
+			fprintf(stderr,
+				"HOTT converted object action failed source-claim=%u premise-claim=%u "
+				"status=%d\n",
+				source_claim_id,
+				conversion_derivation->premises[0].claim_id,
+				converted_status);
 			return converted_status;
 		}
 		uint32_t identity_family_claim;
@@ -3320,6 +3414,9 @@ static int hott_construct_object_value_action_depth(
 				right_claim_id,
 				&identity_family_claim
 			) != 0) {
+			fprintf(stderr,
+				"HOTT converted object family failed source-claim=%u\n",
+				source_claim_id);
 			return -1;
 		}
 		const struct prototype_judgement_proposition* family =
@@ -3336,6 +3433,11 @@ static int hott_construct_object_value_action_depth(
 			prototype_judgement_classifier_conversion(
 				terms, types, witness->classifier, family->subject
 			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			fprintf(stderr,
+				"HOTT converted object witness validation failed source-claim=%u "
+				"family-claim=%u witness-claim=%u\n",
+				source_claim_id, identity_family_claim,
+				converted_witness_claim);
 			return -1;
 		}
 		uint32_t witness_claim = converted_witness_claim;

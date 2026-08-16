@@ -1060,6 +1060,8 @@ int prototype_term_reindex(
 	if (cached->present && cached->term == term &&
 		cached->substitution == substitution_id &&
 		cached->graph_revision == terms->normalization_graph_revision &&
+		cached->type_declaration_revision ==
+			type_declarations->semantic_revision &&
 		cached->result < terms->term_count) {
 		substitutions->reindex_hits++;
 		*p_reindexed = cached->result;
@@ -1129,7 +1131,8 @@ int prototype_term_reindex(
 			.term = term,
 			.substitution = substitution_id,
 			.result = *p_reindexed,
-			.graph_revision = terms->normalization_graph_revision
+			.graph_revision = terms->normalization_graph_revision,
+			.type_declaration_revision = type_declarations->semantic_revision
 		};
 	}
 	return status;
@@ -1621,28 +1624,35 @@ int prototype_context_pullback_occurrence_telescope(
 		const struct prototype_context* source = prototype_context_get(
 			contexts, source_path[i]
 		);
-		uint32_t classifier;
+		uint32_t source_classifier = prototype_context_classifier_term(source);
+		uint32_t classifier_variable =
+			prototype_context_classifier_variable(source);
+		uint32_t classifier = PROTOTYPE_INVALID_ID;
 		uint32_t target_extension;
 		uint32_t projection;
 		uint32_t weakened_substitution;
 		uint32_t variable;
 		if (!source || source->binding_id == PROTOTYPE_INVALID_ID ||
+			(source_classifier == PROTOTYPE_INVALID_ID &&
+			 classifier_variable == PROTOTYPE_INVALID_ID) ||
 			prototype_context_contains_binding(
 				contexts, target_context, source->binding_id
-			) || prototype_term_reindex(
+			) || (source_classifier != PROTOTYPE_INVALID_ID &&
+			 prototype_term_reindex(
 				terms,
 				type_declarations,
 				contexts,
 				substitutions,
-				prototype_context_classifier_term(source),
+				source_classifier,
 				substitution,
 				&classifier
-			) != 0 || prototype_context_extend(
+			 ) != 0) || prototype_context_extend(
 				contexts,
 				target_context,
 				source->binding_id,
 				classifier,
-				PROTOTYPE_INVALID_ID,
+				classifier == PROTOTYPE_INVALID_ID ?
+					classifier_variable : PROTOTYPE_INVALID_ID,
 				&target_extension
 			) != 0 || prototype_substitution_projection(
 				substitutions, contexts, target_extension, &projection
@@ -1654,18 +1664,53 @@ int prototype_context_pullback_occurrence_telescope(
 				&weakened_substitution
 			) != 0 || prototype_term_var(
 				terms, source->binding_id, &variable
-			) != 0 || prototype_substitution_extend(
-				substitutions,
-				contexts,
-				terms,
-				type_declarations,
-				weakened_substitution,
-				source_path[i],
-				variable,
-				classifier,
-				&substitution
 			) != 0) {
 			return -1;
+		}
+		if (classifier != PROTOTYPE_INVALID_ID) {
+			if (prototype_substitution_extend(
+					substitutions,
+					contexts,
+					terms,
+					type_declarations,
+					weakened_substitution,
+					source_path[i],
+					variable,
+					classifier,
+					&substitution
+				) != 0) {
+				return -1;
+			}
+		} else {
+			/* This is a compiler-local structural action over an unresolved
+			 * Context classifier.  The binding object and classifier variable are
+			 * stable, so reindexing terms is already determined; classifier
+			 * coherence is discharged when context resolution replaces the
+			 * variable and fills term_classifier before publication. */
+			const struct prototype_substitution* prefix =
+				prototype_substitution_get(substitutions, weakened_substitution);
+			const struct prototype_context* target = prototype_context_get(
+				contexts, source_path[i]
+			);
+			if (!prefix || !target || target->parent != prefix->target_context ||
+				prefix->source_context != target_extension ||
+				target->binding_id != source->binding_id) {
+				return -1;
+			}
+			struct prototype_substitution pending = {
+				.kind = PROTOTYPE_SUBSTITUTION_EXTEND,
+				.source_context = prefix->source_context,
+				.target_context = source_path[i],
+				.first = weakened_substitution,
+				.second = PROTOTYPE_INVALID_ID,
+				.term = variable,
+				.term_classifier = PROTOTYPE_INVALID_ID
+			};
+			if (prototype_substitution_add(
+					substitutions, pending, &substitution
+				) != 0) {
+				return -1;
+			}
 		}
 		target_context = target_extension;
 	}

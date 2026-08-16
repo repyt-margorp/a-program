@@ -52,6 +52,7 @@ struct prototype_reindex_cache_entry {
 	uint32_t substitution;
 	uint32_t result;
 	uint64_t graph_revision;
+	uint64_t type_declaration_revision;
 };
 
 /*

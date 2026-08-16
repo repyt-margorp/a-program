@@ -137,6 +137,7 @@ struct ih_scope_map_entry {
 struct pending_match_resolution {
 	uint32_t item_id;
 	uint32_t match_term;
+	uint32_t match_operation;
 	uint32_t scrutinee_operation;
 	uint32_t scrutinee_proven_classifier_hint;
 	int constructor_symbol_id;
@@ -244,6 +245,10 @@ enum operation_classifier_goal_reason {
 	OPERATION_CLASSIFIER_GOAL_REASON_CONVERSION_REJECTED,
 	OPERATION_CLASSIFIER_GOAL_REASON_CONVERSION_RESIDUAL,
 	OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY,
+	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_VALIDATED,
+	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_IMPOSSIBLE,
+	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_RESIDUAL,
+	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_INVALID,
 	OPERATION_CLASSIFIER_GOAL_REASON_RESIDUAL_OBLIGATION,
 	OPERATION_CLASSIFIER_GOAL_REASON_INCOMPLETE_BUDGET
 };
@@ -310,8 +315,13 @@ union operation_classifier_goal_payload {
 
 enum operation_constraint_domain {
 	OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER = 1,
-	OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW = 2,
-	OPERATION_CONSTRAINT_DOMAIN_COMPUTATION = 3
+	OPERATION_CONSTRAINT_DOMAIN_BRANCH_REFINEMENT = 2,
+	OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW = 3,
+	OPERATION_CONSTRAINT_DOMAIN_COMPUTATION = 4
+};
+
+enum operation_branch_refinement_constraint_kind {
+	OPERATION_BRANCH_REFINEMENT_CONSTRAINT_MATCH_CASE = 1
 };
 
 struct operation_constraint {
@@ -342,6 +352,18 @@ struct operation_constraint {
 		struct {
 			uint32_t judgement_delta_constraint_id;
 		} computation;
+		struct {
+			uint32_t match_occurrence;
+			uint32_t scrutinee_occurrence;
+			uint32_t case_index;
+			uint32_t source_context;
+			uint32_t refined_context;
+			uint32_t substitution;
+			uint32_t constructor_term;
+			uint32_t residual_pattern;
+			uint32_t residual_value;
+			int refinement_status;
+		} branch_refinement;
 	} payload;
 };
 
@@ -359,6 +381,8 @@ struct operation_constraint_db {
 		constraints[PROTOTYPE_COMPILER_CONSTRAINT_CAPACITY];
 	uint32_t constraint_count;
 	uint32_t classifier_constraint_count;
+	uint32_t first_branch_refinement_constraint;
+	uint32_t branch_refinement_constraint_count;
 	uint32_t first_computation_constraint;
 	uint32_t computation_constraint_count;
 	uint32_t first_effect_constraint;
@@ -379,6 +403,8 @@ struct operation_constraint_db {
 struct operation_constraint_db_mark {
 	uint32_t constraint_count;
 	uint32_t classifier_constraint_count;
+	uint32_t first_branch_refinement_constraint;
+	uint32_t branch_refinement_constraint_count;
 	uint32_t first_computation_constraint;
 	uint32_t computation_constraint_count;
 	uint32_t first_effect_constraint;
@@ -540,7 +566,7 @@ struct compile_judgement_workspace {
 };
 
 #define OPERATION_REINDEX_CACHE_CAPACITY 16384
-#define OPERATION_BRANCH_REFINEMENT_CAPACITY 4096
+#define OPERATION_BINDER_OWNER_CAPACITY 4096
 
 struct operation_reindex_cache_entry {
 	uint32_t occurrence_id;
@@ -551,12 +577,10 @@ struct operation_reindex_cache_entry {
 	int occupied;
 };
 
-struct operation_branch_refinement {
-	int present;
-	int status;
-	uint32_t source_context;
-	uint32_t refined_context;
-	uint32_t substitution;
+struct operation_binder_owner_entry {
+	uint32_t binding_id;
+	uint32_t lambda_occurrence;
+	uint32_t declared_classifier;
 };
 
 struct compile_context {
@@ -579,9 +603,12 @@ struct compile_context {
 	int materializing_checked_classifiers;
 	struct operation_reindex_cache_entry
 		operation_reindex_cache[OPERATION_REINDEX_CACHE_CAPACITY];
-	struct operation_branch_refinement branch_refinements[
-		OPERATION_BRANCH_REFINEMENT_CAPACITY
-	];
+	/* Compiler-work ownership edges for provisional Context classifiers.  A
+	 * BindingId is the stable binder object shared by every reindexed Context
+	 * extension; Context IDs and surface names are deliberately absent. */
+	struct operation_binder_owner_entry
+		binder_owners[OPERATION_BINDER_OWNER_CAPACITY];
+	uint32_t binder_owner_count;
 	struct prototype_occurrence_usage_solution
 		operation_usage_solutions[PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY];
 	struct prototype_usage_entry* operation_usage_entries;
@@ -1618,6 +1645,279 @@ static void operation_default_semantics(
 	}
 }
 
+static struct operation_binder_owner_entry* operation_binder_owner_find(
+	struct compile_context* ctx,
+	uint32_t binding_id
+) {
+	if (!ctx || binding_id == PROTOTYPE_INVALID_ID) {
+		return NULL;
+	}
+	for (uint32_t i = 0; i < ctx->binder_owner_count; ++i) {
+		if (ctx->binder_owners[i].binding_id == binding_id) {
+			return &ctx->binder_owners[i];
+		}
+	}
+	return NULL;
+}
+
+static struct operation_binder_owner_entry* operation_binder_owner_add(
+	struct compile_context* ctx,
+	uint32_t binding_id
+) {
+	struct operation_binder_owner_entry* entry =
+		operation_binder_owner_find(ctx, binding_id);
+	if (entry) {
+		return entry;
+	}
+	if (!ctx || binding_id == PROTOTYPE_INVALID_ID ||
+		ctx->binder_owner_count >= OPERATION_BINDER_OWNER_CAPACITY) {
+		return NULL;
+	}
+	entry = &ctx->binder_owners[ctx->binder_owner_count++];
+	*entry = (struct operation_binder_owner_entry) {
+		.binding_id = binding_id,
+		.lambda_occurrence = PROTOTYPE_INVALID_ID,
+		.declared_classifier = PROTOTYPE_INVALID_ID
+	};
+	return entry;
+}
+
+static int operation_binder_owner_classifier(
+	struct compile_context* ctx,
+	uint32_t binding_id,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !p_classifier) {
+		return -1;
+	}
+	struct operation_binder_owner_entry* entry =
+		operation_binder_owner_find(ctx, binding_id);
+	if (!entry) {
+		return 1;
+	}
+	uint32_t classifier = entry->declared_classifier;
+	if (entry->lambda_occurrence != PROTOTYPE_INVALID_ID) {
+		if (entry->lambda_occurrence >=
+				ctx->metadata->typed_occurrences.occurrence_count) {
+			return -1;
+		}
+		const struct prototype_typed_occurrence* lambda =
+			&ctx->metadata->typed_occurrences.occurrences[
+				entry->lambda_occurrence
+			];
+		if (lambda->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
+			lambda->binding_id != binding_id) {
+			return -1;
+		}
+		if (lambda->binder_classifier != PROTOTYPE_INVALID_ID) {
+			if (classifier != PROTOTYPE_INVALID_ID &&
+				prototype_judgement_classifier_conversion(
+					ctx->terms,
+					ctx->type_declarations,
+					classifier,
+					lambda->binder_classifier
+				).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+				return -1;
+			}
+			classifier = lambda->binder_classifier;
+		}
+	}
+	if (classifier == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	*p_classifier = classifier;
+	return 0;
+}
+
+static int operation_binder_owner_merge(
+	struct compile_context* ctx,
+	uint32_t binding_id,
+	uint32_t owner_occurrence
+) {
+	if (!ctx || !ctx->metadata || binding_id == PROTOTYPE_INVALID_ID ||
+		owner_occurrence >=
+			ctx->metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence* candidate =
+		&ctx->metadata->typed_occurrences.occurrences[owner_occurrence];
+	if (candidate->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
+		candidate->binding_id != binding_id) {
+		return -1;
+	}
+	struct operation_binder_owner_entry* entry =
+		operation_binder_owner_add(ctx, binding_id);
+	if (!entry) {
+		return -1;
+	}
+	uint32_t current_occurrence = entry->lambda_occurrence;
+	if (current_occurrence == PROTOTYPE_INVALID_ID) {
+		if (entry->declared_classifier != PROTOTYPE_INVALID_ID &&
+			candidate->binder_classifier != PROTOTYPE_INVALID_ID &&
+			prototype_judgement_classifier_conversion(
+				ctx->terms,
+				ctx->type_declarations,
+				entry->declared_classifier,
+				candidate->binder_classifier
+			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			return -1;
+		}
+		entry->lambda_occurrence = owner_occurrence;
+		return 0;
+	}
+	if (current_occurrence == owner_occurrence) {
+		return 0;
+	}
+	if (current_occurrence >=
+		ctx->metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence* current =
+		&ctx->metadata->typed_occurrences.occurrences[current_occurrence];
+	if (current->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
+		current->binding_id != binding_id) {
+		return -1;
+	}
+	if (current->binder_classifier == PROTOTYPE_INVALID_ID) {
+		if (candidate->binder_classifier != PROTOTYPE_INVALID_ID) {
+			entry->lambda_occurrence = owner_occurrence;
+		}
+		return 0;
+	}
+	if (candidate->binder_classifier == PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	struct prototype_term_conversion_result conversion =
+		prototype_judgement_classifier_conversion(
+			ctx->terms,
+			ctx->type_declarations,
+			current->binder_classifier,
+			candidate->binder_classifier
+		);
+	return conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL ? 0 : -1;
+}
+
+static int operation_binder_classifier_owner_merge(
+	struct compile_context* ctx,
+	uint32_t binding_id,
+	uint32_t classifier
+) {
+	if (!ctx || binding_id == PROTOTYPE_INVALID_ID ||
+		classifier == PROTOTYPE_INVALID_ID ||
+		classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	struct operation_binder_owner_entry* entry =
+		operation_binder_owner_add(ctx, binding_id);
+	if (!entry) {
+		return -1;
+	}
+	uint32_t current_classifier;
+	int current_status = operation_binder_owner_classifier(
+		ctx, binding_id, &current_classifier
+	);
+	if (current_status < 0 ||
+		(current_status == 0 && prototype_judgement_classifier_conversion(
+			ctx->terms,
+			ctx->type_declarations,
+			current_classifier,
+			classifier
+		).status != PROTOTYPE_TERM_CONVERSION_EQUAL)) {
+		return -1;
+	}
+	entry->declared_classifier = classifier;
+	return 0;
+}
+
+static int operation_binder_owners_rebuild(struct compile_context* ctx) {
+	if (!ctx || !ctx->metadata) {
+		fprintf(stderr, "binder owner rebuild: missing compile metadata\n");
+		return -1;
+	}
+	/* This table is a derived lookup over the mutable occurrence graph and
+	 * pending assumptions.  Occurrence transactions can roll back and reuse a
+	 * slot, and some lowering paths assign an occurrence-specific BindingId
+	 * after publishing the Core-backed node.  Rebuild at the semantic query
+	 * boundary so the lookup cannot become a second binding authority. */
+	ctx->binder_owner_count = 0;
+	for (uint32_t occurrence_id = 0;
+		occurrence_id < ctx->metadata->typed_occurrences.occurrence_count;
+		++occurrence_id) {
+		const struct prototype_typed_occurrence* occurrence =
+			&ctx->metadata->typed_occurrences.occurrences[occurrence_id];
+		if (occurrence->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA) {
+			continue;
+		}
+		if (occurrence->binding_id == PROTOTYPE_INVALID_ID) {
+			fprintf(stderr,
+				"binder owner rebuild: Lambda occurrence=%u has no binding\n",
+				occurrence_id
+			);
+			return -1;
+		}
+		int binding_context_exists = 0;
+		for (uint32_t context_id = 1;
+			context_id < ctx->metadata->contexts.context_count;
+			++context_id) {
+			const struct prototype_context* context = prototype_context_get(
+				&ctx->metadata->contexts, context_id
+			);
+			if (context && context->binding_id == occurrence->binding_id) {
+				binding_context_exists = 1;
+				break;
+			}
+		}
+		/* An unused Lambda binder need not occur in the shared body occurrence's
+		 * Context, but the binding object must exist in ContextDB. */
+		if (!binding_context_exists || operation_binder_owner_merge(
+				ctx, occurrence->binding_id, occurrence_id
+			) != 0) {
+			fprintf(stderr,
+				"binder owner rebuild: invalid Lambda owner occurrence=%u "
+				"binding=%u context-exists=%d\n",
+				occurrence_id, occurrence->binding_id, binding_context_exists
+			);
+			return -1;
+		}
+	}
+	for (uint32_t pending_id = 0;
+		pending_id < ctx->pending_binder_assumption_count;
+		++pending_id) {
+		const struct pending_binder_assumption* pending =
+			&ctx->pending_binder_assumptions[pending_id];
+		uint32_t assumption_context_id;
+		if (pending->context_id >= ctx->metadata->contexts.context_count ||
+			pending->binder_var >= ctx->terms->term_count ||
+			ctx->terms->terms[pending->binder_var].tag != PROTOTYPE_TERM_VAR ||
+			pending->classifier >= ctx->terms->term_count ||
+			(pending->source_operation != PROTOTYPE_INVALID_ID &&
+			 pending->source_operation >=
+				ctx->metadata->typed_occurrences.occurrence_count) ||
+			prototype_context_find_binding(
+				&ctx->metadata->contexts,
+				pending->context_id,
+				ctx->terms->terms[pending->binder_var].as.var.binding_id,
+				&assumption_context_id
+			) != 0 || operation_binder_classifier_owner_merge(
+				ctx,
+				ctx->terms->terms[pending->binder_var].as.var.binding_id,
+				pending->classifier
+			) != 0) {
+			fprintf(stderr,
+				"binder owner rebuild: invalid pending assumption=%u context=%u "
+				"binder=%u classifier=%u source-operation=%u\n",
+				pending_id,
+				pending->context_id,
+				pending->binder_var,
+				pending->classifier,
+				pending->source_operation
+			);
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int operation_add(
 	struct compile_context* ctx,
 	int tag,
@@ -1676,6 +1976,9 @@ static int operation_add(
 	if (tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
 		ctx->terms->terms[core_term].tag == PROTOTYPE_TERM_VAR) {
 		node.binding_id = ctx->terms->terms[core_term].as.var.binding_id;
+	} else if (tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
+		ctx->terms->terms[core_term].tag == PROTOTYPE_TERM_LAMBDA) {
+		node.binding_id = ctx->terms->terms[core_term].as.lambda.binding_id;
 	}
 	node.binder_classifier = binder_classifier;
 	node.ih_owner_occurrence = tag ==
@@ -1812,7 +2115,8 @@ static int operation_add_match_case(
 	memset(&match_case, 0, sizeof(match_case));
 	match_case.context_id =
 		ctx->metadata->typed_occurrences.occurrences[body_occurrence].context_id;
-	match_case.has_refinement = 0;
+	match_case.refinement_status =
+		PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING;
 	match_case.refinement_substitution = PROTOTYPE_INVALID_ID;
 	match_case.constructor_owner = constructor_owner;
 	match_case.constructor_id = constructor_id;
@@ -1912,7 +2216,7 @@ static int operation_apply_classifier_with_mode(
 		&solved_expected_domain
 	);
 	if (domain_solve_status != 0) {
-		return -1;
+		return domain_solve_status;
 	}
 	uint32_t family_id;
 	if (prototype_term_pure_family_lambda(
@@ -2153,12 +2457,16 @@ static int compile_ref_from_term(
 			) != 0) {
 			return -1;
 		}
+		p_ref->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
+		p_ref->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION;
 	} else if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_EFFECT_OPERATION) {
 		if (prototype_judgement_effect_operation_classifier(
 				ctx->terms, &ctx->terms->terms[term], &p_ref->classifier
 			) != 0) {
 			return -1;
 		}
+		p_ref->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
+		p_ref->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION;
 	} else if (ctx->terms->terms[term].tag == PROTOTYPE_TERM_TEXT_LITERAL) {
 		if (prototype_term_make_host_type(
 				ctx->terms,
@@ -2772,12 +3080,14 @@ static int queue_match_constructor_resolution(
 	struct compile_context* ctx,
 	uint32_t item_id,
 	uint32_t match_term,
+	uint32_t match_operation,
 	uint32_t scrutinee_operation,
 	uint32_t scrutinee_proven_classifier_hint,
 	int constructor_symbol_id
 ) {
 	if (!ctx || item_id == PROTOTYPE_INVALID_ID ||
 		match_term >= ctx->terms->term_count ||
+		match_operation >= ctx->metadata->typed_occurrences.occurrence_count ||
 		ctx->pending_match_resolution_count >= 2048) {
 		return -1;
 	}
@@ -2785,6 +3095,7 @@ static int queue_match_constructor_resolution(
 	uint32_t id = ctx->pending_match_resolution_count++;
 	ctx->pending_match_resolutions[id].item_id = item_id;
 	ctx->pending_match_resolutions[id].match_term = match_term;
+	ctx->pending_match_resolutions[id].match_operation = match_operation;
 	ctx->pending_match_resolutions[id].scrutinee_operation = scrutinee_operation;
 	ctx->pending_match_resolutions[id].scrutinee_proven_classifier_hint =
 		scrutinee_proven_classifier_hint;
@@ -2893,6 +3204,7 @@ static int queue_binder_assumption(
 	if (!ctx ||
 		context_id >= ctx->metadata->contexts.context_count ||
 		binder_var >= ctx->terms->term_count ||
+		ctx->terms->terms[binder_var].tag != PROTOTYPE_TERM_VAR ||
 		classifier >= ctx->terms->term_count ||
 		(source_operation != PROTOTYPE_INVALID_ID &&
 		 source_operation >= ctx->metadata->typed_occurrences.occurrence_count) ||
@@ -3153,8 +3465,10 @@ static int push_graph_binder(
 		return -1;
 	}
 
-	uint32_t graph_binder_id =
-		prototype_term_binding_for_scope_slot(ctx->terms, ctx->binder_count);
+	/* Binding identity belongs to the source occurrence and must be globally
+	 * fresh. TermDB performs alpha-aware interning independently, so reusing an
+	 * ID by lexical depth only creates capture between open terms. */
+	uint32_t graph_binder_id = prototype_term_new_binding(ctx->terms);
 	if (graph_binder_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
@@ -3663,6 +3977,84 @@ static int compile_ast_type_expr_term_with_self(
 	uint32_t type_expr,
 	uint32_t self_type,
 	uint32_t* p_ret
+);
+
+/* A function used as a value is thunked once at its outer boundary.  Its
+ * curried result remains a raw negative computation, matching the classifier
+ * synthesized for a nested source lambda. */
+static int compile_ast_value_function_term_with_self(
+	struct compile_context* ctx,
+	uint32_t type_expr,
+	uint32_t self_type,
+	uint32_t* p_ret
+) {
+	if (!ctx || !p_ret || type_expr >= ctx->asts->type_expr_count) {
+		return -1;
+	}
+	const struct prototype_ast_type_expr* expr =
+		&ctx->asts->type_exprs[type_expr];
+	if (expr->tag != PROTOTYPE_AST_TYPE_EXPR_ARROW &&
+		expr->tag != PROTOTYPE_AST_TYPE_EXPR_PI) {
+		uint32_t result;
+		uint32_t empty_effects;
+		if (compile_ast_type_expr_term_with_self(
+				ctx, type_expr, self_type, &result
+			) != 0 || prototype_term_effect_row_empty(
+				ctx->terms, &empty_effects
+			) != 0) {
+			return -1;
+		}
+		return prototype_term_computation_type(
+			ctx->terms, empty_effects, result, p_ret
+		);
+	}
+
+	uint32_t domain_expr = expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI ?
+		expr->as.pi.domain : expr->as.arrow.domain;
+	uint32_t codomain_expr = expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI ?
+		expr->as.pi.codomain : expr->as.arrow.codomain;
+	uint32_t domain;
+	uint32_t codomain;
+	uint32_t graph_binder_id = PROTOTYPE_INVALID_ID;
+	uint32_t saved_binder_count = ctx->binder_count;
+	if (compile_ast_type_expr_term_with_self(
+			ctx, domain_expr, self_type, &domain
+		) != 0) {
+		return -1;
+	}
+	if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI && push_graph_binder(
+			ctx,
+			expr->as.pi.ast_binder_id,
+			domain,
+			expr->as.pi.symbol_id,
+			&graph_binder_id
+		) != 0) {
+		return -1;
+	}
+	if (compile_ast_value_function_term_with_self(
+			ctx, codomain_expr, self_type, &codomain
+		) != 0) {
+		ctx->binder_count = saved_binder_count;
+		return -1;
+	}
+	ctx->binder_count = saved_binder_count;
+	if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW) {
+		return prototype_term_pi(ctx->terms, domain, codomain, p_ret);
+	}
+	uint32_t family;
+	if (prototype_term_pure_family(
+			ctx->terms, graph_binder_id, codomain, &family
+		) != 0) {
+		return -1;
+	}
+	return prototype_term_pi_family(ctx->terms, domain, family, p_ret);
+}
+
+static int compile_ast_type_expr_term_with_self(
+	struct compile_context* ctx,
+	uint32_t type_expr,
+	uint32_t self_type,
+	uint32_t* p_ret
 ) {
 	if (!ctx || !p_ret || type_expr >= ctx->asts->type_expr_count) {
 		return -1;
@@ -3781,62 +4173,19 @@ static int compile_ast_type_expr_term_with_self(
 			return 0;
 		}
 		case PROTOTYPE_AST_TYPE_EXPR_ARROW: {
-			uint32_t domain;
-			uint32_t codomain;
-			uint32_t empty_effects;
-			uint32_t computation;
 			uint32_t function;
-			if (compile_ast_type_expr_term_with_self(ctx, expr.as.arrow.domain, self_type, &domain) != 0) {
-				return -1;
-			}
-			if (compile_ast_type_expr_term_with_self(ctx, expr.as.arrow.codomain, self_type, &codomain) != 0) {
-				return -1;
-			}
-			if (prototype_term_effect_row_empty(ctx->terms, &empty_effects
-				) != 0 || prototype_term_computation_type(
-					ctx->terms, empty_effects, codomain, &computation
-				) != 0 || prototype_term_pi(
-					ctx->terms, domain, computation, &function
+			if (compile_ast_value_function_term_with_self(
+					ctx, type_expr, self_type, &function
 				) != 0) {
 				return -1;
 			}
 			return prototype_term_thunk_type(ctx->terms, function, p_ret);
 		}
 		case PROTOTYPE_AST_TYPE_EXPR_PI: {
-			uint32_t domain;
-			uint32_t codomain;
-			uint32_t graph_binder_id;
-			uint32_t family;
-			uint32_t empty_effects;
-			uint32_t computation;
 			uint32_t function;
-			uint32_t saved_binder_count = ctx->binder_count;
-			if (compile_ast_type_expr_term_with_self(
-					ctx, expr.as.pi.domain, self_type, &domain
-				) != 0 ||
-				push_graph_binder(
-					ctx,
-					expr.as.pi.ast_binder_id,
-					domain,
-					expr.as.pi.symbol_id,
-					&graph_binder_id
-				) != 0 ||
-				compile_ast_type_expr_term_with_self(
-					ctx, expr.as.pi.codomain, self_type, &codomain
+			if (compile_ast_value_function_term_with_self(
+					ctx, type_expr, self_type, &function
 				) != 0) {
-				ctx->binder_count = saved_binder_count;
-				return -1;
-			}
-			ctx->binder_count = saved_binder_count;
-			if (prototype_term_effect_row_empty(ctx->terms, &empty_effects
-				) != 0 ||
-				prototype_term_computation_type(
-					ctx->terms, empty_effects, codomain, &computation
-				) != 0 ||
-				prototype_term_pure_family(
-					ctx->terms, graph_binder_id, computation, &family
-				) != 0 ||
-				prototype_term_pi_family(ctx->terms, domain, family, &function) != 0) {
 				return -1;
 			}
 			return prototype_term_thunk_type(ctx->terms, function, p_ret);
@@ -4016,8 +4365,23 @@ static int compile_ast_function_type_expr_term(
 	uint32_t codomain_expr = expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI ?
 		expr->as.pi.codomain : expr->as.arrow.codomain;
 	uint32_t graph_binder_id = PROTOTYPE_INVALID_ID;
+	uint32_t latent_row_binder = PROTOTYPE_INVALID_ID;
 	uint32_t saved_binder_count = ctx->binder_count;
-	if (compile_ast_type_expr_term(ctx, domain_expr, &domain) != 0) {
+	if (domain_expr >= ctx->asts->type_expr_count) {
+		return -1;
+	}
+	const struct prototype_ast_type_expr* domain_type =
+		&ctx->asts->type_exprs[domain_expr];
+	int domain_has_latent_effect =
+		domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW ||
+		domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_PI ||
+		domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE;
+	if ((domain_has_latent_effect ?
+			compile_ast_binder_value_type_with_latent_effect_row(
+				ctx, domain_expr, &latent_row_binder, &domain
+			) : compile_ast_type_expr_term(
+				ctx, domain_expr, &domain
+			)) != 0) {
 		return -1;
 	}
 	if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI &&
@@ -4035,16 +4399,29 @@ static int compile_ast_function_type_expr_term(
 		return -1;
 	}
 	ctx->binder_count = saved_binder_count;
+	uint32_t function;
 	if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW) {
-		return prototype_term_pi(ctx->terms, domain, codomain, p_ret);
+		if (prototype_term_pi(ctx->terms, domain, codomain, &function) != 0) {
+			return -1;
+		}
+	} else {
+		uint32_t family;
+		if (prototype_term_pure_family(
+				ctx->terms, graph_binder_id, codomain, &family
+			) != 0 || prototype_term_pi_family(
+				ctx->terms, domain, family, &function
+			) != 0) {
+			return -1;
+		}
 	}
-	uint32_t family;
-	if (prototype_term_pure_family(
-			ctx->terms, graph_binder_id, codomain, &family
+	if (latent_row_binder != PROTOTYPE_INVALID_ID &&
+		prototype_term_effect_row_forall(
+			ctx->terms, latent_row_binder, function, &function
 		) != 0) {
 		return -1;
 	}
-	return prototype_term_pi_family(ctx->terms, domain, family, p_ret);
+	*p_ret = function;
+	return 0;
 }
 
 /* Surface arrows annotate raw computation functions. Every other surface type

@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v76.h"
+#include "a_program/artifact/wire_v77.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/typed_occurrence_graph.h"

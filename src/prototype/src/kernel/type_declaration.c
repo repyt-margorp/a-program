@@ -13,6 +13,18 @@
 
 #define reserve_slot prototype_storage_reserve_slot
 
+void prototype_type_declaration_db_mark_semantic_change(
+	struct prototype_type_declaration_db* db
+) {
+	if (!db) {
+		return;
+	}
+	db->semantic_revision++;
+	if (db->semantic_revision == 0) {
+		db->semantic_revision = 1;
+	}
+}
+
 static int type_declaration_present(const struct prototype_type_declaration* type) {
 	return type && type->type_index != PROTOTYPE_INVALID_ID;
 }
@@ -327,6 +339,7 @@ void prototype_type_declaration_db_init(
 	size_t constructor_classifier_cache_capacity
 ) {
 	memset(db, 0, sizeof(*db));
+	db->semantic_revision = 1;
 	db->type_declarations = type_declarations;
 	db->type_capacity = type_capacity;
 	db->constructor_declarations = constructor_declarations;
@@ -532,6 +545,7 @@ int prototype_type_declaration_add(
 
 	db->type_count++;
 	db->representation_db.cache_dirty = 1;
+	prototype_type_declaration_db_mark_semantic_change(db);
 	*p_type_id = id;
 	return 0;
 }
@@ -566,6 +580,7 @@ int prototype_type_declaration_add_generated_identity(
 	db->type_declarations[type_id].origin_source_carrier_term_id =
 		source_carrier_term_id;
 	db->type_declarations[type_id].parameter_context = parameter_context_id;
+	prototype_type_declaration_db_mark_semantic_change(db);
 	*p_type_id = type_id;
 	return 0;
 }
@@ -652,6 +667,7 @@ int prototype_type_declaration_add_parameter(
 	db->readback.parameter_count++;
 	type->parameter_count++;
 	db->representation_db.cache_dirty = 1;
+	prototype_type_declaration_db_mark_semantic_change(db);
 	return 0;
 }
 
@@ -706,6 +722,7 @@ int prototype_type_declaration_add_constructor_schema(
 	db->constructor_count++;
 	type->constructor_count++;
 	db->representation_db.cache_dirty = 1;
+	prototype_type_declaration_db_mark_semantic_change(db);
 	*p_constructor_id = id;
 	return 0;
 }
@@ -2474,6 +2491,7 @@ int prototype_type_declaration_rebuild_representations(
 	db->representation_db.representation_count = 0;
 	if (db->type_count == 0) {
 		db->representation_db.cache_dirty = 0;
+		prototype_type_declaration_db_mark_semantic_change(db);
 		return 0;
 	}
 	if (!db->representation_db.representations || db->representation_db.representation_capacity < db->type_count) {
@@ -2533,6 +2551,7 @@ int prototype_type_declaration_rebuild_representations(
 		db->type_declarations[type_id].representation_id = representation_id;
 	}
 	db->representation_db.cache_dirty = 0;
+	prototype_type_declaration_db_mark_semantic_change(db);
 	return 0;
 }
 

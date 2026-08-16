@@ -566,6 +566,215 @@ static int derivations_equal(
 	return 1;
 }
 
+/* Accepted Claim dependencies are a finite proof DAG. A scoped Proposition is
+ * a rule parameter, not a Claim edge. This traversal is used only when adding
+ * another Derivation for an already accepted Claim, where allocation order no
+ * longer proves that the new edge is acyclic. */
+static int judgement_claim_dependency_reaches(
+	const struct prototype_judgement_db* judgement,
+	uint32_t source_claim_id,
+	uint32_t target_claim_id
+) {
+	if (!judgement || source_claim_id >= judgement->claim_count ||
+		target_claim_id >= judgement->claim_count) {
+		return -1;
+	}
+	unsigned char* visited = calloc(
+		judgement->claim_count ? judgement->claim_count : 1,
+		sizeof(*visited)
+	);
+	uint32_t* stack = malloc(
+		(judgement->claim_count ? judgement->claim_count : 1) * sizeof(*stack)
+	);
+	if (!visited || !stack) {
+		free(visited);
+		free(stack);
+		return -1;
+	}
+	size_t stack_count = 0;
+	visited[source_claim_id] = 1;
+	stack[stack_count++] = source_claim_id;
+	int result = 0;
+	while (stack_count != 0) {
+		uint32_t current = stack[--stack_count];
+		if (current == target_claim_id) {
+			result = 1;
+			break;
+		}
+		for (uint32_t i = 0;
+			i < (uint32_t)judgement->derivation_count; ++i) {
+			const struct prototype_judgement_derivation* derivation =
+				&judgement->derivations[i];
+			if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
+				derivation->conclusion_claim_id != current) {
+				continue;
+			}
+			if (derivation->premise_count >
+					PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
+				(derivation->premise_count != 0 && !derivation->premises)) {
+				result = -1;
+				break;
+			}
+			for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+				uint32_t premise_claim_id = derivation->premises[j].claim_id;
+				if (premise_claim_id == PROTOTYPE_INVALID_ID) {
+					continue;
+				}
+				if (premise_claim_id >= judgement->claim_count) {
+					result = -1;
+					break;
+				}
+				if (!visited[premise_claim_id]) {
+					visited[premise_claim_id] = 1;
+					stack[stack_count++] = premise_claim_id;
+				}
+			}
+			if (result < 0) {
+				break;
+			}
+		}
+		if (result < 0) {
+			break;
+		}
+	}
+	free(visited);
+	free(stack);
+	return result;
+}
+
+static int judgement_derivation_would_create_cycle(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_derivation* derivation
+) {
+	if (!judgement || !derivation ||
+		derivation->conclusion_claim_id >= judgement->claim_count ||
+		(derivation->premise_count != 0 && !derivation->premises)) {
+		return -1;
+	}
+	int conclusion_is_existing_dependency = 0;
+	for (uint32_t i = 0; i < derivation->premise_count; ++i) {
+		uint32_t premise_claim_id = derivation->premises[i].claim_id;
+		if (premise_claim_id == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (premise_claim_id >= judgement->claim_count) {
+			return -1;
+		}
+		if (premise_claim_id == derivation->conclusion_claim_id) {
+			return 1;
+		}
+	}
+	/* A newly interned Claim cannot already be the target of an accepted
+	 * dependency edge. Avoid a full reachability traversal for that dominant
+	 * publication case. */
+	for (uint32_t i = 0;
+		i < (uint32_t)judgement->derivation_count; ++i) {
+		const struct prototype_judgement_derivation* accepted =
+			&judgement->derivations[i];
+		if (accepted->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
+			continue;
+		}
+		if (accepted->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
+			(accepted->premise_count != 0 && !accepted->premises)) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < accepted->premise_count; ++j) {
+			if (accepted->premises[j].claim_id ==
+					derivation->conclusion_claim_id) {
+				conclusion_is_existing_dependency = 1;
+				break;
+			}
+		}
+		if (conclusion_is_existing_dependency) {
+			break;
+		}
+	}
+	if (!conclusion_is_existing_dependency) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < derivation->premise_count; ++i) {
+		uint32_t premise_claim_id = derivation->premises[i].claim_id;
+		if (premise_claim_id == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		int reaches = judgement_claim_dependency_reaches(
+			judgement,
+			premise_claim_id,
+			derivation->conclusion_claim_id
+		);
+		if (reaches != 0) {
+			return reaches;
+		}
+	}
+	return 0;
+}
+
+static int judgement_claim_dependency_dag_is_valid(
+	const struct prototype_judgement_db* judgement
+) {
+	if (!judgement || (judgement->claim_count != 0 && !judgement->claims)) {
+		return -1;
+	}
+	size_t count = judgement->claim_count ? judgement->claim_count : 1;
+	uint32_t* incoming = calloc(count, sizeof(*incoming));
+	uint32_t* queue = malloc(count * sizeof(*queue));
+	if (!incoming || !queue) {
+		free(incoming);
+		free(queue);
+		return -1;
+	}
+	for (uint32_t i = 0;
+		i < (uint32_t)judgement->derivation_count; ++i) {
+		const struct prototype_judgement_derivation* derivation =
+			&judgement->derivations[i];
+		if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
+			continue;
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			uint32_t premise_claim_id = derivation->premises[j].claim_id;
+			if (premise_claim_id != PROTOTYPE_INVALID_ID) {
+				if (incoming[premise_claim_id] == UINT32_MAX) {
+					free(incoming);
+					free(queue);
+					return -1;
+				}
+				incoming[premise_claim_id]++;
+			}
+		}
+	}
+	size_t queue_first = 0;
+	size_t queue_count = 0;
+	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
+		if (incoming[i] == 0) {
+			queue[queue_count++] = i;
+		}
+	}
+	size_t visited_count = 0;
+	while (queue_first < queue_count) {
+		uint32_t current = queue[queue_first++];
+		visited_count++;
+		for (uint32_t i = 0;
+			i < (uint32_t)judgement->derivation_count; ++i) {
+			const struct prototype_judgement_derivation* derivation =
+				&judgement->derivations[i];
+			if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
+				derivation->conclusion_claim_id != current) {
+				continue;
+			}
+			for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+				uint32_t premise_claim_id = derivation->premises[j].claim_id;
+				if (premise_claim_id != PROTOTYPE_INVALID_ID &&
+					--incoming[premise_claim_id] == 0) {
+					queue[queue_count++] = premise_claim_id;
+				}
+			}
+		}
+	}
+	free(incoming);
+	free(queue);
+	return visited_count == judgement->claim_count ? 0 : -1;
+}
+
 int prototype_judgement_db_rebuild_index(
 	struct prototype_judgement_db* judgement
 ) {
@@ -713,7 +922,7 @@ int prototype_judgement_db_rebuild_index(
 		derivation->hash_next = judgement->derivation_index_heads[bucket];
 		judgement->derivation_index_heads[bucket] = i;
 	}
-	return 0;
+	return judgement_claim_dependency_dag_is_valid(judgement);
 }
 
 int prototype_judgement_find_exact_derivation(
@@ -783,6 +992,9 @@ int prototype_judgement_derivation_intern_exact(
 			*p_derivation_id = i;
 			return 0;
 		}
+	}
+	if (judgement_derivation_would_create_cycle(judgement, identity) != 0) {
+		return -1;
 	}
 	if (reserve_slot(
 			judgement->derivation_count, judgement->derivation_capacity
@@ -961,6 +1173,29 @@ static int publish_complete_relation(
 			candidate_proof->premises[i].semantic_action_kind;
 		derivation.premises[i].semantic_action_id =
 			candidate_proof->premises[i].semantic_action_id;
+	}
+	int cycle_status = judgement_derivation_would_create_cycle(
+		judgement, &derivation
+	);
+	if (cycle_status != 0) {
+		judgement->derivation_candidate_count = derivation_candidate_mark;
+		judgement->candidate_premise_count = candidate_premise_mark;
+		if (judgement->claim_count == claim_mark + 1 && claim_id == claim_mark) {
+			size_t bucket = judgement->claims[claim_id].key_hash %
+				PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
+			judgement->claim_index_heads[bucket] =
+				judgement->claims[claim_id].hash_next;
+			judgement->claim_count = claim_mark;
+		}
+		if (cycle_status > 0 && claim_id < claim_mark) {
+			/* The conclusion already has finite accepted evidence. Reindexing it
+			 * back through a Claim that depends on it adds only circular
+			 * certificate provenance, so normalize the operation to reuse the
+			 * existing Claim. */
+			*p_claim_id = claim_id;
+			return 0;
+		}
+		return -1;
 	}
 	uint32_t derivation_id;
 	if (prototype_judgement_derivation_intern_exact(

@@ -370,10 +370,12 @@ static int collect_match_branch_constraints(
 	return 0;
 }
 
-/* An APP proof may use universe cumulativity rather than DefEq for its
- * argument. Preserve each directly observable v <= u obligation. Closed Pi
- * codomains can be traversed without allocating a comparison binder; open
- * dependent codomains require the later alpha-aware universe comparison. */
+/* An APP or expected-type proof may use Universe cumulativity rather than
+ * DefEq. Preserve every structurally corresponding v <= u obligation. The
+ * accepted proof has already checked alpha-compatible classifier structure,
+ * so child roles, rather than BindingIds, align dependent family bodies. This
+ * traversal records constraints only; it never turns distinct Universe level
+ * variables into judgemental equals. */
 static int collect_classifier_cumulativity_constraints(
 	struct prototype_universe_db* db,
 	const struct prototype_term_db* terms,
@@ -410,69 +412,79 @@ static int collect_classifier_cumulativity_constraints(
 			classifier
 		);
 	}
-	uint32_t expected_domain;
-	uint32_t expected_family;
-	uint32_t actual_domain;
-	uint32_t actual_family;
-	if (prototype_judgement_pi_parts(
-			terms, expected, &expected_domain, &expected_family
-		) != 0 ||
-		prototype_judgement_pi_parts(
-			terms, actual, &actual_domain, &actual_family
-		) != 0) {
+
+	/* Surface nested lambdas may be exposed through the canonical pure
+	 * quotation Comp({}, Thunk(C)). Follow the same directional boundary as
+	 * classifier compatibility before comparing ordinary child topology. */
+	if (terms->terms[expected].tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
+		terms->terms[actual].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		const struct prototype_term* computation = &terms->terms[expected];
+		if (computation->as.computation_type.label < terms->term_count &&
+			terms->terms[computation->as.computation_type.label].tag ==
+				PROTOTYPE_TERM_EFFECT_ROW_EMPTY &&
+			computation->as.computation_type.result < terms->term_count &&
+			terms->terms[computation->as.computation_type.result].tag ==
+				PROTOTYPE_TERM_THUNK_TYPE) {
+			return collect_classifier_cumulativity_constraints(
+				db,
+				terms,
+				terms->terms[
+					computation->as.computation_type.result
+				].as.thunk_type.computation,
+				actual,
+				subject,
+				classifier,
+				reason,
+				source_claim_id,
+				source_authority_kind,
+				source_authority_id,
+				depth + 1
+			);
+		}
+	}
+
+	if (terms->terms[expected].tag != terms->terms[actual].tag) {
+		/* Nominal external-reference and TYPE_VIEW boundaries contain no direct
+		 * Universe level. Any applied arguments were already paired by their APP
+		 * parents. */
 		return 0;
 	}
-	if (collect_classifier_cumulativity_constraints(
-			db,
-			terms,
-			expected_domain,
-			actual_domain,
-			subject,
-			classifier,
-			reason,
-			source_claim_id,
-			source_authority_kind,
-			source_authority_id,
-			depth + 1
-		) != 0) {
+
+	uint32_t expected_child_count;
+	uint32_t actual_child_count;
+	if (prototype_term_child_count(
+			terms, expected, &expected_child_count
+		) != 0 || prototype_term_child_count(
+			terms, actual, &actual_child_count
+		) != 0 || expected_child_count != actual_child_count) {
 		return -1;
 	}
-	uint32_t expected_binder;
-	uint32_t expected_body;
-	uint32_t actual_binder;
-	uint32_t actual_body;
-	if (prototype_term_pure_family_parts(
-			terms, expected_family, &expected_binder, &expected_body
-		) != 0 || prototype_term_pure_family_parts(
-			terms, actual_family, &actual_binder, &actual_body
-		) != 0) {
-		return -1;
+	for (uint32_t i = 0; i < expected_child_count; ++i) {
+		struct prototype_term_child expected_child;
+		struct prototype_term_child actual_child;
+		if (prototype_term_child_at(
+				terms, expected, i, &expected_child
+			) != 0 || prototype_term_child_at(
+				terms, actual, i, &actual_child
+			) != 0 || expected_child.role != actual_child.role ||
+			expected_child.ordinal != actual_child.ordinal ||
+			collect_classifier_cumulativity_constraints(
+				db,
+				terms,
+				expected_child.term,
+				actual_child.term,
+				subject,
+				classifier,
+				reason,
+				source_claim_id,
+				source_authority_kind,
+				source_authority_id,
+				depth + 1
+			) != 0) {
+			return -1;
+		}
 	}
-	if (prototype_term_contains_free_binding(
-			terms,
-			expected_body,
-			expected_binder
-		) ||
-		prototype_term_contains_free_binding(
-			terms,
-			actual_body,
-			actual_binder
-		)) {
-		return 0;
-	}
-	return collect_classifier_cumulativity_constraints(
-		db,
-		terms,
-		expected_body,
-		actual_body,
-		subject,
-		classifier,
-		reason,
-		source_claim_id,
-		source_authority_kind,
-		source_authority_id,
-		depth + 1
-	);
+	return 0;
 }
 
 static int collect_app_elim_cumulativity_constraint(

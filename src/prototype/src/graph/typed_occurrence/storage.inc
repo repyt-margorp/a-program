@@ -202,7 +202,8 @@ int prototype_typed_occurrence_graph_add_case(
 			return -1;
 		}
 	}
-	if (!operation_case.has_refinement) {
+	if (operation_case.refinement_status !=
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED) {
 		operation_case.refinement_substitution = PROTOTYPE_INVALID_ID;
 	}
 	if (p_case_id) {

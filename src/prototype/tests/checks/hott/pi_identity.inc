@@ -832,7 +832,7 @@
 	uint32_t refined_universe_branch_context;
 	uint32_t universe_branch_substitution;
 	uint32_t refined_universe_constructor;
-	if (prototype_judgement_indexed_branch_refinement(
+	if (prototype_judgement_identity_relation_branch_refinement(
 			&context_db,
 			&substitution_db,
 			&term_db,
@@ -4020,8 +4020,8 @@
 		&extensional_identity_witness_claim
 	);
 	uint32_t extensional_identity_root;
-	if (extensional_identity_status != 0 ||
-		extensional_identity_witness >= term_db.term_count ||
+	int extensional_root_status = extensional_identity_status == 0 &&
+		extensional_identity_witness < term_db.term_count ?
 		prototype_artifact_interface_add_identity_root(
 			&identity_interface,
 			&term_db,
@@ -4033,13 +4033,26 @@
 			extensional_identity_witness_claim,
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE,
 			&extensional_identity_root
-		) != 0 || prototype_artifact_interface_validate_identity_roots(
+		) : -1;
+	int extensional_root_validation_status = extensional_root_status == 0 ?
+		prototype_artifact_interface_validate_identity_roots(
 			&identity_interface,
 			&term_db,
 			&type_db,
 			&context_db,
 			&judgement
-		) != 0) {
+		) : -1;
+	if (extensional_identity_status != 0 ||
+		extensional_identity_witness >= term_db.term_count ||
+		extensional_root_status != 0 || extensional_root_validation_status != 0) {
+		fprintf(stderr,
+			"HOTT extensional Identity root failed identity-status=%d "
+			"witness=%u term-count=%zu root-status=%d validation-status=%d\n",
+			extensional_identity_status,
+			extensional_identity_witness,
+			term_db.term_count,
+			extensional_root_status,
+			extensional_root_validation_status);
 		return 189;
 	}
 	(void)extensional_identity_root;
@@ -4208,13 +4221,19 @@
 	uint32_t dependent_box_family_claim;
 	uint32_t dependent_box_witness;
 	uint32_t dependent_box_witness_claim;
-	if (prototype_term_constructor(
+	int dependent_box_constructor_status = prototype_term_constructor(
 			&term_db, dependent_box_view, 0, &dependent_box_false
-		) != 0 || prototype_term_app(
+		);
+	int dependent_box_app0_status = dependent_box_constructor_status == 0 ?
+		prototype_term_app(
 			&term_db, dependent_box_false, bool_false, &dependent_box_false
-		) != 0 || prototype_term_app(
+		) : -1;
+	int dependent_box_app1_status = dependent_box_app0_status == 0 ?
+		prototype_term_app(
 			&term_db, dependent_box_false, bool_false, &dependent_box_false
-		) != 0 || prototype_judgement_add_constructor_spine_claim(
+		) : -1;
+	int dependent_box_claim_status = dependent_box_app1_status == 0 ?
+		prototype_judgement_add_constructor_spine_claim(
 			&judgement,
 			&term_db,
 			&type_db,
@@ -4229,7 +4248,9 @@
 			},
 			2,
 			&dependent_box_false_claim
-		) != 0 || prototype_hott_construct_degeneracy(
+		) : -1;
+	int dependent_box_degeneracy_status = dependent_box_claim_status == 0 ?
+		prototype_hott_construct_degeneracy(
 			&action_db,
 			&kernel_builder,
 			&bridge_db,
@@ -4238,7 +4259,24 @@
 			&dependent_box_family_claim,
 			&dependent_box_witness,
 			&dependent_box_witness_claim
-		) != 0) {
+		) : -1;
+	if (dependent_box_constructor_status != 0 || dependent_box_app0_status != 0 ||
+		dependent_box_app1_status != 0 || dependent_box_claim_status != 0 ||
+		dependent_box_degeneracy_status != 0) {
+		int dependent_builder_status = prototype_kernel_builder_validate_stores(
+			&kernel_builder
+		);
+		int dependent_action_status = dependent_builder_status == 0 ?
+			prototype_hott_action_db_validate(
+				&action_db, &kernel_view, &bridge_db
+			) : -1;
+		fprintf(stderr,
+			"HOTT dependent box degeneracy failed constructor=%d app0=%d "
+			"app1=%d claim=%d degeneracy=%d builder=%d action=%d\n",
+			dependent_box_constructor_status, dependent_box_app0_status,
+			dependent_box_app1_status, dependent_box_claim_status,
+			dependent_box_degeneracy_status, dependent_builder_status,
+			dependent_action_status);
 		return 311;
 	}
 	uint32_t dependent_witness_head;
@@ -4731,7 +4769,7 @@
 	uint32_t refined_left;
 	uint32_t refined_right;
 	uint32_t refined_proof;
-	if (prototype_judgement_indexed_branch_refinement(
+	if (prototype_judgement_identity_relation_branch_refinement(
 			&context_db,
 			&substitution_db,
 			&term_db,

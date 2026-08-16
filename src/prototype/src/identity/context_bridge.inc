@@ -1503,7 +1503,7 @@ int prototype_hott_construct_universe_correspondence_projection(
 	uint32_t refinement_substitution;
 	uint32_t constructor_term;
 	uint32_t refined_selected_claim;
-	if (prototype_judgement_indexed_branch_refinement(
+	if (prototype_judgement_identity_relation_branch_refinement(
 			contexts,
 			substitutions,
 			terms,

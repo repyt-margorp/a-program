@@ -55,6 +55,8 @@ const char* prototype_compile_diagnostic_reason_name(int reason) {
 			return "unsupported-indexed-family";
 		case PROTOTYPE_COMPILE_DIAGNOSTIC_NESTED_MATCH_GROUPING:
 			return "nested-match-grouping";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_BRANCH_REFINEMENT_RESIDUAL:
+			return "branch-refinement-residual";
 		default:
 			return "unknown";
 	}

@@ -131,6 +131,10 @@ int prototype_typed_occurrence_graph_validate(
 			operation->tag < PROTOTYPE_TYPED_OCCURRENCE_ATOM ||
 			operation->tag > PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
 			!prototype_context_get(contexts, operation->context_id)) {
+			fprintf(stderr,
+				"typed occurrence header invalid occurrence=%u tag=%d context=%u\n",
+				i, operation ? operation->tag : 0,
+				operation ? operation->context_id : PROTOTYPE_INVALID_ID);
 			return -1;
 		}
 		if (operation->application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
@@ -140,6 +144,9 @@ int prototype_typed_occurrence_graph_validate(
 			 operation->application_role != PROTOTYPE_TERM_APPLICATION_NONE) ||
 			(operation->tag == PROTOTYPE_TYPED_OCCURRENCE_APP &&
 			 operation->application_role == PROTOTYPE_TERM_APPLICATION_NONE)) {
+			fprintf(stderr,
+				"typed occurrence application role invalid occurrence=%u tag=%d role=%d\n",
+				i, operation->tag, operation->application_role);
 			return -1;
 		}
 		uint32_t term_references[] = {
@@ -153,6 +160,9 @@ int prototype_typed_occurrence_graph_validate(
 			if (term_references[j] != PROTOTYPE_INVALID_ID &&
 				(term_references[j] >= terms->term_count ||
 				 terms->terms[term_references[j]].tag == 0)) {
+				fprintf(stderr,
+					"typed occurrence term reference invalid occurrence=%u slot=%zu term=%u\n",
+					i, j, term_references[j]);
 				return -1;
 			}
 		}
@@ -211,10 +221,17 @@ int prototype_typed_occurrence_graph_validate(
 				return -1;
 			}
 		}
-		if ((operation->context_action_substitution == PROTOTYPE_INVALID_ID) !=
-				(operation->source_core_term == PROTOTYPE_INVALID_ID) ||
-			(operation->context_action_substitution == PROTOTYPE_INVALID_ID) !=
-				(operation->source_classifier == PROTOTYPE_INVALID_ID)) {
+		if ((operation->context_action_substitution == PROTOTYPE_INVALID_ID &&
+			 (operation->source_core_term != PROTOTYPE_INVALID_ID ||
+			  operation->source_classifier != PROTOTYPE_INVALID_ID)) ||
+			(operation->context_action_substitution != PROTOTYPE_INVALID_ID &&
+			 operation->source_core_term == PROTOTYPE_INVALID_ID)) {
+			fprintf(stderr,
+				"typed occurrence source action tuple invalid occurrence=%u tag=%d context=%u action=%u source-core=%u source-classifier=%u classifier=%u core=%u\n",
+				i, operation->tag, operation->context_id,
+				operation->context_action_substitution,
+				operation->source_core_term, operation->source_classifier,
+				operation->classifier, operation->core_term);
 			return -1;
 		}
 		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_APP) {
@@ -234,6 +251,10 @@ int prototype_typed_occurrence_graph_validate(
 				(operation->application_role ==
 						PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION &&
 				 operation->category != PROTOTYPE_TERM_CATEGORY_VALUE)) {
+				fprintf(stderr,
+					"typed occurrence APP semantics invalid occurrence=%u core=%u role=%d category=%d\n",
+					i, operation->core_term, operation->application_role,
+					operation->category);
 				return -1;
 			}
 		}
@@ -242,6 +263,11 @@ int prototype_typed_occurrence_graph_validate(
 			if (prototype_typed_occurrence_graph_induction_edge(
 					graph, terms, i, &edge
 				) != 0) {
+				fprintf(stderr,
+					"typed occurrence induction edge invalid occurrence=%u core=%u owner=%u scope=%u case=%u field=%u binding=%u\n",
+					i, operation->core_term, operation->ih_owner_occurrence,
+					operation->ih_scope_id, operation->ih_case_index,
+					operation->ih_field_index, operation->binding_id);
 				return -1;
 			}
 		}
@@ -346,8 +372,25 @@ int prototype_typed_occurrence_graph_validate(
 			!prototype_context_get(contexts, operation_case->context_id) ||
 			operation_case->constructor_owner >= terms->term_count ||
 			terms->terms[operation_case->constructor_owner].tag == 0 ||
-			(operation_case->has_refinement != 0) !=
-				(operation_case->refinement_substitution != PROTOTYPE_INVALID_ID)) {
+			operation_case->refinement_status <
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING ||
+			operation_case->refinement_status >
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_RESIDUAL ||
+			(prototype_typed_occurrence_match_case_is_solved(operation_case) !=
+				(operation_case->refinement_substitution != PROTOTYPE_INVALID_ID)) ||
+			(graph->frozen && operation_case->refinement_status !=
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED &&
+				operation_case->refinement_status !=
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE)) {
+			fprintf(stderr,
+				"typed occurrence case invalid case=%u context=%u owner=%u binders=%u refined=%u action=%u\n",
+				i,
+				operation_case ? operation_case->context_id : PROTOTYPE_INVALID_ID,
+				operation_case ? operation_case->constructor_owner : PROTOTYPE_INVALID_ID,
+				operation_case ? operation_case->binder_count : PROTOTYPE_INVALID_ID,
+				operation_case ? operation_case->refinement_status : -1,
+				operation_case ? operation_case->refinement_substitution :
+					PROTOTYPE_INVALID_ID);
 			return -1;
 		}
 		for (uint32_t binder_index = 0;
@@ -356,6 +399,11 @@ int prototype_typed_occurrence_graph_validate(
 					contexts, operation_case->context_id,
 					operation_case->binder_ids[binder_index]
 				)) {
+				fprintf(stderr,
+					"typed occurrence case binder missing case=%u binder-index=%u binding=%u context=%u\n",
+					i, binder_index,
+					operation_case->binder_ids[binder_index],
+					operation_case->context_id);
 				return -1;
 			}
 		}

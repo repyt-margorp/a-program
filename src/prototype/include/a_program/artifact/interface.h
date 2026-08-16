@@ -14,7 +14,7 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 76
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 77
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
 enum prototype_artifact_export_transparency {

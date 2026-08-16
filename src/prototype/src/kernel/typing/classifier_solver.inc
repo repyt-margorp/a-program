@@ -1328,16 +1328,6 @@ int prototype_judgement_resolve_match_case_request(
 	if (match_case->binder_count != resolution.field_count) {
 		return -1;
 	}
-	if (prototype_term_resolve_match_case(
-		terms,
-		request->match_term,
-		request->case_index,
-		resolution.constructor_owner,
-		resolution.constructor_id
-	) != 0) {
-		return -1;
-	}
-
 		for (uint32_t j = 0; j < match_case->binder_count; ++j) {
 		struct prototype_case_binder* binder =
 			&terms->case_binders[match_case->first_binder + j];
@@ -2130,6 +2120,20 @@ static int classifier_returns_owner(
 		if (current == owner) {
 			return 1;
 		}
+		/* Constructor owners are erased to the computation-level family before
+		 * accepted replay, while their classifiers retain the nominal TypeView.
+		 * The view's core is therefore the authoritative counterpart of owner. */
+		if (terms->terms[current].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+			uint32_t view_core = terms->terms[current].as.type_view.core;
+			if (prototype_term_core_shape_equal(
+					terms, view_core, owner, &same_owner
+				) != 0) {
+				return 0;
+			}
+			if (same_owner) {
+				return 1;
+			}
+		}
 		if (prototype_term_core_shape_equal(
 				terms, current, owner, &same_owner
 			) != 0) {
@@ -2146,34 +2150,51 @@ static int classifier_returns_owner(
 		if (same_owner) {
 			return 1;
 		}
-		/* An indexed constructor is selected through its parameterized owner view,
-		 * while the classifier terminates in a fully indexed instance. Declaration
-		 * identity and uniform parameters, not index equality, establish ownership. */
+		/* An indexed constructor may retain its parameter-only owner view or a
+		 * fully applied source view. Both select the declaration through uniform
+		 * parameters. Result indices are established only after field application
+		 * and are checked by the constructor-spine rule. */
 		if (owner_is_type_instance) {
 			uint32_t result_type_id;
 			uint32_t result_arguments[16];
 			uint32_t result_argument_count;
 			const struct prototype_type_declaration* declaration =
 				&type_declarations->type_declarations[owner_type_id];
-			if (prototype_term_type_instance_info(
+			int result_instance = prototype_term_type_instance_info(
 					terms,
 					current,
 					&result_type_id,
 					result_arguments,
 					&result_argument_count
-				) == 0 && result_type_id == owner_type_id &&
-				owner_argument_count == declaration->parameter_count &&
+				) == 0;
+			if (result_instance && result_type_id == owner_type_id &&
+				(owner_argument_count == declaration->parameter_count ||
+				 owner_argument_count == declaration->parameter_count +
+					declaration->index_count) &&
 				result_argument_count == declaration->parameter_count +
 					declaration->index_count) {
 				int parameters_match = 1;
-				for (uint32_t i = 0; i < owner_argument_count; ++i) {
+				for (uint32_t i = 0; i < declaration->parameter_count; ++i) {
 					int equal = 0;
 					if (prototype_term_core_shape_equal(
 							terms,
 							owner_arguments[i],
 							result_arguments[i],
 							&equal
-						) != 0 || !equal) {
+						) != 0) {
+						parameters_match = 0;
+						break;
+					}
+					if (!equal && prototype_term_source_shape_equal(
+							terms,
+							owner_arguments[i],
+							result_arguments[i],
+							&equal
+						) != 0) {
+						parameters_match = 0;
+						break;
+					}
+					if (!equal) {
 						parameters_match = 0;
 						break;
 					}

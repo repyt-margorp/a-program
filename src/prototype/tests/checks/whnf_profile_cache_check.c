@@ -280,7 +280,18 @@ int main(void) {
 		return 1;
 	}
 
-	if (prototype_term_resolve_match_case(&term_db, match_term, 0, owner, 0) != 0) {
+	struct prototype_match_case_input resolved_case = {
+		.case_label_symbol_id = -1,
+		.constructor_owner = owner,
+		.constructor_id = 0,
+		.binders = NULL,
+		.binder_count = 0,
+		.body = branch
+	};
+	uint32_t resolved_match;
+	if (prototype_term_match(
+			&term_db, constructor, &resolved_case, 1, &resolved_match
+		) != 0 || resolved_match == match_term) {
 		return 1;
 	}
 	uint32_t inductive_whnf;
@@ -289,7 +300,7 @@ int main(void) {
 			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
-			match_term,
+			resolved_match,
 			&inductive_whnf
 		) != 0 ||
 		inductive_whnf != branch) {
@@ -301,7 +312,7 @@ int main(void) {
 			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
-			match_term,
+			resolved_match,
 			&cached_inductive_whnf
 		) != 0 ||
 		cached_inductive_whnf != branch) {
@@ -311,10 +322,21 @@ int main(void) {
 	if (stats.hit_count < 2) {
 		return 1;
 	}
+	uint32_t still_unresolved_whnf;
+	if (prototype_term_normalize_complete_with_profile(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
+			match_term,
+			&still_unresolved_whnf
+		) != 0 || still_unresolved_whnf != match_term) {
+		return 1;
+	}
 
 	/* Artifact linking mutates graph slots directly; its notification must make
 	 * the cached WHNF of this match unusable. */
-	term_db.cases[term_db.terms[match_term].as.match.first_case].body = application;
+	term_db.cases[term_db.terms[resolved_match].as.match.first_case].body = application;
 	prototype_term_notify_graph_mutation(&term_db);
 	uint32_t mutated_whnf;
 	if (prototype_term_normalize_complete_with_profile(
@@ -322,7 +344,7 @@ int main(void) {
 			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
-			match_term,
+			resolved_match,
 			&mutated_whnf
 		) != 0 ||
 		mutated_whnf != constructor) {

@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v76.h"
+#include "a_program/artifact/wire_v77.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
@@ -1076,6 +1076,68 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 15;
 	}
+	uint32_t false_branch_context;
+	uint32_t false_branch_refinement;
+	uint32_t false_refined_constructor;
+	uint32_t true_branch_context;
+	uint32_t true_branch_refinement;
+	uint32_t true_refined_constructor;
+	if (prototype_judgement_identity_relation_branch_refinement(
+			context_db,
+			substitution_db,
+			term_db,
+			type_db,
+			xr_context,
+			xr,
+			input_identity,
+			0,
+			xr_context,
+			NULL,
+			0,
+			&false_branch_context,
+			&false_branch_refinement,
+			&false_refined_constructor
+		) != 0 || prototype_judgement_identity_relation_branch_refinement(
+			context_db,
+			substitution_db,
+			term_db,
+			type_db,
+			xr_context,
+			xr,
+			input_identity,
+			1,
+			xr_context,
+			NULL,
+			0,
+			&true_branch_context,
+			&true_branch_refinement,
+			&true_refined_constructor
+		) != 0) {
+		return 193;
+	}
+	(void)false_refined_constructor;
+	(void)true_refined_constructor;
+	uint32_t false_in_branch;
+	uint32_t false_identity_in_branch;
+	uint32_t true_in_branch;
+	uint32_t true_identity_in_branch;
+	if (prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			false_in_context, false_branch_refinement, &false_in_branch
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			false_identity_in_context, false_branch_refinement,
+			&false_identity_in_branch
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			true_in_context, true_branch_refinement, &true_in_branch
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			true_identity_in_context, true_branch_refinement,
+			&true_identity_in_branch
+		) != 0) {
+		return 194;
+	}
 	if (operation_graph->occurrence_count > operation_graph->occurrence_capacity ||
 		operation_graph->occurrence_capacity - operation_graph->occurrence_count < 16 ||
 		operation_graph->case_count > operation_graph->case_capacity ||
@@ -1087,59 +1149,59 @@ static int check_bool_function_extensional_identity(
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_argument_occurrence = add_operation(
-		operation_graph, xr_context, bool_false, bool_type,
+		operation_graph, false_branch_context, bool_false, bool_type,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_identity_argument_occurrence = add_operation(
-		operation_graph, xr_context, false_identity_witness, false_identity,
+		operation_graph, false_branch_context, false_identity_witness, false_identity,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_constructor_operation = add_operation(
-		operation_graph, xr_context, false_witness_spine[0], PROTOTYPE_INVALID_ID,
+		operation_graph, false_branch_context, false_witness_spine[0], PROTOTYPE_INVALID_ID,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_app1_operation = add_operation(
-		operation_graph, xr_context, false_witness_spine[1], PROTOTYPE_INVALID_ID,
+		operation_graph, false_branch_context, false_witness_spine[1], PROTOTYPE_INVALID_ID,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_app2_operation = add_operation(
-		operation_graph, xr_context, false_witness_spine[2], PROTOTYPE_INVALID_ID,
+		operation_graph, false_branch_context, false_witness_spine[2], PROTOTYPE_INVALID_ID,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_witness_operation = add_operation(
-		operation_graph, xr_context, false_computation_witness,
+		operation_graph, false_branch_context, false_computation_witness,
 		false_computation_identity, PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_operation = add_operation(
-		operation_graph, xr_context, false_witness_return,
+		operation_graph, false_branch_context, false_witness_return,
 		false_branch_computation_identity, PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t true_argument_occurrence = add_operation(
-		operation_graph, xr_context, bool_true, bool_type,
+		operation_graph, true_branch_context, bool_true, bool_type,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_identity_argument_occurrence = add_operation(
-		operation_graph, xr_context, true_identity_witness, true_identity,
+		operation_graph, true_branch_context, true_identity_witness, true_identity,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_constructor_operation = add_operation(
-		operation_graph, xr_context, true_witness_spine[0], PROTOTYPE_INVALID_ID,
+		operation_graph, true_branch_context, true_witness_spine[0], PROTOTYPE_INVALID_ID,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_app1_operation = add_operation(
-		operation_graph, xr_context, true_witness_spine[1], PROTOTYPE_INVALID_ID,
+		operation_graph, true_branch_context, true_witness_spine[1], PROTOTYPE_INVALID_ID,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_app2_operation = add_operation(
-		operation_graph, xr_context, true_witness_spine[2], PROTOTYPE_INVALID_ID,
+		operation_graph, true_branch_context, true_witness_spine[2], PROTOTYPE_INVALID_ID,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_witness_operation = add_operation(
-		operation_graph, xr_context, true_computation_witness,
+		operation_graph, true_branch_context, true_computation_witness,
 		true_computation_identity, PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_operation = add_operation(
-		operation_graph, xr_context, true_witness_return,
+		operation_graph, true_branch_context, true_witness_return,
 		true_branch_computation_identity, PROTOTYPE_TERM_CATEGORY_COMPUTATION
 	);
 	uint32_t proof_operation = add_operation(
@@ -1184,9 +1246,10 @@ static int check_bool_function_extensional_identity(
 	operation_graph->occurrences[proof_operation].first_case = first_proof_case;
 	operation_graph->occurrences[proof_operation].case_count = 2;
 	operation_graph->cases[first_proof_case] = (struct prototype_typed_occurrence_match_case) {
-		.context_id = xr_context,
-		.has_refinement = 0,
-		.refinement_substitution = PROTOTYPE_INVALID_ID,
+		.context_id = false_branch_context,
+		.refinement_status =
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED,
+		.refinement_substitution = false_branch_refinement,
 		.constructor_owner = input_identity,
 		.constructor_id = 0,
 		.case_label_symbol_id = -1,
@@ -1194,9 +1257,10 @@ static int check_bool_function_extensional_identity(
 	};
 	operation_graph->cases[first_proof_case + 1] =
 		(struct prototype_typed_occurrence_match_case) {
-			.context_id = xr_context,
-			.has_refinement = 0,
-			.refinement_substitution = PROTOTYPE_INVALID_ID,
+			.context_id = true_branch_context,
+			.refinement_status =
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED,
+			.refinement_substitution = true_branch_refinement,
 			.constructor_owner = input_identity,
 		.constructor_id = 1,
 		.case_label_symbol_id = -1,
@@ -1368,23 +1432,25 @@ static int check_bool_function_extensional_identity(
 		PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID
 	};
 	if (prototype_judgement_selected_evidence_from_claim(
-			judgement, false_in_context,
+			judgement, false_in_branch,
 			&constructor_evidence[0]
 		) != 0 || prototype_judgement_selected_evidence_from_claim(
-			judgement, false_in_context,
+			judgement, false_in_branch,
 			&constructor_evidence[1]
 		) != 0 || prototype_judgement_selected_evidence_from_claim(
-			judgement, false_identity_in_context, &constructor_evidence[2]
+			judgement, false_identity_in_branch, &constructor_evidence[2]
 		) != 0) {
 		return 16;
 	}
+	prototype_judgement_delta_set_context(&delta, false_branch_context);
 	prototype_judgement_delta_set_occurrence(&delta, false_witness_operation);
 	if (prototype_judgement_delta_record_constructor_spine(
 			&delta, term_db, type_db, false_computation_witness,
 			false_computation_identity, constructor_operations,
 			constructor_evidence, 3
 		) != 0 || prototype_judgement_delta_select_evidence(
-			&delta, false_witness_operation, xr_context, false_computation_witness,
+			&delta, false_witness_operation, false_branch_context,
+			false_computation_witness,
 			false_computation_identity, &branch_evidence
 		) != 0) {
 		return 16;
@@ -1394,29 +1460,31 @@ static int check_bool_function_extensional_identity(
 			&delta, term_db, type_db, false_witness_return,
 			false_witness_operation, &branch_evidence
 		) != 0 || prototype_judgement_delta_select_evidence(
-			&delta, false_operation, xr_context, false_witness_return,
+			&delta, false_operation, false_branch_context, false_witness_return,
 			false_branch_computation_identity, &branch_evidence
 		) != 0) {
 		return 16;
 	}
 	if (prototype_judgement_selected_evidence_from_claim(
-			judgement, true_in_context,
+			judgement, true_in_branch,
 			&constructor_evidence[0]
 		) != 0 || prototype_judgement_selected_evidence_from_claim(
-			judgement, true_in_context,
+			judgement, true_in_branch,
 			&constructor_evidence[1]
 		) != 0 || prototype_judgement_selected_evidence_from_claim(
-			judgement, true_identity_in_context, &constructor_evidence[2]
+			judgement, true_identity_in_branch, &constructor_evidence[2]
 		) != 0) {
 		return 17;
 	}
+	prototype_judgement_delta_set_context(&delta, true_branch_context);
 	prototype_judgement_delta_set_occurrence(&delta, true_witness_operation);
 	if (prototype_judgement_delta_record_constructor_spine(
 			&delta, term_db, type_db, true_computation_witness,
 			true_computation_identity, constructor_operations,
 			constructor_evidence, 3
 		) != 0 || prototype_judgement_delta_select_evidence(
-			&delta, true_witness_operation, xr_context, true_computation_witness,
+			&delta, true_witness_operation, true_branch_context,
+			true_computation_witness,
 			true_computation_identity, &branch_evidence
 		) != 0) {
 		return 17;
@@ -1426,13 +1494,14 @@ static int check_bool_function_extensional_identity(
 			&delta, term_db, type_db, true_witness_return,
 			true_witness_operation, &branch_evidence
 		) != 0 || prototype_judgement_delta_select_evidence(
-			&delta, true_operation, xr_context, true_witness_return,
+			&delta, true_operation, true_branch_context, true_witness_return,
 			true_branch_computation_identity, &branch_evidence
 		) != 0) {
 		return 17;
 	}
 	struct prototype_judgement_selected_evidence current;
 	uint32_t match_classifier;
+	prototype_judgement_delta_set_context(&delta, xr_context);
 	prototype_judgement_delta_set_occurrence(&delta, proof_operation);
 	if (prototype_judgement_delta_build_constant_match_motive(
 			&delta,

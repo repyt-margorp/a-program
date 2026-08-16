@@ -13,7 +13,8 @@
 	indexed_match_operation_cases[0] =
 		(struct prototype_typed_occurrence_match_case) {
 			.context_id = indexed_proof_context,
-			.has_refinement = 0,
+			.refinement_status =
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING,
 			.refinement_substitution = PROTOTYPE_INVALID_ID,
 			.constructor_owner = indexed_relation_type,
 			.constructor_id = 0,
@@ -23,7 +24,8 @@
 	indexed_match_operation_cases[1] =
 		(struct prototype_typed_occurrence_match_case) {
 			.context_id = indexed_proof_context,
-			.has_refinement = 0,
+			.refinement_status =
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING,
 			.refinement_substitution = PROTOTYPE_INVALID_ID,
 			.constructor_owner = indexed_relation_type,
 			.constructor_id = 1,
@@ -636,9 +638,10 @@
 	uint32_t empty_to_empty;
 	uint32_t false_extension;
 	uint32_t false_extension_certificate;
-	if (prototype_substitution_empty(
+	int false_empty_status = prototype_substitution_empty(
 			&substitution_db, &context_db, empty, &empty_to_empty
-		) != 0 || prototype_substitution_extend(
+		);
+	int false_extend_status = false_empty_status == 0 ? prototype_substitution_extend(
 			&substitution_db,
 			&context_db,
 			&term_db,
@@ -648,29 +651,45 @@
 				bool_false,
 				bool_view,
 				&false_extension
-			) != 0 || prototype_substitution_db_validate_classifier_coherence(
+			) : -1;
+	int false_coherence_status = false_extend_status == 0 ?
+		prototype_substitution_db_validate_classifier_coherence(
 				&substitution_db, &context_db, &term_db, &type_db
-			) != 0 || prototype_cwf_certificate_db_certify_substitution_root(
+			) : -1;
+	int false_root_status = false_coherence_status == 0 ?
+		prototype_cwf_certificate_db_certify_substitution_root(
 				&cwf_certificate_db,
 				&substitution_db,
 				&judgement,
 				false_extension,
 				&false_extension_certificate
-			) == 0 || prototype_cwf_certificate_db_add_substitution(
+			) : -1;
+	int false_wrong_claim_status = false_coherence_status == 0 ?
+		prototype_cwf_certificate_db_add_substitution(
 				&cwf_certificate_db,
 				&substitution_db,
 				&judgement,
 				false_extension,
 				bool_is_type,
 				&false_extension_certificate
-			) == 0 || prototype_cwf_certificate_db_add_substitution(
+			) : -1;
+	int false_claim_status = false_coherence_status == 0 ?
+		prototype_cwf_certificate_db_add_substitution(
 				&cwf_certificate_db,
 			&substitution_db,
 			&judgement,
 			false_extension,
 			false_claim,
 				&false_extension_certificate
-			) != 0) {
+			) : -1;
+	if (false_empty_status != 0 || false_extend_status != 0 ||
+		false_coherence_status != 0 || false_root_status == 0 ||
+		false_wrong_claim_status == 0 || false_claim_status != 0) {
+		fprintf(stderr,
+			"HOTT false substitution certificate failed empty=%d extend=%d "
+			"coherence=%d root=%d wrong-claim=%d claim=%d\n",
+			false_empty_status, false_extend_status, false_coherence_status,
+			false_root_status, false_wrong_claim_status, false_claim_status);
 		return 55;
 	}
 	struct prototype_certified_substitution_ref false_extension_ref;

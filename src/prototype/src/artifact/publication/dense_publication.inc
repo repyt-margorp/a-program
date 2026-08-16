@@ -695,7 +695,7 @@ static int artifact_mark_roots(
 		for (size_t i = 0; i < metadata->typed_occurrences.case_count; ++i) {
 			const struct prototype_typed_occurrence_match_case* operation_case =
 				&metadata->typed_occurrences.cases[i];
-			if (operation_case->has_refinement &&
+			if (prototype_typed_occurrence_match_case_is_solved(operation_case) &&
 				artifact_mark_substitution(
 					marks,
 					terms,
@@ -1473,7 +1473,7 @@ static int artifact_publication_metadata_relocate(
 		operation_case->context_id = publication->context_relocation[
 			operation_case->context_id
 		];
-		if (operation_case->has_refinement) {
+		if (prototype_typed_occurrence_match_case_is_solved(operation_case)) {
 			if (operation_case->refinement_substitution >=
 					source->substitutions.substitution_count ||
 				publication->substitution_relocation[
@@ -1977,6 +1977,25 @@ static int artifact_build_publication_graph(
 				compact_substitutions[compact_id].second
 			];
 		}
+	}
+	if (prototype_context_db_validate(
+			&compact_context_db, &closure->terms
+		) != 0 || prototype_substitution_db_validate(
+			&compact_substitution_db, &compact_context_db, &closure->terms
+		) != 0) {
+		fprintf(stderr, "artifact publication substitution slice validation failed\n");
+		free(compact_contexts);
+		free(compact_substitutions);
+		free(compact_types);
+		free(compact_constructors);
+		free(compact_constructor_readbacks);
+		free(compact_constructor_caches);
+		free(compact_propositions);
+		free(compact_context_relocation);
+		artifact_context_slice_free(&context_slice);
+		artifact_substitution_slice_free(&substitution_slice);
+		artifact_publication_graph_free(publication);
+		return -1;
 	}
 	memcpy(
 		compact_types,

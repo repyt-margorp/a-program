@@ -57,8 +57,8 @@ canonicalize_derivations "$TMP_DIR/regrounded.apo" | sort \
 	>"$TMP_DIR/regrounded-derivations.txt"
 cmp "$TMP_DIR/original-derivations.txt" "$TMP_DIR/regrounded-derivations.txt"
 
-# Context weakening is certified by an exact projection/composition
-# Substitution edge. A proof-kind tag and ancestor Contexts are insufficient.
+# A Match branch premise is certified by its exact refinement/projection
+# Substitution edge. Do not duplicate that action as a separate weakening proof.
 cat >"$TMP_DIR/context-weaken.p" <<'EOF_CONTEXT_WEAKEN'
 Bool := @{
 	true : *;
@@ -88,16 +88,18 @@ EOF_CONTEXT_WEAKEN
 ./read_file.out --write-artifact "$TMP_DIR/context-weaken.apo" \
 	"$TMP_DIR/context-weaken.p" >"$TMP_DIR/context-weaken.out"
 awk '
-	$1 == "derivation" { weakening = ($3 == 31) }
-	weakening && $1 == "action" && $2 == 1 && $3 != 4294967295 { found = 1 }
+	$1 == "derivation" { match_elim = ($3 == 15) }
+	match_elim && $1 == "premise" && $4 == "action" &&
+		$5 == 1 && $6 != 4294967295 { found = 1 }
 	END { if (!found) exit 1 }
 ' "$TMP_DIR/context-weaken.apo"
 awk '
-	$1 == "derivation" { weakening = ($3 == 31) }
-	weakening && $1 == "action" && !done {
-		$3 = 4294967295
+	$1 == "derivation" { match_elim = ($3 == 15) }
+	match_elim && $1 == "premise" && $4 == "action" &&
+		$5 == 1 && !done {
+		$6 = 4294967295
 		done = 1
-		weakening = 0
+		match_elim = 0
 	}
 	{ print }
 	END { if (!done) exit 1 }

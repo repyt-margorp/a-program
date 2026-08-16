@@ -354,6 +354,10 @@ int prototype_judgement_solve_index_pattern(
 	const struct prototype_term* right = &terms->terms[value];
 	if (left->tag == PROTOTYPE_TERM_VAR &&
 		left->as.var.binding_id == binding_id) {
+		if (prototype_term_contains_free_binding(terms, value, binding_id)) {
+			return value == pattern ? PROTOTYPE_INDEX_REFINEMENT_RESIDUAL :
+				PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE;
+		}
 		*p_solution = value;
 		return PROTOTYPE_INDEX_REFINEMENT_SOLVED;
 	}
@@ -510,7 +514,7 @@ static int source_index_unique_free_context_binding(
 	return 0;
 }
 
-int prototype_judgement_source_indexed_branch_refinement(
+int prototype_judgement_source_match_branch_refinement(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
@@ -524,27 +528,31 @@ int prototype_judgement_source_indexed_branch_refinement(
 	uint32_t branch_binder_count,
 	uint32_t* p_refined_context_id,
 	uint32_t* p_refinement_substitution_id,
-	uint32_t* p_constructor_term
+	uint32_t* p_constructor_term,
+	uint32_t* p_residual_pattern,
+	uint32_t* p_residual_value
 ) {
 	uint32_t type_id;
 	uint32_t scrutinee_arguments[32];
 	uint32_t scrutinee_argument_count;
 	if (!contexts || !substitutions || !terms || !type_declarations ||
 		!p_refined_context_id || !p_refinement_substitution_id ||
-		!p_constructor_term || branch_binder_count > 64 ||
+		!p_constructor_term || !p_residual_pattern || !p_residual_value ||
+		branch_binder_count > 64 ||
 		(branch_binder_count != 0 && !branch_binders) ||
 		scrutinee_term >= terms->term_count ||
-		terms->terms[scrutinee_term].tag != PROTOTYPE_TERM_VAR ||
 		prototype_term_type_instance_info(
 			terms, scrutinee_classifier, &type_id, scrutinee_arguments,
 			&scrutinee_argument_count
 		) != 0 || type_id >= type_declarations->type_count) {
 		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
 	}
+	*p_residual_pattern = PROTOTYPE_INVALID_ID;
+	*p_residual_value = PROTOTYPE_INVALID_ID;
 	const struct prototype_type_declaration* type =
 		&type_declarations->type_declarations[type_id];
 	if (type->origin_kind != PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE ||
-		type->index_count == 0 || type->parameter_count + type->index_count !=
+		type->parameter_count + type->index_count !=
 			scrutinee_argument_count || constructor_index >= type->constructor_count ||
 		type->first_constructor + constructor_index >=
 			type_declarations->constructor_count) {
@@ -554,6 +562,61 @@ int prototype_judgement_source_indexed_branch_refinement(
 		&type_declarations->constructor_declarations[
 			type->first_constructor + constructor_index
 		];
+	if (terms->terms[scrutinee_term].tag != PROTOTYPE_TERM_VAR) {
+		uint32_t concrete_head;
+		uint32_t concrete_owner;
+		uint32_t concrete_constructor;
+		uint32_t concrete_arguments[64];
+		uint32_t concrete_argument_count;
+		int concrete_status = prototype_term_constructor_spine_info(
+			terms,
+			scrutinee_term,
+			&concrete_head,
+			&concrete_owner,
+			&concrete_constructor,
+			concrete_arguments,
+			64,
+			&concrete_argument_count
+		);
+		if (concrete_status < 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+		if (concrete_status > 0) {
+			*p_residual_pattern = scrutinee_term;
+			return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+		}
+		uint32_t concrete_type_id;
+		uint32_t concrete_owner_arguments[32];
+		uint32_t concrete_owner_argument_count;
+		if (prototype_term_type_instance_info(
+				terms,
+				concrete_owner,
+				&concrete_type_id,
+				concrete_owner_arguments,
+				&concrete_owner_argument_count
+			) != 0 || concrete_type_id != type_id) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+		(void)concrete_head;
+		(void)concrete_owner_arguments;
+		(void)concrete_owner_argument_count;
+		if (concrete_constructor != constructor_index) {
+			return PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE;
+		}
+		if (concrete_argument_count != branch_binder_count ||
+			!prototype_context_get(contexts, branch_context_id) ||
+			prototype_substitution_identity(
+				substitutions,
+				contexts,
+				branch_context_id,
+				p_refinement_substitution_id
+			) != 0) {
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		}
+		*p_refined_context_id = branch_context_id;
+		*p_constructor_term = scrutinee_term;
+		return PROTOTYPE_INDEX_REFINEMENT_SOLVED;
+	}
 	uint32_t raw_result_type_id;
 	uint32_t raw_result_arguments[32];
 	uint32_t raw_result_argument_count;
@@ -594,7 +657,7 @@ int prototype_judgement_source_indexed_branch_refinement(
 			&scrutinee_binding_context
 		) != 0 || !(scrutinee_context = prototype_context_get(
 			contexts, scrutinee_binding_context
-		)) || scrutinee_binding_context != scrutinee_context_id) {
+		))) {
 		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
 	}
 	uint32_t source_index_contexts[32];
@@ -610,6 +673,10 @@ int prototype_judgement_source_indexed_branch_refinement(
 			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
 		}
 		if (binding_status > 0) {
+			*p_residual_pattern =
+				scrutinee_arguments[type->parameter_count + i];
+			*p_residual_value =
+				raw_result_arguments[type->parameter_count + i];
 			return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
 		}
 		if (source_index_contexts[i] != PROTOTYPE_INVALID_ID) {
@@ -754,6 +821,12 @@ int prototype_judgement_source_indexed_branch_refinement(
 			&index_solutions[i]
 		);
 		if (solve_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED) {
+			if (solve_status == PROTOTYPE_INDEX_REFINEMENT_RESIDUAL) {
+				*p_residual_pattern =
+					scrutinee_arguments[type->parameter_count + i];
+				*p_residual_value =
+					specialized_arguments[type->parameter_count + i];
+			}
 			return solve_status;
 		}
 	}
@@ -906,7 +979,7 @@ int prototype_judgement_source_indexed_branch_refinement(
 	return PROTOTYPE_INDEX_REFINEMENT_SOLVED;
 }
 
-int prototype_judgement_indexed_branch_refinement(
+int prototype_judgement_identity_relation_branch_refinement(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,

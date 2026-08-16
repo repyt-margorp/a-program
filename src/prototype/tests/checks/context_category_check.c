@@ -110,7 +110,11 @@ static int check_judgement_graph_collisions(void) {
 }
 
 static int check_judgement_premise_arenas(void) {
-	enum { CLAIM_COUNT = 4, DERIVATION_COUNT = 5, STORAGE_CAPACITY = 5 };
+	enum {
+		CLAIM_COUNT = 4,
+		DERIVATION_COUNT = 5,
+		STORAGE_CAPACITY = 6
+	};
 	const size_t premise_capacity =
 		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES + 4;
 	struct prototype_judgement_proposition propositions[STORAGE_CAPACITY];
@@ -240,6 +244,34 @@ static int check_judgement_premise_arenas(void) {
 	checked_edge->scoped_proposition_id = scoped_id;
 	status = status || prototype_judgement_db_rebuild_index(&judgement) == 0;
 	*checked_edge = saved_edge;
+	status = status || prototype_judgement_db_rebuild_index(&judgement) != 0;
+	struct prototype_judgement_premise_edge cycle_edge = {
+		.claim_id = 1,
+		.scoped_proposition_id = PROTOTYPE_INVALID_ID,
+		.semantic_action_kind = PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID,
+		.semantic_action_id = PROTOTYPE_INVALID_ID
+	};
+	struct prototype_judgement_derivation cycle_derivation = {
+		.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_CONVERSION,
+		.conclusion_claim_id = 0,
+		.closure_rank = PROTOTYPE_INVALID_ID,
+		.semantic_action_kind = PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID,
+		.semantic_action_id = PROTOTYPE_INVALID_ID,
+		.premise_count = 1,
+		.premises = &cycle_edge
+	};
+	size_t derivation_count_before = judgement.derivation_count;
+	size_t premise_count_before = judgement.accepted_premise_count;
+	status = status || prototype_judgement_derivation_intern_exact(
+		&judgement, &cycle_derivation, &found
+	) == 0 || judgement.derivation_count != derivation_count_before ||
+		judgement.accepted_premise_count != premise_count_before;
+	struct prototype_judgement_derivation saved_derivation =
+		judgement.derivations[0];
+	judgement.derivations[0].premise_count = 1;
+	judgement.derivations[0].premises = &cycle_edge;
+	status = status || prototype_judgement_db_rebuild_index(&judgement) == 0;
+	judgement.derivations[0] = saved_derivation;
 	status = status || prototype_judgement_db_rebuild_index(&judgement) != 0;
 	free(premises);
 	return status ? -1 : 0;

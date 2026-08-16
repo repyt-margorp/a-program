@@ -334,6 +334,9 @@ int prototype_judgement_add_expected_type_exposure(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t context_id,
 	uint32_t operation_id,
 	const struct prototype_judgement_selected_evidence* source_evidence,
@@ -360,18 +363,38 @@ int prototype_judgement_add_expected_type_exposure(
 	int proof_kind;
 	if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		proof_kind = PROTOTYPE_JUDGEMENT_PROOF_CONVERSION;
-	} else if (conversion.status == PROTOTYPE_TERM_CONVERSION_NOT_EQUAL &&
-		classifier_kernel_compatible_at_depth(
+	} else {
+		uint32_t solved_expected;
+		int effect_status = prototype_judgement_solve_expected_effect_rows(
 			terms,
 			type_declarations,
 			NULL,
 			expected,
 			source_evidence->classifier,
-			0
-		)) {
+			&solved_expected
+		);
+		int occurrence_status = effect_status == 0 ? 1 :
+			prototype_judgement_occurrence_classifier_satisfies(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				operations,
+				operation_id,
+				expected
+			);
+		if (conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL ||
+			(effect_status != 0 && !classifier_kernel_compatible_at_depth(
+				terms,
+				type_declarations,
+				NULL,
+				expected,
+				source_evidence->classifier,
+				0
+			) && occurrence_status != 1)) {
+			return -1;
+		}
 		proof_kind = PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE;
-	} else {
-		return -1;
 	}
 	uint32_t premise_subjects[1] = { subject };
 	uint32_t premise_classifiers[1] = { source_evidence->classifier };

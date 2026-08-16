@@ -755,13 +755,6 @@ int prototype_term_match_with_ih_scope(
 	uint32_t ih_scope_id,
 	uint32_t* p_ret
 );
-int prototype_term_resolve_match_case(
-	struct prototype_term_db* db,
-	uint32_t match_term,
-	uint32_t case_index,
-	uint32_t constructor_owner,
-	uint32_t constructor_id
-);
 int prototype_term_erase_constructor_view_owners(struct prototype_term_db* db);
 int prototype_term_type_instance_make(
 	struct prototype_term_db* db,

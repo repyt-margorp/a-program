@@ -229,7 +229,7 @@ static int write_artifact_typed_occurrence_section(
 			artifact_context_slice_relocate(
 				context_slice, operation_case->context_id
 			),
-			operation_case->has_refinement,
+			operation_case->refinement_status,
 			operation_case->refinement_substitution,
 			operation_case->constructor_owner,
 			operation_case->constructor_id,
@@ -580,14 +580,19 @@ int prototype_artifact_write_text(
 		return -1;
 	}
 	if (metadata &&
-		(prototype_context_db_validate(&metadata->contexts, terms) != 0 ||
-		 prototype_substitution_db_validate(
-			&metadata->substitutions, &metadata->contexts, terms
-		 ) != 0 ||
-		 prototype_constructor_telescopes_validate(
+		prototype_context_db_validate(&metadata->contexts, terms) != 0) {
+		fprintf(stderr, "artifact source ContextDB validation failed\n");
+		return -1;
+	}
+	/* SubstitutionDB is a monotone solver arena and may retain rejected
+	 * candidates. Dense publication constructs the authoritative substitution
+	 * slice from accepted derivations, typed occurrences, and solved Match cases;
+	 * that compact DB is validated by artifact append and readback. */
+	if (metadata &&
+		prototype_constructor_telescopes_validate(
 			type_declarations, &metadata->contexts, terms
-		 ) != 0)) {
-		fprintf(stderr, "artifact source graph validation failed\n");
+		) != 0) {
+		fprintf(stderr, "artifact source constructor telescope validation failed\n");
 		return -1;
 	}
 	if (interface->identity_root_count != 0 &&

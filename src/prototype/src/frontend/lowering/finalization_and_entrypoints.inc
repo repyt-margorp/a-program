@@ -9,9 +9,15 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 		size_t before_relations = ctx->judgement_delta.proposition_count;
 		int match_resolution_status = compile_phase_resolve_pending_match_items(ctx);
 		if (match_resolution_status < 0) {
+			fprintf(stderr,
+				"typing fixed point: pending Match resolution failed\n"
+			);
 			return -1;
 		}
 		if (operation_solver_resolve_contexts(ctx, 0) != 0) {
+			fprintf(stderr,
+				"typing fixed point: pre-inference context resolution failed\n"
+			);
 			return -1;
 		}
 			int status = compile_phase_infer_general_classifiers(ctx, 0);
@@ -22,6 +28,9 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 				return -1;
 			}
 			if (operation_solver_resolve_contexts(ctx, 0) != 0) {
+				fprintf(stderr,
+					"typing fixed point: post-inference context resolution failed\n"
+				);
 				return -1;
 			}
 		int cbpv_changed = 0;
@@ -44,10 +53,21 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 				ctx->type_declarations,
 				ctx->computation_constraint_results,
 				ctx->computation_constraint_result_capacity
-			) != 0 || operation_solver_bind_computation_constraint_solutions(
+			) != 0) {
+			fprintf(stderr,
+				"typing fixed point: recorded operation request solving failed\n");
+			return -1;
+		}
+		if (operation_solver_bind_computation_constraint_solutions(
 				ctx, &request_changed, 1
-			) != 0 || operation_solver_refresh_computation_constraint_operands(ctx) != 0) {
-			fprintf(stderr, "typing fixed point: operation request closure failed\n");
+			) != 0) {
+			fprintf(stderr,
+				"typing fixed point: operation request solution binding failed\n");
+			return -1;
+		}
+		if (operation_solver_refresh_computation_constraint_operands(ctx) != 0) {
+			fprintf(stderr,
+				"typing fixed point: operation request operand refresh failed\n");
 			return -1;
 		}
 		if (request_changed) {
@@ -83,6 +103,9 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 
 	int match_resolution_status = compile_phase_resolve_pending_match_items(ctx);
 	if (match_resolution_status < 0) {
+		fprintf(stderr,
+			"typing fixed point: final pending Match resolution failed\n"
+		);
 		return -1;
 	}
 	int status = compile_phase_infer_general_classifiers(ctx, 1);
@@ -134,10 +157,6 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 	 * describe the same final Context graph. */
 	if (operation_solver_resolve_contexts(ctx, 1) != 0) {
 		fprintf(stderr, "typing fixed point: finalized context resolution failed\n");
-		return -1;
-	}
-	if (operation_solver_materialize_indexed_branch_contexts(ctx) != 0) {
-		fprintf(stderr, "typing fixed point: indexed branch context materialization failed\n");
 		return -1;
 	}
 	if (operation_solver_rebuild_refined_match_motives(ctx) != 0) {
@@ -233,6 +252,22 @@ static int operation_check_classifier(
 	uint32_t actual_classifier = operation_solver_classifier(ctx, operation_id);
 	if (actual_classifier == PROTOTYPE_INVALID_ID) {
 		actual_classifier = operation_available_classifier(ctx, operation_id);
+	}
+	if (operation->context_action_substitution != PROTOTYPE_INVALID_ID &&
+		operation->source_classifier < ctx->terms->term_count) {
+		/* A pulled-back occurrence is typed by reindexing its source evidence.
+		 * Solver cells may still contain the source principal while a dependent
+		 * branch is being rebuilt, so the explicit Context action is authoritative
+		 * for occurrence-level checking. */
+		if (prototype_term_reindex(
+				ctx->terms, ctx->type_declarations,
+				&ctx->metadata->contexts, &ctx->metadata->substitutions,
+				operation->source_classifier,
+				operation->context_action_substitution,
+				&actual_classifier
+			) != 0) {
+			return -1;
+		}
 	}
 	uint32_t child_occurrence;
 	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_THUNK &&
@@ -359,19 +394,6 @@ static int operation_check_classifier(
 		if (scrutinee_classifier == PROTOTYPE_INVALID_ID) {
 			return 0;
 		}
-		uint32_t match_type_id;
-		uint32_t match_type_arguments[32];
-		uint32_t match_type_argument_count;
-		int indexed_scrutinee = prototype_term_type_instance_info(
-			ctx->terms,
-			scrutinee_classifier,
-			&match_type_id,
-			match_type_arguments,
-			&match_type_argument_count
-		) == 0 && match_type_id < ctx->type_declarations->type_count &&
-			ctx->type_declarations->type_declarations[
-				match_type_id
-			].index_count != 0;
 		for (uint32_t i = 0; i < operation->case_count; ++i) {
 			const struct prototype_typed_occurrence_match_case* operation_case =
 				&ctx->metadata->typed_occurrences.cases[operation->first_case + i];
@@ -389,7 +411,6 @@ static int operation_check_classifier(
 			}
 			const struct prototype_match_case* term_case =
 				&ctx->terms->cases[term_case_id];
-			struct prototype_case_binder occurrence_binders[64];
 			if (term_case->binder_count > 64 || term_case->binder_count !=
 					operation_case->binder_count) {
 				fprintf(stderr,
@@ -398,101 +419,58 @@ static int operation_check_classifier(
 					operation_case->binder_count);
 				return -1;
 			}
-			for (uint32_t binder = 0; binder < term_case->binder_count; ++binder) {
-				occurrence_binders[binder].binding_id =
-					operation_case->binder_ids[binder];
-				occurrence_binders[binder].is_recursive = ctx->terms->case_binders[
-					term_case->first_binder + binder
-				].is_recursive;
+			if (operation_case->refinement_status ==
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE) {
+				continue;
 			}
-			uint32_t refined_context;
-			uint32_t refinement_substitution;
-			uint32_t constructor_term;
-			int refinement_status;
-			if (operation_case->has_refinement) {
+			int pending_pullback = 0;
+			uint32_t refinement_substitution = PROTOTYPE_INVALID_ID;
+			if (prototype_typed_occurrence_match_case_is_solved(operation_case)) {
+				refinement_substitution = operation_case->refinement_substitution;
+			} else {
+				struct operation_constraint* refinement =
+					operation_solver_branch_refinement_constraint(
+						ctx, operation->first_case + i
+					);
+				int refinement_status = refinement ? refinement->payload.
+					branch_refinement.refinement_status :
+					PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
+					continue;
+				}
+				if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_SOLVED) {
+					refinement_substitution = refinement->payload.
+						branch_refinement.substitution;
+					pending_pullback = 1;
+				} else {
+				fprintf(stderr,
+					"classifier check: branch refinement unavailable match=%u "
+					"case=%u status=%d scrutinee-classifier=%u\n",
+					operation_id, i, refinement_status,
+					scrutinee_classifier);
+				return refinement_status == PROTOTYPE_INDEX_REFINEMENT_INVALID ?
+					-1 : 0;
+				}
+			}
+			{
 				const struct prototype_substitution* stored =
 					prototype_substitution_get(
 						&ctx->metadata->substitutions,
-						operation_case->refinement_substitution
+						refinement_substitution
 					);
-				if (!stored || stored->source_context != operation_case->context_id) {
+				int action_matches = stored && (pending_pullback ?
+					stored->target_context == operation_case->context_id :
+					stored->source_context == operation_case->context_id);
+				if (!action_matches) {
 					fprintf(stderr,
 						"classifier check: stale branch refinement match=%u case=%u substitution=%u "
-						"source=%u expected-source=%u\n",
-						operation_id, i, operation_case->refinement_substitution,
+						"source=%u target=%u case-context=%u pending=%d\n",
+						operation_id, i, refinement_substitution,
 						stored ? stored->source_context : PROTOTYPE_INVALID_ID,
-						operation_case->context_id);
+						stored ? stored->target_context : PROTOTYPE_INVALID_ID,
+						operation_case->context_id, pending_pullback);
 					return -1;
 				}
-				refined_context = operation_case->context_id;
-				refinement_substitution =
-					operation_case->refinement_substitution;
-				constructor_term = PROTOTYPE_INVALID_ID;
-				refinement_status = PROTOTYPE_INDEX_REFINEMENT_SOLVED;
-			} else if (indexed_scrutinee) {
-				refinement_status =
-					prototype_judgement_source_indexed_branch_refinement(
-					&ctx->metadata->contexts,
-					&ctx->metadata->substitutions,
-					ctx->terms,
-					ctx->type_declarations,
-					scrutinee->context_id,
-					scrutinee->core_term,
-					scrutinee_classifier,
-					operation_case->constructor_id,
-					operation_case->context_id,
-					occurrence_binders,
-					term_case->binder_count,
-					&refined_context,
-					&refinement_substitution,
-					&constructor_term
-				);
-			} else {
-				refined_context = operation_case->context_id;
-				const struct prototype_type_declaration* declaration =
-					&ctx->type_declarations->type_declarations[match_type_id];
-				uint32_t owner;
-				refinement_status = declaration->origin_kind ==
-						PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
-					declaration->parameter_count == match_type_argument_count &&
-					operation_case->constructor_id < declaration->constructor_count &&
-					prototype_term_type_instance_make(
-						ctx->terms, ctx->type_declarations, match_type_id,
-						match_type_arguments, declaration->parameter_count,
-						&owner
-					) == 0 && prototype_term_constructor(
-						ctx->terms, owner, operation_case->constructor_id,
-						&constructor_term
-					) == 0 ? PROTOTYPE_INDEX_REFINEMENT_SOLVED :
-						PROTOTYPE_INDEX_REFINEMENT_INVALID;
-				for (uint32_t binder = 0;
-					refinement_status == PROTOTYPE_INDEX_REFINEMENT_SOLVED &&
-					binder < term_case->binder_count;
-					++binder) {
-					uint32_t field;
-					if (prototype_term_var(
-							ctx->terms, occurrence_binders[binder].binding_id,
-							&field
-						) != 0 || prototype_term_app(
-							ctx->terms, constructor_term, field,
-							&constructor_term
-						) != 0) {
-						refinement_status = PROTOTYPE_INDEX_REFINEMENT_INVALID;
-					}
-				}
-				refinement_substitution = PROTOTYPE_INVALID_ID;
-			}
-			(void)refined_context;
-			if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
-				continue;
-			}
-			if (refinement_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED) {
-				fprintf(stderr,
-					"classifier check: branch refinement unavailable match=%u case=%u "
-					"status=%d indexed=%d stored=%u scrutinee-classifier=%u\n",
-					operation_id, i, refinement_status, indexed_scrutinee,
-					operation_case->has_refinement, scrutinee_classifier);
-				return refinement_status == PROTOTYPE_INDEX_REFINEMENT_INVALID ? -1 : 0;
 			}
 			uint32_t refined_expected;
 			uint32_t branch_classifier = operation_solver_classifier(
@@ -506,34 +484,38 @@ static int operation_check_classifier(
 			uint32_t refined_actual;
 			uint32_t solved_refined_expected;
 			if (branch_classifier >= ctx->terms->term_count ||
-				(!indexed_scrutinee && !operation_case->has_refinement ?
-				 prototype_term_graph_substitute_bound_var(
-					ctx->terms, ctx->type_declarations,
-					expected_classifier,
-					ctx->terms->terms[
-						scrutinee->core_term
-					].as.var.binding_id,
-					constructor_term,
-					&refined_expected
-				 ) : prototype_term_reindex(
+				prototype_term_reindex(
 					ctx->terms, ctx->type_declarations,
 					&ctx->metadata->contexts,
 					&ctx->metadata->substitutions,
 					expected_classifier, refinement_substitution,
 					&refined_expected
-				 )) != 0) {
+				 ) != 0) {
 				return 0;
 			}
-			if (operation_case->has_refinement || !indexed_scrutinee) {
-				refined_actual = branch_classifier;
-			} else if (operation_solver_reindex_in_enclosing_indexed_branches(
-					ctx,
-					branch_occurrence,
-					operation_case->context_id,
-					branch_classifier,
-					&refined_actual
+			if (pending_pullback &&
+				operation_solver_reindex_in_enclosing_indexed_branches(
+					ctx, branch_occurrence, operation_case->context_id,
+					branch_classifier, &refined_actual
 				) != 0) {
 				return 0;
+			}
+			if (!pending_pullback) {
+				refined_actual = branch_classifier;
+				/* A solved branch has already been pulled into its refined
+				 * Context. Validate the source occurrence structure there before
+				 * comparing its provisional classifier. In particular, RETURN and
+				 * REFERENCE edges carry the evidence that a branch result was
+				 * reindexed; their cached outer classifier need not be rebuilt yet. */
+				int structural_status = operation_check_classifier(
+					ctx, branch_occurrence, refined_expected, depth + 1
+				);
+				if (structural_status < 0) {
+					return -1;
+				}
+				if (structural_status > 0) {
+					continue;
+				}
 			}
 			solved_refined_expected = refined_expected;
 			int effect_status = prototype_judgement_solve_expected_effect_rows(
@@ -642,8 +624,10 @@ static int operation_check_classifier(
 				uint32_t ignored_context;
 				uint32_t ignored_substitution;
 				uint32_t ignored_constructor;
+				uint32_t ignored_residual_pattern;
+				uint32_t ignored_residual_value;
 				int omission_status =
-					prototype_judgement_source_indexed_branch_refinement(
+					prototype_judgement_source_match_branch_refinement(
 						&ctx->metadata->contexts,
 						&ctx->metadata->substitutions,
 						ctx->terms, ctx->type_declarations,
@@ -651,7 +635,8 @@ static int operation_check_classifier(
 						scrutinee_classifier,
 						constructor_index, synthetic_context, binders,
 						field_count, &ignored_context,
-						&ignored_substitution, &ignored_constructor
+						&ignored_substitution, &ignored_constructor,
+						&ignored_residual_pattern, &ignored_residual_value
 					);
 				if (omission_status != PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
 					fprintf(stderr,
@@ -687,12 +672,43 @@ static int operation_refine_classifier_from_expected(
 		expected_classifier >= ctx->terms->term_count || depth > 128) {
 		return -1;
 	}
+	const struct prototype_typed_occurrence* operation =
+		&ctx->metadata->typed_occurrences.occurrences[operation_id];
+	/* A constructor-domain equation is independent synthesized evidence for an
+	 * unresolved pattern variable. Record it before canonicalizing Contexts:
+	 * Context resolution consumes occurrence solutions, so requiring it first
+	 * would make the two fixed-point steps wait on each other. */
+	if (depth == 0 && operation->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
+		operation_solver_classifier(ctx, operation_id) == PROTOTYPE_INVALID_ID &&
+		operation->core_term < ctx->terms->term_count &&
+		ctx->terms->terms[operation->core_term].tag == PROTOTYPE_TERM_VAR) {
+		uint32_t binding_context_id;
+		if (prototype_context_find_binding(
+				&ctx->metadata->contexts,
+				operation->context_id,
+				ctx->terms->terms[operation->core_term].as.var.binding_id,
+				&binding_context_id
+			) == 0) {
+			const struct prototype_context* binding_context =
+				prototype_context_get(
+					&ctx->metadata->contexts, binding_context_id
+				);
+			if (binding_context && prototype_context_classifier_term(
+					binding_context
+				) == PROTOTYPE_INVALID_ID) {
+				operation_solver_store_classifier_solution(
+					ctx, operation_id, expected_classifier
+				);
+				*p_changed = 1;
+				return operation_solver_enqueue_dependents(ctx, operation_id) == 0 ?
+					1 : -1;
+			}
+		}
+	}
 	if (depth == 0 && !ctx->materializing_checked_classifiers &&
 		operation_solver_resolve_contexts(ctx, 0) != 0) {
 		return -1;
 	}
-	const struct prototype_typed_occurrence* operation =
-		&ctx->metadata->typed_occurrences.occurrences[operation_id];
 	uint32_t child_occurrence;
 	uint32_t body_occurrence;
 	uint32_t scrutinee_occurrence;
@@ -1116,19 +1132,6 @@ static int operation_refine_classifier_from_expected(
 		if (scrutinee_classifier == PROTOTYPE_INVALID_ID) {
 			return 0;
 		}
-		uint32_t match_type_id;
-		uint32_t match_type_arguments[32];
-		uint32_t match_type_argument_count;
-		int indexed_scrutinee = prototype_term_type_instance_info(
-			ctx->terms,
-			scrutinee_classifier,
-			&match_type_id,
-			match_type_arguments,
-			&match_type_argument_count
-		) == 0 && match_type_id < ctx->type_declarations->type_count &&
-			ctx->type_declarations->type_declarations[
-				match_type_id
-			].index_count != 0;
 		for (uint32_t case_index = 0;
 			case_index < operation->case_count; ++case_index) {
 			uint32_t branch_occurrence;
@@ -1146,111 +1149,62 @@ static int operation_refine_classifier_from_expected(
 			const struct prototype_match_case* term_case = &ctx->terms->cases[
 				match->as.match.first_case + case_index
 			];
-			struct prototype_case_binder occurrence_binders[64];
 			if (term_case->binder_count > 64 || term_case->binder_count !=
 					operation_case->binder_count) {
 				return -1;
 			}
-			for (uint32_t binder = 0; binder < term_case->binder_count; ++binder) {
-				occurrence_binders[binder].binding_id =
-					operation_case->binder_ids[binder];
-				occurrence_binders[binder].is_recursive = ctx->terms->case_binders[
-					term_case->first_binder + binder
-				].is_recursive;
+			if (operation_case->refinement_status ==
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE) {
+				continue;
 			}
-			uint32_t refined_context;
-			uint32_t refinement_substitution;
-			uint32_t constructor_term;
-			int refinement_status;
-			if (operation_case->has_refinement) {
+			int pending_pullback = 0;
+			uint32_t refinement_substitution = PROTOTYPE_INVALID_ID;
+			if (prototype_typed_occurrence_match_case_is_solved(operation_case)) {
+				refinement_substitution = operation_case->refinement_substitution;
+			} else {
+				struct operation_constraint* refinement =
+					operation_solver_branch_refinement_constraint(
+						ctx, operation->first_case + case_index
+					);
+				int refinement_status = refinement ? refinement->payload.
+					branch_refinement.refinement_status :
+					PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
+					continue;
+				}
+				if (refinement_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED) {
+					return refinement_status == PROTOTYPE_INDEX_REFINEMENT_INVALID ?
+						-1 : 0;
+				}
+				refinement_substitution = refinement->payload.
+					branch_refinement.substitution;
+				pending_pullback = 1;
+			}
+			{
 				const struct prototype_substitution* stored =
 					prototype_substitution_get(
 						&ctx->metadata->substitutions,
-						operation_case->refinement_substitution
+						refinement_substitution
 					);
-				if (!stored || stored->source_context != operation_case->context_id) {
+				if (!stored || (pending_pullback ?
+					stored->target_context != operation_case->context_id :
+					stored->source_context != operation_case->context_id)) {
 					return -1;
 				}
-				refined_context = operation_case->context_id;
-				refinement_substitution = operation_case->refinement_substitution;
-				constructor_term = PROTOTYPE_INVALID_ID;
-				refinement_status = PROTOTYPE_INDEX_REFINEMENT_SOLVED;
-			} else if (indexed_scrutinee) {
-				refinement_status =
-					prototype_judgement_source_indexed_branch_refinement(
-						&ctx->metadata->contexts,
-						&ctx->metadata->substitutions,
-						ctx->terms, ctx->type_declarations,
-						scrutinee_operation->context_id,
-						scrutinee_operation->core_term, scrutinee_classifier,
-						operation_case->constructor_id,
-						operation_case->context_id,
-						occurrence_binders,
-						term_case->binder_count, &refined_context,
-						&refinement_substitution, &constructor_term
-					);
-			} else {
-				refined_context = operation_case->context_id;
-				const struct prototype_type_declaration* declaration =
-					&ctx->type_declarations->type_declarations[match_type_id];
-				uint32_t owner;
-				refinement_status = declaration->origin_kind ==
-						PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
-					declaration->parameter_count == match_type_argument_count &&
-					operation_case->constructor_id < declaration->constructor_count &&
-					prototype_term_type_instance_make(
-						ctx->terms, ctx->type_declarations, match_type_id,
-						match_type_arguments, declaration->parameter_count,
-						&owner
-					) == 0 && prototype_term_constructor(
-						ctx->terms, owner, operation_case->constructor_id,
-						&constructor_term
-					) == 0 ? PROTOTYPE_INDEX_REFINEMENT_SOLVED :
-						PROTOTYPE_INDEX_REFINEMENT_INVALID;
-				for (uint32_t binder = 0;
-					refinement_status == PROTOTYPE_INDEX_REFINEMENT_SOLVED &&
-					binder < term_case->binder_count;
-					++binder) {
-					uint32_t field;
-					if (prototype_term_var(
-							ctx->terms, occurrence_binders[binder].binding_id,
-							&field
-						) != 0 || prototype_term_app(
-							ctx->terms, constructor_term, field,
-							&constructor_term
-						) != 0) {
-						refinement_status = PROTOTYPE_INDEX_REFINEMENT_INVALID;
-					}
-				}
-				refinement_substitution = PROTOTYPE_INVALID_ID;
-			}
-			(void)refined_context;
-			if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
-				continue;
-			}
-			if (refinement_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED) {
-				return refinement_status == PROTOTYPE_INDEX_REFINEMENT_INVALID ?
-					-1 : 0;
 			}
 			uint32_t branch_expected;
-			if ((!indexed_scrutinee && !operation_case->has_refinement ?
-				 prototype_term_graph_substitute_bound_var(
-					ctx->terms, ctx->type_declarations,
-					expected_classifier,
-					ctx->terms->terms[scrutinee].as.var.binding_id,
-					constructor_term,
-					&branch_expected
-				 ) : prototype_term_reindex(
+			if (prototype_term_reindex(
 					ctx->terms, ctx->type_declarations,
 					&ctx->metadata->contexts, &ctx->metadata->substitutions,
 					expected_classifier, refinement_substitution,
 					&branch_expected
-				 )) != 0) {
+				 ) != 0) {
 				fprintf(stderr,
 					"match expected refinement: branch expectation failed match=%u case=%u "
-					"indexed=%d stored-refinement=%u expected=%u substitution=%u\n",
-					operation_id, case_index, indexed_scrutinee,
-					operation_case->has_refinement, expected_classifier,
+					"status=%d pending=%d expected=%u substitution=%u\n",
+					operation_id, case_index, operation_case->refinement_status,
+					pending_pullback,
+					expected_classifier,
 					refinement_substitution);
 				return -1;
 			}
@@ -1552,15 +1506,26 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 		if (structurally_checked < 0) {
 			return -1;
 		}
-		if (actual_classifier == PROTOTYPE_INVALID_ID ||
-			(!structurally_checked && prototype_judgement_solve_expected_effect_rows(
+		int expected_effect_status = actual_classifier == PROTOTYPE_INVALID_ID ? -1 :
+			prototype_judgement_solve_expected_effect_rows(
 				ctx->terms,
 				ctx->type_declarations,
 				&imported_definition_env,
 				expected_classifier,
 				actual_classifier,
 				&expected_classifier
-			) != 0)) {
+			);
+		int classifier_compatible = actual_classifier != PROTOTYPE_INVALID_ID &&
+			prototype_judgement_classifier_compatible_with_definitions(
+				ctx->terms,
+				ctx->type_declarations,
+				&imported_definition_env,
+				expected_classifier,
+				actual_classifier
+			);
+		if (actual_classifier == PROTOTYPE_INVALID_ID ||
+			(!structurally_checked && expected_effect_status != 0 &&
+				!classifier_compatible)) {
 			(void)add_resolve_error_at_span(
 				ctx,
 				PROTOTYPE_RESOLVE_ERROR_COMPILE,
@@ -1592,26 +1557,7 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 				expected_classifier,
 				actual_classifier
 			);
-		if (closed_conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL &&
-			!structurally_checked && !prototype_judgement_classifier_compatible(
-				ctx->terms,
-				ctx->type_declarations,
-				expected_classifier,
-				actual_classifier
-			)) {
-			/* Compatibility may depend on transparent imported definitions. The
-			 * source expectation is valid in that environment, but the standalone
-			 * kernel certificate has no definition premise with which to replay it. */
-			def->compiled_classifier = actual_classifier;
-			continue;
-			}
-		if (structurally_checked &&
-			closed_conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
-			/* `::` validates a source definition after synthesis. Preserve the
-			 * independently synthesized dependent motive as the reusable result. */
-			def->compiled_classifier = actual_classifier;
-			continue;
-		}
+		(void)closed_conversion;
 			if (actual_from_operation) {
 				struct prototype_judgement_selected_evidence source_evidence;
 				uint32_t conclusion_context = ctx->metadata->typed_occurrences.occurrences[
@@ -1625,7 +1571,7 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 						expected_classifier,
 						&source_evidence
 					) == 0) {
-					def->compiled_classifier = expected_classifier;
+					def->compiled_classifier = actual_classifier;
 					continue;
 				}
 				uint32_t source_operation = def->compiled_operation;
@@ -1643,9 +1589,12 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 				}
 				uint32_t source_context =
 					ctx->metadata->typed_occurrences.occurrences[source_operation].context_id;
+				uint32_t source_authority = operation_solver_evidence_owner(
+					ctx, source_operation
+				);
 				int source_status = prototype_judgement_select_evidence(
 						ctx->judgement,
-						source_operation,
+						source_authority,
 						source_context,
 						compiled_term,
 						actual_classifier,
@@ -1658,16 +1607,22 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 						ctx->judgement,
 						ctx->terms,
 						ctx->type_declarations,
+						&ctx->metadata->contexts,
+						&ctx->metadata->substitutions,
+						&ctx->metadata->typed_occurrences,
 						source_context,
 						def->compiled_operation,
 						&source_evidence,
 						expected_classifier,
 						compiled_term
 					) != 0) {
-					fprintf(stderr, "expectation %u: expected-type exposure failed\n", i);
+					fprintf(stderr,
+						"expectation %u: expected-type exposure failed expected=%u actual=%u\n",
+						i, expected_classifier, source_evidence.classifier
+					);
 					return -1;
 			}
-			def->compiled_classifier = expected_classifier;
+			def->compiled_classifier = actual_classifier;
 			continue;
 			}
 			struct prototype_judgement_selected_evidence source_evidence;
@@ -1689,6 +1644,9 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 					ctx->judgement,
 					ctx->terms,
 					ctx->type_declarations,
+					&ctx->metadata->contexts,
+					&ctx->metadata->substitutions,
+					&ctx->metadata->typed_occurrences,
 					0,
 					def->compiled_operation,
 					&source_evidence,
@@ -2021,10 +1979,20 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "compile pending failed: imported constructor classifiers\n");
 		return -1;
 	}
+	if (type_declarations->representation_db.cache_dirty &&
+		(prototype_type_declaration_rebuild_representations(
+			terms, type_declarations, &metadata->contexts
+		) != 0 || prototype_term_rebind_type_former_anchors(
+			terms, type_declarations
+		) != 0)) {
+		fprintf(stderr, "compile pending failed: type representation finalization\n");
+		return -1;
+	}
 	if (prototype_internal_canonicalize_type_view_core_refs(
 			terms, type_declarations, &metadata->contexts
-		) != 0 ||
-		prototype_internal_canonicalize_constructor_owner_refs(terms, type_declarations, 0) != 0) {
+		) != 0 || prototype_internal_canonicalize_constructor_owner_refs(
+			terms, type_declarations, 0
+		) != 0) {
 		return -1;
 	}
 	if (compile_phase_resolve_pending_match_items(&ctx) < 0) {
@@ -2036,8 +2004,9 @@ static int compile_pending_with_workspace(
 	}
 	if (prototype_internal_canonicalize_type_view_core_refs(
 			terms, type_declarations, &metadata->contexts
-		) != 0 ||
-		prototype_internal_canonicalize_constructor_owner_refs(terms, type_declarations, 0) != 0) {
+		) != 0 || prototype_internal_canonicalize_constructor_owner_refs(
+			terms, type_declarations, 0
+		) != 0) {
 		return -1;
 	}
 	if (compile_phase_infer_pending_types(&ctx) != 0) {
@@ -2092,8 +2061,9 @@ static int compile_pending_with_workspace(
 	}
 	if (prototype_internal_canonicalize_type_view_core_refs(
 			terms, type_declarations, &metadata->contexts
-		) != 0 ||
-		prototype_internal_canonicalize_constructor_owner_refs(terms, type_declarations, 0) != 0) {
+		) != 0 || prototype_internal_canonicalize_constructor_owner_refs(
+			terms, type_declarations, 0
+		) != 0) {
 		fprintf(stderr, "post-expectation type-view canonicalization failed\n");
 		return -1;
 	}

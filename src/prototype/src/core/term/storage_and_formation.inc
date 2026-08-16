@@ -881,35 +881,6 @@ int prototype_term_match_with_ih_scope(
 	return 0;
 }
 
-int prototype_term_resolve_match_case(
-	struct prototype_term_db* db,
-	uint32_t match_term,
-	uint32_t case_index,
-	uint32_t constructor_owner,
-	uint32_t constructor_id
-) {
-	if (!db ||
-		match_term >= db->term_count ||
-		db->terms[match_term].tag != PROTOTYPE_TERM_MATCH ||
-		constructor_owner >= db->term_count ||
-		constructor_id == PROTOTYPE_INVALID_ID ||
-		case_index >= db->terms[match_term].as.match.case_count) {
-		return -1;
-	}
-
-	uint32_t stored_case_id = db->terms[match_term].as.match.first_case + case_index;
-	if (stored_case_id >= db->case_count) {
-		return -1;
-	}
-	if (db->cases[stored_case_id].constructor_owner != constructor_owner ||
-		db->cases[stored_case_id].constructor_id != constructor_id) {
-		db->cases[stored_case_id].constructor_owner = constructor_owner;
-		db->cases[stored_case_id].constructor_id = constructor_id;
-		invalidate_normalization_cache(db);
-	}
-	return 0;
-}
-
 int prototype_term_erase_constructor_view_owners(struct prototype_term_db* db) {
 	if (!db) {
 		return -1;

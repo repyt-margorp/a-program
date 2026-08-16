@@ -249,7 +249,54 @@ int main(void) {
 			&type_db,
 			solved_symbolic_computation,
 			terminal_computation
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
+		return 1;
+	}
+
+	/* A curried source Lambda keeps a raw negative Pi spine. A value-arrow
+	 * annotation may quote the same spine as Comp({}, Thunk(Pi(...))). Expected
+	 * effect-row solving must recognize this elaboration boundary in either
+	 * orientation, but an effectful quotation must remain distinct. */
+	uint32_t int_type;
+	uint32_t function_result;
+	uint32_t function_binder;
+	uint32_t function_family;
+	uint32_t raw_function;
+	uint32_t suspended_function_type;
+	uint32_t pure_function_quotation;
+	uint32_t effectful_function_quotation;
+	uint32_t solved_function_classifier;
+	if (prototype_term_make_host_type(
+			&term_db, PROTOTYPE_HOST_TYPE_INT64, &int_type
+		) != 0 || prototype_term_computation_type(
+			&term_db, empty_effect_row, int_type, &function_result
+		) != 0 ||
+		(function_binder = prototype_term_new_binding(&term_db)) ==
+			PROTOTYPE_INVALID_ID || prototype_term_pure_family(
+			&term_db, function_binder, function_result, &function_family
+		) != 0 || prototype_term_pi_family(
+			&term_db, int_type, function_family, &raw_function
+		) != 0 || prototype_term_thunk_type(
+			&term_db, raw_function, &suspended_function_type
+		) != 0 || prototype_term_computation_type(
+			&term_db, empty_effect_row, suspended_function_type,
+			&pure_function_quotation
+		) != 0 || prototype_term_computation_type(
+			&term_db, terminal_effect_row, suspended_function_type,
+			&effectful_function_quotation
+		) != 0 || prototype_judgement_solve_expected_effect_rows(
+			&term_db, &type_db, NULL, pure_function_quotation, raw_function,
+			&solved_function_classifier
+		) != 0 || prototype_judgement_solve_expected_effect_rows(
+			&term_db, &type_db, NULL, raw_function, pure_function_quotation,
+			&solved_function_classifier
+		) != 0 || prototype_judgement_solve_expected_effect_rows(
+			&term_db, &type_db, NULL, effectful_function_quotation, raw_function,
+			&solved_function_classifier
+		) == 0 || prototype_judgement_solve_expected_effect_rows(
+			&term_db, &type_db, NULL, raw_function, effectful_function_quotation,
+			&solved_function_classifier
+		) == 0) {
 		return 1;
 	}
 	struct prototype_term_normalization_result normalization;
