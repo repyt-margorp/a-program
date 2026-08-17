@@ -443,6 +443,193 @@
 		nat_view == PROTOTYPE_INVALID_ID) {
 		return 73;
 	}
+	struct prototype_dimension_operator schema_operator_storage[8];
+	struct prototype_dimension_axis_image schema_image_storage[32];
+	struct prototype_dimension_operator_db schema_operators;
+	prototype_dimension_operator_db_init(
+		&schema_operators,
+		schema_operator_storage,
+		8,
+		schema_image_storage,
+		32
+	);
+	uint32_t schema_extension_0;
+	uint32_t schema_extension_1;
+	uint32_t acted_bool;
+	uint32_t twice_acted_bool;
+	struct prototype_type_schema_view bool_schema_view;
+	struct prototype_constructor_schema_view false_schema_view;
+	struct prototype_constructor_schema_view true_schema_view;
+	size_t schema_type_count = type_db.type_count;
+	size_t schema_constructor_count = type_db.constructor_count;
+	uint64_t schema_revision = type_db.semantic_revision;
+	if (prototype_dimension_operator_extension(
+			&schema_operators, 0, &schema_extension_0
+		) != 0 || prototype_dimension_operator_extension(
+			&schema_operators, 1, &schema_extension_1
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			bool_view,
+			schema_extension_0,
+			&acted_bool
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			acted_bool,
+			schema_extension_1,
+			&twice_acted_bool
+		) != 0 || prototype_type_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			twice_acted_bool,
+			&bool_schema_view
+		) != 0 || bool_schema_view.source_type_view != bool_view ||
+		bool_schema_view.acted_type != twice_acted_bool ||
+		bool_schema_view.target_dimension != 2 ||
+		bool_schema_view.operator_count != 2 ||
+		bool_schema_view.operator_ids[0] != schema_extension_0 ||
+		bool_schema_view.operator_ids[1] != schema_extension_1 ||
+		prototype_constructor_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			&bool_schema_view,
+			0,
+			&false_schema_view
+		) != 0 || prototype_constructor_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			&bool_schema_view,
+			1,
+			&true_schema_view
+		) != 0 || false_schema_view.source_constructor_id ==
+		true_schema_view.source_constructor_id ||
+		false_schema_view.acted_constructor_term ==
+		false_schema_view.source_constructor_term ||
+		false_schema_view.acted_classifier == false_schema_view.source_classifier ||
+		type_db.type_count != schema_type_count ||
+		type_db.constructor_count != schema_constructor_count ||
+		type_db.semantic_revision != schema_revision) {
+		return 247;
+	}
+	uint32_t additional_schema_types[] = {
+		nat_view, box_view, dependent_box_view
+	};
+	for (size_t schema_type_index = 0;
+		schema_type_index < sizeof(additional_schema_types) /
+			sizeof(additional_schema_types[0]);
+		++schema_type_index) {
+		uint32_t acted_schema_type;
+		struct prototype_type_schema_view acted_schema_view;
+		if (prototype_term_dimension_action(
+				&term_db,
+				&schema_operators,
+				additional_schema_types[schema_type_index],
+				schema_extension_0,
+				&acted_schema_type
+			) != 0 || prototype_type_schema_view_query(
+				&type_db,
+				&context_db,
+				&term_db,
+				&schema_operators,
+				acted_schema_type,
+				&acted_schema_view
+			) != 0) {
+			return 249;
+		}
+		for (uint32_t schema_constructor_ordinal = 0;
+			schema_constructor_ordinal <
+				acted_schema_view.source_declaration->constructor_count;
+			++schema_constructor_ordinal) {
+			struct prototype_constructor_schema_view constructor_schema_view;
+			if (prototype_constructor_schema_view_query(
+					&type_db,
+					&context_db,
+					&term_db,
+					&schema_operators,
+					&acted_schema_view,
+					schema_constructor_ordinal,
+					&constructor_schema_view
+				) != 0 || constructor_schema_view.acted_classifier ==
+				constructor_schema_view.source_classifier) {
+				return 250;
+			}
+		}
+	}
+	uint32_t box_constructor_id = type_db.type_declarations[
+		term_db.terms[box_view].as.type_view.view_type_id
+	].first_constructor;
+	struct prototype_constructor_classifier_cache_entry saved_box_cache =
+		type_db.constructor_classifier_cache.entries[box_constructor_id];
+	type_db.constructor_classifier_cache.entries[box_constructor_id] =
+		(struct prototype_constructor_classifier_cache_entry) {
+			.classifier = PROTOTYPE_INVALID_ID,
+			.schema_revision = 0
+		};
+	uint32_t acted_box;
+	struct prototype_type_schema_view uncached_box_schema;
+	struct prototype_constructor_schema_view uncached_box_constructor;
+	if (prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			box_view,
+			schema_extension_0,
+			&acted_box
+		) != 0 || prototype_type_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			acted_box,
+			&uncached_box_schema
+		) != 0 || prototype_constructor_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			&uncached_box_schema,
+			0,
+			&uncached_box_constructor
+		) != 0) {
+		return 251;
+	}
+	type_db.constructor_classifier_cache.entries[box_constructor_id] =
+		saved_box_cache;
+	struct prototype_dimension_axis_image invalid_schema_image = {
+		.kind = PROTOTYPE_DIMENSION_AXIS_ENDPOINT_0,
+		.target_axis = 0
+	};
+	uint32_t invalid_schema_operator;
+	uint32_t invalid_acted_bool;
+	if (prototype_dimension_operator_intern(
+			&schema_operators,
+			1,
+			0,
+			&invalid_schema_image,
+			1,
+			&invalid_schema_operator
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			bool_view,
+			invalid_schema_operator,
+			&invalid_acted_bool
+		) != 0 || prototype_type_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			invalid_acted_bool,
+			&bool_schema_view
+		) == 0) {
+		return 248;
+	}
 	uint32_t bool_false;
 	uint32_t bool_true;
 	if (prototype_term_constructor(&term_db, bool_view, 0, &bool_false) != 0 ||

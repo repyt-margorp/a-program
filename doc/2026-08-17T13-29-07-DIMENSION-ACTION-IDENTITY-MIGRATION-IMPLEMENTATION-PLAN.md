@@ -419,21 +419,24 @@ Exit criteria:
 
 ### DIA3. Introduce source-or-acted schema queries without a new authority DB
 
-Status: blocked on DIA2
+Status: in progress; source/acted query boundary implemented, parameter/index
+face specialization continues in DIA4
 
-- [ ] Define a read-only `prototype_type_schema_view` or equivalently narrow
+- [x] Define a read-only `prototype_type_schema_view` or equivalently narrow
   query result.
-- [ ] Resolve source `TYPE_VIEW` Terms through `TypeDeclarationDB` as today.
+- [x] Resolve source `TYPE_VIEW` Terms through `TypeDeclarationDB` as today.
 - [ ] Resolve `DIMENSION_ACTION` Terms by recursively resolving their source
   schema and acting on its parameter/index/constructor telescopes.
-- [ ] Keep source declaration and constructor IDs in every acted view.
-- [ ] Derive acted constructor classifiers without allocating declarations.
-- [ ] Derive curried classifiers through existing Pi/telescope construction.
-- [ ] Ensure caches are rebuildable and are not part of schema identity.
-- [ ] Add an assertion/test that schema queries cannot mutate
+- [x] Keep source declaration and constructor IDs in every acted view.
+- [x] Derive acted constructor classifier Terms without allocating declarations;
+  DIA4 must expose their face-expanded telescope view.
+- [x] Derive curried classifiers through existing Pi/telescope construction.
+- [x] Ensure caches are rebuildable and are not part of schema identity.
+- [x] Add an assertion/test that schema queries cannot mutate
   `TypeDeclarationDB`.
-- [ ] Add one-dimensional Bool, Nat, List, Box, and indexed-family query tests.
-- [ ] Add a dependent constructor field test.
+- [ ] Add one-dimensional List parameter and indexed-family query tests. Bool,
+  Nat, and Box coverage is active.
+- [x] Add a dependent constructor field test.
 
 Primary migration points:
 
@@ -800,7 +803,7 @@ declaration.
 | DIA0 specification | planned | - | next gate |
 | DIA1 dimension core | blocked | - | waits for DIA0 |
 | DIA2 Core action Term | blocked | - | waits for DIA1 |
-| DIA3 acted schema query | blocked | - | waits for DIA2 |
+| DIA3 acted schema query | in progress | 2026-08-17 | base query, cache independence, Bool/Nat/Box/dependent field complete; parameter/index face action remains |
 | DIA4 Context/telescope action | blocked | - | waits for DIA3 |
 | DIA5 1D cutover | blocked | - | waits for DIA4 |
 | DIA6 generic higher action | blocked | - | waits for DIA5 |

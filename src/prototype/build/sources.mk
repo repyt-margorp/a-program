@@ -18,6 +18,7 @@ PROTOTYPE_TYPING_SOURCES := \
 
 PROTOTYPE_TYPE_DECLARATION_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/kernel/type_declaration.c \
+	$(PROTOTYPE_ROOT)/src/kernel/type_schema_view.c \
 	$(PROTOTYPE_ROOT)/src/identity/generated_schema_validation.c
 
 PROTOTYPE_CWF_SOURCES := \

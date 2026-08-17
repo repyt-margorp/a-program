@@ -10,6 +10,8 @@
 #include "a_program/identity/action_certificate.h"
 #include "a_program/identity/identity_computation.h"
 #include "a_program/identity/object_term_action.h"
+#include "a_program/kernel/type_schema_view.h"
+#include "a_program/dimension/operator.h"
 #include "a_program/parametricity/execution.h"
 #include "calculus.h"
 
