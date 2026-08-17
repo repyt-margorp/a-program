@@ -36,6 +36,22 @@ int prototype_dimension_face_from_ordinal(
 	struct prototype_dimension_face* p_face
 );
 
+int prototype_dimension_face_ordinal(
+	const struct prototype_dimension_face* face,
+	size_t* p_ordinal
+);
+
+int prototype_dimension_face_boundary_count(
+	const struct prototype_dimension_face* face,
+	size_t* p_count
+);
+
+int prototype_dimension_face_boundary_ordinal(
+	const struct prototype_dimension_face* face,
+	size_t boundary_index,
+	size_t* p_ordinal
+);
+
 int prototype_dimension_boundary_from_index(
 	uint32_t dimension,
 	size_t boundary_index,

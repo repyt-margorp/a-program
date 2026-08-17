@@ -126,6 +126,54 @@ static int check_operators(void) {
 	return 0;
 }
 
+static int check_face_boundaries(void) {
+	uint8_t square_center_digits[2] = {
+		PROTOTYPE_DIMENSION_FACE_VARYING,
+		PROTOTYPE_DIMENSION_FACE_VARYING
+	};
+	struct prototype_dimension_face square_center = {
+		.dimension = 2,
+		.digits = square_center_digits
+	};
+	size_t boundary_count;
+	if (prototype_dimension_face_boundary_count(
+			&square_center, &boundary_count
+		) != 0 || boundary_count != 8) {
+		return -1;
+	}
+	for (size_t i = 0; i < boundary_count; ++i) {
+		size_t ordinal;
+		if (prototype_dimension_face_boundary_ordinal(
+				&square_center, i, &ordinal
+			) != 0 || ordinal != i) {
+			return -1;
+		}
+	}
+
+	uint8_t edge_digits[2] = {
+		PROTOTYPE_DIMENSION_FACE_ENDPOINT_0,
+		PROTOTYPE_DIMENSION_FACE_VARYING
+	};
+	struct prototype_dimension_face edge = {
+		.dimension = 2,
+		.digits = edge_digits
+	};
+	const size_t expected_edge_ordinals[2] = { 0, 1 };
+	if (prototype_dimension_face_boundary_count(&edge, &boundary_count) != 0 ||
+		boundary_count != 2) {
+		return -1;
+	}
+	for (size_t i = 0; i < boundary_count; ++i) {
+		size_t ordinal;
+		if (prototype_dimension_face_boundary_ordinal(
+				&edge, i, &ordinal
+			) != 0 || ordinal != expected_edge_ordinals[i]) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int check_malformed(void) {
 	struct prototype_dimension_axis_image duplicate[] = {
 		{ PROTOTYPE_DIMENSION_AXIS_TARGET, 0 },
@@ -164,6 +212,7 @@ static int check_malformed(void) {
 }
 
 int main(void) {
-	return check_boundary_counts() != 0 || check_operators() != 0 ||
+	return check_boundary_counts() != 0 || check_face_boundaries() != 0 ||
+		check_operators() != 0 ||
 		check_malformed() != 0;
 }

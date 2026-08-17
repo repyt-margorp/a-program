@@ -102,6 +102,78 @@ int prototype_dimension_face_from_ordinal(
 	return 0;
 }
 
+int prototype_dimension_face_ordinal(
+	const struct prototype_dimension_face* face,
+	size_t* p_ordinal
+) {
+	if (!p_ordinal || prototype_dimension_face_validate(face) != 0) {
+		return -1;
+	}
+	size_t ordinal = 0;
+	for (uint32_t i = 0; i < face->dimension; ++i) {
+		if (ordinal > (SIZE_MAX - face->digits[i]) / 3) {
+			return -1;
+		}
+		ordinal = ordinal * 3 + face->digits[i];
+	}
+	*p_ordinal = ordinal;
+	return 0;
+}
+
+int prototype_dimension_face_boundary_count(
+	const struct prototype_dimension_face* face,
+	size_t* p_count
+) {
+	uint32_t intrinsic_dimension =
+		prototype_dimension_face_intrinsic_dimension(face);
+	return intrinsic_dimension == UINT32_MAX ? -1 :
+		prototype_dimension_boundary_count(intrinsic_dimension, p_count);
+}
+
+int prototype_dimension_face_boundary_ordinal(
+	const struct prototype_dimension_face* face,
+	size_t boundary_index,
+	size_t* p_ordinal
+) {
+	size_t boundary_count;
+	uint32_t intrinsic_dimension =
+		prototype_dimension_face_intrinsic_dimension(face);
+	if (!p_ordinal || intrinsic_dimension == UINT32_MAX ||
+		prototype_dimension_boundary_count(
+			intrinsic_dimension, &boundary_count
+		) != 0 || boundary_index >= boundary_count) {
+		return -1;
+	}
+	uint8_t local_digits[64];
+	struct prototype_dimension_face local;
+	if (intrinsic_dimension > 64 || prototype_dimension_boundary_from_index(
+			intrinsic_dimension,
+			boundary_index,
+			local_digits,
+			64,
+			&local
+		) != 0) {
+		return -1;
+	}
+	uint8_t global_digits[64];
+	uint32_t local_axis = 0;
+	if (face->dimension > 64) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < face->dimension; ++i) {
+		if (face->digits[i] == PROTOTYPE_DIMENSION_FACE_VARYING) {
+			global_digits[i] = local.digits[local_axis++];
+		} else {
+			global_digits[i] = face->digits[i];
+		}
+	}
+	struct prototype_dimension_face global = {
+		.dimension = face->dimension,
+		.digits = global_digits
+	};
+	return prototype_dimension_face_ordinal(&global, p_ordinal);
+}
+
 int prototype_dimension_boundary_from_index(
 	uint32_t dimension,
 	size_t boundary_index,
