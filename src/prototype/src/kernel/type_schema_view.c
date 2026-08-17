@@ -5,6 +5,7 @@
 #include "a_program/kernel/context.h"
 #include "a_program/kernel/type_declaration.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 static int type_schema_action_chain(
@@ -268,5 +269,208 @@ int prototype_constructor_schema_view_query(
 		return -1;
 	}
 	*p_view = view;
+	return 0;
+}
+
+int prototype_constructor_schema_view_action_classifier(
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	const struct prototype_dimension_operator_db* dimension_operators,
+	const struct prototype_type_schema_view* type_view,
+	uint32_t constructor_ordinal,
+	uint32_t* p_classifier
+) {
+	struct prototype_constructor_schema_view constructor_view;
+	uint32_t acted_owner_source;
+	uint32_t operator_id;
+	if (!type_declarations || !contexts || !terms || !dimension_operators ||
+		!type_view || !p_classifier || type_view->target_dimension != 1 ||
+		prototype_term_dimension_action_info(
+			terms,
+			type_view->acted_type,
+			&acted_owner_source,
+			&operator_id
+		) != 0 || acted_owner_source != type_view->source_type_view ||
+		prototype_constructor_schema_view_query(
+			type_declarations,
+			contexts,
+			terms,
+			dimension_operators,
+			type_view,
+			constructor_ordinal,
+			&constructor_view
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_dimension_operator* operator =
+		prototype_dimension_operator_get(dimension_operators, operator_id);
+	if (!operator || operator->source_dimension != 0 ||
+		operator->target_dimension != 1) {
+		return -1;
+	}
+
+	size_t field_count = 0;
+	uint32_t cursor = constructor_view.source_classifier;
+	while (cursor < terms->term_count &&
+		terms->terms[cursor].tag == PROTOTYPE_TERM_PI) {
+		uint32_t binder;
+		uint32_t body;
+		if (prototype_term_pure_family_parts(
+				terms,
+				terms->terms[cursor].as.pi.codomain_family,
+				&binder,
+				&body
+			) != 0 || field_count == SIZE_MAX) {
+			return -1;
+		}
+		field_count++;
+		cursor = body;
+	}
+	if (field_count > SIZE_MAX / (3 * sizeof(uint32_t)) ||
+		field_count > SIZE_MAX / sizeof(struct prototype_binding_replacement)) {
+		return -1;
+	}
+	uint32_t* binders = field_count == 0 ? NULL : calloc(
+		field_count * 3, sizeof(*binders)
+	);
+	uint32_t* domains = field_count == 0 ? NULL : calloc(
+		field_count * 3, sizeof(*domains)
+	);
+	uint32_t* left_values = field_count == 0 ? NULL : calloc(
+		field_count, sizeof(*left_values)
+	);
+	uint32_t* right_values = field_count == 0 ? NULL : calloc(
+		field_count, sizeof(*right_values)
+	);
+	struct prototype_binding_replacement* left_replacements =
+		field_count == 0 ? NULL : calloc(
+			field_count, sizeof(*left_replacements)
+		);
+	struct prototype_binding_replacement* right_replacements =
+		field_count == 0 ? NULL : calloc(
+			field_count, sizeof(*right_replacements)
+		);
+	if (field_count != 0 && (!binders || !domains || !left_values ||
+		!right_values || !left_replacements || !right_replacements)) {
+		free(binders);
+		free(domains);
+		free(left_values);
+		free(right_values);
+		free(left_replacements);
+		free(right_replacements);
+		return -1;
+	}
+
+	int status = 0;
+	cursor = constructor_view.source_classifier;
+	for (size_t field = 0; field < field_count && status == 0; ++field) {
+		uint32_t source_domain = terms->terms[cursor].as.pi.domain;
+		uint32_t source_binder;
+		uint32_t next;
+		uint32_t acted_domain;
+		if (prototype_term_pure_family_parts(
+				terms,
+				terms->terms[cursor].as.pi.codomain_family,
+				&source_binder,
+				&next
+			) != 0 || prototype_term_graph_reindex_bindings(
+				terms,
+				type_declarations,
+				source_domain,
+				left_replacements,
+				field,
+				&domains[field * 3]
+			) != 0 || prototype_term_graph_reindex_bindings(
+				terms,
+				type_declarations,
+				source_domain,
+				right_replacements,
+				field,
+				&domains[field * 3 + 1]
+			) != 0 || prototype_term_dimension_action(
+				terms,
+				dimension_operators,
+				source_domain,
+				operator_id,
+				&acted_domain
+			) != 0) {
+			status = -1;
+			break;
+		}
+		for (uint32_t face = 0; face < 3 && status == 0; ++face) {
+			binders[field * 3 + face] = prototype_term_new_binding(terms);
+			if (binders[field * 3 + face] == PROTOTYPE_INVALID_ID) {
+				status = -1;
+			}
+		}
+		if (status != 0 || prototype_term_var(
+				terms, binders[field * 3], &left_values[field]
+			) != 0 || prototype_term_var(
+				terms, binders[field * 3 + 1], &right_values[field]
+			) != 0 || prototype_term_app(
+				terms,
+				acted_domain,
+				left_values[field],
+				&domains[field * 3 + 2]
+			) != 0 || prototype_term_app(
+				terms,
+				domains[field * 3 + 2],
+				right_values[field],
+				&domains[field * 3 + 2]
+			) != 0) {
+			status = -1;
+			break;
+		}
+		left_replacements[field] = (struct prototype_binding_replacement) {
+			.binding_id = source_binder,
+			.replacement = left_values[field]
+		};
+		right_replacements[field] = (struct prototype_binding_replacement) {
+			.binding_id = source_binder,
+			.replacement = right_values[field]
+		};
+		cursor = next;
+	}
+
+	uint32_t left_result = constructor_view.source_constructor_term;
+	uint32_t right_result = constructor_view.source_constructor_term;
+	uint32_t classifier = type_view->acted_type;
+	for (size_t field = 0; field < field_count && status == 0; ++field) {
+		if (prototype_term_app(
+				terms, left_result, left_values[field], &left_result
+			) != 0 || prototype_term_app(
+				terms, right_result, right_values[field], &right_result
+			) != 0) {
+			status = -1;
+		}
+	}
+	if (status == 0 && (prototype_term_app(
+			terms, classifier, left_result, &classifier
+		) != 0 || prototype_term_app(
+			terms, classifier, right_result, &classifier
+		) != 0)) {
+		status = -1;
+	}
+	for (size_t i = field_count * 3; i > 0 && status == 0; --i) {
+		uint32_t family;
+		if (prototype_term_pure_family(
+				terms, binders[i - 1], classifier, &family
+			) != 0 || prototype_term_pi_family(
+				terms, domains[i - 1], family, &classifier
+			) != 0) {
+			status = -1;
+		}
+	}
+	free(binders);
+	free(domains);
+	free(left_values);
+	free(right_values);
+	free(left_replacements);
+	free(right_replacements);
+	if (status != 0) {
+		return -1;
+	}
+	*p_classifier = classifier;
 	return 0;
 }

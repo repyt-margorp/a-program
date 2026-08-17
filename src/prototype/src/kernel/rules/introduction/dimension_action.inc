@@ -133,7 +133,8 @@ static int validate_dimension_action_term_proof(
 
 static int validate_dimension_action_constructor_proof(
 	struct prototype_term_db* terms,
-	const struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
 	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_proposition* conclusion,
 	const struct prototype_judgement_rule_application_view* proof
@@ -145,9 +146,10 @@ static int validate_dimension_action_constructor_proof(
 	uint32_t owner;
 	uint32_t constructor_ordinal;
 	uint32_t argument_count;
-	if (!terms || !type_declarations || !dimension_operators || !conclusion ||
+	if (!terms || !type_declarations || !contexts || !dimension_operators ||
+		!conclusion ||
 		!proof || conclusion->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		proof->premise_count != 3 || !dimension_action_info_is_valid(
+		proof->premise_count != 4 || !dimension_action_info_is_valid(
 			terms,
 			dimension_operators,
 			conclusion->subject,
@@ -172,12 +174,14 @@ static int validate_dimension_action_constructor_proof(
 		proof->premises[1].proposition;
 	const struct prototype_judgement_proposition* acted_owner =
 		proof->premises[2].proposition;
-	uint32_t type_id;
-	uint32_t owner_argument_count;
+	const struct prototype_judgement_proposition* acted_classifier =
+		proof->premises[3].proposition;
 	uint32_t acted_owner_source;
 	uint32_t acted_owner_operator;
 	uint32_t expected_classifier;
+	struct prototype_type_schema_view type_view;
 	if (!source_constructor || !source_owner || !acted_owner ||
+		!acted_classifier ||
 		source_constructor->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		source_constructor->context_id != conclusion->context_id ||
 		source_constructor->subject != source || source_owner->kind !=
@@ -186,34 +190,33 @@ static int validate_dimension_action_constructor_proof(
 		source_owner->subject != owner || acted_owner->kind !=
 			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		acted_owner->context_id != conclusion->context_id ||
+		acted_classifier->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		acted_classifier->context_id != conclusion->context_id ||
+		acted_classifier->subject != conclusion->classifier ||
+		acted_classifier->classifier != source_owner->classifier ||
 		prototype_term_dimension_action_info(
 			terms,
 			acted_owner->subject,
 			&acted_owner_source,
 			&acted_owner_operator
 		) != 0 || acted_owner_source != owner ||
-		acted_owner_operator != operator_id || prototype_term_type_instance_info(
-			terms, owner, &type_id, NULL, &owner_argument_count
-		) != 0 || type_id >= type_declarations->type_count ||
-		constructor_ordinal >= type_declarations->type_declarations[
-			type_id
-		].constructor_count) {
-		return -1;
-	}
-	uint32_t constructor_id = type_declarations->type_declarations[
-		type_id
-	].first_constructor + constructor_ordinal;
-	if (constructor_id >= type_declarations->constructor_count ||
-		type_declarations->constructor_declarations[
-			constructor_id
-		].parameter_context != type_declarations->constructor_declarations[
-			constructor_id
-		].field_context || prototype_dimension_action_term_classifier(
+		acted_owner_operator != operator_id || prototype_type_schema_view_query(
+			type_declarations,
+			contexts,
 			terms,
 			dimension_operators,
-			source,
 			acted_owner->subject,
-			target_dimension,
+			&type_view
+		) != 0) {
+		return -1;
+	}
+	if (prototype_constructor_schema_view_action_classifier(
+			type_declarations,
+			contexts,
+			terms,
+			dimension_operators,
+			&type_view,
+			constructor_ordinal,
 			&expected_classifier
 		) != 0 || expected_classifier != conclusion->classifier) {
 		return -1;
@@ -407,6 +410,7 @@ int prototype_judgement_add_dimension_action_constructor(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
 	struct prototype_dimension_operator_db* dimension_operators,
 	uint32_t context_id,
 	uint32_t acted_constructor,
@@ -414,6 +418,7 @@ int prototype_judgement_add_dimension_action_constructor(
 	uint32_t source_constructor_claim_id,
 	uint32_t source_owner_claim_id,
 	uint32_t acted_owner_claim_id,
+	uint32_t acted_constructor_classifier_claim_id,
 	const uint32_t* field_claim_ids,
 	uint32_t field_claim_count,
 	uint32_t* p_claim_id
@@ -430,15 +435,18 @@ int prototype_judgement_add_dimension_action_constructor(
 		.subject = acted_constructor,
 		.classifier = acted_classifier
 	};
-	uint32_t premise_ids[3] = {
-		source_constructor_claim_id, source_owner_claim_id, acted_owner_claim_id
+	uint32_t premise_ids[4] = {
+		source_constructor_claim_id,
+		source_owner_claim_id,
+		acted_owner_claim_id,
+		acted_constructor_classifier_claim_id
 	};
 	struct prototype_judgement_rule_application_view proof;
-	struct prototype_judgement_candidate_premise premises[3];
+	struct prototype_judgement_candidate_premise premises[4];
 	memset(&proof, 0, sizeof(proof));
 	proof.conclusion = &conclusion;
-	proof.premise_count = 3;
-	for (uint32_t i = 0; i < 3; ++i) {
+	proof.premise_count = 4;
+	for (uint32_t i = 0; i < 4; ++i) {
 		const struct prototype_judgement_claim* claim =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		premises[i].proposition = claim ?
@@ -451,6 +459,7 @@ int prototype_judgement_add_dimension_action_constructor(
 	if (validate_dimension_action_constructor_proof(
 			terms,
 			type_declarations,
+			contexts,
 			dimension_operators,
 			&conclusion,
 			&proof
@@ -462,7 +471,7 @@ int prototype_judgement_add_dimension_action_constructor(
 		&conclusion,
 		PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_CONSTRUCTOR,
 		premise_ids,
-		3,
+		4,
 		p_claim_id
 	);
 }

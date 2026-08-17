@@ -6,6 +6,7 @@
 #include "a_program/dimension/operator.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
+#include "a_program/kernel/type_schema_view.h"
 
 #include <stdint.h>
 #include <stdio.h>

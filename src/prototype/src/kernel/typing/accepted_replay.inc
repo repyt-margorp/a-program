@@ -6948,6 +6948,7 @@ int prototype_judgement_validate_accepted_graph(
 				if (validate_dimension_action_constructor_proof(
 						terms,
 						type_declarations,
+						contexts,
 						dimension_operators,
 						relation,
 						proof

@@ -50,4 +50,14 @@ int prototype_constructor_schema_view_query(
 	struct prototype_constructor_schema_view* p_view
 );
 
+int prototype_constructor_schema_view_action_classifier(
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	const struct prototype_dimension_operator_db* dimension_operators,
+	const struct prototype_type_schema_view* type_view,
+	uint32_t constructor_ordinal,
+	uint32_t* p_classifier
+);
+
 #endif

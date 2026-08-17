@@ -128,7 +128,14 @@ premises are:
   0 source constructor HAS_TYPE Claim
   1 source owner type-formation Claim
   2 acted owner type-formation Claim
-  3..n acted field classifier and field witness Claims in source-field order
+  3 exact acted constructor classifier IS_TYPE Claim
+  4..n source-former-specific field action formation Claims in source-field
+       order, when they are not already premises of Claim 3
+
+Concrete field values and field identity witnesses are not premises of the
+constructor-head rule.  They are supplied later by ordinary APP_ELIM Claims;
+duplicating them here would make the same application evidence authoritative
+in two rules.
 
 The conclusion Term for all three rules contains only the source Term and the
 semantic operator ID.  Context-action requests, work IDs, caches, and fuel do

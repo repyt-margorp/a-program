@@ -611,6 +611,8 @@
 				acted_schema_view.source_declaration->constructor_count;
 			++schema_constructor_ordinal) {
 			struct prototype_constructor_schema_view constructor_schema_view;
+			uint32_t action_classifier;
+			uint32_t repeated_action_classifier;
 			if (prototype_constructor_schema_view_query(
 					&type_db,
 					&context_db,
@@ -620,7 +622,24 @@
 					schema_constructor_ordinal,
 					&constructor_schema_view
 				) != 0 || constructor_schema_view.acted_classifier ==
-				constructor_schema_view.source_classifier) {
+				constructor_schema_view.source_classifier ||
+				prototype_constructor_schema_view_action_classifier(
+					&type_db,
+					&context_db,
+					&term_db,
+					&schema_operators,
+					&acted_schema_view,
+					schema_constructor_ordinal,
+					&action_classifier
+				) != 0 || prototype_constructor_schema_view_action_classifier(
+					&type_db,
+					&context_db,
+					&term_db,
+					&schema_operators,
+					&acted_schema_view,
+					schema_constructor_ordinal,
+					&repeated_action_classifier
+				) != 0 || action_classifier != repeated_action_classifier) {
 				return 250;
 			}
 		}
@@ -1140,6 +1159,7 @@
 			&judgement,
 			&term_db,
 			&type_db,
+			&context_db,
 			&bridge_dimension_operator_db,
 			empty,
 			acted_false,
@@ -1147,11 +1167,144 @@
 			false_claim,
 			bool_has_type,
 			acted_bool_family_claim,
+			acted_false_classifier_is_type,
 			NULL,
 			0,
 			&acted_false_claim
 		) != 0) {
 		return 255;
+	}
+	uint32_t acted_nat;
+	uint32_t acted_nat_classifier;
+	uint32_t acted_nat_classifier_has_type;
+	uint32_t acted_nat_classifier_is_type;
+	uint32_t acted_nat_family_claim;
+	uint32_t dimension_nat_succ;
+	uint32_t dimension_nat_succ_claim;
+	uint32_t acted_nat_succ;
+	uint32_t acted_nat_succ_classifier;
+	uint32_t acted_nat_succ_classifier_has_type;
+	uint32_t acted_nat_succ_classifier_is_type;
+	uint32_t acted_nat_succ_claim;
+	struct prototype_type_schema_view acted_nat_schema;
+	struct prototype_constructor_schema_view nat_succ_schema;
+	if (prototype_term_dimension_action(
+			&term_db,
+			&bridge_dimension_operator_db,
+			nat_view,
+			schema_extension_0,
+			&acted_nat
+		) != 0 || prototype_dimension_action_type_classifier(
+			&term_db,
+			&bridge_dimension_operator_db,
+			nat_view,
+			acted_nat,
+			universe,
+			1,
+			&acted_nat_classifier
+		) != 0 || prototype_judgement_add_structural_type_formation_claim(
+			&judgement,
+			&term_db,
+			&type_db,
+			&context_db,
+			&substitution_db,
+			empty,
+			acted_nat_classifier,
+			universe,
+			&acted_nat_classifier_has_type
+		) != 0 || prototype_judgement_add_is_type_claim(
+			&judgement,
+			&term_db,
+			empty,
+			acted_nat_classifier,
+			universe,
+			acted_nat_classifier_has_type,
+			&acted_nat_classifier_is_type
+		) != 0 || prototype_judgement_add_dimension_action_type_formation(
+			&judgement,
+			&term_db,
+			&bridge_dimension_operator_db,
+			empty,
+			acted_nat,
+			acted_nat_classifier,
+			nat_is_type,
+			acted_nat_classifier_is_type,
+			&acted_nat_family_claim
+		) != 0 || prototype_type_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&bridge_dimension_operator_db,
+			acted_nat,
+			&acted_nat_schema
+		) != 0 || prototype_constructor_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&bridge_dimension_operator_db,
+			&acted_nat_schema,
+			1,
+			&nat_succ_schema
+		) != 0 || prototype_term_constructor(
+			&term_db, nat_view, 1, &dimension_nat_succ
+		) != 0 || prototype_judgement_add_constructor_intro_claim(
+			&judgement,
+			&term_db,
+			&type_db,
+			empty,
+			dimension_nat_succ,
+			nat_succ_schema.source_classifier,
+			&dimension_nat_succ_claim
+		) != 0 || prototype_constructor_schema_view_action_classifier(
+			&type_db,
+			&context_db,
+			&term_db,
+			&bridge_dimension_operator_db,
+			&acted_nat_schema,
+			1,
+			&acted_nat_succ_classifier
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&bridge_dimension_operator_db,
+			dimension_nat_succ,
+			schema_extension_0,
+			&acted_nat_succ
+		) != 0 || prototype_judgement_add_structural_type_formation_claim(
+			&judgement,
+			&term_db,
+			&type_db,
+			&context_db,
+			&substitution_db,
+			empty,
+			acted_nat_succ_classifier,
+			universe,
+			&acted_nat_succ_classifier_has_type
+		) != 0 || prototype_judgement_add_is_type_claim(
+			&judgement,
+			&term_db,
+			empty,
+			acted_nat_succ_classifier,
+			universe,
+			acted_nat_succ_classifier_has_type,
+			&acted_nat_succ_classifier_is_type
+		) != 0 || prototype_judgement_add_dimension_action_constructor(
+			&judgement,
+			&term_db,
+			&type_db,
+			&context_db,
+			&bridge_dimension_operator_db,
+			empty,
+			acted_nat_succ,
+			acted_nat_succ_classifier,
+			dimension_nat_succ_claim,
+			nat_has_type,
+			acted_nat_family_claim,
+			acted_nat_succ_classifier_is_type,
+			NULL,
+			0,
+			&acted_nat_succ_claim
+		) != 0) {
+		return 257;
 	}
 	uint32_t bool_distinct_goal;
 	if (prototype_parametricity_relation_goal_db_intern(

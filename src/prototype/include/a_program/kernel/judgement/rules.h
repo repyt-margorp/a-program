@@ -417,6 +417,7 @@ int prototype_judgement_add_dimension_action_constructor(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
 	struct prototype_dimension_operator_db* dimension_operators,
 	uint32_t context_id,
 	uint32_t acted_constructor,
@@ -424,6 +425,7 @@ int prototype_judgement_add_dimension_action_constructor(
 	uint32_t source_constructor_claim_id,
 	uint32_t source_owner_claim_id,
 	uint32_t acted_owner_claim_id,
+	uint32_t acted_constructor_classifier_claim_id,
 	const uint32_t* field_claim_ids,
 	uint32_t field_claim_count,
 	uint32_t* p_claim_id
