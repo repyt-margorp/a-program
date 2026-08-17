@@ -26,7 +26,8 @@ PROTOTYPE_CWF_SOURCES := \
 
 PROTOTYPE_DIMENSION_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/dimension/operator.c \
-	$(PROTOTYPE_ROOT)/src/dimension/face.c
+	$(PROTOTYPE_ROOT)/src/dimension/face.c \
+	$(PROTOTYPE_ROOT)/src/dimension/action.c
 
 PROTOTYPE_KERNEL_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \

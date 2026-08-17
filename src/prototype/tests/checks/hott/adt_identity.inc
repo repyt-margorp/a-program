@@ -507,9 +507,6 @@
 		) != 0 || bool_schema_view.source_type_view != bool_view ||
 		bool_schema_view.acted_type != twice_acted_bool ||
 		bool_schema_view.target_dimension != 2 ||
-		bool_schema_view.operator_count != 2 ||
-		bool_schema_view.operator_ids[0] != schema_extension_0 ||
-		bool_schema_view.operator_ids[1] != schema_extension_1 ||
 		prototype_constructor_schema_view_query(
 			&type_db,
 			&context_db,
@@ -535,6 +532,54 @@
 		type_db.constructor_count != schema_constructor_count ||
 		type_db.semantic_revision != schema_revision) {
 		return 247;
+	}
+	uint32_t acted_bool_classifier;
+	uint32_t acted_bool_classifier_again;
+	uint32_t direct_dimension_three_operator;
+	uint32_t dimension_three_bool;
+	uint32_t dimension_three_classifier;
+	if (prototype_dimension_action_prepare_face_operators(
+			&schema_operators, 3
+		) != 0 || prototype_dimension_action_type_classifier(
+			&term_db,
+			&schema_operators,
+			bool_view,
+			acted_bool,
+			universe,
+			1,
+			&acted_bool_classifier
+		) != 0 || prototype_dimension_action_type_classifier(
+			&term_db,
+			&schema_operators,
+			bool_view,
+			acted_bool,
+			universe,
+			1,
+			&acted_bool_classifier_again
+		) != 0 || acted_bool_classifier_again != acted_bool_classifier ||
+		prototype_dimension_operator_intern(
+			&schema_operators,
+			0,
+			3,
+			NULL,
+			0,
+			&direct_dimension_three_operator
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			bool_view,
+			direct_dimension_three_operator,
+			&dimension_three_bool
+		) != 0 || prototype_dimension_action_type_classifier(
+			&term_db,
+			&schema_operators,
+			bool_view,
+			dimension_three_bool,
+			universe,
+			3,
+			&dimension_three_classifier
+		) != 0 || acted_bool_classifier == dimension_three_classifier) {
+		return 253;
 	}
 	uint32_t additional_schema_types[] = {
 		nat_view, box_view, dependent_box_view
@@ -981,6 +1026,133 @@
 	}
 	false_claim = bool_false_constructor_claim;
 	true_claim = bool_true_constructor_claim;
+	for (uint32_t operator_index = 0;
+		operator_index < schema_operators.operator_count;
+		++operator_index) {
+		const struct prototype_dimension_operator* schema_operator =
+			prototype_dimension_operator_get(&schema_operators, operator_index);
+		const struct prototype_dimension_axis_image* schema_images =
+			prototype_dimension_operator_images(&schema_operators, operator_index);
+		uint32_t kernel_operator_id;
+		if (!schema_operator || prototype_dimension_operator_intern(
+				&bridge_dimension_operator_db,
+				schema_operator->source_dimension,
+				schema_operator->target_dimension,
+				schema_images,
+				schema_operator->image_count,
+				&kernel_operator_id
+			) != 0 || kernel_operator_id != operator_index) {
+			return 254;
+		}
+	}
+	uint32_t acted_bool_classifier_has_type;
+	uint32_t acted_bool_classifier_is_type;
+	uint32_t acted_bool_family_claim;
+	uint32_t acted_false;
+	uint32_t acted_false_classifier;
+	uint32_t acted_bool_at_false;
+	uint32_t acted_bool_at_false_classifier;
+	uint32_t acted_bool_at_false_claim;
+	uint32_t acted_false_classifier_has_type;
+	uint32_t acted_false_classifier_is_type;
+	uint32_t acted_false_claim;
+	if (prototype_judgement_add_structural_type_formation_claim(
+			&judgement,
+			&term_db,
+			&type_db,
+			&context_db,
+			&substitution_db,
+			empty,
+			acted_bool_classifier,
+			universe,
+			&acted_bool_classifier_has_type
+		) != 0 || prototype_judgement_add_is_type_claim(
+			&judgement,
+			&term_db,
+			empty,
+			acted_bool_classifier,
+			universe,
+			acted_bool_classifier_has_type,
+			&acted_bool_classifier_is_type
+		) != 0 || prototype_judgement_add_dimension_action_type_formation(
+			&judgement,
+			&term_db,
+			&bridge_dimension_operator_db,
+			empty,
+			acted_bool,
+			acted_bool_classifier,
+			bool_is_type,
+			acted_bool_classifier_is_type,
+			&acted_bool_family_claim
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&bridge_dimension_operator_db,
+			bool_false,
+			schema_extension_0,
+			&acted_false
+		) != 0 || prototype_dimension_action_term_classifier(
+			&term_db,
+			&bridge_dimension_operator_db,
+			bool_false,
+			acted_bool,
+			1,
+			&acted_false_classifier
+		) != 0 || prototype_term_app(
+			&term_db, acted_bool, bool_false, &acted_bool_at_false
+		) != 0 || prototype_term_pi(
+			&term_db,
+			bool_view,
+			universe,
+			&acted_bool_at_false_classifier
+		) != 0 || prototype_judgement_add_app_claim(
+			&judgement,
+			&term_db,
+			&type_db,
+			&context_db,
+			&substitution_db,
+			empty,
+			acted_bool_at_false,
+			acted_bool_at_false_classifier,
+			acted_bool_family_claim,
+			false_claim,
+			&acted_bool_at_false_claim
+		) != 0 || prototype_judgement_add_app_claim(
+			&judgement,
+			&term_db,
+			&type_db,
+			&context_db,
+			&substitution_db,
+			empty,
+			acted_false_classifier,
+			universe,
+			acted_bool_at_false_claim,
+			false_claim,
+			&acted_false_classifier_has_type
+		) != 0 || prototype_judgement_add_is_type_claim(
+			&judgement,
+			&term_db,
+			empty,
+			acted_false_classifier,
+			universe,
+			acted_false_classifier_has_type,
+			&acted_false_classifier_is_type
+		) != 0 || prototype_judgement_add_dimension_action_constructor(
+			&judgement,
+			&term_db,
+			&type_db,
+			&bridge_dimension_operator_db,
+			empty,
+			acted_false,
+			acted_false_classifier,
+			false_claim,
+			bool_has_type,
+			acted_bool_family_claim,
+			NULL,
+			0,
+			&acted_false_claim
+		) != 0) {
+		return 255;
+	}
 	uint32_t bool_distinct_goal;
 	if (prototype_parametricity_relation_goal_db_intern(
 			&goal_db, &kernel_view, &bridge_db, PROTOTYPE_HOTT_RELATION_VALUE,

@@ -11,8 +11,6 @@ struct prototype_type_constructor_declaration;
 struct prototype_type_declaration;
 struct prototype_type_declaration_db;
 
-#define PROTOTYPE_TYPE_SCHEMA_ACTION_CAPACITY 16
-
 /* A read-only semantic view over one source declaration and an action chain.
  * The chain is ordered from the source outward. It never creates a generated
  * TypeDeclaration. */
@@ -22,8 +20,6 @@ struct prototype_type_schema_view {
 	uint32_t source_type_view;
 	uint32_t acted_type;
 	uint32_t target_dimension;
-	uint32_t operator_ids[PROTOTYPE_TYPE_SCHEMA_ACTION_CAPACITY];
-	size_t operator_count;
 };
 
 struct prototype_constructor_schema_view {

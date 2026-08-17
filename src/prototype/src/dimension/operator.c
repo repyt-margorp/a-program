@@ -152,6 +152,49 @@ static int dimension_operator_equal(
 	return 1;
 }
 
+int prototype_dimension_operator_find(
+	const struct prototype_dimension_operator_db* db,
+	uint32_t source_dimension,
+	uint32_t target_dimension,
+	const struct prototype_dimension_axis_image* images,
+	size_t image_count,
+	uint32_t* p_operator_id
+) {
+	if (!db || !p_operator_id || prototype_dimension_operator_validate(
+			source_dimension, target_dimension, images, image_count
+		) != 0) {
+		return -1;
+	}
+	uint64_t hash = dimension_operator_hash(
+		source_dimension, target_dimension, images, image_count
+	);
+	size_t bucket;
+	if (prototype_intern_index_bucket(
+			hash, PROTOTYPE_DIMENSION_OPERATOR_INDEX_BUCKET_COUNT, &bucket
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t id = db->index_heads[bucket]; id != PROTOTYPE_INVALID_ID;) {
+		if (id >= db->operator_count) {
+			return -1;
+		}
+		const struct prototype_dimension_operator* operator = &db->operators[id];
+		if (operator->key_hash == hash && dimension_operator_equal(
+				db,
+				operator,
+				source_dimension,
+				target_dimension,
+				images,
+				image_count
+			)) {
+			*p_operator_id = id;
+			return 0;
+		}
+		id = operator->hash_next;
+	}
+	return 1;
+}
+
 int prototype_dimension_operator_intern(
 	struct prototype_dimension_operator_db* db,
 	uint32_t source_dimension,

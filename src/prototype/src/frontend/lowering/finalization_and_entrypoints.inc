@@ -2105,6 +2105,7 @@ static int compile_pending_with_workspace(
 			intrinsic_environment,
 			&metadata->contexts,
 			&metadata->substitutions,
+			&metadata->dimension_operators,
 			occurrence_graph,
 			judgement
 		) != 0) {

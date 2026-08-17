@@ -33,6 +33,15 @@ prototype_dimension_operator_images(
 	uint32_t operator_id
 );
 
+int prototype_dimension_operator_find(
+	const struct prototype_dimension_operator_db* db,
+	uint32_t source_dimension,
+	uint32_t target_dimension,
+	const struct prototype_dimension_axis_image* images,
+	size_t image_count,
+	uint32_t* p_operator_id
+);
+
 int prototype_dimension_operator_validate(
 	uint32_t source_dimension,
 	uint32_t target_dimension,

@@ -738,6 +738,7 @@ static int read_artifact_interface_and_graph(
 			intrinsic_environment,
 			&metadata->contexts,
 			&metadata->substitutions,
+			&metadata->dimension_operators,
 			&metadata->typed_occurrences,
 			judgement_db
 		) != 0 || prototype_artifact_interface_validate_identity_roots(
@@ -3939,6 +3940,7 @@ int main(int argc, char** argv) {
 				prototype_default_intrinsic_environment(),
 				&metadata.contexts,
 				&metadata.substitutions,
+				&metadata.dimension_operators,
 				linked_occurrences,
 				&judgement_db
 			) != 0) {
@@ -4245,6 +4247,7 @@ int main(int argc, char** argv) {
 					prototype_default_intrinsic_environment(),
 					&artifact_metadata.contexts,
 					&artifact_metadata.substitutions,
+					&artifact_metadata.dimension_operators,
 					&artifact_metadata.typed_occurrences,
 					&judgement_db
 				) != 0) ||

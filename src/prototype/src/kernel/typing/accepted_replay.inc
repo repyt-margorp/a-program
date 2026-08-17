@@ -6313,11 +6313,12 @@ int prototype_judgement_validate_accepted_graph(
 	const struct prototype_intrinsic_environment* intrinsic_environment,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operations,
 	struct prototype_judgement_db* judgement
 ) {
 	if (!terms || !type_declarations || !intrinsic_environment || !contexts ||
-		!substitutions ||
+		!substitutions || !dimension_operators ||
 		!judgement) {
 		return -1;
 	}
@@ -6929,6 +6930,31 @@ int prototype_judgement_validate_accepted_graph(
 					return -1;
 				}
 				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TYPE_FORMATION:
+				if (validate_dimension_action_type_formation_proof(
+						terms, dimension_operators, relation, proof
+					) != 0) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TERM:
+				if (validate_dimension_action_term_proof(
+						terms, dimension_operators, relation, proof
+					) != 0) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_CONSTRUCTOR:
+				if (validate_dimension_action_constructor_proof(
+						terms,
+						type_declarations,
+						dimension_operators,
+						relation,
+						proof
+					) != 0) {
+					return -1;
+				}
+				break;
 			case PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN:
 				if (validate_context_weaken_proof(
 						contexts, substitutions, relation, proof
@@ -7237,6 +7263,12 @@ static const char* proof_kind_name(int proof_kind) {
 			return "relation-match-witness";
 		case PROTOTYPE_JUDGEMENT_PROOF_RELATION_INDUCTION_HYPOTHESIS_WITNESS:
 			return "relation-induction-hypothesis-witness";
+		case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TYPE_FORMATION:
+			return "dimension-action-type-formation";
+		case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TERM:
+			return "dimension-action-term";
+		case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_CONSTRUCTOR:
+			return "dimension-action-constructor";
 		default:
 			return "invalid";
 	}

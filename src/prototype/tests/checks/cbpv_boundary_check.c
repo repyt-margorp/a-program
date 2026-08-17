@@ -2,6 +2,7 @@
 #include "a_program/kernel/judgement/rules.h"
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
+#include "a_program/dimension/operator.h"
 #include "a_program/support/symbol.h"
 #include "a_program/core/term.h"
 #include "a_program/kernel/type_declaration.h"
@@ -56,6 +57,8 @@ static struct prototype_judgement_computation_constraint computation_constraints
 static struct prototype_judgement_effect_row_constraint effect_row_constraints[8];
 static struct prototype_context context_entries[CONTEXT_CAPACITY];
 static struct prototype_substitution substitution_entries[SUBSTITUTION_CAPACITY];
+static struct prototype_dimension_operator dimension_operator_entries[8];
+static struct prototype_dimension_axis_image dimension_image_entries[32];
 static int symbol_map_ids[16];
 static uint32_t symbol_map_hashes[16];
 static char* symbol_storage[16];
@@ -67,6 +70,7 @@ int main(void) {
 	struct prototype_judgement_delta delta;
 	struct prototype_context_db contexts;
 	struct prototype_substitution_db substitutions;
+	struct prototype_dimension_operator_db dimension_operators;
 	struct symbol_table symbols;
 	symbol_table_init(
 		&symbols, symbol_map_ids, symbol_map_hashes, 16, symbol_storage, 16
@@ -103,6 +107,13 @@ int main(void) {
 	prototype_substitution_db_init(
 		&substitutions, substitution_entries, SUBSTITUTION_CAPACITY
 	);
+	prototype_dimension_operator_db_init(
+		&dimension_operators,
+		dimension_operator_entries,
+		8,
+		dimension_image_entries,
+		32
+	);
 	prototype_judgement_delta_set_context_store(
 		&delta, &contexts, &substitutions
 	);
@@ -131,6 +142,7 @@ int main(void) {
 			prototype_default_intrinsic_environment(),
 			&contexts,
 			&substitutions,
+			&dimension_operators,
 			NULL,
 			&judgement
 		) != 0) {
@@ -379,6 +391,7 @@ int main(void) {
 			prototype_default_intrinsic_environment(),
 			&contexts,
 			&substitutions,
+			&dimension_operators,
 			NULL,
 			&judgement
 		) != 0) {
@@ -563,6 +576,7 @@ int main(void) {
 			&int64_environment,
 			&contexts,
 			&substitutions,
+			&dimension_operators,
 			NULL,
 			&judgement
 		) != 0 || prototype_judgement_validate_accepted_graph(
@@ -571,6 +585,7 @@ int main(void) {
 			default_environment,
 			&contexts,
 			&substitutions,
+			&dimension_operators,
 			NULL,
 			&judgement
 		) == 0) {

@@ -12,43 +12,39 @@ static int type_schema_action_chain(
 	const struct prototype_dimension_operator_db* dimension_operators,
 	uint32_t acted_type,
 	uint32_t* p_source,
-	uint32_t* operator_ids,
-	size_t* p_operator_count,
 	uint32_t* p_target_dimension
 ) {
-	uint32_t reversed[PROTOTYPE_TYPE_SCHEMA_ACTION_CAPACITY];
-	size_t count = 0;
-	uint32_t current = acted_type;
-	while (current < terms->term_count &&
-		terms->terms[current].tag == PROTOTYPE_TERM_DIMENSION_ACTION) {
-		uint32_t source;
-		uint32_t operator_id;
-		if (count >= PROTOTYPE_TYPE_SCHEMA_ACTION_CAPACITY ||
-			prototype_term_dimension_action_info(
-				terms, current, &source, &operator_id
-			) != 0 || !prototype_dimension_operator_get(
-				dimension_operators, operator_id
-			)) {
-			return -1;
-		}
-		reversed[count++] = operator_id;
-		current = source;
+	if (!terms || !dimension_operators || !p_source || !p_target_dimension ||
+		acted_type >= terms->term_count) {
+		return -1;
 	}
-
-	uint32_t dimension = 0;
-	for (size_t i = 0; i < count; ++i) {
-		uint32_t operator_id = reversed[count - i - 1];
-		const struct prototype_dimension_operator* operator =
-			prototype_dimension_operator_get(dimension_operators, operator_id);
-		if (!operator || operator->source_dimension != dimension) {
-			return -1;
-		}
-		operator_ids[i] = operator_id;
-		dimension = operator->target_dimension;
+	if (terms->terms[acted_type].tag != PROTOTYPE_TERM_DIMENSION_ACTION) {
+		*p_source = acted_type;
+		*p_target_dimension = 0;
+		return 0;
 	}
-	*p_source = current;
-	*p_operator_count = count;
-	*p_target_dimension = dimension;
+	uint32_t source;
+	uint32_t operator_id;
+	uint32_t source_type;
+	uint32_t source_dimension;
+	if (prototype_term_dimension_action_info(
+			terms, acted_type, &source, &operator_id
+		) != 0 || type_schema_action_chain(
+			terms,
+			dimension_operators,
+			source,
+			&source_type,
+			&source_dimension
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_dimension_operator* operator =
+		prototype_dimension_operator_get(dimension_operators, operator_id);
+	if (!operator || operator->source_dimension != source_dimension) {
+		return -1;
+	}
+	*p_source = source_type;
+	*p_target_dimension = operator->target_dimension;
 	return 0;
 }
 
@@ -72,8 +68,6 @@ int prototype_type_schema_view_query(
 			dimension_operators,
 			type_term,
 			&view.source_type_view,
-			view.operator_ids,
-			&view.operator_count,
 			&view.target_dimension
 		) != 0 || prototype_type_view_declaration_query(
 			type_declarations,
@@ -86,6 +80,88 @@ int prototype_type_schema_view_query(
 		return -1;
 	}
 	*p_view = view;
+	return 0;
+}
+
+static int source_constructor_classifier(
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	const struct prototype_type_schema_view* type_view,
+	uint32_t constructor_ordinal,
+	uint32_t* p_constructor_id,
+	const struct prototype_type_constructor_declaration** p_constructor,
+	uint32_t* p_classifier
+);
+
+static int act_constructor_schema(
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	const struct prototype_dimension_operator_db* dimension_operators,
+	uint32_t type_term,
+	uint32_t constructor_ordinal,
+	struct prototype_constructor_schema_view* p_view
+) {
+	uint32_t source;
+	uint32_t operator_id;
+	if (prototype_term_dimension_action_info(
+			terms, type_term, &source, &operator_id
+		) == 0) {
+		if (act_constructor_schema(
+				type_declarations,
+				contexts,
+				terms,
+				dimension_operators,
+				source,
+				constructor_ordinal,
+				p_view
+			) != 0 || prototype_term_dimension_action(
+				terms,
+				dimension_operators,
+				p_view->acted_constructor_term,
+				operator_id,
+				&p_view->acted_constructor_term
+			) != 0 || prototype_term_dimension_action(
+				terms,
+				dimension_operators,
+				p_view->acted_classifier,
+				operator_id,
+				&p_view->acted_classifier
+			) != 0) {
+			return -1;
+		}
+		return 0;
+	}
+	struct prototype_type_schema_view source_view;
+	memset(&source_view, 0, sizeof(source_view));
+	if (prototype_type_schema_view_query(
+			type_declarations,
+			contexts,
+			terms,
+			dimension_operators,
+			type_term,
+			&source_view
+		) != 0 || source_view.target_dimension != 0 ||
+		source_constructor_classifier(
+			type_declarations,
+			contexts,
+			terms,
+			&source_view,
+			constructor_ordinal,
+			&p_view->source_constructor_id,
+			&p_view->source_constructor,
+			&p_view->source_classifier
+		) != 0 || prototype_term_constructor(
+			terms,
+			type_term,
+			constructor_ordinal,
+			&p_view->source_constructor_term
+		) != 0) {
+		return -1;
+	}
+	p_view->acted_constructor_term = p_view->source_constructor_term;
+	p_view->acted_classifier = p_view->source_classifier;
 	return 0;
 }
 
@@ -172,41 +248,17 @@ int prototype_constructor_schema_view_query(
 
 	struct prototype_constructor_schema_view view;
 	memset(&view, 0, sizeof(view));
-	if (source_constructor_classifier(
+	if (act_constructor_schema(
 			type_declarations,
 			contexts,
 			terms,
-			type_view,
+			dimension_operators,
+			type_view->acted_type,
 			constructor_ordinal,
-			&view.source_constructor_id,
-			&view.source_constructor,
-			&view.source_classifier
-		) != 0 || prototype_term_constructor(
-			terms,
-			type_view->source_type_view,
-			constructor_ordinal,
-			&view.source_constructor_term
-		) != 0) {
+			&view
+		) != 0 || view.source_constructor->owner_type !=
+		type_view->source_type_id) {
 		return -1;
-	}
-	view.acted_constructor_term = view.source_constructor_term;
-	view.acted_classifier = view.source_classifier;
-	for (size_t i = 0; i < type_view->operator_count; ++i) {
-		if (prototype_term_dimension_action(
-				terms,
-				dimension_operators,
-				view.acted_constructor_term,
-				type_view->operator_ids[i],
-				&view.acted_constructor_term
-			) != 0 || prototype_term_dimension_action(
-				terms,
-				dimension_operators,
-				view.acted_classifier,
-				type_view->operator_ids[i],
-				&view.acted_classifier
-			) != 0) {
-			return -1;
-		}
 	}
 	if (type_declarations->type_count != type_count ||
 		type_declarations->constructor_count != constructor_count ||

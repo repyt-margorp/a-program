@@ -233,6 +233,7 @@
 			prototype_default_intrinsic_environment(),
 			&context_db,
 			&substitution_db,
+			&bridge_dimension_operator_db,
 			&indexed_match_operation_graph,
 			&indexed_match_judgement
 		) != 0) {
@@ -273,6 +274,7 @@
 			prototype_default_intrinsic_environment(),
 			&context_db,
 			&substitution_db,
+			&bridge_dimension_operator_db,
 			&indexed_match_operation_graph,
 			&indexed_match_judgement
 		) == 0) {
@@ -286,6 +288,7 @@
 			prototype_default_intrinsic_environment(),
 			&context_db,
 			&substitution_db,
+			&bridge_dimension_operator_db,
 			&indexed_match_operation_graph,
 			&indexed_match_judgement
 		) != 0) {

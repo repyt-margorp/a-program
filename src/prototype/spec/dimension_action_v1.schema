@@ -101,11 +101,14 @@ The new Judgement proof kinds are:
   DIMENSION_ACTION_TERM=46
   DIMENSION_ACTION_CONSTRUCTOR=47
 
-DIMENSION_ACTION_TYPE_FORMATION concludes that an acted type is a type.  Its
-ordered premises are:
+DIMENSION_ACTION_TYPE_FORMATION concludes HAS_TYPE for an acted type-family
+head.  For example, DIMENSION_ACTION(A,e_0) has classifier
+Pi(A, Pi(A, Universe)); only the fully boundary-applied APP spine concludes an
+IS_TYPE judgement through the ordinary APP and IS_TYPE_FROM_HAS_TYPE rules.
+Its ordered premises are:
 
   0 source IS_TYPE Claim
-  1 exact acted classifier IS_TYPE Claim when the classifier is not Universe
+  1 exact acted classifier IS_TYPE Claim
   2..n exact Context/substitution/type-formation Claims required by the
        source-former-specific replay rule
 

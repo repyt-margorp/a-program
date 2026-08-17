@@ -228,7 +228,8 @@ without changing source declaration identity.
 `DIMENSION_ACTION` is not accepted merely because the compiler produced it.
 Judgement replay must validate explicit rules for:
 
-- formation of an acted type;
+- formation of an acted type-family head as HAS_TYPE; ordinary boundary APP
+  and IS_TYPE_FROM_HAS_TYPE produce the final type judgement;
 - action on a typed term;
 - action on a constructor telescope;
 - application to boundary Terms; and
@@ -806,9 +807,9 @@ declaration.
 | DIA0 specification | planned | - | next gate |
 | DIA1 dimension core | blocked | - | waits for DIA0 |
 | DIA2 Core action Term | blocked | - | waits for DIA1 |
-| DIA3 acted schema query | in progress | 2026-08-17 | base query, cache independence, Bool/Nat/Box/dependent field complete; parameter/index face action remains |
+| DIA3 acted schema query | in progress | 2026-08-17 | base query, cache independence, Bool/Nat/Box/dependent field complete; fixed operator-chain capacity removed; parameter/index face action remains |
 | DIA4 Context/telescope action | in progress | 2026-08-17 | bridge has operator-indexed 1D face bindings and validated BindingId/face lookup; generic higher traversal remains |
-| DIA5 1D cutover | blocked | - | waits for DIA4 |
+| DIA5 1D cutover | in progress | 2026-08-17 | generic boundary classifier and proof kinds 45-47 added; family formation and nullary constructor replay pass; field telescope and active identity cutover remain |
 | DIA6 generic higher action | blocked | - | waits for DIA5 |
 | DIA7 artifact v78 | blocked | - | waits for DIA6 |
 | DIA8 old authority deletion | blocked | - | waits for DIA7 |
