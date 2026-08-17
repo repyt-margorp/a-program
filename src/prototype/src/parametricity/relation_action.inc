@@ -232,15 +232,22 @@ static int hott_context_is_formed(
 	return cursor == empty;
 }
 
-void prototype_hott_bridge_db_init(
+int prototype_hott_bridge_db_init(
 	struct prototype_hott_bridge_db* db,
 	struct prototype_hott_bridge* bridges,
 	size_t bridge_capacity,
 	struct prototype_hott_bridge_certificate* certificates,
-	size_t certificate_capacity
+	size_t certificate_capacity,
+	struct prototype_hott_bridge_face_binding* face_bindings,
+	size_t face_binding_capacity,
+	struct prototype_dimension_operator_db* dimension_operators
 ) {
-	if (!db) {
-		return;
+	uint32_t extension;
+	if (!db || !bridges || !certificates || !face_bindings ||
+		!dimension_operators || prototype_dimension_operator_extension(
+			dimension_operators, 0, &extension
+		) != 0) {
+		return -1;
 	}
 	db->bridges = bridges;
 	db->bridge_count = 0;
@@ -248,6 +255,12 @@ void prototype_hott_bridge_db_init(
 	db->certificates = certificates;
 	db->certificate_count = 0;
 	db->certificate_capacity = certificate_capacity;
+	db->face_bindings = face_bindings;
+	db->face_binding_count = 0;
+	db->face_binding_capacity = face_binding_capacity;
+	db->dimension_operators = dimension_operators;
+	db->default_extension_operator_id = extension;
+	return 0;
 }
 
 const struct prototype_hott_bridge* prototype_hott_bridge_db_get(
@@ -257,15 +270,63 @@ const struct prototype_hott_bridge* prototype_hott_bridge_db_get(
 	return db && bridge_id < db->bridge_count ? &db->bridges[bridge_id] : NULL;
 }
 
+const struct prototype_hott_bridge_face_binding*
+prototype_hott_bridge_face_binding_get(
+	const struct prototype_hott_bridge_db* db,
+	uint32_t bridge_id,
+	uint32_t face_ordinal
+) {
+	const struct prototype_hott_bridge* bridge =
+		prototype_hott_bridge_db_get(db, bridge_id);
+	if (!bridge || face_ordinal >= bridge->face_binding_count ||
+		bridge->first_face_binding + face_ordinal >= db->face_binding_count) {
+		return NULL;
+	}
+	const struct prototype_hott_bridge_face_binding* binding =
+		&db->face_bindings[bridge->first_face_binding + face_ordinal];
+	return binding->bridge_id == bridge_id &&
+		binding->face_ordinal == face_ordinal ? binding : NULL;
+}
+
+const struct prototype_hott_bridge_face_binding*
+prototype_hott_bridge_binding_action_get(
+	const struct prototype_hott_bridge_db* db,
+	uint32_t bridge_id,
+	uint32_t source_binding_id,
+	uint32_t face_ordinal
+) {
+	while (db && bridge_id < db->bridge_count &&
+		bridge_id < db->certificate_count) {
+		const struct prototype_hott_bridge_face_binding* face =
+			prototype_hott_bridge_face_binding_get(
+				db, bridge_id, face_ordinal
+			);
+		if (face && face->source_binding_id == source_binding_id) {
+			return face;
+		}
+		bridge_id = db->certificates[bridge_id].parent_bridge_id;
+	}
+	return NULL;
+}
+
 static int hott_bridge_record_is_valid(
+	const struct prototype_hott_bridge_db* db,
 	const struct prototype_hott_bridge* bridge,
 	uint32_t expected_id,
 	const struct prototype_context_db* contexts,
 	const struct prototype_substitution_db* substitutions,
 	const struct prototype_cwf_certificate_db* cwf_certificates
 ) {
-	if (!bridge || !contexts || !substitutions || !cwf_certificates ||
+	const struct prototype_dimension_operator* operator = db && bridge &&
+		db->dimension_operators ? prototype_dimension_operator_get(
+			db->dimension_operators, bridge->dimension_operator_id
+		) : NULL;
+	if (!db || !bridge || !contexts || !substitutions || !cwf_certificates ||
 		bridge->id != expected_id ||
+		!operator || operator->target_dimension != bridge->target_dimension ||
+		bridge->first_face_binding > db->face_binding_count ||
+		bridge->face_binding_count > db->face_binding_count -
+			bridge->first_face_binding ||
 		bridge->source_context_id >= contexts->context_count ||
 		bridge->bridge_context_id >= contexts->context_count ||
 		!hott_context_is_formed(
@@ -274,6 +335,48 @@ static int hott_bridge_record_is_valid(
 			contexts, cwf_certificates, bridge->bridge_context_id
 		)) {
 		return 0;
+	}
+	if (bridge->source_context_id == prototype_context_empty(contexts)) {
+		if (bridge->face_binding_count != 0) {
+			return 0;
+		}
+	} else {
+		size_t expected_face_count;
+		const struct prototype_context* source = prototype_context_get(
+			contexts, bridge->source_context_id
+		);
+		if (!source || prototype_dimension_face_ordinal_count(
+				bridge->target_dimension, &expected_face_count
+			) != 0 || expected_face_count != bridge->face_binding_count) {
+			return 0;
+		}
+		for (uint32_t i = 0; i < bridge->face_binding_count; ++i) {
+			const struct prototype_hott_bridge_face_binding* face =
+				&db->face_bindings[bridge->first_face_binding + i];
+			uint8_t digits[16];
+			struct prototype_dimension_face face_key;
+			const struct prototype_context* target;
+			const struct prototype_cwf_certificate* certificate;
+			if (face->bridge_id != bridge->id || face->face_ordinal != i ||
+				bridge->target_dimension > 16 ||
+				prototype_dimension_face_from_ordinal(
+					bridge->target_dimension, i, digits, 16, &face_key
+				) != 0 || face->source_binding_id != source->binding_id ||
+				face->intrinsic_dimension !=
+					prototype_dimension_face_intrinsic_dimension(&face_key) ||
+				!(target = prototype_context_get(
+					contexts, face->target_context_id
+				)) || target->binding_id != face->target_binding_id ||
+				prototype_context_classifier_term(target) !=
+					face->classifier_term_id ||
+				!(certificate = prototype_cwf_certificate_db_get_kind(
+					cwf_certificates,
+					face->context_certificate_id,
+					PROTOTYPE_CWF_CERTIFICATE_CONTEXT_FORMATION
+				)) || certificate->structural_id != face->target_context_id) {
+				return 0;
+			}
+		}
 	}
 	const struct prototype_substitution* left = prototype_substitution_get(
 		substitutions, bridge->left_substitution_id
@@ -345,11 +448,15 @@ int prototype_hott_bridge_db_construct(
 		.id = (uint32_t)db->bridge_count,
 		.source_context_id = source_context_id,
 		.bridge_context_id = source_context_id,
+		.dimension_operator_id = db->default_extension_operator_id,
+		.target_dimension = 1,
+		.first_face_binding = (uint32_t)db->face_binding_count,
+		.face_binding_count = 0,
 		.left_substitution_id = identity,
 		.right_substitution_id = identity
 	};
 	if (!hott_bridge_record_is_valid(
-			&bridge, bridge.id, contexts, substitutions, cwf_certificates
+			db, &bridge, bridge.id, contexts, substitutions, cwf_certificates
 		)) {
 		return -1;
 	}
@@ -392,9 +499,12 @@ int prototype_hott_bridge_db_validate(
 	if (!db || db->bridge_count > db->bridge_capacity ||
 		prototype_kernel_view_validate_stores(kernel) != 0 ||
 		db->certificate_count > db->certificate_capacity ||
+		db->face_binding_count > db->face_binding_capacity ||
 		db->certificate_count != db->bridge_count ||
+		!db->dimension_operators ||
 		(db->bridge_count != 0 && !db->bridges) ||
 		(db->certificate_count != 0 && !db->certificates) ||
+		(db->face_binding_count != 0 && !db->face_bindings) ||
 		prototype_cwf_certificate_db_validate_contexts(
 			cwf_certificates, contexts, terms, type_declarations, judgement
 		) != 0 || prototype_cwf_certificate_db_validate_substitutions(
@@ -406,7 +516,7 @@ int prototype_hott_bridge_db_validate(
 		const struct prototype_hott_bridge_certificate* certificate =
 			&db->certificates[i];
 		if (!hott_bridge_record_is_valid(
-				&db->bridges[i], i, contexts, substitutions,
+				db, &db->bridges[i], i, contexts, substitutions,
 				cwf_certificates
 			) || certificate->id != i || certificate->bridge_id != i ||
 			(certificate->parent_bridge_id == PROTOTYPE_INVALID_ID) !=
@@ -589,7 +699,7 @@ static int hott_relation_goal_is_valid(
 	);
 	return bridge && bridge->source_context_id == prototype_judgement_proposition_get(judgement, left->proposition_id)->context_id &&
 		hott_bridge_record_is_valid(
-			bridge, goal->bridge_id, contexts, substitutions,
+			bridges, bridge, goal->bridge_id, contexts, substitutions,
 			cwf_certificates
 		);
 }

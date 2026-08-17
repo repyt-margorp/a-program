@@ -6,6 +6,7 @@
 	struct prototype_cwf_certificate_db cwf_certificate_db;
 	struct prototype_typed_occurrence_graph operation_graph;
 	struct prototype_hott_bridge_db bridge_db;
+	struct prototype_dimension_operator_db bridge_dimension_operator_db;
 	struct prototype_parametricity_relation_goal_db goal_db;
 	struct prototype_parametricity_candidate_db candidate_db;
 	struct prototype_parametricity_work_db work_db;
@@ -67,9 +68,25 @@
 	if (prototype_kernel_builder_view(&kernel_builder, &kernel_view) != 0) {
 		return 138;
 	}
-	prototype_hott_bridge_db_init(
-		&bridge_db, bridges, 128, bridge_certificates, 128
+	prototype_dimension_operator_db_init(
+		&bridge_dimension_operator_db,
+		bridge_dimension_operators,
+		16,
+		bridge_dimension_images,
+		64
 	);
+	if (prototype_hott_bridge_db_init(
+			&bridge_db,
+			bridges,
+			128,
+			bridge_certificates,
+			128,
+			bridge_face_bindings,
+			384,
+			&bridge_dimension_operator_db
+		) != 0) {
+		return 252;
+	}
 	prototype_parametricity_relation_goal_db_init(&goal_db, goals, GOAL_CAPACITY);
 	prototype_parametricity_candidate_db_init(
 		&candidate_db, candidates, CANDIDATE_CAPACITY,

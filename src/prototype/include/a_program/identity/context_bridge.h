@@ -3,16 +3,32 @@
 
 #include "a_program/identity/types.h"
 
-void prototype_hott_bridge_db_init(
+int prototype_hott_bridge_db_init(
 	struct prototype_hott_bridge_db* db,
 	struct prototype_hott_bridge* bridges,
 	size_t bridge_capacity,
 	struct prototype_hott_bridge_certificate* certificates,
-	size_t certificate_capacity
+	size_t certificate_capacity,
+	struct prototype_hott_bridge_face_binding* face_bindings,
+	size_t face_binding_capacity,
+	struct prototype_dimension_operator_db* dimension_operators
 );
 const struct prototype_hott_bridge* prototype_hott_bridge_db_get(
 	const struct prototype_hott_bridge_db* db,
 	uint32_t bridge_id
+);
+const struct prototype_hott_bridge_face_binding*
+prototype_hott_bridge_face_binding_get(
+	const struct prototype_hott_bridge_db* db,
+	uint32_t bridge_id,
+	uint32_t face_ordinal
+);
+const struct prototype_hott_bridge_face_binding*
+prototype_hott_bridge_binding_action_get(
+	const struct prototype_hott_bridge_db* db,
+	uint32_t bridge_id,
+	uint32_t source_binding_id,
+	uint32_t face_ordinal
 );
 int prototype_hott_bridge_db_construct(
 	struct prototype_hott_bridge_db* db,

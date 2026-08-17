@@ -614,23 +614,70 @@ static int hott_bridge_db_finish_extension(
 			right_claim,
 			&right_substitution_certificate
 		) != 0 || bridges->bridge_count >= bridges->bridge_capacity ||
-		bridges->certificate_count >= bridges->certificate_capacity) {
+		bridges->certificate_count >= bridges->certificate_capacity ||
+		bridges->face_binding_count > bridges->face_binding_capacity ||
+		bridges->face_binding_capacity - bridges->face_binding_count < 3) {
 		return -1;
 	}
 	struct prototype_hott_bridge bridge = {
 		.id = (uint32_t)bridges->bridge_count,
 		.source_context_id = source_context_id,
 		.bridge_context_id = bridge_context,
+		.dimension_operator_id = bridges->default_extension_operator_id,
+		.target_dimension = 1,
+		.first_face_binding = (uint32_t)bridges->face_binding_count,
+		.face_binding_count = 3,
 		.left_substitution_id = left_substitution,
 		.right_substitution_id = right_substitution
 	};
+	struct prototype_hott_bridge_face_binding face_bindings[3] = {
+		{
+			.bridge_id = bridge.id,
+			.source_binding_id = source->binding_id,
+			.face_ordinal = 0,
+			.intrinsic_dimension = 0,
+			.target_binding_id = left_endpoint_binding_id,
+			.target_context_id = right_endpoint_context->parent,
+			.classifier_term_id =
+				prototype_context_classifier_term(left_endpoint_context),
+			.context_certificate_id = left_endpoint_context_certificate_id
+		},
+		{
+			.bridge_id = bridge.id,
+			.source_binding_id = source->binding_id,
+			.face_ordinal = 1,
+			.intrinsic_dimension = 0,
+			.target_binding_id = right_endpoint_binding_id,
+			.target_context_id = endpoint_context_id,
+			.classifier_term_id =
+				prototype_context_classifier_term(right_endpoint_context),
+			.context_certificate_id = right_endpoint_context_certificate_id
+		},
+		{
+			.bridge_id = bridge.id,
+			.source_binding_id = source->binding_id,
+			.face_ordinal = 2,
+			.intrinsic_dimension = 1,
+			.target_binding_id = proof_binding,
+			.target_context_id = bridge_context,
+			.classifier_term_id = fiber_type_term_id,
+			.context_certificate_id = bridge_context_certificate
+		}
+	};
+	for (uint32_t i = 0; i < 3; ++i) {
+		bridges->face_bindings[bridges->face_binding_count + i] =
+			face_bindings[i];
+	}
+	bridges->face_binding_count += 3;
 	if (!hott_bridge_record_is_valid(
+			bridges,
 			&bridge,
 			bridge.id,
 			contexts,
 			substitutions,
 			cwf
 		)) {
+		bridges->face_binding_count -= 3;
 		return -1;
 	}
 	bridges->bridges[bridges->bridge_count++] = bridge;

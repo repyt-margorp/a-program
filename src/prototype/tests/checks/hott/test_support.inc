@@ -88,6 +88,9 @@ static struct prototype_typed_occurrence_edge
 static struct prototype_typed_occurrence_match_case occurrence_match_cases[128];
 static struct prototype_hott_bridge bridges[128];
 static struct prototype_hott_bridge_certificate bridge_certificates[128];
+static struct prototype_hott_bridge_face_binding bridge_face_bindings[384];
+static struct prototype_dimension_operator bridge_dimension_operators[16];
+static struct prototype_dimension_axis_image bridge_dimension_images[64];
 static struct prototype_parametricity_relation_goal goals[GOAL_CAPACITY];
 static struct prototype_parametricity_candidate candidates[CANDIDATE_CAPACITY];
 static struct prototype_parametricity_claim_premise claim_premises[PREMISE_CAPACITY];

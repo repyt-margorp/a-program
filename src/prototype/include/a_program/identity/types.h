@@ -7,6 +7,7 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 #include "a_program/kernel/kernel_view.h"
+#include "a_program/dimension/types.h"
 
 struct prototype_artifact_interface;
 
@@ -120,8 +121,23 @@ struct prototype_hott_bridge {
 	uint32_t id;
 	uint32_t source_context_id;
 	uint32_t bridge_context_id;
+	uint32_t dimension_operator_id;
+	uint32_t target_dimension;
+	uint32_t first_face_binding;
+	uint32_t face_binding_count;
 	uint32_t left_substitution_id;
 	uint32_t right_substitution_id;
+};
+
+struct prototype_hott_bridge_face_binding {
+	uint32_t bridge_id;
+	uint32_t source_binding_id;
+	uint32_t face_ordinal;
+	uint32_t intrinsic_dimension;
+	uint32_t target_binding_id;
+	uint32_t target_context_id;
+	uint32_t classifier_term_id;
+	uint32_t context_certificate_id;
 };
 
 enum prototype_hott_bridge_semantics {
@@ -151,6 +167,11 @@ struct prototype_hott_bridge_db {
 	struct prototype_hott_bridge_certificate* certificates;
 	size_t certificate_count;
 	size_t certificate_capacity;
+	struct prototype_hott_bridge_face_binding* face_bindings;
+	size_t face_binding_count;
+	size_t face_binding_capacity;
+	struct prototype_dimension_operator_db* dimension_operators;
+	uint32_t default_extension_operator_id;
 };
 
 enum prototype_hott_action_kind {

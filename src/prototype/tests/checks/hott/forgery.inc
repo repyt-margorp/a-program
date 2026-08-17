@@ -631,6 +631,52 @@
 		) != 0) {
 		return 135;
 	}
+	for (uint32_t bridge_index = 0;
+		bridge_index < bridge_db.bridge_count;
+		++bridge_index) {
+		const struct prototype_hott_bridge* dimension_bridge =
+			prototype_hott_bridge_db_get(&bridge_db, bridge_index);
+		if (!dimension_bridge) {
+			return 253;
+		}
+		uint32_t expected_face_count = dimension_bridge->source_context_id ==
+			prototype_context_empty(&context_db) ? 0 : 3;
+		if (dimension_bridge->target_dimension != 1 ||
+			dimension_bridge->face_binding_count != expected_face_count) {
+			return 253;
+		}
+		for (uint32_t face_ordinal = 0;
+			face_ordinal < expected_face_count;
+			++face_ordinal) {
+			const struct prototype_hott_bridge_face_binding* face =
+				prototype_hott_bridge_face_binding_get(
+					&bridge_db, bridge_index, face_ordinal
+				);
+			if (!face || face->face_ordinal != face_ordinal ||
+				face->intrinsic_dimension != (face_ordinal == 2 ? 1u : 0u)) {
+				return 254;
+			}
+			if (prototype_hott_bridge_binding_action_get(
+					&bridge_db,
+					bridge_index,
+					face->source_binding_id,
+					face_ordinal
+				) != face) {
+				return 256;
+			}
+		}
+	}
+	if (bridge_db.face_binding_count > 0) {
+		uint32_t saved_face_dimension =
+			bridge_db.face_bindings[0].intrinsic_dimension;
+		bridge_db.face_bindings[0].intrinsic_dimension = 9;
+		if (prototype_hott_bridge_db_validate(
+				&bridge_db, &kernel_view
+			) == 0) {
+			return 255;
+		}
+		bridge_db.face_bindings[0].intrinsic_dimension = saved_face_dimension;
+	}
 
 	uint32_t generated_bool_identity;
 	uint32_t repeated_generated_bool_identity;

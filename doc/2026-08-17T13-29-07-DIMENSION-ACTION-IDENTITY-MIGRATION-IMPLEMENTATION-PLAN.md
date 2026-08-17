@@ -462,14 +462,17 @@ Exit criteria:
 
 ### DIA4. Generalize Context bridge and telescope action
 
-Status: blocked on DIA3
+Status: in progress; the existing bridge now records its 1D extension through
+the generic face map, while 2D materialization and acted dependent classifiers
+remain
 
-- [ ] Extend Context-action identity with a dimension operator.
+- [x] Extend Context-action identity with a dimension operator.
 - [ ] Replace the fixed left/right/relation extension assumption with generic
   face traversal.
-- [ ] Preserve endpoint substitutions as named projections of the general face
+- [x] Preserve endpoint substitutions as named projections of the general face
   map.
-- [ ] Map every generated face binding back to source `BindingId` plus face key.
+- [x] Map every generated 1D face binding back to source `BindingId` plus face
+  key; extend the same storage to dimensions 2 and 3.
 - [ ] Act on each dependent classifier under the complete acted prefix.
 - [ ] Retain CwF Context and substitution certificates.
 - [ ] Make Context materialization explicitly cache/workspace data.
@@ -804,7 +807,7 @@ declaration.
 | DIA1 dimension core | blocked | - | waits for DIA0 |
 | DIA2 Core action Term | blocked | - | waits for DIA1 |
 | DIA3 acted schema query | in progress | 2026-08-17 | base query, cache independence, Bool/Nat/Box/dependent field complete; parameter/index face action remains |
-| DIA4 Context/telescope action | blocked | - | waits for DIA3 |
+| DIA4 Context/telescope action | in progress | 2026-08-17 | bridge has operator-indexed 1D face bindings and validated BindingId/face lookup; generic higher traversal remains |
 | DIA5 1D cutover | blocked | - | waits for DIA4 |
 | DIA6 generic higher action | blocked | - | waits for DIA5 |
 | DIA7 artifact v78 | blocked | - | waits for DIA6 |
