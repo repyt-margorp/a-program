@@ -354,18 +354,18 @@ Exit criteria:
 
 ### DIA1. Implement dimension operators and generic face traversal
 
-Status: blocked on DIA0
+Status: complete
 
-- [ ] Add checked immutable operator storage and interning.
-- [ ] Add variable-length face-key storage or caller-owned face values.
-- [ ] Add deterministic traversal of all required boundary faces.
-- [ ] Add checked cardinality/overflow helpers.
-- [ ] Add face restriction and operator composition.
-- [ ] Add transaction marks or rollback compatible with existing prototype
+- [x] Add checked immutable operator storage and interning.
+- [x] Add variable-length face-key storage or caller-owned face values.
+- [x] Add deterministic traversal of all required boundary faces.
+- [x] Add checked cardinality/overflow helpers.
+- [x] Add face restriction and operator composition.
+- [x] Add transaction marks or rollback compatible with existing prototype
   arena conventions.
-- [ ] Add focused unit tests for dimensions 0 through 4.
-- [ ] Add malformed operator, duplicate-axis, invalid-face, and overflow tests.
-- [ ] Verify that no consumer manually counts square faces.
+- [x] Add focused unit tests for dimensions 0 through 4.
+- [x] Add malformed operator, duplicate-axis, invalid-face, and overflow tests.
+- [x] Verify that no dimension-module consumer manually counts square faces.
 
 Expected files:
 
