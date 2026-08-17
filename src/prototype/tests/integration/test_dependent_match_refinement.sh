@@ -6,6 +6,8 @@ tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/a-program-dependent-match.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT
 
 cd "$root_dir"
+. src/prototype/build/test_support.sh
+prototype_test_timing_initialize "$tmp_dir"
 make -f src/prototype/Makefile reader all >/dev/null
 
 compare=src/prototype/tests/fixtures/typing/dependent_recursive_comparison_check.p
@@ -14,28 +16,38 @@ impossible=src/prototype/tests/fixtures/typing/impossible_index_branch_check.p
 residual=src/prototype/tests/fixtures/typing/residual_index_equation_negative.p
 owner_rebuild=examples/type-infer-and-check/level2/02_tree.p
 
+prototype_test_phase source
 for fixture in compare rebuild impossible; do
 	eval source=\$$fixture
 	./read_file.out "$source" >"$tmp_dir/$fixture.out"
+done
+./read_file.out "$owner_rebuild" >"$tmp_dir/owner-rebuild.out"
+
+prototype_test_phase publication
+for fixture in compare rebuild impossible; do
+	eval source=\$$fixture
 	./read_file.out --write-artifact "$tmp_dir/$fixture.apo" "$source" \
 		>"$tmp_dir/$fixture-write.out"
+	grep -q '^A_PROGRAM_ARTIFACT 78 ' "$tmp_dir/$fixture.apo"
+done
+./read_file.out --write-artifact "$tmp_dir/owner-rebuild.apo" \
+	"$owner_rebuild" >"$tmp_dir/owner-rebuild-write.out"
+grep -q '^A_PROGRAM_ARTIFACT 78 ' "$tmp_dir/owner-rebuild.apo"
+
+prototype_test_phase readback
+for fixture in compare rebuild impossible; do
 	./read_file.out --read-graph "$tmp_dir/$fixture.apo" \
 		>"$tmp_dir/$fixture-read.out"
-	grep -q '^A_PROGRAM_ARTIFACT 78 ' "$tmp_dir/$fixture.apo"
 done
 
 # This source exercises speculative definition lowering followed by occurrence
 # slot reuse and zero-clause fold continuations.  Binder-owner lookup must be
 # rebuilt from the retained occurrence graph rather than preserve stale slot
 # ownership from the failed attempt.
-./read_file.out "$owner_rebuild" >"$tmp_dir/owner-rebuild.out"
-./read_file.out --write-artifact "$tmp_dir/owner-rebuild.apo" \
-	"$owner_rebuild" >"$tmp_dir/owner-rebuild-write.out"
 ./read_file.out --read-graph "$tmp_dir/owner-rebuild.apo" \
 	>"$tmp_dir/owner-rebuild-read.out"
 grep -q '^metadata label max ' "$tmp_dir/owner-rebuild.out"
 grep -q '^metadata label height ' "$tmp_dir/owner-rebuild.out"
-grep -q '^A_PROGRAM_ARTIFACT 78 ' "$tmp_dir/owner-rebuild.apo"
 
 grep -q '\[ih-elim proof#' "$tmp_dir/compare.out"
 grep -q '\[solved-match-motive proof#' "$tmp_dir/compare.out"
@@ -67,6 +79,7 @@ awk '
 	END { exit !found }
 ' "$tmp_dir/impossible.apo"
 
+prototype_test_phase runtime
 printf ':q\n' | ./a.out "$compare" >"$tmp_dir/compare-runtime.out"
 grep -Eq '^value main := RETURN\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\), APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#1\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)\)\)$' \
 	"$tmp_dir/compare-runtime.out"
@@ -74,6 +87,7 @@ printf ':q\n' | ./a.out "$rebuild" >"$tmp_dir/rebuild-runtime.out"
 grep -Eq '^value main := RETURN\(APP\(CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\), CONSTRUCTOR\(rep#[0-9]+\.ordinal#0\)\)\)$' \
 	"$tmp_dir/rebuild-runtime.out"
 
+prototype_test_phase negative
 sed 's/currentToHead :: LE lower head/currentToHead :: LE head lower/' \
 	"$rebuild" >"$tmp_dir/wrong-orientation.p"
 if ./read_file.out "$tmp_dir/wrong-orientation.p" \
@@ -146,7 +160,6 @@ do
 	./read_file.out "src/prototype/tests/fixtures/typing/$regression.p" \
 		>"$tmp_dir/$regression.out"
 done
-sh src/prototype/tests/integration/test_if8_fuel_free_quicksort.sh \
-	>"$tmp_dir/if8.out"
 
+prototype_test_phase_finish
 echo "dependent Match refinement tests passed"

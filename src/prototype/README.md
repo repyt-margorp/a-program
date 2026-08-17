@@ -740,6 +740,11 @@ remain the authoritative behavioral tests and are all executed by:
 make -f src/prototype/Makefile test-integration
 ```
 
+This command uses `tests/run_integration_suite.sh`, which emits one monotonic
+wall-clock record for every discovered integration script and prints a final
+descending timing table. Pass `--timing-output FILE` directly to the runner to
+retain its versioned records; focused scripts remain directly executable.
+
 It checks that `identityBool := \x : Bool => x;` and
 `identityNat := \y : Nat => y;` publish the same core lambda term, that artifact
 v78 debug/name records are readable, that term exports keep distinct classifier

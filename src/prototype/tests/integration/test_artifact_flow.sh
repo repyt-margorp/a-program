@@ -9,7 +9,9 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh
+prototype_test_timing_initialize "$TMP_DIR"
 
+prototype_test_phase build_and_kernel_checks
 make reader >/dev/null
 make >/dev/null
 
@@ -145,6 +147,7 @@ if rg -q 'prototype_type_declaration_find_by_representation_fingerprint' \
 	exit 1
 fi
 
+prototype_test_phase core_identity_artifact
 cat >"$TMP_DIR/identity.p" <<'EOF_IDENTITY'
 Bool := @{
         true : *;
@@ -618,6 +621,7 @@ grep -q '^prototype> whnf main := RETURN(APP(CONSTRUCTOR(rep#0.ordinal#1), APP(C
 grep -q '^prototype> nf main := RETURN(APP(CONSTRUCTOR(rep#0.ordinal#1), APP(CONSTRUCTOR(rep#0.ordinal#1), CONSTRUCTOR(rep#0.ordinal#0))))$' \
 	"$TMP_DIR/repl-normal-form.out"
 
+prototype_test_phase typed_occurrence_and_nominality
 cat >"$TMP_DIR/operation-layer.p" <<'EOF_OPERATION_LAYER'
 Bool := @{ true : *; false : *; };
 Nat := @{ zero : *; succ : * -> *; };
@@ -1021,6 +1025,7 @@ if ./read_file.out "$TMP_DIR/bad-ascription.p" >"$TMP_DIR/bad-ascription.out" 2>
 	exit 1
 fi
 
+prototype_test_phase proof_replay
 cat >"$TMP_DIR/constructor-value.p" <<'EOF_CONSTRUCTOR_VALUE'
 Bool := @{
         true : *;
@@ -1960,6 +1965,7 @@ if ./read_file.out --read-graph "$TMP_DIR/BadConversionClassifier.apo" >"$TMP_DI
 	exit 1
 fi
 
+prototype_test_phase intrinsic_and_expectations
 cat >"$TMP_DIR/type-expect-good.p" <<'EOF_TYPE_EXPECT_GOOD'
 Nat := @{
         zero : *;
@@ -2521,6 +2527,7 @@ Nat := @{
 idB := \y : Nat => y;
 EOF_DUPLICATE_NAT_B
 
+prototype_test_phase link_and_import
 cat >"$TMP_DIR/type-alias-key.p" <<'EOF_TYPE_ALIAS_KEY'
 Nat := @{
         zero : *;
@@ -3163,9 +3170,11 @@ for scoped_field in kind context subject classifier; do
 	fi
 done
 
+prototype_test_phase final_representation
 prototype_compile c11 werror compiler \
 	"$TMP_DIR/core-view-representation-check" \
 	src/prototype/tests/checks/core_view_representation_check.c
 "$TMP_DIR/core-view-representation-check"
 
+prototype_test_phase_finish
 echo "artifact flow tests passed"

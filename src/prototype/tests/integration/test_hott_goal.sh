@@ -7,7 +7,11 @@ set -eu
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh
+TIMING_TMP=$(mktemp -d "${TMPDIR:-/tmp}/a-program-hott-timing.XXXXXX")
+trap 'rm -rf "$TIMING_TMP"' EXIT
+prototype_test_timing_initialize "$TIMING_TMP"
 
+prototype_test_phase compile
 manifest_fingerprint=$(sha256sum src/prototype/spec/hott_fragment_v6.schema | awk '{print $1}')
 header_fingerprint=$(awk '
 	/PROTOTYPE_HOTT_CALCULUS_FINGERPRINT/ {
@@ -34,6 +38,7 @@ prototype_compile c11 werror hott \
 	/tmp/a-program-hott-goal-check \
 	src/prototype/tests/checks/hott/main.c
 
+prototype_test_phase execute_publish
 /tmp/a-program-hott-goal-check
 
 identity_artifact=/tmp/a-program-hott-identity-root.apo
@@ -107,6 +112,7 @@ if grep -Eq '^(action_request|action_result|work_result|bridge|certificate|fuel|
 	exit 1
 fi
 
+prototype_test_phase readback
 make reader >/dev/null
 ./read_file.out --read-interface "$identity_artifact" >/dev/null
 cwf_inspection=/tmp/a-program-hott-cwf-inspection.out
@@ -120,6 +126,7 @@ grep -Eq '^  core-value term#[0-9]+ = ' "$cwf_inspection"
 grep -q '^#### Runtime Environment Boundary ####$' "$cwf_inspection"
 grep -Eq '^intrinsic-environment fingerprint=[1-9][0-9]* default-integer=#\.Int32$' \
 	"$cwf_inspection"
+prototype_test_phase forgery
 forged_source_artifact=/tmp/a-program-hott-forged-identity-source.apo
 awk '
 	$1 == "identity_root" && $2 == 0 { $3 = $4 }
@@ -353,6 +360,7 @@ if ./read_file.out --read-interface "$v77_artifact" >/dev/null 2>&1; then
 	echo "artifact reader accepted v77 through a fallback parser" >&2
 	exit 1
 fi
+prototype_test_phase aggregate_link
 ./read_file.out --aggregate-artifact "$aggregate_artifact" "$identity_artifact" >/dev/null
 ./read_file.out --read-graph "$aggregate_artifact" >/dev/null
 if ! identity_root_shape_is_valid "$aggregate_artifact" ||
@@ -361,3 +369,4 @@ if ! identity_root_shape_is_valid "$aggregate_artifact" ||
 	exit 1
 fi
 rm -f /tmp/a-program-hott-goal-check
+prototype_test_phase_finish

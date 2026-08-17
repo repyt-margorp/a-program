@@ -496,9 +496,17 @@ compiler.
 Run the full prototype suite:
 
 ```sh
-for test_script in src/prototype/tests/integration/test_*.sh; do
-	sh "$test_script"
-done
+make -f src/prototype/Makefile test-integration
+```
+
+The suite runner writes one monotonic wall-clock record per test and a final
+descending timing summary to stderr. Use `--timing-output FILE` for a copy of
+the versioned machine-readable records, or `--keep-going` when auditing all
+tests after a failure:
+
+```sh
+sh src/prototype/tests/run_integration_suite.sh \
+	--keep-going --timing-output test-timing.log
 ```
 
 The permanent suite covers artifact/link flow, CBPV boundaries and surface

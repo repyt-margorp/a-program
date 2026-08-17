@@ -28,13 +28,12 @@ clean:
 	rm -f a.out read_file.out
 
 test-type-infer-and-check: reader
-	sh src/prototype/tests/integration/test_type_infer_and_check_examples.sh
+	sh src/prototype/tests/run_integration_suite.sh \
+		--test-name test_type_infer_and_check_examples
 
 test-integration: reader
-	@set -e; for test_script in src/prototype/tests/integration/test_*.sh; do \
-		printf '==> %s\n' "$$test_script"; \
-		sh "$$test_script"; \
-	done
+	sh src/prototype/tests/checks/test_timing_runner.sh
+	sh src/prototype/tests/run_integration_suite.sh
 
 print-kernel-sources:
 	@printf '%s\n' $(PROTOTYPE_KERNEL_SOURCES)
