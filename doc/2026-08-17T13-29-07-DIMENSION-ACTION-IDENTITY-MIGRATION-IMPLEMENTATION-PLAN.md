@@ -2,12 +2,12 @@
 
 Date: 2026-08-17
 
-Status: planned; DIA0 is the next implementation gate
+Status: active; DIA0 complete, DIA1 implemented and under gate verification
 
 Repository baseline:
 
 - branch: `main`;
-- commit: `5369b6158e821354e351ef9abed46144c71edc79`;
+- implementation-start commit: `7f76d82f97605b3abb75e09b99dc8418df4f7da3`;
 - implementation root: `src/prototype/`;
 - artifact format: `v77`; and
 - generated identity references at baseline: 133 occurrences across 20
@@ -326,24 +326,24 @@ generated declarations because none exist.
 
 ### DIA0. Freeze the dimension calculus and wire-independent invariants
 
-Status: planned
+Status: complete
 
-- [ ] Add `src/prototype/spec/dimension_action_v1.schema` defining operator,
+- [x] Add `src/prototype/spec/dimension_action_v1.schema` defining operator,
   face, traversal, composition, and malformed-input rules.
-- [ ] Specify the binary HOTT direction used by the first implementation.
-- [ ] Specify how a dimension operator acts on an already acted Term.
-- [ ] Specify the canonical boundary APP order without placing that order in
+- [x] Specify the binary HOTT direction used by the first implementation.
+- [x] Specify how a dimension operator acts on an already acted Term.
+- [x] Specify the canonical boundary APP order without placing that order in
   every caller.
-- [ ] Specify classifier formation for `DIMENSION_ACTION` on Universe, source
+- [x] Specify classifier formation for `DIMENSION_ACTION` on Universe, source
   ADT/IADT, Pi, Return/Thunk, constructor, Lambda, APP, Match, and IH.
-- [ ] Classify every case as executable, residual, unsupported, or outside this
+- [x] Classify every case as executable, residual, unsupported, or outside this
   migration.
-- [ ] Define action identity and composition laws used by normalization.
-- [ ] Define the exact Judgement proof kinds and their ordered premises.
-- [ ] Define how resource usage and effects are preserved or made residual.
-- [ ] State that no action rule implies equality reflection.
-- [ ] Record baseline build, focused HOTT, artifact, and full-suite runtimes.
-- [ ] Record baseline line counts for every file in the final migration map.
+- [x] Define action identity and composition laws used by normalization.
+- [x] Define the exact Judgement proof kinds and their ordered premises.
+- [x] Define how resource usage and effects are preserved or made residual.
+- [x] State that no action rule implies equality reflection.
+- [x] Record baseline build, focused HOTT, artifact, and full-suite runtimes.
+- [x] Record baseline line counts for every file in the final migration map.
 
 Exit criteria:
 
@@ -702,6 +702,49 @@ Completion criteria:
 | artifact publication | marks generated declaration closure | mark action Term/operator/proof closure |
 | artifact wire/link | serializes and relocates generated declarations | v78 source declarations plus dimension actions |
 | HOTT tests | assert generated IDs and index counts | assert semantic boundaries and no declaration growth |
+
+### 7.1 DIA0 baseline measurements
+
+Measured at implementation-start commit
+`7f76d82f97605b3abb75e09b99dc8418df4f7da3` on 2026-08-17:
+
+| Command or metric | Baseline |
+| --- | ---: |
+| clean build plus reader | 5.550 s |
+| focused HOTT goal | 24.849 s |
+| artifact flow | 13.008 s |
+| full integration suite | 1312.058 s |
+| prototype C/header implementation | 130,412 lines |
+| identity C/header implementation | 17,895 lines |
+| generated-identity/fixed-lift search | 145 occurrences in 25 active/archive files |
+
+The earlier 133/20 count used a narrower search. The 145/25 baseline is retained
+for final deletion accounting and must be split into active and archived
+references when DIA8 closes.
+
+| Migration file | Baseline lines |
+| --- | ---: |
+| `include/a_program/core/term.h` | 1,288 |
+| `src/core/term/storage_and_formation.inc` | 2,315 |
+| `src/core/term/canonicalization.inc` | 2,057 |
+| `src/core/term/evaluation_and_conversion.inc` | 4,106 |
+| `src/core/term/declarations.inc` | 1,055 |
+| `include/a_program/kernel/type_declaration.h` | 512 |
+| `src/kernel/type_declaration.c` | 2,588 |
+| `src/identity/identity_computation.inc` | 3,627 |
+| `src/identity/context_bridge.inc` | 2,560 |
+| `src/identity/telescope_action.inc` | 866 |
+| `src/identity/object_term_action.inc` | 5,767 |
+| `src/identity/action_certificate_validation.inc` | 1,740 |
+| `src/identity/generated_schema_validation.c` | 1,104 |
+| `src/kernel/rules/match/expansion_rule_emission.inc` | 632 |
+| `src/artifact/publication/closure_marking_and_slices.inc` | 1,844 |
+| `src/artifact/publication/dense_publication.inc` | 2,415 |
+| `src/artifact/wire_v77.c` | 3,436 |
+| `src/artifact/relocation.c` | 606 |
+| `src/artifact/link.c` | 2,455 |
+| `include/a_program/kernel/judgement/types.h` | 383 |
+| `spec/hott_fragment_v5.schema` | 369 |
 
 ## 8. Stop Conditions
 

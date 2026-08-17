@@ -1,0 +1,160 @@
+A_PROGRAM_DIMENSION_ACTION 1
+
+status EXPERIMENTAL_KERNEL_CONTRACT
+direction BINARY_ENDPOINTS
+face_digit ENDPOINT_0=0 ENDPOINT_1=1 VARYING=2
+action_result EXECUTABLE=1 RESIDUAL=2 UNSUPPORTED=3 INVALID=4
+
+The dimension action is an object-language operation on the common Core Term
+graph.  It is not a generated TypeDeclaration, a solver request identity, a
+conversion rule, or a value/computation polarity tag.
+
+An n-dimensional face key is a vector of n face digits.  Its intrinsic
+dimension is the number of VARYING digits.  The all-VARYING key is the center.
+Every other key is a boundary face.  Dimension zero has one center and no
+boundary.
+
+For deterministic APP-spine construction, boundary keys are traversed in
+lexicographic base-three order with the leftmost axis most significant and the
+center omitted.  This order is owned by the dimension module.  Callers must
+not reproduce its cardinality or ordering.  The boundary count is 3^n - 1 and
+must be computed with checked arithmetic.
+
+A dimension operator from source dimension n to target dimension m is an
+immutable vector of n source-axis images.  Each image is ENDPOINT_0,
+ENDPOINT_1, or one target axis in [0,m).  Target axes not named by an image are
+new varying directions.  The first implementation is affine: a target axis
+may occur in at most one source-axis image.  Duplicate target axes, an
+out-of-range target axis, malformed storage, or an arithmetic overflow makes
+the operator INVALID.
+
+The identity operator id_n maps source axis i to target axis i.  The canonical
+extension operator e_n : n -> n+1 maps source axis i to target axis i and
+leaves target axis n new.  The initial object identity action uses e_0.
+Repeated higher identity uses e_1, e_2, and so on; no dimension-specific Term
+tag or declaration is introduced.
+
+An operator acts contravariantly on a target face key by replacing every
+source-axis image with its endpoint constant or the digit at its referenced
+target axis.  Composition f : n -> m followed by g : m -> k substitutes every
+axis image of f through g and produces g o f : n -> k.  Composition is INVALID
+when dimensions do not meet or when the affine target-axis condition would be
+violated.  Identity is a two-sided unit.  Composition is associative for all
+valid operators.  Interning compares the complete semantic vector, not an
+allocation or request ID.
+
+The Core form is:
+
+  DIMENSION_ACTION(source_term, operator_id)
+
+The operator source dimension must equal the dimension certified for the
+source Term.  The result dimension is the operator target dimension.  An
+ordinary source Term has certified dimension zero.  An uninstantiated nested
+DIMENSION_ACTION has the target dimension of its outer operator.  Boundary APP
+instantiation does not create another dimension operator.
+
+For an acted family of target dimension n, the classifier exposes every
+required boundary face in the canonical traversal order as an ordinary
+dependent Pi telescope.  Applying those arguments uses ordinary APP Terms and
+APP_ELIM.  The final result is the center family or center witness.  A missing
+boundary is an ordinary partial application.  An extra boundary, a boundary
+with the wrong classifier, or a noncanonical forged classifier is rejected by
+ordinary dependent APP checking and action-certificate replay.
+
+TypeDeclarationDB remains authority only for source-defined and imported
+ADT/IADT schemas.  Acting on an ADT recursively reads the source declaration,
+source constructor ordinal, source field telescope, operator, and already
+acted Context prefix.  It must not allocate a TypeDeclaration or assign a new
+constructor ordinal.  An acted constructor retains the source declaration and
+source constructor identity through its source Term child.
+
+Classifier dispatch for version 1 is:
+
+  source ADT/IADT type       EXECUTABLE through a read-only acted schema view
+  source constructor        EXECUTABLE by incremental telescope action
+  nondependent pure Pi      EXECUTABLE pointwise
+  dependent Pi              RESIDUAL until dependent family lifting is replayed
+  pure Return               EXECUTABLE when its value action is executable
+  pure Thunk                EXECUTABLE when its computation action is executable
+  Lambda                    EXECUTABLE from accepted Lambda/body derivations
+  APP                       EXECUTABLE from accepted function/argument derivations
+  Match                     EXECUTABLE for the admitted derivation-driven fragment
+  induction hypothesis      EXECUTABLE for the admitted guarded-IH fragment
+  empty-effect computation  EXECUTABLE only through the listed pure forms
+  effectful computation     RESIDUAL
+  unresolved effect row     RESIDUAL
+  operation request         RESIDUAL
+  computation fold          RESIDUAL
+  resource-sensitive term  RESIDUAL until a modality/usage action is represented
+  Universe                  UNSUPPORTED in version 1
+  host primitive            UNSUPPORTED in version 1
+  malformed source proof    INVALID
+  malformed operator        INVALID
+
+An implementation may strengthen a RESIDUAL case only after this schema and
+its replay rule are revised.  It must not silently reinterpret RESIDUAL as
+UNSUPPORTED or as proof of an empty identity family.
+
+The new Judgement proof kinds are:
+
+  DIMENSION_ACTION_TYPE_FORMATION=45
+  DIMENSION_ACTION_TERM=46
+  DIMENSION_ACTION_CONSTRUCTOR=47
+
+DIMENSION_ACTION_TYPE_FORMATION concludes that an acted type is a type.  Its
+ordered premises are:
+
+  0 source IS_TYPE Claim
+  1 exact acted classifier IS_TYPE Claim when the classifier is not Universe
+  2..n exact Context/substitution/type-formation Claims required by the
+       source-former-specific replay rule
+
+DIMENSION_ACTION_TERM concludes that the action of a typed ordinary Term has
+the exact acted classifier.  Its ordered premises are:
+
+  0 source HAS_TYPE Claim
+  1 source classifier IS_TYPE Claim
+  2 acted classifier IS_TYPE Claim
+  3..n exact syntax-directed Claims for Lambda, APP, Match, IH, Return, or
+       Thunk action, in source-child order
+
+DIMENSION_ACTION_CONSTRUCTOR is distinct because its theorem quantifies over a
+source declaration and an incrementally acted field telescope.  Its ordered
+premises are:
+
+  0 source constructor HAS_TYPE Claim
+  1 source owner type-formation Claim
+  2 acted owner type-formation Claim
+  3..n acted field classifier and field witness Claims in source-field order
+
+The conclusion Term for all three rules contains only the source Term and the
+semantic operator ID.  Context-action requests, work IDs, caches, and fuel do
+not occur in Term identity.  APP_ELIM remains the sole proof rule for applying
+explicit boundary Terms after the acted family has been formed.
+
+Action preserves an empty effect row.  It does not erase, execute, commute, or
+handle an effect.  A nonempty or unresolved effect row is RESIDUAL.  Likewise,
+version 1 does not duplicate, discard, or reorder a resource-sensitive
+binding; such a Context action is RESIDUAL.
+
+Normalization may remove DIMENSION_ACTION(t,id_n) only after the source Term
+has certified dimension n.  It may replace nested actions
+
+  DIMENSION_ACTION(DIMENSION_ACTION(t,f),g)
+
+with DIMENSION_ACTION(t,g o f) only when composition is valid and no explicit
+boundary APP has intervened.  No other action equation is DefEq in version 1.
+
+In particular, an inhabited object identity produced by dimension action does
+not add a conversion equation, merge Term IDs, mutate a global equality
+union-find, or authorize equality reflection.  Object identity remains an
+ordinary type with ordinary proof Terms, Claims, and Derivations.
+
+Dimension one, two, and three therefore use the same constructions:
+
+  A1 = DIMENSION_ACTION(A,e_0)                    boundary count 2
+  A2 = DIMENSION_ACTION(A1,e_1)                   boundary count 8
+  A3 = DIMENSION_ACTION(A2,e_2)                   boundary count 26
+
+No rule identifies a square by index count eight, and no generated
+TypeDeclaration identity appears in this specification.
