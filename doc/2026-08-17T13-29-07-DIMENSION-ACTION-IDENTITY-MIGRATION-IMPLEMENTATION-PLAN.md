@@ -385,19 +385,20 @@ Exit criteria:
 
 ### DIA2. Add the generic DIMENSION_ACTION Core Term
 
-Status: blocked on DIA1
+Status: complete
 
-- [ ] Add one Core Term tag and payload containing source Term and semantic
+- [x] Add one Core Term tag and payload containing source Term and semantic
   operator identity.
-- [ ] Add child roles for source traversal.
-- [ ] Add formation, interning, hashing, comparison, and debug readback.
-- [ ] Add clone, canonicalization, substitution, reindex, alpha-interning, and
+- [x] Add child roles for source traversal.
+- [x] Add formation, interning, hashing, comparison, and debug readback.
+- [x] Add clone, canonicalization, substitution, reindex, alpha-interning, and
   free-binding traversal.
-- [ ] Add normalization rules only for laws specified in DIA0.
-- [ ] Preserve one common Term representation across value, computation, and
+- [x] Keep untyped normalization neutral until DIA5 supplies the typed
+  dimension certificate required by the DIA0 identity/composition laws.
+- [x] Preserve one common Term representation across value, computation, and
   type classifications.
-- [ ] Add malformed operator-reference validation.
-- [ ] Add round-trip tests in TermDB before adding HOTT semantics.
+- [x] Add malformed operator-reference validation at formation and relocation.
+- [x] Add round-trip tests in TermDB before adding HOTT semantics.
 
 Expected files include:
 

@@ -1402,6 +1402,8 @@ int prototype_internal_artifact_append_graph_ordered(
 			universe_offset,
 			representation_relocation,
 			source_representation_count,
+			NULL,
+			0,
 			order ? order->terms : NULL,
 			order ? order->term_count : 0,
 			term_relocation,

@@ -164,8 +164,15 @@ static int term_contains_free_binder_at_depth(
 					db,
 					term->as.type_view.source,
 					binding_id,
-					depth + 1
+				depth + 1
 				);
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			return term_contains_free_binder_at_depth(
+				db,
+				term->as.dimension_action.source,
+				binding_id,
+				depth + 1
+			);
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 				return term_contains_free_binder_at_depth(
 					db,
@@ -544,8 +551,15 @@ static int term_contains_ih_scope_clone_reference_at_depth(
 					db,
 					ctx,
 					term->as.type_view.source,
-					depth + 1
+				depth + 1
 				);
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			return term_contains_ih_scope_clone_reference_at_depth(
+				db,
+				ctx,
+				term->as.dimension_action.source,
+				depth + 1
+			);
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			return substitution_has_ih_scope_clone(
 					ctx,
@@ -974,6 +988,21 @@ static int substitute_term_uncached_internal(
 				p_ret
 			);
 			}
+		case PROTOTYPE_TERM_DIMENSION_ACTION: {
+			uint32_t source;
+			if (substitute_term_internal(
+					db, term->as.dimension_action.source, ctx, &source
+				) != 0) {
+				return -1;
+			}
+			if (source == term->as.dimension_action.source) {
+				*p_ret = term_id;
+				return 0;
+			}
+			struct prototype_term acted = *term;
+			acted.as.dimension_action.source = source;
+			return add_term(db, acted, p_ret);
+		}
 			case PROTOTYPE_TERM_TYPE_FORMER:
 			case PROTOTYPE_TERM_TYPE_DECLARATION:
 				case PROTOTYPE_TERM_PRIMITIVE_TEXT:

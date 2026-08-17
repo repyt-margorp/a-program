@@ -1,5 +1,6 @@
 #include "a_program/core/term.h"
 
+#include "a_program/dimension/operator.h"
 #include "a_program/kernel/type_declaration.h"
 #include "a_program/support/storage.h"
 
@@ -622,6 +623,9 @@ int prototype_term_semantics(
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			p_ret->layer = PROTOTYPE_TERM_LAYER_INDUCTION;
 			break;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			p_ret->layer = PROTOTYPE_TERM_LAYER_DIMENSION_ACTION;
+			break;
 		default:
 			return -1;
 	}
@@ -721,6 +725,7 @@ int prototype_term_child_count(
 		case PROTOTYPE_TERM_RETURN:
 		case PROTOTYPE_TERM_THUNK:
 		case PROTOTYPE_TERM_FORCE:
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
 			count = 1;
 			break;
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
@@ -949,6 +954,14 @@ int prototype_term_child_at(
 					p_child
 				);
 			}
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			return term_child_result(
+				db,
+				PROTOTYPE_TERM_CHILD_DIMENSION_ACTION_SOURCE,
+				0,
+				term->as.dimension_action.source,
+				p_child
+			);
 		default:
 			return -1;
 	}

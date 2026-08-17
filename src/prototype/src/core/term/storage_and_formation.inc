@@ -99,6 +99,8 @@ struct relocated_term_import {
 	uint32_t universe_offset;
 	const uint32_t* representation_relocation;
 	size_t representation_relocation_count;
+	const uint32_t* dimension_operator_relocation;
+	size_t dimension_operator_relocation_count;
 	uint32_t* terms;
 	unsigned char* states;
 	uint32_t* ih_scopes;
@@ -451,6 +453,21 @@ static int import_relocated_term(
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			break;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			IMPORT_TERM_REF(term.as.dimension_action.source);
+			if (!import->dimension_operator_relocation ||
+				term.as.dimension_action.operator_id >=
+					import->dimension_operator_relocation_count ||
+				import->dimension_operator_relocation[
+					term.as.dimension_action.operator_id
+				] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			term.as.dimension_action.operator_id =
+				import->dimension_operator_relocation[
+					term.as.dimension_action.operator_id
+				];
+			break;
 		default:
 			return -1;
 	}
@@ -475,6 +492,8 @@ int prototype_term_db_append_relocated(
 	uint32_t universe_offset,
 	const uint32_t* representation_relocation,
 	size_t representation_relocation_count,
+	const uint32_t* dimension_operator_relocation,
+	size_t dimension_operator_relocation_count,
 	const uint32_t* source_order,
 	size_t source_order_count,
 	uint32_t* term_relocation,
@@ -508,6 +527,9 @@ int prototype_term_db_append_relocated(
 		.universe_offset = universe_offset,
 		.representation_relocation = representation_relocation,
 		.representation_relocation_count = representation_relocation_count,
+		.dimension_operator_relocation = dimension_operator_relocation,
+		.dimension_operator_relocation_count =
+			dimension_operator_relocation_count,
 		.terms = term_relocation,
 		.states = states,
 		.ih_scopes = ih_scope_relocation
@@ -1320,6 +1342,10 @@ int prototype_term_canonicalize_type_former_references(
 			case PROTOTYPE_TERM_THUNK_TYPE:
 				term->as.thunk_type.computation = remap[term->as.thunk_type.computation];
 				break;
+			case PROTOTYPE_TERM_DIMENSION_ACTION:
+				term->as.dimension_action.source =
+					remap[term->as.dimension_action.source];
+				break;
 			default:
 				break;
 		}
@@ -1540,6 +1566,40 @@ int prototype_term_relation_witness(
 		return -1;
 	}
 	*p_ret = term;
+	return 0;
+}
+
+int prototype_term_dimension_action(
+	struct prototype_term_db* db,
+	const struct prototype_dimension_operator_db* dimension_operators,
+	uint32_t source,
+	uint32_t operator_id,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || source >= db->term_count ||
+		!prototype_dimension_operator_get(dimension_operators, operator_id)) {
+		return -1;
+	}
+	struct prototype_term term;
+	memset(&term, 0, sizeof(term));
+	term.tag = PROTOTYPE_TERM_DIMENSION_ACTION;
+	term.as.dimension_action.source = source;
+	term.as.dimension_action.operator_id = operator_id;
+	return add_term(db, term, p_ret);
+}
+
+int prototype_term_dimension_action_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_source,
+	uint32_t* p_operator_id
+) {
+	if (!db || !p_source || !p_operator_id || term_id >= db->term_count ||
+		db->terms[term_id].tag != PROTOTYPE_TERM_DIMENSION_ACTION) {
+		return -1;
+	}
+	*p_source = db->terms[term_id].as.dimension_action.source;
+	*p_operator_id = db->terms[term_id].as.dimension_action.operator_id;
 	return 0;
 }
 

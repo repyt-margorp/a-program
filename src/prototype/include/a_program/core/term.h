@@ -12,6 +12,7 @@ struct prototype_term_db;
 struct prototype_term_definition_env;
 struct prototype_term_reduction_options;
 struct prototype_type_declaration_db;
+struct prototype_dimension_operator_db;
 
 /* Runtime-only dispatch for an OPERATION_REQUEST. Returning 1 supplies a
  * result, 0 leaves the request unhandled, and -1 reports a runtime failure. */
@@ -70,7 +71,8 @@ enum prototype_term_tag {
 	 * latent effects of its suspended computation argument. */
 	PROTOTYPE_TERM_EFFECT_ROW_OPERATION = 31,
 	PROTOTYPE_TERM_RELATION_TYPE_FORMER = 32,
-	PROTOTYPE_TERM_RELATION_WITNESS_FORMER = 33
+	PROTOTYPE_TERM_RELATION_WITNESS_FORMER = 33,
+	PROTOTYPE_TERM_DIMENSION_ACTION = 34
 };
 
 enum prototype_term_category {
@@ -219,7 +221,8 @@ enum prototype_term_layer {
 	PROTOTYPE_TERM_LAYER_LINK = 5,
 	PROTOTYPE_TERM_LAYER_PURE_PRIMITIVE = 6,
 	PROTOTYPE_TERM_LAYER_EFFECT_OPERATION = 7,
-	PROTOTYPE_TERM_LAYER_INDUCTION = 8
+	PROTOTYPE_TERM_LAYER_INDUCTION = 8,
+	PROTOTYPE_TERM_LAYER_DIMENSION_ACTION = 9
 };
 
 enum prototype_term_whnf_role {
@@ -424,7 +427,8 @@ enum prototype_term_child_role {
 	PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION = 25,
 	PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE = 26,
 	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION = 27,
-	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY = 28
+	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY = 28,
+	PROTOTYPE_TERM_CHILD_DIMENSION_ACTION_SOURCE = 29
 };
 
 struct prototype_term_child {
@@ -544,6 +548,10 @@ struct prototype_term {
 			uint32_t first_clause;
 			uint32_t clause_count;
 		} computation_fold;
+		struct {
+			uint32_t source;
+			uint32_t operator_id;
+		} dimension_action;
 	} as;
 	};
 
@@ -707,6 +715,8 @@ int prototype_term_db_append_relocated(
 	uint32_t universe_offset,
 	const uint32_t* representation_relocation,
 	size_t representation_relocation_count,
+	const uint32_t* dimension_operator_relocation,
+	size_t dimension_operator_relocation_count,
 	const uint32_t* source_order,
 	size_t source_order_count,
 	uint32_t* term_relocation,
@@ -836,6 +846,19 @@ int prototype_term_relation_witness_info(
 	uint32_t term_id,
 	uint32_t* p_left_endpoint,
 	uint32_t* p_right_endpoint
+);
+int prototype_term_dimension_action(
+	struct prototype_term_db* db,
+	const struct prototype_dimension_operator_db* dimension_operators,
+	uint32_t source,
+	uint32_t operator_id,
+	uint32_t* p_ret
+);
+int prototype_term_dimension_action_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_source,
+	uint32_t* p_operator_id
 );
 int prototype_term_text_literal(struct prototype_term_db* db, int text_symbol_id, uint32_t* p_ret);
 int prototype_term_primitive_int(struct prototype_term_db* db, uint32_t* p_ret);

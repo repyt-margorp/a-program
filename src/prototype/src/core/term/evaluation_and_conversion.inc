@@ -145,6 +145,25 @@ static int resolve_external_ref_term(
 			}
 			return prototype_term_constructor(db, owner, term->as.constructor.constructor_id, p_ret);
 		}
+		case PROTOTYPE_TERM_DIMENSION_ACTION: {
+			uint32_t source;
+			if (resolve_external_ref_term(
+					db,
+					term->as.dimension_action.source,
+					symbol_id,
+					replacement,
+					&source
+				) != 0) {
+				return -1;
+			}
+			if (source == term->as.dimension_action.source) {
+				*p_ret = term_id;
+				return 0;
+			}
+			struct prototype_term acted = *term;
+			acted.as.dimension_action.source = source;
+			return add_term(db, acted, p_ret);
+		}
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
 			uint32_t left;
 			uint32_t right;
@@ -2097,6 +2116,27 @@ static int normalize_term_at_depth(
 					db, type_declarations, definitions, options, rebuilt, p_ret, depth - 1
 				);
 		}
+		case PROTOTYPE_TERM_DIMENSION_ACTION: {
+			uint32_t source;
+			if (normalize_term_at_depth(
+					db,
+					type_declarations,
+					definitions,
+					options,
+					term->as.dimension_action.source,
+					&source,
+					depth - 1
+				) != 0) {
+				return -1;
+			}
+			if (source == term->as.dimension_action.source) {
+				*p_ret = whnf;
+				return 0;
+			}
+			struct prototype_term acted = *term;
+			acted.as.dimension_action.source = source;
+			return add_term(db, acted, p_ret);
+		}
 		default:
 			*p_ret = whnf;
 			return 0;
@@ -2448,6 +2488,23 @@ static int conversion_equal_at_depth(
 				depth + 1
 			);
 		}
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			if (left_term->as.dimension_action.operator_id !=
+				right_term->as.dimension_action.operator_id) {
+				*p_equal = 0;
+				return 0;
+			}
+			return conversion_equal_at_depth(
+				db,
+				type_declarations,
+				definitions,
+				options,
+				scope,
+				left_term->as.dimension_action.source,
+				right_term->as.dimension_action.source,
+				p_equal,
+				depth + 1
+			);
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			*p_equal = left_term->as.type_former.representation_id ==
 				right_term->as.type_former.representation_id;
@@ -3592,6 +3649,18 @@ static void print_term_depth_impl(
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			fprintf(output, "<relation-witness>");
 			break;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			fprintf(output, "dimension[%u] ",
+				term->as.dimension_action.operator_id);
+			print_term_depth(
+				output,
+				symbols,
+				type_declarations,
+				terms,
+				term->as.dimension_action.source,
+				depth - 1
+			);
+			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR: {
 			uint32_t type_id;
 			if (type_instance_type_id(terms, term->as.constructor.owner, &type_id) != 0 ||
@@ -3899,6 +3968,19 @@ static void print_term_debug_depth_impl(
 			break;
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			fprintf(output, "RELATION_WITNESS_FORMER");
+			break;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			fprintf(output, "DIMENSION_ACTION(op#%u, ",
+				term->as.dimension_action.operator_id);
+			print_term_debug_depth(
+				output,
+				symbols,
+				type_declarations,
+				terms,
+				term->as.dimension_action.source,
+				depth - 1
+			);
+			fprintf(output, ")");
 			break;
 		case PROTOTYPE_TERM_CONSTRUCTOR:
 			fprintf(output, "CONSTRUCTOR(");

@@ -511,6 +511,17 @@ static int shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			return 1;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			return left->as.dimension_action.operator_id ==
+					right->as.dimension_action.operator_id &&
+				shape_terms_equal_at_depth(
+					db,
+					left->as.dimension_action.source,
+					right->as.dimension_action.source,
+					env,
+					type_view_compare_mode,
+					depth + 1
+				);
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 1;
 			case PROTOTYPE_TERM_TEXT_LITERAL:
@@ -1105,6 +1116,20 @@ static int cross_shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			return 1;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			return left->as.dimension_action.operator_id ==
+					right->as.dimension_action.operator_id &&
+				cross_shape_terms_equal_at_depth(
+					left_db,
+					left_type_declarations,
+					left->as.dimension_action.source,
+					right_db,
+					right_type_declarations,
+					right->as.dimension_action.source,
+					env,
+					type_view_compare_mode,
+					depth + 1
+				);
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 1;
 			case PROTOTYPE_TERM_TEXT_LITERAL:
@@ -1846,6 +1871,20 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			return 0;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			canonical_hash_mix_u32(
+				p_hash, term->as.dimension_action.operator_id
+			);
+			return canonical_hash_term_at_depth(
+				db,
+				type_declarations,
+				term->as.dimension_action.source,
+				env,
+				key,
+				p_hash,
+				canonicalize_frame_refs,
+				depth + 1
+			);
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 0;
 			case PROTOTYPE_TERM_TEXT_LITERAL:
