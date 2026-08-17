@@ -4,7 +4,8 @@ Date: 2026-08-16
 
 Last re-audited: 2026-08-17
 
-Status: planned; Issue 12 gate satisfied; RC0 ready
+Status: planned; Issue 12 gate satisfied; RC0 ready; RC3 waits for the
+dimension-action identity migration
 
 Repository baseline:
 
@@ -21,7 +22,8 @@ Related documents:
 - `2026-08-16T02-36-41-CORE-TERM-TYPED-OCCURRENCE-SEPARATION-PLAN.md`;
 - `2026-08-09T13-35-50-V3-SC1-SEMANTIC-CONSOLIDATION-IMPLEMENTATION-PLAN.md`;
 - `2026-08-09T17-13-30-V3-PC1-PERSISTENT-PROPOSITION-REFERENCE-NORMALIZATION-PLAN.md`;
-- `2026-08-11T08-19-24-CURRENT-COMPILER-FUNCTIONAL-AND-THEORY-REVIEW.md`; and
+- `2026-08-11T08-19-24-CURRENT-COMPILER-FUNCTIONAL-AND-THEORY-REVIEW.md`;
+- `2026-08-17T13-29-07-DIMENSION-ACTION-IDENTITY-MIGRATION-IMPLEMENTATION-PLAN.md`; and
 - `src/prototype/spec/artifact_v77.schema`.
 
 ## 1. Purpose
@@ -647,6 +649,11 @@ Required tests:
 
 Status: pending
 
+Dependency: execute the dimension-action identity migration first. RC3 must
+operate on source/import declaration authority and read-only acted schema
+queries; it must not preserve generated Identity as a semantic declaration in
+order to reduce its own migration scope.
+
 - [ ] Rename the semantic owner to `prototype_type_schema_db` if the rename
   reduces ambiguity after call-site audit.
 - [ ] Give schema, readback, representation, and cache stores independent
@@ -671,8 +678,10 @@ Required tests:
 
 - [ ] zeroing or omitting readback data leaves semantic validation unchanged;
 - [ ] clearing constructor caches leaves classifier results unchanged;
-- [ ] `List A`, Sigma-like dependent fields, `Acc`, and generated Identity use
-  the same schema API;
+- [ ] `List A`, Sigma-like dependent fields, and `Acc` use the same source
+  schema API;
+- [ ] acted Identity schema queries derive from source schema and a dimension
+  action without adding a TypeDeclaration;
 - [ ] two nominal declarations may share a representation without becoming
   DefEq as TypeViews;
 - [ ] corrupt readback is rejected as readback corruption and cannot affect

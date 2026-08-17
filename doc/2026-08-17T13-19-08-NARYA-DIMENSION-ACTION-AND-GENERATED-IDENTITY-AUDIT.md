@@ -4,6 +4,10 @@ Date: 2026-08-17
 
 Status: problem audit and migration boundary, not an implementation plan
 
+Follow-up implementation plan:
+
+- `2026-08-17T13-29-07-DIMENSION-ACTION-IDENTITY-MIGRATION-IMPLEMENTATION-PLAN.md`
+
 ## Baselines
 
 - A Program commit:
