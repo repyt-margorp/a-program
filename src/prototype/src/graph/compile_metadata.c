@@ -16,6 +16,7 @@ int prototype_compile_metadata_frozen_snapshot(
 		.reduction_environment = metadata->reduction_environment,
 		.contexts = metadata->contexts,
 		.substitutions = metadata->substitutions,
+		.dimension_operators = metadata->dimension_operators,
 		.typed_occurrences = metadata->typed_occurrences,
 		.verification = metadata->verification,
 		.selected_entry_term = metadata->selected_entry_term,
@@ -235,6 +236,25 @@ void prototype_compile_metadata_init(
 		&metadata->verification,
 		verification_obligations,
 		verification_obligation_capacity
+	);
+}
+
+void prototype_compile_metadata_set_dimension_storage(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_dimension_operator* operators,
+	size_t operator_capacity,
+	struct prototype_dimension_axis_image* images,
+	size_t image_capacity
+) {
+	if (!metadata) {
+		return;
+	}
+	prototype_dimension_operator_db_init(
+		&metadata->dimension_operators,
+		operators,
+		operator_capacity,
+		images,
+		image_capacity
 	);
 }
 

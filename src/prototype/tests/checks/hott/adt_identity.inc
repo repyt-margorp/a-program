@@ -56,18 +56,6 @@
 	operation_graph.cases = occurrence_match_cases;
 	operation_graph.case_capacity = 128;
 	fixture_set_operation_graph(&term_db, &operation_graph);
-	kernel_builder = (struct prototype_kernel_builder) {
-		.contexts = &context_db,
-		.substitutions = &substitution_db,
-		.cwf_certificates = &cwf_certificate_db,
-		.terms = &term_db,
-		.type_declarations = &type_db,
-		.occurrences = &operation_graph,
-		.judgement = &judgement
-	};
-	if (prototype_kernel_builder_view(&kernel_builder, &kernel_view) != 0) {
-		return 138;
-	}
 	prototype_dimension_operator_db_init(
 		&bridge_dimension_operator_db,
 		bridge_dimension_operators,
@@ -75,6 +63,19 @@
 		bridge_dimension_images,
 		64
 	);
+	kernel_builder = (struct prototype_kernel_builder) {
+		.contexts = &context_db,
+		.substitutions = &substitution_db,
+		.cwf_certificates = &cwf_certificate_db,
+		.terms = &term_db,
+		.type_declarations = &type_db,
+		.occurrences = &operation_graph,
+		.judgement = &judgement,
+		.dimension_operators = &bridge_dimension_operator_db
+	};
+	if (prototype_kernel_builder_view(&kernel_builder, &kernel_view) != 0) {
+		return 138;
+	}
 	if (prototype_hott_bridge_db_init(
 			&bridge_db,
 			bridges,

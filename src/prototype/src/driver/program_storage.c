@@ -45,6 +45,8 @@
 #define PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY 4096
 #define PROGRAM_EFFECT_CONSTRAINT_CAPACITY 8192
 #define PROGRAM_VERIFICATION_OBLIGATION_CAPACITY 4096
+#define PROGRAM_DIMENSION_OPERATOR_CAPACITY 256
+#define PROGRAM_DIMENSION_IMAGE_CAPACITY 2048
 
 struct prototype_program_storage_backing {
 	int symbol_ids[PROGRAM_SYMBOL_MAP_CAPACITY];
@@ -105,6 +107,10 @@ struct prototype_program_storage_backing {
 	struct prototype_resolution_event resolution_events[PROGRAM_RESOLUTION_EVENT_CAPACITY];
 	struct prototype_context contexts[PROTOTYPE_CONTEXT_CAPACITY];
 	struct prototype_substitution substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
+	struct prototype_dimension_operator
+		dimension_operators[PROGRAM_DIMENSION_OPERATOR_CAPACITY];
+	struct prototype_dimension_axis_image
+		dimension_images[PROGRAM_DIMENSION_IMAGE_CAPACITY];
 	struct prototype_typed_occurrence occurrences[PROGRAM_OPERATION_CAPACITY];
 	struct prototype_typed_occurrence_edge occurrence_edges[PROGRAM_OCCURRENCE_EDGE_CAPACITY];
 	struct prototype_typed_occurrence_match_case occurrence_cases[PROGRAM_OPERATION_CASE_CAPACITY];
@@ -172,6 +178,13 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY, b->effect_constraints,
 		PROGRAM_EFFECT_CONSTRAINT_CAPACITY, b->verification_obligations,
 		PROGRAM_VERIFICATION_OBLIGATION_CAPACITY);
+	prototype_compile_metadata_set_dimension_storage(
+		&storage->metadata,
+		b->dimension_operators,
+		PROGRAM_DIMENSION_OPERATOR_CAPACITY,
+		b->dimension_images,
+		PROGRAM_DIMENSION_IMAGE_CAPACITY
+	);
 	prototype_compile_metadata_set_diagnostic_storage(&storage->metadata,
 		b->compile_diagnostics, PROGRAM_COMPILE_DIAGNOSTIC_CAPACITY);
 	prototype_judgement_db_init(&storage->judgement, b->propositions,

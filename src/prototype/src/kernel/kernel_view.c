@@ -7,7 +7,7 @@ int prototype_kernel_view_validate_stores(
 ) {
 	if (!view || !view->contexts || !view->substitutions ||
 		!view->cwf_certificates || !view->terms || !view->type_declarations ||
-		!view->occurrences || !view->judgement) {
+		!view->occurrences || !view->judgement || !view->dimension_operators) {
 		return -1;
 	}
 	return prototype_cwf_certificate_db_validate(
@@ -33,7 +33,8 @@ int prototype_kernel_builder_validate_stores(
 		.terms = builder->terms,
 		.type_declarations = builder->type_declarations,
 		.occurrences = builder->occurrences,
-		.judgement = builder->judgement
+		.judgement = builder->judgement,
+		.dimension_operators = builder->dimension_operators
 	};
 	return prototype_kernel_view_validate_stores(&view);
 }
@@ -52,7 +53,8 @@ int prototype_kernel_builder_view(
 		.terms = builder->terms,
 		.type_declarations = builder->type_declarations,
 		.occurrences = builder->occurrences,
-		.judgement = builder->judgement
+		.judgement = builder->judgement,
+		.dimension_operators = builder->dimension_operators
 	};
 	return 0;
 }

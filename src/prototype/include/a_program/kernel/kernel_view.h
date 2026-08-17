@@ -8,6 +8,7 @@ struct prototype_term_db;
 struct prototype_type_declaration_db;
 struct prototype_typed_occurrence_graph;
 struct prototype_judgement_db;
+struct prototype_dimension_operator_db;
 
 /* A checked capability bundle. Term reduction may extend TermDB with computed
  * nodes, but the view cannot publish Context, Substitution, or Judgement
@@ -20,6 +21,7 @@ struct prototype_kernel_view {
 	struct prototype_type_declaration_db* type_declarations;
 	const struct prototype_typed_occurrence_graph* occurrences;
 	const struct prototype_judgement_db* judgement;
+	const struct prototype_dimension_operator_db* dimension_operators;
 };
 
 struct prototype_kernel_builder {
@@ -30,6 +32,7 @@ struct prototype_kernel_builder {
 	struct prototype_type_declaration_db* type_declarations;
 	const struct prototype_typed_occurrence_graph* occurrences;
 	struct prototype_judgement_db* judgement;
+	struct prototype_dimension_operator_db* dimension_operators;
 };
 
 /* Validates the component stores and every certificate already present. It

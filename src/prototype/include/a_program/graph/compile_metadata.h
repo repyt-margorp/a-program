@@ -9,6 +9,7 @@
 #include "a_program/graph/typed_occurrence_model.h"
 #include "a_program/graph/verification.h"
 #include "a_program/kernel/context.h"
+#include "a_program/dimension/operator.h"
 
 struct prototype_compile_constructor_export {
 	uint32_t type_export_index;
@@ -130,6 +131,7 @@ struct prototype_compile_metadata {
 
 	struct prototype_context_db contexts;
 	struct prototype_substitution_db substitutions;
+	struct prototype_dimension_operator_db dimension_operators;
 	/* Accepted artifact authority for EXTEND nodes. This table is separate from
 	 * SubstitutionDB so structurally valid compiler candidates remain usable
 	 * without pretending that every candidate is a certified CwF morphism. */
@@ -185,6 +187,7 @@ struct prototype_frozen_module_snapshot {
 	struct prototype_term_reduction_environment reduction_environment;
 	struct prototype_context_db contexts;
 	struct prototype_substitution_db substitutions;
+	struct prototype_dimension_operator_db dimension_operators;
 	struct prototype_typed_occurrence_graph typed_occurrences;
 	struct prototype_verification_db verification;
 	uint32_t selected_entry_term;
@@ -279,6 +282,14 @@ void prototype_compile_metadata_init(
 	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
 	size_t verification_obligation_capacity
+);
+
+void prototype_compile_metadata_set_dimension_storage(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_dimension_operator* operators,
+	size_t operator_capacity,
+	struct prototype_dimension_axis_image* images,
+	size_t image_capacity
 );
 
 void prototype_compile_metadata_set_diagnostic_storage(
