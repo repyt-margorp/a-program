@@ -108,17 +108,18 @@ IS_TYPE judgement through the ordinary APP and IS_TYPE_FROM_HAS_TYPE rules.
 Its ordered premises are:
 
   0 source IS_TYPE Claim
-  1 exact acted classifier IS_TYPE Claim
-  2..n exact Context/substitution/type-formation Claims required by the
+  1..n exact Context/substitution Claims required by the
        source-former-specific replay rule
+
+The acted classifier is reconstructed and checked by the rule.  It is not a
+second proof authority and therefore is not admitted as a premise.
 
 DIMENSION_ACTION_TERM concludes that the action of a typed ordinary Term has
 the exact acted classifier.  Its ordered premises are:
 
   0 source HAS_TYPE Claim
   1 source classifier IS_TYPE Claim
-  2 acted classifier IS_TYPE Claim
-  3..n exact syntax-directed Claims for Lambda, APP, Match, IH, Return, or
+  2..n exact syntax-directed Claims for Lambda, APP, Match, IH, Return, or
        Thunk action, in source-child order
 
 DIMENSION_ACTION_CONSTRUCTOR is distinct because its theorem quantifies over a
@@ -128,9 +129,8 @@ premises are:
   0 source constructor HAS_TYPE Claim
   1 source owner type-formation Claim
   2 acted owner type-formation Claim
-  3 exact acted constructor classifier IS_TYPE Claim
-  4..n source-former-specific field action formation Claims in source-field
-       order, when they are not already premises of Claim 3
+  3..n source-former-specific field action formation Claims in source-field
+       order
 
 Concrete field values and field identity witnesses are not premises of the
 constructor-head rule.  They are supplied later by ordinary APP_ELIM Claims;

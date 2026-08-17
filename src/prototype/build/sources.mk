@@ -6,7 +6,7 @@ PROTOTYPE_AST_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/graph/compile_metadata.c \
 	$(PROTOTYPE_ROOT)/src/artifact/interface.c \
 	$(PROTOTYPE_ROOT)/src/artifact/publication.c \
-	$(PROTOTYPE_ROOT)/src/artifact/wire_v77.c \
+	$(PROTOTYPE_ROOT)/src/artifact/wire_v78.c \
 	$(PROTOTYPE_ROOT)/src/artifact/relocation.c \
 	$(PROTOTYPE_ROOT)/src/artifact/link.c \
 	$(PROTOTYPE_ROOT)/src/frontend/ast.c \
@@ -18,8 +18,7 @@ PROTOTYPE_TYPING_SOURCES := \
 
 PROTOTYPE_TYPE_DECLARATION_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/kernel/type_declaration.c \
-	$(PROTOTYPE_ROOT)/src/kernel/type_schema_view.c \
-	$(PROTOTYPE_ROOT)/src/identity/generated_schema_validation.c
+	$(PROTOTYPE_ROOT)/src/kernel/type_schema_view.c
 
 PROTOTYPE_CWF_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/kernel/cwf_certificate.c

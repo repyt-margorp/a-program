@@ -2,12 +2,14 @@ static int write_artifact_graph_section(
 	FILE* stream,
 	const struct symbol_table* symbols,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
 	const struct artifact_context_slice* context_slice
 ) {
-	if (!stream || !symbols || !intrinsic_environment || !terms ||
+	if (!stream || !symbols || !intrinsic_environment || !dimension_operators ||
+		!terms ||
 		!type_declarations || !judgement || !context_slice) {
 		return -1;
 	}
@@ -165,7 +167,7 @@ static int write_artifact_graph_section(
 		}
 		fprintf(
 			stream,
-			"type_decl %zu %s %s %u %u %u %u %u %u %u %u %u %d %u\n",
+			"type_decl %zu %s %s %u %u %u %u %u %u %u %u %u\n",
 			i,
 			type_name,
 			namespace_name,
@@ -181,9 +183,7 @@ static int write_artifact_graph_section(
 			artifact_context_slice_relocate(
 				context_slice, type->index_context
 			),
-			type->index_count,
-			type->origin_kind,
-			type->origin_source_carrier_term_id
+			type->index_count
 		);
 	}
 
@@ -279,6 +279,7 @@ static int write_artifact_graph_section(
 				stream,
 				symbols,
 				intrinsic_environment,
+				dimension_operators,
 				type_declarations,
 				terms,
 				(uint32_t)i,
@@ -416,7 +417,7 @@ static int write_artifact_graph_section(
 			 derivation->proof_kind !=
 				PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX) ||
 			derivation->proof_kind >
-				PROTOTYPE_JUDGEMENT_PROOF_THUNK_TYPE_FORMATION) {
+				PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS) {
 			return -1;
 		}
 		fprintf(

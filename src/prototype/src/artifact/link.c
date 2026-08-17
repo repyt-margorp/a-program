@@ -1,5 +1,6 @@
 #include "a_program/artifact/interface.h"
 
+#include "a_program/dimension/operator.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 
 #include <inttypes.h>
@@ -900,6 +901,111 @@ static int artifact_build_binding_relocation(
 	return 0;
 }
 
+static int artifact_dimension_operator_less(
+	const struct prototype_dimension_operator_db* operators,
+	uint32_t left_id,
+	uint32_t right_id
+) {
+	const struct prototype_dimension_operator* left =
+		prototype_dimension_operator_get(operators, left_id);
+	const struct prototype_dimension_operator* right =
+		prototype_dimension_operator_get(operators, right_id);
+	if (!left || !right) {
+		return 0;
+	}
+	if (left->source_dimension != right->source_dimension) {
+		return left->source_dimension < right->source_dimension;
+	}
+	if (left->target_dimension != right->target_dimension) {
+		return left->target_dimension < right->target_dimension;
+	}
+	const struct prototype_dimension_axis_image* left_images =
+		prototype_dimension_operator_images(operators, left_id);
+	const struct prototype_dimension_axis_image* right_images =
+		prototype_dimension_operator_images(operators, right_id);
+	for (size_t i = 0; i < left->image_count && i < right->image_count; ++i) {
+		if (left_images[i].kind != right_images[i].kind) {
+			return left_images[i].kind < right_images[i].kind;
+		}
+		if (left_images[i].target_axis != right_images[i].target_axis) {
+			return left_images[i].target_axis < right_images[i].target_axis;
+		}
+	}
+	return left->image_count < right->image_count;
+}
+
+static int artifact_append_reachable_dimension_operators(
+	struct prototype_dimension_operator_db* target,
+	const struct prototype_dimension_operator_db* source,
+	const struct prototype_term_db* source_terms,
+	const struct artifact_append_order* order,
+	uint32_t* relocation,
+	size_t relocation_capacity
+) {
+	if (!target || !source || !source_terms || !relocation ||
+		source->operator_count > relocation_capacity) {
+		return -1;
+	}
+	for (size_t i = 0; i < relocation_capacity; ++i) {
+		relocation[i] = PROTOTYPE_INVALID_ID;
+	}
+	size_t operator_storage_count = source->operator_count == 0 ?
+		1 : source->operator_count;
+	unsigned char reachable[operator_storage_count];
+	uint32_t ordered[operator_storage_count];
+	memset(reachable, 0, sizeof(reachable));
+	size_t term_count = order ? order->term_count : source_terms->term_count;
+	for (size_t i = 0; i < term_count; ++i) {
+		uint32_t term_id = order ? order->terms[i] : (uint32_t)i;
+		if (term_id >= source_terms->term_count) {
+			return -1;
+		}
+		const struct prototype_term* term = &source_terms->terms[term_id];
+		if (term->tag != PROTOTYPE_TERM_DIMENSION_ACTION) {
+			continue;
+		}
+		if (term->as.dimension_action.operator_id >= source->operator_count) {
+			return -1;
+		}
+		reachable[term->as.dimension_action.operator_id] = 1;
+	}
+	size_t ordered_count = 0;
+	for (uint32_t operator_id = 0; operator_id < source->operator_count;
+		++operator_id) {
+		if (!reachable[operator_id]) {
+			continue;
+		}
+		size_t position = ordered_count;
+		while (position != 0 && artifact_dimension_operator_less(
+				source, operator_id, ordered[position - 1]
+			)) {
+			ordered[position] = ordered[position - 1];
+			position--;
+		}
+		ordered[position] = operator_id;
+		ordered_count++;
+	}
+	for (size_t i = 0; i < ordered_count; ++i) {
+		uint32_t source_id = ordered[i];
+		const struct prototype_dimension_operator* operator =
+			prototype_dimension_operator_get(source, source_id);
+		const struct prototype_dimension_axis_image* images =
+			prototype_dimension_operator_images(source, source_id);
+		if (!operator || (operator->image_count != 0 && !images) ||
+			prototype_dimension_operator_intern(
+				target,
+				operator->source_dimension,
+				operator->target_dimension,
+				images,
+				operator->image_count,
+				&relocation[source_id]
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 int prototype_internal_artifact_append_graph_ordered(
 	struct prototype_artifact_interface* appended_interface,
 	struct prototype_term_db* target_terms,
@@ -907,12 +1013,14 @@ int prototype_internal_artifact_append_graph_ordered(
 	struct prototype_judgement_db* target_judgement,
 	struct prototype_context_db* target_contexts,
 	struct prototype_substitution_db* target_substitutions,
+	struct prototype_dimension_operator_db* target_dimension_operators,
 	const struct prototype_artifact_interface* source_interface,
 	const struct prototype_term_db* source_terms,
 	const struct prototype_type_declaration_db* source_type_declarations,
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
+	const struct prototype_dimension_operator_db* source_dimension_operators,
 	uint32_t occurrence_offset,
 	uint32_t* term_relocation,
 	size_t term_relocation_capacity,
@@ -924,9 +1032,11 @@ int prototype_internal_artifact_append_graph_ordered(
 ) {
 	if (!appended_interface || !target_terms || !target_type_declarations ||
 		!target_judgement || !target_contexts || !target_substitutions ||
+		!target_dimension_operators ||
 		!source_interface ||
 		!source_terms || !source_type_declarations || !source_judgement ||
-		!source_contexts || !source_substitutions || !term_relocation ||
+		!source_contexts || !source_substitutions ||
+		!source_dimension_operators || !term_relocation ||
 		!context_relocation || source_terms->term_count >
 			term_relocation_capacity || source_contexts->context_count >
 			context_relocation_capacity) {
@@ -958,7 +1068,30 @@ int prototype_internal_artifact_append_graph_ordered(
 		  additional_relocation->claim_id_capacity < source_judgement->claim_count) ||
 		 (additional_relocation->substitution_ids &&
 		  additional_relocation->substitution_id_capacity <
-			source_substitutions->substitution_count))) {
+			source_substitutions->substitution_count) ||
+		 (additional_relocation->dimension_operator_ids &&
+		  additional_relocation->dimension_operator_id_capacity <
+			source_dimension_operators->operator_count))) {
+		return -1;
+	}
+	size_t dimension_operator_relocation_count =
+		source_dimension_operators->operator_count == 0 ? 1 :
+		source_dimension_operators->operator_count;
+	uint32_t local_dimension_operator_relocation[
+		dimension_operator_relocation_count
+	];
+	uint32_t* dimension_operator_relocation = additional_relocation &&
+		additional_relocation->dimension_operator_ids ?
+		additional_relocation->dimension_operator_ids :
+		local_dimension_operator_relocation;
+	if (artifact_append_reachable_dimension_operators(
+			target_dimension_operators,
+			source_dimension_operators,
+			source_terms,
+			order,
+			dimension_operator_relocation,
+			dimension_operator_relocation_count
+		) != 0) {
 		return -1;
 	}
 
@@ -1150,11 +1283,6 @@ int prototype_internal_artifact_append_graph_ordered(
 		const struct prototype_type_declaration* source_type =
 			&source_type_declarations->type_declarations[i];
 		if (!artifact_type_present(source_type)) {
-			continue;
-		}
-		if (source_type->origin_kind ==
-			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) {
-			type_relocation[i] = next_type_id++;
 			continue;
 		}
 		for (uint32_t j = 0; j < type_offset; ++j) {
@@ -1402,8 +1530,8 @@ int prototype_internal_artifact_append_graph_ordered(
 			universe_offset,
 			representation_relocation,
 			source_representation_count,
-			NULL,
-			0,
+			dimension_operator_relocation,
+			dimension_operator_relocation_count,
 			order ? order->terms : NULL,
 			order ? order->term_count : 0,
 			term_relocation,
@@ -1703,16 +1831,6 @@ int prototype_internal_artifact_append_graph_ordered(
 				return -1;
 			}
 			type.formation_classifier = term_relocation[type.formation_classifier];
-			if (type.origin_source_carrier_term_id != PROTOTYPE_INVALID_ID) {
-				if (type.origin_source_carrier_term_id >= term_relocation_capacity ||
-					term_relocation[type.origin_source_carrier_term_id] ==
-						PROTOTYPE_INVALID_ID) {
-					return -1;
-				}
-				type.origin_source_carrier_term_id = term_relocation[
-					type.origin_source_carrier_term_id
-				];
-			}
 			type.parameter_context =
 				context_relocation[type.parameter_context];
 			type.index_context = context_relocation[type.index_context];
@@ -2098,12 +2216,14 @@ int prototype_artifact_append_graph(
 	struct prototype_judgement_db* target_judgement,
 	struct prototype_context_db* target_contexts,
 	struct prototype_substitution_db* target_substitutions,
+	struct prototype_dimension_operator_db* target_dimension_operators,
 	const struct prototype_artifact_interface* source_interface,
 	const struct prototype_term_db* source_terms,
 	const struct prototype_type_declaration_db* source_type_declarations,
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
+	const struct prototype_dimension_operator_db* source_dimension_operators,
 	uint32_t occurrence_offset,
 	uint32_t* term_relocation,
 	size_t term_relocation_capacity,
@@ -2119,12 +2239,14 @@ int prototype_artifact_append_graph(
 		target_judgement,
 		target_contexts,
 		target_substitutions,
+		target_dimension_operators,
 		source_interface,
 		source_terms,
 		source_type_declarations,
 		source_judgement,
 		source_contexts,
 		source_substitutions,
+		source_dimension_operators,
 		occurrence_offset,
 		term_relocation,
 		term_relocation_capacity,

@@ -372,21 +372,41 @@ int prototype_judgement_delta_ensure_type_at_universe(
 		}
 		struct prototype_judgement_selected_evidence binder_evidence;
 		struct prototype_judgement_selected_evidence body_evidence;
-		if (prototype_judgement_delta_select_evidence(
+		int binder_evidence_status = lookup_delta_subject_local_evidence_exact(
+			delta,
+			delta->current_context_id,
+			returned_binder,
+			domain,
+			&binder_evidence
+		);
+		if (binder_evidence_status == 1) {
+			binder_evidence_status = prototype_judgement_delta_select_evidence(
 				delta,
 				PROTOTYPE_INVALID_ID,
 				delta->current_context_id,
 				returned_binder,
 				domain,
 				&binder_evidence
-			) != 0 || prototype_judgement_delta_select_evidence(
+			);
+		}
+		int body_evidence_status = lookup_delta_subject_local_evidence_exact(
+			delta,
+			delta->current_context_id,
+			returned_body,
+			returned_classifier,
+			&body_evidence
+		);
+		if (body_evidence_status == 1) {
+			body_evidence_status = prototype_judgement_delta_select_evidence(
 				delta,
 				PROTOTYPE_INVALID_ID,
 				delta->current_context_id,
 				returned_body,
 				returned_classifier,
 				&body_evidence
-			) != 0) {
+			);
+		}
+		if (binder_evidence_status != 0 || body_evidence_status != 0) {
 			prototype_judgement_delta_set_context(delta, outer_context);
 			prototype_judgement_delta_set_occurrence(delta, outer_operation);
 			return -1;
@@ -745,6 +765,229 @@ int prototype_judgement_delta_ensure_type_at_universe(
 	);
 }
 
+static uint32_t structural_type_formation_claim_exact(
+	const struct prototype_judgement_db* judgement,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t universe
+) {
+	if (!judgement) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = judgement->claim_count; i > 0; --i) {
+		uint32_t claim_id = (uint32_t)i - 1;
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_claim_proposition(judgement, claim_id);
+		if (proposition && proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			proposition->context_id == context_id && proposition->subject == subject &&
+			proposition->classifier == universe) {
+			return claim_id;
+		}
+	}
+	return PROTOTYPE_INVALID_ID;
+}
+
+static int materialize_type_formation_from_is_type(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t is_type_claim_id,
+	size_t remaining_depth,
+	uint32_t* p_claim_id
+) {
+	const struct prototype_judgement_proposition* is_type =
+		prototype_judgement_claim_proposition(judgement, is_type_claim_id);
+	if (!is_type || !p_claim_id || remaining_depth == 0 ||
+		is_type->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE) {
+		return -1;
+	}
+	uint32_t existing = structural_type_formation_claim_exact(
+		judgement, is_type->context_id, is_type->subject, is_type->classifier
+	);
+	if (existing != PROTOTYPE_INVALID_ID) {
+		*p_claim_id = existing;
+		return 0;
+	}
+	size_t derivation_count = judgement->derivation_count;
+	for (uint32_t i = 0; i < derivation_count; ++i) {
+		const struct prototype_judgement_derivation* derivation =
+			prototype_judgement_derivation_get(judgement, i);
+		if (!derivation || derivation->conclusion_claim_id != is_type_claim_id ||
+			derivation->premise_count != 1 ||
+			derivation->premises[0].claim_id == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		uint32_t premise_claim_id = derivation->premises[0].claim_id;
+		const struct prototype_judgement_proposition* premise =
+			prototype_judgement_claim_proposition(judgement, premise_claim_id);
+		if (derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE && premise &&
+			premise->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+			premise->context_id == is_type->context_id &&
+			premise->subject == is_type->subject &&
+			premise->classifier == is_type->classifier) {
+			*p_claim_id = premise_claim_id;
+			return 0;
+		}
+		if ((derivation->proof_kind !=
+				PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX &&
+			 derivation->proof_kind != PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN) ||
+			derivation->semantic_action_kind !=
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION ||
+			!premise || premise->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE) {
+			continue;
+		}
+		uint32_t substitution_id = derivation->semantic_action_id;
+		int proof_kind = derivation->proof_kind;
+		uint32_t source_formation_claim_id;
+		if (materialize_type_formation_from_is_type(
+				judgement,
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				premise_claim_id,
+				remaining_depth - 1,
+				&source_formation_claim_id
+			) != 0) {
+			fprintf(
+				stderr,
+				"formation materialize source failed is=%u premise=%u rule=%d subst=%u\n",
+				is_type_claim_id,
+				premise_claim_id,
+				proof_kind,
+				substitution_id
+			);
+			continue;
+		}
+		uint32_t reindexed_claim_id;
+		if (prototype_judgement_add_reindexed_claim(
+				judgement,
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				source_formation_claim_id,
+				substitution_id,
+				&reindexed_claim_id
+			) != 0) {
+			fprintf(
+				stderr,
+				"formation materialize reindex failed is=%u source-has=%u subst=%u\n",
+				is_type_claim_id,
+				source_formation_claim_id,
+				substitution_id
+			);
+			return -1;
+		}
+		const struct prototype_judgement_proposition* reindexed =
+			prototype_judgement_claim_proposition(judgement, reindexed_claim_id);
+		if (!reindexed || reindexed->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+			reindexed->context_id != is_type->context_id ||
+			reindexed->subject != is_type->subject ||
+			reindexed->classifier != is_type->classifier) {
+			fprintf(
+				stderr,
+				"formation materialize mismatch is=%u result=%u context=%u/%u "
+				"subject=%u/%u classifier=%u/%u\n",
+				is_type_claim_id,
+				reindexed_claim_id,
+				reindexed ? reindexed->context_id : PROTOTYPE_INVALID_ID,
+				is_type->context_id,
+				reindexed ? reindexed->subject : PROTOTYPE_INVALID_ID,
+				is_type->subject,
+				reindexed ? reindexed->classifier : PROTOTYPE_INVALID_ID,
+				is_type->classifier
+			);
+			return -1;
+		}
+		*p_claim_id = reindexed_claim_id;
+		return 0;
+	}
+	return 1;
+}
+
+static int reuse_ancestor_type_formation_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t universe,
+	uint32_t* p_claim_id
+) {
+	uint32_t existing = structural_type_formation_claim_exact(
+		judgement, context_id, subject, universe
+	);
+	if (existing != PROTOTYPE_INVALID_ID) {
+		*p_claim_id = existing;
+		return 0;
+	}
+	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_claim_proposition(judgement, i);
+		if (!proposition || proposition->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+			proposition->context_id != context_id || proposition->subject != subject ||
+			proposition->classifier != universe) {
+			continue;
+		}
+		int materialize_status = materialize_type_formation_from_is_type(
+			judgement,
+			terms,
+			type_declarations,
+			contexts,
+			substitutions,
+			i,
+			judgement->claim_count + 1,
+			p_claim_id
+		);
+		if (materialize_status <= 0) {
+			return materialize_status;
+		}
+	}
+	const struct prototype_context* context = prototype_context_get(contexts, context_id);
+	uint32_t ancestor = context ? context->parent : PROTOTYPE_INVALID_ID;
+	while (ancestor != PROTOTYPE_INVALID_ID) {
+		uint32_t source_claim_id = structural_type_formation_claim_exact(
+			judgement, ancestor, subject, universe
+		);
+		if (source_claim_id != PROTOTYPE_INVALID_ID) {
+			uint32_t projection;
+			uint32_t reindexed_claim_id;
+			if (prototype_substitution_projection_path(
+					substitutions, contexts, context_id, ancestor, &projection
+				) != 0 || prototype_judgement_add_reindexed_claim(
+					judgement,
+					terms,
+					type_declarations,
+					contexts,
+					substitutions,
+					source_claim_id,
+					projection,
+					&reindexed_claim_id
+				) != 0) {
+				return -1;
+			}
+			const struct prototype_judgement_proposition* reindexed =
+				prototype_judgement_claim_proposition(judgement, reindexed_claim_id);
+			if (!reindexed || reindexed->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+				reindexed->context_id != context_id || reindexed->subject != subject ||
+				reindexed->classifier != universe) {
+				return -1;
+			}
+			*p_claim_id = reindexed_claim_id;
+			return 0;
+		}
+		context = prototype_context_get(contexts, ancestor);
+		ancestor = context ? context->parent : PROTOTYPE_INVALID_ID;
+	}
+	return 1;
+}
+
 int prototype_judgement_add_structural_type_formation_claim(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
@@ -760,6 +1003,20 @@ int prototype_judgement_add_structural_type_formation_claim(
 	if (!judgement || !terms || !type_declarations || !contexts || !substitutions ||
 		!p_claim_id) {
 		return -1;
+	}
+	int reuse_status = reuse_ancestor_type_formation_claim(
+		judgement,
+		terms,
+		type_declarations,
+		contexts,
+		substitutions,
+		context_id,
+		subject,
+		universe,
+		p_claim_id
+	);
+	if (reuse_status <= 0) {
+		return reuse_status;
 	}
 	struct prototype_judgement_proposition* propositions = calloc(
 		CAPACITY, sizeof(*propositions)
@@ -810,10 +1067,13 @@ int prototype_judgement_add_structural_type_formation_claim(
 	int status = prototype_judgement_delta_ensure_type_at_universe(
 		&delta, terms, type_declarations, subject, universe
 	);
+	int formation_stage = 1;
 	if (status == 0) {
+		formation_stage = 2;
 		status = prototype_judgement_delta_publish_complete(&delta);
 	}
 	if (status == 0) {
+		formation_stage = 3;
 		status = 1;
 		for (size_t i = judgement->claim_count; i > 0; --i) {
 			const struct prototype_judgement_proposition* proposition =
@@ -825,6 +1085,42 @@ int prototype_judgement_add_structural_type_formation_claim(
 				status = 0;
 				break;
 			}
+		}
+	}
+	if (status != 0) {
+		fprintf(
+			stderr,
+			"structural formation failed subject=%u tag=%d context=%u universe=%u "
+			"stage=%d status=%d delta-propositions=%zu delta-derivations=%zu\n",
+			subject,
+			subject < terms->term_count ? terms->terms[subject].tag : -1,
+			context_id,
+			universe,
+			formation_stage,
+			status,
+			delta.proposition_count,
+			delta.derivation_candidate_count
+		);
+		for (size_t i = 0; i < delta.proposition_count; ++i) {
+			fprintf(
+				stderr,
+				"  delta proposition=%zu kind=%d context=%u subject=%u classifier=%u\n",
+				i,
+				delta.propositions[i].kind,
+				delta.propositions[i].context_id,
+				delta.propositions[i].subject,
+				delta.propositions[i].classifier
+			);
+		}
+		for (size_t i = 0; i < delta.derivation_candidate_count; ++i) {
+			fprintf(
+				stderr,
+				"  delta derivation=%zu rule=%d conclusion=%u premises=%u\n",
+				i,
+				delta.derivation_candidates[i].proof_kind,
+				delta.derivation_candidates[i].conclusion_proposition_id,
+				delta.derivation_candidates[i].premise_count
+			);
 		}
 	}
 	free(propositions);

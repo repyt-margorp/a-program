@@ -1927,6 +1927,7 @@ static int compile_pending_with_workspace(
 		&metadata->contexts,
 		&metadata->substitutions
 	);
+	ctx.judgement_delta.dimension_operators = &metadata->dimension_operators;
 	ctx.context_ids[0] = prototype_context_empty(&metadata->contexts);
 	if (metadata) {
 		prototype_judgement_delta_set_solver_budget(

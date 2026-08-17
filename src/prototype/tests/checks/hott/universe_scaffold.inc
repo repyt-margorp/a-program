@@ -120,6 +120,7 @@
 	prototype_judgement_delta_set_context_store(
 		&indexed_delta, &context_db, &substitution_db
 	);
+	indexed_delta.dimension_operators = &bridge_dimension_operator_db;
 	prototype_judgement_delta_set_occurrence_store(
 		&indexed_delta,
 		indexed_match_operation_graph.occurrences,
@@ -291,7 +292,7 @@
 			&bridge_dimension_operator_db,
 			&indexed_match_operation_graph,
 			&indexed_match_judgement
-		) != 0) {
+	) != 0) {
 		return 144;
 	}
 	(void)indexed_match_bool_type_in_context_claim;
@@ -932,7 +933,7 @@
 			PROTOTYPE_HOTT_ACTION_RESULT_READY ||
 		prototype_hott_action_db_validate(
 			&action_db, &kernel_view, &bridge_db
-		) != 0) {
+			) != 0) {
 		return 56;
 	}
 
@@ -1017,20 +1018,19 @@
 		) != 0) {
 		return 60;
 	}
-	uint32_t neutral_bool_identity_arguments[2] = {
-		bool_variable,
-		bool_variable
-	};
 	uint32_t neutral_bool_identity_family;
 	uint32_t neutral_bool_identity_family_claim;
 	uint32_t neutral_bool_identity_witness;
 	uint32_t neutral_bool_identity_witness_claim;
-	if (prototype_term_type_instance_make(
+	if (prototype_term_app(
 			&term_db,
-			&type_db,
-			generated_bool_identity_type,
-			neutral_bool_identity_arguments,
-			2,
+			bool_identity_family,
+			bool_variable,
+			&neutral_bool_identity_family
+		) != 0 || prototype_term_app(
+			&term_db,
+			neutral_bool_identity_family,
+			bool_variable,
 			&neutral_bool_identity_family
 		) != 0 || prototype_hott_construct_degeneracy(
 			&action_db,
@@ -1042,7 +1042,7 @@
 			&neutral_bool_identity_witness,
 			&neutral_bool_identity_witness_claim
 		) != 0 || term_db.terms[neutral_bool_identity_witness].tag !=
-			PROTOTYPE_TERM_MATCH || prototype_judgement_claim_proposition(
+			PROTOTYPE_TERM_DIMENSION_ACTION || prototype_judgement_claim_proposition(
 			&judgement, neutral_bool_identity_family_claim
 		)->subject != neutral_bool_identity_family ||
 		prototype_judgement_claim_proposition(

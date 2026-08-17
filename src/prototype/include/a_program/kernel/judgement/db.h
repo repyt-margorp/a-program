@@ -115,6 +115,7 @@ struct prototype_judgement_delta {
 	int* solver_exhausted;
 	struct prototype_context_db* contexts;
 	struct prototype_substitution_db* substitutions;
+	const struct prototype_dimension_operator_db* dimension_operators;
 	const struct prototype_typed_occurrence* occurrences;
 	size_t occurrence_count;
 	const struct prototype_typed_occurrence_edge* occurrence_edges;

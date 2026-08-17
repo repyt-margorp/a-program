@@ -1,6 +1,8 @@
 #include "a_program/kernel/type_schema_view.h"
 
 #include "a_program/core/term.h"
+#include "a_program/dimension/action.h"
+#include "a_program/dimension/face.h"
 #include "a_program/dimension/operator.h"
 #include "a_program/kernel/context.h"
 #include "a_program/kernel/type_declaration.h"
@@ -282,16 +284,8 @@ int prototype_constructor_schema_view_action_classifier(
 	uint32_t* p_classifier
 ) {
 	struct prototype_constructor_schema_view constructor_view;
-	uint32_t acted_owner_source;
-	uint32_t operator_id;
 	if (!type_declarations || !contexts || !terms || !dimension_operators ||
-		!type_view || !p_classifier || type_view->target_dimension != 1 ||
-		prototype_term_dimension_action_info(
-			terms,
-			type_view->acted_type,
-			&acted_owner_source,
-			&operator_id
-		) != 0 || acted_owner_source != type_view->source_type_view ||
+		!type_view || !p_classifier || type_view->target_dimension == 0 ||
 		prototype_constructor_schema_view_query(
 			type_declarations,
 			contexts,
@@ -301,12 +295,6 @@ int prototype_constructor_schema_view_action_classifier(
 			constructor_ordinal,
 			&constructor_view
 		) != 0) {
-		return -1;
-	}
-	const struct prototype_dimension_operator* operator =
-		prototype_dimension_operator_get(dimension_operators, operator_id);
-	if (!operator || operator->source_dimension != 0 ||
-		operator->target_dimension != 1) {
 		return -1;
 	}
 
@@ -327,132 +315,196 @@ int prototype_constructor_schema_view_action_classifier(
 		field_count++;
 		cursor = body;
 	}
-	if (field_count > SIZE_MAX / (3 * sizeof(uint32_t)) ||
+	size_t face_count;
+	if (prototype_dimension_face_ordinal_count(
+			type_view->target_dimension, &face_count
+		) != 0 || face_count == 0 || field_count > SIZE_MAX / face_count) {
+		return -1;
+	}
+	size_t acted_field_count = field_count * face_count;
+	if (acted_field_count > SIZE_MAX / sizeof(uint32_t) ||
+		field_count > SIZE_MAX / sizeof(uint32_t) ||
 		field_count > SIZE_MAX / sizeof(struct prototype_binding_replacement)) {
 		return -1;
 	}
-	uint32_t* binders = field_count == 0 ? NULL : calloc(
-		field_count * 3, sizeof(*binders)
+	uint32_t* source_binders = field_count == 0 ? NULL : calloc(
+		field_count, sizeof(*source_binders)
 	);
-	uint32_t* domains = field_count == 0 ? NULL : calloc(
-		field_count * 3, sizeof(*domains)
+	uint32_t* source_domains = field_count == 0 ? NULL : calloc(
+		field_count, sizeof(*source_domains)
 	);
-	uint32_t* left_values = field_count == 0 ? NULL : calloc(
-		field_count, sizeof(*left_values)
+	uint32_t* binders = acted_field_count == 0 ? NULL : calloc(
+		acted_field_count, sizeof(*binders)
 	);
-	uint32_t* right_values = field_count == 0 ? NULL : calloc(
-		field_count, sizeof(*right_values)
+	uint32_t* domains = acted_field_count == 0 ? NULL : calloc(
+		acted_field_count, sizeof(*domains)
 	);
-	struct prototype_binding_replacement* left_replacements =
+	uint32_t* values = acted_field_count == 0 ? NULL : calloc(
+		acted_field_count, sizeof(*values)
+	);
+	struct prototype_binding_replacement* replacements =
 		field_count == 0 ? NULL : calloc(
-			field_count, sizeof(*left_replacements)
+			field_count, sizeof(*replacements)
 		);
-	struct prototype_binding_replacement* right_replacements =
-		field_count == 0 ? NULL : calloc(
-			field_count, sizeof(*right_replacements)
-		);
-	if (field_count != 0 && (!binders || !domains || !left_values ||
-		!right_values || !left_replacements || !right_replacements)) {
+	if (field_count != 0 && (!source_binders || !source_domains || !binders ||
+		!domains || !values || !replacements)) {
+		free(source_binders);
+		free(source_domains);
 		free(binders);
 		free(domains);
-		free(left_values);
-		free(right_values);
-		free(left_replacements);
-		free(right_replacements);
+		free(values);
+		free(replacements);
 		return -1;
 	}
 
 	int status = 0;
 	cursor = constructor_view.source_classifier;
-	for (size_t field = 0; field < field_count && status == 0; ++field) {
-		uint32_t source_domain = terms->terms[cursor].as.pi.domain;
-		uint32_t source_binder;
+	for (size_t field = 0; field < field_count; ++field) {
 		uint32_t next;
-		uint32_t acted_domain;
+		source_domains[field] = terms->terms[cursor].as.pi.domain;
 		if (prototype_term_pure_family_parts(
 				terms,
 				terms->terms[cursor].as.pi.codomain_family,
-				&source_binder,
+				&source_binders[field],
 				&next
-			) != 0 || prototype_term_graph_reindex_bindings(
-				terms,
-				type_declarations,
-				source_domain,
-				left_replacements,
-				field,
-				&domains[field * 3]
-			) != 0 || prototype_term_graph_reindex_bindings(
-				terms,
-				type_declarations,
-				source_domain,
-				right_replacements,
-				field,
-				&domains[field * 3 + 1]
-			) != 0 || prototype_term_dimension_action(
-				terms,
-				dimension_operators,
-				source_domain,
-				operator_id,
-				&acted_domain
 			) != 0) {
 			status = -1;
 			break;
 		}
-		for (uint32_t face = 0; face < 3 && status == 0; ++face) {
-			binders[field * 3 + face] = prototype_term_new_binding(terms);
-			if (binders[field * 3 + face] == PROTOTYPE_INVALID_ID) {
-				status = -1;
-			}
-		}
-		if (status != 0 || prototype_term_var(
-				terms, binders[field * 3], &left_values[field]
-			) != 0 || prototype_term_var(
-				terms, binders[field * 3 + 1], &right_values[field]
-			) != 0 || prototype_term_app(
-				terms,
-				acted_domain,
-				left_values[field],
-				&domains[field * 3 + 2]
-			) != 0 || prototype_term_app(
-				terms,
-				domains[field * 3 + 2],
-				right_values[field],
-				&domains[field * 3 + 2]
-			) != 0) {
-			status = -1;
-			break;
-		}
-		left_replacements[field] = (struct prototype_binding_replacement) {
-			.binding_id = source_binder,
-			.replacement = left_values[field]
-		};
-		right_replacements[field] = (struct prototype_binding_replacement) {
-			.binding_id = source_binder,
-			.replacement = right_values[field]
-		};
 		cursor = next;
 	}
-
-	uint32_t left_result = constructor_view.source_constructor_term;
-	uint32_t right_result = constructor_view.source_constructor_term;
-	uint32_t classifier = type_view->acted_type;
 	for (size_t field = 0; field < field_count && status == 0; ++field) {
-		if (prototype_term_app(
-				terms, left_result, left_values[field], &left_result
-			) != 0 || prototype_term_app(
-				terms, right_result, right_values[field], &right_result
+		for (size_t ordinal = 0; ordinal < face_count && status == 0; ++ordinal) {
+			uint8_t* digits = malloc(type_view->target_dimension);
+			struct prototype_dimension_face face;
+			uint32_t intrinsic_dimension;
+			uint32_t domain;
+			if (!digits || prototype_dimension_face_from_ordinal(
+					type_view->target_dimension,
+					ordinal,
+					digits,
+					type_view->target_dimension,
+					&face
+				) != 0 || (intrinsic_dimension =
+					prototype_dimension_face_intrinsic_dimension(&face)) == UINT32_MAX) {
+				free(digits);
+				status = -1;
+				break;
+			}
+			if (intrinsic_dimension == 0) {
+				for (size_t prior = 0; prior < field; ++prior) {
+					replacements[prior] = (struct prototype_binding_replacement) {
+						.binding_id = source_binders[prior],
+						.replacement = values[prior * face_count + ordinal]
+					};
+				}
+				status = prototype_term_graph_reindex_bindings(
+					terms,
+					type_declarations,
+					source_domains[field],
+					replacements,
+					field,
+					&domain
+				);
+			} else {
+				status = prototype_dimension_action_from_zero(
+					terms,
+					dimension_operators,
+					source_domains[field],
+					intrinsic_dimension,
+					&domain
+				);
+				size_t local_boundary_count;
+				if (status == 0 && prototype_dimension_boundary_count(
+						intrinsic_dimension, &local_boundary_count
+					) != 0) {
+					status = -1;
+				}
+				for (size_t local = 0;
+					local < local_boundary_count && status == 0;
+					++local) {
+					size_t global_ordinal;
+					if (prototype_dimension_face_boundary_ordinal(
+							&face, local, &global_ordinal
+						) != 0 || global_ordinal >= ordinal || prototype_term_app(
+							terms,
+							domain,
+							values[field * face_count + global_ordinal],
+							&domain
+						) != 0) {
+						status = -1;
+					}
+				}
+			}
+			free(digits);
+			size_t index = field * face_count + ordinal;
+			if (status != 0 ||
+				(binders[index] = prototype_term_new_binding(terms)) ==
+					PROTOTYPE_INVALID_ID || prototype_term_var(
+					terms, binders[index], &values[index]
+				) != 0) {
+				status = -1;
+				break;
+			}
+			domains[index] = domain;
+		}
+	}
+
+	uint32_t classifier = type_view->acted_type;
+	for (size_t ordinal = 0; ordinal + 1 < face_count && status == 0; ++ordinal) {
+		uint8_t* digits = malloc(type_view->target_dimension);
+		struct prototype_dimension_face face;
+		uint32_t intrinsic_dimension;
+		uint32_t result;
+		if (!digits || prototype_dimension_face_from_ordinal(
+				type_view->target_dimension,
+				ordinal,
+				digits,
+				type_view->target_dimension,
+				&face
+			) != 0 || prototype_dimension_face_is_center(&face) ||
+			(intrinsic_dimension = prototype_dimension_face_intrinsic_dimension(
+				&face
+			)) == UINT32_MAX || prototype_dimension_action_from_zero(
+				terms,
+				dimension_operators,
+				constructor_view.source_constructor_term,
+				intrinsic_dimension,
+				&result
+			) != 0) {
+			free(digits);
+			status = -1;
+			break;
+		}
+		size_t local_face_count;
+		if (prototype_dimension_face_ordinal_count(
+				intrinsic_dimension, &local_face_count
+			) != 0) {
+			status = -1;
+		}
+		for (size_t field = 0; field < field_count && status == 0; ++field) {
+			for (size_t local = 0; local < local_face_count && status == 0; ++local) {
+				size_t global_ordinal;
+				if (prototype_dimension_face_subface_ordinal(
+						&face, local, &global_ordinal
+					) != 0 || global_ordinal >= face_count || prototype_term_app(
+						terms,
+						result,
+						values[field * face_count + global_ordinal],
+						&result
+					) != 0) {
+					status = -1;
+				}
+			}
+		}
+		free(digits);
+		if (status == 0 && prototype_term_app(
+				terms, classifier, result, &classifier
 			) != 0) {
 			status = -1;
 		}
 	}
-	if (status == 0 && (prototype_term_app(
-			terms, classifier, left_result, &classifier
-		) != 0 || prototype_term_app(
-			terms, classifier, right_result, &classifier
-		) != 0)) {
-		status = -1;
-	}
-	for (size_t i = field_count * 3; i > 0 && status == 0; --i) {
+	for (size_t i = acted_field_count; i > 0 && status == 0; --i) {
 		uint32_t family;
 		if (prototype_term_pure_family(
 				terms, binders[i - 1], classifier, &family
@@ -462,12 +514,12 @@ int prototype_constructor_schema_view_action_classifier(
 			status = -1;
 		}
 	}
+	free(source_binders);
+	free(source_domains);
 	free(binders);
 	free(domains);
-	free(left_values);
-	free(right_values);
-	free(left_replacements);
-	free(right_replacements);
+	free(values);
+	free(replacements);
 	if (status != 0) {
 		return -1;
 	}

@@ -21,7 +21,7 @@ for fixture in compare rebuild impossible; do
 		>"$tmp_dir/$fixture-write.out"
 	./read_file.out --read-graph "$tmp_dir/$fixture.apo" \
 		>"$tmp_dir/$fixture-read.out"
-	grep -q '^A_PROGRAM_ARTIFACT 77 ' "$tmp_dir/$fixture.apo"
+	grep -q '^A_PROGRAM_ARTIFACT 78 ' "$tmp_dir/$fixture.apo"
 done
 
 # This source exercises speculative definition lowering followed by occurrence
@@ -35,7 +35,7 @@ done
 	>"$tmp_dir/owner-rebuild-read.out"
 grep -q '^metadata label max ' "$tmp_dir/owner-rebuild.out"
 grep -q '^metadata label height ' "$tmp_dir/owner-rebuild.out"
-grep -q '^A_PROGRAM_ARTIFACT 77 ' "$tmp_dir/owner-rebuild.apo"
+grep -q '^A_PROGRAM_ARTIFACT 78 ' "$tmp_dir/owner-rebuild.apo"
 
 grep -q '\[ih-elim proof#' "$tmp_dir/compare.out"
 grep -q '\[solved-match-motive proof#' "$tmp_dir/compare.out"

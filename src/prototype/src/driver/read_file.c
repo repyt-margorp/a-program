@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v77.h"
+#include "a_program/artifact/wire_v78.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -57,6 +57,8 @@
 #define OPERATION_FOLD_CLAUSE_CAPACITY 4096
 #define EFFECT_CONSTRAINT_CAPACITY 8192
 #define VERIFICATION_OBLIGATION_CAPACITY 4096
+#define DIMENSION_OPERATOR_CAPACITY 256
+#define DIMENSION_IMAGE_CAPACITY 4096
 #define ARTIFACT_TERM_EXPORT_CAPACITY 512
 #define ARTIFACT_TYPE_EXPORT_CAPACITY 256
 #define ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY 512
@@ -160,6 +162,18 @@ static uint32_t provider_accepted_substitution_claims[
 static uint32_t artifact_accepted_substitution_claims[
 	PROTOTYPE_SUBSTITUTION_CAPACITY
 ];
+static struct prototype_dimension_operator
+	dimension_operators[DIMENSION_OPERATOR_CAPACITY];
+static struct prototype_dimension_axis_image
+	dimension_images[DIMENSION_IMAGE_CAPACITY];
+static struct prototype_dimension_operator
+	provider_dimension_operators[DIMENSION_OPERATOR_CAPACITY];
+static struct prototype_dimension_axis_image
+	provider_dimension_images[DIMENSION_IMAGE_CAPACITY];
+static struct prototype_dimension_operator
+	artifact_dimension_operators[DIMENSION_OPERATOR_CAPACITY];
+static struct prototype_dimension_axis_image
+	artifact_dimension_images[DIMENSION_IMAGE_CAPACITY];
 static struct prototype_compile_label provider_compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export
 	provider_compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
@@ -709,6 +723,7 @@ static int read_artifact_interface_and_graph(
 			artifact_file,
 			symbols,
 			intrinsic_environment,
+			&metadata->dimension_operators,
 			term_db,
 			type_declarations,
 			judgement_db
@@ -746,6 +761,7 @@ static int read_artifact_interface_and_graph(
 			term_db,
 			type_declarations,
 			&metadata->contexts,
+			&metadata->dimension_operators,
 			judgement_db
 		) != 0 || prototype_universe_validate_provenance(
 			universe_db, judgement_db
@@ -1214,6 +1230,13 @@ static int check_export_normalization_equal(
 		artifact_accepted_substitution_claims,
 		PROTOTYPE_SUBSTITUTION_CAPACITY
 	);
+	prototype_compile_metadata_set_dimension_storage(
+		&metadata,
+		artifact_dimension_operators,
+		DIMENSION_OPERATOR_CAPACITY,
+		artifact_dimension_images,
+		DIMENSION_IMAGE_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
@@ -1445,6 +1468,13 @@ static int check_exports_normalization_equal(
 		&metadata,
 		artifact_accepted_substitution_claims,
 		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
+	prototype_compile_metadata_set_dimension_storage(
+		&metadata,
+		artifact_dimension_operators,
+		DIMENSION_OPERATOR_CAPACITY,
+		artifact_dimension_images,
+		DIMENSION_IMAGE_CAPACITY
 	);
 	if (read_artifact_interface_and_graph(
 			path,
@@ -1761,6 +1791,13 @@ static int check_exports_shape_equal(
 		artifact_accepted_substitution_claims,
 		PROTOTYPE_SUBSTITUTION_CAPACITY
 	);
+	prototype_compile_metadata_set_dimension_storage(
+		&metadata,
+		artifact_dimension_operators,
+		DIMENSION_OPERATOR_CAPACITY,
+		artifact_dimension_images,
+		DIMENSION_IMAGE_CAPACITY
+	);
 	if (read_artifact_interface_and_graph(
 			path,
 			&symbols,
@@ -1943,6 +1980,13 @@ static int check_export_classifier_compatible(
 		&metadata,
 		artifact_accepted_substitution_claims,
 		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
+	prototype_compile_metadata_set_dimension_storage(
+		&metadata,
+		artifact_dimension_operators,
+		DIMENSION_OPERATOR_CAPACITY,
+		artifact_dimension_images,
+		DIMENSION_IMAGE_CAPACITY
 	);
 	if (read_artifact_interface_and_graph(
 			path,
@@ -2257,6 +2301,13 @@ static int read_import_artifact_into_slot(
 		provider_accepted_substitution_claims,
 		PROTOTYPE_SUBSTITUTION_CAPACITY
 	);
+	prototype_compile_metadata_set_dimension_storage(
+		&provider_metadata,
+		provider_dimension_operators,
+		DIMENSION_OPERATOR_CAPACITY,
+		provider_dimension_images,
+		DIMENSION_IMAGE_CAPACITY
+	);
 	prototype_compile_metadata_set_diagnostic_storage(
 		&provider_metadata,
 		provider_compile_diagnostics,
@@ -2306,12 +2357,14 @@ static int read_import_artifact_into_slot(
 			program->judgement,
 			&program->metadata->contexts,
 			&program->metadata->substitutions,
+			&program->metadata->dimension_operators,
 			&provider_interface,
 			&provider_term_db,
 			&provider_type_declarations,
 			&provider_judgement_db,
 			&provider_metadata.contexts,
 			&provider_metadata.substitutions,
+			&provider_metadata.dimension_operators,
 			PROTOTYPE_INVALID_ID,
 			provider_term_relocation,
 			provider_term_relocation_count,
@@ -3533,6 +3586,13 @@ int main(int argc, char** argv) {
 			accepted_substitution_claims,
 			PROTOTYPE_SUBSTITUTION_CAPACITY
 		);
+		prototype_compile_metadata_set_dimension_storage(
+			&metadata,
+			dimension_operators,
+			DIMENSION_OPERATOR_CAPACITY,
+			dimension_images,
+			DIMENSION_IMAGE_CAPACITY
+		);
 
 		if (read_artifact_interface_and_graph(
 				link_target_path,
@@ -3714,6 +3774,13 @@ int main(int argc, char** argv) {
 				provider_accepted_substitution_claims,
 				PROTOTYPE_SUBSTITUTION_CAPACITY
 			);
+			prototype_compile_metadata_set_dimension_storage(
+				&provider_metadata,
+				provider_dimension_operators,
+				DIMENSION_OPERATOR_CAPACITY,
+				provider_dimension_images,
+				DIMENSION_IMAGE_CAPACITY
+			);
 			prototype_compile_metadata_set_diagnostic_storage(
 				&provider_metadata,
 				provider_compile_diagnostics,
@@ -3789,12 +3856,14 @@ int main(int argc, char** argv) {
 					&judgement_db,
 					&metadata.contexts,
 					&metadata.substitutions,
+					&metadata.dimension_operators,
 					&provider_interface,
 					&provider_term_db,
 					&provider_type_declarations,
 					&provider_judgement_db,
 					&provider_metadata.contexts,
 					&provider_metadata.substitutions,
+					&provider_metadata.dimension_operators,
 					provider_occurrence_offset,
 					provider_term_relocation,
 					provider_term_relocation_count,
@@ -4142,6 +4211,13 @@ int main(int argc, char** argv) {
 				artifact_accepted_substitution_claims,
 				PROTOTYPE_SUBSTITUTION_CAPACITY
 			);
+			prototype_compile_metadata_set_dimension_storage(
+				&artifact_metadata,
+				artifact_dimension_operators,
+				DIMENSION_OPERATOR_CAPACITY,
+				artifact_dimension_images,
+				DIMENSION_IMAGE_CAPACITY
+			);
 			prototype_type_declaration_db_init(
 				&type_declarations,
 				type_declaration_storage,
@@ -4206,6 +4282,7 @@ int main(int argc, char** argv) {
 					artifact_file,
 					&symbols,
 					prototype_default_intrinsic_environment(),
+					&artifact_metadata.dimension_operators,
 					&term_db,
 					&type_declarations,
 					&judgement_db
@@ -4257,6 +4334,7 @@ int main(int argc, char** argv) {
 					&term_db,
 					&type_declarations,
 					&artifact_metadata.contexts,
+					&artifact_metadata.dimension_operators,
 					&judgement_db
 				) != 0) ||
 				((artifact_graph_stage = "universe-provenance"),
@@ -4580,6 +4658,13 @@ int main(int argc, char** argv) {
 		&metadata,
 		accepted_substitution_claims,
 		PROTOTYPE_SUBSTITUTION_CAPACITY
+	);
+	prototype_compile_metadata_set_dimension_storage(
+		&metadata,
+		dimension_operators,
+		DIMENSION_OPERATOR_CAPACITY,
+		dimension_images,
+		DIMENSION_IMAGE_CAPACITY
 	);
 	prototype_compile_metadata_set_diagnostic_storage(
 		&metadata,

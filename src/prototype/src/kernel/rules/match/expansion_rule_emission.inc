@@ -376,20 +376,36 @@ int prototype_judgement_delta_expand_match(
 				uint32_t indexed_type_id;
 				uint32_t indexed_arguments[16];
 				uint32_t indexed_argument_count;
-				if (prototype_term_type_instance_info(
-						terms,
-						scrutinee_operation->classifier,
-						&indexed_type_id,
-						indexed_arguments,
-						&indexed_argument_count
-					) == 0 && indexed_type_id < type_declarations->type_count) {
-					const struct prototype_type_declaration* indexed_type =
-						&type_declarations->type_declarations[indexed_type_id];
-					if (indexed_type->origin_kind ==
-							PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
-						indexed_type->parameter_count == 0 &&
-						indexed_type->index_count == 2 &&
-						indexed_argument_count == 2) {
+				int identity_relation_classifier = 0;
+				(void)indexed_type_id;
+				(void)indexed_arguments;
+				(void)indexed_argument_count;
+				{
+						uint32_t action;
+						uint32_t action_source;
+						uint32_t operator_id;
+						uint32_t target_dimension;
+						uint32_t action_arguments[2];
+						size_t action_argument_count;
+						identity_relation_classifier = delta->dimension_operators &&
+							prototype_dimension_action_family_instance_info(
+								terms,
+								delta->dimension_operators,
+								scrutinee_operation->classifier,
+								&action,
+								&action_source,
+								&operator_id,
+								&target_dimension,
+								action_arguments,
+								2,
+								&action_argument_count
+							) == 0 && target_dimension == 1 &&
+							action_argument_count == 2;
+						(void)action;
+						(void)action_source;
+						(void)operator_id;
+					}
+				if (identity_relation_classifier) {
 						const struct prototype_typed_occurrence_match_case* operation_case =
 							&delta->occurrence_match_cases[operation->first_case + i];
 						uint32_t body_occurrence_id;
@@ -423,6 +439,7 @@ int prototype_judgement_delta_expand_match(
 								delta->substitutions,
 								terms,
 								type_declarations,
+								delta->dimension_operators,
 								scrutinee_operation->context_id,
 								scrutinee_operation->core_term,
 								scrutinee_operation->classifier,
@@ -516,7 +533,6 @@ int prototype_judgement_delta_expand_match(
 							refinement_substitution;
 						refined = 1;
 						(void)constructor_term;
-					}
 				}
 			}
 		}

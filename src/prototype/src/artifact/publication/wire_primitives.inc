@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v77.h"
+#include "a_program/artifact/wire_v78.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/typed_occurrence_graph.h"
@@ -135,12 +135,14 @@ static int write_artifact_term(
 	FILE* stream,
 	const struct symbol_table* symbols,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	uint32_t term_id,
 	const struct prototype_term* term
 ) {
-	if (!stream || !symbols || !intrinsic_environment || !type_declarations ||
+	if (!stream || !symbols || !intrinsic_environment || !dimension_operators ||
+		!type_declarations ||
 		!terms || !term) {
 		return -1;
 	}
@@ -342,6 +344,33 @@ static int write_artifact_term(
 					term->as.operation_request.argument,
 					term->as.operation_request.continuation);
 				break;
+			case PROTOTYPE_TERM_DIMENSION_ACTION: {
+				const struct prototype_dimension_operator* operator =
+					prototype_dimension_operator_get(
+						dimension_operators,
+						term->as.dimension_action.operator_id
+					);
+				const struct prototype_dimension_axis_image* images =
+					prototype_dimension_operator_images(
+						dimension_operators,
+						term->as.dimension_action.operator_id
+					);
+				if (!operator || (operator->image_count != 0 && !images)) {
+					return -1;
+				}
+				fprintf(
+					stream,
+					" %u %u %u %zu",
+					term->as.dimension_action.source,
+					operator->source_dimension,
+					operator->target_dimension,
+					operator->image_count
+				);
+				for (size_t i = 0; i < operator->image_count; ++i) {
+					fprintf(stream, " %d %u", images[i].kind, images[i].target_axis);
+				}
+				break;
+			}
 			default:
 				return -1;
 	}

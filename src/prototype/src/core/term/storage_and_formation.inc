@@ -1425,25 +1425,6 @@ static int prototype_term_type_view_rebuild_from_source(
 				&arg_count
 			) == 0 &&
 			source_type_id == view_type_id) {
-			const struct prototype_type_declaration* declaration =
-				&type_declarations->type_declarations[view_type_id];
-			if (declaration->origin_source_carrier_term_id < db->term_count &&
-				prototype_type_declaration_generated_identity_rule_for_source(
-					db, declaration->origin_source_carrier_term_id
-				) == PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE) {
-				for (uint32_t i = 0; i < arg_count; ++i) {
-					if (prototype_term_normalize_complete_with_profile(
-							db,
-							type_declarations,
-							NULL,
-							PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-							args[i],
-							&args[i]
-						) != 0) {
-						return -1;
-					}
-				}
-			}
 			return prototype_term_type_instance_make(
 				db,
 				type_declarations,

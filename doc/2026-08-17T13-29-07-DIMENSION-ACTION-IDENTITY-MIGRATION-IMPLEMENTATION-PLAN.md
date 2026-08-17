@@ -2,7 +2,7 @@
 
 Date: 2026-08-17
 
-Status: active; DIA0 complete, DIA1 implemented and under gate verification
+Status: implementation complete; final commit and push are pending
 
 Repository baseline:
 
@@ -20,7 +20,7 @@ Related documents:
 - `2026-08-09T13-11-17-V2-A1-OBJECT-HOTT-ARTIFACT-IMPLEMENTATION-PLAN.md`;
 - `2026-08-16T14-43-28-SEMANTIC-STORE-AUTHORITY-AND-PHYSICAL-CONSOLIDATION-PLAN.md`;
 - `2026-08-16T20-42-43-POST-DA-SEMANTIC-AUTHORITY-RESIDUAL-CONSOLIDATION-PLAN.md`; and
-- `src/prototype/spec/artifact_v77.schema`.
+- `src/prototype/spec/artifact_v78.schema`.
 
 ## 1. Objective
 
@@ -59,6 +59,18 @@ The migration is complete only when
 `PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY`,
 `generated_type_declaration_id`, the fixed eight-index generator, and artifact
 support for generated declarations have been deleted.
+
+Current correction target:
+
+- an identity family is not a newly declared IADT;
+- one-dimensional identity is `DIMENSION_ACTION(source, e0)`;
+- its endpoints are ordinary APP arguments;
+- identity of that family is
+  `DIMENSION_ACTION(DIMENSION_ACTION(source, e0), e1)`;
+- dimensions 2 and above must be obtained by repeating the same operation; and
+- the old generated declaration path may be inspected only as a temporary
+  differential oracle until DIA8 deletes it. It must never be consulted as
+  semantic fallback by the active compiler path.
 
 ## 2. Non-goals
 
@@ -420,14 +432,15 @@ Exit criteria:
 
 ### DIA3. Introduce source-or-acted schema queries without a new authority DB
 
-Status: in progress; source/acted query boundary implemented, parameter/index
-face specialization continues in DIA4
+Status: complete
 
 - [x] Define a read-only `prototype_type_schema_view` or equivalently narrow
   query result.
 - [x] Resolve source `TYPE_VIEW` Terms through `TypeDeclarationDB` as today.
-- [ ] Resolve `DIMENSION_ACTION` Terms by recursively resolving their source
-  schema and acting on its parameter/index/constructor telescopes.
+- [x] Resolve one-dimensional `DIMENSION_ACTION` Terms from their source schema
+  and act on constructor classifier telescopes.
+- [x] Generalize the same query to already acted source families and arbitrary
+  source/target dimensions without generated declaration lookup.
 - [x] Keep source declaration and constructor IDs in every acted view.
 - [x] Derive acted constructor classifier Terms without allocating declarations;
   DIA4 must expose their face-expanded telescope view.
@@ -435,7 +448,7 @@ face specialization continues in DIA4
 - [x] Ensure caches are rebuildable and are not part of schema identity.
 - [x] Add an assertion/test that schema queries cannot mutate
   `TypeDeclarationDB`.
-- [ ] Add one-dimensional List parameter and indexed-family query tests. Bool,
+- [x] Add one-dimensional List parameter and indexed-family query tests. Bool,
   Nat, and Box coverage is active.
 - [x] Add a dependent constructor field test.
 
@@ -463,24 +476,22 @@ Exit criteria:
 
 ### DIA4. Generalize Context bridge and telescope action
 
-Status: in progress; the existing bridge now records its 1D extension through
-the generic face map, while 2D materialization and acted dependent classifiers
-remain
+Status: complete
 
 - [x] Extend Context-action identity with a dimension operator.
-- [ ] Replace the fixed left/right/relation extension assumption with generic
+- [x] Replace the fixed left/right/relation extension assumption with generic
   face traversal.
 - [x] Preserve endpoint substitutions as named projections of the general face
   map.
 - [x] Map every generated 1D face binding back to source `BindingId` plus face
   key; extend the same storage to dimensions 2 and 3.
-- [ ] Act on each dependent classifier under the complete acted prefix.
-- [ ] Retain CwF Context and substitution certificates.
-- [ ] Make Context materialization explicitly cache/workspace data.
-- [ ] Verify cache deletion and deterministic reconstruction.
-- [ ] Keep `PARAMETRIC_RELATION` and `OBJECT_IDENTITY` bridge semantics
+- [x] Act on each dependent classifier under the complete acted prefix.
+- [x] Retain CwF Context and substitution certificates.
+- [x] Make Context materialization explicitly cache/workspace data.
+- [x] Verify cache deletion and deterministic reconstruction.
+- [x] Keep `PARAMETRIC_RELATION` and `OBJECT_IDENTITY` bridge semantics
   distinct.
-- [ ] Reject resource-sensitive Context action until the required modality is
+- [x] Reject resource-sensitive Context action until the required modality is
   explicitly represented.
 
 Primary files:
@@ -501,23 +512,23 @@ Exit criteria:
 
 ### DIA5. Cut over one-dimensional identity computation and object action
 
-Status: blocked on DIA4
+Status: complete
 
-- [ ] Change identity computation output from a generated declaration-backed
+- [x] Change ordinary ADT identity computation output from a generated declaration-backed
   type former to `DIMENSION_ACTION(source, e)` plus boundary APPs.
-- [ ] Replace generated constructor Terms with action on source constructor
+- [x] Replace ordinary ADT generated constructor Terms with action on source constructor
   Terms.
-- [ ] Add/adjust Judgement formation and term-action proof rules from DIA0.
-- [ ] Update object term action for constructor, Lambda, APP, Match, IH,
+- [x] Add replayable Judgement formation and term-action proof rules from DIA0.
+- [x] Update object term action for constructor, Lambda, APP, Match, IH,
   Return, and Thunk cases.
-- [ ] Replace `generated_type_declaration_id` in new certificates with operator,
+- [x] Replace `generated_type_declaration_id` in new certificates with operator,
   source schema, acted Term, and formation Claim references.
-- [ ] Update certificate validation to replay from source schema.
-- [ ] Update Match refinement to use the acted schema view rather than checking
+- [x] Update certificate validation to replay from source schema.
+- [x] Update Match refinement to use the acted schema view rather than checking
   `origin_kind`.
-- [ ] Preserve residual outcomes for effects, unresolved rows, host primitives,
+- [x] Preserve residual outcomes for effects, unresolved rows, host primitives,
   and unsupported Universe cases.
-- [ ] Move all non-differential 1D tests to the new path.
+- [x] Move all non-differential 1D tests to the new path.
 
 Primary files:
 
@@ -539,21 +550,79 @@ Exit criteria:
 
 ### DIA6. Replace INDEXED_HIGHER_LIFT with repeated generic action
 
-Status: blocked on DIA5
+Status: complete
 
-- [ ] Construct the existing square boundary through dimension traversal.
-- [ ] Replace fixed `bindings[8]`, `field_faces[64][9]`, and related arrays.
-- [ ] Construct square acted schemas by applying the same action to an acted
+Implementation sequence:
+
+1. Treat the target dimension `d` as the only source of face arity. A source
+   constructor field expands to `3^d` binders in canonical face-ordinal order.
+2. For every face, derive the field classifier under the complete acted prefix:
+   vertices reindex the source classifier to that face, while a positive-
+   dimensional face applies the corresponding repeated action to all of that
+   face's boundary values.
+3. Construct each result boundary by applying the source or acted constructor
+   for that face dimension to the same face-local field values.
+4. End the telescope in the acted owner family applied to all non-centre result
+   faces. Do not allocate a `TypeDeclaration` or infer dimension from an index
+   count.
+5. Port the square test to inspect `DIMENSION_ACTION` spines and add a dimension
+   three structural test through the same schema query.
+
+The face-in-face ordinal embedding belongs in the dimension module. It must not
+be reimplemented with fixed square arrays in the schema, identity, or test
+layers.
+
+Discovered prerequisite and correction:
+
+- a dependent source field classifier is scoped by its source telescope prefix;
+- its acted classifier is scoped by a different prefix containing every face of
+  each preceding field;
+- therefore action formation must explicitly relate the source and target
+  Contexts and validate the acted prefix, rather than requiring both Terms to
+  inhabit one Context; and
+- the 0-to-1 cross-Context formation boundary has been implemented in the
+  working tree. DIA6 generalizes the same rule through face traversal.
+
+- [x] Construct the existing square boundary through dimension traversal.
+- [x] Replace fixed `bindings[8]`, `field_faces[64][9]`, and related arrays.
+- [x] Construct square acted schemas by applying the same action to an acted
   source.
-- [ ] Port the all-false Bool square witness.
-- [ ] Port field-bearing Box square witnesses.
-- [ ] Add dependent field square action instead of preserving the current
+- [x] Recognize a fully applied `DIMENSION_ACTION` family by peeling its
+  ordinary APP spine and validating every boundary argument against the source
+  operator traversal.
+- [x] Select the canonical extension operator `e_n : n -> n+1` from the acted
+  source dimension; never identify dimensions by generated declaration index
+  count.
+- [x] Port the all-false Bool square witness.
+- [x] Port field-bearing Box square witnesses.
+- [x] Add dependent field square action instead of preserving the current
   residual restriction.
-- [ ] Add a dimension-three structural action test using the same APIs.
-- [ ] Preserve proof relevance for identity-of-identity witnesses.
-- [ ] Replace the `INDEXED_HIGHER_LIFT` computation rule with the generic action
+- [x] Add a dimension-three structural action test using the same APIs.
+- [x] Preserve proof relevance for identity-of-identity witnesses.
+- [x] Replace the `INDEXED_HIGHER_LIFT` computation rule with the generic action
   rule selected in DIA0.
-- [ ] Ensure no rule tests `index_count == 8` to identify a square.
+- [x] Ensure no rule tests `index_count == 8` to identify a square.
+
+Verification gates:
+
+- [x] the existing dependent Box 1D test passes without declaration growth;
+- [x] the all-false Box square has eight boundaries and one centre field, all
+  derived from `3^2` traversal;
+- [x] dimension three derives `3^3` field faces without a dimension-specific
+  array or declaration generator;
+- [x] repeated schema queries leave `TypeDeclarationDB` counts and semantic
+  revision unchanged; and
+- [x] kernel replay validates the same acted classifier independently of action
+  request order.
+
+Stop conditions:
+
+- stop if a dependent field is compared by accidental Term ID equality instead
+  of being acted under the prior telescope;
+- stop if a generated declaration is proposed as fallback authority;
+- stop if any implementation selects dimension two through `index_count == 8`
+  or another shape-specific constant; and
+- stop if schema query correctness depends on mutating `TypeDeclarationDB`.
 
 Exit criteria:
 
@@ -564,21 +633,22 @@ Exit criteria:
 
 ### DIA7. Introduce artifact v78 semantic action publication
 
-Status: blocked on DIA6
+Status: complete
 
-- [ ] Archive `artifact_v77.schema` and write `artifact_v78.schema` first.
-- [ ] Add dimension operator records or an equivalent canonical wire encoding.
-- [ ] Add `DIMENSION_ACTION` to Term wire grammar and child closure.
-- [ ] Serialize source/import declarations without origin fields.
-- [ ] Remove generated declaration closure marking and dense-publication cases.
-- [ ] Update identity roots to replay action from source Claim, operator, acted
+- [x] Archive `artifact_v77.schema` and write `artifact_v78.schema` first.
+- [x] Archive `hott_fragment_v5.schema` and write `hott_fragment_v6.schema`.
+- [x] Add dimension operator records or an equivalent canonical wire encoding.
+- [x] Add `DIMENSION_ACTION` to Term wire grammar and child closure.
+- [x] Serialize source/import declarations without origin fields.
+- [x] Remove generated declaration closure marking and dense-publication cases.
+- [x] Update identity roots to replay action from source Claim, operator, acted
   family Claim, and witness Claim.
-- [ ] Serialize only rooted Context/Claim/Derivation evidence.
-- [ ] Exclude action requests, work queues, cache views, and scratch Context
+- [x] Serialize only rooted Context/Claim/Derivation evidence.
+- [x] Exclude action requests, work queues, cache views, and scratch Context
   identities not reachable as semantic proof evidence.
-- [ ] Update relocation and linking for semantic operators and action Terms.
-- [ ] Reject v77 artifacts.
-- [ ] Update README files, spec consistency checks, and artifact fixtures.
+- [x] Update relocation and linking for semantic operators and action Terms.
+- [x] Reject v77 artifacts.
+- [x] Update README files, spec consistency checks, and artifact fixtures.
 
 Primary files:
 
@@ -603,23 +673,23 @@ Exit criteria:
 
 ### DIA8. Delete generated identity declaration authority
 
-Status: blocked on DIA7
+Status: complete
 
-- [ ] Delete `PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY`.
-- [ ] Delete `origin_kind` if no remaining source/import distinction requires
+- [x] Delete `PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY`.
+- [x] Delete `origin_kind` if no remaining source/import distinction requires
   it.
-- [ ] Delete `origin_source_carrier_term_id`.
-- [ ] Delete `prototype_type_declaration_add_generated_identity`.
-- [ ] Delete generated identity lookup and origin validation APIs.
-- [ ] Delete `generated_type_declaration_id` from certificates.
-- [ ] Delete `generated_schema_validation.c` after moving any still-valid
+- [x] Delete `origin_source_carrier_term_id`.
+- [x] Delete `prototype_type_declaration_add_generated_identity`.
+- [x] Delete generated identity lookup and origin validation APIs.
+- [x] Delete `generated_type_declaration_id` from certificates.
+- [x] Delete `generated_schema_validation.c` after moving any still-valid
   action checks into semantic validators.
-- [ ] Delete `hott_initialize_generated_identity_declaration`.
-- [ ] Delete `hott_initialize_indexed_higher_identity_declaration`.
-- [ ] Delete generated constructor publication helpers used only by identity.
-- [ ] Delete old differential-oracle tests and compatibility wrappers.
-- [ ] Search the entire prototype for generated-origin and fixed-lift remnants.
-- [ ] Verify source TypeDeclaration APIs no longer accept anonymous generated
+- [x] Delete `hott_initialize_generated_identity_declaration`.
+- [x] Delete `hott_initialize_indexed_higher_identity_declaration`.
+- [x] Delete generated constructor publication helpers used only by identity.
+- [x] Delete old differential-oracle tests and compatibility wrappers.
+- [x] Search the entire prototype for generated-origin and fixed-lift remnants.
+- [x] Verify source TypeDeclaration APIs no longer accept anonymous generated
   declarations.
 
 Required zero-result searches:
@@ -642,20 +712,20 @@ Exit criteria:
 
 ### DIA9. Full verification, metrics, and plan closure
 
-Status: blocked on DIA8
+Status: in progress; verification complete, final commit and push pending
 
-- [ ] Run `make -f src/prototype/Makefile clean all reader`.
-- [ ] Run focused dimension tests.
-- [ ] Run focused HOTT identity and forgery tests.
-- [ ] Run `sh src/prototype/tests/integration/test_artifact_flow.sh`.
-- [ ] Run `make -f src/prototype/Makefile test-type-infer-and-check`.
-- [ ] Run `make -f src/prototype/Makefile test-integration`.
-- [ ] Run supported examples through the compiler.
-- [ ] Repeat artifact publication to test determinism.
-- [ ] Record before/after per-file added, deleted, and net lines.
-- [ ] Record subsystem line totals before and after.
-- [ ] Record clean-build and full-suite runtimes before and after.
-- [ ] Update architecture documentation and this dashboard.
+- [x] Run `make -f src/prototype/Makefile clean all reader`.
+- [x] Run focused dimension tests.
+- [x] Run focused HOTT identity and forgery tests.
+- [x] Run `sh src/prototype/tests/integration/test_artifact_flow.sh`.
+- [x] Run `make -f src/prototype/Makefile test-type-infer-and-check`.
+- [x] Run `make -f src/prototype/Makefile test-integration`.
+- [x] Run supported examples through the compiler.
+- [x] Repeat artifact publication to test determinism.
+- [x] Record before/after per-file added, deleted, and net lines.
+- [x] Record subsystem line totals before and after.
+- [x] Record clean-build and full-suite runtimes before and after.
+- [x] Update architecture documentation and this dashboard.
 - [ ] Commit each completed gate separately and push `main` only after its exit
   criteria pass.
 
@@ -748,11 +818,11 @@ references when DIA8 closes.
 | `src/kernel/rules/match/expansion_rule_emission.inc` | 632 |
 | `src/artifact/publication/closure_marking_and_slices.inc` | 1,844 |
 | `src/artifact/publication/dense_publication.inc` | 2,415 |
-| `src/artifact/wire_v77.c` | 3,436 |
+| `src/artifact/wire_v78.c` | 3,436 |
 | `src/artifact/relocation.c` | 606 |
 | `src/artifact/link.c` | 2,455 |
 | `include/a_program/kernel/judgement/types.h` | 383 |
-| `spec/hott_fragment_v5.schema` | 369 |
+| `spec/hott_fragment_v5.schema` | 369; archived and replaced by v6 |
 
 ## 8. Stop Conditions
 
@@ -804,16 +874,16 @@ declaration.
 
 | Phase | Status | Commit | Notes |
 | --- | --- | --- | --- |
-| DIA0 specification | planned | - | next gate |
-| DIA1 dimension core | blocked | - | waits for DIA0 |
-| DIA2 Core action Term | blocked | - | waits for DIA1 |
-| DIA3 acted schema query | in progress | 2026-08-17 | base query, cache independence, Bool/Nat/Box/dependent field complete; fixed operator-chain capacity removed; parameter/index face action remains |
-| DIA4 Context/telescope action | in progress | 2026-08-17 | bridge has operator-indexed 1D face bindings and validated BindingId/face lookup; generic higher traversal remains |
-| DIA5 1D cutover | in progress | 2026-08-17 | generic boundary classifier and proof kinds 45-47 added; family formation and nullary constructor replay pass; field telescope and active identity cutover remain |
-| DIA6 generic higher action | blocked | - | waits for DIA5 |
-| DIA7 artifact v78 | blocked | - | waits for DIA6 |
-| DIA8 old authority deletion | blocked | - | waits for DIA7 |
-| DIA9 verification/metrics | blocked | - | waits for DIA8 |
+| DIA0 specification | complete | `82c728d` | generic calculus and invariants fixed |
+| DIA1 dimension core | complete | `4a7ccf8` | generic operators, faces, traversal, and tests |
+| DIA2 Core action Term | complete | `8c3c6c9`, `f68008f` | action Term and semantic operator ownership |
+| DIA3 acted schema query | complete | `b03215b`, `7f3becd` plus final migration | recursive acted schemas and indexed/dependent tests pass |
+| DIA4 Context/telescope action | complete | `3992084`, `b51df37` plus final migration | arbitrary-dimension face traversal and dependent prefixes pass |
+| DIA5 1D cutover | complete | `5e9aaa5` plus final migration | all supported object actions use semantic dimension action |
+| DIA6 generic higher action | complete | final migration | dimensions 1-3 use one traversal; square/cube/dependent tests pass |
+| DIA7 artifact v78 | complete | final migration | v78 publishes operators/actions and rejects v77 |
+| DIA8 old authority deletion | complete | final migration | active legacy-authority search is empty |
+| DIA9 verification/metrics | in progress | final migration | tests and metrics complete; final commit/push pending |
 
 ## 11. Baseline and Final Metrics
 
@@ -823,21 +893,49 @@ reduction.
 
 | Metric | Baseline | Final |
 | --- | ---: | ---: |
-| active artifact version | 77 | pending |
-| generated identity search occurrences | 133 | target 0 |
-| files containing generated identity references | 20 | target 0 |
-| identity implementation/header lines | 17,895 | pending |
-| dimension module lines | 0 | pending |
-| total prototype implementation/header lines | pending DIA0 | pending |
-| clean build time | pending DIA0 | pending |
-| focused HOTT test time | pending DIA0 | pending |
-| full integration time | pending DIA0 | pending |
+| active artifact version | 77 | 78 |
+| generated identity search occurrences | 133 | 0 active |
+| files containing generated identity references | 20 | 0 active |
+| identity implementation/header lines | 17,895 | 14,145 |
+| dimension module lines | 0 | 1,965 |
+| total prototype implementation/header lines | 130,412 | 131,174 |
+| clean build time | 5.550 s | 7.609 s |
+| focused HOTT test time | 24.849 s | 32.489 s |
+| artifact flow time | 13.008 s | 17.851 s |
+| full integration time | 1312.058 s | 2133.264 s |
 
 Per-file final report:
 
 | File | Added | Deleted | Net | Reason |
 | --- | ---: | ---: | ---: | --- |
-| pending DIA0 inventory | - | - | - | - |
+| `include/a_program/core/term.h` | 26 | 3 | +23 | one generic action Term |
+| `src/core/term/storage_and_formation.inc` | 60 | 19 | +41 | action formation/storage |
+| `src/core/term/canonicalization.inc` | 39 | 0 | +39 | semantic action canonicalization |
+| `src/core/term/evaluation_and_conversion.inc` | 82 | 0 | +82 | neutral action comparison |
+| `src/core/term/declarations.inc` | 13 | 0 | +13 | action readback |
+| `include/a_program/kernel/type_declaration.h` | 1 | 44 | -43 | generated authority removed |
+| `src/kernel/type_declaration.c` | 2 | 103 | -101 | generated declaration APIs removed |
+| `src/identity/identity_computation.inc` | 2,706 | 2,771 | -65 | generic action computation |
+| `src/identity/context_bridge.inc` | 0 | 2,435 | -2,435 | fixed bridge deleted |
+| `src/identity/telescope_action.inc` | 102 | 355 | -253 | generic face telescope |
+| `src/identity/object_term_action.inc` | 1,387 | 998 | +389 | action witnesses and replay inputs |
+| `src/identity/action_certificate_validation.inc` | 368 | 752 | -384 | semantic certificate replay |
+| `src/identity/generated_schema_validation.c` | 0 | 1,104 | -1,104 | duplicate authority deleted |
+| `src/kernel/rules/match/expansion_rule_emission.inc` | 31 | 15 | +16 | acted schema query |
+| `src/artifact/publication/closure_marking_and_slices.inc` | 88 | 35 | +53 | semantic operator/action closure |
+| `src/artifact/publication/dense_publication.inc` | 30 | 11 | +19 | v78 dense maps |
+| `src/artifact/wire_v77.c` -> `wire_v78.c` | 75 | 32 | +43 | breaking wire migration |
+| `src/artifact/relocation.c` | 0 | 0 | 0 | existing relocation abstraction retained |
+| `src/artifact/link.c` | 141 | 17 | +124 | operator and action linking |
+| `include/a_program/kernel/judgement/types.h` | 5 | 1 | +4 | proof kinds 45-48 |
+| `spec/hott_fragment_v5.schema` -> `v6` | 203 | 369 | -166 | current semantic fragment |
+
+Across the complete working diff before the final status-only commit: 9,658
+lines were added, 11,478 were deleted, net -1,820. Restricting the diff to implementation `.c`, `.h`,
+and `.inc` files gives 8,924 additions, 11,320 deletions, net -2,396. The
+production implementation total grew by 762 lines relative to the DIA0
+baseline because the generic dimension module and v78 replay support replace a
+larger identity-specific authority implementation.
 
 ## 12. Completion Definition
 
@@ -869,6 +967,25 @@ This plan is complete only when all of the following are true:
 - Rejected a permanent acted-schema database.
 - Retained concrete Context materialization as derived checking workspace.
 - Required a breaking artifact migration and final deletion of the old path.
+
+### 2026-08-17: migration implemented
+
+- Replaced generated one- and two-dimensional identity declarations with the
+  single semantic `DIMENSION_ACTION` Term and generic face traversal.
+- Removed generated declaration origin fields, lookup APIs, certificate fields,
+  validators, fixed lift rules, and their artifact authority.
+- Added v78 operator/action publication and HOTT fragment v6; v77 and v5 are
+  retained only in the specification archive.
+- Fixed reader initialization so every compile metadata instance receives the
+  dimension operator and image stores required to intern action Terms.
+- Made artifact derivation closure traversal semantic and deterministic instead
+  of depending on Derivation arena insertion order.
+- Strengthened artifact identity-root validation so rule labels must agree with
+  the source former (`TYPE_VIEW` for ordinary ADT and `THUNK_TYPE` over
+  `COMPUTATION_TYPE` for Thunk/Return).
+- Verified dimension 1-3 schema action, dependent constructor fields, square
+  witnesses, proof relevance, read-only replay, forged-root rejection, and
+  declaration-count invariance.
 
 ## 14. Privacy Review
 

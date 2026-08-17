@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v77.h"
+#include "a_program/artifact/wire_v78.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -605,6 +605,7 @@ static int read_artifact_term(
 	FILE* stream,
 	struct symbol_table* symbols,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
+	struct prototype_dimension_operator_db* dimension_operators,
 	struct prototype_term_db* terms,
 	uint32_t expected_id,
 	uint32_t* p_next_binder_id
@@ -612,7 +613,8 @@ static int read_artifact_term(
 	char word[256];
 	uint32_t term_id;
 	int tag;
-	if (!stream || !symbols || !intrinsic_environment || !terms ||
+	if (!stream || !symbols || !intrinsic_environment || !dimension_operators ||
+		!terms ||
 		!p_next_binder_id ||
 		fscanf(stream, "%255s %u %d", word, &term_id, &tag) != 3 ||
 		strcmp(word, "term_node") != 0 ||
@@ -843,6 +845,51 @@ static int read_artifact_term(
 				return fscanf(stream, "%u %u %u", &term->as.operation_request.operation,
 					&term->as.operation_request.argument,
 					&term->as.operation_request.continuation) == 3 ? 0 : -1;
+			case PROTOTYPE_TERM_DIMENSION_ACTION: {
+				uint32_t source_dimension;
+				uint32_t target_dimension;
+				size_t image_count;
+				if (fscanf(
+						stream,
+						"%u %u %u %zu",
+						&term->as.dimension_action.source,
+						&source_dimension,
+						&target_dimension,
+						&image_count
+					) != 4 || image_count != source_dimension || image_count >
+						dimension_operators->image_capacity) {
+					return -1;
+				}
+				struct prototype_dimension_axis_image* images = image_count == 0 ?
+					NULL : calloc(image_count, sizeof(*images));
+				if (image_count != 0 && !images) {
+					return -1;
+				}
+				int status = 0;
+				for (size_t i = 0; i < image_count; ++i) {
+					if (fscanf(
+							stream,
+							"%d %u",
+							&images[i].kind,
+							&images[i].target_axis
+						) != 2) {
+						status = -1;
+						break;
+					}
+				}
+				if (status == 0 && prototype_dimension_operator_intern(
+						dimension_operators,
+						source_dimension,
+						target_dimension,
+						images,
+						image_count,
+						&term->as.dimension_action.operator_id
+					) != 0) {
+					status = -1;
+				}
+				free(images);
+				return status;
+			}
 			default:
 				return -1;
 		}
@@ -1063,6 +1110,7 @@ static int artifact_validate_type_graph_refs(
 static int artifact_validate_term_refs(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	uint32_t term_id,
 	int representation_handles_resolved
 ) {
@@ -1205,6 +1253,12 @@ static int artifact_validate_term_refs(
 			return artifact_read_term_present(terms, term->as.thunk.computation) ? 0 : -1;
 		case PROTOTYPE_TERM_FORCE:
 			return artifact_read_term_present(terms, term->as.force.value) ? 0 : -1;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			return artifact_read_term_present(
+				terms, term->as.dimension_action.source
+			) && prototype_dimension_operator_get(
+				dimension_operators, term->as.dimension_action.operator_id
+			) ? 0 : -1;
 			default:
 				return -1;
 	}
@@ -1213,9 +1267,10 @@ static int artifact_validate_term_refs(
 static int artifact_validate_term_graph_refs(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	int representation_handles_resolved
 ) {
-	if (!terms || !type_declarations) {
+	if (!terms || !type_declarations || !dimension_operators) {
 		return -1;
 	}
 	for (size_t i = 0; i < terms->term_count; ++i) {
@@ -1225,6 +1280,7 @@ static int artifact_validate_term_graph_refs(
 		if (artifact_validate_term_refs(
 				terms,
 				type_declarations,
+				dimension_operators,
 				(uint32_t)i,
 				representation_handles_resolved
 			) != 0) {
@@ -1378,6 +1434,7 @@ static int artifact_validate_judgement_graph_refs(
 static int artifact_validate_read_graph_refs(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_db* judgement,
 	int representation_handles_resolved
 ) {
@@ -1385,6 +1442,7 @@ static int artifact_validate_read_graph_refs(
 		artifact_validate_term_graph_refs(
 			terms,
 			type_declarations,
+			dimension_operators,
 			representation_handles_resolved
 		) == 0 &&
 		artifact_validate_judgement_graph_refs(judgement, terms) == 0 ? 0 : -1;
@@ -1457,11 +1515,13 @@ int prototype_artifact_read_text_graph(
 	FILE* stream,
 	struct symbol_table* symbols,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
+	struct prototype_dimension_operator_db* dimension_operators,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement
 ) {
-	if (!stream || !symbols || !intrinsic_environment || !terms ||
+	if (!stream || !symbols || !intrinsic_environment || !dimension_operators ||
+		!terms ||
 		!type_declarations || !judgement) {
 		return -1;
 	}
@@ -1575,11 +1635,6 @@ int prototype_artifact_read_text_graph(
 		type_declarations->type_declarations[i].index_count = 0;
 		type_declarations->type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
 		type_declarations->type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
-		type_declarations->type_declarations[i].origin_kind =
-			PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE;
-		type_declarations->type_declarations[
-			i
-		].origin_source_carrier_term_id = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < parameter_slot_count; ++i) {
 		type_declarations->readback.parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
@@ -1625,11 +1680,9 @@ int prototype_artifact_read_text_graph(
 		uint32_t parameter_context;
 		uint32_t index_context;
 		uint32_t index_count;
-		int origin_kind;
-		uint32_t origin_source_carrier_term_id;
 		if (fscanf(
 				stream,
-				"%255s %zu %255s %255s %u %u %u %u %u %u %u %u %u %d %u",
+				"%255s %zu %255s %255s %u %u %u %u %u %u %u %u %u",
 				word,
 				&id,
 				name,
@@ -1642,22 +1695,14 @@ int prototype_artifact_read_text_graph(
 				&formation_classifier,
 				&parameter_context,
 				&index_context,
-				&index_count,
-				&origin_kind,
-				&origin_source_carrier_term_id
-			) != 15 ||
+				&index_count
+			) != 13 ||
 				strcmp(word, "type_decl") != 0 ||
 				id >= type_slot_count ||
 				type_index != id ||
 				formation_classifier >= term_slot_count ||
 				parameter_context == PROTOTYPE_INVALID_ID ||
 				index_context == PROTOTYPE_INVALID_ID ||
-				(origin_kind != PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
-				 origin_kind !=
-					PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) ||
-				(origin_kind ==
-					PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
-				 origin_source_carrier_term_id >= term_slot_count) ||
 				!artifact_range_within(first_parameter, parameter_count, parameter_slot_count) ||
 				!artifact_range_within(first_constructor, constructor_count, constructor_slot_count)) {
 				return -1;
@@ -1670,12 +1715,7 @@ int prototype_artifact_read_text_graph(
 			symbol_intern(symbols, name, strlen(name));
 		type->namespace_symbol_id = strcmp(namespace_name, "-") == 0 ? -1 :
 			symbol_intern(symbols, namespace_name, strlen(namespace_name));
-		if (type->namespace_symbol_id < -1 ||
-			(origin_kind == PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
-			 type->name_symbol_id < 0) ||
-			(origin_kind ==
-				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
-			 (type->name_symbol_id != -1 || type->namespace_symbol_id != -1))) {
+		if (type->namespace_symbol_id < -1 || type->name_symbol_id < 0) {
 			return -1;
 		}
 		type->type_index = type_index;
@@ -1687,8 +1727,6 @@ int prototype_artifact_read_text_graph(
 		type->parameter_count = parameter_count;
 		type->first_constructor = first_constructor;
 		type->constructor_count = constructor_count;
-		type->origin_kind = origin_kind;
-		type->origin_source_carrier_term_id = origin_source_carrier_term_id;
 	}
 	type_declarations->type_count = type_slot_count;
 
@@ -1862,6 +1900,7 @@ int prototype_artifact_read_text_graph(
 					stream,
 					symbols,
 					intrinsic_environment,
+					dimension_operators,
 					terms,
 					PROTOTYPE_INVALID_ID,
 					&next_binding_id
@@ -2090,7 +2129,7 @@ int prototype_artifact_read_text_graph(
 			strcmp(premise_count_label, "premises") != 0 ||
 			proof_kind < PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
 			proof_kind >
-				PROTOTYPE_JUDGEMENT_PROOF_THUNK_TYPE_FORMATION ||
+				PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS ||
 			((proof_kind >=
 					PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION &&
 			  proof_kind <=
@@ -2207,6 +2246,7 @@ int prototype_artifact_read_text_graph(
 		if (artifact_validate_read_graph_refs(
 				terms,
 				type_declarations,
+				dimension_operators,
 				judgement,
 				0
 			) != 0) {
@@ -2813,7 +2853,10 @@ int prototype_artifact_read_text_typed_occurrences(
 				type_declarations, &metadata->contexts, terms
 			) != 0 ||
 			artifact_validate_term_graph_refs(
-				terms, type_declarations, 1
+				terms,
+				type_declarations,
+				&metadata->dimension_operators,
+				1
 			) != 0) {
 			return -1;
 		}

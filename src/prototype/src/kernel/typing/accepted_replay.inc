@@ -479,6 +479,7 @@ static int validate_match_elim_proof(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_proposition* relation,
 	const struct prototype_judgement_rule_application_view* proof
@@ -592,6 +593,7 @@ static int validate_match_elim_proof(
 					substitutions,
 					terms,
 					type_declarations,
+					dimension_operators,
 					relation->context_id,
 					match->as.match.scrutinee,
 					match_case->constructor_owner,
@@ -1922,6 +1924,7 @@ int prototype_judgement_add_indexed_match_claim(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t context_id,
 	uint32_t subject,
@@ -1977,6 +1980,7 @@ int prototype_judgement_add_indexed_match_claim(
 			&conclusion, &proof, &view
 		) != 0 || validate_match_elim_proof(
 			terms, type_declarations, contexts, substitutions,
+			dimension_operators,
 			judgement, &conclusion, &view
 		) != 0) {
 		return -1;
@@ -1992,6 +1996,7 @@ int prototype_judgement_add_match_claim(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t context_id,
 	uint32_t subject,
@@ -2007,6 +2012,7 @@ int prototype_judgement_add_match_claim(
 		type_declarations,
 		contexts,
 		substitutions,
+		dimension_operators,
 		operations,
 		context_id,
 		subject,
@@ -4769,6 +4775,54 @@ static int validate_pi_formation_intro_proof(
 	return 0;
 }
 
+int prototype_judgement_add_pi_formation_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t universe,
+	uint32_t domain_claim_id,
+	uint32_t codomain_claim_id,
+	uint32_t family_claim_id,
+	uint32_t* p_claim_id
+) {
+	uint32_t premise_ids[3] = {
+		domain_claim_id,
+		codomain_claim_id,
+		family_claim_id
+	};
+	struct prototype_judgement_proposition conclusion = {
+		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		.context_id = context_id,
+		.occurrence_id = PROTOTYPE_INVALID_ID,
+		.subject = subject,
+		.classifier = universe
+	};
+	struct prototype_judgement_derivation_candidate proof;
+	struct prototype_judgement_rule_application_view view;
+	struct prototype_judgement_candidate_premise premises[
+		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+	];
+	if (!p_claim_id || initialize_exact_claim_rule(
+			judgement,
+			&conclusion,
+			PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO,
+			premise_ids,
+			3,
+			&proof,
+			premises
+		) != 0 || initialize_candidate_rule_application_view(
+			&conclusion, &proof, &view
+		) != 0 || validate_pi_formation_intro_proof(
+			terms, &conclusion, &view
+		) != 0) {
+		return -1;
+	}
+	return publish_complete_relation(
+		judgement, &conclusion, &proof, premise_ids, p_claim_id
+	);
+}
+
 static int validate_effect_operation_type_intro_proof(
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_proposition* relation,
@@ -6764,6 +6818,7 @@ int prototype_judgement_validate_accepted_graph(
 						type_declarations,
 						contexts,
 						substitutions,
+						dimension_operators,
 						judgement,
 						relation,
 						proof
@@ -6932,7 +6987,12 @@ int prototype_judgement_validate_accepted_graph(
 				break;
 			case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TYPE_FORMATION:
 				if (validate_dimension_action_type_formation_proof(
-						terms, dimension_operators, relation, proof
+						terms,
+						type_declarations,
+						contexts,
+						dimension_operators,
+						relation,
+						proof
 					) != 0) {
 					return -1;
 				}
@@ -6949,6 +7009,17 @@ int prototype_judgement_validate_accepted_graph(
 						terms,
 						type_declarations,
 						contexts,
+						dimension_operators,
+						relation,
+						proof
+					) != 0) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS:
+				if (validate_dimension_action_thunk_return_witness_proof(
+						terms,
+						type_declarations,
 						dimension_operators,
 						relation,
 						proof
@@ -7270,6 +7341,8 @@ static const char* proof_kind_name(int proof_kind) {
 			return "dimension-action-term";
 		case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_CONSTRUCTOR:
 			return "dimension-action-constructor";
+		case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS:
+			return "dimension-action-thunk-return-witness";
 		default:
 			return "invalid";
 	}

@@ -49,7 +49,7 @@ grep -q 'resolve_errors=0' "$tmp_dir/selected-cutoff.out"
 	"$tmp_dir/selected-cutoff.p" >"$tmp_dir/selected-cutoff-write.out"
 ./read_file.out --read-graph "$tmp_dir/selected-cutoff.apo" \
 	>"$tmp_dir/selected-cutoff-read.out"
-grep -q '^A_PROGRAM_ARTIFACT 77 [0-9a-f]\{64\}$' "$tmp_dir/selected-cutoff.apo"
+grep -q '^A_PROGRAM_ARTIFACT 78 [0-9a-f]\{64\}$' "$tmp_dir/selected-cutoff.apo"
 ! grep -q 'OPERATION_REQUEST' "$tmp_dir/selected-cutoff.apo"
 ! grep -q 'missing' "$tmp_dir/selected-cutoff.apo"
 
@@ -103,7 +103,7 @@ grep -q 'mode=default yes$' "$tmp_dir/match-exit-false.out"
 	"$tmp_dir/match-exit.p" >"$tmp_dir/match-exit-write.out"
 ./read_file.out --read-graph "$tmp_dir/match-exit.apo" \
 	>"$tmp_dir/match-exit-read.out"
-grep -q '^A_PROGRAM_ARTIFACT 77 [0-9a-f]\{64\}$' "$tmp_dir/match-exit.apo"
+grep -q '^A_PROGRAM_ARTIFACT 78 [0-9a-f]\{64\}$' "$tmp_dir/match-exit.apo"
 ./read_file.out --check-exports-normalization-equal "$tmp_dir/match-exit.apo" \
 	trueResult zeroExpected --reduction-mode default \
 	>"$tmp_dir/match-exit-artifact-true.out"

@@ -43,11 +43,6 @@ int prototype_constructor_telescopes_validate(
 	if (!type_declarations || !contexts || !terms) {
 		return -1;
 	}
-	if (prototype_type_declaration_origins_validate(
-			type_declarations, terms
-		) != 0) {
-		return -1;
-	}
 	for (size_t i = 0; i < type_declarations->type_count; ++i) {
 		const struct prototype_type_declaration* type =
 			&type_declarations->type_declarations[i];
@@ -540,105 +535,11 @@ int prototype_type_declaration_add(
 	type->first_parameter = (uint32_t)db->readback.parameter_count;
 	type->index_context = PROTOTYPE_INVALID_ID;
 	type->first_constructor = (uint32_t)db->constructor_count;
-	type->origin_kind = PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE;
-	type->origin_source_carrier_term_id = PROTOTYPE_INVALID_ID;
-
 	db->type_count++;
 	db->representation_db.cache_dirty = 1;
 	prototype_type_declaration_db_mark_semantic_change(db);
 	*p_type_id = id;
 	return 0;
-}
-
-int prototype_type_declaration_add_generated_identity(
-	struct prototype_type_declaration_db* db,
-	uint32_t source_carrier_term_id,
-	uint32_t parameter_context_id,
-	uint32_t* p_type_id
-) {
-	if (!db || !p_type_id || source_carrier_term_id == PROTOTYPE_INVALID_ID ||
-		parameter_context_id == PROTOTYPE_INVALID_ID) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < db->type_count; ++i) {
-		const struct prototype_type_declaration* type =
-			&db->type_declarations[i];
-		if (type_declaration_present(type) && type->origin_kind ==
-				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
-			type->origin_source_carrier_term_id == source_carrier_term_id &&
-			type->parameter_context == parameter_context_id) {
-			*p_type_id = i;
-			return 0;
-		}
-	}
-	uint32_t type_id;
-	if (prototype_type_declaration_add(db, -1, &type_id) != 0) {
-		return -1;
-	}
-	db->type_declarations[type_id].origin_kind =
-		PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY;
-	db->type_declarations[type_id].origin_source_carrier_term_id =
-		source_carrier_term_id;
-	db->type_declarations[type_id].parameter_context = parameter_context_id;
-	prototype_type_declaration_db_mark_semantic_change(db);
-	*p_type_id = type_id;
-	return 0;
-}
-
-int prototype_type_declaration_origins_validate(
-	const struct prototype_type_declaration_db* db,
-	const struct prototype_term_db* terms
-) {
-	if (!db || !terms) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < db->type_count; ++i) {
-		const struct prototype_type_declaration* type =
-			&db->type_declarations[i];
-		if (!type_declaration_present(type)) {
-			continue;
-		}
-		switch (type->origin_kind) {
-		case PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE:
-			if (type->name_symbol_id < 0) {
-				return -1;
-			}
-			break;
-		case PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY:
-			if (type->name_symbol_id != -1 ||
-				type->namespace_symbol_id != -1 ||
-				type->origin_source_carrier_term_id >= terms->term_count) {
-				return -1;
-			}
-			break;
-		default:
-			return -1;
-		}
-	}
-	return 0;
-}
-
-int prototype_type_declaration_find_generated_identity(
-	const struct prototype_type_declaration_db* db,
-	uint32_t source_carrier_term_id,
-	uint32_t parameter_context_id,
-	uint32_t* p_type_id
-) {
-	if (!db || !p_type_id || source_carrier_term_id == PROTOTYPE_INVALID_ID ||
-		parameter_context_id == PROTOTYPE_INVALID_ID) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < db->type_count; ++i) {
-		const struct prototype_type_declaration* type = &db->type_declarations[i];
-		if (type_declaration_present(type) && type->origin_kind ==
-				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
-			type->origin_source_carrier_term_id == source_carrier_term_id &&
-			type->parameter_context == parameter_context_id) {
-			*p_type_id = i;
-			return 0;
-		}
-	}
-	return 1;
 }
 
 int prototype_type_declaration_add_parameter(
@@ -2507,10 +2408,8 @@ int prototype_type_declaration_rebuild_representations(
 			) != 0) {
 			fprintf(
 				stderr,
-				"type representation rebuild failed for type %u origin %d carrier %u\n",
-				type_id,
-				db->type_declarations[type_id].origin_kind,
-				db->type_declarations[type_id].origin_source_carrier_term_id
+				"type representation rebuild failed for type %u\n",
+				type_id
 			);
 			return -1;
 		}

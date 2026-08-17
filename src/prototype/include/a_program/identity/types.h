@@ -66,7 +66,8 @@ enum prototype_hott_type_former_kind {
 	PROTOTYPE_HOTT_TYPE_FORMER_THUNK = 4,
 	PROTOTYPE_HOTT_TYPE_FORMER_UNIVERSE = 5,
 	PROTOTYPE_HOTT_TYPE_FORMER_HOST_PRIMITIVE = 6,
-	PROTOTYPE_HOTT_TYPE_FORMER_RELATION = 7
+	PROTOTYPE_HOTT_TYPE_FORMER_RELATION = 7,
+	PROTOTYPE_HOTT_TYPE_FORMER_DIMENSION_ACTION = 8
 };
 
 enum prototype_hott_relation_type_action_rule {
@@ -76,7 +77,8 @@ enum prototype_hott_relation_type_action_rule {
 	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_PI_POINTWISE = 3,
 	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_PURE_COMPUTATION = 4,
 	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_THUNK = 5,
-	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_RELATION_HIGHER = 6
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_RELATION_HIGHER = 6,
+	PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_DIMENSION_HIGHER = 7
 };
 
 enum prototype_hott_relation_family_semantics {
@@ -282,7 +284,6 @@ struct prototype_hott_identity_type_computation_certificate {
 	uint32_t endpoint_context_id;
 	uint32_t left_endpoint_binding_id;
 	uint32_t right_endpoint_binding_id;
-	uint32_t generated_type_declaration_id;
 	uint32_t backing_type_former_term_id;
 	uint32_t backing_type_former_has_type_claim_id;
 	uint32_t identity_type_term_id;
@@ -338,14 +339,6 @@ struct prototype_hott_action_db {
 	size_t result_count;
 	size_t result_capacity;
 	uint64_t outcome_publish_requests;
-};
-
-enum prototype_hott_universe_correspondence_projection {
-	PROTOTYPE_HOTT_UNIVERSE_PROJECT_RELATION = 2,
-	PROTOTYPE_HOTT_UNIVERSE_PROJECT_TRANSPORT_RIGHT = 3,
-	PROTOTYPE_HOTT_UNIVERSE_PROJECT_TRANSPORT_LEFT = 4,
-	PROTOTYPE_HOTT_UNIVERSE_PROJECT_LIFT_RIGHT = 5,
-	PROTOTYPE_HOTT_UNIVERSE_PROJECT_LIFT_LEFT = 6
 };
 
 struct prototype_hott_relation_execution {

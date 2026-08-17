@@ -55,7 +55,9 @@ int prototype_hott_register_identity_root(
 		 identity->computation_rule !=
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN &&
 		 identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE) ||
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE &&
+		 identity->computation_rule !=
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_GENERIC_DIMENSION_ACTION) ||
 		hott_term_has_compiler_relation_head(
 			terms, family->subject
 		) != 0) {
@@ -80,6 +82,7 @@ int prototype_hott_register_identity_root(
 		terms,
 		kernel->type_declarations,
 		kernel->contexts,
+		kernel->dimension_operators,
 		judgement,
 		request->key.identity_type.source_claim_id,
 		identity->identity_type_has_type_claim_id,

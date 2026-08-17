@@ -581,6 +581,126 @@
 		) != 0 || acted_bool_classifier == dimension_three_classifier) {
 		return 253;
 	}
+	uint32_t dependent_box_action;
+	uint32_t dependent_box_square_action;
+	uint32_t box_dimension_three_action;
+	uint32_t dependent_box_dimension_three_action;
+	struct prototype_type_schema_view dependent_box_square_schema;
+	struct prototype_type_schema_view box_dimension_three_schema;
+	struct prototype_type_schema_view dependent_box_dimension_three_schema;
+	uint32_t dependent_box_square_classifier;
+	uint32_t box_dimension_three_constructor_classifier;
+	uint32_t dependent_box_dimension_three_constructor_classifier;
+	if (prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			dependent_box_view,
+			schema_extension_0,
+			&dependent_box_action
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			dependent_box_action,
+			schema_extension_1,
+			&dependent_box_square_action
+		) != 0 || prototype_type_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			dependent_box_square_action,
+			&dependent_box_square_schema
+		) != 0 || dependent_box_square_schema.target_dimension != 2 ||
+		prototype_constructor_schema_view_action_classifier(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			&dependent_box_square_schema,
+			0,
+			&dependent_box_square_classifier
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			box_view,
+			direct_dimension_three_operator,
+			&box_dimension_three_action
+		) != 0 || prototype_type_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			box_dimension_three_action,
+			&box_dimension_three_schema
+		) != 0 || box_dimension_three_schema.target_dimension != 3 ||
+		prototype_constructor_schema_view_action_classifier(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			&box_dimension_three_schema,
+			0,
+			&box_dimension_three_constructor_classifier
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&schema_operators,
+			dependent_box_view,
+			direct_dimension_three_operator,
+			&dependent_box_dimension_three_action
+		) != 0 || prototype_type_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			dependent_box_dimension_three_action,
+			&dependent_box_dimension_three_schema
+		) != 0 || dependent_box_dimension_three_schema.target_dimension != 3 ||
+		prototype_constructor_schema_view_action_classifier(
+			&type_db,
+			&context_db,
+			&term_db,
+			&schema_operators,
+			&dependent_box_dimension_three_schema,
+			0,
+			&dependent_box_dimension_three_constructor_classifier
+		) != 0) {
+		return 254;
+	}
+	uint32_t dimension_classifier_counts[3] = { 0, 0, 0 };
+	uint32_t dimension_classifiers[3] = {
+		dependent_box_square_classifier,
+		box_dimension_three_constructor_classifier,
+		dependent_box_dimension_three_constructor_classifier
+	};
+	uint32_t expected_dimension_classifier_counts[3] = { 18, 27, 54 };
+	for (size_t classifier_index = 0; classifier_index < 3;
+		++classifier_index) {
+		uint32_t cursor = dimension_classifiers[classifier_index];
+		while (cursor < term_db.term_count && term_db.terms[cursor].tag ==
+				PROTOTYPE_TERM_PI) {
+			uint32_t binder;
+			uint32_t body;
+			if (prototype_term_pure_family_parts(
+					&term_db,
+					term_db.terms[cursor].as.pi.codomain_family,
+					&binder,
+					&body
+				) != 0) {
+				return 254;
+			}
+			dimension_classifier_counts[classifier_index]++;
+			cursor = body;
+		}
+		if (dimension_classifier_counts[classifier_index] !=
+			expected_dimension_classifier_counts[classifier_index]) {
+			return 254;
+		}
+	}
+	if (type_db.type_count != schema_type_count ||
+		type_db.constructor_count != schema_constructor_count ||
+		type_db.semantic_revision != schema_revision) {
+		return 254;
+	}
 	uint32_t additional_schema_types[] = {
 		nat_view, box_view, dependent_box_view
 	};
@@ -752,6 +872,7 @@
 			&term_db,
 			&type_db,
 			&context_db,
+			&bridge_dimension_operator_db,
 			&judgement,
 			bool_is_type,
 			&bool_descriptor
@@ -1064,6 +1185,107 @@
 			return 254;
 		}
 	}
+	uint32_t kernel_extension_0 = schema_extension_0;
+	uint32_t kernel_extension_1 = schema_extension_1;
+	uint32_t kernel_dependent_box_action;
+	uint32_t kernel_dependent_box_square_action;
+	uint32_t kernel_dependent_box_square_classifier;
+	struct prototype_type_schema_view kernel_dependent_box_square_schema;
+	if (prototype_term_dimension_action(
+			&term_db,
+			&bridge_dimension_operator_db,
+			dependent_box_view,
+			kernel_extension_0,
+			&kernel_dependent_box_action
+		) != 0 || prototype_term_dimension_action(
+			&term_db,
+			&bridge_dimension_operator_db,
+			kernel_dependent_box_action,
+			kernel_extension_1,
+			&kernel_dependent_box_square_action
+		) != 0 || prototype_type_schema_view_query(
+			&type_db,
+			&context_db,
+			&term_db,
+			&bridge_dimension_operator_db,
+			kernel_dependent_box_square_action,
+			&kernel_dependent_box_square_schema
+		) != 0 || prototype_constructor_schema_view_action_classifier(
+			&type_db,
+			&context_db,
+			&term_db,
+			&bridge_dimension_operator_db,
+			&kernel_dependent_box_square_schema,
+			0,
+			&kernel_dependent_box_square_classifier
+		) != 0) {
+		return 254;
+	}
+	uint32_t kernel_square_target_context = empty;
+	uint32_t kernel_square_cursor = kernel_dependent_box_square_classifier;
+	for (uint32_t i = 0; i < 18; ++i) {
+		uint32_t binder;
+		uint32_t body;
+		uint32_t next_context;
+		if (kernel_square_cursor >= term_db.term_count || term_db.terms[
+				kernel_square_cursor
+			].tag != PROTOTYPE_TERM_PI || prototype_term_pure_family_parts(
+				&term_db,
+				term_db.terms[kernel_square_cursor].as.pi.codomain_family,
+				&binder,
+				&body
+			) != 0 || prototype_context_extend(
+				&context_db,
+				kernel_square_target_context,
+				binder,
+				term_db.terms[kernel_square_cursor].as.pi.domain,
+				PROTOTYPE_INVALID_ID,
+				&next_context
+			) != 0) {
+			return 254;
+		}
+		kernel_square_target_context = next_context;
+		kernel_square_cursor = body;
+	}
+	uint32_t square_source_type_id = term_db.terms[
+		dependent_box_view
+	].as.type_view.view_type_id;
+	const struct prototype_type_declaration* square_source_type =
+		square_source_type_id < type_db.type_count ? &type_db.type_declarations[
+			square_source_type_id
+		] : NULL;
+	const struct prototype_type_constructor_declaration* square_source_constructor =
+		square_source_type && square_source_type->first_constructor <
+			type_db.constructor_count ? &type_db.constructor_declarations[
+				square_source_type->first_constructor
+			] : NULL;
+	uint32_t kernel_cross_context_classifier;
+	uint32_t kernel_closed_square_classifier;
+	if (!square_source_constructor ||
+		prototype_dimension_action_context_type_classifier(
+			&term_db,
+			&type_db,
+			&context_db,
+			&bridge_dimension_operator_db,
+			square_source_constructor->field_context,
+			kernel_square_target_context,
+			square_source_constructor->result_classifier,
+			kernel_dependent_box_square_action,
+			universe,
+			kernel_extension_1,
+			&kernel_cross_context_classifier
+		) != 0 || prototype_dimension_action_type_classifier(
+			&term_db,
+			&bridge_dimension_operator_db,
+			dependent_box_view,
+			kernel_dependent_box_square_action,
+			universe,
+			2,
+			&kernel_closed_square_classifier
+		) != 0 || kernel_cross_context_classifier !=
+		kernel_closed_square_classifier) {
+		return 254;
+	}
 	uint32_t acted_bool_classifier_has_type;
 	uint32_t acted_bool_classifier_is_type;
 	uint32_t acted_bool_family_claim;
@@ -1096,12 +1318,13 @@
 		) != 0 || prototype_judgement_add_dimension_action_type_formation(
 			&judgement,
 			&term_db,
+			&type_db,
+			&context_db,
 			&bridge_dimension_operator_db,
 			empty,
 			acted_bool,
 			acted_bool_classifier,
 			bool_is_type,
-			acted_bool_classifier_is_type,
 			&acted_bool_family_claim
 		) != 0 || prototype_term_dimension_action(
 			&term_db,
@@ -1113,6 +1336,7 @@
 			&term_db,
 			&bridge_dimension_operator_db,
 			bool_false,
+			bool_view,
 			acted_bool,
 			1,
 			&acted_false_classifier
@@ -1167,7 +1391,6 @@
 			false_claim,
 			bool_has_type,
 			acted_bool_family_claim,
-			acted_false_classifier_is_type,
 			NULL,
 			0,
 			&acted_false_claim
@@ -1223,12 +1446,13 @@
 		) != 0 || prototype_judgement_add_dimension_action_type_formation(
 			&judgement,
 			&term_db,
+			&type_db,
+			&context_db,
 			&bridge_dimension_operator_db,
 			empty,
 			acted_nat,
 			acted_nat_classifier,
 			nat_is_type,
-			acted_nat_classifier_is_type,
 			&acted_nat_family_claim
 		) != 0 || prototype_type_schema_view_query(
 			&type_db,
@@ -1299,7 +1523,6 @@
 			dimension_nat_succ_claim,
 			nat_has_type,
 			acted_nat_family_claim,
-			acted_nat_succ_classifier_is_type,
 			NULL,
 			0,
 			&acted_nat_succ_claim
@@ -1429,10 +1652,6 @@
 	if (prototype_term_universe_var(&term_db, 1, &universe_successor) != 0) {
 		return 35;
 	}
-	uint32_t bool_type_operation = add_operation(
-		&operation_graph, empty, bool_view, universe,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
 	uint32_t text_type_operation = add_operation(
 		&operation_graph, empty, text, universe,
 		PROTOTYPE_TERM_CATEGORY_VALUE
@@ -1461,15 +1680,28 @@
 		) != 0) {
 		return 35;
 	}
-	uint32_t bool_has_universe = fixture_add_claim(
-		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, bool_type_operation, empty,
-		bool_type_operation, bool_view, universe
-	);
+	uint32_t bool_has_universe;
 	uint32_t text_has_universe = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, text_type_operation, empty,
 		text_type_operation, text, universe
+	);
+	if (prototype_judgement_add_structural_type_formation_claim(
+			&judgement,
+			&term_db,
+			&type_db,
+			&context_db,
+			&substitution_db,
+			empty,
+			bool_view,
+			universe,
+			&bool_has_universe
+		) != 0 || text_has_universe == PROTOTYPE_INVALID_ID ||
+		judgement.derivation_count >= judgement.derivation_capacity) {
+		return 36;
+	}
+	judgement.derivations[judgement.derivation_count++] = fixture_derivation(
+		PROTOTYPE_JUDGEMENT_PROOF_TEXT_TYPE_INTRO, text_has_universe
 	);
 	uint32_t universe_goal;
 	if (prototype_parametricity_relation_goal_db_intern(
@@ -1998,6 +2230,7 @@
 	uint32_t bool_identity_computation_id;
 	uint32_t repeated_bool_identity_computation_id;
 	uint32_t bool_identity_computation_result_id;
+	size_t type_count_before_bool_identity = type_db.type_count;
 	if (prototype_hott_action_request_intern(
 			&action_db,
 			&kernel_view,
@@ -2031,11 +2264,14 @@
 			action_results[bool_identity_computation_result_id].certificate_id
 		].data.identity_type.computation_rule !=
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT ||
-		type_db.type_declarations[
-			action_db.certificates[
+		type_db.type_count !=
+			type_count_before_bool_identity || action_db.certificates[
 				action_results[bool_identity_computation_result_id].certificate_id
-			].data.identity_type.generated_type_declaration_id
-		].index_count != 2 ||
+			].data.identity_type.backing_type_former_term_id >= term_db.term_count ||
+		term_db.terms[action_db.certificates[
+			action_results[bool_identity_computation_result_id].certificate_id
+		].data.identity_type.backing_type_former_term_id].tag !=
+			PROTOTYPE_TERM_DIMENSION_ACTION ||
 		prototype_hott_action_db_validate(
 			&action_db, &kernel_view, &bridge_db
 		) != 0) {

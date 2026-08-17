@@ -435,6 +435,7 @@ static int hott_prepare_local_object_identity(
 				judgement, right_carrier_type_claim
 			)) || left_carrier->subject != left->classifier ||
 			right_carrier->subject != right->classifier) {
+			fprintf(stderr, "local Identity carrier reindex validation failed\n");
 			return -1;
 		}
 	} else if (hott_ensure_is_type_claim_in_context(
@@ -475,6 +476,7 @@ static int hott_prepare_local_object_identity(
 			carrier_type->classifier,
 			right_carrier_type->classifier
 		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		fprintf(stderr, "local Identity carrier universe validation failed\n");
 		return -1;
 	}
 	uint32_t local_universe = carrier_type->classifier;
@@ -535,6 +537,7 @@ static int hott_prepare_local_object_identity(
 			right_carrier_claim,
 			&right_context_certificate
 		) != 0) {
+		fprintf(stderr, "local Identity endpoint context construction failed\n");
 		return -1;
 	}
 	uint32_t left_endpoint;
@@ -544,10 +547,14 @@ static int hott_prepare_local_object_identity(
 		) != 0 || prototype_term_var(
 			terms, right_binding, &right_endpoint
 		) != 0) {
+		fprintf(stderr, "local Identity endpoint variable construction failed\n");
 		return -1;
 	}
-	uint32_t generated_type_id = PROTOTYPE_INVALID_ID;
 	uint32_t identity_type;
+	uint32_t identity_type_claim = PROTOTYPE_INVALID_ID;
+	uint32_t identity_type_is_type_claim;
+	uint32_t backing_type_former = PROTOTYPE_INVALID_ID;
+	uint32_t backing_type_former_claim = PROTOTYPE_INVALID_ID;
 	uint32_t x0_binding = PROTOTYPE_INVALID_ID;
 	uint32_t x1_binding = PROTOTYPE_INVALID_ID;
 	uint32_t xr_binding = PROTOTYPE_INVALID_ID;
@@ -563,40 +570,34 @@ static int hott_prepare_local_object_identity(
 		) != 0) {
 		return 1;
 	}
-	if (prototype_type_declaration_find_generated_identity(
-			types,
-			normalized_carrier,
-			prototype_context_empty(contexts),
-			&generated_type_id
-		) == 0) {
-		uint32_t endpoints[2] = { left_endpoint, right_endpoint };
-		computation_rule =
-			prototype_type_declaration_generated_identity_rule_for_source(
-				terms, normalized_carrier
-			);
-		if (computation_rule == PROTOTYPE_HOTT_IDENTITY_COMPUTATION_INVALID ||
-			prototype_term_type_instance_make(
-				terms,
-				types,
-				generated_type_id,
-				endpoints,
-				2,
-				&identity_type
-			) != 0) {
-			return 1;
-		}
-	} else {
+	int normalized_carrier_is_pi = terms->terms[normalized_carrier].tag ==
+		PROTOTYPE_TERM_PI || (terms->terms[normalized_carrier].tag ==
+			PROTOTYPE_TERM_THUNK_TYPE && terms->terms[normalized_carrier].
+				as.thunk_type.computation < terms->term_count && terms->terms[
+					terms->terms[normalized_carrier].as.thunk_type.computation
+				].tag == PROTOTYPE_TERM_PI);
+	if (normalized_carrier_is_pi) {
 		computation_rule = PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE;
+		uint32_t dimension_operator_id;
 		x0_binding = prototype_term_new_binding(terms);
 		x1_binding = prototype_term_new_binding(terms);
 		xr_binding = prototype_term_new_binding(terms);
 		if (x0_binding == PROTOTYPE_INVALID_ID ||
 			x1_binding == PROTOTYPE_INVALID_ID ||
 			xr_binding == PROTOTYPE_INVALID_ID ||
+			prototype_dimension_operator_find(
+				kernel->dimension_operators,
+				0,
+				1,
+				NULL,
+				0,
+				&dimension_operator_id
+			) != 0 ||
 			hott_build_nondependent_pi_identity_type(
 				terms,
 				types,
-				prototype_context_empty(contexts),
+				kernel->dimension_operators,
+				dimension_operator_id,
 				normalized_carrier,
 				left_binding,
 				right_binding,
@@ -607,10 +608,78 @@ static int hott_prepare_local_object_identity(
 			) != 0) {
 			return 1;
 		}
+	} else {
+		uint32_t source_type_id;
+		const struct prototype_type_declaration* source_type;
+		uint32_t dimension_operator_id;
+		uint32_t left_endpoint_claim;
+		uint32_t right_endpoint_claim;
+		uint32_t acted_at_left;
+		uint32_t acted_at_left_claim;
+		if (prototype_type_view_declaration_query(
+				types,
+				contexts,
+				terms,
+				normalized_carrier,
+				&source_type_id,
+				&source_type
+			) != 0 || !source_type || source_type->constructor_count == 0 ||
+			prototype_dimension_operator_find(
+				kernel->dimension_operators,
+				0,
+				1,
+				NULL,
+				0,
+				&dimension_operator_id
+			) != 0 || hott_ensure_dimension_action_type_claim(
+				kernel,
+				endpoint_context,
+				normalized_carrier,
+				local_universe,
+				dimension_operator_id,
+				&backing_type_former,
+				&backing_type_former_claim
+			) != 0 || prototype_judgement_add_context_binding_assumption(
+				judgement,
+				terms,
+				contexts,
+				endpoint_context,
+				left_binding,
+				left->classifier,
+				&left_endpoint_claim
+			) != 0 || prototype_judgement_add_context_binding_assumption(
+				judgement,
+				terms,
+				contexts,
+				endpoint_context,
+				right_binding,
+				right->classifier,
+				&right_endpoint_claim
+			) != 0 || hott_apply_claim_argument(
+				kernel,
+				endpoint_context,
+				backing_type_former_claim,
+				left_endpoint_claim,
+				&acted_at_left,
+				&acted_at_left_claim
+			) != 0 || hott_apply_claim_argument(
+				kernel,
+				endpoint_context,
+				acted_at_left_claim,
+				right_endpoint_claim,
+				&identity_type,
+				&identity_type_claim
+			) != 0) {
+			return 1;
+		}
+		computation_rule = PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT;
+		(void)source_type_id;
 	}
-	uint32_t identity_type_claim;
-	uint32_t identity_type_is_type_claim;
-	if (prototype_judgement_add_structural_type_formation_claim(
+	if ((identity_type_claim == PROTOTYPE_INVALID_ID &&
+		((computation_rule == PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE &&
+		  prototype_hott_ensure_dimension_classifier_formation(
+			kernel, endpoint_context, identity_type, local_universe
+		  ) != 0) || prototype_judgement_add_structural_type_formation_claim(
 			judgement,
 			terms,
 			types,
@@ -620,7 +689,7 @@ static int hott_prepare_local_object_identity(
 			identity_type,
 			local_universe,
 			&identity_type_claim
-		) != 0 || prototype_judgement_add_is_type_claim(
+		) != 0)) || prototype_judgement_add_is_type_claim(
 			judgement,
 			terms,
 			endpoint_context,
@@ -629,6 +698,14 @@ static int hott_prepare_local_object_identity(
 			identity_type_claim,
 			&identity_type_is_type_claim
 		) != 0) {
+		fprintf(
+			stderr,
+			"local Identity type formation failed type=%u claim=%u context=%u rule=%d\n",
+			identity_type,
+			identity_type_claim,
+			endpoint_context,
+			computation_rule
+		);
 		return -1;
 	}
 	*p_identity = (struct prototype_hott_identity_type_computation_certificate) {
@@ -636,9 +713,8 @@ static int hott_prepare_local_object_identity(
 		.endpoint_context_id = endpoint_context,
 		.left_endpoint_binding_id = left_binding,
 		.right_endpoint_binding_id = right_binding,
-		.generated_type_declaration_id = generated_type_id,
-		.backing_type_former_term_id = PROTOTYPE_INVALID_ID,
-		.backing_type_former_has_type_claim_id = PROTOTYPE_INVALID_ID,
+		.backing_type_former_term_id = backing_type_former,
+		.backing_type_former_has_type_claim_id = backing_type_former_claim,
 		.identity_type_term_id = identity_type,
 		.identity_type_has_type_claim_id = identity_type_claim,
 		.identity_type_is_type_claim_id = identity_type_is_type_claim,
@@ -707,12 +783,18 @@ static int hott_certify_nullary_constructor_refinement(
 	uint32_t prefix_certificate;
 	if (hott_certify_nullary_constructor_refinement(
 			kernel, substitution->first, depth + 1, &prefix_certificate
-		) != 0 || substitution->term >= terms->term_count ||
-		terms->terms[substitution->term].tag != PROTOTYPE_TERM_CONSTRUCTOR) {
+		) != 0 || substitution->term >= terms->term_count) {
 		return -1;
 	}
-	uint32_t claim_id;
-	if (prototype_judgement_add_constructor_intro_claim(
+	uint32_t claim_id = hott_exact_has_type_claim(
+		judgement,
+		substitution->source_context,
+		substitution->term,
+		substitution->term_classifier
+	);
+	if (claim_id == PROTOTYPE_INVALID_ID &&
+		(terms->terms[substitution->term].tag != PROTOTYPE_TERM_CONSTRUCTOR ||
+		 prototype_judgement_add_constructor_intro_claim(
 			judgement,
 			terms,
 			types,
@@ -720,7 +802,7 @@ static int hott_certify_nullary_constructor_refinement(
 			substitution->term,
 			substitution->term_classifier,
 			&claim_id
-		) != 0) {
+		 ) != 0)) {
 		return -1;
 	}
 	return prototype_cwf_certificate_db_add_substitution(
@@ -773,8 +855,7 @@ static int hott_construct_nullary_match_object_action(
 	}
 	if (source_match->tag != PROTOTYPE_TERM_MATCH || !match_derivation ||
 		source_match->as.match.case_count == 0 ||
-		source_match->as.match.case_count + 1 != match_derivation->premise_count ||
-		identity->generated_type_declaration_id == PROTOTYPE_INVALID_ID) {
+		source_match->as.match.case_count + 1 != match_derivation->premise_count) {
 		return 1;
 	}
 	for (uint32_t i = 0; i < source_match->as.match.case_count; ++i) {
@@ -851,32 +932,53 @@ static int hott_construct_nullary_match_object_action(
 	const struct prototype_judgement_proposition* scrutinee_family =
 		prototype_judgement_claim_proposition(judgement, scrutinee_family_claim);
 	if (!scrutinee_family || scrutinee_family->kind !=
-			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE || scrutinee_family->context_id !=
+			PROTOTYPE_JUDGEMENT_KIND_IS_TYPE || scrutinee_family->context_id !=
 			environment->target_context_id || scrutinee_witness >=
 			terms->term_count || terms->terms[scrutinee_witness].tag !=
 			PROTOTYPE_TERM_VAR) {
 		return 1;
 	}
 
-	uint32_t source_type_id;
-	uint32_t source_type_arguments[16];
-	uint32_t source_type_argument_count;
-	uint32_t generated_type_id;
-	uint32_t generated_type_arguments[16];
-	uint32_t generated_type_argument_count;
-	if (prototype_term_type_instance_info(
-			terms, scrutinee->classifier, &source_type_id, source_type_arguments,
-			&source_type_argument_count
-		) != 0 || source_type_id >= types->type_count ||
-		prototype_term_type_instance_info(
-			terms, scrutinee_family->subject, &generated_type_id,
-			generated_type_arguments, &generated_type_argument_count
-		) != 0 || generated_type_id >= types->type_count ||
-		generated_type_argument_count != 2) {
+	struct prototype_type_schema_view source_schema;
+	struct prototype_type_schema_view acted_schema;
+	uint32_t acted_family;
+	uint32_t acted_source;
+	uint32_t acted_operator;
+	uint32_t acted_dimension;
+	size_t acted_boundary_count;
+	if (prototype_type_schema_view_query(
+			types,
+			contexts,
+			terms,
+			kernel->dimension_operators,
+			scrutinee->classifier,
+			&source_schema
+		) != 0 || source_schema.target_dimension != 0 ||
+		prototype_dimension_action_family_instance_info(
+			terms,
+			kernel->dimension_operators,
+			scrutinee_family->subject,
+			&acted_family,
+			&acted_source,
+			&acted_operator,
+			&acted_dimension,
+			NULL,
+			0,
+			&acted_boundary_count
+		) != 0 || prototype_type_schema_view_query(
+			types,
+			contexts,
+			terms,
+			kernel->dimension_operators,
+			acted_family,
+			&acted_schema
+		) != 0 || acted_schema.target_dimension != acted_dimension ||
+		acted_dimension == 0 || acted_schema.source_type_id !=
+			source_schema.source_type_id || acted_source != source_schema.source_type_view) {
 		return 1;
 	}
 	const struct prototype_type_declaration* source_type =
-		&types->type_declarations[source_type_id];
+		source_schema.source_declaration;
 	if (source_type->constructor_count != source_match->as.match.case_count ||
 		source_type->constructor_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 		return 1;
@@ -884,7 +986,7 @@ static int hott_construct_nullary_match_object_action(
 
 	uint32_t branch_witness_claims[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t branch_witness_terms[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t generated_constructor_indices[
+	uint32_t acted_constructor_ordinals[
 		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
 	];
 	for (uint32_t i = 0; i < source_type->constructor_count; ++i) {
@@ -898,16 +1000,9 @@ static int hott_construct_nullary_match_object_action(
 				terms->cases[case_id].body) {
 			return 1;
 		}
-		int constructor_status = hott_generated_constructor_index_for_source_ordinal(
-			terms,
-			types,
-			generated_type_id,
-			scrutinee->classifier,
-			terms->cases[case_id].constructor_id,
-			&generated_constructor_indices[i]
-		);
-		if (constructor_status != 0) {
-			return constructor_status < 0 ? -1 : 1;
+		acted_constructor_ordinals[i] = terms->cases[case_id].constructor_id;
+		if (acted_constructor_ordinals[i] >= source_type->constructor_count) {
+			return 1;
 		}
 		uint32_t branch_left_claim;
 		uint32_t branch_right_claim;
@@ -940,7 +1035,7 @@ static int hott_construct_nullary_match_object_action(
 		cases[i] = (struct prototype_match_case_input) {
 			.case_label_symbol_id = -1,
 			.constructor_owner = scrutinee_family->subject,
-			.constructor_id = generated_constructor_indices[i],
+			.constructor_id = acted_constructor_ordinals[i],
 			.binders = NULL,
 			.binder_count = 0,
 			.body = branch_witness_terms[i]
@@ -954,18 +1049,7 @@ static int hott_construct_nullary_match_object_action(
 		return -1;
 	}
 
-	uint32_t family_is_type_claim;
-	if (prototype_judgement_add_is_type_claim(
-			judgement,
-			terms,
-			environment->target_context_id,
-			scrutinee_family->subject,
-			universe,
-			scrutinee_family_claim,
-			&family_is_type_claim
-		) != 0) {
-		return -1;
-	}
+	uint32_t family_is_type_claim = scrutinee_family_claim;
 	uint32_t motive_binding = prototype_term_new_binding(terms);
 	uint32_t motive_context;
 	uint32_t motive_context_certificate;
@@ -1064,10 +1148,11 @@ static int hott_construct_nullary_match_object_action(
 				substitutions,
 				terms,
 				types,
+				kernel->dimension_operators,
 				environment->target_context_id,
 				scrutinee_witness,
 				scrutinee_family->subject,
-				generated_constructor_indices[i],
+				acted_constructor_ordinals[i],
 				environment->target_context_id,
 				NULL,
 				0,
@@ -1102,6 +1187,7 @@ static int hott_construct_nullary_match_object_action(
 			types,
 			contexts,
 			substitutions,
+			kernel->dimension_operators,
 			kernel->occurrences,
 			environment->target_context_id,
 			witness,
@@ -1131,11 +1217,14 @@ static int hott_construct_nullary_match_object_action(
 	(void)scrutinee_left_claim;
 	(void)scrutinee_right_claim;
 	(void)motive_context_certificate;
+	(void)acted_operator;
+	(void)acted_boundary_count;
 	return 0;
 }
 
 static int hott_construct_adt_value_action(
 	struct prototype_kernel_builder* kernel,
+	const struct prototype_hott_identity_type_computation_certificate* identity,
 	uint32_t source_claim_id,
 	const struct hott_object_action_environment* environment,
 	uint32_t universe,
@@ -1166,7 +1255,8 @@ static int hott_construct_adt_value_action(
 			environment ? environment->right_substitution_id : PROTOTYPE_INVALID_ID
 		) : NULL;
 	if (!terms || !types || !contexts || !substitutions || !judgement ||
-		!source || !environment || !left || !right || !p_left_claim_id ||
+		!source || !identity || !environment || !left || !right ||
+		!p_left_claim_id ||
 		!p_right_claim_id ||
 		!p_identity_family_claim_id || !p_witness_term_id ||
 		!p_witness_claim_id || remaining_depth == 0 ||
@@ -1238,47 +1328,28 @@ static int hott_construct_adt_value_action(
 			environment->target_context_id, endpoint_conversion);
 		return -1;
 	}
-	uint32_t generated_type_id;
-	if (prototype_type_declaration_find_generated_identity(
-			types,
-			left_endpoint->classifier,
-			prototype_context_empty(contexts),
-			&generated_type_id
-		) != 0) {
-		return 1;
-	}
-	uint32_t identity_arguments[2] = {
-		left_endpoint->subject,
-		right_endpoint->subject
-	};
 	uint32_t identity_family;
 	uint32_t identity_family_claim;
-	int identity_family_status = prototype_term_type_instance_make(
-			terms,
-			types,
-			generated_type_id,
-			identity_arguments,
-			2,
-			&identity_family
-		);
-	int identity_family_claim_status = identity_family_status == 0 ?
-		prototype_judgement_add_type_formation_claim(
-			judgement,
-			terms,
-			types,
+	if (hott_instantiate_object_identity_family(
+			kernel,
+			identity,
 			environment->target_context_id,
-			identity_family,
-			universe,
+			left_claim_id,
+			right_claim_id,
 			&identity_family_claim
-		) : -1;
-	if (identity_family_status != 0 || identity_family_claim_status != 0) {
+		) != 0) {
 		fprintf(stderr,
-			"HOTT object action family formation failed source-claim=%u "
-			"generated-type=%u family=%d claim=%d\n",
-			source_claim_id, generated_type_id, identity_family_status,
-			identity_family_claim_status);
+			"HOTT object action family formation failed source-claim=%u\n",
+			source_claim_id);
 		return -1;
 	}
+	const struct prototype_judgement_proposition* identity_family_proposition =
+		prototype_judgement_claim_proposition(judgement, identity_family_claim);
+	if (!identity_family_proposition || identity_family_proposition->kind !=
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
+		return -1;
+	}
+	identity_family = identity_family_proposition->subject;
 	if (source->subject < terms->term_count &&
 		terms->terms[source->subject].tag == PROTOTYPE_TERM_VAR) {
 		uint32_t source_binding = terms->terms[source->subject].as.var.binding_id;
@@ -1342,56 +1413,215 @@ static int hott_construct_adt_value_action(
 		) != 0) {
 		return 1;
 	}
-	const struct prototype_type_declaration* generated =
-		generated_type_id < types->type_count ?
-		&types->type_declarations[generated_type_id] : NULL;
-	uint32_t generated_constructor_index;
-	int generated_constructor_status = generated ?
-		hott_generated_constructor_index_for_source_ordinal(
+	uint32_t acted_source;
+	uint32_t operator_id;
+	if (prototype_term_dimension_action_info(
 			terms,
-			types,
-			generated_type_id,
-			left_endpoint->classifier,
-			constructor_ordinal,
-			&generated_constructor_index
-		) : -1;
-	if (!generated || source_owner != left_endpoint->classifier ||
-		generated_constructor_status < 0 ||
+			identity->backing_type_former_term_id,
+			&acted_source,
+			&operator_id
+		) != 0 || acted_source != source_owner ||
+		source_owner != left_endpoint->classifier ||
 		source_argument_count * 3 > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 		fprintf(stderr,
 			"HOTT ADT constructor mapping failed source-claim=%u source-owner=%u "
-			"endpoint-classifier=%u generated-type=%u generated-status=%d "
+			"endpoint-classifier=%u "
 			"argument-count=%u\n",
 			source_claim_id, source_owner, left_endpoint->classifier,
-			generated_type_id, generated_constructor_status,
 			source_argument_count);
 		return -1;
 	}
-	if (generated_constructor_status > 0) {
-		return 1;
-	}
+	struct prototype_type_schema_view acted_schema;
+	struct prototype_constructor_schema_view constructor_schema;
+	uint32_t action_classifier;
+	uint32_t action_classifier_has_type_claim;
+	uint32_t action_classifier_is_type_claim;
+	uint32_t source_constructor_claim;
+	uint32_t source_owner_claim;
+	uint32_t source_owner_is_type_claim;
+	uint32_t acted_owner;
+	uint32_t acted_owner_claim;
 	uint32_t witness;
+	uint32_t witness_claim;
+	int action_stage = 1;
+	int action_status = prototype_type_schema_view_query(
+			types,
+			contexts,
+			terms,
+			kernel->dimension_operators,
+			identity->backing_type_former_term_id,
+			&acted_schema
+		);
+	if (action_status == 0) {
+		action_stage = 2;
+		action_status = prototype_constructor_schema_view_query(
+			types,
+			contexts,
+			terms,
+			kernel->dimension_operators,
+			&acted_schema,
+			constructor_ordinal,
+			&constructor_schema
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 3;
+		action_status = prototype_constructor_schema_view_action_classifier(
+			types,
+			contexts,
+			terms,
+			kernel->dimension_operators,
+			&acted_schema,
+			constructor_ordinal,
+			&action_classifier
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 4;
+		action_status = prototype_judgement_add_structural_type_formation_claim(
+			judgement,
+			terms,
+			types,
+			contexts,
+			substitutions,
+			environment->target_context_id,
+			source_owner,
+			universe,
+			&source_owner_claim
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 5;
+		action_status = prototype_judgement_add_is_type_claim(
+			judgement,
+			terms,
+			environment->target_context_id,
+			source_owner,
+			universe,
+			source_owner_claim,
+			&source_owner_is_type_claim
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 6;
+		action_status = prototype_judgement_add_constructor_intro_claim(
+			judgement,
+			terms,
+			types,
+			environment->target_context_id,
+			source_head,
+			constructor_schema.source_classifier,
+			&source_constructor_claim
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 7;
+		action_status = hott_ensure_dimension_action_type_claim(
+			kernel,
+			environment->target_context_id,
+			source_owner,
+			universe,
+			operator_id,
+			&acted_owner,
+			&acted_owner_claim
+		);
+		if (action_status == 0 && acted_owner !=
+				identity->backing_type_former_term_id) {
+			action_status = -1;
+		}
+	}
+	if (action_status == 0) {
+		action_stage = 8;
+		action_status = hott_ensure_dimension_classifier_formation_exact(
+			kernel,
+			environment->target_context_id,
+			action_classifier,
+			universe
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 9;
+		action_status = prototype_judgement_add_structural_type_formation_claim(
+			judgement,
+			terms,
+			types,
+			contexts,
+			substitutions,
+			environment->target_context_id,
+			action_classifier,
+			universe,
+			&action_classifier_has_type_claim
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 10;
+		action_status = prototype_judgement_add_is_type_claim(
+			judgement,
+			terms,
+			environment->target_context_id,
+			action_classifier,
+			universe,
+			action_classifier_has_type_claim,
+			&action_classifier_is_type_claim
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 11;
+		action_status = prototype_term_dimension_action(
+			terms,
+			kernel->dimension_operators,
+			source_head,
+			operator_id,
+			&witness
+		);
+	}
+	if (action_status == 0) {
+		action_stage = 12;
+		action_status = prototype_judgement_add_dimension_action_constructor(
+			judgement,
+			terms,
+			types,
+			contexts,
+			kernel->dimension_operators,
+			environment->target_context_id,
+			witness,
+			action_classifier,
+			source_constructor_claim,
+			source_owner_claim,
+			acted_owner_claim,
+			NULL,
+			0,
+			&witness_claim
+		);
+	}
+	if (action_status != 0) {
+		fprintf(
+			stderr,
+			"HOTT acted constructor construction failed source-claim=%u stage=%d "
+			"status=%d\n",
+			source_claim_id,
+			action_stage,
+			action_status
+		);
+		return -1;
+	}
 	if (source_argument_count == 0) {
-		uint32_t witness_claim;
-		int witness_constructor_status = prototype_term_constructor(
-				terms, identity_family, generated_constructor_index, &witness
-			);
-		int witness_claim_status = witness_constructor_status == 0 ?
-			prototype_judgement_add_constructor_intro_claim(
+		if (prototype_judgement_classifier_conversion(
+				terms, types, action_classifier, identity_family
+			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			return -1;
+		}
+		if (action_classifier != identity_family &&
+			prototype_judgement_add_conversion_claim(
 				judgement,
 				terms,
 				types,
 				environment->target_context_id,
 				witness,
 				identity_family,
+				witness_claim,
 				&witness_claim
-			) : -1;
-		if (witness_constructor_status != 0 || witness_claim_status != 0) {
-			fprintf(stderr,
-				"HOTT nullary ADT witness failed source-claim=%u family=%u "
-				"constructor=%u constructor-status=%d claim-status=%d\n",
-				source_claim_id, identity_family, generated_constructor_index,
-				witness_constructor_status, witness_claim_status);
+			) != 0) {
 			return -1;
 		}
 		*p_left_claim_id = left_claim_id;
@@ -1407,16 +1637,6 @@ static int hott_construct_adt_value_action(
 		source_derivation->premise_count != source_argument_count) {
 		return 1;
 	}
-	uint32_t identity_former;
-	if (prototype_term_type_instance_make(
-			terms, types, generated_type_id, NULL, 0, &identity_former
-		) != 0 || prototype_term_constructor(
-			terms, identity_former, generated_constructor_index, &witness
-		) != 0) {
-		return -1;
-	}
-	uint32_t argument_claims[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t argument_count = 0;
 	for (uint32_t i = 0; i < source_argument_count; ++i) {
 		uint32_t field_left_claim;
 		uint32_t field_right_claim;
@@ -1459,32 +1679,48 @@ static int hott_construct_adt_value_action(
 			prototype_judgement_claim_proposition(judgement, field_left_claim);
 		const struct prototype_judgement_proposition* field_right =
 			prototype_judgement_claim_proposition(judgement, field_right_claim);
-		if (!field_left || !field_right || prototype_term_app(
-				terms, witness, field_left->subject, &witness
-			) != 0 || prototype_term_app(
-				terms, witness, field_right->subject, &witness
-			) != 0 || prototype_term_app(
-				terms, witness, field_witness, &witness
+		if (!field_left || !field_right || hott_apply_claim_argument(
+				kernel,
+				environment->target_context_id,
+				witness_claim,
+				field_left_claim,
+				&witness,
+				&witness_claim
+			) != 0 || hott_apply_claim_argument(
+				kernel,
+				environment->target_context_id,
+				witness_claim,
+				field_right_claim,
+				&witness,
+				&witness_claim
+			) != 0 || hott_apply_claim_argument(
+				kernel,
+				environment->target_context_id,
+				witness_claim,
+				field_witness_claim,
+				&witness,
+				&witness_claim
 			) != 0) {
 			return -1;
 		}
-		argument_claims[argument_count++] = field_left_claim;
-		argument_claims[argument_count++] = field_right_claim;
-		argument_claims[argument_count++] = field_witness_claim;
 		(void)field_family_claim;
 	}
-	uint32_t witness_claim;
-	if (prototype_judgement_add_constructor_spine_claim(
+	const struct prototype_judgement_proposition* completed_witness =
+		prototype_judgement_claim_proposition(judgement, witness_claim);
+	if (!completed_witness || prototype_judgement_classifier_conversion(
+			terms, types, completed_witness->classifier, identity_family
+		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		return -1;
+	}
+	if (completed_witness->classifier != identity_family &&
+		prototype_judgement_add_conversion_claim(
 			judgement,
 			terms,
 			types,
-			contexts,
-			substitutions,
 			environment->target_context_id,
 			witness,
 			identity_family,
-			argument_claims,
-			argument_count,
+			witness_claim,
 			&witness_claim
 		) != 0) {
 		return -1;
@@ -1496,180 +1732,6 @@ static int hott_construct_adt_value_action(
 	*p_witness_claim_id = witness_claim;
 	(void)source_head;
 	(void)source_owner;
-	return 0;
-}
-
-static int hott_construct_thunk_return_object_action(
-	struct prototype_kernel_builder* kernel,
-	const struct prototype_hott_identity_type_computation_certificate* identity,
-	uint32_t source_claim_id,
-	const struct hott_object_action_environment* environment,
-	uint32_t universe,
-	uint32_t remaining_depth,
-	uint32_t* p_identity_family_claim_id,
-	uint32_t* p_witness_term_id,
-	uint32_t* p_witness_claim_id
-) {
-	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
-	struct prototype_type_declaration_db* types = kernel ?
-		kernel->type_declarations : NULL;
-	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
-	struct prototype_substitution_db* substitutions = kernel ?
-		kernel->substitutions : NULL;
-	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
-	const struct prototype_judgement_proposition* source = judgement ?
-		prototype_judgement_claim_proposition(judgement, source_claim_id) : NULL;
-	const struct prototype_type_declaration* generated = identity && types &&
-		identity->generated_type_declaration_id < types->type_count ?
-		&types->type_declarations[identity->generated_type_declaration_id] : NULL;
-	if (!terms || !types || !contexts || !substitutions || !judgement ||
-		!identity || !source || !generated || !environment ||
-		!p_identity_family_claim_id ||
-		!p_witness_term_id || !p_witness_claim_id || remaining_depth == 0 ||
-		(identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN &&
-		 identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_CONSTANT_FAMILY_LIFT) ||
-		identity->generated_type_declaration_id == PROTOTYPE_INVALID_ID ||
-		generated->origin_kind !=
-			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY ||
-		generated->origin_source_carrier_term_id != source->classifier ||
-		source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE || source->subject >=
-			terms->term_count || source->classifier >= terms->term_count ||
-		terms->terms[source->subject].tag != PROTOTYPE_TERM_THUNK ||
-		terms->terms[source->classifier].tag != PROTOTYPE_TERM_THUNK_TYPE) {
-		return -1;
-	}
-	uint32_t returned_id = terms->terms[source->subject].as.thunk.computation;
-	if (returned_id >= terms->term_count || terms->terms[returned_id].tag !=
-			PROTOTYPE_TERM_RETURN) {
-		return 1;
-	}
-	const struct prototype_judgement_derivation* thunk_derivation =
-		hott_derivation_for_claim_and_kind(
-			judgement, source_claim_id, PROTOTYPE_JUDGEMENT_PROOF_THUNK_INTRO
-		);
-	uint32_t returned_claim_id = thunk_derivation &&
-		thunk_derivation->premise_count == 1 ?
-		thunk_derivation->premises[0].claim_id : PROTOTYPE_INVALID_ID;
-	const struct prototype_judgement_proposition* returned =
-		prototype_judgement_claim_proposition(judgement, returned_claim_id);
-	const struct prototype_judgement_derivation* return_derivation =
-		hott_derivation_for_claim_and_kind(
-			judgement, returned_claim_id, PROTOTYPE_JUDGEMENT_PROOF_RETURN_INTRO
-		);
-	uint32_t value_claim_id = return_derivation &&
-		return_derivation->premise_count == 1 ?
-		return_derivation->premises[0].claim_id : PROTOTYPE_INVALID_ID;
-	const struct prototype_judgement_proposition* value =
-		prototype_judgement_claim_proposition(judgement, value_claim_id);
-	if (!thunk_derivation || !returned || !return_derivation || !value ||
-		returned->subject != returned_id || value->subject !=
-			terms->terms[returned_id].as.return_term.value) {
-		return 1;
-	}
-
-	uint32_t left_value_claim;
-	uint32_t right_value_claim;
-	uint32_t value_family_claim;
-	uint32_t value_witness;
-	uint32_t value_witness_claim;
-	int value_status = hott_construct_object_value_action_depth(
-		kernel,
-		NULL,
-		value_claim_id,
-		environment,
-		universe,
-		remaining_depth - 1,
-		&left_value_claim,
-		&right_value_claim,
-		&value_family_claim,
-		&value_witness,
-		&value_witness_claim
-	);
-	if (value_status != 0) {
-		return value_status;
-	}
-	const struct prototype_judgement_proposition* left_value =
-		prototype_judgement_claim_proposition(judgement, left_value_claim);
-	const struct prototype_judgement_proposition* right_value =
-		prototype_judgement_claim_proposition(judgement, right_value_claim);
-	uint32_t left_source_claim;
-	uint32_t right_source_claim;
-	uint32_t identity_family_claim;
-	if (!left_value || !right_value || prototype_judgement_add_reindexed_claim(
-			judgement,
-			terms,
-			types,
-			contexts,
-			substitutions,
-			source_claim_id,
-			environment->left_substitution_id,
-			&left_source_claim
-		) != 0 || prototype_judgement_add_reindexed_claim(
-			judgement,
-			terms,
-			types,
-			contexts,
-			substitutions,
-			source_claim_id,
-			environment->right_substitution_id,
-			&right_source_claim
-		) != 0 || hott_instantiate_object_identity_family(
-			kernel,
-			identity,
-			environment->target_context_id,
-			left_source_claim,
-			right_source_claim,
-			&identity_family_claim
-		) != 0) {
-		return -1;
-	}
-	const struct prototype_judgement_proposition* identity_family =
-		prototype_judgement_claim_proposition(judgement, identity_family_claim);
-	uint32_t identity_former;
-	uint32_t witness;
-	if (!identity_family || prototype_term_type_instance_make(
-			terms,
-			types,
-			identity->generated_type_declaration_id,
-			NULL,
-			0,
-			&identity_former
-		) != 0 || prototype_term_constructor(
-			terms, identity_former, 0, &witness
-		) != 0 || prototype_term_app(
-			terms, witness, left_value->subject, &witness
-		) != 0 || prototype_term_app(
-			terms, witness, right_value->subject, &witness
-		) != 0 || prototype_term_app(
-			terms, witness, value_witness, &witness
-		) != 0) {
-		return -1;
-	}
-	uint32_t premises[3] = {
-		left_value_claim, right_value_claim, value_witness_claim
-	};
-	uint32_t witness_claim;
-	if (prototype_judgement_add_constructor_spine_claim(
-			judgement,
-			terms,
-			types,
-			contexts,
-			substitutions,
-			environment->target_context_id,
-			witness,
-			identity_family->subject,
-			premises,
-			3,
-			&witness_claim
-		) != 0) {
-		return -1;
-	}
-	*p_identity_family_claim_id = identity_family_claim;
-	*p_witness_term_id = witness;
-	*p_witness_claim_id = witness_claim;
-	(void)value_family_claim;
 	return 0;
 }
 
@@ -1702,6 +1764,17 @@ static int hott_apply_pointwise_identity_witness(
 		function_identity->classifier >= terms->term_count ||
 		terms->terms[function_identity->classifier].tag !=
 			PROTOTYPE_TERM_THUNK_TYPE || universe >= terms->term_count) {
+		fprintf(
+			stderr,
+			"pointwise witness precondition failed claim=%u subject=%u classifier=%u/%d "
+			"arguments=%u\n",
+			function_identity_claim_id,
+			function_identity ? function_identity->subject : PROTOTYPE_INVALID_ID,
+			function_identity ? function_identity->classifier : PROTOTYPE_INVALID_ID,
+			function_identity && function_identity->classifier < terms->term_count ?
+				terms->terms[function_identity->classifier].tag : -1,
+			argument_count
+		);
 		return -1;
 	}
 	uint32_t context_id = function_identity->context_id;
@@ -1757,6 +1830,7 @@ static int hott_apply_pointwise_identity_witness(
 			argument_claim_ids[0],
 			&application_claim
 		) != 0) {
+		fprintf(stderr, "pointwise witness first application failed\n");
 		return -1;
 	}
 	if (argument_count == 1) {
@@ -1767,6 +1841,7 @@ static int hott_apply_pointwise_identity_witness(
 	if (application_classifier >= terms->term_count ||
 		terms->terms[application_classifier].tag !=
 			PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		fprintf(stderr, "pointwise witness first result is not a computation\n");
 		return -1;
 	}
 	uint32_t next_value_type = terms->terms[
@@ -1788,7 +1863,13 @@ static int hott_apply_pointwise_identity_witness(
 	);
 	if (next_type_status == 1) {
 		uint32_t next_value_type_formation_claim;
-		if (prototype_judgement_add_structural_type_formation_claim(
+		int formation_stage = 1;
+		int formation_status = prototype_hott_ensure_dimension_classifier_formation(
+			kernel, context_id, next_value_type, universe
+		);
+		if (formation_status == 0) {
+			formation_stage = 2;
+			formation_status = prototype_judgement_add_structural_type_formation_claim(
 				judgement,
 				terms,
 				types,
@@ -1798,7 +1879,11 @@ static int hott_apply_pointwise_identity_witness(
 				next_value_type,
 				universe,
 				&next_value_type_formation_claim
-			) != 0 || prototype_judgement_add_is_type_claim(
+			);
+		}
+		if (formation_status == 0) {
+			formation_stage = 3;
+			formation_status = prototype_judgement_add_is_type_claim(
 				judgement,
 				terms,
 				context_id,
@@ -1806,7 +1891,198 @@ static int hott_apply_pointwise_identity_witness(
 				universe,
 				next_value_type_formation_claim,
 				&next_value_type_claim
-			) != 0) {
+			);
+		}
+		if (formation_status != 0) {
+			fprintf(
+				stderr,
+				"pointwise witness next type formation failed type=%u context=%u "
+				"stage=%d status=%d\n",
+				next_value_type,
+				context_id,
+				formation_stage,
+				formation_status
+			);
+			prototype_term_print_debug(
+				stderr, NULL, NULL, types, terms, next_value_type
+			);
+			fputc('\n', stderr);
+			uint32_t trace_term = next_value_type;
+			uint32_t trace_context = context_id;
+			for (size_t trace_depth = 0; trace_depth < 16 && trace_term <
+					terms->term_count; ++trace_depth) {
+				fprintf(
+					stderr,
+					"  type spine depth=%zu term=%u tag=%d context=%u has=%u exact=%u "
+					"is=%u\n",
+					trace_depth,
+					trace_term,
+					terms->terms[trace_term].tag,
+					trace_context,
+					hott_has_type_claim_for_subject(
+						judgement, trace_context, trace_term
+					),
+					hott_exact_has_type_claim(
+						judgement, trace_context, trace_term, universe
+					),
+					hott_is_type_claim_for_subject(
+						judgement, trace_context, trace_term
+					)
+				);
+				if (terms->terms[trace_term].tag == PROTOTYPE_TERM_THUNK_TYPE) {
+					trace_term = terms->terms[trace_term].as.thunk_type.computation;
+					continue;
+				}
+				if (terms->terms[trace_term].tag ==
+						PROTOTYPE_TERM_COMPUTATION_TYPE) {
+					trace_term = terms->terms[trace_term].as.computation_type.result;
+					continue;
+				}
+				if (terms->terms[trace_term].tag == PROTOTYPE_TERM_PI) {
+					uint32_t trace_binder;
+					uint32_t trace_body;
+					uint32_t trace_next_context;
+					uint32_t trace_domain = terms->terms[
+						trace_term
+					].as.pi.domain;
+					fprintf(
+						stderr,
+						"  Pi domain=%u tag=%d has=%u exact=%u is=%u\n",
+						trace_domain,
+						terms->terms[trace_domain].tag,
+						hott_has_type_claim_for_subject(
+							judgement, trace_context, trace_domain
+						),
+						hott_exact_has_type_claim(
+							judgement, trace_context, trace_domain, universe
+						),
+						hott_is_type_claim_for_subject(
+							judgement, trace_context, trace_domain
+						)
+					);
+					uint32_t trace_domain_is = hott_is_type_claim_for_subject(
+						judgement, trace_context, trace_domain
+					);
+					if (trace_domain_is != PROTOTYPE_INVALID_ID) {
+						uint32_t trace_domain_derivations[8];
+						size_t trace_domain_derivation_count;
+						if (prototype_judgement_claim_derivations(
+								judgement,
+								trace_domain_is,
+								trace_domain_derivations,
+								8,
+								&trace_domain_derivation_count
+							) == 0) {
+							for (size_t i = 0; i < trace_domain_derivation_count; ++i) {
+								const struct prototype_judgement_derivation* derivation =
+									prototype_judgement_derivation_get(
+										judgement, trace_domain_derivations[i]
+									);
+								if (derivation && derivation->premise_count != 0) {
+									const struct prototype_judgement_proposition* premise =
+										prototype_judgement_premise_proposition(
+											judgement, &derivation->premises[0]
+										);
+									fprintf(
+										stderr,
+										"  domain IS derivation=%u rule=%d premise=%u kind=%d "
+										"context=%u subject=%u classifier=%u\n",
+										trace_domain_derivations[i],
+										derivation->proof_kind,
+										derivation->premises[0].claim_id,
+										premise ? premise->kind : -1,
+										premise ? premise->context_id : PROTOTYPE_INVALID_ID,
+										premise ? premise->subject : PROTOTYPE_INVALID_ID,
+										premise ? premise->classifier : PROTOTYPE_INVALID_ID
+									);
+								}
+							}
+						}
+					}
+					if (prototype_term_pure_family_parts(
+							terms,
+							terms->terms[trace_term].as.pi.codomain_family,
+							&trace_binder,
+							&trace_body
+						) != 0 || prototype_context_extend(
+							contexts,
+							trace_context,
+							trace_binder,
+							terms->terms[trace_term].as.pi.domain,
+							PROTOTYPE_INVALID_ID,
+							&trace_next_context
+						) != 0) {
+						break;
+					}
+					trace_context = trace_next_context;
+					trace_term = trace_body;
+					continue;
+				}
+				uint32_t trace_is_claim = hott_is_type_claim_for_subject(
+					judgement, trace_context, trace_term
+				);
+				if (trace_is_claim != PROTOTYPE_INVALID_ID) {
+					uint32_t trace_derivations[8];
+					size_t trace_derivation_count;
+					if (prototype_judgement_claim_derivations(
+							judgement,
+							trace_is_claim,
+							trace_derivations,
+							8,
+							&trace_derivation_count
+						) == 0) {
+						for (size_t i = 0; i < trace_derivation_count; ++i) {
+							const struct prototype_judgement_derivation* derivation =
+								prototype_judgement_derivation_get(
+									judgement, trace_derivations[i]
+								);
+							if (derivation && derivation->premise_count != 0) {
+								const struct prototype_judgement_proposition* premise =
+									prototype_judgement_premise_proposition(
+										judgement, &derivation->premises[0]
+									);
+								fprintf(
+									stderr,
+									"  IS_TYPE derivation=%u rule=%d premise-claim=%u "
+									"kind=%d context=%u subject=%u classifier=%u\n",
+									trace_derivations[i],
+									derivation->proof_kind,
+									derivation->premises[0].claim_id,
+									premise ? premise->kind : -1,
+									premise ? premise->context_id : PROTOTYPE_INVALID_ID,
+									premise ? premise->subject : PROTOTYPE_INVALID_ID,
+									premise ? premise->classifier : PROTOTYPE_INVALID_ID
+								);
+							}
+						}
+					}
+				}
+				uint32_t trace_head = trace_term;
+				for (size_t app_depth = 0; app_depth < 16 && trace_head <
+						terms->term_count && terms->terms[trace_head].tag ==
+						PROTOTYPE_TERM_APP; ++app_depth) {
+					fprintf(
+						stderr,
+						"  APP spine depth=%zu term=%u function=%u argument=%u "
+						"argument-tag=%d\n",
+						app_depth,
+						trace_head,
+						terms->terms[trace_head].as.app.function,
+						terms->terms[trace_head].as.app.argument,
+						terms->terms[terms->terms[trace_head].as.app.argument].tag
+					);
+					trace_head = terms->terms[trace_head].as.app.function;
+				}
+				if (trace_head < terms->term_count) {
+					fprintf(
+						stderr,
+						"  APP head=%u tag=%d\n",
+						trace_head,
+						terms->terms[trace_head].tag
+					);
+				}
+				break;
+			}
 			return -1;
 		}
 		next_type_status = 0;
@@ -1831,6 +2107,12 @@ static int hott_apply_pointwise_identity_witness(
 			next_value_type_claim,
 			&continuation_context_certificate
 		) != 0) {
+		fprintf(
+			stderr,
+			"pointwise witness continuation context failed next-type=%u status=%d\n",
+			next_value_type,
+			next_type_status
+		);
 		return -1;
 	}
 	uint32_t continuation_value;
@@ -1854,6 +2136,7 @@ static int hott_apply_pointwise_identity_witness(
 			context_id,
 			&continuation_projection
 		) != 0) {
+		fprintf(stderr, "pointwise witness continuation variable failed\n");
 		return -1;
 	}
 	for (uint32_t i = 1; i < argument_count; ++i) {
@@ -1867,6 +2150,7 @@ static int hott_apply_pointwise_identity_witness(
 				continuation_projection,
 				&mapped_arguments[i - 1]
 			) != 0) {
+			fprintf(stderr, "pointwise witness argument reindex failed index=%u\n", i);
 			return -1;
 		}
 	}
@@ -1881,6 +2165,7 @@ static int hott_apply_pointwise_identity_witness(
 			&continuation_body,
 			&continuation_body_claim
 		) != 0) {
+		fprintf(stderr, "pointwise witness continuation application failed\n");
 		return -1;
 	}
 	const struct prototype_judgement_proposition* continuation_body_evidence =
@@ -1931,6 +2216,7 @@ static int hott_apply_pointwise_identity_witness(
 			continuation_classifier,
 			&fold_classifier
 		) != 0) {
+		fprintf(stderr, "pointwise witness continuation construction failed\n");
 		return -1;
 	}
 	fold_premises[1] = continuation_claim;
@@ -1945,6 +2231,7 @@ static int hott_apply_pointwise_identity_witness(
 			2,
 			&fold_claim
 		) != 0) {
+		fprintf(stderr, "pointwise witness fold typing failed\n");
 		return -1;
 	}
 	*p_computation_term_id = fold;
@@ -1953,257 +2240,6 @@ static int hott_apply_pointwise_identity_witness(
 	return 0;
 }
 
-static int hott_apply_type_pointwise_identity_witness(
-	struct prototype_kernel_builder* kernel,
-	uint32_t function_identity_claim_id,
-	const uint32_t* argument_claim_ids,
-	uint32_t argument_count,
-	uint32_t* p_term_id,
-	uint32_t* p_claim_id
-) {
-	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
-	struct prototype_type_declaration_db* types = kernel ?
-		kernel->type_declarations : NULL;
-	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
-	struct prototype_substitution_db* substitutions = kernel ?
-		kernel->substitutions : NULL;
-	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
-	const struct prototype_judgement_proposition* current = judgement ?
-		prototype_judgement_claim_proposition(
-			judgement, function_identity_claim_id
-		) : NULL;
-	if (!terms || !types || !contexts || !substitutions || !judgement ||
-		!current || !argument_claim_ids || argument_count == 0 ||
-		!p_term_id || !p_claim_id || current->kind !=
-			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
-		return -1;
-	}
-	uint32_t current_claim_id = function_identity_claim_id;
-	for (uint32_t i = 0; i < argument_count; ++i) {
-		const struct prototype_judgement_proposition* argument =
-			prototype_judgement_claim_proposition(
-				judgement, argument_claim_ids[i]
-			);
-		uint32_t codomain_binding;
-		uint32_t codomain;
-		uint32_t application_classifier;
-		uint32_t application;
-		uint32_t application_claim;
-		if (!argument || argument->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			argument->context_id != current->context_id ||
-			current->classifier >= terms->term_count ||
-			terms->terms[current->classifier].tag != PROTOTYPE_TERM_PI ||
-			prototype_term_pure_family_parts(
-				terms,
-				terms->terms[current->classifier].as.pi.codomain_family,
-				&codomain_binding,
-				&codomain
-			) != 0 || prototype_term_graph_substitute_bound_var(
-				terms,
-				types,
-				codomain,
-				codomain_binding,
-				argument->subject,
-				&application_classifier
-			) != 0 || prototype_term_app(
-				terms, current->subject, argument->subject, &application
-			) != 0 || prototype_judgement_add_app_claim(
-				judgement,
-				terms,
-				types,
-				contexts,
-				substitutions,
-				current->context_id,
-				application,
-				application_classifier,
-				current_claim_id,
-				argument_claim_ids[i],
-				&application_claim
-			) != 0) {
-			return -1;
-		}
-		current_claim_id = application_claim;
-		current = prototype_judgement_claim_proposition(
-			judgement, current_claim_id
-		);
-		if (!current) {
-			return -1;
-		}
-	}
-	*p_term_id = current->subject;
-	*p_claim_id = current_claim_id;
-	return 0;
-}
-
-static int hott_construct_type_app_object_action(
-	struct prototype_kernel_builder* kernel,
-	const struct prototype_hott_identity_type_computation_certificate* identity,
-	uint32_t source_claim_id,
-	const struct hott_object_action_environment* environment,
-	uint32_t universe,
-	uint32_t remaining_depth,
-	uint32_t* p_left_claim_id,
-	uint32_t* p_right_claim_id,
-	uint32_t* p_identity_family_claim_id,
-	uint32_t* p_witness_term_id,
-	uint32_t* p_witness_claim_id
-) {
-	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
-	struct prototype_type_declaration_db* types = kernel ?
-		kernel->type_declarations : NULL;
-	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
-	struct prototype_substitution_db* substitutions = kernel ?
-		kernel->substitutions : NULL;
-	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
-	const struct prototype_judgement_proposition* source = judgement ?
-		prototype_judgement_claim_proposition(judgement, source_claim_id) : NULL;
-	const struct prototype_judgement_derivation* app_derivation = judgement ?
-		hott_derivation_for_claim_and_kind(
-			judgement, source_claim_id, PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM
-		) : NULL;
-	if (!terms || !types || !contexts || !substitutions || !judgement ||
-		!identity || !source || !environment || !app_derivation ||
-		remaining_depth == 0 || !p_left_claim_id || !p_right_claim_id ||
-		!p_identity_family_claim_id || !p_witness_term_id ||
-		!p_witness_claim_id || app_derivation->premise_count != 2 ||
-		source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		source->subject >= terms->term_count ||
-		terms->terms[source->subject].tag != PROTOTYPE_TERM_APP ||
-		source->classifier >= terms->term_count ||
-		terms->terms[source->classifier].tag != PROTOTYPE_TERM_UNIVERSE_VAR ||
-		(identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE &&
-		 identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_CONSTANT_FAMILY_LIFT)) {
-		return -1;
-	}
-	uint32_t function_left_claim;
-	uint32_t function_right_claim;
-	uint32_t function_family_claim;
-	uint32_t function_witness;
-	uint32_t function_witness_claim;
-	uint32_t argument_left_claim;
-	uint32_t argument_right_claim;
-	uint32_t argument_family_claim;
-	uint32_t argument_witness;
-	uint32_t argument_witness_claim;
-	int function_status = hott_construct_object_value_action_depth(
-		kernel,
-		NULL,
-		app_derivation->premises[0].claim_id,
-		environment,
-		universe,
-		remaining_depth - 1,
-		&function_left_claim,
-		&function_right_claim,
-		&function_family_claim,
-		&function_witness,
-		&function_witness_claim
-	);
-	int argument_status = function_status == 0 ?
-		hott_construct_object_value_action_depth(
-			kernel,
-			NULL,
-			app_derivation->premises[1].claim_id,
-			environment,
-			universe,
-			remaining_depth - 1,
-			&argument_left_claim,
-			&argument_right_claim,
-			&argument_family_claim,
-			&argument_witness,
-			&argument_witness_claim
-		) : function_status;
-	if (function_status != 0 || argument_status != 0) {
-		return function_status != 0 ? function_status : argument_status;
-	}
-	uint32_t pointwise_arguments[3] = {
-		argument_left_claim,
-		argument_right_claim,
-		argument_witness_claim
-	};
-	uint32_t witness;
-	uint32_t witness_claim;
-	if (hott_apply_type_pointwise_identity_witness(
-			kernel,
-			function_witness_claim,
-			pointwise_arguments,
-			3,
-			&witness,
-			&witness_claim
-		) != 0) {
-		return -1;
-	}
-	uint32_t left_claim;
-	uint32_t right_claim;
-	uint32_t identity_family_claim;
-	if (prototype_judgement_add_reindexed_claim(
-			judgement,
-			terms,
-			types,
-			contexts,
-			substitutions,
-			source_claim_id,
-			environment->left_substitution_id,
-			&left_claim
-		) != 0 || prototype_judgement_add_reindexed_claim(
-			judgement,
-			terms,
-			types,
-			contexts,
-			substitutions,
-			source_claim_id,
-			environment->right_substitution_id,
-			&right_claim
-		) != 0 || hott_instantiate_object_identity_family(
-			kernel,
-			identity,
-			environment->target_context_id,
-			left_claim,
-			right_claim,
-			&identity_family_claim
-		) != 0) {
-		return -1;
-	}
-	const struct prototype_judgement_proposition* family =
-		prototype_judgement_claim_proposition(
-			judgement, identity_family_claim
-		);
-	const struct prototype_judgement_proposition* witness_evidence =
-		prototype_judgement_claim_proposition(judgement, witness_claim);
-	if (!family || !witness_evidence || witness_evidence->context_id !=
-			environment->target_context_id ||
-		prototype_judgement_classifier_conversion(
-			terms, types, witness_evidence->classifier, family->subject
-		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
-		return -1;
-	}
-	if (witness_evidence->classifier != family->subject &&
-		prototype_judgement_add_conversion_claim(
-			judgement,
-			terms,
-			types,
-			environment->target_context_id,
-			witness,
-			family->subject,
-			witness_claim,
-			&witness_claim
-		) != 0) {
-		return -1;
-	}
-	*p_left_claim_id = left_claim;
-	*p_right_claim_id = right_claim;
-	*p_identity_family_claim_id = identity_family_claim;
-	*p_witness_term_id = witness;
-	*p_witness_claim_id = witness_claim;
-	(void)function_left_claim;
-	(void)function_right_claim;
-	(void)function_family_claim;
-	(void)function_witness;
-	(void)argument_family_claim;
-	(void)argument_witness;
-	return 0;
-}
 
 static int hott_construct_object_app_action(
 	struct prototype_kernel_builder* kernel,
@@ -2296,6 +2332,12 @@ static int hott_construct_object_app_action(
 			&argument_witness_claim
 		) : function_status;
 	if (function_status != 0 || argument_status != 0) {
+		fprintf(
+			stderr,
+			"HOTT computation APP child action failed function=%d argument=%d\n",
+			function_status,
+			argument_status
+		);
 		return function_status != 0 ? function_status : argument_status;
 	}
 	uint32_t application_arguments[3] = {
@@ -2314,6 +2356,7 @@ static int hott_construct_object_app_action(
 			&witness_computation,
 			&witness_computation_claim
 		) != 0) {
+		fprintf(stderr, "HOTT APP pointwise witness application failed\n");
 		return -1;
 	}
 	uint32_t left_claim;
@@ -2337,6 +2380,7 @@ static int hott_construct_object_app_action(
 			environment->right_substitution_id,
 			&right_claim
 		) != 0) {
+		fprintf(stderr, "HOTT APP endpoint reindex failed\n");
 		return -1;
 	}
 	const struct prototype_judgement_proposition* left =
@@ -2344,71 +2388,114 @@ static int hott_construct_object_app_action(
 	const struct prototype_judgement_proposition* right =
 		prototype_judgement_claim_proposition(judgement, right_claim);
 	uint32_t computation_thunk_type;
-	uint32_t identity_type_id;
 	uint32_t left_thunk;
 	uint32_t right_thunk;
+	uint32_t left_thunk_claim;
+	uint32_t right_thunk_claim;
 	uint32_t identity_family;
 	uint32_t identity_family_claim;
-	uint32_t identity_arguments[2];
 	if (!left || !right || prototype_term_thunk_type(
 			terms, source->classifier, &computation_thunk_type
-		) != 0 || prototype_type_declaration_find_generated_identity(
-			types,
-			computation_thunk_type,
-			prototype_context_empty(contexts),
-			&identity_type_id
 		) != 0 || prototype_term_thunk(
 			terms, left->subject, &left_thunk
 		) != 0 || prototype_term_thunk(
 			terms, right->subject, &right_thunk
-		) != 0) {
-		return 1;
-	}
-	identity_arguments[0] = left_thunk;
-	identity_arguments[1] = right_thunk;
-	if (prototype_term_type_instance_make(
-			terms,
-			types,
-			identity_type_id,
-			identity_arguments,
-			2,
-			&identity_family
-		) != 0 || prototype_judgement_add_type_formation_claim(
+		) != 0 || prototype_judgement_add_thunk_claim(
 			judgement,
 			terms,
 			types,
 			environment->target_context_id,
-			identity_family,
-			universe,
-			&identity_family_claim
+			left_thunk,
+			computation_thunk_type,
+			left_claim,
+			&left_thunk_claim
+		) != 0 || prototype_judgement_add_thunk_claim(
+			judgement,
+			terms,
+			types,
+			environment->target_context_id,
+			right_thunk,
+			computation_thunk_type,
+			right_claim,
+			&right_thunk_claim
 		) != 0) {
+		fprintf(stderr, "HOTT APP endpoint thunk typing failed\n");
 		return -1;
 	}
 	const struct prototype_judgement_proposition* witness_evidence =
 		prototype_judgement_claim_proposition(
 			judgement, witness_computation_claim
 		);
-	uint32_t empty_effects;
-	uint32_t expected_classifier;
-	if (!witness_evidence || prototype_term_effect_row_empty(terms, &empty_effects
-		) != 0 || prototype_term_computation_type(
-			terms, empty_effects, identity_family, &expected_classifier
-		) != 0 || prototype_judgement_classifier_conversion(
-			terms, types, witness_evidence->classifier, expected_classifier
-		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+	uint32_t result_action_family;
+	uint32_t result_action_source;
+	uint32_t result_action_operator;
+	uint32_t result_action_dimension;
+	uint32_t result_boundaries[2];
+	size_t result_boundary_count;
+	uint32_t acted_thunk_type;
+	uint32_t acted_thunk_type_claim;
+	uint32_t acted_at_left;
+	uint32_t acted_at_left_claim;
+	if (!witness_evidence || witness_evidence->classifier >= terms->term_count ||
+		terms->terms[witness_evidence->classifier].tag !=
+			PROTOTYPE_TERM_COMPUTATION_TYPE || prototype_term_effect_row_purity(
+			terms,
+			terms->terms[witness_evidence->classifier].as.computation_type.label
+		) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
 		return -1;
 	}
-	if (witness_evidence->classifier != expected_classifier &&
-		prototype_judgement_add_conversion_claim(
-			judgement,
+	identity_family = terms->terms[
+		witness_evidence->classifier
+	].as.computation_type.result;
+	if (prototype_dimension_action_family_instance_info(
 			terms,
-			types,
+			kernel->dimension_operators,
+			identity_family,
+			&result_action_family,
+			&result_action_source,
+			&result_action_operator,
+			&result_action_dimension,
+			result_boundaries,
+			2,
+			&result_boundary_count
+		) != 0 || result_action_source != computation_thunk_type ||
+		result_action_dimension != 1 || result_boundary_count != 2 ||
+		result_boundaries[0] != left_thunk || result_boundaries[1] != right_thunk ||
+		hott_ensure_dimension_action_type_claim(
+			kernel,
 			environment->target_context_id,
-			witness_computation,
-			expected_classifier,
-			witness_computation_claim,
-			&witness_computation_claim
-		) != 0) {
+			computation_thunk_type,
+			universe,
+			result_action_operator,
+			&acted_thunk_type,
+			&acted_thunk_type_claim
+		) != 0 || acted_thunk_type != result_action_family ||
+		hott_apply_claim_argument(
+			kernel,
+			environment->target_context_id,
+			acted_thunk_type_claim,
+			left_thunk_claim,
+			&acted_at_left,
+			&acted_at_left_claim
+		) != 0 || hott_apply_claim_argument(
+			kernel,
+			environment->target_context_id,
+			acted_at_left_claim,
+			right_thunk_claim,
+			&identity_family,
+			&identity_family_claim
+		) != 0 || identity_family != terms->terms[
+			witness_evidence->classifier
+		].as.computation_type.result) {
+		fprintf(
+			stderr,
+			"HOTT APP result dimension action reconstruction failed family=%u source=%u "
+			"dimension=%u boundaries=%zu\n",
+			identity_family,
+			result_action_source,
+			result_action_dimension,
+			result_boundary_count
+		);
 		return -1;
 	}
 	*p_left_claim_id = left_claim;
@@ -2422,6 +2509,7 @@ static int hott_construct_object_app_action(
 	(void)function_witness;
 	(void)argument_family_claim;
 	(void)argument_witness;
+	(void)result_action_family;
 	return 0;
 }
 
@@ -2492,10 +2580,8 @@ static int hott_construct_identity_lambda_action(
 	if (!terms || !types || !contexts || !substitutions || !cwf || !judgement ||
 		!identity || !source || !p_identity_family_claim_id ||
 		!p_witness_term_id || !p_witness_claim_id ||
-		(identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE &&
-		 identity->computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_CONSTANT_FAMILY_LIFT) ||
+		identity->computation_rule !=
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE ||
 		source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		source->subject >= terms->term_count ||
 		source->classifier >= terms->term_count || universe >= terms->term_count ||
@@ -2756,15 +2842,57 @@ static int hott_construct_identity_lambda_action(
 	uint32_t input_identity_is_type_claim;
 	uint32_t xr_context;
 	uint32_t xr_context_certificate;
-	if (prototype_judgement_add_type_formation_claim(
-			judgement,
-			terms,
-			types,
+	uint32_t action_at_left = input_identity < terms->term_count &&
+		terms->terms[input_identity].tag == PROTOTYPE_TERM_APP ?
+		terms->terms[input_identity].as.app.function : PROTOTYPE_INVALID_ID;
+	uint32_t action_head = action_at_left < terms->term_count &&
+		terms->terms[action_at_left].tag == PROTOTYPE_TERM_APP ?
+		terms->terms[action_at_left].as.app.function : PROTOTYPE_INVALID_ID;
+	uint32_t action_source;
+	uint32_t action_operator_id;
+	uint32_t x0_claim_in_x1;
+	uint32_t x1_claim_in_x1;
+	uint32_t acted_type;
+	uint32_t acted_type_claim;
+	uint32_t acted_at_left;
+	uint32_t acted_at_left_claim;
+	uint32_t acted_at_endpoints;
+	if (action_at_left >= terms->term_count || action_head >= terms->term_count ||
+		terms->terms[action_at_left].as.app.argument != x0 ||
+		terms->terms[input_identity].as.app.argument != x1 ||
+		prototype_term_dimension_action_info(
+			terms, action_head, &action_source, &action_operator_id
+		) != 0 || action_source != domain ||
+		prototype_judgement_add_context_binding_assumption(
+			judgement, terms, contexts, x1_context, binders[0], domain,
+			&x0_claim_in_x1
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			judgement, terms, contexts, x1_context, binders[1], domain,
+			&x1_claim_in_x1
+		) != 0 || hott_ensure_dimension_action_type_claim(
+			kernel,
 			x1_context,
-			input_identity,
+			action_source,
 			universe,
+			action_operator_id,
+			&acted_type,
+			&acted_type_claim
+		) != 0 || acted_type != action_head || hott_apply_claim_argument(
+			kernel,
+			x1_context,
+			acted_type_claim,
+			x0_claim_in_x1,
+			&acted_at_left,
+			&acted_at_left_claim
+		) != 0 || acted_at_left != action_at_left || hott_apply_claim_argument(
+			kernel,
+			x1_context,
+			acted_at_left_claim,
+			x1_claim_in_x1,
+			&acted_at_endpoints,
 			&input_identity_has_type_claim
-		) != 0 || prototype_judgement_add_is_type_claim(
+		) != 0 || acted_at_endpoints != input_identity ||
+		prototype_judgement_add_is_type_claim(
 			judgement,
 			terms,
 			x1_context,
@@ -2957,6 +3085,13 @@ static int hott_construct_identity_lambda_action(
 		free(mapped_bindings);
 		free(mapped_identity_claims);
 		if (value_action_status != 0) {
+			fprintf(stderr,
+				"HOTT Lambda body value action failed source-claim=%u body-claim=%u "
+				"value-claim=%u status=%d\n",
+				source_claim_id,
+				body_claim_id,
+				source_value_claim_id,
+				value_action_status);
 			return value_action_status;
 		}
 		const struct prototype_judgement_proposition* value_identity_family =
@@ -2996,81 +3131,230 @@ static int hott_construct_identity_lambda_action(
 				return -1;
 			}
 		} else {
-			const struct prototype_judgement_proposition* left_value =
-				prototype_judgement_claim_proposition(
-					judgement, left_value_claim
-				);
-			const struct prototype_judgement_proposition* right_value =
-				prototype_judgement_claim_proposition(
-					judgement, right_value_claim
-				);
-			uint32_t result_carrier = body_claim->classifier < terms->term_count &&
-				terms->terms[body_claim->classifier].tag ==
-					PROTOTYPE_TERM_COMPUTATION_TYPE ?
-				terms->terms[body_claim->classifier].as.computation_type.result :
-				PROTOTYPE_INVALID_ID;
-			uint32_t result_thunk_type;
-			uint32_t result_identity_type_id;
-			if (!left_value || !right_value ||
-				result_carrier == PROTOTYPE_INVALID_ID || prototype_term_thunk_type(
-					terms, body_claim->classifier, &result_thunk_type
-				) != 0 || prototype_type_declaration_find_generated_identity(
-					types,
-					result_thunk_type,
-					prototype_context_empty(contexts),
-					&result_identity_type_id
-				) != 0) {
-				return 1;
-			}
-			uint32_t result_identity_former;
-			uint32_t pointwise_witness;
-			if (prototype_term_type_instance_make(
+			uint32_t result_action_family;
+			uint32_t result_action_source;
+			uint32_t result_action_operator;
+			uint32_t result_action_dimension;
+			uint32_t result_boundaries[2];
+			size_t result_boundary_count;
+			if (prototype_dimension_action_family_instance_info(
 					terms,
-					types,
-					result_identity_type_id,
-					NULL,
-					0,
-					&result_identity_former
-				) != 0 || prototype_term_constructor(
-					terms, result_identity_former, 0, &pointwise_witness
-				) != 0 || prototype_term_app(
-					terms,
-					pointwise_witness,
-					left_value->subject,
-					&pointwise_witness
-				) != 0 || prototype_term_app(
-					terms,
-					pointwise_witness,
-					right_value->subject,
-					&pointwise_witness
-				) != 0 || prototype_term_app(
-					terms, pointwise_witness, value_witness, &pointwise_witness
-				) != 0) {
+					kernel->dimension_operators,
+					result_identity,
+					&result_action_family,
+					&result_action_source,
+					&result_action_operator,
+					&result_action_dimension,
+					result_boundaries,
+					2,
+					&result_boundary_count
+				) != 0 || result_action_dimension != 1 ||
+				result_boundary_count != 2) {
 				return -1;
 			}
-			uint32_t pointwise_premises[3] = {
-				left_value_claim,
-				right_value_claim,
-				value_witness_claim
+			const struct prototype_judgement_proposition* endpoint_values[2] = {
+				prototype_judgement_claim_proposition(
+					judgement, left_value_claim
+				),
+				prototype_judgement_claim_proposition(
+					judgement, right_value_claim
+				)
 			};
-			uint32_t pointwise_witness_claim;
-			if (prototype_judgement_add_constructor_spine_claim(
+			uint32_t endpoint_value_claims[2] = {
+				left_value_claim, right_value_claim
+			};
+			uint32_t endpoint_function_claims[2];
+			uint32_t endpoint_argument_claims[2] = {x0_claim, x1_claim};
+			uint32_t endpoint_thunk_claims[2];
+			uint32_t result_computation = result_action_source < terms->term_count &&
+				terms->terms[result_action_source].tag == PROTOTYPE_TERM_THUNK_TYPE ?
+				terms->terms[result_action_source].as.thunk_type.computation :
+				PROTOTYPE_INVALID_ID;
+			uint32_t source_function_pi = source->classifier < terms->term_count &&
+				terms->terms[source->classifier].tag == PROTOTYPE_TERM_THUNK_TYPE ?
+				terms->terms[source->classifier].as.thunk_type.computation :
+				PROTOTYPE_INVALID_ID;
+			if (result_computation == PROTOTYPE_INVALID_ID || source_function_pi ==
+					PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			if (prototype_judgement_add_reindexed_claim(
 					judgement,
 					terms,
 					types,
 					contexts,
 					substitutions,
-					xr_context,
-					pointwise_witness,
-					result_identity,
-					pointwise_premises,
-					3,
-					&pointwise_witness_claim
+					left_source_claim_id,
+					body_target_projection,
+					&endpoint_function_claims[0]
+				) != 0 || prototype_judgement_add_reindexed_claim(
+					judgement,
+					terms,
+					types,
+					contexts,
+					substitutions,
+					right_source_claim_id,
+					body_target_projection,
+					&endpoint_function_claims[1]
 				) != 0) {
 				return -1;
 			}
-			current_term = pointwise_witness;
+			for (uint32_t i = 0; i < 2; ++i) {
+				uint32_t boundary_computation = result_boundaries[i] <
+					terms->term_count && terms->terms[result_boundaries[i]].tag ==
+						PROTOTYPE_TERM_THUNK ? terms->terms[
+							result_boundaries[i]
+						].as.thunk.computation : PROTOTYPE_INVALID_ID;
+				uint32_t boundary_function = boundary_computation < terms->term_count &&
+					terms->terms[boundary_computation].tag == PROTOTYPE_TERM_APP ?
+					terms->terms[boundary_computation].as.app.function :
+					PROTOTYPE_INVALID_ID;
+				uint32_t boundary_argument = boundary_computation < terms->term_count &&
+					terms->terms[boundary_computation].tag == PROTOTYPE_TERM_APP ?
+					terms->terms[boundary_computation].as.app.argument :
+					PROTOTYPE_INVALID_ID;
+				uint32_t forced_function = boundary_function < terms->term_count &&
+					terms->terms[boundary_function].tag == PROTOTYPE_TERM_FORCE ?
+					terms->terms[boundary_function].as.force.value :
+					PROTOTYPE_INVALID_ID;
+				uint32_t forced_claim;
+				uint32_t computation_claim;
+				uint32_t thunked_claim;
+				const struct prototype_judgement_proposition* endpoint_function =
+					prototype_judgement_claim_proposition(
+						judgement, endpoint_function_claims[i]
+					);
+				const struct prototype_judgement_proposition* endpoint_argument =
+					prototype_judgement_claim_proposition(
+						judgement, endpoint_argument_claims[i]
+					);
+				int endpoint_status = !endpoint_values[i] || !endpoint_function ||
+					!endpoint_argument || forced_function != endpoint_function->subject ||
+					boundary_argument != endpoint_argument->subject ? -1 :
+					prototype_judgement_add_force_claim(
+						judgement,
+						terms,
+						xr_context,
+						boundary_function,
+						source_function_pi,
+						endpoint_function_claims[i],
+						&forced_claim
+					);
+				int endpoint_stage = 1;
+				if (endpoint_status == 0) {
+					endpoint_stage = 2;
+					endpoint_status = prototype_judgement_add_app_claim(
+						judgement,
+						terms,
+						types,
+						contexts,
+						substitutions,
+						xr_context,
+						boundary_computation,
+						result_computation,
+						forced_claim,
+						endpoint_argument_claims[i],
+						&computation_claim
+					);
+				}
+				if (endpoint_status == 0) {
+					endpoint_stage = 3;
+					endpoint_status = prototype_judgement_add_thunk_claim(
+						judgement,
+						terms,
+						types,
+						xr_context,
+						result_boundaries[i],
+						result_action_source,
+						computation_claim,
+						&thunked_claim
+					);
+				}
+				if (endpoint_status != 0) {
+					fprintf(
+						stderr,
+						"pointwise thunk endpoint typing failed index=%u boundary=%u "
+						"computation=%u function=%u forced=%u source=%u argument=%u "
+						"stage=%d status=%d\n",
+						i,
+						result_boundaries[i],
+						boundary_computation,
+						boundary_function,
+						forced_function,
+						endpoint_function ? endpoint_function->subject :
+							PROTOTYPE_INVALID_ID,
+						boundary_argument,
+						endpoint_stage,
+						endpoint_status
+					);
+					return -1;
+				}
+				endpoint_thunk_claims[i] = thunked_claim;
+			}
+			uint32_t result_action_claim;
+			uint32_t rebuilt_action;
+			uint32_t result_identity_left;
+			uint32_t result_identity_left_claim;
+			uint32_t rebuilt_result_identity;
+			uint32_t result_identity_has_type_claim;
+			uint32_t result_identity_is_type_claim;
+			if (hott_ensure_dimension_action_type_claim(
+					kernel,
+					xr_context,
+					result_action_source,
+					universe,
+					result_action_operator,
+					&rebuilt_action,
+					&result_action_claim
+				) != 0 || rebuilt_action != result_action_family ||
+				hott_apply_claim_argument(
+					kernel,
+					xr_context,
+					result_action_claim,
+					endpoint_thunk_claims[0],
+					&result_identity_left,
+					&result_identity_left_claim
+				) != 0 || hott_apply_claim_argument(
+					kernel,
+					xr_context,
+					result_identity_left_claim,
+					endpoint_thunk_claims[1],
+					&rebuilt_result_identity,
+					&result_identity_has_type_claim
+				) != 0 || rebuilt_result_identity != result_identity ||
+				prototype_judgement_add_is_type_claim(
+					judgement,
+					terms,
+					xr_context,
+					result_identity,
+					universe,
+					result_identity_has_type_claim,
+					&result_identity_is_type_claim
+				) != 0) {
+				fprintf(stderr, "pointwise thunk relation reconstruction failed\n");
+				return -1;
+			}
+			uint32_t pointwise_witness_claim;
+			if (prototype_judgement_add_dimension_action_thunk_return_witness(
+					judgement,
+					terms,
+					types,
+					kernel->dimension_operators,
+					xr_context,
+					value_witness,
+					result_identity,
+					result_identity_is_type_claim,
+					endpoint_thunk_claims[0],
+					endpoint_thunk_claims[1],
+					value_witness_claim,
+					&pointwise_witness_claim
+				) != 0) {
+				fprintf(stderr, "pointwise thunk typed action rule failed\n");
+				return -1;
+			}
+			current_term = value_witness;
 			current_claim = pointwise_witness_claim;
+			(void)endpoint_value_claims;
 		}
 	} else {
 		uint32_t computation_identity_family_claim;
@@ -3292,19 +3576,21 @@ static int hott_construct_object_value_action_depth(
 		}
 		uint32_t left_substitution;
 		uint32_t right_substitution;
-		if (prototype_substitution_compose(
+		int left_compose_status = prototype_substitution_compose(
 				substitutions,
 				contexts,
 				reindex_derivation->semantic_action_id,
 				environment->left_substitution_id,
 				&left_substitution
-			) != 0 || prototype_substitution_compose(
+			);
+		int right_compose_status = prototype_substitution_compose(
 				substitutions,
 				contexts,
 				reindex_derivation->semantic_action_id,
 				environment->right_substitution_id,
 				&right_substitution
-			) != 0) {
+			);
+		if (left_compose_status != 0 || right_compose_status != 0) {
 			/* A Claim may have both a direct structural derivation and later
 			 * reindex derivations. An unrelated reindex edge is not the canonical
 			 * decomposition of that Claim for the current object action. */
@@ -3312,7 +3598,7 @@ static int hott_construct_object_value_action_depth(
 			struct hott_object_action_environment source_environment = *environment;
 			source_environment.left_substitution_id = left_substitution;
 			source_environment.right_substitution_id = right_substitution;
-			return hott_construct_object_value_action_depth(
+			int source_action_status = hott_construct_object_value_action_depth(
 				kernel,
 				NULL,
 				reindex_derivation->premises[0].claim_id,
@@ -3325,6 +3611,7 @@ static int hott_construct_object_value_action_depth(
 				p_witness_term_id,
 				p_witness_claim_id
 			);
+			return source_action_status;
 		}
 	}
 	uint32_t left_claim_id;
@@ -3350,6 +3637,59 @@ static int hott_construct_object_value_action_depth(
 		) != 0) {
 		return -1;
 	}
+	if (!identity && terms->terms[source->subject].tag == PROTOTYPE_TERM_VAR) {
+		uint32_t source_binding = terms->terms[
+			source->subject
+		].as.var.binding_id;
+		uint32_t mapped_identity_claim = PROTOTYPE_INVALID_ID;
+		for (uint32_t i = 0; i < environment->binding_count; ++i) {
+			if (environment->source_binding_ids[i] == source_binding) {
+				mapped_identity_claim = environment->identity_claim_ids[i];
+				break;
+			}
+		}
+		const struct prototype_judgement_proposition* mapped_identity =
+			prototype_judgement_claim_proposition(
+				judgement, mapped_identity_claim
+			);
+		uint32_t mapped_family_claim = mapped_identity ?
+			hott_has_type_claim_for_subject(
+				judgement,
+				environment->target_context_id,
+				mapped_identity->classifier
+			) : PROTOTYPE_INVALID_ID;
+		if (mapped_identity && mapped_family_claim == PROTOTYPE_INVALID_ID) {
+			mapped_family_claim = hott_is_type_claim_for_subject(
+				judgement,
+				environment->target_context_id,
+				mapped_identity->classifier
+			);
+		}
+		if (mapped_identity && mapped_family_claim == PROTOTYPE_INVALID_ID &&
+			hott_ensure_is_type_claim_in_context(
+				judgement,
+				terms,
+				types,
+				contexts,
+				substitutions,
+				environment->target_context_id,
+				mapped_identity->classifier,
+				&mapped_family_claim
+			) != 0) {
+			mapped_family_claim = PROTOTYPE_INVALID_ID;
+		}
+		if (mapped_identity && mapped_identity->kind ==
+				PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE && mapped_identity->context_id ==
+				environment->target_context_id && mapped_family_claim !=
+					PROTOTYPE_INVALID_ID) {
+			*p_left_claim_id = left_claim_id;
+			*p_right_claim_id = right_claim_id;
+			*p_identity_family_claim_id = mapped_family_claim;
+			*p_witness_term_id = mapped_identity->subject;
+			*p_witness_claim_id = mapped_identity_claim;
+			return 0;
+		}
+	}
 	struct prototype_hott_identity_type_computation_certificate local_identity;
 	if (!identity) {
 		int identity_status = hott_prepare_local_object_identity(
@@ -3362,8 +3702,16 @@ static int hott_construct_object_value_action_depth(
 		if (identity_status != 0) {
 			fprintf(stderr,
 				"HOTT object action local Identity failed source-claim=%u "
-				"status=%d\n",
-				source_claim_id, identity_status);
+				"status=%d subject=%u subject-tag=%u classifier=%u "
+				"classifier-tag=%u context=%u\n",
+				source_claim_id,
+				identity_status,
+				source->subject,
+				(unsigned)terms->terms[source->subject].tag,
+				source->classifier,
+				source->classifier < terms->term_count ?
+					(unsigned)terms->terms[source->classifier].tag : UINT32_MAX,
+				source->context_id);
 			return identity_status;
 		}
 		identity = &local_identity;
@@ -3584,112 +3932,7 @@ static int hott_construct_object_value_action_depth(
 		int witness_conversion = prototype_judgement_classifier_conversion(
 			terms, types, witness->classifier, family->subject
 		).status;
-		if (witness_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL &&
-			identity->computation_rule ==
-				PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE) {
-			uint32_t constructor_head;
-			uint32_t constructor_owner;
-			uint32_t constructor_ordinal;
-			uint32_t arguments[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-			uint32_t argument_count;
-			uint32_t constructor_claim = normalized_witness_claim;
-			uint32_t premise_reindex = PROTOTYPE_INVALID_ID;
-			const struct prototype_judgement_derivation* witness_reindex =
-				hott_derivation_for_claim_and_kind(
-					judgement,
-					normalized_witness_claim,
-					PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX
-				);
-			if (witness_reindex) {
-				if (witness_reindex->premise_count != 1 ||
-					witness_reindex->semantic_action_kind !=
-						PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
-					return -1;
-				}
-				constructor_claim = witness_reindex->premises[0].claim_id;
-				premise_reindex = witness_reindex->semantic_action_id;
-			}
-			const struct prototype_judgement_derivation* constructor_derivation =
-				hott_constructor_derivation_for_claim(
-					judgement, constructor_claim
-				);
-			if (!constructor_derivation ||
-				prototype_term_constructor_spine_info(
-					terms,
-					normalized_witness,
-					&constructor_head,
-					&constructor_owner,
-					&constructor_ordinal,
-					arguments,
-					PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
-					&argument_count
-				) != 0 || argument_count < 2 ||
-				constructor_derivation->premise_count != argument_count) {
-				return -1;
-			}
-			const struct prototype_judgement_proposition* left =
-				prototype_judgement_claim_proposition(
-					judgement, left_claim_id
-				);
-			const struct prototype_judgement_proposition* right =
-				prototype_judgement_claim_proposition(
-					judgement, right_claim_id
-				);
-			uint32_t argument_claims[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-			if (!left || !right) {
-				return -1;
-			}
-			arguments[0] = left->subject;
-			arguments[1] = right->subject;
-			argument_claims[0] = left_claim_id;
-			argument_claims[1] = right_claim_id;
-			for (uint32_t i = 2; i < argument_count; ++i) {
-				argument_claims[i] =
-					constructor_derivation->premises[i].claim_id;
-				if (premise_reindex != PROTOTYPE_INVALID_ID &&
-					prototype_judgement_add_reindexed_claim(
-						judgement,
-						terms,
-						types,
-						contexts,
-						substitutions,
-						argument_claims[i],
-						premise_reindex,
-						&argument_claims[i]
-					) != 0) {
-					return -1;
-				}
-			}
-			uint32_t retargeted_witness = constructor_head;
-			for (uint32_t i = 0; i < argument_count; ++i) {
-				if (prototype_term_app(
-						terms,
-						retargeted_witness,
-						arguments[i],
-						&retargeted_witness
-					) != 0) {
-					return -1;
-				}
-			}
-			if (prototype_judgement_add_constructor_spine_claim(
-					judgement,
-					terms,
-					types,
-					contexts,
-					substitutions,
-					environment->target_context_id,
-					retargeted_witness,
-					family->subject,
-					argument_claims,
-					argument_count,
-					&witness_claim
-				) != 0) {
-				return -1;
-			}
-			normalized_witness = retargeted_witness;
-			(void)constructor_owner;
-			(void)constructor_ordinal;
-		} else if (witness_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		if (witness_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			return -1;
 		} else if (witness->classifier != family->subject &&
 			prototype_judgement_add_conversion_claim(
@@ -3714,62 +3957,6 @@ static int hott_construct_object_value_action_depth(
 		(void)normalized_family_claim;
 		return 0;
 	}
-	if (source->context_id == prototype_context_empty(contexts) &&
-		source->classifier < terms->term_count &&
-		terms->terms[source->classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR &&
-		identity->computation_rule ==
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE) {
-		uint32_t closed_family_claim;
-		uint32_t closed_witness;
-		uint32_t closed_witness_claim;
-		int closed_status = hott_construct_universe_degeneracy(
-			kernel,
-			identity,
-			source_claim_id,
-			&closed_family_claim,
-			&closed_witness,
-			&closed_witness_claim
-		);
-		if (closed_status != 0) {
-			return closed_status;
-		}
-		uint32_t target_projection;
-		uint32_t family_claim;
-		uint32_t witness_claim;
-		if (prototype_substitution_projection_path(
-				substitutions,
-				contexts,
-				environment->target_context_id,
-				source->context_id,
-				&target_projection
-			) != 0 || prototype_judgement_add_reindexed_claim(
-				judgement,
-				terms,
-				types,
-				contexts,
-				substitutions,
-				closed_family_claim,
-				target_projection,
-				&family_claim
-			) != 0 || prototype_judgement_add_reindexed_claim(
-				judgement,
-				terms,
-				types,
-				contexts,
-				substitutions,
-				closed_witness_claim,
-				target_projection,
-				&witness_claim
-			) != 0) {
-			return -1;
-		}
-		*p_left_claim_id = left_claim_id;
-		*p_right_claim_id = right_claim_id;
-		*p_identity_family_claim_id = family_claim;
-		*p_witness_term_id = closed_witness;
-		*p_witness_claim_id = witness_claim;
-		return 0;
-	}
 	int status;
 	if (terms->terms[source->subject].tag == PROTOTYPE_TERM_VAR) {
 		status = hott_construct_object_variable_action(
@@ -3781,39 +3968,9 @@ static int hott_construct_object_value_action_depth(
 			p_witness_term_id,
 			p_witness_claim_id
 		);
-	} else if (terms->terms[source->subject].tag == PROTOTYPE_TERM_APP &&
-		source->classifier < terms->term_count &&
-		terms->terms[source->classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR &&
-		identity->generated_type_declaration_id != PROTOTYPE_INVALID_ID) {
-		status = hott_construct_type_app_object_action(
-			kernel,
-			identity,
-			source_claim_id,
-			environment,
-			universe,
-			remaining_depth - 1,
-			p_left_claim_id,
-			p_right_claim_id,
-			p_identity_family_claim_id,
-			p_witness_term_id,
-			p_witness_claim_id
-		);
-		return status;
 	} else if (terms->terms[source->subject].tag == PROTOTYPE_TERM_THUNK &&
-		identity->generated_type_declaration_id != PROTOTYPE_INVALID_ID) {
-		status = hott_construct_thunk_return_object_action(
-			kernel,
-			identity,
-			source_claim_id,
-			environment,
-			universe,
-			remaining_depth - 1,
-			p_identity_family_claim_id,
-			p_witness_term_id,
-			p_witness_claim_id
-		);
-	} else if (terms->terms[source->subject].tag == PROTOTYPE_TERM_THUNK &&
-		identity->generated_type_declaration_id == PROTOTYPE_INVALID_ID) {
+		identity->computation_rule ==
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE) {
 		status = hott_construct_identity_lambda_action(
 			kernel,
 			identity,
@@ -3824,8 +3981,7 @@ static int hott_construct_object_value_action_depth(
 			p_witness_term_id,
 			p_witness_claim_id
 		);
-	} else if (terms->terms[source->subject].tag == PROTOTYPE_TERM_LAMBDA &&
-		identity->generated_type_declaration_id == PROTOTYPE_INVALID_ID) {
+	} else if (terms->terms[source->subject].tag == PROTOTYPE_TERM_LAMBDA) {
 		status = hott_construct_identity_lambda_action(
 			kernel,
 			identity,
@@ -3837,7 +3993,7 @@ static int hott_construct_object_value_action_depth(
 			p_witness_claim_id
 		);
 	} else if (terms->terms[source->subject].tag == PROTOTYPE_TERM_MATCH &&
-		identity->generated_type_declaration_id != PROTOTYPE_INVALID_ID) {
+		identity->backing_type_former_term_id != PROTOTYPE_INVALID_ID) {
 		status = hott_construct_nullary_match_object_action(
 			kernel,
 			identity,
@@ -3852,9 +4008,12 @@ static int hott_construct_object_value_action_depth(
 			p_witness_claim_id
 		);
 		return status;
-	} else if (identity->generated_type_declaration_id != PROTOTYPE_INVALID_ID) {
+	} else if (identity->computation_rule ==
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT &&
+		identity->backing_type_former_term_id != PROTOTYPE_INVALID_ID) {
 		status = hott_construct_adt_value_action(
 			kernel,
+			identity,
 			source_claim_id,
 			environment,
 			universe,
@@ -3866,6 +4025,97 @@ static int hott_construct_object_value_action_depth(
 			p_witness_claim_id
 		);
 		return status;
+	} else if ((identity->computation_rule ==
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_GENERIC_DIMENSION_ACTION ||
+		 identity->computation_rule ==
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN) &&
+		identity->backing_type_former_term_id != PROTOTYPE_INVALID_ID) {
+		uint32_t higher_source;
+		uint32_t extension_operator;
+		uint32_t target_projection;
+		uint32_t source_claim_in_target;
+		uint32_t source_classifier_claim;
+		uint32_t identity_family_claim;
+		uint32_t identity_family_is_type_claim;
+		uint32_t witness;
+		uint32_t witness_claim;
+		if (prototype_term_dimension_action_info(
+				terms,
+				identity->backing_type_former_term_id,
+				&higher_source,
+				&extension_operator
+			) != 0 || prototype_substitution_projection_path(
+				substitutions,
+				contexts,
+				environment->target_context_id,
+				source->context_id,
+				&target_projection
+			) != 0 || prototype_judgement_add_reindexed_claim(
+				judgement,
+				terms,
+				types,
+				contexts,
+				substitutions,
+				source_claim_id,
+				target_projection,
+				&source_claim_in_target
+			) != 0 || hott_ensure_is_type_claim_in_context(
+				judgement,
+				terms,
+				types,
+				contexts,
+				substitutions,
+				environment->target_context_id,
+				source->classifier,
+				&source_classifier_claim
+			) != 0 || hott_instantiate_object_identity_family(
+				kernel,
+				identity,
+				environment->target_context_id,
+				left_claim_id,
+				right_claim_id,
+				&identity_family_claim
+			) != 0) {
+			return -1;
+		}
+		const struct prototype_judgement_proposition* family =
+			prototype_judgement_claim_proposition(
+				judgement, identity_family_claim
+			);
+		if (!family || prototype_judgement_add_is_type_claim(
+				judgement,
+				terms,
+				environment->target_context_id,
+				family->subject,
+				universe,
+				identity_family_claim,
+				&identity_family_is_type_claim
+			) != 0 || prototype_term_dimension_action(
+				terms,
+				kernel->dimension_operators,
+				source->subject,
+				extension_operator,
+				&witness
+			) != 0 || prototype_judgement_add_dimension_action_term(
+				judgement,
+				terms,
+				kernel->dimension_operators,
+				environment->target_context_id,
+				witness,
+				family->subject,
+				source_claim_in_target,
+				source_classifier_claim,
+				&witness_claim
+			) != 0) {
+			return -1;
+		}
+		*p_left_claim_id = left_claim_id;
+		*p_right_claim_id = right_claim_id;
+		*p_identity_family_claim_id = identity_family_claim;
+		*p_witness_term_id = witness;
+		*p_witness_claim_id = witness_claim;
+		(void)higher_source;
+		return 0;
 	} else {
 		return 1;
 	}
@@ -3874,6 +4124,149 @@ static int hott_construct_object_value_action_depth(
 		*p_right_claim_id = right_claim_id;
 	}
 	return status;
+}
+
+static int hott_construct_dimension_action_degeneracy(
+	struct prototype_kernel_builder* kernel,
+	const struct prototype_hott_identity_type_computation_certificate* identity,
+	uint32_t source_claim_id,
+	uint32_t universe,
+	uint32_t* p_identity_family_claim_id,
+	uint32_t* p_witness_term_id,
+	uint32_t* p_witness_claim_id
+) {
+	struct prototype_term_db* terms = kernel ? kernel->terms : NULL;
+	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
+	const struct prototype_judgement_proposition* source = judgement ?
+		prototype_judgement_claim_proposition(judgement, source_claim_id) : NULL;
+	uint32_t acted_source;
+	uint32_t operator_id;
+	uint32_t target_dimension;
+	uint32_t source_classifier_is_type;
+	uint32_t acted_classifier;
+	uint32_t acted_classifier_claim;
+	uint32_t identity_family;
+	uint32_t identity_family_claim;
+	uint32_t identity_family_is_type;
+	uint32_t witness;
+	uint32_t witness_claim;
+	if (!kernel || !identity || !terms || !judgement || !source ||
+		!p_identity_family_claim_id || !p_witness_term_id || !p_witness_claim_id ||
+		source->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		prototype_term_dimension_action_info(
+			terms,
+			identity->backing_type_former_term_id,
+			&acted_source,
+			&operator_id
+		) != 0 || prototype_dimension_action_term_dimension(
+			terms,
+			kernel->dimension_operators,
+			identity->backing_type_former_term_id,
+			&target_dimension
+		) != 0) {
+		return -1;
+	}
+	if (hott_ensure_is_type_claim_in_context(
+			judgement,
+			terms,
+			kernel->type_declarations,
+			kernel->contexts,
+			kernel->substitutions,
+			source->context_id,
+			source->classifier,
+			&source_classifier_is_type
+		) != 0) {
+		return -1;
+	}
+	if (prototype_dimension_action_extend_classifier_family(
+			terms,
+			kernel->dimension_operators,
+			source->classifier,
+			operator_id,
+			&acted_classifier
+		) != 0 || acted_classifier != identity->backing_type_former_term_id) {
+		return -1;
+	}
+	uint32_t formed_acted_classifier;
+	if (hott_ensure_dimension_action_type_claim(
+			kernel,
+			source->context_id,
+			acted_source,
+			universe,
+			operator_id,
+			&formed_acted_classifier,
+			&acted_classifier_claim
+		) != 0 || formed_acted_classifier != acted_classifier) {
+		return -1;
+	}
+	if (prototype_dimension_action_term_classifier(
+			terms,
+			kernel->dimension_operators,
+			source->subject,
+			source->classifier,
+			acted_classifier,
+			target_dimension,
+			&identity_family
+		) != 0 || prototype_hott_ensure_dimension_classifier_formation(
+			kernel,
+			source->context_id,
+			identity_family,
+			universe
+		) != 0) {
+		return -1;
+	}
+	if (prototype_judgement_add_structural_type_formation_claim(
+			judgement,
+			terms,
+			kernel->type_declarations,
+			kernel->contexts,
+			kernel->substitutions,
+			source->context_id,
+			identity_family,
+			universe,
+			&identity_family_claim
+		) != 0) {
+		return -1;
+	}
+	if (prototype_judgement_add_is_type_claim(
+			judgement,
+			terms,
+			source->context_id,
+			identity_family,
+			universe,
+			identity_family_claim,
+			&identity_family_is_type
+		) != 0) {
+		return -1;
+	}
+	if (prototype_term_dimension_action(
+			terms,
+			kernel->dimension_operators,
+			source->subject,
+			operator_id,
+			&witness
+		) != 0) {
+		return -1;
+	}
+	if (prototype_judgement_add_dimension_action_term(
+			judgement,
+			terms,
+			kernel->dimension_operators,
+			source->context_id,
+			witness,
+			identity_family,
+			source_claim_id,
+			source_classifier_is_type,
+			&witness_claim
+		) != 0) {
+		return -1;
+	}
+	*p_identity_family_claim_id = identity_family_claim;
+	*p_witness_term_id = witness;
+	*p_witness_claim_id = witness_claim;
+	(void)acted_source;
+	(void)acted_classifier_claim;
+	return 0;
 }
 
 int prototype_hott_construct_degeneracy(
@@ -3917,17 +4310,6 @@ int prototype_hott_construct_degeneracy(
 		source_term->classifier != source_type->subject) {
 		return -1;
 	}
-	if (certificate->data.identity_type.computation_rule ==
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE) {
-		return hott_construct_universe_degeneracy(
-			kernel,
-			&certificate->data.identity_type,
-			source_claim_id,
-			p_identity_family_claim_id,
-			p_witness_term_id,
-			p_witness_claim_id
-		);
-	}
 	uint32_t constructor_head;
 	uint32_t constructor_owner;
 	uint32_t constructor_ordinal;
@@ -3956,14 +4338,21 @@ int prototype_hott_construct_degeneracy(
 			p_witness_claim_id
 		);
 	}
-	if (certificate->data.identity_type.computation_rule ==
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT) {
-		return hott_construct_adt_degeneracy_depth(
+	uint32_t action_source;
+	uint32_t action_operator;
+	if (prototype_term_dimension_action_info(
+			kernel->terms,
+			certificate->data.identity_type.backing_type_former_term_id,
+			&action_source,
+			&action_operator
+		) == 0) {
+		(void)action_source;
+		(void)action_operator;
+		return hott_construct_dimension_action_degeneracy(
 			kernel,
+			&certificate->data.identity_type,
 			source_claim_id,
-			certificate->data.identity_type.generated_type_declaration_id,
 			source_type->classifier,
-			(uint32_t)kernel->terms->term_count + 1,
 			p_identity_family_claim_id,
 			p_witness_term_id,
 			p_witness_claim_id

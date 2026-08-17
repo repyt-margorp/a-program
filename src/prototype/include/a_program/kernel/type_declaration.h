@@ -11,10 +11,7 @@ enum prototype_identity_computation_rule {
 	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT = 1,
 	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN = 2,
 	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_PI_POINTWISE = 3,
-	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_CONSTANT_FAMILY_LIFT = 4,
-	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_INDEXED_HIGHER_LIFT = 5,
-	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE = 6,
-	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_FIBER = 7
+	PROTOTYPE_HOTT_IDENTITY_COMPUTATION_GENERIC_DIMENSION_ACTION = 5
 };
 
 struct prototype_term_db;
@@ -139,11 +136,6 @@ struct prototype_constructor_classifier_cache_entry {
 	uint32_t schema_revision;
 };
 
-enum prototype_type_declaration_origin_kind {
-	PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE = 0,
-	PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY = 1
-};
-
 struct prototype_type_declaration {
 	int name_symbol_id;
 	/* Stable TypeView identity.  The local type_index remains an arena handle;
@@ -167,11 +159,6 @@ struct prototype_type_declaration {
 	uint32_t index_count;
 	uint32_t first_constructor;
 	uint32_t constructor_count;
-	/* Generated semantic declarations have no surface name. Their object
-	 * identity is selected by the exact source carrier Term, never by an
-	 * invented Symbol ID or allocation-order-sensitive display name. */
-	int origin_kind;
-	uint32_t origin_source_carrier_term_id;
 };
 
 /*
@@ -305,36 +292,6 @@ int prototype_type_declaration_add(
 	struct prototype_type_declaration_db* db,
 	int name_symbol_id,
 	uint32_t* p_type_id
-);
-
-int prototype_type_declaration_add_generated_identity(
-	struct prototype_type_declaration_db* db,
-	uint32_t source_carrier_term_id,
-	uint32_t parameter_context_id,
-	uint32_t* p_type_id
-);
-
-int prototype_type_declaration_origins_validate(
-	const struct prototype_type_declaration_db* db,
-	const struct prototype_term_db* terms
-);
-int prototype_type_declaration_find_generated_identity(
-	const struct prototype_type_declaration_db* db,
-	uint32_t source_carrier_term_id,
-	uint32_t parameter_context_id,
-	uint32_t* p_type_id
-);
-int prototype_type_declaration_generated_identity_rule_for_source(
-	const struct prototype_term_db* terms,
-	uint32_t source_carrier_term_id
-);
-int prototype_type_declaration_validate_generated_identity(
-	const struct prototype_term_db* terms,
-	const struct prototype_type_declaration_db* db,
-	const struct prototype_context_db* contexts,
-	uint32_t source_carrier_term_id,
-	uint32_t generated_type_id,
-	int computation_rule
 );
 
 int prototype_type_declaration_add_parameter(

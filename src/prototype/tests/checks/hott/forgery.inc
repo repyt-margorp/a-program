@@ -224,6 +224,7 @@
 			&term_db,
 			&type_db,
 			&context_db,
+			&bridge_dimension_operator_db,
 			&judgement,
 			bool_relation_type_claim,
 			&relation_descriptor
@@ -678,38 +679,6 @@
 		bridge_db.face_bindings[0].intrinsic_dimension = saved_face_dimension;
 	}
 
-	uint32_t generated_bool_identity;
-	uint32_t repeated_generated_bool_identity;
-	uint32_t generated_box_identity;
-	if (prototype_type_declaration_origins_validate(
-			&type_db, &term_db
-		) != 0 || prototype_type_declaration_add_generated_identity(
-			&type_db, bool_view, empty, &generated_bool_identity
-		) != 0 || prototype_type_declaration_add_generated_identity(
-			&type_db, bool_view, empty, &repeated_generated_bool_identity
-		) != 0 || prototype_type_declaration_add_generated_identity(
-			&type_db, box_view, empty, &generated_box_identity
-		) != 0 || generated_bool_identity !=
-			repeated_generated_bool_identity || generated_bool_identity ==
-			generated_box_identity || type_db.type_declarations[
-			generated_bool_identity
-		].name_symbol_id != -1 || type_db.type_declarations[
-			generated_bool_identity
-		].origin_kind !=
-			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY ||
-		type_db.type_declarations[
-			generated_bool_identity
-		].origin_source_carrier_term_id != bool_view ||
-		prototype_type_declaration_origins_validate(
-			&type_db, &term_db
-		) != 0) {
-		return 136;
-	}
-	if (prototype_type_declaration_rebuild_representations(
-			&term_db, &type_db, &context_db
-		) != 0) {
-		return 218;
-	}
 	if (prototype_judgement_publish_candidates(
 			&operation_graph, &judgement
 		) != 0) {

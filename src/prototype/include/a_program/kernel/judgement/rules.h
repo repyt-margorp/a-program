@@ -56,6 +56,7 @@ int prototype_judgement_identity_relation_branch_refinement(
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	uint32_t scrutinee_context_id,
 	uint32_t scrutinee_term,
 	uint32_t scrutinee_classifier,
@@ -340,6 +341,7 @@ int prototype_judgement_add_match_claim(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t context_id,
 	uint32_t subject,
@@ -349,12 +351,24 @@ int prototype_judgement_add_match_claim(
 	uint32_t branch_claim_count,
 	uint32_t* p_claim_id
 );
+int prototype_judgement_add_pi_formation_claim(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t universe,
+	uint32_t domain_claim_id,
+	uint32_t codomain_claim_id,
+	uint32_t family_claim_id,
+	uint32_t* p_claim_id
+);
 int prototype_judgement_add_indexed_match_claim(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operations,
 	uint32_t context_id,
 	uint32_t subject,
@@ -393,12 +407,13 @@ int prototype_judgement_add_relation_type_formation(
 int prototype_judgement_add_dimension_action_type_formation(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
 	struct prototype_dimension_operator_db* dimension_operators,
 	uint32_t context_id,
 	uint32_t acted_type,
 	uint32_t acted_classifier,
 	uint32_t source_type_claim_id,
-	uint32_t acted_classifier_claim_id,
 	uint32_t* p_claim_id
 );
 int prototype_judgement_add_dimension_action_term(
@@ -410,7 +425,20 @@ int prototype_judgement_add_dimension_action_term(
 	uint32_t acted_classifier,
 	uint32_t source_term_claim_id,
 	uint32_t source_classifier_claim_id,
-	uint32_t acted_classifier_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_dimension_action_thunk_return_witness(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_dimension_operator_db* dimension_operators,
+	uint32_t context_id,
+	uint32_t witness,
+	uint32_t acted_thunk_relation,
+	uint32_t acted_thunk_relation_claim_id,
+	uint32_t left_thunk_claim_id,
+	uint32_t right_thunk_claim_id,
+	uint32_t value_witness_claim_id,
 	uint32_t* p_claim_id
 );
 int prototype_judgement_add_dimension_action_constructor(
@@ -425,7 +453,6 @@ int prototype_judgement_add_dimension_action_constructor(
 	uint32_t source_constructor_claim_id,
 	uint32_t source_owner_claim_id,
 	uint32_t acted_owner_claim_id,
-	uint32_t acted_constructor_classifier_claim_id,
 	const uint32_t* field_claim_ids,
 	uint32_t field_claim_count,
 	uint32_t* p_claim_id

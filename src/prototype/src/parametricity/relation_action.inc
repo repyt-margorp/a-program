@@ -12,16 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int hott_generated_identity_declaration(
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t source_carrier,
-	uint32_t parameter_context,
-	uint32_t* p_type_id
-);
 static int hott_build_nondependent_pi_identity_type(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	uint32_t parameter_context,
+	const struct prototype_dimension_operator_db* dimension_operators,
+	uint32_t dimension_operator_id,
 	uint32_t source_carrier,
 	uint32_t left_endpoint_binding,
 	uint32_t right_endpoint_binding,
@@ -51,15 +46,6 @@ static int hott_action_result_for_request(
 	uint32_t request_id,
 	uint32_t* p_result_id
 );
-static int hott_apply_type_pointwise_identity_witness(
-	struct prototype_kernel_builder* kernel,
-	uint32_t function_identity_claim_id,
-	const uint32_t* argument_claim_ids,
-	uint32_t argument_count,
-	uint32_t* p_term_id,
-	uint32_t* p_claim_id
-);
-
 static int hott_category_is_valid(int category) {
 	return category == PROTOTYPE_HOTT_RELATION_VALUE ||
 		category == PROTOTYPE_HOTT_RELATION_COMPUTATION;
@@ -1510,101 +1496,6 @@ static int hott_find_unique_derivation_premise(
 	return 0;
 }
 
-static int hott_find_has_type_for_is_type_readonly_depth(
-	const struct prototype_judgement_db* judgement,
-	uint32_t is_type_claim_id,
-	uint32_t remaining_depth,
-	uint32_t* p_has_type_claim_id
-) {
-	const struct prototype_judgement_proposition* is_type = judgement ?
-		prototype_judgement_claim_proposition(judgement, is_type_claim_id) : NULL;
-	if (!judgement || !is_type || !p_has_type_claim_id ||
-		remaining_depth == 0 || is_type->kind !=
-			PROTOTYPE_JUDGEMENT_KIND_IS_TYPE) {
-		return -1;
-	}
-	uint32_t direct_claim_id;
-	if (hott_find_unique_derivation_premise(
-			judgement,
-			is_type_claim_id,
-			PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE,
-			is_type->subject,
-			is_type->classifier,
-			&direct_claim_id
-		) == 0) {
-		*p_has_type_claim_id = direct_claim_id;
-		return 0;
-	}
-	const struct prototype_judgement_derivation* is_type_reindex = NULL;
-	for (uint32_t i = 0; i < judgement->derivation_count; ++i) {
-		const struct prototype_judgement_derivation* derivation =
-			&judgement->derivations[i];
-		if (derivation->conclusion_claim_id != is_type_claim_id ||
-			derivation->proof_kind !=
-				PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX) {
-			continue;
-		}
-		if (derivation->premise_count != 1) {
-			return -1;
-		}
-		if (is_type_reindex && (is_type_reindex->semantic_action_id !=
-				derivation->semantic_action_id ||
-			is_type_reindex->premises[0].claim_id !=
-				derivation->premises[0].claim_id)) {
-			return 1;
-		}
-		is_type_reindex = derivation;
-	}
-	if (!is_type_reindex || is_type_reindex->premise_count != 1 ||
-		is_type_reindex->semantic_action_kind !=
-			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION ||
-		is_type_reindex->semantic_action_id == PROTOTYPE_INVALID_ID) {
-		return 1;
-	}
-	uint32_t source_has_type_claim_id;
-	int source_status = hott_find_has_type_for_is_type_readonly_depth(
-		judgement,
-		is_type_reindex->premises[0].claim_id,
-		remaining_depth - 1,
-		&source_has_type_claim_id
-	);
-	if (source_status != 0) {
-		return source_status;
-	}
-	uint32_t found = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < judgement->derivation_count; ++i) {
-		const struct prototype_judgement_derivation* derivation =
-			&judgement->derivations[i];
-		const struct prototype_judgement_proposition* conclusion =
-			prototype_judgement_claim_proposition(
-				judgement, derivation->conclusion_claim_id
-			);
-		if (derivation->proof_kind !=
-				PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX ||
-			derivation->premise_count != 1 ||
-			derivation->premises[0].claim_id != source_has_type_claim_id ||
-			derivation->semantic_action_kind !=
-				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION ||
-			derivation->semantic_action_id !=
-				is_type_reindex->semantic_action_id || !conclusion ||
-			conclusion->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			conclusion->context_id != is_type->context_id ||
-			conclusion->subject != is_type->subject ||
-			conclusion->classifier != is_type->classifier) {
-			continue;
-		}
-		if (found != PROTOTYPE_INVALID_ID && found !=
-				derivation->conclusion_claim_id) {
-			return 1;
-		}
-		found = derivation->conclusion_claim_id;
-	}
-	if (found == PROTOTYPE_INVALID_ID) {
-		return 1;
-	}
-	*p_has_type_claim_id = found;
-	return 0;
-}
 
 static const struct prototype_judgement_derivation*
 hott_constructor_derivation_for_claim(

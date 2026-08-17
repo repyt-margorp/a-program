@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v77.h"
+#include "a_program/artifact/wire_v78.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
@@ -22,9 +22,9 @@
 #include <string.h>
 
 #define TERM_CAPACITY 8192
-#define CLAIM_CAPACITY 2048
+#define CLAIM_CAPACITY 4096
 #define CONTEXT_CAPACITY 1024
-#define SUBSTITUTION_CAPACITY 2048
+#define SUBSTITUTION_CAPACITY 4096
 #define OPERATION_CAPACITY 64
 #define OCCURRENCE_EDGE_CAPACITY (OPERATION_CAPACITY * 8)
 #define GOAL_CAPACITY 64
@@ -68,6 +68,63 @@ static int fixture_publish_constructor_schema(
 	) != 0 || prototype_type_constructor_classifier_cache_set(
 		types, *p_constructor_id, curried_classifier
 	) != 0 ? -1 : 0;
+}
+
+static int fixture_apply_claim_argument(
+	struct prototype_kernel_builder* kernel,
+	uint32_t context_id,
+	uint32_t function_claim_id,
+	uint32_t argument_claim_id,
+	uint32_t* p_term_id,
+	uint32_t* p_claim_id
+) {
+	const struct prototype_judgement_proposition* function =
+		prototype_judgement_claim_proposition(
+			kernel->judgement, function_claim_id
+		);
+	const struct prototype_judgement_proposition* argument =
+		prototype_judgement_claim_proposition(
+			kernel->judgement, argument_claim_id
+		);
+	uint32_t binder;
+	uint32_t body;
+	uint32_t classifier;
+	if (!function || !argument || function->kind !=
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE || argument->kind !=
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE || function->context_id != context_id ||
+		argument->context_id != context_id || function->classifier >=
+			kernel->terms->term_count || kernel->terms->terms[
+				function->classifier
+			].tag != PROTOTYPE_TERM_PI || prototype_term_pure_family_parts(
+			kernel->terms,
+			kernel->terms->terms[function->classifier].as.pi.codomain_family,
+			&binder,
+			&body
+		) != 0 || prototype_term_graph_substitute_bound_var(
+			kernel->terms,
+			kernel->type_declarations,
+			body,
+			binder,
+			argument->subject,
+			&classifier
+		) != 0 || prototype_term_app(
+			kernel->terms, function->subject, argument->subject, p_term_id
+		) != 0 || prototype_judgement_add_app_claim(
+			kernel->judgement,
+			kernel->terms,
+			kernel->type_declarations,
+			kernel->contexts,
+			kernel->substitutions,
+			context_id,
+			*p_term_id,
+			classifier,
+			function_claim_id,
+			argument_claim_id,
+			p_claim_id
+		) != 0) {
+		return -1;
+	}
+	return 0;
 }
 static struct prototype_substitution substitutions[SUBSTITUTION_CAPACITY];
 static struct prototype_judgement_proposition propositions[CLAIM_CAPACITY];
@@ -158,10 +215,12 @@ static int write_identity_root_artifact_with_environment(
 	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_context_db* context_db,
 	const struct prototype_substitution_db* substitution_db,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operation_graph
 ) {
 	if (!path || !intrinsic_environment || !interface || !term_db || !type_db || !judgement ||
-		!cwf_certificates || !context_db || !substitution_db || !operation_graph) {
+		!cwf_certificates || !context_db || !substitution_db ||
+		!dimension_operators || !operation_graph) {
 		return -1;
 	}
 	int symbol_ids[1024];
@@ -238,6 +297,7 @@ static int write_identity_root_artifact_with_environment(
 	);
 	metadata.contexts = *context_db;
 	metadata.substitutions = *substitution_db;
+	metadata.dimension_operators = *dimension_operators;
 	metadata.typed_occurrences = *operation_graph;
 	if (!metadata.typed_occurrences.frozen &&
 		prototype_typed_occurrence_graph_freeze(
@@ -307,6 +367,7 @@ static int write_identity_root_artifact(
 	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_context_db* context_db,
 	const struct prototype_substitution_db* substitution_db,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operation_graph
 ) {
 	return write_identity_root_artifact_with_environment(
@@ -319,6 +380,7 @@ static int write_identity_root_artifact(
 		cwf_certificates,
 		context_db,
 		substitution_db,
+		dimension_operators,
 		operation_graph
 	);
 }
@@ -667,28 +729,32 @@ static int apply_pure_thunk_function(
 }
 
 static int check_bool_function_extensional_identity(
+	struct prototype_kernel_builder* kernel,
 	struct prototype_term_db* term_db,
 	struct prototype_type_declaration_db* type_db,
 	struct prototype_context_db* context_db,
 	struct prototype_substitution_db* substitution_db,
 	struct prototype_judgement_db* judgement,
+	struct prototype_dimension_operator_db* dimension_operators,
 	struct prototype_typed_occurrence_graph* operation_graph,
 	uint32_t empty_context,
 	uint32_t universe,
 	uint32_t bool_type,
 	uint32_t bool_false,
 	uint32_t bool_true,
-	uint32_t bool_identity_type_id,
-	uint32_t thunk_bool_identity_type_id,
+	uint32_t bool_identity_former,
+	uint32_t bool_identity_former_claim,
 	uint32_t thunk_bool_identity_former,
+	uint32_t thunk_bool_identity_former_claim,
 	uint32_t function_type,
 	const struct prototype_hott_identity_type_computation_certificate* certificate,
 	uint32_t* p_identity_family_claim,
 	uint32_t* p_witness_term,
 	uint32_t* p_witness_claim
 ) {
-	if (!term_db || !type_db || !context_db || !substitution_db || !judgement ||
-		!operation_graph || !certificate || !p_identity_family_claim ||
+	if (!kernel || !term_db || !type_db || !context_db || !substitution_db ||
+		!judgement || !dimension_operators || !operation_graph || !certificate ||
+		!p_identity_family_claim ||
 		!p_witness_term || !p_witness_claim) {
 		return 1;
 	}
@@ -851,8 +917,6 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 8;
 	}
-	uint32_t false_identity_arguments[2] = { bool_false, bool_false };
-	uint32_t true_identity_arguments[2] = { bool_true, bool_true };
 	uint32_t false_identity;
 	uint32_t true_identity;
 	uint32_t false_identity_witness;
@@ -861,72 +925,92 @@ static int check_bool_function_extensional_identity(
 	uint32_t true_thunk;
 	uint32_t false_computation_identity;
 	uint32_t true_computation_identity;
-	uint32_t false_computation_identity_arguments[2];
-	uint32_t true_computation_identity_arguments[2];
 	uint32_t false_computation_witness;
 	uint32_t true_computation_witness;
-	uint32_t false_witness_spine[4];
-	uint32_t true_witness_spine[4];
 	uint32_t false_witness_return;
 	uint32_t true_witness_return;
 	uint32_t false_branch_computation_identity;
 	uint32_t true_branch_computation_identity;
-	if (prototype_term_type_instance_make(
-			term_db, type_db, bool_identity_type_id,
-			false_identity_arguments, 2, &false_identity
-		) != 0 || prototype_term_type_instance_make(
-			term_db, type_db, bool_identity_type_id,
-			true_identity_arguments, 2, &true_identity
-		) != 0 || prototype_term_constructor(
-			term_db, false_identity, 0, &false_identity_witness
-		) != 0 || prototype_term_constructor(
-			term_db, true_identity, 1, &true_identity_witness
+	uint32_t bool_identity_source;
+	uint32_t bool_identity_operator;
+	uint32_t thunk_identity_source;
+	uint32_t thunk_identity_operator;
+	if (prototype_term_dimension_action_info(
+			term_db,
+			bool_identity_former,
+			&bool_identity_source,
+			&bool_identity_operator
+		) != 0 || bool_identity_source != bool_type ||
+		prototype_term_dimension_action_info(
+			term_db,
+			thunk_bool_identity_former,
+			&thunk_identity_source,
+			&thunk_identity_operator
+		) != 0) {
+		return 90;
+	}
+	if (prototype_term_app(
+			term_db, bool_identity_former, bool_false, &false_identity
+		) != 0 || prototype_term_app(
+			term_db, false_identity, bool_false, &false_identity
+		) != 0 || prototype_term_app(
+			term_db, bool_identity_former, bool_true, &true_identity
+		) != 0 || prototype_term_app(
+			term_db, true_identity, bool_true, &true_identity
+		) != 0 || prototype_term_dimension_action(
+			term_db,
+			dimension_operators,
+			bool_false,
+			bool_identity_operator,
+			&false_identity_witness
+		) != 0 || prototype_term_dimension_action(
+			term_db,
+			dimension_operators,
+			bool_true,
+			bool_identity_operator,
+			&true_identity_witness
 		) != 0 || prototype_term_thunk(
 			term_db, false_return, &false_thunk
 		) != 0 || prototype_term_thunk(
 			term_db, true_return, &true_thunk
 		) != 0) {
-		return 9;
+		return 91;
 	}
-	false_computation_identity_arguments[0] = false_thunk;
-	false_computation_identity_arguments[1] = false_thunk;
-	true_computation_identity_arguments[0] = true_thunk;
-	true_computation_identity_arguments[1] = true_thunk;
-	if (prototype_term_type_instance_make(
-			term_db, type_db, thunk_bool_identity_type_id,
-			false_computation_identity_arguments, 2,
+	if (prototype_term_app(
+			term_db,
+			thunk_bool_identity_former,
+			false_thunk,
 			&false_computation_identity
-		) != 0 || prototype_term_type_instance_make(
-			term_db, type_db, thunk_bool_identity_type_id,
-			true_computation_identity_arguments, 2,
+		) != 0 || prototype_term_app(
+			term_db,
+			false_computation_identity,
+			false_thunk,
+			&false_computation_identity
+		) != 0 || prototype_term_app(
+			term_db,
+			thunk_bool_identity_former,
+			true_thunk,
 			&true_computation_identity
-		) != 0 || prototype_term_constructor(
-			term_db, thunk_bool_identity_former, 0, &false_witness_spine[0]
 		) != 0 || prototype_term_app(
-			term_db, false_witness_spine[0], bool_false,
-			&false_witness_spine[1]
-		) != 0 || prototype_term_app(
-			term_db, false_witness_spine[1], bool_false,
-			&false_witness_spine[2]
-		) != 0 || prototype_term_app(
-			term_db, false_witness_spine[2], false_identity_witness,
-			&false_witness_spine[3]
-		) != 0 || prototype_term_constructor(
-			term_db, thunk_bool_identity_former, 0, &true_witness_spine[0]
-		) != 0 || prototype_term_app(
-			term_db, true_witness_spine[0], bool_true,
-			&true_witness_spine[1]
-		) != 0 || prototype_term_app(
-			term_db, true_witness_spine[1], bool_true,
-			&true_witness_spine[2]
-		) != 0 || prototype_term_app(
-			term_db, true_witness_spine[2], true_identity_witness,
-			&true_witness_spine[3]
+			term_db,
+			true_computation_identity,
+			true_thunk,
+			&true_computation_identity
+		) != 0 || prototype_term_dimension_action(
+			term_db,
+			dimension_operators,
+			false_thunk,
+			thunk_identity_operator,
+			&false_computation_witness
+		) != 0 || prototype_term_dimension_action(
+			term_db,
+			dimension_operators,
+			true_thunk,
+			thunk_identity_operator,
+			&true_computation_witness
 		) != 0) {
 		return 10;
 	}
-	false_computation_witness = false_witness_spine[3];
-	true_computation_witness = true_witness_spine[3];
 	if (prototype_term_return(
 			term_db, false_computation_witness, &false_witness_return
 		) != 0 || prototype_term_return(
@@ -1001,11 +1085,58 @@ static int check_bool_function_extensional_identity(
 		return 11;
 	}
 	uint32_t bool_type_claim;
+	uint32_t bool_is_type_claim;
+	uint32_t thunk_type_claim;
+	uint32_t thunk_is_type_claim;
 	uint32_t function_type_claim;
 	uint32_t concrete_identity_claim;
+	uint32_t false_claim;
+	uint32_t true_claim;
 	if (prototype_judgement_add_type_formation_claim(
 		judgement, term_db, type_db, empty_context, bool_type, universe,
 			&bool_type_claim
+		) != 0 || prototype_judgement_add_is_type_claim(
+			judgement,
+			term_db,
+			empty_context,
+			bool_type,
+			universe,
+			bool_type_claim,
+			&bool_is_type_claim
+		) != 0 || prototype_judgement_add_constructor_intro_claim(
+			judgement,
+			term_db,
+			type_db,
+			empty_context,
+			bool_false,
+			bool_type,
+			&false_claim
+		) != 0 || prototype_judgement_add_constructor_intro_claim(
+			judgement,
+			term_db,
+			type_db,
+			empty_context,
+			bool_true,
+			bool_type,
+			&true_claim
+		) != 0 || prototype_judgement_add_structural_type_formation_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			empty_context,
+			thunk_identity_source,
+			universe,
+			&thunk_type_claim
+		) != 0 || prototype_judgement_add_is_type_claim(
+			judgement,
+			term_db,
+			empty_context,
+			thunk_identity_source,
+			universe,
+			thunk_type_claim,
+			&thunk_is_type_claim
 		) != 0 || prototype_judgement_add_structural_type_formation_claim(
 			judgement,
 			term_db,
@@ -1016,6 +1147,482 @@ static int check_bool_function_extensional_identity(
 			function_type,
 			universe,
 			&function_type_claim
+		) != 0) {
+		return 12;
+	}
+	uint32_t false_return_claim;
+	uint32_t true_return_claim;
+	uint32_t false_thunk_claim;
+	uint32_t true_thunk_claim;
+	uint32_t false_identity_left_claim;
+	uint32_t true_identity_left_claim;
+	uint32_t false_identity_type_claim;
+	uint32_t true_identity_type_claim;
+	uint32_t false_identity_is_type_claim;
+	uint32_t true_identity_is_type_claim;
+	uint32_t false_identity_claim;
+	uint32_t true_identity_claim;
+	uint32_t false_computation_identity_left_claim;
+	uint32_t true_computation_identity_left_claim;
+	uint32_t false_computation_identity_type_claim;
+	uint32_t true_computation_identity_type_claim;
+	uint32_t false_computation_identity_is_type_claim;
+	uint32_t true_computation_identity_is_type_claim;
+	uint32_t false_computation_witness_claim;
+	uint32_t true_computation_witness_claim;
+	uint32_t return_computation_type = term_db->terms[
+		thunk_identity_source
+	].as.thunk_type.computation;
+	if (prototype_judgement_add_return_claim(
+			judgement,
+			term_db,
+			type_db,
+			empty_context,
+			false_return,
+			return_computation_type,
+			false_claim,
+			&false_return_claim
+		) != 0 || prototype_judgement_add_return_claim(
+			judgement,
+			term_db,
+			type_db,
+			empty_context,
+			true_return,
+			return_computation_type,
+			true_claim,
+			&true_return_claim
+		) != 0 || prototype_judgement_add_thunk_claim(
+			judgement,
+			term_db,
+			type_db,
+			empty_context,
+			false_thunk,
+			thunk_identity_source,
+			false_return_claim,
+			&false_thunk_claim
+		) != 0 || prototype_judgement_add_thunk_claim(
+			judgement,
+			term_db,
+			type_db,
+			empty_context,
+			true_thunk,
+			thunk_identity_source,
+			true_return_claim,
+			&true_thunk_claim
+		) != 0 || fixture_apply_claim_argument(
+			kernel,
+			empty_context,
+			bool_identity_former_claim,
+			false_claim,
+			&false_identity,
+			&false_identity_left_claim
+		) != 0 || fixture_apply_claim_argument(
+			kernel,
+			empty_context,
+			false_identity_left_claim,
+			false_claim,
+			&false_identity,
+			&false_identity_type_claim
+		) != 0 || prototype_judgement_add_is_type_claim(
+			judgement,
+			term_db,
+			empty_context,
+			false_identity,
+			universe,
+			false_identity_type_claim,
+			&false_identity_is_type_claim
+		) != 0 || prototype_judgement_add_dimension_action_term(
+			judgement,
+			term_db,
+			dimension_operators,
+			empty_context,
+			false_identity_witness,
+			false_identity,
+			false_claim,
+			bool_is_type_claim,
+			&false_identity_claim
+		) != 0 || fixture_apply_claim_argument(
+			kernel,
+			empty_context,
+			bool_identity_former_claim,
+			true_claim,
+			&true_identity,
+			&true_identity_left_claim
+		) != 0 || fixture_apply_claim_argument(
+			kernel,
+			empty_context,
+			true_identity_left_claim,
+			true_claim,
+			&true_identity,
+			&true_identity_type_claim
+		) != 0 || prototype_judgement_add_is_type_claim(
+			judgement,
+			term_db,
+			empty_context,
+			true_identity,
+			universe,
+			true_identity_type_claim,
+			&true_identity_is_type_claim
+		) != 0 || prototype_judgement_add_dimension_action_term(
+			judgement,
+			term_db,
+			dimension_operators,
+			empty_context,
+			true_identity_witness,
+			true_identity,
+			true_claim,
+			bool_is_type_claim,
+			&true_identity_claim
+		) != 0 || fixture_apply_claim_argument(
+			kernel,
+			empty_context,
+			thunk_bool_identity_former_claim,
+			false_thunk_claim,
+			&false_computation_identity,
+			&false_computation_identity_left_claim
+		) != 0 || fixture_apply_claim_argument(
+			kernel,
+			empty_context,
+			false_computation_identity_left_claim,
+			false_thunk_claim,
+			&false_computation_identity,
+			&false_computation_identity_type_claim
+		) != 0 || prototype_judgement_add_is_type_claim(
+			judgement,
+			term_db,
+			empty_context,
+			false_computation_identity,
+			universe,
+			false_computation_identity_type_claim,
+			&false_computation_identity_is_type_claim
+		) != 0 || prototype_judgement_add_dimension_action_term(
+			judgement,
+			term_db,
+			dimension_operators,
+			empty_context,
+			false_computation_witness,
+			false_computation_identity,
+			false_thunk_claim,
+			thunk_is_type_claim,
+			&false_computation_witness_claim
+		) != 0 || fixture_apply_claim_argument(
+			kernel,
+			empty_context,
+			thunk_bool_identity_former_claim,
+			true_thunk_claim,
+			&true_computation_identity,
+			&true_computation_identity_left_claim
+		) != 0 || fixture_apply_claim_argument(
+			kernel,
+			empty_context,
+			true_computation_identity_left_claim,
+			true_thunk_claim,
+			&true_computation_identity,
+			&true_computation_identity_type_claim
+		) != 0 || prototype_judgement_add_is_type_claim(
+			judgement,
+			term_db,
+			empty_context,
+			true_computation_identity,
+			universe,
+			true_computation_identity_type_claim,
+			&true_computation_identity_is_type_claim
+		) != 0 || prototype_judgement_add_dimension_action_term(
+			judgement,
+			term_db,
+			dimension_operators,
+			empty_context,
+			true_computation_witness,
+			true_computation_identity,
+			true_thunk_claim,
+			thunk_is_type_claim,
+			&true_computation_witness_claim
+		) != 0) {
+		return 13;
+	}
+	uint32_t function_computation_type;
+	uint32_t function_codomain_binding;
+	uint32_t function_result_computation_type;
+	if (function_type >= term_db->term_count ||
+		term_db->terms[function_type].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		return 92;
+	}
+	function_computation_type =
+		term_db->terms[function_type].as.thunk_type.computation;
+	if (function_computation_type >= term_db->term_count ||
+		term_db->terms[function_computation_type].tag != PROTOTYPE_TERM_PI ||
+		prototype_term_pure_family_parts(
+			term_db,
+			term_db->terms[function_computation_type].as.pi.codomain_family,
+			&function_codomain_binding,
+			&function_result_computation_type
+		) != 0 || function_result_computation_type != return_computation_type) {
+		return 92;
+	}
+	uint32_t result_computation_type_claim;
+	uint32_t left_context;
+	uint32_t left_var_claim;
+	uint32_t left_return_claim;
+	uint32_t left_lambda_claim;
+	uint32_t left_value_claim;
+	if (prototype_judgement_add_structural_type_formation_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			empty_context,
+			return_computation_type,
+			universe,
+			&result_computation_type_claim
+		) != 0 || prototype_context_extend(
+			context_db,
+			empty_context,
+			left_binder,
+			bool_type,
+			PROTOTYPE_INVALID_ID,
+			&left_context
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			judgement,
+			term_db,
+			context_db,
+			left_context,
+			left_binder,
+			bool_type,
+			&left_var_claim
+		) != 0 || prototype_judgement_add_return_claim(
+			judgement,
+			term_db,
+			type_db,
+			left_context,
+			left_return,
+			return_computation_type,
+			left_var_claim,
+			&left_return_claim
+		) != 0 || prototype_judgement_add_lambda_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			empty_context,
+			left_lambda,
+			function_computation_type,
+			left_var_claim,
+			left_return_claim,
+			&left_lambda_claim
+		) != 0 || prototype_judgement_add_thunk_claim(
+			judgement,
+			term_db,
+			type_db,
+			empty_context,
+			left_value,
+			function_type,
+			left_lambda_claim,
+			&left_value_claim
+		) != 0) {
+		return 93;
+	}
+	uint32_t motive;
+	uint32_t motive_context;
+	uint32_t motive_projection;
+	uint32_t motive_binder_claim;
+	uint32_t result_type_in_motive_context;
+	uint32_t motive_classifier;
+	uint32_t motive_claim;
+	if (prototype_term_lambda(
+			term_db,
+			function_codomain_binding,
+			return_computation_type,
+			&motive
+		) != 0 || prototype_context_extend(
+			context_db,
+			empty_context,
+			function_codomain_binding,
+			bool_type,
+			PROTOTYPE_INVALID_ID,
+			&motive_context
+		) != 0 || prototype_substitution_projection_path(
+			substitution_db,
+			context_db,
+			motive_context,
+			empty_context,
+			&motive_projection
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			judgement,
+			term_db,
+			context_db,
+			motive_context,
+			function_codomain_binding,
+			bool_type,
+			&motive_binder_claim
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			result_computation_type_claim,
+			motive_projection,
+			&result_type_in_motive_context
+		) != 0 || prototype_term_pi(
+			term_db,
+			bool_type,
+			universe,
+			&motive_classifier
+		) != 0 || prototype_judgement_add_lambda_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			empty_context,
+			motive,
+			motive_classifier,
+			motive_binder_claim,
+			result_type_in_motive_context,
+			&motive_claim
+		) != 0) {
+		return 94;
+	}
+	uint32_t right_context;
+	uint32_t right_projection;
+	uint32_t right_var_claim;
+	uint32_t false_return_in_right_context;
+	uint32_t true_return_in_right_context;
+	uint32_t motive_in_right_context;
+	uint32_t right_match_classifier;
+	uint32_t right_match_classifier_claim;
+	uint32_t right_match_classifier_is_type_claim;
+	uint32_t right_branch_claims[2];
+	uint32_t right_match_claim;
+	uint32_t right_lambda_claim;
+	uint32_t right_value_claim;
+	if (prototype_context_extend(
+			context_db,
+			empty_context,
+			right_binder,
+			bool_type,
+			PROTOTYPE_INVALID_ID,
+			&right_context
+		) != 0 || prototype_substitution_projection_path(
+			substitution_db,
+			context_db,
+			right_context,
+			empty_context,
+			&right_projection
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			judgement,
+			term_db,
+			context_db,
+			right_context,
+			right_binder,
+			bool_type,
+			&right_var_claim
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			false_return_claim,
+			right_projection,
+			&false_return_in_right_context
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			true_return_claim,
+			right_projection,
+			&true_return_in_right_context
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			motive_claim,
+			right_projection,
+			&motive_in_right_context
+		) != 0 || prototype_term_app(
+			term_db,
+			motive,
+			right_var,
+			&right_match_classifier
+		) != 0 || prototype_judgement_add_app_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			right_context,
+			right_match_classifier,
+			universe,
+			motive_in_right_context,
+			right_var_claim,
+			&right_match_classifier_claim
+		) != 0 || prototype_judgement_add_is_type_claim(
+			judgement,
+			term_db,
+			right_context,
+			right_match_classifier,
+			universe,
+			right_match_classifier_claim,
+			&right_match_classifier_is_type_claim
+		) != 0) {
+		return 95;
+	}
+	(void)right_match_classifier_is_type_claim;
+	right_branch_claims[0] = false_return_in_right_context;
+	right_branch_claims[1] = true_return_in_right_context;
+	if (prototype_judgement_add_match_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			dimension_operators,
+			operation_graph,
+			right_context,
+			right_match,
+			right_match_classifier,
+			right_match_classifier_claim,
+			right_branch_claims,
+			2,
+			&right_match_claim
+		) != 0 || prototype_judgement_add_lambda_claim(
+			judgement,
+			term_db,
+			type_db,
+			context_db,
+			substitution_db,
+			empty_context,
+			right_lambda,
+			function_computation_type,
+			right_var_claim,
+			right_match_claim,
+			&right_lambda_claim
+		) != 0 || prototype_judgement_add_thunk_claim(
+			judgement,
+			term_db,
+			type_db,
+			empty_context,
+			right_value,
+			function_type,
+			right_lambda_claim,
+			&right_value_claim
+		) != 0) {
+		return 96;
+	}
+	(void)left_value_claim;
+	(void)right_value_claim;
+	if (prototype_hott_ensure_dimension_classifier_formation(
+			kernel,
+			empty_context,
+			concrete_identity,
+			universe
 		) != 0 || prototype_judgement_add_structural_type_formation_claim(
 			judgement,
 			term_db,
@@ -1029,25 +1636,6 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 12;
 	}
-	uint32_t false_claim;
-	uint32_t true_claim;
-	uint32_t false_identity_claim;
-	uint32_t true_identity_claim;
-	if (prototype_judgement_add_constructor_intro_claim(
-			judgement, term_db, type_db, empty_context, bool_false, bool_type,
-			&false_claim
-		) != 0 || prototype_judgement_add_constructor_intro_claim(
-			judgement, term_db, type_db, empty_context, bool_true, bool_type,
-			&true_claim
-		) != 0 || prototype_judgement_add_constructor_intro_claim(
-			judgement, term_db, type_db, empty_context, false_identity_witness,
-			false_identity, &false_identity_claim
-		) != 0 || prototype_judgement_add_constructor_intro_claim(
-			judgement, term_db, type_db, empty_context, true_identity_witness,
-			true_identity, &true_identity_claim
-		) != 0) {
-		return 13;
-	}
 	uint32_t projection;
 	if (prototype_substitution_projection_path(
 			substitution_db, context_db, xr_context, empty_context, &projection
@@ -1058,6 +1646,8 @@ static int check_bool_function_extensional_identity(
 	uint32_t true_in_context;
 	uint32_t false_identity_in_context;
 	uint32_t true_identity_in_context;
+	uint32_t false_computation_witness_in_context;
+	uint32_t true_computation_witness_in_context;
 	if (prototype_judgement_add_reindexed_claim(
 			judgement, term_db, type_db, context_db, substitution_db,
 			false_claim, projection, &false_in_context
@@ -1070,6 +1660,14 @@ static int check_bool_function_extensional_identity(
 		) != 0 || prototype_judgement_add_reindexed_claim(
 			judgement, term_db, type_db, context_db, substitution_db,
 			true_identity_claim, projection, &true_identity_in_context
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			false_computation_witness_claim, projection,
+			&false_computation_witness_in_context
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			true_computation_witness_claim, projection,
+			&true_computation_witness_in_context
 		) != 0 || prototype_judgement_add_context_binding_assumption(
 			judgement, term_db, context_db, x0_context, x0_binding, bool_type,
 			&(uint32_t){0}
@@ -1093,6 +1691,7 @@ static int check_bool_function_extensional_identity(
 			substitution_db,
 			term_db,
 			type_db,
+			dimension_operators,
 			xr_context,
 			xr,
 			input_identity,
@@ -1108,6 +1707,7 @@ static int check_bool_function_extensional_identity(
 			substitution_db,
 			term_db,
 			type_db,
+			dimension_operators,
 			xr_context,
 			xr,
 			input_identity,
@@ -1125,8 +1725,10 @@ static int check_bool_function_extensional_identity(
 	(void)true_refined_constructor;
 	uint32_t false_in_branch;
 	uint32_t false_identity_in_branch;
+	uint32_t false_computation_witness_in_branch;
 	uint32_t true_in_branch;
 	uint32_t true_identity_in_branch;
+	uint32_t true_computation_witness_in_branch;
 	if (prototype_judgement_add_reindexed_claim(
 			judgement, term_db, type_db, context_db, substitution_db,
 			false_in_context, false_branch_refinement, &false_in_branch
@@ -1136,42 +1738,30 @@ static int check_bool_function_extensional_identity(
 			&false_identity_in_branch
 		) != 0 || prototype_judgement_add_reindexed_claim(
 			judgement, term_db, type_db, context_db, substitution_db,
+			false_computation_witness_in_context, false_branch_refinement,
+			&false_computation_witness_in_branch
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
 			true_in_context, true_branch_refinement, &true_in_branch
 		) != 0 || prototype_judgement_add_reindexed_claim(
 			judgement, term_db, type_db, context_db, substitution_db,
 			true_identity_in_context, true_branch_refinement,
 			&true_identity_in_branch
+		) != 0 || prototype_judgement_add_reindexed_claim(
+			judgement, term_db, type_db, context_db, substitution_db,
+			true_computation_witness_in_context, true_branch_refinement,
+			&true_computation_witness_in_branch
 		) != 0) {
 		return 194;
 	}
 	if (operation_graph->occurrence_count > operation_graph->occurrence_capacity ||
-		operation_graph->occurrence_capacity - operation_graph->occurrence_count < 16 ||
+		operation_graph->occurrence_capacity - operation_graph->occurrence_count < 6 ||
 		operation_graph->case_count > operation_graph->case_capacity ||
 		operation_graph->case_capacity - operation_graph->case_count < 2) {
 		return 27;
 	}
 	uint32_t scrutinee_operation = add_operation(
 		operation_graph, xr_context, xr, input_identity,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t false_argument_occurrence = add_operation(
-		operation_graph, false_branch_context, bool_false, bool_type,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t false_identity_argument_occurrence = add_operation(
-		operation_graph, false_branch_context, false_identity_witness, false_identity,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t false_constructor_operation = add_operation(
-		operation_graph, false_branch_context, false_witness_spine[0], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t false_app1_operation = add_operation(
-		operation_graph, false_branch_context, false_witness_spine[1], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t false_app2_operation = add_operation(
-		operation_graph, false_branch_context, false_witness_spine[2], PROTOTYPE_INVALID_ID,
 		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t false_witness_operation = add_operation(
@@ -1181,26 +1771,6 @@ static int check_bool_function_extensional_identity(
 	uint32_t false_operation = add_operation(
 		operation_graph, false_branch_context, false_witness_return,
 		false_branch_computation_identity, PROTOTYPE_TERM_CATEGORY_COMPUTATION
-	);
-	uint32_t true_argument_occurrence = add_operation(
-		operation_graph, true_branch_context, bool_true, bool_type,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t true_identity_argument_occurrence = add_operation(
-		operation_graph, true_branch_context, true_identity_witness, true_identity,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t true_constructor_operation = add_operation(
-		operation_graph, true_branch_context, true_witness_spine[0], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t true_app1_operation = add_operation(
-		operation_graph, true_branch_context, true_witness_spine[1], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_TERM_CATEGORY_VALUE
-	);
-	uint32_t true_app2_operation = add_operation(
-		operation_graph, true_branch_context, true_witness_spine[2], PROTOTYPE_INVALID_ID,
-		PROTOTYPE_TERM_CATEGORY_VALUE
 	);
 	uint32_t true_witness_operation = add_operation(
 		operation_graph, true_branch_context, true_computation_witness,
@@ -1216,37 +1786,11 @@ static int check_bool_function_extensional_identity(
 	);
 	uint32_t first_proof_case = operation_graph->case_count;
 	operation_graph->occurrences[scrutinee_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_VAR;
-	operation_graph->occurrences[false_argument_occurrence].tag =
-		PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR;
-	operation_graph->occurrences[false_identity_argument_occurrence].tag =
-		PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR;
-	operation_graph->occurrences[false_constructor_operation].tag =
+	operation_graph->occurrences[false_witness_operation].tag =
 		PROTOTYPE_TYPED_OCCURRENCE_ATOM;
-	operation_graph->occurrences[false_app1_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
-	operation_graph->occurrences[false_app1_operation].application_role =
-		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->occurrences[false_app2_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
-	operation_graph->occurrences[false_app2_operation].application_role =
-		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->occurrences[false_witness_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
-	operation_graph->occurrences[false_witness_operation].application_role =
-		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
 	operation_graph->occurrences[false_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_RETURN;
-	operation_graph->occurrences[true_argument_occurrence].tag =
-		PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR;
-	operation_graph->occurrences[true_identity_argument_occurrence].tag =
-		PROTOTYPE_TYPED_OCCURRENCE_CONSTRUCTOR;
-	operation_graph->occurrences[true_constructor_operation].tag =
+	operation_graph->occurrences[true_witness_operation].tag =
 		PROTOTYPE_TYPED_OCCURRENCE_ATOM;
-	operation_graph->occurrences[true_app1_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
-	operation_graph->occurrences[true_app1_operation].application_role =
-		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->occurrences[true_app2_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
-	operation_graph->occurrences[true_app2_operation].application_role =
-		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
-	operation_graph->occurrences[true_witness_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
-	operation_graph->occurrences[true_witness_operation].application_role =
-		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION;
 	operation_graph->occurrences[true_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_RETURN;
 	operation_graph->occurrences[proof_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_MATCH;
 	operation_graph->occurrences[proof_operation].first_case = first_proof_case;
@@ -1274,46 +1818,8 @@ static int check_bool_function_extensional_identity(
 	};
 	operation_graph->case_count += 2;
 	if (fixture_add_occurrence_edge(
-			operation_graph, false_app1_operation,
-			PROTOTYPE_TERM_CHILD_FUNCTION, 0, false_constructor_operation
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, false_app1_operation,
-			PROTOTYPE_TERM_CHILD_ARGUMENT, 0, false_argument_occurrence
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, false_app2_operation,
-			PROTOTYPE_TERM_CHILD_FUNCTION, 0, false_app1_operation
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, false_app2_operation,
-			PROTOTYPE_TERM_CHILD_ARGUMENT, 0, false_argument_occurrence
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, false_witness_operation,
-			PROTOTYPE_TERM_CHILD_FUNCTION, 0, false_app2_operation
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, false_witness_operation,
-			PROTOTYPE_TERM_CHILD_ARGUMENT, 0,
-			false_identity_argument_occurrence
-		) != 0 || fixture_add_occurrence_edge(
 			operation_graph, false_operation,
 			PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0, false_witness_operation
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, true_app1_operation,
-			PROTOTYPE_TERM_CHILD_FUNCTION, 0, true_constructor_operation
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, true_app1_operation,
-			PROTOTYPE_TERM_CHILD_ARGUMENT, 0, true_argument_occurrence
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, true_app2_operation,
-			PROTOTYPE_TERM_CHILD_FUNCTION, 0, true_app1_operation
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, true_app2_operation,
-			PROTOTYPE_TERM_CHILD_ARGUMENT, 0, true_argument_occurrence
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, true_witness_operation,
-			PROTOTYPE_TERM_CHILD_FUNCTION, 0, true_app2_operation
-		) != 0 || fixture_add_occurrence_edge(
-			operation_graph, true_witness_operation,
-			PROTOTYPE_TERM_CHILD_ARGUMENT, 0,
-			true_identity_argument_occurrence
 		) != 0 || fixture_add_occurrence_edge(
 			operation_graph, true_operation,
 			PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0, true_witness_operation
@@ -1377,6 +1883,7 @@ static int check_bool_function_extensional_identity(
 	prototype_judgement_delta_set_context_store(
 		&delta, context_db, substitution_db
 	);
+	delta.dimension_operators = dimension_operators;
 	prototype_judgement_delta_set_occurrence_store(
 		&delta,
 		operation_graph->occurrences,
@@ -1392,75 +1899,15 @@ static int check_bool_function_extensional_identity(
 		fixture_occurrence_usage_provider
 	);
 	prototype_judgement_delta_set_context(&delta, xr_context);
-	const struct prototype_type_declaration* thunk_identity_declaration =
-		&type_db->type_declarations[thunk_bool_identity_type_id];
-	const struct prototype_constructor_classifier_cache_entry* thunk_identity_cache =
-		prototype_type_constructor_classifier_cache_get(
-			type_db, thunk_identity_declaration->first_constructor
-		);
-	if (!thunk_identity_cache) {
-		return 15;
-	}
-	uint32_t false_app1_classifier;
-	uint32_t false_app2_classifier;
-	uint32_t true_app1_classifier;
-	uint32_t true_app2_classifier;
-	if (prototype_judgement_delta_app_elim_classifier(
-			&delta, term_db, type_db,
-			thunk_identity_cache->classifier,
-			bool_false, bool_type, &false_app1_classifier
-		) != 0 || prototype_judgement_delta_app_elim_classifier(
-			&delta, term_db, type_db, false_app1_classifier,
-			bool_false, bool_type, &false_app2_classifier
-		) != 0 || prototype_judgement_delta_app_elim_classifier(
-			&delta, term_db, type_db,
-			thunk_identity_cache->classifier,
-			bool_true, bool_type, &true_app1_classifier
-		) != 0 || prototype_judgement_delta_app_elim_classifier(
-			&delta, term_db, type_db, true_app1_classifier,
-			bool_true, bool_type, &true_app2_classifier
-		) != 0) {
-		return 15;
-	}
-	operation_graph->occurrences[false_constructor_operation].classifier =
-		thunk_identity_cache->classifier;
-	operation_graph->occurrences[false_app1_operation].classifier =
-		false_app1_classifier;
-	operation_graph->occurrences[false_app2_operation].classifier =
-		false_app2_classifier;
-	operation_graph->occurrences[true_constructor_operation].classifier =
-		thunk_identity_cache->classifier;
-	operation_graph->occurrences[true_app1_operation].classifier = true_app1_classifier;
-	operation_graph->occurrences[true_app2_operation].classifier = true_app2_classifier;
-	struct prototype_judgement_selected_evidence constructor_evidence[3];
 	struct prototype_judgement_selected_evidence branch_evidence;
-	uint32_t constructor_operations[3] = {
-		PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID
-	};
 	if (prototype_judgement_selected_evidence_from_claim(
-			judgement, false_in_branch,
-			&constructor_evidence[0]
-		) != 0 || prototype_judgement_selected_evidence_from_claim(
-			judgement, false_in_branch,
-			&constructor_evidence[1]
-		) != 0 || prototype_judgement_selected_evidence_from_claim(
-			judgement, false_identity_in_branch, &constructor_evidence[2]
+			judgement,
+			false_computation_witness_in_branch,
+			&branch_evidence
 		) != 0) {
 		return 16;
 	}
 	prototype_judgement_delta_set_context(&delta, false_branch_context);
-	prototype_judgement_delta_set_occurrence(&delta, false_witness_operation);
-	if (prototype_judgement_delta_record_constructor_spine(
-			&delta, term_db, type_db, false_computation_witness,
-			false_computation_identity, constructor_operations,
-			constructor_evidence, 3
-		) != 0 || prototype_judgement_delta_select_evidence(
-			&delta, false_witness_operation, false_branch_context,
-			false_computation_witness,
-			false_computation_identity, &branch_evidence
-		) != 0) {
-		return 16;
-	}
 	prototype_judgement_delta_set_occurrence(&delta, false_operation);
 	if (prototype_judgement_delta_record_cbpv_boundary(
 			&delta, term_db, type_db, false_witness_return,
@@ -1472,29 +1919,13 @@ static int check_bool_function_extensional_identity(
 		return 16;
 	}
 	if (prototype_judgement_selected_evidence_from_claim(
-			judgement, true_in_branch,
-			&constructor_evidence[0]
-		) != 0 || prototype_judgement_selected_evidence_from_claim(
-			judgement, true_in_branch,
-			&constructor_evidence[1]
-		) != 0 || prototype_judgement_selected_evidence_from_claim(
-			judgement, true_identity_in_branch, &constructor_evidence[2]
+			judgement,
+			true_computation_witness_in_branch,
+			&branch_evidence
 		) != 0) {
 		return 17;
 	}
 	prototype_judgement_delta_set_context(&delta, true_branch_context);
-	prototype_judgement_delta_set_occurrence(&delta, true_witness_operation);
-	if (prototype_judgement_delta_record_constructor_spine(
-			&delta, term_db, type_db, true_computation_witness,
-			true_computation_identity, constructor_operations,
-			constructor_evidence, 3
-		) != 0 || prototype_judgement_delta_select_evidence(
-			&delta, true_witness_operation, true_branch_context,
-			true_computation_witness,
-			true_computation_identity, &branch_evidence
-		) != 0) {
-		return 17;
-	}
 	prototype_judgement_delta_set_occurrence(&delta, true_operation);
 	if (prototype_judgement_delta_record_cbpv_boundary(
 			&delta, term_db, type_db, true_witness_return,
@@ -1734,8 +2165,6 @@ static uint32_t add_bool_view(
 		types_db->type_declarations[0] = (struct prototype_type_declaration){
 			.name_symbol_id = 100,
 			.namespace_symbol_id = -1,
-			.origin_kind = PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE,
-			.origin_source_carrier_term_id = PROTOTYPE_INVALID_ID,
 			.type_index = 0,
 		.representation_id = PROTOTYPE_INVALID_ID,
 		.formation_classifier = universe,

@@ -14,7 +14,7 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 77
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 78
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
 enum prototype_artifact_export_transparency {
@@ -292,6 +292,7 @@ int prototype_artifact_interface_add_identity_root(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_db* judgement,
 	uint32_t source_type_claim_id,
 	uint32_t identity_family_has_type_claim_id,
@@ -304,6 +305,7 @@ int prototype_artifact_interface_validate_identity_roots(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_db* judgement
 );
 void prototype_artifact_relocation_table_init(
@@ -454,6 +456,8 @@ struct prototype_artifact_graph_relocation {
 	size_t claim_id_capacity;
 	uint32_t* substitution_ids;
 	size_t substitution_id_capacity;
+	uint32_t* dimension_operator_ids;
+	size_t dimension_operator_id_capacity;
 };
 
 int prototype_artifact_append_graph(
@@ -463,12 +467,14 @@ int prototype_artifact_append_graph(
 	struct prototype_judgement_db* target_judgement,
 	struct prototype_context_db* target_contexts,
 	struct prototype_substitution_db* target_substitutions,
+	struct prototype_dimension_operator_db* target_dimension_operators,
 	const struct prototype_artifact_interface* source_interface,
 	const struct prototype_term_db* source_terms,
 	const struct prototype_type_declaration_db* source_type_declarations,
 	const struct prototype_judgement_db* source_judgement,
 	const struct prototype_context_db* source_contexts,
 	const struct prototype_substitution_db* source_substitutions,
+	const struct prototype_dimension_operator_db* source_dimension_operators,
 	uint32_t occurrence_offset,
 	uint32_t* term_relocation,
 	size_t term_relocation_capacity,

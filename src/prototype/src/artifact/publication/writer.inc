@@ -293,7 +293,7 @@ static int prototype_artifact_write_text_body(
 		prototype_term_host_type_bit_width(
 			interface->default_integer_host_type
 		) == 0 || !terms || !type_declarations || !judgement ||
-		!universe) {
+		!universe || !metadata) {
 		return -1;
 	}
 	(void)asts;
@@ -516,6 +516,7 @@ static int prototype_artifact_write_text_body(
 			stream,
 			symbols,
 			intrinsic_environment,
+			&metadata->dimension_operators,
 			terms,
 			type_declarations,
 		judgement,
@@ -601,6 +602,7 @@ int prototype_artifact_write_text(
 			terms,
 			type_declarations,
 			&metadata->contexts,
+			&metadata->dimension_operators,
 			judgement
 		) != 0)) {
 		fprintf(stderr, "artifact source identity-root validation failed\n");
@@ -707,6 +709,7 @@ int prototype_artifact_write_text(
 			&publication.object.terms,
 			&publication.object.type_declarations,
 			&publication.metadata.contexts,
+			&publication.metadata.dimension_operators,
 			&publication.object.judgement
 		);
 	if (identity_validation_status != 0) {

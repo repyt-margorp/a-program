@@ -551,8 +551,7 @@ int prototype_judgement_source_match_branch_refinement(
 	*p_residual_value = PROTOTYPE_INVALID_ID;
 	const struct prototype_type_declaration* type =
 		&type_declarations->type_declarations[type_id];
-	if (type->origin_kind != PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE ||
-		type->parameter_count + type->index_count !=
+	if (type->parameter_count + type->index_count !=
 			scrutinee_argument_count || constructor_index >= type->constructor_count ||
 		type->first_constructor + constructor_index >=
 			type_declarations->constructor_count) {
@@ -979,11 +978,12 @@ int prototype_judgement_source_match_branch_refinement(
 	return PROTOTYPE_INDEX_REFINEMENT_SOLVED;
 }
 
-int prototype_judgement_identity_relation_branch_refinement(
+static int dimension_action_nullary_branch_refinement(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	uint32_t scrutinee_context_id,
 	uint32_t scrutinee_term,
 	uint32_t scrutinee_classifier,
@@ -995,6 +995,212 @@ int prototype_judgement_identity_relation_branch_refinement(
 	uint32_t* p_refinement_substitution_id,
 	uint32_t* p_constructor_term
 ) {
+	(void)branch_binders;
+	if (!contexts || !substitutions || !terms || !type_declarations ||
+		!p_refined_context_id ||
+		!p_refinement_substitution_id || !p_constructor_term ||
+		branch_binder_count != 0 ||
+		scrutinee_term >= terms->term_count ||
+		terms->terms[scrutinee_term].tag != PROTOTYPE_TERM_VAR ||
+		scrutinee_classifier >= terms->term_count) {
+		return 1;
+	}
+	uint32_t right_app = scrutinee_classifier;
+	if (terms->terms[right_app].tag != PROTOTYPE_TERM_APP) {
+		return 1;
+	}
+	uint32_t right_endpoint = terms->terms[right_app].as.app.argument;
+	uint32_t left_app = terms->terms[right_app].as.app.function;
+	if (left_app >= terms->term_count ||
+		terms->terms[left_app].tag != PROTOTYPE_TERM_APP) {
+		return 1;
+	}
+	uint32_t left_endpoint = terms->terms[left_app].as.app.argument;
+	uint32_t acted_type = terms->terms[left_app].as.app.function;
+	uint32_t source_type;
+	uint32_t operator_id;
+	if (prototype_term_dimension_action_info(
+			terms, acted_type, &source_type, &operator_id
+		) != 0 || !dimension_operators) {
+		return 1;
+	}
+	const struct prototype_dimension_operator* operator =
+		prototype_dimension_operator_get(dimension_operators, operator_id);
+	struct prototype_type_schema_view type_view;
+	struct prototype_constructor_schema_view constructor_view;
+	uint32_t acted_classifier;
+	if (!operator || operator->source_dimension != 0 ||
+		operator->target_dimension != 1) {
+		fprintf(stderr, "dimension branch operator failed operator=%u\n", operator_id);
+		return -1;
+	}
+	if (prototype_type_schema_view_query(
+			type_declarations,
+			contexts,
+			terms,
+			dimension_operators,
+			acted_type,
+			&type_view
+		) != 0 || constructor_index >=
+			type_view.source_declaration->constructor_count) {
+		fprintf(stderr, "dimension branch type view failed acted=%u ctor=%u\n",
+			acted_type, constructor_index);
+		return -1;
+	}
+	if (prototype_constructor_schema_view_query(
+			type_declarations,
+			contexts,
+			terms,
+			dimension_operators,
+			&type_view,
+			constructor_index,
+			&constructor_view
+		) != 0) {
+		fprintf(stderr, "dimension branch constructor view failed acted=%u ctor=%u\n",
+			acted_type, constructor_index);
+		return -1;
+	}
+	if (prototype_constructor_schema_view_action_classifier(
+			type_declarations,
+			contexts,
+			terms,
+			dimension_operators,
+			&type_view,
+			constructor_index,
+			&acted_classifier
+		) != 0) {
+		fprintf(stderr, "dimension branch classifier query failed acted=%u ctor=%u\n",
+			acted_type, constructor_index);
+		return -1;
+	}
+	if (constructor_view.source_classifier < terms->term_count &&
+		terms->terms[constructor_view.source_classifier].tag == PROTOTYPE_TERM_PI) {
+		return 1;
+	}
+	if (left_endpoint >= terms->term_count || right_endpoint >= terms->term_count ||
+		terms->terms[left_endpoint].tag != PROTOTYPE_TERM_VAR ||
+		terms->terms[right_endpoint].tag != PROTOTYPE_TERM_VAR) {
+		return -1;
+	}
+	uint32_t left_context_id;
+	uint32_t right_context_id;
+	uint32_t proof_context_id;
+	if (prototype_context_find_binding(
+			contexts,
+			scrutinee_context_id,
+			terms->terms[left_endpoint].as.var.binding_id,
+			&left_context_id
+		) != 0 || prototype_context_find_binding(
+			contexts,
+			scrutinee_context_id,
+			terms->terms[right_endpoint].as.var.binding_id,
+			&right_context_id
+		) != 0 || prototype_context_find_binding(
+			contexts,
+			scrutinee_context_id,
+			terms->terms[scrutinee_term].as.var.binding_id,
+			&proof_context_id
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_context* left_context =
+		prototype_context_get(contexts, left_context_id);
+	const struct prototype_context* right_context =
+		prototype_context_get(contexts, right_context_id);
+	const struct prototype_context* proof_context =
+		prototype_context_get(contexts, proof_context_id);
+	if (!left_context || !right_context || !proof_context ||
+		right_context->parent != left_context_id ||
+		proof_context->parent != right_context_id ||
+		proof_context_id != scrutinee_context_id ||
+		branch_context_id != scrutinee_context_id ||
+		prototype_context_classifier_term(proof_context) != scrutinee_classifier) {
+		return -1;
+	}
+	uint32_t base_context_id = left_context->parent;
+	uint32_t substitution;
+	if (prototype_substitution_projection_path(
+			substitutions,
+			contexts,
+			base_context_id,
+			base_context_id,
+			&substitution
+		) != 0 || prototype_substitution_extend(
+			substitutions,
+			contexts,
+			terms,
+			type_declarations,
+			substitution,
+			left_context_id,
+			constructor_view.source_constructor_term,
+			prototype_context_classifier_term(left_context),
+			&substitution
+		) != 0 || prototype_substitution_extend(
+			substitutions,
+			contexts,
+			terms,
+			type_declarations,
+			substitution,
+			right_context_id,
+			constructor_view.source_constructor_term,
+			prototype_context_classifier_term(right_context),
+			&substitution
+		) != 0 || prototype_substitution_extend(
+			substitutions,
+			contexts,
+			terms,
+			type_declarations,
+			substitution,
+			proof_context_id,
+			constructor_view.acted_constructor_term,
+			acted_classifier,
+			&substitution
+		) != 0) {
+		return -1;
+	}
+	*p_refined_context_id = base_context_id;
+	*p_refinement_substitution_id = substitution;
+	*p_constructor_term = constructor_view.acted_constructor_term;
+	return 0;
+}
+
+int prototype_judgement_identity_relation_branch_refinement(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators,
+	uint32_t scrutinee_context_id,
+	uint32_t scrutinee_term,
+	uint32_t scrutinee_classifier,
+	uint32_t constructor_index,
+	uint32_t branch_context_id,
+	const struct prototype_case_binder* branch_binders,
+	uint32_t branch_binder_count,
+	uint32_t* p_refined_context_id,
+	uint32_t* p_refinement_substitution_id,
+	uint32_t* p_constructor_term
+) {
+	int action_status = dimension_action_nullary_branch_refinement(
+		contexts,
+		substitutions,
+		terms,
+		type_declarations,
+		dimension_operators,
+		scrutinee_context_id,
+		scrutinee_term,
+		scrutinee_classifier,
+		constructor_index,
+		branch_context_id,
+		branch_binders,
+		branch_binder_count,
+		p_refined_context_id,
+		p_refinement_substitution_id,
+		p_constructor_term
+	);
+	if (action_status <= 0) {
+		return action_status;
+	}
 	uint32_t type_id;
 	uint32_t index_args[16];
 	uint32_t index_count;

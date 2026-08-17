@@ -28,16 +28,14 @@ int prototype_hott_construct_degeneracy(
 	uint32_t* p_witness_claim_id
 );
 
-int prototype_hott_construct_universe_correspondence_projection(
-	const struct prototype_hott_action_db* actions,
+/* Materialize ordinary formation evidence for the dependent classifier of a
+ * dimension action. Action-family leaves already have replayable action Claims;
+ * this walk builds the surrounding Pi/Thunk/Computation formation bottom-up. */
+int prototype_hott_ensure_dimension_classifier_formation(
 	struct prototype_kernel_builder* kernel,
-	const struct prototype_hott_bridge_db* bridges,
-	uint32_t universe_identity_result_id,
-	uint32_t correspondence_claim_id,
-	int projection,
-	uint32_t* p_projection_term_id,
-	uint32_t* p_projection_claim_id
+	uint32_t context_id,
+	uint32_t classifier,
+	uint32_t universe
 );
-
 
 #endif

@@ -1487,6 +1487,8 @@ int prototype_hott_action_db_validate(
 		}
 	}
 	for (uint32_t i = 0; i < db->certificate_count; ++i) {
+		size_t validation_term_count = terms->term_count;
+		uint32_t validation_binding_count = terms->next_binding_id;
 		if (!hott_action_certificate_is_valid(
 				db,
 				&db->certificates[i],
@@ -1501,6 +1503,23 @@ int prototype_hott_action_db_validate(
 				judgement
 			)) {
 			return -1;
+		}
+		if (terms->term_count != validation_term_count || terms->next_binding_id !=
+				validation_binding_count) {
+			fprintf(
+				stderr,
+				"action certificate validation mutated TermDB certificate=%u kind=%d "
+				"rule=%d terms=%zu/%zu bindings=%u/%u\n",
+				i,
+				db->certificates[i].kind,
+				db->certificates[i].kind ==
+					PROTOTYPE_HOTT_ACTION_CERTIFICATE_IDENTITY_TYPE_COMPUTATION ?
+					db->certificates[i].data.identity_type.computation_rule : -1,
+				terms->term_count,
+				validation_term_count,
+				terms->next_binding_id,
+				validation_binding_count
+			);
 		}
 		for (uint32_t j = 0; j < i; ++j) {
 			if (db->certificates[j].request_id ==

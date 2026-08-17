@@ -596,6 +596,53 @@ static int artifact_mark_accepted_claim(
 	uint32_t depth
 );
 
+static int artifact_derivation_semantic_compare(
+	const struct prototype_judgement_derivation* left,
+	const struct prototype_judgement_derivation* right
+) {
+#define COMPARE_DERIVATION_FIELD(a, b) \
+	do { \
+		if ((a) != (b)) { \
+			return (a) < (b) ? -1 : 1; \
+		} \
+	} while (0)
+	COMPARE_DERIVATION_FIELD(left->proof_kind, right->proof_kind);
+	COMPARE_DERIVATION_FIELD(
+		left->conclusion_claim_id, right->conclusion_claim_id
+	);
+	for (uint32_t i = 0; i < 4; ++i) {
+		COMPARE_DERIVATION_FIELD(
+			left->rule_data.words[i], right->rule_data.words[i]
+		);
+	}
+	COMPARE_DERIVATION_FIELD(
+		left->semantic_action_kind, right->semantic_action_kind
+	);
+	COMPARE_DERIVATION_FIELD(
+		left->semantic_action_id, right->semantic_action_id
+	);
+	COMPARE_DERIVATION_FIELD(left->premise_count, right->premise_count);
+	for (uint32_t i = 0; i < left->premise_count; ++i) {
+		COMPARE_DERIVATION_FIELD(
+			left->premises[i].claim_id, right->premises[i].claim_id
+		);
+		COMPARE_DERIVATION_FIELD(
+			left->premises[i].scoped_proposition_id,
+			right->premises[i].scoped_proposition_id
+		);
+		COMPARE_DERIVATION_FIELD(
+			left->premises[i].semantic_action_kind,
+			right->premises[i].semantic_action_kind
+		);
+		COMPARE_DERIVATION_FIELD(
+			left->premises[i].semantic_action_id,
+			right->premises[i].semantic_action_id
+		);
+	}
+#undef COMPARE_DERIVATION_FIELD
+	return 0;
+}
+
 static int artifact_claim_has_derivation(
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id
@@ -1191,26 +1238,15 @@ static int artifact_mark_type(
 	if (!artifact_type_present(type)) {
 		return -1;
 	}
-	if ((type->origin_kind != PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
-		 type->origin_kind !=
-			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) ||
-		type->parameter_context == PROTOTYPE_INVALID_ID ||
+	if (type->parameter_context == PROTOTYPE_INVALID_ID ||
 		type->index_context == PROTOTYPE_INVALID_ID ||
-		(type->origin_kind == PROTOTYPE_TYPE_DECLARATION_ORIGIN_SOURCE &&
-		 (type->name_symbol_id < 0 || type->origin_source_carrier_term_id !=
-			PROTOTYPE_INVALID_ID)) ||
-		(type->origin_kind ==
-			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
-			 (type->name_symbol_id != -1 || type->namespace_symbol_id != -1 ||
-			  type->origin_source_carrier_term_id == PROTOTYPE_INVALID_ID))) {
+		type->name_symbol_id < 0) {
 		fprintf(
 			stderr,
-			"artifact closure: invalid type metadata type=%u origin=%d name=%d namespace=%d carrier=%u parameter_context=%u index_context=%u\n",
+			"artifact closure: invalid type metadata type=%u name=%d namespace=%d parameter_context=%u index_context=%u\n",
 			type_id,
-			type->origin_kind,
 			type->name_symbol_id,
 			type->namespace_symbol_id,
-			type->origin_source_carrier_term_id,
 			type->parameter_context,
 			type->index_context
 		);
@@ -1219,9 +1255,6 @@ static int artifact_mark_type(
 	if (marks->types[type_id]) {
 		return 0;
 	}
-	/* Mark before following the generated declaration's source carrier. A
-	 * carrier TYPE_FORMER can select this declaration as its representation
-	 * anchor, so the origin edge is allowed to close a graph cycle. */
 	marks->types[type_id] = 1;
 	if (artifact_record_publication_order(
 			marks->type_order,
@@ -1229,18 +1262,6 @@ static int artifact_mark_type(
 			&marks->ordered_type_count,
 			type_id
 		) != 0) {
-		return -1;
-	}
-	if (type->origin_kind ==
-			PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY &&
-		artifact_mark_term(
-			marks,
-			terms,
-			type->origin_source_carrier_term_id,
-			depth + 1
-		) != 0) {
-		fprintf(stderr, "artifact closure: generated type origin failed type=%u carrier=%u\n",
-			type_id, type->origin_source_carrier_term_id);
 		return -1;
 	}
 	if (type->formation_classifier == PROTOTYPE_INVALID_ID ||
@@ -1612,15 +1633,37 @@ static int artifact_mark_accepted_claim(
 		);
 		return -1;
 	}
-	int found = 0;
+	uint32_t* derivation_order = malloc(
+		(judgement->derivation_count == 0 ? 1 : judgement->derivation_count) *
+			sizeof(*derivation_order)
+	);
+	if (!derivation_order) {
+		return -1;
+	}
+	size_t derivation_count = 0;
 	for (uint32_t i = 0; i < (uint32_t)judgement->derivation_count; ++i) {
+		if (judgement->derivations[i].conclusion_claim_id == claim_id) {
+			derivation_order[derivation_count++] = i;
+		}
+	}
+	for (size_t i = 1; i < derivation_count; ++i) {
+		uint32_t candidate = derivation_order[i];
+		size_t position = i;
+		while (position > 0 && artifact_derivation_semantic_compare(
+			&judgement->derivations[candidate],
+			&judgement->derivations[derivation_order[position - 1]]
+		) < 0) {
+			derivation_order[position] = derivation_order[position - 1];
+			position--;
+		}
+		derivation_order[position] = candidate;
+	}
+	for (size_t position = 0; position < derivation_count; ++position) {
+		uint32_t i = derivation_order[position];
 		const struct prototype_judgement_derivation* derivation =
 			&judgement->derivations[i];
-		if (derivation->conclusion_claim_id != claim_id) {
-			continue;
-		}
-		found = 1;
 		if (i >= marks->derivation_count) {
+			free(derivation_order);
 			return -1;
 		}
 		if (!marks->derivations[i]) {
@@ -1631,6 +1674,7 @@ static int artifact_mark_accepted_claim(
 					&marks->ordered_derivation_count,
 					i
 				) != 0) {
+				free(derivation_order);
 				return -1;
 			}
 		}
@@ -1641,6 +1685,7 @@ static int artifact_mark_accepted_claim(
 				) != 0 || artifact_mark_term(
 					marks, terms, derivation->rule_data.induction.motive, depth + 1
 				) != 0) {
+				free(derivation_order);
 				return -1;
 			}
 		} else if ((derivation->proof_kind ==
@@ -1650,12 +1695,14 @@ static int artifact_mark_accepted_claim(
 			artifact_mark_term(
 				marks, terms, derivation->rule_data.constructor.owner_view, depth + 1
 			) != 0) {
+			free(derivation_order);
 			return -1;
 		}
 		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
 			if (derivation->premises[j].claim_id != PROTOTYPE_INVALID_ID) {
 				uint32_t source_claim_id = derivation->premises[j].claim_id;
 				if (source_claim_id >= judgement->claim_count) {
+					free(derivation_order);
 					return -1;
 				}
 				if (marks->claims[source_claim_id] == 2) {
@@ -1666,12 +1713,14 @@ static int artifact_mark_accepted_claim(
 						i,
 						source_claim_id
 					);
+					free(derivation_order);
 					return -1;
 				}
 				if (artifact_mark_accepted_claim(
 						marks, terms, judgement,
 						source_claim_id, depth + 1
 					) != 0) {
+					free(derivation_order);
 					return -1;
 				}
 			} else {
@@ -1682,6 +1731,7 @@ static int artifact_mark_accepted_claim(
 				uint32_t proposition_id =
 					derivation->premises[j].scoped_proposition_id;
 				if (!proposition || proposition_id >= marks->proposition_count) {
+					free(derivation_order);
 					return -1;
 				}
 				if (!marks->propositions[proposition_id]) {
@@ -1692,6 +1742,7 @@ static int artifact_mark_accepted_claim(
 							&marks->ordered_proposition_count,
 							proposition_id
 						) != 0) {
+						free(derivation_order);
 						return -1;
 					}
 				}
@@ -1710,12 +1761,14 @@ static int artifact_mark_accepted_claim(
 					 artifact_mark_term(
 						marks, terms, proposition->authority_id, depth + 1
 					 ) != 0)) {
+					free(derivation_order);
 					return -1;
 				}
 			}
 		}
 	}
-	if (!found) {
+	free(derivation_order);
+	if (derivation_count == 0) {
 		fprintf(stderr, "artifact closure: accepted claim %u proposition=%u has no derivation\n", claim_id, claim->proposition_id);
 		return -1;
 	}

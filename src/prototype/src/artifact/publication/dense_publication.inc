@@ -71,6 +71,8 @@ struct artifact_publication_graph {
 	struct prototype_artifact_dependency* dependencies;
 	struct prototype_context* contexts;
 	struct prototype_substitution* substitutions;
+	struct prototype_dimension_operator* dimension_operators;
+	struct prototype_dimension_axis_image* dimension_images;
 	struct prototype_typed_occurrence* occurrences;
 	struct prototype_typed_occurrence_edge* occurrence_edges;
 	struct prototype_typed_occurrence_match_case* occurrence_match_cases;
@@ -87,6 +89,7 @@ struct artifact_publication_graph {
 	uint32_t* proposition_relocation;
 	uint32_t* claim_relocation;
 	uint32_t* substitution_relocation;
+	uint32_t* dimension_operator_relocation;
 	uint32_t* substitution_evidence_claims;
 };
 
@@ -184,6 +187,8 @@ static void artifact_publication_graph_free(
 	free(graph->dependencies);
 	free(graph->contexts);
 	free(graph->substitutions);
+	free(graph->dimension_operators);
+	free(graph->dimension_images);
 	free(graph->occurrences);
 	free(graph->occurrence_edges);
 	free(graph->occurrence_match_cases);
@@ -200,6 +205,7 @@ static void artifact_publication_graph_free(
 	free(graph->proposition_relocation);
 	free(graph->claim_relocation);
 	free(graph->substitution_relocation);
+	free(graph->dimension_operator_relocation);
 	free(graph->substitution_evidence_claims);
 	memset(graph, 0, sizeof(*graph));
 }
@@ -1619,6 +1625,10 @@ static int artifact_publication_graph_alloc(
 	ALLOC_PUBLICATION(contexts, metadata->contexts.context_count);
 	ALLOC_PUBLICATION(substitutions, metadata->substitutions.substitution_count);
 	ALLOC_PUBLICATION(
+		dimension_operators, metadata->dimension_operators.operator_count
+	);
+	ALLOC_PUBLICATION(dimension_images, metadata->dimension_operators.image_count);
+	ALLOC_PUBLICATION(
 		substitution_evidence_claims,
 		metadata->substitutions.substitution_count
 	);
@@ -1651,6 +1661,10 @@ static int artifact_publication_graph_alloc(
 	ALLOC_PUBLICATION(claim_relocation, closure->judgement.claim_count);
 	ALLOC_PUBLICATION(
 		substitution_relocation, metadata->substitutions.substitution_count
+	);
+	ALLOC_PUBLICATION(
+		dimension_operator_relocation,
+		metadata->dimension_operators.operator_count
 	);
 #undef ALLOC_PUBLICATION
 	for (size_t i = 0; i < metadata->substitutions.substitution_count; ++i) {
@@ -1765,6 +1779,13 @@ static int artifact_publication_graph_alloc(
 		publication->verification_obligations,
 		metadata->verification.obligation_count
 	);
+	prototype_compile_metadata_set_dimension_storage(
+		&publication->metadata,
+		publication->dimension_operators,
+		metadata->dimension_operators.operator_count,
+		publication->dimension_images,
+		metadata->dimension_operators.image_count
+	);
 	return 0;
 }
 
@@ -1823,7 +1844,10 @@ static int artifact_build_publication_graph(
 		.claim_ids = publication->claim_relocation,
 		.claim_id_capacity = closure->judgement.claim_count,
 		.substitution_ids = publication->substitution_relocation,
-		.substitution_id_capacity = metadata->substitutions.substitution_count
+		.substitution_id_capacity = metadata->substitutions.substitution_count,
+		.dimension_operator_ids = publication->dimension_operator_relocation,
+		.dimension_operator_id_capacity =
+			metadata->dimension_operators.operator_count
 	};
 	struct artifact_substitution_slice substitution_slice;
 	if (artifact_substitution_slice_init(
@@ -2071,18 +2095,11 @@ static int artifact_build_publication_graph(
 				}
 			}
 		}
-		if (compact_types[compact_constructors[i].owner_type].origin_kind ==
-				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY ||
-			incomplete_readback) {
-			/* Generated declarations have no source readback schema. Their field
-			 * telescope and result classifier are the sole wire authority. The same
-			 * rule applies when optional source readback metadata is incomplete. */
+		if (incomplete_readback) {
+			/* Source readback metadata is optional. The constructor telescope and
+			 * result classifier remain the semantic wire authority. */
 			compact_constructor_readbacks[i].first_field_type = PROTOTYPE_INVALID_ID;
 			compact_constructor_readbacks[i].field_count = 0;
-			if (compact_types[compact_constructors[i].owner_type].origin_kind ==
-				PROTOTYPE_TYPE_DECLARATION_ORIGIN_GENERATED_IDENTITY) {
-				compact_constructor_readbacks[i].result_type = PROTOTYPE_INVALID_ID;
-			}
 		}
 		compact_constructors[i].parameter_context = context_slice.relocation[
 			compact_constructors[i].parameter_context
@@ -2191,12 +2208,14 @@ static int artifact_build_publication_graph(
 			&publication->object.judgement,
 			&publication->metadata.contexts,
 			&publication->metadata.substitutions,
+			&publication->metadata.dimension_operators,
 			interface,
 			&closure->terms,
 			&compact_type_declarations,
 			&compact_judgement,
 			&compact_context_db,
 			&compact_substitution_db,
+			&metadata->dimension_operators,
 			0,
 			publication->term_relocation,
 			closure->terms.term_count,

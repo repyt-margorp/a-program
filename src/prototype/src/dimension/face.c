@@ -3,6 +3,7 @@
 #include "a_program/dimension/operator.h"
 
 #include <stdint.h>
+#include <stdlib.h>
 
 int prototype_dimension_face_ordinal_count(
 	uint32_t dimension,
@@ -130,6 +131,58 @@ int prototype_dimension_face_boundary_count(
 		prototype_dimension_boundary_count(intrinsic_dimension, p_count);
 }
 
+int prototype_dimension_face_subface_ordinal(
+	const struct prototype_dimension_face* face,
+	size_t local_ordinal,
+	size_t* p_ordinal
+) {
+	uint32_t intrinsic_dimension =
+		prototype_dimension_face_intrinsic_dimension(face);
+	size_t local_count;
+	if (!p_ordinal || intrinsic_dimension == UINT32_MAX ||
+		prototype_dimension_face_ordinal_count(
+			intrinsic_dimension, &local_count
+		) != 0 || local_ordinal >= local_count) {
+		return -1;
+	}
+	uint8_t* local_digits = intrinsic_dimension == 0 ? NULL : malloc(
+		intrinsic_dimension
+	);
+	uint8_t* global_digits = face->dimension == 0 ? NULL : malloc(face->dimension);
+	if ((intrinsic_dimension != 0 && !local_digits) ||
+		(face->dimension != 0 && !global_digits)) {
+		free(local_digits);
+		free(global_digits);
+		return -1;
+	}
+	struct prototype_dimension_face local;
+	int status = prototype_dimension_face_from_ordinal(
+		intrinsic_dimension,
+		local_ordinal,
+		local_digits,
+		intrinsic_dimension,
+		&local
+	);
+	uint32_t local_axis = 0;
+	for (uint32_t i = 0; i < face->dimension && status == 0; ++i) {
+		if (face->digits[i] == PROTOTYPE_DIMENSION_FACE_VARYING) {
+			global_digits[i] = local.digits[local_axis++];
+		} else {
+			global_digits[i] = face->digits[i];
+		}
+	}
+	struct prototype_dimension_face global = {
+		.dimension = face->dimension,
+		.digits = global_digits
+	};
+	if (status == 0) {
+		status = prototype_dimension_face_ordinal(&global, p_ordinal);
+	}
+	free(local_digits);
+	free(global_digits);
+	return status;
+}
+
 int prototype_dimension_face_boundary_ordinal(
 	const struct prototype_dimension_face* face,
 	size_t boundary_index,
@@ -144,34 +197,18 @@ int prototype_dimension_face_boundary_ordinal(
 		) != 0 || boundary_index >= boundary_count) {
 		return -1;
 	}
-	uint8_t local_digits[64];
-	struct prototype_dimension_face local;
-	if (intrinsic_dimension > 64 || prototype_dimension_boundary_from_index(
-			intrinsic_dimension,
-			boundary_index,
-			local_digits,
-			64,
-			&local
-		) != 0) {
-		return -1;
-	}
-	uint8_t global_digits[64];
-	uint32_t local_axis = 0;
-	if (face->dimension > 64) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < face->dimension; ++i) {
-		if (face->digits[i] == PROTOTYPE_DIMENSION_FACE_VARYING) {
-			global_digits[i] = local.digits[local_axis++];
-		} else {
-			global_digits[i] = face->digits[i];
+	size_t local_center = 0;
+	for (uint32_t i = 0; i < intrinsic_dimension; ++i) {
+		if (local_center > (SIZE_MAX - PROTOTYPE_DIMENSION_FACE_VARYING) / 3) {
+			return -1;
 		}
+		local_center = local_center * 3 + PROTOTYPE_DIMENSION_FACE_VARYING;
 	}
-	struct prototype_dimension_face global = {
-		.dimension = face->dimension,
-		.digits = global_digits
-	};
-	return prototype_dimension_face_ordinal(&global, p_ordinal);
+	size_t local_ordinal = boundary_index >= local_center ?
+		boundary_index + 1 : boundary_index;
+	return prototype_dimension_face_subface_ordinal(
+		face, local_ordinal, p_ordinal
+	);
 }
 
 int prototype_dimension_boundary_from_index(

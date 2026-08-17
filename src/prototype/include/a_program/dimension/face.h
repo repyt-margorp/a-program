@@ -46,6 +46,13 @@ int prototype_dimension_face_boundary_count(
 	size_t* p_count
 );
 
+/* Embed one face of face's intrinsic cube into the ambient cube. */
+int prototype_dimension_face_subface_ordinal(
+	const struct prototype_dimension_face* face,
+	size_t local_ordinal,
+	size_t* p_ordinal
+);
+
 int prototype_dimension_face_boundary_ordinal(
 	const struct prototype_dimension_face* face,
 	size_t boundary_index,

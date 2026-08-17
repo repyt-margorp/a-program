@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "a_program/dimension/action.h"
 #include "artifact_graph_internal.h"
 
 void prototype_canonical_link_table_init(
@@ -108,6 +109,34 @@ static int artifact_parse_pure_pointwise_pi_level(
 	return 1;
 }
 
+static int artifact_parse_one_dimensional_action_instance(
+	const struct prototype_term_db* terms,
+	uint32_t instance,
+	uint32_t* p_source,
+	uint32_t* p_operator_id,
+	uint32_t arguments[2]
+) {
+	if (!terms || !p_source || !p_operator_id || !arguments ||
+		instance >= terms->term_count ||
+		terms->terms[instance].tag != PROTOTYPE_TERM_APP) {
+		return 0;
+	}
+	arguments[1] = terms->terms[instance].as.app.argument;
+	uint32_t left = terms->terms[instance].as.app.function;
+	if (left >= terms->term_count || terms->terms[left].tag != PROTOTYPE_TERM_APP) {
+		return 0;
+	}
+	arguments[0] = terms->terms[left].as.app.argument;
+	uint32_t family = terms->terms[left].as.app.function;
+	if (family >= terms->term_count ||
+		terms->terms[family].tag != PROTOTYPE_TERM_DIMENSION_ACTION) {
+		return 0;
+	}
+	*p_source = terms->terms[family].as.dimension_action.source;
+	*p_operator_id = terms->terms[family].as.dimension_action.operator_id;
+	return 1;
+}
+
 static int artifact_pi_identity_family_matches_source(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -167,20 +196,16 @@ static int artifact_pi_identity_family_matches_source(
 		)) {
 		return 0;
 	}
-	uint32_t domain_identity_type_id;
+	uint32_t domain_action_source;
+	uint32_t domain_action_operator;
 	uint32_t input_identity_arguments[2];
-	uint32_t input_identity_argument_count;
-	if (prototype_term_type_instance_info(
+	if (!artifact_parse_one_dimensional_action_instance(
 			terms,
 			input_identity,
-			&domain_identity_type_id,
-			input_identity_arguments,
-			&input_identity_argument_count
-		) != 0 || input_identity_argument_count != 2 ||
-		domain_identity_type_id >= type_declarations->type_count ||
-		type_declarations->type_declarations[
-			domain_identity_type_id
-		].origin_source_carrier_term_id != domain ||
+			&domain_action_source,
+			&domain_action_operator,
+			input_identity_arguments
+		) || domain_action_source != domain ||
 		!artifact_term_is_binding_var(
 			terms, input_identity_arguments[0], x0_binding
 		) || !artifact_term_is_binding_var(
@@ -188,40 +213,22 @@ static int artifact_pi_identity_family_matches_source(
 		)) {
 		return 0;
 	}
-	uint32_t result_type_id;
+	uint32_t result_action_source;
+	uint32_t result_action_operator;
 	uint32_t result_arguments[2];
-	uint32_t result_argument_count;
-	if (prototype_term_type_instance_info(
+	if (!artifact_parse_one_dimensional_action_instance(
 			terms,
 			result_identity,
-			&result_type_id,
-			result_arguments,
-			&result_argument_count
-		) != 0 || result_type_id >= type_declarations->type_count ||
-		result_argument_count != 2) {
+			&result_action_source,
+			&result_action_operator,
+			result_arguments
+		) || result_action_operator != domain_action_operator) {
 		return 0;
 	}
-	uint32_t result_thunk = type_declarations->type_declarations[
-		result_type_id
-	].origin_source_carrier_term_id;
+	uint32_t result_thunk = result_action_source;
 	if (result_thunk >= terms->term_count ||
 		terms->terms[result_thunk].tag != PROTOTYPE_TERM_THUNK_TYPE ||
-		terms->terms[result_thunk].as.thunk_type.computation != source_codomain ||
-		!prototype_type_declaration_validate_generated_identity(
-			terms,
-			type_declarations,
-			contexts,
-			domain,
-			domain_identity_type_id,
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT
-		) || !prototype_type_declaration_validate_generated_identity(
-			terms,
-			type_declarations,
-			contexts,
-			result_thunk,
-			result_type_id,
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN
-		)) {
+		terms->terms[result_thunk].as.thunk_type.computation != source_codomain) {
 		return 0;
 	}
 	uint32_t endpoints[2];
@@ -246,6 +253,7 @@ static int artifact_pi_identity_family_matches_source(
 		}
 		endpoints[i] = terms->terms[forced].as.force.value;
 	}
+	(void)type_declarations;
 	const struct prototype_context* family_context = prototype_context_get(
 		contexts, family->context_id
 	);
@@ -275,11 +283,13 @@ static int artifact_identity_family_matches_source(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_proposition* source,
 	const struct prototype_judgement_proposition* family,
 	int computation_rule
 ) {
-	if (!terms || !type_declarations || !contexts || !source || !family ||
+	if (!terms || !type_declarations || !contexts || !dimension_operators ||
+		!source || !family ||
 		source->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
 		family->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		source->subject >= terms->term_count ||
@@ -295,36 +305,100 @@ static int artifact_identity_family_matches_source(
 			terms, type_declarations, contexts, source, family
 		);
 	}
+	if (computation_rule == PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT ||
+		computation_rule == PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN) {
+		uint32_t source_head = source->subject;
+		while (source_head < terms->term_count &&
+			terms->terms[source_head].tag == PROTOTYPE_TERM_APP) {
+			source_head = terms->terms[source_head].as.app.function;
+		}
+		if (computation_rule ==
+				PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT &&
+			(source_head >= terms->term_count ||
+			 terms->terms[source_head].tag != PROTOTYPE_TERM_TYPE_VIEW)) {
+			return 0;
+		}
+		if (computation_rule ==
+				PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN &&
+			(source->subject >= terms->term_count ||
+			 terms->terms[source->subject].tag != PROTOTYPE_TERM_THUNK_TYPE ||
+			 terms->terms[source->subject].as.thunk_type.computation >=
+				terms->term_count ||
+			 terms->terms[
+				terms->terms[source->subject].as.thunk_type.computation
+			 ].tag != PROTOTYPE_TERM_COMPUTATION_TYPE)) {
+			return 0;
+		}
+		const struct prototype_term* right_application =
+			&terms->terms[family->subject];
+		const struct prototype_term* left_application =
+			right_application->tag == PROTOTYPE_TERM_APP &&
+			right_application->as.app.function < terms->term_count ?
+			&terms->terms[right_application->as.app.function] : NULL;
+		const struct prototype_term* acted_family = left_application &&
+			left_application->tag == PROTOTYPE_TERM_APP &&
+			left_application->as.app.function < terms->term_count ?
+			&terms->terms[left_application->as.app.function] : NULL;
+		if (!left_application || left_application->tag != PROTOTYPE_TERM_APP ||
+			!acted_family || acted_family->tag != PROTOTYPE_TERM_DIMENSION_ACTION ||
+			acted_family->as.dimension_action.source != source->subject) {
+			return 0;
+		}
+		return prototype_context_get(contexts, family->context_id) != NULL;
+	}
+	if (computation_rule ==
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_GENERIC_DIMENSION_ACTION) {
+		uint32_t family_head;
+		uint32_t family_source;
+		uint32_t operator_id;
+		uint32_t target_dimension;
+		size_t argument_count;
+		if (prototype_dimension_action_family_instance_info(
+				terms,
+				dimension_operators,
+				family->subject,
+				&family_head,
+				&family_source,
+				&operator_id,
+				&target_dimension,
+				NULL,
+				0,
+				&argument_count
+			) != 0) {
+			return 0;
+		}
+		uint32_t source_family;
+		uint32_t source_of_source;
+		uint32_t source_operator;
+		uint32_t source_dimension;
+		size_t source_argument_count;
+		if (prototype_dimension_action_family_instance_info(
+				terms,
+				dimension_operators,
+				source->subject,
+				&source_family,
+				&source_of_source,
+				&source_operator,
+				&source_dimension,
+				NULL,
+				0,
+				&source_argument_count
+			) != 0 || family_source != source_family ||
+			target_dimension != source_dimension + 1) {
+			return 0;
+		}
+		(void)family_head;
+		(void)operator_id;
+		(void)argument_count;
+		(void)source_of_source;
+		(void)source_operator;
+		(void)source_argument_count;
+		return prototype_context_get(contexts, family->context_id) != NULL;
+	}
 	/* The current Universe correspondence has only one-dimensional transport
 	 * and lifting. It is compiler-local until recursive bisimulation evidence
 	 * is represented and replayable, so rule 6 is not an artifact identity. */
-	if (computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT &&
-		computation_rule !=
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN) {
-		return 0;
-	}
-	uint32_t generated_type_id;
-	uint32_t arguments[16];
-	uint32_t argument_count;
-	if (prototype_term_type_instance_info(
-			terms,
-			family->subject,
-			&generated_type_id,
-			arguments,
-			&argument_count
-		) != 0 || argument_count != 2 ||
-		generated_type_id >= type_declarations->type_count) {
-		return 0;
-	}
-	return prototype_type_declaration_validate_generated_identity(
-		terms,
-		type_declarations,
-		contexts,
-		source->subject,
-		generated_type_id,
-		computation_rule
-	);
+	return 0;
 }
 
 int prototype_artifact_interface_add_identity_root(
@@ -332,6 +406,7 @@ int prototype_artifact_interface_add_identity_root(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_db* judgement,
 	uint32_t source_type_claim_id,
 	uint32_t identity_family_has_type_claim_id,
@@ -347,10 +422,16 @@ int prototype_artifact_interface_add_identity_root(
 		prototype_judgement_claim_proposition(
 			judgement, identity_family_has_type_claim_id
 		);
-	if (!interface || !terms || !type_declarations || !contexts || !judgement ||
-		!p_root_id ||
+	if (!interface || !terms || !type_declarations || !contexts ||
+		!dimension_operators || !judgement || !p_root_id ||
 		!artifact_identity_family_matches_source(
-			terms, type_declarations, contexts, source, family, computation_rule
+			terms,
+			type_declarations,
+			contexts,
+			dimension_operators,
+			source,
+			family,
+			computation_rule
 		)) {
 		return -1;
 	}
@@ -421,9 +502,11 @@ int prototype_artifact_interface_validate_identity_roots(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_db* judgement
 ) {
-	if (!interface || !terms || !type_declarations || !contexts || !judgement) {
+	if (!interface || !terms || !type_declarations || !contexts ||
+		!dimension_operators || !judgement) {
 		return -1;
 	}
 	for (size_t i = 0; i < interface->identity_root_count; ++i) {
@@ -441,6 +524,7 @@ int prototype_artifact_interface_validate_identity_roots(
 				terms,
 				type_declarations,
 				contexts,
+				dimension_operators,
 				source,
 				family,
 				root->computation_rule

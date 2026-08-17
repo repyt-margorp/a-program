@@ -8,7 +8,7 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh
 
-manifest_fingerprint=$(sha256sum src/prototype/spec/hott_fragment_v5.schema | awk '{print $1}')
+manifest_fingerprint=$(sha256sum src/prototype/spec/hott_fragment_v6.schema | awk '{print $1}')
 header_fingerprint=$(awk '
 	/PROTOTYPE_HOTT_CALCULUS_FINGERPRINT/ {
 		getline
@@ -18,11 +18,11 @@ header_fingerprint=$(awk '
 	}
 ' src/prototype/calculus.h)
 if [ "$manifest_fingerprint" != "$header_fingerprint" ]; then
-	echo "HOTT calculus fingerprint does not match hott_fragment_v5.schema" >&2
+	echo "HOTT calculus fingerprint does not match hott_fragment_v6.schema" >&2
 	exit 1
 fi
 changed_fingerprint=$(
-	{ cat src/prototype/spec/hott_fragment_v5.schema; printf '\nsemantic-change\n'; } |
+	{ cat src/prototype/spec/hott_fragment_v6.schema; printf '\nsemantic-change\n'; } |
 		sha256sum | awk '{print $1}'
 )
 if [ "$changed_fingerprint" = "$header_fingerprint" ]; then
@@ -46,7 +46,7 @@ identity_root_shape_is_valid() {
 			next
 		}
 		$1 == "identity_root" {
-			if ($2 != count || ($6 != 1 && $6 != 2 && $6 != 3)) {
+			if ($2 != count || ($6 != 1 && $6 != 2 && $6 != 3 && $6 != 5)) {
 				exit 1
 			}
 			key = $6 ":" ($5 == 4294967295 ? "family" : "witness")
@@ -55,9 +55,10 @@ identity_root_shape_is_valid() {
 		}
 		END {
 			if (declared != 16 || count != declared ||
-				shapes["1:family"] != 4 || shapes["1:witness"] != 6 ||
+				shapes["1:family"] != 3 || shapes["1:witness"] != 5 ||
 				shapes["2:family"] != 1 || shapes["2:witness"] != 1 ||
-				shapes["3:family"] != 1 || shapes["3:witness"] != 3) {
+				shapes["3:family"] != 1 || shapes["3:witness"] != 3 ||
+				shapes["5:family"] != 1 || shapes["5:witness"] != 1) {
 				exit 1
 			}
 		}
@@ -159,7 +160,7 @@ awk '
 	{ print }
 ' "$identity_artifact" >"$forged_constructor_artifact"
 if ./read_file.out --read-graph "$forged_constructor_artifact" >/dev/null 2>&1; then
-	echo "artifact reader accepted a generated identity constructor with a forged ordinal" >&2
+	echo "artifact reader accepted a source constructor with a forged ordinal" >&2
 	exit 1
 fi
 forged_witness_artifact=/tmp/a-program-hott-forged-identity-witness.apo
@@ -328,7 +329,7 @@ if ./read_file.out --read-graph "$forged_premise_order_artifact" \
 	echo "artifact reader accepted reordered Lambda premises" >&2
 	exit 1
 fi
-for proof_kind in 12 14 16; do
+for proof_kind in 12 14; do
 	forged_rule_artifact="/tmp/a-program-hott-forged-rule-$proof_kind.apo"
 	awk '
 		$1 == "derivation" && $3 == proof_kind && !changed {
@@ -343,13 +344,13 @@ for proof_kind in 12 14 16; do
 		exit 1
 	fi
 done
-v69_artifact=/tmp/a-program-hott-v69.apo
+v77_artifact=/tmp/a-program-hott-v77.apo
 awk '
-	$1 == "A_PROGRAM_ARTIFACT" { $2 = 69 }
+	$1 == "A_PROGRAM_ARTIFACT" { $2 = 77 }
 	{ print }
-' "$identity_artifact" >"$v69_artifact"
-if ./read_file.out --read-interface "$v69_artifact" >/dev/null 2>&1; then
-	echo "artifact reader accepted v69 through a fallback parser" >&2
+' "$identity_artifact" >"$v77_artifact"
+if ./read_file.out --read-interface "$v77_artifact" >/dev/null 2>&1; then
+	echo "artifact reader accepted v77 through a fallback parser" >&2
 	exit 1
 fi
 ./read_file.out --aggregate-artifact "$aggregate_artifact" "$identity_artifact" >/dev/null

@@ -1,11 +1,12 @@
-#ifndef A_PROGRAM_PROTOTYPE_ARTIFACT_WIRE_V77_H
-#define A_PROGRAM_PROTOTYPE_ARTIFACT_WIRE_V77_H
+#ifndef A_PROGRAM_PROTOTYPE_ARTIFACT_WIRE_V78_H
+#define A_PROGRAM_PROTOTYPE_ARTIFACT_WIRE_V78_H
 
 #include <stdio.h>
 
 #include "a_program/artifact/interface.h"
 
 struct prototype_cwf_certificate_db;
+struct prototype_dimension_operator_db;
 
 int prototype_artifact_write_text(
 	FILE* stream,
@@ -32,6 +33,7 @@ int prototype_artifact_read_text_graph(
 	FILE* stream,
 	struct symbol_table* symbols,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
+	struct prototype_dimension_operator_db* dimension_operators,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement

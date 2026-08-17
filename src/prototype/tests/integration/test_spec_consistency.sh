@@ -5,8 +5,8 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh
 
-artifact_schema=src/prototype/spec/artifact_v77.schema
-hott_schema=src/prototype/spec/hott_fragment_v5.schema
+artifact_schema=src/prototype/spec/artifact_v78.schema
+hott_schema=src/prototype/spec/hott_fragment_v6.schema
 calculus_header=src/prototype/calculus.h
 artifact_header=src/prototype/include/a_program/artifact/interface.h
 
@@ -54,8 +54,8 @@ for readme in README.md src/prototype/README.md; do
 	fi
 done
 
-if [ "$(awk 'NR == 1 && $1 == "A_PROGRAM_HOTT_FRAGMENT" { print $2 }' "$hott_schema")" != 5 ] ||
-	grep -Eq 'fragment version [0-4]|A1\.T0|MATCH_ELIM=13' "$hott_schema"; then
+if [ "$(awk 'NR == 1 && $1 == "A_PROGRAM_HOTT_FRAGMENT" { print $2 }' "$hott_schema")" != 6 ] ||
+	grep -Eq 'fragment version [0-5]|A1\.T0|MATCH_ELIM=13' "$hott_schema"; then
 	echo "HOTT fragment manifest contains a stale version or proof number" >&2
 	exit 1
 fi
@@ -64,12 +64,7 @@ if ! grep -q 'MATCH_TYPE_FORMATION_INTRO=13 MATCH_ELIM=14' "$hott_schema"; then
 	exit 1
 fi
 
-if grep -q 'PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE' \
-	src/prototype/src/identity/artifact_root_extraction.inc; then
-	echo "compiler-local Universe correspondence is admitted as an artifact root" >&2
-	exit 1
-fi
-if ! grep -q 'finite Universe correspondence and Universe-fiber actions are' "$artifact_schema" ||
+if ! grep -q 'canonical dimension operator embedded in the acted Term' "$artifact_schema" ||
 	! grep -q 'a PENDING obligation is a runtime contract and never a Claim' "$artifact_schema"; then
 	echo "artifact manifest omits the current Identity or verification boundary" >&2
 	exit 1

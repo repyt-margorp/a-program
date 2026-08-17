@@ -117,6 +117,7 @@
 			&type_db,
 			&context_db,
 			&substitution_db,
+			&bridge_dimension_operator_db,
 			&operation_graph,
 			bool_context,
 			object_match,
@@ -447,22 +448,20 @@
 		&action_db.certificates[
 			action_results[nat_identity_computation_result_id].certificate_id
 		];
-	const struct prototype_type_declaration* generated_nat_identity_declaration =
-		&type_db.type_declarations[
+	uint32_t nat_identity_action_source;
+	uint32_t nat_identity_action_operator;
+	if (nat_identity_certificate->data.identity_type.computation_rule !=
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT ||
+		prototype_term_dimension_action_info(
+			&term_db,
 			nat_identity_certificate->data.identity_type.
-				generated_type_declaration_id
-		];
-	const struct prototype_type_constructor_declaration*
-		generated_nat_successor_identity = &type_db.constructor_declarations[
-			generated_nat_identity_declaration->first_constructor + 1
-		];
-	const struct prototype_context* generated_nat_successor_fields =
-		prototype_context_get(
-			&context_db, generated_nat_successor_identity->field_context
-		);
-	if (generated_nat_identity_declaration->constructor_count != 2 ||
-		!generated_nat_successor_fields ||
-		generated_nat_successor_fields->depth != 3 ||
+				backing_type_former_term_id,
+			&nat_identity_action_source,
+			&nat_identity_action_operator
+		) != 0 || nat_identity_action_source != nat_view ||
+		!prototype_dimension_operator_get(
+			&bridge_dimension_operator_db, nat_identity_action_operator
+		) ||
 		prototype_hott_action_db_validate(
 			&action_db, &kernel_view, &bridge_db
 		) != 0) {
@@ -646,18 +645,21 @@
 		) != 0) {
 		return 270;
 	}
-	uint32_t neutral_nat_identity_arguments[2] = { nat_variable, nat_variable };
+	uint32_t neutral_nat_identity_left;
 	uint32_t neutral_nat_identity_family;
 	uint32_t neutral_nat_identity_family_claim;
 	uint32_t neutral_nat_identity_witness;
 	uint32_t neutral_nat_identity_witness_claim;
 	size_t neutral_nat_derivation_mark = judgement.derivation_count;
-	if (prototype_term_type_instance_make(
+	if (prototype_term_app(
 			&term_db,
-			&type_db,
-			nat_identity_certificate->data.identity_type.generated_type_declaration_id,
-			neutral_nat_identity_arguments,
-			2,
+			nat_identity_certificate->data.identity_type.backing_type_former_term_id,
+			nat_variable,
+			&neutral_nat_identity_left
+		) != 0 || prototype_term_app(
+			&term_db,
+			neutral_nat_identity_left,
+			nat_variable,
 			&neutral_nat_identity_family
 		) != 0 || prototype_hott_construct_degeneracy(
 			&action_db,
@@ -669,7 +671,10 @@
 			&neutral_nat_identity_witness,
 			&neutral_nat_identity_witness_claim
 		) != 0 || neutral_nat_identity_witness >= term_db.term_count ||
-		term_db.terms[neutral_nat_identity_witness].tag != PROTOTYPE_TERM_MATCH ||
+		term_db.terms[neutral_nat_identity_witness].tag !=
+			PROTOTYPE_TERM_DIMENSION_ACTION || term_db.terms[
+				neutral_nat_identity_witness
+			].as.dimension_action.source != nat_variable ||
 		prototype_judgement_claim_proposition(
 			&judgement, neutral_nat_identity_family_claim
 		)->subject != neutral_nat_identity_family || prototype_judgement_claim_proposition(
@@ -677,24 +682,22 @@
 		)->classifier != neutral_nat_identity_family) {
 		return 224;
 	}
-	int found_neutral_nat_ih = 0;
+	int found_neutral_nat_action = 0;
 	for (size_t i = neutral_nat_derivation_mark;
 		i < judgement.derivation_count;
 		++i) {
 		if (judgement.derivations[i].proof_kind ==
-				PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM) {
-			found_neutral_nat_ih = 1;
+				PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TERM) {
+			found_neutral_nat_action = 1;
 			break;
 		}
 	}
-	if (!found_neutral_nat_ih) {
+	if (!found_neutral_nat_action) {
 		return 225;
 	}
 	uint32_t neutral_identity_root_id;
 	uint32_t composed_identity_root_id;
 	uint32_t neutral_nat_identity_root_id;
-	uint32_t universe_identity_root_id;
-	uint32_t concrete_universe_identity_root_id;
 	size_t final_identity_root_mark = identity_interface.identity_root_count;
 	if (prototype_hott_register_identity_root(
 			&identity_interface,
@@ -710,6 +713,7 @@
 			&term_db,
 			&type_db,
 			&context_db,
+			&bridge_dimension_operator_db,
 			&judgement,
 			nat_is_type,
 			nat_degeneracy_family_claim,
@@ -731,11 +735,12 @@
 			&term_db,
 			&type_db,
 			&context_db,
+			&bridge_dimension_operator_db,
 			&judgement,
 			false_identity_is_type,
 			higher_identity_family_claim,
 			higher_identity_witness_claim,
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT,
+			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_GENERIC_DIMENSION_ACTION,
 			&concrete_higher_identity_root_id
 		) != 0 || concrete_higher_identity_root_id != final_identity_root_mark + 3 ||
 		prototype_artifact_interface_add_identity_root(
@@ -743,6 +748,7 @@
 			&term_db,
 			&type_db,
 			&context_db,
+			&bridge_dimension_operator_db,
 			&judgement,
 			bool_is_type,
 			neutral_identity_family_claim,
@@ -755,6 +761,7 @@
 			&term_db,
 			&type_db,
 			&context_db,
+			&bridge_dimension_operator_db,
 			&judgement,
 			thunk_bool_function_is_type,
 			composed_identity_family_claim,
@@ -767,6 +774,7 @@
 			&term_db,
 			&type_db,
 			&context_db,
+			&bridge_dimension_operator_db,
 			&judgement,
 			nat_is_type,
 			neutral_nat_identity_family_claim,
@@ -775,31 +783,6 @@
 			&neutral_nat_identity_root_id
 		) != 0 || neutral_nat_identity_root_id != final_identity_root_mark + 6) {
 		return 244;
-	}
-	if (prototype_hott_register_identity_root(
-			&identity_interface,
-			&action_db,
-			&kernel_view,
-			&bridge_db,
-			universe_identity_computation_result_id,
-			PROTOTYPE_INVALID_ID,
-			&universe_identity_root_id
-		) == 0 || identity_interface.identity_root_count != final_identity_root_mark + 7) {
-		return 271;
-	}
-	if (prototype_artifact_interface_add_identity_root(
-			&identity_interface,
-			&term_db,
-			&type_db,
-			&context_db,
-			&judgement,
-			universe_is_type,
-			universe_degeneracy_family_claim,
-			universe_degeneracy_witness_claim,
-			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_UNIVERSE_CORRESPONDENCE,
-			&concrete_universe_identity_root_id
-		) == 0 || identity_interface.identity_root_count != final_identity_root_mark + 7) {
-		return 272;
 	}
 	if (getenv("A_PROGRAM_HOTT_REVERSE_DERIVATIONS")) {
 		for (size_t i = 0; i < judgement.derivation_count / 2; ++i) {
@@ -818,6 +801,7 @@
 			&term_db,
 			&type_db,
 			&context_db,
+			&bridge_dimension_operator_db,
 			&judgement
 		) != 0 || prototype_type_declaration_rebuild_representations(
 			&term_db, &type_db, &context_db
@@ -830,6 +814,7 @@
 			&cwf_certificate_db,
 			&context_db,
 			&substitution_db,
+			&bridge_dimension_operator_db,
 			&operation_graph
 		) != 0) {
 		return 244;
@@ -854,6 +839,7 @@
 			&cwf_certificate_db,
 			&context_db,
 			&substitution_db,
+			&bridge_dimension_operator_db,
 			&operation_graph
 		) != 0 || fixture_artifact_interface_environment_round_trip(
 			"/tmp/a-program-hott-identity-root-int64.apo",
@@ -943,6 +929,7 @@
 					&cwf_certificate_db,
 					&context_db,
 				&substitution_db,
+				&bridge_dimension_operator_db,
 				&operation_graph
 		) != 0) {
 		return 245;
