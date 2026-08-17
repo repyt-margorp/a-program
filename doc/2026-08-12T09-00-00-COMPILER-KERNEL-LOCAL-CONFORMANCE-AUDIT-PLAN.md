@@ -2,10 +2,12 @@
 
 Date: 2026-08-12
 
-Status: conformance-survey-only plan. The survey must not modify implementation,
-schemas, or permanent tests. No finding is confirmed until it passes the
-reproduction gate, and no confirmed discrepancy is corrected until a later,
-separately approved remediation plan exists.
+Status: suspended during BH1 on 2026-08-12 at the user's direction. The
+completed evidence remains valid, but BH1-BH10 must not be described as
+complete. The survey must not modify implementation, schemas, or permanent
+tests. No finding is confirmed until it passes the reproduction gate, and no
+confirmed discrepancy is corrected until a later, separately approved
+remediation plan exists.
 
 Baseline:
 
@@ -914,3 +916,222 @@ The expected result is not “no suspicious code.” It is that the supported
 compiler fragment has explicit cross-layer invariants, minimized evidence for
 its likely failure families, and a prioritized remediation backlog from which a
 separate plan can later create permanent boundary tests and fixes.
+
+## 24. Execution Record
+
+### 24.1 BH0 baseline
+
+Implementation baseline:
+
+```text
+commit: 7d3be10bf0a7cd09abfc9b11e58431dd22f07e39
+compiler: GCC 14.2.0
+target: x86_64-linux-gnu
+kernel: Linux 6.12.48+deb13-amd64
+integration scripts: 27
+```
+
+The documentation-only rename and scope clarification is commit
+`2ef4564a4ff404014cc24a2934f8e8b8f2c7b0a3`; it does not change the
+implementation baseline.
+
+Recorded local evidence is under:
+
+```text
+/tmp/a-program-conformance/7d3be10/BH0/
+```
+
+Results:
+
+- [x] clean ordinary reader build: success, 3 seconds;
+- [x] ordinary integration suite: 27/27 scripts started, success, 77 seconds;
+- [x] diagnostic reader build with C memory and undefined-operation runtime
+  checks: success, 12 seconds;
+- [x] diagnostic integration suite: 27/27 scripts started, process status
+  success, 128 seconds;
+- [!] diagnostic integration emitted 208 runtime contract reports at four
+  artifact-publication copy sites;
+- [!] `test_artifact_flow.sh` localized four unreleased directory-stream
+  allocations across three child processes; the owner is recorded below;
+- [x] strict-warning profile completed with 12 warnings recorded;
+- [x] GCC analyzer profile completed with 15 reports investigated;
+- [x] BH0.3 public-boundary, ID, cache, and artifact-authority inventories
+  recorded.
+
+The integration scripts depend on `rg` semantics. In the isolated worktree,
+`~/.local/bin/rg` is a reduced wrapper that does not implement positive
+`--glob` filtering and can make `test_artifact_flow.sh` match its own source.
+BH0 therefore records and invokes the actual ripgrep executable explicitly.
+This is a test-environment reproducibility finding, not compiler-semantic
+evidence.
+
+The authoritative finding records have been moved to:
+
+```text
+doc/2026-08-12T22-46-07-COMPILER-LOCAL-CONFORMANCE-FINDINGS.md
+```
+
+Sections 24.2 through 24.6 below are the initial execution snapshot. Future
+finding updates must be made in the findings ledger to avoid treating the audit
+procedure as the defect database.
+
+### 24.2 BH-CMEM-002: empty semantic slices reach non-null C copy contracts
+
+```text
+severity: critical under the plan's C runtime contract criterion
+status: reproduced; remediation deferred to Program B
+implementation baseline: 7d3be10bf0a7cd09abfc9b11e58431dd22f07e39
+```
+
+Invariant:
+
+> An empty semantic slice is represented by `count == 0` and may have a null
+> data pointer. Physical copy operations must not evaluate that pointer through
+> a C library interface requiring non-null arguments.
+
+Observed sites and report counts:
+
+| Site | Reports | Empty object |
+| --- | ---: | --- |
+| `artifact/publication/closure_marking_and_slices.inc:837` | 114 | canonical substitution order |
+| `artifact/publication/dense_publication.inc:1054` | 32 | representation table |
+| `artifact/publication/dense_publication.inc:1870` | 31 | compact type declarations |
+| `artifact/publication/dense_publication.inc:1875` | 31 | compact constructor declarations |
+
+Root cause:
+
+`artifact_alloc_bytes` deliberately normalizes a zero-length allocation to a
+null pointer. That is a valid internal slice representation. Four publication
+paths nevertheless call `memcpy` without first checking the corresponding
+count. A zero byte count does not satisfy the non-null parameter contract of the
+instrumented C library declaration.
+
+This is not an A Program type-theory failure and should not be corrected by
+allocating dummy semantic objects. The later remediation should introduce or
+reuse one authoritative count-aware slice-copy operation and apply it to every
+physical publication boundary. That preserves the distinction between the
+empty semantic object and its C storage representation and avoids four local
+special cases.
+
+Program B test specification:
+
+- publish a graph with zero substitutions;
+- publish one with zero representations;
+- republish a graph with zero type and constructor declarations;
+- require ordinary and diagnostic builds to produce identical artifacts;
+- require no runtime contract report at any zero-length copy boundary; and
+- enumerate all publication `memcpy` sites to ensure the same invariant is not
+  reintroduced elsewhere.
+
+### 24.3 BH-CMEM-003: successful source-import search retains directory stream
+
+```text
+severity: medium
+status: reproduced; remediation deferred to Program B
+implementation baseline: 7d3be10bf0a7cd09abfc9b11e58431dd22f07e39
+```
+
+Invariant:
+
+> Every successful or unsuccessful directory search closes the directory stream
+> before returning to the compiler driver.
+
+The diagnostic suite localized this finding exclusively to
+`test_artifact_flow.sh`. Three child processes retained one, two, and one
+allocations of 32,816 bytes. Re-running the script with allocation reports made
+fatal identified the first owner as a successful `--import-search-dir` compile.
+
+`add_source_import_from_search_dirs` opens a directory at
+`driver/read_file.c:2354`. Capacity and read failures close it, and the exhausted
+search path closes it at line 2420. The successful candidate path at line 2418
+returns directly without `closedir(directory)`. One retained directory stream
+per resolved source import explains both the allocation size and multiplicity.
+
+This finding is independent from BH-CMEM-002. The same integration script
+exercises both, but one concerns count-aware array copying and the other concerns
+driver resource ownership.
+
+Program B test specification:
+
+- compile one source import resolved through `--import-search-dir`;
+- compile two imports resolved from the same directory;
+- cover candidate-not-found and invalid-candidate paths;
+- require identical semantic output under ordinary and diagnostic builds; and
+- require the directory owner to be released exactly once on every return edge.
+
+### 24.4 BH-CMEM-004: empty resource-usage vectors violate their copy contract
+
+```text
+severity: critical under the plan's C runtime contract criterion
+status: reproduced with a minimal public-API checker
+implementation baseline: 7d3be10bf0a7cd09abfc9b11e58431dd22f07e39
+```
+
+Invariant:
+
+> A zero-entry usage vector is a valid quantitative-resource value. Copying it
+> must preserve the empty vector without requiring backing storage.
+
+`prototype_usage_vector_init` permits `entries == NULL, capacity == 0`, and
+`prototype_usage_vector_copy` explicitly rejects a null target only when the
+source count is nonzero. The function then unconditionally calls `memmove`.
+A minimal checker containing only two empty initialized vectors reproduces two
+runtime contract reports at `kernel/resource_usage.c:88`, one for each pointer
+argument, while returning semantic success.
+
+This is the same missing physical slice convention exposed by BH-CMEM-002, but
+it occurs in the kernel resource algebra rather than artifact publication. It
+must remain a separate reproducer while sharing one remediation root. Resource
+usage is proposition/occurrence evidence; inserting dummy entries or changing
+the empty usage semantics would be the wrong correction.
+
+Program B test specification:
+
+- copy `empty -> empty` with null storage;
+- copy `empty -> allocated-empty` and `allocated-empty -> empty-capacity`;
+- copy one and multiple sorted usage entries;
+- retain overlap behavior promised by `memmove`; and
+- apply the same count-aware slice convention used by artifact publication.
+
+### 24.5 BH-ID-001: obsolete signed narrowing at normalization boundaries
+
+```text
+severity: low at current fixed capacities; design-boundary debt
+status: statically reproduced; no current runtime counterexample
+```
+
+The public `prototype_term_normalize_complete_with_profile` API accepts a
+`uint32_t term_id`. Three callers nevertheless cast valid Term IDs through
+`int`:
+
+- `frontend/lowering/graph_construction.inc:789`;
+- `kernel/typing/classifier_solver.inc:342`;
+- `kernel/typing/classifier_solver.inc:419`.
+
+The current reader/repl capacity is 262,144 Terms, so accepted source programs
+cannot reach the signed-overflow boundary today. These casts are therefore not
+classified as a current false acceptance or rejection. They are retained as an
+ID-domain finding because the API has already migrated to unsigned Term
+identity and these sites preserve an obsolete representation boundary. Program
+B should remove the narrowing as one API-consistency change, not add local range
+checks or warning-suppression casts.
+
+### 24.6 Disproved: accepted replay null-dereference analyzer report
+
+GCC 14 `-fanalyzer` emitted 15 null-dereference reports in two static helpers in
+`kernel/typing/accepted_replay.inc`. They all arise from the analyzer considering
+a Claim whose Proposition is absent or has `UNKNOWN` kind.
+
+That state can exist transiently while closure ranks are recomputed, but
+`prototype_judgement_validate_accepted_graph` immediately calls
+`prototype_judgement_db_rebuild_index` before either replay helper. The rebuild
+checks every non-invalid Derivation conclusion through
+`prototype_judgement_claim_get`; that getter rejects a Claim whose Proposition
+cannot be retrieved. The validator returns `-1` at that point, before accepted
+replay begins.
+
+Therefore the reported dereferences are unreachable through the only callers on
+the validated path. This is retained as a disproved hypothesis rather than
+adding repetitive null checks to every field projection. A future refactor may
+pass the retrieved Proposition pointer into the helper once, but that is API
+clarity work, not a confirmed correctness repair.
