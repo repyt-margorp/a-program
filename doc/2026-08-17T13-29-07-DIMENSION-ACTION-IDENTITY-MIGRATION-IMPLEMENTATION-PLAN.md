@@ -2,7 +2,7 @@
 
 Date: 2026-08-17
 
-Status: implementation complete; final commit and push are pending
+Status: complete
 
 Repository baseline:
 
@@ -712,7 +712,7 @@ Exit criteria:
 
 ### DIA9. Full verification, metrics, and plan closure
 
-Status: in progress; verification complete, final commit and push pending
+Status: complete
 
 - [x] Run `make -f src/prototype/Makefile clean all reader`.
 - [x] Run focused dimension tests.
@@ -726,7 +726,7 @@ Status: in progress; verification complete, final commit and push pending
 - [x] Record subsystem line totals before and after.
 - [x] Record clean-build and full-suite runtimes before and after.
 - [x] Update architecture documentation and this dashboard.
-- [ ] Commit each completed gate separately and push `main` only after its exit
+- [x] Commit each completed gate separately and push `main` only after its exit
   criteria pass.
 
 Completion criteria:
@@ -877,13 +877,13 @@ declaration.
 | DIA0 specification | complete | `82c728d` | generic calculus and invariants fixed |
 | DIA1 dimension core | complete | `4a7ccf8` | generic operators, faces, traversal, and tests |
 | DIA2 Core action Term | complete | `8c3c6c9`, `f68008f` | action Term and semantic operator ownership |
-| DIA3 acted schema query | complete | `b03215b`, `7f3becd` plus final migration | recursive acted schemas and indexed/dependent tests pass |
-| DIA4 Context/telescope action | complete | `3992084`, `b51df37` plus final migration | arbitrary-dimension face traversal and dependent prefixes pass |
-| DIA5 1D cutover | complete | `5e9aaa5` plus final migration | all supported object actions use semantic dimension action |
-| DIA6 generic higher action | complete | final migration | dimensions 1-3 use one traversal; square/cube/dependent tests pass |
-| DIA7 artifact v78 | complete | final migration | v78 publishes operators/actions and rejects v77 |
-| DIA8 old authority deletion | complete | final migration | active legacy-authority search is empty |
-| DIA9 verification/metrics | in progress | final migration | tests and metrics complete; final commit/push pending |
+| DIA3 acted schema query | complete | `b03215b`, `7f3becd`, `291b06e` | recursive acted schemas and indexed/dependent tests pass |
+| DIA4 Context/telescope action | complete | `3992084`, `b51df37`, `291b06e` | arbitrary-dimension face traversal and dependent prefixes pass |
+| DIA5 1D cutover | complete | `5e9aaa5`, `291b06e` | all supported object actions use semantic dimension action |
+| DIA6 generic higher action | complete | `291b06e` | dimensions 1-3 use one traversal; square/cube/dependent tests pass |
+| DIA7 artifact v78 | complete | `291b06e` | v78 publishes operators/actions and rejects v77 |
+| DIA8 old authority deletion | complete | `291b06e` | active legacy-authority search is empty |
+| DIA9 verification/metrics | complete | `291b06e` | full suite passed and implementation was pushed to `main` |
 
 ## 11. Baseline and Final Metrics
 
@@ -986,6 +986,7 @@ This plan is complete only when all of the following are true:
 - Verified dimension 1-3 schema action, dependent constructor fields, square
   witnesses, proof relevance, read-only replay, forged-root rejection, and
   declaration-count invariance.
+- Committed the complete cutover as `291b06e` and pushed it to `origin/main`.
 
 ## 14. Privacy Review
 
