@@ -5,8 +5,13 @@
 
 #define PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY 4096
 
+struct prototype_judgement_delta;
+
 int prototype_judgement_db_rebuild_index(
 	struct prototype_judgement_db* judgement
+);
+int prototype_judgement_delta_rebuild_candidate_index(
+	struct prototype_judgement_delta* delta
 );
 
 enum prototype_judgement_category {

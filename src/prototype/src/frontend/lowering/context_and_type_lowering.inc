@@ -584,6 +584,12 @@ struct operation_binder_owner_entry {
 	uint32_t binding_id;
 	uint32_t lambda_occurrence;
 	uint32_t declared_classifier;
+	uint32_t first_classifier_evidence;
+};
+
+struct operation_binder_classifier_evidence_entry {
+	uint32_t occurrence_id;
+	uint32_t next;
 };
 
 struct compile_context {
@@ -599,9 +605,12 @@ struct compile_context {
 	struct prototype_compile_metadata* metadata;
 	struct operation_constraint_db constraints;
 	struct operation_classifier_solver classifier_solver;
-	uint64_t context_resolution_solution_revision;
+	uint64_t context_dependency_revision;
+	uint64_t context_resolution_dependency_revision;
 	size_t context_resolution_context_count;
-	size_t context_resolution_substitution_count;
+	uint32_t context_dirty_bindings[OPERATION_BINDER_OWNER_CAPACITY];
+	uint32_t context_dirty_binding_count;
+	int context_dependencies_all_dirty;
 	int context_resolution_valid;
 	int context_resolution_finalized;
 	/* Lowering facts are mutable compiler workspace and never frozen into a
@@ -617,6 +626,12 @@ struct compile_context {
 	struct operation_binder_owner_entry
 		binder_owners[OPERATION_BINDER_OWNER_CAPACITY];
 	uint32_t binder_owner_count;
+	struct operation_binder_classifier_evidence_entry
+		binder_classifier_evidence[OPERATION_BINDER_OWNER_CAPACITY];
+	uint32_t binder_classifier_evidence_count;
+	size_t binder_owner_occurrence_count;
+	uint32_t binder_owner_pending_assumption_count;
+	int binder_owner_index_valid;
 	struct prototype_occurrence_usage_solution
 		operation_usage_solutions[PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY];
 	struct prototype_usage_entry* operation_usage_entries;
@@ -655,6 +670,44 @@ struct compile_context {
 	size_t imported_interface_count;
 	int had_error;
 };
+
+static void operation_context_binding_dependency_changed(
+	struct compile_context* ctx,
+	uint32_t binding_id
+) {
+	if (!ctx || binding_id == PROTOTYPE_INVALID_ID) {
+		return;
+	}
+	for (uint32_t i = 0; i < ctx->context_dirty_binding_count; ++i) {
+		if (ctx->context_dirty_bindings[i] == binding_id) {
+			ctx->context_resolution_valid = 0;
+			return;
+		}
+	}
+	ctx->context_dependency_revision++;
+	ctx->context_resolution_valid = 0;
+	if (ctx->context_dirty_binding_count >=
+		OPERATION_BINDER_OWNER_CAPACITY) {
+		ctx->context_dependencies_all_dirty = 1;
+		return;
+	}
+	ctx->context_dirty_bindings[ctx->context_dirty_binding_count++] = binding_id;
+}
+
+static int operation_context_binding_is_dirty(
+	const struct compile_context* ctx,
+	uint32_t binding_id
+) {
+	if (!ctx) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < ctx->context_dirty_binding_count; ++i) {
+		if (ctx->context_dirty_bindings[i] == binding_id) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
 static int compile_occurrence_child(
 	const struct compile_context* ctx,
@@ -856,6 +909,10 @@ static int operation_add(
 	uint32_t case_count,
 	uint32_t* p_operation
 );
+static int operation_binder_owner_publish(
+	struct compile_context* ctx,
+	uint32_t lambda_occurrence
+);
 static int compile_ast_computation_fold_ref(
 	struct compile_context* ctx,
 	const struct prototype_ast_node* node,
@@ -954,8 +1011,13 @@ static int compile_ast_computation_fold_ref(
 			inner_lambda_operation
 		].referenced_ast_binder_id =
 			ast_clause->operation_continuation_binder_id;
-		ctx->metadata->typed_occurrences.occurrences[inner_lambda_operation].binding_id =
-			continuation_binder;
+		ctx->metadata->typed_occurrences.occurrences[
+			inner_lambda_operation
+		].binding_id = continuation_binder;
+		if (operation_binder_owner_publish(ctx, inner_lambda_operation) != 0) {
+			ctx->binder_count = saved_binder_count;
+			return -1;
+		}
 		ctx->binder_count = saved_binder_count;
 		if (operation_add(
 				ctx, PROTOTYPE_TYPED_OCCURRENCE_LAMBDA, outer_lambda,
@@ -971,8 +1033,12 @@ static int compile_ast_computation_fold_ref(
 		ctx->metadata->typed_occurrences.occurrences[
 			outer_lambda_operation
 		].referenced_ast_binder_id = ast_clause->operation_argument_binder_id;
-		ctx->metadata->typed_occurrences.occurrences[outer_lambda_operation].binding_id =
-			argument_binder;
+		ctx->metadata->typed_occurrences.occurrences[
+			outer_lambda_operation
+		].binding_id = argument_binder;
+		if (operation_binder_owner_publish(ctx, outer_lambda_operation) != 0) {
+			return -1;
+		}
 		if (outer_lambda >= ctx->terms->term_count ||
 			ctx->terms->terms[outer_lambda].tag != PROTOTYPE_TERM_LAMBDA ||
 			inner_lambda >= ctx->terms->term_count ||
@@ -1025,6 +1091,9 @@ static int compile_ast_computation_fold_ref(
 		return_clause_operation
 	].referenced_ast_binder_id = node->as.computation_fold.return_binder_id;
 	ctx->metadata->typed_occurrences.occurrences[return_clause_operation].binding_id = return_binder;
+	if (operation_binder_owner_publish(ctx, return_clause_operation) != 0) {
+		return -1;
+	}
 	if (prototype_term_computation_fold(
 			ctx->terms, computation.term, return_clause, core_clauses,
 			node->as.computation_fold.clause_count, &term
@@ -1685,9 +1754,41 @@ static struct operation_binder_owner_entry* operation_binder_owner_add(
 	*entry = (struct operation_binder_owner_entry) {
 		.binding_id = binding_id,
 		.lambda_occurrence = PROTOTYPE_INVALID_ID,
-		.declared_classifier = PROTOTYPE_INVALID_ID
+		.declared_classifier = PROTOTYPE_INVALID_ID,
+		.first_classifier_evidence = PROTOTYPE_INVALID_ID
 	};
 	return entry;
+}
+
+static int operation_binder_classifier_evidence_publish(
+	struct compile_context* ctx,
+	uint32_t occurrence_id
+) {
+	if (!ctx || !ctx->metadata || occurrence_id >=
+			ctx->metadata->typed_occurrences.occurrence_count ||
+		ctx->binder_classifier_evidence_count >=
+			OPERATION_BINDER_OWNER_CAPACITY) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence* occurrence =
+		&ctx->metadata->typed_occurrences.occurrences[occurrence_id];
+	if (occurrence->tag != PROTOTYPE_TYPED_OCCURRENCE_VAR ||
+		occurrence->binding_id == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	struct operation_binder_owner_entry* owner =
+		operation_binder_owner_add(ctx, occurrence->binding_id);
+	if (!owner) {
+		return -1;
+	}
+	uint32_t evidence_id = ctx->binder_classifier_evidence_count++;
+	ctx->binder_classifier_evidence[evidence_id] =
+		(struct operation_binder_classifier_evidence_entry) {
+			.occurrence_id = occurrence_id,
+			.next = owner->first_classifier_evidence
+		};
+	owner->first_classifier_evidence = evidence_id;
+	return 0;
 }
 
 static int operation_binder_owner_classifier(
@@ -1837,54 +1938,105 @@ static int operation_binder_classifier_owner_merge(
 	return 0;
 }
 
-static int operation_binder_owners_rebuild(struct compile_context* ctx) {
-	if (!ctx || !ctx->metadata) {
-		fprintf(stderr, "binder owner rebuild: missing compile metadata\n");
+static int operation_binder_owner_publish(
+	struct compile_context* ctx,
+	uint32_t lambda_occurrence
+) {
+	if (!ctx || !ctx->metadata || lambda_occurrence >=
+			ctx->metadata->typed_occurrences.occurrence_count) {
 		return -1;
 	}
-	/* This table is a derived lookup over the mutable occurrence graph and
-	 * pending assumptions.  Occurrence transactions can roll back and reuse a
-	 * slot, and some lowering paths assign an occurrence-specific BindingId
-	 * after publishing the Core-backed node.  Rebuild at the semantic query
-	 * boundary so the lookup cannot become a second binding authority. */
-	ctx->binder_owner_count = 0;
+	const struct prototype_typed_occurrence* lambda =
+		&ctx->metadata->typed_occurrences.occurrences[lambda_occurrence];
+	if (lambda->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
+		lambda->binding_id == PROTOTYPE_INVALID_ID ||
+		operation_binder_owner_merge(
+			ctx, lambda->binding_id, lambda_occurrence
+		) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
+static int operation_binder_owner_index_seed_transaction(
+	struct compile_context* ctx
+) {
+	if (!ctx || !ctx->metadata ||
+		!ctx->metadata->typed_occurrences.transaction_active ||
+		ctx->binder_owner_count != 0 ||
+		ctx->binder_classifier_evidence_count != 0 ||
+		ctx->binder_owner_occurrence_count != 0 ||
+		ctx->binder_owner_pending_assumption_count != 0) {
+		return -1;
+	}
+	size_t immutable_prefix =
+		prototype_typed_occurrence_graph_transaction_start(
+			&ctx->metadata->typed_occurrences
+		);
+	for (uint32_t occurrence_id = 0;
+		occurrence_id < immutable_prefix;
+		++occurrence_id) {
+		const struct prototype_typed_occurrence* occurrence =
+			&ctx->metadata->typed_occurrences.occurrences[occurrence_id];
+		if ((occurrence->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
+			 operation_binder_owner_publish(ctx, occurrence_id) != 0) ||
+			(occurrence->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
+			 operation_binder_classifier_evidence_publish(
+				ctx, occurrence_id
+			 ) != 0)) {
+			return -1;
+		}
+	}
+	ctx->binder_owner_occurrence_count = immutable_prefix;
+	ctx->binder_owner_index_valid = 1;
+	if (immutable_prefix != 0) {
+		/* The index belongs to one compiler transaction, not to semantic
+		 * metadata. Seed its immutable accepted prefix once; solver passes never
+		 * reconstruct it. */
+		ctx->metadata->binder_owner_index_rebuild_count++;
+	}
+	return 0;
+}
+
+static int operation_binder_owner_index_validate(
+	struct compile_context* ctx
+) {
+	if (!ctx || !ctx->metadata) {
+		return -1;
+	}
 	for (uint32_t occurrence_id = 0;
 		occurrence_id < ctx->metadata->typed_occurrences.occurrence_count;
 		++occurrence_id) {
 		const struct prototype_typed_occurrence* occurrence =
 			&ctx->metadata->typed_occurrences.occurrences[occurrence_id];
 		if (occurrence->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA) {
+			if (occurrence->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR) {
+				struct operation_binder_owner_entry* owner =
+					operation_binder_owner_find(ctx, occurrence->binding_id);
+				int found = 0;
+				for (uint32_t evidence_id = owner ?
+						owner->first_classifier_evidence : PROTOTYPE_INVALID_ID;
+					evidence_id != PROTOTYPE_INVALID_ID;
+					evidence_id =
+						ctx->binder_classifier_evidence[evidence_id].next) {
+					if (evidence_id >= ctx->binder_classifier_evidence_count) {
+						return -1;
+					}
+					if (ctx->binder_classifier_evidence[evidence_id].occurrence_id ==
+							occurrence_id) {
+						found = 1;
+						break;
+					}
+				}
+				if (!found) {
+					return -1;
+				}
+			}
 			continue;
 		}
-		if (occurrence->binding_id == PROTOTYPE_INVALID_ID) {
-			fprintf(stderr,
-				"binder owner rebuild: Lambda occurrence=%u has no binding\n",
-				occurrence_id
-			);
-			return -1;
-		}
-		int binding_context_exists = 0;
-		for (uint32_t context_id = 1;
-			context_id < ctx->metadata->contexts.context_count;
-			++context_id) {
-			const struct prototype_context* context = prototype_context_get(
-				&ctx->metadata->contexts, context_id
-			);
-			if (context && context->binding_id == occurrence->binding_id) {
-				binding_context_exists = 1;
-				break;
-			}
-		}
-		/* An unused Lambda binder need not occur in the shared body occurrence's
-		 * Context, but the binding object must exist in ContextDB. */
-		if (!binding_context_exists || operation_binder_owner_merge(
-				ctx, occurrence->binding_id, occurrence_id
-			) != 0) {
-			fprintf(stderr,
-				"binder owner rebuild: invalid Lambda owner occurrence=%u "
-				"binding=%u context-exists=%d\n",
-				occurrence_id, occurrence->binding_id, binding_context_exists
-			);
+		struct operation_binder_owner_entry* entry =
+			operation_binder_owner_find(ctx, occurrence->binding_id);
+		if (!entry || entry->lambda_occurrence == PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
 	}
@@ -1893,37 +2045,40 @@ static int operation_binder_owners_rebuild(struct compile_context* ctx) {
 		++pending_id) {
 		const struct pending_binder_assumption* pending =
 			&ctx->pending_binder_assumptions[pending_id];
-		uint32_t assumption_context_id;
-		if (pending->context_id >= ctx->metadata->contexts.context_count ||
-			pending->binder_var >= ctx->terms->term_count ||
+		if (pending->binder_var >= ctx->terms->term_count ||
 			ctx->terms->terms[pending->binder_var].tag != PROTOTYPE_TERM_VAR ||
-			pending->classifier >= ctx->terms->term_count ||
-			(pending->source_operation != PROTOTYPE_INVALID_ID &&
-			 pending->source_operation >=
-				ctx->metadata->typed_occurrences.occurrence_count) ||
-			prototype_context_find_binding(
-				&ctx->metadata->contexts,
-				pending->context_id,
-				ctx->terms->terms[pending->binder_var].as.var.binding_id,
-				&assumption_context_id
-			) != 0 || operation_binder_classifier_owner_merge(
+			!operation_binder_owner_find(
 				ctx,
-				ctx->terms->terms[pending->binder_var].as.var.binding_id,
-				pending->classifier
-			) != 0) {
-			fprintf(stderr,
-				"binder owner rebuild: invalid pending assumption=%u context=%u "
-				"binder=%u classifier=%u source-operation=%u\n",
-				pending_id,
-				pending->context_id,
-				pending->binder_var,
-				pending->classifier,
-				pending->source_operation
-			);
+				ctx->terms->terms[pending->binder_var].as.var.binding_id
+			)) {
 			return -1;
 		}
 	}
 	return 0;
+}
+
+static int operation_binder_owners_ensure(struct compile_context* ctx) {
+	if (!ctx || !ctx->metadata) {
+		return -1;
+	}
+	if (ctx->binder_owner_index_valid &&
+		ctx->binder_owner_occurrence_count ==
+			ctx->metadata->typed_occurrences.occurrence_count &&
+		ctx->binder_owner_pending_assumption_count ==
+			ctx->pending_binder_assumption_count) {
+		return getenv("A_PROGRAM_BINDER_OWNER_VALIDATE") ?
+			operation_binder_owner_index_validate(ctx) : 0;
+	}
+	fprintf(
+		stderr,
+		"binder owner index publication mismatch occurrences=%zu/%zu "
+		"assumptions=%u/%u\n",
+		ctx->binder_owner_occurrence_count,
+		ctx->metadata->typed_occurrences.occurrence_count,
+		ctx->binder_owner_pending_assumption_count,
+		ctx->pending_binder_assumption_count
+	);
+	return -1;
 }
 
 static int operation_add(
@@ -2009,6 +2164,13 @@ static int operation_add(
 		) != 0) {
 		return -1;
 	}
+	if (tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
+		operation_binder_classifier_evidence_publish(
+			ctx, *p_operation
+		) != 0) {
+		return -1;
+	}
+	ctx->binder_owner_occurrence_count = graph->occurrence_count;
 	ctx->classifier_hints[*p_operation] = classifier;
 	struct prototype_typed_occurrence_edge edges[64];
 	uint32_t edge_count = 0;
@@ -3234,6 +3396,21 @@ static int queue_binder_assumption(
 	ctx->pending_binder_assumptions[id].binder_var = binder_var;
 	ctx->pending_binder_assumptions[id].classifier = classifier;
 	ctx->pending_binder_assumptions[id].source_operation = source_operation;
+	if (ctx->binder_owner_index_valid) {
+		if (operation_binder_classifier_owner_merge(
+				ctx,
+				ctx->terms->terms[binder_var].as.var.binding_id,
+				classifier
+			) != 0) {
+			ctx->pending_binder_assumption_count--;
+			return -1;
+		}
+		ctx->binder_owner_pending_assumption_count =
+			ctx->pending_binder_assumption_count;
+	}
+	operation_context_binding_dependency_changed(
+		ctx, ctx->terms->terms[binder_var].as.var.binding_id
+	);
 	return 0;
 }
 

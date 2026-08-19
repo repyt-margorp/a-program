@@ -108,7 +108,9 @@ void prototype_context_db_init(
 	db->contexts[0].hash_next = PROTOTYPE_INVALID_ID;
 }
 
-int prototype_context_db_rebuild_index(struct prototype_context_db* db) {
+int prototype_context_db_rebuild_runtime_index_after_bulk_load(
+	struct prototype_context_db* db
+) {
 	if (!db || !db->contexts || db->context_count == 0 ||
 		db->context_count > db->context_capacity) {
 		return -1;
@@ -352,8 +354,15 @@ int prototype_context_db_validate(
 				PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL &&
 			 classifier != PROTOTYPE_INVALID_ID &&
 			 classifier_variable != PROTOTYPE_INVALID_ID);
+		uint64_t expected_key_hash = context_key_hash(
+			context->parent,
+			context->binding_id,
+			classifier,
+			classifier_variable
+		);
 		if (context->parent >= i ||
 			context->binding_id == PROTOTYPE_INVALID_ID ||
+			context->key_hash != expected_key_hash ||
 			context->depth != db->contexts[context->parent].depth + 1 ||
 			!classifier_ref_valid ||
 			(classifier != PROTOTYPE_INVALID_ID &&
@@ -509,7 +518,7 @@ void prototype_substitution_db_init(
 	graph_index_clear(db->index_heads);
 }
 
-int prototype_substitution_db_rebuild_index(
+int prototype_substitution_db_rebuild_runtime_index_after_bulk_load(
 	struct prototype_substitution_db* db
 ) {
 	if (!db || !db->substitutions ||
@@ -581,6 +590,71 @@ static int prototype_substitution_add(
 	db->index_heads[bucket] = id;
 	*p_substitution = id;
 	return 0;
+}
+
+int prototype_substitution_rebase(
+	struct prototype_substitution_db* db,
+	uint32_t substitution_id,
+	uint32_t source_context,
+	uint32_t target_context,
+	uint32_t first,
+	uint32_t second,
+	uint32_t term_classifier,
+	uint32_t* p_substitution
+) {
+	const struct prototype_substitution* source =
+		prototype_substitution_get(db, substitution_id);
+	if (!source || !p_substitution ||
+		source_context == PROTOTYPE_INVALID_ID ||
+		target_context == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	struct prototype_substitution rebased = *source;
+	rebased.source_context = source_context;
+	rebased.target_context = target_context;
+	rebased.first = first;
+	rebased.second = second;
+	rebased.term_classifier = term_classifier;
+	rebased.key_hash = 0;
+	rebased.hash_next = PROTOTYPE_INVALID_ID;
+	switch (rebased.kind) {
+		case PROTOTYPE_SUBSTITUTION_IDENTITY:
+			if (source_context != target_context ||
+				first != PROTOTYPE_INVALID_ID ||
+				second != PROTOTYPE_INVALID_ID ||
+				rebased.term != PROTOTYPE_INVALID_ID ||
+				term_classifier != PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			break;
+		case PROTOTYPE_SUBSTITUTION_EMPTY:
+		case PROTOTYPE_SUBSTITUTION_PROJECTION:
+			if (first != PROTOTYPE_INVALID_ID ||
+				second != PROTOTYPE_INVALID_ID ||
+				rebased.term != PROTOTYPE_INVALID_ID ||
+				term_classifier != PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			break;
+		case PROTOTYPE_SUBSTITUTION_EXTEND:
+			if (first == PROTOTYPE_INVALID_ID ||
+				second != PROTOTYPE_INVALID_ID ||
+				rebased.term == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			break;
+		case PROTOTYPE_SUBSTITUTION_COMPOSE:
+			if (first == PROTOTYPE_INVALID_ID ||
+				second == PROTOTYPE_INVALID_ID ||
+				rebased.term != PROTOTYPE_INVALID_ID ||
+				term_classifier != PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			break;
+		default:
+			return -1;
+	}
+	return prototype_substitution_add(db, rebased, p_substitution);
 }
 
 int prototype_substitution_identity(
@@ -903,7 +977,8 @@ int prototype_substitution_db_validate(
 	for (uint32_t i = 0; i < db->substitution_count; ++i) {
 		const struct prototype_substitution* substitution = &db->substitutions[i];
 		if (!prototype_context_get(contexts, substitution->source_context) ||
-			!prototype_context_get(contexts, substitution->target_context)) {
+			!prototype_context_get(contexts, substitution->target_context) ||
+			substitution->key_hash != substitution_key_hash(substitution)) {
 			return -1;
 		}
 		switch (substitution->kind) {

@@ -2002,7 +2002,14 @@ static int artifact_build_publication_graph(
 			];
 		}
 	}
-	if (prototype_context_db_validate(
+	/* Compaction directly populates semantic records under dense IDs. Rebuild
+	 * runtime-only hashes once after every endpoint has been relocated. */
+	if (prototype_context_db_rebuild_runtime_index_after_bulk_load(
+			&compact_context_db
+		) != 0 ||
+		prototype_substitution_db_rebuild_runtime_index_after_bulk_load(
+			&compact_substitution_db
+		) != 0 || prototype_context_db_validate(
 			&compact_context_db, &closure->terms
 		) != 0 || prototype_substitution_db_validate(
 			&compact_substitution_db, &compact_context_db, &closure->terms

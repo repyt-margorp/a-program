@@ -114,6 +114,8 @@ enum prototype_substitution_kind {
  * COMPOSE stores outer o inner.
  */
 struct prototype_substitution {
+	/* Semantic identity fields are immutable after insertion. Rebase an action
+	 * by interning a new record; never rewrite an accepted morphism in place. */
 	int kind;
 	uint32_t source_context;
 	uint32_t target_context;
@@ -144,7 +146,9 @@ void prototype_context_db_init(
 	struct prototype_context* contexts,
 	size_t context_capacity
 );
-int prototype_context_db_rebuild_index(struct prototype_context_db* db);
+int prototype_context_db_rebuild_runtime_index_after_bulk_load(
+	struct prototype_context_db* db
+);
 uint32_t prototype_context_empty(const struct prototype_context_db* db);
 int prototype_context_extend(
 	struct prototype_context_db* db,
@@ -265,8 +269,18 @@ void prototype_substitution_db_init(
 	struct prototype_substitution* substitutions,
 	size_t substitution_capacity
 );
-int prototype_substitution_db_rebuild_index(
+int prototype_substitution_db_rebuild_runtime_index_after_bulk_load(
 	struct prototype_substitution_db* db
+);
+int prototype_substitution_rebase(
+	struct prototype_substitution_db* db,
+	uint32_t substitution_id,
+	uint32_t source_context,
+	uint32_t target_context,
+	uint32_t first,
+	uint32_t second,
+	uint32_t term_classifier,
+	uint32_t* p_substitution
 );
 int prototype_substitution_identity(
 	struct prototype_substitution_db* db,

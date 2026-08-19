@@ -5071,6 +5071,25 @@ int main(int argc, char** argv) {
 			metadata.context_index_rebuild_count,
 			metadata.substitution_index_rebuild_count
 		);
+		fprintf(
+			stderr,
+			"A_PROGRAM_CONTEXT_RESOLUTION_COUNTERS 1 requests=%" PRIu64
+			" skips=%" PRIu64 " context_visits=%" PRIu64
+			" context_changes=%" PRIu64 " context_inserts=%" PRIu64
+				" substitution_visits=%" PRIu64 " substitution_rebases=%" PRIu64
+				" substitution_inserts=%" PRIu64 " root_projections=%" PRIu64
+				" binder_owner_rebuilds=%" PRIu64 "\n",
+			metadata.context_resolution_request_count,
+			metadata.context_resolution_skip_count,
+			metadata.context_resolution_context_visit_count,
+			metadata.context_resolution_context_change_count,
+			metadata.context_resolution_context_insert_count,
+			metadata.context_resolution_substitution_visit_count,
+			metadata.context_resolution_substitution_rebase_count,
+			metadata.context_resolution_substitution_insert_count,
+				metadata.context_resolution_root_projection_count,
+				metadata.binder_owner_index_rebuild_count
+		);
 	}
 	for (size_t i = 0; i < metadata.typed_occurrences.occurrence_count; ++i) {
 		const struct prototype_typed_occurrence* operation =

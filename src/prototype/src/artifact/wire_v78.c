@@ -2369,7 +2369,7 @@ int prototype_artifact_read_text_typed_occurrences(
 			metadata->contexts.context_count++;
 		}
 	}
-	if (metadata && prototype_context_db_rebuild_index(
+	if (metadata && prototype_context_db_rebuild_runtime_index_after_bulk_load(
 			&metadata->contexts
 		) != 0) {
 		return -1;
@@ -2447,7 +2447,7 @@ int prototype_artifact_read_text_typed_occurrences(
 			}
 		}
 	}
-	if (metadata && prototype_substitution_db_rebuild_index(
+	if (metadata && prototype_substitution_db_rebuild_runtime_index_after_bulk_load(
 			&metadata->substitutions
 		) != 0) {
 		return -1;

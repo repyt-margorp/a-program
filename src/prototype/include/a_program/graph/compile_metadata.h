@@ -136,6 +136,16 @@ struct prototype_compile_metadata {
 	uint64_t context_resolution_pass_count;
 	uint64_t context_index_rebuild_count;
 	uint64_t substitution_index_rebuild_count;
+	uint64_t context_resolution_request_count;
+	uint64_t context_resolution_skip_count;
+	uint64_t context_resolution_context_visit_count;
+	uint64_t context_resolution_context_change_count;
+	uint64_t context_resolution_context_insert_count;
+	uint64_t context_resolution_substitution_visit_count;
+	uint64_t context_resolution_substitution_rebase_count;
+	uint64_t context_resolution_substitution_insert_count;
+	uint64_t context_resolution_root_projection_count;
+	uint64_t binder_owner_index_rebuild_count;
 	/* Frozen operational projection consumed by Core execution. It deliberately
 	 * excludes static type declarations and proof state. */
 	struct prototype_term_reduction_environment reduction_environment;

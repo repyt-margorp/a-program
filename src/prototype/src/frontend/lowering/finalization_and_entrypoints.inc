@@ -1922,6 +1922,9 @@ static int compile_pending_with_workspace(
 		) != 0) {
 		return -1;
 	}
+	if (operation_binder_owner_index_seed_transaction(&ctx) != 0) {
+		return -1;
+	}
 	prototype_judgement_delta_set_context_store(
 		&ctx.judgement_delta,
 		&metadata->contexts,

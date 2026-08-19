@@ -8,7 +8,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cd "$root_dir"
 fixture=src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p
 runner="$tmp_dir/process-metrics"
-limit_ms=${A_PROGRAM_IF8_SINGLE_COMPILE_LIMIT_MS:-20803}
+limit_ms=${A_PROGRAM_IF8_SINGLE_COMPILE_LIMIT_MS:-10000}
 
 make -f src/prototype/Makefile reader >/dev/null
 cc -std=c11 -Wall -Wextra -Werror \
@@ -41,7 +41,28 @@ while [ "$run" -le 3 ]; do
 	printf '%s\n' "$wall_ms" >>"$tmp_dir/wall-ms"
 	printf 'A_PROGRAM_IF8_SINGLE_COMPILE 1 run=%s %s\n' "$run" \
 		"$(printf '%s' "$line" | sed 's/^A_PROGRAM_PROCESS_METRICS 1 //')"
-	grep '^A_PROGRAM_\(PERFORMANCE\|SOLVER\)_COUNTERS 1 ' "$metrics"
+	grep '^A_PROGRAM_\(PERFORMANCE\|SOLVER\|CONTEXT_RESOLUTION\)_COUNTERS 1 ' \
+		"$metrics"
+	solver_line=$(grep '^A_PROGRAM_SOLVER_COUNTERS 1 ' "$metrics")
+	case $solver_line in
+	*' context_index_rebuilds=0 substitution_index_rebuilds=0') ;;
+	*)
+		echo 'IF8 source compilation performed a bulk Context/Substitution rebuild' >&2
+		exit 1
+		;;
+	esac
+	context_line=$(grep '^A_PROGRAM_CONTEXT_RESOLUTION_COUNTERS 1 ' "$metrics")
+	case $context_line in
+	*' skips=0 '*)
+		echo 'IF8 Context resolver did not skip any clean request' >&2
+		exit 1
+		;;
+	*' binder_owner_rebuilds=0') ;;
+	*)
+		echo 'IF8 reconstructed the Binding owner index' >&2
+		exit 1
+		;;
+	esac
 	run=$((run + 1))
 done
 

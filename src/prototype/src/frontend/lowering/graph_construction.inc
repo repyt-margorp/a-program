@@ -3246,6 +3246,9 @@ static int compile_continue_runtime_computation(
 	ctx->metadata->typed_occurrences.occurrences[lambda.operation].referenced_ast_binder_id =
 		ast_binder_id;
 	ctx->metadata->typed_occurrences.occurrences[lambda.operation].binding_id = binding_id;
+	if (operation_binder_owner_publish(ctx, lambda.operation) != 0) {
+		return -1;
+	}
 	ctx->metadata->typed_occurrences.occurrences[lambda.operation].binder_symbol_id =
 		continuation->has_source_binder ?
 			continuation->source_binder_symbol_id : -1;
@@ -3975,6 +3978,9 @@ static int compile_ast_lambda_computation_ref(
 	ctx->metadata->typed_occurrences.occurrences[lambda_operation].referenced_ast_binder_id =
 		node->as.lambda.ast_binder_id;
 	ctx->metadata->typed_occurrences.occurrences[lambda_operation].binding_id = binding_id;
+	if (operation_binder_owner_publish(ctx, lambda_operation) != 0) {
+		return -1;
+	}
 	struct prototype_typed_occurrence* lambda_operation_node =
 		&ctx->metadata->typed_occurrences.occurrences[lambda_operation];
 	const uint32_t* effect_row_variables;
@@ -4602,6 +4608,9 @@ static int compile_ref_make_operation_request(
 	}
 	ctx->metadata->typed_occurrences.occurrences[continuation_occurrence].binding_id =
 		canonical_binder_id;
+	if (operation_binder_owner_publish(ctx, continuation_occurrence) != 0) {
+		return -1;
+	}
 	p_ret->term = request;
 	p_ret->classifier = PROTOTYPE_INVALID_ID;
 	p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
@@ -6499,6 +6508,15 @@ static void operation_solver_store_classifier_solution(
 		&ctx->classifier_solver.solutions[operation];
 	if (solution->classifier != classifier) {
 		ctx->classifier_solver.solution_revision++;
+		if (operation <
+				ctx->metadata->typed_occurrences.occurrence_count &&
+			ctx->metadata->typed_occurrences.occurrences[operation].tag ==
+				PROTOTYPE_TYPED_OCCURRENCE_VAR) {
+			operation_context_binding_dependency_changed(
+				ctx,
+				ctx->metadata->typed_occurrences.occurrences[operation].binding_id
+			);
+		}
 	}
 	solution->classifier = classifier;
 	solution->classifier_state = OPERATION_CONSTRAINT_STATE_SOLVED;
@@ -6973,8 +6991,19 @@ static int operation_solver_refine_sequenced_ih_result(
 			operation_solver_store_classifier_solution(
 				ctx, value_operation, expected_result
 			);
-			ctx->metadata->typed_occurrences.occurrences[continuation_occurrence].binder_classifier =
-				expected_result;
+			if (ctx->metadata->typed_occurrences.occurrences[
+					continuation_occurrence
+				].binder_classifier != expected_result) {
+				ctx->metadata->typed_occurrences.occurrences[
+					continuation_occurrence
+				].binder_classifier = expected_result;
+				operation_context_binding_dependency_changed(
+					ctx,
+					ctx->metadata->typed_occurrences.occurrences[
+						continuation_occurrence
+					].binding_id
+				);
+			}
 			*p_changed = 1;
 			if (operation_solver_enqueue_dependents(ctx, input_occurrence) != 0 ||
 				operation_solver_enqueue_dependents(ctx, fold_id) != 0) {
@@ -7055,8 +7084,19 @@ static int operation_solver_refine_sequenced_ih_result(
 		operation_solver_store_classifier_solution(
 			ctx, value_operation, expected_result
 		);
-		ctx->metadata->typed_occurrences.occurrences[continuation_occurrence].binder_classifier =
-			expected_result;
+		if (ctx->metadata->typed_occurrences.occurrences[
+				continuation_occurrence
+			].binder_classifier != expected_result) {
+			ctx->metadata->typed_occurrences.occurrences[
+				continuation_occurrence
+			].binder_classifier = expected_result;
+			operation_context_binding_dependency_changed(
+				ctx,
+				ctx->metadata->typed_occurrences.occurrences[
+					continuation_occurrence
+				].binding_id
+			);
+		}
 		if (ctx->classifier_solver.solutions[input_occurrence].classifier !=
 				refined_classifier) {
 			operation_solver_store_classifier_solution(

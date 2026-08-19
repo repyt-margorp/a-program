@@ -2,8 +2,9 @@
 
 Date: 2026-08-19
 
-Status: Single-compile performance objective complete; non-critical authority
-follow-ups remain
+Amended: 2026-08-19 after SP4-R implementation and verification
+
+Status: SP4-R implementation complete; final evidence is recorded in section 17
 
 Baseline commit: `3413bf8`
 
@@ -315,13 +316,21 @@ normal restart path.
 
 ### 5.4 Context revisions instead of global rebuilding
 
-Context and substitution records remain separate semantic stores. Add explicit
+Context and substitution records remain separate semantic stores. Context IDs
+denote CwF objects and Substitution IDs denote CwF morphisms; neither identity
+may change because a later classifier solution was discovered. Add explicit
 revision/dependency tracking so that:
 
 - a context is resolved once per changed dependency set;
-- ContextDB and SubstitutionDB indexes are rebuilt only after physical mutation,
-  not once per solver round;
+- ordinary append-only lowering maintains ContextDB and SubstitutionDB indexes
+  incrementally and never rebuilds them;
+- bulk artifact readback, relocation, or compaction may rebuild runtime-only
+  indexes exactly once after direct population;
 - unchanged occurrences retain their resolved context IDs;
+- provisional-to-resolved Context and Substitution projections live in the
+  compiler workspace and are not serialized as semantic objects;
+- an existing Substitution ID is never retained while its source, target, term,
+  or component morphisms are rewritten;
 - finalized resolution is a validation state transition, not another independent
   inference algorithm.
 
@@ -498,8 +507,8 @@ Primary files:
 Tasks:
 
 - [ ] Replace global-count convergence with dirty-domain convergence.
-- [ ] Generate source-derived constraints once.
-- [ ] Represent branch refinements as affected constraint updates.
+- [x] Generate source-derived constraints once.
+- [x] Represent branch refinements as affected constraint updates.
 - [ ] Stop retiring and regenerating the computation/effect suffix.
 - [ ] Resolve only contexts whose dependencies changed.
 - [ ] Remove per-round ContextDB and SubstitutionDB index rebuilds.
@@ -509,8 +518,8 @@ Tasks:
 
 Exit criteria:
 
-- [ ] Ordinary IF8 compilation performs one initial global generation pass.
-- [ ] Later refinement is reported as targeted updates, not global regeneration.
+- [x] Ordinary IF8 compilation performs one initial global generation pass.
+- [x] Later refinement is reported as targeted updates, not global regeneration.
 - [ ] Context/index rebuild counts are tied to actual physical mutations and are
       not proportional to solver rounds.
 
@@ -650,7 +659,8 @@ focused tests and single-compile benchmark pass.
 | SP1 TermDB intern index | Complete | collision/alpha tests and benchmark |
 | SP2 normalization/substitution indexes | Complete | indexed caches and benchmark counters |
 | SP3 persistent constraint indexes | Complete | occurrence, motive, computation, and reverse-dependency indexes |
-| SP4 incremental fixed point | Partial | one global generation pass; branch updates preserve constraint identity |
+| SP4 incremental fixed point | Complete for current source compiler | one global generation pass; dependency-directed Context work; no ordinary Context/Substitution rebuild |
+| SP4-R immutable Context/Substitution resolution | Complete | immutable rebasing, incremental owner/evidence indexes, permanent tests, and section 17 evidence |
 | SP5 one-time judgement materialization | Partial | indexed candidate/proposition paths; final authority cleanup remains |
 | SP6 accepted replay API | Deferred | runtime indexes are isolated; read-only premise API remains follow-up |
 | SP7 TypeDeclaration views | Existing partial boundary | semantic view is used; broad API cleanup remains follow-up |
@@ -808,3 +818,493 @@ in place by runtime-only derived indexes. Paths in the table are relative to
 | `tests/integration/test_term_intern_index.sh` | 11 | 0 | +11 |
 | `tests/performance/benchmark_if8_single_compile.sh` | 54 | 0 | +54 |
 | `tests/support/process_metrics.c` | 68 | 0 | +68 |
+
+## 12. SP4-R Post-Performance Audit
+
+### 12.1 Observed residual work
+
+The final IF8 benchmark still reports:
+
+```text
+context_resolutions=31
+context_index_rebuilds=31
+substitution_index_rebuilds=31
+```
+
+This is not merely an unnecessary call at the end of an otherwise immutable
+algorithm. `operation_solver_resolve_contexts` currently performs a global
+relocation transaction whenever the global classifier `solution_revision`
+changes:
+
+1. rebuild the BindingId-to-owner table by scanning occurrences, Contexts, and
+   pending assumptions;
+2. discover live Substitutions by scanning occurrences, Match cases,
+   constraints, accepted Derivations, and candidate Derivations;
+3. walk every Context and intern a canonical replacement under the currently
+   available classifier;
+4. rewrite Context IDs in every mutable occurrence, constraint, pending item,
+   proposition, and computation constraint;
+5. mutate the endpoints and sometimes the term classifier of existing live
+   Substitution records while preserving their IDs;
+6. clear stale occurrence actions whose endpoints no longer match;
+7. rebuild both hash indexes and clear the Substitution reindex cache.
+
+The cache guard compares one global classifier revision plus total Context and
+Substitution counts. A classifier solution unrelated to any binder Context is
+therefore sufficient to repeat the entire operation.
+
+### 12.2 Semantic defect behind the performance symptom
+
+`context.h` describes Context extensions as immutable CwF objects. Context
+resolution mostly respects this by interning replacement Contexts. Substitution
+resolution does not: it preserves a Substitution ID while rewriting the source
+and target Context IDs stored in that morphism.
+
+That is a weak identity contract. Even when old and new endpoints are
+convertible, a proof edge referring to one immutable morphism must not silently
+acquire a different payload. Rebuilding the hash index repairs lookup mechanics,
+but it does not make this identity mutation conceptually sound.
+
+The correct fix therefore is not:
+
+- skip `prototype_*_db_rebuild_index` while continuing to mutate indexed keys;
+- rebuild only every N solver rounds;
+- hide the count by changing instrumentation; or
+- freeze Contexts early and reject later dependent refinements.
+
+The fix is to make semantic Context and Substitution nodes append-only and move
+elaboration-time change into explicit derived projections.
+
+### 12.3 Additional amplification
+
+The resolver also contains several avoidable global searches:
+
+- Binding owner reconstruction includes a Context scan for each Lambda owner;
+- every unresolved Context classifier searches all variable occurrences;
+- fallback resolution searches pending assumptions and propositions;
+- every pass marks live Substitutions from all semantic and candidate stores;
+- every pass relocates all Context-bearing roots, including unchanged roots;
+- Context index rebuilding discards all interned comprehension actions;
+- Substitution index rebuilding discards the complete reindex cache.
+
+These costs are currently secondary to the already-fixed Term interning path,
+but they scale with `Contexts * occurrences`, proof graph size, and the number of
+classifier discoveries. They will become material for larger IADTs and
+post-hoc dependent Claims.
+
+## 13. SP4-R Target Architecture
+
+### 13.1 Immutable semantic graph
+
+Retain the current distinct stores and typed IDs:
+
+```text
+ContextDB       immutable CwF objects
+SubstitutionDB  immutable CwF morphisms
+```
+
+All ordinary constructors must continue to update their intern indexes at
+append time. After insertion, fields participating in semantic identity or hash
+keys are read-only:
+
+```text
+Context:
+  parent, binding_id, classifier_ref, depth
+
+Substitution:
+  kind, source_context, target_context,
+  first, second, term, term_classifier
+```
+
+`key_hash` and `hash_next` are runtime index metadata. They may be rebuilt after
+bulk loading, but ordinary elaboration must not require rebuilding them.
+
+### 13.2 Compiler-local resolution projections
+
+Add one compiler-workspace projection for each semantic domain:
+
+```text
+ContextResolution[provisional_context] = {
+  current_context,
+  dependency_revision,
+  state
+}
+
+SubstitutionResolution[source_action] = {
+  current_action,
+  source_context_revision,
+  target_context_revision,
+  state
+}
+```
+
+These are derived elaboration indexes, not new semantic authorities. They are
+discarded after finalization and never serialized. A read follows the projection
+to the current immutable semantic node. Finalization snapshots only current IDs
+into TypedOccurrences and terminal Judgement candidates.
+
+When a parent Context or binder classifier changes, create or reuse the new
+Context extension and update the projection. When a Substitution endpoint
+changes, recursively resolve its component morphisms, construct an immutable
+rebased Substitution, intern it, and update the Substitution projection. Never
+rewrite the original morphism.
+
+Projection chains must be compressed or updated directly so lookup remains
+bounded. Cycles are invalid internal state.
+
+### 13.3 Dependency-directed scheduling
+
+Replace the global `solution_revision` guard with revisions for facts that can
+actually affect Context meaning:
+
+```text
+BindingId -> current classifier fact and revision
+ContextId -> parent/binder dependencies and resolution revision
+ContextId -> dependent child Context IDs
+SubstitutionId -> endpoint/component dependencies
+```
+
+`operation_solver_store_classifier_solution` must dirty Context resolution only
+when the changed occurrence contributes the classifier of a bound object. A
+new APP result, Match result, or unrelated computation classifier must not dirty
+all Contexts.
+
+A changed binder fact enqueues its direct Context extensions. A changed Context
+projection enqueues only descendant Contexts and Substitutions whose endpoints
+or components refer to it. A clean queue performs no semantic insertion and no
+root rewrite.
+
+### 13.4 Incremental BindingId lookup
+
+Replace `operation_binder_owners_rebuild` with a compiler-local derived index
+maintained at the mutation sites for:
+
+- Lambda occurrence publication;
+- pending binder-assumption publication;
+- occurrence transaction commit and rollback; and
+- branch binder/context creation.
+
+Rollback restores the index to the transaction snapshot. The index maps exact
+BindingId identity; it must not infer binder identity from equal classifiers or
+surface names. A debug-only full reconstruction may remain as an invariant
+checker, not as the production query path.
+
+### 13.5 Root projection and Judgement boundary
+
+Do not scan and rewrite accepted JudgementDB records during elaboration.
+Accepted Propositions, Claims, Derivations, and their semantic actions retain
+the Context/Substitution IDs with which they were checked.
+
+Mutable constraints and candidate derivations may refer to provisional IDs.
+Before a constraint becomes terminal and before a candidate is committed:
+
+1. resolve its Context through `ContextResolution`;
+2. resolve each semantic action through `SubstitutionResolution`;
+3. validate the resulting endpoints;
+4. materialize the immutable candidate once; and
+5. reject finalization if any projection remains pending.
+
+TypedOccurrence roots may either be updated when their own dependency becomes
+dirty or projected once at the freeze boundary. They must not all be rewritten
+for an unrelated classifier change.
+
+This completes the intended SP4-to-SP5 ownership flow: pending mutable state is
+owned by the ConstraintGraph and compiler projections; accepted evidence is
+immutable.
+
+### 13.6 Bulk rebuild boundary
+
+Restrict full index reconstruction to APIs whose contract is direct bulk
+population:
+
+- artifact readback;
+- artifact relocation/linking when records are copied directly;
+- physical compaction/publication scratch stores; and
+- debug validation.
+
+Rename or wrap the rebuild APIs so an ordinary frontend lowering module cannot
+call them accidentally. Bulk rebuild must validate duplicate keys, malformed
+chains, and immutable payloads before exposing the store.
+
+## 14. Issue Compatibility and Scope
+
+This phase does not implement a new GitHub Issue. It must preserve the existing
+issue boundaries while avoiding a design that blocks their later repair.
+
+| Issue | SP4-R obligation | Explicit non-goal |
+|---|---|---|
+| #11 indexed families and Acc | Preserve exact branch Contexts, pullback Substitutions, indexed IH classifiers, IF8 execution, and artifact replay. | Do not infer indices or weaken residual refinement. |
+| #12 dependent Match refinement, closed | Keep its positive, negative, corruption, and replay suite unchanged; branch actions remain immutable CwF morphisms. | Do not reopen the closed feature with a special-case path. |
+| #13 post-hoc dependent Claims | Leave current support status unchanged, but ensure a future result-binder Context can be represented as an ordinary dirty dependency and frozen candidate. | Do not invent `Returns`, execute effects in types, or claim #13 fixed. |
+| #14 totality/partiality | Keep Acc-based accepted termination and solver diagnostic guards distinct from semantic totality. | Do not add general recursion or a totality proposition. |
+| #16 IADT/GADT conformance audit | Use its concrete construction and semantic-boundary findings as a review checklist for Context/Substitution endpoint preservation. | Do not fix constructor specialization, constant-motive support, nested positivity, diagnostics, or its audit manifest in SP4-R. |
+
+The #16 reproduction may continue to fail exactly as documented. SP4-R must not
+turn that known unsupported/Bug boundary into false success, a different
+failure caused by broken Context projection, or evidence that the Issue itself
+has been completed.
+
+## 15. Revised Implementation Phases
+
+### SP4-R0. Measure semantic work, not only rebuild calls
+
+- [x] Add counters for resolver requests, cache/clean skips, dirty Contexts,
+      Context projection changes, new/reused Contexts, dirty Substitutions,
+      rebased/reused Substitutions, root projections, and bulk index rebuilds.
+- [x] Record which binder classifier revision dirtied each Context in debug
+      traces.
+- [x] Capture IF8 and a small dependent-Match baseline before structural change.
+
+Exit criteria:
+
+- [x] The 31 passes are attributable to concrete invalidation causes.
+- [x] A no-op resolver request is distinguishable from a dirty resolution pass.
+
+### SP4-R1. Enforce Context/Substitution immutability
+
+- [x] Centralize append/intern operations and document post-insertion immutable
+      fields in `context.h`.
+- [x] Remove frontend writes to existing Substitution identity fields.
+- [x] Add debug fingerprints or snapshots that detect payload mutation after
+      insertion.
+- [x] Keep direct population available only to bulk artifact code followed by
+      one validated runtime-index build.
+
+Exit criteria:
+
+- [x] An accepted Context or Substitution payload never changes in place.
+- [x] Existing IDs retain the same semantic endpoints for their lifetime.
+
+### SP4-R2. Replace Binding owner reconstruction
+
+- [x] Maintain BindingId owner and assumption indexes at publication sites.
+- [x] Integrate index lifetime with occurrence transaction rollback. The index
+      is transaction-local, seeds an existing immutable prefix once, and is
+      discarded with the compile workspace on rollback.
+- [x] Add indexed lookup for classifier evidence associated with a binding in a
+      particular Context.
+- [x] Retain a debug-only coverage check, enabled with
+      `A_PROGRAM_BINDER_OWNER_VALIDATE=1`.
+
+Exit criteria:
+
+- [x] Production context resolution performs no full owner rebuild.
+- [x] Duplicate or conflicting owners are rejected at insertion time.
+
+### SP4-R3. Add dirty Context projection
+
+- [x] Add Context dependency revision, finalized state, and dirty BindingId
+      state to `compile_context`.
+- [x] Use the append-only Context invariant `parent < child` as the canonical
+      parent-to-child dependency order, together with the BindingId dirty index.
+      A second stored adjacency graph was deliberately not introduced.
+- [x] Dirty only Contexts affected by a changed binder classifier or parent
+      projection.
+- [x] Resolve dirty Contexts in parent-before-child order.
+- [x] Preserve provisional Context IDs as immutable source nodes and intern
+      concrete replacements.
+
+Exit criteria:
+
+- [x] Unrelated classifier solutions resolve zero Contexts.
+- [x] A changed binder resolves only its dependent subtree.
+- [x] A clean second pass inserts no Context and changes no projection.
+
+### SP4-R4. Rebase Substitutions immutably
+
+- [x] Add one-pass memoized Substitution rebasing over the append/topological
+      Substitution order.
+- [x] Rebase IDENTITY, EMPTY, PROJECTION, EXTEND, and COMPOSE through resolved
+      Context/component projections.
+- [x] Intern the rebased morphism and retain the original ID unchanged.
+- [x] Make reindex caching depend only on immutable Term, Substitution, and type
+      declaration identities; appending unrelated nodes does not invalidate it.
+- [x] Preserve and validate comprehension-action cache entries instead of
+      clearing all entries on each solver pass.
+
+Exit criteria:
+
+- [x] Ordinary lowering never invokes either full rebuild API.
+- [x] Ordinary lowering never clears the entire reindex or comprehension cache.
+- [x] Rebased actions have exact source/target endpoints and stable proof IDs.
+
+### SP4-R5. Project mutable roots once
+
+- [x] Make solver reads use current Context/Substitution projections.
+- [x] Project TypedOccurrence, Match-case, constraint, and candidate roots only
+      when their own dependency changes or at final freeze.
+- [x] Stop rewriting accepted JudgementDB propositions and derivations.
+- [x] Require terminal candidate materialization to use resolved immutable IDs.
+- [x] Reject unresolved final projections with source/constraint provenance.
+
+Exit criteria:
+
+- [x] Accepted evidence is byte-for-byte stable across later solver progress.
+- [x] Root mutation occurs only when its projection changes; validation scans do
+      not overwrite unchanged Context-bearing roots.
+- [x] Artifact publication sees only resolved semantic IDs.
+
+### SP4-R6. Restrict and verify bulk rebuilds
+
+- [x] Rename full rebuild declarations as bulk-load/relocation-only interfaces.
+- [x] Update artifact v78 readback, relocation, and dense publication callers to
+      use that interface.
+- [x] Assert that frontend lowering reports zero ContextDB and SubstitutionDB
+      index rebuilds.
+- [x] Keep runtime indexes, resolution projections, counters, and caches out of
+      artifact payloads.
+
+Exit criteria:
+
+- [x] IF8 reports `context_index_rebuilds=0` and
+      `substitution_index_rebuilds=0` during source compilation.
+- [x] Artifact readback performs at most one rebuild per directly populated
+      semantic store.
+
+### SP4-R7. Permanent verification and performance closure
+
+- [x] Add a C/API test for immutable Context and Substitution identity.
+- [x] Add a dependency test with independent Context subtrees; the targeted
+      pass must visit fewer Contexts than its source store.
+- [x] Add a no-op fixed-point test proving a clean resolver does no work.
+- [x] Run the complete #11/#12 and IF8 source/artifact/runtime boundaries.
+- [x] Confirm #13 and #16 remain at their documented support boundaries; do not
+      change their Issue status from this phase.
+- [x] Run all 37 or later integration tests and the dedicated IF8 benchmark.
+- [x] Record per-file added/deleted/net lines and before/after counters.
+
+Exit criteria:
+
+- [x] The full semantic suite and artifact determinism pass.
+- [x] IF8 remains below the preferred 10-second single-compile target.
+- [x] Expensive resolver work is proportional to changed Context/Substitution
+      dependencies, not classifier-solver rounds or total store size.
+- [x] Any remaining full rebuild has an explicit bulk-operation reason.
+
+## 16. Required Implementation Order
+
+Implement SP4-R0 through SP4-R7 in order. In particular:
+
+1. do not remove rebuild calls before immutable rebasing exists;
+2. do not add a generic root-relocation cache while accepted Judgement records
+   are still mutable;
+3. do not optimize away branch action validation required by #11/#12;
+4. do not claim #13 or #16 progress from an internal Context performance change;
+5. do not perform physical file splitting until semantic ownership and mutation
+   sites have stabilized.
+
+The first code change after measurement should enforce immutable Substitution
+identity and introduce the projection map. That change removes the reason for
+ordinary rebuilds. A conditional around the existing rebuild calls would only
+hide an invalid hash index and is explicitly rejected.
+
+## 17. SP4-R Completion Report
+
+### 17.1 Semantic result
+
+Context and Substitution records are now append-only semantic nodes. Resolving
+a provisional classifier interns a replacement Context; resolving a changed
+morphism interns a rebased Substitution. The old ID and payload remain valid for
+accepted proof edges. Validators recompute semantic key fingerprints, so
+post-insertion key mutation is rejected instead of hidden by an index rebuild.
+
+Accepted JudgementDB propositions and derivations are no longer relocated by
+later solver progress. Only compiler-local occurrence, constraint, pending, and
+candidate roots follow current projections. A root is mutated only when its ID
+actually changes.
+
+Binding identity and dependent classifier evidence remain deliberately
+distinct:
+
+- `BindingId` indexes the binder object and its Lambda/assumption owner;
+- a BindingId-indexed occurrence list finds classifier evidence;
+- the exact Context still selects the dependent fiber classifier;
+- branch pullback Substitutions remain the authority for reindexed fibers.
+
+IF8 verified this distinction: replacing the Context-indexed evidence lookup
+with only the owner classifier fails dependent branch reindexing. That invalid
+simplification was not retained.
+
+The owner/evidence index is compiler-transaction state. An existing immutable
+occurrence prefix is seeded once when a new transaction starts; new occurrences
+update it at publication. Rollback discards the transaction-local index with
+the compile workspace. Context resolution itself never reconstructs it.
+
+Context IDs are append-topological (`parent < child`). The implementation uses
+that existing invariant as the dependency order instead of storing a second
+parent/child graph. Every Context ID is inspected to validate ordering, but
+classifier resolution and semantic insertion occur only for dirty binders,
+their descendants, and newly appended Contexts.
+
+### 17.2 Performance and counters
+
+The dedicated benchmark used three measured source compilations:
+
+| Metric | Before SP4-R | After SP4-R | Result |
+|---|---:|---:|---:|
+| IF8 median wall time | 5,436 ms | 3,690 ms | 32.1% lower |
+| Original plan baseline | 208,028 ms | 3,690 ms | 56.4x faster |
+| Context resolution passes | 31 | 21 | dependency-triggered |
+| ContextDB index rebuilds | 31 | 0 | removed from lowering |
+| SubstitutionDB index rebuilds | 31 | 0 | removed from lowering |
+| Binding owner rebuilds, fresh compile | 31 | 0 | publication index |
+| Resolver requests / clean skips | not measured | 35 / 14 | no-op visible |
+| Dirty Context visits | all Contexts per pass | 2,711 | targeted work |
+| Context changes / inserts | not measured | 1,447 / 596 | explicit |
+| Substitution visits / rebases / inserts | all live actions per pass | 457 / 457 / 457 | immutable |
+| Changed root projections | not measured | 2,564 | actual ID changes |
+
+The final wall times were 3,733.734 ms, 3,639.074 ms, and 3,690.966 ms.
+The median user time was 3,672.960 ms and its system time was 16.004 ms.
+Stable non-Context counters were:
+
+```text
+term_formation=1095011 term_unique=12272 intern_probes=2019129
+exact_probes=1335665 alpha_compares=2015739 intern_rebuilds=2
+normalization_hits=436091 normalization_misses=4722
+constraint_generations=1 constraint_indexes=1 computation_generations=8
+enqueues=35556 pops=7757
+```
+
+### 17.3 Verification
+
+- Full integration suite: 39/39 passed in 75,770 ms.
+- Dedicated IF8 source, negative-proof, publication, readback, artifact
+  equality, and determinism phases passed.
+- Dependent Match source/publication/readback/runtime/negative tests passed.
+- Context category and large direct reindex laws passed.
+- Context/Substitution immutable identity and repeated-rebase interning passed.
+- Incremental tracing confirmed initial/final global passes, a targeted
+  BindingId pass, an untouched independent subtree, and clean request skips.
+- Artifact flow passed with dense publication treated as an explicit bulk
+  relocation boundary.
+- `A_PROGRAM_BINDER_OWNER_VALIDATE=1` passed the IF8 suite.
+- Issue #13 and the new #16 audit remain non-goals. No support status or Issue
+  state was changed by SP4-R.
+
+### 17.4 Line changes
+
+Implementation and permanent tests add 967 lines, delete 224 lines, and have a
+net change of +743 lines. The plan document is reported separately below.
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `include/a_program/graph/compile_metadata.h` | 10 | 0 | +10 |
+| `include/a_program/kernel/context.h` | 16 | 2 | +14 |
+| `include/a_program/kernel/judgement/db.h` | 5 | 0 | +5 |
+| `src/artifact/publication/dense_publication.inc` | 8 | 1 | +7 |
+| `src/artifact/relocation.c` | 3 | 1 | +2 |
+| `src/artifact/wire_v78.c` | 2 | 2 | 0 |
+| `src/driver/read_file.c` | 19 | 0 | +19 |
+| `src/frontend/lowering/constraint_solver.inc` | 317 | 140 | +177 |
+| `src/frontend/lowering/context_and_type_lowering.inc` | 246 | 69 | +177 |
+| `src/frontend/lowering/finalization_and_entrypoints.inc` | 3 | 0 | +3 |
+| `src/frontend/lowering/graph_construction.inc` | 44 | 4 | +40 |
+| `src/kernel/context.c` | 78 | 3 | +75 |
+| `src/kernel/typing/candidate_publication.inc` | 47 | 0 | +47 |
+| `tests/checks/context_category_check.c` | 6 | 0 | +6 |
+| `tests/checks/context_substitution_immutability_check.c` | 67 | 0 | +67 |
+| `tests/integration/test_context_resolution_incremental.sh` | 63 | 0 | +63 |
+| `tests/integration/test_context_substitution_immutability.sh` | 10 | 0 | +10 |
+| `tests/performance/benchmark_if8_single_compile.sh` | 23 | 2 | +21 |
+| Plan document | 510 | 10 | +500 |

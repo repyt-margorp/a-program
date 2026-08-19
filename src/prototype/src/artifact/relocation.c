@@ -345,7 +345,9 @@ int prototype_artifact_apply_term_relocations(
 				return -1;
 			}
 		}
-		if (prototype_context_db_rebuild_index(target_contexts) != 0) {
+		if (prototype_context_db_rebuild_runtime_index_after_bulk_load(
+				target_contexts
+			) != 0) {
 			return -1;
 		}
 		for (size_t j = 0;

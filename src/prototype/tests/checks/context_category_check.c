@@ -1080,6 +1080,12 @@ int main(void) {
 			large_substitutions.substitution_count++;
 			large_context = extended_context;
 		}
+		if (prototype_substitution_db_rebuild_runtime_index_after_bulk_load(
+				&large_substitutions
+			) != 0) {
+			fprintf(stderr, "failed to finalize large substitution fixture\n");
+			return 1;
+		}
 		uint32_t binding_count_before = large_terms.next_binding_id;
 		if (prototype_term_var(
 				&large_terms, 1000 + LARGE_CONTEXT_DEPTH - 1, &large_variable

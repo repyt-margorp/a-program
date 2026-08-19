@@ -513,6 +513,18 @@ static int operation_solver_reset_classifier_state(struct compile_context* ctx) 
 	}
 	struct operation_classifier_solver* solver = &ctx->classifier_solver;
 	uint64_t revision = solver->solution_revision + 1;
+	for (uint32_t i = 0;
+		i < ctx->metadata->typed_occurrences.occurrence_count;
+		++i) {
+		const struct prototype_typed_occurrence* occurrence =
+			&ctx->metadata->typed_occurrences.occurrences[i];
+		if (occurrence->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
+			solver->solutions[i].classifier != PROTOTYPE_INVALID_ID) {
+			operation_context_binding_dependency_changed(
+				ctx, occurrence->binding_id
+			);
+		}
+	}
 	memset(solver, 0, sizeof(*solver));
 	solver->initialized = 1;
 	solver->initialized_occurrence_count =
@@ -546,7 +558,6 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	}
 	ctx->metadata->constraint_generation_pass_count++;
 	struct operation_constraint_db* constraints = &ctx->constraints;
-	ctx->context_resolution_valid = 0;
 	memset(constraints, 0, sizeof(*constraints));
 	for (uint32_t i = 0; i < 4096; ++i) {
 		constraints->first_dependent_constraint[i] = PROTOTYPE_INVALID_ID;
@@ -957,7 +968,8 @@ static int operation_solver_refresh_classifier_constraints(
 			constraint->source_occurrence
 		].context_id;
 	}
-	ctx->context_resolution_valid = 0;
+	/* Constraint records follow occurrence Context roots. Updating that derived
+	 * reference does not change a Context object's parent or binder classifier. */
 	return operation_constraint_db_validate(ctx);
 }
 
@@ -2944,6 +2956,9 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 			input_value_classifier
 		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		continuation_occurrence->binder_classifier = input_value_classifier;
+		operation_context_binding_dependency_changed(
+			ctx, continuation_occurrence->binding_id
+		);
 		*p_changed = 1;
 		if (operation_solver_enqueue_dependents(
 			ctx, continuation_occurrence_id
@@ -3112,6 +3127,7 @@ static int operation_solver_propagate_clause_computation_fold_input(
 				handle_operation->fold_return_ast_binder_id &&
 			operation->binder_classifier == PROTOTYPE_INVALID_ID) {
 			operation->binder_classifier = input_view.result;
+			operation_context_binding_dependency_changed(ctx, operation->binding_id);
 			*p_changed = 1;
 			if (operation_solver_enqueue_dependents(ctx, operation_id) != 0) {
 				return -1;
@@ -3479,6 +3495,9 @@ static int operation_solver_propagate_clause_computation_fold_input(
 				operation_domain
 			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			lambda_operation->binder_classifier = operation_domain;
+			operation_context_binding_dependency_changed(
+				ctx, lambda_operation->binding_id
+			);
 			*p_changed = 1;
 			if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
 				return -1;
@@ -3501,6 +3520,9 @@ static int operation_solver_propagate_clause_computation_fold_input(
 		}
 			if (lambda_operation->binder_classifier == PROTOTYPE_INVALID_ID) {
 				lambda_operation->binder_classifier = continuation_binder_classifier;
+				operation_context_binding_dependency_changed(
+					ctx, lambda_operation->binding_id
+				);
 				*p_changed = 1;
 				if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
 					return -1;
@@ -3511,6 +3533,9 @@ static int operation_solver_propagate_clause_computation_fold_input(
 					continuation_binder_classifier
 				)) {
 				lambda_operation->binder_classifier = continuation_binder_classifier;
+				operation_context_binding_dependency_changed(
+					ctx, lambda_operation->binding_id
+				);
 				*p_changed = 1;
 				if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
 					return -1;
@@ -3681,6 +3706,9 @@ static int operation_solver_propagate_clause_computation_fold_input(
 							classifier
 						 ).status == PROTOTYPE_TERM_CONVERSION_EQUAL))) {
 						lambda_operation->binder_classifier = classifier;
+						operation_context_binding_dependency_changed(
+							ctx, lambda_operation->binding_id
+						);
 						*p_changed = 1;
 						if (operation_solver_enqueue_dependents(
 								ctx, lambda_operation_id
@@ -3695,6 +3723,9 @@ static int operation_solver_propagate_clause_computation_fold_input(
 							classifier
 						)) {
 						lambda_operation->binder_classifier = classifier;
+						operation_context_binding_dependency_changed(
+							ctx, lambda_operation->binding_id
+						);
 						*p_changed = 1;
 						if (operation_solver_enqueue_dependents(
 								ctx, lambda_operation_id
@@ -5079,6 +5110,12 @@ static int operation_solver_pullback_branch_operations(
 		operation->context_action_substitution = action;
 		operation->core_term = projected_core;
 		ctx->classifier_hints[operation_id] = known_classifier;
+		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
+			operation->binder_classifier != binder_classifier) {
+			operation_context_binding_dependency_changed(
+				ctx, operation->binding_id
+			);
+		}
 		operation->binder_classifier = binder_classifier;
 		ctx->classifier_solver.solutions[operation_id].classifier = classifier;
 		ctx->classifier_solver.solutions[operation_id].effect_row = effect_row;
@@ -5209,7 +5246,6 @@ static int operation_solver_pullback_branch_operations(
 			PROTOTYPE_INDEX_REFINEMENT_SOLVED;
 	}
 	ctx->classifier_solver.solution_revision++;
-	ctx->context_resolution_valid = 0;
 	return 0;
 }
 
@@ -10969,37 +11005,47 @@ static int operation_solver_resolve_contexts(
 			PROTOTYPE_SUBSTITUTION_CAPACITY) {
 		return -1;
 	}
+	ctx->metadata->context_resolution_request_count++;
 	if (ctx->context_resolution_valid &&
-		ctx->context_resolution_solution_revision ==
-			ctx->classifier_solver.solution_revision &&
+		ctx->context_resolution_dependency_revision ==
+			ctx->context_dependency_revision &&
 		ctx->context_resolution_context_count ==
 			ctx->metadata->contexts.context_count &&
-		ctx->context_resolution_substitution_count ==
-			ctx->metadata->substitutions.substitution_count &&
 		(!finalize || ctx->context_resolution_finalized)) {
+		ctx->metadata->context_resolution_skip_count++;
 		return 0;
 	}
 	ctx->metadata->context_resolution_pass_count++;
-	if (operation_binder_owners_rebuild(ctx) != 0) {
+	if (operation_binder_owners_ensure(ctx) != 0) {
 		return -1;
 	}
-	/* Context resolution rewrites the Context endpoints stored by existing
-	 * substitutions.  Their IDs remain stable for proof edges, so invalidate
-	 * reindex results before deriving classifiers from those mutable endpoints. */
-	memset(
-		ctx->metadata->substitutions.reindex_cache,
-		0,
-		sizeof(ctx->metadata->substitutions.reindex_cache)
-	);
+	/* Existing substitutions are immutable.  Rebased morphisms are interned as
+	 * new records, so reindex results keyed by old IDs remain valid. */
 	uint32_t relocation[PROTOTYPE_CONTEXT_CAPACITY];
+	uint8_t context_dirty[PROTOTYPE_CONTEXT_CAPACITY];
 	uint8_t context_semantics_changed[PROTOTYPE_CONTEXT_CAPACITY];
 	uint8_t substitution_live[PROTOTYPE_SUBSTITUTION_CAPACITY];
-	uint8_t substitution_preserved[PROTOTYPE_SUBSTITUTION_CAPACITY];
+	uint8_t substitution_rebased[PROTOTYPE_SUBSTITUTION_CAPACITY];
+	uint32_t substitution_relocation[PROTOTYPE_SUBSTITUTION_CAPACITY];
 	uint32_t first_lift_by_source[PROTOTYPE_CONTEXT_CAPACITY];
 	uint32_t next_lift[PROTOTYPE_SUBSTITUTION_CAPACITY];
 	size_t source_count = ctx->metadata->contexts.context_count;
 	size_t substitution_count =
 		ctx->metadata->substitutions.substitution_count;
+	int all_contexts_dirty = ctx->context_dependencies_all_dirty ||
+		ctx->context_resolution_context_count == 0 ||
+		(finalize && !ctx->context_resolution_finalized);
+	int trace_context_resolution =
+		getenv("A_PROGRAM_CONTEXT_RESOLUTION_TRACE") != NULL;
+	if (trace_context_resolution) {
+		fprintf(
+			stderr,
+			"A_PROGRAM_CONTEXT_RESOLUTION_TRACE 1 revision=%" PRIu64
+			" source_contexts=%zu all_dirty=%d finalize=%d\n",
+			ctx->context_dependency_revision, source_count,
+			all_contexts_dirty, finalize
+		);
+	}
 	memset(substitution_live, 0, sizeof(substitution_live));
 #define MARK_LIVE_SUBSTITUTION(substitution_id) \
 	do { \
@@ -11044,22 +11090,8 @@ static int operation_solver_resolve_contexts(
 			);
 		}
 	}
-	for (size_t i = 0; i < ctx->judgement->derivation_count; ++i) {
-		const struct prototype_judgement_derivation* derivation =
-			&ctx->judgement->derivations[i];
-		if (derivation->semantic_action_kind ==
-				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
-			MARK_LIVE_SUBSTITUTION(derivation->semantic_action_id);
-		}
-		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
-			if (derivation->premises[j].semantic_action_kind ==
-					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
-				MARK_LIVE_SUBSTITUTION(
-					derivation->premises[j].semantic_action_id
-				);
-			}
-		}
-	}
+	/* Accepted Derivations retain the immutable Context morphisms under which
+	 * they were checked. Only mutable candidate roots participate in rebasing. */
 	for (size_t i = 0;
 		i < ctx->judgement_delta.derivation_candidate_count;
 		++i) {
@@ -11116,6 +11148,7 @@ static int operation_solver_resolve_contexts(
 		first_lift_by_source[substitution->source_context] = substitution_id;
 	}
 	relocation[0] = 0;
+	context_dirty[0] = all_contexts_dirty;
 	context_semantics_changed[0] = 0;
 	for (uint32_t context_id = 1; context_id < source_count; ++context_id) {
 		const struct prototype_context* context = prototype_context_get(
@@ -11126,6 +11159,31 @@ static int operation_solver_resolve_contexts(
 				context_id, context ? context->parent : PROTOTYPE_INVALID_ID,
 				source_count);
 			return -1;
+		}
+		int binding_dirty = operation_context_binding_is_dirty(
+			ctx, context->binding_id
+		);
+		context_dirty[context_id] = all_contexts_dirty ||
+			context_id >= ctx->context_resolution_context_count ||
+			context_dirty[context->parent] ||
+			binding_dirty;
+		if (!context_dirty[context_id]) {
+			relocation[context_id] = context_id;
+			context_semantics_changed[context_id] = 0;
+			continue;
+		}
+		ctx->metadata->context_resolution_context_visit_count++;
+		if (trace_context_resolution) {
+			fprintf(
+				stderr,
+				"A_PROGRAM_CONTEXT_RESOLUTION_TRACE 1 revision=%" PRIu64
+				" context=%u parent=%u binding=%u cause=%s\n",
+				ctx->context_dependency_revision, context_id, context->parent,
+				context->binding_id,
+				all_contexts_dirty ? "global" :
+					(context_id >= ctx->context_resolution_context_count ? "new" :
+						(binding_dirty ? "binding" : "parent"))
+			);
 		}
 		uint32_t classifier = prototype_context_classifier_term(context);
 		uint32_t classifier_variable =
@@ -11200,9 +11258,23 @@ static int operation_solver_resolve_contexts(
 		}
 		if (classifier_variable != PROTOTYPE_INVALID_ID) {
 			int occurrence_classifier_resolved = 0;
-			for (uint32_t operation_id = 0;
-				operation_id < ctx->metadata->typed_occurrences.occurrence_count;
-				++operation_id) {
+			struct operation_binder_owner_entry* evidence_owner =
+				operation_binder_owner_find(ctx, context->binding_id);
+			for (uint32_t evidence_id = evidence_owner ?
+					evidence_owner->first_classifier_evidence :
+					PROTOTYPE_INVALID_ID;
+				evidence_id != PROTOTYPE_INVALID_ID;
+				evidence_id =
+					ctx->binder_classifier_evidence[evidence_id].next) {
+				if (evidence_id >= ctx->binder_classifier_evidence_count) {
+					return -1;
+				}
+				uint32_t operation_id =
+					ctx->binder_classifier_evidence[evidence_id].occurrence_id;
+				if (operation_id >=
+					ctx->metadata->typed_occurrences.occurrence_count) {
+					return -1;
+				}
 				const struct prototype_typed_occurrence* operation =
 					&ctx->metadata->typed_occurrences.occurrences[operation_id];
 				uint32_t operation_classifier =
@@ -11320,6 +11392,7 @@ static int operation_solver_resolve_contexts(
 				}
 			}
 		}
+		size_t context_count_before = ctx->metadata->contexts.context_count;
 		if (prototype_context_extend(
 				&ctx->metadata->contexts,
 				relocation[context->parent],
@@ -11332,6 +11405,12 @@ static int operation_solver_resolve_contexts(
 			fprintf(stderr, "context resolution extension failed context=%u parent=%u classifier=%u variable=%u\n",
 				context_id, context->parent, classifier, classifier_variable);
 			return -1;
+		}
+		if (ctx->metadata->contexts.context_count != context_count_before) {
+			ctx->metadata->context_resolution_context_insert_count++;
+		}
+		if (relocation[context_id] != context_id) {
+			ctx->metadata->context_resolution_context_change_count++;
 		}
 		context_semantics_changed[context_id] =
 			context_semantics_changed[context->parent] ||
@@ -11348,7 +11427,11 @@ static int operation_solver_resolve_contexts(
 		if (context_id >= source_count) {
 			return -1;
 		}
-		ctx->metadata->typed_occurrences.occurrences[i].context_id = relocation[context_id];
+		if (relocation[context_id] != context_id) {
+			ctx->metadata->typed_occurrences.occurrences[i].context_id =
+				relocation[context_id];
+			ctx->metadata->context_resolution_root_projection_count++;
+		}
 	}
 	for (uint32_t i = 0; i < ctx->constraints.constraint_count; ++i) {
 		struct operation_constraint* constraint =
@@ -11357,7 +11440,10 @@ static int operation_solver_resolve_contexts(
 		if (context_id >= source_count) {
 			return -1;
 		}
-		constraint->context_id = relocation[context_id];
+		if (relocation[context_id] != context_id) {
+			constraint->context_id = relocation[context_id];
+			ctx->metadata->context_resolution_root_projection_count++;
+		}
 		if (constraint->domain ==
 				OPERATION_CONSTRAINT_DOMAIN_BRANCH_REFINEMENT) {
 			uint32_t source_context =
@@ -11369,11 +11455,17 @@ static int operation_solver_resolve_contexts(
 				 refined_context >= source_count)) {
 				return -1;
 			}
-			constraint->payload.branch_refinement.source_context =
-				relocation[source_context];
+			if (relocation[source_context] != source_context) {
+				constraint->payload.branch_refinement.source_context =
+					relocation[source_context];
+				ctx->metadata->context_resolution_root_projection_count++;
+			}
 			if (refined_context != PROTOTYPE_INVALID_ID) {
-				constraint->payload.branch_refinement.refined_context =
-					relocation[refined_context];
+				if (relocation[refined_context] != refined_context) {
+					constraint->payload.branch_refinement.refined_context =
+						relocation[refined_context];
+					ctx->metadata->context_resolution_root_projection_count++;
+				}
 			}
 		}
 	}
@@ -11452,28 +11544,42 @@ static int operation_solver_resolve_contexts(
 		if (context_id >= source_count) {
 			return -1;
 		}
-		ctx->metadata->typed_occurrences.cases[i].context_id = relocation[context_id];
+		if (relocation[context_id] != context_id) {
+			ctx->metadata->typed_occurrences.cases[i].context_id =
+				relocation[context_id];
+			ctx->metadata->context_resolution_root_projection_count++;
+		}
 	}
 	for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.fold_clause_count; ++i) {
 		uint32_t context_id = ctx->metadata->typed_occurrences.fold_clauses[i].context_id;
 		if (context_id >= source_count) {
 			return -1;
 		}
-		ctx->metadata->typed_occurrences.fold_clauses[i].context_id = relocation[context_id];
+		if (relocation[context_id] != context_id) {
+			ctx->metadata->typed_occurrences.fold_clauses[i].context_id =
+				relocation[context_id];
+			ctx->metadata->context_resolution_root_projection_count++;
+		}
 	}
 	for (uint32_t i = 0; i < ctx->pending_binder_assumption_count; ++i) {
 		uint32_t context_id = ctx->pending_binder_assumptions[i].context_id;
 		if (context_id >= source_count) {
 			return -1;
 		}
-		ctx->pending_binder_assumptions[i].context_id = relocation[context_id];
+		if (relocation[context_id] != context_id) {
+			ctx->pending_binder_assumptions[i].context_id = relocation[context_id];
+			ctx->metadata->context_resolution_root_projection_count++;
+		}
 	}
 	for (uint32_t i = 0; i < ctx->pending_declaration_fact_count; ++i) {
 		uint32_t context_id = ctx->pending_declaration_facts[i].context_id;
 		if (context_id >= source_count) {
 			return -1;
 		}
-		ctx->pending_declaration_facts[i].context_id = relocation[context_id];
+		if (relocation[context_id] != context_id) {
+			ctx->pending_declaration_facts[i].context_id = relocation[context_id];
+			ctx->metadata->context_resolution_root_projection_count++;
+		}
 	}
 	for (size_t i = 0; i < ctx->judgement_delta.proposition_count; ++i) {
 		struct prototype_judgement_proposition* proposition =
@@ -11482,57 +11588,54 @@ static int operation_solver_resolve_contexts(
 		if (context_id >= source_count) {
 			return -1;
 		}
-		proposition->context_id = relocation[context_id];
+		if (relocation[context_id] != context_id) {
+			proposition->context_id = relocation[context_id];
+			ctx->metadata->context_resolution_root_projection_count++;
+		}
 	}
-	/* Context canonicalization changes only the object identities referenced by
-	 * a substitution, not the identity of the Context morphism itself. Preserve
-	 * substitution IDs so their CwF evidence and Derivation edges remain
-	 * attached, then rebuild the structural lookup index below. */
-	for (uint32_t i = 0;
-		i < (uint32_t)ctx->metadata->substitutions.substitution_count;
-		++i) {
+	/* Rebase live morphisms into new immutable records. The original payload and
+	 * ID remain valid for already accepted proof edges. Components are ordered
+	 * before users by the SubstitutionDB invariant, so one forward pass suffices. */
+	for (uint32_t i = 0; i < substitution_count; ++i) {
+		substitution_relocation[i] = i;
+		substitution_rebased[i] = 0;
 		const struct prototype_substitution* substitution =
-			&ctx->metadata->substitutions.substitutions[i];
-		if (!substitution_live[i]) {
-			substitution_preserved[i] = 1;
+			prototype_substitution_get(&ctx->metadata->substitutions, i);
+		if (!substitution || !substitution_live[i]) {
 			continue;
 		}
 		if (substitution->source_context >= source_count ||
-			substitution->target_context >= source_count) {
+			substitution->target_context >= source_count ||
+			((substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND ||
+			  substitution->kind == PROTOTYPE_SUBSTITUTION_COMPOSE) &&
+			 substitution->first >= i) ||
+			(substitution->kind == PROTOTYPE_SUBSTITUTION_COMPOSE &&
+			 substitution->second >= i)) {
 			return -1;
 		}
-		substitution_preserved[i] =
-			context_semantics_changed[substitution->source_context] ||
+		uint32_t source_context = relocation[substitution->source_context];
+		uint32_t target_context = relocation[substitution->target_context];
+		uint32_t first = substitution->first == PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_INVALID_ID : substitution_relocation[substitution->first];
+		uint32_t second = substitution->second == PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_INVALID_ID : substitution_relocation[substitution->second];
+		if (context_semantics_changed[substitution->source_context] ||
 			context_semantics_changed[substitution->target_context] ||
 			((substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND ||
 			  substitution->kind == PROTOTYPE_SUBSTITUTION_COMPOSE) &&
-			 (substitution->first >= i ||
-			  substitution_preserved[substitution->first])) ||
+			 !substitution_rebased[substitution->first]) ||
 			(substitution->kind == PROTOTYPE_SUBSTITUTION_COMPOSE &&
-			 (substitution->second >= i ||
-			  substitution_preserved[substitution->second]));
-	}
-	for (uint32_t i = 0;
-		i < (uint32_t)ctx->metadata->substitutions.substitution_count;
-		++i) {
-		struct prototype_substitution* substitution =
-			&ctx->metadata->substitutions.substitutions[i];
-		if (!substitution_live[i] || substitution_preserved[i]) {
+			 !substitution_rebased[substitution->second])) {
 			continue;
 		}
-		if (substitution->source_context >= source_count ||
-			substitution->target_context >= source_count) {
-			return -1;
-		}
-		substitution->source_context = relocation[substitution->source_context];
-		substitution->target_context = relocation[substitution->target_context];
+		uint32_t term_classifier = substitution->term_classifier;
 		if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND &&
 			substitution->term < ctx->terms->term_count &&
 			ctx->terms->terms[substitution->term].tag == PROTOTYPE_TERM_VAR) {
 			uint32_t binding_context_id;
 			if (prototype_context_find_binding(
 					&ctx->metadata->contexts,
-					substitution->source_context,
+					source_context,
 					ctx->terms->terms[substitution->term].as.var.binding_id,
 					&binding_context_id
 				) != 0) {
@@ -11540,7 +11643,7 @@ static int operation_solver_resolve_contexts(
 					"context resolution found out-of-scope substitution term "
 					"substitution=%u source=%u target=%u first=%u term=%u "
 					"binding=%u\n",
-					i, substitution->source_context, substitution->target_context,
+					i, source_context, target_context,
 					substitution->first, substitution->term,
 					ctx->terms->terms[substitution->term].as.var.binding_id);
 				return -1;
@@ -11561,19 +11664,119 @@ static int operation_solver_resolve_contexts(
 				if (finalize) {
 					return -1;
 				}
-				substitution->term_classifier = PROTOTYPE_INVALID_ID;
-				continue;
+					term_classifier = PROTOTYPE_INVALID_ID;
+				} else {
+				term_classifier = binding_classifier;
+				}
 			}
-			/* The extension term is checked in the relocated source Context. Its
-			 * classifier is derived from that binding, not stable payload carried
-			 * across Context classifier resolution. */
-			substitution->term_classifier = binding_classifier;
+		if (source_context == substitution->source_context &&
+			target_context == substitution->target_context &&
+			first == substitution->first && second == substitution->second &&
+			term_classifier == substitution->term_classifier) {
+			substitution_rebased[i] = 1;
+			continue;
+		}
+		ctx->metadata->context_resolution_substitution_visit_count++;
+		size_t substitution_count_before =
+			ctx->metadata->substitutions.substitution_count;
+		if (prototype_substitution_rebase(
+				&ctx->metadata->substitutions,
+				i,
+				source_context,
+				target_context,
+				first,
+				second,
+				term_classifier,
+				&substitution_relocation[i]
+			) != 0) {
+			return -1;
+		}
+		substitution_rebased[i] = 1;
+		if (ctx->metadata->substitutions.substitution_count !=
+			substitution_count_before) {
+			ctx->metadata->context_resolution_substitution_insert_count++;
+		}
+		if (substitution_relocation[i] != i) {
+			ctx->metadata->context_resolution_substitution_rebase_count++;
 		}
 	}
-	/* A semantically changed Context preserves existing Substitution IDs because
-	 * committed proof edges still denote morphisms between the old Contexts.
-	 * Mutable branch constraints, however, describe the action they currently
-	 * reference, so derive their endpoints from that action after relocation. */
+	for (uint32_t i = 0;
+		i < ctx->metadata->typed_occurrences.occurrence_count;
+		++i) {
+		struct prototype_typed_occurrence* operation =
+			&ctx->metadata->typed_occurrences.occurrences[i];
+		if (operation->context_action_substitution != PROTOTYPE_INVALID_ID) {
+			if (operation->context_action_substitution >= substitution_count ||
+				!substitution_live[operation->context_action_substitution]) {
+				return -1;
+			}
+			uint32_t action = operation->context_action_substitution;
+			operation->context_action_substitution = substitution_relocation[action];
+			if (operation->context_action_substitution != action) {
+				ctx->metadata->context_resolution_root_projection_count++;
+			}
+		}
+	}
+	for (uint32_t i = 0;
+		i < ctx->metadata->typed_occurrences.case_count;
+		++i) {
+		struct prototype_typed_occurrence_match_case* operation_case =
+			&ctx->metadata->typed_occurrences.cases[i];
+		if (prototype_typed_occurrence_match_case_is_solved(operation_case)) {
+			if (operation_case->refinement_substitution >= substitution_count ||
+				!substitution_live[operation_case->refinement_substitution]) {
+				return -1;
+			}
+			uint32_t action = operation_case->refinement_substitution;
+			operation_case->refinement_substitution = substitution_relocation[action];
+			if (operation_case->refinement_substitution != action) {
+				ctx->metadata->context_resolution_root_projection_count++;
+			}
+		}
+	}
+	int candidate_actions_changed = 0;
+	for (size_t i = 0;
+		i < ctx->judgement_delta.derivation_candidate_count;
+		++i) {
+		struct prototype_judgement_derivation_candidate* derivation =
+			&ctx->judgement_delta.derivation_candidates[i];
+		if (derivation->semantic_action_kind ==
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+			if (derivation->semantic_action_id >= substitution_count ||
+				!substitution_live[derivation->semantic_action_id]) {
+				return -1;
+			}
+			uint32_t action = derivation->semantic_action_id;
+			derivation->semantic_action_id = substitution_relocation[action];
+			if (derivation->semantic_action_id != action) {
+				candidate_actions_changed = 1;
+				ctx->metadata->context_resolution_root_projection_count++;
+			}
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			if (derivation->premises[j].semantic_action_kind ==
+					PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION) {
+				uint32_t action = derivation->premises[j].semantic_action_id;
+				if (action >= substitution_count || !substitution_live[action]) {
+					return -1;
+				}
+				derivation->premises[j].semantic_action_id =
+					substitution_relocation[action];
+				if (derivation->premises[j].semantic_action_id != action) {
+					candidate_actions_changed = 1;
+					ctx->metadata->context_resolution_root_projection_count++;
+				}
+			}
+		}
+	}
+	if (candidate_actions_changed &&
+		prototype_judgement_delta_rebuild_candidate_index(
+			&ctx->judgement_delta
+		) != 0) {
+		return -1;
+	}
+	/* Mutable branch constraints follow the rebased action. Accepted proof edges
+	 * continue to denote their original immutable morphisms. */
 	for (uint32_t offset = 0;
 		offset < ctx->constraints.branch_refinement_constraint_count;
 		++offset) {
@@ -11586,6 +11789,16 @@ static int operation_solver_resolve_contexts(
 			constraint->payload.branch_refinement.refinement_status !=
 				PROTOTYPE_INDEX_REFINEMENT_SOLVED) {
 			continue;
+		}
+		uint32_t old_action =
+			constraint->payload.branch_refinement.substitution;
+		if (old_action >= substitution_count || !substitution_live[old_action]) {
+			return -1;
+		}
+		constraint->payload.branch_refinement.substitution =
+			substitution_relocation[old_action];
+		if (constraint->payload.branch_refinement.substitution != old_action) {
+			ctx->metadata->context_resolution_root_projection_count++;
 		}
 		const struct prototype_substitution* action = prototype_substitution_get(
 			&ctx->metadata->substitutions,
@@ -11614,16 +11827,14 @@ static int operation_solver_resolve_contexts(
 		if (!action) {
 			return -1;
 		}
-		if (action->source_context == operation->context_id) {
-			continue;
+		if (action->source_context != operation->context_id) {
+			/* A changed binder classifier invalidates this mutable projection. The
+			 * original immutable action remains available to accepted evidence, while
+			 * ordinary constraints rebuild the occurrence in its final Context. */
+			operation->context_action_substitution = PROTOTYPE_INVALID_ID;
+			operation->source_core_term = PROTOTYPE_INVALID_ID;
+			operation->source_classifier = PROTOTYPE_INVALID_ID;
 		}
-		/* The occurrence moved to a Context whose dependent classifier changed.
-		 * Its old action remains valid only between the old immutable Contexts;
-		 * the final occurrence is proved directly from its rebuilt children or
-		 * final Context binding. */
-		operation->context_action_substitution = PROTOTYPE_INVALID_ID;
-		operation->source_core_term = PROTOTYPE_INVALID_ID;
-		operation->source_classifier = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < ctx->judgement_delta.derivation_candidate_count; ++i) {
 		struct prototype_judgement_derivation_candidate* proof =
@@ -11653,52 +11864,18 @@ static int operation_solver_resolve_contexts(
 		if (context_id >= source_count) {
 			return -1;
 		}
-		ctx->judgement_delta.computation_constraints[i].context_id =
-			relocation[context_id];
-	}
-	for (size_t i = 0; i < ctx->judgement->proposition_count; ++i) {
-		struct prototype_judgement_proposition* proposition =
-			&ctx->judgement->propositions[i];
-		uint32_t context_id = proposition->context_id;
-		if (context_id >= source_count) {
-			return -1;
-		}
-		proposition->context_id = relocation[context_id];
-	}
-	for (size_t i = 0; i < ctx->judgement->derivation_candidate_count; ++i) {
-		struct prototype_judgement_derivation_candidate* proof = &ctx->judgement->derivation_candidates[i];
-		if (proof->conclusion_proposition_id >=
-			ctx->judgement->proposition_count) {
-			return -1;
-		}
-		proof->conclusion = &ctx->judgement->propositions[
-			proof->conclusion_proposition_id
-		];
-		if (proof->semantic_action_kind ==
-				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION &&
-			((proof->proof_kind ==
-					PROTOTYPE_JUDGEMENT_PROOF_MATCH_PATTERN_ASSUMPTION ?
-				proof->premise_count != 0 : proof->premise_count != 1) ||
-			 proof->semantic_action_id >=
-				ctx->metadata->substitutions.substitution_count)) {
-			return -1;
+		if (relocation[context_id] != context_id) {
+			ctx->judgement_delta.computation_constraints[i].context_id =
+				relocation[context_id];
+			ctx->metadata->context_resolution_root_projection_count++;
 		}
 	}
-	if (prototype_context_db_rebuild_index(
-			&ctx->metadata->contexts
-		) != 0 || prototype_substitution_db_rebuild_index(
-			&ctx->metadata->substitutions
-		) != 0) {
-		return -1;
-	}
-	ctx->metadata->context_index_rebuild_count++;
-	ctx->metadata->substitution_index_rebuild_count++;
-	ctx->context_resolution_solution_revision =
-		ctx->classifier_solver.solution_revision;
+	ctx->context_resolution_dependency_revision =
+		ctx->context_dependency_revision;
 	ctx->context_resolution_context_count =
 		ctx->metadata->contexts.context_count;
-	ctx->context_resolution_substitution_count =
-		ctx->metadata->substitutions.substitution_count;
+	ctx->context_dirty_binding_count = 0;
+	ctx->context_dependencies_all_dirty = 0;
 	ctx->context_resolution_valid = 1;
 	ctx->context_resolution_finalized = finalize;
 	return 0;
