@@ -511,14 +511,35 @@ int prototype_judgement_delta_record_computation_constraint(
 	} else {
 		return 1;
 	}
-	for (size_t i = 0; i < delta->computation_constraint_count; ++i) {
-		const struct prototype_judgement_computation_constraint* existing =
-			&delta->computation_constraints[i];
-		if (existing->kind == constraint.kind &&
-			existing->context_id == context_id &&
-			existing->occurrence_id == constraint.occurrence_id &&
-			existing->subject == subject) {
-			return 0;
+	if (constraint.occurrence_id != PROTOTYPE_INVALID_ID) {
+		if (constraint.occurrence_id >=
+			PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY) {
+			return -1;
+		}
+		uint32_t existing_id = delta->computation_constraint_by_occurrence[
+			constraint.occurrence_id
+		];
+		if (existing_id != PROTOTYPE_INVALID_ID) {
+			if (existing_id >= delta->computation_constraint_count) {
+				return -1;
+			}
+			const struct prototype_judgement_computation_constraint* existing =
+				&delta->computation_constraints[existing_id];
+			return existing->kind == constraint.kind &&
+				existing->context_id == context_id &&
+				existing->occurrence_id == constraint.occurrence_id &&
+				existing->subject == subject ? 0 : -1;
+		}
+	} else {
+		for (size_t i = 0; i < delta->computation_constraint_count; ++i) {
+			const struct prototype_judgement_computation_constraint* existing =
+				&delta->computation_constraints[i];
+			if (existing->kind == constraint.kind &&
+				existing->context_id == context_id &&
+				existing->occurrence_id == PROTOTYPE_INVALID_ID &&
+				existing->subject == subject) {
+				return 0;
+			}
 		}
 	}
 	if (reserve_slot(
@@ -527,8 +548,60 @@ int prototype_judgement_delta_record_computation_constraint(
 		) != 0) {
 		return -1;
 	}
-	delta->computation_constraints[delta->computation_constraint_count++] =
-		constraint;
+	uint32_t constraint_id = (uint32_t)delta->computation_constraint_count;
+	delta->computation_constraints[delta->computation_constraint_count++] = constraint;
+	if (constraint.occurrence_id != PROTOTYPE_INVALID_ID) {
+		delta->computation_constraint_by_occurrence[constraint.occurrence_id] =
+			constraint_id;
+	}
+	return 0;
+}
+
+int prototype_judgement_delta_rebuild_computation_constraint_index(
+	struct prototype_judgement_delta* delta
+) {
+	if (!delta || (delta->computation_constraint_count != 0 &&
+		!delta->computation_constraints)) {
+		return -1;
+	}
+	for (uint32_t i = 0;
+		i < PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY;
+		++i) {
+		delta->computation_constraint_by_occurrence[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (uint32_t i = 0; i < delta->computation_constraint_count; ++i) {
+		uint32_t occurrence = delta->computation_constraints[i].occurrence_id;
+		if (occurrence == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (occurrence >= PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY ||
+			delta->computation_constraint_by_occurrence[occurrence] !=
+				PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		delta->computation_constraint_by_occurrence[occurrence] = i;
+	}
+	return 0;
+}
+
+int prototype_judgement_delta_computation_constraint_for_occurrence(
+	const struct prototype_judgement_delta* delta,
+	uint32_t occurrence_id,
+	uint32_t* p_constraint_id
+) {
+	if (!delta || !p_constraint_id || occurrence_id >=
+		PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY) {
+		return -1;
+	}
+	uint32_t id = delta->computation_constraint_by_occurrence[occurrence_id];
+	if (id == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	if (id >= delta->computation_constraint_count ||
+		delta->computation_constraints[id].occurrence_id != occurrence_id) {
+		return -1;
+	}
+	*p_constraint_id = id;
 	return 0;
 }
 

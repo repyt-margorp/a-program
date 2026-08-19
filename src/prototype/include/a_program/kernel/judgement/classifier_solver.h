@@ -165,6 +165,14 @@ int prototype_judgement_delta_record_computation_constraint(
 	uint32_t context_id,
 	uint32_t subject
 );
+int prototype_judgement_delta_rebuild_computation_constraint_index(
+	struct prototype_judgement_delta* delta
+);
+int prototype_judgement_delta_computation_constraint_for_occurrence(
+	const struct prototype_judgement_delta* delta,
+	uint32_t occurrence_id,
+	uint32_t* p_constraint_id
+);
 
 int prototype_judgement_delta_generate_computation_constraints(
 	struct prototype_judgement_delta* delta,

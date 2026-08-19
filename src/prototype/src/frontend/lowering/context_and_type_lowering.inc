@@ -387,6 +387,9 @@ struct operation_constraint_db {
 	uint32_t computation_constraint_count;
 	uint32_t first_effect_constraint;
 	uint32_t effect_constraint_count;
+	uint32_t computation_constraint_for_occurrence[4096];
+	uint32_t first_motive_constraint[4096];
+	uint32_t next_motive_constraint[PROTOTYPE_COMPILER_CONSTRAINT_CAPACITY];
 	uint32_t first_dependent_constraint[4096];
 	struct {
 		uint32_t source_occurrence;
@@ -596,6 +599,11 @@ struct compile_context {
 	struct prototype_compile_metadata* metadata;
 	struct operation_constraint_db constraints;
 	struct operation_classifier_solver classifier_solver;
+	uint64_t context_resolution_solution_revision;
+	size_t context_resolution_context_count;
+	size_t context_resolution_substitution_count;
+	int context_resolution_valid;
+	int context_resolution_finalized;
 	/* Lowering facts are mutable compiler workspace and never frozen into a
 	 * typed occurrence or artifact. */
 	uint32_t classifier_hints[4096];
@@ -3342,18 +3350,26 @@ static int queue_declaration_fact(
 }
 
 static int classifier_contains_free_effect_row_variable(
-	const struct prototype_term_db* terms,
+	struct prototype_term_db* terms,
 	uint32_t classifier
 ) {
 	if (!terms || classifier >= terms->term_count) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < (uint32_t)terms->term_count; ++i) {
-		if (terms->terms[i].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
+	const uint32_t* variable_terms;
+	size_t variable_count;
+	if (prototype_term_effect_row_variable_terms(
+			terms, &variable_terms, &variable_count
+		) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < variable_count; ++i) {
+		uint32_t variable = variable_terms[i];
+		if (
 			prototype_term_contains_free_binding(
 				terms,
 				classifier,
-				terms->terms[i].as.effect_row_var.binding_id
+				terms->terms[variable].as.effect_row_var.binding_id
 			)) {
 			return 1;
 		}

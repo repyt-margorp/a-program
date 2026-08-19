@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -5010,6 +5011,67 @@ int main(int argc, char** argv) {
 		metadata.solver_residual_count,
 		metadata.solver_incomplete_count
 	);
+	if (getenv("A_PROGRAM_PERFORMANCE_COUNTERS")) {
+		struct prototype_term_intern_stats intern_stats;
+		struct prototype_term_normalization_cache_stats normalization_stats;
+		prototype_term_intern_get_stats(&term_db, &intern_stats);
+		prototype_term_normalization_cache_get_stats(
+			&term_db, &normalization_stats
+		);
+		fprintf(
+			stderr,
+			"A_PROGRAM_PERFORMANCE_COUNTERS 1 "
+			"term_formation=%" PRIu64 " term_unique=%" PRIu64 " "
+			"intern_probes=%" PRIu64 " exact_probes=%" PRIu64 " "
+			"alpha_compares=%" PRIu64 " "
+			"intern_rebuilds=%" PRIu64 " normalization_hits=%" PRIu64 " "
+			"normalization_misses=%" PRIu64 " normalization_probes=%" PRIu64 " "
+			"normalization_evictions=%" PRIu64 " normalization_invalidations=%" PRIu64 "\n",
+			intern_stats.formation_request_count,
+			intern_stats.unique_term_count,
+			intern_stats.bucket_probe_count,
+			intern_stats.exact_probe_count,
+			intern_stats.alpha_compare_count,
+			intern_stats.index_rebuild_count,
+			normalization_stats.hit_count,
+			normalization_stats.miss_count,
+			normalization_stats.probe_count,
+			normalization_stats.eviction_count,
+			normalization_stats.invalidation_count
+		);
+		for (int tag = 1; tag <= PROTOTYPE_TERM_DIMENSION_ACTION; ++tag) {
+			if (intern_stats.bucket_probes_by_tag[tag] == 0 &&
+				intern_stats.alpha_compares_by_tag[tag] == 0) {
+				continue;
+			}
+			fprintf(
+				stderr,
+				"A_PROGRAM_INTERN_TAG 1 tag=%d probes=%" PRIu64
+				" alpha_compares=%" PRIu64 "\n",
+				tag,
+				intern_stats.bucket_probes_by_tag[tag],
+				intern_stats.alpha_compares_by_tag[tag]
+			);
+		}
+		fprintf(
+			stderr,
+			"A_PROGRAM_SOLVER_COUNTERS 1 constraint_generations=%" PRIu64
+			" constraint_indexes=%" PRIu64
+			" computation_generations=%" PRIu64
+			" enqueues=%" PRIu64 " pops=%" PRIu64
+			" context_resolutions=%" PRIu64
+			" context_index_rebuilds=%" PRIu64
+			" substitution_index_rebuilds=%" PRIu64 "\n",
+			metadata.constraint_generation_pass_count,
+			metadata.constraint_index_pass_count,
+			metadata.computation_constraint_generation_pass_count,
+			metadata.constraint_enqueue_count,
+			metadata.constraint_pop_count,
+			metadata.context_resolution_pass_count,
+			metadata.context_index_rebuild_count,
+			metadata.substitution_index_rebuild_count
+		);
+	}
 	for (size_t i = 0; i < metadata.typed_occurrences.occurrence_count; ++i) {
 		const struct prototype_typed_occurrence* operation =
 			&metadata.typed_occurrences.occurrences[i];

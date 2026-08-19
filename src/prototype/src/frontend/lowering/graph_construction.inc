@@ -3977,11 +3977,19 @@ static int compile_ast_lambda_computation_ref(
 	ctx->metadata->typed_occurrences.occurrences[lambda_operation].binding_id = binding_id;
 	struct prototype_typed_occurrence* lambda_operation_node =
 		&ctx->metadata->typed_occurrences.occurrences[lambda_operation];
-	for (uint32_t i = 0; i < (uint32_t)ctx->terms->term_count; ++i) {
-		if (ctx->terms->terms[i].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
-			continue;
-		}
-		uint32_t row_binder = ctx->terms->terms[i].as.effect_row_var.binding_id;
+	const uint32_t* effect_row_variables;
+	size_t effect_row_variable_count;
+	if (prototype_term_effect_row_variable_terms(
+			ctx->terms,
+			&effect_row_variables,
+			&effect_row_variable_count
+		) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < effect_row_variable_count; ++i) {
+		uint32_t row_binder = ctx->terms->terms[
+			effect_row_variables[i]
+		].as.effect_row_var.binding_id;
 		if (!prototype_term_contains_free_binding(
 				ctx->terms, binder_classifier, row_binder
 			)) {
@@ -6383,7 +6391,15 @@ static const struct operation_constraint* operation_solver_motive_equation(
 	if (!constraints) {
 		return NULL;
 	}
-	for (uint32_t i = 0; i < constraints->classifier_constraint_count; ++i) {
+	if (match_operation >= 4096) {
+		return NULL;
+	}
+	for (uint32_t i = constraints->first_motive_constraint[match_operation];
+		i != PROTOTYPE_INVALID_ID;
+		i = constraints->next_motive_constraint[i]) {
+		if (i >= constraints->classifier_constraint_count) {
+			return NULL;
+		}
 		const struct operation_constraint* goal =
 			&constraints->constraints[i];
 		if (goal->kind == OPERATION_CONSTRAINT_MOTIVE_EQUATION &&
@@ -6427,6 +6443,7 @@ static int operation_solver_enqueue_constraint(
 	ctx->constraints.worklist[tail] = constraint_id;
 	ctx->constraints.constraint_queued[constraint_id] = 1;
 	ctx->constraints.worklist_count++;
+	ctx->metadata->constraint_enqueue_count++;
 	return 0;
 }
 
@@ -6452,62 +6469,6 @@ static int operation_solver_enqueue_dependents(
 	return 0;
 }
 
-static int operation_solver_enqueue_clause_fold_dependents(
-	struct compile_context* ctx,
-	uint32_t clause_body_occurrence
-) {
-	if (!ctx || !ctx->metadata ||
-		clause_body_occurrence >= ctx->metadata->typed_occurrences.occurrence_count) {
-		return -1;
-	}
-	for (uint32_t operation_id = 0;
-		operation_id < ctx->metadata->typed_occurrences.occurrence_count;
-		++operation_id) {
-		const struct prototype_typed_occurrence* fold =
-			&ctx->metadata->typed_occurrences.occurrences[operation_id];
-		if (fold->tag != PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
-			fold->fold_clause_count == 0 ||
-			(size_t)fold->first_fold_clause + fold->fold_clause_count >
-				ctx->metadata->typed_occurrences.fold_clause_count) {
-			continue;
-		}
-		int uses_clause_body = 0;
-		for (uint32_t clause = 0; clause < fold->fold_clause_count; ++clause) {
-			uint32_t clause_operation;
-			uint32_t clause_lambda;
-			uint32_t body_occurrence;
-			if (compile_fold_clause_occurrences(
-					ctx, operation_id, clause, &clause_operation, &clause_lambda,
-					&body_occurrence
-				) != 0) {
-				return -1;
-			}
-			if (body_occurrence == clause_body_occurrence) {
-				uses_clause_body = 1;
-				break;
-			}
-			(void)clause_operation;
-			(void)clause_lambda;
-		}
-		if (!uses_clause_body) {
-			continue;
-		}
-		for (uint32_t constraint_id = 0;
-			constraint_id < ctx->constraints.classifier_constraint_count;
-			++constraint_id) {
-			const struct operation_constraint* constraint =
-				&ctx->constraints.constraints[constraint_id];
-			if (constraint->kind ==
-					OPERATION_CONSTRAINT_COMPUTATION_FOLD_RESULT &&
-				constraint->payload.classifier.classifier_variable == operation_id &&
-				operation_solver_enqueue_constraint(ctx, constraint_id) != 0) {
-				return -1;
-			}
-		}
-	}
-	return 0;
-}
-
 static int operation_solver_pop_constraint(
 	struct compile_context* ctx,
 	uint32_t* p_constraint
@@ -6525,6 +6486,7 @@ static int operation_solver_pop_constraint(
 			PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY;
 	ctx->constraints.worklist_count--;
 	ctx->constraints.constraint_queued[*p_constraint] = 0;
+	ctx->metadata->constraint_pop_count++;
 	return 0;
 }
 
@@ -6619,9 +6581,7 @@ static int operation_solver_bind(
 	if (previous == PROTOTYPE_INVALID_ID) {
 		operation_solver_store_classifier_solution(ctx, variable, classifier);
 		*p_changed = 1;
-		return operation_solver_enqueue_dependents(ctx, variable) != 0 ||
-			operation_solver_enqueue_clause_fold_dependents(ctx, variable) != 0 ?
-				-1 : 0;
+		return operation_solver_enqueue_dependents(ctx, variable);
 	}
 	if (!(prototype_judgement_classifier_conversion(
 			ctx->terms, ctx->type_declarations, previous, classifier
@@ -6744,9 +6704,7 @@ static int operation_solver_bind_proven_classifier(
 	operation_solver_store_classifier_solution(ctx, variable, classifier);
 	ctx->classifier_hints[variable] = classifier;
 	*p_changed = 1;
-	return operation_solver_enqueue_dependents(ctx, variable) != 0 ||
-		operation_solver_enqueue_clause_fold_dependents(ctx, variable) != 0 ?
-			-1 : 0;
+	return operation_solver_enqueue_dependents(ctx, variable);
 }
 
 static int operation_solver_widen_computation_binding(
@@ -6786,9 +6744,7 @@ static int operation_solver_widen_computation_binding(
 	}
 	operation_solver_store_classifier_solution(ctx, operation, merged);
 	*p_changed = 1;
-	return operation_solver_enqueue_dependents(ctx, operation) != 0 ||
-		operation_solver_enqueue_clause_fold_dependents(ctx, operation) != 0 ?
-			-1 : 0;
+	return operation_solver_enqueue_dependents(ctx, operation);
 }
 
 static int operation_solver_continuation_effect_widening(
@@ -8417,13 +8373,40 @@ static int operation_solver_validate_classifier_goal(
 	}
 }
 
+static int operation_solver_index_computation_dependencies(
+	struct compile_context* ctx,
+	const struct operation_constraint* constraint,
+	uint32_t constraint_id
+) {
+	return operation_solver_add_constraint_dependency(
+			ctx,
+			constraint->payload.classifier.goal.computation.first_operation,
+			constraint_id
+		) != 0 || operation_solver_add_constraint_dependency(
+			ctx,
+			constraint->payload.classifier.goal.computation.second_operation,
+			constraint_id
+		) != 0 || operation_solver_add_constraint_dependency(
+			ctx,
+			constraint->payload.classifier.goal.computation.third_operation,
+			constraint_id
+		) != 0 ? -1 : 0;
+}
+
 static int operation_solver_index_constraints(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
+	ctx->metadata->constraint_index_pass_count++;
 	for (uint32_t i = 0; i < 4096; ++i) {
 		ctx->constraints.first_dependent_constraint[i] =
 			PROTOTYPE_INVALID_ID;
+		ctx->constraints.first_motive_constraint[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (uint32_t i = 0;
+		i < ctx->constraints.classifier_constraint_count;
+		++i) {
+		ctx->constraints.next_motive_constraint[i] = PROTOTYPE_INVALID_ID;
 	}
 	ctx->constraints.dependent_constraint_count = 0;
 	ctx->constraints.worklist_head = 0;
@@ -8533,6 +8516,13 @@ static int operation_solver_index_constraints(struct compile_context* ctx) {
 				/* Context binding classifiers are immutable solver inputs. */
 				break;
 			case OPERATION_CONSTRAINT_MOTIVE_EQUATION:
+				ctx->constraints.next_motive_constraint[i] =
+					ctx->constraints.first_motive_constraint[
+						constraint->payload.classifier.classifier_variable
+					];
+				ctx->constraints.first_motive_constraint[
+					constraint->payload.classifier.classifier_variable
+				] = i;
 				if (operation_solver_add_constraint_dependency(
 						ctx, constraint->payload.classifier.goal.motive_case.branch_operation, i
 					) != 0 || operation_solver_add_constraint_dependency(
@@ -8549,13 +8539,38 @@ static int operation_solver_index_constraints(struct compile_context* ctx) {
 				}
 				break;
 			case OPERATION_CONSTRAINT_COMPUTATION_FOLD_RESULT:
+				for (uint32_t clause_index = 0;
+					clause_index < ctx->metadata->typed_occurrences.occurrences[
+						constraint->source_occurrence
+					].fold_clause_count;
+					++clause_index) {
+					uint32_t clause_operation;
+					uint32_t clause_lambda;
+					uint32_t body_occurrence;
+					if (compile_fold_clause_occurrences(
+							ctx,
+							constraint->source_occurrence,
+							clause_index,
+							&clause_operation,
+							&clause_lambda,
+							&body_occurrence
+						) != 0 || operation_solver_add_constraint_dependency(
+							ctx, body_occurrence, i
+						) != 0) {
+						return -1;
+					}
+					(void)clause_operation;
+					(void)clause_lambda;
+				}
+				if (operation_solver_index_computation_dependencies(
+						ctx, constraint, i
+					) != 0) {
+					return -1;
+				}
+				break;
 			case OPERATION_CONSTRAINT_OPERATION_REQUEST_RESULT:
-				if (operation_solver_add_constraint_dependency(
-						ctx, constraint->payload.classifier.goal.computation.first_operation, i
-					) != 0 || operation_solver_add_constraint_dependency(
-						ctx, constraint->payload.classifier.goal.computation.second_operation, i
-					) != 0 || operation_solver_add_constraint_dependency(
-						ctx, constraint->payload.classifier.goal.computation.third_operation, i
+				if (operation_solver_index_computation_dependencies(
+						ctx, constraint, i
 					) != 0) {
 					return -1;
 				}

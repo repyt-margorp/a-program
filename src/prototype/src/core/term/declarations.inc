@@ -1050,6 +1050,7 @@ struct substitution_memo_entry {
 	uint32_t result;
 	uint64_t binding_scope_key;
 	uint64_t ih_scope_clone_key;
+	uint32_t next;
 };
 
 struct substitution_context {
@@ -1062,7 +1063,9 @@ struct substitution_context {
 	uint32_t exact_replacement;
 	int replace_exact_term;
 	struct substitution_memo_entry* memo;
+	uint32_t* memo_buckets;
 	size_t memo_count;
 	size_t memo_capacity;
+	size_t memo_bucket_count;
 	uint64_t next_scope_key;
 };

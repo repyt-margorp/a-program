@@ -23,7 +23,55 @@ void prototype_term_db_init(
 	for (uint32_t i = 0; i < PROTOTYPE_SCOPE_BINDING_CAPACITY; ++i) {
 		db->scope_bindings[i] = PROTOTYPE_INVALID_ID;
 	}
+	for (size_t i = 0; i < PROTOTYPE_TERM_NORMALIZATION_CACHE_BUCKET_CAPACITY; ++i) {
+		db->normalization_cache_buckets[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY; ++i) {
+		db->normalization_cache_next_entry[i] = PROTOTYPE_INVALID_ID;
+	}
 	db->normalization_graph_revision = 1;
+}
+
+void prototype_term_db_dispose_runtime_state(struct prototype_term_db* db) {
+	if (!db) {
+		return;
+	}
+	free(db->intern_keys);
+	free(db->intern_canonical_ids);
+	free(db->intern_next);
+	free(db->intern_buckets);
+	free(db->intern_exact_hashes);
+	free(db->intern_exact_next);
+	free(db->intern_exact_buckets);
+	free(db->effect_row_variable_terms);
+	db->intern_keys = NULL;
+	db->intern_canonical_ids = NULL;
+	db->intern_next = NULL;
+	db->intern_buckets = NULL;
+	db->intern_exact_hashes = NULL;
+	db->intern_exact_next = NULL;
+	db->intern_exact_buckets = NULL;
+	db->effect_row_variable_terms = NULL;
+	db->effect_row_variable_count = 0;
+	db->effect_row_variable_capacity = 0;
+	db->effect_row_variable_index_dirty = 0;
+	db->intern_entry_capacity = 0;
+	db->intern_bucket_count = 0;
+	db->intern_indexed_count = 0;
+	db->intern_index_dirty = 0;
+}
+
+void prototype_term_intern_get_stats(
+	const struct prototype_term_db* db,
+	struct prototype_term_intern_stats* p_stats
+) {
+	if (!p_stats) {
+		return;
+	}
+	memset(p_stats, 0, sizeof(*p_stats));
+	if (db) {
+		*p_stats = db->intern_stats;
+	}
 }
 
 void prototype_term_normalization_cache_clear(struct prototype_term_db* db) {
@@ -32,6 +80,12 @@ void prototype_term_normalization_cache_clear(struct prototype_term_db* db) {
 	}
 	memset(db->normalization_cache, 0, sizeof(db->normalization_cache));
 	memset(&db->normalization_cache_stats, 0, sizeof(db->normalization_cache_stats));
+	for (size_t i = 0; i < PROTOTYPE_TERM_NORMALIZATION_CACHE_BUCKET_CAPACITY; ++i) {
+		db->normalization_cache_buckets[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY; ++i) {
+		db->normalization_cache_next_entry[i] = PROTOTYPE_INVALID_ID;
+	}
 	db->normalization_cache_next = 0;
 }
 
@@ -53,18 +107,311 @@ static void invalidate_normalization_cache(struct prototype_term_db* db) {
 		return;
 	}
 	db->normalization_graph_revision++;
+	db->normalization_cache_stats.invalidation_count++;
 	if (db->normalization_graph_revision == 0) {
 		db->normalization_graph_revision = 1;
 		prototype_term_normalization_cache_clear(db);
+		return;
 	}
+	memset(db->normalization_cache, 0, sizeof(db->normalization_cache));
+	for (size_t i = 0; i < PROTOTYPE_TERM_NORMALIZATION_CACHE_BUCKET_CAPACITY; ++i) {
+		db->normalization_cache_buckets[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (size_t i = 0; i < PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY; ++i) {
+		db->normalization_cache_next_entry[i] = PROTOTYPE_INVALID_ID;
+	}
+	db->normalization_cache_next = 0;
 }
 
 void prototype_term_notify_graph_mutation(struct prototype_term_db* db) {
+	if (!db) {
+		return;
+	}
 	invalidate_normalization_cache(db);
+	db->intern_index_dirty = 1;
+	db->effect_row_variable_index_dirty = 1;
+}
+
+static int term_effect_row_variable_index_reserve(
+	struct prototype_term_db* db,
+	size_t required
+) {
+	if (!db || required > db->term_capacity) {
+		return -1;
+	}
+	if (required <= db->effect_row_variable_capacity) {
+		return 0;
+	}
+	size_t capacity = db->effect_row_variable_capacity > 0 ?
+		db->effect_row_variable_capacity : 16;
+	while (capacity < required) {
+		if (capacity > SIZE_MAX / 2) {
+			return -1;
+		}
+		capacity *= 2;
+	}
+	if (capacity > db->term_capacity) {
+		capacity = db->term_capacity;
+	}
+	uint32_t* terms = realloc(
+		db->effect_row_variable_terms, capacity * sizeof(*terms)
+	);
+	if (!terms) {
+		return -1;
+	}
+	db->effect_row_variable_terms = terms;
+	db->effect_row_variable_capacity = capacity;
+	return 0;
+}
+
+static int term_effect_row_variable_index_rebuild(
+	struct prototype_term_db* db
+) {
+	if (!db || term_effect_row_variable_index_reserve(
+			db, db->term_count
+		) != 0) {
+		return -1;
+	}
+	db->effect_row_variable_count = 0;
+	for (uint32_t term_id = 0; term_id < (uint32_t)db->term_count; ++term_id) {
+		if (db->terms[term_id].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+			db->effect_row_variable_terms[
+				db->effect_row_variable_count++
+			] = term_id;
+		}
+	}
+	db->effect_row_variable_index_dirty = 0;
+	return 0;
+}
+
+int prototype_term_effect_row_variable_terms(
+	struct prototype_term_db* db,
+	const uint32_t** p_terms,
+	size_t* p_count
+) {
+	if (!db || !p_terms || !p_count ||
+		(db->effect_row_variable_index_dirty &&
+		 term_effect_row_variable_index_rebuild(db) != 0)) {
+		return -1;
+	}
+	*p_terms = db->effect_row_variable_terms;
+	*p_count = db->effect_row_variable_count;
+	return 0;
+}
+
+static int term_intern_index_resize(
+	struct prototype_term_db* db,
+	size_t required_entries
+) {
+	if (!db || required_entries > db->term_capacity) {
+		return -1;
+	}
+	if (required_entries <= db->intern_entry_capacity && db->intern_bucket_count > 0) {
+		return 0;
+	}
+	size_t entry_capacity = db->intern_entry_capacity > 0 ?
+		db->intern_entry_capacity : 256;
+	while (entry_capacity < required_entries) {
+		if (entry_capacity > SIZE_MAX / 2) {
+			return -1;
+		}
+		entry_capacity *= 2;
+	}
+	if (entry_capacity > db->term_capacity) {
+		entry_capacity = db->term_capacity;
+	}
+	struct prototype_term_canonical_key* keys = realloc(
+		db->intern_keys, entry_capacity * sizeof(*keys)
+	);
+	if (!keys) {
+		return -1;
+	}
+	db->intern_keys = keys;
+	uint32_t* canonical_ids = realloc(
+		db->intern_canonical_ids, entry_capacity * sizeof(*canonical_ids)
+	);
+	if (!canonical_ids) {
+		return -1;
+	}
+	db->intern_canonical_ids = canonical_ids;
+	uint32_t* next = realloc(
+		db->intern_next, entry_capacity * sizeof(*next)
+	);
+	if (!next) {
+		return -1;
+	}
+	db->intern_next = next;
+	uint64_t* exact_hashes = realloc(
+		db->intern_exact_hashes, entry_capacity * sizeof(*exact_hashes)
+	);
+	if (!exact_hashes) {
+		return -1;
+	}
+	db->intern_exact_hashes = exact_hashes;
+	uint32_t* exact_next = realloc(
+		db->intern_exact_next, entry_capacity * sizeof(*exact_next)
+	);
+	if (!exact_next) {
+		return -1;
+	}
+	db->intern_exact_next = exact_next;
+
+	size_t bucket_count = 512;
+	while (bucket_count < entry_capacity * 2) {
+		if (bucket_count > SIZE_MAX / 2) {
+			return -1;
+		}
+		bucket_count *= 2;
+	}
+	uint32_t* buckets = malloc(bucket_count * sizeof(*buckets));
+	uint32_t* exact_buckets = malloc(bucket_count * sizeof(*exact_buckets));
+	if (!buckets || !exact_buckets) {
+		free(buckets);
+		free(exact_buckets);
+		return -1;
+	}
+	for (size_t i = 0; i < bucket_count; ++i) {
+		buckets[i] = PROTOTYPE_INVALID_ID;
+		exact_buckets[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (uint32_t i = 0; i < db->intern_indexed_count; ++i) {
+		size_t bucket = (size_t)db->intern_keys[i].hash & (bucket_count - 1);
+		db->intern_next[i] = buckets[bucket];
+		buckets[bucket] = i;
+		size_t exact_bucket = (size_t)db->intern_exact_hashes[i] &
+			(bucket_count - 1);
+		db->intern_exact_next[i] = exact_buckets[exact_bucket];
+		exact_buckets[exact_bucket] = i;
+	}
+	free(db->intern_buckets);
+	free(db->intern_exact_buckets);
+	db->intern_buckets = buckets;
+	db->intern_exact_buckets = exact_buckets;
+	db->intern_entry_capacity = entry_capacity;
+	db->intern_bucket_count = bucket_count;
+	return 0;
+}
+
+static int term_intern_index_insert(
+	struct prototype_term_db* db,
+	uint32_t term_id,
+	struct prototype_term_canonical_key key,
+	uint64_t exact_hash,
+	uint32_t canonical_id
+) {
+	if (!db || term_id != db->intern_indexed_count ||
+		term_id >= db->intern_entry_capacity || canonical_id > term_id ||
+		db->intern_bucket_count == 0) {
+		return -1;
+	}
+	size_t bucket = (size_t)key.hash & (db->intern_bucket_count - 1);
+	db->intern_keys[term_id] = key;
+	db->intern_canonical_ids[term_id] = canonical_id;
+	db->intern_next[term_id] = db->intern_buckets[bucket];
+	db->intern_buckets[bucket] = term_id;
+	size_t exact_bucket = (size_t)exact_hash & (db->intern_bucket_count - 1);
+	db->intern_exact_hashes[term_id] = exact_hash;
+	db->intern_exact_next[term_id] = db->intern_exact_buckets[exact_bucket];
+	db->intern_exact_buckets[exact_bucket] = term_id;
+	db->intern_indexed_count++;
+	return 0;
+}
+
+static void term_intern_adjust_test_hashes(
+	struct prototype_term_canonical_key* key,
+	uint64_t* exact_hash
+) {
+#ifdef PROTOTYPE_TERM_INTERN_TEST_FORCE_HASH_COLLISIONS
+	key->hash = 0;
+	*exact_hash = 0;
+#else
+	(void)key;
+	(void)exact_hash;
+#endif
+}
+
+static int term_intern_index_rebuild(struct prototype_term_db* db) {
+	if (!db || term_intern_index_resize(db, db->term_count + 1) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < db->intern_bucket_count; ++i) {
+		db->intern_buckets[i] = PROTOTYPE_INVALID_ID;
+		db->intern_exact_buckets[i] = PROTOTYPE_INVALID_ID;
+	}
+	db->intern_indexed_count = 0;
+	for (uint32_t term_id = 0; term_id < db->term_count; ++term_id) {
+		struct prototype_term_canonical_key key;
+		uint64_t exact_hash;
+		if (term_intern_canonical_key_local(db, term_id, &key) != 0 ||
+			term_intern_exact_hash_local(db, term_id, &exact_hash) != 0) {
+			db->intern_index_dirty = 1;
+			return -1;
+		}
+		term_intern_adjust_test_hashes(&key, &exact_hash);
+		uint32_t canonical_id = term_id;
+		int exact_match = 0;
+		size_t exact_bucket =
+			(size_t)exact_hash & (db->intern_bucket_count - 1);
+		for (uint32_t existing = db->intern_exact_buckets[exact_bucket];
+			existing != PROTOTYPE_INVALID_ID;
+			existing = db->intern_exact_next[existing]) {
+			if (db->intern_exact_hashes[existing] != exact_hash) {
+				continue;
+			}
+			if (term_intern_exact_equal_local(db, existing, term_id) ||
+				term_intern_alpha_equal_local(db, existing, term_id)) {
+				uint32_t representative = db->intern_canonical_ids[existing];
+				if (representative < canonical_id) {
+					canonical_id = representative;
+				}
+				exact_match = 1;
+			}
+		}
+		size_t bucket = (size_t)key.hash & (db->intern_bucket_count - 1);
+		for (uint32_t existing = exact_match ? PROTOTYPE_INVALID_ID :
+			db->intern_buckets[bucket];
+			existing != PROTOTYPE_INVALID_ID;
+			existing = db->intern_next[existing]) {
+			if (db->intern_keys[existing].hash == key.hash &&
+				term_intern_alpha_equal_local(db, existing, term_id)) {
+				uint32_t representative = db->intern_canonical_ids[existing];
+				if (representative < canonical_id) {
+					canonical_id = representative;
+				}
+			}
+		}
+		if (term_intern_index_insert(
+				db, term_id, key, exact_hash, canonical_id
+			) != 0) {
+			db->intern_index_dirty = 1;
+			return -1;
+		}
+	}
+	db->intern_index_dirty = 0;
+	if (term_effect_row_variable_index_rebuild(db) != 0) {
+		db->intern_index_dirty = 1;
+		return -1;
+	}
+	db->intern_stats.index_rebuild_count++;
+	return 0;
 }
 
 static int add_term(struct prototype_term_db* db, struct prototype_term term, uint32_t* p_ret) {
 	if (!db || !p_ret || reserve_slot(db->term_count, db->term_capacity) != 0) {
+		return -1;
+	}
+	db->intern_stats.formation_request_count++;
+	if (db->intern_index_dirty || db->intern_indexed_count != db->term_count) {
+		if (term_intern_index_rebuild(db) != 0) {
+			return -1;
+		}
+	} else if (term_intern_index_resize(db, db->term_count + 1) != 0) {
+		return -1;
+	}
+	if (term.tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
+		term_effect_row_variable_index_reserve(
+			db, db->effect_row_variable_count + 1
+		) != 0) {
 		return -1;
 	}
 
@@ -72,19 +419,105 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 	size_t saved_term_count = db->term_count;
 	db->terms[temp_id] = term;
 	db->term_count = saved_term_count + 1;
-	for (uint32_t i = 0; i < temp_id; ++i) {
-		uint32_t existing = i;
-		if (term_intern_alpha_equal_local(db, existing, temp_id)) {
-			db->term_count = saved_term_count;
-			*p_ret = i;
-			return 0;
+	struct prototype_term_canonical_key key;
+	uint64_t exact_hash;
+	if (term_intern_canonical_key_local(db, temp_id, &key) != 0 ||
+		term_intern_exact_hash_local(db, temp_id, &exact_hash) != 0) {
+		db->term_count = saved_term_count;
+		return -1;
+	}
+	term_intern_adjust_test_hashes(&key, &exact_hash);
+	uint32_t canonical = PROTOTYPE_INVALID_ID;
+	size_t exact_bucket = (size_t)exact_hash & (db->intern_bucket_count - 1);
+	for (uint32_t existing = db->intern_exact_buckets[exact_bucket];
+		existing != PROTOTYPE_INVALID_ID;
+		existing = db->intern_exact_next[existing]) {
+		db->intern_stats.exact_probe_count++;
+		if (db->intern_exact_hashes[existing] != exact_hash) {
+			continue;
+		}
+		int equal = term_intern_exact_equal_local(db, existing, temp_id);
+		if (!equal) {
+			db->intern_stats.alpha_compare_count++;
+			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_DIMENSION_ACTION) {
+				db->intern_stats.alpha_compares_by_tag[term.tag]++;
+			}
+			equal = term_intern_alpha_equal_local(db, existing, temp_id);
+		}
+		if (equal &&
+			(canonical == PROTOTYPE_INVALID_ID ||
+				db->intern_canonical_ids[existing] < canonical)) {
+			canonical = db->intern_canonical_ids[existing];
 		}
 	}
+	if (canonical == PROTOTYPE_INVALID_ID) {
+		size_t bucket = (size_t)key.hash & (db->intern_bucket_count - 1);
+		for (uint32_t existing = db->intern_buckets[bucket];
+			existing != PROTOTYPE_INVALID_ID;
+			existing = db->intern_next[existing]) {
+			db->intern_stats.bucket_probe_count++;
+			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_DIMENSION_ACTION) {
+				db->intern_stats.bucket_probes_by_tag[term.tag]++;
+			}
+			if (db->intern_keys[existing].hash != key.hash) {
+				continue;
+			}
+			db->intern_stats.alpha_compare_count++;
+			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_DIMENSION_ACTION) {
+				db->intern_stats.alpha_compares_by_tag[term.tag]++;
+			}
+			if (term_intern_alpha_equal_local(db, existing, temp_id) &&
+				(canonical == PROTOTYPE_INVALID_ID ||
+					db->intern_canonical_ids[existing] < canonical)) {
+				canonical = db->intern_canonical_ids[existing];
+			}
+		}
+	}
+#ifdef PROTOTYPE_TERM_INTERN_AUDIT
+	{
+		uint32_t audited_canonical = PROTOTYPE_INVALID_ID;
+		for (uint32_t existing = 0; existing < temp_id; ++existing) {
+			if (term_intern_alpha_equal_local(db, existing, temp_id)) {
+				audited_canonical = existing;
+				break;
+			}
+		}
+		if (audited_canonical != canonical) {
+			fprintf(
+				stderr,
+				"term intern index mismatch indexed=%u audited=%u candidate=%u tag=%d "
+				"audited-hash=%" PRIu64 " candidate-hash=%" PRIu64 "\n",
+				canonical,
+				audited_canonical,
+				temp_id,
+				term.tag,
+				audited_canonical == PROTOTYPE_INVALID_ID ? UINT64_C(0) :
+					db->intern_keys[audited_canonical].hash,
+				key.hash
+			);
+			canonical = audited_canonical;
+		}
+	}
+#endif
 	db->term_count = saved_term_count;
+	if (canonical != PROTOTYPE_INVALID_ID) {
+		*p_ret = canonical;
+		return 0;
+	}
 
 	uint32_t id = (uint32_t)db->term_count;
 	db->terms[id] = term;
 	db->term_count++;
+	if (term_intern_index_insert(db, id, key, exact_hash, id) != 0) {
+		db->term_count--;
+		return -1;
+	}
+	if (term.tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		db->effect_row_variable_terms[
+			db->effect_row_variable_count++
+		] = id;
+	}
+	db->intern_stats.unique_term_count++;
 	*p_ret = id;
 	return 0;
 }
@@ -947,7 +1380,7 @@ int prototype_term_erase_constructor_view_owners(struct prototype_term_db* db) {
 		}
 	}
 	if (changed) {
-		invalidate_normalization_cache(db);
+		prototype_term_notify_graph_mutation(db);
 	}
 	return 0;
 }
@@ -1369,7 +1802,7 @@ int prototype_term_canonicalize_type_former_references(
 		db->ih_scopes[i].match_term = remap[db->ih_scopes[i].match_term];
 	}
 	free(remap);
-	invalidate_normalization_cache(db);
+	prototype_term_notify_graph_mutation(db);
 	return 0;
 }
 

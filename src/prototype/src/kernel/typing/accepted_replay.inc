@@ -1141,6 +1141,26 @@ static int replay_term_scratch_init(
 		return -1;
 	}
 	*scratch = *source;
+	/* Runtime indexes are projections of one physical Term arena. A replay
+	 * scratch arena must rebuild its own projection instead of mutating the
+	 * source arena through pointers copied with the semantic graph descriptor. */
+	scratch->intern_keys = NULL;
+	scratch->intern_canonical_ids = NULL;
+	scratch->intern_next = NULL;
+	scratch->intern_buckets = NULL;
+	scratch->intern_exact_hashes = NULL;
+	scratch->intern_exact_next = NULL;
+	scratch->intern_exact_buckets = NULL;
+	scratch->effect_row_variable_terms = NULL;
+	scratch->effect_row_variable_count = 0;
+	scratch->effect_row_variable_capacity = 0;
+	scratch->effect_row_variable_index_dirty = 1;
+	scratch->intern_entry_capacity = 0;
+	scratch->intern_bucket_count = 0;
+	scratch->intern_indexed_count = 0;
+	scratch->intern_index_dirty = 1;
+	memset(&scratch->intern_stats, 0, sizeof(scratch->intern_stats));
+	prototype_term_normalization_cache_clear(scratch);
 	/* Replay may instantiate every binder in a deeply nested classifier. Use the
 	 * authoritative store's configured capacities rather than a term-count
 	 * heuristic, while keeping every generated node isolated in this arena. */
@@ -1186,6 +1206,7 @@ static void replay_term_scratch_free(struct prototype_term_db* scratch) {
 	if (!scratch) {
 		return;
 	}
+	prototype_term_db_dispose_runtime_state(scratch);
 	free(scratch->terms);
 	free(scratch->cases);
 	free(scratch->case_label_symbols);

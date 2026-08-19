@@ -1370,6 +1370,167 @@ static int term_intern_alpha_equal_local(
 	);
 }
 
+/* Exact identity accelerates reconstruction from canonical child IDs. Alpha
+ * identity remains authoritative when this cheap comparison does not match. */
+static int term_intern_exact_equal_local(
+	const struct prototype_term_db* db,
+	uint32_t left_id,
+	uint32_t right_id
+) {
+	if (!db || left_id >= db->term_count || right_id >= db->term_count) {
+		return 0;
+	}
+	const struct prototype_term* left = &db->terms[left_id];
+	const struct prototype_term* right = &db->terms[right_id];
+	if (left->tag != right->tag) {
+		return 0;
+	}
+#define INTERN_EXACT_FIELD(path) (left->as.path == right->as.path)
+	switch (left->tag) {
+		case PROTOTYPE_TERM_VAR:
+			return INTERN_EXACT_FIELD(var.binding_id);
+		case PROTOTYPE_TERM_CONSTRUCTOR:
+			return INTERN_EXACT_FIELD(constructor.owner) &&
+				INTERN_EXACT_FIELD(constructor.constructor_id);
+		case PROTOTYPE_TERM_APP:
+			return INTERN_EXACT_FIELD(app.function) &&
+				INTERN_EXACT_FIELD(app.argument);
+		case PROTOTYPE_TERM_LAMBDA:
+			return INTERN_EXACT_FIELD(lambda.binding_id) &&
+				INTERN_EXACT_FIELD(lambda.body);
+		case PROTOTYPE_TERM_PI:
+			return INTERN_EXACT_FIELD(pi.domain) &&
+				INTERN_EXACT_FIELD(pi.codomain_family);
+		case PROTOTYPE_TERM_MATCH:
+			if (!INTERN_EXACT_FIELD(match.scrutinee) ||
+				!INTERN_EXACT_FIELD(match.case_count) ||
+				!INTERN_EXACT_FIELD(match.ih_scope_id)) {
+				return 0;
+			}
+			for (uint32_t i = 0; i < left->as.match.case_count; ++i) {
+				const struct prototype_match_case* left_case =
+					&db->cases[left->as.match.first_case + i];
+				const struct prototype_match_case* right_case =
+					&db->cases[right->as.match.first_case + i];
+				if (left_case->constructor_owner != right_case->constructor_owner ||
+					left_case->constructor_id != right_case->constructor_id ||
+					left_case->binder_count != right_case->binder_count ||
+					left_case->body != right_case->body) {
+					return 0;
+				}
+				for (uint32_t j = 0; j < left_case->binder_count; ++j) {
+					const struct prototype_case_binder* left_binder =
+						&db->case_binders[left_case->first_binder + j];
+					const struct prototype_case_binder* right_binder =
+						&db->case_binders[right_case->first_binder + j];
+					if (left_binder->binding_id != right_binder->binding_id ||
+						left_binder->is_recursive != right_binder->is_recursive) {
+						return 0;
+					}
+				}
+			}
+			return 1;
+		case PROTOTYPE_TERM_TYPE_FORMER:
+			return INTERN_EXACT_FIELD(type_former.representation_id);
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			return type_identity_is_stable(left->as.type_declaration.identity) ||
+				type_identity_is_stable(right->as.type_declaration.identity) ?
+				type_identity_equal(
+					left->as.type_declaration.identity,
+					right->as.type_declaration.identity
+				) : INTERN_EXACT_FIELD(type_declaration.type_id);
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+			return INTERN_EXACT_FIELD(induction_hypothesis.ih_scope_id) &&
+				INTERN_EXACT_FIELD(induction_hypothesis.argument);
+		case PROTOTYPE_TERM_UNIVERSE_VAR:
+			return INTERN_EXACT_FIELD(universe_var.level_var);
+		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT64:
+		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+			return 1;
+		case PROTOTYPE_TERM_TEXT_LITERAL:
+			return INTERN_EXACT_FIELD(text_literal.text_symbol_id);
+		case PROTOTYPE_TERM_INT_LITERAL:
+			return INTERN_EXACT_FIELD(int_literal.value);
+		case PROTOTYPE_TERM_EXTERNAL_REF:
+			return qualified_names_equal(
+				left->as.external_ref.name, right->as.external_ref.name
+			);
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			return INTERN_EXACT_FIELD(pure_primitive.primitive_id) &&
+				INTERN_EXACT_FIELD(pure_primitive.type_symbol_id);
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			return INTERN_EXACT_FIELD(effect_operation.operation_id) &&
+				INTERN_EXACT_FIELD(effect_operation.classifier);
+		case PROTOTYPE_TERM_TYPE_VIEW:
+			return (type_identity_is_stable(left->as.type_view.identity) ||
+				type_identity_is_stable(right->as.type_view.identity) ?
+				type_identity_equal(
+					left->as.type_view.identity, right->as.type_view.identity
+				) : INTERN_EXACT_FIELD(type_view.view_type_id)) &&
+				INTERN_EXACT_FIELD(type_view.core) &&
+				INTERN_EXACT_FIELD(type_view.source);
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			return INTERN_EXACT_FIELD(effect_row_var.binding_id);
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			return INTERN_EXACT_FIELD(effect_row_union.left) &&
+				INTERN_EXACT_FIELD(effect_row_union.right);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return INTERN_EXACT_FIELD(effect_row_forall.binding_id) &&
+				INTERN_EXACT_FIELD(effect_row_forall.body);
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return INTERN_EXACT_FIELD(computation_type.label) &&
+				INTERN_EXACT_FIELD(computation_type.result);
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return INTERN_EXACT_FIELD(thunk_type.computation);
+		case PROTOTYPE_TERM_RETURN:
+			return INTERN_EXACT_FIELD(return_term.value);
+		case PROTOTYPE_TERM_THUNK:
+			return INTERN_EXACT_FIELD(thunk.computation);
+		case PROTOTYPE_TERM_FORCE:
+			return INTERN_EXACT_FIELD(force.value);
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			return INTERN_EXACT_FIELD(operation_request.operation) &&
+				INTERN_EXACT_FIELD(operation_request.argument) &&
+				INTERN_EXACT_FIELD(operation_request.continuation);
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+			if (!INTERN_EXACT_FIELD(computation_fold.computation) ||
+				!INTERN_EXACT_FIELD(computation_fold.return_clause) ||
+				!INTERN_EXACT_FIELD(computation_fold.clause_count)) {
+				return 0;
+			}
+			for (uint32_t i = 0;
+				i < left->as.computation_fold.clause_count;
+				++i) {
+				const struct prototype_computation_fold_clause* left_clause =
+					&db->computation_fold_clauses[
+						left->as.computation_fold.first_clause + i
+					];
+				const struct prototype_computation_fold_clause* right_clause =
+					&db->computation_fold_clauses[
+						right->as.computation_fold.first_clause + i
+					];
+				if (left_clause->operation != right_clause->operation ||
+					left_clause->body != right_clause->body) {
+					return 0;
+				}
+			}
+			return 1;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return INTERN_EXACT_FIELD(effect_row_operation.operation_id) &&
+				INTERN_EXACT_FIELD(effect_row_operation.latent_row);
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			return INTERN_EXACT_FIELD(dimension_action.operator_id) &&
+				INTERN_EXACT_FIELD(dimension_action.source);
+		default:
+			return 0;
+	}
+#undef INTERN_EXACT_FIELD
+}
+
 int prototype_term_view_shape_equal(
 	const struct prototype_term_db* db,
 	uint32_t left,
@@ -2058,6 +2219,241 @@ int prototype_term_canonical_key_with_types(
 		return -1;
 	}
 	p_key->hash = hash;
+	return 0;
+}
+
+/* Interning treats an IH frame bound by a Match exactly like a binder. Free
+ * frame identity is still checked by the exact alpha comparator after the hash
+ * lookup. This hash is therefore a candidate index, never equality authority. */
+static int term_intern_canonical_key_local(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	struct prototype_term_canonical_key* p_key
+) {
+	if (!db || !p_key || term_id >= db->term_count) {
+		return -1;
+	}
+	uint64_t hash = PROTOTYPE_CANONICAL_HASH_OFFSET;
+	memset(p_key, 0, sizeof(*p_key));
+	const struct prototype_term* term = &db->terms[term_id];
+	canonical_hash_mix_tag(&hash, (uint32_t)term->tag);
+	p_key->node_count = 1;
+#define INTERN_MIX(value) canonical_hash_mix_u32(&hash, (uint32_t)(value))
+#define INTERN_MIX_CHILD(child) \
+	do { \
+		if ((child) >= db->term_count) { \
+			return -1; \
+		} \
+		INTERN_MIX(child); \
+	} while (0)
+	switch (term->tag) {
+		case PROTOTYPE_TERM_VAR:
+			INTERN_MIX(term->as.var.binding_id);
+			break;
+		case PROTOTYPE_TERM_CONSTRUCTOR:
+			INTERN_MIX_CHILD(term->as.constructor.owner);
+			INTERN_MIX(term->as.constructor.constructor_id);
+			break;
+		case PROTOTYPE_TERM_APP:
+			INTERN_MIX_CHILD(term->as.app.function);
+			INTERN_MIX_CHILD(term->as.app.argument);
+			break;
+		case PROTOTYPE_TERM_LAMBDA: {
+			INTERN_MIX(db->terms[term->as.lambda.body].tag);
+			if (db->terms[term->as.lambda.body].tag == PROTOTYPE_TERM_VAR) {
+				uint32_t body_binding =
+					db->terms[term->as.lambda.body].as.var.binding_id;
+				INTERN_MIX(body_binding == term->as.lambda.binding_id ? 1 : 0);
+				if (body_binding != term->as.lambda.binding_id) {
+					INTERN_MIX(body_binding);
+				}
+			}
+			break;
+		}
+		case PROTOTYPE_TERM_PI:
+			INTERN_MIX_CHILD(term->as.pi.domain);
+			INTERN_MIX_CHILD(term->as.pi.codomain_family);
+			break;
+		case PROTOTYPE_TERM_MATCH:
+			INTERN_MIX_CHILD(term->as.match.scrutinee);
+			INTERN_MIX(term->as.match.case_count);
+			INTERN_MIX(term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID);
+			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
+				const struct prototype_match_case* match_case =
+					&db->cases[term->as.match.first_case + i];
+				INTERN_MIX(match_case->constructor_id);
+				INTERN_MIX(match_case->constructor_owner);
+				INTERN_MIX(match_case->binder_count);
+				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
+					INTERN_MIX(db->case_binders[
+						match_case->first_binder + j
+					].is_recursive);
+				}
+				if (match_case->body >= db->term_count) {
+					return -1;
+				}
+				INTERN_MIX(db->terms[match_case->body].tag);
+			}
+			break;
+		case PROTOTYPE_TERM_TYPE_FORMER:
+			INTERN_MIX(term->as.type_former.representation_id);
+			break;
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			if (type_identity_is_stable(term->as.type_declaration.identity)) {
+				INTERN_MIX(term->as.type_declaration.identity.namespace_symbol_id);
+				INTERN_MIX(term->as.type_declaration.identity.name_symbol_id);
+			} else {
+				INTERN_MIX(term->as.type_declaration.type_id);
+			}
+			break;
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+			INTERN_MIX(term->as.induction_hypothesis.ih_scope_id);
+			INTERN_MIX_CHILD(term->as.induction_hypothesis.argument);
+			break;
+		case PROTOTYPE_TERM_UNIVERSE_VAR:
+			INTERN_MIX(term->as.universe_var.level_var);
+			break;
+		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT64:
+		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+			break;
+		case PROTOTYPE_TERM_TEXT_LITERAL:
+			INTERN_MIX(term->as.text_literal.text_symbol_id);
+			break;
+		case PROTOTYPE_TERM_INT_LITERAL:
+			INTERN_MIX((uint32_t)term->as.int_literal.value);
+			INTERN_MIX((uint32_t)((uint64_t)term->as.int_literal.value >> 32));
+			break;
+		case PROTOTYPE_TERM_EXTERNAL_REF:
+			INTERN_MIX(term->as.external_ref.name.namespace_symbol_id);
+			INTERN_MIX(term->as.external_ref.name.name_symbol_id);
+			break;
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			INTERN_MIX(term->as.pure_primitive.primitive_id);
+			INTERN_MIX(term->as.pure_primitive.type_symbol_id);
+			break;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			INTERN_MIX(term->as.effect_operation.operation_id);
+			INTERN_MIX_CHILD(term->as.effect_operation.classifier);
+			break;
+		case PROTOTYPE_TERM_TYPE_VIEW:
+			if (type_identity_is_stable(term->as.type_view.identity)) {
+				INTERN_MIX(term->as.type_view.identity.namespace_symbol_id);
+				INTERN_MIX(term->as.type_view.identity.name_symbol_id);
+			} else {
+				INTERN_MIX(term->as.type_view.view_type_id);
+			}
+			INTERN_MIX_CHILD(term->as.type_view.core);
+			INTERN_MIX_CHILD(term->as.type_view.source);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			INTERN_MIX(term->as.effect_row_var.binding_id);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			INTERN_MIX_CHILD(term->as.effect_row_union.left);
+			INTERN_MIX_CHILD(term->as.effect_row_union.right);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			INTERN_MIX(db->terms[term->as.effect_row_forall.body].tag);
+			break;
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			INTERN_MIX_CHILD(term->as.computation_type.label);
+			INTERN_MIX_CHILD(term->as.computation_type.result);
+			break;
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			INTERN_MIX_CHILD(term->as.thunk_type.computation);
+			break;
+		case PROTOTYPE_TERM_RETURN:
+			INTERN_MIX_CHILD(term->as.return_term.value);
+			break;
+		case PROTOTYPE_TERM_THUNK:
+			INTERN_MIX_CHILD(term->as.thunk.computation);
+			break;
+		case PROTOTYPE_TERM_FORCE:
+			INTERN_MIX_CHILD(term->as.force.value);
+			break;
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			INTERN_MIX_CHILD(term->as.operation_request.operation);
+			INTERN_MIX_CHILD(term->as.operation_request.argument);
+			INTERN_MIX_CHILD(term->as.operation_request.continuation);
+			break;
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+			INTERN_MIX_CHILD(term->as.computation_fold.computation);
+			INTERN_MIX_CHILD(term->as.computation_fold.return_clause);
+			INTERN_MIX(term->as.computation_fold.clause_count);
+			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* clause =
+					&db->computation_fold_clauses[
+						term->as.computation_fold.first_clause + i
+					];
+				INTERN_MIX_CHILD(clause->operation);
+				INTERN_MIX_CHILD(clause->body);
+			}
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			INTERN_MIX(term->as.effect_row_operation.operation_id);
+			INTERN_MIX_CHILD(term->as.effect_row_operation.latent_row);
+			break;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			INTERN_MIX(term->as.dimension_action.operator_id);
+			INTERN_MIX_CHILD(term->as.dimension_action.source);
+			break;
+		default:
+			return -1;
+	}
+	p_key->hash = hash;
+
+#undef INTERN_MIX_CHILD
+#undef INTERN_MIX
+	return 0;
+}
+
+static int term_intern_exact_hash_local(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint64_t* p_hash
+) {
+	if (!db || !p_hash || term_id >= db->term_count) {
+		return -1;
+	}
+	struct prototype_term_canonical_key alpha_key;
+	if (term_intern_canonical_key_local(db, term_id, &alpha_key) != 0) {
+		return -1;
+	}
+	uint64_t hash = alpha_key.hash;
+	const struct prototype_term* term = &db->terms[term_id];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_LAMBDA:
+			canonical_hash_mix_u32(&hash, term->as.lambda.binding_id);
+			canonical_hash_mix_u32(&hash, term->as.lambda.body);
+			break;
+		case PROTOTYPE_TERM_MATCH:
+			canonical_hash_mix_u32(&hash, term->as.match.ih_scope_id);
+			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
+				const struct prototype_match_case* match_case =
+					&db->cases[term->as.match.first_case + i];
+				canonical_hash_mix_u32(&hash, match_case->body);
+				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
+					canonical_hash_mix_u32(
+						&hash,
+						db->case_binders[match_case->first_binder + j].binding_id
+					);
+				}
+			}
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			canonical_hash_mix_u32(
+				&hash, term->as.effect_row_forall.binding_id
+			);
+			canonical_hash_mix_u32(&hash, term->as.effect_row_forall.body);
+			break;
+		default:
+			break;
+	}
+	*p_hash = hash;
 	return 0;
 }
 

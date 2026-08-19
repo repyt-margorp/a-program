@@ -125,6 +125,17 @@ struct prototype_compile_metadata {
 	uint64_t solver_solved_count;
 	uint64_t solver_residual_count;
 	uint64_t solver_incomplete_count;
+	/* Runtime-only compiler work counters. They measure the ahead-of-time
+	 * computation used to construct the accepted graph and are not artifact
+	 * semantics. */
+	uint64_t constraint_generation_pass_count;
+	uint64_t constraint_index_pass_count;
+	uint64_t computation_constraint_generation_pass_count;
+	uint64_t constraint_enqueue_count;
+	uint64_t constraint_pop_count;
+	uint64_t context_resolution_pass_count;
+	uint64_t context_index_rebuild_count;
+	uint64_t substitution_index_rebuild_count;
 	/* Frozen operational projection consumed by Core execution. It deliberately
 	 * excludes static type declarations and proof state. */
 	struct prototype_term_reduction_environment reduction_environment;

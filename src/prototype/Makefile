@@ -9,7 +9,8 @@ PROTOTYPE_IMPLEMENTATION_DEPENDENCIES := $(shell find \
 	\( -name '*.h' -o -name '*.inc' \)) \
 	src/prototype/calculus.h
 
-.PHONY: all reader clean test-type-infer-and-check test-integration
+.PHONY: all reader clean benchmark-if8-single-compile
+.PHONY: test-type-infer-and-check test-integration
 .PHONY: print-kernel-sources print-graph-sources
 .PHONY: print-compiler-sources
 .PHONY: print-hott-sources print-repl-sources print-reader-sources
@@ -31,9 +32,12 @@ test-type-infer-and-check: reader
 	sh src/prototype/tests/run_integration_suite.sh \
 		--test-name test_type_infer_and_check_examples
 
-test-integration: reader
+test-integration: reader a.out
 	sh src/prototype/tests/checks/test_timing_runner.sh
 	sh src/prototype/tests/run_integration_suite.sh
+
+benchmark-if8-single-compile: reader
+	sh src/prototype/tests/performance/benchmark_if8_single_compile.sh
 
 print-kernel-sources:
 	@printf '%s\n' $(PROTOTYPE_KERNEL_SOURCES)

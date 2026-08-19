@@ -3,6 +3,8 @@
 
 #include "a_program/kernel/judgement/types.h"
 
+#define PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY 4096
+
 int prototype_judgement_db_rebuild_index(
 	struct prototype_judgement_db* judgement
 );
@@ -108,6 +110,14 @@ struct prototype_judgement_delta {
 	size_t match_motive_result_capacity;
 	size_t computation_constraint_count;
 	size_t computation_constraint_capacity;
+	/* Rebuildable projection from Operation identity to the active immutable
+	 * computation payload. INVALID denotes that no active payload is recorded. */
+	uint32_t computation_constraint_by_occurrence[
+		PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY
+	];
+	uint32_t candidate_index_heads[
+		PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT
+	];
 	size_t effect_row_constraint_count;
 	size_t effect_row_constraint_capacity;
 	uint64_t solver_step_limit;

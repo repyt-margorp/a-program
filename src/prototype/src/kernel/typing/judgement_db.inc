@@ -101,6 +101,7 @@ void prototype_judgement_db_init(
 	judgement_index_clear(db->claim_index_heads);
 	judgement_index_clear(db->proposition_index_heads);
 	judgement_index_clear(db->derivation_index_heads);
+	judgement_index_clear(db->candidate_index_heads);
 }
 
 void prototype_judgement_db_set_resource_usage_storage(
@@ -533,6 +534,12 @@ void prototype_judgement_delta_init(
 	delta->computation_constraint_capacity = computation_constraint_capacity;
 	delta->effect_row_constraint_capacity = effect_row_constraint_capacity;
 	delta->current_occurrence_id = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0;
+		i < PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY;
+		++i) {
+		delta->computation_constraint_by_occurrence[i] = PROTOTYPE_INVALID_ID;
+	}
+	judgement_index_clear(delta->candidate_index_heads);
 }
 
 void prototype_judgement_delta_set_intrinsic_environment(

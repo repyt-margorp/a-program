@@ -23,11 +23,13 @@ int prototype_judgement_delta_commit(
 	delta->proposition_count = 0;
 	delta->derivation_candidate_count = 0;
 	delta->candidate_premise_count = 0;
+	judgement_index_clear(delta->candidate_index_heads);
 	return 0;
 
 rollback:
 	delta->db->derivation_candidate_count = proof_mark;
 	delta->db->candidate_premise_count = premise_mark;
+	(void)prototype_judgement_db_rebuild_index(delta->db);
 	return -1;
 }
 

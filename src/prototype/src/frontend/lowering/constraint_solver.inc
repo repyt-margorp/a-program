@@ -213,6 +213,20 @@ static int operation_constraint_db_validate(
 	for (uint32_t occurrence = 0;
 		occurrence < ctx->metadata->typed_occurrences.occurrence_count;
 		++occurrence) {
+		uint32_t computation_id =
+			ctx->constraints.computation_constraint_for_occurrence[occurrence];
+		if (computation_id != PROTOTYPE_INVALID_ID &&
+			(computation_id < ctx->constraints.first_computation_constraint ||
+			 computation_id >= ctx->constraints.first_effect_constraint ||
+			 ctx->constraints.constraints[computation_id].domain !=
+				OPERATION_CONSTRAINT_DOMAIN_COMPUTATION ||
+			 ctx->constraints.constraints[computation_id].source_occurrence !=
+				occurrence)) {
+			fprintf(stderr,
+				"constraint db computation index invalid occurrence=%u id=%u\n",
+				occurrence, computation_id);
+			return -1;
+		}
 		uint32_t traversed = 0;
 		for (uint32_t dependency =
 				ctx->constraints.first_dependent_constraint[occurrence];
@@ -266,6 +280,20 @@ static int operation_constraint_db_rollback(
 	if (!db || mark.constraint_count > db->constraint_count ||
 		mark.dependent_constraint_count > db->dependent_constraint_count) {
 		return -1;
+	}
+	for (uint32_t i = db->constraint_count; i > mark.constraint_count; --i) {
+		uint32_t constraint_id = i - 1;
+		const struct operation_constraint* constraint =
+			&db->constraints[constraint_id];
+		if (constraint->domain == OPERATION_CONSTRAINT_DOMAIN_COMPUTATION &&
+			constraint->source_occurrence < 4096 &&
+			db->computation_constraint_for_occurrence[
+				constraint->source_occurrence
+			] == constraint_id) {
+			db->computation_constraint_for_occurrence[
+				constraint->source_occurrence
+			] = PROTOTYPE_INVALID_ID;
+		}
 	}
 	for (uint32_t i = db->dependent_constraint_count;
 		i > mark.dependent_constraint_count;
@@ -478,46 +506,54 @@ static int operation_solver_index_branch_refinement_constraints(
 	return 0;
 }
 
-static int operation_solver_generate_constraints(struct compile_context* ctx) {
+static int operation_solver_reset_classifier_state(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata ||
 		ctx->metadata->typed_occurrences.occurrence_count > 4096) {
 		return -1;
 	}
 	struct operation_classifier_solver* solver = &ctx->classifier_solver;
-	struct operation_constraint_db* constraints = &ctx->constraints;
-	/* The mutable solver is a transaction-local cache. Frozen occurrence
-	 * classifiers are its only cross-transaction seed; retaining partial work
-	 * cells makes later constraints depend on compilation history. */
+	uint64_t revision = solver->solution_revision + 1;
 	memset(solver, 0, sizeof(*solver));
-	memset(constraints, 0, sizeof(*constraints));
-	for (uint32_t i = 0; i < 4096; ++i) {
-		ctx->classifier_solver.solutions[i].classifier = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.solutions[i].effect_row = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.solutions[i].first_usage_entry = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.solutions[i].usage_entry_count = 0;
-		ctx->classifier_solver.solutions[i].binder_usage = PROTOTYPE_USAGE_ZERO;
-		ctx->classifier_solver.solutions[i].classifier_state =
-			OPERATION_CONSTRAINT_STATE_PENDING;
-		ctx->classifier_solver.solutions[i].effect_state =
-			OPERATION_CONSTRAINT_STATE_PENDING;
-		ctx->classifier_solver.solutions[i].usage_state =
-			OPERATION_CONSTRAINT_STATE_PENDING;
-		ctx->classifier_solver.solutions[i].reason =
-			OPERATION_CLASSIFIER_GOAL_REASON_NONE;
-		ctx->classifier_solver.motive_constant_candidates[i] = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.motive_solution_states[i] =
-			OPERATION_MOTIVE_SOLUTION_UNRESOLVED;
-		ctx->classifier_solver.ih_motive_application_ids[i] = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.motive_terms[i] = PROTOTYPE_INVALID_ID;
-	}
-	for (uint32_t i = 0; i < 4096; ++i) {
-		constraints->first_dependent_constraint[i] = PROTOTYPE_INVALID_ID;
-	}
 	solver->initialized = 1;
 	solver->initialized_occurrence_count =
 		ctx->metadata->typed_occurrences.occurrence_count;
-	if (operation_solver_refresh_usage_solutions(ctx) != 0 ||
-		operation_solver_initialize_input_facts(ctx) != 0) {
+	solver->solution_revision = revision;
+	for (uint32_t i = 0; i < 4096; ++i) {
+		solver->solutions[i].classifier = PROTOTYPE_INVALID_ID;
+		solver->solutions[i].effect_row = PROTOTYPE_INVALID_ID;
+		solver->solutions[i].first_usage_entry = PROTOTYPE_INVALID_ID;
+		solver->solutions[i].usage_entry_count = 0;
+		solver->solutions[i].binder_usage = PROTOTYPE_USAGE_ZERO;
+		solver->solutions[i].classifier_state =
+			OPERATION_CONSTRAINT_STATE_PENDING;
+		solver->solutions[i].effect_state = OPERATION_CONSTRAINT_STATE_PENDING;
+		solver->solutions[i].usage_state = OPERATION_CONSTRAINT_STATE_PENDING;
+		solver->solutions[i].reason = OPERATION_CLASSIFIER_GOAL_REASON_NONE;
+		solver->motive_constant_candidates[i] = PROTOTYPE_INVALID_ID;
+		solver->motive_solution_states[i] =
+			OPERATION_MOTIVE_SOLUTION_UNRESOLVED;
+		solver->ih_motive_application_ids[i] = PROTOTYPE_INVALID_ID;
+		solver->motive_terms[i] = PROTOTYPE_INVALID_ID;
+	}
+	return operation_solver_refresh_usage_solutions(ctx) != 0 ||
+		operation_solver_initialize_input_facts(ctx) != 0 ? -1 : 0;
+}
+
+static int operation_solver_generate_constraints(struct compile_context* ctx) {
+	if (!ctx || !ctx->metadata ||
+		ctx->metadata->typed_occurrences.occurrence_count > 4096) {
+		return -1;
+	}
+	ctx->metadata->constraint_generation_pass_count++;
+	struct operation_constraint_db* constraints = &ctx->constraints;
+	ctx->context_resolution_valid = 0;
+	memset(constraints, 0, sizeof(*constraints));
+	for (uint32_t i = 0; i < 4096; ++i) {
+		constraints->first_dependent_constraint[i] = PROTOTYPE_INVALID_ID;
+		constraints->computation_constraint_for_occurrence[i] =
+			PROTOTYPE_INVALID_ID;
+	}
+	if (operation_solver_reset_classifier_state(ctx) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0;
@@ -726,6 +762,205 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	return operation_constraint_db_validate(ctx);
 }
 
+/* Branch pullback changes the projection of existing occurrences into a new
+ * Context, but it does not change occurrence topology. Keep stable constraint
+ * IDs and dependency edges; refresh only payload fields derived from the
+ * mutable occurrence projection, then rerun the same constraint graph. */
+static int operation_solver_refresh_classifier_constraints(
+	struct compile_context* ctx
+) {
+	if (!ctx || !ctx->metadata) {
+		fprintf(stderr, "branch refresh invalid state\n");
+		return -1;
+	}
+	if (operation_solver_reset_classifier_state(ctx) != 0) {
+		fprintf(stderr, "branch refresh solver reset failed\n");
+		return -1;
+	}
+	ctx->constraints.worklist_head = 0;
+	ctx->constraints.worklist_count = 0;
+	memset(
+		ctx->constraints.constraint_queued,
+		0,
+		sizeof(ctx->constraints.constraint_queued)
+	);
+	for (uint32_t id = 0;
+		id < ctx->constraints.classifier_constraint_count;
+		++id) {
+		struct operation_constraint* constraint =
+			&ctx->constraints.constraints[id];
+		uint32_t operation_id = constraint->source_occurrence;
+		if (constraint->domain != OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER ||
+			operation_id >=
+				ctx->metadata->typed_occurrences.occurrence_count) {
+			fprintf(stderr, "branch refresh classifier header id=%u\n", id);
+			return -1;
+		}
+		const struct prototype_typed_occurrence* operation =
+			&ctx->metadata->typed_occurrences.occurrences[operation_id];
+		constraint->context_id = operation->context_id;
+		constraint->state = OPERATION_CONSTRAINT_STATE_PENDING;
+		constraint->reason = OPERATION_CLASSIFIER_GOAL_REASON_NONE;
+		constraint->result_term = PROTOTYPE_INVALID_ID;
+		constraint->evidence_id = PROTOTYPE_INVALID_ID;
+		memset(&constraint->conversion_goal, 0, sizeof(constraint->conversion_goal));
+		switch (constraint->kind) {
+			case OPERATION_CONSTRAINT_CONVERTIBLE:
+				constraint->payload.classifier.goal.conversion.
+					expected_classifier = ctx->classifier_hints[operation_id];
+				break;
+			case OPERATION_CONSTRAINT_BINDER_TYPE: {
+				uint32_t binding_context;
+				int binding_status = operation_solver_var_binding_context(
+					ctx, operation_id, &binding_context
+				);
+				if (binding_status < 0) {
+					fprintf(stderr, "branch refresh binder id=%u operation=%u\n", id, operation_id);
+					return -1;
+				}
+				constraint->payload.classifier.goal.binder_type.binding_context =
+					binding_status == 0 ? binding_context : PROTOTYPE_INVALID_ID;
+				break;
+			}
+			case OPERATION_CONSTRAINT_PI_EXPECTED:
+				if (constraint->payload.classifier.goal.pi.role ==
+						OPERATION_CLASSIFIER_PI_GOAL_INTRO) {
+					constraint->payload.classifier.goal.pi.
+						domain_classifier_or_argument_occurrence =
+						operation->binder_classifier;
+				}
+				break;
+			case OPERATION_CONSTRAINT_MOTIVE_EQUATION: {
+				uint32_t case_index = constraint->payload.classifier.goal.
+					motive_case.case_index;
+				if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
+					operation->core_term >= ctx->terms->term_count ||
+					ctx->terms->terms[operation->core_term].tag !=
+						PROTOTYPE_TERM_MATCH ||
+					case_index >= operation->case_count) {
+					fprintf(stderr, "branch refresh motive header id=%u operation=%u case=%u\n", id, operation_id, case_index);
+					return -1;
+				}
+				uint32_t term_case_id = ctx->terms->terms[
+					operation->core_term
+				].as.match.first_case + case_index;
+				if (term_case_id >= ctx->terms->case_count) {
+					fprintf(stderr, "branch refresh motive term case id=%u term-case=%u\n", id, term_case_id);
+					return -1;
+				}
+				constraint->payload.classifier.goal.motive_case.
+					constructor_owner =
+					ctx->terms->cases[term_case_id].constructor_owner;
+				constraint->payload.classifier.goal.motive_case.ih_scope_id =
+					ctx->terms->terms[operation->core_term].as.match.ih_scope_id;
+				break;
+			}
+			default:
+				break;
+		}
+		if (operation_solver_enqueue_constraint(ctx, id) != 0) {
+			fprintf(stderr, "branch refresh enqueue id=%u\n", id);
+			return -1;
+		}
+	}
+	for (uint32_t offset = 0;
+		offset < ctx->constraints.branch_refinement_constraint_count;
+		++offset) {
+		uint32_t id =
+			ctx->constraints.first_branch_refinement_constraint + offset;
+		struct operation_constraint* constraint =
+			&ctx->constraints.constraints[id];
+		uint32_t match_id =
+			constraint->payload.branch_refinement.match_occurrence;
+		if (constraint->domain !=
+				OPERATION_CONSTRAINT_DOMAIN_BRANCH_REFINEMENT ||
+			match_id >= ctx->metadata->typed_occurrences.occurrence_count) {
+			fprintf(stderr, "branch refresh branch header id=%u\n", id);
+			return -1;
+		}
+		const struct prototype_typed_occurrence* match =
+			&ctx->metadata->typed_occurrences.occurrences[match_id];
+		uint32_t case_index =
+			constraint->payload.branch_refinement.case_index;
+		uint32_t case_id = match->first_case + case_index;
+		if (match->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
+			case_index >= match->case_count ||
+			case_id >= ctx->metadata->typed_occurrences.case_count ||
+			constraint->source_occurrence >=
+				ctx->metadata->typed_occurrences.occurrence_count) {
+			fprintf(stderr, "branch refresh branch shape id=%u match=%u case=%u\n", id, match_id, case_index);
+			return -1;
+		}
+		const struct prototype_typed_occurrence_match_case* operation_case =
+			&ctx->metadata->typed_occurrences.cases[case_id];
+		constraint->context_id = ctx->metadata->typed_occurrences.occurrences[
+			constraint->source_occurrence
+		].context_id;
+		constraint->result_term = PROTOTYPE_INVALID_ID;
+		constraint->evidence_id = PROTOTYPE_INVALID_ID;
+		constraint->payload.branch_refinement.source_context =
+			operation_case->context_id;
+		constraint->payload.branch_refinement.refined_context =
+			PROTOTYPE_INVALID_ID;
+		constraint->payload.branch_refinement.substitution = PROTOTYPE_INVALID_ID;
+		constraint->payload.branch_refinement.constructor_term =
+			PROTOTYPE_INVALID_ID;
+		constraint->payload.branch_refinement.residual_pattern =
+			PROTOTYPE_INVALID_ID;
+		constraint->payload.branch_refinement.residual_value =
+			PROTOTYPE_INVALID_ID;
+		constraint->payload.branch_refinement.refinement_status =
+			PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+		constraint->state = OPERATION_CONSTRAINT_STATE_PENDING;
+		constraint->reason =
+			OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY;
+		if (prototype_typed_occurrence_match_case_is_solved(operation_case)) {
+			const struct prototype_substitution* action =
+				prototype_substitution_get(
+					&ctx->metadata->substitutions,
+					operation_case->refinement_substitution
+				);
+			if (!action || action->source_context != operation_case->context_id) {
+				fprintf(stderr, "branch refresh solved action id=%u action=%u context=%u\n", id, operation_case->refinement_substitution, operation_case->context_id);
+				return -1;
+			}
+			constraint->payload.branch_refinement.source_context =
+				action->target_context;
+			constraint->payload.branch_refinement.refined_context =
+				action->source_context;
+			constraint->payload.branch_refinement.substitution =
+				operation_case->refinement_substitution;
+			constraint->payload.branch_refinement.refinement_status =
+				PROTOTYPE_INDEX_REFINEMENT_SOLVED;
+			constraint->state = OPERATION_CONSTRAINT_STATE_SOLVED;
+			constraint->reason =
+				OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_VALIDATED;
+		} else if (operation_case->refinement_status ==
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE) {
+			constraint->payload.branch_refinement.refinement_status =
+				PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE;
+			constraint->state = OPERATION_CONSTRAINT_STATE_SOLVED;
+			constraint->reason =
+				OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_IMPOSSIBLE;
+		}
+	}
+	for (uint32_t id = ctx->constraints.first_computation_constraint;
+		id < ctx->constraints.constraint_count;
+		++id) {
+		struct operation_constraint* constraint =
+			&ctx->constraints.constraints[id];
+		if (constraint->source_occurrence >=
+				ctx->metadata->typed_occurrences.occurrence_count) {
+			return -1;
+		}
+		constraint->context_id = ctx->metadata->typed_occurrences.occurrences[
+			constraint->source_occurrence
+		].context_id;
+	}
+	ctx->context_resolution_valid = 0;
+	return operation_constraint_db_validate(ctx);
+}
+
 static int operation_solver_seed_known_classifiers(struct compile_context* ctx, int* p_changed) {
 	if (!ctx || !ctx->metadata || !p_changed) {
 		return -1;
@@ -839,11 +1074,17 @@ static int operation_solver_close_unowned_effect_rows(
 		return -1;
 	}
 	uint32_t closed = classifier;
-	for (uint32_t i = 0; i < (uint32_t)ctx->terms->term_count; ++i) {
-		if (ctx->terms->terms[i].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
-			continue;
-		}
-		uint32_t binding_id = ctx->terms->terms[i].as.effect_row_var.binding_id;
+	const uint32_t* variable_terms;
+	size_t variable_count;
+	if (prototype_term_effect_row_variable_terms(
+			ctx->terms, &variable_terms, &variable_count
+		) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < variable_count; ++i) {
+		uint32_t binding_id = ctx->terms->terms[
+			variable_terms[i]
+		].as.effect_row_var.binding_id;
 		if (!prototype_term_contains_free_binding(
 				ctx->terms, closed, binding_id
 			)) {
@@ -885,11 +1126,17 @@ static int operation_classifier_contains_unowned_effect_row(
 		classifier >= ctx->terms->term_count) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < (uint32_t)ctx->terms->term_count; ++i) {
-		if (ctx->terms->terms[i].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
-			continue;
-		}
-		uint32_t binding_id = ctx->terms->terms[i].as.effect_row_var.binding_id;
+	const uint32_t* variable_terms;
+	size_t variable_count;
+	if (prototype_term_effect_row_variable_terms(
+			ctx->terms, &variable_terms, &variable_count
+		) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < variable_count; ++i) {
+		uint32_t binding_id = ctx->terms->terms[
+			variable_terms[i]
+		].as.effect_row_var.binding_id;
 		if (prototype_term_contains_free_binding(
 				ctx->terms,
 				classifier,
@@ -1665,6 +1912,7 @@ static int operation_effect_generate_constraints_impl(
 		return -1;
 	}
 	for (uint32_t operation_id = 0;
+		ctx->classifier_solver.initialized &&
 		operation_id < ctx->metadata->typed_occurrences.occurrence_count;
 		++operation_id) {
 		const struct prototype_typed_occurrence* operation =
@@ -3474,6 +3722,10 @@ static int operation_solver_solve(struct compile_context* ctx, int require_compl
 		return -1;
 	}
 	uint32_t branch_restart_count = 0;
+	int regenerate_constraints =
+		!ctx->classifier_solver.initialized ||
+		ctx->classifier_solver.initialized_occurrence_count !=
+			ctx->metadata->typed_occurrences.occurrence_count;
 
 restart_after_branch_pullback:
 	if (branch_restart_count++ >
@@ -3481,10 +3733,11 @@ restart_after_branch_pullback:
 		fprintf(stderr, "classifier solver: branch pullback did not stabilize\n");
 		return -1;
 	}
-	if (operation_solver_generate_constraints(ctx) != 0) {
+	if (regenerate_constraints && operation_solver_generate_constraints(ctx) != 0) {
 		fprintf(stderr, "classifier solver: constraint generation failed\n");
 		return -1;
 	}
+	regenerate_constraints = 0;
 	int changed = 0;
 	if (operation_solver_seed_known_classifiers(ctx, &changed) != 0) {
 		fprintf(stderr, "classifier solver: input seeding failed\n");
@@ -3498,6 +3751,11 @@ restart_after_branch_pullback:
 		return -1;
 	}
 	if (branch_graph_changed) {
+		if (operation_solver_refresh_classifier_constraints(ctx) != 0) {
+			fprintf(stderr,
+				"classifier solver: branch constraint refresh failed\n");
+			return -1;
+		}
 		goto restart_after_branch_pullback;
 	}
 	int refined_motives_rebuilt = 0;
@@ -3991,6 +4249,14 @@ restart_after_branch_pullback:
 					break;
 				}
 				case OPERATION_CONSTRAINT_BINDER_TYPE: {
+					if (ctx->classifier_solver.solutions[target].classifier !=
+							PROTOTYPE_INVALID_ID) {
+						break;
+					}
+					if (constraint->payload.classifier.goal.binder_type.
+							binding_context == PROTOTYPE_INVALID_ID) {
+						break;
+					}
 					const struct prototype_context* binding = prototype_context_get(
 						&ctx->metadata->contexts,
 						constraint->payload.classifier.goal.binder_type.binding_context
@@ -4149,6 +4415,11 @@ restart_after_branch_pullback:
 			return -1;
 		}
 		if (branch_graph_changed) {
+			if (operation_solver_refresh_classifier_constraints(ctx) != 0) {
+				fprintf(stderr,
+					"classifier solver: branch constraint refresh failed\n");
+				return -1;
+			}
 			goto restart_after_branch_pullback;
 		}
 		if (!materialized) {
@@ -4937,6 +5208,8 @@ static int operation_solver_pullback_branch_operations(
 		constraint->payload.branch_refinement.refinement_status =
 			PROTOTYPE_INDEX_REFINEMENT_SOLVED;
 	}
+	ctx->classifier_solver.solution_revision++;
+	ctx->context_resolution_valid = 0;
 	return 0;
 }
 
@@ -7499,9 +7772,7 @@ static int operation_solver_materialize_induction_hypothesis(
 		 * only available classifier for this recursive application. */
 		operation_solver_store_classifier_solution(ctx, operation_id, classifier);
 		*p_changed = 1;
-		return operation_solver_enqueue_dependents(ctx, operation_id) != 0 ||
-			operation_solver_enqueue_clause_fold_dependents(ctx, operation_id) != 0 ?
-				-1 : 0;
+		return operation_solver_enqueue_dependents(ctx, operation_id);
 	}
 	int widen_status = operation_solver_widen_computation_binding(
 		ctx, operation_id, classifier, p_changed
@@ -10698,6 +10969,17 @@ static int operation_solver_resolve_contexts(
 			PROTOTYPE_SUBSTITUTION_CAPACITY) {
 		return -1;
 	}
+	if (ctx->context_resolution_valid &&
+		ctx->context_resolution_solution_revision ==
+			ctx->classifier_solver.solution_revision &&
+		ctx->context_resolution_context_count ==
+			ctx->metadata->contexts.context_count &&
+		ctx->context_resolution_substitution_count ==
+			ctx->metadata->substitutions.substitution_count &&
+		(!finalize || ctx->context_resolution_finalized)) {
+		return 0;
+	}
+	ctx->metadata->context_resolution_pass_count++;
 	if (operation_binder_owners_rebuild(ctx) != 0) {
 		return -1;
 	}
@@ -11095,6 +11377,76 @@ static int operation_solver_resolve_contexts(
 			}
 		}
 	}
+	/* Context canonicalization may turn a previously unresolved comprehension
+	 * classifier into a concrete binder type. The occurrence topology and all
+	 * unrelated classifier solutions remain valid; refresh only the persistent
+	 * binder-lookup constraints and wake their reverse dependents. */
+	for (uint32_t id = 0;
+		id < ctx->constraints.classifier_constraint_count;
+		++id) {
+		struct operation_constraint* constraint =
+			&ctx->constraints.constraints[id];
+		if (constraint->domain != OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER ||
+			constraint->kind != OPERATION_CONSTRAINT_BINDER_TYPE) {
+			continue;
+		}
+		uint32_t operation_id = constraint->source_occurrence;
+		uint32_t binding_context;
+		int binding_status = operation_solver_var_binding_context(
+			ctx, operation_id, &binding_context
+		);
+		if (binding_status < 0) {
+			fprintf(stderr,
+				"context binder projection lookup failed operation=%u context=%u\n",
+				operation_id,
+				ctx->metadata->typed_occurrences.occurrences[operation_id].context_id);
+			return -1;
+		}
+		constraint->payload.classifier.goal.binder_type.binding_context =
+			binding_status == 0 ? binding_context : PROTOTYPE_INVALID_ID;
+	}
+	for (uint32_t operation_id = 0;
+		ctx->classifier_solver.initialized &&
+		operation_id < ctx->metadata->typed_occurrences.occurrence_count;
+		++operation_id) {
+		const struct prototype_typed_occurrence* operation =
+			&ctx->metadata->typed_occurrences.occurrences[operation_id];
+		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_VAR ||
+			ctx->classifier_solver.solutions[operation_id].classifier !=
+				PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		uint32_t binding_context;
+		int binding_status = operation_solver_var_binding_context(
+			ctx, operation_id, &binding_context
+		);
+		if (binding_status < 0) {
+			return -1;
+		}
+		if (binding_status != 0) {
+			continue;
+		}
+		const struct prototype_context* binding = prototype_context_get(
+			&ctx->metadata->contexts, binding_context
+		);
+		if (!binding) {
+			fprintf(stderr,
+				"context binder projection missing Context operation=%u binding-context=%u\n",
+				operation_id, binding_context);
+			return -1;
+		}
+		uint32_t classifier = prototype_context_classifier_term(binding);
+		if (classifier == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		operation_solver_store_classifier_solution(ctx, operation_id, classifier);
+		if (operation_solver_enqueue_dependents(ctx, operation_id) != 0) {
+			fprintf(stderr,
+				"context binder projection enqueue failed operation=%u\n",
+				operation_id);
+			return -1;
+		}
+	}
 	for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.case_count; ++i) {
 		uint32_t context_id = ctx->metadata->typed_occurrences.cases[i].context_id;
 		if (context_id >= source_count) {
@@ -11339,6 +11691,16 @@ static int operation_solver_resolve_contexts(
 		) != 0) {
 		return -1;
 	}
+	ctx->metadata->context_index_rebuild_count++;
+	ctx->metadata->substitution_index_rebuild_count++;
+	ctx->context_resolution_solution_revision =
+		ctx->classifier_solver.solution_revision;
+	ctx->context_resolution_context_count =
+		ctx->metadata->contexts.context_count;
+	ctx->context_resolution_substitution_count =
+		ctx->metadata->substitutions.substitution_count;
+	ctx->context_resolution_valid = 1;
+	ctx->context_resolution_finalized = finalize;
 	return 0;
 }
 
@@ -11377,6 +11739,11 @@ static int operation_solver_generate_computation_constraints_impl(
 			constraint->return_body_occurrence_id = PROTOTYPE_INVALID_ID;
 		}
 	}
+	if (prototype_judgement_delta_rebuild_computation_constraint_index(
+			&ctx->judgement_delta
+		) != 0) {
+		return -1;
+	}
 	for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
 		const struct prototype_typed_occurrence* operation =
 			&ctx->metadata->typed_occurrences.occurrences[i];
@@ -11396,42 +11763,17 @@ static int operation_solver_generate_computation_constraints_impl(
 		if (status != 0) {
 			return -1;
 		}
-		struct prototype_judgement_computation_constraint* constraint = NULL;
-		uint32_t delta_constraint_id = PROTOTYPE_INVALID_ID;
-		for (size_t constraint_id = 0;
-			constraint_id < ctx->judgement_delta.computation_constraint_count;
-			++constraint_id) {
-			struct prototype_judgement_computation_constraint* candidate =
-				&ctx->judgement_delta.computation_constraints[constraint_id];
-			if (candidate->occurrence_id == i &&
-				candidate->subject == operation->core_term) {
-				constraint = candidate;
-				delta_constraint_id = (uint32_t)constraint_id;
-				break;
-			}
-		}
-		if (!constraint || delta_constraint_id == PROTOTYPE_INVALID_ID) {
+		uint32_t delta_constraint_id;
+		if (prototype_judgement_delta_computation_constraint_for_occurrence(
+				&ctx->judgement_delta, i, &delta_constraint_id
+			) != 0) {
 			return -1;
 		}
-		int linked = 0;
-		uint32_t lifecycle_id = PROTOTYPE_INVALID_ID;
-		for (uint32_t link = 0;
-			link < ctx->constraints.computation_constraint_count;
-			++link) {
-			uint32_t id = ctx->constraints.first_computation_constraint + link;
-			if (id >= ctx->constraints.constraint_count) {
-				return -1;
-			}
-			if (ctx->constraints.constraints[id].domain ==
-					OPERATION_CONSTRAINT_DOMAIN_COMPUTATION &&
-				ctx->constraints.constraints[id].payload.computation.
-					judgement_delta_constraint_id == delta_constraint_id) {
-				linked = 1;
-				lifecycle_id = id;
-				break;
-			}
-		}
-		if (!linked) {
+		struct prototype_judgement_computation_constraint* constraint =
+			&ctx->judgement_delta.computation_constraints[delta_constraint_id];
+		uint32_t lifecycle_id =
+			ctx->constraints.computation_constraint_for_occurrence[i];
+		if (lifecycle_id == PROTOTYPE_INVALID_ID) {
 			if (ctx->constraints.constraint_count >=
 				PROTOTYPE_COMPILER_CONSTRAINT_CAPACITY) {
 				return -1;
@@ -11455,11 +11797,27 @@ static int operation_solver_generate_computation_constraints_impl(
 					.judgement_delta_constraint_id = delta_constraint_id
 				}
 			};
-		} else if (operation_constraint_reopen(
-				&ctx->constraints.constraints[lifecycle_id],
-				OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY
-			) != 0) {
-			return -1;
+			ctx->constraints.computation_constraint_for_occurrence[i] = id;
+		} else {
+			if (lifecycle_id >= ctx->constraints.constraint_count ||
+				ctx->constraints.constraints[lifecycle_id].domain !=
+					OPERATION_CONSTRAINT_DOMAIN_COMPUTATION ||
+				ctx->constraints.constraints[lifecycle_id].source_occurrence != i) {
+				return -1;
+			}
+			struct operation_constraint* lifecycle =
+				&ctx->constraints.constraints[lifecycle_id];
+			lifecycle->kind = constraint->kind;
+			lifecycle->source_ast = operation->source_ast;
+			lifecycle->context_id = operation->context_id;
+			lifecycle->payload.computation.judgement_delta_constraint_id =
+				delta_constraint_id;
+			if (operation_constraint_reopen(
+					lifecycle,
+					OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY
+				) != 0) {
+				return -1;
+			}
 		}
 		if (lifecycle_id == PROTOTYPE_INVALID_ID ||
 			operation_solver_add_constraint_dependency(
@@ -11570,6 +11928,7 @@ static int operation_solver_generate_computation_constraints(
 	if (!ctx) {
 		return -1;
 	}
+	ctx->metadata->computation_constraint_generation_pass_count++;
 	/* Effect equations are regenerated after computation solving. Remove the
 	 * previous effect suffix before adding any newly discovered computation
 	 * obligations; classifier and existing computation identities remain
@@ -11585,82 +11944,6 @@ static int operation_solver_generate_computation_constraints(
 		return -1;
 	}
 	return status;
-}
-
-/* Rebuild only ConstraintDB ownership links after a classifier-only pass has
- * rebuilt its prefix. The recorded kernel payload and selected evidence are
- * immutable here; replay/finalization must not reopen proof search. */
-static int operation_solver_relink_recorded_computation_constraints(
-	struct compile_context* ctx
-) {
-	if (!ctx || !ctx->metadata ||
-		ctx->constraints.computation_constraint_count != 0 ||
-		ctx->constraints.first_computation_constraint !=
-			ctx->constraints.constraint_count) {
-		return -1;
-	}
-	struct operation_constraint_db_mark mark =
-		operation_constraint_db_mark(&ctx->constraints);
-	for (uint32_t delta_id = 0;
-		delta_id < ctx->judgement_delta.computation_constraint_count;
-		++delta_id) {
-		const struct prototype_judgement_computation_constraint* payload =
-			&ctx->judgement_delta.computation_constraints[delta_id];
-		if (payload->occurrence_id == PROTOTYPE_INVALID_ID) {
-			continue;
-		}
-		if (payload->occurrence_id >=
-			ctx->metadata->typed_occurrences.occurrence_count ||
-			ctx->constraints.constraint_count >=
-				PROTOTYPE_COMPILER_CONSTRAINT_CAPACITY) {
-			goto rollback;
-		}
-		const struct prototype_typed_occurrence* occurrence =
-			&ctx->metadata->typed_occurrences.occurrences[payload->occurrence_id];
-		if (occurrence->core_term != payload->subject ||
-			(occurrence->tag != PROTOTYPE_TYPED_OCCURRENCE_REQUEST &&
-			 occurrence->tag != PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD)) {
-			goto rollback;
-		}
-		uint32_t id = ctx->constraints.constraint_count++;
-		ctx->constraints.computation_constraint_count++;
-		ctx->constraints.constraints[id] = (struct operation_constraint){
-			.id = id,
-			.domain = OPERATION_CONSTRAINT_DOMAIN_COMPUTATION,
-			.kind = payload->kind,
-			.source_occurrence = payload->occurrence_id,
-			.source_ast = occurrence->source_ast,
-			.context_id = occurrence->context_id,
-			.state = OPERATION_CONSTRAINT_STATE_PENDING,
-			.reason = OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY,
-			.result_term = PROTOTYPE_INVALID_ID,
-			.evidence_id = PROTOTYPE_INVALID_ID,
-			.origin_constraint_id = PROTOTYPE_INVALID_ID,
-			.payload.computation = {
-				.judgement_delta_constraint_id = delta_id
-			}
-		};
-		if (operation_solver_add_constraint_dependency(
-				ctx, payload->occurrence_id, id
-			) != 0) {
-			goto rollback;
-		}
-		for (uint32_t premise = 0;
-			premise < payload->premise_occurrence_count;
-			++premise) {
-			if (operation_solver_add_constraint_dependency(
-					ctx, payload->premise_occurrences[premise], id
-				) != 0) {
-				goto rollback;
-			}
-		}
-	}
-	ctx->constraints.first_effect_constraint = ctx->constraints.constraint_count;
-	return operation_constraint_db_validate(ctx);
-
-rollback:
-	(void)operation_constraint_db_rollback(&ctx->constraints, mark);
-	return -1;
 }
 
 static int operation_solver_bind_computation_constraint_solutions(
@@ -11690,34 +11973,24 @@ static int operation_solver_bind_computation_constraint_solutions(
 		if (constraint->occurrence_id == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
-		struct operation_constraint* lifecycle = NULL;
-		for (uint32_t link = 0;
-			link < ctx->constraints.computation_constraint_count;
-			++link) {
-			uint32_t id = ctx->constraints.first_computation_constraint + link;
-			if (id >= ctx->constraints.constraint_count) {
-				fprintf(stderr,
-					"computation binding lifecycle range id=%u total=%u first=%u count=%u\n",
-					id, ctx->constraints.constraint_count,
-					ctx->constraints.first_computation_constraint,
-					ctx->constraints.computation_constraint_count);
-				return -1;
-			}
-			struct operation_constraint* candidate =
-				&ctx->constraints.constraints[id];
-			if (candidate->domain == OPERATION_CONSTRAINT_DOMAIN_COMPUTATION &&
-				candidate->payload.computation.judgement_delta_constraint_id == i) {
-				lifecycle = candidate;
-				break;
-			}
-		}
-		if (!lifecycle) {
+		uint32_t lifecycle_id = constraint->occurrence_id < 4096 ?
+			ctx->constraints.computation_constraint_for_occurrence[
+				constraint->occurrence_id
+			] : PROTOTYPE_INVALID_ID;
+		if (lifecycle_id == PROTOTYPE_INVALID_ID ||
+			lifecycle_id >= ctx->constraints.constraint_count) {
 			fprintf(stderr,
 				"computation binding lifecycle missing delta=%zu total-delta=%zu first=%u count=%u total=%u\n",
 				i, ctx->judgement_delta.computation_constraint_count,
 				ctx->constraints.first_computation_constraint,
 				ctx->constraints.computation_constraint_count,
 				ctx->constraints.constraint_count);
+			return -1;
+		}
+		struct operation_constraint* lifecycle =
+			&ctx->constraints.constraints[lifecycle_id];
+		if (lifecycle->domain != OPERATION_CONSTRAINT_DOMAIN_COMPUTATION ||
+			lifecycle->payload.computation.judgement_delta_constraint_id != i) {
 			return -1;
 		}
 		lifecycle->result_term = result->solved_classifier;

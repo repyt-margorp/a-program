@@ -249,6 +249,7 @@ static int substitute_term(
 		p_ret
 	);
 	free(ctx.memo);
+	free(ctx.memo_buckets);
 	return status;
 }
 
@@ -298,17 +299,96 @@ static uint64_t substitution_ih_scope_clone_key(
 	return ctx && ctx->ih_scope_clone ? ctx->ih_scope_clone->scope_key : 0;
 }
 
+static uint64_t substitution_memo_hash(
+	uint32_t term_id,
+	uint64_t binding_scope_key,
+	uint64_t ih_scope_clone_key
+) {
+	uint64_t hash = UINT64_C(1469598103934665603);
+	hash = (hash ^ term_id) * UINT64_C(1099511628211);
+	hash = (hash ^ binding_scope_key) * UINT64_C(1099511628211);
+	hash = (hash ^ ih_scope_clone_key) * UINT64_C(1099511628211);
+	return hash;
+}
+
+static int substitution_memo_reserve(
+	struct substitution_context* ctx,
+	size_t required
+) {
+	if (!ctx) {
+		return -1;
+	}
+	if (required > ctx->memo_capacity) {
+		size_t capacity = ctx->memo_capacity ? ctx->memo_capacity * 2 : 64;
+		while (capacity < required) {
+			if (capacity > SIZE_MAX / 2) {
+				return -1;
+			}
+			capacity *= 2;
+		}
+		struct substitution_memo_entry* memo = realloc(
+			ctx->memo, capacity * sizeof(*memo)
+		);
+		if (!memo) {
+			return -1;
+		}
+		ctx->memo = memo;
+		ctx->memo_capacity = capacity;
+	}
+	size_t bucket_count = 128;
+	while (bucket_count < ctx->memo_capacity * 2) {
+		if (bucket_count > SIZE_MAX / 2) {
+			return -1;
+		}
+		bucket_count *= 2;
+	}
+	if (ctx->memo_bucket_count == bucket_count) {
+		return 0;
+	}
+	uint32_t* buckets = malloc(bucket_count * sizeof(*buckets));
+	if (!buckets) {
+		return -1;
+	}
+	for (size_t i = 0; i < bucket_count; ++i) {
+		buckets[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (uint32_t i = 0; i < ctx->memo_count; ++i) {
+		struct substitution_memo_entry* entry = &ctx->memo[i];
+		size_t bucket = (size_t)substitution_memo_hash(
+			entry->term_id,
+			entry->binding_scope_key,
+			entry->ih_scope_clone_key
+		) & (bucket_count - 1);
+		entry->next = buckets[bucket];
+		buckets[bucket] = i;
+	}
+	free(ctx->memo_buckets);
+	ctx->memo_buckets = buckets;
+	ctx->memo_bucket_count = bucket_count;
+	return 0;
+}
+
 static int substitution_memo_lookup(
 	const struct substitution_context* ctx,
 	uint32_t term_id,
 	uint32_t* p_result
 ) {
-	if (!ctx || !p_result || ctx->binding_count == 0) {
+	if (!ctx || !p_result ||
+		(ctx->binding_count == 0 && !ctx->replace_exact_term) ||
+		ctx->memo_bucket_count == 0) {
 		return 0;
 	}
 	uint64_t binding_scope_key = substitution_binding_scope_key(ctx);
 	uint64_t ih_scope_clone_key = substitution_ih_scope_clone_key(ctx);
-	for (size_t i = 0; i < ctx->memo_count; ++i) {
+	size_t bucket = (size_t)substitution_memo_hash(
+		term_id, binding_scope_key, ih_scope_clone_key
+	) & (ctx->memo_bucket_count - 1);
+	for (uint32_t i = ctx->memo_buckets[bucket];
+		i != PROTOTYPE_INVALID_ID;
+		i = ctx->memo[i].next) {
+		if (i >= ctx->memo_count) {
+			return 0;
+		}
 		const struct substitution_memo_entry* entry = &ctx->memo[i];
 		if (entry->term_id == term_id &&
 			entry->binding_scope_key == binding_scope_key &&
@@ -325,26 +405,26 @@ static int substitution_memo_store(
 	uint32_t term_id,
 	uint32_t result
 ) {
-	if (!ctx || ctx->binding_count == 0) {
+	if (!ctx || (ctx->binding_count == 0 && !ctx->replace_exact_term)) {
 		return 0;
 	}
-	if (ctx->memo_count == ctx->memo_capacity) {
-		size_t capacity = ctx->memo_capacity ? ctx->memo_capacity * 2 : 64;
-		struct substitution_memo_entry* memo = realloc(
-			ctx->memo, capacity * sizeof(*memo)
-		);
-		if (!memo) {
-			return -1;
-		}
-		ctx->memo = memo;
-		ctx->memo_capacity = capacity;
+	if (substitution_memo_reserve(ctx, ctx->memo_count + 1) != 0) {
+		return -1;
 	}
-	ctx->memo[ctx->memo_count++] = (struct substitution_memo_entry) {
+	uint64_t binding_scope_key = substitution_binding_scope_key(ctx);
+	uint64_t ih_scope_clone_key = substitution_ih_scope_clone_key(ctx);
+	size_t bucket = (size_t)substitution_memo_hash(
+		term_id, binding_scope_key, ih_scope_clone_key
+	) & (ctx->memo_bucket_count - 1);
+	uint32_t id = (uint32_t)ctx->memo_count++;
+	ctx->memo[id] = (struct substitution_memo_entry) {
 		.term_id = term_id,
 		.result = result,
-		.binding_scope_key = substitution_binding_scope_key(ctx),
-		.ih_scope_clone_key = substitution_ih_scope_clone_key(ctx)
+		.binding_scope_key = binding_scope_key,
+		.ih_scope_clone_key = ih_scope_clone_key,
+		.next = ctx->memo_buckets[bucket]
 	};
+	ctx->memo_buckets[bucket] = id;
 	return 0;
 }
 
@@ -1275,6 +1355,7 @@ int prototype_term_graph_replace_exact(
 	ctx.replace_exact_term = 1;
 	int status = substitute_term_internal(db, term_id, &ctx, p_ret);
 	free(ctx.memo);
+	free(ctx.memo_buckets);
 	return status;
 }
 
@@ -1318,5 +1399,6 @@ int prototype_term_graph_reindex_bindings(
 		p_ret
 	);
 	free(ctx.memo);
+	free(ctx.memo_buckets);
 	return status;
 }

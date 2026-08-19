@@ -2014,14 +2014,11 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "compile pending failed: infer pending types\n");
 		return -1;
 	}
-	/* The fixed point above has already solved and committed source-operation
-	 * computation constraints in their contexts. The final classifier pass
-	 * rebuilds the classifier prefix, so rebuild the occurrence-owned
-	 * computation suffix and its explicit effect-equation edges before freezing
-	 * residual state. This never scans TermDB for replacement authority. */
+	/* The fixed point retains the occurrence-owned computation suffix across
+	 * classifier passes. Refresh its solved lifecycle and effect equations before
+	 * freezing residual state; no authority reconstruction is required here. */
 	int final_computation_changed = 0;
-	if (operation_solver_relink_recorded_computation_constraints(&ctx) != 0 ||
-		operation_solver_bind_computation_constraint_solutions(
+	if (operation_solver_bind_computation_constraint_solutions(
 			&ctx, &final_computation_changed, 0
 		) != 0 || operation_effect_generate_constraints(&ctx) != 0 ||
 			prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||

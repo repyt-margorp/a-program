@@ -21,7 +21,10 @@ grep -q 'struct operation_constraint_db_mark' "$CONTEXT_SOURCE"
 grep -q 'source_occurrence;' "$CONTEXT_SOURCE"
 grep -q 'operation_constraint_transition(' "$SOLVER_SOURCE"
 grep -q 'operation_constraint_reopen(' "$SOLVER_SOURCE"
-grep -q 'operation_solver_relink_recorded_computation_constraints(' "$SOLVER_SOURCE"
+grep -q 'operation_solver_refresh_computation_constraint_operands(' "$SOLVER_SOURCE"
+grep -q 'computation_constraint_for_occurrence' "$CONTEXT_SOURCE"
+grep -q 'computation_constraint_by_occurrence' \
+	src/prototype/include/a_program/kernel/judgement/db.h
 grep -q 'computation_constraint_id;' "$JUDGEMENT_TYPES"
 
 computation_payload=$(sed -n \

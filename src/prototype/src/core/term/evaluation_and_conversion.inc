@@ -1017,7 +1017,14 @@ static int normalization_cache_lookup(
 	if (!db || !p_result) {
 		return 0;
 	}
-	for (size_t i = 0; i < PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY; ++i) {
+	uint64_t hash = (uint64_t)term_id * UINT64_C(11400714819323198485) ^
+		(uint64_t)(uint32_t)profile * UINT64_C(14029467366897019727);
+	size_t bucket = (size_t)hash &
+		(PROTOTYPE_TERM_NORMALIZATION_CACHE_BUCKET_CAPACITY - 1);
+	for (uint32_t i = db->normalization_cache_buckets[bucket];
+		i != PROTOTYPE_INVALID_ID;
+		i = db->normalization_cache_next_entry[i]) {
+		db->normalization_cache_stats.probe_count++;
 		const struct prototype_term_normalization_cache_entry* entry =
 			&db->normalization_cache[i];
 		if (entry->state == PROTOTYPE_TERM_NORMALIZATION_CACHE_COMPLETE &&
@@ -1032,6 +1039,35 @@ static int normalization_cache_lookup(
 	return 0;
 }
 
+static size_t normalization_cache_bucket(int profile, uint32_t term_id) {
+	uint64_t hash = (uint64_t)term_id * UINT64_C(11400714819323198485) ^
+		(uint64_t)(uint32_t)profile * UINT64_C(14029467366897019727);
+	return (size_t)hash &
+		(PROTOTYPE_TERM_NORMALIZATION_CACHE_BUCKET_CAPACITY - 1);
+}
+
+static void normalization_cache_remove_slot(
+	struct prototype_term_db* db,
+	uint32_t slot
+) {
+	if (!db || slot >= PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY ||
+		db->normalization_cache[slot].state == PROTOTYPE_TERM_NORMALIZATION_CACHE_EMPTY) {
+		return;
+	}
+	const struct prototype_term_normalization_cache_entry* entry =
+		&db->normalization_cache[slot];
+	size_t bucket = normalization_cache_bucket(entry->profile, entry->term_id);
+	uint32_t* link = &db->normalization_cache_buckets[bucket];
+	while (*link != PROTOTYPE_INVALID_ID) {
+		if (*link == slot) {
+			*link = db->normalization_cache_next_entry[slot];
+			break;
+		}
+		link = &db->normalization_cache_next_entry[*link];
+	}
+	db->normalization_cache_next_entry[slot] = PROTOTYPE_INVALID_ID;
+}
+
 static struct prototype_term_normalization_cache_entry* normalization_cache_reserve(
 	struct prototype_term_db* db,
 	int profile,
@@ -1040,28 +1076,23 @@ static struct prototype_term_normalization_cache_entry* normalization_cache_rese
 	if (!db) {
 		return NULL;
 	}
-	for (size_t i = 0; i < PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY; ++i) {
-		struct prototype_term_normalization_cache_entry* entry =
-			&db->normalization_cache[i];
-		if (entry->state == PROTOTYPE_TERM_NORMALIZATION_CACHE_EMPTY ||
-			entry->graph_revision != db->normalization_graph_revision) {
-			entry->term_id = term_id;
-			entry->result_term_id = PROTOTYPE_INVALID_ID;
-			entry->graph_revision = db->normalization_graph_revision;
-			entry->profile = profile;
-			entry->state = PROTOTYPE_TERM_NORMALIZATION_CACHE_IN_PROGRESS;
-			return entry;
-		}
-	}
+	uint32_t slot = db->normalization_cache_next++ %
+		PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY;
 	struct prototype_term_normalization_cache_entry* entry =
-		&db->normalization_cache[
-			db->normalization_cache_next++ % PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY
-		];
+		&db->normalization_cache[slot];
+	if (entry->state != PROTOTYPE_TERM_NORMALIZATION_CACHE_EMPTY) {
+		normalization_cache_remove_slot(db, slot);
+		db->normalization_cache_stats.eviction_count++;
+	}
 	entry->term_id = term_id;
 	entry->result_term_id = PROTOTYPE_INVALID_ID;
 	entry->graph_revision = db->normalization_graph_revision;
 	entry->profile = profile;
 	entry->state = PROTOTYPE_TERM_NORMALIZATION_CACHE_IN_PROGRESS;
+	size_t bucket = normalization_cache_bucket(profile, term_id);
+	db->normalization_cache_next_entry[slot] =
+		db->normalization_cache_buckets[bucket];
+	db->normalization_cache_buckets[bucket] = slot;
 	return entry;
 }
 

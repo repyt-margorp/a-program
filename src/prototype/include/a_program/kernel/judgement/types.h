@@ -191,6 +191,8 @@ struct prototype_judgement_derivation_candidate {
 	uint32_t semantic_action_id;
 	uint32_t premise_count;
 	struct prototype_judgement_candidate_premise* premises;
+	uint64_t key_hash;
+	uint32_t hash_next;
 };
 
 /* Immutable validator input shared by candidate and accepted replay. It owns
@@ -368,6 +370,7 @@ struct prototype_judgement_db {
 		PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT
 	];
 	uint32_t derivation_index_heads[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
+	uint32_t candidate_index_heads[PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT];
 	uint64_t claim_intern_requests;
 	uint64_t claim_intern_hits;
 	uint64_t claim_intern_probes;

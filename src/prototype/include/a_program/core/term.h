@@ -30,6 +30,7 @@ typedef int (*prototype_term_operation_dispatch_fn)(
 
 #define PROTOTYPE_SCOPE_BINDING_CAPACITY 512
 #define PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY 1024
+#define PROTOTYPE_TERM_NORMALIZATION_CACHE_BUCKET_CAPACITY 2048
 #define PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY 4096
 #define PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT UINT64_C(100000)
 #define PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT UINT64_C(100000)
@@ -345,6 +346,20 @@ struct prototype_term_normalization_cache_entry {
 struct prototype_term_normalization_cache_stats {
 	uint64_t hit_count;
 	uint64_t miss_count;
+	uint64_t probe_count;
+	uint64_t eviction_count;
+	uint64_t invalidation_count;
+};
+
+struct prototype_term_intern_stats {
+	uint64_t formation_request_count;
+	uint64_t unique_term_count;
+	uint64_t bucket_probe_count;
+	uint64_t exact_probe_count;
+	uint64_t alpha_compare_count;
+	uint64_t index_rebuild_count;
+	uint64_t bucket_probes_by_tag[PROTOTYPE_TERM_DIMENSION_ACTION + 1];
+	uint64_t alpha_compares_by_tag[PROTOTYPE_TERM_DIMENSION_ACTION + 1];
 };
 
 /* Immutable operational data projected by compilation. It contains only the
@@ -638,7 +653,32 @@ struct prototype_term_db {
 	uint32_t normalization_cache_next;
 	struct prototype_term_normalization_cache_entry
 		normalization_cache[PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY];
+	uint32_t normalization_cache_buckets[
+		PROTOTYPE_TERM_NORMALIZATION_CACHE_BUCKET_CAPACITY
+	];
+	uint32_t normalization_cache_next_entry[
+		PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY
+	];
 	struct prototype_term_normalization_cache_stats normalization_cache_stats;
+
+	/* Runtime-only canonical identity index. The Term graph remains the sole
+	 * semantic owner; this index is a rebuildable projection of that graph. */
+	struct prototype_term_canonical_key* intern_keys;
+	uint32_t* intern_canonical_ids;
+	uint32_t* intern_next;
+	uint32_t* intern_buckets;
+	uint64_t* intern_exact_hashes;
+	uint32_t* intern_exact_next;
+	uint32_t* intern_exact_buckets;
+	uint32_t* effect_row_variable_terms;
+	size_t effect_row_variable_count;
+	size_t effect_row_variable_capacity;
+	int effect_row_variable_index_dirty;
+	size_t intern_entry_capacity;
+	size_t intern_bucket_count;
+	size_t intern_indexed_count;
+	int intern_index_dirty;
+	struct prototype_term_intern_stats intern_stats;
 };
 
 struct prototype_term_definition {
@@ -703,6 +743,16 @@ void prototype_term_db_init(
 	size_t case_binder_capacity,
 	struct prototype_ih_scope* ih_scopes,
 	size_t ih_scope_capacity
+);
+void prototype_term_db_dispose_runtime_state(struct prototype_term_db* db);
+int prototype_term_effect_row_variable_terms(
+	struct prototype_term_db* db,
+	const uint32_t** p_terms,
+	size_t* p_count
+);
+void prototype_term_intern_get_stats(
+	const struct prototype_term_db* db,
+	struct prototype_term_intern_stats* p_stats
 );
 
 int prototype_term_db_append_relocated(

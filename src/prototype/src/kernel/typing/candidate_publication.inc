@@ -31,6 +31,35 @@ static int proof_candidates_equal(
 	return 1;
 }
 
+static uint64_t proof_candidate_key_hash(
+	const struct prototype_judgement_derivation_candidate* proof
+) {
+	uint64_t hash = UINT64_C(1469598103934665603);
+	hash = judgement_key_hash_mix(hash, (uint32_t)proof->proof_kind);
+	hash = judgement_key_hash_mix(hash, proof->conclusion_proposition_id);
+	for (uint32_t i = 0; i < 4; ++i) {
+		hash = judgement_key_hash_mix(hash, proof->rule_data.words[i]);
+	}
+	hash = judgement_key_hash_mix(hash, (uint32_t)proof->semantic_action_kind);
+	hash = judgement_key_hash_mix(hash, proof->semantic_action_id);
+	hash = judgement_key_hash_mix(hash, proof->premise_count);
+	for (uint32_t i = 0; i < proof->premise_count; ++i) {
+		hash = judgement_key_hash_mix(
+			hash, (uint32_t)proof->premises[i].proposition_store_kind
+		);
+		hash = judgement_key_hash_mix(
+			hash, proof->premises[i].proposition_id
+		);
+		hash = judgement_key_hash_mix(
+			hash, (uint32_t)proof->premises[i].semantic_action_kind
+		);
+		hash = judgement_key_hash_mix(
+			hash, proof->premises[i].semantic_action_id
+		);
+	}
+	return hash;
+}
+
 static int find_proposition_id(
 	const struct prototype_judgement_proposition* propositions,
 	size_t proposition_count,
@@ -791,6 +820,7 @@ int prototype_judgement_db_rebuild_index(
 	judgement_index_clear(judgement->claim_index_heads);
 	judgement_index_clear(judgement->proposition_index_heads);
 	judgement_index_clear(judgement->derivation_index_heads);
+	judgement_index_clear(judgement->candidate_index_heads);
 	for (uint32_t i = 0;
 		i < (uint32_t)judgement->proposition_count; ++i) {
 		struct prototype_judgement_proposition* proposition =
@@ -848,6 +878,20 @@ int prototype_judgement_db_rebuild_index(
 				premise->proposition_id
 			];
 		}
+		candidate->key_hash = proof_candidate_key_hash(candidate);
+		size_t bucket = judgement_index_bucket(candidate->key_hash);
+		for (uint32_t existing = judgement->candidate_index_heads[bucket];
+			existing != PROTOTYPE_INVALID_ID;
+			existing = judgement->derivation_candidates[existing].hash_next) {
+			if (judgement->derivation_candidates[existing].key_hash ==
+					candidate->key_hash && proof_candidates_equal(
+					&judgement->derivation_candidates[existing], candidate
+				)) {
+				return -1;
+			}
+		}
+		candidate->hash_next = judgement->candidate_index_heads[bucket];
+		judgement->candidate_index_heads[bucket] = i;
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
 		struct prototype_judgement_claim* claim = &judgement->claims[i];
@@ -1070,8 +1114,13 @@ static int add_complete_candidate(
 		return -1;
 	}
 	proof.premises = proof.premise_count == 0 ? NULL : normalized_premises;
-	for (size_t i = 0; i < judgement->derivation_candidate_count; ++i) {
-		if (proof_candidates_equal(&judgement->derivation_candidates[i], &proof)) {
+	proof.key_hash = proof_candidate_key_hash(&proof);
+	size_t bucket = judgement_index_bucket(proof.key_hash);
+	for (uint32_t i = judgement->candidate_index_heads[bucket];
+		i != PROTOTYPE_INVALID_ID;
+		i = judgement->derivation_candidates[i].hash_next) {
+		if (judgement->derivation_candidates[i].key_hash == proof.key_hash &&
+			proof_candidates_equal(&judgement->derivation_candidates[i], &proof)) {
 			return 0;
 		}
 	}
@@ -1090,6 +1139,9 @@ static int add_complete_candidate(
 	judgement->candidate_premise_allocations += proof.premise_count;
 	judgement->derivation_candidates[proof_id] = proof;
 	judgement->derivation_candidates[proof_id].premises = premises;
+	judgement->derivation_candidates[proof_id].hash_next =
+		judgement->candidate_index_heads[bucket];
+	judgement->candidate_index_heads[bucket] = proof_id;
 	judgement->derivation_candidate_count++;
 	return 0;
 }
@@ -1151,6 +1203,7 @@ static int publish_complete_relation(
 	if (judgement_intern_claim(judgement, &relation, &claim_id) != 0) {
 		judgement->derivation_candidate_count = derivation_candidate_mark;
 		judgement->candidate_premise_count = candidate_premise_mark;
+		(void)prototype_judgement_db_rebuild_index(judgement);
 		return -1;
 	}
 	struct prototype_judgement_derivation derivation;
@@ -1193,8 +1246,10 @@ static int publish_complete_relation(
 			 * certificate provenance, so normalize the operation to reuse the
 			 * existing Claim. */
 			*p_claim_id = claim_id;
+			(void)prototype_judgement_db_rebuild_index(judgement);
 			return 0;
 		}
+		(void)prototype_judgement_db_rebuild_index(judgement);
 		return -1;
 	}
 	uint32_t derivation_id;
@@ -1210,6 +1265,7 @@ static int publish_complete_relation(
 				judgement->claims[claim_id].hash_next;
 			judgement->claim_count = claim_mark;
 		}
+		(void)prototype_judgement_db_rebuild_index(judgement);
 		return -1;
 	}
 	*p_claim_id = claim_id;
@@ -1350,6 +1406,7 @@ int prototype_judgement_delta_publish_complete(
 	delta->proposition_count = 0;
 	delta->derivation_candidate_count = 0;
 	delta->candidate_premise_count = 0;
+	judgement_index_clear(delta->candidate_index_heads);
 
 done:
 	free(published);
@@ -1498,8 +1555,13 @@ static int add_complete_delta_relation(
 		return -1;
 	}
 	proof.premises = proof.premise_count == 0 ? NULL : normalized_premises;
-	for (size_t i = 0; i < delta->derivation_candidate_count; ++i) {
-		if (proof_candidates_equal(&delta->derivation_candidates[i], &proof)) {
+	proof.key_hash = proof_candidate_key_hash(&proof);
+	size_t bucket = judgement_index_bucket(proof.key_hash);
+	for (uint32_t i = delta->candidate_index_heads[bucket];
+		i != PROTOTYPE_INVALID_ID;
+		i = delta->derivation_candidates[i].hash_next) {
+		if (delta->derivation_candidates[i].key_hash == proof.key_hash &&
+			proof_candidates_equal(&delta->derivation_candidates[i], &proof)) {
 			return 0;
 		}
 	}
@@ -1526,6 +1588,9 @@ static int add_complete_delta_relation(
 	delta->candidate_premise_count += proof.premise_count;
 	delta->derivation_candidates[proof_id] = proof;
 	delta->derivation_candidates[proof_id].premises = premises;
+	delta->derivation_candidates[proof_id].hash_next =
+		delta->candidate_index_heads[bucket];
+	delta->candidate_index_heads[bucket] = proof_id;
 	delta->derivation_candidate_count++;
 	return 0;
 }

@@ -211,6 +211,7 @@ void prototype_program_storage_destroy(struct prototype_program_storage* storage
 	if (!storage) {
 		return;
 	}
+	prototype_term_db_dispose_runtime_state(&storage->terms);
 	symbol_table_free(&storage->symbols);
 	free(storage->backing);
 	memset(storage, 0, sizeof(*storage));
