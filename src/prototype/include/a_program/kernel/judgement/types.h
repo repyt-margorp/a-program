@@ -74,7 +74,11 @@ enum prototype_judgement_proof_kind {
 	PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TYPE_FORMATION = 45,
 	PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TERM = 46,
 	PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_CONSTRUCTOR = 47,
-	PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS = 48
+	PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS = 48,
+	PROTOTYPE_JUDGEMENT_PROOF_RETURNS_TYPE_FORMATION = 49,
+	PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION = 50,
+	PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TYPE_FORMATION = 51,
+	PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS = 52
 };
 
 /* Reconstruction role is a property of an accepted rule application, not of
@@ -143,10 +147,12 @@ enum prototype_judgement_proposition_store_kind {
 struct prototype_judgement_candidate_premise {
 	int proposition_store_kind;
 	uint32_t proposition_id;
-	/* Transient builders may populate caller-owned Proposition storage through
-	 * this pointer. Once normalized into a DB or delta, it resolves the ID above
-	 * and must be treated as read-only. */
-	struct prototype_judgement_proposition* proposition;
+	/* Validators consume only this immutable resolution. */
+	const struct prototype_judgement_proposition* proposition;
+	/* Transient candidate construction owns separate caller-provided storage.
+	 * It is not identity, is never serialized, and is cleared when a premise is
+	 * resolved from an accepted store. */
+	struct prototype_judgement_proposition* builder_proposition;
 	int semantic_action_kind;
 	uint32_t semantic_action_id;
 };
@@ -156,6 +162,14 @@ struct prototype_judgement_candidate_premise {
 struct prototype_judgement_premise_edge {
 	uint32_t claim_id;
 	uint32_t scoped_proposition_id;
+	int semantic_action_kind;
+	uint32_t semantic_action_id;
+};
+
+/* Storage-neutral premise resolved for a rule validator. Candidate and
+ * accepted storage IDs are adapter concerns and cannot enter kernel rules. */
+struct prototype_judgement_premise_view {
+	const struct prototype_judgement_proposition* proposition;
 	int semantic_action_kind;
 	uint32_t semantic_action_id;
 };
@@ -204,7 +218,8 @@ struct prototype_judgement_rule_application_view {
 	int semantic_action_kind;
 	uint32_t semantic_action_id;
 	uint32_t premise_count;
-	const struct prototype_judgement_candidate_premise* premises;
+	struct prototype_judgement_premise_view
+		premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 };
 
 /* Complete evidence selected by a proof-producing lookup. Classifier-only

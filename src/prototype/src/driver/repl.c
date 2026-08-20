@@ -70,18 +70,18 @@ static void print_state(
 		ast_db->node_count,
 		ast_db->expectation_count,
 		ast_db->assignment_count,
-		type_declarations->type_count,
-		type_declarations->constructor_count,
+		type_declarations->semantic_schema.type_count,
+		type_declarations->semantic_schema.constructor_count,
 		metadata ? metadata->label_count : 0,
 		term_db->term_count
 	);
-	for (size_t i = 0; i < type_declarations->type_count; ++i) {
-		const struct prototype_type_declaration* type = &type_declarations->type_declarations[i];
+	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
+		const struct prototype_type_declaration* type = &type_declarations->semantic_schema.type_declarations[i];
 		prototype_diagnostic_print_type_declaration(stdout, symbols, type_declarations, type);
 		for (uint32_t j = 0; j < type->constructor_count; ++j) {
 			uint32_t constructor_id = type->first_constructor + j;
 			const struct prototype_type_constructor_declaration* constructor =
-				&type_declarations->constructor_declarations[constructor_id];
+				&type_declarations->semantic_schema.constructor_declarations[constructor_id];
 			const struct prototype_type_constructor_readback* readback =
 				prototype_type_constructor_readback_get(type_declarations, constructor_id);
 			const struct prototype_constructor_classifier_cache_entry* cache =

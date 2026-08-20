@@ -63,11 +63,11 @@ int prototype_judgement_add_type_formation_claim(
 		!term_exists(terms, classifier) ||
 		prototype_term_type_instance_info(
 			terms, subject, &type_id, arguments, &argument_count
-		) != 0 || type_id >= type_declarations->type_count) {
+		) != 0 || type_id >= type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	if ((argument_count == 0 && type->formation_classifier != classifier) ||
 		(argument_count != 0 &&
 			(!type_instance_has_known_type(terms, type_declarations, subject) ||
@@ -326,9 +326,10 @@ int prototype_judgement_add_constructor_spine_claim(
 		premises[i].proposition_id =
 			judgement->claims[argument_claim_ids[i]].proposition_id;
 		premises[i].proposition =
-			(struct prototype_judgement_proposition*)prototype_judgement_claim_proposition(
-			judgement, argument_claim_ids[i]
-		);
+			prototype_judgement_claim_proposition(
+				judgement, argument_claim_ids[i]
+			);
+		premises[i].builder_proposition = NULL;
 	}
 	(void)head;
 	(void)constructor_index;
@@ -546,21 +547,21 @@ int prototype_judgement_source_match_branch_refinement(
 		prototype_term_type_instance_info(
 			terms, scrutinee_classifier, &type_id, scrutinee_arguments,
 			&scrutinee_argument_count
-		) != 0 || type_id >= type_declarations->type_count) {
+		) != 0 || type_id >= type_declarations->semantic_schema.type_count) {
 		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
 	}
 	*p_residual_pattern = PROTOTYPE_INVALID_ID;
 	*p_residual_value = PROTOTYPE_INVALID_ID;
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	if (type->parameter_count + type->index_count !=
 			scrutinee_argument_count || constructor_index >= type->constructor_count ||
 		type->first_constructor + constructor_index >=
-			type_declarations->constructor_count) {
+			type_declarations->semantic_schema.constructor_count) {
 		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
 	}
 	const struct prototype_type_constructor_declaration* constructor =
-		&type_declarations->constructor_declarations[
+		&type_declarations->semantic_schema.constructor_declarations[
 			type->first_constructor + constructor_index
 		];
 	if (terms->terms[scrutinee_term].tag != PROTOTYPE_TERM_VAR) {
@@ -1037,7 +1038,7 @@ static int dimension_action_nullary_branch_refinement(
 		return -1;
 	}
 	if (prototype_type_schema_view_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 			dimension_operators,
@@ -1050,7 +1051,7 @@ static int dimension_action_nullary_branch_refinement(
 		return -1;
 	}
 	if (prototype_constructor_schema_view_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 			dimension_operators,
@@ -1218,11 +1219,11 @@ int prototype_judgement_identity_relation_branch_refinement(
 			&type_id,
 			index_args,
 			&index_count
-		) != 0 || type_id >= type_declarations->type_count) {
+		) != 0 || type_id >= type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	if (type->parameter_count != 0 || type->index_count != 2 ||
 		index_count != 2 || constructor_index >= type->constructor_count ||
 		index_args[0] >= terms->term_count || index_args[1] >= terms->term_count ||
@@ -1266,11 +1267,11 @@ int prototype_judgement_identity_relation_branch_refinement(
 		return -1;
 	}
 	uint32_t constructor_id = type->first_constructor + constructor_index;
-	if (constructor_id >= type_declarations->constructor_count) {
+	if (constructor_id >= type_declarations->semantic_schema.constructor_count) {
 		return -1;
 	}
 	const struct prototype_type_constructor_declaration* constructor =
-		&type_declarations->constructor_declarations[constructor_id];
+		&type_declarations->semantic_schema.constructor_declarations[constructor_id];
 	uint32_t result_type_id;
 	uint32_t result_args[16];
 	uint32_t result_arg_count;

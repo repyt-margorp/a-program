@@ -8,7 +8,7 @@ Weird := \f : Nat -> Nat => \g : Nat -> Nat => @\index : Nat => {
 };
 
 residual := \f : Nat -> Nat => \g : Nat -> Nat => \n : Nat =>
-	\x : Weird &f &g (f n) => x @make k => Nat.zero;
+	\x : Weird f g (f n) => x @make k => Nat.zero;
 
 residual :: (f : Nat -> Nat) -> (g : Nat -> Nat) -> (n : Nat) ->
-	Weird &f &g (f n) -> Nat;
+	Weird f g (f n) -> Nat;

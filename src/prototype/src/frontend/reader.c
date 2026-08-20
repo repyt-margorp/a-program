@@ -496,6 +496,33 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 			return -1;
 		}
 		name = symbol_to_string(parser->program->symbols, parser->current.symbol_id);
+		if (name && strcmp(name, "Returns") == 0) {
+			uint32_t computation;
+			uint32_t value;
+			if (read_token(parser) != 0 || expect(
+					parser, TOKEN_LPAREN, "expected '(' before suspended computation"
+				) != 0 || parse_term(parser, &computation) != 0 || expect(
+					parser, TOKEN_RPAREN, "expected ')' after suspended computation"
+				) != 0 || parse_term(parser, &value) != 0) {
+				return -1;
+			}
+			return prototype_ast_type_expr_returns(
+				parser->program->asts, computation, value, span, p_ret
+			);
+		}
+		if (name && strcmp(name, "Terminates") == 0) {
+			uint32_t computation;
+			if (read_token(parser) != 0 || expect(
+					parser, TOKEN_LPAREN, "expected '(' before suspended computation"
+				) != 0 || parse_term(parser, &computation) != 0 || expect(
+					parser, TOKEN_RPAREN, "expected ')' after suspended computation"
+				) != 0) {
+				return -1;
+			}
+			return prototype_ast_type_expr_terminates(
+				parser->program->asts, computation, span, p_ret
+			);
+		}
 		int host_type;
 		int host_status = prototype_term_host_type_from_source_name(
 			parser->program->intrinsic_environment, name, &host_type
@@ -1441,6 +1468,38 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		}
 			symbol_id = parser->current.symbol_id;
 			name = symbol_to_string(parser->program->symbols, symbol_id);
+			if (name && strcmp(name, "returns") == 0) {
+				uint32_t computation;
+				uint32_t value;
+				if (read_token(parser) != 0 || expect(
+						parser, TOKEN_LPAREN,
+						"expected '(' before suspended computation"
+					) != 0 || parse_term(parser, &computation) != 0 || expect(
+						parser, TOKEN_RPAREN,
+						"expected ')' after suspended computation"
+					) != 0 || parse_term(parser, &value) != 0) {
+					return -1;
+				}
+				return prototype_ast_returns_witness(
+					parser->program->asts, computation, value, span, p_ret
+				);
+			}
+			if (name && strcmp(name, "terminates") == 0) {
+				uint32_t computation;
+				uint32_t returns_witness;
+				if (read_token(parser) != 0 || expect(
+						parser, TOKEN_LPAREN,
+						"expected '(' before suspended computation"
+					) != 0 || parse_term(parser, &computation) != 0 || expect(
+						parser, TOKEN_RPAREN,
+						"expected ')' after suspended computation"
+					) != 0 || parse_term(parser, &returns_witness) != 0) {
+					return -1;
+				}
+				return prototype_ast_terminates_witness(
+					parser->program->asts, computation, returns_witness, span, p_ret
+				);
+			}
 			if (name && strcmp(name, "Nat") == 0) {
 				int nat_symbol_id;
 				if (read_token(parser) != 0) {

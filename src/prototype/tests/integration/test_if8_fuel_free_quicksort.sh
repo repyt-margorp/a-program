@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-11-INDEXED-FAMILY-QUICKSORT
+
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT

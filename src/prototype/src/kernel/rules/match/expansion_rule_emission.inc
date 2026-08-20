@@ -213,13 +213,13 @@ int prototype_judgement_delta_record_substitution_reindex(
 		PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION;
 	proof.semantic_action_id = substitution_id;
 	proof.premise_count = 1;
-	proof.premises[0].proposition->kind = source->kind;
-	proof.premises[0].proposition->authority_kind = source->authority_kind;
-	proof.premises[0].proposition->authority_id = source->authority_id;
-	proof.premises[0].proposition->context_id = source->context_id;
-	proof.premises[0].proposition->occurrence_id = source->occurrence_id;
-	proof.premises[0].proposition->subject = source->subject;
-	proof.premises[0].proposition->classifier = source->classifier;
+	proof.premises[0].builder_proposition->kind = source->kind;
+	proof.premises[0].builder_proposition->authority_kind = source->authority_kind;
+	proof.premises[0].builder_proposition->authority_id = source->authority_id;
+	proof.premises[0].builder_proposition->context_id = source->context_id;
+	proof.premises[0].builder_proposition->occurrence_id = source->occurrence_id;
+	proof.premises[0].builder_proposition->subject = source->subject;
+	proof.premises[0].builder_proposition->classifier = source->classifier;
 	if (add_complete_delta_relation(delta, &relation, &proof) != 0) {
 		return -1;
 	}
@@ -505,6 +505,7 @@ int prototype_judgement_delta_expand_match(
 									delta,
 									terms,
 									type_declarations,
+									PROTOTYPE_INVALID_ID,
 									&premise_evidence[i + 1],
 									premise_classifiers[i + 1],
 									premise_evidence[i + 1].subject
@@ -633,16 +634,16 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	proof.rule_data.induction.field_index = field_index;
 	proof.premise_count = context_evidence_count;
 	for (uint32_t i = 0; i < context_evidence_count; ++i) {
-		proof.premises[i].proposition->kind = context_evidence[i].kind;
-		proof.premises[i].proposition->authority_kind =
+		proof.premises[i].builder_proposition->kind = context_evidence[i].kind;
+		proof.premises[i].builder_proposition->authority_kind =
 			context_evidence[i].authority_kind;
-		proof.premises[i].proposition->authority_id =
+		proof.premises[i].builder_proposition->authority_id =
 			context_evidence[i].authority_id;
-		proof.premises[i].proposition->context_id = context_evidence[i].context_id;
-		proof.premises[i].proposition->occurrence_id =
+		proof.premises[i].builder_proposition->context_id = context_evidence[i].context_id;
+		proof.premises[i].builder_proposition->occurrence_id =
 			context_evidence[i].occurrence_id;
-		proof.premises[i].proposition->subject = context_evidence[i].subject;
-		proof.premises[i].proposition->classifier = context_evidence[i].classifier;
+		proof.premises[i].builder_proposition->subject = context_evidence[i].subject;
+		proof.premises[i].builder_proposition->classifier = context_evidence[i].classifier;
 	}
 	return add_complete_delta_relation(delta, &relation, &proof);
 }

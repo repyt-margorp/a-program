@@ -143,6 +143,7 @@ static int normalize_db_candidate_premises(
 			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
 		normalized[i].proposition_id = proposition_id;
 		normalized[i].proposition = &judgement->propositions[proposition_id];
+		normalized[i].builder_proposition = NULL;
 	}
 	return 0;
 }
@@ -215,7 +216,8 @@ static int normalize_delta_candidate_premises(
 		normalized[i].proposition_store_kind = store_kind;
 		normalized[i].proposition_id = proposition_id;
 		normalized[i].proposition =
-			(struct prototype_judgement_proposition*)proposition;
+			proposition;
+		normalized[i].builder_proposition = NULL;
 	}
 	return 0;
 }
@@ -877,6 +879,7 @@ int prototype_judgement_db_rebuild_index(
 			premise->proposition = &judgement->propositions[
 				premise->proposition_id
 			];
+			premise->builder_proposition = NULL;
 		}
 		candidate->key_hash = proof_candidate_key_hash(candidate);
 		size_t bucket = judgement_index_bucket(candidate->key_hash);
@@ -1685,12 +1688,12 @@ static int add_delta_relation_with_authority_and_explicit_premise_actions(
 	);
 	proof.premise_count = premise_count;
 	for (uint32_t i = 0; i < premise_count; ++i) {
-		proof.premises[i].proposition->kind = premise_evidence ?
+		proof.premises[i].builder_proposition->kind = premise_evidence ?
 			premise_evidence[i].kind : PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
-		proof.premises[i].proposition->context_id = premise_context_ids ?
+		proof.premises[i].builder_proposition->context_id = premise_context_ids ?
 			premise_context_ids[i] : (premise_evidence ?
 				premise_evidence[i].context_id : delta->current_context_id);
-		proof.premises[i].proposition->occurrence_id =
+		proof.premises[i].builder_proposition->occurrence_id =
 			premise_evidence && premise_evidence[i].kind != 0 ?
 			premise_evidence[i].occurrence_id : (premise_occurrence_ids ?
 				premise_occurrence_ids[i] : PROTOTYPE_INVALID_ID);
@@ -1701,17 +1704,17 @@ static int add_delta_relation_with_authority_and_explicit_premise_actions(
 					premise_evidence[i].context_id)) {
 				return -1;
 			}
-			proof.premises[i].proposition->authority_kind =
+			proof.premises[i].builder_proposition->authority_kind =
 				premise_evidence[i].authority_kind;
-			proof.premises[i].proposition->authority_id =
+			proof.premises[i].builder_proposition->authority_id =
 				premise_evidence[i].authority_id;
-			proof.premises[i].proposition->resource_usage_count =
+			proof.premises[i].builder_proposition->resource_usage_count =
 				premise_evidence[i].resource_usage_count;
-			proof.premises[i].proposition->resource_usage =
+			proof.premises[i].builder_proposition->resource_usage =
 				premise_evidence[i].resource_usage;
 		}
-		proof.premises[i].proposition->subject = premise_subjects[i];
-		proof.premises[i].proposition->classifier = premise_classifiers[i];
+		proof.premises[i].builder_proposition->subject = premise_subjects[i];
+		proof.premises[i].builder_proposition->classifier = premise_classifiers[i];
 		if (premise_semantic_action_kinds) {
 			proof.premises[i].semantic_action_kind =
 				premise_semantic_action_kinds[i];

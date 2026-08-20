@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-10-INTRINSIC-INT-PRINCIPAL
+
 # Boundary audit: ISSUE-4-HOST-LITERAL-RECURSIVE-MOTIVE
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)

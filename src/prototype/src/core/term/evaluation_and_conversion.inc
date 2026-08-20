@@ -1128,9 +1128,9 @@ static int constant_match_is_exhaustive(
 			) != 0) {
 			type_id = PROTOTYPE_INVALID_ID;
 		}
-		if (type_id < types->type_count) {
+		if (type_id < types->semantic_schema.type_count) {
 			constructor_count =
-				types->type_declarations[type_id].constructor_count;
+				types->semantic_schema.type_declarations[type_id].constructor_count;
 		}
 	}
 	if (constructor_count != match->as.match.case_count) {
@@ -1396,12 +1396,12 @@ static int evaluate_steps(
 				uint32_t argument_count;
 				if (prototype_term_type_instance_info(
 						db, function, &type_id, arguments, &argument_count
-					) == 0 && type_id < type_declarations->type_count &&
-					type_declarations->type_declarations[type_id].parameter_count <=
-						UINT32_MAX - type_declarations->type_declarations[type_id].index_count &&
+					) == 0 && type_id < type_declarations->semantic_schema.type_count &&
+					type_declarations->semantic_schema.type_declarations[type_id].parameter_count <=
+						UINT32_MAX - type_declarations->semantic_schema.type_declarations[type_id].index_count &&
 					argument_count <
-						type_declarations->type_declarations[type_id].parameter_count +
-						type_declarations->type_declarations[type_id].index_count) {
+						type_declarations->semantic_schema.type_declarations[type_id].parameter_count +
+						type_declarations->semantic_schema.type_declarations[type_id].index_count) {
 					return prototype_term_type_instance_extend(
 						db,
 						type_declarations,
@@ -1979,6 +1979,385 @@ int prototype_term_normalize_with_profile(
 	return 0;
 }
 
+static int constructor_ordinal_for_runtime_owner_label(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	uint32_t owner,
+	int label_symbol_id,
+	uint32_t* p_constructor_id
+) {
+	if (!terms || !type_declarations || !p_constructor_id ||
+		label_symbol_id < 0 || owner >= terms->term_count) {
+		return -1;
+	}
+	uint32_t type_id;
+	if (type_instance_type_id(terms, owner, &type_id) != 0) {
+		uint32_t representation_id;
+		if (constructor_owner_representation_id(
+				terms, owner, &representation_id
+			) != 0) {
+			return -1;
+		}
+		type_id = PROTOTYPE_INVALID_ID;
+		for (uint32_t candidate = 0;
+			candidate < type_declarations->semantic_schema.type_count;
+			++candidate) {
+			if (type_declarations->semantic_schema.type_declarations[
+					candidate
+				].representation_id != representation_id) {
+				continue;
+			}
+			if (type_id != PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			type_id = candidate;
+		}
+		if (type_id == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+	}
+	const struct prototype_type_constructor_declaration* constructor =
+		prototype_type_declaration_lookup_constructor(
+			type_declarations, type_id, label_symbol_id
+		);
+	if (!constructor) {
+		return -1;
+	}
+	*p_constructor_id = constructor->constructor_index;
+	return 0;
+}
+
+static int project_pure_computation_value_at_depth(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t computation,
+	uint64_t step_limit,
+	uint32_t* p_value,
+	uint32_t* active_terms,
+	size_t active_count,
+	size_t active_capacity
+) {
+	struct prototype_term_normalization_result normalization;
+	if (!db || !type_declarations || !p_value || computation >= db->term_count ||
+		!active_terms) {
+		return -1;
+	}
+	if (active_count >= active_capacity) {
+		return 1;
+	}
+	for (size_t i = 0; i < active_count; ++i) {
+		if (active_terms[i] == computation) {
+			return 1;
+		}
+	}
+	active_terms[active_count++] = computation;
+	uint32_t source_root = computation;
+	while (source_root < db->term_count &&
+		db->terms[source_root].tag == PROTOTYPE_TERM_APP) {
+		source_root = db->terms[source_root].as.app.function;
+	}
+	if (source_root < db->term_count && db->terms[source_root].tag ==
+		PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+		/* Do not unfold a guarded recursive call merely to name its result in a
+		 * dependent classifier. Its source APP spine is the stable symbolic
+		 * value; iota evaluation remains available when the enclosing recursive
+		 * invocation itself reduces. */
+		*p_value = computation;
+		return 0;
+	}
+	/* Expose beta structure before enabling iota/induction reduction. This lets
+	 * the projection see a zero-clause fold around a guarded IH and preserve the
+	 * recursive call symbolically instead of unfolding it into the same Match. */
+	struct prototype_term_normalization_result core_normalization;
+	if (prototype_term_normalize_with_profile(
+			db,
+			type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			computation,
+			step_limit,
+			&core_normalization
+		) != 0 || core_normalization.status ==
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {
+		return -1;
+	}
+	if (core_normalization.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
+		return 1;
+	}
+	if (core_normalization.term_id != computation) {
+		return project_pure_computation_value_at_depth(
+			db,
+			type_declarations,
+			core_normalization.term_id,
+			step_limit,
+			p_value,
+			active_terms,
+			active_count,
+			active_capacity
+		);
+	}
+	if (db->terms[computation].tag == PROTOTYPE_TERM_RETURN ||
+		db->terms[computation].tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
+		memset(&normalization, 0, sizeof(normalization));
+		normalization.status = PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE;
+		normalization.term_id = computation;
+	} else if (prototype_term_normalize_with_profile(
+			db,
+			type_declarations,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			computation,
+			step_limit,
+			&normalization
+		) != 0 || normalization.status ==
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {
+		return -1;
+	}
+	if (normalization.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
+		normalization.term_id >= db->term_count) {
+		return 1;
+	}
+
+	const struct prototype_term normalized = db->terms[normalization.term_id];
+	if (normalized.tag == PROTOTYPE_TERM_RETURN) {
+		*p_value = normalized.as.return_term.value;
+		return 0;
+	}
+	if (normalized.tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
+		if (normalized.as.computation_fold.clause_count != 0 ||
+			normalized.as.computation_fold.computation >= db->term_count ||
+			normalized.as.computation_fold.return_clause >= db->term_count) {
+			return normalized.as.computation_fold.clause_count == 0 ? -1 : 1;
+		}
+		uint32_t input_value;
+		int input_status = project_pure_computation_value_at_depth(
+			db,
+			type_declarations,
+			normalized.as.computation_fold.computation,
+			step_limit,
+			&input_value,
+			active_terms,
+			active_count,
+			active_capacity
+		);
+		if (input_status != 0) {
+			return input_status;
+		}
+		uint32_t continued;
+		if (prototype_term_app(
+				db,
+				normalized.as.computation_fold.return_clause,
+				input_value,
+				&continued
+			) != 0) {
+			return -1;
+		}
+		return project_pure_computation_value_at_depth(
+			db,
+			type_declarations,
+			continued,
+			step_limit,
+			p_value,
+			active_terms,
+			active_count,
+			active_capacity
+		);
+	}
+	uint32_t match_term = normalization.term_id;
+	uint32_t app_argument = PROTOTYPE_INVALID_ID;
+	if (normalized.tag == PROTOTYPE_TERM_APP) {
+		uint32_t function_whnf;
+		if (prototype_term_normalize_complete_with_profile(
+				db,
+				type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				normalized.as.app.function,
+				&function_whnf
+			) != 0 || function_whnf >= db->term_count) {
+			return -1;
+		}
+		if (db->terms[function_whnf].tag != PROTOTYPE_TERM_MATCH) {
+			uint32_t root = normalization.term_id;
+			while (root < db->term_count &&
+				db->terms[root].tag == PROTOTYPE_TERM_APP) {
+				root = db->terms[root].as.app.function;
+			}
+			if (root < db->term_count && db->terms[root].tag ==
+				PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+				/* The induction rule already proves this recursive call guarded.
+				 * Its erased APP spine is the symbolic result used by prior type
+				 * computation; runtime evaluation still owns the actual call. */
+				*p_value = normalization.term_id;
+				return 0;
+			}
+			return 1;
+		}
+		match_term = function_whnf;
+		app_argument = normalized.as.app.argument;
+	} else if (normalized.tag != PROTOTYPE_TERM_MATCH) {
+		return 1;
+	}
+	const struct prototype_term match = db->terms[match_term];
+	if (match.as.match.case_count > 64) {
+		return -1;
+	}
+
+	struct prototype_match_case_input cases[64];
+	struct prototype_match_case source_cases[64];
+	int source_labels[64];
+	struct prototype_case_binder source_binders[256];
+	uint32_t binder_cursor = 0;
+	for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
+		uint32_t case_id = match.as.match.first_case + i;
+		if (case_id >= db->case_count || db->cases[case_id].binder_count >
+			256 - binder_cursor) {
+			return -1;
+		}
+		source_cases[i] = db->cases[case_id];
+		source_labels[i] = db->case_label_symbols[case_id];
+		for (uint32_t j = 0; j < source_cases[i].binder_count; ++j) {
+			uint32_t binder_id = source_cases[i].first_binder + j;
+			if (binder_id >= db->case_binder_count) {
+				return -1;
+			}
+			source_binders[binder_cursor + j] = db->case_binders[binder_id];
+		}
+		source_cases[i].first_binder = binder_cursor;
+		binder_cursor += source_cases[i].binder_count;
+	}
+	int has_unresolved_nullary_case = 0;
+	for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
+		if (source_cases[i].constructor_owner == PROTOTYPE_INVALID_ID) {
+			if (source_cases[i].binder_count != 0) {
+				return 1;
+			}
+			has_unresolved_nullary_case = 1;
+		}
+	}
+	if (has_unresolved_nullary_case) {
+		struct prototype_term_normalization_result scrutinee_normalization;
+		if (prototype_term_normalize_with_profile(
+				db,
+				type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				match.as.match.scrutinee,
+				step_limit,
+				&scrutinee_normalization
+			) != 0 || scrutinee_normalization.status !=
+				PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
+			return 1;
+		}
+		uint32_t scrutinee_head = scrutinee_normalization.term_id;
+		while (scrutinee_head < db->term_count &&
+			db->terms[scrutinee_head].tag == PROTOTYPE_TERM_APP) {
+			scrutinee_head = db->terms[scrutinee_head].as.app.function;
+		}
+		if (scrutinee_head >= db->term_count ||
+			db->terms[scrutinee_head].tag != PROTOTYPE_TERM_CONSTRUCTOR) {
+			return 1;
+		}
+		uint32_t owner = db->terms[scrutinee_head].as.constructor.owner;
+		for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
+			uint32_t constructor_id = source_cases[i].constructor_id;
+			if (source_cases[i].constructor_owner == PROTOTYPE_INVALID_ID &&
+				constructor_ordinal_for_runtime_owner_label(
+					db, type_declarations, owner, source_labels[i], &constructor_id
+				) != 0) {
+				return 1;
+			}
+			cases[i] = (struct prototype_match_case_input) {
+				.case_label_symbol_id = source_labels[i],
+				.constructor_owner = owner,
+				.constructor_id = constructor_id,
+				.binders = NULL,
+				.binder_count = 0,
+				.body = source_cases[i].body
+			};
+		}
+		uint32_t resolved_match;
+		if (prototype_term_match_with_ih_scope(
+				db,
+				match.as.match.scrutinee,
+				cases,
+				match.as.match.case_count,
+				match.as.match.ih_scope_id,
+				&resolved_match
+			) != 0) {
+			return -1;
+		}
+		return project_pure_computation_value_at_depth(
+			db,
+			type_declarations,
+			resolved_match,
+			step_limit,
+			p_value,
+			active_terms,
+			active_count,
+			active_capacity
+		);
+	}
+	for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
+		uint32_t body;
+		uint32_t branch_computation = source_cases[i].body;
+		if (app_argument != PROTOTYPE_INVALID_ID && prototype_term_app(
+				db, branch_computation, app_argument, &branch_computation
+			) != 0) {
+			return -1;
+		}
+		int branch_status = project_pure_computation_value_at_depth(
+				db,
+				type_declarations,
+				branch_computation,
+				step_limit,
+				&body,
+				active_terms,
+				active_count,
+				active_capacity
+			);
+		if (branch_status != 0) {
+			return branch_status;
+		}
+		cases[i].case_label_symbol_id = source_labels[i];
+		cases[i].constructor_owner = source_cases[i].constructor_owner;
+		cases[i].constructor_id = source_cases[i].constructor_id;
+		cases[i].binders = source_cases[i].binder_count == 0 ? NULL :
+			&source_binders[source_cases[i].first_binder];
+		cases[i].binder_count = source_cases[i].binder_count;
+		cases[i].body = body;
+	}
+	return prototype_term_match_with_ih_scope(
+		db,
+		match.as.match.scrutinee,
+		cases,
+		match.as.match.case_count,
+		app_argument == PROTOTYPE_INVALID_ID ?
+			match.as.match.ih_scope_id : PROTOTYPE_INVALID_ID,
+		p_value
+	);
+}
+
+int prototype_term_project_pure_computation_value(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t computation,
+	uint64_t step_limit,
+	uint32_t* p_value
+) {
+	uint32_t active_terms[512];
+	return project_pure_computation_value_at_depth(
+		db,
+		type_declarations,
+		computation,
+		step_limit,
+		p_value,
+		active_terms,
+		0,
+		512
+	);
+}
+
 int prototype_term_perform_with_options(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -2193,6 +2572,89 @@ int prototype_term_nf_with_options(
 	);
 }
 
+/* Application commutes with a neutral eliminator whose branches produce
+ * functions. This is a conversion rule, not an evaluation-order choice:
+ *
+ *     (match s with C_i xs => f_i) a
+ *       == match s with C_i xs => f_i a
+ *
+ * Keeping it in conversion preserves the runtime graph while allowing type
+ * computation to compare an unfolded recursive call with its branchwise
+ * specialization. */
+static int conversion_distribute_app_over_match(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t match_id,
+	uint32_t argument,
+	uint32_t* p_result
+) {
+	if (!db || !p_result || match_id >= db->term_count ||
+		argument >= db->term_count || db->terms[match_id].tag != PROTOTYPE_TERM_MATCH) {
+		return -1;
+	}
+	struct prototype_term match = db->terms[match_id];
+	if (match.as.match.case_count > 64) {
+		return -1;
+	}
+	struct prototype_match_case source_cases[64];
+	int source_labels[64];
+	struct prototype_case_binder binders[256];
+	uint32_t binder_cursor = 0;
+	for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
+		uint32_t case_id = match.as.match.first_case + i;
+		if (case_id >= db->case_count ||
+			db->cases[case_id].binder_count > 256 - binder_cursor) {
+			return -1;
+		}
+		source_cases[i] = db->cases[case_id];
+		source_labels[i] = db->case_label_symbols[case_id];
+		for (uint32_t j = 0; j < source_cases[i].binder_count; ++j) {
+			uint32_t binder_id = source_cases[i].first_binder + j;
+			if (binder_id >= db->case_binder_count) {
+				return -1;
+			}
+			binders[binder_cursor + j] = db->case_binders[binder_id];
+		}
+		source_cases[i].first_binder = binder_cursor;
+		binder_cursor += source_cases[i].binder_count;
+	}
+
+	struct prototype_match_case_input cases[64];
+	for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
+		uint32_t body;
+		if (prototype_term_app(db, source_cases[i].body, argument, &body) != 0) {
+			return -1;
+		}
+		uint32_t projected_body;
+		int projection_status = prototype_term_project_pure_computation_value(
+			db, type_declarations, body, UINT64_MAX, &projected_body
+		);
+		if (projection_status < 0) {
+			return -1;
+		}
+		if (projection_status == 0) {
+			body = projected_body;
+		}
+		cases[i] = (struct prototype_match_case_input){
+			.case_label_symbol_id = source_labels[i],
+			.constructor_owner = source_cases[i].constructor_owner,
+			.constructor_id = source_cases[i].constructor_id,
+			.binders = source_cases[i].binder_count == 0 ? NULL :
+				&binders[source_cases[i].first_binder],
+			.binder_count = source_cases[i].binder_count,
+			.body = body
+		};
+	}
+	return prototype_term_match_with_ih_scope(
+		db,
+		match.as.match.scrutinee,
+		cases,
+		match.as.match.case_count,
+		PROTOTYPE_INVALID_ID,
+		p_result
+	);
+}
+
 static int conversion_equal_at_depth(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -2280,6 +2742,42 @@ static int conversion_equal_at_depth(
 	const struct prototype_term* left_term = &left_term_value;
 	const struct prototype_term* right_term = &right_term_value;
 	if (left_term->tag != right_term->tag) {
+		if (left_term->tag == PROTOTYPE_TERM_APP &&
+			left_term->as.app.function < db->term_count &&
+			db->terms[left_term->as.app.function].tag == PROTOTYPE_TERM_MATCH) {
+			uint32_t distributed;
+			if (conversion_distribute_app_over_match(
+					db,
+					type_declarations,
+					left_term->as.app.function,
+					left_term->as.app.argument,
+					&distributed
+				) != 0) {
+				return -1;
+			}
+			return conversion_equal_at_depth(
+				db, type_declarations, definitions, options, scope,
+				distributed, right_whnf, p_equal, depth + 1
+			);
+		}
+		if (right_term->tag == PROTOTYPE_TERM_APP &&
+			right_term->as.app.function < db->term_count &&
+			db->terms[right_term->as.app.function].tag == PROTOTYPE_TERM_MATCH) {
+			uint32_t distributed;
+			if (conversion_distribute_app_over_match(
+					db,
+					type_declarations,
+					right_term->as.app.function,
+					right_term->as.app.argument,
+					&distributed
+				) != 0) {
+				return -1;
+			}
+			return conversion_equal_at_depth(
+				db, type_declarations, definitions, options, scope,
+				left_whnf, distributed, p_equal, depth + 1
+			);
+		}
 		if (left_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
 			right_term->tag == PROTOTYPE_TERM_MATCH) {
 			return conversion_equal_computation_match(
@@ -2542,8 +3040,8 @@ static int conversion_equal_at_depth(
 			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION: {
 			if (!type_declarations ||
-				left_term->as.type_declaration.type_id >= type_declarations->type_count ||
-				right_term->as.type_declaration.type_id >= type_declarations->type_count) {
+				left_term->as.type_declaration.type_id >= type_declarations->semantic_schema.type_count ||
+				right_term->as.type_declaration.type_id >= type_declarations->semantic_schema.type_count) {
 				return -1;
 			}
 			if (type_identity_is_stable(left_term->as.type_declaration.identity) ||
@@ -3605,11 +4103,11 @@ static void print_type_head(
 	const struct prototype_type_declaration_db* type_declarations,
 	uint32_t type_id
 ) {
-	if (type_id >= type_declarations->type_count) {
+	if (type_id >= type_declarations->semantic_schema.type_count) {
 		fprintf(output, "<bad-type:%u>", type_id);
 		return;
 	}
-	fprintf(output, "%s", safe_symbol_name(symbols, type_declarations->type_declarations[type_id].name_symbol_id));
+	fprintf(output, "%s", safe_symbol_name(symbols, type_declarations->semantic_schema.type_declarations[type_id].name_symbol_id));
 }
 
 static void print_term_depth_impl(
@@ -3680,6 +4178,18 @@ static void print_term_depth_impl(
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			fprintf(output, "<relation-witness>");
 			break;
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+			fprintf(output, "#.Returns");
+			break;
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+			fprintf(output, "#.returns");
+			break;
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+			fprintf(output, "#.Terminates");
+			break;
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
+			fprintf(output, "#.terminates");
+			break;
 		case PROTOTYPE_TERM_DIMENSION_ACTION:
 			fprintf(output, "dimension[%u] ",
 				term->as.dimension_action.operator_id);
@@ -3695,7 +4205,7 @@ static void print_term_depth_impl(
 		case PROTOTYPE_TERM_CONSTRUCTOR: {
 			uint32_t type_id;
 			if (type_instance_type_id(terms, term->as.constructor.owner, &type_id) != 0 ||
-				type_id >= type_declarations->type_count) {
+				type_id >= type_declarations->semantic_schema.type_count) {
 				uint32_t representation_id;
 				if (constructor_owner_representation_id(
 						terms,
@@ -3709,13 +4219,13 @@ static void print_term_depth_impl(
 				}
 				break;
 			}
-			const struct prototype_type_declaration* type = &type_declarations->type_declarations[type_id];
+			const struct prototype_type_declaration* type = &type_declarations->semantic_schema.type_declarations[type_id];
 			if (term->as.constructor.constructor_id >= type->constructor_count) {
 				fprintf(output, "<bad-constructor>");
 				break;
 			}
 			const struct prototype_type_constructor_declaration* constructor =
-				&type_declarations->constructor_declarations[type->first_constructor + term->as.constructor.constructor_id];
+				&type_declarations->semantic_schema.constructor_declarations[type->first_constructor + term->as.constructor.constructor_id];
 			print_term_depth(output, symbols, type_declarations, terms, term->as.constructor.owner, depth - 1);
 			fprintf(output, ".%s", safe_symbol_name(symbols, constructor->name_symbol_id));
 			break;
@@ -3915,7 +4425,7 @@ static void print_constructor_name(
 ) {
 	uint32_t type_id;
 	if (type_instance_type_id(terms, term->as.constructor.owner, &type_id) != 0 ||
-		type_id >= type_declarations->type_count) {
+		type_id >= type_declarations->semantic_schema.type_count) {
 		uint32_t representation_id;
 		if (constructor_owner_representation_id(
 				terms,
@@ -3930,14 +4440,14 @@ static void print_constructor_name(
 		return;
 	}
 
-	const struct prototype_type_declaration* type = &type_declarations->type_declarations[type_id];
+	const struct prototype_type_declaration* type = &type_declarations->semantic_schema.type_declarations[type_id];
 	if (term->as.constructor.constructor_id >= type->constructor_count) {
 		fprintf(output, "<bad-constructor>");
 		return;
 	}
 
 	const struct prototype_type_constructor_declaration* constructor =
-		&type_declarations->constructor_declarations[type->first_constructor + term->as.constructor.constructor_id];
+		&type_declarations->semantic_schema.constructor_declarations[type->first_constructor + term->as.constructor.constructor_id];
 	print_term_debug_depth(output, symbols, type_declarations, terms, term->as.constructor.owner, 32);
 	fprintf(output, ".%s", safe_symbol_name(symbols, constructor->name_symbol_id));
 }
@@ -3951,7 +4461,7 @@ static void print_term_debug_depth_impl(
 	uint32_t term_id,
 	unsigned depth
 ) {
-	if (!output || !symbols || !environment || !type_declarations || !terms) {
+	if (!output || !type_declarations || !terms) {
 		return;
 	}
 	if (term_id >= terms->term_count) {
@@ -3976,29 +4486,51 @@ static void print_term_debug_depth_impl(
 			fprintf(output, "%s)", safe_symbol_name(symbols, term->as.external_ref.name.name_symbol_id));
 			break;
 		case PROTOTYPE_TERM_PURE_PRIMITIVE:
-			fprintf(output, "PURE_PRIMITIVE(%s", prototype_intrinsic_namespace_source_name(
-				environment,
-				PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-				term->as.pure_primitive.primitive_id
-			));
+			fprintf(output, "PURE_PRIMITIVE(");
+			if (environment) {
+				fprintf(output, "%s", prototype_intrinsic_namespace_source_name(
+					environment,
+					PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
+					term->as.pure_primitive.primitive_id
+				));
+			} else {
+				fprintf(output, "primitive#%u", term->as.pure_primitive.primitive_id);
+			}
 			if (term->as.pure_primitive.type_symbol_id >= 0) {
 				fprintf(output, ":%s", safe_symbol_name(symbols, term->as.pure_primitive.type_symbol_id));
 			}
 			fprintf(output, ")");
 			break;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			fprintf(output, "EFFECT_OPERATION(%s)",
-				prototype_intrinsic_namespace_source_name(
+			fprintf(output, "EFFECT_OPERATION(");
+			if (environment) {
+				fprintf(output, "%s", prototype_intrinsic_namespace_source_name(
 					environment,
 					PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 					term->as.effect_operation.operation_id
 				));
+			} else {
+				fprintf(output, "operation#%u", term->as.effect_operation.operation_id);
+			}
+			fprintf(output, ")");
 			break;
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 			fprintf(output, "RELATION_TYPE_FORMER");
 			break;
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			fprintf(output, "RELATION_WITNESS_FORMER");
+			break;
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+			fprintf(output, "RETURNS_TYPE_FORMER");
+			break;
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+			fprintf(output, "RETURNS_WITNESS_FORMER");
+			break;
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+			fprintf(output, "TERMINATES_TYPE_FORMER");
+			break;
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
+			fprintf(output, "TERMINATES_WITNESS_FORMER");
 			break;
 		case PROTOTYPE_TERM_DIMENSION_ACTION:
 			fprintf(output, "DIMENSION_ACTION(op#%u, ",

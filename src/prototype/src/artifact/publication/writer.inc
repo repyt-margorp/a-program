@@ -591,7 +591,7 @@ int prototype_artifact_write_text(
 	 * that compact DB is validated by artifact append and readback. */
 	if (metadata &&
 		prototype_constructor_telescopes_validate(
-			type_declarations, &metadata->contexts, terms
+			&type_declarations->semantic_schema, &metadata->contexts, terms
 		) != 0) {
 		fprintf(stderr, "artifact source constructor telescope validation failed\n");
 		return -1;
@@ -689,7 +689,7 @@ int prototype_artifact_write_text(
 		}
 	}
 	if (publication.object.terms.term_count != 0 ||
-		publication.object.type_declarations.type_count != 0 ||
+		publication.object.type_declarations.semantic_schema.type_count != 0 ||
 		publication.object.judgement.claim_count != 0) {
 		struct artifact_publication_graph normalized_publication;
 		if (artifact_republish_publication_graph(

@@ -417,16 +417,16 @@ int prototype_judgement_delta_record_context_weaken(
 		PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION;
 	proof.semantic_action_id = substitution_id;
 	proof.premise_count = 1;
-	proof.premises[0].proposition->kind = source_evidence->kind;
-	proof.premises[0].proposition->context_id = source_evidence->context_id;
-	proof.premises[0].proposition->subject = source_evidence->subject;
-	proof.premises[0].proposition->classifier = source_evidence->classifier;
-	proof.premises[0].proposition->authority_kind = source_evidence->authority_kind;
-	proof.premises[0].proposition->authority_id = source_evidence->authority_id;
-	proof.premises[0].proposition->occurrence_id = source_evidence->occurrence_id;
-	proof.premises[0].proposition->resource_usage_count =
+	proof.premises[0].builder_proposition->kind = source_evidence->kind;
+	proof.premises[0].builder_proposition->context_id = source_evidence->context_id;
+	proof.premises[0].builder_proposition->subject = source_evidence->subject;
+	proof.premises[0].builder_proposition->classifier = source_evidence->classifier;
+	proof.premises[0].builder_proposition->authority_kind = source_evidence->authority_kind;
+	proof.premises[0].builder_proposition->authority_id = source_evidence->authority_id;
+	proof.premises[0].builder_proposition->occurrence_id = source_evidence->occurrence_id;
+	proof.premises[0].builder_proposition->resource_usage_count =
 		source_evidence->resource_usage_count;
-	proof.premises[0].proposition->resource_usage = source_evidence->resource_usage;
+	proof.premises[0].builder_proposition->resource_usage = source_evidence->resource_usage;
 	return add_complete_delta_relation(delta, &relation, &proof);
 }
 
@@ -639,18 +639,18 @@ static int add_claim_reindexed_by_substitution(
 		PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION;
 	proof.semantic_action_id = substitution_id;
 	proof.premise_count = 1;
-	proof.premises[0].proposition->kind = prototype_judgement_proposition_get(judgement, source->proposition_id)->kind;
-	proof.premises[0].proposition->context_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id;
-	proof.premises[0].proposition->subject = prototype_judgement_proposition_get(judgement, source->proposition_id)->subject;
-	proof.premises[0].proposition->classifier = prototype_judgement_proposition_get(judgement, source->proposition_id)->classifier;
-	proof.premises[0].proposition->authority_kind = prototype_judgement_proposition_get(judgement, source->proposition_id)->authority_kind;
-	proof.premises[0].proposition->authority_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->authority_id;
-	proof.premises[0].proposition->occurrence_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->occurrence_id;
-	proof.premises[0].proposition->resource_usage_count =
+	proof.premises[0].builder_proposition->kind = prototype_judgement_proposition_get(judgement, source->proposition_id)->kind;
+	proof.premises[0].builder_proposition->context_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id;
+	proof.premises[0].builder_proposition->subject = prototype_judgement_proposition_get(judgement, source->proposition_id)->subject;
+	proof.premises[0].builder_proposition->classifier = prototype_judgement_proposition_get(judgement, source->proposition_id)->classifier;
+	proof.premises[0].builder_proposition->authority_kind = prototype_judgement_proposition_get(judgement, source->proposition_id)->authority_kind;
+	proof.premises[0].builder_proposition->authority_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->authority_id;
+	proof.premises[0].builder_proposition->occurrence_id = prototype_judgement_proposition_get(judgement, source->proposition_id)->occurrence_id;
+	proof.premises[0].builder_proposition->resource_usage_count =
 		prototype_judgement_proposition_get(
 			judgement, source->proposition_id
 		)->resource_usage_count;
-	proof.premises[0].proposition->resource_usage =
+	proof.premises[0].builder_proposition->resource_usage =
 		prototype_judgement_proposition_get(
 			judgement, source->proposition_id
 		)->resource_usage;

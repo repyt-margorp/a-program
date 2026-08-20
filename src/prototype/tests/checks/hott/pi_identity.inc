@@ -295,8 +295,8 @@
 			.source_bridge_id = full_endpoint_bridge
 		}
 	};
-	size_t square_type_count_before = type_db.type_count;
-	size_t square_constructor_count_before = type_db.constructor_count;
+	size_t square_type_count_before = type_db.semantic_schema.type_count;
+	size_t square_constructor_count_before = type_db.semantic_schema.constructor_count;
 	uint32_t square_identity_computation_id = PROTOTYPE_INVALID_ID;
 	uint32_t square_identity_result_id = PROTOTYPE_INVALID_ID;
 	if (prototype_hott_action_request_intern(
@@ -318,8 +318,8 @@
 			action_results[square_identity_result_id].certificate_id
 		].data.identity_type.computation_rule !=
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_GENERIC_DIMENSION_ACTION ||
-		type_db.type_count != square_type_count_before ||
-		type_db.constructor_count != square_constructor_count_before) {
+		type_db.semantic_schema.type_count != square_type_count_before ||
+		type_db.semantic_schema.constructor_count != square_constructor_count_before) {
 		fprintf(
 			stderr,
 			"square action gate failed result=%u count=%zu state=%d certificate=%u "
@@ -336,9 +336,9 @@
 			].certificate_id < action_db.certificate_count ? action_certificates[
 				action_results[square_identity_result_id].certificate_id
 			].data.identity_type.computation_rule : -1,
-			type_db.type_count,
+			type_db.semantic_schema.type_count,
 			square_type_count_before,
-			type_db.constructor_count,
+			type_db.semantic_schema.constructor_count,
 			square_constructor_count_before
 		);
 		return 255;
@@ -688,8 +688,8 @@
 			.source_bridge_id = bridge
 		}
 	};
-	size_t thunk_identity_type_count_before = type_db.type_count;
-	size_t thunk_identity_constructor_count_before = type_db.constructor_count;
+	size_t thunk_identity_type_count_before = type_db.semantic_schema.type_count;
+	size_t thunk_identity_constructor_count_before = type_db.semantic_schema.constructor_count;
 	uint32_t thunk_bool_identity_computation_id;
 	uint32_t thunk_bool_identity_result_id;
 	if (prototype_hott_action_request_intern(
@@ -719,8 +719,8 @@
 	uint32_t thunk_identity_dimension;
 	if (thunk_bool_identity_certificate->data.identity_type.computation_rule !=
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_THUNK_RETURN ||
-		type_db.type_count != thunk_identity_type_count_before ||
-		type_db.constructor_count != thunk_identity_constructor_count_before ||
+		type_db.semantic_schema.type_count != thunk_identity_type_count_before ||
+		type_db.semantic_schema.constructor_count != thunk_identity_constructor_count_before ||
 		prototype_term_dimension_action_info(
 			&term_db,
 			thunk_bool_identity_certificate->data.identity_type.
@@ -2867,7 +2867,7 @@
 			.source_bridge_id = bridge
 		}
 	};
-	size_t box_type_count_before = type_db.type_count;
+	size_t box_type_count_before = type_db.semantic_schema.type_count;
 	uint32_t box_identity_computation_id;
 	uint32_t box_identity_computation_result_id;
 	int box_request_status = prototype_hott_action_request_intern(
@@ -2919,7 +2919,7 @@
 	uint32_t box_constructor_field_count = 0;
 	if (box_identity_certificate->data.identity_type.computation_rule !=
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT ||
-		type_db.type_count != box_type_count_before ||
+		type_db.semantic_schema.type_count != box_type_count_before ||
 		prototype_term_dimension_action_info(
 			&term_db,
 			box_identity_certificate->data.identity_type.
@@ -2928,7 +2928,7 @@
 			&box_action_operator
 		) != 0 || box_action_source != box_view ||
 		prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&bridge_dimension_operator_db,
@@ -2975,7 +2975,7 @@
 			.source_bridge_id = bridge
 		}
 	};
-	size_t dependent_box_type_count_before = type_db.type_count;
+	size_t dependent_box_type_count_before = type_db.semantic_schema.type_count;
 	uint32_t dependent_box_identity_request_id;
 	uint32_t dependent_box_identity_result_id;
 	int dependent_box_request_status = prototype_hott_action_request_intern(
@@ -3031,7 +3031,7 @@
 	struct prototype_type_schema_view dependent_box_schema;
 	uint32_t dependent_box_constructor_classifier;
 	uint32_t dependent_box_constructor_field_count = 0;
-	if (type_db.type_count != dependent_box_type_count_before ||
+	if (type_db.semantic_schema.type_count != dependent_box_type_count_before ||
 		prototype_term_dimension_action_info(
 			&term_db,
 			dependent_box_identity->data.identity_type.
@@ -3040,7 +3040,7 @@
 			&dependent_box_action_operator
 		) != 0 || dependent_box_action_source != dependent_box_view ||
 		prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&bridge_dimension_operator_db,
@@ -3361,7 +3361,7 @@
 	};
 	uint32_t box_square_identity_id;
 	uint32_t box_square_identity_result_id;
-	size_t box_type_count_before_square = type_db.type_count;
+	size_t box_type_count_before_square = type_db.semantic_schema.type_count;
 	int box_square_intern_status = prototype_hott_action_request_intern(
 			&action_db,
 			&kernel_view,
@@ -3397,7 +3397,7 @@
 	uint32_t box_square_field_count = 0;
 	if (box_square_certificate->data.identity_type.computation_rule !=
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_GENERIC_DIMENSION_ACTION ||
-		type_db.type_count != box_type_count_before_square ||
+		type_db.semantic_schema.type_count != box_type_count_before_square ||
 		prototype_term_dimension_action_info(
 			&term_db,
 			box_square_certificate->data.identity_type.backing_type_former_term_id,
@@ -3409,7 +3409,7 @@
 				&bridge_dimension_operator_db, box_square_action_operator
 			)) || box_square_operator->source_dimension != 1 ||
 		box_square_operator->target_dimension != 2 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&bridge_dimension_operator_db,
@@ -3417,7 +3417,7 @@
 			&box_square_schema
 		) != 0 || box_square_schema.target_dimension != 2 ||
 		prototype_constructor_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&bridge_dimension_operator_db,

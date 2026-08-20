@@ -203,11 +203,9 @@ struct prototype_constructor_classifier_cache {
 	size_t capacity;
 };
 
-/* All storage referenced by this composition view is borrowed from its owner.
- * Its nested stores have separate authority even though one session keeps
- * them physically adjacent. Semantic consumers use schema queries and cannot
- * derive acceptance from readback or cache presence. */
-struct prototype_type_declaration_db {
+/* Authoritative source-derived type and constructor schema. It contains no
+ * readback record, representation lookup, or materialized classifier cache. */
+struct prototype_type_semantic_schema_db {
 	/* Reindexing TYPE_VIEW nodes depends on semantic declaration state as well
 	 * as the Term graph.  Cache users include this revision in their key. */
 	uint64_t semantic_revision;
@@ -218,6 +216,13 @@ struct prototype_type_declaration_db {
 	struct prototype_type_constructor_declaration* constructor_declarations;
 	size_t constructor_count;
 	size_t constructor_capacity;
+};
+
+/* All storage referenced by this session owner is borrowed. The nested stores
+ * have separate authority even though one compiler session keeps them
+ * adjacent. */
+struct prototype_type_declaration_db {
+	struct prototype_type_semantic_schema_db semantic_schema;
 
 	struct prototype_type_readback_db readback;
 	struct prototype_type_representation_db representation_db;
@@ -355,7 +360,7 @@ int prototype_type_constructor_derive_curried_classifier(
 );
 
 int prototype_constructor_telescopes_validate(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms
 );
@@ -432,7 +437,7 @@ int prototype_type_declaration_instance_info(
  * semantic ADT boundary: it never falls back to representation shape or
  * readback metadata. */
 int prototype_type_view_declaration_query(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms,
 	uint32_t type_view,
@@ -441,7 +446,7 @@ int prototype_type_view_declaration_query(
 );
 
 int prototype_type_view_constructor_telescope_query(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms,
 	uint32_t type_view,

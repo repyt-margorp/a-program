@@ -36,6 +36,9 @@ struct prototype_compile_diagnostic {
 	uint32_t constraint_id;
 	uint32_t expected_classifier;
 	uint32_t actual_classifier;
+	uint32_t context_id;
+	uint32_t constructor_ordinal;
+	uint32_t field_ordinal;
 };
 
 #endif

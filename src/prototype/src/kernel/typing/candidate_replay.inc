@@ -57,15 +57,15 @@ static void initialize_proof_premises(
 ) {
 	proof->premise_count = premise_count;
 	for (uint32_t i = 0; i < premise_count; ++i) {
-		proof->premises[i].proposition->kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
-		proof->premises[i].proposition->context_id = premise_context_ids ?
+		proof->premises[i].builder_proposition->kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE;
+		proof->premises[i].builder_proposition->context_id = premise_context_ids ?
 			premise_context_ids[i] : default_context_id;
-		proof->premises[i].proposition->subject = premise_subjects[i];
-		proof->premises[i].proposition->classifier = premise_classifiers[i];
-		proof->premises[i].proposition->authority_kind =
+		proof->premises[i].builder_proposition->subject = premise_subjects[i];
+		proof->premises[i].builder_proposition->classifier = premise_classifiers[i];
+		proof->premises[i].builder_proposition->authority_kind =
 			PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID;
-		proof->premises[i].proposition->authority_id = PROTOTYPE_INVALID_ID;
-		proof->premises[i].proposition->occurrence_id = PROTOTYPE_INVALID_ID;
+		proof->premises[i].builder_proposition->authority_id = PROTOTYPE_INVALID_ID;
+		proof->premises[i].builder_proposition->occurrence_id = PROTOTYPE_INVALID_ID;
 	}
 }
 
@@ -97,6 +97,7 @@ static void initialize_proof_rule_parameters(
 			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_INVALID;
 		proof->premises[i].proposition_id = PROTOTYPE_INVALID_ID;
 		proof->premises[i].proposition = &premise_propositions[i];
+		proof->premises[i].builder_proposition = &premise_propositions[i];
 		premise_propositions[i].authority_kind =
 			PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID;
 		premise_propositions[i].authority_id = PROTOTYPE_INVALID_ID;
@@ -160,7 +161,10 @@ static uint32_t judgement_operation_evidence_owner(
 		return operation->context_action_substitution == PROTOTYPE_INVALID_ID ?
 			PROTOTYPE_INVALID_ID : operation_id;
 	}
-	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REFERENCE) {
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REFERENCE &&
+		operation->wrapped_occurrence < operations->occurrence_count &&
+		operation->classifier ==
+			operations->occurrences[operation->wrapped_occurrence].classifier) {
 		return judgement_operation_evidence_owner(
 			operations, operation->wrapped_occurrence, depth + 1
 		);
@@ -305,8 +309,9 @@ static int judgement_structural_premise_child(
 					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE) {
 					continue;
 				}
-				if (operation_case->refinement_status !=
-						PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED ||
+				if (!prototype_typed_occurrence_match_case_is_admitted(
+						operation_case
+					) ||
 					reachable_index >= premise_count) {
 					return -1;
 				}
@@ -473,7 +478,9 @@ static int judgement_rule_derives_alternate_operation_classifier(int proof_kind)
 		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_EFFECT_WEAKEN ||
 		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN ||
 		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION ||
-		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE;
+		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE ||
+		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION ||
+		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS;
 }
 
 static int judgement_proof_kind_is_known(int proof_kind) {
@@ -526,6 +533,10 @@ static int judgement_proof_kind_is_known(int proof_kind) {
 	case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_TERM:
 	case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_CONSTRUCTOR:
 	case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS:
+	case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_TYPE_FORMATION:
+	case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION:
+	case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TYPE_FORMATION:
+	case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS:
 		return 1;
 	default:
 		return 0;

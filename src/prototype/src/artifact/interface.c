@@ -875,7 +875,7 @@ int prototype_artifact_interface_build_from_metadata(
 		export->name_symbol_id = type_export->name_symbol_id;
 		export->local_type_id = type_export->type_id;
 		export->representation_fingerprint = type_export->representation_fingerprint;
-		if (type_export->type_id >= type_declarations->type_count) {
+		if (type_export->type_id >= type_declarations->semantic_schema.type_count) {
 			return -1;
 		}
 			if (prototype_type_declaration_representation_anchor_type_id(
@@ -887,7 +887,7 @@ int prototype_artifact_interface_build_from_metadata(
 			return -1;
 		}
 		const struct prototype_type_declaration* type =
-			&type_declarations->type_declarations[type_export->type_id];
+			&type_declarations->semantic_schema.type_declarations[type_export->type_id];
 		if (type->formation_classifier == PROTOTYPE_INVALID_ID ||
 			type->formation_classifier >= terms->term_count) {
 			return -1;

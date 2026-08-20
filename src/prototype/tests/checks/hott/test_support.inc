@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v78.h"
+#include "a_program/artifact/wire_v80.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
@@ -2161,8 +2161,8 @@ static uint32_t add_bool_view(
 	terms_db->terms[view].as.type_view.identity.name_symbol_id = 100;
 	terms_db->terms[view].as.type_view.core = core;
 	terms_db->terms[view].as.type_view.source = core;
-	types_db->type_count = 1;
-		types_db->type_declarations[0] = (struct prototype_type_declaration){
+	types_db->semantic_schema.type_count = 1;
+		types_db->semantic_schema.type_declarations[0] = (struct prototype_type_declaration){
 			.name_symbol_id = 100,
 			.namespace_symbol_id = -1,
 			.type_index = 0,
@@ -2173,9 +2173,9 @@ static uint32_t add_bool_view(
 		.first_constructor = 0,
 		.constructor_count = 2
 	};
-	types_db->constructor_count = 2;
+	types_db->semantic_schema.constructor_count = 2;
 	for (uint32_t i = 0; i < 2; ++i) {
-		types_db->constructor_declarations[i] =
+		types_db->semantic_schema.constructor_declarations[i] =
 			(struct prototype_type_constructor_declaration){
 					.name_symbol_id = 101 + (int)i,
 					.owner_type = 0,
@@ -2240,9 +2240,9 @@ static uint32_t add_box_view(
 	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
 	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 200;
 	terms_db->terms[view].as.type_view.source = source;
-	types_db->type_declarations[type_id].formation_classifier = universe;
-	types_db->type_declarations[type_id].parameter_context = empty;
-	types_db->type_declarations[type_id].index_context = empty;
+	types_db->semantic_schema.type_declarations[type_id].formation_classifier = universe;
+	types_db->semantic_schema.type_declarations[type_id].parameter_context = empty;
+	types_db->semantic_schema.type_declarations[type_id].index_context = empty;
 	uint32_t field_binding = prototype_term_new_binding(terms_db);
 	uint32_t field_context;
 	uint32_t curried_classifier;
@@ -2274,9 +2274,9 @@ static uint32_t add_box_view(
 			view,
 			curried_classifier,
 			&constructor_id
-		) != 0 || constructor_id >= types_db->constructor_count ||
-		types_db->constructor_declarations[constructor_id].owner_type != type_id ||
-		types_db->constructor_declarations[constructor_id].constructor_index != 0) {
+		) != 0 || constructor_id >= types_db->semantic_schema.constructor_count ||
+		types_db->semantic_schema.constructor_declarations[constructor_id].owner_type != type_id ||
+		types_db->semantic_schema.constructor_declarations[constructor_id].constructor_index != 0) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	prototype_term_notify_graph_mutation(terms_db);
@@ -2311,9 +2311,9 @@ static uint32_t add_dependent_box_view(
 	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
 	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 210;
 	terms_db->terms[view].as.type_view.source = source;
-	types_db->type_declarations[type_id].formation_classifier = universe;
-	types_db->type_declarations[type_id].parameter_context = empty;
-	types_db->type_declarations[type_id].index_context = empty;
+	types_db->semantic_schema.type_declarations[type_id].formation_classifier = universe;
+	types_db->semantic_schema.type_declarations[type_id].parameter_context = empty;
+	types_db->semantic_schema.type_declarations[type_id].index_context = empty;
 
 	uint32_t first_binding = prototype_term_new_binding(terms_db);
 	uint32_t family_binding = prototype_term_new_binding(terms_db);
@@ -2369,7 +2369,7 @@ static uint32_t add_dependent_box_view(
 			view,
 			curried_classifier,
 			&constructor_id
-		) != 0 || constructor_id >= types_db->constructor_count) {
+		) != 0 || constructor_id >= types_db->semantic_schema.constructor_count) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	prototype_term_notify_graph_mutation(terms_db);
@@ -2405,9 +2405,9 @@ static uint32_t add_nat_view(
 	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
 	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 300;
 	terms_db->terms[view].as.type_view.source = source;
-	types_db->type_declarations[type_id].formation_classifier = universe;
-	types_db->type_declarations[type_id].parameter_context = empty;
-	types_db->type_declarations[type_id].index_context = empty;
+	types_db->semantic_schema.type_declarations[type_id].formation_classifier = universe;
+	types_db->semantic_schema.type_declarations[type_id].parameter_context = empty;
+	types_db->semantic_schema.type_declarations[type_id].index_context = empty;
 	uint32_t zero_constructor_id;
 	if (fixture_publish_constructor_schema(
 			types_db,

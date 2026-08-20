@@ -1,12 +1,47 @@
 #!/bin/sh
 set -eu
 
+# Boundary audit: ISSUE-17-ACCEPTED-REPLAY-AUTHORITY
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/a-program-p0-certificate.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 cd "$ROOT_DIR"
 make reader >/dev/null
+
+JUDGEMENT_TYPES=src/prototype/include/a_program/kernel/judgement/types.h
+ACCEPTED_REPLAY=src/prototype/src/kernel/typing/accepted_replay.inc
+candidate_premise=$(sed -n \
+	'/struct prototype_judgement_candidate_premise {/,/^};/p' \
+	"$JUDGEMENT_TYPES")
+printf '%s\n' "$candidate_premise" | grep -q \
+	'const struct prototype_judgement_proposition\* proposition;'
+printf '%s\n' "$candidate_premise" | grep -q \
+	'struct prototype_judgement_proposition\* builder_proposition;'
+rule_view=$(sed -n \
+	'/struct prototype_judgement_rule_application_view {/,/^};/p' \
+	"$JUDGEMENT_TYPES")
+printf '%s\n' "$rule_view" | grep -q \
+	'struct prototype_judgement_premise_view'
+if printf '%s\n' "$rule_view" | grep -q \
+	'prototype_judgement_candidate_premise'; then
+	echo 'kernel rule view still exposes candidate storage' >&2
+	exit 1
+fi
+accepted_adapter=$(sed -n \
+	'/static int accepted_derivation_rule_application_view(/,/^}/p' \
+	"$ACCEPTED_REPLAY")
+if printf '%s\n' "$accepted_adapter" | grep -q \
+	'prototype_judgement_candidate_premise\|proposition_store_kind'; then
+	echo 'accepted replay still reconstructs candidate premise storage' >&2
+	exit 1
+fi
+if grep -q '(struct prototype_judgement_proposition\*)premise' \
+	"$ACCEPTED_REPLAY"; then
+	echo 'accepted replay still casts an immutable Proposition to mutable' >&2
+	exit 1
+fi
 
 # Derivation IDs are storage identities, not preferred-proof identities. Reverse
 # every accepted Derivation ID and require readback/grounding to preserve the

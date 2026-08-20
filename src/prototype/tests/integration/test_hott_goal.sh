@@ -351,13 +351,13 @@ for proof_kind in 12 14; do
 		exit 1
 	fi
 done
-v77_artifact=/tmp/a-program-hott-v77.apo
+v78_artifact=/tmp/a-program-hott-v78.apo
 awk '
-	$1 == "A_PROGRAM_ARTIFACT" { $2 = 77 }
+	$1 == "A_PROGRAM_ARTIFACT" { $2 = 78 }
 	{ print }
-' "$identity_artifact" >"$v77_artifact"
-if ./read_file.out --read-interface "$v77_artifact" >/dev/null 2>&1; then
-	echo "artifact reader accepted v77 through a fallback parser" >&2
+' "$identity_artifact" >"$v78_artifact"
+if ./read_file.out --read-interface "$v78_artifact" >/dev/null 2>&1; then
+	echo "artifact reader accepted v78 through a fallback parser" >&2
 	exit 1
 fi
 prototype_test_phase aggregate_link

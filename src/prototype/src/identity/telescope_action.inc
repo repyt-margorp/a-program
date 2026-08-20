@@ -7,13 +7,13 @@ static int hott_zero_field_ordinary_adt(
 	uint32_t type_id;
 	const struct prototype_type_declaration* type;
 	if (prototype_type_view_declaration_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 			type_term,
 			&type_id,
 			&type
-		) != 0 || type_id >= type_declarations->type_count) {
+		) != 0 || type_id >= type_declarations->semantic_schema.type_count) {
 		return 0;
 	}
 	if (type->parameter_count != 0 || type->constructor_count == 0) {
@@ -21,11 +21,11 @@ static int hott_zero_field_ordinary_adt(
 	}
 	for (uint32_t i = 0; i < type->constructor_count; ++i) {
 		uint32_t constructor_id = type->first_constructor + i;
-		if (constructor_id >= type_declarations->constructor_count) {
+		if (constructor_id >= type_declarations->semantic_schema.constructor_count) {
 			return 0;
 		}
 		const struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->constructor_declarations[constructor_id];
+			&type_declarations->semantic_schema.constructor_declarations[constructor_id];
 		const struct prototype_context* parameters = prototype_context_get(
 			contexts, constructor->parameter_context
 		);
@@ -65,11 +65,11 @@ static int hott_ordinary_adt_identity_supported(
 	}
 	for (uint32_t i = 0; i < source_type->constructor_count; ++i) {
 		uint32_t constructor_id = source_type->first_constructor + i;
-		if (constructor_id >= type_declarations->constructor_count) {
+		if (constructor_id >= type_declarations->semantic_schema.constructor_count) {
 			return 0;
 		}
 		const struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->constructor_declarations[constructor_id];
+			&type_declarations->semantic_schema.constructor_declarations[constructor_id];
 		uint32_t field_path[64];
 		uint32_t field_count;
 		if (constructor->parameter_context != source_type->parameter_context ||
@@ -114,14 +114,14 @@ static int hott_ordinary_adt_identity_supported(
 				uint32_t field_type_id;
 				const struct prototype_type_declaration* field_type;
 				if (prototype_type_view_declaration_query(
-						type_declarations,
+						&type_declarations->semantic_schema,
 						contexts,
 						terms,
 						field_classifier,
 						&field_type_id,
 						&field_type
 					) != 0 || !field_type || field_type_id >=
-						type_declarations->type_count ||
+						type_declarations->semantic_schema.type_count ||
 					field_type->parameter_count != 0 ||
 					field_type->constructor_count == 0) {
 					return 0;
@@ -197,7 +197,7 @@ static int hott_thunk_pi_identity_supported(
 	uint32_t domain_type_id;
 	const struct prototype_type_declaration* domain_type;
 	if (prototype_type_view_declaration_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 			terms->terms[pi].as.pi.domain,
@@ -216,7 +216,7 @@ static int hott_thunk_pi_identity_supported(
 	uint32_t result_type_id;
 	const struct prototype_type_declaration* result_declaration;
 	int supported = prototype_type_view_declaration_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 			result_type,
@@ -384,13 +384,13 @@ int prototype_hott_type_former_descriptor_query(
 	} else if (acted_instance < 0) {
 		return -1;
 	} else if (prototype_type_view_declaration_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 		exposed_type,
 			&ordinary_type_id,
 			&ordinary_type
-		) == 0 && ordinary_type_id < type_declarations->type_count &&
+		) == 0 && ordinary_type_id < type_declarations->semantic_schema.type_count &&
 		ordinary_type) {
 		descriptor.kind = PROTOTYPE_HOTT_TYPE_FORMER_ORDINARY_ADT;
 		descriptor.admitted = 1;
@@ -527,13 +527,13 @@ int prototype_hott_type_former_descriptor_query(
 		uint32_t source_type_id;
 		const struct prototype_type_declaration* source_type;
 		if (prototype_type_view_declaration_query(
-				type_declarations,
+				&type_declarations->semantic_schema,
 				contexts,
 				terms,
 				exposed_type,
 				&source_type_id,
 				&source_type
-		) == 0 && source_type_id < type_declarations->type_count &&
+		) == 0 && source_type_id < type_declarations->semantic_schema.type_count &&
 		hott_ordinary_adt_identity_supported(
 				terms,
 				type_declarations,

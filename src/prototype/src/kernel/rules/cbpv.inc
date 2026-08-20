@@ -772,7 +772,19 @@ int prototype_judgement_computation_fold_result_classifier(
 				return -1;
 			}
 		} else {
-			return -1;
+			int projection_status = prototype_term_project_pure_computation_value(
+				terms,
+				type_declarations,
+				input_computation,
+				PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
+				&input_value
+			);
+			if (projection_status != 0) {
+				/* COMPLETE means that a WHNF was reached, not that the computation
+				 * returned. Keep an opaque pure result as a residual dependent
+				 * sequencing equation. */
+				return projection_status < 0 ? -1 : 1;
+			}
 		}
 		if (
 			prototype_term_pure_family_lambda(

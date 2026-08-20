@@ -73,8 +73,14 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_EFFECT_ROW_OPERATION = 31,
 	PROTOTYPE_TERM_RELATION_TYPE_FORMER = 32,
 	PROTOTYPE_TERM_RELATION_WITNESS_FORMER = 33,
-	PROTOTYPE_TERM_DIMENSION_ACTION = 34
+	PROTOTYPE_TERM_DIMENSION_ACTION = 34,
+	PROTOTYPE_TERM_RETURNS_TYPE_FORMER = 35,
+	PROTOTYPE_TERM_RETURNS_WITNESS_FORMER = 36,
+	PROTOTYPE_TERM_TERMINATES_TYPE_FORMER = 37,
+	PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER = 38
 };
+
+#define PROTOTYPE_TERM_TAG_MAX PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER
 
 enum prototype_term_category {
 	PROTOTYPE_TERM_CATEGORY_INVALID = 0,
@@ -358,8 +364,8 @@ struct prototype_term_intern_stats {
 	uint64_t exact_probe_count;
 	uint64_t alpha_compare_count;
 	uint64_t index_rebuild_count;
-	uint64_t bucket_probes_by_tag[PROTOTYPE_TERM_DIMENSION_ACTION + 1];
-	uint64_t alpha_compares_by_tag[PROTOTYPE_TERM_DIMENSION_ACTION + 1];
+	uint64_t bucket_probes_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
+	uint64_t alpha_compares_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
 };
 
 /* Immutable operational data projected by compilation. It contains only the
@@ -443,7 +449,11 @@ enum prototype_term_child_role {
 	PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE = 26,
 	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION = 27,
 	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY = 28,
-	PROTOTYPE_TERM_CHILD_DIMENSION_ACTION_SOURCE = 29
+	PROTOTYPE_TERM_CHILD_DIMENSION_ACTION_SOURCE = 29,
+	PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_COMPUTATION = 30,
+	PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_VALUE = 31,
+	PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_COMPUTATION = 32,
+	PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_RETURNS = 33
 };
 
 struct prototype_term_child {
@@ -897,6 +907,50 @@ int prototype_term_relation_witness_info(
 	uint32_t* p_left_endpoint,
 	uint32_t* p_right_endpoint
 );
+int prototype_term_returns_type(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t value,
+	uint32_t* p_ret
+);
+int prototype_term_returns_witness(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t value,
+	uint32_t* p_ret
+);
+int prototype_term_returns_type_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_computation,
+	uint32_t* p_value
+);
+int prototype_term_returns_witness_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_computation,
+	uint32_t* p_value
+);
+int prototype_term_terminates_type(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t* p_ret
+);
+int prototype_term_terminates_witness(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t* p_ret
+);
+int prototype_term_terminates_type_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_computation
+);
+int prototype_term_terminates_witness_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_computation
+);
 int prototype_term_dimension_action(
 	struct prototype_term_db* db,
 	const struct prototype_dimension_operator_db* dimension_operators,
@@ -1296,6 +1350,17 @@ int prototype_term_normalize_with_profile(
 	uint32_t term_id,
 	uint64_t step_limit,
 	struct prototype_term_normalization_result* p_result
+);
+/* Project the value returned by a pure computation without selecting a
+ * neutral Match branch. Zero returns a value graph, one means that the pure
+ * result is still opaque, and -1 reports malformed Core data. The caller is
+ * responsible for establishing an empty effect row. */
+int prototype_term_project_pure_computation_value(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t computation,
+	uint64_t step_limit,
+	uint32_t* p_value
 );
 int prototype_term_nf_with_options(
 	struct prototype_term_db* db,

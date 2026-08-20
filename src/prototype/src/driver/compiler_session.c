@@ -111,13 +111,13 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 		) != 0) {
 		return -1;
 	}
-	if (type_id >= program->type_declarations->type_count) {
+	if (type_id >= program->type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
-	program->type_declarations->type_declarations[type_id].formation_classifier = universe;
-	program->type_declarations->type_declarations[type_id].parameter_context =
+	program->type_declarations->semantic_schema.type_declarations[type_id].formation_classifier = universe;
+	program->type_declarations->semantic_schema.type_declarations[type_id].parameter_context =
 		empty_context;
-	program->type_declarations->type_declarations[type_id].index_context =
+	program->type_declarations->semantic_schema.type_declarations[type_id].index_context =
 		empty_context;
 	prototype_type_declaration_db_mark_semantic_change(
 		program->type_declarations

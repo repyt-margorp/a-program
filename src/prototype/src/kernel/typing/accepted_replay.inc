@@ -123,13 +123,21 @@ static int initialize_candidate_rule_application_view(
 			return -1;
 		}
 	}
+	memset(view, 0, sizeof(*view));
 	view->proof_kind = candidate->proof_kind;
 	view->conclusion = conclusion;
 	view->rule_data = candidate->rule_data;
 	view->semantic_action_kind = candidate->semantic_action_kind;
 	view->semantic_action_id = candidate->semantic_action_id;
 	view->premise_count = candidate->premise_count;
-	view->premises = candidate->premises;
+	for (uint32_t i = 0; i < candidate->premise_count; ++i) {
+		view->premises[i] = (struct prototype_judgement_premise_view){
+			.proposition = candidate->premises[i].proposition,
+			.semantic_action_kind =
+				candidate->premises[i].semantic_action_kind,
+			.semantic_action_id = candidate->premises[i].semantic_action_id
+		};
+	}
 	return 0;
 }
 
@@ -164,6 +172,22 @@ static int judgement_expected_rule_view_premise_operation(
 			operations, child_operation_id, 0
 		);
 	return 0;
+}
+
+static int judgement_premise_operation_matches(
+	const struct prototype_typed_occurrence_graph* operations,
+	uint32_t expected_operation_id,
+	const struct prototype_judgement_proposition* premise
+) {
+	if (!operations || !premise || premise->authority_kind !=
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ||
+		premise->occurrence_id >= operations->occurrence_count) {
+		return 0;
+	}
+	return premise->occurrence_id == expected_operation_id ||
+		judgement_operation_evidence_owner(
+			operations, premise->occurrence_id, 0
+		) == expected_operation_id;
 }
 
 static int validate_app_elim_proof(
@@ -540,7 +564,7 @@ static int validate_match_elim_proof(
 		const struct prototype_match_case* match_case = &terms->cases[case_id];
 		const struct prototype_match_case* motive_case = motive_is_case_split ?
 			&terms->cases[motive_case_id] : NULL;
-		const struct prototype_judgement_candidate_premise* branch_premise =
+		const struct prototype_judgement_premise_view* branch_premise =
 			&proof->premises[i + 1];
 		if (motive_is_case_split &&
 			(match_case->constructor_id != motive_case->constructor_id ||
@@ -735,6 +759,73 @@ static int operation_case_occurrence_binders(
 	return 0;
 }
 
+/* A zero-clause fold is the CBPV sequencing rule. Its continuation classifier
+ * is checked under a fresh runtime-result binder, while a recursive motive is
+ * expressed in the source Context. When the input has a structural pure-value
+ * projection, replay the admissible zeta equation by replacing that local
+ * binder with the projected source value. This is reconstructed from accepted
+ * operation edges; no compiler solver cell or evaluation history is trusted. */
+static int replay_project_pure_sequence_results(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_typed_occurrence_graph* operations,
+	uint32_t context_id,
+	uint32_t classifier,
+	uint32_t* p_projected
+) {
+	return prototype_judgement_project_pure_sequence_results(
+		terms, type_declarations, contexts, operations, context_id,
+		classifier, p_projected
+	);
+}
+
+static int trace_induction_replay_rejection(
+	const struct prototype_judgement_proposition* relation,
+	unsigned line
+) {
+	if (getenv("A_PROGRAM_ACCEPTED_REPLAY_TRACE")) {
+		fprintf(
+			stderr,
+			"IH replay rejected line=%u context=%u occurrence=%u subject=%u classifier=%u\n",
+			line,
+			relation ? relation->context_id : PROTOTYPE_INVALID_ID,
+			relation ? relation->occurrence_id : PROTOTYPE_INVALID_ID,
+			relation ? relation->subject : PROTOTYPE_INVALID_ID,
+			relation ? relation->classifier : PROTOTYPE_INVALID_ID
+		);
+	}
+	return -1;
+}
+
+/* Surface computation bodies may end in a raw value. Lowering interprets that
+ * boundary as RETURN(value), but the erased Core node and its value classifier
+ * remain unchanged. Replay this one admissible polarity bridge explicitly;
+ * it is not global classifier conversion and it never removes an effect. */
+static int classifier_is_pure_computation_result(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t computation_classifier,
+	uint32_t value_classifier
+) {
+	struct prototype_term_classifier_view computation;
+	struct prototype_term_classifier_view value;
+	struct prototype_effect_row_normal_form row;
+	return prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, computation_classifier, &computation
+		) == 0 && computation.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
+		computation.computation_kind ==
+			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING &&
+		prototype_term_effect_row_normal_form(
+			terms, computation.effect_row, &row
+		) == 0 && row.atom_count == 0 && prototype_judgement_classifier_view(
+			terms, type_declarations, NULL, value_classifier, &value
+		) == 0 && value.category == PROTOTYPE_TERM_CATEGORY_VALUE &&
+		prototype_judgement_classifier_conversion(
+			terms, type_declarations, computation.result, value_classifier
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL;
+}
+
 static int validate_induction_hypothesis_elim_proof(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -872,22 +963,32 @@ static int validate_induction_hypothesis_elim_proof(
 		 * original direct-motive replay rule. */
 		if (relation->authority_kind ==
 			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE) {
-			return -1;
+			return trace_induction_replay_rejection(relation, __LINE__);
 		}
 		if (prototype_term_app(
 				terms, proof->rule_data.induction.motive,
 				ih->as.induction_hypothesis.argument,
 				&expected_classifier
 			) != 0) {
-			return -1;
+			return trace_induction_replay_rejection(relation, __LINE__);
 		}
 	}
 	(void)judgement;
+	uint32_t relation_classifier = relation->classifier;
+	if (operations && contexts) {
+		int projection_status = replay_project_pure_sequence_results(
+			terms, type_declarations, contexts, operations,
+			relation->context_id, relation->classifier, &relation_classifier
+		);
+		if (projection_status < 0) {
+			return -1;
+		}
+	}
 	int conversion = prototype_judgement_classifier_conversion(
 		terms,
 		type_declarations,
 		expected_classifier,
-		relation->classifier
+		relation_classifier
 	).status;
 	if (conversion == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		return 0;
@@ -949,11 +1050,17 @@ static int validate_induction_hypothesis_elim_proof(
 		}
 		if (prototype_judgement_classifier_conversion(
 				terms, type_declarations, refined_expected,
-				relation->classifier
+				relation_classifier
 			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			return 0;
 		}
 		replay_expected_classifier = refined_expected;
+	}
+	if (classifier_is_pure_computation_result(
+			terms, type_declarations, replay_expected_classifier,
+			relation_classifier
+		)) {
+		return 0;
 	}
 	/* A higher-order recursive field lifts to a function value.  The IH
 	 * operation constructs that value purely, so its operation classifier is
@@ -963,14 +1070,27 @@ static int validate_induction_hypothesis_elim_proof(
 	struct prototype_term_classifier_view expected_view;
 	struct prototype_effect_row_normal_form row;
 	if (prototype_judgement_classifier_view(
-			terms, type_declarations, NULL, relation->classifier, &relation_view
+			terms, type_declarations, NULL, relation_classifier, &relation_view
 		) != 0 || relation_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		relation_view.computation_kind !=
 			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
 		prototype_term_effect_row_normal_form(
 			terms, relation_view.effect_row, &row
 		) != 0 || row.atom_count != 0) {
-		return -1;
+		if (getenv("A_PROGRAM_ACCEPTED_REPLAY_TRACE")) {
+			fprintf(stderr, "IH replay non-pure-computation relation=%u expected=%u\nrelation: ",
+				relation_classifier, replay_expected_classifier);
+			prototype_term_print_debug(
+				stderr, NULL, NULL, type_declarations, terms, relation_classifier
+			);
+			fprintf(stderr, "\nexpected: ");
+			prototype_term_print_debug(
+				stderr, NULL, NULL, type_declarations, terms,
+				replay_expected_classifier
+			);
+			fprintf(stderr, "\n");
+		}
+		return trace_induction_replay_rejection(relation, __LINE__);
 	}
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, replay_expected_classifier,
@@ -981,14 +1101,14 @@ static int validate_induction_hypothesis_elim_proof(
 		uint32_t solved_expected;
 		int solve_status = prototype_judgement_solve_expected_effect_rows(
 			terms, type_declarations, NULL, replay_expected_classifier,
-			relation->classifier, &solved_expected
+			relation_classifier, &solved_expected
 		);
 		if (solve_status == 0 && prototype_judgement_classifier_compatible(
-				terms, type_declarations, solved_expected, relation->classifier
+				terms, type_declarations, solved_expected, relation_classifier
 			)) {
 			return 0;
 		}
-		return -1;
+		return trace_induction_replay_rejection(relation, __LINE__);
 	}
 	int inner_conversion = prototype_judgement_classifier_conversion(
 		terms, type_declarations, replay_expected_classifier, relation_view.result
@@ -1003,7 +1123,29 @@ static int validate_induction_hypothesis_elim_proof(
 				terms, type_declarations, solved_expected, relation_view.result
 			);
 		if (solve_status != 0 || !compatible) {
-			return -1;
+			if (getenv("A_PROGRAM_ACCEPTED_REPLAY_TRACE")) {
+				fprintf(
+					stderr,
+					"IH replay classifier mismatch expected=%u result=%u solved=%u "
+					"solve_status=%d compatible=%d\nexpected: ",
+					replay_expected_classifier,
+					relation_view.result,
+					solve_status == 0 ? solved_expected : PROTOTYPE_INVALID_ID,
+					solve_status,
+					compatible
+				);
+				prototype_term_print_debug(
+					stderr, NULL, NULL, type_declarations, terms,
+					replay_expected_classifier
+				);
+				fprintf(stderr, "\nresult: ");
+				prototype_term_print_debug(
+					stderr, NULL, NULL, type_declarations, terms,
+					relation_view.result
+				);
+				fprintf(stderr, "\n");
+			}
+			return trace_induction_replay_rejection(relation, __LINE__);
 		}
 	}
 	return 0;
@@ -1027,6 +1169,11 @@ static int match_branch_classifier_satisfies_motive(
 	if (prototype_judgement_classifier_conversion(
 			terms, type_declarations, branch_classifier, motive_classifier
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		return 1;
+	}
+	if (classifier_is_pure_computation_result(
+			terms, type_declarations, motive_classifier, branch_classifier
+		)) {
 		return 1;
 	}
 	uint32_t solved_branch_classifier;
@@ -1106,6 +1253,10 @@ static int replay_operation_case_refinement_status(
 		return operation_case->refinement_substitution == PROTOTYPE_INVALID_ID ?
 			PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE :
 			PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	case PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT:
+		return operation_case->refinement_substitution == PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_INDEX_REFINEMENT_CONSTANT :
+			PROTOTYPE_INDEX_REFINEMENT_INVALID;
 	case PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING:
 	case PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_RESIDUAL:
 	default:
@@ -1115,7 +1266,7 @@ static int replay_operation_case_refinement_status(
 
 static int replay_match_premise_refinement_action(
 	const struct prototype_typed_occurrence_match_case* operation_case,
-	const struct prototype_judgement_candidate_premise* premise
+	const struct prototype_judgement_premise_view* premise
 ) {
 	if (!operation_case || !premise) {
 		return 0;
@@ -1352,7 +1503,8 @@ static int validate_solved_match_motive_proof(
 			if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
 				continue;
 			}
-			if (refinement_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED ||
+			if ((refinement_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED &&
+				 refinement_status != PROTOTYPE_INDEX_REFINEMENT_CONSTANT) ||
 				premise_index >= proof->premise_count) {
 				return -1;
 			}
@@ -1364,7 +1516,7 @@ static int validate_solved_match_motive_proof(
 				) != 0) {
 				return -1;
 			}
-			const struct prototype_judgement_candidate_premise* premise =
+			const struct prototype_judgement_premise_view* premise =
 				&proof->premises[premise_index++];
 			if (premise->proposition->kind !=
 					PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
@@ -1372,11 +1524,15 @@ static int validate_solved_match_motive_proof(
 				premise->proposition->subject !=
 					operations->occurrences[branch_occurrence].core_term ||
 				!replay_match_premise_refinement_action(typed_case, premise) ||
-				!replay_reindexed_classifier_satisfies(
-					terms, type_declarations, contexts, substitutions,
-					relation->classifier, typed_case->refinement_substitution,
-					premise->proposition->classifier
-				)) {
+				(refinement_status == PROTOTYPE_INDEX_REFINEMENT_SOLVED ?
+					!replay_reindexed_classifier_satisfies(
+						terms, type_declarations, contexts, substitutions,
+						relation->classifier, typed_case->refinement_substitution,
+						premise->proposition->classifier
+					) : !match_branch_classifier_satisfies_motive(
+						terms, type_declarations,
+						premise->proposition->classifier, relation->classifier
+					))) {
 				return -1;
 			}
 		}
@@ -1408,11 +1564,11 @@ static int validate_solved_match_motive_proof(
 			if (prototype_type_declaration_instance_info(
 					type_declarations, terms, match_case->constructor_owner,
 					&owner_type_id, owner_arguments, 16, &owner_argument_count
-				) != 0 || owner_type_id >= type_declarations->type_count) {
+				) != 0 || owner_type_id >= type_declarations->semantic_schema.type_count) {
 				return -1;
 			}
 			if (match_operation &&
-				type_declarations->type_declarations[owner_type_id].index_count != 0) {
+				type_declarations->semantic_schema.type_declarations[owner_type_id].index_count != 0) {
 				uint32_t branch_occurrence;
 				if (judgement_occurrence_child(
 						operations, relation->occurrence_id,
@@ -1442,7 +1598,7 @@ static int validate_solved_match_motive_proof(
 			if (premise_index >= proof->premise_count) {
 				return -1;
 			}
-			const struct prototype_judgement_candidate_premise* premise =
+			const struct prototype_judgement_premise_view* premise =
 				&proof->premises[premise_index++];
 			uint32_t expected_subject = terms->cases[case_id].body;
 			if (match_operation) {
@@ -1464,7 +1620,7 @@ static int validate_solved_match_motive_proof(
 				expected_subject =
 					operations->occurrences[branch_occurrence].core_term;
 			}
-			if (type_declarations->type_declarations[owner_type_id].index_count == 0) {
+			if (type_declarations->semantic_schema.type_declarations[owner_type_id].index_count == 0) {
 				if (premise->proposition->kind !=
 						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 					premise->proposition->subject != expected_subject ||
@@ -1584,11 +1740,11 @@ static int validate_solved_match_motive_proof(
 				type_declarations, terms, match_case->constructor_owner,
 				&owner_type_id, owner_arguments, 16, &owner_argument_count
 			);
-		if (owner_status != 0 || owner_type_id >= type_declarations->type_count) {
+		if (owner_status != 0 || owner_type_id >= type_declarations->semantic_schema.type_count) {
 			return -1;
 		}
 		if (match_operation &&
-			type_declarations->type_declarations[owner_type_id].index_count != 0) {
+			type_declarations->semantic_schema.type_declarations[owner_type_id].index_count != 0) {
 			uint32_t branch_occurrence;
 			if (judgement_occurrence_child(
 					operations, relation->occurrence_id,
@@ -1611,7 +1767,7 @@ static int validate_solved_match_motive_proof(
 		if (premise_index >= proof->premise_count) {
 			return -1;
 		}
-		const struct prototype_judgement_candidate_premise* premise =
+		const struct prototype_judgement_premise_view* premise =
 			&proof->premises[premise_index++];
 		uint32_t expected_subject = match_case->body;
 		if (match_operation) {
@@ -1737,7 +1893,8 @@ static int initialize_exact_claim_rule(
 		proof->premises[i].proposition_store_kind =
 			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
 		proof->premises[i].proposition =
-			(struct prototype_judgement_proposition*)premise;
+			premise;
+		proof->premises[i].builder_proposition = NULL;
 	}
 	return 0;
 }
@@ -2114,12 +2271,12 @@ static int validate_type_formation_intro_proof(
 	uint32_t argument_count;
 	if (prototype_term_type_instance_info(
 			terms, relation->subject, &type_id, arguments, &argument_count
-		) != 0 || type_id >= type_declarations->type_count ||
+		) != 0 || type_id >= type_declarations->semantic_schema.type_count ||
 		argument_count > 16) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	if (argument_count == 0 &&
 		type->formation_classifier != PROTOTYPE_INVALID_ID) {
 		return type->formation_classifier == relation->classifier ? 0 : -1;
@@ -2206,13 +2363,13 @@ static int validate_constructor_spine_formation_proof(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
+	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_proposition* relation,
 	const struct prototype_judgement_rule_application_view* proof
 ) {
 	if (!terms || !type_declarations || !contexts || !substitutions ||
-		!relation || !proof ||
+		!operations || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		proof->premise_count == 0 ||
 		proof->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 		return -1;
 	}
@@ -2244,29 +2401,139 @@ static int validate_constructor_spine_formation_proof(
 	}
 	uint32_t expected_classifier;
 	int saturated;
-	if (prototype_judgement_constructor_spine_classifier(
+	int classifier_status = prototype_judgement_constructor_spine_classifier(
 			terms,
 			type_declarations,
 			contexts,
-				substitutions,
-				relation->context_id,
-				relation->subject,
-				proof->rule_data.constructor.owner_view,
-				argument_classifiers,
+			substitutions,
+			relation->context_id,
+			relation->subject,
+			proof->rule_data.constructor.owner_view,
+			argument_classifiers,
 			argument_count,
 			&expected_classifier,
 			&saturated
-		) != 0 ||
-		(!(prototype_judgement_classifier_conversion(
+		);
+	int classifier_matches = classifier_status == 0 &&
+		(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,
 			expected_classifier,
 			relation->classifier
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) &&
-		 !prototype_judgement_classifier_reference_equal(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL ||
+		prototype_judgement_classifier_reference_equal(
 			terms, type_declarations, expected_classifier, relation->classifier
-		))) {
-		return -1;
+		));
+	if (!classifier_matches) {
+		uint32_t projected_subject;
+		uint32_t projected_classifier;
+		uint32_t projected_arguments[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+		uint32_t projected_argument_classifiers[
+			PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
+		];
+		int subject_projection_status =
+			prototype_judgement_project_pure_sequence_results(
+				terms,
+			type_declarations,
+			contexts,
+			operations,
+			relation->context_id,
+			relation->subject,
+				&projected_subject
+			);
+		int classifier_projection_status =
+			prototype_judgement_project_pure_sequence_results(
+				terms,
+				type_declarations,
+				contexts,
+				operations,
+				relation->context_id,
+				relation->classifier,
+				&projected_classifier
+			);
+		if (subject_projection_status != 0 || classifier_projection_status != 0) {
+			return -1;
+		}
+		for (uint32_t i = 0; i < argument_count; ++i) {
+			if (prototype_judgement_project_pure_sequence_results(
+					terms,
+					type_declarations,
+					contexts,
+					operations,
+					relation->context_id,
+					arguments[i],
+					&projected_arguments[i]
+				) != 0 ||
+				prototype_judgement_project_pure_sequence_results(
+					terms,
+					type_declarations,
+					contexts,
+					operations,
+					relation->context_id,
+					argument_classifiers[i],
+					&projected_argument_classifiers[i]
+				) != 0) {
+				return -1;
+			}
+		}
+		uint32_t projected_head;
+		uint32_t projected_owner;
+		uint32_t projected_constructor_index;
+		uint32_t decomposed_arguments[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+		uint32_t projected_argument_count;
+		if (prototype_term_constructor_spine_info(
+				terms,
+				projected_subject,
+				&projected_head,
+				&projected_owner,
+				&projected_constructor_index,
+				decomposed_arguments,
+				PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
+				&projected_argument_count
+			) != 0 ||
+			projected_argument_count != argument_count) {
+			return -1;
+		}
+		for (uint32_t i = 0; i < argument_count; ++i) {
+			if (decomposed_arguments[i] != projected_arguments[i]) {
+				return -1;
+			}
+		}
+		int projected_constructor_status =
+			prototype_judgement_constructor_spine_classifier(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				relation->context_id,
+				projected_subject,
+				proof->rule_data.constructor.owner_view,
+				projected_argument_classifiers,
+				argument_count,
+				&expected_classifier,
+				&saturated
+			);
+		struct prototype_term_conversion_result projected_conversion =
+			projected_constructor_status == 0 ?
+			prototype_judgement_classifier_conversion(
+				terms,
+				type_declarations,
+				expected_classifier,
+				projected_classifier
+			) : (struct prototype_term_conversion_result){0};
+		if (projected_constructor_status != 0 ||
+			(projected_conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL &&
+			 !prototype_judgement_classifier_reference_equal(
+				terms,
+				type_declarations,
+				expected_classifier,
+				projected_classifier
+			))) {
+			return -1;
+		}
+		(void)projected_head;
+		(void)projected_owner;
+		(void)projected_constructor_index;
 	}
 	(void)head;
 	(void)owner;
@@ -2552,7 +2819,8 @@ static int occurrence_classifier_satisfies_at_depth(
 			if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE) {
 				continue;
 			}
-			if (refinement_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED ||
+			if ((refinement_status != PROTOTYPE_INDEX_REFINEMENT_SOLVED &&
+				 refinement_status != PROTOTYPE_INDEX_REFINEMENT_CONSTANT) ||
 				judgement_occurrence_child(
 					operations, operation_id,
 					PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY, i,
@@ -2560,12 +2828,13 @@ static int occurrence_classifier_satisfies_at_depth(
 				) != 0 || child_occurrence >= operations->occurrence_count) {
 				return -1;
 			}
-			uint32_t refined_expected;
-			if (prototype_term_reindex(
+			uint32_t refined_expected = expected_classifier;
+			if ((refinement_status == PROTOTYPE_INDEX_REFINEMENT_SOLVED &&
+				 prototype_term_reindex(
 					terms, type_declarations, contexts, substitutions,
 					expected_classifier, operation_case->refinement_substitution,
 					&refined_expected
-				) != 0 || !persisted_classifier_pair_satisfies(
+				 ) != 0) || !persisted_classifier_pair_satisfies(
 					terms, type_declarations, refined_expected,
 					operations->occurrences[child_occurrence].classifier
 				)) {
@@ -2642,10 +2911,7 @@ static int validate_expected_type_exposure_proof(
 		relation->occurrence_id < operations->occurrence_count) {
 		const struct prototype_typed_occurrence* occurrence =
 			&operations->occurrences[relation->occurrence_id];
-		if (occurrence->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE &&
-			occurrence->wrapped_occurrence ==
-				proof->premises[0].proposition->occurrence_id &&
-			occurrence->core_term == relation->subject) {
+		if (occurrence->core_term == relation->subject) {
 			int occurrence_status =
 				prototype_judgement_occurrence_classifier_satisfies(
 					&scratch_terms, type_declarations, contexts, substitutions,
@@ -2785,7 +3051,7 @@ static int validate_declaration_proof(
 				args,
 				&arg_count
 			) == 0 &&
-			type_id < type_declarations->type_count;
+			type_id < type_declarations->semantic_schema.type_count;
 		(void)args;
 		(void)arg_count;
 		if (has_local_owner &&
@@ -3009,19 +3275,19 @@ static int validate_assumption_proof(
 				64,
 				&argument_count
 			) != 0 ||
-			type_id >= type_declarations->type_count ||
+			type_id >= type_declarations->semantic_schema.type_count ||
 			relation->context_id >= contexts->context_count) {
 			return -1;
 		}
 		const struct prototype_type_declaration* type =
-			&type_declarations->type_declarations[type_id];
+			&type_declarations->semantic_schema.type_declarations[type_id];
 		if (proof->rule_data.constructor.constructor_index >= type->constructor_count ||
 			type->first_constructor + proof->rule_data.constructor.constructor_index >=
-				type_declarations->constructor_count) {
+				type_declarations->semantic_schema.constructor_count) {
 			return -1;
 		}
 		const struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->constructor_declarations[
+			&type_declarations->semantic_schema.constructor_declarations[
 				type->first_constructor + proof->rule_data.constructor.constructor_index
 			];
 		const struct prototype_context* parameter_context =
@@ -4238,6 +4504,113 @@ static int validate_relation_witness_intro_proof(
 	return 0;
 }
 
+static int validate_returns_type_formation_proof(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_proposition* relation,
+	const struct prototype_judgement_rule_application_view* proof
+) {
+	return terms && type_declarations && relation && proof &&
+		relation->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+		relation->classifier < terms->term_count &&
+		terms->terms[relation->classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR &&
+		proof->premise_count == 2 && returns_claim_shape(
+			terms, type_declarations, relation->context_id, relation->subject,
+			proof->premises[0].proposition,
+			proof->premises[1].proposition
+		) == 0 ? 0 : -1;
+}
+
+static int validate_returns_evaluation_proof(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_proposition* relation,
+	const struct prototype_judgement_rule_application_view* proof
+) {
+	uint32_t suspended;
+	uint32_t expected;
+	uint32_t witness_computation;
+	uint32_t witness_value;
+	int witness_computation_equal = 0;
+	int witness_value_equal = 0;
+	return terms && type_declarations && relation && proof &&
+		relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		proof->premise_count == 3 &&
+		proof->premises[0].proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+		proof->premises[0].proposition->context_id == relation->context_id &&
+		proof->premises[0].proposition->subject == relation->classifier &&
+		returns_claim_shape(
+			terms, type_declarations, relation->context_id, relation->classifier,
+			proof->premises[1].proposition,
+			proof->premises[2].proposition
+		) == 0 && prototype_term_returns_type_info(
+			terms, relation->classifier, &suspended, &expected
+		) == 0 && prototype_term_returns_witness_info(
+			terms, relation->subject, &witness_computation, &witness_value
+		) == 0 && prototype_judgement_result_computation_endpoints_equal(
+			terms, type_declarations, witness_computation, suspended,
+			PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT,
+			&witness_computation_equal
+		) == 0 && witness_computation_equal &&
+		prototype_term_core_shape_equal_for_link(
+			terms, type_declarations, witness_value,
+			terms, type_declarations, expected, &witness_value_equal
+		) == 0 && witness_value_equal &&
+		returns_evaluation_is_valid(
+			terms, type_declarations, suspended, expected,
+			PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT
+		) == 0 ? 0 : -1;
+}
+
+static int validate_terminates_type_formation_proof(
+	const struct prototype_term_db* terms,
+	const struct prototype_judgement_proposition* relation,
+	const struct prototype_judgement_rule_application_view* proof
+) {
+	uint32_t suspended;
+	return terms && relation && proof &&
+		relation->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+		relation->classifier < terms->term_count &&
+		terms->terms[relation->classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR &&
+		proof->premise_count == 1 && prototype_term_terminates_type_info(
+			terms, relation->subject, &suspended
+		) == 0 && proof->premises[0].proposition->kind ==
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		proof->premises[0].proposition->context_id == relation->context_id &&
+		proof->premises[0].proposition->subject == suspended &&
+		proof->premises[0].proposition->classifier < terms->term_count &&
+		terms->terms[proof->premises[0].proposition->classifier].tag ==
+			PROTOTYPE_TERM_THUNK_TYPE ? 0 : -1;
+}
+
+static int validate_terminates_from_returns_proof(
+	const struct prototype_term_db* terms,
+	const struct prototype_judgement_proposition* relation,
+	const struct prototype_judgement_rule_application_view* proof
+) {
+	uint32_t suspended;
+	uint32_t witness_computation;
+	uint32_t returns_computation;
+	uint32_t returns_value;
+	return terms && relation && proof &&
+		relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		proof->premise_count == 2 &&
+		proof->premises[0].proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+		proof->premises[0].proposition->context_id == relation->context_id &&
+		proof->premises[0].proposition->subject == relation->classifier &&
+		prototype_term_terminates_type_info(
+			terms, relation->classifier, &suspended
+		) == 0 && prototype_term_terminates_witness_info(
+			terms, relation->subject, &witness_computation
+		) == 0 && witness_computation == suspended &&
+		proof->premises[1].proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		proof->premises[1].proposition->context_id == relation->context_id &&
+		prototype_term_returns_type_info(
+			terms, proof->premises[1].proposition->classifier,
+			&returns_computation, &returns_value
+		) == 0 && returns_computation == suspended ? 0 : -1;
+}
+
 static int validate_relation_constructor_witness_proof(
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_proposition* relation,
@@ -4868,10 +5241,9 @@ static int validate_effect_operation_type_intro_proof(
 static int accepted_derivation_rule_application_view(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_derivation* derivation,
-	struct prototype_judgement_rule_application_view* view,
-	struct prototype_judgement_candidate_premise* premises
+	struct prototype_judgement_rule_application_view* view
 ) {
-	if (!judgement || !derivation || !view || !premises ||
+	if (!judgement || !derivation || !view ||
 		derivation->conclusion_claim_id >= judgement->claim_count ||
 		derivation->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 		return -1;
@@ -4886,12 +5258,6 @@ static int accepted_derivation_rule_application_view(
 		return -1;
 	}
 	memset(view, 0, sizeof(*view));
-	memset(
-		premises,
-		0,
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES * sizeof(*premises)
-	);
-	view->premises = premises;
 	view->proof_kind = derivation->proof_kind;
 	view->conclusion = conclusion_proposition;
 	view->rule_data = derivation->rule_data;
@@ -4899,9 +5265,9 @@ static int accepted_derivation_rule_application_view(
 	view->semantic_action_id = derivation->semantic_action_id;
 	view->premise_count = derivation->premise_count;
 	for (uint32_t i = 0; i < derivation->premise_count; ++i) {
-		premises[i].semantic_action_kind =
+		view->premises[i].semantic_action_kind =
 			derivation->premises[i].semantic_action_kind;
-		premises[i].semantic_action_id =
+		view->premises[i].semantic_action_id =
 			derivation->premises[i].semantic_action_id;
 		uint32_t claim_id = derivation->premises[i].claim_id;
 		if (claim_id == PROTOTYPE_INVALID_ID) {
@@ -4913,12 +5279,7 @@ static int accepted_derivation_rule_application_view(
 				fprintf(stderr, "P0 missing scoped premise index=%u\n", i);
 				return -1;
 			}
-			premises[i].proposition_id =
-				derivation->premises[i].scoped_proposition_id;
-			premises[i].proposition_store_kind =
-				PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
-			premises[i].proposition =
-				(struct prototype_judgement_proposition*)scoped;
+			view->premises[i].proposition = scoped;
 			continue;
 		}
 		if (claim_id >= judgement->claim_count) {
@@ -4933,15 +5294,11 @@ static int accepted_derivation_rule_application_view(
 		}
 		const struct prototype_judgement_claim* premise =
 			&judgement->claims[claim_id];
-		premises[i].proposition_id = premise->proposition_id;
-		premises[i].proposition_store_kind =
-			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
-		premises[i].proposition =
-			(struct prototype_judgement_proposition*)
+		view->premises[i].proposition =
 			prototype_judgement_proposition_get(
 				judgement, premise->proposition_id
 			);
-		if (!premises[i].proposition) {
+		if (!view->premises[i].proposition) {
 			return -1;
 		}
 	}
@@ -5226,7 +5583,7 @@ static int validate_operation_owned_relation(
 		return -1;
 	}
 	for (uint32_t i = 0; i < proof->premise_count; ++i) {
-		const struct prototype_judgement_candidate_premise* premise =
+		const struct prototype_judgement_premise_view* premise =
 			&proof->premises[i];
 		if (premise->semantic_action_kind ==
 				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID) {
@@ -6278,16 +6635,13 @@ int prototype_judgement_audit_principal_occurrence_claims(
 			if (reconstruction_role ==
 					PROTOTYPE_JUDGEMENT_PROOF_RECONSTRUCTION_PRINCIPAL) {
 				struct prototype_judgement_rule_application_view view;
-				struct prototype_judgement_candidate_premise
-					premise_storage[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 				if (!judgement_principal_rule_matches_operation(
 						&operations->occurrences[operation_id],
 						derivation->proof_kind
 					) || accepted_derivation_rule_application_view(
 						judgement,
 						derivation,
-						&view,
-						premise_storage
+						&view
 					) != 0 || !judgement_principal_payload_matches_operation(
 						terms, operations, operation_id, &view
 					) || !judgement_proposition_equal(
@@ -6328,19 +6682,21 @@ int prototype_judgement_audit_principal_occurrence_claims(
 					);
 					if (expected_status < 0 ||
 						(expected_status == 0 &&
-						 premise_storage[premise_index].proposition->authority_kind ==
+						 view.premises[premise_index].proposition->authority_kind ==
 							PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
-							 premise_storage[premise_index].proposition->occurrence_id !=
-							expected_operation_id)) {
+						 !judgement_premise_operation_matches(
+							operations, expected_operation_id,
+							view.premises[premise_index].proposition
+						))) {
 						fprintf(stderr,
 							"principal occurrence audit: premise operation mismatch "
 							"claim=%u occurrence=%u rule=%d premise=%u status=%d "
 							"expected=%u authority=%d:%u actual=%u\n",
 							claim_id, operation_id, derivation->proof_kind,
 							premise_index, expected_status, expected_operation_id,
-							premise_storage[premise_index].proposition->authority_kind,
-							premise_storage[premise_index].proposition->authority_id,
-							premise_storage[premise_index].proposition->occurrence_id);
+							view.premises[premise_index].proposition->authority_kind,
+							view.premises[premise_index].proposition->authority_id,
+							view.premises[premise_index].proposition->occurrence_id);
 						return -1;
 					}
 				}
@@ -6589,13 +6945,10 @@ int prototype_judgement_validate_accepted_graph(
 			continue;
 		}
 		struct prototype_judgement_rule_application_view view;
-		struct prototype_judgement_candidate_premise
-			premise_storage[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 		if (accepted_derivation_rule_application_view(
 				judgement,
 				derivation,
-				&view,
-				premise_storage
+				&view
 			) != 0) {
 			fprintf(
 				stderr,
@@ -6651,8 +7004,10 @@ int prototype_judgement_validate_accepted_graph(
 						(expected_status == 0 &&
 						 proof->premises[premise_index].proposition->authority_kind ==
 							PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
-						 proof->premises[premise_index].proposition->occurrence_id !=
-							expected_operation_id)) {
+						 !judgement_premise_operation_matches(
+							operations, expected_operation_id,
+							proof->premises[premise_index].proposition
+						))) {
 						fprintf(
 							stderr,
 							"P0 accepted premise owner failed derivation=%zu "
@@ -6716,6 +7071,14 @@ int prototype_judgement_validate_accepted_graph(
 				);
 				return -1;
 			}
+			if (getenv("A_PROGRAM_ACCEPTED_REPLAY_TRACE")) {
+				fprintf(stderr,
+					"accepted replay derivation=%zu proof=%d claim=%u occurrence=%u "
+					"subject=%u classifier=%u premises=%u\n",
+					i, proof->proof_kind, derivation->conclusion_claim_id,
+					relation->occurrence_id, relation->subject,
+					relation->classifier, proof->premise_count);
+			}
 			switch (proof->proof_kind) {
 			case PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO:
 				if (validate_type_formation_intro_proof(
@@ -6743,6 +7106,7 @@ int prototype_judgement_validate_accepted_graph(
 						type_declarations,
 						contexts,
 						substitutions,
+						operations,
 						relation,
 						proof
 					) != 0) {
@@ -6872,12 +7236,23 @@ int prototype_judgement_validate_accepted_graph(
 						relation,
 						proof
 				) != 0) {
+					fprintf(stderr,
+						"P0 IH replay failed derivation=%zu claim=%u occurrence=%u "
+						"subject=%u classifier=%u premises=%u\n",
+						i, derivation->conclusion_claim_id,
+						relation->occurrence_id, relation->subject,
+						relation->classifier, proof->premise_count);
 					return -1;
 				}
 				if (operations && relation->occurrence_id != PROTOTYPE_INVALID_ID &&
 					!judgement_principal_payload_matches_operation(
 						terms, operations, relation->occurrence_id, proof
 					)) {
+					fprintf(stderr,
+						"P0 IH principal payload failed derivation=%zu claim=%u "
+						"occurrence=%u\n",
+						i, derivation->conclusion_claim_id,
+						relation->occurrence_id);
 					return -1;
 				}
 				break;
@@ -7109,6 +7484,34 @@ int prototype_judgement_validate_accepted_graph(
 					return -1;
 				}
 				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_TYPE_FORMATION:
+				if (validate_returns_type_formation_proof(
+						terms, type_declarations, relation, proof
+					) != 0) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION:
+				if (validate_returns_evaluation_proof(
+						terms, type_declarations, relation, proof
+					) != 0) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TYPE_FORMATION:
+				if (validate_terminates_type_formation_proof(
+						terms, relation, proof
+					) != 0) {
+					return -1;
+				}
+				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS:
+				if (validate_terminates_from_returns_proof(
+						terms, relation, proof
+					) != 0) {
+					return -1;
+				}
+				break;
 			case PROTOTYPE_JUDGEMENT_PROOF_RELATION_CONSTRUCTOR_WITNESS:
 				if (validate_relation_constructor_witness_proof(
 						terms, relation, proof
@@ -7237,7 +7640,8 @@ int prototype_judgement_add_is_type_claim(
 	premises[0].proposition_store_kind =
 		PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
 	premises[0].proposition =
-		(struct prototype_judgement_proposition*)premise;
+		premise;
+	premises[0].builder_proposition = NULL;
 	return publish_complete_relation(
 		judgement,
 		&proposition,
@@ -7364,6 +7768,14 @@ static const char* proof_kind_name(int proof_kind) {
 			return "dimension-action-constructor";
 		case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS:
 			return "dimension-action-thunk-return-witness";
+		case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_TYPE_FORMATION:
+			return "returns-type-formation";
+		case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION:
+			return "returns-evaluation";
+		case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TYPE_FORMATION:
+			return "terminates-type-formation";
+		case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS:
+			return "terminates-from-returns";
 		default:
 			return "invalid";
 	}

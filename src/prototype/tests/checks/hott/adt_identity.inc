@@ -478,9 +478,9 @@
 	struct prototype_type_schema_view bool_schema_view;
 	struct prototype_constructor_schema_view false_schema_view;
 	struct prototype_constructor_schema_view true_schema_view;
-	size_t schema_type_count = type_db.type_count;
-	size_t schema_constructor_count = type_db.constructor_count;
-	uint64_t schema_revision = type_db.semantic_revision;
+	size_t schema_type_count = type_db.semantic_schema.type_count;
+	size_t schema_constructor_count = type_db.semantic_schema.constructor_count;
+	uint64_t schema_revision = type_db.semantic_schema.semantic_revision;
 	if (prototype_dimension_operator_extension(
 			&schema_operators, 0, &schema_extension_0
 		) != 0 || prototype_dimension_operator_extension(
@@ -498,7 +498,7 @@
 			schema_extension_1,
 			&twice_acted_bool
 		) != 0 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
@@ -508,7 +508,7 @@
 		bool_schema_view.acted_type != twice_acted_bool ||
 		bool_schema_view.target_dimension != 2 ||
 		prototype_constructor_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
@@ -516,7 +516,7 @@
 			0,
 			&false_schema_view
 		) != 0 || prototype_constructor_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
@@ -528,9 +528,9 @@
 		false_schema_view.acted_constructor_term ==
 		false_schema_view.source_constructor_term ||
 		false_schema_view.acted_classifier == false_schema_view.source_classifier ||
-		type_db.type_count != schema_type_count ||
-		type_db.constructor_count != schema_constructor_count ||
-		type_db.semantic_revision != schema_revision) {
+		type_db.semantic_schema.type_count != schema_type_count ||
+		type_db.semantic_schema.constructor_count != schema_constructor_count ||
+		type_db.semantic_schema.semantic_revision != schema_revision) {
 		return 247;
 	}
 	uint32_t acted_bool_classifier;
@@ -604,7 +604,7 @@
 			schema_extension_1,
 			&dependent_box_square_action
 		) != 0 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
@@ -626,7 +626,7 @@
 			direct_dimension_three_operator,
 			&box_dimension_three_action
 		) != 0 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
@@ -648,7 +648,7 @@
 			direct_dimension_three_operator,
 			&dependent_box_dimension_three_action
 		) != 0 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
@@ -696,9 +696,9 @@
 			return 254;
 		}
 	}
-	if (type_db.type_count != schema_type_count ||
-		type_db.constructor_count != schema_constructor_count ||
-		type_db.semantic_revision != schema_revision) {
+	if (type_db.semantic_schema.type_count != schema_type_count ||
+		type_db.semantic_schema.constructor_count != schema_constructor_count ||
+		type_db.semantic_schema.semantic_revision != schema_revision) {
 		return 254;
 	}
 	uint32_t additional_schema_types[] = {
@@ -717,7 +717,7 @@
 				schema_extension_0,
 				&acted_schema_type
 			) != 0 || prototype_type_schema_view_query(
-				&type_db,
+				&type_db.semantic_schema,
 				&context_db,
 				&term_db,
 				&schema_operators,
@@ -734,7 +734,7 @@
 			uint32_t action_classifier;
 			uint32_t repeated_action_classifier;
 			if (prototype_constructor_schema_view_query(
-					&type_db,
+					&type_db.semantic_schema,
 					&context_db,
 					&term_db,
 					&schema_operators,
@@ -764,7 +764,7 @@
 			}
 		}
 	}
-	uint32_t box_constructor_id = type_db.type_declarations[
+	uint32_t box_constructor_id = type_db.semantic_schema.type_declarations[
 		term_db.terms[box_view].as.type_view.view_type_id
 	].first_constructor;
 	struct prototype_constructor_classifier_cache_entry saved_box_cache =
@@ -784,14 +784,14 @@
 			schema_extension_0,
 			&acted_box
 		) != 0 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
 			acted_box,
 			&uncached_box_schema
 		) != 0 || prototype_constructor_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
@@ -823,7 +823,7 @@
 			invalid_schema_operator,
 			&invalid_acted_bool
 		) != 0 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&schema_operators,
@@ -946,20 +946,20 @@
 	].as.type_view.view_type_id;
 	uint32_t box_type_id = term_db.terms[box_view].as.type_view.view_type_id;
 	const struct prototype_type_declaration* box_declaration =
-		box_type_id < type_db.type_count ?
-		&type_db.type_declarations[box_type_id] : NULL;
+		box_type_id < type_db.semantic_schema.type_count ?
+		&type_db.semantic_schema.type_declarations[box_type_id] : NULL;
 	const struct prototype_type_constructor_declaration* box_constructor_declaration =
 		box_declaration && box_declaration->first_constructor <
-			type_db.constructor_count ? &type_db.constructor_declarations[
+			type_db.semantic_schema.constructor_count ? &type_db.semantic_schema.constructor_declarations[
 				box_declaration->first_constructor
 			] : NULL;
 	const struct prototype_type_declaration* dependent_box_declaration =
-		dependent_box_type_id < type_db.type_count ?
-		&type_db.type_declarations[dependent_box_type_id] : NULL;
+		dependent_box_type_id < type_db.semantic_schema.type_count ?
+		&type_db.semantic_schema.type_declarations[dependent_box_type_id] : NULL;
 	const struct prototype_type_constructor_declaration*
 		dependent_box_constructor = dependent_box_declaration &&
-		dependent_box_declaration->first_constructor < type_db.constructor_count ?
-		&type_db.constructor_declarations[
+		dependent_box_declaration->first_constructor < type_db.semantic_schema.constructor_count ?
+		&type_db.semantic_schema.constructor_declarations[
 			dependent_box_declaration->first_constructor
 		] : NULL;
 	const struct prototype_context* dependent_second_context =
@@ -1204,7 +1204,7 @@
 			kernel_extension_1,
 			&kernel_dependent_box_square_action
 		) != 0 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&bridge_dimension_operator_db,
@@ -1251,12 +1251,12 @@
 		dependent_box_view
 	].as.type_view.view_type_id;
 	const struct prototype_type_declaration* square_source_type =
-		square_source_type_id < type_db.type_count ? &type_db.type_declarations[
+		square_source_type_id < type_db.semantic_schema.type_count ? &type_db.semantic_schema.type_declarations[
 			square_source_type_id
 		] : NULL;
 	const struct prototype_type_constructor_declaration* square_source_constructor =
 		square_source_type && square_source_type->first_constructor <
-			type_db.constructor_count ? &type_db.constructor_declarations[
+			type_db.semantic_schema.constructor_count ? &type_db.semantic_schema.constructor_declarations[
 				square_source_type->first_constructor
 			] : NULL;
 	uint32_t kernel_cross_context_classifier;
@@ -1455,14 +1455,14 @@
 			nat_is_type,
 			&acted_nat_family_claim
 		) != 0 || prototype_type_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&bridge_dimension_operator_db,
 			acted_nat,
 			&acted_nat_schema
 		) != 0 || prototype_constructor_schema_view_query(
-			&type_db,
+			&type_db.semantic_schema,
 			&context_db,
 			&term_db,
 			&bridge_dimension_operator_db,
@@ -2230,7 +2230,7 @@
 	uint32_t bool_identity_computation_id;
 	uint32_t repeated_bool_identity_computation_id;
 	uint32_t bool_identity_computation_result_id;
-	size_t type_count_before_bool_identity = type_db.type_count;
+	size_t type_count_before_bool_identity = type_db.semantic_schema.type_count;
 	if (prototype_hott_action_request_intern(
 			&action_db,
 			&kernel_view,
@@ -2264,7 +2264,7 @@
 			action_results[bool_identity_computation_result_id].certificate_id
 		].data.identity_type.computation_rule !=
 			PROTOTYPE_HOTT_IDENTITY_COMPUTATION_ORDINARY_ADT ||
-		type_db.type_count !=
+		type_db.semantic_schema.type_count !=
 			type_count_before_bool_identity || action_db.certificates[
 				action_results[bool_identity_computation_result_id].certificate_id
 			].data.identity_type.backing_type_former_term_id >= term_db.term_count ||

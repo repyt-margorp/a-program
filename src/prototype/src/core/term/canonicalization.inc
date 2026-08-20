@@ -510,6 +510,10 @@ static int shape_terms_equal_at_depth(
 			return left->as.universe_var.level_var == right->as.universe_var.level_var;
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			return 1;
 		case PROTOTYPE_TERM_DIMENSION_ACTION:
 			return left->as.dimension_action.operator_id ==
@@ -1115,6 +1119,10 @@ static int cross_shape_terms_equal_at_depth(
 			return left->as.universe_var.level_var == right->as.universe_var.level_var;
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			return 1;
 		case PROTOTYPE_TERM_DIMENSION_ACTION:
 			return left->as.dimension_action.operator_id ==
@@ -1248,6 +1256,10 @@ static int shape_equal_for_link_with_type_view_mode(
 		left >= left_db->term_count ||
 		right >= right_db->term_count) {
 		return -1;
+	}
+	if (left_db == right_db && left == right) {
+		*p_equal = 1;
+		return 0;
 	}
 
 	struct term_scope_env env;
@@ -1450,6 +1462,10 @@ static int term_intern_exact_equal_local(
 		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			return 1;
 		case PROTOTYPE_TERM_TEXT_LITERAL:
 			return INTERN_EXACT_FIELD(text_literal.text_symbol_id);
@@ -2031,6 +2047,10 @@ static int canonical_hash_term_at_depth(
 			return 0;
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			return 0;
 		case PROTOTYPE_TERM_DIMENSION_ACTION:
 			canonical_hash_mix_u32(
@@ -2319,6 +2339,10 @@ static int term_intern_canonical_key_local(
 		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			break;
 		case PROTOTYPE_TERM_TEXT_LITERAL:
 			INTERN_MIX(term->as.text_literal.text_symbol_id);

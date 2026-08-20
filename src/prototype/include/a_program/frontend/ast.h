@@ -30,7 +30,9 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_BLOCK_BINDING,
 	PROTOTYPE_AST_BLOCK_EXPRESSION,
 	PROTOTYPE_AST_BLOCK_LAMBDA_EXIT,
-	PROTOTYPE_AST_COMPUTATION_FOLD
+	PROTOTYPE_AST_COMPUTATION_FOLD,
+	PROTOTYPE_AST_RETURNS_WITNESS,
+	PROTOTYPE_AST_TERMINATES_WITNESS
 };
 
 enum prototype_ast_block_result_mode {
@@ -56,7 +58,9 @@ enum prototype_ast_type_expr_tag {
 	PROTOTYPE_AST_TYPE_EXPR_PI,
 	PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE,
 	PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE,
-	PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE
+	PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE,
+	PROTOTYPE_AST_TYPE_EXPR_RETURNS,
+	PROTOTYPE_AST_TYPE_EXPR_TERMINATES
 };
 
 struct prototype_source_span {
@@ -105,6 +109,13 @@ struct prototype_ast_type_expr {
 		struct {
 			int host_type_id;
 		} host_type;
+		struct {
+			uint32_t computation;
+			uint32_t value;
+		} returns;
+		struct {
+			uint32_t computation;
+		} terminates;
 	} as;
 };
 
@@ -208,6 +219,14 @@ struct prototype_ast_node {
 			int return_symbol_id;
 			uint32_t return_body;
 		} computation_fold;
+		struct {
+			uint32_t computation;
+			uint32_t value;
+		} returns_witness;
+		struct {
+			uint32_t computation;
+			uint32_t returns_witness;
+		} terminates_witness;
 	} as;
 };
 
@@ -519,6 +538,19 @@ int prototype_ast_type_expr_computation_reference(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
+int prototype_ast_type_expr_returns(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	uint32_t value,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_type_expr_terminates(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
 int prototype_ast_type_expr_name_in_namespace(
 	struct prototype_ast_db* db,
 	int namespace_symbol_id,
@@ -657,6 +689,20 @@ int prototype_ast_ascription(
 int prototype_ast_quote(
 	struct prototype_ast_db* db,
 	uint32_t term,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_returns_witness(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	uint32_t value,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_terminates_witness(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	uint32_t returns_witness,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );

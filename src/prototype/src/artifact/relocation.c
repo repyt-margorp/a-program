@@ -86,7 +86,8 @@ static int attach_linked_declaration_support(
 		derivation->premises[0].proposition_id =
 			judgement->claims[source_claim_id].proposition_id;
 		derivation->premises[0].proposition =
-			(struct prototype_judgement_proposition*)source;
+			source;
+		derivation->premises[0].builder_proposition = NULL;
 		derivation->premises[0].semantic_action_kind =
 			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
 		derivation->premises[0].semantic_action_id = PROTOTYPE_INVALID_ID;
@@ -449,7 +450,7 @@ int prototype_artifact_interface_recompute_keys(
 	}
 	for (size_t i = 0; i < interface->type_export_count; ++i) {
 		struct prototype_artifact_type_export* export = &interface->type_exports[i];
-			if (export->local_type_id >= type_declarations->type_count ||
+			if (export->local_type_id >= type_declarations->semantic_schema.type_count ||
 				prototype_type_declaration_representation_fingerprint(
 					terms,
 					type_declarations,
@@ -460,7 +461,7 @@ int prototype_artifact_interface_recompute_keys(
 			fprintf(stderr, "artifact key recomputation failed type export=%zu\n", i);
 			return -1;
 			}
-			uint32_t formation_classifier = type_declarations->type_declarations[
+			uint32_t formation_classifier = type_declarations->semantic_schema.type_declarations[
 				export->local_type_id
 			].formation_classifier;
 		if (formation_classifier == PROTOTYPE_INVALID_ID ||
@@ -526,12 +527,12 @@ int prototype_artifact_interface_recompute_keys(
 		uint32_t type_id = interface->type_exports[
 			export->type_export_index
 		].local_type_id;
-		if (type_id >= type_declarations->type_count) {
+		if (type_id >= type_declarations->semantic_schema.type_count) {
 			fprintf(stderr, "artifact key recomputation missing constructor type export=%zu\n", i);
 			return -1;
 		}
 		const struct prototype_type_declaration* type =
-			&type_declarations->type_declarations[type_id];
+			&type_declarations->semantic_schema.type_declarations[type_id];
 		if (export->ordinal >= type->constructor_count) {
 			fprintf(stderr, "artifact key recomputation invalid constructor ordinal export=%zu\n", i);
 			return -1;

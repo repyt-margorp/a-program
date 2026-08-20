@@ -3415,7 +3415,7 @@ int prototype_hott_execute_identity_type_computation(
 			uint32_t source_type_id;
 			const struct prototype_type_declaration* source_type;
 			if (prototype_type_view_declaration_query(
-					type_declarations,
+					&type_declarations->semantic_schema,
 					contexts,
 					terms,
 					source->subject,
@@ -3536,7 +3536,7 @@ int prototype_hott_execute_identity_type_computation(
 	uint32_t source_type_id;
 	const struct prototype_type_declaration* source_type;
 	if (prototype_type_view_declaration_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 			source->subject,

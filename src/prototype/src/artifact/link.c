@@ -1048,7 +1048,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			source_terms->next_binding_id) ||
 		 (additional_relocation->type_ids &&
 		  additional_relocation->type_id_capacity <
-			source_type_declarations->type_count) ||
+			source_type_declarations->semantic_schema.type_count) ||
 		 (additional_relocation->type_expr_ids &&
 		  additional_relocation->type_expr_id_capacity <
 			source_type_declarations->readback.expr_count) ||
@@ -1057,7 +1057,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			source_type_declarations->readback.parameter_count) ||
 		 (additional_relocation->constructor_ids &&
 		  additional_relocation->constructor_id_capacity <
-			source_type_declarations->constructor_count) ||
+			source_type_declarations->semantic_schema.constructor_count) ||
 		 (additional_relocation->field_type_ids &&
 		  additional_relocation->field_type_id_capacity <
 			source_type_declarations->readback.field_type_count) ||
@@ -1095,9 +1095,9 @@ int prototype_internal_artifact_append_graph_ordered(
 		return -1;
 	}
 
-	uint32_t type_offset = (uint32_t)target_type_declarations->type_count;
-	size_t type_relocation_count = source_type_declarations->type_count == 0 ?
-		1 : source_type_declarations->type_count;
+	uint32_t type_offset = (uint32_t)target_type_declarations->semantic_schema.type_count;
+	size_t type_relocation_count = source_type_declarations->semantic_schema.type_count == 0 ?
+		1 : source_type_declarations->semantic_schema.type_count;
 	uint32_t type_relocation[type_relocation_count];
 	size_t expr_relocation_count = source_type_declarations->readback.expr_count == 0 ?
 		1 : source_type_declarations->readback.expr_count;
@@ -1108,8 +1108,8 @@ int prototype_internal_artifact_append_graph_ordered(
 		source_type_declarations->readback.parameter_count == 0 ?
 		1 : source_type_declarations->readback.parameter_count;
 	size_t constructor_relocation_count =
-		source_type_declarations->constructor_count == 0 ?
-		1 : source_type_declarations->constructor_count;
+		source_type_declarations->semantic_schema.constructor_count == 0 ?
+		1 : source_type_declarations->semantic_schema.constructor_count;
 	uint32_t expr_relocation[expr_relocation_count];
 	uint32_t field_relocation[field_relocation_count];
 	uint32_t parameter_relocation[parameter_relocation_count];
@@ -1121,7 +1121,7 @@ int prototype_internal_artifact_append_graph_ordered(
 		source_type_declarations->readback.parameter_count + 1
 	];
 	uint32_t constructor_boundary_relocation[
-		source_type_declarations->constructor_count + 1
+		source_type_declarations->semantic_schema.constructor_count + 1
 	];
 	size_t binding_relocation_count = source_terms->next_binding_id == 0 ?
 		1 : source_terms->next_binding_id;
@@ -1191,11 +1191,11 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 		for (size_t position = 0; position < order->type_count; ++position) {
 			uint32_t type_id = order->types[position];
-			if (type_id >= source_type_declarations->type_count) {
+			if (type_id >= source_type_declarations->semantic_schema.type_count) {
 				return -1;
 			}
 			const struct prototype_type_declaration* type =
-				&source_type_declarations->type_declarations[type_id];
+				&source_type_declarations->semantic_schema.type_declarations[type_id];
 			if (!artifact_type_present(type)) {
 				continue;
 			}
@@ -1212,8 +1212,8 @@ int prototype_internal_artifact_append_graph_ordered(
 	} else {
 	for (uint32_t i = 0; i < source_representation_count; ++i) {
 		if (source_representation_anchors[i] >=
-				source_type_declarations->type_count ||
-			!artifact_type_present(&source_type_declarations->type_declarations[
+				source_type_declarations->semantic_schema.type_count ||
+			!artifact_type_present(&source_type_declarations->semantic_schema.type_declarations[
 				source_representation_anchors[i]
 			])) {
 			continue;
@@ -1267,27 +1267,27 @@ int prototype_internal_artifact_append_graph_ordered(
 	}
 	}
 	uint32_t next_type_id = type_offset;
-	for (uint32_t i = 0; i < source_type_declarations->type_count; ++i) {
+	for (uint32_t i = 0; i < source_type_declarations->semantic_schema.type_count; ++i) {
 		type_relocation[i] = PROTOTYPE_INVALID_ID;
 	}
 	size_t ordered_type_count = order ?
-		order->type_count : source_type_declarations->type_count;
+		order->type_count : source_type_declarations->semantic_schema.type_count;
 	if (order && type_offset != 0) {
 		return -1;
 	}
 	for (size_t position = 0; position < ordered_type_count; ++position) {
 		uint32_t i = order ? order->types[position] : (uint32_t)position;
-		if (i >= source_type_declarations->type_count) {
+		if (i >= source_type_declarations->semantic_schema.type_count) {
 			return -1;
 		}
 		const struct prototype_type_declaration* source_type =
-			&source_type_declarations->type_declarations[i];
+			&source_type_declarations->semantic_schema.type_declarations[i];
 		if (!artifact_type_present(source_type)) {
 			continue;
 		}
 		for (uint32_t j = 0; j < type_offset; ++j) {
 			const struct prototype_type_declaration* target_type =
-				&target_type_declarations->type_declarations[j];
+				&target_type_declarations->semantic_schema.type_declarations[j];
 			if (!artifact_type_present(target_type) ||
 				target_type->namespace_symbol_id !=
 					source_type->namespace_symbol_id ||
@@ -1348,20 +1348,20 @@ int prototype_internal_artifact_append_graph_ordered(
 	uint32_t next_parameter_id =
 		(uint32_t)target_type_declarations->readback.parameter_count;
 	uint32_t next_constructor_id =
-		(uint32_t)target_type_declarations->constructor_count;
+		(uint32_t)target_type_declarations->semantic_schema.constructor_count;
 	if (order) {
 		for (size_t position = 0; position < ordered_type_count; ++position) {
 			uint32_t type_id = order->types[position];
 			const struct prototype_type_declaration* type =
-				&source_type_declarations->type_declarations[type_id];
+				&source_type_declarations->semantic_schema.type_declarations[type_id];
 			if (!artifact_type_present(type)) {
 				continue;
 			}
 			if (type->first_parameter > source_type_declarations->readback.parameter_count ||
 				type->parameter_count > source_type_declarations->readback.parameter_count -
 					type->first_parameter ||
-				type->first_constructor > source_type_declarations->constructor_count ||
-				type->constructor_count > source_type_declarations->constructor_count -
+				type->first_constructor > source_type_declarations->semantic_schema.constructor_count ||
+				type->constructor_count > source_type_declarations->semantic_schema.constructor_count -
 					type->first_constructor) {
 				return -1;
 			}
@@ -1380,7 +1380,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			for (uint32_t j = 0; j < type->constructor_count; ++j) {
 				uint32_t constructor_id = type->first_constructor + j;
 				const struct prototype_type_constructor_declaration* constructor =
-					&source_type_declarations->constructor_declarations[constructor_id];
+					&source_type_declarations->semantic_schema.constructor_declarations[constructor_id];
 				const struct prototype_type_constructor_readback* readback =
 					prototype_type_constructor_readback_get(
 						source_type_declarations, constructor_id
@@ -1437,20 +1437,20 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 		parameter_boundary_relocation[source_type_declarations->readback.parameter_count] =
 			next_parameter_id;
-		for (uint32_t i = 0; i < source_type_declarations->constructor_count; ++i) {
+		for (uint32_t i = 0; i < source_type_declarations->semantic_schema.constructor_count; ++i) {
 			constructor_boundary_relocation[i] = next_constructor_id;
 			const struct prototype_type_constructor_declaration* constructor =
-				&source_type_declarations->constructor_declarations[i];
+				&source_type_declarations->semantic_schema.constructor_declarations[i];
 			if (!artifact_constructor_present(constructor)) {
 				continue;
 			}
-			if (constructor->owner_type >= source_type_declarations->type_count ||
+			if (constructor->owner_type >= source_type_declarations->semantic_schema.type_count ||
 				type_relocation[constructor->owner_type] == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
 			if (type_relocation[constructor->owner_type] < type_offset) {
 				const struct prototype_type_declaration* target_owner =
-					&target_type_declarations->type_declarations[
+					&target_type_declarations->semantic_schema.type_declarations[
 						type_relocation[constructor->owner_type]
 					];
 				if (constructor->constructor_index >= target_owner->constructor_count) {
@@ -1463,7 +1463,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			}
 		}
 		constructor_boundary_relocation[
-			source_type_declarations->constructor_count
+			source_type_declarations->semantic_schema.constructor_count
 		] = next_constructor_id;
 	}
 
@@ -1473,9 +1473,9 @@ int prototype_internal_artifact_append_graph_ordered(
 		target_terms->ih_scope_count + source_terms->ih_scope_count > target_terms->ih_scope_capacity ||
 		target_terms->computation_fold_clause_count + source_terms->computation_fold_clause_count >
 			PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY ||
-		target_type_declarations->type_count + source_type_declarations->type_count > target_type_declarations->type_capacity ||
+		target_type_declarations->semantic_schema.type_count + source_type_declarations->semantic_schema.type_count > target_type_declarations->semantic_schema.type_capacity ||
 		target_type_declarations->readback.parameter_count + source_type_declarations->readback.parameter_count > target_type_declarations->readback.parameter_capacity ||
-		target_type_declarations->constructor_count + source_type_declarations->constructor_count > target_type_declarations->constructor_capacity ||
+		target_type_declarations->semantic_schema.constructor_count + source_type_declarations->semantic_schema.constructor_count > target_type_declarations->semantic_schema.constructor_capacity ||
 		target_type_declarations->readback.field_type_count + source_type_declarations->readback.field_type_count > target_type_declarations->readback.field_type_capacity ||
 		target_type_declarations->readback.expr_count + source_type_declarations->readback.expr_count > target_type_declarations->readback.expr_capacity ||
 		target_judgement->proposition_count + source_judgement->proposition_count > target_judgement->proposition_capacity ||
@@ -1503,11 +1503,11 @@ int prototype_internal_artifact_append_graph_ordered(
 			"derivations=%zu/%zu roots=%zu/%zu\n",
 			target_terms->term_count + source_terms->term_count,
 			target_terms->term_capacity,
-			target_type_declarations->type_count + source_type_declarations->type_count,
-			target_type_declarations->type_capacity,
-			target_type_declarations->constructor_count +
-				source_type_declarations->constructor_count,
-			target_type_declarations->constructor_capacity,
+			target_type_declarations->semantic_schema.type_count + source_type_declarations->semantic_schema.type_count,
+			target_type_declarations->semantic_schema.type_capacity,
+			target_type_declarations->semantic_schema.constructor_count +
+				source_type_declarations->semantic_schema.constructor_count,
+			target_type_declarations->semantic_schema.constructor_capacity,
 			target_judgement->proposition_count + source_judgement->proposition_count,
 			target_judgement->proposition_capacity,
 			target_judgement->claim_count + source_judgement->claim_count,
@@ -1540,14 +1540,14 @@ int prototype_internal_artifact_append_graph_ordered(
 		fprintf(stderr, "artifact append: term relocation failed\n");
 		return -1;
 	}
-	for (uint32_t i = 0; i < source_type_declarations->type_count; ++i) {
+	for (uint32_t i = 0; i < source_type_declarations->semantic_schema.type_count; ++i) {
 		if (type_relocation[i] >= type_offset) {
 			continue;
 		}
-		uint32_t source_classifier = source_type_declarations->type_declarations[
+		uint32_t source_classifier = source_type_declarations->semantic_schema.type_declarations[
 			i
 		].formation_classifier;
-		uint32_t target_classifier = target_type_declarations->type_declarations[
+		uint32_t target_classifier = target_type_declarations->semantic_schema.type_declarations[
 			type_relocation[i]
 		].formation_classifier;
 		if (source_classifier >= term_relocation_capacity ||
@@ -1674,26 +1674,26 @@ int prototype_internal_artifact_append_graph_ordered(
 			parameter;
 	}
 	size_t ordered_constructor_count = order ?
-		order->constructor_count : source_type_declarations->constructor_count;
+		order->constructor_count : source_type_declarations->semantic_schema.constructor_count;
 	for (size_t position = 0; position < ordered_constructor_count; ++position) {
 		uint32_t i = (uint32_t)position;
 		if (order) {
 			i = PROTOTYPE_INVALID_ID;
 			for (uint32_t candidate = 0;
-				candidate < source_type_declarations->constructor_count;
+				candidate < source_type_declarations->semantic_schema.constructor_count;
 				++candidate) {
 				if (constructor_relocation[candidate] ==
-					target_type_declarations->constructor_count) {
+					target_type_declarations->semantic_schema.constructor_count) {
 					i = candidate;
 					break;
 				}
 			}
 		}
-		if (i >= source_type_declarations->constructor_count) {
+		if (i >= source_type_declarations->semantic_schema.constructor_count) {
 			return -1;
 		}
 		struct prototype_type_constructor_declaration constructor =
-			source_type_declarations->constructor_declarations[i];
+			source_type_declarations->semantic_schema.constructor_declarations[i];
 		struct prototype_type_constructor_readback readback =
 			source_type_declarations->readback.constructor_readbacks[i];
 		struct prototype_constructor_classifier_cache_entry cache =
@@ -1702,27 +1702,27 @@ int prototype_internal_artifact_append_graph_ordered(
 			continue;
 		}
 		if (constructor_relocation[i] <
-				target_type_declarations->constructor_count) {
+				target_type_declarations->semantic_schema.constructor_count) {
 			continue;
 		}
-		if (constructor.owner_type >= source_type_declarations->type_count ||
+		if (constructor.owner_type >= source_type_declarations->semantic_schema.type_count ||
 			type_relocation[constructor.owner_type] == PROTOTYPE_INVALID_ID ||
 			(readback.result_type != PROTOTYPE_INVALID_ID &&
 			 (readback.result_type >=
 				source_type_declarations->readback.expr_count ||
 			  expr_relocation[readback.result_type] ==
 				PROTOTYPE_INVALID_ID)) ||
-			 target_type_declarations->constructor_count != constructor_relocation[i]) {
+			 target_type_declarations->semantic_schema.constructor_count != constructor_relocation[i]) {
 			fprintf(
 				stderr,
 				"artifact append: constructor relocation invariant failed source=%u "
 				"owner=%u relocated=%u result_expr=%u target_index=%zu expected=%u\n",
 				i,
 				constructor.owner_type,
-				constructor.owner_type < source_type_declarations->type_count ?
+				constructor.owner_type < source_type_declarations->semantic_schema.type_count ?
 					type_relocation[constructor.owner_type] : PROTOTYPE_INVALID_ID,
 				readback.result_type,
-				target_type_declarations->constructor_count,
+				target_type_declarations->semantic_schema.constructor_count,
 				constructor_relocation[i]
 			);
 			return -1;
@@ -1791,20 +1791,20 @@ int prototype_internal_artifact_append_graph_ordered(
 			cache.classifier = term_relocation[cache.classifier];
 		}
 		uint32_t target_constructor_id =
-			(uint32_t)target_type_declarations->constructor_count;
-		target_type_declarations->constructor_declarations[target_constructor_id] = constructor;
+			(uint32_t)target_type_declarations->semantic_schema.constructor_count;
+		target_type_declarations->semantic_schema.constructor_declarations[target_constructor_id] = constructor;
 		target_type_declarations->readback.constructor_readbacks[target_constructor_id] = readback;
 		target_type_declarations->constructor_classifier_cache.entries[target_constructor_id] = cache;
-		target_type_declarations->constructor_count++;
+		target_type_declarations->semantic_schema.constructor_count++;
 	}
 	for (size_t position = 0; position < ordered_type_count; ++position) {
 		uint32_t i = order ? order->types[position] : (uint32_t)position;
 		struct prototype_type_declaration type =
-			source_type_declarations->type_declarations[i];
+			source_type_declarations->semantic_schema.type_declarations[i];
 		if (!artifact_type_present(&type) || type_relocation[i] < type_offset) {
 			continue;
 		}
-		if (target_type_declarations->type_count != type_relocation[i]) {
+		if (target_type_declarations->semantic_schema.type_count != type_relocation[i]) {
 			return -1;
 		}
 		{
@@ -1812,7 +1812,7 @@ int prototype_internal_artifact_append_graph_ordered(
 				type.index_context >= source_contexts->context_count) {
 				return -1;
 			}
-			if (type.type_index >= source_type_declarations->type_count ||
+			if (type.type_index >= source_type_declarations->semantic_schema.type_count ||
 				type_relocation[type.type_index] == PROTOTYPE_INVALID_ID) {
 				return -1;
 			}
@@ -1850,20 +1850,20 @@ int prototype_internal_artifact_append_graph_ordered(
 			}
 			if (type.constructor_count == 0) {
 				if (type.first_constructor >
-						source_type_declarations->constructor_count) {
+						source_type_declarations->semantic_schema.constructor_count) {
 					return -1;
 				}
 				type.first_constructor =
 					constructor_boundary_relocation[type.first_constructor];
 			} else if (type.first_constructor >=
-					source_type_declarations->constructor_count ||
+					source_type_declarations->semantic_schema.constructor_count ||
 				constructor_relocation[type.first_constructor] == PROTOTYPE_INVALID_ID) {
 				return -1;
 			} else {
 				type.first_constructor = constructor_relocation[type.first_constructor];
 			}
 		}
-		target_type_declarations->type_declarations[target_type_declarations->type_count++] = type;
+		target_type_declarations->semantic_schema.type_declarations[target_type_declarations->semantic_schema.type_count++] = type;
 	}
 	target_type_declarations->representation_db.cache_dirty = 1;
 
@@ -1882,8 +1882,8 @@ int prototype_internal_artifact_append_graph_ordered(
 		uint32_t source_anchor_type_id = source_representation_anchors[i];
 		if (source_anchor_type_id >= type_relocation_count ||
 			type_relocation[source_anchor_type_id] >=
-				target_type_declarations->type_count ||
-			target_type_declarations->type_declarations[
+				target_type_declarations->semantic_schema.type_count ||
+			target_type_declarations->semantic_schema.type_declarations[
 				type_relocation[source_anchor_type_id]
 			].representation_id != representation_relocation[i]) {
 			fprintf(
@@ -1897,8 +1897,8 @@ int prototype_internal_artifact_append_graph_ordered(
 				representation_relocation[i],
 				source_anchor_type_id < type_relocation_count &&
 					type_relocation[source_anchor_type_id] <
-						target_type_declarations->type_count ?
-					target_type_declarations->type_declarations[
+						target_type_declarations->semantic_schema.type_count ?
+					target_type_declarations->semantic_schema.type_declarations[
 						type_relocation[source_anchor_type_id]
 					].representation_id : PROTOTYPE_INVALID_ID
 			);
@@ -2101,11 +2101,11 @@ int prototype_internal_artifact_append_graph_ordered(
 		uint32_t type_id = appended_interface->type_exports[
 			export->type_export_index
 		].local_type_id;
-		if (type_id >= target_type_declarations->type_count) {
+		if (type_id >= target_type_declarations->semantic_schema.type_count) {
 			return -1;
 		}
 		const struct prototype_type_declaration* type =
-			&target_type_declarations->type_declarations[type_id];
+			&target_type_declarations->semantic_schema.type_declarations[type_id];
 		if (export->ordinal >= type->constructor_count) {
 			return -1;
 		}
@@ -2170,7 +2170,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			} \
 		} while (0)
 		COPY_ADDITIONAL_RELOCATION(
-			type_ids, type_relocation, source_type_declarations->type_count
+			type_ids, type_relocation, source_type_declarations->semantic_schema.type_count
 		);
 		COPY_ADDITIONAL_RELOCATION(
 			type_expr_ids, expr_relocation, source_type_declarations->readback.expr_count
@@ -2183,7 +2183,7 @@ int prototype_internal_artifact_append_graph_ordered(
 		COPY_ADDITIONAL_RELOCATION(
 			constructor_ids,
 			constructor_relocation,
-			source_type_declarations->constructor_count
+			source_type_declarations->semantic_schema.constructor_count
 		);
 		COPY_ADDITIONAL_RELOCATION(
 			field_type_ids,

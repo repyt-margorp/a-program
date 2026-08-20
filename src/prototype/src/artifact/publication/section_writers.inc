@@ -46,8 +46,8 @@ static int write_artifact_graph_section(
 			present_frame_count++;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->type_count; ++i) {
-		if (artifact_type_present(&type_declarations->type_declarations[i])) {
+	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
+		if (artifact_type_present(&type_declarations->semantic_schema.type_declarations[i])) {
 			present_type_count++;
 		}
 	}
@@ -56,8 +56,8 @@ static int write_artifact_graph_section(
 			present_parameter_count++;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
-		if (artifact_constructor_present(&type_declarations->constructor_declarations[i])) {
+	for (size_t i = 0; i < type_declarations->semantic_schema.constructor_count; ++i) {
+		if (artifact_constructor_present(&type_declarations->semantic_schema.constructor_declarations[i])) {
 			present_constructor_count++;
 		}
 	}
@@ -90,9 +90,9 @@ static int write_artifact_graph_section(
 		present_case_count != terms->case_count ||
 		present_case_binder_count != terms->case_binder_count ||
 		present_frame_count != terms->ih_scope_count ||
-		present_type_count != type_declarations->type_count ||
+		present_type_count != type_declarations->semantic_schema.type_count ||
 		present_parameter_count != type_declarations->readback.parameter_count ||
-		present_constructor_count != type_declarations->constructor_count ||
+		present_constructor_count != type_declarations->semantic_schema.constructor_count ||
 		present_field_type_count !=
 			type_declarations->readback.field_type_count ||
 		present_type_expr_count != type_declarations->readback.expr_count ||
@@ -114,11 +114,11 @@ static int write_artifact_graph_section(
 			present_frame_count,
 			terms->ih_scope_count,
 			present_type_count,
-			type_declarations->type_count,
+			type_declarations->semantic_schema.type_count,
 			present_parameter_count,
 			type_declarations->readback.parameter_count,
 			present_constructor_count,
-			type_declarations->constructor_count,
+			type_declarations->semantic_schema.constructor_count,
 			present_field_type_count,
 			type_declarations->readback.field_type_count,
 			present_type_expr_count,
@@ -139,9 +139,9 @@ static int write_artifact_graph_section(
 		terms->case_count,
 		terms->case_binder_count,
 		terms->ih_scope_count,
-		type_declarations->type_count,
+		type_declarations->semantic_schema.type_count,
 		type_declarations->readback.parameter_count,
-		type_declarations->constructor_count,
+		type_declarations->semantic_schema.constructor_count,
 		type_declarations->readback.field_type_count,
 		type_declarations->readback.expr_count,
 		judgement->proposition_count,
@@ -150,9 +150,9 @@ static int write_artifact_graph_section(
 	);
 
 	fprintf(stream, "type_declarations %zu\n", present_type_count);
-	for (size_t i = 0; i < type_declarations->type_count; ++i) {
+	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
 		const struct prototype_type_declaration* type =
-			&type_declarations->type_declarations[i];
+			&type_declarations->semantic_schema.type_declarations[i];
 		if (!artifact_type_present(type)) {
 			continue;
 		}
@@ -205,9 +205,9 @@ static int write_artifact_graph_section(
 	}
 
 	fprintf(stream, "type_constructors %zu\n", present_constructor_count);
-	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
+	for (size_t i = 0; i < type_declarations->semantic_schema.constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->constructor_declarations[i];
+			&type_declarations->semantic_schema.constructor_declarations[i];
 		const struct prototype_type_constructor_readback* readback =
 			prototype_type_constructor_readback_get(type_declarations, (uint32_t)i);
 		const struct prototype_constructor_classifier_cache_entry* cache =
@@ -417,7 +417,7 @@ static int write_artifact_graph_section(
 			 derivation->proof_kind !=
 				PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX) ||
 			derivation->proof_kind >
-				PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS) {
+				PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS) {
 			return -1;
 		}
 		fprintf(

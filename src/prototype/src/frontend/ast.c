@@ -306,6 +306,42 @@ int prototype_ast_type_expr_computation_reference(
 	return add_type_expr(db, expr, p_ret);
 }
 
+int prototype_ast_type_expr_returns(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	uint32_t value,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || computation >= db->node_count || value >= db->node_count) {
+		return -1;
+	}
+	struct prototype_ast_type_expr expr;
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_AST_TYPE_EXPR_RETURNS;
+	expr.span = span;
+	expr.as.returns.computation = computation;
+	expr.as.returns.value = value;
+	return add_type_expr(db, expr, p_ret);
+}
+
+int prototype_ast_type_expr_terminates(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || computation >= db->node_count) {
+		return -1;
+	}
+	struct prototype_ast_type_expr expr;
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_AST_TYPE_EXPR_TERMINATES;
+	expr.span = span;
+	expr.as.terminates.computation = computation;
+	return add_type_expr(db, expr, p_ret);
+}
+
 int prototype_ast_type_add(
 	struct prototype_ast_db* db,
 	int name_symbol_id,
@@ -743,6 +779,44 @@ int prototype_ast_quote(
 	uint32_t* p_ret
 ) {
 	return prototype_ast_unary(db, PROTOTYPE_AST_QUOTE, term, span, p_ret);
+}
+
+int prototype_ast_returns_witness(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	uint32_t value,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || computation >= db->node_count || value >= db->node_count) {
+		return -1;
+	}
+	struct prototype_ast_node node;
+	memset(&node, 0, sizeof(node));
+	node.tag = PROTOTYPE_AST_RETURNS_WITNESS;
+	node.span = span;
+	node.as.returns_witness.computation = computation;
+	node.as.returns_witness.value = value;
+	return add_node(db, node, p_ret);
+}
+
+int prototype_ast_terminates_witness(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	uint32_t returns_witness,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || computation >= db->node_count || returns_witness >= db->node_count) {
+		return -1;
+	}
+	struct prototype_ast_node node;
+	memset(&node, 0, sizeof(node));
+	node.tag = PROTOTYPE_AST_TERMINATES_WITNESS;
+	node.span = span;
+	node.as.terminates_witness.computation = computation;
+	node.as.terminates_witness.returns_witness = returns_witness;
+	return add_node(db, node, p_ret);
 }
 
 int prototype_ast_definition_block(

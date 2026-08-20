@@ -70,7 +70,7 @@ grep -q '^term matchBlock := MATCH(.*CASE(zero -> COMPUTATION_FOLD(' \
 grep -q '^term appArgument := COMPUTATION_FOLD(' "$tmp_dir/runtime-strict-value.out"
 grep -q '^term constructorArgument := COMPUTATION_FOLD(.*RETURN(APP(CONSTRUCTOR' \
 	"$tmp_dir/runtime-strict-value.out"
-grep -q '^term matchScrutinee := COMPUTATION_FOLD(.*MATCH(VAR' \
+grep -q '^term matchScrutinee := COMPUTATION_FOLD(.*MATCH(' \
 	"$tmp_dir/runtime-strict-value.out"
 ./read_file.out --write-artifact "$tmp_dir/runtime-strict-value.apo" \
 	src/prototype/tests/fixtures/cbpv/runtime_strict_value_check.p \

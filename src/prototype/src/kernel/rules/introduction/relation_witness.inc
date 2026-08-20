@@ -81,13 +81,13 @@ int prototype_judgement_add_relation_type_formation(
 	for (uint32_t i = 0; i < 4; ++i) {
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise_claims[i], &evidence);
-		proof.premises[i].proposition->kind = evidence.kind;
-		proof.premises[i].proposition->context_id = evidence.context_id;
-		proof.premises[i].proposition->subject = evidence.subject;
-		proof.premises[i].proposition->classifier = evidence.classifier;
-		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition->authority_id = evidence.authority_id;
-		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
+		proof.premises[i].builder_proposition->kind = evidence.kind;
+		proof.premises[i].builder_proposition->context_id = evidence.context_id;
+		proof.premises[i].builder_proposition->subject = evidence.subject;
+		proof.premises[i].builder_proposition->classifier = evidence.classifier;
+		proof.premises[i].builder_proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].builder_proposition->authority_id = evidence.authority_id;
+		proof.premises[i].builder_proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &relation, &proof, premise_ids, p_claim_id
@@ -184,13 +184,13 @@ int prototype_judgement_add_relation_witness_intro(
 	for (uint32_t i = 0; i < 3; ++i) {
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premises[i], &evidence);
-		proof.premises[i].proposition->kind = evidence.kind;
-		proof.premises[i].proposition->context_id = evidence.context_id;
-		proof.premises[i].proposition->subject = evidence.subject;
-		proof.premises[i].proposition->classifier = evidence.classifier;
-		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition->authority_id = evidence.authority_id;
-		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
+		proof.premises[i].builder_proposition->kind = evidence.kind;
+		proof.premises[i].builder_proposition->context_id = evidence.context_id;
+		proof.premises[i].builder_proposition->subject = evidence.subject;
+		proof.premises[i].builder_proposition->classifier = evidence.classifier;
+		proof.premises[i].builder_proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].builder_proposition->authority_id = evidence.authority_id;
+		proof.premises[i].builder_proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -334,13 +334,13 @@ int prototype_judgement_add_relation_constructor_witness(
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition->kind = evidence.kind;
-		proof.premises[i].proposition->context_id = evidence.context_id;
-		proof.premises[i].proposition->subject = evidence.subject;
-		proof.premises[i].proposition->classifier = evidence.classifier;
-		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition->authority_id = evidence.authority_id;
-		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
+		proof.premises[i].builder_proposition->kind = evidence.kind;
+		proof.premises[i].builder_proposition->context_id = evidence.context_id;
+		proof.premises[i].builder_proposition->subject = evidence.subject;
+		proof.premises[i].builder_proposition->classifier = evidence.classifier;
+		proof.premises[i].builder_proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].builder_proposition->authority_id = evidence.authority_id;
+		proof.premises[i].builder_proposition->occurrence_id = evidence.occurrence_id;
 	}
 	(void)left_head;
 	(void)right_head;
@@ -465,13 +465,13 @@ int prototype_judgement_add_relation_unary_witness(
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition->kind = evidence.kind;
-		proof.premises[i].proposition->context_id = evidence.context_id;
-		proof.premises[i].proposition->subject = evidence.subject;
-		proof.premises[i].proposition->classifier = evidence.classifier;
-		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition->authority_id = evidence.authority_id;
-		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
+		proof.premises[i].builder_proposition->kind = evidence.kind;
+		proof.premises[i].builder_proposition->context_id = evidence.context_id;
+		proof.premises[i].builder_proposition->subject = evidence.subject;
+		proof.premises[i].builder_proposition->classifier = evidence.classifier;
+		proof.premises[i].builder_proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].builder_proposition->authority_id = evidence.authority_id;
+		proof.premises[i].builder_proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -595,13 +595,13 @@ int prototype_judgement_add_relation_app_witness(
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition->kind = evidence.kind;
-		proof.premises[i].proposition->context_id = evidence.context_id;
-		proof.premises[i].proposition->subject = evidence.subject;
-		proof.premises[i].proposition->classifier = evidence.classifier;
-		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition->authority_id = evidence.authority_id;
-		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
+		proof.premises[i].builder_proposition->kind = evidence.kind;
+		proof.premises[i].builder_proposition->context_id = evidence.context_id;
+		proof.premises[i].builder_proposition->subject = evidence.subject;
+		proof.premises[i].builder_proposition->classifier = evidence.classifier;
+		proof.premises[i].builder_proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].builder_proposition->authority_id = evidence.authority_id;
+		proof.premises[i].builder_proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -787,13 +787,13 @@ int prototype_judgement_add_relation_lambda_witness(
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition->kind = evidence.kind;
-		proof.premises[i].proposition->context_id = evidence.context_id;
-		proof.premises[i].proposition->subject = evidence.subject;
-		proof.premises[i].proposition->classifier = evidence.classifier;
-		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition->authority_id = evidence.authority_id;
-		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
+		proof.premises[i].builder_proposition->kind = evidence.kind;
+		proof.premises[i].builder_proposition->context_id = evidence.context_id;
+		proof.premises[i].builder_proposition->subject = evidence.subject;
+		proof.premises[i].builder_proposition->classifier = evidence.classifier;
+		proof.premises[i].builder_proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].builder_proposition->authority_id = evidence.authority_id;
+		proof.premises[i].builder_proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -1064,13 +1064,13 @@ int prototype_judgement_add_relation_match_witness(
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition->kind = evidence.kind;
-		proof.premises[i].proposition->context_id = evidence.context_id;
-		proof.premises[i].proposition->subject = evidence.subject;
-		proof.premises[i].proposition->classifier = evidence.classifier;
-		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition->authority_id = evidence.authority_id;
-		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
+		proof.premises[i].builder_proposition->kind = evidence.kind;
+		proof.premises[i].builder_proposition->context_id = evidence.context_id;
+		proof.premises[i].builder_proposition->subject = evidence.subject;
+		proof.premises[i].builder_proposition->classifier = evidence.classifier;
+		proof.premises[i].builder_proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].builder_proposition->authority_id = evidence.authority_id;
+		proof.premises[i].builder_proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id
@@ -1193,13 +1193,13 @@ int prototype_judgement_add_relation_induction_hypothesis_witness(
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
 		struct prototype_judgement_selected_evidence evidence;
 		selected_evidence_from_accepted_claim(judgement, premise, &evidence);
-		proof.premises[i].proposition->kind = evidence.kind;
-		proof.premises[i].proposition->context_id = evidence.context_id;
-		proof.premises[i].proposition->subject = evidence.subject;
-		proof.premises[i].proposition->classifier = evidence.classifier;
-		proof.premises[i].proposition->authority_kind = evidence.authority_kind;
-		proof.premises[i].proposition->authority_id = evidence.authority_id;
-		proof.premises[i].proposition->occurrence_id = evidence.occurrence_id;
+		proof.premises[i].builder_proposition->kind = evidence.kind;
+		proof.premises[i].builder_proposition->context_id = evidence.context_id;
+		proof.premises[i].builder_proposition->subject = evidence.subject;
+		proof.premises[i].builder_proposition->classifier = evidence.classifier;
+		proof.premises[i].builder_proposition->authority_kind = evidence.authority_kind;
+		proof.premises[i].builder_proposition->authority_id = evidence.authority_id;
+		proof.premises[i].builder_proposition->occurrence_id = evidence.occurrence_id;
 	}
 	return publish_complete_relation(
 		judgement, &result, &proof, premise_ids, p_claim_id

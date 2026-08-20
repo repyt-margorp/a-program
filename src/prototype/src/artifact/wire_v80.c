@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v78.h"
+#include "a_program/artifact/wire_v80.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -890,6 +890,11 @@ static int read_artifact_term(
 				free(images);
 				return status;
 			}
+			case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+			case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+			case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+			case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
+				return 0;
 			default:
 				return -1;
 		}
@@ -910,8 +915,8 @@ static int artifact_read_type_present(
 	uint32_t type_id
 ) {
 	return type_declarations &&
-		type_id < type_declarations->type_count &&
-		artifact_type_present(&type_declarations->type_declarations[type_id]);
+		type_id < type_declarations->semantic_schema.type_count &&
+		artifact_type_present(&type_declarations->semantic_schema.type_declarations[type_id]);
 }
 
 static int artifact_read_parameter_present(
@@ -928,8 +933,8 @@ static int artifact_read_constructor_present(
 	uint32_t constructor_id
 ) {
 	return type_declarations &&
-		constructor_id < type_declarations->constructor_count &&
-		artifact_constructor_present(&type_declarations->constructor_declarations[constructor_id]);
+		constructor_id < type_declarations->semantic_schema.constructor_count &&
+		artifact_constructor_present(&type_declarations->semantic_schema.constructor_declarations[constructor_id]);
 }
 
 static int artifact_read_type_expr_present(
@@ -1019,9 +1024,9 @@ static int artifact_validate_type_graph_refs(
 	if (!type_declarations || !terms) {
 		return -1;
 	}
-	for (size_t i = 0; i < type_declarations->type_count; ++i) {
+	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
 		const struct prototype_type_declaration* type =
-			&type_declarations->type_declarations[i];
+			&type_declarations->semantic_schema.type_declarations[i];
 		if (!artifact_type_present(type)) {
 			continue;
 		}
@@ -1036,7 +1041,7 @@ static int artifact_validate_type_graph_refs(
 			!artifact_range_within(
 				type->first_constructor,
 				type->constructor_count,
-				type_declarations->constructor_count
+				type_declarations->semantic_schema.constructor_count
 			)) {
 			return -1;
 		}
@@ -1067,9 +1072,9 @@ static int artifact_validate_type_graph_refs(
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
+	for (size_t i = 0; i < type_declarations->semantic_schema.constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->constructor_declarations[i];
+			&type_declarations->semantic_schema.constructor_declarations[i];
 		const struct prototype_constructor_classifier_cache_entry* cache =
 			prototype_type_constructor_classifier_cache_get(
 				type_declarations, (uint32_t)i
@@ -1196,7 +1201,7 @@ static int artifact_validate_term_refs(
 			}
 			{
 				const struct prototype_type_declaration* type =
-					&type_declarations->type_declarations[
+					&type_declarations->semantic_schema.type_declarations[
 						term->as.type_declaration.type_id
 					];
 				return type->namespace_symbol_id ==
@@ -1213,7 +1218,7 @@ static int artifact_validate_term_refs(
 			}
 			{
 				const struct prototype_type_declaration* type =
-					&type_declarations->type_declarations[term->as.type_view.view_type_id];
+					&type_declarations->semantic_schema.type_declarations[term->as.type_view.view_type_id];
 				return type->namespace_symbol_id ==
 						term->as.type_view.identity.namespace_symbol_id &&
 					type->name_symbol_id == term->as.type_view.identity.name_symbol_id ?
@@ -1259,6 +1264,11 @@ static int artifact_validate_term_refs(
 			) && prototype_dimension_operator_get(
 				dimension_operators, term->as.dimension_action.operator_id
 			) ? 0 : -1;
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
+			return 0;
 			default:
 				return -1;
 	}
@@ -1346,19 +1356,19 @@ static int artifact_resolve_representation_handles(
 			continue;
 		}
 		uint32_t representative_type_id = term->as.type_former.representation_id;
-		if (representative_type_id >= type_declarations->type_count ||
-			!artifact_type_present(&type_declarations->type_declarations[representative_type_id])) {
+		if (representative_type_id >= type_declarations->semantic_schema.type_count ||
+			!artifact_type_present(&type_declarations->semantic_schema.type_declarations[representative_type_id])) {
 			return -1;
 		}
 		uint32_t representation_id =
-			type_declarations->type_declarations[representative_type_id].representation_id;
+			type_declarations->semantic_schema.type_declarations[representative_type_id].representation_id;
 		if (representation_id == PROTOTYPE_INVALID_ID ||
 			representation_id >= type_declarations->representation_db.representation_count) {
 			return -1;
 		}
 		term->as.type_former.representation_id = representation_id;
 		term->as.type_former.constructor_count =
-			type_declarations->type_declarations[
+			type_declarations->semantic_schema.type_declarations[
 				representative_type_id
 			].constructor_count;
 	}
@@ -1609,9 +1619,9 @@ int prototype_artifact_read_text_graph(
 		case_slot_count > terms->case_capacity ||
 		case_binder_slot_count > terms->case_binder_capacity ||
 		frame_slot_count > terms->ih_scope_capacity ||
-		type_slot_count > type_declarations->type_capacity ||
+		type_slot_count > type_declarations->semantic_schema.type_capacity ||
 		parameter_slot_count > type_declarations->readback.parameter_capacity ||
-		constructor_slot_count > type_declarations->constructor_capacity ||
+		constructor_slot_count > type_declarations->semantic_schema.constructor_capacity ||
 		field_type_slot_count > type_declarations->readback.field_type_capacity ||
 		expr_slot_count > type_declarations->readback.expr_capacity ||
 		proposition_slot_count > judgement->proposition_capacity ||
@@ -1623,18 +1633,18 @@ int prototype_artifact_read_text_graph(
 
 	size_t count;
 	for (size_t i = 0; i < type_slot_count; ++i) {
-		type_declarations->type_declarations[i].name_symbol_id = -1;
-		type_declarations->type_declarations[i].namespace_symbol_id = -1;
-		type_declarations->type_declarations[i].type_index = PROTOTYPE_INVALID_ID;
-		type_declarations->type_declarations[i].formation_classifier =
+		type_declarations->semantic_schema.type_declarations[i].name_symbol_id = -1;
+		type_declarations->semantic_schema.type_declarations[i].namespace_symbol_id = -1;
+		type_declarations->semantic_schema.type_declarations[i].type_index = PROTOTYPE_INVALID_ID;
+		type_declarations->semantic_schema.type_declarations[i].formation_classifier =
 			PROTOTYPE_INVALID_ID;
-		type_declarations->type_declarations[i].parameter_context =
+		type_declarations->semantic_schema.type_declarations[i].parameter_context =
 			PROTOTYPE_INVALID_ID;
-		type_declarations->type_declarations[i].index_context =
+		type_declarations->semantic_schema.type_declarations[i].index_context =
 			PROTOTYPE_INVALID_ID;
-		type_declarations->type_declarations[i].index_count = 0;
-		type_declarations->type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
-		type_declarations->type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
+		type_declarations->semantic_schema.type_declarations[i].index_count = 0;
+		type_declarations->semantic_schema.type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
+		type_declarations->semantic_schema.type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < parameter_slot_count; ++i) {
 		type_declarations->readback.parameter_declarations[i].binding_id = PROTOTYPE_INVALID_ID;
@@ -1642,17 +1652,17 @@ int prototype_artifact_read_text_graph(
 		type_declarations->readback.parameter_declarations[i].type_expr = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < constructor_slot_count; ++i) {
-		type_declarations->constructor_declarations[i].name_symbol_id = -1;
-		type_declarations->constructor_declarations[i].owner_type = PROTOTYPE_INVALID_ID;
+		type_declarations->semantic_schema.constructor_declarations[i].name_symbol_id = -1;
+		type_declarations->semantic_schema.constructor_declarations[i].owner_type = PROTOTYPE_INVALID_ID;
 		type_declarations->readback.constructor_readbacks[i].first_field_type =
 			PROTOTYPE_INVALID_ID;
 		type_declarations->readback.constructor_readbacks[i].result_type =
 			PROTOTYPE_INVALID_ID;
-		type_declarations->constructor_declarations[i].parameter_context =
+		type_declarations->semantic_schema.constructor_declarations[i].parameter_context =
 			PROTOTYPE_INVALID_ID;
-		type_declarations->constructor_declarations[i].field_context =
+		type_declarations->semantic_schema.constructor_declarations[i].field_context =
 			PROTOTYPE_INVALID_ID;
-		type_declarations->constructor_declarations[i].result_classifier =
+		type_declarations->semantic_schema.constructor_declarations[i].result_classifier =
 			PROTOTYPE_INVALID_ID;
 		type_declarations->constructor_classifier_cache.entries[i].classifier =
 			PROTOTYPE_INVALID_ID;
@@ -1707,7 +1717,7 @@ int prototype_artifact_read_text_graph(
 				!artifact_range_within(first_constructor, constructor_count, constructor_slot_count)) {
 				return -1;
 			}
-		struct prototype_type_declaration* type = &type_declarations->type_declarations[id];
+		struct prototype_type_declaration* type = &type_declarations->semantic_schema.type_declarations[id];
 		if (artifact_type_present(type)) {
 			return -1;
 		}
@@ -1728,7 +1738,7 @@ int prototype_artifact_read_text_graph(
 		type->first_constructor = first_constructor;
 		type->constructor_count = constructor_count;
 	}
-	type_declarations->type_count = type_slot_count;
+	type_declarations->semantic_schema.type_count = type_slot_count;
 
 	if (expect_artifact_count(stream, "type_parameters", &count) != 0 ||
 		count != parameter_slot_count) {
@@ -1806,7 +1816,7 @@ int prototype_artifact_read_text_graph(
 			return -1;
 		}
 		struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->constructor_declarations[id];
+			&type_declarations->semantic_schema.constructor_declarations[id];
 		if (artifact_constructor_present(constructor)) {
 			return -1;
 		}
@@ -1833,7 +1843,7 @@ int prototype_artifact_read_text_graph(
 				.schema_revision = constructor->schema_revision
 			};
 	}
-	type_declarations->constructor_count = constructor_slot_count;
+	type_declarations->semantic_schema.constructor_count = constructor_slot_count;
 
 	if (expect_artifact_count(stream, "type_field_refs", &count) != 0 ||
 		count != field_type_slot_count) {
@@ -2128,8 +2138,7 @@ int prototype_artifact_read_text_graph(
 			strcmp(claim_label, "claim") != 0 ||
 			strcmp(premise_count_label, "premises") != 0 ||
 			proof_kind < PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
-			proof_kind >
-				PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS ||
+			proof_kind > PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS ||
 			((proof_kind >=
 					PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION &&
 			  proof_kind <=
@@ -2712,9 +2721,14 @@ int prototype_artifact_read_text_typed_occurrences(
 		if ((operation_case.refinement_status !=
 				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED &&
 			 operation_case.refinement_status !=
-				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE) ||
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE &&
+			 operation_case.refinement_status !=
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT) ||
 			(operation_case.refinement_status ==
 					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE &&
+			 operation_case.refinement_substitution != PROTOTYPE_INVALID_ID) ||
+			(operation_case.refinement_status ==
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT &&
 			 operation_case.refinement_substitution != PROTOTYPE_INVALID_ID) ||
 			(metadata && (operation_case.context_id >= context_count ||
 			 (operation_case.refinement_status ==

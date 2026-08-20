@@ -439,7 +439,7 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 		int equal = term_intern_exact_equal_local(db, existing, temp_id);
 		if (!equal) {
 			db->intern_stats.alpha_compare_count++;
-			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_DIMENSION_ACTION) {
+			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_TAG_MAX) {
 				db->intern_stats.alpha_compares_by_tag[term.tag]++;
 			}
 			equal = term_intern_alpha_equal_local(db, existing, temp_id);
@@ -456,14 +456,14 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 			existing != PROTOTYPE_INVALID_ID;
 			existing = db->intern_next[existing]) {
 			db->intern_stats.bucket_probe_count++;
-			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_DIMENSION_ACTION) {
+			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_TAG_MAX) {
 				db->intern_stats.bucket_probes_by_tag[term.tag]++;
 			}
 			if (db->intern_keys[existing].hash != key.hash) {
 				continue;
 			}
 			db->intern_stats.alpha_compare_count++;
-			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_DIMENSION_ACTION) {
+			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_TAG_MAX) {
 				db->intern_stats.alpha_compares_by_tag[term.tag]++;
 			}
 			if (term_intern_alpha_equal_local(db, existing, temp_id) &&
@@ -885,6 +885,10 @@ static int import_relocated_term(
 		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
+		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			break;
 		case PROTOTYPE_TERM_DIMENSION_ACTION:
 			IMPORT_TERM_REF(term.as.dimension_action.source);
@@ -1422,7 +1426,7 @@ static int prototype_term_type_declaration(
 	uint32_t* p_ret
 ) {
 	if (!db || !type_declarations || !p_ret ||
-		type_id >= type_declarations->type_count) {
+		type_id >= type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
 	struct prototype_term term;
@@ -1430,9 +1434,9 @@ static int prototype_term_type_declaration(
 	term.tag = PROTOTYPE_TERM_TYPE_DECLARATION;
 	term.as.type_declaration.type_id = type_id;
 	term.as.type_declaration.identity.namespace_symbol_id =
-		type_declarations->type_declarations[type_id].namespace_symbol_id;
+		type_declarations->semantic_schema.type_declarations[type_id].namespace_symbol_id;
 	term.as.type_declaration.identity.name_symbol_id =
-		type_declarations->type_declarations[type_id].name_symbol_id;
+		type_declarations->semantic_schema.type_declarations[type_id].name_symbol_id;
 	return add_term(db, term, p_ret);
 }
 
@@ -1445,12 +1449,12 @@ int prototype_term_type_instance_source_make(
 	uint32_t* p_ret
 ) {
 	if (!db || !type_declarations || !p_ret || arg_count > 16 ||
-		type_id >= type_declarations->type_count ||
+		type_id >= type_declarations->semantic_schema.type_count ||
 		(arg_count != 0 && !args)) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	if (type->parameter_count > UINT32_MAX - type->index_count ||
 		arg_count > type->parameter_count + type->index_count) {
 		return -1;
@@ -1501,11 +1505,11 @@ int prototype_term_type_instance_make(
 	uint32_t* p_ret
 ) {
 	if (!db || !type_declarations || !p_ret || arg_count > 16 ||
-		type_id >= type_declarations->type_count) {
+		type_id >= type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	if (type->parameter_count > UINT32_MAX - type->index_count ||
 		arg_count > type->parameter_count + type->index_count) {
 		return -1;
@@ -1557,8 +1561,8 @@ int prototype_term_type_instance_make(
 	}
 	struct prototype_qualified_name identity;
 	identity.namespace_symbol_id =
-		type_declarations->type_declarations[type_id].namespace_symbol_id;
-	identity.name_symbol_id = type_declarations->type_declarations[type_id].name_symbol_id;
+		type_declarations->semantic_schema.type_declarations[type_id].namespace_symbol_id;
+	identity.name_symbol_id = type_declarations->semantic_schema.type_declarations[type_id].name_symbol_id;
 	return prototype_term_type_view(
 		db, type_id, identity, current, source_current, p_ret
 	);
@@ -1661,15 +1665,15 @@ int prototype_term_rebind_type_former_anchors(
 			continue;
 		}
 		uint32_t declaration_anchor = term->as.type_former.representation_id;
-		if (declaration_anchor >= type_declarations->type_count ||
-			type_declarations->type_declarations[declaration_anchor].representation_id ==
+		if (declaration_anchor >= type_declarations->semantic_schema.type_count ||
+			type_declarations->semantic_schema.type_declarations[declaration_anchor].representation_id ==
 				PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
 		term->as.type_former.representation_id =
-			type_declarations->type_declarations[declaration_anchor].representation_id;
+			type_declarations->semantic_schema.type_declarations[declaration_anchor].representation_id;
 		term->as.type_former.constructor_count =
-			type_declarations->type_declarations[declaration_anchor].constructor_count;
+			type_declarations->semantic_schema.type_declarations[declaration_anchor].constructor_count;
 	}
 	return prototype_term_canonicalize_type_former_references(db);
 }
@@ -1843,7 +1847,7 @@ static int prototype_term_type_view_rebuild_from_source(
 	uint32_t* p_ret
 ) {
 	if (!db || !type_declarations || !p_ret || core >= db->term_count ||
-		source >= db->term_count || view_type_id >= type_declarations->type_count) {
+		source >= db->term_count || view_type_id >= type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
 	{
@@ -1870,9 +1874,9 @@ static int prototype_term_type_view_rebuild_from_source(
 	}
 	struct prototype_qualified_name identity;
 	identity.namespace_symbol_id =
-		type_declarations->type_declarations[view_type_id].namespace_symbol_id;
+		type_declarations->semantic_schema.type_declarations[view_type_id].namespace_symbol_id;
 	identity.name_symbol_id =
-		type_declarations->type_declarations[view_type_id].name_symbol_id;
+		type_declarations->semantic_schema.type_declarations[view_type_id].name_symbol_id;
 	return prototype_term_type_view(
 		db, view_type_id, identity, core, source, p_ret
 	);
@@ -1890,11 +1894,11 @@ int prototype_term_type_instance_is_saturated(
 	uint32_t args[16];
 	uint32_t arg_count;
 	if (prototype_term_type_instance_info(db, term_id, &type_id, args, &arg_count) != 0 ||
-		type_id >= type_declarations->type_count) {
+		type_id >= type_declarations->semantic_schema.type_count) {
 		return 0;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	return type->parameter_count <= UINT32_MAX - type->index_count &&
 		arg_count == type->parameter_count + type->index_count;
 }
@@ -1983,6 +1987,77 @@ int prototype_term_relation_witness(
 	return 0;
 }
 
+static int semantic_application(
+	struct prototype_term_db* db,
+	int former_tag,
+	const uint32_t* arguments,
+	uint32_t argument_count,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || (argument_count != 0 && !arguments)) {
+		return -1;
+	}
+	struct prototype_term former;
+	memset(&former, 0, sizeof(former));
+	former.tag = former_tag;
+	uint32_t term;
+	if (add_term(db, former, &term) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < argument_count; ++i) {
+		if (arguments[i] >= db->term_count ||
+			prototype_term_app(db, term, arguments[i], &term) != 0) {
+			return -1;
+		}
+	}
+	*p_ret = term;
+	return 0;
+}
+
+int prototype_term_returns_type(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t value,
+	uint32_t* p_ret
+) {
+	const uint32_t arguments[2] = { computation, value };
+	return semantic_application(
+		db, PROTOTYPE_TERM_RETURNS_TYPE_FORMER, arguments, 2, p_ret
+	);
+}
+
+int prototype_term_returns_witness(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t value,
+	uint32_t* p_ret
+) {
+	const uint32_t arguments[2] = { computation, value };
+	return semantic_application(
+		db, PROTOTYPE_TERM_RETURNS_WITNESS_FORMER, arguments, 2, p_ret
+	);
+}
+
+int prototype_term_terminates_type(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t* p_ret
+) {
+	return semantic_application(
+		db, PROTOTYPE_TERM_TERMINATES_TYPE_FORMER, &computation, 1, p_ret
+	);
+}
+
+int prototype_term_terminates_witness(
+	struct prototype_term_db* db,
+	uint32_t computation,
+	uint32_t* p_ret
+) {
+	return semantic_application(
+		db, PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER, &computation, 1, p_ret
+	);
+}
+
 int prototype_term_dimension_action(
 	struct prototype_term_db* db,
 	const struct prototype_dimension_operator_db* dimension_operators,
@@ -2038,6 +2113,76 @@ static int relation_spine(
 	}
 	return cursor < db->term_count && db->terms[cursor].tag == former_tag ?
 		0 : -1;
+}
+
+int prototype_term_returns_type_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_computation,
+	uint32_t* p_value
+) {
+	uint32_t arguments[2];
+	if (!p_computation || !p_value || relation_spine(
+			db, term_id, PROTOTYPE_TERM_RETURNS_TYPE_FORMER, arguments, 2
+		) != 0) {
+		return -1;
+	}
+	*p_computation = arguments[0];
+	*p_value = arguments[1];
+	return 0;
+}
+
+int prototype_term_returns_witness_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_computation,
+	uint32_t* p_value
+) {
+	uint32_t arguments[2];
+	if (!p_computation || !p_value || relation_spine(
+			db, term_id, PROTOTYPE_TERM_RETURNS_WITNESS_FORMER, arguments, 2
+		) != 0) {
+		return -1;
+	}
+	*p_computation = arguments[0];
+	*p_value = arguments[1];
+	return 0;
+}
+
+static int unary_semantic_application_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	int former_tag,
+	uint32_t* p_computation
+) {
+	uint32_t argument;
+	if (!p_computation || relation_spine(
+			db, term_id, former_tag, &argument, 1
+		) != 0) {
+		return -1;
+	}
+	*p_computation = argument;
+	return 0;
+}
+
+int prototype_term_terminates_type_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_computation
+) {
+	return unary_semantic_application_info(
+		db, term_id, PROTOTYPE_TERM_TERMINATES_TYPE_FORMER, p_computation
+	);
+}
+
+int prototype_term_terminates_witness_info(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t* p_computation
+) {
+	return unary_semantic_application_info(
+		db, term_id, PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER, p_computation
+	);
 }
 
 int prototype_term_relation_type_info(

@@ -13,29 +13,30 @@ make -f src/prototype/Makefile reader all >/dev/null
 compare=src/prototype/tests/fixtures/typing/dependent_recursive_comparison_check.p
 rebuild=src/prototype/tests/fixtures/typing/indexed_branch_rebuild_check.p
 impossible=src/prototype/tests/fixtures/typing/impossible_index_branch_check.p
-residual=src/prototype/tests/fixtures/typing/residual_index_equation_negative.p
+constant=src/prototype/tests/fixtures/typing/residual_index_equation_negative.p
+residual=src/prototype/tests/fixtures/typing/dependent_residual_index_equation_negative.p
 owner_rebuild=examples/type-infer-and-check/level2/02_tree.p
 
 prototype_test_phase source
-for fixture in compare rebuild impossible; do
+for fixture in compare rebuild impossible constant; do
 	eval source=\$$fixture
 	./read_file.out "$source" >"$tmp_dir/$fixture.out"
 done
 ./read_file.out "$owner_rebuild" >"$tmp_dir/owner-rebuild.out"
 
 prototype_test_phase publication
-for fixture in compare rebuild impossible; do
+for fixture in compare rebuild impossible constant; do
 	eval source=\$$fixture
 	./read_file.out --write-artifact "$tmp_dir/$fixture.apo" "$source" \
 		>"$tmp_dir/$fixture-write.out"
-	grep -q '^A_PROGRAM_ARTIFACT 78 ' "$tmp_dir/$fixture.apo"
+	grep -q '^A_PROGRAM_ARTIFACT 80 ' "$tmp_dir/$fixture.apo"
 done
 ./read_file.out --write-artifact "$tmp_dir/owner-rebuild.apo" \
 	"$owner_rebuild" >"$tmp_dir/owner-rebuild-write.out"
-grep -q '^A_PROGRAM_ARTIFACT 78 ' "$tmp_dir/owner-rebuild.apo"
+grep -q '^A_PROGRAM_ARTIFACT 80 ' "$tmp_dir/owner-rebuild.apo"
 
 prototype_test_phase readback
-for fixture in compare rebuild impossible; do
+for fixture in compare rebuild impossible constant; do
 	./read_file.out --read-graph "$tmp_dir/$fixture.apo" \
 		>"$tmp_dir/$fixture-read.out"
 done
@@ -62,6 +63,7 @@ for output in "$tmp_dir/compare.out" "$tmp_dir/rebuild.out"; do
 	fi
 done
 grep -q 'refinement-status=2' "$tmp_dir/impossible.out"
+grep -q 'refinement-status=4' "$tmp_dir/constant.out"
 
 awk '
 	$1 == "occurrence_match_case" {
@@ -78,6 +80,12 @@ awk '
 	}
 	END { exit !found }
 ' "$tmp_dir/impossible.apo"
+awk '
+	$1 == "occurrence_match_case" && $4 == 4 && $5 == 4294967295 {
+		found = 1
+	}
+	END { exit !found }
+' "$tmp_dir/constant.apo"
 
 prototype_test_phase runtime
 printf ':q\n' | ./a.out "$compare" >"$tmp_dir/compare-runtime.out"

@@ -54,7 +54,10 @@ enum prototype_typed_occurrence_match_refinement_status {
 	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING = 0,
 	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED = 1,
 	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE = 2,
-	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_RESIDUAL = 3
+	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_RESIDUAL = 3,
+	/* The index equation remains unsolved, but a constant motive makes that
+	 * equation irrelevant to this branch's result. No Substitution is forged. */
+	PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT = 4
 };
 
 struct prototype_typed_occurrence {
@@ -151,6 +154,16 @@ static inline int prototype_typed_occurrence_match_case_is_solved(
 ) {
 	return operation_case && operation_case->refinement_status ==
 		PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED;
+}
+
+static inline int prototype_typed_occurrence_match_case_is_admitted(
+	const struct prototype_typed_occurrence_match_case* operation_case
+) {
+	return operation_case &&
+		(operation_case->refinement_status ==
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED ||
+		 operation_case->refinement_status ==
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT);
 }
 
 struct prototype_typed_occurrence_fold_clause {

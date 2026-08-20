@@ -19,7 +19,7 @@ src/core/             erased computation terms
 src/kernel/           contexts, declarations, universes, and judgements
 src/frontend/         reader, surface AST, and lowering
 src/graph/            typed-occurrence metadata, runtime annotations, compile metadata
-src/artifact/         interface publication, v78 wire format, relocation, link
+src/artifact/         interface publication, v80 wire format, relocation, link
 src/identity/         relation action and object Identity computation
 src/driver/           command-line and REPL entry points
 tests/checks/         compiled audit programs
@@ -56,11 +56,15 @@ proof/action construction order.
   occurrence record stores the source Context, classifier/provenance data, and
   a reference to the shared `core_term`; it is not a second runtime syntax tree.
 - `include/a_program/artifact/`, `src/artifact/`: artifact interface,
-  publication closure, v78 wire reader/writer, relocation, and linking.
+  publication closure, v80 wire reader/writer, relocation, and linking.
 - `include/a_program/kernel/judgement/`, `src/kernel/judgement.c`,
   `src/kernel/typing/`, and `src/kernel/rules/`: Proposition, Claim, and
   Derivation storage; classifier conversion and solving; candidate publication;
   accepted replay; and named kernel rules.
+- Result evidence uses ordinary TermDB application spines plus accepted Claims
+  and Derivations for `#.Returns (&M) v` and `#.Terminates (&M)`. The current
+  fragment covers finite deterministic evaluation and artifact replay, not
+  general open totality, divergence, nondeterminism, or effectful postconditions.
 - `include/a_program/identity/`, `src/identity/`: compiler-local relation
   planning, object Identity computation, context bridges, action certificates,
   and artifact-root production. Persistent wire validation remains under
@@ -527,10 +531,10 @@ current implementation rejects arbitrary incomplete solver work; `hybrid`
 permits only residual obligations with a defined runtime verifier.
 
 The current prototype has a text artifact format beginning with
-`A_PROGRAM_ARTIFACT 78 <calculus-fingerprint>`. The reader accepts that version
+`A_PROGRAM_ARTIFACT 80 <calculus-fingerprint>`. The reader accepts that version
 and exact fingerprint only; old artifact versions are intentionally rejected
 instead of being kept as compatibility paths. The canonical format and trust
-boundary are specified by `spec/artifact_v78.schema`; the implemented
+boundary are specified by `spec/artifact_v80.schema`; the implemented
 HOTT/Identity fragment is specified by `spec/hott_fragment_v6.schema`.
 It writes an `interface` section with term exports, type exports,
 interface-local type expressions, type parameter binder records, constructor
@@ -747,7 +751,7 @@ retain its versioned records; focused scripts remain directly executable.
 
 It checks that `identityBool := \x : Bool => x;` and
 `identityNat := \y : Nat => y;` publish the same core lambda term, that artifact
-v78 debug/name records are readable, that term exports keep distinct classifier
+v80 debug/name records are readable, that term exports keep distinct classifier
 keys even when they share a core term, that a split `Nat.apo` + `List.apo`
 compile can build `(List Nat).nil` through explicit interface imports and
 through source-level `import Nat; import List;` plus `--import-search-dir`, and

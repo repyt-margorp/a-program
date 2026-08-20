@@ -74,7 +74,7 @@ void prototype_diagnostic_print_compile_diagnostics(
 			&metadata->compile_diagnostics[i];
 		fprintf(
 			stream,
-			"compile-diagnostic diagnostic-code=%s phase=%s ast#%u span=%u:%u occurrence#%u constraint#%u expected=term#%u actual=term#%u\n",
+			"compile-diagnostic diagnostic-code=%s phase=%s ast#%u span=%u:%u occurrence#%u constraint#%u expected=term#%u actual=term#%u",
 			prototype_compile_diagnostic_reason_name(diagnostic->reason),
 			prototype_compile_diagnostic_phase_name(diagnostic->phase),
 			diagnostic->source_ast,
@@ -85,6 +85,16 @@ void prototype_diagnostic_print_compile_diagnostics(
 			diagnostic->expected_classifier,
 			diagnostic->actual_classifier
 		);
+		if (diagnostic->context_id != PROTOTYPE_INVALID_ID) {
+			fprintf(stream, " context#%u", diagnostic->context_id);
+		}
+		if (diagnostic->constructor_ordinal != PROTOTYPE_INVALID_ID) {
+			fprintf(stream, " constructor-ordinal=%u", diagnostic->constructor_ordinal);
+		}
+		if (diagnostic->field_ordinal != PROTOTYPE_INVALID_ID) {
+			fprintf(stream, " field-ordinal=%u", diagnostic->field_ordinal);
+		}
+		fputc('\n', stream);
 	}
 }
 
@@ -333,8 +343,9 @@ void prototype_diagnostic_print_universe_graph(
 		fprintf(stream, "universe-node #%zu ", i);
 		if (node->tag == PROTOTYPE_UNIVERSE_NODE_TYPE) {
 			fprintf(stream, "type ");
-			if (node->type_id < types->type_count) {
-				prototype_diagnostic_print_type_namespace(stream, symbols, types, &types->type_declarations[node->type_id]);
+			if (node->type_id < types->semantic_schema.type_count) {
+				prototype_diagnostic_print_type_namespace(stream, symbols, types,
+					&types->semantic_schema.type_declarations[node->type_id]);
 			} else {
 				fprintf(stream, "<bad-type:%u>", node->type_id);
 			}

@@ -1136,7 +1136,7 @@ int prototype_term_reindex(
 		cached->substitution == substitution_id &&
 		cached->graph_revision == terms->normalization_graph_revision &&
 		cached->type_declaration_revision ==
-			type_declarations->semantic_revision &&
+			type_declarations->semantic_schema.semantic_revision &&
 		cached->result < terms->term_count) {
 		substitutions->reindex_hits++;
 		*p_reindexed = cached->result;
@@ -1207,7 +1207,7 @@ int prototype_term_reindex(
 			.substitution = substitution_id,
 			.result = *p_reindexed,
 			.graph_revision = terms->normalization_graph_revision,
-			.type_declaration_revision = type_declarations->semantic_revision
+			.type_declaration_revision = type_declarations->semantic_schema.semantic_revision
 		};
 	}
 	return status;

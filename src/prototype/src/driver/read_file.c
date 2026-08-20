@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v78.h"
+#include "a_program/artifact/wire_v80.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -634,26 +634,6 @@ static int artifact_exports_have_accepted_claims(
 				  prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id == export->occurrence));
 			if (!found) {
 				return -1;
-			}
-		}
-		if (!found) {
-			for (size_t j = 0; j < metadata->effect_constraint_count; ++j) {
-				const struct prototype_occurrence_effect_constraint* constraint =
-					&metadata->effect_constraints[j];
-				if (constraint->state ==
-						PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
-					continue;
-				}
-				int reaches = prototype_typed_occurrence_graph_reaches(
-					graph, terms, export->occurrence, constraint->occurrence
-				);
-				if (reaches < 0) {
-					return -1;
-				}
-				if (reaches > 0) {
-					found = 1;
-					break;
-				}
 			}
 		}
 		if (!found) {
@@ -3648,7 +3628,7 @@ int main(int argc, char** argv) {
 		}
 
 		size_t before_terms = term_db.term_count;
-		size_t before_types = type_declarations.type_count;
+		size_t before_types = type_declarations.semantic_schema.type_count;
 		size_t total_provider_exports = 0;
 		for (size_t provider_index = 0; provider_index < link_provider_count; ++provider_index) {
 			const char* provider_path = link_provider_paths[provider_index];
@@ -4103,7 +4083,7 @@ int main(int argc, char** argv) {
 			before_terms,
 			term_db.term_count,
 			before_types,
-			type_declarations.type_count,
+			type_declarations.semantic_schema.type_count,
 			judgement_db.proposition_count,
 			artifact_interface.term_export_count,
 			total_provider_exports,
@@ -4439,8 +4419,8 @@ int main(int argc, char** argv) {
 				term_db.case_count,
 				term_db.case_binder_count,
 				term_db.ih_scope_count,
-				type_declarations.type_count,
-				type_declarations.constructor_count,
+				type_declarations.semantic_schema.type_count,
+				type_declarations.semantic_schema.constructor_count,
 				type_declarations.readback.expr_count,
 				judgement_db.proposition_count,
 				judgement_db.derivation_candidate_count
@@ -4943,14 +4923,14 @@ int main(int argc, char** argv) {
 		ast_db.node_count,
 		ast_db.expectation_count,
 		ast_db.assignment_count,
-		type_declarations.type_count,
-		type_declarations.constructor_count,
+		type_declarations.semantic_schema.type_count,
+		type_declarations.semantic_schema.constructor_count,
 		metadata.label_count,
 		term_db.term_count
 	);
 
-	for (size_t i = 0; i < type_declarations.type_count; ++i) {
-		const struct prototype_type_declaration* type = &type_declarations.type_declarations[i];
+	for (size_t i = 0; i < type_declarations.semantic_schema.type_count; ++i) {
+		const struct prototype_type_declaration* type = &type_declarations.semantic_schema.type_declarations[i];
 		if (type->name_symbol_id < 0 || type->type_index == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
@@ -4958,7 +4938,7 @@ int main(int argc, char** argv) {
 		for (uint32_t j = 0; j < type->constructor_count; ++j) {
 			uint32_t constructor_id = type->first_constructor + j;
 			const struct prototype_type_constructor_declaration* constructor =
-				&type_declarations.constructor_declarations[constructor_id];
+				&type_declarations.semantic_schema.constructor_declarations[constructor_id];
 			const struct prototype_type_constructor_readback* readback =
 				prototype_type_constructor_readback_get(
 					&type_declarations, constructor_id
@@ -5039,7 +5019,7 @@ int main(int argc, char** argv) {
 			normalization_stats.eviction_count,
 			normalization_stats.invalidation_count
 		);
-		for (int tag = 1; tag <= PROTOTYPE_TERM_DIMENSION_ACTION; ++tag) {
+		for (int tag = 1; tag <= PROTOTYPE_TERM_TAG_MAX; ++tag) {
 			if (intern_stats.bucket_probes_by_tag[tag] == 0 &&
 				intern_stats.alpha_compares_by_tag[tag] == 0) {
 				continue;

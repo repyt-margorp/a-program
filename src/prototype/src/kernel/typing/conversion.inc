@@ -2737,9 +2737,9 @@ static int classifier_kernel_compatible_at_depth(
 		) == 0;
 	}
 	if (expected_is_external && actual_is_instance &&
-		instance_type_id < type_declarations->type_count) {
+		instance_type_id < type_declarations->semantic_schema.type_count) {
 		const struct prototype_type_declaration* declaration =
-			&type_declarations->type_declarations[instance_type_id];
+			&type_declarations->semantic_schema.type_declarations[instance_type_id];
 		if (declaration->namespace_symbol_id == external_name.namespace_symbol_id &&
 			declaration->name_symbol_id == external_name.name_symbol_id &&
 			external_argument_count == instance_argument_count) {

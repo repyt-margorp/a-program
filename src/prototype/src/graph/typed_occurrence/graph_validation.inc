@@ -375,13 +375,15 @@ int prototype_typed_occurrence_graph_validate(
 			operation_case->refinement_status <
 				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING ||
 			operation_case->refinement_status >
-				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_RESIDUAL ||
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT ||
 			(prototype_typed_occurrence_match_case_is_solved(operation_case) !=
 				(operation_case->refinement_substitution != PROTOTYPE_INVALID_ID)) ||
 			(graph->frozen && operation_case->refinement_status !=
 					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED &&
 				operation_case->refinement_status !=
-					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE)) {
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE &&
+				operation_case->refinement_status !=
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT)) {
 			fprintf(stderr,
 				"typed occurrence case invalid case=%u context=%u owner=%u binders=%u refined=%u action=%u\n",
 				i,
@@ -445,6 +447,12 @@ int prototype_typed_occurrence_graph_seal(
 				PROTOTYPE_INVALID_ID)) ||
 			occurrence->classifier_status ==
 				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING) {
+			fprintf(stderr,
+				"typed occurrence classifier cannot seal occurrence=%u tag=%d "
+				"core=%u classifier=%u status=%d obligation=%u\n",
+				i, occurrence->tag, occurrence->core_term,
+				occurrence->classifier, occurrence->classifier_status,
+				occurrence->classifier_verification_obligation);
 			return -1;
 		}
 	}

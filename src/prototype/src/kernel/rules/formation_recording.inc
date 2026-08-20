@@ -68,12 +68,12 @@ int prototype_judgement_delta_record_type_formation(
 	uint32_t argument_count;
 	if (prototype_term_type_instance_info(
 			terms, subject, &type_id, arguments, &argument_count
-		) != 0 || type_id >= type_declarations->type_count ||
+		) != 0 || type_id >= type_declarations->semantic_schema.type_count ||
 		argument_count > 16) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	if (argument_count == 0 &&
 		type->formation_classifier != PROTOTYPE_INVALID_ID) {
 		if (type->formation_classifier == classifier) {
@@ -418,20 +418,34 @@ int prototype_judgement_add_expected_type_exposure(
 		]){{0}}
 	);
 	proof.premise_count = 1;
-	proof.premises[0].proposition->kind = source_evidence->kind;
-	proof.premises[0].proposition->context_id = source_evidence->context_id;
-	proof.premises[0].proposition->subject = premise_subjects[0];
-	proof.premises[0].proposition->classifier = premise_classifiers[0];
-	proof.premises[0].proposition->authority_kind = source_evidence->authority_kind;
-	proof.premises[0].proposition->authority_id = source_evidence->authority_id;
-	proof.premises[0].proposition->occurrence_id = source_evidence->occurrence_id;
-	return add_complete_relation(judgement, &relation, &proof);
+	proof.premises[0].builder_proposition->kind = source_evidence->kind;
+	proof.premises[0].builder_proposition->context_id = source_evidence->context_id;
+	proof.premises[0].builder_proposition->subject = premise_subjects[0];
+	proof.premises[0].builder_proposition->classifier = premise_classifiers[0];
+	proof.premises[0].builder_proposition->authority_kind = source_evidence->authority_kind;
+	proof.premises[0].builder_proposition->authority_id = source_evidence->authority_id;
+	proof.premises[0].builder_proposition->occurrence_id = source_evidence->occurrence_id;
+	uint32_t premise_claim_id;
+	uint32_t conclusion_claim_id;
+	if (accepted_claim_for_candidate_proposition(
+			judgement, proof.premises[0].proposition, &premise_claim_id
+		) != 0) {
+		return -1;
+	}
+	return publish_complete_relation(
+		judgement,
+		&relation,
+		&proof,
+		&premise_claim_id,
+		&conclusion_claim_id
+	);
 }
 
 int prototype_judgement_delta_record_expected_type_exposure(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	uint32_t conclusion_occurrence_id,
 	const struct prototype_judgement_selected_evidence* source_evidence,
 	uint32_t expected,
 	uint32_t subject
@@ -444,7 +458,7 @@ int prototype_judgement_delta_record_expected_type_exposure(
 		!term_exists(terms, source_evidence->classifier)) {
 		return -1;
 	}
-	if (delta->current_occurrence_id == source_evidence->occurrence_id &&
+	if (conclusion_occurrence_id == source_evidence->occurrence_id &&
 		expected == source_evidence->classifier) {
 		return 0;
 	}
@@ -470,8 +484,36 @@ int prototype_judgement_delta_record_expected_type_exposure(
 	}
 	uint32_t premise_subjects[1] = { subject };
 	uint32_t premise_classifiers[1] = { source_evidence->classifier };
-	return add_delta_relation_with_explicit_premises(
+	if (conclusion_occurrence_id == PROTOTYPE_INVALID_ID) {
+		int authority_kind = source_evidence->authority_kind ==
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ?
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER :
+			source_evidence->authority_kind;
+		uint32_t authority_id = authority_kind ==
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER ? subject :
+			source_evidence->authority_id;
+		return add_delta_relation_with_authority_and_explicit_premises(
+			delta,
+			authority_kind,
+			authority_id,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			subject,
+			expected,
+			proof_kind,
+			NULL,
+			NULL,
+			premise_subjects,
+			premise_classifiers,
+			source_evidence,
+			1
+		);
+	}
+	return add_delta_relation_with_authority_and_explicit_premises(
 		delta,
+		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
+		conclusion_occurrence_id,
+		conclusion_occurrence_id,
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		expected,

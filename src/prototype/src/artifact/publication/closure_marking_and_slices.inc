@@ -313,9 +313,9 @@ static int artifact_context_slice_init(
 		artifact_context_slice_free(slice);
 		return -1;
 	}
-	for (size_t i = 0; i < type_declarations->type_count; ++i) {
+	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
 		const struct prototype_type_declaration* type =
-			&type_declarations->type_declarations[i];
+			&type_declarations->semantic_schema.type_declarations[i];
 		if (type->type_index != PROTOTYPE_INVALID_ID &&
 			(artifact_context_slice_mark(
 				slice, &metadata->contexts, type->parameter_context
@@ -326,9 +326,9 @@ static int artifact_context_slice_init(
 			return -1;
 		}
 	}
-	for (size_t i = 0; i < type_declarations->constructor_count; ++i) {
+	for (size_t i = 0; i < type_declarations->semantic_schema.constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->constructor_declarations[i];
+			&type_declarations->semantic_schema.constructor_declarations[i];
 		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
@@ -469,11 +469,11 @@ static int artifact_context_slice_canonicalize(
 	}
 	for (size_t position = 0; position < type_order_count; ++position) {
 		uint32_t type_id = type_order[position];
-		if (type_id >= type_declarations->type_count) {
+		if (type_id >= type_declarations->semantic_schema.type_count) {
 			return -1;
 		}
 		const struct prototype_type_declaration* type =
-			&type_declarations->type_declarations[type_id];
+			&type_declarations->semantic_schema.type_declarations[type_id];
 		if (type->type_index == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
@@ -487,11 +487,11 @@ static int artifact_context_slice_canonicalize(
 	}
 	for (size_t position = 0; position < constructor_order_count; ++position) {
 		uint32_t constructor_id = constructor_order[position];
-		if (constructor_id >= type_declarations->constructor_count) {
+		if (constructor_id >= type_declarations->semantic_schema.constructor_count) {
 			return -1;
 		}
 		const struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->constructor_declarations[constructor_id];
+			&type_declarations->semantic_schema.constructor_declarations[constructor_id];
 		if (!artifact_constructor_present(constructor)) {
 			continue;
 		}
@@ -1150,11 +1150,11 @@ static int artifact_mark_constructor(
 		marks ? marks->type_declarations : NULL;
 	if (!marks || !terms || !type_declarations || depth > 512 ||
 		constructor_id >= marks->constructor_count ||
-		constructor_id >= type_declarations->constructor_count) {
+		constructor_id >= type_declarations->semantic_schema.constructor_count) {
 		return -1;
 	}
 	const struct prototype_type_constructor_declaration* constructor =
-		&type_declarations->constructor_declarations[constructor_id];
+		&type_declarations->semantic_schema.constructor_declarations[constructor_id];
 	const struct prototype_type_constructor_readback* readback =
 		prototype_type_constructor_readback_get(type_declarations, constructor_id);
 	const struct prototype_constructor_classifier_cache_entry* cache =
@@ -1230,11 +1230,11 @@ static int artifact_mark_type(
 	if (type_id == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
-	if (type_id >= marks->type_count || type_id >= type_declarations->type_count) {
+	if (type_id >= marks->type_count || type_id >= type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->type_declarations[type_id];
+		&type_declarations->semantic_schema.type_declarations[type_id];
 	if (!artifact_type_present(type)) {
 		return -1;
 	}
@@ -1462,7 +1462,7 @@ static int artifact_mark_term(
 			{
 				for (uint32_t i = 0; i < marks->type_count; ++i) {
 					const struct prototype_type_declaration* marked_type =
-						&marks->type_declarations->type_declarations[i];
+						&marks->type_declarations->semantic_schema.type_declarations[i];
 					if (marks->types[i] && artifact_type_present(marked_type) &&
 						marked_type->representation_id ==
 							term->as.type_former.representation_id) {

@@ -4,6 +4,26 @@ set -eu
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
 
+TYPE_DECLARATION_HEADER=src/prototype/include/a_program/kernel/type_declaration.h
+TYPE_SCHEMA_SOURCE=src/prototype/src/kernel/type_schema_view.c
+semantic_schema=$(sed -n \
+	'/struct prototype_type_semantic_schema_db {/,/^};/p' \
+	"$TYPE_DECLARATION_HEADER")
+printf '%s\n' "$semantic_schema" | grep -q 'constructor_declarations'
+if printf '%s\n' "$semantic_schema" | grep -q \
+	'readback\|representation\|classifier_cache'; then
+	echo 'semantic schema still contains readback or cache authority' >&2
+	exit 1
+fi
+schema_query=$(sed -n \
+	'/int prototype_constructor_schema_view_query(/,/^}/p' \
+	"$TYPE_SCHEMA_SOURCE")
+if printf '%s\n' "$schema_query" | grep -q \
+	'readback\|representation_db\|constructor_classifier_cache'; then
+	echo 'semantic constructor query still depends on non-semantic storage' >&2
+	exit 1
+fi
+
 cat >"$tmp_dir/operation_constants.c" <<'EOF_CONSTANTS'
 #include <stdio.h>
 

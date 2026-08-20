@@ -10,6 +10,7 @@ struct prototype_term_db;
 struct prototype_type_constructor_declaration;
 struct prototype_type_declaration;
 struct prototype_type_declaration_db;
+struct prototype_type_semantic_schema_db;
 
 /* A read-only semantic view over one source declaration and an action chain.
  * The chain is ordered from the source outward. It never creates a generated
@@ -32,7 +33,7 @@ struct prototype_constructor_schema_view {
 };
 
 int prototype_type_schema_view_query(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms,
 	const struct prototype_dimension_operator_db* dimension_operators,
@@ -41,7 +42,7 @@ int prototype_type_schema_view_query(
 );
 
 int prototype_constructor_schema_view_query(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	const struct prototype_dimension_operator_db* dimension_operators,

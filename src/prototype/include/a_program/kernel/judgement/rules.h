@@ -3,6 +3,17 @@
 
 #include "a_program/kernel/judgement/db.h"
 
+#define PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT UINT64_C(1048576)
+
+int prototype_judgement_result_computation_endpoints_equal(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t left,
+	uint32_t right,
+	uint64_t step_limit,
+	int* p_equal
+);
+
 int prototype_judgement_expand_type_def(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
@@ -73,6 +84,7 @@ enum prototype_index_refinement_status {
 	PROTOTYPE_INDEX_REFINEMENT_SOLVED = 0,
 	PROTOTYPE_INDEX_REFINEMENT_IMPOSSIBLE = 1,
 	PROTOTYPE_INDEX_REFINEMENT_RESIDUAL = 2,
+	PROTOTYPE_INDEX_REFINEMENT_CONSTANT = 3,
 	PROTOTYPE_INDEX_REFINEMENT_INVALID = -1
 };
 
@@ -469,6 +481,52 @@ int prototype_judgement_add_relation_witness_intro(
 	uint32_t right_endpoint_claim_id,
 	uint32_t* p_claim_id
 );
+int prototype_judgement_add_returns_type_formation(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t returns_type,
+	uint32_t universe,
+	uint32_t computation_claim_id,
+	uint32_t value_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_returns_evaluation(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t occurrence_id,
+	uint32_t witness,
+	uint32_t returns_type,
+	uint32_t returns_type_claim_id,
+	uint32_t computation_claim_id,
+	uint32_t value_claim_id,
+	uint64_t step_limit,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_terminates_type_formation(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t terminates_type,
+	uint32_t universe,
+	uint32_t computation_claim_id,
+	uint32_t* p_claim_id
+);
+int prototype_judgement_add_terminates_from_returns(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t occurrence_id,
+	uint32_t witness,
+	uint32_t terminates_type,
+	uint32_t terminates_type_claim_id,
+	uint32_t returns_claim_id,
+	uint32_t* p_claim_id
+);
 int prototype_judgement_add_relation_constructor_witness(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
@@ -609,6 +667,35 @@ int prototype_judgement_constructor_spine_classifier(
 	uint32_t* p_classifier,
 	int* p_saturated
 );
+
+/* Checked semantic decomposition of one constructor application. Parameters
+ * specialize the declaration telescope; indices are read only from the
+ * constructor result after field substitution. */
+struct prototype_judgement_constructor_specialization {
+	uint32_t constructor_head;
+	uint32_t owner;
+	uint32_t type_id;
+	uint32_t constructor_index;
+	uint32_t constructor_declaration_id;
+	uint32_t owner_arguments[64];
+	uint32_t owner_argument_count;
+	uint32_t field_terms[64];
+	uint32_t field_count;
+	uint32_t field_contexts[64];
+	uint32_t declared_field_count;
+	uint32_t parameter_substitution;
+};
+
+int prototype_judgement_constructor_specialize(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_context,
+	uint32_t subject,
+	uint32_t constructor_owner_view,
+	struct prototype_judgement_constructor_specialization* p_specialization
+);
 int prototype_judgement_constructor_field_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -656,6 +743,19 @@ int prototype_judgement_delta_record_constructor_spine(
 	const uint32_t* argument_occurrence_ids,
 	const struct prototype_judgement_selected_evidence* argument_evidence,
 	uint32_t argument_count
+);
+
+/* Reconstruct the admissible zeta projection of pure zero-clause sequencing
+ * from the immutable TypedOccurrenceGraph. The result is compiler/kernel
+ * prior computation; no solver cell or runtime history is consulted. */
+int prototype_judgement_project_pure_sequence_results(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	const struct prototype_typed_occurrence_graph* occurrences,
+	uint32_t context_id,
+	uint32_t term,
+	uint32_t* p_projected
 );
 int prototype_judgement_delta_record_constructor_intro(
 	struct prototype_judgement_delta* delta,
@@ -937,6 +1037,7 @@ int prototype_judgement_delta_record_expected_type_exposure(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	uint32_t conclusion_occurrence_id,
 	const struct prototype_judgement_selected_evidence* source_evidence,
 	uint32_t expected,
 	uint32_t subject

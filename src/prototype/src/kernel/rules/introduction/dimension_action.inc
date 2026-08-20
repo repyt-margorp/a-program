@@ -323,7 +323,7 @@ static int validate_dimension_action_constructor_proof(
 			&acted_owner_operator
 		) != 0 || acted_owner_source != owner ||
 		acted_owner_operator != operator_id || prototype_type_schema_view_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 			dimension_operators,
@@ -384,7 +384,8 @@ static int publish_dimension_action_rule(
 		premises[i].proposition_store_kind =
 			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
 		premises[i].proposition =
-			(struct prototype_judgement_proposition*)proposition;
+			proposition;
+		premises[i].builder_proposition = NULL;
 	}
 	return publish_complete_relation(
 		judgement,
@@ -418,20 +419,17 @@ int prototype_judgement_add_dimension_action_type_formation(
 	};
 	uint32_t premise_ids[1] = { source_type_claim_id };
 	struct prototype_judgement_rule_application_view proof;
-	struct prototype_judgement_candidate_premise premises[1];
 	memset(&proof, 0, sizeof(proof));
 	proof.conclusion = &conclusion;
 	proof.premise_count = 1;
 	for (uint32_t i = 0; i < 1; ++i) {
 		const struct prototype_judgement_claim* claim =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
-		premises[i].proposition = claim ?
-			(struct prototype_judgement_proposition*)
+		proof.premises[i].proposition = claim ?
 			prototype_judgement_proposition_get(
 				judgement, claim->proposition_id
 			) : NULL;
 	}
-	proof.premises = premises;
 	uint32_t target_dimension;
 	uint32_t source;
 	uint32_t operator_id;
@@ -489,20 +487,17 @@ int prototype_judgement_add_dimension_action_term(
 		source_classifier_claim_id
 	};
 	struct prototype_judgement_rule_application_view proof;
-	struct prototype_judgement_candidate_premise premises[2];
 	memset(&proof, 0, sizeof(proof));
 	proof.conclusion = &conclusion;
 	proof.premise_count = 2;
 	for (uint32_t i = 0; i < 2; ++i) {
 		const struct prototype_judgement_claim* claim =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
-		premises[i].proposition = claim ?
-			(struct prototype_judgement_proposition*)
+		proof.premises[i].proposition = claim ?
 			prototype_judgement_proposition_get(
 				judgement, claim->proposition_id
 			) : NULL;
 	}
-	proof.premises = premises;
 	uint32_t target_dimension;
 	uint32_t source;
 	uint32_t operator_id;
@@ -560,20 +555,17 @@ int prototype_judgement_add_dimension_action_thunk_return_witness(
 		value_witness_claim_id
 	};
 	struct prototype_judgement_rule_application_view proof;
-	struct prototype_judgement_candidate_premise premises[4];
 	memset(&proof, 0, sizeof(proof));
 	proof.conclusion = &conclusion;
 	proof.premise_count = 4;
 	for (uint32_t i = 0; i < 4; ++i) {
 		const struct prototype_judgement_claim* claim =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
-		premises[i].proposition = claim ?
-			(struct prototype_judgement_proposition*)
+		proof.premises[i].proposition = claim ?
 			prototype_judgement_proposition_get(
 				judgement, claim->proposition_id
 			) : NULL;
 	}
-	proof.premises = premises;
 	if (validate_dimension_action_thunk_return_witness_proof(
 			terms,
 			type_declarations,
@@ -627,20 +619,17 @@ int prototype_judgement_add_dimension_action_constructor(
 		acted_owner_claim_id
 	};
 	struct prototype_judgement_rule_application_view proof;
-	struct prototype_judgement_candidate_premise premises[3];
 	memset(&proof, 0, sizeof(proof));
 	proof.conclusion = &conclusion;
 	proof.premise_count = 3;
 	for (uint32_t i = 0; i < 3; ++i) {
 		const struct prototype_judgement_claim* claim =
 			prototype_judgement_claim_get(judgement, premise_ids[i]);
-		premises[i].proposition = claim ?
-			(struct prototype_judgement_proposition*)
+		proof.premises[i].proposition = claim ?
 			prototype_judgement_proposition_get(
 				judgement, claim->proposition_id
 			) : NULL;
 	}
-	proof.premises = premises;
 	if (validate_dimension_action_constructor_proof(
 			terms,
 			type_declarations,

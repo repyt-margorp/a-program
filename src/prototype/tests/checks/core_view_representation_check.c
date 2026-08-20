@@ -60,8 +60,8 @@ static int add_nullary_type(
 		) != 0) {
 		return -1;
 	}
-	types_db->type_declarations[*p_type_id].parameter_context = 0;
-	types_db->type_declarations[*p_type_id].index_context = 0;
+	types_db->semantic_schema.type_declarations[*p_type_id].parameter_context = 0;
+	types_db->semantic_schema.type_declarations[*p_type_id].index_context = 0;
 	if (prototype_type_expr_self(types_db, &self_expr) != 0 ||
 		prototype_term_type_instance_make(
 			terms_db, types_db, *p_type_id, NULL, 0, &view
@@ -123,8 +123,8 @@ int main(void) {
 	uint32_t two_view;
 	uint32_t ignored_constructor;
 	if (prototype_type_declaration_add(&type_db, 1, &bool_type_id) != 0) return 10;
-	type_db.type_declarations[bool_type_id].parameter_context = 0;
-	type_db.type_declarations[bool_type_id].index_context = 0;
+	type_db.semantic_schema.type_declarations[bool_type_id].parameter_context = 0;
+	type_db.semantic_schema.type_declarations[bool_type_id].index_context = 0;
 	if (prototype_type_expr_self(&type_db, &self_expr) != 0) return 12;
 	if (prototype_term_type_instance_make(&term_db, &type_db, bool_type_id, NULL, 0, &bool_view) != 0) return 13;
 	if (add_nullary_constructor(
@@ -134,8 +134,8 @@ int main(void) {
 		&type_db, bool_type_id, 12, self_expr, bool_view, &ignored_constructor
 	) != 0) return 16;
 	if (prototype_type_declaration_add(&type_db, 2, &two_type_id) != 0) return 11;
-	type_db.type_declarations[two_type_id].parameter_context = 0;
-	type_db.type_declarations[two_type_id].index_context = 0;
+	type_db.semantic_schema.type_declarations[two_type_id].parameter_context = 0;
+	type_db.semantic_schema.type_declarations[two_type_id].index_context = 0;
 	if (prototype_term_type_instance_make(&term_db, &type_db, two_type_id, NULL, 0, &two_view) != 0) return 14;
 	if (add_nullary_constructor(
 		&type_db, two_type_id, 21, self_expr, two_view, &ignored_constructor
@@ -147,7 +147,7 @@ int main(void) {
 	/* Constructor classification is schema-derived. Neither a missing cache nor
 	 * corrupted source readback may change the semantic classifier. */
 	type_db.readback.constructor_readbacks[0].result_type = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < type_db.constructor_count; ++i) {
+	for (uint32_t i = 0; i < type_db.semantic_schema.constructor_count; ++i) {
 		type_db.constructor_classifier_cache.entries[i].classifier = PROTOTYPE_INVALID_ID;
 		type_db.constructor_classifier_cache.entries[i].schema_revision = 0;
 		uint32_t rebuilt_classifier;
@@ -331,9 +331,9 @@ int main(void) {
 		return 22;
 	}
 	uint32_t bool_representation =
-		type_db.type_declarations[bool_type_id].representation_id;
+		type_db.semantic_schema.type_declarations[bool_type_id].representation_id;
 	uint32_t one_representation =
-		cross_type_db.type_declarations[cross_one_type].representation_id;
+		cross_type_db.semantic_schema.type_declarations[cross_one_type].representation_id;
 	if (bool_representation >= type_db.representation_db.representation_count ||
 		one_representation >= cross_type_db.representation_db.representation_count) {
 		return 23;

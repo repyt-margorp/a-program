@@ -52,14 +52,14 @@ static int type_schema_action_chain(
 }
 
 int prototype_type_schema_view_query(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms,
 	const struct prototype_dimension_operator_db* dimension_operators,
 	uint32_t type_term,
 	struct prototype_type_schema_view* p_view
 ) {
-	if (!type_declarations || !contexts || !terms || !dimension_operators ||
+	if (!semantic_schema || !contexts || !terms || !dimension_operators ||
 		!p_view || type_term >= terms->term_count) {
 		return -1;
 	}
@@ -73,7 +73,7 @@ int prototype_type_schema_view_query(
 			&view.source_type_view,
 			&view.target_dimension
 		) != 0 || prototype_type_view_declaration_query(
-			type_declarations,
+			semantic_schema,
 			contexts,
 			terms,
 			view.source_type_view,
@@ -87,7 +87,7 @@ int prototype_type_schema_view_query(
 }
 
 static int source_constructor_classifier(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	const struct prototype_type_schema_view* type_view,
@@ -98,7 +98,7 @@ static int source_constructor_classifier(
 );
 
 static int act_constructor_schema(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	const struct prototype_dimension_operator_db* dimension_operators,
@@ -112,7 +112,7 @@ static int act_constructor_schema(
 			terms, type_term, &source, &operator_id
 		) == 0) {
 		if (act_constructor_schema(
-				type_declarations,
+				semantic_schema,
 				contexts,
 				terms,
 				dimension_operators,
@@ -139,7 +139,7 @@ static int act_constructor_schema(
 	struct prototype_type_schema_view source_view;
 	memset(&source_view, 0, sizeof(source_view));
 	if (prototype_type_schema_view_query(
-			type_declarations,
+			semantic_schema,
 			contexts,
 			terms,
 			dimension_operators,
@@ -147,7 +147,7 @@ static int act_constructor_schema(
 			&source_view
 		) != 0 || source_view.target_dimension != 0 ||
 		source_constructor_classifier(
-			type_declarations,
+			semantic_schema,
 			contexts,
 			terms,
 			&source_view,
@@ -169,7 +169,7 @@ static int act_constructor_schema(
 }
 
 static int source_constructor_classifier(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	const struct prototype_type_schema_view* type_view,
@@ -180,13 +180,13 @@ static int source_constructor_classifier(
 ) {
 	if (constructor_ordinal >= type_view->source_declaration->constructor_count ||
 		type_view->source_declaration->first_constructor + constructor_ordinal >=
-			type_declarations->constructor_count) {
+			semantic_schema->constructor_count) {
 		return -1;
 	}
 	uint32_t constructor_id =
 		type_view->source_declaration->first_constructor + constructor_ordinal;
 	const struct prototype_type_constructor_declaration* constructor =
-		&type_declarations->constructor_declarations[constructor_id];
+		&semantic_schema->constructor_declarations[constructor_id];
 	uint32_t classifier;
 	if (constructor->owner_type != type_view->source_type_id ||
 		constructor->constructor_index != constructor_ordinal ||
@@ -228,7 +228,7 @@ static int source_constructor_classifier(
 }
 
 int prototype_constructor_schema_view_query(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	const struct prototype_dimension_operator_db* dimension_operators,
@@ -236,23 +236,21 @@ int prototype_constructor_schema_view_query(
 	uint32_t constructor_ordinal,
 	struct prototype_constructor_schema_view* p_view
 ) {
-	if (!type_declarations || !contexts || !terms || !dimension_operators ||
+	if (!semantic_schema || !contexts || !terms || !dimension_operators ||
 		!type_view || !p_view || !type_view->source_declaration ||
-		type_view->source_type_id >= type_declarations->type_count ||
+		type_view->source_type_id >= semantic_schema->type_count ||
 		type_view->source_type_view >= terms->term_count ||
 		type_view->acted_type >= terms->term_count) {
 		return -1;
 	}
-	const size_t type_count = type_declarations->type_count;
-	const size_t constructor_count = type_declarations->constructor_count;
-	const uint64_t semantic_revision = type_declarations->semantic_revision;
-	const size_t representation_count =
-		type_declarations->representation_db.representation_count;
+	const size_t type_count = semantic_schema->type_count;
+	const size_t constructor_count = semantic_schema->constructor_count;
+	const uint64_t semantic_revision = semantic_schema->semantic_revision;
 
 	struct prototype_constructor_schema_view view;
 	memset(&view, 0, sizeof(view));
 	if (act_constructor_schema(
-			type_declarations,
+			semantic_schema,
 			contexts,
 			terms,
 			dimension_operators,
@@ -263,11 +261,9 @@ int prototype_constructor_schema_view_query(
 		type_view->source_type_id) {
 		return -1;
 	}
-	if (type_declarations->type_count != type_count ||
-		type_declarations->constructor_count != constructor_count ||
-		type_declarations->semantic_revision != semantic_revision ||
-		type_declarations->representation_db.representation_count !=
-			representation_count) {
+	if (semantic_schema->type_count != type_count ||
+		semantic_schema->constructor_count != constructor_count ||
+		semantic_schema->semantic_revision != semantic_revision) {
 		return -1;
 	}
 	*p_view = view;
@@ -287,7 +283,7 @@ int prototype_constructor_schema_view_action_classifier(
 	if (!type_declarations || !contexts || !terms || !dimension_operators ||
 		!type_view || !p_classifier || type_view->target_dimension == 0 ||
 		prototype_constructor_schema_view_query(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			contexts,
 			terms,
 			dimension_operators,

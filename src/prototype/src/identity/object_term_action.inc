@@ -617,7 +617,7 @@ static int hott_prepare_local_object_identity(
 		uint32_t acted_at_left;
 		uint32_t acted_at_left_claim;
 		if (prototype_type_view_declaration_query(
-				types,
+				&types->semantic_schema,
 				contexts,
 				terms,
 				normalized_carrier,
@@ -947,7 +947,7 @@ static int hott_construct_nullary_match_object_action(
 	uint32_t acted_dimension;
 	size_t acted_boundary_count;
 	if (prototype_type_schema_view_query(
-			types,
+			&types->semantic_schema,
 			contexts,
 			terms,
 			kernel->dimension_operators,
@@ -966,7 +966,7 @@ static int hott_construct_nullary_match_object_action(
 			0,
 			&acted_boundary_count
 		) != 0 || prototype_type_schema_view_query(
-			types,
+			&types->semantic_schema,
 			contexts,
 			terms,
 			kernel->dimension_operators,
@@ -1445,7 +1445,7 @@ static int hott_construct_adt_value_action(
 	uint32_t witness_claim;
 	int action_stage = 1;
 	int action_status = prototype_type_schema_view_query(
-			types,
+			&types->semantic_schema,
 			contexts,
 			terms,
 			kernel->dimension_operators,
@@ -1455,7 +1455,7 @@ static int hott_construct_adt_value_action(
 	if (action_status == 0) {
 		action_stage = 2;
 		action_status = prototype_constructor_schema_view_query(
-			types,
+			&types->semantic_schema,
 			contexts,
 			terms,
 			kernel->dimension_operators,

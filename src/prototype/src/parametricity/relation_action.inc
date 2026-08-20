@@ -1806,7 +1806,7 @@ int prototype_parametricity_relation_plan(
 		uint32_t type_id;
 		const struct prototype_type_declaration* declaration;
 		if (prototype_type_view_declaration_query(
-				type_declarations, contexts, terms, carrier, &type_id, &declaration
+				&type_declarations->semantic_schema, contexts, terms, carrier, &type_id, &declaration
 			) != 0) {
 			return -1;
 		}

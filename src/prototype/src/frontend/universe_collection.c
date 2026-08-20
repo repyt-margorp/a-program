@@ -647,8 +647,8 @@ int prototype_universe_collect(
 
 	prototype_universe_db_clear(db);
 
-	for (uint32_t i = 0; i < (uint32_t)type_declarations->type_count; ++i) {
-		const struct prototype_type_declaration* type = &type_declarations->type_declarations[i];
+	for (uint32_t i = 0; i < (uint32_t)type_declarations->semantic_schema.type_count; ++i) {
+		const struct prototype_type_declaration* type = &type_declarations->semantic_schema.type_declarations[i];
 		uint32_t type_node;
 		if (prototype_universe_add_type_node(db, i, type->name_symbol_id, &type_node) != 0) {
 			fprintf(stderr, "universe collection failed at type node=%u\n", i);

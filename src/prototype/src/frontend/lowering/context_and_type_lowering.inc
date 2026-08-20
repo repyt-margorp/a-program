@@ -248,6 +248,7 @@ enum operation_classifier_goal_reason {
 	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_VALIDATED,
 	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_IMPOSSIBLE,
 	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_RESIDUAL,
+	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_CONSTANT,
 	OPERATION_CLASSIFIER_GOAL_REASON_BRANCH_REFINEMENT_INVALID,
 	OPERATION_CLASSIFIER_GOAL_REASON_RESIDUAL_OBLIGATION,
 	OPERATION_CLASSIFIER_GOAL_REASON_INCOMPLETE_BUDGET
@@ -333,7 +334,6 @@ struct operation_constraint {
 	uint32_t context_id;
 	int state;
 	int reason;
-	uint32_t result_term;
 	uint32_t evidence_id;
 	/* Explicit edge to the compiler constraint which emitted this obligation.
 	 * INVALID denotes an independently generated equation. */
@@ -428,10 +428,7 @@ struct operation_solver_solution {
 	uint32_t first_usage_entry;
 	uint32_t usage_entry_count;
 	int binder_usage;
-	int classifier_state;
-	int effect_state;
 	int usage_state;
-	int reason;
 };
 
 /*
@@ -583,6 +580,13 @@ struct operation_reindex_cache_entry {
 struct operation_binder_owner_entry {
 	uint32_t binding_id;
 	uint32_t lambda_occurrence;
+	/* A sequence-fold lambda binds the successful result of this computation.
+	 * INVALID distinguishes ordinary Lambda binding. The source computation stays
+	 * in the operation graph; this edge only permits bounded prior evaluation. */
+	uint32_t bound_computation_occurrence;
+	/* Derived compiler workspace: the stable symbolic value of a structurally
+	 * pure bound computation. It is never serialized as semantic authority. */
+	uint32_t projected_pure_value;
 	uint32_t declared_classifier;
 	uint32_t first_classifier_evidence;
 };
@@ -616,6 +620,13 @@ struct compile_context {
 	/* Lowering facts are mutable compiler workspace and never frozen into a
 	 * typed occurrence or artifact. */
 	uint32_t classifier_hints[4096];
+	/* Explicit result evidence retains the two source occurrences that become
+	 * accepted proof premises. TermDB endpoints alone cannot select one typed
+	 * occurrence when a shared Core term has several source derivations. */
+	uint32_t result_evidence_computation_occurrences[4096];
+	uint32_t result_evidence_value_occurrences[4096];
+	uint32_t termination_evidence_computation_occurrences[4096];
+	uint32_t termination_evidence_returns_occurrences[4096];
 	struct operation_effect_solver effect_solver;
 	int materializing_checked_classifiers;
 	struct operation_reindex_cache_entry
@@ -1289,26 +1300,6 @@ static int lookup_external_declaration_classifier(
 	return -1;
 }
 
-static int lookup_source_expectation_classifier(
-	struct compile_context* ctx,
-	int name_symbol_id,
-	uint32_t* p_classifier
-) {
-	if (!ctx || !p_classifier) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < (uint32_t)ctx->asts->expectation_count; ++i) {
-		struct prototype_ast_type_expectation_def* expectation =
-			&ctx->asts->expectations[i];
-		if (expectation->kind != PROTOTYPE_AST_TYPE_ENTRY_EXPECTATION ||
-			expectation->name_symbol_id != name_symbol_id) {
-			continue;
-		}
-		return compile_type_expectation_classifier(ctx, expectation, p_classifier);
-	}
-	return -1;
-}
-
 static int lookup_imported_term_classifier(
 	struct compile_context* ctx,
 	struct prototype_qualified_name name,
@@ -1754,6 +1745,8 @@ static struct operation_binder_owner_entry* operation_binder_owner_add(
 	*entry = (struct operation_binder_owner_entry) {
 		.binding_id = binding_id,
 		.lambda_occurrence = PROTOTYPE_INVALID_ID,
+		.bound_computation_occurrence = PROTOTYPE_INVALID_ID,
+		.projected_pure_value = PROTOTYPE_INVALID_ID,
 		.declared_classifier = PROTOTYPE_INVALID_ID,
 		.first_classifier_evidence = PROTOTYPE_INVALID_ID
 	};
@@ -2538,12 +2531,12 @@ static int type_instance_formation_classifier(
 	uint32_t argument_count;
 	if (prototype_term_type_instance_info(
 			ctx->terms, term, &type_id, arguments, &argument_count
-		) != 0 || type_id >= ctx->type_declarations->type_count ||
+		) != 0 || type_id >= ctx->type_declarations->semantic_schema.type_count ||
 		argument_count > 16) {
 		return 1;
 	}
 	const struct prototype_type_declaration* type =
-		&ctx->type_declarations->type_declarations[type_id];
+		&ctx->type_declarations->semantic_schema.type_declarations[type_id];
 	if (type->formation_classifier == PROTOTYPE_INVALID_ID) {
 		return 1;
 	}
@@ -2867,6 +2860,21 @@ static int add_compile_label(
 	ctx->metadata->labels[id].exposed_classifier = exposed_classifier;
 	ctx->metadata->labels[id].exposed_occurrence = exposed_occurrence;
 	ctx->metadata->labels[id].body_occurrence = exposed_occurrence;
+	uint32_t standalone_expectation = PROTOTYPE_INVALID_ID;
+	for (uint32_t expectation_id = 0;
+		expectation_id < (uint32_t)ctx->asts->expectation_count;
+		++expectation_id) {
+		const struct prototype_ast_type_expectation_def* expectation =
+			&ctx->asts->expectations[expectation_id];
+		if (expectation->kind != PROTOTYPE_AST_TYPE_ENTRY_EXPECTATION ||
+			expectation->name_symbol_id != name_symbol_id || !expectation->compiled) {
+			continue;
+		}
+		if (standalone_expectation != PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		standalone_expectation = expectation->compiled_classifier;
+	}
 	if (exposed_occurrence < ctx->metadata->typed_occurrences.occurrence_count &&
 		ctx->metadata->typed_occurrences.occurrences[exposed_occurrence].tag ==
 			PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) {
@@ -2874,6 +2882,8 @@ static int add_compile_label(
 			ctx->metadata->typed_occurrences.occurrences[exposed_occurrence].wrapped_occurrence;
 		ctx->metadata->labels[id].expectation_classifier =
 			ctx->metadata->typed_occurrences.occurrences[exposed_occurrence].classifier;
+	} else if (standalone_expectation != PROTOTYPE_INVALID_ID) {
+		ctx->metadata->labels[id].expectation_classifier = standalone_expectation;
 	} else {
 		ctx->metadata->labels[id].expectation_classifier = PROTOTYPE_INVALID_ID;
 	}
@@ -2905,6 +2915,36 @@ static int add_compile_label(
 					ctx->metadata->labels[id].expectation_classifier) {
 				ctx->metadata->labels[id].expectation_claim_id = claim_id;
 				break;
+			}
+		}
+		/* A definition boundary may insert an implicit THUNK after checking the
+		 * explicit RHS. In that case independently lowering the standalone source
+		 * expectation can allocate a conversion-equal classifier with a different
+		 * Term ID. Label metadata is an accepted-proof projection, so retain the
+		 * classifier of the exact Claim produced by post-synthesis checking rather
+		 * than publishing the unattached source-lowering ID. */
+		if (ctx->metadata->labels[id].expectation_claim_id ==
+				PROTOTYPE_INVALID_ID &&
+			standalone_expectation != PROTOTYPE_INVALID_ID) {
+			for (uint32_t claim_id = 0;
+				claim_id < (uint32_t)ctx->judgement->claim_count;
+				++claim_id) {
+				const struct prototype_judgement_proposition* proposition =
+					prototype_judgement_claim_proposition(ctx->judgement, claim_id);
+				if (proposition && proposition->kind ==
+						PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+					proposition->authority_kind ==
+						PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE &&
+					proposition->authority_id == exposed_occurrence &&
+					proposition->occurrence_id == exposed_occurrence &&
+					proposition->context_id == context_id &&
+					proposition->subject == term &&
+					proposition->classifier == exposed_classifier) {
+					ctx->metadata->labels[id].expectation_classifier =
+						proposition->classifier;
+					ctx->metadata->labels[id].expectation_claim_id = claim_id;
+					break;
+				}
 			}
 		}
 		if (ctx->metadata->labels[id].expectation_claim_id ==
@@ -2953,12 +2993,12 @@ static int add_compile_type_export(
 	if (!ctx || !ctx->metadata) {
 		return 0;
 	}
-	if (!ctx->type_declarations || type_id >= ctx->type_declarations->type_count) {
+	if (!ctx->type_declarations || type_id >= ctx->type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
 
 	const struct prototype_type_declaration* type =
-		&ctx->type_declarations->type_declarations[type_id];
+		&ctx->type_declarations->semantic_schema.type_declarations[type_id];
 	if (reserve_slot(
 			ctx->metadata->type_export_count,
 			ctx->metadata->type_export_capacity
@@ -2991,7 +3031,7 @@ static int add_compile_type_export(
 	for (uint32_t i = 0; i < type->constructor_count; ++i) {
 		uint32_t constructor_id = type->first_constructor + i;
 		const struct prototype_type_constructor_declaration* constructor =
-			&ctx->type_declarations->constructor_declarations[constructor_id];
+			&ctx->type_declarations->semantic_schema.constructor_declarations[constructor_id];
 		const struct prototype_type_constructor_readback* readback =
 			prototype_type_constructor_readback_get(
 				ctx->type_declarations, constructor_id
@@ -3085,7 +3125,44 @@ static int add_compile_diagnostic(
 			.occurrence_id = operation,
 			.constraint_id = constraint,
 			.expected_classifier = expected_classifier,
-			.actual_classifier = actual_classifier
+			.actual_classifier = actual_classifier,
+			.context_id = PROTOTYPE_INVALID_ID,
+			.constructor_ordinal = PROTOTYPE_INVALID_ID,
+			.field_ordinal = PROTOTYPE_INVALID_ID
+		}
+	);
+}
+
+static int add_constructor_compile_diagnostic(
+	struct compile_context* ctx,
+	uint32_t ast,
+	uint32_t operation,
+	uint32_t constraint,
+	uint32_t expected_classifier,
+	uint32_t actual_classifier,
+	uint32_t context_id,
+	uint32_t constructor_ordinal,
+	uint32_t field_ordinal,
+	struct prototype_source_span span
+) {
+	if (!ctx || !ctx->metadata) {
+		return -1;
+	}
+	ctx->had_error = 1;
+	return prototype_compile_metadata_add_diagnostic(
+		ctx->metadata,
+		(struct prototype_compile_diagnostic) {
+			.phase = PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER,
+			.reason = PROTOTYPE_COMPILE_DIAGNOSTIC_CONSTRUCTOR_DOMAIN_MISMATCH,
+			.source_ast = ast,
+			.span = span,
+			.occurrence_id = operation,
+			.constraint_id = constraint,
+			.expected_classifier = expected_classifier,
+			.actual_classifier = actual_classifier,
+			.context_id = context_id,
+			.constructor_ordinal = constructor_ordinal,
+			.field_ordinal = field_ordinal
 		}
 	);
 }
@@ -3812,10 +3889,10 @@ static int compile_type_expr_name_as_keyed_type_ref(
 				return -1;
 			}
 			if (
-				type_id >= ctx->type_declarations->type_count) {
+				type_id >= ctx->type_declarations->semantic_schema.type_count) {
 				return -1;
 			}
-			type = &ctx->type_declarations->type_declarations[type_id];
+			type = &ctx->type_declarations->semantic_schema.type_declarations[type_id];
 			break;
 		}
 	}
@@ -3897,12 +3974,12 @@ static int compile_type_expr_name_as_keyed_type_ref(
 			&arg_count
 		) != 0 ||
 		arg_count != 0 ||
-		type_id >= ctx->type_declarations->type_count) {
+		type_id >= ctx->type_declarations->semantic_schema.type_count) {
 		return 1;
 	}
 
 	const struct prototype_type_declaration* aliased_type =
-		&ctx->type_declarations->type_declarations[type_id];
+		&ctx->type_declarations->semantic_schema.type_declarations[type_id];
 	return prototype_type_expr_name(
 		ctx->type_declarations,
 		aliased_type->name_symbol_id,
@@ -4086,83 +4163,108 @@ static int compile_shared_app(
 	uint32_t* p_ret
 );
 
-/* Type-family applications execute only the pure CBPV fragment. A neutral
- * dependent match cannot choose a branch, but each branch can still expose
- * the value returned by that pure computation. Project RETURN pointwise so a
- * computation term is never installed as the result type of another Comp. */
-static int compile_extract_pure_return_value_at_depth(
-	struct compile_context* ctx,
-	uint32_t computation,
-	uint32_t* p_ret,
-	uint32_t depth
-) {
-	if (!ctx || !p_ret || computation >= ctx->terms->term_count || depth > 64) {
-		return -1;
-	}
-
-	uint32_t whnf;
-	if (prototype_term_normalize_complete_with_profile(
-			ctx->terms,
-			ctx->type_declarations,
-			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-			computation,
-			&whnf
-		) != 0 || whnf >= ctx->terms->term_count) {
-		return -1;
-	}
-	const struct prototype_term term = ctx->terms->terms[whnf];
-	if (term.tag == PROTOTYPE_TERM_RETURN) {
-		*p_ret = term.as.return_term.value;
-		return 0;
-	}
-	if (term.tag != PROTOTYPE_TERM_MATCH) {
-		*p_ret = whnf;
-		return 0;
-	}
-	if (term.as.match.case_count > 64) {
-		return -1;
-	}
-
-	struct prototype_match_case_input cases[64];
-	for (uint32_t i = 0; i < term.as.match.case_count; ++i) {
-		uint32_t case_id = term.as.match.first_case + i;
-		if (case_id >= ctx->terms->case_count) {
-			return -1;
-		}
-		const struct prototype_match_case source = ctx->terms->cases[case_id];
-		uint32_t body;
-		if (compile_extract_pure_return_value_at_depth(
-				ctx, source.body, &body, depth + 1
-			) != 0) {
-			return -1;
-		}
-		cases[i].case_label_symbol_id = ctx->terms->case_label_symbols[case_id];
-		cases[i].constructor_owner = source.constructor_owner;
-		cases[i].constructor_id = source.constructor_id;
-		cases[i].binders = source.binder_count == 0 ? NULL :
-			&ctx->terms->case_binders[source.first_binder];
-		cases[i].binder_count = source.binder_count;
-		cases[i].body = body;
-	}
-	return prototype_term_match_with_ih_scope(
-		ctx->terms,
-		term.as.match.scrutinee,
-		cases,
-		term.as.match.case_count,
-		term.as.match.ih_scope_id,
-		p_ret
-	);
-}
-
 static int compile_extract_pure_return_value(
 	struct compile_context* ctx,
 	uint32_t computation,
 	uint32_t* p_ret
 ) {
-	return compile_extract_pure_return_value_at_depth(
-		ctx, computation, p_ret, 0
+	int projection_status = prototype_term_project_pure_computation_value(
+		ctx->terms,
+		ctx->type_declarations,
+		computation,
+		ctx->metadata->normalization_step_limit,
+		p_ret
 	);
+	if (projection_status <= 0) {
+		return projection_status;
+	}
+	/* A type-family application may reduce directly to a value rather than a
+	 * CBPV RETURN. Preserve that existing representation after the shared
+	 * computation projection has established that no RETURN tree is exposed. */
+	return prototype_term_normalize_complete_with_profile(
+		ctx->terms,
+		ctx->type_declarations,
+		NULL,
+		PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		computation,
+		p_ret
+	);
+}
+
+static int compile_ast_result_evidence_endpoint(
+	struct compile_context* ctx,
+	uint32_t ast_id,
+	uint32_t* p_ret
+) {
+	if (!ctx || !p_ret || ast_id >= ctx->asts->node_count) {
+		return -1;
+	}
+	const struct prototype_ast_node* node = &ctx->asts->nodes[ast_id];
+	switch (node->tag) {
+		case PROTOTYPE_AST_INT_LITERAL:
+			return prototype_term_int_literal(
+				ctx->terms, node->as.int_literal.value, p_ret
+			);
+		case PROTOTYPE_AST_TEXT_LITERAL:
+			return prototype_term_text_literal(
+				ctx->terms, node->as.text_literal.text_symbol_id, p_ret
+			);
+		case PROTOTYPE_AST_VAR: {
+			uint32_t binding_id;
+			if (lookup_graph_binder(
+					ctx, node->as.var.ast_binder_id, &binding_id
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_var(ctx->terms, binding_id, p_ret);
+		}
+		case PROTOTYPE_AST_NAME: {
+			struct prototype_ast_term_assignment_def* def;
+			if (resolve_unique_assignment_if_present(
+					ctx, node->as.name.symbol_id, &def
+				) != 0) {
+				return -1;
+			}
+			return compile_def(ctx, def, p_ret);
+		}
+		case PROTOTYPE_AST_NAME_IN_NAMESPACE: {
+			uint32_t owner;
+			if (compile_type_declaration_term_by_symbol(
+					ctx, node->as.name_in_namespace.namespace_symbol_id, &owner
+				) != 0) {
+				return -1;
+			}
+			return resolve_namespace_member(
+				ctx, owner, node->as.name_in_namespace.symbol_id, p_ret, NULL
+			);
+		}
+		case PROTOTYPE_AST_APP: {
+			uint32_t function;
+			uint32_t argument;
+			if (compile_ast_result_evidence_endpoint(
+					ctx, node->as.app.function, &function
+				) != 0 || compile_ast_result_evidence_endpoint(
+					ctx, node->as.app.argument, &argument
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_app(ctx->terms, function, argument, p_ret);
+		}
+		case PROTOTYPE_AST_QUOTE: {
+			uint32_t computation;
+			if (compile_ast_result_evidence_endpoint(
+					ctx, node->as.unary.term, &computation
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_thunk(ctx->terms, computation, p_ret);
+		}
+		default:
+			/* Result evidence may construct ordinary APP and THUNK Core graphs from
+			 * already synthesized names and binders. It must not lower an effectful
+			 * source expression or create a post-fixed-point TypedOccurrence. */
+			return -1;
+	}
 }
 
 static int compile_ast_type_expr_term_with_self(
@@ -4403,6 +4505,31 @@ static int compile_ast_type_expr_term_with_self(
 				return -1;
 			}
 			return prototype_term_thunk_type(ctx->terms, computation, p_ret);
+		}
+		case PROTOTYPE_AST_TYPE_EXPR_RETURNS: {
+			uint32_t computation;
+			uint32_t value;
+			if (compile_ast_result_evidence_endpoint(
+					ctx, expr.as.returns.computation, &computation
+				) != 0 || compile_ast_result_evidence_endpoint(
+					ctx, expr.as.returns.value, &value
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_returns_type(
+				ctx->terms, computation, value, p_ret
+			);
+		}
+		case PROTOTYPE_AST_TYPE_EXPR_TERMINATES: {
+			uint32_t computation;
+			if (compile_ast_result_evidence_endpoint(
+					ctx, expr.as.terminates.computation, &computation
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_terminates_type(
+				ctx->terms, computation, p_ret
+			);
 		}
 		default:
 			return -1;
@@ -4651,10 +4778,10 @@ static int compile_shared_app(
 	uint32_t args[16];
 	uint32_t arg_count;
 	if (prototype_term_type_instance_info(ctx->terms, function, &type_id, args, &arg_count) == 0) {
-		if (type_id >= ctx->type_declarations->type_count) {
+		if (type_id >= ctx->type_declarations->semantic_schema.type_count) {
 			return -1;
 		}
-		const struct prototype_type_declaration* type = &ctx->type_declarations->type_declarations[type_id];
+		const struct prototype_type_declaration* type = &ctx->type_declarations->semantic_schema.type_declarations[type_id];
 		if (arg_count < type->parameter_count + type->index_count) {
 			return prototype_term_type_instance_extend(
 				ctx->terms,
@@ -4971,10 +5098,10 @@ static int compile_type_declaration_term_by_symbol(
 				return -1;
 			}
 			if (
-				type_id >= ctx->type_declarations->type_count) {
+				type_id >= ctx->type_declarations->semantic_schema.type_count) {
 				return -1;
 			}
-			type = &ctx->type_declarations->type_declarations[type_id];
+			type = &ctx->type_declarations->semantic_schema.type_declarations[type_id];
 			break;
 		}
 	if (!type) {

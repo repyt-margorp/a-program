@@ -2,7 +2,7 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
-MANIFEST=src/prototype/tests/audit/github_issues_3_10.tsv
+MANIFEST=src/prototype/tests/audit/github_issues.tsv
 TAB=$(printf '\t')
 
 cd "$ROOT_DIR"
@@ -23,7 +23,7 @@ while IFS="$TAB" read -r issue boundary_id runner evidence marker summary extra;
 		exit 1
 	fi
 	case "$issue" in
-		3|4|5|6|7|8|9|10) ;;
+		3|4|5|6|7|8|9|10|11|13|14|16|17|18) ;;
 		*)
 			echo "unexpected issue in boundary manifest: $issue" >&2
 			exit 1
@@ -55,6 +55,23 @@ while IFS="$TAB" read -r issue boundary_id runner evidence marker summary extra;
 		echo "boundary marker $marker is absent from $runner" >&2
 		exit 1
 	fi
+	evidence_name=$(basename "$evidence")
+	if [ "$runner" != "$evidence" ] &&
+		! grep -Fq "$evidence" "$runner" &&
+		! grep -Fq "$evidence_name" "$runner"; then
+		transitive_reference=0
+		for source in $(grep -Eo 'src/prototype/tests/checks/[A-Za-z0-9_./-]+\.c' \
+			"$runner" | sort -u); do
+			if [ -f "$source" ] && grep -Fq "$evidence_name" "$source"; then
+				transitive_reference=1
+				break
+			fi
+		done
+		if [ "$transitive_reference" -ne 1 ]; then
+			echo "boundary runner does not reference its evidence: $boundary_id" >&2
+			exit 1
+		fi
+	fi
 done
 
 awk -F '\t' '
@@ -67,11 +84,14 @@ awk -F '\t' '
 		issue_count[$1]++
 	}
 	END {
-		for (issue = 3; issue <= 10; ++issue) {
-			if (!issue_count[issue]) {
-				printf "issue %d has no permanent boundary test\n", issue > "/dev/stderr"
-				exit 1
-			}
+		required[3] = required[4] = required[5] = required[6] = 1
+		required[7] = required[8] = required[9] = required[10] = 1
+		required[11] = required[13] = required[14] = 1
+		required[16] = required[17] = required[18] = 1
+		for (issue in required) {
+			if (issue_count[issue]) continue
+			printf "issue %d has no permanent boundary test\n", issue > "/dev/stderr"
+			exit 1
 		}
 	}
 ' "$MANIFEST"
