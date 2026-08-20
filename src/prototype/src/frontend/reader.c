@@ -1486,18 +1486,17 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			}
 			if (name && strcmp(name, "terminates") == 0) {
 				uint32_t computation;
-				uint32_t returns_witness;
 				if (read_token(parser) != 0 || expect(
 						parser, TOKEN_LPAREN,
 						"expected '(' before suspended computation"
 					) != 0 || parse_term(parser, &computation) != 0 || expect(
 						parser, TOKEN_RPAREN,
 						"expected ')' after suspended computation"
-					) != 0 || parse_term(parser, &returns_witness) != 0) {
+					) != 0) {
 					return -1;
 				}
 				return prototype_ast_terminates_witness(
-					parser->program->asts, computation, returns_witness, span, p_ret
+					parser->program->asts, computation, span, p_ret
 				);
 			}
 			if (name && strcmp(name, "Nat") == 0) {

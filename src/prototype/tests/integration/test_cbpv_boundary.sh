@@ -23,9 +23,9 @@ EOF
 grep -q 'occurrence#[0-9][0-9]* return ' "$tmp_dir/output"
 grep -q 'occurrence#[0-9][0-9]* thunk ' "$tmp_dir/output"
 grep -q 'occurrence#[0-9][0-9]* force ' "$tmp_dir/output"
-grep -q 'has-type RETURN(INT_LITERAL(1)) COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int)) \[return-intro proof#' "$tmp_dir/output"
-grep -q 'has-type THUNK(RETURN(INT_LITERAL(1))) Thunk(COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int))) \[thunk-intro proof#' "$tmp_dir/output"
-grep -q 'has-type FORCE(THUNK(RETURN(INT_LITERAL(1)))) COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int)) \[force-elim proof#' "$tmp_dir/output"
+grep -q 'has-type RETURN(INT_LITERAL(1)) COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int), TOTAL) \[return-intro proof#' "$tmp_dir/output"
+grep -q 'has-type THUNK(RETURN(INT_LITERAL(1))) Thunk(COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int), TOTAL)) \[thunk-intro proof#' "$tmp_dir/output"
+grep -q 'has-type FORCE(THUNK(RETURN(INT_LITERAL(1)))) COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int), TOTAL) \[force-elim proof#' "$tmp_dir/output"
 ./read_file.out --write-artifact "$tmp_dir/boundary.apo" \
 	"$tmp_dir/boundary.p" >"$tmp_dir/boundary-write.out"
 if grep -Eq '^(effect_constraints|effect_constraint) ' "$tmp_dir/boundary.apo"; then

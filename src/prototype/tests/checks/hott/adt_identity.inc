@@ -1727,9 +1727,9 @@
 	if (prototype_term_effect_row_empty(&term_db, &empty_row
 		) != 0 || prototype_term_effect_row_operation(
 			&term_db, PROTOTYPE_EFFECT_OPERATION_PRINT, empty_row, &print_row
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&term_db, empty_row, text, &pure_comp
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&term_db, print_row, text, &effect_comp
 		) != 0 || prototype_term_return(
 			&term_db, left_text, &returned_left

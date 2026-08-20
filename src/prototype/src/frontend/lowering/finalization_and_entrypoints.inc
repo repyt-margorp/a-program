@@ -980,7 +980,7 @@ static int operation_refine_classifier_from_expected(
 			uint32_t empty_row;
 			if (prototype_term_effect_row_empty(
 					ctx->terms, &empty_row
-				) != 0 || prototype_term_computation_type(
+				) != 0 || prototype_term_total_computation_type(
 					ctx->terms, empty_row, function_expected,
 					&function_expected
 				) != 0) {
@@ -2325,64 +2325,47 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 		++occurrence_id) {
 		uint32_t computation_occurrence =
 			ctx->termination_evidence_computation_occurrences[occurrence_id];
-		uint32_t returns_occurrence =
-			ctx->termination_evidence_returns_occurrences[occurrence_id];
-		if (computation_occurrence == PROTOTYPE_INVALID_ID &&
-			returns_occurrence == PROTOTYPE_INVALID_ID) {
+		if (computation_occurrence == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
 		if (computation_occurrence >=
-				ctx->metadata->typed_occurrences.occurrence_count ||
-			returns_occurrence >= ctx->metadata->typed_occurrences.occurrence_count) {
+				ctx->metadata->typed_occurrences.occurrence_count) {
 			return -1;
 		}
 		const struct prototype_typed_occurrence* occurrence =
 			&ctx->metadata->typed_occurrences.occurrences[occurrence_id];
 		const struct prototype_typed_occurrence* computation =
 			&ctx->metadata->typed_occurrences.occurrences[computation_occurrence];
-		const struct prototype_typed_occurrence* returns =
-			&ctx->metadata->typed_occurrences.occurrences[returns_occurrence];
 		uint32_t suspended = PROTOTYPE_INVALID_ID;
 		uint32_t witness_computation = PROTOTYPE_INVALID_ID;
-		uint32_t returns_computation = PROTOTYPE_INVALID_ID;
-		uint32_t returns_value = PROTOTYPE_INVALID_ID;
 		if (occurrence->classifier == PROTOTYPE_INVALID_ID ||
 			computation->classifier == PROTOTYPE_INVALID_ID ||
-			returns->classifier == PROTOTYPE_INVALID_ID ||
 			occurrence->context_id != computation->context_id ||
-			occurrence->context_id != returns->context_id ||
 			prototype_term_terminates_type_info(
 				ctx->terms, occurrence->classifier, &suspended
 			) != 0 || prototype_term_terminates_witness_info(
 				ctx->terms, occurrence->core_term, &witness_computation
-			) != 0 || prototype_term_returns_type_info(
-				ctx->terms, returns->classifier, &returns_computation, &returns_value
 			) != 0 || suspended != witness_computation ||
-			computation->core_term != suspended || returns_computation != suspended) {
+			computation->core_term != suspended) {
 			return -1;
 		}
-		(void)returns_value;
 		uint32_t computation_claim;
-		uint32_t returns_claim;
 		uint32_t terminates_type_claim;
 		uint32_t terminates_claim;
 		uint32_t universe;
 		if (accepted_claim_for_exact_proposition(
 				ctx->judgement, computation->context_id, computation->core_term,
 				computation->classifier, &computation_claim
-			) != 0 || accepted_claim_for_exact_proposition(
-				ctx->judgement, returns->context_id, returns->core_term,
-				returns->classifier, &returns_claim
 			) != 0 || prototype_term_universe_var(
 				ctx->terms, ctx->judgement->next_universe_var++, &universe
 			) != 0 || prototype_judgement_add_terminates_type_formation(
 				ctx->judgement, ctx->terms, ctx->type_declarations,
 				occurrence->context_id, occurrence->classifier, universe,
 				computation_claim, &terminates_type_claim
-			) != 0 || prototype_judgement_add_terminates_from_returns(
+			) != 0 || prototype_judgement_add_terminates_total_computation(
 				ctx->judgement, ctx->terms, occurrence->context_id, occurrence_id,
 				occurrence->core_term, occurrence->classifier,
-				terminates_type_claim, returns_claim, &terminates_claim
+				terminates_type_claim, computation_claim, &terminates_claim
 			) != 0) {
 			return -1;
 		}
@@ -2418,7 +2401,6 @@ static int compile_pending_with_workspace(
 		ctx.result_evidence_computation_occurrences[i] = PROTOTYPE_INVALID_ID;
 		ctx.result_evidence_value_occurrences[i] = PROTOTYPE_INVALID_ID;
 		ctx.termination_evidence_computation_occurrences[i] = PROTOTYPE_INVALID_ID;
-		ctx.termination_evidence_returns_occurrences[i] = PROTOTYPE_INVALID_ID;
 	}
 	ctx.intrinsic_environment = intrinsic_environment;
 	ctx.asts = asts;

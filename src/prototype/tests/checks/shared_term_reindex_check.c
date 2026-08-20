@@ -262,9 +262,9 @@ int main(void) {
 			prototype_context_get(&contexts, outer_context)->binding_id,
 			outer_variable,
 			&shadow_lambda
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&terms, empty_row, outer_variable, &computation_type
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&terms, empty_row, literal_seven, &expected_computation_type
 		) != 0 || prototype_term_thunk_type(
 			&terms, computation_type, &thunk_type

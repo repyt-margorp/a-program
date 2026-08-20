@@ -99,6 +99,7 @@ enum prototype_term_computation_kind {
 struct prototype_term_classifier_view {
 	int category;
 	int computation_kind;
+	int totality;
 	uint32_t effect_row;
 	uint32_t result;
 };
@@ -171,6 +172,16 @@ enum prototype_effect_row_purity {
 	PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL = 2,
 	PROTOTYPE_EFFECT_ROW_PURITY_UNRESOLVED = 3
 };
+
+/* Termination is independent of the effect row. UNKNOWN is a solver outcome
+ * and is never stored in a COMPUTATION_TYPE Term. */
+enum prototype_computation_totality {
+	PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN = 0,
+	PROTOTYPE_COMPUTATION_TOTALITY_TOTAL = 1,
+	PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE = 2
+};
+
+int prototype_computation_totality_join(int left, int right);
 
 #define PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY 2
 #define PROTOTYPE_EFFECT_OPERATION_MAX_ARITY 1
@@ -452,8 +463,7 @@ enum prototype_term_child_role {
 	PROTOTYPE_TERM_CHILD_DIMENSION_ACTION_SOURCE = 29,
 	PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_COMPUTATION = 30,
 	PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_VALUE = 31,
-	PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_COMPUTATION = 32,
-	PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_RETURNS = 33
+	PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_COMPUTATION = 32
 };
 
 struct prototype_term_child {
@@ -549,6 +559,7 @@ struct prototype_term {
 		struct {
 			uint32_t label;
 			uint32_t result;
+			int totality;
 		} computation_type;
 		struct {
 			uint32_t computation;
@@ -1046,7 +1057,18 @@ int prototype_term_computation_type(
 	struct prototype_term_db* db,
 	uint32_t label,
 	uint32_t result,
+	int totality,
 	uint32_t* p_ret
+);
+int prototype_term_total_computation_type(
+	struct prototype_term_db* db,
+	uint32_t label,
+	uint32_t result,
+	uint32_t* p_ret
+);
+int prototype_term_computation_type_is_pure_total(
+	const struct prototype_term_db* db,
+	uint32_t computation_type
 );
 int prototype_term_thunk_type(
 	struct prototype_term_db* db,

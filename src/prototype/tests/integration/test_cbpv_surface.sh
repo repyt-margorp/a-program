@@ -230,7 +230,7 @@ EOF
 grep -q '^term id := LAMBDA(.*RETURN(VAR' "$tmp_dir/raw-function.out"
 grep -q '^term main := APP(LAMBDA(.*INT_LITERAL(1))' "$tmp_dir/raw-function.out"
 ! grep -q '^term id := THUNK(' "$tmp_dir/raw-function.out"
-grep -q 'has-type LAMBDA(.*PI(PRIMITIVE(Int).*COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int))' \
+grep -q 'has-type LAMBDA(.*PI(PRIMITIVE(Int).*COMPUTATION_TYPE(EFFECT_ROW_EMPTY, PRIMITIVE(Int), TOTAL)' \
 	"$tmp_dir/raw-function.out"
 
 cat >"$tmp_dir/higher-order-function.p" <<'EOF'
@@ -273,7 +273,7 @@ EOF
 
 ./read_file.out "$tmp_dir/effect-function.p" >"$tmp_dir/effect-function.out"
 grep -q '^term main := LAMBDA(' "$tmp_dir/effect-function.out"
-grep -q 'has-type LAMBDA(.*COMPUTATION_TYPE(EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY), PRIMITIVE(Text))' \
+grep -q 'has-type LAMBDA(.*COMPUTATION_TYPE(EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY), PRIMITIVE(Text), TOTAL)' \
 	"$tmp_dir/effect-function.out"
 
 grep -q '^term id := LAMBDA(' "$tmp_dir/higher-order-function.out"
@@ -421,7 +421,7 @@ EOF
 
 ./read_file.out "$tmp_dir/effect-forwarding.p" >"$tmp_dir/effect-forwarding.out"
 grep -q 'has-type LAMBDA(.*EFFECT_ROW_FORALL' "$tmp_dir/effect-forwarding.out"
-grep -q 'has-type APP(LAMBDA(.*COMPUTATION_TYPE(EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY), PRIMITIVE(Text))' \
+grep -q 'has-type APP(LAMBDA(.*COMPUTATION_TYPE(EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY), PRIMITIVE(Text), TOTAL)' \
 	"$tmp_dir/effect-forwarding.out"
 ./read_file.out --write-artifact "$tmp_dir/effect-forwarding.apo" \
 	"$tmp_dir/effect-forwarding.p" >"$tmp_dir/effect-forwarding-write.out"
@@ -442,7 +442,7 @@ EOF
 grep -q 'has-type LAMBDA(.*EFFECT_ROW_FORALL' "$tmp_dir/effect-union-forwarding.out"
 grep -q 'EFFECT_ROW_UNION(EFFECT_ROW_VAR.*EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY)' \
 	"$tmp_dir/effect-union-forwarding.out"
-grep -q 'has-type APP(LAMBDA(.*COMPUTATION_TYPE(EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY), PRIMITIVE(Text))' \
+grep -q 'has-type APP(LAMBDA(.*COMPUTATION_TYPE(EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY), PRIMITIVE(Text), TOTAL)' \
 	"$tmp_dir/effect-union-forwarding.out"
 ./read_file.out --write-artifact "$tmp_dir/effect-union-forwarding.apo" \
 	"$tmp_dir/effect-union-forwarding.p" >"$tmp_dir/effect-union-forwarding-write.out"
@@ -863,7 +863,7 @@ grep -q 'EFFECT_OPERATION(scope_text)' "$tmp_dir/higher-order-operation.out"
 grep -q 'THUNK(OPERATION_REQUEST(EFFECT_OPERATION(print)' \
 	"$tmp_dir/higher-order-operation.out"
 grep -q '\[operation-request-intro proof#' "$tmp_dir/higher-order-operation.out"
-grep -q 'COMPUTATION_TYPE(EFFECT_ROW_OPERATION(2, EFFECT_ROW_OPERATION(1, EFFECT_ROW_EMPTY)), PRIMITIVE(Text)) \[operation-request-intro proof#' \
+grep -q 'COMPUTATION_TYPE(EFFECT_ROW_OPERATION(2, EFFECT_ROW_OPERATION(1, EFFECT_ROW_EMPTY)), PRIMITIVE(Text), TOTAL) \[operation-request-intro proof#' \
 	"$tmp_dir/higher-order-operation.out"
 ./read_file.out --policy strict --write-artifact "$tmp_dir/higher-order-operation.apo" \
 	src/prototype/tests/fixtures/effects/higher_order_operation_check.p \
@@ -971,7 +971,7 @@ fi
 # have. The fold carrier is their join, not the return clause classifier alone.
 ./read_file.out --policy strict src/prototype/tests/fixtures/effects/effect_weaken_handler_check.p \
 	>"$tmp_dir/effect-weaken-handler.out"
-grep -q 'has-type COMPUTATION_FOLD(.*COMPUTATION_TYPE(EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY), PRIMITIVE(Text)) \[computation-fold-elim proof#' \
+grep -q 'has-type COMPUTATION_FOLD(.*COMPUTATION_TYPE(EFFECT_ROW_OPERATION([0-9][0-9]*, EFFECT_ROW_EMPTY), PRIMITIVE(Text), TOTAL) \[computation-fold-elim proof#' \
 	"$tmp_dir/effect-weaken-handler.out"
 {
 	cat src/prototype/tests/fixtures/effects/effect_weaken_handler_check.p

@@ -2626,13 +2626,28 @@ int prototype_term_effect_row_operation(
 	return add_term(db, term, p_ret);
 }
 
+int prototype_computation_totality_join(int left, int right) {
+	if (left == PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE ||
+		right == PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE) {
+		return PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE;
+	}
+	if (left == PROTOTYPE_COMPUTATION_TOTALITY_TOTAL &&
+		right == PROTOTYPE_COMPUTATION_TOTALITY_TOTAL) {
+		return PROTOTYPE_COMPUTATION_TOTALITY_TOTAL;
+	}
+	return PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN;
+}
+
 int prototype_term_computation_type(
 	struct prototype_term_db* db,
 	uint32_t label,
 	uint32_t result,
+	int totality,
 	uint32_t* p_ret
 ) {
-	if (!db || !p_ret || label >= db->term_count || result >= db->term_count) {
+	if (!db || !p_ret || label >= db->term_count || result >= db->term_count ||
+		(totality != PROTOTYPE_COMPUTATION_TOTALITY_TOTAL &&
+		 totality != PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE)) {
 		return -1;
 	}
 	struct prototype_term term;
@@ -2640,7 +2655,39 @@ int prototype_term_computation_type(
 	term.tag = PROTOTYPE_TERM_COMPUTATION_TYPE;
 	term.as.computation_type.label = label;
 	term.as.computation_type.result = result;
+	term.as.computation_type.totality = totality;
 	return add_term(db, term, p_ret);
+}
+
+int prototype_term_total_computation_type(
+	struct prototype_term_db* db,
+	uint32_t label,
+	uint32_t result,
+	uint32_t* p_ret
+) {
+	return prototype_term_computation_type(
+		db, label, result, PROTOTYPE_COMPUTATION_TOTALITY_TOTAL, p_ret
+	);
+}
+
+int prototype_term_computation_type_is_pure_total(
+	const struct prototype_term_db* db,
+	uint32_t computation_type
+) {
+	if (!db || computation_type >= db->term_count ||
+		db->terms[computation_type].tag != PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		return -1;
+	}
+	const struct prototype_term* type = &db->terms[computation_type];
+	int purity = prototype_term_effect_row_purity(
+		db, type->as.computation_type.label
+	);
+	if (purity == PROTOTYPE_EFFECT_ROW_PURITY_INVALID) {
+		return -1;
+	}
+	return purity == PROTOTYPE_EFFECT_ROW_PURITY_PURE &&
+		type->as.computation_type.totality ==
+			PROTOTYPE_COMPUTATION_TOTALITY_TOTAL;
 }
 
 int prototype_term_thunk_type(
@@ -2857,7 +2904,7 @@ int prototype_term_effect_operation(
 		) != 0 || prototype_term_effect_row_operation(
 			db, operation_id, empty_effects, &result_effects
 		) != 0 ||
-		prototype_term_computation_type(db, result_effects, text, &result) != 0) {
+		prototype_term_total_computation_type(db, result_effects, text, &result) != 0) {
 		return -1;
 	}
 	switch (declaration->classifier_schema) {
@@ -2873,7 +2920,7 @@ int prototype_term_effect_operation(
 			uint32_t computation;
 			if (row_binder == PROTOTYPE_INVALID_ID ||
 				prototype_term_effect_row_var(db, row_binder, &row) != 0 ||
-				prototype_term_computation_type(db, row, text, &computation) != 0 ||
+				prototype_term_total_computation_type(db, row, text, &computation) != 0 ||
 				prototype_term_thunk_type(db, computation, &argument) != 0 ||
 				prototype_term_pi(db, argument, result, &classifier) != 0 ||
 				prototype_term_effect_row_forall(db, row_binder, classifier, &classifier) != 0) {

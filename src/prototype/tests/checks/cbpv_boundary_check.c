@@ -174,6 +174,9 @@ int main(void) {
 	uint32_t row_computation;
 	uint32_t pure_computation;
 	uint32_t terminal_computation;
+	uint32_t partial_pure_computation;
+	uint32_t partial_symbolic_computation;
+	uint32_t substituted_partial_computation;
 	uint32_t symbolic_computation;
 	uint32_t solved_symbolic_computation;
 	uint32_t scoped_symbolic_row;
@@ -232,17 +235,53 @@ int main(void) {
 			&type_db,
 			substituted_scoped_row,
 			scoped_terminal_row
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_computation_type(
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_total_computation_type(
 			&term_db, symbolic_effect_union, value, &row_computation
 		) != 0 || prototype_term_classifier_view(&term_db, row_computation, &view) != 0 ||
 		view.effect_row != symbolic_effect_union ||
-		prototype_term_computation_type(
+		prototype_term_total_computation_type(
 			&term_db, empty_effect_row, value, &pure_computation
 		) != 0 ||
-		prototype_term_computation_type(
+		prototype_term_total_computation_type(
 			&term_db, terminal_effect_row, value, &terminal_computation
 		) != 0 ||
 		prototype_term_computation_type(
+			&term_db, empty_effect_row, value,
+			PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE,
+			&partial_pure_computation
+		) != 0 ||
+		prototype_term_computation_type(
+			&term_db, symbolic_effect_row, value,
+			PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE,
+			&partial_symbolic_computation
+		) != 0 || prototype_term_computation_type(
+			&term_db, empty_effect_row, value,
+			PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN,
+			&substituted_partial_computation
+		) == 0 || prototype_term_computation_type_is_pure_total(
+			&term_db, pure_computation
+		) != 1 || prototype_term_computation_type_is_pure_total(
+			&term_db, terminal_computation
+		) != 0 || prototype_term_computation_type_is_pure_total(
+			&term_db, partial_pure_computation
+		) != 0 || prototype_computation_totality_join(
+			PROTOTYPE_COMPUTATION_TOTALITY_TOTAL,
+			PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE
+		) != PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE ||
+		prototype_judgement_classifier_conversion(
+			&term_db, &type_db, pure_computation, partial_pure_computation
+		).status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL ||
+		prototype_term_graph_substitute_bound_var(
+			&term_db, &type_db, partial_symbolic_computation, 99,
+			terminal_effect_row, &substituted_partial_computation
+		) != 0 || prototype_term_classifier_view(
+			&term_db, substituted_partial_computation, &view
+		) != 0 || view.totality != PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE ||
+		prototype_judgement_classifier_conversion(
+			&term_db, &type_db, substituted_partial_computation,
+			partial_pure_computation
+		).status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL ||
+		prototype_term_total_computation_type(
 			&term_db, symbolic_effect_row, value, &symbolic_computation
 		) != 0 ||
 		prototype_judgement_classifier_compatible(
@@ -280,7 +319,7 @@ int main(void) {
 	uint32_t solved_function_classifier;
 	if (prototype_term_make_host_type(
 			&term_db, PROTOTYPE_HOST_TYPE_INT64, &int_type
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&term_db, empty_effect_row, int_type, &function_result
 		) != 0 ||
 		(function_binder = prototype_term_new_binding(&term_db)) ==
@@ -290,10 +329,10 @@ int main(void) {
 			&term_db, int_type, function_family, &raw_function
 		) != 0 || prototype_term_thunk_type(
 			&term_db, raw_function, &suspended_function_type
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&term_db, empty_effect_row, suspended_function_type,
 			&pure_function_quotation
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&term_db, terminal_effect_row, suspended_function_type,
 			&effectful_function_quotation
 		) != 0 || prototype_judgement_solve_expected_effect_rows(
@@ -334,12 +373,12 @@ int main(void) {
 		) != 0 || prototype_judgement_classifier_view(
 			&term_db, &type_db, NULL, returned_classifier, &view
 		) != 0 || view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		prototype_term_computation_type(
+		prototype_term_total_computation_type(
 			&term_db,
 			terminal_effect_row,
 			view.result,
 			&widened_returned_classifier
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&term_db,
 			terminal_effect_row,
 			value,

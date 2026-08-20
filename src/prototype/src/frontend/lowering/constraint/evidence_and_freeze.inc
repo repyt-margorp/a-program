@@ -2248,9 +2248,6 @@ static int operation_solver_reify_core_proof(
 			prototype_judgement_delta_set_context(
 				&ctx->judgement_delta, operation->context_id
 			);
-			prototype_judgement_delta_set_occurrence(
-				&ctx->judgement_delta, operation_id
-			);
 			uint32_t derived_classifier;
 			if (prototype_judgement_cbpv_boundary_classifier(
 					ctx->terms,
@@ -2258,7 +2255,16 @@ static int operation_solver_reify_core_proof(
 					core_term,
 					child_classifier,
 					&derived_classifier
-				) != 0 || prototype_judgement_delta_record_cbpv_boundary(
+				) != 0) {
+				return -1;
+			}
+			int classifier_is_derived = derived_classifier != classifier;
+			uint32_t boundary_operation = classifier_is_derived ?
+				PROTOTYPE_INVALID_ID : operation_id;
+			prototype_judgement_delta_set_occurrence(
+				&ctx->judgement_delta, boundary_operation
+			);
+			if (prototype_judgement_delta_record_cbpv_boundary(
 					&ctx->judgement_delta,
 					ctx->terms,
 					ctx->type_declarations,
@@ -2268,16 +2274,22 @@ static int operation_solver_reify_core_proof(
 				) != 0) {
 				return -1;
 			}
-			if (derived_classifier != classifier) {
+			if (classifier_is_derived) {
 				struct prototype_judgement_selected_evidence boundary_evidence;
 				if (operation_solver_delta_select_evidence(
 						ctx,
-						operation_id,
+						PROTOTYPE_INVALID_ID,
 						operation->context_id,
 						core_term,
 						derived_classifier,
 						&boundary_evidence
-					) != 0 ||
+					) != 0) {
+					return -1;
+				}
+				prototype_judgement_delta_set_occurrence(
+					&ctx->judgement_delta, operation_id
+				);
+				if (
 					prototype_judgement_delta_record_expected_type_exposure(
 						&ctx->judgement_delta,
 						ctx->terms,

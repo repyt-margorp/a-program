@@ -638,6 +638,12 @@ static int operation_solver_propagate_clause_computation_fold_input(
 		return 0;
 	}
 	uint32_t fold_effect_row = return_body_view.effect_row;
+	int fold_totality = prototype_computation_totality_join(
+		input_view.totality, return_body_view.totality
+	);
+	if (fold_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+		return 0;
+	}
 	int clause_bodies_complete = 1;
 	uint32_t handled_row;
 	if (prototype_term_effect_row_empty(ctx->terms, &handled_row
@@ -718,6 +724,13 @@ static int operation_solver_propagate_clause_computation_fold_input(
 			) != 0) {
 			return -1;
 		}
+		fold_totality = prototype_computation_totality_join(
+			fold_totality, clause_body_view.totality
+		);
+		if (fold_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+			clause_bodies_complete = 0;
+			continue;
+		}
 		fold_effect_row = joined_row;
 	}
 	uint32_t residual_row;
@@ -739,6 +752,7 @@ static int operation_solver_propagate_clause_computation_fold_input(
 			ctx->terms,
 			fold_effect_row,
 			return_body_view.result,
+			fold_totality,
 			&fold_output_classifier
 		) != 0) {
 		return -1;

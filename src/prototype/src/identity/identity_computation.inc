@@ -962,7 +962,7 @@ static int hott_infer_action_endpoint_claim_depth(
 		uint32_t classifier;
 		if (!value || prototype_term_effect_row_empty(
 				terms, &empty_effects
-			) != 0 || prototype_term_computation_type(
+			) != 0 || prototype_term_total_computation_type(
 				terms, empty_effects, value->classifier, &classifier
 			) != 0) {
 			return -1;
@@ -1275,7 +1275,7 @@ static int hott_add_exact_pi_formation(
 			&binder_claim
 		)) != 0 || (exact_stage = 2, prototype_term_effect_row_empty(
 			terms, &empty_effects
-		)) != 0 || prototype_term_computation_type(
+		)) != 0 || prototype_term_total_computation_type(
 			terms, empty_effects, universe, &returned_classifier
 		) != 0 || prototype_term_pure_family(
 			terms, binder, returned_classifier, &family_classifier_family
@@ -2399,7 +2399,7 @@ static int hott_build_nondependent_pi_identity_type(
 		if (is_computation_function) {
 			uint32_t empty_effects;
 			if (prototype_term_effect_row_empty(terms, &empty_effects
-				) != 0 || prototype_term_computation_type(
+				) != 0 || prototype_term_total_computation_type(
 					terms, empty_effects, classifier, &family_body
 				) != 0) {
 				return -1;

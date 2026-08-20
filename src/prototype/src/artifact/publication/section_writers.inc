@@ -417,7 +417,7 @@ static int write_artifact_graph_section(
 			 derivation->proof_kind !=
 				PROTOTYPE_JUDGEMENT_PROOF_SUBSTITUTION_REINDEX) ||
 			derivation->proof_kind >
-				PROTOTYPE_JUDGEMENT_PROOF_RETURNS_SEQUENCE_BINDING) {
+				PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TOTAL_COMPUTATION) {
 			return -1;
 		}
 		fprintf(

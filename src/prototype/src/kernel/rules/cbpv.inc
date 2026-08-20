@@ -44,7 +44,7 @@ static int host_signature_classifier(
 	}
 	uint32_t effect_row;
 	if (prototype_term_effect_row_empty(terms, &effect_row) != 0 ||
-		prototype_term_computation_type(terms, effect_row, current, &current) != 0) {
+		prototype_term_total_computation_type(terms, effect_row, current, &current) != 0) {
 		return -1;
 	}
 	for (uint32_t i = arity; i > 0; --i) {
@@ -102,7 +102,7 @@ int prototype_judgement_pure_primitive_classifier(
 			uint32_t effects;
 			uint32_t result;
 			if (prototype_term_effect_row_empty(terms, &effects) != 0 ||
-				prototype_term_computation_type(terms, effects, nat, &result) != 0) {
+				prototype_term_total_computation_type(terms, effects, nat, &result) != 0) {
 				return -1;
 			}
 			return prototype_term_pi(terms, text, result, p_ret);
@@ -119,7 +119,7 @@ int prototype_judgement_pure_primitive_classifier(
 			uint32_t effects;
 			uint32_t result;
 			if (prototype_term_effect_row_empty(terms, &effects) != 0 ||
-				prototype_term_computation_type(terms, effects, text, &result) != 0) {
+				prototype_term_total_computation_type(terms, effects, text, &result) != 0) {
 				return -1;
 			}
 			return prototype_term_pi(terms, nat, result, p_ret);
@@ -295,7 +295,7 @@ int prototype_judgement_cbpv_boundary_classifier(
 	if (term->tag == PROTOTYPE_TERM_RETURN) {
 		uint32_t empty_effects;
 		if (prototype_term_effect_row_empty(terms, &empty_effects) != 0 ||
-			prototype_term_computation_type(terms, empty_effects, child_classifier, &classifier) != 0) {
+			prototype_term_total_computation_type(terms, empty_effects, child_classifier, &classifier) != 0) {
 			return -1;
 		}
 	} else if (term->tag == PROTOTYPE_TERM_THUNK) {
@@ -654,6 +654,7 @@ int prototype_judgement_computation_fold_result_classifier(
 	uint32_t normalized_codomain;
 	uint32_t input_value_classifier;
 	uint32_t input_effect_row;
+	int input_totality = PROTOTYPE_COMPUTATION_TOTALITY_TOTAL;
 	if (!terms || !type_declarations || !p_ret ||
 		input_computation >= terms->term_count || input_classifier >= terms->term_count ||
 		continuation_classifier >= terms->term_count) {
@@ -683,6 +684,7 @@ int prototype_judgement_computation_fold_result_classifier(
 			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
 			input_value_classifier = input_view.result;
 			input_effect_row = input_view.effect_row;
+			input_totality = input_view.totality;
 		} else {
 			uint32_t callable_classifier;
 			if (prototype_judgement_expose_callable_classifier(
@@ -742,6 +744,9 @@ int prototype_judgement_computation_fold_result_classifier(
 		)) {
 		applied_codomain = normalized_dependency_codomain;
 	} else {
+		if (input_totality != PROTOTYPE_COMPUTATION_TOTALITY_TOTAL) {
+			return 1;
+		}
 		if (prototype_term_normalize_with_profile(
 				terms,
 				type_declarations,
@@ -822,10 +827,16 @@ int prototype_judgement_computation_fold_result_classifier(
 		return -1;
 	}
 	uint32_t effect_row;
+	int totality = prototype_computation_totality_join(
+		input_totality, continuation_view.totality
+	);
+	if (totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+		return 1;
+	}
 	if (prototype_term_effect_row_union(
 			terms, input_effect_row, continuation_view.effect_row, &effect_row
 		) != 0 || prototype_term_computation_type(
-			terms, effect_row, continuation_view.result, p_ret
+			terms, effect_row, continuation_view.result, totality, p_ret
 		) != 0) {
 		return -1;
 	}
@@ -1360,10 +1371,17 @@ static int solve_operation_request_constraint(
 	request_operation_view.effect_row = operation_effect_row;
 	uint32_t effect_row;
 	uint32_t classifier;
+	int totality = prototype_computation_totality_join(
+		request_operation_view.totality, continuation_view.totality
+	);
+	if (totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+		return 1;
+	}
 	if (computation_effect_row_union(
 			terms, &request_operation_view, &continuation_view, &effect_row
 		) != 0 || prototype_term_computation_type(
-			terms, effect_row, continuation_view.result, &classifier
+			terms, effect_row, continuation_view.result,
+			totality, &classifier
 		) != 0) {
 		return -1;
 	}
@@ -1528,7 +1546,8 @@ static int record_computation_lambda_body_effect_weaken(
 	}
 	uint32_t target_body_classifier;
 	if (prototype_term_computation_type(
-			terms, target_effect_row, source_body.result, &target_body_classifier
+			terms, target_effect_row, source_body.result, source_body.totality,
+			&target_body_classifier
 		) != 0) {
 		return -1;
 	}
@@ -1571,7 +1590,8 @@ static int fold_clause_closed_body_row(
 	uint32_t classifier,
 	uint32_t operation_domain,
 	uint32_t carrier_result,
-	uint32_t* p_effect_row
+	uint32_t* p_effect_row,
+	int* p_totality
 ) {
 	uint32_t outer_domain;
 	uint32_t outer_family;
@@ -1584,7 +1604,7 @@ static int fold_clause_closed_body_row(
 	uint32_t instantiated_domain;
 	uint32_t instantiated_body;
 	struct prototype_term_classifier_view body_view;
-	if (!terms || !type_declarations || !p_effect_row ||
+	if (!terms || !type_declarations || !p_effect_row || !p_totality ||
 		pi_parts(terms, classifier, &outer_domain, &outer_family) != 0 ||
 		prototype_term_pure_family_parts(
 			terms, outer_family, &outer_binder, &inner_classifier
@@ -1637,6 +1657,7 @@ static int fold_clause_closed_body_row(
 		return 1;
 	}
 	*p_effect_row = body_view.effect_row;
+	*p_totality = body_view.totality;
 	return 0;
 }
 
@@ -1827,7 +1848,8 @@ static int solve_clause_computation_fold_constraint(
 		.category = PROTOTYPE_TERM_CATEGORY_COMPUTATION,
 		.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING,
 		.effect_row = handled_operations_row,
-		.result = input_view.result
+		.result = input_view.result,
+		.totality = input_view.totality
 	};
 	uint32_t residual_effect_row;
 	int residual_status = computation_fold_residual_row(
@@ -1921,6 +1943,12 @@ static int solve_clause_computation_fold_constraint(
 	}
 	uint32_t carrier_rows[33];
 	uint32_t carrier_row_count = 0;
+	int fold_totality = prototype_computation_totality_join(
+		input_view.totality, output_view.totality
+	);
+	if (fold_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+		return 1;
+	}
 	carrier_rows[carrier_row_count++] = output_view.effect_row;
 	carrier_rows[carrier_row_count++] = residual_effect_row;
 	uint32_t handled_effect_row;
@@ -1937,6 +1965,7 @@ static int solve_clause_computation_fold_constraint(
 			];
 		if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
 			uint32_t clause_row;
+			int clause_totality;
 			uint32_t premise = 3 + 2 * i;
 			if (premise >= constraint->premise_occurrence_count ||
 				constraint->premise_classifiers[premise] == PROTOTYPE_INVALID_ID) {
@@ -1948,12 +1977,19 @@ static int solve_clause_computation_fold_constraint(
 				constraint->premise_classifiers[premise],
 				operation_domains[i],
 				output_view.result,
-				&clause_row
+				&clause_row,
+				&clause_totality
 			);
 			if (row_status < 0) {
 				return -1;
 			}
 			if (row_status == 0) {
+				fold_totality = prototype_computation_totality_join(
+					fold_totality, clause_totality
+				);
+				if (fold_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+					return 1;
+				}
 				uint32_t joined_row;
 				if (prototype_term_effect_row_union(
 						terms, handled_effect_row, clause_row, &joined_row
@@ -1975,16 +2011,24 @@ static int solve_clause_computation_fold_constraint(
 				continue;
 			}
 			uint32_t clause_row;
+			int clause_totality;
 			int row_status = fold_clause_closed_body_row(
 				terms,
 				type_declarations,
 				relation->classifier,
 				operation_domains[i],
 				output_view.result,
-				&clause_row
+				&clause_row,
+				&clause_totality
 			);
 			if (row_status != 0) {
 				continue;
+			}
+			fold_totality = prototype_computation_totality_join(
+				fold_totality, clause_totality
+			);
+			if (fold_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+				return 1;
 			}
 			uint32_t joined_row;
 			if (prototype_term_effect_row_union(
@@ -2002,7 +2046,8 @@ static int solve_clause_computation_fold_constraint(
 	}
 	result->effect_output_row = handled_effect_row;
 	if (prototype_term_computation_type(
-			terms, handled_effect_row, output_view.result, &handled_output_classifier
+			terms, handled_effect_row, output_view.result, fold_totality,
+			&handled_output_classifier
 		) != 0) {
 		return -1;
 	}

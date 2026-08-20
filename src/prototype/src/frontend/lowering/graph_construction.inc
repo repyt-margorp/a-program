@@ -1702,7 +1702,9 @@ static int __attribute__((unused)) rewrite_imported_type_instances_to_external(
 				*p_ret = term_id;
 				return 0;
 			}
-			return prototype_term_computation_type(terms, label, result, p_ret);
+			return prototype_term_computation_type(
+				terms, label, result, term->as.computation_type.totality, p_ret
+			);
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
 			uint32_t left;
@@ -1882,7 +1884,7 @@ static int compile_expected_classifier_for_ref(
 		if (row_binder == PROTOTYPE_INVALID_ID ||
 			prototype_term_effect_row_var(
 				ctx->terms, row_binder, &effect_row
-			) != 0 || prototype_term_computation_type(
+			) != 0 || prototype_term_total_computation_type(
 				ctx->terms, effect_row, surface_classifier, p_expected
 			) != 0) {
 			return -1;
@@ -2435,20 +2437,10 @@ static int compile_ast_atomic_ref(
 		}
 		case PROTOTYPE_AST_TERMINATES_WITNESS: {
 			struct compile_ref computation;
-			struct compile_ref returns_witness;
-			uint32_t computation_endpoint;
 			uint32_t terminates_type;
 			if (compile_ast_pure_value_ref(
 					ctx, node->as.terminates_witness.computation, &computation
-				) != 0 || compile_ast_pure_value_ref(
-					ctx, node->as.terminates_witness.returns_witness,
-					&returns_witness
 				) != 0 || computation.category != PROTOTYPE_TERM_CATEGORY_VALUE ||
-				returns_witness.category != PROTOTYPE_TERM_CATEGORY_VALUE ||
-				compile_ast_result_evidence_endpoint(
-					ctx, node->as.terminates_witness.computation,
-					&computation_endpoint
-				) != 0 || computation.term != computation_endpoint ||
 				prototype_term_terminates_type(
 					ctx->terms, computation.term, &terminates_type
 				) != 0 || prototype_term_terminates_witness(
@@ -2470,8 +2462,6 @@ static int compile_ast_atomic_ref(
 			].category = PROTOTYPE_TERM_CATEGORY_VALUE;
 			ctx->termination_evidence_computation_occurrences[p_ret->operation] =
 				operation_runtime_unwrap_name(ctx->metadata, computation.operation);
-			ctx->termination_evidence_returns_occurrences[p_ret->operation] =
-				operation_runtime_unwrap_name(ctx->metadata, returns_witness.operation);
 			struct prototype_typed_occurrence_graph* occurrence_graph =
 				prototype_compile_metadata_typed_occurrences(ctx->metadata);
 			if (prototype_typed_occurrence_graph_add_edge(
@@ -2483,17 +2473,6 @@ static int compile_ast_atomic_ref(
 						.ordinal = 0,
 						.child_occurrence =
 							ctx->termination_evidence_computation_occurrences[
-								p_ret->operation
-							]
-					}
-				) != 0 || prototype_typed_occurrence_graph_add_edge(
-					occurrence_graph,
-					p_ret->operation,
-					(struct prototype_typed_occurrence_edge) {
-						.role = PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_RETURNS,
-						.ordinal = 0,
-						.child_occurrence =
-							ctx->termination_evidence_returns_occurrences[
 								p_ret->operation
 							]
 					}
@@ -4313,13 +4292,8 @@ static int ast_lambda_exit_presence_in(
 				)
 			);
 		case PROTOTYPE_AST_TERMINATES_WITNESS:
-			return ast_lambda_exit_merge(
-				ast_lambda_exit_presence_in(
-					asts, node->as.terminates_witness.computation
-				),
-				ast_lambda_exit_presence_in(
-					asts, node->as.terminates_witness.returns_witness
-				)
+			return ast_lambda_exit_presence_in(
+				asts, node->as.terminates_witness.computation
 			);
 		default:
 			return AST_LAMBDA_EXIT_NONE;
@@ -4947,7 +4921,7 @@ static int compile_ref_make_operation_request(
 			&application_view
 		) != 0 || application_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
 		prototype_term_effect_row_empty(ctx->terms, &empty_effects
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			ctx->terms, empty_effects, application_view.result, &return_classifier
 		) != 0 ||
 		(binding_id = prototype_term_new_binding(ctx->terms)) == PROTOTYPE_INVALID_ID ||
@@ -6272,6 +6246,37 @@ static int compile_rebuild_match_occurrence_core(
 	return 0;
 }
 
+static void operation_solver_store_classifier_solution(
+	struct compile_context* ctx,
+	uint32_t operation,
+	uint32_t classifier
+);
+
+/* A result-evidence atom is a checked projection of its child endpoints. When
+ * Context action changes a child Core term, publish the reconstructed
+ * classifier to the sole mutable solution authority. This runs during initial
+ * Match resolution, before the dependency worklist is indexed; all constraints
+ * are queued immediately afterward.
+ * Leaving the old solution or clearing it to a hint would respectively retain
+ * stale evidence or lose an already justified equation. */
+static int compile_publish_rebuilt_evidence_classifier(
+	struct compile_context* ctx,
+	uint32_t occurrence_id,
+	uint32_t classifier
+) {
+	if (!ctx || occurrence_id >=
+			ctx->metadata->typed_occurrences.occurrence_count ||
+		classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	ctx->metadata->typed_occurrences.occurrences[
+		occurrence_id
+	].classifier = classifier;
+	operation_solver_store_classifier_solution(ctx, occurrence_id, classifier);
+	ctx->classifier_hints[occurrence_id] = classifier;
+	return 0;
+}
+
 static int compile_rebuild_occurrence_core(
 	struct compile_context* ctx,
 	uint32_t occurrence_id,
@@ -6295,26 +6300,50 @@ static int compile_rebuild_occurrence_core(
 					occurrence->core_term,
 					&old_computation,
 					&old_value
+				) == 0) {
+				(void)old_computation;
+				(void)old_value;
+				if (compile_occurrence_core_child_term(
+						ctx,
+						occurrence_id,
+						PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_COMPUTATION,
+						0,
+						&first
+					) != 0 || compile_occurrence_core_child_term(
+						ctx,
+						occurrence_id,
+						PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_VALUE,
+						0,
+						&second
+				) != 0 || prototype_term_returns_witness(
+					ctx->terms, first, second, p_term
+				) != 0) {
+					return -1;
+				}
+				return 0;
+			}
+			if (prototype_term_terminates_witness_info(
+					ctx->terms, occurrence->core_term, &old_computation
 				) != 0) {
 				*p_term = occurrence->core_term;
 				return 0;
 			}
-			(void)old_computation;
-			(void)old_value;
 			if (compile_occurrence_core_child_term(
 					ctx,
 					occurrence_id,
-					PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_COMPUTATION,
+					PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_COMPUTATION,
 					0,
 					&first
-				) != 0 || compile_occurrence_core_child_term(
-					ctx,
-					occurrence_id,
-					PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_VALUE,
-					0,
-					&second
-				) != 0 || prototype_term_returns_witness(
-					ctx->terms, first, second, p_term
+				) != 0 || prototype_term_terminates_witness(
+					ctx->terms, first, p_term
+				) != 0) {
+				return -1;
+			}
+			uint32_t classifier;
+			if (prototype_term_terminates_type(
+					ctx->terms, first, &classifier
+				) != 0 || compile_publish_rebuilt_evidence_classifier(
+					ctx, occurrence_id, classifier
 				) != 0) {
 				return -1;
 			}
@@ -7197,10 +7226,16 @@ static int operation_solver_merge_computation_classifiers(
 		}
 	}
 	uint32_t row;
+	int totality = prototype_computation_totality_join(
+		before.totality, after.totality
+	);
+	if (totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+		return 1;
+	}
 	return prototype_term_effect_row_materialize_normal_form(
 			ctx->terms, &merged, &row
 		) != 0 ? -1 : prototype_term_computation_type(
-			ctx->terms, row, before.result, p_merged
+			ctx->terms, row, before.result, totality, p_merged
 		);
 }
 
@@ -7596,7 +7631,7 @@ static int operation_solver_refine_sequenced_ih_result(
 			/* Materializing an induction hypothesis constructs a recursive
 			 * function value; it does not execute that function's latent effects. */
 			if (prototype_term_effect_row_empty(ctx->terms, &row) != 0 ||
-				prototype_term_computation_type(
+				prototype_term_total_computation_type(
 					ctx->terms, row, expected_result, &seeded_classifier
 				) != 0) {
 				return -1;
@@ -7639,6 +7674,7 @@ static int operation_solver_refine_sequenced_ih_result(
 			uint32_t expected_input_classifier;
 			if (prototype_term_computation_type(
 					ctx->terms, input_view.effect_row, expected_result,
+					input_view.totality,
 					&expected_input_classifier
 				) != 0) {
 				return -1;
@@ -7697,6 +7733,7 @@ static int operation_solver_refine_sequenced_ih_result(
 		uint32_t refined_classifier;
 		if (prototype_term_computation_type(
 				ctx->terms, input_view.effect_row, expected_result,
+				input_view.totality,
 				&refined_classifier
 			) != 0) {
 			return -1;
@@ -8364,7 +8401,7 @@ static int operation_solver_constructor_provisional_classifier(
 		if (wrappers[reverse - 1] == PROTOTYPE_TYPED_OCCURRENCE_RETURN) {
 			uint32_t empty_row;
 			if (prototype_term_effect_row_empty(ctx->terms, &empty_row) != 0 ||
-				prototype_term_computation_type(
+				prototype_term_total_computation_type(
 					ctx->terms, empty_row, classifier, &classifier
 				) != 0) {
 				return -1;

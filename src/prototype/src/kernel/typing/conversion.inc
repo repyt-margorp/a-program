@@ -195,7 +195,7 @@ int prototype_judgement_specialize_fold_operation_classifier(
 	uint32_t latent_argument;
 	if (prototype_term_make_host_type(
 			terms, PROTOTYPE_HOST_TYPE_TEXT, &text
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			terms, latent_row, text, &latent_computation
 		) != 0 || prototype_term_thunk_type(
 			terms, latent_computation, &latent_argument

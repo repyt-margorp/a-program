@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v81.h"
+#include "a_program/artifact/wire_v82.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/typed_occurrence_graph.h"
@@ -318,9 +318,10 @@ static int write_artifact_term(
 			case PROTOTYPE_TERM_COMPUTATION_TYPE:
 				fprintf(
 					stream,
-					" %u %u",
+					" %u %u %d",
 					term->as.computation_type.label,
-					term->as.computation_type.result
+					term->as.computation_type.result,
+					term->as.computation_type.totality
 				);
 				break;
 			case PROTOTYPE_TERM_THUNK_TYPE:

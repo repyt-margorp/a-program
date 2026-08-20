@@ -225,7 +225,6 @@ struct prototype_ast_node {
 		} returns_witness;
 		struct {
 			uint32_t computation;
-			uint32_t returns_witness;
 		} terminates_witness;
 	} as;
 };
@@ -702,7 +701,6 @@ int prototype_ast_returns_witness(
 int prototype_ast_terminates_witness(
 	struct prototype_ast_db* db,
 	uint32_t computation,
-	uint32_t returns_witness,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );

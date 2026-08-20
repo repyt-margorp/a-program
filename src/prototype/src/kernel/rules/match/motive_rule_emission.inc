@@ -301,7 +301,7 @@ int prototype_judgement_delta_ensure_type_at_universe(
 		uint32_t returned_classifier;
 		uint32_t family_classifier;
 		if (prototype_term_effect_row_empty(terms, &empty_effects
-				) != 0 || prototype_term_computation_type(
+				) != 0 || prototype_term_total_computation_type(
 					terms, empty_effects, universe, &returned_classifier
 				) != 0 || prototype_term_pure_family(
 					terms, codomain_binder, returned_classifier, &lambda_universe_family

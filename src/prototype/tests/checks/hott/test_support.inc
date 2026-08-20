@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v81.h"
+#include "a_program/artifact/wire_v82.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
@@ -1018,12 +1018,12 @@ static int check_bool_function_extensional_identity(
 		) != 0) {
 		return 10;
 	}
-	if (prototype_term_computation_type(
+	if (prototype_term_total_computation_type(
 			term_db,
 			term_db->terms[xr_codomain].as.computation_type.label,
 			false_computation_identity,
 			&false_branch_computation_identity
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			term_db,
 			term_db->terms[xr_codomain].as.computation_type.label,
 			true_computation_identity,

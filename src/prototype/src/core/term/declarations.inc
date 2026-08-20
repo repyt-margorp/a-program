@@ -992,6 +992,7 @@ int prototype_term_classifier_view(
 		}
 		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
 		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
+		p_ret->totality = term->as.computation_type.totality;
 		p_ret->effect_row = term->as.computation_type.label;
 		p_ret->result = term->as.computation_type.result;
 		return 0;

@@ -2,12 +2,12 @@
 
 Date: 2026-08-19
 
-Status: Authority and indexed-family implementation complete; first
-Returns/Terminates fragment complete; general #13/#14 proof obligations remain
+Status: Authority, indexed-family, and explicit totality representation
+complete; general function-graph postconditions remain intentionally deferred
 
 Baseline commit: `54d33d9a13841c8e48c685d3da8022d4af268420`
 
-Current artifact format: v80
+Current artifact format: v82
 
 ## 1. Purpose
 
@@ -31,8 +31,8 @@ termination, divergence, and residual compile-time knowledge.
 | Issue | Current conclusion | Planned close gate |
 |---|---|---|
 | [#11](https://github.com/repyt-margorp/a-program/issues/11) | implemented: exact head/tail/map/append, multi-index families, indexed IH, Acc, and fuel-free QuickSort survive source/artifact/replay/runtime checks | close after final GitHub audit |
-| [#13](https://github.com/repyt-margorp/a-program/issues/13) | partial: object-level `#.Returns`, closed evaluation evidence, dependent consumers, and v80 replay exist | remains open until the open QuickSort sortedness theorem is constructed rather than assumed |
-| [#14](https://github.com/repyt-margorp/a-program/issues/14) | partial: `#.Terminates` is derived from accepted Returns evidence in the deterministic finite fragment | remains open for general open totality, partiality/divergence, effectful postconditions, and UNKNOWN semantics |
+| [#13](https://github.com/repyt-margorp/a-program/issues/13) | partial: object-level `#.Returns`, closed evaluation evidence, dependent consumers, and v81 replay exist | remains open; on 2026-08-21 the user explicitly deferred the QuickSortGraph/function-graph IADT and its sortedness theorem until its surface form is designed |
+| [#14](https://github.com/repyt-margorp/a-program/issues/14) | explicit `TOTAL`/`MAY_DIVERGE` computation classifiers, compiler-local `UNKNOWN`, direct structural `#.Terminates`, effect orthogonality, and v82 replay are implemented | re-audit after RT0/RT3 tests; postconditions that require the deferred #13 function-graph eliminator do not move into the kernel as a shortcut |
 | [#16](https://github.com/repyt-margorp/a-program/issues/16) | implemented: permanent semantic matrix, concrete Box/Perfect/Matrix, constant/residual split, and corruption rejection | close after final GitHub audit |
 | [#17](https://github.com/repyt-margorp/a-program/issues/17) | implemented: immutable replay views, narrow Type stores, cache-independence checks, and responsibility-based solver split | close after final GitHub audit |
 | [#18](https://github.com/repyt-margorp/a-program/issues/18) | implemented: equation lifecycle, result payload, effect substitution, occurrence solution, diagnostic snapshot, and frozen projection have distinct owners | close after final GitHub audit |
@@ -506,43 +506,64 @@ Close order:
 
 ## 9. RT: Computation Results and Totality
 
-### RT0. Fix the terminology and proof contract first
+### RT0. Result and totality contract
 
 Before adding a wire tag or surface form, specify:
 
 ```text
 Returns (&M) v
-    a finite accepted evaluation derivation returns value v
+    an accepted operational derivation reaches normal RETURN(v)
 
-MayTerminate (&M)
-    at least one accepted execution path reaches an outcome
+Terminates (&M)
+    M has accepted TOTAL structure, or an accepted Returns witness supplies a
+    concrete finite normal-return derivation
 
-MustTerminate (&M)
-    every operational branch reaches an accepted finite outcome
+Pure (&M)
+    M's closed effect row is empty
 
 PureTotal (&M)
-    MustTerminate (&M) plus an empty effect row
+    Pure (&M) and Terminates (&M); neither conjunct implies the other
+
+TOTAL / MAY_DIVERGE
+    object-level computation-classifier modes
 
 UNKNOWN
-    solver did not establish a proposition within its budget
+    compiler-local solver/residual state, never an object classifier
 ```
 
-For the current deterministic fragment, `Returns (&M) v` establishes a finite
-successful execution of that closed computation. The names must still remain
-ready for nondeterministic operations, where may- and must-termination differ.
+An accepted terminal outcome is either normal `RETURN(v)` or a finite operation
+request admitted by the declared operation contract. `Returns` is narrower: it
+always identifies a normal return value. An unhandled or residual request has
+no `Returns` witness. Exception, abort, nondeterministic choice, and resumptive
+operations are not yet source features; adding any of them must define their
+terminal outcomes and may/must quantification before extending `Terminates`.
+
+`PartialEnsures(M,P) := (v) -> Returns(M,v) -> P(v)` is partial correctness and
+does not prove that `M` returns. `TotalEnsures` additionally requires
+`Terminates(M)`. These are normative names, not current primitive Term tags.
+Their general implementation is intentionally coupled to the deferred
+function-graph/result-elimination design in #13 rather than added as a
+QuickSort-specific axiom.
+
+General recursive computation is interpreted by a least fixed point and must
+be classified `MAY_DIVERGE`; coinductive observation is a separate greatest-
+fixed-point feature. The current surface language has no unrestricted-recursion
+former. Until one is introduced, all admitted structural/IH/Acc recursion is
+`TOTAL`; a future partial former must not enter DefEq merely because its effect
+row is empty.
 
 Tasks:
 
-- [ ] Define successful return, handled operation, unhandled operation,
+- [x] Define successful return, handled operation, unhandled operation,
       exception-like outcome, abort, and nondeterministic branch status.
-- [ ] Define which propositions are object types and which statuses are only
+- [x] Define which propositions are object types and which statuses are only
       solver results.
-- [ ] State that effect rows are not termination evidence.
-- [ ] State that one closed run is not a theorem about an open function.
-- [ ] State that budget exhaustion produces residual/UNKNOWN, never a forged
+- [x] State that effect rows are not termination evidence.
+- [x] State that one closed run is not a theorem about an open function.
+- [x] State that budget exhaustion produces residual/UNKNOWN, never a forged
       negative proof.
-- [ ] Specify partial correctness separately from total correctness.
-- [ ] Specify least-fixed partial recursion separately from greatest-fixed
+- [x] Specify partial correctness separately from total correctness.
+- [x] Specify least-fixed partial recursion separately from greatest-fixed
       coinduction.
 
 ### RT1. Introduce object-level `#.Returns`
@@ -570,14 +591,14 @@ Implementation direction:
 
 Required witness rules for the first fragment:
 
-- [ ] `RETURN(v)` returns `v`;
-- [ ] pure APP/Lambda beta steps preserve Returns;
-- [ ] constructor/Match iota steps preserve Returns;
-- [ ] zero-clause computation sequencing composes Returns evidence;
-- [ ] handled computation fold composes computation, return-clause, and
+- [x] `RETURN(v)` returns `v`;
+- [x] pure APP/Lambda beta steps preserve Returns;
+- [x] constructor/Match iota steps preserve Returns;
+- [x] zero-clause computation sequencing composes Returns evidence;
+- [x] handled computation fold composes computation, return-clause, and
       operation-clause result evidence;
-- [ ] unresolved requests produce no closed Returns witness;
-- [ ] normalization budget exhaustion produces no witness and no negative fact.
+- [x] unresolved requests produce no closed Returns witness;
+- [x] normalization budget exhaustion produces no witness and no negative fact.
 
 The implementation must not use the existing VerificationDB obligation as the
 object proof. VerificationDB records a conditional runtime contract; JudgementDB
@@ -585,21 +606,30 @@ records accepted object evidence.
 
 ### RT2. Resolve post-hoc dependent Claims (#13)
 
+Scope decision (2026-08-21): the implemented `Returns` relation and open
+computation-result Context binding remain. Constructing a general trace/graph
+IADT for an already-defined function (for example
+`QuickSortGraph : List A -> List A -> @`), its eliminator, and the resulting
+sortedness theorem is deferred until the surface language is designed. This is
+not replaced by normalization reflection, an algorithm-specific kernel rule,
+or an assumed theorem.
+
 Tasks:
 
-- [ ] Reproduce the exact closed `choose`/`Sorted.nilSorted` Issue case as a
+- [x] Reproduce the exact closed `choose`/`Sorted.nilSorted` Issue case as a
       permanent negative-before/positive-after test.
-- [ ] Let a later theorem or expectation consume explicit
+- [x] Let a later theorem or expectation consume explicit
       `r : #.Returns (&choose) v` evidence.
-- [ ] Keep the original computation Term unchanged; attach a proof graph rather
+- [x] Keep the original computation Term unchanged; attach a proof graph rather
       than synthesizing a new classifier from `::`.
-- [ ] Add a dependent sequencing rule whose result family is instantiated by
+- [x] Add a dependent sequencing rule whose result family is instantiated by
       the value named in Returns evidence.
-- [ ] Add an open QuickSort theorem taking explicit result evidence and proving
+- [ ] Deferred: add a general function-graph IADT/eliminator and then an open
+      QuickSort theorem taking explicit result evidence and proving
       the result-indexed property.
-- [ ] Add negative tests for forged result witnesses, wrong values, unhandled
+- [x] Add negative tests for forged result witnesses, wrong values, unhandled
       effects, and exhausted normalization.
-- [ ] Persist Returns type/witness Claims and Derivations in the next artifact
+- [x] Persist Returns type/witness Claims and Derivations in the next artifact
       format and replay them without candidate state.
 
 #13 closes only after both the exact closed repro and the open certified
@@ -618,18 +648,22 @@ Recommended ownership:
 
 Tasks:
 
-- [ ] Add structural-recursion totality evidence without changing current total
+- [x] Add structural-recursion totality evidence without changing current total
       programs or requiring a `Div` wrapper.
-- [ ] Add Acc-driven open-function totality evidence.
-- [ ] Define may-diverge/partial computation classifiers before adding general
+- [x] Add Acc-driven open-function totality evidence.
+- [x] Define may-diverge/partial computation classifiers before adding general
       recursion.
-- [ ] Prohibit partial computation unfolding in DefEq.
-- [ ] Permit terminating effectful computations to have postconditions without
+- [x] Prohibit partial computation unfolding in DefEq: no partial Core former is
+      admitted yet, `TOTAL` and `MAY_DIVERGE` classifiers are conversion-distinct,
+      and any future partial former is rejected until it has a non-DefEq rule.
+- [x] Permit terminating effectful computations to carry termination evidence
+      without
       running effects during conversion.
-- [ ] Add artifact roots and replay for accepted termination evidence.
-- [ ] Add positive tests for closed pure Match, Acc QuickSort, terminating
+- [x] Add artifact roots and replay for accepted termination evidence.
+- [x] Add positive tests for closed pure Match, Acc QuickSort, terminating
       effectful computation, and replay.
-- [ ] Add negative tests for empty-effect loops, budget exhaustion, one closed
+- [x] Add representation-level negative tests for empty-effect `MAY_DIVERGE`,
+      compiler-local `UNKNOWN`, budget exhaustion, one closed
       run used as open totality, forged evidence, and partial-as-total claims.
 
 #14 closes only after its normative, positive, negative, compatibility, and
@@ -637,23 +671,25 @@ artifact criteria all pass.
 
 ## 10. Artifact Strategy
 
-Artifact versions change only at semantic boundaries:
+Artifact versions change only at semantic boundaries. The historical sequence
+for this plan is now v79 (authority/schema separation), v80 (initial result
+evidence), v81 (computation-result Context origin), and v82 (explicit
+computation totality and direct totality evidence).
 
-1. v79 may remove Type cache authority and serialize the narrowed schema after
-   OA3.
-2. the next version after v79 adds Returns/totality Term and Derivation grammar
-   after RT rules are stable.
+1. v79 removed Type cache authority and serialized the narrowed schema.
+2. v80/v81 added Returns/Terminates and replayable result-binding origins.
+3. v82 serializes `TOTAL`/`MAY_DIVERGE`; `UNKNOWN` is rejected on read.
 
 For each bump:
 
-- [ ] archive the previous schema;
-- [ ] update enum consistency checks;
-- [ ] update reader, writer, relocation, dense publication, link, and replay;
-- [ ] reject absent/hole references and malformed proof edges;
-- [ ] regenerate test artifacts from source;
-- [ ] do not maintain a current compatibility reader for the old semantic
+- [x] archive the previous schema;
+- [x] update enum consistency checks;
+- [x] update reader, writer, relocation, dense publication, link, and replay;
+- [x] reject absent/hole references and malformed proof edges;
+- [x] regenerate test artifacts from source;
+- [x] do not maintain a current compatibility reader for the old semantic
       representation;
-- [ ] verify deterministic bytes from two fresh compilations.
+- [x] verify deterministic bytes from two fresh compilations.
 
 ## 11. Test and Performance Plan
 
@@ -671,17 +707,18 @@ For each bump:
 
 Add dedicated tests for:
 
-- [ ] accepted replay independent of candidate storage;
-- [ ] Type cache/readback clearing;
-- [ ] mutable solver authority corruption;
-- [ ] IADT conformance matrix;
-- [ ] Returns and totality evidence;
-- [ ] artifact result/termination replay.
+- [x] accepted replay independent of candidate storage;
+- [x] Type cache/readback clearing;
+- [x] mutable solver authority corruption;
+- [x] IADT conformance matrix;
+- [x] Returns and totality evidence;
+- [x] artifact result/termination replay.
 
 ### Full gates
 
-- [ ] all integration tests pass;
-- [ ] examples 01-09 continue to pass;
+- [x] all integration tests pass;
+- [x] the existing top-level examples 01-07 and 09 continue to pass (there is
+      no `examples/08_*.p` source);
 - [ ] artifact publication/readback/link/determinism pass;
 - [ ] accepted replay rejects malformed graphs;
 - [ ] IF8 median single compile remains below 10 seconds on the current machine;
@@ -748,17 +785,21 @@ adds a new projection while retaining the old writable owner is not complete.
 
 ### #13
 
-- [ ] RT0-RT2 complete.
-- [ ] exact closed repro passes through explicit result evidence.
-- [ ] open certified QuickSort result theorem passes.
-- [ ] no `::`-driven synthesis or DefEq reflection was added.
+- [x] RT0-RT2 result-evidence foundation complete.
+- [x] exact closed repro passes through explicit result evidence.
+- [ ] Deferred by explicit user decision: general function-graph IADT and open
+      certified QuickSort result theorem.
+- [x] no `::`-driven synthesis or DefEq reflection was added.
 
 ### #14
 
-- [ ] RT0 and RT3 complete.
-- [ ] effects, may/must termination, partial correctness, total correctness,
+- [x] RT0 and the pre-general-recursion RT3 boundary complete.
+- [x] effects, totality classifier mode, partial correctness, total correctness,
       divergence, and UNKNOWN are distinct.
-- [ ] artifact replay and all positive/negative tests pass.
+- [x] artifact replay and implemented-boundary positive/negative tests pass.
+- [ ] Re-audit the Issue body before closure: criteria requiring a source
+      unrestricted-recursion former or the deferred #13 postcondition
+      eliminator remain feature-conditional and must not be simulated.
 
 An Issue receives a closing comment containing commit IDs, focused/full test
 results, performance results, and links to the corresponding plan completion
@@ -837,11 +878,11 @@ Rules:
 | IF1 constructor specialization | Complete | none | concrete Box, Perfect, Matrix, dependent-index construction and post-checks |
 | IF2 Match/refinement boundary | Complete | none | constant motive accepted; equality-dependent residual and nested-positive unsupported remain distinct |
 | IF3 general indexed-family completion | Complete | none | exact head/tail/map/append, multi-index elimination, Acc IH, IF8, and artifact corruption tests |
-| RT0 result/totality contract | Partial | RT3 | deterministic finite success is specified; general nondeterministic/abort/divergence contract is deferred |
-| RT1 Returns relation | Complete for deterministic finite fragment | RT2 | ordinary Terms, Claims, Derivations, negative forgery checks, and v80 replay |
-| RT2 post-hoc Claims | Partial | #13 | closed dependent result and open explicit result binder pass; open QuickSort sortedness construction remains |
-| RT3 totality/partiality | Partial | #14 | Terminates-from-Returns and v80 replay pass; general open/partial/effectful totality remains |
-| CL final audit | Complete for implemented scope | GitHub disposition | 40/40 integration tests and final measurements recorded below |
+| RT0 result/totality contract | Complete for current operation language | future outcome formers | normal return, finite request, residual request, UNKNOWN, partial/total correctness, least/greatest fixed points distinguished |
+| RT1 Returns relation | Complete for deterministic finite fragment | deferred #13 graph eliminator | ordinary Terms, Claims, Derivations, negative forgery checks, and v81 replay |
+| RT2 post-hoc Claims | Foundation complete; theorem layer deferred | #13 remains open | closed dependent result and open explicit result binder pass; function-graph IADT surface and QuickSort sortedness intentionally deferred |
+| RT3 totality/partiality | Complete before general recursion | future recursion syntax | `TOTAL`/`MAY_DIVERGE`, compiler-local `UNKNOWN`, direct structural Terminates, effect orthogonality, and v82 replay |
+| CL final audit | Complete for the implemented scope | #13 and feature-conditional #14 remain open | 40/40 integration tests, existing top-level examples, v82 replay, deterministic IF8 artifact, and 7.862 s median single compile pass |
 
 ## 15. Completion Log
 
@@ -851,6 +892,7 @@ Append one row after each phase. Do not rewrite historical measurements.
 |---|---|---|---|---:|---|---:|---:|---:|---|
 | 2026-08-19 | Planning | `54d33d9` | previous 39/39 | previous 3.69 s median sample | v78 | - | - | - | #17 and #18 opened; no implementation change |
 | 2026-08-20 | OA0-OA4, IF0-IF3, RT0-RT3 fragment, CL | this implementation commit | 40/40, 111.773 s | 5.975 s final single compile; 6.102 s suite sample | v80, IF8 456,207 bytes | 23,545 | 17,485 | +6,060 | Includes tests and version replacement; docs are +936 lines. General #13/#14 remain open. |
+| 2026-08-21 | RT1 replayable result Context and RT3 explicit totality | `c934be9` plus the totality implementation commit | 40/40, 111.349 s; top-level examples 8/8 | 7.862 s | v82, IF8 471,259 bytes | 2,157 | 423 | +1,734 | Diff from the published v80 boundary, including the new v82 schema. v81 adds result-binding origin and v82 adds `TOTAL`/`MAY_DIVERGE`; Context/Substitution index rebuilds remain 0. The general function-graph theorem is explicitly deferred and no shortcut was added. |
 
 ### 15.1 Implemented authority result
 
@@ -885,15 +927,19 @@ result classifiers, field Contexts, and lifted Acc IH payloads.
 ### 15.3 Result and termination boundary
 
 `#.Returns (&M) v` and `#.Terminates (&M)` are ordinary object Terms backed by
-accepted Claims and Derivations. `#.terminates` requires accepted Returns
-evidence for the same computation. These rules survive v80 publication and
-replay and never feed conversion, classifier synthesis, or global DefEq.
+accepted Claims and Derivations. `#.terminates` takes only `&M`; it is justified
+by either accepted Returns evidence or the explicit `TOTAL` mode of `M`'s
+computation classifier. These rules survive v82 publication and replay and
+never feed conversion, classifier synthesis, or global DefEq.
 
-This is deliberately not described as complete #13/#14 support. The current
+This is deliberately not described as complete #13 theorem support. The current
 open-result fixture accepts Returns evidence and a result-indexed proof as
-explicit premises; it does not construct the full QuickSort sortedness proof.
-Likewise, Terminates-from-Returns proves a finite deterministic execution, not
-general open totality, may/must divergence, or effectful postconditions.
+explicit premises; it does not construct the general function graph required
+for the full QuickSort sortedness proof. The user deferred that independent
+surface/theory design on 2026-08-21. The totality representation is nevertheless
+complete before adding general recursion: effects are orthogonal, object modes
+are `TOTAL`/`MAY_DIVERGE`, and unresolved knowledge never becomes an object
+`UNKNOWN` classifier.
 
 ### 15.4 Final verification and accounting
 

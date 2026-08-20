@@ -159,6 +159,9 @@ quickSort := \A : @ => \le : A -> A -> Bool => \xs : List A =>
 
 quickSort :: (A : @) -> (A -> A -> Bool) -> List A -> List A;
 
+quickSortTerminates := \A : @ => \le : A -> A -> Bool => \xs : List A =>
+	#.terminates (&(quickSort A &le xs));
+
 lessOrEqual := \left : Nat =>
 	left @zero => (\right : Nat => Bool.true)
 		@succ leftPredecessor =>

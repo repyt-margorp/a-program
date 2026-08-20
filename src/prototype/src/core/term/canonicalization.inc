@@ -593,7 +593,9 @@ static int shape_terms_equal_at_depth(
 					depth + 1
 				);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			return shape_terms_equal_at_depth(
+			return left->as.computation_type.totality ==
+					right->as.computation_type.totality &&
+				shape_terms_equal_at_depth(
 						db,
 						left->as.computation_type.label,
 						right->as.computation_type.label,
@@ -1215,7 +1217,9 @@ static int cross_shape_terms_equal_at_depth(
 					depth + 1
 				);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			return cross_shape_terms_equal_at_depth(
+			return left->as.computation_type.totality ==
+					right->as.computation_type.totality &&
+				cross_shape_terms_equal_at_depth(
 						left_db,
 						left_type_declarations,
 						left->as.computation_type.label,
@@ -1499,7 +1503,8 @@ static int term_intern_exact_equal_local(
 				INTERN_EXACT_FIELD(effect_row_forall.body);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return INTERN_EXACT_FIELD(computation_type.label) &&
-				INTERN_EXACT_FIELD(computation_type.result);
+				INTERN_EXACT_FIELD(computation_type.result) &&
+				INTERN_EXACT_FIELD(computation_type.totality);
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return INTERN_EXACT_FIELD(thunk_type.computation);
 		case PROTOTYPE_TERM_RETURN:
@@ -2133,6 +2138,9 @@ static int canonical_hash_term_at_depth(
 			return status;
 		}
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			canonical_hash_mix_u32(
+				p_hash, (uint32_t)term->as.computation_type.totality
+			);
 			if (canonical_hash_term_at_depth(
 						db,
 						type_declarations,
@@ -2386,6 +2394,7 @@ static int term_intern_canonical_key_local(
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			INTERN_MIX_CHILD(term->as.computation_type.label);
 			INTERN_MIX_CHILD(term->as.computation_type.result);
+			INTERN_MIX(term->as.computation_type.totality);
 			break;
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			INTERN_MIX_CHILD(term->as.thunk_type.computation);

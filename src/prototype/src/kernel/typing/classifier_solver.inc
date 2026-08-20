@@ -302,12 +302,19 @@ static int lift_recursive_field_classifier_inner(
 					) != 0) {
 					return -1;
 				}
+				int totality = prototype_computation_totality_join(
+					term->as.computation_type.totality, lifted_view.totality
+				);
+				if (totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+					return -1;
+				}
 				return prototype_term_computation_type(
-					terms, joined_row, lifted_view.result, p_classifier
+					terms, joined_row, lifted_view.result, totality, p_classifier
 				);
 			}
 			return prototype_term_computation_type(
-				terms, term->as.computation_type.label, lifted, p_classifier
+				terms, term->as.computation_type.label, lifted,
+				term->as.computation_type.totality, p_classifier
 			);
 		}
 		case PROTOTYPE_TERM_THUNK_TYPE: {

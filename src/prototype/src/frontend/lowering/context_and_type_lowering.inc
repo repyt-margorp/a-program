@@ -626,7 +626,6 @@ struct compile_context {
 	uint32_t result_evidence_computation_occurrences[4096];
 	uint32_t result_evidence_value_occurrences[4096];
 	uint32_t termination_evidence_computation_occurrences[4096];
-	uint32_t termination_evidence_returns_occurrences[4096];
 	struct operation_effect_solver effect_solver;
 	int materializing_checked_classifiers;
 	struct operation_reindex_cache_entry
@@ -4357,7 +4356,7 @@ static int compile_ast_value_function_term_with_self(
 			) != 0) {
 			return -1;
 		}
-		return prototype_term_computation_type(
+		return prototype_term_total_computation_type(
 			ctx->terms, empty_effects, result, p_ret
 		);
 	}
@@ -4557,7 +4556,7 @@ static int compile_ast_type_expr_term_with_self(
 				(row_binder = prototype_term_new_binding(ctx->terms)) ==
 					PROTOTYPE_INVALID_ID ||
 				prototype_term_effect_row_var(ctx->terms, row_binder, &row) != 0 ||
-				prototype_term_computation_type(
+				prototype_term_total_computation_type(
 					ctx->terms, row, result, &computation
 				) != 0) {
 				return -1;
@@ -4623,7 +4622,7 @@ static int compile_ast_binder_value_type_with_latent_effect_row(
 			(row_binder = prototype_term_new_binding(ctx->terms)) ==
 				PROTOTYPE_INVALID_ID ||
 			prototype_term_effect_row_var(ctx->terms, row_binder, &row) != 0 ||
-			prototype_term_computation_type(
+			prototype_term_total_computation_type(
 				ctx->terms, row, result, &computation
 			) != 0 ||
 			prototype_term_thunk_type(ctx->terms, computation, p_ret) != 0) {
@@ -4675,7 +4674,7 @@ static int compile_ast_binder_value_type_with_latent_effect_row(
 	if (
 		(row_binder = prototype_term_new_binding(ctx->terms)) == PROTOTYPE_INVALID_ID ||
 		prototype_term_effect_row_var(ctx->terms, row_binder, &row) != 0 ||
-		prototype_term_computation_type(ctx->terms, row, codomain, &computation) != 0 ||
+		prototype_term_total_computation_type(ctx->terms, row, codomain, &computation) != 0 ||
 		prototype_term_pure_family(
 			ctx->terms, graph_binder_id, computation, &family
 		) != 0 ||
@@ -4715,7 +4714,7 @@ static int compile_ast_function_result_type_expr_term(
 		(row_binder = prototype_term_new_binding(ctx->terms)) ==
 			PROTOTYPE_INVALID_ID ||
 		prototype_term_effect_row_var(ctx->terms, row_binder, &effect_row) != 0 ||
-		prototype_term_computation_type(
+		prototype_term_total_computation_type(
 			ctx->terms, effect_row, result, p_ret
 		) != 0) {
 		return -1;

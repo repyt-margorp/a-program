@@ -86,6 +86,8 @@ prototype_test_phase publication
 	>"$tmp_dir/order-artifact.out"
 ./read_file.out --write-artifact "$tmp_dir/if8-quicksort.apo" "$fuel_free" \
 	>"$tmp_dir/quicksort-artifact.out"
+grep -Eq '^derivation [0-9]+ 54 claim [0-9]+ premises 2$' \
+	"$tmp_dir/if8-quicksort.apo"
 
 prototype_test_phase readback
 ./read_file.out --read-graph "$tmp_dir/if8-order.apo" \
@@ -109,6 +111,7 @@ do
 	grep -q "^exports-normalization-equal $1 $2 mode=default yes$" \
 		"$tmp_dir/$1-artifact.out"
 done
+grep -q '^interface term quickSortTerminates ' "$tmp_dir/quicksort-read.out"
 
 prototype_test_phase determinism
 ./read_file.out --write-artifact "$tmp_dir/if8-quicksort-repeat.apo" "$fuel_free" \

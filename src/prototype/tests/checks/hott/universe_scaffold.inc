@@ -1186,7 +1186,7 @@
 	uint32_t pure_box_computation;
 	uint32_t returned_box;
 	uint32_t pure_box_computation_claim;
-	if (prototype_term_computation_type(
+	if (prototype_term_total_computation_type(
 			&term_db, empty_row, box_view, &pure_box_computation
 		) != 0 || prototype_term_return(
 			&term_db, boxed_bool_variable, &returned_box

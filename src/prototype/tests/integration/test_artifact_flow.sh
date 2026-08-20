@@ -177,8 +177,8 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-grep -q '^A_PROGRAM_ARTIFACT 81 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v81.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 82 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v82.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
@@ -270,10 +270,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 81/A_PROGRAM_ARTIFACT 79/' \
+sed '1s/A_PROGRAM_ARTIFACT 82/A_PROGRAM_ARTIFACT 79/' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v79.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-v79.apo" >"$TMP_DIR/identity-v79.out" 2>"$TMP_DIR/identity-v79.err"; then
-	echo "obsolete artifact unexpectedly passed at the v81 version boundary" >&2
+	echo "obsolete artifact unexpectedly passed at the v82 version boundary" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -290,6 +290,20 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-term-tag.apo" \
 	>"$TMP_DIR/identity-unknown-term-tag.out" \
 	2>"$TMP_DIR/identity-unknown-term-tag.err"; then
 	echo "artifact with an unknown term tag unexpectedly passed" >&2
+	exit 1
+fi
+awk '
+	$1 == "term_node" && $3 == 24 && !done {
+		$6 = 0
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-unknown-totality.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-totality.apo" \
+	>"$TMP_DIR/identity-unknown-totality.out" \
+	2>"$TMP_DIR/identity-unknown-totality.err"; then
+	echo "artifact accepted compiler-local UNKNOWN as object totality" >&2
 	exit 1
 fi
 awk '$1 == "proposition" && !done { $4 = 999; done = 1 } { print } END { if (!done) exit 1 }' \
@@ -1735,7 +1749,7 @@ EOF_DEPENDENT_MATCH
 
 ./read_file.out "$TMP_DIR/dependent-match.p" >"$TMP_DIR/dependent-match.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive proof#' "$TMP_DIR/dependent-match.out"
-grep -q 'COMPUTATION_TYPE(EFFECT_ROW_EMPTY, MATCH' \
+grep -q 'COMPUTATION_TYPE(EFFECT_ROW_EMPTY, MATCH.*, TOTAL)' \
 	"$TMP_DIR/dependent-match.out"
 grep -q 'CASE(true -> TYPE_VIEW(Nat' "$TMP_DIR/dependent-match.out"
 grep -q 'CASE(false -> TYPE_VIEW(Bool' "$TMP_DIR/dependent-match.out"
@@ -1797,7 +1811,7 @@ len := \A : @ =>
 EOF_IH_MOTIVE
 
 ./read_file.out "$TMP_DIR/ih-motive.p" >"$TMP_DIR/ih-motive.out"
-grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_ROW_EMPTY, TYPE_VIEW(Nat.* \[ih-elim proof#' \
+grep -q 'has-type INDUCTION_HYPOTHESIS.*COMPUTATION_TYPE(EFFECT_ROW_EMPTY, TYPE_VIEW(Nat.*, TOTAL) \[ih-elim proof#' \
 	"$TMP_DIR/ih-motive.out"
 grep -q 'has-type MATCH.*APP(LAMBDA.*\[solved-match-motive proof#' "$TMP_DIR/ih-motive.out"
 grep -q 'has-type INDUCTION_HYPOTHESIS.*\[ih-elim proof#[0-9][0-9]* premises=0' "$TMP_DIR/ih-motive.out"

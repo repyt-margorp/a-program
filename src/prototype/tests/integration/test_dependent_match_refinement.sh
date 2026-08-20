@@ -29,11 +29,11 @@ for fixture in compare rebuild impossible constant; do
 	eval source=\$$fixture
 	./read_file.out --write-artifact "$tmp_dir/$fixture.apo" "$source" \
 		>"$tmp_dir/$fixture-write.out"
-	grep -q '^A_PROGRAM_ARTIFACT 81 ' "$tmp_dir/$fixture.apo"
+	grep -q '^A_PROGRAM_ARTIFACT 82 ' "$tmp_dir/$fixture.apo"
 done
 ./read_file.out --write-artifact "$tmp_dir/owner-rebuild.apo" \
 	"$owner_rebuild" >"$tmp_dir/owner-rebuild-write.out"
-grep -q '^A_PROGRAM_ARTIFACT 81 ' "$tmp_dir/owner-rebuild.apo"
+grep -q '^A_PROGRAM_ARTIFACT 82 ' "$tmp_dir/owner-rebuild.apo"
 
 prototype_test_phase readback
 for fixture in compare rebuild impossible constant; do

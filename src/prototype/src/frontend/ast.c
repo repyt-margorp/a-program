@@ -803,11 +803,10 @@ int prototype_ast_returns_witness(
 int prototype_ast_terminates_witness(
 	struct prototype_ast_db* db,
 	uint32_t computation,
-	uint32_t returns_witness,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 ) {
-	if (!db || computation >= db->node_count || returns_witness >= db->node_count) {
+	if (!db || computation >= db->node_count) {
 		return -1;
 	}
 	struct prototype_ast_node node;
@@ -815,7 +814,6 @@ int prototype_ast_terminates_witness(
 	node.tag = PROTOTYPE_AST_TERMINATES_WITNESS;
 	node.span = span;
 	node.as.terminates_witness.computation = computation;
-	node.as.terminates_witness.returns_witness = returns_witness;
 	return add_node(db, node, p_ret);
 }
 

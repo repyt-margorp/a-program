@@ -481,7 +481,8 @@ static int judgement_rule_derives_alternate_operation_classifier(int proof_kind)
 		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE ||
 		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION ||
 		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_RETURNS_SEQUENCE_BINDING ||
-		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS;
+		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS ||
+		proof_kind == PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TOTAL_COMPUTATION;
 }
 
 static int judgement_proof_kind_is_known(int proof_kind) {
@@ -539,6 +540,7 @@ static int judgement_proof_kind_is_known(int proof_kind) {
 	case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_SEQUENCE_BINDING:
 	case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TYPE_FORMATION:
 	case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS:
+	case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TOTAL_COMPUTATION:
 		return 1;
 	default:
 		return 0;

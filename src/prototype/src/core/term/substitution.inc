@@ -1172,7 +1172,9 @@ static int substitute_term_uncached_internal(
 					*p_ret = term_id;
 					return 0;
 				}
-				return prototype_term_computation_type(db, label, result, p_ret);
+				return prototype_term_computation_type(
+					db, label, result, term->as.computation_type.totality, p_ret
+				);
 			}
 			case PROTOTYPE_TERM_THUNK_TYPE: {
 				uint32_t computation;

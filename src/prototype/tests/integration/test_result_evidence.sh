@@ -22,7 +22,9 @@ grep -q '^term proof := APP(APP(RETURNS_WITNESS_FORMER' "$tmp_dir/surface.out"
 grep -q '\[returns-evaluation proof#' "$tmp_dir/surface.out"
 grep -q '^term termination := APP(TERMINATES_WITNESS_FORMER' \
 	"$tmp_dir/surface.out"
-grep -q '\[terminates-from-returns proof#' "$tmp_dir/surface.out"
+grep -q '\[terminates-total-computation proof#' "$tmp_dir/surface.out"
+grep -q '^term effectfulTermination := APP(TERMINATES_WITNESS_FORMER' \
+	"$tmp_dir/surface.out"
 
 ./read_file.out --write-artifact "$tmp_dir/result-evidence.apo" "$source_file" \
 	>"$tmp_dir/write.out"
@@ -32,13 +34,13 @@ grep -q '^interface term proof ' "$tmp_dir/read.out"
 grep -q '^interface term termination ' "$tmp_dir/read.out"
 grep -Eq '^derivation [0-9]+ 50 claim [0-9]+ premises 3$' \
 	"$tmp_dir/result-evidence.apo"
-grep -Eq '^derivation [0-9]+ 52 claim [0-9]+ premises 2$' \
+grep -Eq '^derivation [0-9]+ 54 claim [0-9]+ premises 2$' \
 	"$tmp_dir/result-evidence.apo"
 
 if ./read_file.out \
 	src/prototype/tests/fixtures/typing/result_evidence_termination_mismatch_negative.p \
 	>"$tmp_dir/termination-negative.out" 2>"$tmp_dir/termination-negative.err"; then
-	echo "termination evidence accepted Returns evidence for a different computation" >&2
+	echo "termination evidence accepted the removed second proof argument" >&2
 	exit 1
 fi
 

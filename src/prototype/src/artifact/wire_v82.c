@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v81.h"
+#include "a_program/artifact/wire_v82.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -816,10 +816,11 @@ static int read_artifact_term(
 			case PROTOTYPE_TERM_COMPUTATION_TYPE:
 				return fscanf(
 					stream,
-					"%u %u",
+					"%u %u %d",
 					&term->as.computation_type.label,
-					&term->as.computation_type.result
-				) == 2 ? 0 : -1;
+					&term->as.computation_type.result,
+					&term->as.computation_type.totality
+				) == 3 ? 0 : -1;
 			case PROTOTYPE_TERM_THUNK_TYPE:
 				return fscanf(stream, "%u", &term->as.thunk_type.computation) == 1 ? 0 : -1;
 			case PROTOTYPE_TERM_RETURN:
@@ -1240,7 +1241,11 @@ static int artifact_validate_term_refs(
 					artifact_read_term_present(terms, term->as.induction_hypothesis.argument) ? 0 : -1;
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return artifact_read_term_present(terms, term->as.computation_type.label) &&
-				artifact_read_term_present(terms, term->as.computation_type.result) ? 0 : -1;
+				artifact_read_term_present(terms, term->as.computation_type.result) &&
+				(term->as.computation_type.totality ==
+					PROTOTYPE_COMPUTATION_TOTALITY_TOTAL ||
+				 term->as.computation_type.totality ==
+					PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE) ? 0 : -1;
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return artifact_read_term_present(terms, term->as.thunk_type.computation) ? 0 : -1;
 		case PROTOTYPE_TERM_COMPUTATION_FOLD:
@@ -2149,7 +2154,7 @@ int prototype_artifact_read_text_graph(
 			strcmp(claim_label, "claim") != 0 ||
 			strcmp(premise_count_label, "premises") != 0 ||
 			proof_kind < PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
-			proof_kind > PROTOTYPE_JUDGEMENT_PROOF_RETURNS_SEQUENCE_BINDING ||
+			proof_kind > PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TOTAL_COMPUTATION ||
 			((proof_kind >=
 					PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION &&
 			  proof_kind <=

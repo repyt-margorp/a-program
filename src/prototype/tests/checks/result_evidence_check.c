@@ -144,6 +144,7 @@ int main(void) {
 	uint32_t returns_claim;
 	uint32_t terminates_type_claim;
 	uint32_t terminates_claim;
+	uint32_t total_terminates_claim;
 	if (claim_for(&judgement, suspended, &computation_claim) != 0 ||
 		claim_for(&judgement, value, &value_claim) != 0 ||
 		claim_for(&judgement, wrong_value, &wrong_value_claim) != 0 ||
@@ -171,11 +172,66 @@ int main(void) {
 		) == 0 || prototype_judgement_add_terminates_type_formation(
 			&judgement, &term_db, &type_db, 0, terminates_type, universe,
 			computation_claim, &terminates_type_claim
+		) != 0 || prototype_judgement_add_terminates_total_computation(
+			&judgement, &term_db, 0, PROTOTYPE_INVALID_ID,
+			terminates_witness, terminates_type, terminates_type_claim,
+			computation_claim, &total_terminates_claim
 		) != 0 || prototype_judgement_add_terminates_from_returns(
 			&judgement, &term_db, 0, PROTOTYPE_INVALID_ID,
 			terminates_witness, terminates_type,
 			terminates_type_claim, returns_claim, &terminates_claim
-		) != 0 || prototype_judgement_validate_accepted_graph(
+		) != 0) {
+		return 1;
+	}
+
+	/* An empty effect row is not termination evidence. The proposition can be
+	 * formed for a MAY_DIVERGE computation, but the total-computation proof rule
+	 * must reject it. */
+	uint32_t empty_effect_row;
+	uint32_t int_type;
+	uint32_t partial_computation_type;
+	uint32_t partial_thunk_type;
+	uint32_t partial_binding;
+	uint32_t partial_context;
+	uint32_t partial_computation;
+	uint32_t partial_terminates_type;
+	uint32_t partial_terminates_witness;
+	uint32_t partial_computation_claim;
+	uint32_t partial_terminates_type_claim;
+	if (prototype_term_effect_row_empty(
+			&term_db, &empty_effect_row
+		) != 0 || prototype_term_make_host_type(
+			&term_db, PROTOTYPE_HOST_TYPE_INT64, &int_type
+		) != 0 || prototype_term_computation_type(
+			&term_db, empty_effect_row, int_type,
+			PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE,
+			&partial_computation_type
+		) != 0 || prototype_term_thunk_type(
+			&term_db, partial_computation_type, &partial_thunk_type
+		) != 0 ||
+		(partial_binding = prototype_term_new_binding(&term_db)) ==
+			PROTOTYPE_INVALID_ID || prototype_context_extend(
+			&context_db, prototype_context_empty(&context_db), partial_binding,
+			partial_thunk_type, PROTOTYPE_INVALID_ID, &partial_context
+		) != 0 || prototype_term_var(
+			&term_db, partial_binding, &partial_computation
+		) != 0 || prototype_term_terminates_type(
+			&term_db, partial_computation, &partial_terminates_type
+		) != 0 || prototype_term_terminates_witness(
+			&term_db, partial_computation, &partial_terminates_witness
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			&judgement, &term_db, &context_db, partial_context,
+			partial_binding, partial_thunk_type, &partial_computation_claim
+		) != 0 || prototype_judgement_add_terminates_type_formation(
+			&judgement, &term_db, &type_db, partial_context,
+			partial_terminates_type, universe, partial_computation_claim,
+			&partial_terminates_type_claim
+		) != 0 || prototype_judgement_add_terminates_total_computation(
+			&judgement, &term_db, partial_context, PROTOTYPE_INVALID_ID,
+			partial_terminates_witness, partial_terminates_type,
+			partial_terminates_type_claim, partial_computation_claim,
+			&terminates_claim
+		) == 0 || prototype_judgement_validate_accepted_graph(
 			&term_db, &type_db, prototype_default_intrinsic_environment(),
 			&context_db, &substitution_db, &dimension_db, NULL, &judgement
 		) != 0) {

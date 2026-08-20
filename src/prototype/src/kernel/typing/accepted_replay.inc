@@ -4653,6 +4653,41 @@ static int validate_terminates_from_returns_proof(
 		) == 0 && returns_computation == suspended ? 0 : -1;
 }
 
+static int validate_terminates_total_computation_proof(
+	const struct prototype_term_db* terms,
+	const struct prototype_judgement_proposition* relation,
+	const struct prototype_judgement_rule_application_view* proof
+) {
+	uint32_t suspended;
+	uint32_t witness_computation;
+	if (!terms || !relation || !proof ||
+		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		proof->premise_count != 2 ||
+		proof->premises[0].proposition->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		proof->premises[0].proposition->context_id != relation->context_id ||
+		proof->premises[0].proposition->subject != relation->classifier ||
+		proof->premises[1].proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
+		proof->premises[1].proposition->context_id != relation->context_id ||
+		prototype_term_terminates_type_info(
+			terms, relation->classifier, &suspended
+		) != 0 || prototype_term_terminates_witness_info(
+			terms, relation->subject, &witness_computation
+		) != 0 || witness_computation != suspended ||
+		proof->premises[1].proposition->subject != suspended ||
+		proof->premises[1].proposition->classifier >= terms->term_count ||
+		terms->terms[proof->premises[1].proposition->classifier].tag !=
+			PROTOTYPE_TERM_THUNK_TYPE) {
+		return -1;
+	}
+	uint32_t computation_type = terms->terms[
+		proof->premises[1].proposition->classifier
+	].as.thunk_type.computation;
+	return computation_type < terms->term_count &&
+		terms->terms[computation_type].tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
+		terms->terms[computation_type].as.computation_type.totality ==
+			PROTOTYPE_COMPUTATION_TOTALITY_TOTAL ? 0 : -1;
+}
+
 static int validate_relation_constructor_witness_proof(
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_proposition* relation,
@@ -7561,6 +7596,13 @@ int prototype_judgement_validate_accepted_graph(
 					return -1;
 				}
 				break;
+			case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TOTAL_COMPUTATION:
+				if (validate_terminates_total_computation_proof(
+						terms, relation, proof
+					) != 0) {
+					return -1;
+				}
+				break;
 			case PROTOTYPE_JUDGEMENT_PROOF_RELATION_CONSTRUCTOR_WITNESS:
 				if (validate_relation_constructor_witness_proof(
 						terms, relation, proof
@@ -7827,6 +7869,8 @@ static const char* proof_kind_name(int proof_kind) {
 			return "terminates-type-formation";
 		case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS:
 			return "terminates-from-returns";
+		case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TOTAL_COMPUTATION:
+			return "terminates-total-computation";
 		default:
 			return "invalid";
 	}

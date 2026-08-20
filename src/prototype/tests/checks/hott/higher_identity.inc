@@ -277,7 +277,7 @@
 	(void)pi_type_in_function_context_claim;
 	uint32_t pure_bool_computation;
 	uint32_t bool_to_pure_bool_computation;
-	if (prototype_term_computation_type(
+	if (prototype_term_total_computation_type(
 			&term_db, empty_row, bool_view, &pure_bool_computation
 		) != 0 || prototype_term_pi(
 			&term_db,

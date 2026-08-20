@@ -252,7 +252,9 @@ static int resolve_external_ref_term(
 					*p_ret = term_id;
 					return 0;
 				}
-				return prototype_term_computation_type(db, label, result, p_ret);
+				return prototype_term_computation_type(
+					db, label, result, term->as.computation_type.totality, p_ret
+				);
 			}
 			case PROTOTYPE_TERM_THUNK_TYPE: {
 				uint32_t computation;
@@ -868,6 +870,7 @@ static int conversion_equal_computation_match(
 				db,
 				computation.as.computation_type.label,
 				result_case.body,
+				computation.as.computation_type.totality,
 				&branch_computation
 			) != 0 || conversion_equal_match_case_bodies(
 				db,
@@ -3184,6 +3187,11 @@ static int conversion_equal_at_depth(
 			);
 		case PROTOTYPE_TERM_COMPUTATION_TYPE: {
 			int equal = 0;
+			if (left_term->as.computation_type.totality !=
+				right_term->as.computation_type.totality) {
+				*p_equal = 0;
+				return 0;
+			}
 			if (conversion_equal_at_depth(
 					db,
 					type_declarations,
@@ -4338,7 +4346,12 @@ static void print_term_depth_impl(
 					print_term_depth(output, symbols, type_declarations, terms, term->as.computation_type.label, depth - 1);
 					fprintf(output, ", ");
 					print_term_depth(output, symbols, type_declarations, terms, term->as.computation_type.result, depth - 1);
-			fprintf(output, ")");
+			fprintf(
+				output,
+				", %s)",
+				term->as.computation_type.totality ==
+					PROTOTYPE_COMPUTATION_TOTALITY_TOTAL ? "total" : "may-diverge"
+			);
 			break;
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			fprintf(output, "Thunk(");
@@ -4678,7 +4691,12 @@ static void print_term_debug_depth_impl(
 				print_term_debug_depth(output, symbols, type_declarations, terms, term->as.computation_type.label, depth - 1);
 				fprintf(output, ", ");
 				print_term_debug_depth(output, symbols, type_declarations, terms, term->as.computation_type.result, depth - 1);
-			fprintf(output, ")");
+			fprintf(
+				output,
+				", %s)",
+				term->as.computation_type.totality ==
+					PROTOTYPE_COMPUTATION_TOTALITY_TOTAL ? "TOTAL" : "MAY_DIVERGE"
+			);
 			break;
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			fprintf(output, "Thunk(");

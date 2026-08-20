@@ -665,7 +665,7 @@
 	uint32_t thunk_bool_has_type;
 	uint32_t thunk_bool_is_type;
 	if (prototype_term_effect_row_empty(&term_db, &empty_effect_row
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&term_db, empty_effect_row, bool_view, &pure_bool_computation_type
 		) != 0 || prototype_term_thunk_type(
 			&term_db, pure_bool_computation_type, &thunk_bool_type
@@ -1740,7 +1740,7 @@
 	uint32_t returned_function_value_claim;
 	uint32_t thunked_returned_function;
 	uint32_t thunked_returned_function_claim;
-	if (prototype_term_computation_type(
+	if (prototype_term_total_computation_type(
 			&term_db,
 			empty_effect_row,
 			thunk_bool_function_type,
@@ -3962,7 +3962,7 @@
 			&term_db, indexed_left_var, &indexed_false_return
 		) != 0 || prototype_term_return(
 			&term_db, indexed_left_var, &indexed_true_return
-		) != 0 || prototype_term_computation_type(
+		) != 0 || prototype_term_total_computation_type(
 			&term_db, empty_effect_row, bool_view, &indexed_branch_classifier
 		) != 0) {
 		fprintf(stderr, "indexed match term components failed\n");

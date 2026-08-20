@@ -26,7 +26,8 @@ static int operation_solver_match_classifier_parts(
 	uint32_t classifier,
 	int* p_returns_computation,
 	uint32_t* p_result,
-	uint32_t* p_effect_row
+	uint32_t* p_effect_row,
+	int* p_totality
 );
 
 static int operation_solver_reindex_in_enclosing_indexed_branches(
@@ -1227,6 +1228,7 @@ static int build_operation_motive(
 	uint32_t binder_cursor = 0;
 	int returns_computation = -1;
 	uint32_t joined_effect_row = PROTOTYPE_INVALID_ID;
+	int joined_totality = PROTOTYPE_COMPUTATION_TOTALITY_TOTAL;
 	uint32_t branch_results[64];
 	uint32_t branch_constructor_results[64];
 	uint32_t branch_constructor_terms[64];
@@ -1327,17 +1329,27 @@ static int build_operation_motive(
 		int branch_returns;
 		uint32_t branch_result;
 		uint32_t branch_effect_row;
+		int branch_totality;
 		if (operation_solver_match_classifier_parts(
 				ctx,
 				reindexed_classifier,
 				&branch_returns,
 				&branch_result,
-				&branch_effect_row
+				&branch_effect_row,
+				&branch_totality
 			) != 0 || (returns_computation >= 0 &&
 			branch_returns != returns_computation)) {
 			return 1;
 		}
 		returns_computation = branch_returns;
+		if (branch_returns) {
+			joined_totality = prototype_computation_totality_join(
+				joined_totality, branch_totality
+			);
+			if (joined_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+				return 1;
+			}
+		}
 		motive_cases[case_index].body = branch_result;
 		branch_results[case_index] = branch_result;
 		uint32_t constructor_term;
@@ -1552,7 +1564,8 @@ static int build_operation_motive(
 		uint32_t motive_body = generalized_result;
 		uint32_t motive;
 		if (returns_computation && prototype_term_computation_type(
-				ctx->terms, joined_effect_row, generalized_result, &motive_body
+				ctx->terms, joined_effect_row, generalized_result, joined_totality,
+				&motive_body
 			) != 0) {
 			return -1;
 		}
@@ -1684,7 +1697,8 @@ static int build_operation_motive(
 			}
 			motive_body = generic_result;
 			if (returns_computation && prototype_term_computation_type(
-					ctx->terms, joined_effect_row, generic_result, &motive_body
+					ctx->terms, joined_effect_row, generic_result, joined_totality,
+					&motive_body
 				) != 0) {
 				return -1;
 			}
@@ -1816,7 +1830,8 @@ static int build_operation_motive(
 			uint32_t motive_body = generalized;
 			uint32_t motive;
 			if (returns_computation && prototype_term_computation_type(
-					ctx->terms, joined_effect_row, generalized, &motive_body
+					ctx->terms, joined_effect_row, generalized, joined_totality,
+					&motive_body
 				) != 0) {
 				return -1;
 			}
@@ -1886,7 +1901,8 @@ static int build_operation_motive(
 		}
 		motive_body = generic_result;
 		if (returns_computation && prototype_term_computation_type(
-				ctx->terms, joined_effect_row, generic_result, &motive_body
+				ctx->terms, joined_effect_row, generic_result, joined_totality,
+				&motive_body
 			) != 0) {
 			return -1;
 		}
@@ -1934,7 +1950,8 @@ static int build_operation_motive(
 	}
 	motive_body = motive_match;
 	if (returns_computation && prototype_term_computation_type(
-			ctx->terms, joined_effect_row, motive_match, &motive_body
+			ctx->terms, joined_effect_row, motive_match, joined_totality,
+			&motive_body
 		) != 0) {
 		return -1;
 	}
@@ -2264,9 +2281,11 @@ static int operation_solver_match_classifier_parts(
 	uint32_t classifier,
 	int* p_returns_computation,
 	uint32_t* p_result,
-	uint32_t* p_effect_row
+	uint32_t* p_effect_row,
+	int* p_totality
 ) {
 	if (!ctx || !p_returns_computation || !p_result || !p_effect_row ||
+		!p_totality ||
 		classifier >= ctx->terms->term_count) {
 		return -1;
 	}
@@ -2281,11 +2300,13 @@ static int operation_solver_match_classifier_parts(
 		*p_returns_computation = 1;
 		*p_result = view.result;
 		*p_effect_row = view.effect_row;
+		*p_totality = view.totality;
 		return 0;
 	}
 	*p_returns_computation = 0;
 	*p_result = classifier;
 	*p_effect_row = PROTOTYPE_INVALID_ID;
+	*p_totality = PROTOTYPE_COMPUTATION_TOTALITY_TOTAL;
 	return 0;
 }
 
@@ -2301,10 +2322,12 @@ static int operation_solver_join_match_classifiers(
 	uint32_t right_result;
 	uint32_t left_row;
 	uint32_t right_row;
+	int left_totality;
+	int right_totality;
 	if (!ctx || !p_joined || operation_solver_match_classifier_parts(
-			ctx, left, &left_returns, &left_result, &left_row
+			ctx, left, &left_returns, &left_result, &left_row, &left_totality
 		) != 0 || operation_solver_match_classifier_parts(
-			ctx, right, &right_returns, &right_result, &right_row
+			ctx, right, &right_returns, &right_result, &right_row, &right_totality
 		) != 0 || left_returns != right_returns ||
 		prototype_judgement_classifier_conversion(
 			ctx->terms, ctx->type_declarations, left_result, right_result
@@ -2316,10 +2339,16 @@ static int operation_solver_join_match_classifiers(
 		return 0;
 	}
 	uint32_t joined_row;
+	int joined_totality = prototype_computation_totality_join(
+		left_totality, right_totality
+	);
+	if (joined_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+		return 1;
+	}
 	return prototype_term_effect_row_union(
 			ctx->terms, left_row, right_row, &joined_row
 		) != 0 ? -1 : prototype_term_computation_type(
-			ctx->terms, joined_row, left_result, p_joined
+			ctx->terms, joined_row, left_result, joined_totality, p_joined
 		);
 }
 
@@ -3416,7 +3445,8 @@ static int operation_solver_materialize_induction_hypothesis(
 			) == 0 && previous_view.category ==
 				PROTOTYPE_TERM_CATEGORY_COMPUTATION && lifted_view.category ==
 				PROTOTYPE_TERM_CATEGORY_VALUE && prototype_term_computation_type(
-				ctx->terms, previous_view.effect_row, classifier, &classifier
+				ctx->terms, previous_view.effect_row, classifier,
+				previous_view.totality, &classifier
 			) != 0) {
 			return -1;
 		}

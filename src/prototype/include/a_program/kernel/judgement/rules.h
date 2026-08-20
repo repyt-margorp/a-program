@@ -541,6 +541,17 @@ int prototype_judgement_add_terminates_from_returns(
 	uint32_t returns_claim_id,
 	uint32_t* p_claim_id
 );
+int prototype_judgement_add_terminates_total_computation(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_term_db* terms,
+	uint32_t context_id,
+	uint32_t occurrence_id,
+	uint32_t witness,
+	uint32_t terminates_type,
+	uint32_t terminates_type_claim_id,
+	uint32_t computation_claim_id,
+	uint32_t* p_claim_id
+);
 int prototype_judgement_add_relation_constructor_witness(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,
