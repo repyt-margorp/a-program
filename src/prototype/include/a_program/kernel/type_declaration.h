@@ -42,7 +42,13 @@ enum prototype_type_expr_tag {
 	PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT = 12,
 	PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64 = 13,
 	/* Source-local value selected through a named type view, such as Nat.zero. */
-	PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER = 14
+	PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER = 14,
+	/* Diagnostic readback for the surface `&A` value type.  The semantic
+	 * classifier remains the graph-level THUNK_TYPE(COMPUTATION_TYPE(..., A)). */
+	PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE = 15,
+	/* Opaque diagnostic marker for a semantic relation whose endpoints are
+	 * ordinary Terms.  Endpoint identity is authoritative only in TermDB. */
+	PROTOTYPE_TYPE_EXPR_SEMANTIC_RELATION = 16
 };
 
 struct prototype_type_representation_fingerprint {
@@ -88,6 +94,9 @@ struct prototype_type_expr {
 			int owner_symbol_id;
 			int member_symbol_id;
 		} local_type_member;
+		struct {
+			uint32_t result;
+		} computation_reference;
 		struct {
 			uint32_t function;
 			uint32_t argument;
@@ -290,6 +299,15 @@ int prototype_type_expr_local_type_member(
 	struct prototype_type_declaration_db* db,
 	int owner_symbol_id,
 	int member_symbol_id,
+	uint32_t* p_ret
+);
+int prototype_type_expr_computation_reference(
+	struct prototype_type_declaration_db* db,
+	uint32_t result,
+	uint32_t* p_ret
+);
+int prototype_type_expr_semantic_relation(
+	struct prototype_type_declaration_db* db,
 	uint32_t* p_ret
 );
 

@@ -494,7 +494,36 @@ static int operation_solver_resolve_contexts(
 			}
 		}
 		size_t context_count_before = ctx->metadata->contexts.context_count;
-		if (prototype_context_extend(
+		uint32_t source_computation = context->source_computation;
+		if (context->extension_kind ==
+				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT) {
+			struct operation_binder_owner_entry* result_owner =
+				operation_binder_owner_find(ctx, context->binding_id);
+			if (result_owner && result_owner->bound_computation_occurrence !=
+					PROTOTYPE_INVALID_ID &&
+				result_owner->bound_computation_occurrence >=
+					ctx->metadata->typed_occurrences.occurrence_count) {
+				return -1;
+			}
+			if (result_owner && result_owner->bound_computation_occurrence !=
+					PROTOTYPE_INVALID_ID) {
+				source_computation = ctx->metadata->typed_occurrences.occurrences[
+					result_owner->bound_computation_occurrence
+				].core_term;
+			}
+		}
+		int context_extend_status = context->extension_kind ==
+				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT ?
+			prototype_context_extend_computation_result(
+				&ctx->metadata->contexts,
+				relocation[context->parent],
+				context->binding_id,
+				classifier,
+				finalize && classifier_variable_resolved ?
+					PROTOTYPE_INVALID_ID : classifier_variable,
+				source_computation,
+				&relocation[context_id]
+			) : prototype_context_extend(
 				&ctx->metadata->contexts,
 				relocation[context->parent],
 				context->binding_id,
@@ -502,7 +531,8 @@ static int operation_solver_resolve_contexts(
 				finalize && classifier_variable_resolved ?
 					PROTOTYPE_INVALID_ID : classifier_variable,
 				&relocation[context_id]
-			) != 0) {
+			);
+		if (context_extend_status != 0) {
 			fprintf(stderr, "context resolution extension failed context=%u parent=%u classifier=%u variable=%u\n",
 				context_id, context->parent, classifier, classifier_variable);
 			return -1;

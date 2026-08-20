@@ -514,6 +514,28 @@ int prototype_type_expr_local_type_member(
 	return add_expr(db, expr, p_ret);
 }
 
+int prototype_type_expr_computation_reference(
+	struct prototype_type_declaration_db* db,
+	uint32_t result,
+	uint32_t* p_ret
+) {
+	struct prototype_type_expr expr;
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE;
+	expr.as.computation_reference.result = result;
+	return add_expr(db, expr, p_ret);
+}
+
+int prototype_type_expr_semantic_relation(
+	struct prototype_type_declaration_db* db,
+	uint32_t* p_ret
+) {
+	struct prototype_type_expr expr;
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_TYPE_EXPR_SEMANTIC_RELATION;
+	return add_expr(db, expr, p_ret);
+}
+
 int prototype_type_declaration_add(
 	struct prototype_type_declaration_db* db,
 	int name_symbol_id,

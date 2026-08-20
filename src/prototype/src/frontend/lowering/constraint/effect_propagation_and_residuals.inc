@@ -797,7 +797,7 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 		return -1;
 	}
 	/* Preserve an immutable diagnostic snapshot. The solver does not read this
-	 * projection and v80 does not publish it. */
+	 * projection and v81 does not publish it. */
 	if (ctx->constraints.effect_constraint_count >
 		ctx->metadata->effect_constraint_capacity) {
 		return -1;

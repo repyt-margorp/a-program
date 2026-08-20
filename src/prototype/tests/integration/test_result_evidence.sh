@@ -59,4 +59,41 @@ grep -q '^interface term consumeOpenResult ' "$tmp_dir/dependent-read.out"
 grep -Eq '^derivation [0-9]+ 50 claim [0-9]+ premises 3$' \
 	"$tmp_dir/dependent-result-evidence.apo"
 
+sequence_source=src/prototype/tests/fixtures/typing/result_evidence_sequence_binding_check.p
+./read_file.out "$sequence_source" >"$tmp_dir/sequence-source.out"
+grep -q '\[returns-sequence-binding proof#' "$tmp_dir/sequence-source.out"
+./read_file.out --write-artifact "$tmp_dir/sequence.apo" "$sequence_source" \
+	>"$tmp_dir/sequence-write.out"
+./read_file.out --read-graph "$tmp_dir/sequence.apo" >"$tmp_dir/sequence-read.out"
+grep -Eq '^context [0-9]+ [0-9]+ [0-9]+ [0-9]+ 2 [0-9]+ [0-9]+$' \
+	"$tmp_dir/sequence.apo"
+grep -Eq '^derivation [0-9]+ 53 claim [0-9]+ premises 3$' \
+	"$tmp_dir/sequence.apo"
+
+indexed_source=src/prototype/tests/fixtures/typing/computation_indexed_family_check.p
+./read_file.out "$indexed_source" >"$tmp_dir/computation-indexed.out"
+grep -q '^type (Returns A) constructors=1$' "$tmp_dir/computation-indexed.out"
+
+for negative in \
+	result_evidence_sequence_wrong_computation_negative.p \
+	result_evidence_ordinary_binder_negative.p
+do
+	if ./read_file.out "src/prototype/tests/fixtures/typing/$negative" \
+		>"$tmp_dir/$negative.out" 2>"$tmp_dir/$negative.err"; then
+		echo "invalid open Returns evidence was accepted: $negative" >&2
+		exit 1
+	fi
+done
+
+awk '
+	$1 == "context" && $6 == 2 && !changed { $7 = 0; changed = 1 }
+	{ print }
+	END { if (!changed) exit 1 }
+' "$tmp_dir/sequence.apo" >"$tmp_dir/sequence-corrupt.apo"
+if ./read_file.out --read-graph "$tmp_dir/sequence-corrupt.apo" \
+	>"$tmp_dir/sequence-corrupt.out" 2>"$tmp_dir/sequence-corrupt.err"; then
+	echo "artifact replay accepted a forged computation-result Context origin" >&2
+	exit 1
+fi
+
 echo "result evidence checks passed"

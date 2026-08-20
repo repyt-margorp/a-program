@@ -3489,11 +3489,12 @@ static int compile_continue_runtime_computation(
 	saved_binder_count = ctx->binder_count;
 	if (continuation->has_source_binder) {
 		ast_binder_id = continuation->source_ast_binder_id;
-		if (push_graph_binder(
+		if (push_graph_computation_result_binder(
 				ctx,
 				ast_binder_id,
 				continuation->source_binder_classifier,
 				continuation->source_binder_symbol_id,
+				computation->term,
 				&binding_id
 			) != 0) {
 			return -1;
@@ -3502,13 +3503,15 @@ static int compile_continue_runtime_computation(
 		ast_binder_id = prototype_ast_new_binder(ctx->asts);
 		binding_id = prototype_term_new_binding(ctx->terms);
 		if (ast_binder_id == PROTOTYPE_INVALID_ID ||
-			binding_id == PROTOTYPE_INVALID_ID || prototype_context_extend(
-			&ctx->metadata->contexts,
-			ctx->context_ids[saved_binder_count],
-			binding_id,
-			PROTOTYPE_INVALID_ID,
-			ast_binder_id,
-			&continuation_context
+			binding_id == PROTOTYPE_INVALID_ID ||
+			prototype_context_extend_computation_result(
+				&ctx->metadata->contexts,
+				ctx->context_ids[saved_binder_count],
+				binding_id,
+				PROTOTYPE_INVALID_ID,
+				ast_binder_id,
+				computation->term,
+				&continuation_context
 		) != 0) {
 			return -1;
 		}

@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v80.h"
+#include "a_program/artifact/wire_v81.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/typed_occurrence_graph.h"
@@ -107,6 +107,11 @@ static int write_artifact_type_expr(
 					symbol_to_string(symbols, expr->as.local_type_member.owner_symbol_id),
 					symbol_to_string(symbols, expr->as.local_type_member.member_symbol_id)
 				);
+				break;
+			case PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE:
+				fprintf(stream, " %u", expr->as.computation_reference.result);
+				break;
+			case PROTOTYPE_TYPE_EXPR_SEMANTIC_RELATION:
 				break;
 		case PROTOTYPE_TYPE_EXPR_APP:
 			fprintf(stream, " %u %u", expr->as.app.function, expr->as.app.argument);

@@ -72,10 +72,18 @@ struct prototype_context_classifier_ref {
 	uint32_t variable_id;
 };
 
+enum prototype_context_extension_kind {
+	PROTOTYPE_CONTEXT_EXTENSION_INVALID = 0,
+	PROTOTYPE_CONTEXT_EXTENSION_VALUE = 1,
+	PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT = 2
+};
+
 struct prototype_context {
 	uint32_t parent;
 	uint32_t binding_id;
 	struct prototype_context_classifier_ref classifier_ref;
+	int extension_kind;
+	uint32_t source_computation;
 	uint32_t depth;
 	uint64_t key_hash;
 	uint32_t hash_next;
@@ -165,6 +173,24 @@ int prototype_context_extend_occurrence(
 	uint32_t binding_id,
 	uint32_t classifier,
 	uint32_t classifier_variable,
+	uint32_t* p_context
+);
+int prototype_context_extend_computation_result(
+	struct prototype_context_db* db,
+	uint32_t parent,
+	uint32_t binding_id,
+	uint32_t classifier,
+	uint32_t classifier_variable,
+	uint32_t source_computation,
+	uint32_t* p_context
+);
+int prototype_context_extend_computation_result_occurrence(
+	struct prototype_context_db* db,
+	uint32_t parent,
+	uint32_t binding_id,
+	uint32_t classifier,
+	uint32_t classifier_variable,
+	uint32_t source_computation,
 	uint32_t* p_context
 );
 const struct prototype_context* prototype_context_get(

@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v80.h"
+#include "a_program/artifact/wire_v81.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -588,6 +588,12 @@ static int read_artifact_type_expr(
 					) == 0 && read_artifact_symbol(
 						stream, symbols, &expr->as.local_type_member.member_symbol_id
 					) == 0 ? 0 : -1;
+			case PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE:
+				return fscanf(
+					stream, "%u", &expr->as.computation_reference.result
+				) == 1 ? 0 : -1;
+			case PROTOTYPE_TYPE_EXPR_SEMANTIC_RELATION:
+				return 0;
 		case PROTOTYPE_TYPE_EXPR_APP:
 			return fscanf(stream, "%u %u", &expr->as.app.function, &expr->as.app.argument) == 2 ? 0 : -1;
 		case PROTOTYPE_TYPE_EXPR_ARROW:
@@ -1002,7 +1008,12 @@ static int artifact_validate_type_expr_refs(
 			case PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE:
 			case PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM:
 			case PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER:
+			case PROTOTYPE_TYPE_EXPR_SEMANTIC_RELATION:
 				return 0;
+		case PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE:
+			return artifact_read_type_expr_present(
+				type_declarations, expr->as.computation_reference.result
+			) ? 0 : -1;
 		case PROTOTYPE_TYPE_EXPR_APP:
 			return artifact_read_type_expr_present(type_declarations, expr->as.app.function) &&
 				artifact_read_type_expr_present(type_declarations, expr->as.app.argument) ? 0 : -1;
@@ -2138,7 +2149,7 @@ int prototype_artifact_read_text_graph(
 			strcmp(claim_label, "claim") != 0 ||
 			strcmp(premise_count_label, "premises") != 0 ||
 			proof_kind < PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
-			proof_kind > PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS ||
+			proof_kind > PROTOTYPE_JUDGEMENT_PROOF_RETURNS_SEQUENCE_BINDING ||
 			((proof_kind >=
 					PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION &&
 			  proof_kind <=
@@ -2342,20 +2353,26 @@ int prototype_artifact_read_text_typed_occurrences(
 		uint32_t classifier;
 		if (fscanf(
 				stream,
-				"%255s %zu %u %u %u %u",
+				"%255s %zu %u %u %u %d %u %u",
 				word,
 				&id,
 				&context.parent,
 				&context.binding_id,
 				&classifier,
+				&context.extension_kind,
+				&context.source_computation,
 				&context.depth
-			) != 6 ||
+			) != 8 ||
 			strcmp(word, "context") != 0 ||
 			id != i ||
 			(metadata && (
 				(i != 0 && classifier == PROTOTYPE_INVALID_ID) ||
 				(classifier != PROTOTYPE_INVALID_ID &&
-				 classifier >= terms->term_count)))) {
+				 !artifact_read_term_present(terms, classifier)) ||
+				(context.source_computation != PROTOTYPE_INVALID_ID &&
+				 !artifact_read_term_present(
+					terms, context.source_computation
+				 ))))) {
 			return -1;
 		}
 		context.classifier_ref.kind = i == 0 ?
@@ -2363,6 +2380,18 @@ int prototype_artifact_read_text_typed_occurrences(
 			PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM;
 		context.classifier_ref.term_id = classifier;
 		context.classifier_ref.variable_id = PROTOTYPE_INVALID_ID;
+		if ((i == 0 && (context.extension_kind !=
+				PROTOTYPE_CONTEXT_EXTENSION_INVALID ||
+			context.source_computation != PROTOTYPE_INVALID_ID)) ||
+			(i != 0 && context.extension_kind !=
+				PROTOTYPE_CONTEXT_EXTENSION_VALUE &&
+			 context.extension_kind !=
+				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT) ||
+			(i != 0 &&
+			 (context.extension_kind == PROTOTYPE_CONTEXT_EXTENSION_VALUE) !=
+				(context.source_computation == PROTOTYPE_INVALID_ID))) {
+			return -1;
+		}
 		if (metadata) {
 			if ((i == 0 && context.binding_id != PROTOTYPE_INVALID_ID) ||
 				(i != 0 && context.binding_id == PROTOTYPE_INVALID_ID)) {

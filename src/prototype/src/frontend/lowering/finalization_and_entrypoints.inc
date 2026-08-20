@@ -2113,11 +2113,39 @@ static int accepted_claim_for_exact_proposition(
 	return 1;
 }
 
+static int accepted_or_context_binding_claim(
+	struct compile_context* ctx,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t classifier,
+	uint32_t* p_claim_id
+) {
+	int status = accepted_claim_for_exact_proposition(
+		ctx ? ctx->judgement : NULL,
+		context_id,
+		subject,
+		classifier,
+		p_claim_id
+	);
+	if (status <= 0 || !ctx || subject >= ctx->terms->term_count ||
+		ctx->terms->terms[subject].tag != PROTOTYPE_TERM_VAR) {
+		return status;
+	}
+	return prototype_judgement_add_context_binding_assumption(
+		ctx->judgement,
+		ctx->terms,
+		&ctx->metadata->contexts,
+		context_id,
+		ctx->terms->terms[subject].as.var.binding_id,
+		classifier,
+		p_claim_id
+	);
+}
+
 /* Explicit `#.returns` is proof construction, not classifier synthesis. The
- * source occurrence already carries its synthesized Returns classifier. Only
- * after ordinary Claims are accepted do we check the finite evaluation and
- * add the operational Derivation. The first surface fragment is deliberately
- * closed; open totality requires structural/Acc evidence rather than one run. */
+ * source occurrence already carries its synthesized Returns classifier. Once
+ * ordinary Claims are accepted, closed endpoints use finite evaluation and a
+ * computation-result Context extension uses its recorded sequencing origin. */
 static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata || !ctx->judgement) {
 		return -1;
@@ -2155,7 +2183,7 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 		int value_endpoint_equal = 0;
 		int witness_computation_equal = 0;
 		int witness_value_equal = 0;
-		if (!context || context->depth != 0 ||
+		if (!context ||
 			occurrence->classifier == PROTOTYPE_INVALID_ID ||
 			prototype_term_returns_type_info(
 				ctx->terms, occurrence->classifier, &suspended, &endpoint
@@ -2190,7 +2218,8 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 				"suspended=%u endpoint=%u witness-computation=%u witness-value=%u "
 				"depth=%u computation-occurrence=%u computation-term=%u "
 				"computation-tag=%u computation-wrapped=%u computation-source=%u "
-				"value-occurrence=%u value-term=%u value-tag=%u value-wrapped=%u\n",
+				"value-occurrence=%u value-term=%u value-tag=%u value-wrapped=%u "
+				"equals=%d:%d:%d:%d\n",
 				occurrence_id,
 				occurrence->context_id,
 				occurrence->classifier,
@@ -2207,7 +2236,11 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 				value_occurrence,
 				value->core_term,
 				value->tag,
-				value->wrapped_occurrence
+				value->wrapped_occurrence,
+				witness_computation_equal,
+				witness_value_equal,
+				computation_endpoint_equal,
+				value_endpoint_equal
 			);
 			return -1;
 		}
@@ -2225,9 +2258,9 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 			ctx->judgement, computation->context_id, computation->core_term,
 			computation->classifier, &computation_claim
 		);
-		int value_claim_status = accepted_claim_for_exact_proposition(
-			ctx->judgement, value->context_id, value->core_term,
-			value->classifier, &value_claim
+		int value_claim_status = accepted_or_context_binding_claim(
+			ctx, value->context_id, value->core_term, value->classifier,
+			&value_claim
 		);
 		int universe_status = computation_claim_status == 0 &&
 			value_claim_status == 0 ? prototype_term_universe_var(
@@ -2239,13 +2272,22 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 				occurrence->context_id, occurrence->classifier, universe,
 				computation_claim, value_claim, &returns_type_claim
 			) : -1;
-		int evaluation_status = formation_status == 0 ?
-			prototype_judgement_add_returns_evaluation(
+		int evaluation_status = formation_status == 0 && context->depth != 0 ?
+			prototype_judgement_add_returns_sequence_binding(
+				ctx->judgement, ctx->terms, ctx->type_declarations,
+				&ctx->metadata->contexts,
+				occurrence->context_id, occurrence_id, occurrence->core_term,
+				occurrence->classifier, returns_type_claim, computation_claim,
+				value_claim, &returns_claim
+			) : -1;
+		if (formation_status == 0 && evaluation_status != 0) {
+			evaluation_status = prototype_judgement_add_returns_evaluation(
 				ctx->judgement, ctx->terms, ctx->type_declarations,
 				occurrence->context_id, occurrence_id, occurrence->core_term,
 				occurrence->classifier, returns_type_claim, computation_claim,
 				value_claim, evidence_step_limit, &returns_claim
-			) : -1;
+			);
+		}
 		if (computation_claim_status != 0 || value_claim_status != 0 ||
 			universe_status != 0 || formation_status != 0 ||
 			evaluation_status != 0) {

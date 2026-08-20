@@ -1070,6 +1070,10 @@ static int artifact_mark_type_expr(
 			) == 0 && artifact_mark_type_expr(
 				marks, terms, expr->as.pi.codomain, depth + 1
 			) == 0 ? 0 : -1;
+		case PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE:
+			return artifact_mark_type_expr(
+				marks, terms, expr->as.computation_reference.result, depth + 1
+			);
 		default:
 			return 0;
 	}

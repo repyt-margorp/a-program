@@ -277,6 +277,9 @@ static int relocate_artifact_type_expr(
 			RELOCATE_TYPE_EXPR_REF(expr->as.pi.domain);
 			RELOCATE_TYPE_EXPR_REF(expr->as.pi.codomain);
 			break;
+		case PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE:
+			RELOCATE_TYPE_EXPR_REF(expr->as.computation_reference.result);
+			break;
 		default:
 			break;
 	}

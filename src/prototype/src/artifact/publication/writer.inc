@@ -61,7 +61,7 @@ static int write_artifact_typed_occurrence_section(
 		}
 		fprintf(
 			stream,
-			"context %zu %u %u %u %u\n",
+			"context %zu %u %u %u %d %u %u\n",
 			(size_t)context_slice->relocation[i],
 			context->parent == PROTOTYPE_INVALID_ID ?
 				PROTOTYPE_INVALID_ID :
@@ -70,6 +70,8 @@ static int write_artifact_typed_occurrence_section(
 				),
 			context->binding_id,
 			classifier,
+			context->extension_kind,
+			context->source_computation,
 			context->depth
 		);
 	}

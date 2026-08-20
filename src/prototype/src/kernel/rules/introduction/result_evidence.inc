@@ -70,6 +70,14 @@ int prototype_judgement_result_computation_endpoints_equal(
 		) != 0 || *p_equal) {
 		return *p_equal ? 0 : -1;
 	}
+	struct prototype_term_conversion_result conversion =
+		prototype_judgement_classifier_conversion(
+			terms, type_declarations, left, right
+		);
+	if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		*p_equal = 1;
+		return 0;
+	}
 	*p_equal = 0;
 	if (terms->terms[left].tag != PROTOTYPE_TERM_THUNK ||
 		terms->terms[right].tag != PROTOTYPE_TERM_THUNK) {
@@ -282,6 +290,134 @@ int prototype_judgement_add_returns_evaluation(
 	};
 	return result_evidence_publish(
 		judgement, &conclusion, PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION,
+		premise_ids, premises, 3, p_claim_id
+	);
+}
+
+static int returns_sequence_binding_is_valid(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	uint32_t context_id,
+	uint32_t suspended,
+	uint32_t expected
+) {
+	uint32_t binding_id;
+	uint32_t entry_context_id;
+	int computation_equal = 0;
+	if (!terms || !type_declarations || !contexts ||
+		suspended >= terms->term_count || expected >= terms->term_count ||
+		terms->terms[suspended].tag != PROTOTYPE_TERM_THUNK ||
+		terms->terms[expected].tag != PROTOTYPE_TERM_VAR) {
+		return -1;
+	}
+	binding_id = terms->terms[expected].as.var.binding_id;
+	if (prototype_context_find_binding(
+			contexts, context_id, binding_id, &entry_context_id
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_context* entry = prototype_context_get(
+		contexts, entry_context_id
+	);
+	if (!entry || entry->extension_kind !=
+			PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT ||
+		entry->source_computation == PROTOTYPE_INVALID_ID ||
+		prototype_term_core_shape_equal_for_link(
+			terms,
+			type_declarations,
+			entry->source_computation,
+			terms,
+			type_declarations,
+			terms->terms[suspended].as.thunk.computation,
+			&computation_equal
+		) != 0) {
+		return -1;
+	}
+	if (!computation_equal) {
+		struct prototype_term_conversion_result conversion =
+			prototype_judgement_classifier_conversion(
+				terms,
+				type_declarations,
+				entry->source_computation,
+				terms->terms[suspended].as.thunk.computation
+			);
+		if (conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+int prototype_judgement_add_returns_sequence_binding(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	uint32_t context_id,
+	uint32_t occurrence_id,
+	uint32_t witness,
+	uint32_t returns_type,
+	uint32_t returns_type_claim_id,
+	uint32_t computation_claim_id,
+	uint32_t value_claim_id,
+	uint32_t* p_claim_id
+) {
+	const struct prototype_judgement_proposition* type_formation;
+	const struct prototype_judgement_proposition* computation;
+	const struct prototype_judgement_proposition* value;
+	uint32_t suspended;
+	uint32_t expected;
+	uint32_t witness_computation;
+	uint32_t witness_value;
+	int witness_computation_equal = 0;
+	int witness_value_equal = 0;
+	if (result_evidence_claim(judgement, returns_type_claim_id, &type_formation) != 0 ||
+		result_evidence_claim(judgement, computation_claim_id, &computation) != 0 ||
+		result_evidence_claim(judgement, value_claim_id, &value) != 0 ||
+		type_formation->kind != PROTOTYPE_JUDGEMENT_KIND_IS_TYPE ||
+		type_formation->context_id != context_id ||
+		type_formation->subject != returns_type ||
+		returns_claim_shape(
+			terms, type_declarations, context_id, returns_type, computation, value
+		) != 0 || prototype_term_returns_type_info(
+			terms, returns_type, &suspended, &expected
+		) != 0 || prototype_term_returns_witness_info(
+			terms, witness, &witness_computation, &witness_value
+		) != 0 || prototype_judgement_result_computation_endpoints_equal(
+			terms, type_declarations, witness_computation, suspended,
+			PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT,
+			&witness_computation_equal
+		) != 0 || !witness_computation_equal ||
+		prototype_term_core_shape_equal_for_link(
+			terms, type_declarations, witness_value,
+			terms, type_declarations, expected, &witness_value_equal
+		) != 0 || !witness_value_equal ||
+		returns_sequence_binding_is_valid(
+			terms, type_declarations, contexts, context_id, suspended, expected
+		) != 0) {
+		return -1;
+	}
+	const uint32_t premise_ids[3] = {
+		returns_type_claim_id, computation_claim_id, value_claim_id
+	};
+	const struct prototype_judgement_proposition* premises[3] = {
+		type_formation, computation, value
+	};
+	const struct prototype_judgement_proposition conclusion = {
+		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+		.authority_kind = occurrence_id == PROTOTYPE_INVALID_ID ?
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER :
+			PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE,
+		.authority_id = occurrence_id == PROTOTYPE_INVALID_ID ? witness : occurrence_id,
+		.context_id = context_id,
+		.occurrence_id = occurrence_id,
+		.subject = witness,
+		.classifier = returns_type
+	};
+	return result_evidence_publish(
+		judgement, &conclusion,
+		PROTOTYPE_JUDGEMENT_PROOF_RETURNS_SEQUENCE_BINDING,
 		premise_ids, premises, 3, p_claim_id
 	);
 }

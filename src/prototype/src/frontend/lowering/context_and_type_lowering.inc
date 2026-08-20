@@ -814,6 +814,14 @@ static int push_graph_binder(
 	int symbol_id,
 	uint32_t* p_graph_binder_id
 );
+static int push_graph_computation_result_binder(
+	struct compile_context* ctx,
+	uint32_t ast_binder_id,
+	uint32_t classifier,
+	int symbol_id,
+	uint32_t source_computation,
+	uint32_t* p_graph_binder_id
+);
 static int resolve_namespace_member(
 	struct compile_context* ctx,
 	uint32_t namespace_term,
@@ -3724,11 +3732,12 @@ static int resolve_unique_assignment_if_present(
 	return *p_def ? 0 : -1;
 }
 
-static int push_graph_binder(
+static int push_graph_binder_with_origin(
 	struct compile_context* ctx,
 	uint32_t ast_binder_id,
 	uint32_t classifier,
 	int symbol_id,
+	uint32_t source_computation,
 	uint32_t* p_graph_binder_id
 ) {
 	if (!ctx || !p_graph_binder_id || ctx->binder_count >= 512) {
@@ -3748,14 +3757,15 @@ static int push_graph_binder(
 	 * available. Fixed-point elaboration may later refine that classifier and
 	 * must then relocate this immutable context extension. */
 	uint32_t classifier_variable = ast_binder_id;
-	if (prototype_context_extend_occurrence(
-			&ctx->metadata->contexts,
-			parent_context,
-			graph_binder_id,
-			classifier,
-			classifier_variable,
-			&context_id
-		) != 0) {
+	int extend_status = source_computation == PROTOTYPE_INVALID_ID ?
+		prototype_context_extend_occurrence(
+			&ctx->metadata->contexts, parent_context, graph_binder_id,
+			classifier, classifier_variable, &context_id
+		) : prototype_context_extend_computation_result_occurrence(
+			&ctx->metadata->contexts, parent_context, graph_binder_id,
+			classifier, classifier_variable, source_computation, &context_id
+		);
+	if (extend_status != 0) {
 		return -1;
 	}
 	ctx->binders[ctx->binder_count].ast_binder_id = ast_binder_id;
@@ -3766,6 +3776,33 @@ static int push_graph_binder(
 	ctx->context_ids[ctx->binder_count] = context_id;
 	*p_graph_binder_id = graph_binder_id;
 	return 0;
+}
+
+static int push_graph_binder(
+	struct compile_context* ctx,
+	uint32_t ast_binder_id,
+	uint32_t classifier,
+	int symbol_id,
+	uint32_t* p_graph_binder_id
+) {
+	return push_graph_binder_with_origin(
+		ctx, ast_binder_id, classifier, symbol_id,
+		PROTOTYPE_INVALID_ID, p_graph_binder_id
+	);
+}
+
+static int push_graph_computation_result_binder(
+	struct compile_context* ctx,
+	uint32_t ast_binder_id,
+	uint32_t classifier,
+	int symbol_id,
+	uint32_t source_computation,
+	uint32_t* p_graph_binder_id
+) {
+	return push_graph_binder_with_origin(
+		ctx, ast_binder_id, classifier, symbol_id,
+		source_computation, p_graph_binder_id
+	);
 }
 
 static int lookup_graph_binder_classifier(
@@ -4131,6 +4168,27 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			}
 			break;
 		}
+		case PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE: {
+			uint32_t result;
+			if (compile_ast_type_expr(
+					ctx, expr.as.computation_reference.result, &result
+				) != 0 || prototype_type_expr_computation_reference(
+					ctx->type_declarations, result, &compiled_type_expr
+				) != 0) {
+				return -1;
+			}
+			break;
+		}
+		case PROTOTYPE_AST_TYPE_EXPR_RETURNS:
+		case PROTOTYPE_AST_TYPE_EXPR_TERMINATES:
+			/* Readback cannot own Term endpoints.  The graph-level classifier
+			 * compiled below is the semantic schema authority. */
+			if (prototype_type_expr_semantic_relation(
+					ctx->type_declarations, &compiled_type_expr
+				) != 0) {
+				return -1;
+			}
+			break;
 		default:
 			return -1;
 	}

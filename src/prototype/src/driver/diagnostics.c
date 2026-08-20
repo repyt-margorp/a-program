@@ -305,6 +305,18 @@ static void print_type_expr(
 			print_type_expr(stream, symbols, types, expr->as.pi.codomain, print_primitive_type_exprs);
 			fprintf(stream, ")");
 			break;
+		case PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE:
+			fprintf(stream, "COMPUTATION_REFERENCE(");
+			print_type_expr(
+				stream, symbols, types,
+				expr->as.computation_reference.result,
+				print_primitive_type_exprs
+			);
+			fprintf(stream, ")");
+			break;
+		case PROTOTYPE_TYPE_EXPR_SEMANTIC_RELATION:
+			fprintf(stream, "SEMANTIC_RELATION");
+			break;
 		default:
 			fprintf(stream, "UNKNOWN_TYPE");
 			break;

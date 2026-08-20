@@ -859,7 +859,11 @@ static int artifact_mark_roots(
 				(classifier != PROTOTYPE_INVALID_ID &&
 					artifact_mark_term(
 						marks, terms, classifier, 0
-					) != 0)) {
+					) != 0) ||
+				(context->source_computation != PROTOTYPE_INVALID_ID &&
+				 artifact_mark_term(
+					marks, terms, context->source_computation, 0
+				 ) != 0)) {
 				return -1;
 			}
 		}

@@ -506,6 +506,20 @@ int prototype_judgement_add_returns_evaluation(
 	uint64_t step_limit,
 	uint32_t* p_claim_id
 );
+int prototype_judgement_add_returns_sequence_binding(
+	struct prototype_judgement_db* judgement,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	uint32_t context_id,
+	uint32_t occurrence_id,
+	uint32_t witness,
+	uint32_t returns_type,
+	uint32_t returns_type_claim_id,
+	uint32_t computation_claim_id,
+	uint32_t value_claim_id,
+	uint32_t* p_claim_id
+);
 int prototype_judgement_add_terminates_type_formation(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,

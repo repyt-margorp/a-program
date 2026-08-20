@@ -36,7 +36,7 @@ Implemented in the prototype:
 - object-level `#.Returns` evidence for accepted finite computation results and
   `#.Terminates` evidence derived from those results in the current deterministic
   fragment; these proofs do not extend DefEq or make `::` synthesize types;
-- artifact v80, namespace-qualified interfaces, relocation, linking,
+- artifact v81, namespace-qualified interfaces, relocation, linking,
   aggregation, and backend capability checks;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
@@ -456,7 +456,7 @@ this elaboration boundary.
 
 ## Artifacts and Linking
 
-Artifact format v80 serializes the dense reachable accepted object graph of:
+Artifact format v81 serializes the dense reachable accepted object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
 - TermDB and TypedOccurrenceGraph occurrence metadata;
@@ -475,7 +475,7 @@ binders/contexts/terms, preserves typed export identity, and may share
 alpha-equivalent Core representatives without merging the exports.
 
 The exact current wire and semantic contract is
-[`src/prototype/spec/artifact_v80.schema`](src/prototype/spec/artifact_v80.schema).
+[`src/prototype/spec/artifact_v81.schema`](src/prototype/spec/artifact_v81.schema).
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v6.schema`](src/prototype/spec/hott_fragment_v6.schema).
 
