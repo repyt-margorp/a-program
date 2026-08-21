@@ -32,7 +32,7 @@ termination, divergence, and residual compile-time knowledge.
 |---|---|---|
 | [#11](https://github.com/repyt-margorp/a-program/issues/11) | implemented: exact head/tail/map/append, multi-index families, indexed IH, Acc, and fuel-free QuickSort survive source/artifact/replay/runtime checks | close after final GitHub audit |
 | [#13](https://github.com/repyt-margorp/a-program/issues/13) | partial: object-level `#.Returns`, closed evaluation evidence, dependent consumers, and v81 replay exist | remains open; on 2026-08-21 the user explicitly deferred the QuickSortGraph/function-graph IADT and its sortedness theorem until its surface form is designed |
-| [#14](https://github.com/repyt-margorp/a-program/issues/14) | explicit `TOTAL`/`MAY_DIVERGE` computation classifiers, compiler-local `UNKNOWN`, direct structural `#.Terminates`, effect orthogonality, and v82 replay are implemented | re-audit after RT0/RT3 tests; postconditions that require the deferred #13 function-graph eliminator do not move into the kernel as a shortcut |
+| [#14](https://github.com/repyt-margorp/a-program/issues/14) | implemented and closed: explicit `TOTAL`/`MAY_DIVERGE` computation classifiers, compiler-local `UNKNOWN`, direct structural `#.Terminates`, effect orthogonality, and v82 replay | the current-language totality boundary is complete; the deferred function postcondition belongs to #13, while a future unrestricted-recursion former must satisfy this frozen contract in its own feature work |
 | [#16](https://github.com/repyt-margorp/a-program/issues/16) | implemented: permanent semantic matrix, concrete Box/Perfect/Matrix, constant/residual split, and corruption rejection | close after final GitHub audit |
 | [#17](https://github.com/repyt-margorp/a-program/issues/17) | implemented: immutable replay views, narrow Type stores, cache-independence checks, and responsibility-based solver split | close after final GitHub audit |
 | [#18](https://github.com/repyt-margorp/a-program/issues/18) | implemented: equation lifecycle, result payload, effect substitution, occurrence solution, diagnostic snapshot, and frozen projection have distinct owners | close after final GitHub audit |
@@ -666,8 +666,11 @@ Tasks:
       compiler-local `UNKNOWN`, budget exhaustion, one closed
       run used as open totality, forged evidence, and partial-as-total claims.
 
-#14 closes only after its normative, positive, negative, compatibility, and
-artifact criteria all pass.
+#14 closes after its normative, positive, negative, compatibility, and artifact
+criteria for the current language pass. This does not require inventing a fake
+unrestricted-recursion surface former: such a future feature must introduce a
+real `MAY_DIVERGE` former and its own source-level negative tests. The general
+function postcondition remains independently tracked by #13.
 
 ## 10. Artifact Strategy
 
@@ -797,9 +800,10 @@ adds a new projection while retaining the old writable owner is not complete.
 - [x] effects, totality classifier mode, partial correctness, total correctness,
       divergence, and UNKNOWN are distinct.
 - [x] artifact replay and implemented-boundary positive/negative tests pass.
-- [ ] Re-audit the Issue body before closure: criteria requiring a source
-      unrestricted-recursion former or the deferred #13 postcondition
-      eliminator remain feature-conditional and must not be simulated.
+- [x] Re-audit the Issue body before closure: criteria requiring a source
+      unrestricted-recursion former are assigned to that future feature, and
+      the deferred function postcondition remains in #13 rather than being
+      simulated in the kernel.
 
 An Issue receives a closing comment containing commit IDs, focused/full test
 results, performance results, and links to the corresponding plan completion
@@ -882,7 +886,7 @@ Rules:
 | RT1 Returns relation | Complete for deterministic finite fragment | deferred #13 graph eliminator | ordinary Terms, Claims, Derivations, negative forgery checks, and v81 replay |
 | RT2 post-hoc Claims | Foundation complete; theorem layer deferred | #13 remains open | closed dependent result and open explicit result binder pass; function-graph IADT surface and QuickSort sortedness intentionally deferred |
 | RT3 totality/partiality | Complete before general recursion | future recursion syntax | `TOTAL`/`MAY_DIVERGE`, compiler-local `UNKNOWN`, direct structural Terminates, effect orthogonality, and v82 replay |
-| CL final audit | Complete for the implemented scope | #13 and feature-conditional #14 remain open | 40/40 integration tests, existing top-level examples, v82 replay, deterministic IF8 artifact, and 7.862 s median single compile pass |
+| CL final audit | Complete for the implemented scope | #13 remains open | 40/40 integration tests, existing top-level examples, v82 replay, deterministic IF8 artifact, and 7.862 s median single compile pass; #14 closed after responsibility split |
 
 ## 15. Completion Log
 
@@ -893,6 +897,7 @@ Append one row after each phase. Do not rewrite historical measurements.
 | 2026-08-19 | Planning | `54d33d9` | previous 39/39 | previous 3.69 s median sample | v78 | - | - | - | #17 and #18 opened; no implementation change |
 | 2026-08-20 | OA0-OA4, IF0-IF3, RT0-RT3 fragment, CL | this implementation commit | 40/40, 111.773 s | 5.975 s final single compile; 6.102 s suite sample | v80, IF8 456,207 bytes | 23,545 | 17,485 | +6,060 | Includes tests and version replacement; docs are +936 lines. General #13/#14 remain open. |
 | 2026-08-21 | RT1 replayable result Context and RT3 explicit totality | `c934be9` plus the totality implementation commit | 40/40, 111.349 s; top-level examples 8/8 | 7.862 s | v82, IF8 471,259 bytes | 2,157 | 423 | +1,734 | Diff from the published v80 boundary, including the new v82 schema. v81 adds result-binding origin and v82 adds `TOTAL`/`MAY_DIVERGE`; Context/Substitution index rebuilds remain 0. The general function-graph theorem is explicitly deferred and no shortcut was added. |
+| 2026-08-21 | #14 closure audit | documentation-only closure commit | existing 40/40 result retained; focused audits pass | 7.862 s | v82 | 12 | 7 | +5 | Current-language totality contract is complete. Function postconditions stay in #13; future unrestricted recursion must implement the already frozen `MAY_DIVERGE` boundary. |
 
 ### 15.1 Implemented authority result
 
