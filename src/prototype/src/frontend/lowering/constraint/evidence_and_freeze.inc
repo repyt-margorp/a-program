@@ -3274,6 +3274,7 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 	ctx->proof_materialization_initialized = 1;
 	ctx->metadata->proof_materialization_pass_count++;
 	if (initial_pass) {
+		ctx->metadata->proof_materialization_full_scan_count++;
 		memset(
 			ctx->operation_reindex_cache,
 			0,

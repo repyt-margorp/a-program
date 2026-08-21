@@ -5080,7 +5080,8 @@ int main(int argc, char** argv) {
 		fprintf(
 			stderr,
 			"A_PROGRAM_PROOF_MATERIALIZATION_COUNTERS 1 passes=%" PRIu64
-			" rounds=%" PRIu64 " occurrence_visits=%" PRIu64
+			" full_scans=%" PRIu64 " rounds=%" PRIu64
+			" occurrence_visits=%" PRIu64
 			" post_result_retries=%" PRIu64
 			" reify_roots=%" PRIu64 " reify_recursive=%" PRIu64
 			" reify_success=%" PRIu64 " reify_residual=%" PRIu64
@@ -5088,6 +5089,7 @@ int main(int argc, char** argv) {
 			" current_pass_reuse=%" PRIu64 " cycles=%" PRIu64
 			" result_claims=%" PRIu64 " termination_claims=%" PRIu64 "\n",
 			metadata.proof_materialization_pass_count,
+			metadata.proof_materialization_full_scan_count,
 			metadata.proof_materialization_round_count,
 			metadata.proof_materialization_occurrence_visit_count,
 			metadata.post_result_consumer_retry_count,

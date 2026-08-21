@@ -318,6 +318,8 @@ Status: complete
 Implementation result: permanent phase, Term-tag, alpha-comparison,
 normalization-invalidation, constructor-specialization, proof-reification, and
 post-result retry counters are emitted by the fixture-selectable benchmark.
+The benchmark now enforces the required `6.25 s`, `616,000` alpha-comparison,
+`17,650` recursive-reification, and one-initial-full-scan gates.
 
 - [ ] Extend the single-compile benchmark to accept an explicit fixture while
       retaining the current default fixture.
@@ -604,15 +606,15 @@ removing evidence.
 After each phase run the narrow tests for the changed authority. Before final
 completion run:
 
-- [ ] Term interning collision and alpha-identity tests;
-- [ ] result evidence and totality rule tests;
-- [ ] IF8 fuel-free QuickSort source and artifact test;
-- [ ] dependent Match, Acc, and indexed-family tests;
-- [ ] shared-Core/different-annotation tests;
-- [ ] artifact malformed-proof rejection;
-- [ ] artifact deterministic byte comparison;
-- [ ] examples 01-09;
-- [ ] complete integration suite.
+- [x] Term interning collision and alpha-identity tests;
+- [x] result evidence and totality rule tests;
+- [x] IF8 fuel-free QuickSort source and artifact test;
+- [x] dependent Match, Acc, and indexed-family tests;
+- [x] shared-Core/different-annotation tests;
+- [x] artifact malformed-proof rejection;
+- [x] artifact deterministic byte comparison;
+- [x] examples 01-09;
+- [x] complete integration suite.
 
 The current accepted artifact version is v82. Runtime-only optimization does
 not require an artifact bump. Removing or changing a serialized proof kind does
@@ -701,8 +703,9 @@ Median compiler CPU timings on the final full fixture:
 The full fixture visits 934 worklist entries across four rounds. The second
 closure starts with 61 recorded residual consumers. Reification records 512
 roots, 227 recursive calls, 491 successes, 248 residual observations, 344
-current-pass reuses, and no failures or cycles. Totality publication adds two
-Claims.
+current-pass reuses, and no failures or cycles. The two materialization calls
+record exactly one full scan, proving that the post-result call is pending-only.
+Totality publication adds two Claims.
 
 Constructor attribution records 2,556 specialization attempts, 1,223 curried
 classifier cache hits, zero misses, and 5,242 dependent reindex requests.
@@ -750,7 +753,7 @@ hashing is now useful discriminating work rather than repeated failed deep
 comparison. `propositions_equal` has 1,060,730 calls but no sampled self time,
 which is why TP7 was skipped.
 
-The final complete integration suite passes all 40 tests in 86.842 seconds. It covers
+The final complete integration suite passes all 40 tests in 87.707 seconds. It covers
 the Term collision audit, result/totality evidence, IF8 source/publication/
 readback/determinism, dependent Match and indexed families, shared Core with
 distinct annotations, malformed artifacts, examples 01-09, and incremental
@@ -765,21 +768,44 @@ Two latent boundary defects were exposed and fixed during full verification:
 
 All required and preferred performance gates are met.
 
+The permanent benchmark rejects regressions above the required wall,
+alpha-comparison, and recursive-reification limits. It also rejects any return
+of the second full proof-materialization scan and verifies that instrumentation
+does not change deterministic compiler output.
+
 ### 12.6 Line accounting
 
 The final diff from `b13f047` is:
 
 | Area | Added | Deleted | Net |
 |---|---:|---:|---:|
-| Implementation | 860 | 402 | +458 |
-| Tests and benchmark | 146 | 8 | +138 |
-| This plan/documentation | 234 | 47 | +187 |
-| Total | 1,240 | 457 | +783 |
+| Implementation | 864 | 402 | +462 |
+| Tests and benchmark | 176 | 10 | +166 |
+| This plan/documentation | 270 | 56 | +214 |
+| Total | 1,310 | 468 | +842 |
 
 The largest implementation changes are proof materialization/worklist handling
-(`+373/-285`) and result-evidence publication (`+122/-19`). The added lines are
+(`+374/-285`) and result-evidence publication (`+122/-19`). The added lines are
 primarily permanent attribution counters, explicit state handling, and stronger
 tests. No generated file or artifact schema was changed.
+
+### 12.7 Original proposal disposition
+
+| Proposal area | Final disposition |
+|---|---|
+| TP0 instrumentation | implemented permanently; required gates are executable |
+| TP1 totality paths | both retained as distinct object rules; duplicate formation removed |
+| TP2 reification | implemented with occurrence/Context/classifier transaction state |
+| TP3 general reverse index | replaced by the measured residual-ID worklist; no second authority |
+| TP4 second specialization cache | rejected; all callers use the existing revisioned declaration cache |
+| TP5 child fingerprint cache | rejected for open Terms; one recursive root fingerprint remains authoritative |
+| TP6 narrower cache | reason attribution and empty-cache no-op implemented; broader caching rejected as non-critical |
+| TP7 proposition index | rejected after profiling showed no sampled self time |
+
+Thus the unchecked items retained in the original phase checklists are proposal
+history, not outstanding implementation. Each was either implemented through
+the final architecture above or explicitly rejected to avoid duplicate mutable
+authority.
 
 ## 13. Decision Log
 
@@ -797,3 +823,4 @@ tests. No generated file or artifact schema was changed.
 | 2026-08-21 | Skip a secondary Proposition index | the final profile reports no sampled `propositions_equal` self time |
 | 2026-08-21 | Keep performance counters observational | cumulative counters must never control transaction-local compiler behavior |
 | 2026-08-21 | Validate relocated caches by nominal alpha shape | local Term IDs are storage identities and may change under dense relocation |
+| 2026-08-21 | Enforce plan gates in the permanent benchmark | a measured pass without a failing regression boundary is insufficient completion evidence |

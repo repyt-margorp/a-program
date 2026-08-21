@@ -153,6 +153,7 @@ struct prototype_compile_metadata {
 	uint64_t post_result_closure_time_ns;
 	uint64_t accepted_replay_time_ns;
 	uint64_t proof_materialization_pass_count;
+	uint64_t proof_materialization_full_scan_count;
 	uint64_t proof_materialization_round_count;
 	uint64_t proof_materialization_occurrence_visit_count;
 	uint64_t post_result_consumer_retry_count;

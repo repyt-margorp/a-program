@@ -8,7 +8,9 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cd "$root_dir"
 fixture=${A_PROGRAM_IF8_FIXTURE:-src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p}
 runner="$tmp_dir/process-metrics"
-limit_ms=${A_PROGRAM_IF8_SINGLE_COMPILE_LIMIT_MS:-10000}
+limit_ms=${A_PROGRAM_IF8_SINGLE_COMPILE_LIMIT_MS:-6250}
+alpha_compare_limit=${A_PROGRAM_IF8_ALPHA_COMPARE_LIMIT:-616000}
+proof_reify_recursive_limit=${A_PROGRAM_IF8_PROOF_REIFY_RECURSIVE_LIMIT:-17650}
 
 make -f src/prototype/Makefile reader >/dev/null
 cc -std=c11 -Wall -Wextra -Werror \
@@ -41,8 +43,34 @@ while [ "$run" -le 3 ]; do
 	printf '%s\n' "$wall_ms" >>"$tmp_dir/wall-ms"
 	printf 'A_PROGRAM_IF8_SINGLE_COMPILE 1 run=%s %s\n' "$run" \
 		"$(printf '%s' "$line" | sed 's/^A_PROGRAM_PROCESS_METRICS 1 //')"
-	grep '^A_PROGRAM_\(PERFORMANCE\|SOLVER\|CONTEXT_RESOLUTION\|CONSTRUCTOR_SPECIALIZATION\|COMPILE_PHASE\|PROOF_MATERIALIZATION\)_COUNTERS 1 ' \
-		"$metrics"
+	counter_lines=$(grep '^A_PROGRAM_\(PERFORMANCE\|SOLVER\|CONTEXT_RESOLUTION\|CONSTRUCTOR_SPECIALIZATION\|COMPILE_PHASE\|PROOF_MATERIALIZATION\)_COUNTERS 1 ' \
+		"$metrics")
+	printf '%s\n' "$counter_lines"
+	performance_line=$(grep '^A_PROGRAM_PERFORMANCE_COUNTERS 1 ' "$metrics")
+	proof_line=$(grep '^A_PROGRAM_PROOF_MATERIALIZATION_COUNTERS 1 ' "$metrics")
+	alpha_compares=$(printf '%s\n' "$performance_line" |
+		sed -n 's/.* alpha_compares=\([0-9][0-9]*\).*/\1/p')
+	reify_recursive=$(printf '%s\n' "$proof_line" |
+		sed -n 's/.* reify_recursive=\([0-9][0-9]*\).*/\1/p')
+	full_scans=$(printf '%s\n' "$proof_line" |
+		sed -n 's/.* full_scans=\([0-9][0-9]*\).*/\1/p')
+	if [ -z "$alpha_compares" ] || [ "$alpha_compares" -gt "$alpha_compare_limit" ]; then
+		echo "IF8 alpha comparisons exceeded limit: ${alpha_compares:-missing} > ${alpha_compare_limit}" >&2
+		exit 1
+	fi
+	if [ -z "$reify_recursive" ] ||
+		[ "$reify_recursive" -gt "$proof_reify_recursive_limit" ]; then
+		echo "IF8 recursive proof reification exceeded limit: ${reify_recursive:-missing} > ${proof_reify_recursive_limit}" >&2
+		exit 1
+	fi
+	if [ "$full_scans" != 1 ]; then
+		echo "IF8 proof materialization performed ${full_scans:-missing} full scans; expected one initial scan" >&2
+		exit 1
+	fi
+	if ! cmp -s "$tmp_dir/warmup.out" "$tmp_dir/run-$run.out"; then
+		echo 'IF8 instrumentation changed deterministic compiler output' >&2
+		exit 1
+	fi
 	solver_line=$(grep '^A_PROGRAM_SOLVER_COUNTERS 1 ' "$metrics")
 	case $solver_line in
 	*' context_index_rebuilds=0 substitution_index_rebuilds=0') ;;
