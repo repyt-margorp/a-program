@@ -111,6 +111,92 @@ int main(void) {
 		return 5;
 	}
 
+	/* Nested alpha renaming is canonical, while free Binding identity remains
+	 * nominal even when every index hash is forced to collide. */
+	uint32_t nested_left_outer = prototype_term_new_binding(&db);
+	uint32_t nested_left_inner = prototype_term_new_binding(&db);
+	uint32_t nested_right_outer = prototype_term_new_binding(&db);
+	uint32_t nested_right_inner = prototype_term_new_binding(&db);
+	uint32_t nested_left_outer_var;
+	uint32_t nested_left_inner_var;
+	uint32_t nested_right_outer_var;
+	uint32_t nested_right_inner_var;
+	uint32_t nested_left_app;
+	uint32_t nested_right_app;
+	uint32_t nested_left_body;
+	uint32_t nested_right_body;
+	uint32_t nested_left;
+	uint32_t nested_right;
+	if (nested_left_outer == PROTOTYPE_INVALID_ID ||
+		nested_left_inner == PROTOTYPE_INVALID_ID ||
+		nested_right_outer == PROTOTYPE_INVALID_ID ||
+		nested_right_inner == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(&db, nested_left_outer, &nested_left_outer_var) != 0 ||
+		prototype_term_var(&db, nested_left_inner, &nested_left_inner_var) != 0 ||
+		prototype_term_var(&db, nested_right_outer, &nested_right_outer_var) != 0 ||
+		prototype_term_var(&db, nested_right_inner, &nested_right_inner_var) != 0 ||
+		prototype_term_app(
+			&db, nested_left_outer_var, nested_left_inner_var, &nested_left_app
+		) != 0 || prototype_term_app(
+			&db, nested_right_outer_var, nested_right_inner_var, &nested_right_app
+		) != 0 || prototype_term_lambda(
+			&db, nested_left_inner, nested_left_app, &nested_left_body
+		) != 0 || prototype_term_lambda(
+			&db, nested_right_inner, nested_right_app, &nested_right_body
+		) != 0 || prototype_term_lambda(
+			&db, nested_left_outer, nested_left_body, &nested_left
+		) != 0 || prototype_term_lambda(
+			&db, nested_right_outer, nested_right_body, &nested_right
+		) != 0 || nested_left != nested_right) {
+		prototype_term_db_dispose_runtime_state(&db);
+		return 6;
+	}
+
+	uint32_t free_left = prototype_term_new_binding(&db);
+	uint32_t free_right = prototype_term_new_binding(&db);
+	uint32_t free_lambda_binder = prototype_term_new_binding(&db);
+	uint32_t free_left_var;
+	uint32_t free_right_var;
+	uint32_t free_left_lambda;
+	uint32_t free_right_lambda;
+	if (free_left == PROTOTYPE_INVALID_ID || free_right == PROTOTYPE_INVALID_ID ||
+		free_lambda_binder == PROTOTYPE_INVALID_ID || prototype_term_var(
+			&db, free_left, &free_left_var
+		) != 0 || prototype_term_var(
+			&db, free_right, &free_right_var
+		) != 0 || prototype_term_lambda(
+			&db, free_lambda_binder, free_left_var, &free_left_lambda
+		) != 0 || prototype_term_lambda(
+			&db, free_lambda_binder, free_right_var, &free_right_lambda
+		) != 0 || free_left_lambda == free_right_lambda) {
+		prototype_term_db_dispose_runtime_state(&db);
+		return 7;
+	}
+
+	/* Lambdas with the same APP body tag but different literals must not share
+	 * a Term merely because they occupy one collision bucket. */
+	uint32_t previous_distinct_lambda = PROTOTYPE_INVALID_ID;
+	for (int i = 0; i < 16; ++i) {
+		uint32_t binder = prototype_term_new_binding(&db);
+		uint32_t variable;
+		uint32_t literal;
+		uint32_t body;
+		uint32_t lambda;
+		if (binder == PROTOTYPE_INVALID_ID || prototype_term_var(
+				&db, binder, &variable
+			) != 0 || prototype_term_int_literal(
+				&db, 100 + i, &literal
+			) != 0 || prototype_term_app(
+				&db, variable, literal, &body
+			) != 0 || prototype_term_lambda(
+				&db, binder, body, &lambda
+			) != 0 || lambda == previous_distinct_lambda) {
+			prototype_term_db_dispose_runtime_state(&db);
+			return 8;
+		}
+		previous_distinct_lambda = lambda;
+	}
+
 	/* Runtime indexes are projections. A physical graph mutation invalidates
 	 * them, and the next formation rebuilds from the authoritative Term graph. */
 	db.terms[argument].as.int_literal.value = 8;
@@ -119,14 +205,14 @@ int main(void) {
 	if (prototype_term_int_literal(&db, 8, &rebuilt_literal) != 0 ||
 		rebuilt_literal != argument) {
 		prototype_term_db_dispose_runtime_state(&db);
-		return 6;
+		return 9;
 	}
 	struct prototype_term_intern_stats after_mutation;
 	prototype_term_intern_get_stats(&db, &after_mutation);
 	if (after_mutation.index_rebuild_count <=
 		before_mutation.index_rebuild_count) {
 		prototype_term_db_dispose_runtime_state(&db);
-		return 7;
+		return 10;
 	}
 
 	/* Rebuilds may discover physical duplicates created by an approved bulk
@@ -135,7 +221,7 @@ int main(void) {
 	if (prototype_term_int_literal(&db, 9, &later_literal) != 0 ||
 		later_literal <= argument) {
 		prototype_term_db_dispose_runtime_state(&db);
-		return 8;
+		return 11;
 	}
 	db.terms[later_literal].as.int_literal.value = 8;
 	prototype_term_notify_graph_mutation(&db);
@@ -143,7 +229,7 @@ int main(void) {
 	if (prototype_term_int_literal(&db, 8, &earliest_literal) != 0 ||
 		earliest_literal != argument) {
 		prototype_term_db_dispose_runtime_state(&db);
-		return 9;
+		return 12;
 	}
 
 	prototype_term_db_dispose_runtime_state(&db);
@@ -151,7 +237,7 @@ int main(void) {
 		db.intern_buckets ||
 		db.intern_exact_hashes || db.intern_exact_next ||
 		db.intern_exact_buckets) {
-		return 10;
+		return 13;
 	}
 	return 0;
 }

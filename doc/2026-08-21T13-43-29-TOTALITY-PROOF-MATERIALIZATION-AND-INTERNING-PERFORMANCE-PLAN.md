@@ -2,9 +2,11 @@
 
 Date: 2026-08-21
 
-Status: Audit complete; implementation not started
+Status: Complete
 
 Baseline commit: `1471a53`
+
+Implementation baseline: `b13f047`
 
 Predecessor plan:
 `doc/2026-08-19T00-45-00-QUICKSORT-SINGLE-COMPILE-PERFORMANCE-AND-AUTHORITY-CONSOLIDATION-PLAN.md`
@@ -222,7 +224,8 @@ this plan.
 
 ### 5.1 Alpha-canonical fingerprint index
 
-Every immutable Term receives a cached, strong alpha-canonical fingerprint.
+Every intern candidate receives a strong alpha-canonical fingerprint, and the
+root fingerprint is retained in the Term intern index.
 Bound variables and Match binders are represented in the fingerprint by their
 lexical binding correspondence, not by source names or raw Binding IDs. This is
 an internal canonical key; it does not expose De Bruijn indices as the Core
@@ -239,9 +242,11 @@ tag + alpha fingerprint + cheap arity data
 Free Binding IDs, free IH frame identities, nominal TypeViews, operation IDs,
 and other intentionally nominal components remain in the fingerprint.
 
-The existing recursive canonical-hash implementation should be reused or
-factored into one authority. Do not add another independent definition of
-alpha identity.
+The existing recursive canonical-hash implementation is the one authority.
+Open child Terms do not receive a context-free cached fingerprint: their hash
+depends on the enclosing binder and IH-frame environment. Caching those child
+hashes independently would be unsound. The already-computed root alpha key is
+reused by exact hashing.
 
 ### 5.2 Per-materialization evidence state
 
@@ -250,13 +255,12 @@ Maintain runtime-only state per typed occurrence:
 ```text
 UNSEEN
 IN_PROGRESS
-SUCCEEDED(candidate proposition/authority reference)
-RESIDUAL(current evidence generation)
+SUCCEEDED
 ```
 
 `SUCCEEDED` is reusable throughout the materialization transaction.
-`IN_PROGRESS` detects recursive cycles. A residual result is retried only when
-one of its missing premise generations changes; it is not cached permanently.
+`IN_PROGRESS` detects recursive cycles. A residual result is deliberately reset
+to `UNSEEN` and entered into the pending worklist; it is not cached as failure.
 
 The key is occurrence identity plus the frozen classifier, Context, and evidence
 generation. Core Term ID alone is insufficient because typed occurrences may
@@ -264,9 +268,11 @@ share Core while carrying distinct classifiers or Contexts.
 
 ### 5.3 Evidence dependency worklist
 
-Materialization must enqueue occurrences whose premises become available. Late
-result evidence returns the accepted Claim IDs or evidence keys it introduced.
-Reverse dependency indexes enqueue only consumers of those keys.
+The initial structural pass records only residual occurrence IDs. Late result
+evidence reruns that pending set, not the complete TypedOccurrenceGraph. This is
+the minimal dependency worklist required by the measured pipeline; a second
+general reverse index was not added because it would duplicate existing
+constraint dependency indexes without reducing the residual set further.
 
 The pipeline becomes:
 
@@ -281,29 +287,37 @@ frozen solved occurrence graph
 
 There is no second full materialization pass.
 
-### 5.4 Immutable specialization cache
+### 5.4 Constructor specialization authority
 
-Constructor specialization receives a runtime-only cache keyed by the exact
-semantic inputs:
+The audit found an existing revisioned constructor classifier cache owned by
+TypeDeclarationDB. All measured classifier requests hit that cache after the
+initial declaration build. Solver and namespace callers now use that one API
+instead of directly deriving the curried classifier.
 
-```text
-constructor declaration
-parameter argument spine
-field argument prefix and their classifiers
-source Context
-parameter/field Substitution
-TypeDeclaration semantic revision
-```
+The remaining parameter/field reindexing validates dependent constructor
+domains in the current Context. A second transaction cache for these products
+was rejected: the measured cache miss count is zero, and another mutable result
+store would create a competing projection authority for little demonstrated
+benefit.
 
-The cache may retain expected domain Term IDs and the resulting classifier.
-Kernel candidate replay still validates the explicit premises. The cache is not
-proof authority and is never serialized.
+Kernel candidate replay still validates the explicit premises. Dense artifact
+relocation validates a persisted cache by nominal view-shape alpha equality,
+not local Term-ID equality; the cache remains non-authoritative.
 
 ## 6. Implementation Phases
 
+The checklists below preserve the original audit proposal. The phase `Status`
+and `Implementation result` paragraphs are the completion authority: some
+unchecked proposed mechanisms were intentionally replaced or rejected after
+measurement, rather than implemented as redundant caches or indexes.
+
 ### TP0. Permanent attribution counters
 
-Status: not started
+Status: complete
+
+Implementation result: permanent phase, Term-tag, alpha-comparison,
+normalization-invalidation, constructor-specialization, proof-reification, and
+post-result retry counters are emitted by the fixture-selectable benchmark.
 
 - [ ] Extend the single-compile benchmark to accept an explicit fixture while
       retaining the current default fixture.
@@ -328,7 +342,14 @@ Exit criteria:
 
 ### TP1. Audit and trim totality-specific proof surface
 
-Status: not started
+Status: complete
+
+Implementation result: both rules are retained intentionally.
+`TERMINATES_TOTAL_COMPUTATION` requires a structurally `TOTAL` computation.
+`TERMINATES_FROM_RETURNS` is the elimination of stronger object evidence and is
+used when the classifier is not already total. Exact type-formation selection
+prevents duplicate Universe allocation. Positive and negative kernel tests cover
+both paths.
 
 - [ ] Specify the object rules for `Returns(M, v)` and `Terminates(M)` and state
       whether `Returns` introduction is intended to imply `Terminates`.
@@ -354,7 +375,11 @@ Exit criteria:
 
 ### TP2. Memoize successful occurrence proof reification
 
-Status: not started
+Status: complete
+
+Implementation result: occurrence/Context/classifier keyed transaction-local
+states reuse successful reification, detect cycles, and never retain a residual
+as failure.
 
 Primary files:
 
@@ -392,7 +417,13 @@ Exit criteria:
 
 ### TP3. Replace full proof fixed points with a worklist
 
-Status: not started
+Status: complete with the Section 5.3 adaptation
+
+Implementation result: proposition-count convergence and the second complete
+occurrence traversal were removed. The post-result closure processes 61
+recorded residual consumers on the full fixture, rather than all 755
+occurrences. The function is invoked twice, but the second invocation is a
+pending-only closure.
 
 - [ ] Build reverse evidence dependencies for structural occurrence rules,
       Match motives, computation constraints, Returns, and Terminates.
@@ -415,7 +446,12 @@ Exit criteria:
 
 ### TP4. Cache constructor specialization products
 
-Status: not started
+Status: complete by audit; proposed second cache rejected
+
+Implementation result: direct curried-classifier derivations now use the one
+TypeDeclarationDB revision cache. The full fixture records 1,223 hits and zero
+misses. Dependent field reindexing remains explicit kernel validation; no
+parallel specialization authority was introduced.
 
 - [ ] Define the immutable specialization key from semantic IDs already owned
       by TypeDeclarationDB, ContextDB, and SubstitutionDB.
@@ -437,7 +473,13 @@ Exit criteria:
 
 ### TP5. Strengthen TermDB alpha interning
 
-Status: not started
+Status: complete with the Section 5.1 adaptation
+
+Implementation result: Lambda, Match, and EFFECT_ROW_FORALL roots use the full
+recursive alpha fingerprint. Exact hashing reuses that key. The collision
+validator remains the deep comparator, and tests cover nested binders, free
+Binding identity, and forced collisions. Context-free child fingerprint caching
+was rejected for open Terms.
 
 Primary files:
 
@@ -477,7 +519,12 @@ Exit criteria:
 
 ### TP6. Audit normalization invalidation after structural fixes
 
-Status: not started
+Status: complete
+
+Implementation result: all invalidations are attributed to graph mutation, IH
+scope mutation, or TypeFormer completion. Empty-cache invalidation now advances
+the graph revision without clearing empty arrays. No effectful normalization is
+cached.
 
 - [ ] Re-measure misses, evictions, and invalidations after TP2-TP5.
 - [ ] Identify each invalidation reason and the semantic mutation that requires
@@ -495,7 +542,11 @@ Exit criteria:
 
 ### TP7. Secondary proposition/evidence indexes
 
-Status: not started
+Status: skipped after profiling
+
+`propositions_equal` still has many calls, but no sampled self time in the final
+profile. JudgementDB already owns proposition, Claim, and Derivation indexes.
+Adding another key/index authority is not justified by the remaining cost.
 
 Perform only after re-profiling TP2-TP6.
 
@@ -572,18 +623,18 @@ approved.
 
 | Phase | Status | Evidence |
 |---|---|---|
-| TP0 attribution counters | not started | phase and reification counters |
-| TP1 totality surface audit | not started | retained-rule rationale or deletion |
-| TP2 proof reification memo | not started | once-per-occurrence proof construction |
-| TP3 evidence worklist | not started | no second global pass |
-| TP4 constructor specialization cache | not started | reduced schema reconstruction |
-| TP5 alpha fingerprint index | not started | reduced Lambda deep comparisons |
-| TP6 normalization invalidation | not started | measured post-structural audit |
-| TP7 secondary evidence indexes | conditional | new profile justifies work |
+| TP0 attribution counters | complete | permanent benchmark counters |
+| TP1 totality surface audit | complete | both rules retained with distinct premises and negative tests |
+| TP2 proof reification memo | complete | 227 recursive calls; 344 current-pass reuses |
+| TP3 evidence worklist | complete | 61 residual retries; zero second full scans |
+| TP4 constructor authority | complete by audit | 1,223 existing-cache hits; zero misses; no duplicate cache |
+| TP5 alpha fingerprint index | complete | 665 deep comparisons on the full fixture |
+| TP6 normalization invalidation | complete | reason counters and empty-cache no-op clearing |
+| TP7 secondary evidence indexes | skipped | final profile does not justify another index |
 
-Implementation order is TP0, TP1, TP2, TP3, TP4, TP5, TP6, then conditional
-TP7. TP2 and TP5 may be benchmarked on separate branches, but must be integrated
-only after each preserves the same accepted proof graph.
+Implementation followed TP0, TP2/TP3, TP5, TP4/TP1, TP6, then the conditional
+TP7 audit. The ordering changed only after counters identified alpha interning
+and repeated proof materialization as the dominant paths.
 
 ## 11. Completion Report Requirements
 
@@ -600,7 +651,137 @@ The final report must include:
 - total implementation/test/doc line changes reported separately;
 - any performance gate not met and the measured remaining bottleneck.
 
-## 12. Decision Log
+## 12. Completion Report
+
+### 12.1 Adjacent performance result
+
+Environment: Debian GCC 14.2.0, Linux 6.12 amd64, default non-profiler build,
+one warm-up and three measured runs. The full fixture hash is
+`dfa54d5625d03b95a31f99bd143e295df6f2d98cbffdc2d8322879493d64a7c0`.
+The pre-theorem fixture hash is
+`4564af611d15b4b9f914fbe7fb9333e52ef91d9aba94a8609ff243b6febe0738`.
+
+| Input/compiler | Median wall | Median user | Median system |
+|---|---:|---:|---:|
+| Full fixture at `b13f047` | 8.207 s | 8.162 s | 0.044 s |
+| Full fixture after this plan | 0.462 s | 0.446 s | 0.016 s |
+| Pre-theorem fixture after this plan | 0.323 s | 0.311 s | 0.016 s |
+
+The adjacent full-fixture wall reduction is 94.4%. The theorem now adds about
+139 ms rather than 2.35 seconds.
+
+| Full-fixture metric | `b13f047` | Final | Change |
+|---|---:|---:|---:|
+| Term formations | 1,095,310 | 409,647 | -62.6% |
+| Unique Terms | 19,258 | 9,068 | -52.9% |
+| Alpha comparisons | 2,064,671 | 665 | -99.97% |
+| Alpha comparison node visits | not attributed | 82,646 | measured |
+| Recursive proof reification | 35,299 | 227 | -99.4% |
+| Normalization misses | 11,584 | 7,788 | -32.8% |
+| Normalization evictions | 2,880 | 0 | -100% |
+| Normalization invalidations | 833 | 567 | -31.9% |
+| Solver pops | 7,493 | 7,493 | unchanged |
+
+The unchanged solver count confirms that this work optimized prior proof
+construction and Term canonicalization rather than weakening type constraints.
+
+### 12.2 Final phase attribution
+
+Median compiler CPU timings on the final full fixture:
+
+| Phase | Time |
+|---|---:|
+| Graph construction | 3.452 ms |
+| Classifier/effect fixed point | 102.072 ms |
+| Initial proof materialization | 30.066 ms |
+| Result/totality evidence | 0.072 ms |
+| Pending-only post-result closure | 19.465 ms |
+| Accepted replay | 210.663 ms |
+
+The full fixture visits 934 worklist entries across four rounds. The second
+closure starts with 61 recorded residual consumers. Reification records 512
+roots, 227 recursive calls, 491 successes, 248 residual observations, 344
+current-pass reuses, and no failures or cycles. Totality publication adds two
+Claims.
+
+Constructor attribution records 2,556 specialization attempts, 1,223 curried
+classifier cache hits, zero misses, and 5,242 dependent reindex requests.
+Those data reject a second classifier cache; accepted replay is now the largest
+named phase.
+
+### 12.3 Evidence and artifact preservation
+
+The full fixture publishes exactly the same dense artifact evidence before and
+after implementation:
+
+```text
+propositions 675
+claims       675
+derivations  679
+```
+
+The pre-theorem fixture has 658 Propositions, 658 Claims, and 662 Derivations.
+The additional theorem evidence is retained. Artifact version remains v82, and
+two independent full-fixture publications are byte-identical.
+
+### 12.4 Removed or consolidated paths
+
+- Removed coarse Lambda/Match binder keys in favor of one recursive alpha
+  fingerprint authority.
+- Removed proposition-count-driven all-occurrence convergence scans and the
+  second global materialization traversal.
+- Consolidated direct constructor classifier derivation callers onto the
+  TypeDeclarationDB revision cache.
+- Reused exact IS_TYPE formation Claims before allocating fresh Universe
+  variables.
+- Avoided clearing normalization cache arrays when the cache is empty.
+- Retained both totality proof rules because their premises express different
+  object theorems; no proof evidence was deleted for speed.
+- Rejected new constructor-specialization and Proposition indexes because the
+  final counters/profile do not justify duplicate mutable state.
+
+### 12.5 Profile and verification
+
+The pre-implementation profile reported 52,935,073 recursive
+`shape_terms_equal_at_depth` calls and 35.54% sampled time. The final profile
+reports 18,417 calls with no sampled self time. The current sampled leaders are
+`canonical_hash_term_at_depth` and accepted candidate traversal; canonical
+hashing is now useful discriminating work rather than repeated failed deep
+comparison. `propositions_equal` has 1,060,730 calls but no sampled self time,
+which is why TP7 was skipped.
+
+The final complete integration suite passes all 40 tests in 86.842 seconds. It covers
+the Term collision audit, result/totality evidence, IF8 source/publication/
+readback/determinism, dependent Match and indexed families, shared Core with
+distinct annotations, malformed artifacts, examples 01-09, and incremental
+REPL transactions.
+
+Two latent boundary defects were exposed and fixed during full verification:
+
+- cumulative profiling counters are observation only and cannot select a
+  transaction's initial materialization phase;
+- a relocated constructor cache is validated by nominal alpha shape, not local
+  Term-ID equality.
+
+All required and preferred performance gates are met.
+
+### 12.6 Line accounting
+
+The final diff from `b13f047` is:
+
+| Area | Added | Deleted | Net |
+|---|---:|---:|---:|
+| Implementation | 860 | 402 | +458 |
+| Tests and benchmark | 146 | 8 | +138 |
+| This plan/documentation | 234 | 47 | +187 |
+| Total | 1,240 | 457 | +783 |
+
+The largest implementation changes are proof materialization/worklist handling
+(`+373/-285`) and result-evidence publication (`+122/-19`). The added lines are
+primarily permanent attribution counters, explicit state handling, and stronger
+tests. No generated file or artifact schema was changed.
+
+## 13. Decision Log
 
 | Date | Decision | Reason |
 |---|---|---|
@@ -610,3 +791,9 @@ The final report must include:
 | 2026-08-21 | Audit unused totality proof paths for deletion | existing artifact tags do not justify retaining semantically undeclared machinery |
 | 2026-08-21 | Preserve object totality evidence | performance cannot be obtained by erasing the theorem being checked |
 | 2026-08-21 | Do not reopen Context/Substitution rebuilding work in this phase | both rebuild counts are currently zero and Context visits are not the hot path |
+| 2026-08-21 | Keep `TERMINATES_FROM_RETURNS` | explicit Returns evidence proves termination independently of inferred TOTAL classifiers |
+| 2026-08-21 | Do not cache open child fingerprints context-free | their alpha hash depends on enclosing binder and IH-frame environments |
+| 2026-08-21 | Reuse the existing constructor cache | measured requests have zero misses; another cache would duplicate projection authority |
+| 2026-08-21 | Skip a secondary Proposition index | the final profile reports no sampled `propositions_equal` self time |
+| 2026-08-21 | Keep performance counters observational | cumulative counters must never control transaction-local compiler behavior |
+| 2026-08-21 | Validate relocated caches by nominal alpha shape | local Term IDs are storage identities and may change under dense relocation |

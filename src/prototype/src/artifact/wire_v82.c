@@ -2590,6 +2590,12 @@ int prototype_artifact_read_text_typed_occurrences(
 					operation.classifier,
 					&classifier_view
 				) != 0) {
+				fprintf(
+					stderr,
+					"artifact typed-occurrence graph: classifier view failed "
+					"occurrence=%zu classifier=%u\n",
+					i, operation.classifier
+				);
 				return -1;
 			}
 			operation.computation_kind =
@@ -2639,9 +2645,20 @@ int prototype_artifact_read_text_typed_occurrences(
 			if (prototype_typed_occurrence_graph_add(
 					graph, &metadata->contexts, operation, NULL
 				) != 0) {
+				fprintf(
+					stderr,
+					"artifact typed-occurrence graph: occurrence validation failed "
+					"occurrence=%zu tag=%d core=%u classifier=%u context=%u\n",
+					i, operation.tag, operation.core_term, operation.classifier,
+					operation.context_id
+				);
 				return -1;
 			}
 		}
+	}
+	if (metadata && graph->occurrence_count != occurrence_count) {
+		fprintf(stderr, "artifact typed-occurrence graph: occurrence count mismatch\n");
+		return -1;
 	}
 	if (expect_artifact_count(
 			stream, "occurrence_edges", &occurrence_edge_count
@@ -2667,6 +2684,11 @@ int prototype_artifact_read_text_typed_occurrences(
 			(metadata && prototype_typed_occurrence_graph_add_edge(
 				graph, parent_occurrence, edge
 			) != 0)) {
+			fprintf(
+				stderr,
+				"artifact typed-occurrence graph: edge validation failed edge=%zu\n",
+				i
+			);
 			return -1;
 		}
 	}
@@ -2850,6 +2872,7 @@ int prototype_artifact_read_text_typed_occurrences(
 		if (prototype_typed_occurrence_graph_freeze(
 				graph, terms, &metadata->contexts
 			) != 0) {
+			fprintf(stderr, "artifact typed-occurrence graph: freeze failed\n");
 			return -1;
 		}
 		for (size_t i = 0; i < prototype_typed_occurrence_graph_count(graph); ++i) {
@@ -2893,19 +2916,29 @@ int prototype_artifact_read_text_typed_occurrences(
 		}
 		if (prototype_type_declaration_rebuild_representations(
 				terms, type_declarations, &metadata->contexts
-			) != 0 ||
-			artifact_resolve_representation_handles(
+			) != 0) {
+			fprintf(stderr, "artifact typed-occurrence graph: representation rebuild failed\n");
+			return -1;
+		}
+		if (artifact_resolve_representation_handles(
 				terms, type_declarations
-			) != 0 ||
-			prototype_constructor_curried_caches_validate(
+			) != 0) {
+			fprintf(stderr, "artifact typed-occurrence graph: representation resolution failed\n");
+			return -1;
+		}
+		if (prototype_constructor_curried_caches_validate(
 				type_declarations, &metadata->contexts, terms
-			) != 0 ||
-			artifact_validate_term_graph_refs(
+			) != 0) {
+			fprintf(stderr, "artifact typed-occurrence graph: constructor cache validation failed\n");
+			return -1;
+		}
+		if (artifact_validate_term_graph_refs(
 				terms,
 				type_declarations,
 				&metadata->dimension_operators,
 				1
 			) != 0) {
+			fprintf(stderr, "artifact typed-occurrence graph: Term reference validation failed\n");
 			return -1;
 		}
 	}

@@ -146,6 +146,26 @@ struct prototype_compile_metadata {
 	uint64_t context_resolution_substitution_insert_count;
 	uint64_t context_resolution_root_projection_count;
 	uint64_t binder_owner_index_rebuild_count;
+	uint64_t graph_build_time_ns;
+	uint64_t fixed_point_time_ns;
+	uint64_t proof_materialization_time_ns;
+	uint64_t result_evidence_time_ns;
+	uint64_t post_result_closure_time_ns;
+	uint64_t accepted_replay_time_ns;
+	uint64_t proof_materialization_pass_count;
+	uint64_t proof_materialization_round_count;
+	uint64_t proof_materialization_occurrence_visit_count;
+	uint64_t post_result_consumer_retry_count;
+	uint64_t proof_reify_root_count;
+	uint64_t proof_reify_recursive_count;
+	uint64_t proof_reify_success_count;
+	uint64_t proof_reify_residual_count;
+	uint64_t proof_reify_failure_count;
+	uint64_t proof_reify_accepted_reuse_count;
+	uint64_t proof_reify_current_pass_reuse_count;
+	uint64_t proof_reify_cycle_count;
+	uint64_t result_evidence_claim_count;
+	uint64_t termination_evidence_claim_count;
 	/* Frozen operational projection consumed by Core execution. It deliberately
 	 * excludes static type declarations and proof state. */
 	struct prototype_term_reduction_environment reduction_environment;

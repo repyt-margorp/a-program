@@ -124,6 +124,7 @@ int prototype_constructor_curried_caches_validate(
 			continue;
 		}
 		uint32_t derived_classifier;
+		int cache_equal;
 		if (prototype_type_constructor_derive_curried_classifier(
 				terms,
 				contexts,
@@ -132,7 +133,19 @@ int prototype_constructor_curried_caches_validate(
 				constructor->result_classifier,
 				&derived_classifier
 			) != 0 || cache->schema_revision != constructor->schema_revision ||
-			derived_classifier != cache->classifier) {
+			cache->classifier >= terms->term_count) {
+			return -1;
+		}
+		/* Dense artifact relocation can assign different IDs to alpha-equivalent
+		 * binders. The cache is a checked projection of the constructor telescope,
+		 * so validate its nominal view shape rather than treating its local Term ID
+		 * as semantic authority. */
+		cache_equal = derived_classifier == cache->classifier;
+		if (!cache_equal && (
+				prototype_term_view_shape_equal(
+					terms, derived_classifier, cache->classifier, &cache_equal
+				) != 0 || !cache_equal
+		)) {
 			return -1;
 		}
 	}
@@ -712,9 +725,11 @@ int prototype_type_constructor_classifier(
 		&db->constructor_classifier_cache.entries[constructor_id];
 	if (cache->classifier != PROTOTYPE_INVALID_ID &&
 		cache->schema_revision == constructor->schema_revision) {
+		db->specialization_stats.classifier_cache_hit_count++;
 		*p_classifier = cache->classifier;
 		return 0;
 	}
+	db->specialization_stats.classifier_cache_miss_count++;
 	if (prototype_type_constructor_derive_curried_classifier(
 			terms,
 			contexts,

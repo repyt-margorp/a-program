@@ -1026,6 +1026,7 @@ struct term_scope_env {
 	uint32_t visited_frame_left[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t visited_frame_right[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t visited_frame_count;
+	uint64_t* node_visit_count;
 };
 
 enum prototype_type_view_compare_mode {
@@ -1039,6 +1040,10 @@ struct canonical_binder_env {
 	uint32_t slot[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t count;
 	uint32_t next_slot;
+	uint32_t frame_id[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
+	uint32_t frame_slot[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
+	uint32_t frame_count;
+	uint32_t next_frame_slot;
 };
 
 struct substitution_ih_scope_clone {

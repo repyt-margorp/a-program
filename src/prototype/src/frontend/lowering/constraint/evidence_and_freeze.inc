@@ -1253,6 +1253,13 @@ static int operation_solver_reify_core_proof(
 	uint32_t operation_id,
 	uint32_t core_term,
 	uint32_t depth
+);
+
+static int operation_solver_reify_core_proof_impl(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t core_term,
+	uint32_t depth
 ) {
 	if (!ctx || !ctx->metadata || operation_id >= ctx->metadata->typed_occurrences.occurrence_count ||
 		core_term >= ctx->terms->term_count || depth > 256) {
@@ -1325,6 +1332,7 @@ static int operation_solver_reify_core_proof(
 			return -1;
 		}
 		if (accepted_status == 0) {
+			ctx->metadata->proof_reify_accepted_reuse_count++;
 			return 0;
 		}
 	}
@@ -3032,6 +3040,59 @@ static int operation_solver_reify_core_proof(
 	}
 }
 
+static int operation_solver_reify_core_proof(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t core_term,
+	uint32_t depth
+) {
+	struct operation_reification_cache_entry* cached = NULL;
+	if (ctx && ctx->metadata &&
+		operation_id < ctx->metadata->typed_occurrences.occurrence_count) {
+		const struct prototype_typed_occurrence* operation =
+			&ctx->metadata->typed_occurrences.occurrences[operation_id];
+		cached = &ctx->reification_cache[operation_id];
+		if (cached->context_id == operation->context_id &&
+			cached->classifier == operation->classifier) {
+			if (cached->state == OPERATION_REIFICATION_SUCCEEDED) {
+				ctx->metadata->proof_reify_current_pass_reuse_count++;
+				return 0;
+			}
+			if (cached->state == OPERATION_REIFICATION_IN_PROGRESS) {
+				ctx->metadata->proof_reify_cycle_count++;
+				return 1;
+			}
+		}
+		cached->state = OPERATION_REIFICATION_IN_PROGRESS;
+		cached->context_id = operation->context_id;
+		cached->classifier = operation->classifier;
+	}
+	if (ctx && ctx->metadata) {
+		if (depth == 0) {
+			ctx->metadata->proof_reify_root_count++;
+		} else {
+			ctx->metadata->proof_reify_recursive_count++;
+		}
+	}
+	int status = operation_solver_reify_core_proof_impl(
+		ctx, operation_id, core_term, depth
+	);
+	if (ctx && ctx->metadata) {
+		if (status == 0) {
+			ctx->metadata->proof_reify_success_count++;
+		} else if (status > 0) {
+			ctx->metadata->proof_reify_residual_count++;
+		} else {
+			ctx->metadata->proof_reify_failure_count++;
+		}
+	}
+	if (cached) {
+		cached->state = status == 0 ? OPERATION_REIFICATION_SUCCEEDED :
+			OPERATION_REIFICATION_UNSEEN;
+	}
+	return status;
+}
+
 static int operation_solver_validate_solution_projection(
 	const struct compile_context* ctx
 ) {
@@ -3068,326 +3129,353 @@ static int operation_solver_validate_solution_projection(
 	return 0;
 }
 
+/* Materialize one occurrence from already frozen classifier authority. A
+ * positive result is a missing-premise residual and is the only state that may
+ * be queued again. */
+static int operation_solver_materialize_occurrence_judgement(
+	struct compile_context* ctx,
+	uint32_t operation_id
+) {
+	if (!ctx || !ctx->metadata ||
+		operation_id >= ctx->metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence* operation =
+		&ctx->metadata->typed_occurrences.occurrences[operation_id];
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
+		int match_status = operation_solver_materialize_match_judgement(
+			ctx, operation_id
+		);
+		if (match_status < 0) {
+			fprintf(
+				stderr,
+				"judgement materialization: match motive failed operation=%u\n",
+				operation_id
+			);
+		}
+		return match_status;
+	}
+	int impossible_branch = operation_solver_occurrence_is_in_impossible_branch(
+		ctx, operation_id
+	);
+	if (impossible_branch < 0) {
+		return -1;
+	}
+	if (impossible_branch > 0) {
+		return 0;
+	}
+	prototype_judgement_delta_set_context(
+		&ctx->judgement_delta, operation->context_id
+	);
+	prototype_judgement_delta_set_occurrence(
+		&ctx->judgement_delta, operation_id
+	);
+	uint32_t classifier = operation->classifier;
+	if (classifier == PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	int free_effect_row = operation_classifier_contains_unowned_effect_row(
+		ctx, operation_id, classifier
+	);
+	if (free_effect_row < 0) {
+		return -1;
+	}
+	if (free_effect_row != 0) {
+		return 0;
+	}
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
+		operation->tag == PROTOTYPE_TYPED_OCCURRENCE_APP ||
+		operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE ||
+		operation->tag == PROTOTYPE_TYPED_OCCURRENCE_RETURN ||
+		operation->tag == PROTOTYPE_TYPED_OCCURRENCE_THUNK ||
+		operation->tag == PROTOTYPE_TYPED_OCCURRENCE_FORCE ||
+		operation->tag == PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
+		operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REQUEST) {
+		int reify_status = operation_solver_reify_core_proof(
+			ctx, operation_id, operation->core_term, 0
+		);
+		if (reify_status < 0) {
+			fprintf(
+				stderr,
+				"judgement materialization: reify failed operation=%u tag=%d\n",
+				operation_id, operation->tag
+			);
+			fprintf(stderr, "judgement materialization term: ");
+			prototype_term_print_debug(
+				stderr, NULL, NULL, ctx->type_declarations, ctx->terms,
+				operation->core_term
+			);
+			fprintf(stderr, "\njudgement materialization classifier: ");
+			prototype_term_print_debug(
+				stderr, NULL, NULL, ctx->type_declarations, ctx->terms, classifier
+			);
+			fprintf(stderr, "\n");
+		}
+		return reify_status;
+	}
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS) {
+		if (operation_solver_materialize_induction_hypothesis_judgement(
+				ctx, operation_id
+			) != 0) {
+			fprintf(
+				stderr,
+				"judgement materialization: IH failed operation=%u classifier=%u\n",
+				operation_id, classifier
+			);
+			return -1;
+		}
+		return 0;
+	}
+	if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_ATOM ||
+		operation->core_term >= ctx->terms->term_count) {
+		return 0;
+	}
+	if (prototype_term_type_instance_info(
+			ctx->terms, operation->core_term, &(uint32_t){0}, NULL,
+			&(uint32_t){0}
+		) == 0) {
+		return prototype_judgement_delta_record_type_formation(
+			&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
+			operation->core_term, classifier
+		);
+	}
+	const struct prototype_term* term = &ctx->terms->terms[operation->core_term];
+	if (term->tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
+		return prototype_judgement_delta_record_pure_primitive_type(
+			&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
+			operation->core_term, classifier
+		);
+	}
+	if (term->tag == PROTOTYPE_TERM_EFFECT_OPERATION) {
+		return prototype_judgement_delta_record_effect_operation_type(
+			&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
+			operation->core_term, classifier
+		);
+	}
+	if (term->tag == PROTOTYPE_TERM_TEXT_LITERAL) {
+		return prototype_judgement_delta_record_text_literal(
+			&ctx->judgement_delta, ctx->terms, operation->core_term, classifier
+		);
+	}
+	if (term->tag == PROTOTYPE_TERM_INT_LITERAL) {
+		return prototype_judgement_delta_record_int_literal(
+			&ctx->judgement_delta, ctx->terms, ctx->intrinsic_environment,
+			operation->core_term, classifier
+		);
+	}
+	return 0;
+}
+
 static int operation_solver_materialize_judgements(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
-	memset(
-		ctx->operation_reindex_cache,
-		0,
-		sizeof(ctx->operation_reindex_cache)
-	);
-	memset(
-		ctx->metadata->substitutions.reindex_cache,
-		0,
-		sizeof(ctx->metadata->substitutions.reindex_cache)
-	);
-	/* Constructor-domain checking may establish a more precise classifier for
-	 * a higher-order argument than standalone synthesis can choose (notably an
-	 * empty indexed Match). Commit those already-checked occurrence classifiers
-	 * once, after fixed-point solving and before constructing the proof DAG. */
-	ctx->materializing_checked_classifiers = 1;
-	uint32_t mutable_occurrence_start = (uint32_t)
-		prototype_typed_occurrence_graph_transaction_start(
-			&ctx->metadata->typed_occurrences
+	int initial_pass = !ctx->proof_materialization_initialized;
+	ctx->proof_materialization_initialized = 1;
+	ctx->metadata->proof_materialization_pass_count++;
+	if (initial_pass) {
+		memset(
+			ctx->operation_reindex_cache,
+			0,
+			sizeof(ctx->operation_reindex_cache)
 		);
-	int constructor_domains_changed = 0;
-	for (uint32_t i = mutable_occurrence_start;
-		i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
-		const struct prototype_typed_occurrence* operation =
-			&ctx->metadata->typed_occurrences.occurrences[i];
-		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_APP ||
-			operation->application_role !=
-				PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
-			continue;
-		}
-		int ignored_changed = 0;
-		if (operation_solver_propagate_constructor_domains(
-				ctx, i, &ignored_changed
-			) != 0) {
-			fprintf(stderr,
-				"judgement materialization: constructor domain propagation failed "
-				"operation=%u context=%u core=%u classifier=%u\n",
-				i, operation->context_id, operation->core_term,
-				operation->classifier);
-			ctx->materializing_checked_classifiers = 0;
-			return -1;
-		}
-		if (ignored_changed) {
-			constructor_domains_changed = 1;
-		}
-	}
-	/* Constructor domains can refine a guarded IH and invalidate the classifier
-	 * of an enclosing APP.  Do not freeze that intermediate state: replay the
-	 * ordinary classifier equations so every projected classifier remains
-	 * derivable by its public kernel rule. */
-	if (constructor_domains_changed && operation_solver_solve(ctx, 1) != 0) {
-		fprintf(stderr,
-			"judgement materialization: constructor refinement did not stabilize\n"
+		memset(
+			ctx->metadata->substitutions.reindex_cache,
+			0,
+			sizeof(ctx->metadata->substitutions.reindex_cache)
 		);
-		ctx->materializing_checked_classifiers = 0;
-		return -1;
-	}
-	for (uint32_t i = mutable_occurrence_start;
-		i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
-		uint32_t classifier = operation_solver_classifier(ctx, i);
-		if (classifier == PROTOTYPE_INVALID_ID) {
-			uint32_t obligation_id = PROTOTYPE_INVALID_ID;
-			int obligation_status =
-				ctx->metadata->typed_occurrences.occurrences[i].tag ==
-					PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ?
-				prototype_verification_db_find_occurrence(
-					&ctx->metadata->verification,
-					PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT,
-					i,
-					&obligation_id
-				) : 1;
-			if (obligation_status == 0 && obligation_id <
-					prototype_verification_db_count(&ctx->metadata->verification)) {
-				ctx->metadata->typed_occurrences.occurrences[i].classifier =
-					PROTOTYPE_INVALID_ID;
-				ctx->metadata->typed_occurrences.occurrences[i].classifier_status =
-					PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION;
-				ctx->metadata->typed_occurrences.occurrences[i].
-					classifier_verification_obligation = obligation_id;
-				continue;
-			}
-			ctx->materializing_checked_classifiers = 0;
-			fprintf(stderr,
-				"judgement materialization: unsolved classifier occurrence=%u tag=%d "
-				"hint=%u core=%u core-tag=%u wrapper=%u source_ast=%u context=%u "
-				"binding=%u referenced_ast_binder=%u\n",
-				i,
-				ctx->metadata->typed_occurrences.occurrences[i].tag,
-				ctx->classifier_hints[i],
-				ctx->metadata->typed_occurrences.occurrences[i].core_term,
-				ctx->metadata->typed_occurrences.occurrences[i].core_term <
-					ctx->terms->term_count ? ctx->terms->terms[
-						ctx->metadata->typed_occurrences.occurrences[i].core_term
-					].tag : 0,
-				ctx->metadata->typed_occurrences.occurrences[i].wrapped_occurrence,
-				ctx->metadata->typed_occurrences.occurrences[i].source_ast,
-				ctx->metadata->typed_occurrences.occurrences[i].context_id,
-				ctx->metadata->typed_occurrences.occurrences[i].binding_id,
-				ctx->metadata->typed_occurrences.occurrences[i].referenced_ast_binder_id
+		/* Constructor-domain checking may establish a more precise classifier for
+		 * a higher-order argument than standalone synthesis can choose (notably an
+		 * empty indexed Match). Commit those already-checked occurrence classifiers
+		 * once, after fixed-point solving and before constructing the proof DAG. */
+		ctx->materializing_checked_classifiers = 1;
+		uint32_t mutable_occurrence_start = (uint32_t)
+			prototype_typed_occurrence_graph_transaction_start(
+				&ctx->metadata->typed_occurrences
 			);
-			return -1;
-		}
-		ctx->classifier_hints[i] = classifier;
-		ctx->metadata->typed_occurrences.occurrences[i].classifier = classifier;
-		ctx->metadata->typed_occurrences.occurrences[i].classifier_status =
-			PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED;
-		ctx->metadata->typed_occurrences.occurrences[i].
-			classifier_verification_obligation = PROTOTYPE_INVALID_ID;
-	}
-	ctx->materializing_checked_classifiers = 0;
-	if (operation_solver_validate_solution_projection(ctx) != 0) {
-		fprintf(stderr, "judgement materialization: occurrence projection failed\n");
-		return -1;
-	}
-	if (materialize_pending_binder_assumptions(ctx) != 0 ||
-		materialize_pending_declaration_facts(ctx) != 0) {
-		fprintf(stderr, "judgement materialization: pending input facts failed\n");
-		return -1;
-	}
-	if (operation_solver_materialize_match_pattern_assumptions(ctx) != 0) {
-		fprintf(stderr, "judgement materialization: match assumptions failed\n");
-		return -1;
-	}
-	for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
-		uint32_t action =
-			ctx->metadata->typed_occurrences.occurrences[i].context_action_substitution;
-		if (action != PROTOTYPE_INVALID_ID &&
-			operation_solver_materialize_refinement_binding_evidence_at_depth(
-				ctx, action, 0
-			) != 0) {
-			fprintf(stderr,
-				"judgement materialization: operation action evidence failed "
-				"operation=%u substitution=%u\n",
-				i, action);
-			return -1;
-		}
-	}
-	for (;;) {
-		size_t before_relation_count = ctx->judgement_delta.proposition_count;
-		for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
-			if (ctx->metadata->typed_occurrences.occurrences[i].tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
-				continue;
-			}
-			int match_status = operation_solver_materialize_match_judgement(
-				ctx, i
-			);
-			if (match_status < 0) {
-				fprintf(stderr,
-					"judgement materialization: match motive failed operation=%u\n",
-					i);
-				return -1;
-			}
-		}
-		for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
+		int constructor_domains_changed = 0;
+		for (uint32_t i = mutable_occurrence_start;
+			i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
 			const struct prototype_typed_occurrence* operation =
 				&ctx->metadata->typed_occurrences.occurrences[i];
-			int impossible_branch =
-				operation_solver_occurrence_is_in_impossible_branch(ctx, i);
-			if (impossible_branch < 0) {
-				return -1;
-			}
-			if (impossible_branch > 0) {
+			if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_APP ||
+				operation->application_role !=
+					PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION) {
 				continue;
 			}
-			prototype_judgement_delta_set_context(
-				&ctx->judgement_delta, operation->context_id
+			int ignored_changed = 0;
+			if (operation_solver_propagate_constructor_domains(
+					ctx, i, &ignored_changed
+				) != 0) {
+				fprintf(stderr,
+					"judgement materialization: constructor domain propagation failed "
+					"operation=%u context=%u core=%u classifier=%u\n",
+					i, operation->context_id, operation->core_term,
+					operation->classifier);
+				ctx->materializing_checked_classifiers = 0;
+				return -1;
+			}
+			if (ignored_changed) {
+				constructor_domains_changed = 1;
+			}
+		}
+		/* Constructor domains can refine a guarded IH and invalidate the classifier
+		 * of an enclosing APP.  Do not freeze that intermediate state: replay the
+		 * ordinary classifier equations so every projected classifier remains
+		 * derivable by its public kernel rule. */
+		if (constructor_domains_changed && operation_solver_solve(ctx, 1) != 0) {
+			fprintf(stderr,
+				"judgement materialization: constructor refinement did not stabilize\n"
 			);
-			prototype_judgement_delta_set_occurrence(
-				&ctx->judgement_delta, i
-			);
-			uint32_t classifier = operation->classifier;
+			ctx->materializing_checked_classifiers = 0;
+			return -1;
+		}
+		for (uint32_t i = mutable_occurrence_start;
+			i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
+			uint32_t classifier = operation_solver_classifier(ctx, i);
 			if (classifier == PROTOTYPE_INVALID_ID) {
-				continue;
-			}
-			int free_effect_row = operation_classifier_contains_unowned_effect_row(
-				ctx, i, classifier
-			);
-			if (free_effect_row < 0) {
-				return -1;
-			}
-			if (free_effect_row != 0) {
-				/* The TypedOccurrenceGraph may retain this constraint state, but a
-				 * JudgementDB conclusion must be closed or explicitly generalized. */
-				continue;
-			}
-			if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
-				operation->tag == PROTOTYPE_TYPED_OCCURRENCE_APP ||
-				operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE ||
-				operation->tag == PROTOTYPE_TYPED_OCCURRENCE_RETURN ||
-				operation->tag == PROTOTYPE_TYPED_OCCURRENCE_THUNK ||
-				operation->tag == PROTOTYPE_TYPED_OCCURRENCE_FORCE ||
-				operation->tag == PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
-				operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REQUEST) {
-				int reify_status = operation_solver_reify_core_proof(
-					ctx, i, operation->core_term, 0
-				);
-				if (reify_status < 0) {
-					fprintf(
-						stderr,
-						"judgement materialization: reify failed operation=%u tag=%d\n",
+				uint32_t obligation_id = PROTOTYPE_INVALID_ID;
+				int obligation_status =
+					ctx->metadata->typed_occurrences.occurrences[i].tag ==
+						PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ?
+					prototype_verification_db_find_occurrence(
+						&ctx->metadata->verification,
+						PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT,
 						i,
-						operation->tag
-					);
-					fprintf(stderr, "judgement materialization term: ");
-					prototype_term_print_debug(
-						stderr, NULL, NULL, ctx->type_declarations, ctx->terms,
-						operation->core_term
-					);
-					fprintf(stderr, "\njudgement materialization classifier: ");
-					prototype_term_print_debug(
-						stderr, NULL, NULL, ctx->type_declarations, ctx->terms,
-						classifier
-					);
-					fprintf(stderr, "\n");
-					return -1;
-				}
-				if (reify_status > 0) {
+						&obligation_id
+					) : 1;
+				if (obligation_status == 0 && obligation_id <
+						prototype_verification_db_count(&ctx->metadata->verification)) {
+					ctx->metadata->typed_occurrences.occurrences[i].classifier =
+						PROTOTYPE_INVALID_ID;
+					ctx->metadata->typed_occurrences.occurrences[i].classifier_status =
+						PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION;
+					ctx->metadata->typed_occurrences.occurrences[i].
+						classifier_verification_obligation = obligation_id;
 					continue;
 				}
-			} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS) {
-				if (operation_solver_materialize_induction_hypothesis_judgement(
-						ctx, i
-					) != 0) {
-					fprintf(stderr, "judgement materialization: IH failed operation=%u classifier=%u\n",
-						i, classifier);
-					return -1;
-				}
-			} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_ATOM &&
-				prototype_term_type_instance_info(
-					ctx->terms,
-					operation->core_term,
-					&(uint32_t){0},
-					NULL,
-					&(uint32_t){0}
-				) == 0 &&
-				prototype_judgement_delta_record_type_formation(
-					&ctx->judgement_delta,
-					ctx->terms,
-					ctx->type_declarations,
-					operation->core_term,
-					classifier
-				) != 0) {
-				return -1;
-			} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_ATOM &&
-				operation->core_term < ctx->terms->term_count &&
-				ctx->terms->terms[operation->core_term].tag ==
-					PROTOTYPE_TERM_PURE_PRIMITIVE &&
-				prototype_judgement_delta_record_pure_primitive_type(
-					&ctx->judgement_delta,
-					ctx->terms,
-					ctx->type_declarations,
-					operation->core_term,
-					classifier
-				) != 0) {
-				return -1;
-			} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_ATOM &&
-				operation->core_term < ctx->terms->term_count &&
-				ctx->terms->terms[operation->core_term].tag ==
-					PROTOTYPE_TERM_EFFECT_OPERATION &&
-				prototype_judgement_delta_record_effect_operation_type(
-					&ctx->judgement_delta,
-					ctx->terms,
-					ctx->type_declarations,
-					operation->core_term,
-					operation->classifier
-				) != 0) {
-				return -1;
-			} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_ATOM &&
-				operation->core_term < ctx->terms->term_count &&
-				ctx->terms->terms[operation->core_term].tag ==
-					PROTOTYPE_TERM_TEXT_LITERAL &&
-				prototype_judgement_delta_record_text_literal(
-					&ctx->judgement_delta,
-					ctx->terms,
-					operation->core_term,
-					classifier
-				) != 0) {
-				return -1;
-			} else if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_ATOM &&
-				operation->core_term < ctx->terms->term_count &&
-				ctx->terms->terms[operation->core_term].tag ==
-					PROTOTYPE_TERM_INT_LITERAL) {
-				if (prototype_judgement_delta_record_int_literal(
-						&ctx->judgement_delta,
-						ctx->terms,
-						ctx->intrinsic_environment,
-						operation->core_term,
-						classifier
-					) != 0) {
-					return -1;
-				}
-				}
-			}
-			/* Computation constraints are generated and solved before this phase, but
-			 * their replayable derivations require premise evidence materialized above.
-			 * Re-run only the checked rule closure; operation solutions are validated
-			 * again and are never selected here. */
-			if (operation_solver_refresh_computation_constraint_operands(ctx) != 0 ||
-				prototype_judgement_delta_solve_recorded_computation_requests(
-					&ctx->judgement_delta,
-					ctx->terms,
-					ctx->type_declarations,
-					ctx->computation_constraint_results,
-					ctx->computation_constraint_result_capacity
-				) != 0 ||
-				prototype_judgement_delta_solve_recorded_computation_constraints(
-					&ctx->judgement_delta,
-					ctx->terms,
-					ctx->type_declarations,
-					ctx->computation_constraint_results,
-					ctx->computation_constraint_result_capacity
-				) != 0 || operation_solver_validate_solution_projection(ctx) != 0) {
+				ctx->materializing_checked_classifiers = 0;
+				fprintf(stderr,
+					"judgement materialization: unsolved classifier occurrence=%u tag=%d "
+					"hint=%u core=%u core-tag=%u wrapper=%u source_ast=%u context=%u "
+					"binding=%u referenced_ast_binder=%u\n",
+					i,
+					ctx->metadata->typed_occurrences.occurrences[i].tag,
+					ctx->classifier_hints[i],
+					ctx->metadata->typed_occurrences.occurrences[i].core_term,
+					ctx->metadata->typed_occurrences.occurrences[i].core_term <
+						ctx->terms->term_count ? ctx->terms->terms[
+							ctx->metadata->typed_occurrences.occurrences[i].core_term
+						].tag : 0,
+					ctx->metadata->typed_occurrences.occurrences[i].wrapped_occurrence,
+					ctx->metadata->typed_occurrences.occurrences[i].source_ast,
+					ctx->metadata->typed_occurrences.occurrences[i].context_id,
+					ctx->metadata->typed_occurrences.occurrences[i].binding_id,
+					ctx->metadata->typed_occurrences.occurrences[i].referenced_ast_binder_id
+				);
 				return -1;
 			}
-			if (ctx->judgement_delta.proposition_count == before_relation_count) {
-				break;
+			ctx->classifier_hints[i] = classifier;
+			ctx->metadata->typed_occurrences.occurrences[i].classifier = classifier;
+			ctx->metadata->typed_occurrences.occurrences[i].classifier_status =
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED;
+			ctx->metadata->typed_occurrences.occurrences[i].
+				classifier_verification_obligation = PROTOTYPE_INVALID_ID;
 		}
+		ctx->materializing_checked_classifiers = 0;
+		if (operation_solver_validate_solution_projection(ctx) != 0) {
+			fprintf(stderr, "judgement materialization: occurrence projection failed\n");
+			return -1;
+		}
+		if (materialize_pending_binder_assumptions(ctx) != 0 ||
+			materialize_pending_declaration_facts(ctx) != 0) {
+			fprintf(stderr, "judgement materialization: pending input facts failed\n");
+			return -1;
+		}
+		if (operation_solver_materialize_match_pattern_assumptions(ctx) != 0) {
+			fprintf(stderr, "judgement materialization: match assumptions failed\n");
+			return -1;
+		}
+		for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
+			uint32_t action =
+				ctx->metadata->typed_occurrences.occurrences[i].context_action_substitution;
+			if (action != PROTOTYPE_INVALID_ID &&
+				operation_solver_materialize_refinement_binding_evidence_at_depth(
+					ctx, action, 0
+				) != 0) {
+				fprintf(stderr,
+					"judgement materialization: operation action evidence failed "
+					"operation=%u substitution=%u\n",
+					i, action);
+				return -1;
+			}
+		}
+	}
+	uint32_t current_queue[4096];
+	uint32_t next_queue[4096];
+	uint32_t current_count = 0;
+	if (initial_pass) {
+		for (uint32_t i = 0;
+			i < ctx->metadata->typed_occurrences.occurrence_count;
+			++i) {
+			current_queue[current_count++] = i;
+		}
+	} else {
+		current_count = ctx->proof_materialization_pending_count;
+		ctx->metadata->post_result_consumer_retry_count += current_count;
+		memcpy(
+			current_queue,
+			ctx->proof_materialization_pending_ids,
+			current_count * sizeof(current_queue[0])
+		);
+	}
+	ctx->proof_materialization_pending_count = 0;
+	while (current_count != 0) {
+		ctx->metadata->proof_materialization_round_count++;
+		size_t before_relation_count = ctx->judgement_delta.proposition_count;
+		uint32_t next_count = 0;
+		for (uint32_t queue_index = 0;
+			queue_index < current_count;
+			++queue_index) {
+			uint32_t operation_id = current_queue[queue_index];
+			ctx->metadata->proof_materialization_occurrence_visit_count++;
+			int status = operation_solver_materialize_occurrence_judgement(
+				ctx, operation_id
+			);
+			if (status < 0) {
+				return -1;
+			}
+			if (status > 0) {
+				next_queue[next_count++] = operation_id;
+			}
+		}
+		/* Computation constraints are solved before this phase. Their replayable
+		 * rules are retried only after this round produced new premise evidence. */
+		if (operation_solver_refresh_computation_constraint_operands(ctx) != 0 ||
+			prototype_judgement_delta_solve_recorded_computation_requests(
+				&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
+				ctx->computation_constraint_results,
+				ctx->computation_constraint_result_capacity
+			) != 0 ||
+			prototype_judgement_delta_solve_recorded_computation_constraints(
+				&ctx->judgement_delta, ctx->terms, ctx->type_declarations,
+				ctx->computation_constraint_results,
+				ctx->computation_constraint_result_capacity
+			) != 0 || operation_solver_validate_solution_projection(ctx) != 0) {
+			return -1;
+		}
+		if (next_count == 0 ||
+			ctx->judgement_delta.proposition_count == before_relation_count) {
+			ctx->proof_materialization_pending_count = next_count;
+			memcpy(
+				ctx->proof_materialization_pending_ids,
+				next_queue,
+				next_count * sizeof(next_queue[0])
+			);
+			break;
+		}
+		memcpy(current_queue, next_queue, next_count * sizeof(next_queue[0]));
+		current_count = next_count;
 	}
 	if (operation_solver_refresh_delta_resource_usage(ctx) != 0) {
 		return -1;

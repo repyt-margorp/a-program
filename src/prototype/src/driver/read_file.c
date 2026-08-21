@@ -5002,37 +5002,106 @@ int main(int argc, char** argv) {
 			stderr,
 			"A_PROGRAM_PERFORMANCE_COUNTERS 1 "
 			"term_formation=%" PRIu64 " term_unique=%" PRIu64 " "
-			"intern_probes=%" PRIu64 " exact_probes=%" PRIu64 " "
-			"alpha_compares=%" PRIu64 " "
+				"intern_probes=%" PRIu64 " exact_probes=%" PRIu64 " "
+				"alpha_compares=%" PRIu64 " alpha_compare_node_visits=%" PRIu64
+				" max_alpha_bucket_probes=%" PRIu64 " "
 			"intern_rebuilds=%" PRIu64 " normalization_hits=%" PRIu64 " "
 			"normalization_misses=%" PRIu64 " normalization_probes=%" PRIu64 " "
-			"normalization_evictions=%" PRIu64 " normalization_invalidations=%" PRIu64 "\n",
+				"normalization_evictions=%" PRIu64 " normalization_invalidations=%" PRIu64
+				" graph_mutation_invalidations=%" PRIu64
+				" ih_scope_invalidations=%" PRIu64
+				" type_former_invalidations=%" PRIu64
+				" empty_cache_invalidations=%" PRIu64 "\n",
 			intern_stats.formation_request_count,
 			intern_stats.unique_term_count,
 			intern_stats.bucket_probe_count,
-			intern_stats.exact_probe_count,
-			intern_stats.alpha_compare_count,
+				intern_stats.exact_probe_count,
+				intern_stats.alpha_compare_count,
+				intern_stats.alpha_compare_node_visit_count,
+				intern_stats.max_alpha_bucket_probe_count,
 			intern_stats.index_rebuild_count,
 			normalization_stats.hit_count,
 			normalization_stats.miss_count,
 			normalization_stats.probe_count,
-			normalization_stats.eviction_count,
-			normalization_stats.invalidation_count
+				normalization_stats.eviction_count,
+				normalization_stats.invalidation_count,
+				normalization_stats.graph_mutation_invalidation_count,
+				normalization_stats.ih_scope_invalidation_count,
+				normalization_stats.type_former_invalidation_count,
+				normalization_stats.empty_cache_invalidation_count
 		);
 		for (int tag = 1; tag <= PROTOTYPE_TERM_TAG_MAX; ++tag) {
-			if (intern_stats.bucket_probes_by_tag[tag] == 0 &&
+			if (intern_stats.formation_requests_by_tag[tag] == 0 &&
+				intern_stats.unique_terms_by_tag[tag] == 0 &&
+				intern_stats.bucket_probes_by_tag[tag] == 0 &&
 				intern_stats.alpha_compares_by_tag[tag] == 0) {
 				continue;
 			}
 			fprintf(
 				stderr,
-				"A_PROGRAM_INTERN_TAG 1 tag=%d probes=%" PRIu64
+				"A_PROGRAM_INTERN_TAG 1 tag=%d formations=%" PRIu64
+				" unique=%" PRIu64 " probes=%" PRIu64
 				" alpha_compares=%" PRIu64 "\n",
 				tag,
+				intern_stats.formation_requests_by_tag[tag],
+				intern_stats.unique_terms_by_tag[tag],
 				intern_stats.bucket_probes_by_tag[tag],
 				intern_stats.alpha_compares_by_tag[tag]
 			);
 		}
+			fprintf(
+				stderr,
+				"A_PROGRAM_CONSTRUCTOR_SPECIALIZATION_COUNTERS 1 attempts=%" PRIu64
+				" classifier_cache_hits=%" PRIu64
+				" classifier_cache_misses=%" PRIu64
+				" reindex_requests=%" PRIu64
+				" type_declaration_formations=%" PRIu64
+				" type_view_formations=%" PRIu64 "\n",
+				type_declarations.specialization_stats.specialization_attempt_count,
+				type_declarations.specialization_stats.classifier_cache_hit_count,
+				type_declarations.specialization_stats.classifier_cache_miss_count,
+				type_declarations.specialization_stats.reindex_request_count,
+				intern_stats.formation_requests_by_tag[PROTOTYPE_TERM_TYPE_DECLARATION],
+				intern_stats.formation_requests_by_tag[PROTOTYPE_TERM_TYPE_VIEW]
+			);
+			fprintf(
+				stderr,
+				"A_PROGRAM_COMPILE_PHASE_COUNTERS 1 graph_ns=%" PRIu64
+			" fixed_point_ns=%" PRIu64 " materialization_ns=%" PRIu64
+			" result_evidence_ns=%" PRIu64 " post_result_closure_ns=%" PRIu64
+			" accepted_replay_ns=%" PRIu64 "\n",
+			metadata.graph_build_time_ns,
+			metadata.fixed_point_time_ns,
+			metadata.proof_materialization_time_ns,
+			metadata.result_evidence_time_ns,
+			metadata.post_result_closure_time_ns,
+			metadata.accepted_replay_time_ns
+		);
+		fprintf(
+			stderr,
+			"A_PROGRAM_PROOF_MATERIALIZATION_COUNTERS 1 passes=%" PRIu64
+			" rounds=%" PRIu64 " occurrence_visits=%" PRIu64
+			" post_result_retries=%" PRIu64
+			" reify_roots=%" PRIu64 " reify_recursive=%" PRIu64
+			" reify_success=%" PRIu64 " reify_residual=%" PRIu64
+			" reify_failure=%" PRIu64 " accepted_reuse=%" PRIu64
+			" current_pass_reuse=%" PRIu64 " cycles=%" PRIu64
+			" result_claims=%" PRIu64 " termination_claims=%" PRIu64 "\n",
+			metadata.proof_materialization_pass_count,
+			metadata.proof_materialization_round_count,
+			metadata.proof_materialization_occurrence_visit_count,
+			metadata.post_result_consumer_retry_count,
+			metadata.proof_reify_root_count,
+			metadata.proof_reify_recursive_count,
+			metadata.proof_reify_success_count,
+			metadata.proof_reify_residual_count,
+			metadata.proof_reify_failure_count,
+			metadata.proof_reify_accepted_reuse_count,
+			metadata.proof_reify_current_pass_reuse_count,
+			metadata.proof_reify_cycle_count,
+			metadata.result_evidence_claim_count,
+			metadata.termination_evidence_claim_count
+		);
 		fprintf(
 			stderr,
 			"A_PROGRAM_SOLVER_COUNTERS 1 constraint_generations=%" PRIu64

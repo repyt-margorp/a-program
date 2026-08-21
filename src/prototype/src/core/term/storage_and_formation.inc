@@ -102,12 +102,34 @@ void prototype_term_normalization_cache_get_stats(
 	}
 }
 
-static void invalidate_normalization_cache(struct prototype_term_db* db) {
+enum normalization_cache_invalidation_reason {
+	NORMALIZATION_CACHE_INVALIDATION_GRAPH_MUTATION = 1,
+	NORMALIZATION_CACHE_INVALIDATION_IH_SCOPE = 2,
+	NORMALIZATION_CACHE_INVALIDATION_TYPE_FORMER = 3
+};
+
+static void invalidate_normalization_cache(
+	struct prototype_term_db* db,
+	enum normalization_cache_invalidation_reason reason
+) {
 	if (!db) {
 		return;
 	}
 	db->normalization_graph_revision++;
 	db->normalization_cache_stats.invalidation_count++;
+	if (reason == NORMALIZATION_CACHE_INVALIDATION_GRAPH_MUTATION) {
+		db->normalization_cache_stats.graph_mutation_invalidation_count++;
+	} else if (reason == NORMALIZATION_CACHE_INVALIDATION_IH_SCOPE) {
+		db->normalization_cache_stats.ih_scope_invalidation_count++;
+	} else if (reason == NORMALIZATION_CACHE_INVALIDATION_TYPE_FORMER) {
+		db->normalization_cache_stats.type_former_invalidation_count++;
+	}
+	/* The graph revision still advances, but there is no index to clear before
+	 * the first normalization following a mutation. */
+	if (db->normalization_cache_next == 0) {
+		db->normalization_cache_stats.empty_cache_invalidation_count++;
+		return;
+	}
 	if (db->normalization_graph_revision == 0) {
 		db->normalization_graph_revision = 1;
 		prototype_term_normalization_cache_clear(db);
@@ -127,7 +149,9 @@ void prototype_term_notify_graph_mutation(struct prototype_term_db* db) {
 	if (!db) {
 		return;
 	}
-	invalidate_normalization_cache(db);
+	invalidate_normalization_cache(
+		db, NORMALIZATION_CACHE_INVALIDATION_GRAPH_MUTATION
+	);
 	db->intern_index_dirty = 1;
 	db->effect_row_variable_index_dirty = 1;
 }
@@ -343,7 +367,7 @@ static int term_intern_index_rebuild(struct prototype_term_db* db) {
 		struct prototype_term_canonical_key key;
 		uint64_t exact_hash;
 		if (term_intern_canonical_key_local(db, term_id, &key) != 0 ||
-			term_intern_exact_hash_local(db, term_id, &exact_hash) != 0) {
+			term_intern_exact_hash_local(db, term_id, &key, &exact_hash) != 0) {
 			db->intern_index_dirty = 1;
 			return -1;
 		}
@@ -368,10 +392,12 @@ static int term_intern_index_rebuild(struct prototype_term_db* db) {
 			}
 		}
 		size_t bucket = (size_t)key.hash & (db->intern_bucket_count - 1);
+		uint64_t alpha_bucket_probe_count = 0;
 		for (uint32_t existing = exact_match ? PROTOTYPE_INVALID_ID :
 			db->intern_buckets[bucket];
 			existing != PROTOTYPE_INVALID_ID;
 			existing = db->intern_next[existing]) {
+			alpha_bucket_probe_count++;
 			if (db->intern_keys[existing].hash == key.hash &&
 				term_intern_alpha_equal_local(db, existing, term_id)) {
 				uint32_t representative = db->intern_canonical_ids[existing];
@@ -379,6 +405,9 @@ static int term_intern_index_rebuild(struct prototype_term_db* db) {
 					canonical_id = representative;
 				}
 			}
+		}
+		if (alpha_bucket_probe_count > db->intern_stats.max_alpha_bucket_probe_count) {
+			db->intern_stats.max_alpha_bucket_probe_count = alpha_bucket_probe_count;
 		}
 		if (term_intern_index_insert(
 				db, term_id, key, exact_hash, canonical_id
@@ -401,6 +430,9 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 		return -1;
 	}
 	db->intern_stats.formation_request_count++;
+	if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_TAG_MAX) {
+		db->intern_stats.formation_requests_by_tag[term.tag]++;
+	}
 	if (db->intern_index_dirty || db->intern_indexed_count != db->term_count) {
 		if (term_intern_index_rebuild(db) != 0) {
 			return -1;
@@ -422,7 +454,7 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 	struct prototype_term_canonical_key key;
 	uint64_t exact_hash;
 	if (term_intern_canonical_key_local(db, temp_id, &key) != 0 ||
-		term_intern_exact_hash_local(db, temp_id, &exact_hash) != 0) {
+		term_intern_exact_hash_local(db, temp_id, &key, &exact_hash) != 0) {
 		db->term_count = saved_term_count;
 		return -1;
 	}
@@ -452,9 +484,11 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 	}
 	if (canonical == PROTOTYPE_INVALID_ID) {
 		size_t bucket = (size_t)key.hash & (db->intern_bucket_count - 1);
+		uint64_t alpha_bucket_probe_count = 0;
 		for (uint32_t existing = db->intern_buckets[bucket];
 			existing != PROTOTYPE_INVALID_ID;
 			existing = db->intern_next[existing]) {
+			alpha_bucket_probe_count++;
 			db->intern_stats.bucket_probe_count++;
 			if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_TAG_MAX) {
 				db->intern_stats.bucket_probes_by_tag[term.tag]++;
@@ -471,6 +505,9 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 					db->intern_canonical_ids[existing] < canonical)) {
 				canonical = db->intern_canonical_ids[existing];
 			}
+		}
+		if (alpha_bucket_probe_count > db->intern_stats.max_alpha_bucket_probe_count) {
+			db->intern_stats.max_alpha_bucket_probe_count = alpha_bucket_probe_count;
 		}
 	}
 #ifdef PROTOTYPE_TERM_INTERN_AUDIT
@@ -518,6 +555,9 @@ static int add_term(struct prototype_term_db* db, struct prototype_term term, ui
 		] = id;
 	}
 	db->intern_stats.unique_term_count++;
+	if (term.tag > 0 && term.tag <= PROTOTYPE_TERM_TAG_MAX) {
+		db->intern_stats.unique_terms_by_tag[term.tag]++;
+	}
 	*p_ret = id;
 	return 0;
 }
@@ -1086,7 +1126,7 @@ int prototype_term_set_ih_scope_term(
 		memset(&db->ih_scopes[ih_scope_id].key, 0, sizeof(db->ih_scopes[ih_scope_id].key));
 		return -1;
 	}
-	invalidate_normalization_cache(db);
+	invalidate_normalization_cache(db, NORMALIZATION_CACHE_INVALIDATION_IH_SCOPE);
 	return 0;
 }
 
@@ -1406,7 +1446,9 @@ static int prototype_term_type_former(
 		}
 		if (existing->as.type_former.constructor_count != constructor_count) {
 			existing->as.type_former.constructor_count = constructor_count;
-			invalidate_normalization_cache(db);
+			invalidate_normalization_cache(
+				db, NORMALIZATION_CACHE_INVALIDATION_TYPE_FORMER
+			);
 		}
 		*p_ret = i;
 		return 0;

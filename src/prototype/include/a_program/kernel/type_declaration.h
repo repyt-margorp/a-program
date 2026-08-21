@@ -212,6 +212,15 @@ struct prototype_constructor_classifier_cache {
 	size_t capacity;
 };
 
+/* Runtime-only attribution for constructor schema specialization. These
+ * counters are neither semantic authority nor artifact data. */
+struct prototype_constructor_specialization_stats {
+	uint64_t specialization_attempt_count;
+	uint64_t classifier_cache_hit_count;
+	uint64_t classifier_cache_miss_count;
+	uint64_t reindex_request_count;
+};
+
 /* Authoritative source-derived type and constructor schema. It contains no
  * readback record, representation lookup, or materialized classifier cache. */
 struct prototype_type_semantic_schema_db {
@@ -236,6 +245,7 @@ struct prototype_type_declaration_db {
 	struct prototype_type_readback_db readback;
 	struct prototype_type_representation_db representation_db;
 	struct prototype_constructor_classifier_cache constructor_classifier_cache;
+	struct prototype_constructor_specialization_stats specialization_stats;
 };
 
 void prototype_type_declaration_db_mark_semantic_change(

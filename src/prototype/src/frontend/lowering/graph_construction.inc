@@ -1174,14 +1174,12 @@ static int resolve_namespace_member(
 	if (!constructor) {
 		return -1;
 	}
+	uint32_t constructor_id = (uint32_t)(constructor -
+		ctx->type_declarations->semantic_schema.constructor_declarations);
 	uint32_t classifier;
-	if (prototype_type_constructor_derive_curried_classifier(
-			ctx->terms,
-			&ctx->metadata->contexts,
-			constructor->parameter_context,
-			constructor->field_context,
-			constructor->result_classifier,
-			&classifier
+	if (prototype_type_constructor_classifier(
+			ctx->type_declarations, &ctx->metadata->contexts, ctx->terms,
+			constructor_id, &classifier
 		) != 0) {
 		return -1;
 	}

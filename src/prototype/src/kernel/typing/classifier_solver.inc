@@ -439,14 +439,11 @@ static int constructor_classifier_from_schema(
 		return 1;
 	}
 
+	uint32_t constructor_id = (uint32_t)(constructor -
+		type_declarations->semantic_schema.constructor_declarations);
 	uint32_t classifier;
-	if (prototype_type_constructor_derive_curried_classifier(
-			terms,
-			delta->contexts,
-			constructor->parameter_context,
-			constructor->field_context,
-			constructor->result_classifier,
-			&classifier
+	if (prototype_type_constructor_classifier(
+			type_declarations, delta->contexts, terms, constructor_id, &classifier
 		) != 0) {
 		return -1;
 	}
@@ -748,6 +745,7 @@ int prototype_judgement_constructor_specialize(
 		!p_specialization) {
 		return -1;
 	}
+	type_declarations->specialization_stats.specialization_attempt_count++;
 	memset(p_specialization, 0, sizeof(*p_specialization));
 	if (prototype_term_constructor_spine_info(
 			terms,
@@ -857,13 +855,9 @@ int prototype_judgement_constructor_spine_classifier(
 	uint32_t substitution = specialization.parameter_substitution;
 
 	uint32_t residual_classifier;
-	if (prototype_type_constructor_derive_curried_classifier(
-			terms,
-			contexts,
-			constructor->parameter_context,
-			constructor->field_context,
-			constructor->result_classifier,
-			&residual_classifier
+	if (prototype_type_constructor_classifier(
+			type_declarations, contexts, terms,
+			specialization.constructor_declaration_id, &residual_classifier
 		) != 0) {
 		return -1;
 	}
@@ -896,6 +890,7 @@ int prototype_judgement_constructor_spine_classifier(
 		}
 		uint32_t field_classifier =
 			prototype_context_classifier_term(field_context);
+		type_declarations->specialization_stats.reindex_request_count++;
 		if (prototype_term_reindex(
 				terms,
 				type_declarations,
@@ -956,6 +951,9 @@ int prototype_judgement_constructor_spine_classifier(
 	uint32_t classifier = residual_classifier;
 	*p_saturated = specialization.field_count ==
 		specialization.declared_field_count;
+	if (*p_saturated) {
+		type_declarations->specialization_stats.reindex_request_count++;
+	}
 	if (*p_saturated && prototype_term_reindex(
 			terms,
 			type_declarations,
@@ -1003,6 +1001,8 @@ int prototype_judgement_constructor_spine_expected_domains(
 		&type_declarations->semantic_schema.constructor_declarations[
 			specialization.constructor_declaration_id
 		];
+	type_declarations->specialization_stats.reindex_request_count +=
+		specialization.field_count;
 	for (uint32_t i = 0; i < specialization.field_count; ++i) {
 		if (prototype_context_telescope_entry_classifier(
 				contexts, substitutions, terms, type_declarations,

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "../../internal/ast_common.h"
 #include "../../artifact/artifact_internal.h"
@@ -17,6 +18,24 @@ static void compile_metadata_refresh_runtime_capabilities(
 	struct prototype_compile_metadata* metadata,
 	const struct prototype_term_db* terms
 );
+
+static uint64_t compile_performance_clock_ns(void) {
+	clock_t now = clock();
+	uint64_t seconds;
+	uint64_t remainder;
+	if (now == (clock_t)-1) {
+		return 0;
+	}
+	seconds = (uint64_t)now / (uint64_t)CLOCKS_PER_SEC;
+	remainder = (uint64_t)now % (uint64_t)CLOCKS_PER_SEC;
+	return seconds * UINT64_C(1000000000) +
+		remainder * UINT64_C(1000000000) / (uint64_t)CLOCKS_PER_SEC;
+}
+
+static uint64_t compile_performance_elapsed_ns(uint64_t start) {
+	uint64_t finish = compile_performance_clock_ns();
+	return finish >= start ? finish - start : 0;
+}
 
 static int artifact_term_present(const struct prototype_term* term) {
 	return term && term->tag != 0;
@@ -596,6 +615,18 @@ struct operation_binder_classifier_evidence_entry {
 	uint32_t next;
 };
 
+enum operation_reification_state {
+	OPERATION_REIFICATION_UNSEEN = 0,
+	OPERATION_REIFICATION_IN_PROGRESS,
+	OPERATION_REIFICATION_SUCCEEDED
+};
+
+struct operation_reification_cache_entry {
+	int state;
+	uint32_t context_id;
+	uint32_t classifier;
+};
+
 struct compile_context {
 	const struct prototype_intrinsic_environment* intrinsic_environment;
 	struct prototype_ast_db* asts;
@@ -626,6 +657,11 @@ struct compile_context {
 	uint32_t result_evidence_computation_occurrences[4096];
 	uint32_t result_evidence_value_occurrences[4096];
 	uint32_t termination_evidence_computation_occurrences[4096];
+	uint32_t returns_claim_for_computation_occurrence[4096];
+	struct operation_reification_cache_entry reification_cache[4096];
+	uint32_t proof_materialization_pending_ids[4096];
+	uint32_t proof_materialization_pending_count;
+	int proof_materialization_initialized;
 	struct operation_effect_solver effect_solver;
 	int materializing_checked_classifiers;
 	struct operation_reindex_cache_entry

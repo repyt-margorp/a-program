@@ -231,7 +231,59 @@ int main(void) {
 			partial_terminates_witness, partial_terminates_type,
 			partial_terminates_type_claim, partial_computation_claim,
 			&terminates_claim
-		) == 0 || prototype_judgement_validate_accepted_graph(
+			) == 0) {
+			return 1;
+		}
+
+	/* Explicit Returns evidence proves termination independently of the
+	 * computation classifier's conservative MAY_DIVERGE totality. */
+	uint32_t partial_value_binding = prototype_term_new_binding(&term_db);
+	uint32_t partial_value_context;
+	uint32_t partial_value;
+	uint32_t partial_returns_type;
+	uint32_t partial_returns_binding;
+	uint32_t partial_returns_context;
+	uint32_t partial_returns_witness;
+	uint32_t partial_value_claim;
+	uint32_t partial_returns_type_claim;
+	uint32_t partial_returns_claim;
+	if (partial_value_binding == PROTOTYPE_INVALID_ID || prototype_context_extend(
+			&context_db, partial_context, partial_value_binding, int_type,
+			PROTOTYPE_INVALID_ID, &partial_value_context
+		) != 0 || prototype_term_var(
+			&term_db, partial_value_binding, &partial_value
+		) != 0 || prototype_term_returns_type(
+			&term_db, partial_computation, partial_value, &partial_returns_type
+		) != 0 ||
+		(partial_returns_binding = prototype_term_new_binding(&term_db)) ==
+			PROTOTYPE_INVALID_ID || prototype_context_extend(
+			&context_db, partial_value_context, partial_returns_binding,
+			partial_returns_type, PROTOTYPE_INVALID_ID, &partial_returns_context
+		) != 0 || prototype_term_var(
+			&term_db, partial_returns_binding, &partial_returns_witness
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			&judgement, &term_db, &context_db, partial_returns_context,
+			partial_binding, partial_thunk_type, &partial_computation_claim
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			&judgement, &term_db, &context_db, partial_returns_context,
+			partial_value_binding, int_type, &partial_value_claim
+		) != 0 || prototype_judgement_add_returns_type_formation(
+			&judgement, &term_db, &type_db, partial_returns_context,
+			partial_returns_type, universe, partial_computation_claim,
+			partial_value_claim, &partial_returns_type_claim
+		) != 0 || prototype_judgement_add_context_binding_assumption(
+			&judgement, &term_db, &context_db, partial_returns_context,
+			partial_returns_binding, partial_returns_type, &partial_returns_claim
+		) != 0 || prototype_judgement_add_terminates_type_formation(
+			&judgement, &term_db, &type_db, partial_returns_context,
+			partial_terminates_type, universe, partial_computation_claim,
+			&partial_terminates_type_claim
+		) != 0 || prototype_judgement_add_terminates_from_returns(
+			&judgement, &term_db, partial_returns_context, PROTOTYPE_INVALID_ID,
+			partial_terminates_witness, partial_terminates_type,
+			partial_terminates_type_claim, partial_returns_claim,
+			&terminates_claim
+		) != 0 || prototype_judgement_validate_accepted_graph(
 			&term_db, &type_db, prototype_default_intrinsic_environment(),
 			&context_db, &substitution_db, &dimension_db, NULL, &judgement
 		) != 0) {

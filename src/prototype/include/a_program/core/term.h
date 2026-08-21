@@ -366,6 +366,10 @@ struct prototype_term_normalization_cache_stats {
 	uint64_t probe_count;
 	uint64_t eviction_count;
 	uint64_t invalidation_count;
+	uint64_t graph_mutation_invalidation_count;
+	uint64_t ih_scope_invalidation_count;
+	uint64_t type_former_invalidation_count;
+	uint64_t empty_cache_invalidation_count;
 };
 
 struct prototype_term_intern_stats {
@@ -374,7 +378,11 @@ struct prototype_term_intern_stats {
 	uint64_t bucket_probe_count;
 	uint64_t exact_probe_count;
 	uint64_t alpha_compare_count;
+	uint64_t alpha_compare_node_visit_count;
+	uint64_t max_alpha_bucket_probe_count;
 	uint64_t index_rebuild_count;
+	uint64_t formation_requests_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
+	uint64_t unique_terms_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
 	uint64_t bucket_probes_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
 	uint64_t alpha_compares_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
 };

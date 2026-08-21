@@ -262,6 +262,9 @@ static int shape_terms_equal_at_depth(
 		depth > 256) {
 		return 0;
 	}
+	if (env->node_visit_count) {
+		(*env->node_visit_count)++;
+	}
 	left_id = shape_term_compare_id(db, left_id, type_view_compare_mode);
 	right_id = shape_term_compare_id(db, right_id, type_view_compare_mode);
 	if (left_id >= db->term_count || right_id >= db->term_count) {
@@ -1370,12 +1373,13 @@ static int shape_equal_with_type_view_mode(
 }
 
 static int term_intern_alpha_equal_local(
-	const struct prototype_term_db* db,
+	struct prototype_term_db* db,
 	uint32_t left,
 	uint32_t right
 ) {
 	struct term_scope_env env;
 	memset(&env, 0, sizeof(env));
+	env.node_visit_count = &db->intern_stats.alpha_compare_node_visit_count;
 	return shape_terms_equal_at_depth(
 		db,
 		left,
@@ -1707,6 +1711,37 @@ static int canonical_env_push(
 	return 0;
 }
 
+static int canonical_env_lookup_frame(
+	const struct canonical_binder_env* env,
+	uint32_t frame_id,
+	uint32_t* p_slot
+) {
+	if (!env || !p_slot) {
+		return 0;
+	}
+	for (uint32_t i = env->frame_count; i > 0; --i) {
+		uint32_t index = i - 1;
+		if (env->frame_id[index] == frame_id) {
+			*p_slot = env->frame_slot[index];
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int canonical_env_push_frame(
+	struct canonical_binder_env* env,
+	uint32_t frame_id
+) {
+	if (!env || env->frame_count >= PROTOTYPE_CANONICAL_BINDER_CAPACITY) {
+		return -1;
+	}
+	env->frame_id[env->frame_count] = frame_id;
+	env->frame_slot[env->frame_count] = env->next_frame_slot++;
+	env->frame_count++;
+	return 0;
+}
+
 static int canonical_hash_term_at_depth(
 	const struct prototype_term_db* db,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -1753,6 +1788,7 @@ static int canonical_hash_match_case_at_depth(
 	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
 		const struct prototype_case_binder* binder =
 			&db->case_binders[match_case->first_binder + i];
+		canonical_hash_mix_u32(p_hash, (uint32_t)binder->is_recursive);
 		if (canonical_env_push(env, binder->binding_id) != 0) {
 			env->count = saved_count;
 			env->next_slot = saved_next_slot;
@@ -1939,6 +1975,9 @@ static int canonical_hash_term_at_depth(
 				depth + 1
 			);
 		case PROTOTYPE_TERM_MATCH:
+			{
+			uint32_t saved_frame_count = env->frame_count;
+			uint32_t saved_next_frame_slot = env->next_frame_slot;
 			key->has_frame_local_reference =
 				key->has_frame_local_reference ||
 				(term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
@@ -1946,6 +1985,14 @@ static int canonical_hash_term_at_depth(
 					(term->as.match.ih_scope_id >= db->ih_scope_count ||
 						!db->ih_scopes[term->as.match.ih_scope_id].key.is_linkable));
 			canonical_hash_mix_u32(p_hash, term->as.match.case_count);
+			canonical_hash_mix_u32(
+				p_hash,
+				term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID
+			);
+			if (term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
+				canonical_env_push_frame(env, term->as.match.ih_scope_id) != 0) {
+				return -1;
+			}
 			if (canonical_hash_term_at_depth(
 					db,
 					type_declarations,
@@ -1956,6 +2003,8 @@ static int canonical_hash_term_at_depth(
 					canonicalize_frame_refs,
 					depth + 1
 				) != 0) {
+				env->frame_count = saved_frame_count;
+				env->next_frame_slot = saved_next_frame_slot;
 				return -1;
 			}
 			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
@@ -1971,10 +2020,15 @@ static int canonical_hash_term_at_depth(
 						canonicalize_frame_refs,
 						depth + 1
 					) != 0) {
+					env->frame_count = saved_frame_count;
+					env->next_frame_slot = saved_next_frame_slot;
 					return -1;
 				}
 			}
+			env->frame_count = saved_frame_count;
+			env->next_frame_slot = saved_next_frame_slot;
 			return 0;
+			}
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			key->has_type_local_reference = 1;
 			canonical_hash_mix_u32(p_hash, term->as.type_former.representation_id);
@@ -2023,19 +2077,20 @@ static int canonical_hash_term_at_depth(
 			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			if (canonicalize_frame_refs) {
 				canonical_hash_mix_u32(p_hash, 0);
-			} else if (term->as.induction_hypothesis.ih_scope_id < db->ih_scope_count &&
-				db->ih_scopes[term->as.induction_hypothesis.ih_scope_id].key.is_linkable) {
-				const struct prototype_ih_scope_key* frame_key =
-					&db->ih_scopes[term->as.induction_hypothesis.ih_scope_id].key;
-				canonical_hash_mix_u32(p_hash, 1);
-				canonical_hash_mix_u32(p_hash, (uint32_t)frame_key->match_key.hash);
-				canonical_hash_mix_u32(p_hash, (uint32_t)(frame_key->match_key.hash >> 32));
-				canonical_hash_mix_u32(p_hash, frame_key->match_key.node_count);
-				canonical_hash_mix_u32(p_hash, frame_key->case_count);
 			} else {
-				key->has_frame_local_reference = 1;
-				canonical_hash_mix_u32(p_hash, 2);
-				canonical_hash_mix_u32(p_hash, term->as.induction_hypothesis.ih_scope_id);
+				uint32_t frame_slot;
+				if (canonical_env_lookup_frame(
+						env, term->as.induction_hypothesis.ih_scope_id, &frame_slot
+					)) {
+				canonical_hash_mix_u32(p_hash, 1);
+					canonical_hash_mix_u32(p_hash, frame_slot);
+				} else {
+					key->has_frame_local_reference = 1;
+					canonical_hash_mix_u32(p_hash, 2);
+					canonical_hash_mix_u32(
+						p_hash, term->as.induction_hypothesis.ih_scope_id
+					);
+				}
 			}
 			return canonical_hash_term_at_depth(
 				db,
@@ -2099,8 +2154,10 @@ static int canonical_hash_term_at_depth(
 				{
 					uint32_t slot;
 					if (canonical_env_lookup(env, term->as.effect_row_var.binding_id, &slot)) {
+						canonical_hash_mix_u32(p_hash, 1);
 						canonical_hash_mix_u32(p_hash, slot);
 					} else {
+						canonical_hash_mix_u32(p_hash, 0);
 						canonical_hash_mix_u32(p_hash, term->as.effect_row_var.binding_id);
 					}
 				}
@@ -2264,6 +2321,19 @@ static int term_intern_canonical_key_local(
 	uint64_t hash = PROTOTYPE_CANONICAL_HASH_OFFSET;
 	memset(p_key, 0, sizeof(*p_key));
 	const struct prototype_term* term = &db->terms[term_id];
+	if (term->tag == PROTOTYPE_TERM_LAMBDA ||
+		term->tag == PROTOTYPE_TERM_MATCH ||
+		term->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
+		struct canonical_binder_env env;
+		memset(&env, 0, sizeof(env));
+		if (canonical_hash_term_at_depth(
+				db, NULL, term_id, &env, p_key, &hash, 0, 0
+			) != 0) {
+			return -1;
+		}
+		p_key->hash = hash;
+		return 0;
+	}
 	canonical_hash_mix_tag(&hash, (uint32_t)term->tag);
 	p_key->node_count = 1;
 #define INTERN_MIX(value) canonical_hash_mix_u32(&hash, (uint32_t)(value))
@@ -2286,42 +2356,9 @@ static int term_intern_canonical_key_local(
 			INTERN_MIX_CHILD(term->as.app.function);
 			INTERN_MIX_CHILD(term->as.app.argument);
 			break;
-		case PROTOTYPE_TERM_LAMBDA: {
-			INTERN_MIX(db->terms[term->as.lambda.body].tag);
-			if (db->terms[term->as.lambda.body].tag == PROTOTYPE_TERM_VAR) {
-				uint32_t body_binding =
-					db->terms[term->as.lambda.body].as.var.binding_id;
-				INTERN_MIX(body_binding == term->as.lambda.binding_id ? 1 : 0);
-				if (body_binding != term->as.lambda.binding_id) {
-					INTERN_MIX(body_binding);
-				}
-			}
-			break;
-		}
 		case PROTOTYPE_TERM_PI:
 			INTERN_MIX_CHILD(term->as.pi.domain);
 			INTERN_MIX_CHILD(term->as.pi.codomain_family);
-			break;
-		case PROTOTYPE_TERM_MATCH:
-			INTERN_MIX_CHILD(term->as.match.scrutinee);
-			INTERN_MIX(term->as.match.case_count);
-			INTERN_MIX(term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID);
-			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
-				const struct prototype_match_case* match_case =
-					&db->cases[term->as.match.first_case + i];
-				INTERN_MIX(match_case->constructor_id);
-				INTERN_MIX(match_case->constructor_owner);
-				INTERN_MIX(match_case->binder_count);
-				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
-					INTERN_MIX(db->case_binders[
-						match_case->first_binder + j
-					].is_recursive);
-				}
-				if (match_case->body >= db->term_count) {
-					return -1;
-				}
-				INTERN_MIX(db->terms[match_case->body].tag);
-			}
 			break;
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			INTERN_MIX(term->as.type_former.representation_id);
@@ -2388,9 +2425,6 @@ static int term_intern_canonical_key_local(
 			INTERN_MIX_CHILD(term->as.effect_row_union.left);
 			INTERN_MIX_CHILD(term->as.effect_row_union.right);
 			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			INTERN_MIX(db->terms[term->as.effect_row_forall.body].tag);
-			break;
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			INTERN_MIX_CHILD(term->as.computation_type.label);
 			INTERN_MIX_CHILD(term->as.computation_type.result);
@@ -2447,16 +2481,13 @@ static int term_intern_canonical_key_local(
 static int term_intern_exact_hash_local(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
+	const struct prototype_term_canonical_key* alpha_key,
 	uint64_t* p_hash
 ) {
-	if (!db || !p_hash || term_id >= db->term_count) {
+	if (!db || !alpha_key || !p_hash || term_id >= db->term_count) {
 		return -1;
 	}
-	struct prototype_term_canonical_key alpha_key;
-	if (term_intern_canonical_key_local(db, term_id, &alpha_key) != 0) {
-		return -1;
-	}
-	uint64_t hash = alpha_key.hash;
+	uint64_t hash = alpha_key->hash;
 	const struct prototype_term* term = &db->terms[term_id];
 	switch (term->tag) {
 		case PROTOTYPE_TERM_LAMBDA:

@@ -2113,6 +2113,29 @@ static int accepted_claim_for_exact_proposition(
 	return 1;
 }
 
+static int accepted_type_formation_claim(
+	const struct prototype_judgement_db* judgement,
+	uint32_t context_id,
+	uint32_t subject,
+	uint32_t* p_classifier,
+	uint32_t* p_claim_id
+) {
+	if (!judgement || !p_classifier || !p_claim_id) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < judgement->claim_count; ++i) {
+		const struct prototype_judgement_proposition* proposition =
+			prototype_judgement_claim_proposition(judgement, i);
+		if (proposition && proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
+			proposition->context_id == context_id && proposition->subject == subject) {
+			*p_classifier = proposition->classifier;
+			*p_claim_id = i;
+			return 0;
+		}
+	}
+	return 1;
+}
+
 static int accepted_or_context_binding_claim(
 	struct compile_context* ctx,
 	uint32_t context_id,
@@ -2249,6 +2272,7 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 		uint32_t returns_type_claim;
 		uint32_t returns_claim;
 		uint32_t universe;
+		size_t claim_count_before = ctx->judgement->claim_count;
 		uint64_t evidence_step_limit =
 			ctx->metadata->normalization_step_limit <
 				PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT ?
@@ -2262,16 +2286,23 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 			ctx, value->context_id, value->core_term, value->classifier,
 			&value_claim
 		);
-		int universe_status = computation_claim_status == 0 &&
-			value_claim_status == 0 ? prototype_term_universe_var(
-				ctx->terms, ctx->judgement->next_universe_var++, &universe
-			) : -1;
-		int formation_status = universe_status == 0 ?
-			prototype_judgement_add_returns_type_formation(
-				ctx->judgement, ctx->terms, ctx->type_declarations,
-				occurrence->context_id, occurrence->classifier, universe,
-				computation_claim, value_claim, &returns_type_claim
-			) : -1;
+		int formation_status = accepted_type_formation_claim(
+			ctx->judgement, occurrence->context_id, occurrence->classifier,
+			&universe, &returns_type_claim
+		);
+		int universe_status = 0;
+		if (formation_status > 0) {
+			universe_status = computation_claim_status == 0 &&
+				value_claim_status == 0 ? prototype_term_universe_var(
+					ctx->terms, ctx->judgement->next_universe_var++, &universe
+				) : -1;
+			formation_status = universe_status == 0 ?
+				prototype_judgement_add_returns_type_formation(
+					ctx->judgement, ctx->terms, ctx->type_declarations,
+					occurrence->context_id, occurrence->classifier, universe,
+					computation_claim, value_claim, &returns_type_claim
+				) : -1;
+		}
 		int evaluation_status = formation_status == 0 && context->depth != 0 ?
 			prototype_judgement_add_returns_sequence_binding(
 				ctx->judgement, ctx->terms, ctx->type_declarations,
@@ -2318,6 +2349,14 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 			fprintf(stderr, "\n");
 			return -1;
 		}
+		ctx->metadata->result_evidence_claim_count +=
+			ctx->judgement->claim_count - claim_count_before;
+		uint32_t* selected_returns_claim =
+			&ctx->returns_claim_for_computation_occurrence[computation_occurrence];
+		if (*selected_returns_claim == PROTOTYPE_INVALID_ID ||
+			returns_claim < *selected_returns_claim) {
+			*selected_returns_claim = returns_claim;
+		}
 		(void)returns_claim;
 	}
 	for (uint32_t occurrence_id = 0;
@@ -2353,22 +2392,65 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 		uint32_t terminates_type_claim;
 		uint32_t terminates_claim;
 		uint32_t universe;
+		size_t claim_count_before = ctx->judgement->claim_count;
 		if (accepted_claim_for_exact_proposition(
 				ctx->judgement, computation->context_id, computation->core_term,
 				computation->classifier, &computation_claim
-			) != 0 || prototype_term_universe_var(
-				ctx->terms, ctx->judgement->next_universe_var++, &universe
-			) != 0 || prototype_judgement_add_terminates_type_formation(
-				ctx->judgement, ctx->terms, ctx->type_declarations,
-				occurrence->context_id, occurrence->classifier, universe,
-				computation_claim, &terminates_type_claim
-			) != 0 || prototype_judgement_add_terminates_total_computation(
-				ctx->judgement, ctx->terms, occurrence->context_id, occurrence_id,
-				occurrence->core_term, occurrence->classifier,
-				terminates_type_claim, computation_claim, &terminates_claim
 			) != 0) {
 			return -1;
 		}
+		int formation_status = accepted_type_formation_claim(
+			ctx->judgement, occurrence->context_id, occurrence->classifier,
+			&universe, &terminates_type_claim
+		);
+		if (formation_status < 0) {
+			return -1;
+		}
+		if (formation_status > 0 && (
+				prototype_term_universe_var(
+					ctx->terms, ctx->judgement->next_universe_var++, &universe
+				) != 0 || prototype_judgement_add_terminates_type_formation(
+					ctx->judgement, ctx->terms, ctx->type_declarations,
+					occurrence->context_id, occurrence->classifier, universe,
+					computation_claim, &terminates_type_claim
+				) != 0
+		)) {
+			return -1;
+		}
+		uint32_t computation_classifier = computation->classifier;
+		if (prototype_judgement_classifier_value_whnf(
+				ctx->terms, ctx->type_declarations, computation_classifier,
+				&computation_classifier
+			) != 0 || computation_classifier >= ctx->terms->term_count ||
+			ctx->terms->terms[computation_classifier].tag !=
+				PROTOTYPE_TERM_THUNK_TYPE) {
+			return -1;
+		}
+		uint32_t computation_type = ctx->terms->terms[
+			computation_classifier
+		].as.thunk_type.computation;
+		int total = computation_type < ctx->terms->term_count &&
+			ctx->terms->terms[computation_type].tag ==
+				PROTOTYPE_TERM_COMPUTATION_TYPE &&
+			ctx->terms->terms[computation_type].as.computation_type.totality ==
+				PROTOTYPE_COMPUTATION_TOTALITY_TOTAL;
+		int termination_status = total ?
+			prototype_judgement_add_terminates_total_computation(
+				ctx->judgement, ctx->terms, occurrence->context_id, occurrence_id,
+				occurrence->core_term, occurrence->classifier,
+				terminates_type_claim, computation_claim, &terminates_claim
+			) : prototype_judgement_add_terminates_from_returns(
+				ctx->judgement, ctx->terms, occurrence->context_id, occurrence_id,
+				occurrence->core_term, occurrence->classifier,
+				terminates_type_claim,
+				ctx->returns_claim_for_computation_occurrence[computation_occurrence],
+				&terminates_claim
+			);
+		if (termination_status != 0) {
+			return -1;
+		}
+		ctx->metadata->termination_evidence_claim_count +=
+			ctx->judgement->claim_count - claim_count_before;
 		(void)terminates_claim;
 	}
 	return 0;
@@ -2401,6 +2483,7 @@ static int compile_pending_with_workspace(
 		ctx.result_evidence_computation_occurrences[i] = PROTOTYPE_INVALID_ID;
 		ctx.result_evidence_value_occurrences[i] = PROTOTYPE_INVALID_ID;
 		ctx.termination_evidence_computation_occurrences[i] = PROTOTYPE_INVALID_ID;
+		ctx.returns_claim_for_computation_occurrence[i] = PROTOTYPE_INVALID_ID;
 	}
 	ctx.intrinsic_environment = intrinsic_environment;
 	ctx.asts = asts;
@@ -2465,10 +2548,12 @@ static int compile_pending_with_workspace(
 	if (compile_phase_report_def_index_errors(&ctx) != 0) {
 		return -1;
 	}
+	uint64_t phase_started = compile_performance_clock_ns();
 	if (compile_phase_build_graph(&ctx) != 0) {
 		fprintf(stderr, "compile pending failed: build graph\n");
 		return -1;
 	}
+	metadata->graph_build_time_ns += compile_performance_elapsed_ns(phase_started);
 	prototype_judgement_delta_set_occurrence_store(
 		&ctx.judgement_delta,
 		metadata->typed_occurrences.occurrences,
@@ -2530,10 +2615,12 @@ static int compile_pending_with_workspace(
 		) != 0) {
 		return -1;
 	}
+	phase_started = compile_performance_clock_ns();
 	if (compile_phase_infer_pending_types(&ctx) != 0) {
 		fprintf(stderr, "compile pending failed: infer pending types\n");
 		return -1;
 	}
+	metadata->fixed_point_time_ns += compile_performance_elapsed_ns(phase_started);
 	/* The fixed point retains the occurrence-owned computation suffix across
 	 * classifier passes. Refresh its solved lifecycle and effect equations before
 	 * freezing residual state; no authority reconstruction is required here. */
@@ -2561,10 +2648,13 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "post-synthesis ascription checking failed\n");
 		return -1;
 	}
+	phase_started = compile_performance_clock_ns();
 	if (operation_solver_materialize_judgements(&ctx) != 0) {
 		fprintf(stderr, "post-expectation judgement materialization failed\n");
 		return -1;
 	}
+	metadata->proof_materialization_time_ns +=
+		compile_performance_elapsed_ns(phase_started);
 	if (prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0) {
 		fprintf(stderr, "post-expectation judgement commit failed\n");
 		return -1;
@@ -2577,19 +2667,29 @@ static int compile_pending_with_workspace(
 	 * consumer of synthesis and cannot feed a classifier back into it. */
 	if (prototype_judgement_publish_candidates(
 			occurrence_graph, judgement
-		) != 0 || compile_phase_publish_result_evidence(&ctx) != 0) {
+		) != 0) {
+		fprintf(stderr, "pre-expectation candidate publication failed\n");
+		return -1;
+	}
+	phase_started = compile_performance_clock_ns();
+	if (compile_phase_publish_result_evidence(&ctx) != 0) {
 		fprintf(stderr, "pre-expectation result evidence publication failed\n");
 		return -1;
 	}
+	metadata->result_evidence_time_ns +=
+		compile_performance_elapsed_ns(phase_started);
 	/* Returns evidence can discharge premises of later APP/Lambda/Match
 	 * occurrences. Close only the accepted Judgement DAG again; classifier and
 	 * effect solutions remain frozen and cannot receive feedback from evidence. */
+	phase_started = compile_performance_clock_ns();
 	if (operation_solver_materialize_judgements(&ctx) != 0 ||
 		prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
 		prototype_judgement_publish_candidates(occurrence_graph, judgement) != 0) {
 		fprintf(stderr, "post-result judgement closure failed\n");
 		return -1;
 	}
+	metadata->post_result_closure_time_ns +=
+		compile_performance_elapsed_ns(phase_started);
 	if (compile_phase_check_expectations(&ctx) != 0) {
 		fprintf(stderr, "post-synthesis expectation checking failed\n");
 		return -1;
@@ -2636,6 +2736,7 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "typed-occurrence graph sealing failed before accepted replay\n");
 		return -1;
 	}
+	phase_started = compile_performance_clock_ns();
 	if (prototype_judgement_validate_accepted_graph(
 			terms,
 			type_declarations,
@@ -2649,6 +2750,8 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "P0 accepted proof graph validation failed\n");
 		return -1;
 	}
+	metadata->accepted_replay_time_ns +=
+		compile_performance_elapsed_ns(phase_started);
 	if (prototype_typed_occurrence_graph_validate(
 			occurrence_graph, terms, &metadata->contexts
 		) != 0) {
