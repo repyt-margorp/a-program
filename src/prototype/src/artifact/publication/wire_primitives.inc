@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v82.h"
+#include "a_program/artifact/wire_v83.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/typed_occurrence_graph.h"
@@ -377,8 +377,6 @@ static int write_artifact_term(
 				}
 				break;
 			}
-			case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
-			case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
 			case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
 			case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 				break;

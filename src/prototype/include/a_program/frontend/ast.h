@@ -31,7 +31,7 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_BLOCK_EXPRESSION,
 	PROTOTYPE_AST_BLOCK_LAMBDA_EXIT,
 	PROTOTYPE_AST_COMPUTATION_FOLD,
-	PROTOTYPE_AST_RETURNS_WITNESS,
+	PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE,
 	PROTOTYPE_AST_TERMINATES_WITNESS
 };
 
@@ -59,7 +59,8 @@ enum prototype_ast_type_expr_tag {
 	PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE,
 	PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE,
 	PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE,
-	PROTOTYPE_AST_TYPE_EXPR_RETURNS,
+	PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE,
+	PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION,
 	PROTOTYPE_AST_TYPE_EXPR_TERMINATES
 };
 
@@ -90,6 +91,14 @@ struct prototype_ast_type_expr {
 			int symbol_id;
 		} name_in_namespace;
 		struct {
+			int owner_symbol_id;
+		} function_graph_reference;
+		struct {
+			uint32_t term;
+			uint32_t first_binding;
+			uint32_t binding_count;
+		} accepted_projection;
+		struct {
 			uint32_t function;
 			uint32_t argument;
 		} app;
@@ -109,10 +118,6 @@ struct prototype_ast_type_expr {
 		struct {
 			int host_type_id;
 		} host_type;
-		struct {
-			uint32_t computation;
-			uint32_t value;
-		} returns;
 		struct {
 			uint32_t computation;
 		} terminates;
@@ -220,9 +225,8 @@ struct prototype_ast_node {
 			uint32_t return_body;
 		} computation_fold;
 		struct {
-			uint32_t computation;
-			uint32_t value;
-		} returns_witness;
+			int owner_symbol_id;
+		} function_graph_witness_reference;
 		struct {
 			uint32_t computation;
 		} terminates_witness;
@@ -248,6 +252,11 @@ struct prototype_ast_type_constructor {
 	uint32_t first_field_type;
 	uint32_t field_count;
 	uint32_t result_type;
+};
+
+struct prototype_ast_accepted_binding_projection {
+	uint32_t source_binding_id;
+	uint32_t target_ast_binder_id;
 };
 
 struct prototype_ast_type_def {
@@ -431,6 +440,11 @@ struct prototype_ast_db {
 	size_t type_field_expr_count;
 	size_t type_field_expr_capacity;
 
+	struct prototype_ast_accepted_binding_projection*
+		accepted_binding_projections;
+	size_t accepted_binding_projection_count;
+	size_t accepted_binding_projection_capacity;
+
 	uint32_t next_ast_binder_id;
 	uint32_t next_ast_level_var;
 	uint32_t next_source_entry_id;
@@ -470,6 +484,12 @@ void prototype_ast_db_init(
 	uint32_t* type_field_binder_ids,
 	int* type_field_name_symbol_ids,
 	size_t type_field_expr_capacity
+);
+
+void prototype_ast_db_set_accepted_projection_storage(
+	struct prototype_ast_db* db,
+	struct prototype_ast_accepted_binding_projection* projections,
+	size_t projection_capacity
 );
 
 uint32_t prototype_ast_new_binder(struct prototype_ast_db* db);
@@ -537,10 +557,17 @@ int prototype_ast_type_expr_computation_reference(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_type_expr_returns(
+int prototype_ast_type_expr_function_graph_reference(
 	struct prototype_ast_db* db,
-	uint32_t computation,
-	uint32_t value,
+	int owner_symbol_id,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_type_expr_accepted_projection(
+	struct prototype_ast_db* db,
+	uint32_t term,
+	const struct prototype_ast_accepted_binding_projection* bindings,
+	uint32_t binding_count,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
@@ -654,6 +681,12 @@ int prototype_ast_induction_hypothesis(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
+int prototype_ast_function_graph_witness_reference(
+	struct prototype_ast_db* db,
+	int owner_symbol_id,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
 int prototype_ast_text_literal(
 	struct prototype_ast_db* db,
 	int text_symbol_id,
@@ -688,13 +721,6 @@ int prototype_ast_ascription(
 int prototype_ast_quote(
 	struct prototype_ast_db* db,
 	uint32_t term,
-	struct prototype_source_span span,
-	uint32_t* p_ret
-);
-int prototype_ast_returns_witness(
-	struct prototype_ast_db* db,
-	uint32_t computation,
-	uint32_t value,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );

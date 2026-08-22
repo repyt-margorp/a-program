@@ -701,6 +701,28 @@ static int artifact_append_accepted_judgement(
 			derivation.semantic_action_id != PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
+		int collapsed_conversion = 0;
+		for (uint32_t j = 0; j < derivation.premise_count; ++j) {
+			if (premises[j].claim_id != derivation.conclusion_claim_id) {
+				continue;
+			}
+			if (derivation.premise_count == 1 &&
+				(derivation.proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONVERSION ||
+				 derivation.proof_kind ==
+					PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE)) {
+				collapsed_conversion = 1;
+				break;
+			}
+			fprintf(stderr,
+				"artifact judgement relocation created a non-conversion self premise "
+				"source=%u kind=%d premise=%u\n",
+				i, derivation.proof_kind, j
+			);
+			return -1;
+		}
+		if (collapsed_conversion) {
+			continue;
+		}
 		uint32_t derivation_id;
 		if (prototype_judgement_derivation_intern_exact(
 				target, &derivation, &derivation_id
@@ -1966,7 +1988,23 @@ int prototype_internal_artifact_append_graph_ordered(
 		source_interface->constructor_field_type_expr_count;
 	appended_interface->type_expr_count = source_interface->type_expr_count;
 	appended_interface->identity_root_count = source_interface->identity_root_count;
+	appended_interface->function_graph_association_count =
+		source_interface->function_graph_association_count;
 	appended_interface->dependency_count = source_interface->dependency_count;
+	for (size_t i = 0;
+		i < source_interface->function_graph_association_count;
+		++i) {
+		const struct prototype_artifact_function_graph_association* source =
+			&source_interface->function_graph_associations[i];
+		if (source->owner_term_export_index >= source_interface->term_export_count ||
+			source->graph_type_export_index >= source_interface->type_export_count ||
+			source->result_type_export_index >= source_interface->type_export_count ||
+			source->certified_runner_term_export_index >=
+				source_interface->term_export_count) {
+			return -1;
+		}
+		appended_interface->function_graph_associations[i] = *source;
+	}
 	for (size_t i = 0; i < source_interface->type_expr_count; ++i) {
 		appended_interface->type_exprs[i] = source_interface->type_exprs[i];
 	}

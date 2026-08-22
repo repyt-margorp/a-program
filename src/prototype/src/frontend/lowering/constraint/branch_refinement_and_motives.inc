@@ -1073,10 +1073,17 @@ static int operation_solver_solve_branch_refinement_constraints(
 			fprintf(stderr,
 				"branch refinement invalid constraint=%u match=%u case=%u "
 				"scrutinee=%u match-context=%u branch-context=%u "
-				"scrutinee-classifier=%u constructor=%u\n",
+				"scrutinee-classifier=%u constructor=%u ast=%u\n",
 				constraint->id, match_id, case_index, scrutinee_id,
 				match->context_id, operation_case->context_id,
-				scrutinee_classifier, operation_case->constructor_id);
+				scrutinee_classifier, operation_case->constructor_id,
+				match->source_ast);
+			fprintf(stderr, "branch refinement scrutinee classifier: ");
+			prototype_term_print_debug(
+				stderr, NULL, NULL, ctx->type_declarations, ctx->terms,
+				scrutinee_classifier
+			);
+			fprintf(stderr, "\n");
 			(void)operation_constraint_transition(
 				constraint,
 				OPERATION_CONSTRAINT_STATE_CONTRADICTION,

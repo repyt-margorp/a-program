@@ -3,8 +3,6 @@
 
 #include "a_program/kernel/judgement/db.h"
 
-#define PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT UINT64_C(1048576)
-
 int prototype_judgement_result_computation_endpoints_equal(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -481,45 +479,6 @@ int prototype_judgement_add_relation_witness_intro(
 	uint32_t right_endpoint_claim_id,
 	uint32_t* p_claim_id
 );
-int prototype_judgement_add_returns_type_formation(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t context_id,
-	uint32_t returns_type,
-	uint32_t universe,
-	uint32_t computation_claim_id,
-	uint32_t value_claim_id,
-	uint32_t* p_claim_id
-);
-int prototype_judgement_add_returns_evaluation(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t context_id,
-	uint32_t occurrence_id,
-	uint32_t witness,
-	uint32_t returns_type,
-	uint32_t returns_type_claim_id,
-	uint32_t computation_claim_id,
-	uint32_t value_claim_id,
-	uint64_t step_limit,
-	uint32_t* p_claim_id
-);
-int prototype_judgement_add_returns_sequence_binding(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_context_db* contexts,
-	uint32_t context_id,
-	uint32_t occurrence_id,
-	uint32_t witness,
-	uint32_t returns_type,
-	uint32_t returns_type_claim_id,
-	uint32_t computation_claim_id,
-	uint32_t value_claim_id,
-	uint32_t* p_claim_id
-);
 int prototype_judgement_add_terminates_type_formation(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms,
@@ -528,17 +487,6 @@ int prototype_judgement_add_terminates_type_formation(
 	uint32_t terminates_type,
 	uint32_t universe,
 	uint32_t computation_claim_id,
-	uint32_t* p_claim_id
-);
-int prototype_judgement_add_terminates_from_returns(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t context_id,
-	uint32_t occurrence_id,
-	uint32_t witness,
-	uint32_t terminates_type,
-	uint32_t terminates_type_claim_id,
-	uint32_t returns_claim_id,
 	uint32_t* p_claim_id
 );
 int prototype_judgement_add_terminates_total_computation(

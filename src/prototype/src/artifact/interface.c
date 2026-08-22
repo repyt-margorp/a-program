@@ -747,6 +747,7 @@ int prototype_artifact_interface_build_from_metadata(
 	interface->constructor_field_type_expr_count = 0;
 	interface->type_expr_count = 0;
 	interface->dependency_count = 0;
+	interface->function_graph_association_count = 0;
 
 	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		interface->type_exprs[interface->type_expr_count++] =
@@ -911,6 +912,51 @@ int prototype_artifact_interface_build_from_metadata(
 		export->readback_field_count = constructor_export->readback_field_count;
 		export->curried_classifier_cache =
 			constructor_export->curried_classifier_cache;
+	}
+
+	for (size_t i = 0; i < metadata->function_graph_association_count; ++i) {
+		const struct prototype_function_graph_association* source =
+			&metadata->function_graph_associations[i];
+		uint32_t owner = PROTOTYPE_INVALID_ID;
+		uint32_t graph = PROTOTYPE_INVALID_ID;
+		uint32_t result = PROTOTYPE_INVALID_ID;
+		uint32_t runner = PROTOTYPE_INVALID_ID;
+		for (uint32_t j = 0; j < interface->term_export_count; ++j) {
+			if (interface->term_exports[j].name_symbol_id == source->owner_symbol_id) {
+				owner = j;
+			} else if (interface->term_exports[j].name_symbol_id ==
+					source->certified_runner_symbol_id) {
+				runner = j;
+			}
+		}
+		for (uint32_t j = 0; j < interface->type_export_count; ++j) {
+			if (interface->type_exports[j].name_symbol_id == source->graph_symbol_id) {
+				graph = j;
+			} else if (interface->type_exports[j].name_symbol_id ==
+					source->result_symbol_id) {
+				result = j;
+			}
+		}
+		if (owner == PROTOTYPE_INVALID_ID || graph == PROTOTYPE_INVALID_ID ||
+			result == PROTOTYPE_INVALID_ID || runner == PROTOTYPE_INVALID_ID ||
+			interface->function_graph_association_count >=
+				PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY) {
+			return -1;
+		}
+		for (size_t j = 0; j < interface->function_graph_association_count; ++j) {
+			if (interface->function_graph_associations[j].owner_term_export_index ==
+					owner) {
+				return -1;
+			}
+		}
+		interface->function_graph_associations[
+			interface->function_graph_association_count++
+		] = (struct prototype_artifact_function_graph_association) {
+			.owner_term_export_index = owner,
+			.graph_type_export_index = graph,
+			.result_type_export_index = result,
+			.certified_runner_term_export_index = runner
+		};
 	}
 
 	return 0;

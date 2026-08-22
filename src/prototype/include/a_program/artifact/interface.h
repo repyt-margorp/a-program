@@ -14,7 +14,8 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 82
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 83
+#define PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY 128
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
 enum prototype_artifact_export_transparency {
@@ -95,6 +96,13 @@ struct prototype_artifact_identity_root {
 	uint32_t identity_family_has_type_claim_id;
 	uint32_t witness_has_type_claim_id;
 	int computation_rule;
+};
+
+struct prototype_artifact_function_graph_association {
+	uint32_t owner_term_export_index;
+	uint32_t graph_type_export_index;
+	uint32_t result_type_export_index;
+	uint32_t certified_runner_term_export_index;
 };
 
 struct prototype_artifact_external_term_ref {
@@ -239,6 +247,12 @@ struct prototype_artifact_interface {
 	struct prototype_artifact_identity_root* identity_roots;
 	size_t identity_root_count;
 	size_t identity_root_capacity;
+
+	struct prototype_artifact_function_graph_association
+		function_graph_associations[
+			PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY
+		];
+	size_t function_graph_association_count;
 
 	struct prototype_artifact_dependency* dependencies;
 	size_t dependency_count;

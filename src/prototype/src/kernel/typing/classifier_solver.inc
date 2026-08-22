@@ -2165,7 +2165,6 @@ static int term_is_structural_type(
 	uint32_t term_id
 ) {
 	uint32_t first;
-	uint32_t second;
 	if (!term_exists(terms, term_id)) {
 		return 0;
 	}
@@ -2177,9 +2176,6 @@ static int term_is_structural_type(
 			term_has_tag(terms, term_id, PROTOTYPE_TERM_PI) ||
 			term_has_tag(terms, term_id, PROTOTYPE_TERM_COMPUTATION_TYPE) ||
 			term_has_tag(terms, term_id, PROTOTYPE_TERM_THUNK_TYPE) ||
-			prototype_term_returns_type_info(
-				terms, term_id, &first, &second
-			) == 0 ||
 			prototype_term_terminates_type_info(terms, term_id, &first) == 0 ||
 			type_instance_has_known_type(terms, type_declarations, term_id);
 }

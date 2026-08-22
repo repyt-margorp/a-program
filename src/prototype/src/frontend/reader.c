@@ -496,20 +496,6 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 			return -1;
 		}
 		name = symbol_to_string(parser->program->symbols, parser->current.symbol_id);
-		if (name && strcmp(name, "Returns") == 0) {
-			uint32_t computation;
-			uint32_t value;
-			if (read_token(parser) != 0 || expect(
-					parser, TOKEN_LPAREN, "expected '(' before suspended computation"
-				) != 0 || parse_term(parser, &computation) != 0 || expect(
-					parser, TOKEN_RPAREN, "expected ')' after suspended computation"
-				) != 0 || parse_term(parser, &value) != 0) {
-				return -1;
-			}
-			return prototype_ast_type_expr_returns(
-				parser->program->asts, computation, value, span, p_ret
-			);
-		}
 		if (name && strcmp(name, "Terminates") == 0) {
 			uint32_t computation;
 			if (read_token(parser) != 0 || expect(
@@ -564,6 +550,15 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 	if (parser->current.kind == TOKEN_AT) {
 		if (read_token(parser) != 0) {
 			return -1;
+		}
+		if (parser->current.kind == TOKEN_IDENT) {
+			int owner_symbol_id = parser->current.symbol_id;
+			if (read_token(parser) != 0) {
+				return -1;
+			}
+			return prototype_ast_type_expr_function_graph_reference(
+				parser->program->asts, owner_symbol_id, span, p_ret
+			);
 		}
 		return prototype_ast_type_expr_fresh_universe(parser->program->asts, span, p_ret);
 	}
@@ -1100,18 +1095,7 @@ static int parse_parameterized_type_or_lambda_def(
 			parser->binders = outer_binders;
 			return -1;
 		}
-		if (parser->current.kind == TOKEN_AT) {
-			struct prototype_source_span span = current_span(parser);
-			if (read_token(parser) != 0) {
-				parser->binders = outer_binders;
-				return -1;
-			}
-			if (prototype_ast_type_expr_fresh_universe(parser->program->asts, span, &binder_types[binder_count]) != 0) {
-				set_error(parser, "type expression table is full");
-				parser->binders = outer_binders;
-				return -1;
-			}
-		} else if (parse_type_expr(parser, &binder_types[binder_count]) != 0) {
+		if (parse_type_expr(parser, &binder_types[binder_count]) != 0) {
 			parser->binders = outer_binders;
 			return -1;
 		}
@@ -1468,22 +1452,6 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		}
 			symbol_id = parser->current.symbol_id;
 			name = symbol_to_string(parser->program->symbols, symbol_id);
-			if (name && strcmp(name, "returns") == 0) {
-				uint32_t computation;
-				uint32_t value;
-				if (read_token(parser) != 0 || expect(
-						parser, TOKEN_LPAREN,
-						"expected '(' before suspended computation"
-					) != 0 || parse_term(parser, &computation) != 0 || expect(
-						parser, TOKEN_RPAREN,
-						"expected ')' after suspended computation"
-					) != 0 || parse_term(parser, &value) != 0) {
-					return -1;
-				}
-				return prototype_ast_returns_witness(
-					parser->program->asts, computation, value, span, p_ret
-				);
-			}
 			if (name && strcmp(name, "terminates") == 0) {
 				uint32_t computation;
 				if (read_token(parser) != 0 || expect(
@@ -1617,10 +1585,14 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 					PROTOTYPE_READ_DIAGNOSTIC_NESTED_MATCH_GROUPING,
 					"nested elimination body requires parentheses before sibling '@' clauses"
 				);
-			} else {
-				set_error(parser, "induction hypothesis must refer to a local binder");
+				return -1;
 			}
-			return -1;
+			if (read_token(parser) != 0) {
+				return -1;
+			}
+			return prototype_ast_function_graph_witness_reference(
+				parser->program->asts, symbol_id, span, p_ret
+			);
 		}
 		if (!binder->induction_allowed) {
 			set_error(parser, "induction hypothesis must refer to a match-case binder");
@@ -2039,16 +2011,7 @@ static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	if (expect(parser, TOKEN_COLON, "expected ':' after lambda binder") != 0) {
 		return -1;
 	}
-	if (parser->current.kind == TOKEN_AT) {
-		struct prototype_source_span span = current_span(parser);
-		if (read_token(parser) != 0) {
-			return -1;
-		}
-		if (prototype_ast_type_expr_fresh_universe(parser->program->asts, span, &binder_type) != 0) {
-			set_error(parser, "type expression table is full");
-			return -1;
-		}
-	} else if (parse_type_expr(parser, &binder_type) != 0) {
+	if (parse_type_expr(parser, &binder_type) != 0) {
 		return -1;
 	}
 	if (expect(parser, TOKEN_FATARROW, "expected '=>' after lambda binder") != 0) {
@@ -2099,16 +2062,7 @@ static int parse_bare_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	if (read_token(parser) != 0) {
 		return -1;
 	}
-	if (parser->current.kind == TOKEN_AT) {
-		struct prototype_source_span span = current_span(parser);
-		if (read_token(parser) != 0) {
-			return -1;
-		}
-		if (prototype_ast_type_expr_fresh_universe(parser->program->asts, span, &binder_type) != 0) {
-			set_error(parser, "type expression table is full");
-			return -1;
-		}
-	} else if (parse_type_expr(parser, &binder_type) != 0) {
+	if (parse_type_expr(parser, &binder_type) != 0) {
 		return -1;
 	}
 	if (expect(parser, TOKEN_FATARROW, "expected '=>' after binder") != 0) {

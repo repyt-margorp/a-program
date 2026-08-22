@@ -79,6 +79,19 @@ void prototype_ast_db_init(
 	db->type_field_expr_capacity = type_field_expr_capacity;
 }
 
+void prototype_ast_db_set_accepted_projection_storage(
+	struct prototype_ast_db* db,
+	struct prototype_ast_accepted_binding_projection* projections,
+	size_t projection_capacity
+) {
+	if (!db) {
+		return;
+	}
+	db->accepted_binding_projections = projections;
+	db->accepted_binding_projection_capacity = projections ? projection_capacity : 0;
+	db->accepted_binding_projection_count = 0;
+}
+
 static int add_node(struct prototype_ast_db* db, struct prototype_ast_node node, uint32_t* p_ret) {
 	if (!db || !p_ret || reserve_slot(db->node_count, db->node_capacity) != 0) {
 		return -1;
@@ -306,23 +319,54 @@ int prototype_ast_type_expr_computation_reference(
 	return add_type_expr(db, expr, p_ret);
 }
 
-int prototype_ast_type_expr_returns(
+int prototype_ast_type_expr_function_graph_reference(
 	struct prototype_ast_db* db,
-	uint32_t computation,
-	uint32_t value,
+	int owner_symbol_id,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 ) {
-	if (!db || computation >= db->node_count || value >= db->node_count) {
+	if (!db || owner_symbol_id < 0) {
 		return -1;
 	}
 	struct prototype_ast_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
-	expr.tag = PROTOTYPE_AST_TYPE_EXPR_RETURNS;
+	expr.tag = PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE;
 	expr.span = span;
-	expr.as.returns.computation = computation;
-	expr.as.returns.value = value;
+	expr.as.function_graph_reference.owner_symbol_id = owner_symbol_id;
 	return add_type_expr(db, expr, p_ret);
+}
+
+int prototype_ast_type_expr_accepted_projection(
+	struct prototype_ast_db* db,
+	uint32_t term,
+	const struct prototype_ast_accepted_binding_projection* bindings,
+	uint32_t binding_count,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || (binding_count != 0 && !bindings) ||
+		db->accepted_binding_projection_count + binding_count >
+			db->accepted_binding_projection_capacity) {
+		return -1;
+	}
+	uint32_t first_binding = (uint32_t)db->accepted_binding_projection_count;
+	for (uint32_t i = 0; i < binding_count; ++i) {
+		db->accepted_binding_projections[
+			db->accepted_binding_projection_count++
+		] = bindings[i];
+	}
+	struct prototype_ast_type_expr expr;
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION;
+	expr.span = span;
+	expr.as.accepted_projection.term = term;
+	expr.as.accepted_projection.first_binding = first_binding;
+	expr.as.accepted_projection.binding_count = binding_count;
+	if (add_type_expr(db, expr, p_ret) != 0) {
+		db->accepted_binding_projection_count = first_binding;
+		return -1;
+	}
+	return 0;
 }
 
 int prototype_ast_type_expr_terminates(
@@ -681,6 +725,23 @@ int prototype_ast_induction_hypothesis(
 	return add_node(db, node, p_ret);
 }
 
+int prototype_ast_function_graph_witness_reference(
+	struct prototype_ast_db* db,
+	int owner_symbol_id,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || owner_symbol_id < 0) {
+		return -1;
+	}
+	struct prototype_ast_node node;
+	memset(&node, 0, sizeof(node));
+	node.tag = PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE;
+	node.span = span;
+	node.as.function_graph_witness_reference.owner_symbol_id = owner_symbol_id;
+	return add_node(db, node, p_ret);
+}
+
 int prototype_ast_text_literal(
 	struct prototype_ast_db* db,
 	int text_symbol_id,
@@ -779,25 +840,6 @@ int prototype_ast_quote(
 	uint32_t* p_ret
 ) {
 	return prototype_ast_unary(db, PROTOTYPE_AST_QUOTE, term, span, p_ret);
-}
-
-int prototype_ast_returns_witness(
-	struct prototype_ast_db* db,
-	uint32_t computation,
-	uint32_t value,
-	struct prototype_source_span span,
-	uint32_t* p_ret
-) {
-	if (!db || computation >= db->node_count || value >= db->node_count) {
-		return -1;
-	}
-	struct prototype_ast_node node;
-	memset(&node, 0, sizeof(node));
-	node.tag = PROTOTYPE_AST_RETURNS_WITNESS;
-	node.span = span;
-	node.as.returns_witness.computation = computation;
-	node.as.returns_witness.value = value;
-	return add_node(db, node, p_ret);
 }
 
 int prototype_ast_terminates_witness(

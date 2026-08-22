@@ -494,9 +494,9 @@ static int operation_solver_resolve_contexts(
 			}
 		}
 		size_t context_count_before = ctx->metadata->contexts.context_count;
-		uint32_t source_computation = context->source_computation;
+		uint32_t producer_computation = context->producer_computation;
 		if (context->extension_kind ==
-				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT) {
+				PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT) {
 			struct operation_binder_owner_entry* result_owner =
 				operation_binder_owner_find(ctx, context->binding_id);
 			if (result_owner && result_owner->bound_computation_occurrence !=
@@ -507,21 +507,21 @@ static int operation_solver_resolve_contexts(
 			}
 			if (result_owner && result_owner->bound_computation_occurrence !=
 					PROTOTYPE_INVALID_ID) {
-				source_computation = ctx->metadata->typed_occurrences.occurrences[
+				producer_computation = ctx->metadata->typed_occurrences.occurrences[
 					result_owner->bound_computation_occurrence
 				].core_term;
 			}
 		}
 		int context_extend_status = context->extension_kind ==
-				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT ?
-			prototype_context_extend_computation_result(
+				PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT ?
+			prototype_context_extend_sequence_result(
 				&ctx->metadata->contexts,
 				relocation[context->parent],
 				context->binding_id,
 				classifier,
 				finalize && classifier_variable_resolved ?
 					PROTOTYPE_INVALID_ID : classifier_variable,
-				source_computation,
+				producer_computation,
 				&relocation[context_id]
 			) : prototype_context_extend(
 				&ctx->metadata->contexts,

@@ -1269,6 +1269,18 @@ restart_after_branch_pullback:
 				&ctx->constraints.constraints[i];
 			struct operation_constraint* constraint_result =
 				&ctx->constraints.constraints[i];
+			if (getenv("A_PROGRAM_CLASSIFIER_TRACE") != NULL) {
+				fprintf(
+					stderr,
+					"classifier-trace constraint=%u kind=%d domain=%d target=%u state=%d reason=%d\n",
+					i,
+					constraint->kind,
+					constraint->domain,
+					constraint->payload.classifier.classifier_variable,
+					constraint->state,
+					constraint->reason
+				);
+			}
 			if (constraint->domain != OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER) {
 				continue;
 			}
@@ -1842,6 +1854,17 @@ restart_after_branch_pullback:
 					if (operation_solver_solve_match(
 							ctx, target, &pass_changed
 						) != 0) {
+						const struct prototype_typed_occurrence* failed =
+							&ctx->metadata->typed_occurrences.occurrences[target];
+						fprintf(
+							stderr,
+							"classifier solver: Match failed operation=%u ast=%u term=%u classifier=%u cases=%u\n",
+							target,
+							failed->source_ast,
+							failed->core_term,
+							operation_solver_classifier(ctx, target),
+							failed->case_count
+						);
 						return -1;
 					}
 					break;

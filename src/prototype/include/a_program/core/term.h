@@ -74,8 +74,6 @@ enum prototype_term_tag {
 	PROTOTYPE_TERM_RELATION_TYPE_FORMER = 32,
 	PROTOTYPE_TERM_RELATION_WITNESS_FORMER = 33,
 	PROTOTYPE_TERM_DIMENSION_ACTION = 34,
-	PROTOTYPE_TERM_RETURNS_TYPE_FORMER = 35,
-	PROTOTYPE_TERM_RETURNS_WITNESS_FORMER = 36,
 	PROTOTYPE_TERM_TERMINATES_TYPE_FORMER = 37,
 	PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER = 38
 };
@@ -456,7 +454,7 @@ enum prototype_term_child_role {
 	PROTOTYPE_TERM_CHILD_EFFECT_ROW_BODY = 14,
 	PROTOTYPE_TERM_CHILD_EFFECT_ROW_LATENT = 15,
 	PROTOTYPE_TERM_CHILD_COMPUTATION_EFFECT_ROW = 16,
-	PROTOTYPE_TERM_CHILD_COMPUTATION_RESULT = 17,
+	PROTOTYPE_TERM_CHILD_SEQUENCE_RESULT = 17,
 	PROTOTYPE_TERM_CHILD_THUNK_TYPE_COMPUTATION = 18,
 	PROTOTYPE_TERM_CHILD_RETURN_VALUE = 19,
 	PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION = 20,
@@ -469,8 +467,6 @@ enum prototype_term_child_role {
 	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION = 27,
 	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY = 28,
 	PROTOTYPE_TERM_CHILD_DIMENSION_ACTION_SOURCE = 29,
-	PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_COMPUTATION = 30,
-	PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_VALUE = 31,
 	PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_COMPUTATION = 32
 };
 
@@ -509,6 +505,10 @@ struct prototype_term {
 			uint32_t ih_scope_id;
 		} match;
 		struct {
+			/* Rebuild anchor for the process-local representation cache. This is
+			 * not nominal identity: structurally shared formers may use any
+			 * declaration with the same representation. */
+			uint32_t declaration_type_id;
 			uint32_t representation_id;
 			/* Number of constructor ordinals in this erased algebra signature.
 			 * This is operational reduction data, not a source declaration or
@@ -925,30 +925,6 @@ int prototype_term_relation_witness_info(
 	uint32_t term_id,
 	uint32_t* p_left_endpoint,
 	uint32_t* p_right_endpoint
-);
-int prototype_term_returns_type(
-	struct prototype_term_db* db,
-	uint32_t computation,
-	uint32_t value,
-	uint32_t* p_ret
-);
-int prototype_term_returns_witness(
-	struct prototype_term_db* db,
-	uint32_t computation,
-	uint32_t value,
-	uint32_t* p_ret
-);
-int prototype_term_returns_type_info(
-	const struct prototype_term_db* db,
-	uint32_t term_id,
-	uint32_t* p_computation,
-	uint32_t* p_value
-);
-int prototype_term_returns_witness_info(
-	const struct prototype_term_db* db,
-	uint32_t term_id,
-	uint32_t* p_computation,
-	uint32_t* p_value
 );
 int prototype_term_terminates_type(
 	struct prototype_term_db* db,

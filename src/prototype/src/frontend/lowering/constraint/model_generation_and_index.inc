@@ -364,7 +364,11 @@ static int operation_solver_add_branch_refinement_constraints(
 	ctx->constraints.first_branch_refinement_constraint =
 		ctx->constraints.constraint_count;
 	ctx->constraints.branch_refinement_constraint_count = 0;
-	for (uint32_t match_id = 0;
+	uint32_t mutable_occurrence_start = (uint32_t)
+		prototype_typed_occurrence_graph_transaction_start(
+			&ctx->metadata->typed_occurrences
+		);
+	for (uint32_t match_id = mutable_occurrence_start;
 		match_id < ctx->metadata->typed_occurrences.occurrence_count;
 		++match_id) {
 		const struct prototype_typed_occurrence* match =
@@ -567,7 +571,11 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	if (operation_solver_reset_classifier_state(ctx) != 0) {
 		return -1;
 	}
-	for (uint32_t i = 0;
+	uint32_t mutable_occurrence_start = (uint32_t)
+		prototype_typed_occurrence_graph_transaction_start(
+			&ctx->metadata->typed_occurrences
+		);
+	for (uint32_t i = mutable_occurrence_start;
 		i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
 		const struct prototype_typed_occurrence* operation = &ctx->metadata->typed_occurrences.occurrences[i];
 		int base_constraint_kind = OPERATION_CONSTRAINT_HAS_TYPE;

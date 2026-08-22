@@ -28,6 +28,66 @@ struct prototype_compile_type_export {
 	uint32_t constructor_count;
 };
 
+enum prototype_function_graph_request_flag {
+	PROTOTYPE_FUNCTION_GRAPH_REQUEST_FAMILY = 1u << 0,
+	PROTOTYPE_FUNCTION_GRAPH_REQUEST_CERTIFIED_EXECUTION = 1u << 1
+};
+
+enum prototype_function_graph_request_state {
+	PROTOTYPE_FUNCTION_GRAPH_REQUEST_PENDING = 1,
+	PROTOTYPE_FUNCTION_GRAPH_REQUEST_GENERATED = 2,
+	PROTOTYPE_FUNCTION_GRAPH_REQUEST_RESIDUAL = 3,
+	PROTOTYPE_FUNCTION_GRAPH_REQUEST_ERROR = 4
+};
+
+enum prototype_function_graph_request_reason {
+	PROTOTYPE_FUNCTION_GRAPH_REASON_NONE = 0,
+	PROTOTYPE_FUNCTION_GRAPH_REASON_UNKNOWN_OWNER = 1,
+	PROTOTYPE_FUNCTION_GRAPH_REASON_AMBIGUOUS_OWNER = 2,
+	PROTOTYPE_FUNCTION_GRAPH_REASON_NONFUNCTION_OWNER = 3,
+	PROTOTYPE_FUNCTION_GRAPH_REASON_EFFECTFUL_OWNER = 4,
+	PROTOTYPE_FUNCTION_GRAPH_REASON_NONTOTAL_OWNER = 5,
+	PROTOTYPE_FUNCTION_GRAPH_REASON_UNSUPPORTED_SOURCE = 6,
+	PROTOTYPE_FUNCTION_GRAPH_REASON_MISSING_IMPORT_ASSOCIATION = 7
+};
+
+/* One request belongs to one source definition identity. Equal erased Core
+ * Terms never merge these records. */
+struct prototype_function_graph_request {
+	int owner_symbol_id;
+	uint32_t owner_assignment_id;
+	uint32_t owner_source_entry_id;
+	uint32_t request_flags;
+	uint32_t first_requesting_ast;
+	int state;
+	int reason;
+};
+
+/* Generated names are projections of the owner definition, not independently
+ * inferred aliases. Local IDs remain compiler-session data; artifacts publish
+ * the corresponding export identities in their own association section. */
+struct prototype_function_graph_association {
+	int owner_symbol_id;
+	uint32_t owner_assignment_id;
+	uint32_t owner_source_entry_id;
+	int graph_symbol_id;
+	int result_symbol_id;
+	int returned_constructor_symbol_id;
+	int certified_runner_symbol_id;
+	uint32_t graph_type_id;
+	uint32_t result_type_id;
+	uint32_t graph_type_assignment_id;
+	uint32_t result_type_assignment_id;
+	uint32_t certified_runner_assignment_id;
+	uint32_t executable_assignment_id;
+};
+
+enum prototype_function_graph_compile_stage {
+	PROTOTYPE_FUNCTION_GRAPH_COMPILE_NORMAL = 0,
+	PROTOTYPE_FUNCTION_GRAPH_COMPILE_OWNER_PREFLIGHT = 1,
+	PROTOTYPE_FUNCTION_GRAPH_COMPILE_GENERATED_CLOSURE = 2
+};
+
 struct prototype_resolve_error {
 	int kind;
 	int name_symbol_id;
@@ -111,6 +171,9 @@ enum prototype_backend_target {
 struct prototype_compile_metadata {
 	int compile_policy;
 	int definition_thunk_policy;
+	/* Driver-controlled staged elaboration. Generated graph declarations are
+	 * accepted before source consumers can project them. */
+	int function_graph_preflight;
 	int selected_entry_symbol_id;
 	uint32_t selected_entry_term;
 	uint32_t selected_entry_classifier;
@@ -149,14 +212,14 @@ struct prototype_compile_metadata {
 	uint64_t graph_build_time_ns;
 	uint64_t fixed_point_time_ns;
 	uint64_t proof_materialization_time_ns;
-	uint64_t result_evidence_time_ns;
-	uint64_t post_result_closure_time_ns;
+	uint64_t termination_evidence_time_ns;
+	uint64_t evidence_closure_time_ns;
 	uint64_t accepted_replay_time_ns;
 	uint64_t proof_materialization_pass_count;
 	uint64_t proof_materialization_full_scan_count;
 	uint64_t proof_materialization_round_count;
 	uint64_t proof_materialization_occurrence_visit_count;
-	uint64_t post_result_consumer_retry_count;
+	uint64_t evidence_consumer_retry_count;
 	uint64_t proof_reify_root_count;
 	uint64_t proof_reify_recursive_count;
 	uint64_t proof_reify_success_count;
@@ -165,7 +228,6 @@ struct prototype_compile_metadata {
 	uint64_t proof_reify_accepted_reuse_count;
 	uint64_t proof_reify_current_pass_reuse_count;
 	uint64_t proof_reify_cycle_count;
-	uint64_t result_evidence_claim_count;
 	uint64_t termination_evidence_claim_count;
 	/* Frozen operational projection consumed by Core execution. It deliberately
 	 * excludes static type declarations and proof state. */
@@ -199,6 +261,14 @@ struct prototype_compile_metadata {
 	struct prototype_compile_constructor_export* constructor_exports;
 	size_t constructor_export_count;
 	size_t constructor_export_capacity;
+
+	struct prototype_function_graph_request* function_graph_requests;
+	size_t function_graph_request_count;
+	size_t function_graph_request_capacity;
+
+	struct prototype_function_graph_association* function_graph_associations;
+	size_t function_graph_association_count;
+	size_t function_graph_association_capacity;
 
 	struct prototype_resolve_error* resolve_errors;
 	size_t resolve_error_count;
@@ -241,6 +311,42 @@ struct prototype_frozen_module_snapshot {
 int prototype_compile_metadata_frozen_snapshot(
 	const struct prototype_compile_metadata* metadata,
 	struct prototype_frozen_module_snapshot* p_snapshot
+);
+
+void prototype_compile_metadata_set_function_graph_storage(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_function_graph_request* requests,
+	size_t request_capacity,
+	struct prototype_function_graph_association* associations,
+	size_t association_capacity
+);
+
+int prototype_compile_metadata_request_function_graph(
+	struct prototype_compile_metadata* metadata,
+	int owner_symbol_id,
+	uint32_t owner_assignment_id,
+	uint32_t owner_source_entry_id,
+	uint32_t request_flags,
+	uint32_t requesting_ast,
+	uint32_t* p_request_id
+);
+
+const struct prototype_function_graph_request*
+prototype_compile_metadata_function_graph_request(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t request_id
+);
+
+int prototype_compile_metadata_add_function_graph_association(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_function_graph_association association,
+	uint32_t* p_association_id
+);
+
+const struct prototype_function_graph_association*
+prototype_compile_metadata_function_graph_association_for_owner(
+	const struct prototype_compile_metadata* metadata,
+	int owner_symbol_id
 );
 
 struct prototype_type_inspection {

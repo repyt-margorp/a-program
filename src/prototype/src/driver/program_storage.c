@@ -22,6 +22,7 @@
 #define PROGRAM_AST_FAMILY_BINDER_CAPACITY 128
 #define PROGRAM_AST_TYPE_CONSTRUCTOR_CAPACITY 256
 #define PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY 512
+#define PROGRAM_AST_ACCEPTED_BINDING_PROJECTION_CAPACITY 8192
 #define PROGRAM_UNIVERSE_NODE_CAPACITY 256
 #define PROGRAM_UNIVERSE_EDGE_CAPACITY 512
 #define PROGRAM_UNIVERSE_LEVEL_CAPACITY 1024
@@ -47,6 +48,8 @@
 #define PROGRAM_VERIFICATION_OBLIGATION_CAPACITY 4096
 #define PROGRAM_DIMENSION_OPERATOR_CAPACITY 256
 #define PROGRAM_DIMENSION_IMAGE_CAPACITY 2048
+#define PROGRAM_FUNCTION_GRAPH_REQUEST_CAPACITY 128
+#define PROGRAM_FUNCTION_GRAPH_ASSOCIATION_CAPACITY 128
 
 struct prototype_program_storage_backing {
 	int symbol_ids[PROGRAM_SYMBOL_MAP_CAPACITY];
@@ -77,6 +80,10 @@ struct prototype_program_storage_backing {
 	uint32_t ast_type_field_exprs[PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY];
 	uint32_t ast_type_field_binder_ids[PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY];
 	int ast_type_field_name_symbol_ids[PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY];
+	struct prototype_ast_accepted_binding_projection
+		ast_accepted_binding_projections[
+			PROGRAM_AST_ACCEPTED_BINDING_PROJECTION_CAPACITY
+		];
 	struct prototype_universe_node universe_nodes[PROGRAM_UNIVERSE_NODE_CAPACITY];
 	struct prototype_universe_edge universe_edges[PROGRAM_UNIVERSE_EDGE_CAPACITY];
 	struct prototype_universe_level universe_levels[PROGRAM_UNIVERSE_LEVEL_CAPACITY];
@@ -100,6 +107,10 @@ struct prototype_program_storage_backing {
 	struct prototype_compile_label compile_labels[PROGRAM_COMPILE_LABEL_CAPACITY];
 	struct prototype_compile_type_export compile_type_exports[PROGRAM_COMPILE_TYPE_EXPORT_CAPACITY];
 	struct prototype_compile_constructor_export compile_constructor_exports[PROGRAM_COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
+	struct prototype_function_graph_request
+		function_graph_requests[PROGRAM_FUNCTION_GRAPH_REQUEST_CAPACITY];
+	struct prototype_function_graph_association
+		function_graph_associations[PROGRAM_FUNCTION_GRAPH_ASSOCIATION_CAPACITY];
 	struct prototype_resolve_error resolve_errors[PROGRAM_RESOLVE_ERROR_CAPACITY];
 	struct prototype_compile_diagnostic compile_diagnostics[PROGRAM_COMPILE_DIAGNOSTIC_CAPACITY];
 	struct prototype_resolution_item resolution_items[PROGRAM_RESOLUTION_ITEM_CAPACITY];
@@ -154,6 +165,11 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		PROGRAM_AST_TYPE_CONSTRUCTOR_CAPACITY, b->ast_type_field_exprs,
 		b->ast_type_field_binder_ids, b->ast_type_field_name_symbol_ids,
 		PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY);
+	prototype_ast_db_set_accepted_projection_storage(
+		&storage->asts,
+		b->ast_accepted_binding_projections,
+		PROGRAM_AST_ACCEPTED_BINDING_PROJECTION_CAPACITY
+	);
 	prototype_universe_db_init(&storage->universe, b->universe_nodes,
 		PROGRAM_UNIVERSE_NODE_CAPACITY, b->universe_edges,
 		PROGRAM_UNIVERSE_EDGE_CAPACITY, b->universe_levels,
@@ -184,6 +200,13 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		PROGRAM_DIMENSION_OPERATOR_CAPACITY,
 		b->dimension_images,
 		PROGRAM_DIMENSION_IMAGE_CAPACITY
+	);
+	prototype_compile_metadata_set_function_graph_storage(
+		&storage->metadata,
+		b->function_graph_requests,
+		PROGRAM_FUNCTION_GRAPH_REQUEST_CAPACITY,
+		b->function_graph_associations,
+		PROGRAM_FUNCTION_GRAPH_ASSOCIATION_CAPACITY
 	);
 	prototype_compile_metadata_set_diagnostic_storage(&storage->metadata,
 		b->compile_diagnostics, PROGRAM_COMPILE_DIAGNOSTIC_CAPACITY);

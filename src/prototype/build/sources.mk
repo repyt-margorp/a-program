@@ -6,10 +6,11 @@ PROTOTYPE_AST_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/graph/compile_metadata.c \
 	$(PROTOTYPE_ROOT)/src/artifact/interface.c \
 	$(PROTOTYPE_ROOT)/src/artifact/publication.c \
-	$(PROTOTYPE_ROOT)/src/artifact/wire_v82.c \
+	$(PROTOTYPE_ROOT)/src/artifact/wire_v83.c \
 	$(PROTOTYPE_ROOT)/src/artifact/relocation.c \
 	$(PROTOTYPE_ROOT)/src/artifact/link.c \
 	$(PROTOTYPE_ROOT)/src/frontend/ast.c \
+	$(PROTOTYPE_ROOT)/src/frontend/function_graph.c \
 	$(PROTOTYPE_ROOT)/src/frontend/lowering.c \
 	$(PROTOTYPE_ROOT)/src/frontend/universe_collection.c
 

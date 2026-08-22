@@ -764,10 +764,16 @@ static int operation_runtime_machine_enter_match_case(
 		if (term_case->constructor_id != constructor_id) {
 			continue;
 		}
+		uint32_t case_owner;
 		int owner_equal = 0;
-		if (prototype_term_core_shape_equal(
+		if (operation_runtime_instantiate_term(
 				machine->terms,
+				&machine->environment,
 				term_case->constructor_owner,
+				&case_owner
+			) != 0 || prototype_term_core_shape_equal(
+				machine->terms,
+				case_owner,
 				owner,
 				&owner_equal
 			) != 0) {

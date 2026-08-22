@@ -1,4 +1,4 @@
-Returns := \A : @ => @\computation : &A => @\value : A => {
+ResultRelation := \A : @ => @\computation : &A => @\value : A => {
 	assumed : (computation : &A) -> (value : A) -> * computation value;
 };
 

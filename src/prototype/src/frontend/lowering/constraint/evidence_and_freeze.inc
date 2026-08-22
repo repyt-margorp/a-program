@@ -282,6 +282,13 @@ static int operation_solver_select_operation_evidence_in_context(
 	struct prototype_judgement_selected_evidence* p_evidence
 );
 
+static int operation_solver_reify_core_proof(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t core_term,
+	uint32_t depth
+);
+
 static int operation_solver_materialize_match_judgement(
 	struct compile_context* ctx,
 	uint32_t operation_id
@@ -344,6 +351,9 @@ static int operation_solver_materialize_match_judgement(
 			continue;
 		}
 		if (refinement_status == PROTOTYPE_INDEX_REFINEMENT_INVALID) {
+			fprintf(stderr,
+				"match materialization invalid refinement operation=%u case=%u\n",
+				operation_id, case_index);
 			return -1;
 		}
 		if (body->classifier == PROTOTYPE_INVALID_ID) {
@@ -355,7 +365,13 @@ static int operation_solver_materialize_match_judgement(
 			ctx->metadata->typed_occurrences.cases[
 				operation_case_id
 			].refinement_substitution : PROTOTYPE_INVALID_ID;
-		int evidence_status = operation_solver_select_operation_evidence_in_context(
+		int reify_status = operation_solver_reify_core_proof(
+			ctx, branch_operation, body->core_term, 0
+		);
+		if (reify_status != 0) {
+			return reify_status;
+		}
+		int evidence_status = operation_solver_select_evidence_in_context(
 			ctx,
 			branch_operation,
 			body->context_id,
@@ -364,9 +380,30 @@ static int operation_solver_materialize_match_judgement(
 			&branch_evidence[case_index]
 		);
 		if (evidence_status != 0) {
+			fprintf(stderr,
+				"match materialization branch evidence failed operation=%u case=%u branch=%u status=%d context=%u term=%u classifier=%u\n",
+				operation_id, case_index, branch_operation, evidence_status,
+				body->context_id, body->core_term, body->classifier);
 			return evidence_status;
 		}
+		if (branch_evidence[case_index].occurrence_id != branch_operation) {
+			fprintf(stderr,
+				"match branch evidence owner differs operation=%u branch=%u branch-tag=%d evidence-occurrence=%u authority=%d:%u\n",
+				operation_id, branch_operation, body->tag,
+				branch_evidence[case_index].occurrence_id,
+				branch_evidence[case_index].authority_kind,
+				branch_evidence[case_index].authority_id);
+		}
 	}
+	/* Branch proof reification changes the active Delta authority. The motive
+	 * conclusion belongs to the Match occurrence, not to the final branch or IH
+	 * visited above. */
+	prototype_judgement_delta_set_context(
+		&ctx->judgement_delta, operation->context_id
+	);
+	prototype_judgement_delta_set_occurrence(
+		&ctx->judgement_delta, operation_id
+	);
 	int record_status = prototype_judgement_delta_record_materialized_match_motive(
 		&ctx->judgement_delta,
 		ctx->terms,
@@ -377,6 +414,26 @@ static int operation_solver_materialize_match_judgement(
 		branch_substitution_ids,
 		operation->case_count
 	);
+	if (record_status != 0) {
+		const struct prototype_term* classifier_term =
+			operation->classifier < ctx->terms->term_count ?
+			&ctx->terms->terms[operation->classifier] : NULL;
+		uint32_t classifier_head = operation->classifier;
+		while (classifier_head < ctx->terms->term_count &&
+			ctx->terms->terms[classifier_head].tag == PROTOTYPE_TERM_APP) {
+			classifier_head = ctx->terms->terms[classifier_head].as.app.function;
+		}
+		fprintf(stderr,
+			"match materialization motive record failed operation=%u status=%d classifier=%u tag=%d scrutinee=%u app-argument=%u head=%u head-tag=%d\n",
+			operation_id, record_status, operation->classifier,
+			classifier_term ? classifier_term->tag : -1,
+			ctx->terms->terms[operation->core_term].as.match.scrutinee,
+			classifier_term && classifier_term->tag == PROTOTYPE_TERM_APP ?
+				classifier_term->as.app.argument : PROTOTYPE_INVALID_ID,
+			classifier_head,
+			classifier_head < ctx->terms->term_count ?
+				ctx->terms->terms[classifier_head].tag : -1);
+	}
 	return record_status;
 }
 
@@ -640,7 +697,11 @@ static int operation_solver_materialize_match_pattern_assumptions(
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
-	for (uint32_t operation_id = 0;
+	uint32_t mutable_occurrence_start = (uint32_t)
+		prototype_typed_occurrence_graph_transaction_start(
+			&ctx->metadata->typed_occurrences
+		);
+	for (uint32_t operation_id = mutable_occurrence_start;
 		operation_id < ctx->metadata->typed_occurrences.occurrence_count;
 		++operation_id) {
 		const struct prototype_typed_occurrence* operation =
@@ -3099,7 +3160,13 @@ static int operation_solver_validate_solution_projection(
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
+	uint32_t mutable_occurrence_start = (uint32_t)
+		prototype_typed_occurrence_graph_transaction_start(
+			&ctx->metadata->typed_occurrences
+		);
+	for (uint32_t i = mutable_occurrence_start;
+		i < ctx->metadata->typed_occurrences.occurrence_count;
+		++i) {
 		const struct operation_solver_solution* solution =
 			&ctx->classifier_solver.solutions[i];
 		const struct prototype_typed_occurrence* operation =
@@ -3149,8 +3216,13 @@ static int operation_solver_materialize_occurrence_judgement(
 		if (match_status < 0) {
 			fprintf(
 				stderr,
-				"judgement materialization: match motive failed operation=%u\n",
-				operation_id
+				"judgement materialization: match motive failed operation=%u ast=%u term=%u classifier=%u cases=%u context=%u\n",
+				operation_id,
+				operation->source_ast,
+				operation->core_term,
+				operation->classifier,
+				operation->case_count,
+				operation->context_id
 			);
 		}
 		return match_status;
@@ -3397,7 +3469,9 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 			fprintf(stderr, "judgement materialization: match assumptions failed\n");
 			return -1;
 		}
-		for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
+		for (uint32_t i = mutable_occurrence_start;
+			i < ctx->metadata->typed_occurrences.occurrence_count;
+			++i) {
 			uint32_t action =
 				ctx->metadata->typed_occurrences.occurrences[i].context_action_substitution;
 			if (action != PROTOTYPE_INVALID_ID &&
@@ -3416,14 +3490,18 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 	uint32_t next_queue[4096];
 	uint32_t current_count = 0;
 	if (initial_pass) {
-		for (uint32_t i = 0;
+		uint32_t mutable_occurrence_start = (uint32_t)
+			prototype_typed_occurrence_graph_transaction_start(
+				&ctx->metadata->typed_occurrences
+			);
+		for (uint32_t i = mutable_occurrence_start;
 			i < ctx->metadata->typed_occurrences.occurrence_count;
 			++i) {
 			current_queue[current_count++] = i;
 		}
 	} else {
 		current_count = ctx->proof_materialization_pending_count;
-		ctx->metadata->post_result_consumer_retry_count += current_count;
+		ctx->metadata->evidence_consumer_retry_count += current_count;
 		memcpy(
 			current_queue,
 			ctx->proof_materialization_pending_ids,

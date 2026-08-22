@@ -758,6 +758,8 @@ static int compile_ast_type_def(
 			ast_type,
 			&ctx->type_declarations->semantic_schema.type_declarations[type_id].formation_classifier
 		) != 0) {
+		fprintf(stderr, "type formation classifier family failed type=%d id=%u\n",
+			ast_type->name_symbol_id, type_id);
 		ast_type->compiling = 0;
 		return -1;
 	}
@@ -795,6 +797,8 @@ static int compile_ast_type_def(
 				ctx->asts->type_field_name_symbol_ids[field_id] :
 				-1;
 			if (compile_ast_type_expr(ctx, field_type, &compiled_field_types[j]) != 0) {
+				fprintf(stderr, "type field readback failed type=%d constructor=%u field=%u expr=%u\n",
+					ast_type->name_symbol_id, i, j, field_type);
 				ctx->binder_count = previous_binder_count;
 				ast_type->compiling = 0;
 				return -1;
@@ -805,6 +809,8 @@ static int compile_ast_type_def(
 					type_term,
 					&compiled_field_terms[j]
 				) != 0) {
+				fprintf(stderr, "type field semantic compile failed type=%d constructor=%u field=%u expr=%u\n",
+					ast_type->name_symbol_id, i, j, field_type);
 				ctx->binder_count = previous_binder_count;
 				ast_type->compiling = 0;
 				return -1;
@@ -892,8 +898,10 @@ static int compile_ast_type_def(
 				ctx,
 				constructor->result_type,
 				type_term,
-				&compiled_result_term
-			) != 0) {
+					&compiled_result_term
+				) != 0) {
+			fprintf(stderr, "type result compile failed type=%d constructor=%u expr=%u\n",
+				ast_type->name_symbol_id, i, constructor->result_type);
 			ctx->binder_count = previous_binder_count;
 			ast_type->compiling = 0;
 			return -1;
@@ -909,6 +917,11 @@ static int compile_ast_type_def(
 				&result_arg_count
 			) != 0 || result_type_id != type_id ||
 			result_arg_count != ast_type->parameter_count + ast_type->index_count) {
+			fprintf(stderr,
+				"type result shape failed type=%d id=%u constructor=%u result=%u result-id=%u args=%u expected=%u\n",
+				ast_type->name_symbol_id, type_id, i, compiled_result_term,
+				result_type_id, result_arg_count,
+				ast_type->parameter_count + ast_type->index_count);
 			ctx->binder_count = previous_binder_count;
 			ast_type->compiling = 0;
 			return -1;
@@ -937,30 +950,40 @@ static int compile_ast_type_def(
 				compiled_result_term,
 				&curried_classifier_cache
 			) != 0) {
+			fprintf(stderr, "type constructor classifier derivation failed type=%d constructor=%u\n",
+				ast_type->name_symbol_id, i);
 			ctx->binder_count = previous_binder_count;
 			ast_type->compiling = 0;
 			return -1;
 		}
 		ctx->binder_count = previous_binder_count;
-		if (prototype_type_declaration_add_constructor_schema(
-				ctx->type_declarations,
-				type_id,
-				constructor->name_symbol_id,
-				parameter_context,
-				field_context,
-				compiled_result_term,
-				&constructor_id
-			) != 0 || prototype_type_readback_attach_constructor(
+		int schema_status = prototype_type_declaration_add_constructor_schema(
+			ctx->type_declarations,
+			type_id,
+			constructor->name_symbol_id,
+			parameter_context,
+			field_context,
+			compiled_result_term,
+			&constructor_id
+		);
+		int readback_status = schema_status == 0 ?
+			prototype_type_readback_attach_constructor(
 				ctx->type_declarations,
 				constructor_id,
 				compiled_field_types,
 				constructor->field_count,
 				compiled_result_type
-			) != 0 || prototype_type_constructor_classifier_cache_set(
+			) : -1;
+		int cache_status = readback_status == 0 ?
+			prototype_type_constructor_classifier_cache_set(
 				ctx->type_declarations,
 				constructor_id,
 				curried_classifier_cache
-			) != 0) {
+			) : -1;
+		if (schema_status != 0 || readback_status != 0 || cache_status != 0) {
+			fprintf(stderr,
+				"type constructor publication failed type=%d constructor=%u schema=%d readback=%d cache=%d\n",
+				ast_type->name_symbol_id, i, schema_status, readback_status, cache_status);
 			ast_type->compiling = 0;
 			return -1;
 		}
@@ -2364,74 +2387,42 @@ static int compile_ast_atomic_ref(
 			}
 			return compile_ref_from_term(ctx, term, p_ret);
 		}
-		case PROTOTYPE_AST_RETURNS_WITNESS: {
-			struct compile_ref computation;
-			struct compile_ref value;
-			uint32_t computation_endpoint;
-			uint32_t value_endpoint;
-			uint32_t returns_type;
-			if (compile_ast_pure_value_ref(
-					ctx, node->as.returns_witness.computation, &computation
-				) != 0 || compile_ast_pure_value_ref(
-					ctx, node->as.returns_witness.value, &value
-				) != 0 || computation.category != PROTOTYPE_TERM_CATEGORY_VALUE ||
-				value.category != PROTOTYPE_TERM_CATEGORY_VALUE ||
-				compile_ast_result_evidence_endpoint(
-					ctx, node->as.returns_witness.computation, &computation_endpoint
-				) != 0 || compile_ast_result_evidence_endpoint(
-					ctx, node->as.returns_witness.value, &value_endpoint
-				) != 0 || computation.term != computation_endpoint ||
-				value.term != value_endpoint ||
-				prototype_term_returns_type(
-					ctx->terms, computation.term, value.term, &returns_type
-				) != 0 || prototype_term_returns_witness(
-					ctx->terms, computation.term, value.term, &p_ret->term
-				) != 0 || operation_add(
-					ctx, PROTOTYPE_TYPED_OCCURRENCE_ATOM, p_ret->term, returns_type,
-					ast_id, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
-					PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
-					PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, 0,
-					&p_ret->operation
-				) != 0) {
+		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE: {
+			const struct prototype_function_graph_association* association =
+				compile_function_graph_association(
+					ctx,
+					node->as.function_graph_witness_reference.owner_symbol_id
+				);
+			if (!association ||
+				association->certified_runner_assignment_id >=
+					ctx->asts->assignment_count) {
+				fprintf(stderr,
+					"function graph witness association unavailable owner=%d association=%p runner=%u assignments=%zu\n",
+					node->as.function_graph_witness_reference.owner_symbol_id,
+					(void*)association,
+					association ? association->certified_runner_assignment_id : PROTOTYPE_INVALID_ID,
+					ctx->asts->assignment_count);
 				return -1;
 			}
-			p_ret->classifier = returns_type;
-			p_ret->category = PROTOTYPE_TERM_CATEGORY_VALUE;
-			p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
-			ctx->metadata->typed_occurrences.occurrences[
-				p_ret->operation
-			].category = PROTOTYPE_TERM_CATEGORY_VALUE;
-			/* Result evidence names the suspended computation value, not a FORCE
-			 * inserted by a strict use of that name. Keep the source occurrence as
-			 * the proof premise while retaining the canonical endpoint Term. */
-			ctx->result_evidence_computation_occurrences[p_ret->operation] =
-				operation_runtime_unwrap_name(ctx->metadata, computation.operation);
-			ctx->result_evidence_value_occurrences[p_ret->operation] =
-				operation_runtime_unwrap_name(ctx->metadata, value.operation);
-			struct prototype_typed_occurrence_graph* occurrence_graph =
-				prototype_compile_metadata_typed_occurrences(ctx->metadata);
-			if (prototype_typed_occurrence_graph_add_edge(
-					occurrence_graph,
-					p_ret->operation,
-					(struct prototype_typed_occurrence_edge) {
-						.role = PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_COMPUTATION,
-						.ordinal = 0,
-						.child_occurrence =
-							ctx->result_evidence_computation_occurrences[p_ret->operation]
-					}
-				) != 0 || prototype_typed_occurrence_graph_add_edge(
-					occurrence_graph,
-					p_ret->operation,
-					(struct prototype_typed_occurrence_edge) {
-						.role = PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_VALUE,
-						.ordinal = 0,
-						.child_occurrence =
-							ctx->result_evidence_value_occurrences[p_ret->operation]
-					}
-				) != 0) {
-				return -1;
+			int status = compile_def_ref(
+				ctx,
+				&ctx->asts->assignments[
+					association->certified_runner_assignment_id
+				],
+				p_ret
+			);
+			if (status != 0) {
+				const struct prototype_ast_term_assignment_def* runner =
+					&ctx->asts->assignments[association->certified_runner_assignment_id];
+				fprintf(stderr,
+					"function graph witness runner lowering failed owner=%d runner_assignment=%u compiled=%d compiling=%d term=%u classifier=%u operation=%u occurrences=%zu\n",
+					node->as.function_graph_witness_reference.owner_symbol_id,
+					association->certified_runner_assignment_id,
+					runner->compiled, runner->compiling, runner->compiled_term,
+					runner->compiled_classifier, runner->compiled_operation,
+					ctx->metadata->typed_occurrences.occurrence_count);
 			}
-			return 0;
+			return status;
 		}
 		case PROTOTYPE_AST_TERMINATES_WITNESS: {
 			struct compile_ref computation;
@@ -2653,6 +2644,28 @@ static int compile_ast_atomic_ref(
 					&constructor_term,
 					&classifier
 				) != 0) {
+				fprintf(
+					stderr,
+					"namespace member resolution failed ast=%u namespace=%s member=%s status=%d term=%u assignments=%u\n",
+					ast_id,
+					symbol_to_string(
+						ctx->symbols,
+						node->as.name_in_namespace.namespace_symbol_id
+					),
+					symbol_to_string(
+						ctx->symbols,
+						node->as.name_in_namespace.symbol_id
+					),
+					status,
+					status == 0 ? namespace_term : PROTOTYPE_INVALID_ID,
+					lookup_def_index_entry_const(
+						ctx->asts,
+						node->as.name_in_namespace.namespace_symbol_id
+					) ? lookup_def_index_entry_const(
+						ctx->asts,
+						node->as.name_in_namespace.namespace_symbol_id
+					)->assignment_count : 0
+				);
 				return -1;
 			}
 			p_ret->term = constructor_term;
@@ -3481,7 +3494,7 @@ static int compile_continue_runtime_computation(
 		binding_id = prototype_term_new_binding(ctx->terms);
 		if (ast_binder_id == PROTOTYPE_INVALID_ID ||
 			binding_id == PROTOTYPE_INVALID_ID ||
-			prototype_context_extend_computation_result(
+			prototype_context_extend_sequence_result(
 				&ctx->metadata->contexts,
 				ctx->context_ids[saved_binder_count],
 				binding_id,
@@ -4153,9 +4166,20 @@ static int compile_ast_application_computation_ref(
 		spine.applications[other] = application;
 	}
 	if (compile_ast_function_ref(ctx, head, &function) != 0) {
+		fprintf(stderr,
+			"application function lowering failed app=%u head=%u tag=%d\n",
+			ast_id, head, ctx->asts->nodes[head].tag);
 		return -1;
 	}
-	return compile_application_spine_step(ctx, &spine, &function, 0, p_ret);
+	int status = compile_application_spine_step(ctx, &spine, &function, 0, p_ret);
+	if (status != 0) {
+		fprintf(stderr,
+			"application spine lowering failed app=%u head=%u tag=%d arguments=%u function-term=%u classifier=%u operation=%u category=%d computation-kind=%d\n",
+			ast_id, head, ctx->asts->nodes[head].tag, spine.argument_count,
+			function.term, function.classifier, function.operation,
+			function.category, function.computation_kind);
+	}
+	return status;
 }
 
 enum ast_lambda_exit_presence {
@@ -4280,15 +4304,8 @@ static int ast_lambda_exit_presence_in(
 			return result == AST_LAMBDA_EXIT_NONE ? AST_LAMBDA_EXIT_NONE :
 				AST_LAMBDA_EXIT_FORBIDDEN;
 		}
-		case PROTOTYPE_AST_RETURNS_WITNESS:
-			return ast_lambda_exit_merge(
-				ast_lambda_exit_presence_in(
-					asts, node->as.returns_witness.computation
-				),
-				ast_lambda_exit_presence_in(
-					asts, node->as.returns_witness.value
-				)
-			);
+		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
+			return AST_LAMBDA_EXIT_NONE;
 		case PROTOTYPE_AST_TERMINATES_WITNESS:
 			return ast_lambda_exit_presence_in(
 				asts, node->as.terminates_witness.computation
@@ -4634,7 +4651,7 @@ static int compile_ast_value_ref(
 		case PROTOTYPE_AST_NAME_IN_NAMESPACE:
 		case PROTOTYPE_AST_TYPE_FORMATION:
 		case PROTOTYPE_AST_TYPE_LITERAL:
-		case PROTOTYPE_AST_RETURNS_WITNESS:
+		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
 		case PROTOTYPE_AST_TERMINATES_WITNESS:
 			if (compile_ast_atomic_ref(ctx, ast_id, p_ret) != 0) {
 				return -1;
@@ -5707,7 +5724,8 @@ static int compile_ast_computation_ref(
 		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION;
 		return 0;
 	}
-	if (node->tag == PROTOTYPE_AST_NAME || node->tag == PROTOTYPE_AST_VAR) {
+	if (node->tag == PROTOTYPE_AST_NAME || node->tag == PROTOTYPE_AST_VAR ||
+		node->tag == PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE) {
 		struct compile_ref name;
 		if (compile_ast_atomic_ref(ctx, ast_id, &name) != 0) {
 			return -1;
@@ -5838,7 +5856,168 @@ static int compile_selected_definition(
 	return 0;
 }
 
+static int function_graph_type_expr_contains_request(
+	const struct prototype_ast_db* asts,
+	uint32_t type_expr,
+	uint32_t depth
+);
+
+static int function_graph_ast_contains_request(
+	const struct prototype_ast_db* asts,
+	uint32_t ast,
+	uint32_t depth
+) {
+	if (!asts || ast >= asts->node_count || depth > 256) {
+		return 0;
+	}
+	const struct prototype_ast_node* node = &asts->nodes[ast];
+	switch (node->tag) {
+		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
+			return 1;
+		case PROTOTYPE_AST_APP:
+			return function_graph_ast_contains_request(
+				asts, node->as.app.function, depth + 1
+			) || function_graph_ast_contains_request(
+				asts, node->as.app.argument, depth + 1
+			);
+		case PROTOTYPE_AST_LAMBDA:
+			return function_graph_type_expr_contains_request(
+				asts, node->as.lambda.binder_type, depth + 1
+			) || function_graph_ast_contains_request(
+				asts, node->as.lambda.body, depth + 1
+			);
+		case PROTOTYPE_AST_MATCH:
+			if (function_graph_ast_contains_request(
+					asts, node->as.match.scrutinee, depth + 1
+				)) {
+				return 1;
+			}
+			for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
+				uint32_t case_id = node->as.match.first_case + i;
+				if (case_id >= asts->case_count || function_graph_ast_contains_request(
+						asts, asts->cases[case_id].body, depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_ASCRIPTION:
+			return function_graph_ast_contains_request(
+				asts, node->as.ascription.term, depth + 1
+			) || function_graph_type_expr_contains_request(
+				asts, node->as.ascription.type_expr, depth + 1
+			);
+		case PROTOTYPE_AST_QUOTE:
+			return function_graph_ast_contains_request(
+				asts, node->as.unary.term, depth + 1
+			);
+		case PROTOTYPE_AST_COMPUTATION_BLOCK:
+		case PROTOTYPE_AST_DEFINITION_BLOCK:
+			for (uint32_t i = 0; i < (node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+					node->as.block.item_count : node->as.definition_block.assignment_count);
+				++i) {
+				uint32_t item = node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+					asts->block_items[node->as.block.first_item + i] :
+					asts->definition_items[node->as.definition_block.first_assignment + i];
+				if (function_graph_ast_contains_request(asts, item, depth + 1)) {
+					return 1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_DEFINITION_SELECT:
+			return function_graph_ast_contains_request(
+				asts, node->as.definition_select.definition_block, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_BINDING:
+			return (node->as.block_binding.binder_type != PROTOTYPE_INVALID_ID &&
+				function_graph_type_expr_contains_request(
+					asts, node->as.block_binding.binder_type, depth + 1
+				)) || function_graph_ast_contains_request(
+				asts, node->as.block_binding.value, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_EXPRESSION:
+			return function_graph_ast_contains_request(
+				asts, node->as.block_expression.term, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_LAMBDA_EXIT:
+			return function_graph_ast_contains_request(
+				asts, node->as.block_lambda_exit.value, depth + 1
+			);
+		case PROTOTYPE_AST_COMPUTATION_FOLD:
+			if (function_graph_ast_contains_request(
+					asts, node->as.computation_fold.computation, depth + 1
+				) || function_graph_ast_contains_request(
+					asts, node->as.computation_fold.return_body, depth + 1
+				)) {
+				return 1;
+			}
+			for (uint32_t i = 0; i < node->as.computation_fold.clause_count; ++i) {
+				uint32_t clause_id = node->as.computation_fold.first_clause + i;
+				if (clause_id >= asts->computation_fold_clause_count ||
+					function_graph_ast_contains_request(
+						asts, asts->computation_fold_clauses[clause_id].body,
+						depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_TERMINATES_WITNESS:
+			return function_graph_ast_contains_request(
+				asts, node->as.terminates_witness.computation, depth + 1
+			);
+		default:
+			return 0;
+	}
+}
+
+static int function_graph_type_expr_contains_request(
+	const struct prototype_ast_db* asts,
+	uint32_t type_expr,
+	uint32_t depth
+) {
+	if (!asts || type_expr >= asts->type_expr_count || depth > 256) {
+		return 0;
+	}
+	const struct prototype_ast_type_expr* expr = &asts->type_exprs[type_expr];
+	switch (expr->tag) {
+		case PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE:
+			return 1;
+		case PROTOTYPE_AST_TYPE_EXPR_APP:
+			return function_graph_type_expr_contains_request(
+				asts, expr->as.app.function, depth + 1
+			) || function_graph_type_expr_contains_request(
+				asts, expr->as.app.argument, depth + 1
+			);
+		case PROTOTYPE_AST_TYPE_EXPR_ARROW:
+			return function_graph_type_expr_contains_request(
+				asts, expr->as.arrow.domain, depth + 1
+			) || function_graph_type_expr_contains_request(
+				asts, expr->as.arrow.codomain, depth + 1
+			);
+		case PROTOTYPE_AST_TYPE_EXPR_PI:
+			return function_graph_type_expr_contains_request(
+				asts, expr->as.pi.domain, depth + 1
+			) || function_graph_type_expr_contains_request(
+				asts, expr->as.pi.codomain, depth + 1
+			);
+		case PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE:
+			return function_graph_type_expr_contains_request(
+				asts, expr->as.computation_reference.result, depth + 1
+			);
+		case PROTOTYPE_AST_TYPE_EXPR_TERMINATES:
+			return function_graph_ast_contains_request(
+				asts, expr->as.terminates.computation, depth + 1
+			);
+		default:
+			return 0;
+	}
+}
+
 static int compile_phase_build_selected_entry(struct compile_context* ctx) {
+	if (ctx && ctx->metadata && ctx->metadata->function_graph_preflight) {
+		return 0;
+	}
 	if (ctx->asts->root_definition_select != PROTOTYPE_INVALID_ID) {
 		const struct prototype_ast_node* select;
 		struct prototype_ast_term_assignment_def* selected;
@@ -5887,6 +6066,116 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 		return -1;
 	}
 
+	if (ctx->metadata->function_graph_preflight ==
+		PROTOTYPE_FUNCTION_GRAPH_COMPILE_OWNER_PREFLIGHT) {
+		/* Lazy compilation may otherwise interleave constructors from a field's
+		 * referenced type with the owner declaration. TypeDeclarationDB stores each
+		 * constructor range contiguously, so establish source type declarations first. */
+		for (uint32_t i = 0; i < (uint32_t)ctx->asts->assignment_count; ++i) {
+			const struct prototype_ast_term_assignment_def* def =
+				&ctx->asts->assignments[i];
+			if (def->ast >= ctx->asts->node_count ||
+				(ctx->asts->nodes[def->ast].tag != PROTOTYPE_AST_TYPE_FORMATION &&
+				ctx->asts->nodes[def->ast].tag != PROTOTYPE_AST_TYPE_LITERAL)) {
+				continue;
+			}
+			ctx->binder_count = 0;
+			ctx->ih_scope_count = 0;
+			uint32_t term;
+			if (compile_def(ctx, &ctx->asts->assignments[i], &term) != 0) {
+				return -1;
+			}
+		}
+		for (uint32_t assignment_id = 0;
+			assignment_id < ctx->asts->assignment_count;
+			++assignment_id) {
+			if (function_graph_ast_contains_request(
+					ctx->asts, ctx->asts->assignments[assignment_id].ast, 0
+				)) {
+				continue;
+			}
+			ctx->binder_count = 0;
+			ctx->ih_scope_count = 0;
+			uint32_t term;
+			if (compile_def(
+					ctx,
+					&ctx->asts->assignments[assignment_id],
+					&term
+				) != 0) {
+				return -1;
+			}
+		}
+		return 0;
+	}
+	if (ctx->metadata->function_graph_preflight ==
+		PROTOTYPE_FUNCTION_GRAPH_COMPILE_GENERATED_CLOSURE) {
+		for (uint32_t association_id = 0;
+			association_id < ctx->metadata->function_graph_association_count;
+			++association_id) {
+			const struct prototype_function_graph_association* association =
+				&ctx->metadata->function_graph_associations[association_id];
+			uint32_t assignments[4] = {
+				association->graph_type_assignment_id,
+				association->result_type_assignment_id,
+				association->certified_runner_assignment_id,
+				association->executable_assignment_id
+			};
+			for (uint32_t i = 0; i < 4; ++i) {
+				if (assignments[i] >= ctx->asts->assignment_count) {
+					return -1;
+				}
+				ctx->binder_count = 0;
+				ctx->ih_scope_count = 0;
+				uint32_t term;
+				if (compile_def(
+						ctx, &ctx->asts->assignments[assignments[i]], &term
+					) != 0) {
+					return -1;
+				}
+			}
+		}
+		for (uint32_t assignment_id = 0;
+			assignment_id < ctx->asts->assignment_count;
+			++assignment_id) {
+			struct prototype_ast_term_assignment_def* assignment =
+				&ctx->asts->assignments[assignment_id];
+			if (assignment->compiled || !function_graph_ast_contains_request(
+					ctx->asts, assignment->ast, 0
+				)) {
+				continue;
+			}
+			ctx->binder_count = 0;
+			ctx->ih_scope_count = 0;
+			uint32_t term;
+			if (compile_def(ctx, assignment, &term) != 0) {
+				return -1;
+			}
+		}
+		return 0;
+	}
+	/* Accepted projections embedded in generated type declarations may refer to
+	 * source type IDs. Compile every type formation in source order before any
+	 * term consumer can trigger a generated family lazily. */
+	for (uint32_t i = 0; i < (uint32_t)ctx->asts->assignment_count; ++i) {
+		const struct prototype_ast_term_assignment_def* def = &ctx->asts->assignments[i];
+		if (def->ast >= ctx->asts->node_count ||
+			(ctx->asts->nodes[def->ast].tag != PROTOTYPE_AST_TYPE_FORMATION &&
+			ctx->asts->nodes[def->ast].tag != PROTOTYPE_AST_TYPE_LITERAL)) {
+			continue;
+		}
+		ctx->binder_count = 0;
+		ctx->ih_scope_count = 0;
+		uint32_t term;
+		if (compile_def(ctx, &ctx->asts->assignments[i], &term) != 0) {
+			fprintf(
+				stderr,
+				"type formation compile failed assignment=%u name=%d ast=%u\n",
+				i, def->name_symbol_id, def->ast
+			);
+			return -1;
+		}
+	}
+
 	for (uint32_t i = 0; i < (uint32_t)ctx->asts->assignment_count; ++i) {
 		uint32_t term;
 		const struct prototype_ast_term_assignment_def* def = &ctx->asts->assignments[i];
@@ -5900,6 +6189,13 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 		size_t previous_error_count = ctx->metadata ?
 			ctx->metadata->resolve_error_count : 0;
 		if (compile_def(ctx, &ctx->asts->assignments[i], &term) != 0) {
+			fprintf(
+				stderr,
+				"definition compile failed assignment=%u name=%d ast=%u\n",
+				i,
+				def->name_symbol_id,
+				def->ast
+			);
 			if (!ctx->metadata ||
 				ctx->metadata->resolve_error_count == previous_error_count) {
 				(void)add_resolve_error_at_span(
@@ -6292,34 +6588,6 @@ static int compile_rebuild_occurrence_core(
 	switch (occurrence->tag) {
 		case PROTOTYPE_TYPED_OCCURRENCE_ATOM: {
 			uint32_t old_computation;
-			uint32_t old_value;
-			if (prototype_term_returns_witness_info(
-					ctx->terms,
-					occurrence->core_term,
-					&old_computation,
-					&old_value
-				) == 0) {
-				(void)old_computation;
-				(void)old_value;
-				if (compile_occurrence_core_child_term(
-						ctx,
-						occurrence_id,
-						PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_COMPUTATION,
-						0,
-						&first
-					) != 0 || compile_occurrence_core_child_term(
-						ctx,
-						occurrence_id,
-						PROTOTYPE_TERM_CHILD_RESULT_EVIDENCE_VALUE,
-						0,
-						&second
-				) != 0 || prototype_term_returns_witness(
-					ctx->terms, first, second, p_term
-				) != 0) {
-					return -1;
-				}
-				return 0;
-			}
 			if (prototype_term_terminates_witness_info(
 					ctx->terms, occurrence->core_term, &old_computation
 				) != 0) {

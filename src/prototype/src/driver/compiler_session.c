@@ -1,9 +1,33 @@
 #include "a_program/driver/compiler_session.h"
+#include "a_program/frontend/function_graph.h"
 #include "a_program/frontend/reader.h"
+#include "a_program/frontend/ast_inspect.h"
 #include "a_program/frontend/universe_collection.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+static int program_has_function_graph_requests(
+	const struct prototype_ast_db* asts
+) {
+	if (!asts) {
+		return 0;
+	}
+	for (size_t i = 0; i < asts->type_expr_count; ++i) {
+		if (asts->type_exprs[i].tag ==
+				PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE) {
+			return 1;
+		}
+	}
+	for (size_t i = 0; i < asts->node_count; ++i) {
+		if (asts->nodes[i].tag ==
+				PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
 static int prototype_install_system_nat(struct prototype_program* program) {
 	int nat_symbol;
@@ -188,12 +212,17 @@ int prototype_compile_graph_with_imports(
 		program->metadata->definition_thunk_policy =
 			program->compile_options.definition_thunk_policy;
 	}
+	int function_graph_requested = program_has_function_graph_requests(program->asts);
+	program->metadata->function_graph_preflight = function_graph_requested ?
+		PROTOTYPE_FUNCTION_GRAPH_COMPILE_OWNER_PREFLIGHT :
+		PROTOTYPE_FUNCTION_GRAPH_COMPILE_NORMAL;
 	if (prototype_ast_compile_pending_with_imports(
 		program->asts,
 		program->terms,
 		program->type_declarations,
 		program->judgement,
 		program->metadata,
+		program->symbols,
 		program->intrinsic_environment,
 		program->namespace_symbol_id,
 		imported_interfaces,
@@ -223,6 +252,58 @@ int prototype_compile_graph_with_imports(
 			);
 		}
 		return -1;
+	}
+	if (function_graph_requested) {
+		if (prototype_function_graph_generate_requested(
+				program->asts,
+				program->terms,
+				program->type_declarations,
+				program->judgement,
+				program->metadata,
+				program->symbols
+				) != 0) {
+			if (error) {
+				snprintf(
+					error->message,
+					sizeof(error->message),
+					"%s",
+						"failed to generate accepted function graph"
+					);
+				}
+			return -1;
+		}
+		/* The source pass is an accepted immutable prefix, not disposable scratch.
+		 * Extend it with generated declarations, promote the certified projection,
+		 * then compile only the graph-reference consumers skipped by the first pass. */
+		program->metadata->function_graph_preflight =
+			PROTOTYPE_FUNCTION_GRAPH_COMPILE_GENERATED_CLOSURE;
+
+		if (prototype_ast_compile_pending_with_imports(
+				program->asts,
+				program->terms,
+				program->type_declarations,
+				program->judgement,
+				program->metadata,
+				program->symbols,
+				program->intrinsic_environment,
+				program->namespace_symbol_id,
+				imported_interfaces,
+				imported_interface_count
+			) != 0 || prototype_function_graph_finalize_associations(
+				program->asts, program->metadata
+			) != 0) {
+			if (error) {
+				snprintf(
+					error->message,
+					sizeof(error->message),
+					"%s",
+					"failed to generate accepted function graph"
+				);
+			}
+			return -1;
+		}
+		program->metadata->function_graph_preflight =
+			PROTOTYPE_FUNCTION_GRAPH_COMPILE_NORMAL;
 	}
 	if (prototype_link_external_refs(program) != 0) {
 		if (error) {

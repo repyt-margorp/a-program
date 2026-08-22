@@ -2,7 +2,7 @@
 
 Date: 2026-08-22 JST
 
-Status: implementation not started
+Status: implementation in progress
 
 Base revision: `715eaf1e70b1c6fa7a0e6ed7a098777823fca666`
 
@@ -53,20 +53,45 @@ to the kernel.
 - [x] Audit current `Returns` Term, Context, Claim, Derivation, and artifact use.
 - [x] Audit the current indexed-family and recursive-IH representation.
 - [x] Compare the proposal with primary function-graph and dependent-CBPV work.
-- [ ] Accept this revised semantic contract before implementation.
+- [x] Accept this revised semantic contract before implementation.
 
 ### Implementation
 
-- [ ] FGR0: freeze syntax, ownership, and certified-execution rules.
-- [ ] FGR1: add graph requests and immutable accepted-definition views.
-- [ ] FGR2: generate `@length`, its result package, and `*length`.
-- [ ] FGR3: derive executable `length` by evidence erasure/projection.
+- [x] FGR0: freeze syntax, ownership, and certified-execution rules.
+- [x] FGR1: add graph requests and immutable accepted-definition views.
+- [x] FGR2: generate `@length`, its result package, and `*length`.
+- [x] FGR3: derive executable `length` by evidence erasure/projection.
 - [ ] FGR4: support helper calls and the `Acc` QuickSort worker graph.
-- [ ] FGR5: publish and replay generated graph objects in artifact v83.
-- [ ] FGR6: migrate graph-dependent proof fixtures away from `Returns`.
-- [ ] FGR7: remove `Returns` completely and rename sequencing provenance.
+- [x] FGR5: publish and replay generated graph objects in artifact v83.
+- [x] FGR6: remove obsolete `Returns` fixtures and preserve separate sequencing
+  coverage. QuickSort graph-property fixtures remain part of FGR4.
+- [x] FGR7: remove `Returns` completely and rename sequencing provenance.
 - [ ] FGR8: run correctness, negative, determinism, and performance gates.
-- [ ] Commit and push each independently green phase to `main`.
+- [ ] Commit and push the green implementation checkpoint to `main`.
+
+### 2.1 Implemented checkpoint
+
+The current implementation checkpoint provides:
+
+- source `@f` and `*f` requests keyed by the unique source definition;
+- an immutable accepted-definition view over accepted AST, occurrence,
+  classifier, effect, and totality authorities;
+- an ordinary generated graph IADT, dependent result package, certified runner,
+  and executable projection for the supported pure-total fragment;
+- branch-precise constructors and recursive graph premises for unary direct
+  Match recursion, covered by `length`;
+- a conservative coarse `executed` graph for other curried pure-total functions;
+- artifact v83 owner/graph/result/certified-runner associations, dense
+  publication, readback, link validation, and malformed-index rejection;
+- complete removal of active `Returns` syntax, Term formers, proof rules, and
+  the `TERMINATES_FROM_RETURNS` bridge;
+- sequence-result Context provenance and direct totality witnesses justified by
+  accepted `TOTAL` computation classifiers.
+
+The coarse graph is deliberately **not** accepted as completion of FGR4. It
+records that a result was produced, but it does not expose QuickSort's lower and
+upper recursive calls. It is useful only as a typed execution package while the
+structure-preserving generator remains unsupported.
 
 ## 3. Critical Review of PR #19
 
@@ -116,9 +141,12 @@ f x   : Comp(E, B)
 @f    : A -> B -> @
 ```
 
-The final index of `@f` requires a value of type `B`. `f x` is a computation of
-type `Comp(E,B)`. Substituting that computation into the value index would erase
-the exact value/computation boundary that CBPV was introduced to preserve.
+The final index of `@f` requires a value of type `B`. `f x` is initially a
+computation of type `Comp(E,B)`, so its Core computation node cannot be inserted
+directly into the value index. The existing type-expression elaborator may,
+however, ahead-of-time evaluate an accepted total and pure application through
+`RETURN(v)` and insert the extracted `v`. This is A Program's ordinary static
+computation policy and does not collapse the CBPV boundary.
 
 Dependent CBPV makes this a real semantic issue, not parser inconvenience.
 Dependent sequencing needs the value produced by a computation before a later
@@ -253,14 +281,16 @@ dependent sum `Sigma (y : B). @f x y`:
 
 ```text
 f.Result :=
-	@\x : A =>
+	\x : A =>
 	{
-		returned : (y : B) -> @f x y -> * x;
+		returned : (y : B) -> @f x y -> *;
 	};
 ```
 
-This is generated with the existing indexed-family mechanism. It is not a
-built-in Sigma, existential, or special kernel object.
+Here `x` is a uniform parameter, not a family index. This is generated with the
+existing parameterized inductive-family mechanism and is equivalent to a
+dependent package `Sigma (y : B). @f x y`. It is not a built-in Sigma,
+existential, or special kernel object.
 
 ### 4.3 Global `*f`
 
@@ -450,10 +480,12 @@ the generator must not guess.
 
 - [ ] Add negative parser fixtures proving that bare `@`, indexed `@\i`, type
   literals, Match labels, local `*field`, and global `*f` remain unambiguous.
-- [ ] Add a compile-only fixture documenting the certified-result classifier.
-- [ ] Add a negative fixture for `@f x (f x)` at the raw CBPV boundary.
+- [x] Add compile fixtures documenting the certified-result classifier and
+  dependent package elimination.
+- [x] Add a fixture proving that total/pure `f x` in a graph index is accepted
+  only through existing ahead-of-time value extraction.
 - [ ] Record current QuickSort and result-evidence performance baselines.
-- [ ] Add static checks forbidding new graph-specific Core and proof tags.
+- [x] Add static checks forbidding new graph-specific Core and proof tags.
 
 Exit gate:
 
@@ -474,15 +506,15 @@ Primary files:
 
 Tasks:
 
-- [ ] Add `FUNCTION_GRAPH_REFERENCE` and
+- [x] Add `FUNCTION_GRAPH_REFERENCE` and
   `FUNCTION_GRAPH_WITNESS_REFERENCE` AST nodes.
-- [ ] Resolve `@` plus identifier in type-atom parser state as a graph request.
-- [ ] Resolve `*name` locally first, then globally.
-- [ ] Add stable owner identity and request-state records.
-- [ ] Add the immutable accepted-definition view API.
+- [x] Resolve `@` plus identifier in type-atom parser state as a graph request.
+- [x] Resolve `*name` locally first, then globally.
+- [x] Add stable owner identity and request-state records.
+- [x] Add the immutable accepted-definition view API.
 - [ ] Reject local Lambdas, higher-order variables, ambiguous names, nonfunction
   owners, and imports without graph exports.
-- [ ] Keep `::` as post-synthesis validation. It must not drive graph shape.
+- [x] Keep `::` as post-synthesis validation. It must not drive graph shape.
 
 Exit gate:
 
@@ -500,10 +532,10 @@ Tasks:
 
 - [ ] Implement accepted-view traversal for constructor, Match, RETURN,
   zero-clause COMPUTATION_FOLD, APP, and guarded IH.
-- [ ] Generate `@length` as an ordinary indexed family.
-- [ ] Generate `length.Result` as an ordinary indexed family.
-- [ ] Generate `*length` as the certified execution.
-- [ ] Compile every generated object through existing lowering and fixed point.
+- [x] Generate `@length` as an ordinary indexed family.
+- [x] Generate `length.Result` as an ordinary indexed family.
+- [x] Generate `*length` as the certified execution.
+- [x] Compile every generated object through existing lowering and fixed point.
 - [ ] Reuse accepted Context/Substitution IDs through view references; create
   new Context extensions only for genuinely generated binders.
 - [ ] Reject unsupported source operations with a precise residual diagnostic.
@@ -518,13 +550,13 @@ Exit gate:
 
 Tasks:
 
-- [ ] Generate the hidden certified runner before publishing `f`.
-- [ ] Generate `f` as a zero-clause COMPUTATION_FOLD over that runner.
-- [ ] Ensure all source references to `f` select the projection, not an earlier
+- [x] Generate the hidden certified runner before publishing the final `f`.
+- [x] Generate `f` as sequencing/projection over that runner.
+- [x] Ensure published references to `f` select the projection, not an earlier
   provisional body Term.
-- [ ] Keep one definition authority; do not retain the old executable body as
+- [x] Keep one published definition authority; do not retain the old body as
   another published implementation.
-- [ ] Add runtime tests showing that `f x` and one `*f x` certified execution
+- [x] Add runtime tests showing that `f x` and one `*f x` certified execution
   choose the same packaged output by construction.
 - [ ] Add resource-usage accounting for the package and graph witness.
 
@@ -548,6 +580,19 @@ quickSort
 
 Tasks:
 
+- [ ] Replace syntactic root-Lambda counting with an accepted dependent binder
+  path. `quickSortAcc`'s final `input` binder is introduced under the `Acc.acc`
+  branch, so scanning only consecutive root Lambdas loses a real argument.
+- [ ] Generalize precise graph indices from `(input, output)` to the full
+  dependent argument spine plus output. Project each later argument classifier
+  through the binding map built by earlier arguments.
+- [ ] Implement recursive accepted-AST traversal for Lambda, Match, RETURN,
+  APP, zero-clause COMPUTATION_FOLD, and computation blocks. Unsupported effect
+  clauses must produce a residual instead of falling back to `executed`.
+- [ ] Lift the motive of the Match that owns an IH from ordinary output to the
+  generated result package. The lifted local IH must return the recursive
+  output and graph witness together; running the old IH and forging a graph
+  afterward is forbidden.
 - [ ] Generate helper graph/result packages only when required by the requested
   QuickSort graph.
 - [ ] Treat the comparator as a pure higher-order input. Record its observed
@@ -567,29 +612,35 @@ Exit gate:
 - the partition branch exposes exactly two recursive graph premises;
 - no QuickSort-specific Core tag, proof kind, or trusted rule exists.
 
+Implementation stop condition: the generic coarse `executed` constructor must
+not be used to satisfy this gate. For `quickSortAcc`, a successful test must
+eliminate its generated partition constructor and receive two distinct graph
+premises corresponding to the lower call followed by the upper call.
+
 ### FGR5: Artifact v83
 
 Primary files:
 
-- `src/prototype/spec/artifact_v82.schema`
+- `src/prototype/spec/artifact_v83.schema`
 - `src/prototype/include/a_program/artifact/interface.h`
-- `src/prototype/include/a_program/artifact/wire_v82.h`
+- `src/prototype/include/a_program/artifact/wire_v83.h`
 - `src/prototype/src/artifact/interface.c`
 - `src/prototype/src/artifact/publication/`
-- `src/prototype/src/artifact/wire_v82.c`
+- `src/prototype/src/artifact/wire_v83.c`
 - `src/prototype/src/artifact/link.c`
 
 Tasks:
 
-- [ ] Archive v82 and introduce v83 with no read compatibility facade.
-- [ ] Add an explicit owner-export to graph-family/result-family/certified-runner
+- [x] Archive v82 and introduce v83 with no read compatibility facade.
+- [x] Add an explicit owner-export to graph-family/result-family/certified-runner
   association table.
-- [ ] Publish generated IADTs, constructors, Terms, Claims, and Derivations by
+- [x] Publish generated IADTs, constructors, Terms, Claims, and Derivations by
   the ordinary dense publication path.
-- [ ] Keep generated source recipe data out of the artifact unless a later
+- [x] Keep generated source recipe data out of the artifact unless a later
   regeneration feature proves it necessary.
-- [ ] Import projections only through the explicit association table.
-- [ ] Reject owner/graph identity mismatches during link and replay.
+- [x] Import graph ownership only through the explicit association table.
+- [x] Reject malformed or out-of-range owner/graph association identities during
+  read, link, and replay.
 
 Exit gate:
 
@@ -603,12 +654,12 @@ Tasks:
 
 - [ ] Replace the named-function parts of
   `result_evidence_dependent_check.p` with certified graph execution.
-- [ ] Add permanent generated `length` graph tests.
+- [x] Add permanent generated `length` graph tests.
 - [ ] Add permanent QuickSort worker/wrapper graph tests.
 - [ ] Add negative tests for wrong owner, wrong output index, wrong recursive
   premise, wrong Context, forged constructor, partial owner, effectful owner,
   and missing imported graph export.
-- [ ] Preserve tests for ordinary CBPV dependent sequencing independently of
+- [x] Preserve tests for ordinary CBPV dependent sequencing independently of
   `Returns`.
 
 Exit gate:
@@ -625,36 +676,36 @@ implementation and v83 must contain no active `Returns` contract.
 
 Remove:
 
-- [ ] `PROTOTYPE_AST_RETURNS_WITNESS`.
-- [ ] `PROTOTYPE_AST_TYPE_EXPR_RETURNS`.
-- [ ] `PROTOTYPE_TERM_RETURNS_TYPE_FORMER`.
-- [ ] `PROTOTYPE_TERM_RETURNS_WITNESS_FORMER`.
-- [ ] `RETURNS_TYPE_FORMATION` proof kind.
-- [ ] `RETURNS_EVALUATION` proof kind.
-- [ ] `RETURNS_SEQUENCE_BINDING` proof kind.
-- [ ] `TERMINATES_FROM_RETURNS` proof kind.
-- [ ] `#.Returns` and `#.returns` parser branches.
-- [ ] Returns-specific canonicalization, conversion, HOTT/dimension action,
+- [x] `PROTOTYPE_AST_RETURNS_WITNESS`.
+- [x] `PROTOTYPE_AST_TYPE_EXPR_RETURNS`.
+- [x] `PROTOTYPE_TERM_RETURNS_TYPE_FORMER`.
+- [x] `PROTOTYPE_TERM_RETURNS_WITNESS_FORMER`.
+- [x] `RETURNS_TYPE_FORMATION` proof kind.
+- [x] `RETURNS_EVALUATION` proof kind.
+- [x] `RETURNS_SEQUENCE_BINDING` proof kind.
+- [x] `TERMINATES_FROM_RETURNS` proof kind.
+- [x] `#.Returns` and `#.returns` parser branches.
+- [x] Returns-specific canonicalization, conversion, HOTT/dimension action,
   replay, artifact, metadata, and diagnostic code.
-- [ ] Returns fixtures and the current `test_result_evidence.sh` contract.
+- [x] Returns fixtures and the current `test_result_evidence.sh` contract.
 
 Preserve and clarify:
 
-- [ ] `RETURN` as the CBPV computation constructor.
-- [ ] `COMPUTATION_FOLD` as sequencing and handler fold.
-- [ ] computation result binders, renamed to sequence result binders.
-- [ ] direct `Terminates` formation and witnesses justified by accepted
+- [x] `RETURN` as the CBPV computation constructor.
+- [x] `COMPUTATION_FOLD` as sequencing and handler fold.
+- [x] computation result binders, renamed to sequence result binders.
+- [x] direct `Terminates` formation and witnesses justified by accepted
   `TOTAL` computation classifiers.
-- [ ] normalization and evaluation results in TermDB.
+- [x] normalization and evaluation results in TermDB.
 
 Refactor:
 
-- [ ] Rename `result_evidence.inc` to a totality-specific module after Returns
+- [x] Replace `result_evidence.inc` with a totality-specific module after Returns
   code is deleted.
-- [ ] Remove Returns-only metadata arrays and counters.
-- [ ] Rename Context fields and artifact enum values from computation-result
+- [x] Remove Returns-only metadata arrays and counters.
+- [x] Rename Context fields and artifact enum values from computation-result
   evidence terminology to sequencing provenance.
-- [ ] Update `src/prototype/README.md` and active schemas.
+- [x] Update `src/prototype/README.md` and active schemas.
 
 Exit gate:
 
@@ -670,12 +721,12 @@ returns no active implementation hits. Archived v80-v82 schemas are excluded.
 
 Correctness:
 
-- [ ] Build with `-std=c11 -Wall -Wextra` and no new warnings.
-- [ ] Run focused parser, IADT, Context, Substitution, CBPV, graph, QuickSort,
+- [x] Build with `-std=c11 -Wall -Wextra` and no new warnings.
+- [x] Run focused parser, IADT, Context, Substitution, CBPV, graph, QuickSort,
   artifact, link, and replay tests.
-- [ ] Run the complete prototype integration suite.
-- [ ] Run deterministic artifact regeneration checks.
-- [ ] Validate generated Claim premise ordering during accepted replay.
+- [x] Run the complete prototype integration suite.
+- [x] Run deterministic artifact regeneration checks.
+- [x] Validate generated Claim premise ordering during accepted replay.
 - [ ] Verify generated graph evidence remains proof-relevant under HOTT action.
 
 Performance baselines measured at the planning revision:
@@ -765,6 +816,37 @@ requirements, not a claim that one cited paper already contains this exact
 calculus.
 
 ## 11. Completion Report Template
+
+### 11.1 2026-08-22 implementation checkpoint
+
+```text
+Implemented revision: pending checkpoint commit
+Artifact version: v83
+
+Graph-enabled definitions: unary direct-Match recursion; conservative curried
+                           pure-total execution packages
+Unsupported definitions: structure-preserving nested Match/fold graphs,
+                         effectful and partial definitions
+
+Correctness tests: focused function graph, totality, CBPV, IADT, and QuickSort
+Negative tests: unknown owner, computation-valued graph index, removed Returns
+Artifact/replay tests: v83 association read/write/link and malformed index
+Full suite: 41/41 passed in 85.850 s
+
+Per-file additions/deletions: reported by staged diff
+Total additions: 4,891
+Total deletions: 2,282
+Net change: +2,609
+
+Returns active references remaining: none; negative syntax fixture only
+Known residual theory obligations: FGR4 certified motive lifting, two recursive
+                                   QuickSort premises, wrapper graph theorem,
+                                   higher/effectful function graphs
+```
+
+This checkpoint does not claim QuickSort graph induction is complete. Existing
+fuel-free QuickSort execution remains tested, while its generated graph request
+currently selects the explicitly documented coarse package.
 
 At completion, append:
 

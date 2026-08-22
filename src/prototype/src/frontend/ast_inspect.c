@@ -51,8 +51,8 @@ static const char* ast_tag_name(int tag) {
 			return "block-lambda-exit";
 		case PROTOTYPE_AST_COMPUTATION_FOLD:
 			return "computation-fold";
-		case PROTOTYPE_AST_RETURNS_WITNESS:
-			return "returns-witness";
+		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
+			return "function-graph-witness-reference";
 		case PROTOTYPE_AST_TERMINATES_WITNESS:
 			return "terminates-witness";
 		default:
@@ -84,8 +84,10 @@ static const char* type_expr_tag_name(int tag) {
 				return "host-type";
 			case PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE:
 				return "name-in-namespace";
-			case PROTOTYPE_AST_TYPE_EXPR_RETURNS:
-				return "returns";
+			case PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE:
+				return "function-graph-reference";
+			case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION:
+				return "accepted-projection";
 			case PROTOTYPE_AST_TYPE_EXPR_TERMINATES:
 				return "terminates";
 			default:

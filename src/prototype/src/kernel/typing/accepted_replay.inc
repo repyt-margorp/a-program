@@ -4504,106 +4504,6 @@ static int validate_relation_witness_intro_proof(
 	return 0;
 }
 
-static int validate_returns_type_formation_proof(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_proposition* relation,
-	const struct prototype_judgement_rule_application_view* proof
-) {
-	return terms && type_declarations && relation && proof &&
-		relation->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-		relation->classifier < terms->term_count &&
-		terms->terms[relation->classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR &&
-		proof->premise_count == 2 && returns_claim_shape(
-			terms, type_declarations, relation->context_id, relation->subject,
-			proof->premises[0].proposition,
-			proof->premises[1].proposition
-		) == 0 ? 0 : -1;
-}
-
-static int validate_returns_evaluation_proof(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_proposition* relation,
-	const struct prototype_judgement_rule_application_view* proof
-) {
-	uint32_t suspended;
-	uint32_t expected;
-	uint32_t witness_computation;
-	uint32_t witness_value;
-	int witness_computation_equal = 0;
-	int witness_value_equal = 0;
-	return terms && type_declarations && relation && proof &&
-		relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-		proof->premise_count == 3 &&
-		proof->premises[0].proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-		proof->premises[0].proposition->context_id == relation->context_id &&
-		proof->premises[0].proposition->subject == relation->classifier &&
-		returns_claim_shape(
-			terms, type_declarations, relation->context_id, relation->classifier,
-			proof->premises[1].proposition,
-			proof->premises[2].proposition
-		) == 0 && prototype_term_returns_type_info(
-			terms, relation->classifier, &suspended, &expected
-		) == 0 && prototype_term_returns_witness_info(
-			terms, relation->subject, &witness_computation, &witness_value
-		) == 0 && prototype_judgement_result_computation_endpoints_equal(
-			terms, type_declarations, witness_computation, suspended,
-			PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT,
-			&witness_computation_equal
-		) == 0 && witness_computation_equal &&
-		prototype_term_core_shape_equal_for_link(
-			terms, type_declarations, witness_value,
-			terms, type_declarations, expected, &witness_value_equal
-		) == 0 && witness_value_equal &&
-		returns_evaluation_is_valid(
-			terms, type_declarations, suspended, expected,
-			PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT
-		) == 0 ? 0 : -1;
-}
-
-static int validate_returns_sequence_binding_proof(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_context_db* contexts,
-	const struct prototype_judgement_proposition* relation,
-	const struct prototype_judgement_rule_application_view* proof
-) {
-	uint32_t suspended;
-	uint32_t expected;
-	uint32_t witness_computation;
-	uint32_t witness_value;
-	int witness_computation_equal = 0;
-	int witness_value_equal = 0;
-	return terms && type_declarations && contexts && relation && proof &&
-		relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-		proof->premise_count == 3 &&
-		proof->premises[0].proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-		proof->premises[0].proposition->context_id == relation->context_id &&
-		proof->premises[0].proposition->subject == relation->classifier &&
-		returns_claim_shape(
-			terms, type_declarations, relation->context_id, relation->classifier,
-			proof->premises[1].proposition,
-			proof->premises[2].proposition
-		) == 0 && prototype_term_returns_type_info(
-			terms, relation->classifier, &suspended, &expected
-		) == 0 && prototype_term_returns_witness_info(
-			terms, relation->subject, &witness_computation, &witness_value
-		) == 0 && prototype_judgement_result_computation_endpoints_equal(
-			terms, type_declarations, witness_computation, suspended,
-			PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT,
-			&witness_computation_equal
-		) == 0 && witness_computation_equal &&
-		prototype_term_core_shape_equal_for_link(
-			terms, type_declarations, witness_value,
-			terms, type_declarations, expected, &witness_value_equal
-		) == 0 && witness_value_equal &&
-		returns_sequence_binding_is_valid(
-			terms, type_declarations, contexts, relation->context_id,
-			suspended, expected
-		) == 0 ? 0 : -1;
-}
-
 static int validate_terminates_type_formation_proof(
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_proposition* relation,
@@ -4623,34 +4523,6 @@ static int validate_terminates_type_formation_proof(
 		proof->premises[0].proposition->classifier < terms->term_count &&
 		terms->terms[proof->premises[0].proposition->classifier].tag ==
 			PROTOTYPE_TERM_THUNK_TYPE ? 0 : -1;
-}
-
-static int validate_terminates_from_returns_proof(
-	const struct prototype_term_db* terms,
-	const struct prototype_judgement_proposition* relation,
-	const struct prototype_judgement_rule_application_view* proof
-) {
-	uint32_t suspended;
-	uint32_t witness_computation;
-	uint32_t returns_computation;
-	uint32_t returns_value;
-	return terms && relation && proof &&
-		relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-		proof->premise_count == 2 &&
-		proof->premises[0].proposition->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
-		proof->premises[0].proposition->context_id == relation->context_id &&
-		proof->premises[0].proposition->subject == relation->classifier &&
-		prototype_term_terminates_type_info(
-			terms, relation->classifier, &suspended
-		) == 0 && prototype_term_terminates_witness_info(
-			terms, relation->subject, &witness_computation
-		) == 0 && witness_computation == suspended &&
-		proof->premises[1].proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-		proof->premises[1].proposition->context_id == relation->context_id &&
-		prototype_term_returns_type_info(
-			terms, proof->premises[1].proposition->classifier,
-			&returns_computation, &returns_value
-		) == 0 && returns_computation == suspended ? 0 : -1;
 }
 
 static int validate_terminates_total_computation_proof(
@@ -6148,14 +6020,27 @@ int prototype_judgement_validate_occurrence_typing(
 					core->as.constructor.owner
 				);
 			if (!belongs || !returns_owner) {
+				uint32_t debug_type_id = PROTOTYPE_INVALID_ID;
+				uint32_t debug_args[16];
+				uint32_t debug_arg_count = 0;
+				int debug_type_status = prototype_term_type_instance_info(
+					terms,
+					core->as.constructor.owner,
+					&debug_type_id,
+					debug_args,
+					&debug_arg_count
+				);
 				fprintf(stderr,
-					"occurrence constructor validation failed occurrence=%u core-tag=%d owner=%u constructor=%u classifier=%u belongs=%d returns-owner=%d\n",
+					"occurrence constructor validation failed occurrence=%u core-tag=%d owner=%u constructor=%u classifier=%u belongs=%d returns-owner=%d type-status=%d type=%u arguments=%u types=%zu constructors=%zu\n",
 					operation_id, core->tag,
 					core->tag == PROTOTYPE_TERM_CONSTRUCTOR ?
 						core->as.constructor.owner : PROTOTYPE_INVALID_ID,
 					core->tag == PROTOTYPE_TERM_CONSTRUCTOR ?
 						core->as.constructor.constructor_id : PROTOTYPE_INVALID_ID,
-					operation->classifier, belongs, returns_owner);
+					operation->classifier, belongs, returns_owner,
+					debug_type_status, debug_type_id, debug_arg_count,
+					type_declarations->semantic_schema.type_count,
+					type_declarations->semantic_schema.constructor_count);
 				return -1;
 			}
 			return 0;
@@ -7561,36 +7446,8 @@ int prototype_judgement_validate_accepted_graph(
 					return -1;
 				}
 				break;
-			case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_TYPE_FORMATION:
-				if (validate_returns_type_formation_proof(
-						terms, type_declarations, relation, proof
-					) != 0) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION:
-				if (validate_returns_evaluation_proof(
-						terms, type_declarations, relation, proof
-					) != 0) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_SEQUENCE_BINDING:
-				if (validate_returns_sequence_binding_proof(
-						terms, type_declarations, contexts, relation, proof
-					) != 0) {
-					return -1;
-				}
-				break;
 			case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TYPE_FORMATION:
 				if (validate_terminates_type_formation_proof(
-						terms, relation, proof
-					) != 0) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS:
-				if (validate_terminates_from_returns_proof(
 						terms, relation, proof
 					) != 0) {
 					return -1;
@@ -7859,16 +7716,8 @@ static const char* proof_kind_name(int proof_kind) {
 			return "dimension-action-constructor";
 		case PROTOTYPE_JUDGEMENT_PROOF_DIMENSION_ACTION_THUNK_RETURN_WITNESS:
 			return "dimension-action-thunk-return-witness";
-		case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_TYPE_FORMATION:
-			return "returns-type-formation";
-		case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_EVALUATION:
-			return "returns-evaluation";
-		case PROTOTYPE_JUDGEMENT_PROOF_RETURNS_SEQUENCE_BINDING:
-			return "returns-sequence-binding";
 		case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TYPE_FORMATION:
 			return "terminates-type-formation";
-		case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_FROM_RETURNS:
-			return "terminates-from-returns";
 		case PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TOTAL_COMPUTATION:
 			return "terminates-total-computation";
 		default:

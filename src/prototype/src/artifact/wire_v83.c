@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v82.h"
+#include "a_program/artifact/wire_v83.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -389,6 +389,45 @@ int prototype_artifact_read_text_interface(
 		if (export->name_symbol_id < 0) {
 			return -1;
 		}
+	}
+
+	if (fscanf(stream, "%255s %zu", word, &count) != 2 ||
+		strcmp(word, "function_graph_associations") != 0 ||
+		count > PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY) {
+		return -1;
+	}
+	interface->function_graph_association_count = 0;
+	for (size_t i = 0; i < count; ++i) {
+		size_t id;
+		struct prototype_artifact_function_graph_association* association =
+			&interface->function_graph_associations[
+				interface->function_graph_association_count
+			];
+		if (fscanf(
+				stream,
+				"%255s %zu %u %u %u %u",
+				word,
+				&id,
+				&association->owner_term_export_index,
+				&association->graph_type_export_index,
+				&association->result_type_export_index,
+				&association->certified_runner_term_export_index
+			) != 6 || strcmp(word, "function_graph_association") != 0 ||
+			id != interface->function_graph_association_count ||
+			association->owner_term_export_index >= interface->term_export_count ||
+			association->graph_type_export_index >= interface->type_export_count ||
+			association->result_type_export_index >= interface->type_export_count ||
+			association->certified_runner_term_export_index >=
+				interface->term_export_count) {
+			return -1;
+		}
+		for (size_t j = 0; j < interface->function_graph_association_count; ++j) {
+			if (interface->function_graph_associations[j].owner_term_export_index ==
+					association->owner_term_export_index) {
+				return -1;
+			}
+		}
+		interface->function_graph_association_count++;
 	}
 
 	if (fscanf(stream, "%255s %zu", word, &count) != 2 ||
@@ -897,8 +936,6 @@ static int read_artifact_term(
 				free(images);
 				return status;
 			}
-			case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
-			case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
 			case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
 			case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 				return 0;
@@ -1280,8 +1317,6 @@ static int artifact_validate_term_refs(
 			) && prototype_dimension_operator_get(
 				dimension_operators, term->as.dimension_action.operator_id
 			) ? 0 : -1;
-		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
-		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
 		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
 		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			return 0;
@@ -1382,6 +1417,7 @@ static int artifact_resolve_representation_handles(
 			representation_id >= type_declarations->representation_db.representation_count) {
 			return -1;
 		}
+		term->as.type_former.declaration_type_id = representative_type_id;
 		term->as.type_former.representation_id = representation_id;
 		term->as.type_former.constructor_count =
 			type_declarations->semantic_schema.type_declarations[
@@ -2365,7 +2401,7 @@ int prototype_artifact_read_text_typed_occurrences(
 				&context.binding_id,
 				&classifier,
 				&context.extension_kind,
-				&context.source_computation,
+				&context.producer_computation,
 				&context.depth
 			) != 8 ||
 			strcmp(word, "context") != 0 ||
@@ -2374,9 +2410,9 @@ int prototype_artifact_read_text_typed_occurrences(
 				(i != 0 && classifier == PROTOTYPE_INVALID_ID) ||
 				(classifier != PROTOTYPE_INVALID_ID &&
 				 !artifact_read_term_present(terms, classifier)) ||
-				(context.source_computation != PROTOTYPE_INVALID_ID &&
+				(context.producer_computation != PROTOTYPE_INVALID_ID &&
 				 !artifact_read_term_present(
-					terms, context.source_computation
+					terms, context.producer_computation
 				 ))))) {
 			return -1;
 		}
@@ -2387,14 +2423,14 @@ int prototype_artifact_read_text_typed_occurrences(
 		context.classifier_ref.variable_id = PROTOTYPE_INVALID_ID;
 		if ((i == 0 && (context.extension_kind !=
 				PROTOTYPE_CONTEXT_EXTENSION_INVALID ||
-			context.source_computation != PROTOTYPE_INVALID_ID)) ||
+			context.producer_computation != PROTOTYPE_INVALID_ID)) ||
 			(i != 0 && context.extension_kind !=
 				PROTOTYPE_CONTEXT_EXTENSION_VALUE &&
 			 context.extension_kind !=
-				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT) ||
+				PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT) ||
 			(i != 0 &&
 			 (context.extension_kind == PROTOTYPE_CONTEXT_EXTENSION_VALUE) !=
-				(context.source_computation == PROTOTYPE_INVALID_ID))) {
+				(context.producer_computation == PROTOTYPE_INVALID_ID))) {
 			return -1;
 		}
 		if (metadata) {

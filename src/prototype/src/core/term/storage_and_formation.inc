@@ -791,6 +791,21 @@ static int import_relocated_term(
 			}
 			goto imported;
 		case PROTOTYPE_TERM_TYPE_FORMER:
+			if (term.as.type_former.declaration_type_id <
+					import->type_relocation_count &&
+				import->type_relocation[
+					term.as.type_former.declaration_type_id
+				] != PROTOTYPE_INVALID_ID) {
+				term.as.type_former.declaration_type_id =
+					import->type_relocation[
+						term.as.type_former.declaration_type_id
+					];
+			} else {
+				/* Dense publication may retain a structurally equivalent nominal
+				 * declaration instead of this cache anchor. The representation is
+				 * authoritative and remains relocatable independently. */
+				term.as.type_former.declaration_type_id = PROTOTYPE_INVALID_ID;
+			}
 			if (term.as.type_former.representation_id >=
 					import->representation_relocation_count) {
 				return -1;
@@ -925,8 +940,6 @@ static int import_relocated_term(
 		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
-		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
-		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
 		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
 		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			break;
@@ -1431,6 +1444,7 @@ int prototype_term_erase_constructor_view_owners(struct prototype_term_db* db) {
 
 static int prototype_term_type_former(
 	struct prototype_term_db* db,
+	uint32_t declaration_type_id,
 	uint32_t representation_id,
 	uint32_t constructor_count,
 	uint32_t* p_ret
@@ -1444,6 +1458,9 @@ static int prototype_term_type_former(
 			existing->as.type_former.representation_id != representation_id) {
 			continue;
 		}
+		if (existing->as.type_former.declaration_type_id == PROTOTYPE_INVALID_ID) {
+			existing->as.type_former.declaration_type_id = declaration_type_id;
+		}
 		if (existing->as.type_former.constructor_count != constructor_count) {
 			existing->as.type_former.constructor_count = constructor_count;
 			invalidate_normalization_cache(
@@ -1456,6 +1473,7 @@ static int prototype_term_type_former(
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_TYPE_FORMER;
+	term.as.type_former.declaration_type_id = declaration_type_id;
 	term.as.type_former.representation_id = representation_id;
 	term.as.type_former.constructor_count = constructor_count;
 	return add_term(db, term, p_ret);
@@ -1576,7 +1594,7 @@ int prototype_term_type_instance_make(
 	}
 	uint32_t current;
 	if (prototype_term_type_former(
-			db, representation_id, type->constructor_count, &current
+			db, type_id, representation_id, type->constructor_count, &current
 		) != 0) {
 		return -1;
 	}
@@ -1706,11 +1724,20 @@ int prototype_term_rebind_type_former_anchors(
 		if (term->tag != PROTOTYPE_TERM_TYPE_FORMER) {
 			continue;
 		}
-		uint32_t declaration_anchor = term->as.type_former.representation_id;
+		uint32_t declaration_anchor = term->as.type_former.declaration_type_id;
 		if (declaration_anchor >= type_declarations->semantic_schema.type_count ||
 			type_declarations->semantic_schema.type_declarations[declaration_anchor].representation_id ==
 				PROTOTYPE_INVALID_ID) {
-			return -1;
+			if (term->as.type_former.representation_id >=
+					type_declarations->representation_db.representation_count ||
+				prototype_type_declaration_representation_type_id(
+					type_declarations,
+					term->as.type_former.representation_id,
+					&declaration_anchor
+				) != 0) {
+				return -1;
+			}
+			term->as.type_former.declaration_type_id = declaration_anchor;
 		}
 		term->as.type_former.representation_id =
 			type_declarations->semantic_schema.type_declarations[declaration_anchor].representation_id;
@@ -2056,30 +2083,6 @@ static int semantic_application(
 	return 0;
 }
 
-int prototype_term_returns_type(
-	struct prototype_term_db* db,
-	uint32_t computation,
-	uint32_t value,
-	uint32_t* p_ret
-) {
-	const uint32_t arguments[2] = { computation, value };
-	return semantic_application(
-		db, PROTOTYPE_TERM_RETURNS_TYPE_FORMER, arguments, 2, p_ret
-	);
-}
-
-int prototype_term_returns_witness(
-	struct prototype_term_db* db,
-	uint32_t computation,
-	uint32_t value,
-	uint32_t* p_ret
-) {
-	const uint32_t arguments[2] = { computation, value };
-	return semantic_application(
-		db, PROTOTYPE_TERM_RETURNS_WITNESS_FORMER, arguments, 2, p_ret
-	);
-}
-
 int prototype_term_terminates_type(
 	struct prototype_term_db* db,
 	uint32_t computation,
@@ -2155,40 +2158,6 @@ static int relation_spine(
 	}
 	return cursor < db->term_count && db->terms[cursor].tag == former_tag ?
 		0 : -1;
-}
-
-int prototype_term_returns_type_info(
-	const struct prototype_term_db* db,
-	uint32_t term_id,
-	uint32_t* p_computation,
-	uint32_t* p_value
-) {
-	uint32_t arguments[2];
-	if (!p_computation || !p_value || relation_spine(
-			db, term_id, PROTOTYPE_TERM_RETURNS_TYPE_FORMER, arguments, 2
-		) != 0) {
-		return -1;
-	}
-	*p_computation = arguments[0];
-	*p_value = arguments[1];
-	return 0;
-}
-
-int prototype_term_returns_witness_info(
-	const struct prototype_term_db* db,
-	uint32_t term_id,
-	uint32_t* p_computation,
-	uint32_t* p_value
-) {
-	uint32_t arguments[2];
-	if (!p_computation || !p_value || relation_spine(
-			db, term_id, PROTOTYPE_TERM_RETURNS_WITNESS_FORMER, arguments, 2
-		) != 0) {
-		return -1;
-	}
-	*p_computation = arguments[0];
-	*p_value = arguments[1];
-	return 0;
 }
 
 static int unary_semantic_application_info(

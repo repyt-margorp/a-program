@@ -1464,42 +1464,6 @@ static int compile_phase_check_ascriptions(struct compile_context* ctx) {
 	return 0;
 }
 
-static int result_evidence_classifier_compatible(
-	struct compile_context* ctx,
-	uint32_t expected,
-	uint32_t actual
-) {
-	uint32_t expected_computation;
-	uint32_t expected_value;
-	uint32_t actual_computation;
-	uint32_t actual_value;
-	int computation_equal = 0;
-	int value_equal = 0;
-	if (!ctx || prototype_term_returns_type_info(
-			ctx->terms, expected, &expected_computation, &expected_value
-		) != 0 || prototype_term_returns_type_info(
-			ctx->terms, actual, &actual_computation, &actual_value
-		) != 0) {
-		return 0;
-	}
-	return prototype_judgement_result_computation_endpoints_equal(
-			ctx->terms,
-			ctx->type_declarations,
-			expected_computation,
-			actual_computation,
-			PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT,
-			&computation_equal
-		) == 0 && computation_equal && prototype_term_core_shape_equal_for_link(
-			ctx->terms,
-			ctx->type_declarations,
-			expected_value,
-			ctx->terms,
-			ctx->type_declarations,
-			actual_value,
-			&value_equal
-		) == 0 && value_equal;
-}
-
 static int accepted_claim_for_exact_proposition(
 	const struct prototype_judgement_db* judgement,
 	uint32_t context_id,
@@ -1508,67 +1472,10 @@ static int accepted_claim_for_exact_proposition(
 	uint32_t* p_claim_id
 );
 
-static int publish_expected_result_evidence(
-	struct compile_context* ctx,
-	uint32_t occurrence_id,
-	uint32_t witness,
-	uint32_t expected_classifier
-) {
-	if (!ctx || !ctx->metadata || occurrence_id >=
-		ctx->metadata->typed_occurrences.occurrence_count) {
-		return -1;
-	}
-	uint32_t computation_occurrence =
-		ctx->result_evidence_computation_occurrences[occurrence_id];
-	uint32_t value_occurrence =
-		ctx->result_evidence_value_occurrences[occurrence_id];
-	if (computation_occurrence >= ctx->metadata->typed_occurrences.occurrence_count ||
-		value_occurrence >= ctx->metadata->typed_occurrences.occurrence_count) {
-		return -1;
-	}
-	const struct prototype_typed_occurrence* occurrence =
-		&ctx->metadata->typed_occurrences.occurrences[occurrence_id];
-	const struct prototype_typed_occurrence* computation =
-		&ctx->metadata->typed_occurrences.occurrences[computation_occurrence];
-	const struct prototype_typed_occurrence* value =
-		&ctx->metadata->typed_occurrences.occurrences[value_occurrence];
-	uint32_t computation_claim;
-	uint32_t value_claim;
-	uint32_t type_claim;
-	uint32_t witness_claim;
-	uint32_t universe;
-	uint64_t step_limit = ctx->metadata->normalization_step_limit <
-		PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT ?
-		ctx->metadata->normalization_step_limit :
-		PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT;
-	if (accepted_claim_for_exact_proposition(
-			ctx->judgement, computation->context_id, computation->core_term,
-			computation->classifier, &computation_claim
-		) != 0 || accepted_claim_for_exact_proposition(
-			ctx->judgement, value->context_id, value->core_term,
-			value->classifier, &value_claim
-		) != 0 || prototype_term_universe_var(
-			ctx->terms, ctx->judgement->next_universe_var++, &universe
-		) != 0 || prototype_judgement_add_returns_type_formation(
-			ctx->judgement, ctx->terms, ctx->type_declarations,
-			occurrence->context_id, expected_classifier, universe,
-			computation_claim, value_claim, &type_claim
-		) != 0 || prototype_judgement_add_returns_evaluation(
-			ctx->judgement, ctx->terms, ctx->type_declarations,
-			occurrence->context_id, occurrence_id, witness, expected_classifier,
-			type_claim, computation_claim, value_claim, step_limit, &witness_claim
-		) != 0) {
-		return -1;
-	}
-	(void)witness_claim;
-	return 0;
-}
-
 static int compile_phase_check_expectations(struct compile_context* ctx) {
 	if (!ctx || !ctx->asts) {
 		return -1;
 	}
-
 	struct prototype_term_definition imported_definitions[1024];
 	struct prototype_term_definition_env imported_definition_env;
 	if (build_imported_external_definition_env(
@@ -1591,6 +1498,9 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 		uint32_t compiled_term;
 		int actual_from_operation = 0;
 		if (resolve_unique_assignment(ctx, expectation->name_symbol_id, PROTOTYPE_INVALID_ID, &def) != 0) {
+			continue;
+		}
+		if (ctx->metadata->function_graph_preflight && !def->compiled) {
 			continue;
 		}
 		ctx->binder_count = 0;
@@ -1722,13 +1632,6 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 				expected_classifier,
 				actual_classifier
 			);
-		int result_evidence_compatible = 0;
-		if (!classifier_compatible && actual_classifier != PROTOTYPE_INVALID_ID) {
-			result_evidence_compatible = result_evidence_classifier_compatible(
-				ctx, expected_classifier, actual_classifier
-			);
-			classifier_compatible = result_evidence_compatible;
-		}
 		if (actual_classifier == PROTOTYPE_INVALID_ID ||
 			(!structurally_checked && expected_effect_status != 0 &&
 				!classifier_compatible)) {
@@ -1773,19 +1676,6 @@ static int compile_phase_check_expectations(struct compile_context* ctx) {
 			/* The expectation has been checked, but its external effect-row
 			 * equation remains a residual artifact obligation. Do not expose that
 			 * open solver state as a closed JudgementDB certificate. */
-			def->compiled_classifier = actual_classifier;
-			continue;
-		}
-		if (result_evidence_compatible) {
-			/* `::` is a post-synthesis check. Result-evidence endpoint
-			 * correspondence validates the expectation by constructing evidence at
-			 * the expected Returns classifier. It does not reflect a new DefEq
-			 * conversion or replace the synthesized classifier. */
-			if (publish_expected_result_evidence(
-					ctx, def->compiled_operation, compiled_term, expected_classifier
-				) != 0) {
-				return -1;
-			}
 			def->compiled_classifier = actual_classifier;
 			continue;
 		}
@@ -2136,228 +2026,11 @@ static int accepted_type_formation_claim(
 	return 1;
 }
 
-static int accepted_or_context_binding_claim(
-	struct compile_context* ctx,
-	uint32_t context_id,
-	uint32_t subject,
-	uint32_t classifier,
-	uint32_t* p_claim_id
-) {
-	int status = accepted_claim_for_exact_proposition(
-		ctx ? ctx->judgement : NULL,
-		context_id,
-		subject,
-		classifier,
-		p_claim_id
-	);
-	if (status <= 0 || !ctx || subject >= ctx->terms->term_count ||
-		ctx->terms->terms[subject].tag != PROTOTYPE_TERM_VAR) {
-		return status;
-	}
-	return prototype_judgement_add_context_binding_assumption(
-		ctx->judgement,
-		ctx->terms,
-		&ctx->metadata->contexts,
-		context_id,
-		ctx->terms->terms[subject].as.var.binding_id,
-		classifier,
-		p_claim_id
-	);
-}
-
-/* Explicit `#.returns` is proof construction, not classifier synthesis. The
- * source occurrence already carries its synthesized Returns classifier. Once
- * ordinary Claims are accepted, closed endpoints use finite evaluation and a
- * computation-result Context extension uses its recorded sequencing origin. */
-static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
+/* Termination evidence is public only for computations whose synthesized
+ * classifier is explicitly TOTAL. */
+static int compile_phase_publish_termination_evidence(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata || !ctx->judgement) {
 		return -1;
-	}
-	for (uint32_t occurrence_id = 0;
-		occurrence_id < ctx->metadata->typed_occurrences.occurrence_count;
-		++occurrence_id) {
-		uint32_t computation_occurrence =
-			ctx->result_evidence_computation_occurrences[occurrence_id];
-		uint32_t value_occurrence =
-			ctx->result_evidence_value_occurrences[occurrence_id];
-		if (computation_occurrence == PROTOTYPE_INVALID_ID &&
-			value_occurrence == PROTOTYPE_INVALID_ID) {
-			continue;
-		}
-		if (computation_occurrence >=
-				ctx->metadata->typed_occurrences.occurrence_count ||
-			value_occurrence >= ctx->metadata->typed_occurrences.occurrence_count) {
-			return -1;
-		}
-		const struct prototype_typed_occurrence* occurrence =
-			&ctx->metadata->typed_occurrences.occurrences[occurrence_id];
-		const struct prototype_typed_occurrence* computation =
-			&ctx->metadata->typed_occurrences.occurrences[computation_occurrence];
-		const struct prototype_typed_occurrence* value =
-			&ctx->metadata->typed_occurrences.occurrences[value_occurrence];
-		uint32_t witness_computation = PROTOTYPE_INVALID_ID;
-		uint32_t witness_value = PROTOTYPE_INVALID_ID;
-		const struct prototype_context* context = prototype_context_get(
-			&ctx->metadata->contexts, occurrence->context_id
-		);
-		uint32_t suspended = PROTOTYPE_INVALID_ID;
-		uint32_t endpoint = PROTOTYPE_INVALID_ID;
-		int computation_endpoint_equal = 0;
-		int value_endpoint_equal = 0;
-		int witness_computation_equal = 0;
-		int witness_value_equal = 0;
-		if (!context ||
-			occurrence->classifier == PROTOTYPE_INVALID_ID ||
-			prototype_term_returns_type_info(
-				ctx->terms, occurrence->classifier, &suspended, &endpoint
-			) != 0 || prototype_term_returns_witness_info(
-				ctx->terms, occurrence->core_term, &witness_computation,
-				&witness_value
-			) != 0 || prototype_judgement_result_computation_endpoints_equal(
-				ctx->terms, ctx->type_declarations,
-				witness_computation, suspended,
-				PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT,
-				&witness_computation_equal
-			) != 0 || !witness_computation_equal ||
-			prototype_term_core_shape_equal_for_link(
-				ctx->terms, ctx->type_declarations, witness_value,
-				ctx->terms, ctx->type_declarations, endpoint, &witness_value_equal
-			) != 0 || !witness_value_equal ||
-			prototype_judgement_result_computation_endpoints_equal(
-				ctx->terms, ctx->type_declarations,
-				computation->core_term, suspended,
-				PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT,
-				&computation_endpoint_equal
-			) != 0 || !computation_endpoint_equal ||
-			prototype_term_core_shape_equal_for_link(
-				ctx->terms, ctx->type_declarations, value->core_term,
-				ctx->terms, ctx->type_declarations, endpoint, &value_endpoint_equal
-			) != 0 || !value_endpoint_equal ||
-			computation->classifier == PROTOTYPE_INVALID_ID ||
-			value->classifier == PROTOTYPE_INVALID_ID) {
-			fprintf(
-				stderr,
-				"result evidence shape invalid occurrence=%u context=%u classifier=%u "
-				"suspended=%u endpoint=%u witness-computation=%u witness-value=%u "
-				"depth=%u computation-occurrence=%u computation-term=%u "
-				"computation-tag=%u computation-wrapped=%u computation-source=%u "
-				"value-occurrence=%u value-term=%u value-tag=%u value-wrapped=%u "
-				"equals=%d:%d:%d:%d\n",
-				occurrence_id,
-				occurrence->context_id,
-				occurrence->classifier,
-				suspended,
-				endpoint,
-				witness_computation,
-				witness_value,
-				context ? context->depth : PROTOTYPE_INVALID_ID,
-				computation_occurrence,
-				computation->core_term,
-				computation->tag,
-				computation->wrapped_occurrence,
-				computation->source_core_term,
-				value_occurrence,
-				value->core_term,
-				value->tag,
-				value->wrapped_occurrence,
-				witness_computation_equal,
-				witness_value_equal,
-				computation_endpoint_equal,
-				value_endpoint_equal
-			);
-			return -1;
-		}
-		uint32_t computation_claim;
-		uint32_t value_claim;
-		uint32_t returns_type_claim;
-		uint32_t returns_claim;
-		uint32_t universe;
-		size_t claim_count_before = ctx->judgement->claim_count;
-		uint64_t evidence_step_limit =
-			ctx->metadata->normalization_step_limit <
-				PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT ?
-				ctx->metadata->normalization_step_limit :
-				PROTOTYPE_RESULT_EVIDENCE_REPLAY_STEP_LIMIT;
-		int computation_claim_status = accepted_claim_for_exact_proposition(
-			ctx->judgement, computation->context_id, computation->core_term,
-			computation->classifier, &computation_claim
-		);
-		int value_claim_status = accepted_or_context_binding_claim(
-			ctx, value->context_id, value->core_term, value->classifier,
-			&value_claim
-		);
-		int formation_status = accepted_type_formation_claim(
-			ctx->judgement, occurrence->context_id, occurrence->classifier,
-			&universe, &returns_type_claim
-		);
-		int universe_status = 0;
-		if (formation_status > 0) {
-			universe_status = computation_claim_status == 0 &&
-				value_claim_status == 0 ? prototype_term_universe_var(
-					ctx->terms, ctx->judgement->next_universe_var++, &universe
-				) : -1;
-			formation_status = universe_status == 0 ?
-				prototype_judgement_add_returns_type_formation(
-					ctx->judgement, ctx->terms, ctx->type_declarations,
-					occurrence->context_id, occurrence->classifier, universe,
-					computation_claim, value_claim, &returns_type_claim
-				) : -1;
-		}
-		int evaluation_status = formation_status == 0 && context->depth != 0 ?
-			prototype_judgement_add_returns_sequence_binding(
-				ctx->judgement, ctx->terms, ctx->type_declarations,
-				&ctx->metadata->contexts,
-				occurrence->context_id, occurrence_id, occurrence->core_term,
-				occurrence->classifier, returns_type_claim, computation_claim,
-				value_claim, &returns_claim
-			) : -1;
-		if (formation_status == 0 && evaluation_status != 0) {
-			evaluation_status = prototype_judgement_add_returns_evaluation(
-				ctx->judgement, ctx->terms, ctx->type_declarations,
-				occurrence->context_id, occurrence_id, occurrence->core_term,
-				occurrence->classifier, returns_type_claim, computation_claim,
-				value_claim, evidence_step_limit, &returns_claim
-			);
-		}
-		if (computation_claim_status != 0 || value_claim_status != 0 ||
-			universe_status != 0 || formation_status != 0 ||
-			evaluation_status != 0) {
-			fprintf(
-				stderr,
-				"result evidence publication invalid occurrence=%u computation-claim=%d "
-				"value-claim=%d universe=%d formation=%d evaluation=%d "
-				"computation=%u value=%u\n",
-				occurrence_id,
-				computation_claim_status,
-				value_claim_status,
-				universe_status,
-				formation_status,
-				evaluation_status,
-				suspended,
-				endpoint
-			);
-			fprintf(stderr, "result evidence computation classifier: ");
-			prototype_term_print_debug(
-				stderr, NULL, NULL, ctx->type_declarations, ctx->terms,
-				computation->classifier
-			);
-			fprintf(stderr, "\nresult evidence value classifier: ");
-			prototype_term_print_debug(
-				stderr, NULL, NULL, ctx->type_declarations, ctx->terms,
-				value->classifier
-			);
-			fprintf(stderr, "\n");
-			return -1;
-		}
-		ctx->metadata->result_evidence_claim_count +=
-			ctx->judgement->claim_count - claim_count_before;
-		uint32_t* selected_returns_claim =
-			&ctx->returns_claim_for_computation_occurrence[computation_occurrence];
-		if (*selected_returns_claim == PROTOTYPE_INVALID_ID ||
-			returns_claim < *selected_returns_claim) {
-			*selected_returns_claim = returns_claim;
-		}
-		(void)returns_claim;
 	}
 	for (uint32_t occurrence_id = 0;
 		occurrence_id < ctx->metadata->typed_occurrences.occurrence_count;
@@ -2429,24 +2102,16 @@ static int compile_phase_publish_result_evidence(struct compile_context* ctx) {
 		uint32_t computation_type = ctx->terms->terms[
 			computation_classifier
 		].as.thunk_type.computation;
-		int total = computation_type < ctx->terms->term_count &&
-			ctx->terms->terms[computation_type].tag ==
-				PROTOTYPE_TERM_COMPUTATION_TYPE &&
-			ctx->terms->terms[computation_type].as.computation_type.totality ==
-				PROTOTYPE_COMPUTATION_TOTALITY_TOTAL;
-		int termination_status = total ?
+		if (computation_type >= ctx->terms->term_count ||
+			ctx->terms->terms[computation_type].tag !=
+				PROTOTYPE_TERM_COMPUTATION_TYPE ||
+			ctx->terms->terms[computation_type].as.computation_type.totality !=
+				PROTOTYPE_COMPUTATION_TOTALITY_TOTAL ||
 			prototype_judgement_add_terminates_total_computation(
 				ctx->judgement, ctx->terms, occurrence->context_id, occurrence_id,
 				occurrence->core_term, occurrence->classifier,
 				terminates_type_claim, computation_claim, &terminates_claim
-			) : prototype_judgement_add_terminates_from_returns(
-				ctx->judgement, ctx->terms, occurrence->context_id, occurrence_id,
-				occurrence->core_term, occurrence->classifier,
-				terminates_type_claim,
-				ctx->returns_claim_for_computation_occurrence[computation_occurrence],
-				&terminates_claim
-			);
-		if (termination_status != 0) {
+			) != 0) {
 			return -1;
 		}
 		ctx->metadata->termination_evidence_claim_count +=
@@ -2462,6 +2127,7 @@ static int compile_pending_with_workspace(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement,
 	struct prototype_compile_metadata* metadata,
+	struct symbol_table* symbols,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
 	int namespace_symbol_id,
 	const struct prototype_artifact_interface* const* imported_interfaces,
@@ -2480,12 +2146,10 @@ static int compile_pending_with_workspace(
 		ctx.classifier_hints[i] = PROTOTYPE_INVALID_ID;
 		ctx.classifier_solver.solutions[i].classifier = PROTOTYPE_INVALID_ID;
 		ctx.classifier_solver.solutions[i].effect_row = PROTOTYPE_INVALID_ID;
-		ctx.result_evidence_computation_occurrences[i] = PROTOTYPE_INVALID_ID;
-		ctx.result_evidence_value_occurrences[i] = PROTOTYPE_INVALID_ID;
 		ctx.termination_evidence_computation_occurrences[i] = PROTOTYPE_INVALID_ID;
-		ctx.returns_claim_for_computation_occurrence[i] = PROTOTYPE_INVALID_ID;
 	}
 	ctx.intrinsic_environment = intrinsic_environment;
+	ctx.symbols = symbols;
 	ctx.asts = asts;
 	ctx.terms = terms;
 	ctx.type_declarations = type_declarations;
@@ -2544,6 +2208,10 @@ static int compile_pending_with_workspace(
 	ctx.imported_interfaces = imported_interfaces;
 	ctx.imported_interface_count = imported_interface_count;
 	sync_universe_level_counters(&ctx);
+	if (compile_phase_collect_function_graph_requests(&ctx) != 0) {
+		fprintf(stderr, "compile pending failed: function-graph request collection\n");
+		return -1;
+	}
 
 	if (compile_phase_report_def_index_errors(&ctx) != 0) {
 		return -1;
@@ -2661,10 +2329,7 @@ static int compile_pending_with_workspace(
 	}
 	struct prototype_typed_occurrence_graph* occurrence_graph =
 		prototype_compile_metadata_typed_occurrences(metadata);
-	/* Result evidence is derived only from already synthesized source evidence.
-	 * Publish that evidence before checking a later `::` expectation whose
-	 * subject may itself be a result witness.  Expectation checking remains a
-	 * consumer of synthesis and cannot feed a classifier back into it. */
+	/* Totality evidence consumes only already accepted synthesis results. */
 	if (prototype_judgement_publish_candidates(
 			occurrence_graph, judgement
 		) != 0) {
@@ -2672,23 +2337,22 @@ static int compile_pending_with_workspace(
 		return -1;
 	}
 	phase_started = compile_performance_clock_ns();
-	if (compile_phase_publish_result_evidence(&ctx) != 0) {
-		fprintf(stderr, "pre-expectation result evidence publication failed\n");
+	if (compile_phase_publish_termination_evidence(&ctx) != 0) {
+		fprintf(stderr, "pre-expectation termination evidence publication failed\n");
 		return -1;
 	}
-	metadata->result_evidence_time_ns +=
+	metadata->termination_evidence_time_ns +=
 		compile_performance_elapsed_ns(phase_started);
-	/* Returns evidence can discharge premises of later APP/Lambda/Match
-	 * occurrences. Close only the accepted Judgement DAG again; classifier and
-	 * effect solutions remain frozen and cannot receive feedback from evidence. */
+	/* Close only the accepted Judgement DAG again; classifier and effect
+	 * solutions remain frozen and cannot receive feedback from evidence. */
 	phase_started = compile_performance_clock_ns();
 	if (operation_solver_materialize_judgements(&ctx) != 0 ||
 		prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
 		prototype_judgement_publish_candidates(occurrence_graph, judgement) != 0) {
-		fprintf(stderr, "post-result judgement closure failed\n");
+		fprintf(stderr, "post-evidence judgement closure failed\n");
 		return -1;
 	}
-	metadata->post_result_closure_time_ns +=
+	metadata->evidence_closure_time_ns +=
 		compile_performance_elapsed_ns(phase_started);
 	if (compile_phase_check_expectations(&ctx) != 0) {
 		fprintf(stderr, "post-synthesis expectation checking failed\n");
@@ -2789,6 +2453,7 @@ int prototype_ast_compile_pending_with_imports(
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_judgement_db* judgement,
 	struct prototype_compile_metadata* metadata,
+	struct symbol_table* symbols,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
 	int namespace_symbol_id,
 	const struct prototype_artifact_interface* const* imported_interfaces,
@@ -2804,6 +2469,7 @@ int prototype_ast_compile_pending_with_imports(
 		type_declarations,
 		judgement,
 		metadata,
+		symbols,
 		intrinsic_environment,
 		namespace_symbol_id,
 		imported_interfaces,
@@ -2833,6 +2499,7 @@ int prototype_ast_compile_pending(
 		type_declarations,
 		judgement,
 		metadata,
+		NULL,
 		prototype_default_intrinsic_environment(),
 		-1,
 		NULL,

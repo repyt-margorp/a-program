@@ -629,6 +629,7 @@ struct operation_reification_cache_entry {
 
 struct compile_context {
 	const struct prototype_intrinsic_environment* intrinsic_environment;
+	struct symbol_table* symbols;
 	struct prototype_ast_db* asts;
 	struct prototype_term_db* terms;
 	struct prototype_type_declaration_db* type_declarations;
@@ -651,13 +652,7 @@ struct compile_context {
 	/* Lowering facts are mutable compiler workspace and never frozen into a
 	 * typed occurrence or artifact. */
 	uint32_t classifier_hints[4096];
-	/* Explicit result evidence retains the two source occurrences that become
-	 * accepted proof premises. TermDB endpoints alone cannot select one typed
-	 * occurrence when a shared Core term has several source derivations. */
-	uint32_t result_evidence_computation_occurrences[4096];
-	uint32_t result_evidence_value_occurrences[4096];
 	uint32_t termination_evidence_computation_occurrences[4096];
-	uint32_t returns_claim_for_computation_occurrence[4096];
 	struct operation_reification_cache_entry reification_cache[4096];
 	uint32_t proof_materialization_pending_ids[4096];
 	uint32_t proof_materialization_pending_count;
@@ -854,7 +849,7 @@ static int push_graph_computation_result_binder(
 	uint32_t ast_binder_id,
 	uint32_t classifier,
 	int symbol_id,
-	uint32_t source_computation,
+	uint32_t producer_computation,
 	uint32_t* p_graph_binder_id
 );
 static int resolve_namespace_member(
@@ -1215,6 +1210,11 @@ static int compile_ast_type_expr_term(
 	struct compile_context* ctx,
 	uint32_t type_expr,
 	uint32_t* p_ret
+);
+static const struct prototype_function_graph_association*
+compile_function_graph_association(
+	const struct compile_context* ctx,
+	int owner_symbol_id
 );
 static int compile_ast_function_type_expr_term(
 	struct compile_context* ctx,
@@ -3772,7 +3772,7 @@ static int push_graph_binder_with_origin(
 	uint32_t ast_binder_id,
 	uint32_t classifier,
 	int symbol_id,
-	uint32_t source_computation,
+	uint32_t producer_computation,
 	uint32_t* p_graph_binder_id
 ) {
 	if (!ctx || !p_graph_binder_id || ctx->binder_count >= 512) {
@@ -3792,13 +3792,13 @@ static int push_graph_binder_with_origin(
 	 * available. Fixed-point elaboration may later refine that classifier and
 	 * must then relocate this immutable context extension. */
 	uint32_t classifier_variable = ast_binder_id;
-	int extend_status = source_computation == PROTOTYPE_INVALID_ID ?
+	int extend_status = producer_computation == PROTOTYPE_INVALID_ID ?
 		prototype_context_extend_occurrence(
 			&ctx->metadata->contexts, parent_context, graph_binder_id,
 			classifier, classifier_variable, &context_id
-		) : prototype_context_extend_computation_result_occurrence(
+		) : prototype_context_extend_sequence_result_occurrence(
 			&ctx->metadata->contexts, parent_context, graph_binder_id,
-			classifier, classifier_variable, source_computation, &context_id
+			classifier, classifier_variable, producer_computation, &context_id
 		);
 	if (extend_status != 0) {
 		return -1;
@@ -3831,12 +3831,12 @@ static int push_graph_computation_result_binder(
 	uint32_t ast_binder_id,
 	uint32_t classifier,
 	int symbol_id,
-	uint32_t source_computation,
+	uint32_t producer_computation,
 	uint32_t* p_graph_binder_id
 ) {
 	return push_graph_binder_with_origin(
 		ctx, ast_binder_id, classifier, symbol_id,
-		source_computation, p_graph_binder_id
+		producer_computation, p_graph_binder_id
 	);
 }
 
@@ -4058,6 +4058,62 @@ static int compile_type_expr_name_as_keyed_type_ref(
 		p_ret
 	);
 }
+static int compile_accepted_type_projection_term(
+	struct compile_context* ctx,
+	const struct prototype_ast_type_expr* expr,
+	uint32_t* p_term
+) {
+	if (!ctx || !expr || !p_term ||
+		expr->tag != PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION ||
+		expr->as.accepted_projection.term >= ctx->terms->term_count ||
+		expr->as.accepted_projection.first_binding >
+			ctx->asts->accepted_binding_projection_count ||
+		expr->as.accepted_projection.binding_count >
+			ctx->asts->accepted_binding_projection_count -
+				expr->as.accepted_projection.first_binding ||
+		expr->as.accepted_projection.binding_count > 64) {
+		return -1;
+	}
+	struct prototype_binding_replacement replacements[64];
+	for (uint32_t i = 0; i < expr->as.accepted_projection.binding_count; ++i) {
+		const struct prototype_ast_accepted_binding_projection* projection =
+			&ctx->asts->accepted_binding_projections[
+				expr->as.accepted_projection.first_binding + i
+			];
+		uint32_t target_binding;
+		uint32_t target_var;
+		if (lookup_graph_binder(
+				ctx, projection->target_ast_binder_id, &target_binding
+			) != 0 || prototype_term_var(
+				ctx->terms, target_binding, &target_var
+			) != 0) {
+			return -1;
+		}
+		replacements[i] = (struct prototype_binding_replacement) {
+			.binding_id = projection->source_binding_id,
+			.replacement = target_var
+		};
+	}
+	int status = prototype_term_graph_reindex_bindings(
+		ctx->terms,
+		ctx->type_declarations,
+		expr->as.accepted_projection.term,
+		replacements,
+		expr->as.accepted_projection.binding_count,
+		p_term
+	);
+	if (status != 0) {
+		fprintf(
+			stderr,
+			"accepted type projection failed term=%u tag=%d bindings=%u types=%zu\n",
+			expr->as.accepted_projection.term,
+			ctx->terms->terms[expr->as.accepted_projection.term].tag,
+			expr->as.accepted_projection.binding_count,
+			ctx->type_declarations->semantic_schema.type_count
+		);
+	}
+	return status;
+}
 
 static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr, uint32_t* p_ret) {
 	if (!ctx || !p_ret) {
@@ -4159,6 +4215,39 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 				return -1;
 			}
 			break;
+		case PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE: {
+			const struct prototype_function_graph_association* association =
+				compile_function_graph_association(
+					ctx, expr.as.function_graph_reference.owner_symbol_id
+				);
+			uint32_t ignored_graph_term;
+			if (!association || association->graph_symbol_id < 0 ||
+				association->graph_type_assignment_id >= ctx->asts->assignment_count ||
+				compile_def(
+					ctx,
+					&ctx->asts->assignments[association->graph_type_assignment_id],
+					&ignored_graph_term
+				) != 0 ||
+				prototype_type_expr_name(
+					ctx->type_declarations,
+					association->graph_symbol_id,
+					&compiled_type_expr
+				) != 0) {
+				return -1;
+			}
+			break;
+		}
+		case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION: {
+			if (compile_accepted_type_projection_term(
+					ctx, &expr, &(uint32_t) { PROTOTYPE_INVALID_ID }
+				) != 0 || prototype_type_expr_semantic_relation(
+					ctx->type_declarations,
+					&compiled_type_expr
+				) != 0) {
+				return -1;
+			}
+			break;
+		}
 		case PROTOTYPE_AST_TYPE_EXPR_ARROW: {
 			uint32_t domain;
 			uint32_t codomain;
@@ -4214,7 +4303,6 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			}
 			break;
 		}
-		case PROTOTYPE_AST_TYPE_EXPR_RETURNS:
 		case PROTOTYPE_AST_TYPE_EXPR_TERMINATES:
 			/* Readback cannot own Term endpoints.  The graph-level classifier
 			 * compiled below is the semantic schema authority. */
@@ -4284,7 +4372,7 @@ static int compile_extract_pure_return_value(
 	);
 }
 
-static int compile_ast_result_evidence_endpoint(
+static int compile_ast_static_endpoint(
 	struct compile_context* ctx,
 	uint32_t ast_id,
 	uint32_t* p_ret
@@ -4334,9 +4422,9 @@ static int compile_ast_result_evidence_endpoint(
 		case PROTOTYPE_AST_APP: {
 			uint32_t function;
 			uint32_t argument;
-			if (compile_ast_result_evidence_endpoint(
+			if (compile_ast_static_endpoint(
 					ctx, node->as.app.function, &function
-				) != 0 || compile_ast_result_evidence_endpoint(
+				) != 0 || compile_ast_static_endpoint(
 					ctx, node->as.app.argument, &argument
 				) != 0) {
 				return -1;
@@ -4345,7 +4433,7 @@ static int compile_ast_result_evidence_endpoint(
 		}
 		case PROTOTYPE_AST_QUOTE: {
 			uint32_t computation;
-			if (compile_ast_result_evidence_endpoint(
+			if (compile_ast_static_endpoint(
 					ctx, node->as.unary.term, &computation
 				) != 0) {
 				return -1;
@@ -4537,6 +4625,33 @@ static int compile_ast_type_expr_term_with_self(
 				NULL
 			);
 		}
+		case PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE: {
+			const struct prototype_function_graph_association* association =
+				compile_function_graph_association(
+					ctx, expr.as.function_graph_reference.owner_symbol_id
+				);
+			if (!association || association->graph_type_assignment_id >=
+					ctx->asts->assignment_count) {
+				return -1;
+			}
+			if (association->graph_type_id == PROTOTYPE_INVALID_ID) {
+				return compile_def(
+					ctx,
+					&ctx->asts->assignments[association->graph_type_assignment_id],
+					p_ret
+				);
+			}
+			return prototype_term_type_instance_make(
+				ctx->terms,
+				ctx->type_declarations,
+				association->graph_type_id,
+				NULL,
+				0,
+				p_ret
+			);
+		}
+		case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION:
+			return compile_accepted_type_projection_term(ctx, &expr, p_ret);
 				case PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE: {
 					return prototype_term_make_host_type(
 						ctx->terms,
@@ -4599,23 +4714,9 @@ static int compile_ast_type_expr_term_with_self(
 			}
 			return prototype_term_thunk_type(ctx->terms, computation, p_ret);
 		}
-		case PROTOTYPE_AST_TYPE_EXPR_RETURNS: {
-			uint32_t computation;
-			uint32_t value;
-			if (compile_ast_result_evidence_endpoint(
-					ctx, expr.as.returns.computation, &computation
-				) != 0 || compile_ast_result_evidence_endpoint(
-					ctx, expr.as.returns.value, &value
-				) != 0) {
-				return -1;
-			}
-			return prototype_term_returns_type(
-				ctx->terms, computation, value, p_ret
-			);
-		}
 		case PROTOTYPE_AST_TYPE_EXPR_TERMINATES: {
 			uint32_t computation;
-			if (compile_ast_result_evidence_endpoint(
+			if (compile_ast_static_endpoint(
 					ctx, expr.as.terminates.computation, &computation
 				) != 0) {
 				return -1;

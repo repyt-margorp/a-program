@@ -3,6 +3,128 @@
 
 #include <string.h>
 
+void prototype_compile_metadata_set_function_graph_storage(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_function_graph_request* requests,
+	size_t request_capacity,
+	struct prototype_function_graph_association* associations,
+	size_t association_capacity
+) {
+	if (!metadata) {
+		return;
+	}
+	metadata->function_graph_requests = requests;
+	metadata->function_graph_request_capacity = requests ? request_capacity : 0;
+	metadata->function_graph_request_count = 0;
+	metadata->function_graph_associations = associations;
+	metadata->function_graph_association_capacity = associations ?
+		association_capacity : 0;
+	metadata->function_graph_association_count = 0;
+}
+
+int prototype_compile_metadata_request_function_graph(
+	struct prototype_compile_metadata* metadata,
+	int owner_symbol_id,
+	uint32_t owner_assignment_id,
+	uint32_t owner_source_entry_id,
+	uint32_t request_flags,
+	uint32_t requesting_ast,
+	uint32_t* p_request_id
+) {
+	if (!metadata || !metadata->function_graph_requests || owner_symbol_id < 0 ||
+		owner_assignment_id == PROTOTYPE_INVALID_ID ||
+		owner_source_entry_id == PROTOTYPE_INVALID_ID || request_flags == 0 ||
+		!p_request_id) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < metadata->function_graph_request_count; ++i) {
+		struct prototype_function_graph_request* request =
+			&metadata->function_graph_requests[i];
+		if (request->owner_assignment_id != owner_assignment_id ||
+			request->owner_source_entry_id != owner_source_entry_id) {
+			continue;
+		}
+		request->request_flags |= request_flags;
+		*p_request_id = i;
+		return 0;
+	}
+	if (metadata->function_graph_request_count >=
+		metadata->function_graph_request_capacity) {
+		return -1;
+	}
+	uint32_t id = (uint32_t)metadata->function_graph_request_count++;
+	metadata->function_graph_requests[id] =
+		(struct prototype_function_graph_request) {
+			.owner_symbol_id = owner_symbol_id,
+			.owner_assignment_id = owner_assignment_id,
+			.owner_source_entry_id = owner_source_entry_id,
+			.request_flags = request_flags,
+			.first_requesting_ast = requesting_ast,
+			.state = PROTOTYPE_FUNCTION_GRAPH_REQUEST_PENDING,
+			.reason = PROTOTYPE_FUNCTION_GRAPH_REASON_NONE
+		};
+	*p_request_id = id;
+	return 0;
+}
+
+const struct prototype_function_graph_request*
+prototype_compile_metadata_function_graph_request(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t request_id
+) {
+	return metadata && metadata->function_graph_requests &&
+		request_id < metadata->function_graph_request_count ?
+		&metadata->function_graph_requests[request_id] : NULL;
+}
+
+int prototype_compile_metadata_add_function_graph_association(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_function_graph_association association,
+	uint32_t* p_association_id
+) {
+	if (!metadata || !metadata->function_graph_associations ||
+		association.owner_symbol_id < 0 ||
+		association.owner_assignment_id == PROTOTYPE_INVALID_ID ||
+		association.owner_source_entry_id == PROTOTYPE_INVALID_ID ||
+		!p_association_id) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < metadata->function_graph_association_count; ++i) {
+		const struct prototype_function_graph_association* existing =
+			&metadata->function_graph_associations[i];
+		if (existing->owner_assignment_id == association.owner_assignment_id ||
+			existing->owner_source_entry_id == association.owner_source_entry_id ||
+			existing->owner_symbol_id == association.owner_symbol_id) {
+			return -1;
+		}
+	}
+	if (metadata->function_graph_association_count >=
+		metadata->function_graph_association_capacity) {
+		return -1;
+	}
+	uint32_t id = (uint32_t)metadata->function_graph_association_count++;
+	metadata->function_graph_associations[id] = association;
+	*p_association_id = id;
+	return 0;
+}
+
+const struct prototype_function_graph_association*
+prototype_compile_metadata_function_graph_association_for_owner(
+	const struct prototype_compile_metadata* metadata,
+	int owner_symbol_id
+) {
+	if (!metadata || !metadata->function_graph_associations || owner_symbol_id < 0) {
+		return NULL;
+	}
+	for (size_t i = 0; i < metadata->function_graph_association_count; ++i) {
+		if (metadata->function_graph_associations[i].owner_symbol_id ==
+			owner_symbol_id) {
+			return &metadata->function_graph_associations[i];
+		}
+	}
+	return NULL;
+}
+
 int prototype_compile_metadata_frozen_snapshot(
 	const struct prototype_compile_metadata* metadata,
 	struct prototype_frozen_module_snapshot* p_snapshot

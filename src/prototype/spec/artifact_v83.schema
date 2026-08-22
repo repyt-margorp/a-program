@@ -1,0 +1,289 @@
+A_PROGRAM_ARTIFACT 83
+
+This file is the canonical semantic manifest for artifact version 83. The
+artifact header carries the SHA-256 digest of these exact bytes. A reader must
+reject a different version or digest before reading the interface. Version 82
+is not accepted and has no compatibility parser. Version 83 removes Returns
+and adds explicit named-function graph associations. Effect rows and totality
+remain orthogonal.
+
+The header is followed by one immutable Intrinsic-environment contract:
+
+intrinsic_environment FINGERPRINT DEFAULT_INTEGER_HOST_TYPE
+
+FINGERPRINT is the deterministic 64-bit identity of namespace bindings, pure
+primitive signatures, effect-operation signatures, and the default unsuffixed
+integer representation. DEFAULT_INTEGER_HOST_TYPE must agree with that
+fingerprint. Read and link reject an environment mismatch before interpreting
+literal or primitive Claims. In the default environment, Int and Int32 name
+HOST_TYPE_INT32 and unsuffixed integer literals have exactly that principal;
+Int64 remains distinct. INT_LITERAL_ADMISSIBILITY is retained in the numeric
+wire vocabulary only as a reserved historical ordinal and is not emitted or
+accepted by the v83 compiler.
+
+The artifact is one dense accepted object graph. Every section uses IDs in
+0..count-1 with no holes. Solver candidates, work queues, HOTT actions,
+bridges, certificates, normalization fuel, graph revisions, and closure ranks
+are compiler-local and absent.
+
+judgement_kind UNKNOWN=0 HAS_TYPE=1 IS_TYPE=2
+judgement_authority INVALID=0 TYPED_OCCURRENCE=1 CONTEXT_BINDING=2 TYPE_DECLARATION=3 INTRINSIC=4 TYPE_FORMATION=5 UNIVERSE=6 CORE_HELPER=7 EXPORT=8
+judgement_proof INVALID=0 TYPE_FORMATION_INTRO=1 CONSTRUCTOR_INTRO=2 CONSTRUCTOR_SPINE_FORMATION=3 BINDER_ASSUMPTION=4 MATCH_PATTERN_ASSUMPTION=5 LAMBDA_INTRO=6 APP_ELIM=7 RETURN_INTRO=8 THUNK_INTRO=9 FORCE_ELIM=10 OPERATION_REQUEST_INTRO=11 COMPUTATION_FOLD_ELIM=12 MATCH_TYPE_FORMATION_INTRO=13 MATCH_ELIM=14 SOLVED_MATCH_MOTIVE=15 INDUCTION_HYPOTHESIS_ELIM=16 TEXT_LITERAL_INTRO=17 PURE_PRIMITIVE_TYPE_INTRO=18 EFFECT_OPERATION_TYPE_INTRO=19 CONVERSION=20 EXPECTED_TYPE_EXPOSURE=21 TEXT_TYPE_INTRO=22 INT_LITERAL_INTRO=23 INT_LITERAL_ADMISSIBILITY=24 INT_TYPE_INTRO=25 HOST_TYPE_INTRO=26 IS_TYPE_FROM_HAS_TYPE=27 DECLARATION=28 UNIVERSE_CUMULATIVITY=29 PI_FORMATION_INTRO=30 CONTEXT_WEAKEN=31 EFFECT_WEAKEN=32 SUBSTITUTION_REINDEX=35 COMPUTATION_TYPE_FORMATION=43 THUNK_TYPE_FORMATION=44 DIMENSION_ACTION_TYPE_FORMATION=45 DIMENSION_ACTION_TERM=46 DIMENSION_ACTION_CONSTRUCTOR=47 DIMENSION_ACTION_THUNK_RETURN_WITNESS=48 TERMINATES_TYPE_FORMATION=51 TERMINATES_TOTAL_COMPUTATION=54
+
+Compiler-local relation-action proof kinds 33,34,36,37,38,39,40,41,42 are
+not accepted wire proof kinds. SUBSTITUTION_REINDEX=35 is object evidence for
+a Context/Substitution action and is intentionally retained.
+
+term_tag VAR=1 CONSTRUCTOR=2 APP=3 LAMBDA=4 PI=5 MATCH=6 TYPE_FORMER=7 TYPE_DECLARATION=8 INDUCTION_HYPOTHESIS=9 UNIVERSE_VAR=10 PRIMITIVE_TEXT=11 TEXT_LITERAL=12 PRIMITIVE_INT=13 PRIMITIVE_INT64=14 INT_LITERAL=15 EXTERNAL_REF=16 PURE_PRIMITIVE=17 EFFECT_OPERATION=18 TYPE_VIEW=19 EFFECT_ROW_EMPTY=20 EFFECT_ROW_VAR=21 EFFECT_ROW_UNION=22 EFFECT_ROW_FORALL=23 COMPUTATION_TYPE=24 THUNK_TYPE=25 RETURN=26 THUNK=27 FORCE=28 OPERATION_REQUEST=29 COMPUTATION_FOLD=30 EFFECT_ROW_OPERATION=31 DIMENSION_ACTION=34 TERMINATES_TYPE_FORMER=37 TERMINATES_WITNESS_FORMER=38
+computation_totality UNKNOWN=0 TOTAL=1 MAY_DIVERGE=2
+
+COMPUTATION_TYPE serializes EFFECT_LABEL, RESULT_TYPE, and TOTALITY. TOTALITY
+must be TOTAL or MAY_DIVERGE. UNKNOWN is a compiler-local unresolved solver
+state and is rejected on publication and readback; it is never an object-term
+classifier. Joining computations preserves MAY_DIVERGE if either operand may
+diverge, preserves TOTAL only when both operands are total, and otherwise
+remains compiler-local UNKNOWN.
+
+Compiler-local RELATION_TYPE_FORMER=32 and
+RELATION_WITNESS_FORMER=33 are not accepted identity-root syntax.
+
+DIMENSION_ACTION serializes SOURCE_TERM, SOURCE_DIMENSION, TARGET_DIMENSION,
+IMAGE_COUNT, and exactly IMAGE_COUNT pairs of IMAGE_KIND and TARGET_AXIS.
+IMAGE_COUNT equals SOURCE_DIMENSION. Readback interns this canonical operator
+tuple and stores only the resulting operator ID in memory; compiler-local
+operator IDs are never wire authority.
+
+TERMINATES_TYPE_FORMER and TERMINATES_WITNESS_FORMER are fieldless heads of
+one-argument APP spines. `Terminates(c)` is derivable only from an accepted
+`Thunk(Comp(E,A,TOTAL))` classifier. E may be nonempty. This proposition does
+not alter DefEq or infer termination from effect-row emptiness.
+
+type_expr_tag UNIVERSE=1 UNIVERSE_VAR=2 SELF=3 VAR=4 NAME=5 APP=6 ARROW=7 PI=8 IMPORTED_TYPE=9 EXTERNAL_TERM=10 PRIMITIVE_TEXT=11 PRIMITIVE_INT=12 PRIMITIVE_INT64=13 LOCAL_TYPE_MEMBER=14
+typed_occurrence_kind ATOM=1 VAR=2 REFERENCE=3 CONSTRUCTOR=4 APP=5 LAMBDA=6 MATCH=7 INDUCTION_HYPOTHESIS=8 EXPECTED_TYPE=9 RETURN=10 THUNK=11 FORCE=12 REQUEST=13 COMPUTATION_FOLD=14
+typed_occurrence_category INVALID=0 VALUE=1 COMPUTATION=2 TYPE=3
+typed_occurrence_application_role NONE=0 FUNCTION_ELIMINATION=1 CONSTRUCTOR_FORMATION=2 PURE_TYPE_FAMILY_EVALUATION=3
+typed_occurrence_classifier_status PENDING=0 SOLVED=1 RESIDUAL_VERIFICATION=2
+substitution_kind IDENTITY=1 EMPTY=2 PROJECTION=3 EXTEND=4 COMPOSE=5
+verification_kind COMPUTATION_FOLD_RESULT=1 EFFECT_ROW_EQUATION=2
+verification_state PENDING=1 DISCHARGED=2 FAILED=3
+normalization_profile CORE_WHNF=1 COMPUTATION_WHNF=2 PURE_TYPE_WHNF=3
+export_transparency OPAQUE=1 TRANSPARENT=2
+compile_policy STRICT=1 HYBRID=2 EXPLORATORY=3
+definition_thunk_policy IMPLICIT=1 EXPLICIT=2
+identity_computation_rule INVALID=0 ORDINARY_ADT=1 THUNK_RETURN=2 PI_POINTWISE=3 GENERIC_DIMENSION_ACTION=5
+usage_grade ZERO=0 ONE=1 MANY=2
+universe_node TYPE=1 PARAMETER=2
+universe_edge PARAMETER_TO_TYPE=1
+universe_reason INVALID=0 TERM_LEVEL_SUCCESSOR=1 PI_DOMAIN=2 PI_CODOMAIN=3 MATCH_BRANCH=4 APP_CUMULATIVITY=5 EXPECTED_TYPE_CUMULATIVITY=6 DERIVED_UNIVERSE_LEVEL=7 DERIVED_PI_DOMAIN=8 DERIVED_PI_CODOMAIN=9
+
+Interface identity root:
+identity_root ID SOURCE_TYPE_CLAIM IDENTITY_FAMILY_HAS_TYPE_CLAIM WITNESS_HAS_TYPE_CLAIM_OR_INVALID COMPUTATION_RULE
+
+The mandatory source Claim proves that the source carrier is a type. The
+mandatory family Claim classifies an ordinary computed identity family by the
+same admitted Universe. The optional witness Claim classifies an ordinary
+proof Term by exactly that family. The computation rule must be replayed from
+the source Claim, the canonical dimension operator embedded in the acted Term,
+the acted-family Claim, and the witness Claim; the root label is not authority
+by itself. Exact duplicate quadruples are rejected. Registration is permitted
+only after accepted-graph publication is frozen. Roots never add conversion
+equations or equality reflection.
+
+The dependency table is recomputed from the final dense rooted publication
+graph. External references reachable only through accepted proof premises,
+rule payloads, Contexts, or Substitutions are dependencies. External references
+present only in unrooted solver or HOTT work are not dependencies.
+
+Dense accepted proof grammar:
+propositions N
+proposition ID KIND AUTHORITY_KIND AUTHORITY_ID CONTEXT OCCURRENCE SUBJECT CLASSIFIER USAGE_COUNT [BINDING_ID USAGE_GRADE]*
+claims N
+claim ID proposition PROPOSITION_ID
+derivations N
+derivation ID PROOF_KIND claim CONCLUSION_CLAIM premises PREMISE_COUNT
+payload none
+| payload constructor OWNER_VIEW CONSTRUCTOR_INDEX FIELD_INDEX
+| payload constructor_spine OWNER_VIEW
+| payload induction MATCH MOTIVE CASE_INDEX FIELD_INDEX
+action SEMANTIC_ACTION_KIND SEMANTIC_ACTION_ID
+premise claim CLAIM_ID action SEMANTIC_ACTION_KIND SEMANTIC_ACTION_ID
+| premise scoped PROPOSITION_ID action SEMANTIC_ACTION_KIND SEMANTIC_ACTION_ID
+
+MATCH_PATTERN_ASSUMPTION uses constructor payload.
+CONSTRUCTOR_SPINE_FORMATION uses constructor_spine payload.
+INDUCTION_HYPOTHESIS_ELIM uses induction payload.
+Every other admitted proof kind uses none payload.
+Exactly one premise reference is valid. Proposition identity is serialized
+once; Claims and scoped premises refer to it directly. Derivation sources are
+exactly the ordered premise edges and are not repeated in a sources list.
+
+Resource usage is part of Proposition identity. Usage entries are strictly
+increasing persistent Context binding IDs; ZERO entries are omitted. ONE is
+one use and MANY is the saturated image of every count greater than one.
+Sequential composition uses saturated addition, mutually exclusive branches
+use maximum, and substitution multiplies each target grade by the usage vector
+of its source assignment before adding columns. Projection weakening preserves
+the vector because persistent binding IDs remain stable. Thunk is
+grade-preserving and never grants contraction to a captured resource or
+resumption. Until object-identity Context bridges carry an explicit graded
+modality, an object-term action with nonempty resource usage is residual.
+
+Type declarations serialize only named source or imported schemas: namespace,
+name, parameter and index Contexts, index count, constructor telescope, result
+classifier, and optional readback/cache data. Every declaration has a name.
+Computed identity and higher-dimensional families are DIMENSION_ACTION Terms,
+not anonymous declarations. No declaration origin or generated carrier field
+exists in v83.
+
+type_declarations N
+type_decl ID NAME NAMESPACE TYPE_INDEX FIRST_PARAMETER PARAMETER_COUNT FIRST_CONSTRUCTOR CONSTRUCTOR_COUNT FORMATION_CLASSIFIER PARAMETER_CONTEXT INDEX_CONTEXT INDEX_COUNT
+
+NAME is mandatory. NAMESPACE may be `-` for the root namespace. TYPE_INDEX
+equals ID. Every referenced Context, constructor range, parameter range, and
+formation classifier must be present in the same dense object graph.
+
+All object graph arenas are dense. Solver variables, worklists, source AST
+node IDs, source AST binder IDs, runtime environments, normalization caches,
+and duplicate Core child columns are absent. Closure rank and lookup indices
+are reconstructed by least-fixed-point replay after readback.
+
+Typed occurrence grammar:
+compile_policy POLICY THUNK_POLICY ENTRY_NAME_OR_DASH ENTRY_TERM_OR_INVALID ENTRY_CLASSIFIER_OR_INVALID ENTRY_OCCURRENCE_OR_INVALID REQUIRED_RUNTIME_CAPABILITIES
+contexts N
+context ID PARENT BINDING CLASSIFIER EXTENSION_KIND SOURCE_COMPUTATION_OR_INVALID DEPTH
+typed_occurrences N
+typed_occurrence ID KIND CATEGORY APPLICATION_ROLE CORE_TERM CLASSIFIER_STATUS CLASSIFIER_OR_INVALID VERIFICATION_OBLIGATION_OR_INVALID SOURCE_NAME_OR_DASH BINDER_NAME_OR_DASH BINDING_ID_OR_INVALID WRAPPED_OCCURRENCE_OR_INVALID BINDER_CLASSIFIER_OR_INVALID IH_OWNER_OCCURRENCE_OR_INVALID IH_SCOPE_OR_INVALID IH_CASE_OR_INVALID IH_FIELD_OR_INVALID FOLD_RETURN_BINDING_OR_INVALID IMPLICIT_ROW_COUNT FIRST_CASE_OR_INVALID CASE_COUNT FIRST_FOLD_CLAUSE_OR_INVALID FOLD_CLAUSE_COUNT CONTEXT CONTEXT_ACTION_SUBSTITUTION_OR_INVALID SOURCE_CORE_TERM_OR_INVALID SOURCE_CLASSIFIER_OR_INVALID
+typed_occurrence_rows ID [BINDING_ID]*
+occurrence_edges N
+occurrence_edge ID PARENT_OCCURRENCE CHILD_ROLE ORDINAL CHILD_OCCURRENCE
+occurrence_fold_clauses N
+occurrence_fold_clause ID CONTEXT ARGUMENT_BINDING CONTINUATION_BINDING
+occurrence_match_cases N
+occurrence_match_case ID CONTEXT REFINEMENT_STATUS REFINEMENT_SUBSTITUTION_OR_INVALID CONSTRUCTOR_OWNER CONSTRUCTOR_ID LABEL_OR_DASH
+occurrence_match_case_binders ID BINDER_COUNT [BINDING_ID]*
+
+REFINEMENT_STATUS is SOLVED (1), IMPOSSIBLE (2), or CONSTANT (4). SOLVED
+requires one refinement Substitution whose source is the stored branch
+Context. IMPOSSIBLE and CONSTANT require INVALID substitution. CONSTANT means
+that the index equation remained residual but the accepted Match motive does
+not use the refined index; it is not a solved equation. Compiler-workspace
+PENDING (0) and RESIDUAL (3) states are rejected at publication and readback.
+
+Occurrence edges are the only typed-layer correspondence topology. APP,
+Lambda, Match, CBPV, request, and computation-fold children are not repeated
+in occurrence records or side tables; their computational topology belongs to
+TermDB. Match and fold side tables retain only information that is not
+recoverable from alpha-shared Core nodes: refined Contexts, constructor
+selection, and persistent occurrence Binding identities.
+
+EXTENSION_KIND is INVALID (0) only for the empty Context, VALUE (1) for an
+ordinary value assumption, or SEQUENCE_RESULT (2) for the value delivered to a
+sequencing continuation. SEQUENCE_RESULT names the raw source computation Term
+and is relocated, closed, and replayed with the Context.
+
+After constructor exports, `function_graph_associations COUNT` contains dense
+records `function_graph_association ID OWNER_TERM_EXPORT GRAPH_TYPE_EXPORT
+RESULT_TYPE_EXPORT CERTIFIED_RUNNER_TERM_EXPORT`. All four indices must be
+present and each owner occurs at most once. Link and replay never reconstruct
+this ownership relation from Core equality.
+
+A frozen occurrence has exactly one closure state. SOLVED names one present
+classifier and has no verification obligation. RESIDUAL_VERIFICATION has no
+classifier and names one persisted pending obligation. PENDING is a compiler
+workspace state and is rejected by publication and readback.
+
+Normalization and solver budgets, consumed steps, worklist state, solved
+constraint counts, and effect-constraint diagnostic snapshots are compiler
+session state. They are not serialized. Any deferred semantic requirement is
+represented only by a versioned verification obligation referenced from a
+RESIDUAL_VERIFICATION occurrence.
+
+A typed occurrence carries the action triple
+CONTEXT_ACTION_SUBSTITUTION, SOURCE_CORE_TERM, SOURCE_CLASSIFIER. All three are
+INVALID for an untransformed source occurrence, or all three are valid. For a
+transformed occurrence the Substitution source is the occurrence Context;
+SOURCE_CORE_TERM and SOURCE_CLASSIFIER must both be reindexable through that
+Substitution, and the projected source term must be CORE_TERM. The projected
+source classifier is pullback-time evidence: the final structural classifier
+may be refined later by constraint solving, so equality with the final
+classifier is not required. Keeping this triple is necessary to reconstruct
+typed evidence after indexed branch pullback without treating shared Core Term
+identity as occurrence identity.
+
+Each Match-case binder entry stores only its authoritative persistent Binding
+ID. Replay does not assume that case binders are the final Context extensions:
+indexed pullback may retain free branch variables after the constructor
+telescope.
+
+Each typed-occurrence Substitution record ends with an evidence Claim ID.
+IDENTITY, EMPTY, PROJECTION, and COMPOSE use INVALID. EXTEND must name the exact
+accepted HAS_TYPE Claim for its source Context, assigned Term, and reindexed
+classifier. The Claim must have an accepted Derivation. This compact edge is
+wire authority because those four fields need not identify a unique Claim when
+different source authorities prove the same proposition.
+
+Observational identity fragment admitted by roots:
+- homogeneous ordinary ADT identity families represented by one-dimensional
+  DIMENSION_ACTION terms and ordinary constructor witnesses checked against
+  their acted schemas;
+- repeated generic dimension actions whose canonical operator extends the
+  source dimension by one and whose complete boundary is replayable;
+- pure Return/Thunk identity families represented by dimension action and
+  constructor witnesses; and
+- nondependent pure Pi pointwise identity families and ordinary Lambda/Match
+  witnesses whose complete accepted derivation graph replays read-only.
+
+No fixed square constructor generator or generated declaration is admitted.
+Dimensions one, two, and higher use the same operator/action representation.
+Contextual actions are publishable only when their complete ordinary
+Context/Claim/Derivation evidence is reachable from a semantic root.
+
+These roots certify only the explicitly listed type-directed computation and
+inhabitance rules. They do not turn compiler-local RELATION_TYPE or TERM action
+results into identity, and they do not claim completeness for contextual
+equivalence. Dependent constructor fields, general dependent APP/Match/IH
+action, and generic lifting through an index telescope remain residual.
+
+Universe action, full Universe bisimulation/coherence, generic transport,
+effectful requests/folds, host primitives, HIT, quotient, and general IADT
+identity computation remain residual and cannot be roots.
+
+Dependent computation-fold verification lifecycle:
+- a fold whose result family closes by deterministic pure normalization may
+  contribute ordinary static typing evidence;
+- blocked-effect or exhausted pure normalization creates one versioned
+  COMPUTATION_FOLD_RESULT obligation keyed by the typed occurrence;
+- a PENDING obligation is a runtime contract and never a Claim or Derivation;
+- strict compilation and Verilog admission reject PENDING obligations;
+- hybrid compilation may publish PENDING obligations only when the selected
+  backend declares the computation-fold result verifier and handler
+  capabilities;
+- artifact v83 persists only PENDING obligations. DISCHARGED and FAILED are
+  execution-instance outcomes and are rejected on readback;
+- execution discharges an obligation by applying its retained pure classifier
+  family to the returned value and checking conversion with the continuation
+  result classifier under the retained normalization profile; and
+- failed discharge aborts that execution and cannot retroactively create or
+  alter accepted static evidence.
+
+An unresolved effect equation is persisted as an EFFECT_ROW_EQUATION
+obligation containing its occurrence and result/operand rows. This immutable
+contract replaces the compiler-local mutable effect-constraint snapshot. It
+may be discharged by linking or a declared host boundary; it is never an
+accepted typing Claim by itself.
+Contextual equivalence is a metatheoretic adequacy target, not an artifact
+record or kernel proof-search rule.
+
+Recursive Match frame grammar:
+match_frames N
+match_frame ID MATCH_TERM SCRUTINEE_BINDING_OR_INVALID CASE_COUNT IS_LINKABLE MATCH_KEY
+
+SCRUTINEE_BINDING_OR_INVALID is the persistent BindingId of the recursive
+Match subject when that subject is a variable. It is not a display name or a
+de Bruijn position. Branch substitution preserves this binding until iota
+reduction, where the current recursive scrutinee is substituted into it before
+constructor-field binders. This is runtime semantics and therefore wire
+authority; reconstructing it from an alpha-interned Match after readback is
+not permitted. The referenced Match scrutinee must be a VAR whose persistent
+BindingId is exactly SCRUTINEE_BINDING_OR_INVALID; missing, merely in-range,
+or different bindings are rejected.

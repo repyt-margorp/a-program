@@ -23,13 +23,13 @@ static uint64_t context_key_hash(
 	uint32_t classifier,
 	uint32_t classifier_variable,
 	int extension_kind,
-	uint32_t source_computation
+	uint32_t producer_computation
 ) {
 	uint64_t hash = UINT64_C(1469598103934665603);
 	hash = graph_key_hash_mix(hash, parent);
 	hash = graph_key_hash_mix(hash, binding_id);
 	hash = graph_key_hash_mix(hash, (uint32_t)extension_kind);
-	hash = graph_key_hash_mix(hash, source_computation);
+	hash = graph_key_hash_mix(hash, producer_computation);
 	if (classifier != PROTOTYPE_INVALID_ID &&
 		classifier_variable != PROTOTYPE_INVALID_ID) {
 		hash = graph_key_hash_mix(hash, 3);
@@ -108,7 +108,7 @@ void prototype_context_db_init(
 	db->contexts[0].classifier_ref.term_id = PROTOTYPE_INVALID_ID;
 	db->contexts[0].classifier_ref.variable_id = PROTOTYPE_INVALID_ID;
 	db->contexts[0].extension_kind = PROTOTYPE_CONTEXT_EXTENSION_INVALID;
-	db->contexts[0].source_computation = PROTOTYPE_INVALID_ID;
+	db->contexts[0].producer_computation = PROTOTYPE_INVALID_ID;
 	db->contexts[0].depth = 0;
 	db->contexts[0].key_hash = 0;
 	db->contexts[0].hash_next = PROTOTYPE_INVALID_ID;
@@ -147,7 +147,7 @@ int prototype_context_db_rebuild_runtime_index_after_bulk_load(
 					PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL ?
 					context->classifier_ref.variable_id : PROTOTYPE_INVALID_ID),
 			context->extension_kind,
-			context->source_computation
+			context->producer_computation
 		);
 		size_t bucket = context->key_hash %
 			PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT;
@@ -197,7 +197,7 @@ static int prototype_context_extend_internal(
 	uint32_t classifier,
 	uint32_t classifier_variable,
 	int extension_kind,
-	uint32_t source_computation,
+	uint32_t producer_computation,
 	int preserve_occurrence,
 	uint32_t* p_context
 ) {
@@ -206,17 +206,17 @@ static int prototype_context_extend_internal(
 		(classifier == PROTOTYPE_INVALID_ID &&
 			classifier_variable == PROTOTYPE_INVALID_ID) ||
 		(extension_kind != PROTOTYPE_CONTEXT_EXTENSION_VALUE &&
-		 extension_kind != PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT) ||
+		 extension_kind != PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT) ||
 		(extension_kind == PROTOTYPE_CONTEXT_EXTENSION_VALUE &&
-		 source_computation != PROTOTYPE_INVALID_ID) ||
-		(extension_kind == PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT &&
-		 source_computation == PROTOTYPE_INVALID_ID)) {
+		 producer_computation != PROTOTYPE_INVALID_ID) ||
+		(extension_kind == PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT &&
+		 producer_computation == PROTOTYPE_INVALID_ID)) {
 		return -1;
 	}
 	db->intern_requests++;
 	uint64_t key_hash = context_key_hash(
 		parent, binding_id, classifier, classifier_variable,
-		extension_kind, source_computation
+		extension_kind, producer_computation
 	);
 	size_t bucket = graph_index_bucket(key_hash);
 	if (!preserve_occurrence) {
@@ -232,7 +232,7 @@ static int prototype_context_extend_internal(
 				prototype_context_classifier_term(context) == classifier &&
 				prototype_context_classifier_variable(context) == classifier_variable &&
 				context->extension_kind == extension_kind &&
-				context->source_computation == source_computation;
+				context->producer_computation == producer_computation;
 			/* Binding objects are graph identity. Equal classifiers do not make two
 			 * independently allocated context extensions interchangeable. */
 			if (context->parent == parent && context->binding_id == binding_id &&
@@ -259,7 +259,7 @@ static int prototype_context_extend_internal(
 	db->contexts[id].classifier_ref.term_id = classifier;
 	db->contexts[id].classifier_ref.variable_id = classifier_variable;
 	db->contexts[id].extension_kind = extension_kind;
-	db->contexts[id].source_computation = source_computation;
+	db->contexts[id].producer_computation = producer_computation;
 	db->contexts[id].depth = db->contexts[parent].depth + 1;
 	db->contexts[id].key_hash = key_hash;
 	db->contexts[id].hash_next = db->index_heads[bucket];
@@ -296,35 +296,35 @@ int prototype_context_extend_occurrence(
 	);
 }
 
-int prototype_context_extend_computation_result(
+int prototype_context_extend_sequence_result(
 	struct prototype_context_db* db,
 	uint32_t parent,
 	uint32_t binding_id,
 	uint32_t classifier,
 	uint32_t classifier_variable,
-	uint32_t source_computation,
+	uint32_t producer_computation,
 	uint32_t* p_context
 ) {
 	return prototype_context_extend_internal(
 		db, parent, binding_id, classifier, classifier_variable,
-		PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT,
-		source_computation, 0, p_context
+		PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT,
+		producer_computation, 0, p_context
 	);
 }
 
-int prototype_context_extend_computation_result_occurrence(
+int prototype_context_extend_sequence_result_occurrence(
 	struct prototype_context_db* db,
 	uint32_t parent,
 	uint32_t binding_id,
 	uint32_t classifier,
 	uint32_t classifier_variable,
-	uint32_t source_computation,
+	uint32_t producer_computation,
 	uint32_t* p_context
 ) {
 	return prototype_context_extend_internal(
 		db, parent, binding_id, classifier, classifier_variable,
-		PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT,
-		source_computation, 1, p_context
+		PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT,
+		producer_computation, 1, p_context
 	);
 }
 
@@ -379,7 +379,7 @@ int prototype_context_db_validate(
 		empty->classifier_ref.term_id != PROTOTYPE_INVALID_ID ||
 		empty->classifier_ref.variable_id != PROTOTYPE_INVALID_ID ||
 		empty->extension_kind != PROTOTYPE_CONTEXT_EXTENSION_INVALID ||
-		empty->source_computation != PROTOTYPE_INVALID_ID ||
+		empty->producer_computation != PROTOTYPE_INVALID_ID ||
 		empty->depth != 0) {
 		return -1;
 	}
@@ -407,7 +407,7 @@ int prototype_context_db_validate(
 			classifier,
 			classifier_variable,
 			context->extension_kind,
-			context->source_computation
+			context->producer_computation
 		);
 		if (context->parent >= i ||
 			context->binding_id == PROTOTYPE_INVALID_ID ||
@@ -415,16 +415,16 @@ int prototype_context_db_validate(
 			context->depth != db->contexts[context->parent].depth + 1 ||
 			!classifier_ref_valid ||
 			((context->extension_kind == PROTOTYPE_CONTEXT_EXTENSION_VALUE) !=
-			 (context->source_computation == PROTOTYPE_INVALID_ID)) ||
+			 (context->producer_computation == PROTOTYPE_INVALID_ID)) ||
 			(context->extension_kind != PROTOTYPE_CONTEXT_EXTENSION_VALUE &&
 			 context->extension_kind !=
-				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT) ||
+				PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT) ||
 			(classifier != PROTOTYPE_INVALID_ID &&
 				(classifier >= terms->term_count ||
 				 terms->terms[classifier].tag == 0)) ||
-			(context->source_computation != PROTOTYPE_INVALID_ID &&
-			 (context->source_computation >= terms->term_count ||
-			  terms->terms[context->source_computation].tag == 0))) {
+			(context->producer_computation != PROTOTYPE_INVALID_ID &&
+			 (context->producer_computation >= terms->term_count ||
+			  terms->terms[context->producer_computation].tag == 0))) {
 			return -1;
 		}
 	}
@@ -471,10 +471,10 @@ int prototype_context_db_append_relocated(
 			context->classifier_ref.variable_id < binding_relocation_count
 			? binding_relocation[context->classifier_ref.variable_id]
 			: PROTOTYPE_INVALID_ID;
-		uint32_t source_computation = context &&
-			context->source_computation != PROTOTYPE_INVALID_ID &&
-			context->source_computation < term_relocation_count ?
-			term_relocation[context->source_computation] : PROTOTYPE_INVALID_ID;
+		uint32_t producer_computation = context &&
+			context->producer_computation != PROTOTYPE_INVALID_ID &&
+			context->producer_computation < term_relocation_count ?
+			term_relocation[context->producer_computation] : PROTOTYPE_INVALID_ID;
 		if (!context || context->parent >= i ||
 			(classifier == PROTOTYPE_INVALID_ID) ==
 				(classifier_variable == PROTOTYPE_INVALID_ID) ||
@@ -482,11 +482,11 @@ int prototype_context_db_append_relocated(
 			context->binding_id >= binding_relocation_count ||
 			binding_relocation[context->binding_id] == PROTOTYPE_INVALID_ID ||
 			(context->extension_kind ==
-				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT ?
-			 prototype_context_extend_computation_result_occurrence(
+				PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT ?
+			 prototype_context_extend_sequence_result_occurrence(
 				target, relocation[context->parent],
 				binding_relocation[context->binding_id], classifier,
-				classifier_variable, source_computation, &relocation[i]
+				classifier_variable, producer_computation, &relocation[i]
 			 ) : prototype_context_extend_occurrence(
 				target, relocation[context->parent],
 				binding_relocation[context->binding_id], classifier,
@@ -1527,7 +1527,7 @@ int prototype_context_comprehension_action(
 		return -1;
 	}
 	uint32_t classifier;
-	uint32_t source_computation = PROTOTYPE_INVALID_ID;
+	uint32_t producer_computation = PROTOTYPE_INVALID_ID;
 	uint32_t candidate_binder;
 	uint32_t target_extension;
 	if (prototype_term_reindex(
@@ -1539,23 +1539,23 @@ int prototype_context_comprehension_action(
 			base_substitution,
 			&classifier
 		) != 0 ||
-		(source_entry->source_computation != PROTOTYPE_INVALID_ID &&
+		(source_entry->producer_computation != PROTOTYPE_INVALID_ID &&
 		 prototype_term_reindex(
 			terms,
 			type_declarations,
 			contexts,
 			substitutions,
-			source_entry->source_computation,
+			source_entry->producer_computation,
 			base_substitution,
-			&source_computation
+			&producer_computation
 		 ) != 0) ||
 		(candidate_binder = prototype_term_new_binding(terms)) ==
 			PROTOTYPE_INVALID_ID ||
 		(source_entry->extension_kind ==
-			PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT ?
-		 prototype_context_extend_computation_result(
+			PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT ?
+		 prototype_context_extend_sequence_result(
 			contexts, base->source_context, candidate_binder, classifier,
-			PROTOTYPE_INVALID_ID, source_computation, &target_extension
+			PROTOTYPE_INVALID_ID, producer_computation, &target_extension
 		 ) : prototype_context_extend(
 			contexts, base->source_context, candidate_binder, classifier,
 			PROTOTYPE_INVALID_ID, &target_extension
@@ -1779,7 +1779,7 @@ int prototype_context_pullback_occurrence_telescope(
 		uint32_t classifier_variable =
 			prototype_context_classifier_variable(source);
 		uint32_t classifier = PROTOTYPE_INVALID_ID;
-		uint32_t source_computation = PROTOTYPE_INVALID_ID;
+		uint32_t producer_computation = PROTOTYPE_INVALID_ID;
 		uint32_t target_extension;
 		uint32_t projection;
 		uint32_t weakened_substitution;
@@ -1798,23 +1798,23 @@ int prototype_context_pullback_occurrence_telescope(
 				source_classifier,
 				substitution,
 				&classifier
-			 ) != 0) || (source->source_computation != PROTOTYPE_INVALID_ID &&
+			 ) != 0) || (source->producer_computation != PROTOTYPE_INVALID_ID &&
 			 prototype_term_reindex(
 				terms,
 				type_declarations,
 				contexts,
 				substitutions,
-				source->source_computation,
+				source->producer_computation,
 				substitution,
-				&source_computation
+				&producer_computation
 			 ) != 0) ||
 			(source->extension_kind ==
-				PROTOTYPE_CONTEXT_EXTENSION_COMPUTATION_RESULT ?
-			 prototype_context_extend_computation_result(
+				PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT ?
+			 prototype_context_extend_sequence_result(
 				contexts, target_context, source->binding_id, classifier,
 				classifier == PROTOTYPE_INVALID_ID ? classifier_variable :
 					PROTOTYPE_INVALID_ID,
-				source_computation, &target_extension
+				producer_computation, &target_extension
 			 ) : prototype_context_extend(
 				contexts, target_context, source->binding_id, classifier,
 				classifier == PROTOTYPE_INVALID_ID ? classifier_variable :

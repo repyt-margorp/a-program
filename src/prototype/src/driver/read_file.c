@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v82.h"
+#include "a_program/artifact/wire_v83.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -39,6 +39,7 @@
 #define AST_FAMILY_BINDER_CAPACITY 128
 #define AST_TYPE_CONSTRUCTOR_CAPACITY 256
 #define AST_TYPE_FIELD_EXPR_CAPACITY 512
+#define AST_ACCEPTED_BINDING_PROJECTION_CAPACITY 8192
 #define TERM_CAPACITY 262144
 #define MATCH_CASE_CAPACITY 262144
 #define MATCH_BINDER_CAPACITY 262144
@@ -60,6 +61,8 @@
 #define VERIFICATION_OBLIGATION_CAPACITY 4096
 #define DIMENSION_OPERATOR_CAPACITY 256
 #define DIMENSION_IMAGE_CAPACITY 4096
+#define FUNCTION_GRAPH_REQUEST_CAPACITY 128
+#define FUNCTION_GRAPH_ASSOCIATION_CAPACITY 128
 #define ARTIFACT_TERM_EXPORT_CAPACITY 512
 #define ARTIFACT_TYPE_EXPORT_CAPACITY 256
 #define ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY 512
@@ -112,6 +115,8 @@ static struct prototype_ast_type_constructor ast_type_constructors[AST_TYPE_CONS
 static uint32_t ast_type_field_exprs[AST_TYPE_FIELD_EXPR_CAPACITY];
 static uint32_t ast_type_field_binder_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
 static int ast_type_field_name_symbol_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
+static struct prototype_ast_accepted_binding_projection
+	ast_accepted_binding_projections[AST_ACCEPTED_BINDING_PROJECTION_CAPACITY];
 static struct prototype_universe_node
 	universe_nodes[PROTOTYPE_UNIVERSE_NODE_CAPACITY];
 static struct prototype_universe_edge
@@ -141,6 +146,10 @@ static struct prototype_usage_entry judgement_resource_usage[
 static struct prototype_compile_label compile_labels[COMPILE_LABEL_CAPACITY];
 static struct prototype_compile_type_export compile_type_exports[COMPILE_TYPE_EXPORT_CAPACITY];
 static struct prototype_compile_constructor_export compile_constructor_exports[COMPILE_CONSTRUCTOR_EXPORT_CAPACITY];
+static struct prototype_function_graph_request
+	function_graph_requests[FUNCTION_GRAPH_REQUEST_CAPACITY];
+static struct prototype_function_graph_association
+	function_graph_associations[FUNCTION_GRAPH_ASSOCIATION_CAPACITY];
 static struct prototype_resolve_error resolve_errors[RESOLVE_ERROR_CAPACITY];
 static struct prototype_compile_diagnostic
 	compile_diagnostics[COMPILE_DIAGNOSTIC_CAPACITY];
@@ -4580,6 +4589,11 @@ int main(int argc, char** argv) {
 		ast_type_field_name_symbol_ids,
 		AST_TYPE_FIELD_EXPR_CAPACITY
 	);
+	prototype_ast_db_set_accepted_projection_storage(
+		&ast_db,
+		ast_accepted_binding_projections,
+		AST_ACCEPTED_BINDING_PROJECTION_CAPACITY
+	);
 	prototype_universe_db_init(
 		&universe_db,
 		universe_nodes,
@@ -4646,6 +4660,13 @@ int main(int argc, char** argv) {
 		DIMENSION_OPERATOR_CAPACITY,
 		dimension_images,
 		DIMENSION_IMAGE_CAPACITY
+	);
+	prototype_compile_metadata_set_function_graph_storage(
+		&metadata,
+		function_graph_requests,
+		FUNCTION_GRAPH_REQUEST_CAPACITY,
+		function_graph_associations,
+		FUNCTION_GRAPH_ASSOCIATION_CAPACITY
 	);
 	prototype_compile_metadata_set_diagnostic_storage(
 		&metadata,
@@ -5068,13 +5089,13 @@ int main(int argc, char** argv) {
 				stderr,
 				"A_PROGRAM_COMPILE_PHASE_COUNTERS 1 graph_ns=%" PRIu64
 			" fixed_point_ns=%" PRIu64 " materialization_ns=%" PRIu64
-			" result_evidence_ns=%" PRIu64 " post_result_closure_ns=%" PRIu64
+			" termination_evidence_ns=%" PRIu64 " evidence_closure_ns=%" PRIu64
 			" accepted_replay_ns=%" PRIu64 "\n",
 			metadata.graph_build_time_ns,
 			metadata.fixed_point_time_ns,
 			metadata.proof_materialization_time_ns,
-			metadata.result_evidence_time_ns,
-			metadata.post_result_closure_time_ns,
+			metadata.termination_evidence_time_ns,
+			metadata.evidence_closure_time_ns,
 			metadata.accepted_replay_time_ns
 		);
 		fprintf(
@@ -5082,17 +5103,17 @@ int main(int argc, char** argv) {
 			"A_PROGRAM_PROOF_MATERIALIZATION_COUNTERS 1 passes=%" PRIu64
 			" full_scans=%" PRIu64 " rounds=%" PRIu64
 			" occurrence_visits=%" PRIu64
-			" post_result_retries=%" PRIu64
+			" evidence_retries=%" PRIu64
 			" reify_roots=%" PRIu64 " reify_recursive=%" PRIu64
 			" reify_success=%" PRIu64 " reify_residual=%" PRIu64
 			" reify_failure=%" PRIu64 " accepted_reuse=%" PRIu64
 			" current_pass_reuse=%" PRIu64 " cycles=%" PRIu64
-			" result_claims=%" PRIu64 " termination_claims=%" PRIu64 "\n",
+			" termination_claims=%" PRIu64 "\n",
 			metadata.proof_materialization_pass_count,
 			metadata.proof_materialization_full_scan_count,
 			metadata.proof_materialization_round_count,
 			metadata.proof_materialization_occurrence_visit_count,
-			metadata.post_result_consumer_retry_count,
+			metadata.evidence_consumer_retry_count,
 			metadata.proof_reify_root_count,
 			metadata.proof_reify_recursive_count,
 			metadata.proof_reify_success_count,
@@ -5101,7 +5122,6 @@ int main(int argc, char** argv) {
 			metadata.proof_reify_accepted_reuse_count,
 			metadata.proof_reify_current_pass_reuse_count,
 			metadata.proof_reify_cycle_count,
-			metadata.result_evidence_claim_count,
 			metadata.termination_evidence_claim_count
 		);
 		fprintf(

@@ -71,7 +71,7 @@ static int write_artifact_typed_occurrence_section(
 			context->binding_id,
 			classifier,
 			context->extension_kind,
-			context->source_computation,
+			context->producer_computation,
 			context->depth
 		);
 	}
@@ -471,6 +471,32 @@ static int prototype_artifact_write_text_body(
 			export->readback_first_field_type,
 			export->readback_field_count,
 			export->curried_classifier_cache
+		);
+	}
+
+	fprintf(
+		stream,
+		"function_graph_associations %zu\n",
+		interface->function_graph_association_count
+	);
+	for (size_t i = 0; i < interface->function_graph_association_count; ++i) {
+		const struct prototype_artifact_function_graph_association* association =
+			&interface->function_graph_associations[i];
+		if (association->owner_term_export_index >= interface->term_export_count ||
+			association->graph_type_export_index >= interface->type_export_count ||
+			association->result_type_export_index >= interface->type_export_count ||
+			association->certified_runner_term_export_index >=
+				interface->term_export_count) {
+			return -1;
+		}
+		fprintf(
+			stream,
+			"function_graph_association %zu %u %u %u %u\n",
+			i,
+			association->owner_term_export_index,
+			association->graph_type_export_index,
+			association->result_type_export_index,
+			association->certified_runner_term_export_index
 		);
 	}
 

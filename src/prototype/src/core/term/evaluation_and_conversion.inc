@@ -4186,12 +4186,6 @@ static void print_term_depth_impl(
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			fprintf(output, "<relation-witness>");
 			break;
-		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
-			fprintf(output, "#.Returns");
-			break;
-		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
-			fprintf(output, "#.returns");
-			break;
 		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
 			fprintf(output, "#.Terminates");
 			break;
@@ -4532,12 +4526,6 @@ static void print_term_debug_depth_impl(
 			break;
 		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
 			fprintf(output, "RELATION_WITNESS_FORMER");
-			break;
-		case PROTOTYPE_TERM_RETURNS_TYPE_FORMER:
-			fprintf(output, "RETURNS_TYPE_FORMER");
-			break;
-		case PROTOTYPE_TERM_RETURNS_WITNESS_FORMER:
-			fprintf(output, "RETURNS_WITNESS_FORMER");
 			break;
 		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
 			fprintf(output, "TERMINATES_TYPE_FORMER");

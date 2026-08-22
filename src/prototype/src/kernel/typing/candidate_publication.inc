@@ -1871,6 +1871,13 @@ int prototype_judgement_delta_record_materialized_match_motive(
 		!match_motive_result_classifier(terms, match_term, classifier) ||
 		branch_count != terms->terms[match_term].as.match.case_count ||
 		branch_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
+		fprintf(stderr,
+			"materialized match motive invalid input match=%u classifier=%u branch-count=%u term-count=%zu case-count=%u motive=%d\n",
+			match_term, classifier, branch_count, terms ? terms->term_count : 0,
+			terms && match_term < terms->term_count &&
+				terms->terms[match_term].tag == PROTOTYPE_TERM_MATCH ?
+				terms->terms[match_term].as.match.case_count : PROTOTYPE_INVALID_ID,
+			terms ? match_motive_result_classifier(terms, match_term, classifier) : 0);
 		return -1;
 	}
 	if (add_match_motive_result(delta, match_term, classifier) != 0) {
@@ -1897,6 +1904,12 @@ int prototype_judgement_delta_record_materialized_match_motive(
 				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
 			branch_evidence[i].subject >= terms->term_count ||
 			branch_evidence[i].classifier >= terms->term_count) {
+			fprintf(stderr,
+				"materialized match motive invalid branch case=%u case-id=%u/%zu expected-occurrence=%u evidence-kind=%d evidence-occurrence=%u authority=%d subject=%u classifier=%u\n",
+				i, case_id, terms->case_count, branch_occurrence_ids[i],
+				branch_evidence[i].kind, branch_evidence[i].occurrence_id,
+				branch_evidence[i].authority_kind, branch_evidence[i].subject,
+				branch_evidence[i].classifier);
 			return -1;
 		}
 		/* A typed Match occurrence can share an alpha-interned Core Match with
