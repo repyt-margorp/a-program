@@ -67,7 +67,7 @@ to the kernel.
   coverage. QuickSort graph-property fixtures remain part of FGR4.
 - [x] FGR7: remove `Returns` completely and rename sequencing provenance.
 - [ ] FGR8: run correctness, negative, determinism, and performance gates.
-- [ ] Commit and push the green implementation checkpoint to `main`.
+- [x] Commit and push the green implementation checkpoint to `main`.
 
 ### 2.1 Implemented checkpoint
 
@@ -820,7 +820,7 @@ calculus.
 ### 11.1 2026-08-22 implementation checkpoint
 
 ```text
-Implemented revision: pending checkpoint commit
+Implemented revision: 01537a7
 Artifact version: v83
 
 Graph-enabled definitions: unary direct-Match recursion; conservative curried
