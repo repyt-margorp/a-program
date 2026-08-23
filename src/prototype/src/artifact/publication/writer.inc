@@ -1,6 +1,7 @@
 static int write_artifact_typed_occurrence_section(
 	FILE* stream,
 	const struct symbol_table* symbols,
+	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_compile_metadata* metadata,
@@ -8,12 +9,17 @@ static int write_artifact_typed_occurrence_section(
 	size_t substitution_evidence_count,
 	const struct artifact_context_slice* context_slice
 ) {
-	if (!stream || !symbols || !type_declarations || !judgement ||
+	if (!stream || !symbols || !terms || !type_declarations || !judgement ||
 		!metadata || !context_slice) {
 		return -1;
 	}
 	const struct prototype_typed_occurrence_graph* graph =
 		prototype_compile_metadata_typed_occurrences_const(metadata);
+	if (prototype_verification_db_validate(
+			&metadata->verification, graph, terms
+		) != 0) {
+		return -1;
+	}
 	size_t occurrence_count = prototype_typed_occurrence_graph_count(graph);
 	size_t case_count = prototype_typed_occurrence_graph_case_count(graph);
 	size_t fold_clause_count = graph->fold_clause_count;
@@ -253,7 +259,7 @@ static int write_artifact_typed_occurrence_section(
 		}
 		fprintf(
 			stream,
-			"verification %zu %d %d %u %u %u %u %u %u %u %u %d %u\n",
+			"verification %zu %d %d %u %u %u %u %u %u %u %u %d %d %u\n",
 			i,
 			obligation->kind,
 			obligation->state,
@@ -265,8 +271,25 @@ static int write_artifact_typed_occurrence_section(
 			obligation->input_classifier,
 			obligation->classifier_family,
 			obligation->effect_row,
+			obligation->effect_constraint_kind,
 			obligation->normalization_profile,
 			obligation->schema_version
+		);
+	}
+	fprintf(
+		stream,
+		"verification_dependencies %zu\n",
+		metadata->verification.dependency_count
+	);
+	for (size_t i = 0; i < metadata->verification.dependency_count; ++i) {
+		const struct prototype_verification_dependency* dependency =
+			&metadata->verification.dependencies[i];
+		fprintf(
+			stream,
+			"verification_dependency %zu %u %u\n",
+			i,
+			dependency->occurrence,
+			dependency->obligation_id
 		);
 	}
 	return fprintf(stream, "END typed_occurrences\n") < 0 ? -1 : 0;
@@ -389,9 +412,9 @@ static int prototype_artifact_write_text_body(
 		);
 	}
 	fprintf(stream, "term_exports %zu\n", interface->term_export_count);
+	size_t export_condition_offset = 0;
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		const struct prototype_artifact_term_export* export = &interface->term_exports[i];
-		uint32_t source_claim_id = PROTOTYPE_INVALID_ID;
 		const char* name = symbol_to_string(symbols, export->name_symbol_id);
 		const char* namespace_name = symbol_to_string(symbols, export->namespace_symbol_id);
 		if (!name || !namespace_name) {
@@ -404,10 +427,19 @@ static int prototype_artifact_write_text_body(
 				)) {
 				return -1;
 			}
-			source_claim_id = export->source_evidence.id;
 		} else if (export->source_evidence.kind !=
-			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID ||
-			export->source_evidence.id != PROTOTYPE_INVALID_ID) {
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL ||
+			export->source_condition_count == 0 ||
+			export->source_condition_first != export_condition_offset ||
+			export->source_condition_first >
+				interface->export_condition_obligation_count ||
+			export->source_condition_count >
+				interface->export_condition_obligation_count -
+					export->source_condition_first ||
+			(export->source_evidence.id != PROTOTYPE_INVALID_ID &&
+			 !prototype_judgement_claim_get(
+				judgement, export->source_evidence.id
+			 ))) {
 			return -1;
 		}
 		fprintf(
@@ -423,11 +455,30 @@ static int prototype_artifact_write_text_body(
 		print_artifact_key(stream, &export->classifier_key);
 		fprintf(
 			stream,
-			" namespace %s occurrence %u claim %u\n",
+			" namespace %s occurrence %u evidence %d %u %u",
 			namespace_name,
 			export->occurrence,
-			source_claim_id
+			export->source_evidence.kind,
+			export->source_evidence.id,
+			export->source_condition_count
 		);
+		if (export->source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) {
+			for (uint32_t j = 0; j < export->source_condition_count; ++j) {
+				fprintf(
+					stream,
+					" %u",
+					interface->export_condition_obligation_ids[
+						export->source_condition_first + j
+					]
+				);
+			}
+			export_condition_offset += export->source_condition_count;
+		}
+		fprintf(stream, "\n");
+	}
+	if (export_condition_offset != interface->export_condition_obligation_count) {
+		return -1;
 	}
 
 	fprintf(stream, "type_exports %zu\n", interface->type_export_count);
@@ -566,6 +617,7 @@ static int prototype_artifact_write_text_body(
 	if (write_artifact_typed_occurrence_section(
 		stream,
 		symbols,
+		terms,
 		type_declarations,
 		judgement,
 		metadata,
@@ -755,6 +807,17 @@ int prototype_artifact_write_text(
 			"artifact dense identity validation failed status=%d\n",
 			identity_validation_status
 		);
+		artifact_publication_graph_free(&publication);
+		artifact_closure_graph_free(&closure_graph);
+		return -1;
+	}
+	if (prototype_artifact_interface_validate_function_graph_associations(
+			&publication.interface,
+			&publication.object.terms,
+			&publication.object.type_declarations,
+			&publication.object.judgement
+		) != 0) {
+		fprintf(stderr, "artifact dense function-graph validation failed\n");
 		artifact_publication_graph_free(&publication);
 		artifact_closure_graph_free(&closure_graph);
 		return -1;

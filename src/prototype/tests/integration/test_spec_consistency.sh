@@ -8,7 +8,7 @@ cd "$ROOT_DIR"
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/a-program-spec-consistency.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT
 
-artifact_schema=src/prototype/spec/artifact_v83.schema
+artifact_schema=src/prototype/spec/artifact_v84.schema
 hott_schema=src/prototype/spec/hott_fragment_v6.schema
 calculus_header=src/prototype/calculus.h
 artifact_header=src/prototype/include/a_program/artifact/interface.h
@@ -68,7 +68,8 @@ if ! grep -q 'MATCH_TYPE_FORMATION_INTRO=13 MATCH_ELIM=14' "$hott_schema"; then
 fi
 
 if ! grep -q 'canonical dimension operator embedded in the acted Term' "$artifact_schema" ||
-	! grep -q 'a PENDING obligation is a runtime contract and never a Claim' "$artifact_schema"; then
+	! grep -q 'a PENDING computation-fold obligation is a runtime contract and never a' "$artifact_schema" ||
+	! grep -q 'effect obligation is never an' "$artifact_schema"; then
 	echo "artifact manifest omits the current Identity or verification boundary" >&2
 	exit 1
 fi

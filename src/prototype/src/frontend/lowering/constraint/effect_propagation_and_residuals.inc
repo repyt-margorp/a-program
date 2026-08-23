@@ -562,14 +562,13 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 				if (has_external_ref < 0) {
 					return -1;
 				}
-				/* The identity equation adds no obligation when every symbolic
-				 * row is scoped by this Operation. A free external row remains a
-				 * residual link-time obligation even though rho = rho is trivial. */
 				int state = unowned != 0 && has_external_ref != 0 ?
 					OPERATION_CONSTRAINT_STATE_RESIDUAL :
 					OPERATION_CONSTRAINT_STATE_SOLVED;
 				if (operation_constraint_transition(
-						constraint, state, OPERATION_CLASSIFIER_GOAL_REASON_NONE
+						constraint,
+						state,
+						OPERATION_CLASSIFIER_GOAL_REASON_NONE
 					) != 0) {
 					return -1;
 				}
@@ -1119,6 +1118,7 @@ static int compile_phase_record_residual_effect_constraints(
 				constraint->source_occurrence
 			];
 		int already_recorded = 0;
+		uint32_t obligation_id = PROTOTYPE_INVALID_ID;
 		for (uint32_t j = 0;
 			j < prototype_verification_db_count(&ctx->metadata->verification);
 			++j) {
@@ -1127,11 +1127,13 @@ static int compile_phase_record_residual_effect_constraints(
 			if (existing && existing->kind ==
 					PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION &&
 				existing->occurrence == constraint->source_occurrence &&
+				existing->effect_constraint_kind == constraint->kind &&
 				existing->effect_row == constraint->payload.effect.result_row &&
 				existing->input_classifier == constraint->payload.effect.left_row &&
 				existing->classifier_family ==
 					constraint->payload.effect.right_row) {
 				already_recorded = 1;
+				obligation_id = j;
 				break;
 			}
 		}
@@ -1149,10 +1151,19 @@ static int compile_phase_record_residual_effect_constraints(
 					.input_classifier = constraint->payload.effect.left_row,
 					.classifier_family = constraint->payload.effect.right_row,
 					.effect_row = constraint->payload.effect.result_row,
+					.effect_constraint_kind = constraint->kind,
 					.normalization_profile =
 						PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF
 				},
-				NULL
+				&obligation_id
+			) != 0) {
+			return -1;
+		}
+		if (obligation_id == PROTOTYPE_INVALID_ID ||
+			prototype_verification_db_add_dependency(
+				&ctx->metadata->verification,
+				constraint->source_occurrence,
+				obligation_id
 			) != 0) {
 			return -1;
 		}
@@ -1458,7 +1469,14 @@ static int compile_phase_record_residual_dependent_folds(struct compile_context*
 					.normalization_profile =
 						PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
 				},
-				NULL
+				&existing_obligation
+			) != 0) {
+			return -1;
+		}
+		if (prototype_verification_db_add_dependency(
+				&ctx->metadata->verification,
+				operation_id,
+				existing_obligation
 			) != 0) {
 			return -1;
 		}
@@ -1548,7 +1566,14 @@ static int compile_phase_record_residual_computation_fold_results(struct compile
 					.normalization_profile =
 						PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
 				},
-				NULL
+				&existing_obligation
+			) != 0) {
+			return -1;
+		}
+		if (prototype_verification_db_add_dependency(
+				&ctx->metadata->verification,
+				operation_id,
+				existing_obligation
 			) != 0) {
 			return -1;
 		}

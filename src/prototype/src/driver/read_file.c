@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v83.h"
+#include "a_program/artifact/wire_v84.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -59,6 +59,7 @@
 #define OPERATION_FOLD_CLAUSE_CAPACITY 4096
 #define EFFECT_CONSTRAINT_CAPACITY 8192
 #define VERIFICATION_OBLIGATION_CAPACITY 4096
+#define VERIFICATION_DEPENDENCY_CAPACITY 8192
 #define DIMENSION_OPERATOR_CAPACITY 256
 #define DIMENSION_IMAGE_CAPACITY 4096
 #define FUNCTION_GRAPH_REQUEST_CAPACITY 128
@@ -207,6 +208,8 @@ static struct prototype_occurrence_effect_constraint
 	effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
+static struct prototype_verification_dependency
+	verification_dependencies[VERIFICATION_DEPENDENCY_CAPACITY];
 static struct prototype_typed_occurrence provider_operations[OPERATION_CAPACITY];
 static struct prototype_typed_occurrence_edge
 	provider_occurrence_edges[OCCURRENCE_EDGE_CAPACITY];
@@ -217,6 +220,8 @@ static struct prototype_occurrence_effect_constraint
 	provider_effect_constraints[EFFECT_CONSTRAINT_CAPACITY];
 static struct prototype_verification_obligation
 	provider_verification_obligations[VERIFICATION_OBLIGATION_CAPACITY];
+static struct prototype_verification_dependency
+	provider_verification_dependencies[VERIFICATION_DEPENDENCY_CAPACITY];
 static struct prototype_artifact_term_export artifact_term_exports[ARTIFACT_TERM_EXPORT_CAPACITY];
 static struct prototype_artifact_type_export artifact_type_exports[ARTIFACT_TYPE_EXPORT_CAPACITY];
 static struct prototype_artifact_type_parameter_export artifact_type_parameter_exports[ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY];
@@ -577,14 +582,20 @@ static int artifact_export_claim_ids_match_loaded_image(
 		const struct prototype_artifact_term_export* export =
 			&interface->term_exports[i];
 		if (export->source_evidence.kind ==
-			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
-			if (export->source_evidence.id != PROTOTYPE_INVALID_ID) {
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) {
+			if (export->source_condition_count == 0 ||
+				(export->source_evidence.id != PROTOTYPE_INVALID_ID &&
+				 export->source_evidence.id >= judgement->claim_count)) {
 				return -1;
 			}
-			continue;
+			if (export->source_evidence.id == PROTOTYPE_INVALID_ID) {
+				continue;
+			}
 		}
-		if (export->source_evidence.kind !=
-				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM ||
+		if ((export->source_evidence.kind !=
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM &&
+			 export->source_evidence.kind !=
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) ||
 			export->source_evidence.id >= judgement->claim_count) {
 			return -1;
 		}
@@ -615,72 +626,14 @@ static int artifact_exports_have_accepted_claims(
 	if (!interface || !terms || !judgement || !metadata) {
 		return -1;
 	}
-	const struct prototype_typed_occurrence_graph* graph =
-		prototype_compile_metadata_typed_occurrences_const(metadata);
-	for (size_t i = 0; i < interface->term_export_count; ++i) {
-		struct prototype_artifact_term_export* export =
-			&interface->term_exports[i];
-		if (export->occurrence >= metadata->typed_occurrences.occurrence_count ||
-			metadata->typed_occurrences.occurrences[export->occurrence].classifier != export->classifier) {
-			return -1;
-		}
-		int found = 0;
-		if (export->source_evidence.kind !=
-			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
-			if (export->source_evidence.kind !=
-					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM ||
-				export->source_evidence.id >= judgement->claim_count) {
-				return -1;
-			}
-			const struct prototype_judgement_claim* claim =
-				&judgement->claims[export->source_evidence.id];
-			found = prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-				prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == export->local_term &&
-				prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier == export->classifier &&
-				claim->closure_rank != PROTOTYPE_INVALID_ID &&
-				(prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_kind != PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE ||
-				 (prototype_judgement_proposition_get(judgement, claim->proposition_id)->authority_id == export->occurrence &&
-				  prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id == export->occurrence));
-			if (!found) {
-				return -1;
-			}
-		}
-		if (!found) {
-			for (size_t j = 0;
-				j < prototype_verification_db_count(&metadata->verification);
-				++j) {
-				const struct prototype_verification_obligation* obligation =
-					prototype_verification_db_get(
-						&metadata->verification, (uint32_t)j
-					);
-				if (!obligation || obligation->state !=
-						PROTOTYPE_VERIFICATION_OBLIGATION_PENDING) {
-					continue;
-				}
-				int reaches = prototype_typed_occurrence_graph_reaches(
-					graph, terms, export->occurrence, obligation->occurrence
-				);
-				if (reaches < 0) {
-					return -1;
-				}
-				if (reaches > 0) {
-					found = 1;
-					break;
-				}
-			}
-		}
-		if (!found) {
-			fprintf(
-				stderr,
-				"artifact export has no accepted projected claim subject=%u classifier=%u\n",
-				export->local_term,
-				export->classifier
-			);
-			return -1;
-		}
-	}
-	(void)rebind_source_claim_ids;
-	return 0;
+	(void)terms;
+	return rebind_source_claim_ids ?
+		prototype_artifact_interface_refresh_term_export_evidence(
+			interface, metadata, judgement
+		) :
+		prototype_artifact_interface_validate_term_export_evidence(
+			interface, metadata, judgement
+		);
 }
 
 static int read_artifact_interface_and_graph(
@@ -753,10 +706,15 @@ static int read_artifact_interface_and_graph(
 			&metadata->contexts,
 			&metadata->dimension_operators,
 			judgement_db
+		) != 0 || prototype_artifact_interface_validate_function_graph_associations(
+			artifact_interface,
+			term_db,
+			type_declarations,
+			judgement_db
 		) != 0 || prototype_universe_validate_provenance(
 			universe_db, judgement_db
 		) != 0 || artifact_exports_have_accepted_claims(
-			artifact_interface, term_db, judgement_db, metadata, 1
+			artifact_interface, term_db, judgement_db, metadata, 0
 		) != 0) {
 		status = -1;
 	}
@@ -820,7 +778,13 @@ static int append_link_typed_occurrence_graph(
 			prototype_typed_occurrence_graph_case_count(source_graph) >
 			target_graph->case_capacity ||
 		target_graph->fold_clause_count + source_graph->fold_clause_count >
-			target_graph->fold_clause_capacity) {
+			target_graph->fold_clause_capacity ||
+		target->verification.obligation_count +
+			source->verification.obligation_count >
+			target->verification.obligation_capacity ||
+		target->verification.dependency_count +
+			source->verification.dependency_count >
+			target->verification.dependency_capacity) {
 		return -1;
 	}
 	int target_is_empty = prototype_typed_occurrence_graph_count(target_graph) == 0 &&
@@ -863,6 +827,8 @@ static int append_link_typed_occurrence_graph(
 	uint32_t case_offset =
 		(uint32_t)prototype_typed_occurrence_graph_case_count(target_graph);
 	uint32_t fold_clause_offset = (uint32_t)target_graph->fold_clause_count;
+	uint32_t obligation_offset =
+		(uint32_t)target->verification.obligation_count;
 	for (size_t i = 0; i < prototype_typed_occurrence_graph_count(source_graph); ++i) {
 		const struct prototype_typed_occurrence* source_operation =
 			prototype_typed_occurrence_graph_get(source_graph, (uint32_t)i);
@@ -1060,7 +1026,22 @@ static int append_link_typed_occurrence_graph(
 		RELOCATE_TERM_FIELD(obligation.input_classifier);
 		RELOCATE_TERM_FIELD(obligation.classifier_family);
 		RELOCATE_TERM_FIELD(obligation.effect_row);
-		if (prototype_verification_db_add(&target->verification, obligation, NULL) != 0) {
+		uint32_t obligation_id;
+		if (prototype_verification_db_add(
+				&target->verification, obligation, &obligation_id
+			) != 0 || obligation_id != obligation_offset + i) {
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < source->verification.dependency_count; ++i) {
+		const struct prototype_verification_dependency* dependency =
+			&source->verification.dependencies[i];
+		if (dependency->obligation_id >= source->verification.obligation_count ||
+			prototype_verification_db_add_dependency(
+				&target->verification,
+				offset_link_graph_id(dependency->occurrence, occurrence_offset),
+				obligation_offset + dependency->obligation_id
+			) != 0) {
 			return -1;
 		}
 	}
@@ -1213,7 +1194,8 @@ static int check_export_normalization_equal(
 		occurrence_match_cases, OPERATION_CASE_CAPACITY,
 		occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
-		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY,
+		verification_dependencies, VERIFICATION_DEPENDENCY_CAPACITY
 	);
 	prototype_compile_metadata_set_accepted_substitution_claim_storage(
 		&metadata,
@@ -1452,7 +1434,8 @@ static int check_exports_normalization_equal(
 		occurrence_match_cases, OPERATION_CASE_CAPACITY,
 		occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
-		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY,
+		verification_dependencies, VERIFICATION_DEPENDENCY_CAPACITY
 	);
 	prototype_compile_metadata_set_accepted_substitution_claim_storage(
 		&metadata,
@@ -1774,7 +1757,8 @@ static int check_exports_shape_equal(
 		occurrence_match_cases, OPERATION_CASE_CAPACITY,
 		occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
-		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY,
+		verification_dependencies, VERIFICATION_DEPENDENCY_CAPACITY
 	);
 	prototype_compile_metadata_set_accepted_substitution_claim_storage(
 		&metadata,
@@ -1964,7 +1948,8 @@ static int check_export_classifier_compatible(
 		occurrence_match_cases, OPERATION_CASE_CAPACITY,
 		occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 		effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
-		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+		verification_obligations, VERIFICATION_OBLIGATION_CAPACITY,
+		verification_dependencies, VERIFICATION_DEPENDENCY_CAPACITY
 	);
 	prototype_compile_metadata_set_accepted_substitution_claim_storage(
 		&metadata,
@@ -2284,7 +2269,9 @@ static int read_import_artifact_into_slot(
 		provider_effect_constraints,
 		EFFECT_CONSTRAINT_CAPACITY,
 		provider_verification_obligations,
-		VERIFICATION_OBLIGATION_CAPACITY
+		VERIFICATION_OBLIGATION_CAPACITY,
+		provider_verification_dependencies,
+		VERIFICATION_DEPENDENCY_CAPACITY
 	);
 	prototype_compile_metadata_set_accepted_substitution_claim_storage(
 		&provider_metadata,
@@ -2334,12 +2321,19 @@ static int read_import_artifact_into_slot(
 		provider_judgement_db.claim_count == 0 ? 1 :
 		provider_judgement_db.claim_count;
 	uint32_t provider_claim_relocation[provider_claim_relocation_count];
+	size_t provider_binding_relocation_count =
+		provider_term_db.next_binding_id == 0 ? 1 : provider_term_db.next_binding_id;
+	uint32_t provider_binding_relocation[provider_binding_relocation_count];
 	struct prototype_artifact_graph_relocation provider_additional = {
+		.binding_ids = provider_binding_relocation,
+		.binding_id_capacity = provider_binding_relocation_count,
 		.claim_ids = provider_claim_relocation,
 		.claim_id_capacity = provider_claim_relocation_count,
 		.substitution_ids = provider_substitution_relocation,
 		.substitution_id_capacity = provider_substitution_relocation_count
 	};
+	uint32_t occurrence_offset =
+		(uint32_t)program->metadata->typed_occurrences.occurrence_count;
 	int append_status = prototype_artifact_append_graph(
 			&imported_artifact_interfaces[slot],
 			program->terms,
@@ -2355,7 +2349,7 @@ static int read_import_artifact_into_slot(
 			&provider_metadata.contexts,
 			&provider_metadata.substitutions,
 			&provider_metadata.dimension_operators,
-			PROTOTYPE_INVALID_ID,
+			occurrence_offset,
 			provider_term_relocation,
 			provider_term_relocation_count,
 		provider_context_relocation,
@@ -2367,10 +2361,35 @@ static int read_import_artifact_into_slot(
 		fprintf(stderr, "%s: imported graph append failed\n", path);
 		return -1;
 	}
-	/* Interface imports intentionally omit the provider's accepted judgement
-	 * graph. Consequently no provider ClaimId is relocated, and importing its
-	 * accepted-substitution Claim references would create dangling authority.
-	 * Link/re-export mode, which does append accepted Claims, owns that copy. */
+	if (append_link_typed_occurrence_graph(
+			program->metadata,
+			&provider_metadata,
+			program->terms,
+			provider_term_relocation,
+			provider_term_relocation_count,
+			provider_context_relocation,
+			provider_context_relocation_count,
+			provider_binding_relocation,
+			provider_binding_relocation_count,
+			provider_substitution_relocation,
+			provider_substitution_relocation_count
+		) != 0 ||
+		prototype_compile_metadata_append_accepted_substitution_claims(
+			program->metadata,
+			&provider_metadata,
+			provider_substitution_relocation,
+			provider_substitution_relocation_count,
+			provider_claim_relocation,
+			provider_claim_relocation_count
+		) != 0 ||
+		prototype_artifact_interface_refresh_term_export_evidence(
+			&imported_artifact_interfaces[slot],
+			program->metadata,
+			program->judgement
+		) != 0) {
+		fprintf(stderr, "%s: imported semantic graph append failed\n", path);
+		return -1;
+	}
 	return 0;
 }
 
@@ -3578,7 +3597,9 @@ int main(int argc, char** argv) {
 			effect_constraints,
 			EFFECT_CONSTRAINT_CAPACITY,
 			verification_obligations,
-			VERIFICATION_OBLIGATION_CAPACITY
+			VERIFICATION_OBLIGATION_CAPACITY,
+			verification_dependencies,
+			VERIFICATION_DEPENDENCY_CAPACITY
 		);
 		prototype_compile_metadata_set_accepted_substitution_claim_storage(
 			&metadata,
@@ -3635,6 +3656,17 @@ int main(int argc, char** argv) {
 		}
 		struct prototype_typed_occurrence_graph* linked_occurrences =
 			prototype_compile_metadata_typed_occurrences(&metadata);
+		size_t discharged_link_effect_equations = 0;
+		if (prototype_verification_db_try_discharge_phase(
+				&metadata.verification,
+				&term_db,
+				PROTOTYPE_VERIFICATION_PHASE_LINK,
+				&discharged_link_effect_equations
+			) != 0) {
+			fprintf(stderr, "%s: linked effect-row discharge failed\n", link_target_path);
+			symbol_table_free(&symbols);
+			return 1;
+		}
 		if (link_provider_count != 0 &&
 			prototype_typed_occurrence_graph_begin_transaction(
 				linked_occurrences, &term_db, &metadata.contexts
@@ -3766,7 +3798,9 @@ int main(int argc, char** argv) {
 				provider_effect_constraints,
 				EFFECT_CONSTRAINT_CAPACITY,
 				provider_verification_obligations,
-				VERIFICATION_OBLIGATION_CAPACITY
+				VERIFICATION_OBLIGATION_CAPACITY,
+				provider_verification_dependencies,
+				VERIFICATION_DEPENDENCY_CAPACITY
 			);
 			prototype_compile_metadata_set_accepted_substitution_claim_storage(
 				&provider_metadata,
@@ -4094,6 +4128,7 @@ int main(int argc, char** argv) {
 			"target=%s providers=%zu\n"
 			"output=%s\n"
 			"terms=%zu->%zu types=%zu->%zu judgements=%zu\n"
+			"discharged_link_effect_equations=%zu\n"
 			"target_exports=%zu provider_exports=%zu dependencies=%zu reexport=%s\n",
 			link_target_path,
 			link_provider_count,
@@ -4103,6 +4138,7 @@ int main(int argc, char** argv) {
 			before_types,
 			type_declarations.semantic_schema.type_count,
 			judgement_db.proposition_count,
+			discharged_link_effect_equations,
 			artifact_interface.term_export_count,
 			total_provider_exports,
 			artifact_interface.dependency_count,
@@ -4203,7 +4239,8 @@ int main(int argc, char** argv) {
 				occurrence_match_cases, OPERATION_CASE_CAPACITY,
 				occurrence_fold_clauses, OPERATION_FOLD_CLAUSE_CAPACITY,
 				effect_constraints, EFFECT_CONSTRAINT_CAPACITY,
-				verification_obligations, VERIFICATION_OBLIGATION_CAPACITY
+				verification_obligations, VERIFICATION_OBLIGATION_CAPACITY,
+				verification_dependencies, VERIFICATION_DEPENDENCY_CAPACITY
 			);
 			prototype_compile_metadata_set_accepted_substitution_claim_storage(
 				&artifact_metadata,
@@ -4334,6 +4371,13 @@ int main(int argc, char** argv) {
 					&type_declarations,
 					&artifact_metadata.contexts,
 					&artifact_metadata.dimension_operators,
+					&judgement_db
+				) != 0) ||
+				((artifact_graph_stage = "function-graph-associations"),
+				 prototype_artifact_interface_validate_function_graph_associations(
+					&artifact_interface,
+					&term_db,
+					&type_declarations,
 					&judgement_db
 				) != 0) ||
 				((artifact_graph_stage = "universe-provenance"),
@@ -4659,7 +4703,9 @@ int main(int argc, char** argv) {
 		effect_constraints,
 		EFFECT_CONSTRAINT_CAPACITY,
 		verification_obligations,
-		VERIFICATION_OBLIGATION_CAPACITY
+		VERIFICATION_OBLIGATION_CAPACITY,
+		verification_dependencies,
+		VERIFICATION_DEPENDENCY_CAPACITY
 	);
 	prototype_compile_metadata_set_accepted_substitution_claim_storage(
 		&metadata,

@@ -1433,6 +1433,36 @@ static int resolve_imported_term_name(
 	return found ? 0 : 1;
 }
 
+static const struct prototype_artifact_term_export* lookup_imported_term_export(
+	const struct compile_context* ctx,
+	struct prototype_qualified_name name
+) {
+	const struct prototype_artifact_term_export* found = NULL;
+	if (!ctx) {
+		return NULL;
+	}
+	for (size_t i = 0; i < ctx->imported_interface_count; ++i) {
+		const struct prototype_artifact_interface* interface =
+			ctx->imported_interfaces[i];
+		if (!interface) {
+			continue;
+		}
+		for (size_t j = 0; j < interface->term_export_count; ++j) {
+			const struct prototype_artifact_term_export* candidate =
+				&interface->term_exports[j];
+			if (candidate->namespace_symbol_id != name.namespace_symbol_id ||
+				candidate->name_symbol_id != name.name_symbol_id) {
+				continue;
+			}
+			if (found) {
+				return NULL;
+			}
+			found = candidate;
+		}
+	}
+	return found;
+}
+
 static int resolve_imported_type_name(
 	const struct compile_context* ctx,
 	int name_symbol_id,
@@ -1525,6 +1555,7 @@ static int compile_external_ref_ref(
 	uint32_t classifier = PROTOTYPE_INVALID_ID;
 	int has_classifier = 0;
 	int is_imported_type = 0;
+	const struct prototype_artifact_term_export* imported_export = NULL;
 	if (lookup_external_declaration_classifier(ctx, name_symbol_id, &classifier) == 0) {
 		name.namespace_symbol_id = ctx->namespace_symbol_id;
 		has_classifier = 1;
@@ -1536,6 +1567,14 @@ static int compile_external_ref_ref(
 		}
 		if (imported_status == 0 &&
 			lookup_imported_term_classifier(ctx, name, &classifier) == 0) {
+			imported_export = lookup_imported_term_export(ctx, name);
+			if (!imported_export || imported_export->source_evidence.kind ==
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) {
+				/* The first conditional-import fragment preserves provider
+				 * identity but rejects use until condition propagation can be
+				 * proved for every occurrence constructor. */
+				return -1;
+			}
 			has_classifier = 1;
 		}
 	}

@@ -2451,6 +2451,17 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "constructor cache validation failed after accepted replay\n");
 		return -1;
 	}
+	size_t discharged_compile_effect_equations = 0;
+	if (prototype_verification_db_try_discharge_phase(
+			&metadata->verification,
+			terms,
+			PROTOTYPE_VERIFICATION_PHASE_COMPILE,
+			&discharged_compile_effect_equations
+		) != 0) {
+		fprintf(stderr, "compile-time effect-equation discharge failed\n");
+		return -1;
+	}
+	(void)discharged_compile_effect_equations;
 	if (compile_phase_publish_labels(&ctx) != 0) {
 		fprintf(stderr, "label publication failed\n");
 		return -1;

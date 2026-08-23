@@ -426,7 +426,8 @@ int main(void) {
 	uint32_t residual_classifier;
 	uint32_t residual_binder = prototype_term_new_binding(&term_db);
 	uint32_t residual_family;
-	struct prototype_verification_obligation obligations[1];
+	struct prototype_verification_obligation obligations[4];
+	struct prototype_verification_dependency dependencies[4];
 	struct prototype_verification_db verification;
 	if (residual_binder == PROTOTYPE_INVALID_ID ||
 		prototype_term_effect_row_empty(&term_db, &effect_row) != 0 ||
@@ -436,7 +437,13 @@ int main(void) {
 		) != 0) {
 		return 1;
 	}
-	prototype_verification_db_init(&verification, obligations, 1);
+	prototype_verification_db_init(
+		&verification,
+		obligations,
+		4,
+		dependencies,
+		4
+	);
 	if (prototype_verification_db_add(
 			&verification,
 			(struct prototype_verification_obligation){
@@ -464,6 +471,98 @@ int main(void) {
 		) != 0 || !prototype_verification_db_get(&verification, 0) ||
 			prototype_verification_db_get(&verification, 0)->state !=
 			PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED) {
+		return 1;
+	}
+
+	/* Static/link discharge closes only ground, true effect equations. A row
+	 * variable is not evidence of equality, and a false equation stays pending. */
+	uint32_t print_row;
+	uint32_t symbolic_row;
+	uint32_t ground_obligation;
+	uint32_t symbolic_obligation;
+	uint32_t unequal_obligation;
+	uint32_t symbolic_binding = prototype_term_new_binding(&term_db);
+	if (symbolic_binding == PROTOTYPE_INVALID_ID ||
+		prototype_term_effect_row_operation(
+			&term_db,
+			PROTOTYPE_EFFECT_OPERATION_PRINT,
+			effect_row,
+			&print_row
+		) != 0 || prototype_term_effect_row_var(
+			&term_db, symbolic_binding, &symbolic_row
+		) != 0 || prototype_verification_db_add(
+			&verification,
+			(struct prototype_verification_obligation){
+				.kind = PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION,
+				.state = PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
+				.occurrence = 1,
+				.core_term = constructor,
+				.input_classifier = effect_row,
+				.classifier_family = PROTOTYPE_INVALID_ID,
+				.effect_row = effect_row,
+				.effect_constraint_kind =
+					PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_EXACT,
+				.normalization_profile =
+					PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF
+			},
+			&ground_obligation
+		) != 0 || prototype_verification_db_add(
+			&verification,
+			(struct prototype_verification_obligation){
+				.kind = PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION,
+				.state = PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
+				.occurrence = 2,
+				.core_term = constructor,
+				.input_classifier = symbolic_row,
+				.classifier_family = PROTOTYPE_INVALID_ID,
+				.effect_row = symbolic_row,
+				.effect_constraint_kind =
+					PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_EXACT,
+				.normalization_profile =
+					PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF
+			},
+			&symbolic_obligation
+		) != 0 || prototype_verification_db_add(
+			&verification,
+			(struct prototype_verification_obligation){
+				.kind = PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION,
+				.state = PROTOTYPE_VERIFICATION_OBLIGATION_PENDING,
+				.occurrence = 3,
+				.core_term = constructor,
+				.input_classifier = print_row,
+				.classifier_family = PROTOTYPE_INVALID_ID,
+				.effect_row = effect_row,
+				.effect_constraint_kind =
+					PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_EXACT,
+				.normalization_profile =
+					PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF
+			},
+			&unequal_obligation
+		) != 0 || prototype_verification_db_add_dependency(
+			&verification, 1, ground_obligation
+		) != 0 || prototype_verification_db_add_dependency(
+			&verification, 2, symbolic_obligation
+		) != 0 || prototype_verification_db_add_dependency(
+			&verification, 3, unequal_obligation
+		) != 0) {
+		return 1;
+	}
+	size_t discharged_effects = 0;
+	if (prototype_verification_db_try_discharge_phase(
+			&verification,
+			&term_db,
+			PROTOTYPE_VERIFICATION_PHASE_LINK,
+			&discharged_effects
+		) != 0 || discharged_effects != 1 ||
+		verification.obligations[ground_obligation].state !=
+			PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED ||
+		verification.obligations[symbolic_obligation].state !=
+			PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
+		verification.obligations[unequal_obligation].state !=
+			PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
+		verification.dependency_count != 2 ||
+		verification.dependencies[0].obligation_id != symbolic_obligation ||
+		verification.dependencies[1].obligation_id != unequal_obligation) {
 		return 1;
 	}
 	return 0;

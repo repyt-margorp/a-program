@@ -1899,35 +1899,6 @@ static int artifact_mark_exact_relation(
 	return 1;
 }
 
-static int artifact_export_has_residual_constraint(
-	const struct prototype_compile_metadata* metadata,
-	const struct prototype_term_db* terms,
-	uint32_t operation
-) {
-	if (!metadata || !terms || operation >= metadata->typed_occurrences.occurrence_count) {
-		return -1;
-	}
-	const struct prototype_typed_occurrence_graph* graph =
-		prototype_compile_metadata_typed_occurrences_const(metadata);
-	for (size_t i = 0;
-		i < prototype_verification_db_count(&metadata->verification);
-		++i) {
-		const struct prototype_verification_obligation* obligation =
-			prototype_verification_db_get(&metadata->verification, (uint32_t)i);
-		if (!obligation || obligation->state !=
-				PROTOTYPE_VERIFICATION_OBLIGATION_PENDING) {
-			continue;
-		}
-		int reaches = prototype_typed_occurrence_graph_reaches(
-			graph, terms, operation, obligation->occurrence
-		);
-		if (reaches != 0) {
-			return reaches;
-		}
-	}
-	return 0;
-}
-
 static int artifact_mark_subject_relations(
 	struct artifact_graph_marks* marks,
 	const struct prototype_term_db* terms,

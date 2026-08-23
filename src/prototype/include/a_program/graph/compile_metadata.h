@@ -460,7 +460,9 @@ void prototype_compile_metadata_init(
 	struct prototype_occurrence_effect_constraint* effect_constraints,
 	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
-	size_t verification_obligation_capacity
+	size_t verification_obligation_capacity,
+	struct prototype_verification_dependency* verification_dependencies,
+	size_t verification_dependency_capacity
 );
 
 void prototype_compile_metadata_set_dimension_storage(

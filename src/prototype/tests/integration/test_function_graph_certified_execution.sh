@@ -88,6 +88,67 @@ grep -q '^term quickSortGraphProbe :=' "$tmp_dir/quicksort-graph.out"
 grep -q '^interface term \$certified\.quickSort ' \
 	"$tmp_dir/quicksort-graph-read.out"
 
+expect_quicksort_association_rejection() {
+	artifact=$1
+	message=$2
+	if ./read_file.out --read-graph "$artifact" \
+		>"$artifact.out" 2>"$artifact.err"
+	then
+		echo "$message" >&2
+		exit 1
+	fi
+}
+
+awk '
+	$1 == "function_graph_association" && $9 != 4294967295 && !done {
+		$9 = 4294967295
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$tmp_dir/quicksort-graph.apo" >"$tmp_dir/quicksort-higher-as-first.apo"
+expect_quicksort_association_rejection \
+	"$tmp_dir/quicksort-higher-as-first.apo" \
+	'higher-order function graph accepted the first-order sentinel'
+
+awk '
+	$1 == "function_graph_association" && $9 != 4294967295 && !done {
+		$9 = 999
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$tmp_dir/quicksort-graph.apo" >"$tmp_dir/quicksort-higher-out-of-range.apo"
+expect_quicksort_association_rejection \
+	"$tmp_dir/quicksort-higher-out-of-range.apo" \
+	'higher-order function graph accepted an out-of-range callback index'
+
+awk '
+	$1 == "function_graph_association" && $9 == 4294967295 && !done {
+		$9 = 0
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$tmp_dir/quicksort-graph.apo" >"$tmp_dir/quicksort-first-as-higher.apo"
+expect_quicksort_association_rejection \
+	"$tmp_dir/quicksort-first-as-higher.apo" \
+	'first-order function graph accepted a fabricated callback index'
+
+awk '
+	$1 == "function_graph_association" && $9 != 4294967295 && !done {
+		temporary = $4
+		$4 = $5
+		$5 = temporary
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$tmp_dir/quicksort-graph.apo" >"$tmp_dir/quicksort-swapped-families.apo"
+expect_quicksort_association_rejection \
+	"$tmp_dir/quicksort-swapped-families.apo" \
+	'function graph accepted swapped graph and result families'
+
 prototype_test_phase executable_projection
 ./read_file.out --check-source-exports-normalization-equal \
 	main expected "$positive" >"$tmp_dir/equality.out"

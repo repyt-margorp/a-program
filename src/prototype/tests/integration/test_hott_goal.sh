@@ -162,6 +162,31 @@ if ./read_file.out --read-graph "$forged_rule_artifact" >/dev/null 2>&1; then
 	echo "artifact reader accepted an incomplete Universe correspondence as identity" >&2
 	exit 1
 fi
+dimension_zero_generic_artifact=$TIMING_TMP/dimension-zero-generic-root.apo
+awk '
+	$1 == "identity_root" && $2 == 0 { $6 = 5 }
+	{ print }
+' "$identity_artifact" >"$dimension_zero_generic_artifact"
+if ./read_file.out --read-graph "$dimension_zero_generic_artifact" \
+	>/dev/null 2>&1; then
+	echo "artifact reader accepted a dimension-zero generic identity root" >&2
+	exit 1
+fi
+noncanonical_extension_artifact=$TIMING_TMP/noncanonical-extension-root.apo
+awk '
+	$1 == "term_node" && $3 == 34 && $5 == 1 && $6 == 2 &&
+		$7 == 1 && $8 == 3 && $9 == 0 && !changed {
+		$9 = 1
+		changed = 1
+	}
+	{ print }
+	END { if (!changed) exit 1 }
+' "$identity_artifact" >"$noncanonical_extension_artifact"
+if ./read_file.out --read-graph "$noncanonical_extension_artifact" \
+	>/dev/null 2>&1; then
+	echo "artifact reader accepted a noncanonical generic identity extension" >&2
+	exit 1
+fi
 forged_constructor_artifact=$TIMING_TMP/forged-identity-constructor.apo
 awk '
 	$1 == "type_constructor" && $2 == 2 { $5 = 1 }
@@ -367,6 +392,18 @@ prototype_test_phase aggregate_link
 if ! identity_root_shape_is_valid "$aggregate_artifact" ||
 	! grep -qx 'dependency fixture_8 namespace fixture_7' "$aggregate_artifact"; then
 	echo "HOTT identity root was not preserved by artifact aggregation" >&2
+	exit 1
+fi
+if ./read_file.out --quiet --aggregate-artifact \
+	"$TIMING_TMP/invalid-zero-aggregate.apo" \
+	"$dimension_zero_generic_artifact" >/dev/null 2>&1; then
+	echo "artifact aggregation accepted a dimension-zero generic identity root" >&2
+	exit 1
+fi
+if ./read_file.out --quiet --aggregate-artifact \
+	"$TIMING_TMP/invalid-noncanonical-aggregate.apo" \
+	"$noncanonical_extension_artifact" >/dev/null 2>&1; then
+	echo "artifact aggregation accepted a noncanonical identity extension" >&2
 	exit 1
 fi
 prototype_test_phase_finish

@@ -1990,6 +1990,7 @@ int prototype_internal_artifact_append_graph_ordered(
 	appended_interface->identity_root_count = source_interface->identity_root_count;
 	appended_interface->function_graph_association_count =
 		source_interface->function_graph_association_count;
+	appended_interface->export_condition_obligation_count = 0;
 	appended_interface->dependency_count = source_interface->dependency_count;
 	for (size_t i = 0;
 		i < source_interface->function_graph_association_count;
@@ -2034,16 +2035,14 @@ int prototype_internal_artifact_append_graph_ordered(
 			offset_artifact_id(
 				source_interface->term_exports[i].occurrence, occurrence_offset
 			);
-		if (source_interface->term_exports[i].source_evidence.kind !=
-				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
+		if (source_interface->term_exports[i].source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM) {
 			if (occurrence_offset == PROTOTYPE_INVALID_ID) {
 				appended_interface->term_exports[i].source_evidence.kind =
 					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
 				appended_interface->term_exports[i].source_evidence.id =
 					PROTOTYPE_INVALID_ID;
-			} else if (source_interface->term_exports[i].source_evidence.kind !=
-					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM ||
-				source_interface->term_exports[i].source_evidence.id >=
+			} else if (source_interface->term_exports[i].source_evidence.id >=
 					source_judgement->claim_count || claim_relocation[
 					source_interface->term_exports[i].source_evidence.id
 				] == PROTOTYPE_INVALID_ID) {
@@ -2055,12 +2054,36 @@ int prototype_internal_artifact_append_graph_ordered(
 					claim_relocation[
 						source_interface->term_exports[i].source_evidence.id
 					];
+				appended_interface->term_exports[i].source_condition_first = 0;
+				appended_interface->term_exports[i].source_condition_count = 0;
 			}
+		} else if (source_interface->term_exports[i].source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL &&
+			occurrence_offset != PROTOTYPE_INVALID_ID) {
+			/* The condition projection is regenerated after VerificationDB and
+			 * occurrence relocation. It is not a second relocation authority. */
+			appended_interface->term_exports[i].source_evidence.kind =
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL;
+			uint32_t source_claim = source_interface->term_exports[i].source_evidence.id;
+			if (source_claim == PROTOTYPE_INVALID_ID) {
+				appended_interface->term_exports[i].source_evidence.id =
+					PROTOTYPE_INVALID_ID;
+			} else if (source_claim >= source_judgement->claim_count ||
+				claim_relocation[source_claim] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			} else {
+				appended_interface->term_exports[i].source_evidence.id =
+					claim_relocation[source_claim];
+			}
+			appended_interface->term_exports[i].source_condition_first = 0;
+			appended_interface->term_exports[i].source_condition_count = 0;
 		} else {
 			appended_interface->term_exports[i].source_evidence.kind =
 				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
 			appended_interface->term_exports[i].source_evidence.id =
 				PROTOTYPE_INVALID_ID;
+			appended_interface->term_exports[i].source_condition_first = 0;
+			appended_interface->term_exports[i].source_condition_count = 0;
 		}
 		if (appended_interface->term_exports[i].classifier != PROTOTYPE_INVALID_ID) {
 			if (appended_interface->term_exports[i].classifier >=
@@ -2252,6 +2275,21 @@ int prototype_internal_artifact_append_graph_ordered(
 #undef COPY_ADDITIONAL_RELOCATION
 	}
 	prototype_term_notify_graph_mutation(target_terms);
+	if (prototype_artifact_interface_validate_identity_roots(
+			appended_interface,
+			target_terms,
+			target_type_declarations,
+			target_contexts,
+			target_dimension_operators,
+			target_judgement
+		) != 0 || prototype_artifact_interface_validate_function_graph_associations(
+			appended_interface,
+			target_terms,
+			target_type_declarations,
+			target_judgement
+		) != 0) {
+		return -1;
+	}
 	return 0;
 }
 

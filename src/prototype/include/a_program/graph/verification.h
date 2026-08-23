@@ -35,7 +35,7 @@ struct prototype_occurrence_effect_constraint {
 };
 
 /* Residual verification is distinct from JudgementDB: a record here is a
- * conditional runtime obligation, never a closed has-type derivation. */
+ * phase-specific conditional obligation, never a closed has-type derivation. */
 enum prototype_verification_obligation_kind {
 	PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT = 1,
 	PROTOTYPE_VERIFICATION_OBLIGATION_EFFECT_ROW_EQUATION = 2
@@ -45,6 +45,20 @@ enum prototype_verification_obligation_state {
 	PROTOTYPE_VERIFICATION_OBLIGATION_PENDING = 1,
 	PROTOTYPE_VERIFICATION_OBLIGATION_DISCHARGED = 2,
 	PROTOTYPE_VERIFICATION_OBLIGATION_FAILED = 3
+};
+
+enum prototype_verification_phase {
+	PROTOTYPE_VERIFICATION_PHASE_COMPILE = 1u << 0,
+	PROTOTYPE_VERIFICATION_PHASE_LINK = 1u << 1,
+	PROTOTYPE_VERIFICATION_PHASE_RUNTIME = 1u << 2
+};
+
+struct prototype_verification_kind_descriptor {
+	int kind;
+	uint32_t schema_version;
+	uint32_t preservation_phase_mask;
+	uint32_t discharge_phase_mask;
+	int discharge_can_enable_claim_reconstruction;
 };
 
 struct prototype_verification_obligation {
@@ -58,14 +72,26 @@ struct prototype_verification_obligation {
 	uint32_t input_classifier;
 	uint32_t classifier_family;
 	uint32_t effect_row;
+	int effect_constraint_kind;
 	int normalization_profile;
 	uint32_t schema_version;
+};
+
+/* One immutable semantic dependency edge. The v84 initial fragment records
+ * exactly the source occurrence edge. Cross-occurrence propagation remains
+ * unsupported and conditional imports are rejected at first use. */
+struct prototype_verification_dependency {
+	uint32_t occurrence;
+	uint32_t obligation_id;
 };
 
 struct prototype_verification_db {
 	struct prototype_verification_obligation* obligations;
 	size_t obligation_count;
 	size_t obligation_capacity;
+	struct prototype_verification_dependency* dependencies;
+	size_t dependency_count;
+	size_t dependency_capacity;
 };
 
 struct prototype_verification_coverage {
@@ -85,9 +111,13 @@ int prototype_compile_metadata_validate_backend(
 void prototype_verification_db_init(
 	struct prototype_verification_db* db,
 	struct prototype_verification_obligation* obligations,
-	size_t obligation_capacity
+	size_t obligation_capacity,
+	struct prototype_verification_dependency* dependencies,
+	size_t dependency_capacity
 );
 uint32_t prototype_verification_obligation_schema_version(int kind);
+const struct prototype_verification_kind_descriptor*
+prototype_verification_obligation_descriptor(int kind);
 size_t prototype_verification_db_count(const struct prototype_verification_db* db);
 size_t prototype_verification_db_capacity(const struct prototype_verification_db* db);
 void prototype_verification_db_clear(struct prototype_verification_db* db);
@@ -119,6 +149,15 @@ int prototype_verification_db_add(
 	struct prototype_verification_obligation obligation,
 	uint32_t* p_obligation_id
 );
+int prototype_verification_db_add_dependency(
+	struct prototype_verification_db* db,
+	uint32_t occurrence,
+	uint32_t obligation_id
+);
+int prototype_verification_db_remove_obligation_dependencies(
+	struct prototype_verification_db* db,
+	uint32_t obligation_id
+);
 int prototype_verification_db_discharge_computation_fold_result(
 	struct prototype_verification_db* db,
 	struct prototype_term_db* terms,
@@ -126,5 +165,20 @@ int prototype_verification_db_discharge_computation_fold_result(
 	uint32_t obligation_id,
 	uint32_t returned_value,
 	uint32_t return_result_classifier
+);
+int prototype_verification_effect_row_equation_holds(
+	const struct prototype_term_db* terms,
+	const struct prototype_verification_obligation* obligation
+);
+int prototype_verification_db_discharge_effect_row_equation(
+	struct prototype_verification_db* db,
+	const struct prototype_term_db* terms,
+	uint32_t obligation_id
+);
+int prototype_verification_db_try_discharge_phase(
+	struct prototype_verification_db* db,
+	const struct prototype_term_db* terms,
+	uint32_t phase,
+	size_t* p_discharged_count
 );
 #endif

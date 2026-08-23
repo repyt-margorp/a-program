@@ -46,6 +46,7 @@
 #define PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY 4096
 #define PROGRAM_EFFECT_CONSTRAINT_CAPACITY 8192
 #define PROGRAM_VERIFICATION_OBLIGATION_CAPACITY 4096
+#define PROGRAM_VERIFICATION_DEPENDENCY_CAPACITY 8192
 #define PROGRAM_DIMENSION_OPERATOR_CAPACITY 256
 #define PROGRAM_DIMENSION_IMAGE_CAPACITY 2048
 #define PROGRAM_FUNCTION_GRAPH_REQUEST_CAPACITY 128
@@ -128,6 +129,9 @@ struct prototype_program_storage_backing {
 	struct prototype_typed_occurrence_fold_clause fold_clauses[PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY];
 	struct prototype_occurrence_effect_constraint effect_constraints[PROGRAM_EFFECT_CONSTRAINT_CAPACITY];
 	struct prototype_verification_obligation verification_obligations[PROGRAM_VERIFICATION_OBLIGATION_CAPACITY];
+	struct prototype_verification_dependency verification_dependencies[
+		PROGRAM_VERIFICATION_DEPENDENCY_CAPACITY
+	];
 };
 
 int prototype_program_storage_init(struct prototype_program_storage* storage) {
@@ -192,8 +196,9 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		PROGRAM_OCCURRENCE_EDGE_CAPACITY, b->occurrence_cases,
 		PROGRAM_OPERATION_CASE_CAPACITY, b->fold_clauses,
 		PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY, b->effect_constraints,
-		PROGRAM_EFFECT_CONSTRAINT_CAPACITY, b->verification_obligations,
-		PROGRAM_VERIFICATION_OBLIGATION_CAPACITY);
+			PROGRAM_EFFECT_CONSTRAINT_CAPACITY, b->verification_obligations,
+			PROGRAM_VERIFICATION_OBLIGATION_CAPACITY, b->verification_dependencies,
+			PROGRAM_VERIFICATION_DEPENDENCY_CAPACITY);
 	prototype_compile_metadata_set_dimension_storage(
 		&storage->metadata,
 		b->dimension_operators,

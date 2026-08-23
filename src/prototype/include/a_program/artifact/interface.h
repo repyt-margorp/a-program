@@ -14,8 +14,9 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 83
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 84
 #define PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY 128
+#define PROTOTYPE_ARTIFACT_EXPORT_CONDITION_CAPACITY 8192
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
 enum prototype_artifact_export_transparency {
@@ -25,7 +26,8 @@ enum prototype_artifact_export_transparency {
 
 enum prototype_artifact_evidence_reference_kind {
 	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID = 0,
-	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM = 1
+	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM = 1,
+	PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL = 2
 };
 
 struct prototype_artifact_evidence_reference {
@@ -48,9 +50,16 @@ struct prototype_artifact_term_export {
 	/* Source typed occurrence authorizing this export. The erased local_term
 	 * alone cannot identify a Claim or a residual solver obligation. */
 	uint32_t occurrence;
-	/* Exact evidence authorizing this export. Source artifacts use an accepted
-	 * Claim; an appended, not-yet-republished graph uses its Proposition. */
+	/* Exact unconditional base evidence. CONDITIONAL uses an accepted Claim ID
+	 * when one exists, or INVALID only when the occurrence's classifier residual
+	 * itself is the base evidence. A condition such as an effect equation cannot
+	 * replace missing typing evidence. */
 	struct prototype_artifact_evidence_reference source_evidence;
+	/* Canonical projection into export_condition_obligation_ids. This is derived
+	 * interface data; VerificationDB's occurrence dependency table remains the
+	 * semantic authority. */
+	uint32_t source_condition_first;
+	uint32_t source_condition_count;
 	int transparency;
 	struct prototype_term_canonical_key canonical_key;
 	struct prototype_term_canonical_key classifier_key;
@@ -257,6 +266,11 @@ struct prototype_artifact_interface {
 		];
 	size_t function_graph_association_count;
 
+	uint32_t export_condition_obligation_ids[
+		PROTOTYPE_ARTIFACT_EXPORT_CONDITION_CAPACITY
+	];
+	size_t export_condition_obligation_count;
+
 	struct prototype_artifact_dependency* dependencies;
 	size_t dependency_count;
 	size_t dependency_capacity;
@@ -323,6 +337,22 @@ int prototype_artifact_interface_validate_identity_roots(
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
 	const struct prototype_dimension_operator_db* dimension_operators,
+	const struct prototype_judgement_db* judgement
+);
+int prototype_artifact_interface_validate_function_graph_associations(
+	const struct prototype_artifact_interface* interface,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement
+);
+int prototype_artifact_interface_refresh_term_export_evidence(
+	struct prototype_artifact_interface* interface,
+	const struct prototype_compile_metadata* metadata,
+	const struct prototype_judgement_db* judgement
+);
+int prototype_artifact_interface_validate_term_export_evidence(
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_compile_metadata* metadata,
 	const struct prototype_judgement_db* judgement
 );
 void prototype_artifact_relocation_table_init(

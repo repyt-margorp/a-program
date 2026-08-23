@@ -1196,6 +1196,15 @@ int prototype_term_view_shape_equal(
 	uint32_t right,
 	int* p_equal
 );
+int prototype_term_view_shape_equal_under_binders(
+	const struct prototype_term_db* db,
+	const uint32_t* left_binders,
+	const uint32_t* right_binders,
+	size_t binder_count,
+	uint32_t left,
+	uint32_t right,
+	int* p_equal
+);
 /*
  * Core shape equality compares the computational core under TYPE_VIEW wrappers.
  * It is structural evidence only; callers must not use it as a typed conversion

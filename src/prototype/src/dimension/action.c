@@ -251,7 +251,9 @@ static int extension_operator_id(
 		p_operator_id
 	);
 	free(images);
-	return status == 0 ? 0 : -1;
+	return status == 0 && prototype_dimension_operator_is_canonical_extension(
+		dimension_operators, *p_operator_id
+	) == 1 ? 0 : -1;
 }
 
 static int face_type(

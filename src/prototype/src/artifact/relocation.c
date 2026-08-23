@@ -135,8 +135,11 @@ static int artifact_export_source_proposition(
 	if (!export || !judgement || !p_proposition_id) {
 		return -1;
 	}
-	if (export->source_evidence.kind !=
-		PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM) {
+	if ((export->source_evidence.kind !=
+			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM &&
+		export->source_evidence.kind !=
+			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) ||
+		export->source_evidence.id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
 	const struct prototype_judgement_claim* claim =
@@ -184,8 +187,8 @@ int prototype_artifact_apply_term_relocations(
 		/* A residual export has no grounded source Claim and therefore cannot
 		 * discharge an external declaration during relocation. Its verification
 		 * obligation is validated at the final artifact boundary. */
-		if (provider->source_evidence.kind ==
-			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID) {
+		if (provider->source_evidence.kind !=
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM) {
 			continue;
 		}
 		uint32_t provider_proposition_id;

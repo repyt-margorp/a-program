@@ -1565,6 +1565,34 @@ int prototype_term_view_shape_equal(
 	);
 }
 
+int prototype_term_view_shape_equal_under_binders(
+	const struct prototype_term_db* db,
+	const uint32_t* left_binders,
+	const uint32_t* right_binders,
+	size_t binder_count,
+	uint32_t left,
+	uint32_t right,
+	int* p_equal
+) {
+	if (!db || !p_equal || left >= db->term_count || right >= db->term_count ||
+		(binder_count > 0 && (!left_binders || !right_binders))) {
+		return -1;
+	}
+	struct term_scope_env env;
+	memset(&env, 0, sizeof(env));
+	for (size_t i = 0; i < binder_count; ++i) {
+		if (term_scope_env_push_binder(
+				&env, left_binders[i], right_binders[i]
+			) != 0) {
+			return -1;
+		}
+	}
+	*p_equal = shape_terms_equal_at_depth(
+		db, left, right, &env, PROTOTYPE_TYPE_VIEW_COMPARE_VIEW, 0
+	);
+	return 0;
+}
+
 int prototype_term_core_shape_equal(
 	const struct prototype_term_db* db,
 	uint32_t left,

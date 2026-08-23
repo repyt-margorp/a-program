@@ -317,7 +317,9 @@ void prototype_compile_metadata_init(
 	struct prototype_occurrence_effect_constraint* effect_constraints,
 	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
-	size_t verification_obligation_capacity
+	size_t verification_obligation_capacity,
+	struct prototype_verification_dependency* verification_dependencies,
+	size_t verification_dependency_capacity
 ) {
 	memset(metadata, 0, sizeof(*metadata));
 	metadata->compile_policy = PROTOTYPE_COMPILE_POLICY_HYBRID;
@@ -369,7 +371,9 @@ void prototype_compile_metadata_init(
 	prototype_verification_db_init(
 		&metadata->verification,
 		verification_obligations,
-		verification_obligation_capacity
+		verification_obligation_capacity,
+		verification_dependencies,
+		verification_dependency_capacity
 	);
 }
 

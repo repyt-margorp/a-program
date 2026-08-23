@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "a_program/dimension/action.h"
+#include "a_program/dimension/operator.h"
 #include "artifact_graph_internal.h"
 
 void prototype_canonical_link_table_init(
@@ -364,7 +365,9 @@ static int artifact_identity_family_matches_source(
 				NULL,
 				0,
 				&argument_count
-			) != 0) {
+			) != 0 || prototype_dimension_operator_is_canonical_extension(
+				dimension_operators, operator_id
+			) != 1) {
 			return 0;
 		}
 		uint32_t source_family;
@@ -383,12 +386,12 @@ static int artifact_identity_family_matches_source(
 				NULL,
 				0,
 				&source_argument_count
-			) != 0 || family_source != source_family ||
+			) != 0 || source_dimension == 0 || source_dimension == UINT32_MAX ||
+			family_source != source_family ||
 			target_dimension != source_dimension + 1) {
 			return 0;
 		}
 		(void)family_head;
-		(void)operator_id;
 		(void)argument_count;
 		(void)source_of_source;
 		(void)source_operator;
@@ -548,6 +551,649 @@ int prototype_artifact_interface_validate_identity_roots(
 		}
 	}
 	return 0;
+}
+
+struct artifact_callable_spine {
+	uint32_t domains[68];
+	uint32_t binders[68];
+	size_t domain_count;
+	uint32_t result;
+};
+
+static int artifact_export_has_accepted_classifier(
+	const struct prototype_artifact_term_export* export,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!export || !judgement ||
+		(export->source_evidence.kind !=
+			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM &&
+		 export->source_evidence.kind !=
+			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) ||
+		export->source_evidence.id == PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	const struct prototype_judgement_proposition* proposition =
+		prototype_judgement_claim_proposition(judgement, export->source_evidence.id);
+	return proposition && proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		proposition->subject == export->local_term &&
+		proposition->classifier == export->classifier;
+}
+
+static int artifact_callable_spine_open(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t classifier,
+	struct artifact_callable_spine* p_spine
+) {
+	if (!terms || !type_declarations || !p_spine || classifier >= terms->term_count) {
+		return -1;
+	}
+	memset(p_spine, 0, sizeof(*p_spine));
+	uint32_t current = classifier;
+	for (size_t depth = 0; depth < 96; ++depth) {
+		uint32_t callable;
+		uint32_t whnf;
+		if (prototype_judgement_expose_callable_classifier(
+				terms, type_declarations, current, &callable
+			) != 0 || prototype_judgement_classifier_value_whnf(
+				terms, type_declarations, callable, &whnf
+			) != 0 || whnf >= terms->term_count) {
+			return -1;
+		}
+		const struct prototype_term* term = &terms->terms[whnf];
+		if (term->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
+			current = term->as.effect_row_forall.body;
+			continue;
+		}
+		if (term->tag != PROTOTYPE_TERM_PI) {
+			struct prototype_term_classifier_view view;
+			if (prototype_judgement_classifier_view(
+					terms, type_declarations, NULL, whnf, &view
+				) == 0 && view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
+				view.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+				p_spine->result = view.result;
+			} else {
+				p_spine->result = whnf;
+			}
+			return 0;
+		}
+		if (p_spine->domain_count >=
+				sizeof(p_spine->domains) / sizeof(p_spine->domains[0])) {
+			return -1;
+		}
+		p_spine->domains[p_spine->domain_count] = term->as.pi.domain;
+		uint32_t binder;
+		if (prototype_term_pure_family_parts(
+				terms, term->as.pi.codomain_family, &binder, &current
+			) != 0) {
+			return -1;
+		}
+		p_spine->binders[p_spine->domain_count++] = binder;
+	}
+	return -1;
+}
+
+static int artifact_classifier_convertible(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t left,
+	uint32_t right
+) {
+	return prototype_judgement_classifier_conversion(
+		terms, type_declarations, left, right
+	).status == PROTOTYPE_TERM_CONVERSION_EQUAL;
+}
+
+static int artifact_classifier_same_view_shape_under_binders(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const uint32_t* left_binders,
+	const uint32_t* right_binders,
+	size_t binder_count,
+	uint32_t left,
+	uint32_t right
+) {
+	if (artifact_classifier_convertible(terms, type_declarations, left, right)) {
+		return 1;
+	}
+	uint32_t left_whnf;
+	uint32_t right_whnf;
+	int equal = 0;
+	return prototype_judgement_classifier_value_whnf(
+			terms, type_declarations, left, &left_whnf
+		) == 0 && prototype_judgement_classifier_value_whnf(
+			terms, type_declarations, right, &right_whnf
+		) == 0 && prototype_term_view_shape_equal_under_binders(
+			terms,
+			left_binders,
+			right_binders,
+			binder_count,
+			left_whnf,
+			right_whnf,
+			&equal
+		) == 0 && equal;
+}
+
+static int artifact_classifier_is_type_instance(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t classifier,
+	uint32_t expected_type
+) {
+	uint32_t whnf;
+	uint32_t type_id;
+	uint32_t arguments[16];
+	uint32_t argument_count;
+	int whnf_status = prototype_judgement_classifier_value_whnf(
+		terms, type_declarations, classifier, &whnf
+	);
+	int instance_status = whnf_status == 0 ? prototype_term_type_instance_info(
+		terms, whnf, &type_id, arguments, &argument_count
+	) : -1;
+	if (getenv("A_PROGRAM_FUNCTION_GRAPH_VALIDATION_TRACE") &&
+		(instance_status != 0 || type_id != expected_type)) {
+		fprintf(
+			stderr,
+			"function-graph type instance mismatch classifier=%u whnf-status=%d "
+			"whnf=%u tag=%d instance-status=%d actual-type=%u expected-type=%u\n",
+			classifier,
+			whnf_status,
+			whnf_status == 0 ? whnf : PROTOTYPE_INVALID_ID,
+			whnf_status == 0 && whnf < terms->term_count ? terms->terms[whnf].tag : -1,
+			instance_status,
+			instance_status == 0 ? type_id : PROTOTYPE_INVALID_ID,
+			expected_type
+		);
+	}
+	return instance_status == 0 && type_id == expected_type;
+}
+
+static int artifact_callable_domains_match(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct artifact_callable_spine* left,
+	const struct artifact_callable_spine* right,
+	const size_t* right_indices
+) {
+	if (!terms || !type_declarations || !left || !right ||
+		left->domain_count > sizeof(left->binders) / sizeof(left->binders[0])) {
+		return 0;
+	}
+	uint32_t left_binders[68];
+	uint32_t right_binders[68];
+	for (size_t i = 0; i < left->domain_count; ++i) {
+		size_t right_index = right_indices ? right_indices[i] : i;
+		int domain_matches = right_index < right->domain_count &&
+			artifact_classifier_same_view_shape_under_binders(
+				terms,
+				type_declarations,
+				left_binders,
+				right_binders,
+				i,
+				left->domains[i],
+				right->domains[right_index]
+			);
+		if (!domain_matches) {
+			if (getenv("A_PROGRAM_FUNCTION_GRAPH_VALIDATION_TRACE")) {
+				int core_equal = 0;
+				if (right_index < right->domain_count) {
+					(void)prototype_term_core_shape_equal_under_binders(
+						terms,
+						left_binders,
+						right_binders,
+						i,
+						left->domains[i],
+						right->domains[right_index],
+						&core_equal
+					);
+				}
+				fprintf(
+					stderr,
+					"function-graph domain mismatch index=%zu right-index=%zu "
+					"left=%u right=%u core-equal=%d\n",
+					i,
+					right_index,
+					left->domains[i],
+					right_index < right->domain_count ?
+						right->domains[right_index] : PROTOTYPE_INVALID_ID,
+					core_equal
+				);
+			}
+			return 0;
+		}
+		left_binders[i] = left->binders[i];
+		right_binders[i] = right->binders[right_index];
+	}
+	return 1;
+}
+
+static int artifact_callable_classifiers_match_under_binders(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const uint32_t* base_left_binders,
+	const uint32_t* base_right_binders,
+	size_t base_binder_count,
+	uint32_t left_classifier,
+	uint32_t right_classifier,
+	size_t right_extra_domain_count,
+	int compare_result
+) {
+	struct artifact_callable_spine left;
+	struct artifact_callable_spine right;
+	if (artifact_callable_spine_open(
+			terms, type_declarations, left_classifier, &left
+		) != 0 || artifact_callable_spine_open(
+			terms, type_declarations, right_classifier, &right
+		) != 0 || left.domain_count == 0 ||
+		left.domain_count + right_extra_domain_count != right.domain_count ||
+		base_binder_count + left.domain_count > 136 ||
+		(base_binder_count > 0 && (!base_left_binders || !base_right_binders))) {
+		return 0;
+	}
+	uint32_t left_binders[136];
+	uint32_t right_binders[136];
+	for (size_t i = 0; i < base_binder_count; ++i) {
+		left_binders[i] = base_left_binders[i];
+		right_binders[i] = base_right_binders[i];
+	}
+	for (size_t i = 0; i < left.domain_count; ++i) {
+		if (!artifact_classifier_same_view_shape_under_binders(
+				terms,
+				type_declarations,
+				left_binders,
+				right_binders,
+				base_binder_count + i,
+				left.domains[i],
+				right.domains[i]
+			)) {
+			return 0;
+		}
+		left_binders[base_binder_count + i] = left.binders[i];
+		right_binders[base_binder_count + i] = right.binders[i];
+	}
+	return !compare_result || artifact_classifier_same_view_shape_under_binders(
+		terms,
+		type_declarations,
+		left_binders,
+		right_binders,
+		base_binder_count + left.domain_count,
+		left.result,
+		right.result
+	);
+}
+
+static int artifact_term_graph_reaches(
+	const struct prototype_term_db* terms,
+	uint32_t root,
+	uint32_t target,
+	unsigned char* visited,
+	uint32_t* stack,
+	size_t scratch_capacity
+) {
+	if (!terms || root >= terms->term_count || target >= terms->term_count ||
+		!visited || !stack || terms->term_count > scratch_capacity) {
+		return -1;
+	}
+	memset(visited, 0, terms->term_count * sizeof(*visited));
+	size_t stack_count = 0;
+	stack[stack_count++] = root;
+	int result = 0;
+	while (stack_count != 0) {
+		uint32_t current = stack[--stack_count];
+		if (current == target) {
+			result = 1;
+			break;
+		}
+		if (visited[current]) {
+			continue;
+		}
+		visited[current] = 1;
+		uint32_t child_count;
+		if (prototype_term_child_count(terms, current, &child_count) != 0) {
+			result = -1;
+			break;
+		}
+		for (uint32_t child_index = 0; child_index < child_count; ++child_index) {
+			struct prototype_term_child child;
+			if (prototype_term_child_at(
+					terms, current, child_index, &child
+				) != 0 || child.term >= terms->term_count ||
+				stack_count >= scratch_capacity) {
+				result = -1;
+				break;
+			}
+			stack[stack_count++] = child.term;
+		}
+		if (result < 0) {
+			break;
+		}
+	}
+	return result;
+}
+
+static int artifact_term_graph_contains_type_instance(
+	const struct prototype_term_db* terms,
+	uint32_t root,
+	uint32_t expected_type,
+	unsigned char* visited,
+	uint32_t* stack,
+	size_t scratch_capacity
+) {
+	if (!terms || root >= terms->term_count || !visited || !stack ||
+		terms->term_count > scratch_capacity) {
+		return -1;
+	}
+	memset(visited, 0, terms->term_count * sizeof(*visited));
+	size_t stack_count = 0;
+	stack[stack_count++] = root;
+	int result = 0;
+	while (stack_count != 0) {
+		uint32_t current = stack[--stack_count];
+		if (visited[current]) {
+			continue;
+		}
+		visited[current] = 1;
+		uint32_t type_id;
+		uint32_t arguments[16];
+		uint32_t argument_count;
+		if (prototype_term_type_instance_info(
+				terms, current, &type_id, arguments, &argument_count
+			) == 0 && type_id == expected_type) {
+			result = 1;
+			break;
+		}
+		uint32_t child_count;
+		if (prototype_term_child_count(terms, current, &child_count) != 0) {
+			result = -1;
+			break;
+		}
+		for (uint32_t child_index = 0; child_index < child_count; ++child_index) {
+			struct prototype_term_child child;
+			if (prototype_term_child_at(
+					terms, current, child_index, &child
+				) != 0 || child.term >= terms->term_count ||
+				stack_count >= scratch_capacity) {
+				result = -1;
+				break;
+			}
+			stack[stack_count++] = child.term;
+		}
+		if (result < 0) {
+			break;
+		}
+	}
+	return result;
+}
+
+int prototype_artifact_interface_validate_function_graph_associations(
+	const struct prototype_artifact_interface* interface,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!interface || !terms || !type_declarations || !judgement) {
+		return -1;
+	}
+	if (terms->term_capacity > SIZE_MAX / sizeof(uint32_t)) {
+		return -1;
+	}
+	size_t scratch_capacity = terms->term_capacity ? terms->term_capacity : 1;
+	unsigned char* visited = calloc(
+		scratch_capacity,
+		sizeof(*visited)
+	);
+	uint32_t* stack = malloc(
+		scratch_capacity * sizeof(*stack)
+	);
+	if (!visited || !stack) {
+		free(visited);
+		free(stack);
+		return -1;
+	}
+	int validation_result = -1;
+	for (size_t i = 0; i < interface->function_graph_association_count; ++i) {
+		const struct prototype_artifact_function_graph_association* association =
+			&interface->function_graph_associations[i];
+		if (association->owner_term_export_index >= interface->term_export_count ||
+			association->graph_type_export_index >= interface->type_export_count ||
+			association->result_type_export_index >= interface->type_export_count ||
+			association->graph_interface_term_export_index >=
+				interface->term_export_count ||
+			association->certified_runner_term_export_index >=
+				interface->term_export_count ||
+			(association->certified_adapter_term_export_index != PROTOTYPE_INVALID_ID &&
+			 association->certified_adapter_term_export_index >=
+				interface->term_export_count)) {
+			goto cleanup;
+		}
+		const struct prototype_artifact_term_export* owner =
+			&interface->term_exports[association->owner_term_export_index];
+		const struct prototype_artifact_term_export* graph_interface =
+			&interface->term_exports[association->graph_interface_term_export_index];
+		const struct prototype_artifact_term_export* runner =
+			&interface->term_exports[association->certified_runner_term_export_index];
+		const struct prototype_artifact_type_export* graph_type =
+			&interface->type_exports[association->graph_type_export_index];
+		const struct prototype_artifact_type_export* result_type =
+			&interface->type_exports[association->result_type_export_index];
+		if (!artifact_export_has_accepted_classifier(owner, judgement) ||
+			!artifact_export_has_accepted_classifier(graph_interface, judgement) ||
+			!artifact_export_has_accepted_classifier(runner, judgement)) {
+			goto cleanup;
+		}
+		struct artifact_callable_spine owner_spine;
+		struct artifact_callable_spine graph_interface_spine;
+		struct artifact_callable_spine runner_spine;
+		int owner_spine_status = artifact_callable_spine_open(
+				terms, type_declarations, owner->classifier, &owner_spine
+			);
+		int graph_spine_status = artifact_callable_spine_open(
+				terms, type_declarations, graph_interface->classifier,
+				&graph_interface_spine
+			);
+		int runner_spine_status = artifact_callable_spine_open(
+				terms, type_declarations, runner->classifier, &runner_spine
+			);
+		int graph_result_matches = artifact_term_graph_contains_type_instance(
+			terms, graph_interface->local_term, graph_type->local_type_id,
+			visited, stack, scratch_capacity
+		) == 1;
+		int runner_result_matches = runner_spine_status == 0 &&
+			artifact_classifier_is_type_instance(
+				terms, type_declarations, runner_spine.result,
+				result_type->local_type_id
+			);
+		if (owner_spine_status != 0 || graph_spine_status != 0 ||
+			runner_spine_status != 0 || owner_spine.domain_count == 0 ||
+			runner_spine.domain_count == 0 || !graph_result_matches ||
+			!runner_result_matches || result_type->constructor_count != 1 ||
+			result_type->first_constructor_export >= interface->constructor_export_count ||
+			interface->constructor_exports[
+				result_type->first_constructor_export
+			].readback_field_count != 2) {
+			if (getenv("A_PROGRAM_FUNCTION_GRAPH_VALIDATION_TRACE")) {
+				fprintf(
+					stderr,
+					"function-graph package mismatch association=%zu owner-spine=%d "
+					"graph-spine=%d runner-spine=%d graph-result=%d runner-result=%d "
+					"result-constructors=%u result-first=%u\n",
+					i,
+					owner_spine_status,
+					graph_spine_status,
+					runner_spine_status,
+					graph_result_matches,
+					runner_result_matches,
+					result_type->constructor_count,
+					result_type->first_constructor_export
+				);
+			}
+			goto cleanup;
+		}
+		if (association->certified_adapter_term_export_index !=
+				PROTOTYPE_INVALID_ID) {
+			const struct prototype_artifact_term_export* adapter =
+				&interface->term_exports[
+					association->certified_adapter_term_export_index
+				];
+			struct artifact_callable_spine adapter_spine;
+			if (!artifact_export_has_accepted_classifier(adapter, judgement) ||
+				artifact_callable_spine_open(
+					terms, type_declarations, adapter->classifier, &adapter_spine
+				) != 0 || adapter_spine.domain_count != owner_spine.domain_count ||
+				!artifact_callable_domains_match(
+					terms, type_declarations, &owner_spine, &adapter_spine, NULL
+				)) {
+				goto cleanup;
+			}
+		}
+		if (getenv("A_PROGRAM_FUNCTION_GRAPH_VALIDATION_TRACE")) {
+			fprintf(
+				stderr,
+				"function-graph validation association=%zu mode=%s owner-domains=%zu "
+				"runner-domains=%zu adapter=%u index=%u\n",
+				i,
+				association->certified_argument_index == PROTOTYPE_INVALID_ID ?
+					"first-order projection" : "higher-order certified variant",
+				owner_spine.domain_count,
+				runner_spine.domain_count,
+				association->certified_adapter_term_export_index,
+				association->certified_argument_index
+			);
+		}
+		if (association->certified_argument_index == PROTOTYPE_INVALID_ID) {
+			/* A first-order owner is the generated projection. It has no callback
+			 * adapter and preserves the certified runner's source argument prefix. */
+			if (owner_spine.domain_count != runner_spine.domain_count ||
+				artifact_term_graph_reaches(
+					terms, owner->local_term, runner->local_term, visited, stack,
+					scratch_capacity
+				) != 1) {
+				goto cleanup;
+			}
+			if (!artifact_callable_domains_match(
+					terms, type_declarations, &owner_spine, &runner_spine, NULL
+				)) {
+				goto cleanup;
+			}
+			continue;
+		}
+		/* A higher-order association retains the raw owner. The certified runner
+		 * inserts the graph interface and certified callback immediately after the
+		 * indexed callback argument. */
+		if (association->certified_argument_index >= owner_spine.domain_count ||
+			runner_spine.domain_count != owner_spine.domain_count + 2 ||
+			artifact_term_graph_reaches(
+				terms, owner->local_term, runner->local_term, visited, stack,
+				scratch_capacity
+			) != 0) {
+			goto cleanup;
+		}
+		struct artifact_callable_spine callback_spine;
+		if (artifact_callable_spine_open(
+				terms,
+				type_declarations,
+				owner_spine.domains[association->certified_argument_index],
+				&callback_spine
+			) != 0 || callback_spine.domain_count == 0) {
+			goto cleanup;
+		}
+		uint32_t left_binders[68];
+		uint32_t right_binders[68];
+		int owner_domains_match = 1;
+		for (size_t owner_index = 0; owner_index < owner_spine.domain_count;
+			++owner_index) {
+			size_t runner_index = owner_index;
+			if (owner_index > association->certified_argument_index) {
+				runner_index += 2;
+			}
+			int domain_matches = owner_index ==
+					association->certified_argument_index ?
+				artifact_callable_classifiers_match_under_binders(
+					terms,
+					type_declarations,
+					left_binders,
+					right_binders,
+					owner_index,
+					owner_spine.domains[owner_index],
+					runner_spine.domains[runner_index],
+					0,
+					1
+				) : artifact_classifier_same_view_shape_under_binders(
+					terms,
+					type_declarations,
+					left_binders,
+					right_binders,
+					owner_index,
+					owner_spine.domains[owner_index],
+					runner_spine.domains[runner_index]
+				);
+			if (!domain_matches) {
+				owner_domains_match = 0;
+				break;
+			}
+			left_binders[owner_index] = owner_spine.binders[owner_index];
+			right_binders[owner_index] = runner_spine.binders[runner_index];
+		}
+		uint32_t callback_domain = owner_spine.domains[
+			association->certified_argument_index
+		];
+		uint32_t runner_interface_domain = runner_spine.domains[
+			association->certified_argument_index + 1
+		];
+		uint32_t runner_callback_domain = runner_spine.domains[
+			association->certified_argument_index + 2
+		];
+		int interface_domain_matches =
+			artifact_callable_classifiers_match_under_binders(
+				terms,
+				type_declarations,
+				left_binders,
+				right_binders,
+				association->certified_argument_index + 1,
+				callback_domain,
+				runner_interface_domain,
+				1,
+				0
+			);
+		int callback_domain_matches =
+			artifact_callable_classifiers_match_under_binders(
+				terms,
+				type_declarations,
+				left_binders,
+				right_binders,
+				association->certified_argument_index + 1,
+				callback_domain,
+				runner_callback_domain,
+				0,
+				0
+			);
+		if (!owner_domains_match || !interface_domain_matches ||
+			!callback_domain_matches) {
+			if (getenv("A_PROGRAM_FUNCTION_GRAPH_VALIDATION_TRACE")) {
+				fprintf(
+					stderr,
+					"function-graph higher package mismatch association=%zu "
+					"owner-domains=%d interface-domain=%d callback-domain=%d "
+					"interface-export-classifier=%u runner-domain=%u\n",
+					i,
+					owner_domains_match,
+					interface_domain_matches,
+					callback_domain_matches,
+					graph_interface->classifier,
+					runner_spine.domains[
+						association->certified_argument_index + 1
+					]
+				);
+			}
+			goto cleanup;
+		}
+	}
+	validation_result = 0;
+
+cleanup:
+	free(visited);
+	free(stack);
+	return validation_result;
 }
 
 void prototype_artifact_relocation_table_init(
@@ -715,6 +1361,389 @@ static int resolve_export_evidence_occurrence(
 	return -1;
 }
 
+static int artifact_mark_reachable_occurrences(
+	const struct prototype_typed_occurrence_graph* graph,
+	uint32_t root,
+	unsigned char* reachable,
+	uint32_t* stack
+) {
+	if (!graph || !reachable || !stack || root >= graph->occurrence_count) {
+		return -1;
+	}
+	size_t stack_count = 0;
+	reachable[root] = 1;
+	stack[stack_count++] = root;
+	while (stack_count != 0) {
+		uint32_t occurrence_id = stack[--stack_count];
+		if (occurrence_id >= graph->occurrence_count) {
+			return -1;
+		}
+		const struct prototype_typed_occurrence* occurrence =
+			&graph->occurrences[occurrence_id];
+		if (occurrence->edge_count != 0 &&
+			(occurrence->first_edge == PROTOTYPE_INVALID_ID ||
+			 occurrence->first_edge > graph->edge_count ||
+			 occurrence->edge_count > graph->edge_count - occurrence->first_edge)) {
+			return -1;
+		}
+		for (uint32_t offset = 0; offset < occurrence->edge_count; ++offset) {
+			const struct prototype_typed_occurrence_edge* edge =
+				&graph->edges[occurrence->first_edge + offset];
+			if (edge->child_occurrence >= graph->occurrence_count) {
+				return -1;
+			}
+			if (reachable[edge->child_occurrence]) {
+				continue;
+			}
+			if (stack_count >= graph->occurrence_count) {
+				return -1;
+			}
+			reachable[edge->child_occurrence] = 1;
+			stack[stack_count++] = edge->child_occurrence;
+		}
+	}
+	return 0;
+}
+
+static int artifact_collect_export_conditions(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t root,
+	unsigned char* reachable,
+	unsigned char* selected,
+	uint32_t* stack,
+	uint32_t* output,
+	size_t output_capacity,
+	size_t* p_count
+) {
+	if (!metadata || !reachable || !selected || !stack || !p_count) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence_graph* graph =
+		&metadata->typed_occurrences;
+	memset(reachable, 0, graph->occurrence_count);
+	memset(selected, 0, metadata->verification.obligation_count);
+	if (artifact_mark_reachable_occurrences(graph, root, reachable, stack) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < metadata->verification.dependency_count; ++i) {
+		const struct prototype_verification_dependency* dependency =
+			&metadata->verification.dependencies[i];
+		if (dependency->occurrence >= graph->occurrence_count ||
+			dependency->obligation_id >= metadata->verification.obligation_count) {
+			return -1;
+		}
+		if (reachable[dependency->occurrence]) {
+			selected[dependency->obligation_id] = 1;
+		}
+	}
+	size_t count = 0;
+	for (uint32_t obligation_id = 0;
+		obligation_id < metadata->verification.obligation_count;
+		++obligation_id) {
+		if (!selected[obligation_id]) {
+			continue;
+		}
+		const struct prototype_verification_obligation* obligation =
+			&metadata->verification.obligations[obligation_id];
+		if (obligation->state != PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
+			count >= output_capacity) {
+			return -1;
+		}
+		if (output) {
+			output[count] = obligation_id;
+		}
+		count++;
+	}
+	*p_count = count;
+	return 0;
+}
+
+static int artifact_term_export_claim(
+	const struct prototype_artifact_term_export* export,
+	const struct prototype_compile_metadata* metadata,
+	const struct prototype_judgement_db* judgement,
+	uint32_t* p_claim
+) {
+	if (!export || !metadata || !judgement || !p_claim ||
+		export->occurrence >= metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	*p_claim = find_export_source_claim(
+		judgement,
+		export->occurrence,
+		metadata->typed_occurrences.occurrences[export->occurrence].context_id,
+		export->local_term,
+		export->classifier
+	);
+	return 0;
+}
+
+static int artifact_term_export_claim_matches(
+	const struct prototype_artifact_term_export* export,
+	const struct prototype_compile_metadata* metadata,
+	const struct prototype_judgement_db* judgement,
+	uint32_t claim_id
+) {
+	if (!export || !metadata || !judgement ||
+		export->occurrence >= metadata->typed_occurrences.occurrence_count) {
+		return 0;
+	}
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, claim_id);
+	const struct prototype_judgement_proposition* proposition = claim ?
+		prototype_judgement_proposition_get(judgement, claim->proposition_id) : NULL;
+	const struct prototype_typed_occurrence* occurrence =
+		&metadata->typed_occurrences.occurrences[export->occurrence];
+	return proposition && claim->closure_rank != PROTOTYPE_INVALID_ID &&
+		proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		proposition->context_id == occurrence->context_id &&
+		proposition->subject == export->local_term &&
+		proposition->classifier == export->classifier;
+}
+
+static int artifact_term_export_classifier_residual_matches(
+	const struct prototype_artifact_term_export* export,
+	const struct prototype_compile_metadata* metadata,
+	const unsigned char* selected
+) {
+	if (!export || !metadata || !selected ||
+		export->occurrence >= metadata->typed_occurrences.occurrence_count) {
+		return 0;
+	}
+	const struct prototype_typed_occurrence* occurrence =
+		&metadata->typed_occurrences.occurrences[export->occurrence];
+	for (uint32_t obligation_id = 0;
+		obligation_id < metadata->verification.obligation_count;
+		++obligation_id) {
+		const struct prototype_verification_obligation* obligation =
+			&metadata->verification.obligations[obligation_id];
+		const struct prototype_verification_kind_descriptor* descriptor =
+			prototype_verification_obligation_descriptor(obligation->kind);
+		if (!selected[obligation_id] ||
+			obligation->state != PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
+			!descriptor || !descriptor->discharge_can_enable_claim_reconstruction ||
+			obligation->occurrence != export->occurrence ||
+			obligation->core_term != occurrence->core_term) {
+			continue;
+		}
+		if (occurrence->classifier_status ==
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION &&
+			occurrence->classifier_verification_obligation == obligation_id) {
+			return 1;
+		}
+		if (occurrence->classifier_status ==
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED &&
+			occurrence->classifier == export->classifier) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int prototype_artifact_interface_refresh_term_export_evidence(
+	struct prototype_artifact_interface* interface,
+	const struct prototype_compile_metadata* metadata,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!interface || !metadata || !judgement) {
+		return -1;
+	}
+	size_t occurrence_count = metadata->typed_occurrences.occurrence_count;
+	size_t obligation_count = metadata->verification.obligation_count;
+	int has_dependencies = metadata->verification.dependency_count != 0;
+	unsigned char* reachable = has_dependencies ?
+		calloc(occurrence_count ? occurrence_count : 1, 1) : NULL;
+	unsigned char* selected = has_dependencies ?
+		calloc(obligation_count ? obligation_count : 1, 1) : NULL;
+	uint32_t* stack = has_dependencies ?
+		malloc((occurrence_count ? occurrence_count : 1) * sizeof(*stack)) : NULL;
+	if (has_dependencies && (!reachable || !selected || !stack)) {
+		free(reachable);
+		free(selected);
+		free(stack);
+		return -1;
+	}
+	interface->export_condition_obligation_count = 0;
+	for (size_t i = 0; i < interface->term_export_count; ++i) {
+		struct prototype_artifact_term_export* export = &interface->term_exports[i];
+		uint32_t claim = PROTOTYPE_INVALID_ID;
+		if (export->source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM &&
+			artifact_term_export_claim_matches(
+				export, metadata, judgement, export->source_evidence.id
+			)) {
+			claim = export->source_evidence.id;
+		} else if (export->source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL &&
+			export->source_evidence.id != PROTOTYPE_INVALID_ID &&
+			artifact_term_export_claim_matches(
+				export, metadata, judgement, export->source_evidence.id
+			)) {
+			claim = export->source_evidence.id;
+		} else if (artifact_term_export_claim(
+				export, metadata, judgement, &claim
+			) != 0) {
+			free(reachable);
+			free(selected);
+			free(stack);
+			return -1;
+		}
+		export->source_condition_first = 0;
+		export->source_condition_count = 0;
+		size_t first = interface->export_condition_obligation_count;
+		size_t count = 0;
+		int collect_status = has_dependencies ? artifact_collect_export_conditions(
+				metadata,
+				export->occurrence,
+				reachable,
+				selected,
+				stack,
+				&interface->export_condition_obligation_ids[first],
+				PROTOTYPE_ARTIFACT_EXPORT_CONDITION_CAPACITY - first,
+				&count
+			) : 0;
+		if (collect_status != 0 || first > UINT32_MAX || count > UINT32_MAX) {
+			free(reachable);
+			free(selected);
+			free(stack);
+			return -1;
+		}
+		if (count == 0) {
+			if (claim != PROTOTYPE_INVALID_ID) {
+				export->source_evidence.kind =
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM;
+				export->source_evidence.id = claim;
+			} else {
+				export->source_evidence.kind =
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
+				export->source_evidence.id = PROTOTYPE_INVALID_ID;
+			}
+			continue;
+		}
+		if (claim == PROTOTYPE_INVALID_ID &&
+			!artifact_term_export_classifier_residual_matches(
+				export, metadata, selected
+			)) {
+			export->source_evidence.kind =
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
+			export->source_evidence.id = PROTOTYPE_INVALID_ID;
+			continue;
+		}
+		export->source_evidence.kind =
+			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL;
+		export->source_evidence.id = claim;
+		export->source_condition_first = (uint32_t)first;
+		export->source_condition_count = (uint32_t)count;
+		interface->export_condition_obligation_count += count;
+	}
+	free(reachable);
+	free(selected);
+	free(stack);
+	return 0;
+}
+
+int prototype_artifact_interface_validate_term_export_evidence(
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_compile_metadata* metadata,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!interface || !metadata || !judgement) {
+		return -1;
+	}
+	size_t occurrence_count = metadata->typed_occurrences.occurrence_count;
+	size_t obligation_count = metadata->verification.obligation_count;
+	int has_dependencies = metadata->verification.dependency_count != 0;
+	unsigned char* reachable = has_dependencies ?
+		calloc(occurrence_count ? occurrence_count : 1, 1) : NULL;
+	unsigned char* selected = has_dependencies ?
+		calloc(obligation_count ? obligation_count : 1, 1) : NULL;
+	uint32_t* stack = has_dependencies ?
+		malloc((occurrence_count ? occurrence_count : 1) * sizeof(*stack)) : NULL;
+	uint32_t* conditions = has_dependencies ? malloc(
+		(obligation_count ? obligation_count : 1) * sizeof(*conditions)
+	) : NULL;
+	if (has_dependencies && (!reachable || !selected || !stack || !conditions)) {
+		free(reachable);
+		free(selected);
+		free(stack);
+		free(conditions);
+		return -1;
+	}
+	size_t condition_offset = 0;
+	int status = 0;
+	for (size_t i = 0; i < interface->term_export_count; ++i) {
+		const struct prototype_artifact_term_export* actual = &interface->term_exports[i];
+		if (actual->occurrence >= occurrence_count ||
+			metadata->typed_occurrences.occurrences[
+				actual->occurrence
+			].core_term != actual->local_term ||
+			metadata->typed_occurrences.occurrences[
+				actual->occurrence
+			].classifier != actual->classifier) {
+			status = -1;
+			break;
+		}
+		if (actual->source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM) {
+			if (!artifact_term_export_claim_matches(
+					actual, metadata, judgement, actual->source_evidence.id
+				) ||
+				actual->source_condition_first != 0 ||
+				actual->source_condition_count != 0) {
+				status = -1;
+				break;
+			}
+			continue;
+		}
+		if (actual->source_evidence.kind !=
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL ||
+			actual->source_condition_first != condition_offset) {
+			status = -1;
+			break;
+		}
+		size_t count = 0;
+		if (artifact_collect_export_conditions(
+				metadata,
+				actual->occurrence,
+				reachable,
+				selected,
+				stack,
+				conditions,
+				obligation_count,
+				&count
+			) != 0 || count == 0 || count != actual->source_condition_count ||
+			condition_offset > interface->export_condition_obligation_count ||
+			count > interface->export_condition_obligation_count - condition_offset ||
+			memcmp(
+				conditions,
+				&interface->export_condition_obligation_ids[condition_offset],
+				count * sizeof(conditions[0])
+			) != 0) {
+			status = -1;
+			break;
+		}
+		if (actual->source_evidence.id != PROTOTYPE_INVALID_ID ?
+			!artifact_term_export_claim_matches(
+				actual, metadata, judgement, actual->source_evidence.id
+			) : !artifact_term_export_classifier_residual_matches(
+				actual, metadata, selected
+			)) {
+			status = -1;
+			break;
+		}
+		condition_offset += count;
+	}
+	if (status == 0 && condition_offset !=
+			interface->export_condition_obligation_count) {
+		status = -1;
+	}
+	free(reachable);
+	free(selected);
+	free(stack);
+	free(conditions);
+	return status;
+}
+
 int prototype_artifact_interface_build_from_metadata(
 	struct prototype_artifact_interface* interface,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
@@ -748,6 +1777,7 @@ int prototype_artifact_interface_build_from_metadata(
 	interface->type_expr_count = 0;
 	interface->dependency_count = 0;
 	interface->function_graph_association_count = 0;
+	interface->export_condition_obligation_count = 0;
 
 	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		interface->type_exprs[interface->type_expr_count++] =
@@ -783,6 +1813,8 @@ int prototype_artifact_interface_build_from_metadata(
 		export->source_evidence.kind =
 			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
 		export->source_evidence.id = PROTOTYPE_INVALID_ID;
+		export->source_condition_first = 0;
+		export->source_condition_count = 0;
 		export->canonical_key = label->canonical_key;
 		export->transparency = PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT;
 		if (metadata->typed_occurrences.occurrences[export->occurrence].classifier !=
@@ -978,7 +2010,9 @@ int prototype_artifact_interface_build_from_metadata(
 			};
 	}
 
-	return 0;
+	return prototype_artifact_interface_refresh_term_export_evidence(
+		interface, metadata, judgement
+	);
 }
 
 int prototype_artifact_interface_add_dependency(

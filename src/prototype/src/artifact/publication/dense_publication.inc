@@ -78,6 +78,7 @@ struct artifact_publication_graph {
 	struct prototype_typed_occurrence_match_case* occurrence_match_cases;
 	struct prototype_typed_occurrence_fold_clause* occurrence_fold_clauses;
 	struct prototype_verification_obligation* verification_obligations;
+	struct prototype_verification_dependency* verification_dependencies;
 	uint32_t* term_relocation;
 	uint32_t* binding_relocation;
 	uint32_t* context_relocation;
@@ -194,6 +195,7 @@ static void artifact_publication_graph_free(
 	free(graph->occurrence_match_cases);
 	free(graph->occurrence_fold_clauses);
 	free(graph->verification_obligations);
+	free(graph->verification_dependencies);
 	free(graph->term_relocation);
 	free(graph->binding_relocation);
 	free(graph->context_relocation);
@@ -456,7 +458,10 @@ static int artifact_mark_roots(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_compile_metadata* metadata
 ) {
-	if (!marks || !interface || !terms || !type_declarations || !judgement) {
+	if (!marks || !interface || !terms || !type_declarations || !judgement ||
+		!metadata || prototype_artifact_interface_validate_term_export_evidence(
+			interface, metadata, judgement
+		) != 0) {
 		return -1;
 	}
 	/* A structural TYPE_FORMER does not select a nominal declaration. Root the
@@ -496,6 +501,20 @@ static int artifact_mark_roots(
 				i, export->local_term);
 			return -1;
 		}
+		if ((export->source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM ||
+			export->source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) &&
+			export->source_evidence.id != PROTOTYPE_INVALID_ID &&
+			artifact_mark_accepted_claim(
+				marks,
+				terms,
+				judgement,
+				export->source_evidence.id,
+				0
+			) != 0) {
+			return -1;
+		}
 		if (export->classifier != PROTOTYPE_INVALID_ID) {
 			int claim_status = artifact_mark_exact_relation(
 					marks,
@@ -505,9 +524,8 @@ static int artifact_mark_roots(
 					export->classifier
 				);
 			int residual_status = claim_status > 0 ?
-				artifact_export_has_residual_constraint(
-					metadata, terms, export->occurrence
-				) : 1;
+				export->source_evidence.kind ==
+					PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL : 1;
 			int classifier_term_status = artifact_mark_term(
 				marks, terms, export->classifier, 0
 			);
@@ -535,9 +553,8 @@ static int artifact_mark_roots(
 				);
 			return -1;
 			}
-		} else if (artifact_export_has_residual_constraint(
-			metadata, terms, export->occurrence
-		) <= 0) {
+		} else if (export->source_evidence.kind !=
+			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) {
 			fprintf(
 				stderr,
 				"artifact export has neither classifier Claim nor residual obligation "
@@ -1671,6 +1688,10 @@ static int artifact_publication_metadata_relocate(
 		}
 		obligation->continuation_binder_id = relocated_binding;
 	}
+	target->verification.dependency_count = source->verification.dependency_count;
+	for (size_t i = 0; i < source->verification.dependency_count; ++i) {
+		target->verification.dependencies[i] = source->verification.dependencies[i];
+	}
 	return 0;
 }
 
@@ -1739,6 +1760,9 @@ static int artifact_publication_graph_alloc(
 	);
 	ALLOC_PUBLICATION(
 		verification_obligations, metadata->verification.obligation_count
+	);
+	ALLOC_PUBLICATION(
+		verification_dependencies, metadata->verification.dependency_count
 	);
 	ALLOC_PUBLICATION(term_relocation, closure->terms.term_count);
 	ALLOC_PUBLICATION(binding_relocation, closure->terms.next_binding_id);
@@ -1876,7 +1900,9 @@ static int artifact_publication_graph_alloc(
 		NULL,
 		0,
 		publication->verification_obligations,
-		metadata->verification.obligation_count
+		metadata->verification.obligation_count,
+		publication->verification_dependencies,
+		metadata->verification.dependency_count
 	);
 	prototype_compile_metadata_set_dimension_storage(
 		&publication->metadata,
@@ -2441,7 +2467,13 @@ static int artifact_build_publication_graph(
 		) : -1;
 	int universe_status = accepted_status == 0 ?
 		artifact_publication_universe_relocate(publication, closure) : -1;
-	int key_status = metadata_status == 0 && universe_status == 0 ?
+	int evidence_status = universe_status == 0 ?
+		prototype_artifact_interface_refresh_term_export_evidence(
+			&publication->interface,
+			&publication->metadata,
+			&publication->object.judgement
+		) : -1;
+	int key_status = evidence_status == 0 ?
 		prototype_artifact_interface_recompute_keys(
 			&publication->interface,
 			&publication->object.terms,
@@ -2449,16 +2481,17 @@ static int artifact_build_publication_graph(
 			&publication->metadata.contexts
 		) : -1;
 	int status = metadata_status == 0 && accepted_status == 0 &&
-		universe_status == 0 && key_status == 0 ?
+		universe_status == 0 && evidence_status == 0 && key_status == 0 ?
 		0 : -1;
 	if (status != 0) {
 		fprintf(
 			stderr,
 			"artifact publication relocation failed metadata=%d accepted=%d "
-			"universe=%d keys=%d\n",
+			"universe=%d evidence=%d keys=%d\n",
 			metadata_status,
 			accepted_status,
 			universe_status,
+			evidence_status,
 			key_status
 		);
 	}

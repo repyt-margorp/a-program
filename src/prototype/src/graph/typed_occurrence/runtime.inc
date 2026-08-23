@@ -287,7 +287,9 @@ static int operation_runtime_discharge_sequence_fold(
 	struct prototype_verification_obligation frame_obligation =
 		*obligation;
 	struct prototype_verification_db frame_verification;
-	prototype_verification_db_init(&frame_verification, &frame_obligation, 1);
+	prototype_verification_db_init(
+		&frame_verification, &frame_obligation, 1, NULL, 0
+	);
 	if (prototype_verification_db_add(
 			&frame_verification, frame_obligation, NULL
 		) != 0) {
@@ -510,7 +512,9 @@ static int operation_runtime_discharge_computation_fold_result(
 	struct prototype_verification_obligation frame_obligation = *obligation;
 	frame_obligation.state = instance->state;
 	struct prototype_verification_db frame_verification;
-	prototype_verification_db_init(&frame_verification, &frame_obligation, 1);
+	prototype_verification_db_init(
+		&frame_verification, &frame_obligation, 1, NULL, 0
+	);
 	if (prototype_verification_db_add(
 			&frame_verification, frame_obligation, NULL
 		) != 0 || prototype_verification_db_discharge_computation_fold_result(

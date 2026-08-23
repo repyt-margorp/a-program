@@ -70,6 +70,14 @@ int prototype_dimension_operator_extension(
 	uint32_t* p_operator_id
 );
 
+/* Return one exactly for the canonical dimension-preserving extension
+ * [0..n) -> [0..n+1). Zero-dimensional e_0 is canonical; callers that require
+ * a repeated action must separately require a nonzero source dimension. */
+int prototype_dimension_operator_is_canonical_extension(
+	const struct prototype_dimension_operator_db* db,
+	uint32_t operator_id
+);
+
 int prototype_dimension_operator_compose(
 	struct prototype_dimension_operator_db* db,
 	uint32_t first_operator_id,

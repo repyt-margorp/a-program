@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v83.h"
+#include "a_program/artifact/wire_v84.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -341,8 +341,7 @@ int prototype_artifact_read_text_interface(
 		char namespace_word[256];
 		char namespace_name[256];
 		char occurrence_word[256];
-		char claim_word[256];
-		uint32_t source_claim_id;
+		char evidence_word[256];
 		struct prototype_artifact_term_export* export =
 			&interface->term_exports[interface->term_export_count++];
 		if (fscanf(
@@ -363,17 +362,19 @@ int prototype_artifact_read_text_interface(
 			read_artifact_term_key(stream, &export->classifier_key) != 0 ||
 			fscanf(
 				stream,
-				"%255s %255s %255s %u %255s %u",
+				"%255s %255s %255s %u %255s %d %u %u",
 				namespace_word,
 				namespace_name,
 				occurrence_word,
 				&export->occurrence,
-				claim_word,
-				&source_claim_id
-			) != 6 ||
+				evidence_word,
+				&export->source_evidence.kind,
+				&export->source_evidence.id,
+				&export->source_condition_count
+			) != 8 ||
 			strcmp(namespace_word, "namespace") != 0 ||
 			strcmp(occurrence_word, "occurrence") != 0 ||
-			strcmp(claim_word, "claim") != 0) {
+			strcmp(evidence_word, "evidence") != 0) {
 			return -1;
 		}
 		export->namespace_symbol_id = symbol_intern(
@@ -384,10 +385,39 @@ int prototype_artifact_read_text_interface(
 		if (export->namespace_symbol_id < 0) {
 			return -1;
 		}
-		export->source_evidence.kind = source_claim_id == PROTOTYPE_INVALID_ID ?
-			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID :
-			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM;
-		export->source_evidence.id = source_claim_id;
+		if (export->source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM) {
+			if (export->source_evidence.id == PROTOTYPE_INVALID_ID ||
+				export->source_condition_count != 0) {
+				return -1;
+			}
+			export->source_condition_first = 0;
+		} else if (export->source_evidence.kind ==
+				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL) {
+			if (export->source_condition_count == 0 ||
+				export->source_condition_count >
+					PROTOTYPE_ARTIFACT_EXPORT_CONDITION_CAPACITY -
+						interface->export_condition_obligation_count) {
+				return -1;
+			}
+			export->source_condition_first =
+				(uint32_t)interface->export_condition_obligation_count;
+			for (uint32_t j = 0; j < export->source_condition_count; ++j) {
+				uint32_t obligation_id;
+				if (fscanf(stream, "%u", &obligation_id) != 1 ||
+					(j != 0 && obligation_id <=
+					 interface->export_condition_obligation_ids[
+						export->source_condition_first + j - 1
+					 ])) {
+					return -1;
+				}
+				interface->export_condition_obligation_ids[
+					interface->export_condition_obligation_count++
+				] = obligation_id;
+			}
+		} else {
+			return -1;
+		}
 	}
 
 	if (fscanf(stream, "%255s %zu", word, &count) != 2 ||
@@ -2973,13 +3003,13 @@ int prototype_artifact_read_text_typed_occurrences(
 	for (size_t i = 0; i < obligation_count; ++i) {
 		size_t id;
 		struct prototype_verification_obligation obligation;
-		if (fscanf(stream, "%255s %zu %d %d %u %u %u %u %u %u %u %u %d %u", word, &id,
+		if (fscanf(stream, "%255s %zu %d %d %u %u %u %u %u %u %u %u %d %d %u", word, &id,
 				&obligation.kind, &obligation.state, &obligation.occurrence,
 				&obligation.core_term, &obligation.computation_occurrence,
 				&obligation.continuation_occurrence, &obligation.continuation_binder_id,
 				&obligation.input_classifier, &obligation.classifier_family,
-				&obligation.effect_row, &obligation.normalization_profile,
-				&obligation.schema_version) != 14 ||
+				&obligation.effect_row, &obligation.effect_constraint_kind,
+				&obligation.normalization_profile, &obligation.schema_version) != 15 ||
 			strcmp(word, "verification") != 0 || id != i ||
 			obligation.schema_version !=
 				prototype_verification_obligation_schema_version(obligation.kind) ||
@@ -2991,6 +3021,36 @@ int prototype_artifact_read_text_typed_occurrences(
 			(metadata && prototype_verification_db_add(
 				&metadata->verification, obligation, NULL
 			) != 0)) {
+			return -1;
+		}
+	}
+	size_t verification_dependency_count;
+	if (expect_artifact_count(
+			stream,
+			"verification_dependencies",
+			&verification_dependency_count
+		) != 0 ||
+		(metadata && verification_dependency_count >
+			metadata->verification.dependency_capacity) ||
+		(!metadata && verification_dependency_count != 0)) {
+		return -1;
+	}
+	for (size_t i = 0; i < verification_dependency_count; ++i) {
+		size_t id;
+		uint32_t occurrence;
+		uint32_t obligation_id;
+		if (fscanf(
+				stream,
+				"%255s %zu %u %u",
+				word,
+				&id,
+				&occurrence,
+				&obligation_id
+			) != 4 || strcmp(word, "verification_dependency") != 0 ||
+			id != i || !metadata ||
+			prototype_verification_db_add_dependency(
+				&metadata->verification, occurrence, obligation_id
+			) != 0) {
 			return -1;
 		}
 	}

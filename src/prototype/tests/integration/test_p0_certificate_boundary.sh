@@ -154,12 +154,12 @@ fi
 	>"$TMP_DIR/shared-core.out"
 id1_claim=$(awk '
 	$1 == "term" && $2 == "id1" {
-		for (i = 1; i <= NF; ++i) if ($i == "claim") print $(i + 1)
+		for (i = 1; i <= NF; ++i) if ($i == "evidence" && $(i + 1) == 1) print $(i + 2)
 	}
 ' "$TMP_DIR/shared-core.apo")
 id2_claim=$(awk '
 	$1 == "term" && $2 == "id2" {
-		for (i = 1; i <= NF; ++i) if ($i == "claim") print $(i + 1)
+		for (i = 1; i <= NF; ++i) if ($i == "evidence" && $(i + 1) == 1) print $(i + 2)
 	}
 ' "$TMP_DIR/shared-core.apo")
 test -n "$id1_claim"

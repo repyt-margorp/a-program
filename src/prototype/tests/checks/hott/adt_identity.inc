@@ -476,6 +476,7 @@
 	);
 	uint32_t schema_extension_0;
 	uint32_t schema_extension_1;
+	uint32_t schema_noncanonical_extension;
 	uint32_t acted_bool;
 	uint32_t twice_acted_bool;
 	struct prototype_type_schema_view bool_schema_view;
@@ -484,10 +485,29 @@
 	size_t schema_type_count = type_db.semantic_schema.type_count;
 	size_t schema_constructor_count = type_db.semantic_schema.constructor_count;
 	uint64_t schema_revision = type_db.semantic_schema.semantic_revision;
+	struct prototype_dimension_axis_image noncanonical_extension_image = {
+		.kind = PROTOTYPE_DIMENSION_AXIS_TARGET,
+		.target_axis = 1
+	};
 	if (prototype_dimension_operator_extension(
 			&schema_operators, 0, &schema_extension_0
 		) != 0 || prototype_dimension_operator_extension(
 			&schema_operators, 1, &schema_extension_1
+		) != 0 || prototype_dimension_operator_intern(
+			&schema_operators,
+			1,
+			2,
+			&noncanonical_extension_image,
+			1,
+			&schema_noncanonical_extension
+		) != 0 || prototype_dimension_operator_is_canonical_extension(
+			&schema_operators, schema_extension_0
+		) != 1 || prototype_dimension_operator_is_canonical_extension(
+			&schema_operators, schema_extension_1
+		) != 1 || prototype_dimension_operator_is_canonical_extension(
+			&schema_operators, schema_noncanonical_extension
+		) != 0 || prototype_dimension_operator_is_canonical_extension(
+			&schema_operators, PROTOTYPE_INVALID_ID
 		) != 0 || prototype_term_dimension_action(
 			&term_db,
 			&schema_operators,

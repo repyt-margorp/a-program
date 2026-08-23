@@ -2716,7 +2716,8 @@ static int operation_subtree_contains_external_ref(
 	for (uint32_t target = 0;
 		target < ctx->metadata->typed_occurrences.occurrence_count;
 		++target) {
-		uint32_t core_term = ctx->metadata->typed_occurrences.occurrences[target].core_term;
+		uint32_t core_term =
+			ctx->metadata->typed_occurrences.occurrences[target].core_term;
 		if (core_term >= ctx->terms->term_count ||
 			ctx->terms->terms[core_term].tag != PROTOTYPE_TERM_EXTERNAL_REF) {
 			continue;

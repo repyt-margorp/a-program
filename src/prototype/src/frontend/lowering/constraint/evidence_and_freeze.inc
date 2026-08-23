@@ -2935,8 +2935,8 @@ static int operation_solver_reify_core_proof_impl(
 							premise_classifiers[i],
 							&premise_evidence[i]
 					);
-					if (status != 0) {
-						return status;
+						if (status != 0) {
+							return status;
 					}
 				}
 			}

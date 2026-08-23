@@ -417,8 +417,10 @@ arguments appear as graph/result-family indices in source order.
 
 ### 4.4 Executable `f`
 
-The executable definition is the evidence-erasing projection of the certified
-execution:
+The executable definition is mode-specific.
+
+For a first-order owner, `f` is the evidence-erasing projection of the
+certified execution:
 
 ```text
 f x =
@@ -429,7 +431,15 @@ f x =
 ```
 
 This gives a structural connection between execution and graph evidence. There
-are not two separately trusted implementations.
+are not two separately trusted first-order implementations.
+
+For a higher-order owner, the raw executable `f` retains its original callback
+ABI. The certified runner is an additional variant that receives the callback
+graph interface and certified callback immediately after the raw callback
+argument. Replacing the raw owner with that runner would change the meaning of
+existing callers, which possess only the callback value. Therefore the
+association certifies executions through the explicit certified variant; it
+does not claim that every raw higher-order call already carries graph evidence.
 
 The initial interpreter may construct graph evidence. A later backend proof
 erasure pass may erase `graph` and the package constructor, but erasure is an
@@ -644,16 +654,16 @@ Exit gate:
 - elimination over `@length xs n` exposes the recursive graph hypothesis;
 - malformed generated constructors fail ordinary accepted replay.
 
-### FGR3: Make execution a projection of evidence
+### FGR3: Connect execution to evidence by mode
 
 Tasks:
 
 - [x] Generate the hidden certified runner before publishing the final `f`.
-- [x] Generate `f` as sequencing/projection over that runner.
-- [x] Ensure published references to `f` select the projection, not an earlier
-  provisional body Term.
-- [x] Keep one published definition authority; do not retain the old body as
-  another published implementation.
+- [x] Generate first-order `f` as sequencing/projection over that runner.
+- [x] Ensure published first-order references to `f` select the projection, not
+  an earlier provisional body Term.
+- [x] Preserve a higher-order owner's raw callback ABI and publish its certified
+  runner as an additional explicitly associated variant.
 - [x] Add runtime tests showing that `f x` and one `*f x` certified execution
   choose the same packaged output by construction.
 - [x] Add resource-usage accounting for the package and graph witness.
@@ -661,7 +671,10 @@ Tasks:
 Exit gate:
 
 - the graph connection is structural and contains no `Returns` premise;
-- there is one operational execution, not a separately run function and proof;
+- first-order mode has one operational execution, not a separately run function
+  and proof;
+- higher-order mode makes no certification claim for execution through the raw
+  owner without the explicit graph interface;
 - current normalization results are preserved after evidence projection.
 
 ### FGR4: QuickSort dependency closure
@@ -996,8 +1009,9 @@ net source delta          +567 lines
 5. Graph constructors and witnesses are ordinary generated A Program objects.
 6. The generator cannot publish a Claim directly. It must pass the ordinary
    constraint, proof materialization, and accepted replay pipeline.
-7. The executable function is a projection of certified execution whenever a
-   graph interface is published.
+7. A first-order executable is a projection of certified execution. A
+   higher-order executable retains its raw ABI and has a separate certified
+   variant; publication of that association does not certify raw calls.
 8. Graph evidence never changes DefEq or the global normalizer.
 9. Partial/effectful definitions are rejected by the first graph fragment.
 10. Removing `Returns` does not remove dependent sequencing provenance.
@@ -1022,7 +1036,10 @@ net source delta          +567 lines
 Stop the phase and revise this plan if any of the following occurs:
 
 - `*f` requires placing a computation in a value index;
-- executable `f` and certified `*f` become separately authoritative bodies;
+- a first-order executable `f` and certified `*f` become separately
+  authoritative bodies;
+- a higher-order association is used to claim certification of the raw owner
+  without an explicit callback graph interface;
 - graph generation needs to duplicate mutable Context or Substitution stores;
 - accepted replay requires a graph-specific proof kind;
 - a generated graph for QuickSort loses either recursive call;

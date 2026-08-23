@@ -181,8 +181,8 @@ grep -q '^source-exports-normalization-equal natMain natExpected mode=default ye
 	--write-artifact "$TMP_DIR/identity-no-type-instance-cache.apo" \
 	"$TMP_DIR/identity.p"
 cmp "$TMP_DIR/identity.apo" "$TMP_DIR/identity-no-type-instance-cache.apo"
-grep -q '^A_PROGRAM_ARTIFACT 83 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v83.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 84 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v84.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
@@ -274,10 +274,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 83/A_PROGRAM_ARTIFACT 82/' \
+sed '1s/A_PROGRAM_ARTIFACT 84/A_PROGRAM_ARTIFACT 83/' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v79.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-v79.apo" >"$TMP_DIR/identity-v79.out" 2>"$TMP_DIR/identity-v79.err"; then
-	echo "obsolete artifact unexpectedly passed at the v83 version boundary" >&2
+	echo "obsolete artifact unexpectedly passed at the v84 version boundary" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -421,7 +421,7 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-universe-reason.apo" 
 	echo "Universe constraint accepted an unknown provenance reason" >&2
 	exit 1
 fi
-grep -q '^term identityBool .* namespace identity occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/identity.apo"
+grep -q '^term identityBool .* namespace identity occurrence [0-9][0-9]* evidence 1 [0-9][0-9]* 0$' "$TMP_DIR/identity.apo"
 grep -q '^type Bool .* namespace identity$' "$TMP_DIR/identity.apo"
 grep -q 'metadata label identityBool -> occurrence#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
 grep -q 'metadata label identityNat -> occurrence#[0-9][0-9]* -> term#' "$TMP_DIR/identity.out"
@@ -470,12 +470,12 @@ test -n "$use1_operation"
 test "$id1_operation" != "$id2_operation"
 id1_export_claim=$(awk '
 	$1 == "term" && $2 == "id1" {
-		for (i = 1; i <= NF; ++i) if ($i == "claim") print $(i + 1)
+		for (i = 1; i <= NF; ++i) if ($i == "evidence" && $(i + 1) == 1) print $(i + 2)
 	}
 ' "$TMP_DIR/SharedCoreProofOwner.apo")
 id2_export_claim=$(awk '
 	$1 == "term" && $2 == "id2" {
-		for (i = 1; i <= NF; ++i) if ($i == "claim") print $(i + 1)
+		for (i = 1; i <= NF; ++i) if ($i == "evidence" && $(i + 1) == 1) print $(i + 2)
 	}
 ' "$TMP_DIR/SharedCoreProofOwner.apo")
 test -n "$id1_export_claim"
@@ -483,7 +483,7 @@ test -n "$id2_export_claim"
 test "$id1_export_claim" != "$id2_export_claim"
 awk -v wrong_claim="$id2_export_claim" '
 	$1 == "term" && $2 == "id1" {
-		for (i = 1; i <= NF; ++i) if ($i == "claim") $(i + 1) = wrong_claim
+		for (i = 1; i <= NF; ++i) if ($i == "evidence" && $(i + 1) == 1) $(i + 2) = wrong_claim
 		done = 1
 	}
 	{ print }
@@ -546,7 +546,7 @@ identity_bool_classifier_key=$(awk '$1 == "term" && $2 == "identityBool" { print
 identity_nat_classifier_key=$(awk '$1 == "term" && $2 == "identityNat" { print $14 ":" $15 ":" $16 ":" $17 ":" $18 ":" $19 ":" $20 ":" $21 }' "$TMP_DIR/identity.apo")
 test "$identity_bool_term" = "$identity_nat_term"
 test "$identity_bool_classifier" != "$identity_nat_classifier"
-test "$identity_bool_fields" -eq 27
+test "$identity_bool_fields" -eq 29
 test "$identity_bool_key" = "$identity_nat_key"
 test "$identity_bool_classifier_key" != "$identity_nat_classifier_key"
 grep -q "term_name identityBool $identity_bool_term " "$TMP_DIR/identity.apo"
@@ -1409,13 +1409,13 @@ EOF_SHARED_NAMESPACE_B
 	--namespace Shared \
 	"$TMP_DIR/shared-namespace-a.p" \
 	"$TMP_DIR/shared-namespace-b.p" >"$TMP_DIR/shared-namespace.out"
-grep -q '^term Nat .* namespace Shared occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
-grep -q '^term id .* namespace Shared occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/Shared.apo"
+grep -q '^term Nat .* namespace Shared occurrence [0-9][0-9]* evidence 1 [0-9][0-9]* 0$' "$TMP_DIR/Shared.apo"
+grep -q '^term id .* namespace Shared occurrence [0-9][0-9]* evidence 1 [0-9][0-9]* 0$' "$TMP_DIR/Shared.apo"
 grep -q '^type Nat .* namespace Shared$' "$TMP_DIR/Shared.apo"
 ./read_file.out --write-artifact "$TMP_DIR/DottedNamespace.apo" \
 	--namespace Shared.Core \
 	"$TMP_DIR/shared-namespace-a.p" >"$TMP_DIR/dotted-namespace.out"
-grep -q '^term Nat .* namespace Shared.Core occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DottedNamespace.apo"
+grep -q '^term Nat .* namespace Shared.Core occurrence [0-9][0-9]* evidence 1 [0-9][0-9]* 0$' "$TMP_DIR/DottedNamespace.apo"
 
 cat >"$TMP_DIR/match-graph.p" <<'EOF_MATCH_GRAPH'
 Bool := @{
@@ -2222,8 +2222,8 @@ EOF_MULTIPLE_DERIVATIONS
 id1_claim=$(awk '
 	$1 == "term" && $2 == "id1" {
 		for (i = 1; i < NF; ++i) {
-			if ($i == "claim") {
-				print $(i + 1);
+			if ($i == "evidence" && $(i + 1) == 1) {
+				print $(i + 2);
 				exit;
 			}
 		}
@@ -2232,8 +2232,8 @@ id1_claim=$(awk '
 id2_claim=$(awk '
 	$1 == "term" && $2 == "id2" {
 		for (i = 1; i < NF; ++i) {
-			if ($i == "claim") {
-				print $(i + 1);
+			if ($i == "evidence" && $(i + 1) == 1) {
+				print $(i + 2);
 				exit;
 			}
 		}
@@ -2678,8 +2678,8 @@ grep -q '^export-normalization-equal idNat yes$' "$TMP_DIR/id-provider-normaliza
 	"$TMP_DIR/DuplicateNatB.apo" >"$TMP_DIR/duplicate-nat-ab.out"
 ./read_file.out --read-graph "$TMP_DIR/DuplicateNatAB.apo" >"$TMP_DIR/duplicate-nat-ab-read.out"
 grep -q 'term_exports=4 type_exports=2 constructor_exports=4 dependencies=0' "$TMP_DIR/duplicate-nat-ab-read.out"
-grep -q '^term Nat .* namespace duplicate-nat-a occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
-grep -q '^term Nat .* namespace duplicate-nat-b occurrence [0-9][0-9]* claim [0-9][0-9]*$' "$TMP_DIR/DuplicateNatAB.apo"
+grep -q '^term Nat .* namespace duplicate-nat-a occurrence [0-9][0-9]* evidence 1 [0-9][0-9]* 0$' "$TMP_DIR/DuplicateNatAB.apo"
+grep -q '^term Nat .* namespace duplicate-nat-b occurrence [0-9][0-9]* evidence 1 [0-9][0-9]* 0$' "$TMP_DIR/DuplicateNatAB.apo"
 grep -q '^type Nat .* namespace duplicate-nat-a$' "$TMP_DIR/DuplicateNatAB.apo"
 grep -q '^type Nat .* namespace duplicate-nat-b$' "$TMP_DIR/DuplicateNatAB.apo"
 duplicate_nat_a_term=$(awk '$1 == "term" && $2 == "idA" { print $3 }' "$TMP_DIR/DuplicateNatAB.apo")
@@ -2767,14 +2767,13 @@ fi
 	idNat \
 	idAlias >"$TMP_DIR/alias-classifier-compatible.out"
 grep -q '^export-classifiers-compatible idNat idAlias yes$' "$TMP_DIR/alias-classifier-compatible.out"
-./read_file.out --write-artifact "$TMP_DIR/IdUserDeclared.apo" "$TMP_DIR/id-user-declared.p" >"$TMP_DIR/id-user-declared.out"
-if grep -q 'has-type EXTERNAL_REF(id-user-declared.idNat)' "$TMP_DIR/id-user-declared.out" ||
-	grep -q 'has-type APP(EXTERNAL_REF(id-user-declared.idNat)' "$TMP_DIR/id-user-declared.out"; then
-	echo "unresolved external effect row was materialized in JudgementDB" >&2
+if ./read_file.out --write-artifact "$TMP_DIR/IdUserDeclared.apo" \
+	"$TMP_DIR/id-user-declared.p" >"$TMP_DIR/id-user-declared.out" \
+	2>"$TMP_DIR/id-user-declared.err"; then
+	echo "an effect equation authorized an export without typing evidence" >&2
 	exit 1
 fi
-grep -Eq '^verification [0-9]+ 2 1 ' "$TMP_DIR/IdUserDeclared.apo"
-./read_file.out --read-graph "$TMP_DIR/IdUserDeclared.apo" >"$TMP_DIR/id-user-declared-read.out"
+grep -q 'failed to write artifact' "$TMP_DIR/id-user-declared.err"
 if ./read_file.out --policy strict --write-artifact "$TMP_DIR/IdUserDeclaredStrict.apo" \
 	"$TMP_DIR/id-user-declared.p" >"$TMP_DIR/id-user-declared-strict.out" \
 	2>"$TMP_DIR/id-user-declared-strict.err"; then
@@ -2806,7 +2805,7 @@ fi
 ./read_file.out --read-graph "$TMP_DIR/IdUser.linked.apo" >"$TMP_DIR/id-linked-read.out"
 awk -v declaration_proof_kind="$PROOF_KIND_DECLARATION" '
 	FNR == NR && $1 == "term" && $2 == "idNat" {
-		for (i = 1; i <= NF; ++i) if ($i == "claim") provider_claim = $(i + 1)
+		for (i = 1; i <= NF; ++i) if ($i == "evidence" && $(i + 1) == 1) provider_claim = $(i + 2)
 		next
 	}
 	FNR != NR && $1 == "derivation" && $3 == declaration_proof_kind &&
@@ -3116,15 +3115,6 @@ fi
 grep -q 'term_exports=4 type_exports=2 constructor_exports=4 dependencies=0' "$TMP_DIR/alias-linked-read.out"
 grep -q 'relocation_external_terms=0 .*relocation_external_type_exprs=0' "$TMP_DIR/alias-linked-read.out"
 grep -q 'resolved constructor owner kind=1 .* ordinal=0' "$TMP_DIR/alias-linked-read.out"
-
-mkdir "$TMP_DIR/residual-link"
-./read_file.out --link-artifacts "$TMP_DIR/IdUserDeclared.apo" \
-	--link-output "$TMP_DIR/residual-link/IdUserDeclared.linked.apo" \
-	>"$TMP_DIR/id-user-declared-link.out"
-grep -Eq '^verification [0-9]+ 2 1 ' \
-	"$TMP_DIR/residual-link/IdUserDeclared.linked.apo"
-./read_file.out --read-graph "$TMP_DIR/residual-link/IdUserDeclared.linked.apo" \
-	>"$TMP_DIR/id-user-declared-linked-read.out"
 
 awk '
 	FNR == NR {

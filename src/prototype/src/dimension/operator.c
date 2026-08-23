@@ -367,6 +367,31 @@ int prototype_dimension_operator_extension(
 	return result;
 }
 
+int prototype_dimension_operator_is_canonical_extension(
+	const struct prototype_dimension_operator_db* db,
+	uint32_t operator_id
+) {
+	const struct prototype_dimension_operator* operator =
+		prototype_dimension_operator_get(db, operator_id);
+	if (!operator || operator->source_dimension == UINT32_MAX ||
+		operator->target_dimension != operator->source_dimension + 1 ||
+		operator->image_count != operator->source_dimension) {
+		return 0;
+	}
+	const struct prototype_dimension_axis_image* images =
+		prototype_dimension_operator_images(db, operator_id);
+	if (operator->image_count != 0 && !images) {
+		return 0;
+	}
+	for (uint32_t axis = 0; axis < operator->source_dimension; ++axis) {
+		if (images[axis].kind != PROTOTYPE_DIMENSION_AXIS_TARGET ||
+			images[axis].target_axis != axis) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
 int prototype_dimension_operator_compose(
 	struct prototype_dimension_operator_db* db,
 	uint32_t first_operator_id,
