@@ -177,6 +177,10 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
+./read_file.out --quiet --audit-no-type-instance-cache \
+	--write-artifact "$TMP_DIR/identity-no-type-instance-cache.apo" \
+	"$TMP_DIR/identity.p"
+cmp "$TMP_DIR/identity.apo" "$TMP_DIR/identity-no-type-instance-cache.apo"
 grep -q '^A_PROGRAM_ARTIFACT 83 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
 schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v83.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")

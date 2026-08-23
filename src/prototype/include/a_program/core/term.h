@@ -385,6 +385,24 @@ struct prototype_term_intern_stats {
 	uint64_t alpha_compares_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
 };
 
+#define PROTOTYPE_TYPE_INSTANCE_CACHE_CAPACITY 4096
+
+struct prototype_type_instance_cache_entry {
+	int present;
+	uint64_t semantic_revision;
+	uint32_t type_id;
+	uint32_t arg_count;
+	uint32_t args[16];
+	uint32_t result;
+};
+
+struct prototype_type_instance_cache_stats {
+	uint64_t hit_count;
+	uint64_t miss_count;
+	uint64_t collision_count;
+	uint64_t stale_revision_count;
+};
+
 /* Immutable operational data projected by compilation. It contains only the
  * Core identities required by host-backed reduction and no classifier,
  * Context, constructor telescope, or proof information. */
@@ -689,6 +707,10 @@ struct prototype_term_db {
 		PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY
 	];
 	struct prototype_term_normalization_cache_stats normalization_cache_stats;
+	int type_instance_cache_enabled;
+	struct prototype_type_instance_cache_entry* type_instance_cache;
+	size_t type_instance_cache_capacity;
+	struct prototype_type_instance_cache_stats type_instance_cache_stats;
 
 	/* Runtime-only canonical identity index. The Term graph remains the sole
 	 * semantic owner; this index is a rebuildable projection of that graph. */

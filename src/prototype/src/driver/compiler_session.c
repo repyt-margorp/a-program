@@ -7,6 +7,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+static uint64_t compiler_session_clock_ns(void) {
+	clock_t now = clock();
+	if (now == (clock_t)-1) {
+		return 0;
+	}
+	return (uint64_t)now / (uint64_t)CLOCKS_PER_SEC * UINT64_C(1000000000) +
+		(uint64_t)now % (uint64_t)CLOCKS_PER_SEC * UINT64_C(1000000000) /
+		(uint64_t)CLOCKS_PER_SEC;
+}
+
+static uint64_t compiler_session_elapsed_ns(uint64_t started) {
+	uint64_t finished = compiler_session_clock_ns();
+	return finished >= started ? finished - started : 0;
+}
 
 static int program_has_function_graph_requests(
 	const struct prototype_ast_db* asts
@@ -216,6 +232,7 @@ int prototype_compile_graph_with_imports(
 	program->metadata->function_graph_preflight = function_graph_requested ?
 		PROTOTYPE_FUNCTION_GRAPH_COMPILE_OWNER_PREFLIGHT :
 		PROTOTYPE_FUNCTION_GRAPH_COMPILE_NORMAL;
+	uint64_t stage_started = compiler_session_clock_ns();
 	if (prototype_ast_compile_pending_with_imports(
 		program->asts,
 		program->terms,
@@ -253,7 +270,14 @@ int prototype_compile_graph_with_imports(
 		}
 		return -1;
 	}
+	program->metadata->source_compile_time_ns +=
+		compiler_session_elapsed_ns(stage_started);
 	if (function_graph_requested) {
+		size_t source_ast_nodes = program->asts->node_count;
+		size_t source_assignments = program->asts->assignment_count;
+		size_t source_types = program->asts->type_def_count;
+		size_t source_constructors = program->asts->type_constructor_count;
+		stage_started = compiler_session_clock_ns();
 		if (prototype_function_graph_generate_requested(
 				program->asts,
 				program->terms,
@@ -269,15 +293,27 @@ int prototype_compile_graph_with_imports(
 					"%s",
 						"failed to generate accepted function graph"
 					);
-				}
+			}
 			return -1;
 		}
+		program->metadata->function_graph_generation_time_ns +=
+			compiler_session_elapsed_ns(stage_started);
+		program->metadata->function_graph_source_ast_node_count += source_ast_nodes;
+		program->metadata->function_graph_generated_ast_node_count +=
+			program->asts->node_count - source_ast_nodes;
+		program->metadata->function_graph_generated_assignment_count +=
+			program->asts->assignment_count - source_assignments;
+		program->metadata->function_graph_generated_type_count +=
+			program->asts->type_def_count - source_types;
+		program->metadata->function_graph_generated_constructor_count +=
+			program->asts->type_constructor_count - source_constructors;
 		/* The source pass is an accepted immutable prefix, not disposable scratch.
 		 * Extend it with generated declarations, promote the certified projection,
 		 * then compile only the graph-reference consumers skipped by the first pass. */
 		program->metadata->function_graph_preflight =
 			PROTOTYPE_FUNCTION_GRAPH_COMPILE_GENERATED_CLOSURE;
 
+		stage_started = compiler_session_clock_ns();
 		if (prototype_ast_compile_pending_with_imports(
 				program->asts,
 				program->terms,
@@ -302,6 +338,8 @@ int prototype_compile_graph_with_imports(
 			}
 			return -1;
 		}
+		program->metadata->function_graph_generated_compile_time_ns +=
+			compiler_session_elapsed_ns(stage_started);
 		program->metadata->function_graph_preflight =
 			PROTOTYPE_FUNCTION_GRAPH_COMPILE_NORMAL;
 	}

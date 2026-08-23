@@ -51,7 +51,7 @@ int prototype_judgement_add_normalization_premise_conversions(
 				uint32_t candidate_cursor = 0;
 				uint32_t candidate_derivation_id;
 				int has_direct_derivation = 0;
-				while (prototype_judgement_candidate_derivation_next(
+				while (prototype_judgement_candidate_derivation_for_conclusion_next(
 					judgement->propositions,
 					judgement->proposition_count,
 					judgement->derivation_candidates,
@@ -1365,6 +1365,13 @@ static int replay_term_scratch_init(
 	scratch->effect_row_variable_count = 0;
 	scratch->effect_row_variable_capacity = 0;
 	scratch->effect_row_variable_index_dirty = 1;
+	scratch->type_instance_cache = NULL;
+	scratch->type_instance_cache_capacity = 0;
+	memset(
+		&scratch->type_instance_cache_stats,
+		0,
+		sizeof(scratch->type_instance_cache_stats)
+	);
 	scratch->intern_entry_capacity = 0;
 	scratch->intern_bucket_count = 0;
 	scratch->intern_indexed_count = 0;
@@ -1425,50 +1432,85 @@ static void replay_term_scratch_free(struct prototype_term_db* scratch) {
 	memset(scratch, 0, sizeof(*scratch));
 }
 
-static int replay_reindexed_classifier_satisfies(
+struct prototype_accepted_replay_workspace {
+	struct prototype_term_db terms;
+	struct prototype_substitution_db substitutions;
+};
+
+static int accepted_replay_workspace_init(
 	const struct prototype_term_db* terms,
+	const struct prototype_substitution_db* substitutions,
+	struct prototype_accepted_replay_workspace* workspace
+) {
+	if (!terms || !substitutions || !workspace ||
+		substitutions->substitution_capacity < substitutions->substitution_count) {
+		return -1;
+	}
+	memset(workspace, 0, sizeof(*workspace));
+	workspace->substitutions = *substitutions;
+	workspace->substitutions.substitutions = malloc(
+		substitutions->substitution_capacity *
+			sizeof(*workspace->substitutions.substitutions)
+	);
+	if (replay_term_scratch_init(terms, &workspace->terms) != 0 ||
+		!workspace->substitutions.substitutions) {
+		replay_term_scratch_free(&workspace->terms);
+		free(workspace->substitutions.substitutions);
+		memset(workspace, 0, sizeof(*workspace));
+		return -1;
+	}
+	memcpy(
+		workspace->substitutions.substitutions,
+		substitutions->substitutions,
+		substitutions->substitution_count * sizeof(*substitutions->substitutions)
+	);
+	memset(
+		workspace->substitutions.reindex_cache,
+		0,
+		sizeof(workspace->substitutions.reindex_cache)
+	);
+	memset(
+		workspace->substitutions.binding_cache,
+		0,
+		sizeof(workspace->substitutions.binding_cache)
+	);
+	workspace->substitutions.reindex_requests = 0;
+	workspace->substitutions.reindex_hits = 0;
+	return 0;
+}
+
+static void accepted_replay_workspace_free(
+	struct prototype_accepted_replay_workspace* workspace
+) {
+	if (!workspace) {
+		return;
+	}
+	replay_term_scratch_free(&workspace->terms);
+	free(workspace->substitutions.substitutions);
+	memset(workspace, 0, sizeof(*workspace));
+}
+
+static int replay_reindexed_classifier_satisfies(
+	struct prototype_accepted_replay_workspace* workspace,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
 	uint32_t source_classifier,
 	uint32_t substitution_id,
 	uint32_t actual_classifier
 ) {
-	if (!terms || !type_declarations || !contexts || !substitutions ||
-		source_classifier >= terms->term_count ||
-		actual_classifier >= terms->term_count ||
-		substitutions->substitution_capacity < substitutions->substitution_count) {
+	if (!workspace || !type_declarations || !contexts ||
+		source_classifier >= workspace->terms.term_count ||
+		actual_classifier >= workspace->terms.term_count) {
 		return 0;
 	}
-	struct prototype_term_db scratch_terms;
-	memset(&scratch_terms, 0, sizeof(scratch_terms));
-	struct prototype_substitution_db scratch_substitutions = *substitutions;
-	scratch_substitutions.substitution_capacity =
-		substitutions->substitution_capacity;
-	scratch_substitutions.substitutions = malloc(
-		scratch_substitutions.substitution_capacity *
-			sizeof(*scratch_substitutions.substitutions)
-	);
-	if (replay_term_scratch_init(terms, &scratch_terms) != 0 ||
-		!scratch_substitutions.substitutions) {
-		replay_term_scratch_free(&scratch_terms);
-		free(scratch_substitutions.substitutions);
-		return 0;
-	}
-	memcpy(scratch_substitutions.substitutions, substitutions->substitutions,
-		substitutions->substitution_count * sizeof(*substitutions->substitutions));
-	memset(scratch_substitutions.reindex_cache, 0,
-		sizeof(scratch_substitutions.reindex_cache));
 	uint32_t expected_classifier;
 	int result = prototype_term_reindex(
-		&scratch_terms, type_declarations, contexts, &scratch_substitutions,
+		&workspace->terms, type_declarations, contexts, &workspace->substitutions,
 		source_classifier, substitution_id, &expected_classifier
 	) == 0 && match_branch_classifier_satisfies_motive(
-		&scratch_terms, type_declarations,
+		&workspace->terms, type_declarations,
 		actual_classifier, expected_classifier
 	);
-	replay_term_scratch_free(&scratch_terms);
-	free(scratch_substitutions.substitutions);
 	return result;
 }
 
@@ -1497,6 +1539,7 @@ static int replay_match_case_constructor_term(
 
 static int validate_solved_match_motive_proof(
 	struct prototype_term_db* terms,
+	struct prototype_accepted_replay_workspace* workspace,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
@@ -1585,7 +1628,7 @@ static int validate_solved_match_motive_proof(
 				!replay_match_premise_refinement_action(typed_case, premise) ||
 				(refinement_status == PROTOTYPE_INDEX_REFINEMENT_SOLVED ?
 					!replay_reindexed_classifier_satisfies(
-						terms, type_declarations, contexts, substitutions,
+						workspace, type_declarations, contexts,
 						relation->classifier, typed_case->refinement_substitution,
 						premise->proposition->classifier
 					) : !match_branch_classifier_satisfies_motive(
@@ -2927,14 +2970,14 @@ int prototype_judgement_occurrence_classifier_satisfies(
 
 static int validate_expected_type_exposure_proof(
 	struct prototype_term_db* terms,
+	struct prototype_accepted_replay_workspace* workspace,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
 	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_proposition* relation,
 	const struct prototype_judgement_rule_application_view* proof
 ) {
-	if (!terms || !type_declarations || !relation || !proof ||
+	if (!terms || !workspace || !type_declarations || !relation || !proof ||
 		relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 		proof->premise_count != 1 ||
 		proof->premises[0].proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
@@ -2944,14 +2987,9 @@ static int validate_expected_type_exposure_proof(
 		!term_exists(terms, proof->premises[0].proposition->classifier)) {
 		return -1;
 	}
-	struct prototype_term_db scratch_terms;
-	memset(&scratch_terms, 0, sizeof(scratch_terms));
-	if (replay_term_scratch_init(terms, &scratch_terms) != 0) {
-		return -1;
-	}
 	uint32_t solved_expected;
 	int solve_status = prototype_judgement_solve_expected_effect_rows(
-			&scratch_terms,
+			&workspace->terms,
 			type_declarations,
 			NULL,
 			relation->classifier,
@@ -2959,11 +2997,10 @@ static int validate_expected_type_exposure_proof(
 			&solved_expected
 		);
 	if (solve_status == 0) {
-		replay_term_scratch_free(&scratch_terms);
 		return 0;
 	}
 	int compatible = classifier_kernel_compatible_at_depth(
-		&scratch_terms,
+		&workspace->terms,
 		type_declarations,
 		NULL,
 		relation->classifier,
@@ -2978,7 +3015,8 @@ static int validate_expected_type_exposure_proof(
 		if (occurrence->core_term == relation->subject) {
 			int occurrence_status =
 				prototype_judgement_occurrence_classifier_satisfies(
-					&scratch_terms, type_declarations, contexts, substitutions,
+					&workspace->terms, type_declarations, contexts,
+					&workspace->substitutions,
 					operations, relation->occurrence_id, relation->classifier
 				);
 			compatible = occurrence_status == 1;
@@ -2992,7 +3030,6 @@ static int validate_expected_type_exposure_proof(
 			proof->premises[0].proposition->classifier,
 			solve_status);
 	}
-	replay_term_scratch_free(&scratch_terms);
 	return compatible ? 0 : -1;
 }
 
@@ -5360,9 +5397,15 @@ static int validate_proof_relation_coverage(
 			continue;
 		}
 		int found = 0;
-		for (uint32_t derivation_id = 0;
-			derivation_id < (uint32_t)judgement->derivation_count;
-			++derivation_id) {
+		for (uint32_t derivation_id =
+				judgement->claims[claim_id].first_derivation;
+			derivation_id != PROTOTYPE_INVALID_ID;
+			derivation_id = judgement->derivations[
+				derivation_id
+			].next_same_conclusion) {
+			if (derivation_id >= judgement->derivation_count) {
+				return -1;
+			}
 			const struct prototype_judgement_derivation* derivation =
 				&judgement->derivations[derivation_id];
 			if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
@@ -5498,7 +5541,12 @@ static int judgement_claim_has_effect_row_assumption(
 		return -1;
 	}
 	const struct prototype_judgement_claim* claim = &judgement->claims[claim_id];
-	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+	for (uint32_t i = claim->first_derivation;
+		i != PROTOTYPE_INVALID_ID;
+		i = judgement->derivations[i].next_same_conclusion) {
+		if (i >= judgement->derivation_count) {
+			return -1;
+		}
 		const struct prototype_judgement_derivation* derivation =
 			&judgement->derivations[i];
 		if (derivation->conclusion_claim_id != claim_id) {
@@ -6672,7 +6720,12 @@ int prototype_judgement_audit_principal_occurrence_claims(
 		projected.resource_usage_count = (uint32_t)projected_usage.count;
 		projected.resource_usage = projected_usage.entries;
 		size_t derivation_count = 0;
-		for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		for (uint32_t i = accepted->first_derivation;
+			i != PROTOTYPE_INVALID_ID;
+			i = judgement->derivations[i].next_same_conclusion) {
+			if (i >= judgement->derivation_count) {
+				return -1;
+			}
 			const struct prototype_judgement_derivation* derivation =
 				&judgement->derivations[i];
 			if (derivation->conclusion_claim_id != claim_id ||
@@ -6814,7 +6867,7 @@ int prototype_judgement_audit_principal_occurrence_claims(
 	return 0;
 }
 
-int prototype_judgement_validate_accepted_graph(
+static int validate_accepted_graph_with_workspace(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
@@ -6822,14 +6875,16 @@ int prototype_judgement_validate_accepted_graph(
 	struct prototype_substitution_db* substitutions,
 	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operations,
-	struct prototype_judgement_db* judgement
+	struct prototype_judgement_db* judgement,
+	struct prototype_accepted_replay_workspace* workspace
 ) {
 	if (!terms || !type_declarations || !intrinsic_environment || !contexts ||
 		!substitutions || !dimension_operators ||
-		!judgement) {
+		!judgement || !workspace) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->proposition_count; ++i) {
+		judgement->accepted_replay_stats.proposition_visit_count++;
 		const struct prototype_judgement_proposition* proposition =
 			&judgement->propositions[i];
 		if (!prototype_context_get(contexts, proposition->context_id) ||
@@ -6913,6 +6968,7 @@ int prototype_judgement_validate_accepted_graph(
 	if (operations) {
 		for (uint32_t claim_id = 0;
 			claim_id < (uint32_t)judgement->claim_count; ++claim_id) {
+			judgement->accepted_replay_stats.claim_visit_count++;
 			if (judgement->claims[claim_id].closure_rank == PROTOTYPE_INVALID_ID) {
 				continue;
 			}
@@ -6975,6 +7031,7 @@ int prototype_judgement_validate_accepted_graph(
 		for (uint32_t operation_id = 0;
 			operation_id < operations->occurrence_count;
 			++operation_id) {
+			judgement->accepted_replay_stats.occurrence_validation_count++;
 			if (prototype_judgement_validate_occurrence_typing(
 					terms,
 					type_declarations,
@@ -7012,6 +7069,8 @@ int prototype_judgement_validate_accepted_graph(
 			fprintf(stderr, "P0 principal occurrence reconstruction audit failed\n");
 			return -1;
 		}
+		judgement->accepted_replay_stats.usage_solve_count +=
+			principal_audit.principal_occurrence_count;
 	}
 	for (size_t i = 0; i < judgement->derivation_count; ++i) {
 		const struct prototype_judgement_derivation* derivation =
@@ -7020,6 +7079,9 @@ int prototype_judgement_validate_accepted_graph(
 			derivation->closure_rank == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
+		judgement->accepted_replay_stats.derivation_visit_count++;
+		judgement->accepted_replay_stats.premise_visit_count +=
+			derivation->premise_count;
 		struct prototype_judgement_rule_application_view view;
 		if (accepted_derivation_rule_application_view(
 				judgement,
@@ -7118,6 +7180,7 @@ int prototype_judgement_validate_accepted_graph(
 							free_effect_row_binder
 						);
 				if (has_effect_row_assumption == 0) {
+					judgement->accepted_replay_stats.reachability_query_count++;
 					has_effect_row_assumption =
 						judgement_operation_owns_effect_row_binder(
 							terms,
@@ -7308,6 +7371,7 @@ int prototype_judgement_validate_accepted_graph(
 			case PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE:
 					if (validate_solved_match_motive_proof(
 							terms,
+							workspace,
 							type_declarations,
 							contexts,
 							substitutions,
@@ -7425,9 +7489,9 @@ int prototype_judgement_validate_accepted_graph(
 			case PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE:
 				if (validate_expected_type_exposure_proof(
 						terms,
+						workspace,
 						type_declarations,
 						contexts,
-						substitutions,
 						operations,
 						relation,
 						proof
@@ -7648,6 +7712,51 @@ int prototype_judgement_validate_accepted_graph(
 		}
 	}
 	return 0;
+}
+
+int prototype_judgement_validate_accepted_graph(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_dimension_operator_db* dimension_operators,
+	const struct prototype_typed_occurrence_graph* operations,
+	struct prototype_judgement_db* judgement
+) {
+	if (!terms || !substitutions || !judgement) {
+		return -1;
+	}
+	struct prototype_accepted_replay_workspace workspace;
+	if (accepted_replay_workspace_init(terms, substitutions, &workspace) != 0) {
+		return -1;
+	}
+	judgement->accepted_replay_stats.validation_count++;
+	judgement->accepted_replay_stats.scratch_initialization_count++;
+	int status = validate_accepted_graph_with_workspace(
+		terms,
+		type_declarations,
+		intrinsic_environment,
+		contexts,
+		substitutions,
+		dimension_operators,
+		operations,
+		judgement,
+		&workspace
+	);
+	if (workspace.terms.intern_stats.index_rebuild_count > 1) {
+		fprintf(
+			stderr,
+			"accepted replay rebuilt its scratch Term index more than once: %" PRIu64
+			"\n",
+			workspace.terms.intern_stats.index_rebuild_count
+		);
+		status = -1;
+	}
+	judgement->accepted_replay_stats.scratch_index_rebuild_count +=
+		workspace.terms.intern_stats.index_rebuild_count;
+	accepted_replay_workspace_free(&workspace);
+	return status;
 }
 
 int prototype_judgement_add_is_type(
@@ -7887,7 +7996,7 @@ void prototype_judgement_print(
 		);
 		uint32_t cursor = 0;
 		uint32_t derivation_id;
-		while (prototype_judgement_candidate_derivation_next(
+		while (prototype_judgement_candidate_derivation_for_conclusion_next(
 			judgement->propositions,
 			judgement->proposition_count,
 			judgement->derivation_candidates,

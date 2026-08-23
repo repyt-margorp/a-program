@@ -277,6 +277,227 @@ static int check_judgement_premise_arenas(void) {
 	return status ? -1 : 0;
 }
 
+static uint32_t adjacency_test_random(uint32_t* state) {
+	*state = *state * UINT32_C(1664525) + UINT32_C(1013904223);
+	return *state;
+}
+
+static int check_judgement_adjacency_against_full_scan(void) {
+	enum {
+		PROPOSITION_COUNT = 127,
+		DERIVATION_COUNT = 509
+	};
+	struct prototype_judgement_proposition* propositions = calloc(
+		PROPOSITION_COUNT, sizeof(*propositions)
+	);
+	struct prototype_judgement_derivation_candidate* candidates = calloc(
+		DERIVATION_COUNT, sizeof(*candidates)
+	);
+	struct prototype_judgement_claim* claims = calloc(
+		PROPOSITION_COUNT, sizeof(*claims)
+	);
+	struct prototype_judgement_derivation* derivations = calloc(
+		DERIVATION_COUNT, sizeof(*derivations)
+	);
+	struct prototype_judgement_premise_edge* premises = calloc(
+		DERIVATION_COUNT, sizeof(*premises)
+	);
+	unsigned char* seen = calloc(DERIVATION_COUNT, sizeof(*seen));
+	if (!propositions || !candidates || !claims || !derivations ||
+		!premises || !seen) {
+		free(propositions);
+		free(candidates);
+		free(claims);
+		free(derivations);
+		free(premises);
+		free(seen);
+		return -1;
+	}
+	uint32_t random_state = UINT32_C(0x6f3d2b19);
+	for (uint32_t i = 0; i < PROPOSITION_COUNT; ++i) {
+		propositions[i] = (struct prototype_judgement_proposition) {
+			.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+			.authority_id = i,
+			.context_id = 0,
+			.occurrence_id = PROTOTYPE_INVALID_ID,
+			.subject = i,
+			.classifier = i + PROPOSITION_COUNT
+		};
+		claims[i] = (struct prototype_judgement_claim) {
+			.proposition_id = i,
+			.closure_rank = i
+		};
+	}
+	for (uint32_t i = 0; i < DERIVATION_COUNT; ++i) {
+		uint32_t conclusion = 1 + adjacency_test_random(&random_state) %
+			(PROPOSITION_COUNT - 1);
+		candidates[i] = (struct prototype_judgement_derivation_candidate) {
+			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
+			.conclusion_proposition_id = conclusion,
+			.conclusion = &propositions[conclusion],
+			.semantic_action_kind =
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID,
+			.semantic_action_id = PROTOTYPE_INVALID_ID
+		};
+		candidates[i].rule_data.words[0] = i;
+		derivations[i] = (struct prototype_judgement_derivation) {
+			.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
+			.conclusion_claim_id = conclusion,
+			.closure_rank = conclusion,
+			.semantic_action_kind =
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID,
+			.semantic_action_id = PROTOTYPE_INVALID_ID
+		};
+		derivations[i].rule_data.words[0] = i;
+		premises[i] = (struct prototype_judgement_premise_edge) {
+			.claim_id = adjacency_test_random(&random_state) % conclusion,
+			.scoped_proposition_id = PROTOTYPE_INVALID_ID,
+			.semantic_action_kind =
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID,
+			.semantic_action_id = PROTOTYPE_INVALID_ID
+		};
+		derivations[i].premise_count = 1;
+		derivations[i].premises = &premises[i];
+	}
+	struct prototype_judgement_db judgement;
+	prototype_judgement_db_init(
+		&judgement,
+		propositions,
+		candidates,
+		claims,
+		derivations,
+		DERIVATION_COUNT,
+		NULL,
+		0,
+		premises,
+		DERIVATION_COUNT
+	);
+	judgement.proposition_count = PROPOSITION_COUNT;
+	judgement.derivation_candidate_count = DERIVATION_COUNT;
+	judgement.claim_count = PROPOSITION_COUNT;
+	judgement.derivation_count = DERIVATION_COUNT;
+	judgement.accepted_premise_count = DERIVATION_COUNT;
+	int status = prototype_judgement_db_rebuild_index(&judgement);
+	for (uint32_t claim_id = 0; status == 0 &&
+		claim_id < PROPOSITION_COUNT; ++claim_id) {
+		memset(seen, 0, DERIVATION_COUNT);
+		uint32_t indexed_count = 0;
+		uint32_t cursor = 0;
+		uint32_t derivation_id;
+		uint32_t previous_id = PROTOTYPE_INVALID_ID;
+		int next_status;
+		while ((next_status =
+			prototype_judgement_candidate_derivation_for_conclusion_next(
+				propositions,
+				PROPOSITION_COUNT,
+				candidates,
+				DERIVATION_COUNT,
+				claim_id,
+				&cursor,
+				&derivation_id
+			)) == 0) {
+			if (derivation_id >= DERIVATION_COUNT || seen[derivation_id] ||
+				(previous_id != PROTOTYPE_INVALID_ID &&
+				 derivation_id <= previous_id)) {
+				status = -1;
+				break;
+			}
+			seen[derivation_id] = 1;
+			previous_id = derivation_id;
+			indexed_count++;
+		}
+		uint32_t scanned_count = 0;
+		for (uint32_t i = 0; i < DERIVATION_COUNT; ++i) {
+			if (candidates[i].conclusion_proposition_id == claim_id) {
+				scanned_count++;
+				if (!seen[i]) {
+					status = -1;
+				}
+			}
+		}
+		if (next_status < 0 || indexed_count != scanned_count) {
+			status = -1;
+		}
+
+		memset(seen, 0, DERIVATION_COUNT);
+		indexed_count = 0;
+		previous_id = PROTOTYPE_INVALID_ID;
+		for (uint32_t i = claims[claim_id].first_derivation;
+			i != PROTOTYPE_INVALID_ID;
+			i = derivations[i].next_same_conclusion) {
+			if (i >= DERIVATION_COUNT || seen[i] ||
+				(previous_id != PROTOTYPE_INVALID_ID && i <= previous_id) ||
+				derivations[i].conclusion_claim_id != claim_id) {
+				status = -1;
+				break;
+			}
+			seen[i] = 1;
+			previous_id = i;
+			indexed_count++;
+		}
+		scanned_count = 0;
+		for (uint32_t i = 0; i < DERIVATION_COUNT; ++i) {
+			if (derivations[i].conclusion_claim_id == claim_id) {
+				scanned_count++;
+				if (!seen[i]) {
+					status = -1;
+				}
+			}
+		}
+		if (indexed_count != scanned_count) {
+			status = -1;
+		}
+
+		memset(seen, 0, DERIVATION_COUNT);
+		indexed_count = 0;
+		previous_id = PROTOTYPE_INVALID_ID;
+		for (uint32_t edge_id = claims[claim_id].first_dependent_premise;
+			edge_id != PROTOTYPE_INVALID_ID;
+			edge_id = premises[edge_id].next_for_claim) {
+			if (edge_id >= DERIVATION_COUNT || seen[edge_id] ||
+				(previous_id != PROTOTYPE_INVALID_ID && edge_id <= previous_id) ||
+				premises[edge_id].claim_id != claim_id ||
+				premises[edge_id].owner_derivation_id >= DERIVATION_COUNT) {
+				status = -1;
+				break;
+			}
+			seen[edge_id] = 1;
+			previous_id = edge_id;
+			indexed_count++;
+		}
+		scanned_count = 0;
+		for (uint32_t i = 0; i < DERIVATION_COUNT; ++i) {
+			if (derivations[i].premise_count != 0 &&
+				premises[i].claim_id == claim_id) {
+				scanned_count++;
+				if (!seen[i]) {
+					status = -1;
+				}
+			}
+		}
+		if (indexed_count != scanned_count) {
+			status = -1;
+		}
+	}
+	if (status == 0) {
+		propositions[0].first_candidate_derivation = 0;
+		propositions[0].last_candidate_derivation = 0;
+		claims[0].first_derivation = 0;
+		claims[0].last_derivation = 0;
+		claims[0].first_dependent_premise = 0;
+		claims[0].last_dependent_premise = 0;
+		status = prototype_judgement_db_rebuild_index(&judgement);
+	}
+	free(propositions);
+	free(candidates);
+	free(claims);
+	free(derivations);
+	free(premises);
+	free(seen);
+	return status;
+}
+
 static int check_principal_occurrence_projection(void) {
 	struct prototype_term term_storage[32];
 	struct prototype_match_case term_case_storage[1];
@@ -1411,6 +1632,10 @@ int main(void) {
 	}
 	if (check_judgement_premise_arenas() != 0) {
 		fprintf(stderr, "judgement premise arena law failed\n");
+		return 1;
+	}
+	if (check_judgement_adjacency_against_full_scan() != 0) {
+		fprintf(stderr, "judgement adjacency audit failed\n");
 		return 1;
 	}
 	if (check_principal_occurrence_projection() != 0) {

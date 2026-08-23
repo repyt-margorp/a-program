@@ -60,6 +60,103 @@ static uint64_t proof_candidate_key_hash(
 	return hash;
 }
 
+static int judgement_candidate_adjacency_append(
+	struct prototype_judgement_proposition* propositions,
+	size_t proposition_count,
+	struct prototype_judgement_derivation_candidate* derivations,
+	size_t derivation_count,
+	uint32_t derivation_id
+) {
+	if (!propositions || !derivations || derivation_id >= derivation_count) {
+		return -1;
+	}
+	struct prototype_judgement_derivation_candidate* derivation =
+		&derivations[derivation_id];
+	if (derivation->conclusion_proposition_id >= proposition_count) {
+		return -1;
+	}
+	struct prototype_judgement_proposition* conclusion =
+		&propositions[derivation->conclusion_proposition_id];
+	derivation->next_same_conclusion = PROTOTYPE_INVALID_ID;
+	if (conclusion->last_candidate_derivation == PROTOTYPE_INVALID_ID) {
+		conclusion->first_candidate_derivation = derivation_id;
+	} else {
+		if (conclusion->last_candidate_derivation >= derivation_count) {
+			return -1;
+		}
+		derivations[
+			conclusion->last_candidate_derivation
+		].next_same_conclusion = derivation_id;
+	}
+	conclusion->last_candidate_derivation = derivation_id;
+	return 0;
+}
+
+static int judgement_accepted_adjacency_append(
+	struct prototype_judgement_db* judgement,
+	uint32_t derivation_id
+) {
+	if (!judgement || derivation_id >= judgement->derivation_count) {
+		return -1;
+	}
+	struct prototype_judgement_derivation* derivation =
+		&judgement->derivations[derivation_id];
+	if (derivation->conclusion_claim_id >= judgement->claim_count) {
+		return -1;
+	}
+	struct prototype_judgement_claim* conclusion =
+		&judgement->claims[derivation->conclusion_claim_id];
+	derivation->next_same_conclusion = PROTOTYPE_INVALID_ID;
+	if (conclusion->last_derivation == PROTOTYPE_INVALID_ID) {
+		conclusion->first_derivation = derivation_id;
+	} else {
+		if (conclusion->last_derivation >= judgement->derivation_count) {
+			return -1;
+		}
+		judgement->derivations[
+			conclusion->last_derivation
+		].next_same_conclusion = derivation_id;
+	}
+	conclusion->last_derivation = derivation_id;
+	return 0;
+}
+
+static int judgement_premise_adjacency_append(
+	struct prototype_judgement_db* judgement,
+	uint32_t edge_id,
+	uint32_t owner_derivation_id
+) {
+	if (!judgement || edge_id >= judgement->accepted_premise_count ||
+		owner_derivation_id >= judgement->derivation_count) {
+		return -1;
+	}
+	struct prototype_judgement_premise_edge* premise =
+		&judgement->accepted_premises[edge_id];
+	premise->owner_derivation_id = owner_derivation_id;
+	premise->next_for_claim = PROTOTYPE_INVALID_ID;
+	if (premise->claim_id == PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	if (premise->claim_id >= judgement->claim_count) {
+		return -1;
+	}
+	struct prototype_judgement_claim* dependency =
+		&judgement->claims[premise->claim_id];
+	if (dependency->last_dependent_premise == PROTOTYPE_INVALID_ID) {
+		dependency->first_dependent_premise = edge_id;
+	} else {
+		if (dependency->last_dependent_premise >=
+			judgement->accepted_premise_count) {
+			return -1;
+		}
+		judgement->accepted_premises[
+			dependency->last_dependent_premise
+		].next_for_claim = edge_id;
+	}
+	dependency->last_dependent_premise = edge_id;
+	return 0;
+}
+
 static int find_proposition_id(
 	const struct prototype_judgement_proposition* propositions,
 	size_t proposition_count,
@@ -207,6 +304,10 @@ static int normalize_delta_candidate_premises(
 			) == 0) {
 			proposition_id = (uint32_t)delta->proposition_count++;
 			delta->propositions[proposition_id] = *source->proposition;
+			delta->propositions[proposition_id].first_candidate_derivation =
+				PROTOTYPE_INVALID_ID;
+			delta->propositions[proposition_id].last_candidate_derivation =
+				PROTOTYPE_INVALID_ID;
 			store_kind = PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DELTA;
 			proposition = &delta->propositions[proposition_id];
 		} else {
@@ -261,7 +362,7 @@ static int candidate_proposition_transaction_rollback(
 	return prototype_judgement_db_rebuild_index(judgement);
 }
 
-int prototype_judgement_candidate_derivation_next(
+int prototype_judgement_candidate_derivation_for_conclusion_next(
 	const struct prototype_judgement_proposition* claims,
 	size_t claim_count,
 	const struct prototype_judgement_derivation_candidate* derivations,
@@ -274,17 +375,28 @@ int prototype_judgement_candidate_derivation_next(
 		claim_id >= claim_count || *p_cursor > derivation_count) {
 		return -1;
 	}
-	for (uint32_t i = *p_cursor; i < (uint32_t)derivation_count; ++i) {
-		if (derivations[i].proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
-			derivations[i].conclusion_proposition_id != claim_id) {
-			continue;
+	uint32_t i;
+	if (*p_cursor == 0) {
+		i = claims[claim_id].first_candidate_derivation;
+	} else {
+		uint32_t previous = *p_cursor - 1;
+		if (previous >= derivation_count ||
+			derivations[previous].conclusion_proposition_id != claim_id) {
+			return -1;
 		}
-		*p_cursor = i + 1;
-		*p_derivation_id = i;
-		return 0;
+		i = derivations[previous].next_same_conclusion;
 	}
-	*p_cursor = (uint32_t)derivation_count;
-	return 1;
+	if (i == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	if (i >= derivation_count ||
+		derivations[i].proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
+		derivations[i].conclusion_proposition_id != claim_id) {
+		return -1;
+	}
+	*p_cursor = i + 1;
+	*p_derivation_id = i;
+	return 0;
 }
 
 int prototype_judgement_candidate_find_derivation_kind(
@@ -303,7 +415,7 @@ int prototype_judgement_candidate_find_derivation_kind(
 	uint32_t cursor = 0;
 	uint32_t derivation_id;
 	int status;
-	while ((status = prototype_judgement_candidate_derivation_next(
+	while ((status = prototype_judgement_candidate_derivation_for_conclusion_next(
 		claims,
 		claim_count,
 		derivations,
@@ -377,7 +489,7 @@ int prototype_judgement_candidate_find_derivation_other_than(
 	uint32_t cursor = 0;
 	uint32_t derivation_id;
 	int status;
-	while ((status = prototype_judgement_candidate_derivation_next(
+	while ((status = prototype_judgement_candidate_derivation_for_conclusion_next(
 		claims,
 		claim_count,
 		derivations,
@@ -565,6 +677,10 @@ int prototype_judgement_claim_intern_exact(
 	uint32_t claim_id = (uint32_t)judgement->claim_count++;
 	identity.key_hash = key_hash;
 	identity.hash_next = judgement->claim_index_heads[bucket];
+	identity.first_derivation = PROTOTYPE_INVALID_ID;
+	identity.last_derivation = PROTOTYPE_INVALID_ID;
+	identity.first_dependent_premise = PROTOTYPE_INVALID_ID;
+	identity.last_dependent_premise = PROTOTYPE_INVALID_ID;
 	judgement->claims[claim_id] = identity;
 	judgement->claim_index_heads[bucket] = claim_id;
 	*p_claim_id = claim_id;
@@ -632,8 +748,13 @@ static int judgement_claim_dependency_reaches(
 			result = 1;
 			break;
 		}
-		for (uint32_t i = 0;
-			i < (uint32_t)judgement->derivation_count; ++i) {
+		for (uint32_t i = judgement->claims[current].first_derivation;
+			i != PROTOTYPE_INVALID_ID;
+			i = judgement->derivations[i].next_same_conclusion) {
+			if (i >= judgement->derivation_count) {
+				result = -1;
+				break;
+			}
 			const struct prototype_judgement_derivation* derivation =
 				&judgement->derivations[i];
 			if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
@@ -682,7 +803,6 @@ static int judgement_derivation_would_create_cycle(
 		(derivation->premise_count != 0 && !derivation->premises)) {
 		return -1;
 	}
-	int conclusion_is_existing_dependency = 0;
 	for (uint32_t i = 0; i < derivation->premise_count; ++i) {
 		uint32_t premise_claim_id = derivation->premises[i].claim_id;
 		if (premise_claim_id == PROTOTYPE_INVALID_ID) {
@@ -698,29 +818,9 @@ static int judgement_derivation_would_create_cycle(
 	/* A newly interned Claim cannot already be the target of an accepted
 	 * dependency edge. Avoid a full reachability traversal for that dominant
 	 * publication case. */
-	for (uint32_t i = 0;
-		i < (uint32_t)judgement->derivation_count; ++i) {
-		const struct prototype_judgement_derivation* accepted =
-			&judgement->derivations[i];
-		if (accepted->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
-			continue;
-		}
-		if (accepted->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
-			(accepted->premise_count != 0 && !accepted->premises)) {
-			return -1;
-		}
-		for (uint32_t j = 0; j < accepted->premise_count; ++j) {
-			if (accepted->premises[j].claim_id ==
-					derivation->conclusion_claim_id) {
-				conclusion_is_existing_dependency = 1;
-				break;
-			}
-		}
-		if (conclusion_is_existing_dependency) {
-			break;
-		}
-	}
-	if (!conclusion_is_existing_dependency) {
+	if (judgement->claims[
+		derivation->conclusion_claim_id
+	].first_dependent_premise == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
 	for (uint32_t i = 0; i < derivation->premise_count; ++i) {
@@ -784,8 +884,14 @@ static int judgement_claim_dependency_dag_is_valid(
 	while (queue_first < queue_count) {
 		uint32_t current = queue[queue_first++];
 		visited_count++;
-		for (uint32_t i = 0;
-			i < (uint32_t)judgement->derivation_count; ++i) {
+		for (uint32_t i = judgement->claims[current].first_derivation;
+			i != PROTOTYPE_INVALID_ID;
+			i = judgement->derivations[i].next_same_conclusion) {
+			if (i >= judgement->derivation_count) {
+				free(incoming);
+				free(queue);
+				return -1;
+			}
 			const struct prototype_judgement_derivation* derivation =
 				&judgement->derivations[i];
 			if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
@@ -804,6 +910,32 @@ static int judgement_claim_dependency_dag_is_valid(
 	free(incoming);
 	free(queue);
 	return visited_count == judgement->claim_count ? 0 : -1;
+}
+
+static int judgement_derivation_premises_are_arena_owned(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_derivation* derivation
+) {
+	if (!judgement || !derivation || derivation->premise_count >
+		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
+		return 0;
+	}
+	if (derivation->premise_count == 0) {
+		return 1;
+	}
+	if (!derivation->premises || !judgement->accepted_premises ||
+		judgement->accepted_premise_count >
+			judgement->accepted_premise_capacity) {
+		return 0;
+	}
+	uintptr_t arena_first = (uintptr_t)judgement->accepted_premises;
+	uintptr_t arena_last = arena_first + judgement->accepted_premise_count *
+		sizeof(*judgement->accepted_premises);
+	uintptr_t premise_first = (uintptr_t)derivation->premises;
+	size_t premise_bytes = derivation->premise_count *
+		sizeof(*derivation->premises);
+	return premise_first >= arena_first && premise_first <= arena_last &&
+		premise_bytes <= arena_last - premise_first;
 }
 
 int prototype_judgement_db_rebuild_index(
@@ -827,6 +959,8 @@ int prototype_judgement_db_rebuild_index(
 		i < (uint32_t)judgement->proposition_count; ++i) {
 		struct prototype_judgement_proposition* proposition =
 			&judgement->propositions[i];
+		proposition->first_candidate_derivation = PROTOTYPE_INVALID_ID;
+		proposition->last_candidate_derivation = PROTOTYPE_INVALID_ID;
 		if (proposition->kind == PROTOTYPE_JUDGEMENT_KIND_UNKNOWN) {
 			proposition->key_hash = 0;
 			proposition->hash_next = PROTOTYPE_INVALID_ID;
@@ -895,9 +1029,22 @@ int prototype_judgement_db_rebuild_index(
 		}
 		candidate->hash_next = judgement->candidate_index_heads[bucket];
 		judgement->candidate_index_heads[bucket] = i;
+		if (judgement_candidate_adjacency_append(
+				judgement->propositions,
+				judgement->proposition_count,
+				judgement->derivation_candidates,
+				judgement->derivation_candidate_count,
+				i
+			) != 0) {
+			return -1;
+		}
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
 		struct prototype_judgement_claim* claim = &judgement->claims[i];
+		claim->first_derivation = PROTOTYPE_INVALID_ID;
+		claim->last_derivation = PROTOTYPE_INVALID_ID;
+		claim->first_dependent_premise = PROTOTYPE_INVALID_ID;
+		claim->last_dependent_premise = PROTOTYPE_INVALID_ID;
 		if (!prototype_judgement_proposition_get(
 				judgement, claim->proposition_id
 			)) {
@@ -925,6 +1072,11 @@ int prototype_judgement_db_rebuild_index(
 	for (uint32_t i = 0; i < (uint32_t)judgement->derivation_count; ++i) {
 		struct prototype_judgement_derivation* derivation =
 			&judgement->derivations[i];
+		if (!judgement_derivation_premises_are_arena_owned(
+				judgement, derivation
+			)) {
+			return -1;
+		}
 		derivation->hash_next = PROTOTYPE_INVALID_ID;
 		if (derivation->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
 			derivation->key_hash = 0;
@@ -968,6 +1120,19 @@ int prototype_judgement_db_rebuild_index(
 		}
 		derivation->hash_next = judgement->derivation_index_heads[bucket];
 		judgement->derivation_index_heads[bucket] = i;
+		if (judgement_accepted_adjacency_append(judgement, i) != 0) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < derivation->premise_count; ++j) {
+			uint32_t edge_id = (uint32_t)(
+				&derivation->premises[j] - judgement->accepted_premises
+			);
+			if (judgement_premise_adjacency_append(
+					judgement, edge_id, i
+				) != 0) {
+				return -1;
+			}
+		}
 	}
 	return judgement_claim_dependency_dag_is_valid(judgement);
 }
@@ -981,6 +1146,10 @@ int prototype_judgement_delta_rebuild_candidate_index(
 		return -1;
 	}
 	judgement_index_clear(delta->candidate_index_heads);
+	for (uint32_t i = 0; i < (uint32_t)delta->proposition_count; ++i) {
+		delta->propositions[i].first_candidate_derivation = PROTOTYPE_INVALID_ID;
+		delta->propositions[i].last_candidate_derivation = PROTOTYPE_INVALID_ID;
+	}
 	for (uint32_t i = 0;
 		i < (uint32_t)delta->derivation_candidate_count;
 		++i) {
@@ -1015,6 +1184,15 @@ int prototype_judgement_delta_rebuild_candidate_index(
 		}
 		candidate->hash_next = delta->candidate_index_heads[bucket];
 		delta->candidate_index_heads[bucket] = i;
+		if (judgement_candidate_adjacency_append(
+				delta->propositions,
+				delta->proposition_count,
+				delta->derivation_candidates,
+				delta->derivation_candidate_count,
+				i
+			) != 0) {
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -1113,8 +1291,22 @@ int prototype_judgement_derivation_intern_exact(
 	struct prototype_judgement_derivation derivation = *identity;
 	derivation.key_hash = key_hash;
 	derivation.hash_next = judgement->derivation_index_heads[bucket];
+	derivation.next_same_conclusion = PROTOTYPE_INVALID_ID;
 	judgement->derivations[id] = derivation;
 	judgement->derivations[id].premises = premises;
+	if (judgement_accepted_adjacency_append(judgement, id) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < derivation.premise_count; ++i) {
+		uint32_t edge_id = (uint32_t)(
+			premises + i - judgement->accepted_premises
+		);
+		if (judgement_premise_adjacency_append(
+				judgement, edge_id, id
+			) != 0) {
+			return -1;
+		}
+	}
 	judgement->derivation_index_heads[bucket] = id;
 	*p_derivation_id = id;
 	return 0;
@@ -1191,6 +1383,15 @@ static int add_complete_candidate(
 	judgement->derivation_candidates[proof_id].premises = premises;
 	judgement->derivation_candidates[proof_id].hash_next =
 		judgement->candidate_index_heads[bucket];
+	if (judgement_candidate_adjacency_append(
+			judgement->propositions,
+			judgement->proposition_count,
+			judgement->derivation_candidates,
+			proof_id + 1,
+			proof_id
+		) != 0) {
+		return -1;
+	}
 	judgement->candidate_index_heads[bucket] = proof_id;
 	judgement->derivation_candidate_count++;
 	return 0;
@@ -1592,6 +1793,10 @@ static int add_complete_delta_relation(
 	if (new_relation) {
 		relation_id = (uint32_t)delta->proposition_count++;
 		delta->propositions[relation_id] = normalized_relation;
+		delta->propositions[relation_id].first_candidate_derivation =
+			PROTOTYPE_INVALID_ID;
+		delta->propositions[relation_id].last_candidate_derivation =
+			PROTOTYPE_INVALID_ID;
 	}
 	struct prototype_judgement_derivation_candidate proof = *candidate_proof;
 	struct prototype_judgement_candidate_premise
@@ -1640,6 +1845,15 @@ static int add_complete_delta_relation(
 	delta->derivation_candidates[proof_id].premises = premises;
 	delta->derivation_candidates[proof_id].hash_next =
 		delta->candidate_index_heads[bucket];
+	if (judgement_candidate_adjacency_append(
+			delta->propositions,
+			delta->proposition_count,
+			delta->derivation_candidates,
+			proof_id + 1,
+			proof_id
+		) != 0) {
+		return -1;
+	}
 	delta->candidate_index_heads[bucket] = proof_id;
 	delta->derivation_candidate_count++;
 	return 0;

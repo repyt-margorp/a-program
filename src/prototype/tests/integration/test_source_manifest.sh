@@ -26,11 +26,14 @@ require_subset graph compiler
 require_subset compiler repl
 require_subset compiler reader
 
+make -s -f src/prototype/Makefile reader
 make -f src/prototype/Makefile -pn a.out >"$tmp_dir/make-database"
-grep '^a\.out:.*src/prototype/src/kernel/typing/accepted_replay\.inc' \
+grep '^.*/src/prototype/src/kernel/judgement\.o:.*src/prototype/src/kernel/typing/accepted_replay\.inc' \
 	"$tmp_dir/make-database" >/dev/null
 make -f src/prototype/Makefile -pn read_file.out >"$tmp_dir/reader-make-database"
-grep '^read_file\.out:.*src/prototype/src/identity/object_term_action\.inc' \
+grep '^read_file\.out:.*.*/src/prototype/src/driver/read_file\.o' \
+	"$tmp_dir/reader-make-database" >/dev/null
+grep '^.*/src/prototype/src/driver/read_file\.o:.*src/prototype/src/driver/read_file\.c' \
 	"$tmp_dir/reader-make-database" >/dev/null
 
 printf '%s\n' 'source manifest set tests passed'

@@ -7806,7 +7806,9 @@ static int operation_solver_enqueue_constraint(
 	if (!ctx || constraint_id >= ctx->constraints.constraint_count) {
 		return -1;
 	}
+	ctx->metadata->constraint_enqueue_request_count++;
 	if (ctx->constraints.constraint_queued[constraint_id]) {
+		ctx->metadata->constraint_enqueue_duplicate_count++;
 		return 0;
 	}
 	if (ctx->constraints.worklist_count >=
@@ -7931,6 +7933,10 @@ static int operation_solver_pop_constraint(
 	ctx->constraints.worklist_count--;
 	ctx->constraints.constraint_queued[*p_constraint] = 0;
 	ctx->metadata->constraint_pop_count++;
+	int kind = ctx->constraints.constraints[*p_constraint].kind;
+	if (kind > 0 && kind < 16) {
+		ctx->metadata->constraint_pop_by_kind[kind]++;
+	}
 	return 0;
 }
 

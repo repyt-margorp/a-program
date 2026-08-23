@@ -212,8 +212,13 @@ struct prototype_compile_metadata {
 	uint64_t constraint_generation_pass_count;
 	uint64_t constraint_index_pass_count;
 	uint64_t computation_constraint_generation_pass_count;
+	uint64_t constraint_enqueue_request_count;
+	uint64_t constraint_enqueue_duplicate_count;
 	uint64_t constraint_enqueue_count;
 	uint64_t constraint_pop_count;
+	uint64_t constraint_pop_by_kind[16];
+	uint64_t constraint_changed_by_kind[16];
+	uint64_t constraint_noop_by_kind[16];
 	uint64_t context_resolution_pass_count;
 	uint64_t context_index_rebuild_count;
 	uint64_t substitution_index_rebuild_count;
@@ -233,6 +238,14 @@ struct prototype_compile_metadata {
 	uint64_t termination_evidence_time_ns;
 	uint64_t evidence_closure_time_ns;
 	uint64_t accepted_replay_time_ns;
+	uint64_t source_compile_time_ns;
+	uint64_t function_graph_generation_time_ns;
+	uint64_t function_graph_generated_compile_time_ns;
+	uint64_t function_graph_source_ast_node_count;
+	uint64_t function_graph_generated_ast_node_count;
+	uint64_t function_graph_generated_assignment_count;
+	uint64_t function_graph_generated_type_count;
+	uint64_t function_graph_generated_constructor_count;
 	uint64_t proof_materialization_pass_count;
 	uint64_t proof_materialization_full_scan_count;
 	uint64_t proof_materialization_round_count;

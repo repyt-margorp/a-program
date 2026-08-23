@@ -5,6 +5,9 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh
 
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/a-program-spec-consistency.XXXXXX")
+trap 'rm -rf "$tmp_dir"' EXIT
+
 artifact_schema=src/prototype/spec/artifact_v83.schema
 hott_schema=src/prototype/spec/hott_fragment_v6.schema
 calculus_header=src/prototype/calculus.h
@@ -71,8 +74,8 @@ if ! grep -q 'canonical dimension operator embedded in the acted Term' "$artifac
 fi
 
 prototype_compile c11 werror kernel \
-	/tmp/a-program-spec-enum-check \
+	"$tmp_dir/spec-enum-check" \
 	src/prototype/tests/checks/spec_enum_check.c
-/tmp/a-program-spec-enum-check
+"$tmp_dir/spec-enum-check"
 
 echo "current specification consistency tests passed"

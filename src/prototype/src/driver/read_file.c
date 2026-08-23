@@ -3096,9 +3096,20 @@ int main(int argc, char** argv) {
 	uint64_t solver_step_limit = 0;
 	int compile_policy = PROTOTYPE_COMPILE_POLICY_HYBRID;
 	int definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
+	int quiet = 0;
+	int audit_no_type_instance_cache = 0;
 	memset(&read_options, 0, sizeof(read_options));
 
 	for (; file_arg < argc && argv[file_arg][0] == '-'; ++file_arg) {
+		if (strcmp(argv[file_arg], "--quiet") == 0 ||
+			strcmp(argv[file_arg], "--check-only") == 0) {
+			quiet = 1;
+			continue;
+		}
+		if (strcmp(argv[file_arg], "--audit-no-type-instance-cache") == 0) {
+			audit_no_type_instance_cache = 1;
+			continue;
+		}
 		if (strcmp(argv[file_arg], "--implicit-definition-thunks") == 0) {
 			definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
 			continue;
@@ -4615,6 +4626,9 @@ int main(int argc, char** argv) {
 		ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
+	if (audit_no_type_instance_cache) {
+		term_db.type_instance_cache_enabled = 0;
+	}
 	prototype_compile_metadata_init(
 		&metadata,
 		compile_labels,
@@ -4933,6 +4947,10 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 	}
+	if (quiet) {
+		symbol_table_free(&symbols);
+		return 0;
+	}
 	printf(
 		"#### AST ####\n"
 		"asts=%zu ast_expectations=%zu ast_assignments=%zu\n"
@@ -5068,9 +5086,9 @@ int main(int argc, char** argv) {
 				intern_stats.alpha_compares_by_tag[tag]
 			);
 		}
-			fprintf(
-				stderr,
-				"A_PROGRAM_CONSTRUCTOR_SPECIALIZATION_COUNTERS 1 attempts=%" PRIu64
+		fprintf(
+			stderr,
+			"A_PROGRAM_CONSTRUCTOR_SPECIALIZATION_COUNTERS 1 attempts=%" PRIu64
 				" classifier_cache_hits=%" PRIu64
 				" classifier_cache_misses=%" PRIu64
 				" reindex_requests=%" PRIu64
@@ -5081,8 +5099,18 @@ int main(int argc, char** argv) {
 				type_declarations.specialization_stats.classifier_cache_miss_count,
 				type_declarations.specialization_stats.reindex_request_count,
 				intern_stats.formation_requests_by_tag[PROTOTYPE_TERM_TYPE_DECLARATION],
-				intern_stats.formation_requests_by_tag[PROTOTYPE_TERM_TYPE_VIEW]
-			);
+			intern_stats.formation_requests_by_tag[PROTOTYPE_TERM_TYPE_VIEW]
+		);
+		fprintf(
+			stderr,
+			"A_PROGRAM_TYPE_INSTANCE_CACHE_COUNTERS 1 hits=%" PRIu64
+			" misses=%" PRIu64 " collisions=%" PRIu64
+			" stale_revisions=%" PRIu64 "\n",
+			term_db.type_instance_cache_stats.hit_count,
+			term_db.type_instance_cache_stats.miss_count,
+			term_db.type_instance_cache_stats.collision_count,
+			term_db.type_instance_cache_stats.stale_revision_count
+		);
 			fprintf(
 				stderr,
 				"A_PROGRAM_COMPILE_PHASE_COUNTERS 1 graph_ns=%" PRIu64
@@ -5127,6 +5155,8 @@ int main(int argc, char** argv) {
 			"A_PROGRAM_SOLVER_COUNTERS 1 constraint_generations=%" PRIu64
 			" constraint_indexes=%" PRIu64
 			" computation_generations=%" PRIu64
+			" enqueue_requests=%" PRIu64
+			" enqueue_duplicates=%" PRIu64
 			" enqueues=%" PRIu64 " pops=%" PRIu64
 			" context_resolutions=%" PRIu64
 			" context_index_rebuilds=%" PRIu64
@@ -5134,11 +5164,65 @@ int main(int argc, char** argv) {
 			metadata.constraint_generation_pass_count,
 			metadata.constraint_index_pass_count,
 			metadata.computation_constraint_generation_pass_count,
+			metadata.constraint_enqueue_request_count,
+			metadata.constraint_enqueue_duplicate_count,
 			metadata.constraint_enqueue_count,
 			metadata.constraint_pop_count,
 			metadata.context_resolution_pass_count,
 			metadata.context_index_rebuild_count,
 			metadata.substitution_index_rebuild_count
+		);
+		for (int kind = 1; kind < 16; ++kind) {
+			if (metadata.constraint_pop_by_kind[kind] == 0 &&
+				metadata.constraint_changed_by_kind[kind] == 0 &&
+				metadata.constraint_noop_by_kind[kind] == 0) {
+				continue;
+			}
+			fprintf(
+				stderr,
+				"A_PROGRAM_SOLVER_KIND_COUNTERS 1 kind=%d pops=%" PRIu64
+				" changed=%" PRIu64 " noop=%" PRIu64 "\n",
+				kind,
+				metadata.constraint_pop_by_kind[kind],
+				metadata.constraint_changed_by_kind[kind],
+				metadata.constraint_noop_by_kind[kind]
+			);
+		}
+		fprintf(
+			stderr,
+			"A_PROGRAM_FUNCTION_GRAPH_PHASE_COUNTERS 1 source_compile_ns=%" PRIu64
+			" generation_ns=%" PRIu64 " generated_compile_ns=%" PRIu64
+			" source_ast_nodes=%" PRIu64 " generated_ast_nodes=%" PRIu64
+			" generated_assignments=%" PRIu64 " generated_types=%" PRIu64
+			" generated_constructors=%" PRIu64 "\n",
+			metadata.source_compile_time_ns,
+			metadata.function_graph_generation_time_ns,
+			metadata.function_graph_generated_compile_time_ns,
+			metadata.function_graph_source_ast_node_count,
+			metadata.function_graph_generated_ast_node_count,
+			metadata.function_graph_generated_assignment_count,
+			metadata.function_graph_generated_type_count,
+			metadata.function_graph_generated_constructor_count
+		);
+		fprintf(
+			stderr,
+			"A_PROGRAM_ACCEPTED_REPLAY_COUNTERS 1 validations=%" PRIu64
+			" propositions=%" PRIu64 " claims=%" PRIu64
+			" derivations=%" PRIu64 " premises=%" PRIu64
+			" scratch_initializations=%" PRIu64
+			" scratch_index_rebuilds=%" PRIu64
+			" occurrence_validations=%" PRIu64
+			" usage_solves=%" PRIu64 " reachability_queries=%" PRIu64 "\n",
+			judgement_db.accepted_replay_stats.validation_count,
+			judgement_db.accepted_replay_stats.proposition_visit_count,
+			judgement_db.accepted_replay_stats.claim_visit_count,
+			judgement_db.accepted_replay_stats.derivation_visit_count,
+			judgement_db.accepted_replay_stats.premise_visit_count,
+			judgement_db.accepted_replay_stats.scratch_initialization_count,
+			judgement_db.accepted_replay_stats.scratch_index_rebuild_count,
+			judgement_db.accepted_replay_stats.occurrence_validation_count,
+			judgement_db.accepted_replay_stats.usage_solve_count,
+			judgement_db.accepted_replay_stats.reachability_query_count
 		);
 		fprintf(
 			stderr,

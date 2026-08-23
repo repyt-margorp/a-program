@@ -1644,18 +1644,28 @@ static int artifact_mark_accepted_claim(
 		);
 		return -1;
 	}
+	size_t derivation_count = 0;
+	for (uint32_t i = claim->first_derivation;
+		i != PROTOTYPE_INVALID_ID;
+		i = judgement->derivations[i].next_same_conclusion) {
+		if (i >= judgement->derivation_count ||
+			judgement->derivations[i].conclusion_claim_id != claim_id) {
+			return -1;
+		}
+		derivation_count++;
+	}
 	uint32_t* derivation_order = malloc(
-		(judgement->derivation_count == 0 ? 1 : judgement->derivation_count) *
+		(derivation_count == 0 ? 1 : derivation_count) *
 			sizeof(*derivation_order)
 	);
 	if (!derivation_order) {
 		return -1;
 	}
-	size_t derivation_count = 0;
-	for (uint32_t i = 0; i < (uint32_t)judgement->derivation_count; ++i) {
-		if (judgement->derivations[i].conclusion_claim_id == claim_id) {
-			derivation_order[derivation_count++] = i;
-		}
+	size_t derivation_position = 0;
+	for (uint32_t i = claim->first_derivation;
+		i != PROTOTYPE_INVALID_ID;
+		i = judgement->derivations[i].next_same_conclusion) {
+		derivation_order[derivation_position++] = i;
 	}
 	for (size_t i = 1; i < derivation_count; ++i) {
 		uint32_t candidate = derivation_order[i];
@@ -1792,7 +1802,28 @@ static int artifact_mark_accepted_claim(
 	}
 	free(derivation_order);
 	if (derivation_count == 0) {
-		fprintf(stderr, "artifact closure: accepted claim %u proposition=%u has no derivation\n", claim_id, claim->proposition_id);
+		size_t linear_count = 0;
+		for (size_t i = 0; i < judgement->derivation_count; ++i) {
+			if (judgement->derivations[i].conclusion_claim_id == claim_id) {
+				linear_count++;
+			}
+		}
+		fprintf(
+			stderr,
+			"artifact closure: accepted claim %u proposition=%u has no indexed "
+			"derivation (linear=%zu kind=%d authority=%d:%u context=%u "
+			"occurrence=%u subject=%u classifier=%u)\n",
+			claim_id,
+			claim->proposition_id,
+			linear_count,
+			claim_proposition->kind,
+			claim_proposition->authority_kind,
+			claim_proposition->authority_id,
+			claim_proposition->context_id,
+			claim_proposition->occurrence_id,
+			claim_proposition->subject,
+			claim_proposition->classifier
+		);
 		return -1;
 	}
 	marks->claims[claim_id] = 1;

@@ -13,13 +13,59 @@ prototype_compile() {
 	if [ "$warnings" = "werror" ]; then
 		werror=-Werror
 	fi
+	compile_flags="-std=$standard -Wall -Wextra"
+	if [ -n "$werror" ]; then
+		compile_flags="$compile_flags $werror"
+	fi
 
-	# Source groups contain repository-controlled paths and are intentionally
-	# split into shell words for the compiler invocation.
-	# shellcheck disable=SC2046
-	cc "-std=$standard" -Wall -Wextra $werror \
-		-I src/prototype/include -I src/prototype \
-		"$@" $(prototype_source_group "$group") -o "$output"
+	local_sources=
+	extra_cppflags=
+	for argument do
+		case $argument in
+		*.c)
+			local_sources="$local_sources $argument"
+			;;
+		*)
+			extra_cppflags="$extra_cppflags $argument"
+			;;
+		esac
+	done
+	compiler_identity=$(cc --version | sed -n '1p')
+	configuration=$(printf '%s\n' \
+		"compiler=$compiler_identity cppflags=-I src/prototype/include -I src/prototype$extra_cppflags cflags=$compile_flags" |
+		sha256sum | awk '{ print $1 }')
+	object_root=${A_PROGRAM_TEST_OBJECT_ROOT:-${XDG_CACHE_HOME:-${TMPDIR:-/tmp}}/a-program-prototype-test-objects}
+	object_root=$object_root/$configuration
+	production_sources=$(prototype_source_group "$group")
+	warning_flags="-Wall -Wextra $werror"
+	make -s -f src/prototype/build/test_objects.mk prototype-test-objects \
+		TEST_STANDARD="$standard" \
+		TEST_WARNING_FLAGS="$warning_flags" \
+		TEST_CPPFLAGS="$extra_cppflags" \
+		TEST_OBJECT_ROOT="$object_root" \
+		TEST_SOURCES="$production_sources"
+	production_objects=$(make -s -f src/prototype/build/test_objects.mk \
+		print-prototype-test-objects \
+		TEST_OBJECT_ROOT="$object_root" TEST_SOURCES="$production_sources")
+
+	local_object_directory=$output.objects
+	rm -rf "$local_object_directory"
+	mkdir -p "$local_object_directory"
+	local_objects=
+	for source in $local_sources; do
+		object_name=$(printf '%s\n' "$source" | cksum |
+			awk '{ print $1 "-" $2 ".o" }')
+		object=$local_object_directory/$object_name
+		# Test-local sources may intentionally share a basename.
+		# shellcheck disable=SC2086
+		cc "-std=$standard" -Wall -Wextra $werror $extra_cppflags \
+			-I src/prototype/include -I src/prototype -c "$source" -o "$object"
+		local_objects="$local_objects $object"
+	done
+	# Object paths are generated from repository-controlled paths without spaces.
+	# shellcheck disable=SC2086
+	cc $production_objects $local_objects -o "$output"
+	rm -rf "$local_object_directory"
 }
 
 prototype_test_timing_initialize() {

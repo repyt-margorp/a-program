@@ -9,6 +9,7 @@ cd "$ROOT_DIR"
 . src/prototype/build/test_support.sh
 TIMING_TMP=$(mktemp -d "${TMPDIR:-/tmp}/a-program-hott-timing.XXXXXX")
 trap 'rm -rf "$TIMING_TMP"' EXIT
+export A_PROGRAM_HOTT_TMPDIR=$TIMING_TMP
 prototype_test_timing_initialize "$TIMING_TMP"
 
 prototype_test_phase compile
@@ -35,15 +36,15 @@ if [ "$changed_fingerprint" = "$header_fingerprint" ]; then
 fi
 
 prototype_compile c11 werror hott \
-	/tmp/a-program-hott-goal-check \
+	"$TIMING_TMP/hott-goal-check" \
 	src/prototype/tests/checks/hott/main.c
 
 prototype_test_phase execute_publish
-/tmp/a-program-hott-goal-check
+"$TIMING_TMP/hott-goal-check"
 
-identity_artifact=/tmp/a-program-hott-identity-root.apo
-perturbed_identity_artifact=/tmp/a-program-hott-identity-root-perturbed.apo
-aggregate_artifact=/tmp/a-program-hott-identity-root-aggregate.apo
+identity_artifact=$TIMING_TMP/identity-root.apo
+perturbed_identity_artifact=$TIMING_TMP/identity-root-perturbed.apo
+aggregate_artifact=$TIMING_TMP/identity-root-aggregate.apo
 identity_root_shape_is_valid() {
 	awk '
 		$1 == "identity_roots" {
@@ -73,26 +74,26 @@ if ! cmp -s "$identity_artifact" "$perturbed_identity_artifact"; then
 	echo "HOTT identity artifact depends on unrelated allocation history" >&2
 	exit 1
 fi
-cp "$identity_artifact" /tmp/a-program-hott-identity-root-before-binding-history.apo
-A_PROGRAM_HOTT_PREALLOCATE_BINDING=1 /tmp/a-program-hott-goal-check
+cp "$identity_artifact" "$TIMING_TMP/identity-root-before-binding-history.apo"
+A_PROGRAM_HOTT_PREALLOCATE_BINDING=1 "$TIMING_TMP/hott-goal-check"
 if ! cmp -s \
-	/tmp/a-program-hott-identity-root-before-binding-history.apo \
+	"$TIMING_TMP/identity-root-before-binding-history.apo" \
 	"$identity_artifact"; then
 	echo "HOTT identity artifact depends on reachable Binding allocation history" >&2
 	exit 1
 fi
-cp "$identity_artifact" /tmp/a-program-hott-identity-root-before-type-order.apo
-A_PROGRAM_HOTT_REVERSE_INDEPENDENT_TYPES=1 /tmp/a-program-hott-goal-check
+cp "$identity_artifact" "$TIMING_TMP/identity-root-before-type-order.apo"
+A_PROGRAM_HOTT_REVERSE_INDEPENDENT_TYPES=1 "$TIMING_TMP/hott-goal-check"
 if ! cmp -s \
-	/tmp/a-program-hott-identity-root-before-type-order.apo \
+	"$TIMING_TMP/identity-root-before-type-order.apo" \
 	"$identity_artifact"; then
 	echo "HOTT identity artifact depends on independent type allocation order" >&2
 	exit 1
 fi
-cp "$identity_artifact" /tmp/a-program-hott-identity-root-before-derivation-order.apo
-A_PROGRAM_HOTT_REVERSE_DERIVATIONS=1 /tmp/a-program-hott-goal-check
+cp "$identity_artifact" "$TIMING_TMP/identity-root-before-derivation-order.apo"
+A_PROGRAM_HOTT_REVERSE_DERIVATIONS=1 "$TIMING_TMP/hott-goal-check"
 if ! cmp -s \
-	/tmp/a-program-hott-identity-root-before-derivation-order.apo \
+	"$TIMING_TMP/identity-root-before-derivation-order.apo" \
 	"$identity_artifact"; then
 	echo "HOTT identity artifact depends on Derivation arena order" >&2
 	exit 1
@@ -114,8 +115,8 @@ fi
 
 prototype_test_phase readback
 make reader >/dev/null
-./read_file.out --read-interface "$identity_artifact" >/dev/null
-cwf_inspection=/tmp/a-program-hott-cwf-inspection.out
+./read_file.out --quiet --read-interface "$identity_artifact" >/dev/null
+cwf_inspection=$TIMING_TMP/cwf-inspection.out
 ./read_file.out --read-graph "$identity_artifact" >"$cwf_inspection"
 grep -q '^#### Static Context and Substitution ####$' "$cwf_inspection"
 grep -Eq '^context#[1-9][0-9]* parent=context#[0-9]+ depth=[1-9][0-9]* binding=binding#[0-9]+ classifier=term#[0-9]+$' \
@@ -127,7 +128,7 @@ grep -q '^#### Runtime Environment Boundary ####$' "$cwf_inspection"
 grep -Eq '^intrinsic-environment fingerprint=[1-9][0-9]* default-integer=#\.Int32$' \
 	"$cwf_inspection"
 prototype_test_phase forgery
-forged_source_artifact=/tmp/a-program-hott-forged-identity-source.apo
+forged_source_artifact=$TIMING_TMP/forged-identity-source.apo
 awk '
 	$1 == "identity_root" && $2 == 0 { $3 = $4 }
 	{ print }
@@ -136,7 +137,7 @@ if ./read_file.out --read-graph "$forged_source_artifact" >/dev/null 2>&1; then
 	echo "artifact reader accepted an identity root with a forged source Claim" >&2
 	exit 1
 fi
-forged_rule_artifact=/tmp/a-program-hott-forged-identity-rule.apo
+forged_rule_artifact=$TIMING_TMP/forged-identity-rule.apo
 awk '
 	$1 == "identity_root" && $2 == 0 { $6 = 2 }
 	{ print }
@@ -161,7 +162,7 @@ if ./read_file.out --read-graph "$forged_rule_artifact" >/dev/null 2>&1; then
 	echo "artifact reader accepted an incomplete Universe correspondence as identity" >&2
 	exit 1
 fi
-forged_constructor_artifact=/tmp/a-program-hott-forged-identity-constructor.apo
+forged_constructor_artifact=$TIMING_TMP/forged-identity-constructor.apo
 awk '
 	$1 == "type_constructor" && $2 == 2 { $5 = 1 }
 	{ print }
@@ -170,7 +171,7 @@ if ./read_file.out --read-graph "$forged_constructor_artifact" >/dev/null 2>&1; 
 	echo "artifact reader accepted a source constructor with a forged ordinal" >&2
 	exit 1
 fi
-forged_witness_artifact=/tmp/a-program-hott-forged-identity-witness.apo
+forged_witness_artifact=$TIMING_TMP/forged-identity-witness.apo
 awk '
 	$1 == "proposition" && $2 == 9 { $9 = 0 }
 	{ print }
@@ -179,7 +180,7 @@ if ./read_file.out --read-graph "$forged_witness_artifact" >/dev/null 2>&1; then
 	echo "artifact reader accepted an identity witness with the wrong classifier" >&2
 	exit 1
 fi
-forged_context_artifact=/tmp/a-program-hott-forged-identity-context.apo
+forged_context_artifact=$TIMING_TMP/forged-identity-context.apo
 awk '
 	$1 == "context" && $2 == 1 { $3 = 999999 }
 	{ print }
@@ -188,7 +189,7 @@ if ./read_file.out --read-graph "$forged_context_artifact" >/dev/null 2>&1; then
 	echo "artifact reader accepted an out-of-range identity proof Context" >&2
 	exit 1
 fi
-forged_substitution_artifact=/tmp/a-program-hott-forged-identity-substitution.apo
+forged_substitution_artifact=$TIMING_TMP/forged-identity-substitution.apo
 awk '
 	!changed && $1 == "action" && $2 == 1 { $3 = 999999; changed = 1 }
 	{ print }
@@ -198,7 +199,7 @@ if ./read_file.out --read-graph "$forged_substitution_artifact" >/dev/null 2>&1;
 	exit 1
 fi
 forged_substitution_classifier_artifact=\
-/tmp/a-program-hott-forged-substitution-classifier.apo
+$TIMING_TMP/forged-substitution-classifier.apo
 awk '
 	!changed && $1 == "substitution" && $3 == 4 {
 		$9 = $9 == 0 ? 1 : 0
@@ -213,7 +214,7 @@ if ./read_file.out --read-graph "$forged_substitution_classifier_artifact" \
 	exit 1
 fi
 forged_missing_substitution_evidence_artifact=\
-/tmp/a-program-hott-forged-missing-substitution-evidence.apo
+$TIMING_TMP/forged-missing-substitution-evidence.apo
 awk '
 	!changed && $1 == "substitution" && $3 == 4 {
 		$10 = 4294967295
@@ -228,7 +229,7 @@ if ./read_file.out --read-graph "$forged_missing_substitution_evidence_artifact"
 	exit 1
 fi
 forged_substitution_claim_classifier_artifact=\
-/tmp/a-program-hott-forged-substitution-claim-classifier.apo
+$TIMING_TMP/forged-substitution-claim-classifier.apo
 awk '
 	FNR == NR {
 		if ($1 == "claim") {
@@ -254,7 +255,7 @@ if ./read_file.out --read-graph "$forged_substitution_claim_classifier_artifact"
 	echo "artifact reader accepted an EXTEND Claim with a forged classifier" >&2
 	exit 1
 fi
-forged_proof_kind_artifact=/tmp/a-program-hott-forged-proof-kind.apo
+forged_proof_kind_artifact=$TIMING_TMP/forged-proof-kind.apo
 awk '
 	$1 == "derivation" && $2 == 0 { $3 = 999999 }
 	{ print }
@@ -263,7 +264,7 @@ if ./read_file.out --read-graph "$forged_proof_kind_artifact" >/dev/null 2>&1; t
 	echo "artifact reader accepted an unknown persistent proof kind" >&2
 	exit 1
 fi
-forged_observation_proof_artifact=/tmp/a-program-hott-forged-observation-proof.apo
+forged_observation_proof_artifact=$TIMING_TMP/forged-observation-proof.apo
 awk '
 	$1 == "derivation" && !changed { $3 = 33; changed = 1 }
 	{ print }
@@ -274,7 +275,7 @@ if ./read_file.out --read-graph "$forged_observation_proof_artifact" \
 	echo "artifact reader accepted compiler-local observation proof authority" >&2
 	exit 1
 fi
-forged_observation_term_artifact=/tmp/a-program-hott-forged-observation-term.apo
+forged_observation_term_artifact=$TIMING_TMP/forged-observation-term.apo
 awk '
 	$1 == "term_node" && !changed { $3 = 32; changed = 1 }
 	{ print }
@@ -286,7 +287,7 @@ if ./read_file.out --read-graph "$forged_observation_term_artifact" \
 	exit 1
 fi
 for reference_kind in proposition claim derivation premise term; do
-	forged_reference_artifact=/tmp/a-program-hott-forged-$reference_kind-reference.apo
+	forged_reference_artifact=$TIMING_TMP/forged-$reference_kind-reference.apo
 	awk -v reference_kind="$reference_kind" '
 		reference_kind == "proposition" && $1 == "proposition" && !changed {
 			$8 = 999999; changed = 1
@@ -312,7 +313,7 @@ for reference_kind in proposition claim derivation premise term; do
 		exit 1
 	fi
 done
-forged_premise_order_artifact=/tmp/a-program-hott-forged-premise-order.apo
+forged_premise_order_artifact=$TIMING_TMP/forged-premise-order.apo
 awk '
 	$1 == "derivation" && $3 == 6 && $7 == 2 && !selected {
 		selected = 1
@@ -337,7 +338,7 @@ if ./read_file.out --read-graph "$forged_premise_order_artifact" \
 	exit 1
 fi
 for proof_kind in 12 14; do
-	forged_rule_artifact="/tmp/a-program-hott-forged-rule-$proof_kind.apo"
+	forged_rule_artifact="$TIMING_TMP/forged-rule-$proof_kind.apo"
 	awk '
 		$1 == "derivation" && $3 == proof_kind && !changed {
 			$3 = 7
@@ -351,7 +352,7 @@ for proof_kind in 12 14; do
 		exit 1
 	fi
 done
-v78_artifact=/tmp/a-program-hott-v78.apo
+v78_artifact=$TIMING_TMP/v78.apo
 awk '
 	$1 == "A_PROGRAM_ARTIFACT" { $2 = 78 }
 	{ print }
@@ -361,12 +362,11 @@ if ./read_file.out --read-interface "$v78_artifact" >/dev/null 2>&1; then
 	exit 1
 fi
 prototype_test_phase aggregate_link
-./read_file.out --aggregate-artifact "$aggregate_artifact" "$identity_artifact" >/dev/null
-./read_file.out --read-graph "$aggregate_artifact" >/dev/null
+./read_file.out --quiet --aggregate-artifact "$aggregate_artifact" "$identity_artifact" >/dev/null
+./read_file.out --quiet --read-graph "$aggregate_artifact" >/dev/null
 if ! identity_root_shape_is_valid "$aggregate_artifact" ||
 	! grep -qx 'dependency fixture_8 namespace fixture_7' "$aggregate_artifact"; then
 	echo "HOTT identity root was not preserved by artifact aggregation" >&2
 	exit 1
 fi
-rm -f /tmp/a-program-hott-goal-check
 prototype_test_phase_finish

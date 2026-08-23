@@ -268,7 +268,7 @@ int prototype_judgement_delta_publish_complete(
 /* Enumerates every solver candidate Derivation concluding one candidate Claim.
  * Initialize *p_cursor to zero. Returns 0 with one result, 1 at the end, and
  * -1 for malformed input. No Derivation is designated as the Claim's proof. */
-int prototype_judgement_candidate_derivation_next(
+int prototype_judgement_candidate_derivation_for_conclusion_next(
 	const struct prototype_judgement_proposition* claims,
 	size_t claim_count,
 	const struct prototype_judgement_derivation_candidate* derivations,

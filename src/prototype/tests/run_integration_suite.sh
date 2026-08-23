@@ -68,6 +68,7 @@ fi
 runner_tmp=$(mktemp -d "${TMPDIR:-/tmp}/a-program-test-runner.XXXXXX") || exit 2
 clock_binary="$runner_tmp/monotonic-clock"
 results_file="$runner_tmp/results.tsv"
+test_object_root=${A_PROGRAM_TEST_OBJECT_ROOT:-${XDG_CACHE_HOME:-/tmp}/a-program-prototype-test-objects}
 child_pid=
 interrupted_exit=0
 
@@ -186,8 +187,12 @@ for test_script do
 	printf '==> %s\n' "$test_script"
 	test_start=$(now_milliseconds) || exit 2
 	phase_state="$runner_tmp/phase-$executed.tsv"
+	test_tmp="$runner_tmp/test-$executed"
+	mkdir -p "$test_tmp" || exit 2
 	: >"$phase_state"
-	A_PROGRAM_TEST_CLOCK=$clock_binary A_PROGRAM_TEST_NAME=$test_name \
+	TMPDIR=$test_tmp \
+		A_PROGRAM_TEST_OBJECT_ROOT=$test_object_root \
+		A_PROGRAM_TEST_CLOCK=$clock_binary A_PROGRAM_TEST_NAME=$test_name \
 		A_PROGRAM_TEST_PHASE_STATE=$phase_state \
 		A_PROGRAM_TEST_TIMING_OUTPUT=$timing_output \
 		A_PROGRAM_TEST_SUPPORT="$root_dir/src/prototype/build/test_support.sh" \

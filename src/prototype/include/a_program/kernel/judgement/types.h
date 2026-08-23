@@ -132,6 +132,11 @@ struct prototype_judgement_proposition {
 	const struct prototype_usage_entry* resource_usage;
 	uint64_t key_hash;
 	uint32_t hash_next;
+	/* Runtime projection. Candidate Derivations with this conclusion form one
+	 * intrusive adjacency list. It is rebuilt after bulk load and is not part of
+	 * Proposition identity or artifact semantics. */
+	uint32_t first_candidate_derivation;
+	uint32_t last_candidate_derivation;
 };
 
 enum prototype_judgement_proposition_store_kind {
@@ -163,6 +168,9 @@ struct prototype_judgement_premise_edge {
 	uint32_t scoped_proposition_id;
 	int semantic_action_kind;
 	uint32_t semantic_action_id;
+	/* Runtime reverse dependency projection for accepted Claim DAG traversal. */
+	uint32_t owner_derivation_id;
+	uint32_t next_for_claim;
 };
 
 /* Storage-neutral premise resolved for a rule validator. Candidate and
@@ -206,6 +214,7 @@ struct prototype_judgement_derivation_candidate {
 	struct prototype_judgement_candidate_premise* premises;
 	uint64_t key_hash;
 	uint32_t hash_next;
+	uint32_t next_same_conclusion;
 };
 
 /* Immutable validator input shared by candidate and accepted replay. It owns
@@ -245,6 +254,11 @@ struct prototype_judgement_claim {
 	uint32_t closure_rank;
 	uint64_t key_hash;
 	uint32_t hash_next;
+	/* Runtime adjacency projections, excluded from Claim identity. */
+	uint32_t first_derivation;
+	uint32_t last_derivation;
+	uint32_t first_dependent_premise;
+	uint32_t last_dependent_premise;
 };
 
 /* Accepted rule application. Valid premise Claim ids are graph edges;
@@ -263,6 +277,7 @@ struct prototype_judgement_derivation {
 	struct prototype_judgement_premise_edge* premises;
 	uint64_t key_hash;
 	uint32_t hash_next;
+	uint32_t next_same_conclusion;
 };
 
 struct prototype_judgement_match_motive_result {
@@ -332,6 +347,21 @@ struct prototype_judgement_computation_constraint_result {
 	uint32_t effect_output_row;
 };
 
+/* Runtime-only cost accounting for accepted evidence replay. These counters do
+ * not participate in Claim identity and are never serialized. */
+struct prototype_accepted_replay_stats {
+	uint64_t validation_count;
+	uint64_t proposition_visit_count;
+	uint64_t claim_visit_count;
+	uint64_t derivation_visit_count;
+	uint64_t premise_visit_count;
+	uint64_t scratch_initialization_count;
+	uint64_t scratch_index_rebuild_count;
+	uint64_t occurrence_validation_count;
+	uint64_t usage_solve_count;
+	uint64_t reachability_query_count;
+};
+
 enum prototype_judgement_effect_row_constraint_kind {
 	PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_JOIN = 1,
 	PROTOTYPE_JUDGEMENT_EFFECT_ROW_CONSTRAINT_RESIDUAL = 2,
@@ -397,6 +427,7 @@ struct prototype_judgement_db {
 	uint64_t candidate_premise_allocations;
 	uint64_t accepted_premise_allocations;
 	uint64_t accepted_premise_reuses;
+	struct prototype_accepted_replay_stats accepted_replay_stats;
 
 	uint32_t next_universe_var;
 };

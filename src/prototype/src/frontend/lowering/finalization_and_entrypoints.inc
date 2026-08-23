@@ -2125,6 +2125,10 @@ static int compile_pending_with_workspace(
 	ctx.type_declarations = type_declarations;
 	ctx.judgement = judgement;
 	ctx.operation_usage_entries = workspace->operation_usage_entries;
+	ctx.branch_reachability_bits = workspace->branch_reachability_bits;
+	ctx.branch_reachability_valid = workspace->branch_reachability_valid;
+	ctx.branch_reachability_occurrence_count =
+		&workspace->branch_reachability_occurrence_count;
 	ctx.computation_constraint_results = workspace->computation_constraint_results;
 	ctx.computation_constraint_result_capacity = PROTOTYPE_JUDGEMENT_DELTA_CAPACITY;
 	ctx.operation_usage_entry_capacity = PROTOTYPE_TYPED_OCCURRENCE_USAGE_ENTRY_CAPACITY;

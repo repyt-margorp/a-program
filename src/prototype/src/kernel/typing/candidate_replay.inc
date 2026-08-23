@@ -26,7 +26,7 @@ static int judgement_candidate_claim_has_derivation(
 			relation->classifier == classifier) {
 			uint32_t cursor = 0;
 			uint32_t derivation_id;
-			while (prototype_judgement_candidate_derivation_next(
+			while (prototype_judgement_candidate_derivation_for_conclusion_next(
 				judgement->propositions,
 				judgement->proposition_count,
 				judgement->derivation_candidates,
@@ -127,7 +127,7 @@ static int judgement_operation_candidate_claim_has_derivation(
 			relation->subject == subject && relation->classifier == classifier) {
 			uint32_t cursor = 0;
 			uint32_t derivation_id;
-			if (prototype_judgement_candidate_derivation_next(
+			if (prototype_judgement_candidate_derivation_for_conclusion_next(
 				judgement->propositions,
 				judgement->proposition_count,
 				judgement->derivation_candidates,

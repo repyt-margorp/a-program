@@ -45,9 +45,9 @@ do
 	test "$(grep -E "$pattern" "$TMP_DIR/repl.out" | sort -u | wc -l)" -eq 1
 done
 
-./read_file.out --write-artifact "$TMP_DIR/before.apo" "$SOURCE" >/dev/null
+./read_file.out --quiet --write-artifact "$TMP_DIR/before.apo" "$SOURCE" >/dev/null
 printf ':type literal\n:q\n' | ./a.out "$SOURCE" >/dev/null
-./read_file.out --write-artifact "$TMP_DIR/after.apo" "$SOURCE" >/dev/null
+./read_file.out --quiet --write-artifact "$TMP_DIR/after.apo" "$SOURCE" >/dev/null
 cmp "$TMP_DIR/before.apo" "$TMP_DIR/after.apo"
 test "$(wc -c <"$TMP_DIR/before.apo")" -eq "$(wc -c <"$TMP_DIR/after.apo")"
 

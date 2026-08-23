@@ -582,6 +582,13 @@ struct compile_judgement_workspace {
 		effect_row_constraints[PROTOTYPE_JUDGEMENT_DELTA_CAPACITY];
 	struct prototype_usage_entry
 		operation_usage_entries[PROTOTYPE_TYPED_OCCURRENCE_USAGE_ENTRY_CAPACITY];
+	uint64_t branch_reachability_bits[
+		PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY
+	][PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY / 64];
+	uint8_t branch_reachability_valid[
+		PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY
+	];
+	size_t branch_reachability_occurrence_count;
 };
 
 #define OPERATION_REINDEX_CACHE_CAPACITY 16384
@@ -679,6 +686,11 @@ struct compile_context {
 	struct prototype_usage_entry* operation_usage_entries;
 	uint32_t operation_usage_entry_count;
 	uint32_t operation_usage_entry_capacity;
+	uint64_t (*branch_reachability_bits)[
+		PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY / 64
+	];
+	uint8_t* branch_reachability_valid;
+	size_t* branch_reachability_occurrence_count;
 	struct binder_map_entry binders[512];
 	uint32_t binder_count;
 	/* context_ids[n] is the persistent context represented by the first n

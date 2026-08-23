@@ -280,26 +280,24 @@ static int operation_solver_indexed_branch_endomorphism(
 	);
 }
 
-static int operation_solver_branch_subtree_reaches_at_depth(
+static int operation_solver_branch_subtree_index_at_depth(
 	const struct prototype_typed_occurrence_graph* graph,
 	const struct prototype_term_db* terms,
-	uint32_t root_operation,
-	uint32_t target_operation,
-	uint8_t* visited
+	uint32_t operation_id,
+	uint8_t* visited,
+	uint64_t* reachable
 ) {
-	if (!graph || !terms || !visited || root_operation >= graph->occurrence_count ||
-		target_operation >= graph->occurrence_count) {
+	if (!graph || !terms || !visited || !reachable ||
+		operation_id >= graph->occurrence_count) {
 		return -1;
 	}
-	if (root_operation == target_operation) {
-		return 1;
-	}
-	if (visited[root_operation]) {
+	if (visited[operation_id]) {
 		return 0;
 	}
-	visited[root_operation] = 1;
+	visited[operation_id] = 1;
+	reachable[operation_id / 64] |= UINT64_C(1) << (operation_id % 64);
 	const struct prototype_typed_occurrence* operation =
-		&graph->occurrences[root_operation];
+		&graph->occurrences[operation_id];
 	/* A reference occurrence belongs to the branch, but its wrapped definition
 	 * does not. Pulling the definition body into the branch Context would mutate
 	 * a separately named source occurrence. Expected-type wrappers, by contrast,
@@ -308,51 +306,79 @@ static int operation_solver_branch_subtree_reaches_at_depth(
 		return 0;
 	}
 	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) {
-		int wrapped = operation_solver_branch_subtree_reaches_at_depth(
-			graph, terms, operation->wrapped_occurrence, target_operation, visited
-		);
-		if (wrapped != 0) {
-			return wrapped;
+		if (operation_solver_branch_subtree_index_at_depth(
+				graph, terms, operation->wrapped_occurrence, visited, reachable
+			) != 0) {
+			return -1;
 		}
 	}
 	uint32_t child_count;
 	if (prototype_typed_occurrence_core_child_count(
-			graph, terms, root_operation, &child_count
+			graph, terms, operation_id, &child_count
 		) != 0) {
 		return -1;
 	}
 	for (uint32_t child_index = 0; child_index < child_count; ++child_index) {
 		uint32_t child;
 		if (prototype_typed_occurrence_core_child(
-				graph, terms, root_operation, child_index, &child
+				graph, terms, operation_id, child_index, &child
 			) != 0) {
 			return -1;
 		}
-		int reaches = operation_solver_branch_subtree_reaches_at_depth(
-			graph, terms, child, target_operation, visited
-		);
-		if (reaches != 0) {
-			return reaches;
+		if (operation_solver_branch_subtree_index_at_depth(
+				graph, terms, child, visited, reachable
+			) != 0) {
+			return -1;
 		}
 	}
 	return 0;
 }
 
 static int operation_solver_branch_subtree_reaches(
-	const struct prototype_typed_occurrence_graph* graph,
-	const struct prototype_term_db* terms,
+	const struct compile_context* ctx,
 	uint32_t root_operation,
 	uint32_t target_operation
 ) {
-	if (!graph || root_operation >= graph->occurrence_count ||
+	if (!ctx || !ctx->metadata || !ctx->terms ||
+		!ctx->branch_reachability_bits || !ctx->branch_reachability_valid ||
+		!ctx->branch_reachability_occurrence_count) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence_graph* graph =
+		&ctx->metadata->typed_occurrences;
+	if (graph->occurrence_count >
+			PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY ||
+		root_operation >= graph->occurrence_count ||
 		target_operation >= graph->occurrence_count) {
 		return -1;
 	}
-	uint8_t visited[graph->occurrence_count];
-	memset(visited, 0, sizeof(visited));
-	return operation_solver_branch_subtree_reaches_at_depth(
-		graph, terms, root_operation, target_operation, visited
-	);
+	if (*ctx->branch_reachability_occurrence_count != graph->occurrence_count) {
+		memset(
+			ctx->branch_reachability_valid,
+			0,
+			PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY
+		);
+		*ctx->branch_reachability_occurrence_count = graph->occurrence_count;
+	}
+	if (!ctx->branch_reachability_valid[root_operation]) {
+		uint8_t visited[PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY];
+		uint64_t* reachable = ctx->branch_reachability_bits[root_operation];
+		memset(visited, 0, sizeof(visited));
+		memset(
+			reachable,
+			0,
+			(PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY / 64) *
+				sizeof(*reachable)
+		);
+		if (operation_solver_branch_subtree_index_at_depth(
+				graph, ctx->terms, root_operation, visited, reachable
+			) != 0) {
+			return -1;
+		}
+		ctx->branch_reachability_valid[root_operation] = 1;
+	}
+	return (ctx->branch_reachability_bits[root_operation][target_operation / 64] &
+		(UINT64_C(1) << (target_operation % 64))) != 0;
 }
 
 static int operation_solver_occurrence_is_in_impossible_branch(
@@ -389,7 +415,7 @@ static int operation_solver_occurrence_is_in_impossible_branch(
 				return -1;
 			}
 			int reaches = operation_solver_branch_subtree_reaches(
-				graph, ctx->terms, branch_operation, occurrence_id
+				ctx, branch_operation, occurrence_id
 			);
 			if (reaches != 0) {
 				return reaches;
@@ -417,7 +443,7 @@ static int operation_solver_pullback_branch_operations(
 	for (uint32_t operation_id = 0;
 		operation_id < graph->occurrence_count; ++operation_id) {
 		int reaches = operation_solver_branch_subtree_reaches(
-			graph, ctx->terms, root_operation, operation_id
+			ctx, root_operation, operation_id
 		);
 		if (reaches < 0) {
 			fprintf(stderr,
@@ -810,8 +836,7 @@ static int operation_solver_occurrence_waits_for_branch_action(
 			continue;
 		}
 		int reaches = operation_solver_branch_subtree_reaches(
-			&ctx->metadata->typed_occurrences,
-			ctx->terms,
+			ctx,
 			constraint->source_occurrence,
 			occurrence_id
 		);
@@ -893,8 +918,7 @@ static int operation_solver_waits_for_enclosing_branch_refinement(
 			continue;
 		}
 		int reaches = operation_solver_branch_subtree_reaches(
-			&ctx->metadata->typed_occurrences,
-			ctx->terms,
+			ctx,
 			enclosing->source_occurrence,
 			match_id
 		);

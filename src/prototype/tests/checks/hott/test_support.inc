@@ -536,6 +536,41 @@ static int fixture_artifact_interface_environment_round_trip(
 	return status;
 }
 
+static int fixture_rebuild_judgement_index(
+	struct prototype_judgement_db* judgement
+) {
+	if (!judgement || !judgement->accepted_premises) {
+		return -1;
+	}
+	for (size_t i = 0; i < judgement->derivation_count; ++i) {
+		struct prototype_judgement_derivation* derivation =
+			&judgement->derivations[i];
+		if (derivation->premise_count == 0) {
+			continue;
+		}
+		size_t bytes = derivation->premise_count *
+			sizeof(*derivation->premises);
+		uintptr_t source = (uintptr_t)derivation->premises;
+		uintptr_t arena_first = (uintptr_t)judgement->accepted_premises;
+		uintptr_t arena_last = arena_first + judgement->accepted_premise_count *
+			sizeof(*judgement->accepted_premises);
+		if (source >= arena_first && source <= arena_last &&
+			bytes <= arena_last - source) {
+			continue;
+		}
+		if (!derivation->premises || judgement->accepted_premise_count +
+			derivation->premise_count > judgement->accepted_premise_capacity) {
+			return -1;
+		}
+		struct prototype_judgement_premise_edge* destination =
+			&judgement->accepted_premises[judgement->accepted_premise_count];
+		memcpy(destination, derivation->premises, bytes);
+		derivation->premises = destination;
+		judgement->accepted_premise_count += derivation->premise_count;
+	}
+	return prototype_judgement_db_rebuild_index(judgement);
+}
+
 static uint32_t fixture_add_claim(
 	struct prototype_judgement_db* judgement,
 	int kind,
@@ -606,7 +641,7 @@ static uint32_t fixture_add_claim(
 		.proposition_id = proposition_id,
 		.closure_rank = 0
 	};
-	if (prototype_judgement_db_rebuild_index(judgement) != 0) {
+	if (fixture_rebuild_judgement_index(judgement) != 0) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	return id;

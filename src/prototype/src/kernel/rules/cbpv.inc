@@ -2770,7 +2770,7 @@ static int infer_core_helper_facts_with_results(
 		uint32_t cursor = 0;
 		uint32_t derivation_id;
 		int found = 0;
-		while (prototype_judgement_candidate_derivation_next(
+		while (prototype_judgement_candidate_derivation_for_conclusion_next(
 			delta->propositions,
 			delta->proposition_count,
 			delta->derivation_candidates,

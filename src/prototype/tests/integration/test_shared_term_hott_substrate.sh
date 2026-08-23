@@ -3,6 +3,9 @@ set -eu
 
 . src/prototype/build/test_support.sh
 
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/a-program-shared-term-hott.XXXXXX")
+trap 'rm -rf "$tmp_dir"' EXIT
+
 app_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_APP([[:space:]]*=|,)' src/prototype/include/a_program/core/term.h)
 lambda_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_LAMBDA([[:space:]]*=|,)' src/prototype/include/a_program/core/term.h)
 pi_tags=$(grep -Ec '^[[:space:]]*PROTOTYPE_TERM_PI([[:space:]]*=|,)' src/prototype/include/a_program/core/term.h)
@@ -26,8 +29,7 @@ if grep -Eq '^[[:space:]]*PROTOTYPE_TERM_(OBS_EQ|EQUALITY|PATH|TRANSPORT|COHEREN
 fi
 
 prototype_compile c11 warnings graph \
-	/tmp/a-program-shared-term-reindex-check \
+	"$tmp_dir/shared-term-reindex-check" \
 	src/prototype/tests/checks/shared_term_reindex_check.c
 
-/tmp/a-program-shared-term-reindex-check
-rm -f /tmp/a-program-shared-term-reindex-check
+"$tmp_dir/shared-term-reindex-check"

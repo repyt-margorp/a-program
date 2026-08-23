@@ -5,15 +5,15 @@ set -eu
 
 . src/prototype/build/test_support.sh
 
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/a-program-cbpv-boundary.XXXXXX")
+trap 'rm -rf "$tmp_dir"' EXIT
+
 prototype_compile c11 warnings compiler \
-	/tmp/a-program-cbpv-boundary-check \
+	"$tmp_dir/cbpv-boundary-check" \
 	src/prototype/tests/checks/cbpv_boundary_check.c
 
-/tmp/a-program-cbpv-boundary-check
-rm -f /tmp/a-program-cbpv-boundary-check
+"$tmp_dir/cbpv-boundary-check"
 
-tmp_dir=$(mktemp -d)
-trap 'rm -rf "$tmp_dir"' EXIT
 cat >"$tmp_dir/boundary.p" <<'EOF'
 delayed := &{ #1; };
 main := { x := delayed; x; };

@@ -8,7 +8,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cd "$root_dir"
 fixture=${A_PROGRAM_IF8_FIXTURE:-src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p}
 runner="$tmp_dir/process-metrics"
-limit_ms=${A_PROGRAM_IF8_SINGLE_COMPILE_LIMIT_MS:-6250}
+limit_ms=${A_PROGRAM_IF8_SINGLE_COMPILE_LIMIT_MS:-500}
 alpha_compare_limit=${A_PROGRAM_IF8_ALPHA_COMPARE_LIMIT:-616000}
 proof_reify_recursive_limit=${A_PROGRAM_IF8_PROOF_REIFY_RECURSIVE_LIMIT:-17650}
 
@@ -43,7 +43,7 @@ while [ "$run" -le 3 ]; do
 	printf '%s\n' "$wall_ms" >>"$tmp_dir/wall-ms"
 	printf 'A_PROGRAM_IF8_SINGLE_COMPILE 1 run=%s %s\n' "$run" \
 		"$(printf '%s' "$line" | sed 's/^A_PROGRAM_PROCESS_METRICS 1 //')"
-	counter_lines=$(grep '^A_PROGRAM_\(PERFORMANCE\|SOLVER\|CONTEXT_RESOLUTION\|CONSTRUCTOR_SPECIALIZATION\|COMPILE_PHASE\|PROOF_MATERIALIZATION\)_COUNTERS 1 ' \
+	counter_lines=$(grep '^A_PROGRAM_\(PERFORMANCE\|SOLVER\|SOLVER_KIND\|CONTEXT_RESOLUTION\|CONSTRUCTOR_SPECIALIZATION\|TYPE_INSTANCE_CACHE\|COMPILE_PHASE\|PROOF_MATERIALIZATION\|ACCEPTED_REPLAY\)_COUNTERS 1 ' \
 		"$metrics")
 	printf '%s\n' "$counter_lines"
 	performance_line=$(grep '^A_PROGRAM_PERFORMANCE_COUNTERS 1 ' "$metrics")

@@ -1121,7 +1121,7 @@ static int operation_solver_materialize_match_pattern_assumptions(
 					}
 					uint32_t cursor = 0;
 					uint32_t derivation_id;
-					while (prototype_judgement_candidate_derivation_next(
+					while (prototype_judgement_candidate_derivation_for_conclusion_next(
 						ctx->judgement_delta.propositions,
 						ctx->judgement_delta.proposition_count,
 						ctx->judgement_delta.derivation_candidates,

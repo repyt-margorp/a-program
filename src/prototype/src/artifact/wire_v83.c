@@ -2601,14 +2601,9 @@ int prototype_artifact_read_text_typed_occurrences(
 			metadata->substitutions.substitutions[i] = substitution;
 			metadata->substitutions.substitution_count++;
 			if (substitution.kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
-				int has_derivation = 0;
-				for (size_t j = 0; j < judgement->derivation_count; ++j) {
-					if (judgement->derivations[j].conclusion_claim_id ==
-							evidence_claim_id) {
-						has_derivation = 1;
-						break;
-					}
-				}
+				int has_derivation = evidence_claim_id < judgement->claim_count &&
+					judgement->claims[evidence_claim_id].first_derivation !=
+						PROTOTYPE_INVALID_ID;
 				int certifies = prototype_cwf_substitution_claim_certifies(
 						&metadata->substitutions,
 						judgement,

@@ -630,6 +630,9 @@
 			.semantic_action_id = PROTOTYPE_INVALID_ID,
 			.hash_next = PROTOTYPE_INVALID_ID
 		};
+	if (fixture_rebuild_judgement_index(&judgement) != 0) {
+		return 270;
+	}
 	uint32_t neutral_identity_family_claim;
 	uint32_t neutral_identity_witness;
 	uint32_t neutral_identity_witness_claim;
@@ -792,11 +795,37 @@
 			judgement.derivations[i] = judgement.derivations[j];
 			judgement.derivations[j] = temporary;
 		}
-		if (prototype_judgement_db_rebuild_index(&judgement) != 0) {
+		if (fixture_rebuild_judgement_index(&judgement) != 0) {
 			return 273;
 		}
 	}
-	if (prototype_artifact_interface_validate_identity_roots(
+	const char* hott_tmp_dir = getenv("A_PROGRAM_HOTT_TMPDIR");
+	char identity_artifact_path[512];
+	char int64_artifact_path[512];
+	char perturbed_identity_artifact_path[512];
+	if (!hott_tmp_dir || snprintf(
+			identity_artifact_path,
+			sizeof(identity_artifact_path),
+			"%s/identity-root.apo",
+			hott_tmp_dir
+		) >= (int)sizeof(identity_artifact_path) || snprintf(
+			int64_artifact_path,
+			sizeof(int64_artifact_path),
+			"%s/identity-root-int64.apo",
+			hott_tmp_dir
+		) >= (int)sizeof(int64_artifact_path) || snprintf(
+			perturbed_identity_artifact_path,
+			sizeof(perturbed_identity_artifact_path),
+			"%s/identity-root-perturbed.apo",
+			hott_tmp_dir
+		) >= (int)sizeof(perturbed_identity_artifact_path)) {
+		return 275;
+	}
+	/* This fixture deliberately assembles several accepted records directly to
+	 * exercise artifact forgery boundaries. Treat that image like a bulk load:
+	 * rebuild every runtime projection before publication. */
+	if (fixture_rebuild_judgement_index(&judgement) != 0 ||
+		prototype_artifact_interface_validate_identity_roots(
 			&identity_interface,
 			&term_db,
 			&type_db,
@@ -806,7 +835,7 @@
 		) != 0 || prototype_type_declaration_rebuild_representations(
 			&term_db, &type_db, &context_db
 		) != 0 || write_identity_root_artifact(
-			"/tmp/a-program-hott-identity-root.apo",
+			identity_artifact_path,
 			&identity_interface,
 			&term_db,
 			&type_db,
@@ -830,7 +859,7 @@
 		) == prototype_intrinsic_environment_fingerprint(
 			prototype_default_intrinsic_environment()
 		) || write_identity_root_artifact_with_environment(
-			"/tmp/a-program-hott-identity-root-int64.apo",
+			int64_artifact_path,
 			&int64_environment,
 			&identity_interface,
 			&term_db,
@@ -842,7 +871,7 @@
 			&bridge_dimension_operator_db,
 			&operation_graph
 		) != 0 || fixture_artifact_interface_environment_round_trip(
-			"/tmp/a-program-hott-identity-root-int64.apo",
+			int64_artifact_path,
 			&int64_environment,
 			prototype_default_intrinsic_environment(),
 			&identity_interface
@@ -921,7 +950,7 @@
 			&unused_identity_result_id
 		) != 0 || action_results[unused_identity_result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY || write_identity_root_artifact(
-			"/tmp/a-program-hott-identity-root-perturbed.apo",
+			perturbed_identity_artifact_path,
 			&identity_interface,
 			&term_db,
 				&type_db,

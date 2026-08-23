@@ -30,6 +30,7 @@ void prototype_term_db_init(
 		db->normalization_cache_next_entry[i] = PROTOTYPE_INVALID_ID;
 	}
 	db->normalization_graph_revision = 1;
+	db->type_instance_cache_enabled = 1;
 }
 
 void prototype_term_db_dispose_runtime_state(struct prototype_term_db* db) {
@@ -44,6 +45,7 @@ void prototype_term_db_dispose_runtime_state(struct prototype_term_db* db) {
 	free(db->intern_exact_next);
 	free(db->intern_exact_buckets);
 	free(db->effect_row_variable_terms);
+	free(db->type_instance_cache);
 	db->intern_keys = NULL;
 	db->intern_canonical_ids = NULL;
 	db->intern_next = NULL;
@@ -52,6 +54,8 @@ void prototype_term_db_dispose_runtime_state(struct prototype_term_db* db) {
 	db->intern_exact_next = NULL;
 	db->intern_exact_buckets = NULL;
 	db->effect_row_variable_terms = NULL;
+	db->type_instance_cache = NULL;
+	db->type_instance_cache_capacity = 0;
 	db->effect_row_variable_count = 0;
 	db->effect_row_variable_capacity = 0;
 	db->effect_row_variable_index_dirty = 0;
@@ -1556,6 +1560,42 @@ static int prototype_term_type_view(
 	return add_term(db, term, p_ret);
 }
 
+static size_t type_instance_cache_slot(
+	uint64_t semantic_revision,
+	uint32_t type_id,
+	const uint32_t* args,
+	uint32_t arg_count
+) {
+	uint64_t hash = UINT64_C(1469598103934665603);
+	hash = (hash ^ semantic_revision) * UINT64_C(1099511628211);
+	hash = (hash ^ type_id) * UINT64_C(1099511628211);
+	hash = (hash ^ arg_count) * UINT64_C(1099511628211);
+	for (uint32_t i = 0; i < arg_count; ++i) {
+		hash = (hash ^ args[i]) * UINT64_C(1099511628211);
+	}
+	return (size_t)(hash % PROTOTYPE_TYPE_INSTANCE_CACHE_CAPACITY);
+}
+
+static int type_instance_cache_entry_matches(
+	const struct prototype_type_instance_cache_entry* entry,
+	uint64_t semantic_revision,
+	uint32_t type_id,
+	const uint32_t* args,
+	uint32_t arg_count
+) {
+	if (!entry || !entry->present ||
+		entry->semantic_revision != semantic_revision ||
+		entry->type_id != type_id || entry->arg_count != arg_count) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < arg_count; ++i) {
+		if (entry->args[i] != args[i]) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
 int prototype_term_type_instance_make(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -1580,6 +1620,40 @@ int prototype_term_type_instance_make(
 	for (uint32_t i = 0; i < arg_count; ++i) {
 		if (args[i] >= db->term_count) {
 			return -1;
+		}
+	}
+	uint64_t semantic_revision =
+		type_declarations->semantic_schema.semantic_revision;
+	size_t cache_slot = type_instance_cache_slot(
+		semantic_revision, type_id, args, arg_count
+	);
+	if (db->type_instance_cache_enabled && !db->type_instance_cache) {
+		db->type_instance_cache = calloc(
+			PROTOTYPE_TYPE_INSTANCE_CACHE_CAPACITY,
+			sizeof(*db->type_instance_cache)
+		);
+		if (db->type_instance_cache) {
+			db->type_instance_cache_capacity =
+				PROTOTYPE_TYPE_INSTANCE_CACHE_CAPACITY;
+		}
+	}
+	struct prototype_type_instance_cache_entry* cache_entry =
+		db->type_instance_cache_enabled &&
+		db->type_instance_cache_capacity == PROTOTYPE_TYPE_INSTANCE_CACHE_CAPACITY ?
+			&db->type_instance_cache[cache_slot] : NULL;
+	if (cache_entry && type_instance_cache_entry_matches(
+			cache_entry, semantic_revision, type_id, args, arg_count
+		) && cache_entry->result < db->term_count) {
+		db->type_instance_cache_stats.hit_count++;
+		*p_ret = cache_entry->result;
+		return 0;
+	}
+	db->type_instance_cache_stats.miss_count++;
+	if (cache_entry && cache_entry->present) {
+		if (cache_entry->semantic_revision != semantic_revision) {
+			db->type_instance_cache_stats.stale_revision_count++;
+		} else {
+			db->type_instance_cache_stats.collision_count++;
 		}
 	}
 
@@ -1623,9 +1697,24 @@ int prototype_term_type_instance_make(
 	identity.namespace_symbol_id =
 		type_declarations->semantic_schema.type_declarations[type_id].namespace_symbol_id;
 	identity.name_symbol_id = type_declarations->semantic_schema.type_declarations[type_id].name_symbol_id;
-	return prototype_term_type_view(
-		db, type_id, identity, current, source_current, p_ret
-	);
+	if (prototype_term_type_view(
+			db, type_id, identity, current, source_current, p_ret
+		) != 0) {
+		return -1;
+	}
+	if (cache_entry) {
+		*cache_entry = (struct prototype_type_instance_cache_entry) {
+			.present = 1,
+			.semantic_revision = semantic_revision,
+			.type_id = type_id,
+			.arg_count = arg_count,
+			.result = *p_ret
+		};
+		for (uint32_t i = 0; i < arg_count; ++i) {
+			cache_entry->args[i] = args[i];
+		}
+	}
+	return 0;
 }
 
 static int type_instance_app_spine_info(

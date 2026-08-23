@@ -8,6 +8,7 @@
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/kernel/type_schema_view.h"
 
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -154,21 +154,24 @@
 		PROTOTYPE_JUDGEMENT_AUTHORITY_TYPED_OCCURRENCE, sibling_operation, empty,
 		sibling_operation, left_text, text
 	);
-	judgement.derivations[0] = fixture_derivation(
+	struct prototype_judgement_derivation left_text_derivation = fixture_derivation(
 		PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO, left_has_type
 	);
-	judgement.derivations[1] = fixture_derivation(
+	struct prototype_judgement_derivation left_conversion_derivation = fixture_derivation(
 		PROTOTYPE_JUDGEMENT_PROOF_CONVERSION, left_has_type
 	);
-	judgement.derivations[1].premise_count = 1;
-	judgement.derivations[1].premises =
+	left_conversion_derivation.premise_count = 1;
+	left_conversion_derivation.premises =
 		(struct prototype_judgement_premise_edge[]) {
 			fixture_premise(sibling_has_type)
 		};
-	judgement.derivation_count = 2;
 	uint32_t derivation_ids[2];
 	size_t derivation_count;
-	if (prototype_judgement_claim_derivations(
+	if (prototype_judgement_derivation_intern_exact(
+			&judgement, &left_text_derivation, &derivation_ids[0]
+		) != 0 || prototype_judgement_derivation_intern_exact(
+			&judgement, &left_conversion_derivation, &derivation_ids[1]
+		) != 0 || prototype_judgement_claim_derivations(
 			&judgement, left_has_type, derivation_ids, 2, &derivation_count
 		) != 0 || derivation_count != 2 || derivation_ids[0] == derivation_ids[1]) {
 		return 2;

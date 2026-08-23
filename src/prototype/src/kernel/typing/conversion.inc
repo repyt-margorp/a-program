@@ -1823,7 +1823,7 @@ static int merge_app_elim_argument_evidence(
 		}
 		uint32_t cursor = 0;
 		uint32_t derivation_id;
-		while (prototype_judgement_candidate_derivation_next(
+		while (prototype_judgement_candidate_derivation_for_conclusion_next(
 			relations,
 			proposition_count,
 			proofs,

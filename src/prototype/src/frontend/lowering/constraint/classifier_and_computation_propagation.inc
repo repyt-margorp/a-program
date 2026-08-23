@@ -1348,6 +1348,9 @@ restart_after_branch_pullback:
 				);
 			}
 			if (constraint->domain != OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER) {
+				if (constraint->kind > 0 && constraint->kind < 16) {
+					ctx->metadata->constraint_noop_by_kind[constraint->kind]++;
+				}
 				continue;
 			}
 			uint32_t target = constraint->payload.classifier.classifier_variable;
@@ -2016,6 +2019,11 @@ restart_after_branch_pullback:
 			}
 			if (pass_changed) {
 				changed = 1;
+				if (constraint->kind > 0 && constraint->kind < 16) {
+					ctx->metadata->constraint_changed_by_kind[constraint->kind]++;
+				}
+			} else if (constraint->kind > 0 && constraint->kind < 16) {
+				ctx->metadata->constraint_noop_by_kind[constraint->kind]++;
 			}
 		}
 		if (pop_status < 0) {

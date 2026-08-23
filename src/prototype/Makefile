@@ -4,10 +4,19 @@ CC ?= cc
 CPPFLAGS += -I src/prototype/include -I src/prototype
 CFLAGS += -std=c11 -Wall -Wextra
 
-PROTOTYPE_IMPLEMENTATION_DEPENDENCIES := $(shell find \
-	src/prototype/include src/prototype/src -type f \
-	\( -name '*.h' -o -name '*.inc' \)) \
-	src/prototype/calculus.h
+PROTOTYPE_COMPILER_IDENTITY := $(shell $(CC) --version | sed -n '1p')
+PROTOTYPE_BUILD_CONFIGURATION := $(shell printf '%s\n' \
+	'compiler=$(PROTOTYPE_COMPILER_IDENTITY) cppflags=$(CPPFLAGS) cflags=$(CFLAGS)' | \
+	sha256sum | awk '{ print $$1 }')
+PROTOTYPE_OBJECT_BASE ?= $(if $(A_PROGRAM_TEST_OBJECT_ROOT), \
+	$(A_PROGRAM_TEST_OBJECT_ROOT),build/prototype)
+PROTOTYPE_OBJECT_ROOT := $(PROTOTYPE_OBJECT_BASE)/$(PROTOTYPE_BUILD_CONFIGURATION)
+PROTOTYPE_READER_OBJECTS := $(addprefix $(PROTOTYPE_OBJECT_ROOT)/, \
+	$(PROTOTYPE_READER_SOURCES:.c=.o))
+PROTOTYPE_REPL_OBJECTS := $(addprefix $(PROTOTYPE_OBJECT_ROOT)/, \
+	$(PROTOTYPE_REPL_SOURCES:.c=.o))
+PROTOTYPE_DEPENDENCIES := $(sort \
+	$(PROTOTYPE_READER_OBJECTS:.o=.d) $(PROTOTYPE_REPL_OBJECTS:.o=.d))
 
 .PHONY: all reader clean benchmark-if8-single-compile
 .PHONY: test-type-infer-and-check test-integration
@@ -19,14 +28,21 @@ all: a.out
 
 reader: read_file.out
 
-a.out: $(PROTOTYPE_REPL_SOURCES) $(PROTOTYPE_IMPLEMENTATION_DEPENDENCIES)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(PROTOTYPE_REPL_SOURCES) -o $@
+a.out: $(PROTOTYPE_REPL_OBJECTS)
+	$(CC) $(PROTOTYPE_REPL_OBJECTS) -o $@
 
-read_file.out: $(PROTOTYPE_READER_SOURCES) $(PROTOTYPE_IMPLEMENTATION_DEPENDENCIES)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(PROTOTYPE_READER_SOURCES) -o $@
+read_file.out: $(PROTOTYPE_READER_OBJECTS)
+	$(CC) $(PROTOTYPE_READER_OBJECTS) -o $@
+
+$(PROTOTYPE_OBJECT_ROOT)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
+
+-include $(PROTOTYPE_DEPENDENCIES)
 
 clean:
 	rm -f a.out read_file.out
+	rm -rf build/prototype
 
 test-type-infer-and-check: reader
 	sh src/prototype/tests/run_integration_suite.sh \

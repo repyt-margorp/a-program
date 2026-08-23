@@ -2054,11 +2054,46 @@ static int type_representation_fingerprint_term_at_depth(
 				depth + 1
 			);
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			for (uint32_t candidate = 0; candidate < db->semantic_schema.type_count; ++candidate) {
-				if (!type_declaration_present(&db->semantic_schema.type_declarations[candidate]) ||
-					db->semantic_schema.type_declarations[candidate].representation_id !=
-						term->as.type_former.representation_id) {
-					continue;
+			{
+				uint32_t candidate = term->as.type_former.declaration_type_id;
+				if (!db->representation_db.cache_dirty &&
+					term->as.type_former.representation_id <
+						db->representation_db.representation_count) {
+					candidate = db->representation_db.representations[
+						term->as.type_former.representation_id
+					].representative_type_id;
+				}
+				if (db->representation_db.cache_dirty &&
+					(candidate >= db->semantic_schema.type_count ||
+					 !type_declaration_present(
+						&db->semantic_schema.type_declarations[candidate]
+					 ) || db->semantic_schema.type_declarations[
+						candidate
+					 ].representation_id != term->as.type_former.representation_id)) {
+					candidate = PROTOTYPE_INVALID_ID;
+					/* During representation rebuild the reverse map is deliberately
+					 * unavailable. Recover its owner once from relocated declaration
+					 * anchors; steady-state queries use RepresentationDB directly. */
+					for (uint32_t i = 0;
+						i < db->semantic_schema.type_count; ++i) {
+						if (type_declaration_present(
+								&db->semantic_schema.type_declarations[i]
+							) && db->semantic_schema.type_declarations[
+								i
+							].representation_id ==
+								term->as.type_former.representation_id) {
+							candidate = i;
+							break;
+						}
+					}
+				}
+				if (candidate >= db->semantic_schema.type_count ||
+					!type_declaration_present(
+						&db->semantic_schema.type_declarations[candidate]
+					) || db->semantic_schema.type_declarations[
+						candidate
+					].representation_id != term->as.type_former.representation_id) {
+					return -1;
 				}
 				if (candidate == self_type_id) {
 					type_representation_fingerprint_hash_mix_tag(
@@ -2068,11 +2103,7 @@ static int type_representation_fingerprint_term_at_depth(
 				}
 				struct prototype_type_representation_fingerprint referenced;
 				if (prototype_type_declaration_representation_fingerprint(
-						terms,
-						db,
-						env->contexts,
-						candidate,
-						&referenced
+						terms, db, env->contexts, candidate, &referenced
 					) != 0) {
 					return -1;
 				}
@@ -2080,7 +2111,6 @@ static int type_representation_fingerprint_term_at_depth(
 				type_representation_fingerprint_merge_referenced_key(key, &referenced);
 				return 0;
 			}
-			return -1;
 		default:
 			return -1;
 	}

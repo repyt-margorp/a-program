@@ -320,6 +320,10 @@ int prototype_judgement_proposition_intern(
 	judgement->propositions[proposition_id].key_hash = key_hash;
 	judgement->propositions[proposition_id].hash_next =
 		judgement->proposition_index_heads[bucket];
+	judgement->propositions[proposition_id].first_candidate_derivation =
+		PROTOTYPE_INVALID_ID;
+	judgement->propositions[proposition_id].last_candidate_derivation =
+		PROTOTYPE_INVALID_ID;
 	judgement->proposition_index_heads[bucket] = proposition_id;
 	*p_proposition_id = proposition_id;
 	return 0;
@@ -491,9 +495,12 @@ int prototype_judgement_claim_derivations(
 		return -1;
 	}
 	size_t count = 0;
-	for (uint32_t i = 0; i < (uint32_t)judgement->derivation_count; ++i) {
-		if (judgement->derivations[i].conclusion_claim_id != claim_id) {
-			continue;
+	for (uint32_t i = judgement->claims[claim_id].first_derivation;
+		i != PROTOTYPE_INVALID_ID;
+		i = judgement->derivations[i].next_same_conclusion) {
+		if (i >= judgement->derivation_count ||
+			judgement->derivations[i].conclusion_claim_id != claim_id) {
+			return -1;
 		}
 		if (count < derivation_capacity) {
 			derivation_ids[count] = i;
