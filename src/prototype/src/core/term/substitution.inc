@@ -4,7 +4,7 @@ static int term_contains_free_binder_at_depth(
 	uint32_t binding_id,
 	uint32_t depth
 ) {
-	if (!db || term_id >= db->term_count || depth > 128) {
+	if (!db || term_id >= db->term_count || depth > 1024) {
 		return 0;
 	}
 	const struct prototype_term* term = &db->terms[term_id];
@@ -138,6 +138,15 @@ static int term_contains_free_binder_at_depth(
 			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
 				const struct prototype_match_case* match_case =
 					&db->cases[term->as.match.first_case + i];
+				if (match_case->constructor_owner != PROTOTYPE_INVALID_ID &&
+					term_contains_free_binder_at_depth(
+						db,
+						match_case->constructor_owner,
+						binding_id,
+						depth + 1
+					)) {
+					return 1;
+				}
 				int shadowed = 0;
 				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
 					const struct prototype_case_binder* case_binder =
@@ -719,9 +728,10 @@ static int substitute_term_uncached_internal(
 	switch (term->tag) {
 		case PROTOTYPE_TERM_VAR: {
 			uint32_t direct_replacement;
-			if (substitution_lookup_binding(
-					ctx, term->as.var.binding_id, &direct_replacement
-				)) {
+			int has_replacement = substitution_lookup_binding(
+				ctx, term->as.var.binding_id, &direct_replacement
+			);
+			if (has_replacement) {
 				*p_ret = direct_replacement;
 			} else {
 				*p_ret = term_id;
@@ -832,10 +842,8 @@ static int substitute_term_uncached_internal(
 				) != 0) {
 				return -1;
 			}
-			uint32_t relocated_recursive_subject_binding =
-				recursive_subject_binding;
-			int preserve_recursive_subject_binding =
-				recursive_subject_binding != PROTOTYPE_INVALID_ID;
+			uint32_t relocated_recursive_subject_binding = PROTOTYPE_INVALID_ID;
+			int preserve_recursive_subject_binding = 0;
 			if (recursive_subject_binding != PROTOTYPE_INVALID_ID &&
 				scrutinee < db->term_count &&
 				db->terms[scrutinee].tag == PROTOTYPE_TERM_VAR) {

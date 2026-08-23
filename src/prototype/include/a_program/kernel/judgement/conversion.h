@@ -147,4 +147,20 @@ int prototype_judgement_dependent_classifier_argument(
 	uint32_t* p_ret
 );
 
+/* Apply a pure, total type-family code during classifier formation. This is
+ * prior computation: it interprets a suspended family value without weakening
+ * the runtime APP/FORCE boundary. Returns 1 when the classifier is not such a
+ * family or its domain is incompatible. */
+int prototype_judgement_static_family_app_classifier(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t function_classifier,
+	uint32_t argument,
+	uint32_t argument_classifier,
+	uint32_t* p_result_classifier
+);
+
 #endif

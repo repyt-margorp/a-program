@@ -285,6 +285,7 @@ int prototype_judgement_delta_record_app_elim(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
+	int proof_kind,
 	const struct prototype_judgement_selected_evidence* function_evidence,
 	const struct prototype_judgement_selected_evidence* argument_evidence
 ) {
@@ -326,15 +327,32 @@ int prototype_judgement_delta_record_app_elim(
 		return -1;
 	}
 	uint32_t result_classifier;
-	int result_status = prototype_judgement_delta_app_elim_classifier(
-		delta,
-		terms,
-		type_declarations,
-		function_evidence->classifier,
-		argument_evidence->subject,
-		argument_evidence->classifier,
-		&result_classifier
-	);
+	int result_status;
+	if (proof_kind == PROTOTYPE_JUDGEMENT_PROOF_STATIC_FAMILY_APP_ELIM) {
+		result_status = prototype_judgement_static_family_app_classifier(
+			delta->contexts,
+			delta->substitutions,
+			terms,
+			type_declarations,
+			delta->current_context_id,
+			function_evidence->classifier,
+			argument_evidence->subject,
+			argument_evidence->classifier,
+			&result_classifier
+		);
+	} else if (proof_kind == PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM) {
+		result_status = prototype_judgement_delta_app_elim_classifier(
+			delta,
+			terms,
+			type_declarations,
+			function_evidence->classifier,
+			argument_evidence->subject,
+			argument_evidence->classifier,
+			&result_classifier
+		);
+	} else {
+		return -1;
+	}
 	int result_equal = result_status == 0 &&
 		(prototype_judgement_classifier_conversion(
 			terms, type_declarations, result_classifier, classifier
@@ -359,7 +377,7 @@ int prototype_judgement_delta_record_app_elim(
 		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 		subject,
 		classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM,
+		proof_kind,
 		NULL,
 		NULL,
 		premise_subjects,

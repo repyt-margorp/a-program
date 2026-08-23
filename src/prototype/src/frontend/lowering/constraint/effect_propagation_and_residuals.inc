@@ -458,7 +458,8 @@ static int operation_effect_materialize_solution(
 	uint32_t* classifiers[] = {
 		&ctx->classifier_hints[owner],
 		&ctx->metadata->typed_occurrences.occurrences[owner].binder_classifier,
-		&ctx->classifier_solver.solutions[owner].classifier
+		&ctx->classifier_solver.solutions[owner].classifier,
+		&ctx->classifier_solver.solutions[owner].effect_row
 	};
 	for (size_t i = 0; i < sizeof(classifiers) / sizeof(classifiers[0]); ++i) {
 		if (*classifiers[i] == PROTOTYPE_INVALID_ID) {
@@ -775,22 +776,6 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 				ctx, meta, replacement
 			) != 0) {
 			return -1;
-		}
-	}
-	for (size_t i = 0; i < ctx->constraints.effect_constraint_count; ++i) {
-		uint32_t id = ctx->constraints.first_effect_constraint + (uint32_t)i;
-		if (id >= ctx->constraints.constraint_count) {
-			return -1;
-		}
-		const struct operation_constraint* constraint =
-			&ctx->constraints.constraints[id];
-		if (constraint->state ==
-				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED &&
-			constraint->source_occurrence <
-				ctx->metadata->typed_occurrences.occurrence_count) {
-			ctx->classifier_solver.solutions[
-				constraint->source_occurrence
-			].effect_row = constraint->payload.effect.result_row;
 		}
 	}
 	if (operation_constraint_db_validate(ctx) != 0) {
@@ -1226,6 +1211,69 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 			case PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS:
 				if (ctx->classifier_solver.solutions[i].classifier ==
 					PROTOTYPE_INVALID_ID) {
+					fprintf(stderr,
+						"classifier solver incomplete occurrence=%u tag=%d ast=%u context=%u core=%u action=%u ih-owner=%u ih-case=%u ih-field=%u scope=%u\n",
+						i, operation->tag, operation->source_ast,
+						operation->context_id, operation->core_term,
+						operation->context_action_substitution,
+						operation->ih_owner_occurrence,
+						operation->ih_case_index, operation->ih_field_index,
+						operation->ih_scope_id);
+					if (operation->tag ==
+							PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS &&
+						operation->ih_owner_occurrence <
+							ctx->metadata->typed_occurrences.occurrence_count) {
+						uint32_t owner = operation->ih_owner_occurrence;
+						const struct prototype_typed_occurrence* owner_operation =
+							&ctx->metadata->typed_occurrences.occurrences[owner];
+						fprintf(stderr,
+							"  IH owner tag=%d ast=%u context=%u core=%u classifier=%u motive=%u motive-state=%u\n",
+							owner_operation->tag, owner_operation->source_ast,
+							owner_operation->context_id, owner_operation->core_term,
+							ctx->classifier_solver.solutions[owner].classifier,
+							ctx->classifier_solver.motive_terms[owner],
+							ctx->classifier_solver.motive_solution_states[owner]);
+					}
+					for (uint32_t edge = 0; edge < operation->edge_count; ++edge) {
+						const struct prototype_typed_occurrence_edge* child_edge =
+							&ctx->metadata->typed_occurrences.edges[
+								operation->first_edge + edge
+							];
+						uint32_t child = child_edge->child_occurrence;
+						fprintf(stderr,
+							"  child role=%d ordinal=%u occurrence=%u tag=%d classifier=%u\n",
+							child_edge->role, child_edge->ordinal, child,
+							child < ctx->metadata->typed_occurrences.occurrence_count ?
+								ctx->metadata->typed_occurrences.occurrences[child].tag : -1,
+							child < ctx->metadata->typed_occurrences.occurrence_count ?
+								ctx->classifier_solver.solutions[child].classifier :
+								PROTOTYPE_INVALID_ID);
+						if (child < ctx->metadata->typed_occurrences.occurrence_count &&
+							ctx->classifier_solver.solutions[child].classifier !=
+								PROTOTYPE_INVALID_ID) {
+							fprintf(stderr, "    classifier-term: ");
+							prototype_term_print_debug(
+								stderr, ctx->symbols, ctx->intrinsic_environment,
+								ctx->type_declarations, ctx->terms,
+								ctx->classifier_solver.solutions[child].classifier
+							);
+							fprintf(stderr, "\n");
+						}
+					}
+					uint32_t debug_first = i > 8 ? i - 8 : 0;
+					for (uint32_t debug = debug_first; debug <= i; ++debug) {
+						const struct prototype_typed_occurrence* nearby =
+							&ctx->metadata->typed_occurrences.occurrences[debug];
+						fprintf(stderr,
+							"nearby occurrence=%u tag=%d ast=%u core=%u classifier=%u term=",
+							debug, nearby->tag, nearby->source_ast, nearby->core_term,
+							ctx->classifier_solver.solutions[debug].classifier);
+						prototype_term_print_debug(
+							stderr, ctx->symbols, ctx->intrinsic_environment,
+							ctx->type_declarations, ctx->terms, nearby->core_term
+						);
+						fprintf(stderr, "\n");
+					}
 					if (ctx->metadata->compile_diagnostic_count == 0) {
 						int reason = PROTOTYPE_COMPILE_DIAGNOSTIC_UNSOLVED_CLASSIFIER;
 						uint32_t constraint_id = PROTOTYPE_INVALID_ID;

@@ -920,10 +920,19 @@ int prototype_artifact_interface_build_from_metadata(
 		uint32_t owner = PROTOTYPE_INVALID_ID;
 		uint32_t graph = PROTOTYPE_INVALID_ID;
 		uint32_t result = PROTOTYPE_INVALID_ID;
+		uint32_t graph_interface = PROTOTYPE_INVALID_ID;
+		uint32_t adapter = PROTOTYPE_INVALID_ID;
 		uint32_t runner = PROTOTYPE_INVALID_ID;
 		for (uint32_t j = 0; j < interface->term_export_count; ++j) {
 			if (interface->term_exports[j].name_symbol_id == source->owner_symbol_id) {
 				owner = j;
+			} else if (interface->term_exports[j].name_symbol_id ==
+					source->graph_interface_symbol_id) {
+				graph_interface = j;
+			} else if (source->certified_adapter_symbol_id >= 0 &&
+				interface->term_exports[j].name_symbol_id ==
+					source->certified_adapter_symbol_id) {
+				adapter = j;
 			} else if (interface->term_exports[j].name_symbol_id ==
 					source->certified_runner_symbol_id) {
 				runner = j;
@@ -938,7 +947,11 @@ int prototype_artifact_interface_build_from_metadata(
 			}
 		}
 		if (owner == PROTOTYPE_INVALID_ID || graph == PROTOTYPE_INVALID_ID ||
-			result == PROTOTYPE_INVALID_ID || runner == PROTOTYPE_INVALID_ID ||
+			result == PROTOTYPE_INVALID_ID ||
+			graph_interface == PROTOTYPE_INVALID_ID ||
+			(source->certified_adapter_symbol_id >= 0 &&
+				adapter == PROTOTYPE_INVALID_ID) ||
+			runner == PROTOTYPE_INVALID_ID ||
 			interface->function_graph_association_count >=
 				PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY) {
 			return -1;
@@ -953,10 +966,13 @@ int prototype_artifact_interface_build_from_metadata(
 			interface->function_graph_association_count++
 		] = (struct prototype_artifact_function_graph_association) {
 			.owner_term_export_index = owner,
-			.graph_type_export_index = graph,
-			.result_type_export_index = result,
-			.certified_runner_term_export_index = runner
-		};
+				.graph_type_export_index = graph,
+				.result_type_export_index = result,
+				.graph_interface_term_export_index = graph_interface,
+				.certified_adapter_term_export_index = adapter,
+				.certified_runner_term_export_index = runner,
+				.certified_argument_index = source->certified_argument_index
+			};
 	}
 
 	return 0;

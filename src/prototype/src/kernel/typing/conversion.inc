@@ -2199,6 +2199,10 @@ int prototype_judgement_expose_callable_classifier(
 			classifier = terms->terms[whnf].as.thunk_type.computation;
 			continue;
 		}
+		/* EFFECT_ROW_FORALL is part of the callable classifier. APP must retain
+		 * it until the argument classifier determines its instantiation. Shape-only
+		 * clients may inspect the quantified body explicitly without publishing it
+		 * as the classifier of an application. */
 		*p_ret = classifier;
 		return 0;
 	}
@@ -2254,6 +2258,16 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 			&solved_domain
 		);
 		if (solve_status != 0) {
+			if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+				fprintf(
+					stderr,
+					"effect forall domain solve status=%d binder=%u domain=%u argument=%u\n",
+					solve_status,
+					quantified->as.effect_row_forall.binding_id,
+					domain,
+					argument_classifier
+				);
+			}
 			return solve_status;
 		}
 		uint32_t row;
@@ -2494,6 +2508,176 @@ static int pi_codomain_after_argument_in_context(
 		argument_classifier,
 		p_result
 	);
+}
+
+static int static_family_pi_is_pure_total(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t classifier,
+	uint32_t depth
+) {
+	uint32_t whnf;
+	if (!terms || !type_declarations || depth == 0 ||
+		classifier_kernel_whnf(
+			terms, type_declarations, NULL, classifier, &whnf
+		) != 0 || whnf >= terms->term_count ||
+		terms->terms[whnf].tag != PROTOTYPE_TERM_PI) {
+		return 0;
+	}
+	uint32_t domain;
+	uint32_t family;
+	uint32_t binding_id;
+	uint32_t body;
+	if (pi_parts(terms, whnf, &domain, &family) != 0 ||
+		prototype_term_pure_family_parts(
+			terms, family, &binding_id, &body
+		) != 0 || classifier_kernel_whnf(
+			terms, type_declarations, NULL, body, &body
+		) != 0 || body >= terms->term_count) {
+		return 0;
+	}
+	(void)domain;
+	(void)binding_id;
+	if (terms->terms[body].tag == PROTOTYPE_TERM_PI) {
+		return static_family_pi_is_pure_total(
+			terms, type_declarations, body, depth - 1
+		);
+	}
+	if (terms->terms[body].tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
+		return 1;
+	}
+	if (terms->terms[body].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
+		prototype_term_computation_type_is_pure_total(terms, body) != 1) {
+		return 0;
+	}
+	uint32_t result = terms->terms[body].as.computation_type.result;
+	if (classifier_kernel_whnf(
+			terms, type_declarations, NULL, result, &result
+		) != 0 || result >= terms->term_count) {
+		return 0;
+	}
+	return terms->terms[result].tag == PROTOTYPE_TERM_UNIVERSE_VAR;
+}
+
+int prototype_judgement_static_family_app_classifier(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t function_classifier,
+	uint32_t argument,
+	uint32_t argument_classifier,
+	uint32_t* p_result_classifier
+) {
+	uint32_t callable;
+	if (!contexts || !substitutions || !terms || !type_declarations ||
+		!p_result_classifier || argument >= terms->term_count ||
+		argument_classifier >= terms->term_count || classifier_kernel_whnf(
+			terms, type_declarations, NULL, function_classifier, &callable
+		) != 0 || callable >= terms->term_count) {
+		return -1;
+	}
+	if (terms->terms[callable].tag == PROTOTYPE_TERM_THUNK_TYPE) {
+		callable = terms->terms[callable].as.thunk_type.computation;
+		if (classifier_kernel_whnf(
+				terms, type_declarations, NULL, callable, &callable
+			) != 0 || callable >= terms->term_count) {
+			return -1;
+		}
+	}
+	if (terms->terms[callable].tag != PROTOTYPE_TERM_PI ||
+		!static_family_pi_is_pure_total(
+			terms, type_declarations, callable, 64
+		)) {
+		return 1;
+	}
+	uint32_t domain;
+	uint32_t family;
+	uint32_t domain_whnf;
+	uint32_t solved_domain;
+	if (pi_parts(terms, callable, &domain, &family) != 0 ||
+		classifier_kernel_whnf(
+			terms, type_declarations, NULL, domain, &domain_whnf
+		) != 0 || domain_whnf >= terms->term_count) {
+		return -1;
+	}
+	(void)family;
+	if (terms->terms[domain_whnf].tag == PROTOTYPE_TERM_RETURN) {
+		domain_whnf = terms->terms[domain_whnf].as.return_term.value;
+	}
+	/* Surface type-family application accepts a raw pure Lambda where the value
+	 * domain is its suspended function type. This is the static counterpart of
+	 * compile_ref_open_pure_type_family; it changes only classifier inspection,
+	 * not the shared APP/LAMBDA Core graph. */
+	if (domain_whnf < terms->term_count &&
+		terms->terms[domain_whnf].tag == PROTOTYPE_TERM_THUNK_TYPE &&
+		terms->terms[argument].tag == PROTOTYPE_TERM_LAMBDA) {
+		domain_whnf = terms->terms[domain_whnf].as.thunk_type.computation;
+		if (classifier_kernel_whnf(
+				terms, type_declarations, NULL, domain_whnf, &domain_whnf
+			) != 0 || domain_whnf >= terms->term_count ||
+			terms->terms[domain_whnf].tag != PROTOTYPE_TERM_PI) {
+			return -1;
+		}
+	}
+	int domain_status = prototype_judgement_solve_expected_effect_rows(
+		terms,
+		type_declarations,
+		NULL,
+		domain_whnf,
+		argument_classifier,
+		&solved_domain
+	);
+	if (domain_status != 0) {
+		return domain_status < 0 ? -1 : 1;
+	}
+	(void)solved_domain;
+	uint32_t result;
+	if (pi_codomain_after_argument_in_context(
+			contexts,
+			substitutions,
+			terms,
+			type_declarations,
+			context_id,
+			callable,
+			argument,
+			argument_classifier,
+			&result
+		) != 0 || classifier_kernel_whnf(
+			terms, type_declarations, NULL, result, &result
+		) != 0 || result >= terms->term_count) {
+		return -1;
+	}
+	if (terms->terms[result].tag == PROTOTYPE_TERM_PI) {
+		if (!static_family_pi_is_pure_total(
+				terms, type_declarations, result, 64
+			)) {
+			return 1;
+		}
+		*p_result_classifier = result;
+		return 0;
+	}
+	if (terms->terms[result].tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
+		*p_result_classifier = result;
+		return 0;
+	}
+	if (terms->terms[result].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
+		prototype_term_computation_type_is_pure_total(terms, result) != 1) {
+		return 1;
+	}
+	uint32_t value_classifier = terms->terms[result].as.computation_type.result;
+	uint32_t value_whnf;
+	if (classifier_kernel_whnf(
+			terms, type_declarations, NULL, value_classifier, &value_whnf
+		) != 0 || value_whnf >= terms->term_count) {
+		return -1;
+	}
+	if (terms->terms[value_whnf].tag != PROTOTYPE_TERM_UNIVERSE_VAR) {
+		return 1;
+	}
+	*p_result_classifier = value_classifier;
+	return 0;
 }
 
 static int pi_codomain_at_binder_in_context(

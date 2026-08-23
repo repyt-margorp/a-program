@@ -86,8 +86,10 @@ static const char* type_expr_tag_name(int tag) {
 				return "name-in-namespace";
 			case PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE:
 				return "function-graph-reference";
-			case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION:
-				return "accepted-projection";
+			case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_SUBSTITUTION:
+				return "accepted-substitution";
+			case PROTOTYPE_AST_TYPE_EXPR_VALUE_REFERENCE:
+				return "value-reference";
 			case PROTOTYPE_AST_TYPE_EXPR_TERMINATES:
 				return "terminates";
 			default:

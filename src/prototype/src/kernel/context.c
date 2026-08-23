@@ -591,6 +591,7 @@ int prototype_substitution_db_rebuild_runtime_index_after_bulk_load(
 	}
 	graph_index_clear(db->index_heads);
 	memset(db->reindex_cache, 0, sizeof(db->reindex_cache));
+	memset(db->binding_cache, 0, sizeof(db->binding_cache));
 	for (uint32_t i = 0; i < db->substitution_count; ++i) {
 		struct prototype_substitution* substitution = &db->substitutions[i];
 		substitution->key_hash = substitution_key_hash(substitution);
@@ -1291,10 +1292,26 @@ int prototype_substitution_binding_term(
 	if (!substitution || !p_term) {
 		return -1;
 	}
+	size_t cache_slot = graph_key_hash_mix(
+		graph_key_hash_mix(
+			UINT64_C(1469598103934665603), substitution_id
+		),
+		target_binder
+	) % PROTOTYPE_SUBSTITUTION_BINDING_CACHE_COUNT;
+	struct prototype_substitution_binding_cache_entry* cached =
+		&substitutions->binding_cache[cache_slot];
+	if (cached->present && cached->substitution == substitution_id &&
+		cached->binding_id == target_binder && cached->term < terms->term_count) {
+		*p_term = cached->term;
+		return 0;
+	}
+	uint32_t result;
+	int status;
 	switch (substitution->kind) {
 		case PROTOTYPE_SUBSTITUTION_IDENTITY:
 		case PROTOTYPE_SUBSTITUTION_PROJECTION:
-			return prototype_term_var(terms, target_binder, p_term);
+			status = prototype_term_var(terms, target_binder, &result);
+			break;
 		case PROTOTYPE_SUBSTITUTION_EMPTY:
 			return -1;
 		case PROTOTYPE_SUBSTITUTION_EXTEND: {
@@ -1304,18 +1321,20 @@ int prototype_substitution_binding_term(
 				return -1;
 			}
 			if (target->binding_id == target_binder) {
-				*p_term = substitution->term;
-				return 0;
+				result = substitution->term;
+				status = 0;
+				break;
 			}
-			return prototype_substitution_binding_term(
+			status = prototype_substitution_binding_term(
 				terms,
 				type_declarations,
 				contexts,
 				substitutions,
 				substitution->first,
 				target_binder,
-				p_term
+				&result
 			);
+			break;
 		}
 		case PROTOTYPE_SUBSTITUTION_COMPOSE: {
 			uint32_t middle_term;
@@ -1330,19 +1349,31 @@ int prototype_substitution_binding_term(
 			) != 0) {
 				return -1;
 			}
-			return prototype_term_reindex(
+			status = prototype_term_reindex(
 				terms,
 				type_declarations,
 				contexts,
 				substitutions,
 				middle_term,
 				substitution->second,
-				p_term
+				&result
 			);
+			break;
 		}
 		default:
 			return -1;
 	}
+	if (status != 0) {
+		return status;
+	}
+	*cached = (struct prototype_substitution_binding_cache_entry) {
+		.present = 1,
+		.substitution = substitution_id,
+		.binding_id = target_binder,
+		.term = result
+	};
+	*p_term = result;
+	return 0;
 }
 
 int prototype_substitution_compare_pointwise(
@@ -1983,7 +2014,7 @@ int prototype_context_substitution_from_terms(
 	return 0;
 }
 
-int prototype_context_telescope_entry_classifier(
+int prototype_context_telescope_classifiers(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
@@ -1993,17 +2024,20 @@ int prototype_context_telescope_entry_classifier(
 	uint32_t telescope_end,
 	const uint32_t* previous_terms,
 	uint32_t previous_term_count,
-	uint32_t entry_index,
-	uint32_t* p_classifier
+	uint32_t entry_count,
+	uint32_t* classifiers
 ) {
 	const struct prototype_substitution* prefix =
 		prototype_substitution_get(substitutions, prefix_substitution);
 	if (!contexts || !substitutions || !terms || !type_declarations ||
-		!prefix || !p_classifier ||
+		!prefix || (entry_count > 0 && !classifiers) ||
 		(previous_term_count > 0 && !previous_terms) ||
 		prefix->target_context != telescope_base ||
-		previous_term_count < entry_index) {
+		(entry_count > 0 && previous_term_count < entry_count - 1)) {
 		return -1;
+	}
+	if (entry_count == 0) {
+		return 0;
 	}
 	uint32_t path[128];
 	uint32_t path_count;
@@ -2014,11 +2048,11 @@ int prototype_context_telescope_entry_classifier(
 			path,
 			128,
 			&path_count
-		) != 0 || entry_index >= path_count) {
+		) != 0 || entry_count > path_count) {
 		return -1;
 	}
 	uint32_t substitution = prefix_substitution;
-	for (uint32_t i = 0; i <= entry_index; ++i) {
+	for (uint32_t i = 0; i < entry_count; ++i) {
 		const struct prototype_context* entry =
 			prototype_context_get(contexts, path[i]);
 		uint32_t classifier;
@@ -2044,11 +2078,8 @@ int prototype_context_telescope_entry_classifier(
 		if (terms->terms[whnf].tag == PROTOTYPE_TERM_RETURN) {
 			whnf = terms->terms[whnf].as.return_term.value;
 		}
-		if (i == entry_index) {
-			*p_classifier = whnf;
-			return 0;
-		}
-		if (prototype_substitution_extend(
+		classifiers[i] = whnf;
+		if (i + 1 < entry_count && prototype_substitution_extend(
 				substitutions,
 				contexts,
 				terms,
@@ -2062,5 +2093,39 @@ int prototype_context_telescope_entry_classifier(
 			return -1;
 		}
 	}
-	return -1;
+	return 0;
+}
+
+int prototype_context_telescope_entry_classifier(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t prefix_substitution,
+	uint32_t telescope_base,
+	uint32_t telescope_end,
+	const uint32_t* previous_terms,
+	uint32_t previous_term_count,
+	uint32_t entry_index,
+	uint32_t* p_classifier
+) {
+	uint32_t classifiers[128];
+	if (entry_index >= 128 || !p_classifier ||
+		prototype_context_telescope_classifiers(
+			contexts,
+			substitutions,
+			terms,
+			type_declarations,
+			prefix_substitution,
+			telescope_base,
+			telescope_end,
+			previous_terms,
+			previous_term_count,
+			entry_index + 1,
+			classifiers
+		) != 0) {
+		return -1;
+	}
+	*p_classifier = classifiers[entry_index];
+	return 0;
 }

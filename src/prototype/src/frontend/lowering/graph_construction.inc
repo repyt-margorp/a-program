@@ -640,7 +640,12 @@ static int compile_type_formation_classifier_family(
 		uint32_t domain;
 		uint32_t binding_id;
 		uint32_t codomain_family;
-		if (compile_ast_type_expr_term(ctx, parameter->type_expr, &domain) != 0 ||
+		int domain_status = parameter->role ==
+				PROTOTYPE_AST_FAMILY_BINDER_PARAMETER ?
+			compile_ast_binder_value_type_component(
+				ctx, parameter->type_expr, &domain
+			) : compile_ast_type_expr_term(ctx, parameter->type_expr, &domain);
+		if (domain_status != 0 ||
 			lookup_graph_binder(ctx, parameter->ast_binder_id, &binding_id) != 0 ||
 			prototype_term_pure_family(
 				ctx->terms, binding_id, classifier, &codomain_family
@@ -673,19 +678,20 @@ static int compile_ast_type_def(
 		return -1;
 	}
 
+	uint32_t family_binder_count = ast_type->parameter_count + ast_type->index_count;
+	if (family_binder_count > ctx->binder_count) {
+		return -1;
+	}
+	uint32_t family_base_binder_count = ctx->binder_count - family_binder_count;
 	uint32_t type_id;
-	if (prototype_type_declaration_add(ctx->type_declarations, ast_type->name_symbol_id, &type_id) != 0) {
+	if (prototype_type_declaration_add(
+			ctx->type_declarations, ast_type->name_symbol_id, &type_id
+		) != 0) {
 		return -1;
 	}
 	ctx->type_declarations->semantic_schema.type_declarations[type_id].namespace_symbol_id =
 		ctx->namespace_symbol_id;
 	uint32_t type_term;
-	uint32_t family_binder_count = ast_type->parameter_count + ast_type->index_count;
-	if (family_binder_count > ctx->binder_count) {
-		ast_type->compiling = 0;
-		return -1;
-	}
-	uint32_t family_base_binder_count = ctx->binder_count - family_binder_count;
 
 	ast_type->compiling = 1;
 	ast_type->compiled_type = type_id;
@@ -797,8 +803,35 @@ static int compile_ast_type_def(
 				ctx->asts->type_field_name_symbol_ids[field_id] :
 				-1;
 			if (compile_ast_type_expr(ctx, field_type, &compiled_field_types[j]) != 0) {
-				fprintf(stderr, "type field readback failed type=%d constructor=%u field=%u expr=%u\n",
-					ast_type->name_symbol_id, i, j, field_type);
+				fprintf(stderr, "type field readback failed type=%d constructor=%u field=%u expr=%u tag=%d\n",
+					ast_type->name_symbol_id, i, j, field_type,
+					field_type < ctx->asts->type_expr_count ?
+						ctx->asts->type_exprs[field_type].tag : -1);
+				if (field_type < ctx->asts->type_expr_count &&
+					ctx->asts->type_exprs[field_type].tag == PROTOTYPE_AST_TYPE_EXPR_APP) {
+					const struct prototype_ast_type_expr* failed =
+						&ctx->asts->type_exprs[field_type];
+					fprintf(stderr, "type field app function=%u(tag=%d) argument=%u(tag=%d)\n",
+						failed->as.app.function,
+						ctx->asts->type_exprs[failed->as.app.function].tag,
+						failed->as.app.argument,
+						ctx->asts->type_exprs[failed->as.app.argument].tag);
+					uint32_t cursor = field_type;
+					while (cursor < ctx->asts->type_expr_count &&
+						ctx->asts->type_exprs[cursor].tag == PROTOTYPE_AST_TYPE_EXPR_APP) {
+						const struct prototype_ast_type_expr* app =
+							&ctx->asts->type_exprs[cursor];
+						fprintf(stderr, "type field spine node=%u arg=%u tag=%d\n",
+							cursor, app->as.app.argument,
+							ctx->asts->type_exprs[app->as.app.argument].tag);
+						cursor = app->as.app.function;
+					}
+					fprintf(stderr, "type field spine head=%u tag=%d binder=%u\n",
+						cursor, ctx->asts->type_exprs[cursor].tag,
+						ctx->asts->type_exprs[cursor].tag == PROTOTYPE_AST_TYPE_EXPR_VAR ?
+							ctx->asts->type_exprs[cursor].as.var.ast_binder_id :
+							PROTOTYPE_INVALID_ID);
+				}
 				ctx->binder_count = previous_binder_count;
 				ast_type->compiling = 0;
 				return -1;
@@ -2291,6 +2324,73 @@ static int compile_def_ref(
 	return 0;
 }
 
+/* A generated witness reference is the public eliminator of its generated
+ * function graph.  Its schema is therefore part of the reference form, even
+ * though the generated runner body is still synthesized independently and
+ * checked against that schema later.  This lets one generated runner call an
+ * already generated dependency without turning source-level `::` expectations
+ * into inputs to synthesis. */
+static int compile_function_graph_runner_classifier(
+	struct compile_context* ctx,
+	uint32_t runner_assignment,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !p_classifier || runner_assignment >= ctx->asts->assignment_count) {
+		return -1;
+	}
+	struct prototype_ast_type_expectation_def* selected = NULL;
+	for (uint32_t i = 0; i < (uint32_t)ctx->asts->expectation_count; ++i) {
+		struct prototype_ast_type_expectation_def* expectation =
+			&ctx->asts->expectations[i];
+		if (expectation->kind != PROTOTYPE_AST_TYPE_ENTRY_EXPECTATION ||
+			expectation->paired_assignment_id != runner_assignment) {
+			continue;
+		}
+		if (selected) {
+			return -1;
+		}
+		selected = expectation;
+	}
+	if (!selected) {
+		return -1;
+	}
+	uint32_t saved_binder_count = ctx->binder_count;
+	uint32_t saved_ih_scope_count = ctx->ih_scope_count;
+	struct binder_map_entry saved_binders[512];
+	uint32_t saved_context_ids[513];
+	struct ih_scope_map_entry saved_ih_scopes[512];
+	memcpy(
+		saved_binders, ctx->binders,
+		saved_binder_count * sizeof(saved_binders[0])
+	);
+	memcpy(
+		saved_context_ids, ctx->context_ids,
+		(saved_binder_count + 1) * sizeof(saved_context_ids[0])
+	);
+	memcpy(
+		saved_ih_scopes, ctx->ih_scopes,
+		saved_ih_scope_count * sizeof(saved_ih_scopes[0])
+	);
+	ctx->binder_count = 0;
+	ctx->ih_scope_count = 0;
+	int status = compile_type_expectation_classifier(ctx, selected, p_classifier);
+	memcpy(
+		ctx->binders, saved_binders,
+		saved_binder_count * sizeof(saved_binders[0])
+	);
+	memcpy(
+		ctx->context_ids, saved_context_ids,
+		(saved_binder_count + 1) * sizeof(saved_context_ids[0])
+	);
+	memcpy(
+		ctx->ih_scopes, saved_ih_scopes,
+		saved_ih_scope_count * sizeof(saved_ih_scopes[0])
+	);
+	ctx->binder_count = saved_binder_count;
+	ctx->ih_scope_count = saved_ih_scope_count;
+	return status;
+}
+
 static int compile_ast_pure_value_ref(
 	struct compile_context* ctx,
 	uint32_t ast_id,
@@ -2404,16 +2504,23 @@ static int compile_ast_atomic_ref(
 					ctx->asts->assignment_count);
 				return -1;
 			}
+			uint32_t runner_assignment =
+				association->certified_runner_assignment_id;
 			int status = compile_def_ref(
 				ctx,
-				&ctx->asts->assignments[
-					association->certified_runner_assignment_id
-				],
+				&ctx->asts->assignments[runner_assignment],
 				p_ret
 			);
+			uint32_t runner_classifier;
+			if (status == 0 && compile_function_graph_runner_classifier(
+					ctx, runner_assignment, &runner_classifier
+				) == 0) {
+				p_ret->classifier = runner_classifier;
+				ctx->classifier_hints[p_ret->operation] = runner_classifier;
+			}
 			if (status != 0) {
 				const struct prototype_ast_term_assignment_def* runner =
-					&ctx->asts->assignments[association->certified_runner_assignment_id];
+					&ctx->asts->assignments[runner_assignment];
 				fprintf(stderr,
 					"function graph witness runner lowering failed owner=%d runner_assignment=%u compiled=%d compiling=%d term=%u classifier=%u operation=%u occurrences=%zu\n",
 					node->as.function_graph_witness_reference.owner_symbol_id,
@@ -2726,9 +2833,14 @@ static int compile_ast_atomic_ref(
 				/* A telescope domain is checked in the preceding context. Extending
 				 * first would incorrectly make the binder visible in its own domain and
 				 * lets lazy compilation of a named domain reset that extension. */
-				if (compile_ast_type_expr_term(
+				int binder_status = parameter->role ==
+						PROTOTYPE_AST_FAMILY_BINDER_PARAMETER ?
+					compile_ast_binder_value_type_component(
 						ctx, parameter->type_expr, &binder_classifier
-					) != 0 || push_graph_binder(
+					) : compile_ast_type_expr_term(
+						ctx, parameter->type_expr, &binder_classifier
+					);
+				if (binder_status != 0 || push_graph_binder(
 						ctx,
 						parameter->ast_binder_id,
 						binder_classifier,
@@ -2765,9 +2877,14 @@ static int compile_ast_atomic_ref(
 					&ctx->asts->family_binders[ast_type->first_family_binder + i];
 				uint32_t binding_id;
 				uint32_t classifier;
-				if (compile_ast_type_expr_term(
+				int binder_status = binder->role ==
+						PROTOTYPE_AST_FAMILY_BINDER_PARAMETER ?
+					compile_ast_binder_value_type_component(
 						ctx, binder->type_expr, &classifier
-					) != 0 || push_graph_binder(
+					) : compile_ast_type_expr_term(
+						ctx, binder->type_expr, &classifier
+					);
+				if (binder_status != 0 || push_graph_binder(
 						ctx,
 						binder->ast_binder_id,
 						classifier,
@@ -3914,7 +4031,7 @@ static int compile_application_make_computation(
 		if (direct_pi) {
 			uint32_t result_classifier = PROTOTYPE_INVALID_ID;
 			if (argument->classifier != PROTOTYPE_INVALID_ID &&
-				operation_apply_classifier(
+				operation_apply_pure_type_family_classifier(
 					ctx,
 					function->classifier,
 					argument->classifier,
@@ -3940,6 +4057,10 @@ static int compile_application_make_computation(
 			p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
 			ctx->metadata->typed_occurrences.occurrences[p_ret->operation].category =
 				PROTOTYPE_TERM_CATEGORY_VALUE;
+			ctx->metadata->typed_occurrences.occurrences[
+				p_ret->operation
+			].application_role =
+				PROTOTYPE_TERM_APPLICATION_PURE_TYPE_FAMILY_EVALUATION;
 			return 0;
 		}
 		if (compile_ref_make_force(ctx, function, source_ast, &applied_function) != 0) {
@@ -4013,6 +4134,21 @@ static int compile_induction_hypothesis_for_expected_value(
 		) != 0 || whnf >= ctx->terms->term_count) {
 		return -1;
 	}
+	for (uint32_t depth = 0; depth < 16 && whnf < ctx->terms->term_count &&
+		ctx->terms->terms[whnf].tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL;
+		++depth) {
+		whnf = ctx->terms->terms[whnf].as.effect_row_forall.body;
+		if (prototype_term_normalize_complete_with_profile(
+				ctx->terms,
+				ctx->type_declarations,
+				NULL,
+				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				whnf,
+				&whnf
+			) != 0) {
+			return -1;
+		}
+	}
 	if (ctx->terms->terms[whnf].tag != PROTOTYPE_TERM_PI) {
 		return 1;
 	}
@@ -4038,8 +4174,10 @@ static int compile_induction_hypothesis_for_expected_value(
 }
 
 struct compile_application_spine_context {
-	uint32_t arguments[64];
-	uint32_t applications[64];
+	uint32_t arguments[68];
+	uint32_t applications[68];
+	struct compile_ref synthetic_arguments[68];
+	unsigned char argument_is_synthetic[68];
 	uint32_t argument_count;
 };
 
@@ -4048,6 +4186,13 @@ struct compile_application_spine_step_context {
 	struct compile_ref function;
 	uint32_t index;
 };
+
+static int compile_ref_add_checked_expectation(
+	struct compile_context* ctx,
+	struct compile_ref* ref,
+	uint32_t surface_classifier,
+	uint32_t source_ast
+);
 
 static int compile_application_spine_step(
 	struct compile_context* ctx,
@@ -4074,6 +4219,46 @@ static int compile_application_spine_argument_continuation(
 			context->spine->applications[context->index],
 			&application
 		) != 0) {
+		fprintf(stderr,
+			"application spine step failed index=%u function=%u classifier=%u argument=%u argument-classifier=%u\n",
+			context ? context->index : PROTOTYPE_INVALID_ID,
+			context ? context->function.term : PROTOTYPE_INVALID_ID,
+			context ? context->function.classifier : PROTOTYPE_INVALID_ID,
+			argument ? argument->term : PROTOTYPE_INVALID_ID,
+			argument ? argument->classifier : PROTOTYPE_INVALID_ID);
+		if (ctx && context && context->function.classifier != PROTOTYPE_INVALID_ID) {
+			fprintf(stderr, "  function classifier: ");
+			prototype_term_print_debug(
+				stderr, ctx->symbols, ctx->intrinsic_environment,
+				ctx->type_declarations, ctx->terms, context->function.classifier
+			);
+			fprintf(stderr, "\n");
+		}
+		if (ctx && argument && argument->classifier != PROTOTYPE_INVALID_ID) {
+			fprintf(stderr, "  argument term: ");
+			prototype_term_print_debug(
+				stderr, ctx->symbols, ctx->intrinsic_environment,
+				ctx->type_declarations, ctx->terms, argument->term
+			);
+			fprintf(stderr, "\n");
+			if (argument->term < ctx->terms->term_count &&
+				ctx->terms->terms[argument->term].tag == PROTOTYPE_TERM_VAR) {
+				uint32_t binding = ctx->terms->terms[argument->term].as.var.binding_id;
+				for (uint32_t i = 0; i < ctx->binder_count; ++i) {
+					if (ctx->binders[i].graph_binder_id == binding) {
+						fprintf(stderr, "  argument binder symbol: %s (%d)\n",
+							symbol_to_string(ctx->symbols, ctx->binders[i].symbol_id),
+							ctx->binders[i].symbol_id);
+					}
+				}
+			}
+			fprintf(stderr, "  argument classifier: ");
+			prototype_term_print_debug(
+				stderr, ctx->symbols, ctx->intrinsic_environment,
+				ctx->type_declarations, ctx->terms, argument->classifier
+			);
+			fprintf(stderr, "\n");
+		}
 		return -1;
 	}
 	return compile_application_spine_step(
@@ -4109,6 +4294,91 @@ static int compile_application_spine_step(
 		.apply = compile_application_spine_argument_continuation,
 		.data = &context
 	};
+	if (spine->argument_is_synthetic[index]) {
+		struct compile_ref synthetic = spine->synthetic_arguments[index];
+		if (function->classifier != PROTOTYPE_INVALID_ID) {
+			uint32_t callable = PROTOTYPE_INVALID_ID;
+			uint32_t specialized;
+			uint32_t whnf;
+			int expose_status = prototype_judgement_expose_callable_classifier(
+					ctx->terms,
+					ctx->type_declarations,
+					function->classifier,
+					&callable
+				);
+			specialized = callable;
+			int specialize_status = expose_status == 0 &&
+				synthetic.classifier != PROTOTYPE_INVALID_ID ?
+				prototype_judgement_specialize_effect_rows_for_argument(
+					ctx->terms,
+					ctx->type_declarations,
+					callable,
+					synthetic.classifier,
+					&specialized
+				) : expose_status;
+			int normalize_status = specialize_status == 0 ?
+				prototype_term_normalize_complete_with_profile(
+					ctx->terms,
+					ctx->type_declarations,
+					NULL,
+					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+					specialized,
+					&whnf
+				) : 1;
+			for (uint32_t depth = 0; normalize_status == 0 && depth < 16 &&
+				whnf < ctx->terms->term_count && ctx->terms->terms[whnf].tag ==
+					PROTOTYPE_TERM_EFFECT_ROW_FORALL; ++depth) {
+				whnf = ctx->terms->terms[whnf].as.effect_row_forall.body;
+				normalize_status = prototype_term_normalize_complete_with_profile(
+					ctx->terms,
+					ctx->type_declarations,
+					NULL,
+					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+					whnf,
+					&whnf
+				);
+			}
+			if (expose_status != 0 || specialize_status != 0 ||
+				normalize_status != 0 || whnf >= ctx->terms->term_count ||
+				ctx->terms->terms[whnf].tag != PROTOTYPE_TERM_PI) {
+				if (getenv("A_PROGRAM_FORMATION_TRACE") != NULL) {
+					fprintf(stderr,
+						"formation-trace synthetic application index=%u function=%u "
+						"classifier=%u argument=%u argument-classifier=%u expose=%d "
+						"specialize=%d normalize=%d whnf=%u tag=%d\n",
+						index, function->term, function->classifier, synthetic.term,
+						synthetic.classifier, expose_status, specialize_status,
+						normalize_status,
+						normalize_status == 0 ? whnf : PROTOTYPE_INVALID_ID,
+							normalize_status == 0 && whnf < ctx->terms->term_count ?
+								ctx->terms->terms[whnf].tag : -1);
+					fprintf(stderr, "  callable classifier: ");
+					prototype_term_print_debug(
+						stderr, ctx->symbols, ctx->intrinsic_environment,
+						ctx->type_declarations, ctx->terms, callable
+					);
+					fprintf(stderr, "\n  synthetic classifier: ");
+					prototype_term_print_debug(
+						stderr, ctx->symbols, ctx->intrinsic_environment,
+						ctx->type_declarations, ctx->terms, synthetic.classifier
+					);
+					fprintf(stderr, "\n");
+				}
+				return -1;
+			}
+			if (compile_ref_add_checked_expectation(
+					ctx,
+					&synthetic,
+					ctx->terms->terms[whnf].as.pi.domain,
+					spine->applications[index]
+				) != 0) {
+				return -1;
+			}
+		}
+		return continuation.apply(
+			ctx, &synthetic, continuation.data, p_ret
+		);
+	}
 	struct compile_ref expected_value;
 	int expected_value_status = compile_induction_hypothesis_for_expected_value(
 		ctx,
@@ -4129,6 +4399,129 @@ static int compile_application_spine_step(
 	);
 }
 
+static int compile_function_graph_expand_certified_arguments(
+	struct compile_context* ctx,
+	uint32_t head,
+	struct compile_application_spine_context* spine
+) {
+	if (!ctx || !spine || head >= ctx->asts->node_count ||
+		ctx->asts->nodes[head].tag !=
+			PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE) {
+		return 0;
+	}
+	const struct prototype_function_graph_association* owner_association =
+		compile_function_graph_association(
+			ctx,
+			ctx->asts->nodes[head].as.function_graph_witness_reference.owner_symbol_id
+		);
+	if (!owner_association || owner_association->certified_argument_index ==
+			PROTOTYPE_INVALID_ID ||
+		spine->argument_count <= owner_association->certified_argument_index) {
+		return 0;
+	}
+	if (spine->argument_count + 2 > 68) {
+		return -1;
+	}
+	uint32_t certified_index = owner_association->certified_argument_index;
+	uint32_t callback_ast = spine->arguments[certified_index];
+	if (callback_ast >= ctx->asts->node_count ||
+		ctx->asts->nodes[callback_ast].tag != PROTOTYPE_AST_QUOTE) {
+		return -1;
+	}
+	uint32_t callback_name_ast = ctx->asts->nodes[callback_ast].as.unary.term;
+	if (callback_name_ast >= ctx->asts->node_count ||
+		ctx->asts->nodes[callback_name_ast].tag != PROTOTYPE_AST_NAME) {
+		return -1;
+	}
+	const struct prototype_function_graph_association* callback_association =
+		compile_function_graph_association(
+			ctx, ctx->asts->nodes[callback_name_ast].as.name.symbol_id
+		);
+	if (!callback_association ||
+		callback_association->graph_interface_assignment_id >=
+			ctx->asts->assignment_count ||
+		callback_association->certified_adapter_assignment_id >=
+			ctx->asts->assignment_count) {
+		fprintf(stderr,
+			"certified callback association incomplete callback=%d interface=%u adapter=%u runner=%u assignments=%zu\n",
+			callback_association ? callback_association->owner_symbol_id : -1,
+			callback_association ? callback_association->graph_interface_assignment_id :
+				PROTOTYPE_INVALID_ID,
+			callback_association ? callback_association->certified_adapter_assignment_id :
+				PROTOTYPE_INVALID_ID,
+			callback_association ? callback_association->certified_runner_assignment_id :
+				PROTOTYPE_INVALID_ID,
+			ctx->asts->assignment_count);
+		return -1;
+	}
+	struct compile_ref graph_interface;
+	struct compile_ref certified_callback;
+	if (compile_def_ref(
+			ctx,
+			&ctx->asts->assignments[
+				callback_association->graph_interface_assignment_id
+			],
+			&graph_interface
+		) != 0 ||
+		compile_def_ref(
+			ctx,
+			&ctx->asts->assignments[
+				callback_association->certified_adapter_assignment_id
+			],
+			&certified_callback
+		) != 0) {
+		return -1;
+	}
+	if (graph_interface.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
+		struct compile_ref quoted;
+		if (compile_ref_make_thunk(ctx, &graph_interface, callback_ast, &quoted) != 0) {
+			return -1;
+		}
+		graph_interface = quoted;
+	}
+	if (graph_interface.category != PROTOTYPE_TERM_CATEGORY_VALUE) {
+		return -1;
+	}
+	if (getenv("A_PROGRAM_FORMATION_TRACE") != NULL) {
+		fprintf(stderr,
+			"formation-trace graph interface term=%u classifier=%u category=%d tag=%d\n",
+			graph_interface.term, graph_interface.classifier,
+			graph_interface.category,
+			graph_interface.term < ctx->terms->term_count ?
+				ctx->terms->terms[graph_interface.term].tag : -1);
+	}
+	if (certified_callback.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
+		struct compile_ref quoted;
+		if (compile_ref_make_thunk(ctx, &certified_callback, callback_ast, &quoted) != 0) {
+			return -1;
+		}
+		certified_callback = quoted;
+	}
+	if (certified_callback.category != PROTOTYPE_TERM_CATEGORY_VALUE) {
+		return -1;
+	}
+	struct compile_application_spine_context expanded;
+	memset(&expanded, 0, sizeof(expanded));
+	for (uint32_t i = 0; i < spine->argument_count; ++i) {
+		uint32_t target = expanded.argument_count++;
+		expanded.arguments[target] = spine->arguments[i];
+		expanded.applications[target] = spine->applications[i];
+		if (i != certified_index) {
+			continue;
+		}
+		target = expanded.argument_count++;
+		expanded.applications[target] = spine->applications[i];
+		expanded.argument_is_synthetic[target] = 1;
+		expanded.synthetic_arguments[target] = graph_interface;
+		target = expanded.argument_count++;
+		expanded.applications[target] = spine->applications[i];
+		expanded.argument_is_synthetic[target] = 1;
+		expanded.synthetic_arguments[target] = certified_callback;
+	}
+	*spine = expanded;
+	return 0;
+}
+
 static int compile_ast_application_computation_ref(
 	struct compile_context* ctx,
 	uint32_t ast_id,
@@ -4144,7 +4537,7 @@ static int compile_ast_application_computation_ref(
 	uint32_t head = ast_id;
 	while (head < ctx->asts->node_count &&
 		ctx->asts->nodes[head].tag == PROTOTYPE_AST_APP) {
-		if (spine.argument_count >= 64) {
+		if (spine.argument_count >= 68) {
 			return -1;
 		}
 		spine.arguments[spine.argument_count] =
@@ -4169,6 +4562,12 @@ static int compile_ast_application_computation_ref(
 		fprintf(stderr,
 			"application function lowering failed app=%u head=%u tag=%d\n",
 			ast_id, head, ctx->asts->nodes[head].tag);
+		return -1;
+	}
+	if (compile_function_graph_expand_certified_arguments(ctx, head, &spine) != 0) {
+		fprintf(stderr,
+			"certified application interface unavailable app=%u head=%u\n",
+			ast_id, head);
 		return -1;
 	}
 	int status = compile_application_spine_step(ctx, &spine, &function, 0, p_ret);
@@ -4331,8 +4730,18 @@ static int compile_ast_lambda_computation_ref(
 		return -1;
 	}
 	saved_binder_count = ctx->binder_count;
+	int binder_is_type_family =
+		node->as.lambda.binder_type < ctx->asts->type_expr_count &&
+		(ctx->asts->type_exprs[node->as.lambda.binder_type].tag ==
+			PROTOTYPE_AST_TYPE_EXPR_ARROW ||
+		 ctx->asts->type_exprs[node->as.lambda.binder_type].tag ==
+			PROTOTYPE_AST_TYPE_EXPR_PI) &&
+		ast_type_expr_returns_universe(
+			ctx->asts, node->as.lambda.binder_type
+		);
 	int binder_has_latent_effect =
 		node->as.lambda.binder_type < ctx->asts->type_expr_count &&
+		!binder_is_type_family &&
 		(ctx->asts->type_exprs[node->as.lambda.binder_type].tag ==
 			PROTOTYPE_AST_TYPE_EXPR_ARROW ||
 		 ctx->asts->type_exprs[node->as.lambda.binder_type].tag ==
@@ -4341,7 +4750,9 @@ static int compile_ast_lambda_computation_ref(
 				 PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE);
 	int exit_presence = ast_lambda_exit_presence_in(ctx->asts, node->as.lambda.body);
 	if (exit_presence == AST_LAMBDA_EXIT_FORBIDDEN ||
-		(binder_has_latent_effect ? compile_ast_binder_value_type_with_latent_effect_row(
+		(binder_is_type_family ? compile_ast_binder_value_type_component(
+				ctx, node->as.lambda.binder_type, &binder_classifier
+			) : binder_has_latent_effect ? compile_ast_binder_value_type_with_latent_effect_row(
 				ctx, node->as.lambda.binder_type, &(uint32_t){ PROTOTYPE_INVALID_ID },
 				&binder_classifier
 			) : compile_ast_type_expr_term(
@@ -4578,10 +4989,21 @@ static int compile_ast_value_ref(
 		if (namespace_status != 0 || member_status != 0) {
 			fprintf(stderr,
 				"namespace member lowering failed ast=%u namespace-ast=%u "
-				"namespace-status=%d member-status=%d namespace-term=%u\n",
+				"member=%s namespace-status=%d member-status=%d namespace-term=%u\n",
 				ast_id, node->as.name_in_ast_namespace.namespace_ast,
+				symbol_to_string(
+					ctx->symbols, node->as.name_in_ast_namespace.symbol_id
+				),
 				namespace_status, member_status,
 				namespace_status == 0 ? namespace_ref.term : PROTOTYPE_INVALID_ID);
+			if (namespace_status == 0) {
+				fprintf(stderr, "namespace member owner: ");
+				prototype_term_print_debug(
+					stderr, ctx->symbols, ctx->intrinsic_environment,
+					ctx->type_declarations, ctx->terms, namespace_ref.term
+				);
+				fprintf(stderr, "\n");
+			}
 			return -1;
 		}
 		p_ret->term = constructor_term;
@@ -4758,6 +5180,15 @@ static int compile_constructor_spine_argument_continuation(
 				argument->term,
 				&application.classifier
 			) != 0) {
+			fprintf(stderr,
+				"constructor classifier application failed ast=%u function-term=%u classifier=%u argument-term=%u\n",
+				context->source_ast, context->function.term,
+				context->function.classifier, argument->term);
+			prototype_term_print_debug(
+				stderr, ctx->symbols, ctx->intrinsic_environment,
+				ctx->type_declarations, ctx->terms, context->function.classifier
+			);
+			fprintf(stderr, "\n");
 			return -1;
 		}
 	}
@@ -5075,6 +5506,56 @@ static int compile_ast_block_execution_ref(
 	return 0;
 }
 
+/* A block binding annotation checks the already-synthesized right-hand side and
+ * then exposes the checked classifier to the continuation. Keep that selection
+ * as its own occurrence: mutating the synthesized occurrence would make the
+ * annotation an input to synthesis and would also lose nominal TYPE_VIEWs when
+ * a dependent APP later reconstructs only their Core classifier. */
+static int compile_ref_add_checked_expectation(
+	struct compile_context* ctx,
+	struct compile_ref* ref,
+	uint32_t surface_classifier,
+	uint32_t source_ast
+) {
+	if (!ctx || !ref) {
+		return -1;
+	}
+	if (surface_classifier == PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	uint32_t expected_classifier;
+	uint32_t expected_operation;
+	uint32_t synthesized_operation = ref->operation;
+	if (compile_expected_classifier_for_ref(
+			ctx, ref, surface_classifier, &expected_classifier
+		) != 0 || operation_add(
+			ctx,
+			PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE,
+			ref->term,
+			expected_classifier,
+			source_ast,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			synthesized_operation,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_INVALID_ID,
+			0,
+			&expected_operation
+		) != 0 || queue_ascription_check(
+			ctx,
+			ref->term,
+			expected_classifier,
+			source_ast,
+			synthesized_operation
+		) != 0) {
+		return -1;
+	}
+	ref->classifier = expected_classifier;
+	ref->operation = expected_operation;
+	return 0;
+}
+
 static int compile_ast_block_items_ref(
 	struct compile_context* ctx,
 	uint32_t block_ast,
@@ -5169,7 +5650,9 @@ static int compile_ast_block_items_ref(
 		) != 0 || (item->as.block_binding.binder_type != PROTOTYPE_INVALID_ID &&
 			compile_ast_type_expr_term(
 				ctx, item->as.block_binding.binder_type, &binder_classifier
-			) != 0)) {
+			) != 0) || compile_ref_add_checked_expectation(
+			ctx, &value, binder_classifier, item_ast
+		) != 0) {
 		return -1;
 	}
 	if (value.category == PROTOTYPE_TERM_CATEGORY_VALUE ||
@@ -5178,9 +5661,7 @@ static int compile_ast_block_items_ref(
 		 ctx->asts->nodes[item->as.block_binding.value].tag !=
 			PROTOTYPE_AST_INDUCTION_HYPOTHESIS)) {
 		uint32_t saved_local_ref_count = ctx->local_ref_count;
-		if ((binder_classifier != PROTOTYPE_INVALID_ID && queue_ascription_check(
-				ctx, value.term, binder_classifier, item_ast, value.operation
-			) != 0) || push_local_ref(
+		if (push_local_ref(
 				ctx,
 				item->as.block_binding.ast_binder_id,
 				item->as.block_binding.binder_symbol_id,
@@ -5504,15 +5985,19 @@ static int compile_ast_block_items_control_ref(
 		return -1;
 	}
 	if (value_exit_presence == AST_LAMBDA_EXIT_NONE &&
+		compile_ref_add_checked_expectation(
+			ctx, &value, binder_classifier, item_ast
+		) != 0) {
+		return -1;
+	}
+	if (value_exit_presence == AST_LAMBDA_EXIT_NONE &&
 		(value.category == PROTOTYPE_TERM_CATEGORY_VALUE ||
 		(value.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
 		 value.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION &&
 		 ctx->asts->nodes[item->as.block_binding.value].tag !=
 			 PROTOTYPE_AST_INDUCTION_HYPOTHESIS))) {
 		uint32_t saved_local_ref_count = ctx->local_ref_count;
-		if ((binder_classifier != PROTOTYPE_INVALID_ID && queue_ascription_check(
-				ctx, value.term, binder_classifier, item_ast, value.operation
-			) != 0) || push_local_ref(
+		if (push_local_ref(
 				ctx,
 				item->as.block_binding.ast_binder_id,
 				item->as.block_binding.binder_symbol_id,
@@ -6114,13 +6599,14 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 			++association_id) {
 			const struct prototype_function_graph_association* association =
 				&ctx->metadata->function_graph_associations[association_id];
-			uint32_t assignments[4] = {
+			uint32_t assignments[5] = {
 				association->graph_type_assignment_id,
 				association->result_type_assignment_id,
+				association->graph_interface_assignment_id,
 				association->certified_runner_assignment_id,
 				association->executable_assignment_id
 			};
-			for (uint32_t i = 0; i < 4; ++i) {
+			for (uint32_t i = 0; i < 5; ++i) {
 				if (assignments[i] >= ctx->asts->assignment_count) {
 					return -1;
 				}
@@ -6129,6 +6615,24 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 				uint32_t term;
 				if (compile_def(
 						ctx, &ctx->asts->assignments[assignments[i]], &term
+					) != 0) {
+					return -1;
+				}
+			}
+			if (association->certified_adapter_assignment_id != PROTOTYPE_INVALID_ID) {
+				if (association->certified_adapter_assignment_id >=
+						ctx->asts->assignment_count) {
+					return -1;
+				}
+				ctx->binder_count = 0;
+				ctx->ih_scope_count = 0;
+				uint32_t term;
+				if (compile_def(
+						ctx,
+						&ctx->asts->assignments[
+							association->certified_adapter_assignment_id
+						],
+						&term
 					) != 0) {
 					return -1;
 				}
@@ -6239,6 +6743,7 @@ static int constructor_telescope_field_classifier(
 			&argument_count
 		) != 0 ||
 		type_id >= ctx->type_declarations->semantic_schema.type_count) {
+		fprintf(stderr, "constructor field owner decode failed owner=%u\n", owner);
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
@@ -6247,6 +6752,10 @@ static int constructor_telescope_field_classifier(
 		type->first_constructor + constructor_index >=
 			ctx->type_declarations->semantic_schema.constructor_count ||
 		argument_count != type->parameter_count) {
+		fprintf(stderr,
+			"constructor field owner shape failed type=%u constructor=%u arguments=%u parameters=%u indices=%u\n",
+			type_id, constructor_index, argument_count, type->parameter_count,
+			type->index_count);
 		return -1;
 	}
 	const struct prototype_type_constructor_declaration* constructor =
@@ -6270,6 +6779,9 @@ static int constructor_telescope_field_classifier(
 			argument_count,
 			&substitution
 		) != 0) {
+		fprintf(stderr,
+			"constructor field parameter substitution failed type=%u source-context=%u parameter-context=%u arguments=%u\n",
+			type_id, source_context, constructor->parameter_context, argument_count);
 		return -1;
 	}
 	uint32_t previous_terms[64];
@@ -6280,7 +6792,7 @@ static int constructor_telescope_field_classifier(
 			return -1;
 		}
 	}
-	return prototype_context_telescope_entry_classifier(
+	int status = prototype_context_telescope_entry_classifier(
 		&ctx->metadata->contexts,
 		&ctx->metadata->substitutions,
 		ctx->terms,
@@ -6293,6 +6805,13 @@ static int constructor_telescope_field_classifier(
 		field_index,
 		p_classifier
 	);
+	if (status != 0) {
+		fprintf(stderr,
+			"constructor field telescope projection failed type=%u field=%u previous=%u substitution=%u field-context=%u\n",
+			type_id, field_index, previous_binder_count, substitution,
+			constructor->field_context);
+	}
+	return status;
 }
 
 /* Once the outer scrutinee classifier is known, an otherwise impossible
@@ -6833,6 +7352,10 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 					&scrutinee_classifier
 				);
 			if (selection_status < 0) {
+				fprintf(stderr,
+					"pending Match scrutinee selection failed index=%u item=%u ast=%u operation=%u\n",
+					i, resolution->item_id, item->ast,
+					resolution->scrutinee_operation);
 				return -1;
 			}
 			if (selection_status > 0) {
@@ -6847,6 +7370,12 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				resolution->constructor_symbol_id,
 				&resolved
 			) != 0) {
+			fprintf(stderr,
+				"pending Match constructor resolution failed index=%u item=%u ast=%u constructor=%d classifier=%u tag=%d\n",
+				i, resolution->item_id, item->ast,
+				resolution->constructor_symbol_id, scrutinee_classifier,
+				scrutinee_classifier < ctx->terms->term_count ?
+					ctx->terms->terms[scrutinee_classifier].tag : -1);
 			int diagnostic_status = diagnose_nested_match_grouping(
 				ctx, resolution, item, scrutinee_classifier
 			);
@@ -6891,6 +7420,7 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 		uint32_t resolved_case_id =
 			resolved_match->as.match.first_case + item->case_index;
 		if (resolved_case_id >= ctx->terms->case_count) {
+			fprintf(stderr, "pending Match resolved case out of range index=%u case=%u\n", i, resolved_case_id);
 			return -1;
 		}
 		const struct prototype_match_case* resolved_case =
@@ -6907,6 +7437,9 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 		if (source_case->binder_count != resolved_case->binder_count ||
 			source_case->first_binder + source_case->binder_count >
 				ctx->asts->case_binder_count) {
+			fprintf(stderr,
+				"pending Match binder mismatch index=%u source=%u resolved=%u\n",
+				i, source_case->binder_count, resolved_case->binder_count);
 			return -1;
 		}
 		if (resolved_operation->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
@@ -6914,6 +7447,8 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 			item->case_index >= resolved_operation->case_count ||
 			resolved_operation->first_case + item->case_index >=
 				ctx->metadata->typed_occurrences.case_count) {
+			fprintf(stderr, "pending Match occurrence shape failed index=%u operation=%u\n",
+				i, resolution->match_operation);
 			return -1;
 		}
 		struct prototype_typed_occurrence_match_case* resolved_operation_case =
@@ -6927,6 +7462,8 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				&body_occurrence
 			) != 0 || body_occurrence >=
 				ctx->metadata->typed_occurrences.occurrence_count) {
+			fprintf(stderr, "pending Match body occurrence failed index=%u operation=%u\n",
+				i, resolution->match_operation);
 			return -1;
 		}
 		uint32_t case_context = ctx->metadata->typed_occurrences.occurrences[
@@ -6934,10 +7471,17 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 		].context_id;
 		if (case_context == PROTOTYPE_INVALID_ID ||
 			resolved_operation_case->binder_count != resolved_case->binder_count) {
+			fprintf(stderr,
+				"pending Match case context failed index=%u context=%u occurrence-binders=%u resolved-binders=%u\n",
+				i, case_context, resolved_operation_case->binder_count,
+				resolved_case->binder_count);
 			return -1;
 		}
-		struct prototype_case_binder occurrence_binders[16];
-		if (resolved_case->binder_count > 16) {
+		struct prototype_case_binder occurrence_binders[
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY
+		];
+		if (resolved_case->binder_count >
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY) {
 			return -1;
 		}
 		for (uint32_t binder_index = 0;
@@ -6948,6 +7492,9 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 					case_context,
 					resolved_operation_case->binder_ids[binder_index]
 				)) {
+				fprintf(stderr,
+					"pending Match case binding missing index=%u binder=%u context=%u\n",
+					i, binder_index, case_context);
 				return -1;
 			}
 			occurrence_binders[binder_index] = ctx->terms->case_binders[
@@ -6970,6 +7517,10 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 					binder_index,
 					&binder_classifier
 				) != 0) {
+				fprintf(stderr,
+					"pending Match field classifier failed index=%u binder=%u owner=%u constructor=%u context=%u\n",
+					i, binder_index, resolved.constructor_owner,
+					resolved.constructor_id, case_context);
 				return -1;
 			}
 			if (prototype_judgement_classifier_is_strictly_positive_recursive_field(
@@ -6979,6 +7530,9 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 					scrutinee_classifier,
 					&occurrence_binders[binder_index].is_recursive
 				) != 0) {
+				fprintf(stderr,
+					"pending Match field positivity failed index=%u binder=%u classifier=%u scrutinee=%u\n",
+					i, binder_index, binder_classifier, scrutinee_classifier);
 				return -1;
 			}
 			uint32_t binder_var;
@@ -6991,6 +7545,9 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 					binder_classifier,
 					PROTOTYPE_INVALID_ID
 				) != 0) {
+				fprintf(stderr,
+					"pending Match binder assumption failed index=%u binder=%u classifier=%u\n",
+					i, binder_index, binder_classifier);
 				return -1;
 			}
 			for (uint32_t operation_id = 0;
@@ -7002,7 +7559,9 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 					operation->referenced_ast_binder_id ==
 						ctx->asts->case_binders[
 							source_case->first_binder + binder_index
-						].ast_binder_id) {
+						].ast_binder_id &&
+					operation->binding_id ==
+						resolved_operation_case->binder_ids[binder_index]) {
 					ctx->classifier_hints[operation_id] = binder_classifier;
 				}
 			}
@@ -7018,6 +7577,8 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				resolved_case->binder_count,
 				&rebuilt_match
 			) != 0) {
+			fprintf(stderr, "pending Match core rebuild failed index=%u operation=%u\n",
+				i, resolution->match_operation);
 			return -1;
 		}
 		resolved_operation->core_term = rebuilt_match;
@@ -7034,6 +7595,8 @@ static int compile_phase_resolve_pending_match_items(struct compile_context* ctx
 				resolved.constructor_owner,
 				resolved.constructor_id
 			) != 0) {
+			fprintf(stderr, "pending Match core propagation failed index=%u operation=%u\n",
+				i, resolution->match_operation);
 			return -1;
 		}
 	}
@@ -7418,11 +7981,25 @@ static int operation_solver_bind(
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 		fprintf(stderr,
 			"classifier solver binding conflict operation=%u tag=%u core=%u "
-			"previous=%u candidate=%u\n",
+			"previous=%u candidate=%u source-ast=%u context=%u binding=%u\n",
 			variable,
 			ctx->metadata->typed_occurrences.occurrences[variable].tag,
 			ctx->metadata->typed_occurrences.occurrences[variable].core_term,
-			previous, classifier);
+			previous, classifier,
+			ctx->metadata->typed_occurrences.occurrences[variable].source_ast,
+			ctx->metadata->typed_occurrences.occurrences[variable].context_id,
+			ctx->metadata->typed_occurrences.occurrences[variable].binding_id);
+		fprintf(stderr, "previous classifier: ");
+		prototype_term_print_debug(
+			stderr, ctx->symbols, ctx->intrinsic_environment,
+			ctx->type_declarations, ctx->terms, previous
+		);
+		fprintf(stderr, "\ncandidate classifier: ");
+		prototype_term_print_debug(
+			stderr, ctx->symbols, ctx->intrinsic_environment,
+			ctx->type_declarations, ctx->terms, classifier
+		);
+		fprintf(stderr, "\n");
 		return -1;
 	}
 	return 0;
@@ -7466,6 +8043,25 @@ static int operation_solver_merge_computation_classifiers(
 			ctx->terms, after.effect_row, &after_row
 		) != 0) {
 		return 1;
+	}
+	/* A lone row variable in an occurrence solution is the application-site
+	 * metavariable introduced while instantiating EFFECT_ROW_FORALL.  Once the
+	 * argument supplies a concrete row, solve that cell instead of retaining the
+	 * metavariable as if it were an observable effect atom.  Quantified rows in
+	 * the function classifier itself remain unchanged. */
+	if (before_row.atom_count == 1 &&
+		before_row.atoms[0] < ctx->terms->term_count &&
+		ctx->terms->terms[before_row.atoms[0]].tag ==
+			PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		*p_merged = candidate;
+		return 0;
+	}
+	if (after_row.atom_count == 1 &&
+		after_row.atoms[0] < ctx->terms->term_count &&
+		ctx->terms->terms[after_row.atoms[0]].tag ==
+			PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		*p_merged = previous;
+		return 0;
 	}
 	struct prototype_effect_row_normal_form merged;
 	memset(&merged, 0, sizeof(merged));
@@ -7778,6 +8374,18 @@ static int operation_subgraph_unique_induction_hypothesis(
 		*p_ih_operation = operation_id;
 		return 0;
 	}
+	/* EXPECTED_TYPE is a local post-check wrapper. It has no structural Core
+	 * child, but its wrapped occurrence remains part of the same synthesized
+	 * computation. Recursive-result refinement must inspect that occurrence
+	 * without treating the expected classifier as synthesis input. */
+	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) {
+		int status = operation_subgraph_unique_induction_hypothesis(
+			ctx, operation->wrapped_occurrence, depth + 1, p_ih_operation
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
 	if (operation->edge_count == 0) {
 		return 0;
 	}
@@ -7902,6 +8510,12 @@ static int operation_solver_refine_sequenced_ih_result(
 				) != 0) {
 				return -1;
 			}
+			int refine_status = operation_refine_classifier_from_expected(
+				ctx, input_occurrence, seeded_classifier, 0, p_changed
+			);
+			if (refine_status < 0) {
+				return -1;
+			}
 			operation_solver_store_classifier_solution(
 				ctx, input_occurrence, seeded_classifier
 			);
@@ -7938,6 +8552,13 @@ static int operation_solver_refine_sequenced_ih_result(
 		}
 		if (input->tag != PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS) {
 			uint32_t expected_input_classifier;
+			/* An unapplied recursive function still returns a PI. Propagating a
+			 * non-PI expectation through that spine would reinterpret an ordinary
+			 * argument as the missing final argument and corrupt its binding type. */
+			if ((ctx->terms->terms[input_view.result].tag == PROTOTYPE_TERM_PI) !=
+				(ctx->terms->terms[expected_result].tag == PROTOTYPE_TERM_PI)) {
+				return 1;
+			}
 			if (prototype_term_computation_type(
 					ctx->terms, input_view.effect_row, expected_result,
 					input_view.totality,
@@ -8004,7 +8625,9 @@ static int operation_solver_refine_sequenced_ih_result(
 			) != 0) {
 			return -1;
 		}
-		uint32_t owner_match = input->ih_owner_occurrence;
+		const struct prototype_typed_occurrence* guarded_ih_operation =
+			&ctx->metadata->typed_occurrences.occurrences[guarded_ih];
+		uint32_t owner_match = guarded_ih_operation->ih_owner_occurrence;
 		if (owner_match >= ctx->metadata->typed_occurrences.occurrence_count ||
 			ctx->metadata->typed_occurrences.occurrences[owner_match].tag !=
 				PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
@@ -8020,12 +8643,30 @@ static int operation_solver_refine_sequenced_ih_result(
 		 * equation here.  The ordinary Match solver must still construct M from
 		 * every branch, otherwise a lambda inferred from this one occurrence would
 		 * incorrectly impose the recursive index on non-recursive branches. */
-		operation_solver_store_classifier_solution(
-			ctx, value_operation, expected_result
-		);
-		if (ctx->metadata->typed_occurrences.occurrences[
+		uint32_t value_classifier =
+			ctx->classifier_solver.solutions[value_operation].classifier;
+		if (value_classifier == PROTOTYPE_INVALID_ID ||
+			prototype_judgement_classifier_conversion(
+				ctx->terms,
+				ctx->type_declarations,
+				value_classifier,
+				expected_result
+			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			operation_solver_store_classifier_solution(
+				ctx, value_operation, expected_result
+			);
+		}
+		uint32_t continuation_classifier =
+			ctx->metadata->typed_occurrences.occurrences[
 				continuation_occurrence
-			].binder_classifier != expected_result) {
+			].binder_classifier;
+		if (continuation_classifier == PROTOTYPE_INVALID_ID ||
+			prototype_judgement_classifier_conversion(
+				ctx->terms,
+				ctx->type_declarations,
+				continuation_classifier,
+				expected_result
+			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			ctx->metadata->typed_occurrences.occurrences[
 				continuation_occurrence
 			].binder_classifier = expected_result;
@@ -8036,8 +8677,15 @@ static int operation_solver_refine_sequenced_ih_result(
 				].binding_id
 			);
 		}
-		if (ctx->classifier_solver.solutions[input_occurrence].classifier !=
-				refined_classifier) {
+		uint32_t current_input_classifier =
+			ctx->classifier_solver.solutions[input_occurrence].classifier;
+		if (current_input_classifier == PROTOTYPE_INVALID_ID ||
+			prototype_judgement_classifier_conversion(
+				ctx->terms,
+				ctx->type_declarations,
+				current_input_classifier,
+				refined_classifier
+			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			operation_solver_store_classifier_solution(
 				ctx, input_occurrence, refined_classifier
 			);

@@ -29,6 +29,7 @@ enum prototype_substitution_extend_result {
 #define PROTOTYPE_SUBSTITUTION_CAPACITY 8192
 #define PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT 1021
 #define PROTOTYPE_REINDEX_CACHE_COUNT 1021
+#define PROTOTYPE_SUBSTITUTION_BINDING_CACHE_COUNT 4093
 #define PROTOTYPE_CONTEXT_COMPREHENSION_ACTION_CAPACITY 8192
 
 /*
@@ -53,6 +54,13 @@ struct prototype_reindex_cache_entry {
 	uint32_t result;
 	uint64_t graph_revision;
 	uint64_t type_declaration_revision;
+};
+
+struct prototype_substitution_binding_cache_entry {
+	int present;
+	uint32_t substitution;
+	uint32_t binding_id;
+	uint32_t term;
 };
 
 /*
@@ -145,6 +153,8 @@ struct prototype_substitution_db {
 	uint64_t intern_probes;
 	struct prototype_reindex_cache_entry
 		reindex_cache[PROTOTYPE_REINDEX_CACHE_COUNT];
+	struct prototype_substitution_binding_cache_entry
+		binding_cache[PROTOTYPE_SUBSTITUTION_BINDING_CACHE_COUNT];
 	uint64_t reindex_requests;
 	uint64_t reindex_hits;
 };
@@ -425,6 +435,19 @@ int prototype_context_substitution_from_terms(
 	const uint32_t* arguments,
 	uint32_t argument_count,
 	uint32_t* p_substitution
+);
+int prototype_context_telescope_classifiers(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t prefix_substitution,
+	uint32_t telescope_base,
+	uint32_t telescope_end,
+	const uint32_t* previous_terms,
+	uint32_t previous_term_count,
+	uint32_t entry_count,
+	uint32_t* classifiers
 );
 int prototype_context_telescope_entry_classifier(
 	struct prototype_context_db* contexts,

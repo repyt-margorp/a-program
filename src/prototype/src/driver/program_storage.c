@@ -10,19 +10,19 @@
 #define PROGRAM_PARAMETER_CAPACITY 128
 #define PROGRAM_FIELD_TYPE_CAPACITY 512
 #define PROGRAM_TYPE_EXPR_CAPACITY 1024
-#define PROGRAM_AST_CAPACITY 1024
+#define PROGRAM_AST_CAPACITY 4096
 #define PROGRAM_AST_DEF_CAPACITY 256
 #define PROGRAM_AST_MATCH_CASE_CAPACITY 256
 #define PROGRAM_AST_MATCH_BINDER_CAPACITY 512
 #define PROGRAM_AST_FOLD_CLAUSE_CAPACITY 256
 #define PROGRAM_AST_BLOCK_ITEM_CAPACITY 4096
 #define PROGRAM_AST_DEFINITION_ITEM_CAPACITY 4096
-#define PROGRAM_AST_TYPE_EXPR_CAPACITY 1024
+#define PROGRAM_AST_TYPE_EXPR_CAPACITY 4096
 #define PROGRAM_AST_TYPE_DEF_CAPACITY 64
 #define PROGRAM_AST_FAMILY_BINDER_CAPACITY 128
 #define PROGRAM_AST_TYPE_CONSTRUCTOR_CAPACITY 256
 #define PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY 512
-#define PROGRAM_AST_ACCEPTED_BINDING_PROJECTION_CAPACITY 8192
+#define PROGRAM_AST_ACCEPTED_BINDING_SUBSTITUTION_CAPACITY 8192
 #define PROGRAM_UNIVERSE_NODE_CAPACITY 256
 #define PROGRAM_UNIVERSE_EDGE_CAPACITY 512
 #define PROGRAM_UNIVERSE_LEVEL_CAPACITY 1024
@@ -80,9 +80,9 @@ struct prototype_program_storage_backing {
 	uint32_t ast_type_field_exprs[PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY];
 	uint32_t ast_type_field_binder_ids[PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY];
 	int ast_type_field_name_symbol_ids[PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY];
-	struct prototype_ast_accepted_binding_projection
-		ast_accepted_binding_projections[
-			PROGRAM_AST_ACCEPTED_BINDING_PROJECTION_CAPACITY
+	struct prototype_ast_accepted_binding_substitution
+		ast_accepted_binding_substitutions[
+			PROGRAM_AST_ACCEPTED_BINDING_SUBSTITUTION_CAPACITY
 		];
 	struct prototype_universe_node universe_nodes[PROGRAM_UNIVERSE_NODE_CAPACITY];
 	struct prototype_universe_edge universe_edges[PROGRAM_UNIVERSE_EDGE_CAPACITY];
@@ -165,10 +165,10 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		PROGRAM_AST_TYPE_CONSTRUCTOR_CAPACITY, b->ast_type_field_exprs,
 		b->ast_type_field_binder_ids, b->ast_type_field_name_symbol_ids,
 		PROGRAM_AST_TYPE_FIELD_EXPR_CAPACITY);
-	prototype_ast_db_set_accepted_projection_storage(
+	prototype_ast_db_set_accepted_substitution_storage(
 		&storage->asts,
-		b->ast_accepted_binding_projections,
-		PROGRAM_AST_ACCEPTED_BINDING_PROJECTION_CAPACITY
+		b->ast_accepted_binding_substitutions,
+		PROGRAM_AST_ACCEPTED_BINDING_SUBSTITUTION_CAPACITY
 	);
 	prototype_universe_db_init(&storage->universe, b->universe_nodes,
 		PROGRAM_UNIVERSE_NODE_CAPACITY, b->universe_edges,

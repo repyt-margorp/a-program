@@ -112,6 +112,7 @@ int prototype_judgement_source_match_branch_refinement(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t scrutinee_context_id,
 	uint32_t scrutinee_term,
+	uint32_t scrutinee_binding_id,
 	uint32_t scrutinee_classifier,
 	uint32_t constructor_index,
 	uint32_t branch_context_id,
@@ -191,6 +192,16 @@ int prototype_judgement_delta_expand_app(
 	uint32_t* p_classifier
 );
 
+/* Interpret a pure, total type-family code in the prior-computation layer.
+ * Runtime APP remains governed exclusively by APP_ELIM and FORCE. */
+int prototype_judgement_delta_expand_static_family_app(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t* p_classifier
+);
+
 /* Materialize a source-operation derivation without choosing premises by
  * core-term identity. The caller supplies the already solved classifiers of
  * the source binder/body or function/argument occurrence. */
@@ -214,6 +225,7 @@ int prototype_judgement_delta_record_app_elim(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t subject,
 	uint32_t classifier,
+	int proof_kind,
 	const struct prototype_judgement_selected_evidence* function_evidence,
 	const struct prototype_judgement_selected_evidence* argument_evidence
 );

@@ -189,7 +189,8 @@ int prototype_typed_occurrence_graph_add_case(
 	if (!graph || graph->frozen || graph->sealed ||
 		!contexts || !graph->cases ||
 		!prototype_context_get(contexts, operation_case.context_id) ||
-		operation_case.binder_count > 16 ||
+		operation_case.binder_count >
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY ||
 		reserve_slot(graph->case_count, graph->case_capacity) != 0) {
 		return -1;
 	}

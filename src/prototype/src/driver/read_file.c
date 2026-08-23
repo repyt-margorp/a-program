@@ -27,19 +27,19 @@
 #define PARAMETER_CAPACITY 128
 #define FIELD_TYPE_CAPACITY 512
 #define TYPE_EXPR_CAPACITY 1024
-#define AST_CAPACITY 1024
+#define AST_CAPACITY 4096
 #define AST_DEF_CAPACITY 256
 #define AST_MATCH_CASE_CAPACITY 256
 #define AST_MATCH_BINDER_CAPACITY 512
 #define AST_COMPUTATION_FOLD_CLAUSE_CAPACITY 256
 #define AST_BLOCK_ITEM_CAPACITY 4096
 #define AST_DEFINITION_ITEM_CAPACITY 4096
-#define AST_TYPE_EXPR_CAPACITY 1024
+#define AST_TYPE_EXPR_CAPACITY 4096
 #define AST_TYPE_DEF_CAPACITY 64
 #define AST_FAMILY_BINDER_CAPACITY 128
 #define AST_TYPE_CONSTRUCTOR_CAPACITY 256
 #define AST_TYPE_FIELD_EXPR_CAPACITY 512
-#define AST_ACCEPTED_BINDING_PROJECTION_CAPACITY 8192
+#define AST_ACCEPTED_BINDING_SUBSTITUTION_CAPACITY 8192
 #define TERM_CAPACITY 262144
 #define MATCH_CASE_CAPACITY 262144
 #define MATCH_BINDER_CAPACITY 262144
@@ -115,8 +115,8 @@ static struct prototype_ast_type_constructor ast_type_constructors[AST_TYPE_CONS
 static uint32_t ast_type_field_exprs[AST_TYPE_FIELD_EXPR_CAPACITY];
 static uint32_t ast_type_field_binder_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
 static int ast_type_field_name_symbol_ids[AST_TYPE_FIELD_EXPR_CAPACITY];
-static struct prototype_ast_accepted_binding_projection
-	ast_accepted_binding_projections[AST_ACCEPTED_BINDING_PROJECTION_CAPACITY];
+static struct prototype_ast_accepted_binding_substitution
+	ast_accepted_binding_substitutions[AST_ACCEPTED_BINDING_SUBSTITUTION_CAPACITY];
 static struct prototype_universe_node
 	universe_nodes[PROTOTYPE_UNIVERSE_NODE_CAPACITY];
 static struct prototype_universe_edge
@@ -4589,10 +4589,10 @@ int main(int argc, char** argv) {
 		ast_type_field_name_symbol_ids,
 		AST_TYPE_FIELD_EXPR_CAPACITY
 	);
-	prototype_ast_db_set_accepted_projection_storage(
+	prototype_ast_db_set_accepted_substitution_storage(
 		&ast_db,
-		ast_accepted_binding_projections,
-		AST_ACCEPTED_BINDING_PROJECTION_CAPACITY
+		ast_accepted_binding_substitutions,
+		AST_ACCEPTED_BINDING_SUBSTITUTION_CAPACITY
 	);
 	prototype_universe_db_init(
 		&universe_db,

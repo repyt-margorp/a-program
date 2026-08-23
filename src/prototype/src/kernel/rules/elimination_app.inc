@@ -128,6 +128,71 @@ int prototype_judgement_delta_expand_app(
 		return -1;
 	}
 	if (select_status > 0) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			struct prototype_judgement_selected_evidence function_evidence[32];
+			struct prototype_judgement_selected_evidence argument_evidence[32];
+			uint32_t function_count = 0;
+			uint32_t argument_count = 0;
+			(void)collect_subject_evidence(
+				delta,
+				app->as.app.function,
+				function_evidence,
+				32,
+				&function_count
+			);
+			(void)collect_subject_evidence(
+				delta,
+				app->as.app.argument,
+				argument_evidence,
+				32,
+				&argument_count
+			);
+			fprintf(
+				stderr,
+				"APP expansion unavailable context=%u subject=%u function=%u "
+				"argument=%u functions=%u arguments=%u\n",
+				delta->current_context_id,
+				subject,
+				app->as.app.function,
+				app->as.app.argument,
+				function_count,
+				argument_count
+			);
+			for (uint32_t i = 0; i < function_count; ++i) {
+				uint32_t pi;
+				uint32_t domain;
+				uint32_t family;
+				int pi_status = classifier_kernel_as_pi(
+					terms,
+					type_declarations,
+					NULL,
+					function_evidence[i].classifier,
+					&pi,
+					&domain,
+					&family
+				);
+				fprintf(
+					stderr,
+					"  function evidence[%u] context=%u classifier=%u pi=%d "
+					"domain=%u family=%u\n",
+					i,
+					function_evidence[i].context_id,
+					function_evidence[i].classifier,
+					pi_status,
+					pi_status == 0 ? domain : PROTOTYPE_INVALID_ID,
+					pi_status == 0 ? family : PROTOTYPE_INVALID_ID
+				);
+			}
+			for (uint32_t i = 0; i < argument_count; ++i) {
+				fprintf(
+					stderr,
+					"  argument evidence[%u] context=%u classifier=%u\n",
+					i,
+					argument_evidence[i].context_id,
+					argument_evidence[i].classifier
+				);
+			}
+		}
 		uint32_t argument_candidates[32];
 		uint32_t argument_candidate_count = 0;
 		if (collect_subject_classifiers(
@@ -451,6 +516,106 @@ static int infer_lambda_classifiers_from_body(
 				}
 			}
 		}
+	}
+		return 0;
+	}
+
+int prototype_judgement_delta_expand_static_family_app(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t subject,
+	uint32_t* p_classifier
+) {
+	if (!delta || !delta->contexts || !delta->substitutions ||
+		!term_has_tag(terms, subject, PROTOTYPE_TERM_APP)) {
+		return -1;
+	}
+	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
+	const struct prototype_term* app = &terms->terms[subject];
+	struct prototype_judgement_selected_evidence function_evidence[32];
+	struct prototype_judgement_selected_evidence argument_evidence[32];
+	uint32_t function_count = 0;
+	uint32_t argument_count = 0;
+	if (collect_subject_evidence(
+			delta,
+			app->as.app.function,
+			function_evidence,
+			32,
+			&function_count
+		) != 0 || collect_subject_evidence(
+			delta,
+			app->as.app.argument,
+			argument_evidence,
+			32,
+			&argument_count
+		) != 0) {
+		return -1;
+	}
+	uint32_t result_count = 0;
+	uint32_t first_classifier = PROTOTYPE_INVALID_ID;
+	for (uint32_t function_index = 0;
+		function_index < function_count;
+		++function_index) {
+		for (uint32_t argument_index = 0;
+			argument_index < argument_count;
+			++argument_index) {
+			uint32_t result_classifier;
+			int status = prototype_judgement_static_family_app_classifier(
+				delta->contexts,
+				delta->substitutions,
+				terms,
+				type_declarations,
+				delta->current_context_id,
+				function_evidence[function_index].classifier,
+				app->as.app.argument,
+				argument_evidence[argument_index].classifier,
+				&result_classifier
+			);
+			if (status < 0) {
+				return -1;
+			}
+			if (status > 0) {
+				continue;
+			}
+			uint32_t premise_subjects[2] = {
+				app->as.app.function,
+				app->as.app.argument
+			};
+			uint32_t premise_classifiers[2] = {
+				function_evidence[function_index].classifier,
+				argument_evidence[argument_index].classifier
+			};
+			struct prototype_judgement_selected_evidence premises[2] = {
+				function_evidence[function_index],
+				argument_evidence[argument_index]
+			};
+			if (add_delta_relation_with_explicit_premises(
+					delta,
+					PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+					subject,
+					result_classifier,
+					PROTOTYPE_JUDGEMENT_PROOF_STATIC_FAMILY_APP_ELIM,
+					NULL,
+					NULL,
+					premise_subjects,
+					premise_classifiers,
+					premises,
+					2
+				) != 0) {
+				return -1;
+			}
+			if (result_count == 0) {
+				first_classifier = result_classifier;
+			}
+			result_count++;
+		}
+	}
+	if (result_count == 0) {
+		return 1;
+	}
+	if (p_classifier) {
+		*p_classifier = first_classifier;
 	}
 	return 0;
 }

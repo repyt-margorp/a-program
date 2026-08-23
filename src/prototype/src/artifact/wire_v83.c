@@ -405,18 +405,27 @@ int prototype_artifact_read_text_interface(
 			];
 		if (fscanf(
 				stream,
-				"%255s %zu %u %u %u %u",
+					"%255s %zu %u %u %u %u %u %u %u",
 				word,
 				&id,
 				&association->owner_term_export_index,
 				&association->graph_type_export_index,
 				&association->result_type_export_index,
-				&association->certified_runner_term_export_index
-			) != 6 || strcmp(word, "function_graph_association") != 0 ||
+				&association->graph_interface_term_export_index,
+				&association->certified_adapter_term_export_index,
+					&association->certified_runner_term_export_index,
+					&association->certified_argument_index
+				) != 9 || strcmp(word, "function_graph_association") != 0 ||
 			id != interface->function_graph_association_count ||
 			association->owner_term_export_index >= interface->term_export_count ||
 			association->graph_type_export_index >= interface->type_export_count ||
 			association->result_type_export_index >= interface->type_export_count ||
+			association->graph_interface_term_export_index >=
+				interface->term_export_count ||
+			(association->certified_adapter_term_export_index !=
+				PROTOTYPE_INVALID_ID &&
+			 association->certified_adapter_term_export_index >=
+				interface->term_export_count) ||
 			association->certified_runner_term_export_index >=
 				interface->term_export_count) {
 			return -1;
@@ -2190,7 +2199,7 @@ int prototype_artifact_read_text_graph(
 			strcmp(claim_label, "claim") != 0 ||
 			strcmp(premise_count_label, "premises") != 0 ||
 			proof_kind < PROTOTYPE_JUDGEMENT_PROOF_TYPE_FORMATION_INTRO ||
-			proof_kind > PROTOTYPE_JUDGEMENT_PROOF_TERMINATES_TOTAL_COMPUTATION ||
+			proof_kind > PROTOTYPE_JUDGEMENT_PROOF_STATIC_FAMILY_APP_ELIM ||
 			((proof_kind >=
 					PROTOTYPE_JUDGEMENT_PROOF_RELATION_TYPE_FORMATION &&
 			  proof_kind <=
@@ -2842,7 +2851,8 @@ int prototype_artifact_read_text_typed_occurrences(
 				&binder_case_id,
 				&operation_case.binder_count
 			) != 3 || strcmp(word, "occurrence_match_case_binders") != 0 ||
-			binder_case_id != i || operation_case.binder_count > 16) {
+			binder_case_id != i || operation_case.binder_count >
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY) {
 			return -1;
 		}
 		for (uint32_t j = 0; j < operation_case.binder_count; ++j) {

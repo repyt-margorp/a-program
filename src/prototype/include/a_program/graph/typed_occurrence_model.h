@@ -130,6 +130,8 @@ struct prototype_typed_occurrence_edge {
 	uint32_t child_occurrence;
 };
 
+#define PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY 64
+
 struct prototype_typed_occurrence_match_case {
 	/* Semantic case telescope. Source binder IDs below are occurrence metadata. */
 	uint32_t context_id;
@@ -145,8 +147,8 @@ struct prototype_typed_occurrence_match_case {
 	uint32_t binder_count;
 	/* Exact source-occurrence Binding identities. Core Match binders may be
 	 * alpha-interned and refined Contexts need not end in the case telescope. */
-	uint32_t binder_ids[16];
-	uint32_t ast_binder_ids[16];
+	uint32_t binder_ids[PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY];
+	uint32_t ast_binder_ids[PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY];
 };
 
 static inline int prototype_typed_occurrence_match_case_is_solved(

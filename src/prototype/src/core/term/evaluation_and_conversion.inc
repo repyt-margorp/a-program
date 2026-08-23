@@ -2465,6 +2465,26 @@ static int normalize_term_at_depth(
 			}
 			return prototype_term_lambda(db, term->as.lambda.binding_id, body, p_ret);
 		}
+		case PROTOTYPE_TERM_RETURN: {
+			uint32_t value;
+			if (normalize_term_at_depth(
+					db, type_declarations, definitions, options,
+					term->as.return_term.value, &value, depth - 1
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_return(db, value, p_ret);
+		}
+		case PROTOTYPE_TERM_THUNK: {
+			uint32_t computation;
+			if (normalize_term_at_depth(
+					db, type_declarations, definitions, options,
+					term->as.thunk.computation, &computation, depth - 1
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_thunk(db, computation, p_ret);
+		}
 		case PROTOTYPE_TERM_PI: {
 			uint32_t domain;
 			uint32_t codomain_family;
@@ -2653,7 +2673,7 @@ static int conversion_distribute_app_over_match(
 		match.as.match.scrutinee,
 		cases,
 		match.as.match.case_count,
-		PROTOTYPE_INVALID_ID,
+		match.as.match.ih_scope_id,
 		p_result
 	);
 }

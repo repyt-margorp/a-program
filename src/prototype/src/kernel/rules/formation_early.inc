@@ -524,6 +524,7 @@ int prototype_judgement_source_match_branch_refinement(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t scrutinee_context_id,
 	uint32_t scrutinee_term,
+	uint32_t scrutinee_binding_id,
 	uint32_t scrutinee_classifier,
 	uint32_t constructor_index,
 	uint32_t branch_context_id,
@@ -653,9 +654,14 @@ int prototype_judgement_source_match_branch_refinement(
 	}
 	uint32_t scrutinee_binding_context;
 	const struct prototype_context* scrutinee_context;
-	if (prototype_context_find_binding(
+	/* Alpha-interning may select another VAR node as the erased Core
+	 * representative. The source occurrence's Binding identity, not that
+	 * representative's payload, determines the Context variable refined by this
+	 * Match branch. */
+	if (scrutinee_binding_id == PROTOTYPE_INVALID_ID ||
+		prototype_context_find_binding(
 			contexts, scrutinee_context_id,
-			terms->terms[scrutinee_term].as.var.binding_id,
+			scrutinee_binding_id,
 			&scrutinee_binding_context
 		) != 0 || !(scrutinee_context = prototype_context_get(
 			contexts, scrutinee_binding_context
@@ -1516,6 +1522,43 @@ int prototype_judgement_delta_record_context_binding_assumption(
 			binding_id
 		) || prototype_term_var(terms, binding_id, &subject) != 0) {
 		return -1;
+	}
+	struct prototype_judgement_selected_evidence classifier_evidence[32];
+	uint32_t classifier_evidence_count = 0;
+	if (collect_subject_evidence(
+			delta,
+			classifier,
+			classifier_evidence,
+			32,
+			&classifier_evidence_count
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < classifier_evidence_count; ++i) {
+		if (classifier_evidence[i].context_id != delta->current_context_id ||
+			!term_is_universe_var(terms, classifier_evidence[i].classifier)) {
+			continue;
+		}
+		uint32_t premise_subject = classifier;
+		uint32_t premise_classifier = classifier_evidence[i].classifier;
+		return add_delta_relation_with_authority_and_explicit_premise_actions(
+			delta,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CONTEXT_BINDING,
+			subject,
+			PROTOTYPE_INVALID_ID,
+			PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
+			subject,
+			classifier,
+			PROTOTYPE_JUDGEMENT_PROOF_BINDER_ASSUMPTION,
+			NULL,
+			NULL,
+			&premise_subject,
+			&premise_classifier,
+			&classifier_evidence[i],
+			NULL,
+			NULL,
+			1
+		);
 	}
 	return add_delta_relation(
 		delta,

@@ -638,6 +638,7 @@ static int operation_check_classifier(
 						&ctx->metadata->substitutions,
 						ctx->terms, ctx->type_declarations,
 						scrutinee->context_id, scrutinee->core_term,
+						scrutinee->binding_id,
 						scrutinee_classifier,
 						constructor_index, synthetic_context, binders,
 						field_count, &ignored_context,
@@ -683,37 +684,6 @@ static int operation_refine_classifier_from_expected(
 	}
 	const struct prototype_typed_occurrence* operation =
 		&ctx->metadata->typed_occurrences.occurrences[operation_id];
-	/* A constructor-domain equation is independent synthesized evidence for an
-	 * unresolved pattern variable. Record it before canonicalizing Contexts:
-	 * Context resolution consumes occurrence solutions, so requiring it first
-	 * would make the two fixed-point steps wait on each other. */
-	if (depth == 0 && operation->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
-		operation_solver_classifier(ctx, operation_id) == PROTOTYPE_INVALID_ID &&
-		operation->core_term < ctx->terms->term_count &&
-		ctx->terms->terms[operation->core_term].tag == PROTOTYPE_TERM_VAR) {
-		uint32_t binding_context_id;
-		if (prototype_context_find_binding(
-				&ctx->metadata->contexts,
-				operation->context_id,
-				ctx->terms->terms[operation->core_term].as.var.binding_id,
-				&binding_context_id
-			) == 0) {
-			const struct prototype_context* binding_context =
-				prototype_context_get(
-					&ctx->metadata->contexts, binding_context_id
-				);
-			if (binding_context && prototype_context_classifier_term(
-					binding_context
-				) == PROTOTYPE_INVALID_ID) {
-				operation_solver_store_classifier_solution(
-					ctx, operation_id, expected_classifier
-				);
-				*p_changed = 1;
-				return operation_solver_enqueue_dependents(ctx, operation_id) == 0 ?
-					1 : -1;
-			}
-		}
-	}
 	if (depth == 0 && !ctx->materializing_checked_classifiers &&
 		operation_solver_resolve_contexts(ctx, 0) != 0) {
 		return -1;
@@ -2344,12 +2314,31 @@ static int compile_pending_with_workspace(
 	metadata->termination_evidence_time_ns +=
 		compile_performance_elapsed_ns(phase_started);
 	/* Close only the accepted Judgement DAG again; classifier and effect
-	 * solutions remain frozen and cannot receive feedback from evidence. */
+	 * solutions remain frozen and cannot receive feedback from evidence. A
+	 * publication round can expose a newly accepted substitution premise, so
+	 * iterate until both Claims and Derivations are stable. */
 	phase_started = compile_performance_clock_ns();
-	if (operation_solver_materialize_judgements(&ctx) != 0 ||
-		prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
-		prototype_judgement_publish_candidates(occurrence_graph, judgement) != 0) {
-		fprintf(stderr, "post-evidence judgement closure failed\n");
+	int evidence_closed = 0;
+	for (uint32_t round = 0; round < 16; ++round) {
+		size_t before_claims = judgement->claim_count;
+		size_t before_derivations = judgement->derivation_count;
+		if (operation_solver_materialize_judgements(&ctx) != 0 ||
+			prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
+			prototype_judgement_publish_candidates(
+				occurrence_graph, judgement
+			) != 0) {
+			fprintf(stderr, "post-evidence judgement closure failed round=%u\n", round);
+			return -1;
+		}
+		if (judgement->claim_count == before_claims &&
+			judgement->derivation_count == before_derivations &&
+			!ctx.proof_materialization_substitution_pending) {
+			evidence_closed = 1;
+			break;
+		}
+	}
+	if (!evidence_closed) {
+		fprintf(stderr, "post-evidence judgement closure did not stabilize\n");
 		return -1;
 	}
 	metadata->evidence_closure_time_ns +=
@@ -2392,6 +2381,36 @@ static int compile_pending_with_workspace(
 			judgement
 		) != 0) {
 		fprintf(stderr, "P0 proof candidate publication failed\n");
+		return -1;
+	}
+	/* Normalization conversion expansion adds scoped substitution premises after
+	 * the ordinary evidence closure above. Close those newly accepted edges
+	 * before sealing and replaying the graph. */
+	int normalization_evidence_closed = 0;
+	for (uint32_t round = 0; round < 16; ++round) {
+		size_t before_claims = judgement->claim_count;
+		size_t before_derivations = judgement->derivation_count;
+		if (operation_solver_materialize_judgements(&ctx) != 0 ||
+			prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
+			prototype_judgement_publish_candidates(
+				occurrence_graph, judgement
+			) != 0) {
+			fprintf(
+				stderr,
+				"normalization evidence closure failed round=%u\n",
+				round
+			);
+			return -1;
+		}
+		if (judgement->claim_count == before_claims &&
+			judgement->derivation_count == before_derivations &&
+			!ctx.proof_materialization_substitution_pending) {
+			normalization_evidence_closed = 1;
+			break;
+		}
+	}
+	if (!normalization_evidence_closed) {
+		fprintf(stderr, "normalization evidence closure did not stabilize\n");
 		return -1;
 	}
 	if (prototype_typed_occurrence_graph_seal(

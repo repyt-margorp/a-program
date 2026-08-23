@@ -2,7 +2,7 @@
 
 Date: 2026-08-22 JST
 
-Status: implementation in progress
+Status: FGR4 implementation complete; FGR8 performance and HOTT follow-up open
 
 Base revision: `715eaf1e70b1c6fa7a0e6ed7a098777823fca666`
 
@@ -61,7 +61,7 @@ to the kernel.
 - [x] FGR1: add graph requests and immutable accepted-definition views.
 - [x] FGR2: generate `@length`, its result package, and `*length`.
 - [x] FGR3: derive executable `length` by evidence erasure/projection.
-- [ ] FGR4: support helper calls and the `Acc` QuickSort worker graph.
+- [x] FGR4: support helper calls and the `Acc` QuickSort worker graph.
 - [x] FGR5: publish and replay generated graph objects in artifact v83.
 - [x] FGR6: remove obsolete `Returns` fixtures and preserve separate sequencing
   coverage. QuickSort graph-property fixtures remain part of FGR4.
@@ -80,7 +80,8 @@ The current implementation checkpoint provides:
   and executable projection for the supported pure-total fragment;
 - branch-precise constructors and recursive graph premises for unary direct
   Match recursion, covered by `length`;
-- a conservative coarse `executed` graph for other curried pure-total functions;
+- unsupported source shapes are residual; no forgeable catch-all graph
+  constructor is generated;
 - artifact v83 owner/graph/result/certified-runner associations, dense
   publication, readback, link validation, and malformed-index rejection;
 - complete removal of active `Returns` syntax, Term formers, proof rules, and
@@ -88,10 +89,81 @@ The current implementation checkpoint provides:
 - sequence-result Context provenance and direct totality witnesses justified by
   accepted `TOTAL` computation classifiers.
 
-The coarse graph is deliberately **not** accepted as completion of FGR4. It
-records that a result was produced, but it does not expose QuickSort's lower and
-upper recursive calls. It is useful only as a typed execution package while the
-structure-preserving generator remains unsupported.
+The earlier coarse `executed(args, output)` fallback was removed after the
+implementation audit. Because its public constructor admitted every output, it
+was not merely imprecise: it failed to characterize the named execution at all.
+Only structure-preserving generated constructors are accepted.
+
+### 2.2 2026-08-23 FGR4 implementation audit
+
+The implementation now additionally has:
+
+- recursive accepted-AST traversal and exact recursive APP spines;
+- full dependent source argument indices and two recursive-call packages;
+- requested-only named helper graph/result packages;
+- dependency-first generation, so one type's constructor interval is not
+  interleaved with a helper type's constructors;
+- direct and nested runner support for terminal named helper packages;
+- explicit projection from classifier Pi binders to accepted source-operation
+  binders before a dependent final result is used.
+
+The final item fixes a real authority bug exposed by `partitionLower` and
+`partitionUpper`. Their structurally shared classifier could retain the first
+definition's Pi Binding IDs. Peeling that Pi and treating its codomain as if it
+already lived in the second definition's operation Context leaked foreign free
+Bindings. The accepted argument path now constructs the one Context
+substitution from classifier binders to source-operation binders before graph
+schema generation. This is a semantic projection between binder contexts, not
+name-based remapping.
+
+`partitionByDecision` now generates and type-checks a certified graph using the
+ordinary helper packages for `partitionLower` and `partitionUpper`.
+
+The `partition` boundary is higher-order. Its block computes:
+
+```text
+decision := le head pivot
+```
+
+Recording only `decision : Bool` would make the public graph constructor
+forgeable. A sound implementation must carry evidence that this output belongs
+to the graph interface selected for this exact `le` argument. The proof-side
+callback therefore returns an ordinary dependent IADT package:
+
+```text
+CertifiedBinaryBool A LeGraph left right := @{
+	returned : (output : Bool) -> LeGraph left right output -> *;
+}
+
+leCertified : (left : A) -> (right : A) ->
+	CertifiedBinaryBool A LeGraph left right
+```
+
+This package is implemented using the existing indexed-family implementation;
+it requires no Core tag. The elaboration contract is strict:
+
+1. generated graph families are relationally parameterized by `LeGraph`;
+2. generated certified runners receive `leCertified` and obtain `decision` and
+   its graph witness in one sequencing step;
+3. named `&le` arguments may be elaborated only to the associated `@le`/`*le`;
+4. a local or anonymous comparator without an explicit certified interface is
+   residual;
+5. an arbitrary callback must never be silently paired with an unrelated raw
+   comparator;
+6. generated helper calls propagate the same interface through `partition`,
+   `quickSortAcc`, and `quickSort`.
+
+The compiler must not mutate an already accepted source definition to insert
+these proof arguments. They belong to generated graph/result/runner objects and
+to graph-reference consumer elaboration. The executable definition retains its
+raw operational classifier.
+
+The focused boundary test now generates this interface for the named
+`leftIsZero` comparator, propagates it through `partition`, `quickSortAcc`, and
+`quickSort`, publishes the generated closure in artifact v83, and eliminates
+the 17-field `quickSortAcc.cons` graph constructor as an ordinary IADT. An
+anonymous comparator remains residual because it does not select an
+authoritative graph interface.
 
 ## 3. Critical Review of PR #19
 
@@ -248,6 +320,32 @@ The first accepted fragment is therefore:
 
 `@f` for partial or effectful definitions may be designed later, but neither
 `@f` nor `*f` is silently generated outside the accepted fragment in this plan.
+
+### 3.7 Higher-order arguments require an explicit graph interface
+
+The initial FGR4 wording proposed recording a comparator's observed Bool while
+not requiring evidence that the Bool came from that comparator. That is
+insufficient for an ordinary public IADT: a user could apply the generated
+constructor with an arbitrary Bool and forge a trace unrelated to `le`.
+
+The corrected contract is:
+
+```text
+LeGraph : A -> A -> Bool -> @
+leCertified : (x : A) -> (y : A) -> LeResult LeGraph x y
+```
+
+The graph/certified interface generated for QuickSort receives these additional
+proof-side parameters. The executable `quickSort` keeps its existing raw
+comparator argument and operational classifier. A named comparator may supply
+its generated `@le` and `*le`; a local or anonymous comparator without an
+explicit interface is residual. This is not a renamed global `Returns`
+predicate: the relation is definition-specific, ordinary IADT evidence and is
+passed only where a higher-order call must be reflected in another graph.
+
+The compiler may later elaborate a named `&lessOrEqual` argument by inserting
+its graph interface. The first implementation may require the interface
+explicitly, but it must never fabricate comparator observations.
 
 ## 4. Revised Semantic Contract
 
@@ -484,7 +582,7 @@ the generator must not guess.
   dependent package elimination.
 - [x] Add a fixture proving that total/pure `f x` in a graph index is accepted
   only through existing ahead-of-time value extraction.
-- [ ] Record current QuickSort and result-evidence performance baselines.
+- [x] Record current QuickSort and result-evidence performance baselines.
 - [x] Add static checks forbidding new graph-specific Core and proof tags.
 
 Exit gate:
@@ -530,7 +628,7 @@ second compiler.
 
 Tasks:
 
-- [ ] Implement accepted-view traversal for constructor, Match, RETURN,
+- [x] Implement accepted-view traversal for constructor, Match, RETURN,
   zero-clause COMPUTATION_FOLD, APP, and guarded IH.
 - [x] Generate `@length` as an ordinary indexed family.
 - [x] Generate `length.Result` as an ordinary indexed family.
@@ -538,7 +636,7 @@ Tasks:
 - [x] Compile every generated object through existing lowering and fixed point.
 - [ ] Reuse accepted Context/Substitution IDs through view references; create
   new Context extensions only for genuinely generated binders.
-- [ ] Reject unsupported source operations with a precise residual diagnostic.
+- [x] Reject unsupported source operations with a precise residual diagnostic.
 
 Exit gate:
 
@@ -580,30 +678,30 @@ quickSort
 
 Tasks:
 
-- [ ] Replace syntactic root-Lambda counting with an accepted dependent binder
+- [x] Replace syntactic root-Lambda counting with an accepted dependent binder
   path. `quickSortAcc`'s final `input` binder is introduced under the `Acc.acc`
   branch, so scanning only consecutive root Lambdas loses a real argument.
-- [ ] Generalize precise graph indices from `(input, output)` to the full
+- [x] Generalize precise graph indices from `(input, output)` to the full
   dependent argument spine plus output. Project each later argument classifier
   through the binding map built by earlier arguments.
-- [ ] Implement recursive accepted-AST traversal for Lambda, Match, RETURN,
+- [x] Implement recursive accepted-AST traversal for Lambda, Match, RETURN,
   APP, zero-clause COMPUTATION_FOLD, and computation blocks. Unsupported effect
   clauses must produce a residual instead of falling back to `executed`.
-- [ ] Lift the motive of the Match that owns an IH from ordinary output to the
+- [x] Lift the motive of the Match that owns an IH from ordinary output to the
   generated result package. The lifted local IH must return the recursive
   output and graph witness together; running the old IH and forging a graph
   afterward is forbidden.
-- [ ] Generate helper graph/result packages only when required by the requested
+- [x] Generate helper graph/result packages only when required by the requested
   QuickSort graph.
-- [ ] Treat the comparator as a pure higher-order input. Record its observed
-  Bool result in execution structure without inventing a graph for the unknown
-  function value.
-- [ ] Translate local `*down` IH occurrences to recursive
+- [x] Add proof-side higher-order graph parameters for the comparator. Named
+  comparators use their `@le`/`*le` association; local or anonymous functions
+  without an explicit graph interface are residual.
+- [x] Translate local `*down` IH occurrences to recursive
   `@quickSortAcc` graph evidence using exact IH owner/scope/case/field IDs.
-- [ ] Preserve both lower and upper recursive call packages in source order.
-- [ ] Generate a public wrapper graph that hides irrelevant raw `Acc` fields via
+- [x] Preserve both lower and upper recursive call packages in source order.
+- [x] Generate a public wrapper graph that hides irrelevant raw `Acc` fields via
   a checked constructor/witness term, not via metadata deletion.
-- [ ] Add one ordinary IADT-elimination theorem that follows the QuickSort
+- [x] Add one ordinary IADT-elimination theorem that follows the QuickSort
   recursive shape. Sortedness and permutation remain separate theorem work.
 
 Exit gate:
@@ -612,8 +710,8 @@ Exit gate:
 - the partition branch exposes exactly two recursive graph premises;
 - no QuickSort-specific Core tag, proof kind, or trusted rule exists.
 
-Implementation stop condition: the generic coarse `executed` constructor must
-not be used to satisfy this gate. For `quickSortAcc`, a successful test must
+Implementation stop condition: no generic `executed(args, output)` constructor
+may be used to satisfy this gate. For `quickSortAcc`, a successful test must
 eliminate its generated partition constructor and receive two distinct graph
 premises corresponding to the lower call followed by the upper call.
 
@@ -655,7 +753,7 @@ Tasks:
 - [ ] Replace the named-function parts of
   `result_evidence_dependent_check.p` with certified graph execution.
 - [x] Add permanent generated `length` graph tests.
-- [ ] Add permanent QuickSort worker/wrapper graph tests.
+- [x] Add permanent QuickSort worker/wrapper graph tests.
 - [ ] Add negative tests for wrong owner, wrong output index, wrong recursive
   premise, wrong Context, forged constructor, partial owner, effectful owner,
   and missing imported graph export.
@@ -738,18 +836,53 @@ test_result_evidence.sh            3.761 s total
 
 Performance gates:
 
-- [ ] Report source compile, fixed point, proof materialization, accepted replay,
+- [x] Report source compile, fixed point, proof materialization, accepted replay,
   publication, readback, and artifact equality separately.
-- [ ] Report Term, typed occurrence, Context, Substitution, Claim, Derivation,
+- [x] Report Term, typed occurrence, Context, Substitution, Claim, Derivation,
   type declaration, and artifact byte deltas.
-- [ ] Do not add Context/Substitution index rebuilds to graph generation.
+- [x] Do not add Context/Substitution index rebuilds to graph generation.
 - [ ] Require requested-only graph generation to leave unrelated modules within
   measurement noise.
 - [ ] Require the graph-enabled QuickSort source compile to stay within 1.25x
   of the pre-graph source compile unless a measured proof-size reason is
   documented and accepted.
 - [ ] Compare v83 graph artifacts against v82 Returns artifacts.
-- [ ] Report per-file added/deleted lines and total source-line delta.
+- [x] Report per-file added/deleted lines and total source-line delta.
+
+2026-08-23 FGR4 measurement on the same build and host:
+
+```text
+                                      IF8 source   graph-enabled source
+wall time                                0.421 s              5.109 s
+graph build                              0.003 s              0.032 s
+fixed point                              0.075 s              1.114 s
+proof materialization                    0.037 s              0.378 s
+evidence closure                         0.022 s              0.130 s
+accepted replay                          0.183 s              2.166 s
+TermDB terms                              8,650               42,730
+typed occurrences                          755                2,024
+published Contexts                         250                  869
+published Substitutions                    546                1,748
+published Claims / Derivations          703 / 707        2,106 / 2,120
+artifact bytes                          482,520            1,590,285
+artifact write wall                       0.468 s              5.493 s
+artifact readback wall                       n/a               0.619 s
+Context/Substitution index rebuilds         0 / 0                0 / 0
+```
+
+The graph-enabled source is about `12.1x` the no-request source compile, so the
+`1.25x` gate is not met. This is not explained by Context/Substitution index
+rebuilds. The requested dependency closure adds 19 type declarations, 25
+constructors, 1,269 typed occurrences, and about 34,000 live TermDB terms; its
+accepted certificate image is about three times the base artifact. The largest
+remaining phases are accepted replay and fixed point. This remains a measured
+performance obligation rather than being waived as measurement noise.
+
+During this audit, immutable `(Substitution, Binding) -> Term` lookup caching
+reduced graph source compilation from `10.95 s` to `5.11 s` and Term formation
+requests from about `50.9 million` to `1.0 million`. Telescope field domains are
+also projected in one left-to-right pass instead of rebuilding every prefix.
+These are rebuildable runtime accelerators; neither is artifact authority.
 
 ## 7. Required Invariants
 
@@ -826,6 +959,7 @@ Artifact version: v83
 Graph-enabled definitions: unary direct-Match recursion; conservative curried
                            pure-total execution packages
 Unsupported definitions: structure-preserving nested Match/fold graphs,
+                         higher-order calls without graph interfaces,
                          effectful and partial definitions
 
 Correctness tests: focused function graph, totality, CBPV, IADT, and QuickSort
@@ -844,9 +978,102 @@ Known residual theory obligations: FGR4 certified motive lifting, two recursive
                                    higher/effectful function graphs
 ```
 
-This checkpoint does not claim QuickSort graph induction is complete. Existing
-fuel-free QuickSort execution remains tested, while its generated graph request
-currently selects the explicitly documented coarse package.
+The 2026-08-22 checkpoint did not claim QuickSort graph induction was complete:
+its graph request was residual until the structure-preserving generator and
+comparator interface became available. FGR4 below closes that implementation
+boundary.
+
+### 11.2 2026-08-23 FGR4 implementation checkpoint
+
+```text
+Implemented revision: pending final commit
+Artifact version: v83
+
+Graph-enabled definitions: requested pure-total dependent functions; nested
+                           Match/IH recursion; multiple recursive calls; named
+                           higher-order binary Bool callbacks with @f/*f;
+                           Acc QuickSort worker and public wrapper
+Unsupported definitions: anonymous higher-order callbacks without an explicit
+                         graph interface; effectful or partial function graphs
+
+Correctness tests: dependent spine, two recursive calls, QuickSort dependency
+                   closure, ordinary graph IADT elimination, CBPV sequencing
+Negative tests: unknown owner, computation-valued index, coarse forged graph,
+                malformed artifact association
+Artifact/replay tests: v83 association write/read/link/replay and deterministic
+                       regeneration for generated graph artifacts
+Full suite: 41/41 passed in 103.977 s
+
+Before/after graph source timing: 10.95 s -> 5.11 s after reindex lookup cache
+Before/after focused graph test: 13.86 s -> 6.31 s
+Base/graph artifact bytes: 482,520 -> 1,590,285
+Base/graph TermDB terms: 8,650 -> 42,730
+Base/graph typed occurrences: 755 -> 2,024
+
+Total implementation additions: 11,425
+Total implementation deletions: 1,946
+Net implementation change: +9,479
+
+Returns active references remaining: negative removed-syntax fixture only
+Known residual obligations: graph-specific HOTT proof-relevance test; accepted
+                            replay/fixed-point performance; complete negative
+                            ownership/effect/import matrix
+```
+
+Per-file implementation delta (`added deleted path`) at this checkpoint:
+
+```text
+1 1 src/prototype/calculus.h
+3 0 src/prototype/include/a_program/artifact/interface.h
+26 13 src/prototype/include/a_program/frontend/ast.h
+7 0 src/prototype/include/a_program/graph/compile_metadata.h
+4 2 src/prototype/include/a_program/graph/typed_occurrence_model.h
+23 0 src/prototype/include/a_program/kernel/context.h
+16 0 src/prototype/include/a_program/kernel/judgement/conversion.h
+12 0 src/prototype/include/a_program/kernel/judgement/rules.h
+2 1 src/prototype/include/a_program/kernel/judgement/types.h
+12 4 src/prototype/spec/artifact_v83.schema
+21 5 src/prototype/src/artifact/interface.c
+5 0 src/prototype/src/artifact/link.c
+45 8 src/prototype/src/artifact/publication/closure_marking_and_slices.inc
+55 20 src/prototype/src/artifact/publication/dense_publication.inc
+1 1 src/prototype/src/artifact/publication/section_writers.inc
+11 2 src/prototype/src/artifact/publication/writer.inc
+15 5 src/prototype/src/artifact/wire_v83.c
+21 1 src/prototype/src/core/term/evaluation_and_conversion.inc
+16 8 src/prototype/src/core/term/substitution.inc
+0 1 src/prototype/src/driver/compiler_session.c
+9 9 src/prototype/src/driver/program_storage.c
+8 8 src/prototype/src/driver/read_file.c
+35 18 src/prototype/src/frontend/ast.c
+4 2 src/prototype/src/frontend/ast_inspect.c
+7226 1306 src/prototype/src/frontend/function_graph.c
+602 19 src/prototype/src/frontend/lowering/constraint/branch_refinement_and_motives.inc
+113 39 src/prototype/src/frontend/lowering/constraint/classifier_and_computation_propagation.inc
+65 17 src/prototype/src/frontend/lowering/constraint/effect_propagation_and_residuals.inc
+940 250 src/prototype/src/frontend/lowering/constraint/evidence_and_freeze.inc
+6 2 src/prototype/src/frontend/lowering/constraint/model_generation_and_index.inc
+406 45 src/prototype/src/frontend/lowering/context_and_type_lowering.inc
+55 36 src/prototype/src/frontend/lowering/finalization_and_entrypoints.inc
+695 47 src/prototype/src/frontend/lowering/graph_construction.inc
+2 1 src/prototype/src/graph/typed_occurrence/graph_validation.inc
+2 1 src/prototype/src/graph/typed_occurrence/storage.inc
+85 20 src/prototype/src/kernel/context.c
+165 0 src/prototype/src/kernel/rules/elimination_app.inc
+45 2 src/prototype/src/kernel/rules/formation_early.inc
+28 10 src/prototype/src/kernel/rules/introduction/structural.inc
+59 0 src/prototype/src/kernel/type_declaration.c
+159 25 src/prototype/src/kernel/typing/accepted_replay.inc
+1 0 src/prototype/src/kernel/typing/candidate_replay.inc
+86 16 src/prototype/src/kernel/typing/classifier_solver.inc
+184 0 src/prototype/src/kernel/typing/conversion.inc
+7 2 src/prototype/tests/checks/shared_term_reindex_check.c
+1 0 src/prototype/tests/checks/spec_enum_check.c
+72 0 src/prototype/tests/integration/test_function_graph_certified_execution.sh
+8 0 src/prototype/tests/fixtures/negative/function_graph_coarse_forgery.p
+32 0 src/prototype/tests/fixtures/typing/function_graph_dependent_spine_check.p
+30 0 src/prototype/tests/fixtures/typing/function_graph_two_recursive_calls_check.p
+```
 
 At completion, append:
 

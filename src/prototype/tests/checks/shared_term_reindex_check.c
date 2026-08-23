@@ -463,10 +463,15 @@ int main(void) {
 		reindexed_ih_scope >= terms.ih_scope_count ||
 		terms.ih_scopes[reindexed_ih_scope].match_term != reindexed_ih_match ||
 		terms.ih_scopes[reindexed_ih_scope].scrutinee_binding_id !=
-			terms.ih_scopes[ih_frame].scrutinee_binding_id ||
+			PROTOTYPE_INVALID_ID ||
 		terms.terms[reindexed_ih_match].as.match.scrutinee != literal_seven ||
 		terms.terms[reindexed_ih_case->body].as.induction_hypothesis.argument !=
-			outer_variable) {
+			literal_seven ||
+		prototype_term_contains_free_binding(
+			&terms,
+			reindexed_ih_match,
+			prototype_context_get(&contexts, outer_context)->binding_id
+		)) {
 		fprintf(stderr, "scoped IH frame remap law failed\n");
 		return 1;
 	}

@@ -102,7 +102,10 @@ struct prototype_artifact_function_graph_association {
 	uint32_t owner_term_export_index;
 	uint32_t graph_type_export_index;
 	uint32_t result_type_export_index;
+	uint32_t graph_interface_term_export_index;
+	uint32_t certified_adapter_term_export_index;
 	uint32_t certified_runner_term_export_index;
+	uint32_t certified_argument_index;
 };
 
 struct prototype_artifact_external_term_ref {

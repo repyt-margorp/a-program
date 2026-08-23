@@ -316,12 +316,14 @@ static int artifact_context_slice_init(
 	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
 		const struct prototype_type_declaration* type =
 			&type_declarations->semantic_schema.type_declarations[i];
-		if (type->type_index != PROTOTYPE_INVALID_ID &&
-			(artifact_context_slice_mark(
+		if (!artifact_type_present(type)) {
+			continue;
+		}
+		if (artifact_context_slice_mark(
 				slice, &metadata->contexts, type->parameter_context
 			) != 0 || artifact_context_slice_mark(
 				slice, &metadata->contexts, type->index_context
-			) != 0)) {
+			) != 0) {
 			artifact_context_slice_free(slice);
 			return -1;
 		}
@@ -329,7 +331,7 @@ static int artifact_context_slice_init(
 	for (size_t i = 0; i < type_declarations->semantic_schema.constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
 			&type_declarations->semantic_schema.constructor_declarations[i];
-		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
+		if (!artifact_constructor_present(constructor)) {
 			continue;
 		}
 		if (artifact_context_slice_mark(
@@ -1571,8 +1573,13 @@ static int artifact_mark_accepted_claim(
 	uint32_t claim_id,
 	uint32_t depth
 ) {
-	if (!marks || !terms || !judgement || claim_id >= judgement->claim_count ||
-		depth > 512) {
+	if (!marks || !terms || !judgement || claim_id >= judgement->claim_count) {
+		return -1;
+	}
+	if (depth > 512) {
+		fprintf(stderr,
+			"artifact closure: claim dependency depth exceeded claim=%u depth=%u\n",
+			claim_id, depth);
 		return -1;
 	}
 	if (claim_id >= marks->claim_count) {
@@ -1724,6 +1731,10 @@ static int artifact_mark_accepted_claim(
 						marks, terms, judgement,
 						source_claim_id, depth + 1
 					) != 0) {
+					fprintf(stderr,
+						"artifact closure: premise claim traversal failed claim=%u "
+						"derivation=%u premise=%u depth=%u\n",
+						claim_id, i, source_claim_id, depth);
 					free(derivation_order);
 					return -1;
 				}
@@ -1735,6 +1746,10 @@ static int artifact_mark_accepted_claim(
 				uint32_t proposition_id =
 					derivation->premises[j].scoped_proposition_id;
 				if (!proposition || proposition_id >= marks->proposition_count) {
+					fprintf(stderr,
+						"artifact closure: scoped premise missing claim=%u derivation=%u "
+						"proposition=%u depth=%u\n",
+						claim_id, i, proposition_id, depth);
 					free(derivation_order);
 					return -1;
 				}
@@ -1765,6 +1780,10 @@ static int artifact_mark_accepted_claim(
 					 artifact_mark_term(
 						marks, terms, proposition->authority_id, depth + 1
 					 ) != 0)) {
+					fprintf(stderr,
+						"artifact closure: scoped premise term traversal failed claim=%u "
+						"derivation=%u proposition=%u depth=%u\n",
+						claim_id, i, proposition_id, depth);
 					free(derivation_order);
 					return -1;
 				}
@@ -1800,7 +1819,16 @@ static int artifact_mark_exact_relation(
 			prototype_judgement_proposition_get(judgement, claim->proposition_id);
 		if (proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
 			proposition->subject == subject && proposition->classifier == classifier) {
-			return artifact_mark_accepted_claim(marks, terms, judgement, i, 0);
+			int status = artifact_mark_accepted_claim(
+				marks, terms, judgement, i, 0
+			);
+			if (status != 0) {
+				fprintf(stderr,
+					"artifact closure: exact claim traversal failed claim=%u "
+					"subject=%u classifier=%u\n",
+					i, subject, classifier);
+			}
+			return status;
 		}
 	}
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
@@ -1825,7 +1853,16 @@ static int artifact_mark_exact_relation(
 			continue;
 		}
 		if (same_projection) {
-			return artifact_mark_accepted_claim(marks, terms, judgement, i, 0);
+			int status = artifact_mark_accepted_claim(
+				marks, terms, judgement, i, 0
+			);
+			if (status != 0) {
+				fprintf(stderr,
+					"artifact closure: projected claim traversal failed claim=%u "
+					"subject=%u projected=%u classifier=%u\n",
+					i, proposition->subject, subject, classifier);
+			}
+			return status;
 		}
 	}
 	return 1;

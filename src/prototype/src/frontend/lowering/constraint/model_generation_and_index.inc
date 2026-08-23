@@ -409,7 +409,11 @@ static int operation_solver_add_branch_refinement_constraints(
 			}
 			const struct prototype_typed_occurrence* branch_occurrence =
 				&ctx->metadata->typed_occurrences.occurrences[branch];
-			uint32_t source_context = operation_case->context_id;
+			/* Until refinement produces an accepted substitution, the branch
+			 * occurrence Context is the only source Context represented by this
+			 * constraint. The case Context remains authoritative on
+			 * operation_case itself. */
+			uint32_t source_context = branch_occurrence->context_id;
 			uint32_t refined_context = PROTOTYPE_INVALID_ID;
 			uint32_t substitution = PROTOTYPE_INVALID_ID;
 			int refinement_status = PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
@@ -916,7 +920,7 @@ static int operation_solver_refresh_classifier_constraints(
 		].context_id;
 		constraint->evidence_id = PROTOTYPE_INVALID_ID;
 		constraint->payload.branch_refinement.source_context =
-			operation_case->context_id;
+			constraint->context_id;
 		constraint->payload.branch_refinement.refined_context =
 			PROTOTYPE_INVALID_ID;
 		constraint->payload.branch_refinement.substitution = PROTOTYPE_INVALID_ID;

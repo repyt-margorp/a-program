@@ -504,26 +504,36 @@ static int artifact_mark_roots(
 					export->local_term,
 					export->classifier
 				);
-			if (claim_status < 0 ||
-				(claim_status > 0 && artifact_export_has_residual_constraint(
+			int residual_status = claim_status > 0 ?
+				artifact_export_has_residual_constraint(
 					metadata, terms, export->occurrence
-				) <= 0) ||
-				artifact_mark_term(marks, terms, export->classifier, 0) != 0 ||
+				) : 1;
+			int classifier_term_status = artifact_mark_term(
+				marks, terms, export->classifier, 0
+			);
+			int classifier_relation_status = classifier_term_status == 0 ?
 				artifact_mark_subject_relations(
 					marks,
 					terms,
 					judgement,
 					export->classifier
-				) != 0) {
+				) : -1;
+			if (claim_status < 0 || (claim_status > 0 && residual_status <= 0) ||
+				classifier_term_status != 0 || classifier_relation_status != 0) {
 				fprintf(
 					stderr,
 					"artifact export has neither accepted claim nor residual obligation "
-					"occurrence=%u subject=%u classifier=%u\n",
+					"occurrence=%u subject=%u classifier=%u claim=%d residual=%d "
+					"classifier-term=%d classifier-relations=%d\n",
 					export->occurrence,
 					export->local_term,
-					export->classifier
+					export->classifier,
+					claim_status,
+					residual_status,
+					classifier_term_status,
+					classifier_relation_status
 				);
-				return -1;
+			return -1;
 			}
 		} else if (artifact_export_has_residual_constraint(
 			metadata, terms, export->occurrence
@@ -610,15 +620,34 @@ static int artifact_mark_roots(
 		unsigned char reachable_contexts[PROTOTYPE_CONTEXT_CAPACITY];
 		memset(reachable_contexts, 0, sizeof(reachable_contexts));
 		reachable_contexts[prototype_context_empty(&metadata->contexts)] = 1;
-		for (size_t i = 0; i < interface->type_export_count; ++i) {
-			uint32_t type_id = interface->type_exports[i].local_type_id;
-			if (type_id >= type_declarations->semantic_schema.type_count) {
-				fprintf(stderr, "artifact closure: exported type out of range export=%zu type=%u\n",
-					i, type_id);
-				return -1;
+		for (uint32_t type_id = 0;
+			type_id < type_declarations->semantic_schema.type_count;
+			++type_id) {
+			if (type_id >= marks->type_count || !marks->types[type_id]) {
+				continue;
 			}
 			const struct prototype_type_declaration* type =
 				&type_declarations->semantic_schema.type_declarations[type_id];
+			if (!artifact_type_present(type)) {
+				return -1;
+			}
+			uint32_t type_context_ids[] = {
+				type->parameter_context,
+				type->index_context
+			};
+			for (size_t context_index = 0; context_index < 2; ++context_index) {
+				uint32_t context_id = type_context_ids[context_index];
+				while (context_id != prototype_context_empty(&metadata->contexts)) {
+					const struct prototype_context* context = prototype_context_get(
+						&metadata->contexts, context_id
+					);
+					if (!context || context_id >= PROTOTYPE_CONTEXT_CAPACITY) {
+						return -1;
+					}
+					reachable_contexts[context_id] = 1;
+					context_id = context->parent;
+				}
+			}
 			for (uint32_t j = 0; j < type->constructor_count; ++j) {
 				const struct prototype_type_constructor_declaration* constructor =
 					&type_declarations->semantic_schema.constructor_declarations[
@@ -2074,16 +2103,22 @@ static int artifact_build_publication_graph(
 	}
 	/* Compaction directly populates semantic records under dense IDs. Rebuild
 	 * runtime-only hashes once after every endpoint has been relocated. */
-	if (prototype_context_db_rebuild_runtime_index_after_bulk_load(
+	int context_rebuild_status =
+		prototype_context_db_rebuild_runtime_index_after_bulk_load(
 			&compact_context_db
-		) != 0 ||
+		);
+	int substitution_rebuild_status = context_rebuild_status == 0 ?
 		prototype_substitution_db_rebuild_runtime_index_after_bulk_load(
 			&compact_substitution_db
-		) != 0 || prototype_context_db_validate(
-			&compact_context_db, &closure->terms
-		) != 0 || prototype_substitution_db_validate(
+		) : -1;
+	int context_validation_status = substitution_rebuild_status == 0 ?
+		prototype_context_db_validate(&compact_context_db, &closure->terms) : -1;
+	int substitution_validation_status = context_validation_status == 0 ?
+		prototype_substitution_db_validate(
 			&compact_substitution_db, &compact_context_db, &closure->terms
-		) != 0) {
+		) : -1;
+	if (context_rebuild_status != 0 || substitution_rebuild_status != 0 ||
+		context_validation_status != 0 || substitution_validation_status != 0) {
 		fprintf(stderr, "artifact publication substitution slice validation failed\n");
 		free(compact_contexts);
 		free(compact_substitutions);

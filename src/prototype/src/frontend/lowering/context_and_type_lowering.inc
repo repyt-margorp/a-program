@@ -657,6 +657,7 @@ struct compile_context {
 	uint32_t proof_materialization_pending_ids[4096];
 	uint32_t proof_materialization_pending_count;
 	int proof_materialization_initialized;
+	int proof_materialization_substitution_pending;
 	struct operation_effect_solver effect_solver;
 	int materializing_checked_classifiers;
 	struct operation_reindex_cache_entry
@@ -2312,7 +2313,8 @@ static int operation_add_match_case(
 ) {
 	if (!ctx || !ctx->metadata || !p_case ||
 		!ast_case || (ast_case->binder_count != 0 && !occurrence_binders) ||
-		ast_case->binder_count > 16 ||
+		ast_case->binder_count >
+			PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY ||
 		ast_case->first_binder + ast_case->binder_count >
 			ctx->asts->case_binder_count) {
 		return -1;
@@ -2376,6 +2378,13 @@ static int operation_apply_classifier_with_mode(
 		&specialized_function
 	);
 	if (specialization_status != 0) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(
+				stderr,
+				"application effect specialization status=%d function=%u argument=%u\n",
+				specialization_status, function_classifier, argument_classifier
+			);
+		}
 		return specialization_status;
 	}
 	function_classifier = specialized_function;
@@ -2422,6 +2431,13 @@ static int operation_apply_classifier_with_mode(
 		&solved_expected_domain
 	);
 	if (domain_solve_status != 0) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(
+				stderr,
+				"application domain solve status=%d expected=%u argument=%u\n",
+				domain_solve_status, expected_domain, argument_classifier
+			);
+		}
 		return domain_solve_status;
 	}
 	uint32_t family_id;
@@ -3534,6 +3550,96 @@ static int queue_binder_assumption(
 	return 0;
 }
 
+/* Generated dependent schemas can project an accepted classifier directly
+ * into a new Context. Reconstruct the applicable APP derivation before using
+ * that classifier as a binder type. */
+static int materialize_classifier_application_formation(
+	struct compile_context* ctx,
+	uint32_t context_id,
+	uint32_t classifier
+) {
+	if (!ctx || classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	uint32_t spine[64];
+	uint32_t spine_count = 0;
+	uint32_t current = classifier;
+	while (current < ctx->terms->term_count &&
+		ctx->terms->terms[current].tag == PROTOTYPE_TERM_APP) {
+		if (spine_count >= 64) {
+			return -1;
+		}
+		spine[spine_count++] = current;
+		current = ctx->terms->terms[current].as.app.function;
+	}
+	if (spine_count == 0) {
+		return 0;
+	}
+	prototype_judgement_delta_set_context(&ctx->judgement_delta, context_id);
+	prototype_judgement_delta_set_occurrence(
+		&ctx->judgement_delta, PROTOTYPE_INVALID_ID
+	);
+	uint32_t inferred = PROTOTYPE_INVALID_ID;
+	for (uint32_t reverse = spine_count; reverse > 0; --reverse) {
+		int status = prototype_judgement_delta_expand_static_family_app(
+			&ctx->judgement_delta,
+			ctx->terms,
+			ctx->type_declarations,
+			spine[reverse - 1],
+			&inferred
+		);
+		if (status > 0) {
+			status = prototype_judgement_delta_expand_app(
+				&ctx->judgement_delta,
+				ctx->terms,
+				ctx->type_declarations,
+				spine[reverse - 1],
+				&inferred
+			);
+		}
+		if (status != 0) {
+			if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+				const struct prototype_term* app =
+					&ctx->terms->terms[spine[reverse - 1]];
+				fprintf(
+					stderr,
+					"classifier formation failed context=%u subject=%u step=%u "
+					"app=%u function=%u argument=%u status=%d\n",
+					context_id,
+					classifier,
+					reverse,
+					spine[reverse - 1],
+					app->as.app.function,
+					app->as.app.argument,
+					status
+				);
+			}
+			return status;
+		}
+	}
+	if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+		uint32_t evidence_count = 0;
+		for (size_t i = 0; i < ctx->judgement_delta.proposition_count; ++i) {
+			const struct prototype_judgement_proposition* evidence =
+				&ctx->judgement_delta.propositions[i];
+			if (evidence->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+				evidence->subject == classifier) {
+				evidence_count++;
+			}
+		}
+		fprintf(
+			stderr,
+			"classifier formation context=%u subject=%u inferred=%u evidence=%u\n",
+			context_id,
+			classifier,
+			inferred,
+			evidence_count
+		);
+	}
+	return inferred < ctx->terms->term_count &&
+		ctx->terms->terms[inferred].tag == PROTOTYPE_TERM_UNIVERSE_VAR ? 0 : -1;
+}
+
 static int materialize_pending_binder_assumptions(struct compile_context* ctx) {
 	if (!ctx) {
 		return -1;
@@ -3596,8 +3702,10 @@ static int materialize_pending_binder_assumptions(struct compile_context* ctx) {
 			already_materialized = 1;
 			break;
 		}
-		if (already_materialized) {
-			continue;
+		if (materialize_classifier_application_formation(
+				ctx, pending->context_id, classifier
+			) != 0) {
+			return -1;
 		}
 		size_t before = ctx->judgement_delta.proposition_count;
 		if (prototype_judgement_delta_record_context_binding_assumption(
@@ -3609,7 +3717,8 @@ static int materialize_pending_binder_assumptions(struct compile_context* ctx) {
 			ctx->judgement_delta.proposition_count == 0) {
 			return -1;
 		}
-		if (ctx->judgement_delta.proposition_count == before) {
+		if (ctx->judgement_delta.proposition_count == before &&
+			already_materialized) {
 			continue;
 		}
 	}
@@ -3939,6 +4048,39 @@ static int compile_ast_level_var(
 	return 0;
 }
 
+static int compile_top_level_type_formation(
+	struct compile_context* ctx,
+	struct prototype_ast_term_assignment_def* formation,
+	uint32_t* p_term
+) {
+	if (!ctx || !formation || !p_term || ctx->binder_count > 512) {
+		return -1;
+	}
+	uint32_t saved_binder_count = ctx->binder_count;
+	struct binder_map_entry saved_binders[512];
+	uint32_t saved_context_ids[513];
+	memcpy(
+		saved_binders, ctx->binders,
+		saved_binder_count * sizeof(saved_binders[0])
+	);
+	memcpy(
+		saved_context_ids, ctx->context_ids,
+		(saved_binder_count + 1) * sizeof(saved_context_ids[0])
+	);
+	ctx->binder_count = 0;
+	int status = compile_def(ctx, formation, p_term);
+	memcpy(
+		ctx->binders, saved_binders,
+		saved_binder_count * sizeof(saved_binders[0])
+	);
+	memcpy(
+		ctx->context_ids, saved_context_ids,
+		(saved_binder_count + 1) * sizeof(saved_context_ids[0])
+	);
+	ctx->binder_count = saved_binder_count;
+	return status;
+}
+
 static int compile_type_expr_name_as_keyed_type_ref(
 	struct compile_context* ctx,
 	int symbol_id,
@@ -3957,8 +4099,25 @@ static int compile_type_expr_name_as_keyed_type_ref(
 			uint32_t type_id;
 			if (ctx->asts->type_defs[i].compiling) {
 				type_id = ctx->asts->type_defs[i].compiled_type;
-			} else if (compile_ast_type_def(ctx, i, &type_id) != 0) {
-				return -1;
+			} else if (ctx->asts->type_defs[i].compiled) {
+				type_id = ctx->asts->type_defs[i].compiled_type;
+			} else {
+				struct prototype_ast_term_assignment_def* formation =
+					lookup_unique_assignment_raw(ctx->asts, symbol_id);
+				uint32_t formation_term;
+				if (!formation || formation->ast >= ctx->asts->node_count ||
+					ctx->asts->nodes[formation->ast].tag !=
+						PROTOTYPE_AST_TYPE_FORMATION ||
+					ctx->asts->nodes[formation->ast].as.type_formation.ast_type_def_id != i) {
+					return -1;
+				}
+				int formation_status = compile_top_level_type_formation(
+					ctx, formation, &formation_term
+				);
+				if (formation_status != 0 || !ctx->asts->type_defs[i].compiled) {
+					return -1;
+				}
+				type_id = ctx->asts->type_defs[i].compiled_type;
 			}
 			if (
 				type_id >= ctx->type_declarations->semantic_schema.type_count) {
@@ -4058,57 +4217,60 @@ static int compile_type_expr_name_as_keyed_type_ref(
 		p_ret
 	);
 }
-static int compile_accepted_type_projection_term(
+static int compile_ast_static_endpoint(
+	struct compile_context* ctx,
+	uint32_t ast_id,
+	uint32_t* p_ret
+);
+
+static int compile_accepted_type_substitution_term(
 	struct compile_context* ctx,
 	const struct prototype_ast_type_expr* expr,
 	uint32_t* p_term
 ) {
 	if (!ctx || !expr || !p_term ||
-		expr->tag != PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION ||
-		expr->as.accepted_projection.term >= ctx->terms->term_count ||
-		expr->as.accepted_projection.first_binding >
-			ctx->asts->accepted_binding_projection_count ||
-		expr->as.accepted_projection.binding_count >
-			ctx->asts->accepted_binding_projection_count -
-				expr->as.accepted_projection.first_binding ||
-		expr->as.accepted_projection.binding_count > 64) {
+		expr->tag != PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_SUBSTITUTION ||
+		expr->as.accepted_substitution.term >= ctx->terms->term_count ||
+		expr->as.accepted_substitution.first_binding >
+			ctx->asts->accepted_binding_substitution_count ||
+		expr->as.accepted_substitution.binding_count >
+			ctx->asts->accepted_binding_substitution_count -
+				expr->as.accepted_substitution.first_binding ||
+		expr->as.accepted_substitution.binding_count > 64) {
 		return -1;
 	}
 	struct prototype_binding_replacement replacements[64];
-	for (uint32_t i = 0; i < expr->as.accepted_projection.binding_count; ++i) {
-		const struct prototype_ast_accepted_binding_projection* projection =
-			&ctx->asts->accepted_binding_projections[
-				expr->as.accepted_projection.first_binding + i
+	for (uint32_t i = 0; i < expr->as.accepted_substitution.binding_count; ++i) {
+		const struct prototype_ast_accepted_binding_substitution* substitution =
+			&ctx->asts->accepted_binding_substitutions[
+				expr->as.accepted_substitution.first_binding + i
 			];
-		uint32_t target_binding;
-		uint32_t target_var;
-		if (lookup_graph_binder(
-				ctx, projection->target_ast_binder_id, &target_binding
-			) != 0 || prototype_term_var(
-				ctx->terms, target_binding, &target_var
+		uint32_t target_value;
+		if (compile_ast_static_endpoint(
+				ctx, substitution->target_value, &target_value
 			) != 0) {
 			return -1;
 		}
 		replacements[i] = (struct prototype_binding_replacement) {
-			.binding_id = projection->source_binding_id,
-			.replacement = target_var
+			.binding_id = substitution->source_binding_id,
+			.replacement = target_value
 		};
 	}
 	int status = prototype_term_graph_reindex_bindings(
 		ctx->terms,
 		ctx->type_declarations,
-		expr->as.accepted_projection.term,
+		expr->as.accepted_substitution.term,
 		replacements,
-		expr->as.accepted_projection.binding_count,
+		expr->as.accepted_substitution.binding_count,
 		p_term
 	);
 	if (status != 0) {
 		fprintf(
 			stderr,
-			"accepted type projection failed term=%u tag=%d bindings=%u types=%zu\n",
-			expr->as.accepted_projection.term,
-			ctx->terms->terms[expr->as.accepted_projection.term].tag,
-			expr->as.accepted_projection.binding_count,
+			"accepted type substitution failed term=%u tag=%d bindings=%u types=%zu\n",
+			expr->as.accepted_substitution.term,
+			ctx->terms->terms[expr->as.accepted_substitution.term].tag,
+			expr->as.accepted_substitution.binding_count,
 			ctx->type_declarations->semantic_schema.type_count
 		);
 	}
@@ -4237,8 +4399,8 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			}
 			break;
 		}
-		case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION: {
-			if (compile_accepted_type_projection_term(
+		case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_SUBSTITUTION: {
+			if (compile_accepted_type_substitution_term(
 					ctx, &expr, &(uint32_t) { PROTOTYPE_INVALID_ID }
 				) != 0 || prototype_type_expr_semantic_relation(
 					ctx->type_declarations,
@@ -4248,6 +4410,15 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			}
 			break;
 		}
+		case PROTOTYPE_AST_TYPE_EXPR_VALUE_REFERENCE:
+			/* Readback schemas cannot own an AST endpoint. The semantic Term
+			 * compiled below remains authoritative for this generated index. */
+			if (prototype_type_expr_semantic_relation(
+					ctx->type_declarations, &compiled_type_expr
+				) != 0) {
+				return -1;
+			}
+			break;
 		case PROTOTYPE_AST_TYPE_EXPR_ARROW: {
 			uint32_t domain;
 			uint32_t codomain;
@@ -4400,6 +4571,13 @@ static int compile_ast_static_endpoint(
 			return prototype_term_var(ctx->terms, binding_id, p_ret);
 		}
 		case PROTOTYPE_AST_NAME: {
+			if (prototype_type_declaration_lookup(
+					ctx->type_declarations, node->as.name.symbol_id
+				)) {
+				return compile_type_declaration_term_by_symbol(
+					ctx, node->as.name.symbol_id, p_ret
+				);
+			}
 			struct prototype_ast_term_assignment_def* def;
 			if (resolve_unique_assignment_if_present(
 					ctx, node->as.name.symbol_id, &def
@@ -4417,6 +4595,36 @@ static int compile_ast_static_endpoint(
 			}
 			return resolve_namespace_member(
 				ctx, owner, node->as.name_in_namespace.symbol_id, p_ret, NULL
+			);
+		}
+		case PROTOTYPE_AST_NAME_IN_AST_NAMESPACE: {
+			uint32_t owner;
+			if (compile_ast_static_endpoint(
+					ctx, node->as.name_in_ast_namespace.namespace_ast, &owner
+				) != 0) {
+				return -1;
+			}
+			/* Generated index expressions build a parameterized namespace through
+			 * ordinary APP nodes. Re-form the recognized type instance so the
+			 * constructor owner uses the same canonical TypeView as accepted source
+			 * constructor occurrences. */
+			uint32_t type_id;
+			uint32_t arguments[16];
+			uint32_t argument_count;
+			if (prototype_term_type_instance_info(
+					ctx->terms, owner, &type_id, arguments, &argument_count
+				) == 0 && prototype_term_type_instance_make(
+					ctx->terms,
+					ctx->type_declarations,
+					type_id,
+					arguments,
+					argument_count,
+					&owner
+				) != 0) {
+				return -1;
+			}
+			return resolve_namespace_member(
+				ctx, owner, node->as.name_in_ast_namespace.symbol_id, p_ret, NULL
 			);
 		}
 		case PROTOTYPE_AST_APP: {
@@ -4454,6 +4662,85 @@ static int compile_ast_type_expr_term_with_self(
 	uint32_t self_type,
 	uint32_t* p_ret
 );
+
+static int ast_type_expr_returns_universe(
+	const struct prototype_ast_db* asts,
+	uint32_t type_expr
+) {
+	if (!asts || type_expr >= asts->type_expr_count) {
+		return 0;
+	}
+	const struct prototype_ast_type_expr* expr = &asts->type_exprs[type_expr];
+	if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI) {
+		return ast_type_expr_returns_universe(asts, expr->as.pi.codomain);
+	}
+	if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW) {
+		return ast_type_expr_returns_universe(asts, expr->as.arrow.codomain);
+	}
+	return expr->tag == PROTOTYPE_AST_TYPE_EXPR_UNIVERSE ||
+		expr->tag == PROTOTYPE_AST_TYPE_EXPR_UNIVERSE_VAR;
+}
+
+static int compile_ast_type_family_term_with_self(
+	struct compile_context* ctx,
+	uint32_t type_expr,
+	uint32_t self_type,
+	uint32_t* p_ret
+) {
+	if (!ctx || !p_ret || type_expr >= ctx->asts->type_expr_count) {
+		return -1;
+	}
+	const struct prototype_ast_type_expr* expr = &ctx->asts->type_exprs[type_expr];
+	if (expr->tag != PROTOTYPE_AST_TYPE_EXPR_PI &&
+		expr->tag != PROTOTYPE_AST_TYPE_EXPR_ARROW) {
+		return compile_ast_type_expr_term_with_self(
+			ctx, type_expr, self_type, p_ret
+		);
+	}
+	uint32_t domain_expr = expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI ?
+		expr->as.pi.domain : expr->as.arrow.domain;
+	uint32_t codomain_expr = expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI ?
+		expr->as.pi.codomain : expr->as.arrow.codomain;
+	uint32_t domain;
+	uint32_t codomain;
+	uint32_t binding_id;
+	uint32_t saved_binder_count = ctx->binder_count;
+	if (compile_ast_type_expr_term_with_self(
+			ctx, domain_expr, self_type, &domain
+		) != 0) {
+		return -1;
+	}
+	if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI) {
+		if (push_graph_binder(
+				ctx,
+				expr->as.pi.ast_binder_id,
+				domain,
+				expr->as.pi.symbol_id,
+				&binding_id
+			) != 0) {
+			return -1;
+		}
+	} else {
+		binding_id = prototype_term_new_binding(ctx->terms);
+		if (binding_id == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+	}
+	if (compile_ast_type_family_term_with_self(
+			ctx, codomain_expr, self_type, &codomain
+		) != 0) {
+		ctx->binder_count = saved_binder_count;
+		return -1;
+	}
+	ctx->binder_count = saved_binder_count;
+	uint32_t family;
+	if (prototype_term_pure_family(
+			ctx->terms, binding_id, codomain, &family
+		) != 0) {
+		return -1;
+	}
+	return prototype_term_pi_family(ctx->terms, domain, family, p_ret);
+}
 
 /* A function used as a value is thunked once at its outer boundary.  Its
  * curried result remains a raw negative computation, matching the classifier
@@ -4650,8 +4937,12 @@ static int compile_ast_type_expr_term_with_self(
 				p_ret
 			);
 		}
-		case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION:
-			return compile_accepted_type_projection_term(ctx, &expr, p_ret);
+		case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_SUBSTITUTION:
+			return compile_accepted_type_substitution_term(ctx, &expr, p_ret);
+		case PROTOTYPE_AST_TYPE_EXPR_VALUE_REFERENCE:
+			return compile_ast_static_endpoint(
+				ctx, expr.as.value_reference.value, p_ret
+			);
 				case PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE: {
 					return prototype_term_make_host_type(
 						ctx->terms,
@@ -4664,18 +4955,30 @@ static int compile_ast_type_expr_term_with_self(
 			uint32_t argument;
 			uint32_t application;
 			if (compile_ast_type_expr_term_with_self(ctx, expr.as.app.function, self_type, &function) != 0) {
+				fprintf(stderr, "type APP function lowering failed expr=%u function=%u\n",
+					type_expr, expr.as.app.function);
 				return -1;
 			}
 			if (compile_ast_type_expr_term_with_self(ctx, expr.as.app.argument, self_type, &argument) != 0) {
+				fprintf(stderr, "type APP argument lowering failed expr=%u argument=%u\n",
+					type_expr, expr.as.app.argument);
 				return -1;
 			}
 			if (compile_shared_app(ctx, function, argument, &application) != 0 ||
 				compile_extract_pure_return_value(ctx, application, p_ret) != 0) {
+				fprintf(stderr,
+					"type APP application failed expr=%u function-term=%u argument-term=%u application=%u\n",
+					type_expr, function, argument, application);
 				return -1;
 			}
 			return 0;
 		}
 		case PROTOTYPE_AST_TYPE_EXPR_ARROW: {
+			if (ast_type_expr_returns_universe(ctx->asts, type_expr)) {
+				return compile_ast_type_family_term_with_self(
+					ctx, type_expr, self_type, p_ret
+				);
+			}
 			uint32_t function;
 			if (compile_ast_value_function_term_with_self(
 					ctx, type_expr, self_type, &function
@@ -4685,6 +4988,11 @@ static int compile_ast_type_expr_term_with_self(
 			return prototype_term_thunk_type(ctx->terms, function, p_ret);
 		}
 		case PROTOTYPE_AST_TYPE_EXPR_PI: {
+			if (ast_type_expr_returns_universe(ctx->asts, type_expr)) {
+				return compile_ast_type_family_term_with_self(
+					ctx, type_expr, self_type, p_ret
+				);
+			}
 			uint32_t function;
 			if (compile_ast_value_function_term_with_self(
 					ctx, type_expr, self_type, &function
@@ -4732,6 +5040,31 @@ static int compile_ast_type_expr_term_with_self(
 
 static int compile_ast_type_expr_term(struct compile_context* ctx, uint32_t type_expr, uint32_t* p_ret) {
 	return compile_ast_type_expr_term_with_self(ctx, type_expr, PROTOTYPE_INVALID_ID, p_ret);
+}
+
+/* A type family is a raw Pi while it is formed, but a parameter that carries
+ * that family is an ordinary suspended function value. */
+static int compile_ast_binder_value_type_component(
+	struct compile_context* ctx,
+	uint32_t type_expr,
+	uint32_t* p_ret
+) {
+	if (!ctx || !p_ret || type_expr >= ctx->asts->type_expr_count) {
+		return -1;
+	}
+	const struct prototype_ast_type_expr* expr = &ctx->asts->type_exprs[type_expr];
+	if ((expr->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW ||
+		expr->tag == PROTOTYPE_AST_TYPE_EXPR_PI) &&
+		ast_type_expr_returns_universe(ctx->asts, type_expr)) {
+		uint32_t function;
+		if (compile_ast_value_function_term_with_self(
+				ctx, type_expr, PROTOTYPE_INVALID_ID, &function
+			) != 0) {
+			return -1;
+		}
+		return prototype_term_thunk_type(ctx->terms, function, p_ret);
+	}
+	return compile_ast_type_expr_term(ctx, type_expr, p_ret);
 }
 
 /* A source binder annotated with a suspended computation receives one
@@ -4785,7 +5118,9 @@ static int compile_ast_binder_value_type_with_latent_effect_row(
 		function_type->as.pi.domain : function_type->as.arrow.domain;
 	uint32_t codomain_expr = function_type->tag == PROTOTYPE_AST_TYPE_EXPR_PI ?
 		function_type->as.pi.codomain : function_type->as.arrow.codomain;
-	if (compile_ast_type_expr_term(ctx, domain_expr, &domain) != 0) {
+	if (compile_ast_binder_value_type_component(
+			ctx, domain_expr, &domain
+		) != 0) {
 		return -1;
 	}
 	if (function_type->tag == PROTOTYPE_AST_TYPE_EXPR_PI &&
@@ -4803,7 +5138,9 @@ static int compile_ast_binder_value_type_with_latent_effect_row(
 			PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
-	if (compile_ast_type_expr_term(ctx, codomain_expr, &codomain) != 0) {
+	if (compile_ast_binder_value_type_component(
+			ctx, codomain_expr, &codomain
+		) != 0) {
 		ctx->binder_count = saved_binder_count;
 		return -1;
 	}
@@ -4886,11 +5223,18 @@ static int compile_ast_function_type_expr_term(
 	}
 	const struct prototype_ast_type_expr* domain_type =
 		&ctx->asts->type_exprs[domain_expr];
+	int domain_is_type_family =
+		(domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW ||
+		 domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_PI) &&
+		ast_type_expr_returns_universe(ctx->asts, domain_expr);
 	int domain_has_latent_effect =
-		domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW ||
-		domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_PI ||
-		domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE;
-	if ((domain_has_latent_effect ?
+		!domain_is_type_family &&
+		(domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW ||
+		 domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_PI ||
+		 domain_type->tag == PROTOTYPE_AST_TYPE_EXPR_COMPUTATION_REFERENCE);
+	if ((domain_is_type_family ? compile_ast_binder_value_type_component(
+			ctx, domain_expr, &domain
+		) : domain_has_latent_effect ?
 			compile_ast_binder_value_type_with_latent_effect_row(
 				ctx, domain_expr, &latent_row_binder, &domain
 			) : compile_ast_type_expr_term(
@@ -5288,8 +5632,25 @@ static int compile_type_declaration_term_by_symbol(
 			uint32_t type_id;
 			if (ctx->asts->type_defs[i].compiling) {
 				type_id = ctx->asts->type_defs[i].compiled_type;
-			} else if (compile_ast_type_def(ctx, i, &type_id) != 0) {
-				return -1;
+			} else if (ctx->asts->type_defs[i].compiled) {
+				type_id = ctx->asts->type_defs[i].compiled_type;
+			} else {
+				struct prototype_ast_term_assignment_def* formation =
+					lookup_unique_assignment_raw(ctx->asts, symbol_id);
+				uint32_t formation_term;
+				if (!formation || formation->ast >= ctx->asts->node_count ||
+					ctx->asts->nodes[formation->ast].tag !=
+						PROTOTYPE_AST_TYPE_FORMATION ||
+					ctx->asts->nodes[formation->ast].as.type_formation.ast_type_def_id != i) {
+					return -1;
+				}
+				int formation_status = compile_top_level_type_formation(
+					ctx, formation, &formation_term
+				);
+				if (formation_status != 0 || !ctx->asts->type_defs[i].compiled) {
+					return -1;
+				}
+				type_id = ctx->asts->type_defs[i].compiled_type;
 			}
 			if (
 				type_id >= ctx->type_declarations->semantic_schema.type_count) {

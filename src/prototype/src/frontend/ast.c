@@ -79,17 +79,17 @@ void prototype_ast_db_init(
 	db->type_field_expr_capacity = type_field_expr_capacity;
 }
 
-void prototype_ast_db_set_accepted_projection_storage(
+void prototype_ast_db_set_accepted_substitution_storage(
 	struct prototype_ast_db* db,
-	struct prototype_ast_accepted_binding_projection* projections,
-	size_t projection_capacity
+	struct prototype_ast_accepted_binding_substitution* substitutions,
+	size_t substitution_capacity
 ) {
 	if (!db) {
 		return;
 	}
-	db->accepted_binding_projections = projections;
-	db->accepted_binding_projection_capacity = projections ? projection_capacity : 0;
-	db->accepted_binding_projection_count = 0;
+	db->accepted_binding_substitutions = substitutions;
+	db->accepted_binding_substitution_capacity = substitutions ? substitution_capacity : 0;
+	db->accepted_binding_substitution_count = 0;
 }
 
 static int add_node(struct prototype_ast_db* db, struct prototype_ast_node node, uint32_t* p_ret) {
@@ -336,37 +336,54 @@ int prototype_ast_type_expr_function_graph_reference(
 	return add_type_expr(db, expr, p_ret);
 }
 
-int prototype_ast_type_expr_accepted_projection(
+int prototype_ast_type_expr_accepted_substitution(
 	struct prototype_ast_db* db,
 	uint32_t term,
-	const struct prototype_ast_accepted_binding_projection* bindings,
+	const struct prototype_ast_accepted_binding_substitution* bindings,
 	uint32_t binding_count,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 ) {
 	if (!db || !p_ret || (binding_count != 0 && !bindings) ||
-		db->accepted_binding_projection_count + binding_count >
-			db->accepted_binding_projection_capacity) {
+		db->accepted_binding_substitution_count + binding_count >
+			db->accepted_binding_substitution_capacity) {
 		return -1;
 	}
-	uint32_t first_binding = (uint32_t)db->accepted_binding_projection_count;
+	uint32_t first_binding = (uint32_t)db->accepted_binding_substitution_count;
 	for (uint32_t i = 0; i < binding_count; ++i) {
-		db->accepted_binding_projections[
-			db->accepted_binding_projection_count++
+		db->accepted_binding_substitutions[
+			db->accepted_binding_substitution_count++
 		] = bindings[i];
 	}
 	struct prototype_ast_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
-	expr.tag = PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION;
+	expr.tag = PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_SUBSTITUTION;
 	expr.span = span;
-	expr.as.accepted_projection.term = term;
-	expr.as.accepted_projection.first_binding = first_binding;
-	expr.as.accepted_projection.binding_count = binding_count;
+	expr.as.accepted_substitution.term = term;
+	expr.as.accepted_substitution.first_binding = first_binding;
+	expr.as.accepted_substitution.binding_count = binding_count;
 	if (add_type_expr(db, expr, p_ret) != 0) {
-		db->accepted_binding_projection_count = first_binding;
+		db->accepted_binding_substitution_count = first_binding;
 		return -1;
 	}
 	return 0;
+}
+
+int prototype_ast_type_expr_value_reference(
+	struct prototype_ast_db* db,
+	uint32_t value,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || value >= db->node_count || !p_ret) {
+		return -1;
+	}
+	struct prototype_ast_type_expr expr;
+	memset(&expr, 0, sizeof(expr));
+	expr.tag = PROTOTYPE_AST_TYPE_EXPR_VALUE_REFERENCE;
+	expr.span = span;
+	expr.as.value_reference.value = value;
+	return add_type_expr(db, expr, p_ret);
 }
 
 int prototype_ast_type_expr_terminates(

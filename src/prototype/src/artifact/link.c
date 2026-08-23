@@ -1999,6 +1999,11 @@ int prototype_internal_artifact_append_graph_ordered(
 		if (source->owner_term_export_index >= source_interface->term_export_count ||
 			source->graph_type_export_index >= source_interface->type_export_count ||
 			source->result_type_export_index >= source_interface->type_export_count ||
+			source->graph_interface_term_export_index >=
+				source_interface->term_export_count ||
+			(source->certified_adapter_term_export_index != PROTOTYPE_INVALID_ID &&
+			 source->certified_adapter_term_export_index >=
+				source_interface->term_export_count) ||
 			source->certified_runner_term_export_index >=
 				source_interface->term_export_count) {
 			return -1;

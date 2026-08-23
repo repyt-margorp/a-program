@@ -60,7 +60,11 @@ enum prototype_ast_type_expr_tag {
 	PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE,
 	PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE,
 	PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE,
-	PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_PROJECTION,
+	PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_SUBSTITUTION,
+	/* Generated declarations may reuse a pure value expression as an IADT
+	 * index. The referenced expression is lowered through the ordinary static
+	 * endpoint path and does not create a second Term representation. */
+	PROTOTYPE_AST_TYPE_EXPR_VALUE_REFERENCE,
 	PROTOTYPE_AST_TYPE_EXPR_TERMINATES
 };
 
@@ -97,7 +101,10 @@ struct prototype_ast_type_expr {
 			uint32_t term;
 			uint32_t first_binding;
 			uint32_t binding_count;
-		} accepted_projection;
+		} accepted_substitution;
+		struct {
+			uint32_t value;
+		} value_reference;
 		struct {
 			uint32_t function;
 			uint32_t argument;
@@ -254,9 +261,9 @@ struct prototype_ast_type_constructor {
 	uint32_t result_type;
 };
 
-struct prototype_ast_accepted_binding_projection {
+struct prototype_ast_accepted_binding_substitution {
 	uint32_t source_binding_id;
-	uint32_t target_ast_binder_id;
+	uint32_t target_value;
 };
 
 struct prototype_ast_type_def {
@@ -440,10 +447,10 @@ struct prototype_ast_db {
 	size_t type_field_expr_count;
 	size_t type_field_expr_capacity;
 
-	struct prototype_ast_accepted_binding_projection*
-		accepted_binding_projections;
-	size_t accepted_binding_projection_count;
-	size_t accepted_binding_projection_capacity;
+	struct prototype_ast_accepted_binding_substitution*
+		accepted_binding_substitutions;
+	size_t accepted_binding_substitution_count;
+	size_t accepted_binding_substitution_capacity;
 
 	uint32_t next_ast_binder_id;
 	uint32_t next_ast_level_var;
@@ -486,10 +493,10 @@ void prototype_ast_db_init(
 	size_t type_field_expr_capacity
 );
 
-void prototype_ast_db_set_accepted_projection_storage(
+void prototype_ast_db_set_accepted_substitution_storage(
 	struct prototype_ast_db* db,
-	struct prototype_ast_accepted_binding_projection* projections,
-	size_t projection_capacity
+	struct prototype_ast_accepted_binding_substitution* substitutions,
+	size_t substitution_capacity
 );
 
 uint32_t prototype_ast_new_binder(struct prototype_ast_db* db);
@@ -563,11 +570,17 @@ int prototype_ast_type_expr_function_graph_reference(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_type_expr_accepted_projection(
+int prototype_ast_type_expr_accepted_substitution(
 	struct prototype_ast_db* db,
 	uint32_t term,
-	const struct prototype_ast_accepted_binding_projection* bindings,
+	const struct prototype_ast_accepted_binding_substitution* bindings,
 	uint32_t binding_count,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_type_expr_value_reference(
+	struct prototype_ast_db* db,
+	uint32_t value,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );

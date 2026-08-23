@@ -73,13 +73,20 @@ struct prototype_function_graph_association {
 	int graph_symbol_id;
 	int result_symbol_id;
 	int returned_constructor_symbol_id;
+	int graph_interface_symbol_id;
+	int certified_adapter_symbol_id;
 	int certified_runner_symbol_id;
 	uint32_t graph_type_id;
 	uint32_t result_type_id;
 	uint32_t graph_type_assignment_id;
 	uint32_t result_type_assignment_id;
+	uint32_t graph_interface_assignment_id;
+	uint32_t certified_adapter_assignment_id;
 	uint32_t certified_runner_assignment_id;
 	uint32_t executable_assignment_id;
+	/* The raw owner argument followed by its generated graph interface and
+	 * certified callback. INVALID means that the owner is first-order. */
+	uint32_t certified_argument_index;
 };
 
 enum prototype_function_graph_compile_stage {

@@ -367,7 +367,48 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 	uint32_t input_classifier = operation_solver_classifier(
 		ctx, computation_occurrence
 	);
+	const struct prototype_term* sequence_fold_term =
+		&ctx->terms->terms[sequence_fold_operation->core_term];
+	if (sequence_fold_term->as.computation_fold.return_clause >=
+			ctx->terms->term_count ||
+		ctx->terms->terms[sequence_fold_term->as.computation_fold.return_clause].tag !=
+			PROTOTYPE_TERM_LAMBDA ||
+		ctx->metadata->typed_occurrences.occurrences[
+			continuation_occurrence_id
+		].tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA) {
+		return -1;
+	}
+	struct prototype_typed_occurrence* continuation_occurrence =
+		&ctx->metadata->typed_occurrences.occurrences[continuation_occurrence_id];
 	if (input_classifier == PROTOTYPE_INVALID_ID) {
+		if (continuation_occurrence->binder_classifier != PROTOTYPE_INVALID_ID) {
+			uint8_t visited[
+				ctx->metadata->typed_occurrences.occurrence_count
+			];
+			for (uint32_t operation_id = 0;
+				operation_id <
+					ctx->metadata->typed_occurrences.occurrence_count;
+				++operation_id) {
+				const struct prototype_typed_occurrence* operation =
+					&ctx->metadata->typed_occurrences.occurrences[operation_id];
+				memset(visited, 0, sizeof(visited));
+				if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_VAR ||
+					operation->referenced_ast_binder_id !=
+						continuation_occurrence->referenced_ast_binder_id ||
+					operation_subtree_contains_operation(
+						ctx, continuation_occurrence_id, operation_id, visited
+					) <= 0) {
+					continue;
+				}
+				int refine_status = operation_solver_refine_sequenced_ih_result(
+					ctx, operation_id,
+					continuation_occurrence->binder_classifier, p_changed
+				);
+				if (refine_status <= 0) {
+					return refine_status;
+				}
+			}
+		}
 		return 0;
 	}
 	struct prototype_term_classifier_view input_view;
@@ -399,17 +440,50 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 		}
 		input_value_classifier = input_view.result;
 	}
-	const struct prototype_term* sequence_fold_term =
-		&ctx->terms->terms[sequence_fold_operation->core_term];
-	if (sequence_fold_term->as.computation_fold.return_clause >= ctx->terms->term_count ||
-		ctx->terms->terms[sequence_fold_term->as.computation_fold.return_clause].tag !=
-			PROTOTYPE_TERM_LAMBDA ||
-		ctx->metadata->typed_occurrences.occurrences[continuation_occurrence_id].tag !=
-			PROTOTYPE_TYPED_OCCURRENCE_LAMBDA) {
+	uint32_t binder_var;
+	if (prototype_term_var(
+			ctx->terms,
+			ctx->terms->terms[sequence_fold_term->as.computation_fold.return_clause].as.lambda.binding_id,
+			&binder_var
+		) != 0) {
 		return -1;
 	}
-	struct prototype_typed_occurrence* continuation_occurrence =
-		&ctx->metadata->typed_occurrences.occurrences[continuation_occurrence_id];
+	if (continuation_occurrence->binder_classifier != PROTOTYPE_INVALID_ID &&
+		prototype_judgement_classifier_conversion(
+			ctx->terms,
+			ctx->type_declarations,
+			continuation_occurrence->binder_classifier,
+			input_value_classifier
+		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		uint8_t visited[ctx->metadata->typed_occurrences.occurrence_count];
+		for (uint32_t operation_id = 0;
+			operation_id < ctx->metadata->typed_occurrences.occurrence_count;
+			++operation_id) {
+			const struct prototype_typed_occurrence* operation =
+				&ctx->metadata->typed_occurrences.occurrences[operation_id];
+			memset(visited, 0, sizeof(visited));
+			int binder_matches =
+				continuation_occurrence->referenced_ast_binder_id != PROTOTYPE_INVALID_ID ?
+					operation->referenced_ast_binder_id ==
+						continuation_occurrence->referenced_ast_binder_id :
+					operation->core_term == binder_var;
+			if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_VAR || !binder_matches ||
+				operation_subtree_contains_operation(
+					ctx, continuation_occurrence_id, operation_id, visited
+				) <= 0) {
+				continue;
+			}
+			int refine_status = operation_solver_refine_sequenced_ih_result(
+				ctx,
+				operation_id,
+				continuation_occurrence->binder_classifier,
+				p_changed
+			);
+			if (refine_status <= 0) {
+				return refine_status;
+			}
+		}
+	}
 	if (continuation_occurrence->binder_classifier == PROTOTYPE_INVALID_ID ||
 		prototype_judgement_classifier_conversion(
 			ctx->terms,
@@ -427,14 +501,6 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 		) != 0) {
 			return -1;
 		}
-	}
-	uint32_t binder_var;
-	if (prototype_term_var(
-			ctx->terms,
-			ctx->terms->terms[sequence_fold_term->as.computation_fold.return_clause].as.lambda.binding_id,
-			&binder_var
-		) != 0) {
-		return -1;
 	}
 	uint8_t visited[ctx->metadata->typed_occurrences.occurrence_count];
 	for (uint32_t operation_id = 0;
@@ -1411,7 +1477,12 @@ restart_after_branch_pullback:
 							break;
 						}
 						ctx->classifier_hints[target] = solved_expected;
-						if (operation_solver_bind(
+						/* The expected occurrence is a checked projection of the
+						 * current body classifier. A later pass may refine a latent
+						 * effect row from E to E union F; replace the provisional
+						 * projection with this newly validated solution instead of
+						 * treating monotone effect discovery as a second type. */
+						if (operation_solver_bind_proven_classifier(
 								ctx,
 								target,
 								solved_expected,
@@ -1622,27 +1693,30 @@ restart_after_branch_pullback:
 								if (refine_status < 0) {
 									return -1;
 								}
-								argument_classifier = operation_solver_classifier(
-									ctx,
-									constraint->payload.classifier.goal.pi.
-										domain_classifier_or_argument_occurrence
-								);
-								if (argument_classifier == PROTOTYPE_INVALID_ID &&
-									operation_solver_bind(
+									argument_classifier = operation_solver_classifier(
 										ctx,
 										constraint->payload.classifier.goal.pi.
-											domain_classifier_or_argument_occurrence,
-										expected_domain,
-										&pass_changed
-									) != 0) {
-									return -1;
+											domain_classifier_or_argument_occurrence
+									);
+									uint32_t argument_operation = constraint->payload.
+										classifier.goal.pi.
+											domain_classifier_or_argument_occurrence;
+									if (argument_classifier == PROTOTYPE_INVALID_ID &&
+										ctx->metadata->typed_occurrences.occurrences[
+											argument_operation
+										].tag != PROTOTYPE_TYPED_OCCURRENCE_VAR &&
+										operation_solver_bind(
+											ctx,
+											argument_operation,
+											expected_domain,
+											&pass_changed
+										) != 0) {
+										return -1;
+									}
+									argument_classifier = operation_solver_classifier(
+										ctx, argument_operation
+									);
 								}
-								argument_classifier = operation_solver_classifier(
-									ctx,
-									constraint->payload.classifier.goal.pi.
-										domain_classifier_or_argument_occurrence
-								);
-							}
 						}
 						if (function_classifier == PROTOTYPE_INVALID_ID ||
 							argument_classifier == PROTOTYPE_INVALID_ID) {
@@ -1764,9 +1838,9 @@ restart_after_branch_pullback:
 						if (waits_for_branch > 0) {
 							break;
 						}
-						const struct prototype_typed_occurrence* operation =
-							&ctx->metadata->typed_occurrences.occurrences[target];
-						(void)add_constructor_compile_diagnostic(
+							const struct prototype_typed_occurrence* operation =
+								&ctx->metadata->typed_occurrences.occurrences[target];
+							(void)add_constructor_compile_diagnostic(
 							ctx,
 							operation->source_ast,
 							target,

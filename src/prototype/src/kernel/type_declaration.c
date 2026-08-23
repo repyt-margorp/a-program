@@ -1856,6 +1856,29 @@ static int type_representation_fingerprint_term_at_depth(
 				terms, db, self_type_id, term->as.effect_row_union.right,
 				env, key, p_hash, depth + 1
 			);
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
+			uint32_t saved_count = env->count;
+			uint32_t saved_next_slot = env->next_slot;
+			if (type_representation_fingerprint_env_push(
+					env, term->as.effect_row_forall.binding_id
+				) != 0) {
+				return -1;
+			}
+			key->bound_binder_count++;
+			int status = type_representation_fingerprint_term_at_depth(
+				terms,
+				db,
+				self_type_id,
+				term->as.effect_row_forall.body,
+				env,
+				key,
+				p_hash,
+				depth + 1
+			);
+			env->count = saved_count;
+			env->next_slot = saved_next_slot;
+			return status;
+		}
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			if (type_representation_fingerprint_term_at_depth(
 					terms, db, self_type_id, term->as.computation_type.label,
@@ -1885,6 +1908,23 @@ static int type_representation_fingerprint_term_at_depth(
 		case PROTOTYPE_TERM_FORCE:
 			return type_representation_fingerprint_term_at_depth(
 				terms, db, self_type_id, term->as.force.value,
+				env, key, p_hash, depth + 1
+			);
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+			type_representation_fingerprint_hash_mix_u32(
+				p_hash, term->as.computation_fold.clause_count
+			);
+			if (term->as.computation_fold.clause_count != 0 ||
+				type_representation_fingerprint_term_at_depth(
+					terms, db, self_type_id,
+					term->as.computation_fold.computation,
+					env, key, p_hash, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return type_representation_fingerprint_term_at_depth(
+				terms, db, self_type_id,
+				term->as.computation_fold.return_clause,
 				env, key, p_hash, depth + 1
 			);
 		case PROTOTYPE_TERM_MATCH:
@@ -2063,6 +2103,10 @@ int prototype_type_declaration_representation_fingerprint(
 		type->parameter_count > 64 || type->index_count > 64 ||
 		!prototype_context_get(contexts, type->parameter_context) ||
 		!prototype_context_get(contexts, type->index_context)) {
+		fprintf(stderr,
+			"type representation header failed type=%u parameters=%u indices=%u parameter-context=%u index-context=%u\n",
+			type_id, type->parameter_count, type->index_count,
+			type->parameter_context, type->index_context);
 		return -1;
 	}
 	struct type_representation_fingerprint_binder_env env;
@@ -2106,6 +2150,8 @@ int prototype_type_declaration_representation_fingerprint(
 				0
 			) != 0 ||
 			type_representation_fingerprint_env_push(&env, parameter->binding_id) != 0) {
+			fprintf(stderr, "type representation parameter failed type=%u ordinal=%u term=%u\n",
+				type_id, i, parameter_classifier);
 			return -1;
 		}
 		p_key->bound_binder_count++;
@@ -2144,6 +2190,8 @@ int prototype_type_declaration_representation_fingerprint(
 			) != 0 || type_representation_fingerprint_env_push(
 				&env, index->binding_id
 			) != 0) {
+			fprintf(stderr, "type representation index failed type=%u ordinal=%u term=%u\n",
+				type_id, i, index_classifier);
 			return -1;
 		}
 		p_key->bound_binder_count++;
@@ -2167,6 +2215,11 @@ int prototype_type_declaration_representation_fingerprint(
 				&field_count
 			) != 0 ||
 			constructor->result_classifier >= terms->term_count) {
+			fprintf(stderr,
+				"type representation constructor header failed type=%u constructor=%u parameter-context=%u expected=%u field-context=%u result=%u\n",
+				type_id, i, constructor->parameter_context,
+				type->parameter_context, constructor->field_context,
+				constructor->result_classifier);
 			return -1;
 		}
 		env.count = parameter_binder_count;
@@ -2193,6 +2246,9 @@ int prototype_type_declaration_representation_fingerprint(
 					0
 				) != 0 ||
 				type_representation_fingerprint_env_push(&env, field->binding_id) != 0) {
+				fprintf(stderr,
+					"type representation field failed type=%u symbol=%d constructor=%u ordinal=%u term=%u\n",
+					type_id, type->name_symbol_id, i, j, field_classifier);
 				return -1;
 			}
 			p_key->bound_binder_count++;
@@ -2209,6 +2265,9 @@ int prototype_type_declaration_representation_fingerprint(
 				&hash,
 				0
 			) != 0) {
+			fprintf(stderr,
+				"type representation result failed type=%u constructor=%u term=%u\n",
+				type_id, i, constructor->result_classifier);
 			return -1;
 		}
 	}

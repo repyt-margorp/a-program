@@ -5,7 +5,7 @@
  * the artifact manifest. It changes whenever the accepted semantic manifest
  * changes; no compatibility alias is retained in the prototype. */
 #define PROTOTYPE_CALCULUS_FINGERPRINT \
-	"067c82acd25e64bd2a0df48523222e8d1524eef1656a5af88636c0967c741b49"
+	"445e2fd2fa868e922ab486f3d22057584f9fa7e86477ee74c6abbb61d95c349a"
 
 /* This digest identifies the compiler-local parametricity and object Identity
  * vocabulary. Artifact v83 persists only the object roots admitted by both

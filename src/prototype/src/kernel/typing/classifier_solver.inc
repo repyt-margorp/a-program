@@ -916,6 +916,15 @@ int prototype_judgement_constructor_spine_classifier(
 				argument_classifiers[i],
 				&solved_expected
 			) != 0) {
+			if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+				fprintf(stderr,
+					"constructor spine domain mismatch subject=%u owner=%u context=%u "
+					"field=%u declaration-classifier=%u expected=%u argument=%u "
+					"residual=%u substitution=%u\n",
+					subject, specialization.owner, source_context, i,
+					field_classifier, normalized_expected, argument_classifiers[i],
+					residual_classifier, substitution);
+			}
 			return PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_DOMAIN_MISMATCH;
 		}
 		(void)solved_expected;
@@ -1003,16 +1012,17 @@ int prototype_judgement_constructor_spine_expected_domains(
 		];
 	type_declarations->specialization_stats.reindex_request_count +=
 		specialization.field_count;
-	for (uint32_t i = 0; i < specialization.field_count; ++i) {
-		if (prototype_context_telescope_entry_classifier(
-				contexts, substitutions, terms, type_declarations,
-				specialization.parameter_substitution,
-				constructor->parameter_context,
-				constructor->field_context, specialization.field_terms, i, i,
-				&expected_domains[i]
-			) != 0) {
-			return -1;
-		}
+	if (prototype_context_telescope_classifiers(
+			contexts, substitutions, terms, type_declarations,
+			specialization.parameter_substitution,
+			constructor->parameter_context,
+			constructor->field_context,
+			specialization.field_terms,
+			specialization.field_count,
+			specialization.field_count,
+			expected_domains
+		) != 0) {
+		return -1;
 	}
 	*p_domain_count = specialization.field_count;
 	return 0;
@@ -1183,6 +1193,35 @@ int prototype_judgement_project_pure_sequence_results(
 	return 0;
 }
 
+static int constructor_owner_view_from_classifier(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t classifier,
+	uint32_t* p_owner_view
+) {
+	if (!terms || !type_declarations || !p_owner_view) {
+		return -1;
+	}
+	uint32_t type_id;
+	uint32_t arguments[64];
+	uint32_t argument_count;
+	if (prototype_term_type_instance_info(
+			terms, classifier, &type_id, arguments, &argument_count
+		) != 0 || type_id >= type_declarations->semantic_schema.type_count) {
+		return 1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->semantic_schema.type_declarations[type_id];
+	if (type->parameter_count > 64 || type->index_count > 64 - type->parameter_count ||
+		argument_count != type->parameter_count + type->index_count) {
+		return 1;
+	}
+	return prototype_term_type_instance_make(
+		terms, type_declarations, type_id, arguments, type->parameter_count,
+		p_owner_view
+	);
+}
+
 int prototype_judgement_delta_record_constructor_spine(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -1254,6 +1293,23 @@ int prototype_judgement_delta_record_constructor_spine(
 	if (spine_status != 0 || argument_count != argument_evidence_count) {
 		return -1;
 	}
+	uint32_t owner_view = owner;
+	uint32_t classifier_owner_view;
+	int owner_view_status = constructor_owner_view_from_classifier(
+		terms, type_declarations, classifier, &classifier_owner_view
+	);
+	if (owner_view_status < 0) {
+		return -1;
+	}
+	if (owner_view_status == 0) {
+		int same_core;
+		if (prototype_term_core_shape_equal(
+				terms, owner, classifier_owner_view, &same_core
+			) != 0 || !same_core) {
+			return -1;
+		}
+		owner_view = classifier_owner_view;
+	}
 	int classifier_status = prototype_judgement_constructor_spine_classifier(
 			terms,
 			type_declarations,
@@ -1261,16 +1317,29 @@ int prototype_judgement_delta_record_constructor_spine(
 			delta->substitutions,
 			delta->current_context_id,
 			subject,
-			owner,
+			owner_view,
 			argument_classifiers,
 			argument_evidence_count,
 			&expected_classifier,
 			&saturated
 		);
-	int classifier_matches = classifier_status == 0 &&
-		prototype_judgement_classifier_conversion(
+	struct prototype_term_conversion_result classifier_conversion =
+		classifier_status == 0 ? prototype_judgement_classifier_conversion(
 			terms, type_declarations, expected_classifier, classifier
-		).status == PROTOTYPE_TERM_CONVERSION_EQUAL;
+		) : (struct prototype_term_conversion_result) {
+			.status = PROTOTYPE_TERM_CONVERSION_INVALID
+		};
+	int classifier_matches = classifier_status == 0 &&
+		classifier_conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL;
+	if (!classifier_matches && getenv("A_PROGRAM_FORMATION_TRACE")) {
+		fprintf(stderr,
+			"constructor spine classifier mismatch subject=%u owner=%u owner-view=%u context=%u "
+			"status=%d expected=%u actual=%u conversion=%d arguments=%u\n",
+			subject, owner, owner_view, delta->current_context_id,
+			classifier_status,
+			classifier_status == 0 ? expected_classifier : PROTOTYPE_INVALID_ID,
+			classifier, classifier_conversion.status, argument_evidence_count);
+	}
 	if (!classifier_matches && delta->occurrences && delta->occurrence_count != 0) {
 		struct prototype_typed_occurrence_graph occurrence_graph;
 		memset(&occurrence_graph, 0, sizeof(occurrence_graph));
@@ -1320,7 +1389,7 @@ int prototype_judgement_delta_record_constructor_spine(
 			) != 0 || projected_argument_count != argument_evidence_count ||
 			prototype_judgement_constructor_spine_classifier(
 				terms, type_declarations, delta->contexts, delta->substitutions,
-				delta->current_context_id, projected_subject, projected_owner,
+				delta->current_context_id, projected_subject, owner_view,
 				projected_argument_classifiers, argument_evidence_count,
 				&expected_classifier, &saturated
 			) != 0 || prototype_judgement_classifier_conversion(
@@ -1331,6 +1400,7 @@ int prototype_judgement_delta_record_constructor_spine(
 		}
 		classifier_matches = 1;
 		(void)projected_head;
+		(void)projected_owner;
 		(void)projected_constructor;
 	}
 	if (!classifier_matches) {
@@ -1356,7 +1426,7 @@ int prototype_judgement_delta_record_constructor_spine(
 	initialize_proof_rule_parameters(
 		&proof, proof_premises, premise_propositions
 	);
-	proof.rule_data.constructor.owner_view = owner;
+	proof.rule_data.constructor.owner_view = owner_view;
 	proof.premise_count = argument_count;
 	for (uint32_t i = 0; i < argument_count; ++i) {
 		if (current_argument_evidence[i].subject != arguments[i]) {

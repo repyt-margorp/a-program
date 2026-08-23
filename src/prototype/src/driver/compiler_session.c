@@ -447,7 +447,6 @@ int prototype_link_external_refs(struct prototype_program* program) {
 	if (!program || !program->terms || !program->metadata || !program->judgement) {
 		return -1;
 	}
-
 	/* Each successful pass must eliminate or relocate at least one reference.
 	 * Bound the fixed point by the finite linked graph rather than a magic
 	 * pass count unrelated to the artifact size. */

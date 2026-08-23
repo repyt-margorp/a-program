@@ -368,7 +368,8 @@ int prototype_typed_occurrence_graph_validate(
 		const struct prototype_typed_occurrence_match_case* operation_case =
 			prototype_typed_occurrence_graph_get_case(graph, i);
 		if (!operation_case ||
-			operation_case->binder_count > 16 ||
+			operation_case->binder_count >
+				PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY ||
 			!prototype_context_get(contexts, operation_case->context_id) ||
 			operation_case->constructor_owner >= terms->term_count ||
 			terms->terms[operation_case->constructor_owner].tag == 0 ||

@@ -485,18 +485,27 @@ static int prototype_artifact_write_text_body(
 		if (association->owner_term_export_index >= interface->term_export_count ||
 			association->graph_type_export_index >= interface->type_export_count ||
 			association->result_type_export_index >= interface->type_export_count ||
+			association->graph_interface_term_export_index >=
+				interface->term_export_count ||
+			(association->certified_adapter_term_export_index !=
+				PROTOTYPE_INVALID_ID &&
+			 association->certified_adapter_term_export_index >=
+				interface->term_export_count) ||
 			association->certified_runner_term_export_index >=
 				interface->term_export_count) {
 			return -1;
 		}
 		fprintf(
 			stream,
-			"function_graph_association %zu %u %u %u %u\n",
+			"function_graph_association %zu %u %u %u %u %u %u %u\n",
 			i,
 			association->owner_term_export_index,
 			association->graph_type_export_index,
 			association->result_type_export_index,
-			association->certified_runner_term_export_index
+			association->graph_interface_term_export_index,
+			association->certified_adapter_term_export_index,
+			association->certified_runner_term_export_index,
+			association->certified_argument_index
 		);
 	}
 

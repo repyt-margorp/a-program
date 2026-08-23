@@ -14,6 +14,9 @@ make -f src/prototype/Makefile reader >/dev/null
 
 positive=src/prototype/tests/fixtures/typing/function_graph_generated_length_check.p
 model=src/prototype/tests/fixtures/typing/function_graph_certified_length_model.p
+two_recursive=src/prototype/tests/fixtures/typing/function_graph_two_recursive_calls_check.p
+dependent_spine=src/prototype/tests/fixtures/typing/function_graph_dependent_spine_check.p
+quick_sort=src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p
 
 test -f "$model"
 
@@ -21,6 +24,63 @@ prototype_test_phase generated_graph
 ./read_file.out "$positive" >"$tmp_dir/positive.out"
 grep -q '^term certifiedMain :=' "$tmp_dir/positive.out"
 grep -q '^term main :=' "$tmp_dir/positive.out"
+
+prototype_test_phase two_recursive_calls
+./read_file.out "$two_recursive" >"$tmp_dir/two-recursive.out"
+grep -q '^constructor \$graph\.mirror\.fork readback_fields=6 ' \
+	"$tmp_dir/two-recursive.out"
+./read_file.out --check-source-exports-normalization-equal \
+	main expected "$two_recursive" >"$tmp_dir/two-recursive-equality.out"
+grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
+	"$tmp_dir/two-recursive-equality.out"
+
+prototype_test_phase dependent_argument_spine
+./read_file.out "$dependent_spine" >"$tmp_dir/dependent-spine.out"
+grep -q '^term certified :=' "$tmp_dir/dependent-spine.out"
+./read_file.out --check-source-exports-normalization-equal \
+	main expected "$dependent_spine" >"$tmp_dir/dependent-spine-equality.out"
+grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
+	"$tmp_dir/dependent-spine-equality.out"
+
+prototype_test_phase quicksort_dependency_closure
+{
+	sed -n '1,$p' "$quick_sort"
+	printf '%s\n' \
+		'leftIsZero := \left : Nat => \right : Nat =>' \
+			'left @zero => Bool.true @succ predecessor => Bool.false;' \
+			'' \
+			'partitionGraphProbe := \pivot : Nat => \size : Nat =>' \
+			'\input : SizedList Nat size =>' \
+			'*partition Nat &leftIsZero pivot size input;' \
+			'' \
+			'quickSortGraphProbe := *quickSort Nat &leftIsZero sample;' \
+			'' \
+			'inspectQuickSortAcc := \LeGraph : (left : Nat) -> (right : Nat) -> Bool -> @ =>' \
+			'\size : Nat => \access : Acc Nat LT size =>' \
+			'\input : SizedList Nat size => \output : List Nat =>' \
+			'\graph : @quickSortAcc Nat LeGraph size access input output =>' \
+			'graph' \
+			'@nil current down => output' \
+			'@cons tailSize pivot tail current down lowerSize lower upperSize upper' \
+			'lowerBound upperBound lowerOutput lowerGraph upperOutput upperGraph' \
+			'result appendGraph => output;'
+} >"$tmp_dir/quicksort-graph.p"
+./read_file.out --write-artifact "$tmp_dir/quicksort-graph.apo" \
+	"$tmp_dir/quicksort-graph.p" >"$tmp_dir/quicksort-graph.out"
+grep -q '^type (\$graph.quickSortAcc A le) constructors=2$' \
+	"$tmp_dir/quicksort-graph.out"
+grep -q '^constructor (\$graph.quickSortAcc A le).cons readback_fields=17 ' \
+	"$tmp_dir/quicksort-graph.out"
+grep -q '^type (\$graph.quickSort A le xs) constructors=1$' \
+	"$tmp_dir/quicksort-graph.out"
+grep -q '^term \$certified.quickSortAcc :=' "$tmp_dir/quicksort-graph.out"
+grep -q '^term inspectQuickSortAcc :=' "$tmp_dir/quicksort-graph.out"
+grep -q '^term partitionGraphProbe :=' "$tmp_dir/quicksort-graph.out"
+grep -q '^term quickSortGraphProbe :=' "$tmp_dir/quicksort-graph.out"
+./read_file.out --read-graph "$tmp_dir/quicksort-graph.apo" \
+	>"$tmp_dir/quicksort-graph-read.out"
+grep -q '^interface term \$certified\.quickSort ' \
+	"$tmp_dir/quicksort-graph-read.out"
 
 prototype_test_phase executable_projection
 ./read_file.out --check-source-exports-normalization-equal \
@@ -31,6 +91,9 @@ grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
 prototype_test_phase artifact_association
 ./read_file.out --write-artifact "$tmp_dir/function-graph.apo" "$positive" \
 	>"$tmp_dir/artifact-write.out"
+./read_file.out --write-artifact "$tmp_dir/function-graph-repeat.apo" "$positive" \
+	>"$tmp_dir/artifact-repeat.out"
+cmp "$tmp_dir/function-graph.apo" "$tmp_dir/function-graph-repeat.apo"
 grep -q '^function_graph_associations 1$' "$tmp_dir/function-graph.apo"
 grep -q '^function_graph_association 0 ' "$tmp_dir/function-graph.apo"
 ./read_file.out --read-graph "$tmp_dir/function-graph.apo" \
@@ -60,6 +123,15 @@ then
 	echo 'function_graph_unknown_owner unexpectedly compiled' >&2
 	exit 1
 fi
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_coarse_forgery.p \
+	>"$tmp_dir/coarse.out" 2>"$tmp_dir/coarse.err"
+then
+	echo 'forgeable coarse function graph unexpectedly compiled' >&2
+	exit 1
+fi
+grep -q 'source shape is not structure-preserving' "$tmp_dir/coarse.err"
 
 prototype_test_phase static_boundary
 if rg -n \
