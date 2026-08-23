@@ -986,7 +986,7 @@ boundary.
 ### 11.2 2026-08-23 FGR4 implementation checkpoint
 
 ```text
-Implemented revision: pending final commit
+Implemented revision: 9c981b8
 Artifact version: v83
 
 Graph-enabled definitions: requested pure-total dependent functions; nested
