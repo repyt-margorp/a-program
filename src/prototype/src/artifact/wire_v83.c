@@ -67,6 +67,92 @@ static int read_artifact_type_expr(
 	uint32_t* p_next_level_var
 );
 
+static int function_graph_export_name_matches(
+	const struct symbol_table* symbols,
+	int symbol_id,
+	const char* prefix,
+	const char* owner_name
+) {
+	char expected[256];
+	const char* actual = symbol_to_string(symbols, symbol_id);
+	int length;
+	if (!symbols || !prefix || !owner_name || !actual) {
+		return 0;
+	}
+	length = snprintf(expected, sizeof(expected), "$%s.%s", prefix, owner_name);
+	return length >= 0 && (size_t)length < sizeof(expected) &&
+		strcmp(actual, expected) == 0;
+}
+
+static int validate_function_graph_association_names(
+	const struct symbol_table* symbols,
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_artifact_function_graph_association* association
+) {
+	const struct prototype_artifact_term_export* owner;
+	const struct prototype_artifact_type_export* graph;
+	const struct prototype_artifact_type_export* result;
+	const struct prototype_artifact_term_export* graph_interface;
+	const struct prototype_artifact_term_export* runner;
+	const char* owner_name;
+	if (!symbols || !interface || !association ||
+		association->owner_term_export_index >= interface->term_export_count ||
+		association->graph_type_export_index >= interface->type_export_count ||
+		association->result_type_export_index >= interface->type_export_count ||
+		association->graph_interface_term_export_index >=
+			interface->term_export_count ||
+		association->certified_runner_term_export_index >=
+			interface->term_export_count) {
+		return -1;
+	}
+	owner = &interface->term_exports[association->owner_term_export_index];
+	graph = &interface->type_exports[association->graph_type_export_index];
+	result = &interface->type_exports[association->result_type_export_index];
+	graph_interface = &interface->term_exports[
+		association->graph_interface_term_export_index
+	];
+	runner = &interface->term_exports[
+		association->certified_runner_term_export_index
+	];
+	owner_name = symbol_to_string(symbols, owner->name_symbol_id);
+	if (!owner_name ||
+		graph->namespace_symbol_id != owner->namespace_symbol_id ||
+		result->namespace_symbol_id != owner->namespace_symbol_id ||
+		graph_interface->namespace_symbol_id != owner->namespace_symbol_id ||
+		runner->namespace_symbol_id != owner->namespace_symbol_id ||
+		!function_graph_export_name_matches(
+			symbols, graph->name_symbol_id, "graph", owner_name
+		) ||
+		!function_graph_export_name_matches(
+			symbols, result->name_symbol_id, "result", owner_name
+		) ||
+		!function_graph_export_name_matches(
+			symbols, graph_interface->name_symbol_id, "interface", owner_name
+		) ||
+		!function_graph_export_name_matches(
+			symbols, runner->name_symbol_id, "certified", owner_name
+		)) {
+		return -1;
+	}
+	if (association->certified_adapter_term_export_index != PROTOTYPE_INVALID_ID) {
+		if (association->certified_adapter_term_export_index >=
+				interface->term_export_count) {
+			return -1;
+		}
+		const struct prototype_artifact_term_export* adapter =
+			&interface->term_exports[
+				association->certified_adapter_term_export_index
+			];
+		if (adapter->namespace_symbol_id != owner->namespace_symbol_id ||
+			!function_graph_export_name_matches(
+				symbols, adapter->name_symbol_id, "adapter", owner_name
+			)) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 int prototype_artifact_read_text_interface(
 	FILE* stream,
 	struct symbol_table* symbols,
@@ -427,7 +513,10 @@ int prototype_artifact_read_text_interface(
 			 association->certified_adapter_term_export_index >=
 				interface->term_export_count) ||
 			association->certified_runner_term_export_index >=
-				interface->term_export_count) {
+				interface->term_export_count ||
+			validate_function_graph_association_names(
+				symbols, interface, association
+			) != 0) {
 			return -1;
 		}
 		for (size_t j = 0; j < interface->function_graph_association_count; ++j) {

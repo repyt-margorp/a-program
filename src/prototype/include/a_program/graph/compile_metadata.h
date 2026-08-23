@@ -70,6 +70,17 @@ struct prototype_function_graph_association {
 	int owner_symbol_id;
 	uint32_t owner_assignment_id;
 	uint32_t owner_source_entry_id;
+	/* Imported associations are immutable projections of one artifact
+	 * association. They never participate in local graph generation or
+	 * publication. */
+	int imported;
+	uint32_t imported_interface_index;
+	uint32_t imported_owner_term_export_index;
+	uint32_t imported_graph_type_export_index;
+	uint32_t imported_result_type_export_index;
+	uint32_t imported_graph_interface_term_export_index;
+	uint32_t imported_certified_adapter_term_export_index;
+	uint32_t imported_certified_runner_term_export_index;
 	int graph_symbol_id;
 	int result_symbol_id;
 	int returned_constructor_symbol_id;

@@ -2493,6 +2493,28 @@ static int compile_ast_atomic_ref(
 					ctx,
 					node->as.function_graph_witness_reference.owner_symbol_id
 				);
+			if (association && association->imported) {
+				if (association->imported_interface_index >=
+						ctx->imported_interface_count) {
+					return -1;
+				}
+				const struct prototype_artifact_interface* interface =
+					ctx->imported_interfaces[
+						association->imported_interface_index
+					];
+				if (!interface ||
+					association->imported_certified_runner_term_export_index >=
+						interface->term_export_count) {
+					return -1;
+				}
+				return compile_external_ref_ref(
+					ctx,
+					interface->term_exports[
+						association->imported_certified_runner_term_export_index
+					].name_symbol_id,
+					p_ret
+				);
+			}
 			if (!association ||
 				association->certified_runner_assignment_id >=
 					ctx->asts->assignment_count) {
@@ -4438,10 +4460,11 @@ static int compile_function_graph_expand_certified_arguments(
 			ctx, ctx->asts->nodes[callback_name_ast].as.name.symbol_id
 		);
 	if (!callback_association ||
-		callback_association->graph_interface_assignment_id >=
-			ctx->asts->assignment_count ||
-		callback_association->certified_adapter_assignment_id >=
-			ctx->asts->assignment_count) {
+		(!callback_association->imported &&
+			(callback_association->graph_interface_assignment_id >=
+				ctx->asts->assignment_count ||
+			 callback_association->certified_adapter_assignment_id >=
+				ctx->asts->assignment_count))) {
 		fprintf(stderr,
 			"certified callback association incomplete callback=%d interface=%u adapter=%u runner=%u assignments=%zu\n",
 			callback_association ? callback_association->owner_symbol_id : -1,
@@ -4456,7 +4479,39 @@ static int compile_function_graph_expand_certified_arguments(
 	}
 	struct compile_ref graph_interface;
 	struct compile_ref certified_callback;
-	if (compile_def_ref(
+	if (callback_association->imported) {
+		if (callback_association->imported_interface_index >=
+				ctx->imported_interface_count) {
+			return -1;
+		}
+		const struct prototype_artifact_interface* interface =
+			ctx->imported_interfaces[
+				callback_association->imported_interface_index
+			];
+		if (!interface ||
+			callback_association->imported_graph_interface_term_export_index >=
+				interface->term_export_count ||
+			callback_association->imported_certified_adapter_term_export_index >=
+				interface->term_export_count ||
+			compile_external_ref_ref(
+				ctx,
+				interface->term_exports[
+					callback_association->
+						imported_graph_interface_term_export_index
+				].name_symbol_id,
+				&graph_interface
+			) != 0 ||
+			compile_external_ref_ref(
+				ctx,
+				interface->term_exports[
+					callback_association->
+						imported_certified_adapter_term_export_index
+				].name_symbol_id,
+				&certified_callback
+			) != 0) {
+			return -1;
+		}
+	} else if (compile_def_ref(
 			ctx,
 			&ctx->asts->assignments[
 				callback_association->graph_interface_assignment_id
@@ -6599,6 +6654,9 @@ static int compile_phase_build_graph(struct compile_context* ctx) {
 			++association_id) {
 			const struct prototype_function_graph_association* association =
 				&ctx->metadata->function_graph_associations[association_id];
+			if (association->imported) {
+				continue;
+			}
 			uint32_t assignments[5] = {
 				association->graph_type_assignment_id,
 				association->result_type_assignment_id,

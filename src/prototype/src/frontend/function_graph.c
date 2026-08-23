@@ -106,6 +106,7 @@ struct function_graph_generation {
 		FUNCTION_GRAPH_MAX_RECURSIVE_CALLS
 	];
 	uint32_t recursive_site_count;
+	int failure_reason;
 };
 
 struct function_graph_binary_classifier {
@@ -3291,6 +3292,21 @@ static int function_graph_prepare(
 			failed->compiled_classifier,
 			generation->metadata->typed_occurrences.frozen,
 			generation->metadata->typed_occurrences.sealed);
+		uint32_t ignored_result;
+		uint32_t ignored_effect;
+		int ignored_totality;
+		if (failed->compiled_classifier == PROTOTYPE_INVALID_ID ||
+			accepted_definition_final_computation(
+				generation->terms,
+				generation->type_declarations,
+				failed->compiled_classifier,
+				&ignored_result,
+				&ignored_effect,
+				&ignored_totality
+			) != 0) {
+			generation->failure_reason =
+				PROTOTYPE_FUNCTION_GRAPH_REASON_NONFUNCTION_OWNER;
+		}
 		return -1;
 	}
 	if (generation->view.final_totality !=
@@ -3304,6 +3320,11 @@ static int function_graph_prepare(
 			generation->view.final_effect_row,
 			generation->view.final_effect_row < generation->terms->term_count ?
 				generation->terms->terms[generation->view.final_effect_row].tag : -1);
+		generation->failure_reason =
+			generation->view.final_totality ==
+				PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE ?
+				PROTOTYPE_FUNCTION_GRAPH_REASON_NONTOTAL_OWNER :
+				PROTOTYPE_FUNCTION_GRAPH_REASON_EFFECTFUL_OWNER;
 		return -1;
 	}
 	const struct prototype_ast_term_assignment_def* owner =
@@ -7867,10 +7888,12 @@ static int function_graph_generate_one(
 			PROTOTYPE_FUNCTION_GRAPH_REQUEST_ERROR;
 		request->reason = prepare > 0 ?
 			PROTOTYPE_FUNCTION_GRAPH_REASON_UNSUPPORTED_SOURCE :
+			(generation->failure_reason != PROTOTYPE_FUNCTION_GRAPH_REASON_NONE ?
+				generation->failure_reason :
 			(generation->view.final_totality ==
 				PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE ?
 				PROTOTYPE_FUNCTION_GRAPH_REASON_NONTOTAL_OWNER :
-				PROTOTYPE_FUNCTION_GRAPH_REASON_EFFECTFUL_OWNER);
+				PROTOTYPE_FUNCTION_GRAPH_REASON_EFFECTFUL_OWNER));
 		return -1;
 	}
 	if (!generation->branch_precise) {
@@ -7993,6 +8016,14 @@ static int function_graph_generate_one(
 		.owner_symbol_id = request->owner_symbol_id,
 		.owner_assignment_id = request->owner_assignment_id,
 		.owner_source_entry_id = request->owner_source_entry_id,
+		.imported = 0,
+		.imported_interface_index = PROTOTYPE_INVALID_ID,
+		.imported_owner_term_export_index = PROTOTYPE_INVALID_ID,
+		.imported_graph_type_export_index = PROTOTYPE_INVALID_ID,
+		.imported_result_type_export_index = PROTOTYPE_INVALID_ID,
+		.imported_graph_interface_term_export_index = PROTOTYPE_INVALID_ID,
+		.imported_certified_adapter_term_export_index = PROTOTYPE_INVALID_ID,
+		.imported_certified_runner_term_export_index = PROTOTYPE_INVALID_ID,
 		.graph_symbol_id = generation->graph_symbol,
 		.result_symbol_id = generation->result_symbol,
 		.returned_constructor_symbol_id = generation->returned_symbol,
@@ -8172,8 +8203,13 @@ int prototype_function_graph_generate_requested(
 ) {
 	if (!asts || !terms || !type_declarations || !judgement || !metadata ||
 		!symbols || !metadata->typed_occurrences.frozen ||
-		metadata->function_graph_association_count != 0) {
+		metadata->typed_occurrences.transaction_active) {
 		return -1;
+	}
+	for (size_t i = 0; i < metadata->function_graph_association_count; ++i) {
+		if (!metadata->function_graph_associations[i].imported) {
+			return -1;
+		}
 	}
 	uint32_t accepted_source_node_count = (uint32_t)asts->node_count;
 	for (uint32_t request_id = 0;
@@ -8207,6 +8243,9 @@ int prototype_function_graph_finalize_associations(
 		++association_id) {
 		struct prototype_function_graph_association* association =
 			&metadata->function_graph_associations[association_id];
+		if (association->imported) {
+			continue;
+		}
 		association->graph_type_id = PROTOTYPE_INVALID_ID;
 		association->result_type_id = PROTOTYPE_INVALID_ID;
 		for (size_t type_id = 0; type_id < asts->type_def_count; ++type_id) {

@@ -84,16 +84,28 @@ int prototype_compile_metadata_add_function_graph_association(
 ) {
 	if (!metadata || !metadata->function_graph_associations ||
 		association.owner_symbol_id < 0 ||
-		association.owner_assignment_id == PROTOTYPE_INVALID_ID ||
-		association.owner_source_entry_id == PROTOTYPE_INVALID_ID ||
+		(!association.imported &&
+			(association.owner_assignment_id == PROTOTYPE_INVALID_ID ||
+			 association.owner_source_entry_id == PROTOTYPE_INVALID_ID)) ||
 		!p_association_id) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < metadata->function_graph_association_count; ++i) {
 		const struct prototype_function_graph_association* existing =
 			&metadata->function_graph_associations[i];
-		if (existing->owner_assignment_id == association.owner_assignment_id ||
-			existing->owner_source_entry_id == association.owner_source_entry_id ||
+		if (existing->owner_symbol_id == association.owner_symbol_id &&
+			existing->imported && association.imported &&
+			existing->imported_interface_index ==
+				association.imported_interface_index &&
+			existing->imported_owner_term_export_index ==
+				association.imported_owner_term_export_index) {
+			*p_association_id = i;
+			return 0;
+		}
+		if ((!existing->imported && !association.imported &&
+				(existing->owner_assignment_id == association.owner_assignment_id ||
+				 existing->owner_source_entry_id ==
+					association.owner_source_entry_id)) ||
 			existing->owner_symbol_id == association.owner_symbol_id) {
 			return -1;
 		}

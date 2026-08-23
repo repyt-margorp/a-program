@@ -917,6 +917,9 @@ int prototype_artifact_interface_build_from_metadata(
 	for (size_t i = 0; i < metadata->function_graph_association_count; ++i) {
 		const struct prototype_function_graph_association* source =
 			&metadata->function_graph_associations[i];
+		if (source->imported) {
+			continue;
+		}
 		uint32_t owner = PROTOTYPE_INVALID_ID;
 		uint32_t graph = PROTOTYPE_INVALID_ID;
 		uint32_t result = PROTOTYPE_INVALID_ID;

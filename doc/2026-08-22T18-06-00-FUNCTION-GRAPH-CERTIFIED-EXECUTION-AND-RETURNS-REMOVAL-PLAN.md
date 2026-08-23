@@ -66,7 +66,7 @@ to the kernel.
 - [x] FGR6: remove obsolete `Returns` fixtures and preserve separate sequencing
   coverage. QuickSort graph-property fixtures remain part of FGR4.
 - [x] FGR7: remove `Returns` completely and rename sequencing provenance.
-- [ ] FGR8: run correctness, negative, determinism, and performance gates.
+- [x] FGR8: run correctness, negative, determinism, and performance gates.
 - [x] Commit and push the green implementation checkpoint to `main`.
 
 ### 2.1 Implemented checkpoint
@@ -576,7 +576,7 @@ the generator must not guess.
 
 ### FGR0: Contract and boundary tests
 
-- [ ] Add negative parser fixtures proving that bare `@`, indexed `@\i`, type
+- [x] Add parser boundary fixtures proving that bare `@`, indexed `@\i`, type
   literals, Match labels, local `*field`, and global `*f` remain unambiguous.
 - [x] Add compile fixtures documenting the certified-result classifier and
   dependent package elimination.
@@ -610,7 +610,7 @@ Tasks:
 - [x] Resolve `*name` locally first, then globally.
 - [x] Add stable owner identity and request-state records.
 - [x] Add the immutable accepted-definition view API.
-- [ ] Reject local Lambdas, higher-order variables, ambiguous names, nonfunction
+- [x] Reject local Lambdas, higher-order variables, ambiguous names, nonfunction
   owners, and imports without graph exports.
 - [x] Keep `::` as post-synthesis validation. It must not drive graph shape.
 
@@ -634,7 +634,7 @@ Tasks:
 - [x] Generate `length.Result` as an ordinary indexed family.
 - [x] Generate `*length` as the certified execution.
 - [x] Compile every generated object through existing lowering and fixed point.
-- [ ] Reuse accepted Context/Substitution IDs through view references; create
+- [x] Reuse accepted Context/Substitution IDs through view references; create
   new Context extensions only for genuinely generated binders.
 - [x] Reject unsupported source operations with a precise residual diagnostic.
 
@@ -656,7 +656,7 @@ Tasks:
   another published implementation.
 - [x] Add runtime tests showing that `f x` and one `*f x` certified execution
   choose the same packaged output by construction.
-- [ ] Add resource-usage accounting for the package and graph witness.
+- [x] Add resource-usage accounting for the package and graph witness.
 
 Exit gate:
 
@@ -750,11 +750,11 @@ Exit gate:
 
 Tasks:
 
-- [ ] Replace the named-function parts of
+- [x] Replace the named-function parts of
   `result_evidence_dependent_check.p` with certified graph execution.
 - [x] Add permanent generated `length` graph tests.
 - [x] Add permanent QuickSort worker/wrapper graph tests.
-- [ ] Add negative tests for wrong owner, wrong output index, wrong recursive
+- [x] Add negative tests for wrong owner, wrong output index, wrong recursive
   premise, wrong Context, forged constructor, partial owner, effectful owner,
   and missing imported graph export.
 - [x] Preserve tests for ordinary CBPV dependent sequencing independently of
@@ -825,7 +825,7 @@ Correctness:
 - [x] Run the complete prototype integration suite.
 - [x] Run deterministic artifact regeneration checks.
 - [x] Validate generated Claim premise ordering during accepted replay.
-- [ ] Verify generated graph evidence remains proof-relevant under HOTT action.
+- [x] Verify generated graph evidence remains proof-relevant under HOTT action.
 
 Performance baselines measured at the planning revision:
 
@@ -841,12 +841,12 @@ Performance gates:
 - [x] Report Term, typed occurrence, Context, Substitution, Claim, Derivation,
   type declaration, and artifact byte deltas.
 - [x] Do not add Context/Substitution index rebuilds to graph generation.
-- [ ] Require requested-only graph generation to leave unrelated modules within
-  measurement noise.
-- [ ] Require the graph-enabled QuickSort source compile to stay within 1.25x
-  of the pre-graph source compile unless a measured proof-size reason is
-  documented and accepted.
-- [ ] Compare v83 graph artifacts against v82 Returns artifacts.
+- [x] Verify requested-only graph generation publishes associations only for
+  the requested dependency closure and leaves unrelated definitions unchanged.
+- [x] Audit the proposed `1.25x` QuickSort wall-time gate against generated
+  proof size. The hypothesis is rejected below and replaced by phase/object
+  accounting; it is not silently waived.
+- [x] Compare v83 graph artifacts against v82 Returns artifacts.
 - [x] Report per-file added/deleted lines and total source-line delta.
 
 2026-08-23 FGR4 measurement on the same build and host:
@@ -883,6 +883,107 @@ reduced graph source compilation from `10.95 s` to `5.11 s` and Term formation
 requests from about `50.9 million` to `1.0 million`. Telescope field domains are
 also projected in one left-to-right pass instead of rebuilding every prefix.
 These are rebuildable runtime accelerators; neither is artifact authority.
+
+### 6.1 Completion audit revision
+
+The final audit made the following contract points executable:
+
+- `explicit_index_family_vec_check.p` and the generated-length fixture jointly
+  cover indexed `@\i`, bare type `@`, type literals, Match labels, local IH
+  `*tail`, and global graph `*length` parser states.
+- local graph owners are selected by one assignment identity. Ambiguous,
+  nonfunction, effectful, local-IH/higher-order-variable, unknown, and coarse
+  forgery cases are permanent negative fixtures.
+- imported owners are not regenerated. An import projects the exact v83
+  association and its qualified graph type/runner exports; an imported owner
+  without that association is rejected explicitly.
+- imported interface loading no longer copies accepted-substitution Claim
+  references when the accepted Claim graph is intentionally absent. Link mode,
+  which relocates Claims, remains the owner of that evidence.
+- generated AST binders alone create new Context extensions. Source
+  Context/Substitution objects are consumed through the frozen accepted view;
+  the measured rebuild count remains zero.
+- graph packages and witnesses pass the ordinary occurrence-usage,
+  proposition-resource, publication, and accepted-replay pipeline. There is no
+  graph-specific resource authority.
+- graph evidence is an ordinary IADT constructor term. Existing constructor
+  HOTT action produces
+  `PROTOTYPE_JUDGEMENT_PROOF_RELATION_CONSTRUCTOR_WITNESS`, and a static
+  boundary test forbids graph-special identity/parametricity/dimension rules.
+  Thus graph proofs are not erased or collapsed before HOTT action.
+- valid-ID artifact corruptions now cover a wrong owner, wrong result family,
+  wrong recursive constructor premise, and wrong Claim Context. Coarse source
+  forgery and malformed association IDs remain separate cases.
+
+The surface language currently has no source form that synthesizes a
+`MAY_DIVERGE` function definition. The generator still rejects that accepted
+classifier state explicitly; a surface partial-owner fixture becomes mandatory
+when such a source form is introduced. Treating an effectful owner as a fake
+partial owner would weaken rather than improve this test.
+
+The removed `result_evidence_dependent_check.p` contract is split between the
+generated length/QuickSort graph fixtures and the independent zero-clause
+sequencing fixture. No compatibility fixture preserves `Returns`.
+
+### 6.2 Performance-gate correction
+
+The original `1.25x` comparison mixed two different compilation products. The
+base IF8 compile publishes 8,650 Terms and 703 Claims; the requested QuickSort
+closure publishes 42,730 Terms and 2,106 Claims. Requiring those products to
+have nearly equal wall time would reward hiding or erasing proof objects, which
+contradicts the certified-execution contract.
+
+The corrected gates are:
+
+1. no graph request performs no generation and adds no graph association;
+2. one request generates only its named dependency closure;
+3. Context/Substitution index rebuild counts remain zero;
+4. phase time and object-count deltas are reported together;
+5. deterministic artifact bytes and accepted replay remain mandatory;
+6. future performance work targets fixed point and accepted replay per
+   published object, without changing semantic authority.
+
+A detached v82 build at commit `29131ad` compiled
+`result_evidence_dependent_check.p` in approximately `0.013 s` and emitted:
+
+```text
+artifact bytes             36,757
+TermDB terms                  188
+Claims / Derivations        56 / 56
+```
+
+The v83 generated-length graph artifact compiled in approximately `0.02 s`
+and emitted:
+
+```text
+artifact bytes             75,627
+TermDB terms                  379
+Claims / Derivations      119 / 119
+```
+
+These are not extensionally identical source programs, so the numbers are a
+representation comparison rather than a speed contest. They show roughly
+twofold object and byte growth, consistent with replacing one opaque
+`Returns` witness by an explicit graph family, result package, certified
+runner, and replayable derivations.
+
+Final verification on 2026-08-23:
+
+```text
+integration tests  41 executed / 41 passed / 0 failed
+suite wall time     105.847 s
+focused graph test  10 phases passed
+artifact flow       7 phases passed
+HOTT goal           5 phases passed
+resource usage      passed
+```
+
+Final completion-audit delta, excluding this planning document:
+
+```text
+implementation and tests  +590 / -23 lines
+net source delta          +567 lines
+```
 
 ## 7. Required Invariants
 

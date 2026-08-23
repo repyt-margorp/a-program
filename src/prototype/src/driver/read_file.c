@@ -2340,7 +2340,7 @@ static int read_import_artifact_into_slot(
 		.substitution_ids = provider_substitution_relocation,
 		.substitution_id_capacity = provider_substitution_relocation_count
 	};
-	if (prototype_artifact_append_graph(
+	int append_status = prototype_artifact_append_graph(
 			&imported_artifact_interfaces[slot],
 			program->terms,
 			program->type_declarations,
@@ -2362,17 +2362,15 @@ static int read_import_artifact_into_slot(
 		provider_context_relocation_count,
 			&provider_additional,
 			1
-		) != 0 ||
-		prototype_compile_metadata_append_accepted_substitution_claims(
-			program->metadata,
-			&provider_metadata,
-			provider_substitution_relocation,
-			provider_substitution_relocation_count,
-			provider_claim_relocation,
-			provider_claim_relocation_count
-		) != 0) {
+		);
+	if (append_status != 0) {
+		fprintf(stderr, "%s: imported graph append failed\n", path);
 		return -1;
 	}
+	/* Interface imports intentionally omit the provider's accepted judgement
+	 * graph. Consequently no provider ClaimId is relocated, and importing its
+	 * accepted-substitution Claim references would create dangling authority.
+	 * Link/re-export mode, which does append accepted Claims, owns that copy. */
 	return 0;
 }
 

@@ -4382,6 +4382,39 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 				compile_function_graph_association(
 					ctx, expr.as.function_graph_reference.owner_symbol_id
 				);
+			if (association && association->imported) {
+				if (association->imported_interface_index >=
+						ctx->imported_interface_count ||
+					association->imported_graph_type_export_index ==
+						PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				const struct prototype_artifact_interface* interface =
+					ctx->imported_interfaces[
+						association->imported_interface_index
+					];
+				if (!interface ||
+					association->imported_graph_type_export_index >=
+						interface->type_export_count) {
+					return -1;
+				}
+				const struct prototype_artifact_type_export* graph_export =
+					&interface->type_exports[
+						association->imported_graph_type_export_index
+					];
+				if (prototype_type_expr_imported_type(
+						ctx->type_declarations,
+						qualified_name_make(
+							graph_export->namespace_symbol_id,
+							graph_export->name_symbol_id
+						),
+						&graph_export->representation_fingerprint,
+						&compiled_type_expr
+					) != 0) {
+					return -1;
+				}
+				break;
+			}
 			uint32_t ignored_graph_term;
 			if (!association || association->graph_symbol_id < 0 ||
 				association->graph_type_assignment_id >= ctx->asts->assignment_count ||
@@ -4917,6 +4950,31 @@ static int compile_ast_type_expr_term_with_self(
 				compile_function_graph_association(
 					ctx, expr.as.function_graph_reference.owner_symbol_id
 				);
+			if (association && association->imported) {
+				if (association->imported_interface_index >=
+						ctx->imported_interface_count) {
+					return -1;
+				}
+				const struct prototype_artifact_interface* interface =
+					ctx->imported_interfaces[
+						association->imported_interface_index
+					];
+				if (!interface ||
+					association->imported_graph_type_export_index >=
+						interface->type_export_count) {
+					return -1;
+				}
+				return prototype_term_type_instance_make(
+					ctx->terms,
+					ctx->type_declarations,
+					interface->type_exports[
+						association->imported_graph_type_export_index
+					].local_type_id,
+					NULL,
+					0,
+					p_ret
+				);
+			}
 			if (!association || association->graph_type_assignment_id >=
 					ctx->asts->assignment_count) {
 				return -1;
