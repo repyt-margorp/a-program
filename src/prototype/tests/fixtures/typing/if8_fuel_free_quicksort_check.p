@@ -141,14 +141,16 @@ quickSortAcc := \A : @ => \le : A -> A -> Bool =>
 			(\input : SizedList A current =>
 					input @nil => (List A).nil
 						@cons tailSize pivot tail => {
-							partitioned := partition A le pivot tailSize tail;
-							partitioned
-								@parts lowerSize lower upperSize upper lowerBound upperBound =>
-									append A
-										(*down lowerSize lowerBound lower)
-										((List A).cons pivot
-											(*down upperSize upperBound upper));
-						});
+						partitioned := partition A le pivot tailSize tail;
+						partitioned
+							@parts lowerSize lower upperSize upper lowerBound upperBound =>
+								{
+									lowerResult := *down lowerSize lowerBound lower;
+									upperResult := *down upperSize upperBound upper;
+									append A lowerResult
+										((List A).cons pivot upperResult);
+								};
+				});
 
 quickSortAcc :: (A : @) -> (A -> A -> Bool) ->
 	(size : Nat) -> Acc Nat LT size -> SizedList A size -> List A;

@@ -1525,6 +1525,8 @@ int prototype_internal_artifact_append_graph_ordered(
 		source_interface->type_expr_count > appended_interface->type_expr_capacity ||
 		 source_interface->identity_root_count >
 				appended_interface->identity_root_capacity ||
+		 source_interface->function_graph_selector_group_count >
+				appended_interface->function_graph_selector_group_capacity ||
 		 source_interface->dependency_count > appended_interface->dependency_capacity) {
 		fprintf(
 			stderr,
@@ -2006,6 +2008,8 @@ int prototype_internal_artifact_append_graph_ordered(
 	appended_interface->identity_root_count = source_interface->identity_root_count;
 	appended_interface->function_graph_association_count =
 		source_interface->function_graph_association_count;
+	appended_interface->function_graph_selector_group_count =
+		source_interface->function_graph_selector_group_count;
 	appended_interface->export_condition_obligation_count = 0;
 	appended_interface->dependency_count = source_interface->dependency_count;
 	for (size_t i = 0;
@@ -2026,6 +2030,17 @@ int prototype_internal_artifact_append_graph_ordered(
 			return -1;
 		}
 		appended_interface->function_graph_associations[i] = *source;
+	}
+	for (size_t i = 0;
+		i < source_interface->function_graph_selector_group_count;
+		++i) {
+		const struct prototype_artifact_function_graph_selector_group* source =
+			&source_interface->function_graph_selector_groups[i];
+		if (source->association_index >=
+				source_interface->function_graph_association_count) {
+			return -1;
+		}
+		appended_interface->function_graph_selector_groups[i] = *source;
 	}
 	for (size_t i = 0; i < source_interface->type_expr_count; ++i) {
 		appended_interface->type_exprs[i] = source_interface->type_exprs[i];
@@ -2303,6 +2318,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			appended_interface,
 			target_terms,
 			target_type_declarations,
+			target_contexts,
 			target_judgement
 		) != 0) {
 		return -1;

@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v85.h"
+#include "a_program/artifact/wire_v86.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
@@ -474,6 +474,11 @@ static int fixture_artifact_interface_environment_round_trip(
 		shape->identity_root_capacity
 	);
 	FIXTURE_ALLOC(
+		prototype_artifact_function_graph_selector_group,
+		function_graph_selector_groups,
+		shape->function_graph_selector_group_capacity
+	);
+	FIXTURE_ALLOC(
 		prototype_artifact_dependency,
 		dependencies,
 		shape->dependency_capacity
@@ -481,7 +486,7 @@ static int fixture_artifact_interface_environment_round_trip(
 #undef FIXTURE_ALLOC
 	if (!term_exports || !type_exports || !type_parameters ||
 		!constructor_exports || !field_type_exprs || !type_exprs ||
-		!identity_roots || !dependencies) {
+		!identity_roots || !function_graph_selector_groups || !dependencies) {
 		free(term_exports);
 		free(type_exports);
 		free(type_parameters);
@@ -489,6 +494,7 @@ static int fixture_artifact_interface_environment_round_trip(
 		free(field_type_exprs);
 		free(type_exprs);
 		free(identity_roots);
+		free(function_graph_selector_groups);
 		free(dependencies);
 		return -1;
 	}
@@ -509,6 +515,8 @@ static int fixture_artifact_interface_environment_round_trip(
 		shape->type_expr_capacity,
 		identity_roots,
 		shape->identity_root_capacity,
+		function_graph_selector_groups,
+		shape->function_graph_selector_group_capacity,
 		dependencies,
 		shape->dependency_capacity
 	);
@@ -543,6 +551,7 @@ static int fixture_artifact_interface_environment_round_trip(
 	free(field_type_exprs);
 	free(type_exprs);
 	free(identity_roots);
+	free(function_graph_selector_groups);
 	free(dependencies);
 	return status;
 }

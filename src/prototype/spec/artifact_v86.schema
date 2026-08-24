@@ -1,6 +1,6 @@
-A_PROGRAM_ARTIFACT 85
+A_PROGRAM_ARTIFACT 86
 
-This file is the canonical semantic manifest for artifact version 85. The
+This file is the canonical semantic manifest for artifact version 86. The
 artifact header carries the SHA-256 digest of these exact bytes. A reader must
 reject a different version or digest before reading the interface. Version 84
 is not accepted and has no compatibility parser. Version 85 replaces trusted
@@ -20,7 +20,7 @@ literal or primitive Claims. In the default environment, Int and Int32 name
 HOST_TYPE_INT32 and unsuffixed integer literals have exactly that principal;
 Int64 remains distinct. INT_LITERAL_ADMISSIBILITY is retained in the numeric
 wire vocabulary only as a reserved historical ordinal and is not emitted or
-accepted by the v85 compiler.
+accepted by the v86 compiler.
 
 The artifact is one dense accepted object graph. Every section uses IDs in
 0..count-1 with no holes. Solver candidates, work queues, HOTT actions, bridges,
@@ -156,7 +156,7 @@ name, parameter and index Contexts, index count, constructor telescope, result
 classifier, and optional readback/cache data. Every declaration has a name.
 Computed identity and higher-dimensional families are DIMENSION_ACTION Terms,
 not anonymous declarations. No declaration origin or generated carrier field
-exists in v85.
+exists in v86.
 
 type_declarations N
 type_decl ID NAME NAMESPACE TYPE_INDEX FIRST_PARAMETER PARAMETER_COUNT FIRST_CONSTRUCTOR CONSTRUCTOR_COUNT FORMATION_CLASSIFIER PARAMETER_CONTEXT INDEX_CONTEXT INDEX_COUNT
@@ -215,7 +215,7 @@ HAS_TYPE Claim for the exported occurrence, subject, classifier, and Context.
 CONDITIONAL evidence has nonzero CONDITION_COUNT. ID is either the exact
 accepted HAS_TYPE Claim for the exported occurrence, subject, classifier, and
 Context, or INVALID only when one exact classifier-closing residual obligation
-is the base evidence. In v85 that exceptional base is a
+is the base evidence. In v86 that exceptional base is a
 COMPUTATION_FOLD_RESULT whose kind descriptor permits later Claim
 reconstruction; an EFFECT_ROW_EQUATION can never be the base typing evidence.
 An occurrence may already have a SOLVED classifier while a distinct pending
@@ -263,6 +263,21 @@ instance of the designated result family. Generated names remain diagnostics,
 not semantic evidence. The association does not claim that raw higher-order
 execution is certified.
 
+After graph associations, `function_graph_selector_groups COUNT` contains
+dense records `function_graph_selector_group ID ASSOCIATION_INDEX
+CONSTRUCTOR_ORDINAL DISPLAY_NAME ROLE_MASK VALUE_FIELD_ORDINAL
+GRAPH_FIELD_ORDINAL RECURSIVE`. `DISPLAY_NAME` is an interned readback label.
+The association, constructor, and field ordinals are the semantic identity.
+`VALUE` is mandatory. `GRAPH_FIELD_ORDINAL` is `4294967295` exactly when the
+graph role is absent. The induction role is present exactly when `RECURSIVE` is
+one, and a recursive group has a graph field immediately after its result-value
+field. The graph field classifier must be a strictly-positive recursive field
+of that generated constructor. Names are unique within one association and
+constructor. Readers reject malformed role combinations, out-of-telescope
+fields, false recursion markers, duplicate selectors, and records detached
+from a graph association. Imported elaboration copies these frozen records; it
+never reconstructs provider source roles from equal field classifiers.
+
 A frozen occurrence has exactly one closure state. SOLVED names one present
 classifier and has no verification obligation. RESIDUAL_VERIFICATION has no
 classifier and names one persisted pending obligation. PENDING is a compiler
@@ -285,7 +300,7 @@ verification_dependencies N
 verification_dependency ID OCCURRENCE OBLIGATION_ID
 
 Dependency records are sorted by `(OCCURRENCE, OBLIGATION_ID)`, contain no
-duplicates, and target only PENDING obligations. In the v85 initial fragment
+duplicates, and target only PENDING obligations. In the v86 initial fragment
 each residual has its exact source edge. Conditional-use propagation is not
 silently approximated: a source consumer that would require a propagated
 condition is rejected until that propagation rule is implemented.
@@ -351,7 +366,7 @@ Dependent computation-fold verification lifecycle:
 - hybrid compilation may publish PENDING obligations only when the selected
   backend declares the computation-fold result verifier and handler
   capabilities;
-- artifact v85 persists only PENDING obligations. DISCHARGED and FAILED are
+- artifact v86 persists only PENDING obligations. DISCHARGED and FAILED are
   execution-instance outcomes and are rejected on readback;
 - execution discharges an obligation by applying its retained pure classifier
   family to the returned value and checking conversion with the continuation
@@ -366,7 +381,7 @@ effect-constraint snapshot. Compile/link discharge must use canonical row
 normal forms; naming a host is not discharge evidence. Successful equation
 checking removes only the dependency edge. It does not fabricate a HAS_TYPE
 Claim: ordinary candidate reconstruction and accepted replay are independently
-required. Host discharge is not part of v85. An effect obligation is never an
+required. Host discharge is not part of v86. An effect obligation is never an
 accepted typing Claim by itself.
 Contextual equivalence is a metatheoretic adequacy target, not an artifact
 record or kernel proof-search rule.

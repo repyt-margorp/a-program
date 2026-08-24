@@ -25,10 +25,14 @@ static uint64_t compiler_session_elapsed_ns(uint64_t started) {
 }
 
 static int program_has_function_graph_requests(
-	const struct prototype_ast_db* asts
+	const struct prototype_program* program
 ) {
-	if (!asts) {
+	if (!program || !program->asts || !program->metadata) {
 		return 0;
+	}
+	const struct prototype_ast_db* asts = program->asts;
+	if (program->metadata->function_graph_request_count != 0) {
+		return 1;
 	}
 	for (size_t i = 0; i < asts->type_expr_count; ++i) {
 		if (asts->type_exprs[i].tag ==
@@ -38,7 +42,7 @@ static int program_has_function_graph_requests(
 	}
 	for (size_t i = 0; i < asts->node_count; ++i) {
 		if (asts->nodes[i].tag ==
-				PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE) {
+				PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE) {
 			return 1;
 		}
 	}
@@ -242,7 +246,7 @@ int prototype_compile_graph_with_imports(
 		program->metadata->definition_thunk_policy =
 			program->compile_options.definition_thunk_policy;
 	}
-	int function_graph_requested = program_has_function_graph_requests(program->asts);
+	int function_graph_requested = program_has_function_graph_requests(program);
 	program->metadata->function_graph_preflight = function_graph_requested ?
 		PROTOTYPE_FUNCTION_GRAPH_COMPILE_OWNER_PREFLIGHT :
 		PROTOTYPE_FUNCTION_GRAPH_COMPILE_NORMAL;
@@ -339,9 +343,12 @@ int prototype_compile_graph_with_imports(
 				program->namespace_symbol_id,
 				imported_interfaces,
 				imported_interface_count
-			) != 0 || prototype_function_graph_finalize_associations(
-				program->asts, program->metadata
-			) != 0) {
+				) != 0 || prototype_function_graph_finalize_associations(
+					program->asts,
+					program->terms,
+					program->type_declarations,
+					program->metadata
+				) != 0) {
 			if (error) {
 				snprintf(
 					error->message,

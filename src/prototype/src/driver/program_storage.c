@@ -14,6 +14,7 @@
 #define PROGRAM_AST_DEF_CAPACITY 256
 #define PROGRAM_AST_MATCH_CASE_CAPACITY 256
 #define PROGRAM_AST_MATCH_BINDER_CAPACITY 512
+#define PROGRAM_AST_MATCH_SELECTOR_CAPACITY 512
 #define PROGRAM_AST_FOLD_CLAUSE_CAPACITY 256
 #define PROGRAM_AST_BLOCK_ITEM_CAPACITY 4096
 #define PROGRAM_AST_DEFINITION_ITEM_CAPACITY 4096
@@ -50,6 +51,7 @@
 #define PROGRAM_DIMENSION_IMAGE_CAPACITY 4096
 #define PROGRAM_FUNCTION_GRAPH_REQUEST_CAPACITY 128
 #define PROGRAM_FUNCTION_GRAPH_ASSOCIATION_CAPACITY 128
+#define PROGRAM_FUNCTION_GRAPH_ORIGIN_GROUP_CAPACITY 2048
 #define PROGRAM_ARTIFACT_TERM_EXPORT_CAPACITY 512
 #define PROGRAM_ARTIFACT_TYPE_EXPORT_CAPACITY 256
 #define PROGRAM_ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY 512
@@ -57,6 +59,7 @@
 #define PROGRAM_ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY 1024
 #define PROGRAM_ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY 2048
 #define PROGRAM_ARTIFACT_IDENTITY_ROOT_CAPACITY 512
+#define PROGRAM_ARTIFACT_FUNCTION_GRAPH_SELECTOR_GROUP_CAPACITY 2048
 #define PROGRAM_ARTIFACT_DEPENDENCY_CAPACITY 512
 #define PROGRAM_ARTIFACT_EXTERNAL_TERM_REF_CAPACITY 512
 #define PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY 512
@@ -84,6 +87,9 @@ struct prototype_program_storage_backing {
 	struct prototype_ast_def_open_address_entry ast_def_index[PROGRAM_AST_DEF_CAPACITY];
 	struct prototype_ast_match_case ast_match_cases[PROGRAM_AST_MATCH_CASE_CAPACITY];
 	struct prototype_ast_binder ast_match_binders[PROGRAM_AST_MATCH_BINDER_CAPACITY];
+	struct prototype_ast_match_selector ast_match_selectors[
+		PROGRAM_AST_MATCH_SELECTOR_CAPACITY
+	];
 	struct prototype_ast_computation_fold_clause ast_fold_clauses[PROGRAM_AST_FOLD_CLAUSE_CAPACITY];
 	uint32_t ast_block_items[PROGRAM_AST_BLOCK_ITEM_CAPACITY];
 	uint32_t ast_definition_items[PROGRAM_AST_DEFINITION_ITEM_CAPACITY];
@@ -127,6 +133,8 @@ struct prototype_program_storage_backing {
 		function_graph_requests[PROGRAM_FUNCTION_GRAPH_REQUEST_CAPACITY];
 	struct prototype_function_graph_association
 		function_graph_associations[PROGRAM_FUNCTION_GRAPH_ASSOCIATION_CAPACITY];
+	struct prototype_function_graph_origin_group
+		function_graph_origin_groups[PROGRAM_FUNCTION_GRAPH_ORIGIN_GROUP_CAPACITY];
 	struct prototype_resolve_error resolve_errors[PROGRAM_RESOLVE_ERROR_CAPACITY];
 	struct prototype_compile_diagnostic compile_diagnostics[PROGRAM_COMPILE_DIAGNOSTIC_CAPACITY];
 	struct prototype_resolution_item resolution_items[PROGRAM_RESOLUTION_ITEM_CAPACITY];
@@ -165,6 +173,10 @@ struct prototype_artifact_interface_storage_backing {
 		type_exprs[PROGRAM_ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY];
 	struct prototype_artifact_identity_root
 		identity_roots[PROGRAM_ARTIFACT_IDENTITY_ROOT_CAPACITY];
+	struct prototype_artifact_function_graph_selector_group
+		function_graph_selector_groups[
+			PROGRAM_ARTIFACT_FUNCTION_GRAPH_SELECTOR_GROUP_CAPACITY
+		];
 	struct prototype_artifact_dependency
 		dependencies[PROGRAM_ARTIFACT_DEPENDENCY_CAPACITY];
 	struct prototype_artifact_external_term_ref
@@ -234,6 +246,11 @@ static void initialize_program_storage_views(
 		b->ast_accepted_binding_substitutions,
 		PROGRAM_AST_ACCEPTED_BINDING_SUBSTITUTION_CAPACITY
 	);
+	prototype_ast_db_set_match_selector_storage(
+		&storage->asts,
+		b->ast_match_selectors,
+		PROGRAM_AST_MATCH_SELECTOR_CAPACITY
+	);
 	prototype_universe_db_init(&storage->universe, b->universe_nodes,
 		PROGRAM_UNIVERSE_NODE_CAPACITY, b->universe_edges,
 		PROGRAM_UNIVERSE_EDGE_CAPACITY, b->universe_levels,
@@ -276,7 +293,9 @@ static void initialize_program_storage_views(
 		b->function_graph_requests,
 		PROGRAM_FUNCTION_GRAPH_REQUEST_CAPACITY,
 		b->function_graph_associations,
-		PROGRAM_FUNCTION_GRAPH_ASSOCIATION_CAPACITY
+		PROGRAM_FUNCTION_GRAPH_ASSOCIATION_CAPACITY,
+		b->function_graph_origin_groups,
+		PROGRAM_FUNCTION_GRAPH_ORIGIN_GROUP_CAPACITY
 	);
 	prototype_compile_metadata_set_diagnostic_storage(&storage->metadata,
 		b->compile_diagnostics, PROGRAM_COMPILE_DIAGNOSTIC_CAPACITY);
@@ -361,6 +380,8 @@ static void initialize_artifact_interface_storage_views(
 		PROGRAM_ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
 		b->identity_roots,
 		PROGRAM_ARTIFACT_IDENTITY_ROOT_CAPACITY,
+		b->function_graph_selector_groups,
+		PROGRAM_ARTIFACT_FUNCTION_GRAPH_SELECTOR_GROUP_CAPACITY,
 		b->dependencies,
 		PROGRAM_ARTIFACT_DEPENDENCY_CAPACITY
 	);

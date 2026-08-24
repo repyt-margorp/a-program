@@ -31,8 +31,16 @@ enum prototype_ast_tag {
 	PROTOTYPE_AST_BLOCK_EXPRESSION,
 	PROTOTYPE_AST_BLOCK_LAMBDA_EXIT,
 	PROTOTYPE_AST_COMPUTATION_FOLD,
-	PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE,
-	PROTOTYPE_AST_TERMINATES_WITNESS
+	PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE,
+	PROTOTYPE_AST_TERMINATES_WITNESS,
+	PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_REFERENCE,
+	PROTOTYPE_AST_CERTIFIED_ELIMINATION
+};
+
+enum prototype_ast_function_graph_role {
+	PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_GRAPH = 1,
+	PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_INDUCTION_HYPOTHESIS,
+	PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_CERTIFIED_COMPANION
 };
 
 enum prototype_ast_block_result_mode {
@@ -159,6 +167,8 @@ struct prototype_ast_node {
 			int binder_symbol_id;
 			uint32_t binder_type;
 			uint32_t body;
+			uint32_t function_graph_origin_ast_binder_id;
+			int function_graph_companion_role;
 		} lambda;
 		struct {
 			uint32_t scrutinee;
@@ -233,10 +243,23 @@ struct prototype_ast_node {
 		} computation_fold;
 		struct {
 			int owner_symbol_id;
-		} function_graph_witness_reference;
+		} certified_function_reference;
 		struct {
 			uint32_t computation;
 		} terminates_witness;
+		struct {
+			uint32_t origin_ast_binder_id;
+			int symbol_id;
+			int role;
+		} function_graph_role_reference;
+		struct {
+			uint32_t computation;
+			int owner_symbol_id;
+			uint32_t result_ast_binder_id;
+			int result_symbol_id;
+			uint32_t graph_ast_binder_id;
+			uint32_t body;
+		} certified_elimination;
 	} as;
 };
 
@@ -284,6 +307,9 @@ struct prototype_ast_match_case {
 	int constructor_symbol_id;
 	uint32_t first_binder;
 	uint32_t binder_count;
+	uint32_t first_selector;
+	uint32_t selector_count;
+	int selectors_expanded;
 	uint32_t body;
 	struct prototype_source_span span;
 };
@@ -291,6 +317,15 @@ struct prototype_ast_match_case {
 struct prototype_ast_binder {
 	uint32_t ast_binder_id;
 	int symbol_id;
+};
+
+struct prototype_ast_match_selector {
+	int source_symbol_id;
+	int local_symbol_id;
+	uint32_t value_ast_binder_id;
+	uint32_t graph_ast_binder_id;
+	uint32_t role_mask;
+	struct prototype_source_span span;
 };
 
 struct prototype_ast_match_case_input {
@@ -411,6 +446,10 @@ struct prototype_ast_db {
 	size_t case_binder_count;
 	size_t case_binder_capacity;
 
+	struct prototype_ast_match_selector* match_selectors;
+	size_t match_selector_count;
+	size_t match_selector_capacity;
+
 	struct prototype_ast_computation_fold_clause* computation_fold_clauses;
 	size_t computation_fold_clause_count;
 	size_t computation_fold_clause_capacity;
@@ -497,6 +536,12 @@ void prototype_ast_db_set_accepted_substitution_storage(
 	struct prototype_ast_db* db,
 	struct prototype_ast_accepted_binding_substitution* substitutions,
 	size_t substitution_capacity
+);
+
+void prototype_ast_db_set_match_selector_storage(
+	struct prototype_ast_db* db,
+	struct prototype_ast_match_selector* selectors,
+	size_t selector_capacity
 );
 
 uint32_t prototype_ast_new_binder(struct prototype_ast_db* db);
@@ -667,11 +712,33 @@ int prototype_ast_lambda(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
+int prototype_ast_lambda_set_function_graph_companion(
+	struct prototype_ast_db* db,
+	uint32_t lambda,
+	uint32_t origin_ast_binder_id,
+	int role
+);
 int prototype_ast_match(
 	struct prototype_ast_db* db,
 	uint32_t scrutinee,
 	const struct prototype_ast_match_case_input* cases,
 	uint32_t case_count,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+
+int prototype_ast_match_case_set_selectors(
+	struct prototype_ast_db* db,
+	uint32_t case_id,
+	const struct prototype_ast_match_selector* selectors,
+	uint32_t selector_count
+);
+
+int prototype_ast_function_graph_role_reference(
+	struct prototype_ast_db* db,
+	uint32_t origin_ast_binder_id,
+	int symbol_id,
+	int role,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
@@ -694,9 +761,20 @@ int prototype_ast_induction_hypothesis(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );
-int prototype_ast_function_graph_witness_reference(
+int prototype_ast_certified_function_reference(
 	struct prototype_ast_db* db,
 	int owner_symbol_id,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+);
+int prototype_ast_certified_elimination(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	int owner_symbol_id,
+	uint32_t result_ast_binder_id,
+	int result_symbol_id,
+	uint32_t graph_ast_binder_id,
+	uint32_t body,
 	struct prototype_source_span span,
 	uint32_t* p_ret
 );

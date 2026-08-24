@@ -595,6 +595,13 @@ static int match_motive_result_classifier(
 	uint32_t match_term,
 	uint32_t classifier
 );
+static int classifier_external_type_application_info(
+	const struct prototype_term_db* terms,
+	uint32_t term,
+	struct prototype_qualified_name* p_name,
+	uint32_t* arguments,
+	uint32_t* p_argument_count
+);
 
 /* Operation judgements retain TYPE_VIEW nodes. The application rule validates
  * their shared computation against the enclosed core APP. */
@@ -937,6 +944,48 @@ int prototype_judgement_classifier_reference_equal(
 				right->as.external_ref.name.namespace_symbol_id &&
 			left->as.type_view.identity.name_symbol_id ==
 				right->as.external_ref.name.name_symbol_id;
+	}
+	struct prototype_qualified_name external_name;
+	uint32_t external_arguments[16];
+	uint32_t external_argument_count;
+	uint32_t instance_type_id;
+	uint32_t instance_arguments[16];
+	uint32_t instance_argument_count;
+	int left_is_external = classifier_external_type_application_info(
+		terms, expected, &external_name, external_arguments,
+		&external_argument_count
+	) == 0;
+	int right_is_instance = prototype_term_type_instance_info(
+		terms, actual, &instance_type_id, instance_arguments,
+		&instance_argument_count
+	) == 0;
+	if (!left_is_external || !right_is_instance) {
+		left_is_external = classifier_external_type_application_info(
+			terms, actual, &external_name, external_arguments,
+			&external_argument_count
+		) == 0;
+		right_is_instance = prototype_term_type_instance_info(
+			terms, expected, &instance_type_id, instance_arguments,
+			&instance_argument_count
+		) == 0;
+	}
+	if (left_is_external && right_is_instance &&
+		instance_type_id < type_declarations->semantic_schema.type_count) {
+		const struct prototype_type_declaration* declaration =
+			&type_declarations->semantic_schema.type_declarations[instance_type_id];
+		if (declaration->namespace_symbol_id == external_name.namespace_symbol_id &&
+			declaration->name_symbol_id == external_name.name_symbol_id &&
+			external_argument_count == instance_argument_count) {
+			for (uint32_t i = 0; i < external_argument_count; ++i) {
+				if (!prototype_judgement_classifier_reference_equal(
+						terms, type_declarations, external_arguments[i],
+						instance_arguments[i]
+					)) {
+					return 0;
+				}
+			}
+			return 1;
+		}
 	}
 	return 0;
 }

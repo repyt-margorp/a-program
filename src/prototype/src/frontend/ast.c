@@ -92,6 +92,19 @@ void prototype_ast_db_set_accepted_substitution_storage(
 	db->accepted_binding_substitution_count = 0;
 }
 
+void prototype_ast_db_set_match_selector_storage(
+	struct prototype_ast_db* db,
+	struct prototype_ast_match_selector* selectors,
+	size_t selector_capacity
+) {
+	if (!db) {
+		return;
+	}
+	db->match_selectors = selectors;
+	db->match_selector_capacity = selectors ? selector_capacity : 0;
+	db->match_selector_count = 0;
+}
+
 static int add_node(struct prototype_ast_db* db, struct prototype_ast_node node, uint32_t* p_ret) {
 	if (!db || !p_ret || reserve_slot(db->node_count, db->node_capacity) != 0) {
 		return -1;
@@ -635,7 +648,27 @@ int prototype_ast_lambda(
 	node.as.lambda.binder_symbol_id = binder_symbol_id;
 	node.as.lambda.binder_type = binder_type;
 	node.as.lambda.body = body;
+	node.as.lambda.function_graph_origin_ast_binder_id = PROTOTYPE_INVALID_ID;
+	node.as.lambda.function_graph_companion_role = 0;
 	return add_node(db, node, p_ret);
+}
+
+int prototype_ast_lambda_set_function_graph_companion(
+	struct prototype_ast_db* db,
+	uint32_t lambda,
+	uint32_t origin_ast_binder_id,
+	int role
+) {
+	if (!db || lambda >= db->node_count || origin_ast_binder_id == PROTOTYPE_INVALID_ID ||
+		db->nodes[lambda].tag != PROTOTYPE_AST_LAMBDA ||
+		(role != PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_GRAPH &&
+		 role != PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_CERTIFIED_COMPANION)) {
+		return -1;
+	}
+	db->nodes[lambda].as.lambda.function_graph_origin_ast_binder_id =
+		origin_ast_binder_id;
+	db->nodes[lambda].as.lambda.function_graph_companion_role = role;
+	return 0;
 }
 
 int prototype_ast_match(
@@ -673,6 +706,9 @@ int prototype_ast_match(
 		stored_case->constructor_symbol_id = cases[i].constructor_symbol_id;
 		stored_case->first_binder = (uint32_t)db->case_binder_count;
 		stored_case->binder_count = cases[i].binder_count;
+		stored_case->first_selector = (uint32_t)db->match_selector_count;
+		stored_case->selector_count = 0;
+		stored_case->selectors_expanded = 1;
 		stored_case->body = cases[i].body;
 		stored_case->span = cases[i].span;
 		for (uint32_t j = 0; j < cases[i].binder_count; ++j) {
@@ -687,6 +723,53 @@ int prototype_ast_match(
 	node.as.match.scrutinee = scrutinee;
 	node.as.match.first_case = first_case;
 	node.as.match.case_count = case_count;
+	return add_node(db, node, p_ret);
+}
+
+int prototype_ast_match_case_set_selectors(
+	struct prototype_ast_db* db,
+	uint32_t case_id,
+	const struct prototype_ast_match_selector* selectors,
+	uint32_t selector_count
+) {
+	if (!db || case_id >= db->case_count || selector_count == 0 || !selectors ||
+		db->match_selector_count + selector_count > db->match_selector_capacity) {
+		return -1;
+	}
+	struct prototype_ast_match_case* match_case = &db->cases[case_id];
+	if (match_case->selector_count != 0 || !match_case->selectors_expanded) {
+		return -1;
+	}
+	match_case->first_selector = (uint32_t)db->match_selector_count;
+	match_case->selector_count = selector_count;
+	match_case->selectors_expanded = 0;
+	for (uint32_t i = 0; i < selector_count; ++i) {
+		db->match_selectors[db->match_selector_count++] = selectors[i];
+	}
+	return 0;
+}
+
+int prototype_ast_function_graph_role_reference(
+	struct prototype_ast_db* db,
+	uint32_t origin_ast_binder_id,
+	int symbol_id,
+	int role,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || origin_ast_binder_id == PROTOTYPE_INVALID_ID ||
+		(role != PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_GRAPH &&
+		 role != PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_INDUCTION_HYPOTHESIS)) {
+		return -1;
+	}
+	struct prototype_ast_node node;
+	memset(&node, 0, sizeof(node));
+	node.tag = PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_REFERENCE;
+	node.span = span;
+	node.as.function_graph_role_reference.origin_ast_binder_id =
+		origin_ast_binder_id;
+	node.as.function_graph_role_reference.symbol_id = symbol_id;
+	node.as.function_graph_role_reference.role = role;
 	return add_node(db, node, p_ret);
 }
 
@@ -742,7 +825,7 @@ int prototype_ast_induction_hypothesis(
 	return add_node(db, node, p_ret);
 }
 
-int prototype_ast_function_graph_witness_reference(
+int prototype_ast_certified_function_reference(
 	struct prototype_ast_db* db,
 	int owner_symbol_id,
 	struct prototype_source_span span,
@@ -753,9 +836,38 @@ int prototype_ast_function_graph_witness_reference(
 	}
 	struct prototype_ast_node node;
 	memset(&node, 0, sizeof(node));
-	node.tag = PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE;
+	node.tag = PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE;
 	node.span = span;
-	node.as.function_graph_witness_reference.owner_symbol_id = owner_symbol_id;
+	node.as.certified_function_reference.owner_symbol_id = owner_symbol_id;
+	return add_node(db, node, p_ret);
+}
+
+int prototype_ast_certified_elimination(
+	struct prototype_ast_db* db,
+	uint32_t computation,
+	int owner_symbol_id,
+	uint32_t result_ast_binder_id,
+	int result_symbol_id,
+	uint32_t graph_ast_binder_id,
+	uint32_t body,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!db || computation >= db->node_count || owner_symbol_id < 0 ||
+		result_ast_binder_id == PROTOTYPE_INVALID_ID || result_symbol_id < 0 ||
+		graph_ast_binder_id == PROTOTYPE_INVALID_ID || body >= db->node_count) {
+		return -1;
+	}
+	struct prototype_ast_node node;
+	memset(&node, 0, sizeof(node));
+	node.tag = PROTOTYPE_AST_CERTIFIED_ELIMINATION;
+	node.span = span;
+	node.as.certified_elimination.computation = computation;
+	node.as.certified_elimination.owner_symbol_id = owner_symbol_id;
+	node.as.certified_elimination.result_ast_binder_id = result_ast_binder_id;
+	node.as.certified_elimination.result_symbol_id = result_symbol_id;
+	node.as.certified_elimination.graph_ast_binder_id = graph_ast_binder_id;
+	node.as.certified_elimination.body = body;
 	return add_node(db, node, p_ret);
 }
 

@@ -14,8 +14,9 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 85
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 86
 #define PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY 128
+#define PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_SELECTOR_GROUP_CAPACITY 2048
 #define PROTOTYPE_ARTIFACT_EXPORT_CONDITION_CAPACITY 8192
 #define PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT \
 	PROTOTYPE_CALCULUS_FINGERPRINT
@@ -115,6 +116,19 @@ struct prototype_artifact_function_graph_association {
 	uint32_t certified_adapter_term_export_index;
 	uint32_t certified_runner_term_export_index;
 	uint32_t certified_argument_index;
+};
+
+/* A frozen source selector projected onto one generated constructor
+ * telescope. Names are readback labels; association, constructor, and field
+ * ordinals are the semantic identity used by imported elaboration. */
+struct prototype_artifact_function_graph_selector_group {
+	uint32_t association_index;
+	uint32_t constructor_ordinal;
+	int display_symbol_id;
+	uint32_t role_mask;
+	uint32_t value_field_ordinal;
+	uint32_t graph_field_ordinal;
+	int recursive;
 };
 
 struct prototype_artifact_external_term_ref {
@@ -265,6 +279,10 @@ struct prototype_artifact_interface {
 			PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY
 		];
 	size_t function_graph_association_count;
+	struct prototype_artifact_function_graph_selector_group*
+		function_graph_selector_groups;
+	size_t function_graph_selector_group_count;
+	size_t function_graph_selector_group_capacity;
 
 	uint32_t export_condition_obligation_ids[
 		PROTOTYPE_ARTIFACT_EXPORT_CONDITION_CAPACITY
@@ -315,6 +333,9 @@ void prototype_artifact_interface_init(
 	size_t type_expr_capacity,
 	struct prototype_artifact_identity_root* identity_roots,
 	size_t identity_root_capacity,
+	struct prototype_artifact_function_graph_selector_group*
+		function_graph_selector_groups,
+	size_t function_graph_selector_group_capacity,
 	struct prototype_artifact_dependency* dependencies,
 	size_t dependency_capacity
 );
@@ -343,6 +364,7 @@ int prototype_artifact_interface_validate_function_graph_associations(
 	const struct prototype_artifact_interface* interface,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
 	const struct prototype_judgement_db* judgement
 );
 int prototype_artifact_interface_refresh_term_export_evidence(

@@ -381,6 +381,8 @@
 		0,
 		identity_roots,
 		sizeof(identity_roots) / sizeof(identity_roots[0]),
+		NULL,
+		0,
 			identity_dependencies,
 			16
 		);

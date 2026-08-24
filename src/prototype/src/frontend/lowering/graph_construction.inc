@@ -3,6 +3,7 @@ struct match_compile_state {
 	uint32_t scrutinee;
 	uint32_t scrutinee_operation;
 	uint32_t ih_scope_id;
+	uint32_t scrutinee_proven_classifier_hint;
 	struct prototype_match_case_input case_inputs[64];
 	uint32_t resolution_item_ids[64];
 	int case_constructor_symbols[64];
@@ -15,6 +16,17 @@ struct match_compile_state {
 	);
 	void* compile_branch_data;
 };
+
+static int constructor_telescope_field_classifier(
+	struct compile_context* ctx,
+	uint32_t source_context,
+	uint32_t owner,
+	uint32_t constructor_index,
+	const struct prototype_case_binder* previous_binders,
+	uint32_t previous_binder_count,
+	uint32_t field_index,
+	uint32_t* p_classifier
+);
 
 struct compiled_match_branch {
 	const struct prototype_case_binder* binders;
@@ -87,7 +99,44 @@ static int prepare_match_pattern_environment(
 	) != 0) {
 		return -1;
 	}
-	(void)previous_binder_count;
+	if (state->scrutinee_proven_classifier_hint != PROTOTYPE_INVALID_ID) {
+		struct prototype_match_constructor_resolution resolved;
+		if (prototype_judgement_resolve_match_constructor(
+				ctx->terms,
+				ctx->type_declarations,
+				&ctx->metadata->contexts,
+				state->scrutinee_proven_classifier_hint,
+				old_case->constructor_symbol_id,
+				&resolved
+			) == 0 && resolved.field_count == old_case->binder_count) {
+			uint32_t case_context = ctx->context_ids[ctx->binder_count];
+			for (uint32_t field = 0; field < old_case->binder_count; ++field) {
+				uint32_t classifier;
+				if (constructor_telescope_field_classifier(
+						ctx,
+						case_context,
+						resolved.constructor_owner,
+						resolved.constructor_id,
+						&state->binder_storage[*p_binder_start],
+						field,
+						field,
+						&classifier
+					) != 0 ||
+					prototype_judgement_classifier_is_strictly_positive_recursive_field(
+						ctx->terms,
+						ctx->type_declarations,
+						classifier,
+						state->scrutinee_proven_classifier_hint,
+						&state->binder_storage[
+							*p_binder_start + field
+						].is_recursive
+					) != 0) {
+					return -1;
+				}
+				ctx->binders[previous_binder_count + field].classifier = classifier;
+			}
+		}
+	}
 	(void)previous_ih_scope_count;
 	return 0;
 }
@@ -118,9 +167,12 @@ static int compile_match_branch_body(
 	if (branch_status != 0 ||
 		body_ref.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
 		fprintf(stderr,
-			"match branch body lowering failed match=%u case=%u body=%u status=%d "
+			"match branch body lowering failed match=%u case=%u body=%u tag=%d status=%d "
 			"category=%u\n",
-			state->match_ast, case_index, old_case->body, branch_status,
+			state->match_ast, case_index, old_case->body,
+			old_case->body < ctx->asts->node_count ?
+				ctx->asts->nodes[old_case->body].tag : -1,
+			branch_status,
 			branch_status == 0 ? body_ref.category : PROTOTYPE_TERM_CATEGORY_INVALID);
 		return -1;
 	}
@@ -222,6 +274,640 @@ static int match_scrutinee_proven_classifier_hint(
 		}
 	}
 
+static int function_graph_association_graph_type(
+	struct compile_context* ctx,
+	const struct prototype_function_graph_association* association,
+	uint32_t* p_graph_type
+) {
+	if (!ctx || !association || !p_graph_type) {
+		return -1;
+	}
+	if (association->graph_type_id != PROTOTYPE_INVALID_ID) {
+		*p_graph_type = association->graph_type_id;
+		return 0;
+	}
+	if (association->graph_type_assignment_id >= ctx->asts->assignment_count) {
+		return -1;
+	}
+	const struct prototype_ast_term_assignment_def* assignment =
+		&ctx->asts->assignments[association->graph_type_assignment_id];
+	if (!assignment->compiled || assignment->ast >= ctx->asts->node_count) {
+		return -1;
+	}
+	const struct prototype_ast_node* node = &ctx->asts->nodes[assignment->ast];
+	if ((node->tag != PROTOTYPE_AST_TYPE_FORMATION &&
+		node->tag != PROTOTYPE_AST_TYPE_LITERAL) ||
+		node->as.type_formation.ast_type_def_id >= ctx->asts->type_def_count) {
+		return -1;
+	}
+	const struct prototype_ast_type_def* type =
+		&ctx->asts->type_defs[node->as.type_formation.ast_type_def_id];
+	if (!type->compiled || type->compiled_type == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	*p_graph_type = type->compiled_type;
+	return 0;
+}
+
+static int function_graph_association_for_classifier(
+	struct compile_context* ctx,
+	uint32_t classifier,
+	uint32_t* p_association_id
+) {
+	if (!ctx || !p_association_id || classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	uint32_t classifier_type;
+	uint32_t ignored_arguments[64];
+	uint32_t ignored_argument_count;
+	if (prototype_term_type_instance_info(
+			ctx->terms,
+			classifier,
+			&classifier_type,
+			ignored_arguments,
+			&ignored_argument_count
+		) != 0) {
+		return -1;
+	}
+	uint32_t selected = PROTOTYPE_INVALID_ID;
+	for (uint32_t association_id = 0;
+		association_id < ctx->metadata->function_graph_association_count;
+		++association_id) {
+		const struct prototype_function_graph_association* association =
+			&ctx->metadata->function_graph_associations[association_id];
+		uint32_t graph_type;
+		if (function_graph_association_graph_type(
+				ctx, association, &graph_type
+			) != 0 || graph_type != classifier_type) {
+			continue;
+		}
+		if (selected != PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		selected = association_id;
+	}
+	if (selected == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	*p_association_id = selected;
+	return 0;
+}
+
+static uint32_t function_graph_ast_application_head(
+	const struct prototype_ast_db* asts,
+	uint32_t ast
+) {
+	while (asts && ast < asts->node_count &&
+		asts->nodes[ast].tag == PROTOTYPE_AST_APP) {
+		ast = asts->nodes[ast].as.app.function;
+	}
+	return ast;
+}
+
+static int function_graph_ast_contains_node(
+	const struct prototype_ast_db* asts,
+	uint32_t root,
+	uint32_t target,
+	uint32_t depth
+) {
+	if (!asts || root >= asts->node_count || depth > 256) {
+		return 0;
+	}
+	if (root == target) {
+		return 1;
+	}
+	const struct prototype_ast_node* node = &asts->nodes[root];
+	switch (node->tag) {
+		case PROTOTYPE_AST_APP:
+			return function_graph_ast_contains_node(
+				asts, node->as.app.function, target, depth + 1
+			) || function_graph_ast_contains_node(
+				asts, node->as.app.argument, target, depth + 1
+			);
+		case PROTOTYPE_AST_LAMBDA:
+			return function_graph_ast_contains_node(
+				asts, node->as.lambda.body, target, depth + 1
+			);
+		case PROTOTYPE_AST_MATCH:
+			if (function_graph_ast_contains_node(
+					asts, node->as.match.scrutinee, target, depth + 1
+				)) {
+				return 1;
+			}
+			for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
+				uint32_t case_id = node->as.match.first_case + i;
+				if (case_id < asts->case_count && function_graph_ast_contains_node(
+						asts, asts->cases[case_id].body, target, depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_ASCRIPTION:
+			return function_graph_ast_contains_node(
+				asts, node->as.ascription.term, target, depth + 1
+			);
+		case PROTOTYPE_AST_QUOTE:
+			return function_graph_ast_contains_node(
+				asts, node->as.unary.term, target, depth + 1
+			);
+		case PROTOTYPE_AST_COMPUTATION_BLOCK:
+			for (uint32_t i = 0; i < node->as.block.item_count; ++i) {
+				if (function_graph_ast_contains_node(
+						asts,
+						asts->block_items[node->as.block.first_item + i],
+						target,
+						depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_BLOCK_BINDING:
+			return function_graph_ast_contains_node(
+				asts, node->as.block_binding.value, target, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_EXPRESSION:
+			return function_graph_ast_contains_node(
+				asts, node->as.block_expression.term, target, depth + 1
+			);
+		default:
+			return 0;
+	}
+}
+
+static int function_graph_association_for_lexical_certified_result(
+	struct compile_context* ctx,
+	uint32_t named_match_ast,
+	const struct prototype_ast_node* named_match,
+	uint32_t* p_association_id
+) {
+	if (!ctx || !named_match || !p_association_id ||
+		named_match->as.match.scrutinee >= ctx->asts->node_count ||
+		ctx->asts->nodes[named_match->as.match.scrutinee].tag != PROTOTYPE_AST_VAR) {
+		return -1;
+	}
+	uint32_t graph_ast_binder = ctx->asts->nodes[
+		named_match->as.match.scrutinee
+	].as.var.ast_binder_id;
+	uint32_t selected = PROTOTYPE_INVALID_ID;
+	for (uint32_t outer_ast = 0; outer_ast < ctx->asts->node_count; ++outer_ast) {
+		const struct prototype_ast_node* outer = &ctx->asts->nodes[outer_ast];
+		if (outer->tag != PROTOTYPE_AST_MATCH || outer_ast == named_match_ast) {
+			continue;
+		}
+		uint32_t head = function_graph_ast_application_head(
+			ctx->asts, outer->as.match.scrutinee
+		);
+		if (head >= ctx->asts->node_count || ctx->asts->nodes[head].tag !=
+			PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE) {
+			continue;
+		}
+		int owner_symbol = ctx->asts->nodes[head].as.certified_function_reference.
+			owner_symbol_id;
+		const struct prototype_function_graph_association* association =
+			prototype_compile_metadata_function_graph_association_for_owner(
+				ctx->metadata, owner_symbol
+			);
+		if (!association || association->returned_constructor_symbol_id < 0) {
+			continue;
+		}
+		for (uint32_t case_index = 0; case_index < outer->as.match.case_count;
+			++case_index) {
+			const struct prototype_ast_match_case* outer_case = &ctx->asts->cases[
+				outer->as.match.first_case + case_index
+			];
+			if (outer_case->constructor_symbol_id !=
+				association->returned_constructor_symbol_id ||
+				!function_graph_ast_contains_node(
+					ctx->asts, outer_case->body, named_match_ast, 0
+				)) {
+				continue;
+			}
+			for (uint32_t binder_index = 0; binder_index < outer_case->binder_count;
+				++binder_index) {
+				if (ctx->asts->case_binders[outer_case->first_binder + binder_index].
+					ast_binder_id != graph_ast_binder) {
+					continue;
+				}
+				uint32_t association_id = (uint32_t)(association -
+					ctx->metadata->function_graph_associations);
+				if (selected != PROTOTYPE_INVALID_ID && selected != association_id) {
+					return -1;
+				}
+				selected = association_id;
+			}
+		}
+	}
+	if (selected == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	*p_association_id = selected;
+	return 0;
+}
+
+static int function_graph_named_constructor_shape(
+	struct compile_context* ctx,
+	const struct prototype_function_graph_association* association,
+	int constructor_symbol_id,
+	uint32_t* p_constructor_ordinal,
+	uint32_t* p_field_count
+) {
+	uint32_t type_id;
+	if (!ctx || !association || !p_constructor_ordinal || !p_field_count ||
+		function_graph_association_graph_type(ctx, association, &type_id) != 0) {
+		return -1;
+	}
+	const struct prototype_type_constructor_declaration* constructor =
+		prototype_type_declaration_lookup_constructor(
+			&ctx->type_declarations->semantic_schema,
+			type_id,
+			constructor_symbol_id
+		);
+	uint32_t field_contexts[128];
+	if (!constructor || prototype_context_extension_path(
+			&ctx->metadata->contexts,
+			constructor->parameter_context,
+			constructor->field_context,
+			field_contexts,
+			128,
+			p_field_count
+		) != 0) {
+		return -1;
+	}
+	*p_constructor_ordinal = constructor->constructor_index;
+	return 0;
+}
+
+static struct prototype_ast_match_selector* function_graph_case_selector_for_origin(
+	struct prototype_ast_db* asts,
+	struct prototype_ast_match_case* match_case,
+	uint32_t origin_ast_binder_id
+) {
+	if (!asts || !match_case || match_case->first_selector +
+		match_case->selector_count > asts->match_selector_count) {
+		return NULL;
+	}
+	for (uint32_t i = 0; i < match_case->selector_count; ++i) {
+		struct prototype_ast_match_selector* selector =
+			&asts->match_selectors[match_case->first_selector + i];
+		if (selector->value_ast_binder_id == origin_ast_binder_id) {
+			return selector;
+		}
+	}
+	return NULL;
+}
+
+static int function_graph_resolve_case_role_references(
+	struct prototype_ast_db* asts,
+	struct prototype_ast_match_case* match_case,
+	uint32_t ast,
+	uint32_t depth
+) {
+	if (!asts || !match_case || ast >= asts->node_count || depth > 256) {
+		return -1;
+	}
+	struct prototype_ast_node* node = &asts->nodes[ast];
+	if (node->tag == PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_REFERENCE) {
+		struct prototype_ast_match_selector* selector =
+			function_graph_case_selector_for_origin(
+				asts,
+				match_case,
+				node->as.function_graph_role_reference.origin_ast_binder_id
+			);
+		if (!selector) {
+			/* A nested certified elimination owns this role reference and will
+			 * resolve it when that elimination is expanded. */
+			return 0;
+		}
+		if (selector->graph_ast_binder_id == PROTOTYPE_INVALID_ID ||
+			!(selector->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH)) {
+			fprintf(stderr, "named graph selector has no graph role symbol=%d\n",
+				node->as.function_graph_role_reference.symbol_id);
+			return -1;
+		}
+		if (node->as.function_graph_role_reference.role ==
+			PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_INDUCTION_HYPOTHESIS) {
+			if (!(selector->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH)) {
+				fprintf(stderr, "named graph selector has no induction role symbol=%d\n",
+					node->as.function_graph_role_reference.symbol_id);
+				return -1;
+			}
+			node->tag = PROTOTYPE_AST_INDUCTION_HYPOTHESIS;
+			node->as.induction_hypothesis.ast_binder_id =
+				selector->graph_ast_binder_id;
+			node->as.induction_hypothesis.symbol_id = selector->local_symbol_id;
+		} else {
+			node->tag = PROTOTYPE_AST_VAR;
+			node->as.var.ast_binder_id = selector->graph_ast_binder_id;
+			node->as.var.symbol_id = selector->local_symbol_id;
+		}
+		return 0;
+	}
+	switch (node->tag) {
+		case PROTOTYPE_AST_APP:
+			if (function_graph_resolve_case_role_references(
+					asts, match_case, node->as.app.function, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return function_graph_resolve_case_role_references(
+				asts, match_case, node->as.app.argument, depth + 1
+			);
+		case PROTOTYPE_AST_LAMBDA:
+			return function_graph_resolve_case_role_references(
+				asts, match_case, node->as.lambda.body, depth + 1
+			);
+		case PROTOTYPE_AST_MATCH:
+			if (function_graph_resolve_case_role_references(
+					asts, match_case, node->as.match.scrutinee, depth + 1
+				) != 0) {
+				return -1;
+			}
+			for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
+				uint32_t case_id = node->as.match.first_case + i;
+				if (case_id >= asts->case_count ||
+					function_graph_resolve_case_role_references(
+						asts, match_case, asts->cases[case_id].body, depth + 1
+					) != 0) {
+					return -1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_ASCRIPTION:
+			return function_graph_resolve_case_role_references(
+				asts, match_case, node->as.ascription.term, depth + 1
+			);
+		case PROTOTYPE_AST_QUOTE:
+			return function_graph_resolve_case_role_references(
+				asts, match_case, node->as.unary.term, depth + 1
+			);
+		case PROTOTYPE_AST_COMPUTATION_BLOCK:
+		case PROTOTYPE_AST_DEFINITION_BLOCK: {
+			uint32_t first = node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+				node->as.block.first_item : node->as.definition_block.first_assignment;
+			uint32_t count = node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+				node->as.block.item_count : node->as.definition_block.assignment_count;
+			for (uint32_t i = 0; i < count; ++i) {
+				uint32_t item = node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+					asts->block_items[first + i] : asts->definition_items[first + i];
+				if (function_graph_resolve_case_role_references(
+						asts, match_case, item, depth + 1
+					) != 0) {
+					return -1;
+				}
+			}
+			return 0;
+		}
+		case PROTOTYPE_AST_BLOCK_BINDING:
+			return function_graph_resolve_case_role_references(
+				asts, match_case, node->as.block_binding.value, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_EXPRESSION:
+			return function_graph_resolve_case_role_references(
+				asts, match_case, node->as.block_expression.term, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_LAMBDA_EXIT:
+			return function_graph_resolve_case_role_references(
+				asts, match_case, node->as.block_lambda_exit.value, depth + 1
+			);
+		default:
+			return 0;
+	}
+}
+
+static int function_graph_expand_direct_certified_elimination(
+	struct compile_context* ctx,
+	uint32_t ast_id
+) {
+	if (!ctx || ast_id >= ctx->asts->node_count ||
+		ctx->asts->nodes[ast_id].tag != PROTOTYPE_AST_CERTIFIED_ELIMINATION) {
+		return -1;
+	}
+	struct prototype_ast_node direct = ctx->asts->nodes[ast_id];
+	const struct prototype_function_graph_association* association =
+		compile_function_graph_association(
+			ctx, direct.as.certified_elimination.owner_symbol_id
+		);
+	if (!association || association->returned_constructor_symbol_id < 0) {
+		fprintf(
+			stderr,
+			"direct certified elimination has no accepted association owner=%d\n",
+			direct.as.certified_elimination.owner_symbol_id
+		);
+		return -1;
+	}
+	struct prototype_ast_binder binders[2] = {
+		{
+			.ast_binder_id = direct.as.certified_elimination.result_ast_binder_id,
+			.symbol_id = direct.as.certified_elimination.result_symbol_id
+		},
+		{
+			.ast_binder_id = direct.as.certified_elimination.graph_ast_binder_id,
+			.symbol_id = direct.as.certified_elimination.result_symbol_id
+		}
+	};
+	struct prototype_ast_match_case_input match_case = {
+		.constructor_symbol_id = association->returned_constructor_symbol_id,
+		.binders = binders,
+		.binder_count = 2,
+		.body = direct.as.certified_elimination.body,
+		.span = direct.span
+	};
+	uint32_t match_ast;
+	if (prototype_ast_match(
+			ctx->asts,
+			direct.as.certified_elimination.computation,
+			&match_case,
+			1,
+			direct.span,
+			&match_ast
+		) != 0 || match_ast >= ctx->asts->node_count) {
+		return -1;
+	}
+	struct prototype_ast_node* match = &ctx->asts->nodes[match_ast];
+	if (match->as.match.first_case >= ctx->asts->case_count) {
+		return -1;
+	}
+	struct prototype_ast_match_selector selector = {
+		.source_symbol_id = direct.as.certified_elimination.result_symbol_id,
+		.local_symbol_id = direct.as.certified_elimination.result_symbol_id,
+		.value_ast_binder_id =
+			direct.as.certified_elimination.result_ast_binder_id,
+		.graph_ast_binder_id =
+			direct.as.certified_elimination.graph_ast_binder_id,
+		.role_mask = PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH,
+		.span = direct.span
+	};
+	uint32_t case_id = match->as.match.first_case;
+	if (prototype_ast_match_case_set_selectors(
+			ctx->asts, case_id, &selector, 1
+		) != 0 || function_graph_resolve_case_role_references(
+			ctx->asts,
+			&ctx->asts->cases[case_id],
+			direct.as.certified_elimination.body,
+			0
+		) != 0) {
+		return -1;
+	}
+	ctx->asts->cases[case_id].selectors_expanded = 1;
+	ctx->asts->nodes[ast_id] = *match;
+	return 0;
+}
+
+static int function_graph_expand_named_match_cases(
+	struct compile_context* ctx,
+	uint32_t match_ast,
+	const struct prototype_ast_node* node,
+	uint32_t scrutinee_classifier
+) {
+	if (!ctx || !node || node->tag != PROTOTYPE_AST_MATCH) {
+		return -1;
+	}
+	int needs_expansion = 0;
+	for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
+		if (!ctx->asts->cases[node->as.match.first_case + i].selectors_expanded) {
+			needs_expansion = 1;
+		}
+	}
+	if (!needs_expansion) {
+		return 0;
+	}
+	uint32_t association_id;
+	if ((scrutinee_classifier == PROTOTYPE_INVALID_ID ||
+		function_graph_association_for_classifier(
+			ctx, scrutinee_classifier, &association_id
+		) != 0) && function_graph_association_for_lexical_certified_result(
+			ctx, match_ast, node, &association_id
+		) != 0) {
+		fprintf(stderr, "named graph case requires a synthesized graph classifier\n");
+		return -1;
+	}
+	const struct prototype_function_graph_association* association =
+		&ctx->metadata->function_graph_associations[association_id];
+	if (!association->origin_groups_staged || association->first_origin_group +
+		association->origin_group_count >
+		ctx->metadata->function_graph_origin_group_count) {
+		fprintf(stderr, "named graph case has no accepted selector interface\n");
+		return -1;
+	}
+	for (uint32_t case_index = 0; case_index < node->as.match.case_count; ++case_index) {
+		struct prototype_ast_match_case* match_case =
+			&ctx->asts->cases[node->as.match.first_case + case_index];
+		if (match_case->selectors_expanded) {
+			continue;
+		}
+		uint32_t constructor_ordinal;
+		uint32_t constructor_field_count;
+		struct prototype_match_constructor_resolution resolved;
+		int resolved_from_classifier = scrutinee_classifier != PROTOTYPE_INVALID_ID &&
+			prototype_judgement_resolve_match_constructor(
+				ctx->terms,
+				ctx->type_declarations,
+				&ctx->metadata->contexts,
+				scrutinee_classifier,
+				match_case->constructor_symbol_id,
+				&resolved
+			) == 0;
+		if (resolved_from_classifier) {
+			constructor_ordinal = resolved.constructor_id;
+			constructor_field_count = resolved.field_count;
+		} else if (function_graph_named_constructor_shape(
+				ctx,
+				association,
+				match_case->constructor_symbol_id,
+				&constructor_ordinal,
+				&constructor_field_count
+			) != 0) {
+			fprintf(stderr,
+				"named graph constructor shape failed association=%u constructor=%d\n",
+				association_id, match_case->constructor_symbol_id);
+			return -1;
+		}
+		if (ctx->asts->case_binder_count + constructor_field_count >
+			ctx->asts->case_binder_capacity) {
+			return -1;
+		}
+		uint32_t first_binder = (uint32_t)ctx->asts->case_binder_count;
+		for (uint32_t field = 0; field < constructor_field_count; ++field) {
+			struct prototype_ast_match_selector* selected = NULL;
+			const struct prototype_function_graph_origin_group* selected_group = NULL;
+			for (uint32_t selector_index = 0;
+				selector_index < match_case->selector_count;
+				++selector_index) {
+				struct prototype_ast_match_selector* selector =
+					&ctx->asts->match_selectors[
+						match_case->first_selector + selector_index
+					];
+				const struct prototype_function_graph_origin_group* group =
+					prototype_compile_metadata_draft_function_graph_origin_group(
+						ctx->metadata,
+						association_id,
+						constructor_ordinal,
+						selector->source_symbol_id
+					);
+				if (!group) {
+					fprintf(stderr, "unknown named graph selector symbol=%d case=%d\n",
+						selector->source_symbol_id, match_case->constructor_symbol_id);
+					return -1;
+				}
+				if (group->value_field_ordinal == field ||
+					group->graph_field_ordinal == field) {
+					if (selected && selected != selector) {
+						return -1;
+					}
+					selected = selector;
+					selected_group = group;
+				}
+			}
+			struct prototype_ast_binder binder;
+			binder.ast_binder_id = PROTOTYPE_INVALID_ID;
+			binder.symbol_id = -1;
+			if (selected && selected_group->value_field_ordinal == field) {
+				binder.ast_binder_id = selected->value_ast_binder_id;
+				binder.symbol_id = selected->local_symbol_id;
+				selected->role_mask = selected_group->role_mask;
+			}
+			if (selected && selected_group->graph_field_ordinal == field) {
+				if (selected->graph_ast_binder_id == PROTOTYPE_INVALID_ID) {
+					selected->graph_ast_binder_id = prototype_ast_new_binder(ctx->asts);
+				}
+				binder.ast_binder_id = selected->graph_ast_binder_id;
+				binder.symbol_id = selected->local_symbol_id;
+				selected->role_mask = selected_group->role_mask;
+			}
+			if (binder.ast_binder_id == PROTOTYPE_INVALID_ID) {
+				binder.ast_binder_id = prototype_ast_new_binder(ctx->asts);
+			}
+			if (binder.ast_binder_id == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			ctx->asts->case_binders[ctx->asts->case_binder_count++] = binder;
+		}
+		for (uint32_t selector_index = 0;
+			selector_index < match_case->selector_count;
+			++selector_index) {
+			const struct prototype_ast_match_selector* selector =
+				&ctx->asts->match_selectors[
+					match_case->first_selector + selector_index
+				];
+			if (selector->role_mask == 0) {
+				fprintf(stderr, "named graph selector did not select a constructor field\n");
+				return -1;
+			}
+		}
+		match_case->first_binder = first_binder;
+		match_case->binder_count = constructor_field_count;
+		match_case->selectors_expanded = 1;
+		if (function_graph_resolve_case_role_references(
+				ctx->asts, match_case, match_case->body, 0
+			) != 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int compile_match_branch_body_default(
 	struct compile_context* ctx,
 	uint32_t body_ast,
@@ -266,6 +952,12 @@ static int compile_ast_match_from_value_with_branch_compiler(
 			ctx,
 			node->as.match.scrutinee,
 			&scrutinee_proven_classifier_hint
+		) != 0) {
+		return -1;
+	}
+	state.scrutinee_proven_classifier_hint = scrutinee_proven_classifier_hint;
+	if (function_graph_expand_named_match_cases(
+			ctx, ast_id, node, scrutinee_proven_classifier_hint
 		) != 0) {
 		return -1;
 	}
@@ -2499,11 +3191,11 @@ static int compile_ast_atomic_ref(
 			}
 			return compile_ref_from_term(ctx, term, p_ret);
 		}
-		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE: {
+		case PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE: {
 			const struct prototype_function_graph_association* association =
 				compile_function_graph_association(
 					ctx,
-					node->as.function_graph_witness_reference.owner_symbol_id
+					node->as.certified_function_reference.owner_symbol_id
 				);
 			if (association && association->imported) {
 				if (association->imported_interface_index >=
@@ -2532,7 +3224,7 @@ static int compile_ast_atomic_ref(
 					ctx->asts->assignment_count) {
 				fprintf(stderr,
 					"function graph witness association unavailable owner=%d association=%p runner=%u assignments=%zu\n",
-					node->as.function_graph_witness_reference.owner_symbol_id,
+					node->as.certified_function_reference.owner_symbol_id,
 					(void*)association,
 					association ? association->certified_runner_assignment_id : PROTOTYPE_INVALID_ID,
 					ctx->asts->assignment_count);
@@ -2557,7 +3249,7 @@ static int compile_ast_atomic_ref(
 					&ctx->asts->assignments[runner_assignment];
 				fprintf(stderr,
 					"function graph witness runner lowering failed owner=%d runner_assignment=%u compiled=%d compiling=%d term=%u classifier=%u operation=%u occurrences=%zu\n",
-					node->as.function_graph_witness_reference.owner_symbol_id,
+					node->as.certified_function_reference.owner_symbol_id,
 					association->certified_runner_assignment_id,
 					runner->compiled, runner->compiling, runner->compiled_term,
 					runner->compiled_classifier, runner->compiled_operation,
@@ -2622,8 +3314,7 @@ static int compile_ast_atomic_ref(
 			uint32_t ih_term;
 			if (lookup_graph_binder(
 					ctx, node->as.induction_hypothesis.ast_binder_id, &binding_id
-				) != 0 ||
-				lookup_ih_edge(
+				) != 0 || lookup_ih_edge(
 					ctx,
 					node->as.induction_hypothesis.ast_binder_id,
 					&ih_scope_id,
@@ -4440,13 +5131,13 @@ static int compile_function_graph_expand_certified_arguments(
 ) {
 	if (!ctx || !spine || head >= ctx->asts->node_count ||
 		ctx->asts->nodes[head].tag !=
-			PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE) {
+			PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE) {
 		return 0;
 	}
 	const struct prototype_function_graph_association* owner_association =
 		compile_function_graph_association(
 			ctx,
-			ctx->asts->nodes[head].as.function_graph_witness_reference.owner_symbol_id
+			ctx->asts->nodes[head].as.certified_function_reference.owner_symbol_id
 		);
 	if (!owner_association || owner_association->certified_argument_index ==
 			PROTOTYPE_INVALID_ID ||
@@ -4770,7 +5461,7 @@ static int ast_lambda_exit_presence_in(
 			return result == AST_LAMBDA_EXIT_NONE ? AST_LAMBDA_EXIT_NONE :
 				AST_LAMBDA_EXIT_FORBIDDEN;
 		}
-		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
+		case PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE:
 			return AST_LAMBDA_EXIT_NONE;
 		case PROTOTYPE_AST_TERMINATES_WITNESS:
 			return ast_lambda_exit_presence_in(
@@ -4985,8 +5676,9 @@ static int compile_ast_value_ref(
 			node->tag == PROTOTYPE_AST_BLOCK_BINDING ||
 			node->tag == PROTOTYPE_AST_BLOCK_EXPRESSION ||
 			node->tag == PROTOTYPE_AST_BLOCK_LAMBDA_EXIT ||
-		node->tag == PROTOTYPE_AST_COMPUTATION_FOLD ||
-		node->tag == PROTOTYPE_AST_INDUCTION_HYPOTHESIS) {
+			node->tag == PROTOTYPE_AST_COMPUTATION_FOLD ||
+			node->tag == PROTOTYPE_AST_INDUCTION_HYPOTHESIS ||
+			node->tag == PROTOTYPE_AST_CERTIFIED_ELIMINATION) {
 		return 1;
 	}
 	if (node->tag == PROTOTYPE_AST_QUOTE) {
@@ -5140,7 +5832,7 @@ static int compile_ast_value_ref(
 		case PROTOTYPE_AST_NAME_IN_NAMESPACE:
 		case PROTOTYPE_AST_TYPE_FORMATION:
 		case PROTOTYPE_AST_TYPE_LITERAL:
-		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
+		case PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE:
 		case PROTOTYPE_AST_TERMINATES_WITNESS:
 			if (compile_ast_atomic_ref(ctx, ast_id, p_ret) != 0) {
 				return -1;
@@ -6192,6 +6884,10 @@ static int compile_ast_computation_ref(
 	if (!ctx || !p_ret || ast_id >= ctx->asts->node_count) {
 		return -1;
 	}
+	if (ctx->asts->nodes[ast_id].tag == PROTOTYPE_AST_CERTIFIED_ELIMINATION &&
+		function_graph_expand_direct_certified_elimination(ctx, ast_id) != 0) {
+		return -1;
+	}
 	const struct prototype_ast_node* node = &ctx->asts->nodes[ast_id];
 	if (node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK) {
 		if (node->as.block.item_count == 0 ||
@@ -6277,7 +6973,7 @@ static int compile_ast_computation_ref(
 		return 0;
 	}
 	if (node->tag == PROTOTYPE_AST_NAME || node->tag == PROTOTYPE_AST_VAR ||
-		node->tag == PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE) {
+		node->tag == PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE) {
 		struct compile_ref name;
 		if (compile_ast_atomic_ref(ctx, ast_id, &name) != 0) {
 			return -1;
@@ -6424,7 +7120,9 @@ static int function_graph_ast_contains_request(
 	}
 	const struct prototype_ast_node* node = &asts->nodes[ast];
 	switch (node->tag) {
-		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
+		case PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE:
+		case PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_REFERENCE:
+		case PROTOTYPE_AST_CERTIFIED_ELIMINATION:
 			return 1;
 		case PROTOTYPE_AST_APP:
 			return function_graph_ast_contains_request(
@@ -6439,6 +7137,13 @@ static int function_graph_ast_contains_request(
 				asts, node->as.lambda.body, depth + 1
 			);
 		case PROTOTYPE_AST_MATCH:
+			for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
+				uint32_t case_id = node->as.match.first_case + i;
+				if (case_id < asts->case_count &&
+					asts->cases[case_id].selector_count != 0) {
+					return 1;
+				}
+			}
 			if (function_graph_ast_contains_request(
 					asts, node->as.match.scrutinee, depth + 1
 				)) {

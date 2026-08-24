@@ -8,7 +8,9 @@ void prototype_compile_metadata_set_function_graph_storage(
 	struct prototype_function_graph_request* requests,
 	size_t request_capacity,
 	struct prototype_function_graph_association* associations,
-	size_t association_capacity
+	size_t association_capacity,
+	struct prototype_function_graph_origin_group* origin_groups,
+	size_t origin_group_capacity
 ) {
 	if (!metadata) {
 		return;
@@ -20,6 +22,132 @@ void prototype_compile_metadata_set_function_graph_storage(
 	metadata->function_graph_association_capacity = associations ?
 		association_capacity : 0;
 	metadata->function_graph_association_count = 0;
+	metadata->function_graph_origin_groups = origin_groups;
+	metadata->function_graph_origin_group_capacity = origin_groups ?
+		origin_group_capacity : 0;
+	metadata->function_graph_origin_group_count = 0;
+}
+
+int prototype_compile_metadata_stage_function_graph_origin_groups(
+	struct prototype_compile_metadata* metadata,
+	uint32_t association_id,
+	const struct prototype_function_graph_origin_group* groups,
+	uint32_t group_count
+) {
+	if (!metadata || !metadata->function_graph_associations ||
+		association_id >= metadata->function_graph_association_count ||
+		(group_count != 0 && (!groups || !metadata->function_graph_origin_groups)) ||
+		metadata->function_graph_origin_group_count + group_count >
+			metadata->function_graph_origin_group_capacity) {
+		return -1;
+	}
+	struct prototype_function_graph_association* association =
+		&metadata->function_graph_associations[association_id];
+	if (association->origin_groups_staged || association->origin_groups_frozen) {
+		return -1;
+	}
+	uint32_t first = (uint32_t)metadata->function_graph_origin_group_count;
+	for (uint32_t i = 0; i < group_count; ++i) {
+		const struct prototype_function_graph_origin_group* group = &groups[i];
+		if (group->association_id != PROTOTYPE_INVALID_ID ||
+			group->display_symbol_id < 0 || group->role_mask == 0 ||
+			(group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE) == 0 ||
+			(((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) == 0) !=
+				(group->graph_field_ordinal == PROTOTYPE_INVALID_ID)) ||
+			(((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH) != 0) !=
+				(group->recursive != 0))) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < i; ++j) {
+			if (groups[j].constructor_ordinal == group->constructor_ordinal &&
+				groups[j].display_symbol_id == group->display_symbol_id) {
+				return -1;
+			}
+		}
+		metadata->function_graph_origin_groups[first + i] = *group;
+		metadata->function_graph_origin_groups[first + i].association_id = association_id;
+	}
+	metadata->function_graph_origin_group_count += group_count;
+	association->first_origin_group = first;
+	association->origin_group_count = group_count;
+	association->origin_groups_staged = 1;
+	return 0;
+}
+
+int prototype_compile_metadata_freeze_function_graph_origin_groups(
+	struct prototype_compile_metadata* metadata,
+	uint32_t association_id
+) {
+	if (!metadata || !metadata->function_graph_associations ||
+		association_id >= metadata->function_graph_association_count) {
+		return -1;
+	}
+	struct prototype_function_graph_association* association =
+		&metadata->function_graph_associations[association_id];
+	if (!association->origin_groups_staged || association->origin_groups_frozen ||
+		association->first_origin_group + association->origin_group_count >
+			metadata->function_graph_origin_group_count) {
+		return -1;
+	}
+	association->origin_groups_frozen = 1;
+	return 0;
+}
+
+static const struct prototype_function_graph_origin_group*
+function_graph_origin_group_in_association(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t association_id,
+	uint32_t constructor_ordinal,
+	int display_symbol_id,
+	int require_frozen
+) {
+	if (!metadata || !metadata->function_graph_associations ||
+		!metadata->function_graph_origin_groups || display_symbol_id < 0 ||
+		association_id >= metadata->function_graph_association_count) {
+		return NULL;
+	}
+	const struct prototype_function_graph_association* association =
+		&metadata->function_graph_associations[association_id];
+	if (!association->origin_groups_staged ||
+		(require_frozen && !association->origin_groups_frozen) ||
+		association->first_origin_group + association->origin_group_count >
+			metadata->function_graph_origin_group_count) {
+		return NULL;
+	}
+	for (uint32_t i = 0; i < association->origin_group_count; ++i) {
+		const struct prototype_function_graph_origin_group* group =
+			&metadata->function_graph_origin_groups[association->first_origin_group + i];
+		if (group->association_id == association_id &&
+			group->constructor_ordinal == constructor_ordinal &&
+			group->display_symbol_id == display_symbol_id) {
+			return group;
+		}
+	}
+	return NULL;
+}
+
+const struct prototype_function_graph_origin_group*
+prototype_compile_metadata_draft_function_graph_origin_group(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t association_id,
+	uint32_t constructor_ordinal,
+	int display_symbol_id
+) {
+	return function_graph_origin_group_in_association(
+		metadata, association_id, constructor_ordinal, display_symbol_id, 0
+	);
+}
+
+const struct prototype_function_graph_origin_group*
+prototype_compile_metadata_function_graph_origin_group(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t association_id,
+	uint32_t constructor_ordinal,
+	int display_symbol_id
+) {
+	return function_graph_origin_group_in_association(
+		metadata, association_id, constructor_ordinal, display_symbol_id, 1
+	);
 }
 
 int prototype_compile_metadata_request_function_graph(

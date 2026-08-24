@@ -181,8 +181,8 @@ grep -q '^source-exports-normalization-equal natMain natExpected mode=default ye
 	--write-artifact "$TMP_DIR/identity-no-type-instance-cache.apo" \
 	"$TMP_DIR/identity.p"
 cmp "$TMP_DIR/identity.apo" "$TMP_DIR/identity-no-type-instance-cache.apo"
-grep -q '^A_PROGRAM_ARTIFACT 85 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v85.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 86 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v86.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
@@ -274,10 +274,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 85/A_PROGRAM_ARTIFACT 84/' \
+sed '1s/A_PROGRAM_ARTIFACT 86/A_PROGRAM_ARTIFACT 85/' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v79.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-v79.apo" >"$TMP_DIR/identity-v79.out" 2>"$TMP_DIR/identity-v79.err"; then
-	echo "obsolete artifact unexpectedly passed at the v85 version boundary" >&2
+	echo "obsolete artifact unexpectedly passed at the v86 version boundary" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \

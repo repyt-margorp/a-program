@@ -38,7 +38,8 @@ struct prototype_effect_constraint_summary {
 
 enum prototype_function_graph_request_flag {
 	PROTOTYPE_FUNCTION_GRAPH_REQUEST_FAMILY = 1u << 0,
-	PROTOTYPE_FUNCTION_GRAPH_REQUEST_CERTIFIED_EXECUTION = 1u << 1
+	PROTOTYPE_FUNCTION_GRAPH_REQUEST_CERTIFIED_EXECUTION = 1u << 1,
+	PROTOTYPE_FUNCTION_GRAPH_REQUEST_INSPECTION = 1u << 2
 };
 
 enum prototype_function_graph_request_state {
@@ -106,6 +107,31 @@ struct prototype_function_graph_association {
 	/* The raw owner argument followed by its generated graph interface and
 	 * certified callback. INVALID means that the owner is first-order. */
 	uint32_t certified_argument_index;
+	uint32_t first_origin_group;
+	uint32_t origin_group_count;
+	int origin_groups_staged;
+	int origin_groups_frozen;
+};
+
+enum prototype_function_graph_origin_role {
+	PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE = 1u << 0,
+	PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH = 1u << 1,
+	PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH = 1u << 2
+};
+
+/* One source-origin group describes presentation roles for fields in one
+ * accepted generated constructor. The field ordinals remain semantic
+ * authority; source spellings and AST Binder IDs are compiler-local selectors.
+ * Distinct value, graph, and IH Bindings are created when a case is elaborated. */
+struct prototype_function_graph_origin_group {
+	uint32_t association_id;
+	uint32_t constructor_ordinal;
+	uint32_t source_ast_binder_id;
+	int display_symbol_id;
+	uint32_t role_mask;
+	uint32_t value_field_ordinal;
+	uint32_t graph_field_ordinal;
+	int recursive;
 };
 
 enum prototype_function_graph_compile_stage {
@@ -307,6 +333,10 @@ struct prototype_compile_metadata {
 	size_t function_graph_association_count;
 	size_t function_graph_association_capacity;
 
+	struct prototype_function_graph_origin_group* function_graph_origin_groups;
+	size_t function_graph_origin_group_count;
+	size_t function_graph_origin_group_capacity;
+
 	struct prototype_resolve_error* resolve_errors;
 	size_t resolve_error_count;
 	size_t resolve_error_capacity;
@@ -355,7 +385,9 @@ void prototype_compile_metadata_set_function_graph_storage(
 	struct prototype_function_graph_request* requests,
 	size_t request_capacity,
 	struct prototype_function_graph_association* associations,
-	size_t association_capacity
+	size_t association_capacity,
+	struct prototype_function_graph_origin_group* origin_groups,
+	size_t origin_group_capacity
 );
 
 int prototype_compile_metadata_request_function_graph(
@@ -384,6 +416,34 @@ const struct prototype_function_graph_association*
 prototype_compile_metadata_function_graph_association_for_owner(
 	const struct prototype_compile_metadata* metadata,
 	int owner_symbol_id
+);
+
+int prototype_compile_metadata_stage_function_graph_origin_groups(
+	struct prototype_compile_metadata* metadata,
+	uint32_t association_id,
+	const struct prototype_function_graph_origin_group* groups,
+	uint32_t group_count
+);
+
+int prototype_compile_metadata_freeze_function_graph_origin_groups(
+	struct prototype_compile_metadata* metadata,
+	uint32_t association_id
+);
+
+const struct prototype_function_graph_origin_group*
+prototype_compile_metadata_draft_function_graph_origin_group(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t association_id,
+	uint32_t constructor_ordinal,
+	int display_symbol_id
+);
+
+const struct prototype_function_graph_origin_group*
+prototype_compile_metadata_function_graph_origin_group(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t association_id,
+	uint32_t constructor_ordinal,
+	int display_symbol_id
 );
 
 struct prototype_type_inspection {

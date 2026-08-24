@@ -51,10 +51,14 @@ static const char* ast_tag_name(int tag) {
 			return "block-lambda-exit";
 		case PROTOTYPE_AST_COMPUTATION_FOLD:
 			return "computation-fold";
-		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
-			return "function-graph-witness-reference";
+		case PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE:
+			return "certified-function-reference";
 		case PROTOTYPE_AST_TERMINATES_WITNESS:
 			return "terminates-witness";
+			case PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_REFERENCE:
+				return "function-graph-role-reference";
+			case PROTOTYPE_AST_CERTIFIED_ELIMINATION:
+				return "certified-elimination";
 		default:
 			return "unknown";
 	}

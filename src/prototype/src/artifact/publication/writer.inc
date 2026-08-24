@@ -560,6 +560,35 @@ static int prototype_artifact_write_text_body(
 		);
 	}
 
+	fprintf(
+		stream,
+		"function_graph_selector_groups %zu\n",
+		interface->function_graph_selector_group_count
+	);
+	for (size_t i = 0; i < interface->function_graph_selector_group_count; ++i) {
+		const struct prototype_artifact_function_graph_selector_group* group =
+			&interface->function_graph_selector_groups[i];
+		const char* display_name = symbol_to_string(
+			symbols, group->display_symbol_id
+		);
+		if (!display_name || group->association_index >=
+				interface->function_graph_association_count) {
+			return -1;
+		}
+		fprintf(
+			stream,
+			"function_graph_selector_group %zu %u %u %s %u %u %u %d\n",
+			i,
+			group->association_index,
+			group->constructor_ordinal,
+			display_name,
+			group->role_mask,
+			group->value_field_ordinal,
+			group->graph_field_ordinal,
+			group->recursive
+		);
+	}
+
 	fprintf(stream, "identity_roots %zu\n", interface->identity_root_count);
 	for (size_t i = 0; i < interface->identity_root_count; ++i) {
 		const struct prototype_artifact_identity_root* root =
@@ -815,6 +844,7 @@ int prototype_artifact_write_text(
 			&publication.interface,
 			&publication.object.terms,
 			&publication.object.type_declarations,
+			&publication.metadata.contexts,
 			&publication.object.judgement
 		) != 0) {
 		fprintf(stderr, "artifact dense function-graph validation failed\n");

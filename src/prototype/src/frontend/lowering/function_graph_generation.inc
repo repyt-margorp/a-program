@@ -8,6 +8,7 @@ static int compile_imported_function_graph_association(
 	const struct prototype_artifact_function_graph_association* selected = NULL;
 	uint32_t selected_interface_index = PROTOTYPE_INVALID_ID;
 	uint32_t selected_owner_export = PROTOTYPE_INVALID_ID;
+	uint32_t selected_association_index = PROTOTYPE_INVALID_ID;
 	uint32_t owner_count = 0;
 	if (!ctx || owner_symbol_id < 0) {
 		return -1;
@@ -27,12 +28,14 @@ static int compile_imported_function_graph_association(
 			selected_interface_index = i;
 			selected_owner_export = j;
 			selected = NULL;
+			selected_association_index = PROTOTYPE_INVALID_ID;
 			for (uint32_t k = 0;
 				k < interface->function_graph_association_count;
 				++k) {
 				if (interface->function_graph_associations[k].
 						owner_term_export_index == j) {
 					selected = &interface->function_graph_associations[k];
+					selected_association_index = k;
 					break;
 				}
 			}
@@ -60,6 +63,13 @@ static int compile_imported_function_graph_association(
 			selected_interface->term_export_count)) {
 		return -1;
 	}
+	const struct prototype_artifact_type_export* selected_result_type =
+		&selected_interface->type_exports[selected->result_type_export_index];
+	if (selected_result_type->constructor_count != 1 ||
+		selected_result_type->first_constructor_export >=
+			selected_interface->constructor_export_count) {
+		return -1;
+	}
 	struct prototype_function_graph_association association = {
 		.owner_symbol_id = owner_symbol_id,
 		.owner_assignment_id = PROTOTYPE_INVALID_ID,
@@ -81,7 +91,9 @@ static int compile_imported_function_graph_association(
 		.result_symbol_id = selected_interface->type_exports[
 			selected->result_type_export_index
 		].name_symbol_id,
-		.returned_constructor_symbol_id = -1,
+		.returned_constructor_symbol_id = selected_interface->constructor_exports[
+			selected_result_type->first_constructor_export
+		].name_symbol_id,
 		.graph_interface_symbol_id = selected_interface->term_exports[
 			selected->graph_interface_term_export_index
 		].name_symbol_id,
@@ -105,11 +117,59 @@ static int compile_imported_function_graph_association(
 		.certified_adapter_assignment_id = PROTOTYPE_INVALID_ID,
 		.certified_runner_assignment_id = PROTOTYPE_INVALID_ID,
 		.executable_assignment_id = PROTOTYPE_INVALID_ID,
-		.certified_argument_index = selected->certified_argument_index
+		.certified_argument_index = selected->certified_argument_index,
+		.first_origin_group = PROTOTYPE_INVALID_ID,
+		.origin_group_count = 0,
+		.origin_groups_staged = 0,
+		.origin_groups_frozen = 0
 	};
-	return prototype_compile_metadata_add_function_graph_association(
-		ctx->metadata, association, &(uint32_t) { PROTOTYPE_INVALID_ID }
-	);
+	uint32_t association_id;
+	if (selected_association_index == PROTOTYPE_INVALID_ID ||
+		prototype_compile_metadata_add_function_graph_association(
+			ctx->metadata, association, &association_id
+		) != 0) {
+		return -1;
+	}
+	if (association_id < ctx->metadata->function_graph_association_count &&
+		ctx->metadata->function_graph_associations[association_id].
+			origin_groups_frozen) {
+		return 0;
+	}
+	struct prototype_function_graph_origin_group groups[
+		PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_SELECTOR_GROUP_CAPACITY
+	];
+	uint32_t group_count = 0;
+	for (size_t i = 0;
+		i < selected_interface->function_graph_selector_group_count;
+		++i) {
+		const struct prototype_artifact_function_graph_selector_group* source =
+			&selected_interface->function_graph_selector_groups[i];
+		if (source->association_index != selected_association_index) {
+			continue;
+		}
+		if (group_count >=
+				PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_SELECTOR_GROUP_CAPACITY) {
+			return -1;
+		}
+		groups[group_count++] = (struct prototype_function_graph_origin_group) {
+			.association_id = PROTOTYPE_INVALID_ID,
+			.constructor_ordinal = source->constructor_ordinal,
+			.source_ast_binder_id = PROTOTYPE_INVALID_ID,
+			.display_symbol_id = source->display_symbol_id,
+			.role_mask = source->role_mask,
+			.value_field_ordinal = source->value_field_ordinal,
+			.graph_field_ordinal = source->graph_field_ordinal,
+			.recursive = source->recursive
+		};
+	}
+	if (prototype_compile_metadata_stage_function_graph_origin_groups(
+			ctx->metadata, association_id, groups, group_count
+		) != 0 || prototype_compile_metadata_freeze_function_graph_origin_groups(
+			ctx->metadata, association_id
+		) != 0) {
+		return -1;
+	}
+	return 0;
 }
 
 static int compile_collect_function_graph_request(
@@ -199,7 +259,18 @@ static int compile_phase_collect_function_graph_requests(
 	if (!ctx || !ctx->asts || !ctx->metadata) {
 		return -1;
 	}
-	ctx->metadata->function_graph_request_count = 0;
+	/* Driver inspection requests are explicit pre-compilation inputs. Preserve
+	 * them while rebuilding syntax-derived requests from the current AST. */
+	size_t retained_request_count = 0;
+	for (size_t i = 0; i < ctx->metadata->function_graph_request_count; ++i) {
+		if ((ctx->metadata->function_graph_requests[i].request_flags &
+			PROTOTYPE_FUNCTION_GRAPH_REQUEST_INSPECTION) == 0) {
+			continue;
+		}
+		ctx->metadata->function_graph_requests[retained_request_count++] =
+			ctx->metadata->function_graph_requests[i];
+	}
+	ctx->metadata->function_graph_request_count = retained_request_count;
 	for (uint32_t i = 0; i < ctx->asts->type_expr_count; ++i) {
 		const struct prototype_ast_type_expr* expr = &ctx->asts->type_exprs[i];
 		if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE &&
@@ -214,10 +285,10 @@ static int compile_phase_collect_function_graph_requests(
 	}
 	for (uint32_t i = 0; i < ctx->asts->node_count; ++i) {
 		const struct prototype_ast_node* node = &ctx->asts->nodes[i];
-		if (node->tag == PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE &&
+		if (node->tag == PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE &&
 			compile_collect_function_graph_request(
 				ctx,
-				node->as.function_graph_witness_reference.owner_symbol_id,
+				node->as.certified_function_reference.owner_symbol_id,
 				i,
 				PROTOTYPE_FUNCTION_GRAPH_REQUEST_FAMILY |
 					PROTOTYPE_FUNCTION_GRAPH_REQUEST_CERTIFIED_EXECUTION

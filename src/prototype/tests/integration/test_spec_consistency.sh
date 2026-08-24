@@ -8,7 +8,7 @@ cd "$ROOT_DIR"
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/a-program-spec-consistency.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT
 
-artifact_schema=src/prototype/spec/artifact_v85.schema
+artifact_schema=src/prototype/spec/artifact_v86.schema
 hott_schema=src/prototype/spec/hott_fragment_v6.schema
 calculus_header=src/prototype/calculus.h
 artifact_header=src/prototype/include/a_program/artifact/interface.h

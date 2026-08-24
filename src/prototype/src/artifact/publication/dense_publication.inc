@@ -70,6 +70,8 @@ struct artifact_publication_graph {
 	uint32_t* constructor_field_type_exprs;
 	struct prototype_type_expr* interface_type_exprs;
 	struct prototype_artifact_identity_root* identity_roots;
+	struct prototype_artifact_function_graph_selector_group*
+		function_graph_selector_groups;
 	struct prototype_artifact_dependency* dependencies;
 	struct prototype_context* contexts;
 	struct prototype_substitution* substitutions;
@@ -189,6 +191,7 @@ static void artifact_publication_graph_free(
 	free(graph->constructor_field_type_exprs);
 	free(graph->interface_type_exprs);
 	free(graph->identity_roots);
+	free(graph->function_graph_selector_groups);
 	free(graph->dependencies);
 	free(graph->contexts);
 	free(graph->substitutions);
@@ -1768,6 +1771,10 @@ static int artifact_publication_graph_alloc(
 	);
 	ALLOC_PUBLICATION(interface_type_exprs, interface->type_expr_count);
 	ALLOC_PUBLICATION(identity_roots, interface->identity_root_count);
+	ALLOC_PUBLICATION(
+		function_graph_selector_groups,
+		interface->function_graph_selector_group_count
+	);
 	ALLOC_PUBLICATION(dependencies, dependency_capacity);
 	ALLOC_PUBLICATION(contexts, metadata->contexts.context_count);
 	ALLOC_PUBLICATION(substitutions, metadata->substitutions.substitution_count);
@@ -1895,6 +1902,8 @@ static int artifact_publication_graph_alloc(
 		interface->type_expr_count,
 		publication->identity_roots,
 		interface->identity_root_count,
+		publication->function_graph_selector_groups,
+		interface->function_graph_selector_group_count,
 		publication->dependencies,
 		dependency_capacity
 	);

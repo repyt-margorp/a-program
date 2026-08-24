@@ -2,6 +2,7 @@
 
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
+#include "a_program/frontend/function_graph.h"
 #include "a_program/graph/runtime.h"
 
 #include <stdio.h>
@@ -527,6 +528,54 @@ static void query_type(
 	}
 }
 
+static void query_function_graph(
+	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_db* term_db,
+	const struct prototype_compile_metadata* metadata,
+	const char* name
+) {
+	int symbol_id = -1;
+	if (!symbols || !intrinsic_environment || !type_declarations || !term_db ||
+		!metadata || !name) {
+		return;
+	}
+	for (size_t i = 0; i < metadata->function_graph_association_count; ++i) {
+		int candidate_symbol =
+			metadata->function_graph_associations[i].owner_symbol_id;
+		const char* candidate = symbol_to_string(symbols, candidate_symbol);
+		if (candidate && strcmp(candidate, name) == 0) {
+			symbol_id = candidate_symbol;
+			break;
+		}
+	}
+	if (symbol_id < 0) {
+		printf(
+			"function graph %s: absent; recompile with --show-function-graph %s\n",
+			name, name
+		);
+		return;
+	}
+	enum prototype_function_graph_inspection_state state =
+		prototype_function_graph_inspect(
+			stdout,
+			symbols,
+			intrinsic_environment,
+			term_db,
+			type_declarations,
+			metadata,
+			symbol_id
+		);
+	if (state != PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AVAILABLE) {
+		printf(
+			"function graph %s: %s\n",
+			name,
+			prototype_function_graph_inspection_state_name(state)
+		);
+	}
+}
+
 static int query_existing_value(
 	const struct symbol_table* symbols,
 	const struct prototype_intrinsic_environment* intrinsic_environment,
@@ -714,15 +763,24 @@ int main(int argc, char** argv) {
 		}
 		if (input_len == 0) {
 			char query_name[128];
-			if (is_named_command(line, ":type", query_name, sizeof(query_name))) {
+				if (is_named_command(line, ":type", query_name, sizeof(query_name))) {
 				query_type(
 					symbols, program->intrinsic_environment,
 					type_declarations, term_db, metadata, query_name
 				);
 				printf("prototype> ");
 				fflush(stdout);
-				continue;
-			}
+					continue;
+				}
+				if (is_named_command(line, ":graph", query_name, sizeof(query_name))) {
+					query_function_graph(
+						symbols, program->intrinsic_environment,
+						type_declarations, term_db, metadata, query_name
+					);
+					printf("prototype> ");
+					fflush(stdout);
+					continue;
+				}
 			if (is_named_command(line, ":whnf", query_name, sizeof(query_name))) {
 				query_normal_form(
 					symbols, program->intrinsic_environment,

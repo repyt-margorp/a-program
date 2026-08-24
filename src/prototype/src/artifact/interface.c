@@ -38,6 +38,9 @@ void prototype_artifact_interface_init(
 	size_t type_expr_capacity,
 	struct prototype_artifact_identity_root* identity_roots,
 	size_t identity_root_capacity,
+	struct prototype_artifact_function_graph_selector_group*
+		function_graph_selector_groups,
+	size_t function_graph_selector_group_capacity,
 	struct prototype_artifact_dependency* dependencies,
 	size_t dependency_capacity
 ) {
@@ -59,6 +62,9 @@ void prototype_artifact_interface_init(
 	interface->type_expr_capacity = type_expr_capacity;
 	interface->identity_roots = identity_roots;
 	interface->identity_root_capacity = identity_root_capacity;
+	interface->function_graph_selector_groups = function_graph_selector_groups;
+	interface->function_graph_selector_group_capacity =
+		function_graph_selector_group_capacity;
 	interface->dependencies = dependencies;
 	interface->dependency_capacity = dependency_capacity;
 }
@@ -929,9 +935,10 @@ int prototype_artifact_interface_validate_function_graph_associations(
 	const struct prototype_artifact_interface* interface,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
 	const struct prototype_judgement_db* judgement
 ) {
-	if (!interface || !terms || !type_declarations || !judgement) {
+	if (!interface || !terms || !type_declarations || !contexts || !judgement) {
 		return -1;
 	}
 	if (terms->term_capacity > SIZE_MAX / sizeof(uint32_t)) {
@@ -951,6 +958,12 @@ int prototype_artifact_interface_validate_function_graph_associations(
 		return -1;
 	}
 	int validation_result = -1;
+	for (size_t i = 0; i < interface->function_graph_selector_group_count; ++i) {
+		if (interface->function_graph_selector_groups[i].association_index >=
+				interface->function_graph_association_count) {
+			goto cleanup;
+		}
+	}
 	for (size_t i = 0; i < interface->function_graph_association_count; ++i) {
 		const struct prototype_artifact_function_graph_association* association =
 			&interface->function_graph_associations[i];
@@ -1028,6 +1041,97 @@ int prototype_artifact_interface_validate_function_graph_associations(
 				);
 			}
 			goto cleanup;
+		}
+		for (size_t group_index = 0;
+			group_index < interface->function_graph_selector_group_count;
+			++group_index) {
+			const struct prototype_artifact_function_graph_selector_group* group =
+				&interface->function_graph_selector_groups[group_index];
+			if (group->association_index != i) {
+				continue;
+			}
+			if (group->display_symbol_id < 0 || group->recursive < 0 ||
+				group->recursive > 1 || group->role_mask == 0 ||
+				(group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE) == 0 ||
+				(group->role_mask & ~(PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE |
+					PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH |
+					PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH)) != 0 ||
+				(((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) == 0) !=
+					(group->graph_field_ordinal == PROTOTYPE_INVALID_ID)) ||
+				(((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH) != 0) !=
+					(group->recursive != 0))) {
+				goto cleanup;
+			}
+			if (graph_type->local_type_id >=
+					type_declarations->semantic_schema.type_count) {
+				goto cleanup;
+			}
+			const struct prototype_type_declaration* graph_declaration =
+				&type_declarations->semantic_schema.type_declarations[
+					graph_type->local_type_id
+				];
+			if (group->constructor_ordinal >= graph_declaration->constructor_count ||
+				graph_declaration->first_constructor + group->constructor_ordinal >=
+					type_declarations->semantic_schema.constructor_count) {
+				goto cleanup;
+			}
+			const struct prototype_type_constructor_declaration* constructor =
+				&type_declarations->semantic_schema.constructor_declarations[
+					graph_declaration->first_constructor + group->constructor_ordinal
+				];
+			uint32_t field_contexts[128];
+			uint32_t field_count = 0;
+			if (prototype_context_extension_path(
+					contexts,
+					constructor->parameter_context,
+					constructor->field_context,
+					field_contexts,
+					128,
+					&field_count
+				) != 0 || group->value_field_ordinal >= field_count ||
+				(group->graph_field_ordinal != PROTOTYPE_INVALID_ID &&
+				 group->graph_field_ordinal >= field_count)) {
+				if (getenv("A_PROGRAM_FUNCTION_GRAPH_VALIDATION_TRACE")) {
+					fprintf(
+						stderr,
+						"function-graph selector telescope mismatch association=%zu "
+						"group=%zu constructor=%u fields=%u value=%u graph=%u\n",
+						i, group_index, group->constructor_ordinal,
+						field_count,
+						group->value_field_ordinal, group->graph_field_ordinal
+					);
+				}
+				goto cleanup;
+			}
+			if ((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) != 0) {
+				const struct prototype_context* graph_field = prototype_context_get(
+					contexts, field_contexts[group->graph_field_ordinal]
+				);
+				int semantic_recursive = 0;
+				if (!graph_field ||
+					group->graph_field_ordinal != group->value_field_ordinal + 1 ||
+					prototype_judgement_classifier_is_strictly_positive_recursive_field(
+						terms,
+						type_declarations,
+						prototype_context_classifier_term(graph_field),
+						constructor->result_classifier,
+						&semantic_recursive
+					) != 0 || (semantic_recursive != 0) !=
+						(group->recursive != 0)) {
+					goto cleanup;
+				}
+			}
+			for (size_t previous_index = 0;
+				previous_index < group_index;
+				++previous_index) {
+				const struct prototype_artifact_function_graph_selector_group* previous =
+					&interface->function_graph_selector_groups[previous_index];
+				if (previous->association_index == group->association_index &&
+					previous->constructor_ordinal == group->constructor_ordinal &&
+					previous->display_symbol_id == group->display_symbol_id) {
+					goto cleanup;
+				}
+			}
 		}
 		if (association->certified_adapter_term_export_index !=
 				PROTOTYPE_INVALID_ID) {
@@ -1810,6 +1914,7 @@ int prototype_artifact_interface_build_from_metadata(
 	interface->type_expr_count = 0;
 	interface->dependency_count = 0;
 	interface->function_graph_association_count = 0;
+	interface->function_graph_selector_group_count = 0;
 	interface->export_condition_obligation_count = 0;
 
 	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
@@ -2032,17 +2137,47 @@ int prototype_artifact_interface_build_from_metadata(
 				return -1;
 			}
 		}
-		interface->function_graph_associations[
-			interface->function_graph_association_count++
-		] = (struct prototype_artifact_function_graph_association) {
+		if (!source->origin_groups_staged || !source->origin_groups_frozen ||
+			source->first_origin_group + source->origin_group_count >
+				metadata->function_graph_origin_group_count ||
+			interface->function_graph_selector_group_count +
+				source->origin_group_count >
+				interface->function_graph_selector_group_capacity) {
+			return -1;
+		}
+		uint32_t association_index =
+			(uint32_t)interface->function_graph_association_count;
+		interface->function_graph_associations[association_index] =
+			(struct prototype_artifact_function_graph_association) {
 			.owner_term_export_index = owner,
-				.graph_type_export_index = graph,
-				.result_type_export_index = result,
-				.graph_interface_term_export_index = graph_interface,
-				.certified_adapter_term_export_index = adapter,
-				.certified_runner_term_export_index = runner,
-				.certified_argument_index = source->certified_argument_index
+			.graph_type_export_index = graph,
+			.result_type_export_index = result,
+			.graph_interface_term_export_index = graph_interface,
+			.certified_adapter_term_export_index = adapter,
+			.certified_runner_term_export_index = runner,
+			.certified_argument_index = source->certified_argument_index
 			};
+		interface->function_graph_association_count++;
+		for (uint32_t j = 0; j < source->origin_group_count; ++j) {
+			const struct prototype_function_graph_origin_group* origin =
+				&metadata->function_graph_origin_groups[
+					source->first_origin_group + j
+				];
+			if (origin->association_id != i) {
+				return -1;
+			}
+			interface->function_graph_selector_groups[
+				interface->function_graph_selector_group_count++
+			] = (struct prototype_artifact_function_graph_selector_group) {
+				.association_index = association_index,
+				.constructor_ordinal = origin->constructor_ordinal,
+				.display_symbol_id = origin->display_symbol_id,
+				.role_mask = origin->role_mask,
+				.value_field_ordinal = origin->value_field_ordinal,
+				.graph_field_ordinal = origin->graph_field_ordinal,
+				.recursive = origin->recursive
+			};
+		}
 	}
 
 	return prototype_artifact_interface_refresh_term_export_evidence(

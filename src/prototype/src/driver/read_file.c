@@ -1,8 +1,9 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v85.h"
+#include "a_program/artifact/wire_v86.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
+#include "a_program/frontend/function_graph.h"
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 
@@ -513,6 +514,7 @@ static int read_artifact_interface_and_graph(
 			artifact_interface,
 			term_db,
 			type_declarations,
+			&metadata->contexts,
 			judgement_db
 	) != 0 || prototype_universe_validate_replay(
 			universe_db,
@@ -2311,6 +2313,7 @@ static int read_file_command(
 	const char* check_source_exports_normalization_equal_left_name = NULL;
 	const char* check_source_exports_normalization_equal_right_name = NULL;
 	const char* trace_source_export_evaluation_name = NULL;
+	const char* show_function_graph_name = NULL;
 	const char* reduction_mode = "default";
 	const char* check_exports_shape_equal_path = NULL;
 	const char* check_exports_shape_equal_left_name = NULL;
@@ -2483,6 +2486,14 @@ static int read_file_command(
 			trace_source_export_evaluation_name = argv[++file_arg];
 			continue;
 		}
+		if (strcmp(argv[file_arg], "--show-function-graph") == 0) {
+			if (file_arg + 1 >= argc) {
+				fprintf(stderr, "--show-function-graph requires a definition name\n");
+				return 1;
+			}
+			show_function_graph_name = argv[++file_arg];
+			continue;
+		}
 			if (strcmp(argv[file_arg], "--reduction-mode") == 0) {
 				if (file_arg + 1 >= argc) {
 					fprintf(stderr, "--reduction-mode requires default, beta, match, or none\n");
@@ -2610,7 +2621,7 @@ static int read_file_command(
 			continue;
 		}
 		fprintf(stderr, "unknown option: %s\n", argv[file_arg]);
-		fprintf(stderr, "Usage: %s [--policy strict|hybrid|exploratory] [--implicit-definition-thunks|--no-implicit-definition-thunks] [--normalization-steps N] [--solver-steps N] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--policy strict|hybrid|exploratory] [--implicit-definition-thunks|--no-implicit-definition-thunks] [--normalization-steps N] [--solver-steps N] [--show-function-graph name] [--write-artifact out.ao] [--namespace name] [--opaque-export name ...] [--import-interface import.ao ...] [--import-search-dir dir ...] <file.p>...\n", argv[0]);
 		fprintf(stderr, "       %s --read-interface file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --read-graph file.ao\n", argv[0]);
 			fprintf(stderr, "       %s --check-backend interpreter|c|verilog file.ao\n", argv[0]);
@@ -3222,6 +3233,7 @@ static int read_file_command(
 					artifact_interface,
 					term_db,
 					type_declarations,
+					&artifact_metadata->contexts,
 					judgement_db
 				) != 0) ||
 				((artifact_graph_stage = "universe-provenance"),
@@ -3539,6 +3551,31 @@ static int read_file_command(
 			return 1;
 		}
 		program->namespace_symbol_id = namespace_symbol_id;
+		int show_function_graph_symbol = -1;
+		if (show_function_graph_name) {
+			show_function_graph_symbol = symbol_intern(
+				symbols,
+				show_function_graph_name,
+				strlen(show_function_graph_name)
+			);
+			enum prototype_function_graph_inspection_state request_state =
+				show_function_graph_symbol < 0 ?
+					PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID :
+					prototype_function_graph_request_inspection(
+						ast_db, metadata, show_function_graph_symbol
+					);
+			if (request_state == PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AMBIGUOUS ||
+				request_state == PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID) {
+				fprintf(
+					stderr,
+					"function graph inspection request %s: %s\n",
+					show_function_graph_name,
+					prototype_function_graph_inspection_state_name(request_state)
+				);
+				symbol_table_free(symbols);
+				return 1;
+			}
+		}
 		if (prototype_compile_graph_with_imports(
 			program,
 			imported_interface_refs,
@@ -3557,6 +3594,28 @@ static int read_file_command(
 		prototype_diagnostic_print_compile_diagnostics(stderr, metadata);
 		symbol_table_free(symbols);
 		return 1;
+	}
+	if (show_function_graph_name) {
+		enum prototype_function_graph_inspection_state inspection_state =
+			prototype_function_graph_inspect(
+				stdout,
+				symbols,
+				program->intrinsic_environment,
+				term_db,
+				type_declarations,
+				metadata,
+				show_function_graph_symbol
+			);
+		if (inspection_state != PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AVAILABLE) {
+			fprintf(
+				stderr,
+				"function graph inspection %s: %s\n",
+				show_function_graph_name,
+				prototype_function_graph_inspection_state_name(inspection_state)
+			);
+			symbol_table_free(symbols);
+			return 1;
+		}
 	}
 	struct prototype_artifact_interface* artifact_interface =
 		&storage->artifact.interface;

@@ -1,4 +1,5 @@
 #include "a_program/frontend/function_graph.h"
+#include "a_program/kernel/judgement/classifier_solver.h"
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/rules.h"
 
@@ -9,6 +10,8 @@
 #define FUNCTION_GRAPH_MAX_BINDINGS 32
 #define FUNCTION_GRAPH_MAX_RECURSIVE_CALLS 16
 #define FUNCTION_GRAPH_MAX_ARGUMENTS 16
+#define FUNCTION_GRAPH_MAX_ORIGIN_GROUPS 256
+#define FUNCTION_GRAPH_MAX_TERMINAL_BINDINGS 16
 
 struct function_graph_binding_map {
 	uint32_t source_ast_binder;
@@ -106,6 +109,10 @@ struct function_graph_generation {
 		FUNCTION_GRAPH_MAX_RECURSIVE_CALLS
 	];
 	uint32_t recursive_site_count;
+	struct prototype_function_graph_origin_group origin_groups[
+		FUNCTION_GRAPH_MAX_ORIGIN_GROUPS
+	];
+	uint32_t origin_group_count;
 	int failure_reason;
 };
 
@@ -122,6 +129,21 @@ struct function_graph_certified_block {
 	int source_block_symbol;
 	uint32_t callback_arguments[2];
 	struct function_graph_named_call_site helper;
+};
+
+struct function_graph_terminal_binding {
+	uint32_t item_ast;
+	uint32_t source_ast_binder;
+	int source_symbol_id;
+	uint32_t value_ast;
+};
+
+struct function_graph_terminal_plan {
+	uint32_t body_ast;
+	struct function_graph_terminal_binding bindings[
+		FUNCTION_GRAPH_MAX_TERMINAL_BINDINGS
+	];
+	uint32_t binding_count;
 };
 
 static const struct function_graph_recursive_site*
@@ -315,8 +337,8 @@ static int function_graph_request_certified_source_dependencies(
 		}
 		if (head >= generation->asts->node_count ||
 			generation->asts->nodes[head].tag !=
-				PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE ||
-			generation->asts->nodes[head].as.function_graph_witness_reference.
+				PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE ||
+			generation->asts->nodes[head].as.certified_function_reference.
 				owner_symbol_id != generation->owner_symbol ||
 			argument_count <= generation->certified_argument_index) {
 			continue;
@@ -635,7 +657,7 @@ static int function_graph_collect_recursive_sites(
 		case PROTOTYPE_AST_TYPE_LITERAL:
 		case PROTOTYPE_AST_TYPE_FORMATION:
 		case PROTOTYPE_AST_INDUCTION_HYPOTHESIS:
-		case PROTOTYPE_AST_FUNCTION_GRAPH_WITNESS_REFERENCE:
+		case PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE:
 			return 0;
 		default:
 			return -1;
@@ -948,7 +970,7 @@ static int function_graph_named_certified_call(
 	uint32_t* p_call
 ) {
 	if (!generation || !site || !arguments || !p_call ||
-		prototype_ast_function_graph_witness_reference(
+		prototype_ast_certified_function_reference(
 			generation->asts, site->owner_symbol_id, generation->span, p_call
 		) != 0) {
 		return -1;
@@ -1038,6 +1060,73 @@ static int function_graph_self_app(
 		}
 	}
 	*p_type = type;
+	return 0;
+}
+
+static int function_graph_record_origin_group(
+	struct function_graph_generation* generation,
+	uint32_t constructor_ordinal,
+	uint32_t source_ast_binder_id,
+	int display_symbol_id,
+	uint32_t role_mask,
+	uint32_t value_field_ordinal,
+	uint32_t graph_field_ordinal,
+	int recursive
+) {
+	if (!generation || display_symbol_id < 0 || role_mask == 0 ||
+		value_field_ordinal == PROTOTYPE_INVALID_ID ||
+		generation->origin_group_count >= FUNCTION_GRAPH_MAX_ORIGIN_GROUPS) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < generation->origin_group_count; ++i) {
+		const struct prototype_function_graph_origin_group* existing =
+			&generation->origin_groups[i];
+		if (existing->constructor_ordinal == constructor_ordinal &&
+			existing->display_symbol_id == display_symbol_id) {
+			return -1;
+		}
+	}
+	generation->origin_groups[generation->origin_group_count++] =
+		(struct prototype_function_graph_origin_group) {
+			.association_id = PROTOTYPE_INVALID_ID,
+			.constructor_ordinal = constructor_ordinal,
+			.source_ast_binder_id = source_ast_binder_id,
+			.display_symbol_id = display_symbol_id,
+			.role_mask = role_mask,
+			.value_field_ordinal = value_field_ordinal,
+			.graph_field_ordinal = graph_field_ordinal,
+			.recursive = recursive
+		};
+	return 0;
+}
+
+static int function_graph_record_case_field_origins(
+	struct function_graph_generation* generation,
+	uint32_t constructor_ordinal,
+	const struct prototype_ast_match_case* source_case,
+	uint32_t first_field_ordinal
+) {
+	if (!generation || !source_case || source_case->first_binder +
+		source_case->binder_count > generation->asts->case_binder_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < source_case->binder_count; ++i) {
+		const struct prototype_ast_binder* binder = &generation->asts->case_binders[
+			source_case->first_binder + i
+		];
+		if (function_graph_record_origin_group(
+				generation,
+				constructor_ordinal,
+				binder->ast_binder_id,
+				binder->symbol_id,
+				PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE,
+				first_field_ordinal + i,
+				PROTOTYPE_INVALID_ID,
+				0
+			) != 0) {
+			return -1;
+		}
+	}
 	return 0;
 }
 
@@ -1404,6 +1493,137 @@ static int function_graph_collect_ih(
 		node->tag == PROTOTYPE_AST_NAME_IN_AST_NAMESPACE ||
 		node->tag == PROTOTYPE_AST_TEXT_LITERAL ||
 		node->tag == PROTOTYPE_AST_INT_LITERAL ? 0 : -1;
+}
+
+/* A computation block is source sequencing, not a second proof language. For
+ * graph generation, retain every binding origin and expose the selected final
+ * expression. Recursive computations are still represented by ordinary graph
+ * output/evidence fields; the source Binder only determines their local role
+ * names and subsequent substitution. */
+static int function_graph_terminal_plan_open(
+	struct function_graph_generation* generation,
+	uint32_t ast,
+	struct function_graph_terminal_plan* p_plan
+) {
+	const struct prototype_ast_db* asts = generation ? generation->asts : NULL;
+	if (!asts || !p_plan || ast >= asts->node_count) {
+		return -1;
+	}
+	memset(p_plan, 0, sizeof(*p_plan));
+	p_plan->body_ast = ast;
+	const struct prototype_ast_node* node = &asts->nodes[ast];
+	if (node->tag != PROTOTYPE_AST_COMPUTATION_BLOCK) {
+		return 0;
+	}
+	if (node->as.block.item_count == 0 || node->as.block.result_item_index >=
+		node->as.block.item_count || node->as.block.first_item +
+		node->as.block.item_count > asts->block_item_count) {
+		return -1;
+	}
+	uint32_t cutoff = node->as.block.result_item_index;
+	for (uint32_t i = 0; i <= cutoff; ++i) {
+		uint32_t item_ast = asts->block_items[node->as.block.first_item + i];
+		if (item_ast >= asts->node_count) {
+			return -1;
+		}
+		const struct prototype_ast_node* item = &asts->nodes[item_ast];
+		if (item->tag == PROTOTYPE_AST_BLOCK_BINDING) {
+			if (p_plan->binding_count >= FUNCTION_GRAPH_MAX_TERMINAL_BINDINGS) {
+				return -1;
+			}
+			p_plan->bindings[p_plan->binding_count++] =
+				(struct function_graph_terminal_binding) {
+					.item_ast = item_ast,
+					.source_ast_binder = item->as.block_binding.ast_binder_id,
+					.source_symbol_id = item->as.block_binding.binder_symbol_id,
+					.value_ast = item->as.block_binding.value
+				};
+			if (i == cutoff && prototype_ast_var(
+					generation->asts,
+					item->as.block_binding.ast_binder_id,
+					item->as.block_binding.binder_symbol_id,
+					item->span,
+					&p_plan->body_ast
+				) != 0) {
+				return -1;
+			}
+			continue;
+		}
+		if (item->tag != PROTOTYPE_AST_BLOCK_EXPRESSION || i != cutoff) {
+			return -1;
+		}
+		p_plan->body_ast = item->as.block_expression.term;
+	}
+	return p_plan->body_ast == ast ? -1 : 0;
+}
+
+static const struct function_graph_terminal_binding*
+function_graph_terminal_binding_for_ih(
+	const struct prototype_ast_db* asts,
+	const struct function_graph_terminal_plan* plan,
+	uint32_t ih_ast
+) {
+	if (!asts || !plan) {
+		return NULL;
+	}
+	for (uint32_t i = 0; i < plan->binding_count; ++i) {
+		uint32_t found[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS];
+		uint32_t found_count = 0;
+		if (function_graph_collect_ih(
+				asts, plan->bindings[i].value_ast, found,
+				FUNCTION_GRAPH_MAX_RECURSIVE_CALLS, &found_count
+			) != 0) {
+			continue;
+		}
+		for (uint32_t j = 0; j < found_count; ++j) {
+			if (found[j] == ih_ast) {
+				return &plan->bindings[i];
+			}
+		}
+	}
+	return NULL;
+}
+
+static int function_graph_collect_terminal_ih(
+	const struct prototype_ast_db* asts,
+	const struct function_graph_terminal_plan* plan,
+	uint32_t* ih_asts,
+	uint32_t capacity,
+	uint32_t* p_count
+) {
+	if (!asts || !plan || !ih_asts || !p_count) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < plan->binding_count; ++i) {
+		if (function_graph_collect_ih(
+				asts, plan->bindings[i].value_ast, ih_asts, capacity, p_count
+			) != 0) {
+			return -1;
+		}
+	}
+	return function_graph_collect_ih(
+		asts, plan->body_ast, ih_asts, capacity, p_count
+	);
+}
+
+static int function_graph_terminal_binding_core_id(
+	const struct function_graph_generation* generation,
+	const struct function_graph_terminal_binding* binding,
+	uint32_t* p_binding_id
+) {
+	if (!generation || !binding || !p_binding_id) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence* occurrence = function_graph_occurrence(
+		generation->metadata,
+		binding->item_ast,
+		PROTOTYPE_TYPED_OCCURRENCE_VAR
+	);
+	if (!occurrence || occurrence->binding_id == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	*p_binding_id = occurrence->binding_id;
+	return 0;
 }
 
 static int function_graph_term_value(
@@ -3754,6 +3974,7 @@ static int function_graph_generate_graph_type(
 					recursive_occurrence->first_case
 				];
 		}
+		uint32_t source_first_field = field_count;
 		if (function_graph_append_case_fields(
 				generation,
 				source_case,
@@ -3765,6 +3986,8 @@ static int function_graph_generate_graph_type(
 				field_symbols,
 				field_values,
 				&field_count
+			) != 0 || function_graph_record_case_field_origins(
+				generation, case_index, source_case, source_first_field
 			) != 0) {
 			fprintf(stderr,
 				"function graph input fields failed case=%u bindings=%u fields=%u\n",
@@ -3785,7 +4008,12 @@ static int function_graph_generate_graph_type(
 					field_symbols,
 					field_values,
 					&field_count
-				) != 0 || function_graph_case_result_classifier(
+					) != 0 || function_graph_record_case_field_origins(
+						generation,
+						case_index,
+						recursive_source_case,
+						nested_outer_first_field
+					) != 0 || function_graph_case_result_classifier(
 					generation, operation_case, &refined_classifier
 				) != 0 || function_graph_refine_binding_values(
 					generation, refined_classifier, bindings, binding_count
@@ -3887,9 +4115,10 @@ static int function_graph_generate_graph_type(
 				&generation->metadata->typed_occurrences.cases[
 					terminal_occurrence->first_case
 				];
-			if (function_graph_append_case_fields(
-					generation,
-					terminal_source_case,
+				uint32_t terminal_first_field = field_count;
+				if (function_graph_append_case_fields(
+						generation,
+						terminal_source_case,
 					terminal_operation_case,
 					bindings,
 					&binding_count,
@@ -3897,8 +4126,13 @@ static int function_graph_generate_graph_type(
 					field_binders,
 					field_symbols,
 					field_values,
-					&field_count
-				) != 0) {
+						&field_count
+					) != 0 || function_graph_record_case_field_origins(
+						generation,
+						case_index,
+						terminal_source_case,
+						terminal_first_field
+					) != 0) {
 				fprintf(stderr,
 					"function graph nested terminal fields failed case=%u bindings=%u fields=%u\n",
 					case_index, binding_count, field_count);
@@ -3953,7 +4187,10 @@ static int function_graph_generate_graph_type(
 					terminal_body = recursive_result_source_case->body;
 				}
 			}
-			struct function_graph_certified_block certified_block;
+				struct function_graph_certified_block certified_block;
+			struct function_graph_terminal_plan terminal_plan = {
+				.body_ast = terminal_body
+			};
 		int certified_block_status = function_graph_certified_block_open(
 			generation, terminal_body, &certified_block
 		);
@@ -4052,16 +4289,27 @@ static int function_graph_generate_graph_type(
 				.target_value = PROTOTYPE_INVALID_ID,
 				.symbol_id = field_symbols[decision_field]
 			};
-			field_count += 2;
-			terminal_body = certified_block.helper.call_ast;
-		}
-			uint32_t ih_asts[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS];
+				field_count += 2;
+				terminal_body = certified_block.helper.call_ast;
+				terminal_plan.body_ast = terminal_body;
+			}
+			if (certified_block_status == 0 &&
+				function_graph_terminal_plan_open(
+					generation, terminal_body, &terminal_plan
+				) != 0) {
+				fprintf(stderr,
+					"function graph terminal block projection failed case=%u body=%u\n",
+					case_index, terminal_body);
+				return -1;
+			}
+			terminal_body = terminal_plan.body_ast;
+				uint32_t ih_asts[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS];
 			uint32_t ih_count = 0;
 			if (recursive_result_ih != PROTOTYPE_INVALID_ID) {
 				ih_asts[ih_count++] = recursive_result_ih;
 			}
-		if (function_graph_collect_ih(
-				generation->asts, terminal_body, ih_asts,
+			if (function_graph_collect_terminal_ih(
+					generation->asts, &terminal_plan, ih_asts,
 				FUNCTION_GRAPH_MAX_RECURSIVE_CALLS, &ih_count
 			) != 0) {
 			fprintf(stderr, "function graph terminal IH collection failed body=%u tag=%d\n",
@@ -4075,9 +4323,13 @@ static int function_graph_generate_graph_type(
 			];
 		uint32_t recursive_argument_values[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS]
 			[FUNCTION_GRAPH_MAX_ARGUMENTS];
-			for (uint32_t i = 0; i < ih_count; ++i) {
-				const struct prototype_ast_node* ih = &generation->asts->nodes[ih_asts[i]];
-				int destructured_result = ih_asts[i] == recursive_result_ih;
+				for (uint32_t i = 0; i < ih_count; ++i) {
+					const struct prototype_ast_node* ih = &generation->asts->nodes[ih_asts[i]];
+					const struct function_graph_terminal_binding* terminal_origin =
+						function_graph_terminal_binding_for_ih(
+							generation->asts, &terminal_plan, ih_asts[i]
+						);
+					int destructured_result = ih_asts[i] == recursive_result_ih;
 				const struct function_graph_binding_map* argument =
 				function_graph_find_binding(
 					bindings, binding_count, ih->as.induction_hypothesis.ast_binder_id
@@ -4095,8 +4347,9 @@ static int function_graph_generate_graph_type(
 				uint32_t output_binder = destructured_result ? PROTOTYPE_INVALID_ID :
 					prototype_ast_new_binder(generation->asts);
 				uint32_t graph_binder = prototype_ast_new_binder(generation->asts);
-				int output_symbol = destructured_result ? -1 :
-					symbol_intern(generation->symbols, "recursiveOutput", 15);
+					int output_symbol = destructured_result ? -1 : terminal_origin ?
+						terminal_origin->source_symbol_id :
+						symbol_intern(generation->symbols, "recursiveOutput", 15);
 			int graph_symbol = symbol_intern(generation->symbols, "recursiveGraph", 14);
 			const struct function_graph_recursive_site* site =
 				function_graph_recursive_site_for_ih(generation, ih_asts[i]);
@@ -4312,17 +4565,45 @@ static int function_graph_generate_graph_type(
 			}
 				field_binders[graph_field] = graph_binder;
 				field_symbols[graph_field] = graph_symbol;
-			recursive[i] = (struct function_graph_recursive_call) {
-				.source_call_ast = site ? site->call_ast : ih_asts[i],
+				recursive[i] = (struct function_graph_recursive_call) {
+					.source_call_ast = site ? site->call_ast : ih_asts[i],
 				.source_ih_ast = ih_asts[i],
 				.source_argument_ast_binder = argument->source_ast_binder,
 				.argument_symbol_id = argument->symbol_id,
 				.output_ast_binder = output_binder,
 				.graph_ast_binder = graph_binder,
-				.output_symbol_id = output_symbol,
-				.graph_symbol_id = graph_symbol
-			};
-					field_count += destructured_result ? 1 : 2;
+					.output_symbol_id = output_symbol,
+					.graph_symbol_id = graph_symbol
+				};
+					if (terminal_origin) {
+						uint32_t source_binding;
+						if (destructured_result || binding_count >=
+								FUNCTION_GRAPH_MAX_BINDINGS ||
+							function_graph_terminal_binding_core_id(
+								generation, terminal_origin, &source_binding
+							) != 0 || function_graph_record_origin_group(
+								generation,
+								case_index,
+								terminal_origin->source_ast_binder,
+								terminal_origin->source_symbol_id,
+								PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE |
+									PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH |
+									PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH,
+								field_count,
+								graph_field,
+								1
+							) != 0) {
+							return -1;
+						}
+						bindings[binding_count++] = (struct function_graph_binding_map) {
+							.source_ast_binder = terminal_origin->source_ast_binder,
+							.source_binding = source_binding,
+							.target_ast_binder = output_binder,
+							.target_value = PROTOTYPE_INVALID_ID,
+							.symbol_id = output_symbol
+						};
+					}
+						field_count += destructured_result ? 1 : 2;
 			}
 			struct function_graph_named_call_site helper_site;
 			uint32_t helper_argument_values[FUNCTION_GRAPH_MAX_ARGUMENTS];
@@ -5155,6 +5436,9 @@ static int function_graph_generate_runner_branch(
 		}
 	}
 	struct function_graph_certified_block certified_block;
+	struct function_graph_terminal_plan terminal_plan = {
+		.body_ast = terminal_body
+	};
 	int certified_block_status = function_graph_certified_block_open(
 		generation, terminal_body, &certified_block
 	);
@@ -5226,15 +5510,22 @@ static int function_graph_generate_runner_branch(
 			.symbol_id = callback_output_symbol
 		};
 		terminal_body = certified_block.helper.call_ast;
+		terminal_plan.body_ast = terminal_body;
 	}
+	if (certified_block_status == 0 && function_graph_terminal_plan_open(
+			generation, terminal_body, &terminal_plan
+		) != 0) {
+		return -1;
+	}
+	terminal_body = terminal_plan.body_ast;
 	uint32_t ih_asts[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS];
 	uint32_t ih_count = 0;
 	if (recursive_result_ih != PROTOTYPE_INVALID_ID) {
 		ih_asts[ih_count++] = recursive_result_ih;
 	}
-	if (function_graph_collect_ih(
+	if (function_graph_collect_terminal_ih(
 			generation->asts,
-			terminal_body,
+			&terminal_plan,
 			ih_asts,
 			FUNCTION_GRAPH_MAX_RECURSIVE_CALLS,
 			&ih_count
@@ -5253,6 +5544,10 @@ static int function_graph_generate_runner_branch(
 	int recursive_packet_symbols[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS];
 	for (uint32_t i = 0; i < ih_count; ++i) {
 		const struct prototype_ast_node* ih = &generation->asts->nodes[ih_asts[i]];
+		const struct function_graph_terminal_binding* terminal_origin =
+			function_graph_terminal_binding_for_ih(
+				generation->asts, &terminal_plan, ih_asts[i]
+			);
 		const struct function_graph_binding_map* argument =
 			function_graph_find_binding(
 				bindings, binding_count, ih->as.induction_hypothesis.ast_binder_id
@@ -5310,9 +5605,10 @@ static int function_graph_generate_runner_branch(
 		recursive[i].argument_symbol_id = argument->symbol_id;
 		recursive[i].output_ast_binder = prototype_ast_new_binder(generation->asts);
 		recursive[i].graph_ast_binder = prototype_ast_new_binder(generation->asts);
-		recursive[i].output_symbol_id = symbol_intern(
-			generation->symbols, "recursiveOutput", 15
-		);
+		recursive[i].output_symbol_id = terminal_origin ?
+			terminal_origin->source_symbol_id : symbol_intern(
+				generation->symbols, "recursiveOutput", 15
+			);
 		recursive[i].graph_symbol_id = symbol_intern(
 			generation->symbols, "recursiveGraph", 14
 		);
@@ -5338,6 +5634,22 @@ static int function_graph_generate_runner_branch(
 				&recursive_graph_values[i]
 			) != 0) {
 			return -1;
+		}
+		if (terminal_origin) {
+			uint32_t source_binding;
+			if (binding_count >= FUNCTION_GRAPH_MAX_BINDINGS ||
+				function_graph_terminal_binding_core_id(
+					generation, terminal_origin, &source_binding
+				) != 0) {
+				return -1;
+			}
+			bindings[binding_count++] = (struct function_graph_binding_map) {
+				.source_ast_binder = terminal_origin->source_ast_binder,
+				.source_binding = source_binding,
+				.target_ast_binder = recursive[i].output_ast_binder,
+				.target_value = PROTOTYPE_INVALID_ID,
+				.symbol_id = recursive[i].output_symbol_id
+			};
 		}
 	}
 	struct function_graph_named_call_site helper_site;
@@ -6138,11 +6450,23 @@ static int function_graph_generate_nested_inner_branch(
 		}
 		terminal_field_count = terminal_source_case->binder_count;
 	}
+	struct function_graph_terminal_plan terminal_plan = {
+		.body_ast = terminal_body
+	};
+	if (function_graph_terminal_plan_open(
+			generation, terminal_body, &terminal_plan
+		) != 0) {
+		fprintf(stderr,
+			"function graph nested terminal plan failed body=%u\n",
+			terminal_body);
+		return -1;
+	}
+	terminal_body = terminal_plan.body_ast;
 	uint32_t ih_asts[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS];
 	uint32_t ih_count = 0;
-	if (function_graph_collect_ih(
+	if (function_graph_collect_terminal_ih(
 			generation->asts,
-			terminal_body,
+			&terminal_plan,
 			ih_asts,
 			FUNCTION_GRAPH_MAX_RECURSIVE_CALLS,
 			&ih_count
@@ -6161,6 +6485,10 @@ static int function_graph_generate_nested_inner_branch(
 	uint32_t packet_binders[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS];
 	int packet_symbols[FUNCTION_GRAPH_MAX_RECURSIVE_CALLS];
 	for (uint32_t i = 0; i < ih_count; ++i) {
+		const struct function_graph_terminal_binding* terminal_origin =
+			function_graph_terminal_binding_for_ih(
+				generation->asts, &terminal_plan, ih_asts[i]
+			);
 		const struct function_graph_recursive_site* site =
 			function_graph_recursive_site_for_ih(generation, ih_asts[i]);
 		if (!site || function_graph_nested_recursive_arguments(
@@ -6181,9 +6509,8 @@ static int function_graph_generate_nested_inner_branch(
 			.source_ih_ast = site->ih_ast,
 			.output_ast_binder = prototype_ast_new_binder(generation->asts),
 			.graph_ast_binder = prototype_ast_new_binder(generation->asts),
-			.output_symbol_id = symbol_intern(
-				generation->symbols, "recursiveOutput", 15
-			),
+			.output_symbol_id = terminal_origin ? terminal_origin->source_symbol_id :
+				symbol_intern(generation->symbols, "recursiveOutput", 15),
 			.graph_symbol_id = symbol_intern(
 				generation->symbols, "recursiveGraph", 14
 			)
@@ -6210,6 +6537,22 @@ static int function_graph_generate_nested_inner_branch(
 				&recursive_graphs[i]
 			) != 0) {
 			return -1;
+		}
+		if (terminal_origin) {
+			uint32_t source_binding;
+			if (binding_count >= FUNCTION_GRAPH_MAX_BINDINGS ||
+				function_graph_terminal_binding_core_id(
+					generation, terminal_origin, &source_binding
+				) != 0) {
+				return -1;
+			}
+			bindings[binding_count++] = (struct function_graph_binding_map) {
+				.source_ast_binder = terminal_origin->source_ast_binder,
+				.source_binding = source_binding,
+				.target_ast_binder = recursive[i].output_ast_binder,
+				.target_value = PROTOTYPE_INVALID_ID,
+				.symbol_id = recursive[i].output_symbol_id
+			};
 		}
 	}
 	struct function_graph_named_call_site helper_site;
@@ -7830,23 +8173,29 @@ static int function_graph_generate_terminal_dependencies(
 			return -1;
 		}
 		struct function_graph_named_call_site site;
-		int status = function_graph_named_call_site_open(
-			generation, terminal_body, &site
+		struct function_graph_certified_block certified_block;
+		int certified_status = function_graph_certified_block_open(
+			generation, terminal_body, &certified_block
 		);
-		if (status < 0) {
+		if (certified_status < 0) {
 			return -1;
 		}
-		if (status == 0) {
-			struct function_graph_certified_block certified_block;
-			int certified_status = function_graph_certified_block_open(
-				generation, terminal_body, &certified_block
-			);
-			if (certified_status < 0) {
+		int status;
+		if (certified_status > 0) {
+			site = certified_block.helper;
+			status = 1;
+		} else {
+			struct function_graph_terminal_plan terminal_plan;
+			if (function_graph_terminal_plan_open(
+					generation, terminal_body, &terminal_plan
+				) != 0) {
 				return -1;
 			}
-			if (certified_status > 0) {
-				site = certified_block.helper;
-				status = 1;
+			status = function_graph_named_call_site_open(
+				generation, terminal_plan.body_ast, &site
+			);
+			if (status < 0) {
+				return -1;
 			}
 		}
 		if (status == 0) {
@@ -8039,15 +8388,23 @@ static int function_graph_generate_one(
 		.certified_adapter_assignment_id = generation->adapter_assignment,
 		.certified_runner_assignment_id = generation->runner_assignment,
 		.executable_assignment_id = generation->executable_assignment,
-		.certified_argument_index = generation->certified_argument_index
+		.certified_argument_index = generation->certified_argument_index,
+		.first_origin_group = PROTOTYPE_INVALID_ID,
+		.origin_group_count = 0,
+		.origin_groups_staged = 0,
+		.origin_groups_frozen = 0
 	};
 	uint32_t association_id;
 	if (prototype_compile_metadata_add_function_graph_association(
 			generation->metadata, association, &association_id
+		) != 0 || prototype_compile_metadata_stage_function_graph_origin_groups(
+			generation->metadata,
+			association_id,
+			generation->origin_groups,
+			generation->origin_group_count
 		) != 0) {
 		return -1;
 	}
-	(void)association_id;
 	if (generation->executable_assignment != request->owner_assignment_id) {
 		function_graph_unpublish_owner(
 			generation->metadata, generation->executable_symbol
@@ -8231,11 +8588,109 @@ int prototype_function_graph_generate_requested(
 	return 0;
 }
 
+static int function_graph_validate_origin_groups(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_compile_metadata* metadata,
+	uint32_t association_id
+) {
+	if (!terms || !type_declarations || !metadata ||
+		association_id >= metadata->function_graph_association_count) {
+		return -1;
+	}
+	const struct prototype_function_graph_association* association =
+		&metadata->function_graph_associations[association_id];
+	if (!association->origin_groups_staged || association->origin_groups_frozen ||
+		association->graph_type_id >=
+			type_declarations->semantic_schema.type_count ||
+		association->first_origin_group + association->origin_group_count >
+			metadata->function_graph_origin_group_count) {
+		fprintf(stderr, "function graph origin interface state invalid association=%u\n",
+			association_id);
+		return -1;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->semantic_schema.type_declarations[
+			association->graph_type_id
+		];
+	for (uint32_t i = 0; i < association->origin_group_count; ++i) {
+		const struct prototype_function_graph_origin_group* group =
+			&metadata->function_graph_origin_groups[
+				association->first_origin_group + i
+			];
+		if (group->association_id != association_id ||
+			group->constructor_ordinal >= type->constructor_count ||
+			type->first_constructor + group->constructor_ordinal >=
+				type_declarations->semantic_schema.constructor_count) {
+			fprintf(stderr,
+				"function graph origin constructor invalid association=%u group=%u constructor=%u\n",
+				association_id, i, group->constructor_ordinal);
+			return -1;
+		}
+		const struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->semantic_schema.constructor_declarations[
+				type->first_constructor + group->constructor_ordinal
+			];
+		uint32_t field_contexts[128];
+		uint32_t field_count;
+		if (prototype_context_extension_path(
+				&metadata->contexts,
+				constructor->parameter_context,
+				constructor->field_context,
+				field_contexts,
+				128,
+				&field_count
+			) != 0 || group->value_field_ordinal >= field_count ||
+			((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) != 0 &&
+			 group->graph_field_ordinal >= field_count)) {
+			fprintf(stderr,
+				"function graph origin field invalid association=%u group=%u value=%u graph=%u fields=%u\n",
+				association_id, i, group->value_field_ordinal,
+				group->graph_field_ordinal, field_count);
+			return -1;
+		}
+		int recursive = 0;
+		if ((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) != 0) {
+			const struct prototype_context* graph_field = prototype_context_get(
+				&metadata->contexts, field_contexts[group->graph_field_ordinal]
+			);
+			uint32_t graph_classifier = prototype_context_classifier_term(graph_field);
+			if (!graph_field || graph_classifier == PROTOTYPE_INVALID_ID ||
+				prototype_judgement_classifier_is_strictly_positive_recursive_field(
+					terms,
+					type_declarations,
+					graph_classifier,
+					constructor->result_classifier,
+					&recursive
+				) != 0) {
+				fprintf(stderr,
+					"function graph origin recursive classifier invalid association=%u group=%u field=%u kind=%d\n",
+					association_id, i, group->graph_field_ordinal,
+					graph_field ? graph_field->classifier_ref.kind : -1);
+				return -1;
+			}
+		}
+		if ((group->recursive != 0) != (recursive != 0) ||
+			(((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH) != 0) !=
+			 (recursive != 0))) {
+			fprintf(stderr,
+				"function graph origin recursive role mismatch association=%u group=%u stored=%d semantic=%d roles=%u\n",
+				association_id, i, group->recursive, recursive, group->role_mask);
+			return -1;
+		}
+	}
+	return prototype_compile_metadata_freeze_function_graph_origin_groups(
+		metadata, association_id
+	);
+}
+
 int prototype_function_graph_finalize_associations(
 	struct prototype_ast_db* asts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_compile_metadata* metadata
 ) {
-	if (!asts || !metadata) {
+	if (!asts || !terms || !type_declarations || !metadata) {
 		return -1;
 	}
 	for (size_t association_id = 0;
@@ -8260,7 +8715,10 @@ int prototype_function_graph_finalize_associations(
 			}
 		}
 		if (association->graph_type_id == PROTOTYPE_INVALID_ID ||
-			association->result_type_id == PROTOTYPE_INVALID_ID) {
+			association->result_type_id == PROTOTYPE_INVALID_ID ||
+			function_graph_validate_origin_groups(
+				terms, type_declarations, metadata, (uint32_t)association_id
+			) != 0) {
 			return -1;
 		}
 		if (association->owner_assignment_id >= asts->assignment_count ||
@@ -8318,4 +8776,271 @@ int prototype_function_graph_finalize_associations(
 		}
 	}
 	return 0;
+}
+
+const char* prototype_function_graph_inspection_state_name(
+	enum prototype_function_graph_inspection_state state
+) {
+	switch (state) {
+	case PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AVAILABLE:
+		return "available";
+	case PROTOTYPE_FUNCTION_GRAPH_INSPECTION_ABSENT:
+		return "absent";
+	case PROTOTYPE_FUNCTION_GRAPH_INSPECTION_RESIDUAL:
+		return "residual";
+	case PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AMBIGUOUS:
+		return "ambiguous";
+	case PROTOTYPE_FUNCTION_GRAPH_INSPECTION_UNEXPORTED:
+		return "unexported";
+	case PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID:
+	default:
+		return "invalid";
+	}
+}
+
+enum prototype_function_graph_inspection_state
+prototype_function_graph_request_inspection(
+	const struct prototype_ast_db* asts,
+	struct prototype_compile_metadata* metadata,
+	int owner_symbol_id
+) {
+	if (!asts || !metadata || owner_symbol_id < 0) {
+		return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+	}
+	uint32_t assignment_id = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < asts->assignment_count; ++i) {
+		if (asts->assignments[i].name_symbol_id != owner_symbol_id) {
+			continue;
+		}
+		if (assignment_id != PROTOTYPE_INVALID_ID) {
+			return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AMBIGUOUS;
+		}
+		assignment_id = i;
+	}
+	if (assignment_id == PROTOTYPE_INVALID_ID) {
+		return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_ABSENT;
+	}
+	const struct prototype_ast_term_assignment_def* assignment =
+		&asts->assignments[assignment_id];
+	uint32_t request_id;
+	if (prototype_compile_metadata_request_function_graph(
+			metadata,
+			owner_symbol_id,
+			assignment_id,
+			assignment->source_entry_id,
+			PROTOTYPE_FUNCTION_GRAPH_REQUEST_FAMILY |
+				PROTOTYPE_FUNCTION_GRAPH_REQUEST_CERTIFIED_EXECUTION |
+				PROTOTYPE_FUNCTION_GRAPH_REQUEST_INSPECTION,
+			assignment->ast,
+			&request_id
+		) != 0) {
+		return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+	}
+	return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AVAILABLE;
+}
+
+static const char* function_graph_role_text(uint32_t roles) {
+	switch (roles) {
+	case PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE:
+		return "value";
+	case PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH:
+		return "graph";
+	case PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE |
+		PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH:
+		return "value,graph";
+	case PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH |
+		PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH:
+		return "graph,ih";
+	case PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE |
+		PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH |
+		PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH:
+		return "value,graph,ih";
+	default:
+		return "invalid";
+	}
+}
+
+static void function_graph_print_classifier(
+	FILE* output,
+	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_db* terms,
+	const char* label,
+	uint32_t classifier
+) {
+	fprintf(output, "  %s=", label);
+	prototype_term_print_debug(
+		output, symbols, intrinsic_environment, type_declarations, terms, classifier
+	);
+	fputc('\n', output);
+}
+
+enum prototype_function_graph_inspection_state prototype_function_graph_inspect(
+	FILE* output,
+	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_compile_metadata* metadata,
+	int owner_symbol_id
+) {
+	if (!output || !symbols || !intrinsic_environment || !terms ||
+		!type_declarations || !metadata || owner_symbol_id < 0) {
+		return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+	}
+	uint32_t association_id = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < metadata->function_graph_association_count; ++i) {
+		if (metadata->function_graph_associations[i].owner_symbol_id !=
+			owner_symbol_id) {
+			continue;
+		}
+		if (association_id != PROTOTYPE_INVALID_ID) {
+			return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AMBIGUOUS;
+		}
+		association_id = i;
+	}
+	if (association_id == PROTOTYPE_INVALID_ID) {
+		for (uint32_t i = 0; i < metadata->function_graph_request_count; ++i) {
+			const struct prototype_function_graph_request* request =
+				&metadata->function_graph_requests[i];
+			if (request->owner_symbol_id == owner_symbol_id &&
+				request->state == PROTOTYPE_FUNCTION_GRAPH_REQUEST_RESIDUAL) {
+				return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_RESIDUAL;
+			}
+		}
+		return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_ABSENT;
+	}
+	const struct prototype_function_graph_association* association =
+		&metadata->function_graph_associations[association_id];
+	if (!association->origin_groups_frozen) {
+		return association->imported ?
+			PROTOTYPE_FUNCTION_GRAPH_INSPECTION_UNEXPORTED :
+			PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+	}
+	if (association->graph_type_id >=
+		type_declarations->semantic_schema.type_count ||
+		association->first_origin_group + association->origin_group_count >
+			metadata->function_graph_origin_group_count) {
+		return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+	}
+	const struct prototype_type_declaration* type =
+		&type_declarations->semantic_schema.type_declarations[
+			association->graph_type_id
+		];
+	const char* owner_name = symbol_to_string(symbols, owner_symbol_id);
+	fprintf(
+		output,
+		"function-graph owner=%s association=%u source=%s graph-type=%u result-type=%u "
+		"certified-argument=",
+		owner_name ? owner_name : "<unknown>", association_id,
+		association->imported ? "imported" : "local",
+		association->graph_type_id, association->result_type_id
+	);
+	if (association->certified_argument_index == PROTOTYPE_INVALID_ID) {
+		fprintf(output, "none\n");
+	} else {
+		fprintf(output, "%u\n", association->certified_argument_index);
+	}
+	function_graph_print_classifier(
+		output, symbols, intrinsic_environment, type_declarations, terms,
+		"graph-formation-classifier", type->formation_classifier
+	);
+	for (uint32_t constructor_ordinal = 0;
+		constructor_ordinal < type->constructor_count;
+		++constructor_ordinal) {
+		uint32_t constructor_id = type->first_constructor + constructor_ordinal;
+		if (constructor_id >=
+			type_declarations->semantic_schema.constructor_count) {
+			return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+		}
+		const struct prototype_type_constructor_declaration* constructor =
+			&type_declarations->semantic_schema.constructor_declarations[
+				constructor_id
+			];
+		uint32_t field_contexts[128];
+		uint32_t field_count;
+		if (prototype_context_extension_path(
+				&metadata->contexts,
+				constructor->parameter_context,
+				constructor->field_context,
+				field_contexts,
+				128,
+				&field_count
+			) != 0) {
+			return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+		}
+		const char* constructor_name = symbol_to_string(
+			symbols, constructor->name_symbol_id
+		);
+		fprintf(
+			output,
+			"constructor ordinal=%u name=%s fields=%u\n",
+			constructor_ordinal,
+			constructor_name ? constructor_name : "<unknown>",
+			field_count
+		);
+		function_graph_print_classifier(
+			output, symbols, intrinsic_environment, type_declarations, terms,
+			"result-classifier", constructor->result_classifier
+		);
+		for (uint32_t i = 0; i < association->origin_group_count; ++i) {
+			const struct prototype_function_graph_origin_group* group =
+				&metadata->function_graph_origin_groups[
+					association->first_origin_group + i
+				];
+			if (group->association_id != association_id ||
+				group->constructor_ordinal != constructor_ordinal ||
+				group->value_field_ordinal >= field_count ||
+				((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) != 0 &&
+				 group->graph_field_ordinal >= field_count)) {
+				continue;
+			}
+			const char* display_name = symbol_to_string(
+				symbols, group->display_symbol_id
+			);
+			fprintf(
+				output,
+				"origin name=%s roles=%s value-field=%u graph-field=",
+				display_name ? display_name : "<unknown>",
+				function_graph_role_text(group->role_mask),
+				group->value_field_ordinal
+			);
+			if ((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) == 0) {
+				fprintf(output, "none recursive=no\n");
+			} else {
+				fprintf(
+					output, "%u recursive=%s\n", group->graph_field_ordinal,
+					group->recursive ? "yes" : "no"
+				);
+			}
+			const struct prototype_context* value_field = prototype_context_get(
+				&metadata->contexts, field_contexts[group->value_field_ordinal]
+			);
+			uint32_t value_classifier =
+				prototype_context_classifier_term(value_field);
+			if (!value_field || value_classifier == PROTOTYPE_INVALID_ID) {
+				return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+			}
+			function_graph_print_classifier(
+				output, symbols, intrinsic_environment, type_declarations, terms,
+				"value-classifier", value_classifier
+			);
+			if ((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) != 0) {
+				const struct prototype_context* graph_field = prototype_context_get(
+					&metadata->contexts, field_contexts[group->graph_field_ordinal]
+				);
+				uint32_t graph_classifier =
+					prototype_context_classifier_term(graph_field);
+				if (!graph_field || graph_classifier == PROTOTYPE_INVALID_ID) {
+					return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
+				}
+				function_graph_print_classifier(
+					output, symbols, intrinsic_environment, type_declarations, terms,
+					"graph-classifier", graph_classifier
+				);
+			}
+		}
+	}
+	return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_AVAILABLE;
 }

@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v85.h"
+#include "a_program/artifact/wire_v86.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -556,6 +556,95 @@ int prototype_artifact_read_text_interface(
 			}
 		}
 		interface->function_graph_association_count++;
+	}
+
+	if (fscanf(stream, "%255s %zu", word, &count) != 2 ||
+		strcmp(word, "function_graph_selector_groups") != 0 ||
+		count > interface->function_graph_selector_group_capacity) {
+		return -1;
+	}
+	interface->function_graph_selector_group_count = 0;
+	for (size_t i = 0; i < count; ++i) {
+		size_t id;
+		char selector_name[256];
+		struct prototype_artifact_function_graph_selector_group* group =
+			&interface->function_graph_selector_groups[
+				interface->function_graph_selector_group_count
+			];
+		if (fscanf(
+				stream,
+				"%255s %zu %u %u %255s %u %u %u %d",
+				word,
+				&id,
+				&group->association_index,
+				&group->constructor_ordinal,
+				selector_name,
+				&group->role_mask,
+				&group->value_field_ordinal,
+				&group->graph_field_ordinal,
+				&group->recursive
+			) != 9 || strcmp(word, "function_graph_selector_group") != 0 ||
+			id != interface->function_graph_selector_group_count ||
+			group->association_index >=
+				interface->function_graph_association_count ||
+			group->role_mask == 0 ||
+			(group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE) == 0 ||
+			(group->role_mask & ~(PROTOTYPE_FUNCTION_GRAPH_ORIGIN_VALUE |
+				PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH |
+				PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH)) != 0 ||
+			(((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) == 0) !=
+				(group->graph_field_ordinal == PROTOTYPE_INVALID_ID)) ||
+			(((group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH) != 0) !=
+				(group->recursive != 0)) ||
+			(group->recursive &&
+				(group->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH) == 0)) {
+			return -1;
+		}
+		const struct prototype_artifact_function_graph_association* association =
+			&interface->function_graph_associations[group->association_index];
+		const struct prototype_artifact_type_export* graph_type =
+			&interface->type_exports[association->graph_type_export_index];
+		const struct prototype_artifact_constructor_export* constructor = NULL;
+		if (graph_type->first_constructor_export + graph_type->constructor_count >
+				interface->constructor_export_count) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < graph_type->constructor_count; ++j) {
+			const struct prototype_artifact_constructor_export* candidate =
+				&interface->constructor_exports[
+					graph_type->first_constructor_export + j
+				];
+			if (candidate->type_export_index ==
+					association->graph_type_export_index &&
+				candidate->ordinal == group->constructor_ordinal) {
+				constructor = candidate;
+				break;
+			}
+		}
+		if (!constructor || group->value_field_ordinal >=
+				constructor->readback_field_count ||
+			(group->graph_field_ordinal != PROTOTYPE_INVALID_ID &&
+			 group->graph_field_ordinal >= constructor->readback_field_count)) {
+			return -1;
+		}
+		group->display_symbol_id = symbol_intern(
+			symbols, selector_name, strlen(selector_name)
+		);
+		if (group->display_symbol_id < 0) {
+			return -1;
+		}
+		for (size_t j = 0;
+			j < interface->function_graph_selector_group_count;
+			++j) {
+			const struct prototype_artifact_function_graph_selector_group* previous =
+				&interface->function_graph_selector_groups[j];
+			if (previous->association_index == group->association_index &&
+				previous->constructor_ordinal == group->constructor_ordinal &&
+				previous->display_symbol_id == group->display_symbol_id) {
+				return -1;
+			}
+		}
+		interface->function_graph_selector_group_count++;
 	}
 
 	if (fscanf(stream, "%255s %zu", word, &count) != 2 ||

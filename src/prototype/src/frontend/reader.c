@@ -49,7 +49,16 @@ struct local_binder {
 	int symbol_id;
 	uint32_t ast_binder_id;
 	int induction_allowed;
+	uint32_t type_expr;
 	struct local_binder* next;
+};
+
+enum local_binder_role {
+	LOCAL_BINDER_ROLE_VALUE = 0,
+	LOCAL_BINDER_ROLE_MATCH = 1,
+	LOCAL_BINDER_ROLE_FUNCTION_GRAPH_ORIGIN = 2,
+	LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION = 3,
+	LOCAL_BINDER_ROLE_CERTIFIED_FUNCTION_COMPANION = 4
 };
 
 struct parser {
@@ -447,7 +456,22 @@ static int parse_case_body(struct parser* parser, uint32_t* p_ret);
 
 static const struct local_binder* lookup_binder(const struct parser* parser, int symbol_id) {
 	for (const struct local_binder* binder = parser->binders; binder; binder = binder->next) {
-		if (binder->symbol_id == symbol_id) {
+		if (binder->symbol_id == symbol_id &&
+			binder->induction_allowed != LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION &&
+			binder->induction_allowed != LOCAL_BINDER_ROLE_CERTIFIED_FUNCTION_COMPANION) {
+			return binder;
+		}
+	}
+	return NULL;
+}
+
+static const struct local_binder* lookup_companion_binder(
+	const struct parser* parser,
+	int symbol_id,
+	int role
+) {
+	for (const struct local_binder* binder = parser->binders; binder; binder = binder->next) {
+		if (binder->symbol_id == symbol_id && binder->induction_allowed == role) {
 			return binder;
 		}
 	}
@@ -553,8 +577,22 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 		}
 		if (parser->current.kind == TOKEN_IDENT) {
 			int owner_symbol_id = parser->current.symbol_id;
+			const struct local_binder* companion = lookup_companion_binder(
+				parser,
+				owner_symbol_id,
+				LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION
+			);
 			if (read_token(parser) != 0) {
 				return -1;
+			}
+			if (companion) {
+				return prototype_ast_type_expr_var(
+					parser->program->asts,
+					companion->ast_binder_id,
+					owner_symbol_id,
+					span,
+					p_ret
+				);
 			}
 			return prototype_ast_type_expr_function_graph_reference(
 				parser->program->asts, owner_symbol_id, span, p_ret
@@ -666,6 +704,21 @@ static void restore_parser(struct parser* parser, const struct parser_snapshot* 
 	parser->binders = snapshot->binders;
 }
 
+static int current_starts_plain_lambda(struct parser* parser) {
+	if (!parser || parser->current.kind != TOKEN_BACKSLASH) {
+		return 0;
+	}
+	struct parser_snapshot snapshot;
+	snapshot_parser(parser, &snapshot);
+	if (read_token(parser) != 0) {
+		restore_parser(parser, &snapshot);
+		return 0;
+	}
+	int result = parser->current.kind == TOKEN_IDENT;
+	restore_parser(parser, &snapshot);
+	return result;
+}
+
 static int parse_type_expr(struct parser* parser, uint32_t* p_ret) {
 	if (parser->current.kind == TOKEN_LPAREN) {
 		struct parser_snapshot snapshot;
@@ -693,6 +746,7 @@ static int parse_type_expr(struct parser* parser, uint32_t* p_ret) {
 				binder.symbol_id = symbol_id;
 				binder.ast_binder_id = ast_binder_id;
 				binder.induction_allowed = 0;
+				binder.type_expr = domain;
 				binder.next = parser->binders;
 				parser->binders = &binder;
 				if (parse_type_expr(parser, &codomain) != 0) {
@@ -843,6 +897,7 @@ static int parse_constructor_type(
 			field_binders[field_count].symbol_id = field_symbol_id;
 			field_binders[field_count].ast_binder_id = field_binder_id;
 			field_binders[field_count].induction_allowed = 0;
+			field_binders[field_count].type_expr = field_type;
 			field_binders[field_count].next = parser->binders;
 			parser->binders = &field_binders[field_count];
 		}
@@ -972,6 +1027,7 @@ static int parse_family_body(struct parser* parser, uint32_t ast_type_def_id) {
 		index_binders[index_count].symbol_id = symbol_id;
 		index_binders[index_count].ast_binder_id = ast_binder_id;
 		index_binders[index_count].induction_allowed = 0;
+		index_binders[index_count].type_expr = classifier;
 		index_binders[index_count].next = parser->binders;
 		parser->binders = &index_binders[index_count++];
 
@@ -1064,7 +1120,7 @@ static int parse_parameterized_type_or_lambda_def(
 	struct local_binder binders[32];
 	struct local_binder* outer_binders = parser->binders;
 
-	while (parser->current.kind == TOKEN_BACKSLASH) {
+	while (current_starts_plain_lambda(parser)) {
 		if (binder_count >= 32) {
 			set_error(parser, "too many lambda/type parameters");
 			parser->binders = outer_binders;
@@ -1106,6 +1162,7 @@ static int parse_parameterized_type_or_lambda_def(
 		binders[binder_count].symbol_id = binder_symbols[binder_count];
 		binders[binder_count].ast_binder_id = ast_binder_ids[binder_count];
 		binders[binder_count].induction_allowed = 0;
+		binders[binder_count].type_expr = binder_types[binder_count];
 		binders[binder_count].next = parser->binders;
 		parser->binders = &binders[binder_count];
 		binder_count++;
@@ -1336,6 +1393,7 @@ static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
 			binder->symbol_id = binder_symbol_id;
 			binder->ast_binder_id = ast_binder_id;
 			binder->induction_allowed = 0;
+			binder->type_expr = binder_type;
 			binder->next = parser->binders;
 			parser->binders = binder;
 		} else {
@@ -1410,6 +1468,48 @@ fail:
 }
 
 static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
+	if (accept(parser, TOKEN_AT)) {
+		struct prototype_source_span span = current_span(parser);
+		if (parser->current.kind != TOKEN_IDENT) {
+			set_error(parser, "expected named graph selector after '@'");
+			return -1;
+		}
+		int symbol_id = parser->current.symbol_id;
+		const struct local_binder* companion = lookup_companion_binder(
+			parser,
+			symbol_id,
+			LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION
+		);
+		if (companion) {
+			if (read_token(parser) != 0) {
+				return -1;
+			}
+			return prototype_ast_var(
+				parser->program->asts,
+				companion->ast_binder_id,
+				symbol_id,
+				span,
+				p_ret
+			);
+		}
+		const struct local_binder* binder = lookup_binder(parser, symbol_id);
+		if (!binder || binder->induction_allowed !=
+			LOCAL_BINDER_ROLE_FUNCTION_GRAPH_ORIGIN) {
+			set_error(parser, "'@name' requires a named graph selector");
+			return -1;
+		}
+		if (read_token(parser) != 0) {
+			return -1;
+		}
+		return prototype_ast_function_graph_role_reference(
+			parser->program->asts,
+			binder->ast_binder_id,
+			symbol_id,
+			PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_GRAPH,
+			span,
+			p_ret
+		);
+	}
 	if (accept(parser, TOKEN_AMPERSAND)) {
 		struct prototype_source_span span = current_span(parser);
 		uint32_t computation;
@@ -1577,6 +1677,23 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			return -1;
 		}
 		symbol_id = parser->current.symbol_id;
+		const struct local_binder* certified = lookup_companion_binder(
+			parser,
+			symbol_id,
+			LOCAL_BINDER_ROLE_CERTIFIED_FUNCTION_COMPANION
+		);
+		if (certified) {
+			if (read_token(parser) != 0) {
+				return -1;
+			}
+			return prototype_ast_var(
+				parser->program->asts,
+				certified->ast_binder_id,
+				symbol_id,
+				span,
+				p_ret
+			);
+		}
 		binder = lookup_binder(parser, symbol_id);
 		if (!binder) {
 			if (lookup_closed_case_binder(parser, symbol_id)) {
@@ -1590,7 +1707,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			if (read_token(parser) != 0) {
 				return -1;
 			}
-			return prototype_ast_function_graph_witness_reference(
+			return prototype_ast_certified_function_reference(
 				parser->program->asts, symbol_id, span, p_ret
 			);
 		}
@@ -1600,6 +1717,16 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		}
 		if (read_token(parser) != 0) {
 			return -1;
+		}
+		if (binder->induction_allowed == LOCAL_BINDER_ROLE_FUNCTION_GRAPH_ORIGIN) {
+			return prototype_ast_function_graph_role_reference(
+				parser->program->asts,
+				binder->ast_binder_id,
+				symbol_id,
+				PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_INDUCTION_HYPOTHESIS,
+				span,
+				p_ret
+			);
 		}
 		return prototype_ast_induction_hypothesis(
 			parser->program->asts,
@@ -1685,6 +1812,32 @@ static int token_starts_term_atom(int kind) {
 		kind == TOKEN_INT_LITERAL;
 }
 
+static int current_starts_function_graph_role_reference(struct parser* parser) {
+	if (!parser || parser->current.kind != TOKEN_AT) {
+		return 0;
+	}
+	struct parser saved = *parser;
+	if (read_token(parser) != 0) {
+		*parser = saved;
+		return 0;
+	}
+	int result = parser->current.kind == TOKEN_IDENT;
+	if (result) {
+		const struct local_binder* companion = lookup_companion_binder(
+			parser,
+			parser->current.symbol_id,
+			LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION
+		);
+		const struct local_binder* binder = lookup_binder(
+			parser, parser->current.symbol_id
+		);
+		result = companion || (binder && binder->induction_allowed ==
+			LOCAL_BINDER_ROLE_FUNCTION_GRAPH_ORIGIN);
+	}
+	*parser = saved;
+	return result;
+}
+
 static int parse_app_term(struct parser* parser, uint32_t* p_ret) {
 	uint32_t term;
 	struct prototype_source_span span = current_span(parser);
@@ -1692,7 +1845,8 @@ static int parse_app_term(struct parser* parser, uint32_t* p_ret) {
 		return -1;
 	}
 
-	while (token_starts_term_atom(parser->current.kind)) {
+	while (token_starts_term_atom(parser->current.kind) ||
+		current_starts_function_graph_role_reference(parser)) {
 		uint32_t argument;
 		uint32_t app;
 		if (parse_term_atom(parser, &argument) != 0) {
@@ -1709,6 +1863,95 @@ static int parse_app_term(struct parser* parser, uint32_t* p_ret) {
 	return 0;
 }
 
+static int certified_application_owner(
+	const struct prototype_ast_db* asts,
+	uint32_t ast,
+	int* p_owner_symbol_id
+) {
+	if (!asts || !p_owner_symbol_id) {
+		return 0;
+	}
+	while (ast < asts->node_count && asts->nodes[ast].tag == PROTOTYPE_AST_APP) {
+		ast = asts->nodes[ast].as.app.function;
+	}
+	if (ast >= asts->node_count || asts->nodes[ast].tag !=
+		PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE) {
+		return 0;
+	}
+	*p_owner_symbol_id =
+		asts->nodes[ast].as.certified_function_reference.owner_symbol_id;
+	return 1;
+}
+
+static int current_starts_direct_certified_elimination(struct parser* parser) {
+	if (!parser || parser->current.kind != TOKEN_AT) {
+		return 0;
+	}
+	struct parser saved = *parser;
+	int result = read_token(parser) == 0 && parser->current.kind == TOKEN_IDENT &&
+		read_token(parser) == 0 && parser->current.kind == TOKEN_FATARROW;
+	*parser = saved;
+	return result;
+}
+
+static int parse_direct_certified_elimination(
+	struct parser* parser,
+	uint32_t computation,
+	int owner_symbol_id,
+	struct prototype_source_span span,
+	uint32_t* p_ret
+) {
+	if (!parser || !p_ret || !accept(parser, TOKEN_AT) ||
+		parser->current.kind != TOKEN_IDENT) {
+		set_error(parser, "expected result binder after certified elimination '@'");
+		return -1;
+	}
+	int result_symbol_id = parser->current.symbol_id;
+	if (lookup_binder(parser, result_symbol_id)) {
+		set_error(parser, "certified elimination result shadows an active binder");
+		return -1;
+	}
+	uint32_t result_ast_binder_id =
+		prototype_ast_new_binder(parser->program->asts);
+	uint32_t graph_ast_binder_id =
+		prototype_ast_new_binder(parser->program->asts);
+	if (result_ast_binder_id == PROTOTYPE_INVALID_ID ||
+		graph_ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
+		expect(parser, TOKEN_FATARROW,
+			"expected '=>' after certified elimination result") != 0) {
+		return -1;
+	}
+	struct local_binder result_binder = {
+		.symbol_id = result_symbol_id,
+		.ast_binder_id = result_ast_binder_id,
+		.induction_allowed = LOCAL_BINDER_ROLE_FUNCTION_GRAPH_ORIGIN,
+		.type_expr = PROTOTYPE_INVALID_ID,
+		.next = parser->binders
+	};
+	parser->binders = &result_binder;
+	uint32_t body;
+	if (parse_case_body(parser, &body) != 0) {
+		parser->binders = result_binder.next;
+		return -1;
+	}
+	parser->binders = result_binder.next;
+	if (prototype_ast_certified_elimination(
+			parser->program->asts,
+			computation,
+			owner_symbol_id,
+			result_ast_binder_id,
+			result_symbol_id,
+			graph_ast_binder_id,
+			body,
+			span,
+			p_ret
+		) != 0) {
+		set_error(parser, "AST table is full");
+		return -1;
+	}
+	return 0;
+}
+
 enum parsed_elimination_head_kind {
 	PARSED_ELIMINATION_HEAD_BARE = 1,
 	PARSED_ELIMINATION_HEAD_TERM,
@@ -1722,6 +1965,8 @@ struct parsed_elimination_clause {
 	struct prototype_source_span span;
 	struct prototype_ast_binder* binders;
 	uint32_t binder_count;
+	struct prototype_ast_match_selector* selectors;
+	uint32_t selector_count;
 	uint32_t body;
 };
 
@@ -1841,9 +2086,12 @@ static int parse_elimination_suffix(
 ) {
 	struct parsed_elimination_clause clauses[64];
 	struct prototype_ast_binder binder_storage[256];
-	struct local_binder local_binders[256];
+	struct prototype_ast_match_selector selector_storage[256];
+	struct local_binder local_binders[512];
 	uint32_t clause_count = 0;
 	uint32_t binder_cursor = 0;
+	uint32_t selector_cursor = 0;
+	uint32_t local_cursor = 0;
 	uint32_t return_clause = PROTOTYPE_INVALID_ID;
 	uint32_t closed_binder_base = parser->closed_case_binder_count;
 
@@ -1859,8 +2107,10 @@ static int parse_elimination_suffix(
 		}
 		clause->binders = &binder_storage[binder_cursor];
 		clause->binder_count = 0;
+		clause->selectors = &selector_storage[selector_cursor];
+		clause->selector_count = 0;
 		while (parser->current.kind == TOKEN_IDENT) {
-			if (binder_cursor >= 256) {
+			if (binder_cursor >= 256 || local_cursor >= 512) {
 				set_error(parser, "too many elimination binders");
 				return -1;
 			}
@@ -1870,14 +2120,82 @@ static int parse_elimination_suffix(
 				set_error(parser, "binder table is full");
 				return -1;
 			}
-			local_binders[binder_cursor].symbol_id = binder_storage[binder_cursor].symbol_id;
-			local_binders[binder_cursor].ast_binder_id = binder_storage[binder_cursor].ast_binder_id;
-			local_binders[binder_cursor].induction_allowed = 1;
-			local_binders[binder_cursor].next = parser->binders;
-			parser->binders = &local_binders[binder_cursor];
+			local_binders[local_cursor].symbol_id = binder_storage[binder_cursor].symbol_id;
+			local_binders[local_cursor].ast_binder_id = binder_storage[binder_cursor].ast_binder_id;
+			local_binders[local_cursor].induction_allowed = LOCAL_BINDER_ROLE_MATCH;
+			local_binders[local_cursor].type_expr = PROTOTYPE_INVALID_ID;
+			local_binders[local_cursor].next = parser->binders;
+			parser->binders = &local_binders[local_cursor++];
 			binder_cursor++;
 			clause->binder_count++;
 			if (read_token(parser) != 0) {
+				return -1;
+			}
+		}
+		if (accept(parser, TOKEN_LBRACE)) {
+			if (clause->binder_count != 0) {
+				set_error(parser, "named graph selectors cannot follow positional binders");
+				return -1;
+			}
+			while (parser->current.kind != TOKEN_RBRACE) {
+				if (parser->current.kind != TOKEN_IDENT || selector_cursor >= 256 ||
+					local_cursor >= 512) {
+					set_error(parser, "expected named graph selector");
+					return -1;
+				}
+				struct prototype_ast_match_selector* selector =
+					&selector_storage[selector_cursor];
+				memset(selector, 0, sizeof(*selector));
+				selector->source_symbol_id = parser->current.symbol_id;
+				selector->local_symbol_id = parser->current.symbol_id;
+				selector->span = current_span(parser);
+				if (read_token(parser) != 0) {
+					return -1;
+				}
+				if (accept(parser, TOKEN_ASSIGN)) {
+					if (parser->current.kind != TOKEN_IDENT) {
+						set_error(parser, "expected selector alias after ':='");
+						return -1;
+					}
+					selector->local_symbol_id = parser->current.symbol_id;
+					if (read_token(parser) != 0) {
+						return -1;
+					}
+				}
+				for (uint32_t i = 0; i < clause->selector_count; ++i) {
+					const struct prototype_ast_match_selector* previous =
+						&clause->selectors[i];
+					if (previous->source_symbol_id == selector->source_symbol_id ||
+						previous->local_symbol_id == selector->local_symbol_id) {
+						set_error(parser, "duplicate named graph selector or alias");
+						return -1;
+					}
+				}
+				if (lookup_binder(parser, selector->local_symbol_id)) {
+					set_error(parser, "named graph selector alias shadows an active binder");
+					return -1;
+				}
+				selector->value_ast_binder_id =
+					prototype_ast_new_binder(parser->program->asts);
+				selector->graph_ast_binder_id = PROTOTYPE_INVALID_ID;
+				if (selector->value_ast_binder_id == PROTOTYPE_INVALID_ID ||
+					expect(parser, TOKEN_SEMI, "expected ';' after named graph selector") != 0) {
+					return -1;
+				}
+				local_binders[local_cursor].symbol_id = selector->local_symbol_id;
+				local_binders[local_cursor].ast_binder_id = selector->value_ast_binder_id;
+				local_binders[local_cursor].induction_allowed =
+					LOCAL_BINDER_ROLE_FUNCTION_GRAPH_ORIGIN;
+				local_binders[local_cursor].type_expr = PROTOTYPE_INVALID_ID;
+				local_binders[local_cursor].next = parser->binders;
+				parser->binders = &local_binders[local_cursor++];
+				selector_cursor++;
+				clause->selector_count++;
+			}
+			if (clause->selector_count == 0 || expect(
+					parser, TOKEN_RBRACE, "expected '}' after named graph selectors"
+				) != 0) {
+				set_error(parser, "named graph case requires at least one selector");
 				return -1;
 			}
 		}
@@ -1888,9 +2206,12 @@ static int parse_elimination_suffix(
 		if (parse_case_body(parser, &clause->body) != 0) {
 			return -1;
 		}
-		for (uint32_t i = 0; i < clause->binder_count; ++i) {
-			parser->binders = local_binders[binder_cursor - i - 1].next;
+		for (uint32_t i = 0;
+			i < clause->binder_count + clause->selector_count;
+			++i) {
+			parser->binders = local_binders[local_cursor - i - 1].next;
 		}
+		local_cursor -= clause->binder_count + clause->selector_count;
 		for (uint32_t i = 0; i < clause->binder_count; ++i) {
 			if (parser->closed_case_binder_count >= 256) {
 				set_error(parser, "too many closed elimination binders");
@@ -1980,8 +2301,129 @@ static int parse_elimination_suffix(
 	int status = prototype_ast_match(
 		parser->program->asts, scrutinee, match_cases, clause_count, span, p_ret
 	);
+	if (status == 0) {
+		const struct prototype_ast_node* match =
+			&parser->program->asts->nodes[*p_ret];
+		for (uint32_t i = 0; i < clause_count; ++i) {
+			if (clauses[i].selector_count != 0 && prototype_ast_match_case_set_selectors(
+					parser->program->asts,
+					match->as.match.first_case + i,
+					clauses[i].selectors,
+					clauses[i].selector_count
+				) != 0) {
+				set_error(parser, "named graph selector table is full");
+				status = -1;
+				break;
+			}
+		}
+	}
 	parser->closed_case_binder_count = closed_binder_base;
 	return status;
+}
+
+static int function_graph_callback_type_parts(
+	const struct prototype_ast_db* asts,
+	uint32_t type_expr,
+	uint32_t* p_domain,
+	uint32_t* p_result
+) {
+	if (!asts || !p_domain || !p_result || type_expr >= asts->type_expr_count) {
+		return -1;
+	}
+	const struct prototype_ast_type_expr* first = &asts->type_exprs[type_expr];
+	uint32_t domain;
+	uint32_t tail;
+	if (first->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW) {
+		domain = first->as.arrow.domain;
+		tail = first->as.arrow.codomain;
+	} else if (first->tag == PROTOTYPE_AST_TYPE_EXPR_PI) {
+		domain = first->as.pi.domain;
+		tail = first->as.pi.codomain;
+	} else {
+		return 1;
+	}
+	if (tail >= asts->type_expr_count) {
+		return -1;
+	}
+	const struct prototype_ast_type_expr* second = &asts->type_exprs[tail];
+	if (second->tag == PROTOTYPE_AST_TYPE_EXPR_ARROW) {
+		*p_result = second->as.arrow.codomain;
+	} else if (second->tag == PROTOTYPE_AST_TYPE_EXPR_PI) {
+		*p_result = second->as.pi.codomain;
+	} else {
+		return 1;
+	}
+	*p_domain = domain;
+	return 0;
+}
+
+static int build_certified_function_companion_type(
+	struct parser* parser,
+	const struct local_binder* raw,
+	const struct local_binder* graph,
+	struct prototype_source_span span,
+	uint32_t* p_type
+) {
+	uint32_t domain;
+	uint32_t result;
+	if (!parser || !raw || !graph || !p_type ||
+		function_graph_callback_type_parts(
+			parser->program->asts, raw->type_expr, &domain, &result
+		) != 0 || result >= parser->program->asts->type_expr_count) {
+		set_error(parser,
+			"certified companion requires a binary callback classifier");
+		return -1;
+	}
+	const struct prototype_ast_type_expr* result_expr =
+		&parser->program->asts->type_exprs[result];
+	const char* result_name = result_expr->tag == PROTOTYPE_AST_TYPE_EXPR_NAME ?
+		symbol_to_string(parser->program->symbols, result_expr->as.name.symbol_id) : NULL;
+	if (!result_name || strcmp(result_name, "Bool") != 0) {
+		set_error(parser,
+			"certified companion currently requires a binary Bool callback");
+		return -1;
+	}
+	int package_symbol = symbol_intern(
+		parser->program->symbols, "$certified.binary-bool", 22
+	);
+	int left_symbol = symbol_intern(parser->program->symbols, "left", 4);
+	int right_symbol = symbol_intern(parser->program->symbols, "right", 5);
+	uint32_t left_binder = prototype_ast_new_binder(parser->program->asts);
+	uint32_t right_binder = prototype_ast_new_binder(parser->program->asts);
+	uint32_t package;
+	uint32_t graph_var;
+	uint32_t left_var;
+	uint32_t right_var;
+	if (package_symbol < 0 || left_symbol < 0 || right_symbol < 0 ||
+		left_binder == PROTOTYPE_INVALID_ID || right_binder == PROTOTYPE_INVALID_ID ||
+		prototype_ast_type_expr_name(
+			parser->program->asts, package_symbol, span, &package
+		) != 0 || prototype_ast_type_expr_var(
+			parser->program->asts, graph->ast_binder_id, graph->symbol_id, span,
+			&graph_var
+		) != 0 || prototype_ast_type_expr_var(
+			parser->program->asts, left_binder, left_symbol, span, &left_var
+		) != 0 || prototype_ast_type_expr_var(
+			parser->program->asts, right_binder, right_symbol, span, &right_var
+		) != 0 || prototype_ast_type_expr_app(
+			parser->program->asts, package, domain, span, &package
+		) != 0 || prototype_ast_type_expr_app(
+			parser->program->asts, package, graph_var, span, &package
+		) != 0 || prototype_ast_type_expr_app(
+			parser->program->asts, package, left_var, span, &package
+		) != 0 || prototype_ast_type_expr_app(
+			parser->program->asts, package, right_var, span, &package
+		) != 0 || prototype_ast_type_expr_pi(
+			parser->program->asts, right_binder, right_symbol, domain, package,
+			span, &package
+		) != 0 || prototype_ast_type_expr_pi(
+			parser->program->asts, left_binder, left_symbol, domain, package,
+			span, p_type
+		) != 0) {
+		set_error(parser, "certified companion classifier table is full");
+		return -1;
+	}
+	return 0;
 }
 
 static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
@@ -1991,9 +2433,16 @@ static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	uint32_t binder_type;
 	uint32_t body;
 	struct local_binder binder;
+	const struct local_binder* origin = NULL;
+	int companion_role = LOCAL_BINDER_ROLE_VALUE;
 
 	if (expect(parser, TOKEN_BACKSLASH, "expected lambda") != 0) {
 		return -1;
+	}
+	if (accept(parser, TOKEN_AT)) {
+		companion_role = LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION;
+	} else if (accept(parser, TOKEN_STAR)) {
+		companion_role = LOCAL_BINDER_ROLE_CERTIFIED_FUNCTION_COMPANION;
 	}
 	if (parser->current.kind != TOKEN_IDENT) {
 		set_error(parser, "expected lambda binder");
@@ -2008,11 +2457,34 @@ static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	if (read_token(parser) != 0) {
 		return -1;
 	}
-	if (expect(parser, TOKEN_COLON, "expected ':' after lambda binder") != 0) {
-		return -1;
+	if (companion_role == LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION) {
+		origin = lookup_binder(parser, binder_symbol);
+		if (!origin) {
+			set_error(parser, "graph companion requires a preceding raw binder");
+			return -1;
+		}
+	} else if (companion_role == LOCAL_BINDER_ROLE_CERTIFIED_FUNCTION_COMPANION) {
+		origin = lookup_binder(parser, binder_symbol);
+		const struct local_binder* graph = lookup_companion_binder(
+			parser,
+			binder_symbol,
+			LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION
+		);
+		if (!origin || !graph || build_certified_function_companion_type(
+				parser, origin, graph, span, &binder_type
+			) != 0) {
+			if (!parser->error || parser->error->message[0] == '\0') {
+				set_error(parser,
+					"certified companion requires preceding raw and graph binders");
+			}
+			return -1;
+		}
 	}
-	if (parse_type_expr(parser, &binder_type) != 0) {
-		return -1;
+	if (companion_role != LOCAL_BINDER_ROLE_CERTIFIED_FUNCTION_COMPANION) {
+		if (expect(parser, TOKEN_COLON, "expected ':' after lambda binder") != 0 ||
+			parse_type_expr(parser, &binder_type) != 0) {
+			return -1;
+		}
 	}
 	if (expect(parser, TOKEN_FATARROW, "expected '=>' after lambda binder") != 0) {
 		return -1;
@@ -2020,7 +2492,8 @@ static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
 
 	binder.symbol_id = binder_symbol;
 	binder.ast_binder_id = ast_binder_id;
-	binder.induction_allowed = 0;
+	binder.induction_allowed = companion_role;
+	binder.type_expr = binder_type;
 	binder.next = parser->binders;
 	parser->binders = &binder;
 
@@ -2030,7 +2503,22 @@ static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	}
 
 	parser->binders = binder.next;
-	return prototype_ast_lambda(parser->program->asts, ast_binder_id, binder_symbol, binder_type, body, span, p_ret);
+	if (prototype_ast_lambda(
+			parser->program->asts, ast_binder_id, binder_symbol, binder_type, body,
+			span, p_ret
+		) != 0) {
+		return -1;
+	}
+	if (companion_role == LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION ||
+		companion_role == LOCAL_BINDER_ROLE_CERTIFIED_FUNCTION_COMPANION) {
+		int ast_role = companion_role == LOCAL_BINDER_ROLE_FUNCTION_GRAPH_COMPANION ?
+			PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_GRAPH :
+			PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_CERTIFIED_COMPANION;
+		return prototype_ast_lambda_set_function_graph_companion(
+			parser->program->asts, *p_ret, origin->ast_binder_id, ast_role
+		);
+	}
+	return 0;
 }
 
 static int parse_bare_lambda_term(struct parser* parser, uint32_t* p_ret) {
@@ -2072,6 +2560,7 @@ static int parse_bare_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	binder.symbol_id = binder_symbol;
 	binder.ast_binder_id = ast_binder_id;
 	binder.induction_allowed = 0;
+	binder.type_expr = binder_type;
 	binder.next = parser->binders;
 	parser->binders = &binder;
 
@@ -2105,10 +2594,19 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 			if (parse_app_term(parser, &term) != 0) {
 				return -1;
 			}
-			if (parser->current.kind == TOKEN_AT) {
-				if (parse_elimination_suffix(parser, term, span, p_ret) != 0) {
-					return -1;
-				}
+				if (parser->current.kind == TOKEN_AT) {
+					int owner_symbol_id;
+					if (certified_application_owner(
+							parser->program->asts, term, &owner_symbol_id
+						) && current_starts_direct_certified_elimination(parser)) {
+						if (parse_direct_certified_elimination(
+								parser, term, owner_symbol_id, span, p_ret
+							) != 0) {
+							return -1;
+						}
+					} else if (parse_elimination_suffix(parser, term, span, p_ret) != 0) {
+						return -1;
+					}
 			} else {
 				*p_ret = term;
 			}
@@ -2119,7 +2617,16 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 			return -1;
 		}
 		if (parser->current.kind == TOKEN_AT) {
-			if (parse_elimination_suffix(parser, term, span, p_ret) != 0) {
+			int owner_symbol_id;
+			if (certified_application_owner(
+					parser->program->asts, term, &owner_symbol_id
+				) && current_starts_direct_certified_elimination(parser)) {
+				if (parse_direct_certified_elimination(
+						parser, term, owner_symbol_id, span, p_ret
+					) != 0) {
+					return -1;
+				}
+			} else if (parse_elimination_suffix(parser, term, span, p_ret) != 0) {
 				return -1;
 			}
 		} else {

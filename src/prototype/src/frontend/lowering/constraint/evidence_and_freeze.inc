@@ -641,9 +641,18 @@ static int operation_solver_materialize_refinement_binding_evidence_with_mode(
 	if (operation_solver_materialize_refinement_binding_evidence_with_mode(
 			ctx, substitution->first, depth + 1, require_accepted
 		) != 0) {
+		const struct prototype_substitution* first = prototype_substitution_get(
+			&ctx->metadata->substitutions, substitution->first
+		);
 		fprintf(stderr,
-			"refinement evidence prefix failed substitution=%u first=%u depth=%u\n",
-			substitution_id, substitution->first, depth);
+			"refinement evidence prefix failed substitution=%u first=%u depth=%u "
+			"first-kind=%d source=%u target=%u term=%u classifier=%u\n",
+			substitution_id, substitution->first, depth,
+			first ? first->kind : -1,
+			first ? first->source_context : PROTOTYPE_INVALID_ID,
+			first ? first->target_context : PROTOTYPE_INVALID_ID,
+			first ? first->term : PROTOTYPE_INVALID_ID,
+			first ? first->term_classifier : PROTOTYPE_INVALID_ID);
 		return -1;
 	}
 	if (substitution->term >= ctx->terms->term_count) {

@@ -10,12 +10,14 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cd "$root_dir"
 . src/prototype/build/test_support.sh
 prototype_test_timing_initialize "$tmp_dir"
-make -f src/prototype/Makefile reader >/dev/null
+make -f src/prototype/Makefile reader a.out >/dev/null
 
 positive=src/prototype/tests/fixtures/typing/function_graph_generated_length_check.p
 model=src/prototype/tests/fixtures/typing/function_graph_certified_length_model.p
 two_recursive=src/prototype/tests/fixtures/typing/function_graph_two_recursive_calls_check.p
 dependent_spine=src/prototype/tests/fixtures/typing/function_graph_dependent_spine_check.p
+block_binding=src/prototype/tests/fixtures/typing/function_graph_block_binding_check.p
+named_case=src/prototype/tests/fixtures/typing/function_graph_named_case_check.p
 quick_sort=src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p
 
 test -f "$model"
@@ -48,6 +50,127 @@ grep -q '^term certified :=' "$tmp_dir/dependent-spine.out"
 grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
 	"$tmp_dir/dependent-spine-equality.out"
 
+prototype_test_phase block_bound_recursive_result
+./read_file.out "$block_binding" >"$tmp_dir/block-binding.out"
+grep -q '^constructor \$graph\.length\.cons readback_fields=4 ' \
+	"$tmp_dir/block-binding.out"
+grep -q 'name=tailLength' "$tmp_dir/block-binding.out"
+./read_file.out --check-source-exports-normalization-equal \
+	main expected "$block_binding" >"$tmp_dir/block-binding-equality.out"
+grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
+	"$tmp_dir/block-binding-equality.out"
+
+prototype_test_phase named_case_roles
+./read_file.out "$named_case" >"$tmp_dir/named-case.out"
+grep -q '^term inspect :=' "$tmp_dir/named-case.out"
+grep -q '^term selectGraph :=' "$tmp_dir/named-case.out"
+grep -q '^term package :=' "$tmp_dir/named-case.out"
+grep -q '^term directValue :=' "$tmp_dir/named-case.out"
+grep -q '^term proof :=' "$tmp_dir/named-case.out"
+grep -q 'CASE(cons .*INDUCTION_HYPOTHESIS' "$tmp_dir/named-case.out"
+if grep -q '@returned' "$named_case"
+then
+	echo 'ordinary named graph fixture still exposes generated returned syntax' >&2
+	exit 1
+fi
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_named_unknown_selector.p \
+	>"$tmp_dir/named-unknown.out" 2>"$tmp_dir/named-unknown.err"
+then
+	echo 'unknown named graph selector unexpectedly compiled' >&2
+	exit 1
+fi
+grep -q 'unknown named graph selector' "$tmp_dir/named-unknown.err"
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_named_unavailable_role.p \
+	>"$tmp_dir/named-role.out" 2>"$tmp_dir/named-role.err"
+then
+	echo 'unavailable named graph role unexpectedly compiled' >&2
+	exit 1
+fi
+grep -q 'named graph selector has no graph role' "$tmp_dir/named-role.err"
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_direct_result_ih.p \
+	>"$tmp_dir/direct-result-ih.out" 2>"$tmp_dir/direct-result-ih.err"
+then
+	echo 'direct certified result unexpectedly exposed an induction hypothesis' >&2
+	exit 1
+fi
+grep -q 'named graph selector has no induction role' \
+	"$tmp_dir/direct-result-ih.err"
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_companion_without_raw.p \
+	>"$tmp_dir/companion-without-raw.out" \
+	2>"$tmp_dir/companion-without-raw.err"
+then
+	echo 'graph companion without a raw binder unexpectedly compiled' >&2
+	exit 1
+fi
+grep -q 'graph companion requires a preceding raw binder' \
+	"$tmp_dir/companion-without-raw.err"
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_certified_companion_without_graph.p \
+	>"$tmp_dir/certified-without-graph.out" \
+	2>"$tmp_dir/certified-without-graph.err"
+then
+	echo 'certified companion without a graph binder unexpectedly compiled' >&2
+	exit 1
+fi
+grep -q 'certified companion requires preceding raw and graph binders' \
+	"$tmp_dir/certified-without-graph.err"
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_certified_companion_nonbinary.p \
+	>"$tmp_dir/certified-nonbinary.out" \
+	2>"$tmp_dir/certified-nonbinary.err"
+then
+	echo 'non-binary certified companion unexpectedly compiled' >&2
+	exit 1
+fi
+grep -q 'certified companion requires a binary callback classifier' \
+	"$tmp_dir/certified-nonbinary.err"
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_certified_companion_nonbool.p \
+	>"$tmp_dir/certified-nonbool.out" \
+	2>"$tmp_dir/certified-nonbool.err"
+then
+	echo 'non-Bool certified companion unexpectedly compiled' >&2
+	exit 1
+fi
+grep -q 'certified companion currently requires a binary Bool callback' \
+	"$tmp_dir/certified-nonbool.err"
+
+prototype_test_phase static_inspection
+inspection_source=$block_binding
+./read_file.out --quiet --show-function-graph length "$inspection_source" \
+	>"$tmp_dir/function-graph-inspection.out"
+grep -q '^function-graph owner=length association=0 source=local ' \
+	"$tmp_dir/function-graph-inspection.out"
+grep -q '^constructor ordinal=1 name=cons fields=4$' \
+	"$tmp_dir/function-graph-inspection.out"
+grep -q '^origin name=tailLength roles=value,graph,ih value-field=2 graph-field=3 recursive=yes$' \
+	"$tmp_dir/function-graph-inspection.out"
+./read_file.out --quiet --show-function-graph length "$inspection_source" \
+	>"$tmp_dir/function-graph-inspection-repeat.out"
+cmp "$tmp_dir/function-graph-inspection.out" \
+	"$tmp_dir/function-graph-inspection-repeat.out"
+
+printf ':graph length\n:q\n' | ./a.out \
+	src/prototype/tests/fixtures/typing/function_graph_import_provider_without_association.p \
+	>"$tmp_dir/function-graph-repl-absent.out"
+grep -q 'function graph length: absent; recompile with --show-function-graph length' \
+	"$tmp_dir/function-graph-repl-absent.out"
+printf ':graph length\n:q\n' | ./a.out "$named_case" \
+	>"$tmp_dir/function-graph-repl-accepted.out"
+grep -q 'function-graph owner=length association=0 source=local ' \
+	"$tmp_dir/function-graph-repl-accepted.out"
+
 prototype_test_phase quicksort_dependency_closure
 {
 	sed -n '1,$p' "$quick_sort"
@@ -61,15 +184,16 @@ prototype_test_phase quicksort_dependency_closure
 			'' \
 			'quickSortGraphProbe := *quickSort Nat &leftIsZero sample;' \
 			'' \
-			'inspectQuickSortAcc := \LeGraph : (left : Nat) -> (right : Nat) -> Bool -> @ =>' \
+			'inspectQuickSortAcc := \le : Nat -> Nat -> Bool =>' \
+			'\@le : (left : Nat) -> (right : Nat) -> Bool -> @ =>' \
+			'\*le =>' \
 			'\size : Nat => \access : Acc Nat LT size =>' \
 			'\input : SizedList Nat size => \output : List Nat =>' \
-			'\graph : @quickSortAcc Nat LeGraph size access input output =>' \
+			'\graph : @quickSortAcc Nat @le size access input output =>' \
 			'graph' \
-			'@nil current down => output' \
-			'@cons tailSize pivot tail current down lowerSize lower upperSize upper' \
-			'lowerBound upperBound lowerOutput lowerGraph upperOutput upperGraph' \
-			'result appendGraph => output;'
+			'@nil current down => (List Nat).nil' \
+			'@cons { lowerResult; upperResult; } =>' \
+			'append Nat *lowerResult *upperResult;'
 } >"$tmp_dir/quicksort-graph.p"
 ./read_file.out --write-artifact "$tmp_dir/quicksort-graph.apo" \
 	"$tmp_dir/quicksort-graph.p" >"$tmp_dir/quicksort-graph.out"
@@ -83,6 +207,12 @@ grep -q '^term \$certified.quickSortAcc :=' "$tmp_dir/quicksort-graph.out"
 grep -q '^term inspectQuickSortAcc :=' "$tmp_dir/quicksort-graph.out"
 grep -q '^term partitionGraphProbe :=' "$tmp_dir/quicksort-graph.out"
 grep -q '^term quickSortGraphProbe :=' "$tmp_dir/quicksort-graph.out"
+./read_file.out --quiet --show-function-graph quickSortAcc \
+	"$tmp_dir/quicksort-graph.p" >"$tmp_dir/quicksort-inspection.out"
+grep -q 'name=lowerResult roles=value,graph,ih' \
+	"$tmp_dir/quicksort-inspection.out"
+grep -q 'name=upperResult roles=value,graph,ih' \
+	"$tmp_dir/quicksort-inspection.out"
 ./read_file.out --read-graph "$tmp_dir/quicksort-graph.apo" \
 	>"$tmp_dir/quicksort-graph-read.out"
 grep -q '^interface term \$certified\.quickSort ' \
@@ -163,6 +293,9 @@ prototype_test_phase artifact_association
 cmp "$tmp_dir/function-graph.apo" "$tmp_dir/function-graph-repeat.apo"
 grep -q '^function_graph_associations 1$' "$tmp_dir/function-graph.apo"
 grep -q '^function_graph_association 0 ' "$tmp_dir/function-graph.apo"
+grep -q '^function_graph_selector_groups 2$' "$tmp_dir/function-graph.apo"
+grep -q '^function_graph_selector_group 0 0 1 head 1 0 4294967295 0$' \
+	"$tmp_dir/function-graph.apo"
 ./read_file.out --read-graph "$tmp_dir/function-graph.apo" \
 	>"$tmp_dir/artifact-read.out"
 grep -q '^interface term \$certified\.length ' "$tmp_dir/artifact-read.out"
@@ -189,6 +322,21 @@ grep -q 'relocation_external_terms=0 relocation_resolved_external_terms=0' \
 	"$tmp_dir/function-graph-consumer-linked-read.out"
 grep -q '^interface term \$certified\.length ' \
 	"$tmp_dir/function-graph-consumer-linked-read.out"
+
+./read_file.out --quiet --show-function-graph length \
+	--import-interface "$tmp_dir/function-graph.apo" \
+	src/prototype/tests/fixtures/typing/function_graph_import_consumer.p \
+	>"$tmp_dir/function-graph-imported-inspection.out"
+grep -q '^function-graph owner=length association=0 source=imported ' \
+	"$tmp_dir/function-graph-imported-inspection.out"
+grep -q '^origin name=head roles=value value-field=0 graph-field=none recursive=no$' \
+	"$tmp_dir/function-graph-imported-inspection.out"
+
+./read_file.out --import-interface "$tmp_dir/function-graph.apo" \
+	src/prototype/tests/fixtures/typing/function_graph_import_named_consumer.p \
+	>"$tmp_dir/function-graph-imported-named.out"
+grep -q '^term graphHead :=' "$tmp_dir/function-graph-imported-named.out"
+grep -q '^term certified :=' "$tmp_dir/function-graph-imported-named.out"
 
 ./read_file.out --write-artifact "$tmp_dir/function-without-graph.apo" \
 	src/prototype/tests/fixtures/typing/function_graph_import_provider_without_association.p \
@@ -231,6 +379,79 @@ if ./read_file.out --read-graph "$tmp_dir/function-graph-wrong-result.apo" \
 	>"$tmp_dir/wrong-result.out" 2>"$tmp_dir/wrong-result.err"
 then
 	echo 'wrong function graph result family unexpectedly read' >&2
+	exit 1
+fi
+
+awk '
+	$1 == "function_graph_selector_group" && !done {
+		$6 = 3
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$tmp_dir/function-graph.apo" >"$tmp_dir/function-graph-selector-wrong-role.apo"
+if ./read_file.out --read-graph \
+	"$tmp_dir/function-graph-selector-wrong-role.apo" \
+	>"$tmp_dir/selector-wrong-role.out" 2>"$tmp_dir/selector-wrong-role.err"
+then
+	echo 'function graph selector accepted a graph role without a field' >&2
+	exit 1
+fi
+
+awk '
+	$1 == "function_graph_selector_group" && !done {
+		$7 = 999
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$tmp_dir/function-graph.apo" >"$tmp_dir/function-graph-selector-wrong-field.apo"
+if ./read_file.out --read-graph \
+	"$tmp_dir/function-graph-selector-wrong-field.apo" \
+	>"$tmp_dir/selector-wrong-field.out" 2>"$tmp_dir/selector-wrong-field.err"
+then
+	echo 'function graph selector accepted an out-of-telescope value field' >&2
+	exit 1
+fi
+
+./read_file.out --write-artifact "$tmp_dir/function-graph-recursive-selector.apo" \
+	"$block_binding" >"$tmp_dir/function-graph-recursive-selector.out"
+grep -q '^function_graph_selector_group .* tailLength 7 2 3 1$' \
+	"$tmp_dir/function-graph-recursive-selector.apo"
+awk '
+	$1 == "function_graph_selector_group" && $5 == "tailLength" && !done {
+		$6 = 3
+		$9 = 0
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$tmp_dir/function-graph-recursive-selector.apo" \
+	>"$tmp_dir/function-graph-selector-false-recursive.apo"
+if ./read_file.out --read-graph \
+	"$tmp_dir/function-graph-selector-false-recursive.apo" \
+	>"$tmp_dir/selector-false-recursive.out" \
+	2>"$tmp_dir/selector-false-recursive.err"
+then
+	echo 'function graph selector accepted a false recursion marker' >&2
+	exit 1
+fi
+
+awk '
+	$1 == "function_graph_selector_group" && $5 == "tailLength" && !done {
+		$7 = 0
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$tmp_dir/function-graph-recursive-selector.apo" \
+	>"$tmp_dir/function-graph-selector-swapped-value.apo"
+if ./read_file.out --read-graph \
+	"$tmp_dir/function-graph-selector-swapped-value.apo" \
+	>"$tmp_dir/selector-swapped-value.out" \
+	2>"$tmp_dir/selector-swapped-value.err"
+then
+	echo 'function graph selector accepted a same-typed field swap' >&2
 	exit 1
 fi
 

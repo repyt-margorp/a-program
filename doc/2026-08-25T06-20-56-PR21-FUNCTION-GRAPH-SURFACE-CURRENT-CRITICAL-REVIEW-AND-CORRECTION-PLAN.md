@@ -2,11 +2,13 @@
 
 Date: 2026-08-25 JST
 
-Status: critical review complete; implementation not started
+Status: FGSI0-FGSI6 implemented and verified
 
-Repository revision: `be63360e72f7e324b7b263cb4fefbe6941e6c947`
+Review revision: `be63360e72f7e324b7b263cb4fefbe6941e6c947`
 
-Artifact format: v85
+Implementation base revision: `e379c74336be1b18dd1df3c41b68317c97e3d586`
+
+Artifact format: v86
 
 Reviewed proposal:
 
@@ -379,89 +381,143 @@ and demonstrate it on QuickSort.
 
 ## 10. Revised Implementation Order
 
-### FGSI0: Freeze corrected syntax and negative boundaries
+### FGSI0: Freeze corrected syntax and negative boundaries - COMPLETE
 
-- [ ] Add parser-negative tests for `:graph`, named cases, role references, and
+- [x] Add parser-negative tests for `:graph`, named cases, role references, and
       direct certified elimination before enabling each form.
-- [ ] Add the reproduced block-bound recursive-result fixture permanently.
-- [ ] Record deterministic current schemas for length, mirror, dependent spine,
+- [x] Add the reproduced block-bound recursive-result fixture permanently.
+- [x] Record deterministic current schemas for length, mirror, dependent spine,
       and QuickSort.
-- [ ] Rename the misleading certified-reference AST concept.
-- [ ] Freeze the rule that role projection never uses expected-type search.
+- [x] Rename the misleading certified-reference AST concept.
+- [x] Freeze the rule that role projection never uses expected-type search.
 
 Exit: current behavior is fixed by tests and the corrected grammar is accepted.
 
-### FGSI1: Origin-group authority and block-bound recursive calls
+### FGSI1: Origin-group authority and block-bound recursive calls - COMPLETE
 
-- [ ] Add the typed compiler-local function-graph interface DB.
-- [ ] Capture block Binding identity while source and recursive-call origin are
+- [x] Add the typed compiler-local function-graph interface DB.
+- [x] Capture block Binding identity while source and recursive-call origin are
       both available.
-- [ ] Fix terminal IH collection for `tailLength := *tail`.
-- [ ] Generate and validate distinct value/graph role field ordinals.
-- [ ] Mark the exact graph field that receives an IH.
-- [ ] Freeze the interface only after graph constructors are accepted.
-- [ ] Reject shadowed or duplicate short selectors deterministically.
+- [x] Fix terminal IH collection for `tailLength := *tail`.
+- [x] Generate and validate distinct value/graph role field ordinals.
+- [x] Mark the exact graph field that receives an IH.
+- [x] Freeze the interface only after graph constructors are accepted.
+- [x] Reject shadowed or duplicate short selectors deterministically.
 
 Exit: lower and upper QuickSort calls have distinct origin groups without
 public synthetic field names.
 
-### FGSI2: Named graph cases and role references
+### FGSI2: Named graph cases and role references - COMPLETE
 
-- [ ] Add AST-only named case/selector/role-reference forms.
-- [ ] Resolve the owner from the synthesized scrutinee classifier.
-- [ ] Expand every case to the full constructor telescope.
-- [ ] Create hidden Bindings for omitted fields.
-- [ ] Create distinct value, graph, and IH Bindings linked by one origin group.
-- [ ] Support whole-group aliases.
-- [ ] Lower to existing MATCH and IH operations before kernel checking.
+- [x] Add AST-only named case/selector/role-reference forms.
+- [x] Resolve the owner from the synthesized scrutinee classifier.
+- [x] Expand every case to the full constructor telescope.
+- [x] Create hidden Bindings for omitted fields.
+- [x] Create distinct value, graph, and IH Bindings linked by one origin group.
+- [x] Support whole-group aliases.
+- [x] Lower to existing MATCH and IH operations before kernel checking.
 
 Exit: length and QuickSort proofs no longer require positional generated fields.
 
-### FGSI3: Static inspection
+### FGSI3: Static inspection - COMPLETE
 
-- [ ] Add pre-compilation `--show-function-graph NAME` request handling.
-- [ ] Add read-only REPL `:graph NAME` for accepted associations.
-- [ ] Print owner, indices, constructors, origin groups, roles, and raw checked
+- [x] Add pre-compilation `--show-function-graph NAME` request handling.
+- [x] Add read-only REPL `:graph NAME` for accepted associations.
+- [x] Print owner, indices, constructors, origin groups, roles, and raw checked
       classifiers from the same frozen interface used by named-case lowering.
-- [ ] Diagnose absent, residual, ambiguous, and unexported graphs separately.
-- [ ] Add deterministic local and imported output tests.
+- [x] Diagnose absent, residual, ambiguous, and unexported graphs separately.
+- [x] Add deterministic local and imported output tests.
 
 Exit: inspection and elaboration cannot disagree about available selectors.
 
-### FGSI4: Direct certified elimination
+### FGSI4: Direct certified elimination - COMPLETE
 
-- [ ] Parse `*f arguments @ result => body` as a dedicated AST form.
-- [ ] Introduce distinct hidden output/evidence Bindings under one origin group.
-- [ ] Lower once to computation sequencing plus the current result-package
+- [x] Parse `*f arguments @ result => body` as a dedicated AST form.
+- [x] Introduce distinct hidden output/evidence Bindings under one origin group.
+- [x] Lower once to computation sequencing plus the current result-package
       Match.
-- [ ] Keep standalone `*f arguments` valid.
-- [ ] Remove `@returned` from ordinary examples after replacement tests pass.
+- [x] Keep standalone `*f arguments` valid.
+- [x] Remove `@returned` from ordinary examples after replacement tests pass.
 
 Exit: one actual execution supplies `result` and `@result` without a generated
 constructor name.
 
-### FGSI5: Artifact v86 selectors
+### FGSI5: Artifact v86 selectors - COMPLETE
 
-- [ ] Define selector-group wire grammar and update the calculus fingerprint.
-- [ ] Publish only groups owned by exported graph associations.
-- [ ] Relocate by association/constructor/field identity, never display name.
-- [ ] Validate read, append, link, import, and republish.
-- [ ] Add same-typed-field swap, wrong-owner, wrong-role, and false-recursive
+- [x] Define selector-group wire grammar and update the calculus fingerprint.
+- [x] Publish only groups owned by exported graph associations.
+- [x] Relocate by association/constructor/field identity, never display name.
+- [x] Validate read, append, link, import, and republish.
+- [x] Add same-typed-field swap, wrong-owner, wrong-role, and false-recursive
       corruption fixtures.
-- [ ] Make imported inspection and named elimination use the wire table.
+- [x] Make imported inspection and named elimination use the wire table.
 
 Exit: a provider can hide its body while exporting one deterministic proof ABI.
 
-### FGSI6: Higher-order companions and QuickSort proof
+### FGSI6: Higher-order companions and QuickSort proof - COMPLETE
 
-- [ ] Specify classifiers and CBPV categories for `h`, `@h`, and `*h`.
-- [ ] Add distinct companion Bindings linked by one origin group.
-- [ ] Replace user-visible `LeGraph` only after equivalent explicit typing is
+- [x] Specify classifiers and CBPV categories for `h`, `@h`, and `*h`.
+- [x] Add distinct companion Bindings linked by one origin group.
+- [x] Replace user-visible `LeGraph` only after equivalent explicit typing is
       demonstrated.
-- [ ] Implement one two-recursive-call QuickSort property using both IHs.
-- [ ] Record compile time, generated graph size, Artifact bytes, and link time.
+- [x] Implement one two-recursive-call QuickSort property using both IHs.
+- [x] Record compile time, generated graph size, Artifact bytes, and link time.
 
 Exit: the syntax is validated on the motivating higher-order dependent example.
+
+### 10.1 Implementation Results
+
+The public simplification proposed by PR #21 is implemented without adding a
+Core Term tag or a kernel function-graph elimination rule:
+
+- named cases select one source-origin group and expose `r`, `@r`, and valid
+  `*r` roles through distinct Bindings;
+- `*f arguments @ result => body` lowers to the existing certified package
+  elimination and executes `f` once;
+- `--show-function-graph NAME` and REPL `:graph NAME` read the same frozen
+  interface used by elaboration;
+- artifact v86 persists selector groups and validates role, field, owner, and
+  recursion identity across read, append, import, link, and republish; and
+- homogeneous binary Bool callbacks support the explicit companion telescope
+  `h`, `@h`, `*h`. Other callback shapes are rejected rather than inferred by
+  expected-type search.
+
+Imported named elimination exposed one pre-existing artifact boundary defect.
+An imported nominal type is represented as an `EXTERNAL_REF` while the local
+constructor owner is represented by its shared `TYPE_FORMER`/`TYPE_VIEW`.
+Constructor proof materialization previously compared only the local view. The
+fix uses stable declaration identity and uniform parameters through the
+artifact-specific classifier reference-equality boundary. It does not add
+nominal equality to ordinary DefEq and does not identify distinct TypeViews.
+
+Controlled QuickSort graph measurement on this implementation:
+
+| Metric | Result |
+| --- | ---: |
+| Compile wall time | 3.122 s |
+| Artifact read wall time | 0.240 s |
+| Link wall time | 0.732 s |
+| Artifact bytes | 1,616,447 |
+| Term slots | 11,002 |
+| Typed occurrences | 2,045 |
+| Function-graph associations | 9 |
+| Selector groups | 37 |
+| Printed graph types / constructors | 8 / 13 |
+
+These are local comparison measurements, not performance guarantees. The
+focused QuickSort phase compiles the source twice, once for publication and
+once for inspection, and therefore takes about seven seconds.
+
+### 10.2 Verification Results
+
+- focused function-graph integration: 13/13 phases passed;
+- artifact v86 flow: 7/7 phases passed;
+- full integration suite: 45/45 tests passed in 31.039 s; and
+- type-inference/example manifest: passed.
+
+The implementation changes 53 files with 3,694 inserted and 247 deleted lines.
+The artifact v85 implementation and schema are renamed in place to v86; no
+compatibility reader or duplicate wire implementation remains.
 
 ## 11. Permanent Verification Matrix
 

@@ -1334,7 +1334,9 @@ int prototype_judgement_delta_record_constructor_spine(
 			.status = PROTOTYPE_TERM_CONVERSION_INVALID
 		};
 	int classifier_matches = classifier_status == 0 &&
-		classifier_conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL;
+		prototype_judgement_classifier_reference_equal(
+			terms, type_declarations, expected_classifier, classifier
+		);
 	if (!classifier_matches && getenv("A_PROGRAM_FORMATION_TRACE")) {
 		fprintf(stderr,
 			"constructor spine classifier mismatch subject=%u owner=%u owner-view=%u context=%u "
@@ -1396,10 +1398,10 @@ int prototype_judgement_delta_record_constructor_spine(
 				delta->current_context_id, projected_subject, owner_view,
 				projected_argument_classifiers, argument_evidence_count,
 				&expected_classifier, &saturated
-			) != 0 || prototype_judgement_classifier_conversion(
+			) != 0 || !prototype_judgement_classifier_reference_equal(
 				terms, type_declarations, expected_classifier,
 				projected_classifier
-			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			)) {
 			return -1;
 		}
 		classifier_matches = 1;
@@ -2378,6 +2380,61 @@ static int classifier_returns_owner(
 	}
 	uint32_t current = classifier;
 	while (current < terms->term_count) {
+		/* Imported constructor classifiers retain the provider's stable nominal
+		 * name while the constructor owner is already lowered to the shared erased
+		 * TYPE_FORMER representation. Relate those two views through the semantic
+		 * declaration identity; an EXTERNAL_REF is not Core-shape-equal to a local
+		 * TYPE_FORMER. */
+		if (owner_is_type_instance) {
+			uint32_t reversed_arguments[16];
+			uint32_t external_argument_count = 0;
+			uint32_t external_head = current;
+			while (external_head < terms->term_count &&
+				terms->terms[external_head].tag == PROTOTYPE_TERM_APP) {
+				if (external_argument_count >= 16) {
+					return 0;
+				}
+				reversed_arguments[external_argument_count++] =
+					terms->terms[external_head].as.app.argument;
+				external_head = terms->terms[external_head].as.app.function;
+			}
+			const struct prototype_type_declaration* declaration =
+				&type_declarations->semantic_schema.type_declarations[owner_type_id];
+			struct prototype_qualified_name declaration_name = {
+				.namespace_symbol_id = declaration->namespace_symbol_id,
+				.name_symbol_id = declaration->name_symbol_id
+			};
+			if (external_head < terms->term_count &&
+				terms->terms[external_head].tag == PROTOTYPE_TERM_EXTERNAL_REF &&
+				terms->terms[external_head].as.external_ref.name.namespace_symbol_id ==
+					declaration_name.namespace_symbol_id &&
+				terms->terms[external_head].as.external_ref.name.name_symbol_id ==
+					declaration_name.name_symbol_id &&
+				external_argument_count == declaration->parameter_count +
+					declaration->index_count &&
+				(owner_argument_count == declaration->parameter_count ||
+				 owner_argument_count == declaration->parameter_count +
+					declaration->index_count)) {
+				int parameters_match = 1;
+				for (uint32_t i = 0; i < declaration->parameter_count; ++i) {
+					uint32_t argument = reversed_arguments[
+						external_argument_count - i - 1
+					];
+					int equal = 0;
+					if (prototype_term_core_shape_equal(
+							terms, owner_arguments[i], argument, &equal
+						) != 0 || (!equal && prototype_term_source_shape_equal(
+							terms, owner_arguments[i], argument, &equal
+						) != 0) || !equal) {
+						parameters_match = 0;
+						break;
+					}
+				}
+				if (parameters_match) {
+					return 1;
+				}
+			}
+		}
 		int same_owner = 0;
 		if (current == owner) {
 			return 1;
