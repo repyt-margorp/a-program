@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v84.h"
+#include "a_program/artifact/wire_v85.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -3157,17 +3157,19 @@ int prototype_artifact_read_text_universe(
 	char label_edges[32];
 	char label_levels[32];
 	char label_constraints[32];
-	char label_solved[32];
+	char label_obligations[32];
+	char label_certificate_state[32];
 	size_t node_slot_count;
 	size_t present_node_count;
 	size_t edge_slot_count;
 	size_t present_edge_count;
 	size_t level_count;
 	size_t constraint_count;
-	int solved;
+	size_t obligation_count;
+	int certificate_state;
 	if (fscanf(
 			stream,
-			"%255s %31s %zu %31s %zu %31s %zu %31s %zu %31s %zu %31s %zu %31s %d",
+			"%255s %31s %zu %31s %zu %31s %zu %31s %zu %31s %zu %31s %zu %31s %zu %31s %d",
 			word,
 			label_node_slots,
 			&node_slot_count,
@@ -3181,9 +3183,11 @@ int prototype_artifact_read_text_universe(
 			&level_count,
 			label_constraints,
 			&constraint_count,
-			label_solved,
-			&solved
-		) != 15 ||
+			label_obligations,
+			&obligation_count,
+			label_certificate_state,
+			&certificate_state
+		) != 17 ||
 		strcmp(word, "counts") != 0 ||
 		strcmp(label_node_slots, "node_slots") != 0 ||
 		strcmp(label_nodes, "nodes") != 0 ||
@@ -3191,11 +3195,14 @@ int prototype_artifact_read_text_universe(
 		strcmp(label_edges, "edges") != 0 ||
 		strcmp(label_levels, "levels") != 0 ||
 		strcmp(label_constraints, "constraints") != 0 ||
-		strcmp(label_solved, "solved") != 0 ||
+		strcmp(label_obligations, "obligations") != 0 ||
+		strcmp(label_certificate_state, "certificate_state") != 0 ||
 		node_slot_count > universe->node_capacity ||
 		edge_slot_count > universe->edge_capacity ||
 		level_count > universe->level_capacity ||
-		constraint_count > universe->constraint_capacity) {
+		constraint_count > universe->constraint_capacity ||
+		obligation_count > universe->obligation_span_capacity ||
+		certificate_state != PROTOTYPE_UNIVERSE_CERTIFICATE_CLOSED) {
 		return -1;
 	}
 
@@ -3291,7 +3298,7 @@ int prototype_artifact_read_text_universe(
 		struct prototype_universe_constraint* constraint = &universe->constraints[i];
 		if (fscanf(
 				stream,
-				"%255s %zu %u %u %d %u %u %d %u %d %u %u %u",
+				"%255s %zu %u %u %d %u %u %d %u %u %d %u %u %u",
 				word,
 				&id,
 				&constraint->lower_level_var,
@@ -3301,18 +3308,58 @@ int prototype_artifact_read_text_universe(
 				&constraint->classifier,
 				&constraint->reason,
 				&constraint->source_claim_id,
+				&constraint->source_derivation_id,
 				&constraint->source_authority_kind,
 				&constraint->source_authority_id,
 				&constraint->source_subject,
 				&constraint->source_classifier
-			) != 13 ||
+			) != 14 ||
 			strcmp(word, "universe_constraint") != 0 ||
 			id != i) {
 			return -1;
 		}
 		}
 		universe->constraint_count = count;
-		universe->solved = solved;
+
+	if (expect_artifact_count(stream, "universe_obligations", &count) != 0 ||
+		count != obligation_count) {
+		return -1;
+	}
+	for (size_t i = 0; i < count; ++i) {
+		size_t id;
+		struct prototype_universe_obligation_span* span =
+			&universe->obligation_spans[i];
+		if (fscanf(
+				stream,
+				"%255s %zu %u %u %u %u",
+				word,
+				&id,
+				&span->source_claim_id,
+				&span->source_derivation_id,
+				&span->first_constraint,
+				&span->constraint_count
+			) != 6 || strcmp(word, "universe_obligation") != 0 || id != i ||
+			span->first_constraint > constraint_count ||
+			span->constraint_count > constraint_count - span->first_constraint) {
+			return -1;
+		}
+	}
+	universe->obligation_span_count = count;
+	if (fscanf(
+			stream,
+			"%255s %" SCNu64 " %" SCNu64 " %u %u %d",
+			word,
+			&universe->certificate.constraint_fingerprint,
+			&universe->certificate.solution_fingerprint,
+			&universe->certificate.constraint_count,
+			&universe->certificate.level_count,
+			&universe->certificate.state
+		) != 6 || strcmp(word, "universe_certificate") != 0 ||
+		universe->certificate.state != certificate_state ||
+		universe->certificate.constraint_count != constraint_count ||
+		universe->certificate.level_count != level_count) {
+		return -1;
+	}
 		if (artifact_validate_read_universe_refs(universe) != 0) {
 			return -1;
 		}

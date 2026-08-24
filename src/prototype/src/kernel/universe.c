@@ -14,7 +14,9 @@ void prototype_universe_db_init(
 	struct prototype_universe_level* levels,
 	size_t level_capacity,
 	struct prototype_universe_constraint* constraints,
-	size_t constraint_capacity
+	size_t constraint_capacity,
+	struct prototype_universe_obligation_span* obligation_spans,
+	size_t obligation_span_capacity
 ) {
 	memset(db, 0, sizeof(*db));
 	db->nodes = nodes;
@@ -25,6 +27,8 @@ void prototype_universe_db_init(
 	db->level_capacity = level_capacity;
 	db->constraints = constraints;
 	db->constraint_capacity = constraint_capacity;
+	db->obligation_spans = obligation_spans;
+	db->obligation_span_capacity = obligation_span_capacity;
 }
 
 void prototype_universe_db_clear(struct prototype_universe_db* db) {
@@ -35,7 +39,8 @@ void prototype_universe_db_clear(struct prototype_universe_db* db) {
 	db->edge_count = 0;
 	db->level_count = 0;
 	db->constraint_count = 0;
-	db->solved = 0;
+	db->obligation_span_count = 0;
+	memset(&db->certificate, 0, sizeof(db->certificate));
 }
 
 static int add_node(
@@ -169,6 +174,7 @@ int prototype_universe_add_constraint(
 	uint32_t classifier,
 	int reason,
 	uint32_t source_claim_id,
+	uint32_t source_derivation_id,
 	int source_authority_kind,
 	uint32_t source_authority_id,
 	uint32_t source_subject,
@@ -190,6 +196,7 @@ int prototype_universe_add_constraint(
 			constraint->offset == offset && constraint->subject == subject &&
 			constraint->classifier == classifier && constraint->reason == reason &&
 			constraint->source_claim_id == source_claim_id &&
+			constraint->source_derivation_id == source_derivation_id &&
 			constraint->source_authority_kind == source_authority_kind &&
 			constraint->source_authority_id == source_authority_id &&
 			constraint->source_subject == source_subject &&
@@ -209,6 +216,7 @@ int prototype_universe_add_constraint(
 		.classifier = classifier,
 		.reason = reason,
 		.source_claim_id = source_claim_id,
+		.source_derivation_id = source_derivation_id,
 		.source_authority_kind = source_authority_kind,
 		.source_authority_id = source_authority_id,
 		.source_subject = source_subject,
@@ -217,6 +225,38 @@ int prototype_universe_add_constraint(
 	db->constraint_count++;
 	(void)lower_index;
 	(void)upper_index;
+	return 0;
+}
+
+int prototype_universe_add_obligation_span(
+	struct prototype_universe_db* db,
+	uint32_t source_claim_id,
+	uint32_t source_derivation_id,
+	uint32_t first_constraint
+) {
+	if (!db || !db->obligation_spans ||
+		first_constraint > db->constraint_count ||
+		reserve_slot(
+			db->obligation_span_count, db->obligation_span_capacity
+		) != 0) {
+		return -1;
+	}
+	for (size_t i = 0; i < db->obligation_span_count; ++i) {
+		const struct prototype_universe_obligation_span* span =
+			&db->obligation_spans[i];
+		if (span->source_claim_id == source_claim_id &&
+			span->source_derivation_id == source_derivation_id) {
+			return -1;
+		}
+	}
+	db->obligation_spans[db->obligation_span_count++] =
+		(struct prototype_universe_obligation_span) {
+			.source_claim_id = source_claim_id,
+			.source_derivation_id = source_derivation_id,
+			.first_constraint = first_constraint,
+			.constraint_count =
+				(uint32_t)db->constraint_count - first_constraint
+		};
 	return 0;
 }
 
@@ -266,9 +306,74 @@ int prototype_universe_solve(struct prototype_universe_db* db) {
 			}
 		}
 		if (!changed) {
-			db->solved = 1;
 			return 0;
 		}
 	}
 	return -1;
+}
+
+static uint64_t universe_hash_word(uint64_t hash, uint32_t word) {
+	hash ^= word;
+	hash *= UINT64_C(1099511628211);
+	return hash;
+}
+
+static uint64_t universe_constraint_fingerprint(
+	const struct prototype_universe_db* db
+) {
+	uint64_t hash = UINT64_C(1469598103934665603);
+	for (size_t i = 0; i < db->constraint_count; ++i) {
+		const struct prototype_universe_constraint* constraint =
+			&db->constraints[i];
+		hash = universe_hash_word(hash, constraint->lower_level_var);
+		hash = universe_hash_word(hash, constraint->upper_level_var);
+		hash = universe_hash_word(hash, (uint32_t)constraint->offset);
+		hash = universe_hash_word(hash, constraint->subject);
+		hash = universe_hash_word(hash, constraint->classifier);
+		hash = universe_hash_word(hash, (uint32_t)constraint->reason);
+		hash = universe_hash_word(
+			hash, (uint32_t)constraint->source_authority_kind
+		);
+		hash = universe_hash_word(hash, constraint->source_authority_id);
+		hash = universe_hash_word(hash, constraint->source_subject);
+		hash = universe_hash_word(hash, constraint->source_classifier);
+	}
+	return hash;
+}
+
+static uint64_t universe_solution_fingerprint(
+	const struct prototype_universe_db* db
+) {
+	uint64_t hash = UINT64_C(1469598103934665603);
+	for (size_t i = 0; i < db->level_count; ++i) {
+		hash = universe_hash_word(hash, db->levels[i].level_var);
+		hash = universe_hash_word(hash, (uint32_t)db->levels[i].value);
+	}
+	return hash;
+}
+
+int prototype_universe_close(struct prototype_universe_db* db) {
+	if (!db || prototype_universe_solve(db) != 0) {
+		return -1;
+	}
+	db->certificate = (struct prototype_universe_solution_certificate) {
+		.constraint_fingerprint = universe_constraint_fingerprint(db),
+		.solution_fingerprint = universe_solution_fingerprint(db),
+		.constraint_count = (uint32_t)db->constraint_count,
+		.level_count = (uint32_t)db->level_count,
+		.state = PROTOTYPE_UNIVERSE_CERTIFICATE_CLOSED
+	};
+	return 0;
+}
+
+int prototype_universe_certificate_equal(
+	const struct prototype_universe_solution_certificate* left,
+	const struct prototype_universe_solution_certificate* right
+) {
+	return left && right &&
+		left->constraint_fingerprint == right->constraint_fingerprint &&
+		left->solution_fingerprint == right->solution_fingerprint &&
+		left->constraint_count == right->constraint_count &&
+		left->level_count == right->level_count &&
+		left->state == right->state;
 }

@@ -350,7 +350,7 @@ int prototype_compile_graph_with_imports(
 		return -1;
 	}
 	if (program->universe &&
-		prototype_universe_collect(
+		prototype_universe_build_closed(
 			program->universe,
 			program->type_declarations,
 			program->terms,

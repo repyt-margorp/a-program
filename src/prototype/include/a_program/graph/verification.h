@@ -77,7 +77,7 @@ struct prototype_verification_obligation {
 	uint32_t schema_version;
 };
 
-/* One immutable semantic dependency edge. The v84 initial fragment records
+/* One immutable semantic dependency edge. The v85 initial fragment records
  * exactly the source occurrence edge. Cross-occurrence propagation remains
  * unsupported and conditional imports are rejected at first use. */
 struct prototype_verification_dependency {

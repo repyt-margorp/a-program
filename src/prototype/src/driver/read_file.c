@@ -1,6 +1,6 @@
 #include "a_program/frontend/reader.h"
 
-#include "a_program/artifact/wire_v84.h"
+#include "a_program/artifact/wire_v85.h"
 #include "a_program/driver/compiler_session.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/universe_collection.h"
@@ -126,6 +126,8 @@ static struct prototype_universe_level
 	universe_levels[PROTOTYPE_UNIVERSE_LEVEL_CAPACITY];
 static struct prototype_universe_constraint
 	universe_constraints[PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY];
+static struct prototype_universe_obligation_span
+	universe_obligation_spans[PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY];
 static struct prototype_term terms[TERM_CAPACITY];
 static struct prototype_match_case match_cases[MATCH_CASE_CAPACITY];
 static int match_case_label_symbols[MATCH_CASE_CAPACITY];
@@ -711,8 +713,12 @@ static int read_artifact_interface_and_graph(
 			term_db,
 			type_declarations,
 			judgement_db
-		) != 0 || prototype_universe_validate_provenance(
-			universe_db, judgement_db
+	) != 0 || prototype_universe_validate_replay(
+			universe_db,
+			type_declarations,
+			term_db,
+			&metadata->typed_occurrences,
+			judgement_db
 		) != 0 || artifact_exports_have_accepted_claims(
 			artifact_interface, term_db, judgement_db, metadata, 0
 		) != 0) {
@@ -1176,7 +1182,9 @@ static int check_export_normalization_equal(
 		universe_levels,
 		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY,
+		universe_obligation_spans,
+		PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY
 	);
 	prototype_compile_metadata_init(
 		&metadata,
@@ -1416,7 +1424,9 @@ static int check_exports_normalization_equal(
 		universe_levels,
 		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY,
+		universe_obligation_spans,
+		PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY
 	);
 	prototype_compile_metadata_init(
 		&metadata,
@@ -1739,7 +1749,9 @@ static int check_exports_shape_equal(
 		universe_levels,
 		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY,
+		universe_obligation_spans,
+		PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY
 	);
 	prototype_compile_metadata_init(
 		&metadata,
@@ -1930,7 +1942,9 @@ static int check_export_classifier_compatible(
 		universe_levels,
 		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY,
+		universe_obligation_spans,
+		PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY
 	);
 	prototype_compile_metadata_init(
 		&metadata,
@@ -3565,7 +3579,9 @@ int main(int argc, char** argv) {
 			universe_levels,
 			PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 			universe_constraints,
-			PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
+			PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY,
+			universe_obligation_spans,
+			PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY
 		);
 		prototype_compile_metadata_init(
 			&metadata,
@@ -4062,7 +4078,7 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 		if (link_output_path) {
-			if (prototype_universe_collect(
+			if (prototype_universe_build_closed(
 					&universe_db,
 					&type_declarations,
 					&term_db,
@@ -4311,7 +4327,9 @@ int main(int argc, char** argv) {
 				universe_levels,
 				PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 				universe_constraints,
-				PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
+				PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY,
+				universe_obligation_spans,
+				PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY
 			);
 			const char* artifact_graph_stage = "graph";
 			if (prototype_artifact_read_text_graph(
@@ -4381,8 +4399,12 @@ int main(int argc, char** argv) {
 					&judgement_db
 				) != 0) ||
 				((artifact_graph_stage = "universe-provenance"),
-				 prototype_universe_validate_provenance(
-					&universe_db, &judgement_db
+				 prototype_universe_validate_replay(
+					&universe_db,
+					&type_declarations,
+					&term_db,
+					&artifact_metadata.typed_occurrences,
+					&judgement_db
 				) != 0) ||
 				((artifact_graph_stage = "accepted-exports"),
 				 artifact_exports_have_accepted_claims(
@@ -4488,12 +4510,14 @@ int main(int argc, char** argv) {
 				judgement_db.derivation_candidate_count
 			);
 			printf(
-				"universe_nodes=%zu universe_edges=%zu universe_levels=%zu universe_constraints=%zu solved=%s\n",
+				"universe_nodes=%zu universe_edges=%zu universe_levels=%zu universe_constraints=%zu universe_obligations=%zu certificate=%s\n",
 				universe_db.node_count,
 				universe_db.edge_count,
 				universe_db.level_count,
 				universe_db.constraint_count,
-				universe_db.solved ? "yes" : "no"
+				universe_db.obligation_span_count,
+				universe_db.certificate.state ==
+					PROTOTYPE_UNIVERSE_CERTIFICATE_CLOSED ? "closed" : "invalid"
 			);
 			printf(
 				"graph_next_level_var=%u judgement_next_universe_var=%u\n",
@@ -4656,7 +4680,9 @@ int main(int argc, char** argv) {
 		universe_levels,
 		PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
 		universe_constraints,
-		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
+		PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY,
+		universe_obligation_spans,
+		PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY
 	);
 	prototype_term_db_init(
 		&term_db,

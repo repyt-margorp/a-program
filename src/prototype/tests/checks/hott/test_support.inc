@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v84.h"
+#include "a_program/artifact/wire_v85.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
@@ -248,6 +248,7 @@ static int write_identity_root_artifact_with_environment(
 	struct prototype_universe_edge universe_edges[1];
 	struct prototype_universe_level universe_levels[1];
 	struct prototype_universe_constraint universe_constraints[1];
+	struct prototype_universe_obligation_span universe_obligation_spans[1];
 	struct prototype_universe_db universe;
 	prototype_universe_db_init(
 		&universe,
@@ -258,9 +259,13 @@ static int write_identity_root_artifact_with_environment(
 		universe_levels,
 		1,
 		universe_constraints,
+		1,
+		universe_obligation_spans,
 		1
 	);
-	universe.solved = 1;
+	if (prototype_universe_close(&universe) != 0) {
+		return -1;
+	}
 	struct prototype_compile_metadata metadata;
 	prototype_compile_metadata_init(
 		&metadata,

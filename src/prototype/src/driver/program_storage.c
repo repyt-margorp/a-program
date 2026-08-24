@@ -89,6 +89,8 @@ struct prototype_program_storage_backing {
 	struct prototype_universe_edge universe_edges[PROGRAM_UNIVERSE_EDGE_CAPACITY];
 	struct prototype_universe_level universe_levels[PROGRAM_UNIVERSE_LEVEL_CAPACITY];
 	struct prototype_universe_constraint universe_constraints[PROGRAM_UNIVERSE_CONSTRAINT_CAPACITY];
+	struct prototype_universe_obligation_span
+		universe_obligation_spans[PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY];
 	struct prototype_term terms[PROGRAM_TERM_CAPACITY];
 	struct prototype_match_case match_cases[PROGRAM_MATCH_CASE_CAPACITY];
 	int match_case_label_symbols[PROGRAM_MATCH_CASE_CAPACITY];
@@ -178,7 +180,8 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		PROGRAM_UNIVERSE_NODE_CAPACITY, b->universe_edges,
 		PROGRAM_UNIVERSE_EDGE_CAPACITY, b->universe_levels,
 		PROGRAM_UNIVERSE_LEVEL_CAPACITY, b->universe_constraints,
-		PROGRAM_UNIVERSE_CONSTRAINT_CAPACITY);
+		PROGRAM_UNIVERSE_CONSTRAINT_CAPACITY, b->universe_obligation_spans,
+		PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY);
 	prototype_term_db_init(&storage->terms, b->terms, PROGRAM_TERM_CAPACITY,
 		b->match_cases, b->match_case_label_symbols, PROGRAM_MATCH_CASE_CAPACITY,
 		b->match_binders, PROGRAM_MATCH_BINDER_CAPACITY, b->ih_scopes,

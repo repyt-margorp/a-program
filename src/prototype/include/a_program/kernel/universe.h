@@ -13,6 +13,7 @@
 #define PROTOTYPE_UNIVERSE_EDGE_CAPACITY 512
 #define PROTOTYPE_UNIVERSE_LEVEL_CAPACITY 1024
 #define PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY 4096
+#define PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY 8192
 
 enum prototype_universe_node_tag {
 	PROTOTYPE_UNIVERSE_NODE_TYPE = 1,
@@ -65,10 +66,36 @@ struct prototype_universe_constraint {
 	/* Accepted evidence provenance. A derived helper inequality has no Claim,
 	 * but still carries explicit authority instead of an untyped reason int. */
 	uint32_t source_claim_id;
+	uint32_t source_derivation_id;
 	int source_authority_kind;
 	uint32_t source_authority_id;
 	uint32_t source_subject;
 	uint32_t source_classifier;
+};
+
+/* One exact accepted Derivation and the contiguous Universe obligations it
+ * emits. A zero-length span is still evidence that the Derivation was audited
+ * and requires no Universe inequality. */
+struct prototype_universe_obligation_span {
+	uint32_t source_claim_id;
+	uint32_t source_derivation_id;
+	uint32_t first_constraint;
+	uint32_t constraint_count;
+};
+
+enum prototype_universe_certificate_state {
+	PROTOTYPE_UNIVERSE_CERTIFICATE_INVALID = 0,
+	PROTOTYPE_UNIVERSE_CERTIFICATE_CLOSED = 1
+};
+
+/* A closed global Universe condition Context. Fingerprints cover the complete
+ * provenance-bearing constraint set and its canonical numerical solution. */
+struct prototype_universe_solution_certificate {
+	uint64_t constraint_fingerprint;
+	uint64_t solution_fingerprint;
+	uint32_t constraint_count;
+	uint32_t level_count;
+	int state;
 };
 
 struct prototype_universe_db {
@@ -88,7 +115,11 @@ struct prototype_universe_db {
 	size_t constraint_count;
 	size_t constraint_capacity;
 
-	int solved;
+	struct prototype_universe_obligation_span* obligation_spans;
+	size_t obligation_span_count;
+	size_t obligation_span_capacity;
+
+	struct prototype_universe_solution_certificate certificate;
 };
 
 void prototype_universe_db_init(
@@ -100,7 +131,9 @@ void prototype_universe_db_init(
 	struct prototype_universe_level* levels,
 	size_t level_capacity,
 	struct prototype_universe_constraint* constraints,
-	size_t constraint_capacity
+	size_t constraint_capacity,
+	struct prototype_universe_obligation_span* obligation_spans,
+	size_t obligation_span_capacity
 );
 
 void prototype_universe_db_clear(struct prototype_universe_db* db);
@@ -148,12 +181,27 @@ int prototype_universe_add_constraint(
 	uint32_t classifier,
 	int reason,
 	uint32_t source_claim_id,
+	uint32_t source_derivation_id,
 	int source_authority_kind,
 	uint32_t source_authority_id,
 	uint32_t source_subject,
 	uint32_t source_classifier
 );
 
+int prototype_universe_add_obligation_span(
+	struct prototype_universe_db* db,
+	uint32_t source_claim_id,
+	uint32_t source_derivation_id,
+	uint32_t first_constraint
+);
+
 int prototype_universe_solve(struct prototype_universe_db* db);
+
+int prototype_universe_close(struct prototype_universe_db* db);
+
+int prototype_universe_certificate_equal(
+	const struct prototype_universe_solution_certificate* left,
+	const struct prototype_universe_solution_certificate* right
+);
 
 #endif

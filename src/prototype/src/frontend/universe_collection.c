@@ -1,5 +1,6 @@
 #include "a_program/frontend/universe_collection.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "a_program/frontend/lowering.h"
@@ -31,6 +32,7 @@ static int collect_universe_term_constraints(
 	uint32_t subject,
 	uint32_t classifier,
 	uint32_t source_claim_id,
+	uint32_t source_derivation_id,
 	int source_authority_kind,
 	uint32_t source_authority_id
 ) {
@@ -53,6 +55,7 @@ static int collect_universe_term_constraints(
 			classifier,
 			PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_TERM_LEVEL_SUCCESSOR,
 			source_claim_id,
+			source_derivation_id,
 			source_authority_kind,
 			source_authority_id,
 			subject,
@@ -91,6 +94,7 @@ static int collect_pi_constraints(
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id,
+	uint32_t derivation_id,
 	const struct prototype_judgement_claim* relation,
 	const struct prototype_judgement_derivation* proof
 ) {
@@ -121,6 +125,7 @@ static int collect_pi_constraints(
 			prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier,
 			PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_PI_DOMAIN,
 			claim_id,
+			derivation_id,
 			prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_kind,
 			prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_id,
 			prototype_judgement_proposition_get(judgement, relation->proposition_id)->subject,
@@ -141,6 +146,7 @@ static int collect_pi_constraints(
 			prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier,
 			PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_PI_CODOMAIN,
 			claim_id,
+			derivation_id,
 			prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_kind,
 			prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_id,
 			prototype_judgement_proposition_get(judgement, relation->proposition_id)->subject,
@@ -162,6 +168,7 @@ static int collect_type_level_at_depth(
 	const struct prototype_term_db* terms,
 	uint32_t type_term,
 	uint32_t source_claim_id,
+	uint32_t source_derivation_id,
 	int source_authority_kind,
 	uint32_t source_authority_id,
 	uint32_t source_subject,
@@ -187,6 +194,7 @@ static int collect_type_level_at_depth(
 				type_term,
 				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_UNIVERSE_LEVEL,
 				source_claim_id,
+				source_derivation_id,
 				source_authority_kind,
 				source_authority_id,
 				source_subject,
@@ -213,6 +221,7 @@ static int collect_type_level_at_depth(
 			terms,
 			domain,
 			source_claim_id,
+			source_derivation_id,
 			source_authority_kind,
 			source_authority_id,
 			source_subject,
@@ -229,6 +238,7 @@ static int collect_type_level_at_depth(
 				type_term,
 				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_DOMAIN,
 				source_claim_id,
+				source_derivation_id,
 				source_authority_kind,
 				source_authority_id,
 				source_subject,
@@ -248,6 +258,7 @@ static int collect_type_level_at_depth(
 					terms,
 					family_body,
 					source_claim_id,
+					source_derivation_id,
 					source_authority_kind,
 					source_authority_id,
 					source_subject,
@@ -263,8 +274,9 @@ static int collect_type_level_at_depth(
 					type_term,
 					type_term,
 					PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_DERIVED_PI_CODOMAIN,
-						source_claim_id,
-						source_authority_kind,
+					source_claim_id,
+					source_derivation_id,
+					source_authority_kind,
 						source_authority_id,
 						source_subject,
 						source_classifier
@@ -287,6 +299,7 @@ static int collect_match_branch_constraints(
 	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id,
+	uint32_t derivation_id,
 	const struct prototype_judgement_claim* relation,
 	const struct prototype_judgement_derivation* proof
 ) {
@@ -358,6 +371,7 @@ static int collect_match_branch_constraints(
 				prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier,
 				PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_MATCH_BRANCH,
 				claim_id,
+				derivation_id,
 				prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_kind,
 				prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_id,
 				prototype_judgement_proposition_get(judgement, relation->proposition_id)->subject,
@@ -385,6 +399,7 @@ static int collect_classifier_cumulativity_constraints(
 	uint32_t classifier,
 	int reason,
 	uint32_t source_claim_id,
+	uint32_t source_derivation_id,
 	int source_authority_kind,
 	uint32_t source_authority_id,
 	uint32_t depth
@@ -406,6 +421,7 @@ static int collect_classifier_cumulativity_constraints(
 			classifier,
 			reason,
 			source_claim_id,
+			source_derivation_id,
 			source_authority_kind,
 			source_authority_id,
 			subject,
@@ -436,6 +452,7 @@ static int collect_classifier_cumulativity_constraints(
 				classifier,
 				reason,
 				source_claim_id,
+				source_derivation_id,
 				source_authority_kind,
 				source_authority_id,
 				depth + 1
@@ -477,6 +494,7 @@ static int collect_classifier_cumulativity_constraints(
 				classifier,
 				reason,
 				source_claim_id,
+				source_derivation_id,
 				source_authority_kind,
 				source_authority_id,
 				depth + 1
@@ -492,6 +510,7 @@ static int collect_app_elim_cumulativity_constraint(
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id,
+	uint32_t derivation_id,
 	const struct prototype_judgement_claim* relation,
 	const struct prototype_judgement_derivation* proof
 ) {
@@ -527,6 +546,7 @@ static int collect_app_elim_cumulativity_constraint(
 		prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier,
 		PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_APP_CUMULATIVITY,
 		claim_id,
+		derivation_id,
 		prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_kind,
 		prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_id,
 		0
@@ -538,6 +558,7 @@ static int collect_expected_type_exposure_constraints(
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement,
 	uint32_t claim_id,
+	uint32_t derivation_id,
 	const struct prototype_judgement_claim* relation,
 	const struct prototype_judgement_derivation* proof
 ) {
@@ -560,6 +581,7 @@ static int collect_expected_type_exposure_constraints(
 		prototype_judgement_proposition_get(judgement, relation->proposition_id)->classifier,
 		PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_EXPECTED_TYPE_CUMULATIVITY,
 		claim_id,
+		derivation_id,
 		prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_kind,
 		prototype_judgement_proposition_get(judgement, relation->proposition_id)->authority_id,
 		0
@@ -586,55 +608,92 @@ static int collect_relation_constraints(
 	if (proposition->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
 		return 0;
 	}
-	uint32_t classifier_level;
-	(void)collect_type_level_at_depth(
-		db,
-		terms,
-		proposition->classifier,
-		claim_id,
-		proposition->authority_kind,
-		proposition->authority_id,
-		proposition->subject,
-		proposition->classifier,
-		&classifier_level,
-		0
-	);
 	for (uint32_t derivation_id = 0;
 		derivation_id < (uint32_t)judgement->derivation_count;
 		++derivation_id) {
 		const struct prototype_judgement_derivation* proof =
 			&judgement->derivations[derivation_id];
-		if (proof->conclusion_claim_id != claim_id) {
+		if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID ||
+			proof->conclusion_claim_id != claim_id) {
 			continue;
 		}
-		if (collect_universe_term_constraints(
-				db,
-				terms,
-				proposition->subject,
-				proposition->classifier,
+		uint32_t first_constraint = (uint32_t)db->constraint_count;
+		uint32_t classifier_level;
+		(void)collect_type_level_at_depth(
+			db,
+			terms,
+			proposition->classifier,
+			claim_id,
+			derivation_id,
+			proposition->authority_kind,
+			proposition->authority_id,
+			proposition->subject,
+			proposition->classifier,
+			&classifier_level,
+			0
+		);
+		int status = collect_universe_term_constraints(
+			db,
+			terms,
+			proposition->subject,
+			proposition->classifier,
+			claim_id,
+			derivation_id,
+			proposition->authority_kind,
+			proposition->authority_id
+		);
+		const char* failed_stage = "term";
+		if (status == 0) {
+			failed_stage = "pi";
+			status = collect_pi_constraints(
+				db, terms, judgement, claim_id, derivation_id, relation, proof
+			);
+		}
+		if (status == 0) {
+			failed_stage = "match";
+			status = collect_match_branch_constraints(
+				db, terms, operations, judgement, claim_id, derivation_id,
+				relation, proof
+			);
+		}
+		if (status == 0) {
+			failed_stage = "app";
+			status = collect_app_elim_cumulativity_constraint(
+				db, terms, judgement, claim_id, derivation_id, relation, proof
+			);
+		}
+		if (status == 0) {
+			failed_stage = "expected-type";
+			status = collect_expected_type_exposure_constraints(
+				db, terms, judgement, claim_id, derivation_id, relation, proof
+			);
+		}
+		if (status == 0 && db->constraint_count > first_constraint) {
+			failed_stage = "span";
+			status = prototype_universe_add_obligation_span(
+				db, claim_id, derivation_id, first_constraint
+			);
+		}
+		if (status != 0) {
+			fprintf(
+				stderr,
+				"universe obligation reconstruction failed claim=%u derivation=%u proof=%d stage=%s spans=%zu/%zu constraints=%zu/%zu\n",
 				claim_id,
-				proposition->authority_kind,
-				proposition->authority_id
-			) != 0 ||
-			collect_pi_constraints(
-				db, terms, judgement, claim_id, relation, proof
-			) != 0 ||
-			collect_match_branch_constraints(
-				db, terms, operations, judgement, claim_id, relation, proof
-			) != 0 ||
-			collect_app_elim_cumulativity_constraint(
-				db, terms, judgement, claim_id, relation, proof
-			) != 0 ||
-			collect_expected_type_exposure_constraints(
-				db, terms, judgement, claim_id, relation, proof
-			) != 0) {
+				derivation_id,
+				proof->proof_kind,
+				failed_stage,
+				db->obligation_span_count,
+				db->obligation_span_capacity,
+				db->constraint_count,
+				db->constraint_capacity
+			);
 			return -1;
 		}
 	}
 	return 0;
 }
 
-int prototype_universe_collect(
+int prototype_universe_reconstruct_obligations(
 	struct prototype_universe_db* db,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
@@ -715,23 +774,50 @@ int prototype_universe_collect(
 		}
 	}
 
-	if (prototype_universe_solve(db) != 0) {
-		fprintf(stderr, "universe collection constraint solver failed\n");
-		return -1;
-	}
-	if (prototype_universe_validate_provenance(db, judgement) != 0) {
-		fprintf(stderr, "universe collection provenance validation failed\n");
-		return -1;
-	}
 	return 0;
 }
 
-int prototype_universe_validate_provenance(
+static int prototype_universe_validate_obligations(
 	const struct prototype_universe_db* db,
 	const struct prototype_judgement_db* judgement
 ) {
 	if (!db || !judgement) {
 		return -1;
+	}
+	uint8_t* covered_derivations = calloc(
+		judgement->derivation_count ? judgement->derivation_count : 1,
+		sizeof(*covered_derivations)
+	);
+	if (!covered_derivations) {
+		return -1;
+	}
+	int status = -1;
+	for (size_t i = 0; i < db->obligation_span_count; ++i) {
+		const struct prototype_universe_obligation_span* span =
+			&db->obligation_spans[i];
+		if (span->source_claim_id >= judgement->claim_count ||
+			span->source_derivation_id >= judgement->derivation_count ||
+			span->first_constraint > db->constraint_count ||
+			span->constraint_count >
+				db->constraint_count - span->first_constraint ||
+			covered_derivations[span->source_derivation_id]) {
+			goto out;
+		}
+		const struct prototype_judgement_derivation* derivation =
+			&judgement->derivations[span->source_derivation_id];
+		if (derivation->conclusion_claim_id != span->source_claim_id) {
+			goto out;
+		}
+		covered_derivations[span->source_derivation_id] = 1;
+		for (uint32_t j = 0; j < span->constraint_count; ++j) {
+			const struct prototype_universe_constraint* constraint =
+				&db->constraints[span->first_constraint + j];
+			if (constraint->source_claim_id != span->source_claim_id ||
+				constraint->source_derivation_id !=
+					span->source_derivation_id) {
+				goto out;
+			}
+		}
 	}
 	for (size_t i = 0; i < db->constraint_count; ++i) {
 		const struct prototype_universe_constraint* constraint =
@@ -743,16 +829,20 @@ int prototype_universe_validate_provenance(
 			constraint->source_authority_kind ==
 				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID) {
 			fprintf(stderr, "invalid universe provenance header constraint=%zu\n", i);
-			return -1;
+			goto out;
 		}
 		if (constraint->source_claim_id == PROTOTYPE_INVALID_ID) {
 			if (constraint->source_authority_kind !=
 					PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER ||
 				constraint->source_authority_id == PROTOTYPE_INVALID_ID) {
 				fprintf(stderr, "invalid helper universe provenance constraint=%zu\n", i);
-				return -1;
+				goto out;
 			}
 			continue;
+		}
+		if (constraint->source_derivation_id >= judgement->derivation_count ||
+			!covered_derivations[constraint->source_derivation_id]) {
+			goto out;
 		}
 			const struct prototype_judgement_claim* claim =
 				prototype_judgement_claim_get(
@@ -765,7 +855,7 @@ int prototype_universe_validate_provenance(
 					i,
 					constraint->source_claim_id
 				);
-				return -1;
+				goto out;
 			}
 			const struct prototype_judgement_proposition* proposition =
 				prototype_judgement_proposition_get(judgement, claim->proposition_id);
@@ -794,8 +884,162 @@ int prototype_universe_validate_provenance(
 					constraint->source_classifier,
 					claim->closure_rank
 				);
-				return -1;
+				goto out;
 		}
 	}
+	status = 0;
+out:
+	free(covered_derivations);
+	return status;
+}
+
+int prototype_universe_close_program(
+	struct prototype_universe_db* db,
+	const struct prototype_judgement_db* judgement
+) {
+	if (prototype_universe_validate_obligations(db, judgement) != 0 ||
+		prototype_universe_close(db) != 0) {
+		return -1;
+	}
 	return 0;
+}
+
+int prototype_universe_build_closed(
+	struct prototype_universe_db* db,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_db* terms,
+	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_db* judgement
+) {
+	return prototype_universe_reconstruct_obligations(
+			db, type_declarations, terms, operations, judgement
+		) == 0 ? prototype_universe_close_program(db, judgement) : -1;
+}
+
+static int universe_constraint_equal(
+	const struct prototype_universe_constraint* left,
+	const struct prototype_universe_constraint* right
+) {
+	return left->lower_level_var == right->lower_level_var &&
+		left->upper_level_var == right->upper_level_var &&
+		left->offset == right->offset && left->subject == right->subject &&
+		left->classifier == right->classifier && left->reason == right->reason &&
+		left->source_claim_id == right->source_claim_id &&
+		left->source_derivation_id == right->source_derivation_id &&
+		left->source_authority_kind == right->source_authority_kind &&
+		left->source_authority_id == right->source_authority_id &&
+		left->source_subject == right->source_subject &&
+		left->source_classifier == right->source_classifier;
+}
+
+int prototype_universe_validate_replay(
+	const struct prototype_universe_db* db,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_db* terms,
+	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_db* judgement
+) {
+	if (!db || !type_declarations || !terms || !judgement ||
+		db->certificate.state != PROTOTYPE_UNIVERSE_CERTIFICATE_CLOSED) {
+		return -1;
+	}
+	struct prototype_universe_node* nodes = calloc(
+		db->node_capacity ? db->node_capacity : 1, sizeof(*nodes)
+	);
+	struct prototype_universe_edge* edges = calloc(
+		db->edge_capacity ? db->edge_capacity : 1, sizeof(*edges)
+	);
+	struct prototype_universe_level* levels = calloc(
+		db->level_capacity ? db->level_capacity : 1, sizeof(*levels)
+	);
+	struct prototype_universe_constraint* constraints = calloc(
+		db->constraint_capacity ? db->constraint_capacity : 1,
+		sizeof(*constraints)
+	);
+	struct prototype_universe_obligation_span* spans = calloc(
+		db->obligation_span_capacity ? db->obligation_span_capacity : 1,
+		sizeof(*spans)
+	);
+	if (!nodes || !edges || !levels || !constraints || !spans) {
+		free(nodes);
+		free(edges);
+		free(levels);
+		free(constraints);
+		free(spans);
+		return -1;
+	}
+	struct prototype_universe_db rebuilt;
+	prototype_universe_db_init(
+		&rebuilt,
+		nodes,
+		db->node_capacity,
+		edges,
+		db->edge_capacity,
+		levels,
+		db->level_capacity,
+		constraints,
+		db->constraint_capacity,
+		spans,
+		db->obligation_span_capacity
+	);
+	int status = prototype_universe_build_closed(
+		&rebuilt, type_declarations, terms, operations, judgement
+	);
+	if (status == 0 &&
+		(rebuilt.node_count != db->node_count ||
+		 rebuilt.edge_count != db->edge_count ||
+		 rebuilt.level_count != db->level_count ||
+		 rebuilt.constraint_count != db->constraint_count ||
+		 rebuilt.obligation_span_count != db->obligation_span_count ||
+		 !prototype_universe_certificate_equal(
+			&rebuilt.certificate, &db->certificate
+		))) {
+		status = -1;
+	}
+	for (size_t i = 0; status == 0 && i < db->node_count; ++i) {
+		if (rebuilt.nodes[i].tag != db->nodes[i].tag ||
+			rebuilt.nodes[i].type_id != db->nodes[i].type_id ||
+			rebuilt.nodes[i].parameter_id != db->nodes[i].parameter_id ||
+			rebuilt.nodes[i].type_expr != db->nodes[i].type_expr) {
+			status = -1;
+		}
+	}
+	for (size_t i = 0; status == 0 && i < db->edge_count; ++i) {
+		if (rebuilt.edges[i].tag != db->edges[i].tag ||
+			rebuilt.edges[i].from_node != db->edges[i].from_node ||
+			rebuilt.edges[i].to_node != db->edges[i].to_node) {
+			status = -1;
+		}
+	}
+	for (size_t i = 0; status == 0 && i < db->level_count; ++i) {
+		if (rebuilt.levels[i].level_var != db->levels[i].level_var ||
+			rebuilt.levels[i].value != db->levels[i].value) {
+			status = -1;
+		}
+	}
+	for (size_t i = 0; status == 0 && i < db->constraint_count; ++i) {
+		if (!universe_constraint_equal(
+				&rebuilt.constraints[i], &db->constraints[i]
+			)) {
+			status = -1;
+		}
+	}
+	for (size_t i = 0; status == 0 && i < db->obligation_span_count; ++i) {
+		const struct prototype_universe_obligation_span* left =
+			&rebuilt.obligation_spans[i];
+		const struct prototype_universe_obligation_span* right =
+			&db->obligation_spans[i];
+		if (left->source_claim_id != right->source_claim_id ||
+			left->source_derivation_id != right->source_derivation_id ||
+			left->first_constraint != right->first_constraint ||
+			left->constraint_count != right->constraint_count) {
+			status = -1;
+		}
+	}
+	free(nodes);
+	free(edges);
+	free(levels);
+	free(constraints);
+	free(spans);
+	return status;
 }

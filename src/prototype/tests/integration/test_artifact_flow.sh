@@ -181,8 +181,8 @@ grep -q '^source-exports-normalization-equal natMain natExpected mode=default ye
 	--write-artifact "$TMP_DIR/identity-no-type-instance-cache.apo" \
 	"$TMP_DIR/identity.p"
 cmp "$TMP_DIR/identity.apo" "$TMP_DIR/identity-no-type-instance-cache.apo"
-grep -q '^A_PROGRAM_ARTIFACT 84 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v84.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 85 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v85.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
 grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
@@ -274,10 +274,10 @@ if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 84/A_PROGRAM_ARTIFACT 83/' \
+sed '1s/A_PROGRAM_ARTIFACT 85/A_PROGRAM_ARTIFACT 84/' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v79.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-v79.apo" >"$TMP_DIR/identity-v79.out" 2>"$TMP_DIR/identity-v79.err"; then
-	echo "obsolete artifact unexpectedly passed at the v84 version boundary" >&2
+	echo "obsolete artifact unexpectedly passed at the v85 version boundary" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -382,10 +382,10 @@ awk '
 		next
 	}
 	FNR == NR && $1 == "universe_constraint" && !source_found {
-		source_authority_kind = $10
-		source_authority_id = $11
-		source_subject = $12
-		source_classifier = $13
+		source_authority_kind = $11
+		source_authority_id = $12
+		source_subject = $13
+		source_classifier = $14
 		source_found = 1
 		next
 	}
@@ -419,6 +419,92 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-universe-reason.apo" 
 	>"$TMP_DIR/identity-unknown-universe-reason.out" \
 	2>"$TMP_DIR/identity-unknown-universe-reason.err"; then
 	echo "Universe constraint accepted an unknown provenance reason" >&2
+	exit 1
+fi
+awk '
+	$1 == "universe_constraint" && !done {
+		$4 = $3
+		$5 = 1
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-universe-positive-cycle.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-universe-positive-cycle.apo" \
+	>"$TMP_DIR/identity-universe-positive-cycle.out" \
+	2>"$TMP_DIR/identity-universe-positive-cycle.err"; then
+	echo "Universe replay accepted a positive self-cycle" >&2
+	exit 1
+fi
+awk '
+	$1 == "universe_level" && !done {
+		$4 += 100
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-wrong-universe-level.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-wrong-universe-level.apo" \
+	>"$TMP_DIR/identity-wrong-universe-level.out" \
+	2>"$TMP_DIR/identity-wrong-universe-level.err"; then
+	echo "Universe replay accepted a forged numerical level" >&2
+	exit 1
+fi
+awk '
+	$1 == "counts" && $2 == "node_slots" {
+		for (i = 1; i <= NF; ++i) {
+			if ($i == "certificate_state") {
+				$(i + 1) = 0
+				done = 1
+			}
+		}
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-unsolved-universe.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-unsolved-universe.apo" \
+	>"$TMP_DIR/identity-unsolved-universe.out" \
+	2>"$TMP_DIR/identity-unsolved-universe.err"; then
+	echo "Universe replay accepted an unclosed solution" >&2
+	exit 1
+fi
+awk '
+	$1 == "universe_certificate" && !done {
+		$2 += 1
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-forged-universe-fingerprint.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-forged-universe-fingerprint.apo" \
+	>"$TMP_DIR/identity-forged-universe-fingerprint.out" 2>&1; then
+	echo "Universe replay accepted a forged closure fingerprint" >&2
+	exit 1
+fi
+awk '
+	$1 == "universe_certificate" && !done {
+		$4 += 1
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-forged-universe-count.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-forged-universe-count.apo" \
+	>"$TMP_DIR/identity-forged-universe-count.out" 2>&1; then
+	echo "Universe replay accepted a forged certificate constraint count" >&2
+	exit 1
+fi
+awk '
+	$1 == "universe_obligation" && !done {
+		$4 = 4294967295
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-forged-universe-coverage.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-forged-universe-coverage.apo" \
+	>"$TMP_DIR/identity-forged-universe-coverage.out" 2>&1; then
+	echo "Universe replay accepted forged Derivation coverage" >&2
 	exit 1
 fi
 grep -q '^term identityBool .* namespace identity occurrence [0-9][0-9]* evidence 1 [0-9][0-9]* 0$' "$TMP_DIR/identity.apo"
@@ -993,7 +1079,7 @@ p2 := (Sigma2 Nat ConstNat).mk Nat.zero Nat.zero;
 EOF_DEPENDENT_CONSTRUCTOR_SHAPE_KEY
 
 ./read_file.out "$TMP_DIR/dependent-constructor-shape-key.p" >"$TMP_DIR/dependent-constructor-shape-key.out"
-grep -Eq '^universe-levels=[0-9]+ universe-constraints=[0-9]+ solved=yes$' \
+grep -Eq '^universe-levels=[0-9]+ universe-constraints=[0-9]+ certificate=closed$' \
 	"$TMP_DIR/dependent-constructor-shape-key.out"
 sigma_key=$(awk '/interface type Sigma / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")
 sigma2_key=$(awk '/interface type Sigma2 / { sub("representation_fingerprint=", "", $7); print $7 }' "$TMP_DIR/dependent-constructor-shape-key.out")

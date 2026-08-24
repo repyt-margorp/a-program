@@ -56,6 +56,12 @@ awk '
 	FNR != NR && $1 == "derivation" {
 		$2 = maximum_derivation_id - $2
 	}
+	FNR != NR && $1 == "universe_constraint" {
+		$10 = maximum_derivation_id - $10
+	}
+	FNR != NR && $1 == "universe_obligation" {
+		$4 = maximum_derivation_id - $4
+	}
 	FNR != NR { print }
 ' "$TMP_DIR/original.apo" "$TMP_DIR/original.apo" \
 	>"$TMP_DIR/reversed-derivations.apo"
@@ -146,9 +152,8 @@ if ./read_file.out --read-graph "$TMP_DIR/forged-context-weaken.apo" \
 	exit 1
 fi
 
-# Equal numerical Universe edges retain separate exact source Claims. The two
-# identity exports share erased Core and classifier terms, but their Operation
-# authorities remain distinct.
+# Serialized Universe constraints are checked projections. Injecting another
+# numerically equal edge is rejected even when it cites an accepted Claim.
 ./read_file.out --write-artifact "$TMP_DIR/shared-core.apo" \
 	src/prototype/tests/fixtures/artifact/shared_core_universe_provenance_check.p \
 	>"$TMP_DIR/shared-core.out"
@@ -165,85 +170,27 @@ id2_claim=$(awk '
 test -n "$id1_claim"
 test -n "$id2_claim"
 test "$id1_claim" != "$id2_claim"
-awk -v id1_claim="$id1_claim" -v id2_claim="$id2_claim" '
-	FNR == NR && $1 == "proposition" {
-		authority_kind[$2] = $4
-		authority_id[$2] = $5
-		subject[$2] = $8
-		classifier[$2] = $9
-		next
-	}
-	FNR == NR && $1 == "claim" {
-		claim_proposition[$2] = $4
-		next
-	}
-	FNR != NR && $1 == "SECTION" && $2 == "universe" {
-		in_universe = 1
-		print
-		next
-	}
-	FNR != NR && in_universe && $1 == "counts" {
-		$13 = $13 + 1
-		print
-		next
-	}
-	FNR != NR && $1 == "universe_constraints" {
-		$2 = $2 + 1
-		print
-		next
-	}
-	FNR != NR && $1 == "END" && $2 == "universe" {
-		in_universe = 0
-		print
-		next
-	}
-	FNR != NR && $1 == "universe_constraint" && !done {
-		id1_proposition = claim_proposition[id1_claim]
-		id2_proposition = claim_proposition[id2_claim]
-		$9 = id1_claim
-		$10 = authority_kind[id1_proposition]
-		$11 = authority_id[id1_proposition]
-		$12 = subject[id1_proposition]
-		$13 = classifier[id1_proposition]
-		print
-		$2 = $2 + 1
-		$9 = id2_claim
-		$10 = authority_kind[id2_proposition]
-		$11 = authority_id[id2_proposition]
-		$12 = subject[id2_proposition]
-		$13 = classifier[id2_proposition]
-		print
-		done = 1
-		next
-	}
-	FNR != NR { print }
-	END { if (!done) exit 1 }
-' "$TMP_DIR/shared-core.apo" "$TMP_DIR/shared-core.apo" \
-	>"$TMP_DIR/two-provenances.apo"
-# Readback validates and retains both provenance records. Aggregation is not
-# used here because it intentionally recollects constraints from the accepted
-# proof graph instead of preserving injected serialized constraints.
-./read_file.out --read-graph "$TMP_DIR/two-provenances.apo" \
-	>"$TMP_DIR/two-provenances-read.out"
-grep -q 'universe_constraints=2' "$TMP_DIR/two-provenances-read.out"
 awk '
-	$1 == "universe_constraint" {
-		numerical = $3 SUBSEP $4 SUBSEP $5
-		count[numerical]++
-		source[numerical SUBSEP $9] = 1
+	$1 == "SECTION" && $2 == "universe" { in_universe = 1 }
+	in_universe && $1 == "counts" {
+		$13 = $13 + 1
 	}
-	END {
-		for (key in count) {
-			if (count[key] != 2) continue
-			source_count = 0
-			for (entry in source) {
-				split(entry, parts, SUBSEP)
-				if (parts[1] SUBSEP parts[2] SUBSEP parts[3] == key) source_count++
-			}
-			if (source_count == 2) found = 1
-		}
-		if (!found) exit 1
+	in_universe && $1 == "universe_constraints" {
+		$2 = $2 + 1
 	}
-' "$TMP_DIR/two-provenances.apo"
+	in_universe && $1 == "universe_constraint" && !done {
+		print
+		$2 = $2 + 1
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/shared-core.apo" \
+	>"$TMP_DIR/two-provenances.apo"
+if ./read_file.out --read-graph "$TMP_DIR/two-provenances.apo" \
+		>"$TMP_DIR/two-provenances-read.out" 2>&1; then
+	echo "artifact accepted an injected Universe constraint projection" >&2
+	exit 1
+fi
 
 printf '%s\n' "P0 certificate boundary tests passed"

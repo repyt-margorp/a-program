@@ -37,7 +37,7 @@ Implemented in the prototype:
   function executions, plus `#.Terminates` evidence for accepted total
   computation classifiers; these proofs do not extend DefEq or make `::`
   synthesize types;
-- artifact v84, namespace-qualified interfaces, relocation, linking,
+- artifact v85, namespace-qualified interfaces, relocation, linking,
   aggregation, and backend capability checks;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
@@ -457,7 +457,7 @@ this elaboration boundary.
 
 ## Artifacts and Linking
 
-Artifact format v84 serializes the dense reachable accepted or explicitly
+Artifact format v85 serializes the dense reachable accepted or explicitly
 conditional object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
@@ -478,7 +478,7 @@ binders/contexts/terms, preserves typed export identity, and may share
 alpha-equivalent Core representatives without merging the exports.
 
 The exact current wire and semantic contract is
-[`src/prototype/spec/artifact_v84.schema`](src/prototype/spec/artifact_v84.schema).
+[`src/prototype/spec/artifact_v85.schema`](src/prototype/spec/artifact_v85.schema).
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v6.schema`](src/prototype/spec/hott_fragment_v6.schema).
 

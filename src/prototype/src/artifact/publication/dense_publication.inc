@@ -28,6 +28,7 @@ struct artifact_closure_graph {
 	struct prototype_universe_edge* universe_edges;
 	struct prototype_universe_level* universe_levels;
 	struct prototype_universe_constraint* universe_constraints;
+	struct prototype_universe_obligation_span* universe_obligation_spans;
 	uint32_t* term_order;
 	uint32_t* case_order;
 	uint32_t* case_binder_order;
@@ -122,6 +123,7 @@ static void artifact_closure_graph_free(struct artifact_closure_graph* graph) {
 	free(graph->universe_edges);
 	free(graph->universe_levels);
 	free(graph->universe_constraints);
+	free(graph->universe_obligation_spans);
 	free(graph->term_order);
 	free(graph->case_order);
 	free(graph->case_binder_order);
@@ -1032,6 +1034,10 @@ static int artifact_closure_graph_alloc(
 			(void**)&graph->universe_constraints,
 			universe->constraint_count,
 			sizeof(*graph->universe_constraints)
+		) != 0 || artifact_alloc_bytes(
+			(void**)&graph->universe_obligation_spans,
+			universe->obligation_span_count,
+			sizeof(*graph->universe_obligation_spans)
 		) != 0) {
 		artifact_closure_graph_free(graph);
 		return -1;
@@ -1093,7 +1099,9 @@ static int artifact_closure_graph_alloc(
 		graph->universe_levels,
 		universe->level_count,
 		graph->universe_constraints,
-		universe->constraint_count
+		universe->constraint_count,
+		graph->universe_obligation_spans,
+		universe->obligation_span_count
 	);
 	graph->terms.term_count = terms->term_count;
 	graph->terms.case_count = terms->case_count;
@@ -1114,7 +1122,8 @@ static int artifact_closure_graph_alloc(
 	graph->universe.edge_count = universe->edge_count;
 	graph->universe.level_count = universe->level_count;
 	graph->universe.constraint_count = 0;
-	graph->universe.solved = universe->solved;
+	graph->universe.obligation_span_count = 0;
+	graph->universe.certificate = universe->certificate;
 	artifact_init_closure_defaults(graph);
 	return 0;
 }
@@ -1319,7 +1328,8 @@ static int artifact_closure_graph_copy_marked(
 			graph->universe.constraints[graph->universe.constraint_count++] = *constraint;
 		}
 	}
-	graph->universe.solved = universe->solved;
+	graph->universe.obligation_span_count = 0;
+	memset(&graph->universe.certificate, 0, sizeof(graph->universe.certificate));
 	return 0;
 }
 
@@ -1404,7 +1414,8 @@ static void artifact_reset_object_graph_for_publication(
 	graph->universe.edge_count = 0;
 	graph->universe.level_count = 0;
 	graph->universe.constraint_count = 0;
-	graph->universe.solved = 0;
+	graph->universe.obligation_span_count = 0;
+	memset(&graph->universe.certificate, 0, sizeof(graph->universe.certificate));
 }
 
 static int artifact_publication_metadata_relocate(
@@ -1841,10 +1852,12 @@ static int artifact_publication_graph_alloc(
 			&closure->judgement,
 			&(struct prototype_universe_db){
 				.node_count = PROTOTYPE_UNIVERSE_NODE_CAPACITY,
-				.edge_count = PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
-				.level_count = PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
-				.constraint_count = PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY
-			}
+					.edge_count = PROTOTYPE_UNIVERSE_EDGE_CAPACITY,
+					.level_count = PROTOTYPE_UNIVERSE_LEVEL_CAPACITY,
+					.constraint_count = PROTOTYPE_UNIVERSE_CONSTRAINT_CAPACITY,
+					.obligation_span_count =
+						PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY
+				}
 		) != 0) {
 		artifact_publication_graph_free(publication);
 		return -1;
@@ -1923,7 +1936,7 @@ static int artifact_publication_universe_relocate(
 	}
 	struct prototype_typed_occurrence_graph* occurrences =
 		prototype_compile_metadata_typed_occurrences(&publication->metadata);
-	if (prototype_universe_collect(
+	if (prototype_universe_build_closed(
 		&publication->object.universe,
 		&publication->object.type_declarations,
 		&publication->object.terms,

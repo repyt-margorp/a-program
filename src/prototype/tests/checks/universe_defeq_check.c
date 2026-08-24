@@ -4,6 +4,7 @@
 #include "a_program/kernel/judgement/rules.h"
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
+#include "a_program/kernel/universe.h"
 
 #include <stdint.h>
 
@@ -31,6 +32,11 @@ static struct prototype_type_parameter_declaration parameter_declarations[PARAME
 static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
 static struct prototype_type_representation type_representations[TYPE_CAPACITY];
+static struct prototype_universe_node universe_nodes[2];
+static struct prototype_universe_edge universe_edges[2];
+static struct prototype_universe_level universe_levels[2];
+static struct prototype_universe_constraint universe_constraints[2];
+static struct prototype_universe_obligation_span universe_obligations[2];
 
 int main(void) {
 	struct prototype_term_db term_db;
@@ -81,6 +87,40 @@ int main(void) {
 	if ((prototype_judgement_classifier_conversion(
 			&term_db, &type_db, universe_u, universe_v
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
+		return 1;
+	}
+	struct prototype_universe_db universe_db;
+	prototype_universe_db_init(
+		&universe_db,
+		universe_nodes,
+		2,
+		universe_edges,
+		2,
+		universe_levels,
+		2,
+		universe_constraints,
+		2,
+		universe_obligations,
+		2
+	);
+	uint32_t level_index;
+	if (prototype_universe_ensure_level(&universe_db, 7, &level_index) != 0 ||
+		prototype_universe_add_constraint(
+			&universe_db,
+			7,
+			7,
+			1,
+			universe_u,
+			universe_u,
+			PROTOTYPE_UNIVERSE_CONSTRAINT_REASON_TERM_LEVEL_SUCCESSOR,
+			0,
+			0,
+			PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
+			0,
+			universe_u,
+			universe_u
+		) != 0 || prototype_universe_close(&universe_db) == 0 ||
+		universe_db.certificate.state == PROTOTYPE_UNIVERSE_CERTIFICATE_CLOSED) {
 		return 1;
 	}
 	return 0;

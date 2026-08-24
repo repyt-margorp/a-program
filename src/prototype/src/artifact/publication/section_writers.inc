@@ -1260,14 +1260,15 @@ static int write_artifact_universe_section(
 	}
 	fprintf(
 		stream,
-		"counts node_slots %zu nodes %zu edge_slots %zu edges %zu levels %zu constraints %zu solved %d\n",
+		"counts node_slots %zu nodes %zu edge_slots %zu edges %zu levels %zu constraints %zu obligations %zu certificate_state %d\n",
 		universe->node_count,
 		present_node_count,
 		universe->edge_count,
 		present_edge_count,
 		universe->level_count,
 		universe->constraint_count,
-		universe->solved
+		universe->obligation_span_count,
+		universe->certificate.state
 	);
 	fprintf(stream, "universe_nodes %zu\n", present_node_count);
 	for (size_t i = 0; i < universe->node_count; ++i) {
@@ -1317,7 +1318,7 @@ static int write_artifact_universe_section(
 		const struct prototype_universe_constraint* constraint = &universe->constraints[i];
 		fprintf(
 			stream,
-			"universe_constraint %zu %u %u %d %u %u %d %u %d %u %u %u\n",
+			"universe_constraint %zu %u %u %d %u %u %d %u %u %d %u %u %u\n",
 			i,
 			constraint->lower_level_var,
 			constraint->upper_level_var,
@@ -1326,12 +1327,40 @@ static int write_artifact_universe_section(
 			constraint->classifier,
 			constraint->reason,
 			constraint->source_claim_id,
+			constraint->source_derivation_id,
 			constraint->source_authority_kind,
 			constraint->source_authority_id,
 			constraint->source_subject,
 			constraint->source_classifier
 		);
 	}
+	fprintf(
+		stream,
+		"universe_obligations %zu\n",
+		universe->obligation_span_count
+	);
+	for (size_t i = 0; i < universe->obligation_span_count; ++i) {
+		const struct prototype_universe_obligation_span* span =
+			&universe->obligation_spans[i];
+		fprintf(
+			stream,
+			"universe_obligation %zu %u %u %u %u\n",
+			i,
+			span->source_claim_id,
+			span->source_derivation_id,
+			span->first_constraint,
+			span->constraint_count
+		);
+	}
+	fprintf(
+		stream,
+		"universe_certificate %" PRIu64 " %" PRIu64 " %u %u %d\n",
+		universe->certificate.constraint_fingerprint,
+		universe->certificate.solution_fingerprint,
+		universe->certificate.constraint_count,
+		universe->certificate.level_count,
+		universe->certificate.state
+	);
 	fprintf(stream, "END universe\n");
 	return 0;
 }

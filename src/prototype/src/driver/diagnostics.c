@@ -380,7 +380,14 @@ void prototype_diagnostic_print_universe_graph(
 		const char* tag = edge->tag == PROTOTYPE_UNIVERSE_EDGE_PARAMETER_TO_TYPE ? "parameter-to-type" : "unknown";
 		fprintf(stream, "universe-edge #%zu %s #%u -> #%u\n", i, tag, edge->from_node, edge->to_node);
 	}
-	fprintf(stream, "universe-levels=%zu universe-constraints=%zu solved=%s\n", universe->level_count, universe->constraint_count, universe->solved ? "yes" : "no");
+	fprintf(
+		stream,
+		"universe-levels=%zu universe-constraints=%zu certificate=%s\n",
+		universe->level_count,
+		universe->constraint_count,
+		universe->certificate.state == PROTOTYPE_UNIVERSE_CERTIFICATE_CLOSED ?
+			"closed" : "invalid"
+	);
 	for (size_t i = 0; i < universe->level_count; ++i) {
 		fprintf(stream, "universe-level ");
 		print_universe_level(stream, universe->levels[i].level_var);
