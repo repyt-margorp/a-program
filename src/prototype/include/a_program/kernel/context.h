@@ -98,6 +98,9 @@ struct prototype_context {
 };
 
 struct prototype_context_db {
+	/* Changes only when an existing Context ID may acquire different meaning.
+	 * Interning a new immutable Context does not invalidate prior readers. */
+	uint64_t semantic_revision;
 	struct prototype_context* contexts;
 	size_t context_count;
 	size_t context_capacity;
@@ -144,6 +147,8 @@ struct prototype_substitution {
 };
 
 struct prototype_substitution_db {
+	/* Changes only at bulk replacement boundaries, not on append-only intern. */
+	uint64_t semantic_revision;
 	struct prototype_substitution* substitutions;
 	size_t substitution_count;
 	size_t substitution_capacity;
@@ -217,6 +222,11 @@ int prototype_context_contains_binding(
 	const struct prototype_context_db* db,
 	uint32_t context_id,
 	uint32_t binding_id
+);
+int prototype_context_is_ancestor(
+	const struct prototype_context_db* db,
+	uint32_t ancestor_context_id,
+	uint32_t descendant_context_id
 );
 int prototype_context_find_binding(
 	const struct prototype_context_db* db,

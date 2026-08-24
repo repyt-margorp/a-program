@@ -13,6 +13,18 @@ int prototype_judgement_db_rebuild_index(
 int prototype_judgement_delta_rebuild_candidate_index(
 	struct prototype_judgement_delta* delta
 );
+int prototype_judgement_transaction_begin(
+	const struct prototype_judgement_db* judgement,
+	struct prototype_judgement_transaction_mark* mark
+);
+int prototype_judgement_transaction_commit(
+	const struct prototype_judgement_db* judgement,
+	struct prototype_judgement_transaction_mark* mark
+);
+int prototype_judgement_transaction_rollback(
+	struct prototype_judgement_db* judgement,
+	struct prototype_judgement_transaction_mark* mark
+);
 
 enum prototype_judgement_category {
 	PROTOTYPE_JUDGEMENT_CATEGORY_INVALID = 0,

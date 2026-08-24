@@ -1066,8 +1066,23 @@ int prototype_judgement_publish_candidates(
 		fprintf(stderr, "P0 invalid publication storage\n");
 		return -1;
 	}
-	if (judgement_rebuild_claim_derivations(judgement, operations) != 0 ||
-		prototype_judgement_recompute_closure_ranks(operations, judgement) != 0) {
+	struct prototype_judgement_transaction_mark transaction;
+	if (prototype_judgement_transaction_begin(
+			judgement, &transaction
+		) != 0) {
+		return -1;
+	}
+	if (judgement_rebuild_claim_derivations(judgement, operations) != 0) {
+		return judgement_transaction_abort(judgement, &transaction);
+	}
+	if (prototype_judgement_transaction_commit(
+			judgement, &transaction
+		) != 0) {
+		return judgement_transaction_abort(judgement, &transaction);
+	}
+	if (prototype_judgement_recompute_closure_ranks(
+			operations, judgement
+		) != 0) {
 		return -1;
 	}
 	/* Claim and Derivation IDs are append-only arena handles. Artifact

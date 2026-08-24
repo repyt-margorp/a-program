@@ -125,6 +125,12 @@ int prototype_judgement_delta_expand_app(
 			&candidate_count
 		);
 	if (select_status < 0) {
+		fprintf(stderr,
+			"APP candidate collection failed context=%u subject=%u function=%u "
+			"argument=%u\n",
+			delta->current_context_id, subject, app->as.app.function,
+			app->as.app.argument
+		);
 		return -1;
 	}
 	if (select_status > 0) {
@@ -282,6 +288,12 @@ int prototype_judgement_delta_expand_app(
 				premise_evidence,
 				2
 			) != 0) {
+				fprintf(stderr,
+					"APP candidate publication failed context=%u subject=%u "
+					"candidate=%u/%u classifier=%u\n",
+					delta->current_context_id, subject, i, candidate_count,
+					candidates[i].result_classifier
+				);
 				return -1;
 			}
 		}
@@ -786,11 +798,11 @@ static int select_delta_pi_classifier_for_domain(
 				return -1;
 			}
 			if (prototype_term_effect_row_normal_form_includes(
-					&selected_effects, &candidate_effects
+					terms, &selected_effects, &candidate_effects
 				)) {
 				*selected = candidates[i];
 			} else if (!prototype_term_effect_row_normal_form_includes(
-					&candidate_effects, &selected_effects
+					terms, &candidate_effects, &selected_effects
 				)) {
 				return -1;
 			}

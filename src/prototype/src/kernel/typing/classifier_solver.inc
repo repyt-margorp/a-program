@@ -35,7 +35,7 @@ int prototype_judgement_resolve_match_constructor(
 
 	const struct prototype_type_constructor_declaration* constructor =
 		prototype_type_declaration_lookup_constructor(
-			type_declarations,
+			&type_declarations->semantic_schema,
 			type_id,
 			constructor_symbol_id
 		);
@@ -443,7 +443,9 @@ static int constructor_classifier_from_schema(
 		type_declarations->semantic_schema.constructor_declarations);
 	uint32_t classifier;
 	if (prototype_type_constructor_classifier(
-			type_declarations, delta->contexts, terms, constructor_id, &classifier
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache,
+			&type_declarations->specialization_stats, delta->contexts, terms, constructor_id, &classifier
 		) != 0) {
 		return -1;
 	}
@@ -856,7 +858,9 @@ int prototype_judgement_constructor_spine_classifier(
 
 	uint32_t residual_classifier;
 	if (prototype_type_constructor_classifier(
-			type_declarations, contexts, terms,
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache,
+			&type_declarations->specialization_stats, contexts, terms,
 			specialization.constructor_declaration_id, &residual_classifier
 		) != 0) {
 		return -1;
@@ -1488,7 +1492,8 @@ int prototype_judgement_synthesize_match_pattern_classifier(
 		return -1;
 	}
 	const struct prototype_type_constructor_declaration* constructor =
-		prototype_type_declaration_lookup_constructor(type_declarations, type_id, constructor_symbol_id);
+		prototype_type_declaration_lookup_constructor(
+			&type_declarations->semantic_schema, type_id, constructor_symbol_id);
 	if (!constructor) {
 		return -1;
 	}
@@ -1905,6 +1910,12 @@ static int collect_app_classifier_candidates_from_candidates(
 		);
 		(void)codomain_family;
 		if (status < 0) {
+			fprintf(stderr,
+				"APP function classifier normalization failed context=%u "
+				"classifier=%u function-evidence-context=%u\n",
+				context_id, function_candidates[i].classifier,
+				function_candidates[i].context_id
+			);
 			return -1;
 		}
 		if (status > 0) {
@@ -1931,6 +1942,17 @@ static int collect_app_classifier_candidates_from_candidates(
 					argument_candidates[j].classifier,
 					&result_classifier
 				) != 0) {
+				fprintf(stderr,
+					"APP codomain instantiation failed context=%u contexts=%zu/%zu "
+					"substitutions=%zu/%zu function-context=%u argument-context=%u "
+					"pi=%u argument=%u argument-classifier=%u\n",
+					context_id, contexts->context_count, contexts->context_capacity,
+					substitutions->substitution_count,
+					substitutions->substitution_capacity,
+					function_candidates[i].context_id,
+					argument_candidates[j].context_id,
+					function_pi, argument, argument_candidates[j].classifier
+				);
 				return -1;
 			}
 			int duplicate = 0;
@@ -1942,9 +1964,13 @@ static int collect_app_classifier_candidates_from_candidates(
 							type_declarations,
 							candidates[k].result_classifier,
 							result_classifier
-						),
-						&result_equal
-					) != 0) {
+					),
+					&result_equal
+				) != 0) {
+					fprintf(stderr,
+						"APP result classifier conversion undecided left=%u right=%u\n",
+						candidates[k].result_classifier, result_classifier
+					);
 					return -1;
 				}
 				if (selected_evidence_equal(
@@ -1962,6 +1988,10 @@ static int collect_app_classifier_candidates_from_candidates(
 				continue;
 			}
 			if (*p_candidate_count >= candidate_capacity) {
+				fprintf(stderr,
+					"APP classifier candidate capacity exceeded capacity=%u\n",
+					candidate_capacity
+				);
 				return -1;
 			}
 			candidates[*p_candidate_count].function_evidence = function_candidates[i];
@@ -1993,19 +2023,38 @@ static int collect_delta_app_classifier_candidates(
 	struct prototype_judgement_selected_evidence argument_candidates[32];
 	uint32_t function_candidate_count = 0;
 	uint32_t argument_candidate_count = 0;
-	if (collect_subject_evidence(
+	int function_status = collect_subject_evidence(
 			delta,
 			function,
 			function_candidates,
 			32,
 			&function_candidate_count
-		) != 0 ||
-		collect_subject_evidence(
+		);
+	int argument_status = function_status == 0 ? collect_subject_evidence(
 			delta,
 			argument,
 			argument_candidates,
 			32,
 			&argument_candidate_count
+		) : -1;
+	if (function_status != 0 || argument_status != 0) {
+		fprintf(stderr,
+			"APP subject evidence collection failed function=%u status=%d count=%u "
+			"argument=%u status=%d count=%u\n",
+			function, function_status, function_candidate_count,
+			argument, argument_status, argument_candidate_count
+		);
+		return -1;
+	}
+	if (function_candidate_count == 0 && collect_subject_evidence_internal(
+			delta, function, function_candidates, 32,
+			&function_candidate_count, 1
+		) != 0) {
+		return -1;
+	}
+	if (argument_candidate_count == 0 && collect_subject_evidence_internal(
+			delta, argument, argument_candidates, 32,
+			&argument_candidate_count, 1
 		) != 0) {
 		return -1;
 	}

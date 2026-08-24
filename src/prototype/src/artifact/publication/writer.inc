@@ -521,7 +521,7 @@ static int prototype_artifact_write_text_body(
 			export->ordinal,
 			export->readback_first_field_type,
 			export->readback_field_count,
-			export->curried_classifier_cache
+			export->constructor_classifier
 		);
 	}
 

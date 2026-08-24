@@ -1015,6 +1015,7 @@ static int normalization_cache_lookup(
 	struct prototype_term_db* db,
 	int profile,
 	uint32_t term_id,
+	uint64_t semantic_revision,
 	uint32_t* p_result
 ) {
 	if (!db || !p_result) {
@@ -1032,6 +1033,13 @@ static int normalization_cache_lookup(
 			&db->normalization_cache[i];
 		if (entry->state == PROTOTYPE_TERM_NORMALIZATION_CACHE_COMPLETE &&
 			entry->graph_revision == db->normalization_graph_revision &&
+			entry->profile == profile && entry->term_id == term_id &&
+			entry->semantic_revision != semantic_revision) {
+			db->normalization_cache_stats.semantic_revision_miss_count++;
+		}
+		if (entry->state == PROTOTYPE_TERM_NORMALIZATION_CACHE_COMPLETE &&
+			entry->graph_revision == db->normalization_graph_revision &&
+			entry->semantic_revision == semantic_revision &&
 			entry->profile == profile &&
 			entry->term_id == term_id &&
 			entry->result_term_id < db->term_count) {
@@ -1042,7 +1050,12 @@ static int normalization_cache_lookup(
 	return 0;
 }
 
-static size_t normalization_cache_bucket(int profile, uint32_t term_id) {
+static size_t normalization_cache_bucket(
+	int profile,
+	uint32_t term_id,
+	uint64_t semantic_revision
+) {
+	(void)semantic_revision;
 	uint64_t hash = (uint64_t)term_id * UINT64_C(11400714819323198485) ^
 		(uint64_t)(uint32_t)profile * UINT64_C(14029467366897019727);
 	return (size_t)hash &
@@ -1059,7 +1072,9 @@ static void normalization_cache_remove_slot(
 	}
 	const struct prototype_term_normalization_cache_entry* entry =
 		&db->normalization_cache[slot];
-	size_t bucket = normalization_cache_bucket(entry->profile, entry->term_id);
+	size_t bucket = normalization_cache_bucket(
+		entry->profile, entry->term_id, entry->semantic_revision
+	);
 	uint32_t* link = &db->normalization_cache_buckets[bucket];
 	while (*link != PROTOTYPE_INVALID_ID) {
 		if (*link == slot) {
@@ -1074,7 +1089,8 @@ static void normalization_cache_remove_slot(
 static struct prototype_term_normalization_cache_entry* normalization_cache_reserve(
 	struct prototype_term_db* db,
 	int profile,
-	uint32_t term_id
+	uint32_t term_id,
+	uint64_t semantic_revision
 ) {
 	if (!db) {
 		return NULL;
@@ -1090,13 +1106,25 @@ static struct prototype_term_normalization_cache_entry* normalization_cache_rese
 	entry->term_id = term_id;
 	entry->result_term_id = PROTOTYPE_INVALID_ID;
 	entry->graph_revision = db->normalization_graph_revision;
+	entry->semantic_revision = semantic_revision;
 	entry->profile = profile;
 	entry->state = PROTOTYPE_TERM_NORMALIZATION_CACHE_IN_PROGRESS;
-	size_t bucket = normalization_cache_bucket(profile, term_id);
+	size_t bucket = normalization_cache_bucket(
+		profile, term_id, semantic_revision
+	);
 	db->normalization_cache_next_entry[slot] =
 		db->normalization_cache_buckets[bucket];
 	db->normalization_cache_buckets[bucket] = slot;
 	return entry;
+}
+
+static uint64_t normalization_profile_semantic_revision(
+	int profile,
+	const struct prototype_type_declaration_db* type_declarations
+) {
+	return profile == PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF ||
+		!type_declarations ? 0 :
+		type_declarations->semantic_schema.semantic_revision;
 }
 
 static int constant_match_is_exhaustive(
@@ -2021,7 +2049,7 @@ static int constructor_ordinal_for_runtime_owner_label(
 	}
 	const struct prototype_type_constructor_declaration* constructor =
 		prototype_type_declaration_lookup_constructor(
-			type_declarations, type_id, label_symbol_id
+			&type_declarations->semantic_schema, type_id, label_symbol_id
 		);
 	if (!constructor) {
 		return -1;
@@ -2382,17 +2410,25 @@ int prototype_term_perform_with_options(
 			PROTOTYPE_EVALUATION_DEPTH_LIMIT
 		);
 	}
+	uint64_t semantic_revision = normalization_profile_semantic_revision(
+		profile, type_declarations
+	);
 
 	uint32_t cached;
-	if (normalization_cache_lookup(db, profile, term_id, &cached)) {
+	if (normalization_cache_lookup(
+			db, profile, term_id, semantic_revision, &cached
+		)) {
 		db->normalization_cache_stats.hit_count++;
 		*p_ret = cached;
 		return 0;
 	}
 	db->normalization_cache_stats.miss_count++;
 	struct prototype_term_normalization_cache_entry* entry =
-		normalization_cache_reserve(db, profile, term_id);
+		normalization_cache_reserve(
+			db, profile, term_id, semantic_revision
+		);
 	uint64_t entry_revision = db ? db->normalization_graph_revision : 0;
+	uint64_t entry_semantic_revision = semantic_revision;
 	int status = evaluate_steps(
 		db,
 		type_declarations,
@@ -2405,7 +2441,11 @@ int prototype_term_perform_with_options(
 	if (!entry) {
 		return status;
 	}
+	uint64_t final_semantic_revision = normalization_profile_semantic_revision(
+		profile, type_declarations
+	);
 	if (status == 0 && db && entry_revision == db->normalization_graph_revision &&
+		entry_semantic_revision == final_semantic_revision &&
 		(!options.p_normalization_status ||
 			*options.p_normalization_status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE)) {
 		entry->result_term_id = *p_ret;

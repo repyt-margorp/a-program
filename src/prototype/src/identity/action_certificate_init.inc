@@ -22,6 +22,45 @@ void prototype_hott_action_db_init(
 	}
 }
 
+int prototype_hott_action_db_seal(
+	struct prototype_hott_action_db* db,
+	const struct prototype_kernel_view* kernel
+) {
+	if (!db || !kernel) {
+		return -1;
+	}
+	struct prototype_kernel_semantic_epoch current;
+	if (prototype_kernel_semantic_epoch_capture(kernel, &current) != 0) {
+		return -1;
+	}
+	if (!db->semantic_epoch_frozen) {
+		db->semantic_epoch = current;
+		db->semantic_epoch_frozen = 1;
+		return 0;
+	}
+	if (!prototype_kernel_semantic_epoch_matches(kernel, &db->semantic_epoch)) {
+		return -1;
+	}
+	return 0;
+}
+
+int prototype_hott_action_db_epoch_matches(
+	const struct prototype_hott_action_db* db,
+	const struct prototype_kernel_view* kernel
+) {
+	if (!db || !kernel || !db->semantic_epoch_frozen) {
+		return -1;
+	}
+	struct prototype_kernel_semantic_epoch current;
+	if (prototype_kernel_semantic_epoch_capture(kernel, &current) != 0) {
+		return -1;
+	}
+	if (!prototype_kernel_semantic_epoch_matches(kernel, &db->semantic_epoch)) {
+		return -1;
+	}
+	return 0;
+}
+
 const struct prototype_hott_action_request* prototype_hott_action_request_get(
 	const struct prototype_hott_action_db* db,
 	uint32_t request_id

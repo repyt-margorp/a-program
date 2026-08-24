@@ -108,39 +108,6 @@ int prototype_judgement_add_normalization_premise_conversions(
 	return 0;
 }
 
-static int initialize_candidate_rule_application_view(
-	const struct prototype_judgement_proposition* conclusion,
-	const struct prototype_judgement_derivation_candidate* candidate,
-	struct prototype_judgement_rule_application_view* view
-) {
-	if (!conclusion || !candidate || !view ||
-		candidate->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
-		(candidate->premise_count != 0 && !candidate->premises)) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < candidate->premise_count; ++i) {
-		if (!candidate->premises[i].proposition) {
-			return -1;
-		}
-	}
-	memset(view, 0, sizeof(*view));
-	view->proof_kind = candidate->proof_kind;
-	view->conclusion = conclusion;
-	view->rule_data = candidate->rule_data;
-	view->semantic_action_kind = candidate->semantic_action_kind;
-	view->semantic_action_id = candidate->semantic_action_id;
-	view->premise_count = candidate->premise_count;
-	for (uint32_t i = 0; i < candidate->premise_count; ++i) {
-		view->premises[i] = (struct prototype_judgement_premise_view){
-			.proposition = candidate->premises[i].proposition,
-			.semantic_action_kind =
-				candidate->premises[i].semantic_action_kind,
-			.semantic_action_id = candidate->premises[i].semantic_action_id
-		};
-	}
-	return 0;
-}
-
 static int judgement_expected_rule_view_premise_operation(
 	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_rule_application_view* view,
@@ -1273,7 +1240,7 @@ static int match_branch_classifier_satisfies_motive(
 		) == 0 && prototype_term_effect_row_normal_form(
 			terms, motive.effect_row, &motive_row
 		) == 0 && prototype_term_effect_row_normal_form_includes(
-			&motive_row, &branch_row
+			terms, &motive_row, &branch_row
 		);
 }
 
@@ -1950,43 +1917,26 @@ static int validate_solved_match_motive_proof(
 	return 0;
 }
 
-static int initialize_exact_claim_rule(
+static int initialize_exact_claim_rule_view(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_proposition* conclusion,
 	int proof_kind,
 	const uint32_t* premise_claim_ids,
 	uint32_t premise_count,
-	struct prototype_judgement_derivation_candidate* proof,
-	struct prototype_judgement_candidate_premise* proof_premises
+	struct prototype_judgement_rule_application_view* view
 ) {
-	if (!judgement || !conclusion || !proof || !proof_premises ||
+	if (!judgement || !conclusion || !view ||
 		(premise_count != 0 && !premise_claim_ids) ||
 		premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 		return -1;
 	}
-	memset(proof, 0, sizeof(*proof));
-	proof->proof_kind = proof_kind;
-	proof->conclusion_proposition_id = PROTOTYPE_INVALID_ID;
-	proof->conclusion = conclusion;
-	memset(
-		proof_premises,
-		0,
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES * sizeof(*proof_premises)
-	);
-	proof->premises = proof_premises;
-	memset(&proof->rule_data, 0xff, sizeof(proof->rule_data));
-	proof->semantic_action_kind = PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
-	proof->semantic_action_id = PROTOTYPE_INVALID_ID;
-	proof->premise_count = premise_count;
-	for (uint32_t i = 0;
-		i < PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES; ++i) {
-		proof->premises[i].proposition_store_kind =
-			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_INVALID;
-		proof->premises[i].proposition_id = PROTOTYPE_INVALID_ID;
-		proof->premises[i].semantic_action_kind =
-			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
-		proof->premises[i].semantic_action_id = PROTOTYPE_INVALID_ID;
-	}
+	memset(view, 0, sizeof(*view));
+	view->proof_kind = proof_kind;
+	view->conclusion = conclusion;
+	memset(&view->rule_data, 0xff, sizeof(view->rule_data));
+	view->semantic_action_kind = PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
+	view->semantic_action_id = PROTOTYPE_INVALID_ID;
+	view->premise_count = premise_count;
 	for (uint32_t i = 0; i < premise_count; ++i) {
 		const struct prototype_judgement_proposition* premise =
 			prototype_judgement_claim_proposition(
@@ -1995,13 +1945,12 @@ static int initialize_exact_claim_rule(
 		if (!premise) {
 			return -1;
 		}
-		proof->premises[i].proposition_id =
-			judgement->claims[premise_claim_ids[i]].proposition_id;
-		proof->premises[i].proposition_store_kind =
-			PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
-		proof->premises[i].proposition =
-			premise;
-		proof->premises[i].builder_proposition = NULL;
+		view->premises[i] = (struct prototype_judgement_premise_view) {
+			.proposition = premise,
+			.semantic_action_kind =
+				PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID,
+			.semantic_action_id = PROTOTYPE_INVALID_ID
+		};
 	}
 	return 0;
 }
@@ -2041,24 +1990,18 @@ int prototype_judgement_add_lambda_claim(
 		.subject = subject,
 		.classifier = classifier
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
-	if (!p_claim_id || initialize_exact_claim_rule(
+	if (!p_claim_id || initialize_exact_claim_rule_view(
 			judgement, &conclusion, PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO,
-			premise_ids, 2, &proof, premises
-		) != 0 || initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
+			premise_ids, 2, &view
 		) != 0 || validate_lambda_intro_proof(
 			terms, type_declarations, contexts, substitutions, NULL,
 			&conclusion, &view
 		) != 0) {
 		return -1;
 	}
-	return publish_complete_relation(
-		judgement, &conclusion, &proof, premise_ids, p_claim_id
+	return publish_accepted_rule_application(
+		judgement, &conclusion, &view, NULL, premise_ids, p_claim_id
 	);
 }
 
@@ -2083,23 +2026,17 @@ int prototype_judgement_add_app_claim(
 		.subject = subject,
 		.classifier = classifier
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
-	if (!p_claim_id || initialize_exact_claim_rule(
+	if (!p_claim_id || initialize_exact_claim_rule_view(
 			judgement, &conclusion, PROTOTYPE_JUDGEMENT_PROOF_APP_ELIM,
-			premise_ids, 2, &proof, premises
-		) != 0 || initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
+			premise_ids, 2, &view
 		) != 0 || validate_app_elim_proof(
 			terms, type_declarations, contexts, substitutions, &conclusion, &view
 		) != 0) {
 		return -1;
 	}
-	return publish_complete_relation(
-		judgement, &conclusion, &proof, premise_ids, p_claim_id
+	return publish_accepted_rule_application(
+		judgement, &conclusion, &view, NULL, premise_ids, p_claim_id
 	);
 }
 
@@ -2122,18 +2059,9 @@ static int judgement_add_unary_intro_claim(
 		.subject = subject,
 		.classifier = classifier
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
-	if (!p_claim_id || initialize_exact_claim_rule(
-			judgement, &conclusion, proof_kind, premise_ids, 1, &proof, premises
-		) != 0) {
-		return -1;
-	}
-	if (initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
+	if (!p_claim_id || initialize_exact_claim_rule_view(
+			judgement, &conclusion, proof_kind, premise_ids, 1, &view
 		) != 0) {
 		return -1;
 	}
@@ -2152,8 +2080,8 @@ static int judgement_add_unary_intro_claim(
 	} else {
 		return -1;
 	}
-	return publish_complete_relation(
-		judgement, &conclusion, &proof, premise_ids, p_claim_id
+	return publish_accepted_rule_application(
+		judgement, &conclusion, &view, NULL, premise_ids, p_claim_id
 	);
 }
 
@@ -2228,11 +2156,7 @@ int prototype_judgement_add_indexed_match_claim(
 		.subject = subject,
 		.classifier = classifier
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
 	if (!p_claim_id || (branch_claim_count != 0 && !branch_claim_ids) ||
 		branch_claim_count + 1 > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES) {
 		return -1;
@@ -2242,9 +2166,9 @@ int prototype_judgement_add_indexed_match_claim(
 	for (uint32_t i = 0; i < branch_claim_count; ++i) {
 		premise_ids[i + 1] = branch_claim_ids[i];
 	}
-	if (initialize_exact_claim_rule(
+	if (initialize_exact_claim_rule_view(
 			judgement, &conclusion, PROTOTYPE_JUDGEMENT_PROOF_MATCH_ELIM,
-			premise_ids, branch_claim_count + 1, &proof, premises
+			premise_ids, branch_claim_count + 1, &view
 		) != 0) {
 		return -1;
 	}
@@ -2257,21 +2181,19 @@ int prototype_judgement_add_indexed_match_claim(
 			)) {
 			return -1;
 		}
-		premises[i + 1].semantic_action_kind =
+		view.premises[i + 1].semantic_action_kind =
 			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_SUBSTITUTION;
-		premises[i + 1].semantic_action_id = branch_substitution_ids[i];
+		view.premises[i + 1].semantic_action_id = branch_substitution_ids[i];
 	}
-	if (initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
-		) != 0 || validate_match_elim_proof(
+	if (validate_match_elim_proof(
 			terms, type_declarations, contexts, substitutions,
 			dimension_operators,
 			judgement, &conclusion, &view
 		) != 0) {
 		return -1;
 	}
-	return publish_complete_relation(
-		judgement, &conclusion, &proof, premise_ids, p_claim_id
+	return publish_accepted_rule_application(
+		judgement, &conclusion, &view, NULL, premise_ids, p_claim_id
 	);
 }
 
@@ -2330,35 +2252,28 @@ int prototype_judgement_add_induction_hypothesis_claim(
 		.subject = subject,
 		.classifier = classifier
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
-	if (!p_claim_id || initialize_exact_claim_rule(
+	if (!p_claim_id || initialize_exact_claim_rule_view(
 			judgement,
 			&conclusion,
 			PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM,
 			NULL,
 			0,
-			&proof,
-			premises
+			&view
 		) != 0) {
 		return -1;
 	}
-	proof.rule_data.induction.match = match;
-	proof.rule_data.induction.motive = motive;
-	proof.rule_data.induction.case_index = case_index;
-	proof.rule_data.induction.field_index = field_index;
-	if (initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
-		) != 0 || validate_induction_hypothesis_elim_proof(
+	view.rule_data.induction.match = match;
+	view.rule_data.induction.motive = motive;
+	view.rule_data.induction.case_index = case_index;
+	view.rule_data.induction.field_index = field_index;
+	if (validate_induction_hypothesis_elim_proof(
 			terms, type_declarations, NULL, NULL, NULL, judgement, &conclusion, &view
 		) != 0) {
 		return -1;
 	}
-	return publish_complete_relation(
-		judgement, &conclusion, &proof, NULL, p_claim_id
+	return publish_accepted_rule_application(
+		judgement, &conclusion, &view, NULL, NULL, p_claim_id
 	);
 }
 
@@ -2747,23 +2662,17 @@ int prototype_judgement_add_conversion_claim(
 		.subject = subject,
 		.classifier = expected_classifier
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
-	if (!p_claim_id || initialize_exact_claim_rule(
+	if (!p_claim_id || initialize_exact_claim_rule_view(
 			judgement, &conclusion, PROTOTYPE_JUDGEMENT_PROOF_CONVERSION,
-			premise_ids, 1, &proof, premises
-		) != 0 || initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
+			premise_ids, 1, &view
 		) != 0 || validate_conversion_proof(
 			terms, type_declarations, &conclusion, &view
 		) != 0) {
 		return -1;
 	}
-	return publish_complete_relation(
-		judgement, &conclusion, &proof, premise_ids, p_claim_id
+	return publish_accepted_rule_application(
+		judgement, &conclusion, &view, NULL, premise_ids, p_claim_id
 	);
 }
 
@@ -2857,7 +2766,7 @@ static int occurrence_classifier_satisfies_at_depth(
 			) != 0 || prototype_term_effect_row_normal_form(
 				terms, actual_view.effect_row, &actual_row
 			) != 0 || !prototype_term_effect_row_normal_form_includes(
-				&expected_row, &actual_row
+				terms, &expected_row, &actual_row
 			) || judgement_occurrence_child(
 				operations, operation_id, PROTOTYPE_TERM_CHILD_RETURN_VALUE,
 				0, &child_occurrence
@@ -3081,7 +2990,7 @@ static int validate_effect_weaken_proof(
 		) : -1;
 	int effect_inclusion = source_effect_status == 0 && target_effect_status == 0 ?
 		prototype_term_effect_row_normal_form_includes(
-			&target_effects, &source_effects
+			terms, &target_effects, &source_effects
 		) : 0;
 	if (source_view_status != 0 || target_view_status != 0 ||
 		source.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
@@ -3671,7 +3580,7 @@ static int computation_fold_carrier_compatible(
 	 * than the fold carrier. The validator checks the exact union of all local
 	 * rows against the result row after validating these inclusions. */
 	return prototype_term_effect_row_normal_form_includes(
-		&right_effects, &left_effects
+		terms, &right_effects, &left_effects
 	);
 }
 
@@ -3999,28 +3908,21 @@ int prototype_judgement_add_force_claim(
 		.subject = subject,
 		.classifier = classifier
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
-	if (!p_claim_id || initialize_exact_claim_rule(
+	if (!p_claim_id || initialize_exact_claim_rule_view(
 			judgement,
 			&conclusion,
 			PROTOTYPE_JUDGEMENT_PROOF_FORCE_ELIM,
 			premise_ids,
 			1,
-			&proof,
-			premises
-		) != 0 || initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
+			&view
 		) != 0 || validate_force_elim_proof(
 			terms, &conclusion, &view
 		) != 0) {
 		return -1;
 	}
-	return publish_complete_relation(
-		judgement, &conclusion, &proof, premise_ids, p_claim_id
+	return publish_accepted_rule_application(
+		judgement, &conclusion, &view, NULL, premise_ids, p_claim_id
 	);
 }
 
@@ -4042,32 +3944,26 @@ int prototype_judgement_add_computation_fold_claim(
 		.subject = subject,
 		.classifier = classifier
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
 	if (!premise_claim_ids || !p_claim_id || premise_count == 0 ||
 		premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
-		initialize_exact_claim_rule(
+		initialize_exact_claim_rule_view(
 			judgement,
 			&conclusion,
 			PROTOTYPE_JUDGEMENT_PROOF_COMPUTATION_FOLD_ELIM,
 			premise_claim_ids,
 			premise_count,
-			&proof,
-			premises
-		) != 0 || initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
+			&view
 		) != 0 || validate_computation_fold_elim_proof(
 			terms, type_declarations, &conclusion, &view
 		) != 0) {
 		return -1;
 	}
-	return publish_complete_relation(
+	return publish_accepted_rule_application(
 		judgement,
 		&conclusion,
-		&proof,
+		&view,
+		NULL,
 		premise_claim_ids,
 		p_claim_id
 	);
@@ -5269,28 +5165,21 @@ int prototype_judgement_add_pi_formation_claim(
 		.subject = subject,
 		.classifier = universe
 	};
-	struct prototype_judgement_derivation_candidate proof;
 	struct prototype_judgement_rule_application_view view;
-	struct prototype_judgement_candidate_premise premises[
-		PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
-	if (!p_claim_id || initialize_exact_claim_rule(
+	if (!p_claim_id || initialize_exact_claim_rule_view(
 			judgement,
 			&conclusion,
 			PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO,
 			premise_ids,
 			3,
-			&proof,
-			premises
-		) != 0 || initialize_candidate_rule_application_view(
-			&conclusion, &proof, &view
+			&view
 		) != 0 || validate_pi_formation_intro_proof(
 			terms, &conclusion, &view
 		) != 0) {
 		return -1;
 	}
-	return publish_complete_relation(
-		judgement, &conclusion, &proof, premise_ids, p_claim_id
+	return publish_accepted_rule_application(
+		judgement, &conclusion, &view, NULL, premise_ids, p_claim_id
 	);
 }
 
@@ -7813,28 +7702,22 @@ int prototype_judgement_add_is_type_claim(
 		.subject = subject,
 		.classifier = universe
 	};
-	struct prototype_judgement_derivation_candidate derivation;
-	struct prototype_judgement_candidate_premise
-		premises[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	struct prototype_judgement_proposition
-		premise_propositions[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	memset(&derivation, 0, sizeof(derivation));
-	derivation.proof_kind = PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE;
-	initialize_proof_rule_parameters(
-		&derivation, premises, premise_propositions
-	);
-	derivation.premise_count = 1;
-	premises[0].proposition_id =
-		judgement->claims[has_type_claim_id].proposition_id;
-	premises[0].proposition_store_kind =
-		PROTOTYPE_JUDGEMENT_PROPOSITION_STORE_DB;
-	premises[0].proposition =
-		premise;
-	premises[0].builder_proposition = NULL;
-	return publish_complete_relation(
+	struct prototype_judgement_rule_application_view view;
+	if (initialize_exact_claim_rule_view(
+			judgement,
+			&proposition,
+			PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE,
+			&has_type_claim_id,
+			1,
+			&view
+		) != 0) {
+		return -1;
+	}
+	return publish_accepted_rule_application(
 		judgement,
 		&proposition,
-		&derivation,
+		&view,
+		NULL,
 		&has_type_claim_id,
 		p_claim_id
 	);

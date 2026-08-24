@@ -47,6 +47,7 @@ int main(void) {
 	struct prototype_term_db terms;
 	struct prototype_type_declaration type_storage[1];
 	struct prototype_type_constructor_declaration constructor_storage[1];
+	struct prototype_type_readback_entry type_readback_entries[1];
 	struct prototype_type_constructor_readback constructor_readbacks[1];
 	struct prototype_constructor_classifier_cache_entry constructor_caches[1];
 	struct prototype_type_parameter_declaration parameter_storage[1];
@@ -76,6 +77,8 @@ int main(void) {
 		type_storage,
 		1,
 		constructor_storage,
+		1,
+		type_readback_entries,
 		1,
 		parameter_storage,
 		1,

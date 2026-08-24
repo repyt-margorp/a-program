@@ -658,6 +658,7 @@ static int check_comprehension_action_collisions(void) {
 	struct prototype_type_declaration_db type_declarations;
 	struct prototype_type_declaration type_storage[1];
 	struct prototype_type_constructor_declaration constructor_storage[1];
+	struct prototype_type_readback_entry type_readback_entries[1];
 	struct prototype_type_constructor_readback constructor_readbacks[1];
 	struct prototype_constructor_classifier_cache_entry constructor_caches[1];
 	struct prototype_type_parameter_declaration parameter_storage[1];
@@ -688,6 +689,8 @@ static int check_comprehension_action_collisions(void) {
 		type_storage,
 		1,
 		constructor_storage,
+		1,
+		type_readback_entries,
 		1,
 		parameter_storage,
 		1,
@@ -792,6 +795,7 @@ int main(void) {
 	struct prototype_type_declaration_db type_declarations;
 	struct prototype_type_declaration type_storage[4];
 	struct prototype_type_constructor_declaration constructor_storage[4];
+	struct prototype_type_readback_entry type_readback_entries[4];
 	struct prototype_type_constructor_readback constructor_readbacks[4];
 	struct prototype_constructor_classifier_cache_entry constructor_caches[4];
 	struct prototype_type_parameter_declaration parameter_storage[4];
@@ -869,6 +873,8 @@ int main(void) {
 		4,
 		constructor_storage,
 		4,
+		type_readback_entries,
+		4,
 		parameter_storage,
 		4,
 		constructor_readbacks,
@@ -941,6 +947,19 @@ int main(void) {
 		found_context != nested_context ||
 		prototype_context_find_binding(&contexts, nested_context, 99, &found_context) != 1 ||
 		prototype_context_find_binding(&contexts, 0, 0, &found_context) != 1 ||
+		prototype_context_is_ancestor(&contexts, 0, nested_context) != 1 ||
+		prototype_context_is_ancestor(
+			&contexts, int_context, nested_context
+		) != 1 ||
+		prototype_context_is_ancestor(
+			&contexts, nested_context, nested_context
+		) != 1 ||
+		prototype_context_is_ancestor(
+			&contexts, text_context, nested_context
+		) != 0 ||
+		prototype_context_is_ancestor(
+			&contexts, nested_context, int_context
+		) != 0 ||
 		prototype_context_get(&contexts, nested_context)->depth != 2 ||
 		prototype_context_db_validate(&contexts, &term_db) != 0) {
 		fprintf(stderr, "categorical context law failed\n");

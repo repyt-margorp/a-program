@@ -4630,9 +4630,11 @@ int prototype_hott_execute_object_term_action(
 	struct prototype_substitution_db* substitutions = kernel ?
 		kernel->substitutions : NULL;
 	struct prototype_judgement_db* judgement = kernel ? kernel->judgement : NULL;
+	struct prototype_kernel_view epoch_view;
 	if (!actions || !kernel || !bridges || !terms || !types || !contexts ||
 		!substitutions || !judgement || !p_result_id ||
-		prototype_kernel_builder_validate_stores(kernel) != 0) {
+		prototype_kernel_builder_view(kernel, &epoch_view) != 0 ||
+		prototype_hott_action_db_epoch_matches(actions, &epoch_view) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(
@@ -4868,7 +4870,8 @@ static int hott_ensure_bridge_for_context(
 	if (!actions || !contexts || !substitutions || !cwf_certificates ||
 		!cwf_certificates || !bridges || !terms || !type_declarations ||
 		!judgement || !p_bridge_id || !p_residual_reason ||
-		prototype_kernel_builder_view(kernel, &view) != 0) {
+		prototype_kernel_builder_view(kernel, &view) != 0 ||
+		prototype_hott_action_db_epoch_matches(actions, &view) != 0) {
 		return -1;
 	}
 	if (hott_bridge_for_source_context_and_semantics(

@@ -491,7 +491,7 @@ int prototype_artifact_read_text_interface(
 				&export->ordinal,
 				&export->readback_first_field_type,
 				&export->readback_field_count,
-				&export->curried_classifier_cache
+				&export->constructor_classifier
 			) != 7 ||
 			strcmp(word, "constructor") != 0 ||
 			(export->readback_field_count > 0 &&
@@ -1204,6 +1204,8 @@ static int artifact_validate_type_graph_refs(
 	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
 		const struct prototype_type_declaration* type =
 			&type_declarations->semantic_schema.type_declarations[i];
+		const struct prototype_type_readback_entry* readback_entry =
+			&type_declarations->readback.type_entries[i];
 		if (!artifact_type_present(type)) {
 			continue;
 		}
@@ -1211,7 +1213,7 @@ static int artifact_validate_type_graph_refs(
 			type->formation_classifier == PROTOTYPE_INVALID_ID ||
 			!artifact_read_term_present(terms, type->formation_classifier) ||
 			!artifact_range_within(
-				type->first_parameter,
+				readback_entry->first_parameter,
 				type->parameter_count,
 				type_declarations->readback.parameter_count
 			) ||
@@ -1225,7 +1227,7 @@ static int artifact_validate_type_graph_refs(
 		for (uint32_t j = 0; j < type->parameter_count; ++j) {
 			if (!artifact_read_parameter_present(
 					type_declarations,
-					type->first_parameter + j
+					readback_entry->first_parameter + j
 				)) {
 				return -1;
 			}
@@ -1254,7 +1256,8 @@ static int artifact_validate_type_graph_refs(
 			&type_declarations->semantic_schema.constructor_declarations[i];
 		const struct prototype_constructor_classifier_cache_entry* cache =
 			prototype_type_constructor_classifier_cache_get(
-				type_declarations, (uint32_t)i
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache, (uint32_t)i
 			);
 		if (!artifact_constructor_present(constructor)) {
 			continue;
@@ -1823,7 +1826,8 @@ int prototype_artifact_read_text_graph(
 		type_declarations->semantic_schema.type_declarations[i].index_context =
 			PROTOTYPE_INVALID_ID;
 		type_declarations->semantic_schema.type_declarations[i].index_count = 0;
-		type_declarations->semantic_schema.type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
+		type_declarations->readback.type_entries[i].first_parameter =
+			PROTOTYPE_INVALID_ID;
 		type_declarations->semantic_schema.type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < parameter_slot_count; ++i) {
@@ -1913,7 +1917,8 @@ int prototype_artifact_read_text_graph(
 		type->parameter_context = parameter_context;
 		type->index_context = index_context;
 		type->index_count = index_count;
-		type->first_parameter = first_parameter;
+		type_declarations->readback.type_entries[id].first_parameter =
+			first_parameter;
 		type->parameter_count = parameter_count;
 		type->first_constructor = first_constructor;
 		type->constructor_count = constructor_count;
@@ -1964,7 +1969,7 @@ int prototype_artifact_read_text_graph(
 		uint32_t parameter_context;
 		uint32_t field_context;
 		uint32_t result_classifier;
-		uint32_t curried_classifier_cache;
+		uint32_t constructor_classifier;
 		if (fscanf(
 				stream,
 				"%255s %zu %255s %u %u %u %u %u %u %u %u %u",
@@ -1979,7 +1984,7 @@ int prototype_artifact_read_text_graph(
 				&parameter_context,
 				&field_context,
 				&result_classifier,
-				&curried_classifier_cache
+				&constructor_classifier
 			) != 12 ||
 			strcmp(word, "type_constructor") != 0 ||
 				id >= constructor_slot_count ||
@@ -1991,8 +1996,8 @@ int prototype_artifact_read_text_graph(
 					))) ||
 				(result_type != PROTOTYPE_INVALID_ID && result_type >= expr_slot_count) ||
 				result_classifier >= term_slot_count ||
-				(curried_classifier_cache != PROTOTYPE_INVALID_ID &&
-					curried_classifier_cache >= term_slot_count)) {
+				(constructor_classifier != PROTOTYPE_INVALID_ID &&
+					constructor_classifier >= term_slot_count)) {
 			return -1;
 		}
 		struct prototype_type_constructor_declaration* constructor =
@@ -2019,7 +2024,7 @@ int prototype_artifact_read_text_graph(
 		constructor->result_classifier = result_classifier;
 		type_declarations->constructor_classifier_cache.entries[id] =
 			(struct prototype_constructor_classifier_cache_entry){
-				.classifier = curried_classifier_cache,
+				.classifier = constructor_classifier,
 				.schema_revision = constructor->schema_revision
 			};
 	}
@@ -2449,7 +2454,9 @@ int prototype_artifact_read_text_graph(
 		strcmp(section_name, "graph") != 0) {
 		return -1;
 	}
-	prototype_type_declaration_db_mark_semantic_change(type_declarations);
+	prototype_type_declaration_db_mark_semantic_change(
+		&type_declarations->semantic_schema
+	);
 	return 0;
 }
 
@@ -2678,7 +2685,11 @@ int prototype_artifact_read_text_typed_occurrences(
 		graph->edge_count = 0;
 		graph->case_count = 0;
 		graph->fold_clause_count = 0;
-		metadata->effect_constraint_count = 0;
+		memset(
+			&metadata->effect_constraint_summary,
+			0,
+			sizeof(metadata->effect_constraint_summary)
+		);
 		prototype_verification_db_clear(&metadata->verification);
 	}
 	for (size_t i = 0; i < occurrence_count; ++i) {
@@ -3117,7 +3128,8 @@ int prototype_artifact_read_text_typed_occurrences(
 			return -1;
 		}
 		if (prototype_constructor_curried_caches_validate(
-				type_declarations, &metadata->contexts, terms
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache, &metadata->contexts, terms
 			) != 0) {
 			fprintf(stderr, "artifact typed-occurrence graph: constructor cache validation failed\n");
 			return -1;

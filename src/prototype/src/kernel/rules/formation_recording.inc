@@ -32,7 +32,7 @@ int prototype_judgement_delta_record_effect_weaken(
 		) != 0 || prototype_term_effect_row_normal_form(
 			terms, target.effect_row, &target_effects
 		) != 0 || !prototype_term_effect_row_normal_form_includes(
-			&target_effects, &source_effects
+			terms, &target_effects, &source_effects
 		)) {
 		return -1;
 	}

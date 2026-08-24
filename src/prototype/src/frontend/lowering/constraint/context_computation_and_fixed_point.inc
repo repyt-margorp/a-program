@@ -334,8 +334,12 @@ static int operation_solver_resolve_contexts(
 					return -1;
 				}
 				if (context->parent == lambda->context_id &&
-					lambda->binder_classifier != PROTOTYPE_INVALID_ID) {
-					classifier = lambda->binder_classifier;
+					operation_solver_binder_classifier(
+						ctx, owner->lambda_occurrence
+					) != PROTOTYPE_INVALID_ID) {
+					classifier = operation_solver_binder_classifier(
+						ctx, owner->lambda_occurrence
+					);
 					classifier_variable_resolved = 1;
 				}
 			}
@@ -635,7 +639,7 @@ static int operation_solver_resolve_contexts(
 		const struct prototype_typed_occurrence* operation =
 			&ctx->metadata->typed_occurrences.occurrences[operation_id];
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_VAR ||
-			ctx->classifier_solver.solutions[operation_id].classifier !=
+			ctx->classifier_solver.classifier_metas[operation_id].classifier !=
 				PROTOTYPE_INVALID_ID) {
 			continue;
 		}
@@ -662,7 +666,11 @@ static int operation_solver_resolve_contexts(
 		if (classifier == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
-		operation_solver_store_classifier_solution(ctx, operation_id, classifier);
+		if (operation_classifier_meta_solve(
+				ctx, operation_id, classifier
+			) != 0) {
+			return -1;
+		}
 		if (operation_solver_enqueue_dependents(ctx, operation_id) != 0) {
 			fprintf(stderr,
 				"context binder projection enqueue failed operation=%u\n",

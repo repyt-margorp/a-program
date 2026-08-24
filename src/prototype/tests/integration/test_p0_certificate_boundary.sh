@@ -42,6 +42,10 @@ if grep -q '(struct prototype_judgement_proposition\*)premise' \
 	echo 'accepted replay still casts an immutable Proposition to mutable' >&2
 	exit 1
 fi
+if grep -q 'prototype_judgement_candidate_premise' "$ACCEPTED_REPLAY"; then
+	echo 'accepted replay still declares solver-local candidate premise storage' >&2
+	exit 1
+fi
 
 # Derivation IDs are storage identities, not preferred-proof identities. Reverse
 # every accepted Derivation ID and require readback/grounding to preserve the

@@ -126,6 +126,10 @@ struct prototype_type_constructor_readback {
 	uint32_t result_type;
 };
 
+struct prototype_type_readback_entry {
+	uint32_t first_parameter;
+};
+
 struct prototype_type_constructor_declaration {
 	int name_symbol_id;
 	uint32_t owner_type;
@@ -158,9 +162,7 @@ struct prototype_type_declaration {
 	uint32_t formation_classifier;
 	/* Full telescope of type-former parameters. */
 	uint32_t parameter_context;
-	uint32_t first_parameter;
-	/* Readback/index cache; validation requires this to equal the depth of
-	 * parameter_context. Semantic parameter classifiers live in ContextDB. */
+	/* Semantic parameter classifiers live in ContextDB. */
 	uint32_t parameter_count;
 	/* The index telescope extends parameter_context. Constructors quantify
 	 * only over uniform parameters and specialize indices in their result. */
@@ -182,6 +184,8 @@ struct prototype_type_representation {
 /* Source reconstruction and diagnostics only. None of these records may be
  * consulted to validate constructor fields or result classifiers. */
 struct prototype_type_readback_db {
+	struct prototype_type_readback_entry* type_entries;
+	size_t type_entry_capacity;
 	struct prototype_type_parameter_declaration* parameter_declarations;
 	size_t parameter_count;
 	size_t parameter_capacity;
@@ -249,7 +253,7 @@ struct prototype_type_declaration_db {
 };
 
 void prototype_type_declaration_db_mark_semantic_change(
-	struct prototype_type_declaration_db* db
+	struct prototype_type_semantic_schema_db* semantic_schema
 );
 
 void prototype_type_declaration_db_init(
@@ -258,6 +262,8 @@ void prototype_type_declaration_db_init(
 	size_t type_capacity,
 	struct prototype_type_constructor_declaration* constructor_declarations,
 	size_t constructor_capacity,
+	struct prototype_type_readback_entry* type_readback_entries,
+	size_t type_readback_entry_capacity,
 	struct prototype_type_parameter_declaration* parameter_declarations,
 	size_t parameter_capacity,
 	struct prototype_type_constructor_readback* constructor_readbacks,
@@ -278,16 +284,16 @@ int prototype_type_declaration_project_reduction_environment(
 	struct prototype_term_reduction_environment* p_environment
 );
 
-int prototype_type_expr_universe(struct prototype_type_declaration_db* db, uint32_t level, uint32_t* p_ret);
-int prototype_type_expr_fresh_universe(struct prototype_type_declaration_db* db, uint32_t* p_ret);
-int prototype_type_expr_self(struct prototype_type_declaration_db* db, uint32_t* p_ret);
-int prototype_type_expr_var(struct prototype_type_declaration_db* db, uint32_t binding_id, int symbol_id, uint32_t* p_ret);
-int prototype_type_expr_name(struct prototype_type_declaration_db* db, int symbol_id, uint32_t* p_ret);
-int prototype_type_expr_primitive(struct prototype_type_declaration_db* db, int tag, uint32_t* p_ret);
-int prototype_type_expr_app(struct prototype_type_declaration_db* db, uint32_t function, uint32_t argument, uint32_t* p_ret);
-int prototype_type_expr_arrow(struct prototype_type_declaration_db* db, uint32_t domain, uint32_t codomain, uint32_t* p_ret);
+int prototype_type_expr_universe(struct prototype_type_readback_db* readback, uint32_t level, uint32_t* p_ret);
+int prototype_type_expr_fresh_universe(struct prototype_type_readback_db* readback, uint32_t* p_ret);
+int prototype_type_expr_self(struct prototype_type_readback_db* readback, uint32_t* p_ret);
+int prototype_type_expr_var(struct prototype_type_readback_db* readback, uint32_t binding_id, int symbol_id, uint32_t* p_ret);
+int prototype_type_expr_name(struct prototype_type_readback_db* readback, int symbol_id, uint32_t* p_ret);
+int prototype_type_expr_primitive(struct prototype_type_readback_db* readback, int tag, uint32_t* p_ret);
+int prototype_type_expr_app(struct prototype_type_readback_db* readback, uint32_t function, uint32_t argument, uint32_t* p_ret);
+int prototype_type_expr_arrow(struct prototype_type_readback_db* readback, uint32_t domain, uint32_t codomain, uint32_t* p_ret);
 int prototype_type_expr_pi(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	uint32_t binding_id,
 	int symbol_id,
 	uint32_t domain,
@@ -295,40 +301,44 @@ int prototype_type_expr_pi(
 	uint32_t* p_ret
 );
 int prototype_type_expr_imported_type(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	struct prototype_qualified_name name,
 	const struct prototype_type_representation_fingerprint* key,
 	uint32_t* p_ret
 );
 int prototype_type_expr_external_term(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	struct prototype_qualified_name name,
 	uint32_t* p_ret
 );
 int prototype_type_expr_local_type_member(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	int owner_symbol_id,
 	int member_symbol_id,
 	uint32_t* p_ret
 );
 int prototype_type_expr_computation_reference(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	uint32_t result,
 	uint32_t* p_ret
 );
 int prototype_type_expr_semantic_relation(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	uint32_t* p_ret
 );
 
 int prototype_type_declaration_add(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_type_readback_db* readback,
+	struct prototype_type_representation_db* representation_db,
 	int name_symbol_id,
 	uint32_t* p_type_id
 );
 
 int prototype_type_declaration_add_parameter(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_type_readback_db* readback,
+	struct prototype_type_representation_db* representation_db,
 	uint32_t type_id,
 	uint32_t binding_id,
 	int name_symbol_id,
@@ -336,7 +346,10 @@ int prototype_type_declaration_add_parameter(
 );
 
 int prototype_type_declaration_add_constructor_schema(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_type_readback_db* readback,
+	struct prototype_type_representation_db* representation_db,
+	struct prototype_constructor_classifier_cache* classifier_cache,
 	uint32_t type_id,
 	int name_symbol_id,
 	uint32_t parameter_context,
@@ -346,7 +359,8 @@ int prototype_type_declaration_add_constructor_schema(
 );
 
 int prototype_type_readback_attach_constructor(
-	struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_type_readback_db* readback,
 	uint32_t constructor_id,
 	const uint32_t* field_type_exprs,
 	uint32_t field_count,
@@ -354,13 +368,16 @@ int prototype_type_readback_attach_constructor(
 );
 
 int prototype_type_constructor_classifier_cache_set(
-	struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_constructor_classifier_cache* classifier_cache,
 	uint32_t constructor_id,
 	uint32_t classifier
 );
 
 int prototype_type_constructor_classifier(
-	struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_constructor_classifier_cache* classifier_cache,
+	struct prototype_constructor_specialization_stats* specialization_stats,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	uint32_t constructor_id,
@@ -368,13 +385,15 @@ int prototype_type_constructor_classifier(
 );
 
 const struct prototype_type_constructor_readback* prototype_type_constructor_readback_get(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	const struct prototype_type_readback_db* readback,
 	uint32_t constructor_id
 );
 
 const struct prototype_constructor_classifier_cache_entry*
 prototype_type_constructor_classifier_cache_get(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	const struct prototype_constructor_classifier_cache* classifier_cache,
 	uint32_t constructor_id
 );
 
@@ -394,24 +413,26 @@ int prototype_constructor_telescopes_validate(
 );
 
 int prototype_constructor_curried_caches_validate(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	const struct prototype_constructor_classifier_cache* classifier_cache,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms
 );
 
 int prototype_constructor_curried_caches_rebuild(
-	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_constructor_classifier_cache* classifier_cache,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms
 );
 
 const struct prototype_type_declaration* prototype_type_declaration_lookup(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	int name_symbol_id
 );
 
 const struct prototype_type_constructor_declaration* prototype_type_declaration_lookup_constructor(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	uint32_t type_id,
 	int name_symbol_id
 );

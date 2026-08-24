@@ -86,6 +86,7 @@ void prototype_judgement_db_init(
 	size_t accepted_premise_capacity
 ) {
 	memset(db, 0, sizeof(*db));
+	db->semantic_revision = 1;
 	db->propositions = relations;
 	db->derivation_candidates = proofs;
 	db->proposition_capacity = claim_capacity;

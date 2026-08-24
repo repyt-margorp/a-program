@@ -280,6 +280,19 @@ struct prototype_judgement_derivation {
 	uint32_t next_same_conclusion;
 };
 
+/* One atomic append boundary for JudgementDB. The mark contains authoritative
+ * arena extents only; hash tables and adjacency links are rebuilt projections. */
+struct prototype_judgement_transaction_mark {
+	size_t proposition_count;
+	size_t derivation_candidate_count;
+	size_t claim_count;
+	size_t derivation_count;
+	size_t candidate_premise_count;
+	size_t accepted_premise_count;
+	size_t proposition_resource_usage_count;
+	int active;
+};
+
 struct prototype_judgement_match_motive_result {
 	uint32_t match_term;
 	uint32_t classifier;
@@ -385,6 +398,9 @@ struct prototype_judgement_effect_row_constraint {
 };
 
 struct prototype_judgement_db {
+	/* Accepted records are append-only. This revision is reserved for a future
+	 * bulk replacement of an existing accepted identity. */
+	uint64_t semantic_revision;
 	/* Mutable solver frontier. These records are reconstructed after artifact
 	 * readback when linking or further solving needs a local candidate view;
 	 * they are not the accepted certificate image. */
@@ -427,6 +443,7 @@ struct prototype_judgement_db {
 	uint64_t candidate_premise_allocations;
 	uint64_t accepted_premise_allocations;
 	uint64_t accepted_premise_reuses;
+	uint64_t index_rebuild_count;
 	struct prototype_accepted_replay_stats accepted_replay_stats;
 
 	uint32_t next_universe_var;

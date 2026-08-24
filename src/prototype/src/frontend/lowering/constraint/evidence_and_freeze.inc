@@ -84,7 +84,7 @@ static int operation_solver_collect_effect_row_assumptions(
 					PROTOTYPE_INVALID_ID,
 					ctx->metadata->typed_occurrences.occurrences[operation_id].context_id,
 					binder_var,
-					lambda->binder_classifier,
+					operation_solver_binder_classifier(ctx, lambda_id),
 					&evidence[*p_count]
 				) != 0) {
 				return -1;
@@ -1827,7 +1827,8 @@ static int operation_solver_reify_core_proof_impl(
 			const struct prototype_typed_occurrence* body =
 				&ctx->metadata->typed_occurrences.occurrences[body_occurrence];
 			if (body->classifier == PROTOTYPE_INVALID_ID ||
-				operation->binder_classifier == PROTOTYPE_INVALID_ID) {
+				operation_solver_binder_classifier(ctx, operation_id) ==
+					PROTOTYPE_INVALID_ID) {
 				return 1;
 			}
 			int status = operation_solver_reify_core_proof(
@@ -3157,11 +3158,15 @@ static int operation_solver_reify_core_proof_impl(
 				if (lambda_operation->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
 					lambda_operation->referenced_ast_binder_id !=
 						operation->referenced_ast_binder_id ||
-					lambda_operation->binder_classifier == PROTOTYPE_INVALID_ID ||
+					operation_solver_binder_classifier(
+						ctx, lambda_operation_id
+					) == PROTOTYPE_INVALID_ID ||
 					!(prototype_judgement_classifier_conversion(
 						ctx->terms,
 						ctx->type_declarations,
-						lambda_operation->binder_classifier,
+						operation_solver_binder_classifier(
+							ctx, lambda_operation_id
+						),
 						classifier
 					).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 					continue;
@@ -3692,14 +3697,48 @@ static int operation_solver_validate_solution_projection(
 	for (uint32_t i = mutable_occurrence_start;
 		i < ctx->metadata->typed_occurrences.occurrence_count;
 		++i) {
-		const struct operation_solver_solution* solution =
-			&ctx->classifier_solver.solutions[i];
+		const struct operation_classifier_meta_solution* solution =
+			&ctx->classifier_solver.classifier_metas[i];
 		const struct prototype_typed_occurrence* operation =
 			&ctx->metadata->typed_occurrences.occurrences[i];
 		if (solution->classifier != operation->classifier) {
+			fprintf(stderr,
+				"occurrence freeze projection mismatch occurrence=%u meta=%u graph=%u\n",
+				i, solution->classifier, operation->classifier
+			);
+			return -1;
+		}
+		if (solution->state != OPERATION_CLASSIFIER_META_FROZEN) {
+			fprintf(stderr,
+				"occurrence freeze state mismatch occurrence=%u state=%d\n",
+				i, solution->state
+			);
+			return -1;
+		}
+		if (solution->binder_classifier != operation->binder_classifier ||
+			solution->binder_state != OPERATION_CLASSIFIER_META_FROZEN) {
+			fprintf(stderr,
+				"occurrence freeze binder mismatch occurrence=%u meta=%u graph=%u "
+				"state=%d\n",
+				i, solution->binder_classifier, operation->binder_classifier,
+				solution->binder_state
+			);
 			return -1;
 		}
 		if (solution->classifier == PROTOTYPE_INVALID_ID) {
+			uint32_t obligation_id = operation->classifier_verification_obligation;
+			if (operation->classifier_status !=
+					PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION ||
+				obligation_id >= prototype_verification_db_count(
+					&ctx->metadata->verification
+				)) {
+				fprintf(stderr,
+					"occurrence freeze residual mismatch occurrence=%u status=%d "
+					"obligation=%u\n",
+					i, operation->classifier_status, obligation_id
+				);
+				return -1;
+			}
 			continue;
 		}
 		struct prototype_term_classifier_view view;
@@ -3710,12 +3749,24 @@ static int operation_solver_validate_solution_projection(
 				solution->classifier,
 				&view
 			) != 0) {
+			fprintf(stderr,
+				"occurrence freeze classifier view failed occurrence=%u classifier=%u\n",
+				i, solution->classifier
+			);
 			return -1;
 		}
 		if (view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
-			view.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING &&
-			solution->effect_row != view.effect_row) {
-			return -1;
+			view.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+			uint32_t meta_id = ctx->effect_solver.meta_for_occurrence[i];
+			if (meta_id != PROTOTYPE_INVALID_ID &&
+				(meta_id >= ctx->effect_solver.meta_count ||
+				 ctx->effect_solver.metas[meta_id].materialized_row != view.effect_row)) {
+				fprintf(stderr,
+					"occurrence freeze effect mismatch occurrence=%u meta=%u row=%u\n",
+					i, meta_id, view.effect_row
+				);
+				return -1;
+			}
 		}
 	}
 	return 0;
@@ -3893,6 +3944,100 @@ static int operation_solver_materialize_occurrence_judgement(
 	return 0;
 }
 
+static int operation_solver_freeze_occurrences(
+	struct compile_context* ctx,
+	uint32_t first_occurrence
+) {
+	if (!ctx || !ctx->metadata || first_occurrence >
+		ctx->metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	for (uint32_t i = first_occurrence;
+		i < ctx->metadata->typed_occurrences.occurrence_count;
+		++i) {
+		uint32_t classifier = operation_solver_classifier(ctx, i);
+		struct prototype_typed_occurrence* frozen =
+			&ctx->metadata->typed_occurrences.occurrences[i];
+		if (classifier == PROTOTYPE_INVALID_ID) {
+			uint32_t obligation_id = PROTOTYPE_INVALID_ID;
+			int obligation_status = frozen->tag ==
+					PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ?
+				prototype_verification_db_find_occurrence(
+					&ctx->metadata->verification,
+					PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT,
+					i,
+					&obligation_id
+				) : 1;
+			if (obligation_status == 0 && obligation_id <
+					prototype_verification_db_count(&ctx->metadata->verification)) {
+				frozen->classifier = PROTOTYPE_INVALID_ID;
+				frozen->classifier_status =
+					PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION;
+				frozen->classifier_verification_obligation = obligation_id;
+				ctx->classifier_solver.classifier_metas[i].state =
+					OPERATION_CLASSIFIER_META_FROZEN;
+				ctx->classifier_solver.classifier_metas[i].binder_classifier =
+					frozen->binder_classifier;
+				ctx->classifier_solver.classifier_metas[i].binder_state =
+					OPERATION_CLASSIFIER_META_FROZEN;
+				continue;
+			}
+			fprintf(stderr,
+				"judgement materialization: unsolved classifier occurrence=%u tag=%d "
+				"seed=%u core=%u core-tag=%u wrapper=%u source_ast=%u context=%u "
+				"binding=%u referenced_ast_binder=%u\n",
+				i,
+				frozen->tag,
+				ctx->classifier_seeds[i].classifier,
+				frozen->core_term,
+				frozen->core_term < ctx->terms->term_count ?
+					ctx->terms->terms[frozen->core_term].tag : 0,
+				frozen->wrapped_occurrence,
+				frozen->source_ast,
+				frozen->context_id,
+				frozen->binding_id,
+				frozen->referenced_ast_binder_id
+			);
+			return -1;
+		}
+		frozen->classifier = classifier;
+		frozen->binder_classifier = operation_solver_binder_classifier(ctx, i);
+		uint32_t effect_meta_id = ctx->effect_solver.meta_for_occurrence[i];
+		if (effect_meta_id != PROTOTYPE_INVALID_ID) {
+			if (effect_meta_id >= ctx->effect_solver.meta_count ||
+				ctx->effect_solver.metas[effect_meta_id].materialized_row ==
+					PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			if (frozen->binder_classifier != PROTOTYPE_INVALID_ID) {
+				uint32_t binding_id = ctx->terms->terms[
+					ctx->effect_solver.metas[effect_meta_id].placeholder_row
+				].as.effect_row_var.binding_id;
+				if (prototype_term_graph_substitute_bound_var(
+						ctx->terms,
+						ctx->type_declarations,
+						frozen->binder_classifier,
+						binding_id,
+						ctx->effect_solver.metas[effect_meta_id].materialized_row,
+						&frozen->binder_classifier
+					) != 0) {
+					return -1;
+				}
+			}
+		}
+		frozen->classifier_status =
+			PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED;
+		frozen->classifier_verification_obligation = PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.classifier_metas[i].state =
+			OPERATION_CLASSIFIER_META_FROZEN;
+		ctx->classifier_solver.classifier_metas[i].binder_classifier =
+			frozen->binder_classifier;
+		ctx->classifier_solver.classifier_metas[i].binder_state =
+			OPERATION_CLASSIFIER_META_FROZEN;
+	}
+	return operation_solver_validate_solution_projection(ctx);
+}
+
 static int operation_solver_materialize_judgements(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata) {
 		return -1;
@@ -3959,63 +4104,14 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 			ctx->materializing_checked_classifiers = 0;
 			return -1;
 		}
-		for (uint32_t i = mutable_occurrence_start;
-			i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
-			uint32_t classifier = operation_solver_classifier(ctx, i);
-			if (classifier == PROTOTYPE_INVALID_ID) {
-				uint32_t obligation_id = PROTOTYPE_INVALID_ID;
-				int obligation_status =
-					ctx->metadata->typed_occurrences.occurrences[i].tag ==
-						PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ?
-					prototype_verification_db_find_occurrence(
-						&ctx->metadata->verification,
-						PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT,
-						i,
-						&obligation_id
-					) : 1;
-				if (obligation_status == 0 && obligation_id <
-						prototype_verification_db_count(&ctx->metadata->verification)) {
-					ctx->metadata->typed_occurrences.occurrences[i].classifier =
-						PROTOTYPE_INVALID_ID;
-					ctx->metadata->typed_occurrences.occurrences[i].classifier_status =
-						PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION;
-					ctx->metadata->typed_occurrences.occurrences[i].
-						classifier_verification_obligation = obligation_id;
-					continue;
-				}
-				ctx->materializing_checked_classifiers = 0;
-				fprintf(stderr,
-					"judgement materialization: unsolved classifier occurrence=%u tag=%d "
-					"hint=%u core=%u core-tag=%u wrapper=%u source_ast=%u context=%u "
-					"binding=%u referenced_ast_binder=%u\n",
-					i,
-					ctx->metadata->typed_occurrences.occurrences[i].tag,
-					ctx->classifier_hints[i],
-					ctx->metadata->typed_occurrences.occurrences[i].core_term,
-					ctx->metadata->typed_occurrences.occurrences[i].core_term <
-						ctx->terms->term_count ? ctx->terms->terms[
-							ctx->metadata->typed_occurrences.occurrences[i].core_term
-						].tag : 0,
-					ctx->metadata->typed_occurrences.occurrences[i].wrapped_occurrence,
-					ctx->metadata->typed_occurrences.occurrences[i].source_ast,
-					ctx->metadata->typed_occurrences.occurrences[i].context_id,
-					ctx->metadata->typed_occurrences.occurrences[i].binding_id,
-					ctx->metadata->typed_occurrences.occurrences[i].referenced_ast_binder_id
-				);
-				return -1;
-			}
-			ctx->classifier_hints[i] = classifier;
-			ctx->metadata->typed_occurrences.occurrences[i].classifier = classifier;
-			ctx->metadata->typed_occurrences.occurrences[i].classifier_status =
-				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED;
-			ctx->metadata->typed_occurrences.occurrences[i].
-				classifier_verification_obligation = PROTOTYPE_INVALID_ID;
-		}
-		ctx->materializing_checked_classifiers = 0;
-		if (operation_solver_validate_solution_projection(ctx) != 0) {
-			fprintf(stderr, "judgement materialization: occurrence projection failed\n");
+		if (operation_solver_freeze_occurrences(
+				ctx, mutable_occurrence_start
+			) != 0) {
+			ctx->materializing_checked_classifiers = 0;
+			fprintf(stderr, "judgement materialization: occurrence freeze failed\n");
 			return -1;
 		}
+		ctx->materializing_checked_classifiers = 0;
 		if (materialize_pending_binder_assumptions(ctx) != 0 ||
 			materialize_pending_declaration_facts(ctx) != 0) {
 			fprintf(stderr, "judgement materialization: pending input facts failed\n");

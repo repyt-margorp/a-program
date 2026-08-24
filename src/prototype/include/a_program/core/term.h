@@ -354,6 +354,7 @@ struct prototype_term_normalization_cache_entry {
 	uint32_t term_id;
 	uint32_t result_term_id;
 	uint64_t graph_revision;
+	uint64_t semantic_revision;
 	int profile;
 	int state;
 };
@@ -368,6 +369,7 @@ struct prototype_term_normalization_cache_stats {
 	uint64_t ih_scope_invalidation_count;
 	uint64_t type_former_invalidation_count;
 	uint64_t empty_cache_invalidation_count;
+	uint64_t semantic_revision_miss_count;
 };
 
 struct prototype_term_intern_stats {
@@ -1011,6 +1013,7 @@ int prototype_term_effect_row_normal_form(
 	struct prototype_effect_row_normal_form* p_normal
 );
 int prototype_term_effect_row_normal_form_includes(
+	const struct prototype_term_db* db,
 	const struct prototype_effect_row_normal_form* superset,
 	const struct prototype_effect_row_normal_form* subset
 );

@@ -26,6 +26,7 @@ static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 static struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration
 	constructor_declarations[CONSTRUCTOR_CAPACITY];
+static struct prototype_type_readback_entry type_readback_entries[TYPE_CAPACITY];
 static struct prototype_type_constructor_readback constructor_readbacks[CONSTRUCTOR_CAPACITY];
 static struct prototype_constructor_classifier_cache_entry constructor_caches[CONSTRUCTOR_CAPACITY];
 static struct prototype_type_parameter_declaration
@@ -100,6 +101,8 @@ int main(void) {
 		TYPE_CAPACITY,
 		constructor_declarations,
 		CONSTRUCTOR_CAPACITY,
+		type_readback_entries,
+		TYPE_CAPACITY,
 		parameter_declarations,
 		PARAMETER_CAPACITY,
 		constructor_readbacks,

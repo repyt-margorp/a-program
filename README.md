@@ -431,7 +431,8 @@ The normalizer has separate profiles:
 
 Reduction flags independently control definitions, beta, Match/iota,
 induction, CBPV cuts, and pure intrinsics. Results are memoized by term,
-profile, and graph revision. Outcomes distinguish `COMPLETE`,
+profile, graph revision, and the semantic-schema revision for profiles that
+inspect type declarations. Outcomes distinguish `COMPLETE`,
 `BLOCKED_EFFECT`, and `EXHAUSTED`; only complete normalization can establish
 kernel conversion.
 
@@ -464,7 +465,8 @@ conditional object graph of:
 - TermDB and TypedOccurrenceGraph occurrence metadata;
 - contexts, substitutions, constructor schemas, and type views;
 - JudgementDB proofs and pending runtime verification obligations;
-- universe constraints and runtime/backend capabilities;
+- reconstructed universe obligations, their checked solution certificate, and
+  runtime/backend capabilities;
 - generated function-graph owner/type/result/runner associations;
 - relocation and debug/readback metadata.
 

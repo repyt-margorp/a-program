@@ -232,9 +232,16 @@ void prototype_diagnostic_print_type_namespace(
 		return;
 	}
 	fprintf(stream, "(%s", symbol_to_string(symbols, type->name_symbol_id));
+	uint32_t type_id = (uint32_t)(
+		type - type_declarations->semantic_schema.type_declarations
+	);
+	const struct prototype_type_readback_entry* readback_entry =
+		&type_declarations->readback.type_entries[type_id];
 	for (uint32_t i = 0; i < type->parameter_count; ++i) {
 		const struct prototype_type_parameter_declaration* parameter =
-			&type_declarations->readback.parameter_declarations[type->first_parameter + i];
+			&type_declarations->readback.parameter_declarations[
+				readback_entry->first_parameter + i
+			];
 		fprintf(stream, " %s", symbol_to_string(symbols, parameter->name_symbol_id));
 	}
 	fprintf(stream, ")");

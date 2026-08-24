@@ -12,6 +12,14 @@ void prototype_hott_action_db_init(
 	struct prototype_hott_action_result* results,
 	size_t result_capacity
 );
+int prototype_hott_action_db_seal(
+	struct prototype_hott_action_db* db,
+	const struct prototype_kernel_view* kernel
+);
+int prototype_hott_action_db_epoch_matches(
+	const struct prototype_hott_action_db* db,
+	const struct prototype_kernel_view* kernel
+);
 const struct prototype_hott_action_request* prototype_hott_action_request_get(
 	const struct prototype_hott_action_db* db,
 	uint32_t request_id

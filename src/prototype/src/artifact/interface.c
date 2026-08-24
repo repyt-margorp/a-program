@@ -1671,6 +1671,8 @@ int prototype_artifact_interface_validate_term_export_evidence(
 	}
 	size_t condition_offset = 0;
 	int status = 0;
+	const char* failure_stage = NULL;
+	size_t failure_export = 0;
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		const struct prototype_artifact_term_export* actual = &interface->term_exports[i];
 		if (actual->occurrence >= occurrence_count ||
@@ -1681,6 +1683,8 @@ int prototype_artifact_interface_validate_term_export_evidence(
 				actual->occurrence
 			].classifier != actual->classifier) {
 			status = -1;
+			failure_stage = "occurrence-projection";
+			failure_export = i;
 			break;
 		}
 		if (actual->source_evidence.kind ==
@@ -1691,6 +1695,8 @@ int prototype_artifact_interface_validate_term_export_evidence(
 				actual->source_condition_first != 0 ||
 				actual->source_condition_count != 0) {
 				status = -1;
+				failure_stage = "accepted-claim";
+				failure_export = i;
 				break;
 			}
 			continue;
@@ -1698,7 +1704,20 @@ int prototype_artifact_interface_validate_term_export_evidence(
 		if (actual->source_evidence.kind !=
 				PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CONDITIONAL ||
 			actual->source_condition_first != condition_offset) {
+			fprintf(
+				stderr,
+				"artifact conditional evidence header mismatch export=%zu kind=%d "
+				"first=%u expected-first=%zu count=%u evidence=%u\n",
+				i,
+				actual->source_evidence.kind,
+				actual->source_condition_first,
+				condition_offset,
+				actual->source_condition_count,
+				actual->source_evidence.id
+			);
 			status = -1;
+			failure_stage = "conditional-header";
+			failure_export = i;
 			break;
 		}
 		size_t count = 0;
@@ -1720,6 +1739,8 @@ int prototype_artifact_interface_validate_term_export_evidence(
 				count * sizeof(conditions[0])
 			) != 0) {
 			status = -1;
+			failure_stage = "conditional-obligations";
+			failure_export = i;
 			break;
 		}
 		if (actual->source_evidence.id != PROTOTYPE_INVALID_ID ?
@@ -1729,6 +1750,8 @@ int prototype_artifact_interface_validate_term_export_evidence(
 				actual, metadata, selected
 			)) {
 			status = -1;
+			failure_stage = "conditional-evidence";
+			failure_export = i;
 			break;
 		}
 		condition_offset += count;
@@ -1736,6 +1759,16 @@ int prototype_artifact_interface_validate_term_export_evidence(
 	if (status == 0 && condition_offset !=
 			interface->export_condition_obligation_count) {
 		status = -1;
+		failure_stage = "condition-count";
+		failure_export = interface->term_export_count;
+	}
+	if (status != 0) {
+		fprintf(
+			stderr,
+			"artifact term export evidence invalid stage=%s export=%zu\n",
+			failure_stage ? failure_stage : "unknown",
+			failure_export
+		);
 	}
 	free(reachable);
 	free(selected);
@@ -1921,12 +1954,14 @@ int prototype_artifact_interface_build_from_metadata(
 		}
 		const struct prototype_type_declaration* type =
 			&type_declarations->semantic_schema.type_declarations[type_export->type_id];
+		const struct prototype_type_readback_entry* readback_entry =
+			&type_declarations->readback.type_entries[type_export->type_id];
 		if (type->formation_classifier == PROTOTYPE_INVALID_ID ||
 			type->formation_classifier >= terms->term_count) {
 			return -1;
 		}
 		export->formation_classifier = type->formation_classifier;
-		export->first_parameter = type->first_parameter;
+		export->first_parameter = readback_entry->first_parameter;
 		export->parameter_count = type->parameter_count;
 		export->first_constructor_export = type_export->first_constructor_export;
 		export->constructor_count = type_export->constructor_count;
@@ -1942,8 +1977,8 @@ int prototype_artifact_interface_build_from_metadata(
 		export->ordinal = constructor_export->ordinal;
 		export->readback_first_field_type = constructor_export->readback_first_field_type;
 		export->readback_field_count = constructor_export->readback_field_count;
-		export->curried_classifier_cache =
-			constructor_export->curried_classifier_cache;
+		export->constructor_classifier =
+			constructor_export->constructor_classifier;
 	}
 
 	for (size_t i = 0; i < metadata->function_graph_association_count; ++i) {
@@ -2292,7 +2327,8 @@ int prototype_artifact_interface_collect_dependencies(
 	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		if (expr->tag == PROTOTYPE_TYPE_EXPR_NAME &&
-			!prototype_type_declaration_lookup(type_declarations, expr->as.name.symbol_id) &&
+			!prototype_type_declaration_lookup(
+			&type_declarations->semantic_schema, expr->as.name.symbol_id) &&
 			prototype_artifact_interface_add_dependency(interface, expr->as.name.symbol_id) != 0) {
 			return -1;
 		}
@@ -2323,7 +2359,7 @@ int prototype_artifact_interface_collect_dependencies(
 		const struct prototype_type_expr* expr = &interface->type_exprs[i];
 		if (expr->tag == PROTOTYPE_TYPE_EXPR_NAME &&
 			!prototype_type_declaration_lookup(
-				type_declarations, expr->as.name.symbol_id
+			&type_declarations->semantic_schema, expr->as.name.symbol_id
 			) && prototype_artifact_interface_add_dependency(
 				interface, expr->as.name.symbol_id
 			) != 0) {

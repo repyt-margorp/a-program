@@ -75,12 +75,16 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 		return -1;
 	}
 	const struct prototype_type_declaration* existing =
-		prototype_type_declaration_lookup(program->type_declarations, nat_symbol);
+		prototype_type_declaration_lookup(
+			&program->type_declarations->semantic_schema, nat_symbol);
 	if (existing) {
 		return 0;
 	}
-	if (prototype_type_declaration_add(program->type_declarations, nat_symbol, &type_id) != 0 ||
-		prototype_type_expr_self(program->type_declarations, &self_expr) != 0 ||
+	if (prototype_type_declaration_add(
+			&program->type_declarations->semantic_schema,
+			&program->type_declarations->readback,
+			&program->type_declarations->representation_db, nat_symbol, &type_id) != 0 ||
+		prototype_type_expr_self(&program->type_declarations->readback, &self_expr) != 0 ||
 		prototype_term_type_instance_make(
 			program->terms,
 			program->type_declarations,
@@ -94,7 +98,10 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 			&program->metadata->contexts
 		)) == PROTOTYPE_INVALID_ID ||
 		prototype_type_declaration_add_constructor_schema(
-			program->type_declarations,
+			&program->type_declarations->semantic_schema,
+			&program->type_declarations->readback,
+			&program->type_declarations->representation_db,
+			&program->type_declarations->constructor_classifier_cache,
 			type_id,
 			zero_symbol,
 			empty_context,
@@ -102,13 +109,15 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 			nat_term,
 			&zero_constructor_id
 		) != 0 || prototype_type_readback_attach_constructor(
-			program->type_declarations,
+			&program->type_declarations->semantic_schema,
+			&program->type_declarations->readback,
 			zero_constructor_id,
 			NULL,
 			0,
 			self_expr
 		) != 0 || prototype_type_constructor_classifier_cache_set(
-			program->type_declarations,
+			&program->type_declarations->semantic_schema,
+			&program->type_declarations->constructor_classifier_cache,
 			zero_constructor_id,
 			nat_term
 		) != 0) {
@@ -128,7 +137,10 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 		return -1;
 	}
 	if (prototype_type_declaration_add_constructor_schema(
-			program->type_declarations,
+			&program->type_declarations->semantic_schema,
+			&program->type_declarations->readback,
+			&program->type_declarations->representation_db,
+			&program->type_declarations->constructor_classifier_cache,
 			type_id,
 			succ_symbol,
 			empty_context,
@@ -136,13 +148,15 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 			nat_term,
 			&succ_constructor_id
 		) != 0 || prototype_type_readback_attach_constructor(
-			program->type_declarations,
+			&program->type_declarations->semantic_schema,
+			&program->type_declarations->readback,
 			succ_constructor_id,
 			&succ_field,
 			1,
 			self_expr
 		) != 0 || prototype_type_constructor_classifier_cache_set(
-			program->type_declarations,
+			&program->type_declarations->semantic_schema,
+			&program->type_declarations->constructor_classifier_cache,
 			succ_constructor_id,
 			succ_classifier
 		) != 0 ||
@@ -160,7 +174,7 @@ static int prototype_install_system_nat(struct prototype_program* program) {
 	program->type_declarations->semantic_schema.type_declarations[type_id].index_context =
 		empty_context;
 	prototype_type_declaration_db_mark_semantic_change(
-		program->type_declarations
+		&program->type_declarations->semantic_schema
 	);
 	if (prototype_judgement_expand_type_def(
 			program->judgement,

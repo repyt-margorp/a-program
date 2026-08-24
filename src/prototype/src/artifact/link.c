@@ -1379,20 +1379,24 @@ int prototype_internal_artifact_append_graph_ordered(
 			uint32_t type_id = order->types[position];
 			const struct prototype_type_declaration* type =
 				&source_type_declarations->semantic_schema.type_declarations[type_id];
+			const struct prototype_type_readback_entry* readback_entry =
+				&source_type_declarations->readback.type_entries[type_id];
 			if (!artifact_type_present(type)) {
 				continue;
 			}
-			if (type->first_parameter > source_type_declarations->readback.parameter_count ||
+			if (readback_entry->first_parameter >
+				source_type_declarations->readback.parameter_count ||
 				type->parameter_count > source_type_declarations->readback.parameter_count -
-					type->first_parameter ||
+					readback_entry->first_parameter ||
 				type->first_constructor > source_type_declarations->semantic_schema.constructor_count ||
 				type->constructor_count > source_type_declarations->semantic_schema.constructor_count -
 					type->first_constructor) {
 				return -1;
 			}
-			parameter_boundary_relocation[type->first_parameter] = next_parameter_id;
+			parameter_boundary_relocation[readback_entry->first_parameter] =
+				next_parameter_id;
 			for (uint32_t j = 0; j < type->parameter_count; ++j) {
-				uint32_t parameter_id = type->first_parameter + j;
+				uint32_t parameter_id = readback_entry->first_parameter + j;
 				if (!artifact_parameter_present(
 						&source_type_declarations->readback.parameter_declarations[parameter_id]
 					)) {
@@ -1408,7 +1412,8 @@ int prototype_internal_artifact_append_graph_ordered(
 					&source_type_declarations->semantic_schema.constructor_declarations[constructor_id];
 				const struct prototype_type_constructor_readback* readback =
 					prototype_type_constructor_readback_get(
-						source_type_declarations, constructor_id
+			&source_type_declarations->semantic_schema,
+			&source_type_declarations->readback, constructor_id
 					);
 				if (!readback || !artifact_constructor_present(constructor) ||
 					constructor->owner_type != type_id ||
@@ -1826,6 +1831,8 @@ int prototype_internal_artifact_append_graph_ordered(
 		uint32_t i = order ? order->types[position] : (uint32_t)position;
 		struct prototype_type_declaration type =
 			source_type_declarations->semantic_schema.type_declarations[i];
+		struct prototype_type_readback_entry type_readback =
+			source_type_declarations->readback.type_entries[i];
 		if (!artifact_type_present(&type) || type_relocation[i] < type_offset) {
 			continue;
 		}
@@ -1860,18 +1867,20 @@ int prototype_internal_artifact_append_graph_ordered(
 				context_relocation[type.parameter_context];
 			type.index_context = context_relocation[type.index_context];
 			if (type.parameter_count == 0) {
-				if (type.first_parameter >
+				if (type_readback.first_parameter >
 						source_type_declarations->readback.parameter_count) {
 					return -1;
 				}
-				type.first_parameter =
-					parameter_boundary_relocation[type.first_parameter];
-			} else if (type.first_parameter >=
+				type_readback.first_parameter =
+					parameter_boundary_relocation[type_readback.first_parameter];
+			} else if (type_readback.first_parameter >=
 					source_type_declarations->readback.parameter_count ||
-				parameter_relocation[type.first_parameter] == PROTOTYPE_INVALID_ID) {
+				parameter_relocation[type_readback.first_parameter] ==
+					PROTOTYPE_INVALID_ID) {
 				return -1;
 			} else {
-				type.first_parameter = parameter_relocation[type.first_parameter];
+				type_readback.first_parameter =
+					parameter_relocation[type_readback.first_parameter];
 			}
 			if (type.constructor_count == 0) {
 				if (type.first_constructor >
@@ -1888,7 +1897,13 @@ int prototype_internal_artifact_append_graph_ordered(
 				type.first_constructor = constructor_relocation[type.first_constructor];
 			}
 		}
-		target_type_declarations->semantic_schema.type_declarations[target_type_declarations->semantic_schema.type_count++] = type;
+		uint32_t target_type_id =
+			(uint32_t)target_type_declarations->semantic_schema.type_count;
+		target_type_declarations->semantic_schema.type_declarations[target_type_id] =
+			type;
+		target_type_declarations->readback.type_entries[target_type_id] =
+			type_readback;
+		target_type_declarations->semantic_schema.type_count++;
 	}
 	target_type_declarations->representation_db.cache_dirty = 1;
 
@@ -1971,7 +1986,8 @@ int prototype_internal_artifact_append_graph_ordered(
 		(prototype_internal_canonicalize_type_view_core_refs(
 			target_terms, target_type_declarations, target_contexts
 		) != 0 || prototype_constructor_curried_caches_rebuild(
-			target_type_declarations, target_contexts, target_terms
+			&target_type_declarations->semantic_schema,
+			&target_type_declarations->constructor_classifier_cache, target_contexts, target_terms
 		) != 0)) {
 		return -1;
 	}
@@ -2180,13 +2196,14 @@ int prototype_internal_artifact_append_graph_ordered(
 		}
 		const struct prototype_constructor_classifier_cache_entry* cache =
 			prototype_type_constructor_classifier_cache_get(
-				target_type_declarations,
+			&target_type_declarations->semantic_schema,
+			&target_type_declarations->constructor_classifier_cache,
 				type->first_constructor + export->ordinal
 			);
 		if (!cache) {
 			return -1;
 		}
-		appended_interface->constructor_exports[i].curried_classifier_cache =
+		appended_interface->constructor_exports[i].constructor_classifier =
 			cache->classifier;
 	}
 	for (size_t i = 0; i < source_interface->identity_root_count; ++i) {

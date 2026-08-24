@@ -2999,7 +2999,8 @@ int prototype_parametricity_execute_relation_type_action(
 	if (!actions || !contexts || !substitutions || !cwf_certificates ||
 		!cwf_certificates || !bridges || !terms || !type_declarations ||
 		!judgement || !p_result_id ||
-		prototype_kernel_builder_view(kernel, &view) != 0) {
+		prototype_kernel_builder_view(kernel, &view) != 0 ||
+		prototype_hott_action_db_epoch_matches(actions, &view) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(
@@ -3298,9 +3299,11 @@ int prototype_hott_execute_identity_type_computation(
 	struct prototype_context_db* contexts = kernel ? kernel->contexts : NULL;
 	struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
+	struct prototype_kernel_view view;
 	if (!actions || !terms || !type_declarations || !contexts || !judgement ||
 		!bridges || !p_result_id ||
-		prototype_kernel_builder_validate_stores(kernel) != 0) {
+		prototype_kernel_builder_view(kernel, &view) != 0 ||
+		prototype_hott_action_db_epoch_matches(actions, &view) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(

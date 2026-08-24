@@ -9,6 +9,7 @@ struct artifact_closure_graph {
 	struct prototype_case_binder* case_binders;
 	struct prototype_ih_scope* frames;
 	struct prototype_type_declaration* type_nodes;
+	struct prototype_type_readback_entry* type_readback_entries;
 	struct prototype_type_parameter_declaration* parameter_declarations;
 	struct prototype_type_constructor_declaration* constructor_declarations;
 	struct prototype_type_constructor_readback* constructor_readbacks;
@@ -105,6 +106,7 @@ static void artifact_closure_graph_free(struct artifact_closure_graph* graph) {
 	free(graph->case_binders);
 	free(graph->frames);
 	free(graph->type_nodes);
+	free(graph->type_readback_entries);
 	free(graph->parameter_declarations);
 	free(graph->constructor_declarations);
 	free(graph->constructor_readbacks);
@@ -248,7 +250,8 @@ static void artifact_init_closure_defaults(struct artifact_closure_graph* graph)
 		graph->type_declarations.semantic_schema.type_declarations[i].representation_id = PROTOTYPE_INVALID_ID;
 		graph->type_declarations.semantic_schema.type_declarations[i].parameter_context = PROTOTYPE_INVALID_ID;
 		graph->type_declarations.semantic_schema.type_declarations[i].index_context = PROTOTYPE_INVALID_ID;
-		graph->type_declarations.semantic_schema.type_declarations[i].first_parameter = PROTOTYPE_INVALID_ID;
+		graph->type_declarations.readback.type_entries[i].first_parameter =
+			PROTOTYPE_INVALID_ID;
 		graph->type_declarations.semantic_schema.type_declarations[i].first_constructor = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < graph->type_declarations.readback.parameter_count; ++i) {
@@ -461,9 +464,13 @@ static int artifact_mark_roots(
 	const struct prototype_compile_metadata* metadata
 ) {
 	if (!marks || !interface || !terms || !type_declarations || !judgement ||
-		!metadata || prototype_artifact_interface_validate_term_export_evidence(
+		!metadata) {
+		return -1;
+	}
+	if (prototype_artifact_interface_validate_term_export_evidence(
 			interface, metadata, judgement
 		) != 0) {
+		fprintf(stderr, "artifact closure: term export evidence validation failed\n");
 		return -1;
 	}
 	/* A structural TYPE_FORMER does not select a nominal declaration. Root the
@@ -622,15 +629,15 @@ static int artifact_mark_roots(
 	for (size_t i = 0; i < interface->constructor_export_count; ++i) {
 		const struct prototype_artifact_constructor_export* export =
 			&interface->constructor_exports[i];
-		if (export->curried_classifier_cache != PROTOTYPE_INVALID_ID &&
+		if (export->constructor_classifier != PROTOTYPE_INVALID_ID &&
 			(artifact_mark_term(
-					marks, terms, export->curried_classifier_cache, 0
+					marks, terms, export->constructor_classifier, 0
 				) != 0 ||
 				artifact_mark_subject_relations(
 					marks,
 					terms,
 					judgement,
-					export->curried_classifier_cache
+					export->constructor_classifier
 				) != 0)) {
 			return -1;
 		}
@@ -961,6 +968,11 @@ static int artifact_closure_graph_alloc(
 			sizeof(*graph->parameter_declarations)
 		) != 0 ||
 		artifact_alloc_bytes(
+			(void**)&graph->type_readback_entries,
+			type_declarations->semantic_schema.type_count,
+			sizeof(*graph->type_readback_entries)
+		) != 0 ||
+		artifact_alloc_bytes(
 			(void**)&graph->constructor_declarations,
 			type_declarations->semantic_schema.constructor_count,
 			sizeof(*graph->constructor_declarations)
@@ -1060,6 +1072,8 @@ static int artifact_closure_graph_alloc(
 		type_declarations->semantic_schema.type_count,
 		graph->constructor_declarations,
 		type_declarations->semantic_schema.constructor_count,
+		graph->type_readback_entries,
+		type_declarations->semantic_schema.type_count,
 		graph->parameter_declarations,
 		type_declarations->readback.parameter_count,
 		graph->constructor_readbacks,
@@ -1170,6 +1184,8 @@ static int artifact_closure_graph_copy_marked(
 		if (marks->types[i]) {
 			graph->type_declarations.semantic_schema.type_declarations[i] =
 				type_declarations->semantic_schema.type_declarations[i];
+			graph->type_declarations.readback.type_entries[i] =
+				type_declarations->readback.type_entries[i];
 		}
 	}
 	for (size_t i = 0; i < type_declarations->readback.parameter_count; ++i) {
@@ -1910,8 +1926,6 @@ static int artifact_publication_graph_alloc(
 		metadata->typed_occurrences.case_count,
 		publication->occurrence_fold_clauses,
 		metadata->typed_occurrences.fold_clause_count,
-		NULL,
-		0,
 		publication->verification_obligations,
 		metadata->verification.obligation_count,
 		publication->verification_dependencies,

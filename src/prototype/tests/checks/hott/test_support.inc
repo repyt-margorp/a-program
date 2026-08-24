@@ -37,6 +37,7 @@ static int case_labels[256];
 static struct prototype_case_binder case_binders[256];
 static struct prototype_ih_scope ih_scopes[64];
 static struct prototype_type_declaration type_declarations[16];
+static struct prototype_type_readback_entry type_readback_entries[16];
 static struct prototype_type_constructor_declaration constructors[32];
 static struct prototype_type_constructor_readback constructor_readbacks[32];
 static struct prototype_constructor_classifier_cache_entry constructor_caches[32];
@@ -60,13 +61,18 @@ static int fixture_publish_constructor_schema(
 	uint32_t* p_constructor_id
 ) {
 	return prototype_type_declaration_add_constructor_schema(
-		types, type_id, name_symbol_id, parameter_context, field_context,
+			&types->semantic_schema,
+			&types->readback,
+			&types->representation_db,
+			&types->constructor_classifier_cache, type_id, name_symbol_id, parameter_context, field_context,
 		result_classifier, p_constructor_id
 	) != 0 || prototype_type_readback_attach_constructor(
-		types, *p_constructor_id, readback_fields, readback_field_count,
+			&types->semantic_schema,
+			&types->readback, *p_constructor_id, readback_fields, readback_field_count,
 		readback_result
 	) != 0 || prototype_type_constructor_classifier_cache_set(
-		types, *p_constructor_id, curried_classifier
+			&types->semantic_schema,
+			&types->constructor_classifier_cache, *p_constructor_id, curried_classifier
 	) != 0 ? -1 : 0;
 }
 
@@ -269,8 +275,6 @@ static int write_identity_root_artifact_with_environment(
 	struct prototype_compile_metadata metadata;
 	prototype_compile_metadata_init(
 		&metadata,
-		NULL,
-		0,
 		NULL,
 		0,
 		NULL,
@@ -2262,7 +2266,10 @@ static uint32_t add_box_view(
 	uint32_t core
 ) {
 	uint32_t type_id;
-	if (prototype_type_declaration_add(types_db, 200, &type_id) != 0) {
+	if (prototype_type_declaration_add(
+			&types_db->semantic_schema,
+			&types_db->readback,
+			&types_db->representation_db, 200, &type_id) != 0) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	if (terms_db->term_count + 2 > terms_db->term_capacity) {
@@ -2335,7 +2342,10 @@ static uint32_t add_dependent_box_view(
 	uint32_t core
 ) {
 	uint32_t type_id;
-	if (prototype_type_declaration_add(types_db, 210, &type_id) != 0 ||
+	if (prototype_type_declaration_add(
+			&types_db->semantic_schema,
+			&types_db->readback,
+			&types_db->representation_db, 210, &type_id) != 0 ||
 		terms_db->term_count + 2 > terms_db->term_capacity) {
 		return PROTOTYPE_INVALID_ID;
 	}
@@ -2427,7 +2437,10 @@ static uint32_t add_nat_view(
 	uint32_t core
 ) {
 	uint32_t type_id;
-	if (prototype_type_declaration_add(types_db, 300, &type_id) != 0) {
+	if (prototype_type_declaration_add(
+			&types_db->semantic_schema,
+			&types_db->readback,
+			&types_db->representation_db, 300, &type_id) != 0) {
 		return PROTOTYPE_INVALID_ID;
 	}
 	if (terms_db->term_count + 2 > terms_db->term_capacity) {

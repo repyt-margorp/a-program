@@ -17,7 +17,7 @@ struct prototype_compile_constructor_export {
 	uint32_t ordinal;
 	uint32_t readback_first_field_type;
 	uint32_t readback_field_count;
-	uint32_t curried_classifier_cache;
+	uint32_t constructor_classifier;
 };
 
 struct prototype_compile_type_export {
@@ -26,6 +26,14 @@ struct prototype_compile_type_export {
 	struct prototype_type_representation_fingerprint representation_fingerprint;
 	uint32_t first_constructor_export;
 	uint32_t constructor_count;
+};
+
+/* A post-freeze diagnostic projection. ConstraintDB remains the only owner of
+ * effect-equation lifecycle and the only source of residual obligations. */
+struct prototype_effect_constraint_summary {
+	uint32_t solved_count;
+	uint32_t residual_count;
+	uint32_t failed_count;
 };
 
 enum prototype_function_graph_request_flag {
@@ -275,9 +283,7 @@ struct prototype_compile_metadata {
 
 	struct prototype_typed_occurrence_graph typed_occurrences;
 
-	struct prototype_occurrence_effect_constraint* effect_constraints;
-	size_t effect_constraint_count;
-	size_t effect_constraint_capacity;
+	struct prototype_effect_constraint_summary effect_constraint_summary;
 
 	struct prototype_verification_db verification;
 
@@ -457,8 +463,6 @@ void prototype_compile_metadata_init(
 	size_t occurrence_match_case_capacity,
 	struct prototype_typed_occurrence_fold_clause* occurrence_fold_clauses,
 	size_t occurrence_fold_clause_capacity,
-	struct prototype_occurrence_effect_constraint* effect_constraints,
-	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
 	size_t verification_obligation_capacity,
 	struct prototype_verification_dependency* verification_dependencies,

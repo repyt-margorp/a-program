@@ -24,7 +24,8 @@
 		return 246;
 	}
 	prototype_type_declaration_db_init(
-		&type_db, type_declarations, 16, constructors, 32, parameters, 8,
+		&type_db, type_declarations, 16, constructors, 32,
+		type_readback_entries, 16, parameters, 8,
 		constructor_readbacks, 32, field_types, 64, type_exprs, 32,
 		type_representations, 16, constructor_caches, 32
 	);

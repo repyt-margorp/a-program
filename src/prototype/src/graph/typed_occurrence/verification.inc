@@ -438,12 +438,13 @@ int prototype_verification_db_remove_obligation_dependencies(
 }
 
 static int verification_effect_row_normal_equal(
+	const struct prototype_term_db* terms,
 	const struct prototype_effect_row_normal_form* left,
 	const struct prototype_effect_row_normal_form* right
 ) {
 	return left && right &&
-		prototype_term_effect_row_normal_form_includes(left, right) &&
-		prototype_term_effect_row_normal_form_includes(right, left);
+		prototype_term_effect_row_normal_form_includes(terms, left, right) &&
+		prototype_term_effect_row_normal_form_includes(terms, right, left);
 }
 
 static int verification_effect_row_normal_is_ground(
@@ -456,8 +457,7 @@ static int verification_effect_row_normal_is_ground(
 	for (uint32_t i = 0; i < row->atom_count; ++i) {
 		uint32_t atom = row->atoms[i];
 		if (atom >= terms->term_count ||
-			terms->terms[atom].tag != PROTOTYPE_TERM_EFFECT_ROW_OPERATION ||
-			prototype_term_effect_row_is_closed(terms, atom) != 1) {
+			terms->terms[atom].tag != PROTOTYPE_TERM_EFFECT_ROW_OPERATION) {
 			return 0;
 		}
 	}
@@ -465,11 +465,30 @@ static int verification_effect_row_normal_is_ground(
 }
 
 static int verification_effect_row_normal_add(
+	const struct prototype_term_db* terms,
 	struct prototype_effect_row_normal_form* row,
 	uint32_t atom
 ) {
-	if (!row) {
+	if (!terms || !row || atom >= terms->term_count) {
 		return -1;
+	}
+	for (uint32_t i = 0; i < row->atom_count; ++i) {
+		uint32_t existing = row->atoms[i];
+		if (existing >= terms->term_count) {
+			return -1;
+		}
+		const struct prototype_term* existing_term = &terms->terms[existing];
+		const struct prototype_term* atom_term = &terms->terms[atom];
+		if ((existing_term->tag == PROTOTYPE_TERM_EFFECT_ROW_OPERATION &&
+			atom_term->tag == PROTOTYPE_TERM_EFFECT_ROW_OPERATION &&
+			existing_term->as.effect_row_operation.operation_id ==
+				atom_term->as.effect_row_operation.operation_id) ||
+			(existing_term->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
+			 atom_term->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
+			 existing_term->as.effect_row_var.binding_id ==
+				atom_term->as.effect_row_var.binding_id)) {
+			return 0;
+		}
 	}
 	uint32_t position = 0;
 	while (position < row->atom_count && row->atoms[position] < atom) {
@@ -524,7 +543,9 @@ int prototype_verification_effect_row_equation_holds(
 	if (obligation->effect_constraint_kind ==
 			PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_UNION) {
 		for (uint32_t i = 0; i < right.atom_count; ++i) {
-			if (verification_effect_row_normal_add(&expected, right.atoms[i]) != 0) {
+			if (verification_effect_row_normal_add(
+					terms, &expected, right.atoms[i]
+				) != 0) {
 				return -1;
 			}
 		}
@@ -552,13 +573,15 @@ int prototype_verification_effect_row_equation_holds(
 					].as.effect_row_operation.operation_id == operation_id;
 				}
 			}
-			if (!handled && verification_effect_row_normal_add(&residual, atom) != 0) {
+			if (!handled && verification_effect_row_normal_add(
+					terms, &residual, atom
+				) != 0) {
 				return -1;
 			}
 		}
 		expected = residual;
 	}
-	return verification_effect_row_normal_equal(&actual, &expected);
+	return verification_effect_row_normal_equal(terms, &actual, &expected);
 }
 
 int prototype_verification_db_discharge_effect_row_equation(

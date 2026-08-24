@@ -68,6 +68,8 @@ if ! grep -q 'MATCH_TYPE_FORMATION_INTRO=13 MATCH_ELIM=14' "$hott_schema"; then
 fi
 
 if ! grep -q 'canonical dimension operator embedded in the acted Term' "$artifact_schema" ||
+	! grep -q '^universe_levels N$' "$artifact_schema" ||
+	! grep -q '^universe_level ID LEVEL KNOWN$' "$artifact_schema" ||
 	! grep -q 'a PENDING computation-fold obligation is a runtime contract and never a' "$artifact_schema" ||
 	! grep -q 'effect obligation is never an' "$artifact_schema"; then
 	echo "artifact manifest omits the current Identity or verification boundary" >&2

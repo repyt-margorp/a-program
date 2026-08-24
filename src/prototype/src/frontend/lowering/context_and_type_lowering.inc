@@ -360,10 +360,11 @@ struct operation_constraint {
 	struct prototype_kernel_conversion_goal conversion_goal;
 	union {
 		struct {
-			uint32_t classifier_variable;
+			uint32_t classifier_meta_id;
 			union operation_classifier_goal_payload goal;
 		} classifier;
 		struct {
+			uint32_t effect_meta_id;
 			uint32_t result_row;
 			uint32_t left_row;
 			uint32_t right_row;
@@ -441,13 +442,44 @@ struct operation_constraint_db_mark {
  * cells, not a second source of solver truth. The classifier constraint and
  * result arrays below are the pre-ConstraintDB authority and must migrate as
  * one unit; no new consumer may retain either array independently. */
-struct operation_solver_solution {
+enum operation_classifier_meta_state {
+	OPERATION_CLASSIFIER_META_UNSOLVED = 0,
+	OPERATION_CLASSIFIER_META_SOLVED,
+	/* A previous solution was invalidated by an upstream semantic change.
+	 * Republishing this cell must invalidate already-derived dependents. */
+	OPERATION_CLASSIFIER_META_STALE,
+	OPERATION_CLASSIFIER_META_FROZEN
+};
+
+struct operation_classifier_meta_solution {
+	uint32_t owner_occurrence;
 	uint32_t classifier;
-	uint32_t effect_row;
-	uint32_t first_usage_entry;
-	uint32_t usage_entry_count;
-	int binder_usage;
-	int usage_state;
+	/* Last valid representative retained while state is STALE. It distinguishes
+	 * semantic change from a dependency cycle that recomputes the same type. */
+	uint32_t stale_classifier;
+	uint32_t evidence_constraint_id;
+	int state;
+	/* Lambda-domain synthesis is a second typed meta owned by the same source
+	 * occurrence. It is occurrence-scoped rather than BindingId-scoped because
+	 * Context action can place one stable binder in different dependent fibers. */
+	uint32_t binder_classifier;
+	uint32_t binder_evidence_constraint_id;
+	int binder_state;
+};
+
+struct operation_classifier_seed {
+	uint32_t owner_occurrence;
+	uint32_t classifier;
+	uint32_t binder_classifier;
+	int reason;
+};
+
+enum operation_classifier_seed_reason {
+	OPERATION_CLASSIFIER_SEED_NONE = 0,
+	OPERATION_CLASSIFIER_SEED_DECLARATION,
+	OPERATION_CLASSIFIER_SEED_ANNOTATION,
+	OPERATION_CLASSIFIER_SEED_BINDER,
+	OPERATION_CLASSIFIER_SEED_STRUCTURAL
 };
 
 /*
@@ -495,7 +527,7 @@ struct operation_classifier_solver {
 	int initialized;
 	uint32_t initialized_occurrence_count;
 	uint64_t solution_revision;
-	struct operation_solver_solution solutions[4096];
+	struct operation_classifier_meta_solution classifier_metas[4096];
 	/* A candidate is a solver equation M(_) == T. It is never represented by
 	 * a provisional TermDB APP node. */
 	uint32_t motive_constant_candidates[4096];
@@ -545,11 +577,12 @@ static int operation_check_classifier(
  * row is only a location in the current classifier graph; binder identity is
  * never the identity of the solver cell. */
 struct operation_effect_row_meta {
-	uint32_t owner_operation;
+	uint32_t owner_occurrence;
 	uint32_t placeholder_row;
 	uint32_t first_solution_atom;
 	uint32_t solution_atom_count;
-	uint32_t solution_row;
+	uint32_t materialized_row;
+	uint32_t evidence_constraint_id;
 	int state;
 };
 
@@ -561,6 +594,7 @@ struct operation_effect_solver {
 		PROTOTYPE_TYPED_OCCURRENCE_EFFECT_ROW_SOLUTION_ATOM_CAPACITY
 	];
 	uint32_t solution_atom_count;
+	uint32_t meta_for_occurrence[4096];
 };
 
 struct compile_judgement_workspace {
@@ -648,6 +682,7 @@ struct compile_context {
 	struct prototype_compile_metadata* metadata;
 	struct operation_constraint_db constraints;
 	struct operation_classifier_solver classifier_solver;
+	uint32_t active_classifier_constraint_id;
 	uint64_t context_dependency_revision;
 	uint64_t context_resolution_dependency_revision;
 	size_t context_resolution_context_count;
@@ -658,7 +693,8 @@ struct compile_context {
 	int context_resolution_finalized;
 	/* Lowering facts are mutable compiler workspace and never frozen into a
 	 * typed occurrence or artifact. */
-	uint32_t classifier_hints[4096];
+	struct operation_classifier_seed classifier_seeds[4096];
+	uint8_t classifier_seed_suppressed[4096];
 	uint32_t termination_evidence_computation_occurrences[4096];
 	struct operation_reification_cache_entry reification_cache[4096];
 	uint32_t proof_materialization_pending_ids[4096];
@@ -724,6 +760,27 @@ struct compile_context {
 	size_t imported_interface_count;
 	int had_error;
 };
+
+static uint32_t operation_solver_binder_classifier(
+	const struct compile_context* ctx,
+	uint32_t operation
+);
+static int operation_binder_classifier_meta_solve(
+	struct compile_context* ctx,
+	uint32_t operation,
+	uint32_t classifier,
+	int* p_changed
+);
+static int operation_binder_classifier_meta_replace(
+	struct compile_context* ctx,
+	uint32_t operation,
+	uint32_t classifier,
+	int* p_changed
+);
+static int operation_type_metas_discard_mutable_occurrence(
+	struct compile_context* ctx,
+	uint32_t operation
+);
 
 static void operation_context_binding_dependency_changed(
 	struct compile_context* ctx,
@@ -1906,17 +1963,19 @@ static int operation_binder_owner_classifier(
 			lambda->binding_id != binding_id) {
 			return -1;
 		}
-		if (lambda->binder_classifier != PROTOTYPE_INVALID_ID) {
+		uint32_t lambda_binder_classifier =
+			operation_solver_binder_classifier(ctx, entry->lambda_occurrence);
+		if (lambda_binder_classifier != PROTOTYPE_INVALID_ID) {
 			if (classifier != PROTOTYPE_INVALID_ID &&
 				prototype_judgement_classifier_conversion(
 					ctx->terms,
 					ctx->type_declarations,
 					classifier,
-					lambda->binder_classifier
+					lambda_binder_classifier
 				).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 				return -1;
 			}
-			classifier = lambda->binder_classifier;
+			classifier = lambda_binder_classifier;
 		}
 	}
 	if (classifier == PROTOTYPE_INVALID_ID) {
@@ -1948,14 +2007,16 @@ static int operation_binder_owner_merge(
 		return -1;
 	}
 	uint32_t current_occurrence = entry->lambda_occurrence;
+	uint32_t candidate_binder_classifier =
+		operation_solver_binder_classifier(ctx, owner_occurrence);
 	if (current_occurrence == PROTOTYPE_INVALID_ID) {
 		if (entry->declared_classifier != PROTOTYPE_INVALID_ID &&
-			candidate->binder_classifier != PROTOTYPE_INVALID_ID &&
+			candidate_binder_classifier != PROTOTYPE_INVALID_ID &&
 			prototype_judgement_classifier_conversion(
 				ctx->terms,
 				ctx->type_declarations,
 				entry->declared_classifier,
-				candidate->binder_classifier
+				candidate_binder_classifier
 			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			return -1;
 		}
@@ -1975,21 +2036,23 @@ static int operation_binder_owner_merge(
 		current->binding_id != binding_id) {
 		return -1;
 	}
-	if (current->binder_classifier == PROTOTYPE_INVALID_ID) {
-		if (candidate->binder_classifier != PROTOTYPE_INVALID_ID) {
+	uint32_t current_binder_classifier =
+		operation_solver_binder_classifier(ctx, current_occurrence);
+	if (current_binder_classifier == PROTOTYPE_INVALID_ID) {
+		if (candidate_binder_classifier != PROTOTYPE_INVALID_ID) {
 			entry->lambda_occurrence = owner_occurrence;
 		}
 		return 0;
 	}
-	if (candidate->binder_classifier == PROTOTYPE_INVALID_ID) {
+	if (candidate_binder_classifier == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
 	struct prototype_term_conversion_result conversion =
 		prototype_judgement_classifier_conversion(
 			ctx->terms,
 			ctx->type_declarations,
-			current->binder_classifier,
-			candidate->binder_classifier
+			current_binder_classifier,
+			candidate_binder_classifier
 		);
 	return conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL ? 0 : -1;
 }
@@ -2046,6 +2109,9 @@ static int operation_binder_owner_publish(
 	return 0;
 }
 
+/* Context pullback replaces the typed source occurrence itself. Replace the
+ * corresponding input seed and discard any solution computed in the old
+ * Context; this is not a solver refinement. */
 static int operation_binder_owner_index_seed_transaction(
 	struct compile_context* ctx
 ) {
@@ -2231,7 +2297,9 @@ static int operation_add(
 		ctx->terms->terms[core_term].tag == PROTOTYPE_TERM_LAMBDA) {
 		node.binding_id = ctx->terms->terms[core_term].as.lambda.binding_id;
 	}
-	node.binder_classifier = binder_classifier;
+	/* The mutable binder-domain answer belongs to the solver seed/meta stores.
+	 * TypedOccurrence receives it only at the checked freeze boundary. */
+	node.binder_classifier = PROTOTYPE_INVALID_ID;
 	node.ih_owner_occurrence = tag ==
 		PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS ? scrutinee :
 		PROTOTYPE_INVALID_ID;
@@ -2259,7 +2327,8 @@ static int operation_add(
 		return -1;
 	}
 	ctx->binder_owner_occurrence_count = graph->occurrence_count;
-	ctx->classifier_hints[*p_operation] = classifier;
+	ctx->classifier_seeds[*p_operation].classifier = classifier;
+	ctx->classifier_seeds[*p_operation].binder_classifier = binder_classifier;
 	struct prototype_typed_occurrence_edge edges[64];
 	uint32_t edge_count = 0;
 #define APPEND_OCCURRENCE_EDGE(edge_role, edge_ordinal, edge_child) \
@@ -2341,16 +2410,16 @@ static uint32_t operation_available_classifier(
 		ctx->metadata->typed_occurrences.occurrence_count) {
 		return PROTOTYPE_INVALID_ID;
 	}
-	const struct prototype_typed_occurrence* operation =
-		&ctx->metadata->typed_occurrences.occurrences[occurrence_id];
-	uint32_t solved = ctx->classifier_solver.solutions[occurrence_id].classifier;
+	uint32_t solved = ctx->classifier_solver.classifier_metas[occurrence_id].classifier;
 	if (solved != PROTOTYPE_INVALID_ID) {
 		return solved;
 	}
-	if (ctx->classifier_hints[occurrence_id] != PROTOTYPE_INVALID_ID) {
-		return ctx->classifier_hints[occurrence_id];
+	if (ctx->classifier_seeds[occurrence_id].classifier != PROTOTYPE_INVALID_ID) {
+		return ctx->classifier_seed_suppressed[occurrence_id] ?
+			PROTOTYPE_INVALID_ID :
+			ctx->classifier_seeds[occurrence_id].classifier;
 	}
-	return operation->classifier;
+	return PROTOTYPE_INVALID_ID;
 }
 
 static int operation_add_match_case(
@@ -3144,11 +3213,13 @@ static int add_compile_type_export(
 			&ctx->type_declarations->semantic_schema.constructor_declarations[constructor_id];
 		const struct prototype_type_constructor_readback* readback =
 			prototype_type_constructor_readback_get(
-				ctx->type_declarations, constructor_id
+			&ctx->type_declarations->semantic_schema,
+			&ctx->type_declarations->readback, constructor_id
 			);
 		const struct prototype_constructor_classifier_cache_entry* cache =
 			prototype_type_constructor_classifier_cache_get(
-				ctx->type_declarations, constructor_id
+			&ctx->type_declarations->semantic_schema,
+			&ctx->type_declarations->constructor_classifier_cache, constructor_id
 			);
 		if (!readback || !cache) {
 			return -1;
@@ -3160,7 +3231,7 @@ static int add_compile_type_export(
 		constructor_export->ordinal = constructor->constructor_index;
 		constructor_export->readback_first_field_type = readback->first_field_type;
 		constructor_export->readback_field_count = readback->field_count;
-		constructor_export->curried_classifier_cache = cache->classifier;
+		constructor_export->constructor_classifier = cache->classifier;
 	}
 
 	ctx->metadata->type_export_count++;
@@ -4089,7 +4160,7 @@ static int compile_ast_level_var(
 	}
 
 	uint32_t graph_type_expr;
-	if (prototype_type_expr_fresh_universe(ctx->type_declarations, &graph_type_expr) != 0) {
+	if (prototype_type_expr_fresh_universe(&ctx->type_declarations->readback, &graph_type_expr) != 0) {
 		return -1;
 	}
 	ctx->levels[ctx->level_count].ast_level_var = ast_level_var;
@@ -4203,8 +4274,7 @@ static int compile_type_expr_name_as_keyed_type_ref(
 				) != 0) {
 				continue;
 			}
-			return prototype_type_expr_imported_type(
-				ctx->type_declarations,
+			return prototype_type_expr_imported_type(&ctx->type_declarations->readback,
 				imported_type_name,
 				&interface->type_exports[type_export_id].representation_fingerprint,
 				p_ret
@@ -4222,14 +4292,14 @@ static int compile_type_expr_name_as_keyed_type_ref(
 			return -1;
 		}
 		if (external_term_status == 0) {
-			return prototype_type_expr_external_term(
-				ctx->type_declarations,
+			return prototype_type_expr_external_term(&ctx->type_declarations->readback,
 				external_term_name,
 				p_ret
 			);
 		}
 	if (!type) {
-		type = prototype_type_declaration_lookup(ctx->type_declarations, symbol_id);
+		type = prototype_type_declaration_lookup(
+			&ctx->type_declarations->semantic_schema, symbol_id);
 	}
 	if (type) {
 		return 1;
@@ -4262,8 +4332,7 @@ static int compile_type_expr_name_as_keyed_type_ref(
 
 	const struct prototype_type_declaration* aliased_type =
 		&ctx->type_declarations->semantic_schema.type_declarations[type_id];
-	return prototype_type_expr_name(
-		ctx->type_declarations,
+	return prototype_type_expr_name(&ctx->type_declarations->readback,
 		aliased_type->name_symbol_id,
 		p_ret
 	);
@@ -4351,7 +4420,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 	uint32_t compiled_type_expr;
 	switch (expr.tag) {
 		case PROTOTYPE_AST_TYPE_EXPR_UNIVERSE:
-			if (prototype_type_expr_universe(ctx->type_declarations, expr.as.universe.level, &compiled_type_expr) != 0) {
+			if (prototype_type_expr_universe(&ctx->type_declarations->readback, expr.as.universe.level, &compiled_type_expr) != 0) {
 				return -1;
 			}
 			break;
@@ -4361,7 +4430,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			}
 			break;
 		case PROTOTYPE_AST_TYPE_EXPR_SELF:
-			if (prototype_type_expr_self(ctx->type_declarations, &compiled_type_expr) != 0) {
+			if (prototype_type_expr_self(&ctx->type_declarations->readback, &compiled_type_expr) != 0) {
 				return -1;
 			}
 			break;
@@ -4370,7 +4439,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			if (lookup_graph_binder(ctx, expr.as.var.ast_binder_id, &graph_binder_id) != 0) {
 				return -1;
 			}
-			if (prototype_type_expr_var(ctx->type_declarations, graph_binder_id, expr.as.var.symbol_id, &compiled_type_expr) != 0) {
+			if (prototype_type_expr_var(&ctx->type_declarations->readback, graph_binder_id, expr.as.var.symbol_id, &compiled_type_expr) != 0) {
 				return -1;
 			}
 			break;
@@ -4385,8 +4454,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 					return -1;
 				}
 			if (status > 0 &&
-				prototype_type_expr_name(
-					ctx->type_declarations,
+				prototype_type_expr_name(&ctx->type_declarations->readback,
 					expr.as.name.symbol_id,
 					&compiled_type_expr
 				) != 0) {
@@ -4395,8 +4463,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 				break;
 			}
 				case PROTOTYPE_AST_TYPE_EXPR_HOST_TYPE: {
-					if (prototype_type_expr_primitive(
-							ctx->type_declarations,
+					if (prototype_type_expr_primitive(&ctx->type_declarations->readback,
 							prototype_term_host_type_expr_tag(expr.as.host_type.host_type_id),
 							&compiled_type_expr
 						) != 0) {
@@ -4413,14 +4480,13 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			if (compile_ast_type_expr(ctx, expr.as.app.argument, &argument) != 0) {
 				return -1;
 			}
-			if (prototype_type_expr_app(ctx->type_declarations, function, argument, &compiled_type_expr) != 0) {
+			if (prototype_type_expr_app(&ctx->type_declarations->readback, function, argument, &compiled_type_expr) != 0) {
 				return -1;
 			}
 			break;
 		}
 		case PROTOTYPE_AST_TYPE_EXPR_NAME_IN_NAMESPACE:
-			if (prototype_type_expr_local_type_member(
-					ctx->type_declarations,
+			if (prototype_type_expr_local_type_member(&ctx->type_declarations->readback,
 					expr.as.name_in_namespace.namespace_symbol_id,
 					expr.as.name_in_namespace.symbol_id,
 					&compiled_type_expr
@@ -4453,8 +4519,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 					&interface->type_exports[
 						association->imported_graph_type_export_index
 					];
-				if (prototype_type_expr_imported_type(
-						ctx->type_declarations,
+				if (prototype_type_expr_imported_type(&ctx->type_declarations->readback,
 						qualified_name_make(
 							graph_export->namespace_symbol_id,
 							graph_export->name_symbol_id
@@ -4474,8 +4539,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 					&ctx->asts->assignments[association->graph_type_assignment_id],
 					&ignored_graph_term
 				) != 0 ||
-				prototype_type_expr_name(
-					ctx->type_declarations,
+				prototype_type_expr_name(&ctx->type_declarations->readback,
 					association->graph_symbol_id,
 					&compiled_type_expr
 				) != 0) {
@@ -4486,8 +4550,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 		case PROTOTYPE_AST_TYPE_EXPR_ACCEPTED_SUBSTITUTION: {
 			if (compile_accepted_type_substitution_term(
 					ctx, &expr, &(uint32_t) { PROTOTYPE_INVALID_ID }
-				) != 0 || prototype_type_expr_semantic_relation(
-					ctx->type_declarations,
+				) != 0 || prototype_type_expr_semantic_relation(&ctx->type_declarations->readback,
 					&compiled_type_expr
 				) != 0) {
 				return -1;
@@ -4497,8 +4560,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 		case PROTOTYPE_AST_TYPE_EXPR_VALUE_REFERENCE:
 			/* Readback schemas cannot own an AST endpoint. The semantic Term
 			 * compiled below remains authoritative for this generated index. */
-			if (prototype_type_expr_semantic_relation(
-					ctx->type_declarations, &compiled_type_expr
+			if (prototype_type_expr_semantic_relation(&ctx->type_declarations->readback, &compiled_type_expr
 				) != 0) {
 				return -1;
 			}
@@ -4512,7 +4574,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			if (compile_ast_type_expr(ctx, expr.as.arrow.codomain, &codomain) != 0) {
 				return -1;
 			}
-			if (prototype_type_expr_arrow(ctx->type_declarations, domain, codomain, &compiled_type_expr) != 0) {
+			if (prototype_type_expr_arrow(&ctx->type_declarations->readback, domain, codomain, &compiled_type_expr) != 0) {
 				return -1;
 			}
 			break;
@@ -4535,8 +4597,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 				return -1;
 			}
 			ctx->binder_count = saved_binder_count;
-			if (prototype_type_expr_pi(
-					ctx->type_declarations,
+			if (prototype_type_expr_pi(&ctx->type_declarations->readback,
 					graph_binder_id,
 					expr.as.pi.symbol_id,
 					domain,
@@ -4551,8 +4612,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 			uint32_t result;
 			if (compile_ast_type_expr(
 					ctx, expr.as.computation_reference.result, &result
-				) != 0 || prototype_type_expr_computation_reference(
-					ctx->type_declarations, result, &compiled_type_expr
+				) != 0 || prototype_type_expr_computation_reference(&ctx->type_declarations->readback, result, &compiled_type_expr
 				) != 0) {
 				return -1;
 			}
@@ -4561,8 +4621,7 @@ static int compile_ast_type_expr(struct compile_context* ctx, uint32_t type_expr
 		case PROTOTYPE_AST_TYPE_EXPR_TERMINATES:
 			/* Readback cannot own Term endpoints.  The graph-level classifier
 			 * compiled below is the semantic schema authority. */
-			if (prototype_type_expr_semantic_relation(
-					ctx->type_declarations, &compiled_type_expr
+			if (prototype_type_expr_semantic_relation(&ctx->type_declarations->readback, &compiled_type_expr
 				) != 0) {
 				return -1;
 			}
@@ -4656,7 +4715,7 @@ static int compile_ast_static_endpoint(
 		}
 		case PROTOTYPE_AST_NAME: {
 			if (prototype_type_declaration_lookup(
-					ctx->type_declarations, node->as.name.symbol_id
+			&ctx->type_declarations->semantic_schema, node->as.name.symbol_id
 				)) {
 				return compile_type_declaration_term_by_symbol(
 					ctx, node->as.name.symbol_id, p_ret
@@ -5780,7 +5839,8 @@ static int compile_type_declaration_term_by_symbol(
 	}
 	}
 	if (!type) {
-		type = prototype_type_declaration_lookup(ctx->type_declarations, symbol_id);
+		type = prototype_type_declaration_lookup(
+			&ctx->type_declarations->semantic_schema, symbol_id);
 	}
 	if (!type) {
 		return -1;

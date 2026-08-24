@@ -17,6 +17,7 @@ SOLVER_MODEL=$LOWERING_DIR/constraint/model_generation_and_index.inc
 SOLVER_EFFECT=$LOWERING_DIR/constraint/effect_propagation_and_residuals.inc
 SOLVER_SOURCE=$LOWERING_DIR/constraint
 JUDGEMENT_TYPES=src/prototype/include/a_program/kernel/judgement/types.h
+USAGE_TYPES=src/prototype/include/a_program/graph/occurrence_usage.h
 READ_FILE=src/prototype/src/driver/read_file.c
 
 grep -q 'struct operation_constraint_db' "$CONTEXT_SOURCE"
@@ -53,12 +54,38 @@ if grep -R -q 'effect_solver\.constraint_states' "$LOWERING_DIR"; then
 	exit 1
 fi
 
-solution_cell=$(sed -n \
-	'/struct operation_solver_solution {/,/^};/p' \
+if grep -R -q 'struct operation_solver_solution\|classifier_hints\[' \
+	"$LOWERING_DIR"; then
+	echo 'generic solver solution or classifier hint authority returned' >&2
+	exit 1
+fi
+
+classifier_meta=$(sed -n \
+	'/struct operation_classifier_meta_solution {/,/^};/p' \
 	"$CONTEXT_SOURCE")
-if printf '%s\n' "$solution_cell" | grep -q \
-	'classifier_state\|effect_state\|reason'; then
-	echo 'solution cell still duplicates ConstraintDB lifecycle state' >&2
+printf '%s\n' "$classifier_meta" | grep -q 'owner_occurrence;'
+printf '%s\n' "$classifier_meta" | grep -q 'classifier;'
+printf '%s\n' "$classifier_meta" | grep -q 'evidence_constraint_id;'
+if printf '%s\n' "$classifier_meta" | grep -q \
+	'effect_row\|first_usage\|usage_entry\|binder_usage\|reason'; then
+	echo 'classifier meta owns another solver domain' >&2
+	exit 1
+fi
+
+effect_meta=$(sed -n \
+	'/struct operation_effect_row_meta {/,/^};/p' \
+	"$CONTEXT_SOURCE")
+printf '%s\n' "$effect_meta" | grep -q 'owner_occurrence;'
+printf '%s\n' "$effect_meta" | grep -q 'materialized_row;'
+printf '%s\n' "$effect_meta" | grep -q 'evidence_constraint_id;'
+
+usage_solution=$(sed -n \
+	'/struct prototype_occurrence_usage_solution {/,/^};/p' \
+	"$USAGE_TYPES")
+printf '%s\n' "$usage_solution" | grep -q 'binder_usage;'
+if grep -R -q 'classifier_metas\[[^]]*\]\.\(effect_row\|binder_usage\|usage_state\)' \
+	"$LOWERING_DIR"; then
+	echo 'classifier meta still mirrors effect or usage solutions' >&2
 	exit 1
 fi
 
@@ -74,7 +101,7 @@ residual_effect_body=$(sed -n \
 	'/static int compile_phase_record_residual_effect_constraints(/,/^}/p' \
 	"$SOLVER_EFFECT")
 if printf '%s\n' "$residual_effect_body" | grep -q \
-	'metadata->effect_constraints'; then
+	'metadata->effect_constraints\|effect_constraint_summary'; then
 	echo 'verification obligations still read the diagnostic effect snapshot' >&2
 	exit 1
 fi
@@ -82,10 +109,26 @@ artifact_export_check=$(sed -n \
 	'/static int artifact_exports_have_accepted_claims(/,/^}/p' \
 	"$READ_FILE")
 if printf '%s\n' "$artifact_export_check" | grep -q \
-	'effect_constraints'; then
+	'effect_constraints\|effect_constraint_summary'; then
 	echo 'artifact acceptance still falls back to a diagnostic effect snapshot' >&2
 	exit 1
 fi
+
+if grep -q 'effect_constraints\|effect_constraint_count\|effect_constraint_capacity' \
+	src/prototype/include/a_program/graph/compile_metadata.h; then
+	echo 'compile metadata still stores effect equations' >&2
+	exit 1
+fi
+
+freeze_body=$(sed -n \
+	'/static int operation_solver_freeze_occurrences(/,/^}/p' \
+	"$SOLVER_SOURCE/evidence_and_freeze.inc")
+printf '%s\n' "$freeze_body" | grep -q 'frozen->classifier = classifier;'
+printf '%s\n' "$freeze_body" | grep -q \
+	'frozen->binder_classifier = operation_solver_binder_classifier'
+direct_frozen_writes=$(grep -R -h \
+	'frozen->\(classifier\|binder_classifier\) =' "$LOWERING_DIR" | wc -l)
+test "$direct_frozen_writes" -eq 3
 
 validator_calls=$(grep -R -h 'operation_constraint_db_validate(ctx)' \
 	"$SOLVER_SOURCE" | wc -l)

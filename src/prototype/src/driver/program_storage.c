@@ -44,13 +44,25 @@
 #define PROGRAM_OCCURRENCE_EDGE_CAPACITY (PROGRAM_OPERATION_CAPACITY * 8)
 #define PROGRAM_OPERATION_CASE_CAPACITY 4096
 #define PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY 4096
-#define PROGRAM_EFFECT_CONSTRAINT_CAPACITY 8192
 #define PROGRAM_VERIFICATION_OBLIGATION_CAPACITY 4096
 #define PROGRAM_VERIFICATION_DEPENDENCY_CAPACITY 8192
 #define PROGRAM_DIMENSION_OPERATOR_CAPACITY 256
-#define PROGRAM_DIMENSION_IMAGE_CAPACITY 2048
+#define PROGRAM_DIMENSION_IMAGE_CAPACITY 4096
 #define PROGRAM_FUNCTION_GRAPH_REQUEST_CAPACITY 128
 #define PROGRAM_FUNCTION_GRAPH_ASSOCIATION_CAPACITY 128
+#define PROGRAM_ARTIFACT_TERM_EXPORT_CAPACITY 512
+#define PROGRAM_ARTIFACT_TYPE_EXPORT_CAPACITY 256
+#define PROGRAM_ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY 512
+#define PROGRAM_ARTIFACT_CONSTRUCTOR_EXPORT_CAPACITY 512
+#define PROGRAM_ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY 1024
+#define PROGRAM_ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY 2048
+#define PROGRAM_ARTIFACT_IDENTITY_ROOT_CAPACITY 512
+#define PROGRAM_ARTIFACT_DEPENDENCY_CAPACITY 512
+#define PROGRAM_ARTIFACT_EXTERNAL_TERM_REF_CAPACITY 512
+#define PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY 512
+#define PROGRAM_ARTIFACT_RESOLVED_CONSTRUCTOR_OWNER_REF_CAPACITY 1024
+#define PROGRAM_ARTIFACT_DEBUG_NAME_CAPACITY 1024
+#define PROGRAM_ARTIFACT_DEFINITION_CAPACITY 512
 
 struct prototype_program_storage_backing {
 	int symbol_ids[PROGRAM_SYMBOL_MAP_CAPACITY];
@@ -58,6 +70,7 @@ struct prototype_program_storage_backing {
 	char* symbol_strings[PROGRAM_SYMBOL_STORAGE_CAPACITY];
 	struct prototype_type_declaration type_declarations[PROGRAM_TYPE_CAPACITY];
 	struct prototype_type_constructor_declaration constructors[PROGRAM_CONSTRUCTOR_CAPACITY];
+	struct prototype_type_readback_entry type_readback_entries[PROGRAM_TYPE_CAPACITY];
 	struct prototype_type_constructor_readback constructor_readback[PROGRAM_CONSTRUCTOR_CAPACITY];
 	struct prototype_constructor_classifier_cache_entry constructor_classifier_cache[PROGRAM_CONSTRUCTOR_CAPACITY];
 	struct prototype_type_parameter_declaration parameters[PROGRAM_PARAMETER_CAPACITY];
@@ -121,6 +134,7 @@ struct prototype_program_storage_backing {
 	struct prototype_resolution_event resolution_events[PROGRAM_RESOLUTION_EVENT_CAPACITY];
 	struct prototype_context contexts[PROTOTYPE_CONTEXT_CAPACITY];
 	struct prototype_substitution substitutions[PROTOTYPE_SUBSTITUTION_CAPACITY];
+	uint32_t accepted_substitution_claims[PROTOTYPE_SUBSTITUTION_CAPACITY];
 	struct prototype_dimension_operator
 		dimension_operators[PROGRAM_DIMENSION_OPERATOR_CAPACITY];
 	struct prototype_dimension_axis_image
@@ -129,29 +143,73 @@ struct prototype_program_storage_backing {
 	struct prototype_typed_occurrence_edge occurrence_edges[PROGRAM_OCCURRENCE_EDGE_CAPACITY];
 	struct prototype_typed_occurrence_match_case occurrence_cases[PROGRAM_OPERATION_CASE_CAPACITY];
 	struct prototype_typed_occurrence_fold_clause fold_clauses[PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY];
-	struct prototype_occurrence_effect_constraint effect_constraints[PROGRAM_EFFECT_CONSTRAINT_CAPACITY];
 	struct prototype_verification_obligation verification_obligations[PROGRAM_VERIFICATION_OBLIGATION_CAPACITY];
 	struct prototype_verification_dependency verification_dependencies[
 		PROGRAM_VERIFICATION_DEPENDENCY_CAPACITY
 	];
 };
 
-int prototype_program_storage_init(struct prototype_program_storage* storage) {
-	if (!storage) {
-		return -1;
-	}
-	memset(storage, 0, sizeof(*storage));
-	storage->backing = calloc(1, sizeof(*storage->backing));
-	if (!storage->backing) {
-		return -1;
-	}
+struct prototype_artifact_interface_storage_backing {
+	struct prototype_artifact_term_export
+		term_exports[PROGRAM_ARTIFACT_TERM_EXPORT_CAPACITY];
+	struct prototype_artifact_type_export
+		type_exports[PROGRAM_ARTIFACT_TYPE_EXPORT_CAPACITY];
+	struct prototype_artifact_type_parameter_export
+		type_parameters[PROGRAM_ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY];
+	struct prototype_artifact_constructor_export
+		constructor_exports[PROGRAM_ARTIFACT_CONSTRUCTOR_EXPORT_CAPACITY];
+	uint32_t constructor_field_type_exprs[
+		PROGRAM_ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY
+	];
+	struct prototype_type_expr
+		type_exprs[PROGRAM_ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY];
+	struct prototype_artifact_identity_root
+		identity_roots[PROGRAM_ARTIFACT_IDENTITY_ROOT_CAPACITY];
+	struct prototype_artifact_dependency
+		dependencies[PROGRAM_ARTIFACT_DEPENDENCY_CAPACITY];
+	struct prototype_artifact_external_term_ref
+		external_term_refs[PROGRAM_ARTIFACT_EXTERNAL_TERM_REF_CAPACITY];
+	struct prototype_artifact_resolved_external_term_ref
+		resolved_external_term_refs[PROGRAM_ARTIFACT_EXTERNAL_TERM_REF_CAPACITY];
+	struct prototype_artifact_external_type_expr_ref
+		external_type_expr_refs[PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY];
+	struct prototype_artifact_resolved_external_type_expr_ref
+		resolved_external_type_expr_refs[
+			PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY
+		];
+	struct prototype_artifact_external_type_former_ref
+		external_type_former_refs[
+			PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY
+		];
+	struct prototype_artifact_resolved_external_type_former_ref
+		resolved_external_type_former_refs[
+			PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY
+		];
+	struct prototype_artifact_resolved_constructor_owner_ref
+		resolved_constructor_owner_refs[
+			PROGRAM_ARTIFACT_RESOLVED_CONSTRUCTOR_OWNER_REF_CAPACITY
+		];
+	struct prototype_artifact_debug_term_name
+		debug_term_names[PROGRAM_ARTIFACT_DEBUG_NAME_CAPACITY];
+	struct prototype_artifact_debug_type_name
+		debug_type_names[PROGRAM_ARTIFACT_DEBUG_NAME_CAPACITY];
+	struct prototype_artifact_debug_constructor_name
+		debug_constructor_names[PROGRAM_ARTIFACT_DEBUG_NAME_CAPACITY];
+	struct prototype_term_definition
+		definitions[PROGRAM_ARTIFACT_DEFINITION_CAPACITY];
+};
+
+static void initialize_program_storage_views(
+	struct prototype_program_storage* storage
+) {
 	struct prototype_program_storage_backing* b = storage->backing;
 	symbol_table_init(&storage->symbols, b->symbol_ids, b->symbol_hashes,
 		PROGRAM_SYMBOL_MAP_CAPACITY, b->symbol_strings,
 		PROGRAM_SYMBOL_STORAGE_CAPACITY);
 	prototype_type_declaration_db_init(&storage->type_declarations,
 		b->type_declarations, PROGRAM_TYPE_CAPACITY, b->constructors,
-		PROGRAM_CONSTRUCTOR_CAPACITY, b->parameters, PROGRAM_PARAMETER_CAPACITY,
+		PROGRAM_CONSTRUCTOR_CAPACITY, b->type_readback_entries,
+		PROGRAM_TYPE_CAPACITY, b->parameters, PROGRAM_PARAMETER_CAPACITY,
 		b->constructor_readback, PROGRAM_CONSTRUCTOR_CAPACITY, b->field_types,
 		PROGRAM_FIELD_TYPE_CAPACITY, b->type_exprs, PROGRAM_TYPE_EXPR_CAPACITY,
 		b->type_representations, PROGRAM_TYPE_CAPACITY,
@@ -198,8 +256,7 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		PROGRAM_OPERATION_CAPACITY, b->occurrence_edges,
 		PROGRAM_OCCURRENCE_EDGE_CAPACITY, b->occurrence_cases,
 		PROGRAM_OPERATION_CASE_CAPACITY, b->fold_clauses,
-		PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY, b->effect_constraints,
-			PROGRAM_EFFECT_CONSTRAINT_CAPACITY, b->verification_obligations,
+		PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY, b->verification_obligations,
 			PROGRAM_VERIFICATION_OBLIGATION_CAPACITY, b->verification_dependencies,
 			PROGRAM_VERIFICATION_DEPENDENCY_CAPACITY);
 	prototype_compile_metadata_set_dimension_storage(
@@ -208,6 +265,11 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		PROGRAM_DIMENSION_OPERATOR_CAPACITY,
 		b->dimension_images,
 		PROGRAM_DIMENSION_IMAGE_CAPACITY
+	);
+	prototype_compile_metadata_set_accepted_substitution_claim_storage(
+		&storage->metadata,
+		b->accepted_substitution_claims,
+		PROTOTYPE_SUBSTITUTION_CAPACITY
 	);
 	prototype_compile_metadata_set_function_graph_storage(
 		&storage->metadata,
@@ -235,6 +297,37 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 	storage->program.judgement = &storage->judgement;
 	storage->program.metadata = &storage->metadata;
 	storage->program.universe = &storage->universe;
+}
+
+int prototype_program_storage_init(struct prototype_program_storage* storage) {
+	if (!storage) {
+		return -1;
+	}
+	memset(storage, 0, sizeof(*storage));
+	storage->backing = calloc(1, sizeof(*storage->backing));
+	if (!storage->backing) {
+		return -1;
+	}
+	initialize_program_storage_views(storage);
+	return 0;
+}
+
+int prototype_program_storage_reset(struct prototype_program_storage* storage) {
+	if (!storage || !storage->backing) {
+		return -1;
+	}
+	prototype_term_db_dispose_runtime_state(&storage->terms);
+	symbol_table_free(&storage->symbols);
+	memset(storage->backing, 0, sizeof(*storage->backing));
+	memset(&storage->program, 0, sizeof(storage->program));
+	memset(&storage->symbols, 0, sizeof(storage->symbols));
+	memset(&storage->type_declarations, 0, sizeof(storage->type_declarations));
+	memset(&storage->asts, 0, sizeof(storage->asts));
+	memset(&storage->terms, 0, sizeof(storage->terms));
+	memset(&storage->judgement, 0, sizeof(storage->judgement));
+	memset(&storage->metadata, 0, sizeof(storage->metadata));
+	memset(&storage->universe, 0, sizeof(storage->universe));
+	initialize_program_storage_views(storage);
 	return 0;
 }
 
@@ -246,4 +339,108 @@ void prototype_program_storage_destroy(struct prototype_program_storage* storage
 	symbol_table_free(&storage->symbols);
 	free(storage->backing);
 	memset(storage, 0, sizeof(*storage));
+}
+
+static void initialize_artifact_interface_storage_views(
+	struct prototype_artifact_interface_storage* storage
+) {
+	struct prototype_artifact_interface_storage_backing* b = storage->backing;
+	prototype_artifact_interface_init(
+		&storage->interface,
+		b->term_exports,
+		PROGRAM_ARTIFACT_TERM_EXPORT_CAPACITY,
+		b->type_exports,
+		PROGRAM_ARTIFACT_TYPE_EXPORT_CAPACITY,
+		b->type_parameters,
+		PROGRAM_ARTIFACT_TYPE_PARAMETER_EXPORT_CAPACITY,
+		b->constructor_exports,
+		PROGRAM_ARTIFACT_CONSTRUCTOR_EXPORT_CAPACITY,
+		b->constructor_field_type_exprs,
+		PROGRAM_ARTIFACT_CONSTRUCTOR_FIELD_TYPE_EXPR_CAPACITY,
+		b->type_exprs,
+		PROGRAM_ARTIFACT_INTERFACE_TYPE_EXPR_CAPACITY,
+		b->identity_roots,
+		PROGRAM_ARTIFACT_IDENTITY_ROOT_CAPACITY,
+		b->dependencies,
+		PROGRAM_ARTIFACT_DEPENDENCY_CAPACITY
+	);
+	prototype_artifact_relocation_table_init(
+		&storage->relocation,
+		b->external_term_refs,
+		PROGRAM_ARTIFACT_EXTERNAL_TERM_REF_CAPACITY,
+		b->resolved_external_term_refs,
+		PROGRAM_ARTIFACT_EXTERNAL_TERM_REF_CAPACITY,
+		b->external_type_expr_refs,
+		PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY,
+		b->resolved_external_type_expr_refs,
+		PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY,
+		b->external_type_former_refs,
+		PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY,
+		b->resolved_external_type_former_refs,
+		PROGRAM_ARTIFACT_EXTERNAL_TYPE_EXPR_REF_CAPACITY,
+		b->resolved_constructor_owner_refs,
+		PROGRAM_ARTIFACT_RESOLVED_CONSTRUCTOR_OWNER_REF_CAPACITY
+	);
+	prototype_artifact_debug_table_init(
+		&storage->debug,
+		b->debug_term_names,
+		PROGRAM_ARTIFACT_DEBUG_NAME_CAPACITY,
+		b->debug_type_names,
+		PROGRAM_ARTIFACT_DEBUG_NAME_CAPACITY,
+		b->debug_constructor_names,
+		PROGRAM_ARTIFACT_DEBUG_NAME_CAPACITY
+	);
+}
+
+int prototype_artifact_interface_storage_init(
+	struct prototype_artifact_interface_storage* storage
+) {
+	if (!storage) {
+		return -1;
+	}
+	memset(storage, 0, sizeof(*storage));
+	storage->backing = calloc(1, sizeof(*storage->backing));
+	if (!storage->backing) {
+		return -1;
+	}
+	initialize_artifact_interface_storage_views(storage);
+	return 0;
+}
+
+int prototype_artifact_interface_storage_reset(
+	struct prototype_artifact_interface_storage* storage
+) {
+	if (!storage || !storage->backing) {
+		return -1;
+	}
+	memset(storage->backing, 0, sizeof(*storage->backing));
+	memset(&storage->interface, 0, sizeof(storage->interface));
+	memset(&storage->relocation, 0, sizeof(storage->relocation));
+	memset(&storage->debug, 0, sizeof(storage->debug));
+	initialize_artifact_interface_storage_views(storage);
+	return 0;
+}
+
+void prototype_artifact_interface_storage_destroy(
+	struct prototype_artifact_interface_storage* storage
+) {
+	if (!storage) {
+		return;
+	}
+	free(storage->backing);
+	memset(storage, 0, sizeof(*storage));
+}
+
+struct prototype_term_definition*
+prototype_artifact_interface_storage_definitions(
+	struct prototype_artifact_interface_storage* storage
+) {
+	return storage && storage->backing ? storage->backing->definitions : NULL;
+}
+
+size_t prototype_artifact_interface_storage_definition_capacity(
+	const struct prototype_artifact_interface_storage* storage
+) {
+	return storage && storage->backing ?
+		PROGRAM_ARTIFACT_DEFINITION_CAPACITY : 0;
 }

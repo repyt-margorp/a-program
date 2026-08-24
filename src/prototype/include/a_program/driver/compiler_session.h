@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "a_program/artifact/interface.h"
 #include "a_program/frontend/lowering.h"
 #include "a_program/kernel/universe.h"
 #include "a_program/support/symbol.h"
@@ -36,6 +37,7 @@ struct prototype_program {
 };
 
 struct prototype_program_storage_backing;
+struct prototype_artifact_interface_storage_backing;
 
 /* Owns the typed backing arrays for one compiler session. The semantic DBs
  * remain separate typed stores; the backing object only centralizes lifetime. */
@@ -52,7 +54,34 @@ struct prototype_program_storage {
 };
 
 int prototype_program_storage_init(struct prototype_program_storage* storage);
+int prototype_program_storage_reset(struct prototype_program_storage* storage);
 void prototype_program_storage_destroy(struct prototype_program_storage* storage);
+
+/* Owns one artifact interface image and its typed relocation/debug/readback
+ * backing. It is a lifetime bundle, not a semantic database. */
+struct prototype_artifact_interface_storage {
+	struct prototype_artifact_interface interface;
+	struct prototype_artifact_relocation_table relocation;
+	struct prototype_artifact_debug_table debug;
+	struct prototype_artifact_interface_storage_backing* backing;
+};
+
+int prototype_artifact_interface_storage_init(
+	struct prototype_artifact_interface_storage* storage
+);
+int prototype_artifact_interface_storage_reset(
+	struct prototype_artifact_interface_storage* storage
+);
+void prototype_artifact_interface_storage_destroy(
+	struct prototype_artifact_interface_storage* storage
+);
+struct prototype_term_definition*
+prototype_artifact_interface_storage_definitions(
+	struct prototype_artifact_interface_storage* storage
+);
+size_t prototype_artifact_interface_storage_definition_capacity(
+	const struct prototype_artifact_interface_storage* storage
+);
 
 int prototype_compile_graph(
 	struct prototype_program* program,

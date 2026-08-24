@@ -1,6 +1,8 @@
 #ifndef __PROTOTYPE_KERNEL_VIEW_H__
 #define __PROTOTYPE_KERNEL_VIEW_H__
 
+#include <stdint.h>
+
 struct prototype_context_db;
 struct prototype_substitution_db;
 struct prototype_cwf_certificate_db;
@@ -35,6 +37,15 @@ struct prototype_kernel_builder {
 	struct prototype_dimension_operator_db* dimension_operators;
 };
 
+struct prototype_kernel_semantic_epoch {
+	uint64_t type_schema_revision;
+	uint64_t type_schema_type_count;
+	uint64_t type_schema_constructor_count;
+	uint64_t context_revision;
+	uint64_t substitution_revision;
+	uint64_t judgement_revision;
+};
+
 /* Validates the component stores and every certificate already present. It
  * deliberately does not assert global certificate coverage for all candidate
  * substitutions; consumers validate explicit certified roots. */
@@ -47,6 +58,18 @@ int prototype_kernel_builder_validate_stores(
 int prototype_kernel_builder_view(
 	const struct prototype_kernel_builder* builder,
 	struct prototype_kernel_view* p_view
+);
+int prototype_kernel_semantic_epoch_capture(
+	const struct prototype_kernel_view* view,
+	struct prototype_kernel_semantic_epoch* p_epoch
+);
+int prototype_kernel_semantic_epoch_equal(
+	const struct prototype_kernel_semantic_epoch* left,
+	const struct prototype_kernel_semantic_epoch* right
+);
+int prototype_kernel_semantic_epoch_matches(
+	const struct prototype_kernel_view* view,
+	const struct prototype_kernel_semantic_epoch* epoch
 );
 
 #endif

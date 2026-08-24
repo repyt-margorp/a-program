@@ -2460,15 +2460,30 @@ int prototype_term_effect_row_purity(
 		PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL;
 }
 
+static int effect_row_normal_form_atom_equal(
+	const struct prototype_term_db* db,
+	uint32_t left,
+	uint32_t right
+) {
+	if (!db || left >= db->term_count || right >= db->term_count) {
+		return 0;
+	}
+	/* Parameterized operation atoms include their latent row. TermDB interns
+	 * alpha-equivalent rows, so local atom identity is the complete semantic
+	 * identity; comparing only operation_id would erase higher-order scope. */
+	return left == right;
+}
+
 static int effect_row_normal_form_add_atom(
+	const struct prototype_term_db* db,
 	struct prototype_effect_row_normal_form* normal,
 	uint32_t atom
 ) {
-	if (!normal) {
+	if (!db || !normal || atom >= db->term_count) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < normal->atom_count; ++i) {
-		if (normal->atoms[i] == atom) {
+		if (effect_row_normal_form_atom_equal(db, normal->atoms[i], atom)) {
 			return 0;
 		}
 	}
@@ -2500,7 +2515,7 @@ static int effect_row_normal_form_collect(
 				) != 0 ? -1 : 0;
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			return effect_row_normal_form_add_atom(normal, row);
+			return effect_row_normal_form_add_atom(db, normal, row);
 		default:
 			return -1;
 	}
@@ -2519,16 +2534,19 @@ int prototype_term_effect_row_normal_form(
 }
 
 int prototype_term_effect_row_normal_form_includes(
+	const struct prototype_term_db* db,
 	const struct prototype_effect_row_normal_form* superset,
 	const struct prototype_effect_row_normal_form* subset
 ) {
-	if (!superset || !subset) {
+	if (!db || !superset || !subset) {
 		return 0;
 	}
 	for (uint32_t i = 0; i < subset->atom_count; ++i) {
 		int found = 0;
 		for (uint32_t j = 0; j < superset->atom_count; ++j) {
-			if (subset->atoms[i] == superset->atoms[j]) {
+			if (effect_row_normal_form_atom_equal(
+					db, subset->atoms[i], superset->atoms[j]
+				)) {
 				found = 1;
 				break;
 			}
@@ -2545,6 +2563,12 @@ static int effect_row_atom_compare(
 	uint32_t left,
 	uint32_t right
 ) {
+	if (!db || left >= db->term_count || right >= db->term_count) {
+		return left < right ? -1 : left != right;
+	}
+	if (effect_row_normal_form_atom_equal(db, left, right)) {
+		return 0;
+	}
 	struct prototype_term_canonical_key left_key;
 	struct prototype_term_canonical_key right_key;
 	if (prototype_term_canonical_key(db, left, &left_key) != 0 ||
@@ -2589,12 +2613,12 @@ int prototype_term_effect_row_materialize_normal_form(
 		return 0;
 	}
 	for (uint32_t i = 1; i < normal->atom_count; ++i) {
-		struct prototype_term term;
-		memset(&term, 0, sizeof(term));
-		term.tag = PROTOTYPE_TERM_EFFECT_ROW_UNION;
-		term.as.effect_row_union.left = result;
-		term.as.effect_row_union.right = atoms[i];
-		if (add_term(db, term, &result) != 0) {
+		struct prototype_term union_term;
+		memset(&union_term, 0, sizeof(union_term));
+		union_term.tag = PROTOTYPE_TERM_EFFECT_ROW_UNION;
+		union_term.as.effect_row_union.left = result;
+		union_term.as.effect_row_union.right = atoms[i];
+		if (add_term(db, union_term, &result) != 0) {
 			return -1;
 		}
 	}
@@ -2619,7 +2643,7 @@ int prototype_term_effect_row_union(
 	}
 	for (uint32_t i = 0; i < right_normal.atom_count; ++i) {
 		if (effect_row_normal_form_add_atom(
-				&left_normal, right_normal.atoms[i]
+				db, &left_normal, right_normal.atoms[i]
 			) != 0) {
 			return -1;
 		}
@@ -2667,7 +2691,7 @@ int prototype_term_effect_row_residual(
 				].as.effect_row_operation.operation_id == operation_id;
 			}
 		}
-		if (!remove && effect_row_normal_form_add_atom(&residual, atom) != 0) {
+		if (!remove && effect_row_normal_form_add_atom(db, &residual, atom) != 0) {
 			return -1;
 		}
 	}

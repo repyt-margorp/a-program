@@ -92,7 +92,7 @@ struct prototype_artifact_constructor_export {
 	uint32_t ordinal;
 	uint32_t readback_first_field_type;
 	uint32_t readback_field_count;
-	uint32_t curried_classifier_cache;
+	uint32_t constructor_classifier;
 };
 
 struct prototype_artifact_dependency {

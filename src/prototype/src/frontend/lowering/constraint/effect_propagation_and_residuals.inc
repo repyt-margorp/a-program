@@ -231,6 +231,7 @@ static int operation_effect_constraint_add(
 			operation
 		].context_id,
 		.payload.effect = {
+			.effect_meta_id = PROTOTYPE_INVALID_ID,
 			.result_row = result_row,
 			.left_row = left_row,
 			.right_row = right_row
@@ -268,49 +269,58 @@ static int operation_classifier_computation_view(
 
 static int operation_effect_row_meta_find_or_add(
 	struct compile_context* ctx,
-	uint32_t owner_operation,
+	uint32_t owner_occurrence,
 	uint32_t placeholder_row,
 	struct operation_effect_row_meta** p_meta
 ) {
-	if (!ctx || !p_meta || owner_operation >= ctx->metadata->typed_occurrences.occurrence_count ||
+	if (!ctx || !p_meta || owner_occurrence >= ctx->metadata->typed_occurrences.occurrence_count ||
 		placeholder_row >= ctx->terms->term_count ||
 		ctx->terms->terms[placeholder_row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < ctx->effect_solver.meta_count; ++i) {
-		struct operation_effect_row_meta* meta = &ctx->effect_solver.metas[i];
-		if (meta->owner_operation == owner_operation &&
-			meta->placeholder_row == placeholder_row) {
-			*p_meta = meta;
-			return 0;
+	uint32_t existing = ctx->effect_solver.meta_for_occurrence[owner_occurrence];
+	if (existing != PROTOTYPE_INVALID_ID) {
+		if (existing >= ctx->effect_solver.meta_count ||
+			ctx->effect_solver.metas[existing].placeholder_row != placeholder_row) {
+			return -1;
 		}
+		*p_meta = &ctx->effect_solver.metas[existing];
+		return 0;
 	}
 	if (ctx->effect_solver.meta_count >=
 		PROTOTYPE_TYPED_OCCURRENCE_EFFECT_ROW_META_CAPACITY) {
 		return -1;
 	}
+	uint32_t meta_id = ctx->effect_solver.meta_count++;
 	struct operation_effect_row_meta* meta =
-		&ctx->effect_solver.metas[ctx->effect_solver.meta_count++];
+		&ctx->effect_solver.metas[meta_id];
 	*meta = (struct operation_effect_row_meta){
-		.owner_operation = owner_operation,
+		.owner_occurrence = owner_occurrence,
 		.placeholder_row = placeholder_row,
 		.first_solution_atom = PROTOTYPE_INVALID_ID,
-		.solution_row = PROTOTYPE_INVALID_ID,
+		.materialized_row = PROTOTYPE_INVALID_ID,
+		.evidence_constraint_id = PROTOTYPE_INVALID_ID,
 		.state = OPERATION_EFFECT_ROW_META_UNSOLVED
 	};
+	ctx->effect_solver.meta_for_occurrence[owner_occurrence] = meta_id;
 	*p_meta = meta;
 	return 0;
 }
 
 static int operation_effect_normal_add_atom(
+	const struct prototype_term_db* terms,
 	struct prototype_effect_row_normal_form* normal,
 	uint32_t atom
 ) {
-	if (!normal) {
+	if (!terms || !normal || atom >= terms->term_count) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < normal->atom_count; ++i) {
-		if (normal->atoms[i] == atom) {
+		uint32_t existing = normal->atoms[i];
+		if (existing >= terms->term_count) {
+			return -1;
+		}
+		if (existing == atom) {
 			return 0;
 		}
 	}
@@ -322,6 +332,7 @@ static int operation_effect_normal_add_atom(
 }
 
 static int operation_effect_normal_union(
+	const struct prototype_term_db* terms,
 	struct prototype_effect_row_normal_form* target,
 	const struct prototype_effect_row_normal_form* source
 ) {
@@ -329,7 +340,9 @@ static int operation_effect_normal_union(
 		return -1;
 	}
 	for (uint32_t i = 0; i < source->atom_count; ++i) {
-		if (operation_effect_normal_add_atom(target, source->atoms[i]) != 0) {
+		if (operation_effect_normal_add_atom(
+				terms, target, source->atoms[i]
+			) != 0) {
 			return -1;
 		}
 	}
@@ -337,12 +350,13 @@ static int operation_effect_normal_union(
 }
 
 static int operation_effect_normal_equal(
+	const struct prototype_term_db* terms,
 	const struct prototype_effect_row_normal_form* left,
 	const struct prototype_effect_row_normal_form* right
 ) {
 	return left && right &&
-		prototype_term_effect_row_normal_form_includes(left, right) &&
-		prototype_term_effect_row_normal_form_includes(right, left);
+		prototype_term_effect_row_normal_form_includes(terms, left, right) &&
+		prototype_term_effect_row_normal_form_includes(terms, right, left);
 }
 
 static int operation_effect_meta_solution_normal(
@@ -370,11 +384,13 @@ static int operation_effect_meta_solution_normal(
 }
 
 static int operation_effect_meta_store_solution(
+	struct compile_context* ctx,
 	struct operation_effect_solver* solver,
 	struct operation_effect_row_meta* meta,
-	const struct prototype_effect_row_normal_form* normal
+	const struct prototype_effect_row_normal_form* normal,
+	uint32_t evidence_constraint_id
 ) {
-	if (!solver || !meta || !normal ||
+	if (!ctx || !solver || !meta || !normal ||
 		normal->atom_count > PROTOTYPE_TYPED_OCCURRENCE_EFFECT_ROW_SOLUTION_ATOM_CAPACITY -
 			solver->solution_atom_count) {
 		return -1;
@@ -383,7 +399,9 @@ static int operation_effect_meta_store_solution(
 		struct prototype_effect_row_normal_form existing;
 		return operation_effect_meta_solution_normal(
 			solver, meta, &existing
-		) == 0 && operation_effect_normal_equal(&existing, normal) ? 0 : -1;
+		) == 0 && operation_effect_normal_equal(
+			ctx->terms, &existing, normal
+		) ? 0 : -1;
 	}
 	meta->first_solution_atom = solver->solution_atom_count;
 	meta->solution_atom_count = normal->atom_count;
@@ -394,12 +412,88 @@ static int operation_effect_meta_store_solution(
 	);
 	solver->solution_atom_count += normal->atom_count;
 	meta->state = OPERATION_EFFECT_ROW_META_SOLVED;
+	meta->evidence_constraint_id = evidence_constraint_id;
 	return 0;
+}
+
+static int operation_classifier_canonicalize_effect_rows(
+	struct compile_context* ctx,
+	uint32_t classifier,
+	uint32_t depth,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !p_classifier || classifier >= ctx->terms->term_count ||
+		depth > 64) {
+		return -1;
+	}
+	const struct prototype_term* term = &ctx->terms->terms[classifier];
+	switch (term->tag) {
+		case PROTOTYPE_TERM_COMPUTATION_TYPE: {
+			struct prototype_effect_row_normal_form normal;
+			uint32_t row;
+			return prototype_term_effect_row_normal_form(
+					ctx->terms, term->as.computation_type.label, &normal
+				) != 0 || prototype_term_effect_row_materialize_normal_form(
+					ctx->terms, &normal, &row
+				) != 0 ? -1 : prototype_term_computation_type(
+					ctx->terms,
+					row,
+					term->as.computation_type.result,
+					term->as.computation_type.totality,
+					p_classifier
+				);
+		}
+		case PROTOTYPE_TERM_THUNK_TYPE: {
+			uint32_t computation;
+			return operation_classifier_canonicalize_effect_rows(
+					ctx,
+					term->as.thunk_type.computation,
+					depth + 1,
+					&computation
+				) != 0 ? -1 : prototype_term_thunk_type(
+					ctx->terms, computation, p_classifier
+				);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
+			uint32_t body;
+			return operation_classifier_canonicalize_effect_rows(
+					ctx,
+					term->as.effect_row_forall.body,
+					depth + 1,
+					&body
+				) != 0 ? -1 : prototype_term_effect_row_forall(
+					ctx->terms,
+					term->as.effect_row_forall.binding_id,
+					body,
+					p_classifier
+				);
+		}
+		case PROTOTYPE_TERM_PI: {
+			uint32_t domain;
+			uint32_t binder;
+			uint32_t body;
+			uint32_t family;
+			return operation_classifier_canonicalize_effect_rows(
+					ctx, term->as.pi.domain, depth + 1, &domain
+				) != 0 || prototype_term_pure_family_parts(
+					ctx->terms, term->as.pi.codomain_family, &binder, &body
+				) != 0 || operation_classifier_canonicalize_effect_rows(
+					ctx, body, depth + 1, &body
+				) != 0 || prototype_term_pure_family(
+					ctx->terms, binder, body, &family
+				) != 0 ? -1 : prototype_term_pi_family(
+					ctx->terms, domain, family, p_classifier
+				);
+		}
+		default:
+			*p_classifier = classifier;
+			return 0;
+	}
 }
 
 static int operation_effect_resolve_row_normal(
 	struct compile_context* ctx,
-	uint32_t owner_operation,
+	uint32_t owner_occurrence,
 	uint32_t row,
 	struct prototype_effect_row_normal_form* p_normal
 ) {
@@ -414,25 +508,27 @@ static int operation_effect_resolve_row_normal(
 		struct operation_effect_row_meta* solved_meta = NULL;
 		if (atom < ctx->terms->term_count &&
 			ctx->terms->terms[atom].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
-			for (uint32_t j = 0; j < ctx->effect_solver.meta_count; ++j) {
-				struct operation_effect_row_meta* candidate =
-					&ctx->effect_solver.metas[j];
-				if (candidate->owner_operation == owner_operation &&
-					candidate->placeholder_row == atom &&
-					candidate->state == OPERATION_EFFECT_ROW_META_SOLVED) {
-					solved_meta = candidate;
-					break;
-				}
+			uint32_t meta_id = ctx->effect_solver.meta_for_occurrence[owner_occurrence];
+			if (meta_id != PROTOTYPE_INVALID_ID &&
+				meta_id < ctx->effect_solver.meta_count &&
+				ctx->effect_solver.metas[meta_id].placeholder_row == atom &&
+				ctx->effect_solver.metas[meta_id].state ==
+					OPERATION_EFFECT_ROW_META_SOLVED) {
+				solved_meta = &ctx->effect_solver.metas[meta_id];
 			}
 		}
 		if (solved_meta) {
 			struct prototype_effect_row_normal_form solution;
 			if (operation_effect_meta_solution_normal(
 					&ctx->effect_solver, solved_meta, &solution
-				) != 0 || operation_effect_normal_union(p_normal, &solution) != 0) {
+				) != 0 || operation_effect_normal_union(
+					ctx->terms, p_normal, &solution
+				) != 0) {
 				return -1;
 			}
-		} else if (operation_effect_normal_add_atom(p_normal, atom) != 0) {
+		} else if (operation_effect_normal_add_atom(
+				ctx->terms, p_normal, atom
+			) != 0) {
 			return -1;
 		}
 	}
@@ -445,38 +541,41 @@ static int operation_effect_materialize_solution(
 	uint32_t replacement
 ) {
 	if (!ctx || !meta || replacement >= ctx->terms->term_count ||
-		meta->owner_operation >= ctx->metadata->typed_occurrences.occurrence_count ||
+		meta->owner_occurrence >= ctx->metadata->typed_occurrences.occurrence_count ||
 		meta->placeholder_row >= ctx->terms->term_count ||
 		ctx->terms->terms[meta->placeholder_row].tag !=
 			PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 		return -1;
 	}
-	uint32_t owner = meta->owner_operation;
+	uint32_t owner = meta->owner_occurrence;
 	uint32_t binding_id = ctx->terms->terms[
 		meta->placeholder_row
 	].as.effect_row_var.binding_id;
-	uint32_t* classifiers[] = {
-		&ctx->classifier_hints[owner],
-		&ctx->metadata->typed_occurrences.occurrences[owner].binder_classifier,
-		&ctx->classifier_solver.solutions[owner].classifier,
-		&ctx->classifier_solver.solutions[owner].effect_row
-	};
-	for (size_t i = 0; i < sizeof(classifiers) / sizeof(classifiers[0]); ++i) {
-		if (*classifiers[i] == PROTOTYPE_INVALID_ID) {
-			continue;
-		}
+	uint32_t classifier =
+		ctx->classifier_solver.classifier_metas[owner].classifier;
+	if (classifier != PROTOTYPE_INVALID_ID) {
+		uint32_t rewritten;
+		uint32_t canonical;
 		if (prototype_term_graph_substitute_bound_var(
 				ctx->terms,
 				ctx->type_declarations,
-				*classifiers[i],
+				classifier,
 				binding_id,
 				replacement,
-				classifiers[i]
+				&rewritten
+			) != 0 || operation_classifier_canonicalize_effect_rows(
+				ctx, rewritten, 0, &canonical
+			) != 0 || operation_classifier_meta_publish(
+				ctx,
+				owner,
+				canonical,
+				ctx->classifier_solver.classifier_metas[owner].
+					evidence_constraint_id
 			) != 0) {
 			return -1;
 		}
 	}
-	meta->solution_row = replacement;
+	meta->materialized_row = replacement;
 	meta->state = OPERATION_EFFECT_ROW_META_SOLVED;
 	return 0;
 }
@@ -608,7 +707,9 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 					break;
 				case PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_UNION:
 					expected = left;
-					if (operation_effect_normal_union(&expected, &right) != 0) {
+					if (operation_effect_normal_union(
+							ctx->terms, &expected, &right
+						) != 0) {
 						return -1;
 					}
 					break;
@@ -645,7 +746,7 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 							}
 						}
 						if (!handled && operation_effect_normal_add_atom(
-								&expected, atom
+								ctx->terms, &expected, atom
 							) != 0) {
 							return -1;
 						}
@@ -658,7 +759,9 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 				default:
 					return -1;
 			}
-			if (operation_effect_normal_equal(&actual, &expected)) {
+			if (operation_effect_normal_equal(
+					ctx->terms, &actual, &expected
+				)) {
 				if (operation_constraint_transition(
 						constraint,
 						OPERATION_CONSTRAINT_STATE_SOLVED,
@@ -724,10 +827,12 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 			}
 			int was_unsolved = meta->state == OPERATION_EFFECT_ROW_META_UNSOLVED;
 			if (operation_effect_meta_store_solution(
-					&ctx->effect_solver, meta, &expected
+					ctx, &ctx->effect_solver, meta, &expected, constraint->id
 				) != 0) {
 				return -1;
 			}
+			constraint->payload.effect.effect_meta_id =
+				(uint32_t)(meta - ctx->effect_solver.metas);
 			if (operation_constraint_transition(
 					constraint,
 					OPERATION_CONSTRAINT_STATE_SOLVED,
@@ -762,7 +867,7 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 	for (uint32_t i = 0; i < ctx->effect_solver.meta_count; ++i) {
 		struct operation_effect_row_meta* meta = &ctx->effect_solver.metas[i];
 		if (meta->state != OPERATION_EFFECT_ROW_META_SOLVED ||
-			meta->solution_row != PROTOTYPE_INVALID_ID) {
+			meta->materialized_row != PROTOTYPE_INVALID_ID) {
 			continue;
 		}
 		struct prototype_effect_row_normal_form solution;
@@ -780,28 +885,22 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 	if (operation_constraint_db_validate(ctx) != 0) {
 		return -1;
 	}
-	/* Preserve an immutable diagnostic snapshot. The solver does not read this
-	 * projection and v82 does not publish it. */
-	if (ctx->constraints.effect_constraint_count >
-		ctx->metadata->effect_constraint_capacity) {
-		return -1;
-	}
-	ctx->metadata->effect_constraint_count = 0;
+	memset(
+		&ctx->metadata->effect_constraint_summary,
+		0,
+		sizeof(ctx->metadata->effect_constraint_summary)
+	);
 	for (size_t i = 0; i < ctx->constraints.effect_constraint_count; ++i) {
 		uint32_t id = ctx->constraints.first_effect_constraint + (uint32_t)i;
 		const struct operation_constraint* constraint =
 			&ctx->constraints.constraints[id];
-		ctx->metadata->effect_constraints[
-			ctx->metadata->effect_constraint_count++
-		] = (struct prototype_occurrence_effect_constraint){
-			.id = constraint->id,
-			.kind = constraint->kind,
-			.state = constraint->state,
-			.occurrence = constraint->source_occurrence,
-			.result_row = constraint->payload.effect.result_row,
-			.left_row = constraint->payload.effect.left_row,
-			.right_row = constraint->payload.effect.right_row
-		};
+		if (constraint->state == OPERATION_CONSTRAINT_STATE_SOLVED) {
+			ctx->metadata->effect_constraint_summary.solved_count++;
+		} else if (constraint->state == OPERATION_CONSTRAINT_STATE_RESIDUAL) {
+			ctx->metadata->effect_constraint_summary.residual_count++;
+		} else if (constraint->state == OPERATION_CONSTRAINT_STATE_CONTRADICTION) {
+			ctx->metadata->effect_constraint_summary.failed_count++;
+		}
 	}
 	return 0;
 }
@@ -1220,7 +1319,7 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 			case PROTOTYPE_TYPED_OCCURRENCE_LAMBDA:
 			case PROTOTYPE_TYPED_OCCURRENCE_MATCH:
 			case PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS:
-				if (ctx->classifier_solver.solutions[i].classifier ==
+				if (ctx->classifier_solver.classifier_metas[i].classifier ==
 					PROTOTYPE_INVALID_ID) {
 					fprintf(stderr,
 						"classifier solver incomplete occurrence=%u tag=%d ast=%u context=%u core=%u action=%u ih-owner=%u ih-case=%u ih-field=%u scope=%u\n",
@@ -1235,13 +1334,13 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 						operation->ih_owner_occurrence <
 							ctx->metadata->typed_occurrences.occurrence_count) {
 						uint32_t owner = operation->ih_owner_occurrence;
-						const struct prototype_typed_occurrence* owner_operation =
+						const struct prototype_typed_occurrence* owner_occurrence =
 							&ctx->metadata->typed_occurrences.occurrences[owner];
 						fprintf(stderr,
 							"  IH owner tag=%d ast=%u context=%u core=%u classifier=%u motive=%u motive-state=%u\n",
-							owner_operation->tag, owner_operation->source_ast,
-							owner_operation->context_id, owner_operation->core_term,
-							ctx->classifier_solver.solutions[owner].classifier,
+							owner_occurrence->tag, owner_occurrence->source_ast,
+							owner_occurrence->context_id, owner_occurrence->core_term,
+							ctx->classifier_solver.classifier_metas[owner].classifier,
 							ctx->classifier_solver.motive_terms[owner],
 							ctx->classifier_solver.motive_solution_states[owner]);
 					}
@@ -1257,16 +1356,16 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 							child < ctx->metadata->typed_occurrences.occurrence_count ?
 								ctx->metadata->typed_occurrences.occurrences[child].tag : -1,
 							child < ctx->metadata->typed_occurrences.occurrence_count ?
-								ctx->classifier_solver.solutions[child].classifier :
+								ctx->classifier_solver.classifier_metas[child].classifier :
 								PROTOTYPE_INVALID_ID);
 						if (child < ctx->metadata->typed_occurrences.occurrence_count &&
-							ctx->classifier_solver.solutions[child].classifier !=
+							ctx->classifier_solver.classifier_metas[child].classifier !=
 								PROTOTYPE_INVALID_ID) {
 							fprintf(stderr, "    classifier-term: ");
 							prototype_term_print_debug(
 								stderr, ctx->symbols, ctx->intrinsic_environment,
 								ctx->type_declarations, ctx->terms,
-								ctx->classifier_solver.solutions[child].classifier
+								ctx->classifier_solver.classifier_metas[child].classifier
 							);
 							fprintf(stderr, "\n");
 						}
@@ -1278,7 +1377,7 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 						fprintf(stderr,
 							"nearby occurrence=%u tag=%d ast=%u core=%u classifier=%u term=",
 							debug, nearby->tag, nearby->source_ast, nearby->core_term,
-							ctx->classifier_solver.solutions[debug].classifier);
+							ctx->classifier_solver.classifier_metas[debug].classifier);
 						prototype_term_print_debug(
 							stderr, ctx->symbols, ctx->intrinsic_environment,
 							ctx->type_declarations, ctx->terms, nearby->core_term

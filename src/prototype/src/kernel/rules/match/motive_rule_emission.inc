@@ -129,15 +129,26 @@ int prototype_judgement_delta_ensure_type_at_universe(
 	if (term_has_tag(terms, subject, PROTOTYPE_TERM_COMPUTATION_TYPE)) {
 		const struct prototype_term* computation_type = &terms->terms[subject];
 		struct prototype_effect_row_normal_form effect_row;
-		if (prototype_term_effect_row_normal_form(
-				terms, computation_type->as.computation_type.label, &effect_row
-			) != 0 || prototype_judgement_delta_ensure_type_at_universe(
+		int effect_status = prototype_term_effect_row_normal_form(
+			terms, computation_type->as.computation_type.label, &effect_row
+		);
+		int result_status = effect_status == 0 ?
+			prototype_judgement_delta_ensure_type_at_universe(
 				delta,
 				terms,
 				type_declarations,
 				computation_type->as.computation_type.result,
 				universe
-			) != 0) {
+			) : -1;
+		if (effect_status != 0 || result_status != 0) {
+			fprintf(stderr,
+				"computation type formation failed subject=%u effect=%d result=%d "
+				"result-term=%u result-tag=%d universe=%u\n",
+				subject, effect_status, result_status,
+				computation_type->as.computation_type.result,
+				terms->terms[computation_type->as.computation_type.result].tag,
+				universe
+			);
 			return -1;
 		}
 		struct prototype_judgement_selected_evidence result_evidence;
@@ -538,6 +549,10 @@ int prototype_judgement_delta_ensure_type_at_universe(
 			&inferred
 		);
 		if (status < 0) {
+			fprintf(stderr,
+				"type-at-universe APP expansion failed subject=%u phase=initial\n",
+				subject
+			);
 			return -1;
 		}
 			if (status > 0) {
@@ -639,6 +654,10 @@ int prototype_judgement_delta_ensure_type_at_universe(
 					terms,
 					type_declarations
 				) != 0) {
+				fprintf(stderr,
+					"type-at-universe APP helper inference failed subject=%u\n",
+					subject
+				);
 				return -1;
 			}
 			status = prototype_judgement_delta_expand_app(
@@ -649,6 +668,10 @@ int prototype_judgement_delta_ensure_type_at_universe(
 				&inferred
 			);
 			if (status < 0) {
+				fprintf(stderr,
+					"type-at-universe APP expansion failed subject=%u phase=retry\n",
+					subject
+				);
 				return -1;
 			}
 		}
@@ -740,6 +763,19 @@ int prototype_judgement_delta_ensure_type_at_universe(
 		actual = actual_candidates[i];
 	}
 	if (actual == PROTOTYPE_INVALID_ID) {
+		fprintf(stderr,
+			"type-at-universe has no compatible classifier subject=%u tag=%d "
+			"universe=%u candidates=%u context=%u",
+			subject, terms->terms[subject].tag, universe,
+			actual_candidate_count, delta->current_context_id
+		);
+		if (terms->terms[subject].tag == PROTOTYPE_TERM_APP) {
+			fprintf(stderr, " function=%u argument=%u",
+				terms->terms[subject].as.app.function,
+				terms->terms[subject].as.app.argument
+			);
+		}
+		fprintf(stderr, "\n");
 		return -1;
 	}
 	if (actual == universe) {
@@ -1546,13 +1582,27 @@ int prototype_judgement_delta_build_constant_match_motive(
 	}
 	prototype_judgement_delta_set_context(delta, motive_context);
 	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
-	if (prototype_judgement_delta_record_context_binding_assumption(
-			delta, terms, motive_binding, scrutinee_classifier
-		) != 0 || prototype_judgement_delta_ensure_type_at_universe(
+	int assumption_status = prototype_judgement_delta_record_context_binding_assumption(
+		delta, terms, motive_binding, scrutinee_classifier
+	);
+	int result_type_status = assumption_status == 0 ?
+		prototype_judgement_delta_ensure_type_at_universe(
 			delta, terms, type_declarations, result_type, motive_universe
-		) != 0 || prototype_term_pi(
+		) : -1;
+	int pi_status = assumption_status == 0 && result_type_status == 0 ?
+		prototype_term_pi(
 			terms, scrutinee_classifier, motive_universe, &motive_pi
-		) != 0) {
+		) : -1;
+	if (assumption_status != 0 || result_type_status != 0 || pi_status != 0) {
+		fprintf(stderr,
+			"constant Match motive formation failed assumption=%d result-type=%d "
+			"pi=%d context=%u scrutinee-classifier=%u result=%u result-tag=%d "
+			"universe=%u\n",
+			assumption_status, result_type_status, pi_status, motive_context,
+			scrutinee_classifier, result_type,
+			result_type < terms->term_count ? terms->terms[result_type].tag : -1,
+			motive_universe
+		);
 		return -1;
 	}
 	struct prototype_judgement_selected_evidence lambda_evidence[2];

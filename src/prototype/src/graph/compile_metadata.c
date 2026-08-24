@@ -314,8 +314,6 @@ void prototype_compile_metadata_init(
 	size_t occurrence_match_case_capacity,
 	struct prototype_typed_occurrence_fold_clause* occurrence_fold_clauses,
 	size_t occurrence_fold_clause_capacity,
-	struct prototype_occurrence_effect_constraint* effect_constraints,
-	size_t effect_constraint_capacity,
 	struct prototype_verification_obligation* verification_obligations,
 	size_t verification_obligation_capacity,
 	struct prototype_verification_dependency* verification_dependencies,
@@ -366,8 +364,6 @@ void prototype_compile_metadata_init(
 		occurrence_fold_clauses,
 		occurrence_fold_clause_capacity
 	);
-	metadata->effect_constraints = effect_constraints;
-	metadata->effect_constraint_capacity = effect_constraint_capacity;
 	prototype_verification_db_init(
 		&metadata->verification,
 		verification_obligations,

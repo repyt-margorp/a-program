@@ -8,7 +8,8 @@ static int operation_named_nat_type_classifier(
 		return -1;
 	}
 	const struct prototype_type_declaration* nat_type =
-		prototype_type_declaration_lookup(type_declarations, nat_symbol_id);
+		prototype_type_declaration_lookup(
+			&type_declarations->semantic_schema, nat_symbol_id);
 	if (!nat_type) {
 		return -1;
 	}
@@ -2636,6 +2637,7 @@ static int infer_core_helper_facts_with_results(
 	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 	size_t first_relation = delta->proposition_count;
 	if (prototype_judgement_delta_generate_computation_constraints(delta, terms) != 0) {
+		fprintf(stderr, "core helper computation constraint generation failed\n");
 		return -1;
 	}
 	reset_computation_constraint_solutions(delta, results, result_capacity);
@@ -2661,6 +2663,11 @@ static int infer_core_helper_facts_with_results(
 						NULL
 					);
 					if (status < 0) {
+						fprintf(stderr,
+							"core helper APP expansion failed term=%u function=%u argument=%u\n",
+							i, terms->terms[i].as.app.function,
+							terms->terms[i].as.app.argument
+						);
 						return -1;
 					}
 					if (delta->proposition_count > before) {
@@ -2757,6 +2764,10 @@ static int infer_core_helper_facts_with_results(
 			delta, terms, type_declarations, results, result_capacity, 1
 		);
 		if (solve_status != 0) {
+			fprintf(stderr,
+				"core helper computation constraint solve failed status=%d\n",
+				solve_status
+			);
 			return solve_status;
 		}
 		if (delta->proposition_count > before) {
@@ -2765,6 +2776,10 @@ static int infer_core_helper_facts_with_results(
 	}
 	for (size_t i = first_relation; i < delta->proposition_count; ++i) {
 		if (delta->propositions[i].occurrence_id != PROTOTYPE_INVALID_ID) {
+			fprintf(stderr,
+				"core helper emitted occurrence-owned proposition relation=%zu occurrence=%u\n",
+				i, delta->propositions[i].occurrence_id
+			);
 			return -1;
 		}
 		uint32_t cursor = 0;
@@ -2782,11 +2797,19 @@ static int infer_core_helper_facts_with_results(
 			found = 1;
 			if (!delta->derivation_candidates[derivation_id].conclusion ||
 				delta->derivation_candidates[derivation_id].conclusion->occurrence_id !=
-				PROTOTYPE_INVALID_ID) {
+					PROTOTYPE_INVALID_ID) {
+				fprintf(stderr,
+					"core helper emitted occurrence-owned derivation relation=%zu "
+					"derivation=%u\n",
+					i, derivation_id
+				);
 				return -1;
 			}
 		}
 		if (!found) {
+			fprintf(stderr,
+				"core helper proposition has no derivation relation=%zu\n", i
+			);
 			return -1;
 		}
 	}

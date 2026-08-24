@@ -19,7 +19,8 @@ int prototype_hott_execute_substitution_action(
 		!cwf_certificates || !bridges || !terms || !type_declarations ||
 		!judgement || !p_result_id || normalization_profile !=
 			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
-		prototype_kernel_builder_view(kernel, &view) != 0) {
+		prototype_kernel_builder_view(kernel, &view) != 0 ||
+		prototype_hott_action_db_epoch_matches(actions, &view) != 0) {
 		return -1;
 	}
 	int existing = hott_action_result_for_request(
@@ -1354,7 +1355,10 @@ int prototype_hott_action_db_validate(
 		kernel ? kernel->occurrences : NULL;
 	const struct prototype_judgement_db* judgement =
 		kernel ? kernel->judgement : NULL;
-	if (!db || db->request_count > db->request_capacity ||
+	if (!db || ((db->request_count != 0 || db->certificate_count != 0 ||
+			db->result_count != 0) && prototype_hott_action_db_epoch_matches(
+			db, kernel
+		) != 0) || db->request_count > db->request_capacity ||
 		db->certificate_count > db->certificate_capacity ||
 		db->result_count > db->result_capacity ||
 		(db->request_count != 0 && !db->requests) ||

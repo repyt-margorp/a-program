@@ -323,45 +323,6 @@ static int normalize_delta_candidate_premises(
 	return 0;
 }
 
-struct candidate_proposition_transaction_mark {
-	struct prototype_storage_transaction_mark extent;
-	uint64_t intern_requests;
-	uint64_t intern_hits;
-	uint64_t intern_probes;
-};
-
-static struct candidate_proposition_transaction_mark
-candidate_proposition_transaction_mark(
-	const struct prototype_judgement_db* judgement
-) {
-	return (struct candidate_proposition_transaction_mark) {
-		.extent = prototype_storage_transaction_mark(
-			judgement->proposition_count,
-			judgement->proposition_resource_usage_count
-		),
-		.intern_requests = judgement->proposition_intern_requests,
-		.intern_hits = judgement->proposition_intern_hits,
-		.intern_probes = judgement->proposition_intern_probes
-	};
-}
-
-static int candidate_proposition_transaction_rollback(
-	struct prototype_judgement_db* judgement,
-	struct candidate_proposition_transaction_mark mark
-) {
-	if (!judgement || prototype_storage_transaction_rollback(
-			mark.extent,
-			&judgement->proposition_count,
-			&judgement->proposition_resource_usage_count
-		) != 0) {
-		return -1;
-	}
-	judgement->proposition_intern_requests = mark.intern_requests;
-	judgement->proposition_intern_hits = mark.intern_hits;
-	judgement->proposition_intern_probes = mark.intern_probes;
-	return prototype_judgement_db_rebuild_index(judgement);
-}
-
 int prototype_judgement_candidate_derivation_for_conclusion_next(
 	const struct prototype_judgement_proposition* claims,
 	size_t claim_count,
@@ -941,7 +902,11 @@ static int judgement_derivation_premises_are_arena_owned(
 int prototype_judgement_db_rebuild_index(
 	struct prototype_judgement_db* judgement
 ) {
-	if (!judgement ||
+	if (!judgement) {
+		return -1;
+	}
+	judgement->index_rebuild_count++;
+	if (
 		(judgement->claim_count != 0 && !judgement->claims) ||
 		(judgement->derivation_count != 0 && !judgement->derivations) ||
 		judgement->proposition_count > judgement->proposition_capacity ||
@@ -1137,6 +1102,86 @@ int prototype_judgement_db_rebuild_index(
 	return judgement_claim_dependency_dag_is_valid(judgement);
 }
 
+int prototype_judgement_transaction_begin(
+	const struct prototype_judgement_db* judgement,
+	struct prototype_judgement_transaction_mark* mark
+) {
+	if (!judgement || !mark) {
+		return -1;
+	}
+	*mark = (struct prototype_judgement_transaction_mark) {
+		.proposition_count = judgement->proposition_count,
+		.derivation_candidate_count =
+			judgement->derivation_candidate_count,
+		.claim_count = judgement->claim_count,
+		.derivation_count = judgement->derivation_count,
+		.candidate_premise_count = judgement->candidate_premise_count,
+		.accepted_premise_count = judgement->accepted_premise_count,
+		.proposition_resource_usage_count =
+			judgement->proposition_resource_usage_count,
+		.active = 1
+	};
+	return 0;
+}
+
+static int judgement_transaction_extents_contain_mark(
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_transaction_mark* mark
+) {
+	return judgement && mark && mark->active &&
+		judgement->proposition_count >= mark->proposition_count &&
+		judgement->derivation_candidate_count >=
+			mark->derivation_candidate_count &&
+		judgement->claim_count >= mark->claim_count &&
+		judgement->derivation_count >= mark->derivation_count &&
+		judgement->candidate_premise_count >=
+			mark->candidate_premise_count &&
+		judgement->accepted_premise_count >= mark->accepted_premise_count &&
+		judgement->proposition_resource_usage_count >=
+			mark->proposition_resource_usage_count;
+}
+
+int prototype_judgement_transaction_commit(
+	const struct prototype_judgement_db* judgement,
+	struct prototype_judgement_transaction_mark* mark
+) {
+	if (!judgement_transaction_extents_contain_mark(judgement, mark)) {
+		return -1;
+	}
+	mark->active = 0;
+	return 0;
+}
+
+int prototype_judgement_transaction_rollback(
+	struct prototype_judgement_db* judgement,
+	struct prototype_judgement_transaction_mark* mark
+) {
+	if (!judgement_transaction_extents_contain_mark(judgement, mark)) {
+		return -1;
+	}
+	judgement->proposition_count = mark->proposition_count;
+	judgement->derivation_candidate_count =
+		mark->derivation_candidate_count;
+	judgement->claim_count = mark->claim_count;
+	judgement->derivation_count = mark->derivation_count;
+	judgement->candidate_premise_count = mark->candidate_premise_count;
+	judgement->accepted_premise_count = mark->accepted_premise_count;
+	judgement->proposition_resource_usage_count =
+		mark->proposition_resource_usage_count;
+	mark->active = 0;
+	return prototype_judgement_db_rebuild_index(judgement);
+}
+
+static int judgement_transaction_abort(
+	struct prototype_judgement_db* judgement,
+	struct prototype_judgement_transaction_mark* mark
+) {
+	if (prototype_judgement_transaction_rollback(judgement, mark) != 0) {
+		return -1;
+	}
+	return -1;
+}
+
 int prototype_judgement_delta_rebuild_candidate_index(
 	struct prototype_judgement_delta* delta
 ) {
@@ -1312,7 +1357,7 @@ int prototype_judgement_derivation_intern_exact(
 	return 0;
 }
 
-static int add_complete_candidate(
+static int append_complete_candidate(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_proposition* candidate_relation,
 	const struct prototype_judgement_derivation_candidate* candidate_proof
@@ -1330,8 +1375,6 @@ static int add_complete_candidate(
 			judgement->candidate_premise_count) {
 		return -1;
 	}
-	struct candidate_proposition_transaction_mark transaction =
-		candidate_proposition_transaction_mark(judgement);
 	struct prototype_judgement_proposition normalized_relation =
 		*candidate_relation;
 	initialize_candidate_claim_authority(
@@ -1341,7 +1384,6 @@ static int add_complete_candidate(
 	if (prototype_judgement_proposition_intern(
 			judgement, &normalized_relation, &relation_id
 		) != 0) {
-		candidate_proposition_transaction_rollback(judgement, transaction);
 		return -1;
 	}
 	struct prototype_judgement_derivation_candidate proof = *candidate_proof;
@@ -1352,7 +1394,6 @@ static int add_complete_candidate(
 	if (normalize_db_candidate_premises(
 			judgement, candidate_proof, normalized_premises
 		) != 0) {
-		candidate_proposition_transaction_rollback(judgement, transaction);
 		return -1;
 	}
 	proof.premises = proof.premise_count == 0 ? NULL : normalized_premises;
@@ -1397,6 +1438,30 @@ static int add_complete_candidate(
 	return 0;
 }
 
+static int add_complete_candidate(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_proposition* candidate_relation,
+	const struct prototype_judgement_derivation_candidate* candidate_proof
+) {
+	struct prototype_judgement_transaction_mark transaction;
+	if (prototype_judgement_transaction_begin(
+			judgement, &transaction
+		) != 0) {
+		return -1;
+	}
+	if (append_complete_candidate(
+			judgement, candidate_relation, candidate_proof
+		) != 0) {
+		return judgement_transaction_abort(judgement, &transaction);
+	}
+	if (prototype_judgement_transaction_commit(
+			judgement, &transaction
+		) != 0) {
+		return judgement_transaction_abort(judgement, &transaction);
+	}
+	return 0;
+}
+
 static int add_complete_relation(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_judgement_proposition* candidate_relation,
@@ -1407,55 +1472,93 @@ static int add_complete_relation(
 	);
 }
 
-static int publish_complete_relation(
+static int candidate_rule_application_view(
+	const struct prototype_judgement_proposition* conclusion,
+	const struct prototype_judgement_derivation_candidate* candidate,
+	struct prototype_judgement_rule_application_view* view
+) {
+	if (!conclusion || !candidate || !view ||
+		candidate->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
+		(candidate->premise_count != 0 && !candidate->premises)) {
+		return -1;
+	}
+	memset(view, 0, sizeof(*view));
+	view->proof_kind = candidate->proof_kind;
+	view->conclusion = conclusion;
+	view->rule_data = candidate->rule_data;
+	view->semantic_action_kind = candidate->semantic_action_kind;
+	view->semantic_action_id = candidate->semantic_action_id;
+	view->premise_count = candidate->premise_count;
+	for (uint32_t i = 0; i < candidate->premise_count; ++i) {
+		if (!candidate->premises[i].proposition) {
+			return -1;
+		}
+		view->premises[i] = (struct prototype_judgement_premise_view) {
+			.proposition = candidate->premises[i].proposition,
+			.semantic_action_kind =
+				candidate->premises[i].semantic_action_kind,
+			.semantic_action_id =
+				candidate->premises[i].semantic_action_id
+		};
+	}
+	return 0;
+}
+
+static int publish_accepted_rule_application(
 	struct prototype_judgement_db* judgement,
-	const struct prototype_judgement_proposition* candidate_relation,
+	const struct prototype_judgement_proposition* relation_identity,
+	const struct prototype_judgement_rule_application_view* proof,
 	const struct prototype_judgement_derivation_candidate* candidate_proof,
 	const uint32_t* premise_claim_ids,
 	uint32_t* p_claim_id
 ) {
-	if (!judgement || !candidate_relation || !candidate_proof || !p_claim_id ||
-		(candidate_proof->premise_count != 0 && !premise_claim_ids) ||
+	if (!judgement || !relation_identity || !proof || !p_claim_id ||
+		proof->conclusion != relation_identity ||
+		proof->premise_count > PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
+		(proof->premise_count != 0 && !premise_claim_ids) ||
 		judgement->claim_count >= judgement->claim_capacity ||
 		judgement->derivation_count >= judgement->derivation_capacity ||
-		judgement->derivation_candidate_count >=
-			judgement->derivation_candidate_capacity ||
-		candidate_proof->premise_count >
-			judgement->candidate_premise_capacity -
-			judgement->candidate_premise_count ||
-		candidate_proof->premise_count >
-			judgement->accepted_premise_capacity -
-			judgement->accepted_premise_count) {
+		proof->premise_count > judgement->accepted_premise_capacity -
+			judgement->accepted_premise_count ||
+		(candidate_proof && (
+			candidate_proof->proof_kind != proof->proof_kind ||
+			candidate_proof->premise_count != proof->premise_count ||
+			judgement->derivation_candidate_count >=
+				judgement->derivation_candidate_capacity ||
+			candidate_proof->premise_count >
+				judgement->candidate_premise_capacity -
+				judgement->candidate_premise_count))) {
 		return -1;
 	}
-	for (uint32_t i = 0; i < candidate_proof->premise_count; ++i) {
+	for (uint32_t i = 0; i < proof->premise_count; ++i) {
 		const struct prototype_judgement_claim* premise =
 			prototype_judgement_claim_get(judgement, premise_claim_ids[i]);
-		if (!premise || !propositions_equal(
+		if (!premise || !proof->premises[i].proposition ||
+			!propositions_equal(
 				prototype_judgement_proposition_get(
 					judgement, premise->proposition_id
 				),
-				candidate_proof->premises[i].proposition
+				proof->premises[i].proposition
 			)) {
 			return -1;
 		}
 	}
-	size_t derivation_candidate_mark = judgement->derivation_candidate_count;
-	size_t candidate_premise_mark = judgement->candidate_premise_count;
-	if (add_complete_candidate(
-			judgement, candidate_relation, candidate_proof
+	struct prototype_judgement_transaction_mark transaction;
+	if (prototype_judgement_transaction_begin(
+			judgement, &transaction
 		) != 0) {
 		return -1;
 	}
-	struct prototype_judgement_proposition relation = *candidate_relation;
-	initialize_candidate_claim_authority(&relation, candidate_proof->proof_kind);
-	size_t claim_mark = judgement->claim_count;
+	if (candidate_proof && append_complete_candidate(
+			judgement, relation_identity, candidate_proof
+		) != 0) {
+		return judgement_transaction_abort(judgement, &transaction);
+	}
+	struct prototype_judgement_proposition relation = *relation_identity;
+	initialize_candidate_claim_authority(&relation, proof->proof_kind);
 	uint32_t claim_id;
 	if (judgement_intern_claim(judgement, &relation, &claim_id) != 0) {
-		judgement->derivation_candidate_count = derivation_candidate_mark;
-		judgement->candidate_premise_count = candidate_premise_mark;
-		(void)prototype_judgement_db_rebuild_index(judgement);
-		return -1;
+		return judgement_transaction_abort(judgement, &transaction);
 	}
 	struct prototype_judgement_derivation derivation;
 	struct prototype_judgement_premise_edge
@@ -1463,64 +1566,77 @@ static int publish_complete_relation(
 	memset(&derivation, 0, sizeof(derivation));
 	memset(premises, 0, sizeof(premises));
 	derivation.premises = premises;
-	derivation.proof_kind = candidate_proof->proof_kind;
+	derivation.proof_kind = proof->proof_kind;
 	derivation.conclusion_claim_id = claim_id;
 	derivation.closure_rank = PROTOTYPE_INVALID_ID;
-	derivation.rule_data = candidate_proof->rule_data;
-	derivation.semantic_action_kind = candidate_proof->semantic_action_kind;
-	derivation.semantic_action_id = candidate_proof->semantic_action_id;
-	derivation.premise_count = candidate_proof->premise_count;
-	for (uint32_t i = 0; i < candidate_proof->premise_count; ++i) {
+	derivation.rule_data = proof->rule_data;
+	derivation.semantic_action_kind = proof->semantic_action_kind;
+	derivation.semantic_action_id = proof->semantic_action_id;
+	derivation.premise_count = proof->premise_count;
+	for (uint32_t i = 0; i < proof->premise_count; ++i) {
 		derivation.premises[i].claim_id = premise_claim_ids[i];
 		derivation.premises[i].scoped_proposition_id = PROTOTYPE_INVALID_ID;
 		derivation.premises[i].semantic_action_kind =
-			candidate_proof->premises[i].semantic_action_kind;
+			proof->premises[i].semantic_action_kind;
 		derivation.premises[i].semantic_action_id =
-			candidate_proof->premises[i].semantic_action_id;
+			proof->premises[i].semantic_action_id;
 	}
 	int cycle_status = judgement_derivation_would_create_cycle(
 		judgement, &derivation
 	);
 	if (cycle_status != 0) {
-		judgement->derivation_candidate_count = derivation_candidate_mark;
-		judgement->candidate_premise_count = candidate_premise_mark;
-		if (judgement->claim_count == claim_mark + 1 && claim_id == claim_mark) {
-			size_t bucket = judgement->claims[claim_id].key_hash %
-				PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
-			judgement->claim_index_heads[bucket] =
-				judgement->claims[claim_id].hash_next;
-			judgement->claim_count = claim_mark;
+		int reuse_existing_claim = cycle_status > 0 &&
+			claim_id < transaction.claim_count;
+		if (prototype_judgement_transaction_rollback(
+				judgement, &transaction
+			) != 0) {
+			return -1;
 		}
-		if (cycle_status > 0 && claim_id < claim_mark) {
-			/* The conclusion already has finite accepted evidence. Reindexing it
-			 * back through a Claim that depends on it adds only circular
-			 * certificate provenance, so normalize the operation to reuse the
-			 * existing Claim. */
+		if (reuse_existing_claim) {
 			*p_claim_id = claim_id;
-			(void)prototype_judgement_db_rebuild_index(judgement);
 			return 0;
 		}
-		(void)prototype_judgement_db_rebuild_index(judgement);
 		return -1;
 	}
 	uint32_t derivation_id;
 	if (prototype_judgement_derivation_intern_exact(
 			judgement, &derivation, &derivation_id
 		) != 0) {
-		judgement->derivation_candidate_count = derivation_candidate_mark;
-		judgement->candidate_premise_count = candidate_premise_mark;
-		if (judgement->claim_count == claim_mark + 1 && claim_id == claim_mark) {
-			size_t bucket = judgement->claims[claim_id].key_hash %
-				PROTOTYPE_JUDGEMENT_GRAPH_INDEX_BUCKET_COUNT;
-			judgement->claim_index_heads[bucket] =
-				judgement->claims[claim_id].hash_next;
-			judgement->claim_count = claim_mark;
-		}
-		(void)prototype_judgement_db_rebuild_index(judgement);
-		return -1;
+		return judgement_transaction_abort(judgement, &transaction);
+	}
+	if (prototype_judgement_transaction_commit(
+			judgement, &transaction
+		) != 0) {
+		return judgement_transaction_abort(judgement, &transaction);
 	}
 	*p_claim_id = claim_id;
 	return 0;
+}
+
+static int publish_complete_relation(
+	struct prototype_judgement_db* judgement,
+	const struct prototype_judgement_proposition* candidate_relation,
+	const struct prototype_judgement_derivation_candidate* candidate_proof,
+	const uint32_t* premise_claim_ids,
+	uint32_t* p_claim_id
+) {
+	if (!judgement || !candidate_relation || !candidate_proof || !p_claim_id) {
+		return -1;
+	}
+	struct prototype_judgement_rule_application_view view;
+	if (candidate_rule_application_view(
+			candidate_relation, candidate_proof, &view
+		) != 0) {
+		return -1;
+	}
+	return publish_accepted_rule_application(
+		judgement,
+		candidate_relation,
+		&view,
+		candidate_proof,
+		premise_claim_ids,
+		p_claim_id
+	);
 }
 
 static int accepted_claim_for_candidate_proposition(
@@ -1565,6 +1681,13 @@ int prototype_judgement_delta_publish_complete(
 		sizeof(*published)
 	);
 	if (!published) {
+		return -1;
+	}
+	struct prototype_judgement_transaction_mark transaction;
+	if (prototype_judgement_transaction_begin(
+			delta->db, &transaction
+		) != 0) {
+		free(published);
 		return -1;
 	}
 	size_t published_count = 0;
@@ -1661,7 +1784,15 @@ int prototype_judgement_delta_publish_complete(
 
 done:
 	free(published);
-	return status;
+	if (status != 0) {
+		return judgement_transaction_abort(delta->db, &transaction);
+	}
+	if (prototype_judgement_transaction_commit(
+			delta->db, &transaction
+		) != 0) {
+		return judgement_transaction_abort(delta->db, &transaction);
+	}
+	return 0;
 }
 
 static int add_relation_with_premises(

@@ -1009,7 +1009,7 @@ static int artifact_mark_type_expr(
 		case PROTOTYPE_TYPE_EXPR_NAME: {
 			const struct prototype_type_declaration* local_type =
 				prototype_type_declaration_lookup(
-					type_declarations,
+			&type_declarations->semantic_schema,
 					expr->as.name.symbol_id
 				);
 			if (local_type) {
@@ -1026,11 +1026,11 @@ static int artifact_mark_type_expr(
 
 			const struct prototype_type_declaration* local_type =
 				prototype_type_declaration_lookup(
-					type_declarations,
+			&type_declarations->semantic_schema,
 					expr->as.local_type_member.owner_symbol_id
 				);
 			if (!local_type || !prototype_type_declaration_lookup_constructor(
-					type_declarations,
+			&type_declarations->semantic_schema,
 					local_type->type_index,
 					expr->as.local_type_member.member_symbol_id
 				)) {
@@ -1162,10 +1162,13 @@ static int artifact_mark_constructor(
 	const struct prototype_type_constructor_declaration* constructor =
 		&type_declarations->semantic_schema.constructor_declarations[constructor_id];
 	const struct prototype_type_constructor_readback* readback =
-		prototype_type_constructor_readback_get(type_declarations, constructor_id);
+		prototype_type_constructor_readback_get(
+			&type_declarations->semantic_schema,
+			&type_declarations->readback, constructor_id);
 	const struct prototype_constructor_classifier_cache_entry* cache =
 		prototype_type_constructor_classifier_cache_get(
-			type_declarations, constructor_id
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache, constructor_id
 		);
 	if (!artifact_constructor_present(constructor) || !readback || !cache) {
 		return -1;
@@ -1241,6 +1244,8 @@ static int artifact_mark_type(
 	}
 	const struct prototype_type_declaration* type =
 		&type_declarations->semantic_schema.type_declarations[type_id];
+	const struct prototype_type_readback_entry* readback_entry =
+		&type_declarations->readback.type_entries[type_id];
 	if (!artifact_type_present(type)) {
 		return -1;
 	}
@@ -1278,13 +1283,19 @@ static int artifact_mark_type(
 			type_id, type->formation_classifier);
 		return -1;
 	}
-	if (type->first_parameter + type->parameter_count > marks->parameter_count ||
+	if (readback_entry->first_parameter + type->parameter_count >
+		marks->parameter_count ||
 		type->first_constructor + type->constructor_count > marks->constructor_count) {
 		fprintf(stderr, "artifact closure: type slice failed type=%u\n", type_id);
 		return -1;
 	}
 	for (uint32_t i = 0; i < type->parameter_count; ++i) {
-		if (artifact_mark_parameter(marks, terms, type->first_parameter + i, depth + 1) != 0) {
+		if (artifact_mark_parameter(
+				marks,
+				terms,
+				readback_entry->first_parameter + i,
+				depth + 1
+			) != 0) {
 			return -1;
 		}
 	}

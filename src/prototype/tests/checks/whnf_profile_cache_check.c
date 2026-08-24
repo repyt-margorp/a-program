@@ -22,6 +22,7 @@ static struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
 
 static struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
 static struct prototype_type_constructor_declaration constructor_declarations[CONSTRUCTOR_CAPACITY];
+static struct prototype_type_readback_entry type_readback_entries[TYPE_CAPACITY];
 static struct prototype_type_constructor_readback constructor_readbacks[CONSTRUCTOR_CAPACITY];
 static struct prototype_constructor_classifier_cache_entry constructor_caches[CONSTRUCTOR_CAPACITY];
 static struct prototype_type_parameter_declaration parameter_declarations[PARAMETER_CAPACITY];
@@ -50,6 +51,8 @@ int main(void) {
 		TYPE_CAPACITY,
 		constructor_declarations,
 		CONSTRUCTOR_CAPACITY,
+		type_readback_entries,
+		TYPE_CAPACITY,
 		parameter_declarations,
 		PARAMETER_CAPACITY,
 		constructor_readbacks,
@@ -71,7 +74,10 @@ int main(void) {
 	uint32_t lambda;
 	uint32_t application;
 	uint32_t branch;
-	if (prototype_type_declaration_add(&type_db, 1, &type_id) != 0 ||
+	if (prototype_type_declaration_add(
+			&type_db.semantic_schema,
+			&type_db.readback,
+			&type_db.representation_db, 1, &type_id) != 0 ||
 		prototype_term_type_instance_make(
 			&term_db, &type_db, type_id, NULL, 0, &owner
 		) != 0 ||
@@ -563,6 +569,60 @@ int main(void) {
 		verification.dependency_count != 2 ||
 		verification.dependencies[0].obligation_id != symbolic_obligation ||
 		verification.dependencies[1].obligation_id != unequal_obligation) {
+		return 1;
+	}
+
+	/* Schema-dependent profiles must not reuse a result across a semantic
+	 * schema revision. Core WHNF does not inspect the schema and remains valid. */
+	prototype_term_normalization_cache_clear(&term_db);
+	uint32_t schema_cache_result;
+	if (prototype_term_normalize_complete_with_profile(
+			&term_db, &type_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			neutral_uniform_match, &schema_cache_result
+		) != 0 || prototype_term_normalize_complete_with_profile(
+			&term_db, &type_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			neutral_uniform_match, &schema_cache_result
+		) != 0 || prototype_term_normalize_complete_with_profile(
+			&term_db, &type_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			neutral_uniform_match, &schema_cache_result
+		) != 0 || prototype_term_normalize_complete_with_profile(
+			&term_db, &type_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			neutral_uniform_match, &schema_cache_result
+		) != 0) {
+		return 1;
+	}
+	struct prototype_term_normalization_cache_stats before_schema_change;
+	prototype_term_normalization_cache_get_stats(
+		&term_db, &before_schema_change
+	);
+	uint32_t unrelated_type;
+	if (prototype_type_declaration_add(
+			&type_db.semantic_schema,
+			&type_db.readback,
+			&type_db.representation_db, 99, &unrelated_type
+		) != 0 || prototype_term_normalize_complete_with_profile(
+			&term_db, &type_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			neutral_uniform_match, &schema_cache_result
+		) != 0 || prototype_term_normalize_complete_with_profile(
+			&term_db, &type_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			neutral_uniform_match, &schema_cache_result
+		) != 0) {
+		return 1;
+	}
+	struct prototype_term_normalization_cache_stats after_schema_change;
+	prototype_term_normalization_cache_get_stats(
+		&term_db, &after_schema_change
+	);
+	if (after_schema_change.hit_count != before_schema_change.hit_count + 1 ||
+		after_schema_change.miss_count != before_schema_change.miss_count + 1 ||
+		after_schema_change.semantic_revision_miss_count !=
+			before_schema_change.semantic_revision_miss_count + 1) {
 		return 1;
 	}
 	return 0;

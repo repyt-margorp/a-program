@@ -326,6 +326,8 @@ struct prototype_hott_action_result {
 };
 
 struct prototype_hott_action_db {
+	struct prototype_kernel_semantic_epoch semantic_epoch;
+	int semantic_epoch_frozen;
 	struct prototype_hott_action_request* requests;
 	size_t request_count;
 	size_t request_capacity;

@@ -69,7 +69,7 @@ static int computation_effect_row_is_union(
 			.atoms = { left_normal.atoms[i] }
 		};
 		if (!prototype_term_effect_row_normal_form_includes(
-				&result_normal, &singleton
+				terms, &result_normal, &singleton
 			)) {
 			return 0;
 		}
@@ -80,7 +80,7 @@ static int computation_effect_row_is_union(
 			.atoms = { right_normal.atoms[i] }
 		};
 		if (!prototype_term_effect_row_normal_form_includes(
-				&result_normal, &singleton
+				terms, &result_normal, &singleton
 			)) {
 			return 0;
 		}
@@ -92,9 +92,9 @@ static int computation_effect_row_is_union(
 			.atoms = { result_normal.atoms[i] }
 		};
 		if (!prototype_term_effect_row_normal_form_includes(
-				&left_normal, &singleton
+				terms, &left_normal, &singleton
 			) && !prototype_term_effect_row_normal_form_includes(
-				&right_normal, &singleton
+				terms, &right_normal, &singleton
 			)) {
 			return 0;
 		}
@@ -415,7 +415,7 @@ static int solve_effect_row_constraints(
 				) != 0 || prototype_term_effect_row_normal_form(
 					terms, constraint->operands[1], &superset
 				) != 0 || !prototype_term_effect_row_normal_form_includes(
-					&superset, &subset
+					terms, &superset, &subset
 				)) {
 				return -1;
 			}
@@ -430,9 +430,9 @@ static int solve_effect_row_constraints(
 			) != 0 || prototype_term_effect_row_normal_form(
 				terms, expected, &expected_normal
 			) != 0 || !prototype_term_effect_row_normal_form_includes(
-				&result_normal, &expected_normal
+				terms, &result_normal, &expected_normal
 			) || !prototype_term_effect_row_normal_form_includes(
-				&expected_normal, &result_normal
+				terms, &expected_normal, &result_normal
 			)) {
 			return -1;
 		}
@@ -569,12 +569,13 @@ static int collect_subject_classifiers(
 	uint32_t classifier_capacity,
 	uint32_t* p_classifier_count
 );
-static int collect_subject_evidence(
+static int collect_subject_evidence_internal(
 	const struct prototype_judgement_delta* delta,
 	uint32_t subject,
 	struct prototype_judgement_selected_evidence* evidence,
 	uint32_t evidence_capacity,
-	uint32_t* p_evidence_count
+	uint32_t* p_evidence_count,
+	int include_conversion
 );
 static int classifier_returns_owner(
 	const struct prototype_term_db* terms,
@@ -614,12 +615,13 @@ static int term_core_app(
 	return 0;
 }
 
-static int collect_subject_evidence(
+static int collect_subject_evidence_internal(
 	const struct prototype_judgement_delta* delta,
 	uint32_t subject,
 	struct prototype_judgement_selected_evidence* evidence,
 	uint32_t evidence_capacity,
-	uint32_t* p_evidence_count
+	uint32_t* p_evidence_count,
+	int include_conversion
 ) {
 	if (!delta || !evidence || !p_evidence_count) {
 		return -1;
@@ -642,14 +644,22 @@ static int collect_subject_evidence(
 				&candidates[i];
 			if (candidate->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 				candidate->subject != subject ||
-				candidate_has_derivation_other_than(
+				(!include_conversion && candidate_has_derivation_other_than(
 					candidates,
 					candidate_count,
 					derivations,
 					derivation_count,
 					(uint32_t)i,
 					PROTOTYPE_JUDGEMENT_PROOF_CONVERSION
-				) != 1) {
+				) != 1)) {
+				continue;
+			}
+			int visible = delta->contexts ? prototype_context_is_ancestor(
+				delta->contexts,
+				candidate->context_id,
+				delta->current_context_id
+			) : candidate->context_id == delta->current_context_id;
+			if (visible != 1) {
 				continue;
 			}
 			struct prototype_judgement_selected_evidence current;
@@ -671,6 +681,18 @@ static int collect_subject_evidence(
 		}
 	}
 	return 0;
+}
+
+static int collect_subject_evidence(
+	const struct prototype_judgement_delta* delta,
+	uint32_t subject,
+	struct prototype_judgement_selected_evidence* evidence,
+	uint32_t evidence_capacity,
+	uint32_t* p_evidence_count
+) {
+	return collect_subject_evidence_internal(
+		delta, subject, evidence, evidence_capacity, p_evidence_count, 0
+	);
 }
 
 static struct prototype_term_conversion_result classifier_kernel_conversion(

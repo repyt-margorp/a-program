@@ -96,6 +96,7 @@ void prototype_context_db_init(
 		return;
 	}
 	memset(db, 0, sizeof(*db));
+	db->semantic_revision = 1;
 	graph_index_clear(db->index_heads);
 	graph_index_clear(db->comprehension_action_index_heads);
 	db->contexts = contexts;
@@ -120,6 +121,10 @@ int prototype_context_db_rebuild_runtime_index_after_bulk_load(
 	if (!db || !db->contexts || db->context_count == 0 ||
 		db->context_count > db->context_capacity) {
 		return -1;
+	}
+	db->semantic_revision++;
+	if (db->semantic_revision == 0) {
+		db->semantic_revision = 1;
 	}
 	graph_index_clear(db->index_heads);
 	graph_index_clear(db->comprehension_action_index_heads);
@@ -337,6 +342,34 @@ int prototype_context_contains_binding(
 	return prototype_context_find_binding(
 		db, context_id, binding_id, &entry_context_id
 	) == 0;
+}
+
+int prototype_context_is_ancestor(
+	const struct prototype_context_db* db,
+	uint32_t ancestor_context_id,
+	uint32_t descendant_context_id
+) {
+	const struct prototype_context* ancestor = prototype_context_get(
+		db, ancestor_context_id
+	);
+	const struct prototype_context* descendant = prototype_context_get(
+		db, descendant_context_id
+	);
+	if (!ancestor || !descendant) {
+		return -1;
+	}
+	if (ancestor->depth > descendant->depth) {
+		return 0;
+	}
+	uint32_t cursor = descendant_context_id;
+	while (db->contexts[cursor].depth > ancestor->depth) {
+		uint32_t parent = db->contexts[cursor].parent;
+		if (parent >= cursor) {
+			return -1;
+		}
+		cursor = parent;
+	}
+	return cursor == ancestor_context_id;
 }
 
 int prototype_context_find_binding(
@@ -573,6 +606,7 @@ void prototype_substitution_db_init(
 		return;
 	}
 	memset(db, 0, sizeof(*db));
+	db->semantic_revision = 1;
 	db->substitutions = substitutions;
 	db->substitution_count = 0;
 	db->substitution_capacity = substitution_capacity;
@@ -588,6 +622,10 @@ int prototype_substitution_db_rebuild_runtime_index_after_bulk_load(
 	if (!db || !db->substitutions ||
 		db->substitution_count > db->substitution_capacity) {
 		return -1;
+	}
+	db->semantic_revision++;
+	if (db->semantic_revision == 0) {
+		db->semantic_revision = 1;
 	}
 	graph_index_clear(db->index_heads);
 	memset(db->reindex_cache, 0, sizeof(db->reindex_cache));

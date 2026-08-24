@@ -14,14 +14,14 @@
 #define reserve_slot prototype_storage_reserve_slot
 
 void prototype_type_declaration_db_mark_semantic_change(
-	struct prototype_type_declaration_db* db
+	struct prototype_type_semantic_schema_db* semantic_schema
 ) {
-	if (!db) {
+	if (!semantic_schema) {
 		return;
 	}
-	db->semantic_schema.semantic_revision++;
-	if (db->semantic_schema.semantic_revision == 0) {
-		db->semantic_schema.semantic_revision = 1;
+	semantic_schema->semantic_revision++;
+	if (semantic_schema->semantic_revision == 0) {
+		semantic_schema->semantic_revision = 1;
 	}
 }
 
@@ -105,21 +105,23 @@ int prototype_constructor_telescopes_validate(
 }
 
 int prototype_constructor_curried_caches_validate(
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	const struct prototype_constructor_classifier_cache* classifier_cache,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms
 ) {
-	if (!type_declarations || !contexts || !terms ||
+	if (!semantic_schema || !classifier_cache || !contexts || !terms ||
+		semantic_schema->constructor_count > classifier_cache->capacity ||
 		prototype_constructor_telescopes_validate(
-			&type_declarations->semantic_schema, contexts, terms
+			semantic_schema, contexts, terms
 		) != 0) {
 		return -1;
 	}
-	for (size_t i = 0; i < type_declarations->semantic_schema.constructor_count; ++i) {
+	for (size_t i = 0; i < semantic_schema->constructor_count; ++i) {
 		const struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->semantic_schema.constructor_declarations[i];
+			&semantic_schema->constructor_declarations[i];
 		const struct prototype_constructor_classifier_cache_entry* cache =
-			&type_declarations->constructor_classifier_cache.entries[i];
+			&classifier_cache->entries[i];
 		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
@@ -153,21 +155,23 @@ int prototype_constructor_curried_caches_validate(
 }
 
 int prototype_constructor_curried_caches_rebuild(
-	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_constructor_classifier_cache* classifier_cache,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms
 ) {
-	if (!type_declarations || !contexts || !terms ||
+	if (!semantic_schema || !classifier_cache || !contexts || !terms ||
+		semantic_schema->constructor_count > classifier_cache->capacity ||
 		prototype_constructor_telescopes_validate(
-			&type_declarations->semantic_schema, contexts, terms
+			semantic_schema, contexts, terms
 		) != 0) {
 		return -1;
 	}
-	for (size_t i = 0; i < type_declarations->semantic_schema.constructor_count; ++i) {
-		struct prototype_type_constructor_declaration* constructor =
-			&type_declarations->semantic_schema.constructor_declarations[i];
+	for (size_t i = 0; i < semantic_schema->constructor_count; ++i) {
+		const struct prototype_type_constructor_declaration* constructor =
+			&semantic_schema->constructor_declarations[i];
 		struct prototype_constructor_classifier_cache_entry* cache =
-			&type_declarations->constructor_classifier_cache.entries[i];
+			&classifier_cache->entries[i];
 		if (constructor->owner_type == PROTOTYPE_INVALID_ID) {
 			continue;
 		}
@@ -333,6 +337,8 @@ void prototype_type_declaration_db_init(
 	size_t type_capacity,
 	struct prototype_type_constructor_declaration* constructor_declarations,
 	size_t constructor_capacity,
+	struct prototype_type_readback_entry* type_readback_entries,
+	size_t type_readback_entry_capacity,
 	struct prototype_type_parameter_declaration* parameter_declarations,
 	size_t parameter_capacity,
 	struct prototype_type_constructor_readback* constructor_readbacks,
@@ -352,6 +358,8 @@ void prototype_type_declaration_db_init(
 	db->semantic_schema.type_capacity = type_capacity;
 	db->semantic_schema.constructor_declarations = constructor_declarations;
 	db->semantic_schema.constructor_capacity = constructor_capacity;
+	db->readback.type_entries = type_readback_entries;
+	db->readback.type_entry_capacity = type_readback_entry_capacity;
 	db->readback.parameter_declarations = parameter_declarations;
 	db->readback.parameter_capacity = parameter_capacity;
 	db->readback.constructor_readbacks = constructor_readbacks;
@@ -367,70 +375,70 @@ void prototype_type_declaration_db_init(
 	db->constructor_classifier_cache.capacity = constructor_classifier_cache_capacity;
 }
 
-static int add_expr(struct prototype_type_declaration_db* db, struct prototype_type_expr expr, uint32_t* p_ret) {
-	if (!db || !p_ret || reserve_slot(db->readback.expr_count, db->readback.expr_capacity) != 0) {
+static int add_expr(struct prototype_type_readback_db* readback, struct prototype_type_expr expr, uint32_t* p_ret) {
+	if (!readback || !p_ret || reserve_slot(readback->expr_count, readback->expr_capacity) != 0) {
 		return -1;
 	}
 
-	for (uint32_t i = 0; i < (uint32_t)db->readback.expr_count; ++i) {
-		if (memcmp(&db->readback.exprs[i], &expr, sizeof(expr)) == 0) {
+	for (uint32_t i = 0; i < (uint32_t)readback->expr_count; ++i) {
+		if (memcmp(&readback->exprs[i], &expr, sizeof(expr)) == 0) {
 			*p_ret = i;
 			return 0;
 		}
 	}
 
-	uint32_t id = (uint32_t)db->readback.expr_count;
-	db->readback.exprs[id] = expr;
-	db->readback.expr_count++;
+	uint32_t id = (uint32_t)readback->expr_count;
+	readback->exprs[id] = expr;
+	readback->expr_count++;
 	*p_ret = id;
 	return 0;
 }
 
-int prototype_type_expr_universe(struct prototype_type_declaration_db* db, uint32_t level, uint32_t* p_ret) {
+int prototype_type_expr_universe(struct prototype_type_readback_db* readback, uint32_t level, uint32_t* p_ret) {
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_UNIVERSE;
 	expr.as.universe.level = level;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
-int prototype_type_expr_fresh_universe(struct prototype_type_declaration_db* db, uint32_t* p_ret) {
-	if (!db) {
+int prototype_type_expr_fresh_universe(struct prototype_type_readback_db* readback, uint32_t* p_ret) {
+	if (!readback) {
 		return -1;
 	}
 
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR;
-	expr.as.universe_var.level_var = db->readback.next_level_var++;
-	return add_expr(db, expr, p_ret);
+	expr.as.universe_var.level_var = readback->next_level_var++;
+	return add_expr(readback, expr, p_ret);
 }
 
-int prototype_type_expr_self(struct prototype_type_declaration_db* db, uint32_t* p_ret) {
+int prototype_type_expr_self(struct prototype_type_readback_db* readback, uint32_t* p_ret) {
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_SELF;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
-int prototype_type_expr_var(struct prototype_type_declaration_db* db, uint32_t binding_id, int symbol_id, uint32_t* p_ret) {
+int prototype_type_expr_var(struct prototype_type_readback_db* readback, uint32_t binding_id, int symbol_id, uint32_t* p_ret) {
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_VAR;
 	expr.as.var.binding_id = binding_id;
 	expr.as.var.symbol_id = symbol_id;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
-int prototype_type_expr_name(struct prototype_type_declaration_db* db, int symbol_id, uint32_t* p_ret) {
+int prototype_type_expr_name(struct prototype_type_readback_db* readback, int symbol_id, uint32_t* p_ret) {
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_NAME;
 	expr.as.name.symbol_id = symbol_id;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
-int prototype_type_expr_primitive(struct prototype_type_declaration_db* db, int tag, uint32_t* p_ret) {
+int prototype_type_expr_primitive(struct prototype_type_readback_db* readback, int tag, uint32_t* p_ret) {
 	int host_type;
 	if (prototype_term_host_type_from_type_expr_tag(tag, &host_type) != 0) {
 		return -1;
@@ -438,29 +446,29 @@ int prototype_type_expr_primitive(struct prototype_type_declaration_db* db, int 
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = tag;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
-int prototype_type_expr_app(struct prototype_type_declaration_db* db, uint32_t function, uint32_t argument, uint32_t* p_ret) {
+int prototype_type_expr_app(struct prototype_type_readback_db* readback, uint32_t function, uint32_t argument, uint32_t* p_ret) {
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_APP;
 	expr.as.app.function = function;
 	expr.as.app.argument = argument;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
-int prototype_type_expr_arrow(struct prototype_type_declaration_db* db, uint32_t domain, uint32_t codomain, uint32_t* p_ret) {
+int prototype_type_expr_arrow(struct prototype_type_readback_db* readback, uint32_t domain, uint32_t codomain, uint32_t* p_ret) {
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_ARROW;
 	expr.as.arrow.domain = domain;
 	expr.as.arrow.codomain = codomain;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
 int prototype_type_expr_pi(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	uint32_t binding_id,
 	int symbol_id,
 	uint32_t domain,
@@ -474,11 +482,11 @@ int prototype_type_expr_pi(
 	expr.as.pi.symbol_id = symbol_id;
 	expr.as.pi.domain = domain;
 	expr.as.pi.codomain = codomain;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
 int prototype_type_expr_imported_type(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	struct prototype_qualified_name name,
 	const struct prototype_type_representation_fingerprint* key,
 	uint32_t* p_ret
@@ -492,11 +500,11 @@ int prototype_type_expr_imported_type(
 	expr.tag = PROTOTYPE_TYPE_EXPR_IMPORTED_TYPE;
 	expr.as.imported_type.name = name;
 	expr.as.imported_type.representation_fingerprint = *key;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
 int prototype_type_expr_external_term(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	struct prototype_qualified_name name,
 	uint32_t* p_ret
 ) {
@@ -507,11 +515,11 @@ int prototype_type_expr_external_term(
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_EXTERNAL_TERM;
 	expr.as.external_term.name = name;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
 int prototype_type_expr_local_type_member(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	int owner_symbol_id,
 	int member_symbol_id,
 	uint32_t* p_ret
@@ -524,11 +532,11 @@ int prototype_type_expr_local_type_member(
 	expr.tag = PROTOTYPE_TYPE_EXPR_LOCAL_TYPE_MEMBER;
 	expr.as.local_type_member.owner_symbol_id = owner_symbol_id;
 	expr.as.local_type_member.member_symbol_id = member_symbol_id;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
 int prototype_type_expr_computation_reference(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	uint32_t result,
 	uint32_t* p_ret
 ) {
@@ -536,30 +544,36 @@ int prototype_type_expr_computation_reference(
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_COMPUTATION_REFERENCE;
 	expr.as.computation_reference.result = result;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
 int prototype_type_expr_semantic_relation(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_readback_db* readback,
 	uint32_t* p_ret
 ) {
 	struct prototype_type_expr expr;
 	memset(&expr, 0, sizeof(expr));
 	expr.tag = PROTOTYPE_TYPE_EXPR_SEMANTIC_RELATION;
-	return add_expr(db, expr, p_ret);
+	return add_expr(readback, expr, p_ret);
 }
 
 int prototype_type_declaration_add(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_type_readback_db* readback,
+	struct prototype_type_representation_db* representation_db,
 	int name_symbol_id,
 	uint32_t* p_type_id
 ) {
-	if (!db || !p_type_id || reserve_slot(db->semantic_schema.type_count, db->semantic_schema.type_capacity) != 0) {
+	if (!semantic_schema || !readback || !representation_db || !p_type_id ||
+		reserve_slot(semantic_schema->type_count,
+			semantic_schema->type_capacity) != 0 ||
+		reserve_slot(semantic_schema->type_count,
+			readback->type_entry_capacity) != 0) {
 		return -1;
 	}
 
-	uint32_t id = (uint32_t)db->semantic_schema.type_count;
-	struct prototype_type_declaration* type = &db->semantic_schema.type_declarations[id];
+	uint32_t id = (uint32_t)semantic_schema->type_count;
+	struct prototype_type_declaration* type = &semantic_schema->type_declarations[id];
 	memset(type, 0, sizeof(*type));
 	type->name_symbol_id = name_symbol_id;
 	type->namespace_symbol_id = -1;
@@ -567,48 +581,57 @@ int prototype_type_declaration_add(
 	type->representation_id = PROTOTYPE_INVALID_ID;
 	type->formation_classifier = PROTOTYPE_INVALID_ID;
 	type->parameter_context = PROTOTYPE_INVALID_ID;
-	type->first_parameter = (uint32_t)db->readback.parameter_count;
 	type->index_context = PROTOTYPE_INVALID_ID;
-	type->first_constructor = (uint32_t)db->semantic_schema.constructor_count;
-	db->semantic_schema.type_count++;
-	db->representation_db.cache_dirty = 1;
-	prototype_type_declaration_db_mark_semantic_change(db);
+	type->first_constructor = (uint32_t)semantic_schema->constructor_count;
+	readback->type_entries[id].first_parameter = (uint32_t)readback->parameter_count;
+	semantic_schema->type_count++;
+	representation_db->cache_dirty = 1;
+	prototype_type_declaration_db_mark_semantic_change(semantic_schema);
 	*p_type_id = id;
 	return 0;
 }
 
 int prototype_type_declaration_add_parameter(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_type_readback_db* readback,
+	struct prototype_type_representation_db* representation_db,
 	uint32_t type_id,
 	uint32_t binding_id,
 	int name_symbol_id,
 	uint32_t type_expr
 ) {
-	if (!db || type_id >= db->semantic_schema.type_count) {
+	if (!semantic_schema || !readback || !representation_db ||
+		type_id >= semantic_schema->type_count) {
 		return -1;
 	}
-	if (reserve_slot(db->readback.parameter_count, db->readback.parameter_capacity) != 0) {
-		return -1;
-	}
-
-	struct prototype_type_declaration* type = &db->semantic_schema.type_declarations[type_id];
-	if ((uint32_t)db->readback.parameter_count != type->first_parameter + type->parameter_count) {
+	if (reserve_slot(readback->parameter_count, readback->parameter_capacity) != 0) {
 		return -1;
 	}
 
-	uint32_t id = (uint32_t)db->readback.parameter_count;
-	db->readback.parameter_declarations[id].binding_id = binding_id;
-	db->readback.parameter_declarations[id].name_symbol_id = name_symbol_id;
-	db->readback.parameter_declarations[id].type_expr = type_expr;
-	db->readback.parameter_count++;
+	struct prototype_type_declaration* type = &semantic_schema->type_declarations[type_id];
+	const struct prototype_type_readback_entry* readback_entry =
+		&readback->type_entries[type_id];
+	if ((uint32_t)readback->parameter_count !=
+		readback_entry->first_parameter + type->parameter_count) {
+		return -1;
+	}
+
+	uint32_t id = (uint32_t)readback->parameter_count;
+	readback->parameter_declarations[id].binding_id = binding_id;
+	readback->parameter_declarations[id].name_symbol_id = name_symbol_id;
+	readback->parameter_declarations[id].type_expr = type_expr;
+	readback->parameter_count++;
 	type->parameter_count++;
-	db->representation_db.cache_dirty = 1;
-	prototype_type_declaration_db_mark_semantic_change(db);
+	representation_db->cache_dirty = 1;
+	prototype_type_declaration_db_mark_semantic_change(semantic_schema);
 	return 0;
 }
 
 int prototype_type_declaration_add_constructor_schema(
-	struct prototype_type_declaration_db* db,
+	struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_type_readback_db* readback,
+	struct prototype_type_representation_db* representation_db,
+	struct prototype_constructor_classifier_cache* classifier_cache,
 	uint32_t type_id,
 	int name_symbol_id,
 	uint32_t parameter_context,
@@ -616,25 +639,33 @@ int prototype_type_declaration_add_constructor_schema(
 	uint32_t result_classifier,
 	uint32_t* p_constructor_id
 ) {
-	if (!db || !p_constructor_id || type_id >= db->semantic_schema.type_count ||
+	if (!semantic_schema || !readback || !representation_db ||
+		!classifier_cache || !p_constructor_id ||
+		type_id >= semantic_schema->type_count ||
 		parameter_context == PROTOTYPE_INVALID_ID ||
 		field_context == PROTOTYPE_INVALID_ID ||
 		result_classifier == PROTOTYPE_INVALID_ID ||
-		db->semantic_schema.constructor_count >= db->readback.constructor_readback_capacity ||
-		db->semantic_schema.constructor_count >= db->constructor_classifier_cache.capacity) {
+		semantic_schema->constructor_count >= readback->constructor_readback_capacity ||
+		semantic_schema->constructor_count >= classifier_cache->capacity) {
 		return -1;
 	}
-	if (reserve_slot(db->semantic_schema.constructor_count, db->semantic_schema.constructor_capacity) != 0) {
+	if (reserve_slot(
+			semantic_schema->constructor_count,
+			semantic_schema->constructor_capacity
+		) != 0) {
 		return -1;
 	}
 
-	struct prototype_type_declaration* type = &db->semantic_schema.type_declarations[type_id];
-	if ((uint32_t)db->semantic_schema.constructor_count != type->first_constructor + type->constructor_count) {
+	struct prototype_type_declaration* type =
+		&semantic_schema->type_declarations[type_id];
+	if ((uint32_t)semantic_schema->constructor_count !=
+		type->first_constructor + type->constructor_count) {
 		return -1;
 	}
 
-	uint32_t id = (uint32_t)db->semantic_schema.constructor_count;
-	struct prototype_type_constructor_declaration* constructor = &db->semantic_schema.constructor_declarations[id];
+	uint32_t id = (uint32_t)semantic_schema->constructor_count;
+	struct prototype_type_constructor_declaration* constructor =
+		&semantic_schema->constructor_declarations[id];
 	memset(constructor, 0, sizeof(*constructor));
 	constructor->name_symbol_id = name_symbol_id;
 	constructor->owner_type = type_id;
@@ -643,93 +674,103 @@ int prototype_type_declaration_add_constructor_schema(
 	constructor->field_context = field_context;
 	constructor->result_classifier = result_classifier;
 	constructor->schema_revision = 1;
-	db->readback.constructor_readbacks[id] =
+	readback->constructor_readbacks[id] =
 		(struct prototype_type_constructor_readback){
 			.first_field_type = PROTOTYPE_INVALID_ID,
 			.field_count = 0,
 			.result_type = PROTOTYPE_INVALID_ID
 		};
-	db->constructor_classifier_cache.entries[id] =
+	classifier_cache->entries[id] =
 		(struct prototype_constructor_classifier_cache_entry){
 			.classifier = PROTOTYPE_INVALID_ID,
 			.schema_revision = 0
 		};
 
-	db->semantic_schema.constructor_count++;
+	semantic_schema->constructor_count++;
 	type->constructor_count++;
-	db->representation_db.cache_dirty = 1;
-	prototype_type_declaration_db_mark_semantic_change(db);
+	representation_db->cache_dirty = 1;
+	prototype_type_declaration_db_mark_semantic_change(semantic_schema);
 	*p_constructor_id = id;
 	return 0;
 }
 
 int prototype_type_readback_attach_constructor(
-	struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_type_readback_db* readback_db,
 	uint32_t constructor_id,
 	const uint32_t* field_type_exprs,
 	uint32_t field_count,
 	uint32_t result_type_expr
 ) {
-	if (!db || constructor_id >= db->semantic_schema.constructor_count ||
-		constructor_id >= db->readback.constructor_readback_capacity ||
+	if (!semantic_schema || !readback_db ||
+		constructor_id >= semantic_schema->constructor_count ||
+		constructor_id >= readback_db->constructor_readback_capacity ||
 		(field_count > 0 && !field_type_exprs) ||
-		db->readback.field_type_count + field_count > db->readback.field_type_capacity) {
+		readback_db->field_type_count + field_count >
+			readback_db->field_type_capacity) {
 		return -1;
 	}
 	struct prototype_type_constructor_readback* readback =
-		&db->readback.constructor_readbacks[constructor_id];
+		&readback_db->constructor_readbacks[constructor_id];
 	if (readback->first_field_type != PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
-	readback->first_field_type = (uint32_t)db->readback.field_type_count;
+	readback->first_field_type = (uint32_t)readback_db->field_type_count;
 	readback->field_count = field_count;
 	readback->result_type = result_type_expr;
 	for (uint32_t i = 0; i < field_count; ++i) {
-		db->readback.field_types[db->readback.field_type_count++] = field_type_exprs[i];
+		readback_db->field_types[readback_db->field_type_count++] =
+			field_type_exprs[i];
 	}
 	return 0;
 }
 
 int prototype_type_constructor_classifier_cache_set(
-	struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_constructor_classifier_cache* classifier_cache,
 	uint32_t constructor_id,
 	uint32_t classifier
 ) {
-	if (!db || constructor_id >= db->semantic_schema.constructor_count ||
-		constructor_id >= db->constructor_classifier_cache.capacity ||
+	if (!semantic_schema || !classifier_cache ||
+		constructor_id >= semantic_schema->constructor_count ||
+		constructor_id >= classifier_cache->capacity ||
 		classifier == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
 	struct prototype_constructor_classifier_cache_entry* cache =
-		&db->constructor_classifier_cache.entries[constructor_id];
+		&classifier_cache->entries[constructor_id];
 	cache->classifier = classifier;
-	cache->schema_revision = db->semantic_schema.constructor_declarations[constructor_id].schema_revision;
+	cache->schema_revision =
+		semantic_schema->constructor_declarations[constructor_id].schema_revision;
 	return 0;
 }
 
 int prototype_type_constructor_classifier(
-	struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_constructor_classifier_cache* classifier_cache,
+	struct prototype_constructor_specialization_stats* specialization_stats,
 	const struct prototype_context_db* contexts,
 	struct prototype_term_db* terms,
 	uint32_t constructor_id,
 	uint32_t* p_classifier
 ) {
-	if (!db || !contexts || !terms || !p_classifier ||
-		constructor_id >= db->semantic_schema.constructor_count ||
-		constructor_id >= db->constructor_classifier_cache.capacity) {
+	if (!semantic_schema || !classifier_cache || !specialization_stats ||
+		!contexts || !terms || !p_classifier ||
+		constructor_id >= semantic_schema->constructor_count ||
+		constructor_id >= classifier_cache->capacity) {
 		return -1;
 	}
 	const struct prototype_type_constructor_declaration* constructor =
-		&db->semantic_schema.constructor_declarations[constructor_id];
+		&semantic_schema->constructor_declarations[constructor_id];
 	struct prototype_constructor_classifier_cache_entry* cache =
-		&db->constructor_classifier_cache.entries[constructor_id];
+		&classifier_cache->entries[constructor_id];
 	if (cache->classifier != PROTOTYPE_INVALID_ID &&
 		cache->schema_revision == constructor->schema_revision) {
-		db->specialization_stats.classifier_cache_hit_count++;
+		specialization_stats->classifier_cache_hit_count++;
 		*p_classifier = cache->classifier;
 		return 0;
 	}
-	db->specialization_stats.classifier_cache_miss_count++;
+	specialization_stats->classifier_cache_miss_count++;
 	if (prototype_type_constructor_derive_curried_classifier(
 			terms,
 			contexts,
@@ -746,26 +787,30 @@ int prototype_type_constructor_classifier(
 }
 
 const struct prototype_type_constructor_readback* prototype_type_constructor_readback_get(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	const struct prototype_type_readback_db* readback,
 	uint32_t constructor_id
 ) {
-	if (!db || constructor_id >= db->semantic_schema.constructor_count ||
-		constructor_id >= db->readback.constructor_readback_capacity) {
+	if (!semantic_schema || !readback ||
+		constructor_id >= semantic_schema->constructor_count ||
+		constructor_id >= readback->constructor_readback_capacity) {
 		return NULL;
 	}
-	return &db->readback.constructor_readbacks[constructor_id];
+	return &readback->constructor_readbacks[constructor_id];
 }
 
 const struct prototype_constructor_classifier_cache_entry*
 prototype_type_constructor_classifier_cache_get(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	const struct prototype_constructor_classifier_cache* classifier_cache,
 	uint32_t constructor_id
 ) {
-	if (!db || constructor_id >= db->semantic_schema.constructor_count ||
-		constructor_id >= db->constructor_classifier_cache.capacity) {
+	if (!semantic_schema || !classifier_cache ||
+		constructor_id >= semantic_schema->constructor_count ||
+		constructor_id >= classifier_cache->capacity) {
 		return NULL;
 	}
-	return &db->constructor_classifier_cache.entries[constructor_id];
+	return &classifier_cache->entries[constructor_id];
 }
 
 int prototype_type_constructor_derive_curried_classifier(
@@ -842,42 +887,44 @@ int prototype_type_constructor_derive_curried_classifier(
 }
 
 const struct prototype_type_declaration* prototype_type_declaration_lookup(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	int name_symbol_id
 ) {
-	if (!db) {
+	if (!semantic_schema) {
 		return NULL;
 	}
 
-	for (size_t i = 0; i < db->semantic_schema.type_count; ++i) {
-		if (type_declaration_present(&db->semantic_schema.type_declarations[i]) &&
-			db->semantic_schema.type_declarations[i].name_symbol_id == name_symbol_id) {
-			return &db->semantic_schema.type_declarations[i];
+	for (size_t i = 0; i < semantic_schema->type_count; ++i) {
+		if (type_declaration_present(&semantic_schema->type_declarations[i]) &&
+			semantic_schema->type_declarations[i].name_symbol_id == name_symbol_id) {
+			return &semantic_schema->type_declarations[i];
 		}
 	}
 	return NULL;
 }
 
 const struct prototype_type_constructor_declaration* prototype_type_declaration_lookup_constructor(
-	const struct prototype_type_declaration_db* db,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	uint32_t type_id,
 	int name_symbol_id
 ) {
-	if (!db || type_id >= db->semantic_schema.type_count ||
-		!type_declaration_present(&db->semantic_schema.type_declarations[type_id])) {
+	if (!semantic_schema || type_id >= semantic_schema->type_count ||
+		!type_declaration_present(&semantic_schema->type_declarations[type_id])) {
 		return NULL;
 	}
 
-	const struct prototype_type_declaration* type = &db->semantic_schema.type_declarations[type_id];
+	const struct prototype_type_declaration* type =
+		&semantic_schema->type_declarations[type_id];
 	uint32_t first = type->first_constructor;
 	uint32_t end = first + type->constructor_count;
 	for (uint32_t i = first; i < end; ++i) {
-		if (i >= db->semantic_schema.constructor_count ||
-			!constructor_declaration_present(&db->semantic_schema.constructor_declarations[i])) {
+		if (i >= semantic_schema->constructor_count ||
+			!constructor_declaration_present(&semantic_schema->constructor_declarations[i])) {
 			return NULL;
 		}
-		if (db->semantic_schema.constructor_declarations[i].name_symbol_id == name_symbol_id) {
-			return &db->semantic_schema.constructor_declarations[i];
+		if (semantic_schema->constructor_declarations[i].name_symbol_id ==
+			name_symbol_id) {
+			return &semantic_schema->constructor_declarations[i];
 		}
 	}
 	return NULL;
@@ -2522,7 +2569,7 @@ int prototype_type_declaration_rebuild_representations(
 	db->representation_db.representation_count = 0;
 	if (db->semantic_schema.type_count == 0) {
 		db->representation_db.cache_dirty = 0;
-		prototype_type_declaration_db_mark_semantic_change(db);
+		prototype_type_declaration_db_mark_semantic_change(&db->semantic_schema);
 		return 0;
 	}
 	if (!db->representation_db.representations || db->representation_db.representation_capacity < db->semantic_schema.type_count) {
@@ -2580,7 +2627,7 @@ int prototype_type_declaration_rebuild_representations(
 		db->semantic_schema.type_declarations[type_id].representation_id = representation_id;
 	}
 	db->representation_db.cache_dirty = 0;
-	prototype_type_declaration_db_mark_semantic_change(db);
+	prototype_type_declaration_db_mark_semantic_change(&db->semantic_schema);
 	return 0;
 }
 

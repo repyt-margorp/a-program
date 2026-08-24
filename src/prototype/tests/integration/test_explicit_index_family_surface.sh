@@ -46,9 +46,9 @@ grep -q '^term single := APP(APP(APP(CONSTRUCTOR' "$tmp_dir/vec.out"
 ./read_file.out --read-graph "$tmp_dir/Vec.apo" \
 	>"$tmp_dir/vec-read.out"
 grep -q '^interface type Vec .* constructors=2 ' "$tmp_dir/vec-read.out"
-grep -q '^interface constructor type_export#[0-9][0-9]*\.nil ordinal=0 fields=0 curried_classifier_cache=' \
+grep -q '^interface constructor type_export#[0-9][0-9]*\.nil ordinal=0 fields=0 constructor_classifier=' \
 	"$tmp_dir/vec-read.out"
-grep -q '^interface constructor type_export#[0-9][0-9]*\.cons ordinal=1 fields=3 curried_classifier_cache=' \
+grep -q '^interface constructor type_export#[0-9][0-9]*\.cons ordinal=1 fields=3 constructor_classifier=' \
 	"$tmp_dir/vec-read.out"
 
 ./read_file.out \

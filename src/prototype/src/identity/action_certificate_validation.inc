@@ -216,7 +216,7 @@ int prototype_hott_action_request_intern(
 		kernel ? kernel->judgement : NULL;
 	if (!db || !p_request_id || !db->requests ||
 		db->request_count >= db->request_capacity ||
-		prototype_kernel_view_validate_stores(kernel) != 0) {
+		prototype_hott_action_db_seal(db, kernel) != 0) {
 		return -1;
 	}
 	request.id = (uint32_t)db->request_count;
@@ -1272,7 +1272,7 @@ int prototype_hott_action_certificate_add(
 		kernel ? kernel->judgement : NULL;
 	if (!db || !p_certificate_id || !db->certificates ||
 		db->certificate_count >= db->certificate_capacity ||
-		prototype_kernel_view_validate_stores(kernel) != 0) {
+		prototype_hott_action_db_seal(db, kernel) != 0) {
 		return -1;
 	}
 	certificate.id = (uint32_t)db->certificate_count;
@@ -1309,7 +1309,7 @@ int prototype_hott_action_result_publish(
 	if (db) {
 		db->outcome_publish_requests++;
 	}
-	if (!db || !p_result_id || !db->results ||
+	if (!db || !db->semantic_epoch_frozen || !p_result_id || !db->results ||
 		db->result_count >= db->result_capacity ||
 		!prototype_hott_action_request_get(db, result.request_id) ||
 		!hott_deterministic_outcome_is_valid(&result.outcome, 0)) {

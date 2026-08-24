@@ -679,6 +679,56 @@
 		bridge_db.face_bindings[0].intrinsic_dimension = saved_face_dimension;
 	}
 
+	/* HOTT results are valid only for the sealed semantic prefix. Append-only
+	 * Term growth is harmless, while mutation of an existing schema or a
+	 * bulk-loaded Context/Substitution epoch must invalidate reuse. */
+	if (prototype_hott_action_db_epoch_matches(
+			&action_db, &kernel_view
+		) != 0) {
+		return 257;
+	}
+	uint32_t unrelated_epoch_term;
+	if (prototype_term_text_literal(
+			&term_db, 987654, &unrelated_epoch_term
+		) != 0 || prototype_hott_action_db_epoch_matches(
+			&action_db, &kernel_view
+		) != 0) {
+		return 257;
+	}
+	if (type_db.semantic_schema.type_count == 0) {
+		return 257;
+	}
+	uint32_t saved_constructor_count =
+		type_db.semantic_schema.type_declarations[0].constructor_count;
+	type_db.semantic_schema.type_declarations[0].constructor_count++;
+	if (prototype_hott_action_db_epoch_matches(
+			&action_db, &kernel_view
+		) == 0) {
+		return 257;
+	}
+	type_db.semantic_schema.type_declarations[0].constructor_count =
+		saved_constructor_count;
+	context_db.semantic_revision++;
+	if (prototype_hott_action_db_epoch_matches(
+			&action_db, &kernel_view
+		) == 0) {
+		return 257;
+	}
+	context_db.semantic_revision--;
+	substitution_db.semantic_revision++;
+	if (prototype_hott_action_db_epoch_matches(
+			&action_db, &kernel_view
+		) == 0) {
+		return 257;
+	}
+	substitution_db.semantic_revision--;
+	if (prototype_hott_action_db_validate(
+			&action_db, &kernel_view, &bridge_db
+		) != 0) {
+		return 257;
+	}
+	(void)unrelated_epoch_term;
+
 	if (prototype_judgement_publish_candidates(
 			&operation_graph, &judgement
 		) != 0) {

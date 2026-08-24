@@ -504,8 +504,10 @@ static int operation_solver_pullback_branch_operations(
 			return -1;
 		}
 		uint32_t classifier = operation_available_classifier(ctx, operation_id);
-		uint32_t known_classifier = ctx->classifier_hints[operation_id];
-		uint32_t binder_classifier = operation->binder_classifier;
+		uint32_t known_classifier = ctx->classifier_seeds[operation_id].classifier;
+		uint32_t binder_classifier = operation_solver_binder_classifier(
+			ctx, operation_id
+		);
 		int classifier_is_structural_seed =
 			operation->tag == PROTOTYPE_TYPED_OCCURRENCE_ATOM ||
 			operation->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR ||
@@ -513,9 +515,8 @@ static int operation_solver_pullback_branch_operations(
 			operation->tag == PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS;
 		if (!classifier_is_structural_seed && operation->tag !=
 				PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) {
-			/* classifier_hints is also used as a cache by the fixed-point solver.
-			 * For a derived occurrence it is therefore not independent evidence
-			 * that may survive a Context action. */
+			/* A derived occurrence has no independent generation fact that may
+			 * survive a Context action. */
 			known_classifier = PROTOTYPE_INVALID_ID;
 		}
 		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
@@ -552,8 +553,6 @@ static int operation_solver_pullback_branch_operations(
 				classifier : PROTOTYPE_INVALID_ID;
 		int has_source_classifier =
 			source_classifier != PROTOTYPE_INVALID_ID;
-		uint32_t effect_row =
-			ctx->classifier_solver.solutions[operation_id].effect_row;
 		uint32_t projected_core = operation->core_term;
 #define REINDEX_OPERATION_FIELD(field) \
 	do { \
@@ -572,7 +571,6 @@ static int operation_solver_pullback_branch_operations(
 		REINDEX_OPERATION_FIELD(classifier);
 		REINDEX_OPERATION_FIELD(known_classifier);
 		REINDEX_OPERATION_FIELD(binder_classifier);
-		REINDEX_OPERATION_FIELD(effect_row);
 		REINDEX_OPERATION_FIELD(projected_core);
 #undef REINDEX_OPERATION_FIELD
 		for (uint32_t check_id = 0;
@@ -664,21 +662,28 @@ static int operation_solver_pullback_branch_operations(
 			 * stale child choices, so retain only an authoritative hint and let the
 			 * ordinary constraints rebuild every other derived classifier. */
 			classifier = known_classifier;
-			effect_row = PROTOTYPE_INVALID_ID;
 		}
 		operation->context_id = target_context;
 		operation->context_action_substitution = action;
 		operation->core_term = projected_core;
-		ctx->classifier_hints[operation_id] = known_classifier;
 		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
-			operation->binder_classifier != binder_classifier) {
+			operation_solver_binder_classifier(ctx, operation_id) !=
+				binder_classifier) {
 			operation_context_binding_dependency_changed(
 				ctx, operation->binding_id
 			);
 		}
-		operation->binder_classifier = binder_classifier;
-		ctx->classifier_solver.solutions[operation_id].classifier = classifier;
-		ctx->classifier_solver.solutions[operation_id].effect_row = effect_row;
+		/* Branch pullback is one atomic Context action over the reachable graph,
+		 * not a sequence of ordinary meta refinements. Publishing STALE cells here
+		 * cascades invalidation through a graph whose remaining occurrences still
+		 * belong to the old Context. Install the reindexed structural seeds as the
+		 * new invocation state; the caller regenerates and queues all constraints
+		 * after the complete pullback. */
+		if (operation_type_metas_reset_after_context_action(
+				ctx, operation_id, known_classifier, classifier, binder_classifier
+			) != 0) {
+			return -1;
+		}
 	}
 	for (uint32_t case_id = 0;
 		case_id < ctx->metadata->typed_occurrences.case_count; ++case_id) {
@@ -1569,7 +1574,7 @@ static int operation_solver_build_quoted_motive(
 				ctx->terms,
 				ctx->type_declarations,
 				normalized_expected,
-				ctx->classifier_solver.solutions[
+				ctx->classifier_solver.classifier_metas[
 					equation->payload.classifier.goal.motive_case.branch_operation
 				].classifier
 			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
@@ -1641,7 +1646,7 @@ static int build_operation_motive(
 			return 1;
 		}
 		uint32_t branch_classifier =
-			ctx->classifier_solver.solutions[
+			ctx->classifier_solver.classifier_metas[
 				equation->payload.classifier.goal.motive_case.branch_operation
 			].classifier;
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
@@ -1870,7 +1875,7 @@ static int build_operation_motive(
 		if (constructor_status < 0) {
 			return -1;
 		}
-		uint32_t actual_branch = ctx->classifier_solver.solutions[
+		uint32_t actual_branch = ctx->classifier_solver.classifier_metas[
 			equation->payload.classifier.goal.motive_case.branch_operation
 		].classifier;
 		int apply_status = constructor_status == 0 ?
@@ -2565,12 +2570,6 @@ static int operation_solver_refresh_usage_solutions(struct compile_context* ctx)
 		++operation_id) {
 		const struct prototype_occurrence_usage_solution* source =
 			&ctx->operation_usage_solutions[operation_id];
-		struct operation_solver_solution* target =
-			&ctx->classifier_solver.solutions[operation_id];
-		target->first_usage_entry = source->first_entry;
-		target->usage_entry_count = source->entry_count;
-		target->binder_usage = source->binder_usage;
-		target->usage_state = OPERATION_CONSTRAINT_STATE_SOLVED;
 		for (uint32_t usage_index = 0;
 			usage_index < source->entry_count;
 			++usage_index) {
@@ -2740,7 +2739,7 @@ static int operation_classifier_captures_case_binder(
 	uint32_t classifier
 ) {
 	if (!ctx || !equation || classifier >= ctx->terms->term_count ||
-		equation->payload.classifier.classifier_variable >= ctx->metadata->typed_occurrences.occurrence_count) {
+		equation->payload.classifier.classifier_meta_id >= ctx->metadata->typed_occurrences.occurrence_count) {
 		return -1;
 	}
 	uint32_t classifier_whnf;
@@ -2755,7 +2754,7 @@ static int operation_classifier_captures_case_binder(
 		return -1;
 	}
 	const struct prototype_typed_occurrence* match =
-		&ctx->metadata->typed_occurrences.occurrences[equation->payload.classifier.classifier_variable];
+		&ctx->metadata->typed_occurrences.occurrences[equation->payload.classifier.classifier_meta_id];
 	if (match->core_term >= ctx->terms->term_count ||
 		ctx->terms->terms[match->core_term].tag != PROTOTYPE_TERM_MATCH ||
 		equation->payload.classifier.goal.motive_case.case_index >= match->case_count ||
@@ -2801,7 +2800,7 @@ static int operation_classifier_captures_case_binder(
 			continue;
 		}
 		int effect_owned = operation_effect_row_binder_is_owned(
-			ctx, equation->payload.classifier.classifier_variable, binding_id
+			ctx, equation->payload.classifier.classifier_meta_id, binding_id
 		);
 		if (effect_owned < 0) {
 			return -1;
@@ -2929,7 +2928,7 @@ static int build_operation_uniform_motive(
 			return -1;
 		}
 		uint32_t branch_classifier =
-			ctx->classifier_solver.solutions[
+			ctx->classifier_solver.classifier_metas[
 				equation->payload.classifier.goal.motive_case.branch_operation
 			].classifier;
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
@@ -3094,7 +3093,7 @@ static int build_operation_guarded_recursive_motive(
 		motive_cases[case_index].binders = &motive_binders[binder_cursor];
 		motive_cases[case_index].binder_count = source_case->binder_count;
 		uint32_t branch_classifier =
-			ctx->classifier_solver.solutions[
+			ctx->classifier_solver.classifier_metas[
 				equation->payload.classifier.goal.motive_case.branch_operation
 			].classifier;
 		if (branch_classifier != PROTOTYPE_INVALID_ID) {
@@ -3296,7 +3295,7 @@ static int operation_solver_validate_guarded_motive_occurrence(
 			const struct operation_constraint* constraint =
 				&ctx->constraints.constraints[i];
 			if (constraint->kind == OPERATION_CONSTRAINT_IH_EXPECTED &&
-				constraint->payload.classifier.classifier_variable == ih_operation) {
+				constraint->payload.classifier.classifier_meta_id == ih_operation) {
 				constraint_id = constraint->id;
 				break;
 			}
@@ -3344,7 +3343,7 @@ static int operation_solver_nonrecursive_seed_classifier(
 			return -1;
 		}
 		uint32_t branch_classifier =
-			ctx->classifier_solver.solutions[
+			ctx->classifier_solver.classifier_metas[
 				equation->payload.classifier.goal.motive_case.branch_operation
 			].classifier;
 		int classifier_is_provisional = 0;
@@ -3450,7 +3449,7 @@ static int operation_solver_has_guarded_recursive_equation(
 				ctx->constraints.classifier_constraint_count);
 			return -1;
 		}
-		if (ctx->classifier_solver.solutions[
+		if (ctx->classifier_solver.classifier_metas[
 				equation->payload.classifier.goal.motive_case.branch_operation
 			].classifier !=
 			PROTOTYPE_INVALID_ID) {
@@ -3493,7 +3492,7 @@ static int operation_solver_solve_match(
 			ctx->metadata->typed_occurrences.case_count) {
 		return -1;
 	}
-	if (ctx->classifier_solver.solutions[operation_id].classifier !=
+	if (ctx->classifier_solver.classifier_metas[operation_id].classifier !=
 			PROTOTYPE_INVALID_ID ||
 		ctx->classifier_solver.motive_solution_states[operation_id] ==
 			OPERATION_MOTIVE_SOLUTION_MATERIALIZED) {
@@ -3510,7 +3509,7 @@ static int operation_solver_solve_match(
 		}
 		uint32_t body_occurrence = equation->payload.classifier.goal.motive_case.branch_operation;
 		if (body_occurrence >= ctx->metadata->typed_occurrences.occurrence_count ||
-			ctx->classifier_solver.solutions[body_occurrence].classifier ==
+			ctx->classifier_solver.classifier_metas[body_occurrence].classifier ==
 				PROTOTYPE_INVALID_ID) {
 			has_unresolved_body = 1;
 		}
@@ -3617,10 +3616,10 @@ static int operation_solver_materialize_match_solution(
 		}
 	}
 	if (all_branches_impossible &&
-		ctx->classifier_solver.solutions[operation_id].classifier !=
+		ctx->classifier_solver.classifier_metas[operation_id].classifier !=
 			PROTOTYPE_INVALID_ID) {
 		uint32_t existing =
-			ctx->classifier_solver.solutions[operation_id].classifier;
+			ctx->classifier_solver.classifier_metas[operation_id].classifier;
 		if (existing >= ctx->terms->term_count ||
 			ctx->terms->terms[existing].tag != PROTOTYPE_TERM_APP) {
 			return -1;
@@ -3696,6 +3695,114 @@ static int operation_solver_materialize_solved_motives(
 	return 0;
 }
 
+struct operation_match_motive_rebuild_transaction {
+	uint32_t operation;
+	struct operation_classifier_meta_solution classifier_meta;
+	uint32_t constant_candidate;
+	uint32_t motive;
+	uint8_t motive_state;
+	uint64_t solution_revision;
+	int active;
+};
+
+static int operation_match_motive_rebuild_transaction_begin(
+	struct compile_context* ctx,
+	uint32_t operation,
+	struct operation_match_motive_rebuild_transaction* transaction
+) {
+	if (!ctx || !transaction || operation >=
+		ctx->metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	struct operation_classifier_meta_solution* meta =
+		&ctx->classifier_solver.classifier_metas[operation];
+	if (meta->owner_occurrence != operation ||
+		meta->state == OPERATION_CLASSIFIER_META_FROZEN) {
+		return -1;
+	}
+	*transaction = (struct operation_match_motive_rebuild_transaction){
+		.operation = operation,
+		.classifier_meta = *meta,
+		.constant_candidate =
+			ctx->classifier_solver.motive_constant_candidates[operation],
+		.motive = ctx->classifier_solver.motive_terms[operation],
+		.motive_state =
+			ctx->classifier_solver.motive_solution_states[operation],
+		.solution_revision = ctx->classifier_solver.solution_revision,
+		.active = 1
+	};
+	if (meta->classifier != PROTOTYPE_INVALID_ID) {
+		ctx->classifier_solver.solution_revision++;
+	}
+	meta->classifier = PROTOTYPE_INVALID_ID;
+	meta->evidence_constraint_id = PROTOTYPE_INVALID_ID;
+	meta->state = OPERATION_CLASSIFIER_META_UNSOLVED;
+	ctx->classifier_solver.motive_constant_candidates[operation] =
+		PROTOTYPE_INVALID_ID;
+	ctx->classifier_solver.motive_solution_states[operation] =
+		OPERATION_MOTIVE_SOLUTION_READY;
+	ctx->classifier_seed_suppressed[operation] = 1;
+	return 0;
+}
+
+static int operation_match_motive_rebuild_transaction_rollback(
+	struct compile_context* ctx,
+	struct operation_match_motive_rebuild_transaction* transaction
+) {
+	if (!ctx || !transaction || !transaction->active ||
+		transaction->operation >=
+			ctx->metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	uint32_t operation = transaction->operation;
+	ctx->classifier_solver.classifier_metas[operation] =
+		transaction->classifier_meta;
+	ctx->classifier_solver.motive_constant_candidates[operation] =
+		transaction->constant_candidate;
+	ctx->classifier_solver.motive_terms[operation] = transaction->motive;
+	ctx->classifier_solver.motive_solution_states[operation] =
+		transaction->motive_state;
+	ctx->classifier_solver.solution_revision = transaction->solution_revision;
+	ctx->classifier_seed_suppressed[operation] = 0;
+	transaction->active = 0;
+	return 0;
+}
+
+static int operation_match_motive_rebuild_transaction_commit(
+	struct compile_context* ctx,
+	struct operation_match_motive_rebuild_transaction* transaction
+) {
+	if (!ctx || !transaction || !transaction->active ||
+		transaction->operation >=
+			ctx->metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	uint32_t operation = transaction->operation;
+	const struct operation_classifier_meta_solution* candidate =
+		&ctx->classifier_solver.classifier_metas[operation];
+	if (candidate->classifier == PROTOTYPE_INVALID_ID) {
+		return operation_match_motive_rebuild_transaction_rollback(
+			ctx, transaction
+		);
+	}
+	if (transaction->classifier_meta.classifier != PROTOTYPE_INVALID_ID &&
+		prototype_judgement_classifier_conversion(
+			ctx->terms,
+			ctx->type_declarations,
+			transaction->classifier_meta.classifier,
+			candidate->classifier
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		/* Validation may intern another representative. Keep the original
+		 * solution and its evidence when the rebuilt equation is convertible. */
+		return operation_match_motive_rebuild_transaction_rollback(
+			ctx, transaction
+		);
+	}
+	ctx->classifier_seed_suppressed[operation] = 0;
+	transaction->active = 0;
+	return 0;
+}
+
 /* Indexed branch pullback changes the Context in which branch classifiers are
  * represented. A motive materialized before that pullback is derived state,
  * so reconstruct it from the final branch equations instead of retaining a
@@ -3741,49 +3848,39 @@ static int operation_solver_rebuild_refined_match_motives(
 			continue;
 		}
 
-		struct operation_solver_solution* solution =
-			&ctx->classifier_solver.solutions[operation_id];
-		struct operation_solver_solution previous_solution = *solution;
-		uint32_t previous_constant_candidate =
-			ctx->classifier_solver.motive_constant_candidates[operation_id];
-		uint32_t previous_motive =
-			ctx->classifier_solver.motive_terms[operation_id];
-		uint8_t previous_motive_state =
-			ctx->classifier_solver.motive_solution_states[operation_id];
-		uint32_t previous_hint = ctx->classifier_hints[operation_id];
-		if (solution->classifier != PROTOTYPE_INVALID_ID) {
-			ctx->classifier_solver.solution_revision++;
+		struct operation_match_motive_rebuild_transaction transaction;
+		if (operation_match_motive_rebuild_transaction_begin(
+				ctx, operation_id, &transaction
+			) != 0) {
+			return -1;
 		}
-		solution->classifier = PROTOTYPE_INVALID_ID;
-		solution->effect_row = PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.motive_constant_candidates[operation_id] =
-			PROTOTYPE_INVALID_ID;
-		ctx->classifier_solver.motive_terms[operation_id] = previous_motive;
-		ctx->classifier_solver.motive_solution_states[operation_id] =
-			OPERATION_MOTIVE_SOLUTION_READY;
-		ctx->classifier_hints[operation_id] = PROTOTYPE_INVALID_ID;
 
 		int changed = 0;
 		int rebuild_status = operation_solver_materialize_match_solution(
 			ctx, operation_id, &changed
 		);
 		if (rebuild_status < 0) {
+			operation_match_motive_rebuild_transaction_rollback(ctx, &transaction);
 			return -1;
 		}
-		if (rebuild_status > 0 || solution->classifier == PROTOTYPE_INVALID_ID) {
+		if (rebuild_status > 0 ||
+			ctx->classifier_solver.classifier_metas[operation_id].classifier ==
+				PROTOTYPE_INVALID_ID) {
 			/* Some closed ordinary Matches still depend on classifier equations
 			 * scheduled later in this pass. Rebuilding is a cache repair, so an
 			 * unavailable replacement must leave the existing solution intact. */
-			*solution = previous_solution;
-			ctx->classifier_solver.motive_constant_candidates[operation_id] =
-				previous_constant_candidate;
-			ctx->classifier_solver.motive_terms[operation_id] = previous_motive;
-			ctx->classifier_solver.motive_solution_states[operation_id] =
-				previous_motive_state;
-			ctx->classifier_hints[operation_id] = previous_hint;
+			if (operation_match_motive_rebuild_transaction_rollback(
+					ctx, &transaction
+				) != 0) {
+				return -1;
+			}
 			continue;
 		}
-		ctx->classifier_hints[operation_id] = solution->classifier;
+		if (operation_match_motive_rebuild_transaction_commit(
+				ctx, &transaction
+			) != 0) {
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -3805,7 +3902,7 @@ static int operation_solver_materialize_induction_hypothesis(
 	 * target-Context occurrence would apply the pullback twice. The recorded
 	 * substitution, not a second synthesis pass, is authoritative here. */
 	if (operation->context_action_substitution != PROTOTYPE_INVALID_ID) {
-		if (ctx->classifier_solver.solutions[operation_id].classifier !=
+		if (ctx->classifier_solver.classifier_metas[operation_id].classifier !=
 				PROTOTYPE_INVALID_ID) {
 			return 0;
 		}
@@ -3820,9 +3917,11 @@ static int operation_solver_materialize_induction_hypothesis(
 				operation->context_action_substitution,
 				&classifier
 			) == 0) {
-			operation_solver_store_classifier_solution(
+			if (operation_classifier_meta_solve(
 				ctx, operation_id, classifier
-			);
+			) != 0) {
+				return -1;
+			}
 			*p_changed = 1;
 			return operation_solver_enqueue_dependents(ctx, operation_id);
 		}
@@ -3904,7 +4003,7 @@ static int operation_solver_materialize_induction_hypothesis(
 		uint32_t candidate =
 			ctx->classifier_solver.motive_constant_candidates[parent_match];
 		if (candidate != PROTOTYPE_INVALID_ID) {
-			uint32_t previous = ctx->classifier_solver.solutions[
+			uint32_t previous = ctx->classifier_solver.classifier_metas[
 				operation_id
 			].classifier;
 			return previous == PROTOTYPE_INVALID_ID ?
@@ -4036,7 +4135,7 @@ static int operation_solver_materialize_induction_hypothesis(
 			operation_id, classifier);
 		return -1;
 	}
-	uint32_t previous = ctx->classifier_solver.solutions[operation_id].classifier;
+	uint32_t previous = ctx->classifier_solver.classifier_metas[operation_id].classifier;
 	if (previous < ctx->terms->term_count &&
 		ctx->terms->terms[previous].tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
 		prototype_judgement_classifier_conversion(
@@ -4112,18 +4211,24 @@ static int operation_solver_materialize_induction_hypothesis(
 			}
 			const struct prototype_typed_occurrence* continuation =
 				&ctx->metadata->typed_occurrences.occurrences[fold_return_clause];
+			uint32_t continuation_binder_classifier =
+				operation_solver_binder_classifier(ctx, fold_return_clause);
 			if (continuation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
-				continuation->binder_classifier != PROTOTYPE_INVALID_ID &&
+				continuation_binder_classifier != PROTOTYPE_INVALID_ID &&
 				prototype_judgement_classifier_conversion(
 					ctx->terms, ctx->type_declarations,
-					continuation->binder_classifier, previous_view.result
+					continuation_binder_classifier, previous_view.result
 				).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 				return 0;
 			}
 		}
 		/* Without a source-domain equation, the materialized motive remains the
 		 * only available classifier for this recursive application. */
-		operation_solver_store_classifier_solution(ctx, operation_id, classifier);
+		if (operation_classifier_meta_solve(
+				ctx, operation_id, classifier
+			) != 0) {
+			return -1;
+		}
 		*p_changed = 1;
 		return operation_solver_enqueue_dependents(ctx, operation_id);
 	}

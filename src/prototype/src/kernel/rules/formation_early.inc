@@ -5,8 +5,12 @@ int prototype_judgement_delta_commit(
 	if (!delta || !delta->db || mark != 0) {
 		return -1;
 	}
-	size_t proof_mark = delta->db->derivation_candidate_count;
-	size_t premise_mark = delta->db->candidate_premise_count;
+	struct prototype_judgement_transaction_mark transaction;
+	if (prototype_judgement_transaction_begin(
+			delta->db, &transaction
+		) != 0) {
+		return -1;
+	}
 	for (size_t i = 0; i < delta->derivation_candidate_count; ++i) {
 		const struct prototype_judgement_derivation_candidate* proof =
 			&delta->derivation_candidates[i];
@@ -16,9 +20,14 @@ int prototype_judgement_delta_commit(
 		}
 		struct prototype_judgement_proposition relation =
 			delta->propositions[proof->conclusion_proposition_id];
-		if (add_complete_candidate(delta->db, &relation, proof) != 0) {
+		if (append_complete_candidate(delta->db, &relation, proof) != 0) {
 			goto rollback;
 		}
+	}
+	if (prototype_judgement_transaction_commit(
+			delta->db, &transaction
+		) != 0) {
+		goto rollback;
 	}
 	delta->proposition_count = 0;
 	delta->derivation_candidate_count = 0;
@@ -27,9 +36,9 @@ int prototype_judgement_delta_commit(
 	return 0;
 
 rollback:
-	delta->db->derivation_candidate_count = proof_mark;
-	delta->db->candidate_premise_count = premise_mark;
-	(void)prototype_judgement_db_rebuild_index(delta->db);
+	if (transaction.active) {
+		return judgement_transaction_abort(delta->db, &transaction);
+	}
 	return -1;
 }
 

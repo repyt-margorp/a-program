@@ -980,10 +980,10 @@ test -n "$view_bool_shape"
 test "$view_bool_shape" = "$view_two_shape"
 test -n "$view_bool_key"
 test "$view_bool_key" = "$view_two_key"
-grep -q 'interface constructor type_export#0.true ordinal=0 fields=0 curried_classifier_cache=' "$TMP_DIR/type-view-sharing.out"
-grep -q 'interface constructor type_export#1.one ordinal=0 fields=0 curried_classifier_cache=' "$TMP_DIR/type-view-sharing.out"
-grep -q 'interface constructor type_export#0.false ordinal=1 fields=0 curried_classifier_cache=' "$TMP_DIR/type-view-sharing.out"
-grep -q 'interface constructor type_export#1.zero ordinal=1 fields=0 curried_classifier_cache=' "$TMP_DIR/type-view-sharing.out"
+grep -q 'interface constructor type_export#0.true ordinal=0 fields=0 constructor_classifier=' "$TMP_DIR/type-view-sharing.out"
+grep -q 'interface constructor type_export#1.one ordinal=0 fields=0 constructor_classifier=' "$TMP_DIR/type-view-sharing.out"
+grep -q 'interface constructor type_export#0.false ordinal=1 fields=0 constructor_classifier=' "$TMP_DIR/type-view-sharing.out"
+grep -q 'interface constructor type_export#1.zero ordinal=1 fields=0 constructor_classifier=' "$TMP_DIR/type-view-sharing.out"
 grep -Eq 'term Bool := TYPE_VIEW\(Bool, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Bool\)\)' "$TMP_DIR/type-view-sharing.out"
 grep -Eq 'term Two := TYPE_VIEW\(Two, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Two\)\)' "$TMP_DIR/type-view-sharing.out"
 ./read_file.out --check-exports-core-shape-equal "$TMP_DIR/type-view-sharing.apo" Bool Two >"$TMP_DIR/type-view-core-shape.out"
@@ -1021,7 +1021,7 @@ EOF_DEPENDENT_CONSTRUCTOR_FIELD
 
 ./read_file.out "$TMP_DIR/dependent-constructor-field.p" >"$TMP_DIR/dependent-constructor-field.out"
 grep -q 'metadata label first -> occurrence#[0-9][0-9]* -> term#' "$TMP_DIR/dependent-constructor-field.out"
-grep -q 'interface constructor type_export#0.mk ordinal=0 fields=2 curried_classifier_cache=' "$TMP_DIR/dependent-constructor-field.out"
+grep -q 'interface constructor type_export#0.mk ordinal=0 fields=2 constructor_classifier=' "$TMP_DIR/dependent-constructor-field.out"
 grep -E 'has-type VAR\(_#[0-9]+\) APP\(VAR\(_#[0-9]+\), VAR\(_#[0-9]+\)\) \[match-pattern-assumption proof#' "$TMP_DIR/dependent-constructor-field.out" >/dev/null
 
 cat >"$TMP_DIR/dependent-constructor-provider.p" <<'EOF_DEPENDENT_CONSTRUCTOR_PROVIDER'
@@ -1045,7 +1045,7 @@ EOF_DEPENDENT_CONSTRUCTOR_IMPORT_USER
 ./read_file.out --write-artifact "$TMP_DIR/Sigma.apo" \
 	--namespace Sigma \
 	"$TMP_DIR/dependent-constructor-provider.p" >"$TMP_DIR/dependent-constructor-provider.out"
-grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 curried_classifier_cache=[0-9]+' "$TMP_DIR/dependent-constructor-provider.out"
+grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 constructor_classifier=[0-9]+' "$TMP_DIR/dependent-constructor-provider.out"
 sigma_formation_classifier=$(awk '$1 == "type" && $2 == "Sigma" { print $5; exit }' "$TMP_DIR/Sigma.apo")
 test -n "$sigma_formation_classifier"
 test "$sigma_formation_classifier" != 4294967295
@@ -1089,8 +1089,8 @@ test -n "$sigma_key"
 test "$sigma_key" = "$sigma2_key"
 test -n "$sigma_core"
 test "$sigma_core" = "$sigma2_core"
-grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 curried_classifier_cache=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
-grep -Eq 'constructor \(Sigma2 X Y\)\.mk readback_fields=2 curried_classifier_cache=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
+grep -Eq 'constructor \(Sigma A B\)\.mk readback_fields=2 constructor_classifier=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
+grep -Eq 'constructor \(Sigma2 X Y\)\.mk readback_fields=2 constructor_classifier=[0-9]+' "$TMP_DIR/dependent-constructor-shape-key.out"
 grep -Eq 'term Sigma2 := TYPE_VIEW\(Sigma2, core=TYPE_FORMER\(rep#[0-9]+\), source=TYPE_DECLARATION\(Sigma2\)\)' "$TMP_DIR/dependent-constructor-shape-key.out"
 
 cat >"$TMP_DIR/bad-ascription.p" <<'EOF_BAD_ASCRIPTION'
@@ -3065,8 +3065,8 @@ interface_universe_vars=$(awk '
 test "$interface_universe_vars" -eq 2
 grep -q 'interface constructor type_export#0.cons ordinal=1 fields=2' "$TMP_DIR/list.out"
 awk '
-	/interface constructor type_export#0\.cons ordinal=1 fields=2 curried_classifier_cache=/ {
-		split($0, parts, "curried_classifier_cache=");
+	/interface constructor type_export#0\.cons ordinal=1 fields=2 constructor_classifier=/ {
+		split($0, parts, "constructor_classifier=");
 		if (parts[2] == "4294967295" || parts[2] == "") {
 			exit 1;
 		}

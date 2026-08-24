@@ -708,13 +708,15 @@ int prototype_universe_reconstruct_obligations(
 
 	for (uint32_t i = 0; i < (uint32_t)type_declarations->semantic_schema.type_count; ++i) {
 		const struct prototype_type_declaration* type = &type_declarations->semantic_schema.type_declarations[i];
+		const struct prototype_type_readback_entry* readback_entry =
+			&type_declarations->readback.type_entries[i];
 		uint32_t type_node;
 		if (prototype_universe_add_type_node(db, i, type->name_symbol_id, &type_node) != 0) {
 			fprintf(stderr, "universe collection failed at type node=%u\n", i);
 			return -1;
 		}
 		for (uint32_t j = 0; j < type->parameter_count; ++j) {
-			uint32_t parameter_id = type->first_parameter + j;
+			uint32_t parameter_id = readback_entry->first_parameter + j;
 			const struct prototype_type_parameter_declaration* parameter = &type_declarations->readback.parameter_declarations[parameter_id];
 			uint32_t parameter_node;
 			if (prototype_universe_add_parameter_node(

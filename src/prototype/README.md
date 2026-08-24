@@ -159,7 +159,7 @@ machinery. Their semantics are not merged: constructors retain positive
 introduction/ordinal and Match-iota rules, while Pi retains
 formation/Lambda/APP rules. A constructor's semantic schema is
 `parameter_context`, `field_context`, and `result_classifier`.
-`curried_classifier_cache` is derived from that schema for current Pi
+`constructor_classifier` is derived from that schema for current Pi
 consumers and is rebuilt after artifact relocation.
 
 Nested postfix eliminations require parentheses around the inner elimination
@@ -561,8 +561,10 @@ capabilities. Runtime capability
 metadata is recomputed from the loaded graph and rejected when the serialized
 declaration understates its requirements. Source binder identities are
 relocated independently from TermDB binder ids when artifacts are combined.
-A `universe` section stores the densely relocated reachable Universe nodes,
-edges, solved levels, and constraints. A `debug` section stores exported term
+A `universe` section stores densely relocated checked projections of the
+reconstructed Universe constraints, obligation spans, solved levels, and
+closure certificate. Replay rebuilds and solves the obligations independently
+before accepting those projections. A `debug` section stores exported term
 display-name annotations plus source
 entry/name/body spans, exported type display-name annotations plus name/body
 spans, and constructor display names plus constructor-name spans separate from
@@ -590,7 +592,7 @@ spans for re-exported provider names because the source AST is not present at
 that link stage.
 
 Constructor exports include diagnostic field counts/closures and the provider
-Term ID of `curried_classifier_cache`. This lightweight interface record is not
+Term ID of `constructor_classifier`. This lightweight interface record is not
 trusted as an independent schema. Compilation imports the interface and provider
 graph together; graph readback validates
 `parameter_context -> field_context -> result_classifier`, then verifies the

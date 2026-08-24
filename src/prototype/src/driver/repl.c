@@ -83,17 +83,20 @@ static void print_state(
 			const struct prototype_type_constructor_declaration* constructor =
 				&type_declarations->semantic_schema.constructor_declarations[constructor_id];
 			const struct prototype_type_constructor_readback* readback =
-				prototype_type_constructor_readback_get(type_declarations, constructor_id);
+				prototype_type_constructor_readback_get(
+			&type_declarations->semantic_schema,
+			&type_declarations->readback, constructor_id);
 			const struct prototype_constructor_classifier_cache_entry* cache =
 				prototype_type_constructor_classifier_cache_get(
-					type_declarations, constructor_id
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache, constructor_id
 				);
 			if (!readback || !cache) {
 				continue;
 			}
 			printf("constructor ");
 			prototype_diagnostic_print_type_namespace(stdout, symbols, type_declarations, type);
-			printf(".%s readback_fields=%u curried_classifier_cache=%u\n",
+			printf(".%s readback_fields=%u constructor_classifier=%u\n",
 				symbol_to_string(symbols, constructor->name_symbol_id),
 				readback->field_count,
 				cache->classifier);

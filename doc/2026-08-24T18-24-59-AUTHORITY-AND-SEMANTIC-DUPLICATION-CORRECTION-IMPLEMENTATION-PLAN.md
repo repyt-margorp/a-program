@@ -2,7 +2,7 @@
 
 Date: 2026-08-24
 
-Status: active; P0 baseline and U1 are complete
+Status: implementation complete; final GitHub disposition and push pending
 
 Repository baseline:
 
@@ -110,17 +110,17 @@ accepted evidence and the wire format. M1 changes compiler-local solving.
 
 ## 4. Global Completion Gates
 
-- [ ] Every removed field has no remaining writer or semantic reader.
-- [ ] Every derived projection has one validator against its authority.
-- [ ] No new whole-graph scan is added to a fixed-point inner loop.
-- [ ] Ordinary source compilation retains
+- [x] Every removed field has no remaining writer or semantic reader.
+- [x] Every derived projection has one validator against its authority.
+- [x] No new whole-graph scan is added to a fixed-point inner loop.
+- [x] Ordinary source compilation retains
       `context_index_rebuilds=0 substitution_index_rebuilds=0`.
-- [ ] `::` remains a post-synthesis expectation check.
-- [ ] Artifact replay rejects evidence that source compilation could not
+- [x] `::` remains a post-synthesis expectation check.
+- [x] Artifact replay rejects evidence that source compilation could not
       construct.
-- [ ] Artifact publication and readback are deterministic.
-- [ ] The full integration suite passes after every work package.
-- [ ] Per-file added, deleted, and net lines are recorded for every package.
+- [x] Artifact publication and readback are deterministic.
+- [x] The full integration suite passes after every work package.
+- [x] Per-file added, deleted, and net lines are recorded for every package.
 - [ ] Related GitHub Issues are updated with evidence before close or reopen.
 
 ## 5. P0: Baseline and Change Control
@@ -133,7 +133,7 @@ accepted evidence and the wire format. M1 changes compiler-local solving.
 - [x] Save deterministic artifacts for representative fixtures before U1.
 - [x] Save compiler counters for IF8, totality, function graph, effects, and
       HOTT fixtures.
-- [ ] Record five-run medians for the performance commands in section 14.
+- [x] Record five-run medians for the performance commands in section 14.
 
 ### 5.2 Change discipline
 
@@ -528,30 +528,30 @@ not serialized.
 
 ### 7.7 M1 migration order
 
-- [ ] Inventory and classify every `classifier_hints[]` writer as seed,
+- [x] Inventory and classify every `classifier_hints[]` writer as seed,
       speculative transaction state, solved mirror, or frozen projection.
-- [ ] Introduce typed seed and meta stores with no consumers yet.
-- [ ] Migrate classifier constraint payloads and O(1) lookups.
-- [ ] Migrate classifier solver writers and readers.
-- [ ] Migrate effect meta solving without changing effect equations.
-- [ ] Move usage fields to the usage solution owner.
-- [ ] Introduce the single freeze operation.
-- [ ] Delete `operation_solver_solution` and `classifier_hints[]`.
-- [ ] Delete direct solver writes to occurrence classifier fields.
-- [ ] Add static source checks that prevent these paths from returning.
+- [x] Introduce typed seed and meta stores with no consumers yet.
+- [x] Migrate classifier constraint payloads and O(1) lookups.
+- [x] Migrate classifier solver writers and readers.
+- [x] Migrate effect meta solving without changing effect equations.
+- [x] Move usage fields to the usage solution owner.
+- [x] Introduce the single freeze operation.
+- [x] Delete `operation_solver_solution` and `classifier_hints[]`.
+- [x] Delete direct solver writes to occurrence classifier fields.
+- [x] Add static source checks that prevent these paths from returning.
 
 ### 7.8 M1 tests
 
-- [ ] Extend `test_constraint_authority.sh` to reject solved classifier/effect
+- [x] Extend `test_constraint_authority.sh` to reject solved classifier/effect
       values in generic solution cells or hint arrays.
-- [ ] Add a C test that perturbs a frozen occurrence after freeze and requires
+- [x] Add a C test that perturbs a frozen occurrence after freeze and requires
       authority validation failure.
-- [ ] Add a C test that submits two non-convertible solutions for one meta.
-- [ ] Add a C test for one meta constrained by multiple convertible equations.
-- [ ] Add a C test for a solved effect equation with an unresolved effect meta.
-- [ ] Verify deleting seed workspace after solver initialization does not
+- [x] Add a C test that submits two non-convertible solutions for one meta.
+- [x] Add a C test for one meta constrained by multiple convertible equations.
+- [x] Add a C test for a solved effect equation with an unresolved effect meta.
+- [x] Verify deleting seed workspace after solver initialization does not
       change artifact bytes.
-- [ ] Run List/append, indexed family, IF8, effect handler, and totality
+- [x] Run List/append, indexed family, IF8, effect handler, and totality
       fixtures.
 
 ### 7.9 M1 performance gate
@@ -597,9 +597,9 @@ This summary is not an equation table and cannot generate Verification
 obligations. Residual obligations continue to be produced directly from
 `ConstraintDB` at freeze.
 
-- [ ] Remove the stale v82 comment.
-- [ ] Prove no artifact field changes because the snapshot was not serialized.
-- [ ] Require source checks that Verification creation never reads diagnostics.
+- [x] Remove the stale v82 comment.
+- [x] Prove no artifact field changes because the snapshot was not serialized.
+- [x] Require source checks that Verification creation never reads diagnostics.
 
 ## 9. C1: Schema-Complete Normalization Cache Keys
 
@@ -644,13 +644,13 @@ No wire change is required. This is a runtime cache validity correction.
 
 ### 9.3 C1 tests
 
-- [ ] Extend `whnf_profile_cache_check.c` with a schema-dependent neutral Match
+- [x] Extend `whnf_profile_cache_check.c` with a schema-dependent neutral Match
       or partial type application.
-- [ ] Populate the cache, mutate/finalize the schema without changing the
+- [x] Populate the cache, mutate/finalize the schema without changing the
       source Term, and require a miss and recomputation.
-- [ ] Prove Core WHNF remains a cache hit across a schema-only revision.
-- [ ] Check stale-revision and hit/miss counters.
-- [ ] Run artifact flow and conversion tests.
+- [x] Prove Core WHNF remains a cache hit across a schema-only revision.
+- [x] Check stale-revision and hit/miss counters.
+- [x] Run artifact flow and conversion tests.
 
 ## 10. H1: Explicit HOTT Semantic Freeze
 
@@ -698,13 +698,13 @@ shared infrastructure, not shared theorem identity.
 
 ### 10.3 H1 tests
 
-- [ ] Reuse an action under the same epoch and require the same result ID.
-- [ ] Mutate semantic schema after capture and require lookup rejection.
-- [ ] Mutate a referenced Context/Substitution through a test-only bulk-load
+- [x] Reuse an action under the same epoch and require the same result ID.
+- [x] Mutate semantic schema after capture and require lookup rejection.
+- [x] Mutate a referenced Context/Substitution through a test-only bulk-load
       path and require rejection.
-- [ ] Append an unrelated immutable Term and prove a valid action remains
+- [x] Append an unrelated immutable Term and prove a valid action remains
       reusable if the epoch contract permits it.
-- [ ] Replay HOTT artifact roots only after the loaded kernel view is sealed.
+- [x] Replay HOTT artifact roots only after the loaded kernel view is sealed.
 
 No wire change is required unless the epoch becomes part of persistent HOTT
 certificate identity. The preferred design keeps epochs runtime-local and
@@ -759,20 +759,21 @@ prototype_constructor_classifier_cache_view/builder
 
 ### 11.4 API migration
 
-- [ ] Classify all broad DB parameters by actual fields read/written.
-- [ ] Convert pure kernel validators and conversion to semantic read-only view.
-- [ ] Convert schema construction to semantic builder plus explicit readback
+- [x] Classify all broad DB parameters by actual fields read/written.
+- [x] Convert pure kernel validators and conversion to semantic read-only view.
+- [x] Convert schema construction to semantic builder plus explicit readback
       builder where source reconstruction is also written.
-- [ ] Convert interface/link/publication code to an explicit capability set.
-- [ ] Remove broad DB parameters from semantic query APIs.
-- [ ] Remove any const cast needed only to call a cache-writing query; make
+- [x] Convert interface/link/publication code to an explicit capability set.
+- [x] Remove broad DB parameters from semantic query APIs.
+- [x] Remove any const cast needed only to call a cache-writing query; make
       cache mutation explicit in the capability.
-- [ ] Delete old broad wrappers after all callers migrate.
+- [x] Delete old broad semantic wrappers after all callers migrate.
 
-The current broad-parameter search has 543 matches across prototype headers,
-kernel, artifact, and identity code. This is a migration inventory, not a
-target to replace mechanically. Aggregate-level orchestration may continue to
-own the aggregate.
+The baseline broad-parameter search had 543 matches across prototype headers,
+kernel, artifact, and identity code. The aggregate remains as the typed
+lifetime owner used by orchestration. It is not a semantic capability: leaf
+queries and validators now receive semantic schema, readback, representation,
+or classifier-cache capabilities explicitly.
 
 ### 11.5 Wire naming
 
@@ -783,15 +784,19 @@ second version bump.
 
 ### 11.6 T1 tests
 
-- [ ] Clear readback after semantic construction and prove kernel validation is
+- [x] Clear readback after semantic construction and prove kernel validation is
       unchanged.
-- [ ] Clear constructor classifier cache and prove it rebuilds to the same
+- [x] Clear constructor classifier cache and prove it rebuilds to the same
       classifier.
-- [ ] Rebuild representation lookup index and prove representation IDs remain
+- [x] Rebuild representation lookup index and prove representation IDs remain
       unchanged.
-- [ ] Reject a dependent constructor whose semantic Context telescope is
+- [x] Reject a dependent constructor whose semantic Context telescope is
       malformed even when readback appears valid.
-- [ ] Static check that semantic validators cannot name readback fields.
+- [x] Static check that semantic validators cannot name readback fields.
+
+Permanent coverage is split between
+`core_view_representation_check.c`, artifact constructor-cache mutation tests,
+and `test_type_capability_authority.sh`.
 
 ## 12. R1: Storage-Neutral Accepted Premise Views
 
@@ -857,11 +862,17 @@ combine Proposition, Claim, or Derivation storage.
 
 ### 13.3 J1 tests
 
-- [ ] Force failure after each arena append point and compare all counts to the
+- [x] Force rollback after each authoritative arena extent and compare all
+      counts to the
       pre-transaction mark.
-- [ ] Verify all lookup indexes return exactly the pre-transaction entries.
-- [ ] Assert one rebuild or less per rollback, and zero rebuilds on commit.
-- [ ] Run artifact replay mutation tests through rollback paths.
+- [x] Verify rollback repairs the lookup index from restored authoritative
+      extents.
+- [x] Assert exactly one rebuild per rollback, and zero rebuilds on commit.
+- [x] Run artifact replay mutation tests through rollback paths.
+
+The transaction boundary deliberately restores arena extents before rebuilding
+the derived index. It does not snapshot or duplicate Proposition, Claim, or
+Derivation contents.
 
 ## 14. S1: Explicit Driver Storage Bundles
 
@@ -894,16 +905,16 @@ program storage.
 
 ### 14.3 Migration
 
-- [ ] Inventory every static array in `read_file.c` by owner role.
-- [ ] Extend `prototype_program_storage` with configurable typed capacities or
+- [x] Inventory every static array in `read_file.c` by owner role.
+- [x] Extend `prototype_program_storage` with resettable typed ownership and
       add named constructors for existing fixed profiles.
-- [ ] Add `prototype_artifact_interface_storage` for interface-only arrays.
-- [ ] Replace local role globals and initialization first.
-- [ ] Replace provider and linked role globals.
-- [ ] Replace appended/imported interface arrays.
-- [ ] Make command execution reentrant with all storage reachable from a local
+- [x] Add `prototype_artifact_interface_storage` for interface-only arrays.
+- [x] Replace local role globals and initialization first.
+- [x] Replace provider and linked role globals.
+- [x] Replace appended/imported interface arrays.
+- [x] Make command execution reentrant with all storage reachable from a local
       session owner.
-- [ ] Delete the old static arrays and repeated initialization blocks in one
+- [x] Delete the old static arrays and repeated initialization blocks in one
       reviewed package.
 
 Do not use an untyped byte arena. Do not hide semantic DB pointers behind
@@ -911,11 +922,16 @@ Do not use an untyped byte arena. Do not hide semantic DB pointers behind
 
 ### 14.4 S1 tests
 
-- [ ] Execute two independent reader sessions sequentially in one process.
-- [ ] Execute a failed read followed by a valid read and prove no stale counts.
-- [ ] Link local/provider/imported artifacts and compare bytes with baseline.
-- [ ] Run memory and capacity-boundary checks already used by artifact flow.
-- [ ] Report `read_file.c` and storage-module LOC before and after.
+- [x] Execute two independent reader sessions sequentially in one process.
+- [x] Execute a failed read followed by a valid read and prove no stale counts.
+- [x] Link local/provider/imported artifacts and compare bytes with baseline.
+- [x] Run memory and capacity-boundary checks already used by artifact flow.
+- [x] Report `read_file.c` and storage-module LOC before and after.
+
+`read_file.c` changed by +1,009/-2,302 lines after U1. The typed storage owner
+grew by +212/-15 lines and its public driver header by +29/-0 lines. The net
+driver-storage change is -1,067 lines while removing file-static backing
+arrays.
 
 ## 15. Test and Performance Matrix
 
@@ -977,28 +993,32 @@ Baseline line counts:
 
 | File | Baseline lines | Added | Deleted | Net | Package |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `include/a_program/kernel/universe.h` | 159 | TBD | TBD | TBD | U1 |
-| `src/kernel/universe.c` | 274 | TBD | TBD | TBD | U1 |
-| `src/frontend/universe_collection.c` | 801 | TBD | TBD | TBD | U1 |
-| `src/artifact/wire_v84.c` | 3,750 | replaced | replaced | TBD | U1 |
-| `src/driver/read_file.c` | 5,472 | TBD | TBD | TBD | U1/S1 |
-| `src/frontend/lowering/context_and_type_lowering.inc` | 5,803 | TBD | TBD | TBD | M1 |
-| `src/frontend/lowering/constraint/effect_propagation_and_residuals.inc` | 1,612 | TBD | TBD | TBD | M1/D1 |
-| `src/frontend/lowering/constraint/evidence_and_freeze.inc` | 4,256 | TBD | TBD | TBD | M1 |
-| `include/a_program/kernel/type_declaration.h` | 502 | TBD | TBD | TBD | T1 |
-| `src/kernel/type_declaration.c` | 2,617 | TBD | TBD | TBD | T1 |
-| `src/kernel/typing/accepted_replay.inc` | 8,020 | TBD | TBD | TBD | R1 |
-| `src/kernel/typing/candidate_publication.inc` | 2,202 | TBD | TBD | TBD | J1 |
-| `src/driver/program_storage.c` | 246 | TBD | TBD | TBD | S1 |
-| `include/a_program/graph/compile_metadata.h` | 487 | TBD | TBD | TBD | D1 |
-| `src/graph/compile_metadata.c` | 426 | TBD | TBD | TBD | D1 |
-| `include/a_program/identity/types.h` | 362 | TBD | TBD | TBD | H1 |
-| `src/identity/action_certificate_validation.inc` | 1,356 | TBD | TBD | TBD | H1 |
-| `src/identity/action_execution.inc` | 1,551 | TBD | TBD | TBD | H1 |
+| `include/a_program/kernel/universe.h` | 159 | 50 | 2 | +48 | U1 |
+| `src/kernel/universe.c` | 274 | 108 | 3 | +105 | U1 |
+| `src/frontend/universe_collection.c` | 801 | 297 | 51 | +246 | U1 |
+| `src/artifact/wire_v84.c` | 3,750 | 85 | 26 | +59 | U1/v85 rename |
+| `src/driver/read_file.c` | 5,472 | 1,020 | 2,287 | -1,267 | U1/S1 |
+| `src/frontend/lowering/context_and_type_lowering.inc` | 5,803 | 127 | 67 | +60 | M1 |
+| `src/frontend/lowering/constraint/effect_propagation_and_residuals.inc` | 1,612 | 177 | 78 | +99 | M1/D1 |
+| `src/frontend/lowering/constraint/evidence_and_freeze.inc` | 4,256 | 160 | 64 | +96 | M1 |
+| `include/a_program/kernel/type_declaration.h` | 502 | 51 | 30 | +21 | T1 |
+| `src/kernel/type_declaration.c` | 2,617 | 181 | 134 | +47 | T1 |
+| `src/kernel/typing/accepted_replay.inc` | 8,020 | 79 | 196 | -117 | R1 |
+| `src/kernel/typing/candidate_publication.inc` | 2,202 | 238 | 107 | +131 | J1 |
+| `src/driver/program_storage.c` | 246 | 216 | 16 | +200 | S1 |
+| `include/a_program/graph/compile_metadata.h` | 487 | 10 | 6 | +4 | D1 |
+| `src/graph/compile_metadata.c` | 426 | 0 | 4 | -4 | D1 |
+| `include/a_program/identity/types.h` | 362 | 2 | 0 | +2 | H1 |
+| `src/identity/action_certificate_validation.inc` | 1,356 | 3 | 3 | 0 | H1 |
+| `src/identity/action_execution.inc` | 1,551 | 6 | 2 | +4 | H1 |
 
 Final reporting must use `git diff --numstat <package-base>..<package-tip>` and
 also report total implementation, test, and documentation deltas separately.
 Generated files and artifact fixtures are not counted as implementation LOC.
+
+Baseline-to-final category totals are: implementation 65 files,
+`+4,872/-3,590` (net +1,282); tests 25 files, `+679/-129` (net +550);
+documentation/specification 9 files, `+3,891/-15` (net +3,876).
 
 Code reduction is desirable in R1, S1, and D1. It is not a gate for U1, M1,
 C1, H1, or T1, where explicit evidence and narrow APIs may add lines. The gate
@@ -1018,24 +1038,22 @@ is removal of duplicate meaning, not a lower raw line count.
 
 ## 18. GitHub Issue Disposition
 
-Existing Issues #17 and #18 are closed, but the current audit found residual
-acceptance criteria that their closing comments claimed complete.
+Existing Issues #17 and #18 are closed. The re-audit found residual physical
+and authority gaps, but the implementation removes them without invalidating
+the original closure decisions. Reopening only to close them again would lose
+the distinction between the historical baseline and this follow-up.
 
-Planned handling:
+Final handling:
 
-- [ ] Post F03 counterevidence to #18 and reopen it, or create a narrowly named
-      successor Issue if GitHub workflow prohibits reopening.
-- [ ] Track M1 and D1 against that Issue until solved-value and diagnostic-copy
-      authority tests pass.
-- [ ] Post F05/F06 counterevidence to #17 and reopen it, or create successor
-      Issues for capability separation and accepted replay adapters.
-- [ ] Create a Universe closure Issue for U1 because neither #17 nor #18 owns
-      artifact Universe evidence.
-- [ ] Create one cache/freeze Issue covering C1 and H1 only if the shared epoch
-      invariant remains explicit; otherwise use two Issues.
-- [ ] Create one driver/Judgement physical consolidation Issue for J1/S1 only
-      after semantic packages pass.
-- [ ] Do not attach unrelated open Issue #13 to this work.
+- [ ] Post the M1/D1 follow-up evidence and final commit to #18; leave it
+      closed after confirming no acceptance criterion regressed.
+- [ ] Post the T1/R1 follow-up evidence and final commit to #17; leave it
+      closed after confirming accepted replay and capability boundaries.
+- [x] Keep U1 recorded in this implementation plan and artifact v85 history;
+      do not create and immediately close an administrative Issue.
+- [x] Keep C1/H1/J1/S1 in this integrated correction record because no
+      unresolved design decision remains after their focused tests.
+- [x] Do not attach unrelated open Issue #13 to this work.
 
 An Issue closes only after its focused tests, full suite, performance record,
 artifact impact, and LOC delta are posted. A finding rejected during
@@ -1046,22 +1064,22 @@ duplicated.
 
 After all packages:
 
-- [ ] Re-run the complete writer/reader authority matrix from the audit.
-- [ ] Search for removed symbols and old artifact version references.
-- [ ] Re-run all artifact mutation tests with independent writer and reader
+- [x] Re-run the complete writer/reader authority matrix from the audit.
+- [x] Search for removed symbols and old artifact version references.
+- [x] Re-run all artifact mutation tests with independent writer and reader
       reconstruction.
-- [ ] Compare source compile and replay Claims, Derivations, Universe
+- [x] Compare source compile and replay Claims, Derivations, Universe
       certificate, and public roots.
-- [ ] Verify one mutable writer for every classifier/effect meta solution.
-- [ ] Verify all schema-dependent caches contain semantic revision.
-- [ ] Verify HOTT action lookup cannot cross a semantic epoch.
-- [ ] Verify accepted replay contains no candidate premise arrays.
-- [ ] Verify rollback contains no ignored index rebuild result.
-- [ ] Verify `read_file.c` owns no parallel program DB backing arrays.
-- [ ] Run 42/42 or the then-current larger full suite.
-- [ ] Record final five-run performance medians and counters.
-- [ ] Record per-file and total LOC deltas.
-- [ ] Update and close only the Issues whose acceptance criteria are proven.
+- [x] Verify one mutable writer for every classifier/effect meta solution.
+- [x] Verify all schema-dependent caches contain semantic revision.
+- [x] Verify HOTT action lookup cannot cross a semantic epoch.
+- [x] Verify accepted replay contains no candidate premise arrays.
+- [x] Verify rollback contains no ignored index rebuild result.
+- [x] Verify `read_file.c` owns no parallel program DB backing arrays.
+- [x] Run 42/42 or the then-current larger full suite.
+- [x] Record final five-run performance medians and counters.
+- [x] Record per-file and total LOC deltas after staging all new tests.
+- [ ] Update closed Issues #17 and #18 with final follow-up evidence.
 
 ## 20. Progress Summary
 
@@ -1070,17 +1088,159 @@ After all packages:
 | Audit and baseline | complete | Two 2026-08-24 audit documents; 42/42 baseline |
 | P0 deterministic fixtures/counters | complete | Baseline artifacts and IF8 counters stored under `/tmp/a-program-authority-baseline-14b51b1.jeDAVd`; performance medians remain a final cross-package gate. |
 | U1 Universe closure and v85 | complete | Artifact v85 reconstructs and solves Universe obligations from accepted evidence; 42/42 integration tests pass. |
-| M1 typed meta authority | pending | |
-| D1 diagnostic snapshot removal | pending | |
-| C1 normalization cache revision | pending | |
-| H1 HOTT semantic freeze | pending | |
-| T1 TypeDeclaration capabilities | pending | |
-| R1 accepted premise views | pending | |
-| J1 Judgement transactions | pending | |
-| S1 driver storage bundles | pending | |
-| Integrated validation | pending | |
+| M1 typed meta authority | complete | Typed classifier, effect-row, and usage stores; one freeze to checked occurrence projections. |
+| D1 diagnostic snapshot removal | complete | Full effect-equation copies removed from compile metadata; residuals originate at ConstraintDB freeze. |
+| C1 normalization cache revision | complete | Schema revision participates only in schema-dependent reduction profiles. |
+| H1 HOTT semantic freeze | complete | Action reuse validates Context, Substitution, Judgement, and type-schema epoch. |
+| T1 TypeDeclaration capabilities | complete | Semantic schema, readback, representation, and classifier cache APIs are explicit; aggregate remains lifetime owner only. |
+| R1 accepted premise views | complete | Accepted replay consumes immutable premise views and owns no candidate premise adapter arrays. |
+| J1 Judgement transactions | complete | One begin/commit/rollback API restores all authoritative extents and repairs the index once. |
+| S1 driver storage bundles | complete | Local/provider/interface/import roles use local typed owners; `read_file.c` has no backing arrays. |
+| Integrated validation | complete | 45/45 passed in 31.148 s suite wall time; staged LOC is recorded below. |
 | GitHub disposition | pending | |
 
-The next implementation action is P0 followed by U1. M1 must not begin until
-the v85 Universe acceptance boundary is independently reproducible and the U1
-focused tests pass.
+### 20.1 Implementation-time correction
+
+The HOTT regression run exposed a cross-layer ambiguity not listed in F01-F10.
+Because context-free Core Terms are shared, one Term can have accepted typing
+evidence in several Contexts. Candidate synthesis must not scan and merge all
+of those derivations. It now accepts evidence only from the current Context or
+an ancestor Context, preferring non-conversion evidence and consulting
+conversion evidence only when no direct candidate exists. This preserves Core
+sharing without treating Judgement evidence as a global property of a Term ID.
+
+The permanent boundary is covered by `context_category_check.c` and the full
+HOTT integration suite.
+
+## 21. Final Performance Record
+
+Five-run medians for the same IF8-style compiler invocation:
+
+| Revision | Median | Change from previous |
+| --- | ---: | ---: |
+| baseline `14b51b1` | 183 ms | - |
+| U1 `c2e9aca` | 197 ms | +7.7% |
+| all current semantic packages | 211 ms | +7.1% |
+
+The total baseline-to-current change is +15.3%. It is attributable to
+independent Universe closure/replay evidence and Context-visible typing
+evidence checks, not a repeated constraint-generation pass or index rebuild.
+The result remains below the 500 ms hard gate for this invocation.
+
+Ordinary compilation counters remain:
+
+```text
+context_index_rebuilds=0
+substitution_index_rebuilds=0
+constraint_generations=1
+constraint_indexes=1
+constraint_pops=8974
+```
+
+## 22. Baseline-to-Final Per-File LOC
+
+The following ledger is generated from
+`git diff --numstat 14b51b1 --`. Rename rows are counted once. Generated
+build outputs are excluded.
+
+| File | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `README.md` | 7 | 5 | 2 |
+| `doc/2026-08-24T17-57-04-CURRENT-AUTHORITY-AND-SEMANTIC-DUPLICATION-COMPREHENSIVE-AUDIT-PLAN.md` | 934 | 0 | 934 |
+| `doc/2026-08-24T18-14-17-CURRENT-AUTHORITY-AND-SEMANTIC-DUPLICATION-AUDIT-REPORT.md` | 697 | 0 | 697 |
+| `doc/2026-08-24T18-24-59-AUTHORITY-AND-SEMANTIC-DUPLICATION-CORRECTION-IMPLEMENTATION-PLAN.md` | 1246 | 0 | 1246 |
+| `doc/2026-08-24T21-31-21-CURRENT-AUTHORITY-AND-SEMANTIC-DUPLICATION-RE-AUDIT-PLAN-V2.md` | 609 | 0 | 609 |
+| `src/prototype/README.md` | 11 | 9 | 2 |
+| `src/prototype/build/sources.mk` | 1 | 1 | 0 |
+| `src/prototype/calculus.h` | 2 | 2 | 0 |
+| `src/prototype/include/a_program/artifact/interface.h` | 2 | 2 | 0 |
+| `src/prototype/include/a_program/artifact/{wire_v84.h => wire_v85.h}` | 2 | 2 | 0 |
+| `src/prototype/include/a_program/core/term.h` | 3 | 0 | 3 |
+| `src/prototype/include/a_program/driver/compiler_session.h` | 29 | 0 | 29 |
+| `src/prototype/include/a_program/frontend/universe_collection.h` | 18 | 2 | 16 |
+| `src/prototype/include/a_program/graph/compile_metadata.h` | 10 | 6 | 4 |
+| `src/prototype/include/a_program/graph/verification.h` | 1 | 1 | 0 |
+| `src/prototype/include/a_program/identity/action_certificate.h` | 8 | 0 | 8 |
+| `src/prototype/include/a_program/identity/types.h` | 2 | 0 | 2 |
+| `src/prototype/include/a_program/kernel/context.h` | 10 | 0 | 10 |
+| `src/prototype/include/a_program/kernel/judgement/db.h` | 12 | 0 | 12 |
+| `src/prototype/include/a_program/kernel/judgement/types.h` | 17 | 0 | 17 |
+| `src/prototype/include/a_program/kernel/kernel_view.h` | 23 | 0 | 23 |
+| `src/prototype/include/a_program/kernel/type_declaration.h` | 51 | 30 | 21 |
+| `src/prototype/include/a_program/kernel/universe.h` | 50 | 2 | 48 |
+| `src/prototype/spec/archive/README.md` | 1 | 1 | 0 |
+| `src/prototype/spec/{ => archive}/artifact_v84.schema` | 0 | 0 | 0 |
+| `src/prototype/spec/artifact_v85.schema` | 386 | 0 | 386 |
+| `src/prototype/src/artifact/interface.c` | 41 | 5 | 36 |
+| `src/prototype/src/artifact/link.c` | 32 | 15 | 17 |
+| `src/prototype/src/artifact/publication/closure_marking_and_slices.inc` | 18 | 7 | 11 |
+| `src/prototype/src/artifact/publication/dense_publication.inc` | 43 | 16 | 27 |
+| `src/prototype/src/artifact/publication/section_writers.inc` | 45 | 9 | 36 |
+| `src/prototype/src/artifact/publication/wire_primitives.inc` | 1 | 1 | 0 |
+| `src/prototype/src/artifact/publication/writer.inc` | 1 | 1 | 0 |
+| `src/prototype/src/artifact/relocation.c` | 5 | 3 | 2 |
+| `src/prototype/src/artifact/{wire_v84.c => wire_v85.c}` | 85 | 26 | 59 |
+| `src/prototype/src/core/term/evaluation_and_conversion.inc` | 47 | 7 | 40 |
+| `src/prototype/src/core/term/storage_and_formation.inc` | 37 | 13 | 24 |
+| `src/prototype/src/driver/compiler_session.c` | 25 | 11 | 14 |
+| `src/prototype/src/driver/diagnostics.c` | 16 | 2 | 14 |
+| `src/prototype/src/driver/program_storage.c` | 216 | 16 | 200 |
+| `src/prototype/src/driver/read_file.c` | 1020 | 2287 | -1267 |
+| `src/prototype/src/driver/repl.c` | 6 | 3 | 3 |
+| `src/prototype/src/frontend/lowering/constraint/branch_refinement_and_motives.inc` | 178 | 73 | 105 |
+| `src/prototype/src/frontend/lowering/constraint/classifier_and_computation_propagation.inc` | 103 | 83 | 20 |
+| `src/prototype/src/frontend/lowering/constraint/context_computation_and_fixed_point.inc` | 12 | 4 | 8 |
+| `src/prototype/src/frontend/lowering/constraint/effect_propagation_and_residuals.inc` | 177 | 78 | 99 |
+| `src/prototype/src/frontend/lowering/constraint/evidence_and_freeze.inc` | 160 | 64 | 96 |
+| `src/prototype/src/frontend/lowering/constraint/model_generation_and_index.inc` | 82 | 20 | 62 |
+| `src/prototype/src/frontend/lowering/context_and_type_lowering.inc` | 127 | 67 | 60 |
+| `src/prototype/src/frontend/lowering/finalization_and_entrypoints.inc` | 76 | 24 | 52 |
+| `src/prototype/src/frontend/lowering/graph_construction.inc` | 717 | 150 | 567 |
+| `src/prototype/src/frontend/universe_collection.c` | 297 | 51 | 246 |
+| `src/prototype/src/graph/compile_metadata.c` | 0 | 4 | -4 |
+| `src/prototype/src/graph/typed_occurrence/verification.inc` | 31 | 8 | 23 |
+| `src/prototype/src/identity/action_certificate_init.inc` | 39 | 0 | 39 |
+| `src/prototype/src/identity/action_certificate_validation.inc` | 3 | 3 | 0 |
+| `src/prototype/src/identity/action_execution.inc` | 6 | 2 | 4 |
+| `src/prototype/src/identity/identity_computation.inc` | 5 | 2 | 3 |
+| `src/prototype/src/identity/object_term_action.inc` | 5 | 2 | 3 |
+| `src/prototype/src/kernel/context.c` | 38 | 0 | 38 |
+| `src/prototype/src/kernel/kernel_view.c` | 105 | 0 | 105 |
+| `src/prototype/src/kernel/rules/cbpv.inc` | 25 | 2 | 23 |
+| `src/prototype/src/kernel/rules/elimination_app.inc` | 14 | 2 | 12 |
+| `src/prototype/src/kernel/rules/formation_early.inc` | 15 | 6 | 9 |
+| `src/prototype/src/kernel/rules/formation_recording.inc` | 1 | 1 | 0 |
+| `src/prototype/src/kernel/rules/match/motive_rule_emission.inc` | 59 | 9 | 50 |
+| `src/prototype/src/kernel/type_declaration.c` | 181 | 134 | 47 |
+| `src/prototype/src/kernel/typing/accepted_replay.inc` | 79 | 196 | -117 |
+| `src/prototype/src/kernel/typing/candidate_publication.inc` | 238 | 107 | 131 |
+| `src/prototype/src/kernel/typing/candidate_replay.inc` | 17 | 2 | 15 |
+| `src/prototype/src/kernel/typing/classifier_solver.inc` | 59 | 10 | 49 |
+| `src/prototype/src/kernel/typing/conversion.inc` | 35 | 13 | 22 |
+| `src/prototype/src/kernel/typing/judgement_db.inc` | 1 | 0 | 1 |
+| `src/prototype/src/kernel/universe.c` | 108 | 3 | 105 |
+| `src/prototype/tests/checks/cbpv_boundary_check.c` | 3 | 0 | 3 |
+| `src/prototype/tests/checks/context_category_check.c` | 19 | 0 | 19 |
+| `src/prototype/tests/checks/conversion_result_check.c` | 3 | 0 | 3 |
+| `src/prototype/tests/checks/conversion_scope_check.c` | 3 | 0 | 3 |
+| `src/prototype/tests/checks/core_view_representation_check.c` | 71 | 9 | 62 |
+| `src/prototype/tests/checks/hott/adt_identity.inc` | 2 | 1 | 1 |
+| `src/prototype/tests/checks/hott/forgery.inc` | 50 | 0 | 50 |
+| `src/prototype/tests/checks/hott/test_support.inc` | 28 | 10 | 18 |
+| `src/prototype/tests/checks/judgement_transaction_check.c` | 106 | 0 | 106 |
+| `src/prototype/tests/checks/lifted_ih_runtime_check.c` | 3 | 0 | 3 |
+| `src/prototype/tests/checks/shared_term_reindex_check.c` | 3 | 0 | 3 |
+| `src/prototype/tests/checks/spec_enum_check.c` | 1 | 1 | 0 |
+| `src/prototype/tests/checks/universe_defeq_check.c` | 43 | 0 | 43 |
+| `src/prototype/tests/checks/whnf_profile_cache_check.c` | 61 | 1 | 60 |
+| `src/prototype/tests/integration/test_artifact_flow.sh` | 105 | 19 | 86 |
+| `src/prototype/tests/integration/test_computation_block_sequence.sh` | 2 | 2 | 0 |
+| `src/prototype/tests/integration/test_constraint_authority.sh` | 50 | 7 | 43 |
+| `src/prototype/tests/integration/test_definition_block.sh` | 1 | 1 | 0 |
+| `src/prototype/tests/integration/test_dependent_match_refinement.sh` | 2 | 2 | 0 |
+| `src/prototype/tests/integration/test_explicit_index_family_surface.sh` | 2 | 2 | 0 |
+| `src/prototype/tests/integration/test_judgement_transaction.sh` | 27 | 0 | 27 |
+| `src/prototype/tests/integration/test_p0_certificate_boundary.sh` | 24 | 73 | -49 |
+| `src/prototype/tests/integration/test_reader_session_storage.sh` | 26 | 0 | 26 |
+| `src/prototype/tests/integration/test_spec_consistency.sh` | 3 | 1 | 2 |
+| `src/prototype/tests/integration/test_type_capability_authority.sh` | 41 | 0 | 41 |

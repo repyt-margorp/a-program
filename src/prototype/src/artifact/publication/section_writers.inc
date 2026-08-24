@@ -153,6 +153,8 @@ static int write_artifact_graph_section(
 	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
 		const struct prototype_type_declaration* type =
 			&type_declarations->semantic_schema.type_declarations[i];
+		const struct prototype_type_readback_entry* readback_entry =
+			&type_declarations->readback.type_entries[i];
 		if (!artifact_type_present(type)) {
 			continue;
 		}
@@ -172,7 +174,7 @@ static int write_artifact_graph_section(
 			type_name,
 			namespace_name,
 			type->type_index,
-			type->first_parameter,
+			readback_entry->first_parameter,
 			type->parameter_count,
 			type->first_constructor,
 			type->constructor_count,
@@ -209,10 +211,13 @@ static int write_artifact_graph_section(
 		const struct prototype_type_constructor_declaration* constructor =
 			&type_declarations->semantic_schema.constructor_declarations[i];
 		const struct prototype_type_constructor_readback* readback =
-			prototype_type_constructor_readback_get(type_declarations, (uint32_t)i);
+			prototype_type_constructor_readback_get(
+			&type_declarations->semantic_schema,
+			&type_declarations->readback, (uint32_t)i);
 		const struct prototype_constructor_classifier_cache_entry* cache =
 			prototype_type_constructor_classifier_cache_get(
-				type_declarations, (uint32_t)i
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache, (uint32_t)i
 			);
 		if (!artifact_constructor_present(constructor)) {
 			continue;
@@ -839,7 +844,7 @@ static int artifact_count_external_type_expr_refs(
 	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		if (type_declarations->readback.exprs[i].tag == PROTOTYPE_TYPE_EXPR_NAME &&
 			!prototype_type_declaration_lookup(
-				type_declarations,
+			&type_declarations->semantic_schema,
 				type_declarations->readback.exprs[i].as.name.symbol_id
 			)) {
 			(*p_count)++;
@@ -1075,7 +1080,8 @@ static int write_artifact_relocation_section(
 	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		if (expr->tag != PROTOTYPE_TYPE_EXPR_NAME ||
-			prototype_type_declaration_lookup(type_declarations, expr->as.name.symbol_id)) {
+			prototype_type_declaration_lookup(
+			&type_declarations->semantic_schema, expr->as.name.symbol_id)) {
 			continue;
 		}
 		const char* name = symbol_to_string(symbols, expr->as.name.symbol_id);
@@ -1119,7 +1125,8 @@ static int write_artifact_relocation_section(
 	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
 		if (expr->tag != PROTOTYPE_TYPE_EXPR_NAME ||
-			prototype_type_declaration_lookup(type_declarations, expr->as.name.symbol_id)) {
+			prototype_type_declaration_lookup(
+			&type_declarations->semantic_schema, expr->as.name.symbol_id)) {
 			continue;
 		}
 		const char* name = symbol_to_string(symbols, expr->as.name.symbol_id);

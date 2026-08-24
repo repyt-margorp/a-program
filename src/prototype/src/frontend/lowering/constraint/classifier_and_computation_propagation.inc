@@ -33,14 +33,14 @@ static int operation_solver_classifier_goal_is_satisfied(
 	int* p_reason
 ) {
 	if (!ctx || !ctx->metadata || !goal || !p_reason ||
-		goal->payload.classifier.classifier_variable >= ctx->metadata->typed_occurrences.occurrence_count ||
+		goal->payload.classifier.classifier_meta_id >= ctx->metadata->typed_occurrences.occurrence_count ||
 		goal->id >= ctx->constraints.classifier_constraint_count) {
 		return 0;
 	}
 	const struct operation_constraint* result =
 		&ctx->constraints.constraints[goal->id];
 	uint32_t target = operation_solver_classifier(
-		ctx, goal->payload.classifier.classifier_variable
+		ctx, goal->payload.classifier.classifier_meta_id
 	);
 	if (target == PROTOTYPE_INVALID_ID) {
 		return 0;
@@ -135,7 +135,7 @@ static int operation_solver_classifier_goal_is_satisfied(
 			struct prototype_typed_occurrence_induction_edge edge;
 			graph = prototype_compile_metadata_typed_occurrences_const(ctx->metadata);
 			int edge_status = prototype_typed_occurrence_graph_induction_edge(
-					graph, ctx->terms, goal->payload.classifier.classifier_variable, &edge
+					graph, ctx->terms, goal->payload.classifier.classifier_meta_id, &edge
 				);
 			uint32_t recursive_classifier = operation_solver_classifier(
 				ctx,
@@ -212,7 +212,7 @@ static void operation_solver_refresh_constraint_states(
 			if (!obligation) {
 				continue;
 			}
-			if (obligation->occurrence == constraint->payload.classifier.classifier_variable) {
+			if (obligation->occurrence == constraint->payload.classifier.classifier_meta_id) {
 				residual = 1;
 				break;
 			}
@@ -381,7 +381,10 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 	struct prototype_typed_occurrence* continuation_occurrence =
 		&ctx->metadata->typed_occurrences.occurrences[continuation_occurrence_id];
 	if (input_classifier == PROTOTYPE_INVALID_ID) {
-		if (continuation_occurrence->binder_classifier != PROTOTYPE_INVALID_ID) {
+		uint32_t pending_binder_classifier = operation_solver_binder_classifier(
+			ctx, continuation_occurrence_id
+		);
+		if (pending_binder_classifier != PROTOTYPE_INVALID_ID) {
 			uint8_t visited[
 				ctx->metadata->typed_occurrences.occurrence_count
 			];
@@ -402,7 +405,7 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 				}
 				int refine_status = operation_solver_refine_sequenced_ih_result(
 					ctx, operation_id,
-					continuation_occurrence->binder_classifier, p_changed
+					pending_binder_classifier, p_changed
 				);
 				if (refine_status <= 0) {
 					return refine_status;
@@ -448,11 +451,14 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 		) != 0) {
 		return -1;
 	}
-	if (continuation_occurrence->binder_classifier != PROTOTYPE_INVALID_ID &&
+	uint32_t continuation_binder_classifier = operation_solver_binder_classifier(
+		ctx, continuation_occurrence_id
+	);
+	if (continuation_binder_classifier != PROTOTYPE_INVALID_ID &&
 		prototype_judgement_classifier_conversion(
 			ctx->terms,
 			ctx->type_declarations,
-			continuation_occurrence->binder_classifier,
+			continuation_binder_classifier,
 			input_value_classifier
 		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		uint8_t visited[ctx->metadata->typed_occurrences.occurrence_count];
@@ -476,7 +482,7 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 			int refine_status = operation_solver_refine_sequenced_ih_result(
 				ctx,
 				operation_id,
-				continuation_occurrence->binder_classifier,
+				continuation_binder_classifier,
 				p_changed
 			);
 			if (refine_status <= 0) {
@@ -484,20 +490,15 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 			}
 		}
 	}
-	if (continuation_occurrence->binder_classifier == PROTOTYPE_INVALID_ID ||
+	if (continuation_binder_classifier == PROTOTYPE_INVALID_ID ||
 		prototype_judgement_classifier_conversion(
 			ctx->terms,
 			ctx->type_declarations,
-			continuation_occurrence->binder_classifier,
+			continuation_binder_classifier,
 			input_value_classifier
 		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
-		continuation_occurrence->binder_classifier = input_value_classifier;
-		operation_context_binding_dependency_changed(
-			ctx, continuation_occurrence->binding_id
-		);
-		*p_changed = 1;
-		if (operation_solver_enqueue_dependents(
-			ctx, continuation_occurrence_id
+		if (operation_binder_classifier_meta_replace(
+			ctx, continuation_occurrence_id, input_value_classifier, p_changed
 		) != 0) {
 			return -1;
 		}
@@ -506,7 +507,7 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 	for (uint32_t operation_id = 0;
 		operation_id < ctx->metadata->typed_occurrences.occurrence_count;
 		++operation_id) {
-		const struct prototype_typed_occurrence* operation =
+		struct prototype_typed_occurrence* operation =
 			&ctx->metadata->typed_occurrences.occurrences[operation_id];
 		memset(visited, 0, sizeof(visited));
 		int binder_matches =
@@ -527,6 +528,17 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 		 * continuation binder.  A stale binder is not an equation for rewriting
 		 * the input computation; independent expected-type constraints perform
 		 * that reverse refinement at their own source. */
+		uint32_t previous = operation_solver_classifier(ctx, operation_id);
+		if (previous != PROTOTYPE_INVALID_ID &&
+			prototype_judgement_classifier_conversion(
+				ctx->terms,
+				ctx->type_declarations,
+				previous,
+				input_value_classifier
+			).status != PROTOTYPE_TERM_CONVERSION_EQUAL &&
+			operation_classifier_meta_invalidate(ctx, operation_id) != 0) {
+			return -1;
+		}
 		if (operation_solver_bind_proven_classifier(
 			ctx, operation_id, input_value_classifier, p_changed
 		) != 0) {
@@ -647,13 +659,12 @@ static int operation_solver_propagate_clause_computation_fold_input(
 		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
 			operation->referenced_ast_binder_id ==
 				handle_operation->fold_return_ast_binder_id &&
-			operation->binder_classifier == PROTOTYPE_INVALID_ID) {
-			operation->binder_classifier = input_view.result;
-			operation_context_binding_dependency_changed(ctx, operation->binding_id);
-			*p_changed = 1;
-			if (operation_solver_enqueue_dependents(ctx, operation_id) != 0) {
+			operation_solver_binder_classifier(ctx, operation_id) ==
+				PROTOTYPE_INVALID_ID &&
+			operation_binder_classifier_meta_solve(
+				ctx, operation_id, input_view.result, p_changed
+			) != 0) {
 				return -1;
-			}
 		}
 		memset(visited, 0, sizeof(visited));
 		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
@@ -881,20 +892,18 @@ static int operation_solver_propagate_clause_computation_fold_input(
 			}
 			const struct prototype_typed_occurrence* continuation_clause =
 				&ctx->metadata->typed_occurrences.occurrences[continuation_clause_occurrence];
-			const struct operation_solver_solution* continuation_solution =
-				&ctx->classifier_solver.solutions[continuation_clause_occurrence];
+			const struct prototype_occurrence_usage_solution* continuation_usage =
+				&ctx->operation_usage_solutions[continuation_clause_occurrence];
 			if (continuation_clause->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
 				continuation_clause->binding_id !=
 					occurrence_clause->continuation_binder_id ||
-				continuation_solution->usage_state !=
-					OPERATION_CONSTRAINT_STATE_SOLVED ||
 				(declaration->resumption_multiplicity ==
 						PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ABORTIVE &&
-					continuation_solution->binder_usage !=
+					continuation_usage->binder_usage !=
 						PROTOTYPE_USAGE_ZERO) ||
 				(declaration->resumption_multiplicity ==
 						PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT &&
-					continuation_solution->binder_usage ==
+					continuation_usage->binder_usage ==
 						PROTOTYPE_USAGE_MANY)) {
 				return -1;
 			}
@@ -1023,19 +1032,19 @@ static int operation_solver_propagate_clause_computation_fold_input(
 			) != 0 || ast_binder_id != occurrence_clause->argument_ast_binder_id) {
 			continue;
 		}
-		if (lambda_operation->binder_classifier == PROTOTYPE_INVALID_ID ||
+		uint32_t current_binder_classifier = operation_solver_binder_classifier(
+			ctx, lambda_operation_id
+		);
+		if (current_binder_classifier == PROTOTYPE_INVALID_ID ||
 			!(prototype_judgement_classifier_conversion(
 				ctx->terms,
 				ctx->type_declarations,
-				lambda_operation->binder_classifier,
+				current_binder_classifier,
 				operation_domain
 			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
-			lambda_operation->binder_classifier = operation_domain;
-			operation_context_binding_dependency_changed(
-				ctx, lambda_operation->binding_id
-			);
-			*p_changed = 1;
-			if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
+			if (operation_binder_classifier_meta_replace(
+					ctx, lambda_operation_id, operation_domain, p_changed
+				) != 0) {
 				return -1;
 			}
 		}
@@ -1054,32 +1063,31 @@ static int operation_solver_propagate_clause_computation_fold_input(
 				occurrence_clause->continuation_ast_binder_id) {
 			continue;
 		}
-			if (lambda_operation->binder_classifier == PROTOTYPE_INVALID_ID) {
-				lambda_operation->binder_classifier = continuation_binder_classifier;
-				operation_context_binding_dependency_changed(
-					ctx, lambda_operation->binding_id
-				);
-				*p_changed = 1;
-				if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
+		uint32_t current_binder_classifier = operation_solver_binder_classifier(
+			ctx, lambda_operation_id
+		);
+			if (current_binder_classifier == PROTOTYPE_INVALID_ID) {
+				if (operation_binder_classifier_meta_solve(
+						ctx, lambda_operation_id,
+						continuation_binder_classifier, p_changed
+					) != 0) {
 					return -1;
 				}
 			} else if (operation_solver_continuation_effect_widening(
 					ctx,
-					lambda_operation->binder_classifier,
+					current_binder_classifier,
 					continuation_binder_classifier
 				)) {
-				lambda_operation->binder_classifier = continuation_binder_classifier;
-				operation_context_binding_dependency_changed(
-					ctx, lambda_operation->binding_id
-				);
-				*p_changed = 1;
-				if (operation_solver_enqueue_dependents(ctx, lambda_operation_id) != 0) {
+				if (operation_binder_classifier_meta_replace(
+						ctx, lambda_operation_id,
+						continuation_binder_classifier, p_changed
+					) != 0) {
 					return -1;
 				}
 			} else if (!(prototype_judgement_classifier_conversion(
 				ctx->terms,
 				ctx->type_declarations,
-				lambda_operation->binder_classifier,
+				current_binder_classifier,
 				continuation_binder_classifier
 			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 			return -1;
@@ -1131,8 +1139,11 @@ static int operation_solver_propagate_clause_computation_fold_input(
 				ast_binder_id != operation->referenced_ast_binder_id) {
 				continue;
 			}
-			if (lambda_operation->binder_classifier != PROTOTYPE_INVALID_ID) {
-				classifier = lambda_operation->binder_classifier;
+			uint32_t binder_classifier = operation_solver_binder_classifier(
+				ctx, lambda_operation_id
+			);
+			if (binder_classifier != PROTOTYPE_INVALID_ID) {
+				classifier = binder_classifier;
 				break;
 			}
 			uint32_t lambda_body_occurrence;
@@ -1231,23 +1242,22 @@ static int operation_solver_propagate_clause_computation_fold_input(
 						ast_binder_id != operation->referenced_ast_binder_id) {
 						continue;
 					}
-					if (lambda_operation->binder_classifier ==
+					uint32_t current_binder_classifier =
+						operation_solver_binder_classifier(
+							ctx, lambda_operation_id
+						);
+					if (current_binder_classifier ==
 							PROTOTYPE_INVALID_ID ||
 						(operation->referenced_ast_binder_id ==
 							occurrence_clause->argument_ast_binder_id &&
 						 !(prototype_judgement_classifier_conversion(
 							ctx->terms,
 							ctx->type_declarations,
-							lambda_operation->binder_classifier,
+							current_binder_classifier,
 							classifier
 						 ).status == PROTOTYPE_TERM_CONVERSION_EQUAL))) {
-						lambda_operation->binder_classifier = classifier;
-						operation_context_binding_dependency_changed(
-							ctx, lambda_operation->binding_id
-						);
-						*p_changed = 1;
-						if (operation_solver_enqueue_dependents(
-								ctx, lambda_operation_id
+						if (operation_binder_classifier_meta_replace(
+								ctx, lambda_operation_id, classifier, p_changed
 							) != 0) {
 							return -1;
 						}
@@ -1255,16 +1265,11 @@ static int operation_solver_propagate_clause_computation_fold_input(
 							occurrence_clause->continuation_ast_binder_id &&
 						operation_solver_continuation_effect_widening(
 							ctx,
-							lambda_operation->binder_classifier,
+							current_binder_classifier,
 							classifier
 						)) {
-						lambda_operation->binder_classifier = classifier;
-						operation_context_binding_dependency_changed(
-							ctx, lambda_operation->binding_id
-						);
-						*p_changed = 1;
-						if (operation_solver_enqueue_dependents(
-								ctx, lambda_operation_id
+						if (operation_binder_classifier_meta_replace(
+								ctx, lambda_operation_id, classifier, p_changed
 							) != 0) {
 							return -1;
 						}
@@ -1272,7 +1277,7 @@ static int operation_solver_propagate_clause_computation_fold_input(
 						!(prototype_judgement_classifier_conversion(
 							ctx->terms,
 							ctx->type_declarations,
-							lambda_operation->binder_classifier,
+							current_binder_classifier,
 							classifier
 						).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
 						return -1;
@@ -1335,6 +1340,7 @@ restart_after_branch_pullback:
 				&ctx->constraints.constraints[i];
 			struct operation_constraint* constraint_result =
 				&ctx->constraints.constraints[i];
+			ctx->active_classifier_constraint_id = i;
 			if (getenv("A_PROGRAM_CLASSIFIER_TRACE") != NULL) {
 				fprintf(
 					stderr,
@@ -1342,7 +1348,7 @@ restart_after_branch_pullback:
 					i,
 					constraint->kind,
 					constraint->domain,
-					constraint->payload.classifier.classifier_variable,
+					constraint->payload.classifier.classifier_meta_id,
 					constraint->state,
 					constraint->reason
 				);
@@ -1353,7 +1359,7 @@ restart_after_branch_pullback:
 				}
 				continue;
 			}
-			uint32_t target = constraint->payload.classifier.classifier_variable;
+			uint32_t target = constraint->payload.classifier.classifier_meta_id;
 			if (ctx->metadata->solver_steps_used >= ctx->metadata->solver_step_limit) {
 				ctx->metadata->solver_exhausted = 1;
 				operation_solver_refresh_constraint_states(ctx, 1);
@@ -1385,7 +1391,7 @@ restart_after_branch_pullback:
 					uint32_t expected_classifier =
 						constraint->payload.classifier.goal.conversion.expected_classifier;
 						if (expected_classifier == PROTOTYPE_INVALID_ID) {
-							expected_classifier = ctx->classifier_hints[target];
+							expected_classifier = ctx->classifier_seeds[target].classifier;
 						}
 					if (constraint->payload.classifier.goal.conversion.body_occurrence >=
 							ctx->metadata->typed_occurrences.occurrence_count ||
@@ -1479,7 +1485,6 @@ restart_after_branch_pullback:
 							}
 							break;
 						}
-						ctx->classifier_hints[target] = solved_expected;
 						/* The expected occurrence is a checked projection of the
 						 * current body classifier. A later pass may refine a latent
 						 * effect row from E to E union F; replace the provisional
@@ -1505,7 +1510,7 @@ restart_after_branch_pullback:
 					}
 					if (constraint->payload.classifier.goal.pi.role == OPERATION_CLASSIFIER_PI_GOAL_INTRO) {
 						uint32_t expected =
-							ctx->classifier_solver.solutions[target].classifier;
+							ctx->classifier_solver.classifier_metas[target].classifier;
 						uint32_t current_body_classifier = operation_solver_classifier(
 							ctx, constraint->payload.classifier.goal.pi.body_or_function_operation
 						);
@@ -1534,7 +1539,7 @@ restart_after_branch_pullback:
 								!(prototype_judgement_classifier_conversion(
 									ctx->terms, ctx->type_declarations,
 									domain,
-									lambda->binder_classifier
+									operation_solver_binder_classifier(ctx, target)
 								).status == PROTOTYPE_TERM_CONVERSION_EQUAL) ||
 								lambda->binding_id == PROTOTYPE_INVALID_ID ||
 								prototype_term_var(
@@ -1570,7 +1575,8 @@ restart_after_branch_pullback:
 						uint32_t codomain_family;
 						const struct prototype_typed_occurrence* lambda =
 							&ctx->metadata->typed_occurrences.occurrences[target];
-						uint32_t effective_domain = lambda->binder_classifier;
+						uint32_t effective_domain =
+							operation_solver_binder_classifier(ctx, target);
 						if (effective_domain == PROTOTYPE_INVALID_ID) {
 							break;
 						}
@@ -1786,6 +1792,19 @@ restart_after_branch_pullback:
 								&classifier
 							);
 						}
+						if (apply_status == 0) {
+							uint32_t reindexed_classifier;
+							if (operation_solver_reindex_in_enclosing_indexed_branches(
+								ctx,
+								target,
+								ctx->metadata->typed_occurrences.occurrences[target].context_id,
+								classifier,
+								&reindexed_classifier
+							) != 0) {
+								return -1;
+							}
+							classifier = reindexed_classifier;
+						}
 						/* A non-Pi or incompatible current candidate may belong to a
 						 * shared core node. Leave this operation constraint unresolved
 						 * until a source-operation binding selects its classifier. */
@@ -1870,7 +1889,7 @@ restart_after_branch_pullback:
 					break;
 				}
 				case OPERATION_CONSTRAINT_BINDER_TYPE: {
-					if (ctx->classifier_solver.solutions[target].classifier !=
+					if (ctx->classifier_solver.classifier_metas[target].classifier !=
 							PROTOTYPE_INVALID_ID) {
 						break;
 					}
@@ -1895,7 +1914,7 @@ restart_after_branch_pullback:
 					break;
 				}
 				case OPERATION_CONSTRAINT_HAS_TYPE:
-					if (ctx->classifier_solver.solutions[target].classifier !=
+					if (ctx->classifier_solver.classifier_metas[target].classifier !=
 						PROTOTYPE_INVALID_ID) {
 						break;
 					}
@@ -2025,6 +2044,7 @@ restart_after_branch_pullback:
 			} else if (constraint->kind > 0 && constraint->kind < 16) {
 				ctx->metadata->constraint_noop_by_kind[constraint->kind]++;
 			}
+			ctx->active_classifier_constraint_id = PROTOTYPE_INVALID_ID;
 		}
 		if (pop_status < 0) {
 			return -1;

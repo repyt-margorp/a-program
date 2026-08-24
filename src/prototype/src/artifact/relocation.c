@@ -446,7 +446,8 @@ int prototype_artifact_interface_recompute_keys(
 		return -1;
 	}
 	if (prototype_constructor_curried_caches_rebuild(
-			type_declarations, contexts, terms
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache, contexts, terms
 		) != 0) {
 		fprintf(stderr, "artifact key recomputation failed rebuilding constructor caches\n");
 		return -1;
@@ -542,13 +543,14 @@ int prototype_artifact_interface_recompute_keys(
 		}
 		const struct prototype_constructor_classifier_cache_entry* cache =
 			prototype_type_constructor_classifier_cache_get(
-				type_declarations,
+			&type_declarations->semantic_schema,
+			&type_declarations->constructor_classifier_cache,
 				type->first_constructor + export->ordinal
 			);
 		if (!cache) {
 			return -1;
 		}
-		export->curried_classifier_cache = cache->classifier;
+		export->constructor_classifier = cache->classifier;
 	}
 	return 0;
 }
