@@ -4,6 +4,12 @@ Date: 2026-08-24 JST
 
 Status: design proposal; no language implementation change
 
+Current-status note (2026-08-25): this document was intentionally preserved as
+the PR #21 proposal audited at `14b51b1` and Artifact v84. It is not the current
+implementation authority. Its proposals and current-code claims are reviewed
+against `be63360` and Artifact v85 in
+`2026-08-25T06-20-56-PR21-FUNCTION-GRAPH-SURFACE-CURRENT-CRITICAL-REVIEW-AND-CORRECTION-PLAN.md`.
+
 Repository: `repyt-margorp/a-program`
 
 Audited revision: `14b51b16019f049ec54c0dced1320012f1de3d1d`
