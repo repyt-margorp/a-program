@@ -2,7 +2,7 @@
 
 Date: 2026-08-24
 
-Status: implementation complete; final GitHub disposition and push pending
+Status: complete; implementation `64c7934` is published on `origin/main`
 
 Repository baseline:
 
@@ -121,7 +121,7 @@ accepted evidence and the wire format. M1 changes compiler-local solving.
 - [x] Artifact publication and readback are deterministic.
 - [x] The full integration suite passes after every work package.
 - [x] Per-file added, deleted, and net lines are recorded for every package.
-- [ ] Related GitHub Issues are updated with evidence before close or reopen.
+- [x] Related GitHub Issues are updated with evidence before close or reopen.
 
 ## 5. P0: Baseline and Change Control
 
@@ -1045,9 +1045,9 @@ the distinction between the historical baseline and this follow-up.
 
 Final handling:
 
-- [ ] Post the M1/D1 follow-up evidence and final commit to #18; leave it
+- [x] Post the M1/D1 follow-up evidence and final commit to #18; leave it
       closed after confirming no acceptance criterion regressed.
-- [ ] Post the T1/R1 follow-up evidence and final commit to #17; leave it
+- [x] Post the T1/R1 follow-up evidence and final commit to #17; leave it
       closed after confirming accepted replay and capability boundaries.
 - [x] Keep U1 recorded in this implementation plan and artifact v85 history;
       do not create and immediately close an administrative Issue.
@@ -1079,7 +1079,7 @@ After all packages:
 - [x] Run 42/42 or the then-current larger full suite.
 - [x] Record final five-run performance medians and counters.
 - [x] Record per-file and total LOC deltas after staging all new tests.
-- [ ] Update closed Issues #17 and #18 with final follow-up evidence.
+- [x] Update closed Issues #17 and #18 with final follow-up evidence.
 
 ## 20. Progress Summary
 
@@ -1097,7 +1097,7 @@ After all packages:
 | J1 Judgement transactions | complete | One begin/commit/rollback API restores all authoritative extents and repairs the index once. |
 | S1 driver storage bundles | complete | Local/provider/interface/import roles use local typed owners; `read_file.c` has no backing arrays. |
 | Integrated validation | complete | 45/45 passed in 31.148 s suite wall time; staged LOC is recorded below. |
-| GitHub disposition | pending | |
+| GitHub disposition | complete | Follow-up evidence posted to closed Issues #17 and #18; unrelated #13 unchanged. |
 
 ### 20.1 Implementation-time correction
 
