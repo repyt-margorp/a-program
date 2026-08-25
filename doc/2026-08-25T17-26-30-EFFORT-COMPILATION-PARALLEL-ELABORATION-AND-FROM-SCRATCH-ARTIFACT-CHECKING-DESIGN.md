@@ -4,6 +4,10 @@ Date: 2026-08-25
 
 Status: proposed architecture; not implemented
 
+Critical implementation review and revised execution plan:
+
+- `2026-08-25T18-14-21-PR22-EFFORT-COMPILATION-CRITICAL-IMPLEMENTATION-PLAN.md`
+
 Re-audit status: corrected against the same latest `origin/main` on
 2026-08-25. The re-audit confirmed that the central direction is compatible
 with the current architecture, but also identified two necessary corrections:
