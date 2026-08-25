@@ -560,20 +560,6 @@ void prototype_judgement_delta_set_intrinsic_environment(
 	delta->intrinsic_environment = intrinsic_environment;
 }
 
-void prototype_judgement_delta_set_solver_budget(
-	struct prototype_judgement_delta* delta,
-	uint64_t step_limit,
-	uint64_t* steps_used,
-	int* exhausted
-) {
-	if (!delta) {
-		return;
-	}
-	delta->solver_step_limit = step_limit;
-	delta->solver_steps_used = steps_used;
-	delta->solver_exhausted = exhausted;
-}
-
 void prototype_judgement_delta_set_context(
 	struct prototype_judgement_delta* delta,
 	uint32_t context_id

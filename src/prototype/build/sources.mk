@@ -24,6 +24,21 @@ PROTOTYPE_TYPE_DECLARATION_SOURCES := \
 PROTOTYPE_CWF_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/kernel/cwf_certificate.c
 
+PROTOTYPE_CHECKER_SOURCES := \
+	$(PROTOTYPE_ROOT)/src/checker/container.c \
+	$(PROTOTYPE_ROOT)/src/checker/module.c \
+	$(PROTOTYPE_ROOT)/src/checker/module_set.c \
+	$(PROTOTYPE_ROOT)/src/checker/parallel.c \
+	$(PROTOTYPE_ROOT)/src/checker/resources.c \
+	$(PROTOTYPE_ROOT)/src/checker/session.c \
+	$(PROTOTYPE_ROOT)/src/checker/universe.c \
+	$(PROTOTYPE_ROOT)/src/producer/effort.c \
+	$(PROTOTYPE_ROOT)/src/producer/goal.c \
+	$(PROTOTYPE_ROOT)/src/producer/checked_incremental.c \
+	$(PROTOTYPE_ROOT)/src/producer/incremental.c \
+	$(PROTOTYPE_ROOT)/src/producer/merge.c \
+	$(PROTOTYPE_ROOT)/src/producer/capsule.c
+
 PROTOTYPE_DIMENSION_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/dimension/operator.c \
 	$(PROTOTYPE_ROOT)/src/dimension/face.c \
@@ -31,6 +46,7 @@ PROTOTYPE_DIMENSION_SOURCES := \
 
 PROTOTYPE_KERNEL_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
+	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
 	$(PROTOTYPE_CWF_SOURCES) \
@@ -48,6 +64,7 @@ PROTOTYPE_COMPILER_SESSION_SOURCES := \
 
 PROTOTYPE_GRAPH_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
+	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
 	$(PROTOTYPE_CWF_SOURCES) \
@@ -62,6 +79,7 @@ PROTOTYPE_GRAPH_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/support/symbol.c
 PROTOTYPE_COMPILER_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
+	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/context.c \
 	$(PROTOTYPE_CWF_SOURCES) \
@@ -79,6 +97,7 @@ PROTOTYPE_COMPILER_SOURCES := \
 PROTOTYPE_HOTT_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/identity/hott.c \
 	$(PROTOTYPE_AST_SOURCES) \
+	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
 	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/kernel_view.c \

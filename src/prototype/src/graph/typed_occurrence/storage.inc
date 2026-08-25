@@ -172,6 +172,7 @@ int prototype_typed_occurrence_graph_add(
 	if (operation.tag != PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS) {
 		operation.ih_owner_occurrence = PROTOTYPE_INVALID_ID;
 	}
+	operation.match_motive = PROTOTYPE_INVALID_ID;
 	if (operation.classifier_status ==
 			PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING) {
 		operation.classifier_verification_obligation = PROTOTYPE_INVALID_ID;

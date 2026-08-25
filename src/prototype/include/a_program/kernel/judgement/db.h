@@ -137,9 +137,6 @@ struct prototype_judgement_delta {
 	];
 	size_t effect_row_constraint_count;
 	size_t effect_row_constraint_capacity;
-	uint64_t solver_step_limit;
-	uint64_t* solver_steps_used;
-	int* solver_exhausted;
 	struct prototype_context_db* contexts;
 	struct prototype_substitution_db* substitutions;
 	const struct prototype_dimension_operator_db* dimension_operators;
@@ -226,12 +223,6 @@ void prototype_judgement_delta_set_intrinsic_environment(
 	const struct prototype_intrinsic_environment* intrinsic_environment
 );
 
-void prototype_judgement_delta_set_solver_budget(
-	struct prototype_judgement_delta* delta,
-	uint64_t step_limit,
-	uint64_t* steps_used,
-	int* exhausted
-);
 void prototype_judgement_delta_set_context(
 	struct prototype_judgement_delta* delta,
 	uint32_t context_id

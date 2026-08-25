@@ -124,7 +124,7 @@ static void print_state(
 		"#### Metadata ####\n"
 		"labels=%zu resolve_errors=%zu self_contained=%s\n"
 		"typed-occurrences=%zu terms=%zu propositions=%zu claims=%zu derivations=%zu "
-		"normalization-budget=%llu/%llu solver-budget=%llu/%llu\n",
+		"compile-effort=%llu/%llu model=%u\n",
 		metadata ? metadata->label_count : 0,
 		metadata ? metadata->resolve_error_count : 0,
 		metadata && metadata->resolve_error_count == 0 ? "yes" : "no",
@@ -133,10 +133,9 @@ static void print_state(
 		judgement_db->proposition_count,
 		judgement_db->claim_count,
 		judgement_db->derivation_count,
-		(unsigned long long)(metadata ? metadata->normalization_steps_used : 0),
-		(unsigned long long)(metadata ? metadata->normalization_step_limit : 0),
-		(unsigned long long)(metadata ? metadata->solver_steps_used : 0),
-		(unsigned long long)(metadata ? metadata->solver_step_limit : 0)
+		(unsigned long long)(metadata ? metadata->effort.used : 0),
+		(unsigned long long)(metadata ? metadata->effort.limit : 0),
+		metadata ? metadata->effort.cost_model_version : 0
 	);
 	if (metadata) {
 		for (size_t i = 0; i < metadata->label_count; ++i) {

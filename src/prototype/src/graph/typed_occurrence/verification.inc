@@ -330,7 +330,7 @@ int prototype_compile_metadata_validate_backend(
 	if (!metadata ||
 		backend < PROTOTYPE_BACKEND_INTERPRETER ||
 		backend > PROTOTYPE_BACKEND_VERILOG ||
-		metadata->solver_exhausted ||
+		metadata->effort.exhausted ||
 		metadata->solver_incomplete_count != 0) {
 		return -1;
 	}

@@ -1519,21 +1519,22 @@ static int compile_phase_record_residual_dependent_folds(struct compile_context*
 			continue;
 		}
 		struct prototype_term_normalization_result normalized;
+		uint64_t normalization_limit = compile_effort_remaining(ctx);
+		int effort_status = compile_effort_charge(
+			ctx, PROTOTYPE_EFFORT_PHASE_NORMALIZATION, 1
+		);
+		if (effort_status != 0) return effort_status;
 		if (prototype_term_normalize_with_profile(
 				ctx->terms,
 				ctx->type_declarations,
 				NULL,
 				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 				ctx->terms->terms[operation->core_term].as.computation_fold.computation,
-				ctx->metadata->normalization_step_limit,
+				normalization_limit,
 				&normalized
 			) != 0 || normalized.status == PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {
 			return -1;
 		}
-		if (UINT64_MAX - ctx->metadata->normalization_steps_used < normalized.steps_used) {
-			return -1;
-		}
-		ctx->metadata->normalization_steps_used += normalized.steps_used;
 		if (normalized.status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
 			continue;
 		}

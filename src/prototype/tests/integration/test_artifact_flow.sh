@@ -258,17 +258,17 @@ if ./read_file.out --aggregate-artifact "$TMP_DIR/mixed-policy.apo" \
 	exit 1
 fi
 test "$(cat "$TMP_DIR/mixed-policy.apo")" = 'unpublished-sentinel'
-./read_file.out --normalization-steps 7 --solver-steps 100000 \
+./read_file.out --effort 100000 \
 	--write-artifact "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-budget.out"
 grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0$' \
 	"$TMP_DIR/identity-budget.apo"
 cmp "$TMP_DIR/identity.apo" "$TMP_DIR/identity-budget.apo"
-./read_file.out --normalization-steps 7 --solver-steps 100000 \
+./read_file.out --effort 100000 \
 	--write-artifact "$TMP_DIR/identity-budget-repeat.apo" "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-budget-repeat.out"
 cmp "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity-budget-repeat.apo"
-if ./read_file.out --solver-steps 0 "$TMP_DIR/identity.p" \
+if ./read_file.out --effort 0 "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-zero-solver.out" 2>"$TMP_DIR/identity-zero-solver.err"; then
 	echo "zero-step classifier solver unexpectedly completed" >&2
 	exit 1
@@ -2231,7 +2231,7 @@ awk '
 	"$TMP_DIR/IntLiteral.apo"
 ./read_file.out --write-artifact "$TMP_DIR/IntLiteralRepeat.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-repeat.out"
-./read_file.out --solver-steps 200000 \
+./read_file.out --effort 200000 \
 	--write-artifact "$TMP_DIR/IntLiteralMoreFuel.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-more-fuel.out"
 awk '$1 == "typed_occurrence" { print $2, $8 }' "$TMP_DIR/IntLiteral.apo" \

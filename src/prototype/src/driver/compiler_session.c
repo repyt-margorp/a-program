@@ -231,13 +231,11 @@ int prototype_compile_graph_with_imports(
 		}
 		return -1;
 	}
-	if (program->compile_options.normalization_step_limit_is_set) {
-		program->metadata->normalization_step_limit =
-			program->compile_options.normalization_step_limit;
-	}
-	if (program->compile_options.solver_step_limit_is_set) {
-		program->metadata->solver_step_limit =
-			program->compile_options.solver_step_limit;
+	if (program->compile_options.effort_limit_is_set) {
+		prototype_effort_account_init(
+			&program->metadata->effort,
+			program->compile_options.effort_limit
+		);
 	}
 	if (program->compile_options.compile_policy != 0) {
 		program->metadata->compile_policy = program->compile_options.compile_policy;
@@ -281,7 +279,7 @@ int prototype_compile_graph_with_imports(
 				error->message,
 				sizeof(error->message),
 				"%s",
-				program->metadata->solver_exhausted ?
+				program->metadata->effort.exhausted ?
 					"classifier solver step limit exhausted" :
 					"failed to compile AST graph"
 			);

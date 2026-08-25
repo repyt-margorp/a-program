@@ -2,7 +2,14 @@
 
 Date: 2026-08-25 JST
 
-Status: reviewed and planned; implementation not started
+Status: implementation complete for the admitted checked-Core and the first
+static producer fragment through EC14. The v87 checked container, checked-base
+imports, typed effort, resumable classifier, residual-graph normalizer,
+persistent merge producer, canonical module-set merge, isolated parallel
+checking, stable GoalKeys, and checked-module incremental invalidation are
+implemented. Full evaluation-stack persistence, producer-local classifier
+serialization, source-file scheduling, and Claim-only HOTT migration remain
+explicit follow-up work rather than compatibility shortcuts.
 
 PR: #22, `Document effort compilation and from-scratch artifact checking`
 
@@ -10,7 +17,12 @@ Merged revision: `de52b75943cc3a330969f9ce969b1c86d73cfb1b`
 
 Reviewed implementation revision: `de52b75943cc3a330969f9ce969b1c86d73cfb1b`
 
-Current artifact format: v86
+Current checked artifact format: v87; v86 remains the temporary migration
+oracle for Claim-only HOTT roots
+
+Implementation authority schema:
+
+- `2026-08-25T18-50-06-CHECKED-CORE-AUTHORITY-SCHEMA.md`
 
 Source design:
 
@@ -56,7 +68,8 @@ The proposal was compared with the current code in:
 - `src/prototype/spec/artifact_v86.schema`; and
 - the current artifact, Function Graph, HOTT, timing, and integration tests.
 
-No implementation source is changed by this review.
+This section records the original review scope. Implementation work performed
+after that review is tracked by the EC checklists below.
 
 ## 3. Executive Verdict
 
@@ -183,15 +196,15 @@ CompileMetadata. The first parallel model must use fragment-local stores over
 an immutable checked base. Merge performs one typed structural import into a
 new candidate image.
 
-### 4.7 Normalization can stop but cannot resume
+### 4.7 Normalization originally stopped without a residual producer
 
-Normalization distinguishes `COMPLETE`, `BLOCKED_EFFECT`, and `EXHAUSTED`, and
-it has profile-aware caches. It does not expose a serializable machine state
-containing the evaluation stack and continuation. Persisting only the input
-Term and spent fuel would restart, not resume, expensive reductions.
-
-An explicit normalization machine is a prerequisite for persistent resume, but
-it is not a prerequisite for the first from-scratch checker.
+Normalization now distinguishes `COMPLETE`, `BLOCKED_EFFECT`, `EXHAUSTED`, and
+`INVALID` and exposes a process-local machine whose exhausted result is a valid
+residual Core graph. Completed beta/iota/CBPV rewrites therefore survive the
+next advance. The first machine deliberately does not serialize an evaluator
+stack, so traversal of an unreduced outer context may repeat. Persistent exact
+stack resume remains separate from semantic checking and must not be emulated
+by storing an input term plus a replay cursor.
 
 ## 5. Corrected Semantic Boundary
 
@@ -367,20 +380,21 @@ The first implementation does not physically combine all state.
 
 ## 8. Revised Implementation Sequence
 
-### EC0: Freeze checked-Core authority - PENDING
+### EC0: Freeze checked-Core authority - COMPLETE FOR ADMITTED FRAGMENT
 
-- [ ] Inventory every field of TermDB, TypeDeclaration semantic schema,
+- [x] Inventory every field of TermDB, TypeDeclaration semantic schema,
       ContextDB, SubstitutionDB, TypedOccurrenceGraph, VerificationDB, export
       interface, UniverseDB, and Identity roots.
-- [ ] Complete the retain/reconstruct/debug/remove decision for every occurrence
+- [x] Complete the retain/reconstruct/debug/remove decision for every occurrence
       field.
-- [ ] Complete the authority replacement matrix for every v86 proof kind.
-- [ ] Specify checking and local-inference mode for every Core/occurrence tag.
-- [ ] Specify exact resource-usage reconstruction.
-- [ ] Specify exact dependency-closure reconstruction.
-- [ ] Specify object, storage, and incremental identities.
-- [ ] Freeze `ElaboratedModuleView` and opaque `CheckedModuleView` headers.
-- [ ] Add a dependency rule preventing checker headers from including
+- [x] Complete the authority replacement matrix for every v86 proof kind.
+- [x] Specify checking and local-inference mode for every admitted
+      Core/occurrence tag; unsupported future tags reject or pause explicitly.
+- [x] Specify exact resource-usage reconstruction.
+- [x] Specify exact dependency-closure reconstruction.
+- [x] Specify object, storage, and incremental identities.
+- [x] Freeze `ElaboratedModuleView` and opaque `CheckedModuleView` headers.
+- [x] Add a dependency rule preventing checker headers from including
       candidate-publication or accepted-replay APIs.
 
 Exit criteria:
@@ -390,18 +404,19 @@ Exit criteria:
 - every field has one exact authority rule; and
 - no Claim ID appears in the target semantic schema.
 
-### EC1: Build semantic projections in memory - PENDING
+### EC1: Build semantic projections in memory - COMPLETE
 
-- [ ] Add read-only views over TermDB, ContextDB, SubstitutionDB, semantic type
+- [x] Add read-only views over TermDB, ContextDB, SubstitutionDB, semantic type
       schema, and intrinsic environment.
-- [ ] Add the immutable semantic occurrence projection.
-- [ ] Project one completed current compile into an untrusted
+- [x] Add the immutable semantic occurrence projection.
+- [x] Project one completed current compile into an untrusted
       `ElaboratedModuleView`.
-- [ ] Keep source provenance, diagnostics, solver state, and performance counters
+- [x] Keep source provenance, diagnostics, solver state, and performance counters
       outside this view.
-- [ ] Validate all local IDs, ranges, dense references, and fingerprints before
+- [x] Validate current local IDs, ranges, dense Context/Substitution/Symbol
+      references, and calculus/intrinsic fingerprints before
       semantic checking.
-- [ ] Add mutation tests proving that debug/provenance changes do not affect the
+- [x] Add mutation tests proving that debug/provenance changes do not affect the
       semantic projection.
 
 Exit criteria:
@@ -410,7 +425,7 @@ Exit criteria:
 - the view can be destroyed independently of solver work state; and
 - its semantic digest is stable when only diagnostics or source spans change.
 
-### EC2: Implement the foundational from-scratch checker - PENDING
+### EC2: Implement the foundational from-scratch checker - COMPLETE FOR ADMITTED FRAGMENT
 
 Planned files, subject to EC0 naming:
 
@@ -424,17 +439,22 @@ Planned files, subject to EC0 naming:
 
 Tasks:
 
-- [ ] Check fingerprints and imported checked bases.
-- [ ] Check empty and extended Contexts in parent order.
-- [ ] Check identity, empty, projection, extension, and composition
-      Substitutions directly.
-- [ ] Check Universe variables and basic type formation.
-- [ ] Check variables, Pi, Lambda, APP, literals, intrinsics, constructors, and
-      constructor spines.
-- [ ] Recompute DefEq with the pure normalization API.
-- [ ] Return `COMPLETE`, `PAUSED`, or `REJECTED`; only `COMPLETE` mints a checked
+- [x] Check calculus and intrinsic fingerprints and imported checked-base
+      capabilities.
+- [x] Check empty and value-extended Contexts in parent order for the initial
+      zero-indexed fragment.
+- [x] Check identity, empty, projection, extension, and composition
+      Substitutions directly, including non-allocating reindex comparison.
+- [x] Check Universe-variable assertions and basic type formation for the
+      initial fragment.
+- [x] Check variables, Pi, Lambda, APP, literals, intrinsics, constructors, and
+      constructor spines for the currently admitted zero-indexed fragment.
+- [x] Recompute the admitted DefEq fragment with checker-local, non-allocating
+      beta/type-family comparison. The mutable producer normalization cache is
+      deliberately not a checker dependency.
+- [x] Return `COMPLETE`, `PAUSED`, or `REJECTED`; only `COMPLETE` mints a checked
       module view.
-- [ ] Compare each reconstructed judgement with v86 Claims only in the test
+- [x] Compare each reconstructed judgement with v86 Claims only in the test
       harness, never inside checker implementation.
 
 Exit criteria:
@@ -445,18 +465,27 @@ Exit criteria:
 - removing the accepted proof graph from the checker input has no effect on the
   covered fragment.
 
-### EC3: Check dependent Match and CBPV - PENDING
+### EC3: Check dependent Match and CBPV - COMPLETE FOR ADMITTED FRAGMENT
 
-- [ ] Check explicit Match motives without motive synthesis.
-- [ ] Check branch telescope Contexts and constructor ownership.
-- [ ] Check solved and constant branch refinements through exact Substitutions.
-- [ ] Check induction-hypothesis occurrence rules.
-- [ ] Check `RETURN`, `THUNK`, `FORCE`, operation request, and computation fold.
-- [ ] Check effect rows structurally without host dispatch.
-- [ ] Check totality labels only from admitted explicit constructions.
-- [ ] Keep `EXHAUSTED` and `BLOCKED_EFFECT` distinct from conditional contracts.
-- [ ] Add wrong-motive, wrong-owner, wrong-refinement, underreported-effect, and
-      false-totality mutation tests.
+- [x] Check explicit Match motives without motive synthesis.
+- [x] Check a motive body under its own binders and require the producer's
+      constant-motive candidate to be the same normalized classifier whose
+      branch-binder independence was validated. This prevents a checked
+      classifier from retaining an unscoped branch-local term hidden by
+      normalization.
+- [x] Check branch telescope Contexts and constructor ownership.
+- [x] Check solved and constant branch refinements through exact Substitutions.
+- [x] Check induction-hypothesis occurrence rules.
+- [x] Check `RETURN`, `THUNK`, `FORCE`, operation request, and computation fold,
+      including multiple clauses and effect-row-polymorphic operations.
+- [x] Check effect rows structurally without host dispatch; union comparison is
+      order-independent and handled clauses recurse through latent rows.
+- [x] Check totality labels only from admitted explicit constructions.
+- [x] Keep checker effort pause distinct from conditional contracts; explicit
+      blocked-effect producer-state projection remains to be audited.
+- [x] Add wrong-motive, wrong-owner, wrong-refinement, underreported-effect,
+      false-totality, wrong-handler-operation, and wrong-continuation mutation
+      tests.
 
 Exit criteria:
 
@@ -465,17 +494,32 @@ Exit criteria:
 - compile effort exhaustion never becomes `MAY_DIVERGE` or a verification
   obligation.
 
-### EC4: Reconstruct resources, exports, and dependencies - PENDING
+### EC4: Reconstruct resources, exports, and dependencies - COMPLETE
 
-- [ ] Recompute resource usage from semantic occurrences and Context structure.
-- [ ] Compare recomputed vectors with current Proposition vectors.
-- [ ] Check exports from exact checked occurrences and transparency.
-- [ ] Recompute import dependencies from Core references, Contexts,
-      Substitutions, type schemas, contracts, and object proof Terms.
-- [ ] Prove that proof-only dependencies formerly reached through Derivation
-      premises remain present.
-- [ ] Replace test-path export Claim lookups with checked export capabilities.
-- [ ] Add missing/extra dependency, forged usage, and opaque-unfolding tests.
+- [x] Recompute resource usage from semantic occurrences and Context structure.
+- [x] Compare recomputed vectors with current Proposition vectors in the
+      migration test harness; the checker itself consumes no Proposition data.
+- [x] Check exports from exact checked occurrences and transparency and mint
+      opaque checked-export capabilities.
+- [x] Recompute direct import dependencies from reachable qualified Core
+      `EXTERNAL_REF` nodes and reject both missing and extra declarations.
+- [x] Extend dependency closure beyond the selected entry: semantic compaction
+      roots Contexts, Substitutions, type schemas, contracts, every occurrence,
+      Match/fold payloads, and object proof Terms before dependencies are
+      reconstructed from the resulting `EXTERNAL_REF` closure.
+- [x] Prove by construction that dependencies reachable only through compiler
+      Claim/Derivation premises are excluded. Object proof Terms remain normal
+      semantic roots; proof-search provenance is not object dependency data.
+- [x] Replace checked-Core test-path export Claim lookups with checked export
+      capabilities.
+- [x] Add extra-dependency and independently reconstructed usage tests.
+- [x] Add missing and extra semantic dependency tests.
+- [x] Make forged stored usage and proof-only dependency inputs impossible in
+      the checked schema: usage is checker output, and Claim/Derivation premises
+      are absent from `ElaboratedModuleView`.
+- [x] Add imported opaque-definition non-unfolding tests. Providers with the
+      same exact classifier and different opaque bodies are interchangeable;
+      missing, ambiguous, and classifier-forged imports are rejected.
 
 Exit criteria:
 
@@ -483,35 +527,60 @@ Exit criteria:
 - dependency sets match v86 on all current artifacts; and
 - future ONE/MANY resource behavior has one explicit authority.
 
-### EC5: Reconstruct declarations and Universes - PENDING
+### EC5: Reconstruct declarations and Universes - COMPLETE FOR ADMITTED FRAGMENT
 
-- [ ] Check only `prototype_type_semantic_schema_db` as declaration authority.
-- [ ] Treat readback, representation lookup, and constructor classifier caches
-      as optional projections.
-- [ ] Check parameter and index Contexts, constructor telescopes, and result
+- [x] Check only `prototype_type_semantic_schema_db` as declaration authority.
+- [x] Exclude readback and constructor-classifier caches from the elaborated
+      module; retain only operational representation identity in Core terms.
+- [x] Complete the checked-Core audit: `representation_id` is read only as the
+      operational erased-algebra identity needed by `TYPE_FORMER`; no readback,
+      constructor-classifier cache, or representation cache API is reachable
+      from the checker.
+- [x] Check parameter and index Contexts, constructor telescopes, and result
       classifiers.
-- [ ] Reconstruct Universe constraints from checked semantic content.
-- [ ] Solve and compare declared levels without Claim/Derivation provenance.
-- [ ] Retain an optional closure certificate only as an acceleration hint.
-- [ ] Add positive-cycle, omitted-constraint, changed-level, and forged-schema
-      tests.
+- [x] Reconstruct Universe constraints from checked semantic content.
+- [x] Solve and compare declared levels without Claim/Derivation provenance.
+- [x] Do not admit a closure certificate in the first checker. Declared levels
+      are untrusted expected output and all constraints are reconstructed; an
+      optional certificate remains a future acceleration that must be checked.
+- [x] Add changed-level, forged-schema, and indexed-result-classifier mutation
+      tests, plus a permanent indexed `Vec` acceptance boundary.
+- [x] Add a positive-cycle mutation test. Omitted producer constraints are
+      covered structurally because neither the elaborated-module input nor the
+      checker API contains producer Universe constraints.
+- [x] Generalize recursive-field IH classifier lifting for higher-order indexed
+      fields, with permanent abstract, concrete, and eliminator `Acc`
+      acceptance boundaries.
 
 Exit criteria:
 
 - Universe closure and type declarations check without accepted replay; and
 - deleting readback/cache data does not change checked meaning.
 
-### EC6: Check Function Graph and Identity/HOTT boundaries - PENDING
+### EC6: Check Function Graph and Identity/HOTT boundaries - COMPLETE FOR ADMITTED FRAGMENT
 
-- [ ] Check generated Function Graph IADTs and functions as ordinary content.
-- [ ] Validate association and selector metadata only after their referenced
-      declarations and exports are checked.
-- [ ] Inventory each admitted Identity/HOTT root as object syntax, deterministic
-      Core rule, or unsupported target content.
-- [ ] Replace Claim-only roots one family at a time.
-- [ ] Keep current replay authoritative for any unsupported HOTT family.
-- [ ] Add forged association, selector swap, forged dimension action, and forged
-      Identity-root tests.
+- [x] Check generated Function Graph IADTs and functions as ordinary content,
+      including generated length, two recursive calls, and dependent spines.
+      This required exact Context-action provenance and multi-beta computation
+      classifier views rather than Function Graph exceptions.
+- [x] Validate association and selector metadata only after their referenced
+      declarations and exports are checked. The semantic interface uses export,
+      declaration, constructor, and field ordinals; assignment IDs and AST
+      Binder IDs are excluded.
+- [x] Inventory each admitted Identity/HOTT boundary. `RELATION_*` and witness
+      object Terms are ordinary checked-Core content; current artifact Identity
+      roots are Claim tuples created only by the HOTT publication/test path and
+      are not projected as object evidence; dimension content remains an
+      explicit unsupported checker family.
+- [x] Do not translate Claim-only Identity roots into a second semantic record.
+      A root enters the future checked container only after its family and
+      witness are represented by checked object Terms and exports.
+- [x] Keep current v86 replay authoritative for unsupported HOTT families while
+      preventing the independent checker from minting a capability for them.
+- [x] Add forged association, selector, and dimension mutations. Claim-only
+      Identity roots are absent by type from `ElaboratedModuleView`, so they
+      cannot be presented as checked input; object relation Terms remain subject
+      to ordinary occurrence checking as their surface producer is admitted.
 
 Exit criteria:
 
@@ -519,16 +588,20 @@ Exit criteria:
 - compiler-local HOTT plans are not object evidence; and
 - no unsupported root is silently accepted as checked.
 
-### EC7: Complete dual validation and authority erasure test - PENDING
+### EC7: Complete dual validation and authority erasure test - COMPLETE FOR ADMITTED FRAGMENT
 
-- [ ] Run current v86 replay and the from-scratch checker for every passing
-      integration fixture.
-- [ ] Treat any acceptance, export, dependency, usage, Universe, or contract
-      disagreement as blocking.
-- [ ] Produce a proof-graph-erased in-memory image.
-- [ ] Recheck it and compare checked export fingerprints.
-- [ ] Measure replay and checker time separately.
-- [ ] Add a static source audit that the checker does not call accepted replay,
+- [x] Run current v86 replay and the from-scratch checker for every admitted
+      checked-Core fixture. The harness rejects a compile that skipped accepted
+      replay during migration.
+- [x] Treat acceptance and independently reconstructed resource disagreement as
+      blocking; forged exports, dependencies, Universe levels, schema, and
+      runtime contracts are permanent negative tests.
+- [x] Produce a proof-graph-erased in-memory image by deep-projecting semantic
+      content, destroying the entire producer storage, and rechecking it.
+- [x] Recheck the erased image and require the same checked export set. Checked
+      capabilities reference only the immutable projected interface.
+- [x] Measure replay and checker time separately in the permanent fixture run.
+- [x] Add a static source audit that the checker does not call accepted replay,
       candidate publication, or solver selection.
 
 Exit criteria:
@@ -537,18 +610,30 @@ Exit criteria:
   input; and
 - v86 remains only a migration oracle, not a hidden fallback.
 
-### EC8: Introduce the checked `.a` container - PENDING
+### EC8: Introduce the checked `.a` container - IN PROGRESS
 
-- [ ] Define independently hashed semantic, conditional-contract, producer,
-      and debug sections.
-- [ ] Exclude runtime suspension from the first format.
-- [ ] Parse all sections structurally before checking semantic content.
-- [ ] Make producer and debug sections optional and non-authoritative.
-- [ ] Make a checked-only `.a` valid.
-- [ ] Require fresh checking on import; never deserialize checked capabilities.
-- [ ] Add canonical writer ordering and byte-stability tests.
-- [ ] Complete one final format bump and remove the v86 reader without a
-      compatibility parser.
+- [x] Define v87 with independently hashed semantic and conditional-contract
+      sections, plus recognized optional producer and debug sections.
+- [x] Exclude runtime suspension from the first format.
+- [x] Parse and hash-check all sections before checking semantic content.
+- [x] Make producer and debug sections optional and non-authoritative.
+- [x] Make a checked-only `.a` valid.
+- [x] Require fresh checking on import; never deserialize checked capabilities.
+- [x] Add canonical writer ordering and byte-stability tests.
+- [ ] After every published root has checked object evidence, complete one final
+      format bump and remove the v86 reader without a compatibility parser.
+
+The v87 writer accepts only an opaque `prototype_checked_module`; it cannot
+serialize an untrusted elaborated view. The reader reconstructs a fresh owned
+`prototype_elaborated_module`, validates its structure, and invokes the
+independent checker before minting a process-local checked capability. Semantic
+payload corruption and section hash corruption are permanent negative tests.
+Adding a correctly hashed debug section does not change acceptance.
+
+The remaining v86 reader is not a fallback for v87. It remains the migration
+oracle for Claim-only HOTT roots that are deliberately outside the admitted
+checked-Core input type. Removing it before those roots become object Terms
+would silently drop accepted semantics rather than complete EC8.
 
 Exit criteria:
 
@@ -556,15 +641,22 @@ Exit criteria:
 - corrupting those sections cannot grant semantic authority; and
 - corrupting semantic content is rejected by from-scratch checking.
 
-### EC9: Add typed effort accounting - PENDING
+### EC9: Add typed effort accounting - COMPLETE
 
-- [ ] Add a scheduler-owned effort budget with versioned cost model.
-- [ ] Allocate typed credits to classifier, normalization, motive, proof search,
+- [x] Add a scheduler-owned effort budget with versioned cost model.
+- [x] Allocate typed credits to classifier, normalization, motive, proof search,
       Function Graph generation, and checking.
-- [ ] Keep object totality entirely separate from compile effort.
-- [ ] Preserve per-phase counters for diagnostics and performance comparison.
-- [ ] Return `Paused` without publishing or rolling back the last checked base.
-- [ ] Add deterministic split-budget tests.
+- [x] Keep object totality entirely separate from compile effort.
+- [x] Preserve per-phase counters for diagnostics and performance comparison.
+- [x] Return `Paused` without publishing or rolling back the last checked base.
+- [x] Add deterministic split-budget tests, including atomic multi-phase debit.
+
+The cost model is `PROTOTYPE_EFFORT_COST_MODEL_VERSION == 1`. Graph and
+Function Graph construction, inference normalization/motive setup, and final
+proof publication are charged atomically before mutating their phase. The
+classifier worklist is charged one constraint at a time. This makes every
+actual pause a transaction-safe producer frontier instead of a deep helper
+return that has lost invocation-local state.
 
 Exit criteria:
 
@@ -573,48 +665,89 @@ Exit criteria:
 - changing effort changes discovery progress, not the meaning of completed
   content.
 
-### EC10: Make producers resumable in memory - PENDING
+### EC10: Make producers resumable in memory - COMPLETE FOR CLASSIFIER AND NORMALIZER
 
-- [ ] Move classifier fixed-point worklists and cells out of invocation-local
+- [x] Move classifier fixed-point worklists and cells out of invocation-local
       stack state into an owned producer session.
-- [ ] Convert normalization to an explicit resumable machine before claiming
-      normalization resume.
+- [x] Convert normalization to an explicit residual-graph machine. Each
+      exhausted advance returns a valid resumable Core term; a separate
+      evaluation stack is intentionally not claimed by this first version.
 - [ ] Add typed capsules independently for motive, effect, Universe, proof, and
       Function Graph producers only where interruption is useful.
-- [ ] Store no raw pointers in a capsule.
+- [x] Keep raw pointers only in the process-local session, never in a capsule.
 - [ ] Reject resume under changed calculus, intrinsics, imports, producer
       version, or cost-model version.
-- [ ] Compare uninterrupted and pause/resume proposals canonically.
+- [x] Add a permanent split-credit session boundary that pauses before graph
+      mutation, repeatedly resumes the same classifier worklist, and completes
+      the same frozen transaction.
+
+`prototype_compile_producer_session` owns the lowering workspace and mutable
+solver frontier. It borrows candidate-local source and semantic arenas
+exclusively for its lifetime. Destroying an unfinished session rolls back its
+occurrence transaction; pausing does not. The Core normalizer can resume from a
+residual graph independently. Compiler call sites that still precharge an
+atomic inference subphase are not falsely described as preserving an evaluator
+stack, and must be migrated only together with a producer-local transaction for
+the enclosing constraint.
 
 Exit criteria:
 
 - resume continues the saved frontier instead of restarting it; and
 - no capsule can be imported as checked authority.
 
-### EC11: Persist producer state - PENDING
+### EC11: Persist producer state - COMPLETE FOR FRAGMENT MERGE; CLASSIFIER PENDING
 
-- [ ] Serialize only typed, versioned capsule payloads.
-- [ ] Keep capsule-local dense arenas self-contained.
-- [ ] Record positive dependency observations.
-- [ ] Define negative observations only for sealed name/candidate spaces.
-- [ ] Add malformed, stale, and incompatible capsule tests.
-- [ ] Confirm capsule deletion affects performance only.
+- [x] Define and canonically serialize a typed, versioned outer capsule with
+      producer kind/version, cost-model version, calculus/intrinsic/base/goal
+      fingerprints, positive dependencies, payload-format tag, and integrity
+      hash.
+- [x] Permit that capsule in the v87 producer section while ordinary checked
+      import hash-checks and discards it without changing semantic authority.
+- [x] Serialize a typed, versioned fragment-merge payload. The generic outer
+      capsule deliberately does not license opaque byte dumps as a producer
+      codec.
+- [x] Keep merge-capsule arenas self-contained as canonical checked fragment
+      bytes plus a pairwise-conflict cursor.
+- [x] Record positive observations by stable GoalKey and 256-bit checked-content
+      fingerprint; process-local Symbol IDs were removed from capsule v2.
+- [x] Define negative observations only for sealed candidate-space keys and
+      fingerprints.
+- [x] Add malformed, stale, incompatible, canonical round-trip, and fresh-session
+      resume tests.
+- [x] Confirm ordinary v87 import ignores the producer section and freshly
+      checks semantic content.
+
+Malformed, corrupted, and stale outer-capsule tests are permanent. The merge
+producer resumes in a fresh session from canonical fragment bytes and the exact
+next conflict pair. Rechecking those bytes mints new checked capabilities; it
+does not replay merge work. Classifier persistence remains blocked until its
+large shared `compile_context` is replaced by a producer-local fragment. A
+cursor plus reconstruction of hidden classifier state remains explicitly
+unaccepted.
 
 Exit criteria:
 
 - a fresh process resumes supported producers; and
 - deleting all producer state still permits checking completed semantic content.
 
-### EC12: Add fragment merge before parallel execution - PENDING
+### EC12: Add fragment merge before parallel execution - COMPLETE FOR INDEPENDENT MODULES
 
-- [ ] Define fragment-local Term, Context, Substitution, declaration, and
-      occurrence stores over one immutable checked base.
-- [ ] Implement one schema-driven structural importer.
-- [ ] Discard relocation tables after import.
-- [ ] Detect duplicate, alternative, and conflicting declarations explicitly.
-- [ ] Check mutually recursive declarations as one declared SCC.
-- [ ] Canonically sort diagnostics and publication order.
-- [ ] Recheck every merged candidate before publication.
+- [x] Keep each fragment's Term, Context, Substitution, declaration, and
+      occurrence stores module-local over immutable checked bases.
+- [x] Replace flattening/import relocation with checked module-graph
+      composition. Numeric local IDs never cross the module boundary.
+- [x] Eliminate persistent relocation tables from the new merge path.
+- [x] Deduplicate byte-identical modules and reject unequal term, type, or
+      constructor exports with the same qualified identity.
+- [x] Require mutually recursive declarations to be one checked fragment/SCC;
+      independent module merge does not invent cross-fragment recursion.
+- [x] Canonically sort modules by canonical v87 checked bytes.
+- [x] Require each fragment to be freshly checked before it can enter the set.
+
+The original physical-import plan is superseded. Flattening already checked
+modules would create a large relocation layer solely to erase module-local
+storage identity. A checked module graph preserves the intended semantic
+composition while keeping object Binding identity generative and local.
 
 Exit criteria:
 
@@ -622,15 +755,19 @@ Exit criteria:
 - merge does not mutate the checked base; and
 - canonical conflict-free merges produce identical checked bytes.
 
-### EC13: Add parallel producers - PENDING
+### EC13: Add parallel producers - COMPLETE FOR ISOLATED CHECK WORKERS
 
-- [ ] Start with process- or fragment-isolated workers, not shared mutable DBs.
-- [ ] Schedule independent declaration/proof goals against immutable checked
+- [x] Start with fragment-isolated checker workers, not shared mutable DBs.
+- [x] Reject duplicate mutable effort accounts across parallel tasks before
+      starting workers.
+- [x] Schedule independent elaborated modules against immutable checked
       snapshots.
-- [ ] Support speculative dependency closures only as one combined unchecked
-      proposal.
-- [ ] Run schedule permutations and stress tests.
-- [ ] Measure merge, check, and duplicated-work cost.
+- [x] Support dependencies only through exact checked-base capabilities; a
+	  speculative dependency closure must remain one unchecked fragment.
+- [x] Run worker-count and arrival-order permutations in the permanent module
+      set boundary.
+- [ ] Measure parallel speedup and duplicated-work cost on QuickSort-scale
+      multi-fragment input.
 
 Exit criteria:
 
@@ -638,16 +775,24 @@ Exit criteria:
 - no shared-store race exists; and
 - speedup is measured separately from checker overhead.
 
-### EC14: Add edit incrementality - PENDING
+### EC14: Add edit incrementality - COMPLETE FOR CHECKED MODULE SETS
 
-- [ ] Introduce stable GoalKeys distinct from object Binding IDs.
-- [ ] Track exact positive dependencies.
-- [ ] Track negative dependencies only against sealed candidate-space
+- [x] Introduce stable 256-bit GoalKeys distinct from object Binding IDs.
+- [x] Track exact positive dependency fingerprints per producer support.
+- [x] Track negative dependencies only against sealed candidate-space
       fingerprints.
-- [ ] Invalidate reverse dependency closure after edits.
-- [ ] Preserve alternative producer supports until the last valid support is
+- [x] Invalidate reverse dependency closure after edits.
+- [x] Preserve alternative producer supports until the last valid support is
       removed.
-- [ ] Compare every incremental result with a clean elaborate-and-check mode.
+- [x] Integrate the invalidation kernel with canonical checked module sets.
+      Every export has a stable GoalKey, a self-content observation, and exact
+      positive observations for that module's checked interface dependencies.
+- [x] Compare a changed checked-module snapshot with a freshly elaborated and
+      checked snapshot. Permanent tests cover an independent export remaining
+      valid and an opaque provider edit invalidating its consumer closure.
+- [ ] Add a multi-file source scheduler above this checked-module boundary.
+      Source parsing and speculative elaboration remain producer work and may
+      not bypass fresh checking.
 
 Exit criteria:
 
@@ -674,41 +819,41 @@ it ceases to be wire authority.
 
 ### 10.1 Checker boundaries
 
-- [ ] classifier assertion cannot prove itself;
-- [ ] Context extension requires its classifier to be a checked type;
-- [ ] Substitution extension checks the assigned term after exact reindexing;
-- [ ] APP checks Pi domain and instantiated codomain;
-- [ ] Match checks the explicit motive and every branch;
-- [ ] effect rows are recomputed without dispatch;
-- [ ] totality is never inferred from compile completion;
-- [ ] resource usage is recomputed exactly; and
-- [ ] unsupported HOTT evidence is rejected, not treated as absent proof.
+- [x] classifier assertion cannot prove itself;
+- [x] Context extension requires its classifier to be a checked type;
+- [x] Substitution extension checks the assigned term after exact reindexing;
+- [x] APP checks Pi domain and instantiated codomain;
+- [x] Match checks the explicit motive and every branch;
+- [x] effect rows are recomputed without dispatch;
+- [x] totality is never inferred from compile completion;
+- [x] resource usage is recomputed exactly; and
+- [x] unsupported HOTT evidence is rejected, not treated as absent proof.
 
 ### 10.2 Authority erasure
 
-- [ ] remove Derivations;
-- [ ] remove Claims;
-- [ ] remove solver state;
-- [ ] remove normalization caches;
-- [ ] remove debug/source data;
-- [ ] retain identical checked exports and contracts.
+- [x] remove Derivations from checked input;
+- [x] remove Claims from checked input;
+- [x] remove solver state from checked input;
+- [x] remove normalization caches from checked input;
+- [x] remove debug/source data from checked input;
+- [x] retain identical checked exports and contracts.
 
 ### 10.3 Resume and transactionality
 
 - [ ] pause before and after each producer step class;
-- [ ] reject stale revision capsules;
-- [ ] preserve checked base after pause/rejection;
-- [ ] split effort in several partitions;
-- [ ] compare with uninterrupted production.
+- [x] reject stale revision capsules;
+- [x] preserve checked base after pause/rejection;
+- [x] split effort in several partitions;
+- [x] compare with uninterrupted production.
 
 ### 10.4 Parallel merge
 
-- [ ] permute worker completion order;
-- [ ] merge equal fragments;
-- [ ] reject unequal same-name fragments;
-- [ ] check declared recursive SCCs atomically;
-- [ ] reject dependencies on unpublished speculative fragments;
-- [ ] produce canonical bytes.
+- [x] permute worker completion order;
+- [x] merge equal fragments;
+- [x] reject unequal same-name fragments;
+- [x] check declared recursive SCCs atomically by requiring one source fragment;
+- [x] reject dependencies on unpublished speculative fragments;
+- [x] produce canonical bytes.
 
 ### 10.5 Performance
 
@@ -718,7 +863,7 @@ it ceases to be wire authority.
 - [ ] record merge/import time;
 - [ ] record capsule serialization and resume time;
 - [ ] record sequential and parallel wall time on the same input;
-- [ ] retain QuickSort and Function Graph stress inputs.
+- [x] retain QuickSort and Function Graph stress inputs.
 
 ## 11. Implementation Constraints
 
@@ -743,21 +888,21 @@ it ceases to be wire authority.
 | --- | --- | --- |
 | PR22 merge | COMPLETE | none |
 | Critical review | COMPLETE | none |
-| EC0 checked-Core authority | PENDING | plan approval |
-| EC1 semantic projection | PENDING | EC0 |
-| EC2 foundational checker | PENDING | EC1 |
-| EC3 Match/CBPV checker | PENDING | EC2 |
-| EC4 resources/exports/dependencies | PENDING | EC3 |
-| EC5 declarations/Universes | PENDING | EC4 |
-| EC6 Function Graph/HOTT | PENDING | EC5 |
-| EC7 dual validation | PENDING | EC6 |
-| EC8 `.a` container | PENDING | EC7 |
-| EC9 typed effort | PENDING | EC7 |
-| EC10 in-memory resume | PENDING | EC9 |
-| EC11 persistent capsules | PENDING | EC10 |
-| EC12 fragment merge | PENDING | EC8, EC11 |
-| EC13 parallel production | PENDING | EC12 |
-| EC14 edit incrementality | PENDING | EC13 |
+| EC0 checked-Core authority | COMPLETE | authority schema frozen for admitted fragment |
+| EC1 semantic projection | COMPLETE | EC0 boundary decisions used by projection |
+| EC2 foundational checker | COMPLETE FOR ADMITTED FRAGMENT | future calculus formers require explicit rules |
+| EC3 Match/CBPV checker | COMPLETE FOR ADMITTED FRAGMENT | effectful HOTT action remains future calculus work |
+| EC4 resources/exports/dependencies | COMPLETE | none |
+| EC5 declarations/Universes | COMPLETE FOR ADMITTED FRAGMENT | refined Universe calculus remains separate work |
+| EC6 Function Graph/HOTT | COMPLETE FOR ADMITTED FRAGMENT | HOTT object-language expansion is explicit future calculus work |
+| EC7 dual validation | COMPLETE FOR ADMITTED FRAGMENT | EC6 |
+| EC8 `.a` container | IN PROGRESS; v87 checked fragment complete, v86 retirement deferred | object-evidence coverage for remaining HOTT roots |
+| EC9 typed effort | COMPLETE | none |
+| EC10 in-memory resume | COMPLETE FOR CLASSIFIER AND RESIDUAL-GRAPH NORMALIZER | exact evaluator-stack persistence remains optional follow-up |
+| EC11 persistent capsules | MERGE COMPLETE; CLASSIFIER PENDING | producer-local classifier arena |
+| EC12 fragment merge | COMPLETE FOR INDEPENDENT MODULES | cross-fragment SCCs intentionally excluded |
+| EC13 parallel production | ISOLATED CHECK WORKERS COMPLETE | source producer scheduler and benchmarks |
+| EC14 edit incrementality | CHECKED MODULE-SET DRIVER COMPLETE | multi-file source scheduler |
 
 ## 13. Final Decision
 

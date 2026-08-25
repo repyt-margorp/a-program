@@ -4378,13 +4378,21 @@ static int compile_continue_runtime_computation(
 	continuation_value = &variable;
 	struct prototype_term_normalization_result prior_result;
 	uint32_t prior_term = PROTOTYPE_INVALID_ID;
+	uint64_t normalization_limit = compile_effort_remaining(ctx);
+	int normalization_effort = compile_effort_charge(
+		ctx, PROTOTYPE_EFFORT_PHASE_NORMALIZATION, 1
+	);
+	if (normalization_effort != 0) {
+		ctx->binder_count = saved_binder_count;
+		return normalization_effort;
+	}
 	if (prototype_term_normalize_with_profile(
 			ctx->terms,
 			ctx->type_declarations,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			computation->term,
-			ctx->metadata->normalization_step_limit,
+			normalization_limit,
 			&prior_result
 		) != 0) {
 		ctx->binder_count = saved_binder_count;
@@ -8534,7 +8542,8 @@ static const struct operation_constraint* operation_solver_motive_equation(
 static int operation_classifier_captures_case_binder(
 	const struct compile_context* ctx,
 	const struct operation_constraint* equation,
-	uint32_t classifier
+	uint32_t classifier,
+	uint32_t* p_classifier_whnf
 );
 
 static uint32_t operation_solver_classifier(
@@ -11067,11 +11076,16 @@ static int operation_solver_project_pure_sequence_results(
 			];
 		uint32_t value = owner->projected_pure_value;
 		if (value == PROTOTYPE_INVALID_ID) {
+			uint64_t normalization_limit = compile_effort_remaining(ctx);
+			int effort_status = compile_effort_charge(
+				ctx, PROTOTYPE_EFFORT_PHASE_NORMALIZATION, 1
+			);
+			if (effort_status != 0) return effort_status;
 			int projection_status = prototype_term_project_pure_computation_value(
 				ctx->terms,
 				ctx->type_declarations,
 				computation->core_term,
-				ctx->metadata->normalization_step_limit,
+				normalization_limit,
 				&value
 			);
 			if (projection_status != 0) {
@@ -11478,8 +11492,9 @@ static int operation_solver_seed_motive(
 	if (!source_equation) {
 		return -1;
 	}
+	uint32_t classifier_whnf;
 	int capture_status = operation_classifier_captures_case_binder(
-		ctx, source_equation, classifier
+		ctx, source_equation, classifier, &classifier_whnf
 	);
 	if (capture_status < 0) {
 		return -1;
@@ -11600,7 +11615,8 @@ static int operation_solver_seed_motive(
 	uint32_t previous =
 		ctx->classifier_solver.motive_constant_candidates[operation];
 	if (previous == PROTOTYPE_INVALID_ID) {
-		ctx->classifier_solver.motive_constant_candidates[operation] = classifier;
+		ctx->classifier_solver.motive_constant_candidates[operation] =
+			classifier_whnf;
 		*p_changed = 1;
 		if (operation_solver_enqueue_dependents(ctx, operation) != 0) {
 			return -1;
@@ -11627,7 +11643,7 @@ static int operation_solver_seed_motive(
 				continue;
 			}
 			int refine_status = operation_refine_classifier_from_expected(
-				ctx, branch_operation, classifier, 0, p_changed
+				ctx, branch_operation, classifier_whnf, 0, p_changed
 			);
 			if (refine_status < 0) {
 				fprintf(stderr,
@@ -11665,7 +11681,7 @@ static int operation_solver_seed_motive(
 	}
 	uint32_t joined;
 	int join_status = operation_solver_join_match_classifiers(
-		ctx, previous, classifier, &joined
+		ctx, previous, classifier_whnf, &joined
 	);
 	if (join_status != 0) {
 		return join_status < 0 ? -1 : 1;

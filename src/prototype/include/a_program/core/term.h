@@ -308,6 +308,8 @@ struct prototype_term_normalization_result {
 	uint64_t graph_revision;
 };
 
+struct prototype_term_normalization_machine;
+
 enum prototype_term_conversion_status {
 	PROTOTYPE_TERM_CONVERSION_EQUAL = 1,
 	PROTOTYPE_TERM_CONVERSION_NOT_EQUAL,
@@ -1390,6 +1392,30 @@ int prototype_term_normalize_with_profile(
 	uint32_t term_id,
 	uint64_t step_limit,
 	struct prototype_term_normalization_result* p_result
+);
+/* A process-local resumable WHNF producer. Its state is the current residual
+ * TermDB graph, not a replay cursor. Every exhausted advance publishes a valid
+ * residual term, so completed reductions are retained in Core. The evaluator
+ * may revisit unreduced outer traversal because this first machine does not
+ * persist a separate evaluation stack. */
+int prototype_term_normalization_machine_create(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	int profile,
+	uint32_t term_id,
+	struct prototype_term_normalization_machine** p_machine
+);
+int prototype_term_normalization_machine_advance(
+	struct prototype_term_normalization_machine* machine,
+	uint64_t step_limit,
+	struct prototype_term_normalization_result* p_result
+);
+uint32_t prototype_term_normalization_machine_current(
+	const struct prototype_term_normalization_machine* machine
+);
+void prototype_term_normalization_machine_destroy(
+	struct prototype_term_normalization_machine* machine
 );
 /* Project the value returned by a pure computation without selecting a
  * neutral Match branch. Zero returns a value graph, one means that the pure

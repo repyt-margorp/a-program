@@ -2736,9 +2736,11 @@ static int operation_subtree_contains_external_ref(
 static int operation_classifier_captures_case_binder(
 	const struct compile_context* ctx,
 	const struct operation_constraint* equation,
-	uint32_t classifier
+	uint32_t classifier,
+	uint32_t* p_classifier_whnf
 ) {
 	if (!ctx || !equation || classifier >= ctx->terms->term_count ||
+		!p_classifier_whnf ||
 		equation->payload.classifier.classifier_meta_id >= ctx->metadata->typed_occurrences.occurrence_count) {
 		return -1;
 	}
@@ -2809,6 +2811,7 @@ static int operation_classifier_captures_case_binder(
 			return 1;
 		}
 	}
+	*p_classifier_whnf = classifier_whnf;
 	return 0;
 }
 
@@ -2934,8 +2937,9 @@ static int build_operation_uniform_motive(
 		if (branch_classifier == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
+		uint32_t branch_classifier_whnf;
 		int capture_status = operation_classifier_captures_case_binder(
-			ctx, equation, branch_classifier
+			ctx, equation, branch_classifier, &branch_classifier_whnf
 		);
 		if (capture_status < 0) {
 			return -1;
@@ -2944,11 +2948,11 @@ static int build_operation_uniform_motive(
 			return 1;
 		}
 		if (classifier == PROTOTYPE_INVALID_ID) {
-			classifier = branch_classifier;
+			classifier = branch_classifier_whnf;
 		} else {
 			uint32_t joined;
 			int join_status = operation_solver_join_match_classifiers(
-				ctx, classifier, branch_classifier, &joined
+				ctx, classifier, branch_classifier_whnf, &joined
 			);
 			if (join_status != 0) {
 				return join_status;
@@ -4103,15 +4107,20 @@ static int operation_solver_materialize_induction_hypothesis(
 			scrutinee_classifier, motive);
 		return -1;
 	}
+	int motive_effort = compile_effort_charge(
+		ctx, PROTOTYPE_EFFORT_PHASE_MOTIVE, 1
+	);
+	if (motive_effort != 0) return motive_effort;
 	for (uint32_t reduction = 0; reduction < 4; ++reduction) {
 		struct prototype_term_normalization_result normalized_classifier;
+		uint64_t normalization_limit = compile_effort_remaining(ctx);
 		if (prototype_term_normalize_with_profile(
 				ctx->terms,
 				ctx->type_declarations,
 				NULL,
 				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 				classifier,
-				ctx->metadata->normalization_step_limit,
+				normalization_limit,
 				&normalized_classifier
 			) != 0 || normalized_classifier.status ==
 				PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {

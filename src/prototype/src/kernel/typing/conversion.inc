@@ -1,20 +1,3 @@
-static int consume_solver_step(struct prototype_judgement_delta* delta) {
-	if (!delta) {
-		return -1;
-	}
-	if (!delta->solver_steps_used) {
-		return 0;
-	}
-	if (*delta->solver_steps_used >= delta->solver_step_limit) {
-		if (delta->solver_exhausted) {
-			*delta->solver_exhausted = 1;
-		}
-		return 1;
-	}
-	(*delta->solver_steps_used)++;
-	return 0;
-}
-
 static int term_has_tag(const struct prototype_term_db* terms, uint32_t term_id, int tag) {
 	return terms && term_id < terms->term_count && terms->terms[term_id].tag == tag;
 }

@@ -407,7 +407,8 @@ int main(void) {
 		) != 0 || normalization_result.status !=
 			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED ||
 		normalization_result.step_limit != 0 ||
-		normalization_result.steps_used != 0) {
+		normalization_result.steps_used != 0 ||
+		normalization_result.term_id != application) {
 		return 1;
 	}
 	if (prototype_term_normalize_with_profile(
@@ -420,10 +421,40 @@ int main(void) {
 			&normalization_result
 			) != 0 || normalization_result.status !=
 				PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED ||
-		normalization_result.step_limit != 1 ||
-		normalization_result.steps_used != 1) {
+			normalization_result.step_limit != 1 ||
+		normalization_result.steps_used != 1 ||
+		normalization_result.term_id != application) {
 		return 1;
 	}
+
+	struct prototype_term_normalization_machine* machine = NULL;
+	if (prototype_term_normalization_machine_create(
+			&term_db,
+			&type_db,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
+			application,
+			&machine
+		) != 0 || prototype_term_normalization_machine_advance(
+			machine, 1, &normalization_result
+		) != 0 || normalization_result.status !=
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED ||
+		normalization_result.term_id != application ||
+		prototype_term_normalization_machine_advance(
+			machine, 2, &normalization_result
+		) != 0 || normalization_result.status !=
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED ||
+		normalization_result.term_id != constructor ||
+		prototype_term_normalization_machine_current(machine) != constructor ||
+		prototype_term_normalization_machine_advance(
+			machine, 1, &normalization_result
+		) != 0 || normalization_result.status !=
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
+		normalization_result.term_id != constructor) {
+		prototype_term_normalization_machine_destroy(machine);
+		return 1;
+	}
+	prototype_term_normalization_machine_destroy(machine);
 
 	/* The runtime side of a residual computation fold receives an occurrence-local value.
 	 * It instantiates the recorded family without placing that value in TermDB

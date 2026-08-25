@@ -759,7 +759,26 @@ struct compile_context {
 	const struct prototype_artifact_interface* const* imported_interfaces;
 	size_t imported_interface_count;
 	int had_error;
+	int producer_phase;
+	int producer_inference_precharged;
+	int effort_atomic;
 };
+
+static int compile_effort_charge(
+	struct compile_context* ctx,
+	int phase,
+	uint64_t credits
+) {
+	if (ctx && ctx->effort_atomic) return 0;
+	return ctx && ctx->metadata ? prototype_effort_consume(
+		&ctx->metadata->effort, phase, credits
+	) : -1;
+}
+
+static uint64_t compile_effort_remaining(const struct compile_context* ctx) {
+	return ctx && ctx->metadata ?
+		prototype_effort_remaining(&ctx->metadata->effort) : 0;
+}
 
 static uint32_t operation_solver_binder_classifier(
 	const struct compile_context* ctx,
@@ -4663,11 +4682,16 @@ static int compile_extract_pure_return_value(
 	uint32_t computation,
 	uint32_t* p_ret
 ) {
+	uint64_t step_limit = compile_effort_remaining(ctx);
+	int effort_status = compile_effort_charge(
+		ctx, PROTOTYPE_EFFORT_PHASE_NORMALIZATION, 1
+	);
+	if (effort_status != 0) return effort_status;
 	int projection_status = prototype_term_project_pure_computation_value(
 		ctx->terms,
 		ctx->type_declarations,
 		computation,
-		ctx->metadata->normalization_step_limit,
+		step_limit,
 		p_ret
 	);
 	if (projection_status <= 0) {

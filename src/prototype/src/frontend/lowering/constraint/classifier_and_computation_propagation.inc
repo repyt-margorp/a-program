@@ -1360,12 +1360,19 @@ restart_after_branch_pullback:
 				continue;
 			}
 			uint32_t target = constraint->payload.classifier.classifier_meta_id;
-			if (ctx->metadata->solver_steps_used >= ctx->metadata->solver_step_limit) {
-				ctx->metadata->solver_exhausted = 1;
+			int effort_status = prototype_effort_consume(
+				&ctx->metadata->effort,
+				PROTOTYPE_EFFORT_PHASE_CLASSIFIER,
+				1
+			);
+			if (effort_status == 1) {
+				if (operation_solver_enqueue_constraint(ctx, i) != 0) {
+					return -1;
+				}
 				operation_solver_refresh_constraint_states(ctx, 1);
 				return 1;
 			}
-			ctx->metadata->solver_steps_used++;
+			if (effort_status != 0) return -1;
 			uint32_t classifier;
 			switch (constraint->kind) {
 				case OPERATION_CONSTRAINT_EQUAL:
@@ -1451,7 +1458,11 @@ restart_after_branch_pullback:
 						constraint_result->conversion_goal.normalization_profile =
 							PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF;
 						constraint_result->conversion_goal.step_limit =
-							ctx->metadata->normalization_step_limit;
+							compile_effort_remaining(ctx);
+						int conversion_effort = compile_effort_charge(
+							ctx, PROTOTYPE_EFFORT_PHASE_NORMALIZATION, 1
+						);
+						if (conversion_effort != 0) return conversion_effort;
 						if (prototype_judgement_kernel_conversion_goal_execute(
 								&ctx->metadata->contexts,
 								ctx->terms,

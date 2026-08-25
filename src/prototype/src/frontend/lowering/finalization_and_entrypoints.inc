@@ -24,10 +24,12 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 		}
 			int status = compile_phase_infer_general_classifiers(ctx, 0);
 			if (status != 0) {
-				fprintf(stderr,
-					"typing fixed point: classifier inference failed status=%d\n",
-					status);
-				return -1;
+				if (status < 0) {
+					fprintf(stderr,
+						"typing fixed point: classifier inference failed status=%d\n",
+						status);
+				}
+				return status;
 			}
 			if (operation_solver_resolve_contexts(ctx, 0) != 0) {
 				fprintf(stderr,
@@ -114,8 +116,10 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 	}
 	int status = compile_phase_infer_general_classifiers(ctx, 1);
 	if (status != 0) {
-		fprintf(stderr, "typing fixed point: final classifier inference failed\n");
-		return -1;
+		if (status < 0) {
+			fprintf(stderr, "typing fixed point: final classifier inference failed\n");
+		}
+		return status;
 	}
 	if (operation_solver_resolve_contexts(ctx, 0) != 0) {
 		fprintf(stderr, "typing fixed point: final context resolution failed\n");
@@ -172,12 +176,14 @@ static int compile_phase_infer_pending_types(struct compile_context* ctx) {
 	 * classifier is projected into a frozen occurrence or a proof Claim. */
 	status = compile_phase_infer_general_classifiers(ctx, 1);
 	if (status != 0) {
-		fprintf(stderr,
-			"typing fixed point: refined classifier inference failed status=%d "
-			"steps=%" PRIu64 " limit=%" PRIu64 " exhausted=%u\n",
-			status, ctx->metadata->solver_steps_used,
-			ctx->metadata->solver_step_limit, ctx->metadata->solver_exhausted);
-		return -1;
+		if (status < 0) {
+			fprintf(stderr,
+				"typing fixed point: refined classifier inference failed status=%d "
+				"steps=%" PRIu64 " limit=%" PRIu64 " exhausted=%u\n",
+				status, ctx->metadata->effort.used,
+				ctx->metadata->effort.limit, ctx->metadata->effort.exhausted);
+		}
+		return status;
 	}
 	/* Indexed motive refinement can change a Lambda binder classifier after the
 	 * first immutable Context canonicalization. Re-intern the affected Context
@@ -2136,55 +2142,73 @@ static int compile_pending_with_workspace(
 	int namespace_symbol_id,
 	const struct prototype_artifact_interface* const* imported_interfaces,
 	size_t imported_interface_count,
-	struct compile_judgement_workspace* workspace
+	struct compile_judgement_workspace* workspace,
+	struct compile_context* ctx
 ) {
-	if (!asts || !terms || !type_declarations || !judgement ||
-		!intrinsic_environment || !workspace) {
+	if (!asts || !terms || !type_declarations || !judgement || !metadata ||
+		!intrinsic_environment || !workspace || !ctx) {
 		return -1;
 	}
-	struct compile_context ctx;
-	memset(&ctx, 0, sizeof(ctx));
-	for (size_t i = 0;
-		i < sizeof(ctx.classifier_seeds) / sizeof(ctx.classifier_seeds[0]);
-		++i) {
-		ctx.classifier_seeds[i].owner_occurrence = (uint32_t)i;
-		ctx.classifier_seeds[i].classifier = PROTOTYPE_INVALID_ID;
-		ctx.classifier_seeds[i].binder_classifier = PROTOTYPE_INVALID_ID;
-		ctx.classifier_seeds[i].reason = OPERATION_CLASSIFIER_SEED_NONE;
-		ctx.classifier_solver.classifier_metas[i].owner_occurrence = (uint32_t)i;
-		ctx.classifier_solver.classifier_metas[i].classifier = PROTOTYPE_INVALID_ID;
-		ctx.classifier_solver.classifier_metas[i].stale_classifier =
-			PROTOTYPE_INVALID_ID;
-		ctx.classifier_solver.classifier_metas[i].evidence_constraint_id =
-			PROTOTYPE_INVALID_ID;
-		ctx.classifier_solver.classifier_metas[i].state =
-			OPERATION_CLASSIFIER_META_UNSOLVED;
-		ctx.classifier_solver.classifier_metas[i].binder_classifier =
-			PROTOTYPE_INVALID_ID;
-		ctx.classifier_solver.classifier_metas[i].binder_evidence_constraint_id =
-			PROTOTYPE_INVALID_ID;
-		ctx.classifier_solver.classifier_metas[i].binder_state =
-			OPERATION_CLASSIFIER_META_UNSOLVED;
-		ctx.effect_solver.meta_for_occurrence[i] = PROTOTYPE_INVALID_ID;
-		ctx.termination_evidence_computation_occurrences[i] = PROTOTYPE_INVALID_ID;
+	uint64_t phase_started = 0;
+	if (ctx->producer_phase == 0) {
+	uint64_t phase_credits[PROTOTYPE_EFFORT_PHASE_COUNT] = { 0 };
+	phase_credits[PROTOTYPE_EFFORT_PHASE_FUNCTION_GRAPH] =
+		asts->type_expr_count + asts->node_count;
+	phase_credits[PROTOTYPE_EFFORT_PHASE_GRAPH] =
+		asts->assignment_count + asts->node_count;
+	if (phase_credits[PROTOTYPE_EFFORT_PHASE_FUNCTION_GRAPH] == 0) {
+		phase_credits[PROTOTYPE_EFFORT_PHASE_FUNCTION_GRAPH] = 1;
 	}
-	ctx.intrinsic_environment = intrinsic_environment;
-	ctx.symbols = symbols;
-	ctx.asts = asts;
-	ctx.terms = terms;
-	ctx.type_declarations = type_declarations;
-	ctx.judgement = judgement;
-	ctx.operation_usage_entries = workspace->operation_usage_entries;
-	ctx.branch_reachability_bits = workspace->branch_reachability_bits;
-	ctx.branch_reachability_valid = workspace->branch_reachability_valid;
-	ctx.branch_reachability_occurrence_count =
+	if (phase_credits[PROTOTYPE_EFFORT_PHASE_GRAPH] == 0) {
+		phase_credits[PROTOTYPE_EFFORT_PHASE_GRAPH] = 1;
+	}
+	int phase_effort = prototype_effort_consume_split(
+		&metadata->effort, phase_credits
+	);
+	if (phase_effort != 0) return phase_effort;
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->effort_atomic = 1;
+	for (size_t i = 0;
+		i < sizeof(ctx->classifier_seeds) / sizeof(ctx->classifier_seeds[0]);
+		++i) {
+		ctx->classifier_seeds[i].owner_occurrence = (uint32_t)i;
+		ctx->classifier_seeds[i].classifier = PROTOTYPE_INVALID_ID;
+		ctx->classifier_seeds[i].binder_classifier = PROTOTYPE_INVALID_ID;
+		ctx->classifier_seeds[i].reason = OPERATION_CLASSIFIER_SEED_NONE;
+		ctx->classifier_solver.classifier_metas[i].owner_occurrence = (uint32_t)i;
+		ctx->classifier_solver.classifier_metas[i].classifier = PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.classifier_metas[i].stale_classifier =
+			PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.classifier_metas[i].evidence_constraint_id =
+			PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.classifier_metas[i].state =
+			OPERATION_CLASSIFIER_META_UNSOLVED;
+		ctx->classifier_solver.classifier_metas[i].binder_classifier =
+			PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.classifier_metas[i].binder_evidence_constraint_id =
+			PROTOTYPE_INVALID_ID;
+		ctx->classifier_solver.classifier_metas[i].binder_state =
+			OPERATION_CLASSIFIER_META_UNSOLVED;
+		ctx->effect_solver.meta_for_occurrence[i] = PROTOTYPE_INVALID_ID;
+		ctx->termination_evidence_computation_occurrences[i] = PROTOTYPE_INVALID_ID;
+	}
+	ctx->intrinsic_environment = intrinsic_environment;
+	ctx->symbols = symbols;
+	ctx->asts = asts;
+	ctx->terms = terms;
+	ctx->type_declarations = type_declarations;
+	ctx->judgement = judgement;
+	ctx->operation_usage_entries = workspace->operation_usage_entries;
+	ctx->branch_reachability_bits = workspace->branch_reachability_bits;
+	ctx->branch_reachability_valid = workspace->branch_reachability_valid;
+	ctx->branch_reachability_occurrence_count =
 		&workspace->branch_reachability_occurrence_count;
-	ctx.computation_constraint_results = workspace->computation_constraint_results;
-	ctx.computation_constraint_result_capacity = PROTOTYPE_JUDGEMENT_DELTA_CAPACITY;
-	ctx.active_classifier_constraint_id = PROTOTYPE_INVALID_ID;
-	ctx.operation_usage_entry_capacity = PROTOTYPE_TYPED_OCCURRENCE_USAGE_ENTRY_CAPACITY;
+	ctx->computation_constraint_results = workspace->computation_constraint_results;
+	ctx->computation_constraint_result_capacity = PROTOTYPE_JUDGEMENT_DELTA_CAPACITY;
+	ctx->active_classifier_constraint_id = PROTOTYPE_INVALID_ID;
+	ctx->operation_usage_entry_capacity = PROTOTYPE_TYPED_OCCURRENCE_USAGE_ENTRY_CAPACITY;
 	prototype_judgement_delta_init(
-		&ctx.judgement_delta,
+		&ctx->judgement_delta,
 		judgement,
 		workspace->propositions,
 		workspace->derivation_candidates,
@@ -2200,9 +2224,9 @@ static int compile_pending_with_workspace(
 		PROTOTYPE_JUDGEMENT_DELTA_CAPACITY
 	);
 	prototype_judgement_delta_set_intrinsic_environment(
-		&ctx.judgement_delta, intrinsic_environment
+		&ctx->judgement_delta, intrinsic_environment
 	);
-	ctx.metadata = metadata;
+	ctx->metadata = metadata;
 	if (!metadata || prototype_context_empty(&metadata->contexts) == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
@@ -2211,44 +2235,36 @@ static int compile_pending_with_workspace(
 		) != 0) {
 		return -1;
 	}
-	if (operation_binder_owner_index_seed_transaction(&ctx) != 0) {
+	if (operation_binder_owner_index_seed_transaction(ctx) != 0) {
 		return -1;
 	}
 	prototype_judgement_delta_set_context_store(
-		&ctx.judgement_delta,
+		&ctx->judgement_delta,
 		&metadata->contexts,
 		&metadata->substitutions
 	);
-	ctx.judgement_delta.dimension_operators = &metadata->dimension_operators;
-	ctx.context_ids[0] = prototype_context_empty(&metadata->contexts);
-	if (metadata) {
-		prototype_judgement_delta_set_solver_budget(
-			&ctx.judgement_delta,
-			metadata->solver_step_limit,
-			&metadata->solver_steps_used,
-			&metadata->solver_exhausted
-		);
-	}
-	ctx.namespace_symbol_id = namespace_symbol_id;
-	ctx.imported_interfaces = imported_interfaces;
-	ctx.imported_interface_count = imported_interface_count;
-	sync_universe_level_counters(&ctx);
-	if (compile_phase_collect_function_graph_requests(&ctx) != 0) {
+	ctx->judgement_delta.dimension_operators = &metadata->dimension_operators;
+	ctx->context_ids[0] = prototype_context_empty(&metadata->contexts);
+	ctx->namespace_symbol_id = namespace_symbol_id;
+	ctx->imported_interfaces = imported_interfaces;
+	ctx->imported_interface_count = imported_interface_count;
+	sync_universe_level_counters(ctx);
+	if (compile_phase_collect_function_graph_requests(ctx) != 0) {
 		fprintf(stderr, "compile pending failed: function-graph request collection\n");
 		return -1;
 	}
 
-	if (compile_phase_report_def_index_errors(&ctx) != 0) {
+	if (compile_phase_report_def_index_errors(ctx) != 0) {
 		return -1;
 	}
-	uint64_t phase_started = compile_performance_clock_ns();
-	if (compile_phase_build_graph(&ctx) != 0) {
+	phase_started = compile_performance_clock_ns();
+	if (compile_phase_build_graph(ctx) != 0) {
 		fprintf(stderr, "compile pending failed: build graph\n");
 		return -1;
 	}
 	metadata->graph_build_time_ns += compile_performance_elapsed_ns(phase_started);
 	prototype_judgement_delta_set_occurrence_store(
-		&ctx.judgement_delta,
+		&ctx->judgement_delta,
 		metadata->typed_occurrences.occurrences,
 		metadata->typed_occurrences.occurrence_count,
 		metadata->typed_occurrences.edges,
@@ -2257,24 +2273,24 @@ static int compile_pending_with_workspace(
 		metadata->typed_occurrences.case_count
 	);
 	prototype_judgement_delta_set_occurrence_usage_provider(
-		&ctx.judgement_delta, &ctx, operation_solver_proposition_usage
+		&ctx->judgement_delta, ctx, operation_solver_proposition_usage
 	);
 	/* Match resolution and imported-classifier inference may emit candidates
 	 * before the main constraint-generation pass. Resource usage is part of
 	 * Proposition identity, so its graph solution must exist before either
 	 * phase can publish a candidate. */
-	if (operation_solver_refresh_usage_solutions(&ctx) != 0) {
+	if (operation_solver_refresh_usage_solutions(ctx) != 0) {
 		fprintf(stderr, "compile pending failed: initial usage solutions\n");
 		return -1;
 	}
-	if (validate_constructor_occurrence_saturation(&ctx) != 0) {
+	if (validate_constructor_occurrence_saturation(ctx) != 0) {
 		fprintf(stderr, "compile pending failed: constructor saturation\n");
 		return -1;
 	}
-	if (begin_resolution_iteration(&ctx, 0, count_unresolved_resolution_items(&ctx)) != 0) {
+	if (begin_resolution_iteration(ctx, 0, count_unresolved_resolution_items(ctx)) != 0) {
 		return -1;
 	}
-	if (compile_phase_infer_imported_constructor_classifiers(&ctx) != 0) {
+	if (compile_phase_infer_imported_constructor_classifiers(ctx) != 0) {
 		fprintf(stderr, "compile pending failed: imported constructor classifiers\n");
 		return -1;
 	}
@@ -2294,11 +2310,11 @@ static int compile_pending_with_workspace(
 		) != 0) {
 		return -1;
 	}
-	if (compile_phase_resolve_pending_match_items(&ctx) < 0) {
+	if (compile_phase_resolve_pending_match_items(ctx) < 0) {
 		fprintf(stderr, "compile pending failed: initial Match resolution\n");
 		return -1;
 	}
-	if (finish_resolution_iteration(&ctx, count_unresolved_resolution_items(&ctx)) != 0) {
+	if (finish_resolution_iteration(ctx, count_unresolved_resolution_items(ctx)) != 0) {
 		return -1;
 	}
 	if (prototype_internal_canonicalize_type_view_core_refs(
@@ -2308,47 +2324,78 @@ static int compile_pending_with_workspace(
 		) != 0) {
 		return -1;
 	}
+	ctx->producer_phase = 1;
+	}
+	if (ctx->producer_phase == 1) {
+	if (!ctx->producer_inference_precharged) {
+		uint64_t phase_credits[PROTOTYPE_EFFORT_PHASE_COUNT] = { 0 };
+		phase_credits[PROTOTYPE_EFFORT_PHASE_NORMALIZATION] =
+			metadata->typed_occurrences.occurrence_count + 1;
+		phase_credits[PROTOTYPE_EFFORT_PHASE_MOTIVE] =
+			metadata->typed_occurrences.case_count + 1;
+		ctx->effort_atomic = 0;
+		int phase_effort = prototype_effort_consume_split(
+			&metadata->effort, phase_credits
+		);
+		if (phase_effort != 0) return phase_effort;
+		ctx->producer_inference_precharged = 1;
+	}
+	ctx->effort_atomic = 1;
 	phase_started = compile_performance_clock_ns();
-	if (compile_phase_infer_pending_types(&ctx) != 0) {
-		fprintf(stderr, "compile pending failed: infer pending types\n");
-		return -1;
+	int inference_status = compile_phase_infer_pending_types(ctx);
+	if (inference_status != 0) {
+		if (inference_status < 0) {
+			fprintf(stderr, "compile pending failed: infer pending types\n");
+		}
+		return inference_status;
 	}
 	metadata->fixed_point_time_ns += compile_performance_elapsed_ns(phase_started);
+	ctx->effort_atomic = 0;
+	ctx->producer_phase = 2;
+	}
+	if (ctx->producer_phase == 2) {
+	uint64_t finalization_credit =
+		metadata->typed_occurrences.occurrence_count * UINT64_C(64) + 1;
+	int finalization_effort = compile_effort_charge(
+		ctx, PROTOTYPE_EFFORT_PHASE_PROOF, finalization_credit
+	);
+	if (finalization_effort != 0) return finalization_effort;
+	ctx->effort_atomic = 1;
 	/* The fixed point retains the occurrence-owned computation suffix across
 	 * classifier passes. Refresh its solved lifecycle and effect equations before
 	 * freezing residual state; no authority reconstruction is required here. */
 	int final_computation_changed = 0;
 	if (operation_solver_bind_computation_constraint_solutions(
-			&ctx, &final_computation_changed, 0
-		) != 0 || operation_effect_generate_constraints(&ctx) != 0 ||
-			prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
-			compile_phase_record_residual_effect_constraints(&ctx) != 0 ||
-			compile_phase_record_residual_dependent_folds(&ctx) != 0 ||
-			compile_phase_record_residual_computation_fold_results(&ctx) != 0) {
+			ctx, &final_computation_changed, 0
+		) != 0 || operation_effect_generate_constraints(ctx) != 0 ||
+			prototype_judgement_delta_commit(&ctx->judgement_delta, 0) != 0 ||
+			compile_phase_record_residual_effect_constraints(ctx) != 0 ||
+			compile_phase_record_residual_dependent_folds(ctx) != 0 ||
+			compile_phase_record_residual_computation_fold_results(ctx) != 0) {
 		fprintf(stderr, "compile pending failed: effect/commit/residual\n");
 		return -1;
 	}
 	(void)final_computation_changed;
-	operation_solver_refresh_constraint_states(&ctx, ctx.metadata->solver_exhausted);
+	operation_solver_refresh_constraint_states(ctx, ctx->metadata->effort.exhausted);
 	compile_metadata_refresh_runtime_capabilities(metadata, terms);
 	if (metadata && metadata->compile_policy == PROTOTYPE_COMPILE_POLICY_STRICT &&
 		(prototype_verification_db_count(&metadata->verification) != 0 ||
-			operation_effect_unresolved_count(&ctx.constraints) != 0)) {
+			operation_effect_unresolved_count(&ctx->constraints) != 0)) {
 		fprintf(stderr, "strict compilation retained unresolved verification state\n");
 		return -1;
 	}
-	if (compile_phase_check_ascriptions(&ctx) != 0) {
+	if (compile_phase_check_ascriptions(ctx) != 0) {
 		fprintf(stderr, "post-synthesis ascription checking failed\n");
 		return -1;
 	}
 	phase_started = compile_performance_clock_ns();
-	if (operation_solver_materialize_judgements(&ctx) != 0) {
+	if (operation_solver_materialize_judgements(ctx) != 0) {
 		fprintf(stderr, "post-expectation judgement materialization failed\n");
 		return -1;
 	}
 	metadata->proof_materialization_time_ns +=
 		compile_performance_elapsed_ns(phase_started);
-	if (prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0) {
+	if (prototype_judgement_delta_commit(&ctx->judgement_delta, 0) != 0) {
 		fprintf(stderr, "post-expectation judgement commit failed\n");
 		return -1;
 	}
@@ -2362,7 +2409,7 @@ static int compile_pending_with_workspace(
 		return -1;
 	}
 	phase_started = compile_performance_clock_ns();
-	if (compile_phase_publish_termination_evidence(&ctx) != 0) {
+	if (compile_phase_publish_termination_evidence(ctx) != 0) {
 		fprintf(stderr, "pre-expectation termination evidence publication failed\n");
 		return -1;
 	}
@@ -2377,8 +2424,8 @@ static int compile_pending_with_workspace(
 	for (uint32_t round = 0; round < 16; ++round) {
 		size_t before_claims = judgement->claim_count;
 		size_t before_derivations = judgement->derivation_count;
-		if (operation_solver_materialize_judgements(&ctx) != 0 ||
-			prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
+		if (operation_solver_materialize_judgements(ctx) != 0 ||
+			prototype_judgement_delta_commit(&ctx->judgement_delta, 0) != 0 ||
 			prototype_judgement_publish_candidates(
 				occurrence_graph, judgement
 			) != 0) {
@@ -2387,7 +2434,7 @@ static int compile_pending_with_workspace(
 		}
 		if (judgement->claim_count == before_claims &&
 			judgement->derivation_count == before_derivations &&
-			!ctx.proof_materialization_substitution_pending) {
+			!ctx->proof_materialization_substitution_pending) {
 			evidence_closed = 1;
 			break;
 		}
@@ -2398,11 +2445,11 @@ static int compile_pending_with_workspace(
 	}
 	metadata->evidence_closure_time_ns +=
 		compile_performance_elapsed_ns(phase_started);
-	if (compile_phase_check_expectations(&ctx) != 0) {
+	if (compile_phase_check_expectations(ctx) != 0) {
 		fprintf(stderr, "post-synthesis expectation checking failed\n");
 		return -1;
 	}
-	if (prototype_judgement_delta_has_pending_classifier_state(&ctx.judgement_delta) != 0) {
+	if (prototype_judgement_delta_has_pending_classifier_state(&ctx->judgement_delta) != 0) {
 		fprintf(stderr, "judgement delta retained pending classifier state\n");
 		return -1;
 	}
@@ -2445,8 +2492,8 @@ static int compile_pending_with_workspace(
 	for (uint32_t round = 0; round < 16; ++round) {
 		size_t before_claims = judgement->claim_count;
 		size_t before_derivations = judgement->derivation_count;
-		if (operation_solver_materialize_judgements(&ctx) != 0 ||
-			prototype_judgement_delta_commit(&ctx.judgement_delta, 0) != 0 ||
+		if (operation_solver_materialize_judgements(ctx) != 0 ||
+			prototype_judgement_delta_commit(&ctx->judgement_delta, 0) != 0 ||
 			prototype_judgement_publish_candidates(
 				occurrence_graph, judgement
 			) != 0) {
@@ -2459,7 +2506,7 @@ static int compile_pending_with_workspace(
 		}
 		if (judgement->claim_count == before_claims &&
 			judgement->derivation_count == before_derivations &&
-			!ctx.proof_materialization_substitution_pending) {
+			!ctx->proof_materialization_substitution_pending) {
 			normalization_evidence_closed = 1;
 			break;
 		}
@@ -2467,6 +2514,82 @@ static int compile_pending_with_workspace(
 	if (!normalization_evidence_closed) {
 		fprintf(stderr, "normalization evidence closure did not stabilize\n");
 		return -1;
+	}
+	for (uint32_t i = 0; i < occurrence_graph->occurrence_count; ++i) {
+		struct prototype_typed_occurrence* occurrence =
+			&occurrence_graph->occurrences[i];
+		if (occurrence->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
+			continue;
+		}
+		uint32_t motive = ctx->classifier_solver.motive_terms[i];
+		int motive_state = ctx->classifier_solver.motive_solution_states[i];
+		if (motive >= terms->term_count ||
+			(motive_state != OPERATION_MOTIVE_SOLUTION_READY &&
+			 motive_state != OPERATION_MOTIVE_SOLUTION_MATERIALIZED)) {
+			uint32_t classifier = operation_solver_classifier(ctx, i);
+			const struct prototype_term* match = occurrence->core_term <
+				terms->term_count ? &terms->terms[occurrence->core_term] : NULL;
+			const struct prototype_term* classifier_term = classifier <
+				terms->term_count ? &terms->terms[classifier] : NULL;
+			const struct prototype_term* classifier_function = classifier_term &&
+				classifier_term->tag == PROTOTYPE_TERM_APP &&
+				classifier_term->as.app.function < terms->term_count ?
+					&terms->terms[classifier_term->as.app.function] : NULL;
+			if (match && match->tag == PROTOTYPE_TERM_MATCH && classifier_term &&
+				classifier_term->tag == PROTOTYPE_TERM_APP &&
+				classifier_term->as.app.argument == match->as.match.scrutinee &&
+				classifier_function &&
+				classifier_function->tag == PROTOTYPE_TERM_LAMBDA) {
+				motive = classifier_term->as.app.function;
+				ctx->classifier_solver.motive_terms[i] = motive;
+				ctx->classifier_solver.motive_solution_states[i] =
+					OPERATION_MOTIVE_SOLUTION_MATERIALIZED;
+				occurrence->match_motive = motive;
+				continue;
+			}
+			uint32_t motive_binding = prototype_term_new_binding(terms);
+			uint32_t motive_variable;
+			uint32_t motive_body;
+			int abstract_status;
+			if (!match || match->tag != PROTOTYPE_TERM_MATCH ||
+				match->as.match.scrutinee >= terms->term_count ||
+				classifier >= terms->term_count ||
+				motive_binding == PROTOTYPE_INVALID_ID || prototype_term_var(
+					terms, motive_binding, &motive_variable
+				) != 0) {
+				return -1;
+			}
+			const struct prototype_term* scrutinee =
+				&terms->terms[match->as.match.scrutinee];
+			if (scrutinee->tag == PROTOTYPE_TERM_VAR) {
+				abstract_status = prototype_term_graph_substitute_bound_var(
+					terms,
+					type_declarations,
+					classifier,
+					scrutinee->as.var.binding_id,
+					motive_variable,
+					&motive_body
+				);
+			} else {
+				abstract_status = prototype_term_graph_replace_exact(
+					terms,
+					type_declarations,
+					classifier,
+					match->as.match.scrutinee,
+					motive_variable,
+					&motive_body
+				);
+			}
+			if (abstract_status != 0 || prototype_term_lambda(
+					terms, motive_binding, motive_body, &motive
+				) != 0) {
+				return -1;
+			}
+			ctx->classifier_solver.motive_terms[i] = motive;
+			ctx->classifier_solver.motive_solution_states[i] =
+				OPERATION_MOTIVE_SOLUTION_MATERIALIZED;
+		}
+		occurrence->match_motive = motive;
 	}
 	if (prototype_typed_occurrence_graph_seal(
 			occurrence_graph, terms, &metadata->contexts
@@ -2514,11 +2637,11 @@ static int compile_pending_with_workspace(
 		return -1;
 	}
 	(void)discharged_compile_effect_equations;
-	if (compile_phase_publish_labels(&ctx) != 0) {
+	if (compile_phase_publish_labels(ctx) != 0) {
 		fprintf(stderr, "label publication failed\n");
 		return -1;
 	}
-	if (ctx.had_error) {
+	if (ctx->had_error) {
 		fprintf(stderr, "compilation retained an earlier lowering error\n");
 		return -1;
 	}
@@ -2530,7 +2653,132 @@ static int compile_pending_with_workspace(
 		fprintf(stderr, "typed occurrence transaction commit failed\n");
 		return -1;
 	}
+	ctx->effort_atomic = 0;
+	ctx->producer_phase = 3;
+	}
 	return 0;
+}
+
+struct prototype_compile_producer_session {
+	struct prototype_ast_db* asts;
+	struct prototype_term_db* terms;
+	struct prototype_type_declaration_db* type_declarations;
+	struct prototype_judgement_db* judgement;
+	struct prototype_compile_metadata* metadata;
+	struct symbol_table* symbols;
+	const struct prototype_intrinsic_environment* intrinsic_environment;
+	int namespace_symbol_id;
+	const struct prototype_artifact_interface* const* imported_interfaces;
+	size_t imported_interface_count;
+	struct compile_judgement_workspace* workspace;
+	struct compile_context* context;
+	int outcome;
+};
+
+int prototype_compile_producer_session_create(
+	struct prototype_ast_db* asts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_judgement_db* judgement,
+	struct prototype_compile_metadata* metadata,
+	struct symbol_table* symbols,
+	const struct prototype_intrinsic_environment* intrinsic_environment,
+	int namespace_symbol_id,
+	const struct prototype_artifact_interface* const* imported_interfaces,
+	size_t imported_interface_count,
+	struct prototype_compile_producer_session** p_session
+) {
+	if (!asts || !terms || !type_declarations || !judgement || !metadata ||
+		!intrinsic_environment || !p_session ||
+		metadata->typed_occurrences.transaction_active) {
+		return -1;
+	}
+	*p_session = NULL;
+	struct prototype_compile_producer_session* session =
+		calloc(1, sizeof(*session));
+	if (!session) return -1;
+	session->workspace = calloc(1, sizeof(*session->workspace));
+	session->context = calloc(1, sizeof(*session->context));
+	if (!session->workspace || !session->context) {
+		free(session->context);
+		free(session->workspace);
+		free(session);
+		return -1;
+	}
+	session->asts = asts;
+	session->terms = terms;
+	session->type_declarations = type_declarations;
+	session->judgement = judgement;
+	session->metadata = metadata;
+	session->symbols = symbols;
+	session->intrinsic_environment = intrinsic_environment;
+	session->namespace_symbol_id = namespace_symbol_id;
+	session->imported_interfaces = imported_interfaces;
+	session->imported_interface_count = imported_interface_count;
+	*p_session = session;
+	return 0;
+}
+
+int prototype_compile_producer_session_advance(
+	struct prototype_compile_producer_session* session,
+	uint64_t additional_effort,
+	struct prototype_compile_producer_report* p_report
+) {
+	if (!session || !p_report || session->outcome != 0 ||
+		prototype_effort_add_credits(
+			&session->metadata->effort, additional_effort
+		) != 0) {
+		return -1;
+	}
+	uint64_t effort_before = session->metadata->effort.used;
+	int status = compile_pending_with_workspace(
+		session->asts,
+		session->terms,
+		session->type_declarations,
+		session->judgement,
+		session->metadata,
+		session->symbols,
+		session->intrinsic_environment,
+		session->namespace_symbol_id,
+		session->imported_interfaces,
+		session->imported_interface_count,
+		session->workspace,
+		session->context
+	);
+	p_report->phase = session->context->producer_phase;
+	p_report->effort_used = session->metadata->effort.used - effort_before;
+	if (status == 0) {
+		session->outcome = PROTOTYPE_COMPILE_PRODUCER_COMPLETE;
+		p_report->status = session->outcome;
+		return 0;
+	}
+	if (status == 1 && session->metadata->effort.exhausted) {
+		p_report->status = PROTOTYPE_COMPILE_PRODUCER_PAUSED;
+		return 0;
+	}
+	if (session->metadata->typed_occurrences.transaction_active) {
+		(void)prototype_typed_occurrence_graph_rollback_transaction(
+			&session->metadata->typed_occurrences
+		);
+	}
+	session->outcome = PROTOTYPE_COMPILE_PRODUCER_REJECTED;
+	p_report->status = session->outcome;
+	return 0;
+}
+
+void prototype_compile_producer_session_destroy(
+	struct prototype_compile_producer_session* session
+) {
+	if (!session) return;
+	if (session->outcome == 0 && session->metadata &&
+		session->metadata->typed_occurrences.transaction_active) {
+		(void)prototype_typed_occurrence_graph_rollback_transaction(
+			&session->metadata->typed_occurrences
+		);
+	}
+	free(session->context);
+	free(session->workspace);
+	free(session);
 }
 
 int prototype_ast_compile_pending_with_imports(
@@ -2545,11 +2793,8 @@ int prototype_ast_compile_pending_with_imports(
 	const struct prototype_artifact_interface* const* imported_interfaces,
 	size_t imported_interface_count
 ) {
-	struct compile_judgement_workspace* workspace = calloc(1, sizeof(*workspace));
-	if (!workspace) {
-		return -1;
-	}
-	int status = compile_pending_with_workspace(
+	struct prototype_compile_producer_session* session = NULL;
+	if (prototype_compile_producer_session_create(
 		asts,
 		terms,
 		type_declarations,
@@ -2560,16 +2805,18 @@ int prototype_ast_compile_pending_with_imports(
 		namespace_symbol_id,
 		imported_interfaces,
 		imported_interface_count,
-		workspace
-	);
-	if (status != 0 && metadata &&
-		metadata->typed_occurrences.transaction_active) {
-		(void)prototype_typed_occurrence_graph_rollback_transaction(
-			&metadata->typed_occurrences
-		);
+		&session
+	) != 0) {
+		return -1;
 	}
-	free(workspace);
-	return status;
+	struct prototype_compile_producer_report report;
+	int advance_status = prototype_compile_producer_session_advance(
+		session, 0, &report
+	);
+	prototype_compile_producer_session_destroy(session);
+	if (advance_status != 0) return -1;
+	return report.status == PROTOTYPE_COMPILE_PRODUCER_COMPLETE ? 0 :
+		(report.status == PROTOTYPE_COMPILE_PRODUCER_PAUSED ? 1 : -1);
 }
 
 int prototype_ast_compile_pending(

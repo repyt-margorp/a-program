@@ -281,6 +281,18 @@ int prototype_compile_metadata_frozen_snapshot(
 		.dimension_operators = metadata->dimension_operators,
 		.typed_occurrences = metadata->typed_occurrences,
 		.verification = metadata->verification,
+		.labels = metadata->labels,
+		.label_count = metadata->label_count,
+		.type_exports = metadata->type_exports,
+		.type_export_count = metadata->type_export_count,
+		.constructor_exports = metadata->constructor_exports,
+		.constructor_export_count = metadata->constructor_export_count,
+		.function_graph_associations = metadata->function_graph_associations,
+		.function_graph_association_count =
+			metadata->function_graph_association_count,
+		.function_graph_origin_groups = metadata->function_graph_origin_groups,
+		.function_graph_origin_group_count =
+			metadata->function_graph_origin_group_count,
 		.selected_entry_term = metadata->selected_entry_term,
 		.selected_entry_classifier = metadata->selected_entry_classifier,
 		.selected_entry_occurrence = metadata->selected_entry_occurrence,
@@ -459,8 +471,7 @@ void prototype_compile_metadata_init(
 		PROTOTYPE_INVALID_ID;
 	metadata->reduction_environment.system_nat_succ_constructor =
 		PROTOTYPE_INVALID_ID;
-	metadata->normalization_step_limit = PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT;
-	metadata->solver_step_limit = PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT;
+	prototype_effort_account_init(&metadata->effort, UINT64_C(1000000));
 	prototype_context_db_init(&metadata->contexts, contexts, context_capacity);
 	prototype_substitution_db_init(
 		&metadata->substitutions,

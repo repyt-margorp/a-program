@@ -9,6 +9,7 @@
 #include "a_program/graph/typed_occurrence_model.h"
 #include "a_program/graph/verification.h"
 #include "a_program/kernel/context.h"
+#include "a_program/producer/effort.h"
 #include "a_program/dimension/operator.h"
 
 struct prototype_compile_constructor_export {
@@ -231,11 +232,7 @@ struct prototype_compile_metadata {
 	uint32_t selected_entry_classifier;
 	uint32_t selected_entry_occurrence;
 	uint64_t required_runtime_capabilities;
-	uint64_t normalization_step_limit;
-	uint64_t normalization_steps_used;
-	uint64_t solver_step_limit;
-	uint64_t solver_steps_used;
-	int solver_exhausted;
+	struct prototype_effort_account effort;
 	uint64_t solver_constraint_count;
 	uint64_t solver_solved_count;
 	uint64_t solver_residual_count;
@@ -369,6 +366,18 @@ struct prototype_frozen_module_snapshot {
 	struct prototype_dimension_operator_db dimension_operators;
 	struct prototype_typed_occurrence_graph typed_occurrences;
 	struct prototype_verification_db verification;
+	const struct prototype_compile_label* labels;
+	size_t label_count;
+	const struct prototype_compile_type_export* type_exports;
+	size_t type_export_count;
+	const struct prototype_compile_constructor_export* constructor_exports;
+	size_t constructor_export_count;
+	const struct prototype_function_graph_association*
+		function_graph_associations;
+	size_t function_graph_association_count;
+	const struct prototype_function_graph_origin_group*
+		function_graph_origin_groups;
+	size_t function_graph_origin_group_count;
 	uint32_t selected_entry_term;
 	uint32_t selected_entry_classifier;
 	uint32_t selected_entry_occurrence;

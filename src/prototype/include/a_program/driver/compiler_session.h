@@ -15,10 +15,8 @@ struct prototype_read_error;
 struct prototype_compile_options {
 	int compile_policy;
 	int definition_thunk_policy;
-	int normalization_step_limit_is_set;
-	uint64_t normalization_step_limit;
-	int solver_step_limit_is_set;
-	uint64_t solver_step_limit;
+	int effort_limit_is_set;
+	uint64_t effort_limit;
 };
 
 /* Driver-owned composition root. Parser APIs receive this object but do not

@@ -608,21 +608,17 @@ static int append_link_typed_occurrence_graph(
 	} else if (target->compile_policy != source->compile_policy) {
 		return -1;
 	}
-	if (UINT64_MAX - target->normalization_step_limit < source->normalization_step_limit ||
-		UINT64_MAX - target->normalization_steps_used < source->normalization_steps_used ||
-		UINT64_MAX - target->solver_step_limit < source->solver_step_limit ||
-		UINT64_MAX - target->solver_steps_used < source->solver_steps_used ||
-		UINT64_MAX - target->solver_constraint_count < source->solver_constraint_count ||
+	if (UINT64_MAX - target->solver_constraint_count < source->solver_constraint_count ||
 		UINT64_MAX - target->solver_solved_count < source->solver_solved_count ||
 		UINT64_MAX - target->solver_residual_count < source->solver_residual_count ||
 		UINT64_MAX - target->solver_incomplete_count < source->solver_incomplete_count) {
 		return -1;
 	}
-	target->normalization_step_limit += source->normalization_step_limit;
-	target->normalization_steps_used += source->normalization_steps_used;
-	target->solver_step_limit += source->solver_step_limit;
-	target->solver_steps_used += source->solver_steps_used;
-	target->solver_exhausted = target->solver_exhausted || source->solver_exhausted;
+	if (prototype_effort_account_accumulate_snapshot(
+			&target->effort, &source->effort
+		) != 0) {
+		return -1;
+	}
 	target->solver_constraint_count += source->solver_constraint_count;
 	target->solver_solved_count += source->solver_solved_count;
 	target->solver_residual_count += source->solver_residual_count;
@@ -2339,10 +2335,8 @@ static int read_file_command(
 	size_t opaque_export_count = 0;
 	int read_graph = 0;
 	int link_reexport_providers = 0;
-	int normalization_step_limit_is_set = 0;
-	uint64_t normalization_step_limit = 0;
-	int solver_step_limit_is_set = 0;
-	uint64_t solver_step_limit = 0;
+	int effort_limit_is_set = 0;
+	uint64_t effort_limit = 0;
 	int compile_policy = PROTOTYPE_COMPILE_POLICY_HYBRID;
 	int definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
 	int quiet = 0;
@@ -2367,25 +2361,14 @@ static int read_file_command(
 			definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_EXPLICIT;
 			continue;
 		}
-		if (strcmp(argv[file_arg], "--normalization-steps") == 0) {
+		if (strcmp(argv[file_arg], "--effort") == 0) {
 			if (file_arg + 1 >= argc || parse_step_limit(
-					argv[file_arg + 1], &normalization_step_limit
+					argv[file_arg + 1], &effort_limit
 				) != 0) {
-				fprintf(stderr, "--normalization-steps requires an unsigned integer\n");
+				fprintf(stderr, "--effort requires an unsigned integer\n");
 				return 1;
 			}
-			normalization_step_limit_is_set = 1;
-			file_arg++;
-			continue;
-		}
-		if (strcmp(argv[file_arg], "--solver-steps") == 0) {
-			if (file_arg + 1 >= argc || parse_step_limit(
-					argv[file_arg + 1], &solver_step_limit
-				) != 0) {
-				fprintf(stderr, "--solver-steps requires an unsigned integer\n");
-				return 1;
-			}
-			solver_step_limit_is_set = 1;
+			effort_limit_is_set = 1;
 			file_arg++;
 			continue;
 		}
@@ -3464,11 +3447,8 @@ static int read_file_command(
 	program->universe = universe_db;
 	program->compile_options.compile_policy = compile_policy;
 	program->compile_options.definition_thunk_policy = definition_thunk_policy;
-	program->compile_options.normalization_step_limit_is_set =
-		normalization_step_limit_is_set;
-	program->compile_options.normalization_step_limit = normalization_step_limit;
-	program->compile_options.solver_step_limit_is_set = solver_step_limit_is_set;
-	program->compile_options.solver_step_limit = solver_step_limit;
+	program->compile_options.effort_limit_is_set = effort_limit_is_set;
+	program->compile_options.effort_limit = effort_limit;
 
 	for (int i = file_arg; i < argc; ++i) {
 		if (prototype_read_ast_file_with_options(argv[i], program, &read_options, &error) != 0) {
@@ -3804,21 +3784,35 @@ static int read_file_command(
 		prototype_compile_metadata_typed_occurrences_const(metadata);
 	printf(
 		"compile-budget policy=%d capabilities=%" PRIu64
-		" normalization=%" PRIu64 " used=%" PRIu64
-		" solver=%" PRIu64 " used=%" PRIu64 " exhausted=%s"
+		" effort-model=%u effort=%" PRIu64 " used=%" PRIu64
+		" exhausted=%s exhausted-phase=%d"
 		" constraints=%" PRIu64 " solved=%" PRIu64 " residual=%" PRIu64
 		" incomplete=%" PRIu64 "\n",
 		metadata->compile_policy,
 		metadata->required_runtime_capabilities,
-		metadata->normalization_step_limit,
-		metadata->normalization_steps_used,
-		metadata->solver_step_limit,
-		metadata->solver_steps_used,
-		metadata->solver_exhausted ? "yes" : "no",
+		metadata->effort.cost_model_version,
+		metadata->effort.limit,
+		metadata->effort.used,
+		metadata->effort.exhausted ? "yes" : "no",
+		metadata->effort.exhausted_phase,
 		metadata->solver_constraint_count,
 		metadata->solver_solved_count,
 		metadata->solver_residual_count,
 		metadata->solver_incomplete_count
+	);
+	printf(
+		"effort-phases graph=%" PRIu64 " classifier=%" PRIu64
+		" normalization=%" PRIu64 " motive=%" PRIu64
+		" proof=%" PRIu64 " function-graph=%" PRIu64
+		" checker=%" PRIu64 " merge=%" PRIu64 "\n",
+		metadata->effort.phase_used[PROTOTYPE_EFFORT_PHASE_GRAPH],
+		metadata->effort.phase_used[PROTOTYPE_EFFORT_PHASE_CLASSIFIER],
+		metadata->effort.phase_used[PROTOTYPE_EFFORT_PHASE_NORMALIZATION],
+		metadata->effort.phase_used[PROTOTYPE_EFFORT_PHASE_MOTIVE],
+		metadata->effort.phase_used[PROTOTYPE_EFFORT_PHASE_PROOF],
+		metadata->effort.phase_used[PROTOTYPE_EFFORT_PHASE_FUNCTION_GRAPH],
+		metadata->effort.phase_used[PROTOTYPE_EFFORT_PHASE_CHECKER],
+		metadata->effort.phase_used[PROTOTYPE_EFFORT_PHASE_MERGE]
 	);
 	if (getenv("A_PROGRAM_PERFORMANCE_COUNTERS")) {
 		struct prototype_term_intern_stats intern_stats;

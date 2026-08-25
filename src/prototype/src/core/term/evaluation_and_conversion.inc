@@ -641,6 +641,86 @@ static int computation_fold_find_clause(
 	return 0;
 }
 
+static int match_rebuild_scrutinee(
+	struct prototype_term_db* db,
+	uint32_t match_id,
+	uint32_t scrutinee,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || match_id >= db->term_count ||
+		scrutinee >= db->term_count ||
+		db->terms[match_id].tag != PROTOTYPE_TERM_MATCH) {
+		return -1;
+	}
+	const struct prototype_term match = db->terms[match_id];
+	if (scrutinee == match.as.match.scrutinee) {
+		*p_ret = match_id;
+		return 0;
+	}
+	if (match.as.match.case_count > 64) {
+		return -1;
+	}
+	struct prototype_match_case_input cases[64];
+	struct prototype_case_binder binders[256];
+	uint32_t binder_cursor = 0;
+	for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
+		const struct prototype_match_case* source =
+			&db->cases[match.as.match.first_case + i];
+		if (binder_cursor + source->binder_count > 256) {
+			return -1;
+		}
+		for (uint32_t j = 0; j < source->binder_count; ++j) {
+			binders[binder_cursor + j] =
+				db->case_binders[source->first_binder + j];
+		}
+		cases[i] = (struct prototype_match_case_input) {
+			.case_label_symbol_id =
+				db->case_label_symbols[match.as.match.first_case + i],
+			.constructor_owner = source->constructor_owner,
+			.constructor_id = source->constructor_id,
+			.binders = &binders[binder_cursor],
+			.binder_count = source->binder_count,
+			.body = source->body
+		};
+		binder_cursor += source->binder_count;
+	}
+	return prototype_term_match_with_ih_scope(
+		db, scrutinee, cases, match.as.match.case_count,
+		match.as.match.ih_scope_id, p_ret
+	);
+}
+
+static int normalization_rebuild_on_pause(
+	struct prototype_term_db* db,
+	uint32_t parent,
+	uint32_t child,
+	int parent_tag,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || parent >= db->term_count || child >= db->term_count) {
+		return -1;
+	}
+	const struct prototype_term source = db->terms[parent];
+	switch (parent_tag) {
+		case PROTOTYPE_TERM_APP:
+			return prototype_term_app(
+				db, child, source.as.app.argument, p_ret
+			);
+		case PROTOTYPE_TERM_MATCH:
+			return match_rebuild_scrutinee(db, parent, child, p_ret);
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+			return prototype_term_induction_hypothesis(
+				db, source.as.induction_hypothesis.ih_scope_id, child, p_ret
+			);
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+			return computation_fold_rebuild(db, parent, child, p_ret);
+		case PROTOTYPE_TERM_FORCE:
+			return prototype_term_force(db, child, p_ret);
+		default:
+			return -1;
+	}
+}
+
 static int conversion_equal_at_depth(
 	struct prototype_term_db* db,
 	struct prototype_type_declaration_db* type_declarations,
@@ -1314,6 +1394,9 @@ static int evaluate_steps(
 	if (!db || !p_ret || term_id >= db->term_count) {
 		return -1;
 	}
+	/* An exhausted recursive call must still return a valid residual graph. The
+	 * caller replaces this value when it can rebuild a more precise parent. */
+	*p_ret = term_id;
 	if (normalization_consume_step(options)) {
 		return -1;
 	}
@@ -1366,6 +1449,11 @@ static int evaluate_steps(
 					&function,
 					depth - 1
 				) != 0) {
+				if (function < db->term_count) {
+					(void)normalization_rebuild_on_pause(
+						db, term_id, function, PROTOTYPE_TERM_APP, p_ret
+					);
+				}
 				return -1;
 			}
 
@@ -1388,6 +1476,16 @@ static int evaluate_steps(
 						&function,
 						depth - 1
 					) != 0) {
+					if (function < db->term_count) {
+						uint32_t thunk;
+						uint32_t returned;
+						if (prototype_term_thunk(db, function, &thunk) == 0 &&
+							prototype_term_return(db, thunk, &returned) == 0) {
+							(void)prototype_term_app(
+								db, returned, term->as.app.argument, p_ret
+							);
+						}
+					}
 					return -1;
 				}
 			}
@@ -1495,6 +1593,11 @@ static int evaluate_steps(
 					&scrutinee,
 					depth - 1
 				) != 0) {
+				if (scrutinee < db->term_count) {
+					(void)normalization_rebuild_on_pause(
+						db, term_id, scrutinee, PROTOTYPE_TERM_MATCH, p_ret
+					);
+				}
 				return -1;
 			}
 
@@ -1552,38 +1655,8 @@ static int evaluate_steps(
 					*p_ret = term_id;
 					return 0;
 				}
-				struct prototype_match_case_input case_inputs[64];
-				struct prototype_case_binder binder_storage[256];
-				uint32_t binder_cursor = 0;
-				if (term->as.match.case_count > 64) {
-					return -1;
-				}
-				for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
-					const struct prototype_match_case* old_case =
-						&db->cases[term->as.match.first_case + i];
-					if (binder_cursor + old_case->binder_count > 256) {
-						return -1;
-					}
-					for (uint32_t j = 0; j < old_case->binder_count; ++j) {
-						binder_storage[binder_cursor + j] =
-							db->case_binders[old_case->first_binder + j];
-					}
-					case_inputs[i].case_label_symbol_id =
-						db->case_label_symbols[term->as.match.first_case + i];
-					case_inputs[i].constructor_owner = old_case->constructor_owner;
-					case_inputs[i].constructor_id = old_case->constructor_id;
-					case_inputs[i].binders = &binder_storage[binder_cursor];
-					case_inputs[i].binder_count = old_case->binder_count;
-					case_inputs[i].body = old_case->body;
-					binder_cursor += old_case->binder_count;
-				}
-				return prototype_term_match_with_ih_scope(
-					db,
-					scrutinee,
-					case_inputs,
-					term->as.match.case_count,
-					term->as.match.ih_scope_id,
-					p_ret
+				return match_rebuild_scrutinee(
+					db, term_id, scrutinee, p_ret
 				);
 			}
 
@@ -1667,6 +1740,12 @@ static int evaluate_steps(
 				&argument,
 				depth - 1
 			) != 0) {
+				if (argument < db->term_count) {
+					(void)normalization_rebuild_on_pause(
+						db, term_id, argument,
+						PROTOTYPE_TERM_INDUCTION_HYPOTHESIS, p_ret
+					);
+				}
 				return -1;
 			}
 
@@ -1735,6 +1814,12 @@ static int evaluate_steps(
 					db, type_declarations, definitions, inner_options,
 					term->as.computation_fold.computation, &computation, depth - 1
 				) != 0) {
+				if (computation < db->term_count) {
+					(void)normalization_rebuild_on_pause(
+						db, term_id, computation,
+						PROTOTYPE_TERM_COMPUTATION_FOLD, p_ret
+					);
+				}
 				return -1;
 			}
 			/* Nested surface lambdas elide their pure
@@ -1868,6 +1953,11 @@ static int evaluate_steps(
 					&value,
 					depth - 1
 				) != 0) {
+				if (value < db->term_count) {
+					(void)normalization_rebuild_on_pause(
+						db, term_id, value, PROTOTYPE_TERM_FORCE, p_ret
+					);
+				}
 				return -1;
 			}
 			if (value < db->term_count && db->terms[value].tag == PROTOTYPE_TERM_THUNK) {
@@ -1883,6 +1973,16 @@ static int evaluate_steps(
 							&pure_computation,
 							depth - 1
 						) != 0) {
+						if (pure_computation < db->term_count) {
+							uint32_t residual_thunk;
+							if (prototype_term_thunk(
+									db, pure_computation, &residual_thunk
+								) == 0) {
+								(void)prototype_term_force(
+									db, residual_thunk, p_ret
+								);
+							}
+						}
 						return -1;
 					}
 					if (pure_computation >= db->term_count ||
@@ -2000,7 +2100,14 @@ int prototype_term_normalize_with_profile(
 			&result_term,
 			PROTOTYPE_EVALUATION_DEPTH_LIMIT
 		) != 0) {
+		if (status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
+			status = PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID;
+		}
 		p_result->status = status;
+		if (status == PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED &&
+			result_term < db->term_count) {
+			p_result->term_id = result_term;
+		}
 		p_result->steps_used = steps_used;
 		return 0;
 	}
@@ -2008,6 +2115,109 @@ int prototype_term_normalize_with_profile(
 	p_result->term_id = result_term;
 	p_result->steps_used = steps_used;
 	return 0;
+}
+
+struct prototype_term_normalization_machine {
+	struct prototype_term_db* db;
+	struct prototype_type_declaration_db* type_declarations;
+	const struct prototype_term_definition_env* definitions;
+	int profile;
+	int status;
+	uint32_t current_term;
+	uint64_t expected_graph_revision;
+};
+
+int prototype_term_normalization_machine_create(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_definition_env* definitions,
+	int profile,
+	uint32_t term_id,
+	struct prototype_term_normalization_machine** p_machine
+) {
+	struct prototype_term_reduction_options ignored;
+	if (!db || !type_declarations || !p_machine || term_id >= db->term_count ||
+		normalization_profile_options(profile, definitions, &ignored) != 0) {
+		return -1;
+	}
+	*p_machine = NULL;
+	struct prototype_term_normalization_machine* machine = calloc(
+		1, sizeof(*machine)
+	);
+	if (!machine) {
+		return -1;
+	}
+	machine->db = db;
+	machine->type_declarations = type_declarations;
+	machine->definitions = definitions;
+	machine->profile = profile;
+	machine->status = PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED;
+	machine->current_term = term_id;
+	machine->expected_graph_revision = db->normalization_graph_revision;
+	*p_machine = machine;
+	return 0;
+}
+
+int prototype_term_normalization_machine_advance(
+	struct prototype_term_normalization_machine* machine,
+	uint64_t step_limit,
+	struct prototype_term_normalization_result* p_result
+) {
+	if (!machine || !p_result || !machine->db ||
+		machine->current_term >= machine->db->term_count) {
+		return -1;
+	}
+	memset(p_result, 0, sizeof(*p_result));
+	p_result->status = PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID;
+	p_result->term_id = PROTOTYPE_INVALID_ID;
+	p_result->step_limit = step_limit;
+	p_result->graph_revision = machine->db->normalization_graph_revision;
+	if (machine->db->normalization_graph_revision !=
+		machine->expected_graph_revision) {
+		machine->status = PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID;
+		return 0;
+	}
+	if (machine->status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE ||
+		machine->status ==
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT ||
+		machine->status == PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {
+		p_result->status = machine->status;
+		p_result->term_id = machine->status ==
+			PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID ?
+			PROTOTYPE_INVALID_ID : machine->current_term;
+		return 0;
+	}
+	if (prototype_term_normalize_with_profile(
+			machine->db,
+			machine->type_declarations,
+			machine->definitions,
+			machine->profile,
+			machine->current_term,
+			step_limit,
+			p_result
+		) != 0) {
+		return -1;
+	}
+	if (p_result->term_id != PROTOTYPE_INVALID_ID) {
+		machine->current_term = p_result->term_id;
+	}
+	machine->status = p_result->status;
+	machine->expected_graph_revision =
+		machine->db->normalization_graph_revision;
+	p_result->graph_revision = machine->expected_graph_revision;
+	return 0;
+}
+
+uint32_t prototype_term_normalization_machine_current(
+	const struct prototype_term_normalization_machine* machine
+) {
+	return machine ? machine->current_term : PROTOTYPE_INVALID_ID;
+}
+
+void prototype_term_normalization_machine_destroy(
+	struct prototype_term_normalization_machine* machine
+) {
+	free(machine);
 }
 
 static int constructor_ordinal_for_runtime_owner_label(

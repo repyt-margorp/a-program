@@ -102,6 +102,9 @@ struct prototype_typed_occurrence {
 	/* NAME and ASCRIPTION are source wrappers, not Core constructors. */
 	uint32_t wrapped_occurrence;
 	uint32_t binder_classifier;
+	/* Final explicit Match motive. Independent checking must validate this
+	 * assertion, not synthesize a replacement from branch results. */
+	uint32_t match_motive;
 	/* An IH edge belongs to one exact typed Match case field. The erased Core
 	 * VAR binding may be alpha-canonical and cannot recover this occurrence
 	 * identity. The owner Match is occurrence semantics rather than a Core

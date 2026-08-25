@@ -273,27 +273,25 @@ static int compile_phase_collect_function_graph_requests(
 	ctx->metadata->function_graph_request_count = retained_request_count;
 	for (uint32_t i = 0; i < ctx->asts->type_expr_count; ++i) {
 		const struct prototype_ast_type_expr* expr = &ctx->asts->type_exprs[i];
-		if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE &&
-			compile_collect_function_graph_request(
+		if (expr->tag == PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE) {
+			if (compile_collect_function_graph_request(
 				ctx,
 				expr->as.function_graph_reference.owner_symbol_id,
 				i,
 				PROTOTYPE_FUNCTION_GRAPH_REQUEST_FAMILY
-			) != 0) {
-			return -1;
+			) != 0) return -1;
 		}
 	}
 	for (uint32_t i = 0; i < ctx->asts->node_count; ++i) {
 		const struct prototype_ast_node* node = &ctx->asts->nodes[i];
-		if (node->tag == PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE &&
-			compile_collect_function_graph_request(
+		if (node->tag == PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE) {
+			if (compile_collect_function_graph_request(
 				ctx,
 				node->as.certified_function_reference.owner_symbol_id,
 				i,
 				PROTOTYPE_FUNCTION_GRAPH_REQUEST_FAMILY |
 					PROTOTYPE_FUNCTION_GRAPH_REQUEST_CERTIFIED_EXECUTION
-			) != 0) {
-			return -1;
+			) != 0) return -1;
 		}
 	}
 	return 0;

@@ -2455,10 +2455,6 @@ static int solve_computation_constraints(
 			if ((pass == 0) != is_request) {
 				continue;
 			}
-			int budget_status = consume_solver_step(delta);
-			if (budget_status != 0) {
-				return budget_status;
-			}
 			delta->current_context_id = constraint->context_id;
 			delta->current_occurrence_id = constraint->occurrence_id;
 			if (!is_request) {

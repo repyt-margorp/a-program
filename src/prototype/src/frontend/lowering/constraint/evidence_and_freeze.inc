@@ -4051,6 +4051,13 @@ static int operation_solver_materialize_judgements(struct compile_context* ctx) 
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
+	uint64_t proof_credit = ctx->metadata->typed_occurrences.occurrence_count;
+	int proof_effort = compile_effort_charge(
+		ctx,
+		PROTOTYPE_EFFORT_PHASE_PROOF,
+		proof_credit == 0 ? 1 : proof_credit
+	);
+	if (proof_effort != 0) return proof_effort;
 	int initial_pass = !ctx->proof_materialization_initialized;
 	ctx->proof_materialization_substitution_pending = 0;
 	ctx->proof_materialization_initialized = 1;
