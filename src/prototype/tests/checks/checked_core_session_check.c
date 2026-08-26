@@ -8,6 +8,8 @@
 #include "a_program/producer/checked_incremental.h"
 #include "a_program/producer/merge.h"
 
+#include "src/checker/module_set_internal.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1298,11 +1300,14 @@ static int check_checked_module_set_boundary(void) {
 		.goal_key = {137, 0, 0, 0}
 	};
 	struct prototype_merge_producer_report merge_report;
+	prototype_checked_module_image_serialization_count_reset();
 	if (prototype_merge_producer_create(
 			forward, 2, &merge_identity, &merge
-		) != 0 || prototype_merge_producer_advance(
+		) != 0 || prototype_checked_module_image_serialization_count() != 2 ||
+		prototype_merge_producer_advance(
 			merge, 0, &merge_report
 		) != 0 || merge_report.status != PROTOTYPE_MERGE_PRODUCER_PAUSED ||
+		prototype_checked_module_image_serialization_count() != 2 ||
 		prototype_merge_producer_make_capsule(merge, &merge_capsule) != 0) {
 		fprintf(stderr, "merge producer did not pause with a typed capsule\n");
 		goto cleanup;
@@ -1356,6 +1361,14 @@ static int check_checked_module_set_boundary(void) {
 	}
 	prototype_checked_module_set_destroy(first);
 	first = NULL;
+	const struct prototype_checked_module* malformed[] = { NULL };
+	if (prototype_checked_module_set_create(
+			malformed, 1, &first, &set_report
+		) != 0 || set_report.status != PROTOTYPE_CHECKED_MODULE_SET_MALFORMED ||
+		first) {
+		fprintf(stderr, "malformed checked module set did not reject cleanly\n");
+		goto cleanup;
+	}
 
 	const struct prototype_checked_module* conflicting[] = {
 		checked[0], checked[3]

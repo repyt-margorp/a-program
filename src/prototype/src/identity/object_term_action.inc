@@ -1799,8 +1799,7 @@ static int hott_apply_pointwise_identity_witness(
 			&codomain_binding,
 			&codomain
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms,
-			types,
+			terms, prototype_type_view_rebuild_context_from_db(types),
 			codomain,
 			codomain_binding,
 			argument->subject,
@@ -2697,15 +2696,13 @@ static int hott_construct_identity_lambda_action(
 
 	uint32_t concrete_identity;
 	if (prototype_term_graph_substitute_bound_var(
-			terms,
-			types,
+			terms, prototype_type_view_rebuild_context_from_db(types),
 			identity->identity_type_term_id,
 			identity->left_endpoint_binding_id,
 			left_source->subject,
 			&concrete_identity
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms,
-			types,
+			terms, prototype_type_view_rebuild_context_from_db(types),
 			concrete_identity,
 			identity->right_endpoint_binding_id,
 			right_source->subject,

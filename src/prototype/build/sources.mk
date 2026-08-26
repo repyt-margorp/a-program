@@ -24,12 +24,17 @@ PROTOTYPE_TYPE_DECLARATION_SOURCES := \
 PROTOTYPE_CWF_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/kernel/cwf_certificate.c
 
+PROTOTYPE_STRUCTURAL_SOURCES := \
+	$(PROTOTYPE_ROOT)/src/kernel/context.c \
+	$(PROTOTYPE_ROOT)/src/kernel/structural_reader.c
+
 PROTOTYPE_CHECKER_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/checker/container.c \
 	$(PROTOTYPE_ROOT)/src/checker/module.c \
 	$(PROTOTYPE_ROOT)/src/checker/module_set.c \
 	$(PROTOTYPE_ROOT)/src/checker/parallel.c \
 	$(PROTOTYPE_ROOT)/src/checker/resources.c \
+	$(PROTOTYPE_ROOT)/src/checker/semantic_references.c \
 	$(PROTOTYPE_ROOT)/src/checker/session.c \
 	$(PROTOTYPE_ROOT)/src/checker/universe.c \
 	$(PROTOTYPE_ROOT)/src/producer/effort.c \
@@ -44,14 +49,19 @@ PROTOTYPE_DIMENSION_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/dimension/face.c \
 	$(PROTOTYPE_ROOT)/src/dimension/action.c
 
+PROTOTYPE_CORE_SOURCES := \
+	$(PROTOTYPE_ROOT)/src/core/alpha_slot_env.c \
+	$(PROTOTYPE_ROOT)/src/core/term.c \
+	$(PROTOTYPE_ROOT)/src/core/term_schema.c
+
 PROTOTYPE_KERNEL_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
-	$(PROTOTYPE_ROOT)/src/kernel/context.c \
+	$(PROTOTYPE_STRUCTURAL_SOURCES) \
 	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/resource_usage.c \
-	$(PROTOTYPE_ROOT)/src/core/term.c \
+	$(PROTOTYPE_CORE_SOURCES) \
 	$(PROTOTYPE_TYPE_DECLARATION_SOURCES) \
 	$(PROTOTYPE_TYPING_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/universe.c \
@@ -66,12 +76,12 @@ PROTOTYPE_GRAPH_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
-	$(PROTOTYPE_ROOT)/src/kernel/context.c \
+	$(PROTOTYPE_STRUCTURAL_SOURCES) \
 	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/resource_usage.c \
 	$(PROTOTYPE_ROOT)/src/frontend/reader.c \
 	$(PROTOTYPE_COMPILER_SESSION_SOURCES) \
-	$(PROTOTYPE_ROOT)/src/core/term.c \
+	$(PROTOTYPE_CORE_SOURCES) \
 	$(PROTOTYPE_TYPE_DECLARATION_SOURCES) \
 	$(PROTOTYPE_TYPING_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/universe.c \
@@ -81,13 +91,13 @@ PROTOTYPE_COMPILER_SOURCES := \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
-	$(PROTOTYPE_ROOT)/src/kernel/context.c \
+	$(PROTOTYPE_STRUCTURAL_SOURCES) \
 	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/resource_usage.c \
 	$(PROTOTYPE_ROOT)/src/frontend/ast_inspect.c \
 	$(PROTOTYPE_ROOT)/src/frontend/reader.c \
 	$(PROTOTYPE_COMPILER_SESSION_SOURCES) \
-	$(PROTOTYPE_ROOT)/src/core/term.c \
+	$(PROTOTYPE_CORE_SOURCES) \
 	$(PROTOTYPE_TYPE_DECLARATION_SOURCES) \
 	$(PROTOTYPE_TYPING_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/universe.c \
@@ -101,9 +111,9 @@ PROTOTYPE_HOTT_SOURCES := \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
 	$(PROTOTYPE_CWF_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/kernel_view.c \
-	$(PROTOTYPE_ROOT)/src/kernel/context.c \
+	$(PROTOTYPE_STRUCTURAL_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/resource_usage.c \
-	$(PROTOTYPE_ROOT)/src/core/term.c \
+	$(PROTOTYPE_CORE_SOURCES) \
 	$(PROTOTYPE_TYPE_DECLARATION_SOURCES) \
 	$(PROTOTYPE_TYPING_SOURCES) \
 	$(PROTOTYPE_ROOT)/src/kernel/universe.c \

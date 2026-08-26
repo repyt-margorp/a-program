@@ -985,13 +985,15 @@ static int reduction_is_pure_type(
 	return (options.flags & PROTOTYPE_TERM_REDUCE_PURE_TYPE) != 0;
 }
 
-static struct prototype_type_declaration_db* reduction_substitution_types(
-	struct prototype_type_declaration_db* type_declarations,
+static struct prototype_type_view_rebuild_context reduction_substitution_types(
+	const struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_reduction_options options
 ) {
 	/* TypeView rematerialization is part of pure-type normalization. Ordinary
 	 * beta/iota computation performs only structural Core substitution. */
-	return reduction_is_pure_type(options) ? type_declarations : NULL;
+	return reduction_is_pure_type(options) ?
+		prototype_type_view_rebuild_context_from_db(type_declarations) :
+		(struct prototype_type_view_rebuild_context) {0};
 }
 
 static void normalization_mark_status(

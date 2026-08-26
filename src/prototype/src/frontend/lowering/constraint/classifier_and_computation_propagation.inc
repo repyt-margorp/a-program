@@ -1558,8 +1558,7 @@ restart_after_branch_pullback:
 									&binder_var
 								) != 0 ||
 								prototype_term_graph_substitute_bound_var(
-									ctx->terms,
-									ctx->type_declarations,
+									ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 									codomain_body,
 									codomain_binder,
 									binder_var,
@@ -1686,8 +1685,7 @@ restart_after_branch_pullback:
 								if (prototype_term_effect_row_empty(
 										ctx->terms, &empty_row
 									) != 0 || prototype_term_graph_substitute_bound_var(
-										ctx->terms,
-										ctx->type_declarations,
+										ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 										quantified->as.effect_row_forall.body,
 										quantified->as.effect_row_forall.binding_id,
 										empty_row,

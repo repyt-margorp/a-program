@@ -20,6 +20,7 @@ src/kernel/           contexts, declarations, universes, and judgements
 src/frontend/         reader, surface AST, and lowering
 src/graph/            typed-occurrence metadata, runtime annotations, compile metadata
 src/artifact/         interface publication, v86 wire format, relocation, link
+src/checker/          independent checked-Core validation and v87 containers
 src/identity/         relation action and object Identity computation
 src/driver/           command-line and REPL entry points
 tests/checks/         compiled audit programs
@@ -56,7 +57,12 @@ proof/action construction order.
   occurrence record stores the source Context, classifier/provenance data, and
   a reference to the shared `core_term`; it is not a second runtime syntax tree.
 - `include/a_program/artifact/`, `src/artifact/`: artifact interface,
-  publication closure, v86 wire reader/writer, relocation, and linking.
+  publication closure, accepted proof artifact v86 reader/writer, relocation,
+  and linking.
+- `include/a_program/checker/`, `src/checker/`: independent checked-Core
+  validation and the checked semantic container v87 reader/writer. A v87 file
+  carries untrusted semantic input; reading it reruns the checker and never
+  deserializes a checked capability.
 - `include/a_program/kernel/judgement/`, `src/kernel/judgement.c`,
   `src/kernel/typing/`, and `src/kernel/rules/`: Proposition, Claim, and
   Derivation storage; classifier conversion and solving; candidate publication;
@@ -532,7 +538,8 @@ only the resulting solved classifiers and versioned residual obligations. The
 current implementation rejects arbitrary incomplete solver work; `hybrid`
 permits only residual obligations with a defined runtime verifier.
 
-The current prototype has a text artifact format beginning with
+The current prototype has two persistent boundaries. The accepted proof
+artifact v86 is a text format beginning with
 `A_PROGRAM_ARTIFACT 86 <calculus-fingerprint>`. The reader accepts that version
 and exact fingerprint only; old artifact versions are intentionally rejected
 instead of being kept as compatibility paths. The canonical format and trust
@@ -590,6 +597,19 @@ those counts with `--read-graph`. Linked artifacts that are produced from
 already-compiled provider graphs preserve display names but use unknown source
 spans for re-exported provider names because the source AST is not present at
 that link stage.
+
+The checked semantic container v87 begins with the eight bytes `APCHK087`.
+It stores required semantic and residual-contract sections and may carry
+optional producer-work or debug sections. Optional sections have no checked
+authority. A reader reconstructs an untrusted elaborated module, validates its
+structure, and invokes the independent checker before returning a process-local
+checked-module capability. The exact field order, limits, hashes, and authority
+rules are specified by `spec/checked_artifact_v87.schema`.
+
+v86 is not globally superseded by v87. It remains the accepted Claim/Derivation
+proof boundary while some published roots, including deferred Identity/HOTT
+roots, have no admitted checked-Core projection. Retirement requires complete
+checked-Core coverage for every published root required by the language.
 
 Constructor exports include diagnostic field counts/closures and the provider
 Term ID of `constructor_classifier`. This lightweight interface record is not

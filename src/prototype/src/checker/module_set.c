@@ -1,5 +1,7 @@
 #include "a_program/checker/module_set.h"
 
+#include "module_set_internal.h"
+
 #include "a_program/checker/container.h"
 
 #include <stdint.h>
@@ -7,19 +9,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct checked_module_image {
-	const struct prototype_checked_module* module;
-	unsigned char* bytes;
-	size_t count;
-	size_t input_index;
-};
-
 struct prototype_checked_module_set {
-	struct checked_module_image* images;
+	struct prototype_canonical_checked_image* images;
 	size_t count;
 };
 
-static void checked_module_image_destroy(struct checked_module_image* image) {
+static size_t checked_module_image_serialization_count;
+
+void prototype_checked_module_image_serialization_count_reset(void) {
+	checked_module_image_serialization_count = 0;
+}
+
+size_t prototype_checked_module_image_serialization_count(void) {
+	return checked_module_image_serialization_count;
+}
+
+static void checked_module_image_destroy(
+	struct prototype_canonical_checked_image* image
+) {
 	if (!image) return;
 	free(image->bytes);
 	memset(image, 0, sizeof(*image));
@@ -28,11 +35,11 @@ static void checked_module_image_destroy(struct checked_module_image* image) {
 static int checked_module_image_build(
 	const struct prototype_checked_module* module,
 	size_t input_index,
-	struct checked_module_image* image
+	struct prototype_canonical_checked_image* image
 ) {
-	if (!module || !image || !prototype_checked_module_elaborated_view(module)) {
-		return -1;
-	}
+	if (!image) return -1;
+	if (!module || !prototype_checked_module_elaborated_view(module)) return 1;
+	checked_module_image_serialization_count += 1;
 	FILE* stream = tmpfile();
 	if (!stream || prototype_checked_artifact_write(stream, module) != 0 ||
 		fseek(stream, 0, SEEK_END) != 0) {
@@ -54,7 +61,7 @@ static int checked_module_image_build(
 		return -1;
 	}
 	fclose(stream);
-	*image = (struct checked_module_image) {
+	*image = (struct prototype_canonical_checked_image) {
 		.module = module,
 		.bytes = bytes,
 		.count = (size_t)length,
@@ -64,8 +71,8 @@ static int checked_module_image_build(
 }
 
 static int checked_module_image_compare(const void* a, const void* b) {
-	const struct checked_module_image* left = a;
-	const struct checked_module_image* right = b;
+	const struct prototype_canonical_checked_image* left = a;
+	const struct prototype_canonical_checked_image* right = b;
 	size_t common = left->count < right->count ? left->count : right->count;
 	int compared = common == 0 ? 0 : memcmp(left->bytes, right->bytes, common);
 	if (compared != 0) return compared;
@@ -73,8 +80,8 @@ static int checked_module_image_compare(const void* a, const void* b) {
 }
 
 static int checked_module_images_equal(
-	const struct checked_module_image* left,
-	const struct checked_module_image* right
+	const struct prototype_canonical_checked_image* left,
+	const struct prototype_canonical_checked_image* right
 ) {
 	return left->count == right->count &&
 		(left->count == 0 || memcmp(left->bytes, right->bytes, left->count) == 0);
@@ -186,19 +193,13 @@ int prototype_checked_modules_conflict(
 	return *p_export_kind == 0 ? 0 : 1;
 }
 
-int prototype_checked_module_set_create(
+int prototype_checked_module_set_prepare(
 	const struct prototype_checked_module* const* modules,
 	size_t module_count,
-	struct prototype_checked_module_set** p_set,
-	struct prototype_checked_module_set_report* p_report
+	struct prototype_checked_module_set** p_set
 ) {
-	if (!p_set || !p_report || (module_count != 0 && !modules)) return -1;
+	if (!p_set || (module_count != 0 && !modules)) return -1;
 	*p_set = NULL;
-	*p_report = (struct prototype_checked_module_set_report) {
-		.status = PROTOTYPE_CHECKED_MODULE_SET_MALFORMED,
-		.left_module = SIZE_MAX,
-		.right_module = SIZE_MAX
-	};
 	struct prototype_checked_module_set* set = calloc(1, sizeof(*set));
 	if (!set) return -1;
 	set->images = module_count == 0 ? NULL : calloc(
@@ -210,9 +211,12 @@ int prototype_checked_module_set_create(
 	}
 	set->count = module_count;
 	for (size_t i = 0; i < module_count; ++i) {
-		if (checked_module_image_build(modules[i], i, &set->images[i]) != 0) {
+		int status = checked_module_image_build(
+			modules[i], i, &set->images[i]
+		);
+		if (status != 0) {
 			prototype_checked_module_set_destroy(set);
-			return 0;
+			return status;
 		}
 	}
 	qsort(set->images, set->count, sizeof(*set->images),
@@ -227,6 +231,37 @@ int prototype_checked_module_set_create(
 			(set->count - i - 1) * sizeof(*set->images));
 		set->count -= 1;
 	}
+	*p_set = set;
+	return 0;
+}
+
+int prototype_checked_module_set_adopt(
+	struct prototype_canonical_checked_image* images,
+	size_t image_count,
+	struct prototype_checked_module_set** p_set
+) {
+	if (!p_set || (image_count != 0 && !images)) return -1;
+	*p_set = NULL;
+	for (size_t i = 0; i < image_count; ++i) {
+		if (!images[i].module || !prototype_checked_module_elaborated_view(
+				images[i].module
+			) || (images[i].count != 0 && !images[i].bytes) || (i != 0 &&
+			checked_module_image_compare(&images[i - 1], &images[i]) >= 0)) {
+			return -1;
+		}
+	}
+	struct prototype_checked_module_set* set = calloc(1, sizeof(*set));
+	if (!set) return -1;
+	set->images = images;
+	set->count = image_count;
+	*p_set = set;
+	return 0;
+}
+
+static int checked_module_set_check_conflicts(
+	struct prototype_checked_module_set* set,
+	struct prototype_checked_module_set_report* p_report
+) {
 	for (size_t i = 0; i < set->count; ++i) {
 		for (size_t j = i + 1; j < set->count; ++j) {
 			int kind;
@@ -234,20 +269,45 @@ int prototype_checked_module_set_create(
 				set->images[i].module, set->images[j].module, &kind
 			);
 			if (conflict < 0) {
-				prototype_checked_module_set_destroy(set);
-				return 0;
+				return -1;
 			}
 			if (conflict != 0) {
 				p_report->status = PROTOTYPE_CHECKED_MODULE_SET_CONFLICT;
 				p_report->export_kind = kind;
 				p_report->left_module = set->images[i].input_index;
 				p_report->right_module = set->images[j].input_index;
-				prototype_checked_module_set_destroy(set);
 				return 0;
 			}
 		}
 	}
 	p_report->status = PROTOTYPE_CHECKED_MODULE_SET_COMPLETE;
+	return 0;
+}
+
+int prototype_checked_module_set_create(
+	const struct prototype_checked_module* const* modules,
+	size_t module_count,
+	struct prototype_checked_module_set** p_set,
+	struct prototype_checked_module_set_report* p_report
+) {
+	if (!p_set || !p_report || (module_count != 0 && !modules)) return -1;
+	*p_set = NULL;
+	*p_report = (struct prototype_checked_module_set_report) {
+		.status = PROTOTYPE_CHECKED_MODULE_SET_MALFORMED,
+		.left_module = SIZE_MAX,
+		.right_module = SIZE_MAX
+	};
+	struct prototype_checked_module_set* set = NULL;
+	int prepare_status = prototype_checked_module_set_prepare(
+		modules, module_count, &set
+	);
+	if (prepare_status < 0) return -1;
+	if (prepare_status > 0) return 0;
+	if (checked_module_set_check_conflicts(set, p_report) != 0 ||
+		p_report->status != PROTOTYPE_CHECKED_MODULE_SET_COMPLETE) {
+		prototype_checked_module_set_destroy(set);
+		return 0;
+	}
 	*p_set = set;
 	return 0;
 }
@@ -282,4 +342,11 @@ int prototype_checked_module_set_canonical_image_at(
 	*p_bytes = set->images[index].bytes;
 	*p_count = set->images[index].count;
 	return 0;
+}
+
+size_t prototype_checked_module_set_original_index_at(
+	const struct prototype_checked_module_set* set,
+	size_t index
+) {
+	return set && index < set->count ? set->images[index].input_index : SIZE_MAX;
 }

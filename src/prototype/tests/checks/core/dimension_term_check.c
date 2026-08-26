@@ -111,7 +111,7 @@ int main(void) {
 	uint32_t substituted_operator;
 	if (prototype_term_int_literal(&source_terms, 7, &literal) != 0 ||
 		prototype_term_graph_substitute_bound_var(
-			&source_terms, NULL, action, binding, literal, &substituted
+			&source_terms, prototype_type_view_rebuild_context_from_db(NULL), action, binding, literal, &substituted
 		) != 0 || prototype_term_dimension_action_info(
 			&source_terms,
 			substituted,

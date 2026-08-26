@@ -6,6 +6,7 @@
 
 #include "a_program/core/term.h"
 #include "a_program/dimension/types.h"
+#include "a_program/kernel/structural_reader.h"
 
 struct prototype_frozen_module_snapshot;
 struct prototype_intrinsic_environment;
@@ -88,6 +89,21 @@ struct prototype_semantic_substitution_graph_view {
 	const struct prototype_semantic_substitution* substitutions;
 	size_t substitution_count;
 };
+
+int prototype_semantic_term_structural_reader(
+	const struct prototype_semantic_term_graph_view* graph,
+	struct prototype_term_structural_reader* p_reader
+);
+
+int prototype_semantic_context_structural_reader(
+	const struct prototype_semantic_context_graph_view* graph,
+	struct prototype_context_structural_reader* p_reader
+);
+
+int prototype_semantic_substitution_structural_reader(
+	const struct prototype_semantic_substitution_graph_view* graph,
+	struct prototype_substitution_structural_reader* p_reader
+);
 
 struct prototype_semantic_universe_level {
 	uint32_t level_var;

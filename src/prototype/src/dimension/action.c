@@ -539,8 +539,7 @@ int prototype_dimension_action_context_type_classifier(
 				}
 				if (status == 0) {
 					status = prototype_term_graph_reindex_bindings(
-						terms,
-						type_declarations,
+						terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 						prototype_context_classifier_term(source_field),
 						replacements,
 						i,
@@ -633,8 +632,7 @@ int prototype_dimension_action_context_type_classifier(
 			}
 			if (status == 0) {
 				status = prototype_term_graph_reindex_bindings(
-					terms,
-					type_declarations,
+					terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 					source_type,
 					replacements,
 					source_count,

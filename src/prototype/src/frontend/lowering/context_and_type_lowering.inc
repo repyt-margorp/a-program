@@ -2607,8 +2607,7 @@ static int operation_apply_classifier_with_mode(
 		return -1;
 	}
 	return prototype_term_graph_substitute_bound_var(
-		ctx->terms,
-		ctx->type_declarations,
+		ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 		body,
 		binding_id,
 		classifier_argument,
@@ -2712,7 +2711,7 @@ static int operation_apply_classifier_unchecked(
 		return -1;
 	}
 	return prototype_term_graph_substitute_bound_var(
-		ctx->terms, ctx->type_declarations, body, binding_id, argument_term, p_classifier
+		ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), body, binding_id, argument_term, p_classifier
 	);
 }
 
@@ -2772,8 +2771,7 @@ static int type_instance_formation_classifier(
 		(void)family_id;
 		if (
 			prototype_term_graph_substitute_bound_var(
-				ctx->terms,
-				ctx->type_declarations,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 				body,
 				binding_id,
 				arguments[i],
@@ -4396,8 +4394,7 @@ static int compile_accepted_type_substitution_term(
 		};
 	}
 	int status = prototype_term_graph_reindex_bindings(
-		ctx->terms,
-		ctx->type_declarations,
+		ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 		expr->as.accepted_substitution.term,
 		replacements,
 		expr->as.accepted_substitution.binding_count,

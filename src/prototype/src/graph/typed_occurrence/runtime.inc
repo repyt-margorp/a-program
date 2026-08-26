@@ -30,8 +30,7 @@ static int operation_runtime_instantiate_term(
 			continue;
 		}
 		if (prototype_term_graph_substitute_bound_var(
-				terms,
-				NULL,
+				terms, prototype_type_view_rebuild_context_from_db(NULL),
 				current,
 				environment->bindings[i].binding_id,
 				environment->bindings[i].value.as.term,

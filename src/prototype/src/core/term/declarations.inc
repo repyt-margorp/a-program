@@ -1,4 +1,6 @@
 #include "a_program/core/term.h"
+#include "a_program/core/alpha_slot_env.h"
+#include "a_program/core/term_schema.h"
 
 #include "a_program/dimension/operator.h"
 #include "a_program/kernel/type_declaration.h"
@@ -709,70 +711,28 @@ int prototype_term_child_count(
 		return -1;
 	}
 	const struct prototype_term* term = &db->terms[term_id];
-	uint32_t count = 0;
-	switch (term->tag) {
-		case PROTOTYPE_TERM_APP:
-		case PROTOTYPE_TERM_PI:
-		case PROTOTYPE_TERM_TYPE_VIEW:
-		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			count = 2;
-			break;
-		case PROTOTYPE_TERM_LAMBDA:
-		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-		case PROTOTYPE_TERM_EFFECT_OPERATION:
-		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-		case PROTOTYPE_TERM_THUNK_TYPE:
-		case PROTOTYPE_TERM_RETURN:
-		case PROTOTYPE_TERM_THUNK:
-		case PROTOTYPE_TERM_FORCE:
-		case PROTOTYPE_TERM_DIMENSION_ACTION:
-			count = 1;
-			break;
-		case PROTOTYPE_TERM_OPERATION_REQUEST:
-			count = 3;
-			break;
-		case PROTOTYPE_TERM_MATCH:
-			if (term->as.match.first_case > db->case_count ||
-				term->as.match.case_count >
-					db->case_count - term->as.match.first_case) {
-				return -1;
-			}
-			count = 1 + term->as.match.case_count;
-			break;
-		case PROTOTYPE_TERM_COMPUTATION_FOLD:
-			if (term->as.computation_fold.first_clause >
-					db->computation_fold_clause_count ||
-				term->as.computation_fold.clause_count >
-					db->computation_fold_clause_count -
-						term->as.computation_fold.first_clause ||
-				term->as.computation_fold.clause_count > (UINT32_MAX - 2) / 2) {
-				return -1;
-			}
-			count = 2 + 2 * term->as.computation_fold.clause_count;
-			break;
-		case PROTOTYPE_TERM_VAR:
-		case PROTOTYPE_TERM_CONSTRUCTOR:
-		case PROTOTYPE_TERM_TYPE_FORMER:
-		case PROTOTYPE_TERM_TYPE_DECLARATION:
-		case PROTOTYPE_TERM_UNIVERSE_VAR:
-		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
-		case PROTOTYPE_TERM_TEXT_LITERAL:
-		case PROTOTYPE_TERM_PRIMITIVE_INT:
-		case PROTOTYPE_TERM_PRIMITIVE_INT64:
-		case PROTOTYPE_TERM_INT_LITERAL:
-		case PROTOTYPE_TERM_EXTERNAL_REF:
-		case PROTOTYPE_TERM_PURE_PRIMITIVE:
-		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
-		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
-		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
-		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
-		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
-			break;
-		default:
+	uint32_t count;
+	if (prototype_term_schema_fixed_child_count(term, &count) != 0) {
+		return -1;
+	}
+	if (term->tag == PROTOTYPE_TERM_MATCH) {
+		if (term->as.match.first_case > db->case_count ||
+			term->as.match.case_count >
+				db->case_count - term->as.match.first_case ||
+			term->as.match.case_count > UINT32_MAX - count) {
 			return -1;
+		}
+		count += term->as.match.case_count;
+	} else if (term->tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
+		if (term->as.computation_fold.first_clause >
+				db->computation_fold_clause_count ||
+			term->as.computation_fold.clause_count >
+				db->computation_fold_clause_count -
+					term->as.computation_fold.first_clause ||
+			term->as.computation_fold.clause_count > (UINT32_MAX - count) / 2) {
+			return -1;
+		}
+		count += 2 * term->as.computation_fold.clause_count;
 	}
 	*p_count = count;
 	return 0;
@@ -806,169 +766,48 @@ int prototype_term_child_at(
 		return -1;
 	}
 	const struct prototype_term* term = &db->terms[term_id];
-	switch (term->tag) {
-		case PROTOTYPE_TERM_APP:
-			return term_child_result(
-				db,
-				child_index == 0 ? PROTOTYPE_TERM_CHILD_FUNCTION :
-					PROTOTYPE_TERM_CHILD_ARGUMENT,
-				0,
-				child_index == 0 ? term->as.app.function : term->as.app.argument,
-				p_child
-			);
-		case PROTOTYPE_TERM_LAMBDA:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_BODY, 0, term->as.lambda.body, p_child
-			);
-		case PROTOTYPE_TERM_PI:
-			return term_child_result(
-				db,
-				child_index == 0 ? PROTOTYPE_TERM_CHILD_DOMAIN :
-					PROTOTYPE_TERM_CHILD_CODOMAIN_FAMILY,
-				0,
-				child_index == 0 ? term->as.pi.domain : term->as.pi.codomain_family,
-				p_child
-			);
-		case PROTOTYPE_TERM_MATCH:
-			if (child_index == 0) {
-				return term_child_result(
-					db, PROTOTYPE_TERM_CHILD_SCRUTINEE, 0,
-					term->as.match.scrutinee, p_child
-				);
-			}
-			return term_child_result(
-				db,
-				PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
-				child_index - 1,
-				db->cases[term->as.match.first_case + child_index - 1].body,
-				p_child
-			);
-		case PROTOTYPE_TERM_TYPE_VIEW:
-			return term_child_result(
-				db,
-				child_index == 0 ? PROTOTYPE_TERM_CHILD_TYPE_VIEW_CORE :
-					PROTOTYPE_TERM_CHILD_TYPE_VIEW_SOURCE,
-				0,
-				child_index == 0 ? term->as.type_view.core : term->as.type_view.source,
-				p_child
-			);
-		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_INDUCTION_ARGUMENT, 0,
-				term->as.induction_hypothesis.argument, p_child
-			);
-		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_EFFECT_OPERATION_CLASSIFIER, 0,
-				term->as.effect_operation.classifier, p_child
-			);
-		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-			return term_child_result(
-				db,
-				child_index == 0 ? PROTOTYPE_TERM_CHILD_EFFECT_ROW_LEFT :
-					PROTOTYPE_TERM_CHILD_EFFECT_ROW_RIGHT,
-				0,
-				child_index == 0 ? term->as.effect_row_union.left :
-					term->as.effect_row_union.right,
-				p_child
-			);
-		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_EFFECT_ROW_BODY, 0,
-				term->as.effect_row_forall.body, p_child
-			);
-		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_EFFECT_ROW_LATENT, 0,
-				term->as.effect_row_operation.latent_row, p_child
-			);
-		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			return term_child_result(
-				db,
-				child_index == 0 ? PROTOTYPE_TERM_CHILD_COMPUTATION_EFFECT_ROW :
-					PROTOTYPE_TERM_CHILD_SEQUENCE_RESULT,
-				0,
-				child_index == 0 ? term->as.computation_type.label :
-					term->as.computation_type.result,
-				p_child
-			);
-		case PROTOTYPE_TERM_THUNK_TYPE:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_THUNK_TYPE_COMPUTATION, 0,
-				term->as.thunk_type.computation, p_child
-			);
-		case PROTOTYPE_TERM_RETURN:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_RETURN_VALUE, 0,
-				term->as.return_term.value, p_child
-			);
-		case PROTOTYPE_TERM_THUNK:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION, 0,
-				term->as.thunk.computation, p_child
-			);
-		case PROTOTYPE_TERM_FORCE:
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_FORCE_VALUE, 0,
-				term->as.force.value, p_child
-			);
-		case PROTOTYPE_TERM_OPERATION_REQUEST:
-			if (child_index == 0) {
-				return term_child_result(
-					db, PROTOTYPE_TERM_CHILD_REQUEST_OPERATION, 0,
-					term->as.operation_request.operation, p_child
-				);
-			}
-			if (child_index == 1) {
-				return term_child_result(
-					db, PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT, 0,
-					term->as.operation_request.argument, p_child
-				);
-			}
-			return term_child_result(
-				db, PROTOTYPE_TERM_CHILD_REQUEST_CONTINUATION, 0,
-				term->as.operation_request.continuation, p_child
-			);
-		case PROTOTYPE_TERM_COMPUTATION_FOLD:
-			if (child_index == 0) {
-				return term_child_result(
-					db, PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION, 0,
-					term->as.computation_fold.computation, p_child
-				);
-			}
-			if (child_index == 1) {
-				return term_child_result(
-					db, PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0,
-					term->as.computation_fold.return_clause, p_child
-				);
-			}
-			{
-				uint32_t clause_offset = (child_index - 2) / 2;
-				const struct prototype_computation_fold_clause* clause =
-					&db->computation_fold_clauses[
-						term->as.computation_fold.first_clause + clause_offset
-					];
-				return term_child_result(
-					db,
-					(child_index - 2) % 2 == 0 ?
-						PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION :
-						PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY,
-					clause_offset,
-					(child_index - 2) % 2 == 0 ? clause->operation : clause->body,
-					p_child
-				);
-			}
-		case PROTOTYPE_TERM_DIMENSION_ACTION:
-			return term_child_result(
-				db,
-				PROTOTYPE_TERM_CHILD_DIMENSION_ACTION_SOURCE,
-				0,
-				term->as.dimension_action.source,
-				p_child
-			);
-		default:
-			return -1;
+	uint32_t fixed_count;
+	if (prototype_term_schema_fixed_child_count(term, &fixed_count) != 0) {
+		return -1;
 	}
+	if (child_index < fixed_count) {
+		struct prototype_term_child child;
+		if (prototype_term_schema_fixed_child_at(
+				term, child_index, &child
+			) != 0) {
+			return -1;
+		}
+		return term_child_result(
+			db, child.role, child.ordinal, child.term, p_child
+		);
+	}
+	uint32_t slice_index = child_index - fixed_count;
+	if (term->tag == PROTOTYPE_TERM_MATCH) {
+		return term_child_result(
+			db,
+			PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+			slice_index,
+			db->cases[term->as.match.first_case + slice_index].body,
+			p_child
+		);
+	}
+	if (term->tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
+		uint32_t clause_offset = slice_index / 2;
+		const struct prototype_computation_fold_clause* clause =
+			&db->computation_fold_clauses[
+				term->as.computation_fold.first_clause + clause_offset
+			];
+		return term_child_result(
+			db,
+			slice_index % 2 == 0 ?
+				PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION :
+				PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY,
+			clause_offset,
+			slice_index % 2 == 0 ? clause->operation : clause->body,
+			p_child
+		);
+	}
+	return -1;
 }
 
 int prototype_term_classifier_view(
@@ -1032,14 +871,8 @@ enum prototype_type_view_compare_mode {
 };
 
 struct canonical_binder_env {
-	uint32_t binding_id[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
-	uint32_t slot[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
-	uint32_t count;
-	uint32_t next_slot;
-	uint32_t frame_id[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
-	uint32_t frame_slot[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
-	uint32_t frame_count;
-	uint32_t next_frame_slot;
+	struct prototype_alpha_slot_env binders;
+	struct prototype_alpha_slot_env frames;
 };
 
 struct substitution_ih_scope_clone {
@@ -1066,7 +899,7 @@ struct substitution_memo_entry {
 struct substitution_context {
 	const struct substitution_ih_scope_clone* ih_scope_clone;
 	const struct substitution_binding_scope* binding_scope;
-	struct prototype_type_declaration_db* type_declarations;
+	struct prototype_type_view_rebuild_context type_views;
 	const struct prototype_binding_replacement* bindings;
 	size_t binding_count;
 	uint32_t exact_term;

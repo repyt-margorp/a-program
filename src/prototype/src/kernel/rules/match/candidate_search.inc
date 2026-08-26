@@ -22,8 +22,7 @@ static int core_match_case_alpha_reindex(
 			&motive_binder_var
 		) != 0 ||
 			prototype_term_graph_substitute_bound_var(
-				terms,
-				type_declarations,
+				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 				current,
 				source_binders[i].binding_id,
 				motive_binder_var,

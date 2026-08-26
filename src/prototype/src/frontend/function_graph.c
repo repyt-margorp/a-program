@@ -730,8 +730,7 @@ static int function_graph_substitution_type(
 			continue;
 		}
 		if (prototype_term_graph_substitute_bound_var(
-				generation->terms,
-				generation->type_declarations,
+				generation->terms, prototype_type_view_rebuild_context_from_db(generation->type_declarations),
 				term,
 				binding_id,
 				empty_effect_row,
@@ -3256,8 +3255,7 @@ static int function_graph_project_final_computation(
 	}
 	uint32_t projected;
 	if (prototype_term_graph_reindex_bindings(
-			generation->terms,
-			generation->type_declarations,
+			generation->terms, prototype_type_view_rebuild_context_from_db(generation->type_declarations),
 			current,
 			replacements,
 			generation->argument_count,

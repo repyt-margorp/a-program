@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define TERM_CAPACITY 512
 #define CASE_CAPACITY 32
@@ -190,8 +191,7 @@ int main(void) {
 	if (prototype_term_app(
 			&terms, direct_right, literal_seven, &direct_expected
 		) != 0 || prototype_term_graph_reindex_bindings(
-			&terms,
-			&types,
+			&terms, prototype_type_view_rebuild_context_from_db(&types),
 			direct_pair,
 			direct_bindings,
 			2,
@@ -206,8 +206,7 @@ int main(void) {
 	if (prototype_term_app(
 			&terms, direct_right, direct_left, &direct_expected
 		) != 0 || prototype_term_graph_reindex_bindings(
-			&terms,
-			&types,
+			&terms, prototype_type_view_rebuild_context_from_db(&types),
 			direct_pair,
 			direct_bindings,
 			2,
@@ -508,6 +507,56 @@ int main(void) {
 			&telescope_classifier
 		) != 0 || telescope_classifier != int_type) {
 		fprintf(stderr, "dependent telescope reindex failed\n");
+		return 1;
+	}
+
+	uint32_t view_type;
+	uint32_t view_parameter_type;
+	uint32_t named_view;
+	uint32_t expected_named_view;
+	uint32_t reindexed_named_view;
+	size_t representation_count_before_reindex;
+	struct prototype_binding_replacement view_binding = {
+		.binding_id = prototype_context_get(
+			&contexts, outer_context
+		)->binding_id,
+		.replacement = literal_seven
+	};
+	uint32_t view_argument[] = { outer_variable };
+	uint32_t expected_view_argument[] = { literal_seven };
+	if (prototype_type_expr_universe(
+			&types.readback, 0, &view_parameter_type
+		) != 0 || prototype_type_declaration_add(
+			&types.semantic_schema, &types.readback, &types.representation_db,
+			72, &view_type
+		) != 0 || prototype_type_declaration_add_parameter(
+			&types.semantic_schema, &types.readback, &types.representation_db,
+			view_type, 73, 74, view_parameter_type
+		) != 0 || prototype_term_type_instance_make(
+			&terms, &types, view_type, view_argument, 1, &named_view
+		) != 0 || prototype_term_type_instance_make(
+			&terms, &types, view_type, expected_view_argument, 1,
+			&expected_named_view
+		) != 0) {
+		fprintf(stderr, "failed to construct named TypeView fixture\n");
+		return 1;
+	}
+	representation_count_before_reindex =
+		types.representation_db.representation_count;
+	memset(&types.readback, 0, sizeof(types.readback));
+	if (prototype_term_graph_reindex_bindings(
+			&terms, prototype_type_view_rebuild_context_from_db(&types), named_view, &view_binding, 1,
+			&reindexed_named_view
+		) != 0 || reindexed_named_view != expected_named_view ||
+		types.representation_db.representation_count !=
+			representation_count_before_reindex ||
+		terms.terms[reindexed_named_view].as.type_view.view_type_id != view_type ||
+		terms.terms[reindexed_named_view].as.type_view.identity.name_symbol_id !=
+			72 || terms.terms[reindexed_named_view].as.type_view.core !=
+			terms.terms[expected_named_view].as.type_view.core ||
+		terms.terms[reindexed_named_view].as.type_view.source !=
+			terms.terms[expected_named_view].as.type_view.source) {
+		fprintf(stderr, "structural named TypeView reindex failed\n");
 		return 1;
 	}
 

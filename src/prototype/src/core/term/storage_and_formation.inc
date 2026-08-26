@@ -1485,12 +1485,12 @@ static int prototype_term_type_former(
 
 static int prototype_term_type_declaration(
 	struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	uint32_t type_id,
 	uint32_t* p_ret
 ) {
-	if (!db || !type_declarations || !p_ret ||
-		type_id >= type_declarations->semantic_schema.type_count) {
+	if (!db || !semantic_schema || !p_ret ||
+		type_id >= semantic_schema->type_count) {
 		return -1;
 	}
 	struct prototype_term term;
@@ -1498,9 +1498,9 @@ static int prototype_term_type_declaration(
 	term.tag = PROTOTYPE_TERM_TYPE_DECLARATION;
 	term.as.type_declaration.type_id = type_id;
 	term.as.type_declaration.identity.namespace_symbol_id =
-		type_declarations->semantic_schema.type_declarations[type_id].namespace_symbol_id;
+		semantic_schema->type_declarations[type_id].namespace_symbol_id;
 	term.as.type_declaration.identity.name_symbol_id =
-		type_declarations->semantic_schema.type_declarations[type_id].name_symbol_id;
+		semantic_schema->type_declarations[type_id].name_symbol_id;
 	return add_term(db, term, p_ret);
 }
 
@@ -1525,7 +1525,7 @@ int prototype_term_type_instance_source_make(
 	}
 	uint32_t current;
 	if (prototype_term_type_declaration(
-			db, type_declarations, type_id, &current
+			db, &type_declarations->semantic_schema, type_id, &current
 		) != 0) {
 		return -1;
 	}
@@ -1596,20 +1596,31 @@ static int type_instance_cache_entry_matches(
 	return 1;
 }
 
-int prototype_term_type_instance_make(
+struct prototype_type_view_rebuild_context
+prototype_type_view_rebuild_context_from_db(
+	const struct prototype_type_declaration_db* db
+) {
+	return db ? (struct prototype_type_view_rebuild_context) {
+		.semantic_schema = &db->semantic_schema,
+		.representation_db = &db->representation_db
+	} : (struct prototype_type_view_rebuild_context) {0};
+}
+
+static int prototype_term_type_instance_make_with_context(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t type_id,
 	const uint32_t* args,
 	uint32_t arg_count,
 	uint32_t* p_ret
 ) {
-	if (!db || !type_declarations || !p_ret || arg_count > 16 ||
-		type_id >= type_declarations->semantic_schema.type_count) {
+	if (!db || !type_views.semantic_schema || !type_views.representation_db ||
+		!p_ret || arg_count > 16 ||
+		type_id >= type_views.semantic_schema->type_count) {
 		return -1;
 	}
 	const struct prototype_type_declaration* type =
-		&type_declarations->semantic_schema.type_declarations[type_id];
+		&type_views.semantic_schema->type_declarations[type_id];
 	if (type->parameter_count > UINT32_MAX - type->index_count ||
 		arg_count > type->parameter_count + type->index_count) {
 		return -1;
@@ -1623,7 +1634,7 @@ int prototype_term_type_instance_make(
 		}
 	}
 	uint64_t semantic_revision =
-		type_declarations->semantic_schema.semantic_revision;
+		type_views.semantic_schema->semantic_revision;
 	size_t cache_slot = type_instance_cache_slot(
 		semantic_revision, type_id, args, arg_count
 	);
@@ -1658,13 +1669,15 @@ int prototype_term_type_instance_make(
 	}
 
 	uint32_t representation_id;
-	if (prototype_type_declaration_intern_representation(
-				db,
-				type_declarations,
-				type_id,
-				&representation_id
-		) != 0) {
+	if (!type_views.representation_db->representations) {
 		return -1;
+	}
+	if (type_views.representation_db->cache_dirty) {
+		representation_id = type_id;
+	} else {
+		representation_id = type->representation_id;
+		if (representation_id == PROTOTYPE_INVALID_ID || representation_id >=
+			type_views.representation_db->representation_count) return -1;
 	}
 	uint32_t current;
 	if (prototype_term_type_former(
@@ -1674,7 +1687,7 @@ int prototype_term_type_instance_make(
 	}
 	uint32_t source_current;
 	if (prototype_term_type_declaration(
-			db, type_declarations, type_id, &source_current
+			db, type_views.semantic_schema, type_id, &source_current
 		) != 0) {
 		return -1;
 	}
@@ -1695,8 +1708,9 @@ int prototype_term_type_instance_make(
 	}
 	struct prototype_qualified_name identity;
 	identity.namespace_symbol_id =
-		type_declarations->semantic_schema.type_declarations[type_id].namespace_symbol_id;
-	identity.name_symbol_id = type_declarations->semantic_schema.type_declarations[type_id].name_symbol_id;
+		type_views.semantic_schema->type_declarations[type_id].namespace_symbol_id;
+	identity.name_symbol_id =
+		type_views.semantic_schema->type_declarations[type_id].name_symbol_id;
 	if (prototype_term_type_view(
 			db, type_id, identity, current, source_current, p_ret
 		) != 0) {
@@ -1715,6 +1729,24 @@ int prototype_term_type_instance_make(
 		}
 	}
 	return 0;
+}
+
+int prototype_term_type_instance_make(
+	struct prototype_term_db* db,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t type_id,
+	const uint32_t* args,
+	uint32_t arg_count,
+	uint32_t* p_ret
+) {
+	return prototype_term_type_instance_make_with_context(
+		db,
+		prototype_type_view_rebuild_context_from_db(type_declarations),
+		type_id,
+		args,
+		arg_count,
+		p_ret
+	);
 }
 
 static int type_instance_app_spine_info(
@@ -1998,14 +2030,15 @@ int prototype_term_type_instance_extend(
 
 static int prototype_term_type_view_rebuild_from_source(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t view_type_id,
 	uint32_t core,
 	uint32_t source,
 	uint32_t* p_ret
 ) {
-	if (!db || !type_declarations || !p_ret || core >= db->term_count ||
-		source >= db->term_count || view_type_id >= type_declarations->semantic_schema.type_count) {
+	if (!db || !type_views.semantic_schema || !type_views.representation_db ||
+		!p_ret || core >= db->term_count || source >= db->term_count ||
+		view_type_id >= type_views.semantic_schema->type_count) {
 		return -1;
 	}
 	{
@@ -2020,9 +2053,9 @@ static int prototype_term_type_view_rebuild_from_source(
 				&arg_count
 			) == 0 &&
 			source_type_id == view_type_id) {
-			return prototype_term_type_instance_make(
+			return prototype_term_type_instance_make_with_context(
 				db,
-				type_declarations,
+				type_views,
 				view_type_id,
 				args,
 				arg_count,
@@ -2032,9 +2065,11 @@ static int prototype_term_type_view_rebuild_from_source(
 	}
 	struct prototype_qualified_name identity;
 	identity.namespace_symbol_id =
-		type_declarations->semantic_schema.type_declarations[view_type_id].namespace_symbol_id;
+		type_views.semantic_schema->type_declarations[
+			view_type_id
+		].namespace_symbol_id;
 	identity.name_symbol_id =
-		type_declarations->semantic_schema.type_declarations[view_type_id].name_symbol_id;
+		type_views.semantic_schema->type_declarations[view_type_id].name_symbol_id;
 	return prototype_term_type_view(
 		db, view_type_id, identity, core, source, p_ret
 	);

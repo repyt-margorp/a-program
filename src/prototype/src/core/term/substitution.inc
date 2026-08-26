@@ -236,7 +236,7 @@ int prototype_term_pi(
 
 static int substitute_term(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t binding_id,
 	uint32_t replacement,
@@ -248,7 +248,7 @@ static int substitute_term(
 	};
 	struct substitution_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
-	ctx.type_declarations = type_declarations;
+	ctx.type_views = type_views;
 	ctx.bindings = &binding;
 	ctx.binding_count = 1;
 	int status = substitute_term_internal(
@@ -1306,7 +1306,7 @@ static int substitute_term_uncached_internal(
 				*p_ret = term_id;
 				return 0;
 			}
-			if (!ctx->type_declarations) {
+			if (!ctx->type_views.semantic_schema) {
 				/* Erased computation substitutes the graph structurally. Recomputing
 				 * a named TypeView is a pure-type elaboration action and must not make
 				 * beta or iota reduction depend on TypeDeclarationDB. */
@@ -1321,7 +1321,7 @@ static int substitute_term_uncached_internal(
 			}
 			return prototype_term_type_view_rebuild_from_source(
 				db,
-				ctx->type_declarations,
+				ctx->type_views,
 				term->as.type_view.view_type_id,
 				core,
 				source,
@@ -1336,18 +1336,18 @@ static int substitute_term_uncached_internal(
 
 int prototype_term_graph_substitute_bound_var(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t binding_id,
 	uint32_t replacement,
 	uint32_t* p_ret
 ) {
-	return substitute_term(db, type_declarations, term_id, binding_id, replacement, p_ret);
+	return substitute_term(db, type_views, term_id, binding_id, replacement, p_ret);
 }
 
 int prototype_term_graph_replace_exact(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t exact_term,
 	uint32_t replacement,
@@ -1359,7 +1359,7 @@ int prototype_term_graph_replace_exact(
 	}
 	struct substitution_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
-	ctx.type_declarations = type_declarations;
+	ctx.type_views = type_views;
 	ctx.exact_term = exact_term;
 	ctx.exact_replacement = replacement;
 	ctx.replace_exact_term = 1;
@@ -1371,7 +1371,7 @@ int prototype_term_graph_replace_exact(
 
 int prototype_term_graph_reindex_bindings(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	const struct prototype_binding_replacement* bindings,
 	size_t binding_count,
@@ -1399,7 +1399,7 @@ int prototype_term_graph_reindex_bindings(
 
 	struct substitution_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
-	ctx.type_declarations = type_declarations;
+	ctx.type_views = type_views;
 	ctx.bindings = bindings;
 	ctx.binding_count = binding_count;
 	int status = substitute_term_internal(

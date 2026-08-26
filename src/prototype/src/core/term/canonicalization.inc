@@ -1,6 +1,6 @@
 static int substitute_term(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t binding_id,
 	uint32_t replacement,
@@ -1707,30 +1707,14 @@ static int canonical_env_lookup(
 	uint32_t binding_id,
 	uint32_t* p_slot
 ) {
-	if (!env || !p_slot) {
-		return 0;
-	}
-	for (uint32_t i = env->count; i > 0; --i) {
-		uint32_t index = i - 1;
-		if (env->binding_id[index] == binding_id) {
-			*p_slot = env->slot[index];
-			return 1;
-		}
-	}
-	return 0;
+	return env ? prototype_alpha_slot_lookup(&env->binders, binding_id, p_slot) : 0;
 }
 
 static int canonical_env_push(
 	struct canonical_binder_env* env,
 	uint32_t binding_id
 ) {
-	if (!env || env->count >= PROTOTYPE_CANONICAL_BINDER_CAPACITY) {
-		return -1;
-	}
-	env->binding_id[env->count] = binding_id;
-	env->slot[env->count] = env->next_slot++;
-	env->count++;
-	return 0;
+	return env ? prototype_alpha_slot_push(&env->binders, binding_id) : -1;
 }
 
 static int canonical_env_lookup_frame(
@@ -1738,30 +1722,14 @@ static int canonical_env_lookup_frame(
 	uint32_t frame_id,
 	uint32_t* p_slot
 ) {
-	if (!env || !p_slot) {
-		return 0;
-	}
-	for (uint32_t i = env->frame_count; i > 0; --i) {
-		uint32_t index = i - 1;
-		if (env->frame_id[index] == frame_id) {
-			*p_slot = env->frame_slot[index];
-			return 1;
-		}
-	}
-	return 0;
+	return env ? prototype_alpha_slot_lookup(&env->frames, frame_id, p_slot) : 0;
 }
 
 static int canonical_env_push_frame(
 	struct canonical_binder_env* env,
 	uint32_t frame_id
 ) {
-	if (!env || env->frame_count >= PROTOTYPE_CANONICAL_BINDER_CAPACITY) {
-		return -1;
-	}
-	env->frame_id[env->frame_count] = frame_id;
-	env->frame_slot[env->frame_count] = env->next_frame_slot++;
-	env->frame_count++;
-	return 0;
+	return env ? prototype_alpha_slot_push(&env->frames, frame_id) : -1;
 }
 
 static int canonical_hash_term_at_depth(
@@ -1805,15 +1773,14 @@ static int canonical_hash_match_case_at_depth(
 		return -1;
 	}
 
-	uint32_t saved_count = env->count;
-	uint32_t saved_next_slot = env->next_slot;
+	struct prototype_alpha_slot_checkpoint checkpoint =
+		prototype_alpha_slot_checkpoint(&env->binders);
 	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
 		const struct prototype_case_binder* binder =
 			&db->case_binders[match_case->first_binder + i];
 		canonical_hash_mix_u32(p_hash, (uint32_t)binder->is_recursive);
 		if (canonical_env_push(env, binder->binding_id) != 0) {
-			env->count = saved_count;
-			env->next_slot = saved_next_slot;
+			prototype_alpha_slot_restore(&env->binders, checkpoint);
 			return -1;
 		}
 		key->bound_binder_count++;
@@ -1828,8 +1795,7 @@ static int canonical_hash_match_case_at_depth(
 		canonicalize_frame_refs,
 		depth + 1
 	);
-	env->count = saved_count;
-	env->next_slot = saved_next_slot;
+	prototype_alpha_slot_restore(&env->binders, checkpoint);
 	return status;
 }
 
@@ -1899,8 +1865,8 @@ static int canonical_hash_term_at_depth(
 				depth + 1
 			);
 		case PROTOTYPE_TERM_LAMBDA: {
-			uint32_t saved_count = env->count;
-			uint32_t saved_next_slot = env->next_slot;
+			struct prototype_alpha_slot_checkpoint checkpoint =
+				prototype_alpha_slot_checkpoint(&env->binders);
 			if (canonical_env_push(env, term->as.lambda.binding_id) != 0) {
 				return -1;
 			}
@@ -1915,8 +1881,7 @@ static int canonical_hash_term_at_depth(
 				canonicalize_frame_refs,
 				depth + 1
 			);
-			env->count = saved_count;
-			env->next_slot = saved_next_slot;
+			prototype_alpha_slot_restore(&env->binders, checkpoint);
 			return status;
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
@@ -1998,8 +1963,8 @@ static int canonical_hash_term_at_depth(
 			);
 		case PROTOTYPE_TERM_MATCH:
 			{
-			uint32_t saved_frame_count = env->frame_count;
-			uint32_t saved_next_frame_slot = env->next_frame_slot;
+			struct prototype_alpha_slot_checkpoint frame_checkpoint =
+				prototype_alpha_slot_checkpoint(&env->frames);
 			key->has_frame_local_reference =
 				key->has_frame_local_reference ||
 				(term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
@@ -2025,8 +1990,7 @@ static int canonical_hash_term_at_depth(
 					canonicalize_frame_refs,
 					depth + 1
 				) != 0) {
-				env->frame_count = saved_frame_count;
-				env->next_frame_slot = saved_next_frame_slot;
+				prototype_alpha_slot_restore(&env->frames, frame_checkpoint);
 				return -1;
 			}
 			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
@@ -2042,13 +2006,11 @@ static int canonical_hash_term_at_depth(
 						canonicalize_frame_refs,
 						depth + 1
 					) != 0) {
-					env->frame_count = saved_frame_count;
-					env->next_frame_slot = saved_next_frame_slot;
+					prototype_alpha_slot_restore(&env->frames, frame_checkpoint);
 					return -1;
 				}
 			}
-			env->frame_count = saved_frame_count;
-			env->next_frame_slot = saved_next_frame_slot;
+			prototype_alpha_slot_restore(&env->frames, frame_checkpoint);
 			return 0;
 			}
 		case PROTOTYPE_TERM_TYPE_FORMER:
@@ -2194,8 +2156,8 @@ static int canonical_hash_term_at_depth(
 				p_hash, canonicalize_frame_refs, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
-			uint32_t saved_count = env->count;
-			uint32_t saved_next_slot = env->next_slot;
+			struct prototype_alpha_slot_checkpoint checkpoint =
+				prototype_alpha_slot_checkpoint(&env->binders);
 			if (canonical_env_push(env, term->as.effect_row_forall.binding_id) != 0) {
 				return -1;
 			}
@@ -2210,8 +2172,7 @@ static int canonical_hash_term_at_depth(
 				canonicalize_frame_refs,
 				depth + 1
 			);
-			env->count = saved_count;
-			env->next_slot = saved_next_slot;
+			prototype_alpha_slot_restore(&env->binders, checkpoint);
 			return status;
 		}
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:

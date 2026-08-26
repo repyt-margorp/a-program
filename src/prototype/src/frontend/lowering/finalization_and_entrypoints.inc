@@ -354,7 +354,7 @@ static int operation_check_classifier(
 				ctx->terms, operation->binding_id,
 				&body_binder_var
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				ctx->terms, ctx->type_declarations, expected_body,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), expected_body,
 				expected_binder, body_binder_var, &specialized_body
 			) != 0) {
 			return 0;
@@ -934,11 +934,11 @@ static int operation_refine_classifier_from_expected(
 		int abstraction_status =
 			ctx->terms->terms[classifier_argument].tag == PROTOTYPE_TERM_VAR ?
 			prototype_term_graph_substitute_bound_var(
-				ctx->terms, ctx->type_declarations, expected_classifier,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), expected_classifier,
 				ctx->terms->terms[classifier_argument].as.var.binding_id,
 				codomain_var, &codomain_body
 			) : prototype_term_graph_replace_exact(
-				ctx->terms, ctx->type_declarations, expected_classifier,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), expected_classifier,
 				classifier_argument, codomain_var, &codomain_body
 			);
 		if (abstraction_status != 0 || prototype_term_pure_family(
@@ -951,7 +951,7 @@ static int operation_refine_classifier_from_expected(
 		}
 		uint32_t reinstantiated;
 		if (prototype_term_graph_substitute_bound_var(
-				ctx->terms, ctx->type_declarations, codomain_body,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), codomain_body,
 				codomain_binder, classifier_argument, &reinstantiated
 			) != 0 || prototype_judgement_classifier_conversion(
 				ctx->terms, ctx->type_declarations,
@@ -1003,7 +1003,7 @@ static int operation_refine_classifier_from_expected(
 				ctx->terms, operation->binding_id,
 				&body_binder_var
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				ctx->terms, ctx->type_declarations, expected_body,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), expected_body,
 				expected_binder, body_binder_var, &specialized_body
 			) != 0) {
 			return -1;
@@ -1136,8 +1136,7 @@ static int operation_refine_classifier_from_expected(
 			}
 			if (ctx->terms->terms[scrutinee].tag == PROTOTYPE_TERM_VAR) {
 				abstract_status = prototype_term_graph_substitute_bound_var(
-					ctx->terms,
-					ctx->type_declarations,
+					ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 					expected_classifier,
 					ctx->terms->terms[scrutinee].as.var.binding_id,
 					motive_var,
@@ -1145,8 +1144,7 @@ static int operation_refine_classifier_from_expected(
 				);
 			} else {
 				abstract_status = prototype_term_graph_replace_exact(
-					ctx->terms,
-					ctx->type_declarations,
+					ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 					expected_classifier,
 					scrutinee,
 					motive_var,
@@ -2563,8 +2561,7 @@ static int compile_pending_with_workspace(
 				&terms->terms[match->as.match.scrutinee];
 			if (scrutinee->tag == PROTOTYPE_TERM_VAR) {
 				abstract_status = prototype_term_graph_substitute_bound_var(
-					terms,
-					type_declarations,
+					terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 					classifier,
 					scrutinee->as.var.binding_id,
 					motive_variable,
@@ -2572,8 +2569,7 @@ static int compile_pending_with_workspace(
 				);
 			} else {
 				abstract_status = prototype_term_graph_replace_exact(
-					terms,
-					type_declarations,
+					terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 					classifier,
 					match->as.match.scrutinee,
 					motive_variable,

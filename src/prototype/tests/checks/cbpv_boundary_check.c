@@ -226,8 +226,7 @@ int main(void) {
 			terminal_effect_row,
 			&scoped_terminal_row
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			&term_db,
-			&type_db,
+			&term_db, prototype_type_view_rebuild_context_from_db(&type_db),
 			scoped_symbolic_row,
 			99,
 			terminal_effect_row,
@@ -274,7 +273,7 @@ int main(void) {
 			&term_db, &type_db, pure_computation, partial_pure_computation
 		).status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL ||
 		prototype_term_graph_substitute_bound_var(
-			&term_db, &type_db, partial_symbolic_computation, 99,
+			&term_db, prototype_type_view_rebuild_context_from_db(&type_db), partial_symbolic_computation, 99,
 			terminal_effect_row, &substituted_partial_computation
 		) != 0 || prototype_term_classifier_view(
 			&term_db, substituted_partial_computation, &view

@@ -1085,7 +1085,7 @@ int prototype_judgement_apply_indexed_motive(
 		}
 		if (beta_reduce) {
 			if (prototype_term_graph_substitute_bound_var(
-					terms, type_declarations,
+					terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 					terms->terms[current].as.lambda.body,
 					terms->terms[current].as.lambda.binding_id,
 					argument, &current
@@ -1102,7 +1102,7 @@ int prototype_judgement_apply_indexed_motive(
 		if (current >= terms->term_count ||
 			terms->terms[current].tag != PROTOTYPE_TERM_LAMBDA ||
 			prototype_term_graph_substitute_bound_var(
-				terms, type_declarations,
+				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 				terms->terms[current].as.lambda.body,
 				terms->terms[current].as.lambda.binding_id,
 				value, &current
@@ -1187,7 +1187,7 @@ int prototype_judgement_project_pure_sequence_results(
 			}
 		}
 		if (prototype_term_graph_substitute_bound_var(
-				terms, type_declarations, projected,
+				terms, prototype_type_view_rebuild_context_from_db(type_declarations), projected,
 				continuation->binding_id, value, &projected
 			) != 0) {
 			return -1;

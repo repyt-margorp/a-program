@@ -4023,8 +4023,7 @@ static int operation_solver_freeze_occurrences(
 					ctx->effect_solver.metas[effect_meta_id].placeholder_row
 				].as.effect_row_var.binding_id;
 				if (prototype_term_graph_substitute_bound_var(
-						ctx->terms,
-						ctx->type_declarations,
+						ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 						frozen->binder_classifier,
 						binding_id,
 						ctx->effect_solver.metas[effect_meta_id].materialized_row,

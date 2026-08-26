@@ -2386,8 +2386,7 @@
 	}
 	uint32_t pi_degeneracy_family;
 	if (prototype_term_graph_substitute_bound_var(
-			&term_db,
-			&type_db,
+			&term_db, prototype_type_view_rebuild_context_from_db(&type_db),
 			bool_function_identity_certificate->data.identity_type.
 				identity_type_term_id,
 			bool_function_identity_certificate->data.identity_type.
@@ -2395,8 +2394,7 @@
 			identity_function_value,
 			&pi_degeneracy_family
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			&term_db,
-			&type_db,
+			&term_db, prototype_type_view_rebuild_context_from_db(&type_db),
 			pi_degeneracy_family,
 			bool_function_identity_certificate->data.identity_type.
 				right_endpoint_binding_id,
@@ -3511,8 +3509,7 @@
 				&binder,
 				&body
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				&term_db,
-				&type_db,
+				&term_db, prototype_type_view_rebuild_context_from_db(&type_db),
 				body,
 				binder,
 				box_square_field_terms[i],

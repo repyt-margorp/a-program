@@ -248,8 +248,7 @@ static int instantiate_fold_clause_classifier(
 		return -1;
 	}
 	return prototype_term_graph_substitute_bound_var(
-		terms,
-		type_declarations,
+		terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 		classifier,
 		terms->terms[generic.effect_row].as.effect_row_var.binding_id,
 		concrete.effect_row,
@@ -2373,8 +2372,7 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 		}
 		if (row >= terms->term_count ||
 			prototype_term_graph_substitute_bound_var(
-				terms,
-				type_declarations,
+				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 				quantified->as.effect_row_forall.body,
 				quantified->as.effect_row_forall.binding_id,
 				row,
@@ -2485,8 +2483,7 @@ static int instantiate_pure_family_in_context(
 		if (prototype_term_var(
 				terms, context->binding_id, &canonical_var
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				terms,
-				type_declarations,
+				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 				body,
 				binding_id,
 				canonical_var,
@@ -2864,15 +2861,13 @@ static int classifier_instantiate_binding_pair(
 		return -1;
 	}
 	return prototype_term_graph_substitute_bound_var(
-		terms,
-		type_declarations,
+		terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 		expected_body,
 		expected_binding,
 		comparison_term,
 		p_expected
 	) != 0 || prototype_term_graph_substitute_bound_var(
-		terms,
-		type_declarations,
+		terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 		actual_body,
 		actual_binding,
 		comparison_term,
@@ -3456,8 +3451,7 @@ static int expected_effect_row_solve_classifier(
 				expected_term->as.effect_row_forall.binding_id,
 				&expected_row
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				solver->terms,
-				solver->type_declarations,
+				solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
 				actual_term->as.effect_row_forall.body,
 				actual_term->as.effect_row_forall.binding_id,
 				expected_row,
@@ -3501,8 +3495,7 @@ static int expected_effect_row_solve_classifier(
 			}
 		}
 		if (row_status > 0 && prototype_term_graph_substitute_bound_var(
-				solver->terms,
-				solver->type_declarations,
+				solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
 				actual_term->as.effect_row_forall.body,
 				actual_term->as.effect_row_forall.binding_id,
 				row,
@@ -3598,15 +3591,13 @@ static int expected_effect_row_solve_classifier(
 					prototype_term_var(
 						solver->terms, comparison_binder, &comparison_var
 					) != 0 || prototype_term_graph_substitute_bound_var(
-						solver->terms,
-						solver->type_declarations,
+						solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
 						expected_body,
 						solver->terms->case_binders[expected_binder_index].binding_id,
 						comparison_var,
 						&expected_body
 					) != 0 || prototype_term_graph_substitute_bound_var(
-						solver->terms,
-						solver->type_declarations,
+						solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
 						actual_body,
 						solver->terms->case_binders[actual_binder_index].binding_id,
 						comparison_var,
@@ -3766,15 +3757,13 @@ static int expected_effect_row_solve_classifier(
 			prototype_term_var(
 				solver->terms, comparison_binder, &comparison_var
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				solver->terms,
-				solver->type_declarations,
+				solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
 				expected_body,
 				expected_binder,
 				comparison_var,
 				&instantiated_expected
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				solver->terms,
-				solver->type_declarations,
+				solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
 				actual_body,
 				actual_binder,
 				comparison_var,
@@ -3827,15 +3816,13 @@ int prototype_judgement_solve_expected_effect_rows(
 	uint32_t solved_actual = actual;
 	for (uint32_t i = 0; i < solver.solution_count; ++i) {
 		if (prototype_term_graph_substitute_bound_var(
-				terms,
-				type_declarations,
+				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 				solved,
 				solver.solutions[i].binding_id,
 				solver.solutions[i].row,
 				&solved
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				terms,
-				type_declarations,
+				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 				solved_actual,
 				solver.solutions[i].binding_id,
 				solver.solutions[i].row,

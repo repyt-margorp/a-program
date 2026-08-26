@@ -1228,15 +1228,13 @@ static int hott_action_certificate_is_valid(
 			uint32_t expected_family = identity_certificate->data.identity_type.
 				identity_type_term_id;
 			if (prototype_term_graph_substitute_bound_var(
-					(struct prototype_term_db*)terms,
-					type_declarations,
+					(struct prototype_term_db*)terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 					expected_family,
 					identity_certificate->data.identity_type.left_endpoint_binding_id,
 					left->subject,
 					&expected_family
 				) != 0 || prototype_term_graph_substitute_bound_var(
-					(struct prototype_term_db*)terms,
-					type_declarations,
+					(struct prototype_term_db*)terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 					expected_family,
 					identity_certificate->data.identity_type.right_endpoint_binding_id,
 					right->subject,

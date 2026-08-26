@@ -1,5 +1,6 @@
-#include "a_program/checker/module.h"
+#include "internal.h"
 
+#include "a_program/core/term_schema.h"
 #include "a_program/dimension/operator.h"
 #include "a_program/graph/compile_metadata.h"
 #include "a_program/graph/verification.h"
@@ -243,6 +244,216 @@ static int semantic_effect_operation_exists(
 	return 0;
 }
 
+static int semantic_term_reader_read_term(
+	const void* state,
+	uint32_t term_id,
+	const struct prototype_term** p_term
+) {
+	const struct prototype_semantic_term_graph_view* graph = state;
+	if (!graph || !p_term || term_id >= graph->term_count) return -1;
+	*p_term = &graph->terms[term_id];
+	return 0;
+}
+
+static int semantic_term_reader_read_case(
+	const void* state,
+	uint32_t case_id,
+	const struct prototype_match_case** p_case
+) {
+	const struct prototype_semantic_term_graph_view* graph = state;
+	if (!graph || !p_case || case_id >= graph->case_count) return -1;
+	*p_case = &graph->cases[case_id];
+	return 0;
+}
+
+static int semantic_term_reader_read_case_binder(
+	const void* state,
+	uint32_t binder_id,
+	const struct prototype_case_binder** p_binder
+) {
+	const struct prototype_semantic_term_graph_view* graph = state;
+	if (!graph || !p_binder || binder_id >= graph->case_binder_count) return -1;
+	*p_binder = &graph->case_binders[binder_id];
+	return 0;
+}
+
+static int semantic_term_reader_read_ih_scope(
+	const void* state,
+	uint32_t scope_id,
+	struct prototype_term_structural_ih_scope* p_scope
+) {
+	const struct prototype_semantic_term_graph_view* graph = state;
+	if (!graph || !p_scope || scope_id >= graph->ih_scope_count) return -1;
+	p_scope->match_term = graph->ih_scopes[scope_id].match_term;
+	p_scope->scrutinee_binding_id =
+		graph->ih_scopes[scope_id].scrutinee_binding_id;
+	return 0;
+}
+
+static int semantic_term_reader_read_fold_clause(
+	const void* state,
+	uint32_t clause_id,
+	const struct prototype_computation_fold_clause** p_clause
+) {
+	const struct prototype_semantic_term_graph_view* graph = state;
+	if (!graph || !p_clause || clause_id >= graph->computation_fold_clause_count) {
+		return -1;
+	}
+	*p_clause = &graph->computation_fold_clauses[clause_id];
+	return 0;
+}
+
+int prototype_semantic_term_structural_reader(
+	const struct prototype_semantic_term_graph_view* graph,
+	struct prototype_term_structural_reader* p_reader
+) {
+	if (!graph || !p_reader || (graph->term_count != 0 && !graph->terms)) {
+		return -1;
+	}
+	*p_reader = (struct prototype_term_structural_reader) {
+		.state = graph,
+		.term_count = graph->term_count,
+		.case_count = graph->case_count,
+		.case_binder_count = graph->case_binder_count,
+		.ih_scope_count = graph->ih_scope_count,
+		.fold_clause_count = graph->computation_fold_clause_count,
+		.read_term = semantic_term_reader_read_term,
+		.read_case = semantic_term_reader_read_case,
+		.read_case_binder = semantic_term_reader_read_case_binder,
+		.read_ih_scope = semantic_term_reader_read_ih_scope,
+		.read_fold_clause = semantic_term_reader_read_fold_clause
+	};
+	return 0;
+}
+
+static int semantic_context_reader_read(
+	const void* state,
+	uint32_t context_id,
+	struct prototype_context_structural_record* p_record
+) {
+	const struct prototype_semantic_context_graph_view* graph = state;
+	if (!graph || !p_record || context_id >= graph->context_count) return -1;
+	const struct prototype_semantic_context* context = &graph->contexts[context_id];
+	*p_record = (struct prototype_context_structural_record) {
+		.parent = context->parent,
+		.binding_id = context->binding_id,
+		.classifier = context->classifier,
+		.extension_kind = context->extension_kind,
+		.producer_computation = context->producer_computation
+	};
+	return 0;
+}
+
+int prototype_semantic_context_structural_reader(
+	const struct prototype_semantic_context_graph_view* graph,
+	struct prototype_context_structural_reader* p_reader
+) {
+	if (!graph || !p_reader || graph->context_count == 0 || !graph->contexts) {
+		return -1;
+	}
+	*p_reader = (struct prototype_context_structural_reader) {
+		.state = graph,
+		.count = graph->context_count,
+		.read = semantic_context_reader_read
+	};
+	return 0;
+}
+
+static int semantic_substitution_reader_read(
+	const void* state,
+	uint32_t substitution_id,
+	struct prototype_substitution_structural_record* p_record
+) {
+	const struct prototype_semantic_substitution_graph_view* graph = state;
+	if (!graph || !p_record || substitution_id >= graph->substitution_count) {
+		return -1;
+	}
+	const struct prototype_semantic_substitution* substitution =
+		&graph->substitutions[substitution_id];
+	*p_record = (struct prototype_substitution_structural_record) {
+		.kind = substitution->kind,
+		.source_context = substitution->source_context,
+		.target_context = substitution->target_context,
+		.first = substitution->first,
+		.second = substitution->second,
+		.term = substitution->term,
+		.term_classifier = substitution->term_classifier
+	};
+	return 0;
+}
+
+int prototype_semantic_substitution_structural_reader(
+	const struct prototype_semantic_substitution_graph_view* graph,
+	struct prototype_substitution_structural_reader* p_reader
+) {
+	if (!graph || !p_reader ||
+		(graph->substitution_count != 0 && !graph->substitutions)) return -1;
+	*p_reader = (struct prototype_substitution_structural_reader) {
+		.state = graph,
+		.count = graph->substitution_count,
+		.read = semantic_substitution_reader_read
+	};
+	return 0;
+}
+
+static int semantic_term_symbol_field_valid(
+	const struct prototype_semantic_symbol_table_view* symbols,
+	const struct prototype_term_field_value* field
+) {
+	if (field->as.i32 == PROTOTYPE_BASE_NAMESPACE_ID) {
+		return field->role ==
+				PROTOTYPE_TERM_FIELD_ROLE_TYPE_DECLARATION_NAMESPACE ||
+			field->role == PROTOTYPE_TERM_FIELD_ROLE_TYPE_VIEW_NAMESPACE ||
+			field->role == PROTOTYPE_TERM_FIELD_ROLE_EXTERNAL_NAMESPACE ||
+			field->role == PROTOTYPE_TERM_FIELD_ROLE_PRIMITIVE_TYPE;
+	}
+	return semantic_symbol_exists(symbols, field->as.i32);
+}
+
+static int semantic_term_field_structurally_valid(
+	const struct prototype_elaborated_module_view* module,
+	const struct prototype_term* term,
+	const struct prototype_term_field_value* field
+) {
+	const struct prototype_semantic_term_graph_view* graph = &module->terms;
+	switch (field->kind) {
+		case PROTOTYPE_TERM_FIELD_TERM_REQUIRED:
+			return semantic_term_exists(graph, field->as.u32);
+		case PROTOTYPE_TERM_FIELD_TERM_OPTIONAL:
+			return field->as.u32 == PROTOTYPE_INVALID_ID ||
+				semantic_term_exists(graph, field->as.u32);
+		case PROTOTYPE_TERM_FIELD_BINDING:
+			return field->as.u32 != PROTOTYPE_INVALID_ID;
+		case PROTOTYPE_TERM_FIELD_IH_SCOPE:
+			return field->as.u32 < graph->ih_scope_count;
+		case PROTOTYPE_TERM_FIELD_CASE_SLICE:
+			return field->as.u32 <= graph->case_count &&
+				term->as.match.case_count <= graph->case_count - field->as.u32;
+		case PROTOTYPE_TERM_FIELD_FOLD_CLAUSE_SLICE:
+			return field->as.u32 <= graph->computation_fold_clause_count &&
+				term->as.computation_fold.clause_count <=
+					graph->computation_fold_clause_count - field->as.u32;
+		case PROTOTYPE_TERM_FIELD_TYPE_DECLARATION:
+			return field->as.u32 < module->type_schema.type_count;
+		case PROTOTYPE_TERM_FIELD_SYMBOL:
+			return semantic_term_symbol_field_valid(&module->symbols, field);
+		case PROTOTYPE_TERM_FIELD_OPERATION:
+			return semantic_effect_operation_exists(
+				&module->intrinsic_environment, field->as.i32
+			);
+		case PROTOTYPE_TERM_FIELD_DIMENSION_OPERATOR:
+			return field->as.u32 < module->dimensions.operator_count;
+		case PROTOTYPE_TERM_FIELD_REPRESENTATION:
+		case PROTOTYPE_TERM_FIELD_UNIVERSE_LEVEL:
+		case PROTOTYPE_TERM_FIELD_SCALAR_U32:
+		case PROTOTYPE_TERM_FIELD_SCALAR_I32:
+		case PROTOTYPE_TERM_FIELD_SCALAR_I64:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 static int semantic_term_graph_validate(
 	const struct prototype_elaborated_module_view* module
 ) {
@@ -291,13 +502,21 @@ static int semantic_term_graph_validate(
 
 	for (uint32_t i = 0; i < graph->term_count; ++i) {
 		const struct prototype_term* term = &graph->terms[i];
+		size_t field_count;
+		if (prototype_term_schema_field_count(
+				term->tag, &field_count
+			) != 0) {
+			return -1;
+		}
+		for (size_t j = 0; j < field_count; ++j) {
+			struct prototype_term_field_value field;
+			if (prototype_term_schema_field_at(term, j, &field) != 0 ||
+				!semantic_term_field_structurally_valid(module, term, &field)) {
+				return -1;
+			}
+		}
 		uint32_t constructor_count = 0;
 		switch (term->tag) {
-			case PROTOTYPE_TERM_VAR:
-				if (term->as.var.binding_id == PROTOTYPE_INVALID_ID) {
-					return -1;
-				}
-				break;
 			case PROTOTYPE_TERM_CONSTRUCTOR:
 				if (semantic_constructor_owner_arity(
 						graph,
@@ -305,33 +524,6 @@ static int semantic_term_graph_validate(
 						&constructor_count
 					) != 0 || term->as.constructor.constructor_id >=
 						constructor_count) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_APP:
-				if (!semantic_term_exists(graph, term->as.app.function) ||
-					!semantic_term_exists(graph, term->as.app.argument)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_LAMBDA:
-				if (term->as.lambda.binding_id == PROTOTYPE_INVALID_ID ||
-					!semantic_term_exists(graph, term->as.lambda.body)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_PI:
-				if (!semantic_term_exists(graph, term->as.pi.domain) ||
-					!semantic_term_exists(graph, term->as.pi.codomain_family)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_MATCH:
-				if (!semantic_term_exists(graph, term->as.match.scrutinee) ||
-					term->as.match.first_case > graph->case_count ||
-					term->as.match.case_count > graph->case_count -
-						term->as.match.first_case ||
-					term->as.match.ih_scope_id >= graph->ih_scope_count) {
 					return -1;
 				}
 				break;
@@ -346,170 +538,24 @@ static int semantic_term_graph_validate(
 					return -1;
 				}
 				break;
-			case PROTOTYPE_TERM_TYPE_DECLARATION:
-				if (term->as.type_declaration.type_id >=
-						module->type_schema.type_count ||
-					!semantic_qualified_name_valid(
-						&module->symbols,
-						term->as.type_declaration.identity
-					)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-				if (term->as.induction_hypothesis.ih_scope_id >=
-						graph->ih_scope_count ||
-					!semantic_term_exists(
-						graph, term->as.induction_hypothesis.argument
-					)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_UNIVERSE_VAR:
-			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
-			case PROTOTYPE_TERM_PRIMITIVE_INT:
-			case PROTOTYPE_TERM_PRIMITIVE_INT64:
-			case PROTOTYPE_TERM_INT_LITERAL:
-			case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
-			case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
-			case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
-			case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
-			case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
-				break;
-			case PROTOTYPE_TERM_TEXT_LITERAL:
-				if (!semantic_symbol_exists(
-						&module->symbols, term->as.text_literal.text_symbol_id
-					)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_EXTERNAL_REF:
-				if (!semantic_qualified_name_valid(
-						&module->symbols, term->as.external_ref.name
-					)) {
-					return -1;
-				}
-				break;
 			case PROTOTYPE_TERM_PURE_PRIMITIVE:
 				if (!semantic_pure_primitive_exists(
 						&module->intrinsic_environment,
 						term->as.pure_primitive.primitive_id
-					) || (term->as.pure_primitive.type_symbol_id >= 0 &&
-					 !semantic_symbol_exists(
-						&module->symbols,
-						term->as.pure_primitive.type_symbol_id
-					))) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_EFFECT_OPERATION:
-				if (!semantic_effect_operation_exists(
-						&module->intrinsic_environment,
-						term->as.effect_operation.operation_id
-					) || !semantic_term_exists(
-						graph, term->as.effect_operation.classifier
-					)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_TYPE_VIEW:
-				if (term->as.type_view.view_type_id >=
-						module->type_schema.type_count ||
-					!semantic_qualified_name_valid(
-						&module->symbols, term->as.type_view.identity
-					) || !semantic_term_exists(graph, term->as.type_view.core) ||
-					!semantic_term_exists(graph, term->as.type_view.source)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				if (term->as.effect_row_var.binding_id == PROTOTYPE_INVALID_ID) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-				if (!semantic_term_exists(graph, term->as.effect_row_union.left) ||
-					!semantic_term_exists(graph, term->as.effect_row_union.right)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-				if (term->as.effect_row_forall.binding_id == PROTOTYPE_INVALID_ID ||
-					!semantic_term_exists(graph, term->as.effect_row_forall.body)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-				if (!semantic_effect_operation_exists(
-						&module->intrinsic_environment,
-						term->as.effect_row_operation.operation_id
-					) || !semantic_term_exists(
-						graph, term->as.effect_row_operation.latent_row
 					)) {
 					return -1;
 				}
 				break;
 			case PROTOTYPE_TERM_COMPUTATION_TYPE:
-				if (!semantic_term_exists(graph, term->as.computation_type.label) ||
-					!semantic_term_exists(graph, term->as.computation_type.result) ||
-					(term->as.computation_type.totality !=
+				if (term->as.computation_type.totality !=
 						PROTOTYPE_COMPUTATION_TOTALITY_TOTAL &&
 					 term->as.computation_type.totality !=
-						PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_THUNK_TYPE:
-				if (!semantic_term_exists(graph, term->as.thunk_type.computation)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_RETURN:
-				if (!semantic_term_exists(graph, term->as.return_term.value)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_THUNK:
-				if (!semantic_term_exists(graph, term->as.thunk.computation)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_FORCE:
-				if (!semantic_term_exists(graph, term->as.force.value)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_OPERATION_REQUEST:
-				if (!semantic_term_exists(graph, term->as.operation_request.operation) ||
-					!semantic_term_exists(graph, term->as.operation_request.argument) ||
-					!semantic_term_exists(
-						graph, term->as.operation_request.continuation
-					)) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_COMPUTATION_FOLD:
-				if (!semantic_term_exists(
-						graph, term->as.computation_fold.computation
-					) || !semantic_term_exists(
-						graph, term->as.computation_fold.return_clause
-					) || term->as.computation_fold.first_clause >
-						graph->computation_fold_clause_count ||
-					term->as.computation_fold.clause_count >
-						graph->computation_fold_clause_count -
-							term->as.computation_fold.first_clause) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_TERM_DIMENSION_ACTION:
-				if (!semantic_term_exists(graph, term->as.dimension_action.source) ||
-					term->as.dimension_action.operator_id >=
-						module->dimensions.operator_count) {
+						PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE) {
 					return -1;
 				}
 				break;
 			default:
-				return -1;
+				break;
 		}
 	}
 	return 0;
@@ -590,6 +636,57 @@ static int semantic_occurrence_ranges_valid(
 			graph->fold_clause_count - occurrence->first_fold_clause;
 }
 
+struct semantic_term_root_validation_state {
+	const struct prototype_elaborated_module_view* module;
+};
+
+static int semantic_reference_valid(
+	void* state,
+	int target,
+	int requirement,
+	uint32_t reference
+) {
+	const struct semantic_term_root_validation_state* validation = state;
+	if (!validation || !validation->module ||
+		(requirement != PROTOTYPE_CHECKER_REFERENCE_REQUIRED &&
+		 requirement != PROTOTYPE_CHECKER_REFERENCE_OPTIONAL)) return -1;
+	if (requirement == PROTOTYPE_CHECKER_REFERENCE_OPTIONAL &&
+		reference == PROTOTYPE_INVALID_ID) return 0;
+	const struct prototype_elaborated_module_view* module = validation->module;
+	switch (target) {
+		case PROTOTYPE_CHECKER_REFERENCE_TERM:
+			return semantic_term_exists(&module->terms, reference) ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_CONTEXT:
+			return reference < module->contexts.context_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_SUBSTITUTION:
+			return reference < module->substitutions.substitution_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_IH_SCOPE:
+			return reference < module->terms.ih_scope_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_OCCURRENCE:
+			return reference < module->occurrences.occurrence_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_CONTRACT:
+			return reference < module->contracts.contract_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_TYPE:
+			return reference < module->type_schema.type_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_CONSTRUCTOR:
+			return reference < module->type_schema.constructor_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_TERM_EXPORT:
+			return reference < module->interface.term_export_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_TYPE_EXPORT:
+			return reference < module->interface.type_export_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_CONSTRUCTOR_EXPORT:
+			return reference < module->interface.constructor_export_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_FUNCTION_GRAPH_ASSOCIATION:
+			return reference <
+				module->interface.function_graph_association_count ? 0 : -1;
+		case PROTOTYPE_CHECKER_REFERENCE_SYMBOL:
+			return (int32_t)reference == PROTOTYPE_BASE_NAMESPACE_ID ||
+				semantic_symbol_exists(&module->symbols, (int32_t)reference) ? 0 : -1;
+		default:
+			return -1;
+	}
+}
+
 int prototype_elaborated_module_validate_structure(
 	const struct prototype_elaborated_module_view* module
 ) {
@@ -651,6 +748,14 @@ int prototype_elaborated_module_validate_structure(
 	if (semantic_term_graph_validate(module) != 0) {
 		return -1;
 	}
+	struct semantic_term_root_validation_state root_validation = {
+		.module = module
+	};
+	if (prototype_checker_visit_semantic_references(
+			module, semantic_reference_valid, &root_validation
+		) != 0) {
+		return -1;
+	}
 	for (size_t i = 0; i < module->universes.level_count; ++i) {
 		if (module->universes.levels[i].value < 0) {
 			return -1;
@@ -674,112 +779,18 @@ int prototype_elaborated_module_validate_structure(
 		}
 	}
 
-	for (uint32_t i = 0; i < module->contexts.context_count; ++i) {
-		const struct prototype_semantic_context* context =
-			&module->contexts.contexts[i];
-		if ((i == 0 && (context->parent != PROTOTYPE_INVALID_ID ||
-			 context->binding_id != PROTOTYPE_INVALID_ID ||
-			 context->classifier != PROTOTYPE_INVALID_ID ||
-			 context->extension_kind !=
-				PROTOTYPE_SEMANTIC_CONTEXT_EXTENSION_INVALID ||
-			 context->producer_computation != PROTOTYPE_INVALID_ID)) ||
-			(i != 0 && (context->parent >= i ||
-			 context->binding_id == PROTOTYPE_INVALID_ID ||
-			 context->classifier == PROTOTYPE_INVALID_ID ||
-			 (context->extension_kind !=
-				PROTOTYPE_SEMANTIC_CONTEXT_EXTENSION_VALUE &&
-			  context->extension_kind !=
-				PROTOTYPE_SEMANTIC_CONTEXT_EXTENSION_SEQUENCE_RESULT) ||
-			 ((context->extension_kind ==
-				PROTOTYPE_SEMANTIC_CONTEXT_EXTENSION_VALUE) !=
-			  (context->producer_computation == PROTOTYPE_INVALID_ID)))) ||
-			!semantic_optional_term_exists(
-				&module->terms, context->classifier
-			) || !semantic_optional_term_exists(
-				&module->terms, context->producer_computation
-			)) {
-			return -1;
-		}
-	}
-
-	for (uint32_t i = 0; i < module->substitutions.substitution_count; ++i) {
-		const struct prototype_semantic_substitution* substitution =
-			&module->substitutions.substitutions[i];
-		if (substitution->kind < PROTOTYPE_SEMANTIC_SUBSTITUTION_IDENTITY ||
-			substitution->kind > PROTOTYPE_SEMANTIC_SUBSTITUTION_COMPOSE ||
-			!semantic_context_exists(
-				&module->contexts, substitution->source_context
-			) || !semantic_context_exists(
-				&module->contexts, substitution->target_context
-			) || !semantic_optional_term_exists(
-				&module->terms, substitution->term
-			) || !semantic_optional_term_exists(
-				&module->terms, substitution->term_classifier
-			)) {
-			return -1;
-		}
-		int empty_payload = substitution->first == PROTOTYPE_INVALID_ID &&
-			substitution->second == PROTOTYPE_INVALID_ID &&
-			substitution->term == PROTOTYPE_INVALID_ID &&
-			substitution->term_classifier == PROTOTYPE_INVALID_ID;
-		switch (substitution->kind) {
-			case PROTOTYPE_SEMANTIC_SUBSTITUTION_IDENTITY:
-				if (!empty_payload || substitution->source_context !=
-					substitution->target_context) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_SEMANTIC_SUBSTITUTION_EMPTY:
-				if (!empty_payload || substitution->target_context != 0) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_SEMANTIC_SUBSTITUTION_PROJECTION:
-				if (!empty_payload || substitution->source_context == 0 ||
-					module->contexts.contexts[
-						substitution->source_context
-					].parent != substitution->target_context) {
-					return -1;
-				}
-				break;
-			case PROTOTYPE_SEMANTIC_SUBSTITUTION_EXTEND: {
-				if (substitution->first >= i ||
-					substitution->second != PROTOTYPE_INVALID_ID ||
-					substitution->term == PROTOTYPE_INVALID_ID ||
-					substitution->term_classifier == PROTOTYPE_INVALID_ID ||
-					substitution->target_context == 0) {
-					return -1;
-				}
-				const struct prototype_semantic_substitution* prefix =
-					&module->substitutions.substitutions[substitution->first];
-				if (prefix->source_context != substitution->source_context ||
-					prefix->target_context != module->contexts.contexts[
-						substitution->target_context
-					].parent) {
-					return -1;
-				}
-				break;
-			}
-			case PROTOTYPE_SEMANTIC_SUBSTITUTION_COMPOSE: {
-				if (substitution->first >= i || substitution->second >= i ||
-					substitution->term != PROTOTYPE_INVALID_ID ||
-					substitution->term_classifier != PROTOTYPE_INVALID_ID) {
-					return -1;
-				}
-				const struct prototype_semantic_substitution* outer =
-					&module->substitutions.substitutions[substitution->first];
-				const struct prototype_semantic_substitution* inner =
-					&module->substitutions.substitutions[substitution->second];
-				if (outer->source_context != inner->target_context ||
-					substitution->source_context != inner->source_context ||
-					substitution->target_context != outer->target_context) {
-					return -1;
-				}
-				break;
-			}
-			default:
-				return -1;
-		}
+	struct prototype_context_structural_reader context_reader;
+	struct prototype_substitution_structural_reader substitution_reader;
+	if (prototype_semantic_context_structural_reader(
+			&module->contexts, &context_reader
+		) != 0 || prototype_semantic_substitution_structural_reader(
+			&module->substitutions, &substitution_reader
+		) != 0 || prototype_context_structural_validate(
+			&context_reader, module->terms.term_count
+		) != 0 || prototype_substitution_structural_validate(
+			&substitution_reader, &context_reader, module->terms.term_count
+		) != 0) {
+		return -1;
 	}
 
 	for (uint32_t i = 0; i < module->type_schema.type_count; ++i) {
@@ -1133,6 +1144,8 @@ static int project_structural_graphs(
 ) {
 	unsigned char* context_marked = NULL;
 	unsigned char* substitution_marked = NULL;
+	uint32_t* substitution_queue = NULL;
+	size_t substitution_queue_count = 0;
 	uint32_t* context_relocation = NULL;
 	uint32_t* substitution_relocation = NULL;
 	if (!type_schema || !snapshot || !module || !p_context_relocation ||
@@ -1151,10 +1164,15 @@ static int project_structural_graphs(
 			snapshot->substitutions.substitution_count *
 				sizeof(*substitution_relocation)
 		);
+		substitution_queue = malloc(
+			snapshot->substitutions.substitution_count *
+				sizeof(*substitution_queue)
+		);
 	}
 	if (!context_marked || !context_relocation ||
 		(snapshot->substitutions.substitution_count != 0 &&
-		 (!substitution_marked || !substitution_relocation))) {
+		 (!substitution_marked || !substitution_relocation ||
+		  !substitution_queue))) {
 		goto fail;
 	}
 	for (size_t i = 0; i < snapshot->contexts.context_count; ++i) {
@@ -1222,15 +1240,15 @@ static int project_structural_graphs(
 		}
 	}
 
-	int changed;
-	do {
-		changed = 0;
-		for (uint32_t i = 0; i < snapshot->substitutions.substitution_count; ++i) {
-			if (!substitution_marked[i]) {
-				continue;
-			}
-			const struct prototype_substitution* substitution =
-				&snapshot->substitutions.substitutions[i];
+	for (uint32_t i = 0; i < snapshot->substitutions.substitution_count; ++i) {
+		if (substitution_marked[i]) {
+			substitution_queue[substitution_queue_count++] = i;
+		}
+	}
+	for (size_t cursor = 0; cursor < substitution_queue_count; ++cursor) {
+		uint32_t i = substitution_queue[cursor];
+		const struct prototype_substitution* substitution =
+			&snapshot->substitutions.substitutions[i];
 			if (mark_context_path(
 					&snapshot->contexts,
 					substitution->source_context,
@@ -1256,11 +1274,10 @@ static int project_structural_graphs(
 				}
 				if (!substitution_marked[dependency]) {
 					substitution_marked[dependency] = 1;
-					changed = 1;
+					substitution_queue[substitution_queue_count++] = dependency;
 				}
 			}
-		}
-	} while (changed);
+	}
 
 	for (size_t i = 0; i < snapshot->contexts.context_count; ++i) {
 		if (context_marked[i]) {
@@ -1428,6 +1445,7 @@ static int project_structural_graphs(
 	};
 	free(context_marked);
 	free(substitution_marked);
+	free(substitution_queue);
 	*p_context_relocation = context_relocation;
 	*p_substitution_relocation = substitution_relocation;
 	return 0;
@@ -1435,6 +1453,7 @@ static int project_structural_graphs(
 fail:
 	free(context_marked);
 	free(substitution_marked);
+	free(substitution_queue);
 	free(context_relocation);
 	free(substitution_relocation);
 	return -1;
@@ -1625,18 +1644,6 @@ static int mark_semantic_symbol(
 	return 0;
 }
 
-static int mark_semantic_name(
-	unsigned char* marked,
-	size_t symbol_count,
-	struct prototype_qualified_name name
-) {
-	return mark_semantic_symbol(
-		marked, symbol_count, name.namespace_symbol_id
-	) == 0 && mark_semantic_symbol(
-		marked, symbol_count, name.name_symbol_id
-	) == 0 ? 0 : -1;
-}
-
 static int relocate_semantic_symbol(
 	const uint32_t* relocation,
 	size_t symbol_count,
@@ -1651,18 +1658,6 @@ static int relocate_semantic_symbol(
 	}
 	*p_symbol_id = (int)relocation[*p_symbol_id];
 	return 0;
-}
-
-static int relocate_semantic_name(
-	const uint32_t* relocation,
-	size_t symbol_count,
-	struct prototype_qualified_name* name
-) {
-	return relocate_semantic_symbol(
-		relocation, symbol_count, &name->namespace_symbol_id
-	) == 0 && relocate_semantic_symbol(
-		relocation, symbol_count, &name->name_symbol_id
-	) == 0 ? 0 : -1;
 }
 
 static int project_semantic_exports(
@@ -1923,49 +1918,24 @@ static int project_semantic_symbols(
 		relocation[i] = PROTOTYPE_INVALID_ID;
 	}
 	for (size_t i = 0; i < module->view.terms.term_count; ++i) {
-		struct prototype_term* term = &module->terms[i];
-		int mark_status = 0;
-		switch (term->tag) {
-			case PROTOTYPE_TERM_TEXT_LITERAL:
-				mark_status = mark_semantic_symbol(
-					marked,
-					source->storage.count,
-					term->as.text_literal.text_symbol_id
-				);
-				break;
-			case PROTOTYPE_TERM_EXTERNAL_REF:
-				mark_status = mark_semantic_name(
-					marked, source->storage.count, term->as.external_ref.name
-				);
-				break;
-			case PROTOTYPE_TERM_TYPE_DECLARATION:
-				mark_status = mark_semantic_name(
-					marked,
-					source->storage.count,
-					term->as.type_declaration.identity
-				);
-				break;
-			case PROTOTYPE_TERM_TYPE_VIEW:
-				mark_status = mark_semantic_name(
-					marked,
-					source->storage.count,
-					term->as.type_view.identity
-				);
-				break;
-			case PROTOTYPE_TERM_PURE_PRIMITIVE:
-				mark_status = mark_semantic_symbol(
-					marked,
-					source->storage.count,
-					term->as.pure_primitive.type_symbol_id
-				);
-				break;
-			default:
-				break;
+		const struct prototype_term* term = &module->terms[i];
+		size_t field_count;
+		if (prototype_term_schema_field_count(
+				term->tag, &field_count
+			) != 0) {
+			goto fail;
 		}
-		if (mark_status != 0) {
-			free(marked);
-			free(relocation);
-			return -1;
+		for (size_t j = 0; j < field_count; ++j) {
+			struct prototype_term_field_value field;
+			if (prototype_term_schema_field_at(term, j, &field) != 0) {
+				goto fail;
+			}
+			if (field.kind == PROTOTYPE_TERM_FIELD_SYMBOL &&
+				mark_semantic_symbol(
+					marked, source->storage.count, field.as.i32
+				) != 0) {
+				goto fail;
+			}
 		}
 	}
 	for (size_t i = 0; i < module->view.type_schema.type_count; ++i) {
@@ -2055,50 +2025,27 @@ static int project_semantic_symbols(
 	}
 	for (size_t i = 0; i < module->view.terms.term_count; ++i) {
 		struct prototype_term* term = &module->terms[i];
-		int relocation_status = 0;
-		switch (term->tag) {
-			case PROTOTYPE_TERM_TEXT_LITERAL:
-				relocation_status = relocate_semantic_symbol(
-					relocation,
-					source->storage.count,
-					&term->as.text_literal.text_symbol_id
-				);
-				break;
-			case PROTOTYPE_TERM_EXTERNAL_REF:
-				relocation_status = relocate_semantic_name(
-					relocation,
-					source->storage.count,
-					&term->as.external_ref.name
-				);
-				break;
-			case PROTOTYPE_TERM_TYPE_DECLARATION:
-				relocation_status = relocate_semantic_name(
-					relocation,
-					source->storage.count,
-					&term->as.type_declaration.identity
-				);
-				break;
-			case PROTOTYPE_TERM_TYPE_VIEW:
-				relocation_status = relocate_semantic_name(
-					relocation,
-					source->storage.count,
-					&term->as.type_view.identity
-				);
-				break;
-			case PROTOTYPE_TERM_PURE_PRIMITIVE:
-				relocation_status = relocate_semantic_symbol(
-					relocation,
-					source->storage.count,
-					&term->as.pure_primitive.type_symbol_id
-				);
-				break;
-			default:
-				break;
+		size_t field_count;
+		if (prototype_term_schema_field_count(
+				term->tag, &field_count
+			) != 0) {
+			goto fail;
 		}
-		if (relocation_status != 0) {
-			free(marked);
-			free(relocation);
-			return -1;
+		for (size_t j = 0; j < field_count; ++j) {
+			struct prototype_term_field_value field;
+			if (prototype_term_schema_field_at(term, j, &field) != 0) {
+				goto fail;
+			}
+			if (field.kind != PROTOTYPE_TERM_FIELD_SYMBOL) {
+				continue;
+			}
+			if (relocate_semantic_symbol(
+					relocation, source->storage.count, &field.as.i32
+				) != 0 || prototype_term_schema_field_write(
+					term, j, &field
+				) != 0) {
+				goto fail;
+			}
 		}
 	}
 	for (size_t i = 0; i < module->view.type_schema.type_count; ++i) {
@@ -2189,6 +2136,11 @@ static int project_semantic_symbols(
 	free(marked);
 	free(relocation);
 	return 0;
+
+fail:
+	free(marked);
+	free(relocation);
+	return -1;
 }
 
 static int project_semantic_dependencies(
@@ -2288,129 +2240,61 @@ static int mark_semantic_term_children(
 	uint32_t term_id
 ) {
 	const struct prototype_term* term = &module->terms[term_id];
-#define MARK_TERM(child) \
-	do { \
-		if (mark_semantic_term_id(module, marks, (child)) != 0) { \
-			return -1; \
-		} \
-	} while (0)
-	switch (term->tag) {
-		case PROTOTYPE_TERM_CONSTRUCTOR:
-			MARK_TERM(term->as.constructor.owner);
-			break;
-		case PROTOTYPE_TERM_APP:
-			MARK_TERM(term->as.app.function);
-			MARK_TERM(term->as.app.argument);
-			break;
-		case PROTOTYPE_TERM_LAMBDA:
-			MARK_TERM(term->as.lambda.body);
-			break;
-		case PROTOTYPE_TERM_PI:
-			MARK_TERM(term->as.pi.domain);
-			MARK_TERM(term->as.pi.codomain_family);
-			break;
-		case PROTOTYPE_TERM_MATCH:
-			MARK_TERM(term->as.match.scrutinee);
-			if (term->as.match.first_case > module->view.terms.case_count ||
-				term->as.match.case_count > module->view.terms.case_count -
-					term->as.match.first_case ||
-				term->as.match.ih_scope_id >= module->view.terms.ih_scope_count) {
-				return -1;
-			}
-			if (mark_semantic_ih_scope(
-					module, marks, term->as.match.ih_scope_id
-				) != 0) {
-				return -1;
-			}
-			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
-				uint32_t case_id = term->as.match.first_case + i;
-				marks->cases[case_id] = 1;
-				const struct prototype_match_case* match_case =
-					&module->term_cases[case_id];
-				MARK_TERM(match_case->body);
-				if (mark_optional_semantic_term_id(
-						module, marks, match_case->constructor_owner
-					) != 0) {
-					return -1;
-				}
-			}
-			break;
-		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			if (term->as.induction_hypothesis.ih_scope_id >=
-				module->view.terms.ih_scope_count) {
-				return -1;
-			}
-			if (mark_semantic_ih_scope(
-					module,
-					marks,
-					term->as.induction_hypothesis.ih_scope_id
-				) != 0) {
-				return -1;
-			}
-			MARK_TERM(term->as.induction_hypothesis.argument);
-			break;
-		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			MARK_TERM(term->as.effect_operation.classifier);
-			break;
-		case PROTOTYPE_TERM_TYPE_VIEW:
-			MARK_TERM(term->as.type_view.core);
-			MARK_TERM(term->as.type_view.source);
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-			MARK_TERM(term->as.effect_row_union.left);
-			MARK_TERM(term->as.effect_row_union.right);
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			MARK_TERM(term->as.effect_row_forall.body);
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			MARK_TERM(term->as.effect_row_operation.latent_row);
-			break;
-		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			MARK_TERM(term->as.computation_type.label);
-			MARK_TERM(term->as.computation_type.result);
-			break;
-		case PROTOTYPE_TERM_THUNK_TYPE:
-			MARK_TERM(term->as.thunk_type.computation);
-			break;
-		case PROTOTYPE_TERM_RETURN:
-			MARK_TERM(term->as.return_term.value);
-			break;
-		case PROTOTYPE_TERM_THUNK:
-			MARK_TERM(term->as.thunk.computation);
-			break;
-		case PROTOTYPE_TERM_FORCE:
-			MARK_TERM(term->as.force.value);
-			break;
-		case PROTOTYPE_TERM_OPERATION_REQUEST:
-			MARK_TERM(term->as.operation_request.operation);
-			MARK_TERM(term->as.operation_request.argument);
-			MARK_TERM(term->as.operation_request.continuation);
-			break;
-		case PROTOTYPE_TERM_COMPUTATION_FOLD:
-			MARK_TERM(term->as.computation_fold.computation);
-			MARK_TERM(term->as.computation_fold.return_clause);
-			if (term->as.computation_fold.first_clause >
-					module->view.terms.computation_fold_clause_count ||
-				term->as.computation_fold.clause_count >
-					module->view.terms.computation_fold_clause_count -
-						term->as.computation_fold.first_clause) {
-				return -1;
-			}
-			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
-				uint32_t clause_id = term->as.computation_fold.first_clause + i;
-				marks->fold_clauses[clause_id] = 1;
-				MARK_TERM(module->computation_fold_clauses[clause_id].operation);
-				MARK_TERM(module->computation_fold_clauses[clause_id].body);
-			}
-			break;
-		case PROTOTYPE_TERM_DIMENSION_ACTION:
-			MARK_TERM(term->as.dimension_action.source);
-			break;
-		default:
-			break;
+	size_t field_count;
+	if (prototype_term_schema_field_count(term->tag, &field_count) != 0) {
+		return -1;
 	}
-#undef MARK_TERM
+	for (size_t i = 0; i < field_count; ++i) {
+		struct prototype_term_field_value field;
+		if (prototype_term_schema_field_at(term, i, &field) != 0) return -1;
+		if (field.kind == PROTOTYPE_TERM_FIELD_TERM_REQUIRED) {
+			if (mark_semantic_term_id(module, marks, field.as.u32) != 0) return -1;
+		} else if (field.kind == PROTOTYPE_TERM_FIELD_TERM_OPTIONAL) {
+			if (mark_optional_semantic_term_id(
+					module, marks, field.as.u32
+				) != 0) return -1;
+		}
+	}
+	if (term->tag == PROTOTYPE_TERM_MATCH) {
+		if (term->as.match.first_case > module->view.terms.case_count ||
+			term->as.match.case_count > module->view.terms.case_count -
+				term->as.match.first_case ||
+			mark_semantic_ih_scope(
+				module, marks, term->as.match.ih_scope_id
+			) != 0) return -1;
+		for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
+			uint32_t case_id = term->as.match.first_case + i;
+			marks->cases[case_id] = 1;
+			const struct prototype_match_case* match_case =
+				&module->term_cases[case_id];
+			if (mark_semantic_term_id(
+					module, marks, match_case->body
+				) != 0 || mark_optional_semantic_term_id(
+					module, marks, match_case->constructor_owner
+				) != 0) return -1;
+		}
+	} else if (term->tag == PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+		if (mark_semantic_ih_scope(
+				module, marks, term->as.induction_hypothesis.ih_scope_id
+			) != 0) return -1;
+	} else if (term->tag == PROTOTYPE_TERM_COMPUTATION_FOLD) {
+		if (term->as.computation_fold.first_clause >
+				module->view.terms.computation_fold_clause_count ||
+			term->as.computation_fold.clause_count >
+				module->view.terms.computation_fold_clause_count -
+					term->as.computation_fold.first_clause) return -1;
+		for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
+			uint32_t clause_id = term->as.computation_fold.first_clause + i;
+			marks->fold_clauses[clause_id] = 1;
+			if (mark_semantic_term_id(
+					module, marks,
+					module->computation_fold_clauses[clause_id].operation
+				) != 0 || mark_semantic_term_id(
+					module, marks,
+					module->computation_fold_clauses[clause_id].body
+				) != 0) return -1;
+		}
+	}
 	return 0;
 }
 
@@ -2436,98 +2320,82 @@ static int relocate_optional_term_id(
 		relocate_required_term_id(relocation, source_count, p_term_id);
 }
 
+struct mark_semantic_term_roots_state {
+	const struct prototype_elaborated_module* module;
+	struct semantic_term_marks* marks;
+};
+
+static int mark_semantic_term_root(
+	void* state,
+	int requirement,
+	uint32_t term_id
+) {
+	struct mark_semantic_term_roots_state* roots = state;
+	if (!roots || !roots->module || !roots->marks) return -1;
+	if (requirement == PROTOTYPE_CHECKER_REFERENCE_REQUIRED) {
+		return mark_semantic_term_id(roots->module, roots->marks, term_id);
+	}
+	if (requirement == PROTOTYPE_CHECKER_REFERENCE_OPTIONAL) {
+		return mark_optional_semantic_term_id(
+			roots->module, roots->marks, term_id
+		);
+	}
+	return -1;
+}
+
 static int relocate_term_record(
 	struct prototype_term* term,
 	const uint32_t* terms,
 	size_t term_count,
 	const uint32_t* cases,
+	size_t case_count,
 	const uint32_t* ih_scopes,
-	const uint32_t* fold_clauses
+	size_t ih_scope_count,
+	const uint32_t* fold_clauses,
+	size_t fold_clause_count
 ) {
-#define RELOCATE_TERM(field) \
-	do { \
-		if (relocate_required_term_id(terms, term_count, &(field)) != 0) { \
-			return -1; \
-		} \
-	} while (0)
-	switch (term->tag) {
-		case PROTOTYPE_TERM_CONSTRUCTOR:
-			RELOCATE_TERM(term->as.constructor.owner);
-			break;
-		case PROTOTYPE_TERM_APP:
-			RELOCATE_TERM(term->as.app.function);
-			RELOCATE_TERM(term->as.app.argument);
-			break;
-		case PROTOTYPE_TERM_LAMBDA:
-			RELOCATE_TERM(term->as.lambda.body);
-			break;
-		case PROTOTYPE_TERM_PI:
-			RELOCATE_TERM(term->as.pi.domain);
-			RELOCATE_TERM(term->as.pi.codomain_family);
-			break;
-		case PROTOTYPE_TERM_MATCH:
-			RELOCATE_TERM(term->as.match.scrutinee);
-			term->as.match.first_case = term->as.match.case_count == 0 ? 0 :
-				cases[term->as.match.first_case];
-			term->as.match.ih_scope_id = ih_scopes[term->as.match.ih_scope_id];
-			break;
-		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-			term->as.induction_hypothesis.ih_scope_id =
-				ih_scopes[term->as.induction_hypothesis.ih_scope_id];
-			RELOCATE_TERM(term->as.induction_hypothesis.argument);
-			break;
-		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			RELOCATE_TERM(term->as.effect_operation.classifier);
-			break;
-		case PROTOTYPE_TERM_TYPE_VIEW:
-			RELOCATE_TERM(term->as.type_view.core);
-			RELOCATE_TERM(term->as.type_view.source);
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-			RELOCATE_TERM(term->as.effect_row_union.left);
-			RELOCATE_TERM(term->as.effect_row_union.right);
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			RELOCATE_TERM(term->as.effect_row_forall.body);
-			break;
-		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			RELOCATE_TERM(term->as.effect_row_operation.latent_row);
-			break;
-		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			RELOCATE_TERM(term->as.computation_type.label);
-			RELOCATE_TERM(term->as.computation_type.result);
-			break;
-		case PROTOTYPE_TERM_THUNK_TYPE:
-			RELOCATE_TERM(term->as.thunk_type.computation);
-			break;
-		case PROTOTYPE_TERM_RETURN:
-			RELOCATE_TERM(term->as.return_term.value);
-			break;
-		case PROTOTYPE_TERM_THUNK:
-			RELOCATE_TERM(term->as.thunk.computation);
-			break;
-		case PROTOTYPE_TERM_FORCE:
-			RELOCATE_TERM(term->as.force.value);
-			break;
-		case PROTOTYPE_TERM_OPERATION_REQUEST:
-			RELOCATE_TERM(term->as.operation_request.operation);
-			RELOCATE_TERM(term->as.operation_request.argument);
-			RELOCATE_TERM(term->as.operation_request.continuation);
-			break;
-		case PROTOTYPE_TERM_COMPUTATION_FOLD:
-			RELOCATE_TERM(term->as.computation_fold.computation);
-			RELOCATE_TERM(term->as.computation_fold.return_clause);
-			term->as.computation_fold.first_clause =
-				term->as.computation_fold.clause_count == 0 ? 0 :
-				fold_clauses[term->as.computation_fold.first_clause];
-			break;
-		case PROTOTYPE_TERM_DIMENSION_ACTION:
-			RELOCATE_TERM(term->as.dimension_action.source);
-			break;
-		default:
-			break;
+	size_t field_count;
+	if (!term || prototype_term_schema_field_count(
+			term->tag, &field_count
+		) != 0) return -1;
+	for (size_t i = 0; i < field_count; ++i) {
+		struct prototype_term_field_value field;
+		if (prototype_term_schema_field_at(term, i, &field) != 0) return -1;
+		if (field.kind == PROTOTYPE_TERM_FIELD_TERM_REQUIRED) {
+			if (relocate_required_term_id(
+					terms, term_count, &field.as.u32
+				) != 0) return -1;
+		} else if (field.kind == PROTOTYPE_TERM_FIELD_TERM_OPTIONAL) {
+			if (relocate_optional_term_id(
+					terms, term_count, &field.as.u32
+				) != 0) return -1;
+		} else if (field.kind == PROTOTYPE_TERM_FIELD_CASE_SLICE) {
+			if (term->as.match.case_count == 0) {
+				field.as.u32 = 0;
+			} else if (field.as.u32 >= case_count || !cases ||
+				cases[field.as.u32] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			} else {
+				field.as.u32 = cases[field.as.u32];
+			}
+		} else if (field.kind == PROTOTYPE_TERM_FIELD_IH_SCOPE) {
+			if (field.as.u32 >= ih_scope_count || !ih_scopes ||
+				ih_scopes[field.as.u32] == PROTOTYPE_INVALID_ID) return -1;
+			field.as.u32 = ih_scopes[field.as.u32];
+		} else if (field.kind == PROTOTYPE_TERM_FIELD_FOLD_CLAUSE_SLICE) {
+			if (term->as.computation_fold.clause_count == 0) {
+				field.as.u32 = 0;
+			} else if (field.as.u32 >= fold_clause_count || !fold_clauses ||
+				fold_clauses[field.as.u32] == PROTOTYPE_INVALID_ID) {
+				return -1;
+			} else {
+				field.as.u32 = fold_clauses[field.as.u32];
+			}
+		} else {
+			continue;
+		}
+		if (prototype_term_schema_field_write(term, i, &field) != 0) return -1;
 	}
-#undef RELOCATE_TERM
 	return 0;
 }
 
@@ -2558,53 +2426,13 @@ static int compact_semantic_terms(struct prototype_elaborated_module* module) {
 		 !marks.fold_clauses)) {
 		goto fail;
 	}
-#define MARK_ROOT(field) \
-	do { \
-		if (mark_semantic_term_id(module, &marks, (field)) != 0) { \
-			goto fail; \
-		} \
-	} while (0)
-#define MARK_OPTIONAL_ROOT(field) \
-	do { \
-		if (mark_optional_semantic_term_id(module, &marks, (field)) != 0) { \
-			goto fail; \
-		} \
-	} while (0)
-	MARK_OPTIONAL_ROOT(module->view.selected_entry_term);
-	MARK_OPTIONAL_ROOT(module->view.selected_entry_classifier);
-	for (size_t i = 1; i < module->view.contexts.context_count; ++i) {
-		MARK_ROOT(module->contexts[i].classifier);
-		MARK_OPTIONAL_ROOT(module->contexts[i].producer_computation);
-	}
-	for (size_t i = 0; i < module->view.substitutions.substitution_count; ++i) {
-		MARK_OPTIONAL_ROOT(module->substitutions[i].term);
-		MARK_OPTIONAL_ROOT(module->substitutions[i].term_classifier);
-	}
-	for (size_t i = 0; i < module->view.type_schema.type_count; ++i) {
-		MARK_ROOT(module->type_declarations[i].formation_classifier);
-	}
-	for (size_t i = 0; i < module->view.type_schema.constructor_count; ++i) {
-		MARK_ROOT(module->constructor_declarations[i].result_classifier);
-	}
-	for (size_t i = 0; i < module->view.occurrences.occurrence_count; ++i) {
-		struct prototype_semantic_occurrence* occurrence = &module->occurrences[i];
-		MARK_ROOT(occurrence->core_term);
-		MARK_OPTIONAL_ROOT(occurrence->origin_core_term);
-		MARK_OPTIONAL_ROOT(occurrence->origin_classifier);
-		MARK_OPTIONAL_ROOT(occurrence->asserted_classifier);
-		MARK_OPTIONAL_ROOT(occurrence->binder_classifier);
-		MARK_OPTIONAL_ROOT(occurrence->match_motive);
-	}
-	for (size_t i = 0; i < module->view.occurrences.case_count; ++i) {
-		MARK_OPTIONAL_ROOT(module->match_cases[i].constructor_owner);
-	}
-	for (size_t i = 0; i < module->view.contracts.contract_count; ++i) {
-		struct prototype_semantic_contract* contract = &module->contracts[i];
-		MARK_ROOT(contract->core_term);
-		MARK_OPTIONAL_ROOT(contract->input_classifier);
-		MARK_OPTIONAL_ROOT(contract->classifier_family);
-		MARK_OPTIONAL_ROOT(contract->effect_row);
-	}
+	struct mark_semantic_term_roots_state mark_roots = {
+		.module = module,
+		.marks = &marks
+	};
+	if (prototype_checker_visit_semantic_term_roots(
+			&module->view, mark_semantic_term_root, &mark_roots
+		) != 0) goto fail;
 	for (size_t cursor = 0; cursor < marks.queue_count; ++cursor) {
 		if (mark_semantic_term_children(
 				module, &marks, marks.queue[cursor]
@@ -2702,8 +2530,11 @@ static int compact_semantic_terms(struct prototype_elaborated_module* module) {
 				term_relocation,
 				source_term_count,
 				case_relocation,
+				module->view.terms.case_count,
 				ih_relocation,
-				fold_relocation
+				module->view.terms.ih_scope_count,
+				fold_relocation,
+				module->view.terms.computation_fold_clause_count
 			) != 0) {
 			goto compact_fail;
 		}
@@ -2761,103 +2592,17 @@ static int compact_semantic_terms(struct prototype_elaborated_module* module) {
 			goto compact_fail;
 		}
 	}
-	if (relocate_optional_term_id(
-			term_relocation,
-			source_term_count,
-			&module->view.selected_entry_term
-		) != 0 || relocate_optional_term_id(
-			term_relocation,
-			source_term_count,
-			&module->view.selected_entry_classifier
-		) != 0) {
-		goto compact_fail;
-	}
-	for (size_t i = 1; i < module->view.contexts.context_count; ++i) {
-		if (relocate_required_term_id(
-				term_relocation, source_term_count, &module->contexts[i].classifier
-			) != 0 || relocate_optional_term_id(
-				term_relocation,
-				source_term_count,
-				&module->contexts[i].producer_computation
-			) != 0) {
-			goto compact_fail;
-		}
-	}
-	for (size_t i = 0; i < module->view.substitutions.substitution_count; ++i) {
-		if (relocate_optional_term_id(
-				term_relocation, source_term_count, &module->substitutions[i].term
-			) != 0 || relocate_optional_term_id(
-				term_relocation,
-				source_term_count,
-				&module->substitutions[i].term_classifier
-			) != 0) {
-			goto compact_fail;
-		}
-	}
-	for (size_t i = 0; i < module->view.type_schema.type_count; ++i) {
-		if (relocate_required_term_id(
-				term_relocation,
-				source_term_count,
-				&module->type_declarations[i].formation_classifier
-			) != 0) {
-			goto compact_fail;
-		}
-	}
-	for (size_t i = 0; i < module->view.type_schema.constructor_count; ++i) {
-		if (relocate_required_term_id(
-				term_relocation,
-				source_term_count,
-				&module->constructor_declarations[i].result_classifier
-			) != 0) {
-			goto compact_fail;
-		}
-	}
+	if (prototype_checker_relocate_semantic_term_roots(
+			module, term_relocation, source_term_count
+		) != 0) goto compact_fail;
 	for (size_t i = 0; i < module->view.occurrences.occurrence_count; ++i) {
 		struct prototype_semantic_occurrence* occurrence = &module->occurrences[i];
-		if (relocate_required_term_id(
-				term_relocation, source_term_count, &occurrence->core_term
-			) != 0 || relocate_optional_term_id(
-				term_relocation, source_term_count, &occurrence->origin_core_term
-			) != 0 || relocate_optional_term_id(
-				term_relocation, source_term_count, &occurrence->origin_classifier
-			) != 0 || relocate_optional_term_id(
-				term_relocation, source_term_count, &occurrence->asserted_classifier
-			) != 0 || relocate_optional_term_id(
-				term_relocation, source_term_count, &occurrence->binder_classifier
-			) != 0 || relocate_optional_term_id(
-				term_relocation, source_term_count, &occurrence->match_motive
-			) != 0) {
-			goto compact_fail;
-		}
 		if (occurrence->ih_scope_id != PROTOTYPE_INVALID_ID) {
 			if (occurrence->ih_scope_id >= module->view.terms.ih_scope_count ||
 				ih_relocation[occurrence->ih_scope_id] == PROTOTYPE_INVALID_ID) {
 				goto compact_fail;
 			}
 			occurrence->ih_scope_id = ih_relocation[occurrence->ih_scope_id];
-		}
-	}
-	for (size_t i = 0; i < module->view.occurrences.case_count; ++i) {
-		if (relocate_optional_term_id(
-				term_relocation,
-				source_term_count,
-				&module->match_cases[i].constructor_owner
-			) != 0) {
-			goto compact_fail;
-		}
-	}
-	for (size_t i = 0; i < module->view.contracts.contract_count; ++i) {
-		struct prototype_semantic_contract* contract = &module->contracts[i];
-		if (relocate_required_term_id(
-				term_relocation, source_term_count, &contract->core_term
-			) != 0 || relocate_optional_term_id(
-				term_relocation, source_term_count, &contract->input_classifier
-			) != 0 || relocate_optional_term_id(
-				term_relocation, source_term_count, &contract->classifier_family
-			) != 0 || relocate_optional_term_id(
-				term_relocation, source_term_count, &contract->effect_row
-			) != 0) {
-			goto compact_fail;
 		}
 	}
 	free(module->terms);
@@ -2910,8 +2655,6 @@ fail:
 	free(marks.fold_clauses);
 	free(marks.queue);
 	return -1;
-#undef MARK_ROOT
-#undef MARK_OPTIONAL_ROOT
 }
 
 static int project_semantic_universes(

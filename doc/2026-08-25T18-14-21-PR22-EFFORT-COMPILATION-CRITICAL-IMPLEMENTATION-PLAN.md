@@ -15,7 +15,7 @@ PR: #22, `Document effort compilation and from-scratch artifact checking`
 
 Merged revision: `de52b75943cc3a330969f9ce969b1c86d73cfb1b`
 
-Reviewed implementation revision: `de52b75943cc3a330969f9ce969b1c86d73cfb1b`
+Reviewed implementation revision: `fd546e13784c0d7c59f984beeacdac199ddab321`
 
 Current checked artifact format: v87; v86 remains the temporary migration
 oracle for Claim-only HOTT roots
@@ -27,6 +27,48 @@ Implementation authority schema:
 Source design:
 
 - `2026-08-25T17-26-30-EFFORT-COMPILATION-PARALLEL-ELABORATION-AND-FROM-SCRATCH-ARTIFACT-CHECKING-DESIGN.md`
+
+Post-implementation structural consolidation:
+
+- `2026-08-26T13-55-23-CODE-STRUCTURE-CONSOLIDATION-REFACTOR-IMPLEMENTATION-PLAN.md`
+
+### 2026-08-27 re-audit
+
+PR22 is already merged and its admitted implementation is present on `main`.
+The implementation was re-audited against `fd546e1`, not merely against the
+merge commit. Focused checked-Core projection, session, example, v87 container,
+work-capsule, and compile-producer tests all pass.
+
+The re-audit keeps the original acceptance decision, with these boundaries:
+
+| Area | Current decision |
+| --- | --- |
+| Checked semantic projection and independent checking | Adopted; the checker consumes no Claim or Derivation authority |
+| v87 checked semantic container | Adopted for the admitted fragment; it does not retire v86 yet |
+| Typed effort and resumable production | Adopted; effort controls producer progress, never logical truth |
+| Parallelism | Adopted only for isolated immutable inputs and deterministic merge |
+| Persistent resume | Fragment merge is implemented; classifier and exact evaluator-stack persistence remain pending |
+| HOTT and other Claim-only roots | Not migrated by implication; v86 remains the blocking migration oracle |
+| Source scheduling | Not implemented and not to be simulated by sharing mutable compiler arenas |
+
+The implementation also exposed structural duplication that must be removed
+before expanding the checked fragment. This is not a rejection of PR22's
+semantic boundary. It is follow-up consolidation of its physical realization:
+
+1. freeze and test the exact v87 wire schema;
+2. define one Core Term semantic field/reference inventory while keeping
+   calculus-specific validation rules explicit;
+3. use narrow immutable Term, Context, and Substitution readers;
+4. consolidate checked closure and relocation over those readers;
+5. establish one canonical checked-module image owner;
+6. split the large checker aggregate only after its semantic APIs are stable;
+7. retain independent accepted replay and checked-Core acceptance until every
+   published root has checked object evidence.
+
+These tasks are CR1 through CR8 of the linked consolidation plan. They replace
+neither the EC phases below nor the independent checker. They prevent the same
+semantic field inventory from remaining separately encoded in projection,
+validation, closure, relocation, and serialization.
 
 ## 1. Objective
 

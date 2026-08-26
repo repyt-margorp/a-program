@@ -283,8 +283,7 @@ static int hott_publish_dimension_action_identity_result(
 			&classifier_binder,
 			&classifier_body
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms,
-			types,
+			terms, prototype_type_view_rebuild_context_from_db(types),
 			classifier_body,
 			classifier_binder,
 			left_endpoint,
@@ -311,8 +310,7 @@ static int hott_publish_dimension_action_identity_result(
 			&classifier_binder,
 			&classifier_body
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms,
-			types,
+			terms, prototype_type_view_rebuild_context_from_db(types),
 			classifier_body,
 			classifier_binder,
 			right_endpoint,
@@ -685,8 +683,7 @@ static int hott_apply_claim_argument(
 			&binder,
 			&body
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms,
-			types,
+			terms, prototype_type_view_rebuild_context_from_db(types),
 			body,
 			binder,
 			argument->subject,
@@ -922,8 +919,7 @@ static int hott_infer_action_endpoint_claim_depth(
 				depth + 1,
 				&argument_claim
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				terms,
-				kernel->type_declarations,
+				terms, prototype_type_view_rebuild_context_from_db(kernel->type_declarations),
 				codomain,
 				binder,
 				term->as.app.argument,

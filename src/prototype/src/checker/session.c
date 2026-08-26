@@ -28,6 +28,9 @@ struct prototype_checked_module {
 
 struct checker_state {
 	const struct prototype_elaborated_module_view* module;
+	struct prototype_term_structural_reader terms;
+	struct prototype_context_structural_reader contexts;
+	struct prototype_substitution_structural_reader substitutions;
 	const struct prototype_checked_module* const* imported_bases;
 	size_t imported_base_count;
 	const struct prototype_checker_universe_solution* universe_solutions;
@@ -142,10 +145,10 @@ static const struct prototype_term* checker_term(
 	const struct checker_state* state,
 	uint32_t term_id
 ) {
-	if (term_id >= state->module->terms.term_count) {
-		return NULL;
-	}
-	return &state->module->terms.terms[term_id];
+	const struct prototype_term* term;
+	return prototype_term_structural_read(
+		&state->terms, term_id, &term
+	) == 0 ? term : NULL;
 }
 
 static int checker_has_type_family_root(
@@ -956,16 +959,14 @@ static int checker_context_binding(
 	uint32_t binding_id,
 	uint32_t* p_classifier
 ) {
-	while (context_id != 0) {
-		const struct prototype_semantic_context* context =
-			&state->module->contexts.contexts[context_id];
-		if (context->binding_id == binding_id) {
-			*p_classifier = context->classifier;
-			return 0;
-		}
-		context_id = context->parent;
-	}
-	return -1;
+	int status = prototype_context_structural_find_binding(
+		&state->contexts,
+		context_id,
+		binding_id,
+		NULL,
+		p_classifier
+	);
+	return status == 0 ? 0 : -1;
 }
 
 /* Compare one classifier body after substituting a single Pi binder. This is
@@ -1674,32 +1675,24 @@ static int checker_substitution_binding_image(
 	uint32_t binding_id,
 	uint32_t* p_term
 ) {
-	if (substitution_id >= state->module->substitutions.substitution_count) {
-		return -1;
+	struct prototype_substitution_structural_image image;
+	int status = prototype_substitution_structural_binding_image(
+		&state->substitutions,
+		&state->contexts,
+		substitution_id,
+		binding_id,
+		&image
+	);
+	if (status != 0) return status;
+	if (image.kind == PROTOTYPE_SUBSTITUTION_STRUCTURAL_IMAGE_TERM) {
+		*p_term = image.term;
+		return 0;
 	}
-	const struct prototype_semantic_substitution* substitution =
-		&state->module->substitutions.substitutions[substitution_id];
-	switch (substitution->kind) {
-		case PROTOTYPE_SEMANTIC_SUBSTITUTION_IDENTITY:
-		case PROTOTYPE_SEMANTIC_SUBSTITUTION_PROJECTION:
-			*p_term = checker_find_variable_term(state, binding_id);
-			return *p_term == PROTOTYPE_INVALID_ID ? -1 : 0;
-		case PROTOTYPE_SEMANTIC_SUBSTITUTION_EXTEND: {
-			const struct prototype_semantic_context* target =
-				&state->module->contexts.contexts[substitution->target_context];
-			if (target->binding_id == binding_id) {
-				*p_term = substitution->term;
-				return 0;
-			}
-			return checker_substitution_binding_image(
-				state, substitution->first, binding_id, p_term
-			);
-		}
-		case PROTOTYPE_SEMANTIC_SUBSTITUTION_COMPOSE:
-		case PROTOTYPE_SEMANTIC_SUBSTITUTION_EMPTY:
-		default:
-			return 1;
+	if (image.kind == PROTOTYPE_SUBSTITUTION_STRUCTURAL_IMAGE_VARIABLE) {
+		*p_term = checker_find_variable_term(state, image.binding_id);
+		return *p_term == PROTOTYPE_INVALID_ID ? -1 : 0;
 	}
+	return -1;
 }
 
 static int checker_term_contains_binding(
@@ -1805,23 +1798,13 @@ static int checker_pi_parts(
 			)) {
 			return -1;
 		}
+		pi_id = family->as.lambda.body;
 		pi = body;
 	}
-	const struct prototype_term* thunk = pi && pi->tag == PROTOTYPE_TERM_PI ?
-		checker_term(state, pi->as.pi.codomain_family) : NULL;
-	const struct prototype_term* family = thunk &&
-		thunk->tag == PROTOTYPE_TERM_THUNK ?
-		checker_term(state, thunk->as.thunk.computation) : NULL;
-	const struct prototype_term* returned = family &&
-		family->tag == PROTOTYPE_TERM_LAMBDA ?
-		checker_term(state, family->as.lambda.body) : NULL;
-	if (!pi || !family || !returned || returned->tag != PROTOTYPE_TERM_RETURN) {
-		return -1;
-	}
-	*p_domain = pi->as.pi.domain;
-	*p_binding = family->as.lambda.binding_id;
-	*p_body = returned->as.return_term.value;
-	return 0;
+	return pi ? prototype_term_structural_pi_parts(
+		&state->terms, pi_id,
+		p_domain, p_binding, p_body
+	) : -1;
 }
 
 static int checker_term_equal_after_bindings(
@@ -2752,10 +2735,9 @@ static int checker_context_extends(
 	uint32_t context_id,
 	uint32_t ancestor
 ) {
-	while (context_id != ancestor && context_id != 0) {
-		context_id = state->module->contexts.contexts[context_id].parent;
-	}
-	return context_id == ancestor;
+	return prototype_context_structural_is_ancestor(
+		&state->contexts, ancestor, context_id
+	) == 1;
 }
 
 static int checker_context_path_length(
@@ -2764,15 +2746,11 @@ static int checker_context_path_length(
 	uint32_t context_id,
 	uint32_t* p_length
 ) {
-	uint32_t length = 0;
-	while (context_id != ancestor) {
-		if (context_id == 0 || length >= state->module->contexts.context_count) {
-			return -1;
-		}
-		context_id = state->module->contexts.contexts[context_id].parent;
-		++length;
-	}
-	*p_length = length;
+	size_t length;
+	if (prototype_context_structural_path_length(
+			&state->contexts, ancestor, context_id, &length
+		) != 0 || length > UINT32_MAX) return -1;
+	*p_length = (uint32_t)length;
 	return 0;
 }
 
@@ -5089,22 +5067,9 @@ static int checker_pure_family_parts(
 	uint32_t* p_binding_id,
 	uint32_t* p_body_id
 ) {
-	const struct prototype_term* thunk = checker_term(state, family_id);
-	const struct prototype_term* lambda = thunk &&
-		thunk->tag == PROTOTYPE_TERM_THUNK ? checker_term(
-			state, thunk->as.thunk.computation
-		) : NULL;
-	const struct prototype_term* returned = lambda &&
-		lambda->tag == PROTOTYPE_TERM_LAMBDA ? checker_term(
-			state, lambda->as.lambda.body
-		) : NULL;
-	if (!p_binding_id || !p_body_id || !returned ||
-		returned->tag != PROTOTYPE_TERM_RETURN) {
-		return -1;
-	}
-	*p_binding_id = lambda->as.lambda.binding_id;
-	*p_body_id = returned->as.return_term.value;
-	return 0;
+	return prototype_term_structural_pure_family_parts(
+		&state->terms, family_id, p_binding_id, p_body_id
+	);
 }
 
 static int checker_contract_has_exact_source_dependency(
@@ -6929,6 +6894,15 @@ int prototype_checker_check_module(
 		.stop_reason = PROTOTYPE_CHECKER_STOP_NONE,
 		.subject = PROTOTYPE_INVALID_ID
 	};
+	if (prototype_semantic_term_structural_reader(
+			&module->terms, &state.terms
+		) != 0 || prototype_semantic_context_structural_reader(
+			&module->contexts, &state.contexts
+		) != 0 || prototype_semantic_substitution_structural_reader(
+			&module->substitutions, &state.substitutions
+		) != 0) {
+		return 0;
+	}
 	struct prototype_checker_universe_solution* universe_solutions = NULL;
 	size_t universe_solution_count = 0;
 	int status = prototype_checker_reconstruct_universes(

@@ -114,8 +114,7 @@ static int operation_solver_close_unowned_effect_rows(
 		uint32_t empty_row;
 		if (prototype_term_effect_row_empty(ctx->terms, &empty_row) != 0 ||
 			prototype_term_graph_substitute_bound_var(
-				ctx->terms,
-				ctx->type_declarations,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 				closed,
 				binding_id,
 				empty_row,
@@ -557,8 +556,7 @@ static int operation_effect_materialize_solution(
 		uint32_t rewritten;
 		uint32_t canonical;
 		if (prototype_term_graph_substitute_bound_var(
-				ctx->terms,
-				ctx->type_declarations,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 				classifier,
 				binding_id,
 				replacement,

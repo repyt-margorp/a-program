@@ -1295,8 +1295,7 @@ int prototype_term_reindex(
 		context_id = context->parent;
 	}
 	int status = prototype_term_graph_reindex_bindings(
-		terms,
-		type_declarations,
+		terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 		term,
 		bindings,
 		index,

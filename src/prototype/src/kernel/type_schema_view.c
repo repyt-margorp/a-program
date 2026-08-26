@@ -395,8 +395,7 @@ int prototype_constructor_schema_view_action_classifier(
 					};
 				}
 				status = prototype_term_graph_reindex_bindings(
-					terms,
-					type_declarations,
+					terms, prototype_type_view_rebuild_context_from_db(type_declarations),
 					source_domains[field],
 					replacements,
 					field,

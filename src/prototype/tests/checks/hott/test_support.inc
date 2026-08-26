@@ -107,8 +107,7 @@ static int fixture_apply_claim_argument(
 			&binder,
 			&body
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			kernel->terms,
-			kernel->type_declarations,
+			kernel->terms, prototype_type_view_rebuild_context_from_db(kernel->type_declarations),
 			body,
 			binder,
 			argument->subject,
@@ -885,15 +884,13 @@ static int check_bool_function_extensional_identity(
 	}
 	uint32_t concrete_identity;
 	if (prototype_term_graph_substitute_bound_var(
-			term_db,
-			type_db,
+			term_db, prototype_type_view_rebuild_context_from_db(type_db),
 			certificate->identity_type_term_id,
 			certificate->left_endpoint_binding_id,
 			left_value,
 			&concrete_identity
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			term_db,
-			type_db,
+			term_db, prototype_type_view_rebuild_context_from_db(type_db),
 			concrete_identity,
 			certificate->right_endpoint_binding_id,
 			right_value,
@@ -2112,15 +2109,13 @@ static int check_bool_function_extensional_identity(
 		) != 0 || prototype_term_thunk(
 			term_db, constant_lambda, &constant_value
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			term_db,
-			type_db,
+			term_db, prototype_type_view_rebuild_context_from_db(type_db),
 			certificate->identity_type_term_id,
 			certificate->left_endpoint_binding_id,
 			left_value,
 			&discriminating_identity
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			term_db,
-			type_db,
+			term_db, prototype_type_view_rebuild_context_from_db(type_db),
 			discriminating_identity,
 			certificate->right_endpoint_binding_id,
 			constant_value,

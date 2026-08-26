@@ -12,7 +12,19 @@ struct prototype_term_db;
 struct prototype_term_definition_env;
 struct prototype_term_reduction_options;
 struct prototype_type_declaration_db;
+struct prototype_type_semantic_schema_db;
+struct prototype_type_representation_db;
 struct prototype_dimension_operator_db;
+
+struct prototype_type_view_rebuild_context {
+	const struct prototype_type_semantic_schema_db* semantic_schema;
+	const struct prototype_type_representation_db* representation_db;
+};
+
+struct prototype_type_view_rebuild_context
+prototype_type_view_rebuild_context_from_db(
+	const struct prototype_type_declaration_db* db
+);
 
 /* Runtime-only dispatch for an OPERATION_REQUEST. Returning 1 supplies a
  * result, 0 leaves the request unhandled, and -1 reports a runtime failure. */
@@ -1335,7 +1347,7 @@ int prototype_term_pure_family_parts(
  */
 int prototype_term_graph_substitute_bound_var(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t binding_id,
 	uint32_t replacement,
@@ -1345,7 +1357,7 @@ int prototype_term_graph_substitute_bound_var(
  * is structural and does not assert typed conversion between the two terms. */
 int prototype_term_graph_replace_exact(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t exact_term,
 	uint32_t replacement,
@@ -1360,7 +1372,7 @@ struct prototype_binding_replacement {
  * entries in the same substitution. */
 int prototype_term_graph_reindex_bindings(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
+	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	const struct prototype_binding_replacement* bindings,
 	size_t binding_count,

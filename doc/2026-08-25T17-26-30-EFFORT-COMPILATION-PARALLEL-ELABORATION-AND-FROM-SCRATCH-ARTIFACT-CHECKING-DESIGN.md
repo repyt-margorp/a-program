@@ -2,11 +2,17 @@
 
 Date: 2026-08-25
 
-Status: proposed architecture; not implemented
+Status: accepted design; the admitted checked-Core and initial static producer
+fragment were implemented by `fd546e1`. The remaining migration and structural
+consolidation work is tracked by the plans linked below.
 
 Critical implementation review and revised execution plan:
 
 - `2026-08-25T18-14-21-PR22-EFFORT-COMPILATION-CRITICAL-IMPLEMENTATION-PLAN.md`
+
+Post-implementation structural consolidation plan:
+
+- `2026-08-26T13-55-23-CODE-STRUCTURE-CONSOLIDATION-REFACTOR-IMPLEMENTATION-PLAN.md`
 
 Re-audit status: corrected against the same latest `origin/main` on
 2026-08-25. The re-audit confirmed that the central direction is compatible

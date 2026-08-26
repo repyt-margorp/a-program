@@ -10786,7 +10786,7 @@ static int operation_solver_abstract_indexed_motive(
 		if (index_binders[i] == PROTOTYPE_INVALID_ID || prototype_term_var(
 				ctx->terms, index_binders[i], &index_variable
 			) != 0 || prototype_term_graph_replace_exact(
-				ctx->terms, ctx->type_declarations, motive_body,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), motive_body,
 				arguments[declaration->parameter_count + i], index_variable,
 				&motive_body
 			) != 0) {
@@ -10798,7 +10798,7 @@ static int operation_solver_abstract_indexed_motive(
 	if (value_binder == PROTOTYPE_INVALID_ID || prototype_term_var(
 			ctx->terms, value_binder, &value_variable
 		) != 0 || prototype_term_graph_replace_exact(
-			ctx->terms, ctx->type_declarations, motive_body,
+			ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), motive_body,
 			value, value_variable, &motive_body
 		) != 0 || prototype_term_lambda(
 			ctx->terms, value_binder, motive_body, &motive_body
@@ -10943,10 +10943,10 @@ static int operation_solver_abstract_recursive_field_motive_inner(
 		if (shared_binder == PROTOTYPE_INVALID_ID || prototype_term_var(
 				ctx->terms, shared_binder, &shared_value
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				ctx->terms, ctx->type_declarations, field_body,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), field_body,
 				field_binder, shared_value, &next_field
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				ctx->terms, ctx->type_declarations, expected_body,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), expected_body,
 				expected_binder, shared_value, &next_expected
 			) != 0 || prototype_term_app(
 				ctx->terms, field_value, shared_value, &next_value
@@ -11118,8 +11118,7 @@ static int operation_solver_project_pure_sequence_results(
 			}
 		}
 		if (prototype_term_graph_substitute_bound_var(
-				ctx->terms,
-				ctx->type_declarations,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 				projected,
 				owner->binding_id,
 				value,
@@ -11410,7 +11409,7 @@ static int operation_solver_seed_indexed_motive_from_branch(
 		if (index_binders[i] == PROTOTYPE_INVALID_ID || prototype_term_var(
 				ctx->terms, index_binders[i], &index_variable
 			) != 0 || prototype_term_graph_replace_exact(
-				ctx->terms, ctx->type_declarations, motive_body,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), motive_body,
 				constructor_arguments[declaration->parameter_count + i],
 				index_variable, &motive_body
 			) != 0) {
@@ -11422,7 +11421,7 @@ static int operation_solver_seed_indexed_motive_from_branch(
 	if (value_binder == PROTOTYPE_INVALID_ID || prototype_term_var(
 			ctx->terms, value_binder, &value_variable
 		) != 0 || prototype_term_graph_replace_exact(
-			ctx->terms, ctx->type_declarations, motive_body,
+			ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), motive_body,
 			constructor_term, value_variable, &motive_body
 		) != 0 || prototype_term_lambda(
 			ctx->terms, value_binder, motive_body, &motive_body
@@ -11584,11 +11583,11 @@ static int operation_solver_seed_motive(
 	if (motive_binding != PROTOTYPE_INVALID_ID &&
 		prototype_term_var(ctx->terms, motive_binding, &motive_variable) == 0 &&
 		prototype_term_graph_replace_exact(
-			ctx->terms, ctx->type_declarations, classifier,
+			ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), classifier,
 			constructor_term, motive_variable, &motive_body
 		) == 0 && motive_body != classifier &&
 		prototype_term_graph_substitute_bound_var(
-			ctx->terms, ctx->type_declarations, motive_body, motive_binding,
+			ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), motive_body, motive_binding,
 			constructor_term, &reinstantiated
 		) == 0 && prototype_judgement_classifier_conversion(
 			ctx->terms, ctx->type_declarations, reinstantiated, classifier

@@ -3,6 +3,8 @@
 #include "a_program/checker/container.h"
 #include "a_program/producer/effort.h"
 
+#include "../checker/module_set_internal.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,13 +15,13 @@
 struct merge_module_image {
 	const struct prototype_checked_module* checked;
 	struct prototype_elaborated_module* owned_module;
-	unsigned char* bytes;
-	size_t count;
 };
 
 struct prototype_merge_producer_session {
 	struct merge_module_image* images;
+	size_t owned_image_count;
 	size_t image_count;
+	struct prototype_checked_module_set* canonical_images;
 	size_t left;
 	size_t right;
 	size_t completed_pairs;
@@ -97,59 +99,6 @@ static int merge_read_u64(struct merge_reader* reader, uint64_t* p_value) {
 	return 0;
 }
 
-static int merge_image_build(
-	const struct prototype_checked_module* checked,
-	struct merge_module_image* image
-) {
-	if (!checked || !image || !prototype_checked_module_elaborated_view(checked)) {
-		return -1;
-	}
-	FILE* stream = tmpfile();
-	if (!stream || prototype_checked_artifact_write(stream, checked) != 0 ||
-		fseek(stream, 0, SEEK_END) != 0) {
-		if (stream) fclose(stream);
-		return -1;
-	}
-	long length = ftell(stream);
-	if (length < 0 || (uintmax_t)length > SIZE_MAX ||
-		fseek(stream, 0, SEEK_SET) != 0) {
-		fclose(stream);
-		return -1;
-	}
-	unsigned char* bytes = length == 0 ? NULL : malloc((size_t)length);
-	if ((length != 0 && !bytes) || (length != 0 && fread(
-			bytes, 1, (size_t)length, stream
-		) != (size_t)length)) {
-		free(bytes);
-		fclose(stream);
-		return -1;
-	}
-	fclose(stream);
-	*image = (struct merge_module_image) {
-		.checked = checked,
-		.bytes = bytes,
-		.count = (size_t)length
-	};
-	return 0;
-}
-
-static int merge_image_compare(const void* a, const void* b) {
-	const struct merge_module_image* left = a;
-	const struct merge_module_image* right = b;
-	size_t common = left->count < right->count ? left->count : right->count;
-	int compared = common == 0 ? 0 : memcmp(left->bytes, right->bytes, common);
-	if (compared != 0) return compared;
-	return left->count < right->count ? -1 : left->count > right->count;
-}
-
-static int merge_images_equal(
-	const struct merge_module_image* left,
-	const struct merge_module_image* right
-) {
-	return left->count == right->count &&
-		(left->count == 0 || memcmp(left->bytes, right->bytes, left->count) == 0);
-}
-
 static void merge_image_destroy(struct merge_module_image* image) {
 	if (!image) return;
 	prototype_checked_module_destroy(
@@ -159,23 +108,14 @@ static void merge_image_destroy(struct merge_module_image* image) {
 		prototype_elaborated_module_destroy(image->owned_module);
 		free(image->owned_module);
 	}
-	free(image->bytes);
 	memset(image, 0, sizeof(*image));
 }
 
 static int merge_session_prepare(struct prototype_merge_producer_session* session) {
-	qsort(session->images, session->image_count, sizeof(*session->images),
-		merge_image_compare);
-	for (size_t i = 1; i < session->image_count;) {
-		if (!merge_images_equal(&session->images[i - 1], &session->images[i])) {
-			i += 1;
-			continue;
-		}
-		merge_image_destroy(&session->images[i]);
-		memmove(&session->images[i], &session->images[i + 1],
-			(session->image_count - i - 1) * sizeof(*session->images));
-		session->image_count -= 1;
-	}
+	if (!session || !session->canonical_images) return -1;
+	session->image_count = prototype_checked_module_set_count(
+		session->canonical_images
+	);
 	session->left = 0;
 	session->right = session->image_count > 1 ? 1 : session->image_count;
 	return 0;
@@ -196,23 +136,14 @@ int prototype_merge_producer_create(
 	*p_session = NULL;
 	struct prototype_merge_producer_session* session = calloc(1, sizeof(*session));
 	if (!session) return -1;
-	session->images = module_count == 0 ? NULL : calloc(
-		module_count, sizeof(*session->images)
-	);
-	if (module_count != 0 && !session->images) {
-		free(session);
-		return -1;
-	}
-	session->image_count = module_count;
 	session->identity = *identity;
 	prototype_effort_account_init(&session->effort, 0);
-	for (size_t i = 0; i < module_count; ++i) {
-		if (merge_image_build(modules[i], &session->images[i]) != 0) {
-			prototype_merge_producer_destroy(session);
-			return -1;
-		}
+	if (prototype_checked_module_set_prepare(
+			modules, module_count, &session->canonical_images
+		) != 0 || merge_session_prepare(session) != 0) {
+		prototype_merge_producer_destroy(session);
+		return -1;
 	}
-	merge_session_prepare(session);
 	*p_session = session;
 	return 0;
 }
@@ -243,8 +174,8 @@ int prototype_merge_producer_advance(
 		if (charged != 0) return -1;
 		int kind;
 		int conflict = prototype_checked_modules_conflict(
-			session->images[session->left].checked,
-			session->images[session->right].checked,
+			prototype_checked_module_set_at(session->canonical_images, session->left),
+			prototype_checked_module_set_at(session->canonical_images, session->right),
 			&kind
 		);
 		if (conflict != 0) {
@@ -265,21 +196,8 @@ int prototype_merge_producer_advance(
 			session->right = session->left + 1;
 		}
 	}
-	const struct prototype_checked_module** modules =
-		session->image_count == 0 ? NULL : malloc(
-			session->image_count * sizeof(*modules)
-		);
-	if (session->image_count != 0 && !modules) return -1;
-	for (size_t i = 0; i < session->image_count; ++i) {
-		modules[i] = session->images[i].checked;
-	}
-	struct prototype_checked_module_set_report set_report;
-	int status = prototype_checked_module_set_create(
-		modules, session->image_count, &session->result, &set_report
-	);
-	free(modules);
-	if (status != 0 || set_report.status != PROTOTYPE_CHECKED_MODULE_SET_COMPLETE ||
-		!session->result) return -1;
+	session->result = session->canonical_images;
+	session->canonical_images = NULL;
 	session->outcome = PROTOTYPE_MERGE_PRODUCER_COMPLETE;
 	*p_report = (struct prototype_merge_producer_report) {
 		.status = session->outcome,
@@ -305,9 +223,13 @@ int prototype_merge_producer_make_capsule(
 		return -1;
 	}
 	for (size_t i = 0; i < session->image_count; ++i) {
-		if (merge_buffer_u64(&payload, session->images[i].count) != 0 ||
+		const unsigned char* bytes;
+		size_t count;
+		if (prototype_checked_module_set_canonical_image_at(
+				session->canonical_images, i, &bytes, &count
+			) != 0 || merge_buffer_u64(&payload, count) != 0 ||
 			merge_buffer_write(
-				&payload, session->images[i].bytes, session->images[i].count
+				&payload, bytes, count
 			) != 0) {
 			free(payload.bytes);
 			return -1;
@@ -363,6 +285,7 @@ int prototype_merge_producer_restore(
 	struct prototype_merge_producer_session* session = calloc(1, sizeof(*session));
 	if (!session) return -1;
 	session->image_count = (size_t)image_count;
+	session->owned_image_count = (size_t)image_count;
 	session->images = image_count == 0 ? NULL : calloc(
 		(size_t)image_count, sizeof(*session->images)
 	);
@@ -375,6 +298,9 @@ int prototype_merge_producer_restore(
 	session->right = (size_t)right;
 	session->completed_pairs = (size_t)completed_pairs;
 	prototype_effort_account_init(&session->effort, 0);
+	struct prototype_canonical_checked_image* canonical =
+		image_count == 0 ? NULL : calloc((size_t)image_count, sizeof(*canonical));
+	if (image_count != 0 && !canonical) goto fail;
 	for (size_t i = 0; i < session->image_count; ++i) {
 		uint64_t size;
 		if (merge_read_u64(&reader, &size) != 0 || size > SIZE_MAX ||
@@ -397,21 +323,32 @@ int prototype_merge_producer_restore(
 		fclose(stream);
 		session->images[i] = (struct merge_module_image) {
 			.checked = checked,
-			.owned_module = module,
-			.bytes = malloc((size_t)size),
-			.count = (size_t)size
+			.owned_module = module
 		};
-		if (size != 0 && !session->images[i].bytes) goto fail;
+		canonical[i] = (struct prototype_canonical_checked_image) {
+			.module = checked,
+			.bytes = size == 0 ? NULL : malloc((size_t)size),
+			.count = (size_t)size,
+			.input_index = i
+		};
+		if (size != 0 && !canonical[i].bytes) goto fail;
 		if (size != 0) memcpy(
-			session->images[i].bytes, &reader.bytes[reader.cursor], (size_t)size
+			canonical[i].bytes, &reader.bytes[reader.cursor], (size_t)size
 		);
 		reader.cursor += (size_t)size;
 	}
-	if (reader.cursor != reader.count) goto fail;
+	if (reader.cursor != reader.count || prototype_checked_module_set_adopt(
+			canonical, (size_t)image_count, &session->canonical_images
+		) != 0) goto fail;
+	canonical = NULL;
 	*p_session = session;
 	return 0;
 
 fail:
+	if (canonical) {
+		for (size_t i = 0; i < (size_t)image_count; ++i) free(canonical[i].bytes);
+		free(canonical);
+	}
 	prototype_merge_producer_destroy(session);
 	return -1;
 }
@@ -428,7 +365,8 @@ void prototype_merge_producer_destroy(
 ) {
 	if (!session) return;
 	prototype_checked_module_set_destroy(session->result);
-	for (size_t i = 0; i < session->image_count; ++i) {
+	prototype_checked_module_set_destroy(session->canonical_images);
+	for (size_t i = 0; i < session->owned_image_count; ++i) {
 		merge_image_destroy(&session->images[i]);
 	}
 	free(session->images);

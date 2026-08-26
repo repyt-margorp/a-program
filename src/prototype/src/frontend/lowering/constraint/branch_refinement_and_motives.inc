@@ -1327,8 +1327,7 @@ static int operation_solver_quote_refined_term(
 			continue;
 		}
 		if (prototype_term_graph_replace_exact(
-				ctx->terms,
-				ctx->type_declarations,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 				quoted,
 				image,
 				source_variable,
@@ -1452,15 +1451,13 @@ static int operation_solver_build_quoted_motive(
 				return index_quote_status < 0 ? -1 : 1;
 			}
 			if (prototype_term_graph_replace_exact(
-					ctx->terms,
-					ctx->type_declarations,
+					ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 					quoted,
 					quoted_index,
 					scrutinee_arguments[scrutinee_parameter_count + index],
 					&next_quoted
 				) != 0 || prototype_term_graph_replace_exact(
-					ctx->terms,
-					ctx->type_declarations,
+					ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 					quoted_constructor,
 					constructor_arguments[scrutinee_parameter_count + index],
 					scrutinee_arguments[scrutinee_parameter_count + index],
@@ -1473,8 +1470,7 @@ static int operation_solver_build_quoted_motive(
 		}
 		uint32_t generalized;
 		if (prototype_term_graph_replace_exact(
-				ctx->terms,
-				ctx->type_declarations,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 				quoted,
 				quoted_constructor,
 				match->as.match.scrutinee,
@@ -1497,8 +1493,7 @@ static int operation_solver_build_quoted_motive(
 	if (common == PROTOTYPE_INVALID_ID || value_binding == PROTOTYPE_INVALID_ID ||
 		prototype_term_var(ctx->terms, value_binding, &value_variable) != 0 ||
 		prototype_term_graph_replace_exact(
-			ctx->terms,
-			ctx->type_declarations,
+			ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 			common,
 			match->as.match.scrutinee,
 			value_variable,
@@ -1514,8 +1509,7 @@ static int operation_solver_build_quoted_motive(
 		if (index_bindings[index] == PROTOTYPE_INVALID_ID || prototype_term_var(
 				ctx->terms, index_bindings[index], &index_variable
 			) != 0 || prototype_term_graph_replace_exact(
-				ctx->terms,
-				ctx->type_declarations,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 				motive_body,
 				scrutinee_arguments[scrutinee_parameter_count + index],
 				index_variable,
@@ -2008,11 +2002,11 @@ static int build_operation_motive(
 		uint32_t generalized_branch;
 		uint32_t reinstantiated_branch;
 		if (prototype_term_graph_replace_exact(
-				ctx->terms, ctx->type_declarations, branch_results[i],
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), branch_results[i],
 				branch_constructor_terms[i], motive_var, &generalized_branch
 			) != 0 || generalized_branch == branch_results[i] ||
 			prototype_term_graph_substitute_bound_var(
-				ctx->terms, ctx->type_declarations, generalized_branch,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), generalized_branch,
 				motive_binding, branch_constructor_terms[i],
 				&reinstantiated_branch
 			) != 0 || prototype_judgement_classifier_conversion(
@@ -2311,7 +2305,7 @@ static int build_operation_motive(
 				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
 				leaf, &normalized_leaf
 			) != 0 || prototype_term_graph_replace_exact(
-				ctx->terms, ctx->type_declarations, normalized_leaf,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), normalized_leaf,
 				branch_constructor_terms[0], value_var, &generalized
 			) != 0)) {
 			can_abstract = 0;
@@ -2334,7 +2328,7 @@ static int build_operation_motive(
 				index_bindings[i] == PROTOTYPE_INVALID_ID || prototype_term_var(
 					ctx->terms, index_bindings[i], &index_vars[i]
 				) != 0 || prototype_term_graph_substitute_bound_var(
-					ctx->terms, ctx->type_declarations, generalized,
+					ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), generalized,
 					ctx->terms->terms[source_index].as.var.binding_id,
 					index_vars[i], &generalized
 				) != 0) {
@@ -3220,8 +3214,7 @@ static int build_operation_guarded_recursive_motive(
 			prototype_term_var(
 				ctx->terms, index_bindings[index], &index_variable
 			) != 0 || prototype_term_graph_replace_exact(
-				ctx->terms,
-				ctx->type_declarations,
+				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
 				motive_match,
 				scrutinee_arguments[parameter_count + index],
 				index_variable,

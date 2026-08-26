@@ -1,4 +1,6 @@
 #include "a_program/kernel/type_declaration.h"
+
+#include "a_program/core/alpha_slot_env.h"
 #include "a_program/kernel/context.h"
 #include "a_program/core/term.h"
 #include "a_program/support/symbol.h"
@@ -192,14 +194,8 @@ int prototype_constructor_curried_caches_rebuild(
 
 struct type_representation_fingerprint_binder_env {
 	const struct prototype_context_db* contexts;
-	uint32_t binding_id[PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY];
-	uint32_t slot[PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY];
-	uint32_t count;
-	uint32_t next_slot;
-	uint32_t level_var[PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY];
-	uint32_t level_slot[PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY];
-	uint32_t level_count;
-	uint32_t next_level_slot;
+	struct prototype_alpha_slot_env binders;
+	struct prototype_alpha_slot_env levels;
 };
 
 struct representation_compare_env {
@@ -266,48 +262,14 @@ static int type_representation_fingerprint_env_lookup(
 	uint32_t binding_id,
 	uint32_t* p_slot
 ) {
-	if (!env || !p_slot) {
-		return 0;
-	}
-	for (uint32_t i = env->count; i > 0; --i) {
-		uint32_t index = i - 1;
-		if (env->binding_id[index] == binding_id) {
-			*p_slot = env->slot[index];
-			return 1;
-		}
-	}
-	return 0;
+	return env ? prototype_alpha_slot_lookup(&env->binders, binding_id, p_slot) : 0;
 }
 
 static int type_representation_fingerprint_env_push(
 	struct type_representation_fingerprint_binder_env* env,
 	uint32_t binding_id
 ) {
-	if (!env || env->count >= PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY) {
-		return -1;
-	}
-	env->binding_id[env->count] = binding_id;
-	env->slot[env->count] = env->next_slot++;
-	env->count++;
-	return 0;
-}
-
-static int type_representation_fingerprint_level_env_lookup(
-	const struct type_representation_fingerprint_binder_env* env,
-	uint32_t level_var,
-	uint32_t* p_slot
-) {
-	if (!env || !p_slot) {
-		return 0;
-	}
-	for (uint32_t i = env->level_count; i > 0; --i) {
-		uint32_t index = i - 1;
-		if (env->level_var[index] == level_var) {
-			*p_slot = env->level_slot[index];
-			return 1;
-		}
-	}
-	return 0;
+	return env ? prototype_alpha_slot_push(&env->binders, binding_id) : -1;
 }
 
 static int type_representation_fingerprint_level_env_slot(
@@ -315,20 +277,7 @@ static int type_representation_fingerprint_level_env_slot(
 	uint32_t level_var,
 	uint32_t* p_slot
 ) {
-	if (!env || !p_slot) {
-		return -1;
-	}
-	if (type_representation_fingerprint_level_env_lookup(env, level_var, p_slot)) {
-		return 0;
-	}
-	if (env->level_count >= PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY) {
-		return -1;
-	}
-	env->level_var[env->level_count] = level_var;
-	env->level_slot[env->level_count] = env->next_level_slot++;
-	*p_slot = env->level_slot[env->level_count];
-	env->level_count++;
-	return 0;
+	return env ? prototype_alpha_slot_intern(&env->levels, level_var, p_slot) : -1;
 }
 
 void prototype_type_declaration_db_init(
@@ -1701,14 +1650,14 @@ static int type_representation_fingerprint_match_case_at_depth(
 		return -1;
 	}
 
-	uint32_t saved_count = env->count;
-	uint32_t saved_next_slot = env->next_slot;
+	uint32_t saved_count = env->binders.count;
+	uint32_t saved_next_slot = env->binders.next_slot;
 	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
 		const struct prototype_case_binder* binder =
 			&terms->case_binders[match_case->first_binder + i];
 		if (type_representation_fingerprint_env_push(env, binder->binding_id) != 0) {
-			env->count = saved_count;
-			env->next_slot = saved_next_slot;
+			env->binders.count = saved_count;
+			env->binders.next_slot = saved_next_slot;
 			return -1;
 		}
 		key->bound_binder_count++;
@@ -1723,8 +1672,8 @@ static int type_representation_fingerprint_match_case_at_depth(
 		p_hash,
 		depth + 1
 	);
-	env->count = saved_count;
-	env->next_slot = saved_next_slot;
+	env->binders.count = saved_count;
+	env->binders.next_slot = saved_next_slot;
 	return status;
 }
 
@@ -1814,8 +1763,8 @@ static int type_representation_fingerprint_term_at_depth(
 				depth + 1
 			);
 		case PROTOTYPE_TERM_LAMBDA: {
-			uint32_t saved_count = env->count;
-			uint32_t saved_next_slot = env->next_slot;
+			uint32_t saved_count = env->binders.count;
+			uint32_t saved_next_slot = env->binders.next_slot;
 			if (type_representation_fingerprint_env_push(env, term->as.lambda.binding_id) != 0) {
 				return -1;
 			}
@@ -1830,8 +1779,8 @@ static int type_representation_fingerprint_term_at_depth(
 				p_hash,
 				depth + 1
 			);
-			env->count = saved_count;
-			env->next_slot = saved_next_slot;
+			env->binders.count = saved_count;
+			env->binders.next_slot = saved_next_slot;
 			return status;
 		}
 		case PROTOTYPE_TERM_PI:
@@ -1858,8 +1807,8 @@ static int type_representation_fingerprint_term_at_depth(
 				) != 0) {
 				return -1;
 			}
-			uint32_t saved_count = env->count;
-			uint32_t saved_next_slot = env->next_slot;
+			uint32_t saved_count = env->binders.count;
+			uint32_t saved_next_slot = env->binders.next_slot;
 			if (type_representation_fingerprint_env_push(env, binding_id) != 0) {
 				return -1;
 			}
@@ -1874,8 +1823,8 @@ static int type_representation_fingerprint_term_at_depth(
 				p_hash,
 				depth + 1
 			);
-			env->count = saved_count;
-			env->next_slot = saved_next_slot;
+			env->binders.count = saved_count;
+			env->binders.next_slot = saved_next_slot;
 			return status;
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
@@ -1904,8 +1853,8 @@ static int type_representation_fingerprint_term_at_depth(
 				env, key, p_hash, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
-			uint32_t saved_count = env->count;
-			uint32_t saved_next_slot = env->next_slot;
+			uint32_t saved_count = env->binders.count;
+			uint32_t saved_next_slot = env->binders.next_slot;
 			if (type_representation_fingerprint_env_push(
 					env, term->as.effect_row_forall.binding_id
 				) != 0) {
@@ -1922,8 +1871,8 @@ static int type_representation_fingerprint_term_at_depth(
 				p_hash,
 				depth + 1
 			);
-			env->count = saved_count;
-			env->next_slot = saved_next_slot;
+			env->binders.count = saved_count;
+			env->binders.next_slot = saved_next_slot;
 			return status;
 		}
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
@@ -2299,7 +2248,7 @@ int prototype_type_declaration_representation_fingerprint(
 				constructor->result_classifier);
 			return -1;
 		}
-		env.count = parameter_binder_count;
+		env.binders.count = parameter_binder_count;
 		type_representation_fingerprint_hash_mix_tag(&hash, 0x636f6e73U);
 		type_representation_fingerprint_hash_mix_u32(&hash, constructor->constructor_index);
 		type_representation_fingerprint_hash_mix_u32(&hash, field_count);

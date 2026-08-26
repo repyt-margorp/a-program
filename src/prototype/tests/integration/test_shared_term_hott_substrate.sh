@@ -28,8 +28,21 @@ if grep -Eq '^[[:space:]]*PROTOTYPE_TERM_(OBS_EQ|EQUALITY|PATH|TRANSPORT|COHEREN
 	exit 1
 fi
 
+for graph_api in substitute_bound_var replace_exact reindex_bindings; do
+	if sed -n "/int prototype_term_graph_${graph_api}(/,/);/p" \
+			src/prototype/include/a_program/core/term.h | \
+		grep -q 'prototype_type_declaration_db'; then
+		echo "Core graph API exposes aggregate TypeDeclarationDB: $graph_api" >&2
+		exit 1
+	fi
+done
+
 prototype_compile c11 warnings graph \
 	"$tmp_dir/shared-term-reindex-check" \
 	src/prototype/tests/checks/shared_term_reindex_check.c
+prototype_compile c11 werror compiler \
+	"$tmp_dir/alpha-slot-env-check" \
+	src/prototype/tests/checks/alpha_slot_env_check.c
 
 "$tmp_dir/shared-term-reindex-check"
+"$tmp_dir/alpha-slot-env-check"

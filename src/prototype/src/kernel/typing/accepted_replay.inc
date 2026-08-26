@@ -2808,7 +2808,7 @@ static int occurrence_classifier_satisfies_at_depth(
 			prototype_term_var(
 				terms, operation->binding_id, &body_binder_var
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				terms, type_declarations, expected_body, expected_binder,
+				terms, prototype_type_view_rebuild_context_from_db(type_declarations), expected_body, expected_binder,
 				body_binder_var, &specialized_body
 			) != 0 || judgement_occurrence_child(
 				operations, operation_id, PROTOTYPE_TERM_CHILD_BODY, 0,
@@ -5109,8 +5109,7 @@ static int validate_pi_formation_intro_proof(
 	if (prototype_term_var(
 			(struct prototype_term_db*)terms, binding_id, &binder_var
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			(struct prototype_term_db*)terms,
-			NULL,
+			(struct prototype_term_db*)terms, prototype_type_view_rebuild_context_from_db(NULL),
 			lambda_result_body,
 			lambda_result_binder,
 			binder_var,

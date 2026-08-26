@@ -28,6 +28,12 @@ static void test_u64(unsigned char* bytes, uint64_t value) {
 	for (uint32_t i = 0; i < 8; ++i) bytes[i] = (unsigned char)(value >> (i * 8));
 }
 
+static uint64_t test_read_u64(const unsigned char* bytes) {
+	uint64_t value = 0;
+	for (uint32_t i = 0; i < 8; ++i) value |= (uint64_t)bytes[i] << (i * 8);
+	return value;
+}
+
 static int read_file_bytes(FILE* file, unsigned char** p_bytes, size_t* p_count) {
 	if (!file || !p_bytes || !p_count || fflush(file) != 0 ||
 		fseek(file, 0, SEEK_END) != 0) return -1;
@@ -101,6 +107,22 @@ static int expect_read_rejected(
 	return read_result != 0 ? 0 : -1;
 }
 
+static int expect_canonical_rewrite(
+	const struct prototype_checked_module* checked,
+	const unsigned char* expected,
+	size_t expected_count
+) {
+	FILE* file = tmpfile();
+	unsigned char* bytes = NULL;
+	size_t count = 0;
+	int result = file && prototype_checked_artifact_write(file, checked) == 0 &&
+		read_file_bytes(file, &bytes, &count) == 0 && count == expected_count &&
+		memcmp(bytes, expected, count) == 0 ? 0 : -1;
+	free(bytes);
+	if (file) fclose(file);
+	return result;
+}
+
 int main(void) {
 	struct prototype_program_storage storage;
 	struct prototype_elaborated_module source;
@@ -146,6 +168,13 @@ int main(void) {
 		fprintf(stderr, "checked artifact output is not canonical\n");
 		goto cleanup;
 	}
+	if (getenv("A_PROGRAM_ARTIFACT_BASELINE")) {
+		printf(
+			"A_PROGRAM_CHECKED_ARTIFACT_BASELINE 1 bytes=%zu fnv1a64=%llu\n",
+			first_count,
+			(unsigned long long)test_hash(first_bytes, first_count)
+		);
+	}
 	capsule.producer_kind = PROTOTYPE_WORK_CAPSULE_CLASSIFIER;
 	capsule.producer_version = 1;
 	capsule.cost_model_version = PROTOTYPE_EFFORT_COST_MODEL_VERSION;
@@ -165,6 +194,15 @@ int main(void) {
 		) != 0 || report.status != PROTOTYPE_CHECKER_COMPLETE ||
 		!decoded_checked) {
 		fprintf(stderr, "producer capsule changed checked import authority\n");
+		prototype_checked_module_destroy(decoded_checked);
+		prototype_elaborated_module_destroy(&decoded);
+		decoded_checked = NULL;
+		goto cleanup;
+	}
+	if (expect_canonical_rewrite(
+			decoded_checked, first_bytes, first_count
+		) != 0) {
+		fprintf(stderr, "producer erasure changed canonical checked bytes\n");
 		prototype_checked_module_destroy(decoded_checked);
 		prototype_elaborated_module_destroy(&decoded);
 		decoded_checked = NULL;
@@ -208,6 +246,43 @@ int main(void) {
 	prototype_elaborated_module_destroy(&decoded);
 
 	if (first_count <= 36) goto cleanup;
+	if (expect_read_rejected(first_bytes, 15, &options) != 0) {
+		fprintf(stderr, "truncated checked artifact header was accepted\n");
+		goto cleanup;
+	}
+	if (expect_read_rejected(first_bytes, first_count - 1, &options) != 0) {
+		fprintf(stderr, "truncated checked artifact payload was accepted\n");
+		goto cleanup;
+	}
+	test_u32(&first_bytes[12], 1);
+	if (expect_read_rejected(first_bytes, first_count, &options) != 0) {
+		fprintf(stderr, "missing required section was accepted\n");
+		goto cleanup;
+	}
+	test_u32(&first_bytes[12], 2);
+	test_u32(&first_bytes[16], 99);
+	if (expect_read_rejected(first_bytes, first_count, &options) != 0) {
+		fprintf(stderr, "unknown checked artifact section was accepted\n");
+		goto cleanup;
+	}
+	test_u32(&first_bytes[16], 1);
+	uint64_t semantic_count = test_read_u64(&first_bytes[20]);
+	if (semantic_count > SIZE_MAX - 56 || semantic_count + 56 > first_count) {
+		goto cleanup;
+	}
+	size_t second_kind_offset = (size_t)semantic_count + 36;
+	test_u32(&first_bytes[second_kind_offset], 1);
+	if (expect_read_rejected(first_bytes, first_count, &options) != 0) {
+		fprintf(stderr, "duplicate checked artifact section was accepted\n");
+		goto cleanup;
+	}
+	test_u32(&first_bytes[second_kind_offset], 2);
+	test_u64(&first_bytes[20], UINT64_C(1073741825));
+	if (expect_read_rejected(first_bytes, first_count, &options) != 0) {
+		fprintf(stderr, "oversized checked artifact section was accepted\n");
+		goto cleanup;
+	}
+	test_u64(&first_bytes[20], semantic_count);
 	first_bytes[36] ^= 1;
 	if (expect_read_rejected(first_bytes, first_count, &options) != 0) {
 		fprintf(stderr, "semantic payload corruption was accepted\n");
@@ -240,6 +315,15 @@ int main(void) {
 			extended_file, &options, &decoded, &decoded_checked, &report
 		) != 0 || report.status != PROTOTYPE_CHECKER_COMPLETE || !decoded_checked) {
 		fprintf(stderr, "non-authoritative debug section changed acceptance\n");
+		fclose(extended_file);
+		goto cleanup;
+	}
+	if (expect_canonical_rewrite(
+			decoded_checked, first_bytes, first_count
+		) != 0) {
+		fprintf(stderr, "debug erasure changed canonical checked bytes\n");
+		prototype_checked_module_destroy(decoded_checked);
+		prototype_elaborated_module_destroy(&decoded);
 		fclose(extended_file);
 		goto cleanup;
 	}
