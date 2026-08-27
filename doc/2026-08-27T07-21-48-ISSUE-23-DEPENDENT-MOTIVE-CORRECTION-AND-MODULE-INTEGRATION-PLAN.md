@@ -2,8 +2,10 @@
 
 Date: 2026-08-27 JST
 
-Status: implemented and verified for the Issue 23 fragment. PR 24 is merged.
-The broader inverse-reindexing motive solver remains a separate generalization.
+Status: implementation follow-up completed on 2026-08-28 for multi-IH joining,
+frontend rejection, diagnostics, and replay consistency. PR 24 is merged. The
+broader neutral-index inverse-reindexing solver and a QuickSort-specific
+output theorem remain separate work.
 
 Issue: #23, `Bug: generated Function Graph dependent motives become constant
 and fail recursive IH replay`
@@ -588,7 +590,7 @@ Exit gate:
 
 ## I23-6: Diagnostics
 
-Status: [-] deferred; no diagnostic authority change was required
+Status: [x] completed without making diagnostics a solver authority
 
 - [ ] Preserve source span from the graph Match/IH selector into motive errors.
 - [ ] Report graph owner, constructor selector, index ordinal, abstraction
@@ -695,14 +697,14 @@ After each phase:
 - close Issue 23 only after the positive and negative matrix is complete or an
   explicitly excluded v87 migration item is separately tracked and justified.
 
-## 12. Completion Record
+## 12. First Implementation Record
 
 Implementation revision: `e2ca3a5`
 
 Artifact version decision: unchanged; accepted artifacts remain v86 and no
 producer-only motive metadata is serialized
 
-Issue 23 state: remains open after the implementation commit. The concrete Book
+Issue 23 state at this revision: left open after the implementation commit. The concrete Book
 reproducer is fixed, but the issue's broader v87, output-dependent QuickSort,
 negative-provenance, and diagnostic acceptance items are not all complete.
 
@@ -760,3 +762,121 @@ published classifier independently.
 - [x] performance and line-count deltas are recorded;
 - [x] Issue 23 has an implementation-status comment with remaining closure gates; and
 - [x] implementation is committed and pushed to `main`.
+
+## 13. 2026-08-28 Follow-up Implementation Record
+
+The first implementation fixed the minimal single-IH failure, but the wider
+matrix exposed three remaining producer defects:
+
+1. one Match stored only one `recursive_equation_operation`, so a second IH
+   could replace or hide the first recursive equation;
+2. replacing an IH classifier from the selected motive did not invalidate all
+   downstream classifier consequences; and
+3. an incompatible recursive property could survive producer solving and fail
+   only at accepted replay.
+
+The follow-up corrects those defects without weakening Core conversion or
+accepted replay.
+
+### Authority and module result
+
+- `operation_motive_solution` remains the single selected-motive authority per
+  Match.
+- `recursive_equation_owners[ih]` records independent provenance for every
+  exact IH occurrence. It is not a conversion result and supports multiple IHs
+  for one Match.
+- `ih_projected_motives[ih]` is a derived cache only. A cache hit is valid only
+  while the IH classifier is present and was projected from the same motive.
+- ConstraintDB remains the lifecycle authority for each branch motive
+  equation. Cached validation is keyed by motive, actual classifier, Context,
+  refinement substitution, and recursive-equation revision.
+- `motive_solver.inc` owns branch-index correspondence, refinement quotation,
+  equation validation, recursive provenance, and terminal motive diagnostics.
+- branch Context construction and fixed-point scheduling remain in
+  `branch_refinement_and_motives.inc`; occurrence construction remains in
+  `graph_construction.inc`. Moving those mechanisms behind an untyped generic
+  callback would obscure distinct compiler obligations rather than remove a
+  duplicate semantic authority.
+- use-site effect-row instantiation is shared by producer propagation and the
+  kernel computation-fold rule. The generalized premise classifier is not
+  overwritten.
+
+The key rule is now:
+
+```text
+guarded recursive ownership
+  + projection of the selected motive to every exact IH
+  + recomputation of each downstream branch classifier
+  + validation of every branch motive equation
+  ------------------------------------------------------
+  accepted recursive motive equation
+```
+
+The conclusion is a recursive equation premise, not
+`PROTOTYPE_TERM_CONVERSION_EQUAL`. Ordinary DefEq remains unchanged.
+
+### Permanent coverage added
+
+- generated `length` graph with output-dependent motive and one recursive IH;
+- generated `mirror` graph with an output-dependent structural family and two
+  recursive IHs;
+- incompatible recursive output property rejected by the frontend with
+  `motive-equation-mismatch` before P0 replay;
+- constant and nominally distinct equal-Core-shape controls;
+- v86 write/read for both one-IH and two-IH positive fixtures; and
+- a dedicated `test_issue_23_dependent_motive.sh` authority-boundary audit.
+
+The two-IH `mirror` fixture is the small structural output-indexed property
+requested by the plan. A QuickSort-specific `Sorted` or permutation theorem is
+not claimed: it requires an object-level property library and should not be
+simulated by a QuickSort-only compiler rule.
+
+### Checked-Core boundary
+
+The focused one-IH and two-IH fixtures both pass producer elaboration,
+accepted P0 replay, and v86 artifact round-trip. Direct v87 checks currently
+stop at the same existing unsupported root:
+
+```text
+checker status=3 reason=8 kind=5 role=1
+```
+
+The repository-wide checked-Core example command also stops earlier at the
+pre-existing `explicit_index_family_acc_concrete_check.p` root
+(`status=3 reason=4`). No checker rule was weakened or added for Issue 23.
+Admitting the Function Graph APP role into v87 is a checked-fragment migration,
+not part of motive synthesis.
+
+### Follow-up performance
+
+| Scenario | Planning baseline | First implementation | Follow-up | Result |
+| --- | ---: | ---: | ---: | --- |
+| QuickSort dependency closure | 7189 ms | 6677 ms | 6480 ms | no regression |
+| Dedicated one/two-IH and negative matrix | absent | absent | 219 ms | pass |
+
+Timings are wall-clock observations from one local run and are regression
+guards, not deterministic artifact data.
+
+### Follow-up line accounting
+
+Relative to `9d685b0`, tracked implementation and existing-test files add 1406
+lines and delete 750 lines. Two new fixtures/scripts add 112 lines, for a total
+of 1518 additions, 750 deletions, and a net increase of 768 lines, excluding
+this document. Most growth is the explicit typed correspondence, validation
+cache keys, multi-IH provenance, diagnostics, and permanent tests; 318 lines of
+the old branch-local motive path and 63 lines of finalization fallback were
+removed.
+
+### Follow-up verification
+
+- [x] `make -f src/prototype/Makefile reader`;
+- [x] `test_issue_23_dependent_motive.sh`;
+- [x] `test_function_graph_certified_execution.sh`;
+- [x] `test_explicit_index_family_surface.sh`;
+- [x] `test_constraint_authority.sh`;
+- [x] `test_context_substitution_immutability.sh`;
+- [x] `test_artifact_flow.sh`;
+- [x] no Issue 23 temporary motive/replay trace was added;
+- [x] accepted replay remains independent and unchanged in strength;
+- [ ] current v87 admits the generated Function Graph APP role;
+- [ ] a QuickSort-specific output theorem library is available.

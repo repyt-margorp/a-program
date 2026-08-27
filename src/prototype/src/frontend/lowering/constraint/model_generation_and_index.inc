@@ -600,10 +600,13 @@ static int operation_solver_reset_classifier_state(
 		solver->motive_solutions[i] = (struct operation_motive_solution) {
 			.constant_candidate = PROTOTYPE_INVALID_ID,
 			.motive = PROTOTYPE_INVALID_ID,
-			.recursive_equation_operation = PROTOTYPE_INVALID_ID,
+			.source_case_index = PROTOTYPE_INVALID_ID,
+			.source_classifier = PROTOTYPE_INVALID_ID,
 			.state = OPERATION_MOTIVE_SOLUTION_UNRESOLVED
 		};
 		solver->ih_motive_application_ids[i] = PROTOTYPE_INVALID_ID;
+		solver->recursive_equation_owners[i] = PROTOTYPE_INVALID_ID;
+		solver->ih_projected_motives[i] = PROTOTYPE_INVALID_ID;
 	}
 	return operation_solver_refresh_usage_solutions(ctx) != 0 ||
 		operation_solver_initialize_input_facts(ctx) != 0 ? -1 : 0;

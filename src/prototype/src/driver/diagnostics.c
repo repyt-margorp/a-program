@@ -57,6 +57,14 @@ const char* prototype_compile_diagnostic_reason_name(int reason) {
 			return "nested-match-grouping";
 		case PROTOTYPE_COMPILE_DIAGNOSTIC_BRANCH_REFINEMENT_RESIDUAL:
 			return "branch-refinement-residual";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_MOTIVE_CORRESPONDENCE_UNAVAILABLE:
+			return "motive-correspondence-unavailable";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_MOTIVE_CORRESPONDENCE_CONFLICT:
+			return "motive-correspondence-conflict";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_MOTIVE_EQUATION_MISMATCH:
+			return "motive-equation-mismatch";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_MOTIVE_GUARDEDNESS:
+			return "motive-guardedness";
 		default:
 			return "unknown";
 	}
@@ -93,6 +101,19 @@ void prototype_diagnostic_print_compile_diagnostics(
 		}
 		if (diagnostic->field_ordinal != PROTOTYPE_INVALID_ID) {
 			fprintf(stream, " field-ordinal=%u", diagnostic->field_ordinal);
+		}
+		if (diagnostic->dependency_mask != 0 ||
+			diagnostic->abstraction_status != 0 ||
+			diagnostic->guardedness_status != 0 ||
+			diagnostic->conversion_status != 0) {
+			fprintf(
+				stream,
+				" dependency-mask=0x%llx abstraction-status=%d guardedness-status=%d conversion-status=%d",
+				(unsigned long long)diagnostic->dependency_mask,
+				diagnostic->abstraction_status,
+				diagnostic->guardedness_status,
+				diagnostic->conversion_status
+			);
 		}
 		fputc('\n', stream);
 	}

@@ -39,6 +39,8 @@ prototype_test_phase two_recursive_calls
 ./read_file.out "$two_recursive" >"$tmp_dir/two-recursive.out"
 grep -q '^constructor \$graph\.mirror\.fork readback_fields=6 ' \
 	"$tmp_dir/two-recursive.out"
+grep -q '^term mirrorOutputTree :=' "$tmp_dir/two-recursive.out"
+grep -q '^term certifiedOutputTree :=' "$tmp_dir/two-recursive.out"
 ./read_file.out --check-source-exports-normalization-equal \
 	main expected "$two_recursive" >"$tmp_dir/two-recursive-equality.out"
 grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
@@ -66,6 +68,23 @@ grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
 	>"$tmp_dir/dependent-output-ih-read.out"
 grep -q '^interface term lengthOutputUnary ' \
 	"$tmp_dir/dependent-output-ih-read.out"
+
+if ./read_file.out \
+	src/prototype/tests/fixtures/negative/function_graph_incompatible_recursive_property.p \
+	>"$tmp_dir/incompatible-recursive-property.out" \
+	2>"$tmp_dir/incompatible-recursive-property.err"
+then
+	echo 'incompatible recursive property unexpectedly compiled' >&2
+	exit 1
+fi
+if grep -q 'P0 accepted proof graph validation failed' \
+	"$tmp_dir/incompatible-recursive-property.err"
+then
+	echo 'incompatible recursive property reached accepted replay' >&2
+	exit 1
+fi
+grep -q 'diagnostic-code=motive-equation-mismatch' \
+	"$tmp_dir/incompatible-recursive-property.err"
 
 prototype_test_phase nominal_index_constant_motive
 ./read_file.out "$nominal_constant" >"$tmp_dir/nominal-constant.out"

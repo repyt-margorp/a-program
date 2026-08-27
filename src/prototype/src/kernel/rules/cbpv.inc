@@ -718,6 +718,33 @@ int prototype_judgement_computation_fold_result_classifier(
 		prototype_judgement_classifier_conversion(
 			terms, type_declarations, domain, input_value_classifier
 		).status : PROTOTYPE_TERM_CONVERSION_INVALID;
+	if (continuation_pi_status == 0 && family_status == 0 &&
+		domain_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		uint32_t instantiated_input_classifier;
+		int instantiate_status = prototype_judgement_solve_expected_effect_rows(
+			terms,
+			type_declarations,
+			NULL,
+			input_value_classifier,
+			domain,
+			&instantiated_input_classifier
+		);
+		if (instantiate_status < 0) {
+			return -1;
+		}
+		if (instantiate_status == 0 &&
+			prototype_judgement_classifier_conversion(
+				terms,
+				type_declarations,
+				instantiated_input_classifier,
+				domain
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			/* Effect-row schemes are instantiated at the sequencing use site. The
+			 * premise evidence retains its general classifier. */
+			input_value_classifier = instantiated_input_classifier;
+			domain_conversion = PROTOTYPE_TERM_CONVERSION_EQUAL;
+		}
+	}
 	if (continuation_pi_status != 0 || family_status != 0 ||
 		domain_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		return -1;

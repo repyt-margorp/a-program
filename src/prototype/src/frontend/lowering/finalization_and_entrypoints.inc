@@ -762,48 +762,7 @@ static int operation_refine_classifier_from_expected(
 		operation->ih_owner_occurrence < ctx->metadata->typed_occurrences.occurrence_count &&
 		ctx->metadata->typed_occurrences.occurrences[operation->ih_owner_occurrence].tag ==
 			PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
-		uint32_t current_classifier = operation_solver_classifier(
-			ctx, operation_id
-		);
-		uint32_t comparison_expected = expected_classifier;
-		struct prototype_term_classifier_view expected_view;
-		struct prototype_term_classifier_view current_view;
-		if (current_classifier < ctx->terms->term_count &&
-			ctx->terms->terms[current_classifier].tag !=
-				PROTOTYPE_TERM_COMPUTATION_TYPE &&
-			ctx->terms->terms[expected_classifier].tag ==
-				PROTOTYPE_TERM_COMPUTATION_TYPE) {
-			comparison_expected = ctx->terms->terms[
-				expected_classifier
-			].as.computation_type.result;
-		} else if (current_classifier < ctx->terms->term_count &&
-			prototype_judgement_classifier_view(
-				ctx->terms, ctx->type_declarations, NULL,
-				current_classifier, &current_view
-			) == 0 && current_view.category == PROTOTYPE_TERM_CATEGORY_VALUE &&
-			prototype_judgement_classifier_view(
-				ctx->terms, ctx->type_declarations, NULL,
-				expected_classifier, &expected_view
-			) == 0 && expected_view.category ==
-				PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
-			expected_view.computation_kind ==
-				PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
-			comparison_expected = expected_view.result;
-		}
-		int classifier_changed = current_classifier >= ctx->terms->term_count ||
-			prototype_judgement_classifier_conversion(
-				ctx->terms, ctx->type_declarations,
-				current_classifier, comparison_expected
-			).status != PROTOTYPE_TERM_CONVERSION_EQUAL;
-		if (!classifier_changed) {
-			return 1;
-		}
 		int ih_equation_changed = 0;
-		if (operation_solver_invalidate_materialized_match_motive(
-						ctx, operation->ih_owner_occurrence, &ih_equation_changed
-					) < 0) {
-			return -1;
-		}
 		/* Every guarded recursive use contributes an equation for the motive.
 		 * The APP-side expectation may expose a suspended function as a callable
 		 * Pi, so it is not itself authoritative for the IH occurrence. The owner
@@ -814,18 +773,6 @@ static int operation_refine_classifier_from_expected(
 		);
 		if (motive_status < 0) {
 			return -1;
-		}
-		if (motive_status > 0 &&
-			ctx->classifier_solver.motive_solutions[
-				operation->ih_owner_occurrence
-			].state == OPERATION_MOTIVE_SOLUTION_EQUATIONS_READY &&
-			current_classifier < ctx->terms->term_count) {
-			/* An equation-ready motive is the joined recursive candidate. An expected type
-			 * that cannot itself reconstruct that motive is only a branch-local
-			 * provisional equation (typically containing a sequence-result
-			 * binder). It may validate the occurrence, but must not replace the
-			 * canonical classifier already derived from the joined motive. */
-			classifier_changed = 0;
 		}
 		if (ih_equation_changed) {
 			*p_changed = 1;
@@ -1168,8 +1115,12 @@ static int operation_refine_classifier_from_expected(
 				) != 0) {
 				return -1;
 			}
-			if (scrutinee_classifier >= ctx->terms->term_count ||
-				prototype_judgement_apply_indexed_motive(
+			if (scrutinee_classifier >= ctx->terms->term_count) {
+				/* Branch refinement and motive application both require the scrutinee
+				 * classifier. Its absence is a pending constraint, not malformed Core. */
+				return 0;
+			}
+			if (prototype_judgement_apply_indexed_motive(
 					ctx->terms, ctx->type_declarations, motive, scrutinee,
 					scrutinee_classifier, 0, &motive_application
 				) != 0) {
@@ -1193,10 +1144,6 @@ static int operation_refine_classifier_from_expected(
 			if (operation_solver_enqueue_dependents(ctx, operation_id) != 0) {
 				return -1;
 			}
-		}
-		if (!reuse_motive) {
-			ctx->classifier_solver.motive_solutions[operation_id].
-				recursive_equation_operation = PROTOTYPE_INVALID_ID;
 		}
 		ctx->classifier_solver.motive_solutions[operation_id].motive = motive;
 		ctx->classifier_solver.motive_solutions[operation_id].constant_candidate =
@@ -2553,8 +2500,6 @@ static int compile_pending_with_workspace(
 				classifier_function->tag == PROTOTYPE_TERM_LAMBDA) {
 				motive = classifier_term->as.app.function;
 				ctx->classifier_solver.motive_solutions[i].motive = motive;
-				ctx->classifier_solver.motive_solutions[i].
-					recursive_equation_operation = PROTOTYPE_INVALID_ID;
 				ctx->classifier_solver.motive_solutions[i].state =
 					OPERATION_MOTIVE_SOLUTION_MATERIALIZED;
 				occurrence->match_motive = motive;
@@ -2597,8 +2542,6 @@ static int compile_pending_with_workspace(
 				return -1;
 			}
 			ctx->classifier_solver.motive_solutions[i].motive = motive;
-			ctx->classifier_solver.motive_solutions[i].recursive_equation_operation =
-				PROTOTYPE_INVALID_ID;
 			ctx->classifier_solver.motive_solutions[i].state =
 				OPERATION_MOTIVE_SOLUTION_MATERIALIZED;
 		}

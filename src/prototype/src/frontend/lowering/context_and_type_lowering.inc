@@ -293,6 +293,14 @@ struct operation_classifier_motive_case_goal {
 	uint32_t constructor_owner;
 	uint32_t constructor_index;
 	uint32_t ih_scope_id;
+	/* Derived validation cache. ConstraintDB remains the equation authority;
+	 * these keys only memoize validation of an unchanged equation view. */
+	uint32_t validated_motive;
+	uint32_t validated_actual_classifier;
+	uint32_t validated_context;
+	uint32_t validated_substitution;
+	uint64_t validated_recursive_revision;
+	int validation_status;
 };
 
 union operation_classifier_goal_payload {
@@ -515,12 +523,58 @@ struct operation_solver_motive_application {
 struct operation_motive_solution {
 	uint32_t constant_candidate;
 	uint32_t motive;
-	/* Exact IH occurrence whose expected-classifier equation produced motive.
-	 * INVALID means the solution was joined from ordinary branch equations. */
-	uint32_t recursive_equation_operation;
 	uint64_t dependency_mask;
+	uint64_t unavailable_mask;
+	uint64_t conflict_mask;
+	uint32_t source_case_index;
+	/* Cache key for a provisional branch candidate. This is not a second
+	 * classifier authority: it only avoids reconstructing the same candidate
+	 * from an unchanged branch equation. */
+	uint32_t source_classifier;
 	uint8_t state;
 	uint8_t ambiguity;
+};
+
+struct operation_motive_candidate {
+	uint32_t motive;
+	uint32_t source_case_index;
+	uint64_t dependency_mask;
+	uint64_t unavailable_mask;
+	uint64_t conflict_mask;
+};
+
+enum operation_motive_correspondence_status {
+	OPERATION_MOTIVE_CORRESPONDENCE_INVALID = -1,
+	OPERATION_MOTIVE_CORRESPONDENCE_AVAILABLE = 0,
+	OPERATION_MOTIVE_CORRESPONDENCE_UNAVAILABLE = 1,
+	OPERATION_MOTIVE_CORRESPONDENCE_CONFLICT = 2
+};
+
+struct operation_motive_index_correspondence {
+	uint32_t family_type_id;
+	uint32_t index_ordinal;
+	uint32_t source_index;
+	uint32_t branch_index;
+	uint32_t source_index_classifier;
+	uint32_t branch_index_classifier;
+	uint32_t branch_context;
+	uint32_t refinement_substitution;
+};
+
+enum operation_motive_equation_validation_status {
+	OPERATION_MOTIVE_EQUATION_INVALID = -1,
+	OPERATION_MOTIVE_EQUATION_VALID = 0,
+	OPERATION_MOTIVE_EQUATION_PENDING = 1,
+	OPERATION_MOTIVE_EQUATION_MISMATCH = 2
+};
+
+struct operation_motive_equation_validation {
+	uint32_t expected_classifier;
+	uint32_t actual_classifier;
+	uint32_t ih_operation;
+	int conversion_status;
+	int guardedness_status;
+	int used_recursive_equation;
 };
 
 /*
@@ -541,6 +595,7 @@ struct operation_classifier_solver {
 	int initialized;
 	uint32_t initialized_occurrence_count;
 	uint64_t solution_revision;
+	uint64_t recursive_equation_revision;
 	struct operation_classifier_meta_solution classifier_metas[4096];
 	/* A candidate is a solver equation M(_) == T. It is never represented by
 	 * a provisional TermDB APP node. */
@@ -548,6 +603,12 @@ struct operation_classifier_solver {
 	/* For an IH operation i, this indexes symbolic M(argument) in the solver
 	 * arena. It is never a provisional TermDB APP node. */
 	uint32_t ih_motive_application_ids[4096];
+	/* Recursive motive-equation provenance is indexed by the exact IH
+	 * occurrence. Multiple IH equations may belong to one Match solution. */
+	uint32_t recursive_equation_owners[4096];
+	/* Derived cache: the owner motive whose classifier was last projected to
+	 * this IH occurrence. The motive solution remains authoritative. */
+	uint32_t ih_projected_motives[4096];
 	struct operation_solver_motive_application motive_applications[4096];
 	uint32_t motive_application_count;
 	struct operation_solver_input_fact
@@ -566,10 +627,71 @@ static int operation_motive_abstract_index(
 	int* p_dependency_found
 );
 
+static int operation_motive_quote_refined_term(
+	struct compile_context* ctx,
+	uint32_t term,
+	uint32_t substitution_id,
+	uint32_t* p_quoted
+);
+
+static int operation_motive_branch_index_correspondence(
+	struct compile_context* ctx,
+	uint32_t match_operation_id,
+	uint32_t case_index,
+	uint32_t constructor_classifier,
+	uint32_t index_ordinal,
+	struct operation_motive_index_correspondence* p_correspondence
+);
+
+static int operation_solver_validate_guarded_motive_occurrence(
+	struct compile_context* ctx,
+	uint32_t ih_operation,
+	uint32_t motive_operation,
+	uint32_t argument_occurrence
+);
+
+static int operation_motive_validate_equation(
+	struct compile_context* ctx,
+	uint32_t match_operation_id,
+	uint32_t case_index,
+	uint32_t motive,
+	struct operation_motive_equation_validation* p_validation
+);
+
+static int operation_motive_add_terminal_diagnostic(
+	struct compile_context* ctx,
+	uint32_t match_operation_id,
+	uint32_t case_index
+);
+
+static void operation_motive_clear_recursive_equations(
+	struct compile_context* ctx,
+	uint32_t match_operation_id
+);
+
+static int operation_motive_has_recursive_equations(
+	const struct compile_context* ctx,
+	uint32_t match_operation_id
+);
+
+static int operation_motive_register_recursive_equation(
+	struct compile_context* ctx,
+	uint32_t match_operation_id,
+	uint32_t ih_operation
+);
+
 static int operation_solver_var_binding_context(
 	const struct compile_context* ctx,
 	uint32_t variable_occurrence,
 	uint32_t* p_binding_context
+);
+
+static int operation_solver_reindex_in_enclosing_indexed_branches(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t context_id,
+	uint32_t term,
+	uint32_t* p_reindexed
 );
 
 enum operation_effect_row_meta_state {
@@ -706,6 +828,9 @@ struct compile_context {
 	uint32_t active_classifier_constraint_id;
 	uint64_t context_dependency_revision;
 	uint64_t context_resolution_dependency_revision;
+	/* Revision of the solved indexed-branch actions used by the derived
+	 * enclosing-branch reindex cache. */
+	uint64_t operation_reindex_revision;
 	size_t context_resolution_context_count;
 	uint32_t context_dirty_bindings[OPERATION_BINDER_OWNER_CAPACITY];
 	uint32_t context_dirty_binding_count;

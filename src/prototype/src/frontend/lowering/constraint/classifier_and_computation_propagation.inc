@@ -28,8 +28,8 @@ static int operation_subtree_contains_operation(
 );
 
 static int operation_solver_classifier_goal_is_satisfied(
-	const struct compile_context* ctx,
-	const struct operation_constraint* goal,
+	struct compile_context* ctx,
+	struct operation_constraint* goal,
 	int* p_reason
 ) {
 	if (!ctx || !ctx->metadata || !goal || !p_reason ||
@@ -117,18 +117,68 @@ static int operation_solver_classifier_goal_is_satisfied(
 			*p_reason = OPERATION_CLASSIFIER_GOAL_REASON_BINDER_TYPE_VALIDATED;
 			return 1;
 		}
-		case OPERATION_CONSTRAINT_MOTIVE_EQUATION:
-			/* A Match may already carry a validated expected classifier, in which
-			 * case no synthesized motive term is materialized. The semantic case
-			 * goal is discharged once both that Match classifier and this branch
-			 * classifier exist; JudgementDelta later validates the exact rule. */
-			if (operation_solver_classifier(
-					ctx, goal->payload.classifier.goal.motive_case.branch_operation
-				) == PROTOTYPE_INVALID_ID) {
+		case OPERATION_CONSTRAINT_MOTIVE_EQUATION: {
+			uint32_t match_operation =
+				goal->payload.classifier.classifier_meta_id;
+			uint32_t motive = ctx->classifier_solver.
+				motive_solutions[match_operation].motive;
+			if (motive == PROTOTYPE_INVALID_ID) {
+				return 0;
+			}
+			struct operation_classifier_motive_case_goal* motive_case =
+				&goal->payload.classifier.goal.motive_case;
+			uint32_t actual_classifier = operation_solver_classifier(
+				ctx, motive_case->branch_operation
+			);
+			uint32_t operation_case_id = ctx->metadata->typed_occurrences.
+				occurrences[match_operation].first_case + motive_case->case_index;
+			if (operation_case_id >=
+				ctx->metadata->typed_occurrences.case_count) {
+				return -1;
+			}
+			const struct prototype_typed_occurrence_match_case* operation_case =
+				&ctx->metadata->typed_occurrences.cases[operation_case_id];
+			if (motive_case->validated_motive == motive &&
+				motive_case->validated_actual_classifier == actual_classifier &&
+				motive_case->validated_context == operation_case->context_id &&
+				motive_case->validated_substitution ==
+					operation_case->refinement_substitution &&
+				motive_case->validated_recursive_revision ==
+					ctx->classifier_solver.recursive_equation_revision) {
+				if (motive_case->validation_status ==
+					OPERATION_MOTIVE_EQUATION_VALID) {
+					*p_reason =
+						OPERATION_CLASSIFIER_GOAL_REASON_MOTIVE_CASE_VALIDATED;
+					return 1;
+				}
+				return motive_case->validation_status ==
+					OPERATION_MOTIVE_EQUATION_INVALID ? -1 : 0;
+			}
+			struct operation_motive_equation_validation validation;
+			int validation_status = operation_motive_validate_equation(
+				ctx,
+				match_operation,
+				goal->payload.classifier.goal.motive_case.case_index,
+				motive,
+				&validation
+			);
+			motive_case->validated_motive = motive;
+			motive_case->validated_actual_classifier = actual_classifier;
+			motive_case->validated_context = operation_case->context_id;
+			motive_case->validated_substitution =
+				operation_case->refinement_substitution;
+			motive_case->validated_recursive_revision =
+				ctx->classifier_solver.recursive_equation_revision;
+			motive_case->validation_status = validation_status;
+			if (validation_status == OPERATION_MOTIVE_EQUATION_INVALID) {
+				return -1;
+			}
+			if (validation_status != OPERATION_MOTIVE_EQUATION_VALID) {
 				return 0;
 			}
 			*p_reason = OPERATION_CLASSIFIER_GOAL_REASON_MOTIVE_CASE_VALIDATED;
 			return 1;
+		}
 		case OPERATION_CONSTRAINT_IH_EXPECTED:
 		{
 			const struct prototype_typed_occurrence_graph* graph;
@@ -186,10 +236,9 @@ static void operation_solver_refresh_constraint_states(
 	ctx->metadata->solver_residual_count = 0;
 	ctx->metadata->solver_incomplete_count = 0;
 	for (uint32_t i = 0; i < ctx->constraints.classifier_constraint_count; ++i) {
-		const struct operation_constraint* constraint =
-			&ctx->constraints.constraints[i];
 		struct operation_constraint* result =
 			&ctx->constraints.constraints[i];
+		const struct operation_constraint* constraint = result;
 		if (result->state == OPERATION_CONSTRAINT_STATE_CONTRADICTION) {
 			continue;
 		}
@@ -219,7 +268,7 @@ static void operation_solver_refresh_constraint_states(
 		}
 		int solved_reason = OPERATION_CLASSIFIER_GOAL_REASON_NONE;
 		int solved = operation_solver_classifier_goal_is_satisfied(
-			ctx, constraint, &solved_reason
+			ctx, result, &solved_reason
 		);
 		int state = residual ? OPERATION_CONSTRAINT_STATE_RESIDUAL :
 			(solved ? OPERATION_CONSTRAINT_STATE_SOLVED :
@@ -454,6 +503,37 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 	uint32_t continuation_binder_classifier = operation_solver_binder_classifier(
 		ctx, continuation_occurrence_id
 	);
+	if (continuation_binder_classifier != PROTOTYPE_INVALID_ID &&
+		prototype_judgement_classifier_conversion(
+			ctx->terms,
+			ctx->type_declarations,
+			input_value_classifier,
+			continuation_binder_classifier
+		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		uint32_t instantiated_input_classifier;
+		int instantiate_status = prototype_judgement_solve_expected_effect_rows(
+			ctx->terms,
+			ctx->type_declarations,
+			NULL,
+			input_value_classifier,
+			continuation_binder_classifier,
+			&instantiated_input_classifier
+		);
+		if (instantiate_status < 0) {
+			return -1;
+		}
+		if (instantiate_status == 0 &&
+			prototype_judgement_classifier_conversion(
+				ctx->terms,
+				ctx->type_declarations,
+				instantiated_input_classifier,
+				continuation_binder_classifier
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			/* The recursive classifier remains polymorphic at its owner motive.
+			 * Sequencing instantiates that classifier only at this use boundary. */
+			input_value_classifier = instantiated_input_classifier;
+		}
+	}
 	if (continuation_binder_classifier != PROTOTYPE_INVALID_ID &&
 		prototype_judgement_classifier_conversion(
 			ctx->terms,
@@ -1869,9 +1949,9 @@ restart_after_branch_pullback:
 						if (waits_for_branch > 0) {
 							break;
 						}
-							const struct prototype_typed_occurrence* operation =
+						const struct prototype_typed_occurrence* operation =
 								&ctx->metadata->typed_occurrences.occurrences[target];
-							(void)add_constructor_compile_diagnostic(
+						(void)add_constructor_compile_diagnostic(
 							ctx,
 							operation->source_ast,
 							target,

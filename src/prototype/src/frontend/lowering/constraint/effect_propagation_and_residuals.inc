@@ -1392,7 +1392,11 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 							++j) {
 							const struct operation_constraint* constraint =
 								&ctx->constraints.constraints[j];
-							if (constraint->source_occurrence != i) {
+							int motive_branch = constraint->kind ==
+								OPERATION_CONSTRAINT_MOTIVE_EQUATION &&
+								constraint->payload.classifier.goal.motive_case.
+									branch_operation == i;
+							if (constraint->source_occurrence != i && !motive_branch) {
 								continue;
 							}
 							constraint_id = constraint->id;
@@ -1423,9 +1427,29 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 										PROTOTYPE_COMPILE_DIAGNOSTIC_UNSOLVED_CLASSIFIER :
 										PROTOTYPE_COMPILE_DIAGNOSTIC_IH_OWNERSHIP;
 									break;
-								case OPERATION_CONSTRAINT_MOTIVE_EQUATION:
-									reason = PROTOTYPE_COMPILE_DIAGNOSTIC_MATCH_RESULT_MOTIVE;
-									break;
+									case OPERATION_CONSTRAINT_MOTIVE_EQUATION:
+										{
+											int diagnostic_status =
+												operation_motive_add_terminal_diagnostic(
+												ctx,
+												constraint->payload.classifier.classifier_meta_id,
+												constraint->payload.classifier.goal.motive_case.
+													case_index
+												);
+											if (diagnostic_status < 0) {
+												return -1;
+											}
+											if (diagnostic_status == 0) {
+												reason = PROTOTYPE_COMPILE_DIAGNOSTIC_MOTIVE_EQUATION_MISMATCH;
+											} else {
+												/* This case is valid. Keep scanning the same Match for the
+												 * unresolved equation instead of hiding it behind a generic
+												 * Match-result diagnostic. */
+												reason = PROTOTYPE_COMPILE_DIAGNOSTIC_UNSOLVED_CLASSIFIER;
+												continue;
+											}
+										}
+										break;
 								case OPERATION_CONSTRAINT_CONVERTIBLE:
 									reason = PROTOTYPE_COMPILE_DIAGNOSTIC_ASCRIPTION_MISMATCH;
 									expected = constraint->payload.classifier.goal.conversion.expected_classifier;
@@ -1440,7 +1464,8 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 								break;
 							}
 						}
-						(void)add_compile_diagnostic(
+						if (ctx->metadata->compile_diagnostic_count == 0) {
+							(void)add_compile_diagnostic(
 							ctx,
 							PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER,
 							reason,
@@ -1452,7 +1477,8 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 							operation->source_ast < ctx->asts->node_count ?
 								ctx->asts->nodes[operation->source_ast].span :
 								(struct prototype_source_span) { 0, 0 }
-						);
+							);
+						}
 					}
 					return -1;
 				}
