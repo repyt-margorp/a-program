@@ -16,6 +16,8 @@ positive=src/prototype/tests/fixtures/typing/function_graph_generated_length_che
 model=src/prototype/tests/fixtures/typing/function_graph_certified_length_model.p
 two_recursive=src/prototype/tests/fixtures/typing/function_graph_two_recursive_calls_check.p
 dependent_spine=src/prototype/tests/fixtures/typing/function_graph_dependent_spine_check.p
+dependent_output_ih=src/prototype/tests/fixtures/typing/function_graph_dependent_output_ih_check.p
+nominal_constant=src/prototype/tests/fixtures/typing/function_graph_nominal_index_constant_motive_check.p
 block_binding=src/prototype/tests/fixtures/typing/function_graph_block_binding_check.p
 named_case=src/prototype/tests/fixtures/typing/function_graph_named_case_check.p
 quick_sort=src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p
@@ -49,6 +51,31 @@ grep -q '^term certified :=' "$tmp_dir/dependent-spine.out"
 	main expected "$dependent_spine" >"$tmp_dir/dependent-spine-equality.out"
 grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
 	"$tmp_dir/dependent-spine-equality.out"
+
+prototype_test_phase dependent_output_recursive_ih
+./read_file.out --write-artifact "$tmp_dir/dependent-output-ih.apo" \
+	"$dependent_output_ih" >"$tmp_dir/dependent-output-ih.out"
+grep -q '^term lengthOutputUnary :=' "$tmp_dir/dependent-output-ih.out"
+grep -q '^term certified :=' "$tmp_dir/dependent-output-ih.out"
+./read_file.out --check-source-exports-normalization-equal \
+	main expected "$dependent_output_ih" \
+	>"$tmp_dir/dependent-output-ih-equality.out"
+grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
+	"$tmp_dir/dependent-output-ih-equality.out"
+./read_file.out --read-graph "$tmp_dir/dependent-output-ih.apo" \
+	>"$tmp_dir/dependent-output-ih-read.out"
+grep -q '^interface term lengthOutputUnary ' \
+	"$tmp_dir/dependent-output-ih-read.out"
+
+prototype_test_phase nominal_index_constant_motive
+./read_file.out "$nominal_constant" >"$tmp_dir/nominal-constant.out"
+grep -q '^term constantNatUnary :=' "$tmp_dir/nominal-constant.out"
+grep -q '^term constantOneNatUnary :=' "$tmp_dir/nominal-constant.out"
+grep -q '^term certifiedOne :=' "$tmp_dir/nominal-constant.out"
+./read_file.out --check-source-exports-normalization-equal \
+	main expected "$nominal_constant" >"$tmp_dir/nominal-constant-equality.out"
+grep -q '^source-exports-normalization-equal main expected mode=default yes$' \
+	"$tmp_dir/nominal-constant-equality.out"
 
 prototype_test_phase block_bound_recursive_result
 ./read_file.out "$block_binding" >"$tmp_dir/block-binding.out"

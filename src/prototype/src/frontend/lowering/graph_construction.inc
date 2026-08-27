@@ -9627,7 +9627,7 @@ static uint32_t operation_solver_classifier(
 	/* A constant candidate is a solver-side equation M(_) == T, so it can
 	 * discharge the classifier query without pretending that M(argument) has
 	 * already been built in TermDB. */
-	return ctx->classifier_solver.motive_constant_candidates[motive_operation];
+	return ctx->classifier_solver.motive_solutions[motive_operation].constant_candidate;
 }
 
 /* Solve a constructor APP from its dependent telescope. The curried cache is
@@ -9718,15 +9718,17 @@ static int operation_solver_invalidate_materialized_match_motive(
 			PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
 		return -1;
 	}
-	if (ctx->classifier_solver.motive_solution_states[owner_match] !=
+	if (ctx->classifier_solver.motive_solutions[owner_match].state !=
 			OPERATION_MOTIVE_SOLUTION_MATERIALIZED) {
 		return 0;
 	}
-	ctx->classifier_solver.motive_constant_candidates[owner_match] =
+	ctx->classifier_solver.motive_solutions[owner_match].constant_candidate =
 		PROTOTYPE_INVALID_ID;
-	ctx->classifier_solver.motive_terms[owner_match] = PROTOTYPE_INVALID_ID;
-	ctx->classifier_solver.motive_solution_states[owner_match] =
-		OPERATION_MOTIVE_SOLUTION_READY;
+	ctx->classifier_solver.motive_solutions[owner_match].motive = PROTOTYPE_INVALID_ID;
+	ctx->classifier_solver.motive_solutions[owner_match].recursive_equation_operation =
+		PROTOTYPE_INVALID_ID;
+	ctx->classifier_solver.motive_solutions[owner_match].state =
+		OPERATION_MOTIVE_SOLUTION_EQUATIONS_READY;
 	if (operation_classifier_meta_invalidate(ctx, owner_match) != 0) {
 		return -1;
 	}
@@ -10233,7 +10235,7 @@ static int operation_solver_propagate_constructor_domains(
 					PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
 				return -1;
 			}
-			ctx->classifier_solver.motive_constant_candidates[owner_match] =
+			ctx->classifier_solver.motive_solutions[owner_match].constant_candidate =
 				PROTOTYPE_INVALID_ID;
 			if (actual == PROTOTYPE_INVALID_ID ||
 				prototype_judgement_classifier_conversion(
@@ -10780,17 +10782,25 @@ static int operation_solver_abstract_indexed_motive(
 	}
 	uint32_t index_binders[32];
 	uint32_t motive_body = result_classifier;
+	int has_index_dependency = 0;
 	for (uint32_t i = 0; i < declaration->index_count; ++i) {
 		uint32_t index_variable;
+		int dependency_found;
 		index_binders[i] = prototype_term_new_binding(ctx->terms);
 		if (index_binders[i] == PROTOTYPE_INVALID_ID || prototype_term_var(
 				ctx->terms, index_binders[i], &index_variable
-			) != 0 || prototype_term_graph_replace_exact(
-				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), motive_body,
-				arguments[declaration->parameter_count + i], index_variable,
-				&motive_body
 			) != 0) {
 			return -1;
+		}
+		if (operation_motive_abstract_index(
+				ctx, motive_body,
+				arguments[declaration->parameter_count + i], index_variable,
+				&motive_body, &dependency_found
+			) != 0) {
+			return -1;
+		}
+		if (dependency_found) {
+			has_index_dependency = 1;
 		}
 	}
 	uint32_t value_binder = prototype_term_new_binding(ctx->terms);
@@ -10805,11 +10815,13 @@ static int operation_solver_abstract_indexed_motive(
 		) != 0) {
 		return -1;
 	}
-	for (uint32_t reverse = declaration->index_count; reverse > 0; --reverse) {
-		if (prototype_term_lambda(
-				ctx->terms, index_binders[reverse - 1], motive_body, &motive_body
-			) != 0) {
-			return -1;
+	if (has_index_dependency) {
+		for (uint32_t reverse = declaration->index_count; reverse > 0; --reverse) {
+			if (prototype_term_lambda(
+					ctx->terms, index_binders[reverse - 1], motive_body, &motive_body
+				) != 0) {
+				return -1;
+			}
 		}
 	}
 	uint32_t reinstantiated;
@@ -11164,8 +11176,22 @@ static int operation_solver_seed_indexed_motive_from_ih_expected(
 		return -1;
 	}
 	uint32_t result_classifier = expected_classifier;
+	uint32_t owner_branch_occurrence;
 	struct prototype_term_classifier_view expected_view;
-	if (prototype_judgement_classifier_view(
+	if (compile_occurrence_child(
+			ctx, owner_match, PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+			operation->ih_case_index, &owner_branch_occurrence
+		) != 0) {
+		return -1;
+	}
+	/* The equation classifies the owner branch, not the local IH use. A value
+	 * branch (for example append's nested Lambda) consumes the result of a pure
+	 * local computation, while a computation branch (for example Acc's fold)
+	 * retains Comp(E, A) as part of its motive. */
+	if (ctx->metadata->typed_occurrences.occurrences[
+			owner_branch_occurrence
+		].tag == PROTOTYPE_TYPED_OCCURRENCE_LAMBDA &&
+		prototype_judgement_classifier_view(
 			ctx->terms, ctx->type_declarations, NULL,
 			expected_classifier, &expected_view
 		) == 0 && expected_view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
@@ -11234,7 +11260,7 @@ static int operation_solver_seed_indexed_motive_from_ih_expected(
 		}
 	}
 	uint32_t previous_motive =
-		ctx->classifier_solver.motive_terms[owner_match];
+		ctx->classifier_solver.motive_solutions[owner_match].motive;
 	int same_motive = 0;
 	if (previous_motive < ctx->terms->term_count &&
 		prototype_term_core_shape_equal_for_link(
@@ -11249,10 +11275,11 @@ static int operation_solver_seed_indexed_motive_from_ih_expected(
 		return -1;
 	}
 	uint8_t motive_state =
-		ctx->classifier_solver.motive_solution_states[owner_match];
-	int motive_is_final = motive_state == OPERATION_MOTIVE_SOLUTION_READY ||
+		ctx->classifier_solver.motive_solutions[owner_match].state;
+	int motive_has_joint_equations =
+		motive_state == OPERATION_MOTIVE_SOLUTION_EQUATIONS_READY ||
 		motive_state == OPERATION_MOTIVE_SOLUTION_MATERIALIZED;
-	if (!same_motive || !motive_is_final) {
+	if (!same_motive || !motive_has_joint_equations) {
 		/* IH classifiers are projections of the owner motive, not independent
 		 * solutions. Drop every stale projection before publishing a new motive
 		 * equation so each occurrence is reconstructed through its Context action. */
@@ -11273,9 +11300,11 @@ static int operation_solver_seed_indexed_motive_from_ih_expected(
 				return -1;
 			}
 		}
-		ctx->classifier_solver.motive_terms[owner_match] = motive;
-		ctx->classifier_solver.motive_solution_states[owner_match] =
-			OPERATION_MOTIVE_SOLUTION_READY;
+		ctx->classifier_solver.motive_solutions[owner_match].motive = motive;
+		ctx->classifier_solver.motive_solutions[owner_match].
+			recursive_equation_operation = operation_id;
+		ctx->classifier_solver.motive_solutions[owner_match].state =
+			OPERATION_MOTIVE_SOLUTION_EQUATIONS_READY;
 		*p_changed = 1;
 		if (operation_solver_enqueue_dependents(ctx, owner_match) != 0) {
 			return -1;
@@ -11294,9 +11323,11 @@ static int operation_solver_seed_indexed_motive_from_branch(
 	uint32_t operation,
 	uint32_t source_case_index,
 	uint32_t classifier,
-	uint32_t* p_motive
+	uint32_t* p_motive,
+	uint64_t* p_dependency_mask
 ) {
-	if (!ctx || !p_motive || operation >= ctx->metadata->typed_occurrences.occurrence_count) {
+	if (!ctx || !p_motive || !p_dependency_mask || operation >=
+		ctx->metadata->typed_occurrences.occurrence_count) {
 		return -1;
 	}
 	const struct prototype_typed_occurrence* match_operation =
@@ -11403,30 +11434,40 @@ static int operation_solver_seed_indexed_motive_from_branch(
 
 	uint32_t index_binders[32];
 	uint32_t motive_body = classifier;
+	uint64_t dependency_mask = 0;
 	for (uint32_t i = 0; i < declaration->index_count; ++i) {
 		uint32_t index_variable;
+		int dependency_found;
 		index_binders[i] = prototype_term_new_binding(ctx->terms);
 		if (index_binders[i] == PROTOTYPE_INVALID_ID || prototype_term_var(
 				ctx->terms, index_binders[i], &index_variable
-			) != 0 || prototype_term_graph_replace_exact(
-				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), motive_body,
+			) != 0 || operation_motive_abstract_index(
+				ctx, motive_body,
 				constructor_arguments[declaration->parameter_count + i],
-				index_variable, &motive_body
+				index_variable, &motive_body, &dependency_found
 			) != 0) {
 			return -1;
+		}
+		if (dependency_found) {
+			dependency_mask |= UINT64_C(1) << i;
 		}
 	}
 	uint32_t value_binder = prototype_term_new_binding(ctx->terms);
 	uint32_t value_variable;
+	uint32_t body_before_value = motive_body;
+	uint32_t value_abstracted_body;
 	if (value_binder == PROTOTYPE_INVALID_ID || prototype_term_var(
 			ctx->terms, value_binder, &value_variable
 		) != 0 || prototype_term_graph_replace_exact(
 			ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations), motive_body,
-			constructor_term, value_variable, &motive_body
+			constructor_term, value_variable, &value_abstracted_body
 		) != 0 || prototype_term_lambda(
-			ctx->terms, value_binder, motive_body, &motive_body
+			ctx->terms, value_binder, value_abstracted_body, &motive_body
 		) != 0) {
 		return -1;
+	}
+	if (value_abstracted_body != body_before_value) {
+		dependency_mask |= UINT64_C(1) << declaration->index_count;
 	}
 	for (uint32_t reverse = declaration->index_count; reverse > 0; --reverse) {
 		if (prototype_term_lambda(
@@ -11446,6 +11487,7 @@ static int operation_solver_seed_indexed_motive_from_branch(
 		return 1;
 	}
 	*p_motive = motive_body;
+	*p_dependency_mask = dependency_mask;
 	return 0;
 }
 
@@ -11461,9 +11503,9 @@ static int operation_solver_seed_motive(
 		classifier == PROTOTYPE_INVALID_ID || classifier >= ctx->terms->term_count) {
 		return -1;
 	}
-	if (ctx->classifier_solver.motive_solution_states[operation] ==
-			OPERATION_MOTIVE_SOLUTION_READY &&
-		ctx->classifier_solver.motive_terms[operation] <
+	if (ctx->classifier_solver.motive_solutions[operation].state ==
+			OPERATION_MOTIVE_SOLUTION_EQUATIONS_READY &&
+		ctx->classifier_solver.motive_solutions[operation].motive <
 			ctx->terms->term_count) {
 		/* A guarded recursive equation determines the indexed family. A single
 		 * constructor branch is only a provisional seed and cannot replace that
@@ -11505,15 +11547,17 @@ static int operation_solver_seed_motive(
 	 * build that abstraction is a contradiction or permits the constant-motive
 	 * fallback below. */
 	uint32_t indexed_motive;
+	uint64_t dependency_mask;
 	int indexed_status = operation_solver_seed_indexed_motive_from_branch(
-		ctx, operation, source_case_index, classifier, &indexed_motive
+		ctx, operation, source_case_index, classifier, &indexed_motive,
+		&dependency_mask
 	);
 	if (indexed_status < 0 || (indexed_status > 0 && capture_status > 0)) {
 		return indexed_status < 0 ? -1 : 1;
 	}
 	if (indexed_status == 0) {
 		uint32_t previous_motive =
-			ctx->classifier_solver.motive_terms[operation];
+			ctx->classifier_solver.motive_solutions[operation].motive;
 		int same_motive = 0;
 		if (previous_motive < ctx->terms->term_count &&
 			prototype_term_core_shape_equal_for_link(
@@ -11528,10 +11572,15 @@ static int operation_solver_seed_motive(
 			return -1;
 		}
 		if (!same_motive ||
-			ctx->classifier_solver.motive_solution_states[operation] !=
+			ctx->classifier_solver.motive_solutions[operation].state !=
 				OPERATION_MOTIVE_SOLUTION_PROVISIONAL) {
-			ctx->classifier_solver.motive_terms[operation] = indexed_motive;
-			ctx->classifier_solver.motive_solution_states[operation] =
+			ctx->classifier_solver.motive_solutions[operation].motive = indexed_motive;
+			ctx->classifier_solver.motive_solutions[operation].
+				recursive_equation_operation = PROTOTYPE_INVALID_ID;
+			ctx->classifier_solver.motive_solutions[operation].dependency_mask =
+				dependency_mask;
+			ctx->classifier_solver.motive_solutions[operation].ambiguity = 0;
+			ctx->classifier_solver.motive_solutions[operation].state =
 				OPERATION_MOTIVE_SOLUTION_PROVISIONAL;
 			*p_changed = 1;
 			if (operation_solver_enqueue_dependents(ctx, operation) != 0) {
@@ -11598,11 +11647,16 @@ static int operation_solver_seed_motive(
 			) != 0) {
 			return -1;
 		}
-		if (ctx->classifier_solver.motive_terms[operation] != motive ||
-			ctx->classifier_solver.motive_solution_states[operation] !=
+		if (ctx->classifier_solver.motive_solutions[operation].motive != motive ||
+			ctx->classifier_solver.motive_solutions[operation].state !=
 				OPERATION_MOTIVE_SOLUTION_PROVISIONAL) {
-			ctx->classifier_solver.motive_terms[operation] = motive;
-			ctx->classifier_solver.motive_solution_states[operation] =
+			ctx->classifier_solver.motive_solutions[operation].motive = motive;
+			ctx->classifier_solver.motive_solutions[operation].
+				recursive_equation_operation = PROTOTYPE_INVALID_ID;
+			ctx->classifier_solver.motive_solutions[operation].dependency_mask =
+				UINT64_C(1);
+			ctx->classifier_solver.motive_solutions[operation].ambiguity = 0;
+			ctx->classifier_solver.motive_solutions[operation].state =
 				OPERATION_MOTIVE_SOLUTION_PROVISIONAL;
 			*p_changed = 1;
 			if (operation_solver_enqueue_dependents(ctx, operation) != 0) {
@@ -11612,10 +11666,12 @@ static int operation_solver_seed_motive(
 		return 0;
 	}
 	uint32_t previous =
-		ctx->classifier_solver.motive_constant_candidates[operation];
+		ctx->classifier_solver.motive_solutions[operation].constant_candidate;
 	if (previous == PROTOTYPE_INVALID_ID) {
-		ctx->classifier_solver.motive_constant_candidates[operation] =
+		ctx->classifier_solver.motive_solutions[operation].constant_candidate =
 			classifier_whnf;
+		ctx->classifier_solver.motive_solutions[operation].dependency_mask = 0;
+		ctx->classifier_solver.motive_solutions[operation].ambiguity = 0;
 		*p_changed = 1;
 		if (operation_solver_enqueue_dependents(ctx, operation) != 0) {
 			return -1;
@@ -11645,13 +11701,13 @@ static int operation_solver_seed_motive(
 				ctx, branch_operation, classifier_whnf, 0, p_changed
 			);
 			if (refine_status < 0) {
-				fprintf(stderr,
-					"motive seed: branch refinement failed match=%u case=%u branch=%u "
-					"tag=%u classifier=%u\n",
-					operation, case_index, branch_operation,
-					ctx->metadata->typed_occurrences.occurrences[branch_operation].tag,
-					classifier);
-				return -1;
+				/* A one-branch constant seed is provisional. A recursive branch
+				 * that cannot consume it invalidates this candidate and lets the
+				 * owner construct its guarded motive from all equations. */
+				ctx->classifier_solver.motive_solutions[operation].constant_candidate =
+					PROTOTYPE_INVALID_ID;
+				ctx->classifier_solver.motive_solutions[operation].ambiguity = 1;
+				return 1;
 			}
 		}
 		uint32_t ih_scope = PROTOTYPE_INVALID_ID;
@@ -11683,12 +11739,16 @@ static int operation_solver_seed_motive(
 		ctx, previous, classifier_whnf, &joined
 	);
 	if (join_status != 0) {
+		if (join_status > 0) {
+			ctx->classifier_solver.motive_solutions[operation].ambiguity = 1;
+		}
 		return join_status < 0 ? -1 : 1;
 	}
+	ctx->classifier_solver.motive_solutions[operation].ambiguity = 0;
 	if (prototype_judgement_classifier_conversion(
 			ctx->terms, ctx->type_declarations, previous, joined
 		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
-		ctx->classifier_solver.motive_constant_candidates[operation] = joined;
+		ctx->classifier_solver.motive_solutions[operation].constant_candidate = joined;
 		*p_changed = 1;
 		if (operation_solver_enqueue_dependents(ctx, operation) != 0) {
 			return -1;

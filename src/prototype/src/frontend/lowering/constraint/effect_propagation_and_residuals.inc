@@ -1339,8 +1339,8 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 							owner_occurrence->tag, owner_occurrence->source_ast,
 							owner_occurrence->context_id, owner_occurrence->core_term,
 							ctx->classifier_solver.classifier_metas[owner].classifier,
-							ctx->classifier_solver.motive_terms[owner],
-							ctx->classifier_solver.motive_solution_states[owner]);
+							ctx->classifier_solver.motive_solutions[owner].motive,
+							ctx->classifier_solver.motive_solutions[owner].state);
 					}
 					for (uint32_t edge = 0; edge < operation->edge_count; ++edge) {
 						const struct prototype_typed_occurrence_edge* child_edge =

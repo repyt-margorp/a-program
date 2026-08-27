@@ -276,7 +276,7 @@ enum operation_classifier_goal_reason {
 enum operation_motive_solution_state {
 	OPERATION_MOTIVE_SOLUTION_UNRESOLVED = 0,
 	OPERATION_MOTIVE_SOLUTION_PROVISIONAL,
-	OPERATION_MOTIVE_SOLUTION_READY,
+	OPERATION_MOTIVE_SOLUTION_EQUATIONS_READY,
 	OPERATION_MOTIVE_SOLUTION_GUARDED_RECURSIVE,
 	OPERATION_MOTIVE_SOLUTION_MATERIALIZED
 };
@@ -509,6 +509,20 @@ struct operation_solver_motive_application {
 	uint32_t field_index;
 };
 
+/* One Match occurrence owns one motive solution. ConstraintDB remains the
+ * authority for individual branch-equation lifecycle; this record keeps only
+ * the jointly selected solver result. */
+struct operation_motive_solution {
+	uint32_t constant_candidate;
+	uint32_t motive;
+	/* Exact IH occurrence whose expected-classifier equation produced motive.
+	 * INVALID means the solution was joined from ordinary branch equations. */
+	uint32_t recursive_equation_operation;
+	uint64_t dependency_mask;
+	uint8_t state;
+	uint8_t ambiguity;
+};
+
 /*
  * This is the solver-side form of
  *
@@ -530,20 +544,27 @@ struct operation_classifier_solver {
 	struct operation_classifier_meta_solution classifier_metas[4096];
 	/* A candidate is a solver equation M(_) == T. It is never represented by
 	 * a provisional TermDB APP node. */
-	uint32_t motive_constant_candidates[4096];
-	uint8_t motive_solution_states[4096];
+	struct operation_motive_solution motive_solutions[4096];
 	/* For an IH operation i, this indexes symbolic M(argument) in the solver
 	 * arena. It is never a provisional TermDB APP node. */
 	uint32_t ih_motive_application_ids[4096];
 	struct operation_solver_motive_application motive_applications[4096];
 	uint32_t motive_application_count;
-	uint32_t motive_terms[4096];
 	struct operation_solver_input_fact
 		input_facts[PROTOTYPE_TYPED_OCCURRENCE_SOLVER_INPUT_FACT_CAPACITY];
 	uint32_t input_fact_count;
 };
 
 struct compile_context;
+
+static int operation_motive_abstract_index(
+	struct compile_context* ctx,
+	uint32_t body,
+	uint32_t index_term,
+	uint32_t replacement,
+	uint32_t* p_result,
+	int* p_dependency_found
+);
 
 static int operation_solver_var_binding_context(
 	const struct compile_context* ctx,

@@ -2,8 +2,8 @@
 
 Date: 2026-08-27 JST
 
-Status: planned; Issue 23 is reproduced and remains open. PR 24 is merged. No
-semantic implementation change has been made by this plan.
+Status: implemented and verified for the Issue 23 fragment. PR 24 is merged.
+The broader inverse-reindexing motive solver remains a separate generalization.
 
 Issue: #23, `Bug: generated Function Graph dependent motives become constant
 and fail recursive IH replay`
@@ -16,6 +16,39 @@ Merged revision: `f71e61c04d8d159f076a1698eb301d8845918db5`
 Source audit:
 
 - `2026-08-27T00-40-19-GENERATED-FUNCTION-GRAPH-DEPENDENT-MOTIVE-IH-REPLAY-AUDIT.md`
+
+## 0. Implementation Disposition
+
+The implementation confirmed the PR's concrete failure but narrowed its
+proposed abstraction boundary.
+
+- Exact Term ID replacement remains the first and authoritative structural
+  operation.
+- When the selected index is a constructor spine, the compiler derives its
+  Core spine from that exact typed constructor owner and searches only for that
+  constructor shape in the candidate classifier. It does not perform a
+  database-wide DefEq search and does not equate unrelated nominal TypeViews.
+- A one-branch constant seed that fails on a recursive branch is discarded as
+  provisional evidence. It is not reported as a type contradiction.
+- An indexed candidate derived from an IH expected-classifier equation records
+  the exact producing IH occurrence. Recursive equation evidence is checked
+  separately from ordinary conversion and from guardedness.
+- Expected classifiers may validate a solved indexed motive, but cannot create
+  a new indexed motive during finalization. The fallback remains the traditional
+  unary exact-scrutinee motive.
+- Accepted replay was not changed. The original Book reproducer now passes
+  because the producer publishes the correct dependent motive.
+
+The following broader PR suggestion was not adopted in this revision:
+
+> Reconstruct every indexed motive occurrence by generally inverting solved
+> Context/Substitution morphisms.
+
+That remains useful for arbitrary neutral or non-constructor indices, but it is
+not required to fix Issue 23 and would introduce a substantially wider typed
+rewriting authority. The present rule is deliberately constructor-only. A
+future generalization must define an explicit typed correspondence object and
+must retain the same all-equation and replay gates.
 
 ## 1. Objective
 
@@ -413,7 +446,7 @@ side arrays to an already fragmented motive authority.
 
 ## I23-0: Freeze the Reproducer and Baseline
 
-Status: [ ] pending
+Status: [x] completed for the Issue 23 regression boundary
 
 - [ ] Copy the minimal generated `lengthOutputUnary` reproducer into a focused
       prototype integration fixture.
@@ -432,7 +465,7 @@ Exit gate:
 
 ## I23-1: Trace and Freeze the Index Correspondence
 
-Status: [ ] pending
+Status: [x] completed with constructor-only typed/Core correspondence
 
 - [ ] For generated and hand-written indexed families, record the constructor
       result family, parameter spine, index spine, branch Context, and
@@ -456,7 +489,7 @@ Exit gate:
 
 ## I23-2: Implement Typed Index Abstraction
 
-Status: [ ] pending
+Status: [x] completed for constructor indices; general inverse reindexing deferred
 
 - [ ] Introduce the private motive-solver module.
 - [ ] Define a certified correspondence input containing family identity,
@@ -481,7 +514,7 @@ Exit gate:
 
 ## I23-3: Make Motive Equations the Solver Authority
 
-Status: [ ] pending
+Status: [x] completed for the existing branch-equation solver
 
 - [ ] Inventory every read/write of the current motive arrays.
 - [ ] Introduce one `operation_motive_solution` record per owning Match.
@@ -505,7 +538,7 @@ Exit gate:
 
 ## I23-4: Separate Guardedness from Equality
 
-Status: [ ] pending
+Status: [x] completed with separate recursive-equation evidence
 
 - [ ] Delete the path that assigns conversion `EQUAL` after only guarded-IH
       validation.
@@ -530,7 +563,7 @@ Exit gate:
 
 ## I23-5: Complete Producer Module Consolidation
 
-Status: [ ] pending
+Status: [-] partially completed; storage and abstraction are integrated
 
 - [ ] Move candidate joining, quoted motive construction, all-case validation,
       and materialization into `motive_solver.inc`.
@@ -555,7 +588,7 @@ Exit gate:
 
 ## I23-6: Diagnostics
 
-Status: [ ] pending
+Status: [-] deferred; no diagnostic authority change was required
 
 - [ ] Preserve source span from the graph Match/IH selector into motive errors.
 - [ ] Report graph owner, constructor selector, index ordinal, abstraction
@@ -574,7 +607,7 @@ Exit gate:
 
 ## I23-7: Artifact, Checker, and Performance Validation
 
-Status: [ ] pending
+Status: [x] completed for frontend, P0 replay, and v86 artifacts
 
 - [ ] Pass frontend production and accepted P0 replay for the reproducer.
 - [ ] Pass v86 serialization, readback, relocation, and accepted replay.
@@ -664,34 +697,63 @@ After each phase:
 
 ## 12. Completion Record
 
-Implementation revision: pending
+Implementation revision: the `main` commit containing this completion record
 
-Artifact version decision: pending
+Artifact version decision: unchanged; accepted artifacts remain v86 and no
+producer-only motive metadata is serialized
 
-Issue 23 state: open
+Issue 23 state: remains open after the implementation commit. The concrete Book
+reproducer is fixed, but the issue's broader v87, output-dependent QuickSort,
+negative-provenance, and diagnostic acceptance items are not all complete.
+
+### Critical implementation result
+
+The implementation does not claim a general higher-order anti-unifier. It
+solves the observed constructor-index mismatch, retains ordinary constant
+motives, and leaves neutral/non-constructor inverse reindexing unsupported.
+The private `motive_solver.inc` currently owns the typed/Core constructor-shape
+abstraction. Candidate joining and materialization remain in their existing
+lowering fragments, so I23-5 is intentionally partial rather than a physical
+move made only to satisfy the original module sketch.
+
+The old semantic conflation was removed: a recursive equation may be accepted
+from the exact IH equation that produced the candidate plus guardedness and
+successful reapplication, but this fact is no longer stored in or reported as
+`PROTOTYPE_TERM_CONVERSION_EQUAL`. Accepted replay still reconstructs the
+published classifier independently.
 
 ### File change accounting
 
 | File | Before | Added | Deleted | After | Reason |
 | --- | ---: | ---: | ---: | ---: | --- |
-| pending | - | - | - | - | Filled after implementation |
+| `constraint/motive_solver.inc` | 0 | 226 | 0 | 226 | Constructor-only certified index abstraction |
+| `constraint/branch_refinement_and_motives.inc` | 4247 | 59 | 72 | 4234 | Joint validation and separate recursive evidence |
+| `constraint/effect_propagation_and_residuals.inc` | 1710 | 2 | 2 | 1710 | Consolidated solution access |
+| `constraint/model_generation_and_index.inc` | 1078 | 6 | 4 | 1080 | Consolidated solution reset |
+| `constraint_solver.inc` | 8 | 1 | 0 | 9 | Private module inclusion |
+| `context_and_type_lowering.inc` | 5884 | 25 | 4 | 5905 | One motive solution record per Match |
+| `finalization_and_entrypoints.inc` | 2837 | 55 | 38 | 2854 | Reuse solved indexed motive; unary fallback only |
+| `graph_construction.inc` | 12440 | 112 | 52 | 12500 | Candidate lifecycle and exact IH provenance |
+| `test_function_graph_certified_execution.sh` | 550 | 27 | 0 | 577 | Permanent Issue 23 and nominal controls |
+| `function_graph_dependent_output_ih_check.p` | 0 | 40 | 0 | 40 | Focused positive regression fixture |
+| `function_graph_nominal_index_constant_motive_check.p` | 0 | 63 | 0 | 63 | Equal-shape nominal/constant control |
 
 ### Performance accounting
 
 | Scenario | Before | After | Delta | Result |
 | --- | ---: | ---: | ---: | --- |
-| Focused generated length proof | pending | pending | pending | pending |
-| Official Function Graph suite | pending | pending | pending | pending |
-| QuickSort dependent-property control | pending | pending | pending | pending |
+| Book generated length proof | rejected at P0 | 30 ms | now accepted | pass |
+| Official Function Graph suite | not recorded | 7.8 s | no comparable total | pass |
+| QuickSort dependency closure | 7189 ms | 6677 ms | -7.1% | pass; no regression |
 
 ### Final verification
 
-- [ ] focused positive matrix passes;
-- [ ] focused negative matrix rejects for the intended reason;
-- [ ] accepted replay remains unchanged in strength;
-- [ ] artifact/checker boundary is documented accurately;
-- [ ] no broad Core semantic replacement was introduced;
-- [ ] module authority audit passes;
-- [ ] performance and line-count deltas are recorded;
-- [ ] Issue 23 has a complete resolution comment; and
+- [x] focused positive matrix passes;
+- [x] nominal/constant control passes without cross-TypeView abstraction;
+- [x] accepted replay remains unchanged in strength;
+- [x] accepted v86 artifact boundary is verified and unchanged;
+- [x] no broad Core semantic replacement was introduced;
+- [x] motive storage has one solver-owned solution record per Match;
+- [x] performance and line-count deltas are recorded;
+- [ ] Issue 23 has an implementation-status comment with remaining closure gates; and
 - [ ] implementation is committed and pushed to `main`.
