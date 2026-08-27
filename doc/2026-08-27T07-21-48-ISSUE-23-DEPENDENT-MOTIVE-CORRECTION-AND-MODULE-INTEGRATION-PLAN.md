@@ -697,7 +697,7 @@ After each phase:
 
 ## 12. Completion Record
 
-Implementation revision: the `main` commit containing this completion record
+Implementation revision: `e2ca3a5`
 
 Artifact version decision: unchanged; accepted artifacts remain v86 and no
 producer-only motive metadata is serialized
@@ -705,6 +705,9 @@ producer-only motive metadata is serialized
 Issue 23 state: remains open after the implementation commit. The concrete Book
 reproducer is fixed, but the issue's broader v87, output-dependent QuickSort,
 negative-provenance, and diagnostic acceptance items are not all complete.
+
+Implementation status comment:
+`https://github.com/repyt-margorp/a-program/issues/23#issuecomment-5438768732`
 
 ### Critical implementation result
 
@@ -755,5 +758,5 @@ published classifier independently.
 - [x] no broad Core semantic replacement was introduced;
 - [x] motive storage has one solver-owned solution record per Match;
 - [x] performance and line-count deltas are recorded;
-- [ ] Issue 23 has an implementation-status comment with remaining closure gates; and
-- [ ] implementation is committed and pushed to `main`.
+- [x] Issue 23 has an implementation-status comment with remaining closure gates; and
+- [x] implementation is committed and pushed to `main`.
