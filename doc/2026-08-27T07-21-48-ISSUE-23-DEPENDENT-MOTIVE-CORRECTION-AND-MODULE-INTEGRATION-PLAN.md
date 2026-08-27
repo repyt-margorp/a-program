@@ -919,10 +919,10 @@ large add/delete count is code movement into the correct authority module.
 | `checked_core_examples_check.c` | 61 | 3 |
 | `test_issue_23_dependent_motive.sh` | 59 | 0 |
 | two focused checked-Core fixtures | 54 | 0 |
-| this plan document | 187 | 112 |
+| this plan document | 186 | 112 |
 
-Including documentation and tests, the closure change has 4275 additions and
-4014 deletions, net +261 lines. The two focused checked-Core fixtures account
+Including documentation and tests, the closure change has 4274 additions and
+4014 deletions, net +260 lines. The two focused checked-Core fixtures account
 for 54 of those added lines.
 
 ### Focused resource record
