@@ -24,6 +24,62 @@ static uint64_t test_clock_ns(void) {
 		(uint64_t)now.tv_nsec;
 }
 
+static void print_source_term(
+	const char* label,
+	const struct prototype_program_storage* storage,
+	uint32_t term
+) {
+	fprintf(stderr, "%s=%u ", label, term);
+	prototype_term_print_debug(
+		stderr,
+		&storage->symbols,
+		storage->program.intrinsic_environment,
+		&storage->type_declarations,
+		&storage->terms,
+		term
+	);
+	fputc('\n', stderr);
+}
+
+static void print_source_occurrence(
+	const struct prototype_program_storage* storage,
+	uint32_t occurrence_id
+) {
+	if (!storage || occurrence_id >=
+			storage->metadata.typed_occurrences.occurrence_count) {
+		return;
+	}
+	const struct prototype_typed_occurrence* occurrence =
+		&storage->metadata.typed_occurrences.occurrences[occurrence_id];
+	print_source_term("source occurrence core", storage, occurrence->core_term);
+	print_source_term(
+		"source occurrence classifier", storage, occurrence->classifier
+	);
+	for (uint32_t edge = 0; edge < occurrence->edge_count; ++edge) {
+		const struct prototype_typed_occurrence_edge* child_edge =
+			&storage->metadata.typed_occurrences.edges[
+				occurrence->first_edge + edge
+			];
+		if (child_edge->child_occurrence >=
+				storage->metadata.typed_occurrences.occurrence_count) {
+			continue;
+		}
+		const struct prototype_typed_occurrence* child =
+			&storage->metadata.typed_occurrences.occurrences[
+				child_edge->child_occurrence
+			];
+		fprintf(
+			stderr,
+			"source child role=%d ordinal=%u occurrence=%u\n",
+			child_edge->role,
+			child_edge->ordinal,
+			child_edge->child_occurrence
+		);
+		print_source_term("  core", storage, child->core_term);
+		print_source_term("  classifier", storage, child->classifier);
+	}
+}
+
 static int compare_resource_usage(
 	const char* path,
 	const struct prototype_program_storage* storage,
@@ -180,7 +236,7 @@ static int check_file(const char* path) {
 			"%s: checker stopped status=%d reason=%d subject=%u "
 			"kind=%d core=%u:%d classifier=%u:%d origin-core=%u "
 			"source-core=%u:%d source-origin=%u:%d report-term=%d "
-			"role=%d wrapped=%u effort=%llu\n",
+			"role=%d evidence=%d wrapped=%u effort=%llu\n",
 			path,
 			report.status,
 			report.stop_reason,
@@ -198,7 +254,8 @@ static int check_file(const char* path) {
 			source_origin_core ? source_origin_core->tag : -1,
 			report_term ? report_term->tag : -1,
 			occurrence ? occurrence->application_role : -1,
-				occurrence ? occurrence->wrapped_occurrence : PROTOTYPE_INVALID_ID,
+			occurrence ? occurrence->classifier_evidence_kind : -1,
+			occurrence ? occurrence->wrapped_occurrence : PROTOTYPE_INVALID_ID,
 			(unsigned long long)report.effort_used
 			);
 		if (report_term && report_term->tag == PROTOTYPE_TERM_APP) {
@@ -215,7 +272,8 @@ static int check_file(const char* path) {
 				report_term->as.app.argument, argument ? argument->tag : -1
 			);
 		}
-			goto cleanup;
+		print_source_occurrence(&storage, report.subject);
+		goto cleanup;
 	}
 	uint64_t checker_end = test_clock_ns();
 	if (checker_end >= checker_start) {

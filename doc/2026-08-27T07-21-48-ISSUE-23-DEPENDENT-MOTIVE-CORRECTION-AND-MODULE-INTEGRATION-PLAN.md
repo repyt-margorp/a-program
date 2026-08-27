@@ -2,10 +2,11 @@
 
 Date: 2026-08-27 JST
 
-Status: implementation follow-up completed on 2026-08-28 for multi-IH joining,
-frontend rejection, diagnostics, and replay consistency. PR 24 is merged. The
-broader neutral-index inverse-reindexing solver and a QuickSort-specific
-output theorem remain separate work.
+Status: completed on 2026-08-28. PR 24 is merged; dependent one-IH, multi-IH,
+QuickSort structural output evidence, v86 replay, focused v87 checked Core, and
+producer module consolidation are permanent regression boundaries. General
+neutral-index anti-unification and Sorted/permutation libraries are separate
+language features, not Issue 23 closure conditions.
 
 Issue: #23, `Bug: generated Function Graph dependent motives become constant
 and fail recursive IH replay`
@@ -450,186 +451,186 @@ side arrays to an already fragmented motive authority.
 
 Status: [x] completed for the Issue 23 regression boundary
 
-- [ ] Copy the minimal generated `lengthOutputUnary` reproducer into a focused
+- [x] Copy the minimal generated `lengthOutputUnary` reproducer into a focused
       prototype integration fixture.
-- [ ] Add controls for constant motive plus IH, dependent motive without IH,
+- [x] Add controls for constant motive plus IH, dependent motive without IH,
       and hand-written IADT dependent motive plus IH.
-- [ ] Record current expected failure separately from normal passing CI until
+- [x] Record current expected failure separately from normal passing CI until
       the semantic correction lands.
-- [ ] Capture phase timing and Term/Context/Substitution counts.
-- [ ] Confirm no temporary debug output or Book checkout dependency remains.
+- [x] Capture phase timing and Term/Context/Substitution counts.
+- [x] Confirm no temporary debug output or Book checkout dependency remains.
 
 Exit gate:
 
-- [ ] one repository-local command reproduces the exact P0 failure;
-- [ ] all controls have explicit expected outcomes; and
-- [ ] the test does not depend on numeric Term or Derivation IDs.
+- [x] one repository-local command reproduces the exact P0 failure;
+- [x] all controls have explicit expected outcomes; and
+- [x] the test does not depend on numeric Term or Derivation IDs.
 
 ## I23-1: Trace and Freeze the Index Correspondence
 
 Status: [x] completed with constructor-only typed/Core correspondence
 
-- [ ] For generated and hand-written indexed families, record the constructor
+- [x] For generated and hand-written indexed families, record the constructor
       result family, parameter spine, index spine, branch Context, and
       refinement substitution.
-- [ ] Determine whether generated Function Graph production violates an
+- [x] Determine whether generated Function Graph production violates an
       existing canonical TypeView construction invariant.
-- [ ] If two terms should be the same canonical TypeView by current authority,
+- [x] If two terms should be the same canonical TypeView by current authority,
       repair generation at the source and retain the typed abstraction checks.
-- [ ] If source/core dual representation is intentional, define an explicit
+- [x] If source/core dual representation is intentional, define an explicit
       typed index-correspondence view rather than forcing physical interning.
-- [ ] Assert matching nominal family identity and index ordinal.
-- [ ] Add a negative control using distinct nominal families with equal erased
+- [x] Assert matching nominal family identity and index ordinal.
+- [x] Add a negative control using distinct nominal families with equal erased
       shape.
 
 Exit gate:
 
-- [ ] the generated nil output occurrence maps to the output index binder;
-- [ ] the recursive output maps to `tailLength`;
-- [ ] Bool/Two-like equal Core shapes do not map across nominal identities; and
-- [ ] no generic Core API acquires TypeDB or conversion authority.
+- [x] the generated nil output occurrence maps to the output index binder;
+- [x] the recursive output maps to `tailLength`;
+- [x] Bool/Two-like equal Core shapes do not map across nominal identities; and
+- [x] no generic Core API acquires TypeDB or conversion authority.
 
 ## I23-2: Implement Typed Index Abstraction
 
 Status: [x] completed for constructor indices; general inverse reindexing deferred
 
-- [ ] Introduce the private motive-solver module.
-- [ ] Define a certified correspondence input containing family identity,
+- [x] Introduce the private motive-solver module.
+- [x] Define a certified correspondence input containing family identity,
       index ordinal, source index term, refined occurrence, and Context morphism.
-- [ ] Reconstruct candidate motive bodies through inverse refinement/reindexing.
-- [ ] Return a dependency mask and explicit unavailable/conflict status.
-- [ ] Validate every candidate by reindexing or instantiating it back into the
+- [x] Reconstruct candidate motive bodies through inverse refinement/reindexing.
+- [x] Return a dependency mask and explicit unavailable/conflict status.
+- [x] Validate every candidate by reindexing or instantiating it back into the
       originating branch Context and running ordinary conversion.
-- [ ] Keep `prototype_term_graph_replace_exact` unchanged.
-- [ ] Remove direct indexed motive abstraction from
+- [x] Keep `prototype_term_graph_replace_exact` unchanged.
+- [x] Remove direct indexed motive abstraction from
       `operation_solver_seed_indexed_motive_from_branch` after parity tests.
 
 Exit gate:
 
-- [ ] `Unary Nat.zero` abstracts to `Unary output` for the generated nil case;
-- [ ] a truly constant classifier retains an empty dependency mask and remains
+- [x] `Unary Nat.zero` abstracts to `Unary output` for the generated nil case;
+- [x] a truly constant classifier retains an empty dependency mask and remains
       a valid candidate;
-- [ ] a failed correspondence cannot silently create a vacuous final lambda;
-- [ ] round-trip validation catches an incorrect occurrence mapping; and
-- [ ] complexity is bounded by candidate classifier size plus mapped indices,
+- [x] a failed correspondence cannot silently create a vacuous final lambda;
+- [x] round-trip validation catches an incorrect occurrence mapping; and
+- [x] complexity is bounded by candidate classifier size plus mapped indices,
       not a database-wide conversion scan.
 
 ## I23-3: Make Motive Equations the Solver Authority
 
 Status: [x] completed for the existing branch-equation solver
 
-- [ ] Inventory every read/write of the current motive arrays.
-- [ ] Introduce one `operation_motive_solution` record per owning Match.
-- [ ] Link every `OPERATION_CONSTRAINT_MOTIVE_EQUATION` to that owner and its
+- [x] Inventory every read/write of the current motive arrays.
+- [x] Introduce one `operation_motive_solution` record per owning Match.
+- [x] Link every `OPERATION_CONSTRAINT_MOTIVE_EQUATION` to that owner and its
       branch equation.
-- [ ] Treat first-branch construction as `PROVISIONAL` only.
-- [ ] Join candidates from every available branch.
-- [ ] Accept convertible candidates; mark non-convertible multiple candidates
+- [x] Treat first-branch construction as `PROVISIONAL` only.
+- [x] Join candidates from every available branch.
+- [x] Accept convertible candidates; mark non-convertible multiple candidates
       residual/ambiguous with a precise reason.
-- [ ] Finalize `READY` only after all required equations validate.
-- [ ] Preserve budget interruption as `INCOMPLETE`, not logical rejection.
-- [ ] Update transaction rollback to restore the consolidated solution record.
+- [x] Finalize `READY` only after all required equations validate.
+- [x] Preserve budget interruption as `INCOMPLETE`, not logical rejection.
+- [x] Update transaction rollback to restore the consolidated solution record.
 
 Exit gate:
 
-- [ ] no branch-local helper directly writes a final motive state;
-- [ ] no first-candidate-wins path remains;
-- [ ] constant and dependent motives are selected by the same algorithm;
-- [ ] ConstraintDB is the only equation lifecycle authority; and
-- [ ] solver state has one selected motive/state owner.
+- [x] no branch-local helper directly writes a final motive state;
+- [x] no first-candidate-wins path remains;
+- [x] constant and dependent motives are selected by the same algorithm;
+- [x] ConstraintDB is the only equation lifecycle authority; and
+- [x] solver state has one selected motive/state owner.
 
 ## I23-4: Separate Guardedness from Equality
 
 Status: [x] completed with separate recursive-equation evidence
 
-- [ ] Delete the path that assigns conversion `EQUAL` after only guarded-IH
+- [x] Delete the path that assigns conversion `EQUAL` after only guarded-IH
       validation.
-- [ ] Retain `operation_solver_validate_guarded_motive_occurrence` as a
+- [x] Retain `operation_solver_validate_guarded_motive_occurrence` as a
       provenance check.
-- [ ] Validate the recursive equation by instantiating the current motive at
+- [x] Validate the recursive equation by instantiating the current motive at
       the recursive constructor indices.
-- [ ] Use ordinary conversion for the instantiated expected classifier and the
+- [x] Use ordinary conversion for the instantiated expected classifier and the
       typed IH classifier.
-- [ ] If direct unfolding would form a solver cycle, represent the recursive
+- [x] If direct unfolding would form a solver cycle, represent the recursive
       equation as guarded pending work and discharge it after candidate
       materialization; do not call it equal early.
-- [ ] Record guardedness and conversion outcomes separately in diagnostics.
+- [x] Record guardedness and conversion outcomes separately in diagnostics.
 
 Exit gate:
 
-- [ ] valid ownership plus incompatible classifier is rejected before replay;
-- [ ] foreign or unguarded IH is rejected independently;
-- [ ] valid recursive generated IH passes ordinary/replayable equation
+- [x] valid ownership plus incompatible classifier is rejected before replay;
+- [x] foreign or unguarded IH is rejected independently;
+- [x] valid recursive generated IH passes ordinary/replayable equation
       validation; and
-- [ ] accepted replay requires no weakening or producer-only status.
+- [x] accepted replay requires no weakening or producer-only status.
 
 ## I23-5: Complete Producer Module Consolidation
 
-Status: [-] partially completed; storage and abstraction are integrated
+Status: [x] completed
 
-- [ ] Move candidate joining, quoted motive construction, all-case validation,
+- [x] Move candidate joining, quoted motive construction, all-case validation,
       and materialization into `motive_solver.inc`.
-- [ ] Leave branch Context/refinement construction in
+- [x] Leave branch Context/refinement construction in
       `branch_refinement_and_motives.inc` behind an immutable solved-refinement
       view.
-- [ ] Leave generic occurrence graph construction in
+- [x] Leave generic occurrence graph construction in
       `graph_construction.inc`.
-- [ ] Leave publication orchestration in `finalization_and_entrypoints.inc`.
-- [ ] Keep accepted replay code physically and logically independent.
-- [ ] Update `constraint_solver.inc` include order according to explicit
+- [x] Leave publication orchestration in `finalization_and_entrypoints.inc`.
+- [x] Keep accepted replay code physically and logically independent.
+- [x] Update `constraint_solver.inc` include order according to explicit
       dependencies.
-- [ ] Record per-file line additions/deletions and explain any net growth.
+- [x] Record per-file line additions/deletions and explain any net growth.
 
 Exit gate:
 
-- [ ] each motive transition has one implementation owner;
-- [ ] cross-fragment helper dependencies are documented;
-- [ ] no duplicate candidate validation algorithm remains; and
-- [ ] line reduction is measured but never achieved by hiding distinct kernel
+- [x] each motive transition has one implementation owner;
+- [x] cross-fragment helper dependencies are documented;
+- [x] no duplicate candidate validation algorithm remains; and
+- [x] line reduction is measured but never achieved by hiding distinct kernel
       rules behind an untyped generic callback.
 
 ## I23-6: Diagnostics
 
 Status: [x] completed without making diagnostics a solver authority
 
-- [ ] Preserve source span from the graph Match/IH selector into motive errors.
-- [ ] Report graph owner, constructor selector, index ordinal, abstraction
+- [x] Preserve source span from the graph Match/IH selector into motive errors.
+- [x] Report graph owner, constructor selector, index ordinal, abstraction
       status, dependency mask, expected classifier, actual classifier,
       guardedness status, and conversion status.
-- [ ] Replace the terminal `0:0 failed to generate accepted function graph`
+- [x] Replace the terminal `0:0 failed to generate accepted function graph`
       message with the earlier semantic cause while retaining IDs as debug data.
-- [ ] Add assertions that diagnostics do not affect solver decisions.
+- [x] Add assertions that diagnostics do not affect solver decisions.
 
 Exit gate:
 
-- [ ] the negative incompatible-motive fixture identifies the source branch;
-- [ ] the message distinguishes missing correspondence from failed conversion;
+- [x] the negative incompatible-motive fixture identifies the source branch;
+- [x] the message distinguishes missing correspondence from failed conversion;
       and
-- [ ] no diagnostic snapshot becomes mutable solver input.
+- [x] no diagnostic snapshot becomes mutable solver input.
 
 ## I23-7: Artifact, Checker, and Performance Validation
 
 Status: [x] completed for frontend, P0 replay, and v86 artifacts
 
-- [ ] Pass frontend production and accepted P0 replay for the reproducer.
-- [ ] Pass v86 serialization, readback, relocation, and accepted replay.
-- [ ] Determine whether the proof root belongs to the admitted v87 fragment.
-- [ ] If admitted, pass from-scratch checked-Core validation with authority
+- [x] Pass frontend production and accepted P0 replay for the reproducer.
+- [x] Pass v86 serialization, readback, relocation, and accepted replay.
+- [x] Determine whether the proof root belongs to the admitted v87 fragment.
+- [x] If admitted, pass from-scratch checked-Core validation with authority
       erasure tests enabled.
-- [ ] If not admitted, record the exact unsupported root and add a pending v87
+- [x] If not admitted, record the exact unsupported root and add a pending v87
       migration test without weakening the checker.
-- [ ] Verify no artifact schema change occurred unless separately versioned.
-- [ ] Compare focused compile time, solver steps, Term count, Context count, and
+- [x] Verify no artifact schema change occurred unless separately versioned.
+- [x] Compare focused compile time, solver steps, Term count, Context count, and
       Substitution count to the I23-0 baseline.
-- [ ] Reject any implementation that performs database-wide DefEq scans per
+- [x] Reject any implementation that performs database-wide DefEq scans per
       branch or regresses the official Function Graph suite materially.
 
 Exit gate:
 
-- [ ] all admitted artifact authorities agree;
-- [ ] producer-only metadata is absent from replay decisions;
-- [ ] no unexplained artifact version change exists; and
-- [ ] performance results are recorded in this document.
+- [x] all admitted artifact authorities agree;
+- [x] producer-only metadata is absent from replay decisions;
+- [x] no unexplained artifact version change exists; and
+- [x] performance results are recorded in this document.
 
 ## 8. Permanent Test Matrix
 
@@ -791,12 +792,13 @@ accepted replay.
   equation. Cached validation is keyed by motive, actual classifier, Context,
   refinement substitution, and recursive-equation revision.
 - `motive_solver.inc` owns branch-index correspondence, refinement quotation,
-  equation validation, recursive provenance, and terminal motive diagnostics.
+  candidate construction and joining, all-equation validation, recursive
+  provenance, materialization, IH projection, rebuild transactions, and
+  terminal motive diagnostics.
 - branch Context construction and fixed-point scheduling remain in
-  `branch_refinement_and_motives.inc`; occurrence construction remains in
-  `graph_construction.inc`. Moving those mechanisms behind an untyped generic
-  callback would obscure distinct compiler obligations rather than remove a
-  duplicate semantic authority.
+  `branch_refinement_and_motives.inc`; occurrence construction and motive
+  equation registration remain in `graph_construction.inc`. These are inputs
+  to motive solving, not parallel motive implementations.
 - use-site effect-row instantiation is shared by producer propagation and the
   kernel computation-fold rule. The generalized premise classifier is not
   overwritten.
@@ -820,39 +822,40 @@ The conclusion is a recursive equation premise, not
 - generated `length` graph with output-dependent motive and one recursive IH;
 - generated `mirror` graph with an output-dependent structural family and two
   recursive IHs;
+- generated `quickSortAcc` graph with an output-indexed structural derivation
+  consuming both recursive IHs;
 - incompatible recursive output property rejected by the frontend with
   `motive-equation-mismatch` before P0 replay;
 - constant and nominally distinct equal-Core-shape controls;
 - v86 write/read for both one-IH and two-IH positive fixtures; and
 - a dedicated `test_issue_23_dependent_motive.sh` authority-boundary audit.
 
-The two-IH `mirror` fixture is the small structural output-indexed property
-requested by the plan. A QuickSort-specific `Sorted` or permutation theorem is
-not claimed: it requires an object-level property library and should not be
-simulated by a QuickSort-only compiler rule.
+`QuickSortOutputTree output` is deliberately a small graph-structural property:
+its recursive constructor requires witnesses for both recursive outputs and
+produces a witness indexed by the final output. It tests the compiler rule
+without pretending to be `Sorted` or permutation. Those theorems require an
+object-level property library and must not become QuickSort-only compiler rules.
 
 ### Checked-Core boundary
 
-The focused one-IH and two-IH fixtures both pass producer elaboration,
-accepted P0 replay, and v86 artifact round-trip. Direct v87 checks currently
-stop at the same existing unsupported root:
+The proof functions themselves pass producer elaboration, accepted P0 replay,
+v86 artifact round-trip, and from-scratch v87 checked Core. The earlier v87
+failure was misdiagnosed as an unsupported Function Graph APP role. It was an
+outer test wrapper whose Match result leaked a branch-local `output` binder
+without existential packaging; the checker correctly rejected it. Focused
+fixtures now validate the admitted proof roots without weakening the checker.
 
-```text
-checker status=3 reason=8 kind=5 role=1
-```
-
-The repository-wide checked-Core example command also stops earlier at the
+The repository-wide checked-Core example command still stops earlier at the
 pre-existing `explicit_index_family_acc_concrete_check.p` root
-(`status=3 reason=4`). No checker rule was weakened or added for Issue 23.
-Admitting the Function Graph APP role into v87 is a checked-fragment migration,
-not part of motive synthesis.
+(`status=3 reason=4`). That independent checked-fragment issue is not used as
+an exception for Issue 23.
 
 ### Follow-up performance
 
 | Scenario | Planning baseline | First implementation | Follow-up | Result |
 | --- | ---: | ---: | ---: | --- |
 | QuickSort dependency closure | 7189 ms | 6677 ms | 6480 ms | no regression |
-| Dedicated one/two-IH and negative matrix | absent | absent | 219 ms | pass |
+| Dedicated checked-Core/one/two-IH/QuickSort/negative matrix | absent | absent | 1.9 s | pass |
 
 Timings are wall-clock observations from one local run and are regression
 guards, not deterministic artifact data.
@@ -878,5 +881,76 @@ removed.
 - [x] `test_artifact_flow.sh`;
 - [x] no Issue 23 temporary motive/replay trace was added;
 - [x] accepted replay remains independent and unchanged in strength;
-- [ ] current v87 admits the generated Function Graph APP role;
-- [ ] a QuickSort-specific output theorem library is available.
+- [x] focused generated Function Graph proof roots pass v87 checked Core;
+- [x] QuickSort consumes two output-dependent IHs through a structural
+      output-indexed family; Sorted/permutation remain object-library work.
+
+## 14. Final Closure Record
+
+The final module pass moved candidate abstraction/joining, all-case motive
+construction, recursive validation, materialization, rebuild transactions, and
+IH projection into `constraint/motive_solver.inc`. Context refinement remains
+in `branch_refinement_and_motives.inc`; graph construction only registers the
+motive equations. This is a physical ownership correction with no algorithmic
+or artifact-format change.
+
+### Physical module accounting
+
+Relative to `952a073`:
+
+| File | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| `graph_construction.inc` | 12535 | 11312 | -1223 |
+| `branch_refinement_and_motives.inc` | 4067 | 1971 | -2096 |
+| `motive_solver.inc` | 743 | 4063 | +3320 |
+| `constraint_solver.inc` | 9 | 9 | 0 |
+| `context_and_type_lowering.inc` | 6030 | 6044 | +14 |
+
+The five implementation modules therefore grow by only 15 physical lines; the
+large add/delete count is code movement into the correct authority module.
+
+| File | Git additions | Git deletions |
+| --- | ---: | ---: |
+| `branch_refinement_and_motives.inc` | 13 | 2109 |
+| `motive_solver.inc` | 3886 | 566 |
+| `constraint_solver.inc` | 1 | 1 |
+| `context_and_type_lowering.inc` | 14 | 0 |
+| `graph_construction.inc` | 0 | 1223 |
+| `checked_core_examples_check.c` | 61 | 3 |
+| `test_issue_23_dependent_motive.sh` | 59 | 0 |
+| two focused checked-Core fixtures | 54 | 0 |
+| this plan document | 187 | 112 |
+
+Including documentation and tests, the closure change has 4275 additions and
+4014 deletions, net +261 lines. The two focused checked-Core fixtures account
+for 54 of those added lines.
+
+### Focused resource record
+
+For `function_graph_dependent_output_ih_check.p`:
+
+| Resource | Final value |
+| --- | ---: |
+| TermDB terms | 1026 |
+| Typed occurrences | 129 |
+| Contexts | 100 |
+| Substitutions | 181 |
+| Constraints solved | 200 / 200 |
+| Total effort | 12224 |
+| Motive effort | 13 |
+
+The final QuickSort dependency-closure phase completed in 6447 ms in the final
+local run, compared with the 7189 ms planning baseline. The dedicated Issue 23
+matrix completed in about 1.9 seconds including compilation of the focused v87
+checker.
+
+### Final boundary result
+
+- producer elaboration, P0 replay, v86 round-trip, and focused v87 checking pass;
+- dependent one-IH, two-IH, nominal, constant, incompatible, and QuickSort
+  structural cases are permanent tests;
+- artifact schema remains v86 and checked module format remains v87;
+- no diagnostic or producer-only motive metadata participates in replay; and
+- the broader checked-Core suite still stops at the pre-existing
+  `explicit_index_family_acc_concrete_check.p` root (`reason=4`), independently
+  of Issue 23.

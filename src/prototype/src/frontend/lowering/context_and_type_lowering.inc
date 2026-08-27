@@ -618,6 +618,12 @@ struct operation_classifier_solver {
 
 struct compile_context;
 
+static const struct operation_constraint* operation_solver_motive_equation(
+	const struct operation_constraint_db* constraints,
+	uint32_t match_operation,
+	uint32_t case_index
+);
+
 static int operation_motive_abstract_index(
 	struct compile_context* ctx,
 	uint32_t body,
@@ -678,6 +684,14 @@ static int operation_motive_register_recursive_equation(
 	struct compile_context* ctx,
 	uint32_t match_operation_id,
 	uint32_t ih_operation
+);
+
+static int operation_solver_seed_motive(
+	struct compile_context* ctx,
+	uint32_t operation,
+	uint32_t classifier,
+	uint32_t source_body_occurrence,
+	int* p_changed
 );
 
 static int operation_solver_var_binding_context(
