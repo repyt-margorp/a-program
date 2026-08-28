@@ -210,6 +210,12 @@ static int operation_solver_materialize_induction_hypothesis_judgement(
 		fprintf(stderr, "IH materialization effect evidence failed operation=%u context=%u classifier=%u\n", operation_id, operation->context_id, classifier);
 		return -1;
 	}
+	prototype_judgement_delta_set_context(
+		&ctx->judgement_delta, operation->context_id
+	);
+	prototype_judgement_delta_set_occurrence(
+		&ctx->judgement_delta, operation_id
+	);
 	int expand_status = prototype_judgement_delta_expand_induction_hypothesis(
 		&ctx->judgement_delta,
 		ctx->terms,
@@ -2936,17 +2942,17 @@ static int operation_solver_reify_core_proof_impl(
 				if (status != 0) {
 					return status;
 				}
-					if (clause_count == 0) {
-						status = operation_solver_select_operation_evidence_in_context(
-							ctx,
-							premise_occurrences[i],
+				if (clause_count == 0) {
+					status = operation_solver_select_operation_evidence_in_context(
+						ctx,
+						premise_occurrences[i],
 						operation->context_id,
 						premise_terms[i],
-							premise_classifiers[i],
-							&premise_evidence[i]
+						premise_classifiers[i],
+						&premise_evidence[i]
 					);
-						if (status != 0) {
-							return status;
+					if (status != 0) {
+						return status;
 					}
 				}
 			}
@@ -3655,8 +3661,20 @@ static int operation_solver_reify_core_proof(
 		if (cached->context_id == operation->context_id &&
 			cached->classifier == operation->classifier) {
 			if (cached->state == OPERATION_REIFICATION_SUCCEEDED) {
-				ctx->metadata->proof_reify_current_pass_reuse_count++;
-				return 0;
+				struct prototype_judgement_selected_evidence evidence;
+				int evidence_status =
+					operation_solver_select_operation_evidence_in_context(
+						ctx, operation_id, operation->context_id, core_term,
+						operation->classifier, &evidence
+					);
+				if (evidence_status == 0) {
+					ctx->metadata->proof_reify_current_pass_reuse_count++;
+					return 0;
+				}
+				if (evidence_status < 0 || evidence_status == 2) {
+					return -1;
+				}
+				cached->state = OPERATION_REIFICATION_UNSEEN;
 			}
 			if (cached->state == OPERATION_REIFICATION_IN_PROGRESS) {
 				ctx->metadata->proof_reify_cycle_count++;

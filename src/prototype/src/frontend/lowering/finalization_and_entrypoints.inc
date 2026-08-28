@@ -864,7 +864,13 @@ static int operation_refine_classifier_from_expected(
 			return 0;
 		}
 		uint32_t classifier_argument;
-		uint32_t codomain_binder = prototype_term_new_binding(ctx->terms);
+		uint32_t codomain_binder =
+			ctx->classifier_solver.expected_app_codomain_binders[operation_id];
+		if (codomain_binder == PROTOTYPE_INVALID_ID) {
+			codomain_binder = prototype_term_new_binding(ctx->terms);
+			ctx->classifier_solver.expected_app_codomain_binders[operation_id] =
+				codomain_binder;
+		}
 		uint32_t codomain_var;
 		uint32_t codomain_body;
 		uint32_t codomain_family;
@@ -1046,7 +1052,9 @@ static int operation_refine_classifier_from_expected(
 	}
 	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
 		uint64_t motive_revision =
-			ctx->classifier_solver.recursive_equation_revision;
+			ctx->classifier_solver.motive_solutions[
+				operation_id
+			].recursive_equation_revision;
 		if (compile_occurrence_child(
 				ctx, operation_id, PROTOTYPE_TERM_CHILD_SCRUTINEE, 0,
 				&scrutinee_occurrence
@@ -1131,7 +1139,9 @@ static int operation_refine_classifier_from_expected(
 		}
 		uint32_t selected_motive =
 			ctx->classifier_solver.motive_solutions[operation_id].motive;
-		if ((ctx->classifier_solver.recursive_equation_revision !=
+		if ((ctx->classifier_solver.motive_solutions[
+				operation_id
+			].recursive_equation_revision !=
 				motive_revision || operation_motive_has_recursive_equations(
 					ctx, operation_id
 				) > 0) && selected_motive < ctx->terms->term_count &&

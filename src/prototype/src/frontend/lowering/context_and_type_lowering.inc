@@ -365,6 +365,8 @@ struct operation_constraint {
 	/* Nonzero only when this immutable edge has contributed to the current
 	 * recursive motive equation set. The owner remains in the IH payload. */
 	uint64_t activation_revision;
+	/* Projection cache evidence belongs to this IH edge. */
+	uint32_t projected_motive;
 	/* Explicit edge to the compiler constraint which emitted this obligation.
 	 * INVALID denotes an independently generated equation. */
 	uint32_t origin_constraint_id;
@@ -422,6 +424,13 @@ struct operation_constraint_db {
 	 * uniqueness. These are occurrence/case identities, never Core Term IDs. */
 	uint32_t base_classifier_constraint_for_occurrence[4096];
 	uint32_t ih_constraint_for_occurrence[4096];
+	/* Generated owner adjacency for IH_EXPECTED constraints. The constraint is
+	 * still the authority; these links only avoid rediscovering ownership by an
+	 * occurrence-wide scan. */
+	uint32_t first_ih_constraint_for_owner[4096];
+	uint32_t next_ih_constraint_for_owner[
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
+	];
 	uint32_t motive_constraint_for_case[
 		PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
 	];
@@ -429,6 +438,19 @@ struct operation_constraint_db {
 		PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
 	];
 	uint32_t computation_constraint_for_occurrence[4096];
+	/* Generated reverse slice from one Match-case motive equation to the IH
+	 * occurrences structurally used by that branch. Entries reference canonical
+	 * typed occurrences; IH_EXPECTED remains the semantic/lifecycle authority. */
+	uint32_t first_branch_ih_dependency[
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
+	];
+	uint32_t branch_ih_dependency_count[
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
+	];
+	uint32_t branch_ih_dependencies[
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
+	];
+	uint32_t branch_ih_dependency_total;
 	uint32_t first_dependent_constraint[4096];
 	struct {
 		uint32_t source_occurrence;
@@ -452,6 +474,7 @@ struct operation_constraint_db_mark {
 	uint32_t first_effect_constraint;
 	uint32_t effect_constraint_count;
 	uint32_t dependent_constraint_count;
+	uint32_t branch_ih_dependency_total;
 	uint32_t worklist_head;
 	uint32_t worklist_count;
 };
@@ -542,6 +565,9 @@ struct operation_motive_solution {
 	 * classifier authority: it only avoids reconstructing the same candidate
 	 * from an unchanged branch equation. */
 	uint32_t source_classifier;
+	/* Owner-local recursive-equation epoch. This replaces the solver-global
+	 * invalidation counter: unrelated Match owners cannot invalidate each other. */
+	uint64_t recursive_equation_revision;
 	uint8_t state;
 	uint8_t ambiguity;
 };
@@ -606,17 +632,17 @@ struct operation_classifier_solver {
 	int initialized;
 	uint32_t initialized_occurrence_count;
 	uint64_t solution_revision;
-	uint64_t recursive_equation_revision;
 	struct operation_classifier_meta_solution classifier_metas[4096];
+	/* Reverse APP refinement owns one generated codomain binder per APP
+	 * occurrence. Reusing its identity makes retries intern the same graph;
+	 * the classifier meta remains the only authority for the inferred type. */
+	uint32_t expected_app_codomain_binders[4096];
 	/* A candidate is a solver equation M(_) == T. It is never represented by
 	 * a provisional TermDB APP node. */
 	struct operation_motive_solution motive_solutions[4096];
 	/* For an IH operation i, this indexes symbolic M(argument) in the solver
 	 * arena. It is never a provisional TermDB APP node. */
 	uint32_t ih_motive_application_ids[4096];
-	/* Derived cache: the owner motive whose classifier was last projected to
-	 * this IH occurrence. The motive solution remains authoritative. */
-	uint32_t ih_projected_motives[4096];
 	struct operation_solver_motive_application motive_applications[4096];
 	uint32_t motive_application_count;
 	struct operation_solver_input_fact
@@ -678,7 +704,15 @@ static int operation_motive_add_terminal_diagnostic(
 	uint32_t case_index
 );
 
-static void operation_motive_clear_recursive_equations(
+static int operation_motive_collect_owned_induction_hypotheses(
+	const struct compile_context* ctx,
+	uint32_t match_operation_id,
+	uint32_t* operations,
+	uint32_t capacity,
+	uint32_t* p_count
+);
+
+static int operation_motive_clear_recursive_equations(
 	struct compile_context* ctx,
 	uint32_t match_operation_id
 );
@@ -809,6 +843,10 @@ struct operation_binder_owner_entry {
 	 * INVALID distinguishes ordinary Lambda binding. The source computation stays
 	 * in the operation graph; this edge only permits bounded prior evaluation. */
 	uint32_t bound_computation_occurrence;
+	/* The exact zero-clause COMPUTATION_FOLD which sequences the bound
+	 * computation into lambda_occurrence. This avoids rediscovering the producer
+	 * by scanning every occurrence during expected-classifier propagation. */
+	uint32_t sequence_fold_occurrence;
 	/* Derived compiler workspace: the stable symbolic value of a structurally
 	 * pure bound computation. It is never serialized as semantic authority. */
 	uint32_t projected_pure_value;
@@ -2085,6 +2123,7 @@ static struct operation_binder_owner_entry* operation_binder_owner_add(
 		.binding_id = binding_id,
 		.lambda_occurrence = PROTOTYPE_INVALID_ID,
 		.bound_computation_occurrence = PROTOTYPE_INVALID_ID,
+		.sequence_fold_occurrence = PROTOTYPE_INVALID_ID,
 		.projected_pure_value = PROTOTYPE_INVALID_ID,
 		.declared_classifier = PROTOTYPE_INVALID_ID,
 		.first_classifier_evidence = PROTOTYPE_INVALID_ID

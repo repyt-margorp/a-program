@@ -156,10 +156,13 @@ int prototype_verification_db_validate(
 			return -1;
 		}
 		occurrence_kind_masks[obligation->occurrence] |= kind_bit;
-		switch (obligation->kind) {
+			switch (obligation->kind) {
 			case PROTOTYPE_VERIFICATION_OBLIGATION_COMPUTATION_FOLD_RESULT:
 				if (obligation->computation_occurrence >= graph->occurrence_count ||
 					obligation->continuation_occurrence >= graph->occurrence_count ||
+					obligation->effect_constraint_kind != 0 ||
+					obligation->normalization_profile !=
+						PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
 					!verification_term_reference_present(
 						terms, obligation->input_classifier
 					) ||

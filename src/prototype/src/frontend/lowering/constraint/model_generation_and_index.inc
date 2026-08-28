@@ -95,6 +95,7 @@ static int operation_constraint_db_validate(
 		);
 		return -1;
 	}
+	uint32_t ih_constraint_count = 0;
 	for (uint32_t id = 0; id < ctx->constraints.constraint_count; ++id) {
 		const struct operation_constraint* constraint =
 			&ctx->constraints.constraints[id];
@@ -148,6 +149,9 @@ static int operation_constraint_db_validate(
 					constraint->source_occurrence
 				] != id) {
 				return -1;
+			}
+			if (constraint->kind == OPERATION_CONSTRAINT_IH_EXPECTED) {
+				ih_constraint_count++;
 			}
 			if (constraint->kind == OPERATION_CONSTRAINT_MOTIVE_EQUATION) {
 				uint32_t case_index =
@@ -252,9 +256,31 @@ static int operation_constraint_db_validate(
 			}
 		}
 	}
+	uint32_t indexed_ih_count = 0;
 	for (uint32_t occurrence = 0;
 		occurrence < ctx->metadata->typed_occurrences.occurrence_count;
 		++occurrence) {
+		uint32_t owner_link_count = 0;
+		for (uint32_t ih_constraint =
+				ctx->constraints.first_ih_constraint_for_owner[occurrence];
+			ih_constraint != PROTOTYPE_INVALID_ID;
+			ih_constraint = ctx->constraints.next_ih_constraint_for_owner[
+				ih_constraint
+			]) {
+			if (ih_constraint >=
+					ctx->constraints.classifier_constraint_count ||
+				ctx->constraints.constraints[ih_constraint].kind !=
+					OPERATION_CONSTRAINT_IH_EXPECTED ||
+				ctx->constraints.constraints[ih_constraint].payload.classifier.goal.
+					induction_hypothesis.owner_match_occurrence != occurrence ||
+				++owner_link_count > ih_constraint_count) {
+				fprintf(stderr,
+					"constraint db IH owner index invalid owner=%u id=%u\n",
+					occurrence, ih_constraint);
+				return -1;
+			}
+			indexed_ih_count++;
+		}
 		uint32_t computation_id =
 			ctx->constraints.computation_constraint_for_occurrence[occurrence];
 		if (computation_id != PROTOTYPE_INVALID_ID &&
@@ -292,6 +318,12 @@ static int operation_constraint_db_validate(
 			}
 		}
 	}
+	if (indexed_ih_count != ih_constraint_count) {
+		fprintf(stderr,
+			"constraint db IH owner index incomplete expected=%u indexed=%u\n",
+			ih_constraint_count, indexed_ih_count);
+		return -1;
+	}
 	return 0;
 }
 
@@ -310,6 +342,7 @@ static struct operation_constraint_db_mark operation_constraint_db_mark(
 		.first_effect_constraint = db->first_effect_constraint,
 		.effect_constraint_count = db->effect_constraint_count,
 		.dependent_constraint_count = db->dependent_constraint_count,
+		.branch_ih_dependency_total = db->branch_ih_dependency_total,
 		.worklist_head = db->worklist_head,
 		.worklist_count = db->worklist_count
 	};
@@ -367,6 +400,7 @@ static int operation_constraint_db_rollback(
 	db->first_effect_constraint = mark.first_effect_constraint;
 	db->effect_constraint_count = mark.effect_constraint_count;
 	db->dependent_constraint_count = mark.dependent_constraint_count;
+	db->branch_ih_dependency_total = mark.branch_ih_dependency_total;
 	db->worklist_head = mark.worklist_head;
 	db->worklist_count = mark.worklist_count;
 	return 0;
@@ -634,6 +668,7 @@ static int operation_solver_reset_classifier_state(
 			&ctx->metadata->typed_occurrences
 		);
 	for (uint32_t i = 0; i < 4096; ++i) {
+		solver->expected_app_codomain_binders[i] = PROTOTYPE_INVALID_ID;
 		if (i < preserved_count) {
 			solver->classifier_metas[i] = preserved[i];
 			solver->classifier_metas[i].owner_occurrence = i;
@@ -664,7 +699,6 @@ static int operation_solver_reset_classifier_state(
 			.state = OPERATION_MOTIVE_SOLUTION_UNRESOLVED
 		};
 		solver->ih_motive_application_ids[i] = PROTOTYPE_INVALID_ID;
-		solver->ih_projected_motives[i] = PROTOTYPE_INVALID_ID;
 	}
 	return operation_solver_refresh_usage_solutions(ctx) != 0 ||
 		operation_solver_initialize_input_facts(ctx) != 0 ? -1 : 0;
@@ -684,6 +718,7 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 		constraints->base_classifier_constraint_for_occurrence[i] =
 			PROTOTYPE_INVALID_ID;
 		constraints->ih_constraint_for_occurrence[i] = PROTOTYPE_INVALID_ID;
+		constraints->first_ih_constraint_for_owner[i] = PROTOTYPE_INVALID_ID;
 		constraints->computation_constraint_for_occurrence[i] =
 			PROTOTYPE_INVALID_ID;
 		ctx->effect_solver.meta_for_occurrence[i] = PROTOTYPE_INVALID_ID;
@@ -694,7 +729,11 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 		constraints->motive_constraint_for_case[i] = PROTOTYPE_INVALID_ID;
 		constraints->branch_refinement_constraint_for_case[i] =
 			PROTOTYPE_INVALID_ID;
+		constraints->first_branch_ih_dependency[i] = PROTOTYPE_INVALID_ID;
+		constraints->branch_ih_dependency_count[i] = 0;
+		constraints->next_ih_constraint_for_owner[i] = PROTOTYPE_INVALID_ID;
 	}
+	constraints->branch_ih_dependency_total = 0;
 	if (operation_solver_reset_classifier_state(
 			ctx, ctx->classifier_solver.initialized
 		) != 0) {

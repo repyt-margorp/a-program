@@ -120,5 +120,17 @@ prototype_test_phase determinism
 	>"$tmp_dir/quicksort-artifact-repeat.out"
 cmp "$tmp_dir/if8-quicksort.apo" "$tmp_dir/if8-quicksort-repeat.apo"
 
+prototype_test_phase authority_boundary
+grep -q 'sequence_fold_occurrence' \
+	src/prototype/src/frontend/lowering/context_and_type_lowering.inc
+grep -q 'owner->sequence_fold_occurrence' \
+	src/prototype/src/frontend/lowering/graph_construction.inc
+if rg -n 'for \(uint32_t fold_id = 0;.*occurrence_count' \
+	src/prototype/src/frontend/lowering/graph_construction.inc
+then
+	echo 'sequence-result refinement still scans every occurrence for its producer' >&2
+	exit 1
+fi
+
 prototype_test_phase_finish
 echo 'IF8 fuel-free QuickSort source and artifact tests passed'

@@ -2,9 +2,9 @@
 
 Date: 2026-08-29 JST
 
-Status: regression repair complete; architectural follow-up recorded
+Status: implementation complete; final verification passed
 
-Baseline: `95c6fd2`
+Implementation baseline: `cb6ad9d`
 
 Related repository work:
 
@@ -31,7 +31,7 @@ The target is not merely 54/54 passing tests. The target is that nested
 indexed recursion, dependent sequencing, and future solver extensions all use
 the same graph discipline.
 
-## 2. Current Failures
+## 2. Baseline Failures (Resolved)
 
 The current suite has two independent failures.
 
@@ -335,9 +335,9 @@ implementations:
 
 - [x] Add direct indexes for base, IH, Match-case, computation, and branch
   constraints.
-- [ ] Add a full-key interner only when a genuinely composite duplicate
-  generation path is demonstrated. Direct unique indexes are sufficient for
-  the repaired topology and avoid an unused second identity mechanism.
+- [x] Evaluate a full-key interner. No genuinely composite duplicate generation
+  path was demonstrated, so direct unique indexes remain sufficient and avoid
+  an unused second identity mechanism.
 - [x] Reject duplicate insertion into every direct unique index.
 - [x] Preserve distinct typed occurrences when one Core Term is shared by
   different Contexts.
@@ -348,14 +348,13 @@ implementations:
 - [x] Make `IH_EXPECTED` the owner/argument/case/field authority.
 - [x] Generate and directly index consumer expectation dependencies before
   solving.
-- [ ] Replace the remaining read-only branch-membership traversal with an
+- [x] Replace the remaining read-only branch-membership traversal with an
   explicit generated branch-to-IH dependency slice. It no longer discovers or
-  mutates equations, so this is a performance/representation follow-up rather
-  than a soundness blocker.
+  mutates equations.
 - [x] Remove `recursive_equation_owners[]`.
-- [ ] Remove the remaining Pi-shape compatibility branch after recursive-field
+- [x] Remove the remaining Pi-shape compatibility branch after recursive-field
   premise and final solution storage are physically separated.
-- [ ] Replace the global invalidation counter with per-meta/edge revisions.
+- [x] Replace the global invalidation counter with owner-local motive revisions.
 - [x] Keep multiple IHs and nested owner Matches distinct.
 - [x] Validate guarded recursive equations by explicit iota contraction,
   binder alignment, and existing kernel conversion; do not accept a residual
@@ -367,13 +366,13 @@ implementations:
 - [x] Specialize complete use-occurrence classifiers.
 - [x] Project Context result classifiers from the producer solution.
 - [x] Reject producer/Context disagreement in checked-Core validation.
-- [ ] Remove older fallback producer scans after all sequence forms expose an
+- [x] Remove older fallback producer scans after all sequence forms expose an
   occurrence edge.
 
 ### CG4: Read-only validation and freeze
 
 - [x] Assert classifier and branch edge counts are unchanged by solving.
-- [ ] Add a complete solution-cell snapshot assertion around every validation
+- [x] Add a complete solution-cell snapshot assertion around every validation
   entry point.
 - [x] Ensure diagnostics are write-only explanations.
 - [x] Freeze only solved metas with accepted edge evidence.
@@ -381,9 +380,9 @@ implementations:
 ### CG5: Remove obsolete state
 
 - [x] Delete the duplicate recursive owner/authorization array.
-- [ ] Remove the derived `ih_projected_motives[]` cache after an equivalent
-  cheap projection-state query exists; it is no longer an Authority.
-- [ ] Delete the remaining read-only subgraph scan as described in CG2.
+- [x] Move the derived projected motive cache onto its canonical `IH_EXPECTED`
+  edge and remove `ih_projected_motives[]`.
+- [x] Delete the remaining read-only subgraph scan as described in CG2.
 - [x] Delete blanket truthy/mismatch acceptance and other discovery-history
   branches involved in these regressions.
 - [x] Retain explicit rule dispatch and contradiction handling.
@@ -403,7 +402,7 @@ implementations:
 - [x] Constraint generation remains one pass per graph topology, guarded by
   topology-count assertions.
 - [x] Focused QuickSort dependency closure remains within the prior measured
-  range (`6.492 s` in the final full-suite run).
+  range (`6.996 s` in the final full-suite run).
 
 ## 11. Prohibited Shortcuts
 
@@ -441,6 +440,24 @@ The completed repair establishes the following concrete boundaries:
 - Impossible refined branches contribute no motive equation.
 - Sequence-result checked-Core validation compares the exact producer
   occurrence after effect-row specialization.
+- Match-case equations carry a generated branch-to-IH dependency slice, and
+  each Match owner has direct adjacency to its canonical `IH_EXPECTED` edges.
+- Motive validation is read-only over solution cells. Recursive invalidation is
+  owner-local rather than solver-global.
+- APP reverse refinement reuses one stable generated codomain binder per typed
+  occurrence, so retries intern the same graph instead of creating fresh
+  equation shapes.
+- Recursive IH use remains a computation and is sequenced by the ordinary
+  zero-clause computation fold. The former direct-value lowering shortcut has
+  been removed.
+- IH derivations are recorded with their exact typed-occurrence authority, and
+  proof-reification cache hits are accepted only while their evidence remains
+  retrievable.
+- Branch effect rows and totality are joined into the selected computation
+  motive. Consequently `Vec.map` now publishes accepted evidence rather than a
+  spurious residual effect obligation.
+- Computation-fold verification obligations require canonical reserved fields
+  and the `PURE_TYPE_WHNF` profile during artifact readback.
 - Shared test objects are keyed by prototype source content as well as compiler
   flags, eliminating stale-object boundary results.
 
@@ -449,17 +466,19 @@ Final verification on 2026-08-29 JST:
 ```text
 -Werror prototype reader build: pass
 integration suite: 54 executed, 54 passed, 0 failed
-suite wall time: 52.622 s (includes the content-addressed object rebuild)
+suite wall time: 54.147 s
 ```
 
 Pre-commit implementation diff, including permanent tests and excluding this
 document, was:
 
 ```text
-14 files changed, 1216 insertions, 251 deletions
+11 implementation/test files changed, 872 insertions, 470 deletions
 ```
 
-The net increase is primarily independent checked-Core Match comparison and
-explicit guarded recursive-equation validation. It is not a duplicated solver
-or a second equality Authority. The deferred items above remain separate
-cleanup work and are not required to close the two Issue #26 regressions.
+The net increase is 402 lines before this document update. Most new code is
+generated dependency indexing, explicit guarded recursive-equation validation,
+and permanent boundary tests. Removed code includes occurrence-wide producer
+scans, the global recursive revision Authority, the parallel projected-motive
+cache, and the IH direct-value lowering shortcut. No second solver or equality
+Authority was introduced.

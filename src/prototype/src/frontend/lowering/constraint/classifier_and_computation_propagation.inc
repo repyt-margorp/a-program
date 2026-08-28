@@ -144,7 +144,9 @@ static int operation_solver_classifier_goal_is_satisfied(
 				motive_case->validated_substitution ==
 					operation_case->refinement_substitution &&
 				motive_case->validated_recursive_revision ==
-					ctx->classifier_solver.recursive_equation_revision) {
+					ctx->classifier_solver.motive_solutions[
+						match_operation
+					].recursive_equation_revision) {
 				if (motive_case->validation_status ==
 					OPERATION_MOTIVE_EQUATION_VALID) {
 					*p_reason =
@@ -170,7 +172,9 @@ static int operation_solver_classifier_goal_is_satisfied(
 			motive_case->validated_substitution =
 				operation_case->refinement_substitution;
 			motive_case->validated_recursive_revision =
-				ctx->classifier_solver.recursive_equation_revision;
+				ctx->classifier_solver.motive_solutions[
+					match_operation
+				].recursive_equation_revision;
 			motive_case->validation_status = validation_status;
 			if (validation_status == OPERATION_MOTIVE_EQUATION_INVALID ||
 				validation_status == OPERATION_MOTIVE_EQUATION_MISMATCH) {
@@ -438,32 +442,46 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 		uint32_t pending_binder_classifier = operation_solver_binder_classifier(
 			ctx, continuation_occurrence_id
 		);
-		if (pending_binder_classifier != PROTOTYPE_INVALID_ID) {
-			uint8_t visited[
-				ctx->metadata->typed_occurrences.occurrence_count
+		uint32_t fold_constraint =
+			ctx->constraints.base_classifier_constraint_for_occurrence[
+				sequence_fold_operation_id
 			];
-			for (uint32_t operation_id = 0;
-				operation_id <
-					ctx->metadata->typed_occurrences.occurrence_count;
-				++operation_id) {
-				const struct prototype_typed_occurrence* operation =
-					&ctx->metadata->typed_occurrences.occurrences[operation_id];
-				memset(visited, 0, sizeof(visited));
-				if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_VAR ||
-					operation->referenced_ast_binder_id !=
-						continuation_occurrence->referenced_ast_binder_id ||
-					operation_subtree_contains_operation(
-						ctx, continuation_occurrence_id, operation_id, visited
-					) <= 0) {
-					continue;
-				}
-				int refine_status = operation_solver_refine_sequenced_ih_result(
-					ctx, operation_id,
-					pending_binder_classifier, p_changed
+		const struct operation_classifier_meta_solution* continuation_meta =
+			&ctx->classifier_solver.classifier_metas[continuation_occurrence_id];
+		/* A binder projected by this fold is derived output and cannot solve its
+		 * own input. An independently seeded or constrained binder is a consumer
+		 * expectation, however, and contributes a legitimate recursive motive
+		 * equation through this exact sequence edge. */
+		if (pending_binder_classifier != PROTOTYPE_INVALID_ID &&
+			continuation_meta->binder_evidence_constraint_id != fold_constraint) {
+			const struct operation_binder_owner_entry* owner =
+				operation_binder_owner_find(
+					ctx, continuation_occurrence->binding_id
 				);
-				if (refine_status <= 0) {
-					return refine_status;
+			if (!owner || owner->lambda_occurrence != continuation_occurrence_id ||
+				owner->sequence_fold_occurrence != sequence_fold_operation_id) {
+				return -1;
+			}
+			uint32_t evidence_id = owner->first_classifier_evidence;
+			while (evidence_id != PROTOTYPE_INVALID_ID) {
+				if (evidence_id >= ctx->binder_classifier_evidence_count) {
+					return -1;
 				}
+				const struct operation_binder_classifier_evidence_entry* evidence =
+					&ctx->binder_classifier_evidence[evidence_id];
+				int refine_status = operation_solver_refine_sequenced_ih_result(
+					ctx,
+					evidence->occurrence_id,
+					pending_binder_classifier,
+					p_changed
+				);
+				if (refine_status < 0) {
+					return -1;
+				}
+				if (refine_status == 0) {
+					break;
+				}
+				evidence_id = evidence->next;
 			}
 		}
 		return 0;
@@ -563,42 +581,6 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 				*p_changed = 1;
 			}
 			input_value_classifier = instantiated_input_classifier;
-		}
-	}
-	if (continuation_binder_classifier != PROTOTYPE_INVALID_ID &&
-		prototype_judgement_classifier_conversion(
-			ctx->terms,
-			ctx->type_declarations,
-			continuation_binder_classifier,
-			input_value_classifier
-		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
-		uint8_t visited[ctx->metadata->typed_occurrences.occurrence_count];
-		for (uint32_t operation_id = 0;
-			operation_id < ctx->metadata->typed_occurrences.occurrence_count;
-			++operation_id) {
-			const struct prototype_typed_occurrence* operation =
-				&ctx->metadata->typed_occurrences.occurrences[operation_id];
-			memset(visited, 0, sizeof(visited));
-			int binder_matches =
-				continuation_occurrence->referenced_ast_binder_id != PROTOTYPE_INVALID_ID ?
-					operation->referenced_ast_binder_id ==
-						continuation_occurrence->referenced_ast_binder_id :
-					operation->core_term == binder_var;
-			if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_VAR || !binder_matches ||
-				operation_subtree_contains_operation(
-					ctx, continuation_occurrence_id, operation_id, visited
-				) <= 0) {
-				continue;
-			}
-			int refine_status = operation_solver_refine_sequenced_ih_result(
-				ctx,
-				operation_id,
-				continuation_binder_classifier,
-				p_changed
-			);
-			if (refine_status <= 0) {
-				return refine_status;
-			}
 		}
 	}
 	if (continuation_binder_classifier == PROTOTYPE_INVALID_ID ||
