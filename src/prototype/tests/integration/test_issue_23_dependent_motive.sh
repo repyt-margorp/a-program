@@ -129,7 +129,15 @@ then
 	echo 'motive solver implementation escaped its owner module' >&2
 	exit 1
 fi
-grep -q 'recursive_equation_owners\[4096\]' \
+if rg -n 'recursive_equation_owners\[4096\]' \
+	src/prototype/src/frontend/lowering
+then
+	echo 'parallel recursive-equation owner authority remains' >&2
+	exit 1
+fi
+grep -q 'ih_constraint_for_occurrence\[4096\]' \
+	src/prototype/src/frontend/lowering/context_and_type_lowering.inc
+grep -q 'activation_revision' \
 	src/prototype/src/frontend/lowering/context_and_type_lowering.inc
 grep -q 'operation_motive_validate_recursive_equations' \
 	src/prototype/src/frontend/lowering/constraint/motive_solver.inc

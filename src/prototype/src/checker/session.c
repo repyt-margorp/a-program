@@ -3786,7 +3786,7 @@ static int checker_check_match(
 				case_values,
 				case_binding_count,
 				branch->asserted_classifier,
-				0
+				1
 			) : 0;
 		free(case_bindings);
 		free(case_values);
@@ -3922,6 +3922,290 @@ static int checker_recursive_instance_matches(
 	return 1;
 }
 
+/* Compare two classifier terms while applying independent substitutions on
+ * both sides. Match motives and branch classifiers may each contain a
+ * beta-redex: treating only the motive side as substitutable makes equality
+ * depend on which side happened to be elaborated first. */
+static int checker_term_equal_under_bindings(
+	const struct checker_state* state,
+	uint32_t left_id,
+	const uint32_t* left_bindings,
+	const uint32_t* left_arguments,
+	size_t left_count,
+	uint32_t right_id,
+	const uint32_t* right_bindings,
+	const uint32_t* right_arguments,
+	size_t right_count,
+	uint32_t depth
+);
+
+static int checker_beta_spine(
+	const struct checker_state* state,
+	uint32_t term_id,
+	const uint32_t* inherited_bindings,
+	const uint32_t* inherited_arguments,
+	size_t inherited_count,
+	uint32_t* p_body,
+	uint32_t** p_bindings,
+	uint32_t** p_arguments,
+	size_t* p_count
+) {
+	size_t capacity = state->module->terms.term_count;
+	uint32_t* spine = capacity == 0 ? NULL : malloc(
+		capacity * sizeof(*spine)
+	);
+	if (capacity != 0 && !spine) {
+		return -1;
+	}
+	size_t spine_count = 0;
+	uint32_t cursor_id = term_id;
+	const struct prototype_term* cursor = checker_term(state, cursor_id);
+	while (cursor && cursor->tag == PROTOTYPE_TERM_APP) {
+		if (spine_count == capacity) {
+			free(spine);
+			return -1;
+		}
+		spine[spine_count++] = cursor->as.app.argument;
+		cursor_id = cursor->as.app.function;
+		cursor = checker_term(state, cursor_id);
+	}
+	if (spine_count == 0 || !cursor || cursor->tag != PROTOTYPE_TERM_LAMBDA ||
+		inherited_count > SIZE_MAX - spine_count) {
+		free(spine);
+		return 0;
+	}
+	size_t count = inherited_count + spine_count;
+	uint32_t* bindings = malloc(count * sizeof(*bindings));
+	uint32_t* arguments = malloc(count * sizeof(*arguments));
+	if (!bindings || !arguments) {
+		free(bindings);
+		free(arguments);
+		free(spine);
+		return -1;
+	}
+	if (inherited_count != 0) {
+		memcpy(bindings, inherited_bindings,
+			inherited_count * sizeof(*bindings));
+		memcpy(arguments, inherited_arguments,
+			inherited_count * sizeof(*arguments));
+	}
+	for (size_t i = 0; i < spine_count; ++i) {
+		if (!cursor || cursor->tag != PROTOTYPE_TERM_LAMBDA) {
+			free(bindings);
+			free(arguments);
+			free(spine);
+			return 0;
+		}
+		bindings[inherited_count + i] = cursor->as.lambda.binding_id;
+		arguments[inherited_count + i] = spine[spine_count - 1 - i];
+		cursor_id = cursor->as.lambda.body;
+		cursor = checker_term(state, cursor_id);
+	}
+	free(spine);
+	*p_body = cursor_id;
+	*p_bindings = bindings;
+	*p_arguments = arguments;
+	*p_count = count;
+	return 1;
+}
+
+static int checker_binding_argument(
+	uint32_t binding,
+	const uint32_t* bindings,
+	const uint32_t* arguments,
+	size_t count,
+	uint32_t* p_argument
+) {
+	for (size_t i = count; i != 0; --i) {
+		if (bindings[i - 1] == binding) {
+			*p_argument = arguments[i - 1];
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int checker_term_equal_under_bindings(
+	const struct checker_state* state,
+	uint32_t left_id,
+	const uint32_t* left_bindings,
+	const uint32_t* left_arguments,
+	size_t left_count,
+	uint32_t right_id,
+	const uint32_t* right_bindings,
+	const uint32_t* right_arguments,
+	size_t right_count,
+	uint32_t depth
+) {
+	if (depth > state->module->terms.term_count) {
+		return -1;
+	}
+	const struct prototype_term* left = checker_term(state, left_id);
+	const struct prototype_term* right = checker_term(state, right_id);
+	if (!left || !right) {
+		return 0;
+	}
+	if (left->tag == PROTOTYPE_TERM_VAR ||
+		left->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		uint32_t binding = left->tag == PROTOTYPE_TERM_VAR ?
+			left->as.var.binding_id : left->as.effect_row_var.binding_id;
+		uint32_t argument;
+		if (checker_binding_argument(
+				binding, left_bindings, left_arguments, left_count, &argument
+			)) {
+			return checker_term_equal_under_bindings(
+				state, argument, left_bindings, left_arguments, left_count,
+				right_id, right_bindings, right_arguments, right_count, depth + 1
+			);
+		}
+	}
+	if (right->tag == PROTOTYPE_TERM_VAR ||
+		right->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		uint32_t binding = right->tag == PROTOTYPE_TERM_VAR ?
+			right->as.var.binding_id : right->as.effect_row_var.binding_id;
+		uint32_t argument;
+		if (checker_binding_argument(
+				binding, right_bindings, right_arguments, right_count, &argument
+			)) {
+			return checker_term_equal_under_bindings(
+				state, left_id, left_bindings, left_arguments, left_count,
+				argument, right_bindings, right_arguments, right_count, depth + 1
+			);
+		}
+	}
+	uint32_t beta_body;
+	uint32_t* beta_bindings = NULL;
+	uint32_t* beta_arguments = NULL;
+	size_t beta_count = 0;
+	int beta = checker_beta_spine(
+		state, left_id, left_bindings, left_arguments, left_count,
+		&beta_body, &beta_bindings, &beta_arguments, &beta_count
+	);
+	if (beta < 0) {
+		return -1;
+	}
+	if (beta > 0) {
+		int equal = checker_term_equal_under_bindings(
+			state, beta_body, beta_bindings, beta_arguments, beta_count,
+			right_id, right_bindings, right_arguments, right_count, depth + 1
+		);
+		free(beta_bindings);
+		free(beta_arguments);
+		return equal;
+	}
+	beta = checker_beta_spine(
+		state, right_id, right_bindings, right_arguments, right_count,
+		&beta_body, &beta_bindings, &beta_arguments, &beta_count
+	);
+	if (beta < 0) {
+		return -1;
+	}
+	if (beta > 0) {
+		int equal = checker_term_equal_under_bindings(
+			state, left_id, left_bindings, left_arguments, left_count,
+			beta_body, beta_bindings, beta_arguments, beta_count, depth + 1
+		);
+		free(beta_bindings);
+		free(beta_arguments);
+		return equal;
+	}
+	if (left->tag == PROTOTYPE_TERM_TYPE_VIEW &&
+		right->tag != PROTOTYPE_TERM_TYPE_VIEW) {
+		return checker_term_equal_under_bindings(
+			state, left->as.type_view.core,
+			left_bindings, left_arguments, left_count,
+			right_id, right_bindings, right_arguments, right_count, depth + 1
+		);
+	}
+	if (right->tag == PROTOTYPE_TERM_TYPE_VIEW &&
+		left->tag != PROTOTYPE_TERM_TYPE_VIEW) {
+		return checker_term_equal_under_bindings(
+			state, left_id, left_bindings, left_arguments, left_count,
+			right->as.type_view.core,
+			right_bindings, right_arguments, right_count, depth + 1
+		);
+	}
+	if (left->tag != right->tag) {
+		return 0;
+	}
+#define COMPARE_BOTH(left_child, right_child) \
+	checker_term_equal_under_bindings( \
+		state, (left_child), left_bindings, left_arguments, left_count, \
+		(right_child), right_bindings, right_arguments, right_count, depth + 1 \
+	)
+	switch (left->tag) {
+		case PROTOTYPE_TERM_VAR:
+			return left->as.var.binding_id == right->as.var.binding_id;
+		case PROTOTYPE_TERM_APP:
+			return COMPARE_BOTH(
+				left->as.app.function, right->as.app.function
+			) == 1 && COMPARE_BOTH(
+				left->as.app.argument, right->as.app.argument
+			) == 1;
+		case PROTOTYPE_TERM_TYPE_VIEW:
+			return left->as.type_view.view_type_id ==
+				right->as.type_view.view_type_id && COMPARE_BOTH(
+					left->as.type_view.core, right->as.type_view.core
+				) == 1 && COMPARE_BOTH(
+					left->as.type_view.source, right->as.type_view.source
+				) == 1;
+		case PROTOTYPE_TERM_PI:
+			return COMPARE_BOTH(
+				left->as.pi.domain, right->as.pi.domain
+			) == 1 && COMPARE_BOTH(
+				left->as.pi.codomain_family, right->as.pi.codomain_family
+			) == 1;
+		case PROTOTYPE_TERM_CONSTRUCTOR:
+			return left->as.constructor.constructor_id ==
+				right->as.constructor.constructor_id && COMPARE_BOTH(
+					left->as.constructor.owner, right->as.constructor.owner
+				) == 1;
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			return left->as.effect_row_var.binding_id ==
+				right->as.effect_row_var.binding_id;
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			return COMPARE_BOTH(
+				left->as.effect_row_union.left, right->as.effect_row_union.left
+			) == 1 && COMPARE_BOTH(
+				left->as.effect_row_union.right, right->as.effect_row_union.right
+			) == 1;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			return left->as.effect_row_operation.operation_id ==
+				right->as.effect_row_operation.operation_id && COMPARE_BOTH(
+					left->as.effect_row_operation.latent_row,
+					right->as.effect_row_operation.latent_row
+				) == 1;
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			return left->as.computation_type.totality ==
+				right->as.computation_type.totality && COMPARE_BOTH(
+					left->as.computation_type.label,
+					right->as.computation_type.label
+				) == 1 && COMPARE_BOTH(
+					left->as.computation_type.result,
+					right->as.computation_type.result
+				) == 1;
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return COMPARE_BOTH(
+				left->as.thunk_type.computation,
+				right->as.thunk_type.computation
+			);
+		case PROTOTYPE_TERM_RETURN:
+			return COMPARE_BOTH(
+				left->as.return_term.value, right->as.return_term.value
+			);
+		case PROTOTYPE_TERM_THUNK:
+			return COMPARE_BOTH(
+				left->as.thunk.computation, right->as.thunk.computation
+			);
+		default:
+			return checker_term_equal_after_binding(
+				state, left_id, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
+				right_id, depth + 1
+			);
+	}
+#undef COMPARE_BOTH
+}
+
 static int checker_indexed_motive_application_equal(
 	const struct checker_state* state,
 	uint32_t motive_id,
@@ -3976,15 +4260,17 @@ static int checker_indexed_motive_application_equal(
 	}
 	bindings[count - 1] = lambda_bindings[motive_index_count];
 	arguments[count - 1] = value;
-	int equal = checker_term_equal_after_bindings(
-		state, cursor, bindings, arguments, count, target, 0
+	int equal = checker_term_equal_under_bindings(
+		state, cursor, bindings, arguments, count,
+		target, NULL, NULL, 0, 0
 	);
 	if (equal == 0 && compare_computation_result) {
 		const struct prototype_term* body = checker_term(state, cursor);
 		if (body && body->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
-			equal = checker_term_equal_after_bindings(
+			equal = checker_term_equal_under_bindings(
 				state, body->as.computation_type.result,
-				bindings, arguments, count, target, 0
+				bindings, arguments, count,
+				target, NULL, NULL, 0, 0
 			);
 		}
 	}

@@ -16,8 +16,10 @@ fuel_free=src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p
 fuel_reference=src/prototype/tests/fixtures/typing/if8_fuel_quicksort_comparison.p
 order=src/prototype/tests/fixtures/typing/if8_order_check.p
 
-prototype_test_phase source_equality
+prototype_test_phase order_prerequisite
 ./read_file.out "$order" >"$tmp_dir/order.out"
+
+prototype_test_phase source_equality
 ./read_file.out --check-source-exports-normalization-equal \
 	main expected "$fuel_free" >"$tmp_dir/fuel-free.out"
 grep -q '^source-exports-normalization-equal main expected mode=default yes$' \

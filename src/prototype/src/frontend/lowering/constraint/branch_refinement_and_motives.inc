@@ -1671,16 +1671,8 @@ static int operation_solver_validate_guarded_motive_occurrence(
 			argument_occurrence);
 		const struct prototype_typed_occurrence* operation =
 			&ctx->metadata->typed_occurrences.occurrences[ih_operation];
-		uint32_t constraint_id = PROTOTYPE_INVALID_ID;
-		for (uint32_t i = 0; i < ctx->constraints.classifier_constraint_count; ++i) {
-			const struct operation_constraint* constraint =
-				&ctx->constraints.constraints[i];
-			if (constraint->kind == OPERATION_CONSTRAINT_IH_EXPECTED &&
-				constraint->payload.classifier.classifier_meta_id == ih_operation) {
-				constraint_id = constraint->id;
-				break;
-			}
-		}
+		uint32_t constraint_id =
+			ctx->constraints.ih_constraint_for_occurrence[ih_operation];
 		(void)add_compile_diagnostic(
 			ctx,
 			PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER,
@@ -1717,7 +1709,7 @@ static int operation_solver_nonrecursive_seed_classifier(
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
 		const struct operation_constraint* equation =
 			operation_solver_motive_equation(
-				&ctx->constraints, operation_id, case_index
+				ctx, operation_id, case_index
 			);
 		if (!equation || equation->payload.classifier.goal.motive_case.branch_operation >=
 			ctx->metadata->typed_occurrences.occurrence_count) {
@@ -1820,7 +1812,7 @@ static int operation_solver_has_guarded_recursive_equation(
 	for (uint32_t case_index = 0; case_index < match->case_count; ++case_index) {
 		const struct operation_constraint* equation =
 			operation_solver_motive_equation(
-				&ctx->constraints, operation_id, case_index
+				ctx, operation_id, case_index
 			);
 		if (!equation) {
 			fprintf(stderr,
@@ -1883,7 +1875,7 @@ static int operation_solver_solve_match(
 	for (uint32_t case_index = 0; case_index < operation->case_count; ++case_index) {
 		const struct operation_constraint* equation =
 			operation_solver_motive_equation(
-				&ctx->constraints, operation_id, case_index
+				ctx, operation_id, case_index
 			);
 		if (!equation) {
 			return -1;

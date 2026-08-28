@@ -31,8 +31,12 @@ prototype_compile() {
 		esac
 	done
 	compiler_identity=$(cc --version | sed -n '1p')
+	source_identity=$(find src/prototype/src src/prototype/include \
+		-type f \( -name '*.c' -o -name '*.h' -o -name '*.inc' \) \
+		-print | LC_ALL=C sort | xargs sha256sum | sha256sum | \
+		awk '{ print $1 }')
 	configuration=$(printf '%s\n' \
-		"compiler=$compiler_identity cppflags=-I src/prototype/include -I src/prototype$extra_cppflags cflags=$compile_flags" |
+		"compiler=$compiler_identity cppflags=-I src/prototype/include -I src/prototype$extra_cppflags cflags=$compile_flags source=$source_identity" |
 		sha256sum | awk '{ print $1 }')
 	object_root=${A_PROGRAM_TEST_OBJECT_ROOT:-${XDG_CACHE_HOME:-${TMPDIR:-/tmp}}/a-program-prototype-test-objects}
 	object_root=$object_root/$configuration

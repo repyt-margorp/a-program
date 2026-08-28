@@ -152,7 +152,9 @@ static int operation_solver_classifier_goal_is_satisfied(
 					return 1;
 				}
 				return motive_case->validation_status ==
-					OPERATION_MOTIVE_EQUATION_INVALID ? -1 : 0;
+						OPERATION_MOTIVE_EQUATION_INVALID ||
+					motive_case->validation_status ==
+						OPERATION_MOTIVE_EQUATION_MISMATCH ? -1 : 0;
 			}
 			struct operation_motive_equation_validation validation;
 			int validation_status = operation_motive_validate_equation(
@@ -170,7 +172,8 @@ static int operation_solver_classifier_goal_is_satisfied(
 			motive_case->validated_recursive_revision =
 				ctx->classifier_solver.recursive_equation_revision;
 			motive_case->validation_status = validation_status;
-			if (validation_status == OPERATION_MOTIVE_EQUATION_INVALID) {
+			if (validation_status == OPERATION_MOTIVE_EQUATION_INVALID ||
+				validation_status == OPERATION_MOTIVE_EQUATION_MISMATCH) {
 				return -1;
 			}
 			if (validation_status != OPERATION_MOTIVE_EQUATION_VALID) {
@@ -270,15 +273,17 @@ static void operation_solver_refresh_constraint_states(
 		int solved = operation_solver_classifier_goal_is_satisfied(
 			ctx, result, &solved_reason
 		);
-		int state = residual ? OPERATION_CONSTRAINT_STATE_RESIDUAL :
-			(solved ? OPERATION_CONSTRAINT_STATE_SOLVED :
+		int state = solved < 0 ? OPERATION_CONSTRAINT_STATE_CONTRADICTION :
+			(residual ? OPERATION_CONSTRAINT_STATE_RESIDUAL :
+			(solved > 0 ? OPERATION_CONSTRAINT_STATE_SOLVED :
 			(incomplete || goal_incomplete ? OPERATION_CONSTRAINT_STATE_INCOMPLETE :
-				OPERATION_CONSTRAINT_STATE_PENDING));
-		int reason = residual ?
+				OPERATION_CONSTRAINT_STATE_PENDING)));
+		int reason = solved < 0 ?
+			OPERATION_CLASSIFIER_GOAL_REASON_CONVERSION_REJECTED : residual ?
 			(constraint->kind == OPERATION_CONSTRAINT_CONVERTIBLE ?
 				OPERATION_CLASSIFIER_GOAL_REASON_CONVERSION_RESIDUAL :
 				OPERATION_CLASSIFIER_GOAL_REASON_RESIDUAL_OBLIGATION) :
-			(solved ? solved_reason :
+			(solved > 0 ? solved_reason :
 			(incomplete || goal_incomplete ?
 				OPERATION_CLASSIFIER_GOAL_REASON_INCOMPLETE_BUDGET :
 				OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY));
@@ -529,8 +534,34 @@ static int operation_solver_propagate_zero_clause_computation_fold_input(
 				instantiated_input_classifier,
 				continuation_binder_classifier
 			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
-			/* The recursive classifier remains polymorphic at its owner motive.
-			 * Sequencing instantiates that classifier only at this use boundary. */
+			/* The owner motive remains polymorphic, but this occurrence is the exact
+			 * computation consumed by this fold. Record the same instantiation on the
+			 * producer edge that is projected into the sequence-result Context;
+			 * otherwise accepted replay observes a generalized producer and a
+			 * specialized binder as two unrelated classifier assertions. */
+			if (!input_is_value && instantiated_input_classifier !=
+					input_value_classifier) {
+				uint32_t instantiated_computation_classifier;
+				if (prototype_term_computation_type(
+						ctx->terms,
+						input_view.effect_row,
+						instantiated_input_classifier,
+						input_view.totality,
+						&instantiated_computation_classifier
+					) != 0 || operation_classifier_meta_invalidate(
+						ctx, computation_occurrence
+					) != 0 || operation_classifier_meta_solve(
+						ctx,
+						computation_occurrence,
+						instantiated_computation_classifier
+					) != 0 || operation_solver_enqueue_dependents(
+						ctx, computation_occurrence
+					) != 0) {
+					return -1;
+				}
+				input_classifier = instantiated_computation_classifier;
+				*p_changed = 1;
+			}
 			input_value_classifier = instantiated_input_classifier;
 		}
 	}
@@ -1369,6 +1400,16 @@ static int operation_solver_propagate_clause_computation_fold_input(
 	return 0;
 }
 
+static int operation_solver_classifier_topology_matches(
+	const struct compile_context* ctx,
+	uint32_t classifier_count,
+	uint32_t branch_count
+) {
+	return ctx && ctx->constraints.classifier_constraint_count ==
+		classifier_count && ctx->constraints.branch_refinement_constraint_count ==
+		branch_count;
+}
+
 static int operation_solver_solve(struct compile_context* ctx, int require_complete) {
 	if (!ctx) {
 		return -1;
@@ -1390,6 +1431,10 @@ restart_after_branch_pullback:
 		return -1;
 	}
 	regenerate_constraints = 0;
+	uint32_t classifier_topology_count =
+		ctx->constraints.classifier_constraint_count;
+	uint32_t branch_topology_count =
+		ctx->constraints.branch_refinement_constraint_count;
 	int changed = 0;
 	if (operation_solver_seed_known_classifiers(ctx, &changed) != 0) {
 		fprintf(stderr, "classifier solver: input seeding failed\n");
@@ -1403,6 +1448,11 @@ restart_after_branch_pullback:
 		return -1;
 	}
 	if (branch_graph_changed) {
+		if (!operation_solver_classifier_topology_matches(
+				ctx, classifier_topology_count, branch_topology_count
+			)) {
+			return -1;
+		}
 		if (operation_solver_refresh_classifier_constraints(ctx) != 0) {
 			fprintf(stderr,
 				"classifier solver: branch constraint refresh failed\n");
@@ -2161,6 +2211,11 @@ restart_after_branch_pullback:
 			return -1;
 		}
 		if (branch_graph_changed) {
+			if (!operation_solver_classifier_topology_matches(
+					ctx, classifier_topology_count, branch_topology_count
+				)) {
+				return -1;
+			}
 			if (operation_solver_refresh_classifier_constraints(ctx) != 0) {
 				fprintf(stderr,
 					"classifier solver: branch constraint refresh failed\n");
@@ -2169,6 +2224,11 @@ restart_after_branch_pullback:
 			goto restart_after_branch_pullback;
 		}
 		if (!materialized) {
+			if (!operation_solver_classifier_topology_matches(
+					ctx, classifier_topology_count, branch_topology_count
+				)) {
+				return -1;
+			}
 			if (require_complete && operation_solver_require_complete(ctx) != 0) {
 				operation_solver_refresh_constraint_states(ctx, 1);
 				return -1;

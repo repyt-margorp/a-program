@@ -362,6 +362,9 @@ struct operation_constraint {
 	int state;
 	int reason;
 	uint32_t evidence_id;
+	/* Nonzero only when this immutable edge has contributed to the current
+	 * recursive motive equation set. The owner remains in the IH payload. */
+	uint64_t activation_revision;
 	/* Explicit edge to the compiler constraint which emitted this obligation.
 	 * INVALID denotes an independently generated equation. */
 	uint32_t origin_constraint_id;
@@ -415,9 +418,17 @@ struct operation_constraint_db {
 	uint32_t computation_constraint_count;
 	uint32_t first_effect_constraint;
 	uint32_t effect_constraint_count;
+	/* Canonical semantic keys for constraints whose source topology guarantees
+	 * uniqueness. These are occurrence/case identities, never Core Term IDs. */
+	uint32_t base_classifier_constraint_for_occurrence[4096];
+	uint32_t ih_constraint_for_occurrence[4096];
+	uint32_t motive_constraint_for_case[
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
+	];
+	uint32_t branch_refinement_constraint_for_case[
+		PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY
+	];
 	uint32_t computation_constraint_for_occurrence[4096];
-	uint32_t first_motive_constraint[4096];
-	uint32_t next_motive_constraint[PROTOTYPE_COMPILER_CONSTRAINT_CAPACITY];
 	uint32_t first_dependent_constraint[4096];
 	struct {
 		uint32_t source_occurrence;
@@ -603,9 +614,6 @@ struct operation_classifier_solver {
 	/* For an IH operation i, this indexes symbolic M(argument) in the solver
 	 * arena. It is never a provisional TermDB APP node. */
 	uint32_t ih_motive_application_ids[4096];
-	/* Recursive motive-equation provenance is indexed by the exact IH
-	 * occurrence. Multiple IH equations may belong to one Match solution. */
-	uint32_t recursive_equation_owners[4096];
 	/* Derived cache: the owner motive whose classifier was last projected to
 	 * this IH occurrence. The motive solution remains authoritative. */
 	uint32_t ih_projected_motives[4096];
@@ -619,7 +627,7 @@ struct operation_classifier_solver {
 struct compile_context;
 
 static const struct operation_constraint* operation_solver_motive_equation(
-	const struct operation_constraint_db* constraints,
+	const struct compile_context* ctx,
 	uint32_t match_operation,
 	uint32_t case_index
 );

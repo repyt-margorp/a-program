@@ -5,8 +5,11 @@ CPPFLAGS += -I src/prototype/include -I src/prototype
 CFLAGS += -std=c11 -Wall -Wextra
 
 PROTOTYPE_COMPILER_IDENTITY := $(shell $(CC) --version | sed -n '1p')
+PROTOTYPE_SOURCE_IDENTITY := $(shell find src/prototype/src src/prototype/include \
+	-type f \( -name '*.c' -o -name '*.h' -o -name '*.inc' \) -print | \
+	LC_ALL=C sort | xargs sha256sum | sha256sum | awk '{ print $$1 }')
 PROTOTYPE_BUILD_CONFIGURATION := $(shell printf '%s\n' \
-	'compiler=$(PROTOTYPE_COMPILER_IDENTITY) cppflags=$(CPPFLAGS) cflags=$(CFLAGS)' | \
+	'compiler=$(PROTOTYPE_COMPILER_IDENTITY) cppflags=$(CPPFLAGS) cflags=$(CFLAGS) source=$(PROTOTYPE_SOURCE_IDENTITY)' | \
 	sha256sum | awk '{ print $$1 }')
 PROTOTYPE_OBJECT_BASE ?= $(if $(A_PROGRAM_TEST_OBJECT_ROOT), \
 	$(A_PROGRAM_TEST_OBJECT_ROOT),build/prototype)

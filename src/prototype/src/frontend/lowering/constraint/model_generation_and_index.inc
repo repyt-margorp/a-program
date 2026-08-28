@@ -136,9 +136,31 @@ static int operation_constraint_db_validate(
 		if (id < ctx->constraints.first_branch_refinement_constraint) {
 			if (constraint->domain != OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER ||
 				constraint->payload.classifier.classifier_meta_id !=
-					constraint->source_occurrence) {
+					constraint->source_occurrence ||
+				ctx->constraints.base_classifier_constraint_for_occurrence[
+					constraint->source_occurrence
+				] >= ctx->constraints.classifier_constraint_count) {
 				fprintf(stderr, "constraint db classifier payload invalid id=%u\n", id);
 				return -1;
+			}
+			if (constraint->kind == OPERATION_CONSTRAINT_IH_EXPECTED &&
+				ctx->constraints.ih_constraint_for_occurrence[
+					constraint->source_occurrence
+				] != id) {
+				return -1;
+			}
+			if (constraint->kind == OPERATION_CONSTRAINT_MOTIVE_EQUATION) {
+				uint32_t case_index =
+					constraint->payload.classifier.goal.motive_case.case_index;
+				if (occurrence->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
+					case_index >= occurrence->case_count ||
+					occurrence->first_case + case_index >=
+						PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY ||
+					ctx->constraints.motive_constraint_for_case[
+						occurrence->first_case + case_index
+					] != id) {
+					return -1;
+				}
 			}
 		} else if (id < ctx->constraints.first_computation_constraint) {
 			const struct prototype_substitution* branch_action =
@@ -147,19 +169,24 @@ static int operation_constraint_db_validate(
 					&ctx->metadata->substitutions,
 					constraint->payload.branch_refinement.substitution
 				);
+			uint32_t match_id =
+				constraint->payload.branch_refinement.match_occurrence;
+			uint32_t case_index =
+				constraint->payload.branch_refinement.case_index;
+			const struct prototype_typed_occurrence* match = match_id <
+				ctx->metadata->typed_occurrences.occurrence_count ?
+					&ctx->metadata->typed_occurrences.occurrences[match_id] : NULL;
 			if (constraint->domain !=
 					OPERATION_CONSTRAINT_DOMAIN_BRANCH_REFINEMENT ||
-				constraint->payload.branch_refinement.match_occurrence >=
-					ctx->metadata->typed_occurrences.occurrence_count ||
+				!match ||
 				constraint->payload.branch_refinement.scrutinee_occurrence >=
 					ctx->metadata->typed_occurrences.occurrence_count ||
-				ctx->metadata->typed_occurrences.occurrences[
-					constraint->payload.branch_refinement.match_occurrence
-				].tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
-				constraint->payload.branch_refinement.case_index >=
-					ctx->metadata->typed_occurrences.occurrences[
-						constraint->payload.branch_refinement.match_occurrence
-				].case_count ||
+				match->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
+				case_index >= match->case_count || match->first_case + case_index >=
+					PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY ||
+				ctx->constraints.branch_refinement_constraint_for_case[
+					match->first_case + case_index
+				] != id ||
 				(constraint->payload.branch_refinement.refinement_status ==
 						PROTOTYPE_INDEX_REFINEMENT_SOLVED ?
 					(!branch_action || branch_action->source_context !=
@@ -516,8 +543,31 @@ static int operation_solver_index_branch_refinement_constraints(
 		const struct operation_constraint* constraint =
 			&ctx->constraints.constraints[id];
 		if (constraint->domain !=
-				OPERATION_CONSTRAINT_DOMAIN_BRANCH_REFINEMENT ||
-			operation_solver_add_constraint_dependency(
+				OPERATION_CONSTRAINT_DOMAIN_BRANCH_REFINEMENT) {
+			return -1;
+		}
+		uint32_t match_id =
+			constraint->payload.branch_refinement.match_occurrence;
+		if (match_id >= ctx->metadata->typed_occurrences.occurrence_count) {
+			return -1;
+		}
+		const struct prototype_typed_occurrence* match =
+			&ctx->metadata->typed_occurrences.occurrences[match_id];
+		uint32_t case_index = constraint->payload.branch_refinement.case_index;
+		if (match->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
+			case_index >= match->case_count || match->first_case + case_index >=
+				ctx->metadata->typed_occurrences.case_count ||
+			match->first_case + case_index >=
+				PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY ||
+			ctx->constraints.branch_refinement_constraint_for_case[
+				match->first_case + case_index
+			] != PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		ctx->constraints.branch_refinement_constraint_for_case[
+			match->first_case + case_index
+		] = id;
+		if (operation_solver_add_constraint_dependency(
 				ctx,
 				constraint->payload.branch_refinement.scrutinee_occurrence,
 				id
@@ -552,6 +602,15 @@ static int operation_solver_reset_classifier_state(
 	}
 	if (preserved_count != 0) {
 		memcpy(preserved, solver->classifier_metas, sizeof(preserved));
+	}
+	for (uint32_t constraint_id = 0;
+		constraint_id < ctx->constraints.classifier_constraint_count;
+		++constraint_id) {
+		struct operation_constraint* constraint =
+			&ctx->constraints.constraints[constraint_id];
+		if (constraint->kind == OPERATION_CONSTRAINT_IH_EXPECTED) {
+			constraint->activation_revision = 0;
+		}
 	}
 	for (uint32_t i = 0;
 		i < ctx->metadata->typed_occurrences.occurrence_count;
@@ -605,7 +664,6 @@ static int operation_solver_reset_classifier_state(
 			.state = OPERATION_MOTIVE_SOLUTION_UNRESOLVED
 		};
 		solver->ih_motive_application_ids[i] = PROTOTYPE_INVALID_ID;
-		solver->recursive_equation_owners[i] = PROTOTYPE_INVALID_ID;
 		solver->ih_projected_motives[i] = PROTOTYPE_INVALID_ID;
 	}
 	return operation_solver_refresh_usage_solutions(ctx) != 0 ||
@@ -623,9 +681,19 @@ static int operation_solver_generate_constraints(struct compile_context* ctx) {
 	memset(&ctx->effect_solver, 0, sizeof(ctx->effect_solver));
 	for (uint32_t i = 0; i < 4096; ++i) {
 		constraints->first_dependent_constraint[i] = PROTOTYPE_INVALID_ID;
+		constraints->base_classifier_constraint_for_occurrence[i] =
+			PROTOTYPE_INVALID_ID;
+		constraints->ih_constraint_for_occurrence[i] = PROTOTYPE_INVALID_ID;
 		constraints->computation_constraint_for_occurrence[i] =
 			PROTOTYPE_INVALID_ID;
 		ctx->effect_solver.meta_for_occurrence[i] = PROTOTYPE_INVALID_ID;
+	}
+	for (uint32_t i = 0;
+		i < PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY;
+		++i) {
+		constraints->motive_constraint_for_case[i] = PROTOTYPE_INVALID_ID;
+		constraints->branch_refinement_constraint_for_case[i] =
+			PROTOTYPE_INVALID_ID;
 	}
 	if (operation_solver_reset_classifier_state(
 			ctx, ctx->classifier_solver.initialized

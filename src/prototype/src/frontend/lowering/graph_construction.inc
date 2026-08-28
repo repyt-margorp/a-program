@@ -10612,12 +10612,17 @@ static int operation_solver_index_constraints(struct compile_context* ctx) {
 	for (uint32_t i = 0; i < 4096; ++i) {
 		ctx->constraints.first_dependent_constraint[i] =
 			PROTOTYPE_INVALID_ID;
-		ctx->constraints.first_motive_constraint[i] = PROTOTYPE_INVALID_ID;
+		ctx->constraints.base_classifier_constraint_for_occurrence[i] =
+			PROTOTYPE_INVALID_ID;
+		ctx->constraints.ih_constraint_for_occurrence[i] =
+			PROTOTYPE_INVALID_ID;
 	}
 	for (uint32_t i = 0;
-		i < ctx->constraints.classifier_constraint_count;
+		i < PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY;
 		++i) {
-		ctx->constraints.next_motive_constraint[i] = PROTOTYPE_INVALID_ID;
+		ctx->constraints.motive_constraint_for_case[i] = PROTOTYPE_INVALID_ID;
+		ctx->constraints.branch_refinement_constraint_for_case[i] =
+			PROTOTYPE_INVALID_ID;
 	}
 	ctx->constraints.dependent_constraint_count = 0;
 	ctx->constraints.worklist_head = 0;
@@ -10660,6 +10665,15 @@ static int operation_solver_index_constraints(struct compile_context* ctx) {
 			) != 0) {
 			return -1;
 		}
+		uint32_t classifier_meta_id =
+			constraint->payload.classifier.classifier_meta_id;
+		if (ctx->constraints.base_classifier_constraint_for_occurrence[
+				classifier_meta_id
+			] == PROTOTYPE_INVALID_ID) {
+			ctx->constraints.base_classifier_constraint_for_occurrence[
+				classifier_meta_id
+			] = i;
+		}
 		switch (constraint->kind) {
 			case OPERATION_CONSTRAINT_EQUAL:
 				if (operation_solver_add_constraint_dependency(
@@ -10676,6 +10690,14 @@ static int operation_solver_index_constraints(struct compile_context* ctx) {
 				}
 				break;
 			case OPERATION_CONSTRAINT_IH_EXPECTED:
+				if (ctx->constraints.ih_constraint_for_occurrence[
+						classifier_meta_id
+					] != PROTOTYPE_INVALID_ID) {
+					return -1;
+				}
+				ctx->constraints.ih_constraint_for_occurrence[
+					classifier_meta_id
+				] = i;
 				if (operation_solver_add_constraint_dependency(
 						ctx,
 						constraint->payload.classifier.goal.induction_hypothesis.recursive_argument_occurrence,
@@ -10727,13 +10749,28 @@ static int operation_solver_index_constraints(struct compile_context* ctx) {
 				/* Context binding classifiers are immutable solver inputs. */
 				break;
 			case OPERATION_CONSTRAINT_MOTIVE_EQUATION:
-				ctx->constraints.next_motive_constraint[i] =
-					ctx->constraints.first_motive_constraint[
-						constraint->payload.classifier.classifier_meta_id
-					];
-				ctx->constraints.first_motive_constraint[
-					constraint->payload.classifier.classifier_meta_id
-				] = i;
+				{
+					const struct prototype_typed_occurrence* match =
+						&ctx->metadata->typed_occurrences.occurrences[
+							classifier_meta_id
+						];
+					uint32_t case_index = constraint->payload.classifier.goal.
+						motive_case.case_index;
+					if (match->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
+						case_index >= match->case_count ||
+						match->first_case + case_index >=
+							ctx->metadata->typed_occurrences.case_count ||
+						match->first_case + case_index >=
+							PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY ||
+						ctx->constraints.motive_constraint_for_case[
+							match->first_case + case_index
+						] != PROTOTYPE_INVALID_ID) {
+						return -1;
+					}
+					ctx->constraints.motive_constraint_for_case[
+						match->first_case + case_index
+					] = i;
+				}
 				if (operation_solver_add_constraint_dependency(
 						ctx, constraint->payload.classifier.goal.motive_case.branch_operation, i
 					) != 0 || operation_solver_add_constraint_dependency(

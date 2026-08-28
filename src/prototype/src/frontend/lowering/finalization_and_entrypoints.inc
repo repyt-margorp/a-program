@@ -1045,6 +1045,8 @@ static int operation_refine_classifier_from_expected(
 		}
 	}
 	if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_MATCH) {
+		uint64_t motive_revision =
+			ctx->classifier_solver.recursive_equation_revision;
 		if (compile_occurrence_child(
 				ctx, operation_id, PROTOTYPE_TERM_CHILD_SCRUTINEE, 0,
 				&scrutinee_occurrence
@@ -1126,6 +1128,19 @@ static int operation_refine_classifier_from_expected(
 				) != 0) {
 				return -1;
 			}
+		}
+		uint32_t selected_motive =
+			ctx->classifier_solver.motive_solutions[operation_id].motive;
+		if ((ctx->classifier_solver.recursive_equation_revision !=
+				motive_revision || operation_motive_has_recursive_equations(
+					ctx, operation_id
+				) > 0) && selected_motive < ctx->terms->term_count &&
+			selected_motive != motive) {
+			/* A nested expected check added a stronger recursive equation while
+			 * this Match expectation was being elaborated. Discard the classifier
+			 * derived from the stale local motive; the queued graph edge will rerun
+			 * this refinement with the selected motive. */
+			return 1;
 		}
 		uint32_t current_classifier = operation_solver_classifier(
 			ctx, operation_id
@@ -2335,6 +2350,27 @@ static int compile_pending_with_workspace(
 	}
 	(void)final_computation_changed;
 	operation_solver_refresh_constraint_states(ctx, ctx->metadata->effort.exhausted);
+	for (uint32_t constraint_id = 0;
+		constraint_id < ctx->constraints.classifier_constraint_count;
+		++constraint_id) {
+		const struct operation_constraint* constraint =
+			&ctx->constraints.constraints[constraint_id];
+		if (constraint->kind != OPERATION_CONSTRAINT_MOTIVE_EQUATION ||
+			constraint->state != OPERATION_CONSTRAINT_STATE_CONTRADICTION) {
+			continue;
+		}
+		int diagnostic_status = operation_motive_add_terminal_diagnostic(
+			ctx,
+			constraint->payload.classifier.classifier_meta_id,
+			constraint->payload.classifier.goal.motive_case.case_index
+		);
+		if (diagnostic_status < 0) {
+			return -1;
+		}
+		if (diagnostic_status == 0) {
+			return -1;
+		}
+	}
 	compile_metadata_refresh_runtime_capabilities(metadata, terms);
 	if (metadata && metadata->compile_policy == PROTOTYPE_COMPILE_POLICY_STRICT &&
 		(prototype_verification_db_count(&metadata->verification) != 0 ||

@@ -24,60 +24,69 @@ static uint64_t test_clock_ns(void) {
 		(uint64_t)now.tv_nsec;
 }
 
-static void print_source_term(
-	const char* label,
-	const struct prototype_program_storage* storage,
-	uint32_t term
+static void print_checker_failure(
+	const char* path,
+	const struct prototype_elaborated_module* module,
+	const struct prototype_checker_report* report
 ) {
-	fprintf(stderr, "%s=%u ", label, term);
-	prototype_term_print_debug(
+	fprintf(
 		stderr,
-		&storage->symbols,
-		storage->program.intrinsic_environment,
-		&storage->type_declarations,
-		&storage->terms,
-		term
+		"%s: checker stopped status=%d reason=%d subject=%u effort=%llu\n",
+		path,
+		report->status,
+		report->stop_reason,
+		report->subject,
+		(unsigned long long)report->effort_used
 	);
-	fputc('\n', stderr);
-}
-
-static void print_source_occurrence(
-	const struct prototype_program_storage* storage,
-	uint32_t occurrence_id
-) {
-	if (!storage || occurrence_id >=
-			storage->metadata.typed_occurrences.occurrence_count) {
-		return;
-	}
-	const struct prototype_typed_occurrence* occurrence =
-		&storage->metadata.typed_occurrences.occurrences[occurrence_id];
-	print_source_term("source occurrence core", storage, occurrence->core_term);
-	print_source_term(
-		"source occurrence classifier", storage, occurrence->classifier
-	);
-	for (uint32_t edge = 0; edge < occurrence->edge_count; ++edge) {
-		const struct prototype_typed_occurrence_edge* child_edge =
-			&storage->metadata.typed_occurrences.edges[
-				occurrence->first_edge + edge
-			];
-		if (child_edge->child_occurrence >=
-				storage->metadata.typed_occurrences.occurrence_count) {
-			continue;
+	if (report->stop_reason == PROTOTYPE_CHECKER_STOP_CONTEXT) {
+		if (report->subject >= module->view.contexts.context_count) {
+			fprintf(stderr, "checker subject domain=context invalid-id\n");
+			return;
 		}
-		const struct prototype_typed_occurrence* child =
-			&storage->metadata.typed_occurrences.occurrences[
-				child_edge->child_occurrence
-			];
+		const struct prototype_semantic_context* context =
+			&module->view.contexts.contexts[report->subject];
 		fprintf(
 			stderr,
-			"source child role=%d ordinal=%u occurrence=%u\n",
-			child_edge->role,
-			child_edge->ordinal,
-			child_edge->child_occurrence
+			"checker subject domain=context parent=%u binding=%u "
+			"classifier=%u extension=%d producer-core=%u\n",
+			context->parent,
+			context->binding_id,
+			context->classifier,
+			context->extension_kind,
+			context->producer_computation
 		);
-		print_source_term("  core", storage, child->core_term);
-		print_source_term("  classifier", storage, child->classifier);
+		return;
 	}
+	if (report->stop_reason != PROTOTYPE_CHECKER_STOP_OCCURRENCE) {
+		fprintf(stderr, "checker subject domain=reason-specific\n");
+		return;
+	}
+	if (report->subject >= module->view.occurrences.occurrence_count) {
+		fprintf(stderr, "checker subject domain=occurrence invalid-id\n");
+		return;
+	}
+	const struct prototype_semantic_occurrence* occurrence =
+		&module->view.occurrences.occurrences[report->subject];
+	const struct prototype_term* core =
+		occurrence->core_term < module->view.terms.term_count ?
+			&module->view.terms.terms[occurrence->core_term] : NULL;
+	const struct prototype_term* classifier =
+		occurrence->asserted_classifier < module->view.terms.term_count ?
+			&module->view.terms.terms[occurrence->asserted_classifier] : NULL;
+	fprintf(
+		stderr,
+		"checker subject domain=occurrence kind=%d core=%u:%d "
+		"classifier=%u:%d origin-core=%u role=%d evidence=%d wrapped=%u\n",
+		occurrence->kind,
+		occurrence->core_term,
+		core ? core->tag : -1,
+		occurrence->asserted_classifier,
+		classifier ? classifier->tag : -1,
+		occurrence->origin_core_term,
+		occurrence->application_role,
+		occurrence->classifier_evidence_kind,
+		occurrence->wrapped_occurrence
+	);
 }
 
 static int compare_resource_usage(
@@ -210,69 +219,7 @@ static int check_file(const char* path) {
 	if (prototype_checker_check_module(
 			&module.view, &options, &checked, &report
 		) != 0 || report.status != PROTOTYPE_CHECKER_COMPLETE || !checked) {
-		const struct prototype_semantic_occurrence* occurrence =
-			report.subject < module.view.occurrences.occurrence_count ?
-			&module.view.occurrences.occurrences[report.subject] : NULL;
-		const struct prototype_term* core = occurrence &&
-			occurrence->core_term < module.view.terms.term_count ?
-			&module.view.terms.terms[occurrence->core_term] : NULL;
-		const struct prototype_term* classifier = occurrence &&
-			occurrence->asserted_classifier < module.view.terms.term_count ?
-			&module.view.terms.terms[occurrence->asserted_classifier] : NULL;
-		const struct prototype_term* report_term =
-			report.subject < module.view.terms.term_count ?
-			&module.view.terms.terms[report.subject] : NULL;
-		const struct prototype_typed_occurrence* source_occurrence =
-			report.subject < storage.metadata.typed_occurrences.occurrence_count ?
-			&storage.metadata.typed_occurrences.occurrences[report.subject] : NULL;
-		const struct prototype_term* source_core = source_occurrence &&
-			source_occurrence->core_term < storage.terms.term_count ?
-			&storage.terms.terms[source_occurrence->core_term] : NULL;
-		const struct prototype_term* source_origin_core = source_occurrence &&
-			source_occurrence->source_core_term < storage.terms.term_count ?
-			&storage.terms.terms[source_occurrence->source_core_term] : NULL;
-		fprintf(
-			stderr,
-			"%s: checker stopped status=%d reason=%d subject=%u "
-			"kind=%d core=%u:%d classifier=%u:%d origin-core=%u "
-			"source-core=%u:%d source-origin=%u:%d report-term=%d "
-			"role=%d evidence=%d wrapped=%u effort=%llu\n",
-			path,
-			report.status,
-			report.stop_reason,
-			report.subject,
-			occurrence ? occurrence->kind : -1,
-			occurrence ? occurrence->core_term : PROTOTYPE_INVALID_ID,
-			core ? core->tag : -1,
-			occurrence ? occurrence->asserted_classifier : PROTOTYPE_INVALID_ID,
-			classifier ? classifier->tag : -1,
-			occurrence ? occurrence->origin_core_term : PROTOTYPE_INVALID_ID,
-			source_occurrence ? source_occurrence->core_term : PROTOTYPE_INVALID_ID,
-			source_core ? source_core->tag : -1,
-			source_occurrence ? source_occurrence->source_core_term :
-				PROTOTYPE_INVALID_ID,
-			source_origin_core ? source_origin_core->tag : -1,
-			report_term ? report_term->tag : -1,
-			occurrence ? occurrence->application_role : -1,
-			occurrence ? occurrence->classifier_evidence_kind : -1,
-			occurrence ? occurrence->wrapped_occurrence : PROTOTYPE_INVALID_ID,
-			(unsigned long long)report.effort_used
-			);
-		if (report_term && report_term->tag == PROTOTYPE_TERM_APP) {
-			const struct prototype_term* function =
-				report_term->as.app.function < module.view.terms.term_count ?
-				&module.view.terms.terms[report_term->as.app.function] : NULL;
-			const struct prototype_term* argument =
-				report_term->as.app.argument < module.view.terms.term_count ?
-				&module.view.terms.terms[report_term->as.app.argument] : NULL;
-			fprintf(
-				stderr,
-				"report APP function=%u:%d argument=%u:%d\n",
-				report_term->as.app.function, function ? function->tag : -1,
-				report_term->as.app.argument, argument ? argument->tag : -1
-			);
-		}
-		print_source_occurrence(&storage, report.subject);
+		print_checker_failure(path, &module, &report);
 		goto cleanup;
 	}
 	uint64_t checker_end = test_clock_ns();

@@ -14,7 +14,7 @@ prototype_compile c11 werror compiler \
 	"$tmp_dir/checked-core-examples-check" \
 	src/prototype/tests/checks/checked_core_examples_check.c
 
-prototype_test_phase execute
+prototype_test_phase execute_examples
 "$tmp_dir/checked-core-examples-check" \
 	examples/01_bool.p \
 	examples/02_nat.p \
@@ -26,13 +26,16 @@ prototype_test_phase execute
 	examples/09_list_induction.p \
 	src/prototype/tests/fixtures/typing/explicit_index_family_vec_check.p \
 	src/prototype/tests/fixtures/typing/explicit_index_family_acc_check.p \
-	src/prototype/tests/fixtures/typing/explicit_index_family_acc_concrete_check.p \
 	src/prototype/tests/fixtures/typing/explicit_index_family_acc_eliminator_check.p \
 	src/prototype/tests/fixtures/typing/function_graph_generated_length_check.p \
 	src/prototype/tests/fixtures/typing/function_graph_two_recursive_calls_check.p \
 	src/prototype/tests/fixtures/typing/function_graph_dependent_spine_check.p \
 	src/prototype/tests/fixtures/typing/totality_evidence_surface_check.p \
 	src/prototype/tests/fixtures/effects/higher_order_operation_handler_check.p
+
+prototype_test_phase execute_acc_concrete
+"$tmp_dir/checked-core-examples-check" \
+	src/prototype/tests/fixtures/typing/explicit_index_family_acc_concrete_check.p
 
 prototype_test_phase_finish
 echo 'checked Core example tests passed'
