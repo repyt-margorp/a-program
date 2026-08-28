@@ -9,6 +9,8 @@
 #include <string.h>
 #include <time.h>
 
+static int prototype_link_external_refs(struct prototype_program* program);
+
 static uint64_t compiler_session_clock_ns(void) {
 	clock_t now = clock();
 	if (now == (clock_t)-1) {
@@ -500,7 +502,7 @@ static int validate_linked_terms_closed(struct prototype_program* program) {
 	return 0;
 }
 
-int prototype_link_external_refs(struct prototype_program* program) {
+static int prototype_link_external_refs(struct prototype_program* program) {
 	if (!program || !program->terms || !program->metadata || !program->judgement) {
 		return -1;
 	}

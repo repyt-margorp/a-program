@@ -441,42 +441,6 @@ static int infer_cbpv_boundary_classifier(
 	);
 }
 
-int prototype_judgement_delta_infer_cbpv_boundaries(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
-) {
-	if (!delta || !terms || !type_declarations) {
-		return -1;
-	}
-	for (;;) {
-		int changed = 0;
-		for (uint32_t i = 0; i < (uint32_t)terms->term_count; ++i) {
-			int tag = terms->terms[i].tag;
-			if (tag != PROTOTYPE_TERM_RETURN &&
-				tag != PROTOTYPE_TERM_THUNK &&
-				tag != PROTOTYPE_TERM_FORCE) {
-				continue;
-			}
-			uint32_t ignored;
-			if (lookup_delta_proven_classifier(delta, terms, i, &ignored) == 0) {
-				continue;
-			}
-			size_t before = delta->proposition_count;
-			int status = infer_cbpv_boundary_classifier(delta, terms, type_declarations, i);
-			if (status < 0) {
-				return -1;
-			}
-			if (delta->proposition_count > before) {
-				changed = 1;
-			}
-		}
-		if (!changed) {
-			break;
-		}
-	}
-	return 0;
-}
 
 int prototype_judgement_delta_record_computation_constraint(
 	struct prototype_judgement_delta* delta,
@@ -606,7 +570,7 @@ int prototype_judgement_delta_computation_constraint_for_occurrence(
 	return 0;
 }
 
-int prototype_judgement_delta_generate_computation_constraints(
+static int prototype_judgement_delta_generate_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	const struct prototype_term_db* terms
 ) {
@@ -2547,65 +2511,7 @@ static void reset_computation_constraint_solutions(
 	}
 }
 
-int prototype_judgement_delta_infer_computation_constraints(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_computation_constraint_result* results,
-	size_t result_capacity
-) {
-	if (!delta || !terms || !type_declarations || !results ||
-		prototype_judgement_delta_generate_computation_constraints(delta, terms) != 0) {
-		return -1;
-	}
-	reset_computation_constraint_solutions(delta, results, result_capacity);
 
-	for (;;) {
-		size_t before = delta->proposition_count;
-		if (prototype_judgement_delta_infer_cbpv_boundaries(
-				delta, terms, type_declarations
-			) != 0) {
-			return -1;
-		}
-		int solve_status = solve_computation_constraints(
-			delta, terms, type_declarations, results, result_capacity, 1
-		);
-		if (solve_status != 0) {
-			return solve_status;
-		}
-		if (delta->proposition_count == before) {
-			return 0;
-		}
-		reset_computation_constraint_solutions(delta, results, result_capacity);
-	}
-}
-
-int prototype_judgement_delta_solve_computation_constraints(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_computation_constraint_result* results,
-	size_t result_capacity
-) {
-	if (!delta || !terms || !type_declarations || !results ||
-		prototype_judgement_delta_generate_computation_constraints(delta, terms) != 0) {
-		return -1;
-	}
-	reset_computation_constraint_solutions(delta, results, result_capacity);
-	for (;;) {
-		size_t before = delta->proposition_count;
-		int solve_status = solve_computation_constraints(
-			delta, terms, type_declarations, results, result_capacity, 1
-		);
-		if (solve_status != 0) {
-			return solve_status;
-		}
-		if (delta->proposition_count == before) {
-			return 0;
-		}
-		reset_computation_constraint_solutions(delta, results, result_capacity);
-	}
-}
 
 int prototype_judgement_delta_solve_recorded_computation_constraints(
 	struct prototype_judgement_delta* delta,

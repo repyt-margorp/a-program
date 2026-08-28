@@ -47,11 +47,6 @@ int prototype_typed_occurrence_graph_add_edge(
 	uint32_t parent_occurrence,
 	struct prototype_typed_occurrence_edge edge
 );
-int prototype_typed_occurrence_graph_selected_classifier(
-	const struct prototype_typed_occurrence_graph* graph,
-	uint32_t occurrence_id,
-	uint32_t* p_classifier
-);
 const struct prototype_typed_occurrence_match_case* prototype_typed_occurrence_graph_get_case(
 	const struct prototype_typed_occurrence_graph* graph,
 	uint32_t case_id

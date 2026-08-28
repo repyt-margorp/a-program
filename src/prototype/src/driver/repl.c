@@ -650,7 +650,6 @@ int main(int argc, char** argv) {
 	struct prototype_judgement_db* judgement_db;
 	struct prototype_compile_metadata* metadata;
 	struct prototype_program* program;
-	struct prototype_read_options read_options;
 	struct prototype_read_error error;
 	char input[INPUT_CAPACITY];
 	size_t input_len = 0;
@@ -658,7 +657,6 @@ int main(int argc, char** argv) {
 	int first_file_arg = 1;
 	int definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
 
-	memset(&read_options, 0, sizeof(read_options));
 	for (; first_file_arg < argc && argv[first_file_arg][0] == '-'; ++first_file_arg) {
 		if (strcmp(argv[first_file_arg], "--implicit-definition-thunks") == 0) {
 			definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
@@ -687,7 +685,7 @@ int main(int argc, char** argv) {
 	program = &storage.program;
 	program->compile_options.definition_thunk_policy = definition_thunk_policy;
 	for (int i = first_file_arg; i < argc; ++i) {
-		if (prototype_read_ast_file_with_options(argv[i], program, &read_options, &error) != 0) {
+		if (prototype_read_ast_file(argv[i], program, &error) != 0) {
 			fprintf(
 				stderr,
 				"%s:%u:%u: %s\n",
@@ -826,7 +824,7 @@ int main(int argc, char** argv) {
 
 		char name[48];
 		snprintf(name, sizeof(name), "<interactive:%u>", entry_index++);
-		if (prototype_read_ast_string_with_options(name, input, program, &read_options, &error) != 0) {
+		if (prototype_read_ast_string(name, input, program, &error) != 0) {
 			fprintf(
 				stderr,
 				"%s:%u:%u: %s\n",

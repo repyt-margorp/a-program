@@ -1,29 +1,3 @@
-int prototype_judgement_expand_match_motive(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-) {
-	if (!judgement ||
-		!term_has_tag(terms, subject, PROTOTYPE_TERM_MATCH) ||
-		!term_is_universe_var(terms, classifier) ||
-		terms->terms[subject].as.match.case_count != 0) {
-		return -1;
-	}
-	return add_relation_with_premises(
-		judgement,
-		0,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		subject,
-		classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
-		NULL,
-		NULL,
-		NULL,
-		0
-	);
-}
 
 static int prototype_judgement_delta_add_conversion(
 	struct prototype_judgement_delta* delta,
@@ -90,7 +64,7 @@ static int prototype_judgement_delta_add_universe_cumulativity(
 	);
 }
 
-int prototype_judgement_delta_ensure_type_at_universe(
+static int prototype_judgement_delta_ensure_type_at_universe(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -1219,35 +1193,6 @@ static int prototype_judgement_delta_expand_match_motive_with_premises(
 	);
 }
 
-int prototype_judgement_delta_expand_match_motive(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-) {
-	if (!delta ||
-		!term_has_tag(terms, subject, PROTOTYPE_TERM_MATCH) ||
-		!term_is_universe_var(terms, classifier) ||
-		terms->terms[subject].as.match.case_count != 0) {
-		return -1;
-	}
-	return add_delta_relation_with_authority_and_explicit_premises(
-		delta,
-		PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
-		subject,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		subject,
-		classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_MATCH_TYPE_FORMATION_INTRO,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		0
-	);
-}
 
 int prototype_judgement_delta_build_match_motive(
 	struct prototype_judgement_delta* delta,

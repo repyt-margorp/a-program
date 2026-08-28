@@ -294,25 +294,12 @@ int prototype_term_host_type_from_type_expr_tag(int tag, int* p_type_id) {
 	return 1;
 }
 
-const char* prototype_term_host_type_source_name(
-	const struct prototype_intrinsic_environment* environment,
-	int type_id
-) {
-	return prototype_intrinsic_namespace_source_name(
-		environment,
-		PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, type_id
-	);
-}
 
 const char* prototype_term_host_type_debug_name(int type_id) {
 	const struct prototype_host_type_descriptor* type = host_type_by_id(type_id);
 	return type ? type->debug_name : NULL;
 }
 
-int prototype_term_host_type_term_tag(int type_id) {
-	const struct prototype_host_type_descriptor* type = host_type_by_id(type_id);
-	return type ? type->term_tag : 0;
-}
 
 int prototype_term_host_type_expr_tag(int type_id) {
 	const struct prototype_host_type_descriptor* type = host_type_by_id(type_id);

@@ -1504,40 +1504,6 @@ static int prototype_term_type_declaration(
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_type_instance_source_make(
-	struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t type_id,
-	const uint32_t* args,
-	uint32_t arg_count,
-	uint32_t* p_ret
-) {
-	if (!db || !type_declarations || !p_ret || arg_count > 16 ||
-		type_id >= type_declarations->semantic_schema.type_count ||
-		(arg_count != 0 && !args)) {
-		return -1;
-	}
-	const struct prototype_type_declaration* type =
-		&type_declarations->semantic_schema.type_declarations[type_id];
-	if (type->parameter_count > UINT32_MAX - type->index_count ||
-		arg_count > type->parameter_count + type->index_count) {
-		return -1;
-	}
-	uint32_t current;
-	if (prototype_term_type_declaration(
-			db, &type_declarations->semantic_schema, type_id, &current
-		) != 0) {
-		return -1;
-	}
-	for (uint32_t i = 0; i < arg_count; ++i) {
-		if (args[i] >= db->term_count ||
-			prototype_term_app(db, current, args[i], &current) != 0) {
-			return -1;
-		}
-	}
-	*p_ret = current;
-	return 0;
-}
 
 static int prototype_term_type_view(
 	struct prototype_term_db* db,
@@ -2388,7 +2354,7 @@ int prototype_term_primitive_int(struct prototype_term_db* db, uint32_t* p_ret) 
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_primitive_int64(struct prototype_term_db* db, uint32_t* p_ret) {
+static int prototype_term_primitive_int64(struct prototype_term_db* db, uint32_t* p_ret) {
 	struct prototype_term term;
 	memset(&term, 0, sizeof(term));
 	term.tag = PROTOTYPE_TERM_PRIMITIVE_INT64;
@@ -2752,20 +2718,6 @@ int prototype_term_effect_row_forall(
 	return add_term(db, term, p_ret);
 }
 
-int prototype_term_effect_row_forall_parts(
-	const struct prototype_term_db* db,
-	uint32_t term_id,
-	uint32_t* p_binder_id,
-	uint32_t* p_body
-) {
-	if (!db || !p_binder_id || !p_body || term_id >= db->term_count ||
-		db->terms[term_id].tag != PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
-		return -1;
-	}
-	*p_binder_id = db->terms[term_id].as.effect_row_forall.binding_id;
-	*p_body = db->terms[term_id].as.effect_row_forall.body;
-	return 0;
-}
 
 int prototype_term_effect_row_operation(
 	struct prototype_term_db* db,

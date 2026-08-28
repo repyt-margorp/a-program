@@ -17,15 +17,6 @@ struct prototype_term_conversion_result prototype_judgement_classifier_conversio
 	uint32_t actual
 );
 
-struct prototype_term_conversion_result
-prototype_judgement_classifier_conversion_with_definitions(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	uint32_t expected,
-	uint32_t actual
-);
-
 /* A conversion goal records the complete deterministic kernel request. It is
  * compiler evidence only: executing it never creates an object-level equality
  * witness or a JudgementDB relation. */

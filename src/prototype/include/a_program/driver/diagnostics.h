@@ -12,8 +12,6 @@ struct prototype_universe_db;
 struct symbol_table;
 
 const char* prototype_diagnostic_resolve_error_kind_name(int kind);
-const char* prototype_compile_diagnostic_phase_name(int phase);
-const char* prototype_compile_diagnostic_reason_name(int reason);
 
 void prototype_diagnostic_print_resolve_errors(
 	FILE* stream,

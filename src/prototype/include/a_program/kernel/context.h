@@ -284,20 +284,6 @@ int prototype_context_reindex_telescope(
 	uint32_t* p_target_extension,
 	uint32_t* p_substitution
 );
-int prototype_context_pullback_telescope(
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t source_base,
-	uint32_t source_extension,
-	uint32_t base_substitution,
-	uint32_t* binders,
-	uint32_t binder_capacity,
-	uint32_t* p_binder_count,
-	uint32_t* p_target_extension,
-	uint32_t* p_lifted_substitution
-);
 int prototype_context_pullback_occurrence_telescope(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,

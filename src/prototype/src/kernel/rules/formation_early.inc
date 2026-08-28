@@ -351,7 +351,7 @@ int prototype_judgement_add_constructor_spine_claim(
 	);
 }
 
-int prototype_judgement_solve_index_pattern(
+static int prototype_judgement_solve_index_pattern(
 	const struct prototype_term_db* terms,
 	uint32_t binding_id,
 	uint32_t pattern,

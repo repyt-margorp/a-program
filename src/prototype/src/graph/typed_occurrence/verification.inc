@@ -77,7 +77,7 @@ const struct prototype_verification_obligation* prototype_verification_db_get(
 		&db->obligations[obligation_id] : NULL;
 }
 
-struct prototype_verification_obligation* prototype_verification_db_get_mutable(
+static struct prototype_verification_obligation* prototype_verification_db_get_mutable(
 	struct prototype_verification_db* db,
 	uint32_t obligation_id
 ) {
@@ -419,7 +419,7 @@ int prototype_verification_db_add_dependency(
 	return 0;
 }
 
-int prototype_verification_db_remove_obligation_dependencies(
+static int prototype_verification_db_remove_obligation_dependencies(
 	struct prototype_verification_db* db,
 	uint32_t obligation_id
 ) {
@@ -510,7 +510,7 @@ static int verification_effect_row_normal_add(
 	return 0;
 }
 
-int prototype_verification_effect_row_equation_holds(
+static int prototype_verification_effect_row_equation_holds(
 	const struct prototype_term_db* terms,
 	const struct prototype_verification_obligation* obligation
 ) {
@@ -584,7 +584,7 @@ int prototype_verification_effect_row_equation_holds(
 	return verification_effect_row_normal_equal(terms, &actual, &expected);
 }
 
-int prototype_verification_db_discharge_effect_row_equation(
+static int prototype_verification_db_discharge_effect_row_equation(
 	struct prototype_verification_db* db,
 	const struct prototype_term_db* terms,
 	uint32_t obligation_id

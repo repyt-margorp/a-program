@@ -53,23 +53,6 @@ void prototype_dimension_operator_db_init(
 	);
 }
 
-void prototype_dimension_operator_db_clear(
-	struct prototype_dimension_operator_db* db
-) {
-	if (!db) {
-		return;
-	}
-	db->operator_count = 0;
-	db->image_count = 0;
-	db->intern_requests = 0;
-	db->intern_hits = 0;
-	db->intern_probes = 0;
-	prototype_intern_index_clear(
-		db->index_heads,
-		PROTOTYPE_DIMENSION_OPERATOR_INDEX_BUCKET_COUNT,
-		PROTOTYPE_INVALID_ID
-	);
-}
 
 const struct prototype_dimension_operator* prototype_dimension_operator_get(
 	const struct prototype_dimension_operator_db* db,
@@ -259,7 +242,7 @@ int prototype_dimension_operator_intern(
 	return 0;
 }
 
-int prototype_dimension_operator_db_rebuild_index(
+static int prototype_dimension_operator_db_rebuild_index(
 	struct prototype_dimension_operator_db* db
 ) {
 	if (!db) {

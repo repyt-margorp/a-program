@@ -86,13 +86,6 @@ enum prototype_index_refinement_status {
 	PROTOTYPE_INDEX_REFINEMENT_INVALID = -1
 };
 
-int prototype_judgement_solve_index_pattern(
-	const struct prototype_term_db* terms,
-	uint32_t binding_id,
-	uint32_t pattern,
-	uint32_t value,
-	uint32_t* p_solution
-);
 /* Construct the branch-local CwF action for source Match elimination.
  *
  * A solved action always maps the source scrutinee to the selected constructor
@@ -158,31 +151,8 @@ int prototype_judgement_delta_record_effect_weaken(
 	uint32_t target_classifier
 );
 
-int prototype_judgement_expand_lambda(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t classifier
-);
-
-int prototype_judgement_delta_expand_lambda(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t classifier
-);
-
 /* Returns 0 when an APP classifier was synthesized and registered, 1 when
  * current JudgementDB facts are insufficient, and -1 for malformed input. */
-int prototype_judgement_expand_app(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t* p_classifier
-);
 
 int prototype_judgement_delta_expand_app(
 	struct prototype_judgement_delta* delta,
@@ -252,15 +222,6 @@ int prototype_judgement_delta_record_context_weaken(
 	struct prototype_judgement_delta* delta,
 	const struct prototype_judgement_selected_evidence* source_evidence,
 	uint32_t substitution_id
-);
-int prototype_judgement_add_context_weakened_claim(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	uint32_t source_claim_id,
-	uint32_t target_context_id,
-	uint32_t projection_substitution_id,
-	uint32_t* p_claim_id
 );
 int prototype_judgement_add_reindexed_claim(
 	struct prototype_judgement_db* judgement,
@@ -399,19 +360,6 @@ int prototype_judgement_add_indexed_match_claim(
 	const uint32_t* branch_claim_ids,
 	const uint32_t* branch_substitution_ids,
 	uint32_t branch_claim_count,
-	uint32_t* p_claim_id
-);
-int prototype_judgement_add_induction_hypothesis_claim(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t context_id,
-	uint32_t subject,
-	uint32_t classifier,
-	uint32_t match,
-	uint32_t motive,
-	uint32_t case_index,
-	uint32_t field_index,
 	uint32_t* p_claim_id
 );
 int prototype_judgement_add_relation_type_formation(
@@ -671,16 +619,6 @@ struct prototype_judgement_constructor_specialization {
 	uint32_t parameter_substitution;
 };
 
-int prototype_judgement_constructor_specialize(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	uint32_t source_context,
-	uint32_t subject,
-	uint32_t constructor_owner_view,
-	struct prototype_judgement_constructor_specialization* p_specialization
-);
 int prototype_judgement_constructor_field_classifier(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -784,13 +722,6 @@ int prototype_judgement_delta_record_type_formation(
 /* Synthesize an exact type-formation candidate in the current Context. This
  * is prior computation over the ordinary typing rules; callers must publish
  * and select its Claim before using it as certificate authority. */
-int prototype_judgement_delta_ensure_type_at_universe(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t universe
-);
 
 /* Run ordinary structural type formation as prior computation and append its
  * complete Claim/Derivation DAG without renumbering accepted evidence. */
@@ -836,12 +767,6 @@ int prototype_judgement_delta_record_int_literal(
 	uint32_t classifier
 );
 
-int prototype_judgement_delta_record_int_literal_admissibility(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	const struct prototype_judgement_selected_evidence* source_evidence,
-	uint32_t admissible_classifier
-);
 
 int prototype_judgement_pure_primitive_classifier(
 	struct prototype_term_db* terms,
@@ -855,19 +780,7 @@ int prototype_judgement_effect_operation_classifier(
 	uint32_t* p_ret
 );
 
-int prototype_judgement_expand_match_motive(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-);
 
-int prototype_judgement_delta_expand_match_motive(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-);
 
 int prototype_judgement_delta_build_match_motive(
 	struct prototype_judgement_delta* delta,
@@ -903,47 +816,6 @@ int prototype_judgement_delta_type_match_from_cases(
 	uint32_t* p_motive_result
 );
 
-int prototype_judgement_delta_build_match_motive_from_cases(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t match_term,
-	uint32_t universe_level_var,
-	uint32_t* p_motive_result
-);
-
-int prototype_judgement_delta_build_match_motive_from_known_branches(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t match_term,
-	uint32_t universe_level_var,
-	uint32_t* p_motive_result
-);
-
-/*
- * Build a uniform motive from classifiers attached to source operation
- * branches.  INVALID entries are unresolved recursive branches; they are
- * constrained by the synthesized motive rather than read from unrelated
- * JudgementDB facts sharing the same core term.
- */
-int prototype_judgement_delta_build_match_motive_from_branch_hints(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t match_term,
-	const uint32_t* branch_classifiers,
-	uint32_t branch_count,
-	uint32_t universe_level_var,
-	uint32_t* p_motive_result
-);
-int prototype_judgement_expand_match(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t classifier
-);
 
 int prototype_judgement_delta_expand_match(
 	struct prototype_judgement_delta* delta,
@@ -966,30 +838,9 @@ int prototype_judgement_delta_expand_induction_hypothesis(
 	uint32_t context_evidence_count
 );
 
-int prototype_judgement_expand_text_literal(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-);
-
-int prototype_judgement_expand_int_literal(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-);
-
 int prototype_judgement_expand_primitives(
 	struct prototype_judgement_db* judgement,
 	struct prototype_term_db* terms
-);
-
-int prototype_judgement_record_declaration_fact(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
 );
 
 int prototype_judgement_add_expected_type_exposure(
@@ -1052,14 +903,6 @@ int prototype_judgement_validate_accepted_graph(
 
 /* Validate one selected typed occurrence from its authoritative graph
  * identity. TermDB fields are checked only as erased projections. */
-int prototype_judgement_validate_occurrence_typing(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_context_db* contexts,
-	struct prototype_substitution_db* substitutions,
-	const struct prototype_typed_occurrence_graph* operations,
-	uint32_t operation_id
-);
 
 struct prototype_judgement_principal_occurrence_audit {
 	size_t principal_occurrence_count;
@@ -1103,12 +946,6 @@ int prototype_judgement_add_normalization_premise_conversions(
 	struct prototype_judgement_db* judgement
 );
 
-int prototype_judgement_add_is_type(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t universe
-);
 int prototype_judgement_add_is_type_claim(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_term_db* terms,

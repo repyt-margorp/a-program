@@ -451,10 +451,6 @@ int prototype_artifact_interface_build_definition_env(
 uint32_t prototype_artifact_interface_next_universe_var(
 	const struct prototype_artifact_interface* interface
 );
-int prototype_artifact_interface_renumber_universe_vars(
-	struct prototype_artifact_interface* interface,
-	uint32_t offset
-);
 
 int prototype_artifact_interface_find_term_export(
 	const struct prototype_artifact_interface* interface,

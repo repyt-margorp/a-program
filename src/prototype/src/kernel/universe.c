@@ -110,21 +110,6 @@ int prototype_universe_add_edge(
 	return 0;
 }
 
-uint32_t prototype_universe_find_type_node(
-	const struct prototype_universe_db* db,
-	uint32_t type_id
-) {
-	if (!db) {
-		return PROTOTYPE_INVALID_ID;
-	}
-	for (size_t i = 0; i < db->node_count; ++i) {
-		if (db->nodes[i].tag == PROTOTYPE_UNIVERSE_NODE_TYPE &&
-			db->nodes[i].type_id == type_id) {
-			return (uint32_t)i;
-		}
-	}
-	return PROTOTYPE_INVALID_ID;
-}
 
 static uint32_t find_level(
 	const struct prototype_universe_db* db,
@@ -277,7 +262,7 @@ static int constraint_is_first_numerical_edge(
 	return 1;
 }
 
-int prototype_universe_solve(struct prototype_universe_db* db) {
+static int prototype_universe_solve(struct prototype_universe_db* db) {
 	if (!db) {
 		return -1;
 	}

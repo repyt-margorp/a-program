@@ -1746,7 +1746,7 @@ int prototype_context_comprehension_actions_validate(
 	return 0;
 }
 
-int prototype_context_pullback_telescope(
+static int prototype_context_pullback_telescope(
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,

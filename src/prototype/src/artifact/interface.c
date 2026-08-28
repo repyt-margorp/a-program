@@ -2572,24 +2572,6 @@ uint32_t prototype_artifact_interface_next_universe_var(
 	return next;
 }
 
-int prototype_artifact_interface_renumber_universe_vars(
-	struct prototype_artifact_interface* interface,
-	uint32_t offset
-) {
-	if (!interface) {
-		return -1;
-	}
-	if (offset == 0) {
-		return 0;
-	}
-	for (size_t i = 0; i < interface->type_expr_count; ++i) {
-		struct prototype_type_expr* expr = &interface->type_exprs[i];
-		if (expr->tag == PROTOTYPE_TYPE_EXPR_UNIVERSE_VAR) {
-			expr->as.universe_var.level_var += offset;
-		}
-	}
-	return 0;
-}
 
 int prototype_artifact_interface_find_term_export(
 	const struct prototype_artifact_interface* interface,

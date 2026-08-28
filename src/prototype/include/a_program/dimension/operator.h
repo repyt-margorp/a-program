@@ -14,13 +14,7 @@ void prototype_dimension_operator_db_init(
 	size_t image_capacity
 );
 
-void prototype_dimension_operator_db_clear(
-	struct prototype_dimension_operator_db* db
-);
 
-int prototype_dimension_operator_db_rebuild_index(
-	struct prototype_dimension_operator_db* db
-);
 
 const struct prototype_dimension_operator* prototype_dimension_operator_get(
 	const struct prototype_dimension_operator_db* db,

@@ -1,32 +1,4 @@
-int prototype_judgement_expand_text_literal(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-) {
-	if (!term_has_tag(terms, subject, PROTOTYPE_TERM_TEXT_LITERAL) ||
-		!term_has_tag(terms, classifier, PROTOTYPE_TERM_PRIMITIVE_TEXT)) {
-		return -1;
-	}
-	return add_relation(judgement, 0, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_TEXT_LITERAL_INTRO);
-}
 
-int prototype_judgement_expand_int_literal(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-) {
-	if (!term_has_tag(terms, subject, PROTOTYPE_TERM_INT_LITERAL) ||
-		!term_is_primitive_integer(terms, classifier)) {
-		return -1;
-	}
-	if (term_is_primitive_int(terms, classifier) &&
-		!int_literal_fits_int32(terms->terms[subject].as.int_literal.value)) {
-		return -1;
-	}
-	return add_relation(judgement, 0, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_INTRO);
-}
 
 static int judgement_has_host_type_intro(
 	const struct prototype_judgement_db* judgement,

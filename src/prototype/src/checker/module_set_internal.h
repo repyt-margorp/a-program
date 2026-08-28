@@ -26,10 +26,6 @@ int prototype_checked_module_set_adopt(
 	struct prototype_checked_module_set** p_set
 );
 
-size_t prototype_checked_module_set_original_index_at(
-	const struct prototype_checked_module_set* set,
-	size_t index
-);
 
 void prototype_checked_module_image_serialization_count_reset(void);
 size_t prototype_checked_module_image_serialization_count(void);

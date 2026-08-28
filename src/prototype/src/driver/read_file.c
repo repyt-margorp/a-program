@@ -2297,7 +2297,6 @@ static int read_file_command(
 	char** argv,
 	struct read_driver_storage* storage
 ) {
-	struct prototype_read_options read_options;
 	int file_arg = 1;
 	const char* artifact_output_path = NULL;
 	const char* interface_input_path = NULL;
@@ -2341,7 +2340,6 @@ static int read_file_command(
 	int definition_thunk_policy = PROTOTYPE_DEFINITION_THUNK_IMPLICIT;
 	int quiet = 0;
 	int audit_no_type_instance_cache = 0;
-	memset(&read_options, 0, sizeof(read_options));
 
 	for (; file_arg < argc && argv[file_arg][0] == '-'; ++file_arg) {
 		if (strcmp(argv[file_arg], "--quiet") == 0 ||
@@ -3451,7 +3449,7 @@ static int read_file_command(
 	program->compile_options.effort_limit = effort_limit;
 
 	for (int i = file_arg; i < argc; ++i) {
-		if (prototype_read_ast_file_with_options(argv[i], program, &read_options, &error) != 0) {
+		if (prototype_read_ast_file(argv[i], program, &error) != 0) {
 			fprintf(
 				stderr,
 				"%s:%u:%u: %s\n",

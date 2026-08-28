@@ -21,6 +21,16 @@ struct function_graph_binding_map {
 	int symbol_id;
 };
 
+static int prototype_accepted_definition_view_open(
+	const struct prototype_ast_db* asts,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_compile_metadata* metadata,
+	uint32_t assignment_id,
+	struct prototype_accepted_definition_view* p_view
+);
+
 struct function_graph_recursive_call {
 	uint32_t source_call_ast;
 	uint32_t source_ih_ast;
@@ -8488,7 +8498,7 @@ static int definition_root_has_accepted_claim(
 	return 0;
 }
 
-int prototype_accepted_definition_view_open(
+static int prototype_accepted_definition_view_open(
 	const struct prototype_ast_db* asts,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,

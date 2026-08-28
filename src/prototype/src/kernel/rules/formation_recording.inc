@@ -271,64 +271,7 @@ int prototype_judgement_delta_record_int_literal(
 	);
 }
 
-int prototype_judgement_delta_record_int_literal_admissibility(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	const struct prototype_judgement_selected_evidence* source_evidence,
-	uint32_t admissible_classifier
-) {
-	uint32_t integer;
-	uint32_t integer64;
-	if (!source_evidence) {
-		return -1;
-	}
-	if (source_evidence->classifier == admissible_classifier) {
-		return 0;
-	}
-	if (!delta || !terms ||
-		source_evidence->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-		source_evidence->authority_kind == PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
-		!term_has_tag(terms, source_evidence->subject, PROTOTYPE_TERM_INT_LITERAL) ||
-		source_evidence->classifier >= terms->term_count ||
-		prototype_term_make_host_type(
-			terms, PROTOTYPE_HOST_TYPE_INT64, &integer64
-		) != 0 || prototype_term_make_host_type(
-			terms, PROTOTYPE_HOST_TYPE_INT32, &integer
-		) != 0 || (source_evidence->classifier != integer64 &&
-			source_evidence->classifier != integer) ||
-		admissible_classifier != integer || !int_literal_fits_int32(
-			terms->terms[source_evidence->subject].as.int_literal.value
-		)) {
-		return -1;
-	}
-	uint32_t premise_subject = source_evidence->subject;
-	uint32_t premise_classifier = source_evidence->classifier;
-	return add_delta_relation_with_explicit_premises(
-		delta,
-		PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		source_evidence->subject,
-		admissible_classifier,
-		PROTOTYPE_JUDGEMENT_PROOF_INT_LITERAL_ADMISSIBILITY,
-		NULL,
-		NULL,
-		&premise_subject,
-		&premise_classifier,
-		source_evidence,
-		1
-	);
-}
 
-int prototype_judgement_record_declaration_fact(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t classifier
-) {
-	if (!term_exists(terms, subject) || !term_exists(terms, classifier)) {
-		return -1;
-	}
-	return add_relation(judgement, 0, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE, subject, classifier, PROTOTYPE_JUDGEMENT_PROOF_DECLARATION);
-}
 
 int prototype_judgement_add_expected_type_exposure(
 	struct prototype_judgement_db* judgement,

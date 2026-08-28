@@ -2337,30 +2337,6 @@ int prototype_type_declaration_representation_anchor_type_id(
 	return *p_anchor_type_id < db->semantic_schema.type_count ? 0 : -1;
 }
 
-int prototype_type_declaration_intern_representation(
-	const struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* db,
-	uint32_t type_id,
-	uint32_t* p_representation_id
-) {
-	if (!terms || !db || !p_representation_id || type_id >= db->semantic_schema.type_count ||
-		!type_declaration_present(&db->semantic_schema.type_declarations[type_id]) ||
-		!db->representation_db.representations) {
-		return -1;
-	}
-	if (db->representation_db.cache_dirty) {
-		/* Type declarations are still being assembled. Use a declaration anchor
-		 * until the graph-finalization pass interns exact representations. */
-		*p_representation_id = type_id;
-		return 0;
-	}
-	uint32_t representation_id = db->semantic_schema.type_declarations[type_id].representation_id;
-	if (representation_id == PROTOTYPE_INVALID_ID || representation_id >= db->representation_db.representation_count) {
-		return -1;
-	}
-	*p_representation_id = representation_id;
-	return 0;
-}
 
 int prototype_type_declaration_representation_type_id(
 	const struct prototype_type_declaration_db* db,

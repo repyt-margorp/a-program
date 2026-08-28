@@ -49,13 +49,6 @@ void prototype_compile_producer_session_destroy(
 	struct prototype_compile_producer_session* session
 );
 
-int prototype_ast_compile_pending(
-	struct prototype_ast_db* asts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement,
-	struct prototype_compile_metadata* metadata
-);
 int prototype_ast_compile_pending_with_imports(
 	struct prototype_ast_db* asts,
 	struct prototype_term_db* terms,

@@ -2774,24 +2774,3 @@ int prototype_ast_compile_pending_with_imports(
 	return report.status == PROTOTYPE_COMPILE_PRODUCER_COMPLETE ? 0 :
 		(report.status == PROTOTYPE_COMPILE_PRODUCER_PAUSED ? 1 : -1);
 }
-
-int prototype_ast_compile_pending(
-	struct prototype_ast_db* asts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement,
-	struct prototype_compile_metadata* metadata
-) {
-	return prototype_ast_compile_pending_with_imports(
-		asts,
-		terms,
-		type_declarations,
-		judgement,
-		metadata,
-		NULL,
-		prototype_default_intrinsic_environment(),
-		-1,
-		NULL,
-		0
-	);
-}

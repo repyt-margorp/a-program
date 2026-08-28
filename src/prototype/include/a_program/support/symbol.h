@@ -34,6 +34,5 @@ void symbol_table_init(
 void symbol_table_free(struct symbol_table* t);
 int symbol_intern(struct symbol_table* t, const char* s, size_t n);
 const char* symbol_to_string(const struct symbol_table* t, int id);
-int symbol_map_is_used_at(const struct symbol_map* map, size_t index);
 
 #endif

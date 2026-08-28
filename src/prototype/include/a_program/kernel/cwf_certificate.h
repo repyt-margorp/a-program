@@ -127,13 +127,6 @@ int prototype_cwf_certificate_db_substitution_evidence(
 	uint32_t substitution_id,
 	uint32_t* p_claim_id
 );
-int prototype_cwf_certificate_db_validate_substitution_roots(
-	const struct prototype_cwf_certificate_db* db,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_judgement_db* judgement,
-	const struct prototype_certified_substitution_ref* roots,
-	size_t root_count
-);
 /* Artifact readback has accepted Claims but intentionally no compiler-local
  * certificate store. This reconstructs the same EXTEND coverage from every
  * accepted Derivation semantic-action root. */

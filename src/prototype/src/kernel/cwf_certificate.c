@@ -519,31 +519,6 @@ int prototype_cwf_certificate_db_substitution_evidence(
 	return 0;
 }
 
-int prototype_cwf_certificate_db_validate_substitution_roots(
-	const struct prototype_cwf_certificate_db* db,
-	const struct prototype_substitution_db* substitutions,
-	const struct prototype_judgement_db* judgement,
-	const struct prototype_certified_substitution_ref* roots,
-	size_t root_count
-) {
-	if ((!roots && root_count != 0) || !db || !substitutions || !judgement) {
-		return -1;
-	}
-	for (size_t i = 0; i < root_count; ++i) {
-		struct prototype_certified_substitution_ref checked;
-		if (prototype_cwf_certified_substitution_ref_get(
-				db,
-				substitutions,
-				judgement,
-				roots[i].substitution_id,
-				roots[i].certificate_id,
-				&checked
-			) != 0) {
-			return -1;
-		}
-	}
-	return 0;
-}
 
 static int accepted_substitution_root_is_covered_at_depth(
 	const struct prototype_substitution_db* substitutions,

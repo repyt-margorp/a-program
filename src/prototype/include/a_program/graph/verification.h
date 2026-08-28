@@ -125,10 +125,6 @@ const struct prototype_verification_obligation* prototype_verification_db_get(
 	const struct prototype_verification_db* db,
 	uint32_t obligation_id
 );
-struct prototype_verification_obligation* prototype_verification_db_get_mutable(
-	struct prototype_verification_db* db,
-	uint32_t obligation_id
-);
 int prototype_verification_db_find_occurrence(
 	const struct prototype_verification_db* db,
 	int kind,
@@ -154,10 +150,6 @@ int prototype_verification_db_add_dependency(
 	uint32_t occurrence,
 	uint32_t obligation_id
 );
-int prototype_verification_db_remove_obligation_dependencies(
-	struct prototype_verification_db* db,
-	uint32_t obligation_id
-);
 int prototype_verification_db_discharge_computation_fold_result(
 	struct prototype_verification_db* db,
 	struct prototype_term_db* terms,
@@ -165,15 +157,6 @@ int prototype_verification_db_discharge_computation_fold_result(
 	uint32_t obligation_id,
 	uint32_t returned_value,
 	uint32_t return_result_classifier
-);
-int prototype_verification_effect_row_equation_holds(
-	const struct prototype_term_db* terms,
-	const struct prototype_verification_obligation* obligation
-);
-int prototype_verification_db_discharge_effect_row_equation(
-	struct prototype_verification_db* db,
-	const struct prototype_term_db* terms,
-	uint32_t obligation_id
 );
 int prototype_verification_db_try_discharge_phase(
 	struct prototype_verification_db* db,

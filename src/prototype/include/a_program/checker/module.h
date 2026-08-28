@@ -474,10 +474,6 @@ int prototype_elaborated_module_validate_structure(
 	const struct prototype_elaborated_module_view* module
 );
 
-uint64_t prototype_checker_calculus_fingerprint(void);
 
-uint64_t prototype_semantic_intrinsic_fingerprint(
-	const struct prototype_semantic_intrinsic_environment* environment
-);
 
 #endif

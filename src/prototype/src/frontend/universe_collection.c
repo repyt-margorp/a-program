@@ -693,7 +693,7 @@ static int collect_relation_constraints(
 	return 0;
 }
 
-int prototype_universe_reconstruct_obligations(
+static int prototype_universe_reconstruct_obligations(
 	struct prototype_universe_db* db,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
@@ -895,7 +895,7 @@ out:
 	return status;
 }
 
-int prototype_universe_close_program(
+static int prototype_universe_close_program(
 	struct prototype_universe_db* db,
 	const struct prototype_judgement_db* judgement
 ) {

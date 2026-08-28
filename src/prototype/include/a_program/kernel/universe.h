@@ -161,10 +161,6 @@ int prototype_universe_add_edge(
 	uint32_t to_node
 );
 
-uint32_t prototype_universe_find_type_node(
-	const struct prototype_universe_db* db,
-	uint32_t type_id
-);
 
 int prototype_universe_ensure_level(
 	struct prototype_universe_db* db,
@@ -195,7 +191,6 @@ int prototype_universe_add_obligation_span(
 	uint32_t first_constraint
 );
 
-int prototype_universe_solve(struct prototype_universe_db* db);
 
 int prototype_universe_close(struct prototype_universe_db* db);
 

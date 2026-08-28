@@ -26,16 +26,6 @@ struct prototype_accepted_definition_view {
 	int final_totality;
 };
 
-int prototype_accepted_definition_view_open(
-	const struct prototype_ast_db* asts,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_judgement_db* judgement,
-	const struct prototype_compile_metadata* metadata,
-	uint32_t assignment_id,
-	struct prototype_accepted_definition_view* p_view
-);
-
 int prototype_function_graph_generate_requested(
 	struct prototype_ast_db* asts,
 	struct prototype_term_db* terms,

@@ -20,7 +20,7 @@ const char* prototype_diagnostic_resolve_error_kind_name(int kind) {
 	}
 }
 
-const char* prototype_compile_diagnostic_phase_name(int phase) {
+static const char* prototype_compile_diagnostic_phase_name(int phase) {
 	switch (phase) {
 		case PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_GRAPH_CONSTRUCTION:
 			return "graph-construction";
@@ -35,7 +35,7 @@ const char* prototype_compile_diagnostic_phase_name(int phase) {
 	}
 }
 
-const char* prototype_compile_diagnostic_reason_name(int reason) {
+static const char* prototype_compile_diagnostic_reason_name(int reason) {
 	switch (reason) {
 		case PROTOTYPE_COMPILE_DIAGNOSTIC_UNSOLVED_CLASSIFIER:
 			return "unsolved-classifier";

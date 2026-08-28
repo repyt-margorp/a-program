@@ -343,10 +343,3 @@ int prototype_checked_module_set_canonical_image_at(
 	*p_count = set->images[index].count;
 	return 0;
 }
-
-size_t prototype_checked_module_set_original_index_at(
-	const struct prototype_checked_module_set* set,
-	size_t index
-) {
-	return set && index < set->count ? set->images[index].input_index : SIZE_MAX;
-}

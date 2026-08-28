@@ -28,13 +28,6 @@ struct prototype_runtime_annotations {
 	struct prototype_type_declaration_db* verification_type_declarations;
 };
 
-int prototype_runtime_evaluate_core(
-	struct prototype_term_db* terms,
-	const struct prototype_term_definition_env* definitions,
-	struct prototype_term_reduction_options options,
-	uint32_t core_term,
-	uint32_t* p_ret
-);
 
 int prototype_runtime_evaluate_core_with_annotations(
 	const struct prototype_runtime_annotations* annotations,

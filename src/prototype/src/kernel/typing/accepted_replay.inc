@@ -2232,50 +2232,6 @@ int prototype_judgement_add_match_claim(
 	);
 }
 
-int prototype_judgement_add_induction_hypothesis_claim(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t context_id,
-	uint32_t subject,
-	uint32_t classifier,
-	uint32_t match,
-	uint32_t motive,
-	uint32_t case_index,
-	uint32_t field_index,
-	uint32_t* p_claim_id
-) {
-	struct prototype_judgement_proposition conclusion = {
-		.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
-		.context_id = context_id,
-		.occurrence_id = PROTOTYPE_INVALID_ID,
-		.subject = subject,
-		.classifier = classifier
-	};
-	struct prototype_judgement_rule_application_view view;
-	if (!p_claim_id || initialize_exact_claim_rule_view(
-			judgement,
-			&conclusion,
-			PROTOTYPE_JUDGEMENT_PROOF_INDUCTION_HYPOTHESIS_ELIM,
-			NULL,
-			0,
-			&view
-		) != 0) {
-		return -1;
-	}
-	view.rule_data.induction.match = match;
-	view.rule_data.induction.motive = motive;
-	view.rule_data.induction.case_index = case_index;
-	view.rule_data.induction.field_index = field_index;
-	if (validate_induction_hypothesis_elim_proof(
-			terms, type_declarations, NULL, NULL, NULL, judgement, &conclusion, &view
-		) != 0) {
-		return -1;
-	}
-	return publish_accepted_rule_application(
-		judgement, &conclusion, &view, NULL, NULL, p_claim_id
-	);
-}
 
 static int validate_type_formation_intro_proof(
 	const struct prototype_term_db* terms,
@@ -5923,7 +5879,7 @@ static int judgement_operation_expected_polarity(
 	return 0;
 }
 
-int prototype_judgement_validate_occurrence_typing(
+static int prototype_judgement_validate_occurrence_typing(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
@@ -7647,31 +7603,6 @@ int prototype_judgement_validate_accepted_graph(
 	return status;
 }
 
-int prototype_judgement_add_is_type(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_term_db* terms,
-	uint32_t subject,
-	uint32_t universe
-) {
-	if (!term_exists(terms, subject) || !term_is_universe_var(terms, universe)) {
-		return -1;
-	}
-	uint32_t premise_subject = subject;
-	uint32_t premise_classifier = universe;
-	return add_relation_with_premises(
-		judgement,
-		0,
-		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
-		subject,
-		universe,
-		PROTOTYPE_JUDGEMENT_PROOF_IS_TYPE_FROM_HAS_TYPE,
-		NULL,
-		&premise_subject,
-		&premise_classifier,
-		1
-	);
-}
 
 int prototype_judgement_add_is_type_claim(
 	struct prototype_judgement_db* judgement,

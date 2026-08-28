@@ -678,33 +678,6 @@ static int add_claim_reindexed_by_substitution(
 	);
 }
 
-int prototype_judgement_add_context_weakened_claim(
-	struct prototype_judgement_db* judgement,
-	const struct prototype_context_db* contexts,
-	const struct prototype_substitution_db* substitutions,
-	uint32_t source_claim_id,
-	uint32_t target_context_id,
-	uint32_t projection_substitution_id,
-	uint32_t* p_claim_id
-) {
-	const struct prototype_substitution* substitution =
-		prototype_substitution_get(substitutions, projection_substitution_id);
-	if (!substitution || substitution->source_context != target_context_id) {
-		return -1;
-	}
-	return add_claim_reindexed_by_substitution(
-		judgement,
-		NULL,
-		NULL,
-		contexts,
-		(struct prototype_substitution_db*)substitutions,
-		source_claim_id,
-		projection_substitution_id,
-		PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN,
-		1,
-		p_claim_id
-	);
-}
 
 int prototype_judgement_add_reindexed_claim(
 	struct prototype_judgement_db* judgement,

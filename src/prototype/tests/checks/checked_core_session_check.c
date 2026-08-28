@@ -5,6 +5,7 @@
 #include "a_program/driver/compiler_session.h"
 #include "a_program/frontend/reader.h"
 #include "a_program/graph/compile_metadata.h"
+#include "a_program/kernel/type_declaration.h"
 #include "a_program/producer/checked_incremental.h"
 #include "a_program/producer/merge.h"
 
@@ -107,6 +108,42 @@ static int check_complete_fragment(void) {
 		goto cleanup;
 	}
 	storage_initialized = 1;
+	const struct prototype_type_constructor_declaration* telescope_constructor = NULL;
+	uint32_t telescope_type_view = PROTOTYPE_INVALID_ID;
+	for (uint32_t i = 0; i < storage.terms.term_count; ++i) {
+		if (storage.terms.terms[i].tag != PROTOTYPE_TERM_TYPE_VIEW ||
+			prototype_type_view_constructor_telescope_query(
+				&storage.type_declarations.semantic_schema,
+				&storage.metadata.contexts,
+				&storage.terms,
+				i,
+				0,
+				&telescope_constructor
+			) != 0) {
+			continue;
+		}
+		telescope_type_view = i;
+		break;
+	}
+	if (telescope_type_view == PROTOTYPE_INVALID_ID || !telescope_constructor ||
+		prototype_type_view_constructor_telescope_query(
+			&storage.type_declarations.semantic_schema,
+			&storage.metadata.contexts,
+			&storage.terms,
+			telescope_type_view,
+			UINT32_MAX,
+			&telescope_constructor
+		) == 0 || prototype_type_view_constructor_telescope_query(
+			&storage.type_declarations.semantic_schema,
+			&storage.metadata.contexts,
+			&storage.terms,
+			storage.terms.term_count,
+			0,
+			&telescope_constructor
+		) == 0) {
+		fprintf(stderr, "TypeView constructor telescope capability failed\n");
+		goto cleanup;
+	}
 	/* The checked-Core projection owns its full semantic closure. Destroying the
 	 * producer also erases JudgementDB, accepted Derivations, solver state, and
 	 * normalization caches before independent checking begins. */
@@ -165,6 +202,25 @@ static int check_complete_fragment(void) {
 		module.view.interface.term_exports[0].term ||
 		prototype_checked_type_export(checked_export) != NULL) {
 		fprintf(stderr, "checked export capability did not preserve its kind\n");
+		goto cleanup;
+	}
+	const struct prototype_checked_export_ref* checked_constructor_ref =
+		prototype_checked_module_export_at(
+			checked, PROTOTYPE_CHECKED_EXPORT_CONSTRUCTOR, 0
+		);
+	const struct prototype_semantic_constructor_export* constructor_export =
+		prototype_checked_constructor_export(checked_constructor_ref);
+	if (!constructor_export || constructor_export !=
+		&module.view.interface.constructor_exports[0] ||
+		prototype_checked_term_export(checked_constructor_ref) != NULL ||
+		prototype_checked_type_export(checked_constructor_ref) != NULL ||
+		prototype_checked_constructor_export(checked_export) != NULL ||
+		prototype_checked_module_export_at(
+			checked,
+			PROTOTYPE_CHECKED_EXPORT_CONSTRUCTOR,
+			module.view.interface.constructor_export_count
+		) != NULL) {
+		fprintf(stderr, "checked constructor export capability failed\n");
 		goto cleanup;
 	}
 	prototype_checked_module_destroy(checked);

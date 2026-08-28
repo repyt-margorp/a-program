@@ -118,20 +118,6 @@ int prototype_typed_occurrence_graph_add_edge(
 	return 0;
 }
 
-int prototype_typed_occurrence_graph_selected_classifier(
-	const struct prototype_typed_occurrence_graph* graph,
-	uint32_t operation_id,
-	uint32_t* p_classifier
-) {
-	const struct prototype_typed_occurrence* operation =
-		prototype_typed_occurrence_graph_get(graph, operation_id);
-	if (!operation || !p_classifier ||
-		operation->classifier == PROTOTYPE_INVALID_ID) {
-		return -1;
-	}
-	*p_classifier = operation->classifier;
-	return 0;
-}
 
 const struct prototype_typed_occurrence_match_case* prototype_typed_occurrence_graph_get_case(
 	const struct prototype_typed_occurrence_graph* graph,

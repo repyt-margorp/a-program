@@ -19,13 +19,6 @@ int prototype_judgement_resolve_match_constructor(
 
 /* A recursive field may change family indices, but it must retain the same
  * nominal family and uniform parameter spine as the matched scrutinee. */
-int prototype_judgement_classifier_is_recursive_family_instance(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t candidate,
-	uint32_t scrutinee_classifier,
-	int* p_recursive
-);
 int prototype_judgement_classifier_is_strictly_positive_recursive_field(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -47,31 +40,8 @@ int prototype_judgement_lift_recursive_field_classifier(
 	uint32_t* p_classifier
 );
 
-int prototype_judgement_synthesize_match_pattern_classifier(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t scrutinee,
-	uint32_t scrutinee_classifier,
-	int constructor_symbol_id,
-	uint32_t field_index,
-	uint32_t* p_classifier
-);
 
-int prototype_judgement_resolve_match_case_request(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_match_resolution_request* request,
-	struct prototype_match_constructor_resolution* p_resolution
-);
 
-int prototype_judgement_delta_resolve_induction_hypothesis_request(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_induction_hypothesis_resolution_request* request
-);
 
 int prototype_judgement_delta_record_materialized_match_motive(
 	struct prototype_judgement_delta* delta,
@@ -96,11 +66,6 @@ int prototype_judgement_delta_infer_core_helper_facts(
 /* Infer only the CBPV boundary nodes from already materialized child facts.
  * The source-operation compiler uses this after its own solver commits, so
  * it does not create competing derivations for legacy type formation. */
-int prototype_judgement_delta_infer_cbpv_boundaries(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations
-);
 
 /* Classify one RETURN/THUNK/FORCE boundary from its occurrence-selected
  * child classifier. This is the shared kernel rule used by both the source
@@ -125,26 +90,8 @@ int prototype_judgement_delta_record_cbpv_boundary(
 	const struct prototype_judgement_selected_evidence* child_evidence
 );
 
-/* Infer CBPV boundary nodes and solve computation-fold/request constraints using
- * already materialized child derivations. Unlike the Core helper-fact closure,
- * this does not re-run general type formation, APP, or LAMBDA inference. */
-int prototype_judgement_delta_infer_computation_constraints(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_computation_constraint_result* results,
-	size_t result_capacity
-);
-
 /* Solve COMPUTATION_FOLD and OPERATION_REQUEST constraints after source lowering
  * has materialized the occurrence-selected CBPV boundary derivations. */
-int prototype_judgement_delta_solve_computation_constraints(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_computation_constraint_result* results,
-	size_t result_capacity
-);
 int prototype_judgement_delta_solve_recorded_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -174,10 +121,6 @@ int prototype_judgement_delta_computation_constraint_for_occurrence(
 	uint32_t* p_constraint_id
 );
 
-int prototype_judgement_delta_generate_computation_constraints(
-	struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms
-);
 
 void prototype_judgement_print(
 	FILE* output,

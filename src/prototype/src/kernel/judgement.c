@@ -20,7 +20,6 @@
 #include "typing/classifier_solver.inc"
 #include "typing/candidate_publication.inc"
 #include "rules/formation_early.inc"
-#include "rules/introduction_lambda.inc"
 #include "rules/elimination_app.inc"
 #include "rules/cbpv.inc"
 #include "rules/match.inc"

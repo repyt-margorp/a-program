@@ -21,7 +21,7 @@ static uint64_t fingerprint_u32(uint64_t hash, uint32_t value) {
 	return hash;
 }
 
-uint64_t prototype_checker_calculus_fingerprint(void) {
+static uint64_t prototype_checker_calculus_fingerprint(void) {
 	static const char schema[] =
 		"a-program-checked-core:term-v38:occurrence-v15:context-v1:interface-v2";
 	uint64_t hash = CHECKER_FNV_OFFSET;
@@ -32,7 +32,7 @@ uint64_t prototype_checker_calculus_fingerprint(void) {
 	return hash;
 }
 
-uint64_t prototype_semantic_intrinsic_fingerprint(
+static uint64_t prototype_semantic_intrinsic_fingerprint(
 	const struct prototype_semantic_intrinsic_environment* environment
 ) {
 	if (!environment ||

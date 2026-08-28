@@ -103,7 +103,7 @@ int prototype_dimension_face_from_ordinal(
 	return 0;
 }
 
-int prototype_dimension_face_ordinal(
+static int prototype_dimension_face_ordinal(
 	const struct prototype_dimension_face* face,
 	size_t* p_ordinal
 ) {

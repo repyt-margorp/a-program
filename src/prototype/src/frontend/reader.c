@@ -77,7 +77,6 @@ struct parser {
 	 * genuinely nonlocal induction-hypothesis name. */
 	int closed_case_binder_symbols[256];
 	uint32_t closed_case_binder_count;
-	struct prototype_read_options options;
 	unsigned type_definition_depth;
 };
 
@@ -3054,7 +3053,6 @@ static int read_from_owned_input(
 	const char* name,
 	char* input,
 	struct prototype_program* program,
-	const struct prototype_read_options* options,
 	struct prototype_read_error* error
 ) {
 	struct parser parser;
@@ -3079,19 +3077,14 @@ static int read_from_owned_input(
 	parser.column = 1;
 	parser.program = program;
 	parser.error = error;
-	if (options) {
-		parser.options = *options;
-	}
-
 	int result = parse_program(&parser);
 	free(parser.input);
 	return result;
 }
 
-int prototype_read_ast_file_with_options(
+int prototype_read_ast_file(
 	const char* path,
 	struct prototype_program* program,
-	const struct prototype_read_options* options,
 	struct prototype_read_error* error
 ) {
 	char* input = NULL;
@@ -3106,22 +3099,13 @@ int prototype_read_ast_file_with_options(
 		}
 		return -1;
 	}
-	return read_from_owned_input(path, input, program, options, error);
+	return read_from_owned_input(path, input, program, error);
 }
 
-int prototype_read_ast_file(
-	const char* path,
-	struct prototype_program* program,
-	struct prototype_read_error* error
-) {
-	return prototype_read_ast_file_with_options(path, program, NULL, error);
-}
-
-int prototype_read_ast_string_with_options(
+int prototype_read_ast_string(
 	const char* name,
 	const char* input,
 	struct prototype_program* program,
-	const struct prototype_read_options* options,
 	struct prototype_read_error* error
 ) {
 	char* copy = input ? duplicate_input(input) : NULL;
@@ -3133,16 +3117,7 @@ int prototype_read_ast_string_with_options(
 		}
 		return -1;
 	}
-	return read_from_owned_input(name ? name : "<interactive>", copy, program, options, error);
-}
-
-int prototype_read_ast_string(
-	const char* name,
-	const char* input,
-	struct prototype_program* program,
-	struct prototype_read_error* error
-) {
-	return prototype_read_ast_string_with_options(name, input, program, NULL, error);
+	return read_from_owned_input(name ? name : "<interactive>", copy, program, error);
 }
 
 int prototype_read_file(

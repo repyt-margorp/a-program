@@ -121,54 +121,6 @@ static int collect_subject_classifiers(
 	return 0;
 }
 
-static int collect_judgement_subject_classifiers(
-	const struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t* classifiers,
-	uint32_t classifier_capacity,
-	uint32_t* p_classifier_count
-) {
-	if (!judgement || !terms || !type_declarations || !classifiers ||
-		!p_classifier_count || subject >= terms->term_count) {
-		return -1;
-	}
-	*p_classifier_count = 0;
-	for (size_t i = 0; i < judgement->proposition_count; ++i) {
-		const struct prototype_judgement_proposition* relation = &judgement->propositions[i];
-		if (relation->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			relation->subject != subject ||
-			candidate_has_derivation_other_than(
-				judgement->propositions,
-				judgement->proposition_count,
-				judgement->derivation_candidates,
-				judgement->derivation_candidate_count,
-				(uint32_t)i,
-				PROTOTYPE_JUDGEMENT_PROOF_CONVERSION
-			) != 1) {
-			continue;
-		}
-		int contains = classifier_list_contains_normalization_equal(
-				terms,
-				type_declarations,
-				classifiers,
-				*p_classifier_count,
-				relation->classifier
-			);
-		if (contains < 0) {
-			return -1;
-		}
-		if (contains > 0) {
-			continue;
-		}
-		if (*p_classifier_count >= classifier_capacity) {
-			return -1;
-		}
-		classifiers[(*p_classifier_count)++] = relation->classifier;
-	}
-	return 0;
-}
 
 static int select_match_branch_classifier(
 	const struct prototype_judgement_delta* delta,
@@ -491,33 +443,6 @@ static int select_delta_universe_classifier(
 	);
 }
 
-static int select_judgement_universe_classifier(
-	const struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t* p_classifier
-) {
-	uint32_t candidates[32];
-	uint32_t candidate_count = 0;
-	if (collect_judgement_subject_classifiers(
-			judgement,
-			terms,
-			type_declarations,
-			subject,
-			candidates,
-			32,
-			&candidate_count
-		) != 0) {
-		return -1;
-	}
-	return select_universe_classifier_from_candidates(
-		terms,
-		candidates,
-		candidate_count,
-		p_classifier
-	);
-}
 
 static int select_match_branch_classifier_for_motive_from_candidates(
 	struct prototype_term_db* terms,
@@ -611,37 +536,6 @@ static int select_delta_match_branch_classifier_for_motive(
 	);
 }
 
-static int select_judgement_match_branch_classifier_for_motive(
-	const struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_match_case* match_case,
-	const struct prototype_match_case* motive_case,
-	uint32_t* p_classifier
-) {
-	uint32_t candidates[32];
-	uint32_t candidate_count = 0;
-	if (collect_judgement_subject_classifiers(
-			judgement,
-			terms,
-			type_declarations,
-			match_case->body,
-			candidates,
-			32,
-			&candidate_count
-		) != 0) {
-		return -1;
-	}
-	return select_match_branch_classifier_for_motive_from_candidates(
-		terms,
-		type_declarations,
-		match_case,
-		motive_case,
-		candidates,
-		candidate_count,
-		p_classifier
-	);
-}
 
 static int build_match_motive_from_branch_classifiers(
 	struct prototype_judgement_delta* delta,
@@ -749,155 +643,9 @@ static int build_match_motive_from_branch_classifiers(
 	return add_match_motive_result(delta, match_term, motive_result);
 }
 
-int prototype_judgement_delta_build_match_motive_from_known_branches(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t match_term,
-	uint32_t universe_level_var,
-	uint32_t* p_motive_result
-) {
-	if (!delta || !terms || !type_declarations || !p_motive_result ||
-		match_term >= terms->term_count ||
-		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH) {
-		return -1;
-	}
-	int existing_status = select_existing_match_motive_result(
-		delta,
-		terms,
-		match_term,
-		p_motive_result
-	);
-	if (existing_status < 0) {
-		return -1;
-	}
-	if (existing_status == 0) {
-		return 0;
-	}
 
-	const struct prototype_term* match = &terms->terms[match_term];
-	uint32_t common[32];
-	uint32_t common_count = 0;
-	int found_known_branch = 0;
-	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
-		uint32_t case_id = match->as.match.first_case + i;
-		if (case_id >= terms->case_count) {
-			return -1;
-		}
-		uint32_t branch_classifiers[32];
-		uint32_t branch_classifier_count = 0;
-		if (collect_subject_classifiers(
-				delta,
-				terms,
-				type_declarations,
-				terms->cases[case_id].body,
-				branch_classifiers,
-				32,
-				&branch_classifier_count
-			) != 0) {
-			return -1;
-		}
-		if (branch_classifier_count == 0) {
-			continue;
-		}
-		if (!found_known_branch) {
-			for (uint32_t j = 0; j < branch_classifier_count; ++j) {
-				common[common_count++] = branch_classifiers[j];
-			}
-			found_known_branch = 1;
-			continue;
-		}
-		uint32_t write = 0;
-		for (uint32_t j = 0; j < common_count; ++j) {
-			int contains = classifier_list_contains_normalization_equal(
-					terms,
-					type_declarations,
-					branch_classifiers,
-					branch_classifier_count,
-					common[j]
-				);
-			if (contains < 0) {
-				return -1;
-			}
-			if (contains > 0) {
-				common[write++] = common[j];
-			}
-		}
-		common_count = write;
-		if (common_count == 0) {
-			return 1;
-		}
-	}
-	if (!found_known_branch || common_count != 1) {
-		return 1;
-	}
-	uint32_t branch_classifiers[64];
-	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
-		branch_classifiers[i] = common[0];
-	}
-	return build_match_motive_from_branch_classifiers(
-		delta,
-		terms,
-		type_declarations,
-		match_term,
-		branch_classifiers,
-		universe_level_var,
-		p_motive_result
-	);
-}
 
-int prototype_judgement_delta_build_match_motive_from_branch_hints(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t match_term,
-	const uint32_t* branch_classifiers,
-	uint32_t branch_count,
-	uint32_t universe_level_var,
-	uint32_t* p_motive_result
-) {
-	if (!delta || !terms || !type_declarations || !branch_classifiers || !p_motive_result ||
-		match_term >= terms->term_count ||
-		terms->terms[match_term].tag != PROTOTYPE_TERM_MATCH ||
-		branch_count != terms->terms[match_term].as.match.case_count || branch_count > 64) {
-		return -1;
-	}
-	uint32_t selected = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < branch_count; ++i) {
-		uint32_t classifier = branch_classifiers[i];
-		if (classifier == PROTOTYPE_INVALID_ID) {
-			continue;
-		}
-		if (classifier >= terms->term_count) {
-			return -1;
-		}
-		if (selected != PROTOTYPE_INVALID_ID &&
-			!(prototype_judgement_classifier_conversion(
-				terms, type_declarations, selected, classifier
-			).status == PROTOTYPE_TERM_CONVERSION_EQUAL)) {
-			return 1;
-		}
-		selected = classifier;
-	}
-	if (selected == PROTOTYPE_INVALID_ID) {
-		return 1;
-	}
-	uint32_t uniform_classifiers[64];
-	for (uint32_t i = 0; i < branch_count; ++i) {
-		uniform_classifiers[i] = selected;
-	}
-	return build_match_motive_from_branch_classifiers(
-		delta,
-		terms,
-		type_declarations,
-		match_term,
-		uniform_classifiers,
-		universe_level_var,
-		p_motive_result
-	);
-}
-
-int prototype_judgement_delta_build_match_motive_from_cases(
+static int prototype_judgement_delta_build_match_motive_from_cases(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,

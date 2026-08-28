@@ -93,6 +93,4 @@ int prototype_compile_graph_with_imports(
 	struct prototype_read_error* error
 );
 
-int prototype_link_external_refs(struct prototype_program* program);
-
 #endif

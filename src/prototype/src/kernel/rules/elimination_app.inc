@@ -1,32 +1,3 @@
-int prototype_judgement_expand_app(
-	struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t* p_classifier
-) {
-	if (!judgement) {
-		return -1;
-	}
-	struct prototype_judgement_proposition relations[64];
-	struct prototype_judgement_derivation_candidate proofs[64];
-	struct prototype_judgement_candidate_premise premises[
-		64 * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES
-	];
-	struct prototype_judgement_match_motive_result motives[1];
-	struct prototype_judgement_computation_constraint constraints[1];
-	struct prototype_judgement_effect_row_constraint effect_rows[1];
-	struct prototype_judgement_delta delta;
-	prototype_judgement_delta_init(
-		&delta, judgement, relations, proofs, 64,
-		premises, 64 * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES,
-		motives, 1, constraints, 1, effect_rows, 1
-	);
-	int status = prototype_judgement_delta_expand_app(
-		&delta, terms, type_declarations, subject, p_classifier
-	);
-	return status == 0 ? prototype_judgement_delta_commit(&delta, 0) : status;
-}
 
 static int infer_lambda_classifier_for_app_argument(
 	struct prototype_judgement_delta* delta,

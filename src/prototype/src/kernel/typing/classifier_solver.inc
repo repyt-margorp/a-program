@@ -81,7 +81,7 @@ int prototype_judgement_resolve_match_constructor(
 	return 0;
 }
 
-int prototype_judgement_classifier_is_recursive_family_instance(
+static int prototype_judgement_classifier_is_recursive_family_instance(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t candidate,
@@ -733,7 +733,7 @@ static int constructor_field_classifier_from_spine(
 	);
 }
 
-int prototype_judgement_constructor_specialize(
+static int prototype_judgement_constructor_specialize(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_context_db* contexts,
@@ -1453,146 +1453,7 @@ int prototype_judgement_delta_record_constructor_spine(
 	return add_complete_delta_relation(delta, &relation, &proof);
 }
 
-int prototype_judgement_synthesize_match_pattern_classifier(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t scrutinee,
-	uint32_t scrutinee_classifier,
-	int constructor_symbol_id,
-	uint32_t field_index,
-	uint32_t* p_classifier
-) {
-	if (!delta || !terms || !type_declarations || !p_classifier ||
-		scrutinee >= terms->term_count ||
-		scrutinee_classifier >= terms->term_count) {
-		return -1;
-	}
 
-	struct prototype_judgement_selected_evidence scrutinee_evidence;
-	if (lookup_delta_selected_evidence_normalization_equal(
-			delta,
-			terms,
-			type_declarations,
-			scrutinee,
-			scrutinee_classifier,
-			&scrutinee_evidence
-		) != 0) {
-		return -1;
-	}
-
-	uint32_t type_id;
-	uint32_t ignored_args[16];
-	uint32_t ignored_arg_count;
-	if (prototype_term_type_instance_info(
-		terms,
-		scrutinee_classifier,
-		&type_id,
-		ignored_args,
-		&ignored_arg_count
-	) != 0) {
-		return -1;
-	}
-	const struct prototype_type_constructor_declaration* constructor =
-		prototype_type_declaration_lookup_constructor(
-			&type_declarations->semantic_schema, type_id, constructor_symbol_id);
-	if (!constructor) {
-		return -1;
-	}
-	return constructor_field_classifier_from_spine(
-		delta,
-		terms,
-		type_declarations,
-		scrutinee_classifier,
-		constructor->constructor_index,
-		NULL,
-		0,
-		field_index,
-		p_classifier
-	);
-}
-
-int prototype_judgement_resolve_match_case_request(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_match_resolution_request* request,
-	struct prototype_match_constructor_resolution* p_resolution
-) {
-	if (!delta || !terms || !type_declarations || !request || !p_resolution ||
-		request->match_term >= terms->term_count ||
-		terms->terms[request->match_term].tag != PROTOTYPE_TERM_MATCH ||
-		request->case_index >= terms->terms[request->match_term].as.match.case_count) {
-		return -1;
-	}
-
-	struct prototype_match_constructor_resolution resolution;
-	if (prototype_judgement_resolve_match_constructor(
-		terms,
-		type_declarations,
-		delta->contexts,
-		request->scrutinee_classifier,
-		request->constructor_symbol_id,
-		&resolution
-	) != 0) {
-		return -1;
-	}
-
-	uint32_t case_id = terms->terms[request->match_term].as.match.first_case + request->case_index;
-	if (case_id >= terms->case_count) {
-		return -1;
-	}
-	const struct prototype_match_case* match_case = &terms->cases[case_id];
-	if (match_case->binder_count != resolution.field_count) {
-		return -1;
-	}
-		for (uint32_t j = 0; j < match_case->binder_count; ++j) {
-		struct prototype_case_binder* binder =
-			&terms->case_binders[match_case->first_binder + j];
-			uint32_t binder_var;
-			uint32_t binder_classifier;
-			if (prototype_term_var(
-					terms,
-					binder->binding_id,
-					&binder_var
-				) != 0 ||
-				constructor_field_classifier_from_spine(
-					delta,
-					terms,
-					type_declarations,
-					request->scrutinee_classifier,
-					resolution.constructor_id,
-					&terms->case_binders[match_case->first_binder],
-					j,
-					j,
-					&binder_classifier
-				) != 0 ||
-				prototype_judgement_delta_record_match_pattern(
-					delta,
-					terms,
-					binder_var,
-					binder_classifier,
-					request->scrutinee_classifier,
-					resolution.constructor_id,
-					j,
-					PROTOTYPE_INVALID_ID
-				) != 0) {
-				return -1;
-			}
-			if (prototype_judgement_classifier_is_strictly_positive_recursive_field(
-					terms,
-					type_declarations,
-					binder_classifier,
-					request->scrutinee_classifier,
-					&binder->is_recursive
-				) != 0) {
-				return -1;
-			}
-		}
-
-	*p_resolution = resolution;
-	return 0;
-}
 
 static int match_case_binder_is_recursive_self_field(
 	struct prototype_judgement_delta* delta,
@@ -1859,15 +1720,6 @@ static int induction_hypothesis_context_from_argument(
 	return 1;
 }
 
-static int collect_judgement_subject_classifiers(
-	const struct prototype_judgement_db* judgement,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t subject,
-	uint32_t* classifiers,
-	uint32_t classifier_capacity,
-	uint32_t* p_classifier_count
-);
 struct app_classifier_candidate {
 	struct prototype_judgement_selected_evidence function_evidence;
 	struct prototype_judgement_selected_evidence argument_evidence;
@@ -2150,127 +2002,6 @@ static int prototype_judgement_delta_resolve_induction_hypothesis_for_app_argume
 	);
 }
 
-int prototype_judgement_delta_resolve_induction_hypothesis_request(
-	struct prototype_judgement_delta* delta,
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_induction_hypothesis_resolution_request* request
-) {
-	if (!delta || !terms || !type_declarations || !request ||
-		!term_has_tag(terms, request->subject, PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) ||
-		request->argument >= terms->term_count ||
-		terms->terms[request->argument].tag != PROTOTYPE_TERM_VAR ||
-		request->ih_scope_id >= terms->ih_scope_count) {
-		return -1;
-	}
-	const struct prototype_term* subject = &terms->terms[request->subject];
-	if (subject->as.induction_hypothesis.ih_scope_id != request->ih_scope_id ||
-		subject->as.induction_hypothesis.argument != request->argument) {
-		return -1;
-	}
-	uint32_t ignored_existing_classifier;
-	int has_existing_classifier =
-		lookup_delta_proven_classifier(
-			delta,
-			terms,
-			request->subject,
-			&ignored_existing_classifier
-		) == 0;
-
-	uint32_t match_term = terms->ih_scopes[request->ih_scope_id].match_term;
-	if (!term_has_tag(terms, match_term, PROTOTYPE_TERM_MATCH)) {
-		return 1;
-	}
-	const struct prototype_term* match = &terms->terms[match_term];
-	uint32_t binding_id = terms->terms[request->argument].as.var.binding_id;
-	int found = 0;
-	uint32_t context_case_index = PROTOTYPE_INVALID_ID;
-	uint32_t context_field_index = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
-		uint32_t case_id = match->as.match.first_case + i;
-		if (case_id >= terms->case_count) {
-			return -1;
-		}
-		int recursive = match_case_binder_is_recursive_self_field(
-			delta,
-			terms,
-			type_declarations,
-			&terms->cases[case_id],
-			binding_id
-		);
-		if (recursive < 0) {
-			return -1;
-		}
-		if (recursive == 1) {
-			return 1;
-		}
-		if (recursive == 0) {
-			for (uint32_t j = 0; j < terms->cases[case_id].binder_count; ++j) {
-				if (terms->case_binders[terms->cases[case_id].first_binder + j].binding_id ==
-					binding_id) {
-					found = 1;
-					context_case_index = i;
-					context_field_index = j;
-					break;
-				}
-			}
-		}
-	}
-	if (!found) {
-		return -1;
-	}
-
-	uint32_t classifier;
-	uint32_t motive;
-	int status = induction_hypothesis_classifier_from_match_motive(
-		delta,
-		terms,
-		type_declarations,
-		match_term,
-		request->argument,
-		context_case_index,
-		context_field_index,
-		&classifier,
-		&motive
-	);
-	if (status < 0) {
-		return -1;
-	}
-	if (status > 0) {
-		if (has_existing_classifier) {
-			return 0;
-		}
-		return 1;
-	}
-	if (status != 0) {
-		return status;
-	}
-		struct prototype_judgement_selected_evidence existing_evidence;
-		if (has_existing_classifier &&
-			lookup_delta_selected_evidence_normalization_equal(
-				delta,
-				terms,
-				type_declarations,
-				request->subject,
-				classifier,
-				&existing_evidence
-			) == 0) {
-			return 0;
-		}
-		(void)has_existing_classifier;
-		return prototype_judgement_delta_expand_induction_hypothesis(
-		delta,
-		terms,
-		request->subject,
-		classifier,
-		match_term,
-			motive,
-			context_case_index,
-			context_field_index,
-			NULL,
-			0
-		);
-}
 
 static int type_instance_has_known_type(
 	const struct prototype_term_db* terms,

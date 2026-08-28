@@ -545,12 +545,6 @@ void prototype_ast_db_set_match_selector_storage(
 );
 
 uint32_t prototype_ast_new_binder(struct prototype_ast_db* db);
-int prototype_ast_type_expr_universe(
-	struct prototype_ast_db* db,
-	uint32_t level,
-	struct prototype_source_span span,
-	uint32_t* p_ret
-);
 int prototype_ast_type_expr_fresh_universe(
 	struct prototype_ast_db* db,
 	struct prototype_source_span span,
@@ -903,15 +897,6 @@ int prototype_ast_add_import(
 	int name_symbol_id,
 	uint32_t source_entry_id,
 	struct prototype_source_span name_span
-);
-int prototype_ast_pair_type_expectation(
-	struct prototype_ast_db* db,
-	uint32_t expectation_id,
-	uint32_t assignment_id
-);
-const struct prototype_ast_term_assignment_def* prototype_ast_lookup_assignment_const(
-	const struct prototype_ast_db* db,
-	int name_symbol_id
 );
 
 

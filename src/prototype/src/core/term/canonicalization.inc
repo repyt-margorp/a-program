@@ -1323,26 +1323,6 @@ int prototype_term_core_shape_equal_for_link(
 	);
 }
 
-int prototype_term_source_shape_equal_for_link(
-	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
-	uint32_t left,
-	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
-	uint32_t right,
-	int* p_equal
-) {
-	return shape_equal_for_link_with_type_view_mode(
-		left_db,
-		left_type_declarations,
-		left,
-		right_db,
-		right_type_declarations,
-		right,
-		PROTOTYPE_TYPE_VIEW_COMPARE_SOURCE,
-		p_equal
-	);
-}
 
 static int shape_equal_with_type_view_mode(
 	const struct prototype_term_db* db,

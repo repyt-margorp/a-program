@@ -140,19 +140,6 @@ static int add_type_expr(
 	return 0;
 }
 
-int prototype_ast_type_expr_universe(
-	struct prototype_ast_db* db,
-	uint32_t level,
-	struct prototype_source_span span,
-	uint32_t* p_ret
-) {
-	struct prototype_ast_type_expr expr;
-	memset(&expr, 0, sizeof(expr));
-	expr.tag = PROTOTYPE_AST_TYPE_EXPR_UNIVERSE;
-	expr.span = span;
-	expr.as.universe.level = level;
-	return add_type_expr(db, expr, p_ret);
-}
 
 int prototype_ast_type_expr_fresh_universe(
 	struct prototype_ast_db* db,
@@ -1358,44 +1345,4 @@ int prototype_ast_add_import(
 	db->imports[id].name_span = name_span;
 	db->import_count++;
 	return 0;
-}
-
-int prototype_ast_pair_type_expectation(
-	struct prototype_ast_db* db,
-	uint32_t expectation_id,
-	uint32_t assignment_id
-) {
-	if (!db || expectation_id >= db->expectation_count || assignment_id >= db->assignment_count) {
-		return -1;
-	}
-
-	struct prototype_ast_type_expectation_def* expectation = &db->expectations[expectation_id];
-	struct prototype_ast_term_assignment_def* assignment = &db->assignments[assignment_id];
-	if (expectation->name_symbol_id != assignment->name_symbol_id ||
-		expectation->source_entry_id != assignment->source_entry_id) {
-		return -1;
-	}
-	expectation->paired_assignment_id = assignment_id;
-	return 0;
-}
-
-const struct prototype_ast_term_assignment_def* prototype_ast_lookup_assignment_const(
-	const struct prototype_ast_db* db,
-	int name_symbol_id
-) {
-	if (!db) {
-		return NULL;
-	}
-
-	for (size_t i = 0; i < db->def_index_capacity; ++i) {
-		const struct prototype_ast_def_open_address_entry* entry = &db->def_index[i];
-		if (!entry->occupied || entry->symbol_id != name_symbol_id) {
-			continue;
-		}
-		if (entry->assignment_count != 1 || entry->first_assignment >= db->assignment_count) {
-			return NULL;
-		}
-		return &db->assignments[entry->first_assignment];
-	}
-	return NULL;
 }

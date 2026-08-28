@@ -755,23 +755,6 @@ struct prototype_term_conversion_result prototype_judgement_classifier_conversio
 	);
 }
 
-struct prototype_term_conversion_result
-prototype_judgement_classifier_conversion_with_definitions(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_definition_env* definitions,
-	uint32_t expected,
-	uint32_t actual
-) {
-	return classifier_kernel_conversion(
-		terms,
-		type_declarations,
-		definitions,
-		expected,
-		actual
-	);
-}
-
 static int kernel_conversion_profile_is_admitted(int profile) {
 	return profile == PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF ||
 		profile == PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF ||

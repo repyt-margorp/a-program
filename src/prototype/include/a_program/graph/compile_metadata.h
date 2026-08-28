@@ -409,12 +409,6 @@ int prototype_compile_metadata_request_function_graph(
 	uint32_t* p_request_id
 );
 
-const struct prototype_function_graph_request*
-prototype_compile_metadata_function_graph_request(
-	const struct prototype_compile_metadata* metadata,
-	uint32_t request_id
-);
-
 int prototype_compile_metadata_add_function_graph_association(
 	struct prototype_compile_metadata* metadata,
 	struct prototype_function_graph_association association,
@@ -441,14 +435,6 @@ int prototype_compile_metadata_freeze_function_graph_origin_groups(
 
 const struct prototype_function_graph_origin_group*
 prototype_compile_metadata_draft_function_graph_origin_group(
-	const struct prototype_compile_metadata* metadata,
-	uint32_t association_id,
-	uint32_t constructor_ordinal,
-	int display_symbol_id
-);
-
-const struct prototype_function_graph_origin_group*
-prototype_compile_metadata_function_graph_origin_group(
 	const struct prototype_compile_metadata* metadata,
 	uint32_t association_id,
 	uint32_t constructor_ordinal,

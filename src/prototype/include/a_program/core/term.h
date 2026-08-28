@@ -891,14 +891,6 @@ int prototype_term_type_instance_make(
 	uint32_t arg_count,
 	uint32_t* p_ret
 );
-int prototype_term_type_instance_source_make(
-	struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t type_id,
-	const uint32_t* args,
-	uint32_t arg_count,
-	uint32_t* p_ret
-);
 int prototype_term_type_instance_info(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
@@ -999,7 +991,6 @@ int prototype_term_dimension_action_info(
 );
 int prototype_term_text_literal(struct prototype_term_db* db, int text_symbol_id, uint32_t* p_ret);
 int prototype_term_primitive_int(struct prototype_term_db* db, uint32_t* p_ret);
-int prototype_term_primitive_int64(struct prototype_term_db* db, uint32_t* p_ret);
 int prototype_term_int_literal(struct prototype_term_db* db, int64_t value, uint32_t* p_ret);
 int prototype_term_effect_row_empty(
 	struct prototype_term_db* db,
@@ -1047,12 +1038,6 @@ int prototype_term_effect_row_forall(
 	uint32_t binding_id,
 	uint32_t body,
 	uint32_t* p_ret
-);
-int prototype_term_effect_row_forall_parts(
-	const struct prototype_term_db* db,
-	uint32_t term_id,
-	uint32_t* p_binder_id,
-	uint32_t* p_body
 );
 
 int prototype_term_effect_row_operation(
@@ -1135,12 +1120,7 @@ int prototype_term_host_type_from_source_name(
 );
 int prototype_term_host_type_from_term_tag(int tag, int* p_type_id);
 int prototype_term_host_type_from_type_expr_tag(int tag, int* p_type_id);
-const char* prototype_term_host_type_source_name(
-	const struct prototype_intrinsic_environment* environment,
-	int type_id
-);
 const char* prototype_term_host_type_debug_name(int type_id);
-int prototype_term_host_type_term_tag(int type_id);
 int prototype_term_host_type_expr_tag(int type_id);
 int prototype_term_host_type_bit_width(int type_id);
 size_t prototype_term_host_type_count(void);
@@ -1270,15 +1250,6 @@ int prototype_term_source_shape_equal(
 /* Link comparisons use canonical keys only to select candidates. These
  * functions always validate the complete cross-database term structure. */
 int prototype_term_view_shape_equal_for_link(
-	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
-	uint32_t left,
-	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
-	uint32_t right,
-	int* p_equal
-);
-int prototype_term_source_shape_equal_for_link(
 	const struct prototype_term_db* left_db,
 	const struct prototype_type_declaration_db* left_type_declarations,
 	uint32_t left,
@@ -1483,14 +1454,6 @@ void prototype_term_normalization_cache_get_stats(
 	struct prototype_term_normalization_cache_stats* p_stats
 );
 
-void prototype_term_print(
-	FILE* output,
-	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_db* terms,
-	uint32_t term_id
-);
 
 void prototype_term_print_debug(
 	FILE* output,

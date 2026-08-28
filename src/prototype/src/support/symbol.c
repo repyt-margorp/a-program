@@ -100,10 +100,3 @@ const char* symbol_to_string(const struct symbol_table* t, int id) {
 	}
 	return t->storage.strings[id];
 }
-
-int symbol_map_is_used_at(const struct symbol_map* map, size_t index) {
-	if (!map || index >= map->capacity) {
-		return 0;
-	}
-	return map->symbol_ids[index] != -1;
-}

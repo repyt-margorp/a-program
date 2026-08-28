@@ -138,18 +138,6 @@ prototype_compile_metadata_draft_function_graph_origin_group(
 	);
 }
 
-const struct prototype_function_graph_origin_group*
-prototype_compile_metadata_function_graph_origin_group(
-	const struct prototype_compile_metadata* metadata,
-	uint32_t association_id,
-	uint32_t constructor_ordinal,
-	int display_symbol_id
-) {
-	return function_graph_origin_group_in_association(
-		metadata, association_id, constructor_ordinal, display_symbol_id, 1
-	);
-}
-
 int prototype_compile_metadata_request_function_graph(
 	struct prototype_compile_metadata* metadata,
 	int owner_symbol_id,
@@ -193,16 +181,6 @@ int prototype_compile_metadata_request_function_graph(
 		};
 	*p_request_id = id;
 	return 0;
-}
-
-const struct prototype_function_graph_request*
-prototype_compile_metadata_function_graph_request(
-	const struct prototype_compile_metadata* metadata,
-	uint32_t request_id
-) {
-	return metadata && metadata->function_graph_requests &&
-		request_id < metadata->function_graph_request_count ?
-		&metadata->function_graph_requests[request_id] : NULL;
 }
 
 int prototype_compile_metadata_add_function_graph_association(
