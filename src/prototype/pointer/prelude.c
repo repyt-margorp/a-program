@@ -1,4 +1,41 @@
 #include "prelude.h"
+#include "action.h"
+
+/* Fixed library conversions share the caller's normalizer and retain its
+ * checked certificate; they do not evaluate arbitrary source programs. */
+static const struct pg_evidence *convert(struct pg_typing *typing, struct pg_whnf_work *work,
+	const struct pg_evidence *term, const struct pg_evidence *type)
+{
+	if (!term || !type) return NULL;
+	struct pg_conversion conversion;
+	if (pg_conversion_init(&conversion, work, pg_evidence_classifier(term), pg_evidence_subject(type)->core) != 0)
+		return NULL;
+	const struct pg_evidence *result = NULL;
+	if (pg_conversion_advance(&conversion, UINT64_MAX) == PG_CONVERSION_EQUAL)
+		result = pg_prove_conversion(typing, term, type, pg_conversion_certificate(&conversion));
+	pg_conversion_destroy(&conversion);
+	return result;
+}
+
+static const struct pg_evidence *congruence_function(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, struct pg_whnf_work *work,
+	const struct pg_evidence *empty, const struct pg_evidence *context,
+	const struct pg_object *a, const struct pg_object *b)
+{
+	const struct pg_object *x = pg_binder(typing->graph), *f = pg_binder(typing->graph);
+	const struct pg_evidence *domain = pg_prove_value_type(typing, pg_prove_variable(typing, context, a));
+	const struct pg_evidence *inner = pg_prove_context_extension(typing, context, x, domain);
+	const struct pg_evidence *codomain = pg_prove_return_type(typing, classifiers,
+		pg_prove_value_type(typing, pg_prove_variable(typing, inner, b)));
+	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, inner, codomain);
+	context = pg_prove_context_extension(typing, context, f, pg_prove_thunk_type(typing, classifiers, pi));
+	const struct pg_evidence *function = pg_prove_force(typing, pg_prove_variable(typing, context, f));
+	pi = pg_prove_projection(typing, context, pi);
+	const struct pg_evidence *action = pg_prove_reflexivity(typing, pi, function);
+	const struct pg_evidence *expanded = pg_identity_pi_type(typing, classifiers, context, pi, function, function,
+		pg_binder(typing->graph), pg_binder(typing->graph), pg_binder(typing->graph));
+	return pg_prove_abstract(typing, classifiers, empty, context, convert(typing, work, action, expanded));
+}
 
 static const struct pg_evidence *path_function(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, struct pg_whnf_work *work,
@@ -37,16 +74,7 @@ static const struct pg_evidence *path_function(struct pg_typing *typing,
 	const struct pg_evidence *target = pg_prove_identity_type(typing,
 		pg_prove_universe(typing, classifiers, context, level),
 		pg_prove_reindex(typing, left, family), pg_prove_reindex(typing, right, family));
-	if (!action || !target) return NULL;
-	/* Only this fixed, closed library derivation is assembled synchronously.
-	 * Its conversion still uses the caller's common pure work and certificate. */
-	struct pg_conversion conversion;
-	if (pg_conversion_init(&conversion, work, pg_evidence_classifier(action), pg_evidence_subject(target)->core) != 0)
-		return NULL;
-	const struct pg_evidence *checked = NULL;
-	if (pg_conversion_advance(&conversion, UINT64_MAX) == PG_CONVERSION_EQUAL)
-		checked = pg_prove_conversion(typing, action, target, pg_conversion_certificate(&conversion));
-	pg_conversion_destroy(&conversion);
+	const struct pg_evidence *checked = convert(typing, work, action, target);
 	const struct pg_evidence *input = compose ? images[4] : pg_prove_reflexivity(typing, base, images[1]);
 	const struct pg_evidence *result = pg_prove_identity_transport(typing, classifiers, checked, input, PG_IDENTITY_RIGHT);
 	return pg_prove_abstract(typing, classifiers, empty, context, pg_prove_return(typing, classifiers, result));
@@ -114,5 +142,6 @@ const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
 	}
 	library->symmetry = path_function(typing, classifiers, normalization, empty, a_context, a, level, 0);
 	library->composition = path_function(typing, classifiers, normalization, empty, a_context, a, level, 1);
-	return library->symmetry && library->composition ? library : NULL;
+	library->congruence = congruence_function(typing, classifiers, normalization, empty, b_context, a, b);
+	return library->symmetry && library->composition && library->congruence ? library : NULL;
 }

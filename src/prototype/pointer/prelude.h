@@ -19,6 +19,9 @@ struct pg_identity_library {
 	const struct pg_evidence *instance;
 	const struct pg_evidence *symmetry;
 	const struct pg_evidence *composition;
+	/* Applies the reflexive action of f:U(Pi A (F B)) to an input path.
+	 * Its result has computation-side Identity, not an assumed returned value. */
+	const struct pg_evidence *congruence;
 	const struct pg_evidence *transport[2];
 	const struct pg_evidence *lifting[2];
 };

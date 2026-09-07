@@ -1427,6 +1427,26 @@ a specified type family, not a global endpoint-only relation.
   +57/-2, `prelude.h` +7/-2; tests `synthesis.c` +50/-15; docs separate.
   Associativity, inverse laws, higher coherence, general Pi transport and N2
   acceptance remain open; these functions do not establish those laws.
+- [x] September 8, after `eb183ec`: expose computation congruence as the
+  library's tenth ordinary function (`congruence`, named `ap` in source tests).
+  For `f:U(Pi A (F B))`, `x,y:A` and `p:Id A x y`, it produces computation
+  Identity between `APP(FORCE f,x)` and `APP(FORCE f,y)`. Its construction uses
+  reflexivity of `FORCE f`, the existing checked Pi Identity expansion, explicit
+  conversion and ordinary telescope abstraction. The result is not wrapped in
+  an invented returned-value equality. Fixed library conversions now share one
+  helper and the caller's pure work store; no new proof rule, Core tag, source
+  name rule or DefEq equation is added.
+  Source tests show the action of an identity function normalizes to the chosen
+  input witness and a constant function to reflexivity, with their result types
+  checked by `::`. For an unknown function, they independently reconstruct and
+  compare the computation-side result classifier without extracting returned
+  endpoints. A path with wrong endpoints rejects. All ten exports are checked
+  at universe levels 0-2. Final optimized check: 3.406 s (synthesis rebuilt);
+  ASan/UBSan: 18.105 s (affected binaries rebuilt); all four computation suites
+  pass with a 512 KiB stack. Implementation `prelude.c` +40/-11, `prelude.h` +3;
+  tests `synthesis.c` +38/-4; docs separate. This export covers the current pure,
+  constant `F B` result family, not general dependent `apd`, arbitrary effectful
+  congruence or higher coherence. General source Act and N2 acceptance stay open.
 - [x] September 8, after `fedba41`: share context-suffix abstraction between
   ADT branch functions and named checked functions (`pg_prove_abstract`). It
   composes the existing Pi/Lambda rules, retains every premise and binder,
