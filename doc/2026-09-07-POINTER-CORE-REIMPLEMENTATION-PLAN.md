@@ -592,8 +592,18 @@ successful return codes as new-kernel certificates.
   existing value `x : A`; single-step fuel tests retain suspended job behavior.
   Normal and ASan/UBSan pointer suites pass, including domain mismatch rejection
   and the unchanged 158-case syntax inventory (not semantic example parity).
+- [x] Push substitution through prefix projection: restrict its checked image
+  array to the original proof context, then apply the existing substitution
+  and reindex constructors. This preserves the supplied values instead of
+  trying to evaluate a neutral source variable before substitution. A regression
+  failed before the change and now returns `x : A` from a weakened FORCE whose
+  thunk variable is instantiated outside the weakening. Exposure reuses the
+  previously constructed substitution/reindex proof, allocates no extra Core
+  or evidence records on repeated requests, and keeps the original premise DAG.
+  Normal and ASan/UBSan pointer suites pass this regression; no higher family
+  formation or Identity rule is implied by this context-action law.
 - [ ] Generalize substituted-redex exposure across remaining intermediate rule
-  wrappers, including projection under substitution. The synchronous one-step
+  wrappers as additional former support is admitted. The synchronous one-step
   reducer retains its original contract; administrative proof construction is
   not itself a beta/FORCE/FOLD execution step. Primitive substitution and alpha
   traversal still need budget accounting. These tests establish neither general

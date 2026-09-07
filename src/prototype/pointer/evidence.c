@@ -715,6 +715,19 @@ const struct pg_evidence *pg_prove_reindexed_premise(struct pg_typing *typing,
 	case PG_REINDEX:
 		substitution = pg_prove_substitution_compose(typing, original->premises[0], substitution);
 		return pg_prove_reindex(typing, substitution, original->premises[1]);
+	case PG_CONTEXT_PROJECTION: {
+		const struct pg_evidence *source = substitution->premises[0];
+		size_t count = substitution->premise_count - 2;
+		original = original->premises[1];
+		while (source->context != original->context) {
+			if (source->rule != PG_CONTEXT_EXTEND || !count) return NULL;
+			source = source->premises[0];
+			--count;
+		}
+		substitution = pg_prove_substitution(typing, source, substitution->premises[1],
+			count, substitution->premises + 2);
+		return pg_prove_reindex(typing, substitution, original);
+	}
 	default: return NULL;
 	}
 }

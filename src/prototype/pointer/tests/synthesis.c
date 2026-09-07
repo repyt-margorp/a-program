@@ -156,6 +156,26 @@ int main(void)
 	assert(pg_evidence_subject(substituted_result)->core == pg_reference(&graph, x));
 	assert(pg_evidence_classifier(substituted_result) == pg_reference(&graph, a));
 	assert(pg_evidence_rule(substituted_force) == PG_REINDEX);
+	const struct pg_evidence *extended_m = pg_prove_context_extension(&typing, m_context,
+		pg_binder(&graph), pg_prove_variable(&typing, m_context, a));
+	const struct pg_evidence *extended_images[] = {m_images[0], m_images[1], m_images[2], x_value};
+	const struct pg_evidence *extended_substitution = pg_prove_substitution(&typing,
+		extended_m, x_context, 4, extended_images);
+	const struct pg_evidence *weakened_force = pg_prove_projection(&typing, extended_m,
+		pg_prove_force(&typing, m_value));
+	const struct pg_evidence *substituted_weakening = pg_prove_reindex(&typing, extended_substitution, weakened_force);
+	assert(pg_prove_reindexed_premise(&typing, substituted_weakening) == substituted_force);
+	assert(pg_evidence_premise(substituted_weakening, 1) == weakened_force);
+	assert(!pg_prove_reindexed_premise(&typing, weakened_force));
+	assert(!pg_prove_reindexed_premise(&typing, NULL));
+	const struct pg_evidence *weakening_result = complete(&synthesis,
+		pg_synthesis_return(&synthesis, x_context, substituted_weakening), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(weakening_result)->core == pg_reference(&graph, x));
+	assert(pg_evidence_classifier(weakening_result) == pg_reference(&graph, a));
+	size_t weakening_proofs = typing.proofs.count, weakening_terms = graph.terms.count;
+	for (size_t i = 0; i < 20; ++i)
+		assert(pg_prove_reindexed_premise(&typing, substituted_weakening) == substituted_force);
+	assert(typing.proofs.count == weakening_proofs && graph.terms.count == weakening_terms);
 	const struct pg_evidence *nested_result = complete(&synthesis,
 		pg_synthesis_return(&synthesis, x_context, substituted_fold), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(nested_result)->core == pg_reference(&graph, x));
