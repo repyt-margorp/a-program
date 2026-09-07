@@ -542,9 +542,17 @@ successful return codes as new-kernel certificates.
   Synchronous readback inside semantic-demand resumption remains a fuel caveat.
 - [ ] Compute Pi/Lambda/APP action and general F/U rules on selected
   heterogeneous/higher families. The equations above are not full observational
-  Identity. Checked typed reduction jobs still need introduction inversion for
-  action proofs; the current tests establish Core reduction and admissible
-  classifier conversion, not complete source-level action execution.
+  Identity. General one-step typed reduction of action and complete surface
+  action execution remain unfinished.
+- [x] The shared RETURN/THUNK content jobs now handle reflexive action. They
+  await the source's existing content job and form reflexivity at the recovered
+  content classifier using regularity and the existing primitive rule. They
+  do not add an action-specific evaluator, a proof overwrite, or a new evidence
+  rule. Extracting `refl (THUNK M)` yields `refl M` without executing M.
+  Tests cover four iterated actions of a beta-redex source, shared dependencies,
+  split/bulk result agreement, normalized classifier checks, conversion,
+  projection and nontrivial reindexing. Shared prior work can reduce the second
+  scheduler's cost; split/bulk tests must not assume both runs start cold.
 - [ ] Generalize selected instantiation to acted boundary telescopes: the
   present instance rule handles a value-universe identification, not arbitrary
   higher-dimensional families. Connect the existing dimension-map operators.

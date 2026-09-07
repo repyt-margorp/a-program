@@ -1,5 +1,6 @@
 #include "synthesis.h"
 #include "computation.h"
+#include "identity.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -46,6 +47,100 @@ static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
 	assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
 	assert(pg_synthesis_request(synthesis, scope, syntax) == job);
 	return job;
+}
+
+static void identity_contents(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	struct pg_whnf_work *normalization, const struct pg_evidence *context,
+	const struct pg_evidence *source, const struct pg_evidence *value,
+	const struct pg_evidence *substitution)
+{
+	struct pg_synthesis split, whole;
+	assert(pg_synthesis_init(&split, typing, classifiers, normalization, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	assert(pg_synthesis_init(&whole, typing, classifiers, normalization, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	const struct pg_evidence *source_type = pg_prove_classifier(typing, classifiers, context, source);
+	const struct pg_evidence *acted = pg_prove_reflexivity(typing, source_type, source);
+	assert(acted);
+	struct pg_synthesis_job *source_job = pg_synthesis_return(&split, context, source);
+	struct pg_synthesis_job *acted_job = pg_synthesis_return(&split, context, acted);
+	assert(acted_job && !pg_synthesis_result(acted_job));
+	pg_synthesis_advance(&split, 1);
+	assert(pg_synthesis_dependency(acted_job) == source_job);
+	const struct pg_evidence *answer = complete(&split, acted_job, PG_SYNTHESIS_DONE);
+	const struct pg_term *expected = pg_identity_action(typing->graph, pg_evidence_subject(value)->core);
+	assert(pg_evidence_subject(answer)->core == expected);
+	assert(pg_evidence_rule(answer) == PG_REFLEXIVITY);
+	assert(pg_evidence_premise(answer, 1) == pg_synthesis_result(source_job));
+	assert(pg_synthesis_return(&split, context, acted) == acted_job);
+	struct pg_synthesis_job *whole_source = pg_synthesis_return(&whole, context, source);
+	struct pg_synthesis_job *whole_action = pg_synthesis_return(&whole, context, acted);
+	pg_synthesis_advance(&whole, 1000);
+	assert(pg_synthesis_status(whole_source) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(whole_action) == answer);
+	/* The second scheduler shares already accepted reindex/conversion work;
+	 * equal answers, not equal cold-start costs, are the invariant here. */
+	assert(whole.steps <= split.steps);
+	pg_synthesis_destroy(&whole);
+	for (size_t dimension = 1; dimension < 4; ++dimension) {
+		acted = pg_prove_reflexivity(typing,
+			pg_prove_classifier(typing, classifiers, context, acted), acted);
+		expected = pg_identity_action(typing->graph, expected);
+		answer = complete(&split, pg_synthesis_return(&split, context, acted), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(answer)->core == expected);
+		const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, answer);
+		const struct pg_evidence *return_type = pg_prove_return_type(typing, classifiers, type);
+		struct pg_conversion conversion;
+		assert(pg_conversion_init(&conversion, normalization, pg_evidence_classifier(acted),
+			pg_evidence_subject(return_type)->core) == 0);
+		while (pg_conversion_advance(&conversion, 1) == PG_CONVERSION_PENDING)
+			assert(pg_conversion_steps(&conversion) < 10000);
+		assert(pg_conversion_status(&conversion) == PG_CONVERSION_EQUAL);
+		const struct pg_evidence *converted = pg_prove_conversion(typing, acted, return_type,
+			pg_conversion_certificate(&conversion));
+		pg_conversion_destroy(&conversion);
+		assert(converted);
+		assert(complete(&split, pg_synthesis_return(&split, context, converted), PG_SYNTHESIS_DONE) == answer);
+	}
+	const struct pg_evidence *moved = pg_prove_reindex(typing, substitution, acted);
+	assert(moved);
+	const struct pg_evidence *moved_answer = complete(&split,
+		pg_synthesis_return(&split, context, moved), PG_SYNTHESIS_DONE);
+	assert(moved_answer == pg_prove_reindex(typing, substitution, answer));
+	const struct pg_evidence *extension = pg_prove_context_extension(typing, context,
+		pg_binder(typing->graph), pg_prove_classifier(typing, classifiers, context, value));
+	const struct pg_evidence *projected = pg_prove_projection(typing, extension, acted);
+	assert(complete(&split, pg_synthesis_return(&split, extension, projected), PG_SYNTHESIS_DONE)
+		== pg_prove_projection(typing, extension, answer));
+	const struct pg_evidence *new_value = pg_prove_variable(typing, extension,
+		pg_evidence_context(extension)->binder);
+	const struct pg_evidence *changed_images[] = {
+		pg_prove_variable(typing, extension, pg_evidence_context(context)->parent->binder), new_value
+	};
+	const struct pg_evidence *changed = pg_prove_substitution(typing, context, extension, 2, changed_images);
+	assert(changed);
+	const struct pg_evidence *changed_action = pg_prove_reindex(typing, changed, acted);
+	const struct pg_evidence *changed_answer = complete(&split,
+		pg_synthesis_return(&split, extension, changed_action), PG_SYNTHESIS_DONE);
+	assert(changed_answer == pg_prove_reindex(typing, changed, answer));
+	expected = pg_evidence_subject(new_value)->core;
+	for (size_t dimension = 0; dimension < 4; ++dimension)
+		expected = pg_identity_action(typing->graph, expected);
+	assert(pg_evidence_subject(changed_answer)->core == expected);
+	pg_synthesis_destroy(&split);
+
+	/* Extracting acted THUNK code must not execute its beta-redex source. */
+	assert(pg_synthesis_init(&split, typing, classifiers, normalization, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	const struct pg_evidence *quoted = pg_prove_thunk(typing, classifiers, source);
+	const struct pg_evidence *quoted_type = pg_prove_classifier(typing, classifiers, context, quoted);
+	const struct pg_evidence *quoted_action = pg_prove_reflexivity(typing, quoted_type, quoted);
+	struct pg_synthesis_job *unthunk = pg_synthesis_unthunk(&split, context, quoted_action);
+	pg_synthesis_advance(&split, 0);
+	assert(!pg_synthesis_result(unthunk));
+	const struct pg_evidence *code = complete(&split, unthunk, PG_SYNTHESIS_DONE);
+	assert(code == pg_prove_reflexivity(typing, source_type, source));
+	assert(split.jobs.count == 2);
+	assert(!pg_synthesis_return(&split, context, quoted_action));
+	assert(!pg_synthesis_unthunk(&split, context, code));
+	pg_synthesis_destroy(&split);
 }
 
 int main(void)
@@ -121,6 +216,7 @@ int main(void)
 	}
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
+	identity_contents(&typing, &classifiers, &beta, x_context, second_application, x_value, sigma);
 	const struct pg_evidence *deep_body = return_x;
 	for (size_t i = 0; i < 120; ++i)
 		deep_body = pg_prove_return(&typing, &classifiers, pg_prove_thunk(&typing, &classifiers, deep_body));

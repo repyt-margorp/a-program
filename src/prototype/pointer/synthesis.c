@@ -254,7 +254,8 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 
 static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
 
-enum contents_stage { CONTENTS_REDUCING, CONTENTS_CONTEXT_ACTION, CONTENTS_CONVERTING, CONTENTS_SUBSTITUTED, CONTENTS_REINDEXING };
+enum contents_stage { CONTENTS_REDUCING, CONTENTS_CONTEXT_ACTION, CONTENTS_CONVERTING,
+	CONTENTS_SUBSTITUTED, CONTENTS_REINDEXING, CONTENTS_REFLEXIVITY };
 
 static void convert_contents(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	const struct pg_evidence *formation)
@@ -285,6 +286,13 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	if (!job->checking_term) job->checking_term = job->inputs[1];
 	if (job->left) {
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		if (job->stage == CONTENTS_REFLEXIVITY) {
+			const struct pg_evidence *type = pg_prove_classifier(synthesis->typing,
+				synthesis->classifiers, job->inputs[0], job->left->result);
+			job->result = pg_prove_reflexivity(synthesis->typing, type, job->left->result);
+			finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+			return;
+		}
 		if (job->stage == CONTENTS_REINDEXING) {
 			job->result = job->left->result;
 			finish(synthesis, job, PG_SYNTHESIS_DONE);
@@ -330,6 +338,11 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		}
 	}
 	switch (pg_evidence_rule(job->checking_term)) {
+	case PG_REFLEXIVITY:
+		job->left = request_evaluation(synthesis, job->inputs[0], pg_evidence_premise(job->checking_term, 1), job->role);
+		job->stage = CONTENTS_REFLEXIVITY;
+		depend(synthesis, job, job->left);
+		return;
 	case PG_TYPE_CONVERSION:
 		job->left = request_evaluation(synthesis, job->inputs[0], pg_evidence_premise(job->checking_term, 0), job->role);
 		job->stage = CONTENTS_CONTEXT_ACTION;
