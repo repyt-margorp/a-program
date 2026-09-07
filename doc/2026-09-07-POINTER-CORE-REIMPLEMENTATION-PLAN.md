@@ -1155,6 +1155,27 @@ a specified type family, not a global endpoint-only relation.
   Optimized pointer `make check`: 2.514 s (changed test rebuilt); ASan/UBSan:
   16.224 s (affected binaries rebuilt); IADT/Identity/synthesis pass at 512 KiB.
   Implementation +40 (`action.c` +29, `action.h` +11); tests +58/-5; docs separate.
+- [x] September 8, after `418ff93`: schedule conversion-aware substitution
+  pairing. `pg_synthesis_substitution_pair` interns the checked prefix map,
+  source extension and independently typed image. It subscribes to the common
+  reindex job for the dependent field type, uses the existing comparison machine,
+  and calls the existing pairing rule only with accepted conversion evidence.
+  No image synthesis is guided by the target, and no Core/evidence rule is added.
+  The synthesis test constructs an acted result map with a dependent
+  Identity-valued index through these jobs, checks both endpoint projection
+  equations, compares split and bulk results, and checks that repeated requests
+  take no new solver steps. Invalid input shapes and mismatched image types are
+  rejected without changing the prefix proof. Thus the conversion/pairing loop
+  previously demonstrated in the IADT test is available to compiler work too.
+  Reindex and comparison are suspendable; the pairing rule still constructs
+  flat premise/image arrays and checks them synchronously. Repeated extension
+  can therefore retain quadratic aggregate prefix cost; this checkpoint neither
+  hides that limitation nor creates a second persistent-map representation.
+  Optimized pointer `make check`: 3.151 s (changed synthesis test rebuilt);
+  ASan/UBSan: 16.683 s (affected binaries rebuilt); synthesis/IADT/Identity pass
+  at 512 KiB. Implementation +40/-1 (net +39); tests +74/-3; docs separate.
+  N2/N3 remain open: complete nominal admission, recursive fields/IH and indexed
+  transport/lifting still require their own rules and verification.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

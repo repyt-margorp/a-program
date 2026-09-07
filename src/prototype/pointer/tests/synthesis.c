@@ -741,10 +741,15 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	const struct pg_evidence *id = pg_prove_identity_type(typing,
 		pg_prove_value_type(typing, pg_prove_variable(typing, first, a)), xv, xv);
 	const struct pg_evidence *fields = pg_prove_context_extension(typing, first, p, id);
-	const struct pg_evidence *indices = pg_prove_context_extension(typing, parameters, i,
+	const struct pg_evidence *index_first = pg_prove_context_extension(typing, parameters, i,
 		pg_prove_variable(typing, parameters, a));
-	const struct pg_evidence *images[] = {pg_prove_variable(typing, fields, a), pg_prove_variable(typing, fields, x)};
-	const struct pg_evidence *result_map = pg_prove_substitution(typing, indices, fields, 2, images);
+	const struct pg_evidence *index_value = pg_prove_variable(typing, index_first, i);
+	const struct pg_evidence *index_identity = pg_prove_identity_type(typing,
+		pg_prove_value_type(typing, pg_prove_variable(typing, index_first, a)), index_value, index_value);
+	const struct pg_evidence *indices = pg_prove_context_extension(typing, index_first, pg_binder(graph), index_identity);
+	const struct pg_evidence *images[] = {pg_prove_variable(typing, fields, a), pg_prove_variable(typing, fields, x),
+		pg_prove_variable(typing, fields, p)};
+	const struct pg_evidence *result_map = pg_prove_substitution(typing, indices, fields, 3, images);
 	const struct pg_data_schema *schema = pg_data_schema(typing, parameters, indices, 1, &result_map);
 	assert(schema);
 	const struct pg_object *ctor = pg_data_constructor(pg_data_schema_layout(schema), 0);
@@ -814,6 +819,72 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	complete(&split, pg_synthesis_data_case(&split, outside, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *unsupported = request(&split, scope, "type := @{ nil : *; };");
 	complete(&split, pg_synthesis_data_case(&split, unsupported, schema, ctor, motive), PG_SYNTHESIS_UNSUPPORTED);
+	/* Assemble the acted result map through scheduled, explicit post-checks. */
+	struct pg_dimensions dimensions;
+	assert(pg_dimensions_init(&dimensions, graph) == 0);
+	const struct pg_binding_face *field_centers[2], *index_centers[2];
+	for (size_t n = 0; n < 2; ++n) {
+		field_centers[n] = pg_binding_face(&dimensions, pg_binding_cube(&dimensions, 1), pg_dimension_identity(&dimensions, 1));
+		index_centers[n] = pg_binding_face(&dimensions, pg_binding_cube(&dimensions, 1), pg_dimension_identity(&dimensions, 1));
+	}
+	const struct pg_evidence *left, *right, *paths[2], *index_left, *index_right, *index_paths[2];
+	const struct pg_evidence *boundary = pg_identity_context(typing, &dimensions, fields, 2, field_centers, &left, &right, paths);
+	const struct pg_evidence *target = pg_identity_context(typing, &dimensions, indices, 2, index_centers,
+		&index_left, &index_right, index_paths);
+	assert(boundary && target);
+	const struct pg_evidence *acted_images[2];
+	assert(pg_identity_substitution_images(typing, classifiers, result_map, left, right, 2, paths, 2, acted_images) == 0);
+	const struct pg_evidence *endpoints[] = {pg_data_result(typing, schema, ctor, left), pg_data_result(typing, schema, ctor, right)};
+	const struct pg_evidence *values[7] = {pg_evidence_premise(endpoints[0], 2)};
+	for (size_t n = 0; n < 2; ++n) {
+		values[1 + 3 * n] = pg_evidence_premise(endpoints[0], n + 3);
+		values[2 + 3 * n] = pg_evidence_premise(endpoints[1], n + 3);
+		values[3 + 3 * n] = acted_images[n];
+	}
+	const struct pg_evidence *declarations[7], *declaration = target;
+	for (size_t n = 7; n; --n) {
+		declarations[n - 1] = declaration;
+		declaration = pg_evidence_premise(declaration, 0);
+	}
+	const struct pg_evidence *sigma = pg_prove_substitution(typing, declaration, boundary, 0, NULL);
+	const struct pg_evidence *bulk_sigma = sigma;
+	for (size_t n = 0; n < 7; ++n) {
+		terms = graph->terms.count;
+		proofs = typing->proofs.count;
+		struct pg_synthesis_job *pair = pg_synthesis_substitution_pair(&split, sigma, declarations[n], values[n]);
+		struct pg_synthesis_job *bulk_pair = pg_synthesis_substitution_pair(&whole, bulk_sigma, declarations[n], values[n]);
+		assert(pair && bulk_pair && graph->terms.count == terms && typing->proofs.count == proofs);
+		assert(pg_synthesis_substitution_pair(&split, sigma, declarations[n], values[n]) == pair);
+		const struct pg_evidence *prefix = sigma;
+		sigma = complete(&split, pair, PG_SYNTHESIS_DONE);
+		pg_synthesis_advance(&whole, 100000);
+		bulk_sigma = pg_synthesis_result(bulk_pair);
+		assert(bulk_sigma);
+		const struct pg_evidence *converted = pg_evidence_premise(sigma, n + 2);
+		assert(pg_evidence_rule(converted) == PG_TYPE_CONVERSION && pg_evidence_premise(converted, 0) == values[n]);
+		assert(sigma == pg_prove_substitution_pair(typing, prefix, declarations[n], converted));
+		steps = split.steps;
+		assert(pg_synthesis_substitution_pair(&split, prefix, declarations[n], values[n]) == pair);
+		pg_synthesis_advance(&split, 1000);
+		assert(split.steps == steps);
+	}
+	assert(pg_evidence_context(sigma) == pg_evidence_context(bulk_sigma));
+	for (size_t n = 0; n < 7; ++n)
+		same_judgement(pg_evidence_premise(sigma, n + 2), pg_evidence_premise(bulk_sigma, n + 2));
+	const struct pg_evidence *projections[] = {index_left, index_right};
+	for (size_t side = 0; side < 2; ++side) {
+		const struct pg_evidence *composite = pg_prove_substitution_compose(typing, projections[side], sigma);
+		assert(composite);
+		for (size_t n = 0; n < 3; ++n)
+			assert(pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(composite, n + 2))->core,
+				pg_evidence_subject(pg_evidence_premise(endpoints[side], n + 2))->core) == 1);
+	}
+	assert(!pg_synthesis_substitution_pair(&split, sigma, empty, values[0]));
+	assert(!pg_synthesis_substitution_pair(&split, sigma, target, produced));
+	const struct pg_evidence *seed = pg_prove_substitution(typing, declaration, boundary, 0, NULL);
+	complete(&split, pg_synthesis_substitution_pair(&split, seed, declarations[0], values[3]), PG_SYNTHESIS_REJECTED);
+	assert(pg_evidence_premise_count(seed) == 2);
+	pg_dimensions_destroy(&dimensions);
 	struct pg_synthesis_job *cycle = program(&split, scope, "{{ f := g; g := f; }}.f;");
 	struct pg_synthesis_job *waiting = pg_synthesis_data_case(&split, cycle, schema, ctor, motive);
 	pg_synthesis_advance(&split, 1000);

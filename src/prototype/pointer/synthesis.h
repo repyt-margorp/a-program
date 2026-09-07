@@ -58,6 +58,12 @@ struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
  * determines a job. Uses the existing reindex machine, not a second traversal. */
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
+/* Extend a checked substitution with an independently typed value. The
+ * expected dependent field type is reindexed and compared using shared work;
+ * only completed conversion evidence reaches the ordinary pairing rule. */
+struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *synthesis,
+	const struct pg_evidence *substitution, const struct pg_evidence *extension,
+	const struct pg_evidence *image);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.
