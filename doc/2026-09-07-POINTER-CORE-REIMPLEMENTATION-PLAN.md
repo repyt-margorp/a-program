@@ -378,13 +378,15 @@ binders. No normalization or alpha interning is used to merge them.
   same classifier. These tests reuse context substitution/reindex and the
   existing evaluator, without a second action-specific substitution engine.
   They do not construct object Identity witnesses or establish general naturality.
-- [ ] Identity-family/context action and restriction inside semantic owners
-  remain unimplemented. The helper rejects degeneracies: forming a higher witness
+- [ ] General dimension-map action and restriction inside semantic owners
+  remain incomplete. The strict-face helper rejects degeneracies: forming a higher witness
   cannot be replaced by generating another free boundary variable.
   The supplied fixture types are ordinary verified telescopes used to check
   substitution preservation. A cube-associated variable is not thereby a path
   or Identity witness. Generating the actual HOTT boundary types, center types,
-  witnesses and transport remains a separate required N2 gate.
+  witnesses and transport remains a separate required N2 gate. The generated
+  contextual boundary checkpoint below implements one-direction declaration
+  expansion, not all those operations.
 
 **Identity.** Generate identity families and witnesses from this action rather
 than adding an unrelated `Obs(left_type,right_type,left,right)` authority.
@@ -628,6 +630,37 @@ a specified type family, not a global endpoint-only relation.
   higher source computation, transport/lifting and N2 acceptance remain open.
   Sizes: `action.c` +1/-1, `evidence.c` +75/-39, `evidence.h` +10/-7
   (implementation net +39); `tests/identity.c` +127/-39 (net +88), excluding docs.
+- [x] September 8, after `c21c5ce`: generate checked contextual boundaries.
+  `pg_identity_context` expands a requested source suffix in declaration order.
+  Supplied binding-cube faces identify the center binders; restrictions of
+  their last intrinsic axis supply left/right binders. Existing substitution
+  reindexes each declared type for the endpoints, and family Identity formation
+  checks the center type over all previous centers. Ordinary context extension
+  declares that center. The result is an accepted context, two accepted
+  substitutions into the source and center-variable evidence in the result.
+  Output arrays are merely caller-owned handles; they are not a new authority.
+  Failure does not overwrite them. A fixed ambient prefix stays shared.
+  This generates well-formed assumptions, not inhabitants of arbitrary closed
+  Identity types. No new Core/proof tag or context storage is introduced.
+  Repeated requests reuse their context/substitution/evidence and add no Core
+  or accepted proof records, although temporary arrays and lookups remain.
+  Projecting the growing prefix is not constant-time; compiler-wide fuel and
+  large-telescope profiling remain open rather than hidden by this builder.
+  Tests construct the 3/9/27 typed faces of successive 1D/2D/3D cubes, verify
+  endpoint substitutions and center regularity, and feed the results to typed
+  action of a source vertex. They also cover a dependent suffix with a shared
+  ambient type, zero expansion, repeated binders, invalid dimensions/counts,
+  foreign evidence and unchanged outputs on failure. This is **not** a test
+  of arbitrary higher-center computation, transport or coherence. Cube face
+  order follows [Narya's higher-dimensional cubes](https://narya.readthedocs.io/en/latest/observational.html#higher-dimensional-cubes);
+  our binder pointers, polarized rules and source-context construction are
+  the A Program implementation, not an upstream theorem about this kernel.
+  General higher-source computation and dimension-map action remain N2 work.
+  Verification passed: optimized and ASan/UBSan pointer `make check`, plus
+  Identity/synthesis tests with a 512 KiB stack. The 158 parser outcomes do not
+  establish legacy semantic acceptance. Sizes excluding docs: `action.c`
+  +102/-0, `action.h` +12/-0 (implementation net +114); `tests/identity.c`
+  +88/-0. No accepted-source or handmade implementation was modified.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general
@@ -690,8 +723,8 @@ The following is our CBPV adaptation, not a Narya theorem or implemented rule:
   Checking only that corresponding subterms have some relation is insufficient.
 
 Initial code audit: `pointer/action.c` only constructed restriction substitutions.
-It now also builds the checked elementary Identity boundary and Pi expansion
-listed above; general higher-context action is still outstanding.
+It now also builds checked generated contextual boundaries and Pi expansion
+listed above; general dimension-map action and higher computation remain open.
 `pointer/evidence.c` already supplies checked family instantiation by reindexing,
 and now the symbolic Identity rules below. Legacy
 `src/prototype/src/dimension/action.c` has boundary-applied family/classifier

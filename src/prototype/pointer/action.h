@@ -25,6 +25,18 @@ const struct pg_evidence *pg_identity_thunk_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *type,
 	const struct pg_evidence *left, const struct pg_evidence *right);
 
+/* Act on the final count declarations, keeping the ambient prefix fixed.
+ * Each supplied center is a cube face with a last intrinsic axis to vary.
+ * Generate its two endpoints and center in dependency order. On success the
+ * outputs are checked substitutions into source and count center variables
+ * in the returned context. This declares assumptions, not closed fillers.
+ * The output path array is caller-owned; outputs are written only on success. */
+const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
+	struct pg_dimensions *dimensions, const struct pg_evidence *source,
+	size_t count, const struct pg_binding_face *const *centers,
+	const struct pg_evidence **left, const struct pg_evidence **right,
+	const struct pg_evidence **paths);
+
 /* Construct a checked context substitution along a strict face. The binding
  * array follows source declaration order; NULL entries preserve that binder.
  * This preserves supplied typing, but does not assert a higher Identity type

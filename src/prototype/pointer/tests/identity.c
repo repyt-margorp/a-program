@@ -59,6 +59,93 @@ static const struct pg_evidence *action_result(struct pg_typing *typing,
 	return converted;
 }
 
+static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_dimensions dimensions;
+	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *universe = pg_prove_universe(typing, classifiers, empty, 0);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, pg_binder(typing->graph), universe);
+	const struct pg_evidence *initial = source;
+	struct pg_whnf_work work;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	const struct pg_binding_face *centers[9];
+	const struct pg_evidence *paths[9], *repeated_paths[9], *left, *right, *rl, *rr;
+	size_t count = 1;
+	for (size_t dimension = 1; dimension <= 3; ++dimension, count *= 3) {
+		const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, dimension);
+		for (size_t i = 0; i < count; ++i) {
+			struct pg_coordinate coordinates[3];
+			size_t axes = 0, divisor = count / 3;
+			for (size_t j = 0; j + 1 < dimension; ++j, divisor /= 3) {
+				size_t digit = (i / divisor) % 3;
+				coordinates[j] = digit == 2 ? (struct pg_coordinate){PG_AXIS, axes++}
+					: (struct pg_coordinate){digit ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
+			}
+			coordinates[dimension - 1] = (struct pg_coordinate){PG_AXIS, axes++};
+			centers[i] = pg_binding_face(&dimensions, cube, pg_dimension_map(&dimensions, axes, dimension, coordinates));
+			assert(centers[i]);
+		}
+		const struct pg_evidence *target = pg_identity_context(typing, &dimensions, source,
+			count, centers, &left, &right, paths);
+		assert(target);
+		size_t declarations = 0;
+		for (const struct pg_context *c = pg_evidence_context(target); c; c = c->parent) ++declarations;
+		assert(declarations == 3 * count);
+		assert(pg_evidence_premise(left, 0) == source && pg_evidence_premise(right, 0) == source);
+		for (size_t i = 0; i < count; ++i) {
+			assert(pg_evidence_context(paths[i]) == pg_evidence_context(target));
+			assert(pg_evidence_subject(paths[i])->core == pg_reference(typing->graph, &centers[i]->variable));
+			const struct pg_evidence *formation = pg_prove_classifier(typing, classifiers, target, paths[i]);
+			assert(formation && pg_evidence_subject(formation)->core == pg_evidence_classifier(paths[i]));
+		}
+		const struct pg_context *first = pg_evidence_context(source);
+		while (first->parent) first = first->parent;
+		const struct pg_evidence *variable = pg_prove_variable(typing, source, first->binder);
+		const struct pg_evidence *acted = pg_prove_family_action(typing,
+			pg_prove_classifier(typing, classifiers, source, variable), variable, left, right, count, paths);
+		action_result(typing, classifiers, target, &work, acted, paths[0]);
+		size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
+		assert(pg_identity_context(typing, &dimensions, source, count, centers, &rl, &rr, repeated_paths) == target);
+		assert(left == rl && right == rr);
+		for (size_t i = 0; i < count; ++i) assert(paths[i] == repeated_paths[i]);
+		assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+		source = target;
+	}
+	assert(pg_identity_context(typing, &dimensions, source, 0, NULL, &left, &right, NULL) == source);
+	assert(left == right);
+	/* Only the suffix e:Z varies; the existing Z declaration stays shared. */
+	const struct pg_evidence *ztype = pg_prove_value_type(typing,
+		pg_prove_variable(typing, initial, pg_evidence_context(initial)->binder));
+	const struct pg_object *e = pg_binder(typing->graph);
+	const struct pg_evidence *dependent = pg_prove_context_extension(typing, initial, e, ztype);
+	const struct pg_binding_cube *line = pg_binding_cube(&dimensions, 1);
+	centers[0] = pg_binding_face(&dimensions, line, pg_dimension_identity(&dimensions, 1));
+	const struct pg_evidence *suffix = pg_identity_context(typing, &dimensions, dependent,
+		1, centers, &left, &right, paths);
+	assert(suffix && pg_evidence_context(suffix)->parent->parent->parent == pg_evidence_context(initial));
+	assert(pg_evidence_subject(pg_evidence_premise(left, 2))->core
+		== pg_evidence_subject(pg_evidence_premise(right, 2))->core);
+	const struct pg_evidence *ev = pg_prove_variable(typing, dependent, e);
+	action_result(typing, classifiers, suffix, &work,
+		pg_prove_family_action(typing, pg_prove_projection(typing, dependent, ztype), ev, left, right, 1, paths), paths[0]);
+	const struct pg_evidence *saved_left = left, *saved_right = right;
+	centers[1] = centers[0];
+	assert(!pg_identity_context(typing, &dimensions, dependent, 2, centers, &left, &right, paths));
+	assert(!pg_identity_context(typing, &dimensions, initial, 2, centers, &left, &right, paths));
+	assert(!pg_identity_context(typing, &dimensions, initial, 1, NULL, &left, &right, paths));
+	const struct pg_binding_cube *point = pg_binding_cube(&dimensions, 0);
+	centers[0] = pg_binding_face(&dimensions, point, pg_dimension_identity(&dimensions, 0));
+	assert(!pg_identity_context(typing, &dimensions, initial, 1, centers, &left, &right, paths));
+	assert(left == saved_left && right == saved_right);
+	struct pg_typing foreign;
+	assert(pg_typing_init(&foreign, typing->graph) == 0);
+	assert(!pg_identity_context(&foreign, &dimensions, source, 0, NULL, &left, &right, NULL));
+	pg_typing_destroy(&foreign);
+	pg_whnf_work_destroy(&work);
+	pg_dimensions_destroy(&dimensions);
+}
+
 static void neutral_thunks(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	const struct pg_evidence *scope = pg_prove_empty_context(typing);
@@ -969,6 +1056,7 @@ int main(void)
 	assert(!pg_prove_identity_instance(&foreign, &classifiers, pp, xx, yy));
 	pg_typing_destroy(&foreign);
 	neutral_thunks(&typing, &classifiers);
+	generated_contexts(&typing, &classifiers);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
