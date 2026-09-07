@@ -5,9 +5,14 @@ BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c
 
 .PHONY: check
-check: $(BUILD)/core_test
+check: $(BUILD)/core_test $(BUILD)/reader_test
 	$(BUILD)/core_test
+	$(BUILD)/reader_test
 
 $(BUILD)/core_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)tests/core.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)tests/core.c -o $@
+
+$(BUILD)/reader_test: $(ROOT)reader.c $(ROOT)reader.h $(ROOT)tests/reader.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)reader.c $(ROOT)tests/reader.c -o $@

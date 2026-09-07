@@ -392,6 +392,19 @@ compatibility.
 
 ## 7. Compatibility Inventory
 
+`pointer/reader.c` now provides an allocation-free bounded lexer, separated
+from name resolution and type decisions. Its tokens cover the current reader's
+punctuation, identifier, Int64, plain/raw-delimited Text and C-comment forms.
+Words including `return`, `perform` and `import` remain identifiers at this
+layer. Text payloads borrow the input; no escaping or encoding conversion is
+introduced. Explicit buffer length replaces the old NUL-terminated scan.
+
+- [x] Lexical fixtures for indexed declarations, blocks, handler punctuation,
+  contextual words, integer boundaries, delimited text, comments and truncated
+  input. Ordinary and ASan/UBSan checks pass.
+- [ ] Build the grammar and lowering on these tokens; compare the complete
+  frozen fixture inventory. Lexer tests alone do not establish compatibility.
+
 This table is a starting inventory from the current reader, AST and test tree,
 not a claim that the failed snapshot passes every row. N0 must enumerate exact
 fixtures/options and distinguish old bugs from intended behavior.
