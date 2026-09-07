@@ -24,4 +24,14 @@ enum pg_eval_status pg_eval_advance(struct pg_eval *machine, uint64_t budget);
 const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph *graph);
 void pg_eval_destroy(struct pg_eval *machine);
 
+struct pg_binding_value {
+	const struct pg_object *binder;
+	const struct pg_term *value;
+};
+/* Capture-avoiding simultaneous substitution, without reduction. Later entries
+ * shadow earlier entries for the same binder. Images are not resubstituted.
+ * Input nodes and images must outlive the returned graph, as with readback. */
+const struct pg_term *pg_term_substitute(struct pg_graph *graph,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
+
 #endif

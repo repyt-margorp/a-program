@@ -125,6 +125,50 @@ static void context_test(struct pg_graph *graph)
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
 }
 
+static void substitution_test(struct pg_graph *graph)
+{
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_object *y = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x);
+	const struct pg_term *vy = pg_reference(graph, y);
+	struct pg_binding_value bindings[] = {{x, vy}, {y, vx}};
+	const struct pg_term *app = pg_application(graph, vx, vy);
+	assert(pg_term_substitute(graph, app, 0, NULL) == app);
+	assert(pg_term_substitute(graph, app, 2, bindings) == pg_application(graph, vy, vx));
+	/* Substituted free y must not be captured by the lambda's binder. */
+	const struct pg_term *lambda = pg_lambda(graph, y, vx);
+	const struct pg_term *result = pg_term_substitute(graph, lambda, 1, bindings);
+	assert(result && result->kind == PG_LAMBDA);
+	assert(result->as.lambda.binder != y);
+	assert(result->as.lambda.body == vy);
+	const struct pg_term *identity = pg_lambda(graph, x, vx);
+	result = pg_term_substitute(graph, identity, 2, bindings);
+	assert(result && pg_alpha_equal(result, identity) == 1);
+	const struct pg_term *redex = pg_application(graph, identity, vx);
+	result = pg_term_substitute(graph, redex, 1, bindings);
+	assert(result && result->kind == PG_APPLICATION);
+	assert(result != vy);
+	assert(result->as.application.argument == vy);
+	struct pg_eval machine;
+	pg_eval_init(&machine, result);
+	assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, graph) == vy);
+	pg_eval_destroy(&machine);
+	const struct pg_term *dag = vx;
+	const struct pg_term *expected = vy;
+	for (size_t i = 0; i < 40; ++i) {
+		dag = pg_application(graph, dag, dag);
+		expected = pg_application(graph, expected, expected);
+	}
+	assert(pg_term_substitute(graph, dag, 1, bindings) == expected);
+	struct pg_binding_value shadow[] = {{x, vy}, {x, vx}};
+	assert(pg_term_substitute(graph, vx, 2, shadow) == vx);
+	assert(!pg_term_substitute(graph, NULL, 0, NULL));
+	assert(!pg_term_substitute(graph, vx, 1, NULL));
+	assert(!pg_term_substitute(graph, vx, SIZE_MAX, bindings));
+	puts("substitution: simultaneous images, capture avoidance, sharing and no reduction passed");
+}
+
 static void evaluation_test(struct pg_graph *graph)
 {
 	const struct pg_object *x = pg_binder(graph);
@@ -309,6 +353,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	graph_test(&graph);
 	context_test(&graph);
+	substitution_test(&graph);
 	evaluation_test(&graph);
 	dimension_test(&graph);
 	printf("graph: %zu terms; pointer-key interning and separate alpha comparison passed\n", graph.terms.count);

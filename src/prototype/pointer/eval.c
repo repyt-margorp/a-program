@@ -141,18 +141,47 @@ static const struct pg_term *reify(struct readback_context *context, struct pg_c
 	return result;
 }
 
-const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph *graph)
+static const struct pg_term *readback(struct pg_closure closure,
+	const struct pg_argument *arguments, struct pg_graph *graph)
 {
-	if (machine->status == PG_EVAL_ERROR) return NULL;
 	struct readback_context context = {.output = graph};
 	if (pg_index_init(&context.results) != 0) return NULL;
-	const struct pg_term *result = reify(&context, machine->current);
-	for (const struct pg_argument *argument = machine->arguments; argument; argument = argument->next) {
+	const struct pg_term *result = reify(&context, closure);
+	for (const struct pg_argument *argument = arguments; argument; argument = argument->next) {
 		if (!result) break;
 		result = pg_application(graph, result, reify(&context, argument->value));
 	}
 	pg_index_destroy(&context.results);
 	pg_graph_destroy(&context.temporary);
+	return result;
+}
+
+const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph *graph)
+{
+	if (machine->status == PG_EVAL_ERROR) return NULL;
+	return readback(machine->current, machine->arguments, graph);
+}
+
+const struct pg_term *pg_term_substitute(struct pg_graph *graph,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+{
+	if (!term) return NULL;
+	if (!count) return term;
+	if (!bindings) return NULL;
+	if (count > SIZE_MAX / sizeof(struct pg_environment)) return NULL;
+	for (size_t i = 0; i < count; ++i) {
+		if (!bindings[i].binder || !bindings[i].value) return NULL;
+		if (bindings[i].binder->kind != PG_BINDER) return NULL;
+	}
+	struct pg_graph temporary = {0};
+	struct pg_environment *environment = pg_alloc(&temporary, count * sizeof(*environment));
+	if (!environment) return NULL;
+	for (size_t i = 0; i < count; ++i) {
+		environment[i] = (struct pg_environment){bindings[i].binder,
+			{bindings[i].value, NULL}, i ? &environment[i - 1] : NULL};
+	}
+	const struct pg_term *result = readback((struct pg_closure){term, &environment[count - 1]}, NULL, graph);
+	pg_graph_destroy(&temporary);
 	return result;
 }
 

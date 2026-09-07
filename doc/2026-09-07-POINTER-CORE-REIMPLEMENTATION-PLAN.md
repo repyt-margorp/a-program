@@ -283,6 +283,23 @@ extending a context shares its prefix. Typed occurrences preserve scope and
 source evidence even when Core is shared. Context substitution is a mapping of
 these bindings, not a copied parallel term tree.
 
+`pg_term_substitute` now exposes the evaluator's existing capture-avoiding
+readback traversal for simultaneous binder-pointer substitution. Images are
+inserted without resubstitution or reduction; later mappings shadow earlier
+ones for the same pointer. This is an untyped term operation, not a certified
+context morphism or a dimensional action. Typed substitution must still verify
+the domain/codomain declarations. The output shares input/image nodes, so their
+arenas must outlive it. The current traversal freshens traversed lambda binders;
+alpha-equivalent outputs need not have identical pointers and are not interned
+by alpha comparison. Empty substitution returns the original pointer.
+
+- [x] Reuse one readback traversal for evaluator closures and explicit term
+  substitution; test simultaneous swaps, capture avoidance, shadowing, a
+  40-level shared DAG and preservation of unreduced APP. Ordinary and
+  ASan/UBSan checks pass.
+- [ ] Certify substitution against typed contexts and connect it to dimensional
+  restrictions; term substitution alone does not discharge these obligations.
+
 Intern a constraint by its complete semantic inputs: rule, context, typed
 operands, policy and relevant declaration identities. Attach diagnostic source
 sites separately. Allocate the goal before registering dependencies so cycles
