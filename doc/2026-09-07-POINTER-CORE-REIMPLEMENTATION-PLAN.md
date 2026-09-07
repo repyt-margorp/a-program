@@ -450,6 +450,22 @@ successful return codes as new-kernel certificates.
   advertising this as HOTT Identity. Pure type evaluation, generated IADT
   families and their fibrancy obligations remain part of the full goal.
 
+- [x] Initial typed beta reduction derives a reduct from a checked APP whose
+  function premise is a Lambda introduction (possibly weakened). It builds
+  the ordinary checked substitution from the body context into the application
+  context, then reindexes the existing body proof. It preserves the original
+  APP and checks the result classifier up to explicit alpha equality. No new
+  equality axiom, Core node, or unchecked classifier assignment is introduced.
+  Tests cover lexical weakening, invalid contexts/non-APP inputs, an applied
+  polymorphic Lambda whose result is another Lambda, and 100 repeated requests
+  without Term/evidence growth. Temporary image arrays are still rebuilt.
+- [ ] General typed reduction must handle reindexed/converted function proofs,
+  FORCE/FOLD and admitted semantic owners, plus budgeted reduction chains and
+  checked pure type-result exposure. `pg_reduce_beta` is only the direct-rule
+  step above; its NULL result is not a normalization or untypability verdict.
+  Its reduct is ordinary reindex evidence, not an object Identity witness or a
+  persistent conversion certificate for the original APP.
+
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation
 rules for the initial supported type formers. Unknown families may remain

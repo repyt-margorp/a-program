@@ -309,6 +309,39 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 		pi->context, subject, pi->subject->core, 2, premises);
 }
 
+const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *application)
+{
+	if (!context_proof(typing, context)) return NULL;
+	if (!application || application->owner != typing) return NULL;
+	if (application->rule != PG_APP_ELIM || application->context != context->context) return NULL;
+	const struct pg_evidence *function = application->premises[0];
+	while (function->rule == PG_CONTEXT_PROJECTION) function = function->premises[1];
+	if (function->rule != PG_LAMBDA_INTRO) return NULL;
+	const struct pg_evidence *body_context = function->premises[0]->premises[1];
+	size_t count = 0;
+	for (const struct pg_context *scope = body_context->context; scope; scope = scope->parent) ++count;
+	if (!count || count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
+	const struct pg_evidence *result = NULL;
+	if (!images) goto done;
+	images[count - 1] = application->premises[1];
+	const struct pg_context *scope = body_context->context->parent;
+	for (size_t i = count - 1; i; --i) {
+		images[i - 1] = pg_prove_variable(typing, context, scope->binder);
+		if (!images[i - 1]) goto done;
+		scope = scope->parent;
+	}
+	const struct pg_evidence *substitution = pg_prove_substitution(typing, body_context, context, count, images);
+	if (!substitution) goto done;
+	result = pg_prove_reindex(typing, substitution, function->premises[1]);
+	if (result && pg_alpha_equal(result->classifier, application->classifier) != 1) result = NULL;
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument)
 {

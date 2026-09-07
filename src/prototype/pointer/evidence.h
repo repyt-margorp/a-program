@@ -72,6 +72,11 @@ const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 	size_t count, const struct pg_evidence *const *images);
 const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
+/* Derive a beta reduct of a checked APP with a Lambda introduction premise
+ * (possibly weakened). Uses ordinary substitution/reindex evidence, not a
+ * new equality axiom. NULL includes unsupported heads and failed premises. */
+const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *application);
 /* first : Delta -> Gamma, second : Theta -> Delta; result : Theta -> Gamma. */
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second);

@@ -211,6 +211,17 @@ static void evidence_test(struct pg_graph *graph)
 	assert(app && pg_evidence_classifier(app) == pg_evidence_classifier(returned));
 	assert(pg_prove_application(&typing, identity_y, x_term) == app);
 	assert(pg_evidence_premise(app, 0) == identity_y);
+	const struct pg_evidence *reduct = pg_reduce_beta(&typing, x_context, app);
+	assert(reduct && pg_evidence_rule(reduct) == PG_REINDEX);
+	assert(pg_evidence_subject(reduct)->core == pg_evidence_subject(returned)->core);
+	assert(pg_evidence_classifier(reduct) == pg_evidence_classifier(app));
+	assert(pg_reduce_beta(&typing, x_context, app) == reduct);
+	assert(!pg_reduce_beta(&typing, y_context, app));
+	assert(!pg_reduce_beta(&typing, x_context, returned));
+	const struct pg_evidence *weakened_function = pg_prove_projection(&typing, y_context, identity_y);
+	const struct pg_evidence *weakened_app = pg_prove_application(&typing, weakened_function, y_term);
+	const struct pg_evidence *weakened_reduct = pg_reduce_beta(&typing, y_context, weakened_app);
+	assert(weakened_reduct && pg_evidence_subject(weakened_reduct)->core == pg_evidence_subject(return_y)->core);
 	assert(!pg_prove_application(&typing, identity_y, returned));
 	assert(!pg_prove_application(&typing, identity_y, a_in_x));
 	const struct pg_evidence *quoted_function = pg_prove_thunk(&typing, &classifiers, identity_y);

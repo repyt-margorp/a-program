@@ -79,6 +79,15 @@ int main(void)
 	struct pg_token x_name = {.kind = PG_TOKEN_IDENT, .length = 1, .text = "x"};
 	const struct pg_source_scope *a_scope = pg_synthesis_bind(&synthesis, root, a_name, a, a_context);
 	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
+	const struct pg_evidence *typed_application = pg_prove_application(&typing,
+		pg_prove_projection(&typing, a_context, identity), a_type);
+	const struct pg_evidence *typed_reduct = pg_reduce_beta(&typing, a_context, typed_application);
+	assert(typed_reduct && pg_evidence_subject(typed_reduct)->core->kind == PG_LAMBDA);
+	assert(pg_evidence_subject(typed_application)->core->kind == PG_APPLICATION);
+	assert(pg_alpha_equal(pg_evidence_classifier(typed_application), pg_evidence_classifier(typed_reduct)) == 1);
+	size_t reduction_terms = graph.terms.count, reduction_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) assert(pg_reduce_beta(&typing, a_context, typed_application) == typed_reduct);
+	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
 	const struct pg_evidence *application = complete(&synthesis,
