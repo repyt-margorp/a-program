@@ -121,6 +121,36 @@ static void function_eta(struct pg_typing *typing, struct pg_classifiers *classi
 	assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_DIFFERENT);
 	assert(!pg_prove_conversion(typing, refl, different, pg_conversion_certificate(&conversion)));
 	pg_conversion_destroy(&conversion);
+	/* A neutral raw callee still satisfies ap f (refl a) = refl (f a). */
+	const struct pg_object *argument = pg_binder(typing->graph);
+	const struct pg_evidence *domain = pg_prove_universe(typing, classifiers, context, 0);
+	const struct pg_evidence *extended = pg_prove_context_extension(typing, context, argument, domain);
+	f = pg_prove_projection(typing, extended, f);
+	pi = pg_prove_projection(typing, extended, pi);
+	domain = pg_prove_projection(typing, extended, domain);
+	const struct pg_evidence *a = pg_prove_variable(typing, extended, argument);
+	const struct pg_evidence *pa = pg_prove_reflexivity(typing, domain, a);
+	refl = pg_prove_reflexivity(typing, pi, f);
+	const struct pg_evidence *expanded = pg_identity_pi_type(typing, classifiers, extended, pi, f, f,
+		pg_binder(typing->graph), pg_binder(typing->graph), pg_binder(typing->graph));
+	assert(expanded);
+	assert(pg_conversion_init(&conversion, &work, pg_evidence_classifier(refl), pg_evidence_subject(expanded)->core) == 0);
+	assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_EQUAL);
+	const struct pg_evidence *ap = pg_prove_conversion(typing, refl, expanded, pg_conversion_certificate(&conversion));
+	pg_conversion_destroy(&conversion);
+	const struct pg_evidence *early = normalize(&synthesis, extended, ap);
+	early = pg_prove_application(typing, pg_prove_application(typing, pg_prove_application(typing, early, a), a), pa);
+	ap = pg_prove_application(typing, pg_prove_application(typing, pg_prove_application(typing, ap, a), a), pa);
+	const struct pg_evidence *fa = pg_prove_application(typing, f, a);
+	const struct pg_evidence *expected = pg_prove_reflexivity(typing,
+		pg_prove_classifier(typing, classifiers, extended, fa), fa);
+	const struct pg_evidence *actual = normalize(&synthesis, extended, ap);
+	assert(expected && pg_evidence_subject(actual)->core == pg_evidence_subject(expected)->core);
+	same_judgement(actual, normalize(&synthesis, extended, early));
+	assert(pg_prove_classifier(typing, classifiers, extended, actual));
+	assert(pg_conversion_init(&conversion, &work, pg_evidence_classifier(actual), pg_evidence_classifier(expected)) == 0);
+	assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&conversion);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 }

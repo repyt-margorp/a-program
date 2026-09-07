@@ -365,10 +365,27 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	normalizes(&work, wrong_endpoint, wrong_endpoint);
 	const struct pg_term *two = pg_lambda(graph, x, pg_lambda(graph, y,
 		pg_identity_instance(graph, pg_identity_action(graph, a), vx, vy)));
-	const struct pg_term *two_action = pg_identity_apply(graph, two, a, a, refl_a);
-	normalizes(&work, two_action, two_action);
+	const struct pg_term *two_partial = pg_identity_instance(graph, pg_identity_action(graph, two), a, a);
+	normalizes(&work, two_partial, two_partial);
+	const struct pg_term *two_action = pg_application(graph, two_partial, refl_a);
+	converts(&work, two_action, pg_identity_action(graph, pg_lambda(graph, y,
+		pg_identity_instance(graph, pg_identity_action(graph, a), a, vy))));
 	two_action = pg_application(graph, pg_identity_instance(graph, two_action, b, b), pg_identity_action(graph, b));
 	normalizes(&work, two_action, pg_identity_action(graph, closed));
+	/* Neutral application is the normal form, not an expansion/retraction loop. */
+	const struct pg_term *neutral_call = pg_application(graph, q, a);
+	const struct pg_term *neutral_refl = pg_identity_action(graph, neutral_call);
+	normalizes(&work, neutral_refl, neutral_refl);
+	normalizes(&work, pg_identity_apply(graph, q, a, a, refl_a), neutral_refl);
+	const struct pg_term *force_q = pg_application(graph, pg_reference(graph, &pg_force_operation), q);
+	const struct pg_term *forced_refl = pg_identity_action(graph, pg_application(graph, force_q, a));
+	normalizes(&work, pg_identity_apply(graph, force_q, a, a, refl_a), forced_refl);
+	const struct pg_term *observed_refl = pg_application(graph, pg_reference(graph, &pg_force_operation),
+		pg_identity_action(graph, q));
+	normalizes(&work, observed_refl, pg_identity_action(graph, force_q));
+	normalizes(&work, pg_application(graph, pg_identity_instance(graph, observed_refl, a, a), refl_a), forced_refl);
+	const struct pg_term *neutral_loop = pg_identity_apply(graph, q, a, a, p);
+	normalizes(&work, neutral_loop, neutral_loop);
 	/* Equal syntax under different environments is not an equal endpoint. */
 	const struct pg_term *prefix = pg_application(graph, pg_lambda(graph, x,
 		pg_application(graph, pg_identity_action(graph, diagonal_family), vx)), a);

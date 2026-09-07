@@ -12,6 +12,14 @@ const struct pg_object pg_fold_operation = {PG_SEMANTIC_OBJECT, &fold_class};
 
 static int force_answer(struct pg_eval *machine, const struct pg_term *answer)
 {
+	const struct pg_term *source;
+	if (pg_identity_action_view(answer, &source)) {
+		/* Keep reflexivity outside a neutral observation, so pre-normalizing a
+		 * callee cannot hide the diagonal application rule behind FORCE. */
+		const struct pg_term *observed = pg_application(machine->output,
+			pg_reference(machine->output, &pg_force_operation), source);
+		return pg_eval_enter(machine, (struct pg_closure){pg_identity_action(machine->output, observed), NULL}, 1);
+	}
 	if (answer->kind != PG_APPLICATION) return 1;
 	const struct pg_term *head = answer->as.application.function;
 	if (head->kind != PG_REFERENCE) return 1;

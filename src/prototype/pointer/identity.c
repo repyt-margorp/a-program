@@ -198,26 +198,27 @@ static int prune_scope(struct pg_eval *machine, struct action_scope *scope)
 	return enter_action(machine, scope, result, 0);
 }
 
-/* Substituting diagonal triples into an action is reflexivity of the
- * substituted source. Exact closure identity avoids evaluating endpoints or
- * mistaking a chosen loop for reflexivity. This is reduction, not interning. */
-static int diagonal_scope(struct pg_eval *machine, struct action_scope *scope)
+/* Orient ap f (refl a) toward refl (f a), never the converse for a neutral
+ * application. Four administrative binders preserve all incoming closures. */
+static int diagonal_argument(struct pg_eval *machine)
 {
-	if (!scope->count) return 1;
 	const struct pg_argument *cursor = machine->arguments;
-	pg_eval_next_argument(&cursor); /* The action source precedes its triples. */
-	for (size_t i = 0; i < scope->count; ++i) {
-		const struct pg_closure *left = pg_eval_next_argument(&cursor);
-		const struct pg_closure *right = pg_eval_next_argument(&cursor);
-		const struct pg_closure *path = pg_eval_next_argument(&cursor);
-		if (left->term != right->term || left->environment != right->environment) return 1;
-		if (left->environment != path->environment) return 1;
-		const struct pg_term *value;
-		if (!pg_identity_action_view(path->term, &value) || value != left->term) return 1;
-	}
-	if (prepare_bindings(machine, scope) != 0) return -1;
-	const struct pg_term *value = body_endpoint(machine->output, scope, scope->body, 0);
-	return enter_action(machine, scope, pg_identity_action(machine->output, value), 0);
+	pg_eval_next_argument(&cursor);
+	const struct pg_closure *left = pg_eval_next_argument(&cursor);
+	const struct pg_closure *right = pg_eval_next_argument(&cursor);
+	const struct pg_closure *path = pg_eval_next_argument(&cursor);
+	if (!path) return 1;
+	if (left->term != right->term || left->environment != right->environment) return 1;
+	if (left->environment != path->environment) return 1;
+	const struct pg_term *value;
+	if (!pg_identity_action_view(path->term, &value) || value != left->term) return 1;
+	struct pg_graph *graph = machine->output;
+	const struct pg_object *f = pg_binder(graph), *a = pg_binder(graph), *ignored = pg_binder(graph);
+	const struct pg_term *result = pg_identity_action(graph,
+		pg_application(graph, pg_reference(graph, f), pg_reference(graph, a)));
+	result = pg_lambda(graph, f, pg_lambda(graph, a,
+		pg_lambda(graph, ignored, pg_lambda(graph, ignored, result))));
+	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 0);
 }
 
 static int right_endpoint(struct pg_eval *machine, const struct pg_term *right)
@@ -309,11 +310,9 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	}
 	status = prune_scope(machine, &scope);
 	if (status != 1) return status;
-	status = diagonal_scope(machine, &scope);
-	if (status != 1) return status;
 	const struct pg_term *argument = unary_argument(body, &pg_return_operation);
 	if (!argument) argument = unary_argument(body, &pg_thunk_operation);
-	if (!argument) argument = unary_argument(body, &pg_force_operation);
+	if (!argument && scope.count) argument = unary_argument(body, &pg_force_operation);
 	if (argument) {
 		if (prepare_bindings(machine, &scope) != 0) return -1;
 		const struct pg_term *acted = acted_body(machine->output, &scope, argument);
@@ -337,7 +336,9 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 		 * Pi congruence applied to an untyped field reference. */
 		if (field_index(head->as.reference) >= 0) return 1;
 	}
-	if (body->kind != PG_APPLICATION) return 1;
+	/* With no varying binder, congruence would rebuild ap f (refl a) and
+	 * loop with diagonal_argument. Keep refl of a neutral APP as its form. */
+	if (!scope.count || body->kind != PG_APPLICATION) return 1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
 	const struct pg_term *function = acted_body(graph, &scope, body->as.application.function);
@@ -367,5 +368,7 @@ int pg_identity_dispatch(struct pg_eval *machine)
 	}
 	if (machine->current.term->as.reference != &identity_action) return 1;
 	if (!pg_eval_argument(machine, 0)) return 1;
+	int diagonal = diagonal_argument(machine);
+	if (diagonal != 1) return diagonal;
 	return pg_eval_demand(machine, 0, action_source);
 }

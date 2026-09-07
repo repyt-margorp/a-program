@@ -844,6 +844,34 @@ a specified type family, not a global endpoint-only relation.
   Sizes excluding docs: `identity.c` +24/-0, `eval.c` +11/-3,
   `eval.h` +3/-0 (implementation net +35); `tests/identity.c` +55/-0,
   `tests/synthesis.c` +11/-0.
+- [x] September 8, after `51bca5b`: neutral-callee diagonal application.
+  Generalize the preceding ap/refl computation to the first complete diagonal
+  argument triple, without requiring a syntactic Lambda or its entire curried
+  telescope. A partial application with no path remains neutral; a completed
+  diagonal triple reduces even when further function arguments remain absent.
+  Preserve exact closure checks: different environments and arbitrary selected
+  loops are not reflexivity. Four administrative binders use ordinary beta
+  evaluation, not a new substitution implementation or Core constructor.
+  Two orientations are necessary. Expanding `act(f a)` back into
+  `ap f (refl a)` would loop, so zero-scope neutral APP reflexivity stays intact.
+  Likewise retain `act(FORCE v)` and orient `FORCE(act v)` toward it; otherwise
+  normalizing a callee before its application could hide the ap/refl rule.
+  Scoped non-diagonal APP/FORCE action still distributes, and canonical
+  FORCE/THUNK and RETURN/THUNK action retain their computations.
+  Tests cover partial telescopes, neutral and forced callees, loop rejection,
+  closure separation, and checked application/result classifier regularity.
+  The typed test compares whole-application normalization with callee-first
+  normalization using the same evidence rules and synthesis work store.
+  This is not a proof of general confluence: recognition remains syntactic
+  and does not decide whether an arbitrary supplied path converts to refl.
+  General higher action on acted/field-headed terms and indexed fibrancy are
+  still missing. No declaration/Match implementation, `.a` loader, independent
+  Replay engine, or new public syntax is introduced by this checkpoint.
+  Verification: optimized and ASan/UBSan pointer `make check`; Identity and
+  synthesis tests with a 512 KiB stack. Syntax inventory is still parse-only.
+  Sizes excluding docs: `identity.c` +25/-22, `computation.c` +8/-0
+  (implementation net +11); `tests/identity.c` +19/-2,
+  `tests/synthesis.c` +30/-0 (tests net +47).
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general
