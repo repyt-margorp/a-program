@@ -100,6 +100,7 @@ Proposed initial modules (headers are declarative; avoid a service layer per DB)
 | `effect.c`, `effect.h` | request, return and fold descriptors; handler execution |
 | `dimension.c`, `dimension.h` | dimension maps, boundary diagrams and action, present from N1 |
 | `identity.c`, `identity.h` | Identity computation, transport/lifting and evidence, present from N2 |
+| `prelude.c`, `prelude.h` | derived checked library functions; no new primitive rules, evaluator or name-resolution policy |
 | `image.c`, `image.h` | program roots and pointer relocation for `.a` |
 | `driver.c`, prototype-local build/test files | CLI, REPL, test runner |
 
@@ -1355,6 +1356,33 @@ a specified type family, not a global endpoint-only relation.
   ASan/UBSan: 9.648 s (synthesis rebuilt); synthesis passes at 512 KiB stack.
   Implementation `synthesis.c` +2/-0; tests `synthesis.c` +26/-0; docs separate.
   N2/N4 remain open; this does not implement effects or full block compatibility.
+- [x] September 8, after `99bf232`: extract the test-only Identity function
+  builders into `pg_identity_library(typing, classifiers, level)`. The six
+  closed exports are ordinary checked Lambda terms: equality, reflexivity,
+  right/left transport and right/left lifting. At value universe `U_i`, their
+  conceptual types include `Eq : (A:U_i) -> A -> A -> F U_i`,
+  `refl : (A:U_i) -> (x:A) -> F (Id A x x)`, and
+  `trr : (A B:U_i) -> Id U_i A B -> A -> F B`; lifting retains the selected
+  path. These compose existing primitive proofs and telescope abstraction,
+  without special source-name rules or an unchecked witness constructor.
+  The caller publishes exports with `pg_synthesis_name` and chooses names;
+  this does not fix an intrinsic namespace or introduce reserved syntax.
+  Retaining the library shares its proofs. Separate builds use fresh lexical
+  binders, remain alpha-equivalent and are not conversion-interned together.
+  Construction is synchronous finite library assembly, not source solving.
+  Tests now consume these exports, compare transport fields against independent
+  checked constructions, cover levels 0-2 and invalid graph/level inputs, and
+  execute a source transport using a universe-level reflexivity function.
+  `refl1 (@) A` requires parentheses: bare `@ A` parses as a graph companion,
+  which caused the first new fixture's failure, not a classifier defect.
+  Lower-level `refl (@) A` is correctly rejected. Existing higher reflexivity,
+  chosen-path separation and negative post-check fixtures remain enabled.
+  Optimized check: 7.851 s with affected binaries rebuilt, final added tests
+  3.097 s with synthesis rebuilt; ASan/UBSan: 17.748 s. All four computation
+  suites pass at 512 KiB stack. Implementation `prelude.c` +53, `prelude.h` +20,
+  Makefile +1/-1; tests `synthesis.c` +70/-24; documentation separate.
+  Public CLI/import installation, general Act syntax, Pi transport, arbitrary
+  higher coherence and N2 acceptance remain open. No Replay engine is added.
 - [x] September 8, after `fedba41`: share context-suffix abstraction between
   ADT branch functions and named checked functions (`pg_prove_abstract`). It
   composes the existing Pi/Lambda rules, retains every premise and binder,
