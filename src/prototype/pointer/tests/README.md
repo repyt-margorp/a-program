@@ -8,6 +8,9 @@ closure evaluation/readback, bounded resume, dimension-map laws, and lazy cube
 boundary binding. Equality in these tests is explicit: structural pointer
 equality is not WHNF conversion. A reduced result never replaces the original
 node's entry in the interning table.
+Substitution pairing reuses checked prefix images: extending a map containing
+a dependent Pi must not freshen its prefix binders again. The paired and direct
+full-map APIs intern the same proof; flat array copying is not eliminated.
 
 `identity.c` checks symbolic Identity formation, diagonal reflexivity, selected
 universe-family instantiation, iterated diagonal witnesses, CBPV polarity and

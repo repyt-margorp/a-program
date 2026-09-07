@@ -649,6 +649,25 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *function_context = pg_prove_context_extension(&typing, source, f, source_upi);
 	const struct pg_evidence *function_lift = pg_prove_substitution_lift(&typing, sigma, function_context, g);
 	assert(function_lift);
+	/* Extending an accepted map must not freshen Pi binders in its prefix. */
+	const struct pg_evidence *function_destination = pg_evidence_premise(function_lift, 1);
+	const struct pg_evidence *extended_universe = pg_prove_projection(&typing, function_context, universe);
+	const struct pg_evidence *last_context = pg_prove_context_extension(&typing,
+		function_context, pg_binder(graph), extended_universe);
+	const struct pg_evidence *last_image = pg_prove_variable(&typing, function_destination, b);
+	const struct pg_evidence *expected_last = pg_prove_reindex(&typing, function_lift, extended_universe);
+	assert(last_context && last_image && expected_last);
+	size_t prefix_terms = graph->terms.count, prefix_proofs = typing.proofs.count;
+	const struct pg_evidence *last_pair = pg_prove_substitution_pair(&typing, function_lift, last_context, last_image);
+	assert(last_pair);
+	assert(graph->terms.count == prefix_terms);
+	assert(typing.proofs.count == prefix_proofs + 1);
+	const struct pg_evidence *last_images[] = {
+		pg_evidence_premise(function_lift, 2), pg_evidence_premise(function_lift, 3),
+		pg_evidence_premise(function_lift, 4), last_image
+	};
+	assert(pg_prove_substitution(&typing, last_context, function_destination, 4, last_images) == last_pair);
+	assert(pg_evidence_premise(last_pair, 4) == pg_evidence_premise(function_lift, 4));
 	size_t term_count = graph->terms.count;
 	size_t proof_count = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {

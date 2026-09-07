@@ -1176,6 +1176,25 @@ a specified type family, not a global endpoint-only relation.
   at 512 KiB. Implementation +40/-1 (net +39); tests +74/-3; docs separate.
   N2/N3 remain open: complete nominal admission, recursive fields/IH and indexed
   transport/lifting still require their own rules and verification.
+- [x] September 8, after `40937eb`: reuse checked substitution prefixes in
+  pairing/lifting. Accepted prefix images retain their terms and classifiers
+  under projection; only the added declaration needs reindexing and an alpha
+  check. Use the existing reindex evidence (including the scheduler's result),
+  and intern the same ordinary substitution with the same flat image premises.
+  No second map representation, proof rule or unchecked acceptance is added.
+  The regression extends a map whose prefix contains a dependent thunked Pi.
+  With the final domain already reindexed, pairing adds exactly one proof and
+  zero Core terms; the direct full-map API returns that same proof. Compiling
+  this test against `40937eb` evidence.c fails the zero-new-terms assertion:
+  the old path unnecessarily freshens binders in the already checked prefix.
+  Existing rejection, lift, dependent image and scheduled conversion tests pass.
+  Flat premise/binding arrays still copy on extension, and projection/alpha
+  checks remain synchronous; this removes prefix type recomputation, not the
+  quadratic aggregate storage cost or all unbudgeted work. N2/N3 remain open.
+  Optimized pointer `make check`: 2.291 s (changed core test rebuilt);
+  ASan/UBSan: 16.801 s (affected binaries rebuilt); core/IADT/Identity/synthesis
+  pass at 512 KiB. These are verification durations, not a comparative speedup.
+  Implementation `evidence.c` +27/-8; tests `core.c` +19/-0; docs separate.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

@@ -945,7 +945,7 @@ done:
 }
 
 /* Pairing and lifting differ only in the destination and final image. Prefix
- * images are shared, or weakened into the extended destination for a lift. */
+ * images are already checked; projection preserves their terms/classifiers. */
 static const struct pg_evidence *substitution_pair(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
 	const struct pg_evidence *destination, const struct pg_evidence *image)
@@ -955,18 +955,37 @@ static const struct pg_evidence *substitution_pair(struct pg_typing *typing,
 	if (source_extension->rule != PG_CONTEXT_EXTEND) return NULL;
 	if (source_extension->context->parent != substitution->premises[0]->context) return NULL;
 	if (!context_proof(typing, destination)) return NULL;
+	if (!image || image->owner != typing) return NULL;
+	if (image->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (image->context != destination->context) return NULL;
 	size_t count = substitution->premise_count - 2;
-	if (count >= SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *) - 3) return NULL;
+	if (count >= SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
 	struct pg_graph temporary = {0};
-	const struct pg_evidence **images = pg_alloc(&temporary, (count + 1) * sizeof(*images));
+	const struct pg_evidence **premises = pg_alloc(&temporary, (count + 3) * sizeof(*premises));
+	struct pg_binding_value *bindings = pg_alloc(&temporary, (count + 1) * sizeof(*bindings));
 	const struct pg_evidence *result = NULL;
-	if (!images) goto done;
+	if (!premises || !bindings) goto done;
+	premises[0] = source_extension;
+	premises[1] = destination;
+	const struct pg_binding_value *prefix = (const struct pg_binding_value *)(
+		substitution->premises + substitution->premise_count);
 	for (size_t i = 0; i < count; ++i) {
-		images[i] = pg_prove_projection(typing, destination, substitution->premises[i + 2]);
-		if (!images[i]) goto done;
+		premises[i + 2] = pg_prove_projection(typing, destination, substitution->premises[i + 2]);
+		if (!premises[i + 2]) goto done;
+		bindings[i] = prefix[i];
 	}
-	images[count] = image;
-	result = pg_prove_substitution(typing, source_extension, destination, count + 1, images);
+	premises[count + 2] = image;
+	uint64_t hash;
+	result = find_record(typing, PG_CONTEXT_SUBSTITUTION, PG_JUDGEMENT_SUBSTITUTION,
+		destination->context, NULL, NULL, count + 3, premises, NULL, &hash);
+	if (result) goto done;
+	const struct pg_evidence *expected = pg_prove_reindex(typing, substitution, source_extension->premises[1]);
+	if (!expected) goto done;
+	if (pg_alpha_equal(expected->subject->core, image->classifier) != 1) goto done;
+	bindings[count] = (struct pg_binding_value){source_extension->context->binder, image->subject->core};
+	result = accept_record(typing, PG_CONTEXT_SUBSTITUTION, PG_JUDGEMENT_SUBSTITUTION,
+		destination->context, NULL, NULL, count + 3, premises, NULL, count + 1, bindings);
 done:
 	pg_graph_destroy(&temporary);
 	return result;
