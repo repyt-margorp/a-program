@@ -454,6 +454,43 @@ a specified type family, not a global endpoint-only relation.
   This is only the elementary Universe-indexed value boundary; arbitrary
   higher-family instantiation, dimensional typed Act, Pi/Lambda/APP action
   reduction and transport/lifting coherence remain unchecked above/below.
+- [x] One-binder dependent family Identity formation (after `dc30b00`): for
+  `Gamma,x:A |- C type`, two checked substitutions with a common ambient
+  prefix, and `p : Id A[sigma] x0 x1`, form
+  `(refl (lambda x. C[sigma])) x0 x1 p y0 y1` at checked endpoints in
+  `C[left]` and `C[right]`. `PG_FAMILY_IDENTITY_FORM` retains the original
+  formation, substitutions, p and endpoint proofs. Value/computation polarity
+  and the universe bound come from C. All operands remain ordinary Core;
+  family abstraction does not introduce a value-side Pi or return a universe.
+  This symbolic formation is an A Program rule being developed, not a theorem
+  that arbitrary relations are equalities. It supplies no inhabitant or
+  transport and does not yet reduce the action of its lambda body.
+- [x] Homogeneous dependent Pi Identity expands by the fixed pure reducer to
+  `Pi x0:A. Pi x1:A. Pi p:Id A x0 x1.
+  (refl (lambda x.C)) x0 x1 p (f0 x0) (f1 x1)`.
+  `pg_identity_pi_type` checks that result using ordinary context extension,
+  substitution pairing, reindex, family Identity and Pi formation. Conversion
+  checks the original Identity against the expanded type; ordinary APP then
+  accepts its three boundary arguments. There is no dedicated higher-APP rule.
+  Pi Core construction now takes a graph rather than an unnecessary universe
+  registry, so the reducer uses the same constructor without typed lookup.
+  Administrative endpoint lambdas preserve evaluator closures; they are not
+  accepted source functions binding raw computations as values.
+  Tests cover C(z)=z, C(z)=F z, C(z)=Id Universe t z, different selected p/q,
+  a mismatched ambient prefix, wrong endpoint polarity/scope, immutable reuse,
+  and a genuinely dependent Pi with C(z)=F(Id Universe z z). The latter converts
+  to its expanded type and accepts endpoint/center arguments with existing APP.
+  Pi WHNF does not execute its endpoints, including an untyped divergence
+  fixture; this is an evaluator test, not a termination proof for that fixture.
+  The rule follows the boundary shape described in
+  [Narya's function Id documentation](https://narya.readthedocs.io/en/latest/observational.html#id-of-function-types),
+  checked again during this change. CBPV polarity and the use of raw Pi here
+  are our adaptation. Lambda/APP action computation, heterogeneous Pi action,
+  multi-binder/higher coherence and transport remain unfinished; the broad Pi
+  milestone above must remain unchecked.
+  Verified with the complete pointer `make check` in optimized and ASan/UBSan
+  builds and `identity_test` with a 512 KiB stack. Parser inventory checks
+  still do not establish end-to-end semantic acceptance of legacy examples.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general
@@ -461,7 +498,7 @@ a specified type family, not a global endpoint-only relation.
   endpoint types coincide.
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
-  and the implemented homogeneous F/U Identity and RETURN/THUNK action rules;
+  and the implemented homogeneous F/U/Pi Identity and RETURN/THUNK action rules;
   its generic pair walker is not permission to certify an arbitrary callback's
   answers. Runtime handlers/oracles must not change this policy.
 
@@ -515,7 +552,9 @@ The following is our CBPV adaptation, not a Narya theorem or implemented rule:
   telescope; APP action must consume that same telescope, including the center.
   Checking only that corresponding subterms have some relation is insufficient.
 
-Code audit: `pointer/action.c` currently only constructs restriction substitutions.
+Initial code audit: `pointer/action.c` only constructed restriction substitutions.
+It now also builds the checked elementary Identity boundary and Pi expansion
+listed above; general higher-context action is still outstanding.
 `pointer/evidence.c` already supplies checked family instantiation by reindexing,
 and now the symbolic Identity rules below. Legacy
 `src/prototype/src/dimension/action.c` has boundary-applied family/classifier

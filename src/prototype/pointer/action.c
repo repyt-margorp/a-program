@@ -1,5 +1,22 @@
 #include "action.h"
 
+static const struct pg_evidence *projection_substitution(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_evidence *destination)
+{
+	size_t count = 0;
+	for (const struct pg_context *c = pg_evidence_context(source); c; c = c->parent) ++count;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
+	if (count && !images) { pg_graph_destroy(&temporary); return NULL; }
+	const struct pg_context *c = pg_evidence_context(source);
+	for (size_t i = count; i; --i, c = c->parent)
+		images[i - 1] = pg_prove_variable(typing, destination, c->binder);
+	const struct pg_evidence *result = pg_prove_substitution(typing, source, destination, count, images);
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *family, const struct pg_object *left,
@@ -21,6 +38,43 @@ const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
 	const struct pg_evidence *center_type = pg_prove_identity_instance(typing,
 		classifiers, family, x0, x1);
 	return pg_prove_context_extension(typing, context, center, center_type);
+}
+
+const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *pi, const struct pg_evidence *left,
+	const struct pg_evidence *right, const struct pg_object *x0,
+	const struct pg_object *x1, const struct pg_object *path)
+{
+	if (!pg_prove_identity_type(typing, pi, left, right)) return NULL;
+	const struct pg_evidence *domain = pg_prove_pi_domain(typing, pi);
+	const struct pg_evidence *value = pg_prove_type_value(typing, domain);
+	const struct pg_evidence *universe = pg_prove_classifier(typing, classifiers, context, value);
+	const struct pg_evidence *family = pg_prove_reflexivity(typing, universe, value);
+	const struct pg_evidence *boundary = pg_identity_context_extend(typing, classifiers,
+		context, family, x0, x1, path);
+	if (!boundary) return NULL;
+	const struct pg_term *a, *c;
+	const struct pg_object *binder;
+	if (!pg_pi_view(pg_evidence_subject(pi)->core, &a, &binder, &c)) return NULL;
+	const struct pg_evidence *source = pg_prove_context_extension(typing, context, binder, domain);
+	const struct pg_evidence *codomain = pg_prove_pi_codomain(typing,
+		pg_prove_projection(typing, source, pi), pg_prove_variable(typing, source, binder));
+	if (!codomain) return NULL;
+	const struct pg_evidence *l = pg_prove_variable(typing, boundary, x0);
+	const struct pg_evidence *r = pg_prove_variable(typing, boundary, x1);
+	const struct pg_evidence *p = pg_prove_variable(typing, boundary, path);
+	const struct pg_evidence *prefix = projection_substitution(typing, context, boundary);
+	const struct pg_evidence *ls = pg_prove_substitution_pair(typing, prefix, source, l);
+	const struct pg_evidence *rs = pg_prove_substitution_pair(typing, prefix, source, r);
+	const struct pg_evidence *body = pg_prove_family_identity_type(typing, codomain, ls, rs, p,
+		pg_prove_application(typing, pg_prove_projection(typing, boundary, left), l),
+		pg_prove_application(typing, pg_prove_projection(typing, boundary, right), r));
+	for (size_t i = 0; body && i < 3; ++i) {
+		body = pg_prove_pi(typing, classifiers, pg_evidence_premise(boundary, 1), boundary, body);
+		boundary = pg_evidence_premise(boundary, 0);
+	}
+	return body;
 }
 
 const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,

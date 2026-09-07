@@ -11,6 +11,14 @@ const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *family, const struct pg_object *left,
 	const struct pg_object *right, const struct pg_object *center);
+/* Form the expanded homogeneous Identity of a raw computation Pi through
+ * ordinary Pi formation over its dependent value boundary. Conversion from
+ * the symbolic Identity is a separate check using the fixed pure reducer. */
+const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *pi, const struct pg_evidence *left,
+	const struct pg_evidence *right, const struct pg_object *x0,
+	const struct pg_object *x1, const struct pg_object *path);
 
 /* Construct a checked context substitution along a strict face. The binding
  * array follows source declaration order; NULL entries preserve that binder.

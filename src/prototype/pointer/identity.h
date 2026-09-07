@@ -11,10 +11,15 @@ const struct pg_term *pg_identity_action(struct pg_graph *graph, const struct pg
 int pg_identity_action_view(const struct pg_term *term, const struct pg_term **source);
 const struct pg_term *pg_identity_instance(struct pg_graph *graph,
 	const struct pg_term *family, const struct pg_term *left, const struct pg_term *right);
+/* Apply a function/family action to a complete boundary triple. This only
+ * constructs Core; accepted typing must supply the chosen center witness. */
+const struct pg_term *pg_identity_apply(struct pg_graph *graph, const struct pg_term *function,
+	const struct pg_term *left, const struct pg_term *right, const struct pg_term *witness);
 /* Recognize homogeneous (refl A) x y, not an arbitrary family R x y. */
 int pg_identity_view(const struct pg_term *term, const struct pg_term **type,
 	const struct pg_term **left, const struct pg_term **right);
-/* Fixed pure action equations for RETURN/THUNK and canonical F/U endpoints.
+/* Fixed pure action equations for RETURN/THUNK, canonical F/U endpoints and
+ * homogeneous Pi Identity. Pi endpoints are retained without execution.
  * Unknown sources/families stay neutral. No classifier or proof lookup. */
 int pg_identity_dispatch(struct pg_eval *machine);
 

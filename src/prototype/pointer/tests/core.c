@@ -881,10 +881,10 @@ static void classifiers_test(struct pg_graph *graph)
 	const struct pg_term *vx = pg_reference(graph, x);
 	const struct pg_term *vy = pg_reference(graph, y);
 	assert(!pg_universe_level(vx, &level));
-	const struct pg_term *pi_x = pg_pi(&classifiers, u0, x, vx);
-	const struct pg_term *pi_y = pg_pi(&classifiers, u0, y, vy);
+	const struct pg_term *pi_x = pg_pi(graph, u0, x, vx);
+	const struct pg_term *pi_y = pg_pi(graph, u0, y, vy);
 	assert(pi_x && pi_y && pi_x != pi_y);
-	assert(pi_x == pg_pi(&classifiers, u0, x, vx));
+	assert(pi_x == pg_pi(graph, u0, x, vx));
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	assert(pg_pi_view(pi_x, &domain, &binder, &codomain));

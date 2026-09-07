@@ -56,10 +56,9 @@ int pg_universe_level(const struct pg_term *term, uint64_t *level)
 	return 1;
 }
 
-const struct pg_term *pg_pi(struct pg_classifiers *classifiers,
+const struct pg_term *pg_pi(struct pg_graph *graph,
 	const struct pg_term *domain, const struct pg_object *binder, const struct pg_term *codomain)
 {
-	struct pg_graph *graph = classifiers->graph;
 	const struct pg_term *family = pg_lambda(graph, binder, codomain);
 	if (!family) return NULL;
 	const struct pg_term *head = pg_application(graph, pg_reference(graph, &pi_former), domain);

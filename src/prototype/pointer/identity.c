@@ -16,6 +16,13 @@ const struct pg_term *pg_identity_instance(struct pg_graph *graph,
 	return pg_application(graph, pg_application(graph, family, left), right);
 }
 
+const struct pg_term *pg_identity_apply(struct pg_graph *graph, const struct pg_term *function,
+	const struct pg_term *left, const struct pg_term *right, const struct pg_term *witness)
+{
+	const struct pg_term *family = pg_identity_action(graph, function);
+	return pg_application(graph, pg_identity_instance(graph, family, left, right), witness);
+}
+
 int pg_identity_action_view(const struct pg_term *term, const struct pg_term **source)
 {
 	if (!term || term->kind != PG_APPLICATION) return 0;
@@ -79,6 +86,27 @@ static int left_endpoint(struct pg_eval *machine, const struct pg_term *left)
 	return pg_eval_demand(machine, 2, right_endpoint);
 }
 
+static int pi_action(struct pg_eval *machine, const struct pg_term *domain,
+	const struct pg_object *binder, const struct pg_term *codomain)
+{
+	if (!pg_eval_argument(machine, 2)) return 1;
+	struct pg_graph *graph = machine->output;
+	const struct pg_object *f0 = pg_binder(graph), *f1 = pg_binder(graph);
+	const struct pg_object *x0 = pg_binder(graph), *x1 = pg_binder(graph), *p = pg_binder(graph);
+	const struct pg_term *l = pg_reference(graph, x0), *r = pg_reference(graph, x1);
+	const struct pg_term *path = pg_reference(graph, p);
+	const struct pg_term *path_type = pg_identity_instance(graph, pg_identity_action(graph, domain), l, r);
+	const struct pg_term *family = pg_identity_apply(graph, pg_lambda(graph, binder, codomain), l, r, path);
+	const struct pg_term *result = pg_identity_instance(graph, family,
+		pg_application(graph, pg_reference(graph, f0), l),
+		pg_application(graph, pg_reference(graph, f1), r));
+	result = pg_pi(graph, domain, x0, pg_pi(graph, domain, x1, pg_pi(graph, path_type, p, result)));
+	/* Administrative Core lambdas retain endpoint closures without running them.
+	 * They are not extra value binders in an accepted CBPV context. */
+	result = pg_lambda(graph, f0, pg_lambda(graph, f1, result));
+	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
+}
+
 static int action_source(struct pg_eval *machine, const struct pg_term *source)
 {
 	const struct pg_term *argument = unary_argument(source, &pg_return_operation);
@@ -88,6 +116,9 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 		const struct pg_term *result = pg_application(machine->output, source->as.application.function, acted);
 		return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
 	}
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	if (pg_pi_view(source, &domain, &binder, &codomain)) return pi_action(machine, domain, binder, codomain);
 	const struct pg_term *content;
 	if (!endpoint_operation(source, &content)) return 1;
 	if (!pg_eval_argument(machine, 2)) return 1;

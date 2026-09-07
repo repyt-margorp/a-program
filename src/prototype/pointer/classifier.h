@@ -13,7 +13,7 @@ void pg_classifiers_destroy(struct pg_classifiers *classifiers);
 const struct pg_term *pg_universe(struct pg_classifiers *classifiers, uint64_t level);
 /* Structural views only; neither normalizes nor establishes well-formedness. */
 int pg_universe_level(const struct pg_term *term, uint64_t *level);
-const struct pg_term *pg_pi(struct pg_classifiers *classifiers,
+const struct pg_term *pg_pi(struct pg_graph *graph,
 	const struct pg_term *domain, const struct pg_object *binder, const struct pg_term *codomain);
 int pg_pi_view(const struct pg_term *term, const struct pg_term **domain,
 	const struct pg_object **binder, const struct pg_term **codomain);

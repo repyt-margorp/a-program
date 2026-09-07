@@ -12,7 +12,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_CONTEXT_SUBSTITUTION, PG_REINDEX, PG_THUNK_CONTENT, PG_PI_CODOMAIN, PG_PI_DOMAIN,
 	PG_RETURN_CONTENT, PG_PI_CONSTANT_CODOMAIN, PG_FOLD_ELIM,
 	PG_IDENTITY_FORM, PG_IDENTITY_INSTANCE, PG_REFLEXIVITY,
-	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE };
+	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -57,6 +57,14 @@ const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *family,
 	enum pg_evidence_rule side);
+/* C type in Gamma,x:A; left/right substitute into that context with the same
+ * prefix and different final images x0/x1. A checked p : Id A[sigma] x0 x1
+ * selects the acted family at endpoints inhabiting C[left]/C[right]. The
+ * result keeps C's polarity. Family abstraction is not a value-side Pi. */
+const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing,
+	const struct pg_evidence *family, const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, const struct pg_evidence *path,
+	const struct pg_evidence *left, const struct pg_evidence *right);
 /* Symbolic diagonal action; no endpoint conversion is registered globally. */
 const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
 	const struct pg_evidence *type, const struct pg_evidence *term);
