@@ -28,8 +28,12 @@ enum pg_term_kind { PG_LAMBDA, PG_APPLICATION, PG_REFERENCE };
 enum pg_object_kind { PG_BINDER, PG_SEMANTIC_OBJECT };
 
 /* Semantic owners embed this header; Core does not inspect their payloads. */
+struct pg_object_class {
+	const char *name;
+};
 struct pg_object {
 	enum pg_object_kind kind;
+	const struct pg_object_class *owner;
 };
 
 struct pg_term {

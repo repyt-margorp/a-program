@@ -162,7 +162,7 @@ const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 	}
 	struct pg_binding_entry *entry = pg_alloc(dimensions->graph, sizeof(*entry));
 	if (!entry) return NULL;
-	entry->binding = (struct pg_binding_face){{PG_BINDER}, cube, face};
+	entry->binding = (struct pg_binding_face){{.kind = PG_BINDER}, cube, face};
 	if (pg_index_insert(&dimensions->binding_faces, &entry->index, hash) != 0) return NULL;
 	return &entry->binding;
 }

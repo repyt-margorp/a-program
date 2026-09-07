@@ -3,6 +3,7 @@
 #include "eval.h"
 #include "typing.h"
 #include "conversion.h"
+#include "classifier.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -124,6 +125,53 @@ static void context_test(struct pg_graph *graph)
 	assert(lambda_a == pg_occurrence(&typing, NULL, identity, NULL, 1, &body_a));
 	pg_typing_destroy(&typing);
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
+}
+
+static void classifiers_test(struct pg_graph *graph)
+{
+	struct pg_classifiers classifiers;
+	assert(pg_classifiers_init(&classifiers, graph) == 0);
+	const struct pg_term *u0 = pg_universe(&classifiers, 0);
+	const struct pg_term *u1 = pg_universe(&classifiers, 1);
+	assert(u0 && u1 && u0 != u1);
+	assert(u0 == pg_universe(&classifiers, 0));
+	uint64_t level;
+	assert(pg_universe_level(u0, &level) && level == 0);
+	assert(pg_universe_level(u1, &level) && level == 1);
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_object *y = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x);
+	const struct pg_term *vy = pg_reference(graph, y);
+	assert(!pg_universe_level(vx, &level));
+	const struct pg_term *pi_x = pg_pi(&classifiers, u0, x, vx);
+	const struct pg_term *pi_y = pg_pi(&classifiers, u0, y, vy);
+	assert(pi_x && pi_y && pi_x != pi_y);
+	assert(pi_x == pg_pi(&classifiers, u0, x, vx));
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	assert(pg_pi_view(pi_x, &domain, &binder, &codomain));
+	assert(domain == u0 && binder == x && codomain == vx);
+	struct pg_binding_value argument = {binder, u1};
+	assert(pg_term_substitute(graph, codomain, 1, &argument) == u1);
+	assert(!pg_pi_view(u0, &domain, &binder, &codomain));
+	assert(!pg_pi_view(pg_application(graph, pi_x, u0), &domain, &binder, &codomain));
+	struct pg_beta_work work;
+	struct pg_conversion conversion;
+	assert(pg_beta_work_init(&work, graph) == 0);
+	assert(pg_conversion_init(&conversion, &work, pi_x, pi_y) == 0);
+	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&conversion);
+	assert(pg_conversion_init(&conversion, &work, u0, u1) == 0);
+	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_DIFFERENT);
+	pg_conversion_destroy(&conversion);
+	pg_beta_work_destroy(&work);
+	for (uint64_t i = 2; i < 1000; ++i) assert(pg_universe(&classifiers, i));
+	assert(pg_universe_level(pg_universe(&classifiers, UINT64_MAX), &level));
+	assert(level == UINT64_MAX);
+	assert(u0 == pg_universe(&classifiers, 0));
+	pg_classifiers_destroy(&classifiers);
+	assert(pg_universe_level(u0, &level) && level == 0);
+	puts("classifiers: distinct universe levels and Pi spines reuse Core without typed Lambda tags");
 }
 
 static void restriction_test(struct pg_graph *graph)
@@ -501,6 +549,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	graph_test(&graph);
 	context_test(&graph);
+	classifiers_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);
 	beta_work_test(&graph);

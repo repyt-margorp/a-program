@@ -328,6 +328,23 @@ their integer stores or the previous multi-stage publication machinery blindly.
 
 ## 6. One Typed Work Graph
 
+`pointer/classifier.c` introduces structural classifier constructors/views,
+not a checker. Universe objects retain distinct concrete `uint64_t` levels,
+interned within one classifier owner. Pi is
+`APP(APP(pi-former, domain), LAMBDA(binder, codomain))`, reusing ordinary Core
+nodes and simultaneous substitution. Semantic object headers carry an owner
+descriptor pointer; its name is diagnostic, not semantic identity. Core
+interning/evaluation do not inspect that descriptor to select a type view.
+These in-process descriptors will need explicit image relocation identities.
+
+- [x] Test universe level distinction and index growth; Pi exact-pointer reuse,
+  separate alpha/beta comparison, and codomain substitution. Sanitizers pass.
+- [ ] Add checked universe/Pi formation and source elaboration. The structural
+  constructors do not establish value/computation sorts, universe constraints
+  or domain/codomain well-formedness. Concrete levels do not replace the planned
+  level metavariables/constraints; `UINT64_MAX` has no representable successor
+  and must not silently wrap when formation is implemented.
+
 Contexts are persistent extensions containing binder pointers and classifiers;
 extending a context shares its prefix. Typed occurrences preserve scope and
 source evidence even when Core is shared. Context substitution is a mapping of
