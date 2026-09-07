@@ -39,6 +39,9 @@ void pg_dimensions_destroy(struct pg_dimensions *dimensions);
 const struct pg_dimension_map *pg_dimension_map(struct pg_dimensions *dimensions,
 	size_t source, size_t target, const struct pg_coordinate *coordinates);
 const struct pg_dimension_map *pg_dimension_identity(struct pg_dimensions *dimensions, size_t dimension);
+/* Validate/intern a map and require every source axis: no degeneracy. */
+const struct pg_dimension_map *pg_dimension_face(struct pg_dimensions *dimensions,
+	const struct pg_dimension_map *map);
 /* outer : m -> n, inner : l -> m; result : l -> n. */
 const struct pg_dimension_map *pg_dimension_compose(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *outer, const struct pg_dimension_map *inner);

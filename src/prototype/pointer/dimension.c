@@ -84,7 +84,7 @@ const struct pg_dimension_map *pg_dimension_map(struct pg_dimensions *dimensions
 	size_t source, size_t target, const struct pg_coordinate *coordinates)
 {
 	if (target > SIZE_MAX / sizeof(*coordinates)) return NULL;
-	if (validate(source, target, coordinates) != 0) return NULL;
+	if (target && !coordinates) return NULL;
 	uint64_t hash = mix(mix(UINT64_C(14695981039346656037), source), target);
 	for (size_t i = 0; i < target; ++i) {
 		hash = mix(mix(hash, coordinates[i].kind), coordinates[i].axis);
@@ -94,6 +94,7 @@ const struct pg_dimension_map *pg_dimension_map(struct pg_dimensions *dimensions
 		const struct pg_map_entry *entry = (const struct pg_map_entry *)candidate;
 		if (map_equal(&entry->map, source, target, coordinates)) return &entry->map;
 	}
+	if (validate(source, target, coordinates) != 0) return NULL;
 	struct pg_map_entry *entry = pg_alloc(dimensions->graph, sizeof(*entry));
 	if (!entry) return NULL;
 	struct pg_coordinate *copy = pg_alloc(dimensions->graph, target * sizeof(*copy));
@@ -120,6 +121,9 @@ const struct pg_dimension_map *pg_dimension_compose(struct pg_dimensions *dimens
 {
 	if (!outer || !inner) return NULL;
 	if (outer->source != inner->target) return NULL;
+	outer = pg_dimension_map(dimensions, outer->source, outer->target, outer->coordinates);
+	inner = pg_dimension_map(dimensions, inner->source, inner->target, inner->coordinates);
+	if (!outer || !inner) return NULL;
 	struct pg_coordinate *coordinates = calloc(outer->target ? outer->target : 1, sizeof(*coordinates));
 	if (!coordinates) return NULL;
 	for (size_t i = 0; i < outer->target; ++i) {
@@ -138,13 +142,17 @@ const struct pg_binding_cube *pg_binding_cube(struct pg_dimensions *dimensions, 
 	return cube;
 }
 
-static int is_face(const struct pg_dimension_map *face)
+const struct pg_dimension_map *pg_dimension_face(struct pg_dimensions *dimensions,
+	const struct pg_dimension_map *face)
 {
+	if (!face) return NULL;
+	face = pg_dimension_map(dimensions, face->source, face->target, face->coordinates);
+	if (!face) return NULL;
 	size_t used_axes = 0;
 	for (size_t i = 0; i < face->target; ++i) {
 		if (face->coordinates[i].kind == PG_AXIS) used_axes++;
 	}
-	return used_axes == face->source;
+	return used_axes == face->source ? face : NULL;
 }
 
 const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
@@ -152,7 +160,8 @@ const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 {
 	if (!cube || !face) return NULL;
 	if (cube->dimension != face->target) return NULL;
-	if (!is_face(face)) return NULL;
+	face = pg_dimension_face(dimensions, face);
+	if (!face) return NULL;
 	uint64_t hash = mix(mix(UINT64_C(14695981039346656037), (uintptr_t)cube), (uintptr_t)face);
 	for (struct pg_index_entry *candidate = pg_index_candidates(&dimensions->binding_faces, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
@@ -180,7 +189,8 @@ const struct pg_term *pg_term_restrict_bindings(struct pg_dimensions *dimensions
 	size_t count, const struct pg_binding_face *const *bindings)
 {
 	if (!term || !face) return NULL;
-	if (!is_face(face)) return NULL;
+	face = pg_dimension_face(dimensions, face);
+	if (!face) return NULL;
 	if (count && !bindings) return NULL;
 	if (count > SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
 	struct pg_binding_value *values = calloc(count ? count : 1, sizeof(*values));

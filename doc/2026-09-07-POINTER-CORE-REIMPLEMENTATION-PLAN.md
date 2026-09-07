@@ -352,6 +352,15 @@ binders. No normalization or alpha interning is used to merge them.
 - [x] Term-level fixture checks for identity restriction, a square-to-corner
   composite, beta/restriction commutation and protection of bound variables.
   Ordinary and ASan/UBSan checks pass; these are examples, not a general proof.
+- [x] All strict-face entry points now use one validated, interned map path.
+  Previously the untyped binding/Term path only counted axes, while the typed
+  context path checked coordinate validity. Repeated axes could therefore pass
+  the former's face test, and a copied identity map could create a distinct
+  boundary binding. Tests require copied maps to reuse the canonical face and
+  reject duplicate axes in binding, Term, context and composition entry points.
+  Composition validates its maps before substituting coordinates. Existing
+  structurally equal maps are retrieved before allocating validation scratch
+  space; coordinate interning does not identify terms by reduction or alpha.
 - [x] `action.c` builds a checked restriction substitution for an explicitly
   supplied typed boundary telescope. Starting from the empty context, it lifts
   the same substitution through each source declaration using the corresponding

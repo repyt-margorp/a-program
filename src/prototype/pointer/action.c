@@ -6,12 +6,8 @@ const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,
 	const struct pg_binding_face *const *bindings)
 {
 	if (dimensions->graph != typing->graph || !source || !face) return NULL;
-	face = pg_dimension_map(dimensions, face->source, face->target, face->coordinates);
+	face = pg_dimension_face(dimensions, face);
 	if (!face) return NULL;
-	size_t axes = 0;
-	for (size_t i = 0; i < face->target; ++i)
-		if (face->coordinates[i].kind == PG_AXIS) ++axes;
-	if (axes != face->source) return NULL;
 	if (pg_evidence_judgement(source) != PG_JUDGEMENT_CONTEXT) return NULL;
 	if (count && !bindings) return NULL;
 	size_t arity = 0;

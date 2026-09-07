@@ -581,6 +581,9 @@ static void typed_restriction_test(struct pg_graph *graph)
 	const struct pg_dimension_map *degeneracy = pg_dimension_map(&dimensions, 1, 0, NULL);
 	assert(degeneracy && !pg_context_restrict(&typing, &dimensions, empty, degeneracy, 0, NULL));
 	assert(pg_context_restrict(&typing, &dimensions, empty, vertex, 0, NULL));
+	const struct pg_coordinate duplicated_axes[] = {{PG_AXIS, 0}, {PG_AXIS, 0}};
+	const struct pg_dimension_map invalid_face = {2, 2, duplicated_axes};
+	assert(!pg_context_restrict(&typing, &dimensions, source, &invalid_face, 2, bindings));
 	pg_dimensions_destroy(&dimensions);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
@@ -771,6 +774,16 @@ static void restriction_test(struct pg_graph *graph)
 	const struct pg_coordinate projection_coordinates[] = {{PG_AXIS, 0}};
 	const struct pg_dimension_map *projection = pg_dimension_map(&dimensions, 2, 1, projection_coordinates);
 	assert(!pg_term_restrict_bindings(&dimensions, variable, projection, 0, NULL));
+	struct pg_dimension_map copied_identity = *identity;
+	assert(pg_dimension_face(&dimensions, &copied_identity) == identity);
+	assert(pg_binding_face(&dimensions, center->cube, &copied_identity) == center);
+	assert(pg_term_restrict_bindings(&dimensions, variable, &copied_identity, 1, &center) == variable);
+	const struct pg_coordinate repeated_axes[] = {{PG_AXIS, 0}, {PG_AXIS, 0}};
+	const struct pg_dimension_map not_a_face = {2, 2, repeated_axes};
+	assert(!pg_dimension_face(&dimensions, &not_a_face));
+	assert(!pg_binding_face(&dimensions, center->cube, &not_a_face));
+	assert(!pg_term_restrict_bindings(&dimensions, variable, &not_a_face, 0, NULL));
+	assert(!pg_dimension_compose(&dimensions, &not_a_face, identity));
 	pg_dimensions_destroy(&dimensions);
 	puts("restriction: term faces compose and commute with beta without capturing bound variables");
 }
