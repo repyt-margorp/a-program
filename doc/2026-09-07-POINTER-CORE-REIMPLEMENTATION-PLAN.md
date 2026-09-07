@@ -397,9 +397,9 @@ sharing and kernel conversion do not imply equality reflection.
 
 #### Next HOTT milestone: polarized family formation, not more evaluator prerequisites
 
-Re-audit after `a7c268f`: the fresh kernel still has no acted-family formation
-rule. The preceding fuel work does not implement Identity. Do not postpone all
-HOTT work until every existing synchronous helper has been converted.
+Re-audit at `a7c268f` found no acted-family formation rule. The symbolic rules
+below now begin that implementation; type-former computation and transport are
+still missing. The preceding fuel work alone did not implement Identity.
 
 The next implementation must define the following together. These equations
 are an A Program design proposal to validate, not established CBPV-HOTT theorems
@@ -495,11 +495,47 @@ The following is our CBPV adaptation, not a Narya theorem or implemented rule:
 
 Code audit: `pointer/action.c` currently only constructs restriction substitutions.
 `pointer/evidence.c` already supplies checked family instantiation by reindexing,
-but no rule constructs a higher family. Legacy
+and now the symbolic Identity rules below. Legacy
 `src/prototype/src/dimension/action.c` has boundary-applied family/classifier
 builders; they return Term IDs rather than the fresh kernel's accepted formation
 evidence. Reuse their equations only after verifying the premises, not their
 successful return codes as new-kernel certificates.
+
+#### Symbolic Identity formation and selected instantiation
+
+- [x] One immutable `identity-action` reference represents `refl t`; applying
+  `refl A` to two endpoints represents homogeneous `Id A x y`. Iteration uses
+  that same Core reference, not dimension-specific tags. All source/endpoint
+  terms remain ordinary APP operands, visible to substitution and comparison.
+- [x] `PG_IDENTITY_FORM` checks an accepted base formation and both endpoint
+  derivations in its context. Its output keeps the base polarity and universe
+  bound. `PG_REFLEXIVITY` supplies only the diagonal witness with that formation
+  as a premise; it cannot choose unrelated endpoints or register DefEq unions.
+- [x] `PG_IDENTITY_INSTANCE` checks `R : Id Universe_i A B`, `x : A`, `y : B`
+  and forms `R x y : Universe_i`. It keeps R explicitly, rather than replacing
+  it with the endpoint pair. Ordinary functions and arbitrary relations are
+  not accepted as R. This is not raw Pi application or a new value-side Pi.
+- [x] Tests cover distinct choices R/S with identical endpoints, wrong endpoint
+  types/scopes, universe bounds, three iterated symbolic diagonal witnesses,
+  computation versus value polarity, ordinary reindex, and shared erased
+  functions whose differently typed actions retain different classifiers.
+- [ ] Compute action on F/U, Pi, Lambda and APP; connect this to the fixed pure
+  conversion policy. Currently the new action reference is neutral even on
+  canonical inputs. Do not describe that as completed observational Identity.
+- [ ] Generalize selected instantiation to acted boundary telescopes: the
+  present instance rule handles a value-universe identification, not arbitrary
+  higher-dimensional families. Connect the existing dimension-map operators.
+- [ ] Implement transport, lifting, their computations and higher compatibility.
+  No arbitrary relation-to-universe-Identity constructor has been added.
+
+The value rules follow Narya's
+[Identity of the universe and selected instantiation](https://narya.readthedocs.io/en/latest/observational.html#id-of-the-universe).
+Keeping a computation base's Identity/reflexivity on the computation side is
+our CBPV extension, not a theorem supplied by that document. At this checkpoint
+the rules are symbolic and have no operational action equations. They do not
+establish termination, contextual equivalence, general higher coherence, or
+the HOTT transport/lifting structure described in the
+[HOTT documentation](https://narya.readthedocs.io/en/latest/hott.html).
 
 - [x] Checked telescope pairing is shared with substitution lifting:
   `pg_prove_substitution_pair(sigma, Gamma.x, a)` constructs `(sigma,a)` using

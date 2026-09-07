@@ -1,6 +1,7 @@
 #include "evidence.h"
 #include "computation.h"
 #include "eval.h"
+#include "identity.h"
 #include <stdlib.h>
 
 struct pg_evidence {
@@ -208,6 +209,81 @@ const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *value_type)
 {
 	return unary_formation(typing, classifiers, value_type, PG_RETURN_TYPE_FORM);
+}
+
+static int endpoint(const struct pg_typing *typing, const struct pg_evidence *term,
+	enum pg_evidence_judgement judgement, const struct pg_context *context,
+	const struct pg_term *type)
+{
+	if (!term || term->owner != typing) return 0;
+	if (term->judgement != judgement) return 0;
+	if (term->context != context) return 0;
+	return pg_alpha_equal(term->classifier, type) == 1;
+}
+
+const struct pg_evidence *pg_prove_identity_type(struct pg_typing *typing,
+	const struct pg_evidence *type, const struct pg_evidence *left,
+	const struct pg_evidence *right)
+{
+	if (!type || type->owner != typing) return NULL;
+	enum pg_evidence_judgement elements;
+	switch (type->judgement) {
+	case PG_JUDGEMENT_VALUE_TYPE: elements = PG_JUDGEMENT_VALUE; break;
+	case PG_JUDGEMENT_COMPUTATION_TYPE: elements = PG_JUDGEMENT_COMPUTATION; break;
+	default: return NULL;
+	}
+	if (!endpoint(typing, left, elements, type->context, type->subject->core)) return NULL;
+	if (!endpoint(typing, right, elements, type->context, type->subject->core)) return NULL;
+	const struct pg_term *family = pg_identity_action(typing->graph, type->subject->core);
+	const struct pg_term *core = pg_identity_instance(typing->graph, family,
+		left->subject->core, right->subject->core);
+	if (!core) return NULL;
+	const struct pg_occurrence *operands[] = {type->subject, left->subject, right->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, type->context, core, NULL, 3, operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {type, left, right};
+	return accept(typing, PG_IDENTITY_FORM, type->judgement, type->context,
+		subject, type->classifier, 3, premises);
+}
+
+const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *left, const struct pg_evidence *right)
+{
+	if (classifiers->graph != typing->graph) return NULL;
+	if (!family || family->owner != typing) return NULL;
+	if (family->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	const struct pg_term *universe, *left_type, *right_type;
+	if (!pg_identity_view(family->classifier, &universe, &left_type, &right_type)) return NULL;
+	uint64_t level;
+	if (!pg_universe_level(universe, &level)) return NULL;
+	if (!endpoint(typing, left, PG_JUDGEMENT_VALUE, family->context, left_type)) return NULL;
+	if (!endpoint(typing, right, PG_JUDGEMENT_VALUE, family->context, right_type)) return NULL;
+	const struct pg_term *core = pg_identity_instance(typing->graph, family->subject->core,
+		left->subject->core, right->subject->core);
+	if (!core) return NULL;
+	const struct pg_term *sort = pg_universe(classifiers, level);
+	if (!sort) return NULL;
+	const struct pg_occurrence *operands[] = {family->subject, left->subject, right->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, family->context, core, NULL, 3, operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {family, left, right};
+	return accept(typing, PG_IDENTITY_INSTANCE, PG_JUDGEMENT_VALUE_TYPE, family->context,
+		subject, sort, 3, premises);
+}
+
+const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
+	const struct pg_evidence *type, const struct pg_evidence *term)
+{
+	const struct pg_evidence *identity = pg_prove_identity_type(typing, type, term, term);
+	if (!identity) return NULL;
+	const struct pg_term *core = pg_identity_action(typing->graph, term->subject->core);
+	if (!core) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, term->context, core, NULL, 1, &term->subject);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {identity, term};
+	return accept(typing, PG_REFLEXIVITY, term->judgement, term->context,
+		subject, identity->subject->core, 2, premises);
 }
 
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
@@ -1055,6 +1131,9 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	while (term->rule == PG_CONTEXT_PROJECTION) term = term->premises[1];
 	const struct pg_evidence *formation = NULL;
 	switch (term->rule) {
+	case PG_REFLEXIVITY:
+		formation = term->premises[0];
+		break;
 	case PG_VARIABLE: {
 		const struct pg_evidence *declaration = term->premises[0];
 		const struct pg_object *binder = term->subject->core->as.reference;

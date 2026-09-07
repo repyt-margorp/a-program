@@ -10,7 +10,8 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_RETURN_INTRO, PG_THUNK_INTRO, PG_FORCE_ELIM, PG_LAMBDA_INTRO, PG_APP_ELIM,
 	PG_VALUE_FROM_TYPE, PG_TYPE_CONVERSION, PG_CONTEXT_PROJECTION,
 	PG_CONTEXT_SUBSTITUTION, PG_REINDEX, PG_THUNK_CONTENT, PG_PI_CODOMAIN, PG_PI_DOMAIN,
-	PG_RETURN_CONTENT, PG_PI_CONSTANT_CODOMAIN, PG_FOLD_ELIM };
+	PG_RETURN_CONTENT, PG_PI_CONSTANT_CODOMAIN, PG_FOLD_ELIM,
+	PG_IDENTITY_FORM, PG_IDENTITY_INSTANCE, PG_REFLEXIVITY };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -39,6 +40,20 @@ const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *domain, const struct pg_evidence *extended_context,
 	const struct pg_evidence *codomain);
+/* Homogeneous Identity formation has the base formation's polarity. It does
+ * not prove the endpoints equal or execute computational endpoints. */
+const struct pg_evidence *pg_prove_identity_type(struct pg_typing *typing,
+	const struct pg_evidence *type, const struct pg_evidence *left,
+	const struct pg_evidence *right);
+/* R : Id Universe_i A B, x : A, y : B yield R x y : Universe_i.
+ * This is family instantiation, not Pi elimination. R is retained explicitly;
+ * an arbitrary function/relation is not a universe Identity witness. */
+const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *left, const struct pg_evidence *right);
+/* Symbolic diagonal action; no endpoint conversion is registered globally. */
+const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
+	const struct pg_evidence *type, const struct pg_evidence *term);
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
