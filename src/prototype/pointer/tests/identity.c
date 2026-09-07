@@ -46,7 +46,9 @@ static const struct pg_evidence *action_result(struct pg_typing *typing,
 	const struct pg_evidence *reduced = pg_prove_normalization(typing, action, pg_whnf_certificate(job));
 	assert(reduced);
 	const struct pg_evidence *formation = pg_prove_classifier(typing, classifiers, context, action);
-	assert(formation && pg_evidence_subject(formation)->core == pg_evidence_classifier(action));
+	/* Independent substitution may freshen binders; formation is up to alpha,
+	 * not an instruction to alpha-intern the two Core graphs. */
+	assert(formation && pg_alpha_equal(pg_evidence_subject(formation)->core, pg_evidence_classifier(action)) == 1);
 	const struct pg_evidence *target = pg_prove_classifier(typing, classifiers, context, expected);
 	assert(target);
 	struct pg_conversion comparison;
@@ -57,6 +59,86 @@ static const struct pg_evidence *action_result(struct pg_typing *typing,
 	pg_conversion_destroy(&comparison);
 	converts(work, pg_evidence_subject(converted)->core, pg_evidence_subject(expected)->core);
 	return converted;
+}
+
+static void heterogeneous_pi(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_dimensions dimensions;
+	struct pg_whnf_work work;
+	assert(pg_dimensions_init(&dimensions, graph) == 0);
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *type_name = pg_binder(graph), *argument = pg_binder(graph);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, type_name,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_evidence *domain = pg_prove_value_type(typing, pg_prove_variable(typing, source, type_name));
+	const struct pg_evidence *body_context = pg_prove_context_extension(typing, source, argument, domain);
+	const struct pg_evidence *variable = pg_prove_variable(typing, body_context, argument);
+	const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, 1);
+	const struct pg_binding_face *center = pg_binding_face(&dimensions, cube, pg_dimension_identity(&dimensions, 1));
+	const struct pg_evidence *ls, *rs, *path;
+	const struct pg_evidence *context = pg_identity_context(typing, &dimensions, source, 1, &center, &ls, &rs, &path);
+	assert(context);
+	for (size_t dependent = 0; dependent < 2; ++dependent) {
+		const struct pg_evidence *value = variable;
+		if (dependent) value = pg_prove_reflexivity(typing,
+			pg_prove_projection(typing, body_context, domain), variable);
+		const struct pg_evidence *body = pg_prove_return(typing, classifiers, value);
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, body_context,
+			pg_prove_classifier(typing, classifiers, body_context, body));
+		const struct pg_evidence *function = pg_prove_lambda(typing, pi, body);
+		const struct pg_evidence *left = pg_prove_reindex(typing, ls, function);
+		const struct pg_evidence *right = pg_prove_reindex(typing, rs, function);
+		const struct pg_object *args[] = {pg_binder(graph), pg_binder(graph), pg_binder(graph)};
+		const struct pg_evidence *expanded = pg_identity_family_pi_type(typing, classifiers,
+			pi, ls, rs, 1, &path, left, right, args[0], args[1], args[2]);
+		const struct pg_evidence *action = pg_prove_family_action(typing, pi, function, ls, rs, 1, &path);
+		assert(expanded && action);
+		struct pg_conversion conversion;
+		assert(pg_conversion_init(&conversion, &work, pg_evidence_classifier(action), pg_evidence_subject(expanded)->core) == 0);
+		assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_EQUAL);
+		const struct pg_evidence *call = pg_prove_conversion(typing, action, expanded, pg_conversion_certificate(&conversion));
+		pg_conversion_destroy(&conversion);
+		const struct pg_evidence *boundary = NULL, *tail = expanded;
+		for (size_t i = 0; i < 3; ++i) {
+			boundary = pg_evidence_premise(tail, 1);
+			tail = pg_evidence_premise(tail, 2);
+		}
+		call = pg_prove_projection(typing, boundary, call);
+		for (size_t i = 0; i < 3; ++i)
+			call = pg_prove_application(typing, call, pg_prove_variable(typing, boundary, args[i]));
+		assert(call && pg_prove_classifier(typing, classifiers, boundary, call));
+		if (!dependent) action_result(typing, classifiers, boundary, &work, call,
+			pg_prove_return(typing, classifiers, pg_prove_variable(typing, boundary, args[2])));
+		/* A path is oriented and belongs to its checked boundary, not just its endpoints' shapes. */
+		assert(!pg_identity_family_pi_type(typing, classifiers, pi, rs, ls,
+			1, &path, right, left, args[0], args[1], args[2]));
+		assert(!pg_identity_family_pi_type(typing, classifiers, pi, ls, rs,
+			0, NULL, left, right, args[0], args[1], args[2]));
+		assert(!pg_identity_family_pi_type(typing, classifiers, pi, ls, rs,
+			1, &path, left, right, args[0], args[0], args[2]));
+		const struct pg_object *q = pg_binder(graph);
+		const struct pg_evidence *choices = pg_prove_context_extension(typing, context, q,
+			pg_prove_classifier(typing, classifiers, context, path));
+		const struct pg_evidence *l = pg_prove_projection(typing, choices, pg_evidence_premise(ls, 2));
+		const struct pg_evidence *r = pg_prove_projection(typing, choices, pg_evidence_premise(rs, 2));
+		const struct pg_evidence *lsub = pg_prove_substitution(typing, source, choices, 1, &l);
+		const struct pg_evidence *rsub = pg_prove_substitution(typing, source, choices, 1, &r);
+		const struct pg_evidence *selected[] = {pg_prove_projection(typing, choices, path),
+			pg_prove_variable(typing, choices, q)};
+		const struct pg_evidence *results[2];
+		for (size_t i = 0; i < 2; ++i) results[i] = pg_identity_family_pi_type(typing, classifiers,
+			pi, lsub, rsub, 1, &selected[i], pg_prove_projection(typing, choices, left),
+			pg_prove_projection(typing, choices, right), args[0], args[1], args[2]);
+		assert(results[0] && results[1]);
+		assert(pg_conversion_init(&conversion, &work, pg_evidence_subject(results[0])->core,
+			pg_evidence_subject(results[1])->core) == 0);
+		assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_DIFFERENT);
+		pg_conversion_destroy(&conversion);
+	}
+	pg_whnf_work_destroy(&work);
+	pg_dimensions_destroy(&dimensions);
 }
 
 static void transport_fields(struct pg_typing *typing, struct pg_classifiers *classifiers,
@@ -1026,6 +1108,7 @@ int main(void)
 	lambda_actions(&classifiers);
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
 	dependent_pi_action(&typing, &classifiers);
+	heterogeneous_pi(&typing, &classifiers);
 	const struct pg_evidence *u0 = pg_prove_universe(&typing, &classifiers, empty, 0);
 	const struct pg_object *a = pg_binder(&graph), *b = pg_binder(&graph);
 	const struct pg_object *p = pg_binder(&graph), *q = pg_binder(&graph);

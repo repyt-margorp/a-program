@@ -19,6 +19,16 @@ const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *left,
 	const struct pg_evidence *right, const struct pg_object *x0,
 	const struct pg_object *x1, const struct pg_object *path);
+/* The same expansion for a Pi family in Gamma,Delta along checked boundary
+ * substitutions and the selected paths for Delta. Endpoints inhabit the two
+ * substituted Pi types; the generated argument path retains that same family.
+ * This composes existing formation rules, not a new Identity axiom. */
+const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *pi,
+	const struct pg_evidence *left_substitution, const struct pg_evidence *right_substitution,
+	size_t count, const struct pg_evidence *const *paths,
+	const struct pg_evidence *left, const struct pg_evidence *right,
+	const struct pg_object *x0, const struct pg_object *x1, const struct pg_object *path);
 /* Id_(U C) v0 v1 expands to U(Id_C (FORCE v0) (FORCE v1)).
  * FORCE forms observations; this function does not execute endpoints. */
 const struct pg_evidence *pg_identity_thunk_type(struct pg_typing *typing,

@@ -872,6 +872,45 @@ a specified type family, not a global endpoint-only relation.
   Sizes excluding docs: `identity.c` +25/-22, `computation.c` +8/-0
   (implementation net +11); `tests/identity.c` +19/-2,
   `tests/synthesis.c` +30/-0 (tests net +47).
+- [x] September 8, after `2d941a3`: checked heterogeneous Pi expansion.
+  `pg_identity_family_pi_type` constructs the argument boundary and expanded
+  computation Pi for a source family under selected telescope paths, not only
+  a homogeneous Pi. For `C = Pi(x:A).D`, substitutions `s0/s1` and paths `ps`,
+  its shape is:
+
+  ```text
+  Pi(x0 : A[s0]). Pi(x1 : A[s1]). Pi(p : Act(ps,A) x0 x1).
+      Act(ps,p,D) (f0 x0) (f1 x1)
+  ```
+
+  Formation uses the existing Context extension, composition/pairing of
+  substitutions, family Identity and Pi rules. The old homogeneous helper
+  now delegates to this operation with an empty varying telescope. No new
+  proof rule, Core tag, value-side Pi or conversion equation is required.
+  Conversion from symbolic Identity remains a separate checked operation.
+  Tests use a non-reflexive universe path between distinct type variables,
+  both ordinary identity functions and an argument-dependent result
+  `F(Id X x x)`. They check expanded classifiers against the independent
+  reducer, checked triple application, and reduction of the first function
+  action to RETURN of the supplied argument path. Reversing a path, omitting
+  required paths or reusing a boundary binder rejects. Different selected
+  paths between the same endpoints remain distinguishable in the result.
+  Regularity tests now allow explicit alpha comparison of independently
+  substituted classifiers; pointer equality would incorrectly require alpha
+  interning after freshening. No kernel acceptance condition was relaxed.
+  Verification: optimized pointer `make check` (2.382 s, including rebuilding
+  the changed Identity test), ASan/UBSan `make check`, and Identity/synthesis
+  tests with a 512 KiB stack. The 158 syntax cases are still parse-only.
+  Implementation: `action.c` +47/-15, `action.h` +10/-0 (net +42);
+  tests: `tests/identity.c` +84/-1 (net +83); docs counted separately.
+  This is a formation/instantiation milestone, not general function transport
+  or computation-family lifting. Those need their own polarized field rules;
+  treating a neutral F computation as a returned value would not supply them.
+  N2 and N3 remain open. Rechecked primary references:
+  [dependent function Identity](https://narya.readthedocs.io/en/latest/observational.html#heterogeneous-identity-types)
+  and [uniform transport/lifting](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting).
+  The three-value boundary follows that account; the computation codomain and
+  implementation by ordinary CBPV Pi formation are the A Program adaptation.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

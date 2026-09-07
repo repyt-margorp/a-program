@@ -73,34 +73,66 @@ const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
 	const struct pg_evidence *right, const struct pg_object *x0,
 	const struct pg_object *x1, const struct pg_object *path)
 {
-	if (!pg_prove_identity_type(typing, pi, left, right)) return NULL;
+	const struct pg_evidence *identity = projection_substitution(typing, context, context);
+	return pg_identity_family_pi_type(typing, classifiers, pi, identity, identity,
+		0, NULL, left, right, x0, x1, path);
+}
+
+const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *pi,
+	const struct pg_evidence *left_substitution, const struct pg_evidence *right_substitution,
+	size_t count, const struct pg_evidence *const *paths,
+	const struct pg_evidence *left, const struct pg_evidence *right,
+	const struct pg_object *x0, const struct pg_object *x1, const struct pg_object *path)
+{
+	if (!pg_prove_family_identity_type(typing, pi, left_substitution, right_substitution,
+		count, paths, left, right)) return NULL;
 	const struct pg_evidence *domain = pg_prove_pi_domain(typing, pi);
-	const struct pg_evidence *value = pg_prove_type_value(typing, domain);
-	const struct pg_evidence *universe = pg_prove_classifier(typing, classifiers, context, value);
-	const struct pg_evidence *family = pg_prove_reflexivity(typing, universe, value);
-	const struct pg_evidence *boundary = pg_identity_context_extend(typing, classifiers,
-		context, family, x0, x1, path);
-	if (!boundary) return NULL;
+	if (!domain || count >= SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **centers = pg_alloc(&temporary, (count + 1) * sizeof(*centers));
+	const struct pg_evidence *body = NULL;
+	if (!centers) goto done;
+	const struct pg_evidence *context = pg_evidence_premise(left_substitution, 1);
+	const struct pg_evidence *source_context = pg_evidence_premise(left_substitution, 0);
+	const struct pg_evidence *boundary = pg_prove_context_extension(typing, context, x0,
+		pg_prove_reindex(typing, left_substitution, domain));
+	boundary = pg_prove_context_extension(typing, boundary, x1,
+		pg_prove_projection(typing, boundary, pg_prove_reindex(typing, right_substitution, domain)));
+	if (!boundary) goto done;
+	const struct pg_evidence *prefix = projection_substitution(typing, context, boundary);
+	const struct pg_evidence *ls = pg_prove_substitution_compose(typing, left_substitution, prefix);
+	const struct pg_evidence *rs = pg_prove_substitution_compose(typing, right_substitution, prefix);
+	for (size_t i = 0; i < count; ++i) centers[i] = pg_prove_projection(typing, boundary, paths[i]);
+	const struct pg_evidence *center_type = pg_prove_family_identity_type(typing, domain, ls, rs,
+		count, centers, pg_prove_variable(typing, boundary, x0), pg_prove_variable(typing, boundary, x1));
+	boundary = pg_prove_context_extension(typing, boundary, path, center_type);
+	if (!boundary) goto done;
 	const struct pg_term *a, *c;
 	const struct pg_object *binder;
-	if (!pg_pi_view(pg_evidence_subject(pi)->core, &a, &binder, &c)) return NULL;
-	const struct pg_evidence *source = pg_prove_context_extension(typing, context, binder, domain);
+	if (!pg_pi_view(pg_evidence_subject(pi)->core, &a, &binder, &c)) goto done;
+	const struct pg_evidence *source = pg_prove_context_extension(typing, source_context, binder, domain);
 	const struct pg_evidence *codomain = pg_prove_pi_codomain(typing,
 		pg_prove_projection(typing, source, pi), pg_prove_variable(typing, source, binder));
-	if (!codomain) return NULL;
+	if (!codomain) goto done;
 	const struct pg_evidence *l = pg_prove_variable(typing, boundary, x0);
 	const struct pg_evidence *r = pg_prove_variable(typing, boundary, x1);
-	const struct pg_evidence *p = pg_prove_variable(typing, boundary, path);
-	const struct pg_evidence *prefix = projection_substitution(typing, context, boundary);
-	const struct pg_evidence *ls = pg_prove_substitution_pair(typing, prefix, source, l);
-	const struct pg_evidence *rs = pg_prove_substitution_pair(typing, prefix, source, r);
-	const struct pg_evidence *body = pg_prove_family_identity_type(typing, codomain, ls, rs, 1, &p,
+	for (size_t i = 0; i < count; ++i) centers[i] = pg_prove_projection(typing, boundary, paths[i]);
+	centers[count] = pg_prove_variable(typing, boundary, path);
+	prefix = projection_substitution(typing, context, boundary);
+	ls = pg_prove_substitution_pair(typing,
+		pg_prove_substitution_compose(typing, left_substitution, prefix), source, l);
+	rs = pg_prove_substitution_pair(typing,
+		pg_prove_substitution_compose(typing, right_substitution, prefix), source, r);
+	body = pg_prove_family_identity_type(typing, codomain, ls, rs, count + 1, centers,
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, left), l),
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, right), r));
 	for (size_t i = 0; body && i < 3; ++i) {
 		body = pg_prove_pi(typing, classifiers, pg_evidence_premise(boundary, 1), boundary, body);
 		boundary = pg_evidence_premise(boundary, 0);
 	}
+done:
+	pg_graph_destroy(&temporary);
 	return body;
 }
 
