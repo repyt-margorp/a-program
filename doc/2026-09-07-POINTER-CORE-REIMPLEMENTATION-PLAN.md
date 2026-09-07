@@ -410,7 +410,7 @@ fragment, qualified names, literals, quotation, and separate `::` checks into
 source-owned syntax nodes. It does not resolve names, infer types, insert CBPV
 coercions or evaluate expressions. Tests check left-associated application,
 dependent binder retention and separation of expected-type checks from
-definitions. Ordinary and ASan/UBSan checks pass. Match, blocks,
+definitions. Ordinary and ASan/UBSan checks pass. Match,
 imports and graph-companion syntax still need grammar implementations; current
 rejection of those forms is a temporary unsupported boundary, not a language
 design change or a compatibility success.
@@ -423,6 +423,17 @@ reference. List/Vec/Acc, empty declarations, array growth and malformed syntax
 fixtures pass ordinary and sanitizer checks. Name resolution must still reject
 using the defining name as a recursive reference. Positivity, index typing,
 declaration lowering and HOTT declaration action are not implemented yet.
+
+Computation-block syntax now retains an ordered array of named assignments
+(with optional declared annotations), unnamed expressions and lambda-exit
+items. Postfix result selection remains explicit syntax; the parser does not
+drop the suffix after a selected binding or resolve an exit target. Root-only
+`{{...}}.name` uses a distinct definition-block node, including separate `::`
+entries. Constructor and block arrays share one storage builder. Tests cover
+ordering, nesting, quotation, selected results, exit preservation, root
+restrictions and malformed delimiters; ordinary and sanitizer checks pass.
+Scope validation, duplicate-name checks, selected-binding validation, exit
+barriers, CBPV lowering and effect execution remain required.
 
 This table is a starting inventory from the current reader, AST and test tree,
 not a claim that the failed snapshot passes every row. N0 must enumerate exact

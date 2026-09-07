@@ -152,6 +152,49 @@ static void syntax(void)
 	puts("syntax: lambda annotations, dependent Pi, applications and separate expect nodes passed");
 }
 
+static void blocks(void)
+{
+	const char source[] = "f := \\x:A => {a:A:=x; #.print #\"hello\"; b:={x;}; !a; later:=x;}.a; delayed:=&{#.get;};";
+	struct pg_graph arena = {0};
+	struct pg_parser parser;
+	struct pg_definition definition;
+	pg_parser_init(&parser, &arena, source, sizeof(source) - 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	const struct pg_syntax *selection = definition.expression->right;
+	assert(selection->kind == PG_SYNTAX_QUALIFIED);
+	const struct pg_syntax *body = selection->left;
+	assert(body->kind == PG_SYNTAX_BLOCK && body->item_count == 5);
+	assert(body->items[0].operation == PG_TOKEN_ASSIGN);
+	assert(body->items[0].annotation->token.text[0] == 'A');
+	assert(body->items[1].name.kind == 0);
+	assert(body->items[1].expression->kind == PG_SYNTAX_APPLICATION);
+	assert(body->items[2].expression->kind == PG_SYNTAX_BLOCK);
+	assert(body->items[3].expression->kind == PG_SYNTAX_EXIT);
+	assert(body->items[4].name.text_length == strlen("later"));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_QUOTE);
+	assert(definition.expression->left->kind == PG_SYNTAX_BLOCK);
+	assert(pg_parser_next(&parser, &definition) == 0);
+	const char root[] = "{{id:=\\x:A=>x; main:=id #1; main::A;}}.main;";
+	pg_parser_init(&parser, &arena, root, sizeof(root) - 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.operation == '{');
+	body = definition.expression->left;
+	assert(body->kind == PG_SYNTAX_DEFINITIONS && body->item_count == 3);
+	assert(body->items[2].operation == PG_TOKEN_EXPECT);
+	assert(pg_parser_next(&parser, &definition) == 0);
+	const char *invalid[] = {"f:={};", "{{x:=#1;}}", "{x:=#1;}", "{{x:=#1;}}.x extra;",
+		"f:={x:=#1};", "{{!x;}}.x", "{{#.get;}}.x", "f:={x;", "x:=#1; {{y:=#2;}}.y"};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
+		int status;
+		do status = pg_parser_next(&parser, &definition); while (status == 1);
+		assert(status == -1);
+	}
+	pg_graph_destroy(&arena);
+	puts("blocks: ordered named/unnamed items, selected result, exits and root-only definitions passed");
+}
+
 static size_t self_count(const struct pg_syntax *syntax)
 {
 	if (!syntax) return 0;
@@ -216,6 +259,7 @@ int main(void)
 	prefixes();
 	syntax();
 	declarations();
+	blocks();
 	puts("reader: symbolic syntax, contextual names, literals, comments and bounded input passed");
 	return 0;
 }

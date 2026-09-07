@@ -14,12 +14,17 @@ enum pg_syntax_kind {
 	PG_SYNTAX_EXPECT,
 	PG_SYNTAX_QUOTE,
 	PG_SYNTAX_DECLARATION,
-	PG_SYNTAX_CONSTRUCTORS
+	PG_SYNTAX_CONSTRUCTORS,
+	PG_SYNTAX_BLOCK,
+	PG_SYNTAX_DEFINITIONS,
+	PG_SYNTAX_EXIT
 };
 
 struct pg_syntax_item {
 	struct pg_token name;
 	const struct pg_syntax *expression;
+	const struct pg_syntax *annotation;
+	int operation;
 };
 
 /* Source syntax is not executable Core or accepted typing evidence. Token
@@ -44,10 +49,12 @@ struct pg_parser {
 	struct pg_graph *arena;
 	const char *error;
 	struct pg_token error_token;
+	size_t entries;
 };
 void pg_parser_init(struct pg_parser *parser, struct pg_graph *arena,
 	const char *input, size_t length);
-/* 1 definition/check, 0 end, -1 error. No name resolution or type synthesis. */
+/* 1 entry, 0 end, -1 error. operation '{' denotes a root definition-block
+ * selection; otherwise ':=' or '::'. No name resolution or type synthesis. */
 int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition);
 
 #endif

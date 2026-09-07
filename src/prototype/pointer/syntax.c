@@ -41,6 +41,46 @@ static const struct pg_syntax *node(struct pg_parser *parser, enum pg_syntax_kin
 
 static const struct pg_syntax *expression(struct pg_parser *parser);
 
+struct item_buffer {
+	struct pg_syntax_item *items;
+	size_t count, capacity;
+};
+
+static int append_item(struct pg_parser *parser, struct item_buffer *buffer, struct pg_syntax_item item)
+{
+	if (buffer->count == buffer->capacity) {
+		size_t next = buffer->capacity ? buffer->capacity * 2 : 8;
+		if (next < buffer->capacity || next > SIZE_MAX / sizeof(*buffer->items)) {
+			error(parser, "syntax item storage overflow");
+			return -1;
+		}
+		struct pg_syntax_item *grown = realloc(buffer->items, next * sizeof(*grown));
+		if (!grown) {
+			error(parser, "syntax item allocation failed");
+			return -1;
+		}
+		buffer->items = grown;
+		buffer->capacity = next;
+	}
+	buffer->items[buffer->count++] = item;
+	return 0;
+}
+
+static const struct pg_syntax *item_node(struct pg_parser *parser, enum pg_syntax_kind kind,
+	struct pg_token token, const struct item_buffer *buffer)
+{
+	struct pg_syntax_item *stored = pg_alloc(parser->arena, buffer->count * sizeof(*stored));
+	struct pg_syntax *result = pg_alloc(parser->arena, sizeof(*result));
+	if (!stored || !result) {
+		error(parser, "syntax list allocation failed");
+		return NULL;
+	}
+	if (buffer->count) memcpy(stored, buffer->items, buffer->count * sizeof(*stored));
+	*result = (struct pg_syntax){.kind = kind, .token = token,
+		.item_count = buffer->count, .items = stored};
+	return result;
+}
+
 /* Index binders occur inside the declaration marker. Outer lambdas remain
  * parameters; the parser does not substitute the declaration's source name. */
 static const struct pg_syntax *declaration_body(struct pg_parser *parser)
@@ -57,8 +97,7 @@ static const struct pg_syntax *declaration_body(struct pg_parser *parser)
 	}
 	struct pg_token opening = parser->reader.token;
 	if (require(parser, '{', "expected constructor block") != 0) return NULL;
-	struct pg_syntax_item *items = NULL;
-	size_t count = 0, capacity = 0;
+	struct item_buffer buffer = {0};
 	const struct pg_syntax *result = NULL;
 	while (!parser->error && parser->reader.token.kind != '}') {
 		struct pg_token name = parser->reader.token;
@@ -67,35 +106,62 @@ static const struct pg_syntax *declaration_body(struct pg_parser *parser)
 		const struct pg_syntax *type = expression(parser);
 		if (!type) goto done;
 		if (require(parser, ';', "expected ';' after constructor classifier") != 0) goto done;
-		if (count == capacity) {
-			size_t next = capacity ? capacity * 2 : 8;
-			if (next < capacity || next > SIZE_MAX / sizeof(*items)) {
-				error(parser, "constructor storage overflow");
-				goto done;
-			}
-			struct pg_syntax_item *grown = realloc(items, next * sizeof(*items));
-			if (!grown) {
-				error(parser, "constructor storage allocation failed");
-				goto done;
-			}
-			items = grown;
-			capacity = next;
-		}
-		items[count++] = (struct pg_syntax_item){name, type};
+		if (append_item(parser, &buffer, (struct pg_syntax_item){.name = name, .expression = type, .operation = ':'}) != 0) goto done;
 	}
 	if (require(parser, '}', "expected '}' after constructors") != 0) goto done;
-	struct pg_syntax_item *stored = pg_alloc(parser->arena, count * sizeof(*stored));
-	struct pg_syntax *block = pg_alloc(parser->arena, sizeof(*block));
-	if (!stored || !block) {
-		error(parser, "constructor syntax allocation failed");
+	result = item_node(parser, PG_SYNTAX_CONSTRUCTORS, opening, &buffer);
+done:
+	free(buffer.items);
+	return result;
+}
+
+/* The opening brace has already been consumed. Definition blocks are parsed
+ * only at the program root; ordinary blocks preserve source-order statements. */
+static const struct pg_syntax *block(struct pg_parser *parser, struct pg_token opening, int definitions)
+{
+	struct item_buffer buffer = {0};
+	const struct pg_syntax *result = NULL;
+	while (!parser->error && parser->reader.token.kind != '}') {
+		struct pg_syntax_item item = {0};
+		struct pg_token token = parser->reader.token;
+		struct pg_reader lookahead = parser->reader;
+		int next = pg_reader_next(&lookahead);
+		int named = token.kind == PG_TOKEN_IDENT && (next == PG_TOKEN_ASSIGN || next == ':');
+		if (definitions) named = 1;
+		if (named) {
+			item.name = token;
+			if (require(parser, PG_TOKEN_IDENT, "expected block binding name") != 0) goto done;
+			if (!definitions && parser->reader.token.kind == ':') {
+				advance(parser);
+				item.annotation = expression(parser);
+			}
+			item.operation = parser->reader.token.kind;
+			if (item.operation != PG_TOKEN_ASSIGN && !(definitions && item.operation == PG_TOKEN_EXPECT)) {
+				error(parser, "expected block assignment or definition check");
+				goto done;
+			}
+			advance(parser);
+			item.expression = expression(parser);
+		} else if (token.kind == '!') {
+			advance(parser);
+			const struct pg_syntax *value = expression(parser);
+			item.expression = node(parser, PG_SYNTAX_EXIT, token, value, NULL);
+		} else {
+			item.expression = expression(parser);
+		}
+		if (!item.expression) goto done;
+		if (require(parser, ';', "expected ';' after block item") != 0) goto done;
+		if (append_item(parser, &buffer, item) != 0) goto done;
+	}
+	if (!definitions && !buffer.count) {
+		error(parser, "computation block requires an item");
 		goto done;
 	}
-	if (count) memcpy(stored, items, count * sizeof(*stored));
-	*block = (struct pg_syntax){.kind = PG_SYNTAX_CONSTRUCTORS, .token = opening,
-		.item_count = count, .items = stored};
-	result = block;
+	if (require(parser, '}', "expected '}' after block") != 0) goto done;
+	if (definitions && require(parser, '}', "expected second '}' after definitions") != 0) goto done;
+	result = item_node(parser, definitions ? PG_SYNTAX_DEFINITIONS : PG_SYNTAX_BLOCK, opening, &buffer);
 done:
-	free(items);
+	free(buffer.items);
 	return result;
 }
 
@@ -103,7 +169,7 @@ static int atom_start(int kind)
 {
 	switch (kind) {
 	case PG_TOKEN_IDENT: case PG_TOKEN_TEXT: case PG_TOKEN_INT:
-	case '(': case '@': case '#': case '*': case '&':
+	case '(': case '@': case '#': case '*': case '&': case '{':
 		return 1;
 	default: return 0;
 	}
@@ -118,7 +184,9 @@ static const struct pg_syntax *atom(struct pg_parser *parser)
 	}
 	advance(parser);
 	const struct pg_syntax *result = NULL;
-	if (token.kind == '(') {
+	if (token.kind == '{') {
+		result = block(parser, token, 0);
+	} else if (token.kind == '(') {
 		result = expression(parser);
 		if (parser->reader.token.kind == ':') {
 			if (!result) return NULL;
@@ -229,6 +297,28 @@ int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition)
 {
 	if (parser->error) return -1;
 	if (parser->reader.token.kind == PG_TOKEN_EOF) return 0;
+	if (parser->reader.token.kind == '{') {
+		if (parser->entries) {
+			error(parser, "definition block must be the whole program root");
+			return -1;
+		}
+		struct pg_token opening = parser->reader.token;
+		advance(parser);
+		if (require(parser, '{', "program root requires '{{'") != 0) return -1;
+		const struct pg_syntax *definitions = block(parser, opening, 1);
+		struct pg_token dot = parser->reader.token;
+		if (require(parser, '.', "definition block requires '.name'") != 0) return -1;
+		struct pg_token selected = parser->reader.token;
+		if (require(parser, PG_TOKEN_IDENT, "expected selected definition") != 0) return -1;
+		const struct pg_syntax *member = node(parser, PG_SYNTAX_ATOM, selected, NULL, NULL);
+		const struct pg_syntax *selection = node(parser, PG_SYNTAX_QUALIFIED, dot, definitions, member);
+		if (parser->reader.token.kind == ';') advance(parser);
+		if (parser->reader.token.kind != PG_TOKEN_EOF) error(parser, "unexpected input after program root");
+		if (parser->error) return -1;
+		*definition = (struct pg_definition){selected, '{', selection};
+		++parser->entries;
+		return 1;
+	}
 	struct pg_token name = parser->reader.token;
 	if (require(parser, PG_TOKEN_IDENT, "expected top-level name") != 0) return -1;
 	int operation = parser->reader.token.kind;
@@ -241,5 +331,6 @@ int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition)
 	if (require(parser, ';', "expected ';' after top-level entry") != 0) return -1;
 	if (!value) return -1;
 	*definition = (struct pg_definition){name, operation, value};
+	++parser->entries;
 	return 1;
 }
