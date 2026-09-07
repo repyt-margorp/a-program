@@ -8,9 +8,11 @@
 enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, PG_VARIABLE,
 	PG_TYPE_FROM_VALUE, PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_PI_FORM,
 	PG_RETURN_INTRO, PG_THUNK_INTRO, PG_FORCE_ELIM, PG_LAMBDA_INTRO, PG_APP_ELIM,
-	PG_VALUE_FROM_TYPE, PG_TYPE_CONVERSION, PG_CONTEXT_PROJECTION };
+	PG_VALUE_FROM_TYPE, PG_TYPE_CONVERSION, PG_CONTEXT_PROJECTION,
+	PG_CONTEXT_SUBSTITUTION, PG_REINDEX };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
-	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION };
+	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
+	PG_JUDGEMENT_SUBSTITUTION };
 struct pg_evidence;
 
 /* Checked primitive derivations, owned by typing->graph. NULL means a failed
@@ -59,6 +61,15 @@ const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_e
  * stay shared; this creates only the conclusion in the extended context. */
 const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *proof);
+/* sigma : destination -> source. Images of source binders are values in
+ * destination, in declaration order (outermost first). Dependent declaration
+ * types are checked after simultaneous substitution of preceding images.
+ * This rule admits structural alpha equality, not implicit beta conversion. */
+const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_evidence *destination,
+	size_t count, const struct pg_evidence *const *images);
+const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_evidence *proof);
 /* Recover formation of an already synthesized classifier, not an expected
  * type. NULL also covers rules whose regularity action is not implemented. */
 const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,

@@ -327,6 +327,8 @@ static void dependent_application_test(struct pg_graph *graph)
 	assert(app);
 	assert(pg_evidence_classifier(app) == pg_return_type(&classifiers, pg_universe(&classifiers, 0)));
 	assert(pg_evidence_premise(app, 1) == argument);
+	const struct pg_evidence *app_formation = pg_prove_classifier(&typing, &classifiers, f_context, app);
+	assert(app_formation && pg_evidence_subject(app_formation)->core == pg_evidence_classifier(app));
 	assert(!pg_prove_application(&typing, function, u0));
 	/* Open value arguments stay symbolic: the output is F B, not F U0. */
 	const struct pg_evidence *u1_in_f = pg_prove_universe(&typing, &classifiers, f_context, 1);
@@ -337,9 +339,64 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_evidence *open_app = pg_prove_application(&typing, open_function, b_value);
 	assert(open_app);
 	assert(pg_evidence_classifier(open_app) == pg_return_type(&classifiers, pg_reference(graph, b)));
+	const struct pg_evidence *open_formation = pg_prove_classifier(&typing, &classifiers, b_context, open_app);
+	assert(open_formation && pg_evidence_subject(open_formation)->core == pg_evidence_classifier(open_app));
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("dependent application: concrete and open type arguments substitute without executing computations");
+}
+
+static void typed_substitution_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(pg_typing_init(&typing, graph) == 0);
+	assert(pg_classifiers_init(&classifiers, graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, empty, 1);
+	const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph);
+	const struct pg_object *b = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_evidence *a_scope = pg_prove_context_extension(&typing, empty, a, universe);
+	const struct pg_evidence *b_scope = pg_prove_context_extension(&typing, empty, b, universe);
+	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_scope, a);
+	const struct pg_evidence *b_type = pg_prove_variable(&typing, b_scope, b);
+	const struct pg_evidence *source = pg_prove_context_extension(&typing, a_scope, x, a_type);
+	const struct pg_evidence *destination = pg_prove_context_extension(&typing, b_scope, y, b_type);
+	const struct pg_evidence *source_x = pg_prove_variable(&typing, source, x);
+	const struct pg_evidence *destination_b = pg_prove_variable(&typing, destination, b);
+	const struct pg_evidence *destination_y = pg_prove_variable(&typing, destination, y);
+	const struct pg_evidence *images[] = {destination_b, destination_y};
+	const struct pg_evidence *sigma = pg_prove_substitution(&typing, source, destination, 2, images);
+	assert(sigma && pg_evidence_judgement(sigma) == PG_JUDGEMENT_SUBSTITUTION);
+	assert(pg_prove_substitution(&typing, source, destination, 2, images) == sigma);
+	const struct pg_evidence *reindexed = pg_prove_reindex(&typing, sigma, source_x);
+	assert(reindexed && pg_evidence_subject(reindexed)->core == pg_reference(graph, y));
+	assert(pg_evidence_classifier(reindexed) == pg_reference(graph, b));
+	assert(pg_evidence_context(reindexed) == pg_evidence_context(destination));
+	assert(pg_evidence_premise(reindexed, 0) == sigma);
+	assert(pg_evidence_premise(reindexed, 1) == source_x);
+	assert(pg_evidence_subject(source_x)->core == pg_reference(graph, x));
+	const struct pg_evidence *formation = pg_prove_classifier(&typing, &classifiers, destination, reindexed);
+	assert(formation && pg_evidence_subject(formation)->core == pg_reference(graph, b));
+	const struct pg_evidence *returned = pg_prove_return(&typing, &classifiers, source_x);
+	const struct pg_evidence *reindexed_return = pg_prove_reindex(&typing, sigma, returned);
+	assert(reindexed_return && pg_evidence_classifier(reindexed_return) == pg_return_type(&classifiers, pg_reference(graph, b)));
+	assert(!pg_prove_reindex(&typing, sigma, destination_y));
+	assert(!pg_prove_reindex(&typing, sigma, source));
+	assert(!pg_prove_projection(&typing, destination, sigma));
+	assert(!pg_prove_substitution(&typing, source, destination, 1, images));
+	const struct pg_evidence *bad[] = {destination_y, destination_b};
+	assert(!pg_prove_substitution(&typing, source, destination, 2, bad));
+	bad[0] = destination_b;
+	bad[1] = pg_prove_return(&typing, &classifiers, destination_y);
+	assert(!pg_prove_substitution(&typing, source, destination, 2, bad));
+	bad[1] = source_x;
+	assert(!pg_prove_substitution(&typing, source, destination, 2, bad));
+	const struct pg_evidence *closed = pg_prove_substitution(&typing, empty, destination, 0, NULL);
+	assert(closed && pg_prove_reindex(&typing, closed, universe));
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	puts("typed substitution: dependent declarations, simultaneous images and shared premise DAG passed");
 }
 
 static void computation_execution_test(struct pg_graph *graph)
@@ -838,6 +895,7 @@ int main(void)
 	context_test(&graph);
 	evidence_test(&graph);
 	dependent_application_test(&graph);
+	typed_substitution_test(&graph);
 	computation_execution_test(&graph);
 	classifiers_test(&graph);
 	restriction_test(&graph);

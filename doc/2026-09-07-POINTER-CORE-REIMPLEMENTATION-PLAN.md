@@ -432,8 +432,26 @@ conclusion and all premise pointers; no accepted record is overwritten.
   operation consumes an already synthesized judgement, not an expected type.
   Tests obtain the formation of a RETURN body and construct its enclosing Pi
   from that result. No `::` information enters this path.
-- [ ] General typed substitution is required for APP regularity and dimensional
-  action; the prefix projection is not a complete context-morphism API.
+- [x] Add checked finite context substitutions as derivations, without another
+  mutable solution database. Images are value derivations in the destination
+  context, ordered by source declarations. Validate each dependent declaration
+  after substituting preceding images. An immutable pointer mapping is stored
+  inline with the accepted derivation as a projection of those premises.
+  Reindex Core/classifier/annotation through the existing capture-avoiding
+  substitution traversal and retain the original proof DAG as a premise.
+  Tests cover dependent renaming, empty source, invalid arity, image types,
+  computation images, foreign scopes and recovery of reindexed classifiers.
+- [x] APP regularity uses the checked substitution to instantiate the codomain
+  formation of an explicit Pi derivation (possibly prefix-projected). Both
+  concrete universe arguments and open type arguments have verified result
+  formations, without executing their function.
+- [ ] Complete context-morphism composition/lifting and regularity for Pi
+  formations produced through general reindexing, then connect dimensional
+  action. The current substitution checker admits structural alpha equality;
+  nonstructural conversion must be made explicit before supplying an image.
+  It does not decide arbitrary effectful equality. Repeated reindexing of
+  binder-containing terms can freshen bound pointers; scheduling must reuse
+  completed actions rather than introduce alpha interning to hide that work.
   Regularity for unsupported rules returns NULL, not a refutation. Recovery
   currently traverses the relevant proof premises; scheduling/memoization and
   source synthesis still need integration rather than a separate type authority.
