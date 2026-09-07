@@ -441,13 +441,25 @@ conclusion and all premise pointers; no accepted record is overwritten.
   substitution traversal and retain the original proof DAG as a premise.
   Tests cover dependent renaming, empty source, invalid arity, image types,
   computation images, foreign scopes and recovery of reindexed classifiers.
-- [x] APP regularity uses the checked substitution to instantiate the codomain
-  formation of an explicit Pi derivation (possibly prefix-projected). Both
-  concrete universe arguments and open type arguments have verified result
-  formations, without executing their function.
-- [ ] Complete context-morphism composition/lifting and regularity for Pi
-  formations produced through general reindexing, then connect dimensional
-  action. The current substitution checker admits structural alpha equality;
+- [x] Compose checked substitutions by reindexing their value premises and
+  validating the resulting common substitution representation. Lift under a
+  binder by reindexing its declared type, extending the destination context,
+  projecting old images and adding the new variable image. No composition or
+  lifting Core tag is introduced. Test the composite against successive
+  reindexing, new/old variable images and rejection of incompatible contexts
+  and non-fresh destination binders.
+- [x] APP/FORCE regularity now uses formation inversion rather than retracing
+  the provenance of a Pi/U type. From a checked `Pi(x:A,B)` and `v:A`, obtain
+  formation of `B[v/x]`; from checked `U B`, obtain formation of B. These rules
+  apply to generally reindexed formations too. Their derivations retain the
+  type formation and argument premises, not an unchecked syntactic view alone.
+  Both rules retain the parent's universe *upper bound*. In particular, Pi
+  formation bounds its codomain by max(domain,codomain), so codomain inversion
+  need not recover a minimal universe. This is not equality between levels.
+  This removes APP's repeated reconstruction of the entire source context's
+  image array solely to recover result formation.
+- [ ] Connect these context actions to dimensional action. The current
+  substitution checker admits structural alpha equality;
   nonstructural conversion must be made explicit before supplying an image.
   It does not decide arbitrary effectful equality. Repeated reindexing of
   binder-containing terms can freshen bound pointers; scheduling must reuse

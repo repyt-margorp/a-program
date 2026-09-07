@@ -419,6 +419,97 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 		subject, classifier, 2, premises);
 }
 
+static int substitution_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
+{
+	if (!proof || proof->owner != typing) return 0;
+	return proof->rule == PG_CONTEXT_SUBSTITUTION;
+}
+
+const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
+	const struct pg_evidence *first, const struct pg_evidence *second)
+{
+	if (!substitution_proof(typing, first)) return NULL;
+	if (!substitution_proof(typing, second)) return NULL;
+	if (first->context != second->premises[0]->context) return NULL;
+	size_t count = first->premise_count - 2;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
+	const struct pg_evidence *result = NULL;
+	if (count && !images) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		images[i] = pg_prove_reindex(typing, second, first->premises[i + 2]);
+		if (!images[i]) goto done;
+	}
+	result = pg_prove_substitution(typing, first->premises[0], second->premises[1], count, images);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
+const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
+	const struct pg_object *binder)
+{
+	if (!substitution_proof(typing, substitution)) return NULL;
+	if (!context_proof(typing, source_extension)) return NULL;
+	if (source_extension->rule != PG_CONTEXT_EXTEND) return NULL;
+	if (source_extension->context->parent != substitution->premises[0]->context) return NULL;
+	const struct pg_evidence *domain = pg_prove_reindex(typing, substitution, source_extension->premises[1]);
+	const struct pg_evidence *destination = pg_prove_context_extension(typing, substitution->premises[1], binder, domain);
+	if (!destination) return NULL;
+	size_t count = substitution->premise_count - 2;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **images = pg_alloc(&temporary, (count + 1) * sizeof(*images));
+	const struct pg_evidence *result = NULL;
+	if (!images) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		images[i] = pg_prove_projection(typing, destination, substitution->premises[i + 2]);
+		if (!images[i]) goto done;
+	}
+	images[count] = pg_prove_variable(typing, destination, binder);
+	result = pg_prove_substitution(typing, source_extension, destination, count + 1, images);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
+const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,
+	const struct pg_evidence *thunk_type)
+{
+	thunk_type = pg_prove_value_type(typing, thunk_type);
+	if (!thunk_type) return NULL;
+	const struct pg_term *content;
+	if (!pg_thunk_type_view(thunk_type->subject->core, &content)) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, thunk_type->context, content,
+		NULL, 1, &thunk_type->subject);
+	if (!subject) return NULL;
+	return accept(typing, PG_THUNK_CONTENT, PG_JUDGEMENT_COMPUTATION_TYPE,
+		thunk_type->context, subject, thunk_type->classifier, 1, &thunk_type);
+}
+
+const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
+	const struct pg_evidence *pi, const struct pg_evidence *argument)
+{
+	if (!pi || pi->owner != typing) return NULL;
+	if (pi->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	if (!argument || argument->owner != typing) return NULL;
+	if (argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (pi->context != argument->context) return NULL;
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	if (!pg_pi_view(pi->subject->core, &domain, &binder, &codomain)) return NULL;
+	if (pg_alpha_equal(domain, argument->classifier) != 1) return NULL;
+	struct pg_binding_value binding = {binder, argument->subject->core};
+	const struct pg_term *type = pg_term_substitute(typing->graph, codomain, 1, &binding);
+	if (!type) return NULL;
+	const struct pg_occurrence *operands[] = {pi->subject, argument->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, type, NULL, 2, operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {pi, argument};
+	return accept(typing, PG_PI_CODOMAIN, PG_JUDGEMENT_COMPUTATION_TYPE,
+		pi->context, subject, pi->classifier, 2, premises);
+}
+
 const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *term)
@@ -454,10 +545,7 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	case PG_FORCE_ELIM: {
 		const struct pg_evidence *argument = pg_prove_projection(typing, context, term->premises[0]);
 		formation = pg_prove_classifier(typing, classifiers, context, argument);
-		if (!formation) return NULL;
-		while (formation->rule == PG_CONTEXT_PROJECTION) formation = formation->premises[1];
-		if (formation->rule != PG_THUNK_TYPE_FORM) return NULL;
-		formation = formation->premises[0];
+		formation = pg_prove_thunk_content(typing, formation);
 		break;
 	}
 	case PG_LAMBDA_INTRO:
@@ -466,25 +554,8 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	case PG_APP_ELIM: {
 		const struct pg_evidence *function = pg_prove_projection(typing, context, term->premises[0]);
 		const struct pg_evidence *pi = pg_prove_classifier(typing, classifiers, context, function);
-		if (!pi) return NULL;
-		while (pi->rule == PG_CONTEXT_PROJECTION) pi = pi->premises[1];
-		if (pi->rule != PG_PI_FORM) return NULL;
-		const struct pg_evidence *source = pi->premises[1];
-		size_t count = 0;
-		for (const struct pg_context *scope = source->context; scope; scope = scope->parent) ++count;
-		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-		struct pg_graph temporary = {0};
-		const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
-		if (!images) return NULL;
-		images[count - 1] = pg_prove_projection(typing, context, term->premises[1]);
-		const struct pg_context *scope = source->context->parent;
-		for (size_t i = count - 1; i; --i) {
-			images[i - 1] = pg_prove_variable(typing, context, scope->binder);
-			scope = scope->parent;
-		}
-		const struct pg_evidence *substitution = pg_prove_substitution(typing, source, context, count, images);
-		formation = pg_prove_reindex(typing, substitution, pi->premises[2]);
-		pg_graph_destroy(&temporary);
+		const struct pg_evidence *argument = pg_prove_projection(typing, context, term->premises[1]);
+		formation = pg_prove_pi_codomain(typing, pi, argument);
 		break;
 	}
 	case PG_TYPE_CONVERSION:
