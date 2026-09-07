@@ -4,6 +4,7 @@
 #include "typing.h"
 #include "conversion.h"
 #include "classifier.h"
+#include "evidence.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -125,6 +126,54 @@ static void context_test(struct pg_graph *graph)
 	assert(lambda_a == pg_occurrence(&typing, NULL, identity, NULL, 1, &body_a));
 	pg_typing_destroy(&typing);
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
+}
+
+static void evidence_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(pg_typing_init(&typing, graph) == 0);
+	assert(pg_classifiers_init(&classifiers, graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	assert(empty && pg_evidence_rule(empty) == PG_CONTEXT_EMPTY);
+	assert(empty == pg_prove_empty_context(&typing));
+	const struct pg_evidence *u0 = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u1 = pg_prove_universe(&typing, &classifiers, empty, 1);
+	assert(u0 && u1);
+	assert(pg_evidence_classifier(u0) == pg_universe(&classifiers, 1));
+	assert(pg_evidence_premise(u0, 0) == empty);
+	assert(pg_evidence_premise_count(u0) == 1);
+	assert(!pg_evidence_premise(u0, 1));
+	assert(!pg_prove_universe(&typing, &classifiers, empty, UINT64_MAX));
+	const struct pg_object *a = pg_binder(graph);
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_object *y = pg_binder(graph);
+	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u0);
+	assert(a_context && pg_evidence_premise(a_context, 1) == u0);
+	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
+	assert(a_type && pg_evidence_classifier(a_type) == pg_universe(&classifiers, 0));
+	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
+	assert(x_context);
+	const struct pg_evidence *x_term = pg_prove_variable(&typing, x_context, x);
+	assert(x_term && pg_evidence_classifier(x_term) == pg_reference(graph, a));
+	assert(!pg_prove_context_extension(&typing, x_context, y, x_term));
+	assert(!pg_prove_context_extension(&typing, a_context, a, a_type));
+	assert(!pg_prove_context_extension(&typing, a_context, x, u0));
+	assert(!pg_prove_variable(&typing, empty, x));
+	assert(!pg_prove_variable(&typing, x_term, x));
+	assert(x_term == pg_prove_variable(&typing, x_context, x));
+	const struct pg_evidence *a_context_high = pg_prove_context_extension(&typing, empty, a, u1);
+	const struct pg_evidence *a_type_high = pg_prove_variable(&typing, a_context_high, a);
+	assert(a_type_high && a_type_high != a_type);
+	assert(pg_evidence_subject(a_type)->core == pg_evidence_subject(a_type_high)->core);
+	assert(pg_evidence_subject(a_type) != pg_evidence_subject(a_type_high));
+	assert(pg_evidence_classifier(a_type) != pg_evidence_classifier(a_type_high));
+	for (uint64_t i = 2; i < 300; ++i) assert(pg_prove_universe(&typing, &classifiers, empty, i));
+	assert(u0 == pg_prove_universe(&typing, &classifiers, empty, 0));
+	assert(pg_evidence_premise(a_context, 1) == u0);
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	puts("evidence: checked contexts, stratified universes and occurrence-based variable derivations passed");
 }
 
 static void classifiers_test(struct pg_graph *graph)
@@ -549,6 +598,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	graph_test(&graph);
 	context_test(&graph);
+	evidence_test(&graph);
 	classifiers_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);

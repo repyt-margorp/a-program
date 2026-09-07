@@ -24,6 +24,7 @@ struct pg_typing {
 	struct pg_graph *graph;
 	struct pg_index contexts;
 	struct pg_index occurrences;
+	struct pg_index proofs;
 };
 
 int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph);

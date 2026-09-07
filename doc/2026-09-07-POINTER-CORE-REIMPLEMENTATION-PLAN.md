@@ -350,6 +350,23 @@ extending a context shares its prefix. Typed occurrences preserve scope and
 source evidence even when Core is shared. Context substitution is a mapping of
 these bindings, not a copied parallel term tree.
 
+`pointer/evidence.c` now accepts immutable primitive derivations for empty
+context, context extension, concrete Universe formation and variables. Context
+extension requires a derivation of its declared type in exactly the parent
+context and a fresh binder. Universe formation produces `U(level+1)` and rejects
+overflow. Variable evidence references the verified context, whose premise DAG
+contains the declaration formation. Term judgments are attached to occurrences,
+not only erased Core. Proofs are opaque externally and interned by rule,
+conclusion and all premise pointers; no accepted record is overwritten.
+
+- [x] Verify primitive context/Universe/variable premises, rejection of free
+  variables, wrong scopes, duplicate binders and non-type declarations; retain
+  distinct occurrence evidence over shared Core. Ordinary/sanitizer tests pass.
+- [ ] Pi/CBPV formation, conversion evidence, synthesis scheduling, replay and
+  typed HOTT action still need implementation. These four primitive rules do
+  not constitute a complete checker; NULL currently combines invalid-premise
+  and allocation failures and is not a solver-level logical rejection result.
+
 `pg_term_substitute` now exposes the evaluator's existing capture-avoiding
 readback traversal for simultaneous binder-pointer substitution. Images are
 inserted without resubstitution or reduction; later mappings shadow earlier

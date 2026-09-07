@@ -17,8 +17,10 @@ int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 	memset(typing, 0, sizeof(*typing));
 	typing->graph = graph;
 	if (pg_index_init(&typing->contexts) != 0) return -1;
-	if (pg_index_init(&typing->occurrences) == 0) return 0;
-	pg_index_destroy(&typing->contexts);
+	if (pg_index_init(&typing->occurrences) != 0) goto fail;
+	if (pg_index_init(&typing->proofs) == 0) return 0;
+fail:
+	pg_typing_destroy(typing);
 	return -1;
 }
 
@@ -26,6 +28,7 @@ void pg_typing_destroy(struct pg_typing *typing)
 {
 	pg_index_destroy(&typing->contexts);
 	pg_index_destroy(&typing->occurrences);
+	pg_index_destroy(&typing->proofs);
 	memset(typing, 0, sizeof(*typing));
 }
 
