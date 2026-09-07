@@ -492,14 +492,20 @@ const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
 	return result && pg_alpha_equal(result->classifier, application->classifier) == 1 ? result : NULL;
 }
 
-/* Invert introductions through the same context actions as their contents. */
-static const struct pg_evidence *introduced_content(struct pg_typing *typing,
-	const struct pg_evidence *proof, enum pg_evidence_rule introduction)
+/* Inversion uses an accepted judgement, never an untyped constructor spine. */
+static const struct pg_evidence *term_content(struct pg_typing *typing,
+	const struct pg_evidence *proof, const struct pg_object *operation,
+	const struct pg_term *classifier, enum pg_evidence_rule rule,
+	enum pg_evidence_judgement judgement)
 {
-	if (proof->rule == introduction) return proof->premises[0];
-	if (!context_action(proof)) return NULL;
-	const struct pg_evidence *content = introduced_content(typing, proof->premises[1], introduction);
-	return apply_context_action(typing, proof, content);
+	const struct pg_term *core = proof->subject->core;
+	if (core->kind != PG_APPLICATION) return NULL;
+	const struct pg_term *head = core->as.application.function;
+	if (head->kind != PG_REFERENCE || head->as.reference != operation) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, proof->context,
+		core->as.application.argument, NULL, 1, &proof->subject);
+	if (!subject) return NULL;
+	return accept(typing, rule, judgement, proof->context, subject, classifier, 1, &proof);
 }
 
 const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
@@ -507,7 +513,11 @@ const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 {
 	if (!computation || computation->owner != typing) return NULL;
 	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
-	return introduced_content(typing, computation, PG_RETURN_INTRO);
+	if (computation->rule == PG_RETURN_INTRO) return computation->premises[0];
+	const struct pg_term *classifier;
+	if (!pg_return_type_view(computation->classifier, &classifier)) return NULL;
+	return term_content(typing, computation, &pg_return_operation, classifier,
+		PG_RETURN_VALUE, PG_JUDGEMENT_VALUE);
 }
 
 const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
@@ -515,7 +525,11 @@ const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 {
 	if (!value || value->owner != typing) return NULL;
 	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
-	return introduced_content(typing, value, PG_THUNK_INTRO);
+	if (value->rule == PG_THUNK_INTRO) return value->premises[0];
+	const struct pg_term *classifier;
+	if (!pg_thunk_type_view(value->classifier, &classifier)) return NULL;
+	return term_content(typing, value, &pg_thunk_operation, classifier,
+		PG_THUNK_COMPUTATION, PG_JUDGEMENT_COMPUTATION);
 }
 
 int pg_prepare_context_action(struct pg_typing *typing, const struct pg_evidence *context,
@@ -1275,10 +1289,11 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 		if (term->rule == PG_RETURN_INTRO) return pg_prove_return_type(typing, classifiers, formation);
 		return pg_prove_thunk_type(typing, classifiers, formation);
 	}
-	case PG_FORCE_ELIM: {
+	case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION: case PG_RETURN_VALUE: {
 		const struct pg_evidence *argument = pg_prove_projection(typing, context, term->premises[0]);
 		formation = pg_prove_classifier(typing, classifiers, context, argument);
-		formation = pg_prove_thunk_content(typing, formation);
+		formation = term->rule == PG_RETURN_VALUE ? pg_prove_return_content(typing, formation)
+			: pg_prove_thunk_content(typing, formation);
 		break;
 	}
 	case PG_LAMBDA_INTRO:

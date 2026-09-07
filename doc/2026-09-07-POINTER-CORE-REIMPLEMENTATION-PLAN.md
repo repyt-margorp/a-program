@@ -1174,9 +1174,33 @@ conclusion and all premise pointers; no accepted record is overwritten.
   and formations, split/bulk scheduling and receipt lifetime.
   Ordinary `check`, ASan/UBSan `check`, and the synthesis suite with a 512 KiB
   stack pass. The syntax inventory still measures parsing, not full acceptance.
-- [ ] Integrate normalized-head inversion into RETURN/THUNK exposure and retire
-  the overlapping typed reduction traversal where the common evaluator suffices.
-  The older typed contents jobs are not yet replaced by this entry point.
+- [x] RETURN/THUNK exposure now uses shared typed normalization, classifier
+  normalization when necessary, explicit conversion, and canonical-head
+  inversion. `PG_RETURN_VALUE` derives `v : A` from accepted `RETURN v : F A`;
+  `PG_THUNK_COMPUTATION` derives `M : C` from accepted `THUNK M : U C` without
+  running M. Direct introduction evidence still reuses its existing premise.
+  The contents scheduler no longer dispatches on projection, reindex,
+  conversion or reflexivity derivation shapes, nor recursively reconstructs
+  context actions just to obtain contents. Classifier recovery handles both
+  inversion rules. This relies on inversion/injectivity of the admitted F/U
+  typing rules in addition to the subject-reduction obligation below.
+- [x] Regression tests retain neutral-head refusal, converted classifiers,
+  weakening and substitution, unchanged stored THUNK code, four iterated
+  canonical actions and split/bulk scheduling. Tests distinguish identical
+  cached derivations from different derivations of the same judgement; no
+  proof irrelevance or alpha interning is asserted. Typed identity/composition
+  actions applied to a boundary triple now yield a checked returned path via
+  normalization and inversion, not only an untyped conversion comparison.
+  Ordinary and ASan/UBSan suites pass; synthesis and Identity suites also pass
+  with a 512 KiB stack. This integration removes 52 net implementation lines
+  (excluding tests and this plan); the old one-step API below is still present.
+- [ ] Retire the standalone one-step typed reduction scheduler and its
+  reconstruction helpers after migrating their remaining direct API tests.
+  They are no longer used by source-level RETURN/THUNK exposure. Preserve the
+  independent checked-substitution tests, not the old scheduler's control flow.
+- [ ] Extend sharing beyond exact `(Core, policy)` WHNF jobs where appropriate.
+  Nested evaluator closures still have job-local work; using the common
+  evaluator does not establish that every demanded subcomputation is memoized.
 
 The rule adds an explicit metatheoretic obligation: every admitted pure rewrite,
 including acted Lambda/APP and binder freshening during readback, must preserve

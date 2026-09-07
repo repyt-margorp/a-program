@@ -294,7 +294,11 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *weakened_delayed = pg_prove_projection(&typing, y_context, delayed);
 	const struct pg_evidence *weakened_forced = pg_prove_force(&typing, weakened_delayed);
 	const struct pg_evidence *weakened_return = pg_prove_projection(&typing, y_context, returned);
-	assert(pg_reduce_computation(&typing, y_context, weakened_forced) == weakened_return);
+	const struct pg_evidence *weak_result = pg_reduce_computation(&typing, y_context, weakened_forced);
+	assert(weak_result && pg_evidence_rule(weak_result) == PG_THUNK_COMPUTATION);
+	assert(pg_evidence_premise(weak_result, 0) == weakened_delayed);
+	assert(pg_evidence_subject(weak_result)->core == pg_evidence_subject(weakened_return)->core);
+	assert(pg_evidence_classifier(weak_result) == pg_evidence_classifier(weakened_return));
 	const struct pg_evidence *weakened_fold = pg_prove_fold(&typing, weakened_return, weakened_function);
 	const struct pg_evidence *weakened_fold_result = pg_reduce_computation(&typing, y_context, weakened_fold);
 	assert(weakened_fold_result && pg_evidence_context(weakened_fold_result) == pg_evidence_context(y_context));
@@ -303,14 +307,20 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *reindexed_thunk = pg_prove_reindex(&typing, substitution,
 		pg_prove_thunk(&typing, &classifiers, return_y));
 	const struct pg_evidence *reindexed_force = pg_prove_force(&typing, reindexed_thunk);
-	assert(pg_reduce_computation(&typing, x_context, reindexed_force) == reduct);
+	const struct pg_evidence *force_result = pg_reduce_computation(&typing, x_context, reindexed_force);
+	assert(force_result && pg_evidence_rule(force_result) == PG_THUNK_COMPUTATION);
+	assert(pg_evidence_premise(force_result, 0) == reindexed_thunk);
+	assert(pg_evidence_subject(force_result)->core == pg_evidence_subject(reduct)->core);
+	assert(pg_evidence_classifier(force_result) == pg_evidence_classifier(reduct));
 	const struct pg_evidence *exposed = pg_prove_return_value(&typing, reduct);
 	assert(exposed && pg_evidence_subject(exposed)->core == pg_evidence_subject(x_term)->core);
 	assert(pg_evidence_classifier(exposed) == pg_evidence_classifier(x_term));
-	assert(!pg_reduce_computation(&typing, x_context, pg_prove_force(&typing, converted)));
+	const struct pg_evidence *converted_code = pg_reduce_computation(&typing, x_context, pg_prove_force(&typing, converted));
+	assert(converted_code && pg_evidence_premise(converted_code, 0) == converted);
+	assert(pg_evidence_classifier(converted_code) == pg_evidence_subject(pi_z)->core);
 	size_t reduction_terms = graph->terms.count, reduction_proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {
-		assert(pg_reduce_computation(&typing, x_context, reindexed_force) == reduct);
+		assert(pg_reduce_computation(&typing, x_context, reindexed_force) == force_result);
 		assert(pg_reduce_computation(&typing, x_context, reindexed_fold) == reindexed_app);
 		assert(pg_reduce_computation(&typing, y_context, weakened_fold) == weakened_fold_result);
 	}

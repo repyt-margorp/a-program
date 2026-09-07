@@ -12,7 +12,8 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_CONTEXT_SUBSTITUTION, PG_REINDEX, PG_THUNK_CONTENT, PG_PI_CODOMAIN, PG_PI_DOMAIN,
 	PG_RETURN_CONTENT, PG_PI_CONSTANT_CODOMAIN, PG_FOLD_ELIM,
 	PG_IDENTITY_FORM, PG_IDENTITY_INSTANCE, PG_REFLEXIVITY,
-	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION };
+	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
+	PG_RETURN_VALUE, PG_THUNK_COMPUTATION };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -162,8 +163,9 @@ int pg_prepare_context_action(struct pg_typing *typing, const struct pg_evidence
  * claim that an arbitrary replacement is equal to the original operand. */
 const struct pg_evidence *pg_prove_computation_operand(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *operand);
-/* Invert a RETURN introduction through checked context actions. This does not
- * execute an arbitrary computation or assert an equation with its result. */
+/* Invert accepted RETURN v : F A or THUNK M : U C judgements with canonical
+ * heads. Retains the input proof; never executes M or guesses a type from Core.
+ * Symbolic heads must first be normalized with evidence and converted. */
 const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	const struct pg_evidence *computation);
 const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,

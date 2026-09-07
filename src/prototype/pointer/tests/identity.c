@@ -420,9 +420,24 @@ static void typed_lambda_action(struct pg_typing *typing, struct pg_classifiers 
 		assert(applied);
 		assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(applied), pg_evidence_subject(expected_type)->core) == 0);
 		assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
-		assert(pg_prove_conversion(typing, applied, expected_type, pg_conversion_certificate(&comparison)));
+		const struct pg_evidence *checked = pg_prove_conversion(typing, applied, expected_type,
+			pg_conversion_certificate(&comparison));
+		assert(checked);
 		pg_conversion_destroy(&comparison);
 		converts(&work, pg_evidence_subject(applied)->core, pg_evidence_subject(expected)->core);
+		struct pg_whnf_job *job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(checked)->core);
+		assert(pg_whnf_advance(job, 100000) == PG_EVAL_WHNF);
+		const struct pg_evidence *normal = pg_prove_normalization(typing, checked, pg_whnf_certificate(job));
+		const struct pg_evidence *result = pg_prove_return_value(typing, normal);
+		assert(result && pg_evidence_rule(result) == PG_RETURN_VALUE);
+		assert(pg_evidence_premise(result, 0) == normal);
+		assert(pg_evidence_classifier(result) == pg_evidence_classifier(path));
+		assert(pg_prove_classifier(typing, classifiers, arguments, result));
+		job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(result)->core);
+		assert(pg_whnf_advance(job, 100000) == PG_EVAL_WHNF);
+		result = pg_prove_normalization(typing, result, pg_whnf_certificate(job));
+		assert(result && pg_evidence_subject(result)->core == pg_evidence_subject(path)->core);
+		assert(pg_evidence_classifier(result) == pg_evidence_classifier(path));
 	}
 	pg_whnf_work_destroy(&work);
 }
