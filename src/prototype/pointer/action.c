@@ -77,6 +77,17 @@ const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
 	return body;
 }
 
+const struct pg_evidence *pg_identity_thunk_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *type,
+	const struct pg_evidence *left, const struct pg_evidence *right)
+{
+	if (!pg_prove_identity_type(typing, type, left, right)) return NULL;
+	const struct pg_evidence *content = pg_prove_thunk_content(typing, type);
+	const struct pg_evidence *identity = pg_prove_identity_type(typing, content,
+		pg_prove_force(typing, left), pg_prove_force(typing, right));
+	return pg_prove_thunk_type(typing, classifiers, identity);
+}
+
 const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
 	const struct pg_dimension_map *face, size_t count,

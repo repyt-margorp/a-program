@@ -54,13 +54,6 @@ static const struct pg_term *unary_argument(const struct pg_term *term, const st
 	return term->as.application.argument;
 }
 
-static const struct pg_object *endpoint_operation(const struct pg_term *type, const struct pg_term **content)
-{
-	if (pg_return_type_view(type, content)) return &pg_return_operation;
-	if (pg_thunk_type_view(type, content)) return &pg_thunk_operation;
-	return NULL;
-}
-
 struct action_binding {
 	const struct pg_object *source;
 	const struct pg_object *arguments[3];
@@ -148,11 +141,10 @@ static int right_endpoint(struct pg_eval *machine, const struct pg_term *right)
 	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &scope);
 	if (status) return status;
 	const struct pg_term *content;
-	const struct pg_object *operation = endpoint_operation(scope.body, &content);
-	if (!operation) return -1;
-	const struct pg_term *r = unary_argument(right, operation);
+	if (!pg_return_type_view(scope.body, &content)) return -1;
+	const struct pg_term *r = unary_argument(right, &pg_return_operation);
 	if (!r) return 1;
-	const struct pg_term *l = unary_argument(pg_eval_argument(machine, 1 + 3 * scope.count)->term, operation);
+	const struct pg_term *l = unary_argument(pg_eval_argument(machine, 1 + 3 * scope.count)->term, &pg_return_operation);
 	if (!l) return -1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	const struct pg_term *family = acted_body(machine->output, &scope, content);
@@ -167,10 +159,25 @@ static int left_endpoint(struct pg_eval *machine, const struct pg_term *left)
 	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &scope);
 	if (status) return status;
 	const struct pg_term *content;
-	const struct pg_object *operation = endpoint_operation(scope.body, &content);
-	if (!operation) return -1;
-	if (!unary_argument(left, operation)) return 1;
+	if (!pg_return_type_view(scope.body, &content)) return -1;
+	if (!unary_argument(left, &pg_return_operation)) return 1;
 	return pg_eval_demand(machine, 2 + 3 * scope.count, right_endpoint);
+}
+
+static int thunk_type_action(struct pg_eval *machine, struct action_scope *scope,
+	const struct pg_term *content)
+{
+	if (!pg_eval_argument(machine, 2 + 3 * scope->count)) return 1;
+	if (prepare_bindings(machine, scope) != 0) return -1;
+	struct pg_graph *graph = machine->output;
+	const struct pg_object *x0 = pg_binder(graph), *x1 = pg_binder(graph);
+	const struct pg_term *force = pg_reference(graph, &pg_force_operation);
+	const struct pg_term *inner = pg_identity_instance(graph, acted_body(graph, scope, content),
+		pg_application(graph, force, pg_reference(graph, x0)),
+		pg_application(graph, force, pg_reference(graph, x1)));
+	const struct pg_term *result = pg_application(graph, scope->body->as.application.function, inner);
+	/* Construct observations, without demanding or executing either endpoint. */
+	return enter_action(machine, scope, pg_lambda(graph, x0, pg_lambda(graph, x1, result)), 0);
 }
 
 static int pi_action(struct pg_eval *machine, struct action_scope *scope, const struct pg_term *domain,
@@ -217,6 +224,7 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	}
 	const struct pg_term *argument = unary_argument(body, &pg_return_operation);
 	if (!argument) argument = unary_argument(body, &pg_thunk_operation);
+	if (!argument) argument = unary_argument(body, &pg_force_operation);
 	if (argument) {
 		if (prepare_bindings(machine, &scope) != 0) return -1;
 		const struct pg_term *acted = acted_body(machine->output, &scope, argument);
@@ -227,7 +235,8 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	const struct pg_object *binder;
 	if (pg_pi_view(body, &domain, &binder, &codomain)) return pi_action(machine, &scope, domain, binder, codomain);
 	const struct pg_term *content;
-	if (endpoint_operation(body, &content)) {
+	if (pg_thunk_type_view(body, &content)) return thunk_type_action(machine, &scope, content);
+	if (pg_return_type_view(body, &content)) {
 		if (!pg_eval_argument(machine, 2 + 3 * scope.count)) return 1;
 		return pg_eval_demand(machine, 1 + 3 * scope.count, left_endpoint);
 	}

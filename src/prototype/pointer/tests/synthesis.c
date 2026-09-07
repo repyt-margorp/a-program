@@ -282,7 +282,18 @@ static void identity_contents(struct pg_typing *typing, struct pg_classifiers *c
 	pg_synthesis_advance(&split, 0);
 	assert(!pg_synthesis_result(unthunk));
 	const struct pg_evidence *code = complete(&split, unthunk, PG_SYNTHESIS_DONE);
-	same_judgement(code, pg_prove_reflexivity(typing, source_type, source));
+	const struct pg_evidence *source_action = pg_prove_reflexivity(typing, source_type, source);
+	assert(pg_evidence_subject(code)->core == pg_evidence_subject(source_action)->core);
+	/* U observation retains FORCE(THUNK source) in the classifier. It is
+	 * convertible to source, but is not a structurally identical endpoint. */
+	struct pg_conversion code_type;
+	assert(pg_conversion_init(&code_type, normalization, pg_evidence_classifier(code),
+		pg_evidence_classifier(source_action)) == 0);
+	assert(pg_conversion_advance(&code_type, 10000) == PG_CONVERSION_EQUAL);
+	same_judgement(pg_prove_conversion(typing, code,
+		pg_prove_classifier(typing, classifiers, context, source_action),
+		pg_conversion_certificate(&code_type)), source_action);
+	pg_conversion_destroy(&code_type);
 	assert(pg_evidence_rule(code) == PG_THUNK_COMPUTATION);
 	assert(!pg_synthesis_return(&split, context, quoted_action));
 	assert(!pg_synthesis_unthunk(&split, context, code));

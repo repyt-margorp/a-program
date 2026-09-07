@@ -557,6 +557,43 @@ a specified type family, not a global endpoint-only relation.
   (implementation net +51); `tests/identity.c` +93/-0, separately from docs.
   General telescope/dimension action jobs, already-acted source computation,
   transport/lifting, surface Identity and N2 acceptance remain unchecked.
+- [x] September 8, after `4af636c`: neutral U observation and FORCE action.
+  The fixed pure rules now include
+
+  ```text
+  Id_(U C) v0 v1 -> U(Id_C (FORCE v0) (FORCE v1))
+  act(lambda xs.FORCE v) boundaries -> FORCE (act(lambda xs.v) boundaries)
+  ```
+
+  U formation constructs observations without demanding either endpoint.
+  It uses the same equation for neutral and canonical values; ordinary
+  FORCE/THUNK reduction recovers the previous canonical equation. Scoped U
+  action retains C's chosen acted family and lower-dimensional boundary.
+  `pg_identity_thunk_type` constructs the homogeneous expanded formation by
+  composing existing Identity, U-content, FORCE and U-formation derivations.
+  A supplied path becomes forceable only after explicit conversion to that
+  U type; there is no new proof rule, Core tag or implicit classifier lookup.
+  These are our polarized observational equations. The underlying thunk/force
+  introduction/elimination and beta/eta laws are described in
+  [Levy's CBPV lectures, equational theory, slide 93](https://www.cs.bham.ac.uk/~pbl/mgsfastlam.pdf)
+  (April 18, 2026 version, accessed September 8). That reference does not
+  establish the higher Identity extension; global thunk eta conversion is
+  not added here. Preservation/coherence remain required.
+  Tests cover neutral U endpoints and a supplied path, ordinary FORCE of its
+  explicitly converted proof, typed reflexivity commuting with FORCE,
+  scoped FORCE computation, dependent U(F Z) across distinct A/B with chosen
+  p, owner/polarity rejection and divergent untyped endpoints never demanded
+  by U WHNF. Canonical U tests now distinguish structural equality from beta
+  conversion: FORCE(THUNK M) remains in the weak-head classifier. The synthesis
+  content test checks that conversion explicitly while retaining the original
+  unevaluated code. Neutral F observation, general scoped-family conversion,
+  FOLD action, transport and arbitrary higher coherence remain incomplete.
+  Verification passed: full optimized and ASan/UBSan pointer `make check`,
+  `identity_test` and `synthesis_test` with a 512 KiB stack. The 158 parser
+  outcomes still do not establish legacy-program semantic parity.
+  Sizes excluding docs: `action.c` +11/-0, `action.h` +5/-0, `identity.c`
+  +24/-15, `identity.h` +2/-2 (implementation net +25); tests `identity.c`
+  +97/-2, `synthesis.c` +12/-1 (test net +106).
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general
@@ -564,7 +601,7 @@ a specified type family, not a global endpoint-only relation.
   endpoint types coincide.
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
-  and the implemented homogeneous F/U/Pi Identity and RETURN/THUNK action rules;
+  and the implemented F/U/Pi Identity and RETURN/THUNK/FORCE action rules;
   its generic pair walker is not permission to certify an arbitrary callback's
   answers. Runtime handlers/oracles must not change this policy.
 

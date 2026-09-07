@@ -19,6 +19,11 @@ const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *left,
 	const struct pg_evidence *right, const struct pg_object *x0,
 	const struct pg_object *x1, const struct pg_object *path);
+/* Id_(U C) v0 v1 expands to U(Id_C (FORCE v0) (FORCE v1)).
+ * FORCE forms observations; this function does not execute endpoints. */
+const struct pg_evidence *pg_identity_thunk_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *type,
+	const struct pg_evidence *left, const struct pg_evidence *right);
 
 /* Construct a checked context substitution along a strict face. The binding
  * array follows source declaration order; NULL entries preserve that binder.
