@@ -47,6 +47,17 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 	const struct pg_evidence **left, const struct pg_evidence **right,
 	const struct pg_evidence **paths);
 
+/* Act on the final image_count images of sigma : Delta -> Gamma along a
+ * checked boundary into Delta. Each result is ordinary family-action evidence
+ * for that image, not a datatype fibrancy certificate or an equality of maps.
+ * The caller owns an image_count output array; it is written only on success.
+ * -1 includes unsupported regularity rules and allocation failure. */
+int pg_identity_substitution_images(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *left, const struct pg_evidence *right,
+	size_t count, const struct pg_evidence *const *paths, size_t image_count,
+	const struct pg_evidence **images);
+
 /* Construct a checked context substitution along a strict face. The binding
  * array follows source declaration order; NULL entries preserve that binder.
  * This preserves supplied typing, but does not assert a higher Identity type

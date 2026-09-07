@@ -428,13 +428,66 @@ static void schemas(struct pg_graph *graph)
 		assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
 		pg_conversion_destroy(&comparison);
 	}
+	const struct pg_evidence *acted_indices[2], *again[2];
+	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 2, acted_indices) == 0);
+	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 2, again) == 0);
 	for (size_t n = 0; n < 2; ++n) {
-		const struct pg_evidence *type = n ? pg_prove_projection(&typing, fields, id)
-			: pg_prove_value_type(&typing, index_images[0]);
-		const struct pg_evidence *acted = pg_prove_family_action(&typing, type, index_images[n + 1], left, right, 2, paths);
-		assert(acted);
-		check(&work, pg_evidence_subject(acted)->core, pg_evidence_subject(paths[n])->core);
+		assert(acted_indices[n] == again[n]);
+		check(&work, pg_evidence_subject(acted_indices[n])->core, pg_evidence_subject(paths[n])->core);
 	}
+	const struct pg_binding_face *index_centers[2];
+	for (size_t n = 0; n < 2; ++n)
+		index_centers[n] = pg_binding_face(&dimensions, pg_binding_cube(&dimensions, 1), pg_dimension_identity(&dimensions, 1));
+	const struct pg_evidence *index_left, *index_right, *index_paths[2];
+	const struct pg_evidence *index_boundary = pg_identity_context(&typing, &dimensions, indices, 2, index_centers,
+		&index_left, &index_right, index_paths);
+	assert(index_boundary);
+	const struct pg_evidence *map_endpoints[] = {pg_data_result(&typing, indexed, indexed_ctor, left),
+		pg_data_result(&typing, indexed, indexed_ctor, right)};
+	const struct pg_evidence *image_values[7] = {pg_evidence_premise(map_endpoints[0], 2)};
+	for (size_t n = 0; n < 2; ++n) {
+		image_values[1 + 3 * n] = pg_evidence_premise(map_endpoints[0], n + 3);
+		image_values[2 + 3 * n] = pg_evidence_premise(map_endpoints[1], n + 3);
+		image_values[3 + 3 * n] = acted_indices[n];
+	}
+	/* Acting on an image's classifier and substituting into the acted
+	 * classifier agree by computation, not necessarily structural alpha. */
+	const struct pg_evidence *declarations[7], *declaration = index_boundary;
+	for (size_t n = 7; n; --n) {
+		declarations[n - 1] = declaration;
+		declaration = pg_evidence_premise(declaration, 0);
+	}
+	const struct pg_evidence *acted_map = pg_prove_substitution(&typing, declaration, boundary, 0, NULL);
+	for (size_t n = 0; n < 7; ++n) {
+		const struct pg_evidence *expected = pg_prove_reindex(&typing, acted_map, pg_evidence_premise(declarations[n], 1));
+		assert(expected);
+		struct pg_conversion comparison;
+		assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(image_values[n]), pg_evidence_subject(expected)->core) == 0);
+		assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
+		const struct pg_evidence *converted = pg_prove_conversion(&typing, image_values[n], expected, pg_conversion_certificate(&comparison));
+		acted_map = pg_prove_substitution_pair(&typing, acted_map, declarations[n], converted);
+		assert(acted_map);
+		pg_conversion_destroy(&comparison);
+	}
+	const struct pg_evidence *index_sides[] = {index_left, index_right};
+	for (size_t side = 0; side < 2; ++side) {
+		const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, index_sides[side], acted_map);
+		assert(composite);
+		for (size_t n = 0; n < 3; ++n)
+			assert(pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(composite, n + 2))->core,
+				pg_evidence_subject(pg_evidence_premise(map_endpoints[side], n + 2))->core) == 1);
+	}
+	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 0, NULL) == 0);
+	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, left, 0, NULL, 2, again) == 0);
+	for (size_t n = 0; n < 2; ++n)
+		check(&work, pg_evidence_subject(again[n])->core,
+			pg_identity_action(graph, pg_evidence_subject(pg_evidence_premise(map_endpoints[0], n + 3))->core));
+	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 2, again) == 0);
+	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 4, again) == -1);
+	assert(pg_identity_substitution_images(&foreign, &classifiers, index_map, left, right, 2, paths, 2, again) == -1);
+	const struct pg_evidence *invalid_paths[] = {paths[0], paths[0]};
+	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, invalid_paths, 2, again) == -1);
+	assert(again[0] == acted_indices[0] && again[1] == acted_indices[1]);
 	pg_whnf_work_destroy(&work);
 	pg_dimensions_destroy(&dimensions);
 	pg_classifiers_destroy(&classifiers);

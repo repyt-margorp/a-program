@@ -1,5 +1,34 @@
 #include "action.h"
 
+int pg_identity_substitution_images(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *left, const struct pg_evidence *right,
+	size_t count, const struct pg_evidence *const *paths, size_t image_count,
+	const struct pg_evidence **images)
+{
+	if (!pg_evidence_owned_by(substitution, typing)) return -1;
+	if (pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return -1;
+	size_t total = pg_evidence_premise_count(substitution) - 2;
+	if (image_count > total || (image_count && !images)) return -1;
+	if (image_count > SIZE_MAX / sizeof(*images)) return -1;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **results = pg_alloc(&temporary, image_count * sizeof(*results));
+	int status = -1;
+	if (image_count && !results) goto done;
+	const struct pg_evidence *context = pg_evidence_premise(substitution, 1);
+	for (size_t i = 0; i < image_count; ++i) {
+		const struct pg_evidence *value = pg_evidence_premise(substitution, 2 + total - image_count + i);
+		const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, value);
+		results[i] = pg_prove_family_action(typing, type, value, left, right, count, paths);
+		if (!results[i]) goto done;
+	}
+	for (size_t i = 0; i < image_count; ++i) images[i] = results[i];
+	status = 0;
+done:
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
 static int boundary_binders(struct pg_dimensions *dimensions,
 	const struct pg_binding_face *center, const struct pg_object **binders)
 {

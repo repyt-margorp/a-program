@@ -24,6 +24,10 @@ field and index contexts, preserving the fixed parameter prefix. Field/index
 instances use ordinary dependent substitution and composition, including
 Identity-valued indices and their acted boundaries. Alternative context derivations are retained;
 equal contexts need not use identical proof pointers.
+Typed action on result-map images builds a checked substitution between
+expanded field/index contexts after explicit classifier conversion. Both
+endpoint projections commute in the tested dependent example; this is not a
+general naturality or indexed-fibrancy theorem.
 Branch abstraction uses ordinary Pi/Lambda proofs from synthesized computation
 bodies. Its applications agree with typed body substitution and erased iota;
 raw function results stay Pi computations. Selected-path action is compared by

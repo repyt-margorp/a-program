@@ -1128,6 +1128,33 @@ a specified type family, not a global endpoint-only relation.
   Optimized pointer `make check`: 3.082 s; ASan/UBSan: 9.148 s (both rebuilding
   the changed synthesis test); synthesis/IADT/Identity pass at a 512 KiB stack.
   Implementation +100/-1 (net +99); tests +109; docs separate. N2/N3 stay open.
+- [x] September 8, after `c6c7b4b`: typed action on substitution images.
+  `pg_identity_substitution_images` acts on selected trailing images using their
+  recovered classifiers and existing family-action evidence. Outputs are
+  committed to the caller's array only after all requested images succeed;
+  the accepted proofs themselves remain shared immutable DAG nodes. No new
+  relation, map-equality rule or datatype-specific action evaluator is added.
+  The indexed-schema test now constructs a map between the expanded field and
+  index contexts, including an Identity-valued index. Its two endpoint
+  projections agree with composing the original result map with each field
+  projection. Direct alpha-only substitution initially rejected the center
+  classifiers: action followed by substitution requires conversion. Explicit
+  existing conversion proofs followed by substitution pairing close the example;
+  the primitive substitution rule is not weakened. Tests also check diagonal
+  action, proof reuse, invalid paths/ownership/arity and unchanged output arrays
+  on failure. A test-local duplicate variable name was corrected during build.
+  This finite diagram is not a general naturality or fibrancy theorem. The
+  review therefore does not promote raw result schemas to HOTT universe values:
+  they still lack transport/lifting along arbitrary index paths. Narya's
+  [indexed fibrancy caveat](https://narya.readthedocs.io/en/latest/hott.html#hott-inside-parametricity)
+  remains relevant; its replacement construction is not supplied by this helper.
+  Nominal admission must retain those obligations, not silently equate a
+  relation-preserving schema with an equality-supporting datatype. N2/N3 remain
+  open. This helper uses synchronous regularity/action checks; scheduler-level
+  budgeted image action and the full datatype transport contract remain work.
+  Optimized pointer `make check`: 2.514 s (changed test rebuilt); ASan/UBSan:
+  16.224 s (affected binaries rebuilt); IADT/Identity/synthesis pass at 512 KiB.
+  Implementation +40 (`action.c` +29, `action.h` +11); tests +58/-5; docs separate.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general
