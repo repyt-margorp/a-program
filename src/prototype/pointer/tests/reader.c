@@ -142,7 +142,7 @@ static void syntax(void)
 	assert(definition.expression->token.kind == '@');
 	assert(pg_parser_next(&parser, &definition) == 0);
 	const char *invalid[] = {"id := \\x => x;", "x := (x:A);", "x := f (x:A);",
-		"x := (f a;", "x := f", "x := b @true => x;", "T := @{c:*};"};
+		"x := (f a;", "x := f", "x := b @true => ;", "T := @{c:*};"};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
 		assert(pg_parser_next(&parser, &definition) == -1);
@@ -150,6 +150,53 @@ static void syntax(void)
 	}
 	pg_graph_destroy(&arena);
 	puts("syntax: lambda annotations, dependent Pi, applications and separate expect nodes passed");
+}
+
+static void eliminations(void)
+{
+	const char source[] =
+		"add := \\n:Nat => n @zero => \\m:Nat => m @succ k => \\m:Nat => Nat.succ (*k m);"
+		"handled := M @#.get req k => k default @print_alias req k => k unit @#.return result => result;"
+		"nested := b @true => (b @true => x @false => y) @false => z;"
+		"selected := g @step {arg:=x; proof;} => x;";
+	struct pg_graph arena = {0};
+	struct pg_parser parser;
+	struct pg_definition definition;
+	pg_parser_init(&parser, &arena, source, sizeof(source) - 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	const struct pg_syntax *match = definition.expression->right;
+	assert(match->kind == PG_SYNTAX_ELIMINATION && match->item_count == 2);
+	assert(match->items[0].expression->right->kind == PG_SYNTAX_LAMBDA);
+	assert(match->items[1].expression->item_count == 1);
+	assert(match->items[1].expression->items[0].name.text[0] == 'k');
+	assert(match->items[1].expression->right->kind == PG_SYNTAX_LAMBDA);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	match = definition.expression;
+	assert(match->kind == PG_SYNTAX_ELIMINATION && match->item_count == 3);
+	assert(match->items[0].expression->left->kind == PG_SYNTAX_QUALIFIED);
+	assert(match->items[0].expression->item_count == 2);
+	assert(match->items[1].expression->left->token.text_length == strlen("print_alias"));
+	assert(match->items[2].expression->left->right->token.text_length == strlen("return"));
+	assert(match->items[2].expression->item_count == 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	match = definition.expression;
+	assert(match->item_count == 2);
+	assert(match->items[0].expression->right->kind == PG_SYNTAX_ELIMINATION);
+	assert(match->items[0].expression->right->item_count == 2);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	const struct pg_syntax *clause = definition.expression->items[0].expression;
+	assert(clause->item_count == 2);
+	assert(clause->items[0].operation == PG_TOKEN_ASSIGN);
+	assert(clause->items[0].expression->token.text[0] == 'x');
+	assert(pg_parser_next(&parser, &definition) == 0);
+	const char *invalid[] = {"m:=x @;", "m:=x @c p {q;} =>x;", "m:=x @c {p:=;} =>x;",
+		"m:=x @c p x;", "m:=x @c =>;"};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
+		assert(pg_parser_next(&parser, &definition) == -1);
+	}
+	pg_graph_destroy(&arena);
+	puts("elimination syntax: clause arrays, alias heads, return labels, nested grouping and selectors passed");
 }
 
 static void blocks(void)
@@ -260,6 +307,7 @@ int main(void)
 	syntax();
 	declarations();
 	blocks();
+	eliminations();
 	puts("reader: symbolic syntax, contextual names, literals, comments and bounded input passed");
 	return 0;
 }

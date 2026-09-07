@@ -410,8 +410,8 @@ fragment, qualified names, literals, quotation, and separate `::` checks into
 source-owned syntax nodes. It does not resolve names, infer types, insert CBPV
 coercions or evaluate expressions. Tests check left-associated application,
 dependent binder retention and separation of expected-type checks from
-definitions. Ordinary and ASan/UBSan checks pass. Match,
-imports and graph-companion syntax still need grammar implementations; current
+definitions. Ordinary and ASan/UBSan checks pass. Imports and graph-companion
+syntax still need grammar implementations; current
 rejection of those forms is a temporary unsupported boundary, not a language
 design change or a compatibility success.
 
@@ -434,6 +434,16 @@ ordering, nesting, quotation, selected results, exit preservation, root
 restrictions and malformed delimiters; ordinary and sanitizer checks pass.
 Scope validation, duplicate-name checks, selected-binding validation, exit
 barriers, CBPV lowering and effect execution remain required.
+
+Elimination syntax now retains multiple clauses with unresolved label syntax,
+positional binders or named selector aliases, and bodies. `#.return` is retained
+as a qualified name, not dispatched in the parser. The same clause/list storage
+serves ADT and effect syntax without claiming their typing rules are identical.
+Tests cover unparenthesized lambda branch bodies, explicitly grouped nested
+matches, operation aliases and return labels; ordinary and sanitizer checks
+pass. Name/arity validation, head classification, scope checks and iota/fold
+lowering remain unimplemented. The full existing nesting/precedence fixture
+inventory still needs comparison before claiming grammar compatibility.
 
 This table is a starting inventory from the current reader, AST and test tree,
 not a claim that the failed snapshot passes every row. N0 must enumerate exact

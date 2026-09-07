@@ -40,6 +40,7 @@ static const struct pg_syntax *node(struct pg_parser *parser, enum pg_syntax_kin
 }
 
 static const struct pg_syntax *expression(struct pg_parser *parser);
+static const struct pg_syntax *expression_mode(struct pg_parser *parser, int eliminate);
 
 struct item_buffer {
 	struct pg_syntax_item *items;
@@ -66,7 +67,7 @@ static int append_item(struct pg_parser *parser, struct item_buffer *buffer, str
 	return 0;
 }
 
-static const struct pg_syntax *item_node(struct pg_parser *parser, enum pg_syntax_kind kind,
+static struct pg_syntax *item_node(struct pg_parser *parser, enum pg_syntax_kind kind,
 	struct pg_token token, const struct item_buffer *buffer)
 {
 	struct pg_syntax_item *stored = pg_alloc(parser->arena, buffer->count * sizeof(*stored));
@@ -232,8 +233,7 @@ static const struct pg_syntax *application(struct pg_parser *parser)
 	while (!parser->error && atom_start(parser->reader.token.kind)) {
 		struct pg_token token = parser->reader.token;
 		if (token.kind == '@') {
-			error(parser, "elimination grammar not implemented yet");
-			return NULL;
+			break;
 		}
 		const struct pg_syntax *argument = atom(parser);
 		if (!result || !argument) return NULL;
@@ -246,7 +246,7 @@ static const struct pg_syntax *application(struct pg_parser *parser)
 	return result;
 }
 
-static const struct pg_syntax *arrow(struct pg_parser *parser)
+static const struct pg_syntax *arrow(struct pg_parser *parser, int eliminate)
 {
 	if (parser->reader.token.kind == '\\') {
 		advance(parser);
@@ -255,7 +255,7 @@ static const struct pg_syntax *arrow(struct pg_parser *parser)
 		if (require(parser, ':', "lambda requires a domain annotation") != 0) return NULL;
 		const struct pg_syntax *domain = expression(parser);
 		if (require(parser, PG_TOKEN_LAMBDA_ARROW, "expected '=>' after lambda domain") != 0) return NULL;
-		const struct pg_syntax *body = expression(parser);
+		const struct pg_syntax *body = expression_mode(parser, eliminate);
 		return node(parser, PG_SYNTAX_LAMBDA, binder, domain, body);
 	}
 	const struct pg_syntax *domain = application(parser);
@@ -269,20 +269,89 @@ static const struct pg_syntax *arrow(struct pg_parser *parser)
 	}
 	struct pg_token token = parser->reader.token;
 	advance(parser);
-	const struct pg_syntax *codomain = arrow(parser);
+	const struct pg_syntax *codomain = arrow(parser, eliminate);
 	return node(parser, PG_SYNTAX_PI, token, domain, codomain);
+}
+
+static const struct pg_syntax *elimination(struct pg_parser *parser, const struct pg_syntax *scrutinee)
+{
+	struct pg_token opening = parser->reader.token;
+	struct item_buffer clauses = {0};
+	struct item_buffer binders = {0};
+	const struct pg_syntax *result = NULL;
+	while (!parser->error && parser->reader.token.kind == '@') {
+		struct pg_token marker = parser->reader.token;
+		advance(parser);
+		int kind = parser->reader.token.kind;
+		if (kind != PG_TOKEN_IDENT && kind != '#') {
+			error(parser, "expected elimination label");
+			goto done;
+		}
+		const struct pg_syntax *head = atom(parser);
+		if (!head) goto done;
+		binders.count = 0;
+		while (parser->reader.token.kind == PG_TOKEN_IDENT) {
+			struct pg_syntax_item binder = {.name = parser->reader.token};
+			advance(parser);
+			if (append_item(parser, &binders, binder) != 0) goto done;
+		}
+		if (parser->reader.token.kind == '{') {
+			if (binders.count) {
+				error(parser, "named selectors cannot follow positional binders");
+				goto done;
+			}
+			advance(parser);
+			while (!parser->error && parser->reader.token.kind != '}') {
+				struct pg_token name = parser->reader.token;
+				if (require(parser, PG_TOKEN_IDENT, "expected named selector") != 0) goto done;
+				struct pg_token alias = name;
+				if (parser->reader.token.kind == PG_TOKEN_ASSIGN) {
+					advance(parser);
+					alias = parser->reader.token;
+					if (require(parser, PG_TOKEN_IDENT, "expected selector alias") != 0) goto done;
+				}
+				const struct pg_syntax *local = node(parser, PG_SYNTAX_ATOM, alias, NULL, NULL);
+				if (require(parser, ';', "expected ';' after selector") != 0) goto done;
+				if (append_item(parser, &binders, (struct pg_syntax_item){.name = name,
+					.expression = local, .operation = PG_TOKEN_ASSIGN}) != 0) goto done;
+			}
+			if (require(parser, '}', "expected '}' after selectors") != 0) goto done;
+		}
+		if (require(parser, PG_TOKEN_LAMBDA_ARROW, "expected '=>' after clause binders") != 0) goto done;
+		const struct pg_syntax *body = expression_mode(parser, 0);
+		if (!body) goto done;
+		struct pg_syntax *clause = item_node(parser, PG_SYNTAX_CLAUSE, marker, &binders);
+		if (!clause) goto done;
+		clause->left = head;
+		clause->right = body;
+		if (append_item(parser, &clauses, (struct pg_syntax_item){.expression = clause}) != 0) goto done;
+	}
+	struct pg_syntax *match = item_node(parser, PG_SYNTAX_ELIMINATION, opening, &clauses);
+	if (match) match->left = scrutinee;
+	result = match;
+done:
+	free(clauses.items);
+	free(binders.items);
+	return result;
+}
+
+static const struct pg_syntax *expression_mode(struct pg_parser *parser, int eliminate)
+{
+	const struct pg_syntax *result = arrow(parser, eliminate);
+	if (!result) return NULL;
+	if (eliminate && parser->reader.token.kind == '@') result = elimination(parser, result);
+	while (!parser->error && parser->reader.token.kind == PG_TOKEN_EXPECT) {
+		struct pg_token token = parser->reader.token;
+		advance(parser);
+		const struct pg_syntax *expected = arrow(parser, eliminate);
+		result = node(parser, PG_SYNTAX_EXPECT, token, result, expected);
+	}
+	return result;
 }
 
 static const struct pg_syntax *expression(struct pg_parser *parser)
 {
-	const struct pg_syntax *result = arrow(parser);
-	while (!parser->error && parser->reader.token.kind == PG_TOKEN_EXPECT) {
-		struct pg_token token = parser->reader.token;
-		advance(parser);
-		const struct pg_syntax *expected = arrow(parser);
-		result = node(parser, PG_SYNTAX_EXPECT, token, result, expected);
-	}
-	return result;
+	return expression_mode(parser, 1);
 }
 
 void pg_parser_init(struct pg_parser *parser, struct pg_graph *arena,
