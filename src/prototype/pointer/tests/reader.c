@@ -294,6 +294,15 @@ static void declarations(void)
 		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
 		assert(pg_parser_next(&parser, &definition) == -1);
 	}
+	const char repeated[] = "Rel:=@\\x:A=>@\\y:A=>{r:(z:A)->* z z;}; id:=\\A:@=>x:A=>x; grouped:=(x:A=>x);";
+	pg_parser_init(&parser, &arena, repeated, sizeof(repeated) - 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->left->right->kind == PG_SYNTAX_LAMBDA);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->right->kind == PG_SYNTAX_LAMBDA);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_LAMBDA);
+	assert(pg_parser_next(&parser, &definition) == 0);
 	pg_graph_destroy(&arena);
 	puts("declarations: parameter/index separation, List/Vec/Acc self markers and constructor arrays passed");
 }

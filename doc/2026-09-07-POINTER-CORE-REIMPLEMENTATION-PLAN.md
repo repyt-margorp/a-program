@@ -392,6 +392,17 @@ compatibility.
 
 ## 7. Compatibility Inventory
 
+Inventory execution checkpoint: the new `tests/parse_files.c` runner read all
+158 listed current-worktree programs. Initial coverage was 121 parsed / 37
+syntax errors. Comparing failures with the existing reader identified missing
+repeated `@\\` index markers and bare annotated lambdas (`x:A=>body`); after
+implementing these, the result is 133 parsed / 25 syntax errors. Remaining
+errors include graph-companion and import syntax plus old drafts. This is not
+a conformance percentage: negative semantic fixtures may parse, and accepted
+syntax trees still need semantic/precedence comparison. Existing examples
+01--09 (eight files; no 08 file) are now permanent parser smoke tests and pass
+with sanitizers, without modifying the examples.
+
 `pointer/reader.c` now provides an allocation-free bounded lexer, separated
 from name resolution and type decisions. Its tokens cover the current reader's
 punctuation, identifier, Int64, plain/raw-delimited Text and C-comment forms.

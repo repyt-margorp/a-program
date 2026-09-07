@@ -42,6 +42,13 @@ static const struct pg_syntax *node(struct pg_parser *parser, enum pg_syntax_kin
 static const struct pg_syntax *expression(struct pg_parser *parser);
 static const struct pg_syntax *expression_mode(struct pg_parser *parser, int eliminate);
 
+static int starts_annotated_binder(const struct pg_parser *parser)
+{
+	if (parser->reader.token.kind != PG_TOKEN_IDENT) return 0;
+	struct pg_reader lookahead = parser->reader;
+	return pg_reader_next(&lookahead) == ':';
+}
+
 struct item_buffer {
 	struct pg_syntax_item *items;
 	size_t count, capacity;
@@ -86,6 +93,13 @@ static struct pg_syntax *item_node(struct pg_parser *parser, enum pg_syntax_kind
  * parameters; the parser does not substitute the declaration's source name. */
 static const struct pg_syntax *declaration_body(struct pg_parser *parser)
 {
+	if (parser->reader.token.kind == '@') {
+		advance(parser);
+		if (parser->reader.token.kind != '\\') {
+			error(parser, "expected index lambda after '@'");
+			return NULL;
+		}
+	}
 	if (parser->reader.token.kind == '\\') {
 		advance(parser);
 		struct pg_token binder = parser->reader.token;
@@ -188,17 +202,17 @@ static const struct pg_syntax *atom(struct pg_parser *parser)
 	if (token.kind == '{') {
 		result = block(parser, token, 0);
 	} else if (token.kind == '(') {
-		result = expression(parser);
-		if (parser->reader.token.kind == ':') {
-			if (!result) return NULL;
-			if (result->kind != PG_SYNTAX_ATOM || result->token.kind != PG_TOKEN_IDENT) {
-				error(parser, "dependent binder requires a name");
-				return NULL;
-			}
+		if (starts_annotated_binder(parser)) {
+			struct pg_token binder = parser->reader.token;
+			advance(parser);
 			advance(parser);
 			const struct pg_syntax *domain = expression(parser);
-			result = node(parser, PG_SYNTAX_BINDER, result->token, domain, NULL);
-		}
+			if (parser->reader.token.kind == PG_TOKEN_LAMBDA_ARROW) {
+				advance(parser);
+				const struct pg_syntax *body = expression(parser);
+				result = node(parser, PG_SYNTAX_LAMBDA, binder, domain, body);
+			} else result = node(parser, PG_SYNTAX_BINDER, binder, domain, NULL);
+		} else result = expression(parser);
 		if (require(parser, ')', "expected ')' after expression") != 0) return NULL;
 	} else if (token.kind == '&') {
 		result = node(parser, PG_SYNTAX_QUOTE, token, atom(parser), NULL);
@@ -248,8 +262,8 @@ static const struct pg_syntax *application(struct pg_parser *parser)
 
 static const struct pg_syntax *arrow(struct pg_parser *parser, int eliminate)
 {
-	if (parser->reader.token.kind == '\\') {
-		advance(parser);
+	if (parser->reader.token.kind == '\\' || starts_annotated_binder(parser)) {
+		if (parser->reader.token.kind == '\\') advance(parser);
 		struct pg_token binder = parser->reader.token;
 		if (require(parser, PG_TOKEN_IDENT, "expected lambda binder") != 0) return NULL;
 		if (require(parser, ':', "lambda requires a domain annotation") != 0) return NULL;
