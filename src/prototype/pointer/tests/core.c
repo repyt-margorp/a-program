@@ -255,6 +255,12 @@ static void evidence_test(struct pg_graph *graph)
 	assert(!pg_prove_fold(&typing, returned, quoted_function));
 	const struct pg_evidence *fold_formation = pg_prove_classifier(&typing, &classifiers, x_context, folded);
 	assert(fold_formation && pg_evidence_subject(fold_formation)->core == pg_evidence_classifier(folded));
+	size_t fold_terms = graph->terms.count, fold_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_prove_fold(&typing, returned, identity_y) == folded);
+		assert(pg_prove_classifier(&typing, &classifiers, x_context, folded) == fold_formation);
+	}
+	assert(graph->terms.count == fold_terms && typing.proofs.count == fold_proofs);
 	const struct pg_evidence *x_formation = pg_prove_classifier(&typing, &classifiers, x_context, x_term);
 	assert(x_formation && pg_evidence_subject(x_formation)->core == pg_evidence_classifier(x_term));
 	const struct pg_evidence *body_formation = pg_prove_classifier(&typing, &classifiers, x_context, returned);

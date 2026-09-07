@@ -19,6 +19,7 @@ static int derived_output(enum pg_evidence_rule rule)
 {
 	switch (rule) {
 	case PG_REINDEX: case PG_APP_ELIM: case PG_PI_CODOMAIN:
+	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN:
 		return 1;
 	default: return 0;
 	}
@@ -30,8 +31,8 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises,
 	const struct pg_conversion_certificate *conversion, uint64_t *hash_out)
 {
-	/* These output pointers are chosen by capture-avoiding substitution. Their
-	 * immutable inputs, not newly allocated output binders, identify the work. */
+	/* For these rules, immutable premises determine the output. Check this key
+	 * before substitution or independence checks allocate temporary binders. */
 	if (derived_output(rule)) { subject = NULL; classifier = NULL; }
 	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ (uintptr_t)classifier ^ rule) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
@@ -562,6 +563,10 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 {
 	if (!pi || pi->owner != typing) return NULL;
 	if (pi->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_PI_CONSTANT_CODOMAIN,
+		PG_JUDGEMENT_COMPUTATION_TYPE, pi->context, NULL, NULL, 1, &pi, NULL, &hash);
+	if (existing) return existing;
 	const struct pg_term *codomain = constant_codomain(typing, pi->subject->core);
 	if (!codomain) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, codomain, NULL, 1, &pi->subject);
@@ -578,6 +583,11 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (continuation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (computation->context != continuation->context) return NULL;
+	const struct pg_evidence *premises[] = {computation, continuation};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_FOLD_ELIM,
+		PG_JUDGEMENT_COMPUTATION, computation->context, NULL, NULL, 2, premises, NULL, &hash);
+	if (existing) return existing;
 	const struct pg_term *value_type, *domain, *codomain;
 	const struct pg_object *binder;
 	if (!pg_return_type_view(computation->classifier, &value_type)) return NULL;
@@ -592,7 +602,6 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {computation->subject, continuation->subject};
 	const struct pg_occurrence *subject = pg_occurrence(typing, computation->context, core, NULL, 2, operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {computation, continuation};
 	return accept(typing, PG_FOLD_ELIM, PG_JUDGEMENT_COMPUTATION,
 		computation->context, subject, codomain, 2, premises);
 }

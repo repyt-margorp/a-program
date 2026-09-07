@@ -528,6 +528,11 @@ conclusion and all premise pointers; no accepted record is overwritten.
   100 identical APP/regularity requests now return the original proofs without
   increasing Term or derivation counts. Accepted premises remain part of the
   key, so distinct typed occurrences are not merged through a shared Core.
+  FOLD elimination and constant-codomain formation also consult this index
+  before repeating their independence check. A repeated FOLD previously
+  returned the same evidence but allocated fresh test references on every call;
+  the 100-request regression now checks both proof identity and zero Term growth.
+  This reuses accepted typing work only, never the result of executing FOLD.
   Regularity for unsupported rules returns NULL, not a refutation. Recovery
   currently traverses the relevant proof premises; scheduling/memoization and
   source synthesis still need integration rather than a separate type authority.
