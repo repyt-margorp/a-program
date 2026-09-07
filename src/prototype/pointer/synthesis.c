@@ -620,6 +620,88 @@ static int same_name(struct pg_token left, struct pg_token right)
 	return left.length == right.length && memcmp(left.text, right.text, left.length) == 0;
 }
 
+static const struct pg_evidence *classifier_input(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_evidence *context, const struct pg_evidence *input)
+{
+	if (!job->value_job) {
+		job->value_job = pg_synthesis_normalize_classifier(synthesis, context, input);
+		depend(synthesis, job, job->value_job);
+		return NULL;
+	}
+	struct pg_synthesis_job *producer = job->value_job;
+	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return NULL; }
+	job->value_job = NULL;
+	return producer->result;
+}
+
+static void application_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	/* Both source operands have synthesized independently. Expose the callee,
+	 * prepare the argument, then compare/apply and close sequencing frames. */
+	const struct pg_evidence *context = job->application_frame ? job->application_frame->context : job->scope->context;
+	if (!job->function) { job->function = job->left->result; job->checking_term = job->right->result; }
+	if (job->stage == 2) {
+		enum pg_evidence_judgement kind = pg_evidence_judgement(job->function);
+		if (kind != PG_JUDGEMENT_VALUE && kind != PG_JUDGEMENT_COMPUTATION) goto rejected;
+		const struct pg_evidence *function = classifier_input(synthesis, job, context, job->function);
+		if (!function) return;
+		job->function = function;
+		if (kind == PG_JUDGEMENT_VALUE) {
+			job->function = pg_prove_force(synthesis->typing, function);
+			if (!job->function) goto rejected;
+		} else {
+			const struct pg_term *domain, *codomain;
+			const struct pg_object *binder;
+			if (pg_pi_view(pg_evidence_classifier(function), &domain, &binder, &codomain)) job->stage = 3;
+			else {
+				if (!pg_return_type_view(pg_evidence_classifier(function), &domain)) goto rejected;
+				if (sequence_operand(synthesis, &job->application_frame, &context, &job->function, &job->checking_term) != 0)
+					goto unsupported;
+			}
+		}
+		enqueue(synthesis, job);
+		return;
+	}
+	if (job->stage == 3) {
+		if (pg_evidence_judgement(job->checking_term) == PG_JUDGEMENT_COMPUTATION) {
+			const struct pg_evidence *argument = classifier_input(synthesis, job, context, job->checking_term);
+			if (!argument) return;
+			job->checking_term = argument;
+			if (sequence_operand(synthesis, &job->application_frame, &context, &job->checking_term, &job->function) != 0)
+				goto unsupported;
+		} else job->checking_term = value(synthesis, job->checking_term);
+		if (!job->checking_term) goto rejected;
+		const struct pg_evidence *pi = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, job->function);
+		job->checking_type = pg_prove_pi_domain(synthesis->typing, pi);
+		if (!job->checking_type) goto unsupported;
+		job->stage = 4;
+	}
+	if (job->stage == 4) {
+		const struct pg_evidence *argument = job->checking_term;
+		if (pg_evidence_classifier(argument) != pg_evidence_subject(job->checking_type)->core) argument = compare(synthesis, job);
+		if (!argument) return;
+		job->result = pg_prove_application(synthesis->typing, job->function, argument);
+		if (!job->result) goto rejected;
+		job->stage = 5;
+	}
+	if (job->application_frame) {
+		const struct continuation_frame *frame = job->application_frame;
+		const struct pg_evidence *result = close_continuation(synthesis, job, frame, job->result);
+		if (!result) return;
+		job->result = result;
+		job->application_frame = frame->parent;
+		enqueue(synthesis, job);
+		return;
+	}
+	finish(synthesis, job, PG_SYNTHESIS_DONE);
+	return;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+	return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+}
+
 static int register_name(struct pg_synthesis *synthesis, struct pg_index *names, struct pg_token name)
 {
 	if (!name.length) return 0;
@@ -1000,54 +1082,9 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		job->result = pg_prove_pi(synthesis->typing, synthesis->classifiers, job->domain, job->inner->context, codomain);
 		break;
 	}
-	case PG_SYNTAX_APPLICATION: {
-		if (!job->checking_term) {
-			const struct pg_evidence *context = job->scope->context;
-			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) left = pg_prove_force(synthesis->typing, left);
-			if (!left) break;
-			const struct pg_term *returned;
-			if (pg_return_type_view(pg_evidence_classifier(left), &returned)) {
-				if (sequence_operand(synthesis, &job->application_frame, &context, &left, &right) != 0) {
-					finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
-				}
-			}
-			if (pg_evidence_judgement(right) == PG_JUDGEMENT_COMPUTATION) {
-				if (sequence_operand(synthesis, &job->application_frame, &context, &right, &left) != 0) {
-					finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
-				}
-			}
-			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) left = pg_prove_force(synthesis->typing, left);
-			right = value(synthesis, right);
-			if (!left || !right) break;
-			const struct pg_term *domain, *codomain;
-			const struct pg_object *binder;
-			if (!pg_pi_view(pg_evidence_classifier(left), &domain, &binder, &codomain)) break;
-			const struct pg_evidence *pi = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, left);
-			job->checking_type = pg_prove_pi_domain(synthesis->typing, pi);
-			if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-			job->checking_term = right;
-			job->function = left;
-		}
-		if (job->stage == 2) {
-			right = job->checking_term;
-			if (pg_evidence_classifier(right) != pg_evidence_subject(job->checking_type)->core)
-				right = compare(synthesis, job);
-			if (!right) return;
-			job->result = pg_prove_application(synthesis->typing, job->function, right);
-			if (!job->result) break;
-			job->stage = 3;
-		}
-		if (job->application_frame) {
-			const struct continuation_frame *frame = job->application_frame;
-			const struct pg_evidence *result = close_continuation(synthesis, job, frame, job->result);
-			if (!result) return;
-			job->result = result;
-			job->application_frame = frame->parent;
-			enqueue(synthesis, job);
-			return;
-		}
-		break;
-	}
+	case PG_SYNTAX_APPLICATION:
+		application_step(synthesis, job);
+		return;
 	case PG_SYNTAX_EXPECT: {
 		if (!job->checking_term) {
 			right = type_input(synthesis, job, job->scope->context, right);

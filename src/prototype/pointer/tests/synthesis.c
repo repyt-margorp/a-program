@@ -291,6 +291,48 @@ static void named_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	result = complete(&synthesis, pg_synthesis_nf(&synthesis, context, result), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(result)->core == pg_reference(typing->graph, bindings[4]));
 	complete(&synthesis, request(&synthesis, scope, "main := trr B A r y;"), PG_SYNTHESIS_REJECTED);
+	/* The action's classifier computes to Pi; its source term stays unevaluated
+	 * during application synthesis, just as any other checked callee does. */
+	const struct pg_evidence *identity = complete(&synthesis, request(&synthesis, scope,
+		"main := \\T : @ => T;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *acted = pg_prove_reflexivity(typing,
+		pg_prove_classifier(typing, classifiers, context, identity), identity);
+	assert(acted);
+	scope = pg_synthesis_name(&synthesis, scope, (struct pg_token){.kind = PG_TOKEN_IDENT, .text = "acted", .length = 5}, acted);
+	assert(scope);
+	struct pg_whnf_job *untouched = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(acted)->core);
+	result = complete(&synthesis, request(&synthesis, scope, "main := acted A B r;"), PG_SYNTHESIS_DONE);
+	assert(pg_whnf_steps(untouched) == 0 && pg_whnf_status(untouched) == PG_EVAL_PENDING);
+	result = complete(&synthesis, pg_synthesis_return(&synthesis, context, result), PG_SYNTHESIS_DONE);
+	result = complete(&synthesis, pg_synthesis_nf(&synthesis, context, result), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(result)->core == pg_reference(typing->graph, bindings[2]));
+	const struct pg_evidence *wrapped = acted;
+	for (size_t i = 0; i < 3; ++i) {
+		wrapped = i == 1 ? pg_prove_return(typing, classifiers, wrapped) : pg_prove_thunk(typing, classifiers, wrapped);
+		assert(wrapped);
+		scope = pg_synthesis_name(&synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "wrapped", .length = 7}, wrapped);
+		untouched = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(wrapped)->core);
+		result = complete(&synthesis, request(&synthesis, scope, "main := wrapped A B r;"), PG_SYNTHESIS_DONE);
+		assert(pg_whnf_steps(untouched) == 0);
+		result = complete(&synthesis, pg_synthesis_return(&synthesis, context, result), PG_SYNTHESIS_DONE);
+		result = complete(&synthesis, pg_synthesis_nf(&synthesis, context, result), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(result)->core == pg_reference(typing->graph, bindings[2]));
+	}
+	const struct pg_evidence *returned_a = pg_prove_return(typing, classifiers, pg_prove_variable(typing, context, bindings[0]));
+	const struct pg_evidence *computed_path = pg_prove_reflexivity(typing,
+		pg_prove_classifier(typing, classifiers, context, returned_a), returned_a);
+	scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "computed_path", .length = 13}, computed_path);
+	assert(scope);
+	result = complete(&synthesis, request(&synthesis, scope, "main := acted A A computed_path;"), PG_SYNTHESIS_DONE);
+	result = complete(&synthesis, pg_synthesis_return(&synthesis, context, result), PG_SYNTHESIS_DONE);
+	result = complete(&synthesis, pg_synthesis_nf(&synthesis, context, result), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(result)->core == pg_identity_action(typing->graph, pg_reference(typing->graph, bindings[0])));
+	size_t jobs = synthesis.jobs.count;
+	struct pg_synthesis_job *exposure = pg_synthesis_normalize_classifier(&synthesis, context, acted);
+	assert(exposure && pg_synthesis_status(exposure) == PG_SYNTHESIS_DONE && synthesis.jobs.count == jobs);
+	assert(pg_evidence_subject(pg_synthesis_result(exposure))->core == pg_evidence_subject(acted)->core);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 }
@@ -1760,7 +1802,9 @@ int main(void)
 	assert(pg_evidence_rule(pg_evidence_premise(argument_fold, 0)) == PG_CONTEXT_PROJECTION);
 	const struct pg_evidence *ordered_app = pg_evidence_premise(pg_evidence_premise(argument_fold, 1), 1);
 	assert(pg_evidence_rule(ordered_app) == PG_APP_ELIM);
-	assert(pg_evidence_rule(pg_evidence_premise(ordered_app, 0)) == PG_FORCE_ELIM);
+	const struct pg_evidence *callee_projection = pg_evidence_premise(ordered_app, 0);
+	assert(pg_evidence_rule(callee_projection) == PG_CONTEXT_PROJECTION);
+	assert(pg_evidence_rule(pg_evidence_premise(callee_projection, 1)) == PG_FORCE_ELIM);
 	complete(&synthesis, request(&synthesis, scope, "main := { x; } x;"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope,
 		"main := { &(\\y : A => y); } { A; };"), PG_SYNTHESIS_REJECTED);

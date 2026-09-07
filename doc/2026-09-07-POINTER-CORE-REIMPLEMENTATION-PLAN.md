@@ -1322,6 +1322,26 @@ a specified type family, not a global endpoint-only relation.
   Implementation `eval.c` +137/-1, `eval.h` +18/-0, `conversion.c` +30/-6,
   `conversion.h` +5/-3 (net +180); tests `core.c` +90, `identity.c` +9;
   documentation separate. N2/N3/N5 remain open, including NF CLI integration.
+- [x] September 8, after `cece74a`: fix source application of computed
+  classifiers. A named reflexive action of `lambda T:Universe0. RETURN T`
+  was rejected by the old direct Pi inspection although its classifier reduces
+  to the accepted boundary telescope. The regression failed before the change.
+  Application now exposes the callee classifier through the existing typed
+  normalization job, prepares its argument, post-checks, applies and closes its
+  sequencing frames. After FORCE or a returned callee, classifier exposure is
+  requested again for the new typed input; computation arguments use the same
+  mechanism. No expected type guides either source operand's synthesis, no
+  source computation executes to expose its classifier, and no new proof rule
+  or Core tag is introduced. Tests cover raw/quoted/returned/nested callees,
+  acted RETURN arguments, selected result witnesses and cache reuse. Existing
+  callee-before-argument FOLD order remains unchanged; its proof now explicitly
+  projects the forced callee into the argument context. Final witness comparison
+  uses NF since RETURN extraction does not normalize its payload. Public
+  prelude/imports, effects, full HOTT and N2 acceptance remain unfinished.
+  Optimized check: 3.355 s; ASan/UBSan: 9.461 s (synthesis rebuilt).
+  Core/Identity/synthesis/IADT pass with a 512 KiB stack.
+  Implementation `synthesis.c` +85/-48 (net +37); tests `synthesis.c` +45/-1;
+  documentation separate. These timings are not a whole-compiler speed claim.
 - [x] September 8, after `fedba41`: share context-suffix abstraction between
   ADT branch functions and named checked functions (`pg_prove_abstract`). It
   composes the existing Pi/Lambda rules, retains every premise and binder,
