@@ -11,6 +11,9 @@ extern const struct pg_object pg_thunk_operation;
 extern const struct pg_object pg_force_operation;
 /* Zero-operation-clause fold: applied to M and its raw return continuation. */
 extern const struct pg_object pg_fold_operation;
+/* Fixed kernel-pure semantics, shared with conversion. No host callbacks or
+ * user handler overrides. Unknown references remain neutral. */
+extern const struct pg_eval_policy pg_pure_policy;
 /* Pure CBPV semantic WHNF, sharing beta steps with pg_eval. The output graph
  * owns materialized demanded arguments. Effect requests are not implemented. */
 void pg_computation_eval_init(struct pg_eval *machine, struct pg_graph *output,

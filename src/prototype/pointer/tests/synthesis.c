@@ -53,12 +53,12 @@ int main(void)
 	struct pg_graph graph;
 	struct pg_typing typing;
 	struct pg_classifiers classifiers;
-	struct pg_beta_work beta;
+	struct pg_whnf_work beta;
 	struct pg_synthesis synthesis;
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
-	assert(pg_beta_work_init(&beta, &graph) == 0);
+	assert(pg_whnf_work_init(&beta, &graph) == 0);
 	assert(pg_synthesis_init(&synthesis, &typing, &classifiers, &beta, PG_DEFINITION_IMPLICIT_THUNK) == 0);
 	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
 	struct pg_synthesis_job *polymorphic = request(&synthesis, root, "id := \\A : @ => \\x : A => x;");
@@ -638,7 +638,7 @@ int main(void)
 	pg_synthesis_advance(&synthesis, 100);
 	assert(synthesis.steps == steps);
 	pg_synthesis_destroy(&synthesis);
-	pg_beta_work_destroy(&beta);
+	pg_whnf_work_destroy(&beta);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);

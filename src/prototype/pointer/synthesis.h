@@ -12,17 +12,17 @@ enum pg_definition_policy { PG_DEFINITION_IMPLICIT_THUNK, PG_DEFINITION_EXPLICIT
 struct pg_synthesis {
 	struct pg_typing *typing;
 	struct pg_classifiers *classifiers;
-	struct pg_beta_work *beta;
+	struct pg_whnf_work *normalization;
 	struct pg_index jobs;
 	struct pg_synthesis_job *ready;
 	uint64_t steps;
 	enum pg_definition_policy definition_policy;
 };
 
-/* Syntax, source buffers, typing, classifiers and beta work outlive this store.
+/* Syntax, source buffers, typing, classifiers and normalization work outlive this store.
  * Requesting an expression only creates pending work; advance performs it. */
 int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
-	struct pg_classifiers *classifiers, struct pg_beta_work *beta,
+	struct pg_classifiers *classifiers, struct pg_whnf_work *normalization,
 	enum pg_definition_policy definition_policy);
 void pg_synthesis_destroy(struct pg_synthesis *synthesis);
 const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis);

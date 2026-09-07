@@ -519,9 +519,32 @@ successful return codes as new-kernel certificates.
   types/scopes, universe bounds, three iterated symbolic diagonal witnesses,
   computation versus value polarity, ordinary reindex, and shared erased
   functions whose differently typed actions retain different classifiers.
-- [ ] Compute action on F/U, Pi, Lambda and APP; connect this to the fixed pure
-  conversion policy. Currently the new action reference is neutral even on
-  canonical inputs. Do not describe that as completed observational Identity.
+- [x] Pure RETURN/THUNK and canonical F/U equations now share evaluator demand
+  frames with beta, FORCE and zero-clause FOLD. The reducer inspects reference
+  descriptors and Core operands, not classifiers or TypeViews:
+
+  ```text
+  refl (RETURN x)                     -> RETURN (refl x)
+  refl (THUNK M)                      -> THUNK (refl M)
+  Id (F A) (RETURN x) (RETURN y)       -> F (Id A x y)
+  Id (U C) (THUNK M) (THUNK N)         -> U (Id C M N)
+  ```
+
+  Formation does not run these computations; explicit normalization may expose
+  the source and endpoint heads using only the fixed pure policy. Unknown
+  references remain neutral. Thunk contents are not demanded for these WHNF
+  rules. Arbitrary selected R and noncanonical endpoints remain neutral.
+- [x] `pg_whnf_work` replaces the beta-only memo API. Keys include the input
+  and immutable policy pointer. Beta and pure results coexist without aliasing;
+  conversion explicitly requests the fixed `pg_pure_policy`, never an arbitrary
+  caller's dispatcher. Tests cover split budgets, capture, classifier conversion
+  before/after action, suspension, neutral endpoints and policy isolation.
+  Synchronous readback inside semantic-demand resumption remains a fuel caveat.
+- [ ] Compute Pi/Lambda/APP action and general F/U rules on selected
+  heterogeneous/higher families. The equations above are not full observational
+  Identity. Checked typed reduction jobs still need introduction inversion for
+  action proofs; the current tests establish Core reduction and admissible
+  classifier conversion, not complete source-level action execution.
 - [ ] Generalize selected instantiation to acted boundary telescopes: the
   present instance rule handles a value-universe identification, not arbitrary
   higher-dimensional families. Connect the existing dimension-map operators.
@@ -531,8 +554,8 @@ successful return codes as new-kernel certificates.
 The value rules follow Narya's
 [Identity of the universe and selected instantiation](https://narya.readthedocs.io/en/latest/observational.html#id-of-the-universe).
 Keeping a computation base's Identity/reflexivity on the computation side is
-our CBPV extension, not a theorem supplied by that document. At this checkpoint
-the rules are symbolic and have no operational action equations. They do not
+our CBPV extension, not a theorem supplied by that document. The initial symbolic
+checkpoint has now been extended by the four explicit equations above. They do not
 establish termination, contextual equivalence, general higher coherence, or
 the HOTT transport/lifting structure described in the
 [HOTT documentation](https://narya.readthedocs.io/en/latest/hott.html).

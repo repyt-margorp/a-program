@@ -12,13 +12,14 @@ enum pg_conversion_status {
 
 struct pg_conversion_state;
 struct pg_conversion_certificate;
-/* Beta conversion only: no eta, semantic dispatch, or equality reflection.
- * work must outlive this comparison. Budget counts traversal/WHNF transitions;
- * readback allocation is not yet separately budgeted. */
+/* Fixed kernel-pure conversion: beta, structural CBPV and the implemented
+ * Identity equations. No eta, runtime handler override or equality reflection.
+ * work outlives comparisons. Fuel counts transitions, not allocator work or
+ * the still-synchronous materialization of semantic demands. */
 struct pg_conversion {
 	struct pg_conversion_state *state;
 };
-int pg_conversion_init(struct pg_conversion *conversion, struct pg_beta_work *work,
+int pg_conversion_init(struct pg_conversion *conversion, struct pg_whnf_work *work,
 	const struct pg_term *left, const struct pg_term *right);
 enum pg_conversion_status pg_conversion_advance(struct pg_conversion *conversion, uint64_t budget);
 void pg_conversion_destroy(struct pg_conversion *conversion);

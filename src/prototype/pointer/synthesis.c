@@ -75,15 +75,15 @@ struct pg_synthesis_job {
 };
 
 int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
-	struct pg_classifiers *classifiers, struct pg_beta_work *beta,
+	struct pg_classifiers *classifiers, struct pg_whnf_work *normalization,
 	enum pg_definition_policy definition_policy)
 {
 	memset(synthesis, 0, sizeof(*synthesis));
-	if (classifiers->graph != typing->graph || beta->graph != typing->graph) return -1;
+	if (classifiers->graph != typing->graph || normalization->graph != typing->graph) return -1;
 	if ((unsigned)definition_policy > PG_DEFINITION_EXPLICIT_THUNK) return -1;
 	synthesis->typing = typing;
 	synthesis->classifiers = classifiers;
-	synthesis->beta = beta;
+	synthesis->normalization = normalization;
 	synthesis->definition_policy = definition_policy;
 	return pg_index_init(&synthesis->jobs);
 }
@@ -538,7 +538,7 @@ static void atom(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->comparing) {
-		if (pg_conversion_init(&job->comparison, synthesis->beta,
+		if (pg_conversion_init(&job->comparison, synthesis->normalization,
 			pg_evidence_classifier(job->checking_term), pg_evidence_subject(job->checking_type)->core) != 0) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL;
 		}

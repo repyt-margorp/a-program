@@ -394,10 +394,13 @@ void pg_eval_destroy(struct pg_eval *machine)
 	memset(machine, 0, sizeof(*machine));
 }
 
-struct pg_beta_job {
+const struct pg_eval_policy pg_beta_policy = {NULL};
+
+struct pg_whnf_job {
 	struct pg_index_entry index;
 	struct pg_graph *graph;
 	const struct pg_term *input;
+	const struct pg_eval_policy *policy;
 	struct pg_eval machine;
 	const struct pg_term *result;
 	struct readback_context readback;
@@ -408,18 +411,18 @@ struct pg_beta_job {
 	uint64_t steps;
 };
 
-int pg_beta_work_init(struct pg_beta_work *work, struct pg_graph *graph)
+int pg_whnf_work_init(struct pg_whnf_work *work, struct pg_graph *graph)
 {
 	memset(work, 0, sizeof(*work));
 	work->graph = graph;
 	return pg_index_init(&work->jobs);
 }
 
-void pg_beta_work_destroy(struct pg_beta_work *work)
+void pg_whnf_work_destroy(struct pg_whnf_work *work)
 {
 	for (size_t i = 0; i < work->jobs.capacity; ++i) {
 		for (struct pg_index_entry *entry = work->jobs.buckets[i]; entry; entry = entry->next) {
-			struct pg_beta_job *job = (struct pg_beta_job *)entry;
+			struct pg_whnf_job *job = (struct pg_whnf_job *)entry;
 			pg_index_destroy(&job->readback.results);
 			pg_graph_destroy(&job->readback.temporary);
 			pg_eval_destroy(&job->machine);
@@ -430,27 +433,31 @@ void pg_beta_work_destroy(struct pg_beta_work *work)
 	memset(work, 0, sizeof(*work));
 }
 
-struct pg_beta_job *pg_beta_request(struct pg_beta_work *work, const struct pg_term *input)
+struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
+	const struct pg_eval_policy *policy, const struct pg_term *input)
 {
-	if (!input) return NULL;
-	uint64_t hash = (uintptr_t)input * UINT64_C(1099511628211);
+	if (!input || !policy) return NULL;
+	uint64_t hash = ((uintptr_t)input ^ (uintptr_t)policy) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *entry = pg_index_candidates(&work->jobs, hash); entry; entry = entry->next) {
 		if (entry->hash != hash) continue;
-		struct pg_beta_job *job = (struct pg_beta_job *)entry;
-		if (job->input == input) return job;
+		struct pg_whnf_job *job = (struct pg_whnf_job *)entry;
+		if (job->input == input && job->policy == policy) return job;
 	}
-	struct pg_beta_job *job = pg_alloc(&work->storage, sizeof(*job));
+	struct pg_whnf_job *job = pg_alloc(&work->storage, sizeof(*job));
 	if (!job) return NULL;
 	memset(job, 0, sizeof(*job));
 	job->graph = work->graph;
 	job->input = input;
+	job->policy = policy;
 	job->result = NULL;
 	pg_eval_init(&job->machine, input);
+	job->machine.output = work->graph;
+	job->machine.dispatch = policy->dispatch;
 	if (pg_index_insert(&work->jobs, &job->index, hash) != 0) return NULL;
 	return job;
 }
 
-static enum pg_eval_status beta_step(struct pg_beta_job *job)
+static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 {
 	if (job->machine.status == PG_EVAL_PENDING) {
 		if (pg_eval_advance(&job->machine, 1) == PG_EVAL_ERROR) return PG_EVAL_ERROR;
@@ -488,27 +495,27 @@ static enum pg_eval_status beta_step(struct pg_beta_job *job)
 	return PG_EVAL_WHNF;
 }
 
-enum pg_eval_status pg_beta_advance(struct pg_beta_job *job, uint64_t budget)
+enum pg_eval_status pg_whnf_advance(struct pg_whnf_job *job, uint64_t budget)
 {
 	while (job->status == PG_EVAL_PENDING && budget) {
 		--budget;
 		++job->steps;
-		job->status = beta_step(job);
+		job->status = whnf_step(job);
 	}
 	return job->status;
 }
 
-enum pg_eval_status pg_beta_status(const struct pg_beta_job *job)
+enum pg_eval_status pg_whnf_status(const struct pg_whnf_job *job)
 {
 	return job->status;
 }
 
-uint64_t pg_beta_steps(const struct pg_beta_job *job)
+uint64_t pg_whnf_steps(const struct pg_whnf_job *job)
 {
 	return job->steps;
 }
 
-const struct pg_term *pg_beta_result(const struct pg_beta_job *job)
+const struct pg_term *pg_whnf_result(const struct pg_whnf_job *job)
 {
 	return job->result;
 }

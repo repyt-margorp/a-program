@@ -31,7 +31,8 @@ const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph 
 void pg_eval_destroy(struct pg_eval *machine);
 /* Dispatcher protocol: 0 progressed, 1 neutral, -1 failure. Demand evaluates
  * one argument on the same machine; resume receives its materialized WHNF.
- * The output graph must outlive the machine. No dispatched result is cached. */
+ * The output graph must outlive the machine. This machine does not memoize
+ * invocations; the separate WHNF store is only for immutable pure policies. */
 const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index);
 int pg_eval_enter(struct pg_eval *machine, struct pg_closure value, size_t consume);
 int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
@@ -63,25 +64,30 @@ void pg_substitution_destroy(struct pg_substitution *work);
 const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
 
-struct pg_beta_job;
-/* One fixed policy: beta WHNF, all unbound references neutral, no dispatch.
- * Keys are input terms with empty environments. Captured environments remain
- * inside each job. graph and its referenced objects must outlive this store. */
-struct pg_beta_work {
+/* Immutable pure policies outlive their jobs. Core does not decide which
+ * policies are admissible as conversion evidence; that is the checker's job.
+ * Runtime invocations with effects must not be put in this memo store. */
+struct pg_eval_policy { int (*dispatch)(struct pg_eval *machine); };
+extern const struct pg_eval_policy pg_beta_policy;
+struct pg_whnf_job;
+/* Keys are (input term, policy pointer), with empty environments. Captured
+ * environments remain inside jobs. All referenced graphs outlive the store. */
+struct pg_whnf_work {
 	struct pg_graph *graph;
 	struct pg_graph storage;
 	struct pg_index jobs;
 };
-int pg_beta_work_init(struct pg_beta_work *work, struct pg_graph *graph);
-void pg_beta_work_destroy(struct pg_beta_work *work);
+int pg_whnf_work_init(struct pg_whnf_work *work, struct pg_graph *graph);
+void pg_whnf_work_destroy(struct pg_whnf_work *work);
 /* Requesting a job neither evaluates nor compares normal forms. */
-struct pg_beta_job *pg_beta_request(struct pg_beta_work *work, const struct pg_term *input);
+struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
+	const struct pg_eval_policy *policy, const struct pg_term *input);
 /* Includes materialization: WHNF and result are published only after readback.
  * Steps count evaluation, shared traversal and spine reconstruction transitions. */
-enum pg_eval_status pg_beta_advance(struct pg_beta_job *job, uint64_t budget);
-enum pg_eval_status pg_beta_status(const struct pg_beta_job *job);
-uint64_t pg_beta_steps(const struct pg_beta_job *job);
+enum pg_eval_status pg_whnf_advance(struct pg_whnf_job *job, uint64_t budget);
+enum pg_eval_status pg_whnf_status(const struct pg_whnf_job *job);
+uint64_t pg_whnf_steps(const struct pg_whnf_job *job);
 /* NULL until WHNF has been reached and read back successfully. */
-const struct pg_term *pg_beta_result(const struct pg_beta_job *job);
+const struct pg_term *pg_whnf_result(const struct pg_whnf_job *job);
 
 #endif

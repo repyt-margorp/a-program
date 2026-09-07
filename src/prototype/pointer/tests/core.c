@@ -255,9 +255,9 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_prove_fold(&typing, pg_prove_return(&typing, &classifiers, quoted_function), ignore_function));
 	assert(!pg_prove_fold(&typing, returned, ignore_function));
 	assert(pg_evidence_classifier(quoted_function) == old_classifier);
-	struct pg_beta_work work;
+	struct pg_whnf_work work;
 	struct pg_conversion comparison;
-	assert(pg_beta_work_init(&work, graph) == 0);
+	assert(pg_whnf_work_init(&work, graph) == 0);
 	assert(pg_conversion_init(&comparison, &work, old_classifier, new_classifier) == 0);
 	assert(!pg_conversion_certificate(&comparison));
 	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING)
@@ -265,7 +265,7 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_conversion_certificate *certificate = pg_conversion_certificate(&comparison);
 	assert(certificate);
 	pg_conversion_destroy(&comparison);
-	pg_beta_work_destroy(&work);
+	pg_whnf_work_destroy(&work);
 	const struct pg_evidence *converted = pg_prove_conversion(&typing, quoted_function, upi_z, certificate);
 	assert(converted && pg_evidence_classifier(converted) == new_classifier);
 	assert(pg_evidence_classifier(quoted_function) == old_classifier);
@@ -893,16 +893,16 @@ static void classifiers_test(struct pg_graph *graph)
 	assert(pg_term_substitute(graph, codomain, 1, &argument) == u1);
 	assert(!pg_pi_view(u0, &domain, &binder, &codomain));
 	assert(!pg_pi_view(pg_application(graph, pi_x, u0), &domain, &binder, &codomain));
-	struct pg_beta_work work;
+	struct pg_whnf_work work;
 	struct pg_conversion conversion;
-	assert(pg_beta_work_init(&work, graph) == 0);
+	assert(pg_whnf_work_init(&work, graph) == 0);
 	assert(pg_conversion_init(&conversion, &work, pi_x, pi_y) == 0);
 	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_EQUAL);
 	pg_conversion_destroy(&conversion);
 	assert(pg_conversion_init(&conversion, &work, u0, u1) == 0);
 	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_DIFFERENT);
 	pg_conversion_destroy(&conversion);
-	pg_beta_work_destroy(&work);
+	pg_whnf_work_destroy(&work);
 	for (uint64_t i = 2; i < 1000; ++i) assert(pg_universe(&classifiers, i));
 	assert(pg_universe_level(pg_universe(&classifiers, UINT64_MAX), &level));
 	assert(level == UINT64_MAX);
@@ -969,8 +969,8 @@ static void restriction_test(struct pg_graph *graph)
 
 static void conversion_test(struct pg_graph *graph)
 {
-	struct pg_beta_work work;
-	assert(pg_beta_work_init(&work, graph) == 0);
+	struct pg_whnf_work work;
+	assert(pg_whnf_work_init(&work, graph) == 0);
 	const struct pg_object *x = pg_binder(graph);
 	const struct pg_object *y = pg_binder(graph);
 	const struct pg_term *vx = pg_reference(graph, x);
@@ -1043,52 +1043,52 @@ static void conversion_test(struct pg_graph *graph)
 	assert(pg_conversion_init(&conversion, &work, omega, omega) == 0);
 	assert(pg_conversion_advance(&conversion, 0) == PG_CONVERSION_EQUAL);
 	pg_conversion_destroy(&conversion);
-	pg_beta_work_destroy(&work);
+	pg_whnf_work_destroy(&work);
 	puts("conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed");
 }
 
 static void beta_work_test(struct pg_graph *graph)
 {
-	struct pg_beta_work work;
-	assert(pg_beta_work_init(&work, graph) == 0);
+	struct pg_whnf_work work;
+	assert(pg_whnf_work_init(&work, graph) == 0);
 	const struct pg_object *x = pg_binder(graph);
 	const struct pg_object *y = pg_binder(graph);
 	const struct pg_term *vx = pg_reference(graph, x);
 	const struct pg_term *vy = pg_reference(graph, y);
 	const struct pg_term *identity = pg_lambda(graph, x, vx);
 	const struct pg_term *input = pg_application(graph, identity, vy);
-	struct pg_beta_job *job = pg_beta_request(&work, input);
-	assert(job && job == pg_beta_request(&work, input));
-	assert(pg_beta_status(job) == PG_EVAL_PENDING);
-	assert(pg_beta_steps(job) == 0 && !pg_beta_result(job));
-	assert(pg_beta_advance(job, 0) == PG_EVAL_PENDING);
-	assert(pg_beta_advance(job, 1) == PG_EVAL_PENDING);
-	assert(pg_beta_steps(job) == 1);
-	assert(job == pg_beta_request(&work, input));
-	assert(pg_beta_advance(job, 100) == PG_EVAL_WHNF);
-	assert(pg_beta_result(job) == vy);
-	uint64_t steps = pg_beta_steps(job);
-	assert(pg_beta_advance(job, 100) == PG_EVAL_WHNF);
-	assert(pg_beta_steps(job) == steps);
+	struct pg_whnf_job *job = pg_whnf_request(&work, &pg_beta_policy, input);
+	assert(job && job == pg_whnf_request(&work, &pg_beta_policy, input));
+	assert(pg_whnf_status(job) == PG_EVAL_PENDING);
+	assert(pg_whnf_steps(job) == 0 && !pg_whnf_result(job));
+	assert(pg_whnf_advance(job, 0) == PG_EVAL_PENDING);
+	assert(pg_whnf_advance(job, 1) == PG_EVAL_PENDING);
+	assert(pg_whnf_steps(job) == 1);
+	assert(job == pg_whnf_request(&work, &pg_beta_policy, input));
+	assert(pg_whnf_advance(job, 100) == PG_EVAL_WHNF);
+	assert(pg_whnf_result(job) == vy);
+	uint64_t steps = pg_whnf_steps(job);
+	assert(pg_whnf_advance(job, 100) == PG_EVAL_WHNF);
+	assert(pg_whnf_steps(job) == steps);
 	assert(input != vy && pg_application(graph, identity, vy) == input);
-	assert(pg_beta_request(&work, vy) != job);
+	assert(pg_whnf_request(&work, &pg_beta_policy, vy) != job);
 	/* Both requests enter the same lambda body but capture different values. */
 	const struct pg_term *constant = pg_lambda(graph, x, pg_lambda(graph, y, vx));
-	struct pg_beta_job *left = pg_beta_request(&work, pg_application(graph, constant, vx));
-	struct pg_beta_job *right = pg_beta_request(&work, pg_application(graph, constant, vy));
+	struct pg_whnf_job *left = pg_whnf_request(&work, &pg_beta_policy, pg_application(graph, constant, vx));
+	struct pg_whnf_job *right = pg_whnf_request(&work, &pg_beta_policy, pg_application(graph, constant, vy));
 	assert(left != right);
-	assert(pg_beta_advance(left, 100) == PG_EVAL_WHNF);
-	assert(pg_beta_advance(right, 100) == PG_EVAL_WHNF);
-	assert(pg_beta_result(left)->as.lambda.body == vx);
-	assert(pg_beta_result(right)->as.lambda.body == vy);
-	const struct pg_term *stable = pg_beta_result(left);
-	assert(pg_beta_advance(left, 100) == PG_EVAL_WHNF);
-	assert(pg_beta_result(left) == stable);
+	assert(pg_whnf_advance(left, 100) == PG_EVAL_WHNF);
+	assert(pg_whnf_advance(right, 100) == PG_EVAL_WHNF);
+	assert(pg_whnf_result(left)->as.lambda.body == vx);
+	assert(pg_whnf_result(right)->as.lambda.body == vy);
+	const struct pg_term *stable = pg_whnf_result(left);
+	assert(pg_whnf_advance(left, 100) == PG_EVAL_WHNF);
+	assert(pg_whnf_result(left) == stable);
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
-	struct pg_beta_job *loop = pg_beta_request(&work, pg_application(graph, self, self));
-	assert(pg_beta_advance(loop, 30) == PG_EVAL_PENDING);
-	assert(pg_beta_advance(loop, 30) == PG_EVAL_PENDING);
-	assert(pg_beta_steps(loop) == 60 && !pg_beta_result(loop));
+	struct pg_whnf_job *loop = pg_whnf_request(&work, &pg_beta_policy, pg_application(graph, self, self));
+	assert(pg_whnf_advance(loop, 30) == PG_EVAL_PENDING);
+	assert(pg_whnf_advance(loop, 30) == PG_EVAL_PENDING);
+	assert(pg_whnf_steps(loop) == 60 && !pg_whnf_result(loop));
 	const struct pg_term *deep = vx, *deep_expected = vy;
 	for (size_t i = 0; i < 5000; ++i) {
 		deep = pg_application(graph, deep, deep);
@@ -1096,48 +1096,48 @@ static void beta_work_test(struct pg_graph *graph)
 	}
 	const struct pg_term *deep_input = pg_application(graph,
 		pg_lambda(graph, x, pg_lambda(graph, y, deep)), vy);
-	struct pg_beta_job *deep_job = pg_beta_request(&work, deep_input);
-	assert(pg_beta_advance(deep_job, 100) == PG_EVAL_PENDING);
-	assert(!pg_beta_result(deep_job)); /* WHNF execution is short; readback is not. */
-	while (pg_beta_status(deep_job) == PG_EVAL_PENDING) {
-		steps = pg_beta_steps(deep_job);
-		assert(!pg_beta_result(deep_job));
-		pg_beta_advance(deep_job, 11);
-		assert(pg_beta_steps(deep_job) - steps <= 11);
-		assert(pg_beta_request(&work, deep_input) == deep_job);
+	struct pg_whnf_job *deep_job = pg_whnf_request(&work, &pg_beta_policy, deep_input);
+	assert(pg_whnf_advance(deep_job, 100) == PG_EVAL_PENDING);
+	assert(!pg_whnf_result(deep_job)); /* WHNF execution is short; readback is not. */
+	while (pg_whnf_status(deep_job) == PG_EVAL_PENDING) {
+		steps = pg_whnf_steps(deep_job);
+		assert(!pg_whnf_result(deep_job));
+		pg_whnf_advance(deep_job, 11);
+		assert(pg_whnf_steps(deep_job) - steps <= 11);
+		assert(pg_whnf_request(&work, &pg_beta_policy, deep_input) == deep_job);
 	}
-	const struct pg_term *deep_result = pg_beta_result(deep_job);
+	const struct pg_term *deep_result = pg_whnf_result(deep_job);
 	assert(deep_result && deep_result->kind == PG_LAMBDA);
 	assert(deep_result->as.lambda.binder != y);
 	assert(deep_result->as.lambda.body == deep_expected);
-	struct pg_beta_work whole_work;
-	assert(pg_beta_work_init(&whole_work, graph) == 0);
-	struct pg_beta_job *whole_job = pg_beta_request(&whole_work, deep_input);
-	assert(pg_beta_advance(whole_job, UINT64_MAX) == PG_EVAL_WHNF);
-	assert(pg_beta_steps(whole_job) == pg_beta_steps(deep_job));
-	assert(pg_beta_result(whole_job)->as.lambda.body == deep_expected);
-	assert(pg_beta_result(whole_job) != deep_result); /* No alpha interning. */
-	pg_beta_work_destroy(&whole_work);
-	assert(pg_beta_work_init(&whole_work, graph) == 0);
-	whole_job = pg_beta_request(&whole_work, deep_input);
-	assert(pg_beta_advance(whole_job, 100) == PG_EVAL_PENDING);
-	pg_beta_work_destroy(&whole_work); /* Release suspended readback and closures. */
+	struct pg_whnf_work whole_work;
+	assert(pg_whnf_work_init(&whole_work, graph) == 0);
+	struct pg_whnf_job *whole_job = pg_whnf_request(&whole_work, &pg_beta_policy, deep_input);
+	assert(pg_whnf_advance(whole_job, UINT64_MAX) == PG_EVAL_WHNF);
+	assert(pg_whnf_steps(whole_job) == pg_whnf_steps(deep_job));
+	assert(pg_whnf_result(whole_job)->as.lambda.body == deep_expected);
+	assert(pg_whnf_result(whole_job) != deep_result); /* No alpha interning. */
+	pg_whnf_work_destroy(&whole_work);
+	assert(pg_whnf_work_init(&whole_work, graph) == 0);
+	whole_job = pg_whnf_request(&whole_work, &pg_beta_policy, deep_input);
+	assert(pg_whnf_advance(whole_job, 100) == PG_EVAL_PENDING);
+	pg_whnf_work_destroy(&whole_work); /* Release suspended readback and closures. */
 	const struct pg_term *neutral_body = pg_application(graph,
 		pg_application(graph, vy, vx), identity);
-	struct pg_beta_job *neutral_job = pg_beta_request(&work,
+	struct pg_whnf_job *neutral_job = pg_whnf_request(&work, &pg_beta_policy,
 		pg_application(graph, pg_lambda(graph, x, neutral_body), vy));
-	while (pg_beta_advance(neutral_job, 1) == PG_EVAL_PENDING)
-		assert(!pg_beta_result(neutral_job));
+	while (pg_whnf_advance(neutral_job, 1) == PG_EVAL_PENDING)
+		assert(!pg_whnf_result(neutral_job));
 	const struct pg_term *neutral_expected = pg_application(graph,
 		pg_application(graph, vy, vy), identity);
-	assert(pg_alpha_equal(pg_beta_result(neutral_job), neutral_expected) == 1);
+	assert(pg_alpha_equal(pg_whnf_result(neutral_job), neutral_expected) == 1);
 	for (size_t i = 0; i < 1000; ++i) {
-		assert(pg_beta_request(&work, pg_reference(graph, pg_binder(graph))));
+		assert(pg_whnf_request(&work, &pg_beta_policy, pg_reference(graph, pg_binder(graph))));
 	}
-	assert(job == pg_beta_request(&work, input));
-	assert(pg_beta_result(job) == vy);
-	assert(!pg_beta_request(&work, NULL));
-	pg_beta_work_destroy(&work);
+	assert(job == pg_whnf_request(&work, &pg_beta_policy, input));
+	assert(pg_whnf_result(job) == vy);
+	assert(!pg_whnf_request(&work, &pg_beta_policy, NULL));
+	pg_whnf_work_destroy(&work);
 	assert(stable->as.lambda.body == vx);
 	puts("beta work: shared pending jobs, stable answers, split fuel and environment isolation passed");
 }

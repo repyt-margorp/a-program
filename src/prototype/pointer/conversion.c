@@ -1,4 +1,5 @@
 #include "conversion.h"
+#include "computation.h"
 
 #include <stdlib.h>
 
@@ -8,7 +9,7 @@ struct pg_conversion_certificate {
 };
 
 struct pg_conversion_state {
-	struct pg_beta_work *work;
+	struct pg_whnf_work *work;
 	struct pg_comparison comparison;
 	const struct pg_term *left;
 	const struct pg_term *right;
@@ -18,11 +19,11 @@ struct pg_conversion_state {
 
 static int normalize(void *policy, const struct pg_term *input, const struct pg_term **output)
 {
-	struct pg_beta_job *job = pg_beta_request(policy, input);
+	struct pg_whnf_job *job = pg_whnf_request(policy, &pg_pure_policy, input);
 	if (!job) return -1;
-	if (pg_beta_status(job) == PG_EVAL_PENDING)
-		return pg_beta_advance(job, 1) == PG_EVAL_ERROR ? -1 : 0;
-	*output = pg_beta_result(job);
+	if (pg_whnf_status(job) == PG_EVAL_PENDING)
+		return pg_whnf_advance(job, 1) == PG_EVAL_ERROR ? -1 : 0;
+	*output = pg_whnf_result(job);
 	return *output ? 1 : -1;
 }
 
@@ -48,7 +49,7 @@ static void certify(struct pg_conversion *conversion)
 	state->certificate = certificate;
 }
 
-int pg_conversion_init(struct pg_conversion *conversion, struct pg_beta_work *work,
+int pg_conversion_init(struct pg_conversion *conversion, struct pg_whnf_work *work,
 	const struct pg_term *left, const struct pg_term *right)
 {
 	conversion->state = NULL;

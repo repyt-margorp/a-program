@@ -5,6 +5,25 @@
 #include <assert.h>
 #include <stdio.h>
 
+static int first_argument(struct pg_eval *machine)
+{
+	const struct pg_closure *argument = pg_eval_argument(machine, 0);
+	return argument ? pg_eval_enter(machine, *argument, 1) : 1;
+}
+
+static void normalizes(struct pg_whnf_work *work, const struct pg_term *input, const struct pg_term *expected)
+{
+	struct pg_whnf_job *job = pg_whnf_request(work, &pg_pure_policy, input);
+	assert(job && job == pg_whnf_request(work, &pg_pure_policy, input));
+	while (pg_whnf_status(job) == PG_EVAL_PENDING) {
+		assert(!pg_whnf_result(job));
+		pg_whnf_advance(job, 1);
+		assert(pg_whnf_steps(job) < 10000);
+	}
+	assert(pg_whnf_status(job) == PG_EVAL_WHNF);
+	assert(pg_whnf_result(job) == expected);
+}
+
 int main(void)
 {
 	struct pg_graph graph;
@@ -84,15 +103,15 @@ int main(void)
 	const struct pg_evidence *p_type = pg_prove_classifier(&typing, &classifiers, scope, pp);
 	const struct pg_evidence *refl_p = pg_prove_reflexivity(&typing, p_type, pp);
 	const struct pg_evidence *p_to_q = pg_prove_identity_type(&typing, p_type, pp, qq);
-	struct pg_beta_work beta;
+	struct pg_whnf_work beta;
 	struct pg_conversion comparison;
-	assert(pg_beta_work_init(&beta, &graph) == 0);
+	assert(pg_whnf_work_init(&beta, &graph) == 0);
 	assert(pg_conversion_init(&comparison, &beta, pg_evidence_classifier(refl_p),
 		pg_evidence_subject(p_to_q)->core) == 0);
 	assert(pg_conversion_advance(&comparison, 1000) == PG_CONVERSION_DIFFERENT);
 	assert(!pg_prove_conversion(&typing, refl_p, p_to_q, pg_conversion_certificate(&comparison)));
 	pg_conversion_destroy(&comparison);
-	pg_beta_work_destroy(&beta);
+	pg_whnf_work_destroy(&beta);
 	const struct pg_object *argument = pg_binder(&graph);
 	const struct pg_evidence *body_scope = pg_prove_context_extension(&typing, scope, argument, a_type);
 	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers,
@@ -150,11 +169,85 @@ int main(void)
 	assert(!pg_prove_identity_instance(&typing, &classifiers, crefl, xx, xx));
 	const struct pg_evidence *quoted = pg_prove_thunk(&typing, &classifiers, crefl);
 	assert(quoted && pg_evidence_judgement(quoted) == PG_JUDGEMENT_VALUE);
+	const struct pg_evidence *return_refl = pg_prove_return(&typing, &classifiers, refl_x);
 	struct pg_eval machine;
 	pg_computation_eval_init(&machine, &graph, pg_evidence_subject(crefl)->core);
 	assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
-	assert(pg_eval_readback(&machine, &graph) == pg_evidence_subject(crefl)->core);
+	assert(pg_eval_readback(&machine, &graph) == pg_evidence_subject(return_refl)->core);
 	pg_eval_destroy(&machine);
+	struct pg_whnf_work normalization;
+	assert(pg_whnf_work_init(&normalization, &graph) == 0);
+	const struct pg_term *input = pg_evidence_subject(crefl)->core;
+	struct pg_whnf_job *beta_job = pg_whnf_request(&normalization, &pg_beta_policy, input);
+	assert(pg_whnf_advance(beta_job, 1000) == PG_EVAL_WHNF);
+	assert(pg_whnf_result(beta_job) == input);
+	normalizes(&normalization, input, pg_evidence_subject(return_refl)->core);
+	assert(beta_job != pg_whnf_request(&normalization, &pg_pure_policy, input));
+	assert(pg_whnf_result(beta_job) == input);
+	assert(!pg_whnf_request(&normalization, NULL, input));
+	const struct pg_evidence *return_identity = pg_prove_return_type(&typing, &classifiers, diagonal);
+	normalizes(&normalization, pg_evidence_subject(cid)->core, pg_evidence_subject(return_identity)->core);
+	assert(pg_conversion_init(&comparison, &normalization, pg_evidence_classifier(crefl),
+		pg_evidence_subject(return_identity)->core) == 0);
+	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING)
+		assert(pg_conversion_steps(&comparison) < 1000);
+	assert(pg_conversion_status(&comparison) == PG_CONVERSION_EQUAL);
+	assert(pg_prove_conversion(&typing, crefl, return_identity, pg_conversion_certificate(&comparison)));
+	pg_conversion_destroy(&comparison);
+	const struct pg_evidence *ufa = pg_prove_thunk_type(&typing, &classifiers, fa);
+	const struct pg_evidence *delayed = pg_prove_thunk(&typing, &classifiers, returned);
+	const struct pg_evidence *urefl = pg_prove_reflexivity(&typing, ufa, delayed);
+	normalizes(&normalization, pg_evidence_subject(urefl)->core, pg_evidence_subject(quoted)->core);
+	const struct pg_evidence *uid = pg_prove_identity_type(&typing, ufa, delayed, delayed);
+	const struct pg_evidence *ucid = pg_prove_thunk_type(&typing, &classifiers, cid);
+	normalizes(&normalization, pg_evidence_subject(uid)->core, pg_evidence_subject(ucid)->core);
+	assert(pg_conversion_init(&comparison, &normalization, pg_evidence_classifier(urefl),
+		pg_evidence_classifier(quoted)) == 0);
+	assert(pg_conversion_advance(&comparison, 1000) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&comparison);
+	/* WHNF respects suspension. Normalizing a family never needs an unhandled
+	 * operation's answer or the contents of a THUNK to choose this equation. */
+	const struct pg_object *v = pg_binder(&graph);
+	const struct pg_term *vv = pg_reference(&graph, v);
+	/* Another evaluator policy cannot authorize the checker's conversion. */
+	static const struct pg_eval_policy other_policy = {first_argument};
+	const struct pg_term *opaque_app = pg_application(&graph, vv, pg_evidence_subject(xx)->core);
+	struct pg_whnf_job *other_job = pg_whnf_request(&normalization, &other_policy, opaque_app);
+	assert(pg_whnf_advance(other_job, 1000) == PG_EVAL_WHNF);
+	assert(pg_whnf_result(other_job) == pg_evidence_subject(xx)->core);
+	assert(pg_conversion_init(&comparison, &normalization, opaque_app, pg_evidence_subject(xx)->core) == 0);
+	assert(pg_conversion_advance(&comparison, 1000) == PG_CONVERSION_DIFFERENT);
+	assert(!pg_conversion_certificate(&comparison));
+	pg_conversion_destroy(&comparison);
+	const struct pg_term *self = pg_lambda(&graph, v, pg_application(&graph, vv, vv));
+	const struct pg_term *omega = pg_application(&graph, self, self);
+	const struct pg_term *thunk = pg_reference(&graph, &pg_thunk_operation);
+	const struct pg_term *suspended = pg_application(&graph, thunk, omega);
+	normalizes(&normalization, pg_identity_action(&graph, suspended),
+		pg_application(&graph, thunk, pg_identity_action(&graph, omega)));
+	const struct pg_term *ufamily = pg_identity_action(&graph, pg_evidence_subject(ufa)->core);
+	normalizes(&normalization, pg_identity_instance(&graph, ufamily, suspended, suspended),
+		pg_thunk_type(&classifiers, pg_identity_instance(&graph,
+			pg_identity_action(&graph, pg_evidence_subject(fa)->core), omega, omega)));
+	const struct pg_term *ffamily = pg_identity_action(&graph, pg_evidence_subject(fa)->core);
+	const struct pg_term *neutral = pg_identity_instance(&graph, ffamily, vv, omega);
+	normalizes(&normalization, neutral, neutral);
+	normalizes(&normalization, ffamily, ffamily);
+	normalizes(&normalization, pg_evidence_subject(rp)->core, pg_evidence_subject(rp)->core);
+	/* Beta exposure and lexical capture use the same evaluator demand frames. */
+	const struct pg_term *ret = pg_reference(&graph, &pg_return_operation);
+	const struct pg_term *captured = pg_lambda(&graph, v,
+		pg_identity_instance(&graph, ffamily, pg_application(&graph, ret, vv), pg_evidence_subject(returned)->core));
+	normalizes(&normalization, pg_application(&graph, captured, pg_evidence_subject(xx)->core),
+		pg_evidence_subject(return_identity)->core);
+	struct pg_whnf_work unsplit;
+	assert(pg_whnf_work_init(&unsplit, &graph) == 0);
+	struct pg_whnf_job *whole_job = pg_whnf_request(&unsplit, &pg_pure_policy, input);
+	assert(pg_whnf_advance(whole_job, 1000) == PG_EVAL_WHNF);
+	assert(pg_whnf_result(whole_job) == pg_whnf_result(pg_whnf_request(&normalization, &pg_pure_policy, input)));
+	assert(pg_whnf_steps(whole_job) == pg_whnf_steps(pg_whnf_request(&normalization, &pg_pure_policy, input)));
+	pg_whnf_work_destroy(&unsplit);
+	pg_whnf_work_destroy(&normalization);
 
 	/* No new authority for reindexing Identity: the family parameter stays a
 	 * visible Core operand and is substituted by the existing traversal. */
@@ -179,6 +272,6 @@ int main(void)
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
-	puts("identity formation: chosen families, symbolic reflexivity, polarity, universes and reindex passed");
+	puts("identity: chosen families, F/U action, fixed pure conversion, policy isolation and reindex passed");
 	return 0;
 }
