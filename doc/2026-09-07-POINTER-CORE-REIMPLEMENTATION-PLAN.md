@@ -1,0 +1,400 @@
+# Pointer Core Reimplementation Plan
+
+Date: 2026-09-07
+Status: planned; implementation not started
+Predecessor: `2026-08-29T08-31-43-SINGLE-PATH-COMPILER-ARCHITECTURE-IMPLEMENTATION-PLAN.md` (stopped)
+Failure record: `2026-09-07-FAILED-SINGLE-PATH-REFACTOR-RECORD.md`
+Archived source commit: `5bdecb4` on `archive/2026-09-07-failed-single-path-refactor`
+AI implementation location: `src/prototype/pointer/`
+
+Revision: HOTT and dimensional action are foundational from N0/N1, following
+the user's 2026-09-07 correction. They are not a feature to bolt on at N6.
+
+## 1. Objective and Source of Decisions
+
+Reimplement A Program around an erased pointer graph with Lambda, Application,
+and references to bindings or semantic objects. Preserve the current surface
+language and supported behavior; keep CBPV typing, effects, dependencies, and
+proof checking above this representation. Typed terms, binders and declaration
+objects support dimensional action from their first implementation. This is a fresh implementation, not a
+rename of the current TermDB or a pointer facade over its integer IDs.
+
+The user's `src/handmade/` and sibling `a-program-handmade` are read-only design
+inputs for AI work. Do not modify, generate code in, or commit to the sibling
+repository. Do not promote AI code into accepted directories. Use a separate
+prototype build target and executable until replacement acceptance.
+
+Examined handmade inputs:
+
+| Input | Revision / content digest | Observed direction |
+| --- | --- | --- |
+| `src/handmade/main.c` | SHA256 `faa5a7d0b7128fd60c7417f639e4427de3f76abf6e0c5f16284971b31b97d0e8` | APP child pointers; IADT pointer; separate term/type binding |
+| sibling `a-program-handmade/main.c` | repository HEAD `9a78c3db978af82e378aedb06bc8fca0271e85fc`; file SHA256 `87c6fc6be415be7870b5dda678283af1a01d6d0cfa20edfd6fd22281a5815ce2` | generic REFERENCE with object pointer; constructor and Match objects |
+
+GitHub was also checked directly: [repyt-margorp/a-program-handmade at
+9a78c3d](https://github.com/repyt-margorp/a-program-handmade/blob/9a78c3db978af82e378aedb06bc8fca0271e85fc/main.c).
+Its default branch is `master`. The sibling has an uncommitted addition of the
+Match-eliminator sort; distinguish that local extension from the published
+source. Both are read-only references, not locations for this implementation.
+
+The boundary to adopt is concrete: APP knows only the two terms it connects;
+REFERENCE directs operation to the object that owns its semantics;
+`data_type_object` refers to the IADT owner, while `binding` holds term and type
+separately. Preserve this ownership in the replacement. Core must not include
+IADT field layouts or query the typing solver. IADT owns its constructors and
+elimination rules; typing owns admissibility and evidence. This is a direct
+in-process pointer boundary, not a message protocol or a duplicated graph.
+
+These are sketches, not a finished evaluator specification. In particular:
+
+- `lambda.index` currently selects an environment position; it contains neither
+  an abstraction body nor a binder pointer. Implement actual abstraction and
+  lexical reference separately within the proposed representation.
+- Application currently extends the environment and evaluates its function;
+  lexical closure capture and general beta substitution still need definition.
+- The sibling sketch retains stale `TERM_IADT` / `as.type_system` references,
+  and gives element constructor and Match eliminator the same sort value.
+- Recursive child hashing, fixed capacities, and pointer formatting are sketch
+  details, not requirements to reproduce.
+
+No claim is made that three outer node tags alone prove semantic equivalence to
+CBPV. The translation and its operational obligations are specified below and
+must be tested. Oracle objects still carry real semantics; moving them behind a
+pointer does not eliminate those rules.
+
+## 2. Nonnegotiable Design Rules
+
+1. Core evaluation does not consult a classifier, proof context, or TypeView to
+   choose the meaning of the same executable node. A reference's descriptor
+   already determines its operational meaning.
+2. Typed occurrences carry Core references, annotations, context and evidence.
+   Two differently typed identities may share Core without sharing their typing
+   judgement. Never recover a source classifier by searching all types of Core.
+3. Synthesis derives a classifier from source structure and binding declarations.
+   `::` checks the result afterward; it never supplies a missing motive/domain.
+4. CBPV value/computation distinctions remain typing rules, not duplicate
+   Lambda/APP node kinds. Erasure must still preserve sequencing and suspension.
+5. Pointers identify live immutable objects. They do not certify typing, prove
+   arbitrary equality, or provide portable artifact identities.
+6. A budget exhaustion result is pending, not false or accepted. Static
+   evaluation uses only the explicitly admitted pure semantics. Host effects
+   execute only at an execution boundary.
+7. Hash lookup followed by exact comparison and allocation is the common
+   construction path. Rule dispatch, genuine scope distinctions and errors
+   remain explicit. Deleting all conditional operators is not an acceptance test.
+
+## 3. Small Physical Model
+
+Proposed initial modules (headers are declarative; avoid a service layer per DB):
+
+| Module under `src/prototype/pointer/` | Owned information |
+| --- | --- |
+| `graph.c`, `graph.h` | stable allocation, immutable nodes, interning, binder/object references |
+| `eval.c`, `eval.h` | environments, application spines, resumable reduction, pure memoization |
+| `reader.c`, `reader.h` | tokens, source spans, AST, lexical names; no solving |
+| `typing.c`, `typing.h` | typed occurrences, persistent contexts, constraints, derivation checking |
+| `iadt.c`, `iadt.h` | declaration/constructor/Match descriptors, recursive-field schemas |
+| `effect.c`, `effect.h` | request, return and fold descriptors; handler execution |
+| `dimension.c`, `dimension.h` | dimension maps, boundary diagrams and action, present from N1 |
+| `identity.c`, `identity.h` | Identity computation, transport/lifting and evidence, present from N2 |
+| `image.c`, `image.h` | program roots and pointer relocation for `.a` |
+| `driver.c`, prototype-local build/test files | CLI, REPL, test runner |
+
+Add a module only when it owns a distinct responsibility. Share storage helpers;
+do not build a generic database framework before these modules need one.
+
+Core nodes have three forms:
+
+```text
+Lambda(binder*, body*)
+Application(function*, argument*)
+Reference(object*)
+```
+
+A lexical variable is a reference to a binder object. Semantic references point
+to immutable descriptors for constructors, eliminators, literals or operations.
+Use a declared object header/discriminant and checked access, not unchecked
+`void *` casts scattered through the evaluator. A descriptor may contain Core
+children; graph traversal must enumerate them for substitution and persistence.
+
+Allocate stable chunks: growing an arena cannot move referenced objects. Separate
+mutable evaluation frames from immutable nodes. A closure captures a body and
+its environment; sharing a term does not share one mutable runtime invocation.
+Start with whole-program arena ownership and reclaim temporary frames per run.
+Measure before adding fine-grained GC or environment indexes.
+
+Binder objects are allocated before their bodies and are frozen with the binding
+scope. Use a correspondence of binder pointers for alpha comparison, including
+Match field binders and recursive frames. Do not adopt De Bruijn storage. A
+scope-aware structural hash may ignore the identity of bound pointers and then
+resolve collisions with the exact binder bijection. Free pointers remain part of
+identity. Do not hash raw bound addresses and call that alpha interning.
+Measure collision behavior before optimizing this algorithm. Reindexing and
+capture avoidance still exist with pointers; share unchanged subgraphs and
+memoize substitution by term plus immutable environment/mapping.
+
+IADT declarations have generative object identity. Constructors point to their
+owner declaration and their field telescope, and Match clauses point to actual
+constructor objects. Structurally identical Bool and Two stay distinct. Array
+positions/counts and serialized reference numbers are permitted; they are not
+the in-memory semantic identity. Nominal creation is not structural interning.
+
+## 4. Reduction and CBPV Correspondence
+
+Lambda beta reduction is shared by all callers. An applied semantic reference
+collects its arguments and delegates to its fixed reducer. Reducers return a
+reduced graph, a blocked neutral, an effect request, or an error with consumed
+steps. Core contains no type-directed fallback path.
+
+| Typed construct | Proposed erased representation / action |
+| --- | --- |
+| Lambda / APP | the two ordinary Core forms |
+| constructor application | constructor reference applied to field values; saturated data is inert |
+| Match / IH | eliminator/frame references applied to scrutinee and clause closures; general IADT reducer |
+| return / thunk / force | references to fixed structural operations and APP spines |
+| computation fold | immutable clause descriptor plus applied computation and return clause |
+| pure primitive | fixed reference semantics admitted under a documented conversion policy |
+| effect operation | operation reference producing a request; handler or host supplies its result |
+
+The graph has a uniform physical vocabulary but retains the distinctions needed
+for execution. Thunk must stop traversal, force must release it, and deep handler
+resumption must reinstall the handler. Unhandled operations retain the transformed
+continuation. A single reference protocol does not make arbitrary host callbacks
+safe for conversion or serializable.
+
+Use the existing CBPV surface elaboration policy as an explicit translation:
+insert return in a computation body containing a value; sequence returning
+computations where the current language does so; preserve explicit `&`; preserve
+callee-force behavior. Choose evaluation order explicitly, including function
+position, arguments, constructor fields, and blocks. Do not rely on unrestricted
+beta reduction to establish the order of effects.
+
+Before broadening the implementation, show for the initial pure fragment that a
+typed reduction and its erased execution agree on the result, and demonstrate
+effect order with traces. Record the admitted equations rather than claiming a
+general CBPV equivalence theorem from tests alone.
+
+Memoization keys include the semantic reference policy and captured environment
+when relevant. Never memoize a dispatched effect as if repeated force were pure.
+Keep WHNF and NF distinct. Type conversion and object Identity remain distinct.
+
+## 5. Foundational HOTT Action
+
+Narya sources consulted on 2026-09-07:
+
+- [Observational higher dimensions](https://narya.readthedocs.io/en/latest/observational.html):
+  `Id`, `refl`, and `ap` share the higher-dimensional construction; dependent
+  identification includes a correspondence along the base identification.
+- [HOTT](https://narya.readthedocs.io/en/latest/hott.html): transport and lifting
+  supply structure beyond parametricity. The documentation explicitly identifies
+  limitations of current computation rules and special difficulties for indexed
+  inductive types in its fibrancy construction.
+- [Implementation remarks](https://narya.readthedocs.io/en/latest/remarks.html):
+  Narya uses De Bruijn indices/levels and intrinsically scoped OCaml structures.
+  Adopt its semantic discipline, not those representations.
+- [Dimension theory](https://github.com/gwaithimirdain/narya/tree/master/lib/dim),
+  [op.ml](https://github.com/gwaithimirdain/narya/blob/master/lib/dim/op.ml),
+  [hott.ml](https://github.com/gwaithimirdain/narya/blob/master/lib/dim/hott.ml):
+  operators have domain/codomain, act contravariantly, and compose; faces and
+  degeneracies are distinct. These moving upstream references must be pinned
+  to a commit when implementing the corresponding rules.
+
+The following is the A Program adaptation, not a claim that Narya already
+provides a pointer-based CBPV implementation.
+
+**Representation.** From N1, use immutable dimension/operator objects and shared
+boundary diagrams whose cells hold term/binder pointers. Start with binary
+endpoints and one direction, but no fixed maximum dimension or separate 1D/2D
+term tags. Materialize demanded faces instead of eagerly copying every cube.
+Dimensions and array sizes may use integers; bound identities remain pointers.
+
+**Two operations to define precisely.** Restriction by a dimensional map and
+forming the higher action of a typed term are related but not interchangeable.
+For `rho : m -> n`, restriction sends an n-dimensional object to dimension m.
+It obeys `restrict(id,t)=t` and
+`restrict(sigma,restrict(rho,t))=restrict(rho compose sigma,t)`.
+Producing a higher term additionally acts on its context, classifier, and
+boundary bindings; raising a dimension counter alone is not a proof.
+
+An internal `Act` operation takes an explicit typed occurrence, dimension map
+and boundary environment and produces another typed occurrence plus ordinary
+Core. It cannot select an annotation from a naked erased Core pointer. Its
+generated executable references contain the chosen immutable descriptors, so
+subsequent Core reduction has fixed semantics. A suspended action can itself be
+represented through REFERENCE and APP, with no mandatory fourth Core tag.
+
+**Scope.** Acting on a binder produces its boundary binders and center binder in
+one persistent scope diagram. Act on Lambda, APP, classifiers and substitutions
+together. Check compatibility of iterated restrictions on shared faces and
+commutation with substitution/beta. Share the graph traversal machinery, but do
+not equate ordinary variable substitution with dimension restriction.
+
+**Identity.** Generate identity families and witnesses from this action rather
+than adding an unrelated `Obs(left_type,right_type,left,right)` authority.
+For heterogeneous identification retain the chosen family/correspondence and
+base witness: identical endpoints can admit different identifications. Do not
+erase those choices or collapse all evidence into an endpoint pair. Pointer
+sharing and kernel conversion do not imply equality reflection.
+
+**HOTT rather than only relation preservation.** N2 includes checked contracts
+for transport/lifting and their dimensional boundaries, with actual computation
+rules for the initial supported type formers. Unknown families may remain
+neutral with checked types. Unsupported rules must be marked unsupported, never
+fabricated as axioms or reported as complete HOTT. Derive and check symmetry and
+composition in the supported fragment. Do not defer their design until after
+the artifact format is frozen.
+
+**IADT and effects.** N3 must implement action on declaration telescopes,
+constructors, dependent Match and IH at the same time as ordinary IADT support.
+Generate higher families with generic indexed declarations and pointer owners;
+do not add a primitive per datatype or per dimension. Write the fibrancy and
+transport obligations for indexed families explicitly; a generated higher IADT
+alone does not discharge them. N4 must specify the action laws for CBPV
+return/thunk/force and fold. Effectful observational equality needs a stated
+observation model and cannot follow from equal returned values. An arbitrary
+host oracle receives no automatic Identity proof.
+
+**Early gates.** N1 tests map identity/composition, faces, degeneracies and binder
+scope at dimensions 0, 1, 2 and a dimension-3 smoke test. N2 must compute action
+on identity, a constant function and APP, then act again on the result and check
+its boundaries and classifier. Include a non-DefEq function equality witness
+once the necessary observational rules exist; same-term reflexivity alone is
+insufficient. In N3, distinct Bool constructors must reject an attempted witness,
+and Identity-generated datatypes must themselves support Match/action. No claim
+of all coherence laws follows merely from running the dimension-3 example.
+
+Current `src/prototype/include/a_program/dimension/action.h` already exposes
+acted-family and context-aware classifier operations. Audit it and
+`src/prototype/src/dimension/` for reusable equations and fixtures; do not port
+their integer stores or the previous multi-stage publication machinery blindly.
+
+## 6. One Typed Work Graph
+
+Contexts are persistent extensions containing binder pointers and classifiers;
+extending a context shares its prefix. Typed occurrences preserve scope and
+source evidence even when Core is shared. Context substitution is a mapping of
+these bindings, not a copied parallel term tree.
+
+Intern a constraint by its complete semantic inputs: rule, context, typed
+operands, policy and relevant declaration identities. Attach diagnostic source
+sites separately. Allocate the goal before registering dependencies so cycles
+and forward producers do not depend on AST traversal order.
+
+Each goal owns one current answer and its reverse dependencies. The queue stores
+work, not another answer. A pending consumer subscribes to actual dependencies;
+publication wakes affected consumers only. Provenance needed to justify an
+answer is part of the answer's change detection. SCC handling must express the
+recursive rule's obligations, not accept a cycle as its own proof.
+
+Keep immutable derivations with explicit premises. Multiple derivations can
+conclude one proposition; do not overwrite accepted proof records. A checked
+occurrence can reference its accepted evidence directly. Introduce another Claim
+store only if a concrete consumer needs a distinct acceptance identity.
+Expected-type checks, diagnostics and artifact roots read these results rather
+than reproducing their lifecycle.
+
+## 7. Compatibility Inventory
+
+This table is a starting inventory from the current reader, AST and test tree,
+not a claim that the failed snapshot passes every row. N0 must enumerate exact
+fixtures/options and distinguish old bugs from intended behavior.
+
+| Area | Current evidence to read/reuse | Replacement acceptance |
+| --- | --- | --- |
+| names, Lambda, APP, annotations | `src/prototype/src/frontend/reader.c`, `include/a_program/frontend/ast.h`, examples 01-09 | accepted/rejected syntax and synthesized types; `::` cannot steer synthesis |
+| ADT, parameters, indexed `@\\i:T => {...}` and `* i` | `test_explicit_index_family_surface.sh`, Vec/Acc fixtures | generic telescopes, nominal owners, correct rejection of recursive self-name syntax |
+| dependent Pi, Match, recursive `*field` | `test_dependent_pi.sh`, `test_dependent_match_refinement.sh`, List induction fixture | dependent motive/refinement, single and multiple recursive fields |
+| blocks, definitions, `&`, `!` | `test_computation_block_sequence.sh`, `test_definition_block.sh`, `test_cbpv_surface.sh` | exact binding/selection/exit/force policy, not just same final pure value |
+| literals, intrinsic names, requests and multi-clause folds | reader `parse_elimination_head`, CBPV fixtures | ordinary operation application, aliases, `@#.return`, output carrier and effect checking |
+| imports, exported nominal declarations, CLI/REPL | driver sources, `test_artifact_flow.sh`, reader session tests | cross-process identity/relocation; WHNF/NF commands and diagnostics |
+| Acc, totality, generated function graphs | `test_if8_fuel_free_quicksort.sh`, `test_totality_evidence.sh`, function-graph tests | general indexed elimination; no Acc or QuickSort special primitive |
+| Identity and higher supported fragments | `src/prototype/src/identity/`, HOTT/Identity tests | port supported rules with explicit premises; no inferred full HOTT claim |
+| universes, resources, effect constraints | universe/resource tests and kernel sources | distinguish pending, rejected and proved; no empty-row/unknown conflation |
+| checked artifacts and resumption | checker/container and compilation-image tests | valid evidence replay, rejection of invalid references, resumable `.a` contract |
+
+Paths abbreviated as `test_*.sh` refer to `src/prototype/tests/integration/`.
+Legacy tests that assert enum numbers, old Core pretty-print tags or internal DB
+layout are not language semantics. Replace those assertions with results, types,
+effect traces, rejection reasons or evidence replay. Record each disposition;
+do not delete a failing semantic test to make the new implementation pass.
+
+## 8. Program Image and Persistence
+
+One in-memory program owns graph roots, typed occurrences, declarations and work
+results. Parsing/lowering creates its initial unresolved state; bounded solving
+advances it. Execution is an explicit request using the same computation engine
+with a host environment. A parsed graph is not permission to run unchecked code.
+
+`.a` uses section-local wire references reconstructed into pointers on load.
+Never serialize addresses or function pointers. Resolve semantic descriptors by
+versioned builtin names or declaration references and validate their payloads.
+Support recursive declaration graphs through allocate-then-link-then-validate.
+
+Writer retention options: RECOMPUTE stores sufficient immutable input; CHECKPOINT
+adds validated progress and evidence. They use the same loader and solver. Omit
+work queues and historical snapshots; rebuild acceleration indexes. Do not copy
+the failed seed/current/handoff structs into the new implementation. A small
+round-trip prototype must demonstrate which roots suffice before freezing wire
+format. Legacy `.apo/.ao` import, if retained, belongs in a conversion tool, not
+the core evaluator. Exact old wire compatibility is not promised by this plan.
+
+## 9. Implementation and Progress
+
+Complete one vertical slice at a time. Update this table with commit, commands,
+results, timing and net source/test LOC. An unchecked row is not implemented.
+
+| State | Step | Concrete work | Required completion evidence |
+| --- | --- | --- | --- |
+| [x] | Archive | preserve failed source and stop predecessor | local archive commit and failure record |
+| [ ] | N0 Baseline and HOTT rules | inventory syntax/tests; pin Narya source and define action, boundary, transport/lifting rules for the initial fragment | compatibility manifest plus concise rule/representation correspondence, including CBPV obligations |
+| [ ] | N1 Dimensional pointer Core | stable arena, binders, APP, descriptors, alpha interning, evaluator; dimension maps and shared boundary diagrams | beta/capture tests and dimension 0-3 action laws; no depth-specific Core variants |
+| [ ] | N2 Typed HOTT vertical slice | reader, synthesis, contexts; typed Act, Identity and initial transport/lifting computation | shared Core with distinct typing; post-check `::`; iterated action on Lambda/APP, checked boundaries and supported equality operations |
+| [ ] | N3 Dimensional ADT/IADT | parameters/indices, self family, telescope action, nominal declarations, Match/IH and their higher rules | Nat/List/Vec/Acc; higher constructors and Match; indexed transport obligations recorded; producer-order-independent goals |
+| [ ] | N4 CBPV and effects | remaining block/quote/exit forms; structural references; request/fold reducers; effect rows and continuation rules | 01-09, single versus repeated execution, nested exit boundary, operation alias, multi-clause deep handler and unhandled forwarding |
+| [ ] | N5 Image/CLI | `.a` relocation, seed/checkpoint retention, imports, CLI and REPL parity | fresh-process round trips, nominal identity, split-budget solve equivalence, WHNF/NF; replay rejects malformed evidence |
+| [ ] | N6 Proof feature parity | supported totality, generated graph IADTs and resources over the foundational HOTT system | IF8, supported function properties and expanded Identity fixtures; negative cases reject; remaining theory limits recorded |
+| [ ] | N7 Acceptance | finish manifest, benchmark and review deletion/transfer plan | all agreed supported cases pass; per-module old/new LOC and timings; no hidden use of old solver or runtime |
+
+Dependencies: N0 -> N1 -> N2 -> N3 -> N4 -> N5 -> N6 -> N7. Small experiments for
+persistence or recursive binding may happen earlier; they do not bypass the
+preceding acceptance gates. N2 must run from source without the old solver before
+porting advanced features. N0/N1 already include HOTT's dimensional foundation;
+N2 must demonstrate typed higher computation before broader feature migration.
+
+For each step append only a short progress entry:
+
+```text
+Step / date / commit:
+Behavior implemented:
+Checks and elapsed time:
+Source + / - / net; tests + / - / net; docs separately:
+Unresolved issue and next action:
+```
+
+Track graph allocations, intern hits, reducer steps, goal evaluations/wakeups,
+and peak memory alongside elapsed time for small examples, List/append and IF8.
+Test source-to-result and artifact-to-result independently. Compare the same
+input/options on consecutive implementations; do not infer speed from LOC.
+
+## 10. Review Gates and Explicit Limits
+
+- Pointer-based Core is the chosen direction; whether the particular binder
+  canonicalization performs well is an N1 measurement, not an assumption.
+- Oracle/IADT descriptors may contain complex rules. Count their code as Core
+  functionality when reporting size; hiding it behind pointers is not reduction.
+- Do not copy the old solution/projection/transaction infrastructure wholesale.
+  Retain mathematical rule distinctions such as APP elimination and Match
+  elimination even when they share allocation and scheduling utilities.
+- HOTT is an initial architectural requirement, not a later feature. Completing
+  every dependent/higher/Universe rule remains a separate mathematical claim;
+  record coverage and missing equations without weakening the initial design.
+- A complete parser does not mean a complete type checker. Maintain separate
+  parsing, typing, evaluation and replay status for each compatibility case.
+- Main replacement requires the N7 evidence and explicit acceptance. The failed
+  branch remains available. No deletion of the old implementation is needed to
+  start this independent prototype.
+
+The design is informed by the two handmade files and the current implementation
+paths above. It is an A Program engineering proposal, not a claimed direct
+implementation of an external paper or a claim that pointers establish a new
+type-theoretic result.
