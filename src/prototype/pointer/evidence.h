@@ -6,7 +6,8 @@
 
 enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, PG_VARIABLE,
 	PG_TYPE_FROM_VALUE, PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_PI_FORM,
-	PG_RETURN_INTRO, PG_THUNK_INTRO, PG_FORCE_ELIM, PG_LAMBDA_INTRO, PG_APP_ELIM };
+	PG_RETURN_INTRO, PG_THUNK_INTRO, PG_FORCE_ELIM, PG_LAMBDA_INTRO, PG_APP_ELIM,
+	PG_VALUE_FROM_TYPE };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION };
 struct pg_evidence;
@@ -24,6 +25,9 @@ const struct pg_evidence *pg_prove_variable(struct pg_typing *typing,
 /* A value in a value-type universe determines a value type. This operation
  * cannot turn a computation-type formation into a value-type formation. */
 const struct pg_evidence *pg_prove_value_type(struct pg_typing *typing, const struct pg_evidence *value);
+/* Russell-style value universes. Computation formation has a universe bound,
+ * but is not a value inhabiting that universe. */
+const struct pg_evidence *pg_prove_type_value(struct pg_typing *typing, const struct pg_evidence *type);
 const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *value_type);
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,

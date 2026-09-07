@@ -383,8 +383,15 @@ conclusion and all premise pointers; no accepted record is overwritten.
   rule requires exact classifier pointers; an explicit conversion derivation
   remains necessary for non-identical convertible classifiers. The beta-only
   evaluator intentionally does not reduce FORCE(THUNK(...)) yet. F currently
-  describes the pure fragment, not unspecified effect rows. Universe formation
-  as a term-level value, effect rows and dependent computations remain pending.
+  describes the pure fragment, not unspecified effect rows. Effect rows and
+  dependent sequencing remain pending.
+- [x] Connect value-type formation to term-level universe inhabitation by an
+  explicit checked derivation. This is a Russell-style value universe: F/Pi
+  computation formation cannot use this rule; U of a computation type can.
+  Test an assumed `f : U(Pi(A:U1, F A))`: applying `force f` to the value U0
+  synthesizes `F U0`, while applying it to an open `B:U1` synthesizes `F B`.
+  Neither requires executing `f` or deciding B's eventual value. Formation
+  evidence is not silently accepted as argument inhabitation evidence.
 - [ ] Conversion evidence, synthesis scheduling, image checking and
   typed HOTT action still need implementation. These primitive rules do
   not constitute a complete checker; NULL currently combines invalid-premise

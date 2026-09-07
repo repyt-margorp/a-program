@@ -70,6 +70,14 @@ const struct pg_evidence *pg_prove_value_type(struct pg_typing *typing, const st
 		value->context, value->subject, value->classifier, 1, &value);
 }
 
+const struct pg_evidence *pg_prove_type_value(struct pg_typing *typing, const struct pg_evidence *type)
+{
+	if (!type || type->owner != typing) return NULL;
+	if (type->judgement != PG_JUDGEMENT_VALUE_TYPE) return NULL;
+	return accept(typing, PG_VALUE_FROM_TYPE, PG_JUDGEMENT_VALUE,
+		type->context, type->subject, type->classifier, 1, &type);
+}
+
 const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 	const struct pg_evidence *parent, const struct pg_object *binder,
 	const struct pg_evidence *type)

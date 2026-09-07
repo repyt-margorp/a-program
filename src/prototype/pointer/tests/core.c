@@ -239,6 +239,51 @@ static void evidence_test(struct pg_graph *graph)
 	puts("evidence: checked contexts, stratified universes and occurrence-based variable derivations passed");
 }
 
+static void dependent_application_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(pg_typing_init(&typing, graph) == 0);
+	assert(pg_classifiers_init(&classifiers, graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u1 = pg_prove_universe(&typing, &classifiers, empty, 1);
+	const struct pg_object *a = pg_binder(graph);
+	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u1);
+	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
+	const struct pg_evidence *fa = pg_prove_return_type(&typing, &classifiers, a_type);
+	/* A : U1 |- F A computation type. No runtime result is guessed. */
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, u1, a_context, fa);
+	assert(pi);
+	assert(!pg_prove_type_value(&typing, pi));
+	assert(!pg_prove_type_value(&typing, fa));
+	const struct pg_evidence *upi = pg_prove_thunk_type(&typing, &classifiers, pi);
+	assert(pg_prove_type_value(&typing, upi));
+	const struct pg_object *f = pg_binder(graph);
+	const struct pg_evidence *f_context = pg_prove_context_extension(&typing, empty, f, upi);
+	const struct pg_evidence *function = pg_prove_force(&typing, pg_prove_variable(&typing, f_context, f));
+	const struct pg_evidence *u0 = pg_prove_universe(&typing, &classifiers, f_context, 0);
+	const struct pg_evidence *argument = pg_prove_type_value(&typing, u0);
+	assert(argument && pg_evidence_judgement(argument) == PG_JUDGEMENT_VALUE);
+	assert(pg_prove_type_value(&typing, u0) == argument);
+	const struct pg_evidence *app = pg_prove_application(&typing, function, argument);
+	assert(app);
+	assert(pg_evidence_classifier(app) == pg_return_type(&classifiers, pg_universe(&classifiers, 0)));
+	assert(pg_evidence_premise(app, 1) == argument);
+	assert(!pg_prove_application(&typing, function, u0));
+	/* Open value arguments stay symbolic: the output is F B, not F U0. */
+	const struct pg_evidence *u1_in_f = pg_prove_universe(&typing, &classifiers, f_context, 1);
+	const struct pg_object *b = pg_binder(graph);
+	const struct pg_evidence *b_context = pg_prove_context_extension(&typing, f_context, b, u1_in_f);
+	const struct pg_evidence *open_function = pg_prove_force(&typing, pg_prove_variable(&typing, b_context, f));
+	const struct pg_evidence *b_value = pg_prove_variable(&typing, b_context, b);
+	const struct pg_evidence *open_app = pg_prove_application(&typing, open_function, b_value);
+	assert(open_app);
+	assert(pg_evidence_classifier(open_app) == pg_return_type(&classifiers, pg_reference(graph, b)));
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	puts("dependent application: concrete and open type arguments substitute without executing computations");
+}
+
 static void classifiers_test(struct pg_graph *graph)
 {
 	struct pg_classifiers classifiers;
@@ -662,6 +707,7 @@ int main(void)
 	graph_test(&graph);
 	context_test(&graph);
 	evidence_test(&graph);
+	dependent_application_test(&graph);
 	classifiers_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);
