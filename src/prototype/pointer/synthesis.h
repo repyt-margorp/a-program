@@ -61,6 +61,15 @@ const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 const struct pg_source_scope *pg_synthesis_namespace(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_source_scope *exports);
+/* Publish a closed definition-root job, including a pending one. Member
+ * references await the shared registration and whole-module checking jobs;
+ * only that module's own names are exported, not its ambient source scope.
+ * A selected root is canonicalized to its whole-definition job. Registration
+ * requests work but never advances it. This does not read files or execute
+ * exported computations. The module and parent belong to this store. */
+const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	struct pg_synthesis_job *module);
 /* Diagonal action of an input job, after its own synthesis has succeeded.
  * Both jobs belong to this store. The supplied context must be exactly the
  * input judgement's context; no expected classifier guides the producer.

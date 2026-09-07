@@ -2061,6 +2061,24 @@ conclusion and all premise pointers; no accepted record is overwritten.
   suites pass at 512 KiB stack. Implementation `synthesis.c` +32/-14,
   `synthesis.h` +4/-1; tests +76; documentation separate. File loading and
   source/export integration with nominal declarations remain open.
+- [x] September 8, after `b94c5fd`: `pg_synthesis_module_namespace` mounts a
+  closed source-definition job, even while pending, in the existing namespace
+  lookup. Selections canonicalize to their whole-definition root. References
+  await the shared registration job, resolve only that module's own names,
+  then await whole-module acceptance before using the original producer proof.
+  Ambient library names are not re-exported. Registration does not solve or
+  execute code; scope interning includes the module pointer, not a copied
+  classifier/result. Static and module namespace bindings share publication and
+  member traversal. No Replay, second solver or Core namespace form is added.
+  Tests synthesize source-defined Eq/refl aliases, call them from another scope,
+  normalize a function through a second source module, preserve local shadowing,
+  reject open/foreign/non-module inputs, avoid jobs for invalid registrations,
+  propagate unselected errors, and reject missing members during cyclic pending
+  work without polling. Optimized check: 3.474 s (synthesis rebuilt);
+  ASan/UBSan: 18.148 s (affected binaries rebuilt); four computation suites pass
+  with 512 KiB stack. Implementation `synthesis.c` +67/-17, `synthesis.h` +9;
+  tests +93; documentation separate. File resolution, `import` statement wiring,
+  recursive module loading, `.a` loading and N2/N5 acceptance remain open.
 - [x] Connect value universes, scoped variables, annotated Lambda, dependent Pi,
   APP, quotation and inline post-synthesis `::`. Lambda bodies retain raw
   computation polarity, while value bodies acquire RETURN. Function-typed

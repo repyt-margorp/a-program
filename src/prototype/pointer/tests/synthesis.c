@@ -336,6 +336,98 @@ static void namespaces(struct pg_synthesis *synthesis, const struct pg_source_sc
 	puts("namespaces: shared evidence, qualified Identity, lexical shadowing, closed exports and deep paths passed");
 }
 
+static void module_namespaces(struct pg_synthesis *synthesis, const struct pg_source_scope *ambient)
+{
+	struct pg_graph *graph = synthesis->typing->graph;
+	const struct pg_source_scope *root = pg_synthesis_root(synthesis);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "Library", .length = 7};
+	struct pg_token proof_name = {.kind = PG_TOKEN_IDENT, .text = "proof", .length = 5};
+	const char *source = "eq:=&Eq; proof:=&refl; id:=&(\\A:@ => \\x:A => x);";
+	struct pg_parser parser;
+	pg_parser_init(&parser, graph, source, strlen(source));
+	const struct pg_syntax *definitions = pg_parser_program(&parser);
+	assert(definitions);
+	struct pg_synthesis_job *module = pg_synthesis_request(synthesis, ambient, definitions);
+	size_t terms = graph->terms.count, proofs = synthesis->typing->proofs.count, jobs = synthesis->jobs.count;
+	uint64_t steps = synthesis->steps;
+	const struct pg_source_scope *scope = pg_synthesis_module_namespace(synthesis, root, name, module);
+	assert(scope && pg_synthesis_module_namespace(synthesis, root, name, module) == scope);
+	assert(graph->terms.count == terms && synthesis->typing->proofs.count == proofs);
+	assert(synthesis->jobs.count == jobs && synthesis->steps == steps);
+	struct pg_synthesis_job *reference = request(synthesis, scope, "main:=Library.proof;");
+	pg_synthesis_advance(synthesis, 2);
+	assert(pg_synthesis_status(reference) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_dependency(reference) && pg_synthesis_dependency(reference) == pg_synthesis_dependency(module));
+	const struct pg_evidence *answer = complete(synthesis, reference, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_status(module) == PG_SYNTHESIS_DONE);
+	assert(answer == pg_synthesis_result(pg_synthesis_definition(module, proof_name)));
+	struct pg_synthesis_job *selection = pg_synthesis_request(synthesis, ambient,
+		select_definition(graph, definitions, proof_name));
+	assert(pg_synthesis_module_namespace(synthesis, root, name, selection) == scope);
+	assert(complete(synthesis, selection, PG_SYNTHESIS_DONE) == answer);
+	complete(synthesis, request(synthesis, scope,
+		"main:=\\A:@ => \\x:A => Library.proof A x :: Library.eq A x x;"), PG_SYNTHESIS_DONE);
+	complete(synthesis, request(synthesis, scope, "main:=Library.refl;"), PG_SYNTHESIS_REJECTED);
+	complete(synthesis, request(synthesis, scope, "main:=refl;"), PG_SYNTHESIS_REJECTED);
+	complete(synthesis, request(synthesis, scope, "main:=\\Library:@ => Library.proof;"), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_synthesis_job *consumer_module = program(synthesis, scope, "alias:=Library.id;");
+	struct pg_token consumer_name = {.kind = PG_TOKEN_IDENT, .text = "Consumer", .length = 8};
+	const struct pg_source_scope *consumer = pg_synthesis_module_namespace(synthesis, root, consumer_name, consumer_module);
+	assert(consumer);
+	const struct pg_evidence *call = complete(synthesis, request(synthesis, consumer,
+		"main:=\\A:@ => \\x:A => Consumer.alias A x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *empty = pg_prove_empty_context(synthesis->typing);
+	call = complete(synthesis, pg_synthesis_nf(synthesis, empty, call), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *identity = complete(synthesis, request(synthesis, root,
+		"main:=\\A:@ => \\x:A => x;"), PG_SYNTHESIS_DONE);
+	same_judgement(call, identity);
+	complete(synthesis, request(synthesis, consumer, "main:=Consumer.Library.id;"), PG_SYNTHESIS_REJECTED);
+	assert(!pg_synthesis_module_namespace(synthesis, root, name, NULL));
+	assert(!pg_synthesis_module_namespace(synthesis, NULL, name, module));
+	assert(!pg_synthesis_module_namespace(synthesis, root, (struct pg_token){0}, module));
+	assert(!pg_synthesis_module_namespace(synthesis, root, name, reference));
+	assert(!pg_synthesis_module_namespace(synthesis, root, name, pg_synthesis_evidence(synthesis, answer)));
+	pg_parser_init(&parser, graph, source, strlen(source));
+	const struct pg_syntax *fresh_definitions = pg_parser_program(&parser);
+	assert(fresh_definitions);
+	struct pg_synthesis_job *fresh_selection = pg_synthesis_request(synthesis, ambient,
+		select_definition(graph, fresh_definitions, proof_name));
+	jobs = synthesis->jobs.count;
+	assert(!pg_synthesis_module_namespace(synthesis, root, (struct pg_token){0}, fresh_selection));
+	assert(!pg_synthesis_module_namespace(synthesis, NULL, name, fresh_selection));
+	assert(synthesis->jobs.count == jobs);
+	complete(synthesis, fresh_selection, PG_SYNTHESIS_DONE);
+	const struct pg_object *binder = pg_binder(graph);
+	const struct pg_evidence *context = pg_prove_context_extension(synthesis->typing, empty, binder,
+		pg_prove_universe(synthesis->typing, synthesis->classifiers, empty, 0));
+	const struct pg_source_scope *open = pg_synthesis_bind(synthesis, root, name, binder, context);
+	struct pg_synthesis_job *open_module = program(synthesis, open, "alias:=Library;");
+	assert(!pg_synthesis_module_namespace(synthesis, root, name, open_module));
+	complete(synthesis, open_module, PG_SYNTHESIS_DONE);
+	struct pg_synthesis foreign;
+	assert(pg_synthesis_init(&foreign, synthesis->typing, synthesis->classifiers, synthesis->normalization,
+		PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	assert(!pg_synthesis_module_namespace(&foreign, pg_synthesis_root(&foreign), name, module));
+	assert(!pg_synthesis_module_namespace(synthesis, pg_synthesis_root(&foreign), name, module));
+	pg_synthesis_destroy(&foreign);
+	module = program(synthesis, root, "good:=@; bad:=missing;");
+	scope = pg_synthesis_module_namespace(synthesis, root, name, module);
+	assert(scope);
+	complete(synthesis, request(synthesis, scope, "main:=Library.good;"), PG_SYNTHESIS_REJECTED);
+	module = program(synthesis, root, "good:=@; a:=b; b:=a;");
+	scope = pg_synthesis_module_namespace(synthesis, root, name, module);
+	assert(scope);
+	reference = request(synthesis, scope, "main:=Library.good;");
+	complete(synthesis, request(synthesis, scope, "main:=Library.absent;"), PG_SYNTHESIS_REJECTED);
+	pg_synthesis_advance(synthesis, 1000);
+	assert(pg_synthesis_status(reference) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(reference));
+	assert(!pg_synthesis_result(reference) && !synthesis->ready);
+	steps = synthesis->steps;
+	pg_synthesis_advance(synthesis, 1000);
+	assert(synthesis->steps == steps);
+	puts("source module namespaces: pending imports, shared proofs, lexical exports and whole-module validity passed");
+}
+
 static void named_identity(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_whnf_work work;
@@ -358,6 +450,7 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 	}
 	assert(!synthesis.steps && !synthesis.ready && work.jobs.count == library_work);
 	namespaces(&synthesis, scope, library);
+	module_namespaces(&synthesis, scope);
 	const struct pg_evidence *named = complete(&synthesis, request(&synthesis, scope, "main := refl;"), PG_SYNTHESIS_DONE);
 	assert(named == functions[1]);
 	const char *sources[] = {
