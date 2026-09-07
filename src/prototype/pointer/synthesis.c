@@ -11,6 +11,7 @@ struct pg_source_scope {
 	const struct pg_object *binder;
 	const struct pg_evidence *context;
 	struct definition_state *definitions;
+	struct pg_synthesis_job *producer;
 };
 struct waiter {
 	struct pg_synthesis_job *parent;
@@ -194,6 +195,23 @@ struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 	if (!pg_evidence_owned_by(proof, synthesis->typing)) return NULL;
 	const void *inputs[] = {proof};
 	return request_inputs(synthesis, EVIDENCE_JOB, 1, inputs);
+}
+
+const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	const struct pg_evidence *proof)
+{
+	if (!parent || parent->owner != synthesis) return NULL;
+	if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
+	if (!pg_evidence_owned_by(proof, synthesis->typing) || !pg_evidence_subject(proof)) return NULL;
+	proof = pg_prove_projection(synthesis->typing, parent->context, proof);
+	if (!proof) return NULL;
+	struct pg_synthesis_job *producer = pg_synthesis_evidence(synthesis, proof);
+	if (!producer) return NULL;
+	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
+	if (scope) *scope = (struct pg_source_scope){.owner = synthesis, .parent = parent,
+		.name = name, .context = parent->context, .producer = producer};
+	return scope;
 }
 
 struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,
@@ -492,8 +510,14 @@ static void atom(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 					return;
 				}
 			}
-			if (!scope->binder || scope->name.length != token.length) continue;
+			if (scope->name.length != token.length) continue;
 			if (memcmp(scope->name.text, token.text, token.length) != 0) continue;
+			if (scope->producer) {
+				job->left = scope->producer;
+				depend(synthesis, job, job->left);
+				return;
+			}
+			if (!scope->binder) continue;
 			job->result = pg_prove_variable(synthesis->typing, job->scope->context, scope->binder);
 			break;
 		}

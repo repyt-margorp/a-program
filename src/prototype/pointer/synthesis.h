@@ -37,6 +37,15 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
  * this store's typing arena is accepted; this is not a serialized-proof loader. */
 struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 	const struct pg_evidence *proof);
+/* Publish a checked term or formation under an ordinary lexical name. This
+ * does not extend the typing context or insert THUNK/RETURN/FORCE. The proof
+ * must be available in the parent context (prefix projection is permitted).
+ * Names borrow their text as other source scopes do. The new scope shadows
+ * its parent without modifying it; references share the accepted producer.
+ * Serialized results must be checked before reaching this API. */
+const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	const struct pg_evidence *proof);
 /* Diagonal action of an input job, after its own synthesis has succeeded.
  * Both jobs belong to this store. The supplied context must be exactly the
  * input judgement's context; no expected classifier guides the producer.

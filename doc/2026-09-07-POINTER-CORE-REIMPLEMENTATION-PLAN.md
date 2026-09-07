@@ -1322,6 +1322,24 @@ a specified type family, not a global endpoint-only relation.
   Implementation `eval.c` +137/-1, `eval.h` +18/-0, `conversion.c` +30/-6,
   `conversion.h` +5/-3 (net +180); tests `core.c` +90, `identity.c` +9;
   documentation separate. N2/N3/N5 remain open, including NF CLI integration.
+- [x] September 8, after `a8ba9a1`: connect accepted typed terms to source name
+  resolution with `pg_synthesis_name`. Immutable lexical scopes point to the
+  existing accepted-evidence producer, not a Core-only classifier lookup.
+  Publication checks ownership/scope via ordinary projection, adds no context
+  binder or coercion, and runs no computation. Aliases and shadowing preserve
+  previous scopes. Tests supply ordinary checked Eq/refl functions and parse,
+  synthesize and normalize their use in dependent annotations and `::`, including
+  reflexivity of an Identity inhabitant. A source reflexivity function normalizes
+  to its independently constructed checked implementation; unequal endpoints
+  reject during post-check. The test's initially nested definition-block example
+  was corrected to the existing root-only syntax, not enabled by parser changes.
+  Names are supplied by the test library: no reserved Eq/refl, built-in prelude,
+  general surface Act, import loader or CLI is claimed. This advances N2 without
+  bypassing the unresolved Pi transport or nominal fibrancy requirements.
+  Optimized check: 3.311 s (synthesis rebuilt); ASan/UBSan: 17.206 s (affected
+  binaries rebuilt). Synthesis/Identity/IADT also pass with a 512 KiB stack.
+  Implementation `synthesis.c` +25/-1, `synthesis.h` +9/-0 (net +33);
+  test `tests/synthesis.c` +90/-0; documentation separate.
 - [x] September 8, after `ce0a36d`: expose typed NF through the existing solver
   (`pg_synthesis_nf`) without another proof rule or Replay pipeline. WHNF and
   NF issue the same graph-owned `pg_reduction_certificate`, consumed by

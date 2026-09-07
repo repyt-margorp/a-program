@@ -88,6 +88,17 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 	pg_synthesis_advance(&synthesis, 100);
 	assert(!synthesis.steps && !synthesis.ready && synthesis.jobs.count == 2);
 	assert(typing->graph->terms.count == terms && typing->proofs.count == evidence);
+	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "f", .length = 1};
+	for (size_t i = 0; i < 2; ++i) {
+		size_t jobs = synthesis.jobs.count;
+		const struct pg_source_scope *scope = pg_synthesis_name(&synthesis, root, name, proofs[i]);
+		assert(scope && synthesis.jobs.count == jobs);
+		assert(complete(&synthesis, request(&synthesis, scope, "main := f;"), PG_SYNTHESIS_DONE) == proofs[i]);
+		/* Only the expression request is new, not another accepted producer. */
+		assert(synthesis.jobs.count == 3 + i);
+		if (!i) root = scope;
+	}
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 }
@@ -103,6 +114,84 @@ static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
 	assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
 	assert(pg_synthesis_request(synthesis, scope, syntax) == job);
 	return job;
+}
+
+static void named_identity(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *root = pg_synthesis_root(&synthesis), *scope = root;
+	const struct pg_evidence *contexts[4] = {pg_prove_empty_context(typing)}, *domains[3], *functions[2];
+	const struct pg_object *binders[] = {pg_binder(typing->graph), pg_binder(typing->graph), pg_binder(typing->graph)};
+	for (size_t i = 0; i < 3; ++i) {
+		domains[i] = i ? pg_prove_value_type(typing, pg_prove_variable(typing, contexts[i], binders[0]))
+			: pg_prove_universe(typing, classifiers, contexts[0], 0);
+		contexts[i + 1] = pg_prove_context_extension(typing, contexts[i], binders[i], domains[i]);
+		assert(contexts[i + 1]);
+	}
+	/* These are ordinary checked functions, not special source-name rules. */
+	const char *names[] = {"Eq", "refl"};
+	for (size_t n = 0; n < 2; ++n) {
+		size_t count = n ? 2 : 3;
+		const struct pg_evidence *context = contexts[count];
+		const struct pg_evidence *type = pg_prove_value_type(typing, pg_prove_variable(typing, context, binders[0]));
+		const struct pg_evidence *x = pg_prove_variable(typing, context, binders[1]);
+		const struct pg_evidence *body = n ? pg_prove_reflexivity(typing, type, x)
+			: pg_prove_type_value(typing, pg_prove_identity_type(typing, type, x,
+				pg_prove_variable(typing, context, binders[2])));
+		body = pg_prove_return(typing, classifiers, body);
+		for (size_t i = count; i > 0; --i) {
+			const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domains[i - 1], contexts[i],
+				pg_prove_classifier(typing, classifiers, contexts[i], body));
+			body = pg_prove_lambda(typing, pi, body);
+			assert(body);
+		}
+		functions[n] = body;
+		scope = pg_synthesis_name(&synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[n], .length = strlen(names[n])}, body);
+		assert(scope);
+	}
+	assert(!synthesis.steps && !synthesis.ready && !work.jobs.count);
+	const struct pg_evidence *named = complete(&synthesis, request(&synthesis, scope, "main := refl;"), PG_SYNTHESIS_DONE);
+	assert(named == functions[1]);
+	const char *sources[] = {
+		"main := \\A : @ => \\x : A => refl A x :: Eq A x x;",
+		"main := \\A : @ => \\x : A => \\p : Eq A x x => refl (Eq A x x) p :: Eq (Eq A x x) p p;",
+		"{{ duplicate := &refl; proof := &(\\A : @ => \\x : A => duplicate A x :: Eq A x x); }}.proof;"
+	};
+	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
+		const struct pg_evidence *answer = complete(&synthesis, request(&synthesis, scope, sources[i]), PG_SYNTHESIS_DONE);
+		struct pg_synthesis_job *bulk = request(&synthesis, scope, sources[i]);
+		pg_synthesis_advance(&synthesis, 10000);
+		assert(pg_synthesis_status(bulk) == PG_SYNTHESIS_DONE);
+		same_judgement(answer, pg_synthesis_result(bulk));
+		if (i == 0) {
+			const struct pg_evidence *nf = complete(&synthesis,
+				pg_synthesis_nf(&synthesis, contexts[0], answer), PG_SYNTHESIS_DONE);
+			assert(pg_alpha_equal(pg_evidence_subject(nf)->core, pg_evidence_subject(functions[1])->core) == 1);
+		}
+	}
+	complete(&synthesis, request(&synthesis, scope,
+		"main := \\A : @ => \\x : A => \\y : A => refl A x :: Eq A x y;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, root, "main := refl;"), PG_SYNTHESIS_REJECTED);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "refl", .length = 4};
+	const struct pg_source_scope *shadow = pg_synthesis_name(&synthesis, scope, name, functions[0]);
+	assert(shadow);
+	assert(complete(&synthesis, request(&synthesis, shadow, "main := refl;"), PG_SYNTHESIS_DONE) == functions[0]);
+	assert(complete(&synthesis, request(&synthesis, scope, "main := refl;"), PG_SYNTHESIS_DONE) == functions[1]);
+	assert(!pg_synthesis_name(&synthesis, root, name, pg_prove_variable(typing, contexts[1], binders[0])));
+	assert(!pg_synthesis_name(&synthesis, root, name, contexts[0]));
+	assert(!pg_synthesis_name(&synthesis, root, (struct pg_token){0}, functions[0]));
+	struct pg_typing foreign;
+	assert(pg_typing_init(&foreign, typing->graph) == 0);
+	assert(!pg_synthesis_name(&synthesis, root, name,
+		pg_prove_universe(&foreign, classifiers, pg_prove_empty_context(&foreign), 0)));
+	pg_typing_destroy(&foreign);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("source Identity: checked named functions, dependent annotations, higher reflexivity and post-check rejection passed");
 }
 
 static int arbitrary_policy(struct pg_eval *machine)
@@ -1034,6 +1123,7 @@ int main(void)
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	accepted_inputs(&typing, &classifiers);
+	named_identity(&typing, &classifiers);
 	data_cases(&typing, &classifiers);
 	source_actions(&typing, &classifiers);
 	family_transport(&typing, &classifiers);
