@@ -67,7 +67,7 @@ const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
 	const struct pg_evidence *prefix = projection_substitution(typing, context, boundary);
 	const struct pg_evidence *ls = pg_prove_substitution_pair(typing, prefix, source, l);
 	const struct pg_evidence *rs = pg_prove_substitution_pair(typing, prefix, source, r);
-	const struct pg_evidence *body = pg_prove_family_identity_type(typing, codomain, ls, rs, p,
+	const struct pg_evidence *body = pg_prove_family_identity_type(typing, codomain, ls, rs, 1, &p,
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, left), l),
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, right), r));
 	for (size_t i = 0; body && i < 3; ++i) {

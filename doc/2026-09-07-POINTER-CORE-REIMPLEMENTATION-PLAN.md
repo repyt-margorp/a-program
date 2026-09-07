@@ -594,6 +594,40 @@ a specified type family, not a global endpoint-only relation.
   Sizes excluding docs: `action.c` +11/-0, `action.h` +5/-0, `identity.c`
   +24/-15, `identity.h` +2/-2 (implementation net +25); tests `identity.c`
   +97/-2, `synthesis.c` +12/-1 (test net +106).
+- [x] September 8, after `26699b0`: contextual action over dependent telescopes.
+  The previous one-varied-binder API is replaced, not wrapped. Family formation
+  and term action now take a counted array of center proofs for a suffix Delta
+  of the source context Gamma,Delta. Both checked substitutions must agree on
+  Gamma. For each declaration `xi:Ai`, the required center classifier is
+
+  ```text
+  act(lambda x0 ... x(i-1). Ai[sigma]) preceding_triples xi_left xi_right
+  ```
+
+  Earlier centers are validated before constructing this classifier. Later
+  endpoint classifiers need not be equal: the selected preceding paths define
+  their correspondence. The original checked telescope supplies declarations;
+  no classifier is recovered from bare Core. The conclusion closes all varied
+  binders before common substitution and applies one action to all triples.
+  Zero centers uniformly means diagonal action after common substitution,
+  including in the empty context. This arity is not a dimension count.
+  The same formation/action rules retain the counted premises, and the same
+  substitution/evaluator handles capture and computation. No new Core tag,
+  context database or proof rule is introduced. A temporary key array is still
+  allocated on lookup; cached requests add no Core or accepted proof records.
+  [Narya's heterogeneous Identity account](https://narya.readthedocs.io/en/latest/observational.html#heterogeneous-identity-types)
+  motivates retaining the chosen earlier paths. Our polarized telescope rule
+  still needs general substitution/dimensional coherence, not just this
+  executable fragment; it does not infer transport or higher fillers.
+  Tests cover 0/1/2 through 8 varied declarations, Z:Universe followed by
+  elements of Z, both polarities, snapshot/reuse, and rejection of missing,
+  excess or mismatched centers. Changing the first path invalidates a later
+  center typed over the old path. Optimized and ASan/UBSan pointer `make check`
+  pass, as do Identity/synthesis tests with a 512 KiB stack. Parser outcomes
+  remain distinct from semantic compatibility. General dimension-map action,
+  higher source computation, transport/lifting and N2 acceptance remain open.
+  Sizes: `action.c` +1/-1, `evidence.c` +75/-39, `evidence.h` +10/-7
+  (implementation net +39); `tests/identity.c` +127/-39 (net +88), excluding docs.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

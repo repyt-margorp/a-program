@@ -58,20 +58,23 @@ const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *family,
 	enum pg_evidence_rule side);
-/* C type in Gamma,x:A; left/right substitute into that context with the same
- * prefix and different final images x0/x1. A checked p : Id A[sigma] x0 x1
- * selects the acted family at endpoints inhabiting C[left]/C[right]. The
- * result keeps C's polarity. Family abstraction is not a value-side Pi. */
+/* C type in Gamma,Delta; the substitutions agree on Gamma and paths contains
+ * one checked center for each declaration of Delta, in declaration order.
+ * Each center uses that declaration's family acted along preceding centers.
+ * All centers share one direction, not iterated refl. Zero centers means
+ * diagonal action after the common substitution. Preserves C's polarity. */
 const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing,
 	const struct pg_evidence *family, const struct pg_evidence *left_substitution,
-	const struct pg_evidence *right_substitution, const struct pg_evidence *path,
+	const struct pg_evidence *right_substitution, size_t count,
+	const struct pg_evidence *const *paths,
 	const struct pg_evidence *left, const struct pg_evidence *right);
-/* t : C in Gamma,x:A acts along the same checked boundary as C. Endpoints
+/* t : C in Gamma,Delta acts along the same checked boundary as C. Endpoints
  * are t[left]/t[right], not caller-supplied witnesses. Preserves polarity. */
 const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 	const struct pg_evidence *family, const struct pg_evidence *term,
 	const struct pg_evidence *left_substitution,
-	const struct pg_evidence *right_substitution, const struct pg_evidence *path);
+	const struct pg_evidence *right_substitution, size_t count,
+	const struct pg_evidence *const *paths);
 /* Symbolic diagonal action; no endpoint conversion is registered globally. */
 const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
 	const struct pg_evidence *type, const struct pg_evidence *term);

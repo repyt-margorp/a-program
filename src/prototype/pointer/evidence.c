@@ -740,27 +740,35 @@ static int substitution_proof(const struct pg_typing *typing, const struct pg_ev
 	return proof->rule == PG_CONTEXT_SUBSTITUTION;
 }
 
-/* Call only after family formation has checked the common prefix and path.
- * Closing the varied binder before substitution prevents ambient capture. */
+/* Close the varied suffix before substituting the common prefix. One action
+ * then consumes every boundary triple; this is not iterated reflexivity. */
 static const struct pg_term *family_action_core(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *left,
-	const struct pg_evidence *right, const struct pg_evidence *path)
+	const struct pg_evidence *right, size_t common, size_t count,
+	const struct pg_evidence *const *paths)
 {
-	size_t count = left->premise_count - 2;
-	const struct pg_term *abstraction = pg_lambda(typing->graph,
-		source->context->binder, source->subject->core);
+	const struct pg_term *abstraction = source->subject->core;
+	const struct pg_context *context = source->context;
+	for (size_t i = 0; i < count; ++i, context = context->parent)
+		abstraction = pg_lambda(typing->graph, context->binder, abstraction);
 	const struct pg_binding_value *bindings = (const struct pg_binding_value *)(
 		left->premises + left->premise_count);
-	abstraction = pg_term_substitute(typing->graph, abstraction, count - 1, bindings);
+	abstraction = pg_term_substitute(typing->graph, abstraction, common, bindings);
 	if (!abstraction) return NULL;
-	return pg_identity_apply(typing->graph, abstraction,
-		left->premises[count + 1]->subject->core,
-		right->premises[count + 1]->subject->core, path->subject->core);
+	const struct pg_term *result = pg_identity_action(typing->graph, abstraction);
+	for (size_t i = 0; i < count; ++i) {
+		result = pg_identity_instance(typing->graph, result,
+			left->premises[common + i + 2]->subject->core,
+			right->premises[common + i + 2]->subject->core);
+		result = pg_application(typing->graph, result, paths[i]->subject->core);
+	}
+	return result;
 }
 
 const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing,
 	const struct pg_evidence *family, const struct pg_evidence *left_substitution,
-	const struct pg_evidence *right_substitution, const struct pg_evidence *path,
+	const struct pg_evidence *right_substitution, size_t count,
+	const struct pg_evidence *const *paths,
 	const struct pg_evidence *left, const struct pg_evidence *right)
 {
 	if (!family || family->owner != typing) return NULL;
@@ -770,49 +778,77 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	case PG_JUDGEMENT_COMPUTATION_TYPE: elements = PG_JUDGEMENT_COMPUTATION; break;
 	default: return NULL;
 	}
-	if (!family->context) return NULL;
 	if (!substitution_proof(typing, left_substitution)) return NULL;
 	if (!substitution_proof(typing, right_substitution)) return NULL;
 	if (left_substitution->premises[0]->context != family->context) return NULL;
 	if (right_substitution->premises[0]->context != family->context) return NULL;
 	const struct pg_context *context = left_substitution->context;
 	if (right_substitution->context != context) return NULL;
-	const struct pg_evidence *premises[] = {family, left_substitution, right_substitution, path, left, right};
+	size_t arity = left_substitution->premise_count - 2;
+	if (count > arity) return NULL;
+	if (count && !paths) return NULL;
+	if (count > SIZE_MAX / sizeof(const void *) - 5) return NULL;
+	size_t common = arity - count;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = NULL;
+	const struct pg_evidence **premises = pg_alloc(&temporary, (count + 5) * sizeof(*premises));
+	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 3) * sizeof(*operands));
+	const struct pg_evidence **declarations = pg_alloc(&temporary, count * sizeof(*declarations));
+	if (!premises || !operands || (count && !declarations)) goto done;
+	premises[0] = family;
+	premises[1] = left_substitution;
+	premises[2] = right_substitution;
+	for (size_t i = 0; i < count; ++i) premises[i + 3] = paths[i];
+	premises[count + 3] = left;
+	premises[count + 4] = right;
 	uint64_t hash;
-	const struct pg_evidence *existing = find_record(typing, PG_FAMILY_IDENTITY_FORM,
-		family->judgement, context, NULL, NULL, 6, premises, NULL, &hash);
-	if (existing) return existing;
-	size_t count = left_substitution->premise_count - 2;
-	for (size_t i = 0; i + 1 < count; ++i) {
+	result = find_record(typing, PG_FAMILY_IDENTITY_FORM,
+		family->judgement, context, NULL, NULL, count + 5, premises, NULL, &hash);
+	if (result) goto done;
+	for (size_t i = 0; i < common; ++i) {
 		if (pg_alpha_equal(left_substitution->premises[i + 2]->subject->core,
-			right_substitution->premises[i + 2]->subject->core) != 1) return NULL;
+			right_substitution->premises[i + 2]->subject->core) != 1) goto done;
 	}
-	const struct pg_evidence *x0 = left_substitution->premises[count + 1];
-	const struct pg_evidence *x1 = right_substitution->premises[count + 1];
-	if (pg_alpha_equal(x0->classifier, x1->classifier) != 1) return NULL;
-	const struct pg_term *path_type = pg_identity_instance(typing->graph,
-		pg_identity_action(typing->graph, x0->classifier), x0->subject->core, x1->subject->core);
-	if (!endpoint(typing, path, PG_JUDGEMENT_VALUE, context, path_type)) return NULL;
+	const struct pg_evidence *declaration = left_substitution->premises[0];
+	for (size_t i = count; i; --i) {
+		declarations[i - 1] = declaration->premises[1];
+		declaration = declaration->premises[0];
+	}
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_term *acted = family_action_core(typing, declarations[i],
+			left_substitution, right_substitution, common, i, paths);
+		const struct pg_term *path_type = pg_identity_instance(typing->graph, acted,
+			left_substitution->premises[common + i + 2]->subject->core,
+			right_substitution->premises[common + i + 2]->subject->core);
+		if (!endpoint(typing, paths[i], PG_JUDGEMENT_VALUE, context, path_type)) goto done;
+	}
 	const struct pg_evidence *ltype = pg_prove_reindex(typing, left_substitution, family);
 	const struct pg_evidence *rtype = pg_prove_reindex(typing, right_substitution, family);
-	if (!ltype || !rtype) return NULL;
-	if (!endpoint(typing, left, elements, context, ltype->subject->core)) return NULL;
-	if (!endpoint(typing, right, elements, context, rtype->subject->core)) return NULL;
+	if (!ltype || !rtype) goto done;
+	if (!endpoint(typing, left, elements, context, ltype->subject->core)) goto done;
+	if (!endpoint(typing, right, elements, context, rtype->subject->core)) goto done;
 	const struct pg_term *acted = family_action_core(typing, family,
-		left_substitution, right_substitution, path);
+		left_substitution, right_substitution, common, count, paths);
 	const struct pg_term *core = pg_identity_instance(typing->graph, acted, left->subject->core, right->subject->core);
-	if (!core) return NULL;
-	const struct pg_occurrence *operands[] = {family->subject, path->subject, left->subject, right->subject};
-	const struct pg_occurrence *subject = pg_occurrence(typing, context, core, NULL, 4, operands);
-	if (!subject) return NULL;
-	return accept(typing, PG_FAMILY_IDENTITY_FORM, family->judgement, context,
-		subject, family->classifier, 6, premises);
+	if (!core) goto done;
+	operands[0] = family->subject;
+	for (size_t i = 0; i < count; ++i) operands[i + 1] = paths[i]->subject;
+	operands[count + 1] = left->subject;
+	operands[count + 2] = right->subject;
+	const struct pg_occurrence *subject = pg_occurrence(typing, context, core, NULL, count + 3, operands);
+	if (!subject) goto done;
+	result = accept(typing, PG_FAMILY_IDENTITY_FORM, family->judgement, context,
+		subject, family->classifier, count + 5, premises);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 	const struct pg_evidence *family, const struct pg_evidence *term,
 	const struct pg_evidence *left_substitution,
-	const struct pg_evidence *right_substitution, const struct pg_evidence *path)
+	const struct pg_evidence *right_substitution, size_t count,
+	const struct pg_evidence *const *paths)
 {
 	if (!family || family->owner != typing) return NULL;
 	enum pg_evidence_judgement elements;
@@ -825,7 +861,7 @@ const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 	const struct pg_evidence *left = pg_prove_reindex(typing, left_substitution, term);
 	const struct pg_evidence *right = pg_prove_reindex(typing, right_substitution, term);
 	const struct pg_evidence *identity = pg_prove_family_identity_type(typing,
-		family, left_substitution, right_substitution, path, left, right);
+		family, left_substitution, right_substitution, count, paths, left, right);
 	if (!identity) return NULL;
 	const struct pg_evidence *premises[] = {identity, term};
 	uint64_t hash;
@@ -833,9 +869,9 @@ const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 		elements, identity->context, NULL, NULL, 2, premises, NULL, &hash);
 	if (existing) return existing;
 	const struct pg_term *core = family_action_core(typing, term,
-		left_substitution, right_substitution, path);
+		left_substitution, right_substitution, left_substitution->premise_count - 2 - count, count, paths);
 	if (!core) return NULL;
-	const struct pg_occurrence *operands[] = {term->subject, path->subject};
+	const struct pg_occurrence *operands[] = {term->subject, identity->subject};
 	const struct pg_occurrence *subject = pg_occurrence(typing, identity->context,
 		core, NULL, 2, operands);
 	if (!subject) return NULL;
