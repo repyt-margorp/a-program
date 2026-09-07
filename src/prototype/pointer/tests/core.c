@@ -248,6 +248,12 @@ static void evidence_test(struct pg_graph *graph)
 	assert(!pg_prove_conversion(&typing, quoted_function, ufa, certificate));
 	assert(!pg_prove_conversion(&typing, quoted_function, pi_z, certificate));
 	assert(pg_prove_application(&typing, pg_prove_force(&typing, converted), x_term));
+	const struct pg_evidence *folded = pg_prove_fold(&typing, returned, identity_y);
+	assert(folded && pg_evidence_classifier(folded) == pg_evidence_classifier(returned));
+	assert(!pg_prove_fold(&typing, x_term, identity_y));
+	assert(!pg_prove_fold(&typing, returned, quoted_function));
+	const struct pg_evidence *fold_formation = pg_prove_classifier(&typing, &classifiers, x_context, folded);
+	assert(fold_formation && pg_evidence_subject(fold_formation)->core == pg_evidence_classifier(folded));
 	const struct pg_evidence *x_formation = pg_prove_classifier(&typing, &classifiers, x_context, x_term);
 	assert(x_formation && pg_evidence_subject(x_formation)->core == pg_evidence_classifier(x_term));
 	const struct pg_evidence *body_formation = pg_prove_classifier(&typing, &classifiers, x_context, returned);
@@ -327,6 +333,8 @@ static void dependent_application_test(struct pg_graph *graph)
 	assert(app);
 	assert(pg_evidence_classifier(app) == pg_return_type(&classifiers, pg_universe(&classifiers, 0)));
 	assert(pg_evidence_premise(app, 1) == argument);
+	assert(!pg_prove_pi_constant_codomain(&typing, pi));
+	assert(!pg_prove_fold(&typing, pg_prove_return(&typing, &classifiers, argument), function));
 	const struct pg_evidence *app_formation = pg_prove_classifier(&typing, &classifiers, f_context, app);
 	assert(app_formation && pg_evidence_subject(app_formation)->core == pg_evidence_classifier(app));
 	assert(!pg_prove_application(&typing, function, u0));
@@ -514,7 +522,31 @@ static void computation_execution_test(struct pg_graph *graph)
 	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
 	assert(pg_alpha_equal(pg_eval_readback(&semantic, graph), pg_application(graph, ret, identity)) == 1);
 	pg_eval_destroy(&semantic);
-	puts("computation execution: force/thunk, captured environments, neutral demands and split budgets passed");
+	const struct pg_term *fold = pg_reference(graph, &pg_fold_operation);
+	const struct pg_term *continuation = pg_lambda(graph, x, pg_application(graph, ret, vx));
+	const struct pg_term *sequence = pg_application(graph, pg_application(graph, fold, returned), continuation);
+	pg_computation_eval_init(&semantic, graph, sequence);
+	unsigned ticks = 0;
+	while (pg_eval_advance(&semantic, 1) == PG_EVAL_PENDING) {
+		assert(++ticks < 100);
+		struct pg_eval restart;
+		pg_computation_eval_init(&restart, graph, pg_eval_readback(&semantic, graph));
+		assert(pg_eval_advance(&restart, 100) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&restart, graph) == returned);
+		pg_eval_destroy(&restart);
+	}
+	assert(pg_eval_readback(&semantic, graph) == returned);
+	pg_eval_destroy(&semantic);
+	const struct pg_term *blocked = pg_application(graph, pg_application(graph, fold, vx), continuation);
+	pg_computation_eval_init(&semantic, graph, blocked);
+	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&semantic, graph) == blocked);
+	pg_eval_destroy(&semantic);
+	const struct pg_term *diverging = pg_application(graph, pg_application(graph, fold, omega), continuation);
+	pg_computation_eval_init(&semantic, graph, diverging);
+	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_PENDING);
+	pg_eval_destroy(&semantic);
+	puts("computation execution: force/thunk, fold, captured environments, neutral demands and split budgets passed");
 }
 
 static void classifiers_test(struct pg_graph *graph)

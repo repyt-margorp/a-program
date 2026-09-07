@@ -9,7 +9,8 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_TYPE_FROM_VALUE, PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_PI_FORM,
 	PG_RETURN_INTRO, PG_THUNK_INTRO, PG_FORCE_ELIM, PG_LAMBDA_INTRO, PG_APP_ELIM,
 	PG_VALUE_FROM_TYPE, PG_TYPE_CONVERSION, PG_CONTEXT_PROJECTION,
-	PG_CONTEXT_SUBSTITUTION, PG_REINDEX, PG_THUNK_CONTENT, PG_PI_CODOMAIN, PG_PI_DOMAIN };
+	PG_CONTEXT_SUBSTITUTION, PG_REINDEX, PG_THUNK_CONTENT, PG_PI_CODOMAIN, PG_PI_DOMAIN,
+	PG_RETURN_CONTENT, PG_PI_CONSTANT_CODOMAIN, PG_FOLD_ELIM };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -46,8 +47,9 @@ const struct pg_evidence *pg_prove_thunk(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *computation);
 const struct pg_evidence *pg_prove_force(struct pg_typing *typing,
 	const struct pg_evidence *value);
-/* Exact classifier premises; conversion must be supplied as a separate
- * derivation rather than silently changing the input or running a solver. */
+/* Lambda admits structural alpha renaming of its body classifier (including
+ * binders freshened by substitution). Other conversion requires an explicit
+ * derivation, not a solver run inside the primitive rule. APP is exact. */
 const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *body);
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
@@ -85,6 +87,12 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *argument);
 const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	const struct pg_evidence *pi);
+const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
+	const struct pg_evidence *return_type);
+const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing,
+	const struct pg_evidence *pi);
+const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
+	const struct pg_evidence *computation, const struct pg_evidence *continuation);
 /* Recover formation of an already synthesized classifier, not an expected
  * type. NULL also covers rules whose regularity action is not implemented. */
 const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,

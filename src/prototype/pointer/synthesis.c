@@ -188,6 +188,28 @@ static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct 
 	return result;
 }
 
+static const struct pg_evidence *sequence_application(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_evidence *function,
+	const struct pg_evidence *argument)
+{
+	if (pg_evidence_judgement(function) == PG_JUDGEMENT_VALUE)
+		function = pg_prove_force(synthesis->typing, function);
+	if (!function) return NULL;
+	const struct pg_evidence *return_type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, scope->context, argument);
+	const struct pg_evidence *domain = pg_prove_return_content(synthesis->typing, return_type);
+	if (!domain) return NULL;
+	const struct pg_object *binder = pg_binder(synthesis->typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(synthesis->typing, scope->context, binder, domain);
+	if (!context) return NULL;
+	function = pg_prove_projection(synthesis->typing, context, function);
+	const struct pg_evidence *variable = pg_prove_variable(synthesis->typing, context, binder);
+	const struct pg_evidence *body = pg_prove_application(synthesis->typing, function, variable);
+	const struct pg_evidence *codomain = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, body);
+	const struct pg_evidence *pi = pg_prove_pi(synthesis->typing, synthesis->classifiers, domain, context, codomain);
+	const struct pg_evidence *continuation = pg_prove_lambda(synthesis->typing, pi, body);
+	return pg_prove_fold(synthesis->typing, argument, continuation);
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
@@ -258,7 +280,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	case PG_SYNTAX_APPLICATION: {
 		if (!job->checking_term) {
 			if (pg_evidence_judgement(right) == PG_JUDGEMENT_COMPUTATION) {
-				finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+				job->result = sequence_application(synthesis, job->scope, left, right);
+				finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED); return;
 			}
 			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) left = pg_prove_force(synthesis->typing, left);
 			right = value(synthesis, right);

@@ -94,7 +94,21 @@ int main(void)
 	pg_eval_destroy(&machine);
 	complete(&synthesis,
 		request(&synthesis, scope, "main := (\\f : A -> A => f x) &(\\y : A => A);"), PG_SYNTHESIS_REJECTED);
-	complete(&synthesis, request(&synthesis, scope, "main := (\\y : A => y) ((\\y : A => y) x);"), PG_SYNTHESIS_UNSUPPORTED);
+	const struct pg_evidence *sequenced = complete(&synthesis,
+		request(&synthesis, scope, "main := (\\y : A => y) ((\\y : A => y) x);"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(sequenced) == PG_FOLD_ELIM);
+	pg_computation_eval_init(&machine, &graph, pg_evidence_subject(sequenced)->core);
+	assert(pg_eval_advance(&machine, 200) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, &graph) == expected);
+	pg_eval_destroy(&machine);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := \\z : A => (\\y : A => y) ((\\y : A => y) z);"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *curried = complete(&synthesis, request(&synthesis, scope,
+		"main := ((\\u : A => \\v : A => v) ((\\y : A => y) x)) x;"), PG_SYNTHESIS_DONE);
+	pg_computation_eval_init(&machine, &graph, pg_evidence_subject(curried)->core);
+	assert(pg_eval_advance(&machine, 300) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, &graph) == expected);
+	pg_eval_destroy(&machine);
 	complete(&synthesis, request(&synthesis, root, "Nat := @{zero:*; succ:*->*;};"), PG_SYNTHESIS_UNSUPPORTED);
 	uint64_t steps = synthesis.steps;
 	pg_synthesis_advance(&synthesis, 100);

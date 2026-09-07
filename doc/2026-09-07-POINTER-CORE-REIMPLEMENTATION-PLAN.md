@@ -199,6 +199,33 @@ budgeted. Captured environments are still handled by the shared readback path.
   verify effect order and typed action compatibility. The dispatcher is not yet
   a general effect runtime, nor connected to conversion or source execution.
 
+The zero-operation-clause `computation-fold` reference now takes M and a raw
+return continuation K. It demands M through the shared evaluator protocol;
+`FOLD(RETURN v,K)` applies K to v while preserving lexical closures and any
+arguments outside the fold. No separate BIND Core node is added. The first
+checked rule requires `M:F A`, `K:Pi(x:A,C)` with C structurally independent of x.
+C may be a raw computation Pi, not only a returning computation; the left
+operand must still be F A. This is pure CBPV sequencing, not executing raw Pi
+as a source of a bound result. Dependence on x is checked by fresh substitution
+and explicit alpha comparison, never by modifying interned node identity.
+
+- [x] Check/execute zero-clause pure FOLD and recover its result formation;
+  test neutral/divergent input, pending readback and non-value/quoted-continuation
+  rejection. Reject a result classifier depending on the bound result in this
+  nondependent rule; do not fabricate an effectful type-level result.
+- [x] Lower a returning source argument through a fresh typed continuation and
+  FOLD. Source fixtures execute `f (g x)`, including a continuation returning
+  raw Pi followed by another application. Both computations are synthesized
+  before sequencing; no expected type determines their synthesis.
+  The curried fixture exposed a hygiene mismatch: separate substitutions
+  freshened bound classifier pointers differently. Lambda introduction now
+  checks structural alpha equality of its body classifier rather than exact
+  pointer identity. No nodes are merged; nonstructural conversion still needs
+  explicit evidence. This is a binder-renaming rule, not WHNF interning.
+- [ ] Add operation clauses, effect rows/forwarding, dependent sequencing and
+  conversion when a sequenced argument's result classifier is not the exact
+  function domain. Those cases remain unsupported by this initial path.
+
 Memoization keys include the semantic reference policy and captured environment
 when relevant. Never memoize a dispatched effect as if repeated force were pure.
 Keep WHNF and NF distinct. Type conversion and object Identity remain distinct.
@@ -484,9 +511,9 @@ conclusion and all premise pointers; no accepted record is overwritten.
   an application, check function expectations and reject unresolved names.
 - [ ] Complete source lowering/synthesis: root definition graph and forward
   names/imports, literals, ADT/IADT, computation blocks/folds, implicit sequencing
-  of returning arguments/callees, computed type
+  of remaining returning argument/callee cases, computed type
   annotations, structured error reasons and comprehensive surface compatibility.
-  Current unsupported syntax and computation arguments report UNSUPPORTED,
+  Unsupported syntax and unsupported computation-argument cases report UNSUPPORTED,
   not a theorem of untypability. Kernel APIs still conflate some allocation and
   premise failures; error classification must be completed. Budget currently
   counts scheduling/comparison transitions, not all work within a kernel rule.

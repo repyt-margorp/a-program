@@ -270,7 +270,7 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 	const struct pg_object *binder;
 	if (!pg_pi_view(pi->subject->core, &domain, &binder, &codomain)) return NULL;
 	if (body->context != pi->premises[1]->context) return NULL;
-	if (body->classifier != codomain) return NULL;
+	if (pg_alpha_equal(body->classifier, codomain) != 1) return NULL;
 	const struct pg_term *term = pg_lambda(typing->graph, binder, body->subject->core);
 	if (!term) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, term, domain, 1, &body->subject);
@@ -487,6 +487,73 @@ const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,
 		thunk_type->context, subject, thunk_type->classifier, 1, &thunk_type);
 }
 
+const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
+	const struct pg_evidence *return_type)
+{
+	if (!return_type || return_type->owner != typing) return NULL;
+	if (return_type->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	const struct pg_term *content;
+	if (!pg_return_type_view(return_type->subject->core, &content)) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, return_type->context, content,
+		NULL, 1, &return_type->subject);
+	if (!subject) return NULL;
+	return accept(typing, PG_RETURN_CONTENT, PG_JUDGEMENT_VALUE_TYPE,
+		return_type->context, subject, return_type->classifier, 1, &return_type);
+}
+
+static const struct pg_term *constant_codomain(struct pg_typing *typing, const struct pg_term *pi)
+{
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	if (!pg_pi_view(pi, &domain, &binder, &codomain)) return NULL;
+	const struct pg_term *fresh = pg_reference(typing->graph, pg_binder(typing->graph));
+	if (!fresh) return NULL;
+	struct pg_binding_value binding = {binder, fresh};
+	const struct pg_term *renamed = pg_term_substitute(typing->graph, codomain, 1, &binding);
+	if (!renamed || pg_alpha_equal(codomain, renamed) != 1) return NULL;
+	return codomain;
+}
+
+const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing,
+	const struct pg_evidence *pi)
+{
+	if (!pi || pi->owner != typing) return NULL;
+	if (pi->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	const struct pg_term *codomain = constant_codomain(typing, pi->subject->core);
+	if (!codomain) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, codomain, NULL, 1, &pi->subject);
+	if (!subject) return NULL;
+	return accept(typing, PG_PI_CONSTANT_CODOMAIN, PG_JUDGEMENT_COMPUTATION_TYPE,
+		pi->context, subject, pi->classifier, 1, &pi);
+}
+
+const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
+	const struct pg_evidence *computation, const struct pg_evidence *continuation)
+{
+	if (!computation || computation->owner != typing) return NULL;
+	if (!continuation || continuation->owner != typing) return NULL;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (continuation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (computation->context != continuation->context) return NULL;
+	const struct pg_term *value_type, *domain, *codomain;
+	const struct pg_object *binder;
+	if (!pg_return_type_view(computation->classifier, &value_type)) return NULL;
+	if (!pg_pi_view(continuation->classifier, &domain, &binder, &codomain)) return NULL;
+	if (domain != value_type) return NULL;
+	codomain = constant_codomain(typing, continuation->classifier);
+	if (!codomain) return NULL;
+	const struct pg_term *head = pg_application(typing->graph,
+		pg_reference(typing->graph, &pg_fold_operation), computation->subject->core);
+	const struct pg_term *core = pg_application(typing->graph, head, continuation->subject->core);
+	if (!core) return NULL;
+	const struct pg_occurrence *operands[] = {computation->subject, continuation->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, computation->context, core, NULL, 2, operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {computation, continuation};
+	return accept(typing, PG_FOLD_ELIM, PG_JUDGEMENT_COMPUTATION,
+		computation->context, subject, codomain, 2, premises);
+}
+
 const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	const struct pg_evidence *pi)
 {
@@ -575,6 +642,12 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	case PG_TYPE_CONVERSION:
 		formation = term->premises[1];
 		break;
+	case PG_FOLD_ELIM: {
+		const struct pg_evidence *continuation = pg_prove_projection(typing, context, term->premises[1]);
+		const struct pg_evidence *pi = pg_prove_classifier(typing, classifiers, context, continuation);
+		formation = pg_prove_pi_constant_codomain(typing, pi);
+		break;
+	}
 	case PG_REINDEX: {
 		const struct pg_evidence *substitution = term->premises[0];
 		formation = pg_prove_classifier(typing, classifiers, substitution->premises[0], term->premises[1]);

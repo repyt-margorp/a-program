@@ -43,6 +43,18 @@ int pg_eval_enter(struct pg_eval *machine, struct pg_closure value, size_t consu
 	return 0;
 }
 
+int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
+	struct pg_closure argument, size_t consume)
+{
+	if (!argument.term) return -1;
+	struct pg_argument *pending = pg_alloc(&machine->temporary, sizeof(*pending));
+	if (!pending) return -1;
+	if (pg_eval_enter(machine, function, consume) != 0) return -1;
+	*pending = (struct pg_argument){argument, machine->arguments};
+	machine->arguments = pending;
+	return 0;
+}
+
 int pg_eval_demand(struct pg_eval *machine, size_t index,
 	int (*resume)(struct pg_eval *machine, const struct pg_term *answer))
 {
