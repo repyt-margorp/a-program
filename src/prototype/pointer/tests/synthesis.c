@@ -325,10 +325,36 @@ static void named_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "computed_path", .length = 13}, computed_path);
 	assert(scope);
+	untouched = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(computed_path)->core);
+	const char *path_blocks[] = {
+		"main := { v := computed_path; v; };",
+		"main := { computed_path; diagonal; };",
+		"main := { v := { inner := computed_path; inner; }; v; };",
+		"main := { v := computed_path; missing; }.v;"
+	};
+	for (size_t i = 0; i < sizeof(path_blocks) / sizeof(*path_blocks); ++i) {
+		result = complete(&synthesis, request(&synthesis, scope, path_blocks[i]), PG_SYNTHESIS_DONE);
+		if (!i) {
+			assert(pg_whnf_steps(untouched) == 0 && pg_whnf_status(untouched) == PG_EVAL_PENDING);
+			assert(pg_evidence_rule(result) == PG_FOLD_ELIM);
+			assert(pg_evidence_subject(pg_evidence_premise(result, 0))->core == pg_evidence_subject(computed_path)->core);
+		}
+		result = complete(&synthesis, pg_synthesis_return(&synthesis, context, result), PG_SYNTHESIS_DONE);
+		result = complete(&synthesis, pg_synthesis_nf(&synthesis, context, result), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(result)->core == pg_identity_action(typing->graph, pg_reference(typing->graph, bindings[0])));
+	}
 	result = complete(&synthesis, request(&synthesis, scope, "main := acted A A computed_path;"), PG_SYNTHESIS_DONE);
 	result = complete(&synthesis, pg_synthesis_return(&synthesis, context, result), PG_SYNTHESIS_DONE);
 	result = complete(&synthesis, pg_synthesis_nf(&synthesis, context, result), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(result)->core == pg_identity_action(typing->graph, pg_reference(typing->graph, bindings[0])));
+	/* Sequencing exposes a classifier, not the contents of a quoted value. */
+	result = complete(&synthesis, request(&synthesis, scope, "main := { v := &computed_path; v; };"), PG_SYNTHESIS_DONE);
+	result = complete(&synthesis, pg_synthesis_return(&synthesis, context, result), PG_SYNTHESIS_DONE);
+	const struct pg_term *content;
+	assert(pg_thunk_type_view(pg_evidence_classifier(result), &content));
+	result = complete(&synthesis, pg_synthesis_unthunk(&synthesis, context, result), PG_SYNTHESIS_DONE);
+	assert(pg_alpha_equal(pg_evidence_subject(result)->core, pg_evidence_subject(computed_path)->core) == 1);
+	complete(&synthesis, request(&synthesis, scope, "main := { f := acted; f; };"), PG_SYNTHESIS_UNSUPPORTED);
 	size_t jobs = synthesis.jobs.count;
 	struct pg_synthesis_job *exposure = pg_synthesis_normalize_classifier(&synthesis, context, acted);
 	assert(exposure && pg_synthesis_status(exposure) == PG_SYNTHESIS_DONE && synthesis.jobs.count == jobs);

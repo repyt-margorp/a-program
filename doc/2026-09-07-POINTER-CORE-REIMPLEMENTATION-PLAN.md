@@ -1342,6 +1342,19 @@ a specified type family, not a global endpoint-only relation.
   Core/Identity/synthesis/IADT pass with a 512 KiB stack.
   Implementation `synthesis.c` +85/-48 (net +37); tests `synthesis.c` +45/-1;
   documentation separate. These timings are not a whole-compiler speed claim.
+- [x] September 8, after `7541d2b`: computation blocks now use the same
+  classifier-exposure job as source application before sequencing. A checked
+  action with classifier `Id (F Universe0) (RETURN A) (RETURN A)` previously
+  failed as a non-final statement although its classifier reduces to `F (...)`.
+  The new regression failed on the rebuilt original implementation, then passed
+  with shared exposure. Tests cover named/unnamed and nested statements,
+  selected prefixes, preserved quotation, and rejection of raw Pi sequencing.
+  They also check that synthesis leaves the source reduction pending and that
+  the accepted FOLD keeps the original source term. No implicit-force policy,
+  proof rule, Core tag or Replay path changes. Optimized check: 3.241 s;
+  ASan/UBSan: 9.648 s (synthesis rebuilt); synthesis passes at 512 KiB stack.
+  Implementation `synthesis.c` +2/-0; tests `synthesis.c` +26/-0; docs separate.
+  N2/N4 remain open; this does not implement effects or full block compatibility.
 - [x] September 8, after `fedba41`: share context-suffix abstraction between
   ADT branch functions and named checked functions (`pg_prove_abstract`). It
   composes the existing Pi/Lambda rules, retains every premise and binder,

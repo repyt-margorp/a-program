@@ -750,6 +750,8 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		const struct pg_evidence *proof = job->left->result;
 		const struct pg_evidence *input = computation(synthesis, proof);
 		if (!input) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		input = classifier_input(synthesis, job, block->scope->context, input);
+		if (!input) return;
 		if (block->next == block->end) {
 			block->tail = input;
 		} else {
