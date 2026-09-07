@@ -654,6 +654,49 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 		subject, classifier, 2, premises);
 }
 
+const struct pg_evidence *pg_prove_reindexed_variable(struct pg_typing *typing,
+	const struct pg_evidence *proof)
+{
+	if (!proof || proof->owner != typing) return NULL;
+	if (proof->rule != PG_REINDEX || proof->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	const struct pg_evidence *original = proof->premises[1];
+	while (original->rule == PG_CONTEXT_PROJECTION) original = original->premises[1];
+	if (original->rule != PG_VARIABLE) return NULL;
+	const struct pg_evidence *substitution = proof->premises[0];
+	size_t count = substitution->premise_count - 2;
+	const struct pg_binding_value *bindings = (const struct pg_binding_value *)(substitution->premises + substitution->premise_count);
+	for (size_t i = 0; i < count; ++i) {
+		if (bindings[i].binder != original->subject->core->as.reference) continue;
+		const struct pg_evidence *image = substitution->premises[i + 2];
+		return pg_alpha_equal(image->classifier, proof->classifier) == 1 ? image : NULL;
+	}
+	return NULL;
+}
+
+const struct pg_evidence *pg_prove_reindexed_elimination(struct pg_typing *typing,
+	const struct pg_evidence *proof)
+{
+	if (!proof || proof->owner != typing) return NULL;
+	if (proof->rule != PG_REINDEX || proof->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	const struct pg_evidence *substitution = proof->premises[0], *original = proof->premises[1];
+	const struct pg_evidence *left, *right, *result;
+	switch (original->rule) {
+	case PG_FORCE_ELIM:
+		left = pg_prove_reindex(typing, substitution, original->premises[0]);
+		result = pg_prove_force(typing, left);
+		break;
+	case PG_APP_ELIM: case PG_FOLD_ELIM:
+		left = pg_prove_reindex(typing, substitution, original->premises[0]);
+		right = pg_prove_reindex(typing, substitution, original->premises[1]);
+		result = original->rule == PG_APP_ELIM ? pg_prove_application(typing, left, right)
+			: pg_prove_fold(typing, left, right);
+		break;
+	default: return NULL;
+	}
+	if (!result) return NULL;
+	return pg_alpha_equal(result->classifier, proof->classifier) == 1 ? result : NULL;
+}
+
 static int substitution_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
 {
 	if (!proof || proof->owner != typing) return 0;

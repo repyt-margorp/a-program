@@ -72,6 +72,12 @@ const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 	size_t count, const struct pg_evidence *const *images);
 const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
+/* Expose existing checked image evidence or distribute a reindex through
+ * APP/FORCE/FOLD. Original reindex evidence remains immutable and retained. */
+const struct pg_evidence *pg_prove_reindexed_variable(struct pg_typing *typing,
+	const struct pg_evidence *proof);
+const struct pg_evidence *pg_prove_reindexed_elimination(struct pg_typing *typing,
+	const struct pg_evidence *proof);
 /* Derive a beta reduct of a checked APP with a Lambda introduction premise
  * (possibly projected/reindexed). Uses ordinary substitution/reindex evidence, not a
  * new equality axiom. NULL includes unsupported heads and failed premises. */

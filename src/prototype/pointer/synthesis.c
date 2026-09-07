@@ -250,7 +250,26 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 
 static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
 
-enum contents_stage { CONTENTS_REDUCING, CONTENTS_CONTEXT_ACTION, CONTENTS_CONVERTING };
+enum contents_stage { CONTENTS_REDUCING, CONTENTS_CONTEXT_ACTION, CONTENTS_CONVERTING, CONTENTS_SUBSTITUTED };
+
+static void convert_contents(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	const struct pg_evidence *formation)
+{
+	job->checking_type = job->role == THUNK_JOB
+		? pg_prove_thunk_content(synthesis->typing, formation)
+		: pg_prove_return_content(synthesis->typing, formation);
+	if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	job->checking_term = job->left->result;
+	job->left = NULL;
+	if (pg_evidence_classifier(job->checking_term) == pg_evidence_subject(job->checking_type)->core) {
+		job->result = job->checking_term;
+		finish(synthesis, job, PG_SYNTHESIS_DONE);
+		return;
+	}
+	job->stage = CONTENTS_CONVERTING;
+	job->next = synthesis->ready;
+	synthesis->ready = job;
+}
 
 static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
@@ -262,6 +281,11 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	if (!job->checking_term) job->checking_term = job->inputs[1];
 	if (job->left) {
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		if (job->stage == CONTENTS_SUBSTITUTED) {
+			convert_contents(synthesis, job, pg_prove_classifier(synthesis->typing,
+				synthesis->classifiers, job->inputs[0], job->checking_term));
+			return;
+		}
 		if (job->stage == CONTENTS_CONTEXT_ACTION) {
 			const struct pg_evidence *premise = pg_evidence_premise(job->checking_term, 0);
 			switch (pg_evidence_rule(job->checking_term)) {
@@ -272,16 +296,7 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 				job->result = pg_prove_reindex(synthesis->typing, premise, job->left->result);
 				break;
 			case PG_TYPE_CONVERSION:
-				job->checking_type = pg_evidence_premise(job->checking_term, 1);
-				job->checking_type = job->role == THUNK_JOB
-					? pg_prove_thunk_content(synthesis->typing, job->checking_type)
-					: pg_prove_return_content(synthesis->typing, job->checking_type);
-				if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-				job->checking_term = job->left->result;
-				job->left = NULL;
-				job->stage = CONTENTS_CONVERTING;
-				job->next = synthesis->ready;
-				synthesis->ready = job;
+				convert_contents(synthesis, job, pg_evidence_premise(job->checking_term, 1));
 				return;
 			default: finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 			}
@@ -295,6 +310,17 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		? pg_prove_thunk_computation(synthesis->typing, job->checking_term)
 		: pg_prove_return_value(synthesis->typing, job->checking_term);
 	if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+	if (pg_evidence_rule(job->checking_term) == PG_REINDEX) {
+		const struct pg_evidence *exposed = job->role == THUNK_JOB
+			? pg_prove_reindexed_variable(synthesis->typing, job->checking_term)
+			: pg_prove_reindexed_elimination(synthesis->typing, job->checking_term);
+		if (exposed) {
+			job->left = request_evaluation(synthesis, job->inputs[0], exposed, job->role);
+			job->stage = CONTENTS_SUBSTITUTED;
+			depend(synthesis, job, job->left);
+			return;
+		}
+	}
 	switch (pg_evidence_rule(job->checking_term)) {
 	case PG_TYPE_CONVERSION:
 		job->left = request_evaluation(synthesis, job->inputs[0], pg_evidence_premise(job->checking_term, 0), job->role);

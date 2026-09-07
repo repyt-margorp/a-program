@@ -552,11 +552,23 @@ successful return codes as new-kernel certificates.
   without new Core tags or a second context algorithm. Tests cover distinct
   thunk-Pi classifiers, converted FORCE, projected/reindexed contents, original
   evidence retention, wrong input contexts/polarities and completed-job reuse.
-- [ ] Trace a substituted variable back to the checked image evidence when its
-  Core becomes a THUNK. Merely descending to the original variable's proof
-  cannot expose the introduced code. Preserve the original reindex evidence;
-  do not erase the occurrence's origin or infer a classifier from the new Core.
-  Applying converted raw-Pi code also needs argument/result conversions, not
+- [x] A direct reindexed variable (including a weakened original variable)
+  exposes its existing checked image premise from the substitution. The
+  returned-value/content scheduler follows that image rather than descending
+  to the original neutral variable. Reindexing APP/FORCE/FOLD can also be
+  distributed to their operand proofs using the same accepted rules; the
+  content scheduler uses that exposed derivation before demanding a result.
+  Original reindex evidence and its occurrence are unchanged. Tests substitute
+  a THUNK for a variable, expose its code, evaluate reindexed FORCE to a checked
+  value, preserve the original premises, and reuse the completed job. When the
+  exposed content already has the exact target classifier, no redundant
+  conversion proof is added; otherwise the existing comparison checks it.
+- [ ] Generalize substituted-redex exposure across all demanded evaluation
+  positions and intermediate rule wrappers. The synchronous one-step reducer
+  still has its original contract; reindex distribution is proof construction,
+  not itself a beta/FORCE/FOLD execution step. In particular a substituted
+  redex demanded inside a larger elimination can still encounter the original
+  neutral premise. Applying converted raw-Pi code needs argument/result conversions, not
   unchecked peeling of a function's conversion premise. These remain blockers
   for general higher-order typed evaluation despite direct content extraction.
 
