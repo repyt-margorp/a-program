@@ -8,6 +8,7 @@ struct pg_source_scope {
 	struct pg_token name;
 	const struct pg_object *binder;
 	const struct pg_evidence *context;
+	struct definition_state *definitions;
 };
 struct waiter {
 	struct pg_synthesis_job *parent;
@@ -23,6 +24,14 @@ struct continuation_frame {
 struct block_name {
 	struct pg_index_entry index;
 	struct pg_token name;
+	struct pg_synthesis_job *producer;
+};
+struct definition_state {
+	struct pg_index names;
+	struct pg_source_scope *scope;
+	struct pg_synthesis_job **entries;
+	size_t count, next;
+	struct pg_synthesis_job *selected;
 };
 struct block_state {
 	const struct pg_syntax *syntax;
@@ -52,16 +61,21 @@ struct pg_synthesis_job {
 	int comparing;
 	struct block_state *block;
 	const struct continuation_frame *application_frame;
+	int definition;
+	struct definition_state *definitions;
 };
 
 int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
-	struct pg_classifiers *classifiers, struct pg_beta_work *beta)
+	struct pg_classifiers *classifiers, struct pg_beta_work *beta,
+	enum pg_definition_policy definition_policy)
 {
 	memset(synthesis, 0, sizeof(*synthesis));
 	if (classifiers->graph != typing->graph || beta->graph != typing->graph) return -1;
+	if ((unsigned)definition_policy > PG_DEFINITION_EXPLICIT_THUNK) return -1;
 	synthesis->typing = typing;
 	synthesis->classifiers = classifiers;
 	synthesis->beta = beta;
+	synthesis->definition_policy = definition_policy;
 	return pg_index_init(&synthesis->jobs);
 }
 
@@ -72,6 +86,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
 			if (job->block) pg_index_destroy(&job->block->names);
+			if (job->definitions) pg_index_destroy(&job->definitions->names);
 		}
 	pg_index_destroy(&synthesis->jobs);
 	memset(synthesis, 0, sizeof(*synthesis));
@@ -99,28 +114,36 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	if (!pg_prove_variable(synthesis->typing, extended_context, binder)) return NULL;
 	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
 	if (!scope) return NULL;
-	*scope = (struct pg_source_scope){synthesis, parent, name, binder, extended_context};
+	*scope = (struct pg_source_scope){.owner = synthesis, .parent = parent, .name = name,
+		.binder = binder, .context = extended_context};
 	return scope;
 }
 
-struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax, int definition)
 {
 	if (!scope || scope->owner != synthesis || !syntax) return NULL;
-	uint64_t hash = ((uintptr_t)scope ^ (uintptr_t)syntax) * UINT64_C(1099511628211);
+	uint64_t hash = ((uintptr_t)scope ^ (uintptr_t)syntax ^ (unsigned)definition) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->jobs, hash); entry; entry = entry->next) {
 		if (entry->hash != hash) continue;
 		struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
-		if (job->scope == scope && job->syntax == syntax) return job;
+		if (job->scope == scope && job->syntax == syntax && job->definition == definition) return job;
 	}
 	struct pg_synthesis_job *job = pg_alloc(synthesis->typing->graph, sizeof(*job));
 	if (!job) return NULL;
 	job->scope = scope;
 	job->syntax = syntax;
+	job->definition = definition;
 	if (pg_index_insert(&synthesis->jobs, &job->index, hash) != 0) return NULL;
 	job->next = synthesis->ready;
 	synthesis->ready = job;
 	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+{
+	return request_role(synthesis, scope, syntax, 0);
 }
 
 static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -172,13 +195,46 @@ static const struct pg_evidence *computation(struct pg_synthesis *synthesis, con
 	return proof ? pg_prove_return(synthesis->typing, synthesis->classifiers, proof) : NULL;
 }
 
+static uint64_t name_hash(struct pg_token name)
+{
+	uint64_t hash = UINT64_C(14695981039346656037);
+	for (size_t i = 0; i < name.length; ++i) hash = (hash ^ (unsigned char)name.text[i]) * UINT64_C(1099511628211);
+	return hash;
+}
+
+static struct block_name *lookup_name(struct pg_index *names, struct pg_token name)
+{
+	uint64_t hash = name_hash(name);
+	for (struct pg_index_entry *entry = pg_index_candidates(names, hash); entry; entry = entry->next) {
+		if (entry->hash != hash) continue;
+		struct block_name *found = (struct block_name *)entry;
+		if (found->name.length != name.length) continue;
+		if (memcmp(found->name.text, name.text, name.length) == 0) return found;
+	}
+	return NULL;
+}
+
 static void atom(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (job->left) {
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		job->result = pg_prove_projection(synthesis->typing, job->scope->context, job->left->result);
+		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+		return;
+	}
 	struct pg_token token = job->syntax->token;
 	if (token.kind == '@') {
 		job->result = pg_prove_universe(synthesis->typing, synthesis->classifiers, job->scope->context, 0);
 	} else if (token.kind == PG_TOKEN_IDENT) {
 		for (const struct pg_source_scope *scope = job->scope; scope; scope = scope->parent) {
+			if (scope->definitions) {
+				struct block_name *name = lookup_name(&scope->definitions->names, token);
+				if (name) {
+					job->left = name->producer;
+					depend(synthesis, job, job->left);
+					return;
+				}
+			}
 			if (!scope->binder || scope->name.length != token.length) continue;
 			if (memcmp(scope->name.text, token.text, token.length) != 0) continue;
 			job->result = pg_prove_variable(synthesis->typing, job->scope->context, scope->binder);
@@ -257,19 +313,14 @@ static int same_name(struct pg_token left, struct pg_token right)
 	return left.length == right.length && memcmp(left.text, right.text, left.length) == 0;
 }
 
-static int block_name(struct pg_synthesis *synthesis, struct block_state *block, struct pg_token name)
+static int register_name(struct pg_synthesis *synthesis, struct pg_index *names, struct pg_token name)
 {
 	if (!name.length) return 0;
-	uint64_t hash = UINT64_C(14695981039346656037);
-	for (size_t i = 0; i < name.length; ++i) hash = (hash ^ (unsigned char)name.text[i]) * UINT64_C(1099511628211);
-	for (struct pg_index_entry *entry = pg_index_candidates(&block->names, hash); entry; entry = entry->next) {
-		if (entry->hash != hash) continue;
-		if (same_name(((struct block_name *)entry)->name, name)) return 1;
-	}
+	if (lookup_name(names, name)) return 1;
 	struct block_name *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
 	if (!entry) return -1;
 	entry->name = name;
-	return pg_index_insert(&block->names, &entry->index, hash);
+	return pg_index_insert(names, &entry->index, name_hash(name));
 }
 
 static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -328,7 +379,7 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		return;
 	}
 	const struct pg_syntax_item *item = &block->syntax->items[block->next++];
-	int name_status = block_name(synthesis, block, item->name);
+	int name_status = register_name(synthesis, &block->names, item->name);
 	if (name_status) { finish(synthesis, job, name_status > 0 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR); return; }
 	const struct pg_syntax *expression = item->expression;
 	if (item->annotation) {
@@ -341,9 +392,91 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	depend(synthesis, job, job->left);
 }
 
+static void definition_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->left) {
+		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	const struct pg_evidence *result = job->left->result;
+	if (pg_evidence_judgement(result) == PG_JUDGEMENT_COMPUTATION) {
+		if (synthesis->definition_policy == PG_DEFINITION_EXPLICIT_THUNK) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		result = pg_prove_thunk(synthesis->typing, synthesis->classifiers, result);
+	}
+	job->result = result;
+	finish(synthesis, job, result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+}
+
+static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->definitions) {
+		const struct pg_syntax *syntax = job->syntax;
+		if (syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
+		struct definition_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state));
+		if (!state) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->definitions = state;
+		if (pg_index_init(&state->names) != 0) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		state->scope = pg_alloc(synthesis->typing->graph, sizeof(*state->scope));
+		if (syntax->item_count > SIZE_MAX / sizeof(*state->entries)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		state->entries = pg_alloc(synthesis->typing->graph, syntax->item_count * sizeof(*state->entries));
+		if (!state->scope || !state->entries) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		*state->scope = (struct pg_source_scope){.owner = synthesis, .parent = job->scope,
+			.context = job->scope->context, .definitions = state};
+		state->count = syntax->item_count;
+		/* Register every producer before advancing any body or post-check. */
+		for (size_t i = 0; i < state->count; ++i) {
+			const struct pg_syntax_item *item = &syntax->items[i];
+			if (item->operation == PG_TOKEN_EXPECT) continue;
+			if (item->operation != PG_TOKEN_ASSIGN) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+			int status = register_name(synthesis, &state->names, item->name);
+			if (status) { finish(synthesis, job, status > 0 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR); return; }
+			struct block_name *name = lookup_name(&state->names, item->name);
+			if (!name) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			name->producer = request_role(synthesis, state->scope, item->expression, 1);
+			state->entries[i] = name->producer;
+			if (!name->producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		}
+		for (size_t i = 0; i < state->count; ++i) {
+			if (state->entries[i]) continue;
+			const struct pg_syntax_item *item = &syntax->items[i];
+			if (!lookup_name(&state->names, item->name)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+			struct pg_syntax *name = pg_alloc(synthesis->typing->graph, sizeof(*name));
+			struct pg_syntax *check = pg_alloc(synthesis->typing->graph, sizeof(*check));
+			if (!name || !check) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			*name = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = item->name};
+			*check = (struct pg_syntax){.kind = PG_SYNTAX_EXPECT, .left = name, .right = item->expression};
+			state->entries[i] = pg_synthesis_request(synthesis, state->scope, check);
+			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		}
+		if (job->syntax->kind == PG_SYNTAX_QUALIFIED) {
+			struct block_name *name = lookup_name(&state->names, job->syntax->right->token);
+			if (!name) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+			state->selected = name->producer;
+		}
+	}
+	struct definition_state *state = job->definitions;
+	if (job->left && job->left->status != PG_SYNTHESIS_DONE) {
+		finish(synthesis, job, job->left->status); return;
+	}
+	if (state->next < state->count) {
+		job->left = state->entries[state->next++];
+		depend(synthesis, job, job->left);
+		return;
+	}
+	job->result = state->selected ? state->selected->result : NULL;
+	finish(synthesis, job, PG_SYNTHESIS_DONE);
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->definition) { definition_step(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_ATOM) { atom(synthesis, job); return; }
@@ -482,3 +615,10 @@ void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget)
 }
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job) { return job->status; }
 const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job) { return job->result; }
+struct pg_synthesis_job *pg_synthesis_definition(const struct pg_synthesis_job *root,
+	struct pg_token name)
+{
+	if (!root || !root->definitions || !name.length || !name.text) return NULL;
+	struct block_name *entry = lookup_name(&root->definitions->names, name);
+	return entry ? entry->producer : NULL;
+}

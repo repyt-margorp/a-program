@@ -32,6 +32,19 @@ static const struct pg_evidence *complete(struct pg_synthesis *synthesis,
 	return pg_synthesis_result(job);
 }
 
+static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const char *source)
+{
+	struct pg_parser parser;
+	pg_parser_init(&parser, synthesis->typing->graph, source, strlen(source));
+	const struct pg_syntax *syntax = pg_parser_program(&parser);
+	assert(syntax);
+	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
+	assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_request(synthesis, scope, syntax) == job);
+	return job;
+}
+
 int main(void)
 {
 	struct pg_graph graph;
@@ -43,7 +56,7 @@ int main(void)
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	assert(pg_beta_work_init(&beta, &graph) == 0);
-	assert(pg_synthesis_init(&synthesis, &typing, &classifiers, &beta) == 0);
+	assert(pg_synthesis_init(&synthesis, &typing, &classifiers, &beta, PG_DEFINITION_IMPLICIT_THUNK) == 0);
 	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
 	struct pg_synthesis_job *polymorphic = request(&synthesis, root, "id := \\A : @ => \\x : A => x;");
 	pg_synthesis_advance(&synthesis, 0);
@@ -168,6 +181,54 @@ int main(void)
 	assert(pg_return_type_view(codomain, &codomain) && codomain == domain);
 	complete(&synthesis, request(&synthesis, scope,
 		"main := { B := (\\T : @ => T) A; \\y : B => y; };"), PG_SYNTHESIS_UNSUPPORTED);
+	const char *modules[] = {
+		"{{ main := id x; id := \\y:A=>y; }}.main",
+		"{{ main :: A -> A; main := id; id := \\y:A=>y; }}.main",
+		"{{ id := \\y:Alias=>y; Alias:=A; main:=id x; }}.main",
+		"{{ main:=alias x; alias:=id; id:=\\y:A=>y; }}.main"
+	};
+	for (size_t i = 0; i < sizeof(modules) / sizeof(*modules); ++i) {
+		const struct pg_evidence *result = complete(&synthesis, program(&synthesis, scope, modules[i]), PG_SYNTHESIS_DONE);
+		assert(result && pg_evidence_judgement(result) == PG_JUDGEMENT_VALUE);
+		const struct pg_evidence *run = pg_prove_force(&typing, result);
+		if (i == 1) run = pg_prove_application(&typing, run, pg_prove_variable(&typing, x_context, x));
+		assert(run);
+		pg_computation_eval_init(&machine, &graph, pg_evidence_subject(run)->core);
+		assert(pg_eval_advance(&machine, 500) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, &graph) == expected);
+		pg_eval_destroy(&machine);
+	}
+	complete(&synthesis, program(&synthesis, scope, "id:=\\y:A=>y; id::A->A;"), PG_SYNTHESIS_DONE);
+	struct pg_synthesis_job *library = program(&synthesis, scope, "left:=id; right:=id; id:=\\y:A=>y;");
+	assert(!complete(&synthesis, library, PG_SYNTHESIS_DONE));
+	struct pg_token left_name = {.text="left", .length=4}, right_name = {.text="right", .length=5};
+	struct pg_synthesis_job *left_alias = pg_synthesis_definition(library, left_name);
+	struct pg_synthesis_job *right_alias = pg_synthesis_definition(library, right_name);
+	assert(left_alias && right_alias && pg_synthesis_status(left_alias) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(left_alias) == pg_synthesis_result(right_alias));
+	assert(!pg_synthesis_definition(library, x_name));
+	complete(&synthesis, program(&synthesis, scope, ""), PG_SYNTHESIS_DONE);
+	const char *invalid_modules[] = {
+		"{{main:=x; main:=A;}}.main", "{{main:=x;}}.missing",
+		"{{main:=x; other:=missing;}}.main", "{{main:=x; main::@;}}.main",
+		"missing::A;", "{{main::A; main:=missing;}}.main"
+	};
+	for (size_t i = 0; i < sizeof(invalid_modules) / sizeof(*invalid_modules); ++i)
+		complete(&synthesis, program(&synthesis, scope, invalid_modules[i]), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, program(&synthesis, scope, "import Library;"), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_synthesis_job *cycle = program(&synthesis, scope, "{{main:=other; other:=main;}}.main");
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(cycle) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(cycle));
+	assert(!synthesis.ready);
+	struct pg_synthesis strict;
+	assert(pg_synthesis_init(&strict, &typing, &classifiers, &beta, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *strict_root = pg_synthesis_root(&strict);
+	const struct pg_source_scope *strict_a = pg_synthesis_bind(&strict, strict_root, a_name, a, a_context);
+	const struct pg_source_scope *strict_scope = pg_synthesis_bind(&strict, strict_a, x_name, x, x_context);
+	complete(&strict, program(&strict, strict_scope, "{{main:={x;};}}.main"), PG_SYNTHESIS_REJECTED);
+	complete(&strict, program(&strict, strict_scope, "{{main:=&{x;};}}.main"), PG_SYNTHESIS_DONE);
+	complete(&strict, program(&strict, strict_scope, "{{main:=x;}}.main"), PG_SYNTHESIS_DONE);
+	pg_synthesis_destroy(&strict);
 	uint64_t steps = synthesis.steps;
 	pg_synthesis_advance(&synthesis, 100);
 	assert(synthesis.steps == steps);

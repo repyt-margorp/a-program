@@ -551,8 +551,8 @@ conclusion and all premise pointers; no accepted record is overwritten.
   target and performs a resumable comparison; the expectation never flows back
   into the left job. Tests compile a raw polymorphic nested identity, execute
   an application, check function expectations and reject unresolved names.
-- [ ] Complete source lowering/synthesis: root definition graph and forward
-  names/imports, literals, ADT/IADT, computation blocks/folds, implicit sequencing
+- [ ] Complete source lowering/synthesis: imports and full definition diagnostics,
+  literals, ADT/IADT, computation blocks/folds, implicit sequencing
   of remaining returning argument/callee cases, computed type
   annotations, structured error reasons and comprehensive surface compatibility.
   Unsupported syntax and unsupported computation-argument cases report UNSUPPORTED,
@@ -570,6 +570,24 @@ conclusion and all premise pointers; no accepted record is overwritten.
   This is an unresolved syntax input, not yet the N5 program image or a solved
   module. Legacy definition fixtures require implicit/explicit thunk policy;
   that policy belongs to synthesis, not this parser normalization.
+- [x] Definition roots now register all local producer jobs before advancing
+  bodies. Name references subscribe to those jobs and project their accepted
+  evidence into the use context. Aliases share the same evidence; no parallel
+  name-to-classifier answer store is introduced. Definition adaptation is a
+  distinct job role keyed with syntax/scope, so expression synthesis remains
+  raw and independent of the definition's implicit/explicit thunk policy.
+  Standalone `::` creates an ordinary post-check job and never supplies an
+  expected classifier to the producer. The root waits for all entries, not
+  merely a selected prefix as a sequential block does. Unselected libraries
+  expose producer jobs rather than inventing an expression or a `main` value.
+  Tests cover forward references, type aliases, shared function aliases,
+  post-checks before definitions, both quotation policies, duplicate/missing
+  names, failure in an unselected definition, and execution after explicit force.
+- [ ] Definition SCC diagnostics and imports remain incomplete. A circular
+  alias pair exhausts its ready work and stays Pending with no accepted proof;
+  it is not a supported recursive definition. Initialization currently scans
+  the source array in one scheduling transition. Image persistence, complete
+  budgeting, imported names and full definition compatibility remain required.
 - [x] Ordinary APP and inline `::` share one resumable comparison path. Cache
   the already synthesized input and target derivations while comparison is
   pending; do not rerun their synthesis or reconstruct adaptations on each
