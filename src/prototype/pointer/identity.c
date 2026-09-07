@@ -413,30 +413,31 @@ int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
 	int field = field_index(head->as.reference);
 	if (field < 0 || field > 1) return 1;
 	const struct pg_term *family = prefix->as.application.argument;
-	const struct pg_term *computation, *domain, *codomain, *content;
+	const struct pg_term *computation, *domain, *codomain;
 	const struct pg_object *binder;
 	struct action_scope scope;
 	if (!thunk_family(family, &scope, &computation)) return 1;
 	if (!pg_pi_view(computation, &domain, &binder, &codomain)) return 1;
-	if (!pg_return_type_view(codomain, &content)) return 1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
-	const struct pg_object *y = pg_binder(graph), *z = pg_binder(graph);
+	const struct pg_object *y = pg_binder(graph);
 	const struct pg_term *target = pg_reference(graph, y);
 	enum pg_identity_direction direction = (enum pg_identity_direction)field;
 	enum pg_identity_direction reverse = field ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT;
 	const struct pg_term *domain_path = acted_body(graph, &scope, domain);
 	const struct pg_term *input = pg_identity_transport(graph, domain_path, target, reverse);
 	const struct pg_term *lift = pg_identity_lift(graph, domain_path, target, reverse);
-	const struct pg_term *result_path = acted_body(graph, &scope, pg_lambda(graph, binder, content));
+	/* Reuse value transport on U(codomain), then observe it with FORCE.
+	 * Returning and further function results use their ordinary U rules. */
+	const struct pg_term *quoted_codomain = pg_application(graph, scope.body->as.application.function, codomain);
+	const struct pg_term *result_path = acted_body(graph, &scope, pg_lambda(graph, binder, quoted_codomain));
 	result_path = pg_application(graph,
 		pg_identity_instance(graph, result_path, field ? target : input, field ? input : target), lift);
 	const struct pg_term *call = pg_application(graph,
 		pg_application(graph, pg_reference(graph, &pg_force_operation), value->as.application.argument), input);
-	const struct pg_term *result = pg_application(graph, pg_reference(graph, &pg_return_operation),
-		pg_identity_transport(graph, result_path, pg_reference(graph, z), direction));
-	result = pg_application(graph, pg_application(graph, pg_reference(graph, &pg_fold_operation), call),
-		pg_lambda(graph, z, result));
+	const struct pg_term *result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), call);
+	result = pg_application(graph, pg_reference(graph, &pg_force_operation),
+		pg_identity_transport(graph, result_path, result, direction));
 	result = close_family(machine, &scope, family, pg_lambda(graph, y, result));
 	if (!result) return -1;
 	return pg_eval_apply(machine, (struct pg_closure){result, NULL}, *argument, 2);

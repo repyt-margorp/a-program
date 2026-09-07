@@ -1606,6 +1606,21 @@ a specified type family, not a global endpoint-only relation.
   with a 512 KiB stack. Implementation: +69/-11 lines; tests: +51/-1;
   documentation is separate. Syntax inventory success is not source semantic
   acceptance or completion of N0-N7.
+- [x] September 8, after `fc3a5f8`: remove the returning-codomain special case
+  from Pi application transport. Given the reverse-transported input and its
+  lifting witness, act on `U(C(x))`, transport `THUNK(APP(FORCE(f), input))`
+  along that selected path, and FORCE the result. This reuses U/F transport
+  for a returning codomain and the same Pi application rule for a further Pi;
+  unknown codomains retain neutral fields rather than requiring a new tag or
+  solver. The dispatcher no longer constructs a special result FOLD or checks
+  for `F B`. Existing dependent-return, diagonal substitution and runtime
+  call-count tests remain applicable. `curried_transport` constructs checked
+  two-argument functions over two selected paths and the diagonal, in both
+  directions; it checks the direct recipe and pre-normalized partial
+  application. General higher lifting/coherence and datatype admission remain
+  open. Implementation `identity.c`: +9/-8; `identity.h`: +1/-1;
+  tests: +63/-0; documentation separate. Optimized and ASan/UBSan pointer
+  checks pass; Identity also passes with a 512 KiB stack.
 - [ ] Resolve this N2 equational choice before enabling structural U/Pi
   transport or using it to justify nominal datatype fibrancy. If the
   elimination-driven alternative is insufficient, either admit
