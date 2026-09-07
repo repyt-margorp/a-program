@@ -190,3 +190,80 @@ void pg_eval_destroy(struct pg_eval *machine)
 	pg_graph_destroy(&machine->temporary);
 	memset(machine, 0, sizeof(*machine));
 }
+
+struct pg_beta_job {
+	struct pg_index_entry index;
+	struct pg_graph *graph;
+	const struct pg_term *input;
+	struct pg_eval machine;
+	const struct pg_term *result;
+};
+
+int pg_beta_work_init(struct pg_beta_work *work, struct pg_graph *graph)
+{
+	memset(work, 0, sizeof(*work));
+	work->graph = graph;
+	return pg_index_init(&work->jobs);
+}
+
+void pg_beta_work_destroy(struct pg_beta_work *work)
+{
+	for (size_t i = 0; i < work->jobs.capacity; ++i) {
+		for (struct pg_index_entry *entry = work->jobs.buckets[i]; entry; entry = entry->next) {
+			pg_eval_destroy(&((struct pg_beta_job *)entry)->machine);
+		}
+	}
+	pg_index_destroy(&work->jobs);
+	pg_graph_destroy(&work->storage);
+	memset(work, 0, sizeof(*work));
+}
+
+struct pg_beta_job *pg_beta_request(struct pg_beta_work *work, const struct pg_term *input)
+{
+	if (!input) return NULL;
+	uint64_t hash = (uintptr_t)input * UINT64_C(1099511628211);
+	for (struct pg_index_entry *entry = pg_index_candidates(&work->jobs, hash); entry; entry = entry->next) {
+		if (entry->hash != hash) continue;
+		struct pg_beta_job *job = (struct pg_beta_job *)entry;
+		if (job->input == input) return job;
+	}
+	struct pg_beta_job *job = pg_alloc(&work->storage, sizeof(*job));
+	if (!job) return NULL;
+	job->graph = work->graph;
+	job->input = input;
+	job->result = NULL;
+	pg_eval_init(&job->machine, input);
+	if (pg_index_insert(&work->jobs, &job->index, hash) != 0) return NULL;
+	return job;
+}
+
+enum pg_eval_status pg_beta_advance(struct pg_beta_job *job, uint64_t budget)
+{
+	if (job->machine.status != PG_EVAL_PENDING) return job->machine.status;
+	if (pg_eval_advance(&job->machine, budget) != PG_EVAL_WHNF) return job->machine.status;
+	job->result = pg_eval_readback(&job->machine, job->graph);
+	if (!job->result) {
+		job->machine.status = PG_EVAL_ERROR;
+		return PG_EVAL_ERROR;
+	}
+	/* No closure is needed after the answer is materialized. */
+	pg_graph_destroy(&job->machine.temporary);
+	job->machine.current = (struct pg_closure){job->result, NULL};
+	job->machine.arguments = NULL;
+	return PG_EVAL_WHNF;
+}
+
+enum pg_eval_status pg_beta_status(const struct pg_beta_job *job)
+{
+	return job->machine.status;
+}
+
+uint64_t pg_beta_steps(const struct pg_beta_job *job)
+{
+	return job->machine.steps;
+}
+
+const struct pg_term *pg_beta_result(const struct pg_beta_job *job)
+{
+	return job->result;
+}

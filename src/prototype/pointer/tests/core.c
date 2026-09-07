@@ -125,6 +125,59 @@ static void context_test(struct pg_graph *graph)
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
 }
 
+static void beta_work_test(struct pg_graph *graph)
+{
+	struct pg_beta_work work;
+	assert(pg_beta_work_init(&work, graph) == 0);
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_object *y = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x);
+	const struct pg_term *vy = pg_reference(graph, y);
+	const struct pg_term *identity = pg_lambda(graph, x, vx);
+	const struct pg_term *input = pg_application(graph, identity, vy);
+	struct pg_beta_job *job = pg_beta_request(&work, input);
+	assert(job && job == pg_beta_request(&work, input));
+	assert(pg_beta_status(job) == PG_EVAL_PENDING);
+	assert(pg_beta_steps(job) == 0 && !pg_beta_result(job));
+	assert(pg_beta_advance(job, 0) == PG_EVAL_PENDING);
+	assert(pg_beta_advance(job, 1) == PG_EVAL_PENDING);
+	assert(pg_beta_steps(job) == 1);
+	assert(job == pg_beta_request(&work, input));
+	assert(pg_beta_advance(job, 100) == PG_EVAL_WHNF);
+	assert(pg_beta_result(job) == vy);
+	uint64_t steps = pg_beta_steps(job);
+	assert(pg_beta_advance(job, 100) == PG_EVAL_WHNF);
+	assert(pg_beta_steps(job) == steps);
+	assert(input != vy && pg_application(graph, identity, vy) == input);
+	assert(pg_beta_request(&work, vy) != job);
+	/* Both requests enter the same lambda body but capture different values. */
+	const struct pg_term *constant = pg_lambda(graph, x, pg_lambda(graph, y, vx));
+	struct pg_beta_job *left = pg_beta_request(&work, pg_application(graph, constant, vx));
+	struct pg_beta_job *right = pg_beta_request(&work, pg_application(graph, constant, vy));
+	assert(left != right);
+	assert(pg_beta_advance(left, 100) == PG_EVAL_WHNF);
+	assert(pg_beta_advance(right, 100) == PG_EVAL_WHNF);
+	assert(pg_beta_result(left)->as.lambda.body == vx);
+	assert(pg_beta_result(right)->as.lambda.body == vy);
+	const struct pg_term *stable = pg_beta_result(left);
+	assert(pg_beta_advance(left, 100) == PG_EVAL_WHNF);
+	assert(pg_beta_result(left) == stable);
+	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	struct pg_beta_job *loop = pg_beta_request(&work, pg_application(graph, self, self));
+	assert(pg_beta_advance(loop, 30) == PG_EVAL_PENDING);
+	assert(pg_beta_advance(loop, 30) == PG_EVAL_PENDING);
+	assert(pg_beta_steps(loop) == 60 && !pg_beta_result(loop));
+	for (size_t i = 0; i < 1000; ++i) {
+		assert(pg_beta_request(&work, pg_reference(graph, pg_binder(graph))));
+	}
+	assert(job == pg_beta_request(&work, input));
+	assert(pg_beta_result(job) == vy);
+	assert(!pg_beta_request(&work, NULL));
+	pg_beta_work_destroy(&work);
+	assert(stable->as.lambda.body == vx);
+	puts("beta work: shared pending jobs, stable answers, split fuel and environment isolation passed");
+}
+
 static void substitution_test(struct pg_graph *graph)
 {
 	const struct pg_object *x = pg_binder(graph);
@@ -353,6 +406,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	graph_test(&graph);
 	context_test(&graph);
+	beta_work_test(&graph);
 	substitution_test(&graph);
 	evaluation_test(&graph);
 	dimension_test(&graph);

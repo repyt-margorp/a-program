@@ -186,6 +186,25 @@ Memoization keys include the semantic reference policy and captured environment
 when relevant. Never memoize a dispatched effect as if repeated force were pure.
 Keep WHNF and NF distinct. Type conversion and object Identity remain distinct.
 
+Implemented `pg_beta_work` shares resumable beta-WHNF requests by input pointer.
+Its policy is fixed: every unbound REFERENCE is neutral, including semantic
+objects; no oracle dispatch occurs. Each request owns its closure machine and
+one materialized answer. Repeated requests resume that machine or return the
+existing answer without reduction or readback. Captured environments are local
+to the request, never indexed by the current body pointer alone. Completed jobs
+release closure storage; their answers live in the output graph. The input and
+answer nodes remain distinct. This is request-level memoization, not yet reuse
+of arbitrary intermediate closure evaluations.
+
+- [x] Test shared pending requests, split budgets, stable completed answers,
+  different captured arguments, nontermination remaining pending and index
+  growth. Ordinary and ASan/UBSan checks pass.
+- [ ] Connect beta work to typed conversion without interpreting beta-WHNF as
+  full semantic WHNF. Add explicit owner reduction policies before semantic
+  dispatch; do not silently expand this cache to runtime effects.
+- [ ] Make readback itself budgetable before claiming a bound on all work:
+  the current budget counts machine transitions, not output graph traversal.
+
 ## 5. Foundational HOTT Action
 
 Narya sources consulted on 2026-09-07:
