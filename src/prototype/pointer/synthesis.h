@@ -47,6 +47,15 @@ struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_evidence *proof);
+/* Publish an immutable closed source scope as a namespace, not a Core term.
+ * Every name in exports is public; construct it from a fresh root to select
+ * exactly the exports wanted. Member lookup never falls back to the importing
+ * scope. Both scopes belong to this store. A namespace alias can reuse exports.
+ * name is an identifier or the intrinsic root token '#'; no names are reserved
+ * inside exports. This does not load files or validate serialized evidence. */
+const struct pg_source_scope *pg_synthesis_namespace(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	const struct pg_source_scope *exports);
 /* Diagonal action of an input job, after its own synthesis has succeeded.
  * Both jobs belong to this store. The supplied context must be exactly the
  * input judgement's context; no expected classifier guides the producer.

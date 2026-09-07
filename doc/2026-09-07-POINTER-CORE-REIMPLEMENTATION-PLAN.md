@@ -1447,6 +1447,28 @@ a specified type family, not a global endpoint-only relation.
   tests `synthesis.c` +38/-4; docs separate. This export covers the current pure,
   constant `F B` result family, not general dependent `apd`, arbitrary effectful
   congruence or higher coherence. General source Act and N2 acceptance stay open.
+- [x] September 8, after `89afca1`: resolve qualified source names through the
+  existing lexical scopes and accepted producers. `pg_synthesis_namespace`
+  publishes a closed scope, including nested namespace aliases, without a Core
+  namespace node, classifier lookup by erased Core, evaluation or new evidence.
+  All names in the supplied scope are public; callers build explicit exports
+  from a fresh root. Member lookup stays inside that scope and never falls back
+  to the importing environment. Root shadowing is lexical, including local
+  definitions and binders. Ordinary terms cannot serve as namespace scopes;
+  nominal type-member resolution remains unsupported, not guessed from a name.
+  Source `#.refl A x :: #.Eq A x x` uses the existing checked library functions
+  and post-synthesis checking. Qualified aliases use the ordinary producer and
+  projection path. Namespace lookup is iterative with temporary O(path depth)
+  storage, freed after resolution; it does not recursively traverse C frames.
+  Tests cover closed-export ownership, missing members, no ambient-name leak,
+  shadowing, nested aliases, shared Core with different classifiers, and a
+  4,096-component path. Initial tests exposed punctuation tokens without text;
+  `#` now resolves by token kind and does not enter identifier-only hash lookup.
+  Optimized check: 3.438 s (synthesis rebuilt); ASan/UBSan: 17.720 s (affected
+  binaries rebuilt); all four computation suites pass at 512 KiB stack.
+  Implementation `synthesis.c` +84/-24, `synthesis.h` +9; tests +87; docs separate.
+  File imports, automatic CLI library installation, `.a` loading, nominal member
+  synthesis, general Act and N2 acceptance remain open. No Replay engine added.
 - [x] September 8, after `fedba41`: share context-suffix abstraction between
   ADT branch functions and named checked functions (`pg_prove_abstract`). It
   composes the existing Pi/Lambda rules, retains every premise and binder,

@@ -110,6 +110,18 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 		assert(synthesis.jobs.count == 3 + i);
 		if (!i) root = scope;
 	}
+	const char *prefixes[] = {"Low", "High"};
+	const char *references[] = {"main := Low.f;", "main := High.f;"};
+	const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_source_scope *exports = pg_synthesis_name(&synthesis,
+			pg_synthesis_root(&synthesis), name, proofs[i]);
+		scope = pg_synthesis_namespace(&synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = prefixes[i], .length = strlen(prefixes[i])}, exports);
+		assert(scope);
+	}
+	for (size_t i = 0; i < 2; ++i)
+		assert(complete(&synthesis, request(&synthesis, scope, references[i]), PG_SYNTHESIS_DONE) == proofs[i]);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 }
@@ -125,6 +137,80 @@ static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
 	assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
 	assert(pg_synthesis_request(synthesis, scope, syntax) == job);
 	return job;
+}
+
+static void namespaces(struct pg_synthesis *synthesis, const struct pg_source_scope *exports,
+	const struct pg_identity_library *library)
+{
+	struct pg_token intrinsic = {.kind = '#'};
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "N", .length = 1};
+	const struct pg_source_scope *root = pg_synthesis_root(synthesis);
+	size_t terms = synthesis->typing->graph->terms.count, jobs = synthesis->jobs.count;
+	size_t proofs = synthesis->typing->proofs.count, evaluations = synthesis->normalization->jobs.count;
+	const struct pg_source_scope *scope = pg_synthesis_namespace(synthesis, root, intrinsic, exports);
+	scope = pg_synthesis_namespace(synthesis, scope, name, exports);
+	const struct pg_source_scope *nested = pg_synthesis_namespace(synthesis, root, name, exports);
+	struct pg_token outer = {.kind = PG_TOKEN_IDENT, .text = "Outer", .length = 5};
+	scope = pg_synthesis_namespace(synthesis, scope, outer, nested);
+	assert(scope);
+	assert(synthesis->typing->graph->terms.count == terms && synthesis->jobs.count == jobs);
+	assert(synthesis->typing->proofs.count == proofs && synthesis->normalization->jobs.count == evaluations);
+	const char *aliases[] = {"main := #.refl;", "main := N.refl;", "main := Outer.N.refl;"};
+	for (size_t i = 0; i < sizeof(aliases) / sizeof(*aliases); ++i)
+		assert(complete(synthesis, request(synthesis, scope, aliases[i]), PG_SYNTHESIS_DONE) == library->reflexivity);
+	assert(synthesis->typing->graph->terms.count == terms && synthesis->normalization->jobs.count == evaluations);
+	const char *good[] = {
+		"main := \\A:@ => \\x:A => #.refl A x :: N.Eq A x x;",
+		"{{ alias:=&#.refl; main:=&(\\A:@ => \\x:A => alias A x :: #.Eq A x x); }}.main;",
+		"main := \\refl:@ => #.refl;",
+		"main := \\A:@ => { f:=&Outer.N.refl; f; }.f;"
+	};
+	for (size_t i = 0; i < sizeof(good) / sizeof(*good); ++i)
+		complete(synthesis, request(synthesis, scope, good[i]), PG_SYNTHESIS_DONE);
+	const char *missing[] = {"main := #.missing;", "main := Missing.refl;", "main := Outer.refl;",
+		"main := N;", "main := refl;", "main := #.Outer.N.refl;"};
+	for (size_t i = 0; i < sizeof(missing) / sizeof(*missing); ++i)
+		complete(synthesis, request(synthesis, scope, missing[i]), PG_SYNTHESIS_REJECTED);
+	const char *shadowed[] = {"main := \\N:@ => N.refl;", "{{ N:=@; main:=N.refl; }}.main;"};
+	for (size_t i = 0; i < sizeof(shadowed) / sizeof(*shadowed); ++i)
+		complete(synthesis, request(synthesis, scope, shadowed[i]), PG_SYNTHESIS_UNSUPPORTED);
+	const struct pg_source_scope *shadow = pg_synthesis_namespace(synthesis, scope, name, root);
+	complete(synthesis, request(synthesis, shadow, "main := N.refl;"), PG_SYNTHESIS_REJECTED);
+	assert(complete(synthesis, request(synthesis, scope, "main := N.refl;"), PG_SYNTHESIS_DONE) == library->reflexivity);
+	shadow = pg_synthesis_name(synthesis, scope, name, library->equality);
+	complete(synthesis, request(synthesis, shadow, "main := N.refl;"), PG_SYNTHESIS_UNSUPPORTED);
+	assert(!pg_synthesis_namespace(synthesis, NULL, name, exports));
+	assert(!pg_synthesis_namespace(synthesis, root, name, NULL));
+	assert(!pg_synthesis_namespace(synthesis, root, (struct pg_token){0}, exports));
+	assert(!pg_synthesis_namespace(synthesis, root, (struct pg_token){.kind = '@'}, exports));
+	const struct pg_evidence *empty = pg_prove_empty_context(synthesis->typing);
+	const struct pg_object *binder = pg_binder(synthesis->typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(synthesis->typing, empty, binder,
+		pg_prove_universe(synthesis->typing, synthesis->classifiers, empty, 0));
+	const struct pg_source_scope *open = pg_synthesis_bind(synthesis, root, name, binder, context);
+	assert(open && !pg_synthesis_namespace(synthesis, root, name, open));
+	assert(pg_synthesis_namespace(synthesis, open, intrinsic, exports));
+	struct pg_synthesis other;
+	assert(pg_synthesis_init(&other, synthesis->typing, synthesis->classifiers, synthesis->normalization,
+		PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *foreign = pg_synthesis_root(&other);
+	assert(!pg_synthesis_namespace(synthesis, root, name, foreign));
+	assert(!pg_synthesis_namespace(synthesis, foreign, name, exports));
+	pg_synthesis_destroy(&other);
+	/* Qualified paths are traversed without recursive C calls or Core nodes. */
+	size_t depth = 4096;
+	char *source = pg_alloc(synthesis->typing->graph, depth * 2 + 32);
+	assert(source);
+	size_t length = (size_t)sprintf(source, "main := ");
+	const struct pg_source_scope *deep = exports;
+	for (size_t i = 0; i < depth; ++i) {
+		deep = pg_synthesis_namespace(synthesis, root, name, deep);
+		assert(deep);
+		source[length++] = 'N'; source[length++] = '.';
+	}
+	strcpy(source + length, "refl;");
+	assert(complete(synthesis, request(synthesis, deep, source), PG_SYNTHESIS_DONE) == library->reflexivity);
+	puts("namespaces: shared evidence, qualified Identity, lexical shadowing, closed exports and deep paths passed");
 }
 
 static void named_identity(struct pg_typing *typing, struct pg_classifiers *classifiers)
@@ -148,6 +234,7 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 		assert(scope);
 	}
 	assert(!synthesis.steps && !synthesis.ready && work.jobs.count == library_work);
+	namespaces(&synthesis, scope, library);
 	const struct pg_evidence *named = complete(&synthesis, request(&synthesis, scope, "main := refl;"), PG_SYNTHESIS_DONE);
 	assert(named == functions[1]);
 	const char *sources[] = {

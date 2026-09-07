@@ -2,6 +2,7 @@
 #include "computation.h"
 #include "iadt.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 struct pg_source_scope {
@@ -12,6 +13,7 @@ struct pg_source_scope {
 	const struct pg_evidence *context;
 	struct definition_state *definitions;
 	struct pg_synthesis_job *producer;
+	const struct pg_source_scope *exports;
 };
 struct waiter {
 	struct pg_synthesis_job *parent;
@@ -218,6 +220,22 @@ const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
 	if (scope) *scope = (struct pg_source_scope){.owner = synthesis, .parent = parent,
 		.name = name, .context = parent->context, .producer = producer};
+	return scope;
+}
+
+const struct pg_source_scope *pg_synthesis_namespace(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	const struct pg_source_scope *exports)
+{
+	if (!parent || parent->owner != synthesis) return NULL;
+	if (!exports || exports->owner != synthesis) return NULL;
+	if (pg_evidence_context(exports->context)) return NULL;
+	if (name.kind != '#') {
+		if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
+	}
+	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
+	if (scope) *scope = (struct pg_source_scope){.owner = synthesis, .parent = parent,
+		.name = name, .context = parent->context, .exports = exports};
 	return scope;
 }
 
@@ -494,7 +512,59 @@ static struct block_name *lookup_name(struct pg_index *names, struct pg_token na
 	return NULL;
 }
 
-static void atom(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+struct source_reference {
+	const struct pg_object *binder;
+	struct pg_synthesis_job *producer;
+	const struct pg_source_scope *exports;
+};
+
+static struct source_reference lookup_scope(const struct pg_source_scope *scope, struct pg_token token)
+{
+	for (; scope; scope = scope->parent) {
+		if (scope->definitions && token.kind == PG_TOKEN_IDENT) {
+			struct block_name *name = lookup_name(&scope->definitions->names, token);
+			if (name) return (struct source_reference){.producer = name->producer};
+		}
+		if (scope->name.kind != token.kind) continue;
+		/* Punctuation tokens carry their spelling in kind, not text. */
+		if (token.kind != '#') {
+			if (scope->name.length != token.length) continue;
+			if (memcmp(scope->name.text, token.text, token.length) != 0) continue;
+		}
+		return (struct source_reference){scope->binder, scope->producer, scope->exports};
+	}
+	return (struct source_reference){0};
+}
+
+static enum pg_synthesis_status resolve_reference(const struct pg_source_scope *scope,
+	const struct pg_syntax *syntax, struct source_reference *reference)
+{
+	const struct pg_syntax *root = syntax;
+	size_t count = 0;
+	while (root->kind == PG_SYNTAX_QUALIFIED) { ++count; root = root->left; }
+	if (root->kind != PG_SYNTAX_ATOM) return PG_SYNTHESIS_UNSUPPORTED;
+	if (root->token.kind != PG_TOKEN_IDENT && root->token.kind != '#') return PG_SYNTHESIS_UNSUPPORTED;
+	*reference = lookup_scope(scope, root->token);
+	if (!count) return PG_SYNTHESIS_DONE;
+	if (count > SIZE_MAX / sizeof(const struct pg_syntax *)) return PG_SYNTHESIS_ERROR;
+	const struct pg_syntax **path = malloc(count * sizeof(*path));
+	if (!path) return PG_SYNTHESIS_ERROR;
+	for (size_t i = count; i; --i, syntax = syntax->left) path[i - 1] = syntax->right;
+	enum pg_synthesis_status status = PG_SYNTHESIS_DONE;
+	for (size_t i = 0; i < count; ++i) {
+		if (!reference->exports) {
+			/* Nominal type members need typed declaration resolution, not a
+			 * fallback to an older namespace with the same spelling. */
+			status = reference->binder || reference->producer ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_REJECTED;
+			break;
+		}
+		*reference = lookup_scope(reference->exports, path[i]->token);
+	}
+	free(path);
+	return status;
+}
+
+static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->left) {
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
@@ -503,31 +573,21 @@ static void atom(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		return;
 	}
 	struct pg_token token = job->syntax->token;
-	if (token.kind == '@') {
+	if (job->syntax->kind == PG_SYNTAX_ATOM && token.kind == '@') {
 		job->result = pg_prove_universe(synthesis->typing, synthesis->classifiers, job->scope->context, 0);
-	} else if (token.kind == PG_TOKEN_IDENT) {
-		for (const struct pg_source_scope *scope = job->scope; scope; scope = scope->parent) {
-			if (scope->definitions) {
-				struct block_name *name = lookup_name(&scope->definitions->names, token);
-				if (name) {
-					job->left = name->producer;
-					depend(synthesis, job, job->left);
-					return;
-				}
-			}
-			if (scope->name.length != token.length) continue;
-			if (memcmp(scope->name.text, token.text, token.length) != 0) continue;
-			if (scope->producer) {
-				job->left = scope->producer;
-				depend(synthesis, job, job->left);
-				return;
-			}
-			if (!scope->binder) continue;
-			job->result = pg_prove_variable(synthesis->typing, job->scope->context, scope->binder);
-			break;
+	} else {
+		struct source_reference reference;
+		enum pg_synthesis_status status = resolve_reference(job->scope, job->syntax, &reference);
+		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
+		if (reference.producer) {
+			job->left = reference.producer;
+			depend(synthesis, job, job->left);
+			return;
 		}
+		if (reference.binder)
+			job->result = pg_prove_variable(synthesis->typing, job->scope->context, reference.binder);
 		if (!job->result) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-	} else { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	}
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
@@ -1017,7 +1077,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }
-	if (syntax->kind == PG_SYNTAX_ATOM) { atom(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_ATOM || syntax->kind == PG_SYNTAX_QUALIFIED) { reference_step(synthesis, job); return; }
 	switch (syntax->kind) {
 	case PG_SYNTAX_LAMBDA:
 		if (syntax->binder_marker) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
