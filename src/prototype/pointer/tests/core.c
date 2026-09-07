@@ -5,6 +5,7 @@
 #include "conversion.h"
 #include "classifier.h"
 #include "evidence.h"
+#include "computation.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -282,6 +283,78 @@ static void dependent_application_test(struct pg_graph *graph)
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("dependent application: concrete and open type arguments substitute without executing computations");
+}
+
+static void computation_execution_test(struct pg_graph *graph)
+{
+	const struct pg_term *force = pg_reference(graph, &pg_force_operation);
+	const struct pg_term *thunk = pg_reference(graph, &pg_thunk_operation);
+	const struct pg_term *ret = pg_reference(graph, &pg_return_operation);
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x);
+	const struct pg_term *identity = pg_lambda(graph, x, vx);
+	const struct pg_term *returned = pg_application(graph, ret, vx);
+	const struct pg_term *quoted = pg_application(graph, thunk, returned);
+	const struct pg_term *delayed_argument = pg_application(graph, identity, quoted);
+	const struct pg_term *input = pg_application(graph, force, delayed_argument);
+	struct pg_eval beta, semantic;
+	pg_eval_init(&beta, input);
+	assert(pg_eval_advance(&beta, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&beta, graph) == input);
+	pg_eval_destroy(&beta);
+	pg_computation_eval_init(&semantic, graph, input);
+	while (pg_eval_advance(&semantic, 1) == PG_EVAL_PENDING) {
+		const struct pg_term *pending = pg_eval_readback(&semantic, graph);
+		assert(pending);
+		struct pg_eval resumed;
+		pg_computation_eval_init(&resumed, graph, pending);
+		assert(pg_eval_advance(&resumed, 100) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&resumed, graph) == returned);
+		pg_eval_destroy(&resumed);
+	}
+	assert(semantic.status == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&semantic, graph) == returned);
+	uint64_t split_steps = semantic.steps;
+	pg_eval_destroy(&semantic);
+	pg_computation_eval_init(&semantic, graph, input);
+	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
+	assert(semantic.steps == split_steps);
+	pg_eval_destroy(&semantic);
+	const struct pg_term *neutral = pg_application(graph, force, pg_application(graph, identity, vx));
+	pg_computation_eval_init(&semantic, graph, neutral);
+	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&semantic, graph) == pg_application(graph, force, vx));
+	pg_eval_destroy(&semantic);
+	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	const struct pg_term *omega = pg_application(graph, self, self);
+	const struct pg_term *quoted_omega = pg_application(graph, thunk, omega);
+	pg_computation_eval_init(&semantic, graph, quoted_omega);
+	assert(pg_eval_advance(&semantic, 10) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&semantic, graph) == quoted_omega);
+	pg_eval_destroy(&semantic);
+	pg_computation_eval_init(&semantic, graph, pg_application(graph, force, quoted_omega));
+	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_PENDING);
+	pg_eval_destroy(&semantic);
+	/* Releasing a function preserves the arguments waiting outside FORCE. */
+	const struct pg_term *call = pg_application(graph,
+		pg_application(graph, force, pg_application(graph, thunk, identity)), returned);
+	pg_computation_eval_init(&semantic, graph, call);
+	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&semantic, graph) == returned);
+	pg_eval_destroy(&semantic);
+	/* Nested demands and a captured thunk body share the lexical evaluator. */
+	const struct pg_term *inner = pg_application(graph, force, pg_application(graph, thunk, quoted));
+	const struct pg_term *nested = pg_application(graph, force, inner);
+	pg_computation_eval_init(&semantic, graph, nested);
+	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&semantic, graph) == returned);
+	pg_eval_destroy(&semantic);
+	const struct pg_term *capture = pg_application(graph, pg_lambda(graph, x, pg_application(graph, force, quoted)), identity);
+	pg_computation_eval_init(&semantic, graph, capture);
+	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
+	assert(pg_alpha_equal(pg_eval_readback(&semantic, graph), pg_application(graph, ret, identity)) == 1);
+	pg_eval_destroy(&semantic);
+	puts("computation execution: force/thunk, captured environments, neutral demands and split budgets passed");
 }
 
 static void classifiers_test(struct pg_graph *graph)
@@ -708,6 +781,7 @@ int main(void)
 	context_test(&graph);
 	evidence_test(&graph);
 	dependent_application_test(&graph);
+	computation_execution_test(&graph);
 	classifiers_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);

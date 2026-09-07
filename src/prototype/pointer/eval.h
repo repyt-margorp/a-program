@@ -5,6 +5,7 @@
 
 struct pg_environment;
 struct pg_argument;
+struct pg_eval_frame;
 struct pg_closure {
 	const struct pg_term *term;
 	const struct pg_environment *environment;
@@ -16,6 +17,11 @@ struct pg_eval {
 	const struct pg_argument *arguments;
 	enum pg_eval_status status;
 	uint64_t steps;
+	/* Optional fixed semantic dispatcher. NULL preserves beta-only policy. */
+	int (*dispatch)(struct pg_eval *machine);
+	struct pg_graph *output;
+	const struct pg_eval_frame *frames;
+	int head_ready;
 };
 
 void pg_eval_init(struct pg_eval *machine, const struct pg_term *term);
@@ -23,6 +29,13 @@ enum pg_eval_status pg_eval_advance(struct pg_eval *machine, uint64_t budget);
 /* Reify the current state without further reduction; may allocate in graph. */
 const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph *graph);
 void pg_eval_destroy(struct pg_eval *machine);
+/* Dispatcher protocol: 0 progressed, 1 neutral, -1 failure. Demand evaluates
+ * one argument on the same machine; resume receives its materialized WHNF.
+ * The output graph must outlive the machine. No dispatched result is cached. */
+const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index);
+int pg_eval_enter(struct pg_eval *machine, struct pg_closure value, size_t consume);
+int pg_eval_demand(struct pg_eval *machine, size_t index,
+	int (*resume)(struct pg_eval *machine, const struct pg_term *answer));
 
 struct pg_binding_value {
 	const struct pg_object *binder;

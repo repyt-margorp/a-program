@@ -182,6 +182,23 @@ typed reduction and its erased execution agree on the result, and demonstrate
 effect order with traces. Record the admitted equations rather than claiming a
 general CBPV equivalence theorem from tests alone.
 
+`pg_computation_eval_init` now installs a fixed pure CBPV dispatcher on the
+same lexical beta machine. The generic demand protocol suspends an applied
+reference, evaluates one selected argument, materializes that WHNF, restores
+the caller and resumes its operation. FORCE demands its argument and releases
+the body of THUNK. RETURN and THUNK remain inert heads. Unknown arguments leave
+FORCE neutral with the inspected argument retained; no repeated demand loop is
+needed. Demand frames are included in pending readback. Each frame resumption
+is a budgeted machine step, although materialization itself is not yet separately
+budgeted. Captured environments are still handled by the shared readback path.
+
+- [x] Pure FORCE/THUNK execution: test inert quoted divergence, released
+  divergence, neutral arguments, nested demands, pending readback, external
+  application arguments, captured environments and split-budget equivalence.
+- [ ] Extend fixed reference semantics to constructor/Match, folds and requests;
+  verify effect order and typed action compatibility. The dispatcher is not yet
+  a general effect runtime, nor connected to conversion or source execution.
+
 Memoization keys include the semantic reference policy and captured environment
 when relevant. Never memoize a dispatched effect as if repeated force were pure.
 Keep WHNF and NF distinct. Type conversion and object Identity remain distinct.
@@ -382,7 +399,7 @@ conclusion and all premise pointers; no accepted record is overwritten.
 - [ ] Connect these rules to synthesis and semantic execution. The current APP
   rule requires exact classifier pointers; an explicit conversion derivation
   remains necessary for non-identical convertible classifiers. The beta-only
-  evaluator intentionally does not reduce FORCE(THUNK(...)) yet. F currently
+  evaluator intentionally keeps semantic references neutral. F currently
   describes the pure fragment, not unspecified effect rows. Effect rows and
   dependent sequencing remain pending.
 - [x] Connect value-type formation to term-level universe inhabitation by an

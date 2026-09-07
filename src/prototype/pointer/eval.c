@@ -11,6 +11,77 @@ struct pg_argument {
 	struct pg_closure value;
 	const struct pg_argument *next;
 };
+struct pg_eval_frame {
+	struct pg_closure caller;
+	const struct pg_argument *arguments;
+	size_t index;
+	int (*resume)(struct pg_eval *machine, const struct pg_term *answer);
+	const struct pg_eval_frame *parent;
+};
+
+static const struct pg_term *readback(struct pg_closure closure,
+	const struct pg_argument *arguments, struct pg_graph *graph);
+
+const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index)
+{
+	const struct pg_argument *argument = machine->arguments;
+	while (argument && index) { argument = argument->next; --index; }
+	return argument ? &argument->value : NULL;
+}
+
+int pg_eval_enter(struct pg_eval *machine, struct pg_closure value, size_t consume)
+{
+	if (!value.term) return -1;
+	const struct pg_argument *rest = machine->arguments;
+	while (consume) {
+		if (!rest) return -1;
+		rest = rest->next;
+		--consume;
+	}
+	machine->current = value;
+	machine->arguments = rest;
+	return 0;
+}
+
+int pg_eval_demand(struct pg_eval *machine, size_t index,
+	int (*resume)(struct pg_eval *machine, const struct pg_term *answer))
+{
+	if (!machine->output || !resume) return -1;
+	const struct pg_closure *argument = pg_eval_argument(machine, index);
+	if (!argument) return -1;
+	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
+	if (!frame) return -1;
+	*frame = (struct pg_eval_frame){machine->current, machine->arguments, index, resume, machine->frames};
+	machine->frames = frame;
+	machine->current = *argument;
+	machine->arguments = NULL;
+	return 0;
+}
+
+static int resume_frame(struct pg_eval *machine)
+{
+	const struct pg_eval_frame *frame = machine->frames;
+	const struct pg_term *answer = readback(machine->current, machine->arguments, machine->output);
+	if (!answer) return -1;
+	/* Rebuild only the argument-list prefix; the tail and all terms stay shared. */
+	struct pg_argument *first = NULL, *last = NULL;
+	const struct pg_argument *argument = frame->arguments;
+	for (size_t i = 0; i <= frame->index; ++i) {
+		struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
+		if (!copy) return -1;
+		*copy = *argument;
+		if (last) last->next = copy;
+		else first = copy;
+		last = copy;
+		argument = argument->next;
+	}
+	last->value = (struct pg_closure){answer, NULL};
+	machine->current = frame->caller;
+	machine->arguments = first;
+	machine->frames = frame->parent;
+	machine->head_ready = 0;
+	return frame->resume(machine, answer);
+}
 
 struct readback_entry {
 	struct pg_index_entry index;
@@ -42,6 +113,7 @@ void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)
 
 static int step(struct pg_eval *machine)
 {
+	if (machine->head_ready) return resume_frame(machine);
 	const struct pg_term *term = machine->current.term;
 	switch (term->kind) {
 	case PG_APPLICATION: {
@@ -66,7 +138,7 @@ static int step(struct pg_eval *machine)
 	}
 	case PG_REFERENCE: {
 		const struct pg_closure *value = lookup(machine->current.environment, term->as.reference);
-		if (!value) return 1;
+		if (!value) return machine->dispatch ? machine->dispatch(machine) : 1;
 		machine->current = *value;
 		return 0;
 	}
@@ -80,7 +152,10 @@ enum pg_eval_status pg_eval_advance(struct pg_eval *machine, uint64_t budget)
 		budget--;
 		machine->steps++;
 		int result = step(machine);
-		if (result > 0) machine->status = PG_EVAL_WHNF;
+		if (result > 0) {
+			if (machine->frames) machine->head_ready = 1;
+			else machine->status = PG_EVAL_WHNF;
+		}
 		if (result < 0) machine->status = PG_EVAL_ERROR;
 	}
 	return machine->status;
@@ -159,7 +234,19 @@ static const struct pg_term *readback(struct pg_closure closure,
 const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph *graph)
 {
 	if (machine->status == PG_EVAL_ERROR) return NULL;
-	return readback(machine->current, machine->arguments, graph);
+	const struct pg_term *result = readback(machine->current, machine->arguments, graph);
+	for (const struct pg_eval_frame *frame = machine->frames; frame; frame = frame->parent) {
+		if (!result) return NULL;
+		const struct pg_term *caller = readback(frame->caller, NULL, graph);
+		size_t index = 0;
+		for (const struct pg_argument *argument = frame->arguments; argument; argument = argument->next, ++index) {
+			const struct pg_term *value = index == frame->index ? result : readback(argument->value, NULL, graph);
+			caller = pg_application(graph, caller, value);
+			if (!caller) return NULL;
+		}
+		result = caller;
+	}
+	return result;
 }
 
 const struct pg_term *pg_term_substitute(struct pg_graph *graph,
