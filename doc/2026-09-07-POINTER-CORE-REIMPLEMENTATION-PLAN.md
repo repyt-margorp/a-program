@@ -608,6 +608,17 @@ successful return codes as new-kernel certificates.
   not itself a beta/FORCE/FOLD execution step. Primitive substitution and alpha
   traversal still need budget accounting. These tests establish neither general
   higher-order completeness nor HOTT/ADT/effect support.
+- [x] Replace recursive common readback/substitution traversal with explicit
+  heap work frames, indexed by the same `(term, lexical environment)` key.
+  Children complete before their parent is constructed; repeated DAG children
+  reuse one result. Lambda capture avoidance and simultaneous substitution
+  retain their existing semantics, without alpha or reduction interning.
+  A depth-50,040 shared APP graph substitutes successfully, including with a
+  512 KiB process stack. Existing closure, conversion, restriction and typed
+  evaluation tests exercise this same implementation, not a separate fast path.
+- [ ] Make these work frames resumable under fuel. The current public readback
+  and substitution calls still finish synchronously. Environment lookup remains
+  linear, and other recursive traversals are not covered by this stack test.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation

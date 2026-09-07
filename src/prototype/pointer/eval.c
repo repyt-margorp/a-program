@@ -99,12 +99,16 @@ struct readback_entry {
 	struct pg_index_entry index;
 	struct pg_closure input;
 	const struct pg_term *result;
+	struct readback_entry *next, *left, *right;
+	const struct pg_object *binder;
+	unsigned stage;
 };
 
 struct readback_context {
 	struct pg_graph *output;
 	struct pg_graph temporary;
 	struct pg_index results;
+	struct readback_entry *pending;
 };
 
 static const struct pg_closure *lookup(const struct pg_environment *environment,
@@ -175,57 +179,90 @@ enum pg_eval_status pg_eval_advance(struct pg_eval *machine, uint64_t budget)
 
 /* Readback is substitution, not evaluation. Fresh binder references prevent
  * capture when closures from different lexical environments are combined. */
-static const struct pg_term *reify(struct readback_context *context, struct pg_closure closure);
-
-static const struct pg_term *reify_node(struct readback_context *context, struct pg_closure closure)
+static struct readback_entry *reify_request(struct readback_context *context, struct pg_closure closure)
 {
-	struct pg_graph *graph = context->output;
-	const struct pg_term *term = closure.term;
-	switch (term->kind) {
-	case PG_REFERENCE: {
-		const struct pg_closure *value = lookup(closure.environment, term->as.reference);
-		return value ? reify(context, *value) : term;
+	if (!closure.term) return NULL;
+	uint64_t hash = ((uintptr_t)closure.term * UINT64_C(1099511628211)) ^ (uintptr_t)closure.environment;
+	for (struct pg_index_entry *candidate = pg_index_candidates(&context->results, hash); candidate; candidate = candidate->next) {
+		if (candidate->hash != hash) continue;
+		struct readback_entry *entry = (struct readback_entry *)candidate;
+		if (entry->input.term != closure.term) continue;
+		if (entry->input.environment == closure.environment) return entry;
 	}
-	case PG_APPLICATION: {
-		const struct pg_term *function = reify(context,
-			(struct pg_closure){term->as.application.function, closure.environment});
-		if (!function) return NULL;
-		const struct pg_term *argument = reify(context,
-			(struct pg_closure){term->as.application.argument, closure.environment});
-		return pg_application(graph, function, argument);
+	struct readback_entry *entry = pg_alloc(&context->temporary, sizeof(*entry));
+	if (!entry) return NULL;
+	memset(entry, 0, sizeof(*entry));
+	entry->input = closure;
+	if (pg_index_insert(&context->results, &entry->index, hash) != 0) return NULL;
+	if (!closure.environment) entry->result = closure.term;
+	else {
+		entry->next = context->pending;
+		context->pending = entry;
 	}
-	case PG_LAMBDA: {
-		const struct pg_object *binder = pg_binder(graph);
-		const struct pg_term *variable = pg_reference(graph, binder);
-		if (!variable) return NULL;
-		struct pg_environment *environment = pg_alloc(&context->temporary, sizeof(*environment));
-		if (!environment) return NULL;
-		*environment = (struct pg_environment){term->as.lambda.binder, {variable, NULL}, closure.environment};
-		const struct pg_term *body = reify(context, (struct pg_closure){term->as.lambda.body, environment});
-		return pg_lambda(graph, binder, body);
-	}
-	}
-	return NULL;
+	return entry;
 }
 
 static const struct pg_term *reify(struct readback_context *context, struct pg_closure closure)
 {
-	if (!closure.environment) return closure.term;
-	uint64_t hash = ((uintptr_t)closure.term * UINT64_C(1099511628211)) ^ (uintptr_t)closure.environment;
-	for (struct pg_index_entry *candidate = pg_index_candidates(&context->results, hash); candidate; candidate = candidate->next) {
-		if (candidate->hash != hash) continue;
-		const struct readback_entry *entry = (const struct readback_entry *)candidate;
-		if (entry->input.term != closure.term) continue;
-		if (entry->input.environment == closure.environment) return entry->result;
+	struct readback_entry *root = reify_request(context, closure);
+	if (!root) return NULL;
+	while (context->pending) {
+		struct readback_entry *entry = context->pending;
+		const struct pg_term *term = entry->input.term;
+		const struct pg_environment *environment = entry->input.environment;
+		if (!entry->stage) {
+			struct pg_closure child;
+			switch (term->kind) {
+			case PG_REFERENCE: {
+				const struct pg_closure *image = lookup(environment, term->as.reference);
+				if (!image) { entry->result = term; break; }
+				child = *image;
+				break;
+			}
+			case PG_APPLICATION:
+				child = (struct pg_closure){term->as.application.function, environment};
+				break;
+			case PG_LAMBDA: {
+				entry->binder = pg_binder(context->output);
+				const struct pg_term *variable = pg_reference(context->output, entry->binder);
+				struct pg_environment *extended = pg_alloc(&context->temporary, sizeof(*extended));
+				if (!variable || !extended) return NULL;
+				*extended = (struct pg_environment){term->as.lambda.binder, {variable, NULL}, environment};
+				child = (struct pg_closure){term->as.lambda.body, extended};
+				break;
+			}
+			default: return NULL;
+			}
+			entry->stage = 1;
+			if (!entry->result) {
+				entry->left = reify_request(context, child);
+				if (!entry->left) return NULL;
+				continue;
+			}
+		}
+		if (!entry->result) {
+			if (!entry->left->result) return NULL;
+			switch (term->kind) {
+			case PG_REFERENCE: entry->result = entry->left->result; break;
+			case PG_LAMBDA:
+				entry->result = pg_lambda(context->output, entry->binder, entry->left->result);
+				break;
+			case PG_APPLICATION:
+				if (entry->stage == 1) {
+					entry->stage = 2;
+					entry->right = reify_request(context,
+						(struct pg_closure){term->as.application.argument, environment});
+					if (!entry->right) return NULL;
+					continue;
+				}
+				entry->result = pg_application(context->output, entry->left->result, entry->right->result);
+				break;
+			}
+		}
+		if (!entry->result) return NULL;
+		context->pending = entry->next;
 	}
-	const struct pg_term *result = reify_node(context, closure);
-	if (!result) return NULL;
-	struct readback_entry *entry = pg_alloc(&context->temporary, sizeof(*entry));
-	if (!entry) return NULL;
-	entry->input = closure;
-	entry->result = result;
-	if (pg_index_insert(&context->results, &entry->index, hash) != 0) return NULL;
-	return result;
+	return root->result;
 }
 
 static const struct pg_term *readback(struct pg_closure closure,

@@ -988,6 +988,12 @@ static void substitution_test(struct pg_graph *graph)
 		expected = pg_application(graph, expected, expected);
 	}
 	assert(pg_term_substitute(graph, dag, 1, bindings) == expected);
+	/* Deep shared structure must use heap work frames, not C recursion. */
+	for (size_t i = 0; i < 50000; ++i) {
+		dag = pg_application(graph, dag, dag);
+		expected = pg_application(graph, expected, expected);
+	}
+	assert(pg_term_substitute(graph, dag, 1, bindings) == expected);
 	struct pg_binding_value shadow[] = {{x, vy}, {x, vx}};
 	assert(pg_term_substitute(graph, vx, 2, shadow) == vx);
 	assert(!pg_term_substitute(graph, NULL, 0, NULL));
