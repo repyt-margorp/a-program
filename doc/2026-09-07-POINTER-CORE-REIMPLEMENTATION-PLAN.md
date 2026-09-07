@@ -491,6 +491,36 @@ a specified type family, not a global endpoint-only relation.
   Verified with the complete pointer `make check` in optimized and ASan/UBSan
   builds and `identity_test` with a 512 KiB stack. Parser inventory checks
   still do not establish end-to-end semantic acceptance of legacy examples.
+- [x] September 8, after `41cf2ac`: the pure action reducer now consumes
+  complete boundary triples for curried Lambda binders. A bound variable
+  selects its supplied center; a free constant uses diagonal action. APP
+  passes the argument's two endpoint substitutions and its action to the
+  function action. Multiple curried variables use one direction rather than
+  accidentally iterating refl. Incomplete triples and unreduced higher-action
+  heads stay neutral. RETURN/THUNK and F/U/Pi family-body rules use the same
+  scope machinery; no new Core tag, recursive graph copier or typed lookup.
+  Administrative lambdas delegate capture avoidance to the existing evaluator.
+  Variable/constant selection does not allocate fresh boundary binders.
+  A scope rewrite is one semantic transition with work proportional to its
+  curried arity; this is not a per-node or wall-clock fuel bound. Fine-grained
+  scope preparation, like demand readback, remains a budget-accounting task.
+  Tests cover binder selection, ignored divergent endpoints, lexical capture,
+  two curried binders, composition, selected p/q, split budgets, and F/U family
+  computation. Checked functions `lambda x. RETURN x` and its APP composition
+  yield the supplied path via ordinary Pi conversion/APP; both result terms
+  and classifiers compare with independently checked `RETURN p`.
+  The checked family `C(Z)=Pi e:Z. F Z` also computes across distinct A/B to
+  `Pi x0:A. Pi x1:B. Pi p01:R x0 x1. F(R x0 x1)` for the selected R.
+  Changing R to S does not convert to the same expanded type.
+  This does not finish arbitrary higher action or its coherence. In particular
+  action on an already acted source remains neutral; neutral U observation,
+  FORCE/FOLD action laws and transport are not supplied by this change.
+  Typed synthesis still needs shared action-derivation jobs to expose these
+  results automatically: untyped normalization alone cannot invent evidence.
+  Verification: optimized and ASan/UBSan pointer `make check` pass, including
+  the 158 parser outcomes. `identity_test` also passes with a 512 KiB stack,
+  including a 2048-variable curried action. These are fragment tests, not a
+  general coherence or end-to-end legacy-program acceptance proof.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

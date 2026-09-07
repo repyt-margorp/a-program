@@ -18,8 +18,9 @@ const struct pg_term *pg_identity_apply(struct pg_graph *graph, const struct pg_
 /* Recognize homogeneous (refl A) x y, not an arbitrary family R x y. */
 int pg_identity_view(const struct pg_term *term, const struct pg_term **type,
 	const struct pg_term **left, const struct pg_term **right);
-/* Fixed pure action equations for RETURN/THUNK, canonical F/U endpoints and
- * homogeneous Pi Identity. Pi endpoints are retained without execution.
+/* Fixed pure action equations for curried Lambda/APP, RETURN/THUNK and
+ * F/U/Pi family bodies. Boundary triples share one direction; repeated refl
+ * remains distinct. Pi endpoints are retained without execution.
  * Unknown sources/families stay neutral. No classifier or proof lookup. */
 int pg_identity_dispatch(struct pg_eval *machine);
 
