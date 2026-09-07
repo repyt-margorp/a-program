@@ -50,4 +50,11 @@ const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 const struct pg_binding_face *pg_binding_restrict(struct pg_dimensions *dimensions,
 	const struct pg_binding_face *binding, const struct pg_dimension_map *face);
 
+/* Substitute the listed free boundary bindings along a strict face. Other
+ * references are unchanged. This is syntactic restriction, not typed Act,
+ * transport, or restriction of an opaque semantic object's internal data. */
+const struct pg_term *pg_term_restrict_bindings(struct pg_dimensions *dimensions,
+	const struct pg_term *term, const struct pg_dimension_map *face,
+	size_t count, const struct pg_binding_face *const *bindings);
+
 #endif

@@ -273,6 +273,20 @@ together. Check compatibility of iterated restrictions on shared faces and
 commutation with substitution/beta. Share the graph traversal machinery, but do
 not equate ordinary variable substitution with dimension restriction.
 
+`pg_term_restrict_bindings` connects strict-face restriction of explicitly
+listed free boundary bindings to the common term-substitution traversal.
+It leaves unlisted references and opaque semantic data untouched. Identity
+restriction preserves the original pointer; composed restrictions can produce
+distinct alpha-equivalent lambda nodes because capture avoidance freshens
+binders. No normalization or alpha interning is used to merge them.
+
+- [x] Term-level fixture checks for identity restriction, a square-to-corner
+  composite, beta/restriction commutation and protection of bound variables.
+  Ordinary and ASan/UBSan checks pass; these are examples, not a general proof.
+- [ ] Classifier/context action and restriction inside semantic owners remain
+  unimplemented. The helper rejects degeneracies: forming a higher witness
+  cannot be replaced by generating another free boundary variable.
+
 **Identity.** Generate identity families and witnesses from this action rather
 than adding an unrelated `Obs(left_type,right_type,left,right)` authority.
 For heterogeneous identification retain the chosen family/correspondence and

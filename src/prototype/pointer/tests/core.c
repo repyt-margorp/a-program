@@ -126,6 +126,51 @@ static void context_test(struct pg_graph *graph)
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
 }
 
+static void restriction_test(struct pg_graph *graph)
+{
+	struct pg_dimensions dimensions;
+	assert(pg_dimensions_init(&dimensions, graph) == 0);
+	const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, 2);
+	const struct pg_dimension_map *identity = pg_dimension_identity(&dimensions, 2);
+	const struct pg_binding_face *center = pg_binding_face(&dimensions, cube, identity);
+	const struct pg_coordinate edge_coordinates[] = {{PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
+	const struct pg_dimension_map *edge_map = pg_dimension_map(&dimensions, 1, 2, edge_coordinates);
+	const struct pg_coordinate zero_coordinate = {PG_ENDPOINT_ZERO, 0};
+	const struct pg_dimension_map *zero = pg_dimension_map(&dimensions, 0, 1, &zero_coordinate);
+	const struct pg_binding_face *edge = pg_binding_restrict(&dimensions, center, edge_map);
+	const struct pg_binding_face *corner = pg_binding_restrict(&dimensions, edge, zero);
+	assert(center && edge && corner);
+	const struct pg_term *variable = pg_reference(graph, &center->variable);
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x);
+	const struct pg_term *lambda = pg_lambda(graph, x, pg_application(graph, vx, variable));
+	assert(pg_term_restrict_bindings(&dimensions, lambda, identity, 1, &center) == lambda);
+	const struct pg_term *edge_term = pg_term_restrict_bindings(&dimensions, lambda, edge_map, 1, &center);
+	const struct pg_term *iterated = pg_term_restrict_bindings(&dimensions, edge_term, zero, 1, &edge);
+	const struct pg_dimension_map *composite = pg_dimension_compose(&dimensions, edge_map, zero);
+	const struct pg_term *direct = pg_term_restrict_bindings(&dimensions, lambda, composite, 1, &center);
+	assert(iterated && direct && pg_alpha_equal(iterated, direct) == 1);
+	assert(direct->as.lambda.body->as.application.argument == pg_reference(graph, &corner->variable));
+	/* Restricting before or after beta yields the same free boundary cell. */
+	const struct pg_term *redex = pg_application(graph, pg_lambda(graph, x, vx), variable);
+	const struct pg_term *restricted = pg_term_restrict_bindings(&dimensions, redex, composite, 1, &center);
+	assert(restricted && restricted->kind == PG_APPLICATION);
+	struct pg_eval machine;
+	pg_eval_init(&machine, restricted);
+	assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, graph) == pg_term_restrict_bindings(&dimensions, variable, composite, 1, &center));
+	pg_eval_destroy(&machine);
+	/* A lambda-bound occurrence is not a free cube boundary occurrence. */
+	const struct pg_term *bound = pg_lambda(graph, &center->variable, variable);
+	assert(pg_alpha_equal(bound, pg_term_restrict_bindings(&dimensions, bound, composite, 1, &center)) == 1);
+	assert(!pg_term_restrict_bindings(&dimensions, variable, zero, 1, &center));
+	const struct pg_coordinate projection_coordinates[] = {{PG_AXIS, 0}};
+	const struct pg_dimension_map *projection = pg_dimension_map(&dimensions, 2, 1, projection_coordinates);
+	assert(!pg_term_restrict_bindings(&dimensions, variable, projection, 0, NULL));
+	pg_dimensions_destroy(&dimensions);
+	puts("restriction: term faces compose and commute with beta without capturing bound variables");
+}
+
 static void conversion_test(struct pg_graph *graph)
 {
 	struct pg_beta_work work;
@@ -456,6 +501,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	graph_test(&graph);
 	context_test(&graph);
+	restriction_test(&graph);
 	conversion_test(&graph);
 	beta_work_test(&graph);
 	substitution_test(&graph);

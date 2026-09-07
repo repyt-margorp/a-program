@@ -1,4 +1,5 @@
 #include "dimension.h"
+#include "eval.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -137,16 +138,21 @@ const struct pg_binding_cube *pg_binding_cube(struct pg_dimensions *dimensions, 
 	return cube;
 }
 
+static int is_face(const struct pg_dimension_map *face)
+{
+	size_t used_axes = 0;
+	for (size_t i = 0; i < face->target; ++i) {
+		if (face->coordinates[i].kind == PG_AXIS) used_axes++;
+	}
+	return used_axes == face->source;
+}
+
 const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 	const struct pg_binding_cube *cube, const struct pg_dimension_map *face)
 {
 	if (!cube || !face) return NULL;
 	if (cube->dimension != face->target) return NULL;
-	size_t used_axes = 0;
-	for (size_t i = 0; i < face->target; ++i) {
-		if (face->coordinates[i].kind == PG_AXIS) used_axes++;
-	}
-	if (used_axes != face->source) return NULL;
+	if (!is_face(face)) return NULL;
 	uint64_t hash = mix(mix(UINT64_C(14695981039346656037), (uintptr_t)cube), (uintptr_t)face);
 	for (struct pg_index_entry *candidate = pg_index_candidates(&dimensions->binding_faces, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
@@ -167,4 +173,30 @@ const struct pg_binding_face *pg_binding_restrict(struct pg_dimensions *dimensio
 	if (!binding) return NULL;
 	const struct pg_dimension_map *composite = pg_dimension_compose(dimensions, binding->face, face);
 	return pg_binding_face(dimensions, binding->cube, composite);
+}
+
+const struct pg_term *pg_term_restrict_bindings(struct pg_dimensions *dimensions,
+	const struct pg_term *term, const struct pg_dimension_map *face,
+	size_t count, const struct pg_binding_face *const *bindings)
+{
+	if (!term || !face) return NULL;
+	if (!is_face(face)) return NULL;
+	if (count && !bindings) return NULL;
+	if (count > SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
+	struct pg_binding_value *values = calloc(count ? count : 1, sizeof(*values));
+	if (!values) return NULL;
+	size_t changed = 0;
+	const struct pg_term *result = NULL;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_binding_face *restricted = pg_binding_restrict(dimensions, bindings[i], face);
+		if (!restricted) goto done;
+		if (restricted == bindings[i]) continue;
+		const struct pg_term *value = pg_reference(dimensions->graph, &restricted->variable);
+		if (!value) goto done;
+		values[changed++] = (struct pg_binding_value){&bindings[i]->variable, value};
+	}
+	result = pg_term_substitute(dimensions->graph, term, changed, values);
+done:
+	free(values);
+	return result;
 }
