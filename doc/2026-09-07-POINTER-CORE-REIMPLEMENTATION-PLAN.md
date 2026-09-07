@@ -222,9 +222,14 @@ and explicit alpha comparison, never by modifying interned node identity.
   checks structural alpha equality of its body classifier rather than exact
   pointer identity. No nodes are merged; nonstructural conversion still needs
   explicit evidence. This is a binder-renaming rule, not WHNF interning.
+- [x] Sequenced arguments use the same resumable classifier comparison as
+  ordinary value arguments. A block returning a quoted identity function can
+  be passed to a higher-order function even when its Pi binder pointers differ;
+  the continuation's APP retains explicit conversion evidence. A genuinely
+  different result type is rejected. Block and argument sequencing share
+  continuation opening/closing through the existing checked proof rules.
 - [ ] Add operation clauses, effect rows/forwarding, dependent sequencing and
-  conversion when a sequenced argument's result classifier is not the exact
-  function domain. Those cases remain unsupported by this initial path.
+  remaining computed-callee cases. These remain unsupported by this initial path.
 
 Memoization keys include the semantic reference policy and captured environment
 when relevant. Never memoize a dispatched effect as if repeated force were pure.

@@ -74,6 +74,18 @@ int main(void)
 	const struct pg_term *expected = pg_application(&graph, pg_reference(&graph, &pg_return_operation), pg_reference(&graph, x));
 	assert(pg_eval_readback(&machine, &graph) == expected);
 	pg_eval_destroy(&machine);
+	const struct pg_evidence *sequenced_higher = complete(&synthesis, request(&synthesis, scope,
+		"main := (\\f : A -> A => f x) { &(\\y : A => y); };"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(sequenced_higher) == PG_FOLD_ELIM);
+	const struct pg_evidence *sequence_body = pg_evidence_premise(pg_evidence_premise(sequenced_higher, 1), 1);
+	assert(pg_evidence_rule(sequence_body) == PG_APP_ELIM);
+	assert(pg_evidence_rule(pg_evidence_premise(sequence_body, 1)) == PG_TYPE_CONVERSION);
+	pg_computation_eval_init(&machine, &graph, pg_evidence_subject(sequenced_higher)->core);
+	assert(pg_eval_advance(&machine, 300) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, &graph) == expected);
+	pg_eval_destroy(&machine);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := (\\f : A -> A => f x) { &(\\y : A => A); };"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *checked = complete(&synthesis,
 		request(&synthesis, scope, "main := (\\y : A => y) :: A -> A;"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_rule(checked) == PG_TYPE_CONVERSION);
