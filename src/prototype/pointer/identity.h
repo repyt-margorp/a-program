@@ -33,7 +33,9 @@ int pg_identity_view(const struct pg_term *term, const struct pg_term **type,
  * Diagonal value transport returns its input; diagonal lifting acts on it.
  * For an acted U(F A) family, all four fields on THUNK(RETURN(v)) reduce
  * to THUNK(RETURN(the corresponding field of the acted A on v)). Other
- * quoted computations are not forced to expose this canonical equation.
+ * thunks transport by THUNK(FOLD(FORCE(u), lambda x. RETURN(tr A x))).
+ * Quoted computations are never forced while constructing this map;
+ * general lifting on non-returned thunks remains neutral.
  * Unknown sources/families stay neutral. No classifier or proof lookup. */
 int pg_identity_dispatch(struct pg_eval *machine);
 

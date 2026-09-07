@@ -365,7 +365,7 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	return enter_action(machine, &scope, result, 0);
 }
 
-static int returned_thunk_family(const struct pg_term *family,
+static int thunk_return_family(const struct pg_term *family,
 	struct action_scope *scope, const struct pg_term **content)
 {
 	const struct pg_term *source;
@@ -381,20 +381,28 @@ static int returned_thunk_family(const struct pg_term *family,
 	return pg_thunk_type_view(scope->body, &computation) && pg_return_type_view(computation, content);
 }
 
-static int returned_thunk_field(struct pg_eval *machine, const struct pg_term *value)
+static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value)
 {
 	const struct pg_term *body = unary_argument(value, &pg_thunk_operation);
 	const struct pg_term *payload = body ? unary_argument(body, &pg_return_operation) : NULL;
-	if (!payload) return 1;
+	int field = field_index(machine->current.term->as.reference);
+	if (!payload && field >= 2) return 1;
 	struct action_scope scope;
 	const struct pg_term *content, *family = pg_eval_argument(machine, 0)->term;
-	if (!returned_thunk_family(family, &scope, &content)) return -1;
+	if (!thunk_return_family(family, &scope, &content)) return -1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
-	int field = field_index(machine->current.term->as.reference);
+	const struct pg_object *binder = payload ? NULL : pg_binder(graph);
 	const struct pg_term *result = identity_field(graph, acted_body(graph, &scope, content),
-		payload, (enum pg_identity_direction)(field % 2), field / 2);
+		payload ? payload : pg_reference(graph, binder), (enum pg_identity_direction)(field % 2), field / 2);
 	result = pg_application(graph, pg_reference(graph, &pg_return_operation), result);
+	if (binder) {
+		/* Suspend the map. The input computation occurs once, and is not run
+		 * while transporting its thunk. General dependent lifting is separate. */
+		const struct pg_term *source = pg_application(graph, pg_reference(graph, &pg_force_operation), value);
+		result = pg_application(graph,
+			pg_application(graph, pg_reference(graph, &pg_fold_operation), source), pg_lambda(graph, binder, result));
+	}
 	result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), result);
 	size_t count = 3 * scope.count;
 	const struct pg_term **arguments = pg_alloc(&machine->temporary, count * sizeof(*arguments));
@@ -412,8 +420,8 @@ static int field_answer(struct pg_eval *machine, const struct pg_term *family)
 	const struct pg_term *type;
 	if (!pg_identity_action_view(family, &type)) {
 		struct action_scope scope;
-		if (!returned_thunk_family(family, &scope, &type)) return 1;
-		return pg_eval_demand(machine, 1, returned_thunk_field);
+		if (!thunk_return_family(family, &scope, &type)) return 1;
+		return pg_eval_demand(machine, 1, thunk_return_field);
 	}
 	struct pg_closure value = *pg_eval_argument(machine, 1);
 	if (field_index(machine->current.term->as.reference) < 2)

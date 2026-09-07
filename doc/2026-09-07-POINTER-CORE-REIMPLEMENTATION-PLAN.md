@@ -1273,6 +1273,42 @@ a specified type family, not a global endpoint-only relation.
   core/Identity/synthesis/IADT pass at 512 KiB.
   Implementation `computation.c` +54/-11, `computation.h` +3/-0,
   `identity.c` +5/-0 (net +51); tests `core.c` +74/-2; docs separate.
+- [x] September 8, after `8387b88`: transport suspended U/F computations.
+  For `Q = Act(lambda A. U(F A)) A0 A1 R`, either transport direction on
+  `u : U(F A_source)` constructs
+  `THUNK(FOLD(FORCE(u), lambda x. RETURN(tr_direction(R, x))))`.
+  This uses the existing nondependent FOLD: its result type `F A_target`
+  does not depend on `x`. Source computation occurs once under suspension.
+  The previous canonical returned-thunk equation remains a specialization;
+  lifting of an unknown suspended computation still stays neutral.
+  No new Core tag, evidence rule, handler, Replay path or type lookup is added.
+  Tests independently derive the mapped thunk with ordinary accepted Pi,
+  FORCE/FOLD/RETURN/THUNK rules for both directions and two selected paths.
+  They check classifiers, normalization evidence, substitution after mapping,
+  capture, split budgets, beta-only isolation and suspended divergence.
+  A runtime-only counting dispatcher observes zero executions on transport
+  and exactly one per force; it never enters the pure memo/evidence store.
+  The neutral mapped-thunk comparison fails with the `8387b88` identity source.
+  Optimized pointer `make check`: 7.535 s; ASan/UBSan: 17.061 s (both rebuild
+  affected binaries); core/Identity/synthesis/IADT pass at 512 KiB stack.
+  Implementation `identity.c` +16/-8, `identity.h` +3/-1 (net +10);
+  tests `identity.c` +87/-5; documentation separate. N2/N3 remain open.
+- [ ] Close the conversion gap exposed by neutral U/F transport before
+  claiming its substitution/degeneracy equations complete. With `R = refl A`,
+  direct transport computes to `u`, whereas the separately built map retains
+  `THUNK(FOLD(FORCE(u), lambda x. RETURN(tr(refl A, x))))` at WHNF.
+  Reducing the continuation body would expose the right unit, but the current
+  pair comparator rejects the outer shape mismatch before this contraction.
+  Reproduced by calling `thunk_transport(typing, classifiers, scope,
+  diagonal, x, x)` after constructing `diagonal` in `transport_fields`:
+  its independently typed map comparison fails in `converts`.
+  This is incomplete conversion, not evidence of mathematical inequality.
+  Resolve it through budgeted pure equational comparison/reduction, shared
+  with existing evaluation; do not eagerly execute discarded continuations
+  in the runtime evaluator or add a `map refl`-specific acceptance exception.
+  General dependent lifting and higher field action/coherence remain separate
+  obligations. Rechecked the primary Narya transport/lifting section linked
+  below; this U/F adaptation and its remaining conversion work are our own.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

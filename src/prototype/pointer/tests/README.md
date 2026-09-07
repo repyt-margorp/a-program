@@ -27,8 +27,12 @@ higher coherence or observational adequacy.
 Canonical U/F field tests compute transport/lifting of a returned thunk along
 two chosen universe paths, in both directions. Independently derived target
 terms/classifiers agree; lexical capture, split fuel and beta-only isolation
-are checked. A divergent quoted body remains suspended. These tests do not
-establish arbitrary-thunk transport, dependent lifting or U/F eta coherence.
+are checked. General U/F transport also agrees with an independently typed
+THUNK/FORCE/FOLD map of a neutral thunk, including substitution after mapping.
+A divergent quoted body remains suspended; a separate runtime probe runs its
+source exactly once per force, never during transport or through a pure cache.
+General dependent lifting and conversion-complete U/F eta coherence remain
+open; the plan records the failing neutral `map refl` conversion experiment.
 
 `iadt.c` tests erased constructor/Match references, pointer-labelled clause
 selection, saturation, capture, lazy fields/branches and policy isolation.
