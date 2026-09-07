@@ -241,16 +241,67 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 	return producer->result;
 }
 
+static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
+
+enum return_stage { RETURN_REDUCING, RETURN_CONTEXT_ACTION, RETURN_CONVERTING };
+
 static void return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (job->stage == RETURN_CONVERTING) {
+		job->result = compare(synthesis, job);
+		if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
+		return;
+	}
 	if (!job->checking_term) job->checking_term = job->inputs[1];
 	if (job->left) {
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		if (job->stage == RETURN_CONTEXT_ACTION) {
+			const struct pg_evidence *premise = pg_evidence_premise(job->checking_term, 0);
+			switch (pg_evidence_rule(job->checking_term)) {
+			case PG_CONTEXT_PROJECTION:
+				job->result = pg_prove_projection(synthesis->typing, premise, job->left->result);
+				break;
+			case PG_REINDEX:
+				job->result = pg_prove_reindex(synthesis->typing, premise, job->left->result);
+				break;
+			case PG_TYPE_CONVERSION:
+				job->checking_type = pg_prove_return_content(synthesis->typing,
+					pg_evidence_premise(job->checking_term, 1));
+				if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+				job->checking_term = job->left->result;
+				job->left = NULL;
+				job->stage = RETURN_CONVERTING;
+				job->next = synthesis->ready;
+				synthesis->ready = job;
+				return;
+			default: finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+			}
+			finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+			return;
+		}
 		job->checking_term = job->left->result;
 		job->left = NULL;
 	}
 	job->result = pg_prove_return_value(synthesis->typing, job->checking_term);
 	if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+	switch (pg_evidence_rule(job->checking_term)) {
+	case PG_TYPE_CONVERSION:
+		job->left = pg_synthesis_return(synthesis, job->inputs[0], pg_evidence_premise(job->checking_term, 0));
+		job->stage = RETURN_CONTEXT_ACTION;
+		depend(synthesis, job, job->left);
+		return;
+	case PG_CONTEXT_PROJECTION: case PG_REINDEX: {
+		struct pg_reduction step;
+		if (pg_prepare_reduction(synthesis->typing, job->inputs[0], job->checking_term, &step) != 0) {
+			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+		}
+		job->left = pg_synthesis_return(synthesis, step.context, step.input);
+		job->stage = RETURN_CONTEXT_ACTION;
+		depend(synthesis, job, job->left);
+		return;
+	}
+	default: break;
+	}
 	job->left = pg_synthesis_reduce(synthesis, job->inputs[0], job->checking_term);
 	depend(synthesis, job, job->left);
 }

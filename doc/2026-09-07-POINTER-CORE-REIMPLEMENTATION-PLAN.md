@@ -531,6 +531,19 @@ successful return codes as new-kernel certificates.
   still perform unbudgeted work. Different input derivations are deliberately
   distinct keys even when their Core happens to be shared. Effectful execution
   must not reuse a prior runtime result through this pure-work mechanism.
+- [x] Returned-value jobs preserve explicit computation conversion. For an
+  accepted `M : F B` obtained by conversion from `F A`, the job obtains the
+  checked value of the original computation, recovers `B` formation from the
+  target `F B`, and uses the existing resumable conversion checker to derive
+  the returned value at `B`. It neither discards the target classifier nor
+  treats the certificate for `F A = F B` as a certificate for `A = B`.
+  Projection/reindex wrappers resume the same returned-value requests in their
+  source contexts and apply the existing context rules to their results.
+  Tests cover source `::` inside computed annotations, conversion under beta
+  reindexing, distinct alpha-equivalent thunk-Pi classifiers, preservation of
+  original proofs, context actions and completed-job reuse. Converted FORCE
+  and raw-Pi evaluation remain separate outstanding cases; this is not a
+  blanket rule erasing conversion evidence from every computation.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation

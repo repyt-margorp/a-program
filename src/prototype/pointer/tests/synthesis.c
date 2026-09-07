@@ -218,6 +218,16 @@ int main(void)
 		"main := A -> ((\\T : @ => T) A);"), PG_SYNTHESIS_DONE);
 	assert(pg_pi_view(pg_evidence_subject(computed_codomain)->core, &domain, &binder, &codomain));
 	assert(pg_return_type_view(codomain, &codomain) && codomain == pg_reference(&graph, a));
+	const char *checked_types[] = {
+		"main := \\y : (((\\T : @ => T) A) :: @) => y;",
+		"main := \\y : ((\\T : @ => (T :: @)) A) => y;",
+		"main := \\y : ((\\T : @ => ((\\S : @ => S) T) :: @) A) => y;"
+	};
+	for (size_t i = 0; i < sizeof(checked_types) / sizeof(*checked_types); ++i) {
+		const struct pg_evidence *checked_type = complete(&synthesis,
+			request(&synthesis, scope, checked_types[i]), PG_SYNTHESIS_DONE);
+		assert(pg_alpha_equal(pg_evidence_classifier(checked_type), pg_evidence_classifier(computed_domain)) == 1);
+	}
 	const struct pg_evidence *computed_expect = complete(&synthesis, request(&synthesis, scope,
 		"main := x :: ((\\T : @ => T) ((\\S : @ => S) A));"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(computed_expect)->core == pg_reference(&graph, x));
@@ -228,6 +238,42 @@ int main(void)
 	assert(domain == pg_reference(&graph, a));
 	complete(&synthesis, request(&synthesis, scope,
 		"main := \\y : ((\\z : A => z) x) => y;"), PG_SYNTHESIS_REJECTED);
+	const struct pg_evidence *original_quote = pg_prove_thunk(&typing, &classifiers, computed_domain);
+	const struct pg_evidence *original_return = pg_prove_return(&typing, &classifiers, original_quote);
+	const struct pg_evidence *target_quote_type = pg_prove_thunk_type(&typing, &classifiers,
+		pg_prove_classifier(&typing, &classifiers, x_context, computed_function_domain));
+	const struct pg_evidence *target_return_type = pg_prove_return_type(&typing, &classifiers, target_quote_type);
+	assert(pg_evidence_classifier(original_quote) != pg_evidence_subject(target_quote_type)->core);
+	struct pg_conversion return_conversion;
+	assert(pg_conversion_init(&return_conversion, &beta, pg_evidence_classifier(original_return),
+		pg_evidence_subject(target_return_type)->core) == 0);
+	while (pg_conversion_advance(&return_conversion, 1) == PG_CONVERSION_PENDING) {}
+	assert(pg_conversion_status(&return_conversion) == PG_CONVERSION_EQUAL);
+	const struct pg_evidence *converted_return = pg_prove_conversion(&typing, original_return,
+		target_return_type, pg_conversion_certificate(&return_conversion));
+	pg_conversion_destroy(&return_conversion);
+	assert(converted_return);
+	struct pg_synthesis_job *converted_value_job = pg_synthesis_return(&synthesis, x_context, converted_return);
+	const struct pg_evidence *converted_value = complete(&synthesis, converted_value_job, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(converted_value) == PG_TYPE_CONVERSION);
+	assert(pg_evidence_classifier(converted_value) == pg_evidence_subject(target_quote_type)->core);
+	assert(pg_evidence_subject(converted_value) == pg_evidence_subject(original_quote));
+	assert(pg_evidence_classifier(original_quote) != pg_evidence_classifier(converted_value));
+	assert(pg_evidence_conversion(converted_value) != pg_evidence_conversion(converted_return));
+	const struct pg_evidence *projected_conversion = pg_prove_projection(&typing, extra_context, converted_return);
+	const struct pg_evidence *projected_value = complete(&synthesis,
+		pg_synthesis_return(&synthesis, extra_context, projected_conversion), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_context(projected_value) == pg_evidence_context(extra_context));
+	assert(pg_evidence_classifier(projected_value) == pg_evidence_classifier(converted_value));
+	const struct pg_evidence *reindexed_conversion = pg_prove_reindex(&typing, sigma, converted_return);
+	const struct pg_evidence *reindexed_value = complete(&synthesis,
+		pg_synthesis_return(&synthesis, x_context, reindexed_conversion), PG_SYNTHESIS_DONE);
+	assert(pg_return_type_view(pg_evidence_classifier(reindexed_conversion), &codomain));
+	assert(pg_alpha_equal(pg_evidence_classifier(reindexed_value), codomain) == 1);
+	uint64_t conversion_steps = synthesis.steps;
+	assert(pg_synthesis_return(&synthesis, x_context, converted_return) == converted_value_job);
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(synthesis.steps == conversion_steps);
 	struct pg_synthesis_job *batched_type = request(&synthesis, scope,
 		"main := \\y : ((\\T : @ => \\S : @ => S) A A) => y;");
 	pg_synthesis_advance(&synthesis, 0);
