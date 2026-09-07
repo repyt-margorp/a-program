@@ -995,6 +995,53 @@ static void substitution_test(struct pg_graph *graph)
 	}
 	assert(pg_term_substitute(graph, dag, 1, bindings) == expected);
 	struct pg_binding_value shadow[] = {{x, vy}, {x, vx}};
+	struct pg_substitution split, whole;
+	assert(pg_substitution_init(&split, graph, dag, 1, bindings) == 0);
+	assert(pg_substitution_init(&whole, graph, dag, 1, bindings) == 0);
+	assert(!pg_substitution_result(&split));
+	assert(pg_substitution_advance(&split, 0) == PG_SUBSTITUTION_PENDING);
+	assert(pg_substitution_steps(&split) == 0);
+	while (pg_substitution_status(&split) == PG_SUBSTITUTION_PENDING) {
+		assert(!pg_substitution_result(&split));
+		uint64_t steps = pg_substitution_steps(&split);
+		pg_substitution_advance(&split, 7);
+		assert(pg_substitution_steps(&split) - steps <= 7);
+	}
+	assert(pg_substitution_advance(&whole, UINT64_MAX) == PG_SUBSTITUTION_DONE);
+	assert(pg_substitution_result(&split) == expected);
+	assert(pg_substitution_result(&whole) == expected);
+	assert(pg_substitution_steps(&split) == pg_substitution_steps(&whole));
+	uint64_t complete_steps = pg_substitution_steps(&split);
+	assert(pg_substitution_advance(&split, 100) == PG_SUBSTITUTION_DONE);
+	assert(pg_substitution_steps(&split) == complete_steps);
+	pg_substitution_destroy(&split);
+	pg_substitution_destroy(&whole);
+	assert(pg_substitution_status(&split) == PG_SUBSTITUTION_ERROR);
+	assert(!pg_substitution_result(&split));
+	assert(pg_substitution_init(&split, graph, lambda, 1, bindings) == 0);
+	assert(pg_substitution_advance(&split, 1) == PG_SUBSTITUTION_PENDING);
+	pg_substitution_destroy(&split);
+	assert(pg_substitution_init(&split, graph, lambda, 1, bindings) == 0);
+	while (pg_substitution_advance(&split, 1) == PG_SUBSTITUTION_PENDING)
+		assert(!pg_substitution_result(&split));
+	result = pg_substitution_result(&split);
+	assert(result && result->kind == PG_LAMBDA);
+	assert(result->as.lambda.binder != y && result->as.lambda.body == vy);
+	pg_substitution_destroy(&split);
+	struct pg_binding_value lookup_bindings[32];
+	lookup_bindings[0] = (struct pg_binding_value){x, vy};
+	for (size_t i = 1; i < 32; ++i) lookup_bindings[i] = (struct pg_binding_value){y, vx};
+	assert(pg_substitution_init(&split, graph, vx, 32, lookup_bindings) == 0);
+	lookup_bindings[0].value = vx; /* Initialization owns its binding snapshot. */
+	for (size_t i = 0; i < 31; ++i) {
+		assert(pg_substitution_advance(&split, 1) == PG_SUBSTITUTION_PENDING);
+		assert(pg_substitution_steps(&split) == i + 1);
+	}
+	assert(pg_substitution_advance(&split, 2) == PG_SUBSTITUTION_DONE);
+	assert(pg_substitution_result(&split) == vy);
+	pg_substitution_destroy(&split);
+	assert(pg_substitution_init(&split, graph, vx, 1, NULL) != 0);
+	pg_substitution_destroy(&split);
 	assert(pg_term_substitute(graph, vx, 2, shadow) == vx);
 	assert(!pg_term_substitute(graph, NULL, 0, NULL));
 	assert(!pg_term_substitute(graph, vx, 1, NULL));

@@ -616,9 +616,19 @@ successful return codes as new-kernel certificates.
   A depth-50,040 shared APP graph substitutes successfully, including with a
   512 KiB process stack. Existing closure, conversion, restriction and typed
   evaluation tests exercise this same implementation, not a separate fast path.
-- [ ] Make these work frames resumable under fuel. The current public readback
-  and substitution calls still finish synchronously. Environment lookup remains
-  linear, and other recursive traversals are not covered by this stack test.
+- [x] Expose resumable substitution using these same work frames. Initialization
+  snapshots the binding array without walking the input term; `advance` counts
+  traversal transitions and each environment lookup link. Pending jobs expose
+  no result. The synchronous substitution API drives this same engine to
+  completion; no second substitution semantics is introduced. Tests compare
+  split versus whole budgets and total steps on the deep shared graph, Lambda
+  capture avoidance, long environment lookup, binding snapshot isolation,
+  zero fuel, completion reuse, and destruction of suspended work.
+- [ ] Thread resumable substitution through typed evidence/synthesis work and
+  budget evaluation readback. Those call sites still use synchronous wrappers.
+  Initialization validates/copies bindings synchronously; allocation and hash
+  maintenance are not wall-clock bounded. Other recursive traversals are not
+  covered by the stack test. This does not complete end-to-end compiler fuel.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation

@@ -43,6 +43,20 @@ struct pg_binding_value {
 	const struct pg_object *binder;
 	const struct pg_term *value;
 };
+struct pg_substitution_state;
+struct pg_substitution { struct pg_substitution_state *state; };
+enum pg_substitution_status { PG_SUBSTITUTION_PENDING, PG_SUBSTITUTION_DONE, PG_SUBSTITUTION_ERROR };
+/* Initialization copies binding entries but does not traverse the term.
+ * Fuel counts traversal transitions, including environment lookup links.
+ * Allocator/hash-table work is not a wall-clock bound. Inputs and output graph
+ * must outlive the job; completed output survives destroy. */
+int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
+enum pg_substitution_status pg_substitution_advance(struct pg_substitution *work, uint64_t budget);
+enum pg_substitution_status pg_substitution_status(const struct pg_substitution *work);
+uint64_t pg_substitution_steps(const struct pg_substitution *work);
+const struct pg_term *pg_substitution_result(const struct pg_substitution *work);
+void pg_substitution_destroy(struct pg_substitution *work);
 /* Capture-avoiding simultaneous substitution, without reduction. Later entries
  * shadow earlier entries for the same binder. Images are not resubstituted.
  * Input nodes and images must outlive the returned graph, as with readback. */

@@ -1,6 +1,7 @@
 #include "eval.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 struct pg_environment {
 	const struct pg_object *binder;
@@ -102,6 +103,7 @@ struct readback_entry {
 	struct readback_entry *next, *left, *right;
 	const struct pg_object *binder;
 	unsigned stage;
+	const struct pg_environment *cursor;
 };
 
 struct readback_context {
@@ -109,6 +111,7 @@ struct readback_context {
 	struct pg_graph temporary;
 	struct pg_index results;
 	struct readback_entry *pending;
+	uint64_t steps;
 };
 
 static const struct pg_closure *lookup(const struct pg_environment *environment,
@@ -193,6 +196,7 @@ static struct readback_entry *reify_request(struct readback_context *context, st
 	if (!entry) return NULL;
 	memset(entry, 0, sizeof(*entry));
 	entry->input = closure;
+	entry->cursor = closure.environment;
 	if (pg_index_insert(&context->results, &entry->index, hash) != 0) return NULL;
 	if (!closure.environment) entry->result = closure.term;
 	else {
@@ -202,11 +206,11 @@ static struct readback_entry *reify_request(struct readback_context *context, st
 	return entry;
 }
 
-static const struct pg_term *reify(struct readback_context *context, struct pg_closure closure)
+static int reify_advance(struct readback_context *context, uint64_t budget)
 {
-	struct readback_entry *root = reify_request(context, closure);
-	if (!root) return NULL;
-	while (context->pending) {
+	while (context->pending && budget) {
+		--budget;
+		++context->steps;
 		struct readback_entry *entry = context->pending;
 		const struct pg_term *term = entry->input.term;
 		const struct pg_environment *environment = entry->input.environment;
@@ -214,9 +218,12 @@ static const struct pg_term *reify(struct readback_context *context, struct pg_c
 			struct pg_closure child;
 			switch (term->kind) {
 			case PG_REFERENCE: {
-				const struct pg_closure *image = lookup(environment, term->as.reference);
-				if (!image) { entry->result = term; break; }
-				child = *image;
+				if (!entry->cursor) { entry->result = term; break; }
+				if (entry->cursor->binder != term->as.reference) {
+					entry->cursor = entry->cursor->parent;
+					continue;
+				}
+				child = entry->cursor->value;
 				break;
 			}
 			case PG_APPLICATION:
@@ -226,22 +233,22 @@ static const struct pg_term *reify(struct readback_context *context, struct pg_c
 				entry->binder = pg_binder(context->output);
 				const struct pg_term *variable = pg_reference(context->output, entry->binder);
 				struct pg_environment *extended = pg_alloc(&context->temporary, sizeof(*extended));
-				if (!variable || !extended) return NULL;
+				if (!variable || !extended) return -1;
 				*extended = (struct pg_environment){term->as.lambda.binder, {variable, NULL}, environment};
 				child = (struct pg_closure){term->as.lambda.body, extended};
 				break;
 			}
-			default: return NULL;
+			default: return -1;
 			}
 			entry->stage = 1;
 			if (!entry->result) {
 				entry->left = reify_request(context, child);
-				if (!entry->left) return NULL;
+				if (!entry->left) return -1;
 				continue;
 			}
 		}
 		if (!entry->result) {
-			if (!entry->left->result) return NULL;
+			if (!entry->left->result) return -1;
 			switch (term->kind) {
 			case PG_REFERENCE: entry->result = entry->left->result; break;
 			case PG_LAMBDA:
@@ -252,16 +259,26 @@ static const struct pg_term *reify(struct readback_context *context, struct pg_c
 					entry->stage = 2;
 					entry->right = reify_request(context,
 						(struct pg_closure){term->as.application.argument, environment});
-					if (!entry->right) return NULL;
+					if (!entry->right) return -1;
 					continue;
 				}
 				entry->result = pg_application(context->output, entry->left->result, entry->right->result);
 				break;
 			}
 		}
-		if (!entry->result) return NULL;
+		if (!entry->result) return -1;
 		context->pending = entry->next;
 	}
+	return context->pending ? 0 : 1;
+}
+
+static const struct pg_term *reify(struct readback_context *context, struct pg_closure closure)
+{
+	struct readback_entry *root = reify_request(context, closure);
+	if (!root) return NULL;
+	int status;
+	do { status = reify_advance(context, UINT64_MAX); } while (!status);
+	if (status < 0) return NULL;
 	return root->result;
 }
 
@@ -298,26 +315,84 @@ const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph 
 	return result;
 }
 
-const struct pg_term *pg_term_substitute(struct pg_graph *graph,
+struct pg_substitution_state {
+	struct readback_context context;
+	struct readback_entry *root;
+	enum pg_substitution_status status;
+};
+
+int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
 {
-	if (!term) return NULL;
-	if (!count) return term;
-	if (!bindings) return NULL;
-	if (count > SIZE_MAX / sizeof(struct pg_environment)) return NULL;
+	work->state = NULL;
+	if (!graph || !term) return -1;
+	if (count && !bindings) return -1;
+	if (count > SIZE_MAX / sizeof(struct pg_environment)) return -1;
 	for (size_t i = 0; i < count; ++i) {
-		if (!bindings[i].binder || !bindings[i].value) return NULL;
-		if (bindings[i].binder->kind != PG_BINDER) return NULL;
+		if (!bindings[i].binder || !bindings[i].value) return -1;
+		if (bindings[i].binder->kind != PG_BINDER) return -1;
 	}
-	struct pg_graph temporary = {0};
-	struct pg_environment *environment = pg_alloc(&temporary, count * sizeof(*environment));
-	if (!environment) return NULL;
+	struct pg_substitution_state *state = calloc(1, sizeof(*state));
+	if (!state) return -1;
+	work->state = state;
+	state->context.output = graph;
+	if (pg_index_init(&state->context.results) != 0) goto failure;
+	struct pg_environment *environment = pg_alloc(&state->context.temporary, count * sizeof(*environment));
+	if (count && !environment) goto failure;
 	for (size_t i = 0; i < count; ++i) {
 		environment[i] = (struct pg_environment){bindings[i].binder,
 			{bindings[i].value, NULL}, i ? &environment[i - 1] : NULL};
 	}
-	const struct pg_term *result = readback((struct pg_closure){term, &environment[count - 1]}, NULL, graph);
-	pg_graph_destroy(&temporary);
+	state->root = reify_request(&state->context, (struct pg_closure){term, count ? &environment[count - 1] : NULL});
+	if (!state->root) goto failure;
+	state->status = state->root->result ? PG_SUBSTITUTION_DONE : PG_SUBSTITUTION_PENDING;
+	return 0;
+failure:
+	pg_substitution_destroy(work);
+	return -1;
+}
+
+void pg_substitution_destroy(struct pg_substitution *work)
+{
+	if (!work->state) return;
+	pg_index_destroy(&work->state->context.results);
+	pg_graph_destroy(&work->state->context.temporary);
+	free(work->state);
+	work->state = NULL;
+}
+
+enum pg_substitution_status pg_substitution_status(const struct pg_substitution *work)
+{
+	return work->state ? work->state->status : PG_SUBSTITUTION_ERROR;
+}
+
+enum pg_substitution_status pg_substitution_advance(struct pg_substitution *work, uint64_t budget)
+{
+	if (pg_substitution_status(work) != PG_SUBSTITUTION_PENDING) return pg_substitution_status(work);
+	int status = reify_advance(&work->state->context, budget);
+	if (status < 0) work->state->status = PG_SUBSTITUTION_ERROR;
+	if (status > 0) work->state->status = PG_SUBSTITUTION_DONE;
+	return work->state->status;
+}
+
+uint64_t pg_substitution_steps(const struct pg_substitution *work)
+{
+	return work->state ? work->state->context.steps : 0;
+}
+
+const struct pg_term *pg_substitution_result(const struct pg_substitution *work)
+{
+	return pg_substitution_status(work) == PG_SUBSTITUTION_DONE ? work->state->root->result : NULL;
+}
+
+const struct pg_term *pg_term_substitute(struct pg_graph *graph,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+{
+	struct pg_substitution work;
+	if (pg_substitution_init(&work, graph, term, count, bindings) != 0) return NULL;
+	while (pg_substitution_advance(&work, UINT64_MAX) == PG_SUBSTITUTION_PENDING) {}
+	const struct pg_term *result = pg_substitution_result(&work);
+	pg_substitution_destroy(&work);
 	return result;
 }
 
