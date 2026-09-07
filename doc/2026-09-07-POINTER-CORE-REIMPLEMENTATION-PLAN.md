@@ -1,7 +1,7 @@
 # Pointer Core Reimplementation Plan
 
 Date: 2026-09-07
-Status: planned; implementation not started
+Status: in progress on `rewrite/pointer-core-hott`; N0/N1 incomplete
 Predecessor: `2026-08-29T08-31-43-SINGLE-PATH-COMPILER-ARCHITECTURE-IMPLEMENTATION-PLAN.md` (stopped)
 Failure record: `2026-09-07-FAILED-SINGLE-PATH-REFACTOR-RECORD.md`
 Archived source commit: `5bdecb4` on `archive/2026-09-07-failed-single-path-refactor`
@@ -393,6 +393,50 @@ input/options on consecutive implementations; do not infer speed from LOC.
 - Main replacement requires the N7 evidence and explicit acceptance. The failed
   branch remains available. No deletion of the old implementation is needed to
   start this independent prototype.
+
+## 11. Progress: 2026-09-07 Initial Core
+
+Implemented independently in `src/prototype/pointer/`:
+
+- Stable chunk allocation and a shared hash-index implementation used by terms
+  and dimensional maps. Core retains exactly Lambda, Application and Reference.
+- Pointer-bound alpha comparison/interning; APP construction hashes its child
+  pointers directly rather than recursively rescanning them. Lambda hashing
+  still traverses its scope; collision/performance work remains to be measured.
+- A resumable lexical closure machine for pure Lambda WHNF and capture-avoiding
+  readback. Budgets count machine transitions, including administrative steps.
+  Readback performs substitution, not normalization. Semantic references are
+  currently neutral: oracle dispatch, NF and evaluation memoization remain open.
+- Interned binary semicartesian dimension maps and composition. A map `m -> n`
+  stores n coordinates drawn from m distinct source axes or the two endpoints;
+  repeated source axes are rejected. The convention follows the plan, not the
+  legacy operator API's source/target naming. Boundary diagrams and typed Act
+  are not yet implemented.
+
+Narya reference revision obtained from GitHub:
+`c7c92b4ec01ae2f528b97207256549242bd21334`.
+[Pinned dimension operator source](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/dim/op.ml).
+This pins the comparison target; it is not evidence that all corresponding
+rules have been implemented or that HOTT is complete.
+
+Verification:
+
+```sh
+make -f src/prototype/pointer/Makefile check
+make -f src/prototype/pointer/Makefile check BUILD=/tmp/a-program-pointer-sanitized CFLAGS='-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+```
+
+Both passed: lexical capture and independent environments; split-budget
+equivalence and bounded divergence; 38 maps in dimensions 0-2 with 10,422
+composable triples; dimension-3 face/permutation laws; stable references across
+arena/index growth. Observed build-and-test wall time was about 0.05s normally
+and 0.26s with sanitizers in this session, not a compiler-performance claim.
+New C/header code: +589/-0 lines. Test C: +188/-0 lines. Build/docs excluded.
+
+Neither N0 nor N1 is marked complete. Next: complete the compatibility inventory,
+implement shared boundary diagrams and scoped action using this pointer graph,
+then integrate typed Act/Identity with source synthesis. Do not resume the old
+single-path refactoring or push this partial implementation to main.
 
 The design is informed by the two handmade files and the current implementation
 paths above. It is an A Program engineering proposal, not a claimed direct
