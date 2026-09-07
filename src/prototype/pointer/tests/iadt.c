@@ -24,6 +24,107 @@ static const struct pg_evidence *parameter_result(struct pg_typing *typing,
 	return pg_prove_substitution(typing, parameters, fields, 1, &a);
 }
 
+static const struct pg_term *boundary_apply(struct pg_graph *graph, const struct pg_term *function,
+	const struct pg_term *left, const struct pg_term *right, const struct pg_term *path)
+{
+	return pg_application(graph, pg_identity_instance(graph, function, left, right), path);
+}
+
+static const struct pg_term *action_match(struct pg_graph *graph, const struct pg_term *matcher,
+	const struct pg_term *left, const struct pg_term *right, const struct pg_term *path,
+	size_t count, const struct pg_term *const *branches)
+{
+	const struct pg_term *result = boundary_apply(graph, matcher, left, right, path);
+	for (size_t i = 0; i < count; ++i)
+		result = boundary_apply(graph, result, branches[i], branches[i], pg_identity_action(graph, branches[i]));
+	return result;
+}
+
+static void higher_matches(struct pg_graph *graph, struct pg_whnf_work *work)
+{
+	size_t arities[] = {0, 1};
+	const struct pg_data_layout *layout = pg_data_layout(graph, 2, arities);
+	const struct pg_term *zero = pg_reference(graph, pg_data_constructor(layout, 0));
+	const struct pg_term *succ = pg_reference(graph, pg_data_constructor(layout, 1));
+	const struct pg_term *one = pg_application(graph, succ, zero), *two = pg_application(graph, succ, one);
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x), *vy = pg_reference(graph, y);
+	const struct pg_term *id = pg_lambda(graph, x, vx);
+	const struct pg_term *p = pg_reference(graph, pg_binder(graph)), *q = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *branches[] = {zero, id};
+	const struct pg_term *operation = pg_identity_action(graph, pg_reference(graph, pg_data_matcher(layout)));
+	const struct pg_term *center = pg_identity_apply(graph, succ, zero, one, p);
+	const struct pg_term *term = action_match(graph, operation, one, two, center, 2, branches);
+	check(work, term, p);
+	const struct pg_object *z = pg_binder(graph);
+	const struct pg_term *branch_path = pg_lambda(graph, x, pg_lambda(graph, y, pg_lambda(graph, z, q)));
+	const struct pg_term *selected = boundary_apply(graph, operation, one, two, center);
+	selected = boundary_apply(graph, selected, zero, zero, pg_identity_action(graph, zero));
+	check(work, boundary_apply(graph, selected, id, id, branch_path), q);
+	const struct pg_term *different = pg_identity_apply(graph, succ, zero, one, q);
+	check(work, action_match(graph, operation, one, two, different, 2, branches), q);
+	check(work, action_match(graph, operation, one, one, pg_identity_action(graph, one), 2, branches),
+		pg_identity_action(graph, zero));
+	check(work, action_match(graph, operation, zero, zero, pg_identity_action(graph, zero), 2, branches),
+		pg_identity_action(graph, zero));
+	struct pg_match_clause clauses[] = {{pg_data_constructor(layout, 0), zero}, {pg_data_constructor(layout, 1), id}};
+	const struct pg_term *pred = pg_lambda(graph, y, pg_data_match(graph, layout, vy, 2, clauses));
+	check(work, pg_identity_apply(graph, pred, one, two, center), p);
+	const struct pg_term *delta = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	const struct pg_term *omega = pg_application(graph, delta, delta);
+	branches[0] = omega;
+	check(work, action_match(graph, operation, omega, omega, center, 2, branches), p);
+	branches[0] = zero;
+	branches[1] = pg_lambda(graph, x, vy);
+	const struct pg_term *captured = pg_lambda(graph, y,
+		action_match(graph, operation, one, two, center, 2, branches));
+	check(work, pg_application(graph, captured, zero), pg_identity_action(graph, zero));
+	branches[1] = pg_lambda(graph, x, pg_lambda(graph, y, vx));
+	const struct pg_term *function_path = action_match(graph, operation, one, two, center, 2, branches);
+	check(work, boundary_apply(graph, function_path, zero, one, q), p);
+	branches[1] = id;
+	/* A supplied matcher prefix and beta-reduced matcher source agree. */
+	const struct pg_term *partial = pg_application(graph, pg_reference(graph, pg_data_matcher(layout)), one);
+	const struct pg_term *prefixed = pg_identity_action(graph, partial);
+	for (size_t i = 0; i < 2; ++i)
+		prefixed = boundary_apply(graph, prefixed, branches[i], branches[i], pg_identity_action(graph, branches[i]));
+	check(work, prefixed, pg_identity_action(graph, zero));
+	const struct pg_term *beta = pg_identity_action(graph,
+		pg_application(graph, id, pg_reference(graph, pg_data_matcher(layout))));
+	check(work, action_match(graph, beta, one, two, center, 2, branches), p);
+	struct pg_whnf_job *head = pg_whnf_request(work, &pg_pure_policy, operation);
+	assert(pg_whnf_advance(head, 100000) == PG_EVAL_WHNF);
+	const struct pg_term *lowered = pg_whnf_result(head);
+	const struct pg_data_layout *foreign = pg_data_layout(graph, 2, arities);
+	const struct pg_term *invalid[] = {p, pg_identity_action(graph, succ),
+		pg_application(graph, center, zero),
+		pg_identity_action(graph, pg_reference(graph, pg_data_constructor(foreign, 0)))};
+	for (size_t i = 0; i < 4; ++i)
+		check(work, action_match(graph, operation, one, two, invalid[i], 2, branches),
+			action_match(graph, lowered, one, two, invalid[i], 2, branches));
+	check(work, boundary_apply(graph, operation, one, two, omega), boundary_apply(graph, lowered, one, two, omega));
+	/* A constructor path may mix compressed diagonal fields and selected paths. */
+	size_t pair_arity = 2;
+	const struct pg_data_layout *pair = pg_data_layout(graph, 1, &pair_arity);
+	const struct pg_term *mk = pg_reference(graph, pg_data_constructor(pair, 0));
+	const struct pg_term *pair_left = pg_application(graph, pg_application(graph, mk, zero), one);
+	const struct pg_term *pair_right = pg_application(graph, pg_application(graph, mk, zero), two);
+	const struct pg_term *pair_path = pg_identity_apply(graph, mk, zero, zero, pg_identity_action(graph, zero));
+	pair_path = boundary_apply(graph, pair_path, one, two, p);
+	const struct pg_term *second = pg_lambda(graph, x, pg_lambda(graph, y, vy));
+	check(work, action_match(graph, pg_identity_action(graph, pg_reference(graph, pg_data_matcher(pair))),
+		pair_left, pair_right, pair_path, 1, &second), p);
+	struct pg_whnf_work bulk;
+	assert(pg_whnf_work_init(&bulk, graph) == 0);
+	struct pg_whnf_job *whole = pg_whnf_request(&bulk, &pg_pure_policy, term);
+	assert(pg_whnf_advance(whole, 100000) == PG_EVAL_WHNF && pg_whnf_result(whole) == p);
+	assert(pg_whnf_steps(whole) == pg_whnf_steps(pg_whnf_request(work, &pg_pure_policy, term)));
+	struct pg_whnf_job *opaque = pg_whnf_request(&bulk, &pg_beta_policy, term);
+	assert(pg_whnf_advance(opaque, 100000) == PG_EVAL_WHNF && pg_whnf_result(opaque) == term);
+	pg_whnf_work_destroy(&bulk);
+	puts("Match action: selected constructor paths, diagonal prefixes, neutral heads and split budgets passed");
+}
+
 static void schemas(struct pg_graph *graph)
 {
 	struct pg_typing typing, foreign;
@@ -234,15 +335,27 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *branch_action = pg_prove_reflexivity(&typing, branch_type, branch);
 	assert(branch_action);
 	const struct pg_term *acted_branch = pg_evidence_subject(branch_action)->core;
+	const struct pg_term *endpoints[] = {pg_reference(graph, indexed_ctor), pg_reference(graph, indexed_ctor)};
+	const struct pg_term *constructor_path = pg_identity_action(graph, endpoints[0]);
 	for (size_t n = 0; n < 2; ++n) {
-		acted_branch = pg_application(graph, acted_branch, pg_evidence_subject(pg_evidence_premise(left, n + 3))->core);
-		acted_branch = pg_application(graph, acted_branch, pg_evidence_subject(pg_evidence_premise(right, n + 3))->core);
-		acted_branch = pg_application(graph, acted_branch, pg_evidence_subject(paths[n])->core);
+		const struct pg_term *l = pg_evidence_subject(pg_evidence_premise(left, n + 3))->core;
+		const struct pg_term *r = pg_evidence_subject(pg_evidence_premise(right, n + 3))->core;
+		const struct pg_term *path = pg_evidence_subject(paths[n])->core;
+		acted_branch = boundary_apply(graph, acted_branch, l, r, path);
+		constructor_path = boundary_apply(graph, constructor_path, l, r, path);
+		endpoints[0] = pg_application(graph, endpoints[0], l);
+		endpoints[1] = pg_application(graph, endpoints[1], r);
 	}
+	const struct pg_term *branch_core = pg_evidence_subject(branch)->core;
+	const struct pg_term *acted_match = action_match(graph,
+		pg_identity_action(graph, pg_reference(graph, pg_data_matcher(pg_data_schema_layout(indexed)))),
+		endpoints[0], endpoints[1], constructor_path, 1, &branch_core);
 	/* RETURN is WHNF before its payload reduces; compare below that head
-	 * explicitly instead of demanding stronger evaluation from WHNF. */
-	const struct pg_term *actions[] = {pg_evidence_subject(acted_body)->core, acted_branch};
-	for (size_t n = 0; n < 2; ++n) {
+	 * explicitly instead of demanding stronger evaluation from WHNF.
+	 * This checks erased Match coherence with the typed body action, not
+	 * datatype membership or a formation proof for the whole Match. */
+	const struct pg_term *actions[] = {pg_evidence_subject(acted_body)->core, acted_branch, acted_match};
+	for (size_t n = 0; n < sizeof(actions) / sizeof(*actions); ++n) {
 		struct pg_conversion comparison;
 		assert(pg_conversion_init(&comparison, &work, actions[n], acted_answer) == 0);
 		assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
@@ -270,6 +383,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	schemas(&graph);
 	assert(pg_whnf_work_init(&work, &graph) == 0);
+	higher_matches(&graph, &work);
 	size_t arities[] = {0, 1};
 	const struct pg_data_layout *nat = pg_data_layout(&graph, 2, arities);
 	const struct pg_data_layout *other = pg_data_layout(&graph, 2, arities);

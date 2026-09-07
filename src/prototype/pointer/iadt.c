@@ -3,6 +3,8 @@
 
 static const struct pg_object_class constructor_class = {"constructor"};
 static const struct pg_object_class match_class = {"match"};
+static const struct pg_object_class match_action_class = {"match-action"};
+static const struct pg_object match_action = {PG_SEMANTIC_OBJECT, &match_action_class};
 
 struct pg_constructor {
 	struct pg_object object;
@@ -71,6 +73,16 @@ done:
 	return result;
 }
 
+static int apply_fields(struct pg_eval *machine, struct pg_closure branch,
+	size_t count, const struct pg_term *const *fields, size_t consume)
+{
+	const struct pg_object *k = pg_binder(machine->output);
+	const struct pg_term *body = pg_reference(machine->output, k);
+	for (size_t i = 0; i < count; ++i) body = pg_application(machine->output, body, fields[i]);
+	/* Reuse lexical substitution for the selected branch's captured scope. */
+	return pg_eval_apply(machine, (struct pg_closure){pg_lambda(machine->output, k, body), NULL}, branch, consume);
+}
+
 static int match_answer(struct pg_eval *machine, const struct pg_term *answer)
 {
 	const struct pg_data_layout *layout = (const struct pg_data_layout *)machine->current.term->as.reference;
@@ -85,20 +97,83 @@ static int match_answer(struct pg_eval *machine, const struct pg_term *answer)
 	if (count && !fields) return -1;
 	for (size_t i = count; i; --i, answer = answer->as.application.function)
 		fields[i - 1] = answer->as.application.argument;
-	const struct pg_object *k = pg_binder(machine->output);
-	const struct pg_term *body = pg_reference(machine->output, k);
-	for (size_t i = 0; i < count; ++i) body = pg_application(machine->output, body, fields[i]);
 	size_t position = (size_t)(c - layout->constructors);
 	struct pg_closure branch = *pg_eval_argument(machine, position + 1);
-	/* The administrative lambda preserves the chosen branch's environment;
-	 * fields have already been materialized by the shared demand machinery. */
-	return pg_eval_apply(machine, (struct pg_closure){pg_lambda(machine->output, k, body), NULL},
-		branch, layout->count + 1);
+	return apply_fields(machine, branch, count, fields, layout->count + 1);
+}
+
+static const struct pg_data_layout *matcher(const struct pg_term *term)
+{
+	if (term->kind != PG_REFERENCE) return NULL;
+	const struct pg_object *object = term->as.reference;
+	if (object->kind != PG_SEMANTIC_OBJECT || object->owner != &match_class) return NULL;
+	return (const struct pg_data_layout *)object;
+}
+
+static int action_answer(struct pg_eval *machine, const struct pg_term *answer)
+{
+	const struct pg_data_layout *layout = matcher(pg_eval_argument(machine, 0)->term);
+	const struct pg_term *prefix = answer, *source;
+	size_t supplied = 0;
+	while (!pg_identity_action_view(prefix, &source)) {
+		if (prefix->kind != PG_APPLICATION) return 1;
+		++supplied;
+		prefix = prefix->as.application.function;
+	}
+	const struct pg_term *head = source;
+	size_t diagonal = 0;
+	while (head->kind == PG_APPLICATION) { ++diagonal; head = head->as.application.function; }
+	if (head->kind != PG_REFERENCE || supplied % 3) return 1;
+	const struct pg_constructor *c = constructor(head->as.reference, layout);
+	if (!c || diagonal > c->arity || supplied / 3 != c->arity - diagonal) return 1;
+	if (c->arity > SIZE_MAX / (3 * sizeof(const struct pg_term *))) return -1;
+	size_t count = 3 * c->arity;
+	const struct pg_term **fields = pg_alloc(&machine->temporary, count * sizeof(*fields));
+	if (count && !fields) return -1;
+	/* Diagonal_argument can compress an initial part of the boundary spine.
+	 * Decode that prefix and retain every explicit remaining chosen path. */
+	for (size_t i = diagonal; i; --i, source = source->as.application.function) {
+		const struct pg_term *value = source->as.application.argument;
+		fields[3 * (i - 1)] = fields[3 * (i - 1) + 1] = value;
+		fields[3 * (i - 1) + 2] = pg_identity_action(machine->output, value);
+	}
+	for (size_t i = supplied; i; --i, answer = answer->as.application.function)
+		fields[3 * diagonal + i - 1] = answer->as.application.argument;
+	size_t position = (size_t)(c - layout->constructors);
+	return apply_fields(machine, *pg_eval_argument(machine, 6 + 3 * position), count, fields,
+		1 + 3 * (layout->count + 1));
+}
+
+int pg_data_action(struct pg_eval *machine, const struct pg_term *source)
+{
+	const struct pg_term *head = source;
+	size_t count = 0;
+	while (head->kind == PG_APPLICATION) { ++count; head = head->as.application.function; }
+	if (!matcher(head)) return 1;
+	if (count > SIZE_MAX / sizeof(const struct pg_term *)) return -1;
+	const struct pg_term **arguments = pg_alloc(&machine->temporary, count * sizeof(*arguments));
+	if (count && !arguments) return -1;
+	for (size_t i = count; i; --i, source = source->as.application.function)
+		arguments[i - 1] = source->as.application.argument;
+	const struct pg_term *result = pg_application(machine->output, pg_reference(machine->output, &match_action), head);
+	for (size_t i = 0; i < count; ++i) {
+		result = pg_identity_instance(machine->output, result, arguments[i], arguments[i]);
+		result = pg_application(machine->output, result, pg_identity_action(machine->output, arguments[i]));
+	}
+	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
 }
 
 int pg_data_dispatch(struct pg_eval *machine)
 {
 	const struct pg_object *object = machine->current.term->as.reference;
+	if (object == &match_action) {
+		const struct pg_closure *owner = pg_eval_argument(machine, 0);
+		const struct pg_data_layout *layout = owner ? matcher(owner->term) : NULL;
+		if (!layout) return 1;
+		if (layout->count > (SIZE_MAX - 4) / 3) return -1;
+		if (!pg_eval_argument(machine, 3 * (layout->count + 1))) return 1;
+		return pg_eval_demand(machine, 3, action_answer);
+	}
 	if (object->kind != PG_SEMANTIC_OBJECT || object->owner != &match_class) return 1;
 	const struct pg_data_layout *layout = (const struct pg_data_layout *)object;
 	if (!pg_eval_argument(machine, layout->count)) return 1;

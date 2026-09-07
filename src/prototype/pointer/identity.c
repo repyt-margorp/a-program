@@ -1,6 +1,7 @@
 #include "identity.h"
 #include "classifier.h"
 #include "computation.h"
+#include "iadt.h"
 
 static const struct pg_object_class identity_class = {"identity-action"};
 static const struct pg_object identity_action = {PG_SEMANTIC_OBJECT, &identity_class};
@@ -295,6 +296,10 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	struct action_scope scope;
 	int status = action_scope(machine, source, &scope);
 	if (status) return status;
+	if (!scope.count) {
+		status = pg_data_action(machine, source);
+		if (status != 1) return status;
+	}
 	const struct pg_term *body = scope.body;
 	if (body->kind == PG_REFERENCE) {
 		size_t center = 0;

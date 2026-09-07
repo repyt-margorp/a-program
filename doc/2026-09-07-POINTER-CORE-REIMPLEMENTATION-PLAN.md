@@ -1060,6 +1060,32 @@ a specified type family, not a global endpoint-only relation.
   ASan/UBSan `make check` passed in 7.612 s, also rebuilding the changed test;
   iadt/Identity/synthesis passed with a 512 KiB stack. Implementation +26 lines
   (`iadt.c` +18, `iadt.h` +8), tests +74, docs separate. N2/N3 remain open.
+- [x] September 8, after `faad274`: one-direction erased Match action.
+  An acted constructor carries left/right/path triples for its fields. Acting
+  on its matcher selects the corresponding branch path and applies those
+  triples using the same lexical branch-application helper as ordinary iota.
+  The existing diagonal-prefix compression is decoded without losing any
+  explicitly selected path. Different chosen paths with equal endpoints remain
+  different inputs; branch paths are not replaced with reflexivity.
+  A single private `match-action` semantic reference is the lowered operation,
+  with matcher and branches in ordinary APP operands. It avoids expanding a
+  compressed Act prefix back into the same diagonal rewrite, which would loop.
+  It adds neither a Core tag, a datatype-specific higher evaluator nor a proof
+  authority. Demand, closure readback, budgets and policy-keyed caching remain
+  in the existing evaluator. Local spine decoding is synchronous linear work.
+  Tests cover selected field/branch paths, diagonal and mixed prefixes, capture,
+  trailing applications, neutral/foreign/partial/oversaturated constructors,
+  unselected divergence, beta-policy isolation and split-budget step equality.
+  A dependent checked field telescope also connects erased Match action to
+  existing typed body action by conversion, including an Identity-valued field.
+  This does not certify constructor membership or typed Match, and is not a
+  general higher-constructor, transport or indexed fibrancy rule. Those N3
+  obligations remain open; the next step is checked nominal family admission
+  and motive/constructor compatibility using the existing context maps, with
+  recursive self and higher formation obligations explicit rather than assumed.
+  Optimized pointer `make check`: 2.215 s; ASan/UBSan: 7.448 s, both including
+  the changed test rebuild. IADT/Identity/synthesis also pass at a 512 KiB stack.
+  Implementation +90/-7 (net +83); tests +120/-6 (net +114); docs separate.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

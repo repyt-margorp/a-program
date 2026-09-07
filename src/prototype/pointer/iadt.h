@@ -22,6 +22,9 @@ const struct pg_object *pg_data_matcher(const struct pg_data_layout *layout);
 const struct pg_term *pg_data_match(struct pg_graph *graph, const struct pg_data_layout *layout,
 	const struct pg_term *scrutinee, size_t count, const struct pg_match_clause *clauses);
 int pg_data_dispatch(struct pg_eval *machine);
+/* Fixed one-direction action on an erased matcher and any supplied prefix.
+ * Called with the materialized source of Act; adds no typing evidence. */
+int pg_data_action(struct pg_eval *machine, const struct pg_term *source);
 
 struct pg_typing;
 struct pg_classifiers;
