@@ -385,6 +385,17 @@ static void pi_transport_candidate(struct pg_typing *typing, struct pg_classifie
 				pg_prove_classifier(typing, classifiers, function_context, actual));
 			const struct pg_term *term = pg_evidence_subject(expected)->core;
 			const struct pg_term *reflected;
+			if (pg_identity_action_view(pg_evidence_subject(path)->core, &reflected)) {
+				/* Application, unlike bare function comparison, can expose the
+				 * transport recipe without adding function eta to conversion. */
+				const struct pg_evidence *actual_call = pg_prove_application(typing,
+					pg_prove_force(typing, pg_prove_projection(typing, body_context, actual)), target);
+				const struct pg_evidence *recipe_call = pg_prove_application(typing,
+					pg_prove_force(typing, pg_prove_projection(typing, body_context, expected)), target);
+				assert(actual_call && recipe_call);
+				converts(&work, pg_evidence_classifier(actual_call), pg_evidence_classifier(recipe_call));
+				converts(&work, pg_evidence_subject(actual_call)->core, pg_evidence_subject(recipe_call)->core);
+			}
 			if (!dependent && pg_identity_action_view(pg_evidence_subject(path)->core, &reflected)) {
 				const struct pg_term *eta = pg_application(graph, pg_reference(graph, &pg_thunk_operation),
 					pg_lambda(graph, y, pg_application(graph,

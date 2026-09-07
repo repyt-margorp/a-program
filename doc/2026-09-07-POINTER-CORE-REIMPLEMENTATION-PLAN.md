@@ -1569,13 +1569,28 @@ a specified type family, not a global endpoint-only relation.
   rebuilt on those final runs); Identity/synthesis/IADT pass at 512 KiB.
   A test-only omitted split advance was corrected before the final runs.
   Production implementation change: zero; tests `identity.c` +120; docs separate.
+- [x] September 8: test the elimination-driven alternative in
+  `tests/identity.c:pi_transport_candidate`. For a diagonal path, applying
+  FORCE of the candidate and FORCE of the existing transport to the same
+  typed target argument gives convertible classifiers and terms, in both
+  directions, for constant and dependent codomains. Bare function comparison
+  still rejects the eta equation above. These are tests of existing rules,
+  not an implementation of non-diagonal Pi transport.
+- [ ] Investigate elimination-driven transport before changing DefEq: keep
+  non-diagonal U/Pi transport neutral as a value, and compute its action only
+  when FORCE is supplied a function argument. The preceding test discharges
+  the diagonal application example, not general substitution stability.
+  Check non-diagonal subject reduction, higher lifting, normalization before
+  versus after substitution, and effect evaluation order before admitting
+  the rule. Do not install an eager eta expansion as a shortcut.
 - [ ] Resolve this N2 equational choice before enabling structural U/Pi
-  transport or using it to justify nominal datatype fibrancy. Either admit
+  transport or using it to justify nominal datatype fibrancy. If the
+  elimination-driven alternative is insufficient, either admit
   computation-Pi eta into fixed pure DefEq, revisiting the current eta example
   and runtime/Act compatibility, or retain the current DefEq and revise the
   unrestricted strict diagonal transport contract (with its lifting/regularity
   proofs and existing tests). Do not hide the choice behind a path-shape branch
-  or a Pi-transport-only conversion exception. Either choice leaves pointer
+  or a Pi-transport-only conversion exception. Every alternative leaves pointer
   interning structural: conversion must never merge Core nodes. The user has
   been asked which direction to pursue; no choice has been silently adopted.
 - [ ] Universe action needs an inhabitant contract containing transport and
@@ -2350,6 +2365,40 @@ No unchecked serialized "accepted" bit constitutes a proof.
   reject invalid evidence and test shared-DAG checking and split-budget resume.
 - [ ] N5: document what seed/checkpoint retention saves and which calculations
   must be repeated. Do not promise zero recomputation for a compact image.
+
+September 8 clarification: image progress is retained evidence, not a trusted
+completion flag. There is one evaluator, one solver and one set of evidence
+acceptance rules; loading is not a second implementation of any of them.
+
+| Retained content | Loading obligation |
+| --- | --- |
+| Unresolved goals and their semantic inputs | Rebuild references and schedule through the ordinary solver |
+| Checked derivation DAG | Validate premises with ordinary acceptance rules, once per shared node |
+| Conversion endpoints without reduction evidence | Re-establish conversion through the ordinary evaluator |
+| Checkable reduction evidence | Validate it under the identified pure rules before accepting the result |
+| Disposable search/cache state | Rebuild when omitted; never treat it as independent evidence |
+
+Current implementation evidence: `conversion.c` privately creates
+`pg_conversion_certificate` after successful conversion, but the certificate
+contains only its two endpoints. It is an in-process receipt, not a portable
+proof trace. `reader.h` is a source lexer, not an image loader. Neither API
+establishes N5 persistence or fresh-process resumption today.
+
+An image of a program containing effects is not a checkpoint of external world
+state. Loading/checking it must not execute an operation request. Re-running a
+program may repeat effects; resuming an already effectful runtime session with
+exactly-once external effects is a separate contract, not implied by `.a`.
+
+- [ ] Specify seed/checkpoint retention options using the same image model;
+  omit caches without deleting the semantic inputs required to reconstruct work.
+- [ ] Record the rule/environment dependencies needed to validate retained
+  evidence; incompatible dependencies invalidate reuse, not the kernel rules.
+- [ ] Test fresh-process seed versus checkpoint loading: same accepted results,
+  different allowed recomputation counts, with split-budget continuation.
+- [ ] Test that loading and checking an effect-containing image emits no effects;
+  explicit execution, not deserialization, invokes the runtime handler.
+- [ ] Test that serialized conversion endpoints alone cannot manufacture an
+  accepted conversion certificate, and shared derivations are not re-searched.
 
 `pg_term_substitute` now exposes the evaluator's existing capture-avoiding
 readback traversal for simultaneous binder-pointer substitution. Images are
