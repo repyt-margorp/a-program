@@ -9,6 +9,7 @@ check: $(BUILD)/core_test $(BUILD)/reader_test $(BUILD)/parse_files
 	$(BUILD)/core_test
 	$(BUILD)/reader_test
 	$(BUILD)/parse_files $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
+	bash $(ROOT)tests/syntax_inventory.sh $(BUILD)/parse_files
 
 $(BUILD)/core_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)tests/core.c
 	mkdir -p $(BUILD)

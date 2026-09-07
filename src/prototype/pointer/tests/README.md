@@ -47,3 +47,11 @@ files are `12_append_assoc_draft.p` and `stage1.p` through `stage3.p`.
 Negative fixtures can legitimately
 parse before failing semantic checks. These counts are not conformance results.
 `make check` now also parses the existing examples numbered 01 through 09.
+
+`syntax_inventory.sh` runs all 158 inputs in one process and checks their
+syntax outcomes, including the exact four errors in `syntax_exclusions.tsv`.
+The stage files contain unannotated lambda syntax (stage1 also lacks a named
+top-level entry); the append draft contains `==`, which the existing reader
+does not tokenize. They remain documented historical syntax rather than being
+silently enabled. This gate does not validate AST meaning or negative typing
+fixtures; those still require lowering/checking tests.

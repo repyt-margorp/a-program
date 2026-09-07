@@ -460,7 +460,11 @@ no fabricated domain. `@name` in argument position is distinguished from a
 clause head by following syntax. Top-level/root-block imports record only the
 requested name. Tests and a sanitizer inventory run now parse 154/158 files.
 The four remaining syntax failures are `12_append_assoc_draft.p` and the three
-`stage*.p` files; their historical validity still needs explicit review. No
+`stage*.p` files. Review against `reader.c` confirms the former uses untokenized
+`==` syntax and the latter unannotated lambdas (stage1 also lacks a top-level
+definition). `syntax_exclusions.tsv` records their exact diagnostic outcomes;
+`syntax_inventory.sh` now verifies all 158 outcomes in `make check`, including
+sanitizer runs. This does not claim equivalence of resulting syntax trees. No
 negative fixture has been certified merely because it parsed. Companion
 origin checking, import resolution, typed lowering and full precedence/scope
 conformance remain outstanding.

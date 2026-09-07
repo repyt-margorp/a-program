@@ -1,0 +1,4 @@
+examples/12_append_assoc_draft.p	38:31	unexpected character
+examples/stage1.p	1:1	expected top-level name
+examples/stage2.p	1:10	lambda requires a domain annotation
+examples/stage3.p	1:13	lambda requires a domain annotation
