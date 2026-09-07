@@ -469,9 +469,18 @@ successful return codes as new-kernel certificates.
   introductions, introductions beneath beta-generated reindex evidence, wrong
   contexts, unsupported converted introductions, and stable Term/evidence
   counts over 100 repeated requests. This does not execute effect operations.
-- [ ] General typed reduction must handle reindexed/converted function proofs,
+- [x] Typed beta now follows projection/reindex chains on its Lambda premise.
+  It maps the original free variables through those existing context actions,
+  adds the application argument as the original bound variable's image, and
+  reindexes the original body with that checked simultaneous substitution.
+  No runtime closure store or regenerated Lambda introduction is needed.
+  The typed step also commutes through projection/reindex around an elimination
+  proof. Source-synthesized polymorphic identity tests perform two beta steps,
+  include interleaved projection and multiple reindex actions, compare with
+  independent Core evaluation, and repeat requests without Term/proof growth.
+- [ ] General typed reduction must handle converted function proofs,
   converted introductions and admitted semantic owners, plus budgeted reduction chains and
-  checked pure type-result exposure. `pg_reduce_beta` is only the direct-rule
+  checked pure type-result exposure. `pg_reduce_beta` is only the Lambda-head
   step above; its NULL result is not a normalization or untypability verdict.
   Its reduct is ordinary reindex evidence, not an object Identity witness or a
   persistent conversion certificate for the original APP.

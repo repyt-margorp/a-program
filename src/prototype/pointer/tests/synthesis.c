@@ -89,6 +89,36 @@ int main(void)
 	for (size_t i = 0; i < 100; ++i) assert(pg_reduce_beta(&typing, a_context, typed_application) == typed_reduct);
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
+	const struct pg_evidence *x_value = pg_prove_variable(&typing, x_context, x);
+	const struct pg_evidence *second_application = pg_prove_application(&typing,
+		pg_prove_projection(&typing, x_context, typed_reduct), x_value);
+	const struct pg_evidence *second_reduct = pg_reduce_beta(&typing, x_context, second_application);
+	const struct pg_evidence *return_x = pg_prove_return(&typing, &classifiers, x_value);
+	assert(second_reduct && pg_evidence_subject(second_reduct)->core == pg_evidence_subject(return_x)->core);
+	assert(pg_evidence_classifier(second_reduct) == pg_evidence_classifier(return_x));
+	const struct pg_evidence *images[] = {pg_prove_variable(&typing, x_context, a), x_value};
+	const struct pg_evidence *sigma = pg_prove_substitution(&typing, x_context, x_context, 2, images);
+	const struct pg_evidence *twice_reindexed = pg_prove_reindex(&typing, sigma,
+		pg_prove_projection(&typing, x_context, typed_reduct));
+	const struct pg_evidence *third_application = pg_prove_application(&typing, twice_reindexed, x_value);
+	const struct pg_evidence *third_reduct = pg_reduce_beta(&typing, x_context, third_application);
+	assert(third_reduct && pg_evidence_subject(third_reduct)->core == pg_evidence_subject(return_x)->core);
+	const struct pg_evidence *reindexed_application = pg_prove_reindex(&typing, sigma, second_application);
+	const struct pg_evidence *reindexed_reduct = pg_reduce_computation(&typing, x_context, reindexed_application);
+	assert(reindexed_reduct && pg_evidence_subject(reindexed_reduct)->core == pg_evidence_subject(return_x)->core);
+	const struct pg_evidence *projected_application = pg_prove_projection(&typing, x_context, typed_application);
+	const struct pg_evidence *projected_reduct = pg_reduce_computation(&typing, x_context, projected_application);
+	assert(projected_reduct && pg_alpha_equal(pg_evidence_subject(projected_reduct)->core,
+		pg_evidence_subject(typed_reduct)->core) == 1);
+	reduction_terms = graph.terms.count;
+	reduction_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_reduce_beta(&typing, x_context, second_application) == second_reduct);
+		assert(pg_reduce_beta(&typing, x_context, third_application) == third_reduct);
+		assert(pg_reduce_computation(&typing, x_context, reindexed_application) == reindexed_reduct);
+		assert(pg_reduce_computation(&typing, x_context, projected_application) == projected_reduct);
+	}
+	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
 	const struct pg_evidence *application = complete(&synthesis,
 		request(&synthesis, scope, "main := (\\y : A => y) x;"), PG_SYNTHESIS_DONE);
@@ -98,6 +128,13 @@ int main(void)
 	const struct pg_term *expected = pg_application(&graph, pg_reference(&graph, &pg_return_operation), pg_reference(&graph, x));
 	assert(pg_eval_readback(&machine, &graph) == expected);
 	pg_eval_destroy(&machine);
+	const struct pg_evidence *typed_steps[] = {second_application, third_application, reindexed_application};
+	for (size_t i = 0; i < sizeof(typed_steps) / sizeof(*typed_steps); ++i) {
+		pg_computation_eval_init(&machine, &graph, pg_evidence_subject(typed_steps[i])->core);
+		assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, &graph) == pg_evidence_subject(return_x)->core);
+		pg_eval_destroy(&machine);
+	}
 	const struct pg_evidence *sequenced_higher = complete(&synthesis, request(&synthesis, scope,
 		"main := (\\f : A -> A => f x) { &(\\y : A => y); };"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_rule(sequenced_higher) == PG_FOLD_ELIM);

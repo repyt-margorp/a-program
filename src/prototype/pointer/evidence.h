@@ -73,11 +73,12 @@ const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
 /* Derive a beta reduct of a checked APP with a Lambda introduction premise
- * (possibly weakened). Uses ordinary substitution/reindex evidence, not a
+ * (possibly projected/reindexed). Uses ordinary substitution/reindex evidence, not a
  * new equality axiom. NULL includes unsupported heads and failed premises. */
 const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *application);
-/* One checked beta, FORCE/THUNK or zero-clause FOLD/RETURN step.
+/* One checked beta, FORCE/THUNK or zero-clause FOLD/RETURN step, including
+ * through projection/reindex evidence. Traversal is not yet budgeted.
  * NULL also includes unsupported evidence, not just irreducible terms. */
 const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *computation);

@@ -309,6 +309,21 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 		pi->context, subject, pi->subject->core, 2, premises);
 }
 
+static int context_action(const struct pg_evidence *proof)
+{
+	return proof->rule == PG_CONTEXT_PROJECTION || proof->rule == PG_REINDEX;
+}
+
+static const struct pg_evidence *apply_context_action(struct pg_typing *typing,
+	const struct pg_evidence *action, const struct pg_evidence *content)
+{
+	if (action->rule == PG_CONTEXT_PROJECTION)
+		return pg_prove_projection(typing, action->premises[0], content);
+	if (action->rule == PG_REINDEX)
+		return pg_prove_reindex(typing, action->premises[0], content);
+	return NULL;
+}
+
 const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *application)
 {
@@ -316,20 +331,35 @@ const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
 	if (!application || application->owner != typing) return NULL;
 	if (application->rule != PG_APP_ELIM || application->context != context->context) return NULL;
 	const struct pg_evidence *function = application->premises[0];
-	while (function->rule == PG_CONTEXT_PROJECTION) function = function->premises[1];
+	size_t action_count = 0;
+	while (context_action(function)) {
+		++action_count;
+		function = function->premises[1];
+	}
 	if (function->rule != PG_LAMBDA_INTRO) return NULL;
 	const struct pg_evidence *body_context = function->premises[0]->premises[1];
+	const struct pg_evidence *base_context = body_context->premises[0];
 	size_t count = 0;
 	for (const struct pg_context *scope = body_context->context; scope; scope = scope->parent) ++count;
 	if (!count || count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	if (action_count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
+	const struct pg_evidence **actions = pg_alloc(&temporary, action_count * sizeof(*actions));
 	const struct pg_evidence *result = NULL;
 	if (!images) goto done;
+	if (action_count && !actions) goto done;
+	const struct pg_evidence *action = application->premises[0];
+	for (size_t i = action_count; i; --i) {
+		actions[i - 1] = action;
+		action = action->premises[1];
+	}
 	images[count - 1] = application->premises[1];
 	const struct pg_context *scope = body_context->context->parent;
 	for (size_t i = count - 1; i; --i) {
-		images[i - 1] = pg_prove_variable(typing, context, scope->binder);
+		images[i - 1] = pg_prove_variable(typing, base_context, scope->binder);
+		for (size_t j = 0; j < action_count; ++j)
+			images[i - 1] = apply_context_action(typing, actions[j], images[i - 1]);
 		if (!images[i - 1]) goto done;
 		scope = scope->parent;
 	}
@@ -347,17 +377,9 @@ static const struct pg_evidence *introduced_content(struct pg_typing *typing,
 	const struct pg_evidence *proof, enum pg_evidence_rule introduction)
 {
 	if (proof->rule == introduction) return proof->premises[0];
-	const struct pg_evidence *content;
-	switch (proof->rule) {
-	case PG_CONTEXT_PROJECTION:
-		content = introduced_content(typing, proof->premises[1], introduction);
-		return pg_prove_projection(typing, proof->premises[0], content);
-	case PG_REINDEX:
-		content = introduced_content(typing, proof->premises[1], introduction);
-		return pg_prove_reindex(typing, proof->premises[0], content);
-	default:
-		return NULL;
-	}
+	if (!context_action(proof)) return NULL;
+	const struct pg_evidence *content = introduced_content(typing, proof->premises[1], introduction);
+	return apply_context_action(typing, proof, content);
 }
 
 const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
@@ -368,6 +390,20 @@ const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
 	if (computation->context != context->context) return NULL;
 	const struct pg_evidence *result, *value;
 	switch (computation->rule) {
+	case PG_CONTEXT_PROJECTION: {
+		const struct pg_evidence *source = context;
+		while (source->context != computation->premises[1]->context) {
+			if (source->rule != PG_CONTEXT_EXTEND) return NULL;
+			source = source->premises[0];
+		}
+		result = pg_reduce_computation(typing, source, computation->premises[1]);
+		result = apply_context_action(typing, computation, result);
+		break;
+	}
+	case PG_REINDEX:
+		result = pg_reduce_computation(typing, computation->premises[0]->premises[0], computation->premises[1]);
+		result = apply_context_action(typing, computation, result);
+		break;
 	case PG_APP_ELIM:
 		return pg_reduce_beta(typing, context, computation);
 	case PG_FORCE_ELIM:
