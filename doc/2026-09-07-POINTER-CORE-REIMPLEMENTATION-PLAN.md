@@ -769,6 +769,44 @@ a specified type family, not a global endpoint-only relation.
   remain parser-only evidence. Sizes excluding docs: `evidence.c` +44/-0,
   `evidence.h` +12/-1, `identity.c` +53/-1, `identity.h` +10/-0
   (implementation net +117); `tests/identity.c` +114/-0.
+- [x] September 8, after `2d00286`: connect derived classifiers to family
+  transport through the existing scheduler. `pg_synthesis_normalize_classifier`
+  accepts a checked term in its exact context, recovers its classifier formation,
+  schedules shared pure WHNF, and explicitly converts the original typing proof.
+  It neither runs the subject nor takes an expected type as synthesis input.
+  RETURN/THUNK inversion now uses this job instead of duplicating classifier
+  normalization/conversion stages. No new kernel rule, Core tag or Replay path.
+  `tests/synthesis.c:family_transport` constructs, for arbitrary `A` and
+  `a,b,c:A`, `p:Id A a b`, `q:Id A b c`:
+
+  ```text
+  symmetry p    = trr (ap (t |-> Id A t a) p) (refl a) : Id A b a
+  composition p q = trr (ap (t |-> Id A a t) q) p      : Id A a c
+  ```
+
+  These are checked C-API derivations using existing family action and fields,
+  not new primitives or approved surface notation. The resulting transport
+  expressions can remain neutral; their reflexivity computations and higher
+  groupoid coherence are still unimplemented. Tests check destination types,
+  regularity, lifting, subject work remaining unexecuted, split/bulk scheduling,
+  repeated-job reuse and wrong context/polarity/owner rejection. Separate solver
+  stores currently issue separate conversion receipts: compare their accepted
+  judgements, not proof pointers. Same-job reuse preserves the original result.
+  `tests/synthesis.c:function_eta` also checks a non-DefEq function Identity:
+  for `f:U(Pi x:Universe_0. F Universe_0)`, source `lambda x. f x` and `FORCE f`
+  remain different under pure conversion, before and after constructing the
+  witness. Existing Pi-Identity expansion makes their Identity classifier
+  convertible to that of `refl (FORCE f)`. Converting that evidence proves the
+  object Identity; it does not add function eta to DefEq. The same witness fails
+  conversion to Identity with the identity function. This negative test is not
+  a metatheorem of uninhabitability. No general extensionality API is claimed.
+  Regularity recovery and semantic callback work remain partly synchronous;
+  this job does not establish a constant-time scheduler step. N2 remains open.
+  Verification passed: optimized and ASan/UBSan pointer `make check`, and
+  synthesis/Identity tests with a 512 KiB stack. The 158 syntax outcomes remain
+  parser-only checks, not full old-example synthesis/evaluation acceptance.
+  Sizes excluding docs: `synthesis.c` +50/-31, `synthesis.h` +5/-0
+  (implementation net +24); `tests/synthesis.c` +137/-0.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

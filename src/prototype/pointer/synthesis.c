@@ -44,7 +44,8 @@ struct block_state {
 	const struct pg_evidence *tail;
 	struct pg_index names;
 };
-enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, REFLEXIVITY_JOB };
+enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB,
+	REFLEXIVITY_JOB, CLASSIFIER_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -178,15 +179,23 @@ struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis
 	return job;
 }
 
-static struct pg_synthesis_job *request_evaluation(struct pg_synthesis *synthesis,
+static struct pg_synthesis_job *request_typed(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof, enum job_role role)
 {
 	if (!context || !proof) return NULL;
-	enum pg_evidence_judgement judgement = role == THUNK_JOB ? PG_JUDGEMENT_VALUE : PG_JUDGEMENT_COMPUTATION;
-	if (pg_evidence_judgement(proof) != judgement) return NULL;
+	if (!pg_evidence_subject(proof)) return NULL;
 	if (pg_evidence_context(context) != pg_evidence_context(proof)) return NULL;
 	if (pg_prove_projection(synthesis->typing, context, proof) != proof) return NULL;
 	return request_job(synthesis, role, context, proof);
+}
+
+static struct pg_synthesis_job *request_evaluation(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *proof, enum job_role role)
+{
+	if (!proof) return NULL;
+	enum pg_evidence_judgement judgement = role == THUNK_JOB ? PG_JUDGEMENT_VALUE : PG_JUDGEMENT_COMPUTATION;
+	if (pg_evidence_judgement(proof) != judgement) return NULL;
+	return request_typed(synthesis, context, proof, role);
 }
 
 struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
@@ -205,10 +214,18 @@ struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof)
 {
-	if (!context || !proof) return NULL;
-	if (!pg_evidence_subject(proof)) return NULL;
-	if (pg_prove_projection(synthesis->typing, context, proof) != proof) return NULL;
-	return request_job(synthesis, NORMALIZATION_JOB, context, proof);
+	return request_typed(synthesis, context, proof, NORMALIZATION_JOB);
+}
+
+struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *proof)
+{
+	if (!proof) return NULL;
+	switch (pg_evidence_judgement(proof)) {
+	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
+		return request_typed(synthesis, context, proof, CLASSIFIER_JOB);
+	default: return NULL;
+	}
 }
 
 static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -268,7 +285,24 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 
 static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
 
-enum contents_stage { CONTENTS_TERM, CONTENTS_TYPE, CONTENTS_CONVERTING };
+static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->left) {
+		job->checking_term = job->inputs[1];
+		const struct pg_evidence *formation = pg_prove_classifier(synthesis->typing,
+			synthesis->classifiers, job->inputs[0], job->checking_term);
+		if (!formation) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		job->left = pg_synthesis_normalize(synthesis, job->inputs[0], formation);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	job->checking_type = job->left->result;
+	if (pg_evidence_classifier(job->checking_term) == pg_evidence_subject(job->checking_type)->core)
+		job->result = job->checking_term;
+	else job->result = compare(synthesis, job);
+	if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
+}
 
 static const struct pg_evidence *contents(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_evidence *proof)
@@ -285,32 +319,16 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-	switch (job->stage) {
-	case CONTENTS_TERM: {
-		job->checking_term = job->left->result;
-		job->result = contents(synthesis, job, job->checking_term);
+	if (!job->stage) {
+		const struct pg_evidence *term = job->left->result;
+		job->result = contents(synthesis, job, term);
 		if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
-		const struct pg_evidence *formation = pg_prove_classifier(synthesis->typing,
-			synthesis->classifiers, job->inputs[0], job->checking_term);
-		if (!formation) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		job->left = pg_synthesis_normalize(synthesis, job->inputs[0], formation);
-		job->stage = CONTENTS_TYPE;
+		job->left = pg_synthesis_normalize_classifier(synthesis, job->inputs[0], term);
+		job->stage = 1;
 		depend(synthesis, job, job->left);
 		return;
 	}
-	case CONTENTS_TYPE:
-		job->checking_type = job->left->result;
-		if (pg_evidence_classifier(job->checking_term) == pg_evidence_subject(job->checking_type)->core) {
-			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
-			return;
-		}
-		job->stage = CONTENTS_CONVERTING;
-		break;
-	case CONTENTS_CONVERTING: break;
-	}
-	const struct pg_evidence *converted = compare(synthesis, job);
-	if (!converted) return;
-	job->result = contents(synthesis, job, converted);
+	job->result = contents(synthesis, job, job->left->result);
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }
 
@@ -653,6 +671,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == CLASSIFIER_JOB) { classifier_step(synthesis, job); return; }
 	if (job->role == REFLEXIVITY_JOB) {
 		if (!job->stage) {
 			job->stage = 1;
