@@ -9,7 +9,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_TYPE_FROM_VALUE, PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_PI_FORM,
 	PG_RETURN_INTRO, PG_THUNK_INTRO, PG_FORCE_ELIM, PG_LAMBDA_INTRO, PG_APP_ELIM,
 	PG_VALUE_FROM_TYPE, PG_TYPE_CONVERSION, PG_CONTEXT_PROJECTION,
-	PG_CONTEXT_SUBSTITUTION, PG_REINDEX, PG_THUNK_CONTENT, PG_PI_CODOMAIN };
+	PG_CONTEXT_SUBSTITUTION, PG_REINDEX, PG_THUNK_CONTENT, PG_PI_CODOMAIN, PG_PI_DOMAIN };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -83,6 +83,8 @@ const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,
 	const struct pg_evidence *thunk_type);
 const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *argument);
+const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
+	const struct pg_evidence *pi);
 /* Recover formation of an already synthesized classifier, not an expected
  * type. NULL also covers rules whose regularity action is not implemented. */
 const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,

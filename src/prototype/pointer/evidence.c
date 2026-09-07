@@ -487,6 +487,20 @@ const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,
 		thunk_type->context, subject, thunk_type->classifier, 1, &thunk_type);
 }
 
+const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
+	const struct pg_evidence *pi)
+{
+	if (!pi || pi->owner != typing) return NULL;
+	if (pi->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	if (!pg_pi_view(pi->subject->core, &domain, &binder, &codomain)) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, domain, NULL, 1, &pi->subject);
+	if (!subject) return NULL;
+	return accept(typing, PG_PI_DOMAIN, PG_JUDGEMENT_VALUE_TYPE,
+		pi->context, subject, pi->classifier, 1, &pi);
+}
+
 const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *argument)
 {

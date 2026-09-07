@@ -484,13 +484,23 @@ conclusion and all premise pointers; no accepted record is overwritten.
   an application, check function expectations and reject unresolved names.
 - [ ] Complete source lowering/synthesis: root definition graph and forward
   names/imports, literals, ADT/IADT, computation blocks/folds, implicit sequencing
-  of returning arguments/callees, conversion at ordinary APP and computed type
+  of returning arguments/callees, computed type
   annotations, structured error reasons and comprehensive surface compatibility.
   Current unsupported syntax and computation arguments report UNSUPPORTED,
   not a theorem of untypability. Kernel APIs still conflate some allocation and
   premise failures; error classification must be completed. Budget currently
   counts scheduling/comparison transitions, not all work within a kernel rule.
   This initial expression-job store is not a serialized `.a` image yet.
+- [x] Ordinary APP and inline `::` share one resumable comparison path. Cache
+  the already synthesized input and target derivations while comparison is
+  pending; do not rerun their synthesis or reconstruct adaptations on each
+  comparison step. Pi domain formation is recovered by checked inversion with
+  the parent's universe upper bound. A mismatch in argument classifier pointers
+  invokes explicit conversion, never alpha interning or expected-type inference.
+  A source fixture applies a higher-order function to a quoted Lambda with a
+  distinct alpha-equivalent Pi classifier, retains the conversion certificate
+  in its argument premise, and evaluates to RETURN of the original argument.
+  A function with a different result type is rejected by the same comparison.
 - [ ] Semantic conversion extensions, full synthesis scheduling, image checking and
   typed HOTT action still need implementation. These primitive rules do
   not constitute a complete checker; NULL currently combines invalid-premise

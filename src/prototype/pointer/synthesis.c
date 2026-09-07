@@ -26,6 +26,9 @@ struct pg_synthesis_job {
 	const struct pg_source_scope *inner;
 	const struct pg_evidence *domain;
 	const struct pg_evidence *result;
+	const struct pg_evidence *checking_term;
+	const struct pg_evidence *checking_type;
+	const struct pg_evidence *function;
 	struct pg_conversion comparison;
 	int comparing;
 };
@@ -162,6 +165,29 @@ static void atom(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
+static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->comparing) {
+		if (pg_conversion_init(&job->comparison, synthesis->beta,
+			pg_evidence_classifier(job->checking_term), pg_evidence_subject(job->checking_type)->core) != 0) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL;
+		}
+		job->comparing = 1;
+	}
+	enum pg_conversion_status status = pg_conversion_advance(&job->comparison, 1);
+	if (status == PG_CONVERSION_PENDING) {
+		job->next = synthesis->ready;
+		synthesis->ready = job;
+		return NULL;
+	}
+	if (status == PG_CONVERSION_DIFFERENT) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return NULL; }
+	if (status == PG_CONVERSION_ERROR) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
+	const struct pg_evidence *result = pg_prove_conversion(synthesis->typing,
+		job->checking_term, job->checking_type, pg_conversion_certificate(&job->comparison));
+	if (!result) finish(synthesis, job, PG_SYNTHESIS_ERROR);
+	return result;
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
@@ -229,30 +255,45 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		job->result = pg_prove_pi(synthesis->typing, synthesis->classifiers, job->domain, job->inner->context, codomain);
 		break;
 	}
-	case PG_SYNTAX_APPLICATION:
-		if (pg_evidence_judgement(right) == PG_JUDGEMENT_COMPUTATION) {
-			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
-		}
-		if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) left = pg_prove_force(synthesis->typing, left);
-		job->result = pg_prove_application(synthesis->typing, left, value(synthesis, right));
-		break;
-	case PG_SYNTAX_EXPECT: {
-		if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE_TYPE) left = value(synthesis, left);
-		if (!left) break;
-		if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) right = value_type(synthesis, right);
-		else if (pg_evidence_judgement(right) != PG_JUDGEMENT_COMPUTATION_TYPE)
-			right = pg_prove_return_type(synthesis->typing, synthesis->classifiers, value_type(synthesis, right));
-		if (!left || !right) break;
-		if (!job->comparing) {
-			if (pg_conversion_init(&job->comparison, synthesis->beta, pg_evidence_classifier(left), pg_evidence_subject(right)->core) != 0) {
-				finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+	case PG_SYNTAX_APPLICATION: {
+		if (!job->checking_term) {
+			if (pg_evidence_judgement(right) == PG_JUDGEMENT_COMPUTATION) {
+				finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 			}
-			job->comparing = 1;
+			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) left = pg_prove_force(synthesis->typing, left);
+			right = value(synthesis, right);
+			if (!left || !right) break;
+			const struct pg_term *domain, *codomain;
+			const struct pg_object *binder;
+			if (!pg_pi_view(pg_evidence_classifier(left), &domain, &binder, &codomain)) break;
+			if (domain == pg_evidence_classifier(right)) {
+				job->result = pg_prove_application(synthesis->typing, left, right);
+				break;
+			}
+			const struct pg_evidence *pi = pg_prove_classifier(synthesis->typing, synthesis->classifiers, job->scope->context, left);
+			job->checking_type = pg_prove_pi_domain(synthesis->typing, pi);
+			if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+			job->checking_term = right;
+			job->function = left;
 		}
-		enum pg_conversion_status status = pg_conversion_advance(&job->comparison, 1);
-		if (status == PG_CONVERSION_PENDING) { job->next = synthesis->ready; synthesis->ready = job; return; }
-		if (status == PG_CONVERSION_ERROR) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		job->result = pg_prove_conversion(synthesis->typing, left, right, pg_conversion_certificate(&job->comparison));
+		right = compare(synthesis, job);
+		if (!right) return;
+		job->result = pg_prove_application(synthesis->typing, job->function, right);
+		break;
+	}
+	case PG_SYNTAX_EXPECT: {
+		if (!job->checking_term) {
+			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE_TYPE) left = value(synthesis, left);
+			if (!left) break;
+			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) right = value_type(synthesis, right);
+			else if (pg_evidence_judgement(right) != PG_JUDGEMENT_COMPUTATION_TYPE)
+				right = pg_prove_return_type(synthesis->typing, synthesis->classifiers, value_type(synthesis, right));
+			if (!right) break;
+			job->checking_term = left;
+			job->checking_type = right;
+		}
+		job->result = compare(synthesis, job);
+		if (!job->result) return;
 		break;
 	}
 	default: break;

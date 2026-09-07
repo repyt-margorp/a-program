@@ -81,6 +81,19 @@ int main(void)
 	complete(&synthesis, request(&synthesis, scope, "main := x :: @;"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope, "main := &(\\y : A => y);"), PG_SYNTHESIS_DONE);
 	complete(&synthesis, request(&synthesis, scope, "main := (&(\\y : A => y)) x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *higher = complete(&synthesis,
+		request(&synthesis, scope, "main := (\\f : A -> A => f x) &(\\y : A => y);"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(higher) == PG_APP_ELIM);
+	const struct pg_evidence *converted_argument = pg_evidence_premise(higher, 1);
+	assert(pg_evidence_rule(converted_argument) == PG_TYPE_CONVERSION);
+	const struct pg_conversion_certificate *conversion = pg_evidence_conversion(converted_argument);
+	assert(conversion && pg_conversion_left(conversion) != pg_conversion_right(conversion));
+	pg_computation_eval_init(&machine, &graph, pg_evidence_subject(higher)->core);
+	assert(pg_eval_advance(&machine, 200) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, &graph) == expected);
+	pg_eval_destroy(&machine);
+	complete(&synthesis,
+		request(&synthesis, scope, "main := (\\f : A -> A => f x) &(\\y : A => A);"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope, "main := (\\y : A => y) ((\\y : A => y) x);"), PG_SYNTHESIS_UNSUPPORTED);
 	complete(&synthesis, request(&synthesis, root, "Nat := @{zero:*; succ:*->*;};"), PG_SYNTHESIS_UNSUPPORTED);
 	uint64_t steps = synthesis.steps;
