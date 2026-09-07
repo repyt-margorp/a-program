@@ -2081,6 +2081,24 @@ publication wakes affected consumers only. Provenance needed to justify an
 answer is part of the answer's change detection. SCC handling must express the
 recursive rule's obligations, not accept a cycle as its own proof.
 
+- [x] September 8, after `9eadd0a`: replace the ready stack with one FIFO queue.
+  The old LIFO scheduler reinserted unfinished reductions ahead of all older
+  work. A regression with 256 typed FORCE/THUNK steps and an independent `@`
+  request failed on the old implementation: the latter was still pending after
+  16 transitions. All insertion, resumption and dependency wakeup sites now
+  share constant-time `enqueue`; no second work list or acceptance state is
+  added. Short requests made before/during long work finish while it is pending.
+  Tests also cover duplicate requests, consumer wakeup, draining/restarting and
+  cold bulk versus split results. Existing dependency tests retain their
+  assertions but wait a bounded number of transitions for subscription rather
+  than relying on LIFO ordering. Finite transitions give ready-work fairness;
+  synchronous kernel traversals/allocation still prevent a wall-clock bound.
+  This does not change runtime effect order, pure reduction or proof rules.
+  Optimized check: 3.372 s (synthesis rebuilt); ASan/UBSan: 17.323 s (affected
+  binaries rebuilt); Core/Identity/synthesis/IADT pass with a 512 KiB stack.
+  Implementation `synthesis.c` +21/-23, `synthesis.h` +4/-0 (net +2);
+  tests `synthesis.c` +73/-8; documentation separate. N2/N5 remain open.
+
 Keep immutable derivations with explicit premises. Multiple derivations can
 conclude one proposition; do not overwrite accepted proof records. A checked
 occurrence can reference its accepted evidence directly. Introduce another Claim

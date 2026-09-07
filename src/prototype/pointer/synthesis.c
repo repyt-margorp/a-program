@@ -80,6 +80,14 @@ struct pg_synthesis_job {
 	const void *inputs[];
 };
 
+static void enqueue(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	job->next = NULL;
+	if (synthesis->ready_tail) synthesis->ready_tail->next = job;
+	else synthesis->ready = job;
+	synthesis->ready_tail = job;
+}
+
 int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
 	struct pg_classifiers *classifiers, struct pg_whnf_work *normalization,
 	enum pg_definition_policy definition_policy)
@@ -161,8 +169,7 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 		job->result = inputs[0];
 		job->status = PG_SYNTHESIS_DONE;
 	} else if (role != DEFINITION_JOB) {
-		job->next = synthesis->ready;
-		synthesis->ready = job;
+		enqueue(synthesis, job);
 	}
 	return job;
 }
@@ -357,8 +364,7 @@ static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	job->status = status;
 	for (struct waiter *waiter = job->waiters; waiter; waiter = waiter->next) {
 		waiter->parent->dependency = NULL;
-		waiter->parent->next = synthesis->ready;
-		synthesis->ready = waiter->parent;
+		enqueue(synthesis, waiter->parent);
 	}
 	job->waiters = NULL;
 }
@@ -370,8 +376,7 @@ static void depend(struct pg_synthesis *synthesis, struct pg_synthesis_job *pare
 {
 	if (!child) { finish(synthesis, parent, PG_SYNTHESIS_ERROR); return; }
 	if (child->status != PG_SYNTHESIS_PENDING) {
-		parent->next = synthesis->ready;
-		synthesis->ready = parent;
+		enqueue(synthesis, parent);
 		return;
 	}
 	struct waiter *waiter = pg_alloc(synthesis->typing->graph, sizeof(*waiter));
@@ -537,8 +542,7 @@ static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct 
 	}
 	enum pg_conversion_status status = pg_conversion_advance(&job->comparison, 1);
 	if (status == PG_CONVERSION_PENDING) {
-		job->next = synthesis->ready;
-		synthesis->ready = job;
+		enqueue(synthesis, job);
 		return NULL;
 	}
 	if (status == PG_CONVERSION_DIFFERENT) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return NULL; }
@@ -656,8 +660,7 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!tail) return;
 		block->tail = tail;
 		block->frames = frame->parent;
-		job->next = synthesis->ready;
-		synthesis->ready = job;
+		enqueue(synthesis, job);
 		return;
 	}
 	if (job->left) {
@@ -678,8 +681,7 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			if (!block->scope) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
 		job->left = NULL;
-		job->next = synthesis->ready;
-		synthesis->ready = job;
+		enqueue(synthesis, job);
 		return;
 	}
 	const struct pg_syntax_item *item = &block->syntax->items[block->next++];
@@ -749,8 +751,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			state->entries[i] = name->producer;
 			if (!name->producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
-		job->next = synthesis->ready;
-		synthesis->ready = job;
+		enqueue(synthesis, job);
 		return;
 	}
 	if (state->activated < state->count) {
@@ -759,8 +760,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			struct pg_synthesis_job *producer = state->entries[i];
 			if (!producer->stage) {
 				producer->stage = 1;
-				producer->next = synthesis->ready;
-				synthesis->ready = producer;
+				enqueue(synthesis, producer);
 			}
 		} else {
 			const struct pg_syntax_item *item = &state->syntax->items[i];
@@ -773,8 +773,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			state->entries[i] = pg_synthesis_request(synthesis, state->scope, check);
 			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
-		job->next = synthesis->ready;
-		synthesis->ready = job;
+		enqueue(synthesis, job);
 		return;
 	}
 	if (!job->stage) {
@@ -806,8 +805,7 @@ static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 	}
 	switch (pg_reindex_advance(&job->reindex, 1)) {
 	case PG_REINDEX_PENDING:
-		job->next = synthesis->ready;
-		synthesis->ready = job;
+		enqueue(synthesis, job);
 		return;
 	case PG_REINDEX_ERROR:
 		finish(synthesis, job, PG_SYNTHESIS_ERROR);
@@ -924,7 +922,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 			}
 			certificate = pg_whnf_certificate(job->normalizing.whnf);
 		}
-		if (!certificate) { job->next = synthesis->ready; synthesis->ready = job; return; }
+		if (!certificate) { enqueue(synthesis, job); return; }
 		job->result = pg_prove_normalization(synthesis->typing, job->inputs[1], certificate);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
@@ -1045,8 +1043,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 			if (!result) return;
 			job->result = result;
 			job->application_frame = frame->parent;
-			job->next = synthesis->ready;
-			synthesis->ready = job;
+			enqueue(synthesis, job);
 			return;
 		}
 		break;
@@ -1078,6 +1075,7 @@ void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget)
 	while (synthesis->ready && budget) {
 		struct pg_synthesis_job *job = synthesis->ready;
 		synthesis->ready = job->next;
+		if (!synthesis->ready) synthesis->ready_tail = NULL;
 		job->next = NULL;
 		--budget;
 		++synthesis->steps;

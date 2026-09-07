@@ -15,6 +15,7 @@ struct pg_synthesis {
 	struct pg_whnf_work *normalization;
 	struct pg_index jobs;
 	struct pg_synthesis_job *ready;
+	struct pg_synthesis_job *ready_tail;
 	uint64_t steps;
 	enum pg_definition_policy definition_policy;
 };
@@ -104,6 +105,9 @@ struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *
  * This does not execute the stored computation or cache an effect result. */
 struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *value);
+/* FIFO scheduling: each ready job takes one transition before rejoining the
+ * tail. Finite primitive transitions do not starve other ready work. This is
+ * not a wall-clock bound on individual kernel rules or allocation. */
 void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
 const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);
