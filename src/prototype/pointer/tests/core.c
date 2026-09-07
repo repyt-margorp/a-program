@@ -63,6 +63,29 @@ static void graph_test(struct pg_graph *graph)
 	assert(left_lambda != right_lambda);
 	assert(pg_alpha_equal(left_lambda, right_lambda) == 1);
 	assert(pg_alpha_equal(left_dag, right_dag) == 0);
+	assert(pg_term_independent(vx, x) == 0);
+	assert(pg_term_independent(vy, x) == 1);
+	assert(pg_term_independent(identity, x) == 1);
+	assert(pg_term_independent(pg_lambda(graph, y, vx), x) == 0);
+	assert(pg_term_independent(pg_lambda(graph, x, identity), x) == 1);
+	assert(pg_term_independent(pg_application(graph, identity, vx), x) == 0);
+	assert(pg_term_independent(NULL, x) == -1);
+	assert(pg_term_independent(vx, NULL) == -1);
+	assert(pg_term_independent(vx, opaque) == -1);
+	struct pg_comparison split, whole;
+	size_t terms = graph->terms.count;
+	assert(pg_independence_init(&split, left_lambda, x) == 0);
+	assert(pg_independence_init(&whole, left_lambda, x) == 0);
+	assert(pg_comparison_advance(&split, 0) == PG_COMPARISON_PENDING);
+	while (pg_comparison_advance(&split, 1) == PG_COMPARISON_PENDING)
+		assert(pg_comparison_steps(&split) < 1000);
+	assert(pg_comparison_status(&split) == PG_COMPARISON_EQUAL);
+	assert(pg_comparison_advance(&whole, UINT64_MAX) == PG_COMPARISON_EQUAL);
+	assert(pg_comparison_steps(&split) == pg_comparison_steps(&whole));
+	assert(pg_comparison_task_count(&split) == 42);
+	assert(graph->terms.count == terms);
+	pg_comparison_destroy(&split);
+	pg_comparison_destroy(&whole);
 }
 
 static const struct pg_dimension_map *maps[128];
@@ -1031,6 +1054,8 @@ static void conversion_test(struct pg_graph *graph)
 	pg_comparison_destroy(&structural);
 	pg_comparison_destroy(&whole);
 	assert(pg_alpha_equal(deep_left, deep_right) == 1);
+	assert(pg_term_independent(deep_left, x) == 1);
+	assert(pg_term_independent(deep_left->as.lambda.body, x) == 0);
 	struct pg_conversion conversion;
 	assert(pg_conversion_init(&conversion, &work, left, identity) == 0);
 	assert(pg_conversion_advance(&conversion, 0) == PG_CONVERSION_PENDING);

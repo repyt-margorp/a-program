@@ -158,21 +158,44 @@ static enum pg_comparison_status comparison_step(struct pg_comparison_state *con
 	return context->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
 }
 
-int pg_comparison_init(struct pg_comparison *work, const struct pg_term *left,
+static int comparison_init(struct pg_comparison *work, const struct pg_term *left,
 	const struct pg_term *right, void *policy,
-	int (*normalize)(void *, const struct pg_term *, const struct pg_term **))
+	int (*normalize)(void *, const struct pg_term *, const struct pg_term **),
+	const struct pg_object *absent)
 {
 	work->state = calloc(1, sizeof(*work->state));
 	if (!work->state) return -1;
 	work->state->policy = policy;
 	work->state->normalize = normalize;
 	if (pg_index_init(&work->state->seen) != 0) goto fail;
-	if (comparison_push(work->state, left, right, NULL) != 0) goto fail;
+	struct binder_pair *scope = NULL;
+	if (absent) {
+		scope = pg_alloc(&work->state->arena, sizeof(*scope));
+		if (!scope) goto fail;
+		/* No reference can match NULL. Inner lambdas shadow this seed. */
+		*scope = (struct binder_pair){absent, NULL, NULL};
+	}
+	if (comparison_push(work->state, left, right, scope) != 0) goto fail;
 	work->state->status = work->state->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
 	return 0;
 fail:
 	pg_comparison_destroy(work);
 	return -1;
+}
+
+int pg_comparison_init(struct pg_comparison *work, const struct pg_term *left,
+	const struct pg_term *right, void *policy,
+	int (*normalize)(void *, const struct pg_term *, const struct pg_term **))
+{
+	return comparison_init(work, left, right, policy, normalize, NULL);
+}
+
+int pg_independence_init(struct pg_comparison *work, const struct pg_term *term,
+	const struct pg_object *binder)
+{
+	work->state = NULL;
+	if (!binder || binder->kind != PG_BINDER) return -1;
+	return comparison_init(work, term, term, NULL, NULL, binder);
 }
 
 void pg_comparison_destroy(struct pg_comparison *work)
@@ -209,16 +232,28 @@ size_t pg_comparison_task_count(const struct pg_comparison *work)
 	return work->state ? work->state->seen.count : 0;
 }
 
+static int comparison_finish(struct pg_comparison *work)
+{
+	while (pg_comparison_advance(work, UINT64_MAX) == PG_COMPARISON_PENDING) {}
+	enum pg_comparison_status result = pg_comparison_status(work);
+	pg_comparison_destroy(work);
+	return result == PG_COMPARISON_EQUAL ? 1 : result == PG_COMPARISON_DIFFERENT ? 0 : -1;
+}
+
+int pg_term_independent(const struct pg_term *term, const struct pg_object *binder)
+{
+	struct pg_comparison work;
+	if (pg_independence_init(&work, term, binder) != 0) return -1;
+	return comparison_finish(&work);
+}
+
 int pg_alpha_equal(const struct pg_term *left, const struct pg_term *right)
 {
 	if (!left || !right) return 0;
 	if (left == right) return 1;
 	struct pg_comparison work;
 	if (pg_comparison_init(&work, left, right, NULL, NULL) != 0) return -1;
-	while (pg_comparison_advance(&work, UINT64_MAX) == PG_COMPARISON_PENDING) {}
-	enum pg_comparison_status result = pg_comparison_status(&work);
-	pg_comparison_destroy(&work);
-	return result == PG_COMPARISON_EQUAL ? 1 : result == PG_COMPARISON_DIFFERENT ? 0 : -1;
+	return comparison_finish(&work);
 }
 
 int pg_index_init(struct pg_index *index)

@@ -661,6 +661,42 @@ a specified type family, not a global endpoint-only relation.
   establish legacy semantic acceptance. Sizes excluding docs: `action.c`
   +102/-0, `action.h` +12/-0 (implementation net +114); `tests/identity.c`
   +88/-0. No accepted-source or handmade implementation was modified.
+- [x] September 8, after `91fb95c`: syntactically unused action binders.
+  The scoped comparison walker now also tests binder independence, by comparing
+  a term with itself under an unmatched outer binder correspondence. Inner
+  lambdas shadow that correspondence. No freshened term copy, normalization,
+  intern-key change or separate support walker is needed. The same query
+  replaces substitution-plus-alpha testing of a constant Pi codomain.
+  Action removes unused binders and their boundary triples before inspecting
+  the family former. It retains used binders in order and consumes no partial
+  telescope; discarded endpoints are never demanded. This applies to complex
+  constant families and already-action-headed bodies as well as F/Pi/U.
+  [Narya's constant-family rule](https://narya.readthedocs.io/en/latest/observational.html#heterogeneous-identity-types)
+  motivates this computation; deletion of syntactically unused coordinates in
+  our erased curried scope is the A Program adaptation, not a new equality
+  reflection or a metatheorem inherited from Narya.
+  Previously a variable's action classifier could close a later unused binder
+  while the generated center's declared type closed only its original prefix.
+  Tests now check **every** source variable, including higher centers, when
+  constructing the 3/9/27 declarations of 1D/2D/3D boundaries. Both subject and
+  classifier pass directed normalization/conversion against the independently
+  generated center. Selected higher classifiers are initially non-alpha-equal.
+  Further tests cover omitted leading/trailing binders, repeated-pointer
+  shadowing, neutral F endpoints, discarded divergence, incomplete triples,
+  split budgets, and shared/deep DAG independence without new Core records.
+  The independence query is resumable; current action and kernel consumers
+  drive it synchronously. Pruning scans a remaining scope per binder, so it
+  can be quadratic in curried arity. Sharing is retained within each scoped
+  walk, not globally across all support queries. Fine-grained evaluator fuel
+  and profiling/batching remain open; do not claim a per-node callback bound.
+  This does not implement general action on acted sources, transport/lifting,
+  source-level HOTT or arbitrary higher coherence. N2 remains unfinished.
+  Verification: optimized and ASan/UBSan pointer `make check` pass, including
+  the 158 reviewed parser outcomes (not legacy semantic acceptance). Identity
+  and synthesis tests pass with a 512 KiB stack. Sizes excluding docs:
+  `graph.c` +42/-7, `graph.h` +7/-0, `evidence.c` +4/-8, `identity.c` +33/-0
+  (implementation net +71); tests `core.c` +25/-0, `identity.c` +43/-8
+  (test net +60). Accepted-source and handmade code are unchanged.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

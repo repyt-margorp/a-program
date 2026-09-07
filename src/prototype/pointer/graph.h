@@ -64,6 +64,9 @@ const struct pg_term *pg_lambda(struct pg_graph *graph,
 /* Explicit syntactic alpha comparison, never used by interning or reduction.
  * 1 equal, 0 different, -1 allocation failure. */
 int pg_alpha_equal(const struct pg_term *left, const struct pg_term *right);
+/* Syntactic independence: 1 no free occurrence, 0 occurs, -1 error.
+ * Uses the scoped comparison walker without substitution or normalization. */
+int pg_term_independent(const struct pg_term *term, const struct pg_object *binder);
 struct pg_comparison_state;
 struct pg_comparison { struct pg_comparison_state *state; };
 enum pg_comparison_status { PG_COMPARISON_PENDING, PG_COMPARISON_EQUAL,
@@ -74,6 +77,10 @@ enum pg_comparison_status { PG_COMPARISON_PENDING, PG_COMPARISON_EQUAL,
 int pg_comparison_init(struct pg_comparison *work, const struct pg_term *left,
 	const struct pg_term *right, void *policy,
 	int (*normalize)(void *, const struct pg_term *, const struct pg_term **));
+/* EQUAL means independent; DIFFERENT means a free occurrence was found.
+ * The input graph is borrowed and unchanged; advance/destroy as a comparison. */
+int pg_independence_init(struct pg_comparison *work, const struct pg_term *term,
+	const struct pg_object *binder);
 enum pg_comparison_status pg_comparison_advance(struct pg_comparison *work, uint64_t budget);
 enum pg_comparison_status pg_comparison_status(const struct pg_comparison *work);
 uint64_t pg_comparison_steps(const struct pg_comparison *work);

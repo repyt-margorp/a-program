@@ -981,16 +981,12 @@ const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
 		return_type->context, subject, return_type->classifier, 1, &return_type);
 }
 
-static const struct pg_term *constant_codomain(struct pg_typing *typing, const struct pg_term *pi)
+static const struct pg_term *constant_codomain(const struct pg_term *pi)
 {
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	if (!pg_pi_view(pi, &domain, &binder, &codomain)) return NULL;
-	const struct pg_term *fresh = pg_reference(typing->graph, pg_binder(typing->graph));
-	if (!fresh) return NULL;
-	struct pg_binding_value binding = {binder, fresh};
-	const struct pg_term *renamed = pg_term_substitute(typing->graph, codomain, 1, &binding);
-	if (!renamed || pg_alpha_equal(codomain, renamed) != 1) return NULL;
+	if (pg_term_independent(codomain, binder) != 1) return NULL;
 	return codomain;
 }
 
@@ -1003,7 +999,7 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 	const struct pg_evidence *existing = find_record(typing, PG_PI_CONSTANT_CODOMAIN,
 		PG_JUDGEMENT_COMPUTATION_TYPE, pi->context, NULL, NULL, 1, &pi, NULL, &hash);
 	if (existing) return existing;
-	const struct pg_term *codomain = constant_codomain(typing, pi->subject->core);
+	const struct pg_term *codomain = constant_codomain(pi->subject->core);
 	if (!codomain) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, codomain, NULL, 1, &pi->subject);
 	if (!subject) return NULL;
@@ -1029,7 +1025,7 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	if (!pg_return_type_view(computation->classifier, &value_type)) return NULL;
 	if (!pg_pi_view(continuation->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, value_type) != 1) return NULL;
-	codomain = constant_codomain(typing, continuation->classifier);
+	codomain = constant_codomain(continuation->classifier);
 	if (!codomain) return NULL;
 	const struct pg_term *head = pg_application(typing->graph,
 		pg_reference(typing->graph, &pg_fold_operation), computation->subject->core);

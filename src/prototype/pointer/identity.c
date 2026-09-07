@@ -135,6 +135,37 @@ static int enter_action(struct pg_eval *machine, const struct action_scope *scop
 	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
 }
 
+static int prune_scope(struct pg_eval *machine, struct action_scope *scope)
+{
+	if (!scope->count) return 1;
+	unsigned char *keep = pg_alloc(&machine->temporary, scope->count);
+	if (!keep) return -1;
+	const struct pg_term *source = scope->source;
+	size_t retained = 0;
+	for (size_t i = 0; i < scope->count; ++i) {
+		/* Inspect the remaining lambda tail so repeated binder pointers shadow
+		 * outer declarations, just as they do in ordinary substitution. */
+		int absent = pg_term_independent(source->as.lambda.body, source->as.lambda.binder);
+		if (absent < 0) return -1;
+		keep[i] = !absent;
+		retained += keep[i];
+		source = source->as.lambda.body;
+	}
+	if (retained == scope->count) return 1;
+	if (prepare_bindings(machine, scope) != 0) return -1;
+	struct pg_graph *graph = machine->output;
+	const struct pg_term *result = scope->body;
+	for (size_t i = scope->count; i; --i)
+		if (keep[i - 1]) result = pg_lambda(graph, scope->bindings[i - 1].source, result);
+	result = pg_identity_action(graph, result);
+	for (size_t i = 0; i < scope->count; ++i) {
+		if (!keep[i]) continue;
+		for (size_t j = 0; j < 3; ++j)
+			result = pg_application(graph, result, pg_reference(graph, scope->bindings[i].arguments[j]));
+	}
+	return enter_action(machine, scope, result, 0);
+}
+
 static int right_endpoint(struct pg_eval *machine, const struct pg_term *right)
 {
 	struct action_scope scope;
@@ -222,6 +253,8 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 		const struct pg_term *result = pg_identity_action(machine->output, body);
 		return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1 + 3 * scope.count);
 	}
+	status = prune_scope(machine, &scope);
+	if (status != 1) return status;
 	const struct pg_term *argument = unary_argument(body, &pg_return_operation);
 	if (!argument) argument = unary_argument(body, &pg_thunk_operation);
 	if (!argument) argument = unary_argument(body, &pg_force_operation);

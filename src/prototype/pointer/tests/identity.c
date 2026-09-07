@@ -99,12 +99,16 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 			const struct pg_evidence *formation = pg_prove_classifier(typing, classifiers, target, paths[i]);
 			assert(formation && pg_evidence_subject(formation)->core == pg_evidence_classifier(paths[i]));
 		}
-		const struct pg_context *first = pg_evidence_context(source);
-		while (first->parent) first = first->parent;
-		const struct pg_evidence *variable = pg_prove_variable(typing, source, first->binder);
-		const struct pg_evidence *acted = pg_prove_family_action(typing,
-			pg_prove_classifier(typing, classifiers, source, variable), variable, left, right, count, paths);
-		action_result(typing, classifiers, target, &work, acted, paths[0]);
+		/* Include higher centers, whose types were formed in shorter prefixes. */
+		const struct pg_context *declaration = pg_evidence_context(source);
+		for (size_t i = count; i; --i, declaration = declaration->parent) {
+			const struct pg_evidence *variable = pg_prove_variable(typing, source, declaration->binder);
+			const struct pg_evidence *acted = pg_prove_family_action(typing,
+				pg_prove_classifier(typing, classifiers, source, variable), variable, left, right, count, paths);
+			if (dimension > 1 && i == count)
+				assert(pg_alpha_equal(pg_evidence_classifier(acted), pg_evidence_classifier(paths[i - 1])) == 0);
+			action_result(typing, classifiers, target, &work, acted, paths[i - 1]);
+		}
 		size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
 		assert(pg_identity_context(typing, &dimensions, source, count, centers, &rl, &rr, repeated_paths) == target);
 		assert(left == rl && right == rr);
@@ -210,8 +214,9 @@ static void neutral_thunks(struct pg_typing *typing, struct pg_classifiers *clas
 	pg_whnf_work_destroy(&work);
 }
 
-static void lambda_actions(struct pg_graph *graph)
+static void lambda_actions(struct pg_classifiers *classifiers)
 {
+	struct pg_graph *graph = classifiers->graph;
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, graph) == 0);
 	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
@@ -225,6 +230,36 @@ static void lambda_actions(struct pg_graph *graph)
 	normalizes(&work, pg_identity_apply(graph, id, a, b, q), q);
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
 	const struct pg_term *omega = pg_application(graph, self, self);
+	/* Complex constant families prune scope even with neutral endpoints;
+	 * unused boundary computations must never be demanded. */
+	const struct pg_term *family = pg_identity_instance(graph, pg_identity_action(graph, a), vx, vx);
+	const struct pg_term *closed = pg_identity_instance(graph, pg_identity_action(graph, a), a, b);
+	normalizes(&work, pg_identity_apply(graph, pg_lambda(graph, x, closed), omega, omega, omega),
+		pg_identity_action(graph, closed));
+	const struct pg_term *f_type = pg_return_type(classifiers, a);
+	converts(&work, pg_identity_instance(graph,
+		pg_identity_apply(graph, pg_lambda(graph, x, f_type), omega, omega, omega), a, b),
+		pg_identity_instance(graph, pg_identity_action(graph, f_type), a, b));
+	const struct pg_object *z = pg_binder(graph);
+	const struct pg_term *scoped = pg_identity_apply(graph,
+		pg_lambda(graph, y, pg_lambda(graph, x, pg_lambda(graph, z, family))), omega, omega, omega);
+	scoped = pg_application(graph, pg_identity_instance(graph, scoped, a, b), p);
+	scoped = pg_application(graph, pg_identity_instance(graph, scoped, omega, omega), omega);
+	const struct pg_term *retained = pg_identity_apply(graph, pg_lambda(graph, x, family), a, b, p);
+	converts(&work, scoped, retained);
+	const struct pg_term *shadowed = pg_identity_apply(graph,
+		pg_lambda(graph, x, pg_lambda(graph, x, family)), omega, omega, omega);
+	normalizes(&work, shadowed, shadowed); /* Incomplete triples stay neutral. */
+	shadowed = pg_application(graph, pg_identity_instance(graph, shadowed, a, b), p);
+	converts(&work, shadowed, retained);
+	struct pg_whnf_work pruning_whole;
+	assert(pg_whnf_work_init(&pruning_whole, graph) == 0);
+	struct pg_whnf_job *pruned = pg_whnf_request(&pruning_whole, &pg_pure_policy, scoped);
+	assert(pg_whnf_advance(pruned, 100000) == PG_EVAL_WHNF);
+	struct pg_whnf_job *pruned_split = pg_whnf_request(&work, &pg_pure_policy, scoped);
+	assert(pg_whnf_steps(pruned) == pg_whnf_steps(pruned_split));
+	converts(&work, pg_whnf_result(pruned), pg_whnf_result(pruned_split));
+	pg_whnf_work_destroy(&pruning_whole);
 	normalizes(&work, pg_identity_apply(graph, id, omega, omega, p), p);
 	normalizes(&work, pg_identity_apply(graph, pg_lambda(graph, x, a), omega, omega, q), pg_identity_action(graph, a));
 	const struct pg_term *first = pg_lambda(graph, x, pg_lambda(graph, y, vx));
@@ -801,9 +836,9 @@ int main(void)
 	struct pg_typing typing;
 	struct pg_classifiers classifiers;
 	assert(pg_graph_init(&graph) == 0);
-	lambda_actions(&graph);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
+	lambda_actions(&classifiers);
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
 	dependent_pi_action(&typing, &classifiers);
 	const struct pg_evidence *u0 = pg_prove_universe(&typing, &classifiers, empty, 0);
