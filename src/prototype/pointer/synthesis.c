@@ -16,6 +16,7 @@ struct pg_source_scope {
 	struct pg_synthesis_job *producer;
 	const struct pg_source_scope *exports;
 	struct pg_synthesis_job *module;
+	const struct pg_source_scope *imports;
 };
 struct waiter {
 	struct pg_synthesis_job *parent;
@@ -33,6 +34,7 @@ struct block_name {
 	struct pg_index_entry index;
 	struct pg_token name;
 	struct pg_synthesis_job *producer;
+	struct pg_synthesis_job *imported;
 };
 struct definition_state {
 	struct pg_index names;
@@ -133,7 +135,7 @@ static const struct pg_source_scope *intern_scope(struct pg_synthesis *synthesis
 	if (input.name.kind == '#') input.name = (struct pg_token){.kind = '#'};
 	if (input.name.length && !input.name.text) return NULL;
 	uint64_t hash = name_hash(input.name) ^ (unsigned)input.name.kind;
-	const void *pointers[] = {input.parent, input.context, input.binder, input.definitions, input.producer, input.exports, input.module};
+	const void *pointers[] = {input.parent, input.context, input.binder, input.definitions, input.producer, input.exports, input.module, input.imports};
 	for (size_t i = 0; i < sizeof(pointers) / sizeof(*pointers); ++i)
 		hash = (hash ^ (uintptr_t)pointers[i]) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->scopes, hash); entry; entry = entry->next) {
@@ -146,6 +148,7 @@ static const struct pg_source_scope *intern_scope(struct pg_synthesis *synthesis
 		if (scope->producer != input.producer) continue;
 		if (scope->exports != input.exports) continue;
 		if (scope->module != input.module) continue;
+		if (scope->imports != input.imports) continue;
 		if (scope->name.kind != input.name.kind) continue;
 		if (same_name(scope->name, input.name)) return scope;
 	}
@@ -257,6 +260,16 @@ const struct pg_source_scope *pg_synthesis_name_job(struct pg_synthesis *synthes
 	if (!producer || producer->owner != synthesis) return NULL;
 	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent,
 		.name = name, .context = parent->context, .producer = producer});
+}
+
+const struct pg_source_scope *pg_synthesis_import_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_source_scope *bindings)
+{
+	if (!parent || parent->owner != synthesis) return NULL;
+	if (!bindings || bindings->owner != synthesis) return NULL;
+	if (pg_evidence_context(bindings->context)) return NULL;
+	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent,
+		.context = parent->context, .imports = bindings});
 }
 
 static const struct pg_source_scope *publish_namespace(struct pg_synthesis *synthesis,
@@ -559,7 +572,7 @@ static uint64_t name_hash(struct pg_token name)
 	return hash;
 }
 
-static struct block_name *lookup_name(struct pg_index *names, struct pg_token name)
+static struct block_name *lookup_name(const struct pg_index *names, struct pg_token name)
 {
 	uint64_t hash = name_hash(name);
 	for (struct pg_index_entry *entry = pg_index_candidates(names, hash); entry; entry = entry->next) {
@@ -578,12 +591,19 @@ struct source_reference {
 	struct pg_synthesis_job *module;
 };
 
+static struct pg_synthesis_job *lookup_definition(const struct definition_state *state, struct pg_token token)
+{
+	struct block_name *name = lookup_name(&state->names, token);
+	if (!name) return NULL;
+	return name->producer ? name->producer : name->imported;
+}
+
 static struct source_reference lookup_scope(const struct pg_source_scope *scope, struct pg_token token)
 {
 	for (; scope; scope = scope->parent) {
 		if (scope->definitions && token.kind == PG_TOKEN_IDENT) {
-			struct block_name *name = lookup_name(&scope->definitions->names, token);
-			if (name) return (struct source_reference){.producer = name->producer};
+			struct pg_synthesis_job *producer = lookup_definition(scope->definitions, token);
+			if (producer) return (struct source_reference){.producer = producer};
 		}
 		if (scope->name.kind != token.kind) continue;
 		/* Punctuation tokens carry their spelling in kind, not text. */
@@ -610,7 +630,7 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 		*dependency = registration;
 		if (registration->status != PG_SYNTHESIS_DONE) return registration->status;
 		struct block_name *member = lookup_name(&registration->definitions->names, token);
-		if (!member) return PG_SYNTHESIS_REJECTED;
+		if (!member || !member->producer) return PG_SYNTHESIS_REJECTED;
 		*dependency = module;
 		if (module->status != PG_SYNTHESIS_DONE) return module->status;
 		*reference = (struct source_reference){.producer = member->producer};
@@ -624,6 +644,13 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct source_reference *reference, struct pg_synthesis_job **dependency)
 {
+	if (syntax->kind == PG_SYNTAX_IMPORT) {
+		while (scope && !scope->imports) scope = scope->parent;
+		if (!scope) return PG_SYNTHESIS_UNSUPPORTED;
+		*reference = lookup_scope(scope->imports, syntax->left->token);
+		if (reference->producer) return PG_SYNTHESIS_DONE;
+		return reference->exports || reference->module ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_REJECTED;
+	}
 	const struct pg_syntax *root = syntax;
 	size_t count = 0;
 	while (root->kind == PG_SYNTAX_QUALIFIED) { ++count; root = root->left; }
@@ -650,6 +677,9 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 		const struct pg_evidence *proof = job->left->result;
 		if (!proof || !pg_evidence_subject(proof)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		if (job->syntax->kind == PG_SYNTAX_IMPORT && pg_evidence_context(proof)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
 		job->result = pg_prove_projection(synthesis->typing, job->scope->context, proof);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
@@ -963,20 +993,29 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 		state->syntax = syntax;
 	}
 	struct definition_state *state = job->definitions;
-	/* Register one producer per transition. Dormant producers cannot observe
-	 * a partially constructed name index. */
+	/* Local definitions remain dormant until registration completes. Import
+	 * references use the immutable incoming provider scope, never this index. */
 	if (state->indexed < state->count) {
 		size_t i = state->indexed++;
 		const struct pg_syntax_item *item = &state->syntax->items[i];
 		if (item->operation != PG_TOKEN_EXPECT) {
-			if (item->operation != PG_TOKEN_ASSIGN) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-			int status = register_name(synthesis, &state->names, item->name);
-			if (status) { finish(synthesis, job, status > 0 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR); return; }
+			if (item->operation != PG_TOKEN_ASSIGN && item->operation != PG_SYNTAX_IMPORT) {
+				finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+			}
+			if (register_name(synthesis, &state->names, item->name) < 0) {
+				finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+			}
 			struct block_name *name = lookup_name(&state->names, item->name);
 			if (!name) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			name->producer = request_role(synthesis, state->scope, item->expression, DEFINITION_JOB);
-			state->entries[i] = name->producer;
-			if (!name->producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (item->operation == PG_SYNTAX_IMPORT) {
+				if (!name->imported) name->imported = pg_synthesis_request(synthesis, job->scope, item->expression);
+				state->entries[i] = name->imported;
+			} else {
+				if (name->producer) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+				name->producer = request_role(synthesis, state->scope, item->expression, DEFINITION_JOB);
+				state->entries[i] = name->producer;
+			}
+			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
 		enqueue(synthesis, job);
 		return;
@@ -985,13 +1024,13 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 		size_t i = state->activated++;
 		if (state->entries[i]) {
 			struct pg_synthesis_job *producer = state->entries[i];
-			if (!producer->stage) {
+			if (producer->role == DEFINITION_JOB && !producer->stage) {
 				producer->stage = 1;
 				enqueue(synthesis, producer);
 			}
 		} else {
 			const struct pg_syntax_item *item = &state->syntax->items[i];
-			if (!lookup_name(&state->names, item->name)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+			if (!lookup_definition(state, item->name)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			struct pg_syntax *name = pg_alloc(synthesis->typing->graph, sizeof(*name));
 			struct pg_syntax *check = pg_alloc(synthesis->typing->graph, sizeof(*check));
 			if (!name || !check) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -1023,9 +1062,8 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	struct definition_state *state = job->right->definitions;
 	if (selected) {
 		if (!job->stage) {
-			struct block_name *name = lookup_name(&state->names, job->syntax->right->token);
-			if (!name) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			job->value_job = name->producer;
+			job->value_job = lookup_definition(state, job->syntax->right->token);
+			if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			/* Selection cannot hide an invalid or pending unselected entry. */
 			job->left = pg_synthesis_request(synthesis, job->scope, syntax);
 			job->stage = 1;
@@ -1179,7 +1217,9 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }
-	if (syntax->kind == PG_SYNTAX_ATOM || syntax->kind == PG_SYNTAX_QUALIFIED) { reference_step(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_ATOM || syntax->kind == PG_SYNTAX_QUALIFIED || syntax->kind == PG_SYNTAX_IMPORT) {
+		reference_step(synthesis, job); return;
+	}
 	switch (syntax->kind) {
 	case PG_SYNTAX_LAMBDA:
 		if (syntax->binder_marker) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }

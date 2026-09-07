@@ -269,6 +269,115 @@ static void pending_names(struct pg_typing *typing, struct pg_classifiers *class
 	puts("pending names: source export reuse, checked projection, failed/non-term inputs and cycle waiting passed");
 }
 
+static void source_imports(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "id", .length = 2};
+	struct pg_synthesis_job *provider = program(&synthesis, root,
+		"{{export:=&(\\A:@ => \\x:A => x);}}.export;");
+	const struct pg_source_scope *bindings = pg_synthesis_name_job(&synthesis, root, name, provider);
+	const struct pg_source_scope *scope = pg_synthesis_import_scope(&synthesis, root, bindings);
+	assert(scope && !synthesis.steps);
+	assert(pg_synthesis_import_scope(&synthesis, root, bindings) == scope);
+	assert(pg_synthesis_import_scope(&synthesis, root, root) != scope);
+	struct pg_synthesis_job *client = program(&synthesis, scope,
+		"import id; import id; id::(A:@)->A->A; main:=id;");
+	assert(pg_synthesis_status(provider) == PG_SYNTHESIS_PENDING);
+	complete(&synthesis, client, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *answer = pg_synthesis_result(provider);
+	assert(answer && pg_synthesis_result(pg_synthesis_definition(client,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "main", .length = 4})) == answer);
+	assert(!pg_synthesis_definition(client, name));
+	size_t counts[2];
+	const char *repeated[] = {"import id;", "import id; import id; import id;"};
+	for (size_t i = 0; i < 2; ++i) {
+		size_t jobs = synthesis.jobs.count;
+		complete(&synthesis, program(&synthesis, scope, repeated[i]), PG_SYNTHESIS_DONE);
+		counts[i] = synthesis.jobs.count - jobs;
+	}
+	assert(counts[0] == counts[1]);
+	assert(complete(&synthesis, request(&synthesis, scope,
+		"{{import id;}}.id;"), PG_SYNTHESIS_DONE) == answer);
+	complete(&synthesis, request(&synthesis, scope, "main:=id;"), PG_SYNTHESIS_REJECTED);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *call = complete(&synthesis, request(&synthesis, scope,
+		"{{import id; f:=&(\\A:@ => \\x:A => id A x);}}.f;"), PG_SYNTHESIS_DONE);
+	call = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, call), PG_SYNTHESIS_DONE);
+	same_judgement(call, answer);
+	const char *shadowed[] = {
+		"{{import id; id:=@;}}.id;",
+		"{{id:=@; import id;}}.id;"
+	};
+	for (size_t i = 0; i < sizeof(shadowed) / sizeof(*shadowed); ++i)
+		assert(complete(&synthesis, request(&synthesis, scope, shadowed[i]), PG_SYNTHESIS_DONE)
+			== pg_prove_universe(typing, classifiers, empty, 0));
+	struct pg_token module_name = {.kind = PG_TOKEN_IDENT, .text = "Client", .length = 6};
+	const struct pg_source_scope *exports = pg_synthesis_module_namespace(&synthesis, root, module_name, client);
+	assert(complete(&synthesis, request(&synthesis, exports, "main:=Client.main;"), PG_SYNTHESIS_DONE) == answer);
+	complete(&synthesis, request(&synthesis, exports, "main:=Client.id;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, program(&synthesis, pg_synthesis_import_scope(&synthesis, root, exports),
+		"import Client;"), PG_SYNTHESIS_UNSUPPORTED);
+	complete(&synthesis, program(&synthesis, root, "import id;"), PG_SYNTHESIS_UNSUPPORTED);
+	complete(&synthesis, program(&synthesis, pg_synthesis_import_scope(&synthesis, scope, root),
+		"import id;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, program(&synthesis, scope, "import absent;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, program(&synthesis, scope, "import id; id::@;"), PG_SYNTHESIS_REJECTED);
+	/* Importing a raw computation is naming, not assignment-time quotation. */
+	struct pg_synthesis_job *raw = request(&synthesis, root, "main:=\\A:@ => \\x:A => x;");
+	bindings = pg_synthesis_name_job(&synthesis, root, name, raw);
+	const struct pg_source_scope *raw_scope = pg_synthesis_import_scope(&synthesis, root, bindings);
+	const struct pg_evidence *raw_answer = complete(&synthesis, request(&synthesis, raw_scope,
+		"{{import id;}}.id;"), PG_SYNTHESIS_DONE);
+	assert(raw_answer == pg_synthesis_result(raw));
+	assert(pg_evidence_judgement(pg_synthesis_result(raw)) == PG_JUDGEMENT_COMPUTATION);
+	const struct pg_object *binder = pg_binder(typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, binder,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_source_scope *open = pg_synthesis_bind(&synthesis, root, name, binder, context);
+	const struct pg_source_scope *open_imports = pg_synthesis_import_scope(&synthesis, open,
+		pg_synthesis_name(&synthesis, root, name, answer));
+	same_judgement(complete(&synthesis, request(&synthesis, open_imports,
+		"{{import id;}}.id;"), PG_SYNTHESIS_DONE), pg_prove_projection(typing, context, answer));
+	assert(!pg_synthesis_import_scope(&synthesis, root, open));
+	assert(!pg_synthesis_import_scope(&synthesis, root, NULL));
+	assert(!pg_synthesis_import_scope(&synthesis, NULL, bindings));
+	struct pg_synthesis foreign;
+	assert(pg_synthesis_init(&foreign, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	assert(!pg_synthesis_import_scope(&synthesis, root, pg_synthesis_root(&foreign)));
+	assert(!pg_synthesis_import_scope(&synthesis, pg_synthesis_root(&foreign), bindings));
+	pg_synthesis_destroy(&foreign);
+	struct pg_synthesis_job *invalid[] = {
+		request(&synthesis, open, "main:=id;"),
+		pg_synthesis_evidence(&synthesis, empty),
+		program(&synthesis, root, "x:=@;"),
+		request(&synthesis, root, "main:=absent;")
+	};
+	enum pg_synthesis_status statuses[] = {PG_SYNTHESIS_REJECTED, PG_SYNTHESIS_UNSUPPORTED,
+		PG_SYNTHESIS_UNSUPPORTED, PG_SYNTHESIS_REJECTED};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		bindings = pg_synthesis_name_job(&synthesis, root, name, invalid[i]);
+		scope = pg_synthesis_import_scope(&synthesis, root, bindings);
+		complete(&synthesis, program(&synthesis, scope, "import id; id:=@;"), statuses[i]);
+	}
+	provider = program(&synthesis, root, "{{a:=b; b:=a;}}.a;");
+	bindings = pg_synthesis_name_job(&synthesis, root, name, provider);
+	scope = pg_synthesis_import_scope(&synthesis, root, bindings);
+	client = program(&synthesis, scope, "import id; import id; main:=id;");
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(client) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(client));
+	assert(!synthesis.ready);
+	uint64_t steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(synthesis.steps == steps);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("source imports: selected pending symbols, repeated imports, shadowing, closure and shared dependencies passed");
+}
+
 static void definition_selections(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_whnf_work work;
@@ -1853,6 +1962,7 @@ int main(void)
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	accepted_inputs(&typing, &classifiers);
 	pending_names(&typing, &classifiers);
+	source_imports(&typing, &classifiers);
 	definition_selections(&typing, &classifiers);
 	fair_work(&typing, &classifiers);
 	library_levels(&typing, &classifiers);

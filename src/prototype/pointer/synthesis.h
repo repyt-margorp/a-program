@@ -61,6 +61,14 @@ const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 const struct pg_source_scope *pg_synthesis_name_job(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	struct pg_synthesis_job *producer);
+/* Supply the driver-selected symbol bindings for source import statements.
+ * This closed scope is not made lexically visible: only explicit imports
+ * introduce names. Its producers may be pending. No provider search, ambiguity
+ * choice or filesystem access happens here. An absent configuration remains
+ * unsupported; a missing name in a supplied complete binding set is rejected.
+ * Local declarations shadow imports; imports are not implicitly re-exported. */
+const struct pg_source_scope *pg_synthesis_import_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_source_scope *bindings);
 /* Publish an immutable closed source scope as a namespace, not a Core term.
  * Every name in exports is public; construct it from a fresh root to select
  * exactly the exports wanted. Member lookup never falls back to the importing

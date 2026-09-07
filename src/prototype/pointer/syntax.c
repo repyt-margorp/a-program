@@ -59,7 +59,7 @@ static const struct pg_syntax *import_entry(struct pg_parser *parser)
 	struct pg_token token = parser->reader.token;
 	advance(parser);
 	struct pg_token name = parser->reader.token;
-	if (require(parser, PG_TOKEN_IDENT, "expected imported artifact name") != 0) return NULL;
+	if (require(parser, PG_TOKEN_IDENT, "expected imported symbol name") != 0) return NULL;
 	const struct pg_syntax *target = node(parser, PG_SYNTAX_ATOM, name, NULL, NULL);
 	return node(parser, PG_SYNTAX_IMPORT, token, target, NULL);
 }

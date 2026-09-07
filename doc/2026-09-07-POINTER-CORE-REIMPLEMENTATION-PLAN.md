@@ -2093,16 +2093,34 @@ conclusion and all premise pointers; no accepted record is overwritten.
   Optimized check: 3.078 s (synthesis rebuilt); ASan/UBSan: 15.978 s (affected
   binaries rebuilt); four computation suites pass at 512 KiB stack.
   Implementation `synthesis.c` +14/-5, `synthesis.h` +9; tests +69; docs separate.
-- [ ] Preserve source-import semantics when connecting provider resolution:
+- [x] September 8, after `d14b5f5`: connect source imports to driver-selected
+  bindings through `pg_synthesis_import_scope`. Configuration is hidden from
+  lexical lookup; an import awaits its selected producer through the ordinary
+  reference job and checked projection, without assignment-time quotation.
+  One name hash index holds local and imported producers; local definitions
+  shadow imports in either source order. Repeated imports share a job.
+  Imported names can be selected or post-checked but are not implicitly exported
+  as module members; explicit aliases are exported. Invalid unused imports still
+  reject the module. No copied classifier, separate solver or Replay is added.
+  Tests cover pending exports, calls/NF, hidden configuration, shadowing,
+  duplicate-job sharing, post-check failure, export boundaries, missing symbols,
+  raw computation imports, open/foreign/non-term inputs and cyclic waiting.
+  Optimized check: 4.442 s; ASan/UBSan: 19.336 s (affected binaries rebuilt).
+  All four computation suites pass at 512 KiB stack. Implementation:
+  `synthesis.c` +59/-19, `synthesis.h` +8; syntax diagnostic +1/-1;
+  tests +110. These are test/build timings, not end-user compiler benchmarks.
+- [ ] Complete driver provider resolution while preserving symbol imports:
   `import Nat;` selects an exported symbol, not a module/file named Nat
   (`src/prototype/README.md`, source imports; driver `read_file.c`). Do not
   substitute namespace mounting for symbol import. A selected export can use
   the pending-name API above. Old `prototype_ast_add_import` in frontend
   `ast.c` treats repeated imports of the same symbol as idempotent; preserve and
-  test that behavior. Specify provider ambiguity, local shadowing and re-export
-  rules before wiring imports into definition registration. Filename search
-  remains outside the solver. This checkpoint does not implement import syntax
-  elaboration, filesystem resolution, `.a` loading or full source compatibility.
+  test that behavior. The source-import checkpoint above implements local
+  shadowing and explicit re-export. Provider ambiguity and filesystem search
+  remain driver responsibilities, not solver guesses. No configuration reports
+  UNSUPPORTED; a missing symbol in a supplied complete set reports REJECTED.
+  Filesystem resolution, recursive module loading, `.a` restoration and full
+  source compatibility remain open; source wiring alone does not close N5.
 - [x] Connect value universes, scoped variables, annotated Lambda, dependent Pi,
   APP, quotation and inline post-synthesis `::`. Lambda bodies retain raw
   computation polarity, while value bodies acquire RETURN. Function-typed
@@ -2111,7 +2129,7 @@ conclusion and all premise pointers; no accepted record is overwritten.
   target and performs a resumable comparison; the expectation never flows back
   into the left job. Tests compile a raw polymorphic nested identity, execute
   an application, check function expectations and reject unresolved names.
-- [ ] Complete source lowering/synthesis: imports and full definition diagnostics,
+- [ ] Complete source lowering/synthesis: import providers and full definition diagnostics,
   literals, ADT/IADT, computation blocks/folds, implicit sequencing
   of remaining returning argument/callee cases, computed type
   annotations, structured error reasons and comprehensive surface compatibility.
