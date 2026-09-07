@@ -905,6 +905,37 @@ static void conversion_test(struct pg_graph *graph)
 	const struct pg_term *identity = pg_lambda(graph, x, vx);
 	const struct pg_term *other_identity = pg_lambda(graph, y, vy);
 	const struct pg_term *left = pg_lambda(graph, x, pg_application(graph, other_identity, vx));
+	struct pg_comparison structural;
+	assert(pg_comparison_init(&structural, left, identity, NULL, NULL) == 0);
+	assert(pg_comparison_advance(&structural, 100) == PG_COMPARISON_DIFFERENT);
+	pg_comparison_destroy(&structural);
+	assert(pg_comparison_init(&structural, identity, pg_lambda(graph, y, vx), NULL, NULL) == 0);
+	assert(pg_comparison_advance(&structural, 100) == PG_COMPARISON_DIFFERENT);
+	pg_comparison_destroy(&structural);
+	const struct pg_term *deep_left = vx, *deep_right = vy;
+	for (size_t i = 0; i < 20000; ++i) {
+		deep_left = pg_application(graph, deep_left, deep_left);
+		deep_right = pg_application(graph, deep_right, deep_right);
+	}
+	deep_left = pg_lambda(graph, x, deep_left);
+	deep_right = pg_lambda(graph, y, deep_right);
+	struct pg_comparison whole;
+	assert(pg_comparison_init(&structural, deep_left, deep_right, NULL, NULL) == 0);
+	assert(pg_comparison_init(&whole, deep_left, deep_right, NULL, NULL) == 0);
+	assert(pg_comparison_advance(&structural, 0) == PG_COMPARISON_PENDING);
+	assert(pg_comparison_steps(&structural) == 0);
+	while (pg_comparison_status(&structural) == PG_COMPARISON_PENDING) {
+		uint64_t steps = pg_comparison_steps(&structural);
+		pg_comparison_advance(&structural, 7);
+		assert(pg_comparison_steps(&structural) - steps <= 7);
+	}
+	assert(pg_comparison_status(&structural) == PG_COMPARISON_EQUAL);
+	assert(pg_comparison_advance(&whole, UINT64_MAX) == PG_COMPARISON_EQUAL);
+	assert(pg_comparison_steps(&whole) == pg_comparison_steps(&structural));
+	assert(pg_comparison_task_count(&structural) == 20002);
+	pg_comparison_destroy(&structural);
+	pg_comparison_destroy(&whole);
+	assert(pg_alpha_equal(deep_left, deep_right) == 1);
 	struct pg_conversion conversion;
 	assert(pg_conversion_init(&conversion, &work, left, identity) == 0);
 	assert(pg_conversion_advance(&conversion, 0) == PG_CONVERSION_PENDING);

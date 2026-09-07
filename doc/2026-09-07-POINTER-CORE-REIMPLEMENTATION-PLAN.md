@@ -664,7 +664,20 @@ successful return codes as new-kernel certificates.
   maintenance are not wall-clock bounded. Other recursive traversals are not
   covered by the stack test. This does not complete end-to-end compiler fuel.
   In particular beta preparation still assembles and validates context images
-  synchronously, and final classifier alpha comparison is not yet budgeted.
+  synchronously; most primitive evidence rules still call synchronous alpha.
+- [x] Structural alpha and beta conversion now share one resumable scoped-pair
+  walker in graph.c. Structural comparison supplies no normalization; conversion
+  supplies the existing fixed beta-job policy. Pair memoization includes the
+  binder correspondence, and reference lookup advances one scope link at a time.
+  Pointer identity only shortcuts comparison outside a binding correspondence.
+  Conversion alone issues its opaque certificate after successful comparison;
+  an arbitrary comparison callback cannot produce such a certificate.
+- [x] The synchronous alpha API drives that same walker; synthesis uses its
+  resumable structural mode for final beta-classifier checking. No Core tag or
+  alpha/WHNF interning was added. Tests compare 20,000-deep shared APP structures
+  with split/whole budgets and linear task counts, reject bound/free confusion,
+  and distinguish structural inequality from beta convertibility. Existing
+  typed evaluation and conversion tests continue through the common algorithm.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation

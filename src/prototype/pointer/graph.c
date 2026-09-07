@@ -69,69 +69,156 @@ struct alpha_entry {
 	const struct pg_term *left;
 	const struct pg_term *right;
 	const struct binder_pair *scope;
+	const struct binder_pair *cursor;
+	const struct pg_term *normalized[2];
+	struct alpha_entry *next;
+	unsigned stage;
 };
 
-struct alpha_context {
+struct pg_comparison_state {
 	struct pg_graph arena;
 	struct pg_index seen;
+	struct alpha_entry *pending;
+	void *policy;
+	int (*normalize)(void *, const struct pg_term *, const struct pg_term **);
+	enum pg_comparison_status status;
+	uint64_t steps;
 };
 
-static int alpha_equal(struct alpha_context *context, const struct pg_term *left, const struct pg_term *right,
+static int comparison_push(struct pg_comparison_state *context, const struct pg_term *left, const struct pg_term *right,
 	const struct binder_pair *scope)
 {
-	if (left->kind != right->kind) return 0;
-	if (left->kind == PG_REFERENCE) {
-		for (const struct binder_pair *p = scope; p; p = p->parent) {
-			if (left->as.reference == p->left) return right->as.reference == p->right;
-			if (right->as.reference == p->right) return 0;
-		}
-		return left->as.reference == right->as.reference;
-	}
+	if (!left || !right) return -1;
+	if (left == right && !scope) return 0;
 	uint64_t hash = mix(mix((uintptr_t)left, (uintptr_t)right), (uintptr_t)scope);
 	for (struct pg_index_entry *candidate = pg_index_candidates(&context->seen, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
 		const struct alpha_entry *entry = (const struct alpha_entry *)candidate;
 		if (entry->left != left) continue;
 		if (entry->right != right) continue;
-		if (entry->scope == scope) return 1;
+		if (entry->scope == scope) return 0;
 	}
-	int result;
-	switch (left->kind) {
-	case PG_APPLICATION:
-		result = alpha_equal(context, left->as.application.function, right->as.application.function, scope);
-		if (result != 1) return result;
-		result = alpha_equal(context, left->as.application.argument, right->as.application.argument, scope);
-		break;
-	case PG_LAMBDA: {
-		struct binder_pair *binder = pg_alloc(&context->arena, sizeof(*binder));
-		if (!binder) return -1;
-		*binder = (struct binder_pair){left->as.lambda.binder, right->as.lambda.binder, scope};
-		result = alpha_equal(context, left->as.lambda.body, right->as.lambda.body, binder);
-		break;
-	}
-	default:
-		return 0;
-	}
-	if (result != 1) return result;
 	struct alpha_entry *entry = pg_alloc(&context->arena, sizeof(*entry));
 	if (!entry) return -1;
 	entry->left = left;
 	entry->right = right;
 	entry->scope = scope;
+	entry->cursor = scope;
+	entry->next = context->pending;
 	if (pg_index_insert(&context->seen, &entry->index, hash) != 0) return -1;
-	return 1;
+	context->pending = entry;
+	return 0;
+}
+
+static enum pg_comparison_status comparison_step(struct pg_comparison_state *context)
+{
+	struct alpha_entry *entry = context->pending;
+	if (entry->stage < 2) {
+		unsigned side = entry->stage;
+		const struct pg_term *input = side ? entry->right : entry->left;
+		int result = 1;
+		if (context->normalize) result = context->normalize(context->policy, input, &entry->normalized[side]);
+		else entry->normalized[side] = input;
+		if (result < 0) return PG_COMPARISON_ERROR;
+		if (!result) return PG_COMPARISON_PENDING;
+		if (!entry->normalized[side]) return PG_COMPARISON_ERROR;
+		++entry->stage;
+		return PG_COMPARISON_PENDING;
+	}
+	const struct pg_term *left = entry->normalized[0], *right = entry->normalized[1];
+	if (left->kind != right->kind) return PG_COMPARISON_DIFFERENT;
+	if (left->kind == PG_REFERENCE) {
+		const struct binder_pair *scope = entry->cursor;
+		if (scope) {
+			if (left->as.reference == scope->left) {
+				if (right->as.reference != scope->right) return PG_COMPARISON_DIFFERENT;
+			} else {
+				if (right->as.reference == scope->right) return PG_COMPARISON_DIFFERENT;
+				entry->cursor = scope->parent;
+				return PG_COMPARISON_PENDING;
+			}
+		} else if (left->as.reference != right->as.reference) return PG_COMPARISON_DIFFERENT;
+	}
+	context->pending = entry->next;
+	switch (left->kind) {
+	case PG_APPLICATION:
+		if (comparison_push(context, left->as.application.argument, right->as.application.argument, entry->scope) != 0) return PG_COMPARISON_ERROR;
+		if (comparison_push(context, left->as.application.function, right->as.application.function, entry->scope) != 0) return PG_COMPARISON_ERROR;
+		break;
+	case PG_LAMBDA: {
+		struct binder_pair *binder = pg_alloc(&context->arena, sizeof(*binder));
+		if (!binder) return PG_COMPARISON_ERROR;
+		*binder = (struct binder_pair){left->as.lambda.binder, right->as.lambda.binder, entry->scope};
+		if (comparison_push(context, left->as.lambda.body, right->as.lambda.body, binder) != 0) return PG_COMPARISON_ERROR;
+		break;
+	}
+	case PG_REFERENCE: break;
+	default: return PG_COMPARISON_ERROR;
+	}
+	return context->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
+}
+
+int pg_comparison_init(struct pg_comparison *work, const struct pg_term *left,
+	const struct pg_term *right, void *policy,
+	int (*normalize)(void *, const struct pg_term *, const struct pg_term **))
+{
+	work->state = calloc(1, sizeof(*work->state));
+	if (!work->state) return -1;
+	work->state->policy = policy;
+	work->state->normalize = normalize;
+	if (pg_index_init(&work->state->seen) != 0) goto fail;
+	if (comparison_push(work->state, left, right, NULL) != 0) goto fail;
+	work->state->status = work->state->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
+	return 0;
+fail:
+	pg_comparison_destroy(work);
+	return -1;
+}
+
+void pg_comparison_destroy(struct pg_comparison *work)
+{
+	if (!work->state) return;
+	pg_index_destroy(&work->state->seen);
+	pg_graph_destroy(&work->state->arena);
+	free(work->state);
+	work->state = NULL;
+}
+
+enum pg_comparison_status pg_comparison_status(const struct pg_comparison *work)
+{
+	return work->state ? work->state->status : PG_COMPARISON_ERROR;
+}
+
+enum pg_comparison_status pg_comparison_advance(struct pg_comparison *work, uint64_t budget)
+{
+	while (pg_comparison_status(work) == PG_COMPARISON_PENDING && budget) {
+		--budget;
+		++work->state->steps;
+		work->state->status = comparison_step(work->state);
+	}
+	return pg_comparison_status(work);
+}
+
+uint64_t pg_comparison_steps(const struct pg_comparison *work)
+{
+	return work->state ? work->state->steps : 0;
+}
+
+size_t pg_comparison_task_count(const struct pg_comparison *work)
+{
+	return work->state ? work->state->seen.count : 0;
 }
 
 int pg_alpha_equal(const struct pg_term *left, const struct pg_term *right)
 {
 	if (!left || !right) return 0;
 	if (left == right) return 1;
-	struct alpha_context context = {0};
-	if (pg_index_init(&context.seen) != 0) return -1;
-	int result = alpha_equal(&context, left, right, NULL);
-	pg_index_destroy(&context.seen);
-	pg_graph_destroy(&context.arena);
-	return result;
+	struct pg_comparison work;
+	if (pg_comparison_init(&work, left, right, NULL, NULL) != 0) return -1;
+	while (pg_comparison_advance(&work, UINT64_MAX) == PG_COMPARISON_PENDING) {}
+	enum pg_comparison_status result = pg_comparison_status(&work);
+	pg_comparison_destroy(&work);
+	return result == PG_COMPARISON_EQUAL ? 1 : result == PG_COMPARISON_DIFFERENT ? 0 : -1;
 }
 
 int pg_index_init(struct pg_index *index)

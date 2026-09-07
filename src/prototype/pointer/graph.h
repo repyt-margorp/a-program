@@ -64,5 +64,20 @@ const struct pg_term *pg_lambda(struct pg_graph *graph,
 /* Explicit syntactic alpha comparison, never used by interning or reduction.
  * 1 equal, 0 different, -1 allocation failure. */
 int pg_alpha_equal(const struct pg_term *left, const struct pg_term *right);
+struct pg_comparison_state;
+struct pg_comparison { struct pg_comparison_state *state; };
+enum pg_comparison_status { PG_COMPARISON_PENDING, PG_COMPARISON_EQUAL,
+	PG_COMPARISON_DIFFERENT, PG_COMPARISON_ERROR };
+/* Optional immutable normalization policy: -1 error, 0 progressed/pending,
+ * 1 ready with output. NULL selects structural alpha comparison. This walker
+ * issues no typing/conversion certificate and never merges graph nodes. */
+int pg_comparison_init(struct pg_comparison *work, const struct pg_term *left,
+	const struct pg_term *right, void *policy,
+	int (*normalize)(void *, const struct pg_term *, const struct pg_term **));
+enum pg_comparison_status pg_comparison_advance(struct pg_comparison *work, uint64_t budget);
+enum pg_comparison_status pg_comparison_status(const struct pg_comparison *work);
+uint64_t pg_comparison_steps(const struct pg_comparison *work);
+size_t pg_comparison_task_count(const struct pg_comparison *work);
+void pg_comparison_destroy(struct pg_comparison *work);
 
 #endif

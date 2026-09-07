@@ -66,6 +66,7 @@ struct pg_synthesis_job {
 	const struct pg_evidence *function;
 	const struct pg_evidence *continuation;
 	struct pg_conversion comparison;
+	struct pg_comparison structural;
 	struct pg_reindex reindex;
 	int comparing;
 	struct block_state *block;
@@ -93,6 +94,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
+			pg_comparison_destroy(&job->structural);
 			pg_reindex_destroy(&job->reindex);
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
@@ -432,8 +434,19 @@ static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	if (job->stage == REDUCTION_BETA) {
 		job->result = job->left->result;
-		int equal = pg_alpha_equal(pg_evidence_classifier(job->result), pg_evidence_classifier(job->inputs[1]));
-		finish(synthesis, job, equal == 1 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+		if (!job->structural.state && pg_comparison_init(&job->structural,
+			pg_evidence_classifier(job->result), pg_evidence_classifier(job->inputs[1]), NULL, NULL) != 0) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+		enum pg_comparison_status status = pg_comparison_advance(&job->structural, 1);
+		if (status == PG_COMPARISON_PENDING) {
+			job->next = synthesis->ready;
+			synthesis->ready = job;
+			return;
+		}
+		pg_comparison_destroy(&job->structural);
+		finish(synthesis, job, status == PG_COMPARISON_EQUAL ? PG_SYNTHESIS_DONE
+			: status == PG_COMPARISON_DIFFERENT ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_ERROR);
 		return;
 	}
 	if (job->stage == REDUCTION_SUBSTITUTED) {
