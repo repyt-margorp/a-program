@@ -910,6 +910,105 @@ static void computation_execution_test(struct pg_graph *graph)
 	puts("computation execution: force/thunk, fold, captured environments, neutral demands and split budgets passed");
 }
 
+static size_t demand_resumes;
+static const struct pg_object_class demand_class = {"test-demand"};
+static const struct pg_object demand_operation = {PG_SEMANTIC_OBJECT, &demand_class};
+
+static int demand_answer(struct pg_eval *machine, const struct pg_term *answer)
+{
+	const struct pg_closure *argument = pg_eval_argument(machine, 63);
+	assert(argument && !argument->environment && argument->term == answer);
+	++demand_resumes;
+	return 1;
+}
+
+static int demand_dispatch(struct pg_eval *machine)
+{
+	if (machine->current.term->as.reference != &demand_operation) return 1;
+	return pg_eval_demand(machine, 63, demand_answer);
+}
+
+static void demand_budget_test(struct pg_graph *graph)
+{
+	const size_t depth = 5000;
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x), *vy = pg_reference(graph, y);
+	const struct pg_term *deep = vx, *expected = vy;
+	for (size_t i = 0; i < depth; ++i) {
+		deep = pg_application(graph, deep, deep);
+		expected = pg_application(graph, expected, expected);
+	}
+	const struct pg_term *quoted = pg_application(graph, pg_reference(graph, &pg_thunk_operation),
+		pg_lambda(graph, y, deep));
+	const struct pg_term *input = pg_application(graph, pg_lambda(graph, x,
+		pg_application(graph, pg_reference(graph, &pg_force_operation), quoted)), vy);
+	struct pg_eval split, whole;
+	pg_computation_eval_init(&split, graph, input);
+	assert(pg_eval_advance(&split, 100) == PG_EVAL_PENDING);
+	assert(split.frames && split.head_ready);
+	/* Explicit diagnostic readback may discard work, but must preserve meaning. */
+	const struct pg_term *residual = pg_eval_readback(&split, graph);
+	pg_computation_eval_init(&whole, graph, residual);
+	assert(pg_eval_advance(&whole, UINT64_MAX) == PG_EVAL_WHNF);
+	const struct pg_term *result = pg_eval_readback(&whole, graph);
+	assert(result->kind == PG_LAMBDA && result->as.lambda.binder != y);
+	assert(result->as.lambda.body == expected);
+	pg_eval_destroy(&whole);
+	while (split.status == PG_EVAL_PENDING) {
+		uint64_t steps = split.steps;
+		pg_eval_advance(&split, 7);
+		assert(split.steps - steps <= 7 && split.steps < 20 * depth);
+	}
+	assert(split.status == PG_EVAL_WHNF && split.steps > depth);
+	result = pg_eval_readback(&split, graph);
+	assert(result->kind == PG_LAMBDA && result->as.lambda.binder != y);
+	assert(result->as.lambda.body == expected);
+	pg_computation_eval_init(&whole, graph, input);
+	assert(pg_eval_advance(&whole, UINT64_MAX) == PG_EVAL_WHNF);
+	assert(whole.steps == split.steps);
+	assert(pg_alpha_equal(pg_eval_readback(&whole, graph), result) == 1);
+	pg_eval_destroy(&whole);
+	pg_eval_destroy(&split);
+	pg_computation_eval_init(&split, graph, input);
+	assert(pg_eval_advance(&split, 100) == PG_EVAL_PENDING);
+	pg_eval_destroy(&split); /* Release suspended demand traversal, not just frames. */
+	struct pg_whnf_work work;
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	struct pg_whnf_job *job = pg_whnf_request(&work, &pg_pure_policy, input);
+	assert(pg_whnf_advance(job, 100) == PG_EVAL_PENDING);
+	assert(!pg_whnf_result(job) && !pg_whnf_certificate(job));
+	assert(pg_whnf_advance(job, UINT64_MAX) == PG_EVAL_WHNF);
+	assert(pg_alpha_equal(pg_whnf_result(job), result) == 1);
+	pg_whnf_work_destroy(&work);
+	/* Copying the argument prefix must also suspend without calling resume. */
+	input = expected = pg_reference(graph, &demand_operation);
+	const struct pg_term *redex = pg_application(graph, pg_lambda(graph, x, vx), vy);
+	for (size_t i = 0; i < 65; ++i) {
+		input = pg_application(graph, input, i == 63 ? redex : vx);
+		expected = pg_application(graph, expected, i == 63 ? vy : vx);
+	}
+	demand_resumes = 0;
+	pg_eval_init(&split, input);
+	split.output = graph; split.dispatch = demand_dispatch;
+	while (!split.head_ready) {
+		assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
+		assert(split.steps < 100);
+	}
+	assert(pg_eval_advance(&split, 32) == PG_EVAL_PENDING && demand_resumes == 0);
+	assert(pg_eval_readback(&split, graph) == expected);
+	assert(pg_eval_advance(&split, UINT64_MAX) == PG_EVAL_WHNF && demand_resumes == 1);
+	assert(pg_eval_readback(&split, graph) == expected);
+	uint64_t steps = split.steps;
+	assert(pg_eval_advance(&split, 100) == PG_EVAL_WHNF && split.steps == steps && demand_resumes == 1);
+	pg_eval_destroy(&split);
+	pg_eval_init(&split, input);
+	split.output = graph; split.dispatch = demand_dispatch;
+	while (!split.head_ready) assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
+	assert(pg_eval_advance(&split, 32) == PG_EVAL_PENDING && demand_resumes == 1);
+	pg_eval_destroy(&split);
+	puts("demand budget: shared materialization, capture, split fuel, prefix suspension and callback delivery passed");
+}
+
 static void classifiers_test(struct pg_graph *graph)
 {
 	struct pg_classifiers classifiers;
@@ -1495,6 +1594,7 @@ int main(void)
 	family_instance_test(&graph);
 	typed_restriction_test(&graph);
 	computation_execution_test(&graph);
+	demand_budget_test(&graph);
 	classifiers_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);

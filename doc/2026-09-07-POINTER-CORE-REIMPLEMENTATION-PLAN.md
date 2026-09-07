@@ -255,11 +255,12 @@ of arbitrary intermediate closure evaluations.
 - [x] Test shared pending requests, split budgets, stable completed answers,
   different captured arguments, nontermination remaining pending and index
   growth. Ordinary and ASan/UBSan checks pass.
-- [ ] Connect beta work to typed conversion without interpreting beta-WHNF as
-  full semantic WHNF. Add explicit owner reduction policies before semantic
-  dispatch; do not silently expand this cache to runtime effects.
-- [ ] Make readback itself budgetable before claiming a bound on all work:
-  the current budget counts machine transitions, not output graph traversal.
+- [x] Connect work to typed conversion using the fixed pure semantic policy;
+  beta-only and pure-semantic jobs retain distinct keys. Runtime effects are
+  not eligible for this conversion cache.
+- [x] Budget output graph traversal and semantic-demand readback using the
+  shared materializer below. Explicit diagnostic readback remains synchronous;
+  callback algorithms and other work still prevent a bound on all execution.
 
 `pointer/conversion.c` adds a separate resumable beta-conversion traversal using
 the shared beta jobs. It decomposes normalized Lambda/APP/reference pairs,
@@ -506,7 +507,8 @@ a specified type family, not a global endpoint-only relation.
   Variable/constant selection does not allocate fresh boundary binders.
   A scope rewrite is one semantic transition with work proportional to its
   curried arity; this is not a per-node or wall-clock fuel bound. Fine-grained
-  scope preparation, like demand readback, remains a budget-accounting task.
+  scope preparation remains a budget-accounting task. Demand readback has
+  subsequently moved to the shared budgeted materializer below.
   Tests cover binder selection, ignored divergent endpoints, lexical capture,
   two curried binders, composition, selected p/q, split budgets, and F/U family
   computation. Checked functions `lambda x. RETURN x` and its APP composition
@@ -917,7 +919,8 @@ successful return codes as new-kernel certificates.
   conversion explicitly requests the fixed `pg_pure_policy`, never an arbitrary
   caller's dispatcher. Tests cover split budgets, capture, classifier conversion
   before/after action, suspension, neutral endpoints and policy isolation.
-  Synchronous readback inside semantic-demand resumption remains a fuel caveat.
+  Semantic-demand readback is now budgeted by the shared materialization
+  checkpoint below; callback-local algorithms still need their own budgeting.
 - [ ] Compute Pi/Lambda/APP action and general F/U rules on selected
   heterogeneous/higher families. The equations above are not full observational
   Identity. General action rules and complete surface action execution remain
@@ -1028,6 +1031,31 @@ the HOTT transport/lifting structure described in the
   a second term-reconstruction algorithm. Tests cover short execution with deep
   captured readback, split/whole step equivalence, capture avoidance, argument
   order, completed/pending request reuse and destruction during readback.
+- [x] September 8, after `f796656`: semantic demand and final WHNF output now
+  use one resumable closure/spine materializer. Explicit diagnostic readback
+  drives the same algorithm synchronously; it does not introduce another
+  evaluator or a Replay path. Each demand retains work in its evaluator frame,
+  spends fuel on substitution/readback transitions, then copies one argument
+  prefix link per step. The untouched argument tail and Core terms stay shared.
+  Only a complete answer and restored caller enter the callback, exactly once.
+  Suspended materialization is released on cancellation and after delivery.
+  These mutable frames are invocation-local work, not new semantic authorities.
+  `tests/core.c:demand_budget_test` checks a captured depth-5,000 shared DAG,
+  capture avoidance, bounded per-call step increments, split/whole result and
+  step agreement, diagnostic residual restart, pending WHNF receipts, and
+  cancellation during traversal and prefix copying. A 65-argument neutral
+  test dispatcher confirms callback timing, argument order and tail preservation.
+  These are Core evaluator fixtures, not new accepted effect operations.
+  Existing typed Identity, synthesis, FORCE/FOLD and nested-demand tests use
+  the same path. The new steps expose previously uncounted work; this is not a
+  claim of faster evaluation or constant wall-clock cost per step.
+  Remaining unbudgeted work includes callback algorithms, argument lookup and
+  consumption, index maintenance, allocation/freeing, and primitive checking.
+  Verification passed: optimized and ASan/UBSan pointer `make check`, plus
+  Core/synthesis/Identity with a 512 KiB stack. The 158 syntax outcomes still
+  establish parsing only, not full legacy program compatibility.
+  Sizes excluding docs: `eval.c` +100/-84, `eval.h` +3/-1
+  (implementation net +18); `tests/core.c` +100/-0.
 - [x] Beta execution now consumes one environment link per variable-lookup
   transition. For a reference, dropping an unrelated environment prefix changes
   neither its denotation nor captured argument closures; the shared environment
@@ -1046,7 +1074,7 @@ the HOTT transport/lifting structure described in the
   has been retired with that evaluation path. The resumable checked reindex API
   above remains for genuine context substitution, with its independent tests.
 - [ ] Thread resumable substitution through remaining typed evidence work and
-  budget semantic-demand readback. Binding validation/copying, allocation and
+  budget semantic callback algorithms. Binding validation/copying, allocation and
   index maintenance are not wall-clock bounded. Primitive evidence rules still
   use synchronous alpha comparison. This does not complete compiler-wide fuel.
 - [x] Structural alpha and beta conversion now share one resumable scoped-pair

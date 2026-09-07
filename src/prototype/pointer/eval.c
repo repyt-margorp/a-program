@@ -12,16 +12,50 @@ struct pg_argument {
 	struct pg_closure value;
 	const struct pg_argument *next;
 };
+
+struct readback_entry {
+	struct pg_index_entry index;
+	struct pg_closure input;
+	const struct pg_term *result;
+	struct readback_entry *next, *left, *right;
+	const struct pg_object *binder;
+	unsigned stage;
+	const struct pg_environment *cursor;
+};
+
+struct readback_context {
+	struct pg_graph *output;
+	struct pg_graph temporary;
+	struct pg_index results;
+	struct readback_entry *pending;
+	uint64_t steps;
+};
+
+struct materialization {
+	struct readback_context readback;
+	struct readback_entry *entry;
+	const struct pg_argument *remaining;
+	const struct pg_term *partial;
+	int done;
+};
+
 struct pg_eval_frame {
 	struct pg_closure caller;
 	const struct pg_argument *arguments;
 	size_t index;
 	int (*resume)(struct pg_eval *machine, const struct pg_term *answer);
-	const struct pg_eval_frame *parent;
+	struct pg_eval_frame *parent;
+	struct materialization answer;
+	const struct pg_argument *cursor;
+	struct pg_argument *first, *last;
+	size_t copied;
 };
 
 static const struct pg_term *readback(struct pg_closure closure,
 	const struct pg_argument *arguments, struct pg_graph *graph);
+static int materialize_step(struct materialization *work, struct pg_graph *graph,
+	struct pg_closure closure, const struct pg_argument *arguments);
+static void materialize_destroy(struct materialization *work);
 
 const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index)
 {
@@ -64,7 +98,8 @@ int pg_eval_demand(struct pg_eval *machine, size_t index,
 	if (!argument) return -1;
 	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
 	if (!frame) return -1;
-	*frame = (struct pg_eval_frame){machine->current, machine->arguments, index, resume, machine->frames};
+	*frame = (struct pg_eval_frame){.caller = machine->current, .arguments = machine->arguments,
+		.index = index, .resume = resume, .parent = machine->frames, .cursor = machine->arguments};
 	machine->frames = frame;
 	machine->current = *argument;
 	machine->arguments = NULL;
@@ -73,46 +108,29 @@ int pg_eval_demand(struct pg_eval *machine, size_t index,
 
 static int resume_frame(struct pg_eval *machine)
 {
-	const struct pg_eval_frame *frame = machine->frames;
-	const struct pg_term *answer = readback(machine->current, machine->arguments, machine->output);
-	if (!answer) return -1;
-	/* Rebuild only the argument-list prefix; the tail and all terms stay shared. */
-	struct pg_argument *first = NULL, *last = NULL;
-	const struct pg_argument *argument = frame->arguments;
-	for (size_t i = 0; i <= frame->index; ++i) {
-		struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
-		if (!copy) return -1;
-		*copy = *argument;
-		if (last) last->next = copy;
-		else first = copy;
-		last = copy;
-		argument = argument->next;
+	struct pg_eval_frame *frame = machine->frames;
+	if (!frame->answer.done) {
+		int status = materialize_step(&frame->answer, machine->output, machine->current, machine->arguments);
+		return status < 0 ? -1 : 0;
 	}
-	last->value = (struct pg_closure){answer, NULL};
+	/* Rebuild one prefix link per step; the untouched tail remains shared. */
+	struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
+	if (!copy || !frame->cursor) return -1;
+	*copy = *frame->cursor;
+	if (frame->last) frame->last->next = copy;
+	else frame->first = copy;
+	frame->last = copy;
+	frame->cursor = frame->cursor->next;
+	if (frame->copied++ != frame->index) return 0;
+	const struct pg_term *answer = frame->answer.partial;
+	copy->value = (struct pg_closure){answer, NULL};
 	machine->current = frame->caller;
-	machine->arguments = first;
+	machine->arguments = frame->first;
 	machine->frames = frame->parent;
 	machine->head_ready = 0;
+	materialize_destroy(&frame->answer);
 	return frame->resume(machine, answer);
 }
-
-struct readback_entry {
-	struct pg_index_entry index;
-	struct pg_closure input;
-	const struct pg_term *result;
-	struct readback_entry *next, *left, *right;
-	const struct pg_object *binder;
-	unsigned stage;
-	const struct pg_environment *cursor;
-};
-
-struct readback_context {
-	struct pg_graph *output;
-	struct pg_graph temporary;
-	struct pg_index results;
-	struct readback_entry *pending;
-	uint64_t steps;
-};
 
 void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)
 {
@@ -264,28 +282,49 @@ static int reify_advance(struct readback_context *context, uint64_t budget)
 	return context->pending ? 0 : 1;
 }
 
-static const struct pg_term *reify(struct readback_context *context, struct pg_closure closure)
+static int materialize_step(struct materialization *work, struct pg_graph *graph,
+	struct pg_closure closure, const struct pg_argument *arguments)
 {
-	struct readback_entry *root = reify_request(context, closure);
-	if (!root) return NULL;
-	int status;
-	do { status = reify_advance(context, UINT64_MAX); } while (!status);
-	if (status < 0) return NULL;
-	return root->result;
+	if (work->done) return 1;
+	if (!work->readback.output) {
+		work->readback.output = graph;
+		if (pg_index_init(&work->readback.results) != 0) return -1;
+		work->entry = reify_request(&work->readback, closure);
+		if (!work->entry) return -1;
+		work->remaining = arguments;
+		return 0;
+	}
+	if (work->readback.pending)
+		return reify_advance(&work->readback, 1) < 0 ? -1 : 0;
+	const struct pg_term *answer = work->entry->result;
+	if (!answer) return -1;
+	work->partial = work->partial ? pg_application(graph, work->partial, answer) : answer;
+	if (!work->partial) return -1;
+	if (work->remaining) {
+		work->entry = reify_request(&work->readback, work->remaining->value);
+		if (!work->entry) return -1;
+		work->remaining = work->remaining->next;
+		return 0;
+	}
+	work->done = 1;
+	return 1;
+}
+
+static void materialize_destroy(struct materialization *work)
+{
+	pg_index_destroy(&work->readback.results);
+	pg_graph_destroy(&work->readback.temporary);
+	memset(work, 0, sizeof(*work));
 }
 
 static const struct pg_term *readback(struct pg_closure closure,
 	const struct pg_argument *arguments, struct pg_graph *graph)
 {
-	struct readback_context context = {.output = graph};
-	if (pg_index_init(&context.results) != 0) return NULL;
-	const struct pg_term *result = reify(&context, closure);
-	for (const struct pg_argument *argument = arguments; argument; argument = argument->next) {
-		if (!result) break;
-		result = pg_application(graph, result, reify(&context, argument->value));
-	}
-	pg_index_destroy(&context.results);
-	pg_graph_destroy(&context.temporary);
+	struct materialization work = {0};
+	int status;
+	do { status = materialize_step(&work, graph, closure, arguments); } while (!status);
+	const struct pg_term *result = status > 0 ? work.partial : NULL;
+	materialize_destroy(&work);
 	return result;
 }
 
@@ -390,6 +429,8 @@ const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 
 void pg_eval_destroy(struct pg_eval *machine)
 {
+	for (struct pg_eval_frame *frame = machine->frames; frame; frame = frame->parent)
+		materialize_destroy(&frame->answer);
 	pg_graph_destroy(&machine->temporary);
 	memset(machine, 0, sizeof(*machine));
 }
@@ -409,10 +450,7 @@ struct pg_whnf_job {
 	const struct pg_eval_policy *policy;
 	struct pg_eval machine;
 	const struct pg_whnf_certificate *certificate;
-	struct readback_context readback;
-	struct readback_entry *entry;
-	const struct pg_argument *remaining;
-	const struct pg_term *partial;
+	struct materialization output;
 	enum pg_eval_status status;
 	uint64_t steps;
 };
@@ -429,8 +467,7 @@ void pg_whnf_work_destroy(struct pg_whnf_work *work)
 	for (size_t i = 0; i < work->jobs.capacity; ++i) {
 		for (struct pg_index_entry *entry = work->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_whnf_job *job = (struct pg_whnf_job *)entry;
-			pg_index_destroy(&job->readback.results);
-			pg_graph_destroy(&job->readback.temporary);
+			materialize_destroy(&job->output);
 			pg_eval_destroy(&job->machine);
 		}
 	}
@@ -468,36 +505,15 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 		if (pg_eval_advance(&job->machine, 1) == PG_EVAL_ERROR) return PG_EVAL_ERROR;
 		return PG_EVAL_PENDING;
 	}
-	if (!job->readback.output) {
-		job->readback.output = job->graph;
-		if (pg_index_init(&job->readback.results) != 0) return PG_EVAL_ERROR;
-		job->entry = reify_request(&job->readback, job->machine.current);
-		if (!job->entry) return PG_EVAL_ERROR;
-		job->remaining = job->machine.arguments;
-		return PG_EVAL_PENDING;
-	}
-	if (job->readback.pending) {
-		if (reify_advance(&job->readback, 1) < 0) return PG_EVAL_ERROR;
-		return PG_EVAL_PENDING;
-	}
-	const struct pg_term *answer = job->entry->result;
-	if (!answer) return PG_EVAL_ERROR;
-	job->partial = job->partial ? pg_application(job->graph, job->partial, answer) : answer;
-	if (!job->partial) return PG_EVAL_ERROR;
-	if (job->remaining) {
-		job->entry = reify_request(&job->readback, job->remaining->value);
-		if (!job->entry) return PG_EVAL_ERROR;
-		job->remaining = job->remaining->next;
-		return PG_EVAL_PENDING;
-	}
+	int status = materialize_step(&job->output, job->graph, job->machine.current, job->machine.arguments);
+	if (status < 0) return PG_EVAL_ERROR;
+	if (!status) return PG_EVAL_PENDING;
 	struct pg_whnf_certificate *certificate = pg_alloc(job->graph, sizeof(*certificate));
 	if (!certificate) return PG_EVAL_ERROR;
-	*certificate = (struct pg_whnf_certificate){job->input, job->partial, job->policy};
+	*certificate = (struct pg_whnf_certificate){job->input, job->output.partial, job->policy};
 	job->certificate = certificate;
-	pg_index_destroy(&job->readback.results);
-	pg_graph_destroy(&job->readback.temporary);
+	materialize_destroy(&job->output);
 	pg_graph_destroy(&job->machine.temporary);
-	job->entry = NULL;
 	job->machine.current = (struct pg_closure){certificate->target, NULL};
 	job->machine.arguments = NULL;
 	return PG_EVAL_WHNF;

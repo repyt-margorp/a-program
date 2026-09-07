@@ -20,7 +20,7 @@ struct pg_eval {
 	/* Optional fixed semantic dispatcher. NULL preserves beta-only policy. */
 	int (*dispatch)(struct pg_eval *machine);
 	struct pg_graph *output;
-	const struct pg_eval_frame *frames;
+	struct pg_eval_frame *frames;
 	int head_ready;
 };
 
@@ -31,6 +31,8 @@ const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph 
 void pg_eval_destroy(struct pg_eval *machine);
 /* Dispatcher protocol: 0 progressed, 1 neutral, -1 failure. Demand evaluates
  * one argument on the same machine; resume receives its materialized WHNF.
+ * Demand readback and argument-prefix reconstruction consume evaluator steps;
+ * the callback is invoked once, only after the complete answer is available.
  * The output graph must outlive the machine. This machine does not memoize
  * invocations; the separate WHNF store is only for immutable pure policies. */
 const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index);
