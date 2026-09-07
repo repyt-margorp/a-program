@@ -155,6 +155,132 @@ static void function_eta(struct pg_typing *typing, struct pg_classifiers *classi
 	pg_whnf_work_destroy(&work);
 }
 
+static void selected_instances(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_dimensions dimensions;
+	struct pg_whnf_work work;
+	struct pg_synthesis split, whole;
+	assert(pg_dimensions_init(&dimensions, graph) == 0);
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	assert(pg_synthesis_init(&split, typing, classifiers, &work, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	assert(pg_synthesis_init(&whole, typing, classifiers, &work, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	const struct pg_object *a = pg_binder(graph), *b = pg_binder(graph), *r = pg_binder(graph);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *u = pg_prove_universe(typing, classifiers, empty, 0);
+	const struct pg_evidence *ambient = pg_prove_context_extension(typing, empty, a, u);
+	ambient = pg_prove_context_extension(typing, ambient, b, pg_prove_projection(typing, ambient, u));
+	const struct pg_evidence *rt = pg_prove_identity_type(typing, pg_prove_projection(typing, ambient, u),
+		pg_prove_variable(typing, ambient, a), pg_prove_variable(typing, ambient, b));
+	ambient = pg_prove_context_extension(typing, ambient, r, rt);
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, ambient, x,
+		pg_prove_value_type(typing, pg_prove_variable(typing, ambient, a)));
+	source = pg_prove_context_extension(typing, source, y,
+		pg_prove_value_type(typing, pg_prove_variable(typing, source, b)));
+	const struct pg_evidence *instance = pg_prove_identity_instance(typing, classifiers,
+		pg_prove_variable(typing, source, r), pg_prove_variable(typing, source, x), pg_prove_variable(typing, source, y));
+	const struct pg_evidence *input = pg_prove_type_value(typing, instance);
+	const struct pg_binding_face *centers[2];
+	for (size_t i = 0; i < 2; ++i) centers[i] = pg_binding_face(&dimensions,
+		pg_binding_cube(&dimensions, 1), pg_dimension_identity(&dimensions, 1));
+	const struct pg_evidence *ls, *rs, *paths[2];
+	const struct pg_evidence *context = pg_identity_context(typing, &dimensions, source, 2, centers, &ls, &rs, paths);
+	assert(input && context);
+	struct pg_synthesis_job *producer = pg_synthesis_normalize(&split, source, input);
+	struct pg_synthesis_job *other_producer = pg_synthesis_normalize(&whole, source, input);
+	size_t terms = graph->terms.count, proofs = typing->proofs.count;
+	struct pg_synthesis_job *job = pg_synthesis_family_action(&split, producer, ls, rs, 2, paths);
+	struct pg_synthesis_job *other = pg_synthesis_family_action(&whole, other_producer, ls, rs, 2, paths);
+	assert(job && other && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_family_action(&split, producer, ls, rs, 2, paths) == job);
+	assert(graph->terms.count == terms && typing->proofs.count == proofs);
+	pg_synthesis_advance(&split, 1);
+	assert(pg_synthesis_dependency(job) == producer);
+	assert(pg_synthesis_status(producer) == PG_SYNTHESIS_PENDING);
+	const struct pg_evidence *acted = complete(&split, job, PG_SYNTHESIS_DONE);
+	pg_synthesis_advance(&whole, 100000);
+	assert(pg_synthesis_status(other) == PG_SYNTHESIS_DONE);
+	same_judgement(acted, pg_synthesis_result(other));
+	const struct pg_evidence *kind = pg_prove_classifier(typing, classifiers, source, input);
+	same_judgement(acted, pg_prove_family_action(typing, kind, input, ls, rs, 2, paths));
+	/* Instantiation action exposes the selected R, never replaces it by A/B. */
+	const struct pg_term *expected = pg_identity_action(graph, pg_reference(graph, r));
+	for (size_t i = 0; i < 2; ++i) expected = pg_application(graph,
+		pg_identity_instance(graph, expected, pg_evidence_subject(pg_evidence_premise(ls, i + 5))->core,
+			pg_evidence_subject(pg_evidence_premise(rs, i + 5))->core), pg_evidence_subject(paths[i])->core);
+	const struct pg_evidence *normalized = normalize(&split, context, acted);
+	/* WHNF can retain beta/action redexes in neutral argument positions. */
+	struct pg_conversion comparison;
+	assert(pg_conversion_init(&comparison, &work, pg_evidence_subject(normalized)->core, expected) == 0);
+	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&comparison);
+	const struct pg_evidence *family = complete(&split,
+		pg_synthesis_normalize_classifier(&split, context, normalized), PG_SYNTHESIS_DONE);
+	/* Its universe Identity can be instantiated again, forming a square. */
+	const struct pg_evidence *lt = pg_prove_reindex(typing, ls, instance);
+	const struct pg_evidence *rr = pg_prove_reindex(typing, rs, instance);
+	const struct pg_object *w0 = pg_binder(graph), *w1 = pg_binder(graph);
+	const struct pg_evidence *square_context = pg_prove_context_extension(typing, context, w0, lt);
+	square_context = pg_prove_context_extension(typing, square_context, w1, pg_prove_projection(typing, square_context, rr));
+	family = pg_prove_projection(typing, square_context, family);
+	const struct pg_evidence *square = pg_prove_identity_instance(typing, classifiers, family,
+		pg_prove_variable(typing, square_context, w0), pg_prove_variable(typing, square_context, w1));
+	assert(square && pg_evidence_judgement(square) == PG_JUDGEMENT_VALUE_TYPE);
+	assert(pg_evidence_subject(square)->core == pg_identity_instance(graph, pg_evidence_subject(normalized)->core,
+		pg_reference(graph, w0), pg_reference(graph, w1)));
+	assert(!pg_prove_identity_instance(typing, classifiers, family,
+		pg_prove_variable(typing, square_context, w1), pg_prove_variable(typing, square_context, w0)));
+	/* A different path with the same endpoints is a different action request. */
+	const struct pg_object *alternative = pg_binder(graph);
+	const struct pg_evidence *choices = pg_prove_context_extension(typing, context, alternative,
+		pg_prove_classifier(typing, classifiers, context, paths[0]));
+	const struct pg_evidence *li[5], *ri[5];
+	for (size_t i = 0; i < 5; ++i) {
+		li[i] = pg_prove_projection(typing, choices, pg_evidence_premise(ls, i + 2));
+		ri[i] = pg_prove_projection(typing, choices, pg_evidence_premise(rs, i + 2));
+	}
+	const struct pg_evidence *cl = pg_prove_substitution(typing, source, choices, 5, li);
+	const struct pg_evidence *cr = pg_prove_substitution(typing, source, choices, 5, ri);
+	const struct pg_evidence *selected[] = {pg_prove_projection(typing, choices, paths[0]),
+		pg_prove_projection(typing, choices, paths[1])};
+	struct pg_synthesis_job *original = pg_synthesis_family_action(&split, producer, cl, cr, 2, selected);
+	selected[0] = pg_prove_variable(typing, choices, alternative);
+	struct pg_synthesis_job *incoherent = pg_synthesis_family_action(&split, producer, cl, cr, 2, selected);
+	complete(&split, incoherent, PG_SYNTHESIS_UNSUPPORTED);
+	/* The second path's family still mentions the first chosen path, even for
+	 * a constant B. Rebase it by explicit conversion, not inside the rule. */
+	const struct pg_evidence *prefix = pg_evidence_premise(source, 0);
+	const struct pg_evidence *second_type = pg_prove_family_identity_type(typing, pg_evidence_premise(source, 1),
+		pg_prove_substitution(typing, prefix, choices, 4, li), pg_prove_substitution(typing, prefix, choices, 4, ri),
+		1, selected, li[4], ri[4]);
+	assert(second_type);
+	assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(selected[1]), pg_evidence_subject(second_type)->core) == 0);
+	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
+	selected[1] = pg_prove_conversion(typing, selected[1], second_type, pg_conversion_certificate(&comparison));
+	pg_conversion_destroy(&comparison);
+	struct pg_synthesis_job *changed = pg_synthesis_family_action(&split, producer, cl, cr, 2, selected);
+	assert(original && changed && original != changed && incoherent != changed);
+	assert(pg_synthesis_family_action(&split, producer, cl, cr, 2, selected) == changed);
+	const struct pg_evidence *p0 = complete(&split, original, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *p1 = complete(&split, changed, PG_SYNTHESIS_DONE);
+	assert(pg_conversion_init(&comparison, &work, pg_evidence_subject(p0)->core, pg_evidence_subject(p1)->core) == 0);
+	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_DIFFERENT);
+	pg_conversion_destroy(&comparison);
+	assert(!pg_synthesis_family_action(&split, other_producer, ls, rs, 2, paths));
+	assert(!pg_synthesis_family_action(&split, producer, source, rs, 2, paths));
+	assert(!pg_synthesis_family_action(&split, producer, ls, rs, 2, NULL));
+	const struct pg_evidence *missing[] = {paths[0], NULL};
+	assert(!pg_synthesis_family_action(&split, producer, ls, rs, 2, missing));
+	struct pg_synthesis_job *wrong = pg_synthesis_family_action(&split, producer, rs, ls, 2, paths);
+	assert(wrong && wrong != job);
+	complete(&split, wrong, PG_SYNTHESIS_UNSUPPORTED);
+	pg_synthesis_destroy(&split);
+	pg_synthesis_destroy(&whole);
+	pg_whnf_work_destroy(&work);
+	pg_dimensions_destroy(&dimensions);
+}
+
 static void family_transport(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_whnf_work work;
@@ -348,6 +474,21 @@ static void source_actions(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(pg_synthesis_status(cycle_action) == PG_SYNTHESIS_PENDING);
 	assert(pg_synthesis_cycle(cycle_action));
 	assert(!pg_synthesis_result(cycle_action));
+	const struct pg_evidence *sigma = pg_prove_substitution(typing, context, context, 1, &vx);
+	const struct pg_evidence *family_action = complete(&split,
+		pg_synthesis_family_action(&split, function, sigma, sigma, 1, &px), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_judgement(family_action) == PG_JUDGEMENT_COMPUTATION);
+	same_judgement(family_action, pg_prove_family_action(typing, pi,
+		pg_synthesis_result(function), sigma, sigma, 1, &px));
+	same_judgement(complete(&split, pg_synthesis_family_action(&split, function, sigma, sigma, 0, NULL), PG_SYNTHESIS_DONE),
+		pg_prove_family_action(typing, pi, pg_synthesis_result(function), sigma, sigma, 0, NULL));
+	complete(&split, pg_synthesis_family_action(&split, bad, sigma, sigma, 1, &px), PG_SYNTHESIS_REJECTED);
+	complete(&split, pg_synthesis_family_action(&split, type, sigma, sigma, 1, &px), PG_SYNTHESIS_UNSUPPORTED);
+	assert(pg_evidence_judgement(complete(&split,
+		pg_synthesis_family_action(&split, value, sigma, sigma, 1, &px), PG_SYNTHESIS_DONE)) == PG_JUDGEMENT_VALUE);
+	struct pg_synthesis_job *family_cycle = pg_synthesis_family_action(&split, cycle, sigma, sigma, 1, &px);
+	pg_synthesis_advance(&split, 1000);
+	assert(pg_synthesis_status(family_cycle) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(family_cycle));
 	pg_synthesis_destroy(&split);
 	pg_synthesis_destroy(&whole);
 	pg_whnf_work_destroy(&work);
@@ -593,6 +734,7 @@ int main(void)
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	source_actions(&typing, &classifiers);
 	family_transport(&typing, &classifiers);
+	selected_instances(&typing, &classifiers);
 	function_eta(&typing, &classifiers);
 	assert(pg_whnf_work_init(&beta, &graph) == 0);
 	assert(pg_synthesis_init(&synthesis, &typing, &classifiers, &beta, PG_DEFINITION_IMPLICIT_THUNK) == 0);

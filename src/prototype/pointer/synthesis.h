@@ -38,6 +38,14 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
  * This scheduler API does not introduce a new surface keyword. */
 struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *input);
+/* Act on a synthesized input along checked substitutions and selected paths.
+ * Input belongs to this store; its source context comes from the substitutions.
+ * The request does not synthesize or act immediately. Boundary evidence must
+ * outlive the store. All selected paths participate in the immutable job key. */
+struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, size_t count,
+	const struct pg_evidence *const *paths);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.

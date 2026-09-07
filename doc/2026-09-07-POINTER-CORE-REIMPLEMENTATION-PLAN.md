@@ -911,6 +911,42 @@ a specified type family, not a global endpoint-only relation.
   and [uniform transport/lifting](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting).
   The three-value boundary follows that account; the computation codomain and
   implementation by ordinary CBPV Pi formation are the A Program adaptation.
+- [x] September 8, after `3cf93e2`: schedule selected family action.
+  `pg_synthesis_family_action` waits for a producer's own synthesis, recovers
+  its classifier and applies the existing checked family-action rule along
+  supplied substitutions and selected paths. It uses the same ready queue,
+  dependency subscription and immutable evidence store as reflexivity, not a
+  second solver or Replay engine. Requests do not execute the producer or
+  issue evidence; cyclic producers remain pending and failures propagate.
+  The common job index now supports an ordered, variable-length pointer key.
+  Every selected path is part of that key; a caller's mutable array is copied
+  into the immutable request. Existing binary requests use the same index.
+  Tests cover zero/two centers, parsed computation/value-type producers,
+  split/bulk completion, foreign jobs, invalid boundaries and repeat reuse.
+  A checked `R : Id Universe A B` is instantiated under `x:A,y:B`, then this
+  type construction is acted along paths in A/B. Its computed form is
+  `act R x0 x1 px y0 y1 py`, and its classifier can be normalized to a universe
+  Identity between `R x0 y0` and `R x1 y1`. A further checked instantiation
+  at two inhabitants constructs the corresponding square type.
+  This tests selected instantiation, not merely iterated diagonal refl. A
+  second path with the same endpoints yields distinct work/evidence. Since
+  later center types retain earlier selected paths, replacing a path without
+  updating dependent center evidence fails; explicit conversion repairs the
+  constant-family test without weakening the primitive rule.
+  The underlying-family account follows the primary
+  [higher-dimensional cubes discussion](https://narya.readthedocs.io/en/latest/observational.html#higher-dimensional-cubes),
+  rechecked September 8. The typed work scheduling is our implementation.
+  This forms a square type, not a filler for arbitrary boundaries, a proof of
+  higher coherence, a new Universe witness constructor or public syntax.
+  Boundary paths are already accepted inputs, not pending path-producing jobs;
+  primitive evidence construction and request key traversal remain synchronous.
+  Verification: optimized pointer `make check` in 2.773 s and ASan/UBSan in
+  9.186 s (each rebuilding the changed synthesis test), plus Identity and
+  synthesis with a 512 KiB stack. The syntax inventory remains parse-only.
+  Implementation: `synthesis.c` +63/-11, `synthesis.h` +8/-0 (net +60);
+  tests: `tests/synthesis.c` +142/-0; documentation counted separately.
+  N2/N3 remain open, particularly higher field computation, canonical
+  transport/lifting, indexed fibrancy and full source-level access.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

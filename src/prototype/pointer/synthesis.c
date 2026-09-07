@@ -45,12 +45,12 @@ struct block_state {
 	struct pg_index names;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
 	enum job_role role;
-	const void *inputs[2];
+	size_t input_count;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
 	enum pg_synthesis_status status;
@@ -74,6 +74,7 @@ struct pg_synthesis_job {
 	struct block_state *block;
 	const struct continuation_frame *application_frame;
 	struct definition_state *definitions;
+	const void *inputs[];
 };
 
 int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
@@ -130,28 +131,40 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	return scope;
 }
 
-static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
-	enum job_role role, const void *first, const void *second)
+static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
+	enum job_role role, size_t count, const void *const *inputs)
 {
-	uint64_t hash = ((uintptr_t)first ^ (uintptr_t)second ^ (unsigned)role) * UINT64_C(1099511628211);
+	if (count > (SIZE_MAX - sizeof(struct pg_synthesis_job)) / sizeof(*inputs)) return NULL;
+	uint64_t hash = ((unsigned)role ^ count) * UINT64_C(1099511628211);
+	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)inputs[i]) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->jobs, hash); entry; entry = entry->next) {
 		if (entry->hash != hash) continue;
 		struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 		if (job->role != role) continue;
-		if (job->inputs[0] == first && job->inputs[1] == second) return job;
+		if (job->input_count != count) continue;
+		size_t i = 0;
+		while (i < count && job->inputs[i] == inputs[i]) ++i;
+		if (i == count) return job;
 	}
-	struct pg_synthesis_job *job = pg_alloc(synthesis->typing->graph, sizeof(*job));
+	struct pg_synthesis_job *job = pg_alloc(synthesis->typing->graph, sizeof(*job) + count * sizeof(*inputs));
 	if (!job) return NULL;
 	job->owner = synthesis;
 	job->role = role;
-	job->inputs[0] = first;
-	job->inputs[1] = second;
+	job->input_count = count;
+	for (size_t i = 0; i < count; ++i) job->inputs[i] = inputs[i];
 	if (pg_index_insert(&synthesis->jobs, &job->index, hash) != 0) return NULL;
 	if (role != DEFINITION_JOB) {
 		job->next = synthesis->ready;
 		synthesis->ready = job;
 	}
 	return job;
+}
+
+static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
+	enum job_role role, const void *first, const void *second)
+{
+	const void *inputs[] = {first, second};
+	return request_inputs(synthesis, role, 2, inputs);
 }
 
 static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
@@ -176,6 +189,35 @@ struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis
 	if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
 	struct pg_synthesis_job *job = request_job(synthesis, REFLEXIVITY_JOB, context, input);
 	if (job) job->left = input;
+	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, size_t count,
+	const struct pg_evidence *const *paths)
+{
+	if (!input || input->owner != synthesis) return NULL;
+	if (!left_substitution || !right_substitution) return NULL;
+	if (pg_evidence_judgement(left_substitution) != PG_JUDGEMENT_SUBSTITUTION) return NULL;
+	if (pg_evidence_judgement(right_substitution) != PG_JUDGEMENT_SUBSTITUTION) return NULL;
+	if (count && !paths) return NULL;
+	if (count > SIZE_MAX / sizeof(const void *) - 3) return NULL;
+	struct pg_graph temporary = {0};
+	const void **inputs = pg_alloc(&temporary, (count + 3) * sizeof(*inputs));
+	struct pg_synthesis_job *job = NULL;
+	if (!inputs) goto done;
+	inputs[0] = left_substitution;
+	inputs[1] = right_substitution;
+	inputs[2] = input;
+	for (size_t i = 0; i < count; ++i) {
+		if (!paths[i]) goto done;
+		inputs[i + 3] = paths[i];
+	}
+	job = request_inputs(synthesis, FAMILY_ACTION_JOB, count + 3, inputs);
+	if (job) job->left = input;
+done:
+	pg_graph_destroy(&temporary);
 	return job;
 }
 
@@ -672,7 +714,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
 	if (job->role == CLASSIFIER_JOB) { classifier_step(synthesis, job); return; }
-	if (job->role == REFLEXIVITY_JOB) {
+	if (job->role == REFLEXIVITY_JOB || job->role == FAMILY_ACTION_JOB) {
 		if (!job->stage) {
 			job->stage = 1;
 			depend(synthesis, job, job->left);
@@ -682,6 +724,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		const struct pg_evidence *input = job->left->result;
 		if (!input) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		const struct pg_evidence *context = job->inputs[0];
+		if (job->role == FAMILY_ACTION_JOB) context = pg_evidence_premise(context, 0);
 		if (pg_evidence_context(context) != pg_evidence_context(input)) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
@@ -691,7 +734,16 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		if (pg_evidence_judgement(input) == PG_JUDGEMENT_VALUE_TYPE) input = value(synthesis, input);
 		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, input);
 		if (!type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		job->result = pg_prove_reflexivity(synthesis->typing, type, input);
+		if (job->role == FAMILY_ACTION_JOB) {
+			size_t count = job->input_count - 3;
+			struct pg_graph temporary = {0};
+			const struct pg_evidence **paths = pg_alloc(&temporary, count * sizeof(*paths));
+			if (count && !paths) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			for (size_t i = 0; i < count; ++i) paths[i] = job->inputs[i + 3];
+			job->result = pg_prove_family_action(synthesis->typing, type, input,
+				job->inputs[0], job->inputs[1], count, paths);
+			pg_graph_destroy(&temporary);
+		} else job->result = pg_prove_reflexivity(synthesis->typing, type, input);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 		return;
 	}
