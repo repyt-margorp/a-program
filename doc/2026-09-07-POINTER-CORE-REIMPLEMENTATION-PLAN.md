@@ -422,6 +422,21 @@ conclusion and all premise pointers; no accepted record is overwritten.
   synthesizes `F U0`, while applying it to an open `B:U1` synthesizes `F B`.
   Neither requires executing `f` or deciding B's eventual value. Formation
   evidence is not silently accepted as argument inhabitation evidence.
+- [x] Prefix-context projection (weakening) retains the original proof and Core
+  and creates only a conclusion occurrence and derivation in the extended
+  context. Its operands remain shared under the explicit projection evidence;
+  no recursive proof copying or binder renaming occurs. Reject shrinking,
+  sibling scopes and context formation used as a term premise.
+- [x] Recover classifier formation from existing variable, RETURN, THUNK,
+  FORCE, Lambda, type-as-value and conversion derivations. This regularity
+  operation consumes an already synthesized judgement, not an expected type.
+  Tests obtain the formation of a RETURN body and construct its enclosing Pi
+  from that result. No `::` information enters this path.
+- [ ] General typed substitution is required for APP regularity and dimensional
+  action; the prefix projection is not a complete context-morphism API.
+  Regularity for unsupported rules returns NULL, not a refutation. Recovery
+  currently traverses the relevant proof premises; scheduling/memoization and
+  source synthesis still need integration rather than a separate type authority.
 - [ ] Semantic conversion extensions, synthesis scheduling, image checking and
   typed HOTT action still need implementation. These primitive rules do
   not constitute a complete checker; NULL currently combines invalid-premise

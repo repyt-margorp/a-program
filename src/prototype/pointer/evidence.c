@@ -316,6 +316,80 @@ const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
 }
 
 const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_evidence *evidence) { return evidence->conversion; }
+const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *proof)
+{
+	if (!context_proof(typing, context)) return NULL;
+	if (!proof || proof->owner != typing) return NULL;
+	if (proof->judgement == PG_JUDGEMENT_CONTEXT) return NULL;
+	const struct pg_context *cursor = context->context;
+	while (cursor != proof->context) {
+		if (!cursor) return NULL;
+		cursor = cursor->parent;
+	}
+	if (context->context == proof->context) return proof;
+	const struct pg_occurrence *old = proof->subject;
+	const struct pg_occurrence *subject = pg_occurrence(typing, context->context,
+		old->core, old->annotation, old->operand_count, old->operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {context, proof};
+	return accept(typing, PG_CONTEXT_PROJECTION, proof->judgement,
+		context->context, subject, proof->classifier, 2, premises);
+}
+
+const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *term)
+{
+	if (!context_proof(typing, context)) return NULL;
+	if (classifiers->graph != typing->graph) return NULL;
+	if (!term || term->owner != typing) return NULL;
+	if (context->context != term->context) return NULL;
+	/* A projected term keeps its original derivation; inspect it without copying
+	 * the DAG, then transport the recovered formation to the requested context. */
+	while (term->rule == PG_CONTEXT_PROJECTION) term = term->premises[1];
+	const struct pg_evidence *formation = NULL;
+	switch (term->rule) {
+	case PG_VARIABLE: {
+		const struct pg_evidence *declaration = term->premises[0];
+		const struct pg_object *binder = term->subject->core->as.reference;
+		while (declaration->context->binder != binder) declaration = declaration->premises[0];
+		formation = declaration->premises[1];
+		break;
+	}
+	case PG_VALUE_FROM_TYPE: {
+		uint64_t level;
+		if (!pg_universe_level(term->classifier, &level)) return NULL;
+		return pg_prove_universe(typing, classifiers, context, level);
+	}
+	case PG_RETURN_INTRO:
+	case PG_THUNK_INTRO: {
+		const struct pg_evidence *argument = pg_prove_projection(typing, context, term->premises[0]);
+		formation = pg_prove_classifier(typing, classifiers, context, argument);
+		if (term->rule == PG_RETURN_INTRO) return pg_prove_return_type(typing, classifiers, formation);
+		return pg_prove_thunk_type(typing, classifiers, formation);
+	}
+	case PG_FORCE_ELIM: {
+		const struct pg_evidence *argument = pg_prove_projection(typing, context, term->premises[0]);
+		formation = pg_prove_classifier(typing, classifiers, context, argument);
+		if (!formation) return NULL;
+		while (formation->rule == PG_CONTEXT_PROJECTION) formation = formation->premises[1];
+		if (formation->rule != PG_THUNK_TYPE_FORM) return NULL;
+		formation = formation->premises[0];
+		break;
+	}
+	case PG_LAMBDA_INTRO:
+		formation = term->premises[0];
+		break;
+	case PG_TYPE_CONVERSION:
+		formation = term->premises[1];
+		break;
+	default:
+		return NULL;
+	}
+	return pg_prove_projection(typing, context, formation);
+}
+
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence) { return evidence->judgement; }
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence) { return evidence->context; }

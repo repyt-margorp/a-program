@@ -8,7 +8,7 @@
 enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, PG_VARIABLE,
 	PG_TYPE_FROM_VALUE, PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_PI_FORM,
 	PG_RETURN_INTRO, PG_THUNK_INTRO, PG_FORCE_ELIM, PG_LAMBDA_INTRO, PG_APP_ELIM,
-	PG_VALUE_FROM_TYPE, PG_TYPE_CONVERSION };
+	PG_VALUE_FROM_TYPE, PG_TYPE_CONVERSION, PG_CONTEXT_PROJECTION };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION };
 struct pg_evidence;
@@ -55,6 +55,15 @@ const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
 	const struct pg_evidence *term, const struct pg_evidence *target_type,
 	const struct pg_conversion_certificate *certificate);
 const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_evidence *evidence);
+/* Weakening is pullback along a prefix projection. Core and the premise DAG
+ * stay shared; this creates only the conclusion in the extended context. */
+const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *proof);
+/* Recover formation of an already synthesized classifier, not an expected
+ * type. NULL also covers rules whose regularity action is not implemented. */
+const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *term);
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence);
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence);
 /* Context formation has no term subject or classifier. */
