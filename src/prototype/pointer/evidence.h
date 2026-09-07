@@ -4,6 +4,7 @@
 #include "typing.h"
 #include "classifier.h"
 #include "conversion.h"
+#include "identity.h"
 
 enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, PG_VARIABLE,
 	PG_TYPE_FROM_VALUE, PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_PI_FORM,
@@ -13,7 +14,8 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_RETURN_CONTENT, PG_PI_CONSTANT_CODOMAIN, PG_FOLD_ELIM,
 	PG_IDENTITY_FORM, PG_IDENTITY_INSTANCE, PG_REFLEXIVITY,
 	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
-	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION };
+	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
+	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -53,6 +55,15 @@ const struct pg_evidence *pg_prove_identity_type(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *family,
 	const struct pg_evidence *left, const struct pg_evidence *right);
+/* Fibrant value-universe Identity fields. RIGHT sends x:A to B and lifts to
+ * R x (trr R x); LEFT sends y:B to A and lifts to R (trl R y) y.
+ * No raw computation is used as an endpoint or coerced to a universe value. */
+const struct pg_evidence *pg_prove_identity_transport(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *value, enum pg_identity_direction direction);
+const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *value, enum pg_identity_direction direction);
 /* Regularity of R : Id Universe_i A B gives A/B : Universe_i. The
  * accepted R, not an untyped family spine, is the premise. */
 const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typing,

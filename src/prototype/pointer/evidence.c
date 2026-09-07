@@ -317,6 +317,49 @@ const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
 		subject, identity->subject->core, 2, premises);
 }
 
+const struct pg_evidence *pg_prove_identity_transport(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *value, enum pg_identity_direction direction)
+{
+	if ((unsigned)direction > PG_IDENTITY_LEFT) return NULL;
+	const struct pg_term *left, *right;
+	uint64_t level;
+	if (!universe_identity(typing, family, &left, &right, &level)) return NULL;
+	const struct pg_term *domain = direction == PG_IDENTITY_RIGHT ? left : right;
+	if (!endpoint(typing, value, PG_JUDGEMENT_VALUE, family->context, domain)) return NULL;
+	const struct pg_evidence *target = pg_prove_identity_endpoint_type(typing, classifiers, family,
+		direction == PG_IDENTITY_RIGHT ? PG_IDENTITY_RIGHT_TYPE : PG_IDENTITY_LEFT_TYPE);
+	if (!target) return NULL;
+	const struct pg_term *core = pg_identity_transport(typing->graph, family->subject->core, value->subject->core, direction);
+	if (!core) return NULL;
+	const struct pg_occurrence *operands[] = {family->subject, value->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, family->context, core, NULL, 2, operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {target, family, value};
+	return accept(typing, PG_IDENTITY_TRANSPORT, PG_JUDGEMENT_VALUE, family->context,
+		subject, target->subject->core, 3, premises);
+}
+
+const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *value, enum pg_identity_direction direction)
+{
+	const struct pg_evidence *transport = pg_prove_identity_transport(typing, classifiers, family, value, direction);
+	if (!transport) return NULL;
+	const struct pg_evidence *left = direction == PG_IDENTITY_RIGHT ? value : transport;
+	const struct pg_evidence *right = direction == PG_IDENTITY_RIGHT ? transport : value;
+	const struct pg_evidence *type = pg_prove_identity_instance(typing, classifiers, family, left, right);
+	if (!type) return NULL;
+	const struct pg_term *core = pg_identity_lift(typing->graph, family->subject->core, value->subject->core, direction);
+	if (!core) return NULL;
+	const struct pg_occurrence *operands[] = {family->subject, value->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, family->context, core, NULL, 2, operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {type, transport};
+	return accept(typing, PG_IDENTITY_LIFT, PG_JUDGEMENT_VALUE, family->context,
+		subject, type->subject->core, 2, premises);
+}
+
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *computation_type)
 {
@@ -1097,6 +1140,7 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	const struct pg_evidence *formation = NULL;
 	switch (term->rule) {
 	case PG_REFLEXIVITY: case PG_FAMILY_ACTION:
+	case PG_IDENTITY_TRANSPORT: case PG_IDENTITY_LIFT:
 		formation = term->premises[0];
 		break;
 	case PG_VARIABLE: {

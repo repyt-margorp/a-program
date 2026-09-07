@@ -4,6 +4,15 @@
 #include "graph.h"
 struct pg_eval;
 
+enum pg_identity_direction { PG_IDENTITY_RIGHT, PG_IDENTITY_LEFT };
+/* One-dimensional fields of a selected universe identification. These build
+ * pure value expressions, not ordinary Pi functions or effect requests.
+ * Only checked typing can authorize the family's field contract. */
+const struct pg_term *pg_identity_transport(struct pg_graph *graph,
+	const struct pg_term *family, const struct pg_term *value, enum pg_identity_direction direction);
+const struct pg_term *pg_identity_lift(struct pg_graph *graph,
+	const struct pg_term *family, const struct pg_term *value, enum pg_identity_direction direction);
+
 /* Symbolic one-direction reflexive action. Iteration uses the same reference,
  * not a tag per dimension. These constructors do not establish typing or
  * execute a source computation. Fixed action equations are dispatched below. */
@@ -21,6 +30,7 @@ int pg_identity_view(const struct pg_term *term, const struct pg_term **type,
 /* Fixed pure action equations for curried Lambda/APP, RETURN/THUNK/FORCE and
  * F/U/Pi family bodies. Boundary triples share one direction; repeated refl
  * remains distinct. Pi/U endpoints are retained without execution.
+ * Diagonal value transport returns its input; diagonal lifting acts on it.
  * Unknown sources/families stay neutral. No classifier or proof lookup. */
 int pg_identity_dispatch(struct pg_eval *machine);
 

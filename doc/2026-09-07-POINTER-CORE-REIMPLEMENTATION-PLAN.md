@@ -724,6 +724,51 @@ a specified type family, not a global endpoint-only relation.
   Verification passed: full optimized and ASan/UBSan pointer `make check`,
   plus synthesis/Identity tests with a 512 KiB stack. The 158 parser outcomes
   remain parser compatibility only; N2 and legacy semantic parity stay open.
+- [x] September 8, after `126f0a7`: initial value-universe transport fields.
+  For a **selected** accepted `R : Id Universe_i A B`, introduce checked
+  one-dimensional field eliminations:
+
+  ```text
+  trr R x : B                  liftr R x : R x (trr R x)   (x : A)
+  trl R y : A                  liftl R y : R (trl R y) y   (y : B)
+  ```
+
+  These are a new primitive fibrancy contract for the HOTT value universe,
+  not consequences of the earlier logical-relation fragment. Arbitrary
+  relations/functions or ordinary `Id A x y` do not authorize these fields.
+  Future universe introductions, notably IADTs, must satisfy the contract;
+  declaring a generated relation alone cannot establish fibrancy. No general
+  universe-Identity introduction, glue or equivalence-to-Identity axiom is added.
+  Direction is an argument to shared constructors/checkers. Four fixed field
+  references use ordinary APP edges, with two evidence rules retaining the
+  destination/Identity formation and selected-family premises. Regularity and
+  reindex reuse existing algorithms. Core tags remain Lambda/APP/Reference.
+  In our CBPV adaptation these are pure **value expressions**, suitable
+  as dependent endpoints, not raw computation Pi applications or effect
+  requests. This extends the value judgement's term formers without adding a
+  value-side Lambda/Pi; callable source wrappers can still use Lambda/RETURN.
+  Raw computation endpoints are rejected. No thunk is implicitly forced.
+  We adopt diagonal regularity: `trr/trl (refl A) x` compute to x and
+  `liftr/liftl (refl A) x` to `refl x`. This is an explicit A Program equation,
+  not a claim that Narya implements this exact rule for every neutral type.
+  The fixed pure evaluator uses its existing demand/closure machinery; unknown
+  R stays neutral. Higher action on field-headed sources also stays neutral
+  rather than applying ordinary Pi congruence without a uniform field rule.
+  The field types follow [Narya's transport/lifting account](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting),
+  checked during this change. Its higher fields and bisimulation requirements
+  remain obligations here: these eliminations and diagonal tests do **not**
+  establish general coherence, canonicity, transport of arbitrary acted Pi/U/F
+  families, symmetry/composition, or N2 completion.
+  Tests cover both directions, selected R/S distinction, endpoint and scope
+  rejection, exact proof reuse, substitution R:=S, regularity, diagonal
+  computation of terms and classifiers, quoted values, partial applications,
+  capture, split budgets and neutral arguments not executed by field lookup.
+  The divergent fixtures are untyped evaluator checks, not accepted programs.
+  Verification passed: optimized and ASan/UBSan pointer `make check`, plus
+  Identity/synthesis with a 512 KiB stack. The 158 reviewed syntax outcomes
+  remain parser-only evidence. Sizes excluding docs: `evidence.c` +44/-0,
+  `evidence.h` +12/-1, `identity.c` +53/-1, `identity.h` +10/-0
+  (implementation net +117); `tests/identity.c` +114/-0.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general
@@ -731,7 +776,8 @@ a specified type family, not a global endpoint-only relation.
   endpoint types coincide.
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
-  and the implemented F/U/Pi Identity and RETURN/THUNK/FORCE action rules;
+  and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal
+  value transport/lifting rules;
   its generic pair walker is not permission to certify an arbitrary callback's
   answers. Runtime handlers/oracles must not change this policy.
 

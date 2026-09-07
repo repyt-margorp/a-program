@@ -4,6 +4,38 @@
 
 static const struct pg_object_class identity_class = {"identity-action"};
 static const struct pg_object identity_action = {PG_SEMANTIC_OBJECT, &identity_class};
+static const struct pg_object_class field_class = {"identity-field"};
+static const struct pg_object identity_fields[] = {
+	{PG_SEMANTIC_OBJECT, &field_class}, {PG_SEMANTIC_OBJECT, &field_class},
+	{PG_SEMANTIC_OBJECT, &field_class}, {PG_SEMANTIC_OBJECT, &field_class}
+};
+
+static int field_index(const struct pg_object *object)
+{
+	for (size_t i = 0; i < sizeof(identity_fields) / sizeof(*identity_fields); ++i)
+		if (object == &identity_fields[i]) return (int)i;
+	return -1;
+}
+
+static const struct pg_term *identity_field(struct pg_graph *graph,
+	const struct pg_term *family, const struct pg_term *value, enum pg_identity_direction direction, int lift)
+{
+	if ((unsigned)direction > PG_IDENTITY_LEFT) return NULL;
+	const struct pg_term *field = pg_reference(graph, &identity_fields[2 * lift + direction]);
+	return pg_application(graph, pg_application(graph, field, family), value);
+}
+
+const struct pg_term *pg_identity_transport(struct pg_graph *graph,
+	const struct pg_term *family, const struct pg_term *value, enum pg_identity_direction direction)
+{
+	return identity_field(graph, family, value, direction, 0);
+}
+
+const struct pg_term *pg_identity_lift(struct pg_graph *graph,
+	const struct pg_term *family, const struct pg_term *value, enum pg_identity_direction direction)
+{
+	return identity_field(graph, family, value, direction, 1);
+}
 
 const struct pg_term *pg_identity_action(struct pg_graph *graph, const struct pg_term *source)
 {
@@ -275,7 +307,12 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	}
 	const struct pg_term *head = body;
 	while (head->kind == PG_APPLICATION) head = head->as.application.function;
-	if (head->kind == PG_REFERENCE && head->as.reference == &identity_action) return 1;
+	if (head->kind == PG_REFERENCE) {
+		if (head->as.reference == &identity_action) return 1;
+		/* Uniform higher fields need their own boundary rules, not ordinary
+		 * Pi congruence applied to an untyped field reference. */
+		if (field_index(head->as.reference) >= 0) return 1;
+	}
 	if (body->kind != PG_APPLICATION) return 1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
@@ -287,8 +324,23 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	return enter_action(machine, &scope, result, 0);
 }
 
+static int field_answer(struct pg_eval *machine, const struct pg_term *family)
+{
+	const struct pg_term *type;
+	if (!pg_identity_action_view(family, &type)) return 1;
+	struct pg_closure value = *pg_eval_argument(machine, 1);
+	if (field_index(machine->current.term->as.reference) < 2)
+		return pg_eval_enter(machine, value, 2);
+	struct pg_closure action = {pg_reference(machine->output, &identity_action), NULL};
+	return pg_eval_apply(machine, action, value, 2);
+}
+
 int pg_identity_dispatch(struct pg_eval *machine)
 {
+	if (field_index(machine->current.term->as.reference) >= 0) {
+		if (!pg_eval_argument(machine, 1)) return 1;
+		return pg_eval_demand(machine, 0, field_answer);
+	}
 	if (machine->current.term->as.reference != &identity_action) return 1;
 	if (!pg_eval_argument(machine, 0)) return 1;
 	return pg_eval_demand(machine, 0, action_source);
