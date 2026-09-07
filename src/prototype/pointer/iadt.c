@@ -108,38 +108,59 @@ int pg_data_dispatch(struct pg_eval *machine)
 struct pg_data_schema {
 	const struct pg_data_layout *layout;
 	const struct pg_evidence *parameters;
-	const struct pg_evidence *fields[];
+	const struct pg_evidence *indices;
+	const struct pg_evidence *results[];
 };
 
-const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
-	const struct pg_evidence *parameters, size_t count,
-	const struct pg_evidence *const *fields)
+static int extension_size(const struct pg_context *context,
+	const struct pg_context *prefix, size_t *count)
 {
-	if (!pg_evidence_owned_by(parameters, typing) || (count && !fields)) return NULL;
+	*count = 0;
+	for (; context != prefix; context = context->parent) {
+		if (!context) return -1;
+		++*count;
+	}
+	return 0;
+}
+
+const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
+	const struct pg_evidence *parameters, const struct pg_evidence *indices,
+	size_t count, const struct pg_evidence *const *results)
+{
+	if (!pg_evidence_owned_by(parameters, typing) || (count && !results)) return NULL;
 	if (pg_evidence_judgement(parameters) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (count > (SIZE_MAX - sizeof(struct pg_data_schema)) / sizeof(*fields)) return NULL;
+	if (!pg_evidence_owned_by(indices, typing)) return NULL;
+	if (pg_evidence_judgement(indices) != PG_JUDGEMENT_CONTEXT) return NULL;
+	const struct pg_context *prefix = pg_evidence_context(parameters);
+	size_t index_count, parameter_count;
+	if (extension_size(pg_evidence_context(indices), prefix, &index_count) != 0) return NULL;
+	if (extension_size(prefix, NULL, &parameter_count) != 0) return NULL;
+	if (count > (SIZE_MAX - sizeof(struct pg_data_schema)) / sizeof(*results)) return NULL;
 	if (count > SIZE_MAX / sizeof(size_t)) return NULL;
 	struct pg_graph temporary = {0};
 	size_t *arities = pg_alloc(&temporary, count * sizeof(*arities));
 	struct pg_data_schema *schema = NULL;
 	if (count && !arities) goto done;
 	for (size_t i = 0; i < count; ++i) {
-		if (!pg_evidence_owned_by(fields[i], typing)) goto done;
-		if (pg_evidence_judgement(fields[i]) != PG_JUDGEMENT_CONTEXT) goto done;
-		const struct pg_context *cursor = pg_evidence_context(fields[i]);
-		while (cursor != pg_evidence_context(parameters)) {
-			if (!cursor) goto done;
-			++arities[i];
-			cursor = cursor->parent;
+		const struct pg_evidence *result = results[i];
+		if (!pg_evidence_owned_by(result, typing)) goto done;
+		if (pg_evidence_rule(result) != PG_CONTEXT_SUBSTITUTION) goto done;
+		if (pg_evidence_context(pg_evidence_premise(result, 0)) != pg_evidence_context(indices)) goto done;
+		if (extension_size(pg_evidence_context(result), prefix, &arities[i]) != 0) goto done;
+		const struct pg_context *parameter = prefix;
+		for (size_t j = parameter_count; j; --j, parameter = parameter->parent) {
+			const struct pg_term *image = pg_evidence_subject(pg_evidence_premise(result, j + 1))->core;
+			if (image->kind != PG_REFERENCE || image->as.reference != parameter->binder) goto done;
 		}
 	}
 	const struct pg_data_layout *layout = pg_data_layout(typing->graph, count, arities);
 	if (!layout) goto done;
-	schema = pg_alloc(typing->graph, sizeof(*schema) + count * sizeof(*fields));
+	schema = pg_alloc(typing->graph, sizeof(*schema) + count * sizeof(*results));
 	if (!schema) goto done;
 	schema->parameters = parameters;
+	schema->indices = indices;
 	schema->layout = layout;
-	for (size_t i = 0; i < count; ++i) schema->fields[i] = fields[i];
+	for (size_t i = 0; i < count; ++i) schema->results[i] = results[i];
 done:
 	pg_graph_destroy(&temporary);
 	return schema;
@@ -150,12 +171,31 @@ const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *
 	return schema ? schema->layout : NULL;
 }
 
-const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,
+const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema)
+{
+	return schema ? schema->indices : NULL;
+}
+
+const struct pg_evidence *pg_data_schema_result(const struct pg_data_schema *schema,
 	const struct pg_object *object)
 {
 	if (!schema) return NULL;
 	const struct pg_constructor *c = constructor(object, schema->layout);
-	return c ? schema->fields[c - schema->layout->constructors] : NULL;
+	return c ? schema->results[c - schema->layout->constructors] : NULL;
+}
+
+const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,
+	const struct pg_object *object)
+{
+	const struct pg_evidence *result = pg_data_schema_result(schema, object);
+	return result ? pg_evidence_premise(result, 1) : NULL;
+}
+
+const struct pg_evidence *pg_data_result(struct pg_typing *typing,
+	const struct pg_data_schema *schema, const struct pg_object *object,
+	const struct pg_evidence *instance)
+{
+	return pg_prove_substitution_compose(typing, pg_data_schema_result(schema, object), instance);
 }
 
 const struct pg_evidence *pg_data_instance(struct pg_typing *typing,

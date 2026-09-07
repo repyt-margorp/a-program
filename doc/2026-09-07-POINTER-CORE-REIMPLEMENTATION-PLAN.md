@@ -1011,6 +1011,31 @@ a specified type family, not a global endpoint-only relation.
   ASan/UBSan `make check` passed in 6.832 s with the changed test rebuilt.
   Implementation +107 lines (`iadt.c` +80, `iadt.h` +21, evidence API +6),
   tests +114; documentation counted separately. N2/N3 remain open.
+- [x] September 8, after `209284f`: constructor results are checked index maps.
+  Replace the field-only schema API, rather than keeping a compatibility path.
+  With parameter context Gamma, index extension Gamma.I and constructor field
+  extension Gamma.Delta, each result is an ordinary checked substitution
+  `r : Gamma.Delta -> Gamma.I` over Gamma. The schema stores r; its domain
+  supplies the field context and derived erased arity. No result-type array,
+  index evaluator or new evidence rule is introduced. Zero-constructor schemas
+  retain their checked index context. Fixed parameters must map to their own
+  binder references; any required conversion must already be explicit evidence.
+  For an argument instance `s : Theta -> Gamma.Delta`, `pg_data_result` uses
+  ordinary checked composition to obtain `r o s : Theta -> Gamma.I`. Open
+  index terms remain symbolic, with no execution needed to determine a value.
+  Tests cover dependent indices `i:A,q:Id A i i`, chosen field paths, repeated
+  evidence reuse, wrong source/owner and parameter mutation. Context action
+  on the fields gives both endpoint index maps; acting on their defining
+  terms computes to the corresponding selected paths. This is action on
+  existing checked terms, not a proof of fibrancy of the new indexed datatype.
+  Constructor membership, recursive self/positivity, typed Match/IH, nominal
+  and higher datatype acceptance remain open N3 requirements. Synchronous
+  composition retains the underlying substitution checker's cost/fuel limits.
+  Optimized pointer `make check` passed in 6.712 s with affected binaries
+  rebuilt; iadt/Identity/synthesis passed with a 512 KiB stack.
+  ASan/UBSan `make check` passed in 15.813 s, including affected rebuilds.
+  Implementation: `iadt.c` +56/-16, `iadt.h` +14/-6 (net +48);
+  tests +78/-18 (net +60); docs separate. N2/N3 are not closed.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general
