@@ -359,7 +359,6 @@ static void evidence_test(struct pg_graph *graph)
 		assert(checked_normalize(&typing, &evaluation, weakened_fold) == weakened_fold_result);
 	}
 	assert(graph->terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
-	pg_whnf_work_destroy(&evaluation);
 	const struct pg_evidence *fold_formation = pg_prove_classifier(&typing, &classifiers, x_context, folded);
 	assert(fold_formation && pg_evidence_subject(fold_formation)->core == pg_evidence_classifier(folded));
 	size_t fold_terms = graph->terms.count, fold_proofs = typing.proofs.count;
@@ -368,6 +367,32 @@ static void evidence_test(struct pg_graph *graph)
 		assert(pg_prove_classifier(&typing, &classifiers, x_context, folded) == fold_formation);
 	}
 	assert(graph->terms.count == fold_terms && typing.proofs.count == fold_proofs);
+	/* U eta holds for both returned computations and raw Pi computations. */
+	const struct pg_evidence *computations[] = {returned, identity_y};
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_evidence *quote = pg_prove_thunk(&typing, &classifiers, computations[i]);
+		const struct pg_evidence *type = pg_prove_classifier(&typing, &classifiers, x_context, quote);
+		const struct pg_object *u = pg_binder(graph);
+		const struct pg_evidence *context = pg_prove_context_extension(&typing, x_context, u, type);
+		const struct pg_evidence *value = pg_prove_variable(&typing, context, u);
+		const struct pg_evidence *code = pg_prove_force(&typing, value);
+		const struct pg_evidence *eta = pg_prove_thunk(&typing, &classifiers, code);
+		const struct pg_evidence *normal = checked_normalize(&typing, &evaluation, eta);
+		assert(normal && pg_evidence_subject(normal)->core == pg_evidence_subject(value)->core);
+		assert(pg_evidence_classifier(normal) == pg_evidence_classifier(value));
+		assert(pg_prove_classifier(&typing, &classifiers, context, normal));
+		if (i) continue;
+		const struct pg_evidence *unit = pg_prove_projection(&typing, context, identity_y);
+		const struct pg_evidence *sequence = pg_prove_fold(&typing, code, unit);
+		normal = checked_normalize(&typing, &evaluation, sequence);
+		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(code)->core);
+		assert(pg_evidence_classifier(normal) == pg_evidence_classifier(code));
+		eta = pg_prove_thunk(&typing, &classifiers, sequence);
+		normal = checked_normalize(&typing, &evaluation, eta);
+		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(value)->core);
+		assert(pg_evidence_classifier(normal) == pg_evidence_classifier(value));
+	}
+	pg_whnf_work_destroy(&evaluation);
 	const struct pg_evidence *x_formation = pg_prove_classifier(&typing, &classifiers, x_context, x_term);
 	assert(x_formation && pg_evidence_subject(x_formation)->core == pg_evidence_classifier(x_term));
 	const struct pg_evidence *body_formation = pg_prove_classifier(&typing, &classifiers, x_context, returned);
@@ -920,12 +945,59 @@ static void computation_execution_test(struct pg_graph *graph)
 	const struct pg_term *blocked = pg_application(graph, pg_application(graph, fold, vx), continuation);
 	pg_computation_eval_init(&semantic, graph, blocked);
 	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
-	assert(pg_eval_readback(&semantic, graph) == blocked);
+	assert(pg_eval_readback(&semantic, graph) == vx);
 	pg_eval_destroy(&semantic);
 	const struct pg_term *diverging = pg_application(graph, pg_application(graph, fold, omega), continuation);
 	pg_computation_eval_init(&semantic, graph, diverging);
 	assert(pg_eval_advance(&semantic, 100) == PG_EVAL_PENDING);
 	pg_eval_destroy(&semantic);
+	/* Right-unit removal under a thunk must not run its suspended source. */
+	const struct pg_term *eta = pg_application(graph, thunk, pg_application(graph, force, vx));
+	const struct pg_term *quoted_fold = pg_application(graph, thunk, diverging);
+	const struct pg_term *composite = pg_application(graph, thunk,
+		pg_application(graph, pg_application(graph, fold, pg_application(graph, force, vx)), continuation));
+	const struct pg_term *inputs[] = {eta, quoted_fold, composite,
+		pg_application(graph, pg_lambda(graph, x, composite), quoted_omega)};
+	const struct pg_term *outputs[] = {vx, quoted_omega, vx, quoted_omega};
+	for (size_t i = 0; i < 4; ++i) {
+		pg_computation_eval_init(&semantic, graph, inputs[i]);
+		while (pg_eval_advance(&semantic, 1) == PG_EVAL_PENDING) assert(semantic.steps < 100);
+		assert(semantic.status == PG_EVAL_WHNF);
+		assert(pg_alpha_equal(pg_eval_readback(&semantic, graph), outputs[i]) == 1);
+		uint64_t steps = semantic.steps;
+		pg_eval_destroy(&semantic);
+		pg_computation_eval_init(&semantic, graph, inputs[i]);
+		assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF && semantic.steps == steps);
+		pg_eval_destroy(&semantic);
+	}
+	const struct pg_term *eta_bodies[] = {eta, blocked, composite};
+	const struct pg_term *left = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *right = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *path = pg_reference(graph, pg_binder(graph));
+	for (size_t i = 0; i < 3; ++i) {
+		const struct pg_term *action = pg_identity_apply(graph, pg_lambda(graph, x, eta_bodies[i]), left, right, path);
+		pg_computation_eval_init(&semantic, graph, action);
+		assert(pg_eval_advance(&semantic, 1000) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&semantic, graph) == path);
+		pg_eval_destroy(&semantic);
+	}
+	pg_eval_init(&beta, eta);
+	assert(pg_eval_advance(&beta, 100) == PG_EVAL_WHNF && pg_eval_readback(&beta, graph) == eta);
+	pg_eval_destroy(&beta);
+	/* Neither a constant-return clause nor a divergent callee is the unit. */
+	const struct pg_term *other = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *callees[] = {pg_lambda(graph, x, pg_application(graph, ret, other)), omega};
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_term *term = pg_application(graph, pg_application(graph, fold, vx), callees[i]);
+		pg_computation_eval_init(&semantic, graph, term);
+		assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&semantic, graph) == term);
+		pg_eval_destroy(&semantic);
+		term = pg_application(graph, thunk, term);
+		pg_computation_eval_init(&semantic, graph, term);
+		assert(pg_eval_advance(&semantic, 100) == PG_EVAL_WHNF && pg_eval_readback(&semantic, graph) == term);
+		pg_eval_destroy(&semantic);
+	}
 	puts("computation execution: force/thunk, fold, captured environments, neutral demands and split budgets passed");
 }
 

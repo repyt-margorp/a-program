@@ -11,6 +11,9 @@ extern const struct pg_object pg_thunk_operation;
 extern const struct pg_object pg_force_operation;
 /* Zero-operation-clause fold: applied to M and its raw return continuation. */
 extern const struct pg_object pg_fold_operation;
+/* One structural eta contraction, or NULL. Never evaluates the operands.
+ * Shared by semantic evaluation and action under a binder. */
+const struct pg_term *pg_computation_eta(struct pg_graph *graph, const struct pg_term *term);
 /* Fixed kernel-pure semantics, shared with conversion. No host callbacks or
  * user handler overrides. Unknown references remain neutral. */
 extern const struct pg_eval_policy pg_pure_policy;

@@ -1244,6 +1244,35 @@ a specified type family, not a global endpoint-only relation.
   Identity/synthesis/IADT pass at 512 KiB.
   Implementation `identity.c` +54/-2, `identity.h` +3/-0 (net +55);
   tests `identity.c` +76/-0; docs separate. N2/N3 remain open.
+- [x] September 8, after `555e6ac`: structural U eta and F right unit.
+  The fixed pure evaluator contracts `THUNK(FORCE(v))` to `v` and
+  `FOLD(M, lambda x. RETURN(x))` to `M`, preserving the operand's closure.
+  Right-unit removal is also allowed under THUNK, without executing its body.
+  `pg_computation_eta` shares these structural contractions with Act under
+  binders; a selected input path is preserved when acting on an eta expansion.
+  This is explicit reduction, never conversion-based Core interning.
+  The equations are supported by the typed CBPV equational theory in
+  [McDermott/Mycroft, Fig. 5](https://dylanm.org/value-name.pdf).
+  Sharing the contraction with dimensional action is our implementation choice;
+  this does not establish the full dependent/higher equational theory.
+  Tests check accepted typings for neutral U(F A) and U(Pi A B) values, the
+  combined thunk/fold/force contraction, captured scopes, one-step/bulk agreement,
+  beta-only isolation and chosen-path action. Constant-return and divergent
+  continuations are not mistaken for the unit. Suspended divergence is not run.
+  The old assertion retaining `FOLD(neutral, return)` now expects the neutral
+  source, as required by the added equation. The new typed eta test fails with
+  `555e6ac` computation/identity sources. During development, a misplaced cache
+  destruction in the new test was corrected, and its composite Act case exposed
+  the need to share right-unit contraction beneath THUNK too.
+  These are structural eta cases, not a decision procedure recognizing every
+  continuation convertible to the unit. General U/F transport, dependent
+  lifting and higher coherence remain open; no eager continuation evaluation
+  may be used to bypass those obligations. N2/N3 remain open.
+  Optimized pointer `make check`: 7.392 s (affected binaries rebuilt);
+  ASan/UBSan `make check`: 17.278 s (affected binaries rebuilt);
+  core/Identity/synthesis/IADT pass at 512 KiB.
+  Implementation `computation.c` +54/-11, `computation.h` +3/-0,
+  `identity.c` +5/-0 (net +51); tests `core.c` +74/-2; docs separate.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

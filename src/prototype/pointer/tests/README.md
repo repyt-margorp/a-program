@@ -11,6 +11,11 @@ node's entry in the interning table.
 Substitution pairing reuses checked prefix images: extending a map containing
 a dependent Pi must not freshen its prefix binders again. The paired and direct
 full-map APIs intern the same proof; flat array copying is not eliminated.
+The pure CBPV evaluator contracts structural thunk/force eta and fold right
+units, including right units under suspension. Tests retain typing for both
+U(F A) and U(Pi A B), check closure capture, selected-path action and split
+budgets, and reject constant-return/divergent continuations as unit candidates.
+No thunk body or continuation is executed just to recognize these equations.
 
 `identity.c` checks symbolic Identity formation, diagonal reflexivity, selected
 universe-family instantiation, iterated diagonal witnesses, CBPV polarity and

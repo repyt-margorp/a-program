@@ -307,6 +307,11 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 		if (status != 1) return status;
 	}
 	const struct pg_term *body = scope.body;
+	const struct pg_term *contracted = pg_computation_eta(machine->output, body);
+	if (contracted) {
+		if (prepare_bindings(machine, &scope) != 0) return -1;
+		return enter_action(machine, &scope, acted_body(machine->output, &scope, contracted), 0);
+	}
 	if (body->kind == PG_REFERENCE) {
 		size_t center = 0;
 		const struct pg_term *binder = source;
