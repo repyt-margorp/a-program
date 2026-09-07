@@ -2,6 +2,7 @@
 #include "computation.h"
 #include "identity.h"
 #include "action.h"
+#include "iadt.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -722,6 +723,113 @@ static void identity_contents(struct pg_typing *typing, struct pg_classifiers *c
 	pg_synthesis_destroy(&split);
 }
 
+static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_whnf_work work;
+	struct pg_synthesis split, whole;
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	assert(pg_synthesis_init(&split, typing, classifiers, &work, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	assert(pg_synthesis_init(&whole, typing, classifiers, &work, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph), *p = pg_binder(graph), *i = pg_binder(graph);
+	const struct pg_evidence *parameters = pg_prove_context_extension(typing, empty, a,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_evidence *first = pg_prove_context_extension(typing, parameters, x,
+		pg_prove_variable(typing, parameters, a));
+	const struct pg_evidence *xv = pg_prove_variable(typing, first, x);
+	const struct pg_evidence *id = pg_prove_identity_type(typing,
+		pg_prove_value_type(typing, pg_prove_variable(typing, first, a)), xv, xv);
+	const struct pg_evidence *fields = pg_prove_context_extension(typing, first, p, id);
+	const struct pg_evidence *indices = pg_prove_context_extension(typing, parameters, i,
+		pg_prove_variable(typing, parameters, a));
+	const struct pg_evidence *images[] = {pg_prove_variable(typing, fields, a), pg_prove_variable(typing, fields, x)};
+	const struct pg_evidence *result_map = pg_prove_substitution(typing, indices, fields, 2, images);
+	const struct pg_data_schema *schema = pg_data_schema(typing, parameters, indices, 1, &result_map);
+	assert(schema);
+	const struct pg_object *ctor = pg_data_constructor(pg_data_schema_layout(schema), 0);
+	const struct pg_evidence *iv = pg_prove_variable(typing, indices, i);
+	const struct pg_evidence *index_a = pg_prove_value_type(typing, pg_prove_variable(typing, indices, a));
+	const struct pg_evidence *motive = pg_prove_return_type(typing, classifiers,
+		pg_prove_identity_type(typing, index_a, iv, iv));
+	struct pg_token names[] = {{.kind = PG_TOKEN_IDENT, .length = 1, .text = "A"},
+		{.kind = PG_TOKEN_IDENT, .length = 1, .text = "x"}, {.kind = PG_TOKEN_IDENT, .length = 1, .text = "p"}};
+	const struct pg_evidence *contexts[] = {parameters, first, fields};
+	const struct pg_object *binders[] = {a, x, p};
+	const struct pg_source_scope *scope = pg_synthesis_root(&split), *other_scope = pg_synthesis_root(&whole);
+	for (size_t n = 0; n < 3; ++n) {
+		scope = pg_synthesis_bind(&split, scope, names[n], binders[n], contexts[n]);
+		other_scope = pg_synthesis_bind(&whole, other_scope, names[n], binders[n], contexts[n]);
+		assert(scope && other_scope);
+	}
+	struct pg_synthesis_job *body = request(&split, scope, "body := { p; };");
+	struct pg_synthesis_job *other_body = request(&whole, other_scope, "body := { p; };");
+	const struct pg_evidence *prior = complete(&whole, other_body, PG_SYNTHESIS_DONE);
+	size_t terms = graph->terms.count, proofs = typing->proofs.count;
+	struct pg_synthesis_job *job = pg_synthesis_data_case(&split, body, schema, ctor, motive);
+	struct pg_synthesis_job *other = pg_synthesis_data_case(&whole, other_body, schema, ctor, motive);
+	assert(job && other && pg_synthesis_data_case(&split, body, schema, ctor, motive) == job);
+	assert(graph->terms.count == terms && typing->proofs.count == proofs);
+	pg_synthesis_advance(&split, 1);
+	assert(pg_synthesis_dependency(job) == body && pg_synthesis_status(body) == PG_SYNTHESIS_PENDING);
+	complete(&split, body, PG_SYNTHESIS_DONE);
+	pg_synthesis_advance(&split, 1);
+	struct pg_synthesis_job *mapping = pg_synthesis_reindex(&split, result_map, motive);
+	assert(mapping && pg_synthesis_dependency(job) == mapping);
+	pg_synthesis_advance(&split, 1);
+	assert(pg_synthesis_status(mapping) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(mapping));
+	const struct pg_evidence *checked = complete(&split, job, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(mapping) == pg_data_branch_motive(typing, schema, ctor, motive));
+	pg_synthesis_advance(&whole, 100000);
+	assert(pg_synthesis_status(other) == PG_SYNTHESIS_DONE);
+	same_judgement(checked, pg_synthesis_result(other));
+	const struct pg_evidence *produced = pg_synthesis_result(body);
+	same_judgement(prior, produced);
+	const struct pg_evidence *leaf = checked;
+	while (pg_evidence_rule(leaf) == PG_LAMBDA_INTRO) leaf = pg_evidence_premise(leaf, 1);
+	assert(pg_evidence_rule(leaf) == PG_TYPE_CONVERSION && pg_evidence_premise(leaf, 0) == pg_synthesis_result(body));
+	assert(pg_evidence_premise(pg_evidence_premise(leaf, 1), 0) == result_map);
+	uint64_t steps = split.steps;
+	assert(pg_synthesis_data_case(&split, body, schema, ctor, motive) == job);
+	pg_synthesis_advance(&split, 1000);
+	assert(split.steps == steps && pg_synthesis_result(job) == checked);
+	const struct pg_evidence *wrong = pg_prove_return_type(typing, classifiers, index_a);
+	struct pg_synthesis_job *mismatch = pg_synthesis_data_case(&split, body, schema, ctor, wrong);
+	assert(mismatch && mismatch != job);
+	complete(&split, mismatch, PG_SYNTHESIS_REJECTED);
+	assert(pg_synthesis_result(body) == produced);
+	assert(!pg_synthesis_data_case(&split, other_body, schema, ctor, motive));
+	assert(!pg_synthesis_data_case(&split, body, schema, a, motive));
+	assert(!pg_synthesis_data_case(&split, body, NULL, ctor, motive));
+	assert(!pg_synthesis_data_case(&split, body, schema, ctor, index_a));
+	assert(!pg_synthesis_data_case(&split, body, schema, ctor, pg_prove_classifier(typing, classifiers, fields, prior)));
+	assert(!pg_synthesis_reindex(&split, empty, motive));
+	assert(!pg_synthesis_reindex(&split, result_map, fields));
+	assert(!pg_synthesis_reindex(&split, result_map, prior));
+	struct pg_synthesis_job *value = request(&split, scope, "value := p;");
+	complete(&split, pg_synthesis_data_case(&split, value, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *bad = request(&split, scope, "bad := missing;");
+	complete(&split, pg_synthesis_data_case(&split, bad, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *outside = request(&split, pg_synthesis_root(&split), "outside := \\x : @ => x;");
+	complete(&split, pg_synthesis_data_case(&split, outside, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *unsupported = request(&split, scope, "type := @{ nil : *; };");
+	complete(&split, pg_synthesis_data_case(&split, unsupported, schema, ctor, motive), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_synthesis_job *cycle = program(&split, scope, "{{ f := g; g := f; }}.f;");
+	struct pg_synthesis_job *waiting = pg_synthesis_data_case(&split, cycle, schema, ctor, motive);
+	pg_synthesis_advance(&split, 1000);
+	assert(pg_synthesis_status(waiting) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(waiting));
+	assert(!pg_synthesis_result(waiting));
+	/* Destroy while a distinct reindex job still owns suspended traversal. */
+	struct pg_synthesis_job *unfinished = pg_synthesis_reindex(&split, result_map, pg_prove_type_value(typing, index_a));
+	assert(unfinished);
+	pg_synthesis_advance(&split, 1);
+	assert(pg_synthesis_status(unfinished) == PG_SYNTHESIS_PENDING);
+	pg_synthesis_destroy(&split);
+	pg_synthesis_destroy(&whole);
+	pg_whnf_work_destroy(&work);
+	puts("case synthesis: independent producers, index motives, post-check evidence and shared scheduling passed");
+}
+
 int main(void)
 {
 	struct pg_graph graph;
@@ -732,6 +840,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
+	data_cases(&typing, &classifiers);
 	source_actions(&typing, &classifiers);
 	family_transport(&typing, &classifiers);
 	selected_instances(&typing, &classifiers);

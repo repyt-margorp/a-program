@@ -1108,6 +1108,26 @@ a specified type family, not a global endpoint-only relation.
   Match, recursive IH, a motive depending on the scrutinee itself, or nominal
   datatype fibrancy. Shared scheduler integration and checked nominal family
   formation/membership remain next, with recursive and higher obligations intact.
+- [x] September 8, after `2c6dc48`: schedule independent case synthesis and
+  shared typed reindexing. `pg_synthesis_data_case` interns the immutable
+  schema/constructor/motive/producer tuple without computing a target or body.
+  It waits for the producer, subscribes to `pg_synthesis_reindex(r,C)`, advances
+  the existing conversion machine, then abstracts the checked body. Reindex
+  jobs are keyed by the accepted substitution/proof pair and use the existing
+  suspended reindex machine; no second substitution algorithm or work queue
+  is introduced. Completed evidence remains in the ordinary proof DAG.
+  Tests use parsed branch bodies with dependent field/index contexts. They
+  check waiting before synthesis, suspension during substitution, producer-first
+  versus consumer-first scheduling, shared completed work without new steps,
+  unchanged producer evidence after a failed post-check, invalid inputs,
+  unsupported-result propagation, cyclic dependencies and cancellation cleanup.
+  No surface Match rule is enabled by this scheduler API. Nominal membership,
+  scrutinee-dependent motives, recursive self/IH and higher datatype acceptance
+  remain open N3 work. Pi abstraction and primitive premise checks are still
+  synchronous; this does not claim a fully budgeted type checker.
+  Optimized pointer `make check`: 3.082 s; ASan/UBSan: 9.148 s (both rebuilding
+  the changed synthesis test); synthesis/IADT/Identity pass at a 512 KiB stack.
+  Implementation +100/-1 (net +99); tests +109; docs separate. N2/N3 stay open.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

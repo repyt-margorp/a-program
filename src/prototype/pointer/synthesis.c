@@ -1,5 +1,6 @@
 #include "synthesis.h"
 #include "computation.h"
+#include "iadt.h"
 
 #include <string.h>
 
@@ -45,7 +46,7 @@ struct block_state {
 	struct pg_index names;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, DATA_CASE_JOB, REINDEX_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -69,6 +70,7 @@ struct pg_synthesis_job {
 	const struct pg_evidence *function;
 	const struct pg_evidence *continuation;
 	struct pg_conversion comparison;
+	struct pg_reindex reindex;
 	struct pg_whnf_job *normalizing;
 	int comparing;
 	struct block_state *block;
@@ -97,6 +99,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
+			pg_reindex_destroy(&job->reindex);
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
 		}
@@ -218,6 +221,33 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	if (job) job->left = input;
 done:
 	pg_graph_destroy(&temporary);
+	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
+	const struct pg_evidence *substitution, const struct pg_evidence *proof)
+{
+	if (!pg_evidence_owned_by(substitution, synthesis->typing)) return NULL;
+	if (!pg_evidence_owned_by(proof, synthesis->typing)) return NULL;
+	if (pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (!pg_evidence_subject(proof)) return NULL;
+	if (pg_evidence_context(proof) != pg_evidence_context(pg_evidence_premise(substitution, 0))) return NULL;
+	return request_job(synthesis, REINDEX_JOB, substitution, proof);
+}
+
+struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *body, const struct pg_data_schema *schema,
+	const struct pg_object *constructor, const struct pg_evidence *motive)
+{
+	if (!body || body->owner != synthesis) return NULL;
+	if (!pg_evidence_owned_by(motive, synthesis->typing)) return NULL;
+	if (pg_evidence_judgement(motive) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	const struct pg_evidence *result = pg_data_schema_result(schema, constructor);
+	if (!pg_evidence_owned_by(result, synthesis->typing)) return NULL;
+	if (pg_evidence_context(motive) != pg_evidence_context(pg_evidence_premise(result, 0))) return NULL;
+	const void *inputs[] = {schema, constructor, motive, body};
+	struct pg_synthesis_job *job = request_inputs(synthesis, DATA_CASE_JOB, 4, inputs);
+	if (job) job->left = body;
 	return job;
 }
 
@@ -710,9 +740,66 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	finish(synthesis, job, PG_SYNTHESIS_DONE);
 }
 
+static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->reindex.state) {
+		if (pg_reindex_init(&job->reindex, synthesis->typing, job->inputs[0], job->inputs[1]) != 0) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+	}
+	switch (pg_reindex_advance(&job->reindex, 1)) {
+	case PG_REINDEX_PENDING:
+		job->next = synthesis->ready;
+		synthesis->ready = job;
+		return;
+	case PG_REINDEX_ERROR:
+		finish(synthesis, job, PG_SYNTHESIS_ERROR);
+		break;
+	case PG_REINDEX_DONE:
+		job->result = pg_reindex_result(&job->reindex);
+		finish(synthesis, job, PG_SYNTHESIS_DONE);
+		break;
+	}
+	pg_reindex_destroy(&job->reindex);
+}
+
+static void data_case_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->stage) {
+		job->stage = 1;
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	if (job->stage == 1) {
+		job->checking_term = job->left->result;
+		if (!job->checking_term) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		const struct pg_evidence *fields = pg_data_schema_fields(job->inputs[0], job->inputs[1]);
+		if (pg_evidence_context(job->checking_term) != pg_evidence_context(fields)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		if (pg_evidence_judgement(job->checking_term) != PG_JUDGEMENT_COMPUTATION) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		job->right = pg_synthesis_reindex(synthesis,
+			pg_data_schema_result(job->inputs[0], job->inputs[1]), job->inputs[2]);
+		job->stage = 2;
+		depend(synthesis, job, job->right);
+		return;
+	}
+	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+	job->checking_type = job->right->result;
+	const struct pg_evidence *checked = compare(synthesis, job);
+	if (!checked) return;
+	job->result = pg_data_branch(synthesis->typing, synthesis->classifiers, job->inputs[0], job->inputs[1], checked);
+	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == REINDEX_JOB) { reindex_step(synthesis, job); return; }
+	if (job->role == DATA_CASE_JOB) { data_case_step(synthesis, job); return; }
 	if (job->role == CLASSIFIER_JOB) { classifier_step(synthesis, job); return; }
 	if (job->role == REFLEXIVITY_JOB || job->role == FAMILY_ACTION_JOB) {
 		if (!job->stage) {

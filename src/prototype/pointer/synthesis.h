@@ -46,6 +46,18 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, size_t count,
 	const struct pg_evidence *const *paths);
+struct pg_data_schema;
+/* Wait for independent body synthesis, then post-check its classifier against
+ * the constructor's pulled-back index motive and abstract the checked case.
+ * Requests only record immutable inputs; conversion advances on the shared
+ * work queue. This adds no surface syntax or whole-Match typing rule. */
+struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *body, const struct pg_data_schema *schema,
+	const struct pg_object *constructor, const struct pg_evidence *motive);
+/* Shared suspended typed substitution; the checked substitution/proof pair
+ * determines a job. Uses the existing reindex machine, not a second traversal. */
+struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
+	const struct pg_evidence *substitution, const struct pg_evidence *proof);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.
