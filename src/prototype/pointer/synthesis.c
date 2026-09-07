@@ -44,7 +44,7 @@ struct block_state {
 	const struct pg_evidence *tail;
 	struct pg_index names;
 };
-enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, REDUCTION_JOB, THUNK_JOB, REINDEX_JOB, NORMALIZATION_JOB };
+enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	enum job_role role;
@@ -67,8 +67,6 @@ struct pg_synthesis_job {
 	const struct pg_evidence *function;
 	const struct pg_evidence *continuation;
 	struct pg_conversion comparison;
-	struct pg_comparison structural;
-	struct pg_reindex reindex;
 	struct pg_whnf_job *normalizing;
 	int comparing;
 	struct block_state *block;
@@ -96,8 +94,6 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
-			pg_comparison_destroy(&job->structural);
-			pg_reindex_destroy(&job->reindex);
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
 		}
@@ -187,11 +183,6 @@ struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
 	return request_evaluation(synthesis, context, computation, RETURN_JOB);
 }
 
-struct pg_synthesis_job *pg_synthesis_reduce(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *computation)
-{
-	return request_evaluation(synthesis, context, computation, REDUCTION_JOB);
-}
 
 struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *value)
@@ -311,120 +302,6 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }
 
-enum reduction_stage { REDUCTION_DEMAND, REDUCTION_SUBSTITUTED, REDUCTION_CONVERTING, REDUCTION_ARGUMENT, REDUCTION_BETA };
-
-static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	if (job->stage == REDUCTION_CONVERTING) {
-		job->result = compare(synthesis, job);
-		if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
-		return;
-	}
-	if (job->stage == REDUCTION_ARGUMENT) {
-		const struct pg_evidence *argument = job->checking_term;
-		if (pg_evidence_classifier(argument) != pg_evidence_subject(job->checking_type)->core)
-			argument = compare(synthesis, job);
-		if (!argument) return;
-		const struct pg_evidence *application = pg_prove_application(synthesis->typing, job->function, argument);
-		if (!application) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		pg_conversion_destroy(&job->comparison);
-		job->comparing = 0;
-		job->stage = REDUCTION_SUBSTITUTED;
-		job->left = pg_synthesis_reduce(synthesis, job->inputs[0], application);
-		depend(synthesis, job, job->left);
-		return;
-	}
-	if (!job->left) {
-		if (pg_evidence_rule(job->inputs[1]) == PG_TYPE_CONVERSION) {
-			job->stage = REDUCTION_SUBSTITUTED;
-			job->left = pg_synthesis_reduce(synthesis, job->inputs[0], pg_evidence_premise(job->inputs[1], 0));
-			depend(synthesis, job, job->left);
-			return;
-		}
-		if (pg_evidence_rule(job->inputs[1]) == PG_APP_ELIM) {
-			const struct pg_evidence *function = pg_evidence_premise(job->inputs[1], 0);
-			if (pg_evidence_rule(function) == PG_TYPE_CONVERSION) {
-				job->function = pg_evidence_premise(function, 0);
-				job->checking_type = pg_prove_pi_domain(synthesis->typing,
-					pg_prove_classifier(synthesis->typing, synthesis->classifiers, job->inputs[0], job->function));
-				if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-				job->checking_term = pg_evidence_premise(job->inputs[1], 1);
-				job->stage = REDUCTION_ARGUMENT;
-				job->next = synthesis->ready;
-				synthesis->ready = job;
-				return;
-			}
-		}
-		const struct pg_evidence *exposed = pg_prove_reindexed_elimination(synthesis->typing, job->inputs[1]);
-		if (!exposed) exposed = pg_prove_reindexed_premise(synthesis->typing, job->inputs[1]);
-		if (exposed) {
-			job->stage = REDUCTION_SUBSTITUTED;
-			job->left = pg_synthesis_reduce(synthesis, job->inputs[0], exposed);
-			depend(synthesis, job, job->left);
-			return;
-		}
-		if (pg_evidence_rule(job->inputs[1]) == PG_FORCE_ELIM) {
-			job->left = pg_synthesis_unthunk(synthesis, job->inputs[0], pg_evidence_premise(job->inputs[1], 0));
-			depend(synthesis, job, job->left);
-			return;
-		}
-		struct pg_reduction step;
-		if (pg_prepare_reduction(synthesis->typing, job->inputs[0], job->inputs[1], &step) != 0) {
-			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
-		}
-		if (step.result) {
-			job->result = step.result;
-			finish(synthesis, job, PG_SYNTHESIS_DONE); return;
-		}
-		if (step.substitution) {
-			job->stage = REDUCTION_BETA;
-			job->left = request_job(synthesis, REINDEX_JOB, step.substitution, step.input);
-			depend(synthesis, job, job->left);
-			return;
-		}
-		job->left = pg_synthesis_reduce(synthesis, step.context, step.input);
-		depend(synthesis, job, job->left);
-		return;
-	}
-	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-	if (job->stage == REDUCTION_BETA) {
-		job->result = job->left->result;
-		if (!job->structural.state && pg_comparison_init(&job->structural,
-			pg_evidence_classifier(job->result), pg_evidence_classifier(job->inputs[1]), NULL, NULL) != 0) {
-			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-		}
-		enum pg_comparison_status status = pg_comparison_advance(&job->structural, 1);
-		if (status == PG_COMPARISON_PENDING) {
-			job->next = synthesis->ready;
-			synthesis->ready = job;
-			return;
-		}
-		pg_comparison_destroy(&job->structural);
-		finish(synthesis, job, status == PG_COMPARISON_EQUAL ? PG_SYNTHESIS_DONE
-			: status == PG_COMPARISON_DIFFERENT ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_ERROR);
-		return;
-	}
-	if (job->stage == REDUCTION_SUBSTITUTED) {
-		job->checking_term = job->left->result;
-		if (pg_evidence_classifier(job->checking_term) == pg_evidence_classifier(job->inputs[1])) {
-			job->result = job->checking_term;
-			finish(synthesis, job, PG_SYNTHESIS_DONE);
-			return;
-		}
-		job->checking_type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, job->inputs[0], job->inputs[1]);
-		if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		if (pg_alpha_equal(pg_evidence_subject(job->checking_type)->core, pg_evidence_classifier(job->inputs[1])) != 1) {
-			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
-		}
-		job->stage = REDUCTION_CONVERTING;
-		job->next = synthesis->ready;
-		synthesis->ready = job;
-		return;
-	}
-	job->result = pg_evidence_rule(job->inputs[1]) == PG_FORCE_ELIM
-		? job->left->result : pg_prove_computation_operand(synthesis->typing, job->inputs[1], job->left->result);
-	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
-}
 
 static const struct pg_evidence *value(struct pg_synthesis *synthesis, const struct pg_evidence *proof)
 {
@@ -763,26 +640,6 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (job->role == REINDEX_JOB) {
-		if (!job->reindex.state && pg_reindex_init(&job->reindex, synthesis->typing, job->inputs[0], job->inputs[1]) != 0) {
-			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-		}
-		switch (pg_reindex_advance(&job->reindex, 1)) {
-		case PG_REINDEX_PENDING:
-			job->next = synthesis->ready;
-			synthesis->ready = job;
-			return;
-		case PG_REINDEX_DONE:
-			job->result = pg_reindex_result(&job->reindex);
-			pg_reindex_destroy(&job->reindex);
-			finish(synthesis, job, PG_SYNTHESIS_DONE);
-			return;
-		case PG_REINDEX_ERROR:
-			pg_reindex_destroy(&job->reindex);
-			finish(synthesis, job, PG_SYNTHESIS_ERROR);
-			return;
-		}
-	}
 	const struct pg_syntax *syntax = job->syntax;
 	if (job->role == NORMALIZATION_JOB) {
 		if (!job->normalizing) job->normalizing = pg_whnf_request(synthesis->normalization,
@@ -802,7 +659,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		}
 	}
 	if (job->role == RETURN_JOB || job->role == THUNK_JOB) { contents_step(synthesis, job); return; }
-	if (job->role == REDUCTION_JOB) { reduction_step(synthesis, job); return; }
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }

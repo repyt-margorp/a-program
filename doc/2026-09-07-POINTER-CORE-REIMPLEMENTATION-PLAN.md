@@ -633,17 +633,13 @@ successful return codes as new-kernel certificates.
   Synchronous readback inside semantic-demand resumption remains a fuel caveat.
 - [ ] Compute Pi/Lambda/APP action and general F/U rules on selected
   heterogeneous/higher families. The equations above are not full observational
-  Identity. General one-step typed reduction of action and complete surface
-  action execution remain unfinished.
-- [x] The shared RETURN/THUNK content jobs now handle reflexive action. They
-  await the source's existing content job and form reflexivity at the recovered
-  content classifier using regularity and the existing primitive rule. They
-  do not add an action-specific evaluator, a proof overwrite, or a new evidence
-  rule. Extracting `refl (THUNK M)` yields `refl M` without executing M.
-  Tests cover four iterated actions of a beta-redex source, shared dependencies,
-  split/bulk result agreement, normalized classifier checks, conversion,
-  projection and nontrivial reindexing. Shared prior work can reduce the second
-  scheduler's cost; split/bulk tests must not assume both runs start cold.
+  Identity. General action rules and complete surface action execution remain
+  unfinished; typed evaluation uses directed normalization, not a second reducer.
+- [x] RETURN/THUNK content jobs handle canonical reflexive actions through the
+  same pure normalizer and typed inversion as other sources. Tests cover four
+  iterated actions of a beta-redex source, split/bulk agreement, conversion,
+  projection and nontrivial reindexing. Extracting acted THUNK code does not
+  execute its stored computation. See the directed-normalization checkpoint.
 - [ ] Generalize selected instantiation to acted boundary telescopes: the
   present instance rule handles a value-universe identification, not arbitrary
   higher-dimensional families. Connect the existing dimension-map operators.
@@ -683,164 +679,45 @@ the HOTT transport/lifting structure described in the
   advertising this as HOTT Identity. Pure type evaluation, generated IADT
   families and their fibrancy obligations remain part of the full goal.
 
-- [x] Initial typed beta reduction derives a reduct from a checked APP whose
-  function premise is a Lambda introduction (possibly weakened). It builds
-  the ordinary checked substitution from the body context into the application
-  context, then reindexes the existing body proof. It preserves the original
-  APP and checks the result classifier up to explicit alpha equality. No new
-  equality axiom, Core node, or unchecked classifier assignment is introduced.
-  Tests cover lexical weakening, invalid contexts/non-APP inputs, an applied
-  polymorphic Lambda whose result is another Lambda, and 100 repeated requests
-  without Term/evidence growth. Temporary image arrays are still rebuilt.
-- [x] `pg_reduce_computation` dispatches checked beta, FORCE/THUNK and
-  zero-clause FOLD/RETURN steps. Introduction inversion follows existing
-  projection/reindex premises and applies the same context action to their
-  contents. FORCE returns the checked computation content; FOLD constructs an
-  ordinary checked APP of the continuation to the returned value. Classifiers
-  are checked up to alpha equality, without merging Core nodes or manufacturing
-  an Identity/normalization certificate. Tests cover direct steps, weakened
-  introductions, introductions beneath beta-generated reindex evidence, wrong
-  contexts, unsupported converted introductions, and stable Term/evidence
-  counts over 100 repeated requests. This does not execute effect operations.
-- [x] Typed beta now follows projection/reindex chains on its Lambda premise.
-  It maps the original free variables through those existing context actions,
-  adds the application argument as the original bound variable's image, and
-  reindexes the original body with that checked simultaneous substitution.
-  No runtime closure store or regenerated Lambda introduction is needed.
-  The typed step also commutes through projection/reindex around an elimination
-  proof. Source-synthesized polymorphic identity tests perform two beta steps,
-  include interleaved projection and multiple reindex actions, compare with
-  independent Core evaluation, and repeat requests without Term/proof growth.
-- [ ] General typed reduction must handle converted function proofs,
-  converted introductions and admitted semantic owners, plus budgeted reduction chains and
-  general pure type-result exposure. `pg_reduce_beta` is only the Lambda-head
-  step above; its NULL result is not a normalization or untypability verdict.
-  Its reduct is ordinary reindex evidence, not an object Identity witness or a
-  persistent conversion certificate for the original APP.
-  Introduction inversion currently traverses its immutable premise chain;
-  budgeting that traversal and composing arbitrary chains remain unfinished.
-- [x] Initial source-level pure type-result exposure uses existing accepted
-  derivations: `pg_prove_return_value` inverts RETURN through context actions,
-  and the existing value-universe rule checks whether that returned value is a
-  type. Lambda/Pi domains, Pi codomains and the right side of `::` share one
-  synthesis helper. It retains its current proof between scheduler steps;
-  each successful reduction yields before continuing. APP can advance its
-  callee and FOLD its input by rebuilding the same checked elimination rules.
-  Tests cover computed domains/codomains, nested computed arguments in a
-  post-check, a computed callee, rejection of a returned non-type and missing
-  subject, and an unsupported neutral type-family application. `::` still
-  supplies no information to synthesis of its left-hand side.
-- [ ] Neutral/open pure type-family computations require their own checked
-  formation contract; reaching `F Universe` alone is not sufficient to invent
-  a returned type. Current inability to expose `f A` for an unknown `f` is
-  reported unsupported, not proof that dependent families are invalid. The
-  checked family/substitution action contract above is still required.
-  Demand/context traversal and primitive substitution costs are not yet charged
-  individually to fuel.
-- [x] Pure returned-value requests now use the existing synthesis job index,
-  ready queue, completion status and waiters. The immutable key is the job role
-  plus context evidence and input computation evidence; source expression and
-  definition requests use the same index with their own input pair. There is
-  no second evaluation scheduler or copied authoritative classifier answer.
-  Type-position consumers subscribe to the returned-value producer rather
-  than retaining independent reduction progress. Zero-budget requests do no
-  reduction; a partial request resumes its existing proof; completed requests
-  perform no further scheduler steps. Tests cover those cases, two source
-  consumers sharing a computed annotation, same-Core inputs in distinct
-  contexts, differing input derivations, and rejection of foreign-owner proofs.
-- [x] Demanded reduction steps use the same job table and waiters as whole
-  returned-value requests. Preparing a step returns either a checked direct
-  reduct or a context/input pair for its demanded operand. APP callee, FOLD
-  input and projection/reindex demands become shared reduction-job dependencies.
-  Resumption rebuilds the original rule with the checked operand derivation.
-  This reconstruction is a typing operation, not an equality axiom accepting
-  arbitrary replacement evidence. The synchronous `pg_reduce_computation`
-  helper delegates to this same prepare/rebuild contract; synthesis no longer
-  calls its recursive traversal. Tests put two applications simultaneously on
-  the same pending callee job, verify notification and cached step reuse, and
-  check the whole application against independent Core execution.
-- [ ] Budget traversal inside each primitive step. Introduction inversion,
-  context-prefix lookup, beta image construction and term substitution can
-  still perform unbudgeted work. Different input derivations are deliberately
-  distinct keys even when their Core happens to be shared. Effectful execution
-  must not reuse a prior runtime result through this pure-work mechanism.
-- [x] Returned-value jobs preserve explicit computation conversion. For an
-  accepted `M : F B` obtained by conversion from `F A`, the job obtains the
-  checked value of the original computation, recovers `B` formation from the
-  target `F B`, and uses the existing resumable conversion checker to derive
-  the returned value at `B`. It neither discards the target classifier nor
-  treats the certificate for `F A = F B` as a certificate for `A = B`.
-  Projection/reindex wrappers resume the same returned-value requests in their
-  source contexts and apply the existing context rules to their results.
-  Tests cover source `::` inside computed annotations, conversion under beta
-  reindexing, distinct alpha-equivalent thunk-Pi classifiers, preservation of
-  original proofs, context actions and completed-job reuse. This is not a
-  blanket rule erasing conversion evidence from every computation.
-- [x] RETURN and THUNK content requests share one scheduler state machine for
-  introduction inversion, context actions and checked conversion. A THUNK
-  request exposes its stored computation without executing it; FORCE reduction
-  subscribes to that request. Conversion of `U C` to `U D` requires a separately
-  checked conversion of the extracted code from `C` to `D`. Context-action
-  decomposition is shared with reduction preparation for either polarity,
-  without new Core tags or a second context algorithm. Tests cover distinct
-  thunk-Pi classifiers, converted FORCE, projected/reindexed contents, original
-  evidence retention, wrong input contexts/polarities and completed-job reuse.
-- [x] A direct reindexed variable (including a weakened original variable)
-  exposes its existing checked image premise from the substitution. The
-  returned-value/content scheduler follows that image rather than descending
-  to the original neutral variable. Reindexing APP/FORCE/FOLD can also be
-  distributed to their operand proofs using the same accepted rules; the
-  content scheduler uses that exposed derivation before demanding a result.
-  Original reindex evidence and its occurrence are unchanged. Tests substitute
-  a THUNK for a variable, expose its code, evaluate reindexed FORCE to a checked
-  value, preserve the original premises, and reuse the completed job. When the
-  exposed content already has the exact target classifier, no redundant
-  conversion proof is added; otherwise the existing comparison checks it.
-- [x] Reduction jobs distribute a direct reindexed APP/FORCE/FOLD before
-  demanding its next execution step. The exposed derivation is a shared child
-  request, not itself reported as a beta step. The result retains the original
-  classifier up to checked alpha equality, using the existing resumable
-  conversion checker when substituted binders differ. Formation reconstruction
-  can itself freshen Pi binders, so exact classifier-pointer preservation is
-  not claimed; neither result is alpha-interned. Tests cover a substituted FORCE demanded inside FOLD, its
-  final value, a reindexed polymorphic application returning raw Pi code, and
-  completed-step reuse. Original source/reindex proofs remain unchanged.
-- [x] Shared reduction jobs handle direct converted computations and application
-  of converted raw-Pi code. Argument types are checked against the original
-  function domain; reducts are checked against the original request's classifier.
-  Sequential argument/result comparisons have separate comparison state.
-- [x] Push reindex through nested reindex by checked substitution composition,
-  and through conversion by exposing the substituted original premise before
-  restoring the target classifier. Do not evaluate the unsubstituted source
-  variable first: an outer substitution can supply its executable code.
-- [x] APP and FOLD accept structural alpha equality of the domain, consistently
-  with Lambda and checked substitution. Reindexing can freshen internal Pi
-  binders independently in function and argument classifiers. Pointer equality
-  was incorrectly rejecting these valid applications. This is explicit alpha
-  comparison, not alpha interning or implicit beta conversion. Structural
-  mismatches remain rejected and original term/classifier pointers unchanged.
-- [x] Compare Core evaluation with checked returned-value synthesis for five
-  application fixtures and twelve source block fixtures, including higher-order
-  arguments, nested sequencing and post-synthesis annotations. Each returns the
-  existing value `x : A`; single-step fuel tests retain suspended job behavior.
-  Normal and ASan/UBSan pointer suites pass, including domain mismatch rejection
-  and the unchanged 158-case syntax inventory (not semantic example parity).
-- [x] Push substitution through prefix projection: restrict its checked image
-  array to the original proof context, then apply the existing substitution
-  and reindex constructors. This preserves the supplied values instead of
-  trying to evaluate a neutral source variable before substitution. A regression
-  failed before the change and now returns `x : A` from a weakened FORCE whose
-  thunk variable is instantiated outside the weakening. Exposure reuses the
-  previously constructed substitution/reindex proof, allocates no extra Core
-  or evidence records on repeated requests, and keeps the original premise DAG.
-  Normal and ASan/UBSan pointer suites pass this regression; no higher family
-  formation or Identity rule is implied by this context-action law.
-- [ ] Generalize substituted-redex exposure across remaining intermediate rule
-  wrappers as additional former support is admitted. The synchronous one-step
-  reducer retains its original contract; administrative proof construction is
-  not itself a beta/FORCE/FOLD execution step. Primitive substitution and alpha
-  traversal still need budget accounting. These tests establish neither general
-  higher-order completeness nor HOTT/ADT/effect support.
+- [x] Typed evaluation now consumes directed receipts from the common evaluator,
+  retaining the accepted source's context and classifier. The old typed beta,
+  FORCE/FOLD reducer and proof-shape-specific scheduler have been removed.
+  Their earlier checkpoints are retained in Git history through `9317b13`.
+  They duplicated the evaluator's demand ordering and required reconstruction
+  of derivations that the normalized-source rule can retain directly.
+- [x] Returned-value and THUNK-content requests use the existing synthesis job
+  index, ready queue and waiters. Keys retain the typed context/input; common
+  WHNF jobs share computation by exact Core and policy, not by classifier.
+  There is no alternate execution route selected by the source derivation rule.
+  Initialization does not evaluate; completed requests perform no new work.
+- [x] Pure computed annotations work in Lambda/Pi domains and codomains and in
+  the right side of `::`. The left side is synthesized independently. Tests
+  cover computed callees, higher-order arguments, nested blocks, original
+  annotation retention and rejection of a returned value that is not a type.
+- [x] Tests independently construct checked substitutions and compare their
+  reindexed bodies with beta evaluation. Reindexing APP/FORCE/FOLD is compared
+  with applying the same substitution to each operand using ordinary rules.
+  No dedicated reindexed-elimination or reindexed-premise exposure API remains.
+  Interleaved weakening/reindexing and instantiated thunk variables retain
+  their original evidence and evaluate in the supplied environment.
+- [x] Explicit conversion remains a premise. Normalization retains the chosen
+  classifier; RETURN/THUNK inversion extracts content at that classifier.
+  Neither an erased Core lookup nor a certificate for `F A = F B` is used
+  as an independent certificate for `A = B`.
+- [x] APP and FOLD admit structural alpha equality of their domains, consistent
+  with Lambda and checked substitution. Mismatches remain rejected; comparisons
+  do not alpha-intern terms or implicitly beta-convert domain mismatches.
+- [x] Regressions cover invalid contexts/polarities, distinct annotated inputs
+  sharing one Core, exact-result reuse, split/whole budgets, and deep captured
+  RETURN/THUNK bodies. Core evaluation and checked synthesis are compared for
+  application and source block fixtures. The 158-case syntax inventory is still
+  parsing coverage, not end-to-end semantic compatibility.
+- [ ] Neutral/open pure type-family computations require a checked formation
+  contract; `F Universe` alone does not justify extracting an unknown returned
+  type. Unsupported neutral heads are not negative typing proofs.
+- [ ] Budget remaining primitive formation, context-prefix and alpha traversals.
+  Effectful runtime results must not enter the pure WHNF cache. Job-local
+  closure work is not yet globally shared across distinct WHNF inputs.
 - [x] Replace recursive common readback/substitution traversal with explicit
   heap work frames, indexed by the same `(term, lexical environment)` key.
   Children complete before their parent is constructed; repeated DAG children
@@ -878,26 +755,13 @@ the HOTT transport/lifting structure described in the
   keyed evidence, including when another request has accepted it in the meantime.
   Tests cover no pending evidence, split/whole execution, cancellation, invalid
   contexts, Lambda domain annotations, and concurrent identical conclusions.
-- [x] Content extraction routes reindexed RETURN/THUNK results through the
-  existing synthesis queue, keyed by substitution and original proof. Context
-  actions are scheduled before synchronous introduction extraction so they do
-  not bypass this path. Other jobs wait on the same dependency mechanism; there
-  is no second scheduler or new acceptance rule.
-- [x] Preparing a typed beta step now returns its checked context substitution
-  and original body rather than substituting the body synchronously. Both the
-  synchronous reducer and the synthesis reducer consume this same preparation;
-  synthesis waits on its shared reindex job. Completion keeps the beta rule's
-  structural-alpha classifier check, without manufacturing a conversion proof.
-  A 120-level RETURN/THUNK body remains pending during substitution, then returns
-  the same accepted evidence as synchronous beta. Existing projection/reindex,
-  higher-order, converted-function and shared-demand fixtures remain covered.
-- [ ] Thread resumable substitution through remaining typed evidence/synthesis work and
-  budget dispatched evaluation readback. Those call sites still use synchronous wrappers.
-  Initialization validates/copies bindings synchronously; allocation and hash
-  maintenance are not wall-clock bounded. Other recursive traversals are not
-  covered by the stack test. This does not complete end-to-end compiler fuel.
-  In particular beta preparation still assembles and validates context images
-  synchronously; most primitive evidence rules still call synchronous alpha.
+- [x] The old synthesis-only reindex job used for typed beta/content reconstruction
+  has been retired with that evaluation path. The resumable checked reindex API
+  above remains for genuine context substitution, with its independent tests.
+- [ ] Thread resumable substitution through remaining typed evidence work and
+  budget semantic-demand readback. Binding validation/copying, allocation and
+  index maintenance are not wall-clock bounded. Primitive evidence rules still
+  use synchronous alpha comparison. This does not complete compiler-wide fuel.
 - [x] Structural alpha and beta conversion now share one resumable scoped-pair
   walker in graph.c. Structural comparison supplies no normalization; conversion
   supplies the existing fixed beta-job policy. Pair memoization includes the
@@ -1193,11 +1057,27 @@ conclusion and all premise pointers; no accepted record is overwritten.
   normalization and inversion, not only an untyped conversion comparison.
   Ordinary and ASan/UBSan suites pass; synthesis and Identity suites also pass
   with a 512 KiB stack. This integration removes 52 net implementation lines
-  (excluding tests and this plan); the old one-step API below is still present.
-- [ ] Retire the standalone one-step typed reduction scheduler and its
-  reconstruction helpers after migrating their remaining direct API tests.
-  They are no longer used by source-level RETURN/THUNK exposure. Preserve the
-  independent checked-substitution tests, not the old scheduler's control flow.
+  (excluding tests and this plan), before the subsequent removal below.
+- [x] Remove the standalone typed beta/FORCE/FOLD reducer, its preparation and
+  reconstruction APIs, and the reduction/reindex scheduler roles used only by
+  that path. Remaining callers now use `pg_synthesis_normalize` or directly
+  combine the shared WHNF result with `pg_prove_normalization`. Tests retain
+  ordinary substitution/reindex checks and independently expected result terms.
+  Removed APIs include `pg_reduce_beta`, `pg_reduce_computation`,
+  `pg_synthesis_reduce` and the three `pg_prove_reindexed_*` exposure helpers.
+  Ordinary and ASan/UBSan checks pass; synthesis and Identity tests pass with
+  a 512 KiB stack. Changes against `9317b13` (documentation excluded):
+
+  | File under `src/prototype/pointer/` | Added | Removed | Net |
+  | --- | ---: | ---: | ---: |
+  | `evidence.c` | 0 | 248 | -248 |
+  | `evidence.h` | 0 | 41 | -41 |
+  | `synthesis.c` | 1 | 145 | -144 |
+  | `synthesis.h` | 0 | 4 | -4 |
+  | Implementation total | 1 | 438 | -437 |
+  | `tests/core.c` | 42 | 30 | +12 |
+  | `tests/synthesis.c` | 55 | 49 | +6 |
+
 - [ ] Extend sharing beyond exact `(Core, policy)` WHNF jobs where appropriate.
   Nested evaluator closures still have job-local work; using the common
   evaluator does not establish that every demanded subcomputation is memoized.

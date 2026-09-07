@@ -417,80 +417,6 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 		pi->context, subject, pi->subject->core, 2, premises);
 }
 
-static int context_action(const struct pg_evidence *proof)
-{
-	return proof->rule == PG_CONTEXT_PROJECTION || proof->rule == PG_REINDEX;
-}
-
-static const struct pg_evidence *apply_context_action(struct pg_typing *typing,
-	const struct pg_evidence *action, const struct pg_evidence *content)
-{
-	if (action->rule == PG_CONTEXT_PROJECTION)
-		return pg_prove_projection(typing, action->premises[0], content);
-	if (action->rule == PG_REINDEX)
-		return pg_prove_reindex(typing, action->premises[0], content);
-	return NULL;
-}
-
-static const struct pg_evidence *prepare_beta(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *application,
-	const struct pg_evidence **body)
-{
-	*body = NULL;
-	if (!context_proof(typing, context)) return NULL;
-	if (!application || application->owner != typing) return NULL;
-	if (application->rule != PG_APP_ELIM || application->context != context->context) return NULL;
-	const struct pg_evidence *function = application->premises[0];
-	size_t action_count = 0;
-	while (context_action(function)) {
-		++action_count;
-		function = function->premises[1];
-	}
-	if (function->rule != PG_LAMBDA_INTRO) return NULL;
-	const struct pg_evidence *body_context = function->premises[0]->premises[1];
-	const struct pg_evidence *base_context = body_context->premises[0];
-	size_t count = 0;
-	for (const struct pg_context *scope = body_context->context; scope; scope = scope->parent) ++count;
-	if (!count || count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-	if (action_count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-	struct pg_graph temporary = {0};
-	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
-	const struct pg_evidence **actions = pg_alloc(&temporary, action_count * sizeof(*actions));
-	const struct pg_evidence *result = NULL;
-	if (!images) goto done;
-	if (action_count && !actions) goto done;
-	const struct pg_evidence *action = application->premises[0];
-	for (size_t i = action_count; i; --i) {
-		actions[i - 1] = action;
-		action = action->premises[1];
-	}
-	images[count - 1] = application->premises[1];
-	const struct pg_context *scope = body_context->context->parent;
-	for (size_t i = count - 1; i; --i) {
-		images[i - 1] = pg_prove_variable(typing, base_context, scope->binder);
-		for (size_t j = 0; j < action_count; ++j)
-			images[i - 1] = apply_context_action(typing, actions[j], images[i - 1]);
-		if (!images[i - 1]) goto done;
-		scope = scope->parent;
-	}
-	const struct pg_evidence *substitution = pg_prove_substitution(typing, body_context, context, count, images);
-	if (!substitution) goto done;
-	result = substitution;
-	*body = function->premises[1];
-done:
-	pg_graph_destroy(&temporary);
-	return result;
-}
-
-const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *application)
-{
-	const struct pg_evidence *body;
-	const struct pg_evidence *substitution = prepare_beta(typing, context, application, &body);
-	if (!substitution) return NULL;
-	const struct pg_evidence *result = pg_prove_reindex(typing, substitution, body);
-	return result && pg_alpha_equal(result->classifier, application->classifier) == 1 ? result : NULL;
-}
 
 /* Inversion uses an accepted judgement, never an untyped constructor spine. */
 static const struct pg_evidence *term_content(struct pg_typing *typing,
@@ -532,110 +458,6 @@ const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 		PG_THUNK_COMPUTATION, PG_JUDGEMENT_COMPUTATION);
 }
 
-int pg_prepare_context_action(struct pg_typing *typing, const struct pg_evidence *context,
-	const struct pg_evidence *computation, struct pg_reduction *step)
-{
-	if (!step) return -1;
-	*step = (struct pg_reduction){0};
-	if (!context_proof(typing, context)) return -1;
-	if (!computation || computation->owner != typing) return -1;
-	if (computation->context != context->context) return -1;
-	switch (computation->rule) {
-	case PG_CONTEXT_PROJECTION: {
-		const struct pg_evidence *source = context;
-		while (source->context != computation->premises[1]->context) {
-			if (source->rule != PG_CONTEXT_EXTEND) return -1;
-			source = source->premises[0];
-		}
-		step->context = source;
-		step->input = computation->premises[1];
-		return 0;
-	}
-	case PG_REINDEX:
-		step->context = computation->premises[0]->premises[0];
-		step->input = computation->premises[1];
-		return 0;
-	default: return -1;
-	}
-}
-
-int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *context,
-	const struct pg_evidence *computation, struct pg_reduction *step)
-{
-	if (!step) return -1;
-	*step = (struct pg_reduction){0};
-	if (!context_proof(typing, context)) return -1;
-	if (!computation || computation->owner != typing) return -1;
-	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return -1;
-	if (computation->context != context->context) return -1;
-	const struct pg_evidence *result = NULL, *value;
-	step->context = context;
-	switch (computation->rule) {
-	case PG_CONTEXT_PROJECTION: case PG_REINDEX:
-		return pg_prepare_context_action(typing, context, computation, step);
-	case PG_APP_ELIM:
-		step->substitution = prepare_beta(typing, context, computation, &step->input);
-		if (!step->substitution) {
-			step->input = computation->premises[0];
-		}
-		return 0;
-	case PG_FORCE_ELIM:
-		result = pg_prove_thunk_computation(typing, computation->premises[0]);
-		break;
-	case PG_FOLD_ELIM:
-		value = pg_prove_return_value(typing, computation->premises[0]);
-		if (value) result = pg_prove_application(typing, computation->premises[1], value);
-		else {
-			step->input = computation->premises[0];
-			return 0;
-		}
-		break;
-	default:
-		return -1;
-	}
-	if (!result) return -1;
-	if (pg_alpha_equal(result->classifier, computation->classifier) != 1) return -1;
-	step->result = result;
-	return 0;
-}
-
-const struct pg_evidence *pg_prove_computation_operand(struct pg_typing *typing,
-	const struct pg_evidence *computation, const struct pg_evidence *operand)
-{
-	if (!computation || computation->owner != typing) return NULL;
-	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
-	const struct pg_evidence *result;
-	switch (computation->rule) {
-	case PG_CONTEXT_PROJECTION: case PG_REINDEX:
-		result = apply_context_action(typing, computation, operand);
-		break;
-	case PG_APP_ELIM:
-		result = pg_prove_application(typing, operand, computation->premises[1]);
-		break;
-	case PG_FOLD_ELIM:
-		result = pg_prove_fold(typing, operand, computation->premises[1]);
-		break;
-	default: return NULL;
-	}
-	if (!result) return NULL;
-	if (result->context != computation->context) return NULL;
-	if (pg_alpha_equal(result->classifier, computation->classifier) != 1) return NULL;
-	return result;
-}
-
-const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *computation)
-{
-	struct pg_reduction step;
-	if (pg_prepare_reduction(typing, context, computation, &step) != 0) return NULL;
-	if (step.result) return step.result;
-	if (step.substitution) {
-		const struct pg_evidence *result = pg_prove_reindex(typing, step.substitution, step.input);
-		return result && pg_alpha_equal(result->classifier, computation->classifier) == 1 ? result : NULL;
-	}
-	const struct pg_evidence *operand = pg_reduce_computation(typing, step.context, step.input);
-	return pg_prove_computation_operand(typing, computation, operand);
-}
 
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument)
@@ -911,48 +733,6 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	return result;
 }
 
-const struct pg_evidence *pg_prove_reindexed_variable(struct pg_typing *typing,
-	const struct pg_evidence *proof)
-{
-	if (!proof || proof->owner != typing) return NULL;
-	if (proof->rule != PG_REINDEX || proof->judgement != PG_JUDGEMENT_VALUE) return NULL;
-	const struct pg_evidence *original = proof->premises[1];
-	while (original->rule == PG_CONTEXT_PROJECTION) original = original->premises[1];
-	if (original->rule != PG_VARIABLE) return NULL;
-	const struct pg_evidence *substitution = proof->premises[0];
-	size_t count = substitution->premise_count - 2;
-	const struct pg_binding_value *bindings = (const struct pg_binding_value *)(substitution->premises + substitution->premise_count);
-	for (size_t i = 0; i < count; ++i) {
-		if (bindings[i].binder != original->subject->core->as.reference) continue;
-		const struct pg_evidence *image = substitution->premises[i + 2];
-		return pg_alpha_equal(image->classifier, proof->classifier) == 1 ? image : NULL;
-	}
-	return NULL;
-}
-
-const struct pg_evidence *pg_prove_reindexed_elimination(struct pg_typing *typing,
-	const struct pg_evidence *proof)
-{
-	if (!proof || proof->owner != typing) return NULL;
-	if (proof->rule != PG_REINDEX || proof->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
-	const struct pg_evidence *substitution = proof->premises[0], *original = proof->premises[1];
-	const struct pg_evidence *left, *right, *result;
-	switch (original->rule) {
-	case PG_FORCE_ELIM:
-		left = pg_prove_reindex(typing, substitution, original->premises[0]);
-		result = pg_prove_force(typing, left);
-		break;
-	case PG_APP_ELIM: case PG_FOLD_ELIM:
-		left = pg_prove_reindex(typing, substitution, original->premises[0]);
-		right = pg_prove_reindex(typing, substitution, original->premises[1]);
-		result = original->rule == PG_APP_ELIM ? pg_prove_application(typing, left, right)
-			: pg_prove_fold(typing, left, right);
-		break;
-	default: return NULL;
-	}
-	if (!result) return NULL;
-	return pg_alpha_equal(result->classifier, proof->classifier) == 1 ? result : NULL;
-}
 
 static int substitution_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
 {
@@ -1018,34 +798,6 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 		subject, family->classifier, 6, premises);
 }
 
-const struct pg_evidence *pg_prove_reindexed_premise(struct pg_typing *typing,
-	const struct pg_evidence *proof)
-{
-	if (!proof || proof->owner != typing) return NULL;
-	if (proof->rule != PG_REINDEX) return NULL;
-	const struct pg_evidence *substitution = proof->premises[0], *original = proof->premises[1];
-	switch (original->rule) {
-	case PG_TYPE_CONVERSION:
-		return pg_prove_reindex(typing, substitution, original->premises[0]);
-	case PG_REINDEX:
-		substitution = pg_prove_substitution_compose(typing, original->premises[0], substitution);
-		return pg_prove_reindex(typing, substitution, original->premises[1]);
-	case PG_CONTEXT_PROJECTION: {
-		const struct pg_evidence *source = substitution->premises[0];
-		size_t count = substitution->premise_count - 2;
-		original = original->premises[1];
-		while (source->context != original->context) {
-			if (source->rule != PG_CONTEXT_EXTEND || !count) return NULL;
-			source = source->premises[0];
-			--count;
-		}
-		substitution = pg_prove_substitution(typing, source, substitution->premises[1],
-			count, substitution->premises + 2);
-		return pg_prove_reindex(typing, substitution, original);
-	}
-	default: return NULL;
-	}
-}
 
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second)

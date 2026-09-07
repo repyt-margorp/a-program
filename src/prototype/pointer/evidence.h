@@ -122,47 +122,6 @@ enum pg_reindex_status pg_reindex_status(const struct pg_reindex *work);
 uint64_t pg_reindex_steps(const struct pg_reindex *work);
 const struct pg_evidence *pg_reindex_result(const struct pg_reindex *work);
 void pg_reindex_destroy(struct pg_reindex *work);
-/* Expose existing checked image evidence or distribute a reindex through
- * APP/FORCE/FOLD. Original reindex evidence remains immutable and retained. */
-const struct pg_evidence *pg_prove_reindexed_variable(struct pg_typing *typing,
-	const struct pg_evidence *proof);
-const struct pg_evidence *pg_prove_reindexed_elimination(struct pg_typing *typing,
-	const struct pg_evidence *proof);
-/* Push substitution through structural evidence before demanding computation.
- * For conversion, returns the substituted original term: the caller must
- * restore the converted classifier with ordinary checked conversion. */
-const struct pg_evidence *pg_prove_reindexed_premise(struct pg_typing *typing,
-	const struct pg_evidence *proof);
-/* Derive a beta reduct of a checked APP with a Lambda introduction premise
- * (possibly projected/reindexed). Uses ordinary substitution/reindex evidence, not a
- * new equality axiom. NULL includes unsupported heads and failed premises. */
-const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *application);
-/* One checked beta, FORCE/THUNK or zero-clause FOLD/RETURN step, including
- * through projection/reindex evidence. Traversal is not yet budgeted.
- * NULL also includes unsupported evidence, not just irreducible terms. */
-const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *computation);
-struct pg_reduction {
-	const struct pg_evidence *result;
-	const struct pg_evidence *context;
-	const struct pg_evidence *input;
-	/* When present, reindex input with this checked substitution instead of
- * executing input in its original context. Used for a prepared beta step. */
-	const struct pg_evidence *substitution;
-};
-/* Prepare a direct reduct, a beta substitution or a demanded operand without recursively reducing
- * that operand. Nonzero includes unsupported rules and failed premises. */
-int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *context,
-	const struct pg_evidence *computation, struct pg_reduction *step);
-/* Source context and premise of a checked projection/reindex, for either
- * polarity. This decomposes context action, not computation execution. */
-int pg_prepare_context_action(struct pg_typing *typing, const struct pg_evidence *context,
-	const struct pg_evidence *proof, struct pg_reduction *step);
-/* Rebuild the demanded position with checked evidence. This is typing, not a
- * claim that an arbitrary replacement is equal to the original operand. */
-const struct pg_evidence *pg_prove_computation_operand(struct pg_typing *typing,
-	const struct pg_evidence *computation, const struct pg_evidence *operand);
 /* Invert accepted RETURN v : F A or THUNK M : U C judgements with canonical
  * heads. Retains the input proof; never executes M or guesses a type from Core.
  * Symbolic heads must first be normalized with evidence and converted. */

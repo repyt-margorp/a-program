@@ -47,6 +47,12 @@ static const struct pg_evidence *complete(struct pg_synthesis *synthesis,
 	return pg_synthesis_result(job);
 }
 
+static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *input)
+{
+	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
+}
+
 static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const char *source)
 {
@@ -317,18 +323,18 @@ int main(void)
 	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
 	const struct pg_evidence *typed_application = pg_prove_application(&typing,
 		pg_prove_projection(&typing, a_context, identity), a_type);
-	const struct pg_evidence *typed_reduct = pg_reduce_beta(&typing, a_context, typed_application);
+	const struct pg_evidence *typed_reduct = normalize(&synthesis, a_context, typed_application);
 	assert(typed_reduct && pg_evidence_subject(typed_reduct)->core->kind == PG_LAMBDA);
 	assert(pg_evidence_subject(typed_application)->core->kind == PG_APPLICATION);
 	assert(pg_alpha_equal(pg_evidence_classifier(typed_application), pg_evidence_classifier(typed_reduct)) == 1);
 	size_t reduction_terms = graph.terms.count, reduction_proofs = typing.proofs.count;
-	for (size_t i = 0; i < 100; ++i) assert(pg_reduce_beta(&typing, a_context, typed_application) == typed_reduct);
+	for (size_t i = 0; i < 100; ++i) assert(normalize(&synthesis, a_context, typed_application) == typed_reduct);
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
 	const struct pg_evidence *x_value = pg_prove_variable(&typing, x_context, x);
 	const struct pg_evidence *second_application = pg_prove_application(&typing,
 		pg_prove_projection(&typing, x_context, typed_reduct), x_value);
-	const struct pg_evidence *second_reduct = pg_reduce_beta(&typing, x_context, second_application);
+	const struct pg_evidence *second_reduct = normalize(&synthesis, x_context, second_application);
 	const struct pg_evidence *return_x = pg_prove_return(&typing, &classifiers, x_value);
 	assert(second_reduct && pg_evidence_subject(second_reduct)->core == pg_evidence_subject(return_x)->core);
 	assert(pg_evidence_classifier(second_reduct) == pg_evidence_classifier(return_x));
@@ -337,22 +343,22 @@ int main(void)
 	const struct pg_evidence *twice_reindexed = pg_prove_reindex(&typing, sigma,
 		pg_prove_projection(&typing, x_context, typed_reduct));
 	const struct pg_evidence *third_application = pg_prove_application(&typing, twice_reindexed, x_value);
-	const struct pg_evidence *third_reduct = pg_reduce_beta(&typing, x_context, third_application);
+	const struct pg_evidence *third_reduct = normalize(&synthesis, x_context, third_application);
 	assert(third_reduct && pg_evidence_subject(third_reduct)->core == pg_evidence_subject(return_x)->core);
 	const struct pg_evidence *reindexed_application = pg_prove_reindex(&typing, sigma, second_application);
-	const struct pg_evidence *reindexed_reduct = pg_reduce_computation(&typing, x_context, reindexed_application);
+	const struct pg_evidence *reindexed_reduct = normalize(&synthesis, x_context, reindexed_application);
 	assert(reindexed_reduct && pg_evidence_subject(reindexed_reduct)->core == pg_evidence_subject(return_x)->core);
 	const struct pg_evidence *projected_application = pg_prove_projection(&typing, x_context, typed_application);
-	const struct pg_evidence *projected_reduct = pg_reduce_computation(&typing, x_context, projected_application);
+	const struct pg_evidence *projected_reduct = normalize(&synthesis, x_context, projected_application);
 	assert(projected_reduct && pg_alpha_equal(pg_evidence_subject(projected_reduct)->core,
 		pg_evidence_subject(typed_reduct)->core) == 1);
 	reduction_terms = graph.terms.count;
 	reduction_proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {
-		assert(pg_reduce_beta(&typing, x_context, second_application) == second_reduct);
-		assert(pg_reduce_beta(&typing, x_context, third_application) == third_reduct);
-		assert(pg_reduce_computation(&typing, x_context, reindexed_application) == reindexed_reduct);
-		assert(pg_reduce_computation(&typing, x_context, projected_application) == projected_reduct);
+		assert(normalize(&synthesis, x_context, second_application) == second_reduct);
+		assert(normalize(&synthesis, x_context, third_application) == third_reduct);
+		assert(normalize(&synthesis, x_context, reindexed_application) == reindexed_reduct);
+		assert(normalize(&synthesis, x_context, projected_application) == projected_reduct);
 	}
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
@@ -366,10 +372,11 @@ int main(void)
 	const struct pg_evidence *deep_function = pg_prove_projection(&typing, x_context,
 		pg_prove_lambda(&typing, deep_pi, deep_body));
 	const struct pg_evidence *deep_application = pg_prove_application(&typing, deep_function, x_value);
-	struct pg_synthesis_job *deep_step = pg_synthesis_reduce(&synthesis, x_context, deep_application);
+	struct pg_synthesis_job *deep_step = pg_synthesis_normalize(&synthesis, x_context, deep_application);
 	assert(deep_step && !pg_synthesis_result(deep_step));
 	pg_synthesis_advance(&synthesis, 1);
-	assert(pg_synthesis_dependency(deep_step));
+	assert(pg_whnf_status(pg_whnf_request(&beta, &pg_pure_policy,
+		pg_evidence_subject(deep_application)->core)) == PG_EVAL_PENDING);
 	pg_synthesis_advance(&synthesis, 32);
 	assert(pg_synthesis_status(deep_step) == PG_SYNTHESIS_PENDING);
 	assert(!pg_synthesis_result(deep_step));
@@ -379,8 +386,8 @@ int main(void)
 	}
 	const struct pg_evidence *deep_result = pg_synthesis_result(deep_step);
 	assert(deep_result && pg_evidence_subject(deep_result)->core == pg_evidence_subject(deep_body)->core);
-	assert(deep_result == pg_reduce_beta(&typing, x_context, deep_application));
-	assert(pg_synthesis_reduce(&synthesis, x_context, deep_application) == deep_step);
+	assert(deep_result == normalize(&synthesis, x_context, deep_application));
+	assert(pg_synthesis_normalize(&synthesis, x_context, deep_application) == deep_step);
 	const struct pg_evidence *delayed_type = pg_prove_thunk_type(&typing, &classifiers,
 		pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, x_context, a)));
 	const struct pg_object *m = pg_binder(&graph);
@@ -395,27 +402,25 @@ int main(void)
 	const struct pg_evidence *m_images[] = {pg_prove_variable(&typing, x_context, a), x_value, delayed_x};
 	const struct pg_evidence *m_substitution = pg_prove_substitution(&typing, m_context, x_context, 3, m_images);
 	const struct pg_evidence *substituted_m = pg_prove_reindex(&typing, m_substitution, m_value);
-	assert(pg_prove_reindexed_variable(&typing, substituted_m) == delayed_x);
+	same_judgement(substituted_m, delayed_x);
 	assert(pg_evidence_rule(substituted_m) == PG_REINDEX);
 	assert(pg_evidence_premise(substituted_m, 1) == m_value);
-	assert(!pg_prove_reindexed_variable(&typing, m_value));
 	const struct pg_evidence *substituted_code = complete(&synthesis,
 		pg_synthesis_unthunk(&synthesis, x_context, substituted_m), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(substituted_code)->core == pg_evidence_subject(return_x)->core);
 	const struct pg_evidence *substituted_force = pg_prove_reindex(&typing, m_substitution, pg_prove_force(&typing, m_value));
-	const struct pg_evidence *exposed_force = pg_prove_reindexed_elimination(&typing, substituted_force);
-	assert(exposed_force && pg_evidence_rule(exposed_force) == PG_FORCE_ELIM);
-	assert(pg_evidence_subject(exposed_force)->core == pg_evidence_subject(substituted_force)->core);
-	assert(pg_evidence_premise(exposed_force, 0) == substituted_m);
-	const struct pg_evidence *exposed_application = pg_prove_reindexed_elimination(&typing, reindexed_application);
-	assert(exposed_application && pg_evidence_rule(exposed_application) == PG_APP_ELIM);
-	assert(pg_alpha_equal(pg_evidence_subject(exposed_application)->core, pg_evidence_subject(reindexed_application)->core) == 1);
+	const struct pg_evidence *distributed_force = pg_prove_force(&typing, substituted_m);
+	same_judgement(substituted_force, distributed_force);
+	const struct pg_evidence *distributed_application = pg_prove_application(&typing,
+		pg_prove_reindex(&typing, sigma, pg_evidence_premise(second_application, 0)),
+		pg_prove_reindex(&typing, sigma, x_value));
+	same_judgement(reindexed_application, distributed_application);
 	const struct pg_evidence *m_fold = pg_prove_fold(&typing, pg_prove_force(&typing, m_value),
 		pg_prove_projection(&typing, m_context, typed_reduct));
 	const struct pg_evidence *substituted_fold = pg_prove_reindex(&typing, m_substitution, m_fold);
-	const struct pg_evidence *exposed_fold = pg_prove_reindexed_elimination(&typing, substituted_fold);
-	assert(exposed_fold && pg_evidence_rule(exposed_fold) == PG_FOLD_ELIM);
-	assert(pg_alpha_equal(pg_evidence_subject(exposed_fold)->core, pg_evidence_subject(substituted_fold)->core) == 1);
+	const struct pg_evidence *distributed_fold = pg_prove_fold(&typing, substituted_force,
+		pg_prove_reindex(&typing, m_substitution, pg_evidence_premise(m_fold, 1)));
+	same_judgement(substituted_fold, distributed_fold);
 	struct pg_synthesis_job *substituted_return = pg_synthesis_return(&synthesis, x_context, substituted_force);
 	const struct pg_evidence *substituted_result = complete(&synthesis, substituted_return, PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(substituted_result)->core == pg_reference(&graph, x));
@@ -429,23 +434,21 @@ int main(void)
 	const struct pg_evidence *weakened_force = pg_prove_projection(&typing, extended_m,
 		pg_prove_force(&typing, m_value));
 	const struct pg_evidence *substituted_weakening = pg_prove_reindex(&typing, extended_substitution, weakened_force);
-	assert(pg_prove_reindexed_premise(&typing, substituted_weakening) == substituted_force);
+	same_judgement(substituted_weakening, substituted_force);
 	assert(pg_evidence_premise(substituted_weakening, 1) == weakened_force);
-	assert(!pg_prove_reindexed_premise(&typing, weakened_force));
-	assert(!pg_prove_reindexed_premise(&typing, NULL));
 	const struct pg_evidence *weakening_result = complete(&synthesis,
 		pg_synthesis_return(&synthesis, x_context, substituted_weakening), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(weakening_result)->core == pg_reference(&graph, x));
 	assert(pg_evidence_classifier(weakening_result) == pg_reference(&graph, a));
 	size_t weakening_proofs = typing.proofs.count, weakening_terms = graph.terms.count;
 	for (size_t i = 0; i < 20; ++i)
-		assert(pg_prove_reindexed_premise(&typing, substituted_weakening) == substituted_force);
+		assert(pg_prove_reindex(&typing, extended_substitution, weakened_force) == substituted_weakening);
 	assert(typing.proofs.count == weakening_proofs && graph.terms.count == weakening_terms);
 	const struct pg_evidence *nested_result = complete(&synthesis,
 		pg_synthesis_return(&synthesis, x_context, substituted_fold), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(nested_result)->core == pg_reference(&graph, x));
 	assert(pg_evidence_classifier(nested_result) == pg_reference(&graph, a));
-	struct pg_synthesis_job *substituted_force_step = pg_synthesis_reduce(&synthesis, x_context, substituted_force);
+	struct pg_synthesis_job *substituted_force_step = pg_synthesis_normalize(&synthesis, x_context, substituted_force);
 	const struct pg_evidence *force_step_result = complete(&synthesis, substituted_force_step, PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(force_step_result)->core == pg_evidence_subject(return_x)->core);
 	assert(pg_evidence_rule(substituted_force) == PG_REINDEX);
@@ -456,40 +459,42 @@ int main(void)
 	const struct pg_evidence *a_images[] = {a_type};
 	const struct pg_evidence *a_substitution = pg_prove_substitution(&typing, a_context, a_context, 1, a_images);
 	const struct pg_evidence *reindexed_polymorphic = pg_prove_reindex(&typing, a_substitution, typed_application);
-	struct pg_synthesis_job *polymorphic_step = pg_synthesis_reduce(&synthesis, a_context, reindexed_polymorphic);
+	struct pg_synthesis_job *polymorphic_step = pg_synthesis_normalize(&synthesis, a_context, reindexed_polymorphic);
 	const struct pg_evidence *polymorphic_result = complete(&synthesis, polymorphic_step, PG_SYNTHESIS_DONE);
 	assert(pg_alpha_equal(pg_evidence_classifier(polymorphic_result), pg_evidence_classifier(reindexed_polymorphic)) == 1);
 	assert(pg_alpha_equal(pg_evidence_subject(polymorphic_result)->core, pg_evidence_subject(typed_reduct)->core) == 1);
 	image_steps = synthesis.steps;
-	assert(pg_synthesis_reduce(&synthesis, a_context, reindexed_polymorphic) == polymorphic_step);
+	assert(pg_synthesis_normalize(&synthesis, a_context, reindexed_polymorphic) == polymorphic_step);
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(synthesis.steps == image_steps);
-	struct pg_synthesis_job *callee_step = pg_synthesis_reduce(&synthesis, x_context, projected_application);
+	struct pg_synthesis_job *callee_step = pg_synthesis_normalize(&synthesis, x_context, projected_application);
 	const struct pg_evidence *outer_application = pg_prove_application(&typing, projected_application, x_value);
-	struct pg_synthesis_job *outer_step = pg_synthesis_reduce(&synthesis, x_context, outer_application);
+	struct pg_synthesis_job *outer_step = pg_synthesis_normalize(&synthesis, x_context, outer_application);
 	assert(callee_step && outer_step);
 	pg_synthesis_advance(&synthesis, 1);
-	assert(pg_synthesis_dependency(outer_step) == callee_step);
-	assert(pg_synthesis_status(callee_step) == PG_SYNTHESIS_PENDING);
+	assert(!pg_synthesis_result(outer_step));
+	assert(pg_synthesis_status(callee_step) == PG_SYNTHESIS_DONE);
 	const struct pg_evidence *other_application = pg_prove_application(&typing, projected_application,
 		pg_prove_reindex(&typing, sigma, x_value));
-	struct pg_synthesis_job *other_step = pg_synthesis_reduce(&synthesis, x_context, other_application);
+	struct pg_synthesis_job *other_step = pg_synthesis_normalize(&synthesis, x_context, other_application);
 	assert(other_step && other_step != outer_step);
 	pg_synthesis_advance(&synthesis, 1);
-	assert(pg_synthesis_dependency(other_step) == callee_step);
-	assert(pg_synthesis_dependency(outer_step) == callee_step);
+	assert(!pg_synthesis_result(other_step));
 	const struct pg_evidence *outer_reduct = complete(&synthesis, outer_step, PG_SYNTHESIS_DONE);
-	complete(&synthesis, other_step, PG_SYNTHESIS_DONE);
-	assert(outer_reduct == pg_reduce_computation(&typing, x_context, outer_application));
-	assert(pg_synthesis_status(callee_step) == PG_SYNTHESIS_DONE);
+	const struct pg_evidence *other_reduct = complete(&synthesis, other_step, PG_SYNTHESIS_DONE);
+	assert(other_reduct != outer_reduct);
+	assert(pg_evidence_normalization(other_reduct) == pg_evidence_normalization(outer_reduct));
+	same_judgement(other_reduct, outer_reduct);
+	assert(outer_reduct == normalize(&synthesis, x_context, outer_application));
+	complete(&synthesis, callee_step, PG_SYNTHESIS_DONE);
 	uint64_t shared_steps = synthesis.steps;
 	for (size_t i = 0; i < 100; ++i) {
-		assert(pg_synthesis_reduce(&synthesis, x_context, projected_application) == callee_step);
-		assert(pg_synthesis_reduce(&synthesis, x_context, outer_application) == outer_step);
+		assert(pg_synthesis_normalize(&synthesis, x_context, projected_application) == callee_step);
+		assert(pg_synthesis_normalize(&synthesis, x_context, outer_application) == outer_step);
 		pg_synthesis_advance(&synthesis, 100);
 	}
 	assert(synthesis.steps == shared_steps);
-	assert(!pg_synthesis_reduce(&synthesis, a_context, outer_application));
+	assert(!pg_synthesis_normalize(&synthesis, a_context, outer_application));
 	size_t evaluation_jobs = synthesis.jobs.count;
 	struct pg_synthesis_job *shared_return = pg_synthesis_return(&synthesis, x_context, second_application);
 	assert(shared_return && pg_synthesis_status(shared_return) == PG_SYNTHESIS_PENDING);
@@ -614,8 +619,9 @@ int main(void)
 	assert(pg_evidence_premise(unthunked, 0) == converted_value);
 	const struct pg_evidence *force_converted = pg_prove_force(&typing, converted_value);
 	const struct pg_evidence *force_result = complete(&synthesis,
-		pg_synthesis_reduce(&synthesis, x_context, force_converted), PG_SYNTHESIS_DONE);
-	assert(force_result == unthunked);
+		pg_synthesis_normalize(&synthesis, x_context, force_converted), PG_SYNTHESIS_DONE);
+	same_judgement(force_result, unthunked);
+	assert(pg_evidence_premise(force_result, 0) == force_converted);
 	const struct pg_evidence *converted_application = pg_prove_application(&typing, unthunked, x_value);
 	const struct pg_evidence *converted_application_value = complete(&synthesis,
 		pg_synthesis_return(&synthesis, x_context, converted_application), PG_SYNTHESIS_DONE);
@@ -670,7 +676,7 @@ int main(void)
 	assert(pg_eval_readback(&machine, &graph) == expected);
 	pg_eval_destroy(&machine);
 	const struct pg_evidence *typed_steps[] = {second_application, third_application, reindexed_application,
-		outer_application, exposed_application, exposed_force, exposed_fold};
+		outer_application, distributed_application, distributed_force, distributed_fold};
 	for (size_t i = 0; i < sizeof(typed_steps) / sizeof(*typed_steps); ++i) {
 		pg_computation_eval_init(&machine, &graph, pg_evidence_subject(typed_steps[i])->core);
 		assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);

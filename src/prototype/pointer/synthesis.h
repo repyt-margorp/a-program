@@ -37,10 +37,6 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
  * Evidence outlives this store. Primitive rule traversal is not yet budgeted. */
 struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *computation);
-/* One demanded reduction step. Operand reductions are shared dependencies
- * in the same scheduler, not recursive calls hidden inside this request. */
-struct pg_synthesis_job *pg_synthesis_reduce(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *computation);
 /* Normalize an accepted term or formation using shared pure WHNF work, then
  * retain typing through directed subject-reduction evidence. The immutable
  * typed input, not its erased Core alone, is the evidence-job key. */
