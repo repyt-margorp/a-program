@@ -2028,6 +2028,24 @@ conclusion and all premise pointers; no accepted record is overwritten.
   no parallel mutable classifier answer. Completed jobs do not run again.
   Source scopes map names to pointer binders and verified contexts; they are
   not execution environments and do not change Core interning.
+- [x] September 8, after `5328609`: intern source scopes using the common
+  `pg_index`, eliminating independent allocation paths for roots, binders,
+  accepted aliases, namespaces and definition scopes. Keys retain exact parent,
+  context evidence, binder, producer, definition-state and export pointers plus
+  name spelling/kind; source offsets are not binding identity. Mutable definition
+  progress is not hashed. No alpha comparison, normalization or Core-only typing
+  lookup occurs. A regression failed on repeated root construction before this
+  change. Rebuilding the same inputs 100 times now adds no scopes, jobs, Core,
+  proofs, reduction jobs or scheduler steps, and reuses the same source job.
+  Distinct typed proofs over shared Core, contexts, binders, parents, names and
+  namespace exports stay separate. Optimized check: 3.358 s (synthesis rebuilt);
+  ASan/UBSan: 17.899 s (affected binaries rebuilt); all four computation suites
+  pass with 512 KiB stack. Implementation `synthesis.c` +48/-22,
+  `synthesis.h` +5; tests +51; documentation separate. N2/N5 remain open.
+- [ ] Share definition indexing/producers across multiple selections of the
+  same definition AST. `definitions_step` still creates state for each selector
+  job. Preserve whole-definition validation, pending dependencies and useful
+  missing-member diagnostics; do not replace validation with selected-only work.
 - [x] Connect value universes, scoped variables, annotated Lambda, dependent Pi,
   APP, quotation and inline post-synthesis `::`. Lambda bodies retain raw
   computation polarity, while value bodies acquire RETURN. Function-typed

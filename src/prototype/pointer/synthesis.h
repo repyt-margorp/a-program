@@ -14,6 +14,7 @@ struct pg_synthesis {
 	struct pg_classifiers *classifiers;
 	struct pg_whnf_work *normalization;
 	struct pg_index jobs;
+	struct pg_index scopes;
 	struct pg_synthesis_job *ready;
 	struct pg_synthesis_job *ready_tail;
 	uint64_t steps;
@@ -26,6 +27,10 @@ int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
 	struct pg_classifiers *classifiers, struct pg_whnf_work *normalization,
 	enum pg_definition_policy definition_policy);
 void pg_synthesis_destroy(struct pg_synthesis *synthesis);
+/* Scope construction interns immutable binding inputs within this store.
+ * Name spelling matters; token source offsets do not. Exact parent, context,
+ * binder, evidence producer and export-scope pointers remain distinct keys.
+ * This never compares Core by alpha/conversion or merges typed evidence. */
 const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis);
 const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,

@@ -6,6 +6,7 @@
 #include <string.h>
 
 struct pg_source_scope {
+	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
 	const struct pg_source_scope *parent;
 	struct pg_token name;
@@ -35,7 +36,7 @@ struct block_name {
 struct definition_state {
 	struct pg_index names;
 	const struct pg_syntax *syntax;
-	struct pg_source_scope *scope;
+	const struct pg_source_scope *scope;
 	struct pg_synthesis_job **entries;
 	size_t count, indexed, activated, next;
 	struct pg_synthesis_job *selected;
@@ -101,7 +102,10 @@ int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
 	synthesis->classifiers = classifiers;
 	synthesis->normalization = normalization;
 	synthesis->definition_policy = definition_policy;
-	return pg_index_init(&synthesis->jobs);
+	if (pg_index_init(&synthesis->jobs) != 0) return -1;
+	if (pg_index_init(&synthesis->scopes) == 0) return 0;
+	pg_index_destroy(&synthesis->jobs);
+	return -1;
 }
 
 void pg_synthesis_destroy(struct pg_synthesis *synthesis)
@@ -115,16 +119,45 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
 		}
 	pg_index_destroy(&synthesis->jobs);
+	pg_index_destroy(&synthesis->scopes);
 	memset(synthesis, 0, sizeof(*synthesis));
+}
+
+static uint64_t name_hash(struct pg_token name);
+static int same_name(struct pg_token left, struct pg_token right);
+
+static const struct pg_source_scope *intern_scope(struct pg_synthesis *synthesis, struct pg_source_scope input)
+{
+	if (!input.context) return NULL;
+	/* The intrinsic root is a punctuation token with no borrowed spelling. */
+	if (input.name.kind == '#') input.name = (struct pg_token){.kind = '#'};
+	if (input.name.length && !input.name.text) return NULL;
+	uint64_t hash = name_hash(input.name) ^ (unsigned)input.name.kind;
+	const void *pointers[] = {input.parent, input.context, input.binder, input.definitions, input.producer, input.exports};
+	for (size_t i = 0; i < sizeof(pointers) / sizeof(*pointers); ++i)
+		hash = (hash ^ (uintptr_t)pointers[i]) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->scopes, hash); entry; entry = entry->next) {
+		if (entry->hash != hash) continue;
+		const struct pg_source_scope *scope = (const struct pg_source_scope *)entry;
+		if (scope->parent != input.parent) continue;
+		if (scope->context != input.context) continue;
+		if (scope->binder != input.binder) continue;
+		if (scope->definitions != input.definitions) continue;
+		if (scope->producer != input.producer) continue;
+		if (scope->exports != input.exports) continue;
+		if (scope->name.kind != input.name.kind) continue;
+		if (same_name(scope->name, input.name)) return scope;
+	}
+	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
+	if (!scope) return NULL;
+	*scope = input;
+	scope->owner = synthesis;
+	return pg_index_insert(&synthesis->scopes, &scope->index, hash) == 0 ? scope : NULL;
 }
 
 const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis)
 {
-	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
-	if (!scope) return NULL;
-	scope->owner = synthesis;
-	scope->context = pg_prove_empty_context(synthesis->typing);
-	return scope->context ? scope : NULL;
+	return intern_scope(synthesis, (struct pg_source_scope){.context = pg_prove_empty_context(synthesis->typing)});
 }
 
 const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
@@ -138,11 +171,8 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	if (context->binder != binder) return NULL;
 	/* Check ownership through a primitive judgement, not just a context pointer. */
 	if (!pg_prove_variable(synthesis->typing, extended_context, binder)) return NULL;
-	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
-	if (!scope) return NULL;
-	*scope = (struct pg_source_scope){.owner = synthesis, .parent = parent, .name = name,
-		.binder = binder, .context = extended_context};
-	return scope;
+	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent, .name = name,
+		.binder = binder, .context = extended_context});
 }
 
 static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
@@ -217,10 +247,8 @@ const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 	if (!proof) return NULL;
 	struct pg_synthesis_job *producer = pg_synthesis_evidence(synthesis, proof);
 	if (!producer) return NULL;
-	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
-	if (scope) *scope = (struct pg_source_scope){.owner = synthesis, .parent = parent,
-		.name = name, .context = parent->context, .producer = producer};
-	return scope;
+	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent,
+		.name = name, .context = parent->context, .producer = producer});
 }
 
 const struct pg_source_scope *pg_synthesis_namespace(struct pg_synthesis *synthesis,
@@ -233,10 +261,8 @@ const struct pg_source_scope *pg_synthesis_namespace(struct pg_synthesis *synthe
 	if (name.kind != '#') {
 		if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
 	}
-	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
-	if (scope) *scope = (struct pg_source_scope){.owner = synthesis, .parent = parent,
-		.name = name, .context = parent->context, .exports = exports};
-	return scope;
+	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent,
+		.name = name, .context = parent->context, .exports = exports});
 }
 
 struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,
@@ -677,7 +703,8 @@ static int sequence_operand(struct pg_synthesis *synthesis,
 
 static int same_name(struct pg_token left, struct pg_token right)
 {
-	return left.length == right.length && memcmp(left.text, right.text, left.length) == 0;
+	if (left.length != right.length) return 0;
+	return !left.length || memcmp(left.text, right.text, left.length) == 0;
 }
 
 static const struct pg_evidence *classifier_input(struct pg_synthesis *synthesis,
@@ -870,12 +897,11 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		if (!state) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		job->definitions = state;
 		if (pg_index_init(&state->names) != 0) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		state->scope = pg_alloc(synthesis->typing->graph, sizeof(*state->scope));
 		if (syntax->item_count > SIZE_MAX / sizeof(*state->entries)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		state->entries = pg_alloc(synthesis->typing->graph, syntax->item_count * sizeof(*state->entries));
+		state->scope = intern_scope(synthesis, (struct pg_source_scope){.parent = job->scope,
+			.context = job->scope->context, .definitions = state});
 		if (!state->scope || !state->entries) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		*state->scope = (struct pg_source_scope){.owner = synthesis, .parent = job->scope,
-			.context = job->scope->context, .definitions = state};
 		state->count = syntax->item_count;
 		state->syntax = syntax;
 	}

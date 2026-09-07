@@ -100,11 +100,13 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 	assert(!synthesis.steps && !synthesis.ready && synthesis.jobs.count == 2);
 	assert(typing->graph->terms.count == terms && typing->proofs.count == evidence);
 	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
+	assert(pg_synthesis_root(&synthesis) == root);
 	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "f", .length = 1};
 	for (size_t i = 0; i < 2; ++i) {
 		size_t jobs = synthesis.jobs.count;
 		const struct pg_source_scope *scope = pg_synthesis_name(&synthesis, root, name, proofs[i]);
 		assert(scope && synthesis.jobs.count == jobs);
+		assert(pg_synthesis_name(&synthesis, root, name, proofs[i]) == scope);
 		assert(complete(&synthesis, request(&synthesis, scope, "main := f;"), PG_SYNTHESIS_DONE) == proofs[i]);
 		/* Only the expression request is new, not another accepted producer. */
 		assert(synthesis.jobs.count == 3 + i);
@@ -122,6 +124,55 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 	}
 	for (size_t i = 0; i < 2; ++i)
 		assert(complete(&synthesis, request(&synthesis, scope, references[i]), PG_SYNTHESIS_DONE) == proofs[i]);
+	root = pg_synthesis_root(&synthesis);
+	const struct pg_source_scope *typed[2];
+	struct pg_synthesis_job *resolved[2];
+	struct pg_parser parser;
+	struct pg_definition definition;
+	const char *source = "main := f;";
+	pg_parser_init(&parser, typing->graph, source, strlen(source));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	for (size_t i = 0; i < 2; ++i) {
+		typed[i] = pg_synthesis_name(&synthesis, root, name, proofs[i]);
+		resolved[i] = pg_synthesis_request(&synthesis, typed[i], definition.expression);
+		assert(complete(&synthesis, resolved[i], PG_SYNTHESIS_DONE) == proofs[i]);
+	}
+	assert(typed[0] != typed[1] && resolved[0] != resolved[1]);
+	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, x,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_source_scope *bound = pg_synthesis_bind(&synthesis, root, name, x, context);
+	struct pg_token intrinsic = {.kind = '#'};
+	const struct pg_source_scope *space = pg_synthesis_namespace(&synthesis, root, intrinsic, typed[0]);
+	assert(bound && bound != typed[0] && space);
+	char spelling[] = "f";
+	struct pg_token relocated = {.kind = PG_TOKEN_IDENT, .text = spelling, .length = 1, .line = 100, .offset = 256};
+	terms = typing->graph->terms.count; evidence = typing->proofs.count;
+	size_t jobs = synthesis.jobs.count, scopes = synthesis.scopes.count, reductions = work.jobs.count;
+	uint64_t steps = synthesis.steps;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_synthesis_root(&synthesis) == root);
+		assert(pg_synthesis_name(&synthesis, root, relocated, proofs[0]) == typed[0]);
+		assert(pg_synthesis_bind(&synthesis, root, relocated, x, context) == bound);
+		assert(pg_synthesis_namespace(&synthesis, root, intrinsic, typed[0]) == space);
+		assert(pg_synthesis_request(&synthesis, pg_synthesis_name(&synthesis, root, relocated, proofs[0]),
+			definition.expression) == resolved[0]);
+		pg_synthesis_advance(&synthesis, 100);
+	}
+	assert(typing->graph->terms.count == terms && typing->proofs.count == evidence);
+	assert(synthesis.jobs.count == jobs && synthesis.scopes.count == scopes);
+	assert(work.jobs.count == reductions && synthesis.steps == steps);
+	assert(pg_synthesis_namespace(&synthesis, root, intrinsic, typed[1]) != space);
+	assert(pg_synthesis_name(&synthesis, typed[0], name, proofs[0]) != typed[0]);
+	relocated.text = "g";
+	assert(pg_synthesis_name(&synthesis, root, relocated, proofs[0]) != typed[0]);
+	assert(pg_synthesis_bind(&synthesis, root, relocated, x, context) != bound);
+	const struct pg_evidence *other_context = pg_prove_context_extension(typing, empty, x,
+		pg_prove_universe(typing, classifiers, empty, 1));
+	assert(pg_synthesis_bind(&synthesis, root, name, x, other_context) != bound);
+	const struct pg_object *fresh = pg_binder(typing->graph);
+	other_context = pg_prove_context_extension(typing, empty, fresh,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	assert(pg_synthesis_bind(&synthesis, root, name, fresh, other_context) != bound);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 }
