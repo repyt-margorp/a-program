@@ -459,12 +459,24 @@ successful return codes as new-kernel certificates.
   Tests cover lexical weakening, invalid contexts/non-APP inputs, an applied
   polymorphic Lambda whose result is another Lambda, and 100 repeated requests
   without Term/evidence growth. Temporary image arrays are still rebuilt.
+- [x] `pg_reduce_computation` dispatches checked beta, FORCE/THUNK and
+  zero-clause FOLD/RETURN steps. Introduction inversion follows existing
+  projection/reindex premises and applies the same context action to their
+  contents. FORCE returns the checked computation content; FOLD constructs an
+  ordinary checked APP of the continuation to the returned value. Classifiers
+  are checked up to alpha equality, without merging Core nodes or manufacturing
+  an Identity/normalization certificate. Tests cover direct steps, weakened
+  introductions, introductions beneath beta-generated reindex evidence, wrong
+  contexts, unsupported converted introductions, and stable Term/evidence
+  counts over 100 repeated requests. This does not execute effect operations.
 - [ ] General typed reduction must handle reindexed/converted function proofs,
-  FORCE/FOLD and admitted semantic owners, plus budgeted reduction chains and
+  converted introductions and admitted semantic owners, plus budgeted reduction chains and
   checked pure type-result exposure. `pg_reduce_beta` is only the direct-rule
   step above; its NULL result is not a normalization or untypability verdict.
   Its reduct is ordinary reindex evidence, not an object Identity witness or a
   persistent conversion certificate for the original APP.
+  Introduction inversion currently traverses its immutable premise chain;
+  budgeting that traversal and composing arbitrary chains remain unfinished.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation

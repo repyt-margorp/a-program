@@ -342,6 +342,49 @@ done:
 	return result;
 }
 
+/* Invert introductions through the same context actions as their contents. */
+static const struct pg_evidence *introduced_content(struct pg_typing *typing,
+	const struct pg_evidence *proof, enum pg_evidence_rule introduction)
+{
+	if (proof->rule == introduction) return proof->premises[0];
+	const struct pg_evidence *content;
+	switch (proof->rule) {
+	case PG_CONTEXT_PROJECTION:
+		content = introduced_content(typing, proof->premises[1], introduction);
+		return pg_prove_projection(typing, proof->premises[0], content);
+	case PG_REINDEX:
+		content = introduced_content(typing, proof->premises[1], introduction);
+		return pg_prove_reindex(typing, proof->premises[0], content);
+	default:
+		return NULL;
+	}
+}
+
+const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *computation)
+{
+	if (!context_proof(typing, context)) return NULL;
+	if (!computation || computation->owner != typing) return NULL;
+	if (computation->context != context->context) return NULL;
+	const struct pg_evidence *result, *value;
+	switch (computation->rule) {
+	case PG_APP_ELIM:
+		return pg_reduce_beta(typing, context, computation);
+	case PG_FORCE_ELIM:
+		result = introduced_content(typing, computation->premises[0], PG_THUNK_INTRO);
+		break;
+	case PG_FOLD_ELIM:
+		value = introduced_content(typing, computation->premises[0], PG_RETURN_INTRO);
+		result = pg_prove_application(typing, computation->premises[1], value);
+		break;
+	default:
+		return NULL;
+	}
+	if (!result) return NULL;
+	if (pg_alpha_equal(result->classifier, computation->classifier) != 1) return NULL;
+	return result;
+}
+
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument)
 {

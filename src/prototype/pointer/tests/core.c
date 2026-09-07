@@ -192,6 +192,10 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *forced = pg_prove_force(&typing, delayed);
 	assert(forced && pg_evidence_classifier(forced) == pg_evidence_classifier(returned));
 	assert(pg_evidence_subject(forced)->core != pg_evidence_subject(returned)->core);
+	assert(pg_reduce_computation(&typing, x_context, forced) == returned);
+	assert(!pg_reduce_computation(&typing, x_context, returned));
+	assert(!pg_reduce_computation(&typing, x_context, x_term));
+	assert(!pg_reduce_computation(&typing, x_context, NULL));
 	assert(!pg_prove_force(&typing, x_term));
 	assert(!pg_prove_return(&typing, &classifiers, returned));
 	assert(!pg_prove_thunk(&typing, &classifiers, x_term));
@@ -216,6 +220,7 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(reduct)->core == pg_evidence_subject(returned)->core);
 	assert(pg_evidence_classifier(reduct) == pg_evidence_classifier(app));
 	assert(pg_reduce_beta(&typing, x_context, app) == reduct);
+	assert(pg_reduce_computation(&typing, x_context, app) == reduct);
 	assert(!pg_reduce_beta(&typing, y_context, app));
 	assert(!pg_reduce_beta(&typing, x_context, returned));
 	const struct pg_evidence *weakened_function = pg_prove_projection(&typing, y_context, identity_y);
@@ -264,6 +269,35 @@ static void evidence_test(struct pg_graph *graph)
 	assert(folded && pg_evidence_classifier(folded) == pg_evidence_classifier(returned));
 	assert(!pg_prove_fold(&typing, x_term, identity_y));
 	assert(!pg_prove_fold(&typing, returned, quoted_function));
+	assert(pg_reduce_computation(&typing, x_context, folded) == app);
+	assert(!pg_reduce_computation(&typing, y_context, folded));
+	const struct pg_evidence *reindexed_fold = pg_prove_fold(&typing, reduct, identity_y);
+	const struct pg_evidence *reindexed_app = pg_reduce_computation(&typing, x_context, reindexed_fold);
+	assert(reindexed_app && pg_evidence_rule(reindexed_app) == PG_APP_ELIM);
+	assert(pg_evidence_subject(reindexed_app)->core == pg_evidence_subject(app)->core);
+	const struct pg_evidence *reindexed_result = pg_reduce_computation(&typing, x_context, reindexed_app);
+	assert(reindexed_result && pg_evidence_subject(reindexed_result)->core == pg_evidence_subject(returned)->core);
+	const struct pg_evidence *weakened_delayed = pg_prove_projection(&typing, y_context, delayed);
+	const struct pg_evidence *weakened_forced = pg_prove_force(&typing, weakened_delayed);
+	const struct pg_evidence *weakened_return = pg_prove_projection(&typing, y_context, returned);
+	assert(pg_reduce_computation(&typing, y_context, weakened_forced) == weakened_return);
+	const struct pg_evidence *weakened_fold = pg_prove_fold(&typing, weakened_return, weakened_function);
+	const struct pg_evidence *weakened_fold_result = pg_reduce_computation(&typing, y_context, weakened_fold);
+	assert(weakened_fold_result && pg_evidence_context(weakened_fold_result) == pg_evidence_context(y_context));
+	assert(pg_evidence_subject(pg_evidence_premise(weakened_fold_result, 1))->core == pg_reference(graph, x));
+	const struct pg_evidence *substitution = pg_evidence_premise(reduct, 0);
+	const struct pg_evidence *reindexed_thunk = pg_prove_reindex(&typing, substitution,
+		pg_prove_thunk(&typing, &classifiers, return_y));
+	const struct pg_evidence *reindexed_force = pg_prove_force(&typing, reindexed_thunk);
+	assert(pg_reduce_computation(&typing, x_context, reindexed_force) == reduct);
+	assert(!pg_reduce_computation(&typing, x_context, pg_prove_force(&typing, converted)));
+	size_t reduction_terms = graph->terms.count, reduction_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_reduce_computation(&typing, x_context, reindexed_force) == reduct);
+		assert(pg_reduce_computation(&typing, x_context, reindexed_fold) == reindexed_app);
+		assert(pg_reduce_computation(&typing, y_context, weakened_fold) == weakened_fold_result);
+	}
+	assert(graph->terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_evidence *fold_formation = pg_prove_classifier(&typing, &classifiers, x_context, folded);
 	assert(fold_formation && pg_evidence_subject(fold_formation)->core == pg_evidence_classifier(folded));
 	size_t fold_terms = graph->terms.count, fold_proofs = typing.proofs.count;

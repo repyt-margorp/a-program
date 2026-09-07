@@ -77,6 +77,10 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
  * new equality axiom. NULL includes unsupported heads and failed premises. */
 const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *application);
+/* One checked beta, FORCE/THUNK or zero-clause FOLD/RETURN step.
+ * NULL also includes unsupported evidence, not just irreducible terms. */
+const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *computation);
 /* first : Delta -> Gamma, second : Theta -> Delta; result : Theta -> Gamma. */
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second);
