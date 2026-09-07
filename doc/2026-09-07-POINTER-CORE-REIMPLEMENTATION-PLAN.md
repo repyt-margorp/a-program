@@ -340,9 +340,21 @@ binders. No normalization or alpha interning is used to merge them.
 - [x] Term-level fixture checks for identity restriction, a square-to-corner
   composite, beta/restriction commutation and protection of bound variables.
   Ordinary and ASan/UBSan checks pass; these are examples, not a general proof.
-- [ ] Classifier/context action and restriction inside semantic owners remain
-  unimplemented. The helper rejects degeneracies: forming a higher witness
+- [x] `action.c` builds a checked restriction substitution for an explicitly
+  supplied typed boundary telescope. Starting from the empty context, it lifts
+  the same substitution through each source declaration using the corresponding
+  restricted pointer binder. Consequently later dependent declaration types
+  use the earlier restricted variables. NULL binding entries preserve ordinary
+  binders. No independent context-rewriting or classifier solver is added.
+  Tests compare square-to-edge-to-vertex with direct restriction, including
+  dependent classifiers, identity maps and invalid binder/dimension mappings.
+- [ ] Identity-family/context action and restriction inside semantic owners
+  remain unimplemented. The helper rejects degeneracies: forming a higher witness
   cannot be replaced by generating another free boundary variable.
+  The supplied fixture types are ordinary verified telescopes used to check
+  substitution preservation. A cube-associated variable is not thereby a path
+  or Identity witness. Generating the actual HOTT boundary types, center types,
+  witnesses and transport remains a separate required N2 gate.
 
 **Identity.** Generate identity families and witnesses from this action rather
 than adding an unrelated `Obs(left_type,right_type,left,right)` authority.

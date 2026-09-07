@@ -6,6 +6,7 @@
 #include "classifier.h"
 #include "evidence.h"
 #include "computation.h"
+#include "action.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -451,6 +452,64 @@ static void typed_substitution_test(struct pg_graph *graph)
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("typed substitution: dependent declarations, simultaneous images and shared premise DAG passed");
+}
+
+static void typed_restriction_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	struct pg_dimensions dimensions;
+	assert(pg_typing_init(&typing, graph) == 0);
+	assert(pg_classifiers_init(&classifiers, graph) == 0);
+	assert(pg_dimensions_init(&dimensions, graph) == 0);
+	const struct pg_dimension_map *identity = pg_dimension_identity(&dimensions, 2);
+	const struct pg_binding_cube *a_cube = pg_binding_cube(&dimensions, 2);
+	const struct pg_binding_cube *x_cube = pg_binding_cube(&dimensions, 2);
+	const struct pg_binding_face *a = pg_binding_face(&dimensions, a_cube, identity);
+	const struct pg_binding_face *x = pg_binding_face(&dimensions, x_cube, identity);
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, &a->variable, universe);
+	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, &a->variable);
+	const struct pg_evidence *source = pg_prove_context_extension(&typing, a_context, &x->variable, a_type);
+	const struct pg_evidence *source_x = pg_prove_variable(&typing, source, &x->variable);
+	const struct pg_binding_face *bindings[] = {a, x};
+	struct pg_coordinate edge_coordinates[] = {{PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
+	struct pg_coordinate vertex_coordinates[] = {{PG_ENDPOINT_ONE, 0}};
+	const struct pg_dimension_map *edge = pg_dimension_map(&dimensions, 1, 2, edge_coordinates);
+	const struct pg_dimension_map *vertex = pg_dimension_map(&dimensions, 0, 1, vertex_coordinates);
+	const struct pg_evidence *edge_substitution = pg_context_restrict(&typing, &dimensions, source, edge, 2, bindings);
+	assert(edge_substitution);
+	const struct pg_binding_face *edge_a = pg_binding_restrict(&dimensions, a, edge);
+	const struct pg_binding_face *edge_x = pg_binding_restrict(&dimensions, x, edge);
+	const struct pg_evidence *edge_context = pg_evidence_premise(edge_substitution, 1);
+	assert(pg_evidence_context(edge_context)->binder == &edge_x->variable);
+	assert(pg_evidence_context(edge_context)->declared_type == pg_reference(graph, &edge_a->variable));
+	const struct pg_evidence *edge_term = pg_prove_reindex(&typing, edge_substitution, source_x);
+	assert(edge_term && pg_evidence_subject(edge_term)->core == pg_reference(graph, &edge_x->variable));
+	assert(pg_evidence_classifier(edge_term) == pg_reference(graph, &edge_a->variable));
+	const struct pg_binding_face *edge_bindings[] = {edge_a, edge_x};
+	const struct pg_evidence *vertex_substitution = pg_context_restrict(&typing, &dimensions, edge_context, vertex, 2, edge_bindings);
+	const struct pg_dimension_map *composite = pg_dimension_compose(&dimensions, edge, vertex);
+	const struct pg_evidence *direct = pg_context_restrict(&typing, &dimensions, source, composite, 2, bindings);
+	assert(vertex_substitution && direct);
+	assert(pg_evidence_context(vertex_substitution) == pg_evidence_context(direct));
+	const struct pg_evidence *twice = pg_prove_reindex(&typing, vertex_substitution, edge_term);
+	const struct pg_evidence *once = pg_prove_reindex(&typing, direct, source_x);
+	assert(once && twice && pg_evidence_subject(once)->core == pg_evidence_subject(twice)->core);
+	assert(pg_evidence_classifier(once) == pg_evidence_classifier(twice));
+	const struct pg_evidence *identity_substitution = pg_context_restrict(&typing, &dimensions, source, identity, 2, bindings);
+	assert(identity_substitution && pg_evidence_context(identity_substitution) == pg_evidence_context(source));
+	assert(!pg_context_restrict(&typing, &dimensions, source, edge, 1, bindings));
+	assert(!pg_context_restrict(&typing, &dimensions, source, edge, 2, edge_bindings));
+	assert(!pg_context_restrict(&typing, &dimensions, source, vertex, 2, bindings));
+	const struct pg_dimension_map *degeneracy = pg_dimension_map(&dimensions, 1, 0, NULL);
+	assert(degeneracy && !pg_context_restrict(&typing, &dimensions, empty, degeneracy, 0, NULL));
+	assert(pg_context_restrict(&typing, &dimensions, empty, vertex, 0, NULL));
+	pg_dimensions_destroy(&dimensions);
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	puts("typed restriction: dependent context faces preserve classifiers and compose without new Identity axioms");
 }
 
 static void computation_execution_test(struct pg_graph *graph)
@@ -974,6 +1033,7 @@ int main(void)
 	evidence_test(&graph);
 	dependent_application_test(&graph);
 	typed_substitution_test(&graph);
+	typed_restriction_test(&graph);
 	computation_execution_test(&graph);
 	classifiers_test(&graph);
 	restriction_test(&graph);
