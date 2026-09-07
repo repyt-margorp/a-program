@@ -76,6 +76,8 @@ int pg_beta_work_init(struct pg_beta_work *work, struct pg_graph *graph);
 void pg_beta_work_destroy(struct pg_beta_work *work);
 /* Requesting a job neither evaluates nor compares normal forms. */
 struct pg_beta_job *pg_beta_request(struct pg_beta_work *work, const struct pg_term *input);
+/* Includes materialization: WHNF and result are published only after readback.
+ * Steps count evaluation, shared traversal and spine reconstruction transitions. */
 enum pg_eval_status pg_beta_advance(struct pg_beta_job *job, uint64_t budget);
 enum pg_eval_status pg_beta_status(const struct pg_beta_job *job);
 uint64_t pg_beta_steps(const struct pg_beta_job *job);

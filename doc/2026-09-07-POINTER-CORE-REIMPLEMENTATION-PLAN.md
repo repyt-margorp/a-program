@@ -624,8 +624,15 @@ successful return codes as new-kernel certificates.
   split versus whole budgets and total steps on the deep shared graph, Lambda
   capture avoidance, long environment lookup, binding snapshot isolation,
   zero fuel, completion reuse, and destruction of suspended work.
+- [x] Beta-WHNF jobs now retain readback work and materialize neutral application
+  spines under the same requested budget. Public job status stays pending until
+  the complete materialized answer exists; conversion consumes this interface
+  unchanged. The shared readback/substitution traversal supplies the work, not
+  a second term-reconstruction algorithm. Tests cover short execution with deep
+  captured readback, split/whole step equivalence, capture avoidance, argument
+  order, completed/pending request reuse and destruction during readback.
 - [ ] Thread resumable substitution through typed evidence/synthesis work and
-  budget evaluation readback. Those call sites still use synchronous wrappers.
+  budget dispatched evaluation readback. Those call sites still use synchronous wrappers.
   Initialization validates/copies bindings synchronously; allocation and hash
   maintenance are not wall-clock bounded. Other recursive traversals are not
   covered by the stack test. This does not complete end-to-end compiler fuel.

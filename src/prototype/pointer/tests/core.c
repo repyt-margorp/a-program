@@ -941,6 +941,48 @@ static void beta_work_test(struct pg_graph *graph)
 	assert(pg_beta_advance(loop, 30) == PG_EVAL_PENDING);
 	assert(pg_beta_advance(loop, 30) == PG_EVAL_PENDING);
 	assert(pg_beta_steps(loop) == 60 && !pg_beta_result(loop));
+	const struct pg_term *deep = vx, *deep_expected = vy;
+	for (size_t i = 0; i < 5000; ++i) {
+		deep = pg_application(graph, deep, deep);
+		deep_expected = pg_application(graph, deep_expected, deep_expected);
+	}
+	const struct pg_term *deep_input = pg_application(graph,
+		pg_lambda(graph, x, pg_lambda(graph, y, deep)), vy);
+	struct pg_beta_job *deep_job = pg_beta_request(&work, deep_input);
+	assert(pg_beta_advance(deep_job, 100) == PG_EVAL_PENDING);
+	assert(!pg_beta_result(deep_job)); /* WHNF execution is short; readback is not. */
+	while (pg_beta_status(deep_job) == PG_EVAL_PENDING) {
+		steps = pg_beta_steps(deep_job);
+		assert(!pg_beta_result(deep_job));
+		pg_beta_advance(deep_job, 11);
+		assert(pg_beta_steps(deep_job) - steps <= 11);
+		assert(pg_beta_request(&work, deep_input) == deep_job);
+	}
+	const struct pg_term *deep_result = pg_beta_result(deep_job);
+	assert(deep_result && deep_result->kind == PG_LAMBDA);
+	assert(deep_result->as.lambda.binder != y);
+	assert(deep_result->as.lambda.body == deep_expected);
+	struct pg_beta_work whole_work;
+	assert(pg_beta_work_init(&whole_work, graph) == 0);
+	struct pg_beta_job *whole_job = pg_beta_request(&whole_work, deep_input);
+	assert(pg_beta_advance(whole_job, UINT64_MAX) == PG_EVAL_WHNF);
+	assert(pg_beta_steps(whole_job) == pg_beta_steps(deep_job));
+	assert(pg_beta_result(whole_job)->as.lambda.body == deep_expected);
+	assert(pg_beta_result(whole_job) != deep_result); /* No alpha interning. */
+	pg_beta_work_destroy(&whole_work);
+	assert(pg_beta_work_init(&whole_work, graph) == 0);
+	whole_job = pg_beta_request(&whole_work, deep_input);
+	assert(pg_beta_advance(whole_job, 100) == PG_EVAL_PENDING);
+	pg_beta_work_destroy(&whole_work); /* Release suspended readback and closures. */
+	const struct pg_term *neutral_body = pg_application(graph,
+		pg_application(graph, vy, vx), identity);
+	struct pg_beta_job *neutral_job = pg_beta_request(&work,
+		pg_application(graph, pg_lambda(graph, x, neutral_body), vy));
+	while (pg_beta_advance(neutral_job, 1) == PG_EVAL_PENDING)
+		assert(!pg_beta_result(neutral_job));
+	const struct pg_term *neutral_expected = pg_application(graph,
+		pg_application(graph, vy, vy), identity);
+	assert(pg_alpha_equal(pg_beta_result(neutral_job), neutral_expected) == 1);
 	for (size_t i = 0; i < 1000; ++i) {
 		assert(pg_beta_request(&work, pg_reference(graph, pg_binder(graph))));
 	}

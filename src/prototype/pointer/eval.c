@@ -408,6 +408,12 @@ struct pg_beta_job {
 	const struct pg_term *input;
 	struct pg_eval machine;
 	const struct pg_term *result;
+	struct readback_context readback;
+	struct readback_entry *entry;
+	const struct pg_argument *remaining;
+	const struct pg_term *partial;
+	enum pg_eval_status status;
+	uint64_t steps;
 };
 
 int pg_beta_work_init(struct pg_beta_work *work, struct pg_graph *graph)
@@ -421,7 +427,10 @@ void pg_beta_work_destroy(struct pg_beta_work *work)
 {
 	for (size_t i = 0; i < work->jobs.capacity; ++i) {
 		for (struct pg_index_entry *entry = work->jobs.buckets[i]; entry; entry = entry->next) {
-			pg_eval_destroy(&((struct pg_beta_job *)entry)->machine);
+			struct pg_beta_job *job = (struct pg_beta_job *)entry;
+			pg_index_destroy(&job->readback.results);
+			pg_graph_destroy(&job->readback.temporary);
+			pg_eval_destroy(&job->machine);
 		}
 	}
 	pg_index_destroy(&work->jobs);
@@ -440,6 +449,7 @@ struct pg_beta_job *pg_beta_request(struct pg_beta_work *work, const struct pg_t
 	}
 	struct pg_beta_job *job = pg_alloc(&work->storage, sizeof(*job));
 	if (!job) return NULL;
+	memset(job, 0, sizeof(*job));
 	job->graph = work->graph;
 	job->input = input;
 	job->result = NULL;
@@ -448,30 +458,62 @@ struct pg_beta_job *pg_beta_request(struct pg_beta_work *work, const struct pg_t
 	return job;
 }
 
-enum pg_eval_status pg_beta_advance(struct pg_beta_job *job, uint64_t budget)
+static enum pg_eval_status beta_step(struct pg_beta_job *job)
 {
-	if (job->machine.status != PG_EVAL_PENDING) return job->machine.status;
-	if (pg_eval_advance(&job->machine, budget) != PG_EVAL_WHNF) return job->machine.status;
-	job->result = pg_eval_readback(&job->machine, job->graph);
-	if (!job->result) {
-		job->machine.status = PG_EVAL_ERROR;
-		return PG_EVAL_ERROR;
+	if (job->machine.status == PG_EVAL_PENDING) {
+		if (pg_eval_advance(&job->machine, 1) == PG_EVAL_ERROR) return PG_EVAL_ERROR;
+		return PG_EVAL_PENDING;
 	}
-	/* No closure is needed after the answer is materialized. */
+	if (!job->readback.output) {
+		job->readback.output = job->graph;
+		if (pg_index_init(&job->readback.results) != 0) return PG_EVAL_ERROR;
+		job->entry = reify_request(&job->readback, job->machine.current);
+		if (!job->entry) return PG_EVAL_ERROR;
+		job->remaining = job->machine.arguments;
+		return PG_EVAL_PENDING;
+	}
+	if (job->readback.pending) {
+		if (reify_advance(&job->readback, 1) < 0) return PG_EVAL_ERROR;
+		return PG_EVAL_PENDING;
+	}
+	const struct pg_term *answer = job->entry->result;
+	if (!answer) return PG_EVAL_ERROR;
+	job->partial = job->partial ? pg_application(job->graph, job->partial, answer) : answer;
+	if (!job->partial) return PG_EVAL_ERROR;
+	if (job->remaining) {
+		job->entry = reify_request(&job->readback, job->remaining->value);
+		if (!job->entry) return PG_EVAL_ERROR;
+		job->remaining = job->remaining->next;
+		return PG_EVAL_PENDING;
+	}
+	job->result = job->partial;
+	pg_index_destroy(&job->readback.results);
+	pg_graph_destroy(&job->readback.temporary);
 	pg_graph_destroy(&job->machine.temporary);
+	job->entry = NULL;
 	job->machine.current = (struct pg_closure){job->result, NULL};
 	job->machine.arguments = NULL;
 	return PG_EVAL_WHNF;
 }
 
+enum pg_eval_status pg_beta_advance(struct pg_beta_job *job, uint64_t budget)
+{
+	while (job->status == PG_EVAL_PENDING && budget) {
+		--budget;
+		++job->steps;
+		job->status = beta_step(job);
+	}
+	return job->status;
+}
+
 enum pg_eval_status pg_beta_status(const struct pg_beta_job *job)
 {
-	return job->machine.status;
+	return job->status;
 }
 
 uint64_t pg_beta_steps(const struct pg_beta_job *job)
 {
-	return job->machine.steps;
+	return job->steps;
 }
 
 const struct pg_term *pg_beta_result(const struct pg_beta_job *job)
