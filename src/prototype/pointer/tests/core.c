@@ -1301,12 +1301,16 @@ static void normal_form_test(struct pg_graph *graph)
 	assert(split && pg_nf_request(&split_work, &pg_pure_policy, term) == split);
 	assert(split_work.jobs.count == 0 && !pg_nf_result(split));
 	assert(pg_nf_advance(split, 0) == PG_NF_PENDING && pg_nf_steps(split) == 0);
+	assert(!pg_nf_certificate(split));
 	while (pg_nf_status(split) == PG_NF_PENDING) {
 		uint64_t steps = pg_nf_steps(split);
 		pg_nf_advance(split, 1);
 		assert(pg_nf_steps(split) == steps + 1 && steps < 10000);
 	}
 	assert(pg_nf_status(split) == PG_NF_DONE && pg_nf_result(split) == vu);
+	assert(pg_reduction_source(pg_nf_certificate(split)) == term);
+	assert(pg_reduction_target(pg_nf_certificate(split)) == vu);
+	assert(pg_reduction_policy(pg_nf_certificate(split)) == &pg_pure_policy);
 	struct pg_nf_job *whole = pg_nf_request(&whole_work, &pg_pure_policy, term);
 	assert(pg_nf_advance(whole, 10000) == PG_NF_DONE);
 	assert(pg_nf_result(whole) == vu && pg_nf_steps(whole) == pg_nf_steps(split));
@@ -1342,6 +1346,8 @@ static void normal_form_test(struct pg_graph *graph)
 	assert(pg_nf_result(parent) == pg_lambda(graph, x, vu));
 	struct pg_nf_job *answer = pg_nf_request(&split_work, &pg_beta_policy, pg_nf_result(parent));
 	assert(pg_nf_status(answer) == PG_NF_DONE && pg_nf_steps(answer) == 0);
+	assert(pg_reduction_source(pg_nf_certificate(answer)) == pg_nf_result(parent));
+	assert(pg_reduction_target(pg_nf_certificate(answer)) == pg_nf_result(parent));
 	/* Demand the head before descending: a discarded divergent argument does
 	 * not prevent normalization. Under a retained thunk it does remain pending. */
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
@@ -1353,6 +1359,7 @@ static void normal_form_test(struct pg_graph *graph)
 		pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega));
 	assert(pg_nf_advance(divergent, 100) == PG_NF_PENDING && !pg_nf_result(divergent));
 	assert(pg_nf_advance(divergent, 100) == PG_NF_PENDING);
+	assert(!pg_nf_certificate(divergent));
 	assert(pg_conversion_init(&conversion, &split_work, vu,
 		pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega)) == 0);
 	assert(pg_conversion_advance(&conversion, 1000) == PG_CONVERSION_PENDING);

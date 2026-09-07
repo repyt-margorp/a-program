@@ -110,12 +110,12 @@ const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
 	const struct pg_conversion_certificate *certificate);
 const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_evidence *evidence);
 /* Subject reduction for the fixed kernel-pure rules. Requires an accepted
- * source and a directed completed evaluation from exactly that source Core.
+ * source and a directed completed WHNF/NF reduction from exactly that Core.
  * A symmetric conversion certificate cannot justify an arbitrary expansion.
  * The receipt's graph/policy and source evidence must outlive the result. */
 const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
-	const struct pg_evidence *source, const struct pg_whnf_certificate *certificate);
-const struct pg_whnf_certificate *pg_evidence_normalization(const struct pg_evidence *evidence);
+	const struct pg_evidence *source, const struct pg_reduction_certificate *certificate);
+const struct pg_reduction_certificate *pg_evidence_normalization(const struct pg_evidence *evidence);
 /* Weakening is pullback along a prefix projection. Core and the premise DAG
  * stay shared; this creates only the conclusion in the extended context. */
 const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,

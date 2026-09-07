@@ -561,13 +561,13 @@ const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_e
 	return evidence->rule == PG_TYPE_CONVERSION ? evidence->certificate : NULL;
 }
 
-const struct pg_whnf_certificate *pg_evidence_normalization(const struct pg_evidence *evidence)
+const struct pg_reduction_certificate *pg_evidence_normalization(const struct pg_evidence *evidence)
 {
 	return evidence->rule == PG_PURE_NORMALIZATION ? evidence->certificate : NULL;
 }
 
 const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
-	const struct pg_evidence *source, const struct pg_whnf_certificate *certificate)
+	const struct pg_evidence *source, const struct pg_reduction_certificate *certificate)
 {
 	if (!source || source->owner != typing || !certificate) return NULL;
 	if (!source->subject) return NULL;
@@ -576,9 +576,9 @@ const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
 	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
 	default: return NULL;
 	}
-	if (pg_whnf_policy(certificate) != &pg_pure_policy) return NULL;
-	if (pg_whnf_source(certificate) != source->subject->core) return NULL;
-	const struct pg_term *target = pg_whnf_target(certificate);
+	if (pg_reduction_policy(certificate) != &pg_pure_policy) return NULL;
+	if (pg_reduction_source(certificate) != source->subject->core) return NULL;
+	const struct pg_term *target = pg_reduction_target(certificate);
 	if (target == source->subject->core) return source;
 	const struct pg_occurrence *subject = pg_occurrence(typing, source->context,
 		target, NULL, 1, &source->subject);

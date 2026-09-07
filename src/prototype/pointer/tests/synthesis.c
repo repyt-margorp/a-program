@@ -552,10 +552,10 @@ static void normalization_jobs(struct pg_typing *typing, struct pg_classifiers *
 	assert(pg_evidence_classifier(answer) == pg_evidence_classifier(source));
 	assert(pg_evidence_judgement(answer) == pg_evidence_judgement(source));
 	assert(pg_evidence_subject(answer)->core == pg_evidence_subject(pg_prove_return(typing, classifiers, value))->core);
-	const struct pg_whnf_certificate *certificate = pg_whnf_certificate(computation);
+	const struct pg_reduction_certificate *certificate = pg_whnf_certificate(computation);
 	assert(certificate && certificate == pg_evidence_normalization(answer));
-	assert(pg_whnf_source(certificate) == pg_evidence_subject(source)->core);
-	assert(pg_whnf_target(certificate) == pg_evidence_subject(answer)->core);
+	assert(pg_reduction_source(certificate) == pg_evidence_subject(source)->core);
+	assert(pg_reduction_target(certificate) == pg_evidence_subject(answer)->core);
 	assert(!pg_evidence_conversion(answer));
 	assert(pg_prove_normalization(typing, source, certificate) == answer);
 	assert(pg_prove_classifier(typing, classifiers, context, answer));
@@ -645,12 +645,69 @@ static void normalization_jobs(struct pg_typing *typing, struct pg_classifiers *
 	assert(pg_evidence_subject(typed_answers[0])->core == pg_evidence_subject(typed_answers[1])->core);
 	assert(pg_evidence_normalization(typed_answers[0]) == pg_evidence_normalization(typed_answers[1]));
 	assert(pg_evidence_classifier(typed_answers[0]) != pg_evidence_classifier(typed_answers[1]));
+	/* NF traverses suspended computations; WHNF preserves their outer value. */
+	const struct pg_evidence *suspended = pg_prove_thunk(typing, classifiers, source);
+	const struct pg_evidence *expected = pg_prove_thunk(typing, classifiers,
+		pg_prove_return(typing, classifiers, value));
+	assert(complete(&split, pg_synthesis_normalize(&split, context, suspended), PG_SYNTHESIS_DONE) == suspended);
+	struct pg_synthesis_job *nf = pg_synthesis_nf(&split, context, suspended);
+	struct pg_nf_job *nf_core = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(suspended)->core);
+	assert(nf && nf != pg_synthesis_normalize(&split, context, suspended));
+	assert(pg_synthesis_nf(&split, context, suspended) == nf);
+	assert(!pg_synthesis_result(nf) && !pg_nf_certificate(nf_core) && pg_nf_steps(nf_core) == 0);
+	const struct pg_evidence *nf_answer = complete(&split, nf, PG_SYNTHESIS_DONE);
+	const struct pg_reduction_certificate *nf_certificate = pg_nf_certificate(nf_core);
+	assert(nf_certificate && pg_evidence_normalization(nf_answer) == nf_certificate);
+	assert(pg_evidence_subject(nf_answer)->core == pg_evidence_subject(expected)->core);
+	assert(pg_evidence_classifier(nf_answer) == pg_evidence_classifier(suspended));
+	assert(pg_evidence_rule(nf_answer) == PG_PURE_NORMALIZATION);
+	assert(pg_evidence_premise(nf_answer, 0) == suspended);
+	assert(pg_reduction_source(nf_certificate) == pg_evidence_subject(suspended)->core);
+	assert(pg_reduction_target(nf_certificate) == pg_evidence_subject(nf_answer)->core);
+	assert(pg_reduction_policy(nf_certificate) == &pg_pure_policy);
+	assert(pg_prove_normalization(typing, suspended, nf_certificate) == nf_answer);
+	assert(!pg_prove_normalization(typing, value, nf_certificate));
+	steps = pg_nf_steps(nf_core);
+	second = pg_synthesis_nf(&whole, context, suspended);
+	pg_synthesis_advance(&whole, 10000);
+	assert(pg_synthesis_result(second) == nf_answer && pg_nf_steps(nf_core) == steps);
+	const struct pg_evidence *nf_projected = pg_prove_projection(typing, extended, suspended);
+	const struct pg_evidence *nf_other = complete(&split,
+		pg_synthesis_nf(&split, extended, nf_projected), PG_SYNTHESIS_DONE);
+	assert(nf_other != nf_answer && pg_evidence_context(nf_other) == pg_evidence_context(extended));
+	assert(pg_evidence_normalization(nf_other) == nf_certificate && pg_nf_steps(nf_core) == steps);
+	assert(pg_typing_init(&foreign_typing, typing->graph) == 0);
+	assert(!pg_prove_normalization(&foreign_typing, suspended, nf_certificate));
+	pg_typing_destroy(&foreign_typing);
+	assert(!pg_synthesis_nf(&split, context, projected));
+	assert(!pg_synthesis_nf(&split, context, context));
+	struct pg_nf_job *beta_nf = pg_nf_request(&work, &pg_beta_policy, pg_evidence_subject(suspended)->core);
+	assert(pg_nf_advance(beta_nf, 10000) == PG_NF_DONE);
+	assert(!pg_prove_normalization(typing, suspended, pg_nf_certificate(beta_nf)));
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_evidence *local = pg_prove_context_extension(typing, context, z, domains[i]);
+		const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, local, z));
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domains[i], local,
+			pg_prove_classifier(typing, classifiers, local, body));
+		body = pg_prove_force(typing, pg_prove_thunk(typing, classifiers, body));
+		typed_sources[i] = pg_prove_lambda(typing, pi, body);
+		assert(complete(&split, pg_synthesis_normalize(&split, context, typed_sources[i]), PG_SYNTHESIS_DONE) == typed_sources[i]);
+		typed_answers[i] = complete(&split, pg_synthesis_nf(&split, context, typed_sources[i]), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(typed_answers[i])->core != pg_evidence_subject(typed_sources[i])->core);
+		assert(pg_evidence_classifier(typed_answers[i]) == pg_evidence_classifier(typed_sources[i]));
+		assert(pg_evidence_premise(typed_answers[i], 0) == typed_sources[i]);
+		assert(pg_prove_classifier(typing, classifiers, context, typed_answers[i]));
+	}
+	assert(pg_evidence_subject(typed_sources[0])->core == pg_evidence_subject(typed_sources[1])->core);
+	assert(pg_evidence_normalization(typed_answers[0]) == pg_evidence_normalization(typed_answers[1]));
+	assert(pg_evidence_classifier(typed_answers[0]) != pg_evidence_classifier(typed_answers[1]));
 	pg_synthesis_destroy(&whole);
 	pg_synthesis_destroy(&split);
 	pg_whnf_work_destroy(&work);
 	assert(pg_evidence_normalization(answer) == certificate);
-	assert(pg_whnf_target(certificate) == pg_evidence_subject(answer)->core);
+	assert(pg_reduction_target(certificate) == pg_evidence_subject(answer)->core);
 	assert(pg_prove_normalization(typing, source, certificate) == answer);
+	assert(pg_prove_normalization(typing, suspended, nf_certificate) == nf_answer);
 }
 
 static void identity_contents(struct pg_typing *typing, struct pg_classifiers *classifiers,

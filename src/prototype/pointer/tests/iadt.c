@@ -255,7 +255,7 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *body_instance = pg_prove_reindex(&typing, instance, body);
 	const struct pg_term *answer = pg_evidence_subject(body_instance)->core;
 	check(&work, pg_evidence_subject(applied)->core, answer);
-	const struct pg_whnf_certificate *receipt = pg_whnf_certificate(pg_whnf_request(&work, &pg_pure_policy,
+	const struct pg_reduction_certificate *receipt = pg_whnf_certificate(pg_whnf_request(&work, &pg_pure_policy,
 		pg_evidence_subject(applied)->core));
 	const struct pg_evidence *reduced = pg_prove_normalization(&typing, applied, receipt);
 	assert(reduced && pg_alpha_equal(pg_evidence_classifier(reduced), pg_evidence_classifier(body_instance)) == 1);

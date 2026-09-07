@@ -75,7 +75,7 @@ const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 struct pg_eval_policy { int (*dispatch)(struct pg_eval *machine); };
 extern const struct pg_eval_policy pg_beta_policy;
 struct pg_whnf_job;
-struct pg_whnf_certificate;
+struct pg_reduction_certificate;
 /* Keys are (input term, policy pointer), with empty environments. Captured
  * environments remain inside jobs. All referenced graphs outlive the store. */
 struct pg_whnf_work {
@@ -96,13 +96,15 @@ enum pg_eval_status pg_whnf_status(const struct pg_whnf_job *job);
 uint64_t pg_whnf_steps(const struct pg_whnf_job *job);
 /* NULL until WHNF has been reached and read back successfully. */
 const struct pg_term *pg_whnf_result(const struct pg_whnf_job *job);
-/* Immutable directed evaluation receipt, issued only after readback completes.
+/* Immutable directed reduction receipt, shared by WHNF and NF. It certifies
+ * the computation from source to target, not a serialized "normal" flag.
+ * Issued only after evaluation/materialization or congruent NF work completes.
  * Owned by work->graph, so it survives job-store destruction. Core records the
  * policy; the typing layer decides whether that policy preserves typing. */
-const struct pg_whnf_certificate *pg_whnf_certificate(const struct pg_whnf_job *job);
-const struct pg_term *pg_whnf_source(const struct pg_whnf_certificate *certificate);
-const struct pg_term *pg_whnf_target(const struct pg_whnf_certificate *certificate);
-const struct pg_eval_policy *pg_whnf_policy(const struct pg_whnf_certificate *certificate);
+const struct pg_reduction_certificate *pg_whnf_certificate(const struct pg_whnf_job *job);
+const struct pg_term *pg_reduction_source(const struct pg_reduction_certificate *certificate);
+const struct pg_term *pg_reduction_target(const struct pg_reduction_certificate *certificate);
+const struct pg_eval_policy *pg_reduction_policy(const struct pg_reduction_certificate *certificate);
 
 enum pg_nf_status { PG_NF_PENDING, PG_NF_DONE, PG_NF_ERROR };
 struct pg_nf_job;
@@ -117,6 +119,7 @@ struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
 enum pg_nf_status pg_nf_advance(struct pg_nf_job *job, uint64_t budget);
 enum pg_nf_status pg_nf_status(const struct pg_nf_job *job);
 const struct pg_term *pg_nf_result(const struct pg_nf_job *job);
+const struct pg_reduction_certificate *pg_nf_certificate(const struct pg_nf_job *job);
 /* Transitions charged to advances of this root, including dependencies;
  * shared work performed by another root is not charged a second time. */
 uint64_t pg_nf_steps(const struct pg_nf_job *job);

@@ -445,7 +445,7 @@ void pg_eval_destroy(struct pg_eval *machine)
 
 const struct pg_eval_policy pg_beta_policy = {NULL};
 
-struct pg_whnf_certificate {
+struct pg_reduction_certificate {
 	const struct pg_term *source;
 	const struct pg_term *target;
 	const struct pg_eval_policy *policy;
@@ -457,7 +457,7 @@ struct pg_whnf_job {
 	const struct pg_term *input;
 	const struct pg_eval_policy *policy;
 	struct pg_eval machine;
-	const struct pg_whnf_certificate *certificate;
+	const struct pg_reduction_certificate *certificate;
 	struct materialization output;
 	enum pg_eval_status status;
 	uint64_t steps;
@@ -467,7 +467,8 @@ struct pg_nf_job {
 	struct pg_index_entry index;
 	struct pg_whnf_work *work;
 	const struct pg_eval_policy *policy;
-	const struct pg_term *input, *body, *result;
+	const struct pg_term *input, *body;
+	const struct pg_reduction_certificate *certificate;
 	struct pg_whnf_job *head;
 	struct pg_nf_job *children[2];
 	struct pg_nf_job **stack;
@@ -528,6 +529,14 @@ struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
 	return job;
 }
 
+static const struct pg_reduction_certificate *reduction_certificate(struct pg_graph *graph,
+	const struct pg_term *source, const struct pg_term *target, const struct pg_eval_policy *policy)
+{
+	struct pg_reduction_certificate *certificate = pg_alloc(graph, sizeof(*certificate));
+	if (certificate) *certificate = (struct pg_reduction_certificate){source, target, policy};
+	return certificate;
+}
+
 static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 {
 	if (job->machine.status == PG_EVAL_PENDING) {
@@ -537,9 +546,9 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 	int status = materialize_step(&job->output, job->graph, job->machine.current, job->machine.arguments);
 	if (status < 0) return PG_EVAL_ERROR;
 	if (!status) return PG_EVAL_PENDING;
-	struct pg_whnf_certificate *certificate = pg_alloc(job->graph, sizeof(*certificate));
+	const struct pg_reduction_certificate *certificate = reduction_certificate(job->graph,
+		job->input, job->output.partial, job->policy);
 	if (!certificate) return PG_EVAL_ERROR;
-	*certificate = (struct pg_whnf_certificate){job->input, job->output.partial, job->policy};
 	job->certificate = certificate;
 	materialize_destroy(&job->output);
 	pg_graph_destroy(&job->machine.temporary);
@@ -573,10 +582,10 @@ const struct pg_term *pg_whnf_result(const struct pg_whnf_job *job)
 	return job->certificate ? job->certificate->target : NULL;
 }
 
-const struct pg_whnf_certificate *pg_whnf_certificate(const struct pg_whnf_job *job) { return job->certificate; }
-const struct pg_term *pg_whnf_source(const struct pg_whnf_certificate *certificate) { return certificate->source; }
-const struct pg_term *pg_whnf_target(const struct pg_whnf_certificate *certificate) { return certificate->target; }
-const struct pg_eval_policy *pg_whnf_policy(const struct pg_whnf_certificate *certificate) { return certificate->policy; }
+const struct pg_reduction_certificate *pg_whnf_certificate(const struct pg_whnf_job *job) { return job->certificate; }
+const struct pg_term *pg_reduction_source(const struct pg_reduction_certificate *certificate) { return certificate->source; }
+const struct pg_term *pg_reduction_target(const struct pg_reduction_certificate *certificate) { return certificate->target; }
+const struct pg_eval_policy *pg_reduction_policy(const struct pg_reduction_certificate *certificate) { return certificate->policy; }
 
 struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
 	const struct pg_eval_policy *policy, const struct pg_term *input)
@@ -606,11 +615,13 @@ static void nf_complete(struct pg_nf_job *job, const struct pg_term *result)
 		return;
 	}
 	if (canonical->status == PG_NF_PENDING) {
-		canonical->result = result;
-		canonical->status = PG_NF_DONE;
+		canonical->certificate = reduction_certificate(job->work->graph, result, result, job->policy);
+		canonical->status = canonical->certificate ? PG_NF_DONE : PG_NF_ERROR;
 	}
-	job->result = canonical->result;
-	job->status = PG_NF_DONE;
+	if (canonical->status == PG_NF_ERROR) { job->status = PG_NF_ERROR; return; }
+	if (canonical != job) job->certificate = reduction_certificate(job->work->graph,
+		job->input, pg_nf_result(canonical), job->policy);
+	job->status = job->certificate ? PG_NF_DONE : PG_NF_ERROR;
 }
 
 static struct pg_nf_job *nf_step(struct pg_nf_job *job)
@@ -624,8 +635,8 @@ static struct pg_nf_job *nf_step(struct pg_nf_job *job)
 		}
 		struct pg_graph *graph = job->work->graph;
 		job->body = job->body->kind == PG_LAMBDA
-			? pg_lambda(graph, job->body->as.lambda.binder, job->children[0]->result)
-			: pg_application(graph, job->children[0]->result, job->children[1]->result);
+			? pg_lambda(graph, job->body->as.lambda.binder, pg_nf_result(job->children[0]))
+			: pg_application(graph, pg_nf_result(job->children[0]), pg_nf_result(job->children[1]));
 		job->head = pg_whnf_request(job->work, job->policy, job->body);
 		if (!job->head) goto failure;
 		job->stage = NF_RECHECK;
@@ -690,5 +701,6 @@ enum pg_nf_status pg_nf_advance(struct pg_nf_job *job, uint64_t budget)
 }
 
 enum pg_nf_status pg_nf_status(const struct pg_nf_job *job) { return job->status; }
-const struct pg_term *pg_nf_result(const struct pg_nf_job *job) { return job->result; }
+const struct pg_term *pg_nf_result(const struct pg_nf_job *job) { return job->certificate ? job->certificate->target : NULL; }
+const struct pg_reduction_certificate *pg_nf_certificate(const struct pg_nf_job *job) { return job->certificate; }
 uint64_t pg_nf_steps(const struct pg_nf_job *job) { return job->steps; }

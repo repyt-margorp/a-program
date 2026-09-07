@@ -23,6 +23,12 @@ requests, split/bulk budgets, result reuse, 10,000 nested binders and DAGs.
 A retained divergent thunk has no NF result; a discarded divergent argument
 does not block head-first normalization. Conversion uses shared NF work only
 after its WHNF comparison fails, and issues no certificate while pending.
+Typed NF uses the same directed reduction receipt and `PG_PURE_NORMALIZATION`
+rule as typed WHNF. Tests distinguish head results from normalization inside
+THUNK/Lambda, preserve separate annotations and contexts over shared Core,
+reject foreign policies/owners and mismatched sources, and reuse completed
+work across solver instances. Receipts survive work-store destruction; they
+are not serialized proofs or permission to execute runtime effects.
 
 `identity.c` checks symbolic Identity formation, diagonal reflexivity, selected
 universe-family instantiation, iterated diagonal witnesses, CBPV polarity and

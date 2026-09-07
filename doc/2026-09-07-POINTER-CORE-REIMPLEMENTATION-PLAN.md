@@ -1322,6 +1322,35 @@ a specified type family, not a global endpoint-only relation.
   Implementation `eval.c` +137/-1, `eval.h` +18/-0, `conversion.c` +30/-6,
   `conversion.h` +5/-3 (net +180); tests `core.c` +90, `identity.c` +9;
   documentation separate. N2/N3/N5 remain open, including NF CLI integration.
+- [x] September 8, after `ce0a36d`: expose typed NF through the existing solver
+  (`pg_synthesis_nf`) without another proof rule or Replay pipeline. WHNF and
+  NF issue the same graph-owned `pg_reduction_certificate`, consumed by
+  `PG_PURE_NORMALIZATION` with its exact source evidence and fixed pure policy.
+  The receipt is the NF result authority; no separate result pointer is stored.
+  NF requests remain distinct from WHNF requests, use the same reduction store,
+  and do no work until advanced. Evidence remains specific to the typed
+  occurrence/context even when the untyped reduction is shared. Tests cover
+  suspended and Lambda-body redexes, split/bulk jobs, reuse, policy/source/owner
+  rejection and receipt lifetime. This adds no function eta, runtime execution,
+  new term tag or serialized trust bit. CLI/.a and general HOTT remain open.
+  Final optimized check: 3.049 s; ASan/UBSan: 9.439 s, both with synthesis
+  rebuilt. Core/Identity/synthesis/IADT also pass with a 512 KiB stack.
+  The 158-file syntax gate remains parser coverage, not semantic parity.
+
+  | File under `src/prototype/pointer/` | Added | Removed | Net |
+  | --- | ---: | ---: | ---: |
+  | `eval.c` | 28 | 16 | +12 |
+  | `eval.h` | 9 | 6 | +3 |
+  | `evidence.c` | 5 | 5 | 0 |
+  | `evidence.h` | 3 | 3 | 0 |
+  | `synthesis.c` | 27 | 17 | +10 |
+  | `synthesis.h` | 5 | 0 | +5 |
+  | Implementation total | 77 | 47 | +30 |
+  | `tests/core.c` | 7 | 0 | +7 |
+  | `tests/iadt.c` | 1 | 1 | 0 |
+  | `tests/synthesis.c` | 61 | 4 | +57 |
+
+  Documentation is counted separately from implementation and test code.
 - [x] September 8, after `c03fa1c`: audit the U/Pi transport candidate before
   admitting it as a pure rewrite. `tests/identity.c:pi_transport_candidate`
   constructs the map with ordinary checked Pi/Lambda, APP, FOLD, transport

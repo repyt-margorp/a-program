@@ -81,6 +81,11 @@ struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
  * typed input, not its erased Core alone, is the evidence-job key. */
 struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof);
+/* Strong pure normalization of the same typed inputs, with a distinct job
+ * key but shared evaluator/subterm work and subject-reduction evidence.
+ * This may normalize under THUNK; it is not a runtime execution request. */
+struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *proof);
 /* Retain the term, normalize its derived classifier and explicitly convert
  * its typing evidence. No target type is supplied to synthesis or guessed
  * from Core. An unchanged classifier preserves the original proof. */
